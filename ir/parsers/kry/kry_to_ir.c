@@ -688,8 +688,24 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
 
             // Ensure layout exists
             IRLayout* layout = ir_get_layout(component);
+            if (getenv("KRYON_DEBUG_LAYOUT")) {
+                fprintf(stderr, "[KRY_PARSER] Component %u: %s='%s' -> alignment=%d, layout=%p\n",
+                        component->id, name, align, alignment, (void*)layout);
+            }
             if (layout) {
                 layout->flex.cross_axis = alignment;
+                // If contentAlignment, also set justify_content for both-axis centering
+                if (strcmp(name, "contentAlignment") == 0) {
+                    layout->flex.justify_content = alignment;
+                    if (getenv("KRYON_DEBUG_LAYOUT")) {
+                        fprintf(stderr, "[KRY_PARSER]   contentAlignment: set both cross_axis=%d and justify_content=%d\n",
+                                alignment, alignment);
+                    }
+                } else {
+                    if (getenv("KRYON_DEBUG_LAYOUT")) {
+                        fprintf(stderr, "[KRY_PARSER]   alignItems: set cross_axis=%d only\n", alignment);
+                    }
+                }
             }
         }
         return;

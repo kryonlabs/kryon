@@ -552,6 +552,11 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
 
     const char* tag = get_html_tag(component->type);
 
+    // Check if this is a Body component (uses HTML <body> tag)
+    if (component->tag && strcmp(component->tag, "Body") == 0) {
+        tag = "body";
+    }
+
     // CRITICAL: Override tag for semantic HTML elements BEFORE writing opening tag
     // This prevents mismatched tags like <div>...</h1> or <div>...</ul>
     switch (component->type) {
@@ -959,11 +964,39 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         html_generator_write_string(generator, "  <script src=\"kryon.js\"></script>\n");
     }
 
-    html_generator_write_string(generator, "</head>\n<body>\n");
+    html_generator_write_string(generator, "</head>\n");
 
-    generator->indent_level = 1;
-    generate_component_html(generator, root);
-    generator->indent_level = 0;
+    // Check if root or its first child is a Body component
+    IRComponent* body_component = NULL;
+    bool root_is_body = (root->tag && strcmp(root->tag, "Body") == 0);
+
+    if (root_is_body) {
+        body_component = root;
+    } else if (root->child_count > 0 && root->children[0]->tag &&
+               strcmp(root->children[0]->tag, "Body") == 0) {
+        body_component = root->children[0];
+    }
+
+    if (body_component) {
+        // Render Body component as actual <body> element
+        html_generator_write_string(generator, "<body");
+        html_generator_write_format(generator, " id=\"kryon-%u\"", body_component->id);
+        html_generator_write_format(generator, " class=\"%s\"", get_css_class(body_component));
+        html_generator_write_string(generator, ">\n");
+
+        generator->indent_level = 1;
+        // Render Body's children
+        for (uint32_t i = 0; i < body_component->child_count; i++) {
+            generate_component_html(generator, body_component->children[i]);
+        }
+        generator->indent_level = 0;
+    } else {
+        // Normal case: create wrapper body and render component tree
+        html_generator_write_string(generator, "<body>\n");
+        generator->indent_level = 1;
+        generate_component_html(generator, root);
+        generator->indent_level = 0;
+    }
 
     html_generator_write_string(generator, "</body>\n</html>\n");
 

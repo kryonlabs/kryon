@@ -819,8 +819,20 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     }
 
     // Serialize layout properties
+    if (getenv("KRYON_DEBUG_LAYOUT")) {
+        fprintf(stderr, "[JSON_SERIALIZE] Component %u type=%d: layout=%p\n",
+                component->id, component->type, (void*)component->layout);
+    }
     if (component->layout) {
         json_serialize_layout(obj, component->layout, component);
+        if (getenv("KRYON_DEBUG_LAYOUT")) {
+            fprintf(stderr, "[JSON_SERIALIZE]   Layout serialized (cross_axis=%d)\n",
+                    component->layout->flex.cross_axis);
+        }
+    } else {
+        if (getenv("KRYON_DEBUG_LAYOUT")) {
+            fprintf(stderr, "[JSON_SERIALIZE]   SKIPPING layout (NULL)\n");
+        }
     }
 
     // Serialize checkbox state (stored in custom_data)
@@ -2929,6 +2941,7 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (!str) return IR_COMPONENT_CONTAINER;
     // CamelCase variants (from .kir files)
     if (strcmp(str, "Container") == 0) return IR_COMPONENT_CONTAINER;
+    if (strcmp(str, "Body") == 0) return IR_COMPONENT_CONTAINER;  // Body is an alias for Container
     if (strcmp(str, "Row") == 0) return IR_COMPONENT_ROW;
     if (strcmp(str, "Column") == 0) return IR_COMPONENT_COLUMN;
     if (strcmp(str, "Center") == 0) return IR_COMPONENT_CENTER;
@@ -2947,6 +2960,7 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "TabPanel") == 0) return IR_COMPONENT_TAB_PANEL;
     // UPPERCASE variants (from HTML transpiler data-ir-type attributes)
     if (strcmp(str, "CONTAINER") == 0) return IR_COMPONENT_CONTAINER;
+    if (strcmp(str, "BODY") == 0) return IR_COMPONENT_CONTAINER;  // Body is an alias for Container
     if (strcmp(str, "ROW") == 0) return IR_COMPONENT_ROW;
     if (strcmp(str, "COLUMN") == 0) return IR_COMPONENT_COLUMN;
     if (strcmp(str, "CENTER") == 0) return IR_COMPONENT_CENTER;
@@ -3154,7 +3168,12 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
 
     // Type
     if ((item = cJSON_GetObjectItem(json, "type")) != NULL && cJSON_IsString(item)) {
-        component->type = ir_string_to_component_type(item->valuestring);
+        const char* type_str = item->valuestring;
+        component->type = ir_string_to_component_type(type_str);
+        // Preserve "Body" tag for HTML generator
+        if (strcmp(type_str, "Body") == 0) {
+            component->tag = strdup("Body");
+        }
     }
 
     // Text content (check both "text" and "label" properties)
@@ -3187,6 +3206,11 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
 
     // Deserialize style and layout
     json_deserialize_style(json, component->style);
+
+    // Ensure layout exists before deserializing (needed for alignItems, justifyContent, etc.)
+    if (!component->layout) {
+        component->layout = ir_get_layout(component);
+    }
     json_deserialize_layout(json, component->layout);
 
     if (getenv("KRYON_TRACE_MAXWIDTH") && component->layout) {

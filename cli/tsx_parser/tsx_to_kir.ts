@@ -396,7 +396,7 @@ async function parseKryonTSX(source: string): Promise<KIRComponent> {
   const mockComponents: Record<string, any> = {};
 
   const componentTypes = [
-    'Column', 'Row', 'Container', 'Text', 'Button', 'Input',
+    'Column', 'Row', 'Container', 'Body', 'Text', 'Button', 'Input',
     'Checkbox', 'Image', 'Link', 'Canvas', 'Center',
     'Table', 'TableHead', 'TableBody', 'TableFoot', 'TableRow',
     'TableCell', 'TableHeaderCell',

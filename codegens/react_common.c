@@ -88,7 +88,7 @@ const char* react_file_extension(ReactOutputMode mode) {
 
 const char* react_generate_imports(ReactOutputMode mode) {
     (void)mode; // Same for both modes
-    return "import { kryonApp, Column, Row, Button, Text, Input, useState, useEffect, useCallback, useMemo, useReducer } from '@kryon/react';";
+    return "import { kryonApp, Container, Body, Column, Row, Button, Text, Input, useState, useEffect, useCallback, useMemo, useReducer } from '@kryon/react';";
 }
 
 // =============================================================================

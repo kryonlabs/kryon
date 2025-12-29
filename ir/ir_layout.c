@@ -10,6 +10,10 @@
 #include <string.h>
 #include <math.h>
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 // ============================================================================
 // Text Measurement Callback (Backend-Specific)
 // ============================================================================
@@ -2024,6 +2028,11 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
             switch (layout->flex.justify_content) {
                 case IR_ALIGNMENT_CENTER:
                     main_offset = remaining_main / 2.0f;
+                    #ifdef __ANDROID__
+                    __android_log_print(ANDROID_LOG_WARN, "KryonLayout",
+                           "justifyContent CENTER: comp %u, remaining=%.1f, offset=%.1f, is_row=%d, children=%d",
+                           c->id, remaining_main, main_offset, is_row, c->child_count);
+                    #endif
                     break;
                 case IR_ALIGNMENT_END:
                     main_offset = remaining_main;
@@ -2070,6 +2079,16 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                            child->id, cross_offset, child->layout_state->computed.x);
                 }
             }
+
+            // Debug text positioning
+            #ifdef __ANDROID__
+            if (child->type == IR_COMPONENT_TEXT) {
+                __android_log_print(ANDROID_LOG_WARN, "KryonLayout",
+                       "TEXT FINAL: id=%u pos=(%.1f, %.1f) main=%.1f cross=%.1f",
+                       child->id, child->layout_state->computed.x, child->layout_state->computed.y,
+                       main_offset, cross_offset);
+            }
+            #endif
 
             // Re-sync computed layout to rendered_bounds after alignment
             child->rendered_bounds.x = child->layout_state->computed.x;
