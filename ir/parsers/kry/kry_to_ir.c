@@ -1637,6 +1637,60 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
             } else if (child->type == KRY_NODE_FOR_LOOP) {
                 // For loop outside static block - expand/unroll
                 expand_for_loop(ctx, component, child);
+            } else if (child->type == KRY_NODE_IF) {
+                // If/else conditional rendering
+                // For now, evaluate the condition and render the appropriate branch
+                // TODO: Add runtime conditional support for reactive variables
+
+                bool condition_true = true;  // Default to true
+
+                // Try to evaluate the condition
+                if (child->value) {
+                    if (child->value->type == KRY_VALUE_IDENTIFIER) {
+                        // Look up variable value
+                        const char* var_name = child->value->identifier;
+                        const char* var_value = substitute_param(ctx, var_name);
+                        if (var_value) {
+                            // Parse boolean value
+                            if (strcmp(var_value, "false") == 0 || strcmp(var_value, "0") == 0) {
+                                condition_true = false;
+                            }
+                        }
+                    } else if (child->value->type == KRY_VALUE_NUMBER) {
+                        condition_true = (child->value->number_value != 0);
+                    } else if (child->value->type == KRY_VALUE_STRING) {
+                        condition_true = (child->value->string_value && strlen(child->value->string_value) > 0);
+                    }
+                }
+
+                // Render the appropriate branch
+                if (condition_true) {
+                    // Render then branch (children of the if node)
+                    KryNode* then_child = child->first_child;
+                    while (then_child) {
+                        if (then_child->type == KRY_NODE_COMPONENT) {
+                            IRComponent* child_component = convert_node(ctx, then_child);
+                            if (child_component) {
+                                ir_add_child(component, child_component);
+                            }
+                        }
+                        then_child = then_child->next_sibling;
+                    }
+                } else {
+                    // Render else branch
+                    if (child->else_branch) {
+                        KryNode* else_child = child->else_branch->first_child;
+                        while (else_child) {
+                            if (else_child->type == KRY_NODE_COMPONENT) {
+                                IRComponent* child_component = convert_node(ctx, else_child);
+                                if (child_component) {
+                                    ir_add_child(component, child_component);
+                                }
+                            }
+                            else_child = else_child->next_sibling;
+                        }
+                    }
+                }
             }
 
             child = child->next_sibling;

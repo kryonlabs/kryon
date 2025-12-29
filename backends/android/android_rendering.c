@@ -211,10 +211,22 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
         // Use absolute positioning
         x = component->style->absolute_x;
         y = component->style->absolute_y;
+        __android_log_print(ANDROID_LOG_ERROR, "KryonPos",
+            "🎯 ABSOLUTE positioning: comp=%u, mode=%d, absolute=(%.1f,%.1f) → final=(%.1f,%.1f)",
+            component->id, component->style->position_mode,
+            component->style->absolute_x, component->style->absolute_y, x, y);
     } else {
         // Use computed layout position
         x = parent_x + component->layout_state->computed.x;
         y = parent_y + component->layout_state->computed.y;
+        if (component_render_count < 5 || component_render_count % 60 == 0) {
+            __android_log_print(ANDROID_LOG_INFO, "KryonPos",
+                "📐 RELATIVE positioning: comp=%u, mode=%d, parent=(%.1f,%.1f), computed=(%.1f,%.1f) → final=(%.1f,%.1f)",
+                component->id, component->style ? component->style->position_mode : -1,
+                parent_x, parent_y,
+                component->layout_state->computed.x, component->layout_state->computed.y,
+                x, y);
+        }
     }
 
     float width = component->layout_state->computed.width;
