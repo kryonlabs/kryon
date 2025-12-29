@@ -499,6 +499,20 @@ void android_renderer_get_size(AndroidRenderer* renderer, int* width, int* heigh
     if (height) *height = renderer->window_height;
 }
 
+void android_renderer_set_density(AndroidRenderer* renderer, float density) {
+    if (!renderer) return;
+
+    if (density > 0.0f) {
+        renderer->density_scale = density;
+        LOGI("Renderer density set to: %.2f\n", density);
+    }
+}
+
+float android_renderer_get_density(AndroidRenderer* renderer) {
+    if (!renderer) return 1.0f;
+    return renderer->density_scale > 0.0f ? renderer->density_scale : 1.0f;
+}
+
 // ============================================================================
 // Performance & Debugging
 // ============================================================================

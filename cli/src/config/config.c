@@ -429,7 +429,7 @@ bool config_validate(KryonConfig* config) {
 
     // Validate frontend is supported
     if (config->build_frontend) {
-        const char* valid_frontends[] = {"tsx", "jsx", "lua", "nim", "md", "kry", "c"};
+        const char* valid_frontends[] = {"tsx", "jsx", "lua", "nim", "md", "kry", "c", "html"};
         bool valid_frontend = false;
         for (size_t i = 0; i < sizeof(valid_frontends) / sizeof(valid_frontends[0]); i++) {
             if (strcmp(config->build_frontend, valid_frontends[i]) == 0) {
@@ -440,7 +440,7 @@ bool config_validate(KryonConfig* config) {
 
         if (!valid_frontend) {
             fprintf(stderr, "Error: Invalid build.frontend '%s'\n", config->build_frontend);
-            fprintf(stderr, "       Valid frontends: tsx, jsx, lua, nim, md, kry, c\n");
+            fprintf(stderr, "       Valid frontends: tsx, jsx, lua, nim, md, kry, c, html\n");
             has_errors = true;
         }
     }

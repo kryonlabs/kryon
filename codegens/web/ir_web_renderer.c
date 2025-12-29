@@ -128,6 +128,11 @@ void web_ir_renderer_set_include_wasm_modules(WebIRRenderer* renderer, bool incl
     renderer->include_wasm_modules = include;
 }
 
+void web_ir_renderer_set_inline_css(WebIRRenderer* renderer, bool inline_css) {
+    if (!renderer || !renderer->html_generator) return;
+    html_generator_set_inline_css(renderer->html_generator, inline_css);
+}
+
 static bool generate_javascript_runtime(WebIRRenderer* renderer) {
     if (!renderer || !renderer->include_javascript_runtime) return true;
 

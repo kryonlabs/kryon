@@ -380,13 +380,13 @@ bool android_renderer_set_default_font(AndroidRenderer* renderer,
 /**
  * Measure text dimensions.
  *
- * Returns the visual bounding box of rendered text:
+ * Returns dimensions that match what draw_text expects:
  * - width: Horizontal advance (sum of glyph advances)
- * - height: Visual height (highest glyph top to lowest glyph bottom)
+ * - height: Font line height (ascent - descent), scaled to match draw_text baseline
  *
- * Note: Visual height may be smaller than font size for text without descenders.
- * Example: "Hello" at 16px font → ~9px visual height
- *          "Agj" at 16px font → ~12px visual height (has descenders)
+ * IMPORTANT: Height uses font metrics (not visual bounds) so that centering
+ * calculations work correctly with draw_text's baseline positioning.
+ * draw_text expects y to be the top of the font line height box.
  */
 bool android_renderer_measure_text(AndroidRenderer* renderer,
                                     const char* text,
@@ -409,38 +409,27 @@ bool android_renderer_measure_text(AndroidRenderer* renderer,
         return false;
     }
 
-    // Calculate text width AND visual bounds
+    // Calculate text width
     float text_width = 0.0f;
-    float max_ascent = 0.0f;   // Highest point above baseline
-    float max_descent = 0.0f;  // Lowest point below baseline (negative)
 
     for (const char* p = text; *p; p++) {
         GlyphInfo* glyph = android_font_get_glyph(font, *p);
         if (glyph) {
-            // Accumulate width
             text_width += glyph->advance;
-
-            // Track visual bounds
-            // bearing_y = distance from baseline to glyph top (+ = above)
-            // height = glyph bitmap height in pixels
-            float glyph_top = (float)glyph->bearing_y;
-            float glyph_bottom = (float)(glyph->bearing_y - glyph->height);
-
-            if (glyph_top > max_ascent) {
-                max_ascent = glyph_top;
-            }
-            if (glyph_bottom < max_descent) {
-                max_descent = glyph_bottom;
-            }
         }
     }
 
-    // Visual height = distance from highest to lowest point
-    // max_descent is negative, so subtracting adds absolute value
-    float visual_height = max_ascent - max_descent;
+    // Height uses font metrics (ascent - descent) to match draw_text expectations
+    // This ensures centering works correctly:
+    // - center_y - (line_height / 2) gives proper y position for draw_text
+    // - draw_text adds ascent to y to get baseline
+    // - Result: text is visually centered
+    //
+    // Note: descent is typically negative, so (ascent - descent) = ascent + |descent|
+    float line_height = (font->ascent - font->descent) * font->scale;
 
     if (width) *width = text_width;
-    if (height) *height = visual_height;
+    if (height) *height = line_height;
 
     return true;
 }

@@ -15,11 +15,6 @@
 #include <sys/wait.h>
 #include <errno.h>
 
-// Embedded TypeScript parser script (will be written to cache if needed)
-static const char* TSX_PARSER_SCRIPT =
-#include "tsx_to_kir_embedded.h"
-;
-
 static char cached_parser_path[1024] = "";
 static char cached_bun_path[512] = "";
 
@@ -133,28 +128,15 @@ const char* ir_tsx_get_parser_script(void) {
         }
     }
 
-    // Not found - write embedded script to cache
-    if (home) {
-        char cache_dir[1024];
-        snprintf(cache_dir, sizeof(cache_dir), "%s/.cache/kryon/tsx_parser", home);
-
-        // Create cache directory
-        char cmd[2048];
-        snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", cache_dir);
-        system(cmd);
-
-        snprintf(cached_parser_path, sizeof(cached_parser_path),
-                "%s/tsx_to_kir.ts", cache_dir);
-
-        // Write embedded script
-        FILE* f = fopen(cached_parser_path, "w");
-        if (f) {
-            fputs(TSX_PARSER_SCRIPT, f);
-            fclose(f);
-            chmod(cached_parser_path, 0755);
-            return cached_parser_path;
-        }
+    // Not found - provide helpful error message
+    fprintf(stderr, "Error: TSX parser (tsx_to_kir.ts) not found.\n");
+    fprintf(stderr, "Searched locations:\n");
+    for (int i = 0; i < num_paths; i++) {
+        fprintf(stderr, "  - %s\n", search_paths[i]);
     }
+    fprintf(stderr, "\nTo fix:\n");
+    fprintf(stderr, "  1. Run 'make install' in the kryon/cli directory, or\n");
+    fprintf(stderr, "  2. Set KRYON_ROOT environment variable to the kryon source directory\n");
 
     return NULL;
 }

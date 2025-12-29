@@ -48,6 +48,7 @@ void html_generator_destroy(HTMLGenerator* generator);
 HtmlGeneratorOptions html_generator_default_options(void);
 
 void html_generator_set_pretty_print(HTMLGenerator* generator, bool pretty);
+void html_generator_set_inline_css(HTMLGenerator* generator, bool inline_css);
 
 bool html_generator_write_string(HTMLGenerator* generator, const char* string);
 bool html_generator_write_format(HTMLGenerator* generator, const char* format, ...);

@@ -97,6 +97,13 @@ bool android_renderer_is_ready(AndroidRenderer* renderer);
 // Get current framebuffer size
 void android_renderer_get_size(AndroidRenderer* renderer, int* width, int* height);
 
+// Set display density scale (e.g., 1.0, 1.5, 2.0, 2.75, 3.0)
+// Must be called before rendering for proper scaling
+void android_renderer_set_density(AndroidRenderer* renderer, float density);
+
+// Get current display density scale
+float android_renderer_get_density(AndroidRenderer* renderer);
+
 // ============================================================================
 // Font Management
 // ============================================================================

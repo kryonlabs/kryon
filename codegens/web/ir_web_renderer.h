@@ -20,6 +20,7 @@ void web_ir_renderer_set_output_directory(WebIRRenderer* renderer, const char* d
 void web_ir_renderer_set_generate_separate_files(WebIRRenderer* renderer, bool separate);
 void web_ir_renderer_set_include_javascript_runtime(WebIRRenderer* renderer, bool include);
 void web_ir_renderer_set_include_wasm_modules(WebIRRenderer* renderer, bool include);
+void web_ir_renderer_set_inline_css(WebIRRenderer* renderer, bool inline_css);
 
 // Main rendering function
 bool web_ir_renderer_render(WebIRRenderer* renderer, IRComponent* root);
