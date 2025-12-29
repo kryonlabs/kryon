@@ -115,12 +115,17 @@ bool has_event_handlers(IRComponent* component, IRLogicBlock* logic_block) {
 char* generate_natural_class_name(IRComponent* component) {
     if (!component) return NULL;
 
-    // Priority 1: Use component->tag if set (user custom class)
+    // Priority 1: Use component->css_class if set (CSS class from original HTML)
+    if (component->css_class && component->css_class[0] != '\0') {
+        return strdup(component->css_class);
+    }
+
+    // Priority 2: Use component->tag if set (user custom class or semantic tag fallback)
     if (component->tag && component->tag[0] != '\0') {
         return strdup(component->tag);
     }
 
-    // Priority 2: Natural semantic names based on component type
+    // Priority 3: Natural semantic names based on component type
     const char* class_name = NULL;
 
     switch (component->type) {

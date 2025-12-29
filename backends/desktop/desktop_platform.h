@@ -32,6 +32,45 @@ typedef enum {
     DESKTOP_BACKEND_X11
 } DesktopBackendType;
 
+// ============================================================================
+// Shutdown Management
+// ============================================================================
+
+/**
+ * Shutdown state machine states
+ */
+typedef enum {
+    KRYON_SHUTDOWN_RUNNING = 0,       // Normal operation
+    KRYON_SHUTDOWN_REQUESTED,          // Shutdown requested, callbacks running
+    KRYON_SHUTDOWN_IN_PROGRESS,        // Callbacks done, stopping main loop
+    KRYON_SHUTDOWN_COMPLETE            // Ready for window closure
+} KryonShutdownState;
+
+/**
+ * Shutdown reason codes
+ */
+typedef enum {
+    KRYON_SHUTDOWN_REASON_NONE = 0,
+    KRYON_SHUTDOWN_REASON_USER,        // App called kryon_shutdown()
+    KRYON_SHUTDOWN_REASON_WINDOW,      // Window close button pressed
+    KRYON_SHUTDOWN_REASON_SYSTEM,      // System shutdown/signal
+    KRYON_SHUTDOWN_REASON_ERROR        // Fatal error
+} KryonShutdownReason;
+
+/**
+ * Shutdown callback - called before window closes
+ * @param reason Why shutdown was requested
+ * @param user_data User-provided context
+ * @return true to proceed, false to cancel (USER reason only)
+ */
+typedef bool (*KryonShutdownCallback)(KryonShutdownReason reason, void* user_data);
+
+/**
+ * Cleanup callback - called after main loop exits, before window closes
+ * @param user_data User-provided context
+ */
+typedef void (*KryonCleanupCallback)(void* user_data);
+
 /**
  * Backend Operations Table
  *

@@ -32,6 +32,19 @@ struct DesktopIRRenderer {
     bool initialized;
     bool running;
 
+    // Shutdown management
+    KryonShutdownState shutdown_state;
+    KryonShutdownReason shutdown_reason;
+    #define KRYON_MAX_SHUTDOWN_CALLBACKS 8
+    struct {
+        KryonShutdownCallback callback;
+        void* user_data;
+        int priority;
+    } shutdown_callbacks[KRYON_MAX_SHUTDOWN_CALLBACKS];
+    int shutdown_callback_count;
+    KryonCleanupCallback cleanup_callback;
+    void* cleanup_user_data;
+
     // Backend abstraction (NEW)
     DesktopRendererOps* ops;  // Operations table for current backend
 

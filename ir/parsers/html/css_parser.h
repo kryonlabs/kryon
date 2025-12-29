@@ -24,9 +24,15 @@ void ir_css_free_properties(CSSProperty* props, uint32_t count);
 // This maps CSS properties to IR style fields
 void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t count);
 
+// Apply CSS properties to IR layout (flexbox, size constraints)
+void ir_css_apply_to_layout(IRLayout* layout, const CSSProperty* props, uint32_t count);
+
 // Individual property parsers (helpers)
 bool ir_css_parse_color(const char* value, IRColor* out_color);
 bool ir_css_parse_dimension(const char* value, IRDimension* out_dimension);
 bool ir_css_parse_spacing(const char* value, IRSpacing* out_spacing);
+
+// Gradient parsing
+bool ir_css_parse_linear_gradient(const char* value, IRGradient** out_gradient);
 
 #endif // IR_CSS_PARSER_H

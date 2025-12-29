@@ -132,6 +132,25 @@ void ir_html_parse_inline_css(const char* style_str, IRStyle* ir_style) {
     }
 }
 
+// Parse inline CSS and apply to both style and layout
+void ir_html_parse_inline_css_full(const char* style_str, IRStyle* ir_style, IRLayout* ir_layout) {
+    if (!style_str) return;
+
+    // Use the dedicated CSS parser from ir_css_parser.c
+    uint32_t prop_count = 0;
+    CSSProperty* props = ir_css_parse_inline(style_str, &prop_count);
+
+    if (props && prop_count > 0) {
+        if (ir_style) {
+            ir_css_apply_to_style(ir_style, props, prop_count);
+        }
+        if (ir_layout) {
+            ir_css_apply_to_layout(ir_layout, props, prop_count);
+        }
+        ir_css_free_properties(props, prop_count);
+    }
+}
+
 // ============================================================================
 // HTML to IR Conversion
 // ============================================================================
@@ -149,6 +168,30 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
         }
 
         case HTML_NODE_ELEMENT: {
+            // Skip non-visible HTML elements
+            if (node->tag_name) {
+                if (strcmp(node->tag_name, "head") == 0 ||
+                    strcmp(node->tag_name, "meta") == 0 ||
+                    strcmp(node->tag_name, "title") == 0 ||
+                    strcmp(node->tag_name, "script") == 0 ||
+                    strcmp(node->tag_name, "link") == 0 ||
+                    strcmp(node->tag_name, "style") == 0 ||
+                    strcmp(node->tag_name, "noscript") == 0) {
+                    return NULL;  // Skip these elements entirely
+                }
+            }
+
+            // Handle <span class="text"> as Text component (unwrap to text content)
+            if (node->tag_name && strcmp(node->tag_name, "span") == 0 &&
+                node->class_name && strstr(node->class_name, "text") != NULL) {
+                // Extract text content from children
+                for (uint32_t i = 0; i < node->child_count; i++) {
+                    if (node->children[i]->type == HTML_NODE_TEXT) {
+                        return ir_text(node->children[i]->text_content);
+                    }
+                }
+            }
+
             // 3-tier type detection system:
             // Priority 1: data-ir-type attribute (for roundtrip preservation)
             // Priority 2: HTML tag name (<button>, <h1>, etc.)
@@ -158,7 +201,6 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
             if (node->data_ir_type) {
                 // Tier 1: Restore original component type from metadata
                 type = ir_string_to_component_type(node->data_ir_type);
-                printf("  [html→ir] Restored type from data-ir-type: %s → %d\n", node->data_ir_type, type);
             } else {
                 // Tier 2: Map HTML tag to component type
                 type = ir_html_tag_to_component_type(node->tag_name);
@@ -168,7 +210,6 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
                     IRComponentType inferred = ir_infer_type_from_classes(node->class_name);
                     if (inferred != IR_COMPONENT_CONTAINER) {
                         type = inferred;
-                        printf("  [html→ir] Inferred type from class '%s' → %d\n", node->class_name, type);
                     }
                 }
             }
@@ -297,17 +338,58 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
 
                 case IR_COMPONENT_IMAGE: {
                     component = ir_create_component(IR_COMPONENT_IMAGE);
-                    // TODO: Set image src, alt
+                    // Set image src (stored in custom_data)
+                    if (node->src) {
+                        component->custom_data = strdup(node->src);
+                    }
+                    // Set image alt text (stored in text_content)
+                    if (node->alt) {
+                        component->text_content = strdup(node->alt);
+                    }
                     break;
                 }
 
                 case IR_COMPONENT_LINK: {
                     const char* url = node->href ? node->href : "";
                     const char* text = "";
-                    if (node->child_count > 0 && node->children[0]->type == HTML_NODE_TEXT) {
-                        text = node->children[0]->text_content;
+
+                    // Extract text from children - handle both direct text and wrapped text
+                    // But only use simple text if there's just one text child
+                    bool has_complex_children = false;
+                    if (node->child_count > 0) {
+                        HtmlNode* child = node->children[0];
+
+                        // Case 1: Direct text child (only child)
+                        if (node->child_count == 1 && child->type == HTML_NODE_TEXT && child->text_content) {
+                            text = child->text_content;
+                        }
+                        // Case 2: Element child (like <span class="text">) - look for text inside
+                        else if (node->child_count == 1 && child->type == HTML_NODE_ELEMENT && child->child_count > 0) {
+                            for (uint32_t i = 0; i < child->child_count; i++) {
+                                if (child->children[i]->type == HTML_NODE_TEXT &&
+                                    child->children[i]->text_content) {
+                                    text = child->children[i]->text_content;
+                                    break;
+                                }
+                            }
+                        }
+                        // Case 3: Multiple children or complex content (images, etc.)
+                        else {
+                            has_complex_children = true;
+                        }
                     }
+
                     component = ir_link(url, text);
+
+                    // If there are complex children (images, etc.), process them
+                    if (has_complex_children && component) {
+                        for (uint32_t i = 0; i < node->child_count; i++) {
+                            IRComponent* child_comp = ir_html_node_to_component(node->children[i]);
+                            if (child_comp) {
+                                ir_add_child(component, child_comp);
+                            }
+                        }
+                    }
                     break;
                 }
 
@@ -318,22 +400,47 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
                     break;
             }
 
-            // Preserve custom class name in component->tag (for CSS generation)
-            // Priority: class name > tag name
-            if (component) {
-                if (node->class_name && node->class_name[0] != '\0') {
-                    // Use class name for custom styling
+            // Preserve semantic HTML tag AND CSS class for roundtrip generation
+            if (component && node->tag_name) {
+                // Check if this is a semantic HTML tag that should be preserved
+                bool is_semantic = (strcmp(node->tag_name, "header") == 0 ||
+                                   strcmp(node->tag_name, "footer") == 0 ||
+                                   strcmp(node->tag_name, "section") == 0 ||
+                                   strcmp(node->tag_name, "nav") == 0 ||
+                                   strcmp(node->tag_name, "main") == 0 ||
+                                   strcmp(node->tag_name, "article") == 0 ||
+                                   strcmp(node->tag_name, "aside") == 0);
+
+                if (is_semantic) {
+                    // For semantic tags, store the tag name
+                    component->tag = strdup(node->tag_name);
+                    // Also store the class name separately (for CSS styling)
+                    if (node->class_name && node->class_name[0] != '\0') {
+                        component->css_class = strdup(node->class_name);
+                        // If has class, CSS should use class selector (.hero)
+                        component->selector_type = IR_SELECTOR_CLASS;
+                    } else {
+                        // No class, CSS should use element selector (header)
+                        component->selector_type = IR_SELECTOR_ELEMENT;
+                    }
+                } else if (node->class_name && node->class_name[0] != '\0') {
+                    // For non-semantic tags, use class name for styling
                     component->tag = strdup(node->class_name);
-                } else if (node->tag_name && strcmp(node->tag_name, "div") != 0) {
+                    component->css_class = strdup(node->class_name);
+                    component->selector_type = IR_SELECTOR_CLASS;
+                } else if (strcmp(node->tag_name, "div") != 0) {
                     // Fall back to tag name (but skip generic "div")
                     component->tag = strdup(node->tag_name);
+                    // Generic elements like span, a, etc use element selector
+                    component->selector_type = IR_SELECTOR_ELEMENT;
                 }
             }
 
-            // Parse inline CSS styles
+            // Parse inline CSS styles and layout
             if (node->style && component) {
                 IRStyle* style = ir_get_style(component);  // Ensures style is created
-                ir_html_parse_inline_css(node->style, style);
+                IRLayout* layout = ir_get_layout(component);  // Ensures layout is created
+                ir_html_parse_inline_css_full(node->style, style, layout);
             }
 
             // Set component ID (if data-ir-id is present)
@@ -350,7 +457,8 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
 
             // Recursively convert children (except for components that already consumed their children)
             if (component && type != IR_COMPONENT_HEADING &&
-                type != IR_COMPONENT_BUTTON && type != IR_COMPONENT_CODE_BLOCK) {
+                type != IR_COMPONENT_BUTTON && type != IR_COMPONENT_CODE_BLOCK &&
+                type != IR_COMPONENT_LINK) {
                 for (uint32_t i = 0; i < node->child_count; i++) {
                     IRComponent* child = ir_html_node_to_component(node->children[i]);
                     if (child) {

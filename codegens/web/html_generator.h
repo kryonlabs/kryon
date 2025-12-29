@@ -24,7 +24,8 @@
 // HTML Generator Options
 typedef struct {
     bool minify;            // Minify output (remove whitespace)
-    bool inline_css;        // Inline CSS vs external file
+    bool inline_css;        // Inline CSS in element style attributes
+    bool embedded_css;      // Embed CSS in <style> tag instead of external file
     bool include_runtime;   // Include JavaScript runtime for event handlers
 } HtmlGeneratorOptions;
 
@@ -37,6 +38,7 @@ typedef struct HTMLGenerator {
     bool pretty_print;
     HtmlGeneratorOptions options;  // Generation options
     IRLogicBlock* logic_block;     // Logic block for event handlers (transpile mode)
+    IRReactiveManifest* manifest;  // Manifest for CSS variables (optional)
 } HTMLGenerator;
 
 // HTML Generator Functions
@@ -49,6 +51,7 @@ HtmlGeneratorOptions html_generator_default_options(void);
 
 void html_generator_set_pretty_print(HTMLGenerator* generator, bool pretty);
 void html_generator_set_inline_css(HTMLGenerator* generator, bool inline_css);
+void html_generator_set_manifest(HTMLGenerator* generator, IRReactiveManifest* manifest);
 
 bool html_generator_write_string(HTMLGenerator* generator, const char* string);
 bool html_generator_write_format(HTMLGenerator* generator, const char* format, ...);
