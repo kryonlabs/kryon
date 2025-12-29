@@ -88,10 +88,26 @@ char* tsx_codegen_from_json(const char* kir_json) {
 
     sb_append(sb, "    return (\n");
 
-    // Generate root element (not just children!)
-    char* root_elem = react_generate_element(component, &ctx, 3);
-    sb_append(sb, root_elem);
-    free(root_elem);
+    // Check if root is a simple Container with background - if so, generate only its children
+    // to avoid redundancy (kryonApp already handles the background)
+    cJSON* root_type = cJSON_GetObjectItem(component, "type");
+    cJSON* root_children = cJSON_GetObjectItem(component, "children");
+    bool is_simple_container = root_type && cJSON_IsString(root_type) &&
+                               strcmp(cJSON_GetStringValue(root_type), "Container") == 0 &&
+                               root_children && cJSON_IsArray(root_children);
+
+    if (is_simple_container && cJSON_GetArraySize(root_children) == 1) {
+        // Generate only the child element
+        cJSON* child = cJSON_GetArrayItem(root_children, 0);
+        char* child_elem = react_generate_element(child, &ctx, 3);
+        sb_append(sb, child_elem);
+        free(child_elem);
+    } else {
+        // Generate full root element
+        char* root_elem = react_generate_element(component, &ctx, 3);
+        sb_append(sb, root_elem);
+        free(root_elem);
+    }
 
     sb_append(sb, "\n    );\n");
     sb_append(sb, "  }\n");
