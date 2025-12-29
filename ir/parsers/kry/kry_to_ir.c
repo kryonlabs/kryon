@@ -302,7 +302,31 @@ static uint32_t parse_color(const char* color_str) {
 // ============================================================================
 
 static void apply_property(ConversionContext* ctx, IRComponent* component, const char* name, KryValue* value) {
-    if (!component || !name || !value) return;
+    fprintf(stderr, "[APPLY_PROP_ENTRY] name='%s', component=%p\n", name ? name : "NULL", (void*)component);
+    if (!component || !name || !value) {
+        fprintf(stderr, "[APPLY_PROP_ENTRY]   Early return: component=%p, name=%p, value=%p\n",
+                (void*)component, (void*)name, (void*)value);
+        return;
+    }
+
+    // Property aliases for App component (root container)
+    // Map user-friendly names to internal window properties
+    fprintf(stderr, "[PROP_ALIAS] component->id=%u, name='%s'\n", component->id, name);
+    if (component->id == 1) {  // Root component (App)
+        fprintf(stderr, "[PROP_ALIAS]   Is root component!\n");
+        if (strcmp(name, "title") == 0) {
+            fprintf(stderr, "[PROP_ALIAS]   Aliasing 'title' -> 'windowTitle'\n");
+            name = "windowTitle";
+        } else if (strcmp(name, "width") == 0 && value->type == KRY_VALUE_NUMBER) {
+            fprintf(stderr, "[PROP_ALIAS]   Calling windowWidth for width\n");
+            // For App, width sets window width, but also fall through to set container width
+            apply_property(ctx, component, "windowWidth", value);
+        } else if (strcmp(name, "height") == 0 && value->type == KRY_VALUE_NUMBER) {
+            fprintf(stderr, "[PROP_ALIAS]   Calling windowHeight for height\n");
+            // For App, height sets window height, but also fall through to set container height
+            apply_property(ctx, component, "windowHeight", value);
+        }
+    }
 
     IRStyle* style = ir_get_style(component);
     if (!style) {
@@ -791,12 +815,15 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
 
     // Window properties (for App component)
     if (strcmp(name, "windowTitle") == 0) {
+        fprintf(stderr, "[WINDOW_PROP] Setting windowTitle\n");
         if (value->type == KRY_VALUE_STRING) {
             // Get or create metadata
             IRContext* ctx = g_ir_context;
+            fprintf(stderr, "[WINDOW_PROP]   g_ir_context=%p\n", (void*)ctx);
             if (ctx) {
                 if (!ctx->metadata) {
                     ctx->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
+                    fprintf(stderr, "[WINDOW_PROP]   Created metadata=%p\n", (void*)ctx->metadata);
                 }
                 if (ctx->metadata) {
                     // Free old title if exists
@@ -808,6 +835,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                     ctx->metadata->window_title = (char*)malloc(len + 1);
                     if (ctx->metadata->window_title) {
                         strcpy(ctx->metadata->window_title, value->string_value);
+                        fprintf(stderr, "[WINDOW_PROP]   Set title='%s'\n", ctx->metadata->window_title);
                     }
                 }
             }
@@ -816,6 +844,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     if (strcmp(name, "windowWidth") == 0) {
+        fprintf(stderr, "[WINDOW_PROP] Setting windowWidth\n");
         if (value->type == KRY_VALUE_NUMBER) {
             IRContext* ctx = g_ir_context;
             if (ctx) {
@@ -824,6 +853,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 }
                 if (ctx->metadata) {
                     ctx->metadata->window_width = (int)value->number_value;
+                    fprintf(stderr, "[WINDOW_PROP]   Set width=%d\n", ctx->metadata->window_width);
                 }
             }
         }
@@ -831,6 +861,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     }
 
     if (strcmp(name, "windowHeight") == 0) {
+        fprintf(stderr, "[WINDOW_PROP] Setting windowHeight\n");
         if (value->type == KRY_VALUE_NUMBER) {
             IRContext* ctx = g_ir_context;
             if (ctx) {
@@ -839,6 +870,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 }
                 if (ctx->metadata) {
                     ctx->metadata->window_height = (int)value->number_value;
+                    fprintf(stderr, "[WINDOW_PROP]   Set height=%d\n", ctx->metadata->window_height);
                 }
             }
         }

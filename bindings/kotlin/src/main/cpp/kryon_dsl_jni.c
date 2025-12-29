@@ -423,14 +423,27 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetBackground(JNIEnv* env, jobject thi
 JNIEXPORT void JNICALL
 Java_com_kryon_dsl_ComponentBuilder_nativeSetColor(JNIEnv* env, jobject thiz,
                                                     jlong handle, jint componentId, jstring color) {
+    LOGI("nativeSetColor called: componentId=%d", componentId);
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
-    if (!ctx || !ctx->dsl_context) return;
+    if (!ctx || !ctx->dsl_context) {
+        LOGE("nativeSetColor: invalid context");
+        return;
+    }
 
     DSLBuildContext* dsl = ctx->dsl_context;
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component || !component->style) return;
+    if (!component) {
+        LOGE("nativeSetColor: component %d not found", componentId);
+        return;
+    }
+
+    IRStyle* style = ir_get_style(component);
+    if (!style) {
+        LOGE("nativeSetColor: failed to get style for component %d", componentId);
+        return;
+    }
 
     const char* color_str = (*env)->GetStringUTFChars(env, color, NULL);
     if (color_str) {
@@ -438,7 +451,7 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetColor(JNIEnv* env, jobject thiz,
         parse_color(color_str, &r, &g, &b, &a);
         LOGI("nativeSetColor: component_id=%d, type=%d, color=%s -> RGBA(%d,%d,%d,%d)",
              componentId, component->type, color_str, r, g, b, a);
-        ir_set_font_color(component->style, r, g, b, a);
+        ir_set_font_color(style, r, g, b, a);
         (*env)->ReleaseStringUTFChars(env, color, color_str);
     }
 }
@@ -525,15 +538,27 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetFlexDirection(JNIEnv* env, jobject 
 JNIEXPORT void JNICALL
 Java_com_kryon_dsl_ComponentBuilder_nativeSetFontSize(JNIEnv* env, jobject thiz,
                                                        jlong handle, jint componentId, jfloat size) {
+    LOGI("nativeSetFontSize called: componentId=%d, size=%.1f", componentId, size);
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
-    if (!ctx || !ctx->dsl_context) return;
+    if (!ctx || !ctx->dsl_context) {
+        LOGE("nativeSetFontSize: invalid context");
+        return;
+    }
 
     DSLBuildContext* dsl = ctx->dsl_context;
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (component && component->style) {
-        ir_set_font_size(component->style, size);
+    if (component) {
+        IRStyle* style = ir_get_style(component);
+        if (style) {
+            LOGI("Setting font size: componentId=%d, size=%.1f", componentId, size);
+            ir_set_font_size(style, size);
+        } else {
+            LOGE("nativeSetFontSize: failed to get style for component %d", componentId);
+        }
+    } else {
+        LOGE("nativeSetFontSize: component %d not found", componentId);
     }
 }
 
@@ -661,65 +686,6 @@ Java_com_kryon_dsl_TextBuilder_nativeSetText(JNIEnv* env, jobject thiz,
     if (text) {
         ir_set_text_content(component, text);
         (*env)->ReleaseStringUTFChars(env, value, text);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_com_kryon_dsl_TextBuilder_nativeSetTextFontSize(JNIEnv* env, jobject thiz,
-                                                      jlong handle, jint componentId, jfloat size) {
-    KryonNativeContext* ctx = (KryonNativeContext*)handle;
-    if (!ctx || !ctx->dsl_context) return;
-
-    DSLBuildContext* dsl = ctx->dsl_context;
-    ir_set_context(dsl->ir_context);
-
-    IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component) {
-        LOGE("nativeSetTextFontSize: component %d not found", componentId);
-        return;
-    }
-
-    // Get or create style
-    IRStyle* style = ir_get_style(component);
-    if (!style) {
-        LOGE("nativeSetTextFontSize: failed to get/create style");
-        return;
-    }
-
-    LOGI("Setting font size for Text component %d: %.1f", componentId, size);
-    ir_set_font_size(style, size);
-}
-
-JNIEXPORT void JNICALL
-Java_com_kryon_dsl_TextBuilder_nativeSetTextColor(JNIEnv* env, jobject thiz,
-                                                   jlong handle, jint componentId, jstring color) {
-    KryonNativeContext* ctx = (KryonNativeContext*)handle;
-    if (!ctx || !ctx->dsl_context) return;
-
-    DSLBuildContext* dsl = ctx->dsl_context;
-    ir_set_context(dsl->ir_context);
-
-    IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component) {
-        LOGE("nativeSetTextColor: component %d not found", componentId);
-        return;
-    }
-
-    // Get or create style
-    IRStyle* style = ir_get_style(component);
-    if (!style) {
-        LOGE("nativeSetTextColor: failed to get/create style");
-        return;
-    }
-
-    const char* color_str = (*env)->GetStringUTFChars(env, color, NULL);
-    if (color_str) {
-        uint8_t r, g, b, a;
-        parse_color(color_str, &r, &g, &b, &a);
-        LOGI("Setting text color for Text component %d: %s -> RGBA(%d,%d,%d,%d)",
-             componentId, color_str, r, g, b, a);
-        ir_set_font_color(style, r, g, b, a);
-        (*env)->ReleaseStringUTFChars(env, color, color_str);
     }
 }
 

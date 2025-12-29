@@ -2273,22 +2273,38 @@ char* ir_serialize_json_complete(
 
     // Add window properties from global IR context
     IRContext* ctx = g_ir_context;
+    fprintf(stderr, "[JSON_SERIALIZE] g_ir_context=%p\n", (void*)ctx);
+    if (ctx) {
+        fprintf(stderr, "[JSON_SERIALIZE]   ctx->metadata=%p\n", (void*)ctx->metadata);
+        if (ctx->metadata) {
+            fprintf(stderr, "[JSON_SERIALIZE]   window_title=%s, width=%d, height=%d\n",
+                    ctx->metadata->window_title ? ctx->metadata->window_title : "NULL",
+                    ctx->metadata->window_width, ctx->metadata->window_height);
+        }
+    }
     if (ctx && ctx->metadata) {
         cJSON* appJson = cJSON_CreateObject();
         if (ctx->metadata->window_title) {
             cJSON_AddStringToObject(appJson, "windowTitle", ctx->metadata->window_title);
+            fprintf(stderr, "[JSON_SERIALIZE]   Added windowTitle\n");
         }
         if (ctx->metadata->window_width > 0) {
             cJSON_AddNumberToObject(appJson, "windowWidth", ctx->metadata->window_width);
+            fprintf(stderr, "[JSON_SERIALIZE]   Added windowWidth=%d\n", ctx->metadata->window_width);
         }
         if (ctx->metadata->window_height > 0) {
             cJSON_AddNumberToObject(appJson, "windowHeight", ctx->metadata->window_height);
+            fprintf(stderr, "[JSON_SERIALIZE]   Added windowHeight=%d\n", ctx->metadata->window_height);
         }
         // Only add app object if it has any properties
-        if (cJSON_GetArraySize(appJson) > 0) {
+        int app_size = cJSON_GetArraySize(appJson);
+        fprintf(stderr, "[JSON_SERIALIZE]   app object size=%d\n", app_size);
+        if (app_size > 0) {
             cJSON_AddItemToObject(wrapper, "app", appJson);
+            fprintf(stderr, "[JSON_SERIALIZE]   Added app object to wrapper\n");
         } else {
             cJSON_Delete(appJson);
+            fprintf(stderr, "[JSON_SERIALIZE]   Deleted empty app object\n");
         }
     }
 
