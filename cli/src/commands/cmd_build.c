@@ -20,6 +20,9 @@ static const char* detect_frontend(const char* source_file) {
     else if (strcmp(ext, ".md") == 0) {
         return "markdown";
     }
+    else if (strcmp(ext, ".html") == 0) {
+        return "html";
+    }
     else if (strcmp(ext, ".kry") == 0) {
         return "kry";
     }
@@ -75,6 +78,23 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
             free(output);
         }
         return result;
+    }
+    else if (strcmp(frontend, "html") == 0) {
+        // Use kryon compile for HTML
+        char cmd[1024];
+        snprintf(cmd, sizeof(cmd),
+                 "kryon compile \"%s\" --output=\"%s\" 2>&1",
+                 source_file, output_kir);
+
+        int result = system(cmd);
+
+        // Check if KIR was generated
+        if (file_exists(output_kir)) {
+            return 0;
+        }
+
+        fprintf(stderr, "Error: Failed to compile HTML\n");
+        return 1;
     }
     else if (strcmp(frontend, "kry") == 0) {
         // .kry DSL frontend (delegated to Nim CLI)

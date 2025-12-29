@@ -230,14 +230,14 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
             component->id, component->style->position_mode,
             component->style->absolute_x, component->style->absolute_y, density, x, y);
     } else {
-        // Use computed layout position - scale from logical to physical pixels
-        x = parent_x + (component->layout_state->computed.x * density);
-        y = parent_y + (component->layout_state->computed.y * density);
+        // Use computed layout position - these are GLOBAL positions (already include parent offset)
+        // Scale from logical to physical pixels
+        x = component->layout_state->computed.x * density;
+        y = component->layout_state->computed.y * density;
         if (component_render_count < 5 || component_render_count % 60 == 0) {
             __android_log_print(ANDROID_LOG_INFO, "KryonPos",
-                "📐 RELATIVE positioning: comp=%u, mode=%d, parent=(%.1f,%.1f), computed=(%.1f,%.1f) * density=%.2f → final=(%.1f,%.1f)",
-                component->id, component->style ? component->style->position_mode : -1,
-                parent_x, parent_y,
+                "📐 GLOBAL positioning: comp=%u, computed=(%.1f,%.1f) * density=%.2f → final=(%.1f,%.1f)",
+                component->id,
                 component->layout_state->computed.x, component->layout_state->computed.y, density,
                 x, y);
         }
@@ -293,8 +293,8 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
             if (component->text_content) {
                 int seq = ++render_sequence_number;
                 __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
-                    "[SEQ %d] RENDER_TEXT_START: comp=%u, text='%s', pos=(%.1f,%.1f)",
-                    seq, component->id, component->text_content, x, y);
+                    "[SEQ %d] RENDER_TEXT_START: comp=%u, text='%s', pos=(%.1f,%.1f), size=(%.1f,%.1f)",
+                    seq, component->id, component->text_content, x, y, width, height);
 
                 // Check if font color is set and visible
                 IRColor text_color;
@@ -319,30 +319,10 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                 const char* font_name = (component->style && component->style->font.family) ?
                                        component->style->font.family : "Roboto";
 
-                // Measure actual text dimensions at scaled size for perfect centering
-                float text_width_actual, text_height_actual;
-                android_renderer_measure_text(renderer, component->text_content,
-                                             font_name, font_size_scaled,
-                                             &text_width_actual, &text_height_actual);
-
-                // PERFECT CENTERING: Calculate true center position
-                // Container center position
-                float container_center_x = x + (width / 2.0f);
-                float container_center_y = y + (height / 2.0f);
-
-                // Text should be centered in container
-                float text_x = container_center_x - (text_width_actual / 2.0f);
-                float text_y = container_center_y - (text_height_actual / 2.0f);
-
-                __android_log_print(ANDROID_LOG_INFO, "KryonCenter",
-                    "Container: pos=(%.1f,%.1f) size=(%.1f,%.1f) center=(%.1f,%.1f)",
-                    x, y, width, height, container_center_x, container_center_y);
-                __android_log_print(ANDROID_LOG_INFO, "KryonCenter",
-                    "Text: size=(%.1f,%.1f) final_pos=(%.1f,%.1f)",
-                    text_width_actual, text_height_actual, text_x, text_y);
-
+                // Draw text at the computed layout position
+                // The layout system handles centering based on parent's alignItems/justifyContent
                 android_renderer_draw_text(renderer, component->text_content,
-                                          text_x, text_y, font_name, font_size_scaled, color);
+                                          x, y, font_name, font_size_scaled, color);
 
                 seq = ++render_sequence_number;
                 __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",

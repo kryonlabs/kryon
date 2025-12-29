@@ -77,6 +77,9 @@ install: $(TARGET)
 	mkdir -p $(INSTALL_DIR)
 	cp $(TARGET) $(INSTALL_DIR)/$(TARGET)
 	chmod +x $(INSTALL_DIR)/$(TARGET)
+	# Install TSX parser
+	mkdir -p $(HOME)/.local/share/kryon/tsx_parser
+	cp tsx_parser/tsx_to_kir.ts $(HOME)/.local/share/kryon/tsx_parser/
 
 # Clean
 clean:

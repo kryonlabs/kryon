@@ -22,6 +22,14 @@ int main(int argc, char** argv) {
     printf("  Input: %s\n", kir_file);
     printf("  Output: %s/\n", output_dir);
 
+    // Check for --inline-css flag
+    bool inline_css = false;
+    for (int i = 3; i < argc; i++) {
+        if (strcmp(argv[i], "--inline-css") == 0) {
+            inline_css = true;
+        }
+    }
+
     // Load KIR file
     IRComponent* root = ir_read_json_file(kir_file);
     if (!root) {
@@ -29,8 +37,22 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // Create renderer with options
+    WebIRRenderer* renderer = web_ir_renderer_create();
+    if (!renderer) {
+        fprintf(stderr, "Error: Failed to create web renderer\n");
+        ir_destroy_component(root);
+        return 1;
+    }
+
+    web_ir_renderer_set_output_directory(renderer, output_dir);
+    web_ir_renderer_set_inline_css(renderer, inline_css);
+
     // Generate HTML
-    bool success = web_render_ir_component(root, output_dir);
+    bool success = web_ir_renderer_render(renderer, root);
+
+    // Cleanup renderer
+    web_ir_renderer_destroy(renderer);
 
     // Cleanup
     ir_destroy_component(root);

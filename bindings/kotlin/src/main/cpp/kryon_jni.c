@@ -249,6 +249,39 @@ Java_com_kryon_KryonActivity_nativeGLSurfaceChanged(JNIEnv* env, jobject thiz,
 
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
 
+    // Get display density from Activity's Resources
+    if (ctx->renderer && ctx->activity_ref) {
+        // Get Resources from Activity
+        jclass activity_class = (*env)->GetObjectClass(env, ctx->activity_ref);
+        jmethodID get_resources = (*env)->GetMethodID(env, activity_class,
+            "getResources", "()Landroid/content/res/Resources;");
+        jobject resources = (*env)->CallObjectMethod(env, ctx->activity_ref, get_resources);
+
+        if (resources) {
+            // Get DisplayMetrics from Resources
+            jclass resources_class = (*env)->GetObjectClass(env, resources);
+            jmethodID get_metrics = (*env)->GetMethodID(env, resources_class,
+                "getDisplayMetrics", "()Landroid/util/DisplayMetrics;");
+            jobject metrics = (*env)->CallObjectMethod(env, resources, get_metrics);
+
+            if (metrics) {
+                // Get density field from DisplayMetrics
+                jclass metrics_class = (*env)->GetObjectClass(env, metrics);
+                jfieldID density_field = (*env)->GetFieldID(env, metrics_class, "density", "F");
+                float density = (*env)->GetFloatField(env, metrics, density_field);
+
+                LOGI("Setting renderer density: %.2f\n", density);
+                android_renderer_set_density(ctx->renderer, density);
+
+                (*env)->DeleteLocalRef(env, metrics_class);
+                (*env)->DeleteLocalRef(env, metrics);
+            }
+            (*env)->DeleteLocalRef(env, resources_class);
+            (*env)->DeleteLocalRef(env, resources);
+        }
+        (*env)->DeleteLocalRef(env, activity_class);
+    }
+
     if (ctx->renderer) {
         android_renderer_resize(ctx->renderer, width, height);
     }
@@ -264,10 +297,17 @@ Java_com_kryon_KryonActivity_nativeGLSurfaceChanged(JNIEnv* env, jobject thiz,
                 LOGI("Rendering component tree from IR context (type=%d, child_count=%d)\n",
                      g_ir_context->root->type, g_ir_context->root->child_count);
 
-                // Set root dimensions to fill screen
-                LOGI("Setting root dimensions to %dx%d\n", width, height);
-                ir_set_width(g_ir_context->root, IR_DIMENSION_PX, (float)width);
-                ir_set_height(g_ir_context->root, IR_DIMENSION_PX, (float)height);
+                // Get density for conversion (physical -> logical pixels)
+                float density = android_renderer_get_density(ctx->renderer);
+
+                // Set root dimensions in LOGICAL pixels (dp)
+                // Rendering will convert back to physical by multiplying by density
+                float logical_width = (float)width / density;
+                float logical_height = (float)height / density;
+                LOGI("Setting root dimensions: physical=%dx%d, density=%.2f, logical=%.1fx%.1f\n",
+                     width, height, density, logical_width, logical_height);
+                ir_set_width(g_ir_context->root, IR_DIMENSION_PX, logical_width);
+                ir_set_height(g_ir_context->root, IR_DIMENSION_PX, logical_height);
 
                 // Mark tree as needing re-layout
                 android_ir_renderer_set_root(ctx->ir_renderer, g_ir_context->root);

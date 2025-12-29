@@ -406,6 +406,11 @@ void html_generator_set_pretty_print(HTMLGenerator* generator, bool pretty) {
     generator->pretty_print = pretty;
 }
 
+void html_generator_set_inline_css(HTMLGenerator* generator, bool inline_css) {
+    if (!generator) return;
+    generator->options.inline_css = inline_css;
+}
+
 static void html_generator_write_indent(HTMLGenerator* generator) {
     if (!generator->pretty_print) return;
 

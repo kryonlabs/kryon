@@ -580,6 +580,7 @@ async function main() {
     reactiveVars.length = 0;
     hooks.length = 0;
     textExpressions.clear();
+    appMetadata = {};
 
     // Parse to KIR
     const root = await parseKryonTSX(source);
