@@ -17,103 +17,55 @@
 #include "../../ir/ir_logic.h"
 #include "html_generator.h"
 #include "css_generator.h"
+#include "style_analyzer.h"
 
-// HTML tag mapping
-typedef struct {
-    IRComponentType ir_type;
-    const char* html_tag;
-    const char* css_class;
-} HTMLTagMapping;
-
-static const HTMLTagMapping tag_mappings[] = {
-    {IR_COMPONENT_CONTAINER, "div", "kryon-container"},
-    {IR_COMPONENT_TEXT, "span", "kryon-text"},
-    {IR_COMPONENT_BUTTON, "button", "kryon-button"},
-    {IR_COMPONENT_INPUT, "input", "kryon-input"},
-    {IR_COMPONENT_CHECKBOX, "input", "kryon-checkbox"},
-    {IR_COMPONENT_ROW, "div", "kryon-row"},
-    {IR_COMPONENT_COLUMN, "div", "kryon-column"},
-    {IR_COMPONENT_CENTER, "div", "kryon-center"},
-    {IR_COMPONENT_IMAGE, "img", "kryon-image"},
-    {IR_COMPONENT_CANVAS, "canvas", "kryon-canvas"},
-    {IR_COMPONENT_CUSTOM, "div", "kryon-custom"},
-    // Table components
-    {IR_COMPONENT_TABLE, "table", "kryon-table"},
-    {IR_COMPONENT_TABLE_HEAD, "thead", "kryon-thead"},
-    {IR_COMPONENT_TABLE_BODY, "tbody", "kryon-tbody"},
-    {IR_COMPONENT_TABLE_FOOT, "tfoot", "kryon-tfoot"},
-    {IR_COMPONENT_TABLE_ROW, "tr", "kryon-tr"},
-    {IR_COMPONENT_TABLE_CELL, "td", "kryon-td"},
-    {IR_COMPONENT_TABLE_HEADER_CELL, "th", "kryon-th"},
-    // Markdown components
-    {IR_COMPONENT_HEADING, "div", "kryon-heading"},
-    {IR_COMPONENT_PARAGRAPH, "p", "kryon-paragraph"},
-    {IR_COMPONENT_BLOCKQUOTE, "blockquote", "kryon-blockquote"},
-    {IR_COMPONENT_CODE_BLOCK, "pre", "kryon-code-block"},
-    {IR_COMPONENT_HORIZONTAL_RULE, "hr", "kryon-hr"},
-    {IR_COMPONENT_LIST, "div", "kryon-list"},
-    {IR_COMPONENT_LIST_ITEM, "li", "kryon-list-item"},
-    {IR_COMPONENT_LINK, "a", "kryon-link"},
-    {IR_COMPONENT_CONTAINER, "div", "kryon-container"}  // Default fallback
-};
-
+// HTML semantic tag mapping (NO kryon-* classes)
 static const char* get_html_tag(IRComponentType type) {
-    for (size_t i = 0; i < sizeof(tag_mappings) / sizeof(tag_mappings[0]); i++) {
-        if (tag_mappings[i].ir_type == type) {
-            return tag_mappings[i].html_tag;
-        }
-    }
-    return "div";  // Default fallback
-}
-
-static const char* get_css_class(IRComponent* component) {
-    if (component && component->tag) {
-        return component->tag;
-    }
-
-    for (size_t i = 0; i < sizeof(tag_mappings) / sizeof(tag_mappings[0]); i++) {
-        if (tag_mappings[i].ir_type == component->type) {
-            return tag_mappings[i].css_class;
-        }
-    }
-    return "kryon-component";  // Default fallback
-}
-
-static const char* get_component_type_name(IRComponentType type) {
     switch (type) {
-        case IR_COMPONENT_CONTAINER: return "CONTAINER";
-        case IR_COMPONENT_TEXT: return "TEXT";
-        case IR_COMPONENT_BUTTON: return "BUTTON";
-        case IR_COMPONENT_INPUT: return "INPUT";
-        case IR_COMPONENT_CHECKBOX: return "CHECKBOX";
-        case IR_COMPONENT_ROW: return "ROW";
-        case IR_COMPONENT_COLUMN: return "COLUMN";
-        case IR_COMPONENT_CENTER: return "CENTER";
-        case IR_COMPONENT_IMAGE: return "IMAGE";
-        case IR_COMPONENT_CANVAS: return "CANVAS";
-        case IR_COMPONENT_TABLE: return "TABLE";
-        case IR_COMPONENT_TABLE_HEAD: return "TABLE_HEAD";
-        case IR_COMPONENT_TABLE_BODY: return "TABLE_BODY";
-        case IR_COMPONENT_TABLE_FOOT: return "TABLE_FOOT";
-        case IR_COMPONENT_TABLE_ROW: return "TABLE_ROW";
-        case IR_COMPONENT_TABLE_CELL: return "TABLE_CELL";
-        case IR_COMPONENT_TABLE_HEADER_CELL: return "TABLE_HEADER_CELL";
-        case IR_COMPONENT_HEADING: return "HEADING";
-        case IR_COMPONENT_PARAGRAPH: return "PARAGRAPH";
-        case IR_COMPONENT_BLOCKQUOTE: return "BLOCKQUOTE";
-        case IR_COMPONENT_CODE_BLOCK: return "CODE_BLOCK";
-        case IR_COMPONENT_HORIZONTAL_RULE: return "HORIZONTAL_RULE";
-        case IR_COMPONENT_LIST: return "LIST";
-        case IR_COMPONENT_LIST_ITEM: return "LIST_ITEM";
-        case IR_COMPONENT_LINK: return "LINK";
-        case IR_COMPONENT_TAB_GROUP: return "TAB_GROUP";
-        case IR_COMPONENT_TAB_BAR: return "TAB_BAR";
-        case IR_COMPONENT_TAB: return "TAB";
-        case IR_COMPONENT_TAB_CONTENT: return "TAB_CONTENT";
-        case IR_COMPONENT_TAB_PANEL: return "TAB_PANEL";
-        case IR_COMPONENT_DROPDOWN: return "DROPDOWN";
-        case IR_COMPONENT_CUSTOM: return "CUSTOM";
-        default: return "UNKNOWN";
+        case IR_COMPONENT_BUTTON: return "button";
+        case IR_COMPONENT_INPUT: return "input";
+        case IR_COMPONENT_CHECKBOX: return "input";
+        case IR_COMPONENT_IMAGE: return "img";
+        case IR_COMPONENT_CANVAS: return "canvas";
+        case IR_COMPONENT_TEXT: return "span";
+
+        // Table elements
+        case IR_COMPONENT_TABLE: return "table";
+        case IR_COMPONENT_TABLE_HEAD: return "thead";
+        case IR_COMPONENT_TABLE_BODY: return "tbody";
+        case IR_COMPONENT_TABLE_FOOT: return "tfoot";
+        case IR_COMPONENT_TABLE_ROW: return "tr";
+        case IR_COMPONENT_TABLE_CELL: return "td";
+        case IR_COMPONENT_TABLE_HEADER_CELL: return "th";
+
+        // Markdown/semantic elements
+        case IR_COMPONENT_PARAGRAPH: return "p";
+        case IR_COMPONENT_BLOCKQUOTE: return "blockquote";
+        case IR_COMPONENT_CODE_BLOCK: return "pre";
+        case IR_COMPONENT_HORIZONTAL_RULE: return "hr";
+        case IR_COMPONENT_LIST_ITEM: return "li";
+        case IR_COMPONENT_LINK: return "a";
+
+        // Layout containers (all map to div)
+        case IR_COMPONENT_CONTAINER:
+        case IR_COMPONENT_ROW:
+        case IR_COMPONENT_COLUMN:
+        case IR_COMPONENT_CENTER:
+        case IR_COMPONENT_HEADING:  // Will be overridden to h1-h6
+        case IR_COMPONENT_LIST:     // Will be overridden to ul/ol
+        case IR_COMPONENT_CUSTOM:
+        default:
+            return "div";
+    }
+}
+
+// Generate ID prefix for semantic IDs (e.g., btn-1, input-2)
+static const char* get_id_prefix(IRComponentType type) {
+    switch (type) {
+        case IR_COMPONENT_BUTTON: return "btn";
+        case IR_COMPONENT_INPUT: return "input";
+        case IR_COMPONENT_CHECKBOX: return "checkbox";
+        default: return "elem";
     }
 }
 
@@ -412,10 +364,9 @@ static void escape_html_text(const char* text, char* buffer, size_t buffer_size)
 
 HtmlGeneratorOptions html_generator_default_options(void) {
     HtmlGeneratorOptions opts = {
-        .mode = HTML_MODE_DISPLAY,
         .minify = false,
-        .inline_css = true,
-        .preserve_ids = false
+        .inline_css = false,  // Use CSS classes instead of inline styles
+        .include_runtime = true
     };
     return opts;
 }
@@ -590,33 +541,23 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
     html_generator_write_indent(generator);
     html_generator_write_format(generator, "<%s", tag);
 
-    // Generate attributes directly using the generator
-    html_generator_write_format(generator, " id=\"kryon-%u\"", component->id);
-    const char* css_class = get_css_class(component);
+    // Analyze component styling to determine if ID/class needed
+    StyleAnalysis* analysis = analyze_component_style(component, generator->logic_block);
 
-    // DEBUG: Log code block rendering
-    if (component->type == IR_COMPONENT_CODE_BLOCK) {
-        fprintf(stderr, "[HTML_GEN] CODE_BLOCK: id=%u, tag='%s', css_class='%s'\n",
-                component->id, component->tag ? component->tag : "NULL", css_class);
+    // ONLY add ID if component has event handlers
+    if (analysis && analysis->needs_id) {
+        const char* prefix = get_id_prefix(component->type);
+        html_generator_write_format(generator, " id=\"%s-%u\"", prefix, component->id);
     }
 
-    html_generator_write_format(generator, " class=\"%s\"", css_class);
+    // ONLY add class if component has custom styling
+    if (analysis && analysis->needs_css && analysis->suggested_class) {
+        html_generator_write_format(generator, " class=\"%s\"", analysis->suggested_class);
+    }
 
-    // In transpilation mode, add metadata attributes for roundtrip
-    if (generator->options.mode == HTML_MODE_TRANSPILE) {
-        // Add component type for reconstruction
-        html_generator_write_format(generator, " data-ir-type=\"%s\"",
-                                    get_component_type_name(component->type));
-
-        // Add component ID for debugging/tracking
-        if (generator->options.preserve_ids) {
-            html_generator_write_format(generator, " data-ir-id=\"%u\"", component->id);
-        }
-
-        // Add inline styles for transpilation mode
-        if (generator->options.inline_css) {
-            generate_inline_styles(generator, component);
-        }
+    // Add inline styles
+    if (generator->options.inline_css) {
+        generate_inline_styles(generator, component);
     }
 
     // Add custom tag if specified
@@ -751,128 +692,63 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
     }
 
-    // Add event handlers from logic_block (transpile mode) or legacy IREvent (display mode)
-    if (generator->options.mode == HTML_MODE_TRANSPILE && generator->logic_block) {
-        // Transpile mode: lookup handlers from logic_block
-        const char* handler_name = ir_logic_block_get_handler(generator->logic_block, component->id, "click");
-        if (handler_name) {
-            IRLogicFunction* func = ir_logic_block_find_function(generator->logic_block, handler_name);
-            if (func && func->source_count > 0) {
-                // Get JavaScript source (prefer javascript, fallback to first available)
-                const char* source = NULL;
-                for (int i = 0; i < func->source_count; i++) {
-                    if (strcmp(func->sources[i].language, "javascript") == 0) {
-                        source = func->sources[i].source;
-                        break;
-                    }
-                }
-                if (!source && func->source_count > 0) {
-                    source = func->sources[0].source;
-                }
+    // Add event handlers from logic_block (if available)
+    if (generator->logic_block) {
+        // Lookup handlers from logic_block and generate inline event attributes
+        const char* event_types[] = {"click", "change", "input", "focus", "blur", "mouseenter", "mouseleave", "keydown", "keyup"};
+        const char* html_events[] = {"onclick", "onchange", "oninput", "onfocus", "onblur", "onmouseenter", "onmouseleave", "onkeydown", "onkeyup"};
 
-                if (source) {
-                    // Escape quotes in handler source
-                    char escaped_source[1024];
-                    const char* src = source;
-                    char* dst = escaped_source;
-                    while (*src && (dst - escaped_source) < sizeof(escaped_source) - 2) {
-                        if (*src == '"') {
-                            *dst++ = '&';
-                            *dst++ = 'q';
-                            *dst++ = 'u';
-                            *dst++ = 'o';
-                            *dst++ = 't';
-                            *dst++ = ';';
-                            src++;
-                        } else if (*src == '\'') {
-                            *dst++ = '&';
-                            *dst++ = '#';
-                            *dst++ = 'x';
-                            *dst++ = '2';
-                            *dst++ = '7';
-                            *dst++ = ';';
-                            src++;
-                        } else {
-                            *dst++ = *src++;
+        for (size_t i = 0; i < sizeof(event_types) / sizeof(event_types[0]); i++) {
+            const char* handler_name = ir_logic_block_get_handler(generator->logic_block, component->id, event_types[i]);
+            if (handler_name) {
+                IRLogicFunction* func = ir_logic_block_find_function(generator->logic_block, handler_name);
+                if (func && func->source_count > 0) {
+                    // Get JavaScript source (prefer javascript, fallback to first available)
+                    const char* source = NULL;
+                    for (int j = 0; j < func->source_count; j++) {
+                        if (strcmp(func->sources[j].language, "javascript") == 0) {
+                            source = func->sources[j].source;
+                            break;
                         }
                     }
-                    *dst = '\0';
-
-                    html_generator_write_format(generator, " onclick=\"%s\"", escaped_source);
-                }
-            }
-        }
-
-        // Check for other event types
-        const char* change_handler = ir_logic_block_get_handler(generator->logic_block, component->id, "change");
-        if (change_handler) {
-            IRLogicFunction* func = ir_logic_block_find_function(generator->logic_block, change_handler);
-            if (func && func->source_count > 0) {
-                const char* source = NULL;
-                for (int i = 0; i < func->source_count; i++) {
-                    if (strcmp(func->sources[i].language, "javascript") == 0) {
-                        source = func->sources[i].source;
-                        break;
+                    if (!source && func->source_count > 0) {
+                        source = func->sources[0].source;
                     }
-                }
-                if (!source) source = func->sources[0].source;
 
-                if (source) {
-                    char escaped_source[1024];
-                    const char* src = source;
-                    char* dst = escaped_source;
-                    while (*src && (dst - escaped_source) < sizeof(escaped_source) - 2) {
-                        if (*src == '"') {
-                            *dst++ = '&';
-                            *dst++ = 'q';
-                            *dst++ = 'u';
-                            *dst++ = 'o';
-                            *dst++ = 't';
-                            *dst++ = ';';
-                            src++;
-                        } else if (*src == '\'') {
-                            *dst++ = '&';
-                            *dst++ = '#';
-                            *dst++ = 'x';
-                            *dst++ = '2';
-                            *dst++ = '7';
-                            *dst++ = ';';
-                            src++;
-                        } else {
-                            *dst++ = *src++;
+                    if (source) {
+                        // Escape quotes in handler source
+                        char escaped_source[1024];
+                        const char* src = source;
+                        char* dst = escaped_source;
+                        size_t remaining = sizeof(escaped_source) - 2;
+                        while (*src && remaining > 6) {
+                            if (*src == '"') {
+                                memcpy(dst, "&quot;", 6);
+                                dst += 6;
+                                remaining -= 6;
+                                src++;
+                            } else if (*src == '\'') {
+                                memcpy(dst, "&#x27;", 6);
+                                dst += 6;
+                                remaining -= 6;
+                                src++;
+                            } else {
+                                *dst++ = *src++;
+                                remaining--;
+                            }
                         }
-                    }
-                    *dst = '\0';
+                        *dst = '\0';
 
-                    html_generator_write_format(generator, " onchange=\"%s\"", escaped_source);
+                        html_generator_write_format(generator, " %s=\"%s\"", html_events[i], escaped_source);
+                    }
                 }
-            }
-        }
-    } else if (generator->options.mode == HTML_MODE_DISPLAY) {
-        // Display mode: use legacy IREvent system
-        for (IREvent* event = component->events; event; event = event->next) {
-            switch (event->type) {
-                case IR_EVENT_CLICK:
-                    html_generator_write_format(generator, " onclick=\"kryon_handle_click(%u, '%s')\"",
-                            component->id, event->logic_id ? event->logic_id : "");
-                    break;
-                case IR_EVENT_HOVER:
-                    html_generator_write_format(generator, " onmouseover=\"kryon_handle_hover(%u, '%s')\"",
-                            component->id, event->logic_id ? event->logic_id : "");
-                    html_generator_write_format(generator, " onmouseout=\"kryon_handle_leave(%u)\"", component->id);
-                    break;
-                case IR_EVENT_FOCUS:
-                    html_generator_write_format(generator, " onfocus=\"kryon_handle_focus(%u)\"", component->id);
-                    html_generator_write_format(generator, " onblur=\"kryon_handle_blur(%u)\"", component->id);
-                    break;
-                default:
-                    break;
             }
         }
     }
 
     if (is_self_closing) {
         html_generator_write_string(generator, " />\n");
+        style_analysis_free(analysis);
         return true;
     }
 
@@ -923,6 +799,7 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
     html_generator_write_indent(generator);
     html_generator_write_format(generator, "</%s>\n", tag);
 
+    style_analysis_free(analysis);
     return true;
 }
 
@@ -959,8 +836,8 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         html_generator_write_string(generator, "  <link rel=\"stylesheet\" href=\"kryon.css\">\n");
     }
 
-    // Add JavaScript runtime only in display mode
-    if (generator->options.mode == HTML_MODE_DISPLAY) {
+    // Add JavaScript runtime if requested
+    if (generator->options.include_runtime) {
         html_generator_write_string(generator, "  <script src=\"kryon.js\"></script>\n");
     }
 
@@ -979,10 +856,7 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
 
     if (body_component) {
         // Render Body component as actual <body> element
-        html_generator_write_string(generator, "<body");
-        html_generator_write_format(generator, " id=\"kryon-%u\"", body_component->id);
-        html_generator_write_format(generator, " class=\"%s\"", get_css_class(body_component));
-        html_generator_write_string(generator, ">\n");
+        html_generator_write_string(generator, "<body>\n");
 
         generator->indent_level = 1;
         // Render Body's children

@@ -6,6 +6,10 @@
 #include <sys/time.h>
 
 #ifdef __ANDROID__
+#include "../../platforms/android/android_platform.h"
+#endif
+
+#ifdef __ANDROID__
 #include <android/log.h>
 #define LOG_TAG "KryonRenderer"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -50,6 +54,16 @@ void android_color_to_floats(uint32_t color, float* r, float* g, float* b, float
 void android_renderer_update_projection(AndroidRenderer* renderer) {
     if (!renderer) return;
 
+    // Skip if window size is not set yet (avoid div by zero / NaN)
+    if (renderer->window_width == 0 || renderer->window_height == 0) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_WARN, "KryonRenderer",
+            "Skipping projection matrix update: window size is %dx%d",
+            renderer->window_width, renderer->window_height);
+#endif
+        return;
+    }
+
     // Create orthographic projection matrix
     float left = 0.0f;
     float right = (float)renderer->window_width;
@@ -79,6 +93,14 @@ void android_renderer_update_projection(AndroidRenderer* renderer) {
     m[13] = -(top + bottom) / (top - bottom);
     m[14] = -(far_plane + near_plane) / (far_plane - near_plane);
     m[15] = 1.0f;
+
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+        "Projection matrix updated: left=%.1f, right=%.1f, top=%.1f, bottom=%.1f",
+        left, right, top, bottom);
+    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+        "Matrix values: [%.3f, %.3f, %.3f, %.3f]", m[0], m[5], m[12], m[13]);
+#endif
 }
 
 // ============================================================================
@@ -103,6 +125,14 @@ AndroidRenderer* android_renderer_create(const AndroidRendererConfig* config) {
     // Set default values
     renderer->global_opacity = 1.0f;
     renderer->current_shader = SHADER_PROGRAM_COUNT;  // Invalid initially
+
+    // Initialize projection matrix to identity to prevent garbage values
+    // Will be properly updated when window dimensions are known
+    renderer->projection_matrix[0] = 1.0f;
+    renderer->projection_matrix[5] = 1.0f;
+    renderer->projection_matrix[10] = 1.0f;
+    renderer->projection_matrix[15] = 1.0f;
+    // Other elements already zero-initialized by calloc
 
     LOGI("Renderer created\n");
 
@@ -223,6 +253,21 @@ bool android_renderer_initialize_gl_only(AndroidRenderer* renderer) {
         android_renderer_set_error(renderer, ANDROID_RENDERER_ERROR_SHADER_COMPILE_FAILED);
         return false;
     }
+
+#ifdef __ANDROID__
+    // Query display density for automatic px → dp scaling
+    kryon_android_display_info_t display_info = kryon_android_get_display_info();
+    renderer->density_scale = display_info.density_scale;
+    renderer->density_dpi = display_info.density_dpi;
+
+    __android_log_print(ANDROID_LOG_INFO, "KryonRenderer",
+        "Display density: scale=%.2f, dpi=%d (automatic px→dp scaling enabled)",
+        renderer->density_scale, renderer->density_dpi);
+#else
+    // Desktop/other platforms: no scaling
+    renderer->density_scale = 1.0f;
+    renderer->density_dpi = 160;
+#endif
 
 #ifdef __ANDROID__
     // Create vertex array object

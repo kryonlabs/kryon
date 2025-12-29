@@ -38,14 +38,20 @@ static void render_box_shadow(AndroidRenderer* renderer,
     IRBoxShadow* shadow = &component->style->box_shadow;
     if (shadow->blur_radius <= 0) return;
 
+    // Scale shadow parameters by density (px → dp)
+    float density = renderer->density_scale;
+    float shadow_offset_x = shadow->offset_x * density;
+    float shadow_offset_y = shadow->offset_y * density;
+    float shadow_blur = shadow->blur_radius * density;
+
     // Draw shadow as a blurred rect offset from the component
-    float shadow_x = x + shadow->offset_x;
-    float shadow_y = y + shadow->offset_y;
+    float shadow_x = x + shadow_offset_x;
+    float shadow_y = y + shadow_offset_y;
 
     uint32_t shadow_color = ir_color_to_rgba(shadow->color, opacity);
 
     // Simple shadow approximation: draw multiple rects with increasing transparency
-    int blur_steps = (int)fminf(shadow->blur_radius, 10);
+    int blur_steps = (int)fminf(shadow_blur, 10);
     for (int i = 0; i < blur_steps; i++) {
         float offset = (float)i;
         float alpha_factor = 1.0f - ((float)i / blur_steps);
@@ -74,7 +80,9 @@ static void render_background(AndroidRenderer* renderer,
     if (bg_color.data.a == 0) return;
 
     uint32_t color = ir_color_to_rgba(bg_color, opacity);
-    float radius = component->style->border.radius;
+
+    // Scale border radius by density (px → dp)
+    float radius = component->style->border.radius * renderer->density_scale;
 
     int seq = ++render_sequence_number;
     __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
@@ -100,8 +108,11 @@ static void render_border(AndroidRenderer* renderer,
     if (border->width <= 0 || border->color.data.a == 0) return;
 
     uint32_t border_color = ir_color_to_rgba(border->color, opacity);
-    float bw = border->width;
-    float radius = border->radius;
+
+    // Scale border width and radius by density (px → dp)
+    float density = renderer->density_scale;
+    float bw = border->width * density;
+    float radius = border->radius * density;
 
     if (radius > 0) {
         // Draw 4 rounded rect outlines for the border
@@ -203,34 +214,38 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
     AndroidRenderer* renderer = ir_renderer->renderer;
 
+    // Get density scale for automatic px → dp conversion
+    float density = renderer->density_scale;
+
     // Get computed layout bounds (NEW API)
     float x, y;
 
     // Check if component has absolute positioning
     if (component->style && component->style->position_mode == IR_POSITION_ABSOLUTE) {
-        // Use absolute positioning
-        x = component->style->absolute_x;
-        y = component->style->absolute_y;
+        // Use absolute positioning (scale px → dp)
+        x = component->style->absolute_x * density;
+        y = component->style->absolute_y * density;
         __android_log_print(ANDROID_LOG_ERROR, "KryonPos",
-            "🎯 ABSOLUTE positioning: comp=%u, mode=%d, absolute=(%.1f,%.1f) → final=(%.1f,%.1f)",
+            "🎯 ABSOLUTE positioning: comp=%u, mode=%d, absolute=(%.1f,%.1f) × %.2f → final=(%.1f,%.1f)",
             component->id, component->style->position_mode,
-            component->style->absolute_x, component->style->absolute_y, x, y);
+            component->style->absolute_x, component->style->absolute_y, density, x, y);
     } else {
-        // Use computed layout position
-        x = parent_x + component->layout_state->computed.x;
-        y = parent_y + component->layout_state->computed.y;
+        // Use computed layout position (scale px → dp)
+        x = parent_x + (component->layout_state->computed.x * density);
+        y = parent_y + (component->layout_state->computed.y * density);
         if (component_render_count < 5 || component_render_count % 60 == 0) {
             __android_log_print(ANDROID_LOG_INFO, "KryonPos",
-                "📐 RELATIVE positioning: comp=%u, mode=%d, parent=(%.1f,%.1f), computed=(%.1f,%.1f) → final=(%.1f,%.1f)",
+                "📐 RELATIVE positioning: comp=%u, mode=%d, parent=(%.1f,%.1f), computed=(%.1f,%.1f) × %.2f → final=(%.1f,%.1f)",
                 component->id, component->style ? component->style->position_mode : -1,
                 parent_x, parent_y,
                 component->layout_state->computed.x, component->layout_state->computed.y,
-                x, y);
+                density, x, y);
         }
     }
 
-    float width = component->layout_state->computed.width;
-    float height = component->layout_state->computed.height;
+    // Scale dimensions (px → dp)
+    float width = component->layout_state->computed.width * density;
+    float height = component->layout_state->computed.height * density;
 
     // Apply opacity cascading
     float opacity = parent_opacity;
@@ -290,8 +305,12 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                     text_color = IR_COLOR_RGBA(255, 255, 255, 255);
                 }
 
-                int font_size = component->style && component->style->font.size > 0 ?
+                // Get font size in px, default 16px
+                int font_size_px = component->style && component->style->font.size > 0 ?
                     (int)component->style->font.size : 16;
+
+                // Scale to physical pixels for high-DPI displays (px → dp)
+                int font_size_scaled = (int)(font_size_px * density + 0.5f);
 
                 uint32_t color = ir_color_to_rgba(text_color, opacity);
 
@@ -300,7 +319,7 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                                        component->style->font.family : "Roboto";
 
                 android_renderer_draw_text(renderer, component->text_content,
-                                          x, y, font_name, font_size, color);
+                                          x, y, font_name, font_size_scaled, color);
 
                 seq = ++render_sequence_number;
                 __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
@@ -323,14 +342,16 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                     component->style->font.color :
                     IR_COLOR_RGBA(255, 255, 255, 255);
 
-                int font_size = component->style && component->style->font.size > 0 ?
+                // Scale font size by density (px → dp)
+                int font_size_px = component->style && component->style->font.size > 0 ?
                     (int)component->style->font.size : 16;
+                int font_size_scaled = (int)(font_size_px * density + 0.5f);
 
                 uint32_t color = ir_color_to_rgba(text_color, opacity);
 
                 float text_width, text_height;
                 android_renderer_measure_text(renderer, component->text_content,
-                                             NULL, font_size,
+                                             NULL, font_size_scaled,
                                              &text_width, &text_height);
 
                 float text_x = x + (width - text_width) / 2.0f;
@@ -338,7 +359,7 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
                 android_renderer_draw_text(renderer, component->text_content,
                                           text_x, text_y,
-                                          NULL, font_size, color);
+                                          NULL, font_size_scaled, color);
             }
             break;
 

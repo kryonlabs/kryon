@@ -1084,8 +1084,11 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
         return false;
     }
 
-    // Parse logic block
-    cJSON* logic = cJSON_GetObjectItem(root, "logic");
+    // Parse logic block (try "logic_block" first, then fall back to "logic")
+    cJSON* logic = cJSON_GetObjectItem(root, "logic_block");
+    if (!logic) {
+        logic = cJSON_GetObjectItem(root, "logic");
+    }
     if (logic) {
         IRLogicBlock* block = ir_logic_block_from_json(logic);
         if (block) {

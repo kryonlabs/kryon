@@ -219,6 +219,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
         switch (event.type) {
             case SDL_EVENT_QUIT:
+                printf("[SDL3_INPUT] Received SDL_EVENT_QUIT, stopping main loop\n");
                 desktop_event.type = DESKTOP_EVENT_QUIT;
                 if (renderer->event_callback) {
                     renderer->event_callback(&desktop_event, renderer->event_user_data);

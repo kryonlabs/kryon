@@ -646,44 +646,62 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetPosition(JNIEnv* env, jobject thiz,
 JNIEXPORT void JNICALL
 Java_com_kryon_dsl_ComponentBuilder_nativeSetLeft(JNIEnv* env, jobject thiz,
                                                    jlong handle, jint componentId, jfloat value) {
+    LOGE("🔵 nativeSetLeft CALLED: componentId=%d, value=%.1f", componentId, value);
+
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
-    if (!ctx || !ctx->dsl_context) return;
+    if (!ctx || !ctx->dsl_context) {
+        LOGE("❌ nativeSetLeft: ctx or dsl_context is NULL");
+        return;
+    }
 
     DSLBuildContext* dsl = ctx->dsl_context;
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component) return;
+    if (!component) {
+        LOGE("❌ nativeSetLeft: component %d not found", componentId);
+        return;
+    }
 
     // Get or create style
     IRStyle* style = ir_get_style(component);
     if (style) {
         LOGD("Setting left for component %d: %.1f", componentId, value);
         style->absolute_x = value;
+        LOGE("✅ nativeSetLeft SUCCESS: comp=%d, absolute_x=%.1f", componentId, style->absolute_x);
     } else {
-        LOGE("nativeSetLeft: failed to get/create style");
+        LOGE("❌ nativeSetLeft: failed to get/create style");
     }
 }
 
 JNIEXPORT void JNICALL
 Java_com_kryon_dsl_ComponentBuilder_nativeSetTop(JNIEnv* env, jobject thiz,
                                                   jlong handle, jint componentId, jfloat value) {
+    LOGE("🔵 nativeSetTop CALLED: componentId=%d, value=%.1f", componentId, value);
+
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
-    if (!ctx || !ctx->dsl_context) return;
+    if (!ctx || !ctx->dsl_context) {
+        LOGE("❌ nativeSetTop: ctx or dsl_context is NULL");
+        return;
+    }
 
     DSLBuildContext* dsl = ctx->dsl_context;
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component) return;
+    if (!component) {
+        LOGE("❌ nativeSetTop: component %d not found", componentId);
+        return;
+    }
 
     // Get or create style
     IRStyle* style = ir_get_style(component);
     if (style) {
         LOGD("Setting top for component %d: %.1f", componentId, value);
         style->absolute_y = value;
+        LOGE("✅ nativeSetTop SUCCESS: comp=%d, absolute_y=%.1f", componentId, style->absolute_y);
     } else {
-        LOGE("nativeSetTop: failed to get/create style");
+        LOGE("❌ nativeSetTop: failed to get/create style");
     }
 }
 
@@ -695,20 +713,38 @@ JNIEXPORT void JNICALL
 Java_com_kryon_dsl_ComponentBuilder_nativeSetBorder(JNIEnv* env, jobject thiz,
                                                      jlong handle, jint componentId,
                                                      jfloat width, jstring color, jfloat radius) {
+    LOGE("🔵 nativeSetBorder CALLED: componentId=%d, width=%.1f, radius=%.1f", componentId, width, radius);
+
     KryonNativeContext* ctx = (KryonNativeContext*)handle;
-    if (!ctx || !ctx->dsl_context) return;
+    if (!ctx || !ctx->dsl_context) {
+        LOGE("❌ nativeSetBorder: ctx or dsl_context is NULL");
+        return;
+    }
 
     DSLBuildContext* dsl = ctx->dsl_context;
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component || !component->style) return;
+    if (!component) {
+        LOGE("❌ nativeSetBorder: component %d not found", componentId);
+        return;
+    }
+
+    // Get or create style
+    IRStyle* style = ir_get_style(component);
+    if (!style) {
+        LOGE("❌ nativeSetBorder: failed to get/create style");
+        return;
+    }
 
     const char* color_str = (*env)->GetStringUTFChars(env, color, NULL);
     if (color_str) {
+        LOGD("Setting border for component %d: width=%.1f, color=%s, radius=%.1f",
+             componentId, width, color_str, radius);
         uint8_t r, g, b, a;
         parse_color(color_str, &r, &g, &b, &a);
-        ir_set_border(component->style, width, r, g, b, a, (uint8_t)radius);
+        ir_set_border(style, width, r, g, b, a, (uint8_t)radius);
+        LOGE("✅ nativeSetBorder SUCCESS: comp=%d, color=%s", componentId, color_str);
         (*env)->ReleaseStringUTFChars(env, color, color_str);
     }
 }

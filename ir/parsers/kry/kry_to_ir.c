@@ -421,12 +421,61 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             char handler_name[64];
             snprintf(handler_name, sizeof(handler_name), "handler_%u_click", ctx->next_handler_id++);
 
-            // Create logic function with .kry source code
-            IRLogicFunction* func = ir_logic_function_create(handler_name);
-            if (func) {
-                // Add the source code as .kry language
-                ir_logic_function_add_source(func, "kry", value->expression);
+            IRLogicFunction* func = NULL;
 
+            // Try to detect simple patterns and convert to universal logic
+            // Pattern: "var = !var" (toggle)
+            const char* expr = value->expression;
+            char var_name[64] = {0};
+
+            // Strip trailing whitespace and braces
+            const char* expr_end = expr + strlen(expr);
+            while (expr_end > expr && (isspace(*(expr_end - 1)) || *(expr_end - 1) == '}')) {
+                expr_end--;
+            }
+
+            // Simple pattern matching for "varName = !varName"
+            const char* p = expr;
+            while (*p && isspace(*p)) p++;  // Skip leading whitespace
+
+            const char* var_start = p;
+            while (*p && p < expr_end && (isalnum(*p) || *p == '_')) p++;  // Parse identifier
+            size_t var_len = p - var_start;
+
+            if (var_len > 0 && var_len < sizeof(var_name)) {
+                while (*p && p < expr_end && isspace(*p)) p++;  // Skip whitespace
+                if (*p == '=' && p < expr_end) {
+                    p++;
+                    while (*p && p < expr_end && isspace(*p)) p++;  // Skip whitespace
+                    if (*p == '!' && p < expr_end) {
+                        p++;
+                        while (*p && p < expr_end && isspace(*p)) p++;  // Skip whitespace
+
+                        // Check if same variable name follows
+                        if (p + var_len <= expr_end &&
+                            strncmp(p, var_start, var_len) == 0 &&
+                            (p + var_len == expr_end || (!isalnum(p[var_len]) && p[var_len] != '_'))) {
+                            // It's a toggle! Extract variable name
+                            strncpy(var_name, var_start, var_len);
+                            var_name[var_len] = '\0';
+
+                            // Create toggle handler with universal logic
+                            func = ir_logic_create_toggle(handler_name, var_name);
+                        }
+                    }
+                }
+            }
+
+            // If pattern detection failed, create function with .kry source code
+            if (!func) {
+                func = ir_logic_function_create(handler_name);
+                if (func) {
+                    // Add the source code as .kry language
+                    ir_logic_function_add_source(func, "kry", value->expression);
+                }
+            }
+
+            if (func) {
                 // Add function to logic block
                 ir_logic_block_add_function(ctx->logic_block, func);
 
@@ -1638,57 +1687,51 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 // For loop outside static block - expand/unroll
                 expand_for_loop(ctx, component, child);
             } else if (child->type == KRY_NODE_IF) {
-                // If/else conditional rendering
-                // For now, evaluate the condition and render the appropriate branch
-                // TODO: Add runtime conditional support for reactive variables
+                // Runtime conditional rendering support
+                // Render BOTH branches and mark each with visibility condition
 
-                bool condition_true = true;  // Default to true
+                const char* condition_var = NULL;
 
-                // Try to evaluate the condition
-                if (child->value) {
-                    if (child->value->type == KRY_VALUE_IDENTIFIER) {
-                        // Look up variable value
-                        const char* var_name = child->value->identifier;
-                        const char* var_value = substitute_param(ctx, var_name);
-                        if (var_value) {
-                            // Parse boolean value
-                            if (strcmp(var_value, "false") == 0 || strcmp(var_value, "0") == 0) {
-                                condition_true = false;
-                            }
-                        }
-                    } else if (child->value->type == KRY_VALUE_NUMBER) {
-                        condition_true = (child->value->number_value != 0);
-                    } else if (child->value->type == KRY_VALUE_STRING) {
-                        condition_true = (child->value->string_value && strlen(child->value->string_value) > 0);
-                    }
+                // Extract condition variable name
+                if (child->value && child->value->type == KRY_VALUE_IDENTIFIER) {
+                    condition_var = child->value->identifier;
                 }
 
-                // Render the appropriate branch
-                if (condition_true) {
-                    // Render then branch (children of the if node)
-                    KryNode* then_child = child->first_child;
-                    while (then_child) {
-                        if (then_child->type == KRY_NODE_COMPONENT) {
-                            IRComponent* child_component = convert_node(ctx, then_child);
-                            if (child_component) {
+                // Render then branch (visible when condition is true)
+                KryNode* then_child = child->first_child;
+                while (then_child) {
+                    if (then_child->type == KRY_NODE_COMPONENT) {
+                        IRComponent* child_component = convert_node(ctx, then_child);
+                        if (child_component && condition_var) {
+                            // Mark component as conditionally visible
+                            child_component->visible_condition = strdup(condition_var);
+                            child_component->visible_when_true = true;
+                            ir_add_child(component, child_component);
+                        } else if (child_component) {
+                            // No condition variable, always visible
+                            ir_add_child(component, child_component);
+                        }
+                    }
+                    then_child = then_child->next_sibling;
+                }
+
+                // Render else branch (visible when condition is false)
+                if (child->else_branch) {
+                    KryNode* else_child = child->else_branch->first_child;
+                    while (else_child) {
+                        if (else_child->type == KRY_NODE_COMPONENT) {
+                            IRComponent* child_component = convert_node(ctx, else_child);
+                            if (child_component && condition_var) {
+                                // Mark component as conditionally visible (opposite condition)
+                                child_component->visible_condition = strdup(condition_var);
+                                child_component->visible_when_true = false;  // Visible when FALSE
+                                ir_add_child(component, child_component);
+                            } else if (child_component) {
+                                // No condition variable, always visible
                                 ir_add_child(component, child_component);
                             }
                         }
-                        then_child = then_child->next_sibling;
-                    }
-                } else {
-                    // Render else branch
-                    if (child->else_branch) {
-                        KryNode* else_child = child->else_branch->first_child;
-                        while (else_child) {
-                            if (else_child->type == KRY_NODE_COMPONENT) {
-                                IRComponent* child_component = convert_node(ctx, else_child);
-                                if (child_component) {
-                                    ir_add_child(component, child_component);
-                                }
-                            }
-                            else_child = else_child->next_sibling;
-                        }
+                        else_child = else_child->next_sibling;
                     }
                 }
             }
@@ -2124,6 +2167,81 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     // Store the variable declaration
                     ir_source_structures_add_var_decl(ctx.source_structures,
                                                      var_name, var_type, var_value_json, "global");
+                }
+
+                // Add variable to reactive manifest with initial value
+                if (ctx.manifest && var_node->value) {
+                    IRReactiveValue init_value;
+                    IRReactiveVarType react_type;
+                    bool has_init_value = false;
+
+                    // Convert KryValue to IRReactiveValue
+                    if (var_node->value->type == KRY_VALUE_IDENTIFIER) {
+                        const char* ident = var_node->value->identifier;
+                        if (strcmp(ident, "true") == 0) {
+                            react_type = IR_REACTIVE_TYPE_BOOL;
+                            init_value.as_bool = true;
+                            has_init_value = true;
+                        } else if (strcmp(ident, "false") == 0) {
+                            react_type = IR_REACTIVE_TYPE_BOOL;
+                            init_value.as_bool = false;
+                            has_init_value = true;
+                        }
+                    } else if (var_node->value->type == KRY_VALUE_NUMBER) {
+                        // Check if it's a float or int
+                        if (strchr(var_node->value->string_value, '.')) {
+                            react_type = IR_REACTIVE_TYPE_FLOAT;
+                            init_value.as_float = atof(var_node->value->string_value);
+                        } else {
+                            react_type = IR_REACTIVE_TYPE_INT;
+                            init_value.as_int = atoll(var_node->value->string_value);
+                        }
+                        has_init_value = true;
+                    } else if (var_node->value->type == KRY_VALUE_STRING) {
+                        react_type = IR_REACTIVE_TYPE_STRING;
+                        init_value.as_string = var_node->value->string_value;
+                        has_init_value = true;
+                    }
+
+                    if (has_init_value) {
+                        uint32_t var_id = ir_reactive_manifest_add_var(ctx.manifest,
+                                                                       var_name, react_type, init_value);
+
+                        // Set metadata including initial value as JSON
+                        char* init_json = NULL;
+                        if (react_type == IR_REACTIVE_TYPE_BOOL) {
+                            init_json = init_value.as_bool ? "true" : "false";
+                        } else if (react_type == IR_REACTIVE_TYPE_INT) {
+                            char buf[32];
+                            snprintf(buf, sizeof(buf), "%lld", (long long)init_value.as_int);
+                            init_json = strdup(buf);
+                        } else if (react_type == IR_REACTIVE_TYPE_FLOAT) {
+                            char buf[32];
+                            snprintf(buf, sizeof(buf), "%g", init_value.as_float);
+                            init_json = strdup(buf);
+                        } else if (react_type == IR_REACTIVE_TYPE_STRING) {
+                            // Quote the string value
+                            size_t len = strlen(init_value.as_string);
+                            init_json = malloc(len + 3);  // quotes + null
+                            snprintf(init_json, len + 3, "\"%s\"", init_value.as_string);
+                        }
+
+                        if (init_json) {
+                            const char* type_str = react_type == IR_REACTIVE_TYPE_BOOL ? "bool" :
+                                                 react_type == IR_REACTIVE_TYPE_INT ? "int" :
+                                                 react_type == IR_REACTIVE_TYPE_FLOAT ? "float" : "string";
+                            ir_reactive_manifest_set_var_metadata(ctx.manifest, var_id,
+                                                                 type_str, init_json, "global");
+
+                            // Free allocated strings (bool literals don't need freeing)
+                            if (react_type != IR_REACTIVE_TYPE_BOOL) {
+                                free(init_json);
+                            }
+                        }
+
+                        fprintf(stderr, "[VAR_DECL]   Added to reactive manifest: %s\n", var_name);
+                        fflush(stderr);
+                    }
                 }
             }
             var_node = var_node->next_sibling;
