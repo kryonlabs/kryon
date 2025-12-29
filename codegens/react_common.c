@@ -808,19 +808,35 @@ WindowConfig react_extract_window_config(cJSON* component) {
 
     if (!component) return config;
 
-    cJSON* width = cJSON_GetObjectItem(component, "width");
-    if (width && cJSON_IsString(width)) {
-        const char* w = cJSON_GetStringValue(width);
-        if (ends_with(w, "px")) {
-            config.width = atoi(w);
+    // Handle width (supports windowWidth, width, strings with "px", and numbers)
+    cJSON* width = cJSON_GetObjectItem(component, "windowWidth");
+    if (!width) width = cJSON_GetObjectItem(component, "width");
+    if (width) {
+        if (cJSON_IsNumber(width)) {
+            config.width = cJSON_GetNumberValue(width);
+        } else if (cJSON_IsString(width)) {
+            const char* w = cJSON_GetStringValue(width);
+            if (ends_with(w, "px")) {
+                config.width = atoi(w);
+            } else {
+                config.width = atoi(w);
+            }
         }
     }
 
-    cJSON* height = cJSON_GetObjectItem(component, "height");
-    if (height && cJSON_IsString(height)) {
-        const char* h = cJSON_GetStringValue(height);
-        if (ends_with(h, "px")) {
-            config.height = atoi(h);
+    // Handle height (supports windowHeight, height, strings with "px", and numbers)
+    cJSON* height = cJSON_GetObjectItem(component, "windowHeight");
+    if (!height) height = cJSON_GetObjectItem(component, "height");
+    if (height) {
+        if (cJSON_IsNumber(height)) {
+            config.height = cJSON_GetNumberValue(height);
+        } else if (cJSON_IsString(height)) {
+            const char* h = cJSON_GetStringValue(height);
+            if (ends_with(h, "px")) {
+                config.height = atoi(h);
+            } else {
+                config.height = atoi(h);
+            }
         }
     }
 

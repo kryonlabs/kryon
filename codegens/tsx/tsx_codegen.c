@@ -44,8 +44,18 @@ char* tsx_codegen_from_json(const char* kir_json) {
     if (!component) component = cJSON_GetObjectItem(root, "component");
     if (!component) component = root;
 
-    // Extract window configuration
-    WindowConfig win_config = react_extract_window_config(component);
+    // Extract window configuration from "app" section first, then fallback to component
+    cJSON* app_section = cJSON_GetObjectItem(root, "app");
+    WindowConfig win_config = react_extract_window_config(app_section ? app_section : component);
+
+    // If background wasn't set from app section, try to get it from root component
+    if (app_section && (!win_config.background || strcmp(win_config.background, "#1E1E1E") == 0)) {
+        cJSON* bg = cJSON_GetObjectItem(component, "background");
+        if (bg && cJSON_IsString(bg)) {
+            free(win_config.background);
+            win_config.background = strdup(cJSON_GetStringValue(bg));
+        }
+    }
 
     // Get reactive manifest for state hooks
     cJSON* manifest = cJSON_GetObjectItem(root, "reactive_manifest");
