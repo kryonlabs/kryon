@@ -917,6 +917,71 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         return;
     }
 
+    // Dropdown-specific properties
+    if (component->type == IR_COMPONENT_DROPDOWN) {
+        if (strcmp(name, "placeholder") == 0 && value->type == KRY_VALUE_STRING) {
+            // Initialize dropdown state if needed
+            if (!component->custom_data) {
+                IRDropdownState* state = (IRDropdownState*)calloc(1, sizeof(IRDropdownState));
+                state->selected_index = -1;
+                state->is_open = false;
+                state->hovered_index = -1;
+                component->custom_data = (char*)state;
+            }
+            IRDropdownState* state = (IRDropdownState*)component->custom_data;
+            if (state->placeholder) free(state->placeholder);
+            state->placeholder = strdup(value->string_value);
+            return;
+        }
+
+        if (strcmp(name, "selectedIndex") == 0 && value->type == KRY_VALUE_NUMBER) {
+            // Initialize dropdown state if needed
+            if (!component->custom_data) {
+                IRDropdownState* state = (IRDropdownState*)calloc(1, sizeof(IRDropdownState));
+                state->selected_index = -1;
+                state->is_open = false;
+                state->hovered_index = -1;
+                component->custom_data = (char*)state;
+            }
+            IRDropdownState* state = (IRDropdownState*)component->custom_data;
+            state->selected_index = (int32_t)value->number_value;
+            return;
+        }
+
+        if (strcmp(name, "options") == 0 && value->type == KRY_VALUE_ARRAY) {
+            // Initialize dropdown state if needed
+            if (!component->custom_data) {
+                IRDropdownState* state = (IRDropdownState*)calloc(1, sizeof(IRDropdownState));
+                state->selected_index = -1;
+                state->is_open = false;
+                state->hovered_index = -1;
+                component->custom_data = (char*)state;
+            }
+            IRDropdownState* state = (IRDropdownState*)component->custom_data;
+
+            // Free old options if they exist
+            if (state->options) {
+                for (uint32_t i = 0; i < state->option_count; i++) {
+                    free(state->options[i]);
+                }
+                free(state->options);
+            }
+
+            // Copy new options
+            state->option_count = value->array.count;
+            state->options = (char**)malloc(sizeof(char*) * value->array.count);
+            for (size_t i = 0; i < value->array.count; i++) {
+                KryValue* elem = value->array.elements[i];
+                if (elem->type == KRY_VALUE_STRING) {
+                    state->options[i] = strdup(elem->string_value);
+                } else {
+                    state->options[i] = strdup(""); // Default to empty string
+                }
+            }
+            return;
+        }
+    }
+
     // Default: ignore unknown properties
 }
 

@@ -345,6 +345,20 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         return false;
     }
 
+    // Render dropdown menu overlays (second pass after main tree)
+    // Collect all open dropdowns and render their menus on top
+    extern void collect_open_dropdowns(IRComponent* component, IRComponent** dropdown_list, int* count, int max_count);
+    extern void render_dropdown_menu_sdl3(DesktopIRRenderer* renderer, IRComponent* component);
+
+    #define MAX_DROPDOWN_MENUS 10
+    IRComponent* open_dropdowns[MAX_DROPDOWN_MENUS];
+    int dropdown_count = 0;
+    collect_open_dropdowns(root, open_dropdowns, &dropdown_count, MAX_DROPDOWN_MENUS);
+
+    for (int i = 0; i < dropdown_count; i++) {
+        render_dropdown_menu_sdl3(renderer, open_dropdowns[i]);
+    }
+
     renderer->ops->end_frame(renderer);
 
     // Update frame stats

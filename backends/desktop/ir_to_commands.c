@@ -575,15 +575,44 @@ bool ir_gen_dropdown_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRe
     /* Render dropdown box background and border */
     ir_gen_container_commands(comp, ctx, bounds);
 
-    /* Render selected text */
-    if (comp->text_content && comp->text_content[0] != '\0') {
+    /* Get dropdown state */
+    IRDropdownState* dropdown = (IRDropdownState*)comp->custom_data;
+
+    /* Determine what text to display */
+    const char* display_text = NULL;
+    if (dropdown && dropdown->selected_index >= 0 && dropdown->selected_index < (int32_t)dropdown->option_count) {
+        /* Show selected option */
+        display_text = dropdown->options[dropdown->selected_index];
+    } else if (dropdown && dropdown->placeholder) {
+        /* Show placeholder */
+        display_text = dropdown->placeholder;
+    }
+
+    /* Render text if we have something to display */
+    if (display_text && display_text[0] != '\0') {
+        /* Temporarily set text_content for rendering */
+        char* original_text = comp->text_content;
+        comp->text_content = (char*)display_text;
+
+        /* Get font size for vertical centering */
+        float font_size = 14.0f;
+        if (comp->style && comp->style->font.size > 0) {
+            font_size = comp->style->font.size;
+        }
+
+        /* Calculate vertical offset to center text */
+        float text_y_offset = (bounds->height - font_size) / 2.0f;
+
         LayoutRect text_bounds = {
-            .x = bounds->x + 12,
-            .y = bounds->y,
+            .x = bounds->x + 12,  /* 12px left padding */
+            .y = bounds->y + text_y_offset,  /* Vertically centered */
             .width = bounds->width - 40,  /* Leave space for arrow */
-            .height = bounds->height
+            .height = font_size  /* Height should match font size */
         };
         ir_gen_text_commands(comp, ctx, &text_bounds);
+
+        /* Restore original text_content */
+        comp->text_content = original_text;
     }
 
     /* Draw dropdown arrow on the right */
@@ -741,6 +770,13 @@ bool ir_generate_component_commands(
 ) {
     if (!component || !ctx || !bounds) return false;
     if (component->style && !component->style->visible) return true;
+
+    /* Set rendered bounds for hit testing and positioning (dropdowns, etc) */
+    component->rendered_bounds.x = bounds->x;
+    component->rendered_bounds.y = bounds->y;
+    component->rendered_bounds.width = bounds->width;
+    component->rendered_bounds.height = bounds->height;
+    component->rendered_bounds.valid = true;
 
     /* Apply opacity cascading */
     float comp_opacity = component->style ? component->style->opacity : 1.0f;

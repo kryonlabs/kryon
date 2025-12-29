@@ -712,17 +712,48 @@ char* react_generate_element(cJSON* node, ReactContext* ctx, int indent) {
 }
 
 static char* generate_children(cJSON* node, ReactContext* ctx, int indent) {
+    // Check if this is a Text component with text_expression (even without children array)
+    cJSON* type_node = cJSON_GetObjectItem(node, "type");
+    const char* parent_type = type_node && cJSON_IsString(type_node) ? cJSON_GetStringValue(type_node) : "";
+
+    if (strcmp(parent_type, "Text") == 0) {
+        cJSON* text_expr = cJSON_GetObjectItem(node, "text_expression");
+        if (text_expr && cJSON_IsString(text_expr)) {
+            // Generate JSX expression like {variable}
+            StringBuilder* sb = sb_create(256);
+            const char* expr = cJSON_GetStringValue(text_expr);
+
+            // Check if there's a scope attribute to determine scoped variable name
+            cJSON* scope_attr = cJSON_GetObjectItem(node, "scope");
+            const char* scope = scope_attr && cJSON_IsString(scope_attr) ? cJSON_GetStringValue(scope_attr) : NULL;
+
+            // Generate scoped variable name if needed
+            char scoped_var[256];
+            if (scope && strcmp(scope, "component") != 0) {
+                snprintf(scoped_var, sizeof(scoped_var), "%s_%s", expr, scope);
+                // Replace # with _ for valid JavaScript identifiers
+                for (char* p = scoped_var; *p; p++) {
+                    if (*p == '#') *p = '_';
+                }
+                sb_append_fmt(sb, "{%s}", scoped_var);
+            } else {
+                sb_append_fmt(sb, "{%s}", expr);
+            }
+
+            char* result = strdup(sb_get(sb));
+            sb_free(sb);
+            return result;
+        }
+    }
+
     cJSON* children = cJSON_GetObjectItem(node, "children");
     if (!children || !cJSON_IsArray(children) || cJSON_GetArraySize(children) == 0) {
         return strdup("");
     }
 
     // Check if this is a Text component with Text children - handle specially
-    cJSON* type_node = cJSON_GetObjectItem(node, "type");
-    const char* parent_type = type_node && cJSON_IsString(type_node) ? cJSON_GetStringValue(type_node) : "";
-
     if (strcmp(parent_type, "Text") == 0) {
-        // Check if this has a text_expression (JSX expression like {variable})
+        // Check if this has a text_expression with children (complex pattern)
         cJSON* text_expr = cJSON_GetObjectItem(node, "text_expression");
         if (text_expr && cJSON_IsString(text_expr)) {
             // Reconstruct with JSX expression
@@ -739,7 +770,9 @@ static char* generate_children(cJSON* node, ReactContext* ctx, int indent) {
                 if (text_node && cJSON_IsString(text_node)) {
                     // Replace the last child (evaluated value) with the expression
                     if (idx == child_count - 1) {
+                        sb_append(sb, "{");
                         sb_append(sb, expr);
+                        sb_append(sb, "}");
                     } else {
                         sb_append(sb, cJSON_GetStringValue(text_node));
                     }
@@ -881,6 +914,7 @@ char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx) {
             cJSON* type_node = cJSON_GetObjectItem(var, "type");
             cJSON* initial_node = cJSON_GetObjectItem(var, "initial_value");
             cJSON* setter_node = cJSON_GetObjectItem(var, "setter_name");
+            cJSON* scope_node = cJSON_GetObjectItem(var, "scope");
 
             if (!name_node || !cJSON_IsString(name_node)) continue;
 
@@ -888,19 +922,49 @@ char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx) {
             const char* type = type_node ? cJSON_GetStringValue(type_node) : "any";
             const char* initial = initial_node ? cJSON_GetStringValue(initial_node) : "undefined";
             const char* setter = setter_node ? cJSON_GetStringValue(setter_node) : NULL;
+            const char* scope = scope_node ? cJSON_GetStringValue(scope_node) : NULL;
 
-            // Auto-generate setter name if not provided
-            char auto_setter[256];
-            if (!setter) {
-                snprintf(auto_setter, sizeof(auto_setter), "set%c%s",
-                         toupper(name[0]), name + 1);
-                setter = auto_setter;
+            // Skip variables with unresolved parameter references
+            if (strcmp(initial, "initialValue") == 0) {
+                continue;
+            }
+
+            // Generate unique names based on scope to avoid collisions
+            char scoped_name[256];
+            char scoped_setter[256];
+
+            if (scope && strcmp(scope, "component") != 0) {
+                // Replace # with _ for valid JavaScript identifiers
+                snprintf(scoped_name, sizeof(scoped_name), "%s_%s", name, scope);
+                // Replace # with _ in the scoped name
+                for (char* p = scoped_name; *p; p++) {
+                    if (*p == '#') *p = '_';
+                }
+
+                // Generate setter name from scoped name
+                snprintf(scoped_setter, sizeof(scoped_setter), "set%c%s",
+                         toupper(scoped_name[0]), scoped_name + 1);
+
+                name = scoped_name;
+                setter = scoped_setter;
+            } else {
+                // Auto-generate setter name if not provided
+                char auto_setter[256];
+                if (!setter) {
+                    snprintf(auto_setter, sizeof(auto_setter), "set%c%s",
+                             toupper(name[0]), name + 1);
+                    setter = auto_setter;
+                }
             }
 
             // Map KIR types to TypeScript types
             const char* ts_type = type;
             char ts_type_buf[64];
-            if (strcmp(type, "array") == 0) {
+            if (strcmp(type, "int") == 0 || strcmp(type, "float") == 0) {
+                ts_type = "number";
+            } else if (strcmp(type, "bool") == 0) {
+                ts_type = "boolean";
+            } else if (strcmp(type, "array") == 0) {
                 ts_type = "any[]";
             } else if (strcmp(type, "object") == 0) {
                 ts_type = "Record<string, any>";
