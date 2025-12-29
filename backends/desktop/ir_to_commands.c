@@ -671,11 +671,125 @@ bool ir_gen_image_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect*
 
 /* Table Component Generator */
 bool ir_gen_table_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    /* Render table background and border */
+    /* Render table background */
     ir_gen_container_commands(comp, ctx, bounds);
 
-    /* Tables are hierarchical - children handle their own rendering */
-    /* Parent table just provides the container */
+    if (getenv("KRYON_DEBUG_TABLE")) {
+        fprintf(stderr, "[TABLE_RENDER] Component %u type=%d bounds=(%.1f,%.1f,%.1fx%.1f)\n",
+                comp->id, comp->type, bounds->x, bounds->y, bounds->width, bounds->height);
+    }
+
+    /* Handle table-specific rendering based on component type */
+    if (comp->type == IR_COMPONENT_TABLE) {
+        /* Draw table borders if enabled */
+        IRTableState* state = ir_get_table_state(comp);
+
+        if (getenv("KRYON_DEBUG_TABLE")) {
+            fprintf(stderr, "[TABLE_RENDER]   state=%p\n", (void*)state);
+            if (state) {
+                fprintf(stderr, "[TABLE_RENDER]   show_borders=%d calculated_widths=%p calculated_heights=%p\n",
+                        state->style.show_borders, (void*)state->calculated_widths, (void*)state->calculated_heights);
+                fprintf(stderr, "[TABLE_RENDER]   row_count=%u column_count=%u\n",
+                        state->row_count, state->column_count);
+            }
+        }
+        if (state && state->style.show_borders) {
+            uint32_t border_color = 0xC8C8C8FF; /* Default gray */
+            uint8_t r, g, b, a;
+            if (ir_color_resolve(&state->style.border_color, &r, &g, &b, &a)) {
+                border_color = (r << 24) | (g << 16) | (b << 8) | a;
+            }
+            border_color = ir_apply_opacity_to_color(border_color, ctx->current_opacity);
+
+            float border_width = state->style.border_width;
+            float x = bounds->x;
+            float y = bounds->y;
+
+            /* Draw table border grid lines */
+            if (state->calculated_heights && state->calculated_widths) {
+                uint32_t num_rows = state->row_count;
+                uint32_t num_cols = state->column_count;
+
+                /* Horizontal lines */
+                float current_y = y;
+                for (uint32_t r = 0; r <= num_rows; r++) {
+                    kryon_command_t cmd = {0};
+                    cmd.type = KRYON_CMD_DRAW_LINE;
+                    cmd.data.draw_line.x1 = x;
+                    cmd.data.draw_line.y1 = current_y;
+                    cmd.data.draw_line.x2 = x + bounds->width;
+                    cmd.data.draw_line.y2 = current_y;
+                    cmd.data.draw_line.color = border_color;
+                    kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+                    if (r < num_rows) {
+                        current_y += state->calculated_heights[r] + border_width;
+                    }
+                }
+
+                /* Vertical lines */
+                float current_x = x;
+                for (uint32_t c = 0; c <= num_cols; c++) {
+                    kryon_command_t cmd = {0};
+                    cmd.type = KRYON_CMD_DRAW_LINE;
+                    cmd.data.draw_line.x1 = current_x;
+                    cmd.data.draw_line.y1 = y;
+                    cmd.data.draw_line.x2 = current_x;
+                    cmd.data.draw_line.y2 = y + bounds->height;
+                    cmd.data.draw_line.color = border_color;
+                    kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+                    if (c < num_cols) {
+                        current_x += state->calculated_widths[c] + border_width;
+                    }
+                }
+            }
+        }
+    } else if (comp->type == IR_COMPONENT_TABLE_CELL || comp->type == IR_COMPONENT_TABLE_HEADER_CELL) {
+        /* Render cell background and text */
+        if (comp->style && comp->style->background.type == IR_COLOR_SOLID) {
+            uint8_t r, g, b, a;
+            if (ir_color_resolve(&comp->style->background, &r, &g, &b, &a) && a > 0) {
+                uint32_t bg_color = (r << 24) | (g << 16) | (b << 8) | a;
+                bg_color = ir_apply_opacity_to_color(bg_color, ctx->current_opacity);
+
+                kryon_command_t cmd = {0};
+                cmd.type = KRYON_CMD_DRAW_RECT;
+                cmd.data.draw_rect.x = bounds->x;
+                cmd.data.draw_rect.y = bounds->y;
+                cmd.data.draw_rect.w = bounds->width;
+                cmd.data.draw_rect.h = bounds->height;
+                cmd.data.draw_rect.color = bg_color;
+                kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+            }
+        }
+
+        /* Render cell text with padding */
+        if (comp->text_content) {
+            /* Find parent table to get cell padding */
+            float padding = 8.0f; /* Default */
+            IRComponent* parent = comp->parent;
+            while (parent) {
+                if (parent->type == IR_COMPONENT_TABLE) {
+                    IRTableState* state = ir_get_table_state(parent);
+                    if (state) {
+                        padding = state->style.cell_padding;
+                    }
+                    break;
+                }
+                parent = parent->parent;
+            }
+
+            /* Adjust bounds for padding */
+            LayoutRect text_bounds = *bounds;
+            text_bounds.x += padding;
+            text_bounds.y += padding;
+            text_bounds.width -= 2 * padding;
+            text_bounds.height -= 2 * padding;
+
+            ir_gen_text_commands(comp, ctx, &text_bounds);
+        }
+    }
 
     return true;
 }

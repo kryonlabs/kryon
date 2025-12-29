@@ -4,6 +4,7 @@
 #include "ir_component_button.h"
 #include "ir_component_checkbox.h"
 #include "ir_component_dropdown.h"
+#include "ir_component_table.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,6 +44,9 @@ void ir_layout_init_traits(void) {
 
     // Register Dropdown component
     ir_dropdown_component_init();
+
+    // Register Table component
+    ir_table_component_init();
 
     if (getenv("KRYON_DEBUG_REGISTRY")) {
         fprintf(stderr, "[Registry] Layout traits initialized\n");

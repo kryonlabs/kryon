@@ -255,6 +255,15 @@ static IRComponentType get_component_type(const char* name) {
     if (strcmp(lower, "center") == 0) return IR_COMPONENT_CENTER;
     if (strcmp(lower, "canvas") == 0) return IR_COMPONENT_CANVAS;
 
+    // Table components
+    if (strcmp(lower, "table") == 0) return IR_COMPONENT_TABLE;
+    if (strcmp(lower, "tablehead") == 0) return IR_COMPONENT_TABLE_HEAD;
+    if (strcmp(lower, "tablebody") == 0) return IR_COMPONENT_TABLE_BODY;
+    if (strcmp(lower, "tablefoot") == 0) return IR_COMPONENT_TABLE_FOOT;
+    if (strcmp(lower, "tablerow") == 0 || strcmp(lower, "tr") == 0) return IR_COMPONENT_TABLE_ROW;
+    if (strcmp(lower, "tablecell") == 0 || strcmp(lower, "td") == 0) return IR_COMPONENT_TABLE_CELL;
+    if (strcmp(lower, "tableheadercell") == 0 || strcmp(lower, "th") == 0) return IR_COMPONENT_TABLE_HEADER_CELL;
+
     // Default to container for unknown types
     return IR_COMPONENT_CONTAINER;
 }

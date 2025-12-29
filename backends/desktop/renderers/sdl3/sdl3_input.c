@@ -620,7 +620,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 break;
 
             case SDL_EVENT_KEY_UP:
-                if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                // ESC to quit (disabled by default, enable with KRYON_ENABLE_ESCAPE_QUIT=1)
+                if (event.key.scancode == SDL_SCANCODE_ESCAPE && getenv("KRYON_ENABLE_ESCAPE_QUIT")) {
                     renderer->running = false;
                     break;
                 }
@@ -633,7 +634,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
             case SDL_EVENT_KEY_DOWN:
                 if (event.key.repeat) break;
 
-                if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                // ESC to quit (disabled by default, enable with KRYON_ENABLE_ESCAPE_QUIT=1)
+                if (event.key.scancode == SDL_SCANCODE_ESCAPE && getenv("KRYON_ENABLE_ESCAPE_QUIT")) {
                     renderer->running = false;
                     break;
                 }

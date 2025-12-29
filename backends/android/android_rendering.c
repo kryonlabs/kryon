@@ -222,24 +222,24 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
     // Check if component has absolute positioning
     if (component->style && component->style->position_mode == IR_POSITION_ABSOLUTE) {
-        // Use absolute positioning (scale px → dp)
+        // Use absolute positioning - scale from logical to physical pixels
         x = component->style->absolute_x * density;
         y = component->style->absolute_y * density;
         __android_log_print(ANDROID_LOG_ERROR, "KryonPos",
-            "🎯 ABSOLUTE positioning: comp=%u, mode=%d, absolute=(%.1f,%.1f) × %.2f → final=(%.1f,%.1f)",
+            "🎯 ABSOLUTE positioning: comp=%u, mode=%d, absolute=(%.1f,%.1f) * density=%.2f → final=(%.1f,%.1f)",
             component->id, component->style->position_mode,
             component->style->absolute_x, component->style->absolute_y, density, x, y);
     } else {
-        // Use computed layout position (scale px → dp)
+        // Use computed layout position - scale from logical to physical pixels
         x = parent_x + (component->layout_state->computed.x * density);
         y = parent_y + (component->layout_state->computed.y * density);
         if (component_render_count < 5 || component_render_count % 60 == 0) {
             __android_log_print(ANDROID_LOG_INFO, "KryonPos",
-                "📐 RELATIVE positioning: comp=%u, mode=%d, parent=(%.1f,%.1f), computed=(%.1f,%.1f) × %.2f → final=(%.1f,%.1f)",
+                "📐 RELATIVE positioning: comp=%u, mode=%d, parent=(%.1f,%.1f), computed=(%.1f,%.1f) * density=%.2f → final=(%.1f,%.1f)",
                 component->id, component->style ? component->style->position_mode : -1,
                 parent_x, parent_y,
-                component->layout_state->computed.x, component->layout_state->computed.y,
-                density, x, y);
+                component->layout_state->computed.x, component->layout_state->computed.y, density,
+                x, y);
         }
     }
 
@@ -309,8 +309,9 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                 int font_size_px = component->style && component->style->font.size > 0 ?
                     (int)component->style->font.size : 16;
 
-                // Scale to physical pixels for high-DPI displays (px → dp)
-                int font_size_scaled = (int)(font_size_px * density + 0.5f);
+                // Scale to physical pixels with additional mobile boost
+                // Use 1.5x multiplier on top of density for better mobile readability
+                int font_size_scaled = (int)(font_size_px * density * 1.5f + 0.5f);
 
                 uint32_t color = ir_color_to_rgba(text_color, opacity);
 
@@ -318,8 +319,30 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                 const char* font_name = (component->style && component->style->font.family) ?
                                        component->style->font.family : "Roboto";
 
+                // Measure actual text dimensions at scaled size for perfect centering
+                float text_width_actual, text_height_actual;
+                android_renderer_measure_text(renderer, component->text_content,
+                                             font_name, font_size_scaled,
+                                             &text_width_actual, &text_height_actual);
+
+                // PERFECT CENTERING: Calculate true center position
+                // Container center position
+                float container_center_x = x + (width / 2.0f);
+                float container_center_y = y + (height / 2.0f);
+
+                // Text should be centered in container
+                float text_x = container_center_x - (text_width_actual / 2.0f);
+                float text_y = container_center_y - (text_height_actual / 2.0f);
+
+                __android_log_print(ANDROID_LOG_INFO, "KryonCenter",
+                    "Container: pos=(%.1f,%.1f) size=(%.1f,%.1f) center=(%.1f,%.1f)",
+                    x, y, width, height, container_center_x, container_center_y);
+                __android_log_print(ANDROID_LOG_INFO, "KryonCenter",
+                    "Text: size=(%.1f,%.1f) final_pos=(%.1f,%.1f)",
+                    text_width_actual, text_height_actual, text_x, text_y);
+
                 android_renderer_draw_text(renderer, component->text_content,
-                                          x, y, font_name, font_size_scaled, color);
+                                          text_x, text_y, font_name, font_size_scaled, color);
 
                 seq = ++render_sequence_number;
                 __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
@@ -342,10 +365,10 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                     component->style->font.color :
                     IR_COLOR_RGBA(255, 255, 255, 255);
 
-                // Scale font size by density (px → dp)
+                // Scale font size with mobile boost
                 int font_size_px = component->style && component->style->font.size > 0 ?
                     (int)component->style->font.size : 16;
-                int font_size_scaled = (int)(font_size_px * density + 0.5f);
+                int font_size_scaled = (int)(font_size_px * density * 1.5f + 0.5f);
 
                 uint32_t color = ir_color_to_rgba(text_color, opacity);
 
@@ -373,14 +396,19 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                     component->style->font.color :
                     IR_COLOR_RGBA(0, 0, 0, 255);
 
-                int font_size = component->style && component->style->font.size > 0 ?
+                // Scale font size with mobile boost
+                int font_size_px = component->style && component->style->font.size > 0 ?
                     (int)component->style->font.size : 16;
+                int font_size_scaled = (int)(font_size_px * density * 1.5f + 0.5f);
 
                 uint32_t color = ir_color_to_rgba(text_color, opacity);
 
+                // Scale padding by density
+                float padding = 8.0f * density;
+
                 android_renderer_draw_text(renderer, component->text_content,
-                                          x + 8, y + 8,
-                                          NULL, font_size, color);
+                                          x + padding, y + padding,
+                                          NULL, font_size_scaled, color);
             }
             break;
 

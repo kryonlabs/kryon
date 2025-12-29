@@ -19,6 +19,9 @@
 #include "css_generator.h"
 #include "style_analyzer.h"
 
+// Access global IR context for metadata
+extern IRContext* g_ir_context;
+
 // HTML semantic tag mapping (NO kryon-* classes)
 static const char* get_html_tag(IRComponentType type) {
     switch (type) {
@@ -816,7 +819,11 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     html_generator_write_string(generator, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
     html_generator_write_string(generator, "  <meta charset=\"UTF-8\">\n");
     html_generator_write_string(generator, "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-    html_generator_write_string(generator, "  <title>Kryon Web Application</title>\n");
+    // Use metadata title if available, otherwise use default
+    const char* title = (g_ir_context && g_ir_context->metadata && g_ir_context->metadata->window_title)
+                       ? g_ir_context->metadata->window_title
+                       : "Kryon Web Application";
+    html_generator_write_format(generator, "  <title>%s</title>\n", title);
 
     // Add CSS - either inline <style> or external <link>
     if (generator->options.inline_css) {

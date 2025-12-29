@@ -104,6 +104,9 @@ static bool raylib_init(kryon_renderer_t* renderer, void* native_window) {
         return false;
     }
 
+    // Disable ESC key closing the window (let app handle it)
+    SetExitKey(KEY_NULL);
+
     backend->initialized = true;
     renderer->backend_data = backend;
 

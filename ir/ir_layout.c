@@ -430,8 +430,17 @@ static void ir_propagate_direction(IRComponent* component, IRDirection parent_di
 void ir_layout_compute(IRComponent* root, float available_width, float available_height) {
     if (!root) return;
 
+    // DEBUG: Log all layout invocations
+    if (getenv("KRYON_DEBUG_TABLE")) {
+        fprintf(stderr, "[LAYOUT] id=%u type=%d dirty=0x%02x available=%.1fx%.1f\n",
+                root->id, root->type, root->dirty_flags, available_width, available_height);
+    }
+
     // Skip layout if component is clean (not dirty)
     if ((root->dirty_flags & (IR_DIRTY_LAYOUT | IR_DIRTY_SUBTREE)) == 0) {
+        if (getenv("KRYON_DEBUG_TABLE")) {
+            fprintf(stderr, "[LAYOUT] SKIPPING id=%u (not dirty)\n", root->id);
+        }
         return;
     }
 
@@ -524,8 +533,13 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
     // Recursively layout children
     // SKIP table children - their layout is handled by ir_layout_compute_table()
     // These use RELATIVE coordinates that would be corrupted by flex layout
+    fprintf(stderr, "[LAYOUT_RECURSE] root id=%u type=%d child_count=%u\n",
+            root->id, root->type, root->child_count);
     for (uint32_t i = 0; i < root->child_count; i++) {
         IRComponent* child = root->children[i];
+        fprintf(stderr, "[LAYOUT_RECURSE]   child[%u] id=%u type=%d style=%p visible=%d\n",
+                i, child->id, child->type, (void*)child->style,
+                child->style ? child->style->visible : -1);
         if (child->style && child->style->visible) {
             // Skip table children - their layout is managed by table layout algorithm
             bool is_table_child = (child->type == IR_COMPONENT_TABLE_HEAD ||
@@ -535,6 +549,10 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
                                    child->type == IR_COMPONENT_TABLE_CELL ||
                                    child->type == IR_COMPONENT_TABLE_HEADER_CELL);
             if (!is_table_child) {
+                if (child->type == IR_COMPONENT_TABLE) {
+                    fprintf(stderr, "[RECURSE] About to layout table id=%u bounds=%.1fx%.1f\n",
+                            child->id, child->rendered_bounds.width, child->rendered_bounds.height);
+                }
                 ir_layout_compute(child, child->rendered_bounds.width, child->rendered_bounds.height);
             }
         }
@@ -1451,11 +1469,17 @@ static float table_get_cell_content_height(IRComponent* cell) {
 
 // Main table layout function
 void ir_layout_compute_table(IRComponent* table, float available_width, float available_height) {
+    fprintf(stderr, "[TABLE_LAYOUT_ENTRY] table=%p type=%d available=%.1fx%.1f\n",
+            (void*)table, table ? table->type : -1, available_width, available_height);
+
     if (!table || table->type != IR_COMPONENT_TABLE) {
+        fprintf(stderr, "[TABLE_LAYOUT_ENTRY] Early return: table=%p type=%d\n",
+                (void*)table, table ? table->type : -1);
         return;
     }
 
     IRTableState* state = (IRTableState*)table->custom_data;
+    fprintf(stderr, "[TABLE_LAYOUT_ENTRY] state=%p\n", (void*)state);
 
     // Debug: always trace layout state
     if (getenv("KRYON_TRACE_LAYOUT")) {

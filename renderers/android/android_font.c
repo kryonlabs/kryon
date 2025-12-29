@@ -377,6 +377,17 @@ bool android_renderer_set_default_font(AndroidRenderer* renderer,
     return true;
 }
 
+/**
+ * Measure text dimensions.
+ *
+ * Returns the visual bounding box of rendered text:
+ * - width: Horizontal advance (sum of glyph advances)
+ * - height: Visual height (highest glyph top to lowest glyph bottom)
+ *
+ * Note: Visual height may be smaller than font size for text without descenders.
+ * Example: "Hello" at 16px font → ~9px visual height
+ *          "Agj" at 16px font → ~12px visual height (has descenders)
+ */
 bool android_renderer_measure_text(AndroidRenderer* renderer,
                                     const char* text,
                                     const char* font_name,
@@ -398,21 +409,49 @@ bool android_renderer_measure_text(AndroidRenderer* renderer,
         return false;
     }
 
-    // Measure text width
+    // Calculate text width AND visual bounds
     float text_width = 0.0f;
+    float max_ascent = 0.0f;   // Highest point above baseline
+    float max_descent = 0.0f;  // Lowest point below baseline (negative)
+
     for (const char* p = text; *p; p++) {
         GlyphInfo* glyph = android_font_get_glyph(font, *p);
         if (glyph) {
+            // Accumulate width
             text_width += glyph->advance;
+
+            // Track visual bounds
+            // bearing_y = distance from baseline to glyph top (+ = above)
+            // height = glyph bitmap height in pixels
+            float glyph_top = (float)glyph->bearing_y;
+            float glyph_bottom = (float)(glyph->bearing_y - glyph->height);
+
+            if (glyph_top > max_ascent) {
+                max_ascent = glyph_top;
+            }
+            if (glyph_bottom < max_descent) {
+                max_descent = glyph_bottom;
+            }
         }
     }
 
+    // Visual height = distance from highest to lowest point
+    // max_descent is negative, so subtracting adds absolute value
+    float visual_height = max_ascent - max_descent;
+
     if (width) *width = text_width;
-    if (height) *height = (float)size;
+    if (height) *height = visual_height;
 
     return true;
 }
 
+/**
+ * Draw text at specified position.
+ *
+ * Coordinate system: (x, y) = TOP-LEFT corner of text's visual bounding box
+ * Function calculates baseline internally using font metrics
+ * Glyphs positioned relative to baseline for proper typography
+ */
 void android_renderer_draw_text(AndroidRenderer* renderer,
                                  const char* text,
                                  float x, float y,
@@ -502,7 +541,7 @@ void android_renderer_draw_text(AndroidRenderer* renderer,
         }
 
         LOGI("Rendering glyph '%c': pos=(%.1f,%.1f) size=%dx%d\n",
-             *p, cursor_x + glyph->bearing_x, baseline_y + glyph->bearing_y,
+             *p, cursor_x + glyph->bearing_x, baseline_y - glyph->bearing_y,
              glyph->width, glyph->height);
 
         // Check if we need to flush batch
@@ -519,7 +558,9 @@ void android_renderer_draw_text(AndroidRenderer* renderer,
 
         // Calculate glyph position
         float glyph_x = cursor_x + glyph->bearing_x;
-        float glyph_y = baseline_y + glyph->bearing_y;
+        // bearing_y is distance from baseline to glyph top (positive = above baseline)
+        // In screen coords (Y down), subtract to move UP from baseline
+        float glyph_y = baseline_y - glyph->bearing_y;
         float glyph_w = (float)glyph->width;
         float glyph_h = (float)glyph->height;
 

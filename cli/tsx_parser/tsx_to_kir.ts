@@ -61,6 +61,14 @@ const eventBindings: EventBinding[] = [];
 const reactiveVars: ReactiveVar[] = [];
 const hooks: Hook[] = [];
 
+// App metadata from kryonApp config
+let appMetadata: {
+  title?: string;
+  width?: number | string;
+  height?: number | string;
+  version?: string;
+} = {};
+
 // Track JSX text expressions for preservation
 interface TextExpression {
   pattern: string;  // Original pattern like "Count: {count}"
@@ -416,6 +424,12 @@ async function parseKryonTSX(source: string): Promise<KIRComponent> {
 
   // Special handler for kryonApp
   const kryonApp = (config: any) => {
+    // Extract app metadata (title, version, etc.)
+    if (config.title) appMetadata.title = config.title;
+    if (config.width) appMetadata.width = config.width;
+    if (config.height) appMetadata.height = config.height;
+    if (config.version) appMetadata.version = config.version;
+
     if (config.render && typeof config.render === 'function') {
       // Get the rendered content
       const content = config.render();
@@ -579,6 +593,14 @@ async function main() {
       },
       root
     };
+
+    // Add app object with window metadata (canonical format)
+    if (appMetadata.title || appMetadata.width || appMetadata.height) {
+      output.app = {};
+      if (appMetadata.title) output.app.windowTitle = appMetadata.title;
+      if (appMetadata.width) output.app.windowWidth = appMetadata.width;
+      if (appMetadata.height) output.app.windowHeight = appMetadata.height;
+    }
 
     // Add logic_block if there are any event handlers
     if (logicFunctions.length > 0) {

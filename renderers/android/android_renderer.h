@@ -112,6 +112,8 @@ bool android_renderer_set_default_font(AndroidRenderer* renderer,
                                         int size);
 
 // Measure text dimensions
+// Returns visual bounding box: width = horizontal advance,
+// height = actual vertical space occupied by rendered glyphs
 bool android_renderer_measure_text(AndroidRenderer* renderer,
                                     const char* text,
                                     const char* font_name,
