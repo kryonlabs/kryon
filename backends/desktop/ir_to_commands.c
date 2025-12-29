@@ -325,14 +325,52 @@ bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* 
     }
     uint32_t text_color = ir_apply_opacity_to_color(base_color, ctx->current_opacity);
 
+    /* Apply semantic styling based on component type */
+    bool is_bold = style && style->font.bold;
+    bool is_italic = style && style->font.italic;
+    float font_size = style && style->font.size > 0 ? style->font.size : 16;
+    uint32_t bg_color = 0;  /* Background highlight color (for Mark) */
+
+    switch (comp->type) {
+        case IR_COMPONENT_STRONG:
+            is_bold = true;
+            break;
+        case IR_COMPONENT_EM:
+            is_italic = true;
+            break;
+        case IR_COMPONENT_CODE_INLINE:
+            /* TODO: Use monospace font_id when font system supports it */
+            break;
+        case IR_COMPONENT_SMALL:
+            font_size *= 0.85f;  /* Smaller text */
+            break;
+        case IR_COMPONENT_MARK:
+            bg_color = 0xFFFF00FF;  /* Yellow highlight */
+            break;
+        default:
+            break;
+    }
+
+    /* Draw highlight background for Mark component */
+    if (bg_color != 0) {
+        kryon_command_t bg_cmd = {0};
+        bg_cmd.type = KRYON_CMD_DRAW_RECT;
+        bg_cmd.data.draw_rect.x = bounds->x;
+        bg_cmd.data.draw_rect.y = bounds->y;
+        bg_cmd.data.draw_rect.w = bounds->width;
+        bg_cmd.data.draw_rect.h = bounds->height;
+        bg_cmd.data.draw_rect.color = ir_apply_opacity_to_color(bg_color, ctx->current_opacity);
+        kryon_cmd_buf_push(ctx->cmd_buf, &bg_cmd);
+    }
+
     kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize
     cmd.type = KRYON_CMD_DRAW_TEXT;
     cmd.data.draw_text.x = bounds->x;
     cmd.data.draw_text.y = bounds->y;
     cmd.data.draw_text.font_id = 0; /* TODO: Resolve font from style */
-    cmd.data.draw_text.font_size = style && style->font.size > 0 ? style->font.size : 16;
-    cmd.data.draw_text.font_weight = style && style->font.bold ? 1 : 0;
-    cmd.data.draw_text.font_style = style && style->font.italic ? 1 : 0;
+    cmd.data.draw_text.font_size = font_size;
+    cmd.data.draw_text.font_weight = is_bold ? 1 : 0;
+    cmd.data.draw_text.font_style = is_italic ? 1 : 0;
     cmd.data.draw_text.color = text_color;
 
     /* Copy text to inline storage */
@@ -964,7 +1002,16 @@ bool ir_generate_component_commands(
             break;
 
         case IR_COMPONENT_TEXT:
+        case IR_COMPONENT_STRONG:
+        case IR_COMPONENT_EM:
+        case IR_COMPONENT_CODE_INLINE:
+        case IR_COMPONENT_SMALL:
+        case IR_COMPONENT_MARK:
             success = ir_gen_text_commands(component, ctx, render_bounds);
+            break;
+
+        case IR_COMPONENT_SPAN:
+            success = ir_gen_container_commands(component, ctx, render_bounds);
             break;
 
         case IR_COMPONENT_BUTTON:

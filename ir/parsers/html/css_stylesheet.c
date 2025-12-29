@@ -688,9 +688,34 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
     if (temp_style.opacity != 1.0f && temp_style.opacity > 0) out->set_flags |= IR_PROP_OPACITY;
     if (temp_style.z_index > 0) out->set_flags |= IR_PROP_Z_INDEX;
 
-    // Cleanup temporary style's dynamically allocated font.family
+    // Background image (gradient string)
+    if (temp_style.background_image) {
+        out->background_image = strdup(temp_style.background_image);
+        out->set_flags |= IR_PROP_BACKGROUND_IMAGE;
+    }
+
+    // Background clip
+    out->background_clip = temp_style.background_clip;
+    if (temp_style.background_clip != IR_BACKGROUND_CLIP_BORDER_BOX) {
+        out->set_flags |= IR_PROP_BACKGROUND_CLIP;
+    }
+
+    // Text fill color - only set flag if explicitly specified
+    // (type is TRANSPARENT, or type is SOLID with non-zero alpha)
+    out->text_fill_color = temp_style.text_fill_color;
+    if (temp_style.text_fill_color.type == IR_COLOR_TRANSPARENT) {
+        out->set_flags |= IR_PROP_TEXT_FILL_COLOR;
+    } else if (temp_style.text_fill_color.type == IR_COLOR_SOLID &&
+               temp_style.text_fill_color.data.a > 0) {
+        out->set_flags |= IR_PROP_TEXT_FILL_COLOR;
+    }
+
+    // Cleanup temporary style's dynamically allocated memory
     if (temp_style.font.family) {
         free(temp_style.font.family);
+    }
+    if (temp_style.background_image) {
+        free(temp_style.background_image);
     }
 }
 

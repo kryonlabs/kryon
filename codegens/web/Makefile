@@ -21,15 +21,16 @@ WEB_HEADERS = ir_web_renderer.h html_generator.h css_generator.h wasm_bridge.h s
 WEB_STATIC_LIB = $(BUILD_DIR)/libkryon_web.a
 WEB_SHARED_LIB = $(BUILD_DIR)/libkryon_web.so
 WEB_TEST = $(BUILD_DIR)/web_test
+KIR_TO_HTML = kir_to_html
 
 # Include paths
 INCLUDES = -I$(INCLUDE_DIR) -I$(INCLUDE_IR_DIR)
 
 # Link libraries
-LINK_LIBS = -L$(BUILD_DIR) -lkryon_ir
+LINK_LIBS = -L$(BUILD_DIR) -lkryon_web -lkryon_ir
 
 # Default target
-all: $(WEB_STATIC_LIB) $(WEB_SHARED_LIB)
+all: $(WEB_STATIC_LIB) $(WEB_SHARED_LIB) $(KIR_TO_HTML)
 
 # Create build directory
 $(BUILD_DIR):
@@ -59,6 +60,10 @@ $(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator
 $(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o
 	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o ../../build/libkryon_ir.a
 
+# Build kir_to_html CLI tool
+$(KIR_TO_HTML): $(WEB_STATIC_LIB) kir_to_html.c
+	$(CC) $(CFLAGS) $(INCLUDES) kir_to_html.c -o $@ $(LINK_LIBS)
+
 # Test and example targets (when test files are created)
 # test: $(WEB_TEST)
 # example: $(WEB_STATIC_LIB)
@@ -66,7 +71,7 @@ $(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator
 # Clean build artifacts
 clean:
 	rm -f *.o
-	rm -f $(WEB_STATIC_LIB) $(WEB_SHARED_LIB) $(WEB_TEST) $(BUILD_DIR)/example_render
+	rm -f $(WEB_STATIC_LIB) $(WEB_SHARED_LIB) $(WEB_TEST) $(BUILD_DIR)/example_render $(KIR_TO_HTML)
 
 # Install headers
 install-headers: $(BUILD_DIR)

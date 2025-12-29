@@ -49,7 +49,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
 
     if (strcmp(frontend, "markdown") == 0) {
         // Use Nim CLI for markdown compilation
-        char cmd[1024];
+        char cmd[4096];
         snprintf(cmd, sizeof(cmd),
                  "kryon compile \"%s\" 2>&1 | grep -q 'KIR generated' && mv .kryon_cache/*.kir \"%s\" 2>/dev/null || kryon compile \"%s\" > /dev/null 2>&1",
                  source_file, output_kir, source_file);
@@ -66,7 +66,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
     }
     else if (strcmp(frontend, "tsx") == 0 || strcmp(frontend, "jsx") == 0) {
         // Use Bun to parse TSX/JSX
-        char cmd[1024];
+        char cmd[4096];
         snprintf(cmd, sizeof(cmd),
                  "bun run /mnt/storage/Projects/kryon/cli_nim_backup/tsx_to_kir.ts \"%s\" > \"%s\"",
                  source_file, output_kir);
@@ -81,7 +81,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
     }
     else if (strcmp(frontend, "html") == 0) {
         // Use kryon compile for HTML
-        char cmd[1024];
+        char cmd[4096];
         snprintf(cmd, sizeof(cmd),
                  "kryon compile \"%s\" --output=\"%s\" 2>&1",
                  source_file, output_kir);
@@ -104,7 +104,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
     }
     else if (strcmp(frontend, "nim") == 0) {
         // Compile Nim with KRYON_SERIALIZE_IR flag
-        char cmd[1024];
+        char cmd[4096];
         snprintf(cmd, sizeof(cmd),
                  "nim c -d:KRYON_SERIALIZE_IR -r \"%s\"",
                  source_file);
@@ -122,7 +122,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         if (dot) {
             strcpy(dot, ".kir");
 
-            char mv_cmd[1024];
+            char mv_cmd[4096];
             snprintf(mv_cmd, sizeof(mv_cmd), "mv \"%s\" \"%s\"", kir_file, output_kir);
             system(mv_cmd);
         }
@@ -132,7 +132,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
     }
     else if (strcmp(frontend, "lua") == 0) {
         // Run Lua with Kryon bindings
-        char cmd[1024];
+        char cmd[4096];
         snprintf(cmd, sizeof(cmd),
                  "luajit -e 'KRYON_SERIALIZE_IR=true' \"%s\"",
                  source_file);
@@ -159,7 +159,7 @@ static int invoke_codegen(const char* kir_file, const char* target, const char* 
 
     if (strcmp(target, "web") == 0) {
         // Use web codegen library
-        char cmd[1024];
+        char cmd[4096];
         snprintf(cmd, sizeof(cmd),
                  "KRYON_LIB_PATH=/home/wao/.local/lib/libkryon_web.so kryon run \"%s\"",
                  kir_file);

@@ -904,3 +904,58 @@ void kryon_component_add_animation(IRComponent* c, IRAnimation* anim) {
     if (!c || !anim) return;
     ir_component_add_animation(c, anim);
 }
+
+// ============================================================================
+// Shutdown API
+// ============================================================================
+
+// Forward declarations for internal shutdown functions (in ir_desktop_renderer.c)
+// Use weak symbols so these can be missing when desktop backend is not linked
+extern bool kryon_request_shutdown_internal(DesktopIRRenderer* renderer, KryonShutdownReason reason) __attribute__((weak));
+extern bool kryon_register_shutdown_callback_internal(DesktopIRRenderer* renderer,
+                                                       KryonShutdownCallback callback,
+                                                       void* user_data, int priority) __attribute__((weak));
+extern void kryon_set_cleanup_callback_internal(DesktopIRRenderer* renderer,
+                                                 KryonCleanupCallback callback, void* user_data) __attribute__((weak));
+extern KryonShutdownState kryon_get_shutdown_state_internal(DesktopIRRenderer* renderer) __attribute__((weak));
+extern bool kryon_is_shutting_down_internal(DesktopIRRenderer* renderer) __attribute__((weak));
+
+// Global renderer pointer (from desktop backend) - weak so it can be missing
+extern DesktopIRRenderer* g_desktop_renderer __attribute__((weak));
+
+bool kryon_request_shutdown(void* renderer, kryon_shutdown_reason_t reason) {
+    // Check if desktop backend is linked
+    if (!kryon_request_shutdown_internal) return false;
+    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
+    if (!r) return false;
+    return kryon_request_shutdown_internal(r, (KryonShutdownReason)reason);
+}
+
+bool kryon_register_shutdown_callback(void* renderer, kryon_shutdown_callback_t callback,
+                                       void* user_data, int priority) {
+    if (!kryon_register_shutdown_callback_internal) return false;
+    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
+    if (!r) return false;
+    return kryon_register_shutdown_callback_internal(r, (KryonShutdownCallback)callback, user_data, priority);
+}
+
+void kryon_set_cleanup_callback(void* renderer, kryon_cleanup_callback_t callback, void* user_data) {
+    if (!kryon_set_cleanup_callback_internal) return;
+    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
+    if (!r) return;
+    kryon_set_cleanup_callback_internal(r, (KryonCleanupCallback)callback, user_data);
+}
+
+kryon_shutdown_state_t kryon_get_shutdown_state(void* renderer) {
+    if (!kryon_get_shutdown_state_internal) return KRYON_SHUTDOWN_COMPLETE;
+    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
+    if (!r) return KRYON_SHUTDOWN_COMPLETE;
+    return (kryon_shutdown_state_t)kryon_get_shutdown_state_internal(r);
+}
+
+bool kryon_is_shutting_down(void* renderer) {
+    if (!kryon_is_shutting_down_internal) return true;
+    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
+    if (!r) return true;
+    return kryon_is_shutting_down_internal(r);
+}

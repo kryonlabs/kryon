@@ -847,6 +847,57 @@ static KryNode* parse_var_decl(KryParser* p, const char* var_type) {
 // Forward declaration
 static KryNode* parse_component_body(KryParser* p, KryNode* component);
 
+// Parse style block: style selector { property = value; ... }
+// Selector can be:
+//   - Simple identifier: style primaryButton { ... }
+//   - Quoted complex selector: style "header .container" { ... }
+static KryNode* parse_style_block(KryParser* p) {
+    skip_whitespace(p);
+
+    // Parse selector - can be identifier or quoted string
+    char* selector = NULL;
+
+    if (peek(p) == '"') {
+        // Quoted complex selector
+        advance(p);  // Skip opening quote
+        const char* start = p->source + p->pos;
+        size_t len = 0;
+        while (p->pos < p->length && peek(p) != '"') {
+            len++;
+            advance(p);
+        }
+        if (peek(p) != '"') {
+            kry_parser_error(p, "Unterminated string in style selector");
+            return NULL;
+        }
+        advance(p);  // Skip closing quote
+        selector = kry_strndup(p, start, len);
+    } else {
+        // Simple identifier selector (like a class name)
+        selector = parse_identifier(p);
+    }
+
+    if (!selector || !selector[0]) {
+        kry_parser_error(p, "Expected selector after 'style'");
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Create style block node
+    KryNode* style_node = kry_node_create(p, KRY_NODE_STYLE_BLOCK);
+    if (!style_node) return NULL;
+
+    style_node->name = selector;  // Store selector in name field
+
+    // Parse body like a component body (will parse properties as children)
+    if (!parse_component_body(p, style_node)) {
+        return NULL;
+    }
+
+    return style_node;
+}
+
 // Parse static block: static { ... }
 static KryNode* parse_static_block(KryParser* p) {
     skip_whitespace(p);
@@ -1011,6 +1062,12 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
             KryNode* if_stmt = parse_if_statement(p);
             if (!if_stmt) return NULL;
             kry_node_append_child(component, if_stmt);
+        }
+        // Check for style block
+        else if (keyword_match(name, "style")) {
+            KryNode* style_block = parse_style_block(p);
+            if (!style_block) return NULL;
+            kry_node_append_child(component, style_block);
         }
         // Check if it's a property (=) or child component ({)
         else if (peek(p) == '=') {
@@ -1183,6 +1240,10 @@ KryNode* kry_parse(KryParser* parser) {
         // Check for static block
         else if (keyword_match(id, "static")) {
             node = parse_static_block(parser);
+        }
+        // Check for style block at top level
+        else if (keyword_match(id, "style")) {
+            node = parse_style_block(parser);
         }
         // Check for component definition
         else if (keyword_match(id, "component")) {

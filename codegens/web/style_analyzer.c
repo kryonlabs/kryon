@@ -120,9 +120,21 @@ char* generate_natural_class_name(IRComponent* component) {
         return strdup(component->css_class);
     }
 
-    // Priority 2: Use component->tag if set (user custom class or semantic tag fallback)
+    // Priority 2: Use component->tag ONLY if it's a custom class name, not a semantic HTML tag
+    // Semantic tags like h1, h2, p, header, footer, nav, etc. can be targeted directly by CSS
     if (component->tag && component->tag[0] != '\0') {
-        return strdup(component->tag);
+        const char* tag = component->tag;
+        // Skip semantic HTML tags - CSS can target these directly without a class
+        if (strcmp(tag, "h1") != 0 && strcmp(tag, "h2") != 0 && strcmp(tag, "h3") != 0 &&
+            strcmp(tag, "h4") != 0 && strcmp(tag, "h5") != 0 && strcmp(tag, "h6") != 0 &&
+            strcmp(tag, "p") != 0 && strcmp(tag, "header") != 0 && strcmp(tag, "footer") != 0 &&
+            strcmp(tag, "nav") != 0 && strcmp(tag, "main") != 0 && strcmp(tag, "section") != 0 &&
+            strcmp(tag, "article") != 0 && strcmp(tag, "aside") != 0 && strcmp(tag, "div") != 0 &&
+            strcmp(tag, "span") != 0 && strcmp(tag, "a") != 0 && strcmp(tag, "ul") != 0 &&
+            strcmp(tag, "ol") != 0 && strcmp(tag, "li") != 0 && strcmp(tag, "pre") != 0 &&
+            strcmp(tag, "code") != 0 && strcmp(tag, "blockquote") != 0) {
+            return strdup(tag);
+        }
     }
 
     // Priority 3: Natural semantic names based on component type
@@ -196,8 +208,9 @@ StyleAnalysis* analyze_component_style(IRComponent* component, IRLogicBlock* log
     StyleAnalysis* analysis = calloc(1, sizeof(StyleAnalysis));
     if (!analysis) return NULL;
 
-    // Check if component has custom styling
-    analysis->needs_css = ir_style_has_custom_values(component->style);
+    // Check if component has custom styling OR explicit css_class
+    analysis->needs_css = ir_style_has_custom_values(component->style) ||
+                          (component->css_class && component->css_class[0] != '\0');
 
     // Check if component has event handlers
     analysis->needs_id = has_event_handlers(component, logic_block);

@@ -46,6 +46,14 @@ IRComponentType ir_html_tag_to_component_type(const char* tag_name) {
     if (strcmp(tag_name, "img") == 0) return IR_COMPONENT_IMAGE;
     if (strcmp(tag_name, "a") == 0) return IR_COMPONENT_LINK;
 
+    // Inline semantic elements (for rich text)
+    if (strcmp(tag_name, "span") == 0) return IR_COMPONENT_SPAN;
+    if (strcmp(tag_name, "strong") == 0 || strcmp(tag_name, "b") == 0) return IR_COMPONENT_STRONG;
+    if (strcmp(tag_name, "em") == 0 || strcmp(tag_name, "i") == 0) return IR_COMPONENT_EM;
+    if (strcmp(tag_name, "code") == 0) return IR_COMPONENT_CODE_INLINE;
+    if (strcmp(tag_name, "small") == 0) return IR_COMPONENT_SMALL;
+    if (strcmp(tag_name, "mark") == 0) return IR_COMPONENT_MARK;
+
     // Layout containers
     if (strcmp(tag_name, "div") == 0) return IR_COMPONENT_CONTAINER;
 
@@ -62,57 +70,6 @@ IRComponentType ir_html_tag_to_component_type(const char* tag_name) {
 
     // Default
     return IR_COMPONENT_CONTAINER;
-}
-
-// ============================================================================
-// Natural Class Name Inference
-// ============================================================================
-
-/**
- * Infer IR component type from CSS class name
- *
- * Allows natural HTML like:
- *   <div class="row"> → IR_COMPONENT_ROW
- *   <div class="column"> → IR_COMPONENT_COLUMN
- *   <div class="center"> → IR_COMPONENT_CENTER
- *   <div class="button primary"> → IR_COMPONENT_BUTTON
- */
-IRComponentType ir_infer_type_from_classes(const char* class_string) {
-    if (!class_string || class_string[0] == '\0') {
-        return IR_COMPONENT_CONTAINER;
-    }
-
-    // Check for exact matches first (highest priority)
-    if (strcmp(class_string, "row") == 0) return IR_COMPONENT_ROW;
-    if (strcmp(class_string, "column") == 0) return IR_COMPONENT_COLUMN;
-    if (strcmp(class_string, "col") == 0) return IR_COMPONENT_COLUMN;
-    if (strcmp(class_string, "center") == 0) return IR_COMPONENT_CENTER;
-    if (strcmp(class_string, "button") == 0) return IR_COMPONENT_BUTTON;
-
-    // Check for partial matches (class contains keyword)
-    // Use case-insensitive matching for flexibility
-    char* class_lower = strdup(class_string);
-    if (!class_lower) return IR_COMPONENT_CONTAINER;
-
-    for (char* p = class_lower; *p; p++) {
-        *p = tolower(*p);
-    }
-
-    IRComponentType result = IR_COMPONENT_CONTAINER;
-
-    // Check for layout hints in class name
-    if (strstr(class_lower, "row") != NULL && strstr(class_lower, "column") == NULL) {
-        result = IR_COMPONENT_ROW;
-    } else if (strstr(class_lower, "column") != NULL || strstr(class_lower, "col") != NULL) {
-        result = IR_COMPONENT_COLUMN;
-    } else if (strstr(class_lower, "center") != NULL) {
-        result = IR_COMPONENT_CENTER;
-    } else if (strstr(class_lower, "button") != NULL || strstr(class_lower, "btn") != NULL) {
-        result = IR_COMPONENT_BUTTON;
-    }
-
-    free(class_lower);
-    return result;
 }
 
 // ============================================================================
@@ -192,26 +149,17 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
                 }
             }
 
-            // 3-tier type detection system:
-            // Priority 1: data-ir-type attribute (for roundtrip preservation)
-            // Priority 2: HTML tag name (<button>, <h1>, etc.)
-            // Priority 3: CSS class name inference (class="row", class="column")
+            // Type detection - ONLY from HTML tag or explicit data-ir-type attribute
+            // CSS class names are for STYLING, never for type inference
             IRComponentType type;
 
             if (node->data_ir_type) {
-                // Tier 1: Restore original component type from metadata
+                // Priority 1: Restore original component type from data-ir-type metadata
                 type = ir_string_to_component_type(node->data_ir_type);
             } else {
-                // Tier 2: Map HTML tag to component type
+                // Priority 2: Map HTML tag to component type
+                // This is the ONLY source of truth for element type
                 type = ir_html_tag_to_component_type(node->tag_name);
-
-                // Tier 3: If tag is ambiguous (div), check class for hints
-                if (type == IR_COMPONENT_CONTAINER && node->class_name) {
-                    IRComponentType inferred = ir_infer_type_from_classes(node->class_name);
-                    if (inferred != IR_COMPONENT_CONTAINER) {
-                        type = inferred;
-                    }
-                }
             }
 
             switch (type) {
@@ -380,6 +328,16 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
                     }
 
                     component = ir_link(url, text);
+
+                    // Set target and rel attributes if present
+                    if (component) {
+                        if (node->target) {
+                            ir_set_link_target(component, node->target);
+                        }
+                        if (node->rel) {
+                            ir_set_link_rel(component, node->rel);
+                        }
+                    }
 
                     // If there are complex children (images, etc.), process them
                     if (has_complex_children && component) {

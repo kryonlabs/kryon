@@ -77,7 +77,7 @@ typedef struct {
  * Style properties that can be applied via stylesheet rules
  * This is a subset of IRStyle that can be serialized independently
  */
-typedef struct {
+typedef struct IRStyleProperties {
     // Dimensions
     IRDimension width;
     IRDimension height;
@@ -90,6 +90,11 @@ typedef struct {
     IRColor background;
     IRColor color;               // Text color
     IRColor border_color;
+    IRColor text_fill_color;     // For -webkit-text-fill-color
+
+    // Background
+    char* background_image;      // For gradient strings like "linear-gradient(...)"
+    uint8_t background_clip;     // IRBackgroundClip enum value
 
     // Border
     float border_width;
@@ -168,6 +173,9 @@ typedef struct {
 #define IR_PROP_BORDER_RIGHT    (1ULL << 29)
 #define IR_PROP_BORDER_BOTTOM   (1ULL << 30)
 #define IR_PROP_BORDER_LEFT     (1ULL << 31)
+#define IR_PROP_BACKGROUND_IMAGE (1ULL << 32)
+#define IR_PROP_BACKGROUND_CLIP  (1ULL << 33)
+#define IR_PROP_TEXT_FILL_COLOR  (1ULL << 34)
 
 // ============================================================================
 // Style Rules

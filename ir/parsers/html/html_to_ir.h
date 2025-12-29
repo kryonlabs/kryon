@@ -18,8 +18,8 @@ IRComponent* ir_html_node_to_component(HtmlNode* node);
 // Helper: Map HTML tag name to IR component type
 IRComponentType ir_html_tag_to_component_type(const char* tag_name);
 
-// Helper: Infer component type from CSS class names
-IRComponentType ir_infer_type_from_classes(const char* class_string);
+// Note: CSS class names are NEVER used for type inference
+// Element type is determined ONLY by HTML tag or data-ir-type attribute
 
 // Helper: Parse inline CSS style attribute to IRStyle
 void ir_html_parse_inline_css(const char* style_str, IRStyle* ir_style);

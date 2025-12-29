@@ -30,6 +30,8 @@ typedef struct HtmlNode {
     // Element-specific attributes
     char* src;                // <img>, <iframe> src
     char* href;               // <a> href
+    char* target;             // <a> target (_blank, _self, etc.)
+    char* rel;                // <a> rel (noopener, noreferrer, etc.)
     char* alt;                // <img> alt text
     char* input_type;         // <input> type attribute
     char* value;              // <input> value
