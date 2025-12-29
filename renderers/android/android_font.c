@@ -82,13 +82,21 @@ void android_font_cleanup(AndroidRenderer* renderer) {
 }
 
 static bool build_glyph_atlas(FontInfo* font, int size) {
-    if (!font || !font->font_info) return false;
+    LOGE("🔨 build_glyph_atlas CALLED: font=%p, size=%d\n", font, size);
+
+    if (!font || !font->font_info) {
+        LOGE("❌ build_glyph_atlas FAILED: font=%p, font_info=%p\n",
+             font, font ? font->font_info : NULL);
+        return false;
+    }
 
     stbtt_fontinfo* info = (stbtt_fontinfo*)font->font_info;
+    LOGI("✓ Font info valid, building atlas for size %d\n", size);
 
     // Calculate scale for desired size
     font->scale = stbtt_ScaleForPixelHeight(info, (float)size);
     font->size = size;
+    LOGI("✓ Scale calculated: %f\n", font->scale);
 
     // Get font metrics
     stbtt_GetFontVMetrics(info, &font->ascent, &font->descent, &font->line_gap);
@@ -163,22 +171,27 @@ static bool build_glyph_atlas(FontInfo* font, int size) {
             non_zero_pixels++;
         }
     }
-    LOGI("Atlas bitmap stats: total=%d, non_zero=%d (%.1f%%)\n",
+    LOGE("📊 Atlas bitmap stats: total=%d, non_zero=%d (%.1f%%)\n",
          atlas_size * atlas_size, non_zero_pixels,
          100.0f * non_zero_pixels / (atlas_size * atlas_size));
 
     // Create OpenGL texture for atlas
     glGenTextures(1, &font->atlas_texture);
+    LOGE("🎨 glGenTextures created texture ID: %u\n", font->atlas_texture);
+
     glBindTexture(GL_TEXTURE_2D, font->atlas_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlas_size, atlas_size, 0,
+    LOGE("🎨 Uploading %dx%d atlas to texture %u...\n", atlas_size, atlas_size, font->atlas_texture);
+
+    // OpenGL ES 3.0 requires sized internal format (GL_R8, not GL_RED)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, atlas_size, atlas_size, 0,
                  GL_RED, GL_UNSIGNED_BYTE, atlas_bitmap);
 
     // Check GL error
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
-        LOGE("glTexImage2D failed: 0x%x\n", err);
+        LOGE("❌ glTexImage2D FAILED: error=0x%x\n", err);
     } else {
-        LOGI("glTexImage2D succeeded: texture=%d, size=%dx%d\n",
+        LOGE("✅ glTexImage2D SUCCEEDED: texture=%d, size=%dx%d\n",
              font->atlas_texture, atlas_size, atlas_size);
     }
 
@@ -202,12 +215,20 @@ static bool build_glyph_atlas(FontInfo* font, int size) {
 FontInfo* android_font_get(AndroidRenderer* renderer, const char* name, int size) {
     if (!renderer || !name) return NULL;
 
+    LOGI("android_font_get: searching for '%s' @ %dpx (registry has %d fonts)\n",
+         name, size, renderer->font_registry_count);
+
     // Search for existing font with matching size
     for (int i = 0; i < renderer->font_registry_count; i++) {
+        LOGI("  Checking font[%d]: name='%s' size=%d atlas=%u\n",
+             i, renderer->font_registry[i].name, renderer->font_registry[i].size,
+             renderer->font_registry[i].atlas_texture);
+
         if (strcmp(renderer->font_registry[i].name, name) == 0 &&
             renderer->font_registry[i].size == size) {
 
             FontInfo* font = &renderer->font_registry[i];
+            LOGI("  FOUND matching font[%d] with atlas=%u\n", i, font->atlas_texture);
 
 #ifdef __ANDROID__
             // Validate texture still exists (handles GL context loss)

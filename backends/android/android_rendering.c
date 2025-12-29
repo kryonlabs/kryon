@@ -10,6 +10,11 @@
 #include "android_internal.h"
 
 // ============================================================================
+// RENDER SEQUENCE DEBUGGING
+// ============================================================================
+static int render_sequence_number = 0;
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -70,6 +75,11 @@ static void render_background(AndroidRenderer* renderer,
 
     uint32_t color = ir_color_to_rgba(bg_color, opacity);
     float radius = component->style->border.radius;
+
+    int seq = ++render_sequence_number;
+    __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
+        "[SEQ %d] RENDER_BACKGROUND: comp=%u, pos=(%.0f,%.0f), size=%.0fx%.0f, color=0x%08x",
+        seq, component->id, x, y, width, height, color);
 
     if (radius > 0) {
         android_renderer_draw_rounded_rect(renderer, x, y, width, height, radius, color);
@@ -234,16 +244,14 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
         case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
         case IR_COMPONENT_COLUMN:
-            // TEMPORARY: Log ALL containers to debug
             {
+                int seq = ++render_sequence_number;
                 uint32_t bg_color = component->style ?
                     (component->style->background.data.a << 24) | (component->style->background.data.r << 16) |
                     (component->style->background.data.g << 8) | component->style->background.data.b : 0;
-                if (component_render_count < 10 || component_render_count % 60 == 0) {
-                    __android_log_print(ANDROID_LOG_INFO, "KryonBackend",
-                        "Rendering container at (%.1f,%.1f) size %.1fx%.1f bg=0x%08x",
-                        x, y, width, height, bg_color);
-                }
+                __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
+                    "[SEQ %d] CONTAINER_START: comp=%u, pos=(%.1f,%.1f), size=%.1fx%.1f, bg=0x%08x, children=%d",
+                    seq, component->id, x, y, width, height, bg_color, component->child_count);
             }
             render_box_shadow(renderer, component, x, y, width, height, opacity);
             render_background(renderer, component, x, y, width, height, opacity);
@@ -256,8 +264,10 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
         case IR_COMPONENT_TEXT:
             if (component->text_content) {
-                __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
-                    "RENDERING TEXT: '%s' at (%.1f,%.1f)", component->text_content, x, y);
+                int seq = ++render_sequence_number;
+                __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
+                    "[SEQ %d] RENDER_TEXT_START: comp=%u, text='%s', pos=(%.1f,%.1f)",
+                    seq, component->id, component->text_content, x, y);
 
                 // Check if font color is set and visible
                 IRColor text_color;
@@ -273,15 +283,17 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
                 uint32_t color = ir_color_to_rgba(text_color, opacity);
 
-                __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
-                    "Text color=0x%08x, font_size=%d", color, font_size);
-
                 // Use Roboto as default font since it's registered on Android
                 const char* font_name = (component->style && component->style->font.family) ?
                                        component->style->font.family : "Roboto";
 
                 android_renderer_draw_text(renderer, component->text_content,
                                           x, y, font_name, font_size, color);
+
+                seq = ++render_sequence_number;
+                __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
+                    "[SEQ %d] RENDER_TEXT_END: comp=%u, text='%s'",
+                    seq, component->id, component->text_content);
             } else {
                 __android_log_print(ANDROID_LOG_WARN, "KryonBackend",
                     "TEXT component has no text_content!");
@@ -358,12 +370,10 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
 
     // Recursively render children
     if (component->children) {
-        // DEBUG: Log child rendering
-        if (component_render_count < 10 || component_render_count % 60 == 0) {
-            __android_log_print(ANDROID_LOG_INFO, "KryonBackend",
-                "Component type=%d has %d children, rendering them now",
-                component->type, component->child_count);
-        }
+        int seq = ++render_sequence_number;
+        __android_log_print(ANDROID_LOG_ERROR, "KryonSeq",
+            "[SEQ %d] CHILDREN_START: comp=%u, child_count=%d",
+            seq, component->id, component->child_count);
 
         for (uint32_t i = 0; i < component->child_count; i++) {
             IRComponent* child = component->children[i];
