@@ -57,6 +57,9 @@ bool ir_write_json_file(IRComponent* root, IRReactiveManifest* manifest, const c
 IRComponent* ir_deserialize_json(const char* json_string);
 IRComponent* ir_read_json_file(const char* filename);
 
+// Deserialize with manifest (returns manifest via out parameter)
+IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveManifest** out_manifest);
+
 // Component type conversion (for parsers)
 IRComponentType ir_string_to_component_type(const char* str);
 

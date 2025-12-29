@@ -358,6 +358,67 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 #define ON_FOCUS(handler) kryon_on_focus(_comp, handler, #handler)
 
 // ============================================================================
+// Application Lifecycle - Shutdown API Macros
+// ============================================================================
+
+/**
+ * KRYON_ON_CLEANUP - Set cleanup callback
+ * The cleanup callback is called after the main loop exits but before the
+ * window is closed. Use this to free GPU resources (textures, meshes, etc.)
+ *
+ * Usage:
+ *   void my_cleanup(void* user_data) {
+ *       // Free textures, meshes, shaders, etc.
+ *   }
+ *   KRYON_ON_CLEANUP(my_cleanup, NULL);
+ */
+#define KRYON_ON_CLEANUP(callback, user_data) \
+    kryon_set_cleanup_callback(NULL, callback, user_data)
+
+/**
+ * KRYON_ON_SHUTDOWN - Register shutdown callback with priority
+ * Callbacks are called in priority order (highest first) when shutdown is requested.
+ * Return false from the callback to veto user-initiated shutdown.
+ *
+ * Usage:
+ *   bool confirm_exit(kryon_shutdown_reason_t reason, void* user_data) {
+ *       if (reason == KRYON_SHUTDOWN_REASON_USER) {
+ *           return ask_user_to_confirm();  // Return false to cancel
+ *       }
+ *       return true;  // Proceed with shutdown
+ *   }
+ *   KRYON_ON_SHUTDOWN(confirm_exit, NULL, 100);  // Priority 100
+ */
+#define KRYON_ON_SHUTDOWN(callback, user_data, priority) \
+    kryon_register_shutdown_callback(NULL, callback, user_data, priority)
+
+/**
+ * KRYON_SHUTDOWN - Request application shutdown
+ * Initiates the graceful shutdown sequence.
+ *
+ * Usage:
+ *   void on_quit_button(void) {
+ *       KRYON_SHUTDOWN(KRYON_SHUTDOWN_REASON_USER);
+ *   }
+ */
+#define KRYON_SHUTDOWN(reason) \
+    kryon_request_shutdown(NULL, reason)
+
+/**
+ * KRYON_IS_SHUTTING_DOWN - Check if shutdown is in progress
+ * Returns true if the application is shutting down.
+ */
+#define KRYON_IS_SHUTTING_DOWN() \
+    kryon_is_shutting_down(NULL)
+
+/**
+ * KRYON_GET_SHUTDOWN_STATE - Get current shutdown state
+ * Returns the current kryon_shutdown_state_t value.
+ */
+#define KRYON_GET_SHUTDOWN_STATE() \
+    kryon_get_shutdown_state(NULL)
+
+// ============================================================================
 // Utility Macros
 // ============================================================================
 

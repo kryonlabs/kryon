@@ -25,6 +25,9 @@ extern void collect_open_dropdowns(IRComponent* component, IRComponent** dropdow
 // Forward declaration from C bindings event bridge
 extern void kryon_c_event_bridge(const char* logic_id);
 
+// Forward declarations for shutdown API
+extern bool kryon_request_shutdown(DesktopIRRenderer* renderer, KryonShutdownReason reason);
+
 // ============================================================================
 // EVENT HANDLERS
 // ============================================================================
@@ -253,20 +256,21 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
 
 /**
  * Handle keyboard text input for focused input field
+ * NOTE: Only consume characters if there's a focused Kryon input field
+ * to avoid stealing input from native raylib code (like game pause menus)
  */
 static void handle_text_input(DesktopIRRenderer* renderer, IRComponent* root) {
     if (!renderer || !root) return;
 
-    // Get the character pressed
-    int key = GetCharPressed();
-    if (key == 0) return;
+    // IMPORTANT: Don't call GetCharPressed() unless we have a focused Kryon input field
+    // GetCharPressed() consumes the character, so calling it here would steal
+    // input from native raylib applications
+    // TODO: Find focused input and only then consume characters
 
-    // Find focused input field
-    // For now, we'll need to iterate through components to find the focused one
-    // This is a simplified version - in production you'd track focused component
-    printf("[raylib] Character pressed: %c (%d)\n", (char)key, key);
-
-    // TODO: Append character to focused input field
+    // For now, disable this to let game code handle text input
+    // int key = GetCharPressed();
+    // if (key == 0) return;
+    // printf("[raylib] Character pressed: %c (%d)\n", (char)key, key);
 }
 
 /**
@@ -380,14 +384,17 @@ static void handle_mouse_motion(DesktopIRRenderer* renderer, IRComponent* root, 
 void raylib_handle_input_events(DesktopIRRenderer* renderer, IRComponent* root) {
     if (!renderer || !root) return;
 
-    static int frame_count = 0;
-    if (frame_count++ % 60 == 0) {
-        printf("[raylib] Event polling active (frame %d)\n", frame_count);
+    // Check if window is still valid BEFORE calling any GLFW functions
+    if (!IsWindowReady()) {
+        // Window destroyed unexpectedly - signal shutdown
+        renderer->running = false;
+        return;
     }
 
-    // Check for window close
+    // Check for window close - use graceful shutdown API
     if (WindowShouldClose()) {
-        printf("[raylib] Window close requested\n");
+        // Signal main loop that window close was requested
+        // The main loop will call kryon_request_shutdown with WINDOW reason
         renderer->running = false;
         return;
     }

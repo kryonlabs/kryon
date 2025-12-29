@@ -229,21 +229,104 @@ static bool deserialize_dimension(IRBuffer* buffer, IRDimension* dimension) {
     return true;
 }
 
+static bool serialize_gradient(IRBuffer* buffer, IRGradient* gradient) {
+    if (!gradient) {
+        if (!write_uint8(buffer, 0)) return false;  // Null marker
+        return true;
+    }
+
+    if (!write_uint8(buffer, 1)) return false;  // Non-null marker
+    if (!write_uint8(buffer, gradient->type)) return false;
+    if (!write_float32(buffer, gradient->angle)) return false;
+    if (!write_float32(buffer, gradient->center_x)) return false;
+    if (!write_float32(buffer, gradient->center_y)) return false;
+    if (!write_uint8(buffer, gradient->stop_count)) return false;
+
+    // Write color stops
+    for (int i = 0; i < gradient->stop_count; i++) {
+        if (!write_float32(buffer, gradient->stops[i].position)) return false;
+        if (!write_uint8(buffer, gradient->stops[i].r)) return false;
+        if (!write_uint8(buffer, gradient->stops[i].g)) return false;
+        if (!write_uint8(buffer, gradient->stops[i].b)) return false;
+        if (!write_uint8(buffer, gradient->stops[i].a)) return false;
+    }
+
+    return true;
+}
+
+static bool deserialize_gradient(IRBuffer* buffer, IRGradient** gradient_ptr) {
+    uint8_t has_gradient;
+    if (!read_uint8(buffer, &has_gradient)) return false;
+
+    if (!has_gradient) {
+        *gradient_ptr = NULL;
+        return true;
+    }
+
+    IRGradient* gradient = calloc(1, sizeof(IRGradient));
+    if (!gradient) return false;
+
+    if (!read_uint8(buffer, (uint8_t*)&gradient->type)) goto error;
+    if (!read_float32(buffer, &gradient->angle)) goto error;
+    if (!read_float32(buffer, &gradient->center_x)) goto error;
+    if (!read_float32(buffer, &gradient->center_y)) goto error;
+    if (!read_uint8(buffer, &gradient->stop_count)) goto error;
+
+    // Validate stop count
+    if (gradient->stop_count > 8) {
+        gradient->stop_count = 8;
+    }
+
+    // Read color stops
+    for (int i = 0; i < gradient->stop_count; i++) {
+        if (!read_float32(buffer, &gradient->stops[i].position)) goto error;
+        if (!read_uint8(buffer, &gradient->stops[i].r)) goto error;
+        if (!read_uint8(buffer, &gradient->stops[i].g)) goto error;
+        if (!read_uint8(buffer, &gradient->stops[i].b)) goto error;
+        if (!read_uint8(buffer, &gradient->stops[i].a)) goto error;
+    }
+
+    *gradient_ptr = gradient;
+    return true;
+
+error:
+    free(gradient);
+    return false;
+}
+
 static bool serialize_color(IRBuffer* buffer, IRColor color) {
     if (!write_uint8(buffer, color.type)) return false;
-    if (!write_uint8(buffer, color.data.r)) return false;
-    if (!write_uint8(buffer, color.data.g)) return false;
-    if (!write_uint8(buffer, color.data.b)) return false;
-    if (!write_uint8(buffer, color.data.a)) return false;
+
+    if (color.type == IR_COLOR_GRADIENT) {
+        // Serialize gradient data
+        if (!serialize_gradient(buffer, color.data.gradient)) return false;
+    } else {
+        // Serialize RGBA data
+        if (!write_uint8(buffer, color.data.r)) return false;
+        if (!write_uint8(buffer, color.data.g)) return false;
+        if (!write_uint8(buffer, color.data.b)) return false;
+        if (!write_uint8(buffer, color.data.a)) return false;
+    }
+
     return true;
 }
 
 static bool deserialize_color(IRBuffer* buffer, IRColor* color) {
     if (!read_uint8(buffer, (uint8_t*)&color->type)) return false;
-    if (!read_uint8(buffer, &color->data.r)) return false;
-    if (!read_uint8(buffer, &color->data.g)) return false;
-    if (!read_uint8(buffer, &color->data.b)) return false;
-    if (!read_uint8(buffer, &color->data.a)) return false;
+
+    color->var_name = NULL;  // Initialize
+
+    if (color->type == IR_COLOR_GRADIENT) {
+        // Deserialize gradient data
+        if (!deserialize_gradient(buffer, &color->data.gradient)) return false;
+    } else {
+        // Deserialize RGBA data
+        if (!read_uint8(buffer, &color->data.r)) return false;
+        if (!read_uint8(buffer, &color->data.g)) return false;
+        if (!read_uint8(buffer, &color->data.b)) return false;
+        if (!read_uint8(buffer, &color->data.a)) return false;
+    }
+
     return true;
 }
 
@@ -1471,6 +1554,90 @@ IRComponent* ir_read_json_file(const char* filename) {
                     }
                     g_ir_context->source_metadata = metadata;
                 }
+            }
+        }
+        cJSON_Delete(root_json);
+    }
+
+    IRComponent* root = ir_deserialize_json(json);
+    free(json);
+
+    return root;
+}
+
+IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveManifest** out_manifest) {
+    if (out_manifest) *out_manifest = NULL;
+
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* json = malloc(file_size + 1);
+    if (!json) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fread(json, 1, file_size, file) != file_size) {
+        free(json);
+        fclose(file);
+        return NULL;
+    }
+    json[file_size] = '\0';
+    fclose(file);
+
+    // Parse JSON to extract reactive_manifest
+    extern cJSON* cJSON_Parse(const char* value);
+    extern void cJSON_Delete(cJSON* item);
+    extern cJSON* cJSON_GetObjectItem(const cJSON* object, const char* string);
+    extern int cJSON_IsObject(const cJSON* item);
+    extern int cJSON_IsArray(const cJSON* item);
+    extern int cJSON_IsString(const cJSON* item);
+    extern int cJSON_GetArraySize(const cJSON* array);
+    extern cJSON* cJSON_GetArrayItem(const cJSON* array, int index);
+
+    cJSON* root_json = cJSON_Parse(json);
+    if (root_json && out_manifest) {
+        cJSON* manifestObj = cJSON_GetObjectItem(root_json, "reactive_manifest");
+        if (manifestObj && cJSON_IsObject(manifestObj)) {
+            // Create manifest and extract CSS variables from "variables" array
+            IRReactiveManifest* manifest = ir_reactive_manifest_create();
+            if (manifest) {
+                cJSON* variablesArray = cJSON_GetObjectItem(manifestObj, "variables");
+                if (variablesArray && cJSON_IsArray(variablesArray)) {
+                    int var_count = cJSON_GetArraySize(variablesArray);
+                    for (int i = 0; i < var_count; i++) {
+                        cJSON* varObj = cJSON_GetArrayItem(variablesArray, i);
+                        if (!varObj || !cJSON_IsObject(varObj)) continue;
+
+                        cJSON* nameItem = cJSON_GetObjectItem(varObj, "name");
+                        cJSON* typeItem = cJSON_GetObjectItem(varObj, "type");
+                        cJSON* initialValueItem = cJSON_GetObjectItem(varObj, "initial_value");
+
+                        if (nameItem && cJSON_IsString(nameItem)) {
+                            const char* name = nameItem->valuestring;
+                            const char* type_str = typeItem && cJSON_IsString(typeItem) ?
+                                                   typeItem->valuestring : "string";
+                            const char* initial_value = initialValueItem && cJSON_IsString(initialValueItem) ?
+                                                        initialValueItem->valuestring : "";
+
+                            // Add variable to manifest
+                            IRReactiveValue value = {0};
+                            value.as_string = strdup(initial_value);
+
+                            uint32_t var_id = ir_reactive_manifest_add_var(manifest, name,
+                                                                           IR_REACTIVE_TYPE_STRING, value);
+                            ir_reactive_manifest_set_var_metadata(manifest, var_id,
+                                                                   type_str, initial_value, "global");
+                        }
+                    }
+                }
+                *out_manifest = manifest;
             }
         }
         cJSON_Delete(root_json);

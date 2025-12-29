@@ -82,7 +82,7 @@ WebIRRenderer* web_ir_renderer_create() {
     strcpy(renderer->output_directory, ".");
     renderer->generate_separate_files = true;
     renderer->include_javascript_runtime = true;
-    renderer->include_wasm_modules = true;
+    renderer->include_wasm_modules = false;  // Disabled by default
 
     return renderer;
 }
@@ -181,8 +181,8 @@ bool web_ir_renderer_render(WebIRRenderer* renderer, IRComponent* root) {
         printf("✅ Generated HTML: %s\n", html_filename);
     }
 
-    // Generate CSS
-    if (renderer->generate_separate_files) {
+    // Generate CSS (skip if embedded in HTML)
+    if (renderer->generate_separate_files && !renderer->html_generator->options.embedded_css) {
         char css_filename[512];
         snprintf(css_filename, sizeof(css_filename), "%s/kryon.css", renderer->output_directory);
 
@@ -191,6 +191,8 @@ bool web_ir_renderer_render(WebIRRenderer* renderer, IRComponent* root) {
             return false;
         }
         printf("✅ Generated CSS: %s\n", css_filename);
+    } else if (renderer->html_generator->options.embedded_css) {
+        printf("✅ CSS embedded in HTML\n");
     }
 
     // Generate JavaScript runtime
@@ -291,6 +293,17 @@ void web_ir_renderer_print_stats(WebIRRenderer* renderer, IRComponent* root) {
 
 // Convenience function for quick rendering
 bool web_render_ir_component(IRComponent* root, const char* output_dir) {
+    return web_render_ir_component_with_options(root, output_dir, false);
+}
+
+// Convenience function with options
+bool web_render_ir_component_with_options(IRComponent* root, const char* output_dir, bool embedded_css) {
+    return web_render_ir_component_with_manifest(root, output_dir, embedded_css, NULL);
+}
+
+// Convenience function with manifest (for CSS variable support)
+bool web_render_ir_component_with_manifest(IRComponent* root, const char* output_dir,
+                                           bool embedded_css, IRReactiveManifest* manifest) {
     WebIRRenderer* renderer = web_ir_renderer_create();
     if (!renderer) return false;
 
@@ -298,8 +311,30 @@ bool web_render_ir_component(IRComponent* root, const char* output_dir) {
         web_ir_renderer_set_output_directory(renderer, output_dir);
     }
 
+    // Set embedded CSS option on the HTML generator
+    if (embedded_css && renderer->html_generator) {
+        renderer->html_generator->options.embedded_css = true;
+    }
+
+    // Set manifest on both generators for CSS variable output
+    if (manifest) {
+        if (renderer->css_generator) {
+            css_generator_set_manifest(renderer->css_generator, manifest);
+        }
+        // Also set on HTML generator for embedded CSS mode
+        if (renderer->html_generator) {
+            html_generator_set_manifest(renderer->html_generator, manifest);
+        }
+    }
+
     bool success = web_ir_renderer_render(renderer, root);
     web_ir_renderer_destroy(renderer);
 
     return success;
+}
+
+// Set manifest on renderer
+void web_ir_renderer_set_manifest(WebIRRenderer* renderer, IRReactiveManifest* manifest) {
+    if (!renderer || !manifest || !renderer->css_generator) return;
+    css_generator_set_manifest(renderer->css_generator, manifest);
 }

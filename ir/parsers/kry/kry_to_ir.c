@@ -475,6 +475,65 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 }
             }
 
+            // Pattern: "var += number" (increment) or "var -= number" (decrement)
+            if (!func) {
+                const char* p2 = expr;
+                while (*p2 && isspace(*p2)) p2++;  // Skip leading whitespace
+
+                const char* var_start2 = p2;
+                while (*p2 && p2 < expr_end && (isalnum(*p2) || *p2 == '_')) p2++;
+                size_t var_len2 = p2 - var_start2;
+
+                if (var_len2 > 0 && var_len2 < sizeof(var_name)) {
+                    while (*p2 && p2 < expr_end && isspace(*p2)) p2++;  // Skip whitespace
+
+                    char op = 0;
+                    if (p2 + 1 < expr_end && *p2 == '+' && *(p2+1) == '=') {
+                        op = '+';
+                        p2 += 2;
+                    } else if (p2 + 1 < expr_end && *p2 == '-' && *(p2+1) == '=') {
+                        op = '-';
+                        p2 += 2;
+                    }
+
+                    if (op) {
+                        while (*p2 && p2 < expr_end && isspace(*p2)) p2++;  // Skip whitespace
+
+                        // Parse number
+                        char* num_end = NULL;
+                        int64_t delta = strtoll(p2, &num_end, 10);
+
+                        // Check if we parsed a valid number
+                        if (num_end > p2) {
+                            // Extract variable name
+                            strncpy(var_name, var_start2, var_len2);
+                            var_name[var_len2] = '\0';
+
+                            // For simple +=1 or -=1, use existing helpers
+                            if (delta == 1) {
+                                if (op == '+') {
+                                    func = ir_logic_create_increment(handler_name, var_name);
+                                } else {
+                                    func = ir_logic_create_decrement(handler_name, var_name);
+                                }
+                            } else {
+                                // For other values, create STMT_ASSIGN_OP manually
+                                func = ir_logic_function_create(handler_name);
+                                if (func) {
+                                    IRExpression* delta_expr = ir_expr_int(delta);
+                                    IRStatement* stmt = ir_stmt_assign_op(
+                                        var_name,
+                                        op == '+' ? ASSIGN_OP_ADD : ASSIGN_OP_SUB,
+                                        delta_expr
+                                    );
+                                    ir_logic_function_add_stmt(func, stmt);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // If pattern detection failed, create function with .kry source code
             if (!func) {
                 func = ir_logic_function_create(handler_name);

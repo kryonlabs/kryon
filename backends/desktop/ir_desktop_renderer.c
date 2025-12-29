@@ -215,6 +215,154 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
 }
 
 /* ============================================================================
+ * SHUTDOWN MANAGEMENT - Graceful shutdown with callbacks
+ * ============================================================================ */
+
+/**
+ * Execute shutdown callbacks in priority order (highest first)
+ * Returns false if any callback vetoes the shutdown (only for USER reason)
+ */
+static bool execute_shutdown_callbacks(DesktopIRRenderer* renderer) {
+    if (!renderer || renderer->shutdown_callback_count == 0) return true;
+
+    // Sort callbacks by priority (simple bubble sort - small array)
+    for (int i = 0; i < renderer->shutdown_callback_count - 1; i++) {
+        for (int j = 0; j < renderer->shutdown_callback_count - i - 1; j++) {
+            if (renderer->shutdown_callbacks[j].priority < renderer->shutdown_callbacks[j + 1].priority) {
+                // Swap
+                typeof(renderer->shutdown_callbacks[0]) temp = renderer->shutdown_callbacks[j];
+                renderer->shutdown_callbacks[j] = renderer->shutdown_callbacks[j + 1];
+                renderer->shutdown_callbacks[j + 1] = temp;
+            }
+        }
+    }
+
+    // Execute callbacks in priority order
+    for (int i = 0; i < renderer->shutdown_callback_count; i++) {
+        KryonShutdownCallback cb = renderer->shutdown_callbacks[i].callback;
+        void* user_data = renderer->shutdown_callbacks[i].user_data;
+
+        if (cb) {
+            bool proceed = cb(renderer->shutdown_reason, user_data);
+
+            // Only USER-initiated shutdowns can be vetoed
+            if (!proceed && renderer->shutdown_reason == KRYON_SHUTDOWN_REASON_USER) {
+                printf("[kryon] Shutdown vetoed by callback\n");
+                renderer->shutdown_state = KRYON_SHUTDOWN_RUNNING;
+                renderer->shutdown_reason = KRYON_SHUTDOWN_REASON_NONE;
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Request graceful shutdown
+ * Transitions: RUNNING -> REQUESTED -> (callbacks) -> IN_PROGRESS
+ */
+bool kryon_request_shutdown_internal(DesktopIRRenderer* renderer, KryonShutdownReason reason) {
+    if (!renderer) return false;
+
+    // Already shutting down?
+    if (renderer->shutdown_state != KRYON_SHUTDOWN_RUNNING) {
+        printf("[kryon] Shutdown already in progress (state=%d)\n", renderer->shutdown_state);
+        return true;
+    }
+
+    printf("[kryon] Shutdown requested (reason=%d)\n", reason);
+
+    renderer->shutdown_state = KRYON_SHUTDOWN_REQUESTED;
+    renderer->shutdown_reason = reason;
+
+    // Execute shutdown callbacks
+    if (!execute_shutdown_callbacks(renderer)) {
+        // Shutdown was vetoed
+        return false;
+    }
+
+    // Advance to IN_PROGRESS state
+    renderer->shutdown_state = KRYON_SHUTDOWN_IN_PROGRESS;
+    renderer->running = false;
+
+    printf("[kryon] Shutdown in progress\n");
+    return true;
+}
+
+/**
+ * Register a shutdown callback
+ * Callbacks are called in priority order (highest first) when shutdown is requested
+ */
+bool kryon_register_shutdown_callback_internal(DesktopIRRenderer* renderer,
+                                                KryonShutdownCallback callback,
+                                                void* user_data,
+                                                int priority) {
+    if (!renderer || !callback) return false;
+
+    if (renderer->shutdown_callback_count >= KRYON_MAX_SHUTDOWN_CALLBACKS) {
+        fprintf(stderr, "[kryon] Max shutdown callbacks reached (%d)\n",
+                KRYON_MAX_SHUTDOWN_CALLBACKS);
+        return false;
+    }
+
+    int idx = renderer->shutdown_callback_count++;
+    renderer->shutdown_callbacks[idx].callback = callback;
+    renderer->shutdown_callbacks[idx].user_data = user_data;
+    renderer->shutdown_callbacks[idx].priority = priority;
+
+    printf("[kryon] Registered shutdown callback (priority=%d, total=%d)\n",
+           priority, renderer->shutdown_callback_count);
+    return true;
+}
+
+/**
+ * Set cleanup callback (called after main loop exits, before window closes)
+ */
+void kryon_set_cleanup_callback_internal(DesktopIRRenderer* renderer,
+                                          KryonCleanupCallback callback,
+                                          void* user_data) {
+    if (!renderer) return;
+
+    renderer->cleanup_callback = callback;
+    renderer->cleanup_user_data = user_data;
+    printf("[kryon] Cleanup callback set\n");
+}
+
+/**
+ * Get current shutdown state
+ */
+KryonShutdownState kryon_get_shutdown_state_internal(DesktopIRRenderer* renderer) {
+    if (!renderer) return KRYON_SHUTDOWN_COMPLETE;
+    return renderer->shutdown_state;
+}
+
+/**
+ * Check if renderer is shutting down
+ */
+bool kryon_is_shutting_down_internal(DesktopIRRenderer* renderer) {
+    if (!renderer) return true;
+    return renderer->shutdown_state != KRYON_SHUTDOWN_RUNNING;
+}
+
+/**
+ * Complete shutdown process - call cleanup and mark complete
+ * Called by main loop after exiting
+ */
+static void complete_shutdown(DesktopIRRenderer* renderer) {
+    if (!renderer) return;
+
+    // Execute cleanup callback if set
+    if (renderer->cleanup_callback) {
+        printf("[kryon] Executing cleanup callback\n");
+        renderer->cleanup_callback(renderer->cleanup_user_data);
+    }
+
+    renderer->shutdown_state = KRYON_SHUTDOWN_COMPLETE;
+    printf("[kryon] Shutdown complete\n");
+}
+
+/* ============================================================================
  * CANVAS CALLBACKS - Invoke onDraw/onUpdate before rendering
  * ============================================================================ */
 
@@ -383,17 +531,32 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
     printf("Starting desktop main loop\n");
     renderer->running = true;
     renderer->last_root = root;
+    renderer->shutdown_state = KRYON_SHUTDOWN_RUNNING;
+    renderer->shutdown_reason = KRYON_SHUTDOWN_REASON_NONE;
 
     int frame_count = 0;
-    while (renderer->running) {
+    while (renderer->running && renderer->shutdown_state == KRYON_SHUTDOWN_RUNNING) {
         frame_count++;
         if (frame_count % 60 == 0) {
-            printf("[MAIN_LOOP] Frame %d, running=%d\n", frame_count, renderer->running);
+            printf("[MAIN_LOOP] Frame %d, running=%d, shutdown_state=%d\n",
+                   frame_count, renderer->running, renderer->shutdown_state);
         }
 
         // Poll events via ops table
         if (renderer->ops->poll_events) {
             renderer->ops->poll_events(renderer);
+        }
+
+        // Check if poll_events triggered shutdown (window close button)
+        if (!renderer->running && renderer->shutdown_state == KRYON_SHUTDOWN_RUNNING) {
+            // Window was closed - initiate graceful shutdown
+            kryon_request_shutdown_internal(renderer, KRYON_SHUTDOWN_REASON_WINDOW);
+            break;
+        }
+
+        // Exit if shutdown in progress
+        if (renderer->shutdown_state != KRYON_SHUTDOWN_RUNNING) {
+            break;
         }
 
         // Process reactive updates (platform-agnostic)
@@ -414,6 +577,7 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         // Render frame
         if (!desktop_ir_renderer_render_frame(renderer, renderer->last_root)) {
             printf("Frame rendering failed\n");
+            kryon_request_shutdown_internal(renderer, KRYON_SHUTDOWN_REASON_ERROR);
             break;
         }
 
@@ -426,7 +590,12 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         #endif
     }
 
-    printf("Desktop main loop ended after %d frames (running=%d)\n", frame_count, renderer->running);
+    printf("Desktop main loop ended after %d frames (running=%d, shutdown_state=%d)\n",
+           frame_count, renderer->running, renderer->shutdown_state);
+
+    // Complete shutdown - execute cleanup callback before window closes
+    complete_shutdown(renderer);
+
     return true;
 }
 

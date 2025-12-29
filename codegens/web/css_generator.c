@@ -23,6 +23,10 @@ typedef struct CSSGenerator {
     char** generated_classes;
     size_t generated_class_count;
     size_t generated_class_capacity;
+
+    // CSS custom properties (variables) for :root block
+    CSSVariable* css_variables;
+    size_t css_variable_count;
 } CSSGenerator;
 
 // Forward declarations for animation functions
@@ -44,6 +48,9 @@ CSSGenerator* css_generator_create() {
     generator->generated_class_count = 0;
     generator->generated_class_capacity = 0;
 
+    generator->css_variables = NULL;
+    generator->css_variable_count = 0;
+
     return generator;
 }
 
@@ -60,11 +67,95 @@ void css_generator_destroy(CSSGenerator* generator) {
     }
     free(generator->generated_classes);
 
+    // Free CSS variables
+    if (generator->css_variables) {
+        for (size_t i = 0; i < generator->css_variable_count; i++) {
+            free(generator->css_variables[i].name);
+            free(generator->css_variables[i].value);
+        }
+        free(generator->css_variables);
+    }
+
     free(generator);
 }
 
 void css_generator_set_pretty_print(CSSGenerator* generator, bool pretty) {
     generator->pretty_print = pretty;
+}
+
+void css_generator_set_css_variables(CSSGenerator* generator, CSSVariable* variables, size_t count) {
+    if (!generator) return;
+
+    // Free existing variables
+    if (generator->css_variables) {
+        for (size_t i = 0; i < generator->css_variable_count; i++) {
+            free(generator->css_variables[i].name);
+            free(generator->css_variables[i].value);
+        }
+        free(generator->css_variables);
+        generator->css_variables = NULL;
+        generator->css_variable_count = 0;
+    }
+
+    if (!variables || count == 0) return;
+
+    // Copy variables
+    generator->css_variables = malloc(sizeof(CSSVariable) * count);
+    if (!generator->css_variables) return;
+
+    for (size_t i = 0; i < count; i++) {
+        generator->css_variables[i].name = variables[i].name ? strdup(variables[i].name) : NULL;
+        generator->css_variables[i].value = variables[i].value ? strdup(variables[i].value) : NULL;
+    }
+    generator->css_variable_count = count;
+}
+
+void css_generator_set_manifest(CSSGenerator* generator, IRReactiveManifest* manifest) {
+    if (!generator || !manifest) return;
+
+    // Count CSS variables (variables with "css:" prefix in their name)
+    size_t css_var_count = 0;
+    for (uint32_t i = 0; i < manifest->variable_count; i++) {
+        IRReactiveVarDescriptor* var = &manifest->variables[i];
+        if (var->name && strncmp(var->name, "css:", 4) == 0) {
+            css_var_count++;
+        }
+    }
+
+    if (css_var_count == 0) return;
+
+    // Allocate and populate CSS variables
+    CSSVariable* css_vars = malloc(sizeof(CSSVariable) * css_var_count);
+    if (!css_vars) return;
+
+    size_t idx = 0;
+    for (uint32_t i = 0; i < manifest->variable_count; i++) {
+        IRReactiveVarDescriptor* var = &manifest->variables[i];
+        if (var->name && strncmp(var->name, "css:", 4) == 0) {
+            // Extract variable name (skip "css:" prefix)
+            const char* var_name = var->name + 4;
+
+            // Get value from initial_value_json or value.as_string
+            const char* var_value = var->initial_value_json;
+            if (!var_value && var->type == IR_REACTIVE_TYPE_STRING) {
+                var_value = var->value.as_string;
+            }
+
+            css_vars[idx].name = strdup(var_name);
+            css_vars[idx].value = var_value ? strdup(var_value) : strdup("");
+            idx++;
+        }
+    }
+
+    // Use the existing setter (which will make copies)
+    css_generator_set_css_variables(generator, css_vars, css_var_count);
+
+    // Free temporary array
+    for (size_t i = 0; i < css_var_count; i++) {
+        free(css_vars[i].name);
+        free(css_vars[i].value);
+    }
+    free(css_vars);
 }
 
 bool css_generator_write_string(CSSGenerator* generator, const char* string) {
@@ -141,8 +232,56 @@ bool css_generator_write_format(CSSGenerator* generator, const char* format, ...
     return true;
 }
 
+// Helper to lookup a color in CSS variables
+// Returns variable name (e.g., "--bg") or NULL if not found
+static const char* lookup_css_variable_for_color(CSSGenerator* generator, IRColor color) {
+    if (!generator || !generator->css_variables || color.type != IR_COLOR_SOLID) {
+        return NULL;
+    }
+
+    // Build the RGBA string to match against
+    char rgba_str[64];
+    snprintf(rgba_str, sizeof(rgba_str), "rgba(%u, %u, %u, %.2f)",
+             color.data.r, color.data.g, color.data.b, color.data.a / 255.0f);
+
+    // Build the hex string to match against
+    char hex_str[10];
+    snprintf(hex_str, sizeof(hex_str), "#%02x%02x%02x",
+             color.data.r, color.data.g, color.data.b);
+
+    for (size_t i = 0; i < generator->css_variable_count; i++) {
+        CSSVariable* var = &generator->css_variables[i];
+        if (var->value) {
+            // Check if value matches as hex or rgba
+            if (strcmp(var->value, hex_str) == 0 ||
+                strcmp(var->value, rgba_str) == 0) {
+                return var->name;
+            }
+        }
+    }
+    return NULL;
+}
+
+// Thread-local generator for get_color_string_with_vars
+static __thread CSSGenerator* tls_css_generator = NULL;
+
 static const char* get_color_string(IRColor color) {
     static char color_buffer[512];  // Increased size for gradients
+
+    // Check for CSS variable name first (for roundtrip preservation)
+    if (color.var_name) {
+        snprintf(color_buffer, sizeof(color_buffer), "var(%s)", color.var_name);
+        return color_buffer;
+    }
+
+    // Check if this color matches a CSS variable
+    if (tls_css_generator) {
+        const char* var_name = lookup_css_variable_for_color(tls_css_generator, color);
+        if (var_name) {
+            snprintf(color_buffer, sizeof(color_buffer), "var(--%s)", var_name);
+            return color_buffer;
+        }
+    }
 
     switch (color.type) {
         case IR_COLOR_SOLID: {
@@ -383,8 +522,14 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     // Track buffer size before writing selector
     size_t start_size = generator->buffer_size;
 
-    // Generate class selector instead of ID selector
-    css_generator_write_format(generator, ".%s {\n", class_name);
+    // Generate selector based on selector_type for accurate roundtrip
+    if (component->selector_type == IR_SELECTOR_ELEMENT && component->tag) {
+        // Element selector: header { }, nav { }, etc.
+        css_generator_write_format(generator, "%s {\n", component->tag);
+    } else {
+        // Class selector: .container { }, .hero { }, etc.
+        css_generator_write_format(generator, ".%s {\n", class_name);
+    }
     free(class_name);
 
     // Track size after selector (for property checking)
@@ -415,33 +560,100 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
 
     // Border
     if (component->style->border.width > 0) {
+        // Uniform border
         css_generator_write_format(generator, "  border: %.2fpx solid %s;\n",
                                   component->style->border.width,
                                   get_color_string(component->style->border.color));
-        if (component->style->border.radius > 0) {
-            css_generator_write_format(generator, "  border-radius: %upx;\n",
-                                      component->style->border.radius);
+    } else {
+        // Per-side borders
+        const char* color = get_color_string(component->style->border.color);
+        if (component->style->border.width_top > 0) {
+            css_generator_write_format(generator, "  border-top: %.2fpx solid %s;\n",
+                                      component->style->border.width_top, color);
+        }
+        if (component->style->border.width_right > 0) {
+            css_generator_write_format(generator, "  border-right: %.2fpx solid %s;\n",
+                                      component->style->border.width_right, color);
+        }
+        if (component->style->border.width_bottom > 0) {
+            css_generator_write_format(generator, "  border-bottom: %.2fpx solid %s;\n",
+                                      component->style->border.width_bottom, color);
+        }
+        if (component->style->border.width_left > 0) {
+            css_generator_write_format(generator, "  border-left: %.2fpx solid %s;\n",
+                                      component->style->border.width_left, color);
+        }
+    }
+    // Border radius (separate from border)
+    if (component->style->border.radius > 0) {
+        css_generator_write_format(generator, "  border-radius: %upx;\n",
+                                  component->style->border.radius);
+    }
+
+    // Margin (with auto support)
+    bool has_margin = component->style->margin.top != 0 || component->style->margin.right != 0 ||
+                      component->style->margin.bottom != 0 || component->style->margin.left != 0 ||
+                      component->style->margin.right == IR_SPACING_AUTO ||
+                      component->style->margin.left == IR_SPACING_AUTO;
+    if (has_margin) {
+        float top = component->style->margin.top;
+        float right = component->style->margin.right;
+        float bottom = component->style->margin.bottom;
+        float left = component->style->margin.left;
+
+        // Check for "0 auto" pattern (common for centering)
+        bool top_zero = (top == 0);
+        bool bottom_zero = (bottom == 0);
+        bool right_auto = (right == IR_SPACING_AUTO);
+        bool left_auto = (left == IR_SPACING_AUTO);
+
+        if (top_zero && bottom_zero && right_auto && left_auto) {
+            css_generator_write_string(generator, "  margin: 0 auto;\n");
+        } else if (top == bottom && right_auto && left_auto) {
+            css_generator_write_format(generator, "  margin: %.0fpx auto;\n", top);
+        } else {
+            // General case - output each value
+            char top_str[32], right_str[32], bottom_str[32], left_str[32];
+            if (top == IR_SPACING_AUTO) snprintf(top_str, sizeof(top_str), "auto");
+            else snprintf(top_str, sizeof(top_str), "%.0fpx", top);
+            if (right == IR_SPACING_AUTO) snprintf(right_str, sizeof(right_str), "auto");
+            else snprintf(right_str, sizeof(right_str), "%.0fpx", right);
+            if (bottom == IR_SPACING_AUTO) snprintf(bottom_str, sizeof(bottom_str), "auto");
+            else snprintf(bottom_str, sizeof(bottom_str), "%.0fpx", bottom);
+            if (left == IR_SPACING_AUTO) snprintf(left_str, sizeof(left_str), "auto");
+            else snprintf(left_str, sizeof(left_str), "%.0fpx", left);
+
+            css_generator_write_format(generator, "  margin: %s %s %s %s;\n",
+                                      top_str, right_str, bottom_str, left_str);
         }
     }
 
-    // Margin
-    if (component->style->margin.top != 0 || component->style->margin.right != 0 ||
-        component->style->margin.bottom != 0 || component->style->margin.left != 0) {
-        css_generator_write_format(generator, "  margin: %.2fpx %.2fpx %.2fpx %.2fpx;\n",
-                                  component->style->margin.top,
-                                  component->style->margin.right,
-                                  component->style->margin.bottom,
-                                  component->style->margin.left);
-    }
-
-    // Padding
+    // Padding - use shortest CSS shorthand
     if (component->style->padding.top != 0 || component->style->padding.right != 0 ||
         component->style->padding.bottom != 0 || component->style->padding.left != 0) {
-        css_generator_write_format(generator, "  padding: %.2fpx %.2fpx %.2fpx %.2fpx;\n",
-                                  component->style->padding.top,
-                                  component->style->padding.right,
-                                  component->style->padding.bottom,
-                                  component->style->padding.left);
+        float top = component->style->padding.top;
+        float right = component->style->padding.right;
+        float bottom = component->style->padding.bottom;
+        float left = component->style->padding.left;
+
+        if (top == right && right == bottom && bottom == left) {
+            // All same: "10px"
+            if (top == 0) {
+                css_generator_write_string(generator, "  padding: 0;\n");
+            } else {
+                css_generator_write_format(generator, "  padding: %.0fpx;\n", top);
+            }
+        } else if (top == bottom && right == left) {
+            // top/bottom same, left/right same: "10px 20px"
+            css_generator_write_format(generator, "  padding: %.0fpx %.0fpx;\n", top, right);
+        } else if (right == left) {
+            // top different, left/right same: "10px 20px 30px"
+            css_generator_write_format(generator, "  padding: %.0fpx %.0fpx %.0fpx;\n", top, right, bottom);
+        } else {
+            // All different: "10px 20px 30px 40px"
+            css_generator_write_format(generator, "  padding: %.0fpx %.0fpx %.0fpx %.0fpx;\n",
+                                      top, right, bottom, left);
+        }
     }
 
     // Typography
@@ -840,50 +1052,49 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     if (component->layout) {
         IRLayout* layout = component->layout;
 
-        // Flexbox layout (most common)
-        if (layout->mode == IR_LAYOUT_MODE_FLEX || layout->mode == IR_LAYOUT_MODE_BLOCK) {
+        // Flexbox layout - only output if explicitly set in original CSS
+        if (layout->display_explicit && layout->mode == IR_LAYOUT_MODE_FLEX) {
             IRFlexbox* flex = &layout->flex;
 
-            // Only add display:flex if needed
-            if (component->child_count > 0 || flex->gap > 0) {
-                css_generator_write_string(generator, "  display: flex;\n");
+            css_generator_write_string(generator, "  display: flex;\n");
 
-                // Flex direction based on component type
-                if (component->type == IR_COMPONENT_ROW) {
-                    css_generator_write_string(generator, "  flex-direction: row;\n");
-                } else if (component->type == IR_COMPONENT_COLUMN) {
-                    css_generator_write_string(generator, "  flex-direction: column;\n");
-                }
+            // Flex direction based on component type
+            if (component->type == IR_COMPONENT_ROW) {
+                css_generator_write_string(generator, "  flex-direction: row;\n");
+            } else if (component->type == IR_COMPONENT_COLUMN) {
+                css_generator_write_string(generator, "  flex-direction: column;\n");
+            }
 
-                // Flex wrap
-                if (flex->wrap) {
-                    css_generator_write_string(generator, "  flex-wrap: wrap;\n");
-                }
+            // Flex wrap
+            if (flex->wrap) {
+                css_generator_write_string(generator, "  flex-wrap: wrap;\n");
+            }
 
-                // Gap
-                if (flex->gap > 0) {
-                    css_generator_write_format(generator, "  gap: %upx;\n", flex->gap);
-                }
+            // Gap
+            if (flex->gap > 0) {
+                css_generator_write_format(generator, "  gap: %upx;\n", flex->gap);
+            }
 
-                // Justify content - skip default (flex-start)
-                if (flex->justify_content != IR_ALIGNMENT_START) {
-                    css_generator_write_format(generator, "  justify-content: %s;\n",
-                                              get_alignment_string(flex->justify_content));
-                }
+            // Justify content - skip default (flex-start)
+            if (flex->justify_content != IR_ALIGNMENT_START) {
+                css_generator_write_format(generator, "  justify-content: %s;\n",
+                                          get_alignment_string(flex->justify_content));
+            }
 
-                // Align items - skip default (stretch for column, flex-start for row)
-                if (flex->cross_axis != IR_ALIGNMENT_START && flex->cross_axis != IR_ALIGNMENT_STRETCH) {
-                    css_generator_write_format(generator, "  align-items: %s;\n",
-                                              get_alignment_string(flex->cross_axis));
-                }
+            // Align items - skip default (stretch for column, flex-start for row)
+            if (flex->cross_axis != IR_ALIGNMENT_START && flex->cross_axis != IR_ALIGNMENT_STRETCH) {
+                css_generator_write_format(generator, "  align-items: %s;\n",
+                                          get_alignment_string(flex->cross_axis));
+            }
 
-                // Flex grow/shrink
-                if (flex->grow > 0) {
-                    css_generator_write_format(generator, "  flex-grow: %u;\n", flex->grow);
-                }
-                if (flex->shrink > 0) {
-                    css_generator_write_format(generator, "  flex-shrink: %u;\n", flex->shrink);
-                }
+            // Flex grow/shrink - only if explicitly set (non-zero)
+            if (flex->grow > 0) {
+                css_generator_write_format(generator, "  flex-grow: %u;\n", flex->grow);
+            }
+            // Only output flex-shrink if it's not the CSS default (1)
+            // flex-shrink: 0 should be output, flex-shrink: 1 is default (skip)
+            if (flex->shrink != 1) {
+                css_generator_write_format(generator, "  flex-shrink: %u;\n", flex->shrink);
             }
 
             // Center component special case
@@ -891,6 +1102,15 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
                 css_generator_write_string(generator, "  justify-content: center;\n");
                 css_generator_write_string(generator, "  align-items: center;\n");
             }
+        } else if (layout->display_explicit && layout->mode == IR_LAYOUT_MODE_GRID) {
+            // Grid mode - only if explicitly set
+            css_generator_write_string(generator, "  display: grid;\n");
+            // Grid properties would go here
+        }
+
+        // Gap can also apply to non-flex layouts if explicitly set
+        if (!layout->display_explicit && layout->flex.gap > 0) {
+            css_generator_write_format(generator, "  gap: %upx;\n", layout->flex.gap);
         }
 
         // Min/max dimensions
@@ -1044,8 +1264,12 @@ static void generate_container_context(CSSGenerator* generator, IRComponent* com
     mark_class_generated(generator, container_key);
     free(container_key);
 
-    // Generate container-type declaration
-    css_generator_write_format(generator, ".%s {\n", class_name);
+    // Generate container-type declaration with correct selector type
+    if (component->selector_type == IR_SELECTOR_ELEMENT && component->tag) {
+        css_generator_write_format(generator, "%s {\n", component->tag);
+    } else {
+        css_generator_write_format(generator, ".%s {\n", class_name);
+    }
     free(class_name);
 
     switch (component->style->container_type) {
@@ -1111,8 +1335,12 @@ static void generate_pseudo_class_rules(CSSGenerator* generator, IRComponent* co
         mark_class_generated(generator, pseudo_key);
         free(pseudo_key);
 
-        // Start pseudo-class selector with class instead of ID
-        css_generator_write_format(generator, ".%s:%s {\n", class_name, pseudo_name);
+        // Start pseudo-class selector with correct selector type
+        if (component->selector_type == IR_SELECTOR_ELEMENT && component->tag) {
+            css_generator_write_format(generator, "%s:%s {\n", component->tag, pseudo_name);
+        } else {
+            css_generator_write_format(generator, ".%s:%s {\n", class_name, pseudo_name);
+        }
 
         // Apply style overrides
         if (pseudo->has_background) {
@@ -1199,6 +1427,9 @@ static void generate_component_css(CSSGenerator* generator, IRComponent* compone
 const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     if (!generator || !root) return NULL;
 
+    // Set thread-local generator for CSS variable lookups in get_color_string
+    tls_css_generator = generator;
+
     // Clear buffer
     generator->buffer_size = 0;
     if (generator->output_buffer) {
@@ -1215,48 +1446,87 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     css_generator_write_string(generator, "/* Kryon Generated CSS */\n");
     css_generator_write_string(generator, "/* Auto-generated from IR format */\n\n");
 
-    // Generate CSS custom properties from style variables
-    css_generator_write_string(generator, ":root {\n");
-    css_generator_write_string(generator, "  /* Kryon Theme Variables */\n");
-
-    // Export all defined style variables as CSS custom properties
-    for (int i = 0; i < IR_MAX_STYLE_VARS; i++) {
-        if (ir_style_vars[i].defined) {
-            // Generate CSS custom property: --color-N: rgba(r, g, b, a);
-            css_generator_write_format(generator, "  --color-%d: rgba(%u, %u, %u, %.2f);\n",
-                                      i,
-                                      ir_style_vars[i].r,
-                                      ir_style_vars[i].g,
-                                      ir_style_vars[i].b,
-                                      ir_style_vars[i].a / 255.0f);
+    // Generate CSS custom properties from manifest CSS variables (preferred)
+    // or fall back to legacy ir_style_vars
+    if (generator->css_variables && generator->css_variable_count > 0) {
+        css_generator_write_string(generator, ":root {\n");
+        for (size_t i = 0; i < generator->css_variable_count; i++) {
+            CSSVariable* var = &generator->css_variables[i];
+            if (var->name && var->value) {
+                css_generator_write_format(generator, "  --%s: %s;\n", var->name, var->value);
+            }
+        }
+        css_generator_write_string(generator, "}\n\n");
+    } else {
+        // Legacy: Export defined style variables as CSS custom properties
+        bool has_style_vars = false;
+        for (int i = 0; i < IR_MAX_STYLE_VARS; i++) {
+            if (ir_style_vars[i].defined) {
+                has_style_vars = true;
+                break;
+            }
+        }
+        if (has_style_vars) {
+            css_generator_write_string(generator, ":root {\n");
+            css_generator_write_string(generator, "  /* Kryon Theme Variables */\n");
+            for (int i = 0; i < IR_MAX_STYLE_VARS; i++) {
+                if (ir_style_vars[i].defined) {
+                    css_generator_write_format(generator, "  --color-%d: rgba(%u, %u, %u, %.2f);\n",
+                                              i,
+                                              ir_style_vars[i].r,
+                                              ir_style_vars[i].g,
+                                              ir_style_vars[i].b,
+                                              ir_style_vars[i].a / 255.0f);
+                }
+            }
+            css_generator_write_string(generator, "}\n\n");
         }
     }
 
-    css_generator_write_string(generator, "}\n\n");
+    // Generate base styles for body
+    // If root is a Body component, merge its styles here instead of generating a .Body class
+    bool root_is_body = root && root->tag && strcmp(root->tag, "Body") == 0;
 
-    // Generate base styles
     css_generator_write_string(generator, "body {\n");
     css_generator_write_string(generator, "  margin: 0;\n");
     css_generator_write_string(generator, "  padding: 0;\n");
-    css_generator_write_string(generator, "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n");
 
-    // Use root component's background color if available, otherwise transparent
+    // Use Body component's font-family if set, otherwise default
+    if (root_is_body && root->style && root->style->font.family) {
+        css_generator_write_format(generator, "  font-family: %s;\n", root->style->font.family);
+    } else {
+        css_generator_write_string(generator, "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n");
+    }
+
+    // Use root component's background color if available
     if (root && root->style) {
         IRColor* bg = &root->style->background;
         if (bg->type == IR_COLOR_SOLID && bg->data.a > 0) {
-            char bg_buffer[128];
-            snprintf(bg_buffer, sizeof(bg_buffer),
-                    "  background-color: rgba(%d, %d, %d, %.2f);\n",
-                    bg->data.r, bg->data.g, bg->data.b, bg->data.a / 255.0f);
-            css_generator_write_string(generator, bg_buffer);
-        } else {
-            css_generator_write_string(generator, "  background-color: transparent;\n");
+            const char* color_str = get_color_string(*bg);
+            css_generator_write_format(generator, "  background-color: %s;\n", color_str);
         }
-    } else {
-        css_generator_write_string(generator, "  background-color: transparent;\n");
+    }
+
+    // If root is Body, add its additional styles
+    if (root_is_body && root->style) {
+        // Text color
+        if (root->style->font.color.type == IR_COLOR_SOLID && root->style->font.color.data.a > 0) {
+            const char* color_str = get_color_string(root->style->font.color);
+            css_generator_write_format(generator, "  color: %s;\n", color_str);
+        }
+
+        // Line height
+        if (root->style->font.line_height > 0) {
+            css_generator_write_format(generator, "  line-height: %.2f;\n", root->style->font.line_height);
+        }
     }
 
     css_generator_write_string(generator, "}\n\n");
+
+    // Mark Body class as generated so it's skipped later
+    if (root_is_body) {
+        mark_class_generated(generator, "Body");
+    }
 
     // Generate @keyframes for animations
     generate_keyframes(generator, root);
@@ -1440,16 +1710,40 @@ static void collect_animations_recursive(CSSGenerator* generator, IRComponent* c
     }
 
     // Recursively process children
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        collect_animations_recursive(generator, component->children[i]);
+    if (component->children) {
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            collect_animations_recursive(generator, component->children[i]);
+        }
     }
+}
+
+static bool has_animations_recursive(IRComponent* component) {
+    if (!component) return false;
+
+    // Check this component for animations
+    if (component->style && component->style->animations && component->style->animation_count > 0) {
+        return true;
+    }
+
+    // Check children recursively
+    if (component->children) {
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            if (has_animations_recursive(component->children[i])) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 static void generate_keyframes(CSSGenerator* generator, IRComponent* root) {
     if (!generator || !root) return;
 
-    css_generator_write_string(generator, "/* Keyframe Animations */\n");
-    collect_animations_recursive(generator, root);
+    // Only output comment and animations if there are actually animations
+    if (has_animations_recursive(root)) {
+        css_generator_write_string(generator, "/* Keyframe Animations */\n");
+        collect_animations_recursive(generator, root);
+    }
 }
 
 bool css_generator_write_to_file(CSSGenerator* generator, IRComponent* root, const char* filename) {

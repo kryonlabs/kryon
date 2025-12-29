@@ -1,12 +1,15 @@
 #define _POSIX_C_SOURCE 200809L
 #include "html_parser.h"
 #include "html_to_ir.h"
+#include "css_stylesheet.h"
 #include "../../ir_serialization.h"
 #include "../../ir_logic.h"
+#include "../../ir_builder.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <libgen.h>  // For dirname()
 
 // ============================================================================
 // Tokenizer
@@ -124,23 +127,35 @@ static bool next_token(Tokenizer* tok) {
     if (ch == '<') {
         tok->pos++;  // Skip '<'
 
-        // Check for comment
-        if (tok->pos + 2 < tok->length &&
-            tok->input[tok->pos] == '!' &&
-            tok->input[tok->pos + 1] == '-' &&
-            tok->input[tok->pos + 2] == '-') {
-            tok->pos += 3;  // Skip '!--'
+        // Check for comment or DOCTYPE
+        if (tok->input[tok->pos] == '!') {
+            // Check for comment (<!-- ... -->)
+            if (tok->pos + 2 < tok->length &&
+                tok->input[tok->pos + 1] == '-' &&
+                tok->input[tok->pos + 2] == '-') {
+                tok->pos += 3;  // Skip '!--'
 
-            // Find end of comment
-            while (tok->pos + 2 < tok->length) {
-                if (tok->input[tok->pos] == '-' &&
-                    tok->input[tok->pos + 1] == '-' &&
-                    tok->input[tok->pos + 2] == '>') {
-                    tok->pos += 3;
-                    break;
+                // Find end of comment
+                while (tok->pos + 2 < tok->length) {
+                    if (tok->input[tok->pos] == '-' &&
+                        tok->input[tok->pos + 1] == '-' &&
+                        tok->input[tok->pos + 2] == '>') {
+                        tok->pos += 3;
+                        break;
+                    }
+                    tok->pos++;
                 }
+
+                tok->current.type = TOKEN_COMMENT;
+                return true;
+            }
+
+            // Check for DOCTYPE (<!DOCTYPE ...>)
+            // Skip to end of tag and treat as comment
+            while (tok->pos < tok->length && tok->input[tok->pos] != '>') {
                 tok->pos++;
             }
+            if (tok->pos < tok->length) tok->pos++;  // Skip '>'
 
             tok->current.type = TOKEN_COMMENT;
             return true;
@@ -370,6 +385,18 @@ static void extract_event_handler(HtmlParserContext* ctx,
     free(event_type);
 }
 
+// Check if a tag is a void element (no closing tag needed)
+static bool is_void_element(const char* tag_name) {
+    static const char* void_elements[] = {
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr", NULL
+    };
+    for (int i = 0; void_elements[i]; i++) {
+        if (strcmp(tag_name, void_elements[i]) == 0) return true;
+    }
+    return false;
+}
+
 HtmlNode* ir_html_parse(const char* html, size_t length) {
     if (!html || length == 0) return NULL;
 
@@ -440,8 +467,10 @@ HtmlNode* ir_html_parse(const char* html, size_t length) {
                 HtmlNode* parent = stack_peek(&stack);
                 if (parent) html_node_add_child(parent, element);
 
-                // Push to stack (for children)
-                stack_push(&stack, element);
+                // Push to stack (for children) - but NOT for void elements
+                if (!is_void_element(token->value)) {
+                    stack_push(&stack, element);
+                }
                 break;
             }
 
@@ -649,7 +678,11 @@ static HtmlNode* ir_html_parse_with_logic(const char* html, size_t length,
 
                 HtmlNode* parent = stack_peek(&stack);
                 if (parent) html_node_add_child(parent, element);
-                stack_push(&stack, element);
+
+                // Push to stack - but NOT for void elements
+                if (!is_void_element(token->value)) {
+                    stack_push(&stack, element);
+                }
                 break;
             }
 
@@ -762,6 +795,335 @@ static HtmlNode* ir_html_parse_with_logic(const char* html, size_t length,
     return result;
 }
 
+// ============================================================================
+// CSS File Detection
+// ============================================================================
+
+// Extract CSS file hrefs from <link> tags in HTML
+// Returns array of paths (caller must free each string and the array)
+static char** extract_css_hrefs(const char* html, size_t length, int* count) {
+    *count = 0;
+    if (!html || length == 0) return NULL;
+
+    // Initial capacity
+    int capacity = 4;
+    char** hrefs = (char**)calloc(capacity, sizeof(char*));
+    if (!hrefs) return NULL;
+
+    const char* p = html;
+    const char* end = html + length;
+
+    // Look for <link ... href="..." ... rel="stylesheet" ...> tags
+    while (p < end) {
+        // Find <link
+        const char* link_start = strstr(p, "<link");
+        if (!link_start || link_start >= end) break;
+
+        // Find the end of this tag
+        const char* tag_end = strchr(link_start, '>');
+        if (!tag_end || tag_end >= end) break;
+
+        // Extract the tag content
+        size_t tag_len = tag_end - link_start + 1;
+        char* tag = (char*)malloc(tag_len + 1);
+        if (!tag) break;
+        memcpy(tag, link_start, tag_len);
+        tag[tag_len] = '\0';
+
+        // Check if it's a stylesheet link
+        bool is_stylesheet = (strstr(tag, "rel=\"stylesheet\"") != NULL ||
+                             strstr(tag, "rel='stylesheet'") != NULL ||
+                             strstr(tag, "rel=stylesheet") != NULL);
+
+        if (is_stylesheet) {
+            // Extract href value
+            char* href_attr = strstr(tag, "href=");
+            if (href_attr) {
+                href_attr += 5; // Skip "href="
+                char quote = *href_attr;
+                if (quote == '"' || quote == '\'') {
+                    href_attr++; // Skip opening quote
+                    const char* href_end = strchr(href_attr, quote);
+                    if (href_end) {
+                        size_t href_len = href_end - href_attr;
+                        char* href = (char*)malloc(href_len + 1);
+                        if (href) {
+                            memcpy(href, href_attr, href_len);
+                            href[href_len] = '\0';
+
+                            // Add to array
+                            if (*count >= capacity) {
+                                capacity *= 2;
+                                hrefs = (char**)realloc(hrefs, capacity * sizeof(char*));
+                            }
+                            hrefs[(*count)++] = href;
+                        }
+                    }
+                }
+            }
+        }
+
+        free(tag);
+        p = tag_end + 1;
+    }
+
+    return hrefs;
+}
+
+// Extract embedded CSS content from <style> tags
+// Returns concatenated CSS content (caller must free)
+static char* extract_embedded_css(const char* html, size_t length) {
+    if (!html || length == 0) return NULL;
+
+    // Allocate buffer for all CSS content (start with reasonable size)
+    size_t css_capacity = 4096;
+    size_t css_length = 0;
+    char* css_content = (char*)malloc(css_capacity);
+    if (!css_content) return NULL;
+    css_content[0] = '\0';
+
+    const char* p = html;
+    const char* end = html + length;
+
+    while (p < end) {
+        // Find <style (case-insensitive would be better, but most HTML is lowercase)
+        const char* style_start = strstr(p, "<style");
+        if (!style_start || style_start >= end) break;
+
+        // Find the end of the opening tag
+        const char* tag_end = strchr(style_start, '>');
+        if (!tag_end || tag_end >= end) break;
+
+        // CSS content starts after '>'
+        const char* css_start = tag_end + 1;
+
+        // Find </style>
+        const char* style_end = strstr(css_start, "</style>");
+        if (!style_end || style_end >= end) {
+            // Try </style without proper closing
+            style_end = strstr(css_start, "</style");
+            if (!style_end || style_end >= end) break;
+        }
+
+        // Extract CSS content
+        size_t chunk_len = style_end - css_start;
+        if (chunk_len > 0) {
+            // Grow buffer if needed
+            while (css_length + chunk_len + 2 > css_capacity) {
+                css_capacity *= 2;
+                char* new_buf = (char*)realloc(css_content, css_capacity);
+                if (!new_buf) {
+                    free(css_content);
+                    return NULL;
+                }
+                css_content = new_buf;
+            }
+
+            // Append CSS content with newline separator
+            if (css_length > 0) {
+                css_content[css_length++] = '\n';
+            }
+            memcpy(css_content + css_length, css_start, chunk_len);
+            css_length += chunk_len;
+            css_content[css_length] = '\0';
+        }
+
+        p = style_end + 8; // Skip past </style>
+    }
+
+    if (css_length == 0) {
+        free(css_content);
+        return NULL;
+    }
+
+    return css_content;
+}
+
+// ============================================================================
+// Internal conversion with stylesheet support
+// ============================================================================
+
+// Forward declaration
+static IRComponent* ir_html_node_to_component_with_css(HtmlNode* node, CSSStylesheet* stylesheet);
+
+// Convert HtmlNode to IRComponent with CSS stylesheet applied recursively
+static IRComponent* ir_html_node_to_component_with_css(HtmlNode* node, CSSStylesheet* stylesheet) {
+    if (!node) return NULL;
+
+    // First convert node (not children) using the standard function
+    // We'll handle children ourselves to apply CSS recursively
+    IRComponent* component = NULL;
+
+    if (node->type == HTML_NODE_TEXT) {
+        // Text nodes don't have CSS
+        return ir_html_node_to_component(node);
+    }
+
+    if (node->type == HTML_NODE_ELEMENT) {
+        // Handle <span class="text"> as Text component (unwrap to text content)
+        if (node->tag_name && strcmp(node->tag_name, "span") == 0 &&
+            node->class_name && strstr(node->class_name, "text") != NULL) {
+            // Extract text content from children
+            for (uint32_t i = 0; i < node->child_count; i++) {
+                if (node->children[i]->type == HTML_NODE_TEXT && node->children[i]->text_content) {
+                    return ir_text(node->children[i]->text_content);
+                }
+            }
+        }
+
+        // Detect component type to handle special cases
+        IRComponentType type = IR_COMPONENT_CONTAINER;
+        if (node->data_ir_type) {
+            type = ir_string_to_component_type(node->data_ir_type);
+        } else if (node->tag_name) {
+            type = ir_html_tag_to_component_type(node->tag_name);
+            if (type == IR_COMPONENT_CONTAINER && node->class_name) {
+                IRComponentType inferred = ir_infer_type_from_classes(node->class_name);
+                if (inferred != IR_COMPONENT_CONTAINER) {
+                    type = inferred;
+                }
+            }
+        }
+
+        // Components that extract text from children need the full node
+        // (Link, Heading, Button, CodeBlock - they consume their children)
+        if (type == IR_COMPONENT_LINK || type == IR_COMPONENT_HEADING ||
+            type == IR_COMPONENT_BUTTON || type == IR_COMPONENT_CODE_BLOCK) {
+            // Pass full node - these components extract their own text
+            component = ir_html_node_to_component(node);
+            if (!component) return NULL;
+        } else {
+            // Create a temporary copy with no children
+            // to get the component without recursive child conversion
+            HtmlNode temp = *node;
+            temp.children = NULL;
+            temp.child_count = 0;
+            component = ir_html_node_to_component(&temp);
+            if (!component) return NULL;
+        }
+
+        // Apply CSS stylesheet rules FIRST (lower priority)
+        if (stylesheet) {
+            IRStyle* style = ir_get_style(component);
+            IRLayout* layout = ir_get_layout(component);
+            ir_css_apply_stylesheet_rules(stylesheet, node->tag_name, node->class_name, node->id, style, layout);
+        }
+
+        // Apply inline styles SECOND (higher priority - override stylesheet)
+        // This is already done in ir_html_node_to_component, but since we used temp,
+        // we need to do it here
+        if (node->style) {
+            IRStyle* style = ir_get_style(component);
+            IRLayout* layout = ir_get_layout(component);
+            ir_html_parse_inline_css_full(node->style, style, layout);
+        }
+
+        // Now recursively convert children with CSS
+        // Skip certain component types that consume their children (like heading, button)
+        if (type != IR_COMPONENT_HEADING && type != IR_COMPONENT_BUTTON &&
+            type != IR_COMPONENT_CODE_BLOCK && type != IR_COMPONENT_LINK) {
+            for (uint32_t i = 0; i < node->child_count; i++) {
+                IRComponent* child = ir_html_node_to_component_with_css(node->children[i], stylesheet);
+                if (child) {
+                    ir_add_child(component, child);
+                }
+            }
+        }
+    }
+
+    return component;
+}
+
+// Convert HTML AST to IR with stylesheet support
+static IRComponent* ir_html_to_ir_convert_with_css(HtmlNode* html_root, CSSStylesheet* stylesheet) {
+    if (!html_root) return NULL;
+
+    // Handle wrapper root node (skip if tag is "root")
+    if (html_root->tag_name && strcmp(html_root->tag_name, "root") == 0 &&
+        html_root->child_count == 1) {
+        html_root = html_root->children[0];
+    }
+
+    // Skip <html> wrapper and find <body>
+    if (html_root->tag_name && strcmp(html_root->tag_name, "html") == 0) {
+        for (uint32_t i = 0; i < html_root->child_count; i++) {
+            HtmlNode* child = html_root->children[i];
+            if (child && child->tag_name && strcmp(child->tag_name, "body") == 0) {
+                // Convert body's children with CSS
+                IRComponent* root_component = NULL;
+                if (child->child_count == 1) {
+                    root_component = ir_html_node_to_component_with_css(child->children[0], stylesheet);
+                } else if (child->child_count > 1) {
+                    root_component = ir_column();
+                    for (uint32_t j = 0; j < child->child_count; j++) {
+                        IRComponent* body_child = ir_html_node_to_component_with_css(child->children[j], stylesheet);
+                        if (body_child) {
+                            ir_add_child(root_component, body_child);
+                        }
+                    }
+                }
+
+                // Apply body's CSS styles to the root component
+                if (root_component && stylesheet) {
+                    IRStyle* style = ir_get_style(root_component);
+                    IRLayout* layout = ir_get_layout(root_component);
+                    ir_css_apply_stylesheet_rules(stylesheet, "body", child->class_name, child->id, style, layout);
+
+                    // Also apply inline styles from body tag
+                    if (child->style) {
+                        ir_html_parse_inline_css_full(child->style, style, layout);
+                    }
+                }
+
+                // Mark as Body for HTML generator
+                if (root_component) {
+                    root_component->tag = strdup("Body");
+                }
+
+                return root_component;
+            }
+        }
+    }
+
+    // Skip <body> wrapper but apply its styles to the root component
+    if (html_root->tag_name && strcmp(html_root->tag_name, "body") == 0) {
+        IRComponent* root_component = NULL;
+
+        if (html_root->child_count == 1) {
+            root_component = ir_html_node_to_component_with_css(html_root->children[0], stylesheet);
+        } else if (html_root->child_count > 1) {
+            root_component = ir_column();
+            for (uint32_t i = 0; i < html_root->child_count; i++) {
+                IRComponent* child = ir_html_node_to_component_with_css(html_root->children[i], stylesheet);
+                if (child) {
+                    ir_add_child(root_component, child);
+                }
+            }
+        }
+
+        // Apply body's CSS styles to the root component
+        if (root_component && stylesheet) {
+            IRStyle* style = ir_get_style(root_component);
+            IRLayout* layout = ir_get_layout(root_component);
+            ir_css_apply_stylesheet_rules(stylesheet, "body", html_root->class_name, html_root->id, style, layout);
+
+            // Also apply inline styles from body tag
+            if (html_root->style) {
+                ir_html_parse_inline_css_full(html_root->style, style, layout);
+            }
+        }
+
+        // Mark component as body for HTML generator
+        if (root_component) {
+            root_component->tag = strdup("Body");
+        }
+
+        return root_component;
+    }
+
+    return ir_html_node_to_component_with_css(html_root, stylesheet);
+}
+
 // HTML to KIR JSON conversion
 char* ir_html_to_kir(const char* html, size_t length) {
     if (!html) return NULL;
@@ -841,9 +1203,136 @@ char* ir_html_file_to_kir(const char* filepath) {
 
     html[bytes_read] = '\0';
 
-    // Convert HTML to KIR
-    char* kir = ir_html_to_kir(html, bytes_read);
+    // Extract CSS file paths from <link> tags
+    int css_count = 0;
+    char** css_hrefs = extract_css_hrefs(html, bytes_read, &css_count);
+
+    // Load and parse CSS files (merge multiple stylesheets)
+    CSSStylesheet* stylesheet = NULL;
+    if (css_count > 0 && css_hrefs) {
+        // Get the directory of the HTML file for resolving relative paths
+        char* filepath_copy = strdup(filepath);
+        char* html_dir = dirname(filepath_copy);
+
+        // Load all CSS files and merge them (in order, later files override earlier)
+        for (int i = 0; i < css_count; i++) {
+            char css_path[1024];
+
+            // Check if it's an absolute path
+            if (css_hrefs[i][0] == '/') {
+                snprintf(css_path, sizeof(css_path), "%s", css_hrefs[i]);
+            } else {
+                // Resolve relative to HTML file directory
+                snprintf(css_path, sizeof(css_path), "%s/%s", html_dir, css_hrefs[i]);
+            }
+
+            CSSStylesheet* css = ir_css_parse_stylesheet_file(css_path);
+            if (css) {
+                if (!stylesheet) {
+                    stylesheet = css;
+                } else {
+                    ir_css_stylesheet_merge(stylesheet, css);
+                    ir_css_stylesheet_free(css);
+                }
+            }
+        }
+
+        free(filepath_copy);
+
+        // Free CSS hrefs
+        for (int i = 0; i < css_count; i++) {
+            free(css_hrefs[i]);
+        }
+        free(css_hrefs);
+    }
+
+    // Extract and parse embedded <style> content
+    char* embedded_css = extract_embedded_css(html, bytes_read);
+    if (embedded_css) {
+        CSSStylesheet* embedded = ir_css_parse_stylesheet(embedded_css);
+        if (embedded) {
+            if (!stylesheet) {
+                stylesheet = embedded;
+            } else {
+                // Embedded CSS has higher priority (merged after external)
+                ir_css_stylesheet_merge(stylesheet, embedded);
+                ir_css_stylesheet_free(embedded);
+            }
+        }
+        free(embedded_css);
+    }
+
+    // Create parser context for logic extraction
+    HtmlParserContext ctx;
+    parser_ctx_init(&ctx);
+
+    // Parse HTML to AST with logic extraction
+    HtmlNode* ast = ir_html_parse_with_logic(html, bytes_read, &ctx);
     free(html);
 
-    return kir;
+    if (!ast) {
+        fprintf(stderr, "Error: Failed to parse HTML\n");
+        parser_ctx_free(&ctx);
+        if (stylesheet) ir_css_stylesheet_free(stylesheet);
+        return NULL;
+    }
+
+    // Convert AST to IR with stylesheet
+    IRComponent* root = NULL;
+    IRReactiveManifest* manifest = NULL;
+
+    if (stylesheet) {
+        root = ir_html_to_ir_convert_with_css(ast, stylesheet);
+
+        // Create manifest with CSS variables if any exist
+        if (stylesheet->variable_count > 0) {
+            manifest = ir_reactive_manifest_create();
+            if (manifest) {
+                // Store CSS variables as reactive variables with special "css_variable" type
+                for (uint32_t i = 0; i < stylesheet->variable_count; i++) {
+                    CSSVariable* css_var = &stylesheet->variables[i];
+                    // Store as "css:varname" to distinguish from regular variables
+                    char css_name[256];
+                    snprintf(css_name, sizeof(css_name), "css:%s", css_var->name);
+
+                    // Create string value for the CSS variable
+                    IRReactiveValue value = {0};
+                    value.as_string = strdup(css_var->value);
+
+                    // Add variable to manifest
+                    uint32_t var_id = ir_reactive_manifest_add_var(manifest, css_name,
+                                                                   IR_REACTIVE_TYPE_STRING, value);
+
+                    // Set metadata for serialization
+                    ir_reactive_manifest_set_var_metadata(manifest, var_id,
+                                                          "css_variable", css_var->value, "global");
+                }
+            }
+        }
+
+        ir_css_stylesheet_free(stylesheet);
+    } else {
+        root = ir_html_to_ir_convert(ast);
+    }
+    html_node_free(ast);
+
+    if (!root) {
+        fprintf(stderr, "Error: Failed to convert HTML to IR\n");
+        parser_ctx_free(&ctx);
+        if (manifest) ir_reactive_manifest_destroy(manifest);
+        return NULL;
+    }
+
+    // Serialize IR to JSON with logic_block and manifest
+    char* json = ir_serialize_json_complete(root, manifest, ctx.logic_block, NULL, NULL);
+    ir_destroy_component(root);
+    parser_ctx_free(&ctx);
+    if (manifest) ir_reactive_manifest_destroy(manifest);
+
+    if (!json) {
+        fprintf(stderr, "Error: Failed to serialize IR to JSON\n");
+        return NULL;
+    }
+
+    return json;
 }

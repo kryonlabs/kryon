@@ -36,7 +36,29 @@ static const char* detect_frontend(const char* source_file) {
 static int compile_to_kir(const char* source_file, const char* output_kir, const char* frontend) {
     printf("Compiling %s → %s (frontend: %s)\n", source_file, output_kir, frontend);
 
-    if (strcmp(frontend, "markdown") == 0 || strcmp(frontend, "html") == 0 || strcmp(frontend, "kry") == 0) {
+    // HTML uses file-based parser to detect and load external CSS
+    if (strcmp(frontend, "html") == 0) {
+        char* json = ir_html_file_to_kir(source_file);
+        if (!json) {
+            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
+            return 1;
+        }
+
+        // Write to output file
+        FILE* out = fopen(output_kir, "w");
+        if (!out) {
+            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+            free(json);
+            return 1;
+        }
+
+        fprintf(out, "%s\n", json);
+        fclose(out);
+        free(json);
+        return 0;
+    }
+
+    if (strcmp(frontend, "markdown") == 0 || strcmp(frontend, "kry") == 0) {
         // Read the source file
         FILE* f = fopen(source_file, "r");
         if (!f) {
@@ -66,8 +88,6 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
             json = ir_kry_to_kir(source, size);
         } else if (strcmp(frontend, "markdown") == 0) {
             json = ir_markdown_to_kir(source, size);
-        } else if (strcmp(frontend, "html") == 0) {
-            json = ir_html_to_kir(source, size);
         }
 
         free(source);

@@ -34,7 +34,15 @@ bool web_ir_renderer_validate_ir(WebIRRenderer* renderer, IRComponent* root);
 void web_ir_renderer_print_tree_info(WebIRRenderer* renderer, IRComponent* root);
 void web_ir_renderer_print_stats(WebIRRenderer* renderer, IRComponent* root);
 
-// Convenience function for quick rendering
+// Convenience functions for quick rendering
 bool web_render_ir_component(IRComponent* root, const char* output_dir);
+bool web_render_ir_component_with_options(IRComponent* root, const char* output_dir, bool embedded_css);
+
+// Rendering with manifest (for CSS variable support)
+bool web_render_ir_component_with_manifest(IRComponent* root, const char* output_dir,
+                                           bool embedded_css, IRReactiveManifest* manifest);
+
+// Set manifest on renderer (for CSS variable output)
+void web_ir_renderer_set_manifest(WebIRRenderer* renderer, IRReactiveManifest* manifest);
 
 #endif // IR_WEB_RENDERER_H

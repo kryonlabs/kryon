@@ -127,6 +127,7 @@ typedef union IRColorData {
 typedef struct IRColor {
     IRColorType type;
     IRColorData data;
+    char* var_name;  // CSS variable name (e.g., "--bg") for roundtrip preservation
 } IRColor;
 
 // Helper macros for creating IRColor values
@@ -258,15 +259,22 @@ typedef struct {
 } IRGridItem;
 
 // Spacing
+// Special value for "auto" margin (e.g., margin: 0 auto for centering)
+#define IR_SPACING_AUTO (-999999.0f)
+
 typedef struct {
     float top, right, bottom, left;
 } IRSpacing;
 
 // Border
 typedef struct {
-    float width;
+    float width;          // Uniform border width (if > 0, applies to all sides)
+    float width_top;      // Per-side widths (0 = not set)
+    float width_right;
+    float width_bottom;
+    float width_left;
     IRColor color;
-    uint8_t radius;  // Border radius
+    uint8_t radius;       // Border radius
 } IRBorder;
 
 // Text Alignment
@@ -476,6 +484,7 @@ typedef struct IRFilter {
 // Layout Constraints
 typedef struct {
     IRLayoutMode mode;  // Layout algorithm to use
+    bool display_explicit;  // Was display: property explicitly set in CSS?
     IRDimension min_width, min_height;
     IRDimension max_width, max_height;
     IRFlexbox flex;     // Used when mode = IR_LAYOUT_MODE_FLEX
@@ -842,10 +851,20 @@ typedef struct {
     uint32_t active_text_color;    // Active tab text color (RGBA)
 } IRTabData;
 
+// CSS Selector Type (for HTML roundtrip fidelity)
+typedef enum {
+    IR_SELECTOR_NONE = 0,      // No CSS selector (component-only, no styling rule)
+    IR_SELECTOR_ELEMENT,       // Element selector: header { }, nav { }
+    IR_SELECTOR_CLASS,         // Class selector: .container { }, .hero { }
+    IR_SELECTOR_ID             // ID selector: #main { }
+} IRSelectorType;
+
 typedef struct IRComponent {
     uint32_t id;
     IRComponentType type;
-    char* tag;           // HTML tag for web, custom identifier
+    IRSelectorType selector_type;  // How to generate CSS selector (element vs class)
+    char* tag;           // HTML semantic tag (e.g., "section", "header", "nav")
+    char* css_class;     // CSS class name for styling (e.g., "hero", "features")
     IRStyle* style;
     IREvent* events;
     IRLogic* logic;
@@ -994,6 +1013,9 @@ typedef struct IRSourceStructures {
     uint32_t next_for_loop_id;
 } IRSourceStructures;
 
+// Forward declaration for stylesheet (defined in ir_stylesheet.h)
+typedef struct IRStylesheet IRStylesheet;
+
 // Global IR Context
 typedef struct IRContext {
     IRComponent* root;
@@ -1006,6 +1028,7 @@ typedef struct IRContext {
     IRReactiveManifest* reactive_manifest;  // Reactive state and bindings
     IRSourceStructures* source_structures;  // Source preservation (for round-trip codegen)
     IRSourceMetadata* source_metadata;      // Source file metadata (language, file path, etc.)
+    IRStylesheet* stylesheet;               // Global stylesheet with CSS rules and variables
 } IRContext;
 
 // IR Type System Functions

@@ -369,6 +369,7 @@ HtmlGeneratorOptions html_generator_default_options(void) {
     HtmlGeneratorOptions opts = {
         .minify = false,
         .inline_css = false,  // Use CSS classes instead of inline styles
+        .embedded_css = false,  // Use external CSS file by default
         .include_runtime = true
     };
     return opts;
@@ -409,6 +410,11 @@ void html_generator_set_pretty_print(HTMLGenerator* generator, bool pretty) {
 void html_generator_set_inline_css(HTMLGenerator* generator, bool inline_css) {
     if (!generator) return;
     generator->options.inline_css = inline_css;
+}
+
+void html_generator_set_manifest(HTMLGenerator* generator, IRReactiveManifest* manifest) {
+    if (!generator) return;
+    generator->manifest = manifest;  // Store reference (not owned)
 }
 
 static void html_generator_write_indent(HTMLGenerator* generator) {
@@ -516,6 +522,20 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         tag = "body";
     }
 
+    // Check for semantic HTML tags stored in component->tag
+    // These should be used for roundtrip HTML generation accuracy
+    if (component->tag && component->type == IR_COMPONENT_CONTAINER) {
+        if (strcmp(component->tag, "header") == 0 ||
+            strcmp(component->tag, "footer") == 0 ||
+            strcmp(component->tag, "section") == 0 ||
+            strcmp(component->tag, "nav") == 0 ||
+            strcmp(component->tag, "main") == 0 ||
+            strcmp(component->tag, "article") == 0 ||
+            strcmp(component->tag, "aside") == 0) {
+            tag = component->tag;
+        }
+    }
+
     // CRITICAL: Override tag for semantic HTML elements BEFORE writing opening tag
     // This prevents mismatched tags like <div>...</h1> or <div>...</ul>
     switch (component->type) {
@@ -568,10 +588,6 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         generate_inline_styles(generator, component);
     }
 
-    // Add custom tag if specified
-    if (component->tag && strcmp(component->tag, "") != 0) {
-        html_generator_write_format(generator, " data-tag=\"%s\"", component->tag);
-    }
 
     // Component-specific attributes
     switch (component->type) {
@@ -830,11 +846,15 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
                        : "Kryon Web Application";
     html_generator_write_format(generator, "  <title>%s</title>\n", title);
 
-    // Add CSS - either inline <style> or external <link>
-    if (generator->options.inline_css) {
-        // Generate inline CSS in <style> block
+    // Add CSS - either embedded <style> tag or external <link>
+    if (generator->options.embedded_css) {
+        // Generate CSS in embedded <style> block
         CSSGenerator* css_gen = css_generator_create();
         if (css_gen) {
+            // Pass manifest for CSS variable support
+            if (generator->manifest) {
+                css_generator_set_manifest(css_gen, generator->manifest);
+            }
             const char* css = css_generator_generate(css_gen, root);
             if (css && strlen(css) > 0) {
                 html_generator_write_string(generator, "  <style>\n");
@@ -861,7 +881,7 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
 
     if (root_is_body) {
         body_component = root;
-    } else if (root->child_count > 0 && root->children[0]->tag &&
+    } else if (root->child_count > 0 && root->children && root->children[0] && root->children[0]->tag &&
                strcmp(root->children[0]->tag, "Body") == 0) {
         body_component = root->children[0];
     }

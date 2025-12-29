@@ -108,7 +108,10 @@ static void raylib_shutdown(DesktopIRRenderer* renderer) {
         renderer->ops->backend_data = NULL;
     }
 
-    CloseWindow();
+    // Only close window if still open (prevents double close from game_run)
+    if (IsWindowReady()) {
+        CloseWindow();
+    }
     renderer->initialized = false;
 }
 
@@ -136,6 +139,7 @@ static void raylib_poll_events(DesktopIRRenderer* renderer) {
 bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component,
                               LayoutRect rect, float inherited_opacity) {
     if (!renderer || !component) return false;
+
 
     // Skip if not visible
     if (component->style && !component->style->visible) {
@@ -172,14 +176,37 @@ bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component
         case IR_COMPONENT_COLUMN:
             // Render background if present
             if (component->style) {
-                Color bg = ir_color_to_raylib(component->style->background);
-                if (bg.a > 0) {
-                    bg.a = (uint8_t)(bg.a * opacity);
-                    DrawRectangle(
-                        (int)layout->x, (int)layout->y,
-                        (int)layout->width, (int)layout->height,
-                        bg
-                    );
+                IRColor* bg_color = &component->style->background;
+
+                if (bg_color->type == IR_COLOR_GRADIENT && bg_color->data.gradient) {
+                    // Render gradient background
+                    Rectangle rect = {
+                        (float)layout->x, (float)layout->y,
+                        (float)layout->width, (float)layout->height
+                    };
+                    IRGradient* grad = bg_color->data.gradient;
+                    switch (grad->type) {
+                        case IR_GRADIENT_LINEAR:
+                            raylib_render_linear_gradient(rect, grad);
+                            break;
+                        case IR_GRADIENT_RADIAL:
+                            raylib_render_radial_gradient(rect, grad);
+                            break;
+                        case IR_GRADIENT_CONIC:
+                            raylib_render_conic_gradient(rect, grad);
+                            break;
+                    }
+                } else {
+                    // Render solid color background
+                    Color bg = ir_color_to_raylib(component->style->background);
+                    if (bg.a > 0) {
+                        bg.a = (uint8_t)(bg.a * opacity);
+                        DrawRectangle(
+                            (int)layout->x, (int)layout->y,
+                            (int)layout->width, (int)layout->height,
+                            bg
+                        );
+                    }
                 }
 
                 // Render border if present
@@ -202,13 +229,35 @@ bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component
         case IR_COMPONENT_BUTTON:
             // Render button background
             if (component->style) {
-                Color bg = ir_color_to_raylib(component->style->background);
-                bg.a = (uint8_t)(bg.a * opacity);
-                DrawRectangle(
-                    (int)layout->x, (int)layout->y,
-                    (int)layout->width, (int)layout->height,
-                    bg
-                );
+                IRColor* bg_color = &component->style->background;
+
+                if (bg_color->type == IR_COLOR_GRADIENT && bg_color->data.gradient) {
+                    // Render gradient background
+                    Rectangle rect = {
+                        (float)layout->x, (float)layout->y,
+                        (float)layout->width, (float)layout->height
+                    };
+                    IRGradient* grad = bg_color->data.gradient;
+                    switch (grad->type) {
+                        case IR_GRADIENT_LINEAR:
+                            raylib_render_linear_gradient(rect, grad);
+                            break;
+                        case IR_GRADIENT_RADIAL:
+                            raylib_render_radial_gradient(rect, grad);
+                            break;
+                        case IR_GRADIENT_CONIC:
+                            raylib_render_conic_gradient(rect, grad);
+                            break;
+                    }
+                } else {
+                    Color bg = ir_color_to_raylib(component->style->background);
+                    bg.a = (uint8_t)(bg.a * opacity);
+                    DrawRectangle(
+                        (int)layout->x, (int)layout->y,
+                        (int)layout->width, (int)layout->height,
+                        bg
+                    );
+                }
             }
 
             // Render button border
