@@ -470,7 +470,19 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetJustifyContent(JNIEnv* env, jobject
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component || !component->layout) return;
+    if (!component) {
+        LOGE("nativeSetJustifyContent: component %d not found", componentId);
+        return;
+    }
+
+    // Ensure layout exists - create if needed
+    if (!component->layout) {
+        component->layout = ir_get_layout(component);
+        if (!component->layout) {
+            LOGE("nativeSetJustifyContent: failed to create layout for component %d", componentId);
+            return;
+        }
+    }
 
     const char* value_str = (*env)->GetStringUTFChars(env, value, NULL);
     if (value_str) {
@@ -480,6 +492,7 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetJustifyContent(JNIEnv* env, jobject
         else if (strcmp(value_str, "space-between") == 0) alignment = IR_ALIGNMENT_SPACE_BETWEEN;
         else if (strcmp(value_str, "space-around") == 0) alignment = IR_ALIGNMENT_SPACE_AROUND;
 
+        LOGI("nativeSetJustifyContent: component=%d, value=%s, alignment=%d", componentId, value_str, alignment);
         ir_set_justify_content(component->layout, alignment);
         (*env)->ReleaseStringUTFChars(env, value, value_str);
     }
@@ -495,7 +508,19 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetAlignItems(JNIEnv* env, jobject thi
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component || !component->layout) return;
+    if (!component) {
+        LOGE("nativeSetAlignItems: component %d not found", componentId);
+        return;
+    }
+
+    // Ensure layout exists - create if needed
+    if (!component->layout) {
+        component->layout = ir_get_layout(component);
+        if (!component->layout) {
+            LOGE("nativeSetAlignItems: failed to create layout for component %d", componentId);
+            return;
+        }
+    }
 
     const char* value_str = (*env)->GetStringUTFChars(env, value, NULL);
     if (value_str) {
@@ -504,6 +529,7 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetAlignItems(JNIEnv* env, jobject thi
         else if (strcmp(value_str, "end") == 0) alignment = IR_ALIGNMENT_END;
         else if (strcmp(value_str, "stretch") == 0) alignment = IR_ALIGNMENT_STRETCH;
 
+        LOGI("nativeSetAlignItems: component=%d, value=%s, alignment=%d", componentId, value_str, alignment);
         ir_set_align_items(component->layout, alignment);
         (*env)->ReleaseStringUTFChars(env, value, value_str);
     }

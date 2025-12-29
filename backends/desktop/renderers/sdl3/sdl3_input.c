@@ -174,6 +174,14 @@ static void render_dropdown_menu_sdl3_internal(DesktopIRRenderer* renderer, IRCo
     }
 }
 
+/**
+ * Public wrapper for rendering dropdown menus
+ * Called from main rendering loop to draw all open dropdown overlays
+ */
+void render_dropdown_menu_sdl3(DesktopIRRenderer* renderer, IRComponent* component) {
+    render_dropdown_menu_sdl3_internal(renderer, component);
+}
+
 // ============================================================================
 // SDL3 EVENT HANDLING
 // ============================================================================
