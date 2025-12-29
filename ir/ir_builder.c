@@ -804,6 +804,7 @@ void ir_destroy_component(IRComponent* component) {
     if (component->tag) free(component->tag);
     if (component->text_content) free(component->text_content);
     if (component->custom_data) free(component->custom_data);
+    if (component->visible_condition) free(component->visible_condition);
 
     // Free tab data
     if (component->tab_data) {

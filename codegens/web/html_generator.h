@@ -21,18 +21,11 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-// HTML Generation Modes
-typedef enum {
-    HTML_MODE_DISPLAY,      // Runtime rendering with JS (current behavior)
-    HTML_MODE_TRANSPILE,    // Static transpilation for roundtrip (new)
-} HtmlGeneratorMode;
-
 // HTML Generator Options
 typedef struct {
-    HtmlGeneratorMode mode;
     bool minify;            // Minify output (remove whitespace)
     bool inline_css;        // Inline CSS vs external file
-    bool preserve_ids;      // Preserve component IDs for debugging
+    bool include_runtime;   // Include JavaScript runtime for event handlers
 } HtmlGeneratorOptions;
 
 // HTML Generator Context

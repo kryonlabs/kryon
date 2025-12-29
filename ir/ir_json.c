@@ -13,6 +13,17 @@
 #include <stdio.h>
 #include <math.h>
 
+// Android logging
+#ifdef __ANDROID__
+#include <android/log.h>
+#define LOG_TAG "KryonIR"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#else
+#define LOGI(...) fprintf(stderr, __VA_ARGS__)
+#define LOGE(...) fprintf(stderr, __VA_ARGS__)
+#endif
+
 // Weak symbol fallback if C bindings aren't linked
 __attribute__((weak)) CSourceMetadata g_c_metadata = {0};
 
@@ -1146,6 +1157,12 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         cJSON_AddItemToObject(obj, "events", events);
     }
 
+    // Serialize conditional visibility
+    if (component->visible_condition && component->visible_condition[0] != '\0') {
+        cJSON_AddStringToObject(obj, "visible_condition", component->visible_condition);
+        cJSON_AddBoolToObject(obj, "visible_when_true", component->visible_when_true);
+    }
+
     // Serialize animations (stored in style)
     if (component->style && component->style->animation_count > 0) {
         IRAnimation* anim = component->style->animations[0];
@@ -1662,6 +1679,28 @@ static cJSON* json_serialize_logic_block(IRLogicBlock* logic_block) {
 
             if (func->name) {
                 cJSON_AddStringToObject(funcObj, "name", func->name);
+            }
+
+            // Serialize universal logic statements
+            if (func->has_universal && func->statement_count > 0 && func->statements) {
+                cJSON* statementsArray = cJSON_CreateArray();
+
+                for (int j = 0; j < func->statement_count; j++) {
+                    if (func->statements[j]) {
+                        cJSON* stmtJson = ir_stmt_to_json(func->statements[j]);
+                        if (stmtJson) {
+                            cJSON_AddItemToArray(statementsArray, stmtJson);
+                        }
+                    }
+                }
+
+                if (cJSON_GetArraySize(statementsArray) > 0) {
+                    cJSON* universalObj = cJSON_CreateObject();
+                    cJSON_AddItemToObject(universalObj, "statements", statementsArray);
+                    cJSON_AddItemToObject(funcObj, "universal", universalObj);
+                } else {
+                    cJSON_Delete(statementsArray);
+                }
             }
 
             // Serialize multi-language sources
@@ -3757,6 +3796,18 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         }
     }
 
+    // Conditional visibility
+    if ((item = cJSON_GetObjectItem(json, "visible_condition")) != NULL && cJSON_IsString(item)) {
+        component->visible_condition = strdup(item->valuestring);
+        // Default to true if not specified
+        component->visible_when_true = true;
+
+        cJSON* when_true = cJSON_GetObjectItem(json, "visible_when_true");
+        if (when_true && cJSON_IsBool(when_true)) {
+            component->visible_when_true = cJSON_IsTrue(when_true);
+        }
+    }
+
     // Children
     if ((item = cJSON_GetObjectItem(json, "children")) != NULL && cJSON_IsArray(item)) {
         int childCount = cJSON_GetArraySize(item);
@@ -3789,10 +3840,18 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
  * @return Deserialized component tree, or NULL on error
  */
 IRComponent* ir_deserialize_json(const char* json_string) {
-    if (!json_string) return NULL;
+    if (!json_string) {
+        LOGE("[ir_json] json_string is NULL");
+        return NULL;
+    }
 
     cJSON* root = cJSON_Parse(json_string);
-    if (!root) return NULL;
+    if (!root) {
+        const char* error_ptr = cJSON_GetErrorPtr();
+        LOGE("[ir_json] cJSON_Parse failed: %s", error_ptr ? error_ptr : "unknown error");
+        return NULL;
+    }
+    LOGI("[ir_json] cJSON_Parse succeeded, root=%p", root);
 
     // Parse component_definitions for expansion
     ComponentDefContext* ctx = NULL;
@@ -3820,14 +3879,21 @@ IRComponent* ir_deserialize_json(const char* json_string) {
     cJSON* componentJson = cJSON_GetObjectItem(root, "root");
     if (!componentJson) {
         componentJson = cJSON_GetObjectItem(root, "component");
+        LOGI("[ir_json] No 'root' key, trying 'component': %p", componentJson);
+    } else {
+        LOGI("[ir_json] Found 'root' key: %p", componentJson);
     }
 
     if (componentJson && cJSON_IsObject(componentJson)) {
+        LOGI("[ir_json] Deserializing wrapped format");
         // Wrapped format: { "root": {...} } or { "component": {...} }
         component = json_deserialize_component_with_context(componentJson, ctx);
+        LOGI("[ir_json] Deserialized component: %p", component);
     } else {
+        LOGI("[ir_json] Deserializing unwrapped format");
         // Unwrapped format: just component tree at root
         component = json_deserialize_component_with_context(root, ctx);
+        LOGI("[ir_json] Deserialized component (unwrapped): %p", component);
     }
 
     // Parse plugin requirements if present

@@ -158,11 +158,20 @@ bool android_ir_renderer_load_kir(AndroidIRRenderer* ir_renderer,
     json_data[size] = '\0';
     fclose(f);
 
+    __android_log_print(ANDROID_LOG_INFO, "KryonJNI",
+        "About to parse KIR: size=%zu, first 100 chars: %.100s", size, json_data);
+
     // Deserialize JSON
     IRComponent* root = ir_deserialize_json(json_data);
+
+    __android_log_print(ANDROID_LOG_INFO, "KryonJNI",
+        "ir_deserialize_json returned: %p", root);
+
     free(json_data);
 
     if (!root) {
+        __android_log_print(ANDROID_LOG_ERROR, "KryonJNI",
+            "Failed to deserialize KIR file: %s", kir_path);
         fprintf(stderr, "Failed to deserialize KIR file: %s\n", kir_path);
         return false;
     }

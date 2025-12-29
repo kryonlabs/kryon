@@ -771,6 +771,27 @@ bool ir_generate_component_commands(
     if (!component || !ctx || !bounds) return false;
     if (component->style && !component->style->visible) return true;
 
+    // Check conditional visibility
+    if (component->visible_condition && component->visible_condition[0] != '\0') {
+        extern IRExecutorContext* ir_executor_get_global(void);
+        extern int64_t ir_executor_get_var_int(IRExecutorContext* ctx, const char* name, uint32_t instance_id);
+
+        IRExecutorContext* executor = ir_executor_get_global();
+        if (executor) {
+            // Get variable value as int (0 = false, non-zero = true)
+            int64_t var_value = ir_executor_get_var_int(executor, component->visible_condition, component->owner_instance_id);
+            bool condition_value = (var_value != 0);
+
+            // Check if component should be visible
+            bool should_render = (condition_value == component->visible_when_true);
+
+            if (!should_render) {
+                // Component is hidden by condition - skip rendering
+                return true;
+            }
+        }
+    }
+
     /* Set rendered bounds for hit testing and positioning (dropdowns, etc) */
     component->rendered_bounds.x = bounds->x;
     component->rendered_bounds.y = bounds->y;

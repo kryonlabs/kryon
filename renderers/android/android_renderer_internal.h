@@ -145,6 +145,10 @@ struct AndroidRenderer {
     int window_width;
     int window_height;
 
+    // Display density info (for Android DPI scaling)
+    float density_scale;    // e.g., 1.0, 1.5, 2.0, 3.0
+    int density_dpi;        // e.g., 160, 240, 320, 480
+
     // Initialization flags
     bool initialized;
     bool egl_initialized;

@@ -384,7 +384,13 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
     renderer->running = true;
     renderer->last_root = root;
 
+    int frame_count = 0;
     while (renderer->running) {
+        frame_count++;
+        if (frame_count % 60 == 0) {
+            printf("[MAIN_LOOP] Frame %d, running=%d\n", frame_count, renderer->running);
+        }
+
         // Poll events via ops table
         if (renderer->ops->poll_events) {
             renderer->ops->poll_events(renderer);
@@ -420,7 +426,7 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         #endif
     }
 
-    printf("Desktop main loop ended\n");
+    printf("Desktop main loop ended after %d frames (running=%d)\n", frame_count, renderer->running);
     return true;
 }
 

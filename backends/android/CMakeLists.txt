@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project(kryon_android_backend C)
 
+# Android platform detection
+if(ANDROID)
+    add_definitions(-D__ANDROID__)
+endif()
+
 # Source files
 set(BACKEND_SOURCES
     ir_android_renderer.c

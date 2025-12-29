@@ -5,6 +5,11 @@ project(kryon_ir C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Android platform detection
+if(ANDROID)
+    add_definitions(-D__ANDROID__)
+endif()
+
 # Collect all IR source files
 file(GLOB IR_SOURCES
     ir_builder.c
