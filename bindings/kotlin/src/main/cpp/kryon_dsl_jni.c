@@ -617,7 +617,14 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetPosition(JNIEnv* env, jobject thiz,
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (!component || !component->style) return;
+    if (!component) return;
+
+    // Get or create style
+    IRStyle* style = ir_get_style(component);
+    if (!style) {
+        LOGE("nativeSetPosition: failed to get/create style");
+        return;
+    }
 
     const char* value_str = (*env)->GetStringUTFChars(env, value, NULL);
     if (value_str) {
@@ -625,11 +632,11 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetPosition(JNIEnv* env, jobject thiz,
 
         // Set position mode
         if (strcmp(value_str, "absolute") == 0) {
-            component->style->position_mode = IR_POSITION_ABSOLUTE;
+            style->position_mode = IR_POSITION_ABSOLUTE;
         } else if (strcmp(value_str, "relative") == 0) {
-            component->style->position_mode = IR_POSITION_RELATIVE;
+            style->position_mode = IR_POSITION_RELATIVE;
         } else if (strcmp(value_str, "fixed") == 0) {
-            component->style->position_mode = IR_POSITION_FIXED;
+            style->position_mode = IR_POSITION_FIXED;
         }
 
         (*env)->ReleaseStringUTFChars(env, value, value_str);
@@ -646,8 +653,15 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetLeft(JNIEnv* env, jobject thiz,
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (component && component->style) {
-        component->style->absolute_x = value;
+    if (!component) return;
+
+    // Get or create style
+    IRStyle* style = ir_get_style(component);
+    if (style) {
+        LOGD("Setting left for component %d: %.1f", componentId, value);
+        style->absolute_x = value;
+    } else {
+        LOGE("nativeSetLeft: failed to get/create style");
     }
 }
 
@@ -661,8 +675,15 @@ Java_com_kryon_dsl_ComponentBuilder_nativeSetTop(JNIEnv* env, jobject thiz,
     ir_set_context(dsl->ir_context);
 
     IRComponent* component = dsl_get_component(dsl, componentId);
-    if (component && component->style) {
-        component->style->absolute_y = value;
+    if (!component) return;
+
+    // Get or create style
+    IRStyle* style = ir_get_style(component);
+    if (style) {
+        LOGD("Setting top for component %d: %.1f", componentId, value);
+        style->absolute_y = value;
+    } else {
+        LOGE("nativeSetTop: failed to get/create style");
     }
 }
 

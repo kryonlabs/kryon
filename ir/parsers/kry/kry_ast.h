@@ -30,7 +30,8 @@ typedef enum {
     KRY_NODE_EXPRESSION,        // Inline expression ({ value + 1 })
     KRY_NODE_VAR_DECL,          // Variable declaration (const x = ..., let y = ..., var z = ...)
     KRY_NODE_STATIC_BLOCK,      // Static block (static { ... })
-    KRY_NODE_FOR_LOOP           // For loop (for item in array { ... })
+    KRY_NODE_FOR_LOOP,          // For loop (for item in array { ... })
+    KRY_NODE_IF                 // If/else conditional (if condition { ... } else { ... })
 } KryNodeType;
 
 // ============================================================================
@@ -99,6 +100,9 @@ struct KryNode {
     char* arguments;            // Raw arguments for component instantiation (e.g., "5" or "initialValue=10")
     char* var_type;             // Variable declaration type: "const", "let", or "var" (for KRY_NODE_VAR_DECL)
     char* state_type;           // State variable type: "int", "string", etc. (for KRY_NODE_STATE)
+
+    // If/else support
+    KryNode* else_branch;       // Else branch for KRY_NODE_IF (NULL if no else)
 
     // Source location (for error messages)
     uint32_t line;

@@ -1,6 +1,6 @@
 // If/Else Test - Conditional rendering
 
-state showMessage: bool = true
+var showMessage: bool = true
 
 App {
     windowTitle = "If/Else Test"

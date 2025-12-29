@@ -217,6 +217,7 @@ KryNode* kry_node_create(KryParser* parser, KryNodeType type) {
     node->value = NULL;
     node->is_component_definition = false;
     node->arguments = NULL;
+    node->else_branch = NULL;
     node->line = parser->line;
     node->column = parser->column;
 
@@ -805,6 +806,19 @@ static KryNode* parse_var_decl(KryParser* p, const char* var_type) {
 
     skip_whitespace(p);
 
+    // Optional type annotation: ": type"
+    char* type_annotation = NULL;
+    if (peek(p) == ':') {
+        match(p, ':');
+        skip_whitespace(p);
+        type_annotation = parse_identifier(p);
+        if (!type_annotation) {
+            kry_parser_error(p, "Expected type name after ':'");
+            return NULL;
+        }
+        skip_whitespace(p);
+    }
+
     // Expect '='
     if (!match(p, '=')) {
         kry_parser_error(p, "Expected '=' after variable name");
@@ -824,6 +838,8 @@ static KryNode* parse_var_decl(KryParser* p, const char* var_type) {
     var_node->name = var_name;
     var_node->value = value;
     var_node->var_type = kry_strdup(p, var_type);
+    // Store type annotation if provided (for future type checking)
+    (void)type_annotation;  // Currently unused, but parsed for forward compatibility
 
     return var_node;
 }
@@ -887,6 +903,59 @@ static KryNode* parse_for_loop(KryParser* p) {
     return for_node;
 }
 
+// Parse if statement: if condition { ... } else { ... }
+static KryNode* parse_if_statement(KryParser* p) {
+    skip_whitespace(p);
+
+    // Parse condition expression (identifier or expression)
+    KryValue* condition = parse_value(p);
+    if (!condition) {
+        kry_parser_error(p, "Expected condition after 'if'");
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Create if node
+    KryNode* if_node = kry_node_create(p, KRY_NODE_IF);
+    if (!if_node) return NULL;
+
+    // Store condition as value
+    if_node->value = condition;
+
+    // Parse then block
+    if (!parse_component_body(p, if_node)) {
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Check for else block
+    size_t saved_pos = p->pos;
+    char* else_keyword = parse_identifier(p);
+    if (else_keyword && keyword_match(else_keyword, "else")) {
+        skip_whitespace(p);
+
+        // Create else branch node (wrapper for else block children)
+        KryNode* else_node = kry_node_create(p, KRY_NODE_COMPONENT);
+        if (!else_node) return NULL;
+        else_node->name = "ElseBranch";  // Internal marker
+
+        // Parse else block
+        if (!parse_component_body(p, else_node)) {
+            return NULL;
+        }
+
+        if_node->else_branch = else_node;
+    } else {
+        // No else block, restore position
+        p->pos = saved_pos;
+        if_node->else_branch = NULL;
+    }
+
+    return if_node;
+}
+
 static KryNode* parse_component_body(KryParser* p, KryNode* component) {
     skip_whitespace(p);
 
@@ -936,6 +1005,12 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
             KryNode* for_loop = parse_for_loop(p);
             if (!for_loop) return NULL;
             kry_node_append_child(component, for_loop);
+        }
+        // Check for if statement
+        else if (keyword_match(name, "if")) {
+            KryNode* if_stmt = parse_if_statement(p);
+            if (!if_stmt) return NULL;
+            kry_node_append_child(component, if_stmt);
         }
         // Check if it's a property (=) or child component ({)
         else if (peek(p) == '=') {
