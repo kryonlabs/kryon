@@ -912,6 +912,30 @@ bool ir_css_parse_dimension(const char* value, IRDimension* out_dimension) {
             out_dimension->type = IR_DIMENSION_PERCENT;
             out_dimension->value = num;
             return true;
+        } else if (strcmp(unit, "rem") == 0) {
+            out_dimension->type = IR_DIMENSION_REM;
+            out_dimension->value = num;
+            return true;
+        } else if (strcmp(unit, "em") == 0) {
+            out_dimension->type = IR_DIMENSION_EM;
+            out_dimension->value = num;
+            return true;
+        } else if (strcmp(unit, "vw") == 0) {
+            out_dimension->type = IR_DIMENSION_VW;
+            out_dimension->value = num;
+            return true;
+        } else if (strcmp(unit, "vh") == 0) {
+            out_dimension->type = IR_DIMENSION_VH;
+            out_dimension->value = num;
+            return true;
+        } else if (strcmp(unit, "vmin") == 0) {
+            out_dimension->type = IR_DIMENSION_VMIN;
+            out_dimension->value = num;
+            return true;
+        } else if (strcmp(unit, "vmax") == 0) {
+            out_dimension->type = IR_DIMENSION_VMAX;
+            out_dimension->value = num;
+            return true;
         }
     }
 
@@ -1165,23 +1189,9 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                     style->font.family = strdup(family);
                 }
             } else {
-                // Take first font family before comma
-                char* comma = strchr(val, ',');
-                if (comma) {
-                    size_t len = comma - val;
-                    char* clean = malloc(len + 1);
-                    if (clean) {
-                        memcpy(clean, val, len);
-                        clean[len] = '\0';
-                        // Trim trailing whitespace
-                        while (len > 0 && isspace(clean[len-1])) clean[--len] = '\0';
-                        free(style->font.family);
-                        style->font.family = clean;
-                    }
-                } else {
-                    free(style->font.family);
-                    style->font.family = strdup(val);
-                }
+                // Store the entire font-family string for CSS roundtrip
+                free(style->font.family);
+                style->font.family = strdup(val);
             }
         }
         else if (strcmp(prop, "line-height") == 0) {

@@ -1878,7 +1878,13 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
 
     if (props->set_flags & IR_PROP_MAX_WIDTH) {
         if (props->max_width.type == IR_DIMENSION_PX) {
-            cJSON_AddNumberToObject(obj, "maxWidth", props->max_width.value);
+            char buf[32];
+            snprintf(buf, sizeof(buf), "%.0fpx", props->max_width.value);
+            cJSON_AddStringToObject(obj, "maxWidth", buf);
+        } else if (props->max_width.type == IR_DIMENSION_PERCENT) {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "%.1f%%", props->max_width.value);
+            cJSON_AddStringToObject(obj, "maxWidth", buf);
         }
     }
 
@@ -1967,6 +1973,44 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
         }
     }
 
+    // Transitions - serialize IRTransition array
+    if (props->set_flags & IR_PROP_TRANSITION) {
+        if (props->transitions && props->transition_count > 0) {
+            cJSON* transitions_arr = cJSON_CreateArray();
+            for (uint32_t i = 0; i < props->transition_count; i++) {
+                IRTransition* t = &props->transitions[i];
+                cJSON* t_obj = cJSON_CreateObject();
+                cJSON_AddNumberToObject(t_obj, "property", t->property);
+                cJSON_AddNumberToObject(t_obj, "duration", t->duration);
+                cJSON_AddNumberToObject(t_obj, "delay", t->delay);
+                cJSON_AddNumberToObject(t_obj, "easing", t->easing);
+                cJSON_AddItemToArray(transitions_arr, t_obj);
+            }
+            cJSON_AddItemToObject(obj, "transitions", transitions_arr);
+        }
+    }
+
+    // Transform - serialize IRTransform struct
+    if (props->set_flags & IR_PROP_TRANSFORM) {
+        cJSON* tr_obj = cJSON_CreateObject();
+        cJSON_AddNumberToObject(tr_obj, "translateX", props->transform.translate_x);
+        cJSON_AddNumberToObject(tr_obj, "translateY", props->transform.translate_y);
+        cJSON_AddNumberToObject(tr_obj, "scaleX", props->transform.scale_x);
+        cJSON_AddNumberToObject(tr_obj, "scaleY", props->transform.scale_y);
+        cJSON_AddNumberToObject(tr_obj, "rotate", props->transform.rotate);
+        cJSON_AddItemToObject(obj, "transform", tr_obj);
+    }
+
+    // Text decoration - serialize as number (bitmask)
+    if (props->set_flags & IR_PROP_TEXT_DECORATION) {
+        cJSON_AddNumberToObject(obj, "textDecoration", props->text_decoration);
+    }
+
+    // Box sizing
+    if (props->set_flags & IR_PROP_BOX_SIZING) {
+        cJSON_AddNumberToObject(obj, "boxSizing", props->box_sizing);
+    }
+
     return obj;
 }
 
@@ -2049,6 +2093,23 @@ static cJSON* json_serialize_stylesheet(IRStylesheet* stylesheet) {
             cJSON_AddItemToArray(rules, ruleObj);
         }
         cJSON_AddItemToObject(obj, "rules", rules);
+    }
+
+    // Serialize media queries
+    if (stylesheet->media_query_count > 0) {
+        cJSON* media_queries = cJSON_CreateArray();
+        for (uint32_t i = 0; i < stylesheet->media_query_count; i++) {
+            IRMediaQuery* mq = &stylesheet->media_queries[i];
+            cJSON* mqObj = cJSON_CreateObject();
+            if (mq->condition) {
+                cJSON_AddStringToObject(mqObj, "condition", mq->condition);
+            }
+            if (mq->css_content) {
+                cJSON_AddStringToObject(mqObj, "cssContent", mq->css_content);
+            }
+            cJSON_AddItemToArray(media_queries, mqObj);
+        }
+        cJSON_AddItemToObject(obj, "mediaQueries", media_queries);
     }
 
     return obj;
@@ -3023,7 +3084,9 @@ char* ir_serialize_json_complete(
     }
 
     // Add global stylesheet if present (for CSS descendant selectors round-trip)
-    if (ctx && ctx->stylesheet && (ctx->stylesheet->rule_count > 0 || ctx->stylesheet->variable_count > 0)) {
+    if (ctx && ctx->stylesheet && (ctx->stylesheet->rule_count > 0 ||
+                                    ctx->stylesheet->variable_count > 0 ||
+                                    ctx->stylesheet->media_query_count > 0)) {
         cJSON* stylesheetJson = json_serialize_stylesheet(ctx->stylesheet);
         if (stylesheetJson) {
             cJSON_AddItemToObject(wrapper, "stylesheet", stylesheetJson);
@@ -4997,6 +5060,74 @@ static void json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties
         if (props->grid_template_rows) free(props->grid_template_rows);
         props->grid_template_rows = strdup(item->valuestring);
     }
+
+    // Transitions - parse IRTransition array
+    if ((item = cJSON_GetObjectItem(propsObj, "transitions")) && cJSON_IsArray(item)) {
+        int count = cJSON_GetArraySize(item);
+        if (count > 0) {
+            props->transitions = malloc(count * sizeof(IRTransition));
+            if (props->transitions) {
+                memset(props->transitions, 0, count * sizeof(IRTransition));
+                props->transition_count = count;
+                for (int i = 0; i < count; i++) {
+                    cJSON* t_obj = cJSON_GetArrayItem(item, i);
+                    if (t_obj && cJSON_IsObject(t_obj)) {
+                        cJSON* prop_item;
+                        if ((prop_item = cJSON_GetObjectItem(t_obj, "property")) && cJSON_IsNumber(prop_item)) {
+                            props->transitions[i].property = (IRAnimationProperty)prop_item->valueint;
+                        }
+                        if ((prop_item = cJSON_GetObjectItem(t_obj, "duration")) && cJSON_IsNumber(prop_item)) {
+                            props->transitions[i].duration = (float)prop_item->valuedouble;
+                        }
+                        if ((prop_item = cJSON_GetObjectItem(t_obj, "delay")) && cJSON_IsNumber(prop_item)) {
+                            props->transitions[i].delay = (float)prop_item->valuedouble;
+                        }
+                        if ((prop_item = cJSON_GetObjectItem(t_obj, "easing")) && cJSON_IsNumber(prop_item)) {
+                            props->transitions[i].easing = (IREasingType)prop_item->valueint;
+                        }
+                    }
+                }
+                props->set_flags |= IR_PROP_TRANSITION;
+            }
+        }
+    }
+
+    // Transform - parse IRTransform object
+    if ((item = cJSON_GetObjectItem(propsObj, "transform")) && cJSON_IsObject(item)) {
+        cJSON* prop_item;
+        // Initialize to identity
+        props->transform.scale_x = 1.0f;
+        props->transform.scale_y = 1.0f;
+
+        if ((prop_item = cJSON_GetObjectItem(item, "translateX")) && cJSON_IsNumber(prop_item)) {
+            props->transform.translate_x = (float)prop_item->valuedouble;
+        }
+        if ((prop_item = cJSON_GetObjectItem(item, "translateY")) && cJSON_IsNumber(prop_item)) {
+            props->transform.translate_y = (float)prop_item->valuedouble;
+        }
+        if ((prop_item = cJSON_GetObjectItem(item, "scaleX")) && cJSON_IsNumber(prop_item)) {
+            props->transform.scale_x = (float)prop_item->valuedouble;
+        }
+        if ((prop_item = cJSON_GetObjectItem(item, "scaleY")) && cJSON_IsNumber(prop_item)) {
+            props->transform.scale_y = (float)prop_item->valuedouble;
+        }
+        if ((prop_item = cJSON_GetObjectItem(item, "rotate")) && cJSON_IsNumber(prop_item)) {
+            props->transform.rotate = (float)prop_item->valuedouble;
+        }
+        props->set_flags |= IR_PROP_TRANSFORM;
+    }
+
+    // Text decoration - parse as number (bitmask)
+    if ((item = cJSON_GetObjectItem(propsObj, "textDecoration")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_TEXT_DECORATION;
+        props->text_decoration = (uint8_t)item->valueint;
+    }
+
+    // Box sizing - parse as number
+    if ((item = cJSON_GetObjectItem(propsObj, "boxSizing")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_BOX_SIZING;
+        props->box_sizing = (uint8_t)item->valueint;
+    }
 }
 
 /**
@@ -5042,12 +5173,40 @@ static IRStylesheet* json_deserialize_stylesheet(cJSON* obj) {
             // Add rule (ir_stylesheet_add_rule parses the selector string)
             ir_stylesheet_add_rule(stylesheet, selector_str, &props);
 
-            // Free allocated strings (ir_stylesheet_add_rule deep copies them)
+            // Free allocated memory (ir_stylesheet_add_rule deep copies them)
             if (props.font_family) {
                 free(props.font_family);
             }
             if (props.background_image) {
                 free(props.background_image);
+            }
+            if (props.grid_template_columns) {
+                free(props.grid_template_columns);
+            }
+            if (props.grid_template_rows) {
+                free(props.grid_template_rows);
+            }
+            if (props.transitions) {
+                free(props.transitions);
+            }
+        }
+    }
+
+    // Deserialize media queries
+    cJSON* media_queries = cJSON_GetObjectItem(obj, "mediaQueries");
+    if (media_queries && cJSON_IsArray(media_queries)) {
+        cJSON* mq = NULL;
+        cJSON_ArrayForEach(mq, media_queries) {
+            if (!cJSON_IsObject(mq)) continue;
+
+            cJSON* conditionJson = cJSON_GetObjectItem(mq, "condition");
+            cJSON* cssContentJson = cJSON_GetObjectItem(mq, "cssContent");
+
+            if (conditionJson && cJSON_IsString(conditionJson) &&
+                cssContentJson && cJSON_IsString(cssContentJson)) {
+                ir_stylesheet_add_media_query(stylesheet,
+                    conditionJson->valuestring,
+                    cssContentJson->valuestring);
             }
         }
     }

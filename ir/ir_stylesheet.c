@@ -61,6 +61,14 @@ void ir_style_properties_cleanup(IRStyleProperties* props) {
         free(props->grid_template_rows);
         props->grid_template_rows = NULL;
     }
+    // Free transitions array
+    if (props->transitions) {
+        free(props->transitions);
+        props->transitions = NULL;
+        props->transition_count = 0;
+    }
+    // IRTransform is a struct, no need to free
+    // uint8_t text_decoration is a simple value, no need to free
 }
 
 // ============================================================================
@@ -533,6 +541,9 @@ IRStylesheet* ir_stylesheet_create(void) {
     stylesheet->variable_capacity = 32;
     stylesheet->variables = calloc(stylesheet->variable_capacity, sizeof(IRCSSVariable));
 
+    stylesheet->media_query_capacity = 8;
+    stylesheet->media_queries = calloc(stylesheet->media_query_capacity, sizeof(IRMediaQuery));
+
     return stylesheet;
 }
 
@@ -553,7 +564,34 @@ void ir_stylesheet_free(IRStylesheet* stylesheet) {
     }
     free(stylesheet->variables);
 
+    // Free media queries
+    for (uint32_t i = 0; i < stylesheet->media_query_count; i++) {
+        if (stylesheet->media_queries[i].condition) free(stylesheet->media_queries[i].condition);
+        if (stylesheet->media_queries[i].css_content) free(stylesheet->media_queries[i].css_content);
+    }
+    free(stylesheet->media_queries);
+
     free(stylesheet);
+}
+
+bool ir_stylesheet_add_media_query(IRStylesheet* stylesheet, const char* condition, const char* css_content) {
+    if (!stylesheet || !condition || !css_content) return false;
+
+    // Grow array if needed
+    if (stylesheet->media_query_count >= stylesheet->media_query_capacity) {
+        uint32_t new_capacity = stylesheet->media_query_capacity * 2;
+        IRMediaQuery* new_queries = realloc(stylesheet->media_queries,
+                                            new_capacity * sizeof(IRMediaQuery));
+        if (!new_queries) return false;
+        stylesheet->media_queries = new_queries;
+        stylesheet->media_query_capacity = new_capacity;
+    }
+
+    IRMediaQuery* query = &stylesheet->media_queries[stylesheet->media_query_count++];
+    query->condition = str_dup(condition);
+    query->css_content = str_dup(css_content);
+
+    return query->condition && query->css_content;
 }
 
 bool ir_stylesheet_add_rule(IRStylesheet* stylesheet, const char* selector,
@@ -598,6 +636,19 @@ bool ir_stylesheet_add_rule(IRStylesheet* stylesheet, const char* selector,
     if (properties->grid_template_rows) {
         rule->properties.grid_template_rows = str_dup(properties->grid_template_rows);
     }
+
+    // Deep copy transitions array if present
+    if (properties->transitions && properties->transition_count > 0) {
+        rule->properties.transitions = malloc(properties->transition_count * sizeof(IRTransition));
+        if (rule->properties.transitions) {
+            memcpy(rule->properties.transitions, properties->transitions,
+                   properties->transition_count * sizeof(IRTransition));
+            rule->properties.transition_count = properties->transition_count;
+        }
+    }
+
+    // IRTransform is already copied by the struct assignment above
+    // uint8_t text_decoration is already copied by the struct assignment above
 
     return true;
 }

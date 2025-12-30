@@ -76,6 +76,25 @@ void ir_css_add_variable(CSSStylesheet* stylesheet, const char* name, const char
     var->value = strdup(value);
 }
 
+// Add a media query to the stylesheet
+void ir_css_add_media_query(CSSStylesheet* stylesheet, const char* condition, const char* css_content) {
+    if (!stylesheet || !condition || !css_content) return;
+
+    // Grow array if needed
+    if (stylesheet->media_query_count >= stylesheet->media_query_capacity) {
+        uint32_t new_cap = stylesheet->media_query_capacity == 0 ? 8 : stylesheet->media_query_capacity * 2;
+        CSSMediaQuery* new_queries = realloc(stylesheet->media_queries, new_cap * sizeof(CSSMediaQuery));
+        if (!new_queries) return;
+        stylesheet->media_queries = new_queries;
+        stylesheet->media_query_capacity = new_cap;
+    }
+
+    // Add new media query
+    CSSMediaQuery* query = &stylesheet->media_queries[stylesheet->media_query_count++];
+    query->condition = strdup(condition);
+    query->css_content = strdup(css_content);
+}
+
 // Get a CSS variable value by name (without -- prefix)
 const char* ir_css_get_variable(CSSStylesheet* stylesheet, const char* name) {
     if (!stylesheet || !name) return NULL;
@@ -236,9 +255,64 @@ CSSStylesheet* ir_css_parse_stylesheet(const char* css_content) {
             continue;
         }
 
-        // Skip @rules (like @keyframes, @media, etc.)
+        // Handle @rules
         if (*p == '@') {
-            // Skip to end of rule
+            // Check if it's @media
+            if (strncmp(p, "@media", 6) == 0) {
+                // Parse @media query
+                const char* start = p + 6;
+                while (*start && isspace(*start)) start++;
+
+                // Find the condition (everything in parentheses or before '{')
+                const char* cond_start = start;
+                while (*start && *start != '{') start++;
+                if (*start == '\0') continue;
+
+                // Extract condition
+                size_t cond_len = start - cond_start;
+                char* condition_raw = malloc(cond_len + 1);
+                if (condition_raw) {
+                    memcpy(condition_raw, cond_start, cond_len);
+                    condition_raw[cond_len] = '\0';
+
+                    // Trim parentheses and whitespace
+                    char* cond = condition_raw;
+                    while (*cond && (isspace(*cond) || *cond == '(')) cond++;
+                    char* cond_end = cond + strlen(cond) - 1;
+                    while (cond_end > cond && (isspace(*cond_end) || *cond_end == ')')) cond_end--;
+                    cond_end[1] = '\0';
+
+                    // Now find the CSS content inside the braces
+                    start++; // Skip '{'
+                    int brace_depth = 1;
+                    const char* content_start = start;
+                    while (*start && brace_depth > 0) {
+                        if (*start == '{') brace_depth++;
+                        else if (*start == '}') brace_depth--;
+                        if (brace_depth > 0) start++;
+                    }
+
+                    // Extract content
+                    size_t content_len = start - content_start;
+                    char* content = malloc(content_len + 1);
+                    if (content) {
+                        memcpy(content, content_start, content_len);
+                        content[content_len] = '\0';
+
+                        // Add to stylesheet
+                        if (stylesheet) {
+                            ir_css_add_media_query(stylesheet, cond, content);
+                        }
+                        free(content);
+                    }
+                    free(condition_raw);
+                }
+                if (*start == '}') start++;
+                p = start;
+                continue;
+            }
+
+            // Skip other @rules (like @keyframes)
             int brace_depth = 0;
             while (*p) {
                 if (*p == '{') brace_depth++;
@@ -413,6 +487,13 @@ void ir_css_stylesheet_free(CSSStylesheet* stylesheet) {
         free(stylesheet->variables[i].value);
     }
     free(stylesheet->variables);
+
+    // Free media queries
+    for (uint32_t i = 0; i < stylesheet->media_query_count; i++) {
+        free(stylesheet->media_queries[i].condition);
+        free(stylesheet->media_queries[i].css_content);
+    }
+    free(stylesheet->media_queries);
 
     free(stylesheet);
 }
@@ -598,13 +679,17 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
         out->set_flags |= IR_PROP_HEIGHT;
     }
 
-    // Colors
+    // Colors - skip fully transparent colors (alpha=0)
     out->background = temp_style.background;
-    if (temp_style.background.type == IR_COLOR_SOLID || temp_style.background.type == IR_COLOR_GRADIENT) {
+    if (temp_style.background.type == IR_COLOR_GRADIENT) {
+        out->set_flags |= IR_PROP_BACKGROUND;
+    } else if (temp_style.background.type == IR_COLOR_SOLID && temp_style.background.data.a > 0) {
         out->set_flags |= IR_PROP_BACKGROUND;
     }
     out->color = temp_style.font.color;
-    if (temp_style.font.color.type == IR_COLOR_SOLID || temp_style.font.color.type == IR_COLOR_GRADIENT) {
+    if (temp_style.font.color.type == IR_COLOR_GRADIENT) {
+        out->set_flags |= IR_PROP_COLOR;
+    } else if (temp_style.font.color.type == IR_COLOR_SOLID && temp_style.font.color.data.a > 0) {
         out->set_flags |= IR_PROP_COLOR;
     }
 
@@ -673,7 +758,7 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
     if (temp_layout.flex.shrink != 1) out->set_flags |= IR_PROP_FLEX_SHRINK;
 
     // Grid template - store raw CSS string for roundtrip
-    // Look through original props for grid-template-columns/rows
+    // Look through original props for raw CSS string properties
     for (uint32_t i = 0; i < count; i++) {
         if (props[i].property && props[i].value) {
             if (strcmp(props[i].property, "grid-template-columns") == 0) {
@@ -682,6 +767,147 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
             } else if (strcmp(props[i].property, "grid-template-rows") == 0) {
                 out->grid_template_rows = strdup(props[i].value);
                 out->set_flags |= IR_PROP_GRID_TEMPLATE_ROWS;
+            } else if (strcmp(props[i].property, "transition") == 0) {
+                // Parse transition: "all 0.2s ease" or "color 0.3s ease-in-out"
+                // Format: property duration [timing-function] [delay]
+                const char* val = props[i].value;
+
+                // Allocate a single transition (most common case)
+                out->transitions = malloc(sizeof(IRTransition));
+                if (out->transitions) {
+                    memset(out->transitions, 0, sizeof(IRTransition));
+                    out->transition_count = 1;
+
+                    IRTransition* t = out->transitions;
+                    t->property = IR_ANIM_PROP_CUSTOM;  // "all" or specific property
+                    t->duration = 0.2f;  // default
+                    t->delay = 0.0f;
+                    t->easing = IR_EASING_EASE_IN_OUT;  // CSS default is "ease"
+
+                    // Parse duration (look for number followed by 's' or 'ms')
+                    const char* p = val;
+                    while (*p) {
+                        // Skip to next potential number
+                        while (*p && !isdigit(*p) && *p != '.') p++;
+                        if (!*p) break;
+
+                        // Parse number
+                        float num = 0;
+                        sscanf(p, "%f", &num);
+
+                        // Skip past number
+                        while (*p && (isdigit(*p) || *p == '.')) p++;
+
+                        // Check unit
+                        if (*p == 'm' && *(p+1) == 's') {
+                            t->duration = num / 1000.0f;  // ms to seconds
+                            p += 2;
+                        } else if (*p == 's') {
+                            t->duration = num;
+                            p++;
+                        }
+                        break;  // Only parse first duration
+                    }
+
+                    // Parse easing function
+                    if (strstr(val, "ease-in-out")) {
+                        t->easing = IR_EASING_EASE_IN_OUT;
+                    } else if (strstr(val, "ease-out")) {
+                        t->easing = IR_EASING_EASE_OUT;
+                    } else if (strstr(val, "ease-in")) {
+                        t->easing = IR_EASING_EASE_IN;
+                    } else if (strstr(val, "ease")) {
+                        t->easing = IR_EASING_EASE_IN_OUT;  // CSS "ease" is similar
+                    } else if (strstr(val, "linear")) {
+                        t->easing = IR_EASING_LINEAR;
+                    }
+
+                    out->set_flags |= IR_PROP_TRANSITION;
+                }
+            } else if (strcmp(props[i].property, "transform") == 0) {
+                // Parse transform: "scale(1.05)" or "translateX(10px) rotate(45deg)"
+                const char* val = props[i].value;
+
+                // Initialize transform to identity
+                out->transform.translate_x = 0;
+                out->transform.translate_y = 0;
+                out->transform.scale_x = 1.0f;
+                out->transform.scale_y = 1.0f;
+                out->transform.rotate = 0;
+
+                // Parse scale()
+                const char* scale_pos = strstr(val, "scale(");
+                if (scale_pos) {
+                    float scale = 1.0f;
+                    if (sscanf(scale_pos + 6, "%f", &scale) == 1) {
+                        out->transform.scale_x = scale;
+                        out->transform.scale_y = scale;
+                    }
+                }
+
+                // Parse scaleX()
+                const char* scale_x_pos = strstr(val, "scaleX(");
+                if (scale_x_pos) {
+                    sscanf(scale_x_pos + 7, "%f", &out->transform.scale_x);
+                }
+
+                // Parse scaleY()
+                const char* scale_y_pos = strstr(val, "scaleY(");
+                if (scale_y_pos) {
+                    sscanf(scale_y_pos + 7, "%f", &out->transform.scale_y);
+                }
+
+                // Parse translateX()
+                const char* tx_pos = strstr(val, "translateX(");
+                if (tx_pos) {
+                    sscanf(tx_pos + 11, "%f", &out->transform.translate_x);
+                }
+
+                // Parse translateY()
+                const char* ty_pos = strstr(val, "translateY(");
+                if (ty_pos) {
+                    sscanf(ty_pos + 11, "%f", &out->transform.translate_y);
+                }
+
+                // Parse translate(x, y)
+                const char* translate_pos = strstr(val, "translate(");
+                if (translate_pos && !strstr(val, "translateX") && !strstr(val, "translateY")) {
+                    sscanf(translate_pos + 10, "%f", &out->transform.translate_x);
+                    const char* comma = strchr(translate_pos + 10, ',');
+                    if (comma) {
+                        sscanf(comma + 1, "%f", &out->transform.translate_y);
+                    }
+                }
+
+                // Parse rotate()
+                const char* rotate_pos = strstr(val, "rotate(");
+                if (rotate_pos) {
+                    float rotate = 0;
+                    sscanf(rotate_pos + 7, "%f", &rotate);
+                    out->transform.rotate = rotate;
+                }
+
+                out->set_flags |= IR_PROP_TRANSFORM;
+            } else if (strcmp(props[i].property, "text-decoration") == 0) {
+                // Parse text-decoration: "none", "underline", "line-through", "overline"
+                const char* val = props[i].value;
+                out->text_decoration = IR_TEXT_DECORATION_NONE;
+
+                if (strstr(val, "underline")) {
+                    out->text_decoration |= IR_TEXT_DECORATION_UNDERLINE;
+                }
+                if (strstr(val, "overline")) {
+                    out->text_decoration |= IR_TEXT_DECORATION_OVERLINE;
+                }
+                if (strstr(val, "line-through")) {
+                    out->text_decoration |= IR_TEXT_DECORATION_LINE_THROUGH;
+                }
+                // "none" is already 0, no action needed
+
+                out->set_flags |= IR_PROP_TEXT_DECORATION;
+            } else if (strcmp(props[i].property, "box-sizing") == 0) {
+                out->box_sizing = (strcmp(props[i].value, "border-box") == 0) ? 1 : 0;
+                out->set_flags |= IR_PROP_BOX_SIZING;
             }
         }
     }
@@ -763,6 +989,13 @@ IRStylesheet* ir_css_stylesheet_to_ir_stylesheet(CSSStylesheet* css_stylesheet) 
 
         // Cleanup props (font_family is copied in add_rule)
         ir_style_properties_cleanup(&props);
+    }
+
+    // Copy media queries
+    for (uint32_t i = 0; i < css_stylesheet->media_query_count; i++) {
+        ir_stylesheet_add_media_query(ir_stylesheet,
+                                      css_stylesheet->media_queries[i].condition,
+                                      css_stylesheet->media_queries[i].css_content);
     }
 
     return ir_stylesheet;
