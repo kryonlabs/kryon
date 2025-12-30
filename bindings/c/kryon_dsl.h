@@ -173,7 +173,7 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
  */
 #define NATIVE_CANVAS(callback, ...) \
     ({ \
-        IRComponent* _comp = ir_create_native_canvas(800, 600); \
+        IRComponent* _comp = ir_create_native_canvas(0, 0); \
         if (_comp) { \
             _kryon_add_to_parent(_comp); \
             _kryon_push_parent(_comp); \

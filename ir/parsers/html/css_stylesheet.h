@@ -3,6 +3,7 @@
 
 #include "css_parser.h"
 #include "../../ir_core.h"
+#include "../../ir_stylesheet.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -26,6 +27,12 @@ typedef struct {
     char* value;  // Resolved value (e.g., "#6366f1")
 } CSSVariable;
 
+// CSS Media Query (stores raw condition and content for roundtrip)
+typedef struct {
+    char* condition;   // e.g., "max-width: 640px"
+    char* css_content; // Raw CSS rules inside the media query
+} CSSMediaQuery;
+
 // A parsed stylesheet containing multiple rules
 typedef struct {
     CSSRule* rules;
@@ -36,6 +43,11 @@ typedef struct {
     CSSVariable* variables;
     uint32_t variable_count;
     uint32_t variable_capacity;
+
+    // Media Queries
+    CSSMediaQuery* media_queries;
+    uint32_t media_query_count;
+    uint32_t media_query_capacity;
 } CSSStylesheet;
 
 // Parse CSS content into a stylesheet
@@ -112,5 +124,8 @@ const char* ir_css_get_variable(CSSStylesheet* stylesheet, const char* name);
 
 // Add a CSS variable to the stylesheet
 void ir_css_add_variable(CSSStylesheet* stylesheet, const char* name, const char* value);
+
+// Add a media query to the stylesheet
+void ir_css_add_media_query(CSSStylesheet* stylesheet, const char* condition, const char* css_content);
 
 #endif // IR_CSS_STYLESHEET_H

@@ -1692,13 +1692,19 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
         }
 
         if (props->set_flags & IR_PROP_BACKGROUND) {
-            const char* color_str = get_stylesheet_color_string(props->background);
-            css_generator_write_format(generator, "  background-color: %s;\n", color_str);
+            // Skip fully transparent colors
+            if (props->background.type != IR_COLOR_SOLID || props->background.data.a > 0) {
+                const char* color_str = get_stylesheet_color_string(props->background);
+                css_generator_write_format(generator, "  background-color: %s;\n", color_str);
+            }
         }
 
         if (props->set_flags & IR_PROP_COLOR) {
-            const char* color_str = get_stylesheet_color_string(props->color);
-            css_generator_write_format(generator, "  color: %s;\n", color_str);
+            // Skip fully transparent colors
+            if (props->color.type != IR_COLOR_SOLID || props->color.data.a > 0) {
+                const char* color_str = get_stylesheet_color_string(props->color);
+                css_generator_write_format(generator, "  color: %s;\n", color_str);
+            }
         }
 
         if (props->set_flags & IR_PROP_FONT_SIZE) {
@@ -1780,8 +1786,112 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
             css_generator_write_string(generator, "  color: transparent;\n");
         }
 
+        // Transition - convert IRTransition to CSS
+        if (props->set_flags & IR_PROP_TRANSITION) {
+            if (props->transitions && props->transition_count > 0) {
+                IRTransition* t = &props->transitions[0];
+
+                // Get easing function string
+                const char* easing_str = "linear";
+                switch (t->easing) {
+                    case IR_EASING_EASE_IN: easing_str = "ease-in"; break;
+                    case IR_EASING_EASE_OUT: easing_str = "ease-out"; break;
+                    case IR_EASING_EASE_IN_OUT: easing_str = "ease"; break;
+                    case IR_EASING_EASE_IN_QUAD: easing_str = "ease-in"; break;
+                    case IR_EASING_EASE_OUT_QUAD: easing_str = "ease-out"; break;
+                    case IR_EASING_EASE_IN_OUT_QUAD: easing_str = "ease-in-out"; break;
+                    default: break;
+                }
+
+                // "all" for IR_ANIM_PROP_CUSTOM (generic transition)
+                css_generator_write_format(generator, "  transition: all %.1fs %s;\n",
+                                           t->duration, easing_str);
+            }
+        }
+
+        // Transform - convert IRTransform to CSS
+        if (props->set_flags & IR_PROP_TRANSFORM) {
+            IRTransform* tr = &props->transform;
+            bool has_any = false;
+            char transform_buf[256] = "";
+            int pos = 0;
+
+            // Check if scale is non-identity
+            if (tr->scale_x != 1.0f || tr->scale_y != 1.0f) {
+                if (tr->scale_x == tr->scale_y) {
+                    pos += snprintf(transform_buf + pos, sizeof(transform_buf) - pos,
+                                    "scale(%.2f)", tr->scale_x);
+                } else {
+                    pos += snprintf(transform_buf + pos, sizeof(transform_buf) - pos,
+                                    "scale(%.2f, %.2f)", tr->scale_x, tr->scale_y);
+                }
+                has_any = true;
+            }
+
+            // Check if translate is non-zero
+            if (tr->translate_x != 0 || tr->translate_y != 0) {
+                if (has_any) pos += snprintf(transform_buf + pos, sizeof(transform_buf) - pos, " ");
+                if (tr->translate_y == 0) {
+                    pos += snprintf(transform_buf + pos, sizeof(transform_buf) - pos,
+                                    "translateX(%.0fpx)", tr->translate_x);
+                } else if (tr->translate_x == 0) {
+                    pos += snprintf(transform_buf + pos, sizeof(transform_buf) - pos,
+                                    "translateY(%.0fpx)", tr->translate_y);
+                } else {
+                    pos += snprintf(transform_buf + pos, sizeof(transform_buf) - pos,
+                                    "translate(%.0fpx, %.0fpx)", tr->translate_x, tr->translate_y);
+                }
+                has_any = true;
+            }
+
+            // Check if rotate is non-zero
+            if (tr->rotate != 0) {
+                if (has_any) pos += snprintf(transform_buf + pos, sizeof(transform_buf) - pos, " ");
+                pos += snprintf(transform_buf + pos, sizeof(transform_buf) - pos,
+                                "rotate(%.0fdeg)", tr->rotate);
+                has_any = true;
+            }
+
+            if (has_any) {
+                css_generator_write_format(generator, "  transform: %s;\n", transform_buf);
+            }
+        }
+
+        // Text decoration
+        if (props->set_flags & IR_PROP_TEXT_DECORATION) {
+            if (props->text_decoration == IR_TEXT_DECORATION_NONE) {
+                css_generator_write_string(generator, "  text-decoration: none;\n");
+            } else {
+                char decoration_buf[64] = "";
+                int pos = 0;
+                if (props->text_decoration & IR_TEXT_DECORATION_UNDERLINE) {
+                    pos += snprintf(decoration_buf + pos, sizeof(decoration_buf) - pos, "underline");
+                }
+                if (props->text_decoration & IR_TEXT_DECORATION_OVERLINE) {
+                    if (pos > 0) pos += snprintf(decoration_buf + pos, sizeof(decoration_buf) - pos, " ");
+                    pos += snprintf(decoration_buf + pos, sizeof(decoration_buf) - pos, "overline");
+                }
+                if (props->text_decoration & IR_TEXT_DECORATION_LINE_THROUGH) {
+                    if (pos > 0) pos += snprintf(decoration_buf + pos, sizeof(decoration_buf) - pos, " ");
+                    pos += snprintf(decoration_buf + pos, sizeof(decoration_buf) - pos, "line-through");
+                }
+                if (pos > 0) {
+                    css_generator_write_format(generator, "  text-decoration: %s;\n", decoration_buf);
+                }
+            }
+        }
+
+        // Box sizing
+        if (props->set_flags & IR_PROP_BOX_SIZING) {
+            css_generator_write_format(generator, "  box-sizing: %s;\n",
+                                       props->box_sizing ? "border-box" : "content-box");
+        }
+
         css_generator_write_string(generator, "}\n\n");
     }
+
+    // NOTE: Media queries are output at the end of css_generator_generate()
+    // to ensure they come after all base styles
 }
 
 const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
@@ -1898,6 +2008,22 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
 
     // Generate component-specific styles
     generate_component_css(generator, root);
+
+    // Output media queries at the very end (after all base styles)
+    if (g_ir_context && g_ir_context->stylesheet) {
+        IRStylesheet* stylesheet = g_ir_context->stylesheet;
+        if (stylesheet->media_query_count > 0) {
+            css_generator_write_string(generator, "/* Media Queries */\n");
+            for (uint32_t i = 0; i < stylesheet->media_query_count; i++) {
+                IRMediaQuery* mq = &stylesheet->media_queries[i];
+                if (mq->condition && mq->css_content) {
+                    css_generator_write_format(generator, "@media (%s) {\n", mq->condition);
+                    css_generator_write_string(generator, mq->css_content);
+                    css_generator_write_string(generator, "}\n\n");
+                }
+            }
+        }
+    }
 
     return generator->output_buffer;
 }

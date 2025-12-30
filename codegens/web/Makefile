@@ -56,9 +56,9 @@ style_analyzer.o: style_analyzer.c style_analyzer.h
 $(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o
 	$(AR) $(ARFLAGS) $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o
 
-# Create shared library
+# Create shared library (dynamically link libkryon_ir to avoid symbol conflicts)
 $(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o ../../build/libkryon_ir.a
+	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o -L$(BUILD_DIR) -lkryon_ir
 
 # Build kir_to_html CLI tool
 $(KIR_TO_HTML): $(WEB_STATIC_LIB) kir_to_html.c

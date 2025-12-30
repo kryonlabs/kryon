@@ -101,10 +101,22 @@ IRComponent* ir_create_native_canvas(uint16_t width, uint16_t height) {
 
     comp->custom_data = (char*)data;
 
-    // Ensure style exists and set default dimensions
+    // Ensure style exists and set dimensions
     ir_get_style(comp);  // Creates style if it doesn't exist
-    ir_set_width(comp, IR_DIMENSION_PX, (float)width);
-    ir_set_height(comp, IR_DIMENSION_PX, (float)height);
+
+    // If width/height are 0, use 100% to fill parent
+    // Otherwise use explicit pixel dimensions
+    if (width == 0) {
+        ir_set_width(comp, IR_DIMENSION_PERCENT, 100.0f);
+    } else {
+        ir_set_width(comp, IR_DIMENSION_PX, (float)width);
+    }
+
+    if (height == 0) {
+        ir_set_height(comp, IR_DIMENSION_PERCENT, 100.0f);
+    } else {
+        ir_set_height(comp, IR_DIMENSION_PX, (float)height);
+    }
 
     return comp;
 }

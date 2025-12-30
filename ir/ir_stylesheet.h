@@ -109,7 +109,7 @@ typedef struct IRStyleProperties {
     IRSpacing margin;
 
     // Typography
-    float font_size;
+    IRDimension font_size;  // Use IRDimension to preserve rem/em units
     uint16_t font_weight;
     bool font_bold;
     bool font_italic;
@@ -135,6 +135,19 @@ typedef struct IRStyleProperties {
     // Grid layout
     char* grid_template_columns;   // Raw CSS string: "repeat(auto-fit, minmax(240px, 1fr))"
     char* grid_template_rows;      // Raw CSS string for rows
+
+    // Transforms (uses IRTransform from ir_core.h)
+    IRTransform transform;         // Transform: translate, scale, rotate
+
+    // Transitions (array of IRTransition from ir_core.h)
+    IRTransition* transitions;     // Array of transition definitions
+    uint32_t transition_count;     // Number of transitions
+
+    // Text decoration (uses IR_TEXT_DECORATION_* flags from ir_core.h)
+    uint8_t text_decoration;       // Bitmask: IR_TEXT_DECORATION_NONE, _UNDERLINE, _LINE_THROUGH
+
+    // Box model
+    uint8_t box_sizing;            // 0 = content-box, 1 = border-box
 
     // Other
     float opacity;
@@ -182,6 +195,10 @@ typedef struct IRStyleProperties {
 #define IR_PROP_TEXT_FILL_COLOR  (1ULL << 34)
 #define IR_PROP_GRID_TEMPLATE_COLUMNS (1ULL << 35)
 #define IR_PROP_GRID_TEMPLATE_ROWS    (1ULL << 36)
+#define IR_PROP_TRANSITION            (1ULL << 37)
+#define IR_PROP_TRANSFORM             (1ULL << 38)
+#define IR_PROP_TEXT_DECORATION       (1ULL << 39)
+#define IR_PROP_BOX_SIZING            (1ULL << 40)
 
 // ============================================================================
 // Style Rules
@@ -208,11 +225,23 @@ typedef struct {
 } IRCSSVariable;
 
 // ============================================================================
+// Media Queries (stored as raw CSS for roundtrip)
+// ============================================================================
+
+/**
+ * A media query block with condition and CSS content
+ */
+typedef struct {
+    char* condition;   // e.g., "max-width: 640px"
+    char* css_content; // Raw CSS rules inside the media query
+} IRMediaQuery;
+
+// ============================================================================
 // Global Stylesheet
 // ============================================================================
 
 /**
- * A stylesheet containing rules and CSS variables
+ * A stylesheet containing rules, CSS variables, and media queries
  * Attached to IRContext for global access
  */
 typedef struct IRStylesheet {
@@ -223,6 +252,10 @@ typedef struct IRStylesheet {
     IRCSSVariable* variables;
     uint32_t variable_count;
     uint32_t variable_capacity;
+
+    IRMediaQuery* media_queries;
+    uint32_t media_query_count;
+    uint32_t media_query_capacity;
 } IRStylesheet;
 
 // ============================================================================
@@ -258,6 +291,13 @@ bool ir_stylesheet_add_variable(IRStylesheet* stylesheet, const char* name, cons
  * Get a CSS variable value by name
  */
 const char* ir_stylesheet_get_variable(IRStylesheet* stylesheet, const char* name);
+
+/**
+ * Add a media query to the stylesheet
+ * @param condition The media query condition (e.g., "max-width: 640px")
+ * @param css_content The raw CSS content inside the media query
+ */
+bool ir_stylesheet_add_media_query(IRStylesheet* stylesheet, const char* condition, const char* css_content);
 
 // ============================================================================
 // Selector Parsing Functions
