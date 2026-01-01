@@ -169,6 +169,17 @@ bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component
         opacity *= component->style->opacity;
     }
 
+    // Debug: trace component rendering on resize
+    if (component->type == IR_COMPONENT_NATIVE_CANVAS) {
+        static float last_w = 0, last_h = 0;
+        if (layout->width != last_w || layout->height != last_h) {
+            printf("[RAYLIB_DEBUG] NATIVE_CANVAS id=%u layout changed: %.0fx%.0f -> %.0fx%.0f\n",
+                   component->id, last_w, last_h, layout->width, layout->height);
+            last_w = layout->width;
+            last_h = layout->height;
+        }
+    }
+
     // Render based on component type
     switch (component->type) {
         case IR_COMPONENT_CONTAINER:
@@ -352,6 +363,15 @@ bool render_component_raylib(DesktopIRRenderer* renderer, IRComponent* component
             float width = layout->width;
             float height = layout->height;
 
+            // Debug: Print canvas dimensions
+            static float last_canvas_w = 0, last_canvas_h = 0;
+            if (width != last_canvas_w || height != last_canvas_h) {
+                printf("[CANVAS] Render bounds changed: %.0fx%.0f -> %.0fx%.0f\n",
+                       last_canvas_w, last_canvas_h, width, height);
+                last_canvas_w = width;
+                last_canvas_h = height;
+            }
+
             // Set up scissor to clip rendering to canvas bounds
             BeginScissorMode((int)x, (int)y, (int)width, (int)height);
 
@@ -433,12 +453,22 @@ static bool raylib_render_component(DesktopIRRenderer* renderer, IRComponent* ro
 
     ClearBackground(bg_color);
 
+    // Get live window dimensions (handles resize)
+    int window_width = GetScreenWidth();
+    int window_height = GetScreenHeight();
+
+    // Update cached dimensions if they changed
+    if (data->window_width != window_width || data->window_height != window_height) {
+        data->window_width = window_width;
+        data->window_height = window_height;
+    }
+
     // Root layout rectangle
     LayoutRect root_rect = {
         .x = 0,
         .y = 0,
-        .width = (float)data->window_width,
-        .height = (float)data->window_height
+        .width = (float)window_width,
+        .height = (float)window_height
     };
 
     // Render component tree

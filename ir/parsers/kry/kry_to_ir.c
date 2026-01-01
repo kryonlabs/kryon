@@ -1897,7 +1897,8 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                                 }
                             } else if (strcmp(prop_name, "fontSize") == 0) {
                                 if (val->type == KRY_VALUE_NUMBER) {
-                                    props.font_size = (float)val->number_value;
+                                    props.font_size.type = IR_DIMENSION_PX;
+                                    props.font_size.value = (float)val->number_value;
                                     props.set_flags |= IR_PROP_FONT_SIZE;
                                 }
                             } else if (strcmp(prop_name, "borderRadius") == 0) {
@@ -2619,7 +2620,8 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                                 }
                             } else if (strcmp(prop_name, "fontSize") == 0) {
                                 if (val->type == KRY_VALUE_NUMBER) {
-                                    props.font_size = (float)val->number_value;
+                                    props.font_size.type = IR_DIMENSION_PX;
+                                    props.font_size.value = (float)val->number_value;
                                     props.set_flags |= IR_PROP_FONT_SIZE;
                                 }
                             } else if (strcmp(prop_name, "borderRadius") == 0) {

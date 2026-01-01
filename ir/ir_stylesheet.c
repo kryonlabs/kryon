@@ -67,8 +67,121 @@ void ir_style_properties_cleanup(IRStyleProperties* props) {
         props->transitions = NULL;
         props->transition_count = 0;
     }
-    // IRTransform is a struct, no need to free
-    // uint8_t text_decoration is a simple value, no need to free
+    // Free color var_names (safe after deep copy owns them)
+    if (props->background.var_name) {
+        free(props->background.var_name);
+        props->background.var_name = NULL;
+    }
+    if (props->color.var_name) {
+        free(props->color.var_name);
+        props->color.var_name = NULL;
+    }
+    if (props->border_color.var_name) {
+        free(props->border_color.var_name);
+        props->border_color.var_name = NULL;
+    }
+    if (props->text_fill_color.var_name) {
+        free(props->text_fill_color.var_name);
+        props->text_fill_color.var_name = NULL;
+    }
+}
+
+/**
+ * Deep copy IRStyleProperties (properly handles all pointer fields)
+ * This avoids the shallow copy + selective deep copy pattern that causes double-frees
+ */
+void ir_style_properties_deep_copy(const IRStyleProperties* src, IRStyleProperties* dst) {
+    if (!src || !dst) return;
+
+    // Start with a clean struct
+    memset(dst, 0, sizeof(IRStyleProperties));
+
+    // Copy all dimension fields
+    dst->width = src->width;
+    dst->height = src->height;
+    dst->min_width = src->min_width;
+    dst->max_width = src->max_width;
+    dst->min_height = src->min_height;
+    dst->max_height = src->max_height;
+
+    // Deep copy colors (copy struct then duplicate var_name if present)
+    dst->background = src->background;
+    if (src->background.var_name) {
+        dst->background.var_name = str_dup(src->background.var_name);
+    }
+    dst->color = src->color;
+    if (src->color.var_name) {
+        dst->color.var_name = str_dup(src->color.var_name);
+    }
+    dst->border_color = src->border_color;
+    if (src->border_color.var_name) {
+        dst->border_color.var_name = str_dup(src->border_color.var_name);
+    }
+    dst->text_fill_color = src->text_fill_color;
+    if (src->text_fill_color.var_name) {
+        dst->text_fill_color.var_name = str_dup(src->text_fill_color.var_name);
+    }
+
+    // Deep copy string pointers
+    if (src->background_image) {
+        dst->background_image = str_dup(src->background_image);
+    }
+    if (src->font_family) {
+        dst->font_family = str_dup(src->font_family);
+    }
+    if (src->grid_template_columns) {
+        dst->grid_template_columns = str_dup(src->grid_template_columns);
+    }
+    if (src->grid_template_rows) {
+        dst->grid_template_rows = str_dup(src->grid_template_rows);
+    }
+
+    // Copy remaining value fields
+    dst->background_clip = src->background_clip;
+    dst->border_width = src->border_width;
+    dst->border_width_top = src->border_width_top;
+    dst->border_width_right = src->border_width_right;
+    dst->border_width_bottom = src->border_width_bottom;
+    dst->border_width_left = src->border_width_left;
+    dst->border_radius = src->border_radius;
+    dst->padding = src->padding;
+    dst->margin = src->margin;
+    dst->font_size = src->font_size;
+    dst->font_weight = src->font_weight;
+    dst->font_bold = src->font_bold;
+    dst->font_italic = src->font_italic;
+    dst->text_align = src->text_align;
+    dst->line_height = src->line_height;
+    dst->letter_spacing = src->letter_spacing;
+    dst->display = src->display;
+    dst->display_explicit = src->display_explicit;
+    dst->flex_direction = src->flex_direction;
+    dst->flex_wrap = src->flex_wrap;
+    dst->justify_content = src->justify_content;
+    dst->align_items = src->align_items;
+    dst->align_content = src->align_content;
+    dst->gap = src->gap;
+    dst->row_gap = src->row_gap;
+    dst->column_gap = src->column_gap;
+    dst->flex_grow = src->flex_grow;
+    dst->flex_shrink = src->flex_shrink;
+    dst->transform = src->transform;
+    dst->text_decoration = src->text_decoration;
+    dst->box_sizing = src->box_sizing;
+    dst->object_fit = src->object_fit;
+    dst->opacity = src->opacity;
+    dst->z_index = src->z_index;
+    dst->set_flags = src->set_flags;
+
+    // Deep copy transitions array
+    if (src->transitions && src->transition_count > 0) {
+        dst->transitions = malloc(src->transition_count * sizeof(IRTransition));
+        if (dst->transitions) {
+            memcpy(dst->transitions, src->transitions,
+                   src->transition_count * sizeof(IRTransition));
+            dst->transition_count = src->transition_count;
+        }
+    }
 }
 
 // ============================================================================
@@ -615,40 +728,9 @@ bool ir_stylesheet_add_rule(IRStylesheet* stylesheet, const char* selector,
     // Add rule
     IRStyleRule* rule = &stylesheet->rules[stylesheet->rule_count++];
     rule->selector = chain;
-    rule->properties = *properties;  // Copy properties
 
-    // Deep copy font_family if present
-    if (properties->font_family) {
-        rule->properties.font_family = str_dup(properties->font_family);
-    }
-
-    // Deep copy background_image if present
-    if (properties->background_image) {
-        rule->properties.background_image = str_dup(properties->background_image);
-    }
-
-    // Deep copy grid_template_columns if present
-    if (properties->grid_template_columns) {
-        rule->properties.grid_template_columns = str_dup(properties->grid_template_columns);
-    }
-
-    // Deep copy grid_template_rows if present
-    if (properties->grid_template_rows) {
-        rule->properties.grid_template_rows = str_dup(properties->grid_template_rows);
-    }
-
-    // Deep copy transitions array if present
-    if (properties->transitions && properties->transition_count > 0) {
-        rule->properties.transitions = malloc(properties->transition_count * sizeof(IRTransition));
-        if (rule->properties.transitions) {
-            memcpy(rule->properties.transitions, properties->transitions,
-                   properties->transition_count * sizeof(IRTransition));
-            rule->properties.transition_count = properties->transition_count;
-        }
-    }
-
-    // IRTransform is already copied by the struct assignment above
-    // uint8_t text_decoration is already copied by the struct assignment above
+    // Use proper deep copy to avoid double-free issues
+    ir_style_properties_deep_copy(properties, &rule->properties);
 
     return true;
 }
@@ -779,7 +861,17 @@ void ir_style_properties_apply(const IRStyleProperties* props, IRStyle* style, I
             style->margin = props->margin;
         }
         if (props->set_flags & IR_PROP_FONT_SIZE) {
-            style->font.size = props->font_size;
+            // Convert IRDimension to float for legacy style->font.size
+            // For rem/em, convert to px (assuming 16px base)
+            switch (props->font_size.type) {
+                case IR_DIMENSION_REM:
+                case IR_DIMENSION_EM:
+                    style->font.size = props->font_size.value * 16.0f;
+                    break;
+                default:
+                    style->font.size = props->font_size.value;
+                    break;
+            }
         }
         if (props->set_flags & IR_PROP_FONT_WEIGHT) {
             style->font.weight = props->font_weight;

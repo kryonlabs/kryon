@@ -11,12 +11,7 @@
 
 
 
-int cmd_plugin(int argc, char** argv) {
-    (void)argc; (void)argv;
-    printf("plugin command not yet implemented\n");
-    return 1;
-}
-
+// cmd_plugin moved to cmd_plugin.c
 
 int cmd_test(int argc, char** argv) {
     (void)argc; (void)argv;

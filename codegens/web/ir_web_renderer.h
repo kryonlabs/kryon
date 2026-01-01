@@ -17,6 +17,7 @@ void web_ir_renderer_destroy(WebIRRenderer* renderer);
 
 // Configuration
 void web_ir_renderer_set_output_directory(WebIRRenderer* renderer, const char* directory);
+void web_ir_renderer_set_source_directory(WebIRRenderer* renderer, const char* directory);
 void web_ir_renderer_set_generate_separate_files(WebIRRenderer* renderer, bool separate);
 void web_ir_renderer_set_include_javascript_runtime(WebIRRenderer* renderer, bool include);
 void web_ir_renderer_set_include_wasm_modules(WebIRRenderer* renderer, bool include);

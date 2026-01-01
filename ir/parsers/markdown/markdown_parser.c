@@ -751,23 +751,26 @@ static MdNode* parse_document(parser_state_t* p) {
         }
 
         if (in_code_block) {
-            // Accumulate code block content
+            // Accumulate code block content - preserve leading whitespace!
+            // Use line_start (original position) instead of pos (which skipped whitespace)
+            size_t full_line_len = get_line_length(text, len, line_start);
+
             if (!code_buffer) {
                 code_cap = 1024;
                 code_buffer = (char*)malloc(code_cap);
                 code_len = 0;
             }
-            if (code_len + line_len + 2 > code_cap) {
-                code_cap = (code_len + line_len + 2) * 2;
+            if (code_len + full_line_len + 2 > code_cap) {
+                code_cap = (code_len + full_line_len + 2) * 2;
                 code_buffer = (char*)realloc(code_buffer, code_cap);
             }
             if (code_buffer) {
-                memcpy(code_buffer + code_len, text + pos, line_len);
-                code_len += line_len;
+                memcpy(code_buffer + code_len, text + line_start, full_line_len);
+                code_len += full_line_len;
                 code_buffer[code_len++] = '\n';
                 code_buffer[code_len] = '\0';
             }
-            pos = skip_to_next_line(text, len, pos);
+            pos = skip_to_next_line(text, len, line_start);
             continue;
         }
 
@@ -1028,85 +1031,39 @@ static parser_state_t* g_parser = NULL;
 
 // Internal helper that returns MdNode AST
 static MdNode* md_parse_internal(const char* input, size_t length) {
-    fprintf(stderr, "=== md_parse_internal: START, input=%p, length=%zu\n", (void*)input, length);
-    fflush(stderr);
-
-    if (!input) {
-        fprintf(stderr, "=== md_parse_internal: input is NULL!\n");
-        fflush(stderr);
-        return NULL;
-    }
+    if (!input) return NULL;
     if (length == 0) length = strlen(input);
 
-    fprintf(stderr, "=== md_parse_internal: Creating parser...\n");
-    fflush(stderr);
-
     parser_state_t* p = parser_create(input, length);
-    if (!p) {
-        fprintf(stderr, "=== md_parse_internal: parser_create failed!\n");
-        fflush(stderr);
-        return NULL;
-    }
-
-    fprintf(stderr, "=== md_parse_internal: Checking g_parser...\n");
-    fflush(stderr);
+    if (!p) return NULL;
 
     // Store globally for cleanup
     if (g_parser) {
-        fprintf(stderr, "=== md_parse_internal: Destroying old parser at %p\n", (void*)g_parser);
-        fflush(stderr);
         parser_destroy(g_parser);
     }
     g_parser = p;
-
-    fprintf(stderr, "=== md_parse_internal: Parsing document...\n");
-    fflush(stderr);
 
     return parse_document(p);
 }
 
 // Stub implementation - calls internal parser
 IRComponent* ir_markdown_parse(const char* source, size_t length) {
-    fprintf(stderr, ">>> ENTERED ir_markdown_parse <<<\n");
-    fflush(stderr);
-    fprintf(stderr, "=== ir_markdown_parse: Parsing AST...\n");
-    fflush(stderr);
-
     // Parse markdown source to AST
     MdNode* ast = md_parse_internal(source, length);
-    if (!ast) {
-        fprintf(stderr, "=== ir_markdown_parse: AST parse failed\n");
-        fflush(stderr);
-        return NULL;
-    }
-
-    fprintf(stderr, "=== ir_markdown_parse: Converting AST to IR...\n");
-    fflush(stderr);
+    if (!ast) return NULL;
 
     // Convert AST to IR component tree
     IRComponent* root = ir_markdown_ast_to_ir(ast);
 
-    fprintf(stderr, "=== ir_markdown_parse: Done (AST will be freed with parser)\n");
-    fprintf(stderr, "=== ir_markdown_parse: root=%p, type=%d\n", (void*)root, root ? root->type : -1);
-    fflush(stderr);
-
     // NOTE: Do NOT free the AST! All AST memory (nodes, inlines, text) is allocated
     // from pools owned by the parser (node_pool, inline_pool, text_buffer).
     // These pools will be freed when parser_destroy() is called.
-    // Calling md_node_free() tries to free pool memory and causes crashes.
-    // md_node_free(ast);  // DO NOT CALL THIS
-
-    fprintf(stderr, "=== ir_markdown_parse: About to return...\n");
-    fflush(stderr);
 
     return root;
 }
 
 // Convert markdown source to KIR JSON string
 char* ir_markdown_to_kir(const char* source, size_t length) {
-    fprintf(stderr, "=== ir_markdown_to_kir: Starting parse...\n");
-    fflush(stderr);
-
     // Create temporary context for unique component ID assignment
     extern IRContext* g_ir_context;  // Global context (defined in ir_builder.c)
     extern IRContext* ir_create_context(void);
@@ -1118,28 +1075,16 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     IRContext* temp_context = ir_create_context();
     ir_set_context(temp_context);
 
-    fprintf(stderr, "=== ir_markdown_to_kir: Created temp context, calling ir_markdown_parse...\n");
-    fflush(stderr);
-
     // Parse markdown to IR (components now get unique IDs from context)
     IRComponent* root = ir_markdown_parse(source, length);
 
     // Restore original context
     ir_set_context(old_context);
 
-    fprintf(stderr, "=== ir_markdown_to_kir: ir_markdown_parse returned! root=%p\n", (void*)root);
-    fflush(stderr);
-
     if (!root) {
-        fprintf(stderr, "=== ir_markdown_to_kir: Parse failed, root is NULL\n");
-        fflush(stderr);
         ir_destroy_context(temp_context);
         return NULL;
     }
-
-    fprintf(stderr, "=== ir_markdown_to_kir: Parse successful, root type=%d\n", root->type);
-    fprintf(stderr, "=== ir_markdown_to_kir: Extracting event handlers from HTML blocks...\n");
-    fflush(stderr);
 
     // Extract event handlers from embedded HTML blocks
     extern IRLogicBlock* ir_logic_block_create(void);
@@ -1179,8 +1124,6 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
             // Check for event attributes (onclick, onchange, etc.)
             if (strstr(tag_content, "onclick=") || strstr(tag_content, "onchange=") ||
                 strstr(tag_content, "onsubmit=") || strstr(tag_content, "oninput=")) {
-
-                fprintf(stderr, "=== Found HTML tag with event: %s\n", tag_content);
 
                 // Parse attributes to extract event handlers
                 char* attr_pos = tag_content;
@@ -1230,9 +1173,6 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
                             ir_logic_function_add_source(func, "javascript", handler_source);
                             ir_logic_block_add_function(logic_block, func);
 
-                            fprintf(stderr, "=== Extracted event handler: %s -> %s\n",
-                                   handler_name, handler_source);
-
                             free(handler_source);
                         }
                         attr_pos = quote_end + 1;
@@ -1247,11 +1187,6 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
         pos = tag_end + 1;
     }
 
-    fprintf(stderr, "=== ir_markdown_to_kir: Extracted %d event handlers\n",
-            logic_block->function_count);
-    fprintf(stderr, "=== ir_markdown_to_kir: Starting serialization...\n");
-    fflush(stderr);
-
     // Serialize to JSON string (defined in ir_json.c)
     extern char* ir_serialize_json_complete(IRComponent* root, IRReactiveManifest* manifest,
                                             struct IRLogicBlock* logic_block,
@@ -1263,33 +1198,21 @@ char* ir_markdown_to_kir(const char* source, size_t length) {
     ir_logic_block_free(logic_block);
 
     if (!json_str) {
-        fprintf(stderr, "=== ir_markdown_to_kir: Serialization failed\n");
-        fflush(stderr);
         ir_destroy_component(root);
         ir_destroy_context(temp_context);
         return NULL;
     }
 
-    fprintf(stderr, "=== ir_markdown_to_kir: Serialization successful, length=%zu\n", strlen(json_str));
-    fflush(stderr);
-
     // Clean up context (this also frees all components created with it)
-    // No need to call ir_destroy_component - context cleanup handles it
-    fprintf(stderr, "=== ir_markdown_to_kir: Cleaning up context (will free all components)...\n");
-    fflush(stderr);
     ir_destroy_context(temp_context);
 
     // CRITICAL: Also destroy the global parser to prevent stale state between files
-    fprintf(stderr, "=== ir_markdown_to_kir: Destroying global parser...\n");
-    fflush(stderr);
     extern parser_state_t* g_parser;
     extern void parser_destroy(parser_state_t* p);
     if (g_parser) {
         parser_destroy(g_parser);
         g_parser = NULL;
     }
-    fprintf(stderr, "=== ir_markdown_to_kir: Cleanup complete\n");
-    fflush(stderr);
 
     return json_str;
 }

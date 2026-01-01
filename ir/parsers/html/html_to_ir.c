@@ -382,8 +382,9 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
                         component->selector_type = IR_SELECTOR_ELEMENT;
                     }
                 } else if (node->class_name && node->class_name[0] != '\0') {
-                    // For non-semantic tags, use class name for styling
-                    component->tag = strdup(node->class_name);
+                    // For non-semantic tags with class, don't set tag (it's not a semantic tag)
+                    // Only set css_class for styling
+                    component->tag = NULL;  // Don't store class name as tag
                     component->css_class = strdup(node->class_name);
                     component->selector_type = IR_SELECTOR_CLASS;
                 } else if (strcmp(node->tag_name, "div") != 0) {

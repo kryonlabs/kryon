@@ -1042,6 +1042,37 @@ static IRComponent* ir_html_to_ir_convert_with_css(HtmlNode* html_root, CSSStyle
 
     // Skip <html> wrapper and find <body>
     if (html_root->tag_name && strcmp(html_root->tag_name, "html") == 0) {
+        // First pass: extract title from <head>
+        for (uint32_t i = 0; i < html_root->child_count; i++) {
+            HtmlNode* child = html_root->children[i];
+            if (child && child->tag_name && strcmp(child->tag_name, "head") == 0) {
+                // Find <title> in head
+                for (uint32_t j = 0; j < child->child_count; j++) {
+                    HtmlNode* head_child = child->children[j];
+                    if (head_child && head_child->tag_name && strcmp(head_child->tag_name, "title") == 0) {
+                        // Extract title text
+                        if (head_child->child_count > 0 && head_child->children[0]->type == HTML_NODE_TEXT) {
+                            const char* title_text = head_child->children[0]->text_content;
+                            if (title_text && g_ir_context) {
+                                if (!g_ir_context->metadata) {
+                                    g_ir_context->metadata = (IRMetadata*)calloc(1, sizeof(IRMetadata));
+                                }
+                                if (g_ir_context->metadata) {
+                                    if (g_ir_context->metadata->window_title) {
+                                        free(g_ir_context->metadata->window_title);
+                                    }
+                                    g_ir_context->metadata->window_title = strdup(title_text);
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+        // Second pass: find and convert <body>
         for (uint32_t i = 0; i < html_root->child_count; i++) {
             HtmlNode* child = html_root->children[i];
             if (child && child->tag_name && strcmp(child->tag_name, "body") == 0) {
@@ -1271,6 +1302,11 @@ char* ir_html_file_to_kir(const char* filepath) {
         parser_ctx_free(&ctx);
         if (stylesheet) ir_css_stylesheet_free(stylesheet);
         return NULL;
+    }
+
+    // Ensure global context exists before conversion (needed for title extraction)
+    if (!g_ir_context) {
+        ir_set_context(ir_create_context());
     }
 
     // Convert AST to IR with stylesheet

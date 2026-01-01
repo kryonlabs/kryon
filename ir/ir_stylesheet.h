@@ -73,6 +73,8 @@ typedef struct {
 // Style Properties (standalone, without component reference)
 // ============================================================================
 
+// IRObjectFit is now defined in ir_core.h
+
 /**
  * Style properties that can be applied via stylesheet rules
  * This is a subset of IRStyle that can be serialized independently
@@ -149,6 +151,9 @@ typedef struct IRStyleProperties {
     // Box model
     uint8_t box_sizing;            // 0 = content-box, 1 = border-box
 
+    // Image/video properties
+    IRObjectFit object_fit;        // object-fit: fill, contain, cover, none, scale-down
+
     // Other
     float opacity;
     uint32_t z_index;
@@ -199,6 +204,8 @@ typedef struct IRStyleProperties {
 #define IR_PROP_TRANSFORM             (1ULL << 38)
 #define IR_PROP_TEXT_DECORATION       (1ULL << 39)
 #define IR_PROP_BOX_SIZING            (1ULL << 40)
+#define IR_PROP_OBJECT_FIT            (1ULL << 41)
+#define IR_PROP_BORDER_COLOR          (1ULL << 42)
 
 // ============================================================================
 // Style Rules
@@ -371,6 +378,12 @@ void ir_style_properties_init(IRStyleProperties* props);
  * Free any allocated memory in style properties
  */
 void ir_style_properties_cleanup(IRStyleProperties* props);
+
+/**
+ * Deep copy style properties (properly handles all pointer fields)
+ * Avoids the shallow copy + selective deep copy pattern that causes double-frees
+ */
+void ir_style_properties_deep_copy(const IRStyleProperties* src, IRStyleProperties* dst);
 
 // ============================================================================
 // Utility Functions

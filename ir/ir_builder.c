@@ -599,9 +599,11 @@ IRContext* ir_create_context(void) {
     context->logic_list = NULL;
     context->next_component_id = 1;
     context->next_logic_id = 1;
-    context->metadata = NULL;  // Initialize metadata to NULL
-    context->source_metadata = NULL;  // CRITICAL FIX: Initialize source_metadata to NULL
-    context->source_structures = NULL;  // Initialize source_structures to NULL
+    context->metadata = NULL;
+    context->source_metadata = NULL;
+    context->source_structures = NULL;
+    context->reactive_manifest = NULL;
+    context->stylesheet = NULL;  // CRITICAL: Initialize to NULL to prevent garbage pointer access
 
     // Create component pool
     context->component_pool = ir_pool_create();
@@ -821,6 +823,14 @@ void ir_destroy_component(IRComponent* component) {
                 if (link_data->target) free(link_data->target);
                 if (link_data->rel) free(link_data->rel);
                 free(link_data);
+                break;
+            }
+            case IR_COMPONENT_CODE_BLOCK: {
+                IRCodeBlockData* code_data = (IRCodeBlockData*)component->custom_data;
+                if (code_data->language) free(code_data->language);
+                if (code_data->code) free(code_data->code);
+                if (code_data->tokens) free(code_data->tokens);
+                free(code_data);
                 break;
             }
             default:

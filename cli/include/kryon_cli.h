@@ -45,6 +45,7 @@ bool file_write(const char* path, const char* content);
 bool dir_create(const char* path);
 bool dir_create_recursive(const char* path);
 char* dir_get_current(void);
+int dir_list_files(const char* dir, const char* ext, char*** files, int* count);
 char* path_join(const char* p1, const char* p2);
 const char* path_extension(const char* path);
 
@@ -127,6 +128,10 @@ typedef struct {
     // Docs
     bool docs_enabled;
     char* docs_directory;
+    char* docs_base_path;
+    char* docs_template;       // Path to template HTML (e.g., "docs/_layout.html")
+    char* docs_sidebar_title;  // Optional sidebar title
+    bool docs_auto_sidebar;    // Enable auto-generated sidebar (default: true)
 
     // Plugins
     PluginDep* plugins;

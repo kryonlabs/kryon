@@ -271,8 +271,9 @@ static const char* get_color_string(IRColor color) {
     static char color_buffer[512];  // Increased size for gradients
 
     // Check for CSS variable name first (for roundtrip preservation)
+    // var_name now stores full reference like "var(--primary)"
     if (color.var_name) {
-        snprintf(color_buffer, sizeof(color_buffer), "var(%s)", color.var_name);
+        snprintf(color_buffer, sizeof(color_buffer), "%s", color.var_name);
         return color_buffer;
     }
 
@@ -378,39 +379,82 @@ static const char* get_color_string(IRColor color) {
     }
 }
 
+// Helper to format CSS numeric values without trailing zeros
+// Outputs "0" for zero values (no unit), otherwise removes trailing .00 or .0
+static void format_css_value(char* buffer, size_t size, float value, const char* unit) {
+    if (value == 0.0f) {
+        // Zero values don't need a unit
+        strcpy(buffer, "0");
+        return;
+    }
+
+    // Check if value is effectively an integer
+    if (floorf(value) == value) {
+        snprintf(buffer, size, "%.0f%s", value, unit);
+    } else {
+        // Format with enough precision, then strip trailing zeros
+        snprintf(buffer, size, "%.2f%s", value, unit);
+        // Find the end of the numeric part (before unit) and strip trailing zeros
+        size_t len = strlen(buffer);
+        size_t unit_len = strlen(unit);
+        char* p = buffer + len - unit_len - 1;  // Point to last digit before unit
+        while (p > buffer && *p == '0') p--;
+        if (*p == '.') p--;  // Remove trailing dot too
+        // Move unit (and null terminator) right after the last significant digit
+        memmove(p + 1, buffer + len - unit_len, unit_len + 1);
+    }
+}
+
+// Thread-local buffer for inline px value formatting (use in format strings)
+static __thread char px_buffer[8][32];
+static __thread int px_buffer_idx = 0;
+
+static const char* fmt_px(float value) {
+    char* buf = px_buffer[px_buffer_idx++ & 7];
+    format_css_value(buf, 32, value, "px");
+    return buf;
+}
+
+// Format unitless float (for line-height, etc.) without trailing zeros
+static const char* fmt_float(float value) {
+    char* buf = px_buffer[px_buffer_idx++ & 7];
+    format_css_value(buf, 32, value, "");
+    return buf;
+}
+
 static const char* get_dimension_string(IRDimension dimension) {
     static char dim_buffer[32];
 
     switch (dimension.type) {
         case IR_DIMENSION_PX:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2fpx", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "px");
             break;
         case IR_DIMENSION_PERCENT:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2f%%", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "%");
             break;
         case IR_DIMENSION_VW:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2fvw", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "vw");
             break;
         case IR_DIMENSION_VH:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2fvh", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "vh");
             break;
         case IR_DIMENSION_VMIN:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2fvmin", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "vmin");
             break;
         case IR_DIMENSION_VMAX:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2fvmax", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "vmax");
             break;
         case IR_DIMENSION_REM:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2frem", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "rem");
             break;
         case IR_DIMENSION_EM:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2fem", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "em");
             break;
         case IR_DIMENSION_AUTO:
             strcpy(dim_buffer, "auto");
             break;
         case IR_DIMENSION_FLEX:
-            snprintf(dim_buffer, sizeof(dim_buffer), "%.2fr", dimension.value);
+            format_css_value(dim_buffer, sizeof(dim_buffer), dimension.value, "fr");
             break;
         default:
             strcpy(dim_buffer, "auto");
@@ -572,6 +616,38 @@ static void mark_class_generated(CSSGenerator* generator, const char* class_name
     generator->generated_classes[generator->generated_class_count++] = strdup(class_name);
 }
 
+// Convert space-separated class names to compound CSS selector
+// e.g., "btn btn-primary" -> ".btn.btn-primary"
+static char* classes_to_selector(const char* class_names) {
+    if (!class_names || class_names[0] == '\0') return NULL;
+
+    // Count spaces to determine number of classes
+    size_t len = strlen(class_names);
+    size_t space_count = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (class_names[i] == ' ') space_count++;
+    }
+
+    // Allocate buffer: original length + dots for each class + leading dot + null
+    size_t selector_len = len + space_count + 2;  // +1 for leading dot, +1 for null
+    char* selector = malloc(selector_len);
+    if (!selector) return NULL;
+
+    char* out = selector;
+    *out++ = '.';  // Leading dot
+
+    for (size_t i = 0; i < len; i++) {
+        if (class_names[i] == ' ') {
+            *out++ = '.';  // Replace space with dot
+        } else {
+            *out++ = class_names[i];
+        }
+    }
+    *out = '\0';
+
+    return selector;
+}
+
 static void generate_style_rules(CSSGenerator* generator, IRComponent* component) {
     if (!component) return;
 
@@ -579,8 +655,29 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     char* class_name = generate_natural_class_name(component);
     if (!class_name) return;
 
-    // Skip if we've already generated CSS for this class (deduplication)
-    if (has_generated_class(generator, class_name)) {
+    // For element selectors, check if the TAG was already generated (from stylesheet)
+    // For class selectors, check if the CLASS was already generated
+    bool is_element_selector = (component->selector_type == IR_SELECTOR_ELEMENT && component->tag);
+    const char* dedup_key = is_element_selector ? component->tag : class_name;
+
+    // Skip element selector rules from component tree for common HTML elements
+    // These should only come from the stylesheet, not from individual component styles
+    // This prevents generating extra h1, h2, h3, p, etc. rules at the end
+    if (is_element_selector) {
+        const char* tag = component->tag;
+        // Skip common text/semantic elements that shouldn't have global element rules from components
+        if (strcmp(tag, "h1") == 0 || strcmp(tag, "h2") == 0 || strcmp(tag, "h3") == 0 ||
+            strcmp(tag, "h4") == 0 || strcmp(tag, "h5") == 0 || strcmp(tag, "h6") == 0 ||
+            strcmp(tag, "p") == 0 || strcmp(tag, "span") == 0 || strcmp(tag, "code") == 0 ||
+            strcmp(tag, "li") == 0 || strcmp(tag, "ul") == 0 || strcmp(tag, "ol") == 0 ||
+            strcmp(tag, "div") == 0) {
+            free(class_name);
+            return;
+        }
+    }
+
+    // Skip if we've already generated CSS for this selector (deduplication)
+    if (has_generated_class(generator, dedup_key)) {
         free(class_name);
         return;
     }
@@ -595,19 +692,26 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
         return;
     }
 
-    // Mark this class as generated
-    mark_class_generated(generator, class_name);
+    // Mark this selector as generated
+    mark_class_generated(generator, dedup_key);
 
     // Track buffer size before writing selector
     size_t start_size = generator->buffer_size;
 
     // Generate selector based on selector_type for accurate roundtrip
-    if (component->selector_type == IR_SELECTOR_ELEMENT && component->tag) {
+    if (is_element_selector) {
         // Element selector: header { }, nav { }, etc.
         css_generator_write_format(generator, "%s {\n", component->tag);
     } else {
-        // Class selector: .container { }, .hero { }, etc.
-        css_generator_write_format(generator, ".%s {\n", class_name);
+        // Class selector - handle space-separated classes as compound selector
+        // e.g., "btn btn-primary" -> ".btn.btn-primary"
+        char* selector = classes_to_selector(class_name);
+        if (selector) {
+            css_generator_write_format(generator, "%s {\n", selector);
+            free(selector);
+        } else {
+            css_generator_write_format(generator, ".%s {\n", class_name);
+        }
     }
     free(class_name);
 
@@ -638,6 +742,9 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     } else if (component->style->background.type == IR_COLOR_GRADIENT) {
         const char* bg = get_color_string(component->style->background);
         css_generator_write_format(generator, "  background: %s;\n", bg);
+    } else if (component->style->background.type == IR_COLOR_VAR_REF) {
+        const char* bg = get_color_string(component->style->background);
+        css_generator_write_format(generator, "  background: %s;\n", bg);
     }
 
     // Background clip (for gradient text effects)
@@ -663,27 +770,27 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     // Border
     if (component->style->border.width > 0) {
         // Uniform border
-        css_generator_write_format(generator, "  border: %.2fpx solid %s;\n",
-                                  component->style->border.width,
+        css_generator_write_format(generator, "  border: %s solid %s;\n",
+                                  fmt_px(component->style->border.width),
                                   get_color_string(component->style->border.color));
     } else {
         // Per-side borders
         const char* color = get_color_string(component->style->border.color);
         if (component->style->border.width_top > 0) {
-            css_generator_write_format(generator, "  border-top: %.2fpx solid %s;\n",
-                                      component->style->border.width_top, color);
+            css_generator_write_format(generator, "  border-top: %s solid %s;\n",
+                                      fmt_px(component->style->border.width_top), color);
         }
         if (component->style->border.width_right > 0) {
-            css_generator_write_format(generator, "  border-right: %.2fpx solid %s;\n",
-                                      component->style->border.width_right, color);
+            css_generator_write_format(generator, "  border-right: %s solid %s;\n",
+                                      fmt_px(component->style->border.width_right), color);
         }
         if (component->style->border.width_bottom > 0) {
-            css_generator_write_format(generator, "  border-bottom: %.2fpx solid %s;\n",
-                                      component->style->border.width_bottom, color);
+            css_generator_write_format(generator, "  border-bottom: %s solid %s;\n",
+                                      fmt_px(component->style->border.width_bottom), color);
         }
         if (component->style->border.width_left > 0) {
-            css_generator_write_format(generator, "  border-left: %.2fpx solid %s;\n",
-                                      component->style->border.width_left, color);
+            css_generator_write_format(generator, "  border-left: %s solid %s;\n",
+                                      fmt_px(component->style->border.width_left), color);
         }
     }
     // Border radius (separate from border)
@@ -692,69 +799,90 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
                                   component->style->border.radius);
     }
 
-    // Margin (with auto support)
-    bool has_margin = component->style->margin.top != 0 || component->style->margin.right != 0 ||
-                      component->style->margin.bottom != 0 || component->style->margin.left != 0 ||
-                      component->style->margin.right == IR_SPACING_AUTO ||
-                      component->style->margin.left == IR_SPACING_AUTO;
-    if (has_margin) {
+    // Margin (with auto support) - use set_flags to detect explicit values
+    uint8_t margin_flags = component->style->margin.set_flags;
+    if (margin_flags != 0) {
         float top = component->style->margin.top;
         float right = component->style->margin.right;
         float bottom = component->style->margin.bottom;
         float left = component->style->margin.left;
 
-        // Check for "0 auto" pattern (common for centering)
-        bool top_zero = (top == 0);
-        bool bottom_zero = (bottom == 0);
-        bool right_auto = (right == IR_SPACING_AUTO);
-        bool left_auto = (left == IR_SPACING_AUTO);
+        if (margin_flags == IR_SPACING_SET_ALL) {
+            // All sides set - use shorthand
+            bool right_auto = (right == IR_SPACING_AUTO);
+            bool left_auto = (left == IR_SPACING_AUTO);
 
-        if (top_zero && bottom_zero && right_auto && left_auto) {
-            css_generator_write_string(generator, "  margin: 0 auto;\n");
-        } else if (top == bottom && right_auto && left_auto) {
-            css_generator_write_format(generator, "  margin: %.0fpx auto;\n", top);
+            if (top == bottom && right_auto && left_auto) {
+                // Common centering pattern: "0 auto" or "16px auto"
+                css_generator_write_format(generator, "  margin: %s auto;\n", fmt_px(top));
+            } else if (top == right && right == bottom && bottom == left) {
+                // All same value: "0" or "16px"
+                css_generator_write_format(generator, "  margin: %s;\n", fmt_px(top));
+            } else {
+                // General case - output each value
+                const char* top_str = (top == IR_SPACING_AUTO) ? "auto" : fmt_px(top);
+                const char* right_str = (right == IR_SPACING_AUTO) ? "auto" : fmt_px(right);
+                const char* bottom_str = (bottom == IR_SPACING_AUTO) ? "auto" : fmt_px(bottom);
+                const char* left_str = (left == IR_SPACING_AUTO) ? "auto" : fmt_px(left);
+
+                css_generator_write_format(generator, "  margin: %s %s %s %s;\n",
+                                          top_str, right_str, bottom_str, left_str);
+            }
         } else {
-            // General case - output each value
-            char top_str[32], right_str[32], bottom_str[32], left_str[32];
-            if (top == IR_SPACING_AUTO) snprintf(top_str, sizeof(top_str), "auto");
-            else snprintf(top_str, sizeof(top_str), "%.0fpx", top);
-            if (right == IR_SPACING_AUTO) snprintf(right_str, sizeof(right_str), "auto");
-            else snprintf(right_str, sizeof(right_str), "%.0fpx", right);
-            if (bottom == IR_SPACING_AUTO) snprintf(bottom_str, sizeof(bottom_str), "auto");
-            else snprintf(bottom_str, sizeof(bottom_str), "%.0fpx", bottom);
-            if (left == IR_SPACING_AUTO) snprintf(left_str, sizeof(left_str), "auto");
-            else snprintf(left_str, sizeof(left_str), "%.0fpx", left);
-
-            css_generator_write_format(generator, "  margin: %s %s %s %s;\n",
-                                      top_str, right_str, bottom_str, left_str);
+            // Individual properties set - output only those that are set
+            if (margin_flags & IR_SPACING_SET_TOP) {
+                if (top == IR_SPACING_AUTO) css_generator_write_string(generator, "  margin-top: auto;\n");
+                else css_generator_write_format(generator, "  margin-top: %s;\n", fmt_px(top));
+            }
+            if (margin_flags & IR_SPACING_SET_RIGHT) {
+                if (right == IR_SPACING_AUTO) css_generator_write_string(generator, "  margin-right: auto;\n");
+                else css_generator_write_format(generator, "  margin-right: %s;\n", fmt_px(right));
+            }
+            if (margin_flags & IR_SPACING_SET_BOTTOM) {
+                if (bottom == IR_SPACING_AUTO) css_generator_write_string(generator, "  margin-bottom: auto;\n");
+                else css_generator_write_format(generator, "  margin-bottom: %s;\n", fmt_px(bottom));
+            }
+            if (margin_flags & IR_SPACING_SET_LEFT) {
+                if (left == IR_SPACING_AUTO) css_generator_write_string(generator, "  margin-left: auto;\n");
+                else css_generator_write_format(generator, "  margin-left: %s;\n", fmt_px(left));
+            }
         }
     }
 
-    // Padding - use shortest CSS shorthand
-    if (component->style->padding.top != 0 || component->style->padding.right != 0 ||
-        component->style->padding.bottom != 0 || component->style->padding.left != 0) {
+    // Padding - use set_flags to detect explicit values
+    uint8_t padding_flags = component->style->padding.set_flags;
+    if (padding_flags != 0) {
         float top = component->style->padding.top;
         float right = component->style->padding.right;
         float bottom = component->style->padding.bottom;
         float left = component->style->padding.left;
 
-        if (top == right && right == bottom && bottom == left) {
-            // All same: "10px"
-            if (top == 0) {
-                css_generator_write_string(generator, "  padding: 0;\n");
+        if (padding_flags == IR_SPACING_SET_ALL) {
+            // All sides set - use shortest shorthand
+            if (top == right && right == bottom && bottom == left) {
+                // All same: "10px" or "0"
+                css_generator_write_format(generator, "  padding: %s;\n", fmt_px(top));
+            } else if (top == bottom && right == left) {
+                // top/bottom same, left/right same: "10px 20px" or "0 24px"
+                css_generator_write_format(generator, "  padding: %s %s;\n", fmt_px(top), fmt_px(right));
+            } else if (right == left) {
+                // top different, left/right same: "10px 20px 30px"
+                css_generator_write_format(generator, "  padding: %s %s %s;\n", fmt_px(top), fmt_px(right), fmt_px(bottom));
             } else {
-                css_generator_write_format(generator, "  padding: %.0fpx;\n", top);
+                // All different: "10px 20px 30px 40px"
+                css_generator_write_format(generator, "  padding: %s %s %s %s;\n",
+                                          fmt_px(top), fmt_px(right), fmt_px(bottom), fmt_px(left));
             }
-        } else if (top == bottom && right == left) {
-            // top/bottom same, left/right same: "10px 20px"
-            css_generator_write_format(generator, "  padding: %.0fpx %.0fpx;\n", top, right);
-        } else if (right == left) {
-            // top different, left/right same: "10px 20px 30px"
-            css_generator_write_format(generator, "  padding: %.0fpx %.0fpx %.0fpx;\n", top, right, bottom);
         } else {
-            // All different: "10px 20px 30px 40px"
-            css_generator_write_format(generator, "  padding: %.0fpx %.0fpx %.0fpx %.0fpx;\n",
-                                      top, right, bottom, left);
+            // Individual properties set - output only those that are set
+            if (padding_flags & IR_SPACING_SET_TOP)
+                css_generator_write_format(generator, "  padding-top: %s;\n", fmt_px(top));
+            if (padding_flags & IR_SPACING_SET_RIGHT)
+                css_generator_write_format(generator, "  padding-right: %s;\n", fmt_px(right));
+            if (padding_flags & IR_SPACING_SET_BOTTOM)
+                css_generator_write_format(generator, "  padding-bottom: %s;\n", fmt_px(bottom));
+            if (padding_flags & IR_SPACING_SET_LEFT)
+                css_generator_write_format(generator, "  padding-left: %s;\n", fmt_px(left));
         }
     }
 
@@ -763,8 +891,8 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
         component->style->font.color.type != IR_COLOR_TRANSPARENT) {
 
         if (component->style->font.size > 0) {
-            css_generator_write_format(generator, "  font-size: %.2fpx;\n",
-                                      component->style->font.size);
+            css_generator_write_format(generator, "  font-size: %s;\n",
+                                      fmt_px(component->style->font.size));
         }
 
         if (component->style->font.family) {
@@ -794,18 +922,18 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
         // Extended typography (Phase 3) - skip default line-height (1.5)
         if (component->style->font.line_height > 0 &&
             (component->style->font.line_height < 1.49f || component->style->font.line_height > 1.51f)) {
-            css_generator_write_format(generator, "  line-height: %.2f;\n",
-                                      component->style->font.line_height);
+            css_generator_write_format(generator, "  line-height: %s;\n",
+                                      fmt_float(component->style->font.line_height));
         }
 
         if (component->style->font.letter_spacing != 0) {
-            css_generator_write_format(generator, "  letter-spacing: %.2fpx;\n",
-                                      component->style->font.letter_spacing);
+            css_generator_write_format(generator, "  letter-spacing: %s;\n",
+                                      fmt_px(component->style->font.letter_spacing));
         }
 
         if (component->style->font.word_spacing != 0) {
-            css_generator_write_format(generator, "  word-spacing: %.2fpx;\n",
-                                      component->style->font.word_spacing);
+            css_generator_write_format(generator, "  word-spacing: %s;\n",
+                                      fmt_px(component->style->font.word_spacing));
         }
 
         // Text alignment - skip default (left)
@@ -1155,10 +1283,14 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
         IRLayout* layout = component->layout;
 
         // Flexbox layout - only output if explicitly set in original CSS
-        if (layout->display_explicit && layout->mode == IR_LAYOUT_MODE_FLEX) {
+        if (layout->display_explicit && (layout->mode == IR_LAYOUT_MODE_FLEX || layout->mode == IR_LAYOUT_MODE_INLINE_FLEX)) {
             IRFlexbox* flex = &layout->flex;
 
-            css_generator_write_string(generator, "  display: flex;\n");
+            if (layout->mode == IR_LAYOUT_MODE_INLINE_FLEX) {
+                css_generator_write_string(generator, "  display: inline-flex;\n");
+            } else {
+                css_generator_write_string(generator, "  display: flex;\n");
+            }
 
             // Flex direction based on component type
             if (component->type == IR_COMPONENT_ROW) {
@@ -1204,11 +1336,15 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
                 css_generator_write_string(generator, "  justify-content: center;\n");
                 css_generator_write_string(generator, "  align-items: center;\n");
             }
-        } else if (layout->display_explicit && layout->mode == IR_LAYOUT_MODE_GRID) {
+        } else if (layout->display_explicit && (layout->mode == IR_LAYOUT_MODE_GRID || layout->mode == IR_LAYOUT_MODE_INLINE_GRID)) {
             // Grid mode - only if explicitly set
             IRGrid* grid = &layout->grid;
 
-            css_generator_write_string(generator, "  display: grid;\n");
+            if (layout->mode == IR_LAYOUT_MODE_INLINE_GRID) {
+                css_generator_write_string(generator, "  display: inline-grid;\n");
+            } else {
+                css_generator_write_string(generator, "  display: grid;\n");
+            }
 
             // Grid template columns
             generate_grid_template(generator, grid, true);
@@ -1221,13 +1357,13 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
             // Gap
             if (grid->row_gap > 0 || grid->column_gap > 0) {
                 if (grid->row_gap == grid->column_gap) {
-                    css_generator_write_format(generator, "  gap: %.0fpx;\n", grid->row_gap);
+                    css_generator_write_format(generator, "  gap: %s;\n", fmt_px(grid->row_gap));
                 } else {
                     if (grid->row_gap > 0) {
-                        css_generator_write_format(generator, "  row-gap: %.0fpx;\n", grid->row_gap);
+                        css_generator_write_format(generator, "  row-gap: %s;\n", fmt_px(grid->row_gap));
                     }
                     if (grid->column_gap > 0) {
-                        css_generator_write_format(generator, "  column-gap: %.0fpx;\n", grid->column_gap);
+                        css_generator_write_format(generator, "  column-gap: %s;\n", fmt_px(grid->column_gap));
                     }
                 }
             }
@@ -1240,6 +1376,24 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
             if (grid->align_items != IR_ALIGNMENT_START) {
                 css_generator_write_format(generator, "  align-items: %s;\n",
                                           get_alignment_string(grid->align_items));
+            }
+        } else if (layout->display_explicit) {
+            // Other display modes
+            switch (layout->mode) {
+                case IR_LAYOUT_MODE_BLOCK:
+                    css_generator_write_string(generator, "  display: block;\n");
+                    break;
+                case IR_LAYOUT_MODE_INLINE:
+                    css_generator_write_string(generator, "  display: inline;\n");
+                    break;
+                case IR_LAYOUT_MODE_INLINE_BLOCK:
+                    css_generator_write_string(generator, "  display: inline-block;\n");
+                    break;
+                case IR_LAYOUT_MODE_NONE:
+                    css_generator_write_string(generator, "  display: none;\n");
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -1334,7 +1488,9 @@ static void generate_responsive_rules(CSSGenerator* generator, IRComponent* comp
         char* class_name = generate_natural_class_name(component);
         if (!class_name) continue;
 
-        css_generator_write_format(generator, "  .%s {\n", class_name);
+        char* selector = classes_to_selector(class_name);
+        css_generator_write_format(generator, "  %s {\n", selector ? selector : class_name);
+        free(selector);
         free(class_name);
 
         // Apply breakpoint overrides
@@ -1358,14 +1514,29 @@ static void generate_responsive_rules(CSSGenerator* generator, IRComponent* comp
 
         if (bp->has_layout_mode) {
             switch (bp->layout_mode) {
-                case IR_LAYOUT_MODE_GRID:
-                    css_generator_write_string(generator, "    display: grid;\n");
-                    break;
                 case IR_LAYOUT_MODE_FLEX:
                     css_generator_write_string(generator, "    display: flex;\n");
                     break;
+                case IR_LAYOUT_MODE_INLINE_FLEX:
+                    css_generator_write_string(generator, "    display: inline-flex;\n");
+                    break;
+                case IR_LAYOUT_MODE_GRID:
+                    css_generator_write_string(generator, "    display: grid;\n");
+                    break;
+                case IR_LAYOUT_MODE_INLINE_GRID:
+                    css_generator_write_string(generator, "    display: inline-grid;\n");
+                    break;
                 case IR_LAYOUT_MODE_BLOCK:
                     css_generator_write_string(generator, "    display: block;\n");
+                    break;
+                case IR_LAYOUT_MODE_INLINE:
+                    css_generator_write_string(generator, "    display: inline;\n");
+                    break;
+                case IR_LAYOUT_MODE_INLINE_BLOCK:
+                    css_generator_write_string(generator, "    display: inline-block;\n");
+                    break;
+                case IR_LAYOUT_MODE_NONE:
+                    css_generator_write_string(generator, "    display: none;\n");
                     break;
             }
         }
@@ -1403,7 +1574,9 @@ static void generate_container_context(CSSGenerator* generator, IRComponent* com
     if (component->selector_type == IR_SELECTOR_ELEMENT && component->tag) {
         css_generator_write_format(generator, "%s {\n", component->tag);
     } else {
-        css_generator_write_format(generator, ".%s {\n", class_name);
+        char* selector = classes_to_selector(class_name);
+        css_generator_write_format(generator, "%s {\n", selector ? selector : class_name);
+        free(selector);
     }
     free(class_name);
 
@@ -1474,7 +1647,9 @@ static void generate_pseudo_class_rules(CSSGenerator* generator, IRComponent* co
         if (component->selector_type == IR_SELECTOR_ELEMENT && component->tag) {
             css_generator_write_format(generator, "%s:%s {\n", component->tag, pseudo_name);
         } else {
-            css_generator_write_format(generator, ".%s:%s {\n", class_name, pseudo_name);
+            char* selector = classes_to_selector(class_name);
+            css_generator_write_format(generator, "%s:%s {\n", selector ? selector : class_name, pseudo_name);
+            free(selector);
         }
 
         // Apply style overrides
@@ -1578,7 +1753,8 @@ static const char* get_stylesheet_color_string(IRColor color) {
         }
         return buffer;
     } else if (color.type == IR_COLOR_VAR_REF && color.var_name) {
-        snprintf(buffer, sizeof(buffer), "var(%s)", color.var_name);
+        // var_name now stores full reference like "var(--primary)"
+        snprintf(buffer, sizeof(buffer), "%s", color.var_name);
         return buffer;
     }
     return "transparent";
@@ -1606,8 +1782,16 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
         // Output properties
         if (props->set_flags & IR_PROP_DISPLAY) {
             const char* display_str = "block";
-            if (props->display == IR_LAYOUT_MODE_FLEX) display_str = "flex";
-            else if (props->display == IR_LAYOUT_MODE_GRID) display_str = "grid";
+            switch (props->display) {
+                case IR_LAYOUT_MODE_FLEX: display_str = "flex"; break;
+                case IR_LAYOUT_MODE_INLINE_FLEX: display_str = "inline-flex"; break;
+                case IR_LAYOUT_MODE_GRID: display_str = "grid"; break;
+                case IR_LAYOUT_MODE_INLINE_GRID: display_str = "inline-grid"; break;
+                case IR_LAYOUT_MODE_BLOCK: display_str = "block"; break;
+                case IR_LAYOUT_MODE_INLINE: display_str = "inline"; break;
+                case IR_LAYOUT_MODE_INLINE_BLOCK: display_str = "inline-block"; break;
+                case IR_LAYOUT_MODE_NONE: display_str = "none"; break;
+            }
             css_generator_write_format(generator, "  display: %s;\n", display_str);
         }
 
@@ -1646,7 +1830,7 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
         }
 
         if (props->set_flags & IR_PROP_GAP) {
-            css_generator_write_format(generator, "  gap: %.0fpx;\n", props->gap);
+            css_generator_write_format(generator, "  gap: %s;\n", fmt_px(props->gap));
         }
 
         // Grid template (raw CSS strings for roundtrip)
@@ -1658,37 +1842,70 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
         }
 
         if (props->set_flags & IR_PROP_WIDTH) {
-            if (props->width.type == IR_DIMENSION_PX) {
-                css_generator_write_format(generator, "  width: %.2fpx;\n", props->width.value);
-            } else if (props->width.type == IR_DIMENSION_PERCENT) {
-                css_generator_write_format(generator, "  width: %.1f%%;\n", props->width.value);
-            }
+            css_generator_write_format(generator, "  width: %s;\n", get_dimension_string(props->width));
         }
 
         if (props->set_flags & IR_PROP_HEIGHT) {
-            if (props->height.type == IR_DIMENSION_PX) {
-                css_generator_write_format(generator, "  height: %.2fpx;\n", props->height.value);
-            } else if (props->height.type == IR_DIMENSION_PERCENT) {
-                css_generator_write_format(generator, "  height: %.1f%%;\n", props->height.value);
-            }
+            css_generator_write_format(generator, "  height: %s;\n", get_dimension_string(props->height));
         }
 
         if (props->set_flags & IR_PROP_MAX_WIDTH) {
-            if (props->max_width.type == IR_DIMENSION_PX) {
-                css_generator_write_format(generator, "  max-width: %.2fpx;\n", props->max_width.value);
-            }
+            css_generator_write_format(generator, "  max-width: %s;\n", get_dimension_string(props->max_width));
         }
 
         if (props->set_flags & IR_PROP_PADDING) {
-            css_generator_write_format(generator, "  padding: %.0fpx %.0fpx %.0fpx %.0fpx;\n",
-                                        props->padding.top, props->padding.right,
-                                        props->padding.bottom, props->padding.left);
+            float top = props->padding.top;
+            float right = props->padding.right;
+            float bottom = props->padding.bottom;
+            float left = props->padding.left;
+
+            if (top == right && right == bottom && bottom == left) {
+                // All same: "0" or "16px"
+                css_generator_write_format(generator, "  padding: %s;\n", fmt_px(top));
+            } else if (top == bottom && right == left) {
+                // top/bottom same, left/right same: "10px 20px"
+                css_generator_write_format(generator, "  padding: %s %s;\n", fmt_px(top), fmt_px(right));
+            } else if (right == left) {
+                // left/right same: "10px 20px 30px"
+                css_generator_write_format(generator, "  padding: %s %s %s;\n", fmt_px(top), fmt_px(right), fmt_px(bottom));
+            } else {
+                // All different: "10px 20px 30px 40px"
+                css_generator_write_format(generator, "  padding: %s %s %s %s;\n",
+                                            fmt_px(top), fmt_px(right), fmt_px(bottom), fmt_px(left));
+            }
         }
 
         if (props->set_flags & IR_PROP_MARGIN) {
-            css_generator_write_format(generator, "  margin: %.0fpx %.0fpx %.0fpx %.0fpx;\n",
-                                        props->margin.top, props->margin.right,
-                                        props->margin.bottom, props->margin.left);
+            float top = props->margin.top;
+            float right = props->margin.right;
+            float bottom = props->margin.bottom;
+            float left = props->margin.left;
+
+            // Handle IR_SPACING_AUTO for centering (margin: 0 auto)
+            bool right_auto = (right == IR_SPACING_AUTO);
+            bool left_auto = (left == IR_SPACING_AUTO);
+
+            if (top == bottom && right_auto && left_auto) {
+                css_generator_write_format(generator, "  margin: %s auto;\n", fmt_px(top));
+            } else if (top == right && right == bottom && bottom == left && !right_auto) {
+                // All same value: "0" or "16px"
+                css_generator_write_format(generator, "  margin: %s;\n", fmt_px(top));
+            } else if (top == bottom && right == left && !right_auto && !left_auto) {
+                // top/bottom same, left/right same: "10px 20px"
+                css_generator_write_format(generator, "  margin: %s %s;\n", fmt_px(top), fmt_px(right));
+            } else if (right == left && !right_auto && !left_auto) {
+                // left/right same: "10px 20px 30px"
+                css_generator_write_format(generator, "  margin: %s %s %s;\n", fmt_px(top), fmt_px(right), fmt_px(bottom));
+            } else {
+                // General case - output each value, handling auto
+                const char* top_str = (top == IR_SPACING_AUTO) ? "auto" : fmt_px(top);
+                const char* right_str = (right == IR_SPACING_AUTO) ? "auto" : fmt_px(right);
+                const char* bottom_str = (bottom == IR_SPACING_AUTO) ? "auto" : fmt_px(bottom);
+                const char* left_str = (left == IR_SPACING_AUTO) ? "auto" : fmt_px(left);
+
+                css_generator_write_format(generator, "  margin: %s %s %s %s;\n",
+                                          top_str, right_str, bottom_str, left_str);
+            }
         }
 
         if (props->set_flags & IR_PROP_BACKGROUND) {
@@ -1708,7 +1925,8 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
         }
 
         if (props->set_flags & IR_PROP_FONT_SIZE) {
-            css_generator_write_format(generator, "  font-size: %.2fpx;\n", props->font_size);
+            css_generator_write_format(generator, "  font-size: %s;\n",
+                                       get_dimension_string(props->font_size));
         }
 
         if (props->set_flags & IR_PROP_FONT_WEIGHT) {
@@ -1735,15 +1953,42 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
         }
 
         if (props->set_flags & IR_PROP_BORDER) {
-            css_generator_write_format(generator, "  border-width: %.2fpx;\n", props->border_width);
+            // Full border with color
+            const char* color_str = get_stylesheet_color_string(props->border_color);
+            css_generator_write_format(generator, "  border: %s solid %s;\n", fmt_px(props->border_width), color_str);
+        } else {
+            // Individual border sides
+            const char* color_str = get_stylesheet_color_string(props->border_color);
+            if (props->set_flags & IR_PROP_BORDER_TOP) {
+                css_generator_write_format(generator, "  border-top: %s solid %s;\n",
+                                          fmt_px(props->border_width_top), color_str);
+            }
+            if (props->set_flags & IR_PROP_BORDER_RIGHT) {
+                css_generator_write_format(generator, "  border-right: %s solid %s;\n",
+                                          fmt_px(props->border_width_right), color_str);
+            }
+            if (props->set_flags & IR_PROP_BORDER_BOTTOM) {
+                css_generator_write_format(generator, "  border-bottom: %s solid %s;\n",
+                                          fmt_px(props->border_width_bottom), color_str);
+            }
+            if (props->set_flags & IR_PROP_BORDER_LEFT) {
+                css_generator_write_format(generator, "  border-left: %s solid %s;\n",
+                                          fmt_px(props->border_width_left), color_str);
+            }
         }
 
         if (props->set_flags & IR_PROP_BORDER_RADIUS) {
             css_generator_write_format(generator, "  border-radius: %upx;\n", props->border_radius);
         }
 
+        // Border color only (for hover states, etc.)
+        if (props->set_flags & IR_PROP_BORDER_COLOR) {
+            const char* color_str = get_stylesheet_color_string(props->border_color);
+            css_generator_write_format(generator, "  border-color: %s;\n", color_str);
+        }
+
         if (props->set_flags & IR_PROP_LINE_HEIGHT) {
-            css_generator_write_format(generator, "  line-height: %.2f;\n", props->line_height);
+            css_generator_write_format(generator, "  line-height: %s;\n", fmt_float(props->line_height));
         }
 
         // Background image (gradient string)
@@ -1887,7 +2132,40 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
                                        props->box_sizing ? "border-box" : "content-box");
         }
 
+        // Object fit (for images/videos)
+        if (props->set_flags & IR_PROP_OBJECT_FIT) {
+            const char* value = "fill";
+            switch (props->object_fit) {
+                case IR_OBJECT_FIT_COVER: value = "cover"; break;
+                case IR_OBJECT_FIT_CONTAIN: value = "contain"; break;
+                case IR_OBJECT_FIT_NONE: value = "none"; break;
+                case IR_OBJECT_FIT_SCALE_DOWN: value = "scale-down"; break;
+                default: value = "fill"; break;
+            }
+            css_generator_write_format(generator, "  object-fit: %s;\n", value);
+        }
+
         css_generator_write_string(generator, "}\n\n");
+
+        // Track generated selectors to prevent duplicate rules from components
+        const char* selector = rule->selector->original_selector;
+
+        // Simple class selector = starts with '.', no spaces, no additional dots, no pseudo-classes
+        if (selector[0] == '.' &&
+            strchr(selector + 1, '.') == NULL &&
+            strchr(selector + 1, ' ') == NULL &&
+            strchr(selector + 1, ':') == NULL) {
+            // Simple class selector like ".feature-card" - mark as generated
+            mark_class_generated(generator, selector + 1);  // Skip leading dot
+        }
+        // Simple element selector = no '.', no '#', no spaces, no pseudo-classes (like body, a, p)
+        else if (selector[0] != '.' && selector[0] != '#' &&
+                 strchr(selector, ' ') == NULL &&
+                 strchr(selector, ':') == NULL &&
+                 strchr(selector, '.') == NULL) {
+            // Simple element selector like "body", "a", "p" - mark as generated
+            mark_class_generated(generator, selector);
+        }
     }
 
     // NOTE: Media queries are output at the end of css_generator_generate()
@@ -1960,43 +2238,53 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
 
     // Generate base styles for body
     // If root is a Body component, merge its styles here instead of generating a .Body class
+    // BUT skip if stylesheet already has a body rule (prevent duplicates)
     bool root_is_body = root && root->tag && strcmp(root->tag, "Body") == 0;
+    bool stylesheet_has_body = has_generated_class(generator, "body");  // Check if body was in stylesheet
 
-    css_generator_write_string(generator, "body {\n");
-    css_generator_write_string(generator, "  margin: 0;\n");
-    css_generator_write_string(generator, "  padding: 0;\n");
+    if (!stylesheet_has_body) {
+        css_generator_write_string(generator, "body {\n");
+        css_generator_write_string(generator, "  margin: 0;\n");
+        css_generator_write_string(generator, "  padding: 0;\n");
 
-    // Use Body component's font-family if set, otherwise default
-    if (root_is_body && root->style && root->style->font.family) {
-        css_generator_write_format(generator, "  font-family: %s;\n", root->style->font.family);
-    } else {
-        css_generator_write_string(generator, "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n");
-    }
-
-    // Use root component's background color if available
-    if (root && root->style) {
-        IRColor* bg = &root->style->background;
-        if (bg->type == IR_COLOR_SOLID && bg->data.a > 0) {
-            const char* color_str = get_color_string(*bg);
-            css_generator_write_format(generator, "  background-color: %s;\n", color_str);
-        }
-    }
-
-    // If root is Body, add its additional styles
-    if (root_is_body && root->style) {
-        // Text color
-        if (root->style->font.color.type == IR_COLOR_SOLID && root->style->font.color.data.a > 0) {
-            const char* color_str = get_color_string(root->style->font.color);
-            css_generator_write_format(generator, "  color: %s;\n", color_str);
+        // Use Body component's font-family if set, otherwise default
+        if (root_is_body && root->style && root->style->font.family) {
+            css_generator_write_format(generator, "  font-family: %s;\n", root->style->font.family);
+        } else {
+            css_generator_write_string(generator, "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n");
         }
 
-        // Line height
-        if (root->style->font.line_height > 0) {
-            css_generator_write_format(generator, "  line-height: %.2f;\n", root->style->font.line_height);
+        // Use root component's background color if available
+        if (root && root->style) {
+            IRColor* bg = &root->style->background;
+            if (bg->type == IR_COLOR_SOLID && bg->data.a > 0) {
+                const char* color_str = get_color_string(*bg);
+                css_generator_write_format(generator, "  background-color: %s;\n", color_str);
+            } else if (bg->type == IR_COLOR_VAR_REF) {
+                const char* color_str = get_color_string(*bg);
+                css_generator_write_format(generator, "  background: %s;\n", color_str);
+            }
         }
-    }
 
-    css_generator_write_string(generator, "}\n\n");
+        // If root is Body, add its additional styles
+        if (root_is_body && root->style) {
+            // Text color
+            if (root->style->font.color.type == IR_COLOR_SOLID && root->style->font.color.data.a > 0) {
+                const char* color_str = get_color_string(root->style->font.color);
+                css_generator_write_format(generator, "  color: %s;\n", color_str);
+            } else if (root->style->font.color.type == IR_COLOR_VAR_REF) {
+                const char* color_str = get_color_string(root->style->font.color);
+                css_generator_write_format(generator, "  color: %s;\n", color_str);
+            }
+
+            // Line height
+            if (root->style->font.line_height > 0) {
+                css_generator_write_format(generator, "  line-height: %s;\n", fmt_float(root->style->font.line_height));
+            }
+        }
+
+        css_generator_write_string(generator, "}\n\n");
+    }
 
     // Mark Body class as generated so it's skipped later
     if (root_is_body) {
@@ -2008,6 +2296,22 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
 
     // Generate component-specific styles
     generate_component_css(generator, root);
+
+    // Add syntax highlighting CSS rules
+    css_generator_write_string(generator, "/* Syntax Highlighting - GitHub Dark Theme */\n");
+    css_generator_write_string(generator, ".hljs-keyword { color: #ff7b72; }\n");
+    css_generator_write_string(generator, ".hljs-string { color: #a5d6ff; }\n");
+    css_generator_write_string(generator, ".hljs-number { color: #79c0ff; }\n");
+    css_generator_write_string(generator, ".hljs-comment { color: #8b949e; font-style: italic; }\n");
+    css_generator_write_string(generator, ".hljs-title.function_ { color: #d2a8ff; }\n");
+    css_generator_write_string(generator, ".hljs-type { color: #7ee787; }\n");
+    css_generator_write_string(generator, ".hljs-literal { color: #79c0ff; }\n");
+    css_generator_write_string(generator, ".hljs-operator { color: #c9d1d9; }\n");
+    css_generator_write_string(generator, ".hljs-punctuation { color: #c9d1d9; }\n");
+    css_generator_write_string(generator, ".hljs-variable { color: #c9d1d9; }\n");
+    css_generator_write_string(generator, ".hljs-meta { color: #d2a8ff; }\n");
+    css_generator_write_string(generator, ".hljs-tag { color: #7ee787; }\n");
+    css_generator_write_string(generator, ".hljs-attr { color: #79c0ff; }\n\n");
 
     // Output media queries at the very end (after all base styles)
     if (g_ir_context && g_ir_context->stylesheet) {

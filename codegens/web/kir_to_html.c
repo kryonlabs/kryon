@@ -12,25 +12,28 @@
 #include "html_generator.h"
 
 int main(int argc, char** argv) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <input.kir> <output_dir> [--embedded-css]\n", argv[0]);
+    if (argc < 4) {
+        fprintf(stderr, "Usage: %s <source_dir> <input.kir> <output_dir> [--embedded-css]\n", argv[0]);
         fprintf(stderr, "Options:\n");
+        fprintf(stderr, "  source_dir      Directory containing source files (for asset copying)\n");
         fprintf(stderr, "  --embedded-css  Embed CSS in <style> tag instead of external file\n");
         return 1;
     }
 
-    const char* kir_file = argv[1];
-    const char* output_dir = argv[2];
+    const char* source_dir = argv[1];
+    const char* kir_file = argv[2];
+    const char* output_dir = argv[3];
     bool embedded_css = false;
 
     // Parse optional flags
-    for (int i = 3; i < argc; i++) {
+    for (int i = 4; i < argc; i++) {
         if (strcmp(argv[i], "--embedded-css") == 0) {
             embedded_css = true;
         }
     }
 
     printf("Converting KIR to HTML...\n");
+    printf("  Source: %s\n", source_dir);
     printf("  Input: %s\n", kir_file);
     printf("  Output: %s/\n", output_dir);
     if (embedded_css) {
@@ -49,8 +52,28 @@ int main(int argc, char** argv) {
         printf("  CSS Variables: %u found\n", manifest->variable_count);
     }
 
-    // Generate HTML with manifest (for CSS variable output)
-    bool success = web_render_ir_component_with_manifest(root, output_dir, embedded_css, manifest);
+    // Create renderer manually to set source directory
+    WebIRRenderer* renderer = web_ir_renderer_create();
+    if (!renderer) {
+        fprintf(stderr, "Error: Failed to create web renderer\n");
+        ir_destroy_component(root);
+        if (manifest) ir_reactive_manifest_destroy(manifest);
+        return 1;
+    }
+
+    // Configure renderer
+    web_ir_renderer_set_output_directory(renderer, output_dir);
+    web_ir_renderer_set_source_directory(renderer, source_dir);
+    web_ir_renderer_set_inline_css(renderer, embedded_css);
+    if (manifest) {
+        web_ir_renderer_set_manifest(renderer, manifest);
+    }
+
+    // Generate HTML
+    bool success = web_ir_renderer_render(renderer, root);
+
+    // Cleanup
+    web_ir_renderer_destroy(renderer);
 
     // Cleanup
     ir_destroy_component(root);

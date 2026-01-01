@@ -791,6 +791,9 @@ int cmd_run(int argc, char** argv) {
                 snprintf(abs_output_dir, sizeof(abs_output_dir), "%s/%s", cwd, output_dir);
             }
 
+            // Source directory is current working directory (where assets are located)
+            char* source_dir = cwd;
+
             char codegen_cmd[8192];
             snprintf(codegen_cmd, sizeof(codegen_cmd),
                      "cd /mnt/storage/Projects/kryon/codegens/web && "
@@ -800,8 +803,9 @@ int cmd_run(int argc, char** argv) {
                      "../../ir/third_party/cJSON/cJSON.c "
                      "-L../../build -lkryon_ir -lm "
                      "-o /tmp/kryon_web_gen_%d 2>&1 && "
-                     "/tmp/kryon_web_gen_%d \"%s\" \"%s\" 2>&1",
-                     getpid(), getpid(), abs_kir_path, abs_output_dir);
+                     "LD_LIBRARY_PATH=/mnt/storage/Projects/kryon/build:$LD_LIBRARY_PATH "
+                     "/tmp/kryon_web_gen_%d \"%s\" \"%s\" \"%s\" 2>&1",
+                     getpid(), getpid(), source_dir, abs_kir_path, abs_output_dir);
 
             free(cwd);
 
@@ -917,8 +921,9 @@ int cmd_run(int argc, char** argv) {
                      "../../ir/third_party/cJSON/cJSON.c "
                      "-L../../build -lkryon_ir -lm "
                      "-o /tmp/kryon_web_gen_%d 2>&1 && "
-                     "/tmp/kryon_web_gen_%d \"%s\" \"%s\" 2>&1",
-                     getpid(), getpid(), abs_kir_path2, abs_output_dir2);
+                     "LD_LIBRARY_PATH=/mnt/storage/Projects/kryon/build:$LD_LIBRARY_PATH "
+                     "/tmp/kryon_web_gen_%d \"%s\" \"%s\" \"%s\" 2>&1",
+                     getpid(), getpid(), cwd2, abs_kir_path2, abs_output_dir2);
 
             free(cwd2);
 

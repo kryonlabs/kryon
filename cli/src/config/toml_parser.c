@@ -234,24 +234,72 @@ TOMLTable* toml_parse_file(const char* path) {
                     char* array_content = str_copy(value + 1);  // Skip opening [
                     array_content[strlen(array_content) - 1] = '\0';  // Remove closing ]
 
-                    // Split by commas and add each element with index
+                    // Parse array elements, handling nested braces
                     char* elem_start = array_content;
                     int idx = 0;
                     while (*elem_start) {
-                        char* comma = strchr(elem_start, ',');
-                        if (comma) *comma = '\0';
+                        // Skip leading whitespace
+                        while (*elem_start && (*elem_start == ' ' || *elem_start == '\t')) {
+                            elem_start++;
+                        }
+                        if (!*elem_start) break;
 
-                        char* elem = trim_whitespace(elem_start);
-                        elem = remove_quotes(elem);
+                        char* elem_end = NULL;
+                        if (*elem_start == '{') {
+                            // Find matching closing brace
+                            int brace_depth = 0;
+                            char* p = elem_start;
+                            while (*p) {
+                                if (*p == '{') brace_depth++;
+                                else if (*p == '}') {
+                                    brace_depth--;
+                                    if (brace_depth == 0) {
+                                        elem_end = p + 1;
+                                        break;
+                                    }
+                                }
+                                p++;
+                            }
+                            if (brace_depth != 0) break;  // Malformed
 
-                        // Add as full_key.N
-                        char indexed_key[2048];
-                        snprintf(indexed_key, sizeof(indexed_key), "%s.%d", full_key, idx);
-                        toml_table_add(table, indexed_key, elem, line_num);
+                            // Extract inline table
+                            size_t elem_len = elem_end - elem_start;
+                            char* elem = (char*)malloc(elem_len + 1);
+                            strncpy(elem, elem_start, elem_len);
+                            elem[elem_len] = '\0';
 
+                            // Parse as inline table with indexed key
+                            char indexed_key[2048];
+                            snprintf(indexed_key, sizeof(indexed_key), "%s.%d", full_key, idx);
+                            parse_inline_table(table, indexed_key, elem, line_num);
+                            free(elem);
+
+                            // Move past the inline table and any trailing comma
+                            elem_start = elem_end;
+                            while (*elem_start && (*elem_start == ' ' || *elem_start == ',' || *elem_start == '\t')) {
+                                elem_start++;
+                            }
+                        } else {
+                            // Simple value - find comma or end
+                            char* comma = strchr(elem_start, ',');
+                            if (comma) {
+                                *comma = '\0';
+                                elem_end = comma + 1;
+                            } else {
+                                elem_end = elem_start + strlen(elem_start);
+                            }
+
+                            char* elem = trim_whitespace(elem_start);
+                            elem = remove_quotes(elem);
+
+                            // Add as full_key.N
+                            char indexed_key[2048];
+                            snprintf(indexed_key, sizeof(indexed_key), "%s.%d", full_key, idx);
+                            toml_table_add(table, indexed_key, elem, line_num);
+
+                            elem_start = elem_end;
+                        }
                         idx++;
-                        if (!comma) break;
-                        elem_start = comma + 1;
                     }
                     free(array_content);
                 } else {
