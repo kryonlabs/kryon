@@ -66,6 +66,7 @@ bool ir_lua_check_luajit_available(void) {
  * Parse Lua source to KIR JSON by executing it with LuaJIT
  */
 char* ir_lua_to_kir(const char* source, size_t length) {
+    fprintf(stderr, "[DEBUG] ir_lua_to_kir called\n");
     if (!source) return NULL;
 
     if (length == 0) {
@@ -141,6 +142,37 @@ char* ir_lua_to_kir(const char* source, size_t length) {
     fwrite(source, 1, length, f);
     fclose(f);
 
+    // Copy all .lua files from the project directory to temp directory
+    // This enables require() to work for multi-file projects
+    const char* source_file = getenv("KRYON_SOURCE_FILE");
+    fprintf(stderr, "[DEBUG] ir_lua_to_kir: KRYON_SOURCE_FILE = %s\n", source_file ? source_file : "(null)");
+
+    if (source_file) {
+        // Get the directory of the source file
+        char source_dir[4096];
+        snprintf(source_dir, sizeof(source_dir), "%s", source_file);
+
+        // Find the last slash to get the directory
+        char* last_slash = strrchr(source_dir, '/');
+        if (last_slash) {
+            *last_slash = '\0';  // Null-terminate at the slash to get directory
+            fprintf(stderr, "[DEBUG] Copying .lua files from %s to %s\n", source_dir, temp_dir);
+
+            // Copy all .lua files from source directory to temp directory
+            char copy_cmd[2048];
+            snprintf(copy_cmd, sizeof(copy_cmd),
+                     "cp \"%s\"/*.lua \"%s\"/ 2>&1",
+                     source_dir, temp_dir);
+            int copy_result = system(copy_cmd);
+            fprintf(stderr, "[DEBUG] cp result: %d\n", copy_result);
+
+            // List files in temp directory to verify
+            char list_cmd[2048];
+            snprintf(list_cmd, sizeof(list_cmd), "ls -la \"%s\"/*.lua 2>&1", temp_dir);
+            system(list_cmd);
+        }
+    }
+
     // Create wrapper script that serializes to JSON
     char wrapper_file[1200];
     snprintf(wrapper_file, sizeof(wrapper_file), "%s/wrapper.lua", temp_dir);
@@ -172,6 +204,9 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "-- Disable running the desktop renderer\n"
         "os.execute('export KRYON_RUN_DIRECT=false')\n"
         "_G.KRYON_RUN_DIRECT = false\n"
+        "\n"
+        "-- Add current directory for local module requires\n"
+        "package.path = './?.lua;./?/init.lua;' .. package.path\n"
         "\n"
         "-- Add Kryon bindings to package path\n"
         "package.path = package.path .. ';%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua'\n",
