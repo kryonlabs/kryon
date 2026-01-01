@@ -18,8 +18,9 @@ kotlin_codegen.o: kotlin_codegen.c kotlin_codegen.h
 	$(CC) $(CFLAGS) -I$(CJSON_DIR) -I../../ir -c kotlin_codegen.c -o kotlin_codegen.o
 
 # Build cJSON if needed
-$(CJSON_OBJ):
-	$(MAKE) -C $(CJSON_DIR)
+$(CJSON_OBJ): $(CJSON_DIR)/cJSON.c
+	mkdir -p ../../build
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJECTS) $(CJSON_OBJ)
 	ar rcs $(TARGET) $(OBJECTS) $(CJSON_OBJ)
