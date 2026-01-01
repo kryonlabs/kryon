@@ -29,6 +29,9 @@ static const char* get_html_tag(IRComponentType type) {
         // Raw text - no wrapper tag
         case IR_COMPONENT_TEXT: return NULL;
 
+        // Template placeholders - output {{name}} syntax directly
+        case IR_COMPONENT_PLACEHOLDER: return NULL;
+
         case IR_COMPONENT_BUTTON: return "button";
         case IR_COMPONENT_INPUT: return "input";
         case IR_COMPONENT_CHECKBOX: return "input";
@@ -375,6 +378,52 @@ static void escape_html_text(const char* text, char* buffer, size_t buffer_size)
     buffer[pos] = '\0';
 }
 
+/* Length-aware version for substring escaping (used by syntax highlighting) */
+static void escape_html_text_len(const char* text, size_t text_len, char* buffer, size_t buffer_size) {
+    if (!text || !buffer || buffer_size == 0) return;
+
+    size_t pos = 0;
+    for (size_t i = 0; i < text_len && pos < buffer_size - 1; i++) {
+        char c = text[i];
+        switch (c) {
+            case '&':
+                if (pos < buffer_size - 6) {
+                    strcpy(buffer + pos, "&amp;");
+                    pos += 5;
+                }
+                break;
+            case '<':
+                if (pos < buffer_size - 5) {
+                    strcpy(buffer + pos, "&lt;");
+                    pos += 4;
+                }
+                break;
+            case '>':
+                if (pos < buffer_size - 5) {
+                    strcpy(buffer + pos, "&gt;");
+                    pos += 4;
+                }
+                break;
+            case '"':
+                if (pos < buffer_size - 7) {
+                    strcpy(buffer + pos, "&quot;");
+                    pos += 6;
+                }
+                break;
+            case '\'':
+                if (pos < buffer_size - 7) {
+                    strcpy(buffer + pos, "&#x27;");
+                    pos += 6;
+                }
+                break;
+            default:
+                buffer[pos++] = c;
+                break;
+        }
+    }
+    buffer[pos] = '\0';
+}
+
 
 HtmlGeneratorOptions html_generator_default_options(void) {
     HtmlGeneratorOptions opts = {
@@ -509,6 +558,51 @@ bool html_generator_write_format(HTMLGenerator* generator, const char* format, .
     return true;
 }
 
+// Check if a component type is inline (for HTML output formatting)
+static bool is_inline_component(IRComponent* component) {
+    if (!component) return false;
+
+    // TEXT components are always inline
+    if (component->type == IR_COMPONENT_TEXT) return true;
+
+    // Inline semantic elements
+    switch (component->type) {
+        case IR_COMPONENT_SPAN:
+        case IR_COMPONENT_LINK:
+        case IR_COMPONENT_STRONG:
+        case IR_COMPONENT_EM:
+        case IR_COMPONENT_CODE_INLINE:
+        case IR_COMPONENT_SMALL:
+        case IR_COMPONENT_MARK:
+            return true;
+        default:
+            break;
+    }
+
+    return false;
+}
+
+// Check if all children are inline elements (for determining output format)
+static bool has_only_inline_content(IRComponent* component) {
+    if (!component) return false;
+
+    // If there's text content and no children, it's inline
+    if (component->text_content && component->child_count == 0) {
+        return true;
+    }
+
+    // Check all children
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        IRComponent* child = component->children[i];
+        if (!is_inline_component(child)) {
+            return false;
+        }
+    }
+
+    // Has only inline children (or text + inline children)
+    return component->child_count > 0 || component->text_content;
+}
+
 static bool generate_component_html(HTMLGenerator* generator, IRComponent* component) {
     if (!generator || !component) return false;
 
@@ -572,15 +666,48 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
     }
 
+    // Handle template placeholders ({{name}} syntax)
+    // Outputs placeholder text directly for preserve mode or warns if not substituted
+    if (component->type == IR_COMPONENT_PLACEHOLDER) {
+        IRPlaceholderData* ph = (IRPlaceholderData*)component->custom_data;
+        if (ph && ph->name) {
+            if (ph->preserve) {
+                // Preserve mode: output {{name}} syntax directly
+                html_generator_write_format(generator, "{{%s}}", ph->name);
+            } else {
+                // Expand mode: placeholder should have been substituted before codegen
+                fprintf(stderr, "Warning: Unresolved placeholder {{%s}} - should have been substituted\n", ph->name);
+                // Output as comment for debugging
+                html_generator_write_format(generator, "<!-- Unresolved: {{%s}} -->", ph->name);
+            }
+        }
+        return true;
+    }
+
     // Handle raw text output (no wrapper tag)
     // IR_COMPONENT_TEXT outputs raw text content without any HTML tag
     if (tag == NULL) {
-        // Output text content directly (escaped)
+        // Output text content directly (escaped) WITHOUT indentation
+        // Indentation would add unwanted whitespace before inline text
         if (component->text_content && strlen(component->text_content) > 0) {
-            html_generator_write_indent(generator);
-            char escaped_text[4096];
-            escape_html_text(component->text_content, escaped_text, sizeof(escaped_text));
-            html_generator_write_string(generator, escaped_text);
+            // Trim leading/trailing whitespace for inline text
+            const char* start = component->text_content;
+            const char* end = component->text_content + strlen(component->text_content) - 1;
+
+            while (*start && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r')) start++;
+            while (end > start && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')) end--;
+
+            if (end >= start) {
+                size_t trimmed_len = end - start + 1;
+                char trimmed[4096];
+                if (trimmed_len < sizeof(trimmed)) {
+                    strncpy(trimmed, start, trimmed_len);
+                    trimmed[trimmed_len] = '\0';
+                    char escaped_text[4096];
+                    escape_html_text(trimmed, escaped_text, sizeof(escaped_text));
+                    html_generator_write_string(generator, escaped_text);
+                }
+            }
             // Don't add newline for inline text - let parent handle formatting
         }
         // Process children (inline semantic components may have text children)
@@ -595,7 +722,10 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
                           component->type == IR_COMPONENT_IMAGE ||
                           component->type == IR_COMPONENT_HORIZONTAL_RULE);
 
-    html_generator_write_indent(generator);
+    // Skip indentation for inline elements to avoid whitespace between inline content
+    if (!is_inline_component(component)) {
+        html_generator_write_indent(generator);
+    }
     html_generator_write_format(generator, "<%s", tag);
 
     // Analyze component styling to determine if ID/class needed
@@ -613,27 +743,34 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         html_generator_write_format(generator, " class=\"%s\"", component->css_class);
     } else if (analysis && analysis->needs_css && analysis->suggested_class) {
         // Fallback: add class for components with custom styling but no explicit class
-        // Skip semantic elements that have their own HTML tags - CSS can target them directly
+        // Skip elements that CSS can target directly (semantic elements or element selectors)
         bool skip_class = false;
-        switch (component->type) {
-            // Inline elements - skip to preserve descendant selectors
-            case IR_COMPONENT_SPAN:
-            case IR_COMPONENT_STRONG:
-            case IR_COMPONENT_EM:
-            case IR_COMPONENT_CODE_INLINE:
-            case IR_COMPONENT_MARK:
-            case IR_COMPONENT_LINK:
-            // Semantic block elements - CSS can target h1, h2, p, etc. directly
-            case IR_COMPONENT_HEADING:
-            case IR_COMPONENT_PARAGRAPH:
-            case IR_COMPONENT_LIST:
-            case IR_COMPONENT_LIST_ITEM:
-            case IR_COMPONENT_BLOCKQUOTE:
-            case IR_COMPONENT_CODE_BLOCK:
-                skip_class = true;
-                break;
-            default:
-                break;
+
+        // If selector_type is ELEMENT, CSS can target tag directly (e.g., header, footer, nav)
+        if (component->selector_type == IR_SELECTOR_ELEMENT) {
+            skip_class = true;
+        } else {
+            // Also skip specific component types with semantic HTML tags
+            switch (component->type) {
+                // Inline elements - skip to preserve descendant selectors
+                case IR_COMPONENT_SPAN:
+                case IR_COMPONENT_STRONG:
+                case IR_COMPONENT_EM:
+                case IR_COMPONENT_CODE_INLINE:
+                case IR_COMPONENT_MARK:
+                case IR_COMPONENT_LINK:
+                // Semantic block elements - CSS can target h1, h2, p, etc. directly
+                case IR_COMPONENT_HEADING:
+                case IR_COMPONENT_PARAGRAPH:
+                case IR_COMPONENT_LIST:
+                case IR_COMPONENT_LIST_ITEM:
+                case IR_COMPONENT_BLOCKQUOTE:
+                case IR_COMPONENT_CODE_BLOCK:
+                    skip_class = true;
+                    break;
+                default:
+                    break;
+            }
         }
         if (!skip_class) {
             html_generator_write_format(generator, " class=\"%s\"", analysis->suggested_class);
@@ -841,52 +978,166 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         return true;
     }
 
-    html_generator_write_string(generator, ">\n");
+    // Check if content should be output inline (no newlines between tag and content)
+    bool inline_content = has_only_inline_content(component);
 
-    generator->indent_level++;
+    if (inline_content) {
+        // Inline formatting: <tag>content</tag>
+        html_generator_write_string(generator, ">");
 
-    // Special handling for markdown components with custom_data text
-    if (component->type == IR_COMPONENT_HEADING) {
-        IRHeadingData* data = (IRHeadingData*)component->custom_data;
-        if (data && data->text) {
+        // Write text content inline (trimmed)
+        if (component->text_content && strlen(component->text_content) > 0) {
+            // Trim leading/trailing whitespace for inline text
+            const char* start = component->text_content;
+            const char* end = component->text_content + strlen(component->text_content) - 1;
+
+            while (*start && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r')) start++;
+            while (end > start && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')) end--;
+
+            if (end >= start) {
+                size_t trimmed_len = end - start + 1;
+                char trimmed[1024];
+                if (trimmed_len < sizeof(trimmed)) {
+                    strncpy(trimmed, start, trimmed_len);
+                    trimmed[trimmed_len] = '\0';
+                    char escaped_text[1024];
+                    escape_html_text(trimmed, escaped_text, sizeof(escaped_text));
+                    html_generator_write_string(generator, escaped_text);
+                }
+            }
+        }
+
+        // Write inline children
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            generate_component_html(generator, component->children[i]);
+        }
+
+        // For inline elements, don't add newline after closing tag
+        // For block elements with inline content, add newline
+        if (is_inline_component(component)) {
+            html_generator_write_format(generator, "</%s>", tag);
+        } else {
+            html_generator_write_format(generator, "</%s>\n", tag);
+        }
+    } else {
+        // Block formatting: newlines between tag and content
+        html_generator_write_string(generator, ">\n");
+
+        generator->indent_level++;
+
+        // Special handling for markdown components with custom_data text
+        if (component->type == IR_COMPONENT_HEADING) {
+            IRHeadingData* data = (IRHeadingData*)component->custom_data;
+            if (data && data->text) {
+                html_generator_write_indent(generator);
+                char escaped_text[2048];
+                escape_html_text(data->text, escaped_text, sizeof(escaped_text));
+                html_generator_write_format(generator, "%s\n", escaped_text);
+            }
+        } else if (component->type == IR_COMPONENT_CODE_BLOCK) {
+            IRCodeBlockData* data = (IRCodeBlockData*)component->custom_data;
+            if (data && data->code) {
+                html_generator_write_indent(generator);
+                html_generator_write_string(generator, "<code");
+                if (data->language) {
+                    html_generator_write_format(generator, " class=\"language-%s\"", data->language);
+                }
+                html_generator_write_string(generator, ">");
+
+                // Check if we have syntax highlighting tokens
+                if (data->tokens && data->token_count > 0) {
+                    // Output tokenized code with span wrappers
+                    uint32_t pos = 0;
+                    for (uint32_t i = 0; i < data->token_count; i++) {
+                        IRCodeToken* tok = &data->tokens[i];
+
+                        // Output any text between tokens (whitespace, newlines)
+                        if (tok->start > pos) {
+                            size_t gap_len = tok->start - pos;
+                            char* gap_escaped = malloc(gap_len * 6 + 1);
+                            if (gap_escaped) {
+                                escape_html_text_len(data->code + pos, gap_len, gap_escaped, gap_len * 6 + 1);
+                                html_generator_write_string(generator, gap_escaped);
+                                free(gap_escaped);
+                            }
+                        }
+
+                        // Get CSS class for token type
+                        const char* token_class = "";
+                        switch (tok->type) {
+                            case IR_TOKEN_KEYWORD:     token_class = "hljs-keyword"; break;
+                            case IR_TOKEN_STRING:      token_class = "hljs-string"; break;
+                            case IR_TOKEN_NUMBER:      token_class = "hljs-number"; break;
+                            case IR_TOKEN_COMMENT:     token_class = "hljs-comment"; break;
+                            case IR_TOKEN_FUNCTION:    token_class = "hljs-title function_"; break;
+                            case IR_TOKEN_TYPE:        token_class = "hljs-type"; break;
+                            case IR_TOKEN_CONSTANT:    token_class = "hljs-literal"; break;
+                            case IR_TOKEN_OPERATOR:    token_class = "hljs-operator"; break;
+                            case IR_TOKEN_PUNCTUATION: token_class = "hljs-punctuation"; break;
+                            case IR_TOKEN_VARIABLE:    token_class = "hljs-variable"; break;
+                            case IR_TOKEN_ATTRIBUTE:   token_class = "hljs-meta"; break;
+                            case IR_TOKEN_TAG:         token_class = "hljs-tag"; break;
+                            case IR_TOKEN_PROPERTY:    token_class = "hljs-attr"; break;
+                            default: break;
+                        }
+
+                        // Output token with span wrapper (skip span if no class)
+                        char* tok_escaped = malloc(tok->length * 6 + 1);
+                        if (tok_escaped) {
+                            escape_html_text_len(data->code + tok->start, tok->length, tok_escaped, tok->length * 6 + 1);
+                            if (token_class[0]) {
+                                html_generator_write_format(generator, "<span class=\"%s\">%s</span>", token_class, tok_escaped);
+                            } else {
+                                html_generator_write_string(generator, tok_escaped);
+                            }
+                            free(tok_escaped);
+                        }
+
+                        pos = tok->start + tok->length;
+                    }
+
+                    // Output any remaining text after last token
+                    if (pos < data->length) {
+                        size_t rem_len = data->length - pos;
+                        char* rem_escaped = malloc(rem_len * 6 + 1);
+                        if (rem_escaped) {
+                            escape_html_text_len(data->code + pos, rem_len, rem_escaped, rem_len * 6 + 1);
+                            html_generator_write_string(generator, rem_escaped);
+                            free(rem_escaped);
+                        }
+                    }
+                } else {
+                    // No tokens - output plain escaped code (dynamic allocation for large code)
+                    size_t code_len = data->length ? data->length : strlen(data->code);
+                    char* escaped_code = malloc(code_len * 6 + 1);
+                    if (escaped_code) {
+                        escape_html_text_len(data->code, code_len, escaped_code, code_len * 6 + 1);
+                        html_generator_write_string(generator, escaped_code);
+                        free(escaped_code);
+                    }
+                }
+
+                html_generator_write_string(generator, "</code>\n");
+            }
+        }
+        // Write text content if present (for non-markdown components)
+        else if (component->text_content && strlen(component->text_content) > 0) {
             html_generator_write_indent(generator);
-            char escaped_text[2048];
-            escape_html_text(data->text, escaped_text, sizeof(escaped_text));
+            char escaped_text[1024];
+            escape_html_text(component->text_content, escaped_text, sizeof(escaped_text));
             html_generator_write_format(generator, "%s\n", escaped_text);
         }
-    } else if (component->type == IR_COMPONENT_CODE_BLOCK) {
-        IRCodeBlockData* data = (IRCodeBlockData*)component->custom_data;
-        if (data && data->code) {
-            html_generator_write_indent(generator);
-            html_generator_write_string(generator, "<code");
-            if (data->language) {
-                html_generator_write_format(generator, " class=\"language-%s\"", data->language);
-            }
-            html_generator_write_string(generator, ">");
-            // Code blocks need special escaping to preserve formatting
-            char escaped_code[4096];
-            escape_html_text(data->code, escaped_code, sizeof(escaped_code));
-            html_generator_write_string(generator, escaped_code);
-            html_generator_write_string(generator, "</code>\n");
+
+        // Write children
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            generate_component_html(generator, component->children[i]);
         }
-    }
-    // Write text content if present (for non-markdown components)
-    else if (component->text_content && strlen(component->text_content) > 0) {
+
+        generator->indent_level--;
+
         html_generator_write_indent(generator);
-        char escaped_text[1024];
-        escape_html_text(component->text_content, escaped_text, sizeof(escaped_text));
-        html_generator_write_format(generator, "%s\n", escaped_text);
+        html_generator_write_format(generator, "</%s>\n", tag);
     }
-
-    // Write children
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        generate_component_html(generator, component->children[i]);
-    }
-
-    generator->indent_level--;
-
-    html_generator_write_indent(generator);
-    html_generator_write_format(generator, "</%s>\n", tag);
 
     style_analysis_free(analysis);
     return true;

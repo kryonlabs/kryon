@@ -367,7 +367,7 @@ static void json_rgba_to_hex(char* buffer, size_t size, uint8_t r, uint8_t g, ui
  * Serialize color to JSON string (e.g., "#rrggbb" or "#rrggbbaa")
  */
 static char* json_color_to_string(IRColor color) {
-    char buffer[16];
+    char buffer[64];
 
     if (color.type == IR_COLOR_SOLID) {
         json_rgba_to_hex(buffer, sizeof(buffer), color.data.r, color.data.g, color.data.b, color.data.a);
@@ -375,6 +375,10 @@ static char* json_color_to_string(IRColor color) {
     } else if (color.type == IR_COLOR_TRANSPARENT) {
         return strdup("transparent");
     } else if (color.type == IR_COLOR_VAR_REF) {
+        // Prefer var_name (e.g., "var(--border)") over numeric var_id
+        if (color.var_name) {
+            return strdup(color.var_name);
+        }
         snprintf(buffer, sizeof(buffer), "var(%u)", color.data.var_id);
         return strdup(buffer);
     }
@@ -1490,6 +1494,18 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
             cJSON_AddStringToObject(obj, "code", data->code);
         }
         cJSON_AddBoolToObject(obj, "showLineNumbers", data->show_line_numbers);
+        // Serialize syntax highlighting tokens if present
+        if (data->tokens && data->token_count > 0) {
+            cJSON* tokensArray = cJSON_CreateArray();
+            for (uint32_t i = 0; i < data->token_count; i++) {
+                cJSON* tokenObj = cJSON_CreateObject();
+                cJSON_AddNumberToObject(tokenObj, "s", data->tokens[i].start);
+                cJSON_AddNumberToObject(tokenObj, "l", data->tokens[i].length);
+                cJSON_AddNumberToObject(tokenObj, "t", data->tokens[i].type);
+                cJSON_AddItemToArray(tokensArray, tokenObj);
+            }
+            cJSON_AddItemToObject(obj, "tokens", tokensArray);
+        }
     }
 
     if (component->type == IR_COMPONENT_LIST && component->custom_data) {
@@ -1830,8 +1846,16 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
     // Only serialize properties that are explicitly set
     if (props->set_flags & IR_PROP_DISPLAY) {
         const char* display_str = "block";
-        if (props->display == IR_LAYOUT_MODE_FLEX) display_str = "flex";
-        else if (props->display == IR_LAYOUT_MODE_GRID) display_str = "grid";
+        switch (props->display) {
+            case IR_LAYOUT_MODE_FLEX: display_str = "flex"; break;
+            case IR_LAYOUT_MODE_INLINE_FLEX: display_str = "inline-flex"; break;
+            case IR_LAYOUT_MODE_GRID: display_str = "grid"; break;
+            case IR_LAYOUT_MODE_INLINE_GRID: display_str = "inline-grid"; break;
+            case IR_LAYOUT_MODE_BLOCK: display_str = "block"; break;
+            case IR_LAYOUT_MODE_INLINE: display_str = "inline"; break;
+            case IR_LAYOUT_MODE_INLINE_BLOCK: display_str = "inline-block"; break;
+            case IR_LAYOUT_MODE_NONE: display_str = "none"; break;
+        }
         cJSON_AddStringToObject(obj, "display", display_str);
     }
 
@@ -1919,7 +1943,20 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
     }
 
     if (props->set_flags & IR_PROP_FONT_SIZE) {
-        cJSON_AddNumberToObject(obj, "fontSize", props->font_size);
+        // Serialize font-size with unit as string (e.g., "1.5rem", "16px")
+        char buf[32];
+        const char* unit = "";
+        switch (props->font_size.type) {
+            case IR_DIMENSION_PX: unit = "px"; break;
+            case IR_DIMENSION_REM: unit = "rem"; break;
+            case IR_DIMENSION_EM: unit = "em"; break;
+            case IR_DIMENSION_PERCENT: unit = "%"; break;
+            case IR_DIMENSION_VW: unit = "vw"; break;
+            case IR_DIMENSION_VH: unit = "vh"; break;
+            default: unit = "px"; break;
+        }
+        snprintf(buf, sizeof(buf), "%.2f%s", props->font_size.value, unit);
+        cJSON_AddStringToObject(obj, "fontSize", buf);
     }
 
     if (props->set_flags & IR_PROP_FONT_WEIGHT) {
@@ -1930,16 +1967,55 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
         cJSON_AddStringToObject(obj, "fontFamily", props->font_family);
     }
 
+    if (props->set_flags & IR_PROP_LINE_HEIGHT) {
+        cJSON_AddNumberToObject(obj, "lineHeight", props->line_height);
+    }
+
+    if (props->set_flags & IR_PROP_LETTER_SPACING) {
+        cJSON_AddNumberToObject(obj, "letterSpacing", props->letter_spacing);
+    }
+
     if (props->set_flags & IR_PROP_TEXT_ALIGN) {
         cJSON_AddStringToObject(obj, "textAlign", json_text_align_to_string(props->text_align));
     }
 
     if (props->set_flags & IR_PROP_BORDER) {
         cJSON_AddNumberToObject(obj, "borderWidth", props->border_width);
+        char* borderColorStr = json_color_to_string(props->border_color);
+        cJSON_AddStringToObject(obj, "borderColor", borderColorStr);
+        free(borderColorStr);
+    } else {
+        // Individual border sides
+        if (props->set_flags & IR_PROP_BORDER_TOP) {
+            cJSON_AddNumberToObject(obj, "borderTopWidth", props->border_width_top);
+        }
+        if (props->set_flags & IR_PROP_BORDER_RIGHT) {
+            cJSON_AddNumberToObject(obj, "borderRightWidth", props->border_width_right);
+        }
+        if (props->set_flags & IR_PROP_BORDER_BOTTOM) {
+            cJSON_AddNumberToObject(obj, "borderBottomWidth", props->border_width_bottom);
+        }
+        if (props->set_flags & IR_PROP_BORDER_LEFT) {
+            cJSON_AddNumberToObject(obj, "borderLeftWidth", props->border_width_left);
+        }
+        // Serialize border color if any individual border is set
+        if ((props->set_flags & (IR_PROP_BORDER_TOP | IR_PROP_BORDER_RIGHT |
+                                  IR_PROP_BORDER_BOTTOM | IR_PROP_BORDER_LEFT))) {
+            char* borderColorStr = json_color_to_string(props->border_color);
+            cJSON_AddStringToObject(obj, "borderColor", borderColorStr);
+            free(borderColorStr);
+        }
     }
 
     if (props->set_flags & IR_PROP_BORDER_RADIUS) {
         cJSON_AddNumberToObject(obj, "borderRadius", props->border_radius);
+    }
+
+    // Border color only (for hover states, etc.)
+    if (props->set_flags & IR_PROP_BORDER_COLOR) {
+        char* borderColorStr = json_color_to_string(props->border_color);
+        cJSON_AddStringToObject(obj, "borderColorOnly", borderColorStr);
+        free(borderColorStr);
     }
 
     // Background image (gradient string)
@@ -2009,6 +2085,18 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
     // Box sizing
     if (props->set_flags & IR_PROP_BOX_SIZING) {
         cJSON_AddNumberToObject(obj, "boxSizing", props->box_sizing);
+    }
+
+    if (props->set_flags & IR_PROP_OBJECT_FIT) {
+        const char* value = "fill";
+        switch (props->object_fit) {
+            case IR_OBJECT_FIT_CONTAIN: value = "contain"; break;
+            case IR_OBJECT_FIT_COVER: value = "cover"; break;
+            case IR_OBJECT_FIT_NONE: value = "none"; break;
+            case IR_OBJECT_FIT_SCALE_DOWN: value = "scale-down"; break;
+            default: break;
+        }
+        cJSON_AddStringToObject(obj, "objectFit", value);
     }
 
     return obj;
@@ -3306,10 +3394,14 @@ static IRColor json_parse_color(const char* str) {
         return color;
     }
 
-    // Check for var() reference
+    // Check for var() reference - preserve full var() string
     if (strncmp(str, "var(", 4) == 0) {
         color.type = IR_COLOR_VAR_REF;
-        sscanf(str + 4, "%hu", &color.data.var_id);
+        color.var_name = strdup(str);  // Store full "var(--border)"
+        // Try to parse numeric var_id if present (legacy format "var(0)")
+        if (str[4] >= '0' && str[4] <= '9') {
+            sscanf(str + 4, "%hu", &color.data.var_id);
+        }
         return color;
     }
 
@@ -4670,6 +4762,29 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                 data->show_line_numbers = cJSON_IsTrue(showLineNumsItem);
             }
 
+            // Deserialize syntax highlighting tokens if present
+            cJSON* tokensItem = cJSON_GetObjectItem(json, "tokens");
+            if (tokensItem && cJSON_IsArray(tokensItem)) {
+                int tokenCount = cJSON_GetArraySize(tokensItem);
+                if (tokenCount > 0) {
+                    data->tokens = (IRCodeToken*)calloc(tokenCount, sizeof(IRCodeToken));
+                    if (data->tokens) {
+                        data->token_count = (uint32_t)tokenCount;
+                        for (int i = 0; i < tokenCount; i++) {
+                            cJSON* tokenObj = cJSON_GetArrayItem(tokensItem, i);
+                            if (tokenObj) {
+                                cJSON* startVal = cJSON_GetObjectItem(tokenObj, "s");
+                                cJSON* lengthVal = cJSON_GetObjectItem(tokenObj, "l");
+                                cJSON* typeVal = cJSON_GetObjectItem(tokenObj, "t");
+                                if (startVal) data->tokens[i].start = (uint32_t)startVal->valueint;
+                                if (lengthVal) data->tokens[i].length = (uint32_t)lengthVal->valueint;
+                                if (typeVal) data->tokens[i].type = (IRTokenType)typeVal->valueint;
+                            }
+                        }
+                    }
+                }
+            }
+
             component->custom_data = (char*)data;
         }
     }
@@ -4871,8 +4986,14 @@ static void json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties
     // Display
     if ((item = cJSON_GetObjectItem(propsObj, "display")) && cJSON_IsString(item)) {
         props->set_flags |= IR_PROP_DISPLAY;
-        if (strcmp(item->valuestring, "flex") == 0) props->display = IR_LAYOUT_MODE_FLEX;
-        else if (strcmp(item->valuestring, "grid") == 0) props->display = IR_LAYOUT_MODE_GRID;
+        const char* val = item->valuestring;
+        if (strcmp(val, "flex") == 0) props->display = IR_LAYOUT_MODE_FLEX;
+        else if (strcmp(val, "inline-flex") == 0) props->display = IR_LAYOUT_MODE_INLINE_FLEX;
+        else if (strcmp(val, "grid") == 0) props->display = IR_LAYOUT_MODE_GRID;
+        else if (strcmp(val, "inline-grid") == 0) props->display = IR_LAYOUT_MODE_INLINE_GRID;
+        else if (strcmp(val, "inline") == 0) props->display = IR_LAYOUT_MODE_INLINE;
+        else if (strcmp(val, "inline-block") == 0) props->display = IR_LAYOUT_MODE_INLINE_BLOCK;
+        else if (strcmp(val, "none") == 0) props->display = IR_LAYOUT_MODE_NONE;
         else props->display = IR_LAYOUT_MODE_BLOCK;
     }
 
@@ -4924,11 +5045,24 @@ static void json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties
         props->set_flags |= IR_PROP_BACKGROUND;
         props->background = json_parse_color(item->valuestring);
     }
+    // Also check for "backgroundColor" key (used in stylesheet rules)
+    if ((item = cJSON_GetObjectItem(propsObj, "backgroundColor")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_BACKGROUND;
+        props->background = json_parse_color(item->valuestring);
+    }
 
     // Font properties
-    if ((item = cJSON_GetObjectItem(propsObj, "fontSize")) && cJSON_IsNumber(item)) {
-        props->set_flags |= IR_PROP_FONT_SIZE;
-        props->font_size = (float)item->valuedouble;
+    if ((item = cJSON_GetObjectItem(propsObj, "fontSize"))) {
+        if (cJSON_IsString(item)) {
+            // New format: "1.5rem", "16px"
+            props->font_size = json_parse_dimension(item->valuestring);
+            props->set_flags |= IR_PROP_FONT_SIZE;
+        } else if (cJSON_IsNumber(item)) {
+            // Legacy format: plain number (assume px)
+            props->font_size.type = IR_DIMENSION_PX;
+            props->font_size.value = (float)item->valuedouble;
+            props->set_flags |= IR_PROP_FONT_SIZE;
+        }
     }
 
     if ((item = cJSON_GetObjectItem(propsObj, "fontWeight")) && cJSON_IsNumber(item)) {
@@ -4966,9 +5100,9 @@ static void json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties
         props->opacity = (float)item->valuedouble;
     }
 
-    // Border
+    // Border - only set IR_PROP_BORDER if borderWidth is present, not just borderColor
+    // borderColor alone can be used with individual border sides (borderTopWidth, etc.)
     if ((item = cJSON_GetObjectItem(propsObj, "borderColor")) && cJSON_IsString(item)) {
-        props->set_flags |= IR_PROP_BORDER;
         props->border_color = json_parse_color(item->valuestring);
     }
 
@@ -4982,34 +5116,86 @@ static void json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties
         props->border_radius = (uint8_t)item->valueint;
     }
 
-    // Padding
+    // Border color only (for hover states, etc.)
+    if ((item = cJSON_GetObjectItem(propsObj, "borderColorOnly")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_BORDER_COLOR;
+        props->border_color = json_parse_color(item->valuestring);
+    }
+
+    // Individual border sides
+    if ((item = cJSON_GetObjectItem(propsObj, "borderTopWidth")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_BORDER_TOP;
+        props->border_width_top = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(propsObj, "borderRightWidth")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_BORDER_RIGHT;
+        props->border_width_right = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(propsObj, "borderBottomWidth")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_BORDER_BOTTOM;
+        props->border_width_bottom = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(propsObj, "borderLeftWidth")) && cJSON_IsNumber(item)) {
+        props->set_flags |= IR_PROP_BORDER_LEFT;
+        props->border_width_left = (float)item->valuedouble;
+    }
+
+    // Padding - support both array [top, right, bottom, left] and object formats
     cJSON* paddingObj = cJSON_GetObjectItem(propsObj, "padding");
-    if (paddingObj && cJSON_IsObject(paddingObj)) {
+    if (paddingObj) {
         props->set_flags |= IR_PROP_PADDING;
-        if ((item = cJSON_GetObjectItem(paddingObj, "top"))) props->padding.top = (float)item->valuedouble;
-        if ((item = cJSON_GetObjectItem(paddingObj, "right"))) props->padding.right = (float)item->valuedouble;
-        if ((item = cJSON_GetObjectItem(paddingObj, "bottom"))) props->padding.bottom = (float)item->valuedouble;
-        if ((item = cJSON_GetObjectItem(paddingObj, "left"))) props->padding.left = (float)item->valuedouble;
+        props->padding.set_flags = IR_SPACING_SET_ALL;
+        if (cJSON_IsArray(paddingObj) && cJSON_GetArraySize(paddingObj) >= 4) {
+            props->padding.top = (float)cJSON_GetArrayItem(paddingObj, 0)->valuedouble;
+            props->padding.right = (float)cJSON_GetArrayItem(paddingObj, 1)->valuedouble;
+            props->padding.bottom = (float)cJSON_GetArrayItem(paddingObj, 2)->valuedouble;
+            props->padding.left = (float)cJSON_GetArrayItem(paddingObj, 3)->valuedouble;
+        } else if (cJSON_IsObject(paddingObj)) {
+            if ((item = cJSON_GetObjectItem(paddingObj, "top"))) props->padding.top = (float)item->valuedouble;
+            if ((item = cJSON_GetObjectItem(paddingObj, "right"))) props->padding.right = (float)item->valuedouble;
+            if ((item = cJSON_GetObjectItem(paddingObj, "bottom"))) props->padding.bottom = (float)item->valuedouble;
+            if ((item = cJSON_GetObjectItem(paddingObj, "left"))) props->padding.left = (float)item->valuedouble;
+        }
     }
 
-    // Margin
+    // Margin - support both array [top, right, bottom, left] and object formats
     cJSON* marginObj = cJSON_GetObjectItem(propsObj, "margin");
-    if (marginObj && cJSON_IsObject(marginObj)) {
+    if (marginObj) {
         props->set_flags |= IR_PROP_MARGIN;
-        if ((item = cJSON_GetObjectItem(marginObj, "top"))) props->margin.top = (float)item->valuedouble;
-        if ((item = cJSON_GetObjectItem(marginObj, "right"))) props->margin.right = (float)item->valuedouble;
-        if ((item = cJSON_GetObjectItem(marginObj, "bottom"))) props->margin.bottom = (float)item->valuedouble;
-        if ((item = cJSON_GetObjectItem(marginObj, "left"))) props->margin.left = (float)item->valuedouble;
+        props->margin.set_flags = IR_SPACING_SET_ALL;
+        if (cJSON_IsArray(marginObj) && cJSON_GetArraySize(marginObj) >= 4) {
+            props->margin.top = (float)cJSON_GetArrayItem(marginObj, 0)->valuedouble;
+            props->margin.right = (float)cJSON_GetArrayItem(marginObj, 1)->valuedouble;
+            props->margin.bottom = (float)cJSON_GetArrayItem(marginObj, 2)->valuedouble;
+            props->margin.left = (float)cJSON_GetArrayItem(marginObj, 3)->valuedouble;
+        } else if (cJSON_IsObject(marginObj)) {
+            if ((item = cJSON_GetObjectItem(marginObj, "top"))) props->margin.top = (float)item->valuedouble;
+            if ((item = cJSON_GetObjectItem(marginObj, "right"))) props->margin.right = (float)item->valuedouble;
+            if ((item = cJSON_GetObjectItem(marginObj, "bottom"))) props->margin.bottom = (float)item->valuedouble;
+            if ((item = cJSON_GetObjectItem(marginObj, "left"))) props->margin.left = (float)item->valuedouble;
+        }
     }
 
-    // Dimensions
-    if ((item = cJSON_GetObjectItem(propsObj, "width")) && cJSON_IsString(item)) {
-        props->set_flags |= IR_PROP_WIDTH;
-        props->width = json_parse_dimension(item->valuestring);
+    // Dimensions - handle both string ("56px") and numeric (56) values
+    if ((item = cJSON_GetObjectItem(propsObj, "width"))) {
+        if (cJSON_IsString(item)) {
+            props->set_flags |= IR_PROP_WIDTH;
+            props->width = json_parse_dimension(item->valuestring);
+        } else if (cJSON_IsNumber(item)) {
+            props->set_flags |= IR_PROP_WIDTH;
+            props->width.value = (float)item->valuedouble;
+            props->width.type = IR_DIMENSION_PX;
+        }
     }
-    if ((item = cJSON_GetObjectItem(propsObj, "height")) && cJSON_IsString(item)) {
-        props->set_flags |= IR_PROP_HEIGHT;
-        props->height = json_parse_dimension(item->valuestring);
+    if ((item = cJSON_GetObjectItem(propsObj, "height"))) {
+        if (cJSON_IsString(item)) {
+            props->set_flags |= IR_PROP_HEIGHT;
+            props->height = json_parse_dimension(item->valuestring);
+        } else if (cJSON_IsNumber(item)) {
+            props->set_flags |= IR_PROP_HEIGHT;
+            props->height.value = (float)item->valuedouble;
+            props->height.type = IR_DIMENSION_PX;
+        }
     }
     if ((item = cJSON_GetObjectItem(propsObj, "minWidth")) && cJSON_IsString(item)) {
         props->set_flags |= IR_PROP_MIN_WIDTH;
@@ -5127,6 +5313,22 @@ static void json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties
     if ((item = cJSON_GetObjectItem(propsObj, "boxSizing")) && cJSON_IsNumber(item)) {
         props->set_flags |= IR_PROP_BOX_SIZING;
         props->box_sizing = (uint8_t)item->valueint;
+    }
+
+    if ((item = cJSON_GetObjectItem(propsObj, "objectFit")) && cJSON_IsString(item)) {
+        props->set_flags |= IR_PROP_OBJECT_FIT;
+        const char* val = item->valuestring;
+        if (strcmp(val, "contain") == 0) {
+            props->object_fit = IR_OBJECT_FIT_CONTAIN;
+        } else if (strcmp(val, "cover") == 0) {
+            props->object_fit = IR_OBJECT_FIT_COVER;
+        } else if (strcmp(val, "none") == 0) {
+            props->object_fit = IR_OBJECT_FIT_NONE;
+        } else if (strcmp(val, "scale-down") == 0) {
+            props->object_fit = IR_OBJECT_FIT_SCALE_DOWN;
+        } else {
+            props->object_fit = IR_OBJECT_FIT_FILL;
+        }
     }
 }
 

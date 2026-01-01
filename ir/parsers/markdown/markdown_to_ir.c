@@ -18,44 +18,36 @@
 #include "../../ir_builder.h"
 #include "../../ir_core.h"
 
+/* Syntax highlighting - loaded dynamically from plugin at runtime */
+#include "../../ir_plugin.h"
+
+/* Function pointer types for syntax plugin (matches kryon_syntax.h) */
+typedef struct { uint32_t start; uint32_t length; int type; } RuntimeSyntaxToken;
+typedef RuntimeSyntaxToken* (*SyntaxTokenizeFn)(const char* code, size_t length, const char* language, uint32_t* token_count);
+typedef bool (*SyntaxSupportsLangFn)(const char* language);
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 // Create a text component with content
 static IRComponent* create_text_component(const char* text, size_t length) {
-    fprintf(stderr, "=== create_text_component: text='%.*s', length=%zu\n", (int)length, text, length);
-    fflush(stderr);
-
     IRComponent* comp = ir_text("");
-    fprintf(stderr, "=== create_text_component: ir_text returned %p\n", (void*)comp);
-    fflush(stderr);
 
     // CRITICAL: Initialize style to prevent NULL pointer crashes during layout
     if (comp) {
-        IRStyle* style = ir_get_style(comp);
-        fprintf(stderr, "=== create_text_component: ir_get_style returned %p\n", (void*)style);
-        fflush(stderr);
+        ir_get_style(comp);
     }
 
     if (comp && text && length > 0) {
         char* content = (char*)malloc(length + 1);
-        fprintf(stderr, "=== create_text_component: malloc returned %p\n", (void*)content);
-        fflush(stderr);
-
         if (content) {
             memcpy(content, text, length);
             content[length] = '\0';
-            fprintf(stderr, "=== create_text_component: calling ir_set_text_content...\n");
-            fflush(stderr);
             ir_set_text_content(comp, content);
             // Don't free! ir_set_text_content() takes ownership of the pointer
-            fprintf(stderr, "=== create_text_component: content ownership transferred\n");
-            fflush(stderr);
         }
     }
-    fprintf(stderr, "=== create_text_component: returning %p\n", (void*)comp);
-    fflush(stderr);
     return comp;
 }
 
@@ -348,13 +340,34 @@ static IRComponent* md_node_to_ir(MdNode* node) {
             const char* code = node->data.code_block.code;
             uint16_t code_len = node->data.code_block.length;
 
-
             // Use specialized code block builder
             comp = ir_code_block(lang, code);
 
             // Additional styling (builder sets defaults)
             if (comp && comp->style) {
                 ir_set_border(comp->style, 1, 48, 54, 61, 255, 8);
+            }
+
+            // Apply syntax highlighting if the syntax plugin is loaded
+            if (comp && lang && code && ir_plugin_is_loaded("syntax")) {
+                // Get function pointers from the syntax plugin
+                SyntaxSupportsLangFn supports_lang = (SyntaxSupportsLangFn)
+                    ir_plugin_get_symbol("syntax", "syntax_supports_language");
+                SyntaxTokenizeFn tokenize = (SyntaxTokenizeFn)
+                    ir_plugin_get_symbol("syntax", "syntax_tokenize");
+
+                if (supports_lang && tokenize && supports_lang(lang)) {
+                    IRCodeBlockData* data = (IRCodeBlockData*)comp->custom_data;
+                    if (data) {
+                        uint32_t token_count = 0;
+                        RuntimeSyntaxToken* tokens = tokenize(code, code_len, lang, &token_count);
+                        if (tokens && token_count > 0) {
+                            // Copy tokens to IR format (same memory layout)
+                            data->tokens = (IRCodeToken*)tokens;
+                            data->token_count = token_count;
+                        }
+                    }
+                }
             }
 
             break;

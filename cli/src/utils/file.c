@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <libgen.h>
+#include <dirent.h>
 
 /**
  * Check if file exists
@@ -176,4 +177,58 @@ const char* path_extension(const char* path) {
     }
 
     return dot;
+}
+
+/**
+ * List files in directory with given extension
+ * @param dir Directory path
+ * @param ext Extension to filter (e.g., ".md")
+ * @param files Output array of file paths (caller must free)
+ * @param count Output count of files
+ * @return 0 on success, -1 on error
+ */
+int dir_list_files(const char* dir, const char* ext, char*** files, int* count) {
+    if (!dir || !files || !count) return -1;
+
+    DIR* d = opendir(dir);
+    if (!d) return -1;
+
+    *count = 0;
+    *files = NULL;
+
+    struct dirent* entry;
+    while ((entry = readdir(d)) != NULL) {
+        // Skip . and ..
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        // Build full path
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/%s", dir, entry->d_name);
+
+        // Skip directories
+        struct stat st;
+        if (stat(path, &st) != 0 || S_ISDIR(st.st_mode)) {
+            continue;
+        }
+
+        // Check extension
+        const char* name = entry->d_name;
+        const char* dot = strrchr(name, '.');
+        if (!dot || strcmp(dot, ext) != 0) continue;
+
+        // Add to list
+        (*count)++;
+        *files = realloc(*files, (*count) * sizeof(char*));
+        if (!*files) {
+            closedir(d);
+            return -1;
+        }
+
+        (*files)[*count - 1] = strdup(path);
+    }
+
+    closedir(d);
+    return 0;
 }

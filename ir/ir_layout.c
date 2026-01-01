@@ -2005,9 +2005,13 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (c->style) {
         if (c->style->width.type == IR_DIMENSION_PX) {
             own_width = c->style->width.value;
+        } else if (c->style->width.type == IR_DIMENSION_PERCENT) {
+            own_width = constraints.max_width * (c->style->width.value / 100.0f);
         }
         if (c->style->height.type == IR_DIMENSION_PX) {
             own_height = c->style->height.value;
+        } else if (c->style->height.type == IR_DIMENSION_PERCENT) {
+            own_height = constraints.max_height * (c->style->height.value / 100.0f);
         }
     }
 
@@ -2282,6 +2286,20 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
  */
 void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewport_height) {
     if (!root) return;
+
+    // Track viewport changes and invalidate layout when viewport resizes
+    static float last_width = 0, last_height = 0;
+    if (viewport_width != last_width || viewport_height != last_height) {
+        printf("[LAYOUT] Viewport changed: %.0fx%.0f -> %.0fx%.0f\n",
+               last_width, last_height, viewport_width, viewport_height);
+        last_width = viewport_width;
+        last_height = viewport_height;
+
+        // CRITICAL: Invalidate entire layout tree when viewport changes
+        // This forces recomputation with new constraints
+        ir_layout_invalidate_subtree(root);
+        printf("[LAYOUT] Invalidated layout tree for resize\n");
+    }
 
     if (getenv("KRYON_DEBUG_LAYOUT_MODE")) {
         fprintf(stderr, "[Layout] Using SINGLE-PASS layout system\n");

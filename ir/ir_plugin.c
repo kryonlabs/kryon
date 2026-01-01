@@ -73,6 +73,10 @@ typedef struct PluginSystem {
     // Current plugin requirements (from deserialized IR file)
     char** current_requirements;
     uint32_t current_requirement_count;
+
+    // Loaded plugin handles (for dynamic symbol lookup)
+    IRPluginHandle* loaded_handles[MAX_PLUGINS];
+    uint32_t loaded_handle_count;
 } PluginSystem;
 
 // Global plugin system instance - shared across all dynamically loaded libraries
@@ -982,6 +986,11 @@ IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name)
         fprintf(stderr, "[kryon][plugin] Warning: Plugin %s has no shutdown function (%s)\n", plugin_name, shutdown_name);
     }
 
+    // Track this handle for symbol lookup
+    if (g_plugin_system.loaded_handle_count < MAX_PLUGINS) {
+        g_plugin_system.loaded_handles[g_plugin_system.loaded_handle_count++] = handle;
+    }
+
     return handle;
 }
 
@@ -998,6 +1007,39 @@ void ir_plugin_unload(IRPluginHandle* handle) {
 
     free(handle->command_ids);
     free(handle);
+}
+
+void* ir_plugin_get_symbol(const char* plugin_name, const char* symbol_name) {
+    if (!plugin_name || !symbol_name) return NULL;
+
+    // Find the loaded plugin by name
+    for (uint32_t i = 0; i < g_plugin_system.loaded_handle_count; i++) {
+        IRPluginHandle* handle = g_plugin_system.loaded_handles[i];
+        if (handle && strcmp(handle->name, plugin_name) == 0) {
+            // Found the plugin, look up the symbol
+            void* sym = dlsym(handle->dl_handle, symbol_name);
+            if (!sym) {
+                fprintf(stderr, "[kryon][plugin] Symbol '%s' not found in plugin '%s': %s\n",
+                        symbol_name, plugin_name, dlerror());
+            }
+            return sym;
+        }
+    }
+
+    // Plugin not loaded
+    return NULL;
+}
+
+bool ir_plugin_is_loaded(const char* plugin_name) {
+    if (!plugin_name) return false;
+
+    for (uint32_t i = 0; i < g_plugin_system.loaded_handle_count; i++) {
+        IRPluginHandle* handle = g_plugin_system.loaded_handles[i];
+        if (handle && strcmp(handle->name, plugin_name) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 #else  // __ANDROID__
@@ -1023,6 +1065,17 @@ IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name)
 
 void ir_plugin_unload(IRPluginHandle* handle) {
     (void)handle;
+}
+
+void* ir_plugin_get_symbol(const char* plugin_name, const char* symbol_name) {
+    (void)plugin_name;
+    (void)symbol_name;
+    return NULL;
+}
+
+bool ir_plugin_is_loaded(const char* plugin_name) {
+    (void)plugin_name;
+    return false;
 }
 
 #endif  // __ANDROID__

@@ -326,12 +326,23 @@ KryonConfig* config_load(const char* config_path) {
     config->dev_port = toml_get_int(toml, "dev.port", 3000);
     config->dev_auto_open = toml_get_bool(toml, "dev.auto_open", true);
 
-    // Parse docs settings
-    config->docs_enabled = toml_get_bool(toml, "docs.enabled", false);
-    const char* docs_dir = toml_get_string(toml, "docs.directory", NULL);
+    // Parse docs settings (from [build.docs] section)
+    config->docs_enabled = toml_get_bool(toml, "build.docs.enabled", false);
+    const char* docs_dir = toml_get_string(toml, "build.docs.directory", NULL);
     if (docs_dir) {
         config->docs_directory = str_copy(docs_dir);
     }
+    const char* docs_base = toml_get_string(toml, "build.docs.base_path", "/docs");
+    config->docs_base_path = str_copy(docs_base);
+    const char* docs_template = toml_get_string(toml, "build.docs.template", NULL);
+    if (docs_template) {
+        config->docs_template = str_copy(docs_template);
+    }
+    const char* docs_sidebar_title = toml_get_string(toml, "build.docs.sidebar_title", NULL);
+    if (docs_sidebar_title) {
+        config->docs_sidebar_title = str_copy(docs_sidebar_title);
+    }
+    config->docs_auto_sidebar = toml_get_bool(toml, "build.docs.auto_sidebar", true);
 
     // Parse desktop renderer
     const char* renderer = toml_get_string(toml, "desktop.renderer", NULL);
@@ -473,6 +484,9 @@ void config_free(KryonConfig* config) {
     free(config->build_entry);
     free(config->build_frontend);
     free(config->docs_directory);
+    free(config->docs_base_path);
+    free(config->docs_template);
+    free(config->docs_sidebar_title);
     free(config->desktop_renderer);
 
     if (config->build_targets) {

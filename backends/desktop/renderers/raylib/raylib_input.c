@@ -416,5 +416,34 @@ void raylib_handle_input_events(DesktopIRRenderer* renderer, IRComponent* root) 
     handle_keyboard_keys(renderer, root);
 
     // TODO: Handle mouse wheel for scrolling
-    // TODO: Handle window resize events
+
+    // Handle window resize events
+    if (IsWindowResized()) {
+        int new_width = GetScreenWidth();
+        int new_height = GetScreenHeight();
+
+        printf("[raylib] Window resized to %dx%d\n", new_width, new_height);
+
+        // Update config (used by ir_layout_compute_tree)
+        renderer->config.window_width = new_width;
+        renderer->config.window_height = new_height;
+
+        // Update backend data cache
+        RaylibRendererData* data = raylib_get_data(renderer);
+        if (data) {
+            data->window_width = new_width;
+            data->window_height = new_height;
+        }
+
+        // Emit resize event
+        DesktopEvent desktop_event = {0};
+        desktop_event.type = DESKTOP_EVENT_WINDOW_RESIZE;
+        desktop_event.data.resize.width = new_width;
+        desktop_event.data.resize.height = new_height;
+        renderer->needs_relayout = true;
+
+        if (renderer->event_callback) {
+            renderer->event_callback(&desktop_event, renderer->event_user_data);
+        }
+    }
 }

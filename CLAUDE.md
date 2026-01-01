@@ -2,6 +2,15 @@
 
 This file provides context for Claude Code (AI assistant) when working on the Kryon project.
 
+## Development Rules
+
+You are a senior software developer. Follow these rules:
+
+- **No fallbacks** - Never implement fallbacks unless explicitly requested
+- **No legacy preservation** - Never preserve or keep legacy code unless explicitly requested; delete unused code completely
+- **Respect architecture** - Always respect the full existing architecture; implement fixes and features aligned with the intended modular design
+- **Use Nix for dependencies** - When adding dependencies or running applications for testing, first check for `flake.nix` or `shell.nix`; if a required dependency is missing, update the appropriate file instead of using ad-hoc installation methods
+
 ## Project Overview
 
 **Kryon** is a universal UI framework with a three-stage pipeline architecture:

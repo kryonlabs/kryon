@@ -9,6 +9,65 @@
 #include <stdlib.h>
 #include <string.h>
 #include "kryon_cli.h"
+#include <ir_plugin.h>
+
+// Track loaded plugin handles for cleanup
+static IRPluginHandle** g_loaded_plugins = NULL;
+static uint32_t g_loaded_plugin_count = 0;
+
+/**
+ * Initialize the plugin system - discover and load plugins from standard paths.
+ */
+static void init_plugins(void) {
+    uint32_t discovered_count = 0;
+    IRPluginDiscoveryInfo** discovered = ir_plugin_discover(NULL, &discovered_count);
+
+    if (!discovered || discovered_count == 0) {
+        // No plugins found - that's OK
+        return;
+    }
+
+    // Allocate storage for handles
+    g_loaded_plugins = calloc(discovered_count, sizeof(IRPluginHandle*));
+    if (!g_loaded_plugins) {
+        ir_plugin_free_discovery(discovered, discovered_count);
+        return;
+    }
+
+    // Load each discovered plugin
+    for (uint32_t i = 0; i < discovered_count; i++) {
+        IRPluginDiscoveryInfo* info = discovered[i];
+        IRPluginHandle* handle = ir_plugin_load(info->path, info->name);
+
+        if (handle) {
+            g_loaded_plugins[g_loaded_plugin_count++] = handle;
+
+            // Call init function if present
+            if (handle->init_func) {
+                handle->init_func(NULL);
+            }
+        }
+    }
+
+    ir_plugin_free_discovery(discovered, discovered_count);
+}
+
+/**
+ * Shutdown the plugin system - unload all plugins.
+ */
+static void shutdown_plugins(void) {
+    if (!g_loaded_plugins) return;
+
+    for (uint32_t i = 0; i < g_loaded_plugin_count; i++) {
+        if (g_loaded_plugins[i]) {
+            ir_plugin_unload(g_loaded_plugins[i]);
+        }
+    }
+
+    free(g_loaded_plugins);
+    g_loaded_plugins = NULL;
+    g_loaded_plugin_count = 0;
+}
 
 static void print_version(void) {
     printf("Kryon CLI %s\n", KRYON_CLI_VERSION);
@@ -39,9 +98,13 @@ static void print_help(void) {
 }
 
 int main(int argc, char** argv) {
+    // Initialize plugin system
+    init_plugins();
+
     // Handle no arguments
     if (argc < 2) {
         print_help();
+        shutdown_plugins();
         return 1;
     }
 
@@ -49,6 +112,7 @@ int main(int argc, char** argv) {
     CLIArgs* args = cli_args_parse(argc, argv);
     if (!args) {
         fprintf(stderr, "Error: Failed to parse arguments\n");
+        shutdown_plugins();
         return 1;
     }
 
@@ -56,12 +120,14 @@ int main(int argc, char** argv) {
     if (args->help) {
         print_help();
         cli_args_free(args);
+        shutdown_plugins();
         return 0;
     }
 
     if (args->version) {
         print_version();
         cli_args_free(args);
+        shutdown_plugins();
         return 0;
     }
 
@@ -111,5 +177,6 @@ int main(int argc, char** argv) {
     }
 
     cli_args_free(args);
+    shutdown_plugins();
     return result;
 }

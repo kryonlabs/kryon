@@ -54,7 +54,9 @@ typedef enum {
     // Source structure types (for round-trip codegen)
     IR_COMPONENT_STATIC_BLOCK,        // Static block (compile-time code execution)
     IR_COMPONENT_FOR_LOOP,            // For loop template (compile-time iteration)
-    IR_COMPONENT_VAR_DECL             // Variable declaration (const/let/var)
+    IR_COMPONENT_VAR_DECL,            // Variable declaration (const/let/var)
+    // Template placeholder (for docs layout templates)
+    IR_COMPONENT_PLACEHOLDER          // Template placeholder ({{name}})
 } IRComponentType;
 
 // Dimension Types
@@ -208,9 +210,14 @@ typedef struct {
 
 // Layout Mode
 typedef enum {
-    IR_LAYOUT_MODE_FLEX,    // Flexbox layout (default)
-    IR_LAYOUT_MODE_GRID,    // CSS Grid layout
-    IR_LAYOUT_MODE_BLOCK    // Block layout (stacked)
+    IR_LAYOUT_MODE_FLEX,        // Flexbox layout (default)
+    IR_LAYOUT_MODE_INLINE_FLEX, // Inline flexbox layout
+    IR_LAYOUT_MODE_GRID,        // CSS Grid layout
+    IR_LAYOUT_MODE_INLINE_GRID, // Inline CSS Grid layout
+    IR_LAYOUT_MODE_BLOCK,       // Block layout (stacked)
+    IR_LAYOUT_MODE_INLINE,      // Inline layout
+    IR_LAYOUT_MODE_INLINE_BLOCK,// Inline-block layout
+    IR_LAYOUT_MODE_NONE         // display: none
 } IRLayoutMode;
 
 // Grid Track Size
@@ -300,8 +307,16 @@ typedef struct {
 // Special value for "auto" margin (e.g., margin: 0 auto for centering)
 #define IR_SPACING_AUTO (-999999.0f)
 
+// Flags to track which spacing values were explicitly set
+#define IR_SPACING_SET_TOP     (1 << 0)
+#define IR_SPACING_SET_RIGHT   (1 << 1)
+#define IR_SPACING_SET_BOTTOM  (1 << 2)
+#define IR_SPACING_SET_LEFT    (1 << 3)
+#define IR_SPACING_SET_ALL     (IR_SPACING_SET_TOP | IR_SPACING_SET_RIGHT | IR_SPACING_SET_BOTTOM | IR_SPACING_SET_LEFT)
+
 typedef struct {
     float top, right, bottom, left;
+    uint8_t set_flags;  // Track which values were explicitly set (IR_SPACING_SET_*)
 } IRSpacing;
 
 // Border
@@ -547,6 +562,15 @@ typedef enum {
     IR_OVERFLOW_AUTO        // Scrollbars shown only when needed
 } IROverflowMode;
 
+// Object-fit mode (for images and videos)
+typedef enum {
+    IR_OBJECT_FIT_FILL = 0,      // Default: stretch to fill
+    IR_OBJECT_FIT_CONTAIN,       // Scale to fit, preserve aspect ratio
+    IR_OBJECT_FIT_COVER,         // Scale to cover, preserve aspect ratio
+    IR_OBJECT_FIT_NONE,          // No resizing
+    IR_OBJECT_FIT_SCALE_DOWN     // Like none or contain, whichever is smaller
+} IRObjectFit;
+
 // Media Query / Container Query Types
 typedef enum {
     IR_QUERY_MIN_WIDTH,
@@ -653,6 +677,8 @@ typedef struct IRStyle {
     // Overflow handling
     IROverflowMode overflow_x;
     IROverflowMode overflow_y;
+    // Object-fit (for images/videos)
+    IRObjectFit object_fit;
     // Grid item placement (when parent uses grid layout)
     IRGridItem grid_item;
     // Text effects
@@ -874,6 +900,32 @@ typedef struct {
     uint8_t depth;          // Nesting level for nested quotes (1-based)
 } IRBlockquoteData;
 
+// Syntax highlighting token types (matches kryon_syntax.h SyntaxTokenType)
+typedef enum {
+    IR_TOKEN_PLAIN = 0,
+    IR_TOKEN_KEYWORD,
+    IR_TOKEN_STRING,
+    IR_TOKEN_NUMBER,
+    IR_TOKEN_COMMENT,
+    IR_TOKEN_OPERATOR,
+    IR_TOKEN_PUNCTUATION,
+    IR_TOKEN_FUNCTION,
+    IR_TOKEN_TYPE,
+    IR_TOKEN_VARIABLE,
+    IR_TOKEN_CONSTANT,
+    IR_TOKEN_ATTRIBUTE,
+    IR_TOKEN_TAG,
+    IR_TOKEN_PROPERTY,
+    IR_TOKEN_COUNT
+} IRTokenType;
+
+// Syntax highlighting token span
+typedef struct {
+    uint32_t start;         // Start offset in code
+    uint32_t length;        // Token length in bytes
+    IRTokenType type;       // Token type
+} IRCodeToken;
+
 // Code block data
 typedef struct {
     char* language;         // Language tag (e.g., "python", "rust", NULL for none)
@@ -881,6 +933,9 @@ typedef struct {
     size_t length;          // Code length in bytes
     bool show_line_numbers; // Enable line numbers
     uint32_t start_line;    // Starting line number (default 1)
+    // Syntax highlighting (optional, populated by kryon-syntax library)
+    IRCodeToken* tokens;    // Array of tokens (NULL if not tokenized)
+    uint32_t token_count;   // Number of tokens
 } IRCodeBlockData;
 
 // Link data
@@ -890,6 +945,12 @@ typedef struct {
     char* target;           // Target window (_blank, _self, _parent, _top)
     char* rel;              // Relationship (noopener, noreferrer, external, etc.)
 } IRLinkData;
+
+// Placeholder data (for template placeholders like {{content}}, {{sidebar}})
+typedef struct {
+    char* name;             // Placeholder name (e.g., "content", "sidebar")
+    bool preserve;          // If true, output {{name}} in codegen; if false, must be substituted
+} IRPlaceholderData;
 
 // Main IR Component
 // Tab-specific data

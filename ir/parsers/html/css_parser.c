@@ -812,21 +812,19 @@ bool ir_css_parse_color(const char* value, IRColor* out_color) {
         return true;
     }
 
-    // Handle var(--name) references
+    // Handle var(--name) references - store full var() reference for direct output
     if (strncmp(value, "var(", 4) == 0) {
-        // Extract variable name from var(--name)
-        const char* start = value + 4;
-        const char* end = strchr(start, ')');
+        const char* end = strchr(value, ')');
         if (end) {
-            size_t name_len = end - start;
-            char* var_name = malloc(name_len + 1);
-            if (var_name) {
-                strncpy(var_name, start, name_len);
-                var_name[name_len] = '\0';
-                out_color->var_name = var_name;
-                // Set type to VAR_REF but also provide a fallback color
+            // Store the full var(--name) reference including var() wrapper
+            size_t full_len = (end - value) + 1;  // Include closing paren
+            char* var_ref = malloc(full_len + 1);
+            if (var_ref) {
+                strncpy(var_ref, value, full_len);
+                var_ref[full_len] = '\0';
+                out_color->var_name = var_ref;  // e.g., "var(--primary)"
                 out_color->type = IR_COLOR_VAR_REF;
-                out_color->data.var_id = 0;  // Will be resolved if needed
+                out_color->data.var_id = 0;
                 return true;
             }
         }
@@ -882,6 +880,17 @@ bool ir_css_parse_color(const char* value, IRColor* out_color) {
             out_color->data.a = 255;
             return true;
         }
+    }
+
+    // Try named color (e.g., "white", "red", "blue")
+    uint8_t r, g, b;
+    if (parse_named_color(value, &r, &g, &b)) {
+        out_color->type = IR_COLOR_SOLID;
+        out_color->data.r = r;
+        out_color->data.g = g;
+        out_color->data.b = b;
+        out_color->data.a = 255;
+        return true;
     }
 
     // Unknown format
@@ -981,6 +990,7 @@ bool ir_css_parse_spacing(const char* value, IRSpacing* out_spacing) {
         out_spacing->right = parse_single_spacing_value(parts[1]);
         out_spacing->bottom = parse_single_spacing_value(parts[2]);
         out_spacing->left = parse_single_spacing_value(parts[3]);
+        out_spacing->set_flags = IR_SPACING_SET_ALL;
         return true;
     } else if (count == 3) {
         // 3 values: top left/right bottom
@@ -988,6 +998,7 @@ bool ir_css_parse_spacing(const char* value, IRSpacing* out_spacing) {
         out_spacing->right = parse_single_spacing_value(parts[1]);
         out_spacing->left = out_spacing->right;
         out_spacing->bottom = parse_single_spacing_value(parts[2]);
+        out_spacing->set_flags = IR_SPACING_SET_ALL;
         return true;
     } else if (count == 2) {
         // 2 values: top/bottom left/right
@@ -995,6 +1006,7 @@ bool ir_css_parse_spacing(const char* value, IRSpacing* out_spacing) {
         out_spacing->bottom = out_spacing->top;
         out_spacing->right = parse_single_spacing_value(parts[1]);
         out_spacing->left = out_spacing->right;
+        out_spacing->set_flags = IR_SPACING_SET_ALL;
         return true;
     } else if (count == 1) {
         // 1 value: all sides
@@ -1003,6 +1015,7 @@ bool ir_css_parse_spacing(const char* value, IRSpacing* out_spacing) {
         out_spacing->right = val;
         out_spacing->bottom = val;
         out_spacing->left = val;
+        out_spacing->set_flags = IR_SPACING_SET_ALL;
         return true;
     }
 
@@ -1059,34 +1072,89 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
             ir_css_parse_color(val, &style->text_fill_color);
         }
 
-        // Spacing
+        // Spacing - shorthand
         else if (strcmp(prop, "padding") == 0) {
             ir_css_parse_spacing(val, &style->padding);
         } else if (strcmp(prop, "margin") == 0) {
             ir_css_parse_spacing(val, &style->margin);
         }
+        // Spacing - individual margin properties
+        else if (strcmp(prop, "margin-top") == 0) {
+            style->margin.top = parse_single_spacing_value(val);
+            style->margin.set_flags |= IR_SPACING_SET_TOP;
+        } else if (strcmp(prop, "margin-right") == 0) {
+            style->margin.right = parse_single_spacing_value(val);
+            style->margin.set_flags |= IR_SPACING_SET_RIGHT;
+        } else if (strcmp(prop, "margin-bottom") == 0) {
+            style->margin.bottom = parse_single_spacing_value(val);
+            style->margin.set_flags |= IR_SPACING_SET_BOTTOM;
+        } else if (strcmp(prop, "margin-left") == 0) {
+            style->margin.left = parse_single_spacing_value(val);
+            style->margin.set_flags |= IR_SPACING_SET_LEFT;
+        }
+        // Spacing - individual padding properties
+        else if (strcmp(prop, "padding-top") == 0) {
+            style->padding.top = parse_single_spacing_value(val);
+            style->padding.set_flags |= IR_SPACING_SET_TOP;
+        } else if (strcmp(prop, "padding-right") == 0) {
+            style->padding.right = parse_single_spacing_value(val);
+            style->padding.set_flags |= IR_SPACING_SET_RIGHT;
+        } else if (strcmp(prop, "padding-bottom") == 0) {
+            style->padding.bottom = parse_single_spacing_value(val);
+            style->padding.set_flags |= IR_SPACING_SET_BOTTOM;
+        } else if (strcmp(prop, "padding-left") == 0) {
+            style->padding.left = parse_single_spacing_value(val);
+            style->padding.set_flags |= IR_SPACING_SET_LEFT;
+        }
 
         // Border
         else if (strcmp(prop, "border") == 0) {
-            // Parse "2px solid rgba(255, 0, 0, 1.0)"
+            // Parse "2px solid rgba(255, 0, 0, 1.0)" or "2px solid var(--border)"
             float width;
             char rest[512];
             if (sscanf(val, "%fpx %511[^\n]", &width, rest) == 2) {
                 style->border.width = width;
 
-                // Extract color from "solid rgba(...)" or "solid #fff"
-                char* color_start = strstr(rest, "rgba(");
-                if (!color_start) color_start = strstr(rest, "rgb(");
-                if (!color_start) color_start = strchr(rest, '#');
+                // Look for var() reference first
+                char* var_start = strstr(rest, "var(");
+                if (var_start) {
+                    char* name_end = strchr(var_start, ')');
+                    if (name_end) {
+                        size_t full_len = (name_end - var_start) + 1;
+                        char* var_ref = malloc(full_len + 1);
+                        strncpy(var_ref, var_start, full_len);
+                        var_ref[full_len] = '\0';
+                        style->border.color.var_name = var_ref;
+                        style->border.color.type = IR_COLOR_VAR_REF;
+                    }
+                } else {
+                    // Extract color from "solid rgba(...)" or "solid #fff"
+                    char* color_start = strstr(rest, "rgba(");
+                    if (!color_start) color_start = strstr(rest, "rgb(");
+                    if (!color_start) color_start = strchr(rest, '#');
 
-                if (color_start) {
-                    ir_css_parse_color(color_start, &style->border.color);
+                    if (color_start) {
+                        ir_css_parse_color(color_start, &style->border.color);
+                    }
                 }
             }
         } else if (strcmp(prop, "border-radius") == 0) {
             float radius;
             if (sscanf(val, "%fpx", &radius) == 1) {
                 style->border.radius = (uint32_t)radius;
+            }
+        }
+        // Border color only (for hover states, etc.)
+        else if (strcmp(prop, "border-color") == 0) {
+            // Check for var() reference
+            if (strncmp(val, "var(", 4) == 0) {
+                char* var_ref = strdup(val);
+                if (var_ref) {
+                    style->border.color.var_name = var_ref;
+                    style->border.color.type = IR_COLOR_VAR_REF;
+                }
+            } else {
+                ir_css_parse_color(val, &style->border.color);
             }
         }
         // Border sides (border-bottom, border-top, etc.)
@@ -1112,15 +1180,14 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                 // Look for var() reference first
                 char* var_start = strstr(rest, "var(");
                 if (var_start) {
-                    // Extract var name
-                    char* name_start = var_start + 4;
-                    char* name_end = strchr(name_start, ')');
+                    // Extract full var() reference including "var(" and ")"
+                    char* name_end = strchr(var_start, ')');
                     if (name_end) {
-                        size_t name_len = name_end - name_start;
-                        char* var_name = malloc(name_len + 1);
-                        strncpy(var_name, name_start, name_len);
-                        var_name[name_len] = '\0';
-                        style->border.color.var_name = var_name;
+                        size_t full_len = (name_end - var_start) + 1;  // Include closing paren
+                        char* var_ref = malloc(full_len + 1);
+                        strncpy(var_ref, var_start, full_len);
+                        var_ref[full_len] = '\0';
+                        style->border.color.var_name = var_ref;  // e.g., "var(--border)"
                         style->border.color.type = IR_COLOR_VAR_REF;
                     }
                 } else {
@@ -1228,6 +1295,20 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                 style->font.decoration = IR_TEXT_DECORATION_OVERLINE;
             }
         }
+        // Object-fit (for images/videos)
+        else if (strcmp(prop, "object-fit") == 0) {
+            if (strcmp(val, "fill") == 0) {
+                style->object_fit = IR_OBJECT_FIT_FILL;
+            } else if (strcmp(val, "contain") == 0) {
+                style->object_fit = IR_OBJECT_FIT_CONTAIN;
+            } else if (strcmp(val, "cover") == 0) {
+                style->object_fit = IR_OBJECT_FIT_COVER;
+            } else if (strcmp(val, "none") == 0) {
+                style->object_fit = IR_OBJECT_FIT_NONE;
+            } else if (strcmp(val, "scale-down") == 0) {
+                style->object_fit = IR_OBJECT_FIT_SCALE_DOWN;
+            }
+        }
     }
 }
 
@@ -1244,10 +1325,20 @@ void ir_css_apply_to_layout(IRLayout* layout, const CSSProperty* props, uint32_t
             layout->display_explicit = true;  // Mark that display was explicitly set
             if (strcmp(val, "flex") == 0) {
                 layout->mode = IR_LAYOUT_MODE_FLEX;
+            } else if (strcmp(val, "inline-flex") == 0) {
+                layout->mode = IR_LAYOUT_MODE_INLINE_FLEX;
             } else if (strcmp(val, "grid") == 0) {
                 layout->mode = IR_LAYOUT_MODE_GRID;
+            } else if (strcmp(val, "inline-grid") == 0) {
+                layout->mode = IR_LAYOUT_MODE_INLINE_GRID;
             } else if (strcmp(val, "block") == 0) {
                 layout->mode = IR_LAYOUT_MODE_BLOCK;
+            } else if (strcmp(val, "inline") == 0) {
+                layout->mode = IR_LAYOUT_MODE_INLINE;
+            } else if (strcmp(val, "inline-block") == 0) {
+                layout->mode = IR_LAYOUT_MODE_INLINE_BLOCK;
+            } else if (strcmp(val, "none") == 0) {
+                layout->mode = IR_LAYOUT_MODE_NONE;
             }
         }
         else if (strcmp(prop, "flex-direction") == 0) {

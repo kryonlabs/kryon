@@ -118,6 +118,9 @@ IRComponent* ir_create_native_canvas(uint16_t width, uint16_t height) {
         ir_set_height(comp, IR_DIMENSION_PX, (float)height);
     }
 
+    printf("[CANVAS] Created native canvas: %s width, %s height\n",
+           width == 0 ? "100%" : "px", height == 0 ? "100%" : "px");
+
     return comp;
 }
 

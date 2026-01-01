@@ -689,6 +689,8 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
     out->color = temp_style.font.color;
     if (temp_style.font.color.type == IR_COLOR_GRADIENT) {
         out->set_flags |= IR_PROP_COLOR;
+    } else if (temp_style.font.color.type == IR_COLOR_VAR_REF || temp_style.font.color.var_name) {
+        out->set_flags |= IR_PROP_COLOR;
     } else if (temp_style.font.color.type == IR_COLOR_SOLID && temp_style.font.color.data.a > 0) {
         out->set_flags |= IR_PROP_COLOR;
     }
@@ -707,6 +709,11 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
     if (temp_style.border.width_bottom > 0) out->set_flags |= IR_PROP_BORDER_BOTTOM;
     if (temp_style.border.width_left > 0) out->set_flags |= IR_PROP_BORDER_LEFT;
     if (temp_style.border.radius > 0) out->set_flags |= IR_PROP_BORDER_RADIUS;
+    // Check for border-color only (e.g., in hover states)
+    if (temp_style.border.color.type == IR_COLOR_VAR_REF ||
+        (temp_style.border.color.type == IR_COLOR_SOLID && temp_style.border.color.data.a > 0)) {
+        out->set_flags |= IR_PROP_BORDER_COLOR;
+    }
 
     // Spacing
     out->padding = temp_style.padding;
@@ -721,18 +728,58 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
     }
 
     // Typography
-    out->font_size = temp_style.font.size;
+    // Parse font-size directly from raw properties to preserve em/rem units
+    bool font_size_found = false;
+    for (uint32_t i = 0; i < count; i++) {
+        if (strcmp(props[i].property, "font-size") == 0) {
+            const char* val = props[i].value;
+            // Parse number manually to avoid sscanf eating 'e' in 'em' as exponent
+            char* endptr = NULL;
+            float size = strtof(val, &endptr);
+            if (endptr != val) {
+                out->font_size.value = size;
+                // Skip whitespace after number
+                while (*endptr && isspace(*endptr)) endptr++;
+                // Check unit
+                if (strncmp(endptr, "em", 2) == 0 && (endptr[2] == '\0' || isspace(endptr[2]))) {
+                    out->font_size.type = IR_DIMENSION_EM;
+                } else if (strncmp(endptr, "rem", 3) == 0) {
+                    out->font_size.type = IR_DIMENSION_REM;
+                } else if (*endptr == '%') {
+                    out->font_size.type = IR_DIMENSION_PERCENT;
+                } else if (strncmp(endptr, "vw", 2) == 0) {
+                    out->font_size.type = IR_DIMENSION_VW;
+                } else if (strncmp(endptr, "vh", 2) == 0) {
+                    out->font_size.type = IR_DIMENSION_VH;
+                } else {
+                    out->font_size.type = IR_DIMENSION_PX;
+                }
+                out->set_flags |= IR_PROP_FONT_SIZE;
+                font_size_found = true;
+            }
+            break;
+        }
+    }
+    // Fall back to temp_style if not found in raw props
+    if (!font_size_found && temp_style.font.size > 0) {
+        out->font_size.value = temp_style.font.size;
+        out->font_size.type = IR_DIMENSION_PX;
+        out->set_flags |= IR_PROP_FONT_SIZE;
+    }
     out->font_weight = temp_style.font.weight;
     out->font_bold = temp_style.font.bold;
     out->font_italic = temp_style.font.italic;
     out->text_align = temp_style.font.align;
     out->line_height = temp_style.font.line_height;
     out->letter_spacing = temp_style.font.letter_spacing;
-    if (temp_style.font.family) {
-        out->font_family = strdup(temp_style.font.family);
-        out->set_flags |= IR_PROP_FONT_FAMILY;
+    // Parse font-family directly from raw properties to preserve quotes
+    for (uint32_t i = 0; i < count; i++) {
+        if (strcmp(props[i].property, "font-family") == 0) {
+            out->font_family = strdup(props[i].value);
+            out->set_flags |= IR_PROP_FONT_FAMILY;
+            break;
+        }
     }
-    if (temp_style.font.size > 0) out->set_flags |= IR_PROP_FONT_SIZE;
     if (temp_style.font.weight > 0) out->set_flags |= IR_PROP_FONT_WEIGHT;
     if (temp_style.font.align != IR_TEXT_ALIGN_LEFT) out->set_flags |= IR_PROP_TEXT_ALIGN;
     if (temp_style.font.line_height > 0) out->set_flags |= IR_PROP_LINE_HEIGHT;
@@ -749,7 +796,13 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
     out->flex_grow = temp_layout.flex.grow;
     out->flex_shrink = temp_layout.flex.shrink;
     if (temp_layout.display_explicit) out->set_flags |= IR_PROP_DISPLAY;
-    if (temp_layout.flex.direction != 0) out->set_flags |= IR_PROP_FLEX_DIRECTION;
+    // Check if flex-direction was explicitly specified (can't detect from value alone since column=0 is also default)
+    for (uint32_t i = 0; i < count; i++) {
+        if (props[i].property && strcmp(props[i].property, "flex-direction") == 0) {
+            out->set_flags |= IR_PROP_FLEX_DIRECTION;
+            break;
+        }
+    }
     if (temp_layout.flex.wrap) out->set_flags |= IR_PROP_FLEX_WRAP;
     if (temp_layout.flex.justify_content != IR_ALIGNMENT_START) out->set_flags |= IR_PROP_JUSTIFY_CONTENT;
     if (temp_layout.flex.cross_axis != IR_ALIGNMENT_START) out->set_flags |= IR_PROP_ALIGN_ITEMS;
@@ -908,6 +961,20 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
             } else if (strcmp(props[i].property, "box-sizing") == 0) {
                 out->box_sizing = (strcmp(props[i].value, "border-box") == 0) ? 1 : 0;
                 out->set_flags |= IR_PROP_BOX_SIZING;
+            } else if (strcmp(props[i].property, "object-fit") == 0) {
+                const char* val = props[i].value;
+                if (strcmp(val, "fill") == 0) {
+                    out->object_fit = IR_OBJECT_FIT_FILL;
+                } else if (strcmp(val, "contain") == 0) {
+                    out->object_fit = IR_OBJECT_FIT_CONTAIN;
+                } else if (strcmp(val, "cover") == 0) {
+                    out->object_fit = IR_OBJECT_FIT_COVER;
+                } else if (strcmp(val, "none") == 0) {
+                    out->object_fit = IR_OBJECT_FIT_NONE;
+                } else if (strcmp(val, "scale-down") == 0) {
+                    out->object_fit = IR_OBJECT_FIT_SCALE_DOWN;
+                }
+                out->set_flags |= IR_PROP_OBJECT_FIT;
             }
         }
     }

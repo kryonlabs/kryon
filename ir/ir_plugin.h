@@ -557,6 +557,24 @@ IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name)
 void ir_plugin_unload(IRPluginHandle* handle);
 
 /**
+ * Get a symbol from a loaded plugin by name.
+ * This allows runtime lookup of plugin functions without compile-time linking.
+ *
+ * @param plugin_name Name of the loaded plugin (e.g., "syntax")
+ * @param symbol_name Name of the symbol to look up (e.g., "syntax_tokenize")
+ * @return Function pointer, or NULL if plugin not loaded or symbol not found
+ */
+void* ir_plugin_get_symbol(const char* plugin_name, const char* symbol_name);
+
+/**
+ * Check if a plugin is currently loaded.
+ *
+ * @param plugin_name Name of the plugin to check
+ * @return true if the plugin is loaded, false otherwise
+ */
+bool ir_plugin_is_loaded(const char* plugin_name);
+
+/**
  * Scan an IR tree and return list of required plugin names.
  * Analyzes plugin_command types in the tree and maps them to plugin names
  * based on command ID ranges.
