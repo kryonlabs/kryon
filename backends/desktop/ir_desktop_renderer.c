@@ -255,7 +255,6 @@ static bool execute_shutdown_callbacks(DesktopIRRenderer* renderer) {
 
             // Only USER-initiated shutdowns can be vetoed
             if (!proceed && renderer->shutdown_reason == KRYON_SHUTDOWN_REASON_USER) {
-                printf("[kryon] Shutdown vetoed by callback\n");
                 renderer->shutdown_state = KRYON_SHUTDOWN_RUNNING;
                 renderer->shutdown_reason = KRYON_SHUTDOWN_REASON_NONE;
                 return false;
@@ -275,11 +274,8 @@ bool kryon_request_shutdown_internal(DesktopIRRenderer* renderer, KryonShutdownR
 
     // Already shutting down?
     if (renderer->shutdown_state != KRYON_SHUTDOWN_RUNNING) {
-        printf("[kryon] Shutdown already in progress (state=%d)\n", renderer->shutdown_state);
         return true;
     }
-
-    printf("[kryon] Shutdown requested (reason=%d)\n", reason);
 
     renderer->shutdown_state = KRYON_SHUTDOWN_REQUESTED;
     renderer->shutdown_reason = reason;
@@ -294,7 +290,6 @@ bool kryon_request_shutdown_internal(DesktopIRRenderer* renderer, KryonShutdownR
     renderer->shutdown_state = KRYON_SHUTDOWN_IN_PROGRESS;
     renderer->running = false;
 
-    printf("[kryon] Shutdown in progress\n");
     return true;
 }
 

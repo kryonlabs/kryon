@@ -59,6 +59,10 @@ local function trackDependency(target, key, dep)
   end
 
   table.insert(deps[key], dep)
+
+  if ReactiveContext.debugMode then
+    print(string.format("[trackDependency] Added dep, now %d deps for key %s", #deps[key], tostring(key)))
+  end
 end
 
 -- Trigger all effects for a dependency (called during reactive writes)
@@ -200,11 +204,9 @@ function Reactive.reactive(target, parent, parentKey)
 
       local value = target[key]
 
-      -- Recursively wrap nested tables (but don't store back - return the proxy directly)
+      -- Recursively wrap nested tables (don't store back to avoid contaminating target)
       if type(value) == "table" and not isReactive(value) then
         local childProxy = Reactive.reactive(value, t, key)
-        -- Store the reactive proxy for future access
-        target[key] = childProxy
         return childProxy
       end
 
@@ -279,7 +281,9 @@ function Reactive.reactive(target, parent, parentKey)
     for i = 1, #target do
       local value = target[i]
       if type(value) == "table" and not isReactive(value) then
-        rawset(proxy, i, Reactive.reactive(value, proxy, i))
+        local wrapped = Reactive.reactive(value, proxy, i)
+        -- MUST pre-populate proxy with wrapped value for ipairs/# to work
+        rawset(proxy, i, wrapped)
       else
         rawset(proxy, i, value)
       end
@@ -290,13 +294,60 @@ function Reactive.reactive(target, parent, parentKey)
 end
 
 --- Get the raw underlying object from a reactive proxy
+--- Recursively unwraps all nested reactive proxies
 --- @param proxy table Reactive proxy
---- @return table Raw object
-function Reactive.toRaw(proxy)
-  if type(proxy) == "table" and proxy._target then
-    return proxy._target
+--- @param table table|nil Internal: visited set for cycle detection
+--- @return table Raw object without _target or _deps
+function Reactive.toRaw(proxy, visited)
+  -- Handle primitives: numbers, strings, booleans, nil
+  if type(proxy) ~= "table" then
+    return proxy
   end
-  return proxy
+
+  -- Cycle detection for circular references
+  visited = visited or {}
+  if visited[proxy] then
+    return nil  -- Already processed this table
+  end
+  visited[proxy] = true
+
+  -- Extract raw data from reactive proxy
+  if proxy._target then
+    local target = proxy._target
+
+    -- DEBUG: Count properties in _target
+    local propCount = 0
+    for _ in pairs(target) do
+      propCount = propCount + 1
+    end
+
+    if propCount == 0 then
+      -- WARNING: Empty _target!
+      print(string.format("[toRaw] WARNING: _target is empty! keys in proxy:"))
+      for k, v in pairs(proxy) do
+        if k ~= "_target" and k ~= "_deps" then
+          print(string.format("  proxy[%s] = %s", tostring(k), tostring(v)))
+        end
+      end
+    else
+      if ReactiveContext.debugMode then
+        print(string.format("[toRaw] Extracting _target with %d properties", propCount))
+      end
+    end
+
+    proxy = target
+  end
+
+  -- Recursively clean all nested tables
+  local cleaned = {}
+  for key, value in pairs(proxy) do
+    -- Skip internal reactive metadata
+    if key ~= "_target" and key ~= "_deps" then
+      cleaned[key] = Reactive.toRaw(value, visited)
+    end
+  end
+
+  return cleaned
 end
 
 -- ============================================================================

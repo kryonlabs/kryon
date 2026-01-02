@@ -1044,77 +1044,13 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
                 }
                 html_generator_write_string(generator, ">");
 
-                // Check if we have syntax highlighting tokens
-                if (data->tokens && data->token_count > 0) {
-                    // Output tokenized code with span wrappers
-                    uint32_t pos = 0;
-                    for (uint32_t i = 0; i < data->token_count; i++) {
-                        IRCodeToken* tok = &data->tokens[i];
-
-                        // Output any text between tokens (whitespace, newlines)
-                        if (tok->start > pos) {
-                            size_t gap_len = tok->start - pos;
-                            char* gap_escaped = malloc(gap_len * 6 + 1);
-                            if (gap_escaped) {
-                                escape_html_text_len(data->code + pos, gap_len, gap_escaped, gap_len * 6 + 1);
-                                html_generator_write_string(generator, gap_escaped);
-                                free(gap_escaped);
-                            }
-                        }
-
-                        // Get CSS class for token type
-                        const char* token_class = "";
-                        switch (tok->type) {
-                            case IR_TOKEN_KEYWORD:     token_class = "hljs-keyword"; break;
-                            case IR_TOKEN_STRING:      token_class = "hljs-string"; break;
-                            case IR_TOKEN_NUMBER:      token_class = "hljs-number"; break;
-                            case IR_TOKEN_COMMENT:     token_class = "hljs-comment"; break;
-                            case IR_TOKEN_FUNCTION:    token_class = "hljs-title function_"; break;
-                            case IR_TOKEN_TYPE:        token_class = "hljs-type"; break;
-                            case IR_TOKEN_CONSTANT:    token_class = "hljs-literal"; break;
-                            case IR_TOKEN_OPERATOR:    token_class = "hljs-operator"; break;
-                            case IR_TOKEN_PUNCTUATION: token_class = "hljs-punctuation"; break;
-                            case IR_TOKEN_VARIABLE:    token_class = "hljs-variable"; break;
-                            case IR_TOKEN_ATTRIBUTE:   token_class = "hljs-meta"; break;
-                            case IR_TOKEN_TAG:         token_class = "hljs-tag"; break;
-                            case IR_TOKEN_PROPERTY:    token_class = "hljs-attr"; break;
-                            default: break;
-                        }
-
-                        // Output token with span wrapper (skip span if no class)
-                        char* tok_escaped = malloc(tok->length * 6 + 1);
-                        if (tok_escaped) {
-                            escape_html_text_len(data->code + tok->start, tok->length, tok_escaped, tok->length * 6 + 1);
-                            if (token_class[0]) {
-                                html_generator_write_format(generator, "<span class=\"%s\">%s</span>", token_class, tok_escaped);
-                            } else {
-                                html_generator_write_string(generator, tok_escaped);
-                            }
-                            free(tok_escaped);
-                        }
-
-                        pos = tok->start + tok->length;
-                    }
-
-                    // Output any remaining text after last token
-                    if (pos < data->length) {
-                        size_t rem_len = data->length - pos;
-                        char* rem_escaped = malloc(rem_len * 6 + 1);
-                        if (rem_escaped) {
-                            escape_html_text_len(data->code + pos, rem_len, rem_escaped, rem_len * 6 + 1);
-                            html_generator_write_string(generator, rem_escaped);
-                            free(rem_escaped);
-                        }
-                    }
-                } else {
-                    // No tokens - output plain escaped code (dynamic allocation for large code)
-                    size_t code_len = data->length ? data->length : strlen(data->code);
-                    char* escaped_code = malloc(code_len * 6 + 1);
-                    if (escaped_code) {
-                        escape_html_text_len(data->code, code_len, escaped_code, code_len * 6 + 1);
-                        html_generator_write_string(generator, escaped_code);
-                        free(escaped_code);
-                    }
+                // Output plain escaped code - plugins handle syntax highlighting via web renderer
+                size_t code_len = data->length ? data->length : strlen(data->code);
+                char* escaped_code = malloc(code_len * 6 + 1);
+                if (escaped_code) {
+                    escape_html_text_len(data->code, code_len, escaped_code, code_len * 6 + 1);
+                    html_generator_write_string(generator, escaped_code);
+                    free(escaped_code);
                 }
 
                 html_generator_write_string(generator, "</code>\n");
@@ -1218,6 +1154,26 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         generator->indent_level = 1;
         generate_component_html(generator, root);
         generator->indent_level = 0;
+    }
+
+    // Inject hot reload script in dev mode
+    const char* dev_mode = getenv("KRYON_DEV_MODE");
+    const char* ws_port_str = getenv("KRYON_WS_PORT");
+    if (dev_mode && strcmp(dev_mode, "1") == 0 && ws_port_str) {
+        html_generator_write_string(generator, "  <script>\n");
+        html_generator_write_string(generator, "  (function() {\n");
+        html_generator_write_format(generator, "    const ws = new WebSocket('ws://localhost:%s');\n", ws_port_str);
+        html_generator_write_string(generator, "    ws.onmessage = function() {\n");
+        html_generator_write_string(generator, "      console.log('[Kryon] Reloading...');\n");
+        html_generator_write_string(generator, "      location.reload();\n");
+        html_generator_write_string(generator, "    };\n");
+        html_generator_write_string(generator, "    ws.onerror = function() {\n");
+        html_generator_write_string(generator, "      console.log('[Kryon] WebSocket error, retrying...');\n");
+        html_generator_write_string(generator, "      setTimeout(function() { location.reload(); }, 1000);\n");
+        html_generator_write_string(generator, "    };\n");
+        html_generator_write_string(generator, "    console.log('[Kryon] Hot reload enabled');\n");
+        html_generator_write_string(generator, "  })();\n");
+        html_generator_write_string(generator, "  </script>\n");
     }
 
     html_generator_write_string(generator, "</body>\n</html>\n");

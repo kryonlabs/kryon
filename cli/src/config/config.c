@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <ir_plugin.h>
 
 /**
  * Create empty config with defaults
@@ -17,8 +19,7 @@ static KryonConfig* config_create_default(void) {
 
     // Set defaults
     config->build_target = str_copy("web");
-    config->build_output_dir = str_copy("dist");
-    config->build_frontend = str_copy("tsx");
+    config->build_output_dir = str_copy("build");
     config->optimization_enabled = true;
     config->optimization_minify_css = true;
     config->optimization_minify_js = true;
@@ -26,63 +27,11 @@ static KryonConfig* config_create_default(void) {
     config->dev_hot_reload = true;
     config->dev_port = 3000;
     config->dev_auto_open = true;
-    config->docs_enabled = false;
     config->desktop_renderer = str_copy("sdl3");  // Default to SDL3
 
     return config;
 }
 
-/**
- * Parse pages array from TOML
- */
-static void config_parse_pages(KryonConfig* config, TOMLTable* toml) {
-    // Count pages by looking for build.pages.N.* keys
-    int max_page_idx = -1;
-
-    // Simple implementation: try to find pages 0-99
-    for (int i = 0; i < 100; i++) {
-        char key[128];
-        snprintf(key, sizeof(key), "build.pages.%d.name", i);
-        if (toml_get_string(toml, key, NULL)) {
-            max_page_idx = i;
-        }
-    }
-
-    if (max_page_idx < 0) {
-        config->pages_count = 0;
-        config->build_pages = NULL;
-        return;
-    }
-
-    config->pages_count = max_page_idx + 1;
-    config->build_pages = (PageEntry*)calloc(config->pages_count, sizeof(PageEntry));
-    if (!config->build_pages) {
-        config->pages_count = 0;
-        return;
-    }
-
-    for (int i = 0; i <= max_page_idx; i++) {
-        char key[128];
-
-        snprintf(key, sizeof(key), "build.pages.%d.name", i);
-        const char* name = toml_get_string(toml, key, NULL);
-        if (name) {
-            config->build_pages[i].name = str_copy(name);
-        }
-
-        snprintf(key, sizeof(key), "build.pages.%d.route", i);
-        const char* route = toml_get_string(toml, key, NULL);
-        if (route) {
-            config->build_pages[i].route = str_copy(route);
-        }
-
-        snprintf(key, sizeof(key), "build.pages.%d.source", i);
-        const char* source = toml_get_string(toml, key, NULL);
-        if (source) {
-            config->build_pages[i].source = str_copy(source);
-        }
-    }
-}
 
 /**
  * Parse plugins from TOML using named plugin syntax
@@ -265,19 +214,10 @@ KryonConfig* config_load(const char* config_path) {
     if (output_dir) {
         free(config->build_output_dir);
         config->build_output_dir = str_copy(output_dir);
-    }
-
-    // Parse build.entry (required, NO fallback to entry_point)
-    const char* entry = toml_get_string(toml, "build.entry", NULL);
-    if (entry) {
-        config->build_entry = str_copy(entry);
-    }
-
-    // Parse build.frontend (required, NO fallback to project.frontend)
-    const char* frontend = toml_get_string(toml, "build.frontend", NULL);
-    if (frontend) {
-        free(config->build_frontend);
-        config->build_frontend = str_copy(frontend);
+    } else {
+        // Default to "build" directory
+        free(config->build_output_dir);
+        config->build_output_dir = str_copy("build");
     }
 
     // Parse build.targets array (required)
@@ -312,9 +252,6 @@ KryonConfig* config_load(const char* config_path) {
         }
     }
 
-    // Parse pages
-    config_parse_pages(config, toml);
-
     // Parse optimization settings
     config->optimization_enabled = toml_get_bool(toml, "optimization.enabled", true);
     config->optimization_minify_css = toml_get_bool(toml, "optimization.minify_css", true);
@@ -325,24 +262,6 @@ KryonConfig* config_load(const char* config_path) {
     config->dev_hot_reload = toml_get_bool(toml, "dev.hot_reload", true);
     config->dev_port = toml_get_int(toml, "dev.port", 3000);
     config->dev_auto_open = toml_get_bool(toml, "dev.auto_open", true);
-
-    // Parse docs settings (from [build.docs] section)
-    config->docs_enabled = toml_get_bool(toml, "build.docs.enabled", false);
-    const char* docs_dir = toml_get_string(toml, "build.docs.directory", NULL);
-    if (docs_dir) {
-        config->docs_directory = str_copy(docs_dir);
-    }
-    const char* docs_base = toml_get_string(toml, "build.docs.base_path", "/docs");
-    config->docs_base_path = str_copy(docs_base);
-    const char* docs_template = toml_get_string(toml, "build.docs.template", NULL);
-    if (docs_template) {
-        config->docs_template = str_copy(docs_template);
-    }
-    const char* docs_sidebar_title = toml_get_string(toml, "build.docs.sidebar_title", NULL);
-    if (docs_sidebar_title) {
-        config->docs_sidebar_title = str_copy(docs_sidebar_title);
-    }
-    config->docs_auto_sidebar = toml_get_bool(toml, "build.docs.auto_sidebar", true);
 
     // Parse desktop renderer
     const char* renderer = toml_get_string(toml, "desktop.renderer", NULL);
@@ -359,6 +278,93 @@ KryonConfig* config_load(const char* config_path) {
 }
 
 /**
+ * Load plugins specified in config from their paths
+ */
+bool config_load_plugins(KryonConfig* config) {
+    if (!config || !config->plugins || config->plugins_count == 0) {
+        return true;  // No plugins to load is OK
+    }
+
+    char* cwd = dir_get_current();
+    if (!cwd) return false;
+
+    bool all_loaded = true;
+
+    for (int i = 0; i < config->plugins_count; i++) {
+        PluginDep* plugin = &config->plugins[i];
+
+        // Skip disabled plugins
+        if (!plugin->enabled) {
+            continue;
+        }
+
+        if (!plugin->path) {
+            fprintf(stderr, "[kryon][config] Plugin '%s' missing path\n", plugin->name);
+            all_loaded = false;
+            continue;
+        }
+
+        // Resolve plugin path (handle relative paths like "../kryon-syntax")
+        char* resolved_path = plugin->path;
+        if (plugin->path[0] != '/') {
+            // Relative path - resolve relative to cwd
+            resolved_path = path_join(cwd, plugin->path);
+        }
+
+        if (!resolved_path || !file_is_directory(resolved_path)) {
+            fprintf(stderr, "[kryon][config] Plugin '%s' path not found: %s\n",
+                    plugin->name, plugin->path);
+            if (resolved_path && resolved_path != plugin->path) {
+                free(resolved_path);
+            }
+            all_loaded = false;
+            continue;
+        }
+
+        // Discover plugin in the specified path
+        uint32_t count = 0;
+        IRPluginDiscoveryInfo** discovered = ir_plugin_discover(resolved_path, &count);
+
+        if (!discovered || count == 0) {
+            fprintf(stderr, "[kryon][config] No plugin found at: %s\n", resolved_path);
+            if (resolved_path != plugin->path) {
+                free(resolved_path);
+            }
+            all_loaded = false;
+            continue;
+        }
+
+        // Load the first discovered plugin
+        IRPluginDiscoveryInfo* info = discovered[0];
+        IRPluginHandle* handle = ir_plugin_load_with_metadata(info->path, info->name, info);
+
+        if (handle) {
+            printf("[kryon][plugin] Loaded plugin '%s' from %s\n", plugin->name, resolved_path);
+
+            // Call init function if present
+            if (handle->init_func) {
+                handle->init_func(NULL);
+            }
+
+            // Store resolved path in config
+            plugin->resolved_path = str_copy(resolved_path);
+        } else {
+            fprintf(stderr, "[kryon][config] Failed to load plugin '%s' from %s\n",
+                    plugin->name, resolved_path);
+            all_loaded = false;
+        }
+
+        ir_plugin_free_discovery(discovered, count);
+        if (resolved_path != plugin->path) {
+            free(resolved_path);
+        }
+    }
+
+    free(cwd);
+    return all_loaded;
+}
+
+/**
  * Find and load kryon.toml from current directory or parent directories
  */
 KryonConfig* config_find_and_load(void) {
@@ -372,6 +378,12 @@ KryonConfig* config_find_and_load(void) {
         KryonConfig* config = config_load(config_path);
         free(config_path);
         free(cwd);
+
+        // Load plugins after loading config
+        if (config) {
+            config_load_plugins(config);
+        }
+
         return config;
     }
 
@@ -400,18 +412,6 @@ bool config_validate(KryonConfig* config) {
     }
 
     // Validate required [build] fields
-    if (!config->build_entry) {
-        fprintf(stderr, "Error: build.entry is required in kryon.toml\n");
-        fprintf(stderr, "       Specify the entry point file (e.g., entry = \"main.tsx\")\n");
-        has_errors = true;
-    }
-
-    if (!config->build_frontend) {
-        fprintf(stderr, "Error: build.frontend is required in kryon.toml\n");
-        fprintf(stderr, "       Valid values: tsx, jsx, lua, nim, md, kry, c\n");
-        has_errors = true;
-    }
-
     if (!config->build_targets || config->build_targets_count == 0) {
         fprintf(stderr, "Error: build.targets is required in kryon.toml\n");
         fprintf(stderr, "       Specify as array: targets = [\"web\"] or targets = [\"web\", \"desktop\"]\n");
@@ -435,24 +435,6 @@ bool config_validate(KryonConfig* config) {
                 fprintf(stderr, "       Valid targets: web, desktop, terminal, embedded\n");
                 has_errors = true;
             }
-        }
-    }
-
-    // Validate frontend is supported
-    if (config->build_frontend) {
-        const char* valid_frontends[] = {"tsx", "jsx", "lua", "nim", "md", "kry", "c", "html"};
-        bool valid_frontend = false;
-        for (size_t i = 0; i < sizeof(valid_frontends) / sizeof(valid_frontends[0]); i++) {
-            if (strcmp(config->build_frontend, valid_frontends[i]) == 0) {
-                valid_frontend = true;
-                break;
-            }
-        }
-
-        if (!valid_frontend) {
-            fprintf(stderr, "Error: Invalid build.frontend '%s'\n", config->build_frontend);
-            fprintf(stderr, "       Valid frontends: tsx, jsx, lua, nim, md, kry, c, html\n");
-            has_errors = true;
         }
     }
 
@@ -481,12 +463,6 @@ void config_free(KryonConfig* config) {
     free(config->project_description);
     free(config->build_target);
     free(config->build_output_dir);
-    free(config->build_entry);
-    free(config->build_frontend);
-    free(config->docs_directory);
-    free(config->docs_base_path);
-    free(config->docs_template);
-    free(config->docs_sidebar_title);
     free(config->desktop_renderer);
 
     if (config->build_targets) {
@@ -494,15 +470,6 @@ void config_free(KryonConfig* config) {
             free(config->build_targets[i]);
         }
         free(config->build_targets);
-    }
-
-    if (config->build_pages) {
-        for (int i = 0; i < config->pages_count; i++) {
-            free(config->build_pages[i].name);
-            free(config->build_pages[i].route);
-            free(config->build_pages[i].source);
-        }
-        free(config->build_pages);
     }
 
     if (config->plugins) {

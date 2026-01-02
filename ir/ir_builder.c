@@ -829,7 +829,6 @@ void ir_destroy_component(IRComponent* component) {
                 IRCodeBlockData* code_data = (IRCodeBlockData*)component->custom_data;
                 if (code_data->language) free(code_data->language);
                 if (code_data->code) free(code_data->code);
-                if (code_data->tokens) free(code_data->tokens);
                 free(code_data);
                 break;
             }

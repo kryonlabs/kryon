@@ -549,6 +549,18 @@ void ir_plugin_free_discovery(IRPluginDiscoveryInfo** plugins, uint32_t count);
 IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name);
 
 /**
+ * Load a plugin from a .so file with metadata registration.
+ * This is the recommended way to load plugins as it ensures proper registration.
+ *
+ * @param plugin_path Full path to plugin .so file
+ * @param plugin_name Plugin name (for function resolution)
+ * @param discovery_info Plugin discovery metadata (from plugin.toml)
+ * @return Plugin handle, or NULL on error
+ */
+IRPluginHandle* ir_plugin_load_with_metadata(const char* plugin_path, const char* plugin_name,
+                                              const IRPluginDiscoveryInfo* discovery_info);
+
+/**
  * Unload a dynamically loaded plugin.
  * Calls shutdown function if present, then dlclose().
  *
@@ -573,6 +585,15 @@ void* ir_plugin_get_symbol(const char* plugin_name, const char* symbol_name);
  * @return true if the plugin is loaded, false otherwise
  */
 bool ir_plugin_is_loaded(const char* plugin_name);
+
+/**
+ * Find a loaded plugin that provides a specific symbol/capability.
+ * This allows capability-based plugin discovery instead of hardcoded names.
+ *
+ * @param symbol_name Symbol/capability name (e.g., "syntax_tokenize")
+ * @return Plugin name if found, NULL otherwise (do not free returned string)
+ */
+const char* ir_plugin_find_by_capability(const char* symbol_name);
 
 /**
  * Scan an IR tree and return list of required plugin names.

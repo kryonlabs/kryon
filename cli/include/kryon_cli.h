@@ -82,12 +82,6 @@ void toml_free(TOMLTable* table);
 // ============================================================================
 
 typedef struct {
-    char* name;
-    char* route;
-    char* source;
-} PageEntry;
-
-typedef struct {
     char* name;              // Plugin name (e.g., "storage")
     char* path;              // Path to plugin directory (absolute or relative)
     char* version;           // Optional version constraint
@@ -107,12 +101,6 @@ typedef struct {
     char** build_targets;
     int build_targets_count;
     char* build_output_dir;
-    char* build_entry;
-    char* build_frontend;
-
-    // Pages (multi-page support)
-    PageEntry* build_pages;
-    int pages_count;
 
     // Optimization
     bool optimization_enabled;
@@ -124,14 +112,6 @@ typedef struct {
     bool dev_hot_reload;
     int dev_port;
     bool dev_auto_open;
-
-    // Docs
-    bool docs_enabled;
-    char* docs_directory;
-    char* docs_base_path;
-    char* docs_template;       // Path to template HTML (e.g., "docs/_layout.html")
-    char* docs_sidebar_title;  // Optional sidebar title
-    bool docs_auto_sidebar;    // Enable auto-generated sidebar (default: true)
 
     // Plugins
     PluginDep* plugins;

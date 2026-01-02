@@ -1494,18 +1494,7 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
             cJSON_AddStringToObject(obj, "code", data->code);
         }
         cJSON_AddBoolToObject(obj, "showLineNumbers", data->show_line_numbers);
-        // Serialize syntax highlighting tokens if present
-        if (data->tokens && data->token_count > 0) {
-            cJSON* tokensArray = cJSON_CreateArray();
-            for (uint32_t i = 0; i < data->token_count; i++) {
-                cJSON* tokenObj = cJSON_CreateObject();
-                cJSON_AddNumberToObject(tokenObj, "s", data->tokens[i].start);
-                cJSON_AddNumberToObject(tokenObj, "l", data->tokens[i].length);
-                cJSON_AddNumberToObject(tokenObj, "t", data->tokens[i].type);
-                cJSON_AddItemToArray(tokensArray, tokenObj);
-            }
-            cJSON_AddItemToObject(obj, "tokens", tokensArray);
-        }
+        // Syntax highlighting is handled by plugins, not serialized in IR
     }
 
     if (component->type == IR_COMPONENT_LIST && component->custom_data) {
@@ -4762,28 +4751,7 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                 data->show_line_numbers = cJSON_IsTrue(showLineNumsItem);
             }
 
-            // Deserialize syntax highlighting tokens if present
-            cJSON* tokensItem = cJSON_GetObjectItem(json, "tokens");
-            if (tokensItem && cJSON_IsArray(tokensItem)) {
-                int tokenCount = cJSON_GetArraySize(tokensItem);
-                if (tokenCount > 0) {
-                    data->tokens = (IRCodeToken*)calloc(tokenCount, sizeof(IRCodeToken));
-                    if (data->tokens) {
-                        data->token_count = (uint32_t)tokenCount;
-                        for (int i = 0; i < tokenCount; i++) {
-                            cJSON* tokenObj = cJSON_GetArrayItem(tokensItem, i);
-                            if (tokenObj) {
-                                cJSON* startVal = cJSON_GetObjectItem(tokenObj, "s");
-                                cJSON* lengthVal = cJSON_GetObjectItem(tokenObj, "l");
-                                cJSON* typeVal = cJSON_GetObjectItem(tokenObj, "t");
-                                if (startVal) data->tokens[i].start = (uint32_t)startVal->valueint;
-                                if (lengthVal) data->tokens[i].length = (uint32_t)lengthVal->valueint;
-                                if (typeVal) data->tokens[i].type = (IRTokenType)typeVal->valueint;
-                            }
-                        }
-                    }
-                }
-            }
+            // Syntax highlighting is handled by plugins, not deserialized from IR
 
             component->custom_data = (char*)data;
         }
