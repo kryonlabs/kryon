@@ -8,7 +8,8 @@
 # - Transpilation frontends: HTML/web (/codegens/web/) - codegen that outputs browser-renderable code
 
 .PHONY: all clean install install-dynamic install-static uninstall doctor dev test help
-.PHONY: build-cli build-lib build-dynamic build-static
+.PHONY: build-cli build-lib build-dynamic build-static build-c-libs build-codegens
+.PHONY: build-ir build-renderers build-desktop-backend build-c-codegens
 .PHONY: build-terminal build-desktop build-web build-default build-all-variants
 .PHONY: test-serialization test-validation test-conversion test-backend test-integration test-all test-modular
 .PHONY: generate-examples validate-examples clean-generated
@@ -82,7 +83,7 @@ all: build-cli build-lib
 # Build CLI tool (development version)
 build-cli: $(CLI_BIN)
 
-$(CLI_BIN): $(CLI_DEPS) build-codegens
+$(CLI_BIN): $(CLI_DEPS) build-c-libs build-codegens
 	@echo "Building Kryon CLI (development - C version)..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C $(CLI_DIR) clean
@@ -194,17 +195,27 @@ build-all-variants: build-terminal build-desktop build-raylib build-web build-de
 # This creates a combined archive with all C libraries needed for linking
 build-lib: build-c-libs $(LIB_FILE)
 
-# Build the C core libraries
-build-c-libs:
-	@echo "Building C core libraries..."
+# Build the C core libraries with proper dependency ordering
+.PHONY: build-ir build-renderers build-desktop-backend
+build-c-libs: build-ir build-renderers build-desktop-backend build-c-codegens
+
+build-ir:
+	@echo "Building IR library..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C ir all
+
+build-renderers: build-ir
+	@echo "Building renderers..."
 	$(MAKE) -C renderers/common all
 	$(MAKE) -C renderers/common install
 	$(MAKE) -C renderers/sdl3 all
+
+build-desktop-backend: build-ir build-renderers
+	@echo "Building desktop backend..."
 	$(MAKE) -C backends/desktop all
-	@echo "Building code generators..."
-	$(MAKE) -C codegens all
+
+build-c-codegens: build-ir
+	@echo "Building C/Kotlin code generators..."
 	$(MAKE) -C codegens/c all
 	$(MAKE) -C codegens/kotlin all
 	$(MAKE) -C codegens/web all

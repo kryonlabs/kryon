@@ -128,59 +128,57 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         return NULL;
     }
 
-    // Write source to temp file
-    char src_file[1200];
-    snprintf(src_file, sizeof(src_file), "%s/main.lua", temp_dir);
-
-    FILE* f = fopen(src_file, "w");
-    if (!f) {
-        perror("fopen");
-        rmdir(temp_dir);
-        return NULL;
-    }
-
-    fwrite(source, 1, length, f);
-    fclose(f);
-
-    // Copy all .lua files from the project directory to temp directory
-    // This enables require() to work for multi-file projects
+    // Get source file path and directory from environment
     const char* source_file = getenv("KRYON_SOURCE_FILE");
     fprintf(stderr, "[DEBUG] ir_lua_to_kir: KRYON_SOURCE_FILE = %s\n", source_file ? source_file : "(null)");
 
-    if (source_file) {
-        // Get the directory of the source file
-        char source_dir[4096];
-        snprintf(source_dir, sizeof(source_dir), "%s", source_file);
+    // Determine main file path and source directory
+    char* main_file_path = NULL;
+    char source_dir[4096];
 
-        // Find the last slash to get the directory
+    if (!source_file) {
+        // No original file - write source to temp file (backward compatibility)
+        char src_file[1200];
+        snprintf(src_file, sizeof(src_file), "%s/main.lua", temp_dir);
+
+        FILE* f = fopen(src_file, "w");
+        if (!f) {
+            perror("fopen");
+            rmdir(temp_dir);
+            return NULL;
+        }
+
+        fwrite(source, 1, length, f);
+        fclose(f);
+
+        main_file_path = strdup(src_file);
+        snprintf(source_dir, sizeof(source_dir), "%s", temp_dir);
+    } else {
+        // Use original source file directly (no copying needed!)
+        main_file_path = strdup(source_file);
+
+        // Extract source directory from source file path
+        snprintf(source_dir, sizeof(source_dir), "%s", source_file);
         char* last_slash = strrchr(source_dir, '/');
         if (last_slash) {
-            *last_slash = '\0';  // Null-terminate at the slash to get directory
-            fprintf(stderr, "[DEBUG] Copying .lua files from %s to %s\n", source_dir, temp_dir);
-
-            // Copy all .lua files from source directory to temp directory
-            char copy_cmd[2048];
-            snprintf(copy_cmd, sizeof(copy_cmd),
-                     "cp \"%s\"/*.lua \"%s\"/ 2>&1",
-                     source_dir, temp_dir);
-            int copy_result = system(copy_cmd);
-            fprintf(stderr, "[DEBUG] cp result: %d\n", copy_result);
-
-            // List files in temp directory to verify
-            char list_cmd[2048];
-            snprintf(list_cmd, sizeof(list_cmd), "ls -la \"%s\"/*.lua 2>&1", temp_dir);
-            system(list_cmd);
+            *last_slash = '\0';  // Null-terminate to get directory path
         }
     }
+
+    fprintf(stderr, "[DEBUG] main_file_path = %s\n", main_file_path);
+    fprintf(stderr, "[DEBUG] source_dir = %s\n", source_dir);
 
     // Create wrapper script that serializes to JSON
     char wrapper_file[1200];
     snprintf(wrapper_file, sizeof(wrapper_file), "%s/wrapper.lua", temp_dir);
 
-    f = fopen(wrapper_file, "w");
+    FILE* f = fopen(wrapper_file, "w");
     if (!f) {
         perror("fopen wrapper");
-        unlink(src_file);
+        if (!source_file) {
+            unlink(main_file_path);
+        }
+        free(main_file_path);
         rmdir(temp_dir);
         return NULL;
     }
@@ -205,12 +203,12 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "os.execute('export KRYON_RUN_DIRECT=false')\n"
         "_G.KRYON_RUN_DIRECT = false\n"
         "\n"
-        "-- Add current directory for local module requires\n"
-        "package.path = './?.lua;./?/init.lua;' .. package.path\n"
+        "-- Add source directory for local module requires\n"
+        "package.path = '%s/?.lua;%s/?/init.lua;' .. package.path\n"
         "\n"
         "-- Add Kryon bindings to package path\n"
         "package.path = package.path .. ';%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua'\n",
-        kryon_root, kryon_root);
+        source_dir, source_dir, kryon_root, kryon_root);
 
     // Add plugin paths if available
     char* plugin_paths = getenv("KRYON_PLUGIN_PATHS");
@@ -284,7 +282,7 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "  io.stderr:write('Error: Lua file must return an app table with root component\\n')\n"
         "  os.exit(1)\n"
         "end\n",
-        src_file);
+        main_file_path, main_file_path);
 
     fclose(f);
 
@@ -310,18 +308,21 @@ char* ir_lua_to_kir(const char* source, size_t length) {
     // Execute the wrapper with LuaJIT
     // NOTE: We don't use 2>&1 here because we want stderr to go to the terminal
     // (for debug messages) and only stdout (JSON) to be captured
+    // We execute from current directory - wrapper loads user code from original location
     char exec_cmd[4096];
     snprintf(exec_cmd, sizeof(exec_cmd),
-             "cd \"%s\" && "
              "export KRYON_RUN_DIRECT=false && "
              "export LD_LIBRARY_PATH=\"%s:$LD_LIBRARY_PATH\" && "
              "\"%s\" \"%s\"",
-             temp_dir, ld_library_path, luajit, wrapper_file);
+             ld_library_path, luajit, wrapper_file);
 
     FILE* pipe = popen(exec_cmd, "r");
     if (!pipe) {
         fprintf(stderr, "Error: Failed to execute LuaJIT\n");
-        unlink(src_file);
+        if (!source_file) {
+            unlink(main_file_path);  // Only cleanup temp file if we created it
+        }
+        free(main_file_path);
         unlink(wrapper_file);
         rmdir(temp_dir);
         return NULL;
@@ -341,7 +342,10 @@ char* ir_lua_to_kir(const char* source, size_t length) {
             if (!new_result) {
                 free(result);
                 pclose(pipe);
-                unlink(src_file);
+                if (!source_file) {
+                    unlink(main_file_path);
+                }
+                free(main_file_path);
                 unlink(wrapper_file);
                 rmdir(temp_dir);
                 return NULL;
@@ -360,7 +364,10 @@ char* ir_lua_to_kir(const char* source, size_t length) {
             char* new_result = realloc(result, result_size + 1);
             if (!new_result) {
                 free(result);
-                unlink(src_file);
+                if (!source_file) {
+                    unlink(main_file_path);
+                }
+                free(main_file_path);
                 unlink(wrapper_file);
                 rmdir(temp_dir);
                 return NULL;
@@ -377,7 +384,10 @@ char* ir_lua_to_kir(const char* source, size_t length) {
             fprintf(stderr, "%s", result);
         }
         free(result);
-        unlink(src_file);
+        if (!source_file) {
+            unlink(main_file_path);
+        }
+        free(main_file_path);
         unlink(wrapper_file);
         rmdir(temp_dir);
         return NULL;
@@ -387,14 +397,20 @@ char* ir_lua_to_kir(const char* source, size_t length) {
     if (!result || strlen(result) == 0) {
         fprintf(stderr, "Error: No output from Lua script\n");
         free(result);
-        unlink(src_file);
+        if (!source_file) {
+            unlink(main_file_path);
+        }
+        free(main_file_path);
         unlink(wrapper_file);
         rmdir(temp_dir);
         return NULL;
     }
 
     // Cleanup
-    unlink(src_file);
+    if (!source_file) {
+        unlink(main_file_path);  // Only cleanup temp file if we created it
+    }
+    free(main_file_path);
     unlink(wrapper_file);
     rmdir(temp_dir);
 
