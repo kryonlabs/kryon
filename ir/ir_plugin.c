@@ -881,6 +881,62 @@ static bool parse_plugin_toml(const char* toml_path, IRPluginDiscoveryInfo* info
 
 // Discover plugins in a single directory
 static void discover_in_directory(const char* dir_path, IRPluginDiscoveryInfo*** plugins, uint32_t* count) {
+    // First, check if dir_path itself is a plugin directory
+    char toml_path[1024];
+    snprintf(toml_path, sizeof(toml_path), "%s/plugin.toml", dir_path);
+
+    if (file_exists(toml_path)) {
+        IRPluginDiscoveryInfo* info = calloc(1, sizeof(IRPluginDiscoveryInfo));
+        strncpy(info->toml_path, toml_path, sizeof(info->toml_path) - 1);
+
+        if (parse_plugin_toml(toml_path, info)) {
+            // Find .so file - check multiple common locations
+            char so_path[1024];
+            bool found = false;
+
+            // Try root directory first
+            snprintf(so_path, sizeof(so_path), "%s/libkryon_%s.so", dir_path, info->name);
+            if (file_exists(so_path)) {
+                found = true;
+            } else {
+                // Try build/ subdirectory
+                snprintf(so_path, sizeof(so_path), "%s/build/libkryon_%s.so", dir_path, info->name);
+                if (file_exists(so_path)) {
+                    found = true;
+                } else {
+                    // Try lib/ subdirectory
+                    snprintf(so_path, sizeof(so_path), "%s/lib/libkryon_%s.so", dir_path, info->name);
+                    if (file_exists(so_path)) {
+                        found = true;
+                    }
+                }
+            }
+
+            if (found) {
+                strncpy(info->path, so_path, sizeof(info->path) - 1);
+
+                // Add to results
+                *plugins = realloc(*plugins, sizeof(IRPluginDiscoveryInfo*) * (*count + 1));
+                (*plugins)[*count] = info;
+                (*count)++;
+
+                // Found plugin at root level, no need to scan subdirectories
+                return;
+            } else {
+                // .so not found in any location, free info and continue scanning subdirectories
+                free(info->command_ids);
+                for (uint32_t i = 0; i < info->backend_count; i++) {
+                    free(info->backends[i]);
+                }
+                free(info->backends);
+                free(info);
+            }
+        } else {
+            free(info);
+        }
+    }
+
+    // If not a plugin itself, scan subdirectories
     DIR* dir = opendir(dir_path);
     if (!dir) {
         return;
@@ -890,7 +946,6 @@ static void discover_in_directory(const char* dir_path, IRPluginDiscoveryInfo***
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
             // Check for plugin.toml in subdirectory
-            char toml_path[1024];
             snprintf(toml_path, sizeof(toml_path), "%s/%s/plugin.toml", dir_path, entry->d_name);
 
             if (file_exists(toml_path)) {

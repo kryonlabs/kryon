@@ -635,6 +635,7 @@ static struct IRComponent* clone_component_recursive(struct IRComponent* source,
 /**
  * Find and replace a placeholder component with replacement content
  */
+__attribute__((unused))
 static bool replace_placeholder(struct IRComponent* root,
                                uint32_t placeholder_id,
                                struct IRComponent* replacement) {

@@ -159,7 +159,7 @@ setmetatable(reactiveMap, {__mode = "k"})  -- Weak keys for GC
 
 -- Check if a value is a reactive proxy
 local function isReactive(value)
-  return type(value) == "table" and reactiveMap[value] ~= nil
+  return type(value) == "table" and rawget(value, "_target") ~= nil
 end
 
 --- Create a deep reactive object from a table
@@ -204,9 +204,24 @@ function Reactive.reactive(target, parent, parentKey)
 
       local value = target[key]
 
-      -- Recursively wrap nested tables (don't store back to avoid contaminating target)
+      -- Recursively wrap nested tables with proxy caching for consistent identity
       if type(value) == "table" and not isReactive(value) then
+        -- Check if we already have a cached proxy for this nested table
+        local proxyCache = rawget(target, "_proxyCache")
+        if not proxyCache then
+          proxyCache = {}
+          rawset(target, "_proxyCache", proxyCache)
+        end
+
+        -- Return cached proxy if it exists
+        local cachedProxy = proxyCache[key]
+        if cachedProxy then
+          return cachedProxy
+        end
+
+        -- Create new proxy and cache it
         local childProxy = Reactive.reactive(value, t, key)
+        proxyCache[key] = childProxy
         return childProxy
       end
 
@@ -342,7 +357,7 @@ function Reactive.toRaw(proxy, visited)
   local cleaned = {}
   for key, value in pairs(proxy) do
     -- Skip internal reactive metadata
-    if key ~= "_target" and key ~= "_deps" then
+    if key ~= "_target" and key ~= "_deps" and key ~= "_proxyCache" then
       cleaned[key] = Reactive.toRaw(value, visited)
     end
   end

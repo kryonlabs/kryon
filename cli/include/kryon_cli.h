@@ -47,6 +47,7 @@ bool dir_create_recursive(const char* path);
 char* dir_get_current(void);
 int dir_list_files(const char* dir, const char* ext, char*** files, int* count);
 char* path_join(const char* p1, const char* p2);
+char* path_resolve_canonical(const char* path, const char* base_dir);
 const char* path_extension(const char* path);
 
 // ============================================================================
@@ -101,6 +102,7 @@ typedef struct {
     char** build_targets;
     int build_targets_count;
     char* build_output_dir;
+    char* build_entry;  // Entry point file (e.g., "main.lua")
 
     // Optimization
     bool optimization_enabled;

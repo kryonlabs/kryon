@@ -113,7 +113,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
             return 0;
         }
 
-        fprintf(stderr, "Error: Failed to compile HTML\n");
+        fprintf(stderr, "Error: Failed to compile HTML (exit code: %d)\n", result);
         return 1;
     }
     else if (strcmp(frontend, "kry") == 0) {

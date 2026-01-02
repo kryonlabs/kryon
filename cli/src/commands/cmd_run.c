@@ -10,7 +10,6 @@
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_executor.h"
 #include "../../backends/desktop/ir_desktop_renderer.h"
-#include "../../renderers/terminal/terminal_backend.h"
 #include "../../codegens/kotlin/kotlin_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -569,11 +568,22 @@ int cmd_run(int argc, char** argv) {
             return 1;
         }
 
-        fprintf(stderr, "Error: No file specified\n\n");
-        fprintf(stderr, "Usage:\n");
-        fprintf(stderr, "  kryon run <file>\n");
+        // Check if config has an entry point
+        if (!config->build_entry) {
+            fprintf(stderr, "Error: No file specified and no build.entry in kryon.toml\n\n");
+            fprintf(stderr, "Usage:\n");
+            fprintf(stderr, "  kryon run <file>\n");
+            fprintf(stderr, "\nOr add entry point to kryon.toml:\n");
+            fprintf(stderr, "  [build]\n");
+            fprintf(stderr, "  entry = \"main.lua\"\n");
+            config_free(config);
+            return 1;
+        }
+
+        // Use entry from config (make a copy since we'll free the config)
+        target_file = str_copy(config->build_entry);
+        free_target = true;
         config_free(config);
-        return 1;
     } else {
         target_file = argv[0];
 

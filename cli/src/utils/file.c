@@ -163,6 +163,68 @@ char* path_join(const char* p1, const char* p2) {
 }
 
 /**
+ * Resolve and canonicalize a path (handles relative paths, .., ., and symlinks)
+ *
+ * @param path The path to resolve (can be relative or absolute)
+ * @param base_dir Base directory for relative paths (NULL = use CWD)
+ * @return Canonicalized absolute path (caller must free), or NULL on error
+ *
+ * Examples:
+ *   path_resolve_canonical("../foo", "/home/user/bar")
+ *     -> "/home/user/foo"
+ *   path_resolve_canonical("./test/../data", NULL)
+ *     -> "/current/working/dir/data"
+ *   path_resolve_canonical("/absolute/path", "/ignored")
+ *     -> "/absolute/path"
+ */
+char* path_resolve_canonical(const char* path, const char* base_dir) {
+    if (!path) {
+        return NULL;
+    }
+
+    char* intermediate = NULL;
+
+    // If path is absolute, use it directly
+    if (path[0] == '/') {
+        intermediate = str_copy(path);
+    } else {
+        // Relative path - join with base_dir
+        const char* base = base_dir;
+        char* cwd_allocated = NULL;
+
+        if (!base || strlen(base) == 0) {
+            // No base provided, use current working directory
+            cwd_allocated = dir_get_current();
+            base = cwd_allocated;
+        }
+
+        if (!base) {
+            return NULL;  // Failed to get base directory
+        }
+
+        intermediate = path_join(base, path);
+
+        if (cwd_allocated) {
+            free(cwd_allocated);
+        }
+
+        if (!intermediate) {
+            return NULL;
+        }
+    }
+
+    // Canonicalize the path using realpath()
+    // realpath() resolves .., ., symlinks, and removes duplicate /
+    char* canonical = realpath(intermediate, NULL);
+
+    free(intermediate);
+
+    // realpath() returns NULL if path doesn't exist or has permission issues
+    // errno will be set appropriately (ENOENT, EACCES, etc.)
+    return canonical;
+}
+
+/**
  * Get file extension (including dot)
  */
 const char* path_extension(const char* path) {

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <errno.h>
 #include <ir_plugin.h>
 
 /**
@@ -220,6 +221,12 @@ KryonConfig* config_load(const char* config_path) {
         config->build_output_dir = str_copy("build");
     }
 
+    // Parse build.entry (optional entry point file)
+    const char* entry = toml_get_string(toml, "build.entry", NULL);
+    if (entry) {
+        config->build_entry = str_copy(entry);
+    }
+
     // Parse build.targets array (required)
     // Count targets by looking for build.targets.N keys
     int max_target_idx = -1;
@@ -305,18 +312,26 @@ bool config_load_plugins(KryonConfig* config) {
         }
 
         // Resolve plugin path (handle relative paths like "../kryon-syntax")
-        char* resolved_path = plugin->path;
-        if (plugin->path[0] != '/') {
-            // Relative path - resolve relative to cwd
-            resolved_path = path_join(cwd, plugin->path);
+        // This canonicalizes the path, resolving .., ., and symlinks
+        char* resolved_path = path_resolve_canonical(plugin->path, cwd);
+
+        if (!resolved_path) {
+            // Path doesn't exist, has permission issues, or resolution failed
+            fprintf(stderr, "[kryon][config] Plugin '%s' path not found or inaccessible: %s\n",
+                    plugin->name, plugin->path);
+            if (errno == ENOENT) {
+                fprintf(stderr, "                 (path does not exist)\n");
+            } else if (errno == EACCES) {
+                fprintf(stderr, "                 (permission denied)\n");
+            }
+            all_loaded = false;
+            continue;
         }
 
-        if (!resolved_path || !file_is_directory(resolved_path)) {
-            fprintf(stderr, "[kryon][config] Plugin '%s' path not found: %s\n",
-                    plugin->name, plugin->path);
-            if (resolved_path && resolved_path != plugin->path) {
-                free(resolved_path);
-            }
+        if (!file_is_directory(resolved_path)) {
+            fprintf(stderr, "[kryon][config] Plugin '%s' path is not a directory: %s\n",
+                    plugin->name, resolved_path);
+            free(resolved_path);
             all_loaded = false;
             continue;
         }
@@ -463,6 +478,7 @@ void config_free(KryonConfig* config) {
     free(config->project_description);
     free(config->build_target);
     free(config->build_output_dir);
+    free(config->build_entry);
     free(config->desktop_renderer);
 
     if (config->build_targets) {
