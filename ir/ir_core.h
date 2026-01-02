@@ -900,32 +900,6 @@ typedef struct {
     uint8_t depth;          // Nesting level for nested quotes (1-based)
 } IRBlockquoteData;
 
-// Syntax highlighting token types (matches kryon_syntax.h SyntaxTokenType)
-typedef enum {
-    IR_TOKEN_PLAIN = 0,
-    IR_TOKEN_KEYWORD,
-    IR_TOKEN_STRING,
-    IR_TOKEN_NUMBER,
-    IR_TOKEN_COMMENT,
-    IR_TOKEN_OPERATOR,
-    IR_TOKEN_PUNCTUATION,
-    IR_TOKEN_FUNCTION,
-    IR_TOKEN_TYPE,
-    IR_TOKEN_VARIABLE,
-    IR_TOKEN_CONSTANT,
-    IR_TOKEN_ATTRIBUTE,
-    IR_TOKEN_TAG,
-    IR_TOKEN_PROPERTY,
-    IR_TOKEN_COUNT
-} IRTokenType;
-
-// Syntax highlighting token span
-typedef struct {
-    uint32_t start;         // Start offset in code
-    uint32_t length;        // Token length in bytes
-    IRTokenType type;       // Token type
-} IRCodeToken;
-
 // Code block data
 typedef struct {
     char* language;         // Language tag (e.g., "python", "rust", NULL for none)
@@ -933,9 +907,7 @@ typedef struct {
     size_t length;          // Code length in bytes
     bool show_line_numbers; // Enable line numbers
     uint32_t start_line;    // Starting line number (default 1)
-    // Syntax highlighting (optional, populated by kryon-syntax library)
-    IRCodeToken* tokens;    // Array of tokens (NULL if not tokenized)
-    uint32_t token_count;   // Number of tokens
+    // Syntax highlighting is handled by plugins via web renderer extension point
 } IRCodeBlockData;
 
 // Link data

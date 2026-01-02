@@ -581,14 +581,7 @@ static struct IRComponent* clone_component_recursive(struct IRComponent* source,
                     dst->length = src->length;
                     dst->show_line_numbers = src->show_line_numbers;
                     dst->start_line = src->start_line;
-                    // Clone syntax highlighting tokens
-                    if (src->tokens && src->token_count > 0) {
-                        dst->tokens = malloc(src->token_count * sizeof(IRCodeToken));
-                        if (dst->tokens) {
-                            memcpy(dst->tokens, src->tokens, src->token_count * sizeof(IRCodeToken));
-                            dst->token_count = src->token_count;
-                        }
-                    }
+                    // Syntax highlighting handled by plugins, no tokens to clone
                 }
                 clone->custom_data = (char*)dst;
                 break;

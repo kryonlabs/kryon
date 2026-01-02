@@ -9,15 +9,6 @@ ARFLAGS = rcs
 # Single-pass layout system (ONLY system - no legacy code)
 CFLAGS += -DIR_USE_SINGLE_PASS_LAYOUT
 
-# Optional syntax highlighting support (requires kryon-syntax library)
-# Build with: make WITH_SYNTAX=1
-ifdef WITH_SYNTAX
-CFLAGS += -DKRYON_SYNTAX_ENABLED -I$(HOME)/.local/include
-SYNTAX_LIBS = -L$(HOME)/.local/lib -lkryon_syntax
-else
-SYNTAX_LIBS =
-endif
-
 # HarfBuzz, FreeType, and FriBidi for text shaping
 # These must be passed in from the environment or overridden on command line
 HARFBUZZ_CFLAGS ?= $(shell pkg-config --cflags harfbuzz freetype2 fribidi 2>/dev/null || echo "-I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/fribidi")
@@ -215,7 +206,7 @@ $(IR_STATIC_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o i
 
 # Create shared library
 $(IR_SHARED_LIB): $(BUILD_DIR) ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json.o ir_reactive_manifest.o ir_source_structures.o ir_expression.o ir_logic.o ir_executor.o ir_krb.o ir_stylesheet.o parsers/kry/kry_parser.o parsers/kry/kry_to_ir.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o ir_native_canvas.o parsers/markdown/markdown_ast.o parsers/markdown/markdown_parser.o parsers/markdown/markdown_to_ir.o parsers/html/html_ast.o parsers/html/html_parser.o parsers/html/html_to_ir.o parsers/html/css_parser.o parsers/html/css_stylesheet.o parsers/c/c_parser.o parsers/tsx/tsx_parser.o parsers/lua/lua_parser.o ../bindings/c/kryon.o components/ir_component_registry.o components/ir_component_text.o components/ir_component_flexbox.o components/ir_component_button.o components/ir_component_checkbox.o components/ir_component_dropdown.o components/ir_component_table.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json.o ir_reactive_manifest.o ir_source_structures.o ir_expression.o ir_logic.o ir_executor.o ir_krb.o ir_stylesheet.o parsers/kry/kry_parser.o parsers/kry/kry_to_ir.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o ir_native_canvas.o parsers/markdown/markdown_ast.o parsers/markdown/markdown_parser.o parsers/markdown/markdown_to_ir.o parsers/html/html_ast.o parsers/html/html_parser.o parsers/html/html_to_ir.o parsers/html/css_parser.o parsers/html/css_stylesheet.o parsers/c/c_parser.o parsers/tsx/tsx_parser.o parsers/lua/lua_parser.o ../bindings/c/kryon.o components/ir_component_registry.o components/ir_component_text.o components/ir_component_flexbox.o components/ir_component_button.o components/ir_component_checkbox.o components/ir_component_dropdown.o components/ir_component_table.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o -lm $(HARFBUZZ_LIBS) $(SYNTAX_LIBS)
+	$(CC) $(CFLAGS) -shared -o $@ ir_builder.o ir_serialization.o ir_validation.o ir_style_vars.o ir_layout.o ir_memory.o ir_hashmap.o ir_animation.o ir_text_shaping.o ir_hot_reload.o ir_format_detect.o ir_json.o ir_reactive_manifest.o ir_source_structures.o ir_expression.o ir_logic.o ir_executor.o ir_krb.o ir_stylesheet.o parsers/kry/kry_parser.o parsers/kry/kry_to_ir.o ir_game_loop.o ir_input.o ir_sprite.o ir_particle.o ir_asset.o ir_audio.o ir_physics.o ir_entity.o ir_plugin.o ir_native_canvas.o parsers/markdown/markdown_ast.o parsers/markdown/markdown_parser.o parsers/markdown/markdown_to_ir.o parsers/html/html_ast.o parsers/html/html_parser.o parsers/html/html_to_ir.o parsers/html/css_parser.o parsers/html/css_stylesheet.o parsers/c/c_parser.o parsers/tsx/tsx_parser.o parsers/lua/lua_parser.o ../bindings/c/kryon.o components/ir_component_registry.o components/ir_component_text.o components/ir_component_flexbox.o components/ir_component_button.o components/ir_component_checkbox.o components/ir_component_dropdown.o components/ir_component_table.o $(CJSON_DIR)/cJSON.o $(TOML_DIR)/toml.o -lm $(HARFBUZZ_LIBS)
 
 # Install headers
 install-headers: $(BUILD_DIR)

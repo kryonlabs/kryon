@@ -44,23 +44,16 @@ int cmd_config(int argc, char** argv) {
         printf("\n[build]\n");
         if (config->build_target)
             printf("  target = \"%s\"\n", config->build_target);
+        if (config->build_targets && config->build_targets_count > 0) {
+            printf("  targets = [");
+            for (int i = 0; i < config->build_targets_count; i++) {
+                printf("\"%s\"%s", config->build_targets[i],
+                       i < config->build_targets_count - 1 ? ", " : "");
+            }
+            printf("]\n");
+        }
         if (config->build_output_dir)
             printf("  output_dir = \"%s\"\n", config->build_output_dir);
-        if (config->build_entry)
-            printf("  entry = \"%s\"\n", config->build_entry);
-        if (config->build_frontend)
-            printf("  frontend = \"%s\"\n", config->build_frontend);
-
-        if (config->pages_count > 0) {
-            printf("\n  pages:\n");
-            for (int i = 0; i < config->pages_count; i++) {
-                printf("    [%d] name=%s, route=%s, source=%s\n",
-                       i,
-                       config->build_pages[i].name ? config->build_pages[i].name : "?",
-                       config->build_pages[i].route ? config->build_pages[i].route : "?",
-                       config->build_pages[i].source ? config->build_pages[i].source : "?");
-            }
-        }
 
         printf("\n[optimization]\n");
         printf("  enabled = %s\n", config->optimization_enabled ? "true" : "false");
@@ -72,13 +65,6 @@ int cmd_config(int argc, char** argv) {
         printf("  hot_reload = %s\n", config->dev_hot_reload ? "true" : "false");
         printf("  port = %d\n", config->dev_port);
         printf("  auto_open = %s\n", config->dev_auto_open ? "true" : "false");
-
-        if (config->docs_enabled) {
-            printf("\n[docs]\n");
-            printf("  enabled = %s\n", config->docs_enabled ? "true" : "false");
-            if (config->docs_directory)
-                printf("  directory = \"%s\"\n", config->docs_directory);
-        }
 
         if (config->plugins_count > 0) {
             printf("\n[plugins]\n");

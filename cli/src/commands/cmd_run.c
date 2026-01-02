@@ -569,20 +569,11 @@ int cmd_run(int argc, char** argv) {
             return 1;
         }
 
-        if (!config->build_entry) {
-            fprintf(stderr, "Error: No file specified and no build.entry in kryon.toml\n\n");
-            fprintf(stderr, "Add to your kryon.toml:\n");
-            fprintf(stderr, "  [build]\n");
-            fprintf(stderr, "  entry = \"your-file.kry\"\n\n");
-            fprintf(stderr, "Or run with a file:\n");
-            fprintf(stderr, "  kryon run <file>\n");
-            config_free(config);
-            return 1;
-        }
-
-        target_file = str_copy(config->build_entry);
-        free_target = true;
+        fprintf(stderr, "Error: No file specified\n\n");
+        fprintf(stderr, "Usage:\n");
+        fprintf(stderr, "  kryon run <file>\n");
         config_free(config);
+        return 1;
     } else {
         target_file = argv[0];
 

@@ -14,6 +14,9 @@ INSTALL_DIR = $(HOME)/.local/bin
 SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/utils/string.c \
        $(SRC_DIR)/utils/file.c \
+       $(SRC_DIR)/utils/file_discovery.c \
+       $(SRC_DIR)/utils/file_watcher.c \
+       $(SRC_DIR)/utils/ws_reload.c \
        $(SRC_DIR)/utils/args.c \
        $(SRC_DIR)/utils/process.c \
        $(SRC_DIR)/utils/json.c \

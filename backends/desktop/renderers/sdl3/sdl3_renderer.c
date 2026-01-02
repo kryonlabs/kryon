@@ -365,9 +365,7 @@ static bool sdl3_begin_frame(DesktopIRRenderer* renderer) {
         SDL_SetRenderDrawColor(data->renderer, 240, 240, 240, 255);
     }
 
-    fprintf(stderr, "[sdl3_begin_frame] About to clear with renderer=%p\n", (void*)data->renderer);
     SDL_RenderClear(data->renderer);
-    fprintf(stderr, "[sdl3_begin_frame] Cleared screen\n");
 
     return true;
 }

@@ -95,6 +95,24 @@ function Runtime.cleanupHandler(component)
   end
 end
 
+--- Recursively cleanup handlers for a component tree
+--- @param component cdata IRComponent* pointer
+function Runtime.cleanupComponentTreeHandlers(component)
+  if not component then return end
+
+  -- Cleanup this component's handlers
+  Runtime.cleanupHandler(component)
+
+  -- Recursively cleanup all children
+  local childCount = C.ir_get_child_count(component)
+  for i = 0, childCount - 1 do
+    local child = C.ir_get_child_at(component, i)
+    if child then
+      Runtime.cleanupComponentTreeHandlers(child)
+    end
+  end
+end
+
 --- Cleanup all handlers (for app shutdown)
 function Runtime.cleanupAllHandlers()
   Runtime.handlers = {}
@@ -206,9 +224,26 @@ function Runtime.createReactiveApp(config)
     _stopEffect = nil,
   }
 
+  -- Guard against recursive calls during effect execution
+  local isBuilding = false
+
   -- Create effect that auto-rebuilds UI when reactive dependencies change
   local function buildAndUpdateRoot()
+    -- Prevent recursive calls
+    if isBuilding then
+      print("⚠️  [Reactive Effect] buildAndUpdateRoot already running, skipping")
+      return
+    end
+
     print("🔄 [Reactive Effect] buildAndUpdateRoot triggered - rebuilding UI!")
+    isBuilding = true
+
+    -- Cleanup handlers from previous tree to prevent accumulation
+    if app.root then
+      print("🧹 [Reactive Effect] Cleaning up handlers from previous UI tree...")
+      Runtime.cleanupComponentTreeHandlers(app.root)
+    end
+
     local newRoot = config.root()
 
     if app.root then
@@ -230,6 +265,8 @@ function Runtime.createReactiveApp(config)
       C.ir_set_root(newRoot)
       app.root = newRoot
     end
+
+    isBuilding = false
   end
 
   -- Run effect (auto-tracks dependencies and re-runs on changes)

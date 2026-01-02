@@ -348,27 +348,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
                 ir_set_border(comp->style, 1, 48, 54, 61, 255, 8);
             }
 
-            // Apply syntax highlighting if the syntax plugin is loaded
-            if (comp && lang && code && ir_plugin_is_loaded("syntax")) {
-                // Get function pointers from the syntax plugin
-                SyntaxSupportsLangFn supports_lang = (SyntaxSupportsLangFn)
-                    ir_plugin_get_symbol("syntax", "syntax_supports_language");
-                SyntaxTokenizeFn tokenize = (SyntaxTokenizeFn)
-                    ir_plugin_get_symbol("syntax", "syntax_tokenize");
-
-                if (supports_lang && tokenize && supports_lang(lang)) {
-                    IRCodeBlockData* data = (IRCodeBlockData*)comp->custom_data;
-                    if (data) {
-                        uint32_t token_count = 0;
-                        RuntimeSyntaxToken* tokens = tokenize(code, code_len, lang, &token_count);
-                        if (tokens && token_count > 0) {
-                            // Copy tokens to IR format (same memory layout)
-                            data->tokens = (IRCodeToken*)tokens;
-                            data->token_count = token_count;
-                        }
-                    }
-                }
-            }
+            // Syntax highlighting is handled by plugins via web renderer extension point
 
             break;
         }

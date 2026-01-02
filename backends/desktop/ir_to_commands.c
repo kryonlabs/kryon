@@ -127,20 +127,20 @@ void ir_defer_to_overlay(IRCommandContext* ctx, IRComponent* comp) {
  * ============================================================================ */
 
 bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    fprintf(stderr, "[CONTAINER_GEN] Component %u type=%d has_style=%d is_root=%d\n",
-            comp->id, comp->type, comp->style != NULL, ctx->is_root_component);
+    // fprintf(stderr, "[CONTAINER_GEN] Component %u type=%d has_style=%d is_root=%d\n",
+    //         comp->id, comp->type, comp->style != NULL, ctx->is_root_component);
     if (!comp->style) {
-        fprintf(stderr, "[CONTAINER_GEN]   No style, returning early\n");
+        // fprintf(stderr, "[CONTAINER_GEN]   No style, returning early\n");
         return true;
     }
 
     /* Skip root background rendering - SDL_RenderClear already handles it */
     if (ctx->is_root_component) {
-        fprintf(stderr, "[CONTAINER_GEN]   Is root component, skipping background\n");
+        // fprintf(stderr, "[CONTAINER_GEN]   Is root component, skipping background\n");
         return true;
     }
 
-    fprintf(stderr, "[CONTAINER_GEN]   About to check gradient vs solid\n");
+    // fprintf(stderr, "[CONTAINER_GEN]   About to check gradient vs solid\n");
 
     IRStyle* style = comp->style;
     kryon_command_t cmd = {0};  // CRITICAL FIX: Zero-initialize to prevent stack garbage
@@ -201,13 +201,13 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
         uint8_t bg_r, bg_g, bg_b, bg_a;
 
         // DEBUG: Print background color info
-        fprintf(stderr, "[BG_DEBUG] Component %u type=%d background.type=%d\n",
-                comp->id, comp->type, style->background.type);
+        // fprintf(stderr, "[BG_DEBUG] Component %u type=%d background.type=%d\n",
+        //         comp->id, comp->type, style->background.type);
 
         bool resolved = ir_color_resolve(&style->background, &bg_r, &bg_g, &bg_b, &bg_a);
 
-        fprintf(stderr, "[BG_DEBUG]   ir_color_resolve returned %d, RGBA=(%u,%u,%u,%u)\n",
-                resolved, bg_r, bg_g, bg_b, bg_a);
+        // fprintf(stderr, "[BG_DEBUG]   ir_color_resolve returned %d, RGBA=(%u,%u,%u,%u)\n",
+        //         resolved, bg_r, bg_g, bg_b, bg_a);
 
         if (resolved && bg_a > 0) {
         uint32_t bg_color = (bg_r << 24) | (bg_g << 16) | (bg_b << 8) | bg_a;
@@ -231,8 +231,8 @@ bool ir_gen_container_commands(IRComponent* comp, IRCommandContext* ctx, LayoutR
 
         kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
         } else {
-            fprintf(stderr, "[BG_DEBUG]   SKIPPING background (resolved=%d, a=%u)\n",
-                    resolved, bg_a);
+            // fprintf(stderr, "[BG_DEBUG]   SKIPPING background (resolved=%d, a=%u)\n",
+            //         resolved, bg_a);
         }
     }
 
@@ -390,8 +390,8 @@ bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* 
 }
 
 bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    fprintf(stderr, "[BUTTON_GEN] Component %u bounds=(%.1f,%.1f,%.1f,%.1f) has_style=%d\n",
-            comp->id, bounds->x, bounds->y, bounds->width, bounds->height, comp->style != NULL);
+    // fprintf(stderr, "[BUTTON_GEN] Component %u bounds=(%.1f,%.1f,%.1f,%.1f) has_style=%d\n",
+    //         comp->id, bounds->x, bounds->y, bounds->width, bounds->height, comp->style != NULL);
 
     /* Check if button is being hovered */
     bool is_hovered = (g_hovered_component == comp);
@@ -989,9 +989,9 @@ bool ir_generate_component_commands(
     /* Generate commands based on component type */
     bool success = true;
 
-    fprintf(stderr, "[DISPATCH] Component %u type=%d (%s)\n",
-            component->id, component->type,
-            component->type == 8 ? "BUTTON" : "other");
+    // fprintf(stderr, "[DISPATCH] Component %u type=%d (%s)\n",
+    //         component->id, component->type,
+    //         component->type == 8 ? "BUTTON" : "other");
 
     switch (component->type) {
         case IR_COMPONENT_CONTAINER:
@@ -1108,9 +1108,6 @@ bool ir_component_to_commands(
     float opacity,
     void* backend_ctx
 ) {
-    fprintf(stderr, "[IR_TO_CMDS] Called for component %u type=%d\n",
-            component ? component->id : 0, component ? component->type : -1);
-
     if (!component || !cmd_buf || !bounds) return false;
 
     /* Initialize command generation context */

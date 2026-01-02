@@ -41,7 +41,7 @@ typedef struct PluginSystem {
     uint32_t registered_count;
 
     // Component renderer table (indexed by IRComponentType)
-    IRPluginComponentRenderer component_renderers[32];  // Support up to 32 component types
+    IRPluginComponentRenderer component_renderers[64];  // Support up to 64 component types
     uint32_t component_renderer_count;
 
     // Plugin registry
@@ -62,8 +62,8 @@ typedef struct PluginSystem {
     uint32_t callback_bridge_count;
 
     // Web component renderers (indexed by IRComponentType)
-    IRPluginWebComponentRenderer web_renderers[32];
-    IRPluginWebCSSGenerator web_css_generators[32];
+    IRPluginWebComponentRenderer web_renderers[64];
+    IRPluginWebCSSGenerator web_css_generators[64];
     uint32_t web_renderer_count;
 
     // Plugin event type registry (100-255 range)
@@ -131,22 +131,25 @@ bool ir_plugin_register(const IRPluginMetadata* metadata) {
         }
     }
 
-    // Check command ID range validity
-    if (metadata->command_id_start < IR_PLUGIN_CMD_START ||
-        metadata->command_id_end > IR_PLUGIN_CMD_END ||
-        metadata->command_id_start > metadata->command_id_end) {
-        fprintf(stderr, "[kryon][plugin] Plugin '%s' has invalid command ID range (%u-%u)\n",
-                metadata->name, metadata->command_id_start, metadata->command_id_end);
-        return false;
-    }
+    // Check command ID range validity (allow 0-0 for plugins with no commands)
+    bool has_commands = (metadata->command_id_start != 0 || metadata->command_id_end != 0);
+    if (has_commands) {
+        if (metadata->command_id_start < IR_PLUGIN_CMD_START ||
+            metadata->command_id_end > IR_PLUGIN_CMD_END ||
+            metadata->command_id_start > metadata->command_id_end) {
+            fprintf(stderr, "[kryon][plugin] Plugin '%s' has invalid command ID range (%u-%u)\n",
+                    metadata->name, metadata->command_id_start, metadata->command_id_end);
+            return false;
+        }
 
-    // Check for command ID conflicts
-    char conflict_buf[IR_PLUGIN_NAME_MAX];
-    if (ir_plugin_check_command_conflict(metadata->command_id_start, metadata->command_id_end,
-                                         conflict_buf, sizeof(conflict_buf))) {
-        fprintf(stderr, "[kryon][plugin] Plugin '%s' command ID range conflicts with '%s'\n",
-                metadata->name, conflict_buf);
-        return false;
+        // Check for command ID conflicts (only if plugin has commands)
+        char conflict_buf[IR_PLUGIN_NAME_MAX];
+        if (ir_plugin_check_command_conflict(metadata->command_id_start, metadata->command_id_end,
+                                             conflict_buf, sizeof(conflict_buf))) {
+            fprintf(stderr, "[kryon][plugin] Plugin '%s' command ID range conflicts with '%s'\n",
+                    metadata->name, conflict_buf);
+            return false;
+        }
     }
 
     // Check for duplicate plugin name
@@ -533,8 +536,8 @@ bool ir_plugin_register_component_renderer(uint32_t component_type, IRPluginComp
         return false;
     }
 
-    if (component_type >= 32) {
-        fprintf(stderr, "[kryon][plugin] Component type %u out of range (max 31)\n", component_type);
+    if (component_type >= 64) {
+        fprintf(stderr, "[kryon][plugin] Component type %u out of range (max 63)\n", component_type);
         return false;
     }
 
@@ -553,14 +556,14 @@ bool ir_plugin_register_component_renderer(uint32_t component_type, IRPluginComp
 }
 
 void ir_plugin_unregister_component_renderer(uint32_t component_type) {
-    if (component_type < 32 && g_plugin_system.component_renderers[component_type] != NULL) {
+    if (component_type < 64 && g_plugin_system.component_renderers[component_type] != NULL) {
         g_plugin_system.component_renderers[component_type] = NULL;
         g_plugin_system.component_renderer_count--;
     }
 }
 
 bool ir_plugin_has_component_renderer(uint32_t component_type) {
-    if (component_type >= 32) {
+    if (component_type >= 64) {
         return false;
     }
     return g_plugin_system.component_renderers[component_type] != NULL;
@@ -599,8 +602,8 @@ bool ir_plugin_register_web_renderer(uint32_t component_type,
         return false;
     }
 
-    if (component_type >= 32) {
-        fprintf(stderr, "[kryon][plugin] Component type %u out of range for web renderer (max 31)\n", component_type);
+    if (component_type >= 64) {
+        fprintf(stderr, "[kryon][plugin] Component type %u out of range for web renderer (max 63)\n", component_type);
         return false;
     }
 
@@ -620,7 +623,7 @@ bool ir_plugin_register_web_renderer(uint32_t component_type,
 }
 
 void ir_plugin_unregister_web_renderer(uint32_t component_type) {
-    if (component_type < 32 && g_plugin_system.web_renderers[component_type] != NULL) {
+    if (component_type < 64 && g_plugin_system.web_renderers[component_type] != NULL) {
         g_plugin_system.web_renderers[component_type] = NULL;
         g_plugin_system.web_css_generators[component_type] = NULL;
         g_plugin_system.web_renderer_count--;
@@ -628,7 +631,7 @@ void ir_plugin_unregister_web_renderer(uint32_t component_type) {
 }
 
 bool ir_plugin_has_web_renderer(uint32_t component_type) {
-    if (component_type >= 32) {
+    if (component_type >= 64) {
         return false;
     }
     return g_plugin_system.web_renderers[component_type] != NULL;
@@ -742,7 +745,7 @@ static char** expand_path(const char* path, int* count) {
             return NULL;
         }
 
-        char* expanded = malloc(strlen(home) + strlen(path));
+        char* expanded = malloc(strlen(home) + strlen(path) + 1);
         sprintf(expanded, "%s%s", home, path + 1);
 
         char** result = malloc(sizeof(char*));
@@ -791,9 +794,26 @@ static bool parse_plugin_toml(const char* toml_path, IRPluginDiscoveryInfo* info
         return false;
     }
 
-    char errbuf[200];
-    toml_table_t* conf = toml_parse_file(fp, errbuf, sizeof(errbuf));
+    // Read entire file into memory
+    // Note: Using toml_parse() instead of toml_parse_file() because the latter
+    // doesn't work correctly when called from within a shared library
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char* file_contents = malloc(file_size + 1);
+    if (!file_contents) {
+        fclose(fp);
+        return false;
+    }
+
+    size_t read_size = fread(file_contents, 1, file_size, fp);
+    file_contents[read_size] = '\0';
     fclose(fp);
+
+    char errbuf[200] = {0};
+    toml_table_t* conf = toml_parse(file_contents, errbuf, sizeof(errbuf));
+    free(file_contents);
 
     if (!conf) {
         fprintf(stderr, "[kryon][plugin] Error parsing %s: %s\n", toml_path, errbuf);
@@ -951,6 +971,30 @@ void ir_plugin_free_discovery(IRPluginDiscoveryInfo** plugins, uint32_t count) {
 }
 
 IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name) {
+    return ir_plugin_load_with_metadata(plugin_path, plugin_name, NULL);
+}
+
+IRPluginHandle* ir_plugin_load_with_metadata(const char* plugin_path, const char* plugin_name,
+                                              const IRPluginDiscoveryInfo* discovery_info) {
+    // If discovery info is provided, register the plugin first
+    if (discovery_info) {
+        IRPluginMetadata metadata = {0};
+        strncpy(metadata.name, discovery_info->name, sizeof(metadata.name) - 1);
+        strncpy(metadata.version, discovery_info->version, sizeof(metadata.version) - 1);
+
+        // Set command ID range from discovery info
+        if (discovery_info->command_count > 0) {
+            metadata.command_id_start = discovery_info->command_ids[0];
+            metadata.command_id_end = discovery_info->command_ids[discovery_info->command_count - 1];
+        }
+
+        // Register the plugin with metadata
+        if (!ir_plugin_register(&metadata)) {
+            fprintf(stderr, "[kryon][plugin] Failed to register plugin '%s'\n", plugin_name);
+            return NULL;
+        }
+    }
+
     IRPluginHandle* handle = calloc(1, sizeof(IRPluginHandle));
     if (!handle) {
         return NULL;
@@ -967,6 +1011,19 @@ IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name)
     // Store plugin info
     strncpy(handle->name, plugin_name, sizeof(handle->name) - 1);
     strncpy(handle->path, plugin_path, sizeof(handle->path) - 1);
+    if (discovery_info) {
+        strncpy(handle->version, discovery_info->version, sizeof(handle->version) - 1);
+
+        // Copy command IDs
+        if (discovery_info->command_count > 0) {
+            handle->command_count = discovery_info->command_count;
+            handle->command_ids = calloc(discovery_info->command_count, sizeof(uint32_t));
+            if (handle->command_ids) {
+                memcpy(handle->command_ids, discovery_info->command_ids,
+                       discovery_info->command_count * sizeof(uint32_t));
+            }
+        }
+    }
 
     // Resolve init function (e.g., "kryon_canvas_plugin_init")
     char init_name[128];
@@ -1040,6 +1097,25 @@ bool ir_plugin_is_loaded(const char* plugin_name) {
         }
     }
     return false;
+}
+
+const char* ir_plugin_find_by_capability(const char* symbol_name) {
+    if (!symbol_name) return NULL;
+
+    // Search through all loaded plugins for one that provides the symbol
+    for (uint32_t i = 0; i < g_plugin_system.loaded_handle_count; i++) {
+        IRPluginHandle* handle = g_plugin_system.loaded_handles[i];
+        if (!handle) continue;
+
+        // Check if this plugin has the symbol
+        void* sym = dlsym(handle->dl_handle, symbol_name);
+        if (sym) {
+            // Found it - return the plugin name
+            return handle->name;
+        }
+    }
+
+    return NULL;
 }
 
 #else  // __ANDROID__
