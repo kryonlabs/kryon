@@ -1978,12 +1978,27 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // If dispatch handled it (trait registered), we're done
     // Check if computed dimensions are set (trait completed layout)
     if (c->layout_state->computed.width > 0 || c->layout_state->computed.height > 0) {
-        // Sync computed layout to rendered_bounds for click detection
-        c->rendered_bounds.x = c->layout_state->computed.x;
-        c->rendered_bounds.y = c->layout_state->computed.y;
-        c->rendered_bounds.width = c->layout_state->computed.width;
-        c->rendered_bounds.height = c->layout_state->computed.height;
-        c->rendered_bounds.valid = true;
+        // Skip rendered_bounds sync for modal children - they are positioned
+        // during overlay rendering with correct absolute coordinates.
+        // Layout pass uses (0,0) as parent, but rendering repositions correctly.
+        bool is_modal_descendant = false;
+        IRComponent* ancestor = c->parent;
+        while (ancestor) {
+            if (ancestor->type == IR_COMPONENT_MODAL) {
+                is_modal_descendant = true;
+                break;
+            }
+            ancestor = ancestor->parent;
+        }
+
+        if (!is_modal_descendant) {
+            // Sync computed layout to rendered_bounds for click detection
+            c->rendered_bounds.x = c->layout_state->computed.x;
+            c->rendered_bounds.y = c->layout_state->computed.y;
+            c->rendered_bounds.width = c->layout_state->computed.width;
+            c->rendered_bounds.height = c->layout_state->computed.height;
+            c->rendered_bounds.valid = true;
+        }
         return;
     }
 
@@ -2242,8 +2257,17 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
             #endif
 
             // Re-sync computed layout to rendered_bounds after alignment
-            child->rendered_bounds.x = child->layout_state->computed.x;
-            child->rendered_bounds.y = child->layout_state->computed.y;
+            // Skip for modal descendants - they get correct bounds during rendering
+            bool child_in_modal = false;
+            IRComponent* anc = child->parent;
+            while (anc) {
+                if (anc->type == IR_COMPONENT_MODAL) { child_in_modal = true; break; }
+                anc = anc->parent;
+            }
+            if (!child_in_modal) {
+                child->rendered_bounds.x = child->layout_state->computed.x;
+                child->rendered_bounds.y = child->layout_state->computed.y;
+            }
             if (child->type == IR_COMPONENT_CHECKBOX) {
                 printf("[RE-SYNC] Checkbox ID=%u: rendered_bounds updated to [%.1f, %.1f]\n",
                        child->id, child->rendered_bounds.x, child->rendered_bounds.y);
@@ -2291,11 +2315,20 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     c->layout_state->computed.valid = true;
 
     // Sync computed layout to rendered_bounds for click detection
-    c->rendered_bounds.x = c->layout_state->computed.x;
-    c->rendered_bounds.y = c->layout_state->computed.y;
-    c->rendered_bounds.width = c->layout_state->computed.width;
-    c->rendered_bounds.height = c->layout_state->computed.height;
-    c->rendered_bounds.valid = true;
+    // Skip for modal descendants - they get correct bounds during overlay rendering
+    bool in_modal = false;
+    IRComponent* modal_check = c->parent;
+    while (modal_check) {
+        if (modal_check->type == IR_COMPONENT_MODAL) { in_modal = true; break; }
+        modal_check = modal_check->parent;
+    }
+    if (!in_modal) {
+        c->rendered_bounds.x = c->layout_state->computed.x;
+        c->rendered_bounds.y = c->layout_state->computed.y;
+        c->rendered_bounds.width = c->layout_state->computed.width;
+        c->rendered_bounds.height = c->layout_state->computed.height;
+        c->rendered_bounds.valid = true;
+    }
 
     if (c->type == IR_COMPONENT_CHECKBOX) {
         printf("[SYNC_BOUNDS] Checkbox ID=%u: computed=[%.1f, %.1f, %.1f, %.1f] -> rendered_bounds\n",

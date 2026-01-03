@@ -281,6 +281,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 if (renderer->last_root) {
                     // Check for modal backdrop click first (highest priority)
                     IRComponent* open_modal = find_open_modal(renderer->last_root);
+
                     if (open_modal && is_click_on_modal_backdrop(open_modal,
                             (float)event.button.x, (float)event.button.y)) {
                         // Clicked on modal backdrop - close the modal
@@ -335,6 +336,14 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                     if (dropdown_at_point) {
                         clicked = dropdown_at_point;
+                    } else if (open_modal) {
+                        // When modal is open, ONLY search within the modal's children
+                        // Don't search the rest of the tree (which is behind the modal)
+                        clicked = ir_find_component_at_point(
+                            open_modal,
+                            (float)event.button.x,
+                            (float)event.button.y
+                        );
                     } else {
                         clicked = ir_find_component_at_point(
                             renderer->last_root,
@@ -583,11 +592,21 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             }
                         }
                     } else {
-                        hovered = ir_find_component_at_point(
-                            renderer->last_root,
-                            (float)event.motion.x,
-                            (float)event.motion.y
-                        );
+                        // Check if modal is open - search only modal subtree for hover
+                        IRComponent* open_modal = find_open_modal(renderer->last_root);
+                        if (open_modal) {
+                            hovered = ir_find_component_at_point(
+                                open_modal,
+                                (float)event.motion.x,
+                                (float)event.motion.y
+                            );
+                        } else {
+                            hovered = ir_find_component_at_point(
+                                renderer->last_root,
+                                (float)event.motion.x,
+                                (float)event.motion.y
+                            );
+                        }
 
                         // Clear hover state for any open dropdowns
                         #define MAX_DROPDOWNS_TO_CLEAR 10
