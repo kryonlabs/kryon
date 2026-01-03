@@ -13,6 +13,7 @@
 #include "sdl3_renderer.h"
 #include "../../desktop_internal.h"
 #include "../../../../ir/ir_executor.h"
+#include "../../../../ir/ir_builder.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -33,6 +34,51 @@ __attribute__((weak)) void nimButtonBridge(uint32_t componentId);
 __attribute__((weak)) void nimCheckboxBridge(uint32_t componentId);
 __attribute__((weak)) void nimDropdownBridge(uint32_t componentId, int32_t selectedIndex);
 __attribute__((weak)) bool nimInputBridge(IRComponent* component, const char* text);
+
+// ============================================================================
+// MODAL HANDLING
+// ============================================================================
+
+/**
+ * Find an open modal in the component tree
+ * Returns the first open modal component found, or NULL if none
+ */
+static IRComponent* find_open_modal(IRComponent* root) {
+    if (!root) return NULL;
+
+    if (root->type == IR_COMPONENT_MODAL) {
+        /* Parse modal state from custom_data string: "open|title" or "closed|title" */
+        const char* state_str = root->custom_data;
+        if (state_str && strncmp(state_str, "open", 4) == 0) {
+            return root;
+        }
+    }
+
+    for (uint32_t i = 0; i < root->child_count; i++) {
+        IRComponent* found = find_open_modal(root->children[i]);
+        if (found) return found;
+    }
+
+    return NULL;
+}
+
+/**
+ * Check if a point is inside the modal's content area (not the backdrop)
+ * Returns true if click is on backdrop (outside modal content)
+ */
+static bool is_click_on_modal_backdrop(IRComponent* modal, float x, float y) {
+    if (!modal || modal->type != IR_COMPONENT_MODAL) return false;
+
+    // The modal's rendered_bounds contains the centered modal content area
+    IRRenderedBounds bounds = modal->rendered_bounds;
+    if (!bounds.valid) return false;
+
+    // If click is outside the modal content area, it's on the backdrop
+    bool inside = (x >= bounds.x && x < bounds.x + bounds.width &&
+                   y >= bounds.y && y < bounds.y + bounds.height);
+
+    return !inside;
+}
 
 // ============================================================================
 // INPUT CARET VISIBILITY
@@ -233,6 +279,51 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                 desktop_event.data.mouse.button = event.button.button;
 
                 if (renderer->last_root) {
+                    // Check for modal backdrop click first (highest priority)
+                    IRComponent* open_modal = find_open_modal(renderer->last_root);
+                    if (open_modal && is_click_on_modal_backdrop(open_modal,
+                            (float)event.button.x, (float)event.button.y)) {
+                        // Clicked on modal backdrop - close the modal
+                        // Dispatch close event to Lua via the event callback
+                        IREvent* close_event = ir_find_event(open_modal, IR_EVENT_CLICK);
+                        if (close_event && close_event->logic_id &&
+                            strncmp(close_event->logic_id, "lua_event_", 10) == 0) {
+                            uint32_t handler_id = 0;
+                            if (sscanf(close_event->logic_id + 10, "%u", &handler_id) == 1) {
+                                if (renderer->lua_event_callback) {
+                                    // Pass "backdrop_click" as extra info
+                                    renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, "backdrop_click");
+                                }
+                            }
+                        } else {
+                            // Mark the modal as closed by updating custom_data string
+                            // This will cause the modal to not render on next frame
+                            // Note: The reactive system should rebuild UI when state changes
+                            if (open_modal->custom_data) {
+                                const char* state_str = (const char*)open_modal->custom_data;
+                                if (strncmp(state_str, "open", 4) == 0) {
+                                    // Format: "open|title" -> "closed|title"
+                                    const char* title_part = strchr(state_str, '|');
+                                    if (title_part) {
+                                        // Construct "closed|title"
+                                        size_t title_len = strlen(title_part);  // includes the '|'
+                                        char* new_state = malloc(6 + title_len + 1);  // "closed" + "|title" + null
+                                        if (new_state) {
+                                            memcpy(new_state, "closed", 6);
+                                            memcpy(new_state + 6, title_part, title_len + 1);
+                                            ir_set_custom_data(open_modal, new_state);
+                                            free(new_state);
+                                        }
+                                    } else {
+                                        // No title, just set to "closed"
+                                        ir_set_custom_data(open_modal, "closed");
+                                    }
+                                }
+                            }
+                        }
+                        break;  // Don't process click further
+                    }
+
                     IRComponent* clicked = NULL;
 
                     // Check if click is in an open dropdown menu first
@@ -608,6 +699,34 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
             case SDL_EVENT_KEY_DOWN:
                 if (event.key.repeat) break;
+
+                // ESC to close open modal (highest priority)
+                if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                    IRComponent* open_modal = find_open_modal(renderer->last_root);
+                    if (open_modal) {
+                        // Close the modal by updating custom_data properly
+                        if (open_modal->custom_data) {
+                            const char* state_str = (const char*)open_modal->custom_data;
+                            if (strncmp(state_str, "open", 4) == 0) {
+                                // Format: "open|title" -> "closed|title"
+                                const char* title_part = strchr(state_str, '|');
+                                if (title_part) {
+                                    size_t title_len = strlen(title_part);
+                                    char* new_state = malloc(6 + title_len + 1);
+                                    if (new_state) {
+                                        memcpy(new_state, "closed", 6);
+                                        memcpy(new_state + 6, title_part, title_len + 1);
+                                        ir_set_custom_data(open_modal, new_state);
+                                        free(new_state);
+                                    }
+                                } else {
+                                    ir_set_custom_data(open_modal, "closed");
+                                }
+                            }
+                        }
+                        break;  // Don't process ESC further
+                    }
+                }
 
                 // ESC to quit (disabled by default, enable with KRYON_ENABLE_ESCAPE_QUIT=1)
                 if (event.key.scancode == SDL_SCANCODE_ESCAPE && getenv("KRYON_ENABLE_ESCAPE_QUIT")) {

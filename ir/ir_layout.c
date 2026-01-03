@@ -1928,6 +1928,50 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         c->layout_state->dirty = false;  // Clear dirty flag as we're recomputing
     }
 
+    // Modal components don't take space in normal layout flow
+    // They are rendered as overlays with their own positioning
+    if (c->type == IR_COMPONENT_MODAL) {
+        c->layout_state->computed.x = parent_x;
+        c->layout_state->computed.y = parent_y;
+        c->layout_state->computed.width = 0;
+        c->layout_state->computed.height = 0;
+        c->layout_state->computed.valid = true;
+        c->layout_state->layout_valid = true;
+
+        // Get modal's actual dimensions from style for child layout
+        float modal_width = 300.0f;  // Default
+        float modal_height = 200.0f; // Default
+        float padding = 24.0f;       // Default modal padding
+
+        if (c->style) {
+            if (c->style->width.type == IR_DIMENSION_PX && c->style->width.value > 0) {
+                modal_width = c->style->width.value;
+            }
+            if (c->style->height.type == IR_DIMENSION_PX && c->style->height.value > 0) {
+                modal_height = c->style->height.value;
+            }
+            if (c->style->padding.top > 0) {
+                padding = c->style->padding.top;
+            }
+        }
+
+        // Compute children layout relative to (0,0) with modal's content area size
+        IRLayoutConstraints modal_constraints = {
+            .min_width = 0,
+            .max_width = modal_width - 2 * padding,
+            .min_height = 0,
+            .max_height = modal_height - 2 * padding
+        };
+
+        for (uint32_t i = 0; i < c->child_count; i++) {
+            if (c->children[i]) {
+                // Layout children relative to origin (0,0) - will be offset during rendering
+                ir_layout_single_pass(c->children[i], modal_constraints, 0, 0);
+            }
+        }
+        return;
+    }
+
     // Try to dispatch to component-specific trait first
     ir_layout_dispatch(c, constraints, parent_x, parent_y);
 

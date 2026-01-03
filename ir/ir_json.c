@@ -1339,6 +1339,26 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         cJSON_AddItemToObject(obj, "dropdown_state", dropdownState);
     }
 
+    // Serialize modal state (stored in custom_data as string: "open|title" or "closed|title")
+    if (component->type == IR_COMPONENT_MODAL && component->custom_data) {
+        const char* state_str = component->custom_data;
+        bool is_open = (strncmp(state_str, "open", 4) == 0);
+        const char* title = NULL;
+        const char* pipe = strchr(state_str, '|');
+        if (pipe && pipe[1] != '\0') {
+            title = pipe + 1;
+        }
+
+        cJSON* modalState = cJSON_CreateObject();
+        if (modalState) {
+            cJSON_AddBoolToObject(modalState, "isOpen", is_open);
+            if (title) {
+                cJSON_AddStringToObject(modalState, "title", title);
+            }
+            cJSON_AddItemToObject(obj, "modal_state", modalState);
+        }
+    }
+
     // Serialize table state (stored in custom_data as IRTableState*)
     if (component->type == IR_COMPONENT_TABLE && component->custom_data) {
         IRTableState* state = (IRTableState*)component->custom_data;
@@ -4048,6 +4068,7 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "Image") == 0) return IR_COMPONENT_IMAGE;
     if (strcmp(str, "Canvas") == 0) return IR_COMPONENT_CANVAS;
     if (strcmp(str, "Dropdown") == 0) return IR_COMPONENT_DROPDOWN;
+    if (strcmp(str, "Modal") == 0) return IR_COMPONENT_MODAL;
     if (strcmp(str, "Markdown") == 0) return IR_COMPONENT_MARKDOWN;
     if (strcmp(str, "TabGroup") == 0) return IR_COMPONENT_TAB_GROUP;
     if (strcmp(str, "TabBar") == 0) return IR_COMPONENT_TAB_BAR;
@@ -4067,6 +4088,7 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "IMAGE") == 0) return IR_COMPONENT_IMAGE;
     if (strcmp(str, "CANVAS") == 0) return IR_COMPONENT_CANVAS;
     if (strcmp(str, "DROPDOWN") == 0) return IR_COMPONENT_DROPDOWN;
+    if (strcmp(str, "MODAL") == 0) return IR_COMPONENT_MODAL;
     if (strcmp(str, "MARKDOWN") == 0) return IR_COMPONENT_MARKDOWN;
     if (strcmp(str, "TAB_GROUP") == 0) return IR_COMPONENT_TAB_GROUP;
     if (strcmp(str, "TAB_BAR") == 0) return IR_COMPONENT_TAB_BAR;
@@ -4435,6 +4457,27 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
 
             state->hovered_index = -1;
             component->custom_data = (char*)state;
+        }
+    }
+
+    // Parse modal state
+    if (component->type == IR_COMPONENT_MODAL) {
+        cJSON* modalStateObj = cJSON_GetObjectItem(json, "modal_state");
+        if (modalStateObj && cJSON_IsObject(modalStateObj)) {
+            cJSON* isOpenItem = cJSON_GetObjectItem(modalStateObj, "isOpen");
+            cJSON* titleItem = cJSON_GetObjectItem(modalStateObj, "title");
+
+            bool is_open = (isOpenItem && cJSON_IsBool(isOpenItem)) ? cJSON_IsTrue(isOpenItem) : false;
+            const char* title = (titleItem && cJSON_IsString(titleItem)) ? titleItem->valuestring : NULL;
+
+            // Build state string: "open|title" or "closed|title"
+            char state_str[256];
+            if (title) {
+                snprintf(state_str, sizeof(state_str), "%s|%s", is_open ? "open" : "closed", title);
+            } else {
+                snprintf(state_str, sizeof(state_str), "%s", is_open ? "open" : "closed");
+            }
+            ir_set_custom_data(component, state_str);
         }
     }
 

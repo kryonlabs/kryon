@@ -18,6 +18,10 @@
 #include <string.h>
 #include <math.h>
 
+/* Forward declarations */
+bool ir_generate_component_commands(IRComponent* component, IRCommandContext* ctx,
+                                     LayoutRect* bounds, float inherited_opacity);
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */
@@ -101,7 +105,22 @@ void ir_pop_opacity(IRCommandContext* ctx) {
     kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
 }
 
-bool ir_should_defer_to_overlay(IRComponent* comp) {
+bool ir_should_defer_to_overlay(IRComponent* comp, IRCommandContext* ctx) {
+    /* Never defer if we're already in the overlay pass */
+    if (ctx && ctx->current_pass == 1) {
+        return false;
+    }
+
+    /* Defer open modals to overlay pass */
+    if (comp->type == IR_COMPONENT_MODAL) {
+        /* Parse modal state from custom_data string: "open|title" or "closed|title" */
+        const char* state_str = comp->custom_data;
+        if (state_str && strncmp(state_str, "open", 4) == 0) {
+            return true;
+        }
+        return false;
+    }
+
     /* Defer open dropdowns and dragged tabs to overlay pass */
     if (comp->type == IR_COMPONENT_DROPDOWN) {
         /* TODO: Check if dropdown is open */
@@ -915,6 +934,169 @@ bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
     return true;
 }
 
+/* Modal Component Generator */
+bool ir_gen_modal_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
+    /* Parse modal state from custom_data string: "open|title" or "closed|title" */
+    const char* state_str = comp->custom_data;
+    bool is_open = state_str && strncmp(state_str, "open", 4) == 0;
+
+    /* If modal is not open, skip rendering entirely */
+    if (!is_open) {
+        return true;
+    }
+
+    /* Extract title from state string (after the '|') */
+    const char* title = NULL;
+    if (state_str) {
+        const char* pipe = strchr(state_str, '|');
+        if (pipe && pipe[1] != '\0') {
+            title = pipe + 1;
+        }
+    }
+
+    /* Get viewport dimensions from the root component's layout state */
+    /* For simplicity, use reasonable defaults if not available */
+    float viewport_width = 800.0f;
+    float viewport_height = 600.0f;
+
+    /* Try to get actual viewport size from the root component */
+    IRComponent* root = comp;
+    while (root->parent) {
+        root = root->parent;
+    }
+    if (root->layout_state && root->layout_state->computed.valid) {
+        viewport_width = root->layout_state->computed.width;
+        viewport_height = root->layout_state->computed.height;
+    }
+
+    /* 1. Render semi-transparent backdrop covering entire viewport */
+    /* Default: semi-transparent black (rgba(0,0,0,0.5)) */
+    uint32_t backdrop_color = 0x00000080;
+    backdrop_color = ir_apply_opacity_to_color(backdrop_color, ctx->current_opacity);
+
+    kryon_command_t cmd = {0};
+    cmd.type = KRYON_CMD_DRAW_RECT;
+    cmd.data.draw_rect.x = 0;
+    cmd.data.draw_rect.y = 0;
+    cmd.data.draw_rect.w = viewport_width;
+    cmd.data.draw_rect.h = viewport_height;
+    cmd.data.draw_rect.color = backdrop_color;
+    kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+    /* 2. Calculate modal container bounds (centered) */
+    /* Get modal size from style since layout gives it 0 size */
+    float modal_width = 400.0f;  /* Default */
+    float modal_height = 300.0f; /* Default */
+
+    if (comp->style) {
+        if (comp->style->width.type == IR_DIMENSION_PX && comp->style->width.value > 0) {
+            modal_width = comp->style->width.value;
+        }
+        if (comp->style->height.type == IR_DIMENSION_PX && comp->style->height.value > 0) {
+            modal_height = comp->style->height.value;
+        }
+    }
+
+    /* Center the modal in the viewport */
+    float modal_x = (viewport_width - modal_width) / 2.0f;
+    float modal_y = (viewport_height - modal_height) / 2.0f;
+
+    /* Update rendered bounds for hit testing */
+    ir_set_rendered_bounds(comp, modal_x, modal_y, modal_width, modal_height);
+
+    /* Create centered bounds for the modal container */
+    LayoutRect modal_bounds = {
+        .x = modal_x,
+        .y = modal_y,
+        .width = modal_width,
+        .height = modal_height
+    };
+
+    /* 3. Render modal background (as container) */
+    ir_gen_container_commands(comp, ctx, &modal_bounds);
+
+    /* 4. Render title bar if title is provided */
+    float content_y = modal_y;
+    if (title && title[0] != '\0') {
+        float title_height = 40.0f;
+
+        /* Title bar background */
+        cmd.type = KRYON_CMD_DRAW_RECT;
+        cmd.data.draw_rect.x = modal_x;
+        cmd.data.draw_rect.y = modal_y;
+        cmd.data.draw_rect.w = modal_width;
+        cmd.data.draw_rect.h = title_height;
+        cmd.data.draw_rect.color = 0x3d3d3dFF;  /* Slightly lighter than modal bg */
+        kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+        /* Title text */
+        cmd.type = KRYON_CMD_DRAW_TEXT;
+        cmd.data.draw_text.x = modal_x + 16;
+        cmd.data.draw_text.y = modal_y + 10;
+        cmd.data.draw_text.font_id = 0;
+        cmd.data.draw_text.font_size = 16;
+        cmd.data.draw_text.font_weight = 1;  /* Bold */
+        cmd.data.draw_text.font_style = 0;
+        cmd.data.draw_text.color = 0xFFFFFFFF;
+
+        strncpy(cmd.data.draw_text.text_storage, title, 127);
+        cmd.data.draw_text.text_storage[127] = '\0';
+        cmd.data.draw_text.text = NULL;
+        cmd.data.draw_text.max_length = strlen(cmd.data.draw_text.text_storage);
+        kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+
+        content_y += title_height;
+    }
+
+    /* 5. Render children in the modal's content area */
+    if (comp->child_count > 0) {
+        float padding = 24.0f;  /* Default modal padding */
+        if (comp->style && comp->style->padding.top > 0) {
+            padding = comp->style->padding.top;
+        }
+
+        /* Re-layout children with correct modal position so all descendants get proper positions */
+        float content_x = modal_x + padding;
+        float content_start_y = content_y + padding;
+        float content_width = modal_width - 2 * padding;
+        float content_height = modal_height - (content_y - modal_y) - 2 * padding;
+
+        IRLayoutConstraints modal_constraints = {
+            .min_width = 0,
+            .max_width = content_width,
+            .min_height = 0,
+            .max_height = content_height
+        };
+
+        for (int i = 0; i < comp->child_count; i++) {
+            IRComponent* child = comp->children[i];
+            if (!child) continue;
+
+            /* Re-layout child subtree with correct absolute position */
+            ir_layout_single_pass(child, modal_constraints, content_x, content_start_y);
+
+            /* Now render with the newly computed layout */
+            LayoutRect child_bounds;
+            if (child->layout_state && child->layout_state->computed.valid) {
+                child_bounds.x = child->layout_state->computed.x;
+                child_bounds.y = child->layout_state->computed.y;
+                child_bounds.width = child->layout_state->computed.width;
+                child_bounds.height = child->layout_state->computed.height;
+            } else {
+                /* Fallback */
+                child_bounds.x = content_x;
+                child_bounds.y = content_start_y;
+                child_bounds.width = content_width;
+                child_bounds.height = 40.0f;
+            }
+
+            ir_generate_component_commands(child, ctx, &child_bounds, ctx->current_opacity);
+        }
+    }
+
+    return true;
+}
+
 /* ============================================================================
  * Main Component Rendering - Recursive Traversal
  * ============================================================================ */
@@ -985,7 +1167,7 @@ bool ir_generate_component_commands(
     LayoutRect* render_bounds = &transformed_bounds;
 
     /* Defer to overlay pass if needed */
-    if (ir_should_defer_to_overlay(component)) {
+    if (ir_should_defer_to_overlay(component, ctx)) {
         ir_defer_to_overlay(ctx, component);
         ir_pop_opacity(ctx);
         return true;
@@ -1066,6 +1248,10 @@ bool ir_generate_component_commands(
             success = ir_gen_canvas_commands(component, ctx, render_bounds);
             break;
 
+        case IR_COMPONENT_MODAL:
+            success = ir_gen_modal_commands(component, ctx, render_bounds);
+            break;
+
         default:
             /* Unknown component type - render as container */
             success = ir_gen_container_commands(component, ctx, render_bounds);
@@ -1078,7 +1264,9 @@ bool ir_generate_component_commands(
     }
 
     /* Render children */
-    if (success && component->child_count > 0) {
+    /* Skip children for Modal components - they render their own children when open */
+    bool skip_children = (component->type == IR_COMPONENT_MODAL);
+    if (success && component->child_count > 0 && !skip_children) {
         for (int i = 0; i < component->child_count; i++) {
             IRComponent* child = component->children[i];
             if (!child || !child->layout_state) continue;
@@ -1141,8 +1329,10 @@ bool ir_component_to_commands(
     cmd.type = KRYON_CMD_END_PASS;
     kryon_cmd_buf_push(cmd_buf, &cmd);
 
-    /* Pass 2: Overlay rendering (dropdowns, dragged tabs) */
+    /* Pass 2: Overlay rendering (dropdowns, dragged tabs, modals) */
     if (ctx.overlay_count > 0) {
+        ctx.current_pass = 1;  /* Mark that we're in overlay pass */
+
         cmd.type = KRYON_CMD_BEGIN_PASS;
         cmd.data.begin_pass.pass_id = 1;
         kryon_cmd_buf_push(cmd_buf, &cmd);

@@ -70,22 +70,23 @@ ffi.cdef[[
     IR_COMPONENT_TAB = 16,
     IR_COMPONENT_TAB_CONTENT = 17,
     IR_COMPONENT_TAB_PANEL = 18,
-    IR_COMPONENT_TABLE = 19,
-    IR_COMPONENT_TABLE_HEAD = 20,
-    IR_COMPONENT_TABLE_BODY = 21,
-    IR_COMPONENT_TABLE_FOOT = 22,
-    IR_COMPONENT_TABLE_ROW = 23,
-    IR_COMPONENT_TABLE_CELL = 24,
-    IR_COMPONENT_TABLE_HEADER_CELL = 25,
-    IR_COMPONENT_HEADING = 26,
-    IR_COMPONENT_PARAGRAPH = 27,
-    IR_COMPONENT_BLOCKQUOTE = 28,
-    IR_COMPONENT_CODE_BLOCK = 29,
-    IR_COMPONENT_HORIZONTAL_RULE = 30,
-    IR_COMPONENT_LIST = 31,
-    IR_COMPONENT_LIST_ITEM = 32,
-    IR_COMPONENT_LINK = 33,
-    IR_COMPONENT_CUSTOM = 34
+    IR_COMPONENT_MODAL = 19,
+    IR_COMPONENT_TABLE = 20,
+    IR_COMPONENT_TABLE_HEAD = 21,
+    IR_COMPONENT_TABLE_BODY = 22,
+    IR_COMPONENT_TABLE_FOOT = 23,
+    IR_COMPONENT_TABLE_ROW = 24,
+    IR_COMPONENT_TABLE_CELL = 25,
+    IR_COMPONENT_TABLE_HEADER_CELL = 26,
+    IR_COMPONENT_HEADING = 27,
+    IR_COMPONENT_PARAGRAPH = 28,
+    IR_COMPONENT_BLOCKQUOTE = 29,
+    IR_COMPONENT_CODE_BLOCK = 30,
+    IR_COMPONENT_HORIZONTAL_RULE = 31,
+    IR_COMPONENT_LIST = 32,
+    IR_COMPONENT_LIST_ITEM = 33,
+    IR_COMPONENT_LINK = 34,
+    IR_COMPONENT_CUSTOM = 35
   } IRComponentType;
 
   // ============================================================================
@@ -191,6 +192,15 @@ ffi.cdef[[
     char* compiler_version;
     char* timestamp;
   } IRSourceMetadata;
+
+  // ============================================================================
+  // Modal State (for modal overlay components)
+  // ============================================================================
+  typedef struct {
+    bool is_open;            // Whether modal is visible
+    char* title;             // Optional title text (NULL if no title bar)
+    uint32_t backdrop_color; // Backdrop color (RGBA, default semi-transparent black)
+  } IRModalState;
 
   // IRComponent struct (partial definition for FFI access to text_content)
   typedef struct IRComponent {
@@ -497,6 +507,7 @@ return {
     TAB = C.IR_COMPONENT_TAB,
     TAB_CONTENT = C.IR_COMPONENT_TAB_CONTENT,
     TAB_PANEL = C.IR_COMPONENT_TAB_PANEL,
+    MODAL = C.IR_COMPONENT_MODAL,
   },
 
   -- Dimension types

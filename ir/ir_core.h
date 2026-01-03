@@ -26,6 +26,8 @@ typedef enum {
     IR_COMPONENT_TAB,
     IR_COMPONENT_TAB_CONTENT,
     IR_COMPONENT_TAB_PANEL,
+    // Modal/Overlay components
+    IR_COMPONENT_MODAL,
     // Table components
     IR_COMPONENT_TABLE,
     IR_COMPONENT_TABLE_HEAD,
@@ -783,6 +785,13 @@ typedef struct IRDropdownState {
     bool is_open;           // Whether dropdown menu is open
     int32_t hovered_index;  // Currently hovered option index (-1 = none)
 } IRDropdownState;
+
+// Modal State (stored in IRComponent->custom_data)
+typedef struct IRModalState {
+    bool is_open;            // Whether modal is visible
+    char* title;             // Optional title text (NULL if no title bar)
+    uint32_t backdrop_color; // Backdrop color (RGBA, default semi-transparent black)
+} IRModalState;
 
 // ============================================================================
 // Table Component Structures
