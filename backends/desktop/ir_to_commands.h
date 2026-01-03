@@ -135,7 +135,7 @@ void ir_pop_opacity(IRCommandContext* ctx);
 /**
  * Check if a component should be deferred to overlay pass.
  */
-bool ir_should_defer_to_overlay(IRComponent* comp);
+bool ir_should_defer_to_overlay(IRComponent* comp, IRCommandContext* ctx);
 
 /**
  * Defer a component to the overlay rendering pass.

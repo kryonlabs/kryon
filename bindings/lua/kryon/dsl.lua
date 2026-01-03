@@ -687,16 +687,92 @@ end
 
 DSL.Container = SmartComponent(C.IR_COMPONENT_CONTAINER)
 DSL.Text = SmartComponent(C.IR_COMPONENT_TEXT)
-DSL.Button = SmartComponent(C.IR_COMPONENT_BUTTON)
 DSL.Input = SmartComponent(C.IR_COMPONENT_INPUT)
 DSL.Checkbox = SmartComponent(C.IR_COMPONENT_CHECKBOX)
-DSL.Row = SmartComponent(C.IR_COMPONENT_ROW)
-DSL.Column = SmartComponent(C.IR_COMPONENT_COLUMN)
 DSL.Center = SmartComponent(C.IR_COMPONENT_CENTER)
 DSL.Markdown = SmartComponent(C.IR_COMPONENT_MARKDOWN)
 DSL.Canvas = SmartComponent(C.IR_COMPONENT_CANVAS)
 DSL.Image = SmartComponent(C.IR_COMPONENT_IMAGE)
 DSL.Dropdown = SmartComponent(C.IR_COMPONENT_DROPDOWN)
+
+-- Row with default gap for "comfy" spacing
+DSL.Row = function(props)
+  props = props or {}
+  if not props.gap then props.gap = 8 end  -- Default 8px gap
+  return SmartComponent(C.IR_COMPONENT_ROW)(props)
+end
+
+-- Column with default gap for "comfy" spacing
+DSL.Column = function(props)
+  props = props or {}
+  if not props.gap then props.gap = 8 end  -- Default 8px gap
+  return SmartComponent(C.IR_COMPONENT_COLUMN)(props)
+end
+
+-- Button with default padding for "comfy" spacing
+DSL.Button = function(props)
+  props = props or {}
+  if not props.padding then props.padding = "8px 16px" end  -- Default padding
+  return SmartComponent(C.IR_COMPONENT_BUTTON)(props)
+end
+
+-- ============================================================================
+-- Modal Component
+-- ============================================================================
+
+-- Modal with overlay behavior and centered positioning
+-- Usage:
+--   UI.Modal {
+--     isOpen = state.showModal,
+--     onClose = function() state.showModal = false end,
+--     title = "Optional Title",
+--     width = "400px",
+--     height = "300px",
+--     children = { ... }
+--   }
+DSL.Modal = function(props)
+  props = props or {}
+
+  -- Default modal styling
+  if not props.backgroundColor then props.backgroundColor = "#1a1a1a" end
+  if not props.padding then props.padding = 24 end
+  if not props.borderRadius then props.borderRadius = 8 end
+
+  -- Extract modal-specific props for custom_data
+  local isOpen = props.isOpen
+  local onClose = props.onClose
+  local title = props.title
+  local backdropColor = props.backdropColor
+
+  -- Remove modal-specific props from standard props
+  props.isOpen = nil
+  props.onClose = nil
+  props.title = nil
+  props.backdropColor = nil
+
+  -- Create the component
+  local comp = SmartComponent(C.IR_COMPONENT_MODAL)(props)
+
+  -- Set up modal state using custom_data string (survives JSON serialization)
+  if comp then
+    -- Build modal state string: "open|title" or "closed|title"
+    local stateStr = (isOpen ~= false) and "open" or "closed"
+    if title then
+      stateStr = stateStr .. "|" .. title
+    end
+
+    -- Use ir_set_custom_data to store the state string
+    C.ir_set_custom_data(comp, stateStr)
+
+    -- Register onClose handler as IR_EVENT_CLICK (same as buttons)
+    -- This allows C code to properly invoke the handler on backdrop click or ESC
+    if onClose then
+      runtime.registerHandler(comp, C.IR_EVENT_CLICK, onClose)
+    end
+  end
+
+  return comp
+end
 
 -- ============================================================================
 -- Tab Components
@@ -781,8 +857,14 @@ function DSL.Tab(props)
 end
 
 DSL.TabContent = SmartComponent(C.IR_COMPONENT_TAB_CONTENT)
-DSL.TabPanel = SmartComponent(C.IR_COMPONENT_TAB_PANEL)
 DSL.TabGroup = SmartComponent(C.IR_COMPONENT_TAB_GROUP)
+
+-- TabPanel with default padding for "comfy" spacing
+DSL.TabPanel = function(props)
+  props = props or {}
+  if not props.padding then props.padding = 16 end  -- Default 16px padding
+  return SmartComponent(C.IR_COMPONENT_TAB_PANEL)(props)
+end
 
 -- ============================================================================
 -- Helper Functions for Smart DSL
