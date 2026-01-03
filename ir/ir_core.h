@@ -984,6 +984,9 @@ typedef struct IRComponent {
     // Conditional rendering support
     char* visible_condition;           // Variable name that controls visibility (e.g., "showMessage")
     bool visible_when_true;            // True if visible when condition is true, false if visible when condition is false
+
+    // Interaction state
+    bool is_disabled;                  // True if component is disabled (for buttons, inputs, etc.)
 } IRComponent;
 
 // IR Buffer for serialization

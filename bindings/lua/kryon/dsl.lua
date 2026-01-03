@@ -298,14 +298,10 @@ local function applyProperties(component, props)
     local value = props[key]
     if value ~= nil and type(value) == "function" then
       if key == "onClick" then
-        io.stderr:write("📝 Registering onClick handler for component\n")
-        local handlerId = runtime.registerHandler(component, C.IR_EVENT_CLICK, value)
-        io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
+        runtime.registerHandler(component, C.IR_EVENT_CLICK, value)
 
       elseif key == "onTextChange" then
-        io.stderr:write("📝 Registering onTextChange handler for Input component\n")
-        local handlerId = runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value)
-        io.stderr:write(string.format("   Handler ID: %d", handlerId) .. "\n")
+        runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value)
 
       elseif key == "onDraw" then
         -- Get canvas_draw event type from plugin registry
@@ -467,6 +463,9 @@ local function applyProperties(component, props)
     elseif key == "visible" then
       C.ir_set_visible(ensureStyle(), value == true)
 
+    elseif key == "disabled" then
+      C.ir_set_disabled(component, value == true)
+
     -- ========== Border ==========
     elseif key == "borderWidth" then
       C.ir_set_border(ensureStyle(), tonumber(value) or 1, 0, 0, 0, 255, 0)
@@ -499,16 +498,12 @@ local function applyProperties(component, props)
 
           if childType == C.IR_COMPONENT_TAB_BAR then
             ctx.tabBar = child
-            io.stderr:write("📝 Registered TabBar with context\n")
           elseif childType == C.IR_COMPONENT_TAB then
             table.insert(ctx.tabs, child)
-            io.stderr:write(string.format("📝 Registered Tab #%d with context", #ctx.tabs) .. "\n")
           elseif childType == C.IR_COMPONENT_TAB_CONTENT then
             ctx.tabContent = child
-            io.stderr:write("📝 Registered TabContent with context\n")
           elseif childType == C.IR_COMPONENT_TAB_PANEL then
             table.insert(ctx.panels, child)
-            io.stderr:write(string.format("📝 Registered TabPanel #%d with context", #ctx.panels) .. "\n")
           end
         end
       end
@@ -537,7 +532,6 @@ local function buildComponent(componentType, props)
       reorderable = (props and props.reorderable) or false
     }
     pushTabGroupContext(context)
-    io.stderr:write("📝 Pushing TabGroup context\n")
   end
 
   -- Step 3: Apply all properties (adds children, which auto-register)

@@ -394,9 +394,7 @@ static void invoke_canvas_callbacks_recursive(DesktopIRRenderer* renderer, IRCom
                 if (sscanf(draw_event->logic_id + 10, "%u", &handler_id) == 1) {
                     // Dispatch through standard event callback
                     if (renderer->lua_event_callback) {
-                        fprintf(stderr, "[CANVAS_CALLBACK] Dispatching canvas_draw event for component %u (handler_id=%u)\n",
-                                component->id, handler_id);
-                        renderer->lua_event_callback(handler_id, draw_event->type);
+                        renderer->lua_event_callback(handler_id, draw_event->type, NULL);
                     }
                 }
             }
@@ -433,12 +431,8 @@ static void invoke_canvas_update_callbacks_recursive(DesktopIRRenderer* renderer
                 uint32_t handler_id = 0;
                 if (sscanf(update_event->logic_id + 10, "%u", &handler_id) == 1) {
                     // Dispatch through standard event callback
-                    // Note: delta_time is not passed through lua_event_callback
-                    // The Lua side can calculate it if needed
                     if (renderer->lua_event_callback) {
-                        fprintf(stderr, "[CANVAS_CALLBACK] Dispatching canvas_update event for component %u (handler_id=%u)\n",
-                                component->id, handler_id);
-                        renderer->lua_event_callback(handler_id, update_event->type);
+                        renderer->lua_event_callback(handler_id, update_event->type, NULL);
                     }
                 }
             }
@@ -623,7 +617,7 @@ void desktop_ir_renderer_set_event_callback(DesktopIRRenderer* renderer,
 }
 
 void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer,
-                                                void (*callback)(uint32_t, int)) {
+                                                void (*callback)(uint32_t, int, const char*)) {
     if (renderer) {
         renderer->lua_event_callback = callback;
     }

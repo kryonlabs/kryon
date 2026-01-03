@@ -1115,6 +1115,26 @@ void ir_set_opacity(IRStyle* style, float opacity) {
     style->opacity = opacity;
 }
 
+void ir_set_disabled(IRComponent* component, bool disabled) {
+    if (!component) return;
+
+    component->is_disabled = disabled;
+
+    // Apply visual styling for disabled state
+    if (disabled) {
+        // Ensure style exists
+        if (!component->style) {
+            component->style = ir_create_style();
+        }
+
+        // Set 50% opacity for disabled appearance
+        ir_set_opacity(component->style, 0.5f);
+    }
+
+    // Mark component as dirty to trigger re-render
+    mark_style_dirty(component);
+}
+
 // Text Layout
 void ir_set_text_max_width(IRStyle* style, IRDimensionType type, float value) {
     if (!style) return;

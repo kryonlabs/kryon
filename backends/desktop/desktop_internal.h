@@ -74,7 +74,8 @@ struct DesktopIRRenderer {
     void* event_user_data;
 
     // Lua event callback (for Lua FFI bindings)
-    void (*lua_event_callback)(uint32_t component_id, int event_type);
+    // text_data is non-NULL for TEXT_CHANGE events, NULL for other events
+    void (*lua_event_callback)(uint32_t component_id, int event_type, const char* text_data);
 
     // Lua canvas callback (for Canvas onDraw/onUpdate)
     void (*lua_canvas_draw_callback)(uint32_t component_id);
