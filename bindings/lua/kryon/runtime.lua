@@ -64,7 +64,6 @@ function Runtime.registerHandler(component, eventType, callback)
 
   -- Generate a unique ID for this handler
   local handlerId = Runtime.nextHandlerId
-  print(string.format("🎯 registerHandler: handlerId=%d eventType=%d", handlerId, eventType))
   Runtime.nextHandlerId = Runtime.nextHandlerId + 1
 
   -- Store the callback
@@ -77,7 +76,6 @@ function Runtime.registerHandler(component, eventType, callback)
   -- Create IR event with logic_id that identifies it as a Lua event
   -- Desktop renderer will check for "lua_event_" prefix
   local logicId = "lua_event_" .. handlerId
-  print(string.format("   Creating IR event with logic_id='%s'", logicId))
   local event = C.ir_create_event(eventType, logicId, nil)
   C.ir_add_event(component, event)
 
@@ -125,16 +123,14 @@ end
 --- Dispatch an event to the registered Lua callback
 --- This is called from the desktop renderer when events fire
 --- @param handlerId number Handler ID from logic_id
---- @param eventType number Event type (optional)
-function Runtime.dispatchEvent(handlerId, eventType)
+--- @param eventType number Event type
+--- @param textData string|nil Text data for TEXT_CHANGE events (passed from C layer)
+function Runtime.dispatchEvent(handlerId, eventType, textData)
   local handler = Runtime.handlers[handlerId]
   if handler then
-    print(string.format("✅ Found handler %d, executing callback", handlerId))
-
-    -- For TEXT_CHANGE events, get the current input text and pass it to the callback
+    -- For TEXT_CHANGE events, use the text passed from C layer
     if eventType == C.IR_EVENT_TEXT_CHANGE then
-      local component = handler.component
-      local text = component.text_content and ffi.string(component.text_content) or ""
+      local text = textData or ""
       local success, err = pcall(handler.callback, text)
       if not success then
         print("❌ Error in Lua event handler: " .. tostring(err))
@@ -146,8 +142,6 @@ function Runtime.dispatchEvent(handlerId, eventType)
         print("❌ Error in Lua event handler: " .. tostring(err))
       end
     end
-  else
-    print(string.format("⚠️ No handler found for ID: %d", handlerId))
   end
 end
 
@@ -231,16 +225,13 @@ function Runtime.createReactiveApp(config)
   local function buildAndUpdateRoot()
     -- Prevent recursive calls
     if isBuilding then
-      print("⚠️  [Reactive Effect] buildAndUpdateRoot already running, skipping")
       return
     end
 
-    print("🔄 [Reactive Effect] buildAndUpdateRoot triggered - rebuilding UI!")
     isBuilding = true
 
     -- Cleanup handlers from previous tree to prevent accumulation
     if app.root then
-      print("🧹 [Reactive Effect] Cleaning up handlers from previous UI tree...")
       Runtime.cleanupComponentTreeHandlers(app.root)
     end
 
@@ -248,20 +239,15 @@ function Runtime.createReactiveApp(config)
 
     if app.root then
       -- Update existing root (triggers re-render)
-      print("🔄 [Reactive Effect] Updating root component with new tree...")
       C.ir_set_root(newRoot)
       app.root = newRoot
 
       -- Also update in renderer if available
       if Runtime._globalRenderer then
-        print("🔄 [Reactive Effect] Updating renderer with new root")
         Desktop.desktop_ir_renderer_update_root(Runtime._globalRenderer, newRoot)
-      else
-        print("⚠️  [Reactive Effect] No global renderer available yet")
       end
     else
       -- Initial root setup
-      print("[Reactive] Setting initial root...")
       C.ir_set_root(newRoot)
       app.root = newRoot
     end
@@ -379,11 +365,6 @@ end
 --- @param kir_filepath string Path to .kir file
 --- @return table Application instance ready to run
 function Runtime.loadKIR(kir_filepath)
-  io.stderr:write("==============================================\n")
-  io.stderr:write("[RUNTIME.LOADKIR] FUNCTION CALLED!\n")
-  io.stderr:write("==============================================\n")
-  io.stderr:flush()
-
   -- Load the KIR file (parses metadata into g_ir_context)
   local root = C.ir_read_json_file(kir_filepath)
   if root == nil then
@@ -392,25 +373,6 @@ function Runtime.loadKIR(kir_filepath)
 
   -- Get metadata from global context
   local ctx = C.ir_get_global_context()
-
-  -- DEBUG: Check metadata access
-  print(string.format("[runtime.loadKIR] ctx = %s", tostring(ctx)))
-  if ctx ~= nil then
-    print(string.format("[runtime.loadKIR] ctx.source_metadata = %s", tostring(ctx.source_metadata)))
-    if ctx.source_metadata ~= nil then
-      print("[runtime.loadKIR] source_metadata is NOT nil")
-      if ctx.source_metadata.source_language ~= nil then
-        local lang = ffi.string(ctx.source_metadata.source_language)
-        print(string.format("[runtime.loadKIR] source_language = '%s'", lang))
-      else
-        print("[runtime.loadKIR] source_language IS nil")
-      end
-    else
-      print("[runtime.loadKIR] source_metadata IS nil - THIS WAS THE BUG")
-    end
-  else
-    print("[runtime.loadKIR] ctx IS nil")
-  end
 
   local has_lua_events = false
   local source_file = nil
@@ -430,8 +392,6 @@ function Runtime.loadKIR(kir_filepath)
   end
 
   if has_lua_events and source_file then
-    print(string.format("[runtime] KIR generated from Lua, re-executing: %s", source_file))
-
     -- CRITICAL: Reset handler registry before re-executing
     -- This ensures handler IDs match between compilation and runtime
     Runtime.handlers = {}
@@ -440,8 +400,7 @@ function Runtime.loadKIR(kir_filepath)
     -- Re-execute the Lua file to rebuild handler registry
     local chunk, err = loadfile(source_file)
     if not chunk then
-      print(string.format("[runtime] Warning: Cannot load source file: %s", err))
-      print("[runtime] Running without callbacks (KIR tree only)")
+      print("[runtime] Warning: Cannot load source file: " .. err)
       return {
         root = root,
         window = {width = 800, height = 600},
@@ -451,21 +410,11 @@ function Runtime.loadKIR(kir_filepath)
 
     local app = chunk()  -- Execute, returns app table and registers handlers
 
-    -- Count handlers (Runtime.handlers is a table, not an array)
-    local handler_count = 0
-    for _ in pairs(Runtime.handlers) do
-      handler_count = handler_count + 1
-    end
-    print(string.format("[runtime] After re-execution, handler count = %d", handler_count))
-
     -- CRITICAL FIX: Use the app returned from source execution!
     -- This preserves reactive effects created by createReactiveApp()
-    -- Don't use the static KIR tree - use the live reactive app
     if app and app.root then
-      print("[runtime] Using reactive app from source execution")
       return app  -- Return the full reactive app with effects intact
     else
-      print("[runtime] Warning: Source execution didn't return app, falling back to KIR tree")
       return {
         root = root,  -- Fallback to KIR tree if source didn't return app
         window = {width = 800, height = 600, title = "Kryon App"},
@@ -474,7 +423,6 @@ function Runtime.loadKIR(kir_filepath)
     end
   else
     -- No Lua source, return KIR-only app (no callbacks)
-    print("[runtime] KIR has no Lua source metadata, running without callbacks")
     return {
       root = root,
       window = {width = 800, height = 600},
@@ -494,7 +442,6 @@ function Runtime.runDesktop(app)
 
   -- Finalize TabGroups before starting renderer
   -- This registers tabs with TabGroupState so the C core can handle tab switching automatically
-  print("[runtime] Finalizing TabGroups...")
   local dsl = require("kryon.dsl")
   tabVisualStates = dsl._tabVisualStates  -- Make it available to registration functions
   Runtime.finalizeTabGroups(app.root)
@@ -535,10 +482,14 @@ function Runtime.runDesktop(app)
 
   -- Set up event callback so C can call back to Lua
   -- This callback will be invoked when Lua events fire
-  local eventCallback = ffi.cast("LuaEventCallback", function(handler_id, event_type)
-    -- handler_id is the ID we stored in Runtime.handlers (will be passed by C after we update it)
-    print(string.format("🔔 Lua callback invoked: handler_id=%d event_type=%d", handler_id, event_type))
-    Runtime.dispatchEvent(handler_id, event_type)
+  -- text_data is non-NULL for TEXT_CHANGE events
+  local eventCallback = ffi.cast("LuaEventCallback", function(handler_id, event_type, text_data)
+    -- Convert C string to Lua string if present
+    local textStr = nil
+    if text_data ~= nil then
+      textStr = ffi.string(text_data)
+    end
+    Runtime.dispatchEvent(handler_id, event_type, textStr)
   end)
 
   Desktop.desktop_ir_renderer_set_lua_event_callback(renderer, eventCallback)
@@ -548,12 +499,10 @@ function Runtime.runDesktop(app)
 
   -- Set up canvas draw callback
   local canvasDrawCallback = ffi.cast("LuaCanvasDrawCallback", function(component_id)
-    print("[RUNTIME] Canvas draw callback invoked for component:", component_id)
     Runtime.invokeCanvasCallback(component_id)
   end)
 
   Desktop.desktop_ir_renderer_set_lua_canvas_draw_callback(renderer, canvasDrawCallback)
-  print("[RUNTIME] Canvas draw callback registered successfully")
   Runtime._canvasDrawCallback = canvasDrawCallback
 
   -- Set up canvas update callback
@@ -565,10 +514,7 @@ function Runtime.runDesktop(app)
   end)
 
   Desktop.desktop_ir_renderer_set_lua_canvas_update_callback(renderer, canvasUpdateCallback)
-  print("[RUNTIME] Canvas update callback registered successfully")
   Runtime._canvasUpdateCallback = canvasUpdateCallback
-
-  print("🎨 Rendering...")
 
   -- Run main loop (blocking - keeps Lua alive)
   -- Event handlers in Runtime.handlers will be called via dispatchEvent
@@ -593,8 +539,6 @@ function Runtime.loadIR(filepath)
   if root == nil then
     error("Failed to load IR from " .. filepath)
   end
-
-  print("Loaded IR from: " .. filepath)
   return root
 end
 
@@ -701,8 +645,6 @@ function Runtime._walkAndFinalizeTabGroups(component, processedGroups)
     end
 
     if tabBar and tabContent then
-      print(string.format("[runtime] Finalizing TabGroup id=%d", component.id))
-
       -- Create TabGroupState
       local state = Runtime.createTabGroupState(component, 0, false)
 
@@ -717,7 +659,6 @@ function Runtime._walkAndFinalizeTabGroups(component, processedGroups)
           local visualKey = tostring(child)
           local visual = tabVisualStates[visualKey] or {}
           Runtime.registerTab(state, child, visual)
-          print(string.format("[runtime]   Registered tab button id=%d", child.id))
         end
       end
 
@@ -729,13 +670,11 @@ function Runtime._walkAndFinalizeTabGroups(component, processedGroups)
         local child = tabContent.children[i]
         if child.type == C.IR_COMPONENT_TAB_PANEL then
           Runtime.registerPanel(state, child)
-          print(string.format("[runtime]   Registered panel id=%d", child.id))
         end
       end
 
       -- Finalize (apply visuals, set initial selected tab)
       Runtime.finalizeTabGroup(state)
-      print(string.format("[runtime] TabGroup finalized with %d tabs", C.ir_tabgroup_get_tab_count(state)))
 
       -- Store state in component custom_data for runtime access
       component.custom_data = ffi.cast("char*", state)

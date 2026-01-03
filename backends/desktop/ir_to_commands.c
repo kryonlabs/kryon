@@ -396,6 +396,11 @@ bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
     /* Check if button is being hovered */
     bool is_hovered = (g_hovered_component == comp);
 
+    /* Disabled buttons don't show hover effects */
+    if (comp->is_disabled) {
+        is_hovered = false;
+    }
+
     /* Add default border for buttons if not set */
     if (comp->style && comp->style->border.width == 0.0f) {
         comp->style->border.width = 2.0f;  /* 2px for visibility */

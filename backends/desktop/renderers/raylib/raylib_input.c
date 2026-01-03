@@ -75,7 +75,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                     uint32_t handler_id = 0;
                     if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
                         if (renderer->lua_event_callback) {
-                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
+                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
                         }
                     }
                 }
@@ -114,7 +114,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                     uint32_t handler_id = 0;
                     if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
                         if (renderer->lua_event_callback) {
-                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
+                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
                         }
                     }
                 }
@@ -172,7 +172,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                                 uint32_t handler_id = 0;
                                 if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
                                     if (renderer->lua_event_callback) {
-                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
+                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
                                     }
                                 }
                             }
@@ -220,7 +220,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                     uint32_t handler_id = 0;
                     if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
                         if (renderer->lua_event_callback) {
-                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
+                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
                         }
                     }
                 }

@@ -273,6 +273,7 @@ ffi.cdef[[
   void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic);
   void ir_set_z_index(IRStyle* style, uint32_t z_index);
   void ir_set_opacity(IRStyle* style, float opacity);
+  void ir_set_disabled(IRComponent* component, bool disabled);
 
   // Text effects
   void ir_set_text_max_width(IRStyle* style, IRDimensionType type, float value);
@@ -445,7 +446,8 @@ ffi.cdef[[
   void desktop_ir_renderer_stop(DesktopIRRenderer* renderer);
 
   // Event callback
-  typedef void (*LuaEventCallback)(uint32_t component_id, int event_type);
+  // text_data is non-NULL for TEXT_CHANGE events, NULL for other events
+  typedef void (*LuaEventCallback)(uint32_t component_id, int event_type, const char* text_data);
   void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer, LuaEventCallback callback);
 
   void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root);

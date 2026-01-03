@@ -64,6 +64,7 @@ void ir_set_text_fade(IRStyle* style, IRTextFadeType fade_type, float fade_lengt
 void ir_set_text_shadow(IRStyle* style, float offset_x, float offset_y, float blur_radius,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 void ir_set_opacity(IRStyle* style, float opacity);
+void ir_set_disabled(IRComponent* component, bool disabled);
 
 // Text Layout (Phase 1: Multi-line wrapping)
 void ir_set_text_max_width(IRStyle* style, IRDimensionType type, float value);

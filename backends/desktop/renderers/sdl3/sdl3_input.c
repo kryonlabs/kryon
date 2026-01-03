@@ -252,31 +252,12 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         );
                     }
 
-                    printf("[DEBUG] Click at (%.0f, %.0f) found: %s (ID: %u type=%d)\n",
-                           (float)event.button.x, (float)event.button.y,
-                           clicked ? (clicked->type == IR_COMPONENT_LINK ? "LINK" :
-                                     clicked->type == IR_COMPONENT_BUTTON ? "BUTTON" :
-                                     clicked->type == IR_COMPONENT_CHECKBOX ? "CHECKBOX" :
-                                     clicked->type == IR_COMPONENT_TEXT ? "TEXT" :
-                                     clicked->type == IR_COMPONENT_ROW ? "ROW" :
-                                     clicked->type == IR_COMPONENT_COLUMN ? "COLUMN" :
-                                     clicked->type == IR_COMPONENT_TAB ? "TAB" :
-                                     clicked->type == IR_COMPONENT_TAB_BAR ? "TAB_BAR" :
-                                     clicked->type == IR_COMPONENT_TAB_CONTENT ? "TAB_CONTENT" :
-                                     clicked->type == IR_COMPONENT_TAB_PANEL ? "TAB_PANEL" : "OTHER") : "NULL",
-                           clicked ? clicked->id : 0,
-                           clicked ? clicked->type : -1);
                     if (clicked) {
-                        printf("[DEBUG]   rendered_bounds: valid=%d [%.1f, %.1f, %.1f, %.1f]\n",
-                               clicked->rendered_bounds.valid,
-                               clicked->rendered_bounds.x, clicked->rendered_bounds.y,
-                               clicked->rendered_bounds.width, clicked->rendered_bounds.height);
-                    }
-                    if (clicked && clicked->parent) {
-                        printf("[DEBUG]   parent: ID=%u type=%d\n", clicked->parent->id, clicked->parent->type);
-                    }
+                        // Don't process clicks on disabled components
+                        if (clicked->is_disabled) {
+                            break;
+                        }
 
-                    if (clicked) {
                         // Handle input focus
                         if (clicked->type == IR_COMPONENT_INPUT) {
                             focused_input = clicked;
@@ -328,7 +309,6 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                         // Find and trigger IR_EVENT_CLICK handler
                         IREvent* ir_event = ir_find_event(clicked, IR_EVENT_CLICK);
-                        printf("[DEBUG] Component %u has ir_event: %s\n", clicked->id, ir_event ? "YES" : "NO");
                         if (ir_event && ir_event->logic_id) {
                             // Check if this is a Lua event handler
                             if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
@@ -336,9 +316,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 uint32_t handler_id = 0;
                                 if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
                                     if (renderer->lua_event_callback) {
-                                        fprintf(stderr, "[LUA_EVENT] Calling Lua handler %u for component %u%s\n",
-                                                handler_id, clicked->id, handled_as_tab ? " (TAB)" : "");
-                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK);
+                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
                                     } else if (!handled_as_tab) {
                                         printf("⚠️ Lua event detected but no callback registered\n");
                                         printf("  💡 Hint: Run .lua files directly (don't compile to .kir first)\n");
@@ -440,11 +418,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             }
                             // Handle Link clicks - navigate internally or open externally
                             else if (clicked->type == IR_COMPONENT_LINK) {
-                                printf("[DEBUG] Link handler reached! custom_data: %p\n", clicked->custom_data);
                                 IRLinkData* link_data = (IRLinkData*)clicked->custom_data;
-                                if (link_data) {
-                                    printf("[DEBUG] link_data exists, url: %s\n", link_data->url ? link_data->url : "NULL");
-                                }
                                 if (link_data && link_data->url) {
                                     if (link_data->title) {
                                         printf("🔗 Link clicked: %s (%s)\n", link_data->url, link_data->title);
@@ -544,11 +518,13 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     // Set cursor to hand for clickable components
                     SDL_Cursor* desired_cursor;
                     if (is_in_dropdown_menu ||
-                        (hovered_is_valid && (hovered->type == IR_COMPONENT_BUTTON ||
-                                              hovered->type == IR_COMPONENT_INPUT ||
-                                              hovered->type == IR_COMPONENT_CHECKBOX ||
-                                              hovered->type == IR_COMPONENT_DROPDOWN ||
-                                              hovered->type == IR_COMPONENT_LINK))) {
+                        (hovered_is_valid &&
+                         !hovered->is_disabled &&
+                         (hovered->type == IR_COMPONENT_BUTTON ||
+                          hovered->type == IR_COMPONENT_INPUT ||
+                          hovered->type == IR_COMPONENT_CHECKBOX ||
+                          hovered->type == IR_COMPONENT_DROPDOWN ||
+                          hovered->type == IR_COMPONENT_LINK))) {
                         desired_cursor = data->cursor_hand;
                     } else {
                         desired_cursor = data->cursor_default;
@@ -600,8 +576,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 uint32_t handler_id = 0;
                                 if (sscanf(text_event->logic_id + 10, "%u", &handler_id) == 1) {
                                     if (renderer->lua_event_callback) {
-                                        fprintf(stderr, "[LUA_EVENT] Firing onTextChange handler %u (text input)\n", handler_id);
-                                        renderer->lua_event_callback(handler_id, IR_EVENT_TEXT_CHANGE);
+                                        const char* text = focused_input->text_content ? focused_input->text_content : "";
+                                        renderer->lua_event_callback(handler_id, IR_EVENT_TEXT_CHANGE, text);
                                     }
                                 }
                             }
@@ -676,8 +652,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     uint32_t handler_id = 0;
                                     if (sscanf(text_event->logic_id + 10, "%u", &handler_id) == 1) {
                                         if (renderer->lua_event_callback) {
-                                            fprintf(stderr, "[LUA_EVENT] Firing onTextChange handler %u (backspace)\n", handler_id);
-                                            renderer->lua_event_callback(handler_id, IR_EVENT_TEXT_CHANGE);
+                                            const char* text = focused_input->text_content ? focused_input->text_content : "";
+                                            renderer->lua_event_callback(handler_id, IR_EVENT_TEXT_CHANGE, text);
                                         }
                                     }
                                 }
