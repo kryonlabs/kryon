@@ -18,6 +18,76 @@
 static char cached_luajit_path[512] = "";
 
 /**
+ * Find Kryon root directory using a fallback chain
+ * Checks environment variable, then standard install locations
+ */
+static char* find_kryon_root(void) {
+    static char cached_path[1024] = "";
+
+    // Return cached result if available
+    if (cached_path[0] != '\0') {
+        return cached_path;
+    }
+
+    // 1. Check KRYON_ROOT environment variable
+    const char* env_root = getenv("KRYON_ROOT");
+    if (env_root && strlen(env_root) > 0) {
+        strncpy(cached_path, env_root, sizeof(cached_path) - 1);
+        cached_path[sizeof(cached_path) - 1] = '\0';
+        return cached_path;
+    }
+
+    // 2. Check XDG user data directory
+    const char* home = getenv("HOME");
+    if (home) {
+        char xdg_path[1024];
+        snprintf(xdg_path, sizeof(xdg_path), "%s/.local/share/kryon", home);
+        if (access(xdg_path, F_OK) == 0) {
+            strncpy(cached_path, xdg_path, sizeof(cached_path) - 1);
+            cached_path[sizeof(cached_path) - 1] = '\0';
+            return cached_path;
+        }
+    }
+
+    // 3. Check system-wide location
+    if (access("/usr/local/share/kryon", F_OK) == 0) {
+        strncpy(cached_path, "/usr/local/share/kryon", sizeof(cached_path) - 1);
+        cached_path[sizeof(cached_path) - 1] = '\0';
+        return cached_path;
+    }
+
+    // 4. Walk up parent directories from current working directory
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd))) {
+        char check_path[1024];
+        strncpy(check_path, cwd, sizeof(check_path) - 1);
+        check_path[sizeof(check_path) - 1] = '\0';
+
+        // Walk up to 5 levels
+        for (int depth = 0; depth < 5; depth++) {
+            // Check for ir/ directory (characteristic of Kryon root)
+            char test_path[1024];
+            snprintf(test_path, sizeof(test_path), "%s/ir/ir_core.h", check_path);
+            if (access(test_path, F_OK) == 0) {
+                strncpy(cached_path, check_path, sizeof(cached_path) - 1);
+                cached_path[sizeof(cached_path) - 1] = '\0';
+                return cached_path;
+            }
+
+            // Move to parent
+            char* last_slash = strrchr(check_path, '/');
+            if (last_slash && last_slash != check_path) {
+                *last_slash = '\0';
+            } else {
+                break;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/**
  * Find LuaJIT executable in PATH or common locations
  */
 static const char* find_luajit(void) {
@@ -82,36 +152,12 @@ char* ir_lua_to_kir(const char* source, size_t length) {
     }
 
     // Get Kryon root to find bindings
-    char* kryon_root = getenv("KRYON_ROOT");
-    static char detected_path[1024];
-
-    if (!kryon_root) {
-        // Try to find it by checking common locations
-        const char* try_paths[] = {
-            "/mnt/storage/Projects/kryon",
-            "/home/wao/Projects/kryon",
-            "/home/wao/lyra/proj/kryon",
-            "/usr/local/share/kryon",
-            "/opt/kryon",
-            NULL
-        };
-
-        char test_path[1024];
-        for (int i = 0; try_paths[i] && !kryon_root; i++) {
-            snprintf(test_path, sizeof(test_path), "%s/bindings/lua/kryon/ffi.lua", try_paths[i]);
-            if (access(test_path, F_OK) == 0) {
-                strncpy(detected_path, try_paths[i], sizeof(detected_path) - 1);
-                detected_path[sizeof(detected_path) - 1] = '\0';
-                kryon_root = detected_path;
-                break;
-            }
-        }
-    }
+    char* kryon_root = find_kryon_root();
 
     if (!kryon_root) {
         fprintf(stderr, "Error: Could not locate Kryon root directory\n");
         fprintf(stderr, "Set KRYON_ROOT environment variable: export KRYON_ROOT=/path/to/kryon\n");
-        fprintf(stderr, "Or install Kryon to a standard location\n");
+        fprintf(stderr, "Or run 'make install' in the kryon/cli directory\n");
         return NULL;
     }
 

@@ -21,6 +21,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/utils/process.c \
        $(SRC_DIR)/utils/json.c \
        $(SRC_DIR)/utils/dev_server.c \
+       $(SRC_DIR)/utils/paths.c \
        $(SRC_DIR)/config/toml_parser.c \
        $(SRC_DIR)/config/config.c \
        $(SRC_DIR)/template/docs_template.c \
@@ -82,6 +83,12 @@ install: $(TARGET)
 	# Install TSX parser
 	mkdir -p $(HOME)/.local/share/kryon/tsx_parser
 	cp tsx_parser/tsx_to_kir.ts $(HOME)/.local/share/kryon/tsx_parser/
+	# Install Lua bindings
+	mkdir -p $(HOME)/.local/share/kryon/bindings/lua
+	cp -r ../bindings/lua/* $(HOME)/.local/share/kryon/bindings/lua/
+	# Install C bindings
+	mkdir -p $(HOME)/.local/share/kryon/bindings/c
+	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
 
 # Clean
 clean:
