@@ -522,18 +522,37 @@ int cmd_run(int argc, char** argv) {
         argv[i] = new_argv[i];
     }
 
+    // Load config early to check for target names in positional args
+    KryonConfig* early_config = config_find_and_load();
+
+    // Check if first positional argument is a target name (e.g., "kryon run web")
+    if (!explicit_target && argc >= 1 && early_config && early_config->build_targets_count > 0) {
+        // Check if first arg matches any configured target
+        for (int i = 0; i < early_config->build_targets_count; i++) {
+            if (early_config->build_targets[i] && strcmp(argv[0], early_config->build_targets[i]) == 0) {
+                target_platform = argv[0];
+                explicit_target = true;
+                // Shift args: first arg was target, not file
+                for (int j = 0; j < argc - 1; j++) {
+                    argv[j] = argv[j + 1];
+                }
+                argc--;
+                break;
+            }
+        }
+    }
+
     // If no explicit target specified, try to get it from config
     if (!target_platform) {
-        KryonConfig* temp_config = config_find_and_load();
-        if (temp_config && temp_config->build_targets_count > 0 && temp_config->build_targets[0]) {
+        if (early_config && early_config->build_targets_count > 0 && early_config->build_targets[0]) {
             // Use first target from config
-            target_platform = temp_config->build_targets[0];
+            target_platform = early_config->build_targets[0];
             fprintf(stderr, "[kryon] Using target from kryon.toml: %s\n", target_platform);
         } else {
             // Default to desktop if no config or no targets
             target_platform = "desktop";
         }
-        // Note: We don't free temp_config here as target_platform points to its memory
+        // Note: We don't free early_config here as target_platform points to its memory
         // It will be freed later when we reload the config
     }
 
@@ -800,7 +819,7 @@ int cmd_run(int argc, char** argv) {
                      "cd /mnt/storage/Projects/kryon/codegens/web && "
                      "gcc -std=c99 -O2 "
                      "-I../../ir -I../../ir/third_party/cJSON "
-                     "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c "
+                     "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c lua_bundler.c "
                      "../../ir/third_party/cJSON/cJSON.c "
                      "-L../../build -lkryon_ir -lm "
                      "-o /tmp/kryon_web_gen_%d 2>&1 && "
@@ -918,7 +937,7 @@ int cmd_run(int argc, char** argv) {
                      "cd /mnt/storage/Projects/kryon/codegens/web && "
                      "gcc -std=c99 -O2 "
                      "-I../../ir -I../../ir/third_party/cJSON "
-                     "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c "
+                     "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c lua_bundler.c "
                      "../../ir/third_party/cJSON/cJSON.c "
                      "-L../../build -lkryon_ir -lm "
                      "-o /tmp/kryon_web_gen_%d 2>&1 && "
@@ -976,7 +995,7 @@ int cmd_run(int argc, char** argv) {
             fprintf(stderr, "[kryon] KIR requires Lua runtime, delegating to Runtime.loadKIR\n");
 
             // Get LUA_PATH for Kryon bindings
-            char* kryon_root = getenv("KRYON_ROOT");
+            char* kryon_root = paths_get_kryon_root();
             if (!kryon_root) {
                 kryon_root = "/mnt/storage/Projects/kryon";  // fallback
             }
@@ -1202,7 +1221,7 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "[kryon] KIR requires Lua runtime, delegating to Runtime.loadKIR\n");
 
         // Get LUA_PATH for Kryon bindings
-        char* kryon_root = getenv("KRYON_ROOT");
+        char* kryon_root = paths_get_kryon_root();
         if (!kryon_root) {
             kryon_root = "/mnt/storage/Projects/kryon";  // fallback
         }
