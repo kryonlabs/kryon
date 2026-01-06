@@ -24,10 +24,15 @@
 // HTML Generator Options
 typedef struct {
     bool minify;            // Minify output (remove whitespace)
-    bool inline_css;        // Inline CSS in element style attributes
     bool embedded_css;      // Embed CSS in <style> tag instead of external file
     bool include_runtime;   // Include JavaScript runtime for event handlers
 } HtmlGeneratorOptions;
+
+// Collected handler for embedding in Lua registry
+typedef struct {
+    uint32_t component_id;  // Component ID for the handler key
+    char* code;             // Lua function source code
+} CollectedHandler;
 
 // HTML Generator Context
 typedef struct HTMLGenerator {
@@ -39,6 +44,11 @@ typedef struct HTMLGenerator {
     HtmlGeneratorOptions options;  // Generation options
     IRLogicBlock* logic_block;     // Logic block for event handlers (transpile mode)
     IRReactiveManifest* manifest;  // Manifest for CSS variables (optional)
+
+    // Collected handlers for Lua registry generation
+    CollectedHandler* handlers;
+    size_t handler_count;
+    size_t handler_capacity;
 } HTMLGenerator;
 
 // HTML Generator Functions
@@ -50,7 +60,6 @@ void html_generator_destroy(HTMLGenerator* generator);
 HtmlGeneratorOptions html_generator_default_options(void);
 
 void html_generator_set_pretty_print(HTMLGenerator* generator, bool pretty);
-void html_generator_set_inline_css(HTMLGenerator* generator, bool inline_css);
 void html_generator_set_manifest(HTMLGenerator* generator, IRReactiveManifest* manifest);
 
 bool html_generator_write_string(HTMLGenerator* generator, const char* string);

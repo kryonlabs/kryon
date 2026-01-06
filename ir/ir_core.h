@@ -730,6 +730,15 @@ typedef enum {
     IR_LOGIC_NATIVE
 } LogicSourceType;
 
+// Handler Source - stores actual source code for language-specific handlers
+// Used to preserve function source through KIR for roundtrip and web embedding
+typedef struct IRHandlerSource {
+    char* language;      // "lua", "nim", "javascript", etc.
+    char* code;          // The actual function source code
+    char* file;          // Source file name (for debugging/roundtrip)
+    int line;            // Source line number
+} IRHandlerSource;
+
 // Event Handler
 typedef struct IREvent {
     IREventType type;
@@ -737,6 +746,7 @@ typedef struct IREvent {
     char* logic_id;      // References IRLogic (legacy, for Nim/C callbacks)
     char* handler_data;  // Event-specific data
     uint32_t bytecode_function_id;  // References bytecode function in IRMetadata (0 = none)
+    IRHandlerSource* handler_source; // NEW: Embedded handler source code for web/roundtrip
     struct IREvent* next;
 } IREvent;
 

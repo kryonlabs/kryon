@@ -60,10 +60,16 @@ int cmd_doctor(int argc, char** argv) {
 
     printf("\n%s%sKryon System Diagnostics%s\n", COLOR_BOLD, COLOR_CYAN, COLOR_RESET);
 
+    // Get dynamic paths
+    char* kryon_root = paths_get_kryon_root();
+    char* build_path = kryon_root ? path_join(kryon_root, "build") : paths_get_build_path();
+    char* home = paths_get_home_dir();
+
     // Check 1: Kryon Renderer Binary
     print_header("1. Kryon Renderer Binary");
 
-    const char* renderer_binary = "/mnt/storage/Projects/kryon/build/kryon";
+    char renderer_binary[PATH_MAX];
+    snprintf(renderer_binary, sizeof(renderer_binary), "%s/kryon", build_path);
     bool renderer_exists = file_exists(renderer_binary);
     bool renderer_executable = renderer_exists && check_file_executable(renderer_binary);
 
@@ -71,44 +77,63 @@ int cmd_doctor(int argc, char** argv) {
         print_check("Renderer binary found and executable", true, renderer_binary);
     } else if (renderer_exists && !renderer_executable) {
         print_check("Renderer binary found but not executable", false, renderer_binary);
-        print_info("Run: chmod +x /mnt/storage/Projects/kryon/build/kryon");
+        print_info("Run: chmod +x %s", renderer_binary);
         all_ok = false;
     } else {
         print_check("Renderer binary not found", false, renderer_binary);
-        print_info("Run 'make build' in /mnt/storage/Projects/kryon");
+        print_info("Run 'make build' in the Kryon source directory");
         all_ok = false;
     }
 
     // Check 2: Shared Libraries
     print_header("2. Shared Libraries");
 
-    const char* libraries[] = {
-        "/home/wao/.local/lib/libkryon_ir.so",
-        "/mnt/storage/Projects/kryon/build/libkryon_ir.so",
-        "/home/wao/.local/lib/libkryon_desktop.so",
-        "/mnt/storage/Projects/kryon/build/libkryon_desktop.so",
-        NULL
-    };
+    // Build dynamic library search paths
+    char* lib_paths[10];
+    int lib_idx = 0;
+
+    if (kryon_root) {
+        lib_paths[lib_idx++] = path_join(kryon_root, "build");
+    }
+    if (home) {
+        lib_paths[lib_idx++] = path_join(home, ".local/lib");
+    }
+    lib_paths[lib_idx++] = str_copy("/usr/local/lib");
+    lib_paths[lib_idx++] = str_copy("/usr/lib");
 
     bool found_ir = false, found_desktop = false;
 
-    for (int i = 0; libraries[i]; i++) {
-        if (file_exists(libraries[i])) {
-            if (strstr(libraries[i], "ir.so")) found_ir = true;
-            if (strstr(libraries[i], "desktop.so")) found_desktop = true;
-            print_check(libraries[i], true, "Found");
+    for (int i = 0; i < lib_idx; i++) {
+        char ir_lib[PATH_MAX];
+        char desktop_lib[PATH_MAX];
+
+        snprintf(ir_lib, sizeof(ir_lib), "%s/libkryon_ir.so", lib_paths[i]);
+        snprintf(desktop_lib, sizeof(desktop_lib), "%s/libkryon_desktop.so", lib_paths[i]);
+
+        if (file_exists(ir_lib) && !found_ir) {
+            found_ir = true;
+            print_check("libkryon_ir.so", true, ir_lib);
         }
+        if (file_exists(desktop_lib) && !found_desktop) {
+            found_desktop = true;
+            print_check("libkryon_desktop.so", true, desktop_lib);
+        }
+
+        free(lib_paths[i]);
     }
+
+    if (home) free(home);
+    if (kryon_root) free(kryon_root);
 
     if (!found_ir) {
         print_check("libkryon_ir.so", false, "Not found in expected locations");
-        print_info("Run 'make' in /mnt/storage/Projects/kryon/ir");
+        print_info("Run 'make' in the Kryon ir/ directory");
         all_ok = false;
     }
 
     if (!found_desktop) {
         print_check("libkryon_desktop.so", false, "Not found in expected locations");
-        print_info("Run 'make' in /mnt/storage/Projects/kryon/backends/desktop");
+        print_info("Run 'make' in the Kryon backends/desktop/ directory");
         all_ok = false;
     }
 
@@ -231,7 +256,7 @@ int cmd_doctor(int argc, char** argv) {
         if (which_output) free(which_output);
     } else {
         print_check("C CLI not installed", false, installed_cli);
-        print_info("Run 'make install' in /mnt/storage/Projects/kryon/cli");
+        print_info("Run 'make install' in the Kryon cli/ directory");
         all_ok = false;
     }
 

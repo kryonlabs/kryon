@@ -15,12 +15,32 @@
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_plugin.h"
 #include "../../ir/ir_logic.h"
+#include "../../ir/third_party/cJSON/cJSON.h"
 #include "html_generator.h"
 #include "css_generator.h"
 #include "style_analyzer.h"
 
 // Access global IR context for metadata
 extern IRContext* g_ir_context;
+
+// Helper to collect a handler for the Lua registry
+static void collect_handler(HTMLGenerator* generator, uint32_t component_id, const char* code) {
+    if (!generator || !code) return;
+
+    // Grow array if needed
+    if (generator->handler_count >= generator->handler_capacity) {
+        size_t new_capacity = generator->handler_capacity == 0 ? 16 : generator->handler_capacity * 2;
+        CollectedHandler* new_handlers = realloc(generator->handlers, new_capacity * sizeof(CollectedHandler));
+        if (!new_handlers) return;
+        generator->handlers = new_handlers;
+        generator->handler_capacity = new_capacity;
+    }
+
+    // Add handler
+    generator->handlers[generator->handler_count].component_id = component_id;
+    generator->handlers[generator->handler_count].code = strdup(code);
+    generator->handler_count++;
+}
 
 // HTML semantic tag mapping (NO kryon-* classes)
 // Returns NULL for components that should output raw content without wrapper tags
@@ -63,6 +83,16 @@ static const char* get_html_tag(IRComponentType type) {
         case IR_COMPONENT_LIST_ITEM: return "li";
         case IR_COMPONENT_LINK: return "a";
 
+        // Modal dialog
+        case IR_COMPONENT_MODAL: return "dialog";
+
+        // Tab components - use semantic divs with ARIA roles
+        case IR_COMPONENT_TAB_GROUP: return "div";
+        case IR_COMPONENT_TAB_BAR: return "div";
+        case IR_COMPONENT_TAB: return "button";
+        case IR_COMPONENT_TAB_CONTENT: return "div";
+        case IR_COMPONENT_TAB_PANEL: return "div";
+
         // Layout containers (all map to div)
         case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
@@ -82,7 +112,97 @@ static const char* get_id_prefix(IRComponentType type) {
         case IR_COMPONENT_BUTTON: return "btn";
         case IR_COMPONENT_INPUT: return "input";
         case IR_COMPONENT_CHECKBOX: return "checkbox";
+        case IR_COMPONENT_TAB_GROUP: return "tabgroup";
+        case IR_COMPONENT_TAB_BAR: return "tabbar";
+        case IR_COMPONENT_TAB: return "tab";
+        case IR_COMPONENT_TAB_CONTENT: return "tabcontent";
+        case IR_COMPONENT_TAB_PANEL: return "tabpanel";
         default: return "elem";
+    }
+}
+
+// Structure to hold parsed custom attributes
+typedef struct {
+    char* element_id;      // Custom element ID (e.g., "month-display")
+    cJSON* data_attrs;     // Data attributes as JSON object
+    char* action;          // Named action for event dispatch (e.g., "prevMonth")
+} CustomAttrs;
+
+// Parse custom attributes from custom_data JSON
+// Returns true if valid JSON with elementId or data was found
+// The caller is responsible for cleaning up (call cleanup_custom_attrs)
+static bool parse_custom_attrs(const char* custom_data, CustomAttrs* attrs) {
+    if (!custom_data || !attrs) return false;
+
+    // Initialize
+    attrs->element_id = NULL;
+    attrs->data_attrs = NULL;
+    attrs->action = NULL;
+
+    // Check if custom_data looks like JSON (starts with '{')
+    // Skip if it's already used for other purposes (modal state, placeholder, etc.)
+    if (custom_data[0] != '{') return false;
+
+    cJSON* json = cJSON_Parse(custom_data);
+    if (!json) return false;
+
+    // Check for elementId
+    cJSON* id_item = cJSON_GetObjectItem(json, "elementId");
+    if (id_item && cJSON_IsString(id_item)) {
+        attrs->element_id = strdup(id_item->valuestring);
+    }
+
+    // Check for data attributes
+    cJSON* data_item = cJSON_GetObjectItem(json, "data");
+    if (data_item && cJSON_IsObject(data_item)) {
+        // Detach the data object so we can keep it after deleting the parent
+        attrs->data_attrs = cJSON_Duplicate(data_item, true);
+    }
+
+    // Check for action (named action for event dispatch)
+    cJSON* action_item = cJSON_GetObjectItem(json, "action");
+    if (action_item && cJSON_IsString(action_item)) {
+        attrs->action = strdup(action_item->valuestring);
+    }
+
+    cJSON_Delete(json);
+
+    return (attrs->element_id != NULL || attrs->data_attrs != NULL || attrs->action != NULL);
+}
+
+// Clean up custom attributes
+static void cleanup_custom_attrs(CustomAttrs* attrs) {
+    if (!attrs) return;
+    if (attrs->element_id) {
+        free(attrs->element_id);
+        attrs->element_id = NULL;
+    }
+    if (attrs->data_attrs) {
+        cJSON_Delete(attrs->data_attrs);
+        attrs->data_attrs = NULL;
+    }
+    if (attrs->action) {
+        free(attrs->action);
+        attrs->action = NULL;
+    }
+}
+
+// Output data attributes from a JSON object
+static void output_data_attrs(HTMLGenerator* generator, cJSON* data) {
+    if (!data) return;
+
+    cJSON* item = NULL;
+    cJSON_ArrayForEach(item, data) {
+        if (cJSON_IsString(item)) {
+            html_generator_write_format(generator, " data-%s=\"%s\"",
+                item->string, item->valuestring);
+        } else if (cJSON_IsNumber(item)) {
+            html_generator_write_format(generator, " data-%s=\"%.0f\"",
+                item->string, item->valuedouble);
+        } else if (cJSON_IsBool(item)) {
+            html_generator_write_format(generator, " data-%s=\"%s\"",
+                item->string, cJSON_IsTrue(item) ? "true" : "false");
+        }
     }
 }
 
@@ -102,234 +222,66 @@ static void append_color_string(char* buffer, size_t size, IRColor color) {
     }
 }
 
-// Helper to get dimension as CSS string
-static void append_dimension_string(char* buffer, size_t size, IRDimension dim) {
-    switch (dim.type) {
-        case IR_DIMENSION_PX:
-            snprintf(buffer, size, "%.2fpx", dim.value);
-            break;
-        case IR_DIMENSION_PERCENT:
-            snprintf(buffer, size, "%.2f%%", dim.value);
-            break;
-        case IR_DIMENSION_AUTO:
-            snprintf(buffer, size, "auto");
-            break;
-        default:
-            snprintf(buffer, size, "auto");
-            break;
-    }
-}
-
-// Convert IRAlignment to CSS flexbox value
-static const char* alignment_to_css_value(IRAlignment alignment) {
-    switch (alignment) {
-        case IR_ALIGNMENT_START: return "flex-start";
-        case IR_ALIGNMENT_CENTER: return "center";
-        case IR_ALIGNMENT_END: return "flex-end";
-        case IR_ALIGNMENT_SPACE_BETWEEN: return "space-between";
-        case IR_ALIGNMENT_SPACE_AROUND: return "space-around";
-        case IR_ALIGNMENT_SPACE_EVENLY: return "space-evenly";
-        case IR_ALIGNMENT_STRETCH: return "stretch";
-        default: return "flex-start";
-    }
-}
-
-// Generate inline style attribute for transpilation mode
-static void generate_inline_styles(HTMLGenerator* generator, IRComponent* component) {
+// Generate CSS variable inline styles for components with custom colors
+// Only outputs variables for colors that differ from defaults
+static void generate_css_var_styles(HTMLGenerator* generator, IRComponent* component) {
     if (!component || !component->style) return;
 
-    char style_buffer[4096] = "";
+    // Skip for Modal (CSS handles visibility)
+    if (component->type == IR_COMPONENT_MODAL) return;
+
+    // Skip for tab buttons (CSS handles via aria-selected)
+    bool is_tab_button = (component->type == IR_COMPONENT_TAB) ||
+                         (component->type == IR_COMPONENT_BUTTON &&
+                          component->parent && component->parent->type == IR_COMPONENT_TAB_BAR);
+    if (is_tab_button) return;
+
+    char style_buffer[1024] = "";
     char temp[256];
+    bool has_vars = false;
 
-    // Width
-    if (component->style->width.type != IR_DIMENSION_AUTO) {
-        append_dimension_string(temp, sizeof(temp), component->style->width);
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "width: %s; ", temp);
-    }
-
-    // Height
-    if (component->style->height.type != IR_DIMENSION_AUTO) {
-        append_dimension_string(temp, sizeof(temp), component->style->height);
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "height: %s; ", temp);
-    }
-
-    // Size constraints (min/max width/height) - supports both PX and PERCENT
-    if (component->layout) {
-        // Min width
-        if (component->layout->min_width.type != IR_DIMENSION_AUTO) {
-            append_dimension_string(temp, sizeof(temp), component->layout->min_width);
-            snprintf(style_buffer + strlen(style_buffer),
-                    sizeof(style_buffer) - strlen(style_buffer),
-                    "min-width: %s; ", temp);
-        }
-
-        // Max width
-        if (component->layout->max_width.type != IR_DIMENSION_AUTO) {
-            append_dimension_string(temp, sizeof(temp), component->layout->max_width);
-            snprintf(style_buffer + strlen(style_buffer),
-                    sizeof(style_buffer) - strlen(style_buffer),
-                    "max-width: %s; ", temp);
-        }
-
-        // Min height
-        if (component->layout->min_height.type != IR_DIMENSION_AUTO) {
-            append_dimension_string(temp, sizeof(temp), component->layout->min_height);
-            snprintf(style_buffer + strlen(style_buffer),
-                    sizeof(style_buffer) - strlen(style_buffer),
-                    "min-height: %s; ", temp);
-        }
-
-        // Max height
-        if (component->layout->max_height.type != IR_DIMENSION_AUTO) {
-            append_dimension_string(temp, sizeof(temp), component->layout->max_height);
-            snprintf(style_buffer + strlen(style_buffer),
-                    sizeof(style_buffer) - strlen(style_buffer),
-                    "max-height: %s; ", temp);
-        }
-    }
-
-    // Background
-    if (component->style->background.type != IR_COLOR_TRANSPARENT) {
+    // Background color variable - only if solid and visible
+    if (component->style->background.type == IR_COLOR_SOLID &&
+        component->style->background.data.a > 0) {
         append_color_string(temp, sizeof(temp), component->style->background);
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "background-color: %s; ", temp);
+        snprintf(style_buffer + strlen(style_buffer),
+                sizeof(style_buffer) - strlen(style_buffer),
+                "--bg-color: %s; ", temp);
+        has_vars = true;
     }
 
-    // Border
-    if (component->style->border.width > 0) {
-        append_color_string(temp, sizeof(temp), component->style->border.color);
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "border: %.2fpx solid %s; ", component->style->border.width, temp);
-        if (component->style->border.radius > 0) {
-            snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                    "border-radius: %upx; ", component->style->border.radius);
-        }
-    }
-
-    // Padding
-    if (component->style->padding.top != 0 || component->style->padding.right != 0 ||
-        component->style->padding.bottom != 0 || component->style->padding.left != 0) {
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "padding: %.2fpx %.2fpx %.2fpx %.2fpx; ",
-                component->style->padding.top, component->style->padding.right,
-                component->style->padding.bottom, component->style->padding.left);
-    }
-
-    // Margin
-    if (component->style->margin.top != 0 || component->style->margin.right != 0 ||
-        component->style->margin.bottom != 0 || component->style->margin.left != 0) {
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "margin: %.2fpx %.2fpx %.2fpx %.2fpx; ",
-                component->style->margin.top, component->style->margin.right,
-                component->style->margin.bottom, component->style->margin.left);
-    }
-
-    // Font size
-    if (component->style->font.size > 0) {
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "font-size: %.2fpx; ", component->style->font.size);
-    }
-
-    // Font color
-    if (component->style->font.color.type != IR_COLOR_TRANSPARENT) {
+    // Text color variable - only for text components
+    bool is_text_component = (component->type == IR_COMPONENT_TEXT ||
+                              component->type == IR_COMPONENT_BUTTON ||
+                              component->type == IR_COMPONENT_INPUT ||
+                              component->type == IR_COMPONENT_SPAN ||
+                              component->type == IR_COMPONENT_STRONG ||
+                              component->type == IR_COMPONENT_EM ||
+                              component->type == IR_COMPONENT_LINK ||
+                              component->type == IR_COMPONENT_PARAGRAPH ||
+                              component->type == IR_COMPONENT_HEADING);
+    if (is_text_component &&
+        component->style->font.color.type == IR_COLOR_SOLID &&
+        component->style->font.color.data.a > 0) {
         append_color_string(temp, sizeof(temp), component->style->font.color);
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "color: %s; ", temp);
+        snprintf(style_buffer + strlen(style_buffer),
+                sizeof(style_buffer) - strlen(style_buffer),
+                "--text-color: %s; ", temp);
+        has_vars = true;
     }
 
-    // Font weight
-    if (component->style->font.weight > 0) {
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "font-weight: %u; ", component->style->font.weight);
-    } else if (component->style->font.bold) {
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "font-weight: bold; ");
+    // Border color variable - only if border has width
+    if (component->style->border.width > 0 &&
+        component->style->border.color.type == IR_COLOR_SOLID) {
+        append_color_string(temp, sizeof(temp), component->style->border.color);
+        snprintf(style_buffer + strlen(style_buffer),
+                sizeof(style_buffer) - strlen(style_buffer),
+                "--border-color: %s; ", temp);
+        has_vars = true;
     }
 
-    // Font style (italic)
-    if (component->style->font.italic) {
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "font-style: italic; ");
-    }
-
-    // Text align
-    const char* align_str = NULL;
-    switch (component->style->font.align) {
-        case IR_TEXT_ALIGN_LEFT: align_str = "left"; break;
-        case IR_TEXT_ALIGN_RIGHT: align_str = "right"; break;
-        case IR_TEXT_ALIGN_CENTER: align_str = "center"; break;
-        case IR_TEXT_ALIGN_JUSTIFY: align_str = "justify"; break;
-        default: break;
-    }
-    if (align_str) {
-        snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                "text-align: %s; ", align_str);
-    }
-
-    // Flexbox layout properties
-    if (component->layout) {
-        IRFlexbox* flex = &component->layout->flex;
-
-        // Add display:flex if component has children or explicit flex properties
-        if (component->child_count > 0 || flex->gap > 0 || flex->wrap) {
-            snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                    "display: flex; ");
-
-            // Flex direction (0=column, 1=row)
-            if (flex->direction == 1) {
-                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                        "flex-direction: row; ");
-            } else {
-                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                        "flex-direction: column; ");
-            }
-
-            // Justify content (main axis alignment)
-            if (flex->justify_content != IR_ALIGNMENT_START) {
-                const char* justify = alignment_to_css_value(flex->justify_content);
-                if (justify) {
-                    snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                            "justify-content: %s; ", justify);
-                }
-            }
-
-            // Align items (cross axis alignment)
-            if (flex->cross_axis != IR_ALIGNMENT_STRETCH) {
-                const char* align = alignment_to_css_value(flex->cross_axis);
-                if (align) {
-                    snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                            "align-items: %s; ", align);
-                }
-            }
-
-            // Gap
-            if (flex->gap > 0) {
-                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                        "gap: %upx; ", flex->gap);
-            }
-
-            // Flex wrap
-            if (flex->wrap) {
-                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                        "flex-wrap: wrap; ");
-            }
-
-            // Flex grow/shrink (for child flex items)
-            if (flex->grow > 0) {
-                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                        "flex-grow: %u; ", flex->grow);
-            }
-            if (flex->shrink > 0) {
-                snprintf(style_buffer + strlen(style_buffer), sizeof(style_buffer) - strlen(style_buffer),
-                        "flex-shrink: %u; ", flex->shrink);
-            }
-        }
-    }
-
-    // Only write style attribute if we have styles
-    if (strlen(style_buffer) > 0) {
+    // Only write style attribute if we have CSS variables
+    if (has_vars && strlen(style_buffer) > 0) {
         html_generator_write_format(generator, " style=\"%s\"", style_buffer);
     }
 }
@@ -428,7 +380,6 @@ static void escape_html_text_len(const char* text, size_t text_len, char* buffer
 HtmlGeneratorOptions html_generator_default_options(void) {
     HtmlGeneratorOptions opts = {
         .minify = false,
-        .inline_css = false,  // Use CSS classes instead of inline styles
         .embedded_css = false,  // Use external CSS file by default
         .include_runtime = true
     };
@@ -450,6 +401,12 @@ HTMLGenerator* html_generator_create_with_options(HtmlGeneratorOptions options) 
     generator->pretty_print = !options.minify;
     generator->options = options;
     generator->logic_block = NULL;
+    generator->manifest = NULL;
+
+    // Initialize handler collection
+    generator->handlers = NULL;
+    generator->handler_count = 0;
+    generator->handler_capacity = 0;
 
     return generator;
 }
@@ -460,16 +417,22 @@ void html_generator_destroy(HTMLGenerator* generator) {
     if (generator->output_buffer) {
         free(generator->output_buffer);
     }
+
+    // Free collected handlers
+    if (generator->handlers) {
+        for (size_t i = 0; i < generator->handler_count; i++) {
+            if (generator->handlers[i].code) {
+                free(generator->handlers[i].code);
+            }
+        }
+        free(generator->handlers);
+    }
+
     free(generator);
 }
 
 void html_generator_set_pretty_print(HTMLGenerator* generator, bool pretty) {
     generator->pretty_print = pretty;
-}
-
-void html_generator_set_inline_css(HTMLGenerator* generator, bool inline_css) {
-    if (!generator) return;
-    generator->options.inline_css = inline_css;
 }
 
 void html_generator_set_manifest(HTMLGenerator* generator, IRReactiveManifest* manifest) {
@@ -686,7 +649,25 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
 
     // Handle raw text output (no wrapper tag)
     // IR_COMPONENT_TEXT outputs raw text content without any HTML tag
+    // UNLESS it has custom attributes (elementId, data-*) which require a wrapper
     if (tag == NULL) {
+        // Check if text has custom attributes that require a wrapper span
+        CustomAttrs text_custom_attrs = {0};
+        bool has_custom_attrs = parse_custom_attrs(component->custom_data, &text_custom_attrs);
+        bool needs_wrapper = has_custom_attrs && (text_custom_attrs.element_id || text_custom_attrs.data_attrs);
+
+        if (needs_wrapper) {
+            // Wrap text in span with custom attributes
+            html_generator_write_string(generator, "<span");
+            if (text_custom_attrs.element_id) {
+                html_generator_write_format(generator, " id=\"%s\"", text_custom_attrs.element_id);
+            }
+            if (text_custom_attrs.data_attrs) {
+                output_data_attrs(generator, text_custom_attrs.data_attrs);
+            }
+            html_generator_write_string(generator, ">");
+        }
+
         // Output text content directly (escaped) WITHOUT indentation
         // Indentation would add unwanted whitespace before inline text
         if (component->text_content && strlen(component->text_content) > 0) {
@@ -714,6 +695,13 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         for (uint32_t i = 0; i < component->child_count; i++) {
             generate_component_html(generator, component->children[i]);
         }
+
+        // Close wrapper span if we opened one
+        if (needs_wrapper) {
+            html_generator_write_string(generator, "</span>");
+        }
+
+        cleanup_custom_attrs(&text_custom_attrs);
         return true;
     }
 
@@ -731,15 +719,75 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
     // Analyze component styling to determine if ID/class needed
     StyleAnalysis* analysis = analyze_component_style(component, generator->logic_block);
 
-    // ONLY add ID if component has event handlers
-    if (analysis && analysis->needs_id) {
+    // Pre-detect if this button is inside a TabBar (making it a tab)
+    // This affects ID/class generation below
+    bool is_tab_button = false;
+    int tab_button_index = 0;
+    int tab_button_selected_index = 0;
+
+    if (component->type == IR_COMPONENT_BUTTON &&
+        component->parent && component->parent->type == IR_COMPONENT_TAB_BAR) {
+        is_tab_button = true;
+
+        // Find tab index by position in parent
+        for (uint32_t i = 0; i < component->parent->child_count; i++) {
+            if (component->parent->children[i] == component) {
+                tab_button_index = (int)i;
+                break;
+            }
+        }
+
+        // Find selected index from TabGroup grandparent
+        if (component->parent->parent &&
+            component->parent->parent->type == IR_COMPONENT_TAB_GROUP &&
+            component->parent->parent->custom_data) {
+            tab_button_selected_index = atoi(component->parent->parent->custom_data);
+        }
+    }
+
+    // Parse custom attributes from custom_data JSON (elementId, data-*)
+    CustomAttrs custom_attrs = {0};
+    parse_custom_attrs(component->custom_data, &custom_attrs);
+
+    // Add ID: use custom elementId if present, otherwise use default ID generation
+    // Skip for Modal and Tab components - they generate their own ID in the switch below
+    // Also skip for tab-buttons - they get id="tab-N" in the switch below
+    bool skip_default_id = (component->type == IR_COMPONENT_MODAL ||
+                            component->type == IR_COMPONENT_TAB_GROUP ||
+                            component->type == IR_COMPONENT_TAB_BAR ||
+                            component->type == IR_COMPONENT_TAB ||
+                            component->type == IR_COMPONENT_TAB_CONTENT ||
+                            component->type == IR_COMPONENT_TAB_PANEL ||
+                            is_tab_button);
+
+    if (custom_attrs.element_id) {
+        // Use custom element ID
+        html_generator_write_format(generator, " id=\"%s\"", custom_attrs.element_id);
+    } else if (analysis && analysis->needs_id && !skip_default_id) {
+        // Use default ID generation
         const char* prefix = get_id_prefix(component->type);
         html_generator_write_format(generator, " id=\"%s-%u\"", prefix, component->id);
     }
 
+    // Output data attributes if present
+    if (custom_attrs.data_attrs) {
+        output_data_attrs(generator, custom_attrs.data_attrs);
+    }
+
+    // NOTE: Don't cleanup custom_attrs here - we need custom_attrs.action
+    // for event handler generation later. Cleanup happens before returns.
+
     // ONLY add class if component has EXPLICIT css_class set
     // This allows descendant selectors like ".logo span" to work correctly
-    if (component->css_class && component->css_class[0] != '\0') {
+    // Skip for Modal and Tab components - they generate their own class in the switch below
+    // Also skip tab-buttons - they use role="tab" styling, not class="button"
+    if (component->type == IR_COMPONENT_MODAL ||
+        component->type == IR_COMPONENT_TAB_GROUP ||
+        component->type == IR_COMPONENT_TAB_BAR ||
+        component->type == IR_COMPONENT_TAB_CONTENT ||
+        is_tab_button) {
+        // These components handle their own class generation
+    } else if (component->css_class && component->css_class[0] != '\0') {
         html_generator_write_format(generator, " class=\"%s\"", component->css_class);
     } else if (analysis && analysis->needs_css && analysis->suggested_class) {
         // Fallback: add class for components with custom styling but no explicit class
@@ -777,21 +825,39 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         }
     }
 
-    // Add inline styles
-    if (generator->options.inline_css) {
-        generate_inline_styles(generator, component);
-    }
-
+    // Add inline CSS variable styles
+    generate_css_var_styles(generator, component);
 
     // Component-specific attributes
     switch (component->type) {
-        case IR_COMPONENT_BUTTON:
+        case IR_COMPONENT_BUTTON: {
+            // Tab-button detection was done above (is_tab_button, tab_button_index, tab_button_selected_index)
+            if (is_tab_button) {
+                // Generate tab-specific ID and attributes
+                html_generator_write_format(generator, " id=\"tab-%u\"", component->id);
+
+                bool is_selected = (tab_button_index == tab_button_selected_index);
+                html_generator_write_string(generator, " role=\"tab\"");
+                html_generator_write_format(generator, " data-tab=\"%d\"", tab_button_index);
+                html_generator_write_format(generator, " aria-selected=\"%s\"", is_selected ? "true" : "false");
+
+                // Generate native tab switching onclick
+                html_generator_write_format(generator, " onclick=\"kryonSelectTab(this.closest('.kryon-tabs'), %d)\"", tab_button_index);
+
+                // Store action name as data attribute (kryonSelectTab will dispatch it)
+                if (custom_attrs.action) {
+                    html_generator_write_format(generator, " data-action=\"%s\"", custom_attrs.action);
+                }
+            }
+
+            // Add data-text for all buttons (tabs and regular)
             if (component->text_content) {
                 char escaped_text[1024];
                 escape_html_text(component->text_content, escaped_text, sizeof(escaped_text));
                 html_generator_write_format(generator, " data-text=\"%s\"", escaped_text);
             }
             break;
+        }
 
         case IR_COMPONENT_INPUT:
             if (component->custom_data) {  // placeholder
@@ -914,6 +980,122 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
         }
 
+        case IR_COMPONENT_MODAL: {
+            // Modal state stored as "open|title" or "closed|title" in custom_data
+            bool is_open = false;
+            const char* title = NULL;
+
+            if (component->custom_data) {
+                const char* state_str = component->custom_data;
+                is_open = (strncmp(state_str, "open", 4) == 0);
+                const char* pipe = strchr(state_str, '|');
+                if (pipe && pipe[1] != '\0') {
+                    title = pipe + 1;
+                }
+            }
+
+            // Add modal ID and class
+            html_generator_write_format(generator, " id=\"modal-%u\"", component->id);
+            html_generator_write_string(generator, " class=\"kryon-modal\"");
+            html_generator_write_format(generator, " data-modal-open=\"%s\"", is_open ? "true" : "false");
+
+            if (title) {
+                char escaped_title[256];
+                escape_html_text(title, escaped_title, sizeof(escaped_title));
+                html_generator_write_format(generator, " data-modal-title=\"%s\"", escaped_title);
+            }
+            break;
+        }
+
+        // Tab components with ARIA roles and native switching
+        case IR_COMPONENT_TAB_GROUP: {
+            // Find selected tab index from props or default to 0
+            int selected = 0;
+            if (component->custom_data) {
+                selected = atoi(component->custom_data);
+            }
+            html_generator_write_format(generator, " id=\"tabgroup-%u\"", component->id);
+            html_generator_write_string(generator, " class=\"kryon-tabs\"");
+            html_generator_write_format(generator, " data-selected=\"%d\"", selected);
+            break;
+        }
+
+        case IR_COMPONENT_TAB_BAR: {
+            html_generator_write_format(generator, " id=\"tabbar-%u\"", component->id);
+            html_generator_write_string(generator, " class=\"kryon-tab-bar\" role=\"tablist\"");
+            break;
+        }
+
+        case IR_COMPONENT_TAB: {
+            // Find tab index by looking at position in parent
+            int tab_index = 0;
+            bool is_selected = false;
+            if (component->parent) {
+                for (uint32_t i = 0; i < component->parent->child_count; i++) {
+                    if (component->parent->children[i] == component) {
+                        tab_index = i;
+                        break;
+                    }
+                }
+                // Check if this tab is selected by looking at grandparent's data
+                if (component->parent->parent && component->parent->parent->custom_data) {
+                    int selected = atoi(component->parent->parent->custom_data);
+                    is_selected = (tab_index == selected);
+                }
+            }
+            html_generator_write_format(generator, " id=\"tab-%u\"", component->id);
+            html_generator_write_string(generator, " role=\"tab\"");
+            html_generator_write_format(generator, " data-tab=\"%d\"", tab_index);
+            html_generator_write_format(generator, " aria-selected=\"%s\"", is_selected ? "true" : "false");
+            html_generator_write_format(generator, " onclick=\"kryonSelectTab(this.closest('.kryon-tabs'), %d)\"", tab_index);
+            // Store handler ID for Lua callback if there's a click event
+            if (component->events) {
+                IREvent* event = component->events;
+                while (event) {
+                    if (event->type == IR_EVENT_CLICK && event->logic_id) {
+                        if (strncmp(event->logic_id, "lua_event_", 10) == 0) {
+                            int handler_id = atoi(event->logic_id + 10);
+                            html_generator_write_format(generator, " data-handler-id=\"%d\"", handler_id);
+                        }
+                    }
+                    event = event->next;
+                }
+            }
+            break;
+        }
+
+        case IR_COMPONENT_TAB_CONTENT: {
+            html_generator_write_format(generator, " id=\"tabcontent-%u\"", component->id);
+            html_generator_write_string(generator, " class=\"kryon-tab-content\"");
+            break;
+        }
+
+        case IR_COMPONENT_TAB_PANEL: {
+            // Find panel index by looking at position in parent
+            int panel_index = 0;
+            int selected = 0;  // Default to first panel visible
+            if (component->parent) {
+                for (uint32_t i = 0; i < component->parent->child_count; i++) {
+                    if (component->parent->children[i] == component) {
+                        panel_index = i;
+                        break;
+                    }
+                }
+                // Check if this panel should be visible by looking at grandparent's data
+                if (component->parent->parent && component->parent->parent->custom_data) {
+                    selected = atoi(component->parent->parent->custom_data);
+                }
+            }
+            bool is_active = (panel_index == selected);
+            html_generator_write_format(generator, " id=\"tabpanel-%u\"", component->id);
+            html_generator_write_string(generator, " role=\"tabpanel\"");
+            html_generator_write_format(generator, " data-panel=\"%d\"", panel_index);
+            if (!is_active) {
+                html_generator_write_string(generator, " hidden");
+            }
+            break;
+        }
+
         default:
             break;
     }
@@ -972,8 +1154,52 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         }
     }
 
+    // Generate event handlers from component's events array (for Lua events)
+    // This handles lua_event_N style handlers from Lua source files
+    // NOTE: Tab-buttons already have onclick generated above (kryonSelectTab + data-handler-id)
+    if (component->events) {
+        IREvent* event = component->events;
+        while (event) {
+            if (event->logic_id && strncmp(event->logic_id, "lua_event_", 10) == 0) {
+                // Map IR event type to HTML event attribute
+                const char* html_event = NULL;
+                switch (event->type) {
+                    case IR_EVENT_CLICK: html_event = "onclick"; break;
+                    case IR_EVENT_HOVER: html_event = "onmouseenter"; break;
+                    case IR_EVENT_FOCUS: html_event = "onfocus"; break;
+                    case IR_EVENT_BLUR: html_event = "onblur"; break;
+                    case IR_EVENT_TEXT_CHANGE: html_event = "oninput"; break;
+                    default: break;
+                }
+
+                if (html_event) {
+                    // Skip onclick for tab-buttons - they use kryonSelectTab which calls handler via data-handler-id
+                    if (is_tab_button && event->type == IR_EVENT_CLICK) {
+                        // Already handled above with kryonSelectTab + data-handler-id
+                        event = event->next;
+                        continue;
+                    }
+
+                    // Handler source-based dispatch using embedded Lua code from KIR
+                    // The handler source is extracted at compile time and stored in the event
+                    if (event->handler_source && event->handler_source->code) {
+                        // Collect handler for Lua registry generation
+                        collect_handler(generator, component->id, event->handler_source->code);
+
+                        // Generate onclick to call handler by component ID
+                        // Pass event object so handlers can access event.target for data attributes
+                        html_generator_write_format(generator,
+                            " %s=\"kryonCallHandler(%u, event)\"", html_event, component->id);
+                    }
+                }
+            }
+            event = event->next;
+        }
+    }
+
     if (is_self_closing) {
         html_generator_write_string(generator, " />\n");
+        cleanup_custom_attrs(&custom_attrs);
         style_analysis_free(analysis);
         return true;
     }
@@ -1025,6 +1251,57 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
 
         generator->indent_level++;
 
+        // Special handling for Modal - generate title bar and content wrapper
+        if (component->type == IR_COMPONENT_MODAL) {
+            // Parse modal state for title
+            const char* title = NULL;
+            if (component->custom_data) {
+                const char* pipe = strchr(component->custom_data, '|');
+                if (pipe && pipe[1] != '\0') {
+                    title = pipe + 1;
+                }
+            }
+
+            // Generate title bar if title exists
+            if (title) {
+                html_generator_write_indent(generator);
+                html_generator_write_string(generator, "<div class=\"modal-title-bar\">\n");
+                generator->indent_level++;
+
+                html_generator_write_indent(generator);
+                html_generator_write_format(generator, "<span class=\"modal-title\">%s</span>\n", title);
+
+                html_generator_write_indent(generator);
+                html_generator_write_string(generator, "<button class=\"modal-close\" onclick=\"this.closest('dialog').close()\">&times;</button>\n");
+
+                generator->indent_level--;
+                html_generator_write_indent(generator);
+                html_generator_write_string(generator, "</div>\n");
+            }
+
+            // Wrap children in modal-content div
+            html_generator_write_indent(generator);
+            html_generator_write_string(generator, "<div class=\"modal-content\">\n");
+            generator->indent_level++;
+
+            // Write children
+            for (uint32_t i = 0; i < component->child_count; i++) {
+                generate_component_html(generator, component->children[i]);
+            }
+
+            generator->indent_level--;
+            html_generator_write_indent(generator);
+            html_generator_write_string(generator, "</div>\n");
+
+            generator->indent_level--;
+            html_generator_write_indent(generator);
+            html_generator_write_format(generator, "</%s>\n", tag);
+
+            cleanup_custom_attrs(&custom_attrs);
+            style_analysis_free(analysis);
+            return true;
+        }
+
         // Special handling for markdown components with custom_data text
         if (component->type == IR_COMPONENT_HEADING) {
             IRHeadingData* data = (IRHeadingData*)component->custom_data;
@@ -1075,6 +1352,7 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         html_generator_write_format(generator, "</%s>\n", tag);
     }
 
+    cleanup_custom_attrs(&custom_attrs);
     style_analysis_free(analysis);
     return true;
 }
@@ -1087,6 +1365,16 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     if (generator->output_buffer) {
         generator->output_buffer[0] = '\0';
     }
+
+    // Reset handler collection for fresh generation
+    if (generator->handlers) {
+        for (size_t i = 0; i < generator->handler_count; i++) {
+            if (generator->handlers[i].code) {
+                free(generator->handlers[i].code);
+            }
+        }
+    }
+    generator->handler_count = 0;
 
     // Generate HTML document
     html_generator_write_string(generator, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
@@ -1119,6 +1407,10 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         // Link to external CSS file
         html_generator_write_string(generator, "  <link rel=\"stylesheet\" href=\"kryon.css\">\n");
     }
+
+    // Add Fengari Lua VM for Lua event execution (local file, no CDN)
+    // TODO: Make this conditional based on source language from metadata
+    html_generator_write_string(generator, "  <script src=\"fengari-web.min.js\"></script>\n");
 
     // Add JavaScript runtime if requested
     if (generator->options.include_runtime) {
@@ -1155,6 +1447,11 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         generate_component_html(generator, root);
         generator->indent_level = 0;
     }
+
+    // NOTE: Handler registry is now generated by lua_bundler and appended to the
+    // bundled Lua code. This ensures handlers share the same scope as app functions.
+    // The html_generator still collects handlers (for onclick attributes) but doesn't
+    // generate the registry script anymore.
 
     // Inject hot reload script in dev mode
     const char* dev_mode = getenv("KRYON_DEV_MODE");

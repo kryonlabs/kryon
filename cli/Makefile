@@ -3,7 +3,10 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I../ir -I../ir/third_party/cJSON -D_POSIX_C_SOURCE=200809L
 # No plugin libraries linked at build time - they are loaded dynamically at runtime
-LDFLAGS = -L../build -lkryon_ir -lkryon_desktop -lm -lpthread -ldl
+# Note: Desktop backend requires additional dependencies (SDL3, raylib)
+# To enable desktop, build the desktop backend first, then uncomment:
+# LDFLAGS += ../build/libkryon_desktop.a -lSDL3 -lraylib
+LDFLAGS = -L../build -lkryon_ir -lm -lpthread -ldl
 
 # Directories
 SRC_DIR = src
@@ -42,8 +45,15 @@ OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 # Target binary
 TARGET = kryon
 
-# Codegen object files
-CODEGEN_OBJS = ../codegens/kry/kry_codegen.o ../codegens/tsx/tsx_codegen.o ../codegens/nim/nim_codegen.o ../codegens/lua/lua_codegen.o ../codegens/markdown/markdown_codegen.o ../codegens/c/ir_c_codegen.o ../codegens/kotlin/kotlin_codegen.o ../codegens/react_common.o
+# Codegen object files (only include existing ones)
+CODEGEN_OBJS = $(wildcard ../codegens/kry/kry_codegen.o) \
+               $(wildcard ../codegens/tsx/tsx_codegen.o) \
+               $(wildcard ../codegens/nim/nim_codegen.o) \
+               $(wildcard ../codegens/lua/lua_codegen.o) \
+               $(wildcard ../codegens/markdown/markdown_codegen.o) \
+               $(wildcard ../codegens/c/ir_c_codegen.o) \
+               $(wildcard ../codegens/kotlin/kotlin_codegen.o) \
+               $(wildcard ../codegens/react_common.o)
 
 # Third-party libraries
 CJSON_OBJ = $(BUILD_DIR)/cJSON.o
@@ -89,6 +99,14 @@ install: $(TARGET)
 	# Install C bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/c
 	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
+	# Build and install web codegen
+	$(MAKE) -C ../codegens/web kir_to_html
+	mkdir -p $(HOME)/.local/share/kryon/bin
+	cp ../codegens/web/kir_to_html $(HOME)/.local/share/kryon/bin/
+	chmod +x $(HOME)/.local/share/kryon/bin/kir_to_html
+	# Install dev server script
+	mkdir -p $(HOME)/.local/share/kryon/scripts
+	cp scripts/dev_server.ts $(HOME)/.local/share/kryon/scripts/
 
 # Clean
 clean:

@@ -20,6 +20,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <limits.h>
 
 static const char* detect_frontend(const char* file) {
     const char* ext = path_extension(file);
@@ -83,7 +84,14 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
     fprintf(f, "rootProject.name = \"kryon-temp\"\n");
     fprintf(f, "include(\":app\")\n");
     fprintf(f, "include(\":kryon\")\n");
-    fprintf(f, "project(\":kryon\").projectDir = file(\"/mnt/storage/Projects/kryon/bindings/kotlin\")\n");
+
+    // Use dynamic path for Kotlin bindings
+    char* kryon_root = paths_get_kryon_root();
+    char* kotlin_path = kryon_root ? path_join(kryon_root, "bindings/kotlin") : str_copy("bindings/kotlin");
+    fprintf(f, "project(\":kryon\").projectDir = file(\"%s\")\n", kotlin_path);
+    free(kotlin_path);
+    if (kryon_root) free(kryon_root);
+
     fclose(f);
 
     // Create gradle.properties with AndroidX enabled
@@ -270,9 +278,14 @@ static int run_android(const char* kir_file, const char* source_file) {
     }
 
     // Also create local.properties in bindings/kotlin for subproject
+    char* kryon_root = paths_get_kryon_root();
+    char* kotlin_dir = kryon_root ? path_join(kryon_root, "bindings/kotlin") : str_copy("bindings/kotlin");
+
     char bindings_props[2048];
-    snprintf(bindings_props, sizeof(bindings_props), "/mnt/storage/Projects/kryon/bindings/kotlin/local.properties");
+    snprintf(bindings_props, sizeof(bindings_props), "%s/local.properties", kotlin_dir);
     FILE* bindings_f = fopen(bindings_props, "w");
+    free(kotlin_dir);
+    if (kryon_root) free(kryon_root);
     if (bindings_f) {
         if (android_home) {
             fprintf(bindings_f, "sdk.dir=%s\n", android_home);
@@ -651,18 +664,18 @@ int cmd_run(int argc, char** argv) {
     // Get the path to the desktop renderer library
     const char* desktop_lib = getenv("KRYON_DESKTOP_LIB");
     if (!desktop_lib) {
-        // Try default locations
-        if (file_exists("/home/wao/.local/lib/libkryon_desktop.so")) {
-            desktop_lib = "/home/wao/.local/lib/libkryon_desktop.so";
-        } else if (file_exists("/mnt/storage/Projects/kryon/build/libkryon_desktop.so")) {
-            desktop_lib = "/mnt/storage/Projects/kryon/build/libkryon_desktop.so";
-        } else {
+        // Try default locations using path discovery
+        char* found_lib = paths_find_library("libkryon_desktop.so");
+        if (!found_lib) {
             fprintf(stderr, "Error: Desktop renderer library not found\n");
             fprintf(stderr, "Please run: make install\n");
             fprintf(stderr, "Or set KRYON_DESKTOP_LIB environment variable\n");
             if (free_target) free((char*)target_file);
             return 1;
         }
+        // Note: found_lib is leaked here, but it's a small allocation
+        // and we need it for the lifetime of desktop_lib variable
+        desktop_lib = found_lib;
     }
 
     // Build command to run the file
@@ -723,20 +736,42 @@ int cmd_run(int argc, char** argv) {
             snprintf(dir_include, sizeof(dir_include), "-I%.*s ", (int)dir_len, target_file);
         }
 
+        // Get dynamic paths
+        char* kryon_root = paths_get_kryon_root();
+        char* bindings_path = kryon_root ? path_join(kryon_root, "bindings/c") : paths_get_bindings_path();
+        char* ir_path = kryon_root ? path_join(kryon_root, "ir") : str_copy("ir");
+        char* desktop_path = kryon_root ? path_join(kryon_root, "backends/desktop") : str_copy("backends/desktop");
+        char* cjson_path = kryon_root ? path_join(kryon_root, "ir/third_party/cJSON") : str_copy("ir/third_party/cJSON");
+        char* build_path = kryon_root ? path_join(kryon_root, "build") : paths_get_build_path();
+
+        char kryon_c[PATH_MAX];
+        char kryon_dsl_c[PATH_MAX];
+        snprintf(kryon_c, sizeof(kryon_c), "%s/kryon.c", bindings_path);
+        snprintf(kryon_dsl_c, sizeof(kryon_dsl_c), "%s/kryon_dsl.c", bindings_path);
+
         snprintf(compile_cmd, sizeof(compile_cmd),
                  "gcc -std=c99 -O2 \"%s\" %s"
-                 "/mnt/storage/Projects/kryon/bindings/c/kryon.c "
-                 "/mnt/storage/Projects/kryon/bindings/c/kryon_dsl.c "
+                 "\"%s\" \"%s\" "
                  "-o \"%s\" "
                  "%s"  // Add directory include path
                  "-Iinclude "  // Add include directory for project headers
-                 "-I/mnt/storage/Projects/kryon/bindings/c "
-                 "-I/mnt/storage/Projects/kryon/ir "
-                 "-I/mnt/storage/Projects/kryon/backends/desktop "
-                 "-I/mnt/storage/Projects/kryon/ir/third_party/cJSON "
-                 "-L/mnt/storage/Projects/kryon/build "
+                 "-I\"%s\" "
+                 "-I\"%s\" "
+                 "-I\"%s\" "
+                 "-I\"%s\" "
+                 "-L\"%s\" "
                  "-lkryon_desktop -lkryon_ir -lm -lraylib",
-                 target_file, additional_sources, exe_file, dir_include);
+                 target_file, additional_sources,
+                 kryon_c, kryon_dsl_c, exe_file, dir_include,
+                 bindings_path, ir_path, desktop_path, cjson_path, build_path);
+
+        // Free allocated paths
+        free(bindings_path);
+        free(ir_path);
+        free(desktop_path);
+        free(cjson_path);
+        free(build_path);
+        if (kryon_root) free(kryon_root);
 
         int result = system(compile_cmd);
         if (result != 0) {
@@ -749,10 +784,12 @@ int cmd_run(int argc, char** argv) {
         printf("Running application...\n");
 
         // Run the executable
+        char* lib_build_path = paths_get_build_path();
         char run_cmd[2048];
         snprintf(run_cmd, sizeof(run_cmd),
-                 "LD_LIBRARY_PATH=/mnt/storage/Projects/kryon/build:$LD_LIBRARY_PATH \"%s\"",
-                 exe_file);
+                 "LD_LIBRARY_PATH=\"%s:$LD_LIBRARY_PATH\" \"%s\"",
+                 lib_build_path, exe_file);
+        free(lib_build_path);
         result = system(run_cmd);
 
         // Cleanup
@@ -785,6 +822,7 @@ int cmd_run(int argc, char** argv) {
                        web_config->dev_port : 3000;
             bool auto_open = (web_config && web_config->dev_auto_open) ?
                              web_config->dev_auto_open : true;
+            const char* project_name = web_config ? web_config->project_name : NULL;
 
             // Create output directory
             if (!file_is_directory(output_dir)) {
@@ -814,18 +852,37 @@ int cmd_run(int argc, char** argv) {
             // Source directory is current working directory (where assets are located)
             char* source_dir = cwd;
 
+            // Run web codegen using installed binary
+            char* home = getenv("HOME");
+            if (!home) {
+                fprintf(stderr, "Error: HOME environment variable not set\n");
+                free(cwd);
+                return 1;
+            }
+
+            char kir_to_html_path[PATH_MAX];
+            snprintf(kir_to_html_path, sizeof(kir_to_html_path),
+                     "%s/.local/share/kryon/bin/kir_to_html", home);
+
+            // Check if kir_to_html exists
+            if (!file_exists(kir_to_html_path)) {
+                fprintf(stderr, "Error: kir_to_html not found at %s\n", kir_to_html_path);
+                fprintf(stderr, "Please run 'make install' in the CLI directory\n");
+                free(cwd);
+                return 1;
+            }
+
             char codegen_cmd[8192];
-            snprintf(codegen_cmd, sizeof(codegen_cmd),
-                     "cd /mnt/storage/Projects/kryon/codegens/web && "
-                     "gcc -std=c99 -O2 "
-                     "-I../../ir -I../../ir/third_party/cJSON "
-                     "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c lua_bundler.c "
-                     "../../ir/third_party/cJSON/cJSON.c "
-                     "-L../../build -lkryon_ir -lm "
-                     "-o /tmp/kryon_web_gen_%d 2>&1 && "
-                     "LD_LIBRARY_PATH=/mnt/storage/Projects/kryon/build:$LD_LIBRARY_PATH "
-                     "/tmp/kryon_web_gen_%d \"%s\" \"%s\" \"%s\" 2>&1",
-                     getpid(), getpid(), source_dir, abs_kir_path, abs_output_dir);
+            // Build command with project name flag
+            if (project_name) {
+                snprintf(codegen_cmd, sizeof(codegen_cmd),
+                         "\"%s\" \"%s\" \"%s\" \"%s\" --project-name \"%s\" 2>&1",
+                         kir_to_html_path, source_dir, abs_kir_path, abs_output_dir, project_name);
+            } else {
+                snprintf(codegen_cmd, sizeof(codegen_cmd),
+                         "\"%s\" \"%s\" \"%s\" \"%s\" 2>&1",
+                         kir_to_html_path, source_dir, abs_kir_path, abs_output_dir);
+            }
 
             free(cwd);
 
@@ -849,11 +906,22 @@ int cmd_run(int argc, char** argv) {
         }
 
         // Run KIR file directly on desktop (default)
+        char* build_path = paths_get_build_path();
+        char* home = paths_get_home_dir();
+        char lib_path[PATH_MAX * 2];
+        if (home) {
+            snprintf(lib_path, sizeof(lib_path), "\"%s/.local/lib\":\"%s\":$LD_LIBRARY_PATH",
+                     home, build_path);
+            free(home);
+        } else {
+            snprintf(lib_path, sizeof(lib_path), "\"%s\":$LD_LIBRARY_PATH", build_path);
+        }
         snprintf(cmd, sizeof(cmd),
-                 "LD_LIBRARY_PATH=/home/wao/.local/lib:\"/mnt/storage/Projects/kryon/build\":$LD_LIBRARY_PATH "
+                 "LD_LIBRARY_PATH=%s "
                  "KRYON_LIB_PATH=\"%s\" "
-                 "%s \"%s\"",
-                 desktop_lib, desktop_lib, target_file);
+                 "\"%s\" \"%s\"",
+                 lib_path, desktop_lib, desktop_lib, target_file);
+        free(build_path);
     } else {
         // AUTO-COMPILE SOURCE FILES TO KIR FIRST (including .lua)
 
@@ -906,6 +974,7 @@ int cmd_run(int argc, char** argv) {
                        web_config->dev_port : 3000;
             bool auto_open = (web_config && web_config->dev_auto_open) ?
                              web_config->dev_auto_open : true;
+            const char* project_name = web_config ? web_config->project_name : NULL;
 
             // Create output directory
             if (!file_is_directory(output_dir)) {
@@ -932,18 +1001,37 @@ int cmd_run(int argc, char** argv) {
                 snprintf(abs_output_dir2, sizeof(abs_output_dir2), "%s/%s", cwd2, output_dir);
             }
 
+            // Run web codegen using installed binary
+            char* home = getenv("HOME");
+            if (!home) {
+                fprintf(stderr, "Error: HOME environment variable not set\n");
+                free(cwd2);
+                return 1;
+            }
+
+            char kir_to_html_path[PATH_MAX];
+            snprintf(kir_to_html_path, sizeof(kir_to_html_path),
+                     "%s/.local/share/kryon/bin/kir_to_html", home);
+
+            // Check if kir_to_html exists
+            if (!file_exists(kir_to_html_path)) {
+                fprintf(stderr, "Error: kir_to_html not found at %s\n", kir_to_html_path);
+                fprintf(stderr, "Please run 'make install' in the CLI directory\n");
+                free(cwd2);
+                return 1;
+            }
+
             char codegen_cmd[8192];
-            snprintf(codegen_cmd, sizeof(codegen_cmd),
-                     "cd /mnt/storage/Projects/kryon/codegens/web && "
-                     "gcc -std=c99 -O2 "
-                     "-I../../ir -I../../ir/third_party/cJSON "
-                     "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c lua_bundler.c "
-                     "../../ir/third_party/cJSON/cJSON.c "
-                     "-L../../build -lkryon_ir -lm "
-                     "-o /tmp/kryon_web_gen_%d 2>&1 && "
-                     "LD_LIBRARY_PATH=/mnt/storage/Projects/kryon/build:$LD_LIBRARY_PATH "
-                     "/tmp/kryon_web_gen_%d \"%s\" \"%s\" \"%s\" 2>&1",
-                     getpid(), getpid(), cwd2, abs_kir_path2, abs_output_dir2);
+            // Build command with project name flag
+            if (project_name) {
+                snprintf(codegen_cmd, sizeof(codegen_cmd),
+                         "\"%s\" \"%s\" \"%s\" \"%s\" --project-name \"%s\" 2>&1",
+                         kir_to_html_path, cwd2, abs_kir_path2, abs_output_dir2, project_name);
+            } else {
+                snprintf(codegen_cmd, sizeof(codegen_cmd),
+                         "\"%s\" \"%s\" \"%s\" \"%s\" 2>&1",
+                         kir_to_html_path, cwd2, abs_kir_path2, abs_output_dir2);
+            }
 
             free(cwd2);
 
@@ -997,7 +1085,15 @@ int cmd_run(int argc, char** argv) {
             // Get LUA_PATH for Kryon bindings
             char* kryon_root = paths_get_kryon_root();
             if (!kryon_root) {
-                kryon_root = "/mnt/storage/Projects/kryon";  // fallback
+                // Fallback to user install location
+                char* home = paths_get_home_dir();
+                if (home) {
+                    char* user_share = path_join(home, ".local/share/kryon");
+                    free(home);
+                    kryon_root = user_share;
+                } else {
+                    kryon_root = str_copy("/usr/local/share/kryon");
+                }
             }
 
             // Load kryon.toml to get plugin paths
@@ -1223,7 +1319,15 @@ int cmd_run(int argc, char** argv) {
         // Get LUA_PATH for Kryon bindings
         char* kryon_root = paths_get_kryon_root();
         if (!kryon_root) {
-            kryon_root = "/mnt/storage/Projects/kryon";  // fallback
+            // Fallback to user install location
+            char* home = paths_get_home_dir();
+            if (home) {
+                char* user_share = path_join(home, ".local/share/kryon");
+                free(home);
+                kryon_root = user_share;
+            } else {
+                kryon_root = str_copy("/usr/local/share/kryon");
+            }
         }
 
         // Build Lua command to load KIR with Runtime.loadKIR
@@ -1306,4 +1410,26 @@ int cmd_run(int argc, char** argv) {
 
     if (free_target) free((char*)target_file);
     return success ? 0 : 1;
+}
+
+// ============================================================================
+// Weak stub implementations for desktop functions (used when desktop backend not linked)
+// These will be overridden by the real implementations if desktop backend is linked
+// ============================================================================
+
+__attribute__((weak))
+DesktopRendererConfig desktop_renderer_config_sdl3(int width, int height, const char* title) {
+    fprintf(stderr, "Error: Desktop backend not available. Please build the desktop backend.\n");
+    fprintf(stderr, "Run: cd backends/desktop && make\n");
+    DesktopRendererConfig config = {0};
+    return config;
+}
+
+__attribute__((weak))
+bool desktop_render_ir_component(IRComponent* root, const DesktopRendererConfig* config) {
+    (void)root;
+    (void)config;
+    fprintf(stderr, "Error: Desktop backend not available. Please build the desktop backend.\n");
+    fprintf(stderr, "Run: cd backends/desktop && make\n");
+    return false;
 }
