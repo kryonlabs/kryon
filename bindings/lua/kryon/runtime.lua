@@ -57,7 +57,8 @@ Runtime.nextHandlerId = 1
 --- @param component cdata IRComponent* pointer
 --- @param eventType number Event type constant from ffi.EventType
 --- @param callback function Lua function to call when event fires
-function Runtime.registerHandler(component, eventType, callback)
+--- @param sourceInfo table|nil Optional {code=string, file=string, line=number} for KIR embedding
+function Runtime.registerHandler(component, eventType, callback, sourceInfo)
   if not component or not callback then
     error("registerHandler requires component and callback")
   end
@@ -77,6 +78,20 @@ function Runtime.registerHandler(component, eventType, callback)
   -- Desktop renderer will check for "lua_event_" prefix
   local logicId = "lua_event_" .. handlerId
   local event = C.ir_create_event(eventType, logicId, nil)
+
+  -- Set handler source if provided (for KIR embedding in web output)
+  if sourceInfo and sourceInfo.code then
+    local handlerSource = C.ir_create_handler_source(
+      "lua",
+      sourceInfo.code,
+      sourceInfo.file or "",
+      sourceInfo.line or 0
+    )
+    if handlerSource ~= nil then
+      C.ir_event_set_handler_source(event, handlerSource)
+    end
+  end
+
   C.ir_add_event(component, event)
 
   return handlerId

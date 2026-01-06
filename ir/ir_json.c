@@ -1615,6 +1615,24 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
                 cJSON_AddNumberToObject(eventObj, "bytecode_function_id", event->bytecode_function_id);
             }
 
+            // Handler source (IR v2.2: Lua source preservation)
+            if (event->handler_source) {
+                cJSON* handlerSourceObj = cJSON_CreateObject();
+                if (handlerSourceObj) {
+                    if (event->handler_source->language) {
+                        cJSON_AddStringToObject(handlerSourceObj, "language", event->handler_source->language);
+                    }
+                    if (event->handler_source->code) {
+                        cJSON_AddStringToObject(handlerSourceObj, "code", event->handler_source->code);
+                    }
+                    if (event->handler_source->file) {
+                        cJSON_AddStringToObject(handlerSourceObj, "file", event->handler_source->file);
+                    }
+                    cJSON_AddNumberToObject(handlerSourceObj, "line", event->handler_source->line);
+                    cJSON_AddItemToObject(eventObj, "handler_source", handlerSourceObj);
+                }
+            }
+
             cJSON_AddItemToArray(events, eventObj);
             event = event->next;
         }
@@ -1672,6 +1690,30 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
                 cJSON_AddBoolToObject(src_meta, "is_template", component->source_metadata.is_template);
             }
             cJSON_AddItemToObject(obj, "source_metadata", src_meta);
+        }
+    }
+
+    // Serialize generic custom_data (for elementId, data-* attributes, etc.)
+    // Only serialize if it's a JSON string (starts with '{') and not already handled by component-specific code
+    if (component->custom_data && component->custom_data[0] == '{') {
+        // Check if this component type uses custom_data for something else
+        bool is_special_type = (
+            component->type == IR_COMPONENT_CHECKBOX ||
+            component->type == IR_COMPONENT_IMAGE ||
+            component->type == IR_COMPONENT_DROPDOWN ||
+            component->type == IR_COMPONENT_MODAL ||
+            component->type == IR_COMPONENT_TABLE ||
+            component->type == IR_COMPONENT_TABLE_CELL ||
+            component->type == IR_COMPONENT_TABLE_HEADER_CELL ||
+            component->type == IR_COMPONENT_HEADING ||
+            component->type == IR_COMPONENT_CODE_BLOCK ||
+            component->type == IR_COMPONENT_LIST ||
+            component->type == IR_COMPONENT_LIST_ITEM ||
+            component->type == IR_COMPONENT_LINK ||
+            component->type == IR_COMPONENT_TAB_CONTENT
+        );
+        if (!is_special_type) {
+            cJSON_AddStringToObject(obj, "custom_data", component->custom_data);
         }
     }
 
@@ -4937,6 +4979,30 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                 event->bytecode_function_id = (uint32_t)funcIdItem->valueint;
             }
 
+            // Handler source (IR v2.2: Lua source preservation)
+            cJSON* handlerSourceItem = cJSON_GetObjectItem(eventJson, "handler_source");
+            if (handlerSourceItem && cJSON_IsObject(handlerSourceItem)) {
+                event->handler_source = calloc(1, sizeof(IRHandlerSource));
+                if (event->handler_source) {
+                    cJSON* langItem = cJSON_GetObjectItem(handlerSourceItem, "language");
+                    if (langItem && cJSON_IsString(langItem)) {
+                        event->handler_source->language = strdup(langItem->valuestring);
+                    }
+                    cJSON* codeItem = cJSON_GetObjectItem(handlerSourceItem, "code");
+                    if (codeItem && cJSON_IsString(codeItem)) {
+                        event->handler_source->code = strdup(codeItem->valuestring);
+                    }
+                    cJSON* fileItem = cJSON_GetObjectItem(handlerSourceItem, "file");
+                    if (fileItem && cJSON_IsString(fileItem)) {
+                        event->handler_source->file = strdup(fileItem->valuestring);
+                    }
+                    cJSON* lineItem = cJSON_GetObjectItem(handlerSourceItem, "line");
+                    if (lineItem && cJSON_IsNumber(lineItem)) {
+                        event->handler_source->line = lineItem->valueint;
+                    }
+                }
+            }
+
             // Add to linked list
             if (!component->events) {
                 component->events = event;
@@ -4956,6 +5022,14 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         cJSON* when_true = cJSON_GetObjectItem(json, "visible_when_true");
         if (when_true && cJSON_IsBool(when_true)) {
             component->visible_when_true = cJSON_IsTrue(when_true);
+        }
+    }
+
+    // Generic custom_data (for elementId, data-* attributes, etc.)
+    // Only load if not already set by component-specific deserialization above
+    if (!component->custom_data) {
+        if ((item = cJSON_GetObjectItem(json, "custom_data")) != NULL && cJSON_IsString(item)) {
+            component->custom_data = strdup(item->valuestring);
         }
     }
 

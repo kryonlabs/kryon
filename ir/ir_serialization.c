@@ -1074,6 +1074,17 @@ static bool serialize_event(IRBuffer* buffer, IREvent* event) {
     if (!write_string(buffer, event->handler_data)) return false;
     if (!write_uint32(buffer, event->bytecode_function_id)) return false;  // IR v2.1: bytecode support
 
+    // IR v2.2: handler_source for Lua source preservation
+    if (event->handler_source) {
+        if (!write_uint8(buffer, 1)) return false;  // Has handler_source
+        if (!write_string(buffer, event->handler_source->language)) return false;
+        if (!write_string(buffer, event->handler_source->code)) return false;
+        if (!write_string(buffer, event->handler_source->file)) return false;
+        if (!write_uint32(buffer, (uint32_t)event->handler_source->line)) return false;
+    } else {
+        if (!write_uint8(buffer, 0)) return false;  // No handler_source
+    }
+
     return true;
 }
 
@@ -1095,6 +1106,20 @@ static bool deserialize_event(IRBuffer* buffer, IREvent** event_ptr) {
     if (!read_string(buffer, &event->logic_id)) goto error;
     if (!read_string(buffer, &event->handler_data)) goto error;
     if (!read_uint32(buffer, &event->bytecode_function_id)) goto error;  // IR v2.1: bytecode support
+
+    // IR v2.2: handler_source for Lua source preservation
+    uint8_t has_handler_source;
+    if (!read_uint8(buffer, &has_handler_source)) goto error;
+    if (has_handler_source) {
+        event->handler_source = calloc(1, sizeof(IRHandlerSource));
+        if (!event->handler_source) goto error;
+        if (!read_string(buffer, &event->handler_source->language)) goto error;
+        if (!read_string(buffer, &event->handler_source->code)) goto error;
+        if (!read_string(buffer, &event->handler_source->file)) goto error;
+        uint32_t line;
+        if (!read_uint32(buffer, &line)) goto error;
+        event->handler_source->line = (int)line;
+    }
 
     *event_ptr = event;
     return true;
@@ -1601,43 +1626,96 @@ IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveMan
     extern int cJSON_GetArraySize(const cJSON* array);
     extern cJSON* cJSON_GetArrayItem(const cJSON* array, int index);
 
+    // Ensure global context exists before parsing metadata
+    extern IRContext* g_ir_context;
+    if (!g_ir_context) {
+        extern IRContext* ir_create_context(void);
+        extern void ir_set_context(IRContext* ctx);
+        IRContext* ctx = ir_create_context();
+        ir_set_context(ctx);
+    }
+
     cJSON* root_json = cJSON_Parse(json);
-    if (root_json && out_manifest) {
-        cJSON* manifestObj = cJSON_GetObjectItem(root_json, "reactive_manifest");
-        if (manifestObj && cJSON_IsObject(manifestObj)) {
-            // Create manifest and extract CSS variables from "variables" array
-            IRReactiveManifest* manifest = ir_reactive_manifest_create();
-            if (manifest) {
-                cJSON* variablesArray = cJSON_GetObjectItem(manifestObj, "variables");
-                if (variablesArray && cJSON_IsArray(variablesArray)) {
-                    int var_count = cJSON_GetArraySize(variablesArray);
-                    for (int i = 0; i < var_count; i++) {
-                        cJSON* varObj = cJSON_GetArrayItem(variablesArray, i);
-                        if (!varObj || !cJSON_IsObject(varObj)) continue;
+    if (root_json) {
+        // Parse source metadata
+        cJSON* metadataObj = cJSON_GetObjectItem(root_json, "metadata");
+        if (metadataObj && cJSON_IsObject(metadataObj) && g_ir_context) {
+            IRSourceMetadata* metadata = calloc(1, sizeof(IRSourceMetadata));
+            if (metadata) {
+                cJSON* lang = cJSON_GetObjectItem(metadataObj, "source_language");
+                if (lang && cJSON_IsString(lang)) {
+                    metadata->source_language = strdup(lang->valuestring);
+                }
 
-                        cJSON* nameItem = cJSON_GetObjectItem(varObj, "name");
-                        cJSON* typeItem = cJSON_GetObjectItem(varObj, "type");
-                        cJSON* initialValueItem = cJSON_GetObjectItem(varObj, "initial_value");
+                cJSON* file_obj = cJSON_GetObjectItem(metadataObj, "source_file");
+                if (file_obj && cJSON_IsString(file_obj)) {
+                    metadata->source_file = strdup(file_obj->valuestring);
+                }
 
-                        if (nameItem && cJSON_IsString(nameItem)) {
-                            const char* name = nameItem->valuestring;
-                            const char* type_str = typeItem && cJSON_IsString(typeItem) ?
-                                                   typeItem->valuestring : "string";
-                            const char* initial_value = initialValueItem && cJSON_IsString(initialValueItem) ?
-                                                        initialValueItem->valuestring : "";
+                cJSON* version = cJSON_GetObjectItem(metadataObj, "compiler_version");
+                if (version && cJSON_IsString(version)) {
+                    metadata->compiler_version = strdup(version->valuestring);
+                }
 
-                            // Add variable to manifest
-                            IRReactiveValue value = {0};
-                            value.as_string = strdup(initial_value);
+                cJSON* ts = cJSON_GetObjectItem(metadataObj, "timestamp");
+                if (ts && cJSON_IsString(ts)) {
+                    metadata->timestamp = strdup(ts->valuestring);
+                }
 
-                            uint32_t var_id = ir_reactive_manifest_add_var(manifest, name,
-                                                                           IR_REACTIVE_TYPE_STRING, value);
-                            ir_reactive_manifest_set_var_metadata(manifest, var_id,
-                                                                   type_str, initial_value, "global");
+                // Free old source metadata if exists
+                if (g_ir_context->source_metadata) {
+                    if (g_ir_context->source_metadata->source_language)
+                        free(g_ir_context->source_metadata->source_language);
+                    if (g_ir_context->source_metadata->source_file)
+                        free(g_ir_context->source_metadata->source_file);
+                    if (g_ir_context->source_metadata->compiler_version)
+                        free(g_ir_context->source_metadata->compiler_version);
+                    if (g_ir_context->source_metadata->timestamp)
+                        free(g_ir_context->source_metadata->timestamp);
+                    free(g_ir_context->source_metadata);
+                }
+                g_ir_context->source_metadata = metadata;
+            }
+        }
+
+        // Parse reactive manifest
+        if (out_manifest) {
+            cJSON* reactiveObj = cJSON_GetObjectItem(root_json, "reactive_manifest");
+            if (reactiveObj && cJSON_IsObject(reactiveObj)) {
+                // Create manifest and extract CSS variables from "variables" array
+                IRReactiveManifest* manifest = ir_reactive_manifest_create();
+                if (manifest) {
+                    cJSON* variablesArray = cJSON_GetObjectItem(reactiveObj, "variables");
+                    if (variablesArray && cJSON_IsArray(variablesArray)) {
+                        int var_count = cJSON_GetArraySize(variablesArray);
+                        for (int i = 0; i < var_count; i++) {
+                            cJSON* varObj = cJSON_GetArrayItem(variablesArray, i);
+                            if (!varObj || !cJSON_IsObject(varObj)) continue;
+
+                            cJSON* nameItem = cJSON_GetObjectItem(varObj, "name");
+                            cJSON* typeItem = cJSON_GetObjectItem(varObj, "type");
+                            cJSON* initialValueItem = cJSON_GetObjectItem(varObj, "initial_value");
+
+                            if (nameItem && cJSON_IsString(nameItem)) {
+                                const char* name = nameItem->valuestring;
+                                const char* type_str = typeItem && cJSON_IsString(typeItem) ?
+                                                       typeItem->valuestring : "string";
+                                const char* initial_value = initialValueItem && cJSON_IsString(initialValueItem) ?
+                                                            initialValueItem->valuestring : "";
+
+                                // Add variable to manifest
+                                IRReactiveValue value = {0};
+                                value.as_string = strdup(initial_value);
+
+                                uint32_t var_id = ir_reactive_manifest_add_var(manifest, name,
+                                                                               IR_REACTIVE_TYPE_STRING, value);
+                                ir_reactive_manifest_set_var_metadata(manifest, var_id,
+                                                                       type_str, initial_value, "global");
+                            }
                         }
                     }
+                    *out_manifest = manifest;
                 }
-                *out_manifest = manifest;
             }
         }
         cJSON_Delete(root_json);

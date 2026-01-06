@@ -313,3 +313,133 @@ char* paths_find_plugin(const char* plugin_name, const char* explicit_path, cons
     // (Per user requirements: config file paths ONLY)
     return NULL;
 }
+
+/**
+ * Get build directory (where .so files are located)
+ * Checks: KRYON_ROOT/build, ~/.local/lib, /usr/local/lib
+ */
+char* paths_get_build_path(void) {
+    char* kryon_root = paths_get_kryon_root();
+    if (kryon_root) {
+        char* build_path = path_join(kryon_root, "build");
+        free(kryon_root);
+        if (file_is_directory(build_path)) {
+            return build_path;
+        }
+        free(build_path);
+    }
+
+    // Try user lib directory
+    char* home = paths_get_home_dir();
+    if (home) {
+        char* user_lib = path_join(home, ".local/lib");
+        free(home);
+        if (file_is_directory(user_lib)) {
+            return user_lib;
+        }
+        free(user_lib);
+    }
+
+    // Fallback to system lib
+    return str_copy("/usr/local/lib");
+}
+
+/**
+ * Get bindings directory (where C/Lua bindings are located)
+ * Checks: KRYON_ROOT/bindings, ~/.local/share/kryon/bindings, /usr/local/share/kryon/bindings
+ */
+char* paths_get_bindings_path(void) {
+    char* kryon_root = paths_get_kryon_root();
+    if (kryon_root) {
+        char* bindings_path = path_join(kryon_root, "bindings");
+        free(kryon_root);
+        if (file_is_directory(bindings_path)) {
+            return bindings_path;
+        }
+        free(bindings_path);
+    }
+
+    // Try user share directory
+    char* home = paths_get_home_dir();
+    if (home) {
+        char* user_share = path_join(home, ".local/share/kryon/bindings");
+        free(home);
+        if (file_is_directory(user_share)) {
+            return user_share;
+        }
+        free(user_share);
+    }
+
+    // Fallback to system share
+    return str_copy("/usr/local/share/kryon/bindings");
+}
+
+/**
+ * Get scripts directory (where dev_server.ts is located)
+ * Checks: KRYON_ROOT/cli/scripts, ~/.local/share/kryon/scripts, /usr/local/share/kryon/scripts
+ */
+char* paths_get_scripts_path(void) {
+    char* kryon_root = paths_get_kryon_root();
+    if (kryon_root) {
+        char* scripts_path = path_join(kryon_root, "cli/scripts");
+        if (file_is_directory(scripts_path)) {
+            return scripts_path;
+        }
+        free(scripts_path);
+
+        // Also try kryon_root/scripts (for installed structure)
+        scripts_path = path_join(kryon_root, "scripts");
+        if (file_is_directory(scripts_path)) {
+            free(kryon_root);
+            return scripts_path;
+        }
+        free(scripts_path);
+        free(kryon_root);
+    }
+
+    // Try user share directory
+    char* home = paths_get_home_dir();
+    if (home) {
+        char* user_share = path_join(home, ".local/share/kryon/scripts");
+        free(home);
+        if (file_is_directory(user_share)) {
+            return user_share;
+        }
+        free(user_share);
+    }
+
+    // Fallback to system share
+    return str_copy("/usr/local/share/kryon/scripts");
+}
+
+/**
+ * Get TSX parser path (tsx_to_kir.ts)
+ * Checks: KRYON_ROOT, ~/.local/share/kryon/tsx_parser, /usr/local/share/kryon/tsx_parser
+ */
+char* paths_get_tsx_parser_path(void) {
+    // First try KRYON_ROOT
+    char* kryon_root = paths_get_kryon_root();
+    if (kryon_root) {
+        char* tsx_path = path_join(kryon_root, "cli/tsx_parser/tsx_to_kir.ts");
+        if (file_exists(tsx_path)) {
+            free(kryon_root);
+            return tsx_path;
+        }
+        free(tsx_path);
+        free(kryon_root);
+    }
+
+    // Try user share directory
+    char* home = paths_get_home_dir();
+    if (home) {
+        char* user_tsx = path_join(home, ".local/share/kryon/tsx_parser/tsx_to_kir.ts");
+        free(home);
+        if (file_exists(user_tsx)) {
+            return user_tsx;
+        }
+        free(user_tsx);
+    }
+
+    // Fallback to system share
+    return str_copy("/usr/local/share/kryon/tsx_parser/tsx_to_kir.ts");
+}

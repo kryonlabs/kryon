@@ -33,9 +33,18 @@ int start_dev_server(const char* document_root, int port, bool auto_open) {
     }
 
     // Run Bun dev server (blocks until Ctrl+C)
-    snprintf(cmd, sizeof(cmd),
-             "bun run /mnt/storage/Projects/kryon/cli/scripts/dev_server.ts %d \"%s\"",
-             port, document_root);
+    // Use installed dev server script
+    char* home = getenv("HOME");
+    if (home) {
+        snprintf(cmd, sizeof(cmd),
+                 "bun run %s/.local/share/kryon/scripts/dev_server.ts %d \"%s\"",
+                 home, port, document_root);
+    } else {
+        // Fallback to system location
+        snprintf(cmd, sizeof(cmd),
+                 "bun run /usr/local/share/kryon/scripts/dev_server.ts %d \"%s\"",
+                 port, document_root);
+    }
 
     return system(cmd);
 }

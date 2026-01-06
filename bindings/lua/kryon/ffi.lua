@@ -329,6 +329,17 @@ ffi.cdef[[
   void ir_remove_event(IRComponent* component, IREvent* event);
   IREvent* ir_find_event(IRComponent* component, IREventType type);
 
+  // Handler Source (for Lua source preservation in KIR)
+  typedef struct IRHandlerSource {
+    char* language;
+    char* code;
+    char* file;
+    int line;
+  } IRHandlerSource;
+  IRHandlerSource* ir_create_handler_source(const char* language, const char* code, const char* file, int line);
+  void ir_destroy_handler_source(IRHandlerSource* source);
+  void ir_event_set_handler_source(IREvent* event, IRHandlerSource* source);
+
   // ============================================================================
   // Layout Computation (ir_layout.h)
   // ============================================================================

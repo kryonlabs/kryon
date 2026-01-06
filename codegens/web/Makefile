@@ -14,8 +14,8 @@ INCLUDE_DIR = .
 INCLUDE_IR_DIR = ../../ir
 
 # Source files
-WEB_SOURCES = ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c
-WEB_HEADERS = ir_web_renderer.h html_generator.h css_generator.h wasm_bridge.h style_analyzer.h
+WEB_SOURCES = ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c lua_bundler.c
+WEB_HEADERS = ir_web_renderer.h html_generator.h css_generator.h wasm_bridge.h style_analyzer.h lua_bundler.h
 
 # Output files
 WEB_STATIC_LIB = $(BUILD_DIR)/libkryon_web.a
@@ -52,13 +52,16 @@ wasm_bridge.o: wasm_bridge.c wasm_bridge.h
 style_analyzer.o: style_analyzer.c style_analyzer.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c style_analyzer.c -o style_analyzer.o
 
+lua_bundler.o: lua_bundler.c lua_bundler.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c lua_bundler.c -o lua_bundler.o
+
 # Create static library
-$(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o
-	$(AR) $(ARFLAGS) $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o
+$(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o lua_bundler.o
+	$(AR) $(ARFLAGS) $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o lua_bundler.o
 
 # Create shared library (dynamically link libkryon_ir to avoid symbol conflicts)
-$(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o -L$(BUILD_DIR) -lkryon_ir
+$(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o lua_bundler.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o lua_bundler.o -L$(BUILD_DIR) -lkryon_ir
 
 # Build kir_to_html CLI tool
 $(KIR_TO_HTML): $(WEB_STATIC_LIB) kir_to_html.c
@@ -76,6 +79,17 @@ clean:
 # Install headers
 install-headers: $(BUILD_DIR)
 	cp $(WEB_HEADERS) $(BUILD_DIR)/
+
+# Install vendor files (Fengari, etc.) to user data directory
+INSTALL_DIR ?= $(HOME)/.local/share/kryon
+install-vendor:
+	mkdir -p $(INSTALL_DIR)/vendor
+	cp vendor/fengari-web.min.js $(INSTALL_DIR)/vendor/
+	@echo "Installed vendor files to $(INSTALL_DIR)/vendor/"
+
+# Full install
+install: $(WEB_STATIC_LIB) $(WEB_SHARED_LIB) $(KIR_TO_HTML) install-headers install-vendor
+	@echo "Web codegen installed"
 
 # Debug build
 debug: CFLAGS += -g -DDEBUG

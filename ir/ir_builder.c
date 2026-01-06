@@ -26,6 +26,7 @@ extern void nimOnComponentAdded(IRComponent* component) __attribute__((weak));
 
 // Forward declarations
 void ir_tabgroup_apply_visuals(TabGroupState* state);
+void ir_destroy_handler_source(IRHandlerSource* source);
 
 // Helper function to mark component dirty when style changes
 static void mark_style_dirty(IRComponent* component) {
@@ -1458,6 +1459,7 @@ void ir_destroy_event(IREvent* event) {
     if (event->event_name) free(event->event_name);
     if (event->logic_id) free(event->logic_id);
     if (event->handler_data) free(event->handler_data);
+    if (event->handler_source) ir_destroy_handler_source(event->handler_source);
 
     free(event);
 }
@@ -1508,6 +1510,36 @@ void ir_event_set_bytecode_function_id(IREvent* event, uint32_t function_id) {
 uint32_t ir_event_get_bytecode_function_id(IREvent* event) {
     if (!event) return 0;
     return event->bytecode_function_id;
+}
+
+// Handler Source Management (for Lua source preservation in KIR)
+IRHandlerSource* ir_create_handler_source(const char* language, const char* code, const char* file, int line) {
+    IRHandlerSource* source = calloc(1, sizeof(IRHandlerSource));
+    if (!source) return NULL;
+
+    source->language = language ? strdup(language) : NULL;
+    source->code = code ? strdup(code) : NULL;
+    source->file = file ? strdup(file) : NULL;
+    source->line = line;
+
+    return source;
+}
+
+void ir_destroy_handler_source(IRHandlerSource* source) {
+    if (!source) return;
+    if (source->language) free(source->language);
+    if (source->code) free(source->code);
+    if (source->file) free(source->file);
+    free(source);
+}
+
+void ir_event_set_handler_source(IREvent* event, IRHandlerSource* source) {
+    if (!event) return;
+    // Free existing handler source if any
+    if (event->handler_source) {
+        ir_destroy_handler_source(event->handler_source);
+    }
+    event->handler_source = source;
 }
 
 // Logic Management

@@ -59,6 +59,131 @@ end
 -- Utility Functions
 -- ============================================================================
 
+--- Extract function source code using debug.getinfo + file read
+--- This reads the actual function text from the source file
+--- @param fn function The function to extract source from
+--- @return table|nil {code=string, file=string, line=number} or nil
+local function extractFunctionSource(fn)
+  if type(fn) ~= "function" then return nil end
+
+  local info = debug.getinfo(fn, "S")
+  if not info or not info.source or info.source:sub(1,1) ~= "@" then
+    return nil
+  end
+
+  local filepath = info.source:sub(2)  -- Remove @ prefix
+  local file = io.open(filepath, "r")
+  if not file then return nil end
+
+  local lines = {}
+  local lineNum = 0
+  for line in file:lines() do
+    lineNum = lineNum + 1
+    if lineNum >= info.linedefined and lineNum <= info.lastlinedefined then
+      table.insert(lines, line)
+    end
+  end
+  file:close()
+
+  if #lines == 0 then return nil end
+
+  -- Join lines and extract just the function part
+  local fullCode = table.concat(lines, "\n")
+
+  -- Find the start of "function" keyword (handles "onClick = function" -> "function")
+  local funcStart = fullCode:find("function")
+  if funcStart then
+    fullCode = fullCode:sub(funcStart)
+  end
+
+  -- Convert named functions to anonymous: "function name(" -> "function("
+  -- This is needed because we assign handlers as expressions
+  fullCode = fullCode:gsub("^function%s+[%w_]+%s*%(", "function(")
+
+  -- Remove trailing comma if present (from table literal syntax)
+  fullCode = fullCode:gsub(",%s*$", "")
+
+  -- Get just the filename for the file field
+  local filename = filepath:gsub(".*/", "")
+
+  -- Check if handler uses closure variables that need special handling
+  -- Patterns like "toggleHabitCompletion(habitIndex, day.date)" indicate closure usage
+  local usesHabitIndex = fullCode:match("habitIndex") or fullCode:match("%w+Index")
+  local usesDayDate = fullCode:match("day%.date")
+  local usesClosure = usesHabitIndex or usesDayDate
+
+  if usesClosure then
+    -- Add a wrapper that reads from component data attributes instead
+    -- This replaces the closure variables with data attribute lookups
+    -- Extract function body by stripping "function(...) ... end" wrapper
+
+    -- First, remove "function" prefix
+    local funcStart = fullCode:find("function")
+    if funcStart then
+      fullCode = fullCode:sub(funcStart + 8)  -- Skip "function"
+    end
+
+    -- Skip the opening paren and any params until we find the matching closing paren
+    if fullCode:sub(1, 1) == "(" then
+      local depth = 1
+      local paramEnd = 1
+      for i = 2, #fullCode do
+        local c = fullCode:sub(i, i)
+        if c == "(" then depth = depth + 1
+        elseif c == ")" then depth = depth - 1 end
+        if depth == 0 then
+          paramEnd = i
+          break
+        end
+      end
+      fullCode = fullCode:sub(paramEnd + 1)
+    end
+
+    -- Now remove the trailing "end" statement
+    -- It might be on its own line, or at the end of a line with content
+    -- Pattern: "end" at end, possibly preceded by content, followed by optional whitespace/newline
+
+    -- Trim trailing whitespace and newlines first
+    fullCode = fullCode:gsub("%s*$", "")
+
+    -- Now check if last 3 chars are "end"
+    if fullCode:sub(-3) == "end" then
+      fullCode = fullCode:sub(1, -4)
+    end
+
+    -- Also handle case where there's content before "end" on same line
+    local endPos = fullCode:find("end%s*$")
+    if endPos and endPos == #fullCode - 2 then
+      fullCode = fullCode:sub(1, endPos - 1)
+    end
+
+    -- Trim trailing whitespace again
+    fullCode = fullCode:gsub("%s*$", "")
+
+    -- Substitute day.date with dateStr for handlers that use it
+    fullCode = fullCode:gsub("day%.date", "dateStr")
+
+    -- Add trailing newline to ensure proper separation from wrapper's 'end'
+    fullCode = fullCode .. "\n"
+
+    local wrapped = [[function()
+      local js = require("js")
+      local element = js.global.__kryon_get_event_element()
+      local data = element and (element.data or (element.getData and element:getData()))
+      local habitIndex = tonumber(data and data.habit)
+      local dateStr = data and data.date
+    ]] .. fullCode .. [[
+    end]]
+    fullCode = wrapped
+  end
+
+  return {
+    code = fullCode,
+    file = filename,
+    line = info.linedefined
+  }
+end
+
 --- Parse dimension string like "100px", "50%", "auto", "2fr"
 --- @param value any Dimension value (number, string, or reactive)
 --- @return number dimensionType
@@ -293,15 +418,19 @@ local function applyProperties(component, props)
 
   -- IMPORTANT: Process event handlers in FIXED ORDER first to ensure deterministic handler IDs
   -- This prevents handler ID mismatches between compilation and Runtime.loadKIR re-execution
+  -- We extract function source for embedding in KIR (used by web codegen)
   local event_handler_keys = {"onClick", "onTextChange", "onDraw", "onUpdate", "onHover", "onFocus"}
   for _, key in ipairs(event_handler_keys) do
     local value = props[key]
     if value ~= nil and type(value) == "function" then
+      -- Extract function source for KIR embedding
+      local sourceInfo = extractFunctionSource(value)
+
       if key == "onClick" then
-        runtime.registerHandler(component, C.IR_EVENT_CLICK, value)
+        runtime.registerHandler(component, C.IR_EVENT_CLICK, value, sourceInfo)
 
       elseif key == "onTextChange" then
-        runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value)
+        runtime.registerHandler(component, C.IR_EVENT_TEXT_CHANGE, value, sourceInfo)
 
       elseif key == "onDraw" then
         -- Get canvas_draw event type from plugin registry
@@ -309,7 +438,7 @@ local function applyProperties(component, props)
         if event_type_id == 0 then
           error("canvas_draw event type not registered - is canvas plugin loaded?")
         end
-        runtime.registerHandler(component, event_type_id, value)
+        runtime.registerHandler(component, event_type_id, value, sourceInfo)
 
       elseif key == "onUpdate" then
         -- Get canvas_update event type from plugin registry
@@ -317,13 +446,13 @@ local function applyProperties(component, props)
         if event_type_id == 0 then
           error("canvas_update event type not registered - is canvas plugin loaded?")
         end
-        runtime.registerHandler(component, event_type_id, value)
+        runtime.registerHandler(component, event_type_id, value, sourceInfo)
 
       elseif key == "onHover" then
-        runtime.registerHandler(component, C.IR_EVENT_HOVER, value)
+        runtime.registerHandler(component, C.IR_EVENT_HOVER, value, sourceInfo)
 
       elseif key == "onFocus" then
-        runtime.registerHandler(component, C.IR_EVENT_FOCUS, value)
+        runtime.registerHandler(component, C.IR_EVENT_FOCUS, value, sourceInfo)
       end
     end
   end
@@ -483,6 +612,60 @@ local function applyProperties(component, props)
     end
 
     ::continue::
+  end
+
+  -- ========== Custom Element ID and Data Attributes ==========
+  -- These are stored as JSON in custom_data for the HTML generator to parse
+  -- Format: {"elementId": "my-id", "data": {"habit": "1"}}
+  -- Note: Action names are no longer stored here - handler source is in event->handler_source
+  local hasCustomAttrs = props.elementId or props.data
+  if hasCustomAttrs then
+    -- Build JSON object
+    local json = require("kryon.ffi").cjson
+    if json then
+      local obj = {}
+      if props.elementId then
+        obj.elementId = tostring(props.elementId)
+      end
+      if props.data and type(props.data) == "table" then
+        obj.data = {}
+        for k, v in pairs(props.data) do
+          obj.data[tostring(k)] = tostring(v)
+        end
+      end
+      -- Encode to JSON string
+      local encoded = json.encode(obj)
+      if encoded then
+        C.ir_set_custom_data(component, encoded)
+      end
+    else
+      -- Fallback: Simple string concatenation if cJSON not available
+      local parts = {}
+      local needsComma = false
+      table.insert(parts, "{")
+      if props.elementId then
+        table.insert(parts, string.format("\"elementId\":\"%s\"", tostring(props.elementId):gsub('"', '\\"')))
+        needsComma = true
+      end
+      if props.data and type(props.data) == "table" then
+        if needsComma then
+          table.insert(parts, ",")
+        end
+        table.insert(parts, "\"data\":{")
+        local first = true
+        for k, v in pairs(props.data) do
+          if not first then table.insert(parts, ",") end
+          table.insert(parts, string.format("\"%s\":\"%s\"",
+            tostring(k):gsub('"', '\\"'),
+            tostring(v):gsub('"', '\\"')))
+          first = false
+        end
+        table.insert(parts, "}")
+      end
+      table.insert(parts, "}")
+      local jsonStr = table.concat(parts)
+      C.ir_set_custom_data(component, jsonStr)
+    end
   end
 
   -- Add children from the children property

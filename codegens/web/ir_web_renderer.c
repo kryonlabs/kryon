@@ -30,24 +30,136 @@ static const char* javascript_runtime_template =
 "// Kryon Web Runtime\n"
 "// Auto-generated JavaScript for IR component interaction\n\n"
 "let kryon_components = new Map();\n"
-"let kryon_handlers = new Map();\n\n"
-"function kryon_handle_click(component_id, handler_id) {\n"
-"    console.log('Click on component', component_id, 'handler:', handler_id);\n"
-"    // TODO: Call WASM handler when implemented\n"
+"let kryon_modals = new Map();\n"
+"let kryon_lua_ready = false;\n"
+"let kryon_call_queue = [];\n"
+"let kryon_current_element = null;\n\n"  // Track event target for Lua handlers
+"// Lua Handler Bridge - calls embedded Lua handlers by component ID\n"
+"// The Lua code (embedded in <script type=\"text/lua\">) registers kryonCallHandler\n"
+"function kryonCallHandler(componentId, event) {\n"
+"    // Capture the event target for Lua handlers to access\n"
+"    if (event && event.target) {\n"
+"        kryon_current_element = event.target;\n"
+"    }\n"
+"    console.log('[Kryon] Call handler for component:', componentId, 'ready:', kryon_lua_ready);\n"
+"    if (kryon_lua_ready && window.kryonLuaCallHandler) {\n"
+"        window.kryonLuaCallHandler(componentId);\n"
+"    } else {\n"
+"        // Queue calls until Lua is ready\n"
+"        kryon_call_queue.push(componentId);\n"
+"        console.log('[Kryon] Lua not ready, queued handler call:', componentId);\n"
+"    }\n"
 "}\n\n"
-"function kryon_handle_hover(component_id, handler_id) {\n"
-"    console.log('Hover on component', component_id, 'handler:', handler_id);\n"
-"    // TODO: Call WASM handler when implemented\n"
+"// Called by Lua handlers to get the current event element\n"
+"function __kryon_get_event_element() {\n"
+"    return kryon_current_element || { data: {} };\n"
 "}\n\n"
-"function kryon_handle_leave(component_id) {\n"
-"    console.log('Leave component', component_id);\n"
+"// Called by Lua when initialization is complete\n"
+"function kryon_lua_init_complete() {\n"
+"    kryon_lua_ready = true;\n"
+"    console.log('[Kryon] Lua runtime ready');\n"
+"    // Process queued handler calls\n"
+"    while (kryon_call_queue.length > 0) {\n"
+"        const componentId = kryon_call_queue.shift();\n"
+"        kryonCallHandler(componentId);\n"
+"    }\n"
 "}\n\n"
-"function kryon_handle_focus(component_id) {\n"
-"    console.log('Focus component', component_id);\n"
+"// Modal Management Functions\n"
+"function kryon_open_modal(modalId) {\n"
+"    const dialog = kryon_modals.get(modalId) || document.getElementById(modalId);\n"
+"    if (dialog && !dialog.open) {\n"
+"        dialog.showModal();\n"
+"        console.log('[Kryon] Opened modal:', modalId);\n"
+"    }\n"
 "}\n\n"
-"function kryon_handle_blur(component_id) {\n"
-"    console.log('Blur component', component_id);\n"
+"function kryon_close_modal(modalId) {\n"
+"    const dialog = kryon_modals.get(modalId) || document.getElementById(modalId);\n"
+"    if (dialog && dialog.open) {\n"
+"        dialog.close();\n"
+"        console.log('[Kryon] Closed modal:', modalId);\n"
+"    }\n"
 "}\n\n"
+"function kryon_init_modals() {\n"
+"    document.querySelectorAll('dialog.kryon-modal').forEach(dialog => {\n"
+"        const id = dialog.id;\n"
+"        kryon_modals.set(id, dialog);\n"
+"        \n"
+"        // Handle backdrop clicks (clicking outside modal content closes it)\n"
+"        dialog.addEventListener('click', function(e) {\n"
+"            if (e.target === dialog) {\n"
+"                dialog.close();\n"
+"                console.log('[Kryon] Modal closed via backdrop click:', id);\n"
+"            }\n"
+"        });\n"
+"        \n"
+"        // Auto-open modals that have data-modal-open='true'\n"
+"        if (dialog.dataset.modalOpen === 'true') {\n"
+"            dialog.showModal();\n"
+"            console.log('[Kryon] Auto-opened modal:', id);\n"
+"        }\n"
+"    });\n"
+"    \n"
+"    // Auto-wire modal triggers (elements with data-opens-modal attribute)\n"
+"    document.querySelectorAll('[data-opens-modal]').forEach(trigger => {\n"
+"        const modalId = trigger.dataset.opensModal;\n"
+"        trigger.addEventListener('click', function() {\n"
+"            kryon_open_modal(modalId);\n"
+"        });\n"
+"    });\n"
+"    \n"
+"    console.log('[Kryon] Initialized', kryon_modals.size, 'modals');\n"
+"}\n\n"
+"// Tab Switching Functions\n"
+"function kryonSelectTab(tabGroup, index) {\n"
+"    if (!tabGroup) return;\n"
+"    \n"
+"    // Update selected index\n"
+"    tabGroup.dataset.selected = index;\n"
+"    \n"
+"    // Update tab buttons\n"
+"    const tabs = tabGroup.querySelectorAll('[role=\"tab\"]');\n"
+"    tabs.forEach((tab, i) => {\n"
+"        tab.setAttribute('aria-selected', i === index ? 'true' : 'false');\n"
+"    });\n"
+"    \n"
+"    // Update panels\n"
+"    const panels = tabGroup.querySelectorAll('[role=\"tabpanel\"]');\n"
+"    panels.forEach((panel, i) => {\n"
+"        if (i === index) {\n"
+"            panel.removeAttribute('hidden');\n"
+"        } else {\n"
+"            panel.setAttribute('hidden', '');\n"
+"        }\n"
+"    });\n"
+"    \n"
+"    // Call Lua handler if tab has a component ID\n"
+"    const selectedTab = tabs[index];\n"
+"    if (selectedTab && selectedTab.dataset.componentId) {\n"
+"        kryonCallHandler(parseInt(selectedTab.dataset.componentId));\n"
+"    }\n"
+"    \n"
+"    console.log('[Kryon] Tab selected:', index);\n"
+"}\n\n"
+"// Keyboard navigation for tabs\n"
+"document.addEventListener('keydown', function(e) {\n"
+"    if (e.target.matches('[role=\"tab\"]')) {\n"
+"        const tablist = e.target.closest('[role=\"tablist\"]');\n"
+"        if (!tablist) return;\n"
+"        const tabs = Array.from(tablist.querySelectorAll('[role=\"tab\"]'));\n"
+"        const index = tabs.indexOf(e.target);\n"
+"        let newIndex = index;\n"
+"        \n"
+"        if (e.key === 'ArrowRight') newIndex = (index + 1) % tabs.length;\n"
+"        else if (e.key === 'ArrowLeft') newIndex = (index - 1 + tabs.length) % tabs.length;\n"
+"        else if (e.key === 'Home') newIndex = 0;\n"
+"        else if (e.key === 'End') newIndex = tabs.length - 1;\n"
+"        else return;\n"
+"        \n"
+"        e.preventDefault();\n"
+"        tabs[newIndex].click();\n"
+"        tabs[newIndex].focus();\n"
+"    }\n"
+"});\n\n"
 "// Initialize when DOM is ready\n"
 "document.addEventListener('DOMContentLoaded', function() {\n"
 "    console.log('Kryon Web Runtime initialized');\n"
@@ -64,6 +176,9 @@ static const char* javascript_runtime_template =
 "    });\n"
 "    \n"
 "    console.log('Found', kryon_components.size, 'Kryon components');\n"
+"    \n"
+"    // Initialize modals\n"
+"    kryon_init_modals();\n"
 "});\n\n";
 
 WebIRRenderer* web_ir_renderer_create() {
@@ -146,11 +261,6 @@ void web_ir_renderer_set_include_javascript_runtime(WebIRRenderer* renderer, boo
 void web_ir_renderer_set_include_wasm_modules(WebIRRenderer* renderer, bool include) {
     if (!renderer) return;
     renderer->include_wasm_modules = include;
-}
-
-void web_ir_renderer_set_inline_css(WebIRRenderer* renderer, bool inline_css) {
-    if (!renderer || !renderer->html_generator) return;
-    html_generator_set_inline_css(renderer->html_generator, inline_css);
 }
 
 static bool generate_javascript_runtime(WebIRRenderer* renderer) {
@@ -323,6 +433,64 @@ bool web_ir_renderer_render(WebIRRenderer* renderer, IRComponent* root) {
         return false;
     }
     printf("✅ Generated JavaScript: %s/kryon.js\n", renderer->output_directory);
+
+    // Copy Fengari Lua VM (local file, no CDN dependency)
+    // Try: KRYON_ROOT env, ~/.local/share/kryon, /usr/share/kryon, relative to cwd
+    {
+        char fengari_src[1024] = {0};
+        char fengari_dst[1024];
+        const char* kryon_root = getenv("KRYON_ROOT");
+        const char* home = getenv("HOME");
+
+        // Try multiple locations
+        const char* search_paths[] = {
+            kryon_root ? kryon_root : "",
+            home ? home : "",
+            "/usr/share/kryon",
+            "/usr/local/share/kryon",
+            "."
+        };
+        const char* sub_paths[] = {
+            "/codegens/web/vendor/fengari-web.min.js",
+            "/.local/share/kryon/vendor/fengari-web.min.js",
+            "/vendor/fengari-web.min.js",
+            "/vendor/fengari-web.min.js",
+            "/vendor/fengari-web.min.js"
+        };
+
+        for (int i = 0; i < 5; i++) {
+            if (search_paths[i][0] == '\0') continue;
+            snprintf(fengari_src, sizeof(fengari_src), "%s%s", search_paths[i], sub_paths[i]);
+            FILE* test = fopen(fengari_src, "r");
+            if (test) {
+                fclose(test);
+                break;
+            }
+            fengari_src[0] = '\0';
+        }
+
+        if (fengari_src[0] == '\0') {
+            printf("⚠️  Warning: Fengari runtime not found. Set KRYON_ROOT or install to ~/.local/share/kryon\n");
+        } else {
+            snprintf(fengari_dst, sizeof(fengari_dst), "%s/fengari-web.min.js", renderer->output_directory);
+            FILE* src_file = fopen(fengari_src, "rb");
+            FILE* dst_file = fopen(fengari_dst, "wb");
+            if (src_file && dst_file) {
+                char buffer[8192];
+                size_t bytes;
+                while ((bytes = fread(buffer, 1, sizeof(buffer), src_file)) > 0) {
+                    fwrite(buffer, 1, bytes, dst_file);
+                }
+                fclose(src_file);
+                fclose(dst_file);
+                printf("✅ Copied Fengari Lua VM: %s\n", fengari_dst);
+            } else {
+                if (src_file) fclose(src_file);
+                if (dst_file) fclose(dst_file);
+                printf("⚠️  Warning: Could not copy Fengari runtime from %s\n", fengari_src);
+            }
+        }
+    }
 
     // Collect and process WASM modules
     if (!collect_wasm_modules(renderer, root)) {

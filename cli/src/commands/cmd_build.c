@@ -7,10 +7,12 @@
 #include "../template/docs_template.h"
 #include "../utils/file_discovery.h"
 #include "../../../ir/ir_serialization.h"
+#include "../../../ir/parsers/lua/lua_parser.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 /**
  * Detect frontend type by file extension
@@ -86,10 +88,19 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
     }
     else if (strcmp(frontend, "tsx") == 0 || strcmp(frontend, "jsx") == 0) {
         // Use Bun to parse TSX/JSX
+        char* tsx_parser = paths_get_tsx_parser_path();
+        if (!tsx_parser || !file_exists(tsx_parser)) {
+            fprintf(stderr, "Error: TSX parser not found\n");
+            fprintf(stderr, "Please run 'make install' in the CLI directory\n");
+            if (tsx_parser) free(tsx_parser);
+            return 1;
+        }
+
         char cmd[4096];
         snprintf(cmd, sizeof(cmd),
-                 "bun run /mnt/storage/Projects/kryon/cli_nim_backup/tsx_to_kir.ts \"%s\" > \"%s\"",
-                 source_file, output_kir);
+                 "bun run \"%s\" \"%s\" > \"%s\"",
+                 tsx_parser, source_file, output_kir);
+        free(tsx_parser);
 
         char* output = NULL;
         int result = process_run(cmd, &output);
@@ -151,19 +162,35 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         return result;
     }
     else if (strcmp(frontend, "lua") == 0) {
-        // Run Lua with Kryon bindings
-        char cmd[4096];
-        snprintf(cmd, sizeof(cmd),
-                 "luajit -e 'KRYON_SERIALIZE_IR=true' \"%s\"",
-                 source_file);
+        // Use Lua parser (execute-and-serialize approach)
+        char* json = ir_lua_file_to_kir(source_file);
 
-        char* output = NULL;
-        int result = process_run(cmd, &output);
-        if (output) {
-            printf("%s", output);
-            free(output);
+        if (!json) {
+            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
+            return 1;
         }
-        return result;
+
+        // Strip any debug output before the JSON (find first '{')
+        char* json_start = strchr(json, '{');
+        if (!json_start) {
+            fprintf(stderr, "Error: No valid JSON found in parser output\n");
+            free(json);
+            return 1;
+        }
+
+        // Write to output file
+        FILE* out = fopen(output_kir, "w");
+        if (!out) {
+            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+            free(json);
+            return 1;
+        }
+
+        fprintf(out, "%s\n", json_start);
+        fclose(out);
+
+        free(json);
+        return 0;
     }
     else {
         fprintf(stderr, "Error: Unknown frontend type: %s\n", frontend);
@@ -174,7 +201,7 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
 /**
  * Invoke codegen to generate output from KIR
  */
-static int invoke_codegen(const char* kir_file, const char* target, const char* output_dir) {
+static int invoke_codegen(const char* kir_file, const char* target, const char* output_dir, const char* project_name) {
     if (strcmp(target, "web") == 0) {
         // Generate HTML from KIR using web codegen (without starting dev server)
         char* cwd = dir_get_current();
@@ -194,19 +221,37 @@ static int invoke_codegen(const char* kir_file, const char* target, const char* 
             snprintf(abs_output_dir, sizeof(abs_output_dir), "%s/%s", cwd, output_dir);
         }
 
-        // Compile and run web codegen
+        // Run web codegen using installed binary
+        char* home = getenv("HOME");
+        if (!home) {
+            fprintf(stderr, "Error: HOME environment variable not set\n");
+            free(cwd);
+            return 1;
+        }
+
+        char kir_to_html_path[PATH_MAX];
+        snprintf(kir_to_html_path, sizeof(kir_to_html_path),
+                 "%s/.local/share/kryon/bin/kir_to_html", home);
+
+        // Check if kir_to_html exists
+        if (!file_exists(kir_to_html_path)) {
+            fprintf(stderr, "Error: kir_to_html not found at %s\n", kir_to_html_path);
+            fprintf(stderr, "Please run 'make install' in the CLI directory\n");
+            free(cwd);
+            return 1;
+        }
+
         char codegen_cmd[8192];
-        snprintf(codegen_cmd, sizeof(codegen_cmd),
-                 "cd /mnt/storage/Projects/kryon/codegens/web && "
-                 "gcc -std=c99 -O2 "
-                 "-I../../ir -I../../ir/third_party/cJSON "
-                 "kir_to_html.c ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c "
-                 "../../ir/third_party/cJSON/cJSON.c "
-                 "-L../../build -lkryon_ir -lm "
-                 "-o /tmp/kryon_web_gen_%d 2>&1 && "
-                 "LD_LIBRARY_PATH=/mnt/storage/Projects/kryon/build:$LD_LIBRARY_PATH "
-                 "/tmp/kryon_web_gen_%d \"%s\" \"%s\" \"%s\" 2>&1",
-                 getpid(), getpid(), cwd, abs_kir_path, abs_output_dir);
+        // Build command with project name flag
+        if (project_name) {
+            snprintf(codegen_cmd, sizeof(codegen_cmd),
+                     "\"%s\" \"%s\" \"%s\" \"%s\" --project-name \"%s\" 2>&1",
+                     kir_to_html_path, cwd, abs_kir_path, abs_output_dir, project_name);
+        } else {
+            snprintf(codegen_cmd, sizeof(codegen_cmd),
+                     "\"%s\" \"%s\" \"%s\" \"%s\" 2>&1",
+                     kir_to_html_path, cwd, abs_kir_path, abs_output_dir);
+        }
 
         free(cwd);
 
@@ -281,7 +326,7 @@ static int build_single_file(const char* source_file, KryonConfig* config) {
     }
 
     // Invoke codegen
-    result = invoke_codegen(kir_file, config->build_target, output_dir);
+    result = invoke_codegen(kir_file, config->build_target, output_dir, config->project_name);
     if (result != 0) {
         fprintf(stderr, "Error: Code generation failed\n");
         return result;
@@ -376,7 +421,7 @@ static int build_discovered_file(DiscoveredFile* file, KryonConfig* config, cons
                         ir_destroy_component(content_kir);
                         ir_destroy_component(combined_kir);
 
-                        result = invoke_codegen(combined_kir_file, config->build_target, output_dir);
+                        result = invoke_codegen(combined_kir_file, config->build_target, output_dir, config->project_name);
                         docs_template_free(template_ctx);
                         return result;
                     }
@@ -389,7 +434,7 @@ static int build_discovered_file(DiscoveredFile* file, KryonConfig* config, cons
     }
 
     // Use content KIR directly (no template or template failed)
-    result = invoke_codegen(content_kir_file, config->build_target, output_dir);
+    result = invoke_codegen(content_kir_file, config->build_target, output_dir, config->project_name);
     return result;
 }
 

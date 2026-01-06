@@ -118,6 +118,11 @@ IREvent* ir_find_event(IRComponent* component, IREventType type);
 void ir_event_set_bytecode_function_id(IREvent* event, uint32_t function_id);
 uint32_t ir_event_get_bytecode_function_id(IREvent* event);
 
+// Handler Source Management (for Lua source preservation in KIR)
+IRHandlerSource* ir_create_handler_source(const char* language, const char* code, const char* file, int line);
+void ir_destroy_handler_source(IRHandlerSource* source);
+void ir_event_set_handler_source(IREvent* event, IRHandlerSource* source);
+
 // Logic Management
 IRLogic* ir_create_logic(const char* id, LogicSourceType type, const char* source_code);
 void ir_destroy_logic(IRLogic* logic);

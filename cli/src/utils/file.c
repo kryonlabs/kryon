@@ -3,6 +3,7 @@
  * Provides file I/O and path manipulation functions
  */
 
+#define _XOPEN_SOURCE 700
 #include "kryon_cli.h"
 #include <stdlib.h>
 #include <string.h>

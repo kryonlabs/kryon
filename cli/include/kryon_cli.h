@@ -55,6 +55,13 @@ const char* path_extension(const char* path);
 // ============================================================================
 
 char* paths_get_kryon_root(void);
+char* paths_get_home_dir(void);
+char* paths_get_build_path(void);
+char* paths_get_bindings_path(void);
+char* paths_get_scripts_path(void);
+char* paths_get_tsx_parser_path(void);
+char* paths_find_library(const char* lib_name);
+char* paths_find_plugin(const char* plugin_name, const char* explicit_path, const char* config_dir);
 
 // ============================================================================
 // Process Utilities

@@ -379,6 +379,20 @@ static const char* get_color_string(IRColor color) {
     }
 }
 
+// Get CSS variable name for a color property type
+// Returns "var(--bg-color)", "var(--text-color)", etc.
+// CSS variables are always used (no mode flag)
+static const char* get_color_var_name(CSSGenerator* generator, const char* var_name) {
+    static char var_buffer[64];
+
+    if (!generator || !var_name) {
+        return NULL;
+    }
+
+    snprintf(var_buffer, sizeof(var_buffer), "var(--%s)", var_name);
+    return var_buffer;
+}
+
 // Helper to format CSS numeric values without trailing zeros
 // Outputs "0" for zero values (no unit), otherwise removes trailing .00 or .0
 static void format_css_value(char* buffer, size_t size, float value, const char* unit) {
@@ -718,16 +732,9 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     // Track size after selector (for property checking)
     size_t after_selector_size = generator->buffer_size;
 
-    // Basic dimensions
-    if (component->style->width.type != IR_DIMENSION_AUTO) {
-        css_generator_write_format(generator, "  width: %s;\n",
-                                  get_dimension_string(component->style->width));
-    }
-
-    if (component->style->height.type != IR_DIMENSION_AUTO) {
-        css_generator_write_format(generator, "  height: %s;\n",
-                                  get_dimension_string(component->style->height));
-    }
+    // NOTE: width/height are NOT output to CSS classes because they're typically
+    // unique per component instance. They're applied as inline styles instead.
+    // This prevents the root container's dimensions from affecting all containers.
 
     // Background (color or gradient) - skip fully transparent
     // First check for background_image (gradient string like "linear-gradient(...)")
@@ -736,7 +743,8 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     } else if (component->style->background.type == IR_COLOR_SOLID) {
         // Only output if not fully transparent
         if (component->style->background.data.a > 0) {
-            const char* bg = get_color_string(component->style->background);
+            const char* bg_var = get_color_var_name(generator, "bg-color");
+            const char* bg = bg_var ? bg_var : get_color_string(component->style->background);
             css_generator_write_format(generator, "  background-color: %s;\n", bg);
         }
     } else if (component->style->background.type == IR_COLOR_GRADIENT) {
@@ -770,12 +778,15 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
     // Border
     if (component->style->border.width > 0) {
         // Uniform border
+        const char* border_var = get_color_var_name(generator, "border-color");
+        const char* border_color = border_var ? border_var : get_color_string(component->style->border.color);
         css_generator_write_format(generator, "  border: %s solid %s;\n",
                                   fmt_px(component->style->border.width),
-                                  get_color_string(component->style->border.color));
+                                  border_color);
     } else {
         // Per-side borders
-        const char* color = get_color_string(component->style->border.color);
+        const char* border_var = get_color_var_name(generator, "border-color");
+        const char* color = border_var ? border_var : get_color_string(component->style->border.color);
         if (component->style->border.width_top > 0) {
             css_generator_write_format(generator, "  border-top: %s solid %s;\n",
                                       fmt_px(component->style->border.width_top), color);
@@ -903,8 +914,9 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
         // Skip fully transparent text color
         if (component->style->font.color.type == IR_COLOR_SOLID &&
             component->style->font.color.data.a > 0) {
-            css_generator_write_format(generator, "  color: %s;\n",
-                                      get_color_string(component->style->font.color));
+            const char* color_var = get_color_var_name(generator, "text-color");
+            const char* color = color_var ? color_var : get_color_string(component->style->font.color);
+            css_generator_write_format(generator, "  color: %s;\n", color);
         }
 
         // Font weight - numeric value takes precedence over bold flag
@@ -2231,6 +2243,16 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
         }
     }
 
+    // Add default CSS variables for per-instance color customization (always output)
+    css_generator_write_string(generator, ":root {\n");
+    // Default background color (dark gray)
+    css_generator_write_string(generator, "  --bg-color: #3d3d3d;\n");
+    // Default text color (white)
+    css_generator_write_string(generator, "  --text-color: #ffffff;\n");
+    // Default border color (medium gray)
+    css_generator_write_string(generator, "  --border-color: #4c5057;\n");
+    css_generator_write_string(generator, "}\n\n");
+
     // Generate global stylesheet rules if available (descendant selectors, etc.)
     if (g_ir_context && g_ir_context->stylesheet) {
         generate_stylesheet_rules(generator, g_ir_context->stylesheet);
@@ -2266,16 +2288,42 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
             }
         }
 
-        // If root is Body, add its additional styles
+        // Text color - use Body's color if set, otherwise default based on background
+        bool has_text_color = false;
         if (root_is_body && root->style) {
-            // Text color
             if (root->style->font.color.type == IR_COLOR_SOLID && root->style->font.color.data.a > 0) {
                 const char* color_str = get_color_string(root->style->font.color);
                 css_generator_write_format(generator, "  color: %s;\n", color_str);
+                has_text_color = true;
             } else if (root->style->font.color.type == IR_COLOR_VAR_REF) {
                 const char* color_str = get_color_string(root->style->font.color);
                 css_generator_write_format(generator, "  color: %s;\n", color_str);
+                has_text_color = true;
             }
+        }
+
+        // Default text color if none specified - use white for dark backgrounds
+        if (!has_text_color && root && root->style) {
+            IRColor* bg = &root->style->background;
+            if (bg->type == IR_COLOR_SOLID) {
+                // Check if background is dark (simple luminance check)
+                float luminance = (0.299f * bg->data.r + 0.587f * bg->data.g + 0.114f * bg->data.b) / 255.0f;
+                if (luminance < 0.5f) {
+                    css_generator_write_string(generator, "  color: #ffffff;\n");
+                } else {
+                    css_generator_write_string(generator, "  color: #000000;\n");
+                }
+                has_text_color = true;
+            }
+        }
+
+        // Final fallback: white text (most apps use dark themes)
+        if (!has_text_color) {
+            css_generator_write_string(generator, "  color: #ffffff;\n");
+        }
+
+        // If root is Body, add its additional styles
+        if (root_is_body && root->style) {
 
             // Line height
             if (root->style->font.line_height > 0) {
@@ -2297,21 +2345,118 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     // Generate component-specific styles
     generate_component_css(generator, root);
 
-    // Add syntax highlighting CSS rules
-    css_generator_write_string(generator, "/* Syntax Highlighting - GitHub Dark Theme */\n");
-    css_generator_write_string(generator, ".hljs-keyword { color: #ff7b72; }\n");
-    css_generator_write_string(generator, ".hljs-string { color: #a5d6ff; }\n");
-    css_generator_write_string(generator, ".hljs-number { color: #79c0ff; }\n");
-    css_generator_write_string(generator, ".hljs-comment { color: #8b949e; font-style: italic; }\n");
-    css_generator_write_string(generator, ".hljs-title.function_ { color: #d2a8ff; }\n");
-    css_generator_write_string(generator, ".hljs-type { color: #7ee787; }\n");
-    css_generator_write_string(generator, ".hljs-literal { color: #79c0ff; }\n");
-    css_generator_write_string(generator, ".hljs-operator { color: #c9d1d9; }\n");
-    css_generator_write_string(generator, ".hljs-punctuation { color: #c9d1d9; }\n");
-    css_generator_write_string(generator, ".hljs-variable { color: #c9d1d9; }\n");
-    css_generator_write_string(generator, ".hljs-meta { color: #d2a8ff; }\n");
-    css_generator_write_string(generator, ".hljs-tag { color: #7ee787; }\n");
-    css_generator_write_string(generator, ".hljs-attr { color: #79c0ff; }\n\n");
+    // Add Modal dialog styles (HTML <dialog> element)
+    css_generator_write_string(generator, "/* Modal Dialog Styles */\n");
+    css_generator_write_string(generator, "dialog.kryon-modal {\n");
+    css_generator_write_string(generator, "  position: fixed;\n");  // Remove from flex layout
+    css_generator_write_string(generator, "  inset: 0;\n");
+    css_generator_write_string(generator, "  margin: auto;\n");
+    css_generator_write_string(generator, "  border: none;\n");
+    css_generator_write_string(generator, "  border-radius: 8px;\n");
+    css_generator_write_string(generator, "  padding: 0;\n");
+    css_generator_write_string(generator, "  max-width: 90vw;\n");
+    css_generator_write_string(generator, "  max-height: 90vh;\n");
+    css_generator_write_string(generator, "  overflow: hidden;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, "dialog.kryon-modal::backdrop {\n");
+    css_generator_write_string(generator, "  background: rgba(0, 0, 0, 0.5);\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    // Ensure closed dialogs don't take space (browser compatibility)
+    css_generator_write_string(generator, "dialog:not([open]) {\n");
+    css_generator_write_string(generator, "  display: none;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".modal-title-bar {\n");
+    css_generator_write_string(generator, "  display: flex;\n");
+    css_generator_write_string(generator, "  justify-content: space-between;\n");
+    css_generator_write_string(generator, "  align-items: center;\n");
+    css_generator_write_string(generator, "  padding: 12px 16px;\n");
+    css_generator_write_string(generator, "  background: #3d3d3d;\n");
+    css_generator_write_string(generator, "  border-radius: 8px 8px 0 0;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".modal-title {\n");
+    css_generator_write_string(generator, "  color: white;\n");
+    css_generator_write_string(generator, "  font-weight: bold;\n");
+    css_generator_write_string(generator, "  font-size: 16px;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".modal-close {\n");
+    css_generator_write_string(generator, "  background: none;\n");
+    css_generator_write_string(generator, "  border: none;\n");
+    css_generator_write_string(generator, "  color: white;\n");
+    css_generator_write_string(generator, "  font-size: 20px;\n");
+    css_generator_write_string(generator, "  cursor: pointer;\n");
+    css_generator_write_string(generator, "  padding: 0 8px;\n");
+    css_generator_write_string(generator, "  line-height: 1;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".modal-close:hover {\n");
+    css_generator_write_string(generator, "  color: #ff6b6b;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".modal-content {\n");
+    css_generator_write_string(generator, "  padding: 24px;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+
+    // Tab component styles
+    css_generator_write_string(generator, "/* Tab Component Styles */\n");
+    css_generator_write_string(generator, ".kryon-tabs {\n");
+    css_generator_write_string(generator, "  display: flex;\n");
+    css_generator_write_string(generator, "  flex-direction: column;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-bar {\n");
+    css_generator_write_string(generator, "  display: flex;\n");
+    css_generator_write_string(generator, "  gap: 4px;\n");
+    css_generator_write_string(generator, "  border-bottom: 1px solid #333;\n");
+    css_generator_write_string(generator, "  padding: 0 8px;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-bar [role=\"tab\"] {\n");
+    css_generator_write_string(generator, "  padding: 8px 16px;\n");
+    css_generator_write_string(generator, "  border: none;\n");
+    css_generator_write_string(generator, "  background: transparent;\n");
+    css_generator_write_string(generator, "  cursor: pointer;\n");
+    css_generator_write_string(generator, "  border-bottom: 2px solid transparent;\n");
+    css_generator_write_string(generator, "  transition: border-color 0.2s, color 0.2s;\n");
+    css_generator_write_string(generator, "  font-size: inherit;\n");
+    css_generator_write_string(generator, "  font-family: inherit;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-bar [role=\"tab\"][aria-selected=\"true\"] {\n");
+    css_generator_write_string(generator, "  border-bottom-color: #5c6bc0;\n");
+    css_generator_write_string(generator, "  background-color: rgba(92, 107, 192, 0.2);\n");
+    css_generator_write_string(generator, "  color: #ffffff;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-bar [role=\"tab\"][aria-selected=\"false\"] {\n");
+    css_generator_write_string(generator, "  color: #888888;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-bar [role=\"tab\"]:hover {\n");
+    css_generator_write_string(generator, "  color: #ffffff;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-bar [role=\"tab\"]:focus {\n");
+    css_generator_write_string(generator, "  outline: 2px solid #5c6bc0;\n");
+    css_generator_write_string(generator, "  outline-offset: -2px;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-content {\n");
+    css_generator_write_string(generator, "  flex: 1;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-content [role=\"tabpanel\"] {\n");
+    css_generator_write_string(generator, "  display: block;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, ".kryon-tab-content [role=\"tabpanel\"][hidden] {\n");
+    css_generator_write_string(generator, "  display: none;\n");
+    css_generator_write_string(generator, "}\n\n");
 
     // Output media queries at the very end (after all base styles)
     if (g_ir_context && g_ir_context->stylesheet) {
