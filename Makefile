@@ -253,10 +253,13 @@ dev:
 
 # Installation targets
 install: install-dynamic install-lib install-config
+	@echo "Installing CLI components and bindings..."
+	$(MAKE) -C cli install
 	@echo "Installation complete!"
 	@echo "CLI: $(BINDIR)/kryon"
 	@echo "Library: $(LIBDIR)/libkryon.a"
 	@echo "Headers: $(INCDIR)/"
+	@echo "Bindings: $(HOME)/.local/share/kryon/bindings/"
 
 # Install dynamic version (default for most users) - C CLI only
 install-dynamic: build-dynamic
@@ -281,15 +284,29 @@ install-lib: build-lib
 	# Install shared libraries if they exist
 	@if [ -f build/libkryon_ir.so ]; then \
 		install -m 755 build/libkryon_ir.so $(LIBDIR)/; \
-		echo "✓ Installed libkryon_ir.so"; \
+		echo "✓ Installed libkryon_ir.so to $(LIBDIR)"; \
 	fi
 	@if [ -f build/libkryon_desktop.so ]; then \
 		install -m 755 build/libkryon_desktop.so $(LIBDIR)/; \
-		echo "✓ Installed libkryon_desktop.so"; \
+		echo "✓ Installed libkryon_desktop.so to $(LIBDIR)"; \
 	fi
 	@if [ -f build/libkryon_web.so ]; then \
 		install -m 755 build/libkryon_web.so $(LIBDIR)/; \
-		echo "✓ Installed libkryon_web.so"; \
+		echo "✓ Installed libkryon_web.so to $(LIBDIR)"; \
+	fi
+	# Also install shared libraries to ~/.local/share/kryon/build/ for runtime
+	@mkdir -p $(HOME)/.local/share/kryon/build
+	@if [ -f build/libkryon_ir.so ]; then \
+		install -m 755 build/libkryon_ir.so $(HOME)/.local/share/kryon/build/; \
+		echo "✓ Installed libkryon_ir.so to ~/.local/share/kryon/build/"; \
+	fi
+	@if [ -f build/libkryon_desktop.so ]; then \
+		install -m 755 build/libkryon_desktop.so $(HOME)/.local/share/kryon/build/; \
+		echo "✓ Installed libkryon_desktop.so to ~/.local/share/kryon/build/"; \
+	fi
+	@if [ -f build/libkryon_web.so ]; then \
+		install -m 755 build/libkryon_web.so $(HOME)/.local/share/kryon/build/; \
+		echo "✓ Installed libkryon_web.so to ~/.local/share/kryon/build/"; \
 	fi
 	# Copy Nim bindings to include directory (optional - only if they exist)
 	@mkdir -p $(INCDIR)

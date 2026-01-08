@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Forward declaration for cJSON (used in module reference functions)
+typedef struct cJSON cJSON;
+
 // Global IR context
 extern IRContext* g_ir_context;
 
@@ -123,6 +126,11 @@ IRHandlerSource* ir_create_handler_source(const char* language, const char* code
 void ir_destroy_handler_source(IRHandlerSource* source);
 void ir_event_set_handler_source(IREvent* event, IRHandlerSource* source);
 
+// Set closure metadata on a handler source
+// vars: array of variable name strings
+// count: number of variables
+int ir_handler_source_set_closures(IRHandlerSource* source, const char** vars, int count);
+
 // Logic Management
 IRLogic* ir_create_logic(const char* id, LogicSourceType type, const char* source_code);
 void ir_destroy_logic(IRLogic* logic);
@@ -134,6 +142,15 @@ IRLogic* ir_find_logic_by_id(IRComponent* root, const char* id);
 void ir_set_text_content(IRComponent* component, const char* text);
 void ir_set_custom_data(IRComponent* component, const char* data);
 void ir_set_tag(IRComponent* component, const char* tag);
+
+// Module Reference Management (for cross-file component references)
+void ir_set_component_module_ref(IRComponent* component, const char* module_ref, const char* export_name);
+cJSON* ir_clear_tree_module_refs(IRComponent* component);  // Recursively clear all module_refs in tree
+void ir_restore_tree_module_refs(IRComponent* component, cJSON* refs_array);  // Restore from array
+char* ir_clear_tree_module_refs_json(IRComponent* component);  // JSON string wrapper for FFI
+void ir_restore_tree_module_refs_json(IRComponent* component, const char* json_str);  // JSON string wrapper for FFI
+char* ir_clear_component_module_ref(IRComponent* component);  // Returns JSON string with old values
+void ir_restore_component_module_ref(IRComponent* component, const char* json_str);
 
 // Convenience Functions for Common Components
 IRComponent* ir_container(const char* tag);

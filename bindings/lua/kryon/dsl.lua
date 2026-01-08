@@ -15,6 +15,136 @@ local DSL = {}
 DSL._tabVisualStates = {}
 
 -- ============================================================================
+-- Module Tracking (for cross-file component references)
+-- ============================================================================
+
+-- Track the current module being compiled
+-- Set by the wrapper script before loading user code
+-- Format: module_id like "components/calendar" or "main"
+DSL._currentModule = nil
+
+-- Stack for tracking component origin during function calls
+-- When a wrapped function from another module is called, it pushes its module
+-- This allows buildComponent to know the origin module of components being created
+local _originModuleStack = {}
+
+-- Push an origin module onto the stack (for wrapped component functions)
+local function pushOriginModule(module_id)
+  table.insert(_originModuleStack, module_id)
+end
+
+-- Pop the origin module from the stack
+local function popOriginModule()
+  return table.remove(_originModuleStack)
+end
+
+-- Get the current origin module (top of stack, or nil if empty)
+local function getCurrentOriginModule()
+  return _originModuleStack[#_originModuleStack]
+end
+
+-- Wrap a function to set its origin module when called
+-- Used by the wrapper to tag exported component functions
+-- @param fn The function to wrap
+-- @param module_id The module that created this function (e.g., "components/tabs")
+-- @param fn_name The name of the function (for tracking component trees)
+function DSL.wrapWithModuleOrigin(fn, module_id, fn_name)
+  return function(...)
+    pushOriginModule(module_id)
+    local results = {fn(...)}
+    popOriginModule()
+
+    -- Capture returned components for serialization to component_definitions
+    -- Check if any of the returned values are IR components (cdata with type field)
+    if fn_name then
+      local captured = {}
+      for _, result in ipairs(results) do
+        -- Check if result is a cdata IRComponent
+        local type_ok, comp_type = pcall(function()
+          return result ~= nil and tonumber(C.ir_get_component_type(result)) or nil
+        end)
+        if type_ok and comp_type then
+          table.insert(captured, result)
+        end
+        -- Also check if it's a table/array of components
+        if type(result) == "table" then
+          for i, v in ipairs(result) do
+            local ok, t = pcall(function()
+              return v ~= nil and tonumber(C.ir_get_component_type(v)) or nil
+            end)
+            if ok and t then
+              table.insert(captured, v)
+            end
+          end
+        end
+      end
+
+      -- Store captured components for this module/function
+      if #captured > 0 then
+        DSL._capturedComponentTrees[module_id] = DSL._capturedComponentTrees[module_id] or {}
+        DSL._capturedComponentTrees[module_id][fn_name] = captured
+      end
+    end
+
+    return unpack(results)
+  end
+end
+
+-- Table mapping module_id to {exports = {name = true}, source_file = path}
+DSL._moduleRegistry = {}
+
+-- Table to track captured component trees by module
+-- When a wrapped function returns components, we store them here
+-- Structure: {module_id = {function_name = {component1, component2, ...}}}
+DSL._capturedComponentTrees = {}
+
+-- Set the current module context (called from wrapper)
+function DSL.setCurrentModule(module_id)
+  DSL._currentModule = module_id
+end
+
+-- Register a module's exports for reference tracking
+function DSL.registerModule(module_id, exports)
+  DSL._moduleRegistry[module_id] = DSL._moduleRegistry[module_id] or {}
+  DSL._moduleRegistry[module_id].exports = DSL._moduleRegistry[module_id].exports or {}
+  for _, exp in ipairs(exports) do
+    DSL._moduleRegistry[module_id].exports[exp.name] = true
+  end
+end
+
+-- Check if a component name is exported from a different module
+function DSL.getComponentModule(componentName)
+  local currentModule = DSL._currentModule
+  if not currentModule then return nil end
+
+  -- Search all registered modules except current
+  for module_id, info in pairs(DSL._moduleRegistry) do
+    if module_id ~= currentModule and info.exports and info.exports[componentName] then
+      return module_id
+    end
+  end
+  return nil
+end
+
+-- Get current module from environment variable (for backward compatibility)
+local function getCurrentModuleFromEnv()
+  local source_file = os.getenv("KRYON_SOURCE_FILE")
+  if not source_file then return nil end
+
+  -- Convert file path to module_id
+  -- e.g., "/path/to/components/calendar.lua" -> "components/calendar"
+  local module_id = source_file:gsub("^.*/", ""):gsub("%.lua$", "")
+
+  -- If in a subdirectory, include it
+  local subdir = source_file:match("([^/]+/[^/]+)%.lua$")
+  if subdir then
+    module_id = subdir:gsub("%.lua$", "")
+  end
+
+  return module_id
+end
+
+-- ============================================================================
 -- Reactive Value Handling
 -- ============================================================================
 
@@ -61,8 +191,9 @@ end
 
 --- Extract function source code using debug.getinfo + file read
 --- This reads the actual function text from the source file
+--- Returns clean source code WITHOUT target-specific wrappers
 --- @param fn function The function to extract source from
---- @return table|nil {code=string, file=string, line=number} or nil
+--- @return table|nil {code=string, file=string, line=number, closure_vars=table|nil} or nil
 local function extractFunctionSource(fn)
   if type(fn) ~= "function" then return nil end
 
@@ -107,80 +238,27 @@ local function extractFunctionSource(fn)
   local filename = filepath:gsub(".*/", "")
 
   -- Check if handler uses closure variables that need special handling
-  -- Patterns like "toggleHabitCompletion(habitIndex, day.date)" indicate closure usage
-  local usesHabitIndex = fullCode:match("habitIndex") or fullCode:match("%w+Index")
-  local usesDayDate = fullCode:match("day%.date")
-  local usesClosure = usesHabitIndex or usesDayDate
+  -- Store these as metadata for target-specific codegen to handle
+  local closureVars = {}
 
-  if usesClosure then
-    -- Add a wrapper that reads from component data attributes instead
-    -- This replaces the closure variables with data attribute lookups
-    -- Extract function body by stripping "function(...) ... end" wrapper
-
-    -- First, remove "function" prefix
-    local funcStart = fullCode:find("function")
-    if funcStart then
-      fullCode = fullCode:sub(funcStart + 8)  -- Skip "function"
-    end
-
-    -- Skip the opening paren and any params until we find the matching closing paren
-    if fullCode:sub(1, 1) == "(" then
-      local depth = 1
-      local paramEnd = 1
-      for i = 2, #fullCode do
-        local c = fullCode:sub(i, i)
-        if c == "(" then depth = depth + 1
-        elseif c == ")" then depth = depth - 1 end
-        if depth == 0 then
-          paramEnd = i
-          break
-        end
-      end
-      fullCode = fullCode:sub(paramEnd + 1)
-    end
-
-    -- Now remove the trailing "end" statement
-    -- It might be on its own line, or at the end of a line with content
-    -- Pattern: "end" at end, possibly preceded by content, followed by optional whitespace/newline
-
-    -- Trim trailing whitespace and newlines first
-    fullCode = fullCode:gsub("%s*$", "")
-
-    -- Now check if last 3 chars are "end"
-    if fullCode:sub(-3) == "end" then
-      fullCode = fullCode:sub(1, -4)
-    end
-
-    -- Also handle case where there's content before "end" on same line
-    local endPos = fullCode:find("end%s*$")
-    if endPos and endPos == #fullCode - 2 then
-      fullCode = fullCode:sub(1, endPos - 1)
-    end
-
-    -- Trim trailing whitespace again
-    fullCode = fullCode:gsub("%s*$", "")
-
-    -- Substitute day.date with dateStr for handlers that use it
-    fullCode = fullCode:gsub("day%.date", "dateStr")
-
-    -- Add trailing newline to ensure proper separation from wrapper's 'end'
-    fullCode = fullCode .. "\n"
-
-    local wrapped = [[function()
-      local js = require("js")
-      local element = js.global.__kryon_get_event_element()
-      local data = element and (element.data or (element.getData and element:getData()))
-      local habitIndex = tonumber(data and data.habit)
-      local dateStr = data and data.date
-    ]] .. fullCode .. [[
-    end]]
-    fullCode = wrapped
+  -- Detect common closure variable patterns
+  if fullCode:match("habitIndex") or fullCode:match("%w+Index") then
+    table.insert(closureVars, "habitIndex")
+  end
+  if fullCode:match("day%.date") then
+    table.insert(closureVars, "day.date")
   end
 
+  -- Store closure metadata for codegen (empty table if no closures)
+  local closureMetadata = #closureVars > 0 and closureVars or nil
+
+  -- Return clean source code WITHOUT any wrapper
+  -- Target-specific codegen will add appropriate wrappers based on closure_metadata
   return {
     code = fullCode,
     file = filename,
-    line = info.linedefined
+    line = info.linedefined,
+    closure_vars = closureMetadata
   }
 end
 
@@ -616,9 +694,9 @@ local function applyProperties(component, props)
 
   -- ========== Custom Element ID and Data Attributes ==========
   -- These are stored as JSON in custom_data for the HTML generator to parse
-  -- Format: {"elementId": "my-id", "data": {"habit": "1"}}
+  -- Format: {"elementId": "my-id", "data": {"habit": "1"}, "selectedIndex": 0}
   -- Note: Action names are no longer stored here - handler source is in event->handler_source
-  local hasCustomAttrs = props.elementId or props.data
+  local hasCustomAttrs = props.elementId or props.data or props.selectedIndex ~= nil
   if hasCustomAttrs then
     -- Build JSON object
     local json = require("kryon.ffi").cjson
@@ -632,6 +710,9 @@ local function applyProperties(component, props)
         for k, v in pairs(props.data) do
           obj.data[tostring(k)] = tostring(v)
         end
+      end
+      if props.selectedIndex ~= nil then
+        obj.selectedIndex = tonumber(props.selectedIndex) or 0
       end
       -- Encode to JSON string
       local encoded = json.encode(obj)
@@ -661,6 +742,13 @@ local function applyProperties(component, props)
           first = false
         end
         table.insert(parts, "}")
+        needsComma = true
+      end
+      if props.selectedIndex ~= nil then
+        if needsComma then
+          table.insert(parts, ",")
+        end
+        table.insert(parts, string.format("\"selectedIndex\":%d", tonumber(props.selectedIndex) or 0))
       end
       table.insert(parts, "}")
       local jsonStr = table.concat(parts)
@@ -670,9 +758,11 @@ local function applyProperties(component, props)
 
   -- Add children from the children property
   if props.children and type(props.children) == "table" then
+    local childCount = 0
     for i, child in ipairs(props.children) do
       if type(child) == "cdata" then  -- It's an IRComponent*
         C.ir_add_child(component, child)
+        childCount = childCount + 1
 
         -- Auto-register with TabGroup context if applicable
         local ctx = getCurrentTabGroupContext()
@@ -691,6 +781,8 @@ local function applyProperties(component, props)
         end
       end
     end
+    local componentType = tonumber(C.ir_get_component_type(component))
+    io.stderr:write("[applyProperties] Added " .. childCount .. " children to component type " .. tostring(componentType) .. "\n")
   end
 end
 
@@ -701,6 +793,20 @@ end
 local function buildComponent(componentType, props)
   -- Step 1: Create IR component (C call)
   local component = C.ir_create_component(componentType)
+
+  -- Step 1.5: Set module_ref if this component is from an external module
+  -- Check if we're inside a wrapped function from another module
+  local originModule = getCurrentOriginModule()
+  if originModule then
+    -- This component was created by a function from originModule
+    -- Set module_ref to create a cross-file reference instead of inline expansion
+    local currentModule = DSL._currentModule
+    if currentModule and currentModule ~= originModule then
+      -- For Container components, set module_ref to use $module: syntax
+      -- The export_name is inferred from the function that created this
+      C.ir_set_component_module_ref(component, originModule, nil)
+    end
+  end
 
   -- Step 2: Handle TabGroup initialization
   if componentType == C.IR_COMPONENT_TAB_GROUP then
@@ -811,8 +917,22 @@ local function buildComponent(componentType, props)
       end
 
       -- Register all panels
-      for _, panel in ipairs(panels) do
+      io.stderr:write("[TabGroup] Registering " .. #panels .. " panels\n")
+      for idx, panel in ipairs(panels) do
+        local panelChildCount = C.ir_get_child_count(panel)
+        io.stderr:write("[TabGroup] Panel " .. idx .. " has " .. panelChildCount .. " children BEFORE registration\n")
+
+        -- Check child types before registration
+        for i = 0, panelChildCount - 1 do
+          local child = C.ir_get_child_at(panel, i)
+          local childType = tonumber(C.ir_get_component_type(child))
+          io.stderr:write("[TabGroup]   Child " .. i .. " type=" .. childType .. "\n")
+        end
+
         C.ir_tabgroup_register_panel(state, panel)
+
+        local panelChildCountAfter = C.ir_get_child_count(panel)
+        io.stderr:write("[TabGroup] Panel " .. idx .. " has " .. panelChildCountAfter .. " children AFTER registration\n")
       end
 
       -- Finalize (applies visuals, shows tabs)
@@ -1070,5 +1190,156 @@ end
 --- Use this to spread mapArray results into children
 --- Example: Row { unpack(mapArray(days, function(d) return Button{text=d} end)) }
 DSL.unpack = unpack or table.unpack
+
+--- ============================================================================
+--- ForEach Component (Dynamic List Rendering)
+--- ============================================================================
+
+-- Helper: Recursively serialize a Lua value to JSON string
+-- Handles nested tables, arrays, strings, numbers, booleans, and nil
+local function serialize_json_value(v)
+  local t = type(v)
+  if t == "string" then
+    return '"' .. v:gsub('"', '\\"'):gsub('\\', '\\\\') .. '"'
+  elseif t == "number" then
+    return tostring(v)
+  elseif t == "boolean" then
+    return tostring(v)
+  elseif t == "nil" then
+    return "null"
+  elseif t == "table" then
+    -- Check if it's an array (consecutive integer keys starting at 1)
+    local is_array = #v > 0
+    local max_key = 0
+    for k in pairs(v) do
+      if type(k) ~= "number" or k <= 0 or k % 1 ~= 0 then
+        is_array = false
+        break
+      end
+      if k > max_key then max_key = k end
+    end
+    if is_array and max_key == #v then
+      -- Array: serialize as [val1, val2, ...]
+      local parts = {}
+      for i = 1, #v do
+        table.insert(parts, serialize_json_value(v[i]))
+      end
+      return "[" .. table.concat(parts, ",") .. "]"
+    else
+      -- Object: serialize as {"key":val, ...}
+      local parts = {}
+      for k, val in pairs(v) do
+        if type(k) == "string" then
+          table.insert(parts, serialize_json_value(k) .. ":" .. serialize_json_value(val))
+        end
+      end
+      return "{" .. table.concat(parts, ",") .. "}"
+    end
+  else
+    -- Unknown type, serialize as null
+    return "null"
+  end
+end
+
+--- ForEach: dynamic list rendering with build-time evaluation and runtime reactivity
+--- Usage:
+---   UI.ForEach {
+---     each = state.calendarDays,  -- Source array to iterate
+---     as = "day",                  -- Variable name for each item
+---     index = "i",                 -- Variable name for index (optional)
+---     render = function(day, i)   -- Render function for each item
+---       return Button { text = day.dayNumber }
+---     end
+---   }
+--- @param props table ForEach properties
+--- @return cdata IRComponent* pointer
+DSL.ForEach = function(props)
+  if not props then
+    error("ForEach requires props table")
+  end
+
+  local each_source = props.each or props.source
+  local item_name = props.as or props.itemName or "item"
+  local index_name = props.index or props.indexName or "index"
+  local render_fn = props.render
+  -- New: 'expression' property provides a template reference instead of serializing data
+  local source_expr = props.expression or props.sourceExpr or props.var
+
+  if not each_source then
+    error("ForEach requires 'each' property (source array)")
+  end
+  if not render_fn then
+    error("ForEach requires 'render' function")
+  end
+  if type(render_fn) ~= "function" then
+    error("ForEach 'render' must be a function")
+  end
+
+  -- ForEach is ALWAYS runtime/reactive - serialize the source for runtime expansion
+  -- This allows re-rendering when the source data changes (e.g., month navigation)
+
+  -- Build template child (render function called with first item for structure)
+  local template_child
+  if type(each_source) == "table" and #each_source > 0 then
+    template_child = render_fn(each_source[1], 1)
+  elseif type(each_source) == "function" then
+    local success, result = pcall(each_source)
+    if success and type(result) == "table" and #result > 0 then
+      template_child = render_fn(result[1], 1)
+    else
+      template_child = render_fn({}, 1)
+    end
+  else
+    template_child = render_fn({}, 1)
+  end
+
+  -- ForEach has exactly one child: the template to be expanded at runtime
+  local children = {template_child}
+
+  -- Create ForEach component with template child
+  local forEachProps = {
+    children = children
+  }
+
+  -- Create the ForEach component using buildComponent
+  local component = buildComponent(C.IR_COMPONENT_FOR_EACH, forEachProps)
+
+  -- Set ForEach-specific fields directly on the C struct
+  -- Now that the FFI struct has correct field offsets, we can set these directly
+  -- Use ir_set_custom_data for now since we need proper memory allocation
+  local encoded = string.format('{"forEach":true,"each_item_name":"%s","each_index_name":"%s"',
+                                 item_name:gsub('"', '\\"'),
+                                 index_name:gsub('"', '\\"'))
+
+  -- Serialize each_source for runtime expansion
+  -- Priority: 1) expression (template reference), 2) string (variable name), 3) table (data)
+  if source_expr and type(source_expr) == "string" then
+    -- Store expression reference for template KIR (not the evaluated data)
+    encoded = encoded .. string.format(',"each_source":"%s","each_source_is_expr":true', source_expr:gsub('"', '\\"'))
+  elseif type(each_source) == "string" then
+    -- Variable reference (e.g., "state.items")
+    encoded = encoded .. string.format(',"each_source":"%s"', each_source:gsub('"', '\\"'))
+  elseif type(each_source) == "table" then
+    -- Check if we're in multi-file/template mode
+    -- In template mode, don't serialize table data - use a reference marker instead
+    local template_mode = os.getenv("KRYON_TEMPLATE_MODE")
+    if template_mode == "1" then
+      -- Template mode: store a reference marker for runtime re-evaluation
+      encoded = encoded .. string.format(',"each_source":"__dynamic__","each_source_is_expr":true')
+    else
+      -- Desktop mode: ALWAYS serialize the actual table data
+      -- This ensures ForEach components are expanded at compile-time for desktop rendering
+      -- The data (like calendar rows) is already computed at build-time
+      encoded = encoded .. ',"each_source":' .. serialize_json_value(each_source)
+    end
+  elseif type(each_source) == "function" then
+    -- Function source - store marker for runtime evaluation
+    encoded = encoded .. string.format(',"each_source":"__function"')
+  end
+  encoded = encoded .. "}"
+  C.ir_set_custom_data(component, encoded)
+
+  return component
+end
 
 return DSL

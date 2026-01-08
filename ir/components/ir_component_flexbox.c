@@ -384,13 +384,16 @@ void layout_column_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 // Container layout (configurable direction)
 void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                                   float parent_x, float parent_y) {
-    // Container can specify direction via layout->flex.direction
-    // direction == 1 means row (horizontal), otherwise column (vertical)
-    LayoutAxis axis = LAYOUT_AXIS_VERTICAL;  // Default to column
-
-    if (c->layout && c->layout->flex.direction == 1) {
-        axis = LAYOUT_AXIS_HORIZONTAL;
+    // Container MUST have explicit layout direction - no silent fallbacks
+    if (!c->layout || c->layout->flex.direction == 0xFF) {
+        fprintf(stderr, "ERROR: Container component has no explicit layout direction. "
+                "Please use UI.Row or UI.Column, or set flexDirection explicitly.\n");
+        return;
     }
+
+    // direction == 1 means row (horizontal), 0 means column (vertical)
+    LayoutAxis axis = (c->layout->flex.direction == 1) ?
+        LAYOUT_AXIS_HORIZONTAL : LAYOUT_AXIS_VERTICAL;
 
     layout_flexbox_single_pass(c, constraints, parent_x, parent_y, axis);
 }
@@ -526,6 +529,7 @@ void ir_flexbox_components_init(void) {
     ir_layout_register_trait(IR_COMPONENT_COLUMN, &IR_COLUMN_LAYOUT_TRAIT);
     ir_layout_register_trait(IR_COMPONENT_CONTAINER, &IR_CONTAINER_LAYOUT_TRAIT);
     ir_layout_register_trait(IR_COMPONENT_CENTER, &IR_CENTER_LAYOUT_TRAIT);
+    // Note: IR_COMPONENT_FOR_EACH has no layout trait - it should be transparent to layout
 
     if (getenv("KRYON_DEBUG_REGISTRY")) {
         fprintf(stderr, "[Registry] Flexbox components (Row/Column/Container/Center) initialized\n");

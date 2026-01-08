@@ -711,8 +711,55 @@ static CollectedHandler* g_handlers = NULL;
 static size_t g_handler_count = 0;
 static size_t g_handler_capacity = 0;
 
-static void collect_handler_from_kir(uint32_t component_id, const char* code) {
-    if (!code) return;
+// Add web-specific wrapper for handlers that use closure variables
+// This is target-specific codegen - the wrapper is only added for web output
+static char* add_web_wrapper(const char* code, IRHandlerSource* handler_source) {
+    if (!code || !handler_source || !handler_source->uses_closures) {
+        return strdup(code);
+    }
+
+    // Calculate the wrapper size
+    size_t code_len = strlen(code);
+    size_t wrapper_len = code_len + 512;  // Extra space for wrapper code
+
+    char* wrapped = malloc(wrapper_len);
+    if (!wrapped) return strdup(code);
+
+    // Build the wrapper with closure variable extraction
+    int offset = 0;
+
+    // Add opening function and js require
+    offset += snprintf(wrapped + offset, wrapper_len - offset,
+        "function()\n"
+        "  local js = require(\"js\")\n"
+        "  local element = js.global.__kryon_get_event_element()\n"
+        "  local data = element and (element.data or (element.getData and element:getData()))\n"
+    );
+
+    // Add closure variable extraction based on metadata
+    for (int i = 0; i < handler_source->closure_var_count; i++) {
+        const char* var = handler_source->closure_vars[i];
+        if (strcmp(var, "habitIndex") == 0) {
+            offset += snprintf(wrapped + offset, wrapper_len - offset,
+                "  local habitIndex = tonumber(data and data.habit)\n");
+        } else if (strcmp(var, "day.date") == 0) {
+            offset += snprintf(wrapped + offset, wrapper_len - offset,
+                "  local dateStr = data and data.date\n");
+        }
+        // Add more closure variable types as needed
+    }
+
+    // Add the original handler code
+    offset += snprintf(wrapped + offset, wrapper_len - offset, "%s\n", code);
+
+    // Close the wrapper function
+    offset += snprintf(wrapped + offset, wrapper_len - offset, "end");
+
+    return wrapped;
+}
+
+static void collect_handler_from_kir(uint32_t component_id, IRHandlerSource* handler_source) {
+    if (!handler_source || !handler_source->code) return;
 
     // Grow array if needed
     if (g_handler_count >= g_handler_capacity) {
@@ -724,7 +771,9 @@ static void collect_handler_from_kir(uint32_t component_id, const char* code) {
     }
 
     g_handlers[g_handler_count].component_id = component_id;
-    g_handlers[g_handler_count].code = strdup(code);
+
+    // Add web wrapper if handler uses closures (target-specific codegen)
+    g_handlers[g_handler_count].code = add_web_wrapper(handler_source->code, handler_source);
     g_handler_count++;
 }
 
@@ -736,7 +785,7 @@ static void extract_handlers_from_kir(IRComponent* comp) {
     IREvent* event = comp->events;
     while (event) {
         if (event->handler_source && event->handler_source->code) {
-            collect_handler_from_kir(comp->id, event->handler_source->code);
+            collect_handler_from_kir(comp->id, event->handler_source);
         }
         event = event->next;
     }

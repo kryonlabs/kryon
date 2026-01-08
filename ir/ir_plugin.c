@@ -727,10 +727,14 @@ bool ir_plugin_dispatch_callback(uint32_t component_type, uint32_t component_id)
 
 // Plugin search paths (in priority order)
 static const char* PLUGIN_SEARCH_PATHS[] = {
-    "~/.kryon/plugins/",
-    "/usr/local/lib/kryon/plugins/",
-    "/usr/lib/kryon/plugins/",
-    "../kryon-plugin-*/build/",  // Development mode
+    "~/.local/share/kryon/plugins/",     // XDG data directory
+    "~/.config/kryon/plugins/",           // XDG config directory
+    "~/.kryon/plugins/",                  // Legacy home directory
+    "./kryon_plugins/",                   // Project-local plugins
+    "./.kryon/plugins/",                  // Hidden project plugins
+    "/usr/local/lib/kryon/plugins/",      // System-wide (local)
+    "/usr/lib/kryon/plugins/",            // System-wide
+    "../kryon-plugin-*/build/",           // Development mode (wildcard)
     NULL
 };
 
@@ -1025,6 +1029,98 @@ void ir_plugin_free_discovery(IRPluginDiscoveryInfo** plugins, uint32_t count) {
     free(plugins);
 }
 
+// ============================================================================
+// Plugin Lua Bindings Support
+// ============================================================================
+
+/**
+ * Get the directory containing a plugin's Lua bindings.
+ * Searches for bindings/lua/ relative to the plugin's .so file location.
+ *
+ * @param plugin_path Full path to the plugin .so file
+ * @param lua_path Output buffer for the Lua bindings directory path
+ * @param path_size Size of the output buffer
+ * @return true if Lua bindings directory was found, false otherwise
+ */
+bool ir_plugin_get_lua_bindings_path(const char* plugin_path, char* lua_path, size_t path_size) {
+    if (!plugin_path || !lua_path || path_size == 0) {
+        return false;
+    }
+
+    // Get the directory containing the .so file
+    char plugin_dir[1024];
+    strncpy(plugin_dir, plugin_path, sizeof(plugin_dir) - 1);
+    plugin_dir[sizeof(plugin_dir) - 1] = '\0';
+
+    // Find the last directory separator
+    char* last_slash = strrchr(plugin_dir, '/');
+    if (last_slash) {
+        *last_slash = '\0';  // Terminate at the directory
+    } else {
+        // No directory in path, use current directory
+        strcpy(plugin_dir, ".");
+    }
+
+    // Check for bindings/lua/ subdirectory
+    snprintf(lua_path, path_size, "%s/bindings/lua", plugin_dir);
+    struct stat st;
+    if (stat(lua_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+        return true;
+    }
+
+    // Check if the plugin itself is in a build/ subdirectory
+    // Try ../bindings/lua/ (for plugins with build/ layout)
+    char* build_slash = strstr(plugin_dir, "/build");
+    if (build_slash) {
+        *build_slash = '\0';  // Remove /build from path
+        snprintf(lua_path, path_size, "%s/bindings/lua", plugin_dir);
+        if (stat(lua_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+            return true;
+        }
+    }
+
+    // Check for kryon-storage specific path (installed to kryon bindings)
+    snprintf(lua_path, path_size, "%s/../bindings/lua/%s", plugin_dir,
+             strrchr(plugin_dir, '/') ? strrchr(plugin_dir, '/') + 1 : plugin_dir);
+    if (stat(lua_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+        return true;
+    }
+
+    // Not found
+    lua_path[0] = '\0';
+    return false;
+}
+
+/**
+ * Get the Lua module name for a plugin.
+ * For example, "libkryon_storage.so" -> "storage"
+ *
+ * @param plugin_name The plugin name (e.g., "storage")
+ * @param module_name Output buffer for the Lua module name
+ * @param name_size Size of the output buffer
+ */
+void ir_plugin_get_lua_module_name(const char* plugin_name, char* module_name, size_t name_size) {
+    if (!plugin_name || !module_name || name_size == 0) {
+        return;
+    }
+
+    // Remove "libkryon_" prefix if present
+    if (strncmp(plugin_name, "libkryon_", 10) == 0) {
+        strncpy(module_name, plugin_name + 10, name_size - 1);
+    } else if (strncmp(plugin_name, "kryon_", 6) == 0) {
+        strncpy(module_name, plugin_name + 6, name_size - 1);
+    } else {
+        strncpy(module_name, plugin_name, name_size - 1);
+    }
+    module_name[name_size - 1] = '\0';
+
+    // Remove ".so" suffix if present
+    size_t len = strlen(module_name);
+    if (len > 3 && strcmp(module_name + len - 3, ".so") == 0) {
+        module_name[len - 3] = '\0';
+    }
+}
+
 IRPluginHandle* ir_plugin_load(const char* plugin_path, const char* plugin_name) {
     return ir_plugin_load_with_metadata(plugin_path, plugin_name, NULL);
 }
@@ -1173,6 +1269,69 @@ const char* ir_plugin_find_by_capability(const char* symbol_name) {
     return NULL;
 }
 
+uint32_t ir_plugin_auto_discover_and_load(uint32_t max_plugins) {
+    uint32_t discovered_count = 0;
+    IRPluginDiscoveryInfo** discovered = ir_plugin_discover(NULL, &discovered_count);
+
+    if (!discovered || discovered_count == 0) {
+        return 0;
+    }
+
+    uint32_t loaded_count = 0;
+    uint32_t to_load = (max_plugins == 0 || max_plugins > discovered_count) ? discovered_count : max_plugins;
+
+    printf("[kryon][plugin] Auto-discovering plugins (found %u, loading up to %u)...\n",
+           discovered_count, to_load);
+
+    for (uint32_t i = 0; i < to_load; i++) {
+        IRPluginDiscoveryInfo* info = discovered[i];
+        if (!info) continue;
+
+        // Skip if already loaded
+        if (ir_plugin_is_loaded(info->name)) {
+            printf("[kryon][plugin] Plugin '%s' already loaded, skipping\n", info->name);
+            continue;
+        }
+
+        // Load the plugin
+        IRPluginHandle* handle = ir_plugin_load_with_metadata(info->path, info->name, info);
+        if (handle) {
+            loaded_count++;
+
+            // Check for Lua bindings
+            char lua_path[1024];
+            if (ir_plugin_get_lua_bindings_path(info->path, lua_path, sizeof(lua_path))) {
+                printf("[kryon][plugin] Plugin '%s' has Lua bindings at: %s\n", info->name, lua_path);
+
+                // Add to LUA_PATH environment variable for Lua runtime
+                const char* current_lua_path = getenv("LUA_PATH");
+                char new_lua_path[4096];
+                if (current_lua_path) {
+                    snprintf(new_lua_path, sizeof(new_lua_path), "%s/?.lua;%s/?/init.lua;%s",
+                             lua_path, lua_path, current_lua_path);
+                } else {
+                    snprintf(new_lua_path, sizeof(new_lua_path), "%s/?.lua;%s/?/init.lua;;",
+                             lua_path, lua_path);
+                }
+                setenv("LUA_PATH", new_lua_path, 1);
+            }
+
+            // Call init function if present
+            if (handle->init_func) {
+                printf("[kryon][plugin] Calling init function for '%s'\n", info->name);
+                handle->init_func(NULL);
+            }
+        } else {
+            fprintf(stderr, "[kryon][plugin] Failed to auto-load plugin '%s' from %s\n",
+                    info->name, info->path);
+        }
+    }
+
+    ir_plugin_free_discovery(discovered, discovered_count);
+    printf("[kryon][plugin] Auto-discovery complete: loaded %u plugin(s)\n", loaded_count);
+    return loaded_count;
+}
+
 #else  // __ANDROID__
 // Stub implementations for Android
 
@@ -1207,6 +1366,25 @@ void* ir_plugin_get_symbol(const char* plugin_name, const char* symbol_name) {
 bool ir_plugin_is_loaded(const char* plugin_name) {
     (void)plugin_name;
     return false;
+}
+
+bool ir_plugin_get_lua_bindings_path(const char* plugin_path, char* lua_path, size_t path_size) {
+    (void)plugin_path;
+    (void)lua_path;
+    (void)path_size;
+    return false;
+}
+
+void ir_plugin_get_lua_module_name(const char* plugin_name, char* module_name, size_t name_size) {
+    if (plugin_name && module_name && name_size > 0) {
+        strncpy(module_name, plugin_name, name_size - 1);
+        module_name[name_size - 1] = '\0';
+    }
+}
+
+uint32_t ir_plugin_auto_discover_and_load(uint32_t max_plugins) {
+    (void)max_plugins;
+    return 0;
 }
 
 #endif  // __ANDROID__

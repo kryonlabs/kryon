@@ -277,6 +277,72 @@ function Reactive.bindTabGroup(reactive, key, tabGroupId)
 end
 
 -- ============================================================================
+-- ForEach Reactive Integration
+-- ============================================================================
+
+--- Watch a ForEach data source and auto-re-render on changes
+--- @param reactive table Reactive proxy containing the data
+--- @param sourcePath string Path to the array (e.g., "habits[1].calendarDays")
+--- @param containerId string ForEach container element ID
+function Reactive.watchForEach(reactive, sourcePath, containerId)
+    local Runtime = require("kryon.runtime_web")
+
+    -- Parse the path to get the top-level key
+    -- e.g., "habits[1].calendarDays" -> "habits"
+    local topLevelKey = string.match(sourcePath, "^([^%.[%]]+)")
+
+    if not topLevelKey then
+        print("[Reactive Web] Invalid source path for ForEach:", sourcePath)
+        return
+    end
+
+    print("[Reactive Web] Watching ForEach:", containerId, "<-", sourcePath)
+
+    -- Subscribe to changes on the top-level key
+    Reactive.subscribe(reactive, function(changedKey, newValue, oldValue)
+        -- Check if this change affects our ForEach source
+        if changedKey == topLevelKey then
+            -- Get the updated data
+            local newData = Runtime.getReactiveValue(sourcePath)
+            if newData then
+                Runtime.renderForEach(containerId, newData)
+            end
+        end
+    end)
+
+    -- Initial render with current data
+    local initialData = Runtime.getReactiveValue(sourcePath)
+    if initialData then
+        Runtime.renderForEach(containerId, initialData)
+    end
+end
+
+--- Register a ForEach container with its render function and set up reactivity
+--- @param config table Configuration:
+---   - containerId: string - Element ID of ForEach container
+---   - source: string - Reactive data path (e.g., "state.calendarDays")
+---   - itemName: string - Variable name for each item
+---   - indexName: string - Variable name for index
+---   - renderFn: function - Render function(item, index) -> component
+---   - state: table|nil - Optional reactive state to watch
+function Reactive.registerForEach(config)
+    local Runtime = require("kryon.runtime_web")
+
+    -- Register the container with the runtime
+    Runtime.registerForEachContainer(config.containerId, {
+        source = config.source,
+        itemName = config.itemName or "item",
+        indexName = config.indexName or "index",
+        renderFn = config.renderFn
+    })
+
+    -- If reactive state is provided, set up watching
+    if config.state then
+        Reactive.watchForEach(config.state, config.source, config.containerId)
+    end
+end
+
+-- ============================================================================
 -- Effect Function - Automatic Dependency Tracking
 -- ============================================================================
 

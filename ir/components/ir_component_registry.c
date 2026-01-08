@@ -9,12 +9,46 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Forward declaration for dispatch
+extern void ir_layout_dispatch(IRComponent* c, IRLayoutConstraints constraints,
+                                float parent_x, float parent_y);
+
 // Global trait registry - maps component types to their layout traits
 // NOTE: Must NOT be static - needs to be shared across all shared library users
-IRLayoutTrait* g_layout_traits[IR_COMPONENT_CUSTOM + 1] = {0};
+// NOTE: Array size must accommodate all component types up to IR_COMPONENT_PLACEHOLDER
+IRLayoutTrait* g_layout_traits[IR_COMPONENT_PLACEHOLDER + 1] = {0};
+
+// ============================================================================
+// ForEach Layout Trait
+// ============================================================================
+
+/**
+ * Layout function for ForEach components.
+ * ForEach is "layout-transparent" - like CSS display: contents.
+ * It doesn't render itself; it just recursively layouts its children.
+ * The actual expansion of ForEach (duplicating template for each item)
+ * happens via ir_expand_foreach() which is called after loading KIR.
+ */
+static void layout_foreach_single_pass(IRComponent* c, IRLayoutConstraints constraints,
+                                       float parent_x, float parent_y) {
+    if (!c) return;
+
+    // ForEach is layout-transparent - just recursively layout children
+    // without adding any dimensions of its own
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        if (c->children[i]) {
+            ir_layout_dispatch(c->children[i], constraints, parent_x, parent_y);
+        }
+    }
+}
+
+static const IRLayoutTrait IR_FOR_EACH_LAYOUT_TRAIT = {
+    .layout_component = layout_foreach_single_pass,
+    .name = "ForEach"
+};
 
 void ir_layout_register_trait(IRComponentType type, const IRLayoutTrait* trait) {
-    if (type < 0 || type > IR_COMPONENT_CUSTOM) {
+    if (type < 0 || type > IR_COMPONENT_PLACEHOLDER) {
         fprintf(stderr, "[Registry] Invalid component type: %d\n", type);
         return;
     }
@@ -48,6 +82,9 @@ void ir_layout_init_traits(void) {
     // Register Table component
     ir_table_component_init();
 
+    // Register ForEach component (layout-transparent - just passes through to children)
+    ir_layout_register_trait(IR_COMPONENT_FOR_EACH, &IR_FOR_EACH_LAYOUT_TRAIT);
+
     if (getenv("KRYON_DEBUG_REGISTRY")) {
         fprintf(stderr, "[Registry] Layout traits initialized\n");
     }
@@ -58,7 +95,7 @@ void ir_layout_dispatch(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Look up trait for this component type
-    IRLayoutTrait* trait = (c->type >= 0 && c->type <= IR_COMPONENT_CUSTOM)
+    IRLayoutTrait* trait = (c->type >= 0 && c->type <= IR_COMPONENT_PLACEHOLDER)
                           ? g_layout_traits[c->type]
                           : NULL;
 

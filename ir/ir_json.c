@@ -43,6 +43,9 @@ typedef struct {
     int capacity;
 } ComponentDefContext;
 
+// Global cache for module definitions (persists across deserializations)
+static ComponentDefContext* g_module_def_cache = NULL;
+
 static ComponentDefContext* component_def_context_create(void) {
     ComponentDefContext* ctx = calloc(1, sizeof(ComponentDefContext));
     if (!ctx) return NULL;
@@ -76,6 +79,22 @@ static cJSON* component_def_context_find(ComponentDefContext* ctx, const char* n
     if (!ctx || !name) return NULL;
     for (int i = 0; i < ctx->count; i++) {
         if (strcmp(ctx->entries[i].name, name) == 0) {
+            return ctx->entries[i].definition;
+        }
+    }
+    return NULL;
+}
+
+// Find a component definition by module ID prefix (for $module: refs without export name)
+// Returns the first definition that starts with the given module ID
+static cJSON* component_def_context_find_by_module(ComponentDefContext* ctx, const char* module_id) {
+    if (!ctx || !module_id) return NULL;
+    size_t prefix_len = strlen(module_id);
+    for (int i = 0; i < ctx->count; i++) {
+        const char* entry_name = ctx->entries[i].name;
+        // Check if entry name starts with module_id followed by '/'
+        if (strncmp(entry_name, module_id, prefix_len) == 0 &&
+            entry_name[prefix_len] == '/') {
             return ctx->entries[i].definition;
         }
     }
@@ -1176,6 +1195,14 @@ static bool has_property_binding(IRComponent* component, const char* property_na
 static cJSON* json_serialize_component_impl(IRComponent* component, bool as_template) {
     if (!component) return NULL;
 
+    // Debug: ForEach components
+    if (component->type == IR_COMPONENT_FOR_EACH) {
+        fprintf(stderr, "[serialize] ForEach component id=%u, children=%u, each_source=%s, custom_data=%s\n",
+                component->id, component->child_count,
+                component->each_source ? component->each_source : "(null)",
+                component->custom_data ? component->custom_data : "(null)");
+    }
+
     cJSON* obj = cJSON_CreateObject();
     if (!obj) {
         fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) in json_serialize_component_impl\n");
@@ -1204,6 +1231,68 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
                 cJSON_Delete(propsJson);  // Delete the empty container
             }
         }
+        return obj;
+    }
+
+    // If this is a module reference (has module_ref) and we're not serializing as template,
+    // output a module reference instead of the full tree
+    if (!as_template && component->module_ref && component->module_ref[0] != '\0') {
+        // Create type string with $module: prefix
+        char* type_str = NULL;
+        if (component->export_name && component->export_name[0] != '\0') {
+            // Include export name: $module:components/tabs#buildTabsAndPanels
+            asprintf(&type_str, "$module:%s#%s", component->module_ref, component->export_name);
+        } else {
+            // Just module reference: $module:components/tabs
+            asprintf(&type_str, "$module:%s", component->module_ref);
+        }
+
+        if (type_str) {
+            cJSON_AddStringToObject(obj, "type", type_str);
+            free(type_str);
+        }
+        cJSON_AddNumberToObject(obj, "id", component->id);
+
+        // Flatten props to top-level fields (same as component_ref)
+        if (component->component_props && component->component_props[0] != '\0') {
+            cJSON* propsJson = cJSON_Parse(component->component_props);
+            if (propsJson) {
+                cJSON* prop = propsJson->child;
+                while (prop) {
+                    cJSON* nextProp = prop->next;
+                    cJSON_DetachItemViaPointer(propsJson, prop);
+                    cJSON_AddItemToObject(obj, prop->string, prop);
+                    prop = nextProp;
+                }
+                cJSON_Delete(propsJson);
+            }
+        }
+
+        // Include text content (for tab titles, labels, etc.)
+        if (component->text_content && component->text_content[0] != '\0') {
+            cJSON_AddStringToObject(obj, "text", component->text_content);
+        }
+
+        // Include background color if non-default (for tab colors, etc.)
+        if (component->style) {
+            IRStyle* style = component->style;
+            if (style->background.type == IR_COLOR_SOLID) {
+                char* bgColorStr = json_color_to_string(style->background);
+                if (bgColorStr) {
+                    cJSON_AddStringToObject(obj, "background", bgColorStr);
+                    free(bgColorStr);
+                }
+            }
+            // Include text color
+            if (style->font.color.type != IR_COLOR_TRANSPARENT) {
+                char* textColorStr = json_color_to_string(style->font.color);
+                if (textColorStr) {
+                    cJSON_AddStringToObject(obj, "color", textColorStr);
+                    free(textColorStr);
+                }
+            }
+        }
+
         return obj;
     }
 
@@ -1629,6 +1718,24 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
                         cJSON_AddStringToObject(handlerSourceObj, "file", event->handler_source->file);
                     }
                     cJSON_AddNumberToObject(handlerSourceObj, "line", event->handler_source->line);
+
+                    // Closure metadata (IR v2.3: Target-agnostic KIR)
+                    if (event->handler_source->uses_closures) {
+                        cJSON_AddBoolToObject(handlerSourceObj, "uses_closures", true);
+
+                        if (event->handler_source->closure_vars && event->handler_source->closure_var_count > 0) {
+                            cJSON* closureArray = cJSON_CreateArray();
+                            for (int i = 0; i < event->handler_source->closure_var_count; i++) {
+                                if (event->handler_source->closure_vars[i]) {
+                                    cJSON_AddItemToArray(closureArray, cJSON_CreateString(event->handler_source->closure_vars[i]));
+                                }
+                            }
+                            cJSON_AddItemToObject(handlerSourceObj, "closure_vars", closureArray);
+                        }
+                    } else {
+                        cJSON_AddBoolToObject(handlerSourceObj, "uses_closures", false);
+                    }
+
                     cJSON_AddItemToObject(eventObj, "handler_source", handlerSourceObj);
                 }
             }
@@ -1643,6 +1750,42 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     if (component->visible_condition && component->visible_condition[0] != '\0') {
         cJSON_AddStringToObject(obj, "visible_condition", component->visible_condition);
         cJSON_AddBoolToObject(obj, "visible_when_true", component->visible_when_true);
+    }
+
+    // Serialize ForEach (dynamic list rendering) properties
+    // First check direct fields (for components created by deserialization)
+    if (component->each_source && component->each_source[0] != '\0') {
+        cJSON_AddStringToObject(obj, "each_source", component->each_source);
+    }
+    if (component->each_item_name && component->each_item_name[0] != '\0') {
+        cJSON_AddStringToObject(obj, "each_item_name", component->each_item_name);
+    }
+    if (component->each_index_name && component->each_index_name[0] != '\0') {
+        cJSON_AddStringToObject(obj, "each_index_name", component->each_index_name);
+    }
+
+    // For ForEach components created by the DSL, parse metadata from custom_data
+    if (component->type == IR_COMPONENT_FOR_EACH && !component->each_source && component->custom_data && component->custom_data[0] == '{') {
+        cJSON* metadata = cJSON_Parse(component->custom_data);
+        if (metadata) {
+            cJSON* forEach = cJSON_GetObjectItem(metadata, "forEach");
+            if (forEach && cJSON_IsBool(forEach) && cJSON_IsTrue(forEach)) {
+                cJSON* each_source = cJSON_GetObjectItem(metadata, "each_source");
+                cJSON* each_item_name = cJSON_GetObjectItem(metadata, "each_item_name");
+                cJSON* each_index_name = cJSON_GetObjectItem(metadata, "each_index_name");
+
+                if (each_source && cJSON_IsString(each_source)) {
+                    cJSON_AddStringToObject(obj, "each_source", each_source->valuestring);
+                }
+                if (each_item_name && cJSON_IsString(each_item_name)) {
+                    cJSON_AddStringToObject(obj, "each_item_name", each_item_name->valuestring);
+                }
+                if (each_index_name && cJSON_IsString(each_index_name)) {
+                    cJSON_AddStringToObject(obj, "each_index_name", each_index_name->valuestring);
+                }
+            }
+            cJSON_Delete(metadata);
+        }
     }
 
     // Serialize animations (stored in style)
@@ -1712,8 +1855,16 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
             component->type == IR_COMPONENT_LINK ||
             component->type == IR_COMPONENT_TAB_CONTENT
         );
-        if (!is_special_type) {
-            cJSON_AddStringToObject(obj, "custom_data", component->custom_data);
+        if (!is_special_type && component->custom_data) {
+            // Try to parse custom_data as JSON for cleaner output
+            // If it's valid JSON, add it as an object; otherwise add as string
+            cJSON* custom_json = cJSON_Parse(component->custom_data);
+            if (custom_json) {
+                cJSON_AddItemToObject(obj, "custom_data", custom_json);
+            } else {
+                // Not valid JSON, add as escaped string
+                cJSON_AddStringToObject(obj, "custom_data", component->custom_data);
+            }
         }
     }
 
@@ -2489,9 +2640,6 @@ static cJSON* json_serialize_metadata(IRSourceMetadata* metadata) {
 
     if (metadata->source_language) {
         cJSON_AddStringToObject(meta, "source_language", metadata->source_language);
-    }
-    if (metadata->source_file) {
-        cJSON_AddStringToObject(meta, "source_file", metadata->source_file);
     }
     if (metadata->compiler_version) {
         cJSON_AddStringToObject(meta, "compiler_version", metadata->compiler_version);
@@ -4192,6 +4340,18 @@ IRComponentType ir_string_to_component_type(const char* str) {
     if (strcmp(str, "CODEINLINE") == 0) return IR_COMPONENT_CODE_INLINE;
     if (strcmp(str, "SMALL") == 0) return IR_COMPONENT_SMALL;
     if (strcmp(str, "MARK") == 0) return IR_COMPONENT_MARK;
+    // Source structure types (for round-trip codegen)
+    if (strcmp(str, "StaticBlock") == 0) return IR_COMPONENT_STATIC_BLOCK;
+    if (strcmp(str, "ForLoop") == 0) return IR_COMPONENT_FOR_LOOP;
+    if (strcmp(str, "ForEach") == 0) return IR_COMPONENT_FOR_EACH;
+    if (strcmp(str, "VarDecl") == 0) return IR_COMPONENT_VAR_DECL;
+    if (strcmp(str, "Placeholder") == 0) return IR_COMPONENT_PLACEHOLDER;
+    // Uppercase variants for source structure types
+    if (strcmp(str, "STATICBLOCK") == 0) return IR_COMPONENT_STATIC_BLOCK;
+    if (strcmp(str, "FORLOOP") == 0) return IR_COMPONENT_FOR_LOOP;
+    if (strcmp(str, "FOREACH") == 0) return IR_COMPONENT_FOR_EACH;
+    if (strcmp(str, "VARDECL") == 0) return IR_COMPONENT_VAR_DECL;
+    if (strcmp(str, "PLACEHOLDER") == 0) return IR_COMPONENT_PLACEHOLDER;
     return IR_COMPONENT_CONTAINER;
 }
 
@@ -4266,10 +4426,172 @@ static void remap_ids_recursive(IRComponent* comp) {
 static IRComponent* json_deserialize_component_with_context(cJSON* json, ComponentDefContext* ctx) {
     if (!json || !cJSON_IsObject(json)) return NULL;
 
+    // Track if we created the context (for cleanup)
+    int ctx_created = 0;
+
     // Check if this is a custom component that needs expansion
     cJSON* typeItem = cJSON_GetObjectItem(json, "type");
-    if (typeItem && cJSON_IsString(typeItem) && ctx) {
+    if (typeItem && cJSON_IsString(typeItem)) {
         const char* typeName = typeItem->valuestring;
+
+        // Check for module reference: $module:components/tabs or $module:components/tabs#buildTabsAndPanels
+        // Note: We use a global cache for module definitions to avoid reloading
+        if (strncmp(typeName, "$module:", 8) == 0) {
+            // Initialize global cache if needed
+            if (!g_module_def_cache) {
+                g_module_def_cache = component_def_context_create();
+            }
+            // Use global cache as context
+            ctx = g_module_def_cache;
+            ctx_created = 0;  // Never free the global cache here
+
+            const char* moduleRef = typeName + 8;  // Skip "$module:" prefix
+
+            // Parse module reference (format: "module_id" or "module_id#export_name")
+            char* moduleId = strdup(moduleRef);
+            char* exportName = NULL;
+            char* hash = strchr(moduleId, '#');
+            if (hash) {
+                *hash = '\0';
+                exportName = hash + 1;
+            }
+
+            // Try to load module KIR file from cache directory
+            const char* cacheDir = getenv("KRYON_CACHE_DIR");
+            if (!cacheDir) cacheDir = ".kryon_cache";
+
+            char kirPath[4096];
+            snprintf(kirPath, sizeof(kirPath), "%s/%s.kir", cacheDir, moduleId);
+
+            // Check if module KIR file exists
+            FILE* f = fopen(kirPath, "r");
+            if (f) {
+                fseek(f, 0, SEEK_END);
+                long size = ftell(f);
+                fseek(f, 0, SEEK_SET);
+
+                char* kirContent = malloc(size + 1);
+                if (kirContent) {
+                    fread(kirContent, 1, size, f);
+                    kirContent[size] = '\0';
+
+                    cJSON* moduleKir = cJSON_Parse(kirContent);
+                    if (moduleKir) {
+                        // Get component_definitions from module KIR
+                        cJSON* compDefs = cJSON_GetObjectItem(moduleKir, "component_definitions");
+                        if (compDefs && cJSON_IsArray(compDefs)) {
+                            // Add each component definition to the global cache
+                            cJSON* def = compDefs->child;
+                            while (def) {
+                                // Get the component name from the definition
+                                cJSON* nameItem = cJSON_GetObjectItem(def, "name");
+                                if (nameItem && cJSON_IsString(nameItem)) {
+                                    // Create a scoped name for the definition
+                                    char scopedName[1024];
+                                    if (exportName) {
+                                        // If export name specified, only add that one
+                                        if (strcmp(nameItem->valuestring, exportName) == 0) {
+                                            snprintf(scopedName, sizeof(scopedName), "%s/%s", moduleId, nameItem->valuestring);
+                                            component_def_context_add(ctx, scopedName, def);
+                                        }
+                                    } else {
+                                        // Add all exports from this module
+                                        snprintf(scopedName, sizeof(scopedName), "%s/%s", moduleId, nameItem->valuestring);
+                                        component_def_context_add(ctx, scopedName, def);
+                                    }
+                                }
+                                def = def->next;
+                            }
+                        }
+                        // Don't delete moduleKir - the cJSON pointers are stored in the cache
+                        // and will be cleaned up when the cache is freed
+                    }
+                    free(kirContent);
+                }
+                fclose(f);
+            }
+
+            // Now look up the definition using the module reference
+            // The typeName is "$module:..." but we need to look it up as "moduleId/exportName"
+            char lookupName[512];
+            if (exportName) {
+                snprintf(lookupName, sizeof(lookupName), "%s/%s", moduleId, exportName);
+            } else {
+                // Use the full module ref as lookup
+                strncpy(lookupName, moduleRef, sizeof(lookupName) - 1);
+                lookupName[sizeof(lookupName) - 1] = '\0';
+            }
+
+            cJSON* definition = component_def_context_find(ctx, lookupName);
+            // Fallback: if no export name was specified, try to find any definition from this module
+            if (!definition && !exportName) {
+                definition = component_def_context_find_by_module(ctx, moduleId);
+            }
+            if (definition) {
+                // Found the module component definition - expand it
+                cJSON* templateJson = cJSON_GetObjectItem(definition, "template");
+                if (templateJson) {
+                    // Build state context from definition and instance props
+                    StateContext sc = build_state_from_def(definition, json);
+
+                    // Clone template and substitute text expressions
+                    cJSON* expandedTemplate = clone_and_substitute_json(templateJson, &sc);
+                    state_context_free(&sc);
+
+                    if (expandedTemplate) {
+                        // Deserialize the expanded template
+                        IRComponent* expanded = json_deserialize_component_with_context(expandedTemplate, ctx);
+                        cJSON_Delete(expandedTemplate);
+
+                        if (expanded) {
+                            // Copy ID from the instance
+                            cJSON* idItem = cJSON_GetObjectItem(json, "id");
+                            if (idItem && cJSON_IsNumber(idItem)) {
+                                uint32_t instanceId = (uint32_t)idItem->valueint;
+                                remap_ids_recursive(expanded);
+                                expanded->id = instanceId;
+                                set_owner_instance_recursive(expanded, instanceId);
+                            }
+                            // Set module_ref on the expanded component
+                            expanded->module_ref = strdup(moduleId);
+                            if (exportName) {
+                                expanded->export_name = strdup(exportName);
+                            }
+
+                            // Apply instance-specific properties from the module reference
+                            // These override template values (e.g., tab title, colors)
+                            cJSON* textItem = cJSON_GetObjectItem(json, "text");
+                            if (textItem && cJSON_IsString(textItem)) {
+                                if (expanded->text_content) free(expanded->text_content);
+                                expanded->text_content = strdup(textItem->valuestring);
+                            }
+
+                            // Apply background color if specified
+                            cJSON* bgItem = cJSON_GetObjectItem(json, "background");
+                            if (bgItem && cJSON_IsString(bgItem) && expanded->style) {
+                                IRColor color = json_parse_color(bgItem->valuestring);
+                                expanded->style->background = color;
+                            }
+
+                            // Apply text color if specified
+                            cJSON* colorItem = cJSON_GetObjectItem(json, "color");
+                            if (colorItem && cJSON_IsString(colorItem) && expanded->style) {
+                                IRColor color = json_parse_color(colorItem->valuestring);
+                                expanded->style->font.color = color;
+                            }
+
+                            free(moduleId);
+                            return expanded;
+                        }
+                    }
+                }
+            }
+
+            free(moduleId);
+
+            // If we get here, module loading failed - fall through to create a placeholder component
+        }
+
         cJSON* definition = component_def_context_find(ctx, typeName);
         if (definition) {
             // Found a component definition - expand the template
@@ -4566,21 +4888,17 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         }
     }
 
-    // Set default properties for TabBar (horizontal layout + 100% width)
+    // Validate TabBar has explicit layout direction - no silent fallbacks
     if (component->type == IR_COMPONENT_TAB_BAR) {
         if (!component->layout) {
             component->layout = (IRLayout*)calloc(1, sizeof(IRLayout));
         }
-        // Only set default direction if not already set from JSON
-        if (component->layout && component->layout->flex.direction == 0) {
-            // Check if direction was explicitly set to column, or just defaulted to 0
-            // If no flexDirection was in JSON, default to row (horizontal)
-            component->layout->flex.direction = 1;  // Row (horizontal)
-            if (getenv("KRYON_TRACE_LAYOUT")) {
-                fprintf(stderr, "[TabBar] Applied default flexDirection=1 (row)\n");
-            }
-        } else if (component->layout && getenv("KRYON_TRACE_LAYOUT")) {
-            fprintf(stderr, "[TabBar] Already has flexDirection=%d from JSON\n", component->layout->flex.direction);
+        // Check if direction was explicitly set (0xFF = not set, 0 = column, 1 = row)
+        if (component->layout->flex.direction == 0 || component->layout->flex.direction == 0xFF) {
+            // Either defaulted to 0 (not set from JSON) or explicitly marked as 0xFF (not set)
+            fprintf(stderr, "ERROR: TabBar component has no explicit layout direction. "
+                    "Please add flexDirection=\"row\" or flexDirection=\"column\" to your TabBar.\n");
+            // Don't silently set to row - require explicit direction
         }
 
         // Set default width to 100% to fill parent TabGroup
@@ -5000,6 +5318,30 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                     if (lineItem && cJSON_IsNumber(lineItem)) {
                         event->handler_source->line = lineItem->valueint;
                     }
+
+                    // Closure metadata (IR v2.3: Target-agnostic KIR)
+                    cJSON* usesClosuresItem = cJSON_GetObjectItem(handlerSourceItem, "uses_closures");
+                    if (usesClosuresItem && cJSON_IsBool(usesClosuresItem)) {
+                        event->handler_source->uses_closures = (usesClosuresItem->type == cJSON_True);
+
+                        if (event->handler_source->uses_closures) {
+                            cJSON* closureArrayItem = cJSON_GetObjectItem(handlerSourceItem, "closure_vars");
+                            if (closureArrayItem && cJSON_IsArray(closureArrayItem)) {
+                                int closureCount = cJSON_GetArraySize(closureArrayItem);
+                                if (closureCount > 0) {
+                                    event->handler_source->closure_vars = calloc(closureCount, sizeof(char*));
+                                    event->handler_source->closure_var_count = closureCount;
+
+                                    for (int i = 0; i < closureCount; i++) {
+                                        cJSON* closureItem = cJSON_GetArrayItem(closureArrayItem, i);
+                                        if (closureItem && cJSON_IsString(closureItem)) {
+                                            event->handler_source->closure_vars[i] = strdup(closureItem->valuestring);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -5025,11 +5367,63 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         }
     }
 
+    // ForEach (dynamic list rendering) properties
+    if ((item = cJSON_GetObjectItem(json, "each_source")) != NULL && cJSON_IsString(item)) {
+        component->each_source = strdup(item->valuestring);
+    }
+    if ((item = cJSON_GetObjectItem(json, "each_item_name")) != NULL && cJSON_IsString(item)) {
+        component->each_item_name = strdup(item->valuestring);
+    }
+    if ((item = cJSON_GetObjectItem(json, "each_index_name")) != NULL && cJSON_IsString(item)) {
+        component->each_index_name = strdup(item->valuestring);
+    }
+
     // Generic custom_data (for elementId, data-* attributes, etc.)
     // Only load if not already set by component-specific deserialization above
     if (!component->custom_data) {
-        if ((item = cJSON_GetObjectItem(json, "custom_data")) != NULL && cJSON_IsString(item)) {
-            component->custom_data = strdup(item->valuestring);
+        if ((item = cJSON_GetObjectItem(json, "custom_data")) != NULL) {
+            if (cJSON_IsString(item)) {
+                component->custom_data = strdup(item->valuestring);
+            } else if (cJSON_IsObject(item) || cJSON_IsArray(item)) {
+                // custom_data can be a JSON object/array (e.g., ForEach metadata)
+                // Serialize it back to string for later parsing
+                char* json_str = cJSON_PrintUnformatted(item);
+                if (json_str) {
+                    component->custom_data = json_str;
+                }
+            }
+        }
+    }
+
+    // Parse ForEach metadata from custom_data if not already set via direct properties
+    if (component->type == IR_COMPONENT_FOR_EACH && !component->each_source && component->custom_data) {
+        cJSON* custom_json = cJSON_Parse(component->custom_data);
+        if (custom_json) {
+            cJSON* forEach = cJSON_GetObjectItem(custom_json, "forEach");
+            if (forEach && cJSON_IsTrue(forEach)) {
+                cJSON* each_source = cJSON_GetObjectItem(custom_json, "each_source");
+                if (each_source) {
+                    // each_source can be either a string (variable reference) or an array (literal data)
+                    if (cJSON_IsString(each_source)) {
+                        component->each_source = strdup(each_source->valuestring);
+                    } else if (cJSON_IsArray(each_source)) {
+                        // Serialize array back to JSON string for runtime expansion
+                        char* array_str = cJSON_PrintUnformatted(each_source);
+                        if (array_str) {
+                            component->each_source = array_str;
+                        }
+                    }
+                }
+                cJSON* each_item_name = cJSON_GetObjectItem(custom_json, "each_item_name");
+                if (each_item_name && cJSON_IsString(each_item_name)) {
+                    component->each_item_name = strdup(each_item_name->valuestring);
+                }
+                cJSON* each_index_name = cJSON_GetObjectItem(custom_json, "each_index_name");
+                if (each_index_name && cJSON_IsString(each_index_name)) {
+                    component->each_index_name = strdup(each_index_name->valuestring);
+                }
+            }
+            cJSON_Delete(custom_json);
         }
     }
 

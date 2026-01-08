@@ -60,6 +60,9 @@ IRComponent* ir_read_json_file(const char* filename);
 // Deserialize with manifest (returns manifest via out parameter)
 IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveManifest** out_manifest);
 
+// ForEach runtime expansion (call after loading KIR file)
+void ir_expand_foreach(IRComponent* root);
+
 // Component type conversion (for parsers)
 IRComponentType ir_string_to_component_type(const char* str);
 

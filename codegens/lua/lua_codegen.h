@@ -54,6 +54,22 @@ bool lua_codegen_generate_with_options(const char* kir_path,
                                         const char* output_path,
                                         LuaCodegenOptions* options);
 
+/**
+ * Generate multiple Lua files from multi-file KIR with exact source preservation
+ *
+ * This function checks if the KIR file contains a "sources" section. If present,
+ * it regenerates the original Lua source files exactly as they were compiled.
+ * This enables perfect round-trip compilation: Lua -> KIR -> Lua
+ *
+ * @param kir_path Path to .kir JSON file
+ * @param output_dir Directory where generated Lua files should be written
+ * @return bool true on success, false on error
+ *
+ * @example
+ *   bool success = lua_codegen_generate_multi("app.kir", "output/");
+ */
+bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir);
+
 #ifdef __cplusplus
 }
 #endif

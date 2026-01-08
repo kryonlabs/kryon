@@ -409,8 +409,12 @@ bool ir_gen_text_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* 
 }
 
 bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
-    // fprintf(stderr, "[BUTTON_GEN] Component %u bounds=(%.1f,%.1f,%.1f,%.1f) has_style=%d\n",
-    //         comp->id, bounds->x, bounds->y, bounds->width, bounds->height, comp->style != NULL);
+    if (getenv("KRYON_DEBUG_BUTTONS")) {
+        fprintf(stderr, "[BUTTON] ID=%u text='%s' bounds=(%.0f,%.0f,%.0fx%.0f)\n",
+                comp->id,
+                comp->text_content ? comp->text_content : "(null)",
+                bounds->x, bounds->y, bounds->width, bounds->height);
+    }
 
     /* Check if button is being hovered */
     bool is_hovered = (g_hovered_component == comp);
@@ -1181,8 +1185,15 @@ bool ir_generate_component_commands(
     //         component->type == 8 ? "BUTTON" : "other");
 
     switch (component->type) {
-        case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
+            if (getenv("KRYON_DEBUG_LAYOUT")) {
+                fprintf(stderr, "[ROW] ID=%u children=%u\n",
+                        component->id, component->child_count);
+            }
+            success = ir_gen_container_commands(component, ctx, render_bounds);
+            break;
+
+        case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_COLUMN:
         case IR_COMPONENT_CENTER:
             success = ir_gen_container_commands(component, ctx, render_bounds);
@@ -1250,6 +1261,16 @@ bool ir_generate_component_commands(
 
         case IR_COMPONENT_MODAL:
             success = ir_gen_modal_commands(component, ctx, render_bounds);
+            break;
+
+        case IR_COMPONENT_FOR_EACH:
+            /* ForEach is layout-transparent - like CSS display: contents */
+            /* Skip rendering the ForEach wrapper itself, just render children */
+            if (getenv("KRYON_DEBUG_LAYOUT")) {
+                fprintf(stderr, "[FOREACH] ID=%u children=%d\n",
+                        component->id, component->child_count);
+            }
+            success = true;
             break;
 
         default:

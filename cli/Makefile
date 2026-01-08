@@ -25,6 +25,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/utils/json.c \
        $(SRC_DIR)/utils/dev_server.c \
        $(SRC_DIR)/utils/paths.c \
+       $(SRC_DIR)/utils/build.c \
        $(SRC_DIR)/config/toml_parser.c \
        $(SRC_DIR)/config/config.c \
        $(SRC_DIR)/template/docs_template.c \
@@ -90,12 +91,24 @@ install: $(TARGET)
 	mkdir -p $(INSTALL_DIR)
 	cp $(TARGET) $(INSTALL_DIR)/$(TARGET)
 	chmod +x $(INSTALL_DIR)/$(TARGET)
+	# Build and install IR library (needed for Lua runtime)
+	$(MAKE) -C ../ir all
+	mkdir -p $(HOME)/.local/share/kryon/build
+	cp ../build/libkryon_ir.so $(HOME)/.local/share/kryon/build/
+	# Also install to .local/lib for dynamic linker
+	mkdir -p $(HOME)/.local/lib
+	cp ../build/libkryon_ir.so $(HOME)/.local/lib/
 	# Install TSX parser
 	mkdir -p $(HOME)/.local/share/kryon/tsx_parser
 	cp tsx_parser/tsx_to_kir.ts $(HOME)/.local/share/kryon/tsx_parser/
 	# Install Lua bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/lua
 	cp -r ../bindings/lua/* $(HOME)/.local/share/kryon/bindings/lua/
+	# Install plugin Lua bindings (e.g., storage plugin from kryon-storage)
+	@if [ -d /mnt/storage/Projects/KryonLabs/kryon-storage/bindings/lua ]; then \
+		cp /mnt/storage/Projects/KryonLabs/kryon-storage/bindings/lua/*.lua $(HOME)/.local/share/kryon/bindings/lua/ 2>/dev/null || true; \
+		echo "[install] Copied kryon-storage plugin Lua bindings"; \
+	fi
 	# Install C bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/c
 	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/

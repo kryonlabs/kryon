@@ -95,8 +95,7 @@ int main(int argc, char** argv) {
         // walk the KIR tree to extract component_id -> handler_index mappings
         if (g_ir_context && g_ir_context->source_metadata &&
             g_ir_context->source_metadata->source_language &&
-            strcmp(g_ir_context->source_metadata->source_language, "lua") == 0 &&
-            g_ir_context->source_metadata->source_file) {
+            strcmp(g_ir_context->source_metadata->source_language, "lua") == 0) {
 
             printf("📦 Bundling Lua code for web...\n");
 
@@ -126,8 +125,9 @@ int main(int argc, char** argv) {
 
                 // Bundle the main Lua file with handler map from KIR
                 // The bundler extracts component_id -> handler_index mapping from root
+                // Pass input kir_file as the source file reference
                 char* bundled_script = lua_bundler_generate_script(bundler,
-                    g_ir_context->source_metadata->source_file, root);
+                    kir_file, root);
 
                 if (bundled_script) {
                     // Append to HTML file
