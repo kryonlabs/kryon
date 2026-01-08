@@ -4,6 +4,7 @@
  */
 
 #include "kryon_cli.h"
+#include "build.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,23 +16,6 @@
 #include "parsers/c/c_parser.h"
 #include "parsers/tsx/tsx_parser.h"
 #include "parsers/lua/lua_parser.h"
-
-// Import compile_to_kir from cmd_build.c (we'll need to expose it)
-// For now, duplicate the logic
-
-static const char* detect_frontend(const char* source_file) {
-    const char* ext = path_extension(source_file);
-
-    if (strcmp(ext, ".kry") == 0) return "kry";
-    else if (strcmp(ext, ".kir") == 0) return "kir";
-    else if (strcmp(ext, ".md") == 0) return "markdown";
-    else if (strcmp(ext, ".html") == 0) return "html";
-    else if (strcmp(ext, ".tsx") == 0 || strcmp(ext, ".jsx") == 0) return "tsx";
-    else if (strcmp(ext, ".nim") == 0) return "nim";
-    else if (strcmp(ext, ".lua") == 0) return "lua";
-    else if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0) return "c";
-    else return NULL;
-}
 
 static int compile_to_kir(const char* source_file, const char* output_kir, const char* frontend) {
     printf("Compiling %s → %s (frontend: %s)\n", source_file, output_kir, frontend);
@@ -223,7 +207,6 @@ int cmd_compile(int argc, char** argv) {
     const char* source_file = argv[0];
     const char* output_file = NULL;
     bool use_cache = true;
-    // bool preserve_static = false;  // TODO: implement preserve-static for codegen
 
     // Parse flags
     for (int i = 1; i < argc; i++) {
@@ -232,7 +215,7 @@ int cmd_compile(int argc, char** argv) {
         } else if (strcmp(argv[i], "--no-cache") == 0) {
             use_cache = false;
         } else if (strcmp(argv[i], "--preserve-static") == 0) {
-            // preserve_static = true;  // TODO: implement
+            // TODO: implement preserve-static for codegen
         }
     }
 
@@ -241,8 +224,8 @@ int cmd_compile(int argc, char** argv) {
         return 1;
     }
 
-    // Detect frontend
-    const char* frontend = detect_frontend(source_file);
+    // Detect frontend using shared utility
+    const char* frontend = detect_frontend_type(source_file);
     if (!frontend) {
         fprintf(stderr, "Error: Could not detect frontend for %s\n", source_file);
         fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .nim, .lua, .c\n");

@@ -267,6 +267,118 @@ function Runtime.updateCalendarCell(elementId, isCompleted, completedColor)
 end
 
 -- ============================================================================
+-- ForEach Component Support (Dynamic List Rendering)
+-- ============================================================================
+
+-- Registry of all ForEach containers and their render functions
+local forEachContainers = {}
+
+--- Register a ForEach container for runtime re-rendering
+--- @param containerId string ForEach container element ID
+--- @param config table Configuration table with:
+---   - source: string - Data path (e.g., "state.calendarDays")
+---   - itemName: string - Variable name for each item (e.g., "day")
+---   - indexName: string - Variable name for index (e.g., "index")
+---   - renderFn: function - Render function for each item
+function Runtime.registerForEachContainer(containerId, config)
+    forEachContainers[containerId] = {
+        source = config.source,
+        itemName = config.itemName or "item",
+        indexName = config.indexName or "index",
+        renderFn = config.renderFn,
+        element = document:getElementById(containerId)
+    }
+    print("[Runtime] Registered ForEach container: " .. containerId .. " -> " .. config.source)
+end
+
+--- Unregister a ForEach container
+--- @param containerId string ForEach container element ID
+function Runtime.unregisterForEachContainer(containerId)
+    forEachContainers[containerId] = nil
+end
+
+--- Get a reactive value from a path string (e.g., "state.calendarDays")
+--- @param path string Dot-notation path to the value
+--- @return table|nil The value at the path
+function Runtime.getReactiveValue(path)
+    -- Start with global scope
+    local value = _G
+    local parts = {}
+    for part in string.gmatch(path, "[^.]+") do
+        table.insert(parts, part)
+    end
+
+    for _, part in ipairs(parts) do
+        if type(value) == "table" then
+            value = value[part]
+        else
+            return nil
+        end
+    end
+
+    return value
+end
+
+--- Re-render a ForEach container with new data
+--- @param containerId string ForEach container element ID
+--- @param newData table New array of data to render
+function Runtime.renderForEach(containerId, newData)
+    local config = forEachContainers[containerId]
+    if not config then
+        print("[Runtime] ForEach container not found: " .. containerId)
+        return
+    end
+
+    local element = config.element
+    if not element then
+        element = document:getElementById(containerId)
+        if not element then
+            print("[Runtime] ForEach element not found: " .. containerId)
+            return
+        end
+        config.element = element
+    end
+
+    -- Clear existing children (except text nodes we want to preserve)
+    while element.firstChild do
+        element:removeChild(element.firstChild)
+    end
+
+    -- Render each item
+    if type(newData) == "table" then
+        for i, item in ipairs(newData) do
+            -- Call the render function with item and index
+            local success, result = pcall(config.renderFn, item, i)
+            if success and result then
+                -- The render function should return a table with component info
+                -- For now, we'll create a simple element
+                local child = document:createElement("div")
+                child.textContent = tostring(item.text or tostring(item))
+                element:appendChild(child)
+            end
+        end
+    end
+end
+
+--- Update all ForEach containers watching a specific data path
+--- @param path string Data path that changed (e.g., "state.habits[1].calendarDays")
+function Runtime.updateForEachByPath(path)
+    for containerId, config in pairs(forEachContainers) do
+        -- Check if this ForEach is watching the changed path
+        if config.source == path or string.match(path, "^" .. string.gsub(config.source, "%.", "%.")) then
+            local newData = Runtime.getReactiveValue(config.source)
+            Runtime.renderForEach(containerId, newData)
+        end
+    end
+end
+
+--- Get all ForEach containers (for debugging/testing)
+--- @return table Map of container ID to config
+function Runtime.getForEachContainers()
+    return forEachContainers
+end
+
+-- ============================================================================
 -- Modal Helpers
 -- ============================================================================
 

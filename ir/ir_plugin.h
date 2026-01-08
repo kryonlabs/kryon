@@ -638,6 +638,41 @@ const char* const* ir_plugin_get_requirements(uint32_t* count);
  */
 void ir_plugin_clear_requirements(void);
 
+// ============================================================================
+// Plugin Lua Bindings Support
+// ============================================================================
+
+/**
+ * Get the directory containing a plugin's Lua bindings.
+ * Searches for bindings/lua/ relative to the plugin's .so file location.
+ *
+ * @param plugin_path Full path to the plugin .so file
+ * @param lua_path Output buffer for the Lua bindings directory path
+ * @param path_size Size of the output buffer
+ * @return true if Lua bindings directory was found, false otherwise
+ */
+bool ir_plugin_get_lua_bindings_path(const char* plugin_path, char* lua_path, size_t path_size);
+
+/**
+ * Get the Lua module name for a plugin.
+ * For example, "libkryon_storage.so" -> "storage"
+ *
+ * @param plugin_name The plugin name (e.g., "storage")
+ * @param module_name Output buffer for the Lua module name
+ * @param name_size Size of the output buffer
+ */
+void ir_plugin_get_lua_module_name(const char* plugin_name, char* module_name, size_t name_size);
+
+/**
+ * Discover and load all plugins from standard locations.
+ * This is a convenience function that calls ir_plugin_discover(NULL) and
+ * loads all discovered plugins. Returns the count of successfully loaded plugins.
+ *
+ * @param max_plugins Maximum number of plugins to load (0 for unlimited)
+ * @return Number of plugins successfully loaded
+ */
+uint32_t ir_plugin_auto_discover_and_load(uint32_t max_plugins);
+
 #ifdef __cplusplus
 }
 #endif

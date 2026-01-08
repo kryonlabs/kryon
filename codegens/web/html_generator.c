@@ -93,6 +93,9 @@ static const char* get_html_tag(IRComponentType type) {
         case IR_COMPONENT_TAB_CONTENT: return "div";
         case IR_COMPONENT_TAB_PANEL: return "div";
 
+        // ForEach (dynamic list rendering) - renders as div with special class
+        case IR_COMPONENT_FOR_EACH: return "div";
+
         // Layout containers (all map to div)
         case IR_COMPONENT_CONTAINER:
         case IR_COMPONENT_ROW:
@@ -1092,6 +1095,30 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             html_generator_write_format(generator, " data-panel=\"%d\"", panel_index);
             if (!is_active) {
                 html_generator_write_string(generator, " hidden");
+            }
+            break;
+        }
+
+        case IR_COMPONENT_FOR_EACH: {
+            // ForEach: dynamic list rendering with runtime reactivity
+            html_generator_write_format(generator, " id=\"foreach-%u\"", component->id);
+            html_generator_write_string(generator, " class=\"kryon-forEach\"");
+
+            // Add ForEach-specific data attributes for runtime re-rendering
+            if (component->each_source && component->each_source[0] != '\0') {
+                char escaped_source[512];
+                escape_html_text(component->each_source, escaped_source, sizeof(escaped_source));
+                html_generator_write_format(generator, " data-each-source=\"%s\"", escaped_source);
+            }
+            if (component->each_item_name && component->each_item_name[0] != '\0') {
+                char escaped_item[256];
+                escape_html_text(component->each_item_name, escaped_item, sizeof(escaped_item));
+                html_generator_write_format(generator, " data-item-name=\"%s\"", escaped_item);
+            }
+            if (component->each_index_name && component->each_index_name[0] != '\0') {
+                char escaped_index[256];
+                escape_html_text(component->each_index_name, escaped_index, sizeof(escaped_index));
+                html_generator_write_format(generator, " data-index-name=\"%s\"", escaped_index);
             }
             break;
         }

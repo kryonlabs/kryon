@@ -106,6 +106,14 @@ function UI.Tab(props)
     return props
 end
 
+--- ForEach component (for build-time list expansion)
+--- In web mode, this is just a stub since lists are already expanded in HTML
+--- @param props table Component properties (each, as, render)
+--- @return table props
+function UI.ForEach(props)
+    return props
+end
+
 -- ============================================================================
 -- Utility Functions
 -- ============================================================================

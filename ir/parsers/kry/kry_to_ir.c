@@ -2753,7 +2753,6 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     // Create source metadata
     IRSourceMetadata metadata;
     metadata.source_language = "kry";
-    metadata.source_file = "stdin";  // TODO: Pass actual filename
     metadata.compiler_version = "kryon-1.0.0";
     metadata.timestamp = NULL;  // TODO: Add timestamp
 

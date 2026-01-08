@@ -134,6 +134,9 @@ typedef struct {
 
     // Desktop renderer configuration
     char* desktop_renderer;  // "sdl3" or "raylib"
+
+    // Codegen output directory (optional, defaults to build_output_dir)
+    char* codegen_output_dir;
 } KryonConfig;
 
 KryonConfig* config_load(const char* config_path);

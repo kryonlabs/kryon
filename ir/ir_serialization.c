@@ -1548,11 +1548,6 @@ IRComponent* ir_read_json_file(const char* filename) {
                     metadata->source_language = strdup(lang->valuestring);
                 }
 
-                cJSON* file_obj = cJSON_GetObjectItem(metadataObj, "source_file");
-                if (file_obj && cJSON_IsString(file_obj)) {
-                    metadata->source_file = strdup(file_obj->valuestring);
-                }
-
                 cJSON* version = cJSON_GetObjectItem(metadataObj, "compiler_version");
                 if (version && cJSON_IsString(version)) {
                     metadata->compiler_version = strdup(version->valuestring);
@@ -1569,8 +1564,6 @@ IRComponent* ir_read_json_file(const char* filename) {
                     if (g_ir_context->source_metadata) {
                         if (g_ir_context->source_metadata->source_language)
                             free(g_ir_context->source_metadata->source_language);
-                        if (g_ir_context->source_metadata->source_file)
-                            free(g_ir_context->source_metadata->source_file);
                         if (g_ir_context->source_metadata->compiler_version)
                             free(g_ir_context->source_metadata->compiler_version);
                         if (g_ir_context->source_metadata->timestamp)
@@ -1647,11 +1640,6 @@ IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveMan
                     metadata->source_language = strdup(lang->valuestring);
                 }
 
-                cJSON* file_obj = cJSON_GetObjectItem(metadataObj, "source_file");
-                if (file_obj && cJSON_IsString(file_obj)) {
-                    metadata->source_file = strdup(file_obj->valuestring);
-                }
-
                 cJSON* version = cJSON_GetObjectItem(metadataObj, "compiler_version");
                 if (version && cJSON_IsString(version)) {
                     metadata->compiler_version = strdup(version->valuestring);
@@ -1666,8 +1654,6 @@ IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveMan
                 if (g_ir_context->source_metadata) {
                     if (g_ir_context->source_metadata->source_language)
                         free(g_ir_context->source_metadata->source_language);
-                    if (g_ir_context->source_metadata->source_file)
-                        free(g_ir_context->source_metadata->source_file);
                     if (g_ir_context->source_metadata->compiler_version)
                         free(g_ir_context->source_metadata->compiler_version);
                     if (g_ir_context->source_metadata->timestamp)
@@ -1728,3 +1714,752 @@ IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveMan
 }
 
 // NOTE: ir_serialize_json and ir_deserialize_json are now implemented in ir_json.c
+
+/* ============================================================================
+ * ForEach Runtime Expansion
+ * ============================================================================*/
+
+/**
+ * Deep copy a component tree without using JSON serialization.
+ * This preserves ForEach custom_data without double-encoding.
+ *
+ * This function creates a complete deep copy of a component including:
+ * - All primitive fields (id, type, flags, etc.)
+ * - String fields (text_content, custom_data, etc.) via strdup
+ * - Style, layout, events, logic structures
+ * - All children (recursively)
+ *
+ * IMPORTANT: This does NOT copy parent pointers - those must be set after copying.
+ */
+static IRComponent* ir_deep_copy_component(IRComponent* src) {
+    if (!src) return NULL;
+
+    // Allocate new component using the same allocator as the original
+    IRComponent* dest = ir_create_component(src->type);
+    if (!dest) {
+        fprintf(stderr, "[ForEach] Failed to allocate component for deep copy\n");
+        return NULL;
+    }
+
+    // Copy primitive fields
+    dest->selector_type = src->selector_type;
+    dest->child_count = src->child_count;
+    dest->child_capacity = src->child_count;  // Only allocate what we need
+    dest->owner_instance_id = src->owner_instance_id;
+    dest->is_disabled = src->is_disabled;
+    dest->dirty_flags = src->dirty_flags;
+    dest->has_active_animations = src->has_active_animations;
+
+    // Copy string fields
+    if (src->tag) dest->tag = strdup(src->tag);
+    if (src->css_class) dest->css_class = strdup(src->css_class);
+    if (src->text_content) dest->text_content = strdup(src->text_content);
+    if (src->text_expression) dest->text_expression = strdup(src->text_expression);
+    if (src->custom_data) dest->custom_data = strdup(src->custom_data);  // KEY: Direct copy, no JSON encoding!
+    if (src->component_ref) dest->component_ref = strdup(src->component_ref);
+    if (src->component_props) dest->component_props = strdup(src->component_props);
+    if (src->module_ref) dest->module_ref = strdup(src->module_ref);
+    if (src->export_name) dest->export_name = strdup(src->export_name);
+    if (src->scope) dest->scope = strdup(src->scope);
+    if (src->visible_condition) dest->visible_condition = strdup(src->visible_condition);
+    if (src->each_source) dest->each_source = strdup(src->each_source);
+    if (src->each_item_name) dest->each_item_name = strdup(src->each_item_name);
+    if (src->each_index_name) dest->each_index_name = strdup(src->each_index_name);
+
+    // Copy source_metadata
+    if (src->source_metadata.generated_by) {
+        dest->source_metadata.generated_by = strdup(src->source_metadata.generated_by);
+    }
+    dest->source_metadata.iteration_index = src->source_metadata.iteration_index;
+    dest->source_metadata.is_template = src->source_metadata.is_template;
+    dest->visible_when_true = src->visible_when_true;
+
+    // Copy style if present (deep copy of style structure)
+    if (src->style) {
+        dest->style = ir_create_style();
+        if (dest->style && src->style) {
+            memcpy(dest->style, src->style, sizeof(IRStyle));
+            // Copy style strings that need deep copying
+            if (src->style->background_image) dest->style->background_image = strdup(src->style->background_image);
+            if (src->style->background.var_name) dest->style->background.var_name = strdup(src->style->background.var_name);
+            if (src->style->text_fill_color.var_name) dest->style->text_fill_color.var_name = strdup(src->style->text_fill_color.var_name);
+            if (src->style->border_color.var_name) dest->style->border_color.var_name = strdup(src->style->border_color.var_name);
+            if (src->style->font.family) dest->style->font.family = strdup(src->style->font.family);
+            if (src->style->container_name) dest->style->container_name = strdup(src->style->container_name);
+
+            // Copy gradient if present
+            if (src->style->background.type == IR_COLOR_GRADIENT && src->style->background.data.gradient) {
+                dest->style->background.data.gradient = malloc(sizeof(IRGradient));
+                if (dest->style->background.data.gradient) {
+                    memcpy(dest->style->background.data.gradient, src->style->background.data.gradient, sizeof(IRGradient));
+                }
+            }
+
+            // Copy animations
+            if (src->style->animation_count > 0) {
+                dest->style->animations = calloc(src->style->animation_count, sizeof(IRAnimation*));
+                if (dest->style->animations) {
+                    for (uint32_t i = 0; i < src->style->animation_count; i++) {
+                        if (src->style->animations[i]) {
+                            dest->style->animations[i] = malloc(sizeof(IRAnimation));
+                            if (dest->style->animations[i]) {
+                                memcpy(dest->style->animations[i], src->style->animations[i], sizeof(IRAnimation));
+                                if (src->style->animations[i]->name) {
+                                    dest->style->animations[i]->name = strdup(src->style->animations[i]->name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Copy transitions
+            if (src->style->transition_count > 0) {
+                dest->style->transitions = calloc(src->style->transition_count, sizeof(IRTransition*));
+                if (dest->style->transitions) {
+                    for (uint32_t i = 0; i < src->style->transition_count; i++) {
+                        if (src->style->transitions[i]) {
+                            dest->style->transitions[i] = malloc(sizeof(IRTransition));
+                            if (dest->style->transitions[i]) {
+                                memcpy(dest->style->transitions[i], src->style->transitions[i], sizeof(IRTransition));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Copy layout if present
+    if (src->layout) {
+        dest->layout = ir_create_layout();
+        if (dest->layout && src->layout) {
+            memcpy(dest->layout, src->layout, sizeof(IRLayout));
+        }
+    }
+
+    // NOTE: Do NOT copy layout_state! ForEach expanded copies need fresh layout calculation.
+    // Copying layout_state would cause all expanded copies to overlap in the same position.
+    dest->layout_state = NULL;
+
+    // Copy events if present
+    if (src->events && src->child_count > 0) {
+        // Count events first
+        int event_count = 0;
+        IREvent* ev = src->events;
+        while (ev) {
+            event_count++;
+            ev = ev->next;
+        }
+
+        // Copy each event
+        if (event_count > 0) {
+            IREvent** dest_next_ptr = &dest->events;
+            ev = src->events;
+            while (ev) {
+                IREvent* new_event = ir_create_event(ev->type, ev->logic_id, NULL);
+                if (new_event) {
+                    if (ev->handler_source) {
+                        new_event->handler_source = calloc(1, sizeof(IRHandlerSource));
+                        if (new_event->handler_source) {
+                            new_event->handler_source->language = ev->handler_source->language ? strdup(ev->handler_source->language) : NULL;
+                            new_event->handler_source->code = ev->handler_source->code ? strdup(ev->handler_source->code) : NULL;
+                            new_event->handler_source->file = ev->handler_source->file ? strdup(ev->handler_source->file) : NULL;
+                            new_event->handler_source->line = ev->handler_source->line;
+                            new_event->handler_source->uses_closures = ev->handler_source->uses_closures;
+                            new_event->handler_source->closure_var_count = ev->handler_source->closure_var_count;
+
+                            // Copy closure variables array
+                            if (ev->handler_source->closure_vars && ev->handler_source->closure_var_count > 0) {
+                                new_event->handler_source->closure_vars = calloc(ev->handler_source->closure_var_count, sizeof(char*));
+                                for (int i = 0; i < ev->handler_source->closure_var_count; i++) {
+                                    if (ev->handler_source->closure_vars[i]) {
+                                        new_event->handler_source->closure_vars[i] = strdup(ev->handler_source->closure_vars[i]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    *dest_next_ptr = new_event;
+                    dest_next_ptr = &new_event->next;
+                }
+                ev = ev->next;
+            }
+        }
+    }
+
+    // Recursively copy children
+    if (src->child_count > 0) {
+        dest->children = calloc(src->child_count, sizeof(IRComponent*));
+        if (dest->children) {
+            for (uint32_t i = 0; i < src->child_count; i++) {
+                dest->children[i] = ir_deep_copy_component(src->children[i]);
+                if (dest->children[i]) {
+                    dest->children[i]->parent = dest;  // Set parent pointer
+                }
+            }
+        } else {
+            dest->child_count = 0;
+        }
+    }
+
+    return dest;
+}
+
+/**
+ * Update text content of a component tree based on ForEach iteration data
+ * This handles dynamic text like calendar day numbers
+ *
+ * @param component The component (or subtree) to update
+ * @param data_item The JSON data for this iteration (e.g., {"dayNumber": 1, "isCurrentMonth": true})
+ * @param item_name The name of the iteration variable (e.g., "day", "weekRow")
+ */
+static void update_foreach_component_text(IRComponent* component, cJSON* data_item, const char* item_name) {
+    if (!component || !data_item) return;
+
+    // Declare cJSON functions
+    extern cJSON* cJSON_GetObjectItem(const cJSON* object, const char* string);
+    extern int cJSON_IsNumber(const cJSON* item);
+    extern int cJSON_IsBool(const cJSON* item);
+    extern int cJSON_IsTrue(const cJSON* item);
+    extern int cJSON_IsArray(const cJSON* item);
+    extern double cJSON_GetNumberValue(const cJSON* item);
+
+    // Skip if data_item is an array (this is a nested ForEach parent, not the leaf data)
+    if (cJSON_IsArray(data_item)) {
+        return;
+    }
+
+    // Get the dayNumber field for Button/Text components
+    cJSON* day_number = cJSON_GetObjectItem(data_item, "dayNumber");
+    cJSON* is_current_month = cJSON_GetObjectItem(data_item, "isCurrentMonth");
+
+    // For Button or Text components with dynamic text, update based on calendar data
+    if ((component->type == IR_COMPONENT_BUTTON || component->type == IR_COMPONENT_TEXT) && day_number) {
+        // Check if this is a calendar button (has dayNumber in data)
+        if (cJSON_IsNumber(day_number)) {
+            int day_num = (int)cJSON_GetNumberValue(day_number);
+
+            // Check if we should show the number (only for current month)
+            bool show_number = true;
+            if (is_current_month && cJSON_IsBool(is_current_month)) {
+                show_number = cJSON_IsTrue(is_current_month);
+            }
+
+            // Update text_content
+            if (component->text_content) {
+                free(component->text_content);
+            }
+
+            if (show_number) {
+                // Convert day number to string
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%d", day_num);
+                component->text_content = strdup(buf);
+                fprintf(stderr, "[ForEach] Updated text to '%s' for component type=%d (Button=%d, Text=%d)\n",
+                        buf, (int)component->type, IR_COMPONENT_BUTTON, IR_COMPONENT_TEXT);
+            } else {
+                // Empty string for non-current month days
+                component->text_content = strdup("");
+            }
+        }
+    }
+
+    // Don't recurse - only update the immediate component
+    // Nested ForEach will be expanded separately and their children will be updated then
+}
+
+/**
+ * Update nested ForEach components' each_source with the correct iteration data.
+ * When expanding an outer ForEach (e.g., weeks), each copy of the template contains
+ * a nested ForEach (e.g., days). This function finds those nested ForEach components
+ * and updates their each_source with the current iteration's data.
+ *
+ * @param component The component tree to search for nested ForEach
+ * @param source_array The cJSON array to set as the nested ForEach's each_source
+ */
+static void update_nested_foreach_source(IRComponent* component, cJSON* source_array) {
+    if (!component || !source_array) return;
+
+    extern char* cJSON_PrintUnformatted(const cJSON* item);
+
+    // If this is a ForEach, update its each_source
+    if (component->type == IR_COMPONENT_FOR_EACH) {
+        // Free old each_source if present
+        if (component->each_source) {
+            free(component->each_source);
+            component->each_source = NULL;
+        }
+        // Serialize the new source array to string
+        char* json_str = cJSON_PrintUnformatted(source_array);
+        component->each_source = json_str;
+
+        // Debug: show first item's dayNumber to verify correct week data
+        extern cJSON* cJSON_GetArrayItem(const cJSON* array, int index);
+        extern cJSON* cJSON_GetObjectItem(const cJSON* object, const char* string);
+        extern double cJSON_GetNumberValue(const cJSON* item);
+        cJSON* first_item = cJSON_GetArrayItem(source_array, 0);
+        if (first_item) {
+            cJSON* day_num = cJSON_GetObjectItem(first_item, "dayNumber");
+            if (day_num) {
+                fprintf(stderr, "[ForEach] Updated nested ForEach ID=%u, first day=%d\n",
+                        component->id, (int)cJSON_GetNumberValue(day_num));
+            }
+        }
+        return;  // Don't recurse into ForEach children (template)
+    }
+
+    // Recurse into children
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        update_nested_foreach_source(component->children[i], source_array);
+    }
+}
+
+/**
+ * Replace a ForEach component with its expanded children in the parent's children array.
+ * This is necessary because ForEach is layout-transparent - if we leave the ForEach
+ * in the tree, all children would be laid out at the same position.
+ *
+ * @param parent The parent component containing the ForEach (NULL for root-level ForEach)
+ * @param foreach_index The index of the ForEach in parent's children array
+ * @param expanded_children The expanded children to replace the ForEach with
+ * @param expanded_count The number of expanded children
+ */
+static void replace_foreach_with_children(IRComponent* parent, int foreach_index,
+                                          IRComponent** expanded_children, int expanded_count) {
+    if (!expanded_children || expanded_count == 0) return;
+
+    // Special case: parent is NULL (root-level ForEach)
+    // This shouldn't happen in normal usage, but handle it gracefully
+    if (!parent) {
+        fprintf(stderr, "[ForEach] Warning: root-level ForEach cannot be replaced, keeping as-is\n");
+        return;
+    }
+
+    // Allocate new children array with space for expanded children
+    int new_count = parent->child_count - 1 + expanded_count;
+    IRComponent** new_children = calloc(new_count, sizeof(IRComponent*));
+    if (!new_children) return;
+
+    // Copy children before the ForEach
+    int dest_idx = 0;
+    for (int i = 0; i < foreach_index; i++) {
+        new_children[dest_idx++] = parent->children[i];
+    }
+
+    // Add the expanded children
+    for (int i = 0; i < expanded_count; i++) {
+        new_children[dest_idx++] = expanded_children[i];
+        if (expanded_children[i] && !expanded_children[i]->parent) {
+            // Only set parent if not already set (deep copy preserves correct parent)
+            expanded_children[i]->parent = parent;
+        }
+    }
+
+    // Copy children after the ForEach
+    for (int i = foreach_index + 1; i < (int)parent->child_count; i++) {
+        new_children[dest_idx++] = parent->children[i];
+    }
+
+    // Free the old children array (but not the components themselves)
+    free(parent->children);
+
+    // Update parent
+    parent->children = new_children;
+    parent->child_count = new_count;
+
+    fprintf(stderr, "[ForEach] Replaced ForEach at index %d with %d children (parent now has %d children)\n",
+            foreach_index, expanded_count, new_count);
+}
+
+/**
+ * Expand ForEach components that have serialized each_source data
+ * This is called after loading the KIR file to expand ForEach templates
+ *
+ * For the calendar: Outer ForEach (6 week rows) → Inner ForEach (7 days each)
+ */
+static void expand_foreach_component(IRComponent* component) {
+    if (!component) return;
+
+    // Check if this is a ForEach component with serialized data
+    if (component->type != IR_COMPONENT_FOR_EACH) {
+        // Not a ForEach - process children
+        fprintf(stderr, "[ForEach] Not a ForEach (type=%d), processing %d children\n",
+                (int)component->type, component->child_count);
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            if (component->children[i]) {
+                expand_foreach_component(component->children[i]);
+            }
+        }
+        return;
+    }
+
+    fprintf(stderr, "[ForEach] Found ForEach component ID=%d\n", (int)component->id);
+
+    // ForEach data can be in two places:
+    // 1. custom_data (from initial Lua compilation)
+    // 2. each_source (from KIR file deserialization)
+    if (!component->custom_data && !component->each_source) {
+        fprintf(stderr, "[ForEach] ID=%d has no custom_data or each_source\n", (int)component->id);
+        // No data - process children
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            if (component->children[i]) {
+                expand_foreach_component(component->children[i]);
+            }
+        }
+        return;
+    }
+
+    cJSON* custom_json = NULL;
+    cJSON* each_source_item = NULL;
+    int num_items = 0;
+
+    // Declare cJSON functions for use in this function
+    extern cJSON* cJSON_Parse(const char* value);
+    extern void cJSON_Delete(cJSON* item);
+    extern cJSON* cJSON_GetObjectItem(const cJSON* object, const char* string);
+    extern int cJSON_IsArray(const cJSON* item);
+    extern int cJSON_IsObject(const cJSON* item);
+    extern cJSON* cJSON_GetArrayItem(const cJSON* array, int index);
+    extern int cJSON_GetArraySize(const cJSON* array);
+
+    // Prefer each_source (from KIR) over custom_data (from initial compilation)
+    if (component->each_source) {
+        fprintf(stderr, "[ForEach] ID=%d using each_source from KIR\n", (int)component->id);
+        // Parse each_source directly (it should already be a JSON string)
+        custom_json = cJSON_Parse(component->each_source);
+        if (custom_json && cJSON_IsArray(custom_json)) {
+            each_source_item = custom_json;
+            num_items = cJSON_GetArraySize(custom_json);
+            fprintf(stderr, "[ForEach] ID=%d each_source is a direct array with %d items\n", (int)component->id, num_items);
+        }
+    }
+
+    // Fall back to custom_data (from initial compilation)
+    if (!each_source_item && component->custom_data) {
+        fprintf(stderr, "[ForEach] ID=%d custom_data='%s'\n", (int)component->id, component->custom_data);
+
+        custom_json = cJSON_Parse(component->custom_data);
+        if (!custom_json) {
+            fprintf(stderr, "[ForEach] ID=%d failed to parse custom_data as JSON\n", (int)component->id);
+            for (uint32_t i = 0; i < component->child_count; i++) {
+                if (component->children[i]) {
+                    expand_foreach_component(component->children[i]);
+                }
+            }
+            return;
+        }
+
+        fprintf(stderr, "[ForEach] ID=%d parsed custom_data successfully\n", (int)component->id);
+
+        each_source_item = cJSON_GetObjectItem(custom_json, "each_source");
+        if (each_source_item && cJSON_IsArray(each_source_item)) {
+            num_items = cJSON_GetArraySize(each_source_item);
+        }
+    }
+
+    if (!each_source_item || !cJSON_IsArray(each_source_item)) {
+        fprintf(stderr, "[ForEach] ID=%d each_source not found or not an array\n", (int)component->id);
+        if (custom_json) cJSON_Delete(custom_json);
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            if (component->children[i]) {
+                expand_foreach_component(component->children[i]);
+            }
+        }
+        return;
+    }
+
+    if (num_items == 0) {
+        cJSON_Delete(custom_json);
+        return;
+    }
+
+    // Get the template child (first child is the template)
+    if (component->child_count == 0 || !component->children[0]) {
+        fprintf(stderr, "[ForEach] Warning: ForEach has no template child\n");
+        cJSON_Delete(custom_json);
+        return;
+    }
+
+    IRComponent* template = component->children[0];
+
+    fprintf(stderr, "[ForEach] Expanding ForEach with %d items (template type=%d)\n",
+           num_items, template ? (int)template->type : 0);
+
+    // FIXED: Don't expand nested ForEach first!
+    // The old code did: expand_foreach_component(template);
+    // This caused nested ForEach to be expanded, then serialized to JSON,
+    // which corrupted the nested ForEach's custom_data (double-encoded)
+
+    // Allocate new children array
+    IRComponent** new_children = calloc(num_items, sizeof(IRComponent*));
+    if (!new_children) {
+        cJSON_Delete(custom_json);
+        return;
+    }
+
+    // For each item in each_source, create a DEEP COPY of the template
+    // Using deep copy instead of JSON serialize/deserialize preserves
+    // nested ForEach custom_data without double-encoding
+    int expanded_count = 0;
+    for (int i = 0; i < num_items; i++) {
+        IRComponent* copy = ir_deep_copy_component(template);
+        if (copy) {
+            // Set parent pointer
+            copy->parent = component;
+
+            // Update the copy's source_metadata with iteration index
+            copy->source_metadata.iteration_index = i;
+
+            // Update dynamic text content based on iteration data
+            // For calendar buttons: extract dayNumber from the data item
+            cJSON* data_item = cJSON_GetArrayItem(each_source_item, i);
+            if (data_item && cJSON_IsObject(data_item)) {
+                update_foreach_component_text(copy, data_item, component->each_item_name);
+            }
+
+            new_children[expanded_count++] = copy;
+        } else {
+            fprintf(stderr, "[ForEach] Failed to deep copy template for item %d\n", i);
+        }
+    }
+
+    if (expanded_count > 0) {
+        // Free old children (just the template)
+        if (component->children) {
+            // Don't free the template here as it might be in use
+            // Just replace the children array
+        }
+
+        // Update component with expanded children
+        component->children = new_children;
+        component->child_count = expanded_count;
+
+        // Set parent pointers for all new children
+        for (int i = 0; i < expanded_count; i++) {
+            if (new_children[i]) {
+                new_children[i]->parent = component;
+            }
+        }
+
+        fprintf(stderr, "[ForEach] Expanded to %d children\n", expanded_count);
+
+        // IMPORTANT: After copying, expand nested ForEach in each copy
+        // This is the KEY FIX for nested ForEach support!
+        // We do this AFTER all copies are made so each copy gets its
+        // own nested ForEach with its original (uncorrupted) custom_data
+        for (int i = 0; i < expanded_count; i++) {
+            if (new_children[i]) {
+                fprintf(stderr, "[ForEach] Expanding nested ForEach in copy %d\n", i);
+                expand_foreach_component(new_children[i]);
+            }
+        }
+    } else {
+        free(new_children);
+    }
+
+    cJSON_Delete(custom_json);
+}
+
+/**
+ * Expand ForEach components with parent tracking
+ * This version tracks the parent and child index so we can replace the ForEach
+ * with its expanded children, avoiding the layout-overlap issue.
+ */
+static void expand_foreach_with_parent(IRComponent* component, IRComponent* parent, int child_index) {
+    if (!component) return;
+
+    // Check if this is a ForEach component with serialized data
+    if (component->type != IR_COMPONENT_FOR_EACH) {
+        // Not a ForEach - process children
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            if (component->children[i]) {
+                expand_foreach_with_parent(component->children[i], component, (int)i);
+            }
+        }
+        return;
+    }
+
+    fprintf(stderr, "[ForEach] Found ForEach component ID=%d\n", (int)component->id);
+
+    // ForEach data can be in two places:
+    // 1. custom_data (from initial Lua compilation)
+    // 2. each_source (from KIR file deserialization)
+    if (!component->custom_data && !component->each_source) {
+        fprintf(stderr, "[ForEach] ID=%d has no custom_data or each_source\n", (int)component->id);
+        // No data - process children and then replace this ForEach with its single child (the template)
+        if (component->child_count > 0) {
+            // Replace this ForEach with its template child
+            replace_foreach_with_children(parent, child_index, component->children, component->child_count);
+            // Don't free component->children - they're now owned by parent
+            component->children = NULL;
+            component->child_count = 0;
+        }
+        return;
+    }
+
+    cJSON* custom_json = NULL;
+    cJSON* each_source_item = NULL;
+    int num_items = 0;
+
+    // Declare cJSON functions for use in this function
+    extern cJSON* cJSON_Parse(const char* value);
+    extern void cJSON_Delete(cJSON* item);
+    extern cJSON* cJSON_GetObjectItem(const cJSON* object, const char* string);
+    extern int cJSON_IsArray(const cJSON* item);
+    extern int cJSON_IsObject(const cJSON* item);
+    extern cJSON* cJSON_GetArrayItem(const cJSON* array, int index);
+    extern int cJSON_GetArraySize(const cJSON* array);
+
+    // Prefer each_source (from KIR) over custom_data (from initial compilation)
+    if (component->each_source) {
+        fprintf(stderr, "[ForEach] ID=%d using each_source from KIR\n", (int)component->id);
+        // Parse each_source directly (it should already be a JSON string)
+        custom_json = cJSON_Parse(component->each_source);
+        if (custom_json && cJSON_IsArray(custom_json)) {
+            each_source_item = custom_json;
+            num_items = cJSON_GetArraySize(custom_json);
+            fprintf(stderr, "[ForEach] ID=%d each_source is a direct array with %d items\n", (int)component->id, num_items);
+        }
+    }
+
+    // Fall back to custom_data (from initial compilation)
+    if (!each_source_item && component->custom_data) {
+        fprintf(stderr, "[ForEach] ID=%d custom_data='%s'\n", (int)component->id, component->custom_data);
+
+        custom_json = cJSON_Parse(component->custom_data);
+        if (!custom_json) {
+            fprintf(stderr, "[ForEach] ID=%d failed to parse custom_data as JSON\n", (int)component->id);
+            // Replace with template child and return
+            if (component->child_count > 0) {
+                replace_foreach_with_children(parent, child_index, component->children, component->child_count);
+                component->children = NULL;
+                component->child_count = 0;
+            }
+            return;
+        }
+
+        fprintf(stderr, "[ForEach] ID=%d parsed custom_data successfully\n", (int)component->id);
+
+        each_source_item = cJSON_GetObjectItem(custom_json, "each_source");
+        if (each_source_item && cJSON_IsArray(each_source_item)) {
+            num_items = cJSON_GetArraySize(each_source_item);
+        }
+    }
+
+    if (!each_source_item || !cJSON_IsArray(each_source_item)) {
+        fprintf(stderr, "[ForEach] ID=%d each_source not found or not an array\n", (int)component->id);
+        if (custom_json) cJSON_Delete(custom_json);
+        // Replace with template child and return
+        if (component->child_count > 0) {
+            replace_foreach_with_children(parent, child_index, component->children, component->child_count);
+            component->children = NULL;
+            component->child_count = 0;
+        }
+        return;
+    }
+
+    if (num_items == 0) {
+        fprintf(stderr, "[ForEach] ID=%d has empty each_source\n", (int)component->id);
+        if (custom_json) cJSON_Delete(custom_json);
+        return;
+    }
+
+    if (component->child_count == 0 || !component->children[0]) {
+        fprintf(stderr, "[ForEach] Warning: ForEach has no template child\n");
+        cJSON_Delete(custom_json);
+        return;
+    }
+
+    IRComponent* template = component->children[0];
+
+    fprintf(stderr, "[ForEach] Expanding ForEach with %d items (template type=%d)\n",
+           num_items, template ? (int)template->type : 0);
+
+    // Allocate new children array
+    IRComponent** new_children = calloc(num_items, sizeof(IRComponent*));
+    if (!new_children) {
+        cJSON_Delete(custom_json);
+        return;
+    }
+
+    // For each item in each_source, create a DEEP COPY of the template
+    int expanded_count = 0;
+    for (int i = 0; i < num_items; i++) {
+        IRComponent* copy = ir_deep_copy_component(template);
+        if (copy) {
+            copy->parent = component;
+            copy->source_metadata.iteration_index = i;
+
+            // Update dynamic text content based on iteration data
+            cJSON* data_item = cJSON_GetArrayItem(each_source_item, i);
+            if (data_item) {
+                fprintf(stderr, "[ForEach] data_item for i=%d: isObject=%d, isArray=%d\n",
+                        i, cJSON_IsObject(data_item), cJSON_IsArray(data_item));
+                if (cJSON_IsObject(data_item)) {
+                    // Leaf data - update text content directly
+                    update_foreach_component_text(copy, data_item, component->each_item_name);
+                } else if (cJSON_IsArray(data_item)) {
+                    // Nested array data - propagate to nested ForEach components
+                    // This is crucial for nested ForEach (e.g., weeks containing days)
+                    fprintf(stderr, "[ForEach] Propagating nested array data to nested ForEach\n");
+                    update_nested_foreach_source(copy, data_item);
+                }
+            }
+
+            new_children[expanded_count++] = copy;
+        } else {
+            fprintf(stderr, "[ForEach] Failed to deep copy template for item %d\n", i);
+        }
+    }
+
+    if (expanded_count > 0) {
+        // Update component with expanded children
+        component->children = new_children;
+        component->child_count = expanded_count;
+
+        fprintf(stderr, "[ForEach] Expanded to %d children\n", expanded_count);
+
+        // IMPORTANT: Expand nested ForEach in each copy BEFORE replacing in parent
+        // This ensures nested ForEach are also expanded and replaced
+        for (int i = 0; i < expanded_count; i++) {
+            if (new_children[i]) {
+                fprintf(stderr, "[ForEach] Expanding nested ForEach in copy %d\n", i);
+                expand_foreach_with_parent(new_children[i], component, i);
+            }
+        }
+
+        // NOW replace this ForEach with its expanded children in the parent
+        // This is the KEY FIX - the ForEach is removed from the tree and its children
+        // take its place, so the parent (Row/Column) can layout them correctly
+        replace_foreach_with_children(parent, child_index, new_children, expanded_count);
+
+        // Don't free new_children - they're now owned by the parent
+        // But mark component's children as NULL so we don't double-free
+        component->children = NULL;
+        component->child_count = 0;
+    } else {
+        free(new_children);
+    }
+
+    cJSON_Delete(custom_json);
+}
+
+/**
+ * Expand all ForEach components in the tree
+ * Call this after loading a KIR file to expand ForEach templates
+ */
+void ir_expand_foreach(IRComponent* root) {
+    fprintf(stderr, "[ForEach] ir_expand_foreach called, root=%p\n", (void*)root);
+    if (!root) {
+        fprintf(stderr, "[ForEach] root is NULL, returning\n");
+        return;
+    }
+    fprintf(stderr, "[ForEach] starting expansion, root type=%d\n", (int)root->type);
+
+    // Use the new parent-tracking expansion
+    // Root has no parent, so pass NULL and 0
+    expand_foreach_with_parent(root, NULL, 0);
+
+    fprintf(stderr, "[ForEach] expansion complete\n");
+}

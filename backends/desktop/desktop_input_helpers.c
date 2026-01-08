@@ -108,6 +108,10 @@ __attribute__((weak)) void navigate_to_page(const char* path) {
         return;
     }
 
+    // Expand ForEach components (runtime expansion for desktop)
+    extern void ir_expand_foreach(IRComponent* root);
+    ir_expand_foreach(new_root);
+
     // Clean up old tree
     if (page_router.root_component) {
         ir_destroy_component(page_router.root_component);

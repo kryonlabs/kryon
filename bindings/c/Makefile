@@ -5,7 +5,7 @@ AR = ar
 CFLAGS = -Wall -Wextra -std=c11 -O2 -fPIC
 INCLUDES = -I../../ir -I../../backends/desktop -I../../third_party/cJSON
 
-SOURCES = kryon.c kryon_dsl.c
+SOURCES = kryon.c kryon_dsl.c kryon_reactive.c kryon_reactive_ui.c
 OBJECTS = $(SOURCES:.c=.o)
 LIBRARY = libkryon_c.a
 

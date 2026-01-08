@@ -5,6 +5,7 @@
 #include "ir_animation.h"
 #include "ir_plugin.h"
 #include "components/ir_component_registry.h"
+#include "../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -81,6 +82,7 @@ const char* ir_component_type_to_string(IRComponentType type) {
         case IR_COMPONENT_SMALL: return "Small";
         case IR_COMPONENT_MARK: return "Mark";
         case IR_COMPONENT_CUSTOM: return "Custom";
+        case IR_COMPONENT_FOR_EACH: return "ForEach";
         default: return "Unknown";
     }
 }
@@ -239,9 +241,12 @@ void ir_tabgroup_register_panel(TabGroupState* state, IRComponent* panel) {
 }
 
 void ir_tabgroup_select(TabGroupState* state, int index) {
+    fprintf(stderr, "[TAB_SELECT] ir_tabgroup_select called with index=%d, state=%p\n", index, (void*)state);
     if (!state) return;
     if (index < 0 || (uint32_t)index >= state->tab_count) return;
     state->selected_index = index;
+    fprintf(stderr, "[TAB_SELECT] panel_count=%u, panels[%d]=%p\n",
+            state->panel_count, index, (void*)(index < (int)state->panel_count ? state->panels[index] : NULL));
 
     // Panels: show only selected
     if (state->tab_content) {
@@ -814,6 +819,17 @@ void ir_destroy_component(IRComponent* component) {
     // Free strings
     if (component->tag) free(component->tag);
     if (component->text_content) free(component->text_content);
+    if (component->css_class) free(component->css_class);
+    if (component->text_expression) free(component->text_expression);
+    if (component->component_ref) free(component->component_ref);
+    if (component->component_props) free(component->component_props);
+    if (component->module_ref) free(component->module_ref);
+    if (component->export_name) free(component->export_name);
+    if (component->scope) free(component->scope);
+    if (component->source_module) free(component->source_module);
+    if (component->each_source) free(component->each_source);
+    if (component->each_item_name) free(component->each_item_name);
+    if (component->each_index_name) free(component->each_index_name);
 
     // Free custom_data based on component type
     if (component->custom_data) {
@@ -1530,6 +1546,15 @@ void ir_destroy_handler_source(IRHandlerSource* source) {
     if (source->language) free(source->language);
     if (source->code) free(source->code);
     if (source->file) free(source->file);
+
+    // Free closure metadata
+    if (source->closure_vars) {
+        for (int i = 0; i < source->closure_var_count; i++) {
+            free(source->closure_vars[i]);
+        }
+        free(source->closure_vars);
+    }
+
     free(source);
 }
 
@@ -1540,6 +1565,33 @@ void ir_event_set_handler_source(IREvent* event, IRHandlerSource* source) {
         ir_destroy_handler_source(event->handler_source);
     }
     event->handler_source = source;
+}
+
+int ir_handler_source_set_closures(IRHandlerSource* source, const char** vars, int count) {
+    if (!source) return -1;
+    if (!vars || count <= 0) {
+        source->uses_closures = false;
+        source->closure_vars = NULL;
+        source->closure_var_count = 0;
+        return 0;
+    }
+
+    source->uses_closures = true;
+    source->closure_var_count = count;
+    source->closure_vars = calloc(count, sizeof(char*));
+
+    if (!source->closure_vars) {
+        source->closure_var_count = 0;
+        return -1;
+    }
+
+    for (int i = 0; i < count; i++) {
+        if (vars[i]) {
+            source->closure_vars[i] = strdup(vars[i]);
+        }
+    }
+
+    return 0;
 }
 
 // Logic Management
@@ -1639,6 +1691,177 @@ void ir_set_custom_data(IRComponent* component, const char* data) {
         free(component->custom_data);
     }
     component->custom_data = data ? strdup(data) : NULL;
+}
+
+// Module Reference Management (for cross-file component references)
+void ir_set_component_module_ref(IRComponent* component, const char* module_ref, const char* export_name) {
+    if (!component) return;
+
+    if (component->module_ref) {
+        free(component->module_ref);
+    }
+    component->module_ref = module_ref ? strdup(module_ref) : NULL;
+
+    if (component->export_name) {
+        free(component->export_name);
+    }
+    component->export_name = export_name ? strdup(export_name) : NULL;
+}
+
+// Recursively clear module_ref for a component tree (for serialization)
+// Returns a cJSON array with the old values for each component that had module_ref set
+cJSON* ir_clear_tree_module_refs(IRComponent* component) {
+    if (!component) return NULL;
+
+    cJSON* refs_array = cJSON_CreateArray();
+
+    // Process this component first
+    if (component->module_ref) {
+        cJSON* ref = cJSON_CreateObject();
+        cJSON_AddNumberToObject(ref, "id", component->id);
+        cJSON_AddStringToObject(ref, "module_ref", component->module_ref);
+        if (component->export_name) {
+            cJSON_AddStringToObject(ref, "export_name", component->export_name);
+        }
+        cJSON_AddItemToArray(refs_array, ref);
+
+        free(component->module_ref);
+        component->module_ref = NULL;
+    }
+    if (component->export_name) {
+        free(component->export_name);
+        component->export_name = NULL;
+    }
+
+    // Recursively process children
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        cJSON* child_refs = ir_clear_tree_module_refs(component->children[i]);
+        if (child_refs) {
+            // Merge child refs into our array
+            for (int j = 0; j < cJSON_GetArraySize(child_refs); j++) {
+                cJSON* item = cJSON_DetachItemFromArray(child_refs, j);
+                cJSON_AddItemToArray(refs_array, item);
+            }
+            cJSON_Delete(child_refs);
+        }
+    }
+
+    return refs_array;
+}
+
+// Restore module_ref from the refs array returned by ir_clear_tree_module_refs
+void ir_restore_tree_module_refs(IRComponent* component, cJSON* refs_array) {
+    if (!component || !refs_array) return;
+
+    // Create a map by id for quick lookup
+    cJSON* id_map = cJSON_CreateObject();
+
+    for (int i = 0; i < cJSON_GetArraySize(refs_array); i++) {
+        cJSON* ref = cJSON_GetArrayItem(refs_array, i);
+        cJSON* id_obj = cJSON_GetObjectItem(ref, "id");
+        if (id_obj && cJSON_IsNumber(id_obj)) {
+            cJSON_AddItemToObject(id_map, ref->string, ref);
+        }
+    }
+
+    // Helper function to restore refs for a component tree
+    void restore_for_component(IRComponent* comp) {
+        if (!comp) return;
+
+        // Find this component's refs by id
+        char id_str[32];
+        snprintf(id_str, sizeof(id_str), "%u", comp->id);
+
+        cJSON* ref = cJSON_GetObjectItem(id_map, id_str);
+        if (ref) {
+            cJSON* mod_ref = cJSON_GetObjectItem(ref, "module_ref");
+            cJSON* exp_name = cJSON_GetObjectItem(ref, "export_name");
+
+            if (mod_ref && cJSON_IsString(mod_ref)) {
+                comp->module_ref = strdup(mod_ref->valuestring);
+            }
+            if (exp_name && cJSON_IsString(exp_name)) {
+                comp->export_name = strdup(exp_name->valuestring);
+            }
+        }
+
+        // Recursively restore children
+        for (uint32_t i = 0; i < comp->child_count; i++) {
+            restore_for_component(comp->children[i]);
+        }
+    }
+
+    restore_for_component(component);
+    cJSON_Delete(id_map);
+}
+
+// JSON string wrapper for ir_clear_tree_module_refs (for FFI compatibility)
+// Returns a JSON string that must be freed by the caller
+char* ir_clear_tree_module_refs_json(IRComponent* component) {
+    if (!component) return NULL;
+
+    cJSON* refs_array = ir_clear_tree_module_refs(component);
+    if (!refs_array) return NULL;
+
+    char* result = cJSON_PrintUnformatted(refs_array);
+    cJSON_Delete(refs_array);
+    return result;
+}
+
+// JSON string wrapper for ir_restore_tree_module_refs (for FFI compatibility)
+void ir_restore_tree_module_refs_json(IRComponent* component, const char* json_str) {
+    if (!component || !json_str) return;
+
+    cJSON* refs_array = cJSON_Parse(json_str);
+    if (refs_array) {
+        ir_restore_tree_module_refs(component, refs_array);
+        cJSON_Delete(refs_array);
+    }
+}
+
+// Temporarily clear module_ref for serialization (returns old values for restoration)
+// DEPRECATED: Use ir_clear_tree_module_refs instead
+char* ir_clear_component_module_ref(IRComponent* component) {
+    if (!component) return NULL;
+    if (!component->module_ref) return NULL;
+
+    // Create a JSON string with the old values
+    cJSON* old_vals = cJSON_CreateObject();
+    if (component->module_ref) {
+        cJSON_AddStringToObject(old_vals, "module_ref", component->module_ref);
+        free(component->module_ref);
+        component->module_ref = NULL;
+    }
+    if (component->export_name) {
+        cJSON_AddStringToObject(old_vals, "export_name", component->export_name);
+        free(component->export_name);
+        component->export_name = NULL;
+    }
+
+    char* result = cJSON_PrintUnformatted(old_vals);
+    cJSON_Delete(old_vals);
+    return result;
+}
+
+// Restore module_ref from the JSON string returned by ir_clear_component_module_ref
+// DEPRECATED: Use ir_restore_tree_module_refs instead
+void ir_restore_component_module_ref(IRComponent* component, const char* json_str) {
+    if (!component || !json_str) return;
+
+    cJSON* old_vals = cJSON_Parse(json_str);
+    if (old_vals) {
+        cJSON* mod_ref = cJSON_GetObjectItem(old_vals, "module_ref");
+        cJSON* exp_name = cJSON_GetObjectItem(old_vals, "export_name");
+
+        if (mod_ref && cJSON_IsString(mod_ref)) {
+            component->module_ref = strdup(mod_ref->valuestring);
+        }
+        if (exp_name && cJSON_IsString(exp_name)) {
+            component->export_name = strdup(exp_name->valuestring);
+        }
+
+        cJSON_Delete(old_vals);
+    }
 }
 
 // Checkbox state helpers
@@ -1766,9 +1989,10 @@ void ir_set_tag(IRComponent* component, const char* tag) {
 // Convenience Functions
 IRComponent* ir_container(const char* tag) {
     IRComponent* component = ir_create_component(IR_COMPONENT_CONTAINER);
-    // Container defaults to column layout (like HTML div)
+    // Container requires explicit layout direction - no default
+    // Use UI.Row or UI.Column to get explicit direction
     IRLayout* layout = ir_get_layout(component);
-    layout->flex.direction = 0;  // 0 = column (vertical)
+    layout->flex.direction = 0xFF;  // Invalid value - requires explicit set
     layout->flex.justify_content = IR_ALIGNMENT_START;
     layout->flex.cross_axis = IR_ALIGNMENT_START;
     if (tag) ir_set_tag(component, tag);

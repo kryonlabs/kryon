@@ -56,6 +56,7 @@ typedef enum {
     // Source structure types (for round-trip codegen)
     IR_COMPONENT_STATIC_BLOCK,        // Static block (compile-time code execution)
     IR_COMPONENT_FOR_LOOP,            // For loop template (compile-time iteration)
+    IR_COMPONENT_FOR_EACH,            // ForEach (runtime dynamic list rendering)
     IR_COMPONENT_VAR_DECL,            // Variable declaration (const/let/var)
     // Template placeholder (for docs layout templates)
     IR_COMPONENT_PLACEHOLDER          // Template placeholder ({{name}})
@@ -737,6 +738,12 @@ typedef struct IRHandlerSource {
     char* code;          // The actual function source code
     char* file;          // Source file name (for debugging/roundtrip)
     int line;            // Source line number
+
+    // Closure metadata for handlers that reference external variables
+    // This allows target-specific codegen to add appropriate wrappers
+    bool uses_closures;  // True if handler references closure variables
+    char** closure_vars;  // Array of closure variable names
+    int closure_var_count;  // Number of closure variables
 } IRHandlerSource;
 
 // Event Handler
@@ -982,8 +989,11 @@ typedef struct IRComponent {
     char* custom_data;       // For custom components
     char* component_ref;     // For component references (e.g., "Counter")
     char* component_props;   // JSON string of props passed to component instance
+    char* module_ref;        // For module references to external KIR files (e.g., "components/tabs")
+    char* export_name;       // Export name to use from module (e.g., "buildTabsAndPanels")
     uint32_t owner_instance_id;        // ID of owning component instance (for state isolation)
     char* scope;             // Scope string for variable lookups (e.g., "Counter#0", "Counter#1")
+    char* source_module;      // Module that created this component (e.g., "components/calendar")
     IRRenderedBounds rendered_bounds;  // Cached layout bounds
     IRLayoutCache layout_cache;        // Performance cache for layout
     uint32_t dirty_flags;              // Dirty tracking for incremental updates
@@ -1003,6 +1013,11 @@ typedef struct IRComponent {
     // Conditional rendering support
     char* visible_condition;           // Variable name that controls visibility (e.g., "showMessage")
     bool visible_when_true;            // True if visible when condition is true, false if visible when condition is false
+
+    // ForEach (dynamic list rendering) support
+    char* each_source;                 // Reactive variable name to iterate (e.g., "state.calendarDays")
+    char* each_item_name;              // Variable name for each item (e.g., "day")
+    char* each_index_name;             // Variable name for index (e.g., "index")
 
     // Interaction state
     bool is_disabled;                  // True if component is disabled (for buttons, inputs, etc.)
@@ -1041,10 +1056,28 @@ typedef struct IRMetadata {
 // Source file metadata for round-trip serialization
 typedef struct IRSourceMetadata {
     char* source_language;    // Original language: "tsx", "c", "nim", "lua", "kry", "html", "md"
-    char* source_file;        // Path to original source file
     char* compiler_version;   // Kryon compiler version (e.g., "kryon-1.0.0")
     char* timestamp;          // ISO8601 timestamp when KIR was generated
 } IRSourceMetadata;
+
+// ============================================================================
+// Multi-File Source Preservation (for automatic KIR splitting)
+// ============================================================================
+
+// Individual module source file entry for storing original source code in KIR
+typedef struct IRModuleSource {
+    char* module_id;      // Module identifier (e.g., "main", "components/calendar")
+    char* language;       // "lua", "tsx", "kry", etc.
+    char* source;         // Original source code
+    char* hash;           // SHA-256 hash for change detection
+} IRModuleSource;
+
+// Collection of source entries for multi-file KIR
+typedef struct IRSourceCollection {
+    IRModuleSource* entries;
+    uint32_t entry_count;
+    uint32_t entry_capacity;
+} IRSourceCollection;
 
 // ============================================================================
 // Source Preservation Structures (for Kry → KIR → Kry round-trip codegen)

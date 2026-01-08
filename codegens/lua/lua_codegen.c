@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 // String builder helper
 typedef struct {
@@ -84,6 +86,155 @@ static void lua_gen_add_line_fmt(LuaCodeGen* gen, const char* fmt, ...) {
     vsnprintf(temp, sizeof(temp), fmt, args);
     va_end(args);
     lua_gen_add_line(gen, temp);
+}
+
+/**
+ * Convert cJSON to Lua table syntax
+ * This converts JSON format to valid Lua table syntax:
+ * - Objects: {"key":value} -> {key=value}
+ * - Arrays: [1,2,3] -> {1,2,3}
+ * - true/false/null -> true/false/nil
+ */
+static char* cJSON_to_lua_syntax(const cJSON* item) {
+    if (!item) return strdup("nil");
+
+    char* result = NULL;
+    size_t result_size = 0;
+    size_t result_capacity = 256;
+
+    result = malloc(result_capacity);
+    if (!result) return NULL;
+
+    // Helper to append to result
+    int append_str(const char* str) {
+        size_t len = strlen(str);
+        while (result_size + len >= result_capacity) {
+            result_capacity *= 2;
+            char* new_result = realloc(result, result_capacity);
+            if (!new_result) {
+                free(result);
+                return -1;
+            }
+            result = new_result;
+        }
+        strcpy(result + result_size, str);
+        result_size += len;
+        return 0;
+    }
+
+    int append_char(char c) {
+        char str[2] = {c, '\0'};
+        return append_str(str);
+    }
+
+    switch (cJSON_IsInvalid(item) ? 100 : item->type) {
+        case cJSON_NULL:
+            append_str("nil");
+            break;
+
+        case cJSON_False:
+        case cJSON_True:
+            append_str(cJSON_IsTrue(item) ? "true" : "false");
+            break;
+
+        case cJSON_Number:
+            if (item->valuedouble == (double)(int)item->valuedouble) {
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%d", (int)item->valuedouble);
+                append_str(buf);
+            } else {
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%g", item->valuedouble);
+                append_str(buf);
+            }
+            break;
+
+        case cJSON_String: {
+            append_char('"');
+            const char* str = cJSON_GetStringValue(item);
+            for (size_t i = 0; str && str[i]; i++) {
+                if (str[i] == '"' || str[i] == '\\') {
+                    append_char('\\');
+                }
+                append_char(str[i]);
+            }
+            append_char('"');
+            break;
+        }
+
+        case cJSON_Array: {
+            append_char('{');
+            const cJSON* child = item->child;
+            bool first = true;
+            while (child) {
+                if (!first) append_char(',');
+                first = false;
+                char* child_lua = cJSON_to_lua_syntax(child);
+                if (child_lua) {
+                    append_str(child_lua);
+                    free(child_lua);
+                }
+                child = child->next;
+            }
+            append_char('}');
+            break;
+        }
+
+        case cJSON_Object: {
+            append_char('{');
+            const cJSON* child = item->child;
+            bool first = true;
+            while (child) {
+                if (!first) append_char(',');
+                first = false;
+
+                // Key (always a string in JSON objects)
+                if (child->string && child->string[0]) {
+                    // Check if key is a valid Lua identifier
+                    bool is_identifier = true;
+                    for (size_t i = 0; child->string[i]; i++) {
+                        char c = child->string[i];
+                        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                              (c == '_') || (i > 0 && c >= '0' && c <= '9'))) {
+                            is_identifier = false;
+                            break;
+                        }
+                    }
+
+                    if (is_identifier) {
+                        append_str(child->string);
+                    } else {
+                        // Quote the key
+                        append_char('[');
+                        append_char('"');
+                        append_str(child->string);
+                        append_char('"');
+                        append_char(']');
+                    }
+                }
+
+                // Value separator (Lua uses =, JSON uses :)
+                append_char('=');
+
+                // Value
+                char* child_lua = cJSON_to_lua_syntax(child);
+                if (child_lua) {
+                    append_str(child_lua);
+                    free(child_lua);
+                }
+                child = child->next;
+            }
+            append_char('}');
+            break;
+        }
+
+        default:
+            append_str("nil");
+            break;
+    }
+
+    append_char('\0');
+    return result;
 }
 
 // Generate reactive variables
@@ -223,6 +374,7 @@ static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* va
 
     // Map IR type to Lua DSL function
     const char* dsl_func = "Container";
+    bool is_foreach = false;
     if (strcmp(comp_type, "Row") == 0) dsl_func = "Row";
     else if (strcmp(comp_type, "Column") == 0) dsl_func = "Column";
     else if (strcmp(comp_type, "Text") == 0) dsl_func = "Text";
@@ -233,6 +385,10 @@ static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* va
     else if (strcmp(comp_type, "TabBar") == 0) dsl_func = "TabBar";
     else if (strcmp(comp_type, "TabContent") == 0) dsl_func = "TabContent";
     else if (strcmp(comp_type, "TabPanel") == 0) dsl_func = "TabPanel";
+    else if (strcmp(comp_type, "ForEach") == 0) {
+        dsl_func = "ForEach";
+        is_foreach = true;
+    }
 
     if (is_inline) {
         lua_gen_add_line_fmt(gen, "UI.%s {", dsl_func);
@@ -412,15 +568,74 @@ static void generate_component_tree(LuaCodeGen* gen, cJSON* comp, const char* va
         }
     }
 
+    // Handle ForEach-specific properties
+    if (is_foreach) {
+        cJSON* custom_data = cJSON_GetObjectItem(comp, "custom_data");
+        if (custom_data && cJSON_IsObject(custom_data)) {
+            cJSON* each_source = cJSON_GetObjectItem(custom_data, "each_source");
+            cJSON* each_item_name = cJSON_GetObjectItem(custom_data, "each_item_name");
+            cJSON* each_index_name = cJSON_GetObjectItem(custom_data, "each_index_name");
+
+            // Output 'as' property (item name)
+            if (each_item_name && cJSON_IsString(each_item_name)) {
+                const char* item_name = cJSON_GetStringValue(each_item_name);
+                lua_gen_add_line_fmt(gen, "as = \"%s\",", item_name);
+            }
+
+            // Output 'index' property (index name)
+            if (each_index_name && cJSON_IsString(each_index_name)) {
+                const char* index_name = cJSON_GetStringValue(each_index_name);
+                if (strcmp(index_name, "index") != 0) {  // Only output if not default
+                    lua_gen_add_line_fmt(gen, "index = \"%s\",", index_name);
+                }
+            }
+
+            // Output 'each' property (data source)
+            if (each_source) {
+                char* source_str = cJSON_to_lua_syntax(each_source);
+                if (source_str) {
+                    lua_gen_add_line_fmt(gen, "each = %s,", source_str);
+                    free(source_str);
+                }
+            }
+        }
+    }
+
     // Generate children
     cJSON* children = cJSON_GetObjectItem(comp, "children");
     if (children && cJSON_IsArray(children) && cJSON_GetArraySize(children) > 0) {
-        lua_gen_add_line(gen, "");
+        if (is_foreach) {
+            // ForEach children should be wrapped in render function
+            cJSON* custom_data = cJSON_GetObjectItem(comp, "custom_data");
+            const char* item_name = "item";
+            if (custom_data && cJSON_IsObject(custom_data)) {
+                cJSON* each_item_name = cJSON_GetObjectItem(custom_data, "each_item_name");
+                if (each_item_name && cJSON_IsString(each_item_name)) {
+                    item_name = cJSON_GetStringValue(each_item_name);
+                }
+            }
+            lua_gen_add_line(gen, "");
+            lua_gen_add_line_fmt(gen, "render = function(%s, %s_index)",
+                                 item_name, item_name);
+            gen->indent++;
+            lua_gen_add_line(gen, "return");
+            gen->indent++;
+        } else {
+            lua_gen_add_line(gen, "");
+        }
 
         cJSON* child = NULL;
         cJSON_ArrayForEach(child, children) {
             generate_component_tree(gen, child, NULL, handler_ctx, true);
-            lua_gen_add_line(gen, ",");
+            if (!is_foreach) {
+                lua_gen_add_line(gen, ",");
+            }
+        }
+
+        if (is_foreach) {
+            gen->indent--;  // Dedent for children
+            gen->indent--;  // Dedent for function end
+            lua_gen_add_line(gen, "end,");
         }
     }
 
@@ -476,9 +691,45 @@ char* lua_codegen_from_json(const char* kir_json) {
         generate_component_tree(gen, component, "root", &handler_ctx, false);
     }
 
-    // Footer
+    // Footer - check for window metadata in app section
     lua_gen_add_line(gen, "");
-    lua_gen_add_line(gen, "return root");
+    cJSON* app = cJSON_GetObjectItem(root, "app");
+    if (app && cJSON_IsObject(app)) {
+        cJSON* title = cJSON_GetObjectItem(app, "windowTitle");
+        cJSON* width = cJSON_GetObjectItem(app, "windowWidth");
+        cJSON* height = cJSON_GetObjectItem(app, "windowHeight");
+
+        if (title || width || height) {
+            lua_gen_add_line(gen, "return {");
+            gen->indent++;
+            lua_gen_add_line(gen, "root = root,");
+
+            if (title && cJSON_IsString(title)) {
+                lua_gen_add_line_fmt(gen, "window = {title = \"%s\",",
+                                     cJSON_GetStringValue(title));
+            } else {
+                lua_gen_add_line(gen, "window = {");
+            }
+
+            gen->indent++;
+            if (width && cJSON_IsNumber(width)) {
+                int w = (int)cJSON_GetNumberValue(width);
+                lua_gen_add_line_fmt(gen, "width = %d,", w);
+            }
+            if (height && cJSON_IsNumber(height)) {
+                int h = (int)cJSON_GetNumberValue(height);
+                lua_gen_add_line_fmt(gen, "height = %d", h);
+            }
+            gen->indent--;
+            lua_gen_add_line(gen, "}");
+            gen->indent--;
+            lua_gen_add_line(gen, "}");
+        } else {
+            lua_gen_add_line(gen, "return root");
+        }
+    } else {
+        lua_gen_add_line(gen, "return root");
+    }
 
     char* result = strdup(gen->buffer);
     lua_gen_free(gen);
@@ -608,5 +859,159 @@ bool lua_codegen_generate_with_options(const char* kir_path,
     // Note: optimize option affects runtime, not codegen
     // Could be used in future to generate optimized Lua patterns
 
+    return true;
+}
+
+/**
+ * Generate multiple Lua files from multi-file KIR with exact source preservation
+ */
+bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
+    if (!kir_path || !output_dir) {
+        fprintf(stderr, "Error: Invalid arguments to lua_codegen_generate_multi\n");
+        return false;
+    }
+
+    // Read KIR file
+    FILE* f = fopen(kir_path, "r");
+    if (!f) {
+        fprintf(stderr, "Error: Could not read KIR file: %s\n", kir_path);
+        return false;
+    }
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    // Read file
+    char* kir_json = malloc(size + 1);
+    if (!kir_json) {
+        fclose(f);
+        return false;
+    }
+
+    size_t read_size = fread(kir_json, 1, size, f);
+    kir_json[read_size] = '\0';
+    fclose(f);
+
+    // Parse JSON
+    cJSON* root = cJSON_Parse(kir_json);
+    free(kir_json);
+
+    if (!root) {
+        fprintf(stderr, "Error: Failed to parse KIR JSON\n");
+        return false;
+    }
+
+    // Check for sources section
+    cJSON* sources = cJSON_GetObjectItem(root, "sources");
+    if (!sources) {
+        fprintf(stderr, "Error: KIR file does not contain sources section\n");
+        fprintf(stderr, "       Use lua_codegen_generate() for single-file codegen\n");
+        cJSON_Delete(root);
+        return false;
+    }
+
+    // Create output directory if it doesn't exist
+    struct stat st = {0};
+    if (stat(output_dir, &st) == -1) {
+        // Directory doesn't exist, create it
+        char mkdir_cmd[2048];
+        snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
+        if (system(mkdir_cmd) != 0) {
+            fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
+            cJSON_Delete(root);
+            return false;
+        }
+    }
+
+    // Write each source file
+    cJSON* module = NULL;
+    cJSON* import_item = NULL;
+    int files_written = 0;
+
+    // First, write main.lua (entry point)
+    cJSON* main_source = cJSON_GetObjectItem(sources, "main");
+    if (main_source) {
+        cJSON* source = cJSON_GetObjectItem(main_source, "source");
+        if (source && cJSON_IsString(source)) {
+            char main_path[2048];
+            snprintf(main_path, sizeof(main_path), "%s/main.lua", output_dir);
+
+            FILE* out = fopen(main_path, "w");
+            if (out) {
+                fputs(source->valuestring, out);
+                fclose(out);
+                printf("✓ Generated: main.lua\n");
+                files_written++;
+            }
+        }
+    }
+
+    // Write all other modules
+    cJSON* imports = cJSON_GetObjectItem(root, "imports");
+    if (imports && cJSON_IsArray(imports)) {
+        cJSON_ArrayForEach(import_item, imports) {
+            if (cJSON_IsString(import_item)) {
+                const char* module_id = import_item->valuestring;
+
+                // Skip "main" as it's already written
+                if (strcmp(module_id, "main") == 0) {
+                    continue;
+                }
+
+                // Skip Kryon internal modules
+                if (strcmp(module_id, "dsl") == 0 ||
+                    strcmp(module_id, "ffi") == 0 ||
+                    strcmp(module_id, "runtime") == 0 ||
+                    strcmp(module_id, "reactive") == 0 ||
+                    strcmp(module_id, "kryon") == 0) {
+                    continue;
+                }
+
+                cJSON* module_source = cJSON_GetObjectItem(sources, module_id);
+                if (module_source) {
+                    cJSON* source = cJSON_GetObjectItem(module_source, "source");
+                    if (source && cJSON_IsString(source)) {
+                        // Convert module_id to file path
+                        // e.g., "components/calendar" -> "components/calendar.lua"
+                        char file_path[2048];
+                        snprintf(file_path, sizeof(file_path), "%s/%s.lua", output_dir, module_id);
+
+                        // Create subdirectories if needed
+                        char* last_slash = strrchr(file_path, '/');
+                        if (last_slash) {
+                            *last_slash = '\0';
+                            struct stat st2 = {0};
+                            if (stat(file_path, &st2) == -1) {
+                                char mkdir_cmd[2048];
+                                snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", file_path);
+                                system(mkdir_cmd);
+                            }
+                            *last_slash = '/';
+                        }
+
+                        // Write file
+                        FILE* out = fopen(file_path, "w");
+                        if (out) {
+                            fputs(source->valuestring, out);
+                            fclose(out);
+                            printf("✓ Generated: %s.lua\n", module_id);
+                            files_written++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    cJSON_Delete(root);
+
+    if (files_written == 0) {
+        fprintf(stderr, "Warning: No source files were written\n");
+        return false;
+    }
+
+    printf("✓ Generated %d Lua files in %s\n", files_written, output_dir);
     return true;
 }

@@ -277,6 +277,12 @@ KryonConfig* config_load(const char* config_path) {
         config->desktop_renderer = str_copy(renderer);
     }
 
+    // Parse codegen.output_dir (optional)
+    const char* codegen_output_dir = toml_get_string(toml, "codegen.output_dir", NULL);
+    if (codegen_output_dir) {
+        config->codegen_output_dir = str_copy(codegen_output_dir);
+    }
+
     // Parse plugins
     config_parse_plugins(config, toml);
 
@@ -286,10 +292,20 @@ KryonConfig* config_load(const char* config_path) {
 
 /**
  * Load plugins specified in config from their paths
+ * Also auto-discovers and loads plugins from standard locations.
  */
 bool config_load_plugins(KryonConfig* config) {
+    // First, auto-discover and load plugins from standard locations
+    // This allows plugins to "just work" without configuration
+    uint32_t auto_loaded = ir_plugin_auto_discover_and_load(0);
+    if (auto_loaded > 0) {
+        printf("[kryon][config] Auto-discovered and loaded %u plugin(s) from standard locations\n",
+               auto_loaded);
+    }
+
+    // If no config plugins specified, we're done
     if (!config || !config->plugins || config->plugins_count == 0) {
-        return true;  // No plugins to load is OK
+        return true;
     }
 
     char* cwd = dir_get_current();
@@ -297,6 +313,8 @@ bool config_load_plugins(KryonConfig* config) {
 
     bool all_loaded = true;
 
+    // Load any additional plugins specified in kryon.toml
+    // These can override or supplement auto-discovered plugins
     for (int i = 0; i < config->plugins_count; i++) {
         PluginDep* plugin = &config->plugins[i];
 
@@ -333,6 +351,14 @@ bool config_load_plugins(KryonConfig* config) {
                     plugin->name, resolved_path);
             free(resolved_path);
             all_loaded = false;
+            continue;
+        }
+
+        // Check if plugin is already loaded (e.g., by auto-discovery)
+        if (ir_plugin_is_loaded(plugin->name)) {
+            printf("[kryon][config] Plugin '%s' already loaded (skipping config path)\n", plugin->name);
+            plugin->resolved_path = str_copy(resolved_path);
+            free(resolved_path);
             continue;
         }
 
@@ -480,6 +506,7 @@ void config_free(KryonConfig* config) {
     free(config->build_output_dir);
     free(config->build_entry);
     free(config->desktop_renderer);
+    free(config->codegen_output_dir);
 
     if (config->build_targets) {
         for (int i = 0; i < config->build_targets_count; i++) {

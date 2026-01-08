@@ -88,6 +88,15 @@ function Runtime.registerHandler(component, eventType, callback, sourceInfo)
       sourceInfo.line or 0
     )
     if handlerSource ~= nil then
+      -- Set closure metadata if present (for target-agnostic KIR)
+      if sourceInfo.closure_vars and #sourceInfo.closure_vars > 0 then
+        -- Create a cdata array of strings for FFI
+        local varsArray = ffi.new("const char*[?]", #sourceInfo.closure_vars)
+        for i, var in ipairs(sourceInfo.closure_vars) do
+          varsArray[i - 1] = var  -- FFI arrays are 0-indexed
+        end
+        C.ir_handler_source_set_closures(handlerSource, varsArray, #sourceInfo.closure_vars)
+      end
       C.ir_event_set_handler_source(event, handlerSource)
     end
   end
@@ -380,14 +389,21 @@ end
 --- @param kir_filepath string Path to .kir file
 --- @return table Application instance ready to run
 function Runtime.loadKIR(kir_filepath)
+  print("[runtime.loadKIR] Loading KIR from:", kir_filepath)
+
   -- Load the KIR file (parses metadata into g_ir_context)
   local root = C.ir_read_json_file(kir_filepath)
   if root == nil then
     error("Failed to load KIR from " .. kir_filepath)
   end
+  print("[runtime.loadKIR] Loaded root:", root)
+
+  -- NOTE: Don't expand ForEach here yet - we'll expand after Lua source re-execution
+  -- The KIR root is expanded, but it gets discarded when we re-execute the Lua source
 
   -- Get metadata from global context
   local ctx = C.ir_get_global_context()
+  print("[runtime.loadKIR] Got context:", ctx)
 
   local has_lua_events = false
   local source_file = nil
@@ -427,7 +443,15 @@ function Runtime.loadKIR(kir_filepath)
 
     -- CRITICAL FIX: Use the app returned from source execution!
     -- This preserves reactive effects created by createReactiveApp()
+    print("[runtime] chunk() returned, checking app.root...")
+    print("[runtime] app =", app, "app.root =", app and app.root or "nil")
     if app and app.root then
+      -- IMPORTANT: Expand ForEach on the NEW app.root (not the old KIR root)
+      -- The KIR root was expanded earlier, but that root is discarded when we
+      -- re-execute the Lua source. We need to expand the new app.root instead.
+      print("[runtime] Calling ir_expand_foreach on app.root:", app.root)
+      C.ir_expand_foreach(app.root)
+      print("[runtime] ir_expand_foreach completed")
       return app  -- Return the full reactive app with effects intact
     else
       return {
@@ -437,7 +461,8 @@ function Runtime.loadKIR(kir_filepath)
       }
     end
   else
-    -- No Lua source, return KIR-only app (no callbacks)
+    -- No Lua source, expand ForEach on the KIR root
+    C.ir_expand_foreach(root)
     return {
       root = root,
       window = {width = 800, height = 600},

@@ -35,6 +35,9 @@ __attribute__((weak)) void nimCheckboxBridge(uint32_t componentId);
 __attribute__((weak)) void nimDropdownBridge(uint32_t componentId, int32_t selectedIndex);
 __attribute__((weak)) bool nimInputBridge(IRComponent* component, const char* text);
 
+// Forward declaration from C bindings event bridge
+extern void kryon_c_event_bridge(const char* logic_id);
+
 // ============================================================================
 // MODAL HANDLING
 // ============================================================================
@@ -480,8 +483,12 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                     }
                                 }
                             }
+                            // C event (c_click_*, c_change_*, etc.)
+                            else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                                kryon_c_event_bridge(ir_event->logic_id);
+                            }
+                            // Generic fallback - handle via executor
                             else {
-                                // Generic logic_id - handle via executor
                                 printf("Click on component ID %u (logic: %s)\n",
                                        clicked->id, ir_event->logic_id);
                                 IRExecutorContext* executor = ir_executor_get_global();

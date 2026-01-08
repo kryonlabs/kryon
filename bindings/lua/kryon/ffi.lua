@@ -86,7 +86,20 @@ ffi.cdef[[
     IR_COMPONENT_LIST = 32,
     IR_COMPONENT_LIST_ITEM = 33,
     IR_COMPONENT_LINK = 34,
-    IR_COMPONENT_CUSTOM = 35
+    // Inline semantic components
+    IR_COMPONENT_SPAN = 35,
+    IR_COMPONENT_STRONG = 36,
+    IR_COMPONENT_EM = 37,
+    IR_COMPONENT_CODE_INLINE = 38,
+    IR_COMPONENT_SMALL = 39,
+    IR_COMPONENT_MARK = 40,
+    IR_COMPONENT_CUSTOM = 41,
+    // Source structure types (for round-trip codegen)
+    IR_COMPONENT_STATIC_BLOCK = 42,
+    IR_COMPONENT_FOR_LOOP = 43,
+    IR_COMPONENT_FOR_EACH = 44,
+    IR_COMPONENT_VAR_DECL = 45,
+    IR_COMPONENT_PLACEHOLDER = 46
   } IRComponentType;
 
   // ============================================================================
@@ -104,6 +117,14 @@ ffi.cdef[[
     IR_DIMENSION_REM = 8,
     IR_DIMENSION_EM = 9
   } IRDimensionType;
+
+  // CSS Selector Type (for HTML roundtrip fidelity)
+  typedef enum {
+    IR_SELECTOR_NONE = 0,      // No CSS selector (component-only, no styling rule)
+    IR_SELECTOR_ELEMENT,       // Element selector: header { }, nav { }
+    IR_SELECTOR_CLASS,         // Class selector: .container { }, .hero { }
+    IR_SELECTOR_ID             // ID selector: #main { }
+  } IRSelectorType;
 
   typedef struct {
     IRDimensionType type;
@@ -203,10 +224,13 @@ ffi.cdef[[
   } IRModalState;
 
   // IRComponent struct (partial definition for FFI access to text_content)
+  // NOTE: Field order MUST match C struct exactly or offsets will be wrong
   typedef struct IRComponent {
     uint32_t id;
     IRComponentType type;
+    IRSelectorType selector_type;  // Must match C struct offset
     char* tag;
+    char* css_class;               // Must match C struct offset
     IRStyle* style;
     IREvent* events;
     IRLogic* logic;
@@ -217,7 +241,25 @@ ffi.cdef[[
     IRLayoutState* layout_state;
     struct IRComponent* parent;
     char* text_content;
-    char* custom_data;       // For custom components (e.g., TabGroupState*)
+    char* text_expression;
+    char* custom_data;
+    char* component_ref;
+    char* component_props;
+    uint32_t owner_instance_id;
+    char* scope;
+    // Skipping: rendered_bounds, layout_cache, dirty_flags, has_active_animations, text_layout, tab_data
+    // Skipping: property_bindings, property_binding_count
+    // Skipping: source_metadata
+    char* visible_condition;
+    bool visible_when_true;
+
+    // ForEach (dynamic list rendering) support
+    char* each_source;       // Reactive variable name to iterate
+    char* each_item_name;    // Variable name for each item
+    char* each_index_name;   // Variable name for index
+
+    bool is_disabled;
+
     // Additional fields exist in C struct but are not needed for FFI
   } IRComponent;
 
@@ -319,6 +361,11 @@ ffi.cdef[[
   void ir_set_text_content(IRComponent* component, const char* text);
   void ir_set_custom_data(IRComponent* component, const char* data);
   void ir_set_tag(IRComponent* component, const char* tag);
+  void ir_set_component_module_ref(IRComponent* component, const char* module_ref, const char* export_name);
+  char* ir_clear_tree_module_refs_json(IRComponent* component);
+  void ir_restore_tree_module_refs_json(IRComponent* component, const char* json_str);
+  char* ir_clear_component_module_ref(IRComponent* component);
+  void ir_restore_component_module_ref(IRComponent* component, const char* json_str);
 
   // ============================================================================
   // Event Management (ir_builder.h)
@@ -335,10 +382,15 @@ ffi.cdef[[
     char* code;
     char* file;
     int line;
+    // Closure metadata for target-agnostic KIR (IR v2.3)
+    bool uses_closures;
+    char** closure_vars;
+    int closure_var_count;
   } IRHandlerSource;
   IRHandlerSource* ir_create_handler_source(const char* language, const char* code, const char* file, int line);
   void ir_destroy_handler_source(IRHandlerSource* source);
   void ir_event_set_handler_source(IREvent* event, IRHandlerSource* source);
+  int ir_handler_source_set_closures(IRHandlerSource* source, const char** vars, int count);
 
   // ============================================================================
   // Layout Computation (ir_layout.h)
@@ -432,6 +484,9 @@ ffi.cdef[[
   bool ir_write_json_file(IRComponent* root, const char* filename);
   IRComponent* ir_read_json_file(const char* filename);
 
+  // ForEach expansion (call after loading KIR file to expand ForEach components)
+  void ir_expand_foreach(IRComponent* root);
+
   // Context access
   IRContext* ir_get_global_context(void);
 
@@ -519,6 +574,7 @@ return {
     TAB_CONTENT = C.IR_COMPONENT_TAB_CONTENT,
     TAB_PANEL = C.IR_COMPONENT_TAB_PANEL,
     MODAL = C.IR_COMPONENT_MODAL,
+    FOR_EACH = C.IR_COMPONENT_FOR_EACH,
   },
 
   -- Dimension types

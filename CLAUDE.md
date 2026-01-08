@@ -248,6 +248,28 @@ gcc app.c -lkryon_desktop -o app
 ./app
 ```
 
+### Screenshot Debugging
+
+The desktop backend has built-in screenshot capture for debugging. Use environment variables to capture screenshots automatically after launch:
+
+```bash
+# Basic screenshot (captures after 5 frames by default)
+KRYON_SCREENSHOT=/tmp/screenshot.png ./kryon run app.kir
+
+# Custom frame delay
+KRYON_SCREENSHOT=/tmp/screenshot.png KRYON_SCREENSHOT_AFTER_FRAMES=10 ./kryon run app.kir
+
+# Headless mode (exits after screenshot - useful for CI/automation)
+KRYON_SCREENSHOT=/tmp/screenshot.png KRYON_HEADLESS=1 ./kryon run app.kir
+```
+
+**Supported formats:** PNG (`.png` extension) and BMP (default)
+
+**Implementation files:**
+- `backends/desktop/ir_desktop_renderer.c` - Environment variable parsing
+- `backends/desktop/renderers/sdl3/sdl3_renderer.c` - Frame-end trigger
+- `renderers/sdl3/sdl3_backend.c` - Screenshot capture via SDL3
+
 ## Important Files
 
 ### Core IR

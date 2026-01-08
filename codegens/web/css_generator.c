@@ -2458,6 +2458,12 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     css_generator_write_string(generator, "  display: none;\n");
     css_generator_write_string(generator, "}\n\n");
 
+    // ForEach component styles (dynamic list rendering)
+    css_generator_write_string(generator, "/* ForEach Component Styles */\n");
+    css_generator_write_string(generator, ".kryon-forEach {\n");
+    css_generator_write_string(generator, "  display: contents;\n");
+    css_generator_write_string(generator, "}\n\n");
+
     // Output media queries at the very end (after all base styles)
     if (g_ir_context && g_ir_context->stylesheet) {
         IRStylesheet* stylesheet = g_ir_context->stylesheet;
