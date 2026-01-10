@@ -13,9 +13,23 @@
 #include "ir_serialization.h"
 #include "ir_asset.h"
 #include "ir_audio.h"
+#include "ir_hot_reload.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+
+// Forward declaration for desktop state (from desktop backend)
+// Using weak symbol allows desktop backend to override without hard dependency
+typedef struct IRDesktopState IRDesktopState;
+
+// Weak symbols for desktop state management (provided by desktop backend)
+// These are declared as weak so the linker won't fail if desktop backend isn't linked
+#pragma weak ir_desktop_state_create
+extern IRDesktopState* ir_desktop_state_create(uint32_t instance_id);
+
+#pragma weak ir_desktop_state_destroy
+extern void ir_desktop_state_destroy(IRDesktopState* state);
 
 // ============================================================================
 // Global Instance Registry
@@ -119,6 +133,18 @@ IRInstanceContext* ir_instance_create(const char* name, IRInstanceCallbacks* cal
         // Continue anyway - audio will use global state
     }
 
+    // Create desktop state for this instance (if desktop backend is linked)
+    // The weak symbol check ensures this only works if desktop backend is available
+    if (ir_desktop_state_create != NULL) {
+        inst->render.desktop = ir_desktop_state_create(inst->instance_id);
+        if (!inst->render.desktop) {
+            fprintf(stderr, "Warning: Failed to create desktop state for instance %s\n", inst->name);
+            // Continue anyway - will use shared desktop state
+        }
+    } else {
+        inst->render.desktop = NULL;
+    }
+
     // Initialize state
     inst->is_running = true;
     inst->is_suspended = false;
@@ -170,8 +196,13 @@ void ir_instance_destroy(IRInstanceContext* inst) {
         inst->resources.audio = NULL;
     }
 
+    // Destroy desktop state (if desktop backend is linked)
+    if (inst->render.desktop && ir_desktop_state_destroy != NULL) {
+        ir_desktop_state_destroy(inst->render.desktop);
+        inst->render.desktop = NULL;
+    }
+
     // TODO: Destroy commands when Phase 4 implemented
-    // TODO: Destroy desktop state when Phase 5 implemented
     // TODO: Destroy hot reload watcher when Phase 6 implemented
 
     // Remove from registry
@@ -467,4 +498,219 @@ void ir_instance_print(IRInstanceContext* inst) {
     }
 
     printf("----------------------\n");
+}
+
+// ============================================================================
+// Per-Instance Hot Reload Implementation
+// ============================================================================
+
+// Result codes for hot reload (matching IRReloadResult)
+#define IR_RELOAD_SUCCESS 0
+#define IR_RELOAD_BUILD_FAILED 1
+#define IR_RELOAD_NO_CHANGES 2
+#define IR_RELOAD_ERROR 3
+
+bool ir_instance_enable_hot_reload(IRInstanceContext* inst, const char* watch_path) {
+    if (!inst) return false;
+
+    // Create file watcher if not exists
+    if (!inst->hot_reload.watcher) {
+        inst->hot_reload.watcher = ir_file_watcher_create();
+        if (!inst->hot_reload.watcher) {
+            fprintf(stderr, "[Instance] Failed to create file watcher for %s\n", inst->name);
+            return false;
+        }
+    }
+
+    // Set watch path
+    if (watch_path) {
+        strncpy(inst->hot_reload.watch_path, watch_path, sizeof(inst->hot_reload.watch_path) - 1);
+        inst->hot_reload.watch_path[sizeof(inst->hot_reload.watch_path) - 1] = '\0';
+    } else {
+        // Use current directory
+        strncpy(inst->hot_reload.watch_path, ".", sizeof(inst->hot_reload.watch_path) - 1);
+    }
+
+    // Watch the directory
+    if (!ir_file_watcher_add_path(inst->hot_reload.watcher, inst->hot_reload.watch_path, true)) {
+        fprintf(stderr, "[Instance] Failed to watch path: %s\n", inst->hot_reload.watch_path);
+        return false;
+    }
+
+    inst->hot_reload.enabled = true;
+    inst->hot_reload.last_reload_time = 0;
+    inst->hot_reload.reload_count = 0;
+
+    printf("[Instance] Hot reload enabled for %s (watching: %s)\n",
+           inst->name, inst->hot_reload.watch_path);
+    return true;
+}
+
+void ir_instance_disable_hot_reload(IRInstanceContext* inst) {
+    if (!inst) return;
+
+    inst->hot_reload.enabled = false;
+
+    if (inst->hot_reload.watcher) {
+        ir_file_watcher_destroy(inst->hot_reload.watcher);
+        inst->hot_reload.watcher = NULL;
+    }
+}
+
+bool ir_instance_hot_reload_enabled(IRInstanceContext* inst) {
+    return inst && inst->hot_reload.enabled;
+}
+
+// Helper structure for hot reload user data
+typedef struct {
+    IRInstanceContext* inst;
+    const char* filename;
+} InstanceReloadData;
+
+// Forward declaration of reload callback
+static IRComponent* reload_instance_callback(void* user_data);
+
+/**
+ * Find a component in the new tree by matching scope
+ * This allows preserving state across hot reload
+ */
+static IRComponent* find_component_by_scope(IRComponent* new_root, const char* scope) {
+    if (!new_root || !scope) return NULL;
+
+    if (new_root->scope && strcmp(new_root->scope, scope) == 0) {
+        return new_root;
+    }
+
+    for (uint32_t i = 0; i < new_root->child_count; i++) {
+        IRComponent* found = find_component_by_scope(new_root->children[i], scope);
+        if (found) return found;
+    }
+
+    return NULL;
+}
+
+/**
+ * Copy state from old component to new component based on scope match
+ * Preserves:
+ * - Component scope matching
+ * - Basic state migration (can be extended)
+ *
+ * TODO: Preserve input values, checkbox states, tab selections
+ */
+static void migrate_component_state(IRComponent* old_comp, IRComponent* new_comp,
+                                     IRExecutorContext* executor) {
+    if (!old_comp || !new_comp) return;
+
+    // For now, state migration is a placeholder
+    // Full implementation would:
+    // 1. Copy property values (value, checked, selectedIndex, etc.)
+    // 2. Migrate reactive state from executor context
+    // 3. Preserve focus/hover states
+
+    (void)executor;  // Suppress unused warning
+
+    // Recursively migrate children with matching scopes
+    for (uint32_t i = 0; i < old_comp->child_count && i < new_comp->child_count; i++) {
+        if (old_comp->children[i]->scope && new_comp->children[i]->scope) {
+            if (strcmp(old_comp->children[i]->scope, new_comp->children[i]->scope) == 0) {
+                migrate_component_state(old_comp->children[i], new_comp->children[i], executor);
+            }
+        }
+    }
+}
+
+IRComponent* ir_instance_reload_kir(IRInstanceContext* inst, const char* filename) {
+    if (!inst || !filename) {
+        fprintf(stderr, "[Instance] Invalid parameters for reload\n");
+        return NULL;
+    }
+
+    // Check if instance can reload via callback
+    if (inst->callbacks && inst->callbacks->can_reload) {
+        if (!inst->callbacks->can_reload(inst)) {
+            printf("[Instance] %s cannot be reloaded right now\n", inst->name);
+            return NULL;
+        }
+    }
+
+    printf("[Instance] Reloading %s from %s...\n", inst->name, filename);
+
+    // Get old root for state migration
+    IRComponent* old_root = ir_instance_get_root(inst);
+
+    // Trigger before_reload callback
+    if (inst->callbacks && inst->callbacks->on_before_reload) {
+        inst->callbacks->on_before_reload(inst, old_root);
+    }
+
+    // Load new KIR
+    IRComponent* new_root = ir_instance_load_kir(inst, filename);
+    if (!new_root) {
+        fprintf(stderr, "[Instance] Failed to reload KIR file\n");
+
+        if (inst->callbacks && inst->callbacks->on_error) {
+            inst->callbacks->on_error(inst, "Failed to reload KIR file");
+        }
+        return NULL;
+    }
+
+    // Migrate state from old tree to new tree using scope matching
+    if (old_root) {
+        migrate_component_state(old_root, new_root, inst->executor);
+    }
+
+    // Set new root
+    ir_instance_set_root(inst, new_root);
+
+    // Increment version
+    inst->version++;
+
+    // Trigger after_reload callback
+    if (inst->callbacks && inst->callbacks->on_after_reload) {
+        inst->callbacks->on_after_reload(inst, new_root);
+    }
+
+    inst->hot_reload.reload_count++;
+    printf("[Instance] %s reloaded successfully (version %u, reload #%u)\n",
+           inst->name, inst->version, inst->hot_reload.reload_count);
+
+    return new_root;
+}
+
+int ir_instance_hot_reload_poll(IRInstanceContext* inst) {
+    if (!inst || !inst->hot_reload.enabled || !inst->hot_reload.watcher) {
+        return IR_RELOAD_NO_CHANGES;
+    }
+
+    // Poll file watcher
+    int events = ir_file_watcher_poll(inst->hot_reload.watcher, 0);
+    if (events == 0) {
+        return IR_RELOAD_NO_CHANGES;
+    }
+
+    // Debounce: don't reload too frequently
+    uint64_t now = (uint64_t)time(NULL) * 1000;
+    const uint64_t debounce_ms = 500;
+    if (now - inst->hot_reload.last_reload_time < debounce_ms) {
+        return IR_RELOAD_NO_CHANGES;
+    }
+
+    // Trigger reload using watch path as the KIR file
+    // Assuming watch_path is a directory, we look for .kir files
+    // For now, we use a simple heuristic: if watch_path ends with .kir, use it directly
+    char kir_file[512];
+    if (strstr(inst->hot_reload.watch_path, ".kir")) {
+        strncpy(kir_file, inst->hot_reload.watch_path, sizeof(kir_file) - 1);
+    } else {
+        // Look for main.kir in watch directory
+        snprintf(kir_file, sizeof(kir_file), "%s/main.kir", inst->hot_reload.watch_path);
+    }
+
+    IRComponent* new_root = ir_instance_reload_kir(inst, kir_file);
+    if (new_root) {
+        inst->hot_reload.last_reload_time = now;
+        return IR_RELOAD_SUCCESS;
+    }
+
+    return IR_RELOAD_BUILD_FAILED;
 }
