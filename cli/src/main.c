@@ -35,6 +35,8 @@ static void print_help(void) {
     printf("  inspect <file>          IR inspection\n");
     printf("  diff <f1> <f2>          IR comparison\n");
     printf("  config [show|validate]  Config management\n");
+    printf("  install                 Install application\n");
+    printf("  uninstall               Uninstall application\n");
     printf("  doctor                  System diagnostics\n\n");
     printf("Options:\n");
     printf("  -h, --help              Show this help\n");
@@ -106,6 +108,12 @@ int main(int argc, char** argv) {
     }
     else if (strcmp(args->command, "doctor") == 0) {
         result = cmd_doctor(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "install") == 0) {
+        result = cmd_install(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "uninstall") == 0) {
+        result = cmd_uninstall(args->argc, args->argv);
     }
     else {
         fprintf(stderr, "Error: Unknown command '%s'\n", args->command);

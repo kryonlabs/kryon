@@ -107,6 +107,127 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
 }
 
 /**
+ * Parse install configuration from TOML
+ */
+static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
+    // Only parse install section if it exists
+    if (!toml_get_string(toml, "install.mode", NULL) &&
+        !toml_get_string(toml, "install.binary.path", NULL) &&
+        !toml_get_string(toml, "install.binary.name", NULL)) {
+        config->install = NULL;
+        return;
+    }
+
+    InstallConfig* install = (InstallConfig*)calloc(1, sizeof(InstallConfig));
+    if (!install) {
+        config->install = NULL;
+        return;
+    }
+
+    // Parse install.mode (default: symlink)
+    const char* mode_str = toml_get_string(toml, "install.mode", "symlink");
+    if (strcmp(mode_str, "copy") == 0) {
+        install->mode = INSTALL_MODE_COPY;
+    } else if (strcmp(mode_str, "system") == 0) {
+        install->mode = INSTALL_MODE_SYSTEM;
+    } else {
+        install->mode = INSTALL_MODE_SYMLINK;  // default
+    }
+
+    // Parse install.target (optional, NULL for auto-detect)
+    const char* target_str = toml_get_string(toml, "install.target", NULL);
+    if (target_str) {
+        install->target = str_copy(target_str);
+    } else {
+        install->target = NULL;  // Auto-detect later
+    }
+
+    // Parse install.binary.path (default: $HOME/bin)
+    const char* binary_path = toml_get_string(toml, "install.binary.path", "$HOME/bin");
+    install->binary_path = str_copy(binary_path);
+
+    // Parse install.binary.name (default: project.name)
+    const char* binary_name = toml_get_string(toml, "install.binary.name", config->project_name);
+    install->binary_name = str_copy(binary_name);
+
+    // Parse install.binary.executable (default: true)
+    install->binary_executable = toml_get_bool(toml, "install.binary.executable", true);
+
+    // Parse [[install.files]] array
+    // Count files first
+    int file_count = 0;
+    for (int i = 0; i < 100; i++) {  // max 100 files
+        char key[256];
+        snprintf(key, sizeof(key), "install.files.%d.source", i);
+        if (toml_get_string(toml, key, NULL)) {
+            file_count++;
+        } else {
+            break;
+        }
+    }
+
+    if (file_count > 0) {
+        install->files = (InstallFile*)calloc(file_count, sizeof(InstallFile));
+        if (install->files) {
+            install->files_count = file_count;
+            for (int i = 0; i < file_count; i++) {
+                char key[256];
+                snprintf(key, sizeof(key), "install.files.%d.source", i);
+                const char* source = toml_get_string(toml, key, NULL);
+                if (source) {
+                    install->files[i].source = str_copy(source);
+                }
+
+                snprintf(key, sizeof(key), "install.files.%d.target", i);
+                const char* target = toml_get_string(toml, key, NULL);
+                if (target) {
+                    install->files[i].target = str_copy(target);
+                }
+            }
+        }
+    }
+
+    // Parse install.desktop section
+    install->desktop.enabled = toml_get_bool(toml, "install.desktop.enabled", false);
+    const char* desktop_name = toml_get_string(toml, "install.desktop.name", config->project_name);
+    install->desktop.name = str_copy(desktop_name);
+
+    const char* desktop_icon = toml_get_string(toml, "install.desktop.icon", NULL);
+    if (desktop_icon) {
+        install->desktop.icon = str_copy(desktop_icon);
+    }
+
+    // Parse install.desktop.categories array
+    int category_count = 0;
+    for (int i = 0; i < 20; i++) {  // max 20 categories
+        char key[256];
+        snprintf(key, sizeof(key), "install.desktop.categories.%d", i);
+        if (toml_get_string(toml, key, NULL)) {
+            category_count++;
+        } else {
+            break;
+        }
+    }
+
+    if (category_count > 0) {
+        install->desktop.categories = (char**)calloc(category_count, sizeof(char*));
+        if (install->desktop.categories) {
+            install->desktop.categories_count = category_count;
+            for (int i = 0; i < category_count; i++) {
+                char key[256];
+                snprintf(key, sizeof(key), "install.desktop.categories.%d", i);
+                const char* category = toml_get_string(toml, key, NULL);
+                if (category) {
+                    install->desktop.categories[i] = str_copy(category);
+                }
+            }
+        }
+    }
+
+    config->install = install;
+}
+
+/**
  * Load configuration from TOML file
  */
 KryonConfig* config_load(const char* config_path) {
@@ -285,6 +406,9 @@ KryonConfig* config_load(const char* config_path) {
 
     // Parse plugins
     config_parse_plugins(config, toml);
+
+    // Parse install configuration
+    config_parse_install(config, toml);
 
     toml_free(toml);
     return config;
@@ -523,6 +647,32 @@ void config_free(KryonConfig* config) {
             free(config->plugins[i].resolved_path);
         }
         free(config->plugins);
+    }
+
+    if (config->install) {
+        free(config->install->binary_path);
+        free(config->install->binary_name);
+        free(config->install->target);
+
+        if (config->install->files) {
+            for (int i = 0; i < config->install->files_count; i++) {
+                free(config->install->files[i].source);
+                free(config->install->files[i].target);
+            }
+            free(config->install->files);
+        }
+
+        free(config->install->desktop.name);
+        free(config->install->desktop.icon);
+
+        if (config->install->desktop.categories) {
+            for (int i = 0; i < config->install->desktop.categories_count; i++) {
+                free(config->install->desktop.categories[i]);
+            }
+            free(config->install->desktop.categories);
+        }
+
+        free(config->install);
     }
 
     free(config);

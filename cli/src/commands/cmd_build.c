@@ -7,6 +7,7 @@
 #include "build.h"
 #include "../template/docs_template.h"
 #include "../utils/file_discovery.h"
+#include "build/luajit_build.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -132,6 +133,67 @@ static int build_discovered_file(DiscoveredFile* file, KryonConfig* config, cons
 }
 
 /**
+ * Check if "desktop" is in build targets
+ */
+static int has_desktop_target(KryonConfig* config) {
+    if (!config->build_targets || config->build_targets_count == 0) {
+        return 0;
+    }
+    for (int i = 0; i < config->build_targets_count; i++) {
+        if (strcmp(config->build_targets[i], "desktop") == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/**
+ * Build Lua desktop binary
+ */
+static int build_lua_desktop(KryonConfig* config) {
+    // Check if entry file is Lua
+    if (!config->build_entry) {
+        return 1;  // No entry file, not a Lua build
+    }
+
+    size_t entry_len = strlen(config->build_entry);
+    if (entry_len < 4 || strcmp(config->build_entry + entry_len - 4, ".lua") != 0) {
+        return 1;  // Not a Lua file
+    }
+
+    // Check if desktop is a target
+    if (!has_desktop_target(config)) {
+        return 1;  // Desktop not in targets
+    }
+
+    // Check if LuaJIT is available
+    if (!check_luajit_available()) {
+        fprintf(stderr, "Warning: LuaJIT not found, skipping desktop binary build\n");
+        fprintf(stderr, "Install LuaJIT to enable desktop binary builds\n");
+        return 1;
+    }
+
+    // Create output directory
+    const char* output_dir = config->build_output_dir ? config->build_output_dir : "dist";
+    if (!file_is_directory(output_dir)) {
+        dir_create_recursive(output_dir);
+    }
+
+    // Generate binary path
+    char binary_path[1024];
+    snprintf(binary_path, sizeof(binary_path), "%s/%s", output_dir, config->project_name);
+
+    // Build the binary
+    int result = build_lua_binary(config->project_name,
+                                   config->build_entry,
+                                   binary_path,
+                                   NULL,  /* runtime_dir - use standard paths */
+                                   0);    /* verbose */
+
+    return result;
+}
+
+/**
  * Build command entry point
  */
 int cmd_build(int argc, char** argv) {
@@ -151,8 +213,35 @@ int cmd_build(int argc, char** argv) {
 
     int result = 0;
 
-    // If specific file argument provided, build just that file
+    // Determine what to build based on targets
+    // ONLY build the first target by default - don't build all targets
+    const char* primary_target = config->build_targets_count > 0 ?
+                                  config->build_targets[0] : NULL;
+    int is_desktop = primary_target && strcmp(primary_target, "desktop") == 0;
+    int is_web = primary_target && strcmp(primary_target, "web") == 0;
+
+    // Desktop build (Lua binary) takes priority
+    if (is_desktop) {
+        printf("Building desktop targets...\n");
+        int desktop_result = build_lua_desktop(config);
+        if (desktop_result != 0) {
+            // Desktop build failed
+            config_free(config);
+            return 1;
+        }
+        // Desktop only, we're done
+        config_free(config);
+        return 0;
+    }
+
+    // If specific file argument provided, build just that file (web only)
     if (argc > 0) {
+        if (!is_web) {
+            fprintf(stderr, "Error: Single file build only supports web targets\n");
+            config_free(config);
+            return 1;
+        }
+
         const char* source_file = argv[0];
 
         if (!file_exists(source_file)) {
@@ -166,28 +255,34 @@ int cmd_build(int argc, char** argv) {
         return result;
     }
 
-    // Auto-discover all buildable files in project
-    DiscoveryResult* discovered = discover_project_files(".");
+    // Web build: auto-discover and build web files
+    if (is_web) {
+        printf("Building web targets...\n");
 
-    if (!discovered || discovered->count == 0) {
-        fprintf(stderr, "No buildable files found.\n");
-        fprintf(stderr, "Create index.html or docs/*.md to get started.\n");
-        if (discovered) free_discovery_result(discovered);
-        config_free(config);
-        return 1;
+        // Auto-discover all buildable files in project
+        DiscoveryResult* discovered = discover_project_files(".");
+
+        if (!discovered || discovered->count == 0) {
+            fprintf(stderr, "No buildable files found.\n");
+            fprintf(stderr, "Create index.html or docs/*.md to get started.\n");
+            if (discovered) free_discovery_result(discovered);
+            config_free(config);
+            return 1;
+        }
+
+        // Build all discovered files
+        printf("Building %d web file(s)...\n", discovered->count);
+        for (uint32_t i = 0; i < discovered->count && result == 0; i++) {
+            result = build_discovered_file(&discovered->files[i], config, discovered->docs_template);
+        }
+
+        if (result == 0) {
+            printf("✓ Web build complete\n");
+        }
+
+        free_discovery_result(discovered);
     }
 
-    // Build all discovered files
-    printf("Building %d file(s)...\n", discovered->count);
-    for (uint32_t i = 0; i < discovered->count && result == 0; i++) {
-        result = build_discovered_file(&discovered->files[i], config, discovered->docs_template);
-    }
-
-    if (result == 0) {
-        printf("✓ Build complete\n");
-    }
-
-    free_discovery_result(discovered);
     config_free(config);
     return result;
 }
