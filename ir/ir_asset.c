@@ -285,9 +285,51 @@ IRSpriteID* ir_asset_load_sprite_sheet(const char* path,
                                         uint16_t frame_width,
                                         uint16_t frame_height,
                                         uint16_t* out_frame_count) {
-    // TODO: Implement sprite sheet loading
-    (void)path; (void)frame_width; (void)frame_height; (void)out_frame_count;
-    return NULL;
+    if (!g_asset_system.initialized) {
+        ir_asset_init();
+    }
+
+    // Resolve path
+    char real_path[IR_MAX_PATH_LENGTH];
+    if (!ir_asset_resolve_path(path, real_path, sizeof(real_path))) {
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    uint64_t start_time = get_time_ms();
+
+    // Load sprite sheet into default atlas
+    IRSpriteID* sprite_ids = ir_sprite_load_sheet(g_asset_system.default_atlas,
+                                                   real_path,
+                                                   frame_width,
+                                                   frame_height,
+                                                   out_frame_count);
+
+    if (!sprite_ids) {
+        fprintf(stderr, "[Asset] Failed to load sprite sheet: %s\n", path);
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    // Pack atlas to upload textures
+    IRSpriteAtlas* atlas = ir_sprite_atlas_get(g_asset_system.default_atlas);
+    if (atlas && !atlas->is_packed) {
+        ir_sprite_atlas_pack(g_asset_system.default_atlas);
+    }
+
+    uint64_t load_time = get_time_ms() - start_time;
+
+    // Register sprite sheet in asset system (store the first sprite ID as reference)
+    uint16_t frame_count = out_frame_count ? *out_frame_count : 0;
+    ir_asset_register(path, IR_ASSET_SPRITE, (void*)(uintptr_t)sprite_ids[0], 0);
+
+    g_asset_system.total_load_time_ms += load_time;
+    g_asset_system.total_loads++;
+
+    printf("[Asset] Loaded sprite sheet: %s (%u frames, %.2f ms)\n",
+           path, frame_count, (float)load_time);
+
+    return sprite_ids;
 }
 
 void* ir_asset_load_data(const char* path, size_t* out_size) {

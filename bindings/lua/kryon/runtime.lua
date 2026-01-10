@@ -234,11 +234,15 @@ function Runtime.createApp(config)
   local ctx = C.ir_create_context()
   C.ir_set_context(ctx)
 
+  -- Create animation context for smooth animations
+  local anim_ctx = C.ir_animation_context_create()
+
   -- Set root component (C call)
   C.ir_set_root(config.body)
 
   return {
     context = ctx,
+    animation_context = anim_ctx,
     root = config.body,
     window = config.window or {},
     running = false,
@@ -263,8 +267,12 @@ function Runtime.createReactiveApp(config)
   local ctx = C.ir_create_context()
   C.ir_set_context(ctx)
 
+  -- Create animation context for smooth animations
+  local anim_ctx = C.ir_animation_context_create()
+
   local app = {
     context = ctx,
+    animation_context = anim_ctx,
     root = nil,
     window = config.window or {},
     running = false,
@@ -321,8 +329,10 @@ end
 function Runtime.update(app, deltaTime)
   if not app or not app.root then return end
 
-  -- TODO: Call IR animation system when available
-  -- C.ir_animation_tree_update(app.root, deltaTime)
+  -- Update animations if animation context exists
+  if app.animation_context then
+    C.ir_animation_update(app.animation_context, deltaTime)
+  end
 end
 
 --- Render loop - delegates to C layout computation
@@ -345,6 +355,12 @@ function Runtime.destroyApp(app)
   if not app then return end
 
   Runtime.cleanupAllHandlers()
+
+  -- Clean up animation context
+  if app.animation_context then
+    C.ir_animation_context_destroy(app.animation_context)
+    app.animation_context = nil
+  end
 
   if app.root then
     C.ir_destroy_component(app.root)

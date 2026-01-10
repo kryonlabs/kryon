@@ -556,6 +556,48 @@ ffi.cdef[[
   uint32_t ir_plugin_get_event_type_id(const char* event_type_name);
   const char* ir_plugin_get_event_type_name(uint32_t event_type_id);
   bool ir_plugin_has_event_type(const char* event_type_name);
+
+  // ============================================================================
+  // Animation System (ir_animation.h)
+  // ============================================================================
+
+  // Forward declarations
+  typedef struct IRAnimationState IRAnimationState;
+  typedef struct IRAnimationContext IRAnimationContext;
+
+  // Easing functions
+  typedef float (*IREasingFunction)(float t);
+
+  float ir_ease_linear(float t);
+  float ir_ease_in_quad(float t);
+  float ir_ease_out_quad(float t);
+  float ir_ease_in_out_quad(float t);
+  float ir_ease_in_cubic(float t);
+  float ir_ease_out_cubic(float t);
+  float ir_ease_in_out_cubic(float t);
+  float ir_ease_in_bounce(float t);
+  float ir_ease_out_bounce(float t);
+
+  // Animation context management
+  IRAnimationContext* ir_animation_context_create(void);
+  void ir_animation_context_destroy(IRAnimationContext* ctx);
+  void ir_animation_update(IRAnimationContext* ctx, float delta_time);
+  uint32_t ir_animation_get_active_count(IRAnimationContext* ctx);
+
+  // Animation management
+  IRAnimationState* ir_animation_create(IRComponent* target, uint32_t type, float duration);
+  void ir_animation_set_easing(IRAnimationState* anim, IREasingFunction easing);
+  void ir_animation_set_delay_legacy(IRAnimationState* anim, float delay);
+  void ir_animation_set_loop(IRAnimationState* anim, bool loop);
+  void ir_animation_set_property_range(IRAnimationState* anim, float start, float end, float* target_property);
+  void ir_animation_start(IRAnimationContext* ctx, IRAnimationState* anim);
+  void ir_animation_stop(IRAnimationState* anim);
+
+  // Preset animations
+  IRAnimationState* ir_animation_fade_in(IRComponent* target, float duration);
+  IRAnimationState* ir_animation_fade_out(IRComponent* target, float duration);
+  IRAnimationState* ir_animation_slide_in(IRComponent* target, float from_x, float duration);
+  IRAnimationState* ir_animation_scale(IRComponent* target, float from_scale, float to_scale, float duration);
 ]]
 
 -- Desktop-specific FFI declarations (for symbols in libkryon_desktop.so)

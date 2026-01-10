@@ -29,6 +29,141 @@
 __attribute__((weak)) CSourceMetadata g_c_metadata = {0};
 
 // ============================================================================
+// C Metadata Cleanup
+// ============================================================================
+
+/**
+ * Free a single string field safely
+ */
+static void free_string(char** str) {
+    if (*str) {
+        free(*str);
+        *str = NULL;
+    }
+}
+
+/**
+ * Free C variable metadata array
+ */
+static void free_c_variables(CVariableDecl* variables, size_t count) {
+    if (!variables) return;
+    for (size_t i = 0; i < count; i++) {
+        free_string(&variables[i].name);
+        free_string(&variables[i].type);
+        free_string(&variables[i].storage);
+        free_string(&variables[i].initial_value);
+    }
+    free(variables);
+}
+
+/**
+ * Free C event handler metadata array
+ */
+static void free_c_event_handlers(CEventHandlerDecl* handlers, size_t count) {
+    if (!handlers) return;
+    for (size_t i = 0; i < count; i++) {
+        free_string(&handlers[i].logic_id);
+        free_string(&handlers[i].function_name);
+        free_string(&handlers[i].return_type);
+        free_string(&handlers[i].parameters);
+        free_string(&handlers[i].body);
+    }
+    free(handlers);
+}
+
+/**
+ * Free C helper function metadata array
+ */
+static void free_c_helper_functions(CHelperFunction* helpers, size_t count) {
+    if (!helpers) return;
+    for (size_t i = 0; i < count; i++) {
+        free_string(&helpers[i].name);
+        free_string(&helpers[i].return_type);
+        free_string(&helpers[i].parameters);
+        free_string(&helpers[i].body);
+    }
+    free(helpers);
+}
+
+/**
+ * Free C include metadata array
+ */
+static void free_c_includes(CInclude* includes, size_t count) {
+    if (!includes) return;
+    for (size_t i = 0; i < count; i++) {
+        free_string(&includes[i].include_string);
+    }
+    free(includes);
+}
+
+/**
+ * Free C preprocessor directive metadata array
+ */
+static void free_c_preprocessor_directives(CPreprocessorDirective* directives, size_t count) {
+    if (!directives) return;
+    for (size_t i = 0; i < count; i++) {
+        free_string(&directives[i].directive_type);
+        free_string(&directives[i].condition);
+        free_string(&directives[i].value);
+    }
+    free(directives);
+}
+
+/**
+ * Free C source file metadata array
+ */
+static void free_c_source_files(CSourceFile* source_files, size_t count) {
+    if (!source_files) return;
+    for (size_t i = 0; i < count; i++) {
+        free_string(&source_files[i].filename);
+        free_string(&source_files[i].full_path);
+        free_string(&source_files[i].content);
+    }
+    free(source_files);
+}
+
+/**
+ * Clean up all C metadata, freeing allocated memory
+ * Call this before loading new metadata to avoid memory leaks
+ */
+void ir_c_metadata_cleanup(CSourceMetadata* metadata) {
+    if (!metadata) return;
+
+    free_c_variables(metadata->variables, metadata->variable_count);
+    metadata->variables = NULL;
+    metadata->variable_count = 0;
+    metadata->variable_capacity = 0;
+
+    free_c_event_handlers(metadata->event_handlers, metadata->event_handler_count);
+    metadata->event_handlers = NULL;
+    metadata->event_handler_count = 0;
+    metadata->event_handler_capacity = 0;
+
+    free_c_helper_functions(metadata->helper_functions, metadata->helper_function_count);
+    metadata->helper_functions = NULL;
+    metadata->helper_function_count = 0;
+    metadata->helper_function_capacity = 0;
+
+    free_c_includes(metadata->includes, metadata->include_count);
+    metadata->includes = NULL;
+    metadata->include_count = 0;
+    metadata->include_capacity = 0;
+
+    free_c_preprocessor_directives(metadata->preprocessor_directives, metadata->preprocessor_directive_count);
+    metadata->preprocessor_directives = NULL;
+    metadata->preprocessor_directive_count = 0;
+    metadata->preprocessor_directive_capacity = 0;
+
+    free_c_source_files(metadata->source_files, metadata->source_file_count);
+    metadata->source_files = NULL;
+    metadata->source_file_count = 0;
+    metadata->source_file_capacity = 0;
+
+    free_string(&metadata->main_source_file);
+}
+
+
+// ============================================================================
 // Component Definition Context (for expansion during deserialization)
 // ============================================================================
 
@@ -2905,8 +3040,8 @@ static cJSON* json_serialize_c_metadata(void) {
 static void json_deserialize_c_metadata(cJSON* c_meta_obj) {
     if (!c_meta_obj || !cJSON_IsObject(c_meta_obj)) return;
 
-    // Clear existing metadata (safely free existing data)
-    // TODO: Add proper cleanup function for g_c_metadata if not already exists
+    // Clean up existing metadata before loading new data
+    ir_c_metadata_cleanup(&g_c_metadata);
 
     // Deserialize event_handlers
     cJSON* handlers = cJSON_GetObjectItem(c_meta_obj, "event_handlers");

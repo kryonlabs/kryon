@@ -30,6 +30,50 @@ typedef struct {
 // Utility Functions
 // ============================================================================
 
+// Get package name from KIR metadata or environment variable
+// Returns a string that must NOT be freed (static buffer or pointer to JSON string)
+static const char* get_package_name(cJSON* root_json) {
+    // Try to get from KIR metadata
+    cJSON* metadata = cJSON_GetObjectItem(root_json, "metadata");
+    if (metadata) {
+        cJSON* package = cJSON_GetObjectItem(metadata, "package");
+        if (package && cJSON_IsString(package)) {
+            return package->valuestring;
+        }
+    }
+
+    // Try environment variable
+    const char* env_package = getenv("KRYON_KOTLIN_PACKAGE");
+    if (env_package && env_package[0] != '\0') {
+        return env_package;
+    }
+
+    // Default fallback
+    return "com.kryon.generated";
+}
+
+// Get class name from KIR metadata or environment variable
+// Returns a string that must NOT be freed (static buffer or pointer to JSON string)
+static const char* get_class_name(cJSON* root_json) {
+    // Try to get from KIR metadata
+    cJSON* metadata = cJSON_GetObjectItem(root_json, "metadata");
+    if (metadata) {
+        cJSON* class_name = cJSON_GetObjectItem(metadata, "class");
+        if (class_name && cJSON_IsString(class_name)) {
+            return class_name->valuestring;
+        }
+    }
+
+    // Try environment variable
+    const char* env_class = getenv("KRYON_KOTLIN_CLASS");
+    if (env_class && env_class[0] != '\0') {
+        return env_class;
+    }
+
+    // Default fallback
+    return "MainActivity";
+}
+
 static void write_indent(KotlinCodegenContext* ctx) {
     for (int i = 0; i < ctx->indent_level; i++) {
         fprintf(ctx->output, "    ");
@@ -366,8 +410,8 @@ bool ir_generate_kotlin_code(const char* kir_path, const char* output_path) {
     ctx.root_json = root;
     ctx.component_tree = cJSON_GetObjectItem(root, "root");
     ctx.logic_block = cJSON_GetObjectItem(root, "logic_block");
-    ctx.package_name = "com.kryon.temp";  // TODO: Make configurable
-    ctx.class_name = "MainActivity";
+    ctx.package_name = get_package_name(root);
+    ctx.class_name = get_class_name(root);
 
     // Generate code
     generate_header(&ctx);
@@ -405,8 +449,8 @@ bool ir_generate_kotlin_code_from_string(const char* kir_json, const char* outpu
     ctx.root_json = root;
     ctx.component_tree = cJSON_GetObjectItem(root, "root");
     ctx.logic_block = cJSON_GetObjectItem(root, "logic_block");
-    ctx.package_name = "com.kryon.temp";
-    ctx.class_name = "MainActivity";
+    ctx.package_name = get_package_name(root);
+    ctx.class_name = get_class_name(root);
 
     // Generate code
     generate_header(&ctx);

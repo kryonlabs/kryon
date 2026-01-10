@@ -251,13 +251,35 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
                     component = ir_table_row();
                     break;
 
-                case IR_COMPONENT_TABLE_CELL:
-                    component = ir_table_cell(1, 1);  // TODO: Parse colspan/rowspan
+                case IR_COMPONENT_TABLE_CELL: {
+                    // Parse colspan and rowspan attributes
+                    const char* colspan_str = html_node_get_attribute(node, "colspan");
+                    const char* rowspan_str = html_node_get_attribute(node, "rowspan");
+                    int colspan = colspan_str ? atoi(colspan_str) : 1;
+                    int rowspan = rowspan_str ? atoi(rowspan_str) : 1;
+                    // Clamp to reasonable values
+                    if (colspan < 1) colspan = 1;
+                    if (colspan > 100) colspan = 100;
+                    if (rowspan < 1) rowspan = 1;
+                    if (rowspan > 100) rowspan = 100;
+                    component = ir_table_cell((uint8_t)colspan, (uint8_t)rowspan);
                     break;
+                }
 
-                case IR_COMPONENT_TABLE_HEADER_CELL:
-                    component = ir_table_header_cell(1, 1);
+                case IR_COMPONENT_TABLE_HEADER_CELL: {
+                    // Parse colspan and rowspan attributes
+                    const char* colspan_str = html_node_get_attribute(node, "colspan");
+                    const char* rowspan_str = html_node_get_attribute(node, "rowspan");
+                    int colspan = colspan_str ? atoi(colspan_str) : 1;
+                    int rowspan = rowspan_str ? atoi(rowspan_str) : 1;
+                    // Clamp to reasonable values
+                    if (colspan < 1) colspan = 1;
+                    if (colspan > 100) colspan = 100;
+                    if (rowspan < 1) rowspan = 1;
+                    if (rowspan > 100) rowspan = 100;
+                    component = ir_table_header_cell((uint8_t)colspan, (uint8_t)rowspan);
                     break;
+                }
 
                 case IR_COMPONENT_BUTTON: {
                     // Extract button text from children

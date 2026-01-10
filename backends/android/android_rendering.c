@@ -141,10 +141,10 @@ static void render_border(AndroidRenderer* renderer,
 // MAIN RENDERING FUNCTION
 // ============================================================================
 
-// WORKAROUND: Global variable to bypass corrupted parameter passing
-static IRComponent* g_component_to_render = NULL;
-
-// WORKAROUND: Inline wrapper to avoid ABI mismatch when calling from ir_android_renderer.c
+/**
+ * Render the entire component tree for an Android IR renderer
+ * This is the primary rendering API called from ir_android_renderer.c
+ */
 void render_component_tree_inline(AndroidIRRenderer* ir_renderer) {
     if (!ir_renderer || !ir_renderer->last_root || !ir_renderer->renderer) {
         __android_log_print(ANDROID_LOG_WARN, "KryonBackend", "render_tree_inline: NULL params");
@@ -154,9 +154,8 @@ void render_component_tree_inline(AndroidIRRenderer* ir_renderer) {
     __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend", "render_tree_inline: root=%p, child_count=%d",
                       ir_renderer->last_root, ir_renderer->last_root->child_count);
 
-    // WORKAROUND: Use global variable to bypass parameter passing corruption
-    g_component_to_render = ir_renderer->last_root;
-    render_component_android(ir_renderer, NULL, 0.0f, 0.0f, 1.0f);
+    // Render starting from root component at origin with full opacity
+    render_component_android(ir_renderer, ir_renderer->last_root, 0.0f, 0.0f, 1.0f);
 }
 
 __attribute__((noinline))
@@ -166,25 +165,6 @@ void render_component_android(AndroidIRRenderer* ir_renderer,
                               float parent_opacity) {
     static int component_render_count = 0;
     component_render_count++;
-
-    // WORKAROUND: If component is NULL, use global variable (root component)
-    if (component_render_count % 60 == 0) {
-        __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend",
-                          "Received params: component=%p, g_component_to_render=%p",
-                          component, g_component_to_render);
-    }
-
-    if (component == NULL && g_component_to_render != NULL) {
-        component = g_component_to_render;
-        g_component_to_render = NULL;  // Clear after use
-        __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend",
-                          "Using global component workaround: ptr=%p, child_count=%d",
-                          component, component->child_count);
-    } else if (g_component_to_render != NULL) {
-        __android_log_print(ANDROID_LOG_ERROR, "KryonBackend",
-                          "Global set but component not NULL! component=%p, global=%p",
-                          component, g_component_to_render);
-    }
 
     if (component_render_count % 60 == 0) {
         __android_log_print(ANDROID_LOG_DEBUG, "KryonBackend", "render_component called, count=%d, component ptr=%p, child_count=%d, children ptr=%p",

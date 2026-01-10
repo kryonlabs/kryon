@@ -1198,9 +1198,12 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             fprintf(stderr, "[DEBUG] Preserving for loop template!\n");
             // Get collection reference as string
             const char* collection_ref = NULL;
-            // Try to find the original identifier name from the parent call
-            // For now, use a generic name - this will be improved later
-            collection_ref = "items";  // FIXME: Pass this from parent call
+            // If collection is an identifier, use its name; otherwise use a generic name
+            if (collection->type == KRY_VALUE_IDENTIFIER) {
+                collection_ref = collection->identifier;
+            } else {
+                collection_ref = "items";  // Fallback for array literals
+            }
 
             // Create template component (convert first child WITHOUT parameter substitution)
             IRComponent* template_comp = NULL;
