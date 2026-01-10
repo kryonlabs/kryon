@@ -148,12 +148,8 @@ bool ir_desktop_state_initialize(IRDesktopState* state, int width, int height, c
         return false;
     }
 
-    // Create renderer
-    SDL_Renderer* renderer = SDL_CreateRenderer(
-        window,
-        NULL,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
-    );
+    // Create renderer (SDL3 simplified API - no flags parameter)
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 
     if (!renderer) {
         fprintf(stderr, "[Desktop] Failed to create renderer: %s\n", SDL_GetError());
@@ -323,7 +319,7 @@ void ir_desktop_get_stats(IRDesktopState* state, IRDesktopStats* stats) {
     memset(stats, 0, sizeof(IRDesktopStats));
 
 #ifdef ENABLE_SDL3
-    stats->font_cache_count = state->fonts.cache.count;
+    stats->font_cache_count = state->fonts.count;
 #endif
     stats->input_state_count = (uint32_t)state->input.count;
     stats->frame_count = (uint32_t)state->frame_count;

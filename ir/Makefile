@@ -295,6 +295,11 @@ test-phase3: $(IR_STATIC_LIB)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test_phase3_backend_integration.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_phase3_backend_integration
 	$(BUILD_DIR)/test_phase3_backend_integration
 
+# Build and run multi-instance test (Phase 5-7)
+test-multi-instance: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) tests/test_multi_instance.c $(IR_STATIC_LIB) -lm $(IR_TEXT_SHAPING_LIBS) -o $(BUILD_DIR)/test_multi_instance
+	$(BUILD_DIR)/test_multi_instance
+
 # Debug build
 debug: CFLAGS += -g -DDEBUG
 debug: $(IR_STATIC_LIB) $(IR_SHARED_LIB)
@@ -335,6 +340,8 @@ help:
 	@echo "  test-vm            - Build and run VM prototype test"
 	@echo "  test-vm-integration - Build and run VM integration test (Phase 1)"
 	@echo "  test-event-metadata - Build and run event metadata test (Phase 2)"
+	@echo "  test-phase3        - Build and run Phase 3 backend test"
+	@echo "  test-multi-instance - Build and run multi-instance test"
 	@echo "  clean              - Remove build artifacts"
 	@echo "  install-headers    - Copy headers to build directory"
 	@echo "  debug              - Build with debug symbols"
@@ -345,4 +352,4 @@ help:
 	@echo "  tsan               - Build with ThreadSanitizer"
 	@echo "  help               - Show this help"
 
-.PHONY: all clean test test-vm test-vm-integration test-event-metadata debug install-headers help asan ubsan asan-ubsan tsan
+.PHONY: all clean test test-vm test-vm-integration test-event-metadata test-phase3 test-multi-instance debug install-headers help asan ubsan asan-ubsan tsan

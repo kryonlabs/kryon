@@ -59,7 +59,7 @@ endif
 # Core platform-agnostic sources
 DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c desktop_platform.c \
                   desktop_input_helpers.c desktop_test_events.c debug_backend.c \
-                  stb_image_impl.c ir_to_commands.c ir_wireframe.c
+                  stb_image_impl.c ir_to_commands.c ir_wireframe.c ir_desktop_state.c
 
 # SDL3 renderer modules (in renderers/sdl3/)
 SDL3_RENDERER_SOURCES = renderers/sdl3/sdl3_renderer.c \

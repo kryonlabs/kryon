@@ -358,6 +358,48 @@ struct IRContext* ir_context_get_current(void);
 struct IRContext* ir_context_set_current(struct IRContext* ctx);
 
 // ============================================================================
+// Per-Instance Hot Reload
+// ============================================================================
+
+/**
+ * Enable hot reload for an instance
+ * @param inst Instance to enable hot reload for
+ * @param watch_path Path to watch for file changes (can be NULL for current directory)
+ * @return true on success
+ */
+bool ir_instance_enable_hot_reload(IRInstanceContext* inst, const char* watch_path);
+
+/**
+ * Disable hot reload for an instance
+ * @param inst Instance to disable hot reload for
+ */
+void ir_instance_disable_hot_reload(IRInstanceContext* inst);
+
+/**
+ * Check if hot reload is enabled for an instance
+ * @param inst Instance to check
+ * @return true if hot reload is enabled
+ */
+bool ir_instance_hot_reload_enabled(IRInstanceContext* inst);
+
+/**
+ * Process hot reload for an instance
+ * Call this from your main loop to check for file changes and reload
+ * @param inst Instance to process hot reload for
+ * @return IRReloadResult indicating the outcome
+ */
+int ir_instance_hot_reload_poll(IRInstanceContext* inst);
+
+/**
+ * Reload a KIR file into an existing instance
+ * This preserves state by matching scopes between old and new component trees
+ * @param inst Instance to reload
+ * @param filename Path to KIR file
+ * @return New root component, or NULL on failure
+ */
+IRComponent* ir_instance_reload_kir(IRInstanceContext* inst, const char* filename);
+
+// ============================================================================
 // Debug/Logging
 // ============================================================================
 

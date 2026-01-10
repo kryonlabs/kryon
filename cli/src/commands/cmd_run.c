@@ -376,7 +376,7 @@ static int run_kir_file(const char* kir_file, const char* target_platform, const
         return run_web_target(kir_file);
     }
     // Default: desktop
-    return run_kir_on_desktop(kir_file, NULL, renderer_override);
+    return run_kir_on_desktop(kir_file, NULL, renderer);
 }
 
 /* ============================================================================
