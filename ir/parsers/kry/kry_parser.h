@@ -25,6 +25,7 @@
 #define IR_KRY_PARSER_H
 
 #include "ir_core.h"
+#include "ir_logic.h"
 #include "ir_builder.h"
 
 #ifdef __cplusplus

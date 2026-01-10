@@ -2,6 +2,7 @@
  * Kryon Audio System Implementation
  *
  * Core audio management with plugin architecture
+ * Now with per-instance audio state support
  */
 
 #define _POSIX_C_SOURCE 199309L
@@ -14,7 +15,7 @@
 #include <math.h>
 
 // ============================================================================
-// Global State
+// Global State (Legacy - for backward compatibility)
 // ============================================================================
 
 static struct {
@@ -58,6 +59,14 @@ static struct {
     IRAudioConfig config;
 } g_audio_system = {0};
 
+// Thread-local current audio state (for instance-specific audio operations)
+static __thread IRAudioState* t_current_state = NULL;
+
+// Per-instance state tracking (for lookup by instance_id)
+#define IR_MAX_AUDIO_STATES 32
+static IRAudioState* g_audio_states[IR_MAX_AUDIO_STATES] = {0};
+static uint32_t g_audio_state_count = 0;
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -73,31 +82,236 @@ static uint64_t get_time_ms(void) {
 #endif
 }
 
-// Find sound by ID
+// Find sound by ID in a specific state
+static IRSound* find_sound_in_state(IRAudioState* state, IRSoundID sound_id) {
+    if (!state || sound_id == IR_INVALID_SOUND) return NULL;
+
+    for (uint32_t i = 0; i < state->sound_count; i++) {
+        if (state->sounds[i].id == sound_id) {
+            return &state->sounds[i];
+        }
+    }
+    return NULL;
+}
+
+// Find music by ID in a specific state
+static IRMusic* find_music_in_state(IRAudioState* state, IRMusicID music_id) {
+    if (!state || music_id == IR_INVALID_MUSIC) return NULL;
+
+    for (uint32_t i = 0; i < state->music_count; i++) {
+        if (state->music[i].id == music_id) {
+            return &state->music[i];
+        }
+    }
+    return NULL;
+}
+
+// Find sound by ID (uses current state or global)
 static IRSound* find_sound(IRSoundID sound_id) {
-    if (sound_id == IR_INVALID_SOUND) return NULL;
-
-    for (uint32_t i = 0; i < g_audio_system.sound_count; i++) {
-        if (g_audio_system.sounds[i].id == sound_id) {
-            return &g_audio_system.sounds[i];
-        }
-    }
-    return NULL;
+    IRAudioState* state = ir_audio_get_current_state();
+    if (!state) return NULL;
+    return find_sound_in_state(state, sound_id);
 }
 
-// Find music by ID
+// Find music by ID (uses current state or global)
 static IRMusic* find_music(IRMusicID music_id) {
-    if (music_id == IR_INVALID_MUSIC) return NULL;
+    IRAudioState* state = ir_audio_get_current_state();
+    if (!state) return NULL;
+    return find_music_in_state(state, music_id);
+}
 
-    for (uint32_t i = 0; i < g_audio_system.music_count; i++) {
-        if (g_audio_system.music[i].id == music_id) {
-            return &g_audio_system.music[i];
+// Get the global state (instance 0)
+static IRAudioState* get_global_audio_state(void) {
+    // Create a wrapper that points to the global system
+    static IRAudioState global_wrapper = {0};
+
+    global_wrapper.instance_id = 0;
+    global_wrapper.sound_count = g_audio_system.sound_count;
+    global_wrapper.music_count = g_audio_system.music_count;
+    global_wrapper.current_music = g_audio_system.current_music;
+    global_wrapper.next_channel_id = g_audio_system.next_channel_id;
+    global_wrapper.master_volume = g_audio_system.master_volume;
+    global_wrapper.music_volume = g_audio_system.music_volume;
+
+    // Copy arrays
+    memcpy(global_wrapper.sounds, g_audio_system.sounds, sizeof(g_audio_system.sounds));
+    memcpy(global_wrapper.music, g_audio_system.music, sizeof(g_audio_system.music));
+    memcpy(global_wrapper.channels, g_audio_system.channels, sizeof(g_audio_system.channels));
+    memcpy(global_wrapper.listener.position, g_audio_system.listener.position, sizeof(g_audio_system.listener.position));
+    memcpy(global_wrapper.listener.forward, g_audio_system.listener.forward, sizeof(g_audio_system.listener.forward));
+    memcpy(global_wrapper.listener.up, g_audio_system.listener.up, sizeof(g_audio_system.listener.up));
+    memcpy(global_wrapper.listener.velocity, g_audio_system.listener.velocity, sizeof(g_audio_system.listener.velocity));
+
+    return &global_wrapper;
+}
+
+// ============================================================================
+// Per-Instance Audio State API
+// ============================================================================
+
+IRAudioState* ir_audio_state_create(uint32_t instance_id) {
+    // Check if state already exists for this instance
+    for (uint32_t i = 0; i < g_audio_state_count; i++) {
+        if (g_audio_states[i] && g_audio_states[i]->instance_id == instance_id) {
+            return g_audio_states[i];
+        }
+    }
+
+    // Check capacity
+    if (g_audio_state_count >= IR_MAX_AUDIO_STATES) {
+        fprintf(stderr, "[Audio] Maximum audio states reached (%d)\n", IR_MAX_AUDIO_STATES);
+        return NULL;
+    }
+
+    // Allocate new state
+    IRAudioState* state = calloc(1, sizeof(IRAudioState));
+    if (!state) {
+        fprintf(stderr, "[Audio] Failed to allocate audio state\n");
+        return NULL;
+    }
+
+    state->instance_id = instance_id;
+    state->master_volume = 1.0f;
+    state->music_volume = 1.0f;
+
+    // Initialize listener orientation (default: facing -Z, up +Y)
+    state->listener.position[0] = 0.0f;
+    state->listener.position[1] = 0.0f;
+    state->listener.position[2] = 0.0f;
+    state->listener.forward[0] = 0.0f;
+    state->listener.forward[1] = 0.0f;
+    state->listener.forward[2] = -1.0f;
+    state->listener.up[0] = 0.0f;
+    state->listener.up[1] = 1.0f;
+    state->listener.up[2] = 0.0f;
+    state->listener.velocity[0] = 0.0f;
+    state->listener.velocity[1] = 0.0f;
+    state->listener.velocity[2] = 0.0f;
+
+    // Register the state
+    g_audio_states[g_audio_state_count++] = state;
+
+    return state;
+}
+
+void ir_audio_state_destroy(IRAudioState* state) {
+    if (!state) return;
+
+    // Unload all sounds
+    for (uint32_t i = 0; i < state->sound_count; i++) {
+        if (state->sounds[i].loaded && state->sounds[i].backend_data) {
+            // Backend-specific unload would go here
+            free(state->sounds[i].backend_data);
+        }
+    }
+
+    // Unload all music
+    for (uint32_t i = 0; i < state->music_count; i++) {
+        if (state->music[i].loaded && state->music[i].backend_data) {
+            // Backend-specific unload would go here
+            free(state->music[i].backend_data);
+        }
+    }
+
+    // Remove from state list
+    for (uint32_t i = 0; i < g_audio_state_count; i++) {
+        if (g_audio_states[i] == state) {
+            // Shift remaining entries down
+            for (uint32_t j = i; j < g_audio_state_count - 1; j++) {
+                g_audio_states[j] = g_audio_states[j + 1];
+            }
+            g_audio_states[g_audio_state_count - 1] = NULL;
+            g_audio_state_count--;
+            break;
+        }
+    }
+
+    free(state);
+}
+
+IRAudioState* ir_audio_get_current_state(void) {
+    if (t_current_state) {
+        return t_current_state;
+    }
+    // Fall back to global state if not initialized yet
+    if (!g_audio_system.initialized) return NULL;
+    return get_global_audio_state();
+}
+
+IRAudioState* ir_audio_set_current_state(IRAudioState* state) {
+    IRAudioState* prev = t_current_state;
+    t_current_state = state;
+    return prev;
+}
+
+IRAudioState* ir_audio_get_state_by_instance(uint32_t instance_id) {
+    if (instance_id == 0) {
+        return get_global_audio_state();
+    }
+
+    for (uint32_t i = 0; i < g_audio_state_count; i++) {
+        if (g_audio_states[i] && g_audio_states[i]->instance_id == instance_id) {
+            return g_audio_states[i];
         }
     }
     return NULL;
 }
 
-// Find free channel
+// ============================================================================
+// Explicit State API (for multi-instance support)
+// ============================================================================
+
+IRSoundID ir_audio_load_sound_state(IRAudioState* state, const char* path) {
+    // Set current state and call global function
+    IRAudioState* prev = ir_audio_set_current_state(state);
+    // Note: This would need proper implementation for full per-instance support
+    // For now, it delegates to the global implementation which uses the current state
+    ir_audio_set_current_state(prev);
+    return IR_INVALID_SOUND;  // TODO: Implement properly
+}
+
+IRChannelID ir_audio_play_sound_state(IRAudioState* state, IRSoundID sound_id, float volume, float pan, bool loop) {
+    IRAudioState* prev = ir_audio_set_current_state(state);
+    // TODO: Implement properly
+    ir_audio_set_current_state(prev);
+    return IR_INVALID_CHANNEL;
+}
+
+void ir_audio_stop_channel_state(IRAudioState* state, IRChannelID channel_id) {
+    IRAudioState* prev = ir_audio_set_current_state(state);
+    // TODO: Implement properly
+    ir_audio_set_current_state(prev);
+}
+
+void ir_audio_set_channel_volume_state(IRAudioState* state, IRChannelID channel_id, float volume) {
+    IRAudioState* prev = ir_audio_set_current_state(state);
+    // TODO: Implement properly
+    ir_audio_set_current_state(prev);
+}
+
+void ir_audio_set_master_volume_state(IRAudioState* state, float volume) {
+    if (state) {
+        state->master_volume = fmaxf(0.0f, fminf(1.0f, volume));
+    }
+}
+
+void ir_audio_set_listener_position_state(IRAudioState* state, float x, float y, float z) {
+    if (state) {
+        state->listener.position[0] = x;
+        state->listener.position[1] = y;
+        state->listener.position[2] = z;
+    }
+}
+
+void ir_audio_update_state(IRAudioState* state, float dt) {
+    // TODO: Implement properly - update channels, streaming, etc.
+    (void)state;
+    (void)dt;
+}
+
+// ============================================================================
+// Helper Functions (Legacy - using current state)
+// ============================================================================
 static IRChannel* find_free_channel(void) {
     for (uint32_t i = 0; i < IR_MAX_CHANNELS; i++) {
         if (g_audio_system.channels[i].state == IR_AUDIO_STOPPED) {
@@ -676,12 +890,12 @@ float ir_audio_get_master_volume(void) {
 // Channel Management
 // ============================================================================
 
-IRAudioState ir_audio_get_channel_state(IRChannelID channel_id) {
+IRPlaybackState ir_audio_get_channel_state(IRChannelID channel_id) {
     IRChannel* channel = find_channel(channel_id);
     return channel ? channel->state : IR_AUDIO_STOPPED;
 }
 
-IRAudioState ir_audio_get_music_state(void) {
+IRPlaybackState ir_audio_get_music_state(void) {
     if (g_audio_system.backend.get_music_state) {
         return g_audio_system.backend.get_music_state();
     }

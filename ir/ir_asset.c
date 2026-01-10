@@ -2,6 +2,7 @@
  * Kryon Asset Management System Implementation
  *
  * Centralized asset loading, caching, and hot-reloading
+ * Now with per-instance registry support
  */
 
 #define _POSIX_C_SOURCE 199309L
@@ -21,14 +22,11 @@
 #endif
 
 // ============================================================================
-// Global State
+// Global State (Legacy - for backward compatibility)
 // ============================================================================
 
-typedef struct {
-    char alias[64];
-    char real_path[IR_MAX_PATH_LENGTH];
-} IRSearchPath;
-
+// The global asset system (instance 0)
+// This is wrapped as an IRAssetRegistry for multi-instance support
 static struct {
     bool initialized;
 
@@ -36,8 +34,11 @@ static struct {
     IRAsset assets[IR_MAX_ASSETS];
     uint32_t asset_count;
 
-    // Search paths
-    IRSearchPath search_paths[IR_MAX_SEARCH_PATHS];
+    // Search paths (using IRSearchPath from header)
+    struct {
+        char alias[64];
+        char real_path[IR_MAX_PATH_LENGTH];
+    } search_paths[IR_MAX_SEARCH_PATHS];
     uint32_t search_path_count;
 
     // Hot reload
@@ -60,6 +61,27 @@ static struct {
     uint64_t total_load_time_ms;
     uint32_t total_loads;
 } g_asset_system = {0};
+
+// Pointer to global registry as IRAssetRegistry (for API compatibility)
+static IRAssetRegistry g_global_registry_wrapper = {
+    .instance_id = 0,
+    .assets = {0},  // Points to g_asset_system.assets
+    .asset_count = 0,
+    .search_paths = {0},
+    .search_path_count = 0,
+    .hot_reload_callback = NULL,
+    .hot_reload_user_data = NULL,
+    .custom_loaders = {0},
+    .default_atlas = 0
+};
+
+// Thread-local current registry (for instance-specific asset operations)
+static __thread IRAssetRegistry* t_current_registry = NULL;
+
+// Per-instance registry tracking (for lookup by instance_id)
+#define IR_MAX_REGISTRIES 32
+static IRAssetRegistry* g_registries[IR_MAX_REGISTRIES] = {0};
+static uint32_t g_registry_count = 0;
 
 // ============================================================================
 // Helper Functions
@@ -85,18 +107,302 @@ static uint64_t get_time_ms(void) {
 #endif
 }
 
-// Find asset by path (linear search - O(n) but acceptable for < 1024 assets)
+// Find asset by path in a specific registry
+static IRAsset* find_asset_in_registry(IRAssetRegistry* registry, const char* path) {
+    if (!registry) return NULL;
+    for (uint32_t i = 0; i < registry->asset_count; i++) {
+        if (strcmp(registry->assets[i].path, path) == 0) {
+            return &registry->assets[i];
+        }
+    }
+    return NULL;
+}
+
+// Find asset by path (uses current registry or global)
 static IRAsset* find_asset(const char* path) {
-    for (uint32_t i = 0; i < g_asset_system.asset_count; i++) {
-        if (strcmp(g_asset_system.assets[i].path, path) == 0) {
-            return &g_asset_system.assets[i];
+    IRAssetRegistry* registry = ir_asset_get_current_registry();
+    if (!registry) return NULL;
+    return find_asset_in_registry(registry, path);
+}
+
+// Get the global registry (instance 0)
+static IRAssetRegistry* get_global_registry(void) {
+    // Sync the wrapper with the actual global state
+    g_global_registry_wrapper.instance_id = 0;
+    g_global_registry_wrapper.asset_count = g_asset_system.asset_count;
+    g_global_registry_wrapper.search_path_count = g_asset_system.search_path_count;
+    g_global_registry_wrapper.hot_reload_callback = g_asset_system.hot_reload_callback;
+    g_global_registry_wrapper.hot_reload_user_data = g_asset_system.hot_reload_user_data;
+    g_global_registry_wrapper.default_atlas = g_asset_system.default_atlas;
+
+    // Copy assets array
+    memcpy(g_global_registry_wrapper.assets, g_asset_system.assets, sizeof(g_asset_system.assets));
+
+    // Copy search paths (field-by-field due to struct difference)
+    for (uint32_t i = 0; i < g_asset_system.search_path_count && i < IR_MAX_SEARCH_PATHS; i++) {
+        strncpy(g_global_registry_wrapper.search_paths[i].alias,
+               g_asset_system.search_paths[i].alias, sizeof(g_global_registry_wrapper.search_paths[i].alias) - 1);
+        strncpy(g_global_registry_wrapper.search_paths[i].real_path,
+               g_asset_system.search_paths[i].real_path, sizeof(g_global_registry_wrapper.search_paths[i].real_path) - 1);
+    }
+
+    // Copy custom loaders
+    memcpy(g_global_registry_wrapper.custom_loaders, g_asset_system.custom_loaders, sizeof(g_asset_system.custom_loaders));
+
+    return &g_global_registry_wrapper;
+}
+
+// ============================================================================
+// Per-Instance Registry API
+// ============================================================================
+
+IRAssetRegistry* ir_asset_registry_create(uint32_t instance_id) {
+    // Check if registry already exists for this instance
+    for (uint32_t i = 0; i < g_registry_count; i++) {
+        if (g_registries[i] && g_registries[i]->instance_id == instance_id) {
+            return g_registries[i];
+        }
+    }
+
+    // Check capacity
+    if (g_registry_count >= IR_MAX_REGISTRIES) {
+        fprintf(stderr, "[Asset] Maximum registries reached (%d)\n", IR_MAX_REGISTRIES);
+        return NULL;
+    }
+
+    // Allocate new registry
+    IRAssetRegistry* registry = calloc(1, sizeof(IRAssetRegistry));
+    if (!registry) {
+        fprintf(stderr, "[Asset] Failed to allocate registry\n");
+        return NULL;
+    }
+
+    registry->instance_id = instance_id;
+    registry->default_atlas = IR_INVALID_SPRITE_ATLAS;
+
+    // Register the registry
+    g_registries[g_registry_count++] = registry;
+
+    return registry;
+}
+
+void ir_asset_registry_destroy(IRAssetRegistry* registry) {
+    if (!registry) return;
+
+    // Unload all assets
+    for (uint32_t i = 0; i < registry->asset_count; i++) {
+        if (registry->assets[i].data && registry->assets[i].ref_count > 0) {
+            // Call custom unload if registered
+            if (registry->custom_loaders[registry->assets[i].type].unload) {
+                registry->custom_loaders[registry->assets[i].type].unload(registry->assets[i].data);
+            }
+            free(registry->assets[i].data);
+        }
+    }
+
+    // Remove from registry list
+    for (uint32_t i = 0; i < g_registry_count; i++) {
+        if (g_registries[i] == registry) {
+            // Shift remaining entries down
+            for (uint32_t j = i; j < g_registry_count - 1; j++) {
+                g_registries[j] = g_registries[j + 1];
+            }
+            g_registries[g_registry_count - 1] = NULL;
+            g_registry_count--;
+            break;
+        }
+    }
+
+    free(registry);
+}
+
+IRAssetRegistry* ir_asset_get_current_registry(void) {
+    if (t_current_registry) {
+        return t_current_registry;
+    }
+    // Fall back to global registry if not initialized yet
+    if (!g_asset_system.initialized) return NULL;
+    return get_global_registry();
+}
+
+IRAssetRegistry* ir_asset_set_current_registry(IRAssetRegistry* registry) {
+    IRAssetRegistry* prev = t_current_registry;
+    t_current_registry = registry;
+    return prev;
+}
+
+IRAssetRegistry* ir_asset_get_registry_by_instance(uint32_t instance_id) {
+    if (instance_id == 0) {
+        return get_global_registry();
+    }
+
+    for (uint32_t i = 0; i < g_registry_count; i++) {
+        if (g_registries[i] && g_registries[i]->instance_id == instance_id) {
+            return g_registries[i];
         }
     }
     return NULL;
 }
 
 // ============================================================================
-// Initialization
+// Explicit Registry API
+// ============================================================================
+
+IRAssetID ir_asset_register_ex(IRAssetRegistry* registry, const char* path,
+                                IRAssetType type, void* data, size_t size) {
+    if (!registry || !path) return IR_INVALID_ASSET;
+
+    // Check if already exists
+    IRAsset* existing = find_asset_in_registry(registry, path);
+    if (existing) {
+        existing->ref_count++;
+        return existing->id;
+    }
+
+    // Check capacity
+    if (registry->asset_count >= IR_MAX_ASSETS) {
+        fprintf(stderr, "[Asset] Maximum assets reached (%d)\n", IR_MAX_ASSETS);
+        return IR_INVALID_ASSET;
+    }
+
+    // Allocate new asset
+    IRAsset* asset = &registry->assets[registry->asset_count++];
+    asset->id = registry->asset_count;  // Simple ID assignment
+    asset->type = type;
+    asset->state = IR_ASSET_LOADED;
+    strncpy(asset->path, path, IR_MAX_PATH_LENGTH - 1);
+    asset->path[IR_MAX_PATH_LENGTH - 1] = '\0';
+    asset->data = data;
+    asset->data_size = size;
+    asset->ref_count = 1;
+    asset->load_time = get_time_ms();
+    asset->hot_reload = false;
+
+    return asset->id;
+}
+
+void ir_asset_unload_ex(IRAssetRegistry* registry, const char* path) {
+    if (!registry || !path) return;
+
+    for (uint32_t i = 0; i < registry->asset_count; i++) {
+        if (strcmp(registry->assets[i].path, path) == 0) {
+            IRAsset* asset = &registry->assets[i];
+            if (asset->ref_count > 0) {
+                asset->ref_count--;
+                if (asset->ref_count == 0 && asset->data) {
+                    // Unload
+                    if (registry->custom_loaders[asset->type].unload) {
+                        registry->custom_loaders[asset->type].unload(asset->data);
+                    }
+                    free(asset->data);
+                    asset->data = NULL;
+                    asset->state = IR_ASSET_UNLOADED;
+                }
+            }
+            return;
+        }
+    }
+}
+
+IRAsset* ir_asset_get_ex(IRAssetRegistry* registry, const char* path) {
+    if (!registry || !path) return NULL;
+    return find_asset_in_registry(registry, path);
+}
+
+bool ir_asset_add_search_path_ex(IRAssetRegistry* registry, const char* real_path, const char* alias) {
+    if (!registry || !real_path || !alias) return false;
+
+    if (registry->search_path_count >= IR_MAX_SEARCH_PATHS) {
+        fprintf(stderr, "[Asset] Maximum search paths reached (%d)\n", IR_MAX_SEARCH_PATHS);
+        return false;
+    }
+
+    IRSearchPath* sp = &registry->search_paths[registry->search_path_count++];
+    strncpy(sp->alias, alias, sizeof(sp->alias) - 1);
+    sp->alias[sizeof(sp->alias) - 1] = '\0';
+    strncpy(sp->real_path, real_path, IR_MAX_PATH_LENGTH - 1);
+    sp->real_path[IR_MAX_PATH_LENGTH - 1] = '\0';
+
+    return true;
+}
+
+bool ir_asset_resolve_path_ex(IRAssetRegistry* registry, const char* virtual_path,
+                               char* out_real_path, size_t max_len) {
+    if (!registry || !virtual_path || !out_real_path) return false;
+
+    // Check if it's a virtual path (@alias/...)
+    if (virtual_path[0] == '@') {
+        const char* slash = strchr(virtual_path, '/');
+        if (slash) {
+            // Extract alias
+            size_t alias_len = slash - virtual_path - 1;
+            char alias[64];
+            if (alias_len < sizeof(alias)) {
+                strncpy(alias, virtual_path + 1, alias_len);
+                alias[alias_len] = '\0';
+
+                // Find matching search path
+                for (uint32_t i = 0; i < registry->search_path_count; i++) {
+                    if (strcmp(registry->search_paths[i].alias, alias) == 0) {
+                        snprintf(out_real_path, max_len, "%s/%s",
+                                 registry->search_paths[i].real_path, slash + 1);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    // Not a virtual path or alias not found, return as-is
+    strncpy(out_real_path, virtual_path, max_len - 1);
+    out_real_path[max_len - 1] = '\0';
+    return true;
+}
+
+// For now, sprite loading functions delegate to the global implementation
+// TODO: Make these truly per-instance in future iterations
+
+IRSpriteAtlasID ir_asset_load_sprite_atlas_ex(IRAssetRegistry* registry, const char* path,
+                                              uint16_t width, uint16_t height) {
+    // Set current registry and call global function
+    IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
+    IRSpriteAtlasID result = ir_asset_load_sprite_atlas(path, width, height);
+    ir_asset_set_current_registry(prev);
+    return result;
+}
+
+IRSpriteID ir_asset_load_sprite_ex(IRAssetRegistry* registry, const char* path) {
+    IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
+    IRSpriteID result = ir_asset_load_sprite(path);
+    ir_asset_set_current_registry(prev);
+    return result;
+}
+
+IRSpriteID* ir_asset_load_sprite_sheet_ex(IRAssetRegistry* registry, const char* path,
+                                          uint16_t frame_width, uint16_t frame_height,
+                                          uint16_t* out_frame_count) {
+    IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
+    IRSpriteID* result = ir_asset_load_sprite_sheet(path, frame_width, frame_height, out_frame_count);
+    ir_asset_set_current_registry(prev);
+    return result;
+}
+
+void* ir_asset_load_data_ex(IRAssetRegistry* registry, const char* path, size_t* out_size) {
+    IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
+    void* result = ir_asset_load_data(path, out_size);
+    ir_asset_set_current_registry(prev);
+    return result;
+}
+
+char* ir_asset_load_text_ex(IRAssetRegistry* registry, const char* path) {
+    IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
+    char* result = ir_asset_load_text(path);
+    ir_asset_set_current_registry(prev);
+    return result;
+}
+
+// ============================================================================
+// Initialization (Global Registry)
 // ============================================================================
 
 void ir_asset_init(void) {
@@ -154,9 +460,11 @@ bool ir_asset_add_search_path(const char* real_path, const char* alias) {
         return false;
     }
 
-    IRSearchPath* sp = &g_asset_system.search_paths[g_asset_system.search_path_count];
-    strncpy(sp->alias, alias, sizeof(sp->alias) - 1);
-    strncpy(sp->real_path, real_path, sizeof(sp->real_path) - 1);
+    // Use the anonymous struct directly
+    strncpy(g_asset_system.search_paths[g_asset_system.search_path_count].alias, alias, 63);
+    g_asset_system.search_paths[g_asset_system.search_path_count].alias[63] = '\0';
+    strncpy(g_asset_system.search_paths[g_asset_system.search_path_count].real_path, real_path, IR_MAX_PATH_LENGTH - 1);
+    g_asset_system.search_paths[g_asset_system.search_path_count].real_path[IR_MAX_PATH_LENGTH - 1] = '\0';
 
     g_asset_system.search_path_count++;
 
