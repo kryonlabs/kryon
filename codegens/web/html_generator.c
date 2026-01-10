@@ -443,6 +443,11 @@ void html_generator_set_manifest(HTMLGenerator* generator, IRReactiveManifest* m
     generator->manifest = manifest;  // Store reference (not owned)
 }
 
+void html_generator_set_metadata(HTMLGenerator* generator, IRSourceMetadata* metadata) {
+    if (!generator) return;
+    generator->metadata = metadata;  // Store reference (not owned)
+}
+
 static void html_generator_write_indent(HTMLGenerator* generator) {
     if (!generator->pretty_print) return;
 
@@ -1436,8 +1441,15 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     }
 
     // Add Fengari Lua VM for Lua event execution (local file, no CDN)
-    // TODO: Make this conditional based on source language from metadata
-    html_generator_write_string(generator, "  <script src=\"fengari-web.min.js\"></script>\n");
+    // Only include if the source language is Lua
+    bool needs_fengari = false;
+    if (generator->metadata && generator->metadata->source_language) {
+        needs_fengari = (strcmp(generator->metadata->source_language, "lua") == 0);
+    }
+
+    if (needs_fengari) {
+        html_generator_write_string(generator, "  <script src=\"fengari-web.min.js\"></script>\n");
+    }
 
     // Add JavaScript runtime if requested
     if (generator->options.include_runtime) {

@@ -56,6 +56,46 @@ extern "C" {
 IRComponent* ir_kry_parse(const char* source, size_t length);
 
 /**
+ * Extended parse result containing root, manifest, and logic block
+ *
+ * Used by ir_kry_parse_ex() to return all parsing artifacts.
+ */
+typedef struct {
+    IRComponent* root;              // Root component tree
+    IRReactiveManifest* manifest;   // Reactive state manifest (for state variables)
+    IRLogicBlock* logic_block;      // Logic block (for event handlers)
+} IRKryParseResult;
+
+/**
+ * Parse .kry source with extended result
+ *
+ * Returns the root component along with the reactive manifest and logic block.
+ * This allows callers to access state variable definitions and event handlers
+ * that were created during parsing.
+ *
+ * The caller is responsible for freeing all returned pointers:
+ * - ir_destroy_component(result.root)
+ * - ir_reactive_manifest_destroy(result.manifest)
+ * - ir_logic_block_free(result.logic_block)
+ *
+ * @param source .kry source text (UTF-8 encoded)
+ * @param length Length of source in bytes (0 for null-terminated string)
+ * @return IRKryParseResult Parse result containing root, manifest, and logic_block
+ *
+ * @example
+ *   const char* kry = readFile("app.kry");
+ *   IRKryParseResult result = ir_kry_parse_ex(kry, 0);
+ *   if (result.root) {
+ *       // Use result.manifest to access state variables
+ *       // Use result.logic_block to access event handlers
+ *       ir_destroy_component(result.root);
+ *       ir_reactive_manifest_destroy(result.manifest);
+ *       ir_logic_block_free(result.logic_block);
+ *   }
+ */
+IRKryParseResult ir_kry_parse_ex(const char* source, size_t length);
+
+/**
  * Convert .kry source to KIR JSON string
  *
  * Convenience function that combines parsing and JSON serialization.

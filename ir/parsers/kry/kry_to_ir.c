@@ -164,6 +164,126 @@ static void add_param_value(ConversionContext* ctx, const char* name, KryValue* 
 }
 
 // ============================================================================
+// KryValue to JSON Serialization
+// ============================================================================
+
+/**
+ * Convert a KryValue to a JSON string representation.
+ * Returns a dynamically allocated string that must be freed by the caller.
+ */
+static char* kry_value_to_json(KryValue* value) {
+    if (!value) return strdup("null");
+
+    switch (value->type) {
+        case KRY_VALUE_STRING: {
+            char* result = (char*)malloc(strlen(value->string_value) + 3);
+            if (result) {
+                sprintf(result, "\"%s\"", value->string_value);
+            }
+            return result;
+        }
+
+        case KRY_VALUE_NUMBER: {
+            char* result = (char*)malloc(64);
+            if (result) {
+                snprintf(result, 64, "%g", value->number_value);
+            }
+            return result;
+        }
+
+        case KRY_VALUE_IDENTIFIER: {
+            return strdup(value->identifier);
+        }
+
+        case KRY_VALUE_EXPRESSION: {
+            return strdup(value->expression);
+        }
+
+        case KRY_VALUE_ARRAY: {
+            // Calculate required buffer size
+            size_t buffer_size = 2;  // '[' and ']'
+            for (size_t i = 0; i < value->array.count; i++) {
+                if (i > 0) buffer_size += 2;  // ", "
+                char* elem_json = kry_value_to_json(value->array.elements[i]);
+                if (elem_json) {
+                    buffer_size += strlen(elem_json);
+                    free(elem_json);
+                }
+            }
+
+            char* result = (char*)malloc(buffer_size + 1);
+            if (!result) return strdup("[]");
+
+            char* pos = result;
+            *pos++ = '[';
+
+            for (size_t i = 0; i < value->array.count; i++) {
+                if (i > 0) {
+                    *pos++ = ',';
+                    *pos++ = ' ';
+                }
+                char* elem_json = kry_value_to_json(value->array.elements[i]);
+                if (elem_json) {
+                    strcpy(pos, elem_json);
+                    pos += strlen(elem_json);
+                    free(elem_json);
+                }
+            }
+
+            *pos++ = ']';
+            *pos = '\0';
+            return result;
+        }
+
+        case KRY_VALUE_OBJECT: {
+            // Calculate required buffer size
+            size_t buffer_size = 2;  // '{' and '}'
+            for (size_t i = 0; i < value->object.count; i++) {
+                if (i > 0) buffer_size += 2;  // ", "
+                buffer_size += strlen(value->object.keys[i]) + 4;  // key and quotes
+                char* val_json = kry_value_to_json(value->object.values[i]);
+                if (val_json) {
+                    buffer_size += strlen(val_json);
+                    free(val_json);
+                }
+            }
+
+            char* result = (char*)malloc(buffer_size + 1);
+            if (!result) return strdup("{}");
+
+            char* pos = result;
+            *pos++ = '{';
+
+            for (size_t i = 0; i < value->object.count; i++) {
+                if (i > 0) {
+                    *pos++ = ',';
+                    *pos++ = ' ';
+                }
+                *pos++ = '"';
+                strcpy(pos, value->object.keys[i]);
+                pos += strlen(value->object.keys[i]);
+                strcpy(pos, "\": ");
+                pos += 3;
+
+                char* val_json = kry_value_to_json(value->object.values[i]);
+                if (val_json) {
+                    strcpy(pos, val_json);
+                    pos += strlen(val_json);
+                    free(val_json);
+                }
+            }
+
+            *pos++ = '}';
+            *pos = '\0';
+            return result;
+        }
+
+        default:
+            return strdup("null");
+    }
+}
+
+// ============================================================================
 // Parameter Substitution
 // ============================================================================
 
@@ -1248,9 +1368,9 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             char* allocated_strings[MAX_PARAMS * 2];
             int alloc_count = 0;
 
-            // For object elements, we need to make properties accessible
-            // For now, store the element value
-            // TODO: Implement proper object property access
+            // For object elements, make properties accessible via dot notation
+            // e.g., if iterator is "item" and object has "name" property,
+            // store "item.name" → value
 
             // Convert element to string for simple cases
             if (element->type == KRY_VALUE_STRING) {
@@ -1615,15 +1735,54 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 }
 
                 // Add variable to reactive manifest
-                IRReactiveValue react_value = {.as_int = 0};  // Default int value
+                // Parse type from state declaration (child->state_type)
+                IRReactiveVarType ir_type = IR_REACTIVE_TYPE_INT;  // Default
+                const char* type_str = "int";
+
+                if (child->state_type) {
+                    if (strcmp(child->state_type, "string") == 0) {
+                        ir_type = IR_REACTIVE_TYPE_STRING;
+                        type_str = "string";
+                    } else if (strcmp(child->state_type, "float") == 0 ||
+                               strcmp(child->state_type, "double") == 0 ||
+                               strcmp(child->state_type, "number") == 0) {
+                        ir_type = IR_REACTIVE_TYPE_FLOAT;
+                        type_str = child->state_type;
+                    } else if (strcmp(child->state_type, "bool") == 0 ||
+                               strcmp(child->state_type, "boolean") == 0) {
+                        ir_type = IR_REACTIVE_TYPE_BOOL;
+                        type_str = child->state_type;
+                    } else {
+                        // Default to int for unknown types
+                        type_str = child->state_type;
+                    }
+                }
+
+                IRReactiveValue react_value = {.as_int = 0};  // Default value
                 if (init_value) {
-                    react_value.as_int = atoi(init_value);
+                    switch (ir_type) {
+                        case IR_REACTIVE_TYPE_INT:
+                            react_value.as_int = atoi(init_value);
+                            break;
+                        case IR_REACTIVE_TYPE_FLOAT:
+                            react_value.as_float = atof(init_value);
+                            break;
+                        case IR_REACTIVE_TYPE_BOOL:
+                            react_value.as_bool = (strcmp(init_value, "true") == 0);
+                            break;
+                        case IR_REACTIVE_TYPE_STRING:
+                            react_value.as_string = (char*)init_value;
+                            break;
+                        default:
+                            react_value.as_int = atoi(init_value);
+                            break;
+                    }
                 }
 
                 uint32_t var_id = ir_reactive_manifest_add_var(
                     ctx->manifest,
                     var_name,
-                    IR_REACTIVE_TYPE_INT,  // TODO: Parse actual type from declaration
+                    ir_type,
                     react_value
                 );
 
@@ -1632,7 +1791,7 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     ir_reactive_manifest_set_var_metadata(
                         ctx->manifest,
                         var_id,
-                        "int",  // TODO: Use actual type from state declaration
+                        type_str,
                         init_value,
                         "component"  // State variables are component-scoped
                     );
@@ -1706,39 +1865,31 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
 
                         // HYBRID MODE: Preserve variable declaration
                         if (ctx->compile_mode == IR_COMPILE_MODE_HYBRID) {
-                            // Determine variable type
-                            const char* var_type = "const";  // Default
-                            // TODO: Parse actual var type from AST (const/let/var)
+                            // Parse var type from AST (const/let/var)
+                            const char* var_type = static_child->var_type ? static_child->var_type : "var";
 
                             // Convert value to JSON string for preservation
                             const char* value_json = NULL;
-                            static char json_buffer[4096];  // Static buffer for JSON serialization
+                            static char* json_buffer_ptr = NULL;  // For dynamically allocated JSON
                             if (static_child->value) {
-                                if (static_child->value->type == KRY_VALUE_STRING) {
-                                    // Quote string values
-                                    snprintf(json_buffer, sizeof(json_buffer), "\"%s\"", static_child->value->string_value);
-                                    value_json = json_buffer;
-                                } else if (static_child->value->type == KRY_VALUE_ARRAY) {
-                                    // Serialize array to JSON
-                                    size_t pos = 0;
-                                    pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, "[");
-                                    for (size_t i = 0; i < static_child->value->array.count; i++) {
-                                        if (i > 0) pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, ", ");
-                                        KryValue* elem = static_child->value->array.elements[i];
-                                        if (elem->type == KRY_VALUE_STRING) {
-                                            pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, "\"%s\"", elem->string_value);
-                                        } else if (elem->type == KRY_VALUE_NUMBER) {
-                                            pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, "%g", elem->number_value);
-                                        }
-                                    }
-                                    pos += snprintf(json_buffer + pos, sizeof(json_buffer) - pos, "]");
-                                    value_json = json_buffer;
-                                } else if (static_child->value->type == KRY_VALUE_OBJECT) {
-                                    // TODO: Serialize object to JSON string
-                                    value_json = "{...}";  // Placeholder
+                                // Use the kry_value_to_json helper for all complex types
+                                if (static_child->value->type == KRY_VALUE_ARRAY ||
+                                    static_child->value->type == KRY_VALUE_OBJECT) {
+                                    json_buffer_ptr = kry_value_to_json(static_child->value);
+                                    value_json = json_buffer_ptr;
+                                } else if (static_child->value->type == KRY_VALUE_STRING) {
+                                    // Simple string values can use a static buffer
+                                    static char str_buf[2048];
+                                    snprintf(str_buf, sizeof(str_buf), "\"%s\"", static_child->value->string_value);
+                                    value_json = str_buf;
                                 } else if (static_child->value->type == KRY_VALUE_NUMBER) {
-                                    snprintf(json_buffer, sizeof(json_buffer), "%g", static_child->value->number_value);
-                                    value_json = json_buffer;
+                                    static char num_buf[64];
+                                    snprintf(num_buf, sizeof(num_buf), "%g", static_child->value->number_value);
+                                    value_json = num_buf;
+                                } else if (static_child->value->type == KRY_VALUE_IDENTIFIER) {
+                                    value_json = static_child->value->identifier;
+                                } else if (static_child->value->type == KRY_VALUE_EXPRESSION) {
+                                    value_json = static_child->value->expression;
                                 }
                             }
 
@@ -1750,6 +1901,11 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                                 value_json,
                                 static_block_id  // Scope: this static block
                             );
+
+                            // Clean up dynamically allocated JSON
+                            if (json_buffer_ptr) {
+                                free(json_buffer_ptr);
+                            }
                         }
 
                         if (static_child->value) {
@@ -2055,8 +2211,8 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
     // Free parser (includes AST)
     kry_parser_free(parser);
 
-    // TODO: Return manifest and logic_block along with root (needs API change)
-    // For now, just destroy them since we can't return them
+    // Original API only returns root - destroy manifest and logic_block
+    // For extended result, use ir_kry_parse_ex()
     if (ctx.manifest) {
         ir_reactive_manifest_destroy(ctx.manifest);
     }
@@ -2065,6 +2221,91 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
     }
 
     return root;
+}
+
+// ============================================================================
+// Extended Parse API (returns manifest and logic_block)
+// ============================================================================
+
+/**
+ * Extended parse function that returns root, manifest, and logic_block
+ * Allows callers to access state variables and event handlers from parsing
+ */
+IRKryParseResult ir_kry_parse_ex(const char* source, size_t length) {
+    IRKryParseResult result = {NULL, NULL, NULL};
+
+    if (!source) {
+        fprintf(stderr, "Error: NULL source passed to ir_kry_parse_ex\n");
+        return result;
+    }
+
+    if (length == 0) {
+        length = strlen(source);
+    }
+
+    // Parse source to AST
+    KryParser* parser = kry_parser_create(source, length);
+    if (!parser) {
+        fprintf(stderr, "Error: Failed to create parser\n");
+        return result;
+    }
+
+    if (parser->has_error) {
+        fprintf(stderr, "Parse error at line %u: %s\n",
+                parser->error_line, parser->error_message ? parser->error_message : "Unknown error");
+        kry_parser_free(parser);
+        return result;
+    }
+
+    KryNode* ast = parser->root;
+    if (!ast) {
+        fprintf(stderr, "Error: No AST generated\n");
+        kry_parser_free(parser);
+        return result;
+    }
+
+    // Find the root application (skip component definitions)
+    KryNode* root_node = ast;
+    while (root_node) {
+        if (!root_node->is_component_definition) {
+            break;
+        }
+        root_node = root_node->next_sibling;
+    }
+
+    if (!root_node) {
+        fprintf(stderr, "Error: No root application found (only component definitions)\n");
+        kry_parser_free(parser);
+        return result;
+    }
+
+    // Create conversion context
+    ConversionContext ctx;
+    ctx.ast_root = ast;
+    ctx.param_count = 0;
+    ctx.manifest = ir_reactive_manifest_create();
+    ctx.logic_block = ir_logic_block_create();
+    ctx.next_handler_id = 1;
+    ctx.compile_mode = IR_COMPILE_MODE_HYBRID;
+    ctx.source_structures = ir_source_structures_create();
+    ctx.static_block_counter = 0;
+    ctx.current_static_block_id = NULL;
+
+    // Convert AST to IR
+    result.root = convert_node(&ctx, root_node);
+    result.manifest = ctx.manifest;
+    result.logic_block = ctx.logic_block;
+
+    // Free parser (includes AST)
+    kry_parser_free(parser);
+
+    // Note: caller is responsible for freeing source_structures
+    // For now, we destroy it to avoid memory leak
+    if (ctx.source_structures) {
+        ir_source_structures_destroy(ctx.source_structures);
+    }
+
+    return result;
 }
 
 // ============================================================================
@@ -2414,12 +2655,15 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     // Get value as JSON string
                     char* var_value_json = NULL;
                     if (var_node->value) {
-                        // TODO: Convert KryValue to JSON string
-                        // For now, we'll just mark that we found it
-                        fprintf(stderr, "[VAR_DECL]   Variable type=%s, name=%s, value exists=%d\n",
-                                var_type, var_name, var_node->value != NULL);
-                        fflush(stderr);
+                        // Convert KryValue to JSON string
+                        var_value_json = kry_value_to_json(var_node->value);
+                    } else {
+                        var_value_json = strdup("null");
                     }
+
+                    fprintf(stderr, "[VAR_DECL]   Variable type=%s, name=%s, value_json=%s\n",
+                            var_type, var_name, var_value_json ? var_value_json : "(null)");
+                    fflush(stderr);
 
                     // Store the variable declaration
                     ir_source_structures_add_var_decl(ctx.source_structures,
