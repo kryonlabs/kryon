@@ -528,8 +528,14 @@ static void ir_executor_render_for_loops(IRExecutorContext* ctx) {
         printf("[executor]   Rendering loop #%d: %d items in '%s', parent #%u\n",
                i, item_count, loop->collection_expr, loop->parent_component_id);
 
-        // Clear existing children (temporarily skip destruction to avoid crash)
-        // TODO: Need to properly clean up old components without corrupting memory
+        // Properly clean up old children before rendering new ones
+        // Each child component may have allocated memory (styles, events, children, etc.)
+        // that needs to be freed to avoid memory leaks
+        for (uint32_t k = 0; k < parent->child_count; k++) {
+            if (parent->children[k]) {
+                ir_destroy_component(parent->children[k]);
+            }
+        }
         parent->child_count = 0;
         parent->child_capacity = 0;
         if (parent->children) {

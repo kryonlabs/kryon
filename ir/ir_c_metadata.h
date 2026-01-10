@@ -99,6 +99,12 @@ typedef struct {
 // Global metadata instance (defined in bindings/c/kryon.c)
 extern CSourceMetadata g_c_metadata;
 
+/**
+ * Clean up all C metadata, freeing allocated memory
+ * Call this before loading new metadata to avoid memory leaks
+ */
+void ir_c_metadata_cleanup(CSourceMetadata* metadata);
+
 #ifdef __cplusplus
 }
 #endif

@@ -119,6 +119,8 @@ typedef struct {
 
     // Sound loading
     void* (*load_sound)(const char* path, uint32_t* duration_ms, uint32_t* sample_rate, uint8_t* channels);
+    void* (*load_sound_from_memory)(const char* name, const void* data, size_t size,
+                                     uint32_t* duration_ms, uint32_t* sample_rate, uint8_t* channels);
     void (*unload_sound)(void* backend_data);
 
     // Music loading

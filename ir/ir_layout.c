@@ -970,7 +970,88 @@ static void ir_layout_compute_grid(IRComponent* container, float available_width
     float track_available_width = available_width - total_column_gap;
     float track_available_height = available_height - total_row_gap;
 
-    // First pass: calculate fixed and percentage track sizes
+    // ============================================================================
+    // CONTENT-BASED SIZING PASS - Measure intrinsic sizes for AUTO tracks
+    // ============================================================================
+
+    // Track maximum content size for each column/row
+    float column_content_width[IR_MAX_GRID_TRACKS] = {0};
+    float row_content_height[IR_MAX_GRID_TRACKS] = {0};
+
+    // First, determine where each child will be placed (same logic as placement below)
+    uint8_t auto_row = 0, auto_col = 0;
+
+    for (uint32_t i = 0; i < container->child_count; i++) {
+        IRComponent* child = container->children[i];
+        if (!child || !child->style || !child->style->visible) continue;
+
+        IRGridItem* item = &child->style->grid_item;
+
+        // Determine grid placement (same logic as placement phase)
+        int16_t row_start, col_start;
+
+        if (item->row_start >= 0 && item->column_start >= 0) {
+            // Explicit placement
+            row_start = item->row_start;
+            col_start = item->column_start;
+        } else {
+            // Auto placement
+            if (grid->auto_flow_row) {
+                row_start = auto_row;
+                col_start = auto_col;
+                auto_col++;
+                if (auto_col >= grid->column_count) {
+                    auto_col = 0;
+                    auto_row++;
+                }
+            } else {
+                row_start = auto_row;
+                col_start = auto_col;
+                auto_row++;
+                if (auto_row >= grid->row_count) {
+                    auto_row = 0;
+                    auto_col++;
+                }
+            }
+        }
+
+        // Clamp to grid bounds
+        if (row_start >= grid->row_count) row_start = grid->row_count - 1;
+        if (col_start >= grid->column_count) col_start = grid->column_count - 1;
+
+        // Measure child's intrinsic size
+        float child_width = ir_get_component_intrinsic_width(child);
+        float child_height = ir_get_component_intrinsic_height(child);
+
+        // Add child's padding/margin to content size
+        if (child->style) {
+            child_width += child->style->margin.left + child->style->margin.right;
+            child_height += child->style->margin.top + child->style->margin.bottom;
+        }
+
+        // Update column content width (only for AUTO/MIN_CONTENT/MAX_CONTENT columns)
+        if (grid->columns[col_start].type == IR_GRID_TRACK_AUTO ||
+            grid->columns[col_start].type == IR_GRID_TRACK_MIN_CONTENT ||
+            grid->columns[col_start].type == IR_GRID_TRACK_MAX_CONTENT) {
+            if (child_width > column_content_width[col_start]) {
+                column_content_width[col_start] = child_width;
+            }
+        }
+
+        // Update row content height (only for AUTO/MIN_CONTENT/MAX_CONTENT rows)
+        if (grid->rows[row_start].type == IR_GRID_TRACK_AUTO ||
+            grid->rows[row_start].type == IR_GRID_TRACK_MIN_CONTENT ||
+            grid->rows[row_start].type == IR_GRID_TRACK_MAX_CONTENT) {
+            if (child_height > row_content_height[row_start]) {
+                row_content_height[row_start] = child_height;
+            }
+        }
+    }
+
+    // ============================================================================
+    // TRACK SIZING PASS - Calculate final track sizes
+    // ============================================================================
+
     float remaining_width = track_available_width;
     float remaining_height = track_available_height;
     float total_fr_width = 0.0f;
@@ -991,11 +1072,18 @@ static void ir_layout_compute_grid(IRComponent* container, float available_width
             case IR_GRID_TRACK_FR:
                 total_fr_width += track->value;
                 break;
-            case IR_GRID_TRACK_AUTO:
             case IR_GRID_TRACK_MIN_CONTENT:
+                // Use the minimum content size measured
+                column_sizes[col] = column_content_width[col];
+                if (column_sizes[col] <= 0) column_sizes[col] = 50.0f; // Minimum fallback
+                remaining_width -= column_sizes[col];
+                break;
             case IR_GRID_TRACK_MAX_CONTENT:
-                // TODO: Implement content-based sizing
-                // For now, treat as FR
+            case IR_GRID_TRACK_AUTO:
+                // Use content size, but allow growth if space available
+                column_sizes[col] = column_content_width[col];
+                if (column_sizes[col] <= 0) column_sizes[col] = 100.0f; // Reasonable default
+                // AUTO tracks can share remaining space (treat like FR with base content size)
                 total_fr_width += 1.0f;
                 break;
         }
@@ -1016,11 +1104,18 @@ static void ir_layout_compute_grid(IRComponent* container, float available_width
             case IR_GRID_TRACK_FR:
                 total_fr_height += track->value;
                 break;
-            case IR_GRID_TRACK_AUTO:
             case IR_GRID_TRACK_MIN_CONTENT:
+                // Use the minimum content size measured
+                row_sizes[row] = row_content_height[row];
+                if (row_sizes[row] <= 0) row_sizes[row] = 24.0f; // Minimum fallback
+                remaining_height -= row_sizes[row];
+                break;
             case IR_GRID_TRACK_MAX_CONTENT:
-                // TODO: Implement content-based sizing
-                // For now, treat as FR
+            case IR_GRID_TRACK_AUTO:
+                // Use content size, but allow growth if space available
+                row_sizes[row] = row_content_height[row];
+                if (row_sizes[row] <= 0) row_sizes[row] = 24.0f; // Reasonable default
+                // AUTO tracks can share remaining space (treat like FR with base content size)
                 total_fr_height += 1.0f;
                 break;
         }
@@ -1068,7 +1163,9 @@ static void ir_layout_compute_grid(IRComponent* container, float available_width
     }
 
     // Place child components in grid cells
-    uint8_t auto_row = 0, auto_col = 0;
+    // Reset auto placement counters for actual placement
+    auto_row = 0;
+    auto_col = 0;
 
     for (uint32_t i = 0; i < container->child_count; i++) {
         IRComponent* child = container->children[i];

@@ -572,11 +572,146 @@ IRSpriteID* ir_sprite_load_sheet(IRSpriteAtlasID atlas_id,
                                   const char* path,
                                   uint16_t frame_width, uint16_t frame_height,
                                   uint16_t* out_frame_count) {
-    // TODO: Implement sprite sheet loading
-    // For now, return NULL
-    (void)atlas_id; (void)path; (void)frame_width; (void)frame_height;
-    if (out_frame_count) *out_frame_count = 0;
-    return NULL;
+    IRSpriteAtlas* atlas = get_atlas(atlas_id);
+    if (!atlas) {
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    if (atlas->is_packed) {
+        fprintf(stderr, "[Sprite] Cannot load sprite sheet into packed atlas\n");
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    if (frame_width == 0 || frame_height == 0) {
+        fprintf(stderr, "[Sprite] Invalid frame size: %ux%u\n", frame_width, frame_height);
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    // Load sprite sheet image
+    size_t file_size;
+    uint8_t* file_data = load_file(path, &file_size);
+    if (!file_data) {
+        fprintf(stderr, "[Sprite] Failed to load sprite sheet: %s\n", path);
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    // Decode image
+    int width, height, channels;
+    uint8_t* pixels = stbi_load_from_memory(file_data, file_size, &width, &height, &channels, 4);
+    free(file_data);
+
+    if (!pixels) {
+        fprintf(stderr, "[Sprite] Failed to decode sprite sheet: %s\n", path);
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    // Calculate number of frames (grid layout)
+    uint16_t cols = (uint16_t)width / frame_width;
+    uint16_t rows = (uint16_t)height / frame_height;
+    uint16_t frame_count = cols * rows;
+
+    if (frame_count == 0) {
+        fprintf(stderr, "[Sprite] Sprite sheet is smaller than frame size\n");
+        stbi_image_free(pixels);
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    // Allocate sprite ID array
+    IRSpriteID* sprite_ids = (IRSpriteID*)malloc(sizeof(IRSpriteID) * frame_count);
+    if (!sprite_ids) {
+        stbi_image_free(pixels);
+        if (out_frame_count) *out_frame_count = 0;
+        return NULL;
+    }
+
+    // Extract base filename for sprite names
+    const char* filename = strrchr(path, '/');
+    if (!filename) filename = strrchr(path, '\\');
+    if (!filename) filename = path;
+    else filename++;
+
+    // Copy filename without extension
+    char base_name[64];
+    strncpy(base_name, filename, sizeof(base_name) - 1);
+    base_name[sizeof(base_name) - 1] = '\0';
+    char* dot = strrchr(base_name, '.');
+    if (dot) *dot = '\0';
+
+    // Extract each frame and add to atlas
+    uint16_t valid_frames = 0;
+    for (uint16_t row = 0; row < rows; row++) {
+        for (uint16_t col = 0; col < cols; col++) {
+            // Check if we have space in atlas
+            if (atlas->sprite_count >= IR_MAX_SPRITES_PER_ATLAS) {
+                fprintf(stderr, "[Sprite] Atlas full, loaded %u/%u frames\n", valid_frames, frame_count);
+                break;
+            }
+
+            // Extract frame pixels
+            uint8_t* frame_pixels = (uint8_t*)malloc(frame_width * frame_height * 4);
+            if (!frame_pixels) {
+                fprintf(stderr, "[Sprite] Failed to allocate frame pixels\n");
+                break;
+            }
+
+            // Copy frame data from sprite sheet
+            for (uint16_t y = 0; y < frame_height; y++) {
+                int src_y = row * frame_height + y;
+                if (src_y >= height) break;
+
+                for (uint16_t x = 0; x < frame_width; x++) {
+                    int src_x = col * frame_width + x;
+                    if (src_x >= width) break;
+
+                    int src_idx = (src_y * width + src_x) * 4;
+                    int dst_idx = (y * frame_width + x) * 4;
+
+                    frame_pixels[dst_idx + 0] = pixels[src_idx + 0]; // R
+                    frame_pixels[dst_idx + 1] = pixels[src_idx + 1]; // G
+                    frame_pixels[dst_idx + 2] = pixels[src_idx + 2]; // B
+                    frame_pixels[dst_idx + 3] = pixels[src_idx + 3]; // A
+                }
+            }
+
+            // Add frame to atlas
+            IRSpriteID sprite_id = ir_sprite_atlas_add_image_from_memory(atlas_id,
+                                                                        NULL,
+                                                                        frame_pixels,
+                                                                        frame_width,
+                                                                        frame_height);
+            free(frame_pixels);
+
+            if (sprite_id == IR_INVALID_SPRITE) {
+                fprintf(stderr, "[Sprite] Failed to add frame %u to atlas\n", valid_frames);
+                break;
+            }
+
+            sprite_ids[valid_frames] = sprite_id;
+
+            // Update sprite name with frame index
+            IRSprite* sprite = get_sprite(sprite_id);
+            if (sprite) {
+                snprintf(sprite->name, sizeof(sprite->name), "%s_%04u", base_name, valid_frames);
+            }
+
+            valid_frames++;
+        }
+        if (atlas->sprite_count >= IR_MAX_SPRITES_PER_ATLAS) break;
+    }
+
+    stbi_image_free(pixels);
+
+    printf("[Sprite] Loaded sprite sheet: %s (%u frames, %ux%u each)\n",
+           path, valid_frames, frame_width, frame_height);
+
+    if (out_frame_count) *out_frame_count = valid_frames;
+    return sprite_ids;
 }
 
 IRSpriteID* ir_sprite_load_sheet_with_metadata(IRSpriteAtlasID atlas_id,

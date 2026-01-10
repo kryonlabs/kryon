@@ -83,6 +83,7 @@ extern char g_default_font_path[512];
 void android_ir_register_font_internal(const char* name, const char* path);
 
 // Component rendering
+void render_component_tree_inline(AndroidIRRenderer* ir_renderer);
 void render_component_android(AndroidIRRenderer* ir_renderer,
                               IRComponent* component,
                               float parent_x, float parent_y,

@@ -294,12 +294,70 @@ IRSoundID ir_audio_load_sound(const char* path) {
 }
 
 IRSoundID ir_audio_load_sound_from_memory(const char* name, const void* data, size_t size) {
-    (void)name;
-    (void)data;
-    (void)size;
-    // TODO: Implement memory loading
-    fprintf(stderr, "[Audio] load_sound_from_memory not implemented\n");
-    return IR_INVALID_SOUND;
+    if (!g_audio_system.initialized) {
+        fprintf(stderr, "[Audio] Not initialized\n");
+        return IR_INVALID_SOUND;
+    }
+
+    if (!name || !data || size == 0) {
+        fprintf(stderr, "[Audio] Invalid parameters for memory loading\n");
+        return IR_INVALID_SOUND;
+    }
+
+    if (g_audio_system.sound_count >= IR_MAX_SOUNDS) {
+        fprintf(stderr, "[Audio] Max sounds reached\n");
+        return IR_INVALID_SOUND;
+    }
+
+    // Check if already loaded by name
+    for (uint32_t i = 0; i < g_audio_system.sound_count; i++) {
+        if (strcmp(g_audio_system.sounds[i].path, name) == 0) {
+            printf("[Audio] Sound already loaded: %s\n", name);
+            return g_audio_system.sounds[i].id;
+        }
+    }
+
+    // Allocate new sound
+    IRSound* sound = &g_audio_system.sounds[g_audio_system.sound_count];
+    memset(sound, 0, sizeof(IRSound));
+
+    sound->id = g_audio_system.sound_count + 1;
+    strncpy(sound->path, name, sizeof(sound->path) - 1);
+    // Mark as memory-loaded with special prefix
+    char prefixed_name[512];
+    snprintf(prefixed_name, sizeof(prefixed_name), "@memory:%s", name);
+
+    // Load via backend
+    if (g_audio_system.backend.load_sound_from_memory) {
+        sound->backend_data = g_audio_system.backend.load_sound_from_memory(
+            prefixed_name,
+            data,
+            size,
+            &sound->duration_ms,
+            &sound->sample_rate,
+            &sound->channels
+        );
+
+        if (!sound->backend_data) {
+            fprintf(stderr, "[Audio] Failed to load sound from memory: %s (%zu bytes)\n", name, size);
+            return IR_INVALID_SOUND;
+        }
+    } else {
+        // Fallback: try to use the file loader if backend doesn't support memory loading
+        fprintf(stderr, "[Audio] Backend doesn't support memory loading\n");
+        return IR_INVALID_SOUND;
+    }
+
+    sound->loaded = true;
+    g_audio_system.sound_count++;
+
+    // Estimate memory usage
+    g_audio_system.total_memory_bytes += (uint32_t)size;
+
+    printf("[Audio] Loaded sound from memory: %s (id=%u, %zu bytes, %u ms, %u Hz, %u ch)\n",
+           name, sound->id, size, sound->duration_ms, sound->sample_rate, sound->channels);
+
+    return sound->id;
 }
 
 void ir_audio_unload_sound(IRSoundID sound_id) {

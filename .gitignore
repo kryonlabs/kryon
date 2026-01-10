@@ -31,6 +31,7 @@ examples/*/*.exe
 examples/*/bin/
 examples/*/dist/
 examples/*/nimcache/
+research/
 
 # Generated examples (regenerate with scripts/generate_examples.sh)
 # Only .kry files are source of truth
