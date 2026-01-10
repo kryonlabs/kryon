@@ -321,6 +321,7 @@ static const char* detect_frontend_from_entry(const char* entry) {
 int cmd_install(int argc, char** argv) {
     bool dry_run = false;
     bool rebuild = false;
+    bool no_build = false;
     InstallMode cli_mode = INSTALL_MODE_SYMLINK;  // Default
     bool has_cli_mode = false;
     char* target_override = NULL;
@@ -333,13 +334,16 @@ int cmd_install(int argc, char** argv) {
             printf("  --mode <mode>    Install mode: symlink (default), copy, or system\n");
             printf("  --target <t>     Target to install: desktop, web (default: auto-detect)\n");
             printf("  --dry-run        Show what would be installed without installing\n");
-            printf("  --rebuild        Rebuild before installing\n");
+            printf("  --rebuild        Rebuild before installing (same as default behavior)\n");
+            printf("  --no-build       Skip automatic build before installing\n");
             printf("  --help, -h       Show this help message\n");
             return 0;
         } else if (strcmp(argv[i], "--dry-run") == 0) {
             dry_run = true;
         } else if (strcmp(argv[i], "--rebuild") == 0) {
             rebuild = true;
+        } else if (strcmp(argv[i], "--no-build") == 0) {
+            no_build = true;
         } else if (strcmp(argv[i], "--mode") == 0) {
             if (i + 1 < argc) {
                 i++;
@@ -397,6 +401,27 @@ int cmd_install(int argc, char** argv) {
     // Use CLI mode if specified
     if (has_cli_mode) {
         install->mode = cli_mode;
+    }
+
+    // Auto-build before installing (unless --no-build is specified)
+    if (!no_build && !dry_run) {
+        printf("Building project...\n");
+        int build_result = cmd_build(0, NULL);
+        if (build_result != 0) {
+            fprintf(stderr, "Error: Build failed. Aborting install.\n");
+            fprintf(stderr, "       Fix build errors or use --no-build to install existing binary.\n");
+            if (install != config->install) {
+                free(install->binary_path);
+                free(install->binary_name);
+                free(install->desktop.name);
+                free(install);
+            }
+            config_free(config);
+            return 1;
+        }
+        printf("Build complete!\n\n");
+    } else if (!no_build && dry_run) {
+        printf("[DRY RUN] Would build project first (use --no-build to skip)\n");
     }
 
     // Determine which target to install
@@ -683,6 +708,9 @@ int cmd_install(int argc, char** argv) {
         );
     }
 
+    // Save binary name for final message (before cleanup)
+    char* binary_name_to_show = str_copy(install->binary_name);
+
     // Cleanup
     free(source_path);
     free(project_dir);
@@ -697,7 +725,8 @@ int cmd_install(int argc, char** argv) {
     config_free(config);
 
     printf("Installation complete!\n");
-    printf("Run '%s' to start your application.\n", install->binary_name);
+    printf("Run '%s' to start your application.\n", binary_name_to_show);
+    free(binary_name_to_show);
 
     return 0;
 }
