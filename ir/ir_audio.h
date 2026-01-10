@@ -20,9 +20,10 @@ extern "C" {
  * - Volume control (per-sound, per-channel, global)
  * - Mixing (multiple sounds playing simultaneously)
  * - 3D spatial audio (optional, backend-dependent)
+ * - Per-instance audio state (for multi-instance support)
  * - Format support: WAV, OGG, MP3 (backend-dependent)
  *
- * Usage:
+ * Usage (Single Instance / Global):
  *   ir_audio_init();
  *
  *   IRSoundID sound = ir_audio_load_sound("@sounds/jump.wav");
@@ -32,6 +33,12 @@ extern "C" {
  *   ir_audio_play_music(music, true);  // loop=true
  *
  *   ir_audio_shutdown();
+ *
+ * Usage (Multi-Instance):
+ *   IRAudioState* audio = ir_audio_state_create(instance_id);
+ *   ir_audio_set_current_state(audio);
+ *   IRSoundID sound = ir_audio_load_sound("@sounds/jump.wav");
+ *   ir_audio_state_destroy(audio);
  */
 
 // ============================================================================
@@ -50,12 +57,12 @@ typedef uint32_t IRChannelID;
 #define IR_MAX_MUSIC 16
 #define IR_MAX_CHANNELS 32
 
-// Audio state
+// Audio playback state (renamed from IRAudioState to avoid conflict with per-instance audio state)
 typedef enum {
     IR_AUDIO_STOPPED,
     IR_AUDIO_PLAYING,
     IR_AUDIO_PAUSED
-} IRAudioState;
+} IRPlaybackState;
 
 // Audio backend type
 typedef enum {
@@ -91,7 +98,7 @@ typedef struct {
 typedef struct {
     IRChannelID id;
     IRSoundID sound_id;
-    IRAudioState state;
+    IRPlaybackState state;  // Playback state (renamed from IRAudioState)
     float volume;        // 0.0 to 1.0
     float pan;           // -1.0 (left) to 1.0 (right)
     bool loop;
@@ -153,15 +160,135 @@ typedef struct {
     void (*set_master_volume)(float volume);
 
     // State queries
-    IRAudioState (*get_channel_state)(IRChannelID channel_id);
-    IRAudioState (*get_music_state)(void);
+    IRPlaybackState (*get_channel_state)(IRChannelID channel_id);
+    IRPlaybackState (*get_music_state)(void);
 
     // Update (called every frame)
     void (*update)(float dt);
 } IRAudioBackendPlugin;
 
 // ============================================================================
-// Initialization
+// Per-Instance Audio State
+// ============================================================================
+
+/**
+ * Per-instance audio state
+ *
+ * Each instance has its own:
+ * - Sound and music registry
+ * - Active channels
+ * - Volume controls
+ * - Spatial audio listener
+ */
+typedef struct IRAudioState {
+    uint32_t instance_id;        // Owner instance ID (0 = global)
+
+    // Sound registry
+    IRSound sounds[IR_MAX_SOUNDS];
+    uint32_t sound_count;
+
+    // Music registry
+    IRMusic music[IR_MAX_MUSIC];
+    uint32_t music_count;
+    IRMusicID current_music;
+
+    // Channels
+    IRChannel channels[IR_MAX_CHANNELS];
+    uint32_t next_channel_id;
+
+    // Volume
+    float master_volume;
+    float music_volume;
+
+    // Spatial audio - per-instance listener
+    struct {
+        float position[3];   // x, y, z listener position
+        float forward[3];    // forward direction vector
+        float up[3];         // up direction vector
+        float velocity[3];   // listener velocity for doppler
+    } listener;
+} IRAudioState;
+
+// ============================================================================
+// Per-Instance Audio API
+// ============================================================================
+
+/**
+ * Create a new audio state for an instance
+ * @param instance_id Instance ID (0 for global state)
+ * @return New audio state, or NULL on failure
+ */
+IRAudioState* ir_audio_state_create(uint32_t instance_id);
+
+/**
+ * Destroy an audio state
+ * Stops all sounds and frees resources
+ * @param state State to destroy (can be NULL)
+ */
+void ir_audio_state_destroy(IRAudioState* state);
+
+/**
+ * Get the current thread's audio state
+ * Returns the instance's state if set, otherwise global state
+ * @return Current state, or NULL if not initialized
+ */
+IRAudioState* ir_audio_get_current_state(void);
+
+/**
+ * Set the current thread's audio state
+ * @param state State to set as current (NULL for global)
+ * @return Previous state (for restoring)
+ */
+IRAudioState* ir_audio_set_current_state(IRAudioState* state);
+
+/**
+ * Get audio state by instance ID
+ * @param instance_id Instance ID
+ * @return State, or NULL if not found
+ */
+IRAudioState* ir_audio_get_state_by_instance(uint32_t instance_id);
+
+// ============================================================================
+// Explicit State API (for multi-instance support)
+// ============================================================================
+
+/**
+ * Load sound (explicit state - state variant)
+ */
+IRSoundID ir_audio_load_sound_state(IRAudioState* state, const char* path);
+
+/**
+ * Play sound (explicit state - state variant)
+ */
+IRChannelID ir_audio_play_sound_state(IRAudioState* state, IRSoundID sound_id, float volume, float pan, bool loop);
+
+/**
+ * Stop channel (explicit state - state variant)
+ */
+void ir_audio_stop_channel_state(IRAudioState* state, IRChannelID channel_id);
+
+/**
+ * Set channel volume (explicit state - state variant)
+ */
+void ir_audio_set_channel_volume_state(IRAudioState* state, IRChannelID channel_id, float volume);
+
+/**
+ * Set master volume (explicit state - state variant)
+ */
+void ir_audio_set_master_volume_state(IRAudioState* state, float volume);
+
+/**
+ * Set listener position (explicit state - state variant)
+ */
+void ir_audio_set_listener_position_state(IRAudioState* state, float x, float y, float z);
+
+/**
+ * Update audio state (explicit state - state variant)
+ */
+void ir_audio_update_state(IRAudioState* state, float dt);
+
+// ============================================================================
+// Initialization (Global State)
 // ============================================================================
 
 /**
@@ -355,12 +482,12 @@ float ir_audio_get_master_volume(void);
 /**
  * Get channel state
  */
-IRAudioState ir_audio_get_channel_state(IRChannelID channel_id);
+IRPlaybackState ir_audio_get_channel_state(IRChannelID channel_id);
 
 /**
  * Get music state
  */
-IRAudioState ir_audio_get_music_state(void);
+IRPlaybackState ir_audio_get_music_state(void);
 
 /**
  * Get number of active channels

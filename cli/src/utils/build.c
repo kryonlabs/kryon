@@ -524,7 +524,7 @@ int run_kir_with_lua_runtime(const char* kir_file) {
     return (result == 0) ? 0 : 1;
 }
 
-int run_kir_on_desktop(const char* kir_file, const char* desktop_lib) {
+int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char* renderer_override) {
     // Get desktop lib path if not provided
     const char* lib = desktop_lib;
     if (!lib) {
@@ -590,20 +590,27 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib) {
 
     DesktopRendererConfig config = desktop_renderer_config_sdl3(window_width, window_height, window_title);
 
-    // Read kryon.toml to determine renderer
-    KryonConfig* kryon_config = config_find_and_load();
-    if (kryon_config && kryon_config->desktop_renderer) {
-        if (strcmp(kryon_config->desktop_renderer, "raylib") == 0) {
-            printf("Renderer: raylib (from kryon.toml)\n");
-            config.backend_type = DESKTOP_BACKEND_RAYLIB;
-        } else {
-            printf("Renderer: sdl3 (from kryon.toml)\n");
-            config.backend_type = DESKTOP_BACKEND_SDL3;
-        }
-        config_free(kryon_config);
+    // Determine renderer: override flag (from --target={renderer}) > kryon.toml > default
+    const char* renderer = NULL;
+    if (renderer_override) {
+        renderer = renderer_override;
+        printf("Renderer: %s (from --target flag)\n", renderer);
     } else {
-        printf("Renderer: sdl3 (default)\n");
+        // Read kryon.toml to determine renderer
+        KryonConfig* kryon_config = config_find_and_load();
+        if (kryon_config && kryon_config->desktop_renderer) {
+            renderer = kryon_config->desktop_renderer;
+            printf("Renderer: %s (from kryon.toml)\n", renderer);
+            config_free(kryon_config);
+        }
+    }
+
+    // Set backend type based on renderer
+    if (renderer && strcmp(renderer, "raylib") == 0) {
+        config.backend_type = DESKTOP_BACKEND_RAYLIB;
+    } else {
         config.backend_type = DESKTOP_BACKEND_SDL3;
+        if (!renderer) printf("Renderer: sdl3 (default)\n");
     }
 
     // Run the application

@@ -365,7 +365,7 @@ static int run_web_target(const char* kir_file) {
  * KIR File Execution
  * ============================================================================ */
 
-static int run_kir_file(const char* kir_file, const char* target_platform) {
+static int run_kir_file(const char* kir_file, const char* target_platform, const char* renderer) {
     if (strcmp(target_platform, "android") == 0) {
         return run_android(kir_file, kir_file);
     }
@@ -376,7 +376,7 @@ static int run_kir_file(const char* kir_file, const char* target_platform) {
         return run_web_target(kir_file);
     }
     // Default: desktop
-    return run_kir_on_desktop(kir_file, NULL);
+    return run_kir_on_desktop(kir_file, NULL, renderer_override);
 }
 
 /* ============================================================================
@@ -499,8 +499,9 @@ int cmd_run(int argc, char** argv) {
     bool free_target = false;
     const char* target_platform = NULL;
     bool explicit_target = false;
+    const char* renderer_override = NULL;
 
-    // Parse --target flag and detect invalid flags
+    // Parse --target and --renderer flags
     int new_argc = 0;
     char* new_argv[128];
     for (int i = 0; i < argc; i++) {
@@ -508,9 +509,7 @@ int cmd_run(int argc, char** argv) {
             target_platform = argv[i] + 9;
             explicit_target = true;
         } else if (strncmp(argv[i], "--renderer=", 11) == 0) {
-            fprintf(stderr, "Error: Invalid flag '--renderer=%s'\n", argv[i] + 11);
-            fprintf(stderr, "Did you mean '--target=%s'?\n", argv[i] + 11);
-            return 1;
+            renderer_override = argv[i] + 11;
         } else if (strncmp(argv[i], "--", 2) == 0 && strchr(argv[i], '=')) {
             fprintf(stderr, "Error: Unknown flag '%s'\n", argv[i]);
             return 1;
@@ -641,7 +640,7 @@ int cmd_run(int argc, char** argv) {
 
     // KIR files: execute directly
     if (strcmp(frontend, "kir") == 0) {
-        result = run_kir_file(target_file, target_platform);
+        result = run_kir_file(target_file, target_platform, renderer_override);
         if (free_target) free((char*)target_file);
         return result;
     }
@@ -663,7 +662,7 @@ int cmd_run(int argc, char** argv) {
     }
 
     printf("✓ Compiled to KIR: %s\n", kir_file);
-    result = run_kir_file(kir_file, target_platform);
+    result = run_kir_file(kir_file, target_platform, renderer_override);
 
     if (free_target) free((char*)target_file);
     return result;

@@ -20,9 +20,10 @@ extern "C" {
  * - Path aliases (e.g., "@sprites/player.png")
  * - Hot reload support (watches files for changes)
  * - Memory management (unload unused assets)
+ * - Per-instance asset registries (for multi-instance support)
  * - Asset bundles/packs (future)
  *
- * Usage:
+ * Usage (Single Instance / Global):
  *   ir_asset_init();
  *   ir_asset_add_search_path("assets/sprites", "sprites");
  *
@@ -31,6 +32,11 @@ extern "C" {
  *   ir_asset_unload("@sprites/player.png");
  *
  *   ir_asset_shutdown();
+ *
+ * Usage (Multi-Instance):
+ *   IRAssetRegistry* registry = ir_asset_registry_create(instance_id);
+ *   IRSpriteID player = ir_asset_load_sprite_ex(registry, "@sprites/player.png");
+ *   ir_asset_registry_destroy(registry);
  */
 
 // ============================================================================
@@ -94,7 +100,99 @@ typedef bool (*IRAssetReloadCallback)(IRAsset* asset);
 typedef void (*IRAssetHotReloadCallback)(IRAsset* asset, void* user_data);
 
 // ============================================================================
-// Initialization
+// Per-Instance Asset Registry
+// ============================================================================
+
+/**
+ * Search path entry for asset resolution
+ */
+typedef struct {
+    char alias[64];              // Short name (e.g., "sprites")
+    char real_path[IR_MAX_PATH_LENGTH];  // Actual filesystem path
+} IRSearchPath;
+
+/**
+ * Custom loader entry for specific asset types
+ */
+typedef struct {
+    IRAssetLoadCallback load;
+    IRAssetUnloadCallback unload;
+    IRAssetReloadCallback reload;
+    bool registered;
+} IRAssetCustomLoader;
+
+/**
+ * Per-instance asset registry
+ *
+ * Each instance (or the global registry) has its own:
+ * - Asset cache (loaded assets with ref counting)
+ * - Search paths (for virtual path resolution)
+ * - Custom loaders (type-specific loading logic)
+ * - Hot reload state
+ */
+typedef struct IRAssetRegistry {
+    uint32_t instance_id;        // Owner instance ID (0 = global)
+
+    // Asset storage
+    IRAsset assets[IR_MAX_ASSETS];
+    uint32_t asset_count;
+
+    // Search paths
+    IRSearchPath search_paths[IR_MAX_SEARCH_PATHS];
+    uint32_t search_path_count;
+
+    // Hot reload
+    IRAssetHotReloadCallback hot_reload_callback;
+    void* hot_reload_user_data;
+
+    // Custom loaders (index by IRAssetType)
+    IRAssetCustomLoader custom_loaders[IR_ASSET_CUSTOM + 1];
+
+    // Default sprite atlas
+    IRSpriteAtlasID default_atlas;
+} IRAssetRegistry;
+
+// ============================================================================
+// Per-Instance Registry API
+// ============================================================================
+
+/**
+ * Create a new asset registry for an instance
+ * @param instance_id Instance ID (0 for global registry)
+ * @return New registry, or NULL on failure
+ */
+IRAssetRegistry* ir_asset_registry_create(uint32_t instance_id);
+
+/**
+ * Destroy an asset registry
+ * Unloads all assets in the registry
+ * @param registry Registry to destroy (can be NULL)
+ */
+void ir_asset_registry_destroy(IRAssetRegistry* registry);
+
+/**
+ * Get the current thread's asset registry
+ * Returns the instance's registry if set, otherwise global registry
+ * @return Current registry, or NULL if not initialized
+ */
+IRAssetRegistry* ir_asset_get_current_registry(void);
+
+/**
+ * Set the current thread's asset registry
+ * @param registry Registry to set as current (NULL for global)
+ * @return Previous registry (for restoring)
+ */
+IRAssetRegistry* ir_asset_set_current_registry(IRAssetRegistry* registry);
+
+/**
+ * Get asset registry by instance ID
+ * @param instance_id Instance ID
+ * @return Registry, or NULL if not found
+ */
+IRAssetRegistry* ir_asset_get_registry_by_instance(uint32_t instance_id);
+
+// ============================================================================
+// Initialization (Global Registry)
 // ============================================================================
 
 /**
@@ -172,6 +270,65 @@ void* ir_asset_load_data(const char* path, size_t* out_size);
  * Returns null-terminated string (must be freed by caller)
  */
 char* ir_asset_load_text(const char* path);
+
+// ============================================================================
+// Explicit Registry API (for multi-instance support)
+// ============================================================================
+
+/**
+ * Load sprite atlas from image file (explicit registry)
+ */
+IRSpriteAtlasID ir_asset_load_sprite_atlas_ex(IRAssetRegistry* registry, const char* path,
+                                              uint16_t width, uint16_t height);
+
+/**
+ * Load individual sprite from image file (explicit registry)
+ */
+IRSpriteID ir_asset_load_sprite_ex(IRAssetRegistry* registry, const char* path);
+
+/**
+ * Load sprite sheet (grid of sprites) (explicit registry)
+ */
+IRSpriteID* ir_asset_load_sprite_sheet_ex(IRAssetRegistry* registry, const char* path,
+                                          uint16_t frame_width, uint16_t frame_height,
+                                          uint16_t* out_frame_count);
+
+/**
+ * Load data file (explicit registry)
+ */
+void* ir_asset_load_data_ex(IRAssetRegistry* registry, const char* path, size_t* out_size);
+
+/**
+ * Load text file as string (explicit registry)
+ */
+char* ir_asset_load_text_ex(IRAssetRegistry* registry, const char* path);
+
+/**
+ * Register asset (explicit registry)
+ */
+IRAssetID ir_asset_register_ex(IRAssetRegistry* registry, const char* path,
+                                IRAssetType type, void* data, size_t size);
+
+/**
+ * Unload asset (explicit registry)
+ */
+void ir_asset_unload_ex(IRAssetRegistry* registry, const char* path);
+
+/**
+ * Get asset by path (explicit registry)
+ */
+IRAsset* ir_asset_get_ex(IRAssetRegistry* registry, const char* path);
+
+/**
+ * Add search path (explicit registry)
+ */
+bool ir_asset_add_search_path_ex(IRAssetRegistry* registry, const char* real_path, const char* alias);
+
+/**
+ * Resolve path (explicit registry)
+ */
+bool ir_asset_resolve_path_ex(IRAssetRegistry* registry, const char* virtual_path,
+                               char* out_real_path, size_t max_len);
 
 // ============================================================================
 // Asset Registry (Low-level API)

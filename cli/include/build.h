@@ -112,9 +112,10 @@ int build_with_docs_template(const char* content_kir_file,
  *
  * @param kir_file      Path to the KIR file
  * @param desktop_lib   Path to desktop renderer library (NULL to detect)
+ * @param renderer      Override renderer: "sdl3", "raylib", or NULL (use config)
  * @return 0 on success, non-zero on failure
  */
-int run_kir_on_desktop(const char* kir_file, const char* desktop_lib);
+int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char* renderer);
 
 /**
  * Execute a KIR file using the Lua runtime.

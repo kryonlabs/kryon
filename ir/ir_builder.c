@@ -14,6 +14,16 @@
 // Global IR context
 IRContext* g_ir_context = NULL;
 
+// Thread-local IRContext getter/setter (defined in ir_instance.c)
+// Returns the current IRContext for this thread, or NULL if using global
+extern IRContext* ir_context_get_current(void);
+
+// Get the active IRContext (thread-local first, then global)
+static IRContext* get_active_context(void) {
+    IRContext* ctx = ir_context_get_current();
+    return ctx ? ctx : g_ir_context;
+}
+
 // Nim callback for cleanup when components are removed
 // This allows the Nim reactive system to clean up when tab panels change
 extern void nimOnComponentRemoved(IRComponent* component) __attribute__((weak));
@@ -710,15 +720,19 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
     if (!component) return NULL;
 
     component->type = type;
-    if (id == 0 && g_ir_context) {
-        component->id = g_ir_context->next_component_id++;
+
+    // Get active context (thread-local first, then global)
+    IRContext* active_ctx = get_active_context();
+
+    if (id == 0 && active_ctx) {
+        component->id = active_ctx->next_component_id++;
     } else {
         component->id = id;
     }
 
     // Add to hash map for fast lookups
-    if (g_ir_context && g_ir_context->component_map) {
-        ir_map_insert(g_ir_context->component_map, component);
+    if (active_ctx && active_ctx->component_map) {
+        ir_map_insert(active_ctx->component_map, component);
     }
 
     // Initialize layout state for two-pass layout system
