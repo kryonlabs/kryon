@@ -161,13 +161,29 @@ function Runtime.dispatchEvent(handlerId, eventType, textData)
       end
     elseif eventType == C.IR_EVENT_CLICK and textData then
       -- For CLICK events with custom_data, parse it and pass event data to callback
+      print("[DISPATCH] CLICK event with custom_data: " .. tostring(textData):sub(1, 100))
       local eventData = nil
-      local ok, decoded = pcall(function()
-        local json = require("cjson")
-        return json.decode(textData)
-      end)
-      if ok and decoded and decoded.data then
-        eventData = decoded.data
+
+      -- Try to load cjson if available
+      local ok, json = pcall(require, "cjson")
+      if ok and json then
+        local parseOk, decoded = pcall(json.decode, textData)
+        if parseOk and decoded and decoded.data then
+          eventData = decoded.data
+        end
+      end
+
+      -- Fallback: simple pattern extraction for known formats
+      if not eventData then
+        local date = textData:match('"date":"([^"]+)"')
+        local isCompleted = textData:match('"isCompleted":(%w+)')
+        if date then
+          eventData = {
+            date = date,
+            isCompleted = isCompleted == "true"
+          }
+          print("[DISPATCH] Pattern-extracted date=" .. date)
+        end
       end
 
       -- Call callback with event data (handler can check for this)

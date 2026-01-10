@@ -433,15 +433,27 @@ static void update_foreach_component_text_legacy(IRComponent* component, cJSON* 
                     component->style->background.data.a = 255;
                 }
 
-                // Set border for today
+                // Set border for today - use theme color
                 if (today && current_month) {
                     component->style->border.width = 2;
-                    // Border color would need theme color - use default blue
                     component->style->border.color.type = IR_COLOR_SOLID;
-                    component->style->border.color.data.r = 0x4a;
-                    component->style->border.color.data.g = 0x90;
-                    component->style->border.color.data.b = 0xe2;
-                    component->style->border.color.data.a = 255;
+                    if (theme_color && cJSON_IsString(theme_color)) {
+                        const char* hex = theme_color->valuestring;
+                        if (hex[0] == '#' && strlen(hex) >= 7) {
+                            unsigned int r, g, b;
+                            sscanf(hex + 1, "%02x%02x%02x", &r, &g, &b);
+                            component->style->border.color.data.r = r;
+                            component->style->border.color.data.g = g;
+                            component->style->border.color.data.b = b;
+                            component->style->border.color.data.a = 255;
+                        }
+                    } else {
+                        // Fallback blue if no theme color
+                        component->style->border.color.data.r = 0x4a;
+                        component->style->border.color.data.g = 0x90;
+                        component->style->border.color.data.b = 0xe2;
+                        component->style->border.color.data.a = 255;
+                    }
                 }
 
                 // Set disabled state - future dates or non-current month
