@@ -97,6 +97,14 @@ typedef struct {
     bool loop;
     uint32_t start_time_ms;
     void* backend_data;  // Backend-specific data
+
+    // Spatial audio properties
+    bool spatial;        // True if this channel uses 3D spatial audio
+    float position[3];   // x, y, z position in world space
+    float velocity[3];   // vx, vy, vz velocity (for doppler effect)
+    float min_distance;  // Minimum distance for attenuation
+    float max_distance;  // Maximum distance for attenuation (beyond this, silent)
+    float rolloff;       // Rolloff factor for distance attenuation
 } IRChannel;
 
 // Audio configuration

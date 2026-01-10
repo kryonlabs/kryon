@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 
 // ============================================================================
 // Global State
@@ -39,6 +40,14 @@ static struct {
     // Volume control
     float master_volume;
     float music_volume;
+
+    // Spatial audio - listener
+    struct {
+        float position[3];      // x, y, z
+        float forward[3];       // forward vector (normalized)
+        float up[3];           // up vector (normalized)
+        float velocity[3];      // listener velocity (for doppler)
+    } listener;
 
     // Statistics
     uint32_t total_memory_bytes;
@@ -700,34 +709,102 @@ IRChannelID ir_audio_find_channel(IRSoundID sound_id) {
 }
 
 // ============================================================================
-// Spatial Audio (Stubs - backend-dependent)
+// Spatial Audio
 // ============================================================================
 
 void ir_audio_set_listener_position(float x, float y, float z) {
-    (void)x; (void)y; (void)z;
-    // TODO: Implement spatial audio
+    g_audio_system.listener.position[0] = x;
+    g_audio_system.listener.position[1] = y;
+    g_audio_system.listener.position[2] = z;
+
+    // Update backend if it supports spatial audio
+    // Backend implementation would apply this to all spatial channels
 }
 
 void ir_audio_set_listener_orientation(float forward_x, float forward_y, float forward_z,
                                         float up_x, float up_y, float up_z) {
-    (void)forward_x; (void)forward_y; (void)forward_z;
-    (void)up_x; (void)up_y; (void)up_z;
-    // TODO: Implement spatial audio
+    g_audio_system.listener.forward[0] = forward_x;
+    g_audio_system.listener.forward[1] = forward_y;
+    g_audio_system.listener.forward[2] = forward_z;
+
+    g_audio_system.listener.up[0] = up_x;
+    g_audio_system.listener.up[1] = up_y;
+    g_audio_system.listener.up[2] = up_z;
+
+    // Update backend if it supports spatial audio
 }
 
 void ir_audio_set_channel_position(IRChannelID channel_id, float x, float y, float z) {
-    (void)channel_id; (void)x; (void)y; (void)z;
-    // TODO: Implement spatial audio
+    IRChannel* channel = find_channel(channel_id);
+    if (!channel) return;
+
+    channel->spatial = true;
+    channel->position[0] = x;
+    channel->position[1] = y;
+    channel->position[2] = z;
+
+    // Recalculate volume and pan based on distance to listener
+    float dx = x - g_audio_system.listener.position[0];
+    float dy = y - g_audio_system.listener.position[1];
+    float dz = z - g_audio_system.listener.position[2];
+
+    float distance = sqrtf(dx*dx + dy*dy + dz*dz);
+
+    // Apply distance attenuation
+    float min_dist = channel->min_distance > 0 ? channel->min_distance : 1.0f;
+    float max_dist = channel->max_distance > 0 ? channel->max_distance : 1000.0f;
+
+    if (distance <= min_dist) {
+        // No attenuation at minimum distance
+        // Keep original volume
+    } else if (distance >= max_dist) {
+        // Silent beyond max distance
+        channel->volume = 0.0f;
+    } else {
+        // Linear attenuation between min and max distance
+        float attenuation = 1.0f - (distance - min_dist) / (max_dist - min_dist);
+        channel->volume = fmaxf(0.0f, fminf(1.0f, attenuation));
+    }
+
+    // Calculate pan based on horizontal angle to listener
+    // Simple approximation: use x offset for panning
+    if (distance > 0.1f) {
+        float pan = dx / distance;  // -1 (left) to 1 (right)
+        channel->pan = fmaxf(-1.0f, fminf(1.0f, pan));
+    }
+
+    // Update backend channel volume if available
+    if (g_audio_system.backend.set_channel_volume) {
+        g_audio_system.backend.set_channel_volume(channel_id, channel->volume);
+    }
 }
 
 void ir_audio_set_channel_velocity(IRChannelID channel_id, float vx, float vy, float vz) {
-    (void)channel_id; (void)vx; (void)vy; (void)vz;
-    // TODO: Implement spatial audio
+    IRChannel* channel = find_channel(channel_id);
+    if (!channel) return;
+
+    channel->spatial = true;
+    channel->velocity[0] = vx;
+    channel->velocity[1] = vy;
+    channel->velocity[2] = vz;
+
+    // Velocity can be used for doppler effect calculations
+    // Backend implementation would apply doppler shift
 }
 
 void ir_audio_set_channel_attenuation(IRChannelID channel_id, float min_distance, float max_distance) {
-    (void)channel_id; (void)min_distance; (void)max_distance;
-    // TODO: Implement spatial audio
+    IRChannel* channel = find_channel(channel_id);
+    if (!channel) return;
+
+    channel->spatial = true;
+    channel->min_distance = min_distance;
+    channel->max_distance = max_distance;
+
+    // Recalculate attenuation based on new distances
+    ir_audio_set_channel_position(channel_id,
+                                  channel->position[0],
+                                  channel->position[1],
+                                  channel->position[2]);
 }
 
 // ============================================================================

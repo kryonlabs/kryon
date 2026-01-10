@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 199309L
+
 #include "android_platform.h"
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +14,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <sys/inotify.h>
+#include <fcntl.h>
+#else
+#include <unistd.h>
+#include <sys/inotify.h>
+#include <fcntl.h>
 #endif
 
 // ============================================================================
@@ -65,6 +73,34 @@ typedef struct {
     size_t event_queue_tail;
     size_t event_queue_count;
 
+    // Hot reload state
+    struct {
+        bool initialized;
+        int inotify_fd;
+        kryon_android_reload_callback_t callback;
+        void* callback_user_data;
+
+        // Watched paths
+        struct {
+            char path[512];
+            int watch_descriptor;
+            bool recursive;
+        } watched_paths[32];
+        int watch_count;
+
+        // Debouncing
+        uint64_t last_change_time;
+        uint64_t debounce_ms;
+
+        // Files directory cache
+        char files_dir[512];
+        bool files_dir_cached;
+
+        // Debug build cache
+        bool is_debug;
+        bool debug_cached;
+    } hot_reload;
+
 } kryon_android_platform_state_t;
 
 static kryon_android_platform_state_t g_android_platform = {0};
@@ -75,15 +111,6 @@ static kryon_android_platform_state_t g_android_platform = {0};
 
 static void set_last_error(kryon_android_error_t error) {
     g_android_platform.last_error = error;
-}
-
-static bool is_initialized(void) {
-    if (!g_android_platform.initialized) {
-        set_last_error(KRYON_ANDROID_ERROR_NOT_INITIALIZED);
-        KRYON_ANDROID_LOG_ERROR("Platform not initialized\n");
-        return false;
-    }
-    return true;
 }
 
 #ifdef __ANDROID__
@@ -291,7 +318,8 @@ void kryon_android_on_pause(void) {
     g_android_platform.lifecycle_state = KRYON_ANDROID_STATE_PAUSED;
 
     // Save any pending state
-    // TODO: Implement state saving
+    // App can use kryon_android_storage_set() to persist state
+    // Example: kryon_android_storage_set("app_state", state_data, size);
 }
 
 void kryon_android_on_stop(void) {
@@ -385,8 +413,57 @@ void* kryon_android_get_native_window(void) {
 
 void kryon_android_set_orientation(kryon_android_orientation_t orientation) {
     KRYON_ANDROID_LOG_INFO("Setting orientation: %d\n", orientation);
-    // TODO: Implement via JNI call to setRequestedOrientation
+#ifdef __ANDROID__
+    JNIEnv* env = attach_current_thread();
+    if (!env || !g_android_platform.activity_object) {
+        KRYON_ANDROID_LOG_WARN("Cannot set orientation: JNI not ready\n");
+        return;
+    }
+
+    // Get Activity class
+    jclass activity_class = (*env)->GetObjectClass(env, g_android_platform.activity_object);
+    if (!activity_class) {
+        KRYON_ANDROID_LOG_ERROR("Failed to get Activity class\n");
+        return;
+    }
+
+    // Get setRequestedOrientation method
+    jmethodID set_orientation = (*env)->GetMethodID(env, activity_class,
+                                                     "setRequestedOrientation",
+                                                     "(I)V");
+    if (!set_orientation) {
+        KRYON_ANDROID_LOG_ERROR("Failed to get setRequestedOrientation method\n");
+        (*env)->DeleteLocalRef(env, activity_class);
+        return;
+    }
+
+    // Map orientation to Android ActivityInfo constants
+    jint android_orientation;
+    switch (orientation) {
+        case KRYON_ANDROID_ORIENTATION_PORTRAIT:
+            android_orientation = 7;  // ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            break;
+        case KRYON_ANDROID_ORIENTATION_LANDSCAPE:
+            android_orientation = 0;  // ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            break;
+        case KRYON_ANDROID_ORIENTATION_REVERSE_PORTRAIT:
+            android_orientation = 9;  // ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+            break;
+        case KRYON_ANDROID_ORIENTATION_REVERSE_LANDSCAPE:
+            android_orientation = 8;  // ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+            break;
+        case KRYON_ANDROID_ORIENTATION_AUTO:
+        default:
+            android_orientation = 2;  // ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            break;
+    }
+
+    (*env)->CallVoidMethod(env, g_android_platform.activity_object, set_orientation, android_orientation);
+    (*env)->DeleteLocalRef(env, activity_class);
+#else
     (void)orientation;
+    KRYON_ANDROID_LOG_INFO("Orientation control not implemented on desktop\n");
+#endif
 }
 
 // ============================================================================
@@ -400,13 +477,93 @@ uint64_t kryon_android_get_timestamp(void) {
 }
 
 void kryon_android_delay_ms(uint32_t ms) {
-    usleep(ms * 1000);
+    struct timespec ts;
+    ts.tv_sec = ms / 1000;
+    ts.tv_nsec = (ms % 1000) * 1000000;
+    nanosleep(&ts, NULL);
 }
 
 void kryon_android_vibrate(uint32_t duration_ms) {
     KRYON_ANDROID_LOG_INFO("Vibrate: %u ms\n", duration_ms);
-    // TODO: Implement via JNI call to Vibrator service
+#ifdef __ANDROID__
+    JNIEnv* env = attach_current_thread();
+    if (!env || !g_android_platform.activity_object) {
+        KRYON_ANDROID_LOG_WARN("Cannot vibrate: JNI not ready\n");
+        return;
+    }
+
+    // Get Vibrator service
+    jclass context_class = (*env)->FindClass(env, "android/content/Context");
+    if (!context_class) {
+        KRYON_ANDROID_LOG_ERROR("Failed to find Context class\n");
+        return;
+    }
+
+    jmethodID get_vibrator = (*env)->GetMethodID(env, context_class,
+                                                   "getSystemService",
+                                                   "(Ljava/lang/String;)Ljava/lang/Object;");
+    if (!get_vibrator) {
+        KRYON_ANDROID_LOG_ERROR("Failed to get getSystemService method\n");
+        (*env)->DeleteLocalRef(env, context_class);
+        return;
+    }
+
+    jstring vibrator_service = (*env)->NewStringUTF(env, "vibrator");
+    jobject vibrator = (*env)->CallObjectMethod(env, g_android_platform.activity_object,
+                                                   get_vibrator, vibrator_service);
+    (*env)->DeleteLocalRef(env, vibrator_service);
+
+    if (!vibrator) {
+        KRYON_ANDROID_LOG_ERROR("Failed to get Vibrator service\n");
+        (*env)->DeleteLocalRef(env, context_class);
+        return;
+    }
+
+    // Check API level for different vibrate methods
+    if (g_android_platform.api_level >= 26) {
+        // API 26+ (Android 8.0+) use Vibrator class
+        jclass vibrator_class = (*env)->GetObjectClass(env, vibrator);
+
+        // Create VibrationEffect
+        jclass vibration_effect_class = (*env)->FindClass(env, "android/os/VibrationEffect");
+        if (vibration_effect_class) {
+            jmethodID create_one_shot = (*env)->GetStaticMethodID(env, vibration_effect_class,
+                                                                     "createOneShot",
+                                                                     "(J)Landroid/os/VibrationEffect;");
+            if (create_one_shot) {
+                jlong duration_ms_long = (jlong)duration_ms;
+                jobject vibration_effect = (*env)->CallStaticObjectMethod(env, vibration_effect_class,
+                                                                            create_one_shot, duration_ms_long);
+
+                // Get vibrator method
+                jmethodID vibrate_effect = (*env)->GetMethodID(env, vibrator_class,
+                                                                "vibrate",
+                                                                "(Landroid/os/VibrationEffect;)V");
+                if (vibrate_effect) {
+                    (*env)->CallVoidMethod(env, vibrator, vibrate_effect, vibration_effect);
+                }
+                (*env)->DeleteLocalRef(env, vibration_effect);
+            }
+            (*env)->DeleteLocalRef(env, vibration_effect_class);
+        }
+        (*env)->DeleteLocalRef(env, vibrator_class);
+    } else {
+        // Legacy vibrate method (deprecated but works)
+        jclass vibrator_class = (*env)->GetObjectClass(env, vibrator);
+        jmethodID vibrate = (*env)->GetMethodID(env, vibrator_class, "vibrate", "(J)V");
+        if (vibrate) {
+            jlong duration_ms_long = (jlong)duration_ms;
+            (*env)->CallVoidMethod(env, vibrator, vibrate, duration_ms_long);
+        }
+        (*env)->DeleteLocalRef(env, vibrator_class);
+    }
+
+    (*env)->DeleteLocalRef(env, vibrator);
+    (*env)->DeleteLocalRef(env, context_class);
+#else
     (void)duration_ms;
+    KRYON_ANDROID_LOG_INFO("Vibration not implemented on desktop\n");
+#endif
 }
 
 const char* kryon_android_get_package_name(void) {
@@ -444,8 +601,82 @@ const char* kryon_android_get_external_storage_path(void) {
 bool kryon_android_open_url(const char* url) {
     if (!url) return false;
     KRYON_ANDROID_LOG_INFO("Opening URL: %s\n", url);
-    // TODO: Implement via JNI Intent.ACTION_VIEW
+#ifdef __ANDROID__
+    JNIEnv* env = attach_current_thread();
+    if (!env || !g_android_platform.activity_object) {
+        KRYON_ANDROID_LOG_WARN("Cannot open URL: JNI not ready\n");
+        return false;
+    }
+
+    // Get Intent class
+    jclass intent_class = (*env)->FindClass(env, "android/content/Intent");
+    if (!intent_class) {
+        KRYON_ANDROID_LOG_ERROR("Failed to find Intent class\n");
+        return false;
+    }
+
+    // Create Intent with ACTION_VIEW
+    jfieldID action_view = (*env)->GetStaticFieldID(env, intent_class,
+                                                    "ACTION_VIEW",
+                                                    "Ljava/lang/String;");
+    if (!action_view) {
+        KRYON_ANDROID_LOG_ERROR("Failed to get ACTION_VIEW field\n");
+        (*env)->DeleteLocalRef(env, intent_class);
+        return false;
+    }
+
+    jobject action_view_string = (*env)->GetStaticObjectField(env, intent_class, action_view);
+
+    // Create Uri from URL string
+    jclass uri_class = (*env)->FindClass(env, "android/net/Uri");
+    jmethodID uri_parse = (*env)->GetStaticMethodID(env, uri_class, "parse",
+                                                       "(Ljava/lang/String;)Landroid/net/Uri;");
+    if (!uri_parse) {
+        KRYON_ANDROID_LOG_ERROR("Failed to get Uri.parse method\n");
+        (*env)->DeleteLocalRef(env, intent_class);
+        (*env)->DeleteLocalRef(env, action_view_string);
+        return false;
+    }
+
+    jstring url_string = (*env)->NewStringUTF(env, url);
+    jobject uri = (*env)->CallStaticObjectMethod(env, uri_class, uri_parse, url_string);
+
+    // Create Intent
+    jmethodID intent_init = (*env)->GetMethodID(env, intent_class, "<init>",
+                                                      "(Ljava/lang/String;Landroid/net/Uri;)V");
+    jobject intent = (*env)->AllocObject(env, intent_class);
+    (*env)->CallVoidMethod(env, intent, intent_init, action_view_string, uri);
+
+    // Get startActivity method from Activity class
+    jclass activity_class = (*env)->GetObjectClass(env, g_android_platform.activity_object);
+    jmethodID start_activity = (*env)->GetMethodID(env, activity_class,
+                                                       "startActivity",
+                                                       "(Landroid/content/Intent;)V");
+    if (start_activity) {
+        (*env)->CallVoidMethod(env, g_android_platform.activity_object, start_activity, intent);
+        (*env)->DeleteLocalRef(env, intent);
+        (*env)->DeleteLocalRef(env, activity_class);
+        (*env)->DeleteLocalRef(env, intent_class);
+        (*env)->DeleteLocalRef(env, uri_class);
+        (*env)->DeleteLocalRef(env, action_view_string);
+        (*env)->DeleteLocalRef(env, url_string);
+        (*env)->DeleteLocalRef(env, uri);
+        return true;
+    }
+
+    (*env)->DeleteLocalRef(env, intent);
+    (*env)->DeleteLocalRef(env, activity_class);
+    (*env)->DeleteLocalRef(env, intent_class);
+    (*env)->DeleteLocalRef(env, uri_class);
+    (*env)->DeleteLocalRef(env, action_view_string);
+    (*env)->DeleteLocalRef(env, url_string);
+    (*env)->DeleteLocalRef(env, uri);
     return false;
+#else
+    (void)url;
+    KRYON_ANDROID_LOG_INFO("URL opening not implemented on desktop\n");
+    return false;
+#endif
 }
 
 // ============================================================================
@@ -542,6 +773,286 @@ void kryon_android_print_info(void) {
     printf("Gyroscope: %s\n", caps.has_gyroscope ? "Yes" : "No");
     printf("GPS: %s\n", caps.has_gps ? "Yes" : "No");
     printf("===================================\n");
+}
+
+// ============================================================================
+// Hot Reload Support
+// ============================================================================
+
+#define HOT_RELOAD_EVENT_BUFFER_SIZE 4096
+
+bool kryon_android_hot_reload_init(void) {
+    if (g_android_platform.hot_reload.initialized) {
+        return true;  // Already initialized
+    }
+
+    KRYON_ANDROID_LOG_INFO("Initializing hot reload system\n");
+
+    // Initialize inotify
+#ifdef __ANDROID__
+    g_android_platform.hot_reload.inotify_fd = inotify_init1(IN_NONBLOCK);
+    if (g_android_platform.hot_reload.inotify_fd < 0) {
+        KRYON_ANDROID_LOG_ERROR("Failed to initialize inotify: %s\n", strerror(errno));
+        return false;
+    }
+#else
+    g_android_platform.hot_reload.inotify_fd = -1;
+#endif
+
+    g_android_platform.hot_reload.watch_count = 0;
+    g_android_platform.hot_reload.callback = NULL;
+    g_android_platform.hot_reload.callback_user_data = NULL;
+    g_android_platform.hot_reload.last_change_time = 0;
+    g_android_platform.hot_reload.debounce_ms = 100;  // 100ms default debounce
+    g_android_platform.hot_reload.files_dir_cached = false;
+    g_android_platform.hot_reload.debug_cached = false;
+    g_android_platform.hot_reload.initialized = true;
+
+    KRYON_ANDROID_LOG_INFO("Hot reload system initialized\n");
+    return true;
+}
+
+void kryon_android_hot_reload_shutdown(void) {
+    if (!g_android_platform.hot_reload.initialized) {
+        return;
+    }
+
+    KRYON_ANDROID_LOG_INFO("Shutting down hot reload system\n");
+
+    // Remove all watches
+#ifdef __ANDROID__
+    if (g_android_platform.hot_reload.inotify_fd >= 0) {
+        for (int i = 0; i < g_android_platform.hot_reload.watch_count; i++) {
+            inotify_rm_watch(g_android_platform.hot_reload.inotify_fd,
+                            g_android_platform.hot_reload.watched_paths[i].watch_descriptor);
+        }
+        close(g_android_platform.hot_reload.inotify_fd);
+        g_android_platform.hot_reload.inotify_fd = -1;
+    }
+#endif
+
+    g_android_platform.hot_reload.watch_count = 0;
+    g_android_platform.hot_reload.initialized = false;
+}
+
+bool kryon_android_watch_path(const char* path, bool recursive) {
+    if (!g_android_platform.hot_reload.initialized) {
+        KRYON_ANDROID_LOG_ERROR("Hot reload not initialized\n");
+        return false;
+    }
+
+    if (!path || g_android_platform.hot_reload.watch_count >= 32) {
+        KRYON_ANDROID_LOG_ERROR("Invalid path or too many watches\n");
+        return false;
+    }
+
+#ifdef __ANDROID__
+    // Check if path exists
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        KRYON_ANDROID_LOG_ERROR("Path does not exist: %s\n", path);
+        return false;
+    }
+
+    // Watch for: modify, create, delete, move events
+    uint32_t mask = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO;
+
+    int wd = inotify_add_watch(g_android_platform.hot_reload.inotify_fd, path, mask);
+    if (wd < 0) {
+        KRYON_ANDROID_LOG_ERROR("Failed to add watch for %s: %s\n", path, strerror(errno));
+        return false;
+    }
+
+    // Store watch info
+    int idx = g_android_platform.hot_reload.watch_count;
+    strncpy(g_android_platform.hot_reload.watched_paths[idx].path, path, 511);
+    g_android_platform.hot_reload.watched_paths[idx].path[511] = '\0';
+    g_android_platform.hot_reload.watched_paths[idx].watch_descriptor = wd;
+    g_android_platform.hot_reload.watched_paths[idx].recursive = recursive;
+    g_android_platform.hot_reload.watch_count++;
+
+    KRYON_ANDROID_LOG_INFO("Added watch for: %s (wd=%d)\n", path, wd);
+    return true;
+#else
+    (void)recursive;
+    return false;
+#endif
+}
+
+void kryon_android_set_reload_callback(kryon_android_reload_callback_t callback, void* user_data) {
+    g_android_platform.hot_reload.callback = callback;
+    g_android_platform.hot_reload.callback_user_data = user_data;
+}
+
+int kryon_android_hot_reload_poll(void) {
+    if (!g_android_platform.hot_reload.initialized ||
+        g_android_platform.hot_reload.inotify_fd < 0) {
+        return 0;
+    }
+
+#ifdef __ANDROID__
+    char buffer[HOT_RELOAD_EVENT_BUFFER_SIZE];
+    ssize_t len = read(g_android_platform.hot_reload.inotify_fd, buffer, sizeof(buffer));
+    if (len < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return 0;  // No events pending
+        }
+        return 0;
+    }
+
+    int event_count = 0;
+    const struct inotify_event* event;
+
+    for (char* ptr = buffer; ptr < buffer + len; ptr += sizeof(struct inotify_event) + event->len) {
+        event = (const struct inotify_event*)ptr;
+
+        // Find the watched path for this event
+        const char* base_path = NULL;
+        for (int i = 0; i < g_android_platform.hot_reload.watch_count; i++) {
+            if (g_android_platform.hot_reload.watched_paths[i].watch_descriptor == event->wd) {
+                base_path = g_android_platform.hot_reload.watched_paths[i].path;
+                break;
+            }
+        }
+
+        if (!base_path) continue;
+
+        // Build full path
+        char full_path[512];
+        if (event->len > 0) {
+            snprintf(full_path, sizeof(full_path), "%s/%s", base_path, event->name);
+        } else {
+            strncpy(full_path, base_path, sizeof(full_path) - 1);
+            full_path[sizeof(full_path) - 1] = '\0';
+        }
+
+        // Check debounce
+        uint64_t now = (uint64_t)time(NULL) * 1000;
+        if (now - g_android_platform.hot_reload.last_change_time < g_android_platform.hot_reload.debounce_ms) {
+            continue;
+        }
+
+        // Filter for relevant file types
+        const char* ext = strrchr(full_path, '.');
+        if (ext) {
+            bool is_relevant = (strcmp(ext, ".lua") == 0 ||
+                               strcmp(ext, ".tsx") == 0 ||
+                               strcmp(ext, ".kry") == 0 ||
+                               strcmp(ext, ".kir") == 0 ||
+                               strcmp(ext, ".h") == 0 ||
+                               strcmp(ext, ".c") == 0 ||
+                               strcmp(ext, ".json") == 0);
+
+            if (is_relevant && event->mask & (IN_MODIFY | IN_CREATE)) {
+                KRYON_ANDROID_LOG_INFO("File changed: %s\n", full_path);
+
+                // Trigger callback
+                if (g_android_platform.hot_reload.callback) {
+                    g_android_platform.hot_reload.callback(full_path,
+                                                         g_android_platform.hot_reload.callback_user_data);
+                }
+
+                g_android_platform.hot_reload.last_change_time = now;
+                event_count++;
+            }
+        }
+    }
+
+    return event_count;
+#else
+    return 0;
+#endif
+}
+
+bool kryon_android_hot_reload_available(void) {
+#ifdef __ANDROID__
+    // Only available in debug builds
+    return kryon_android_is_debug_build();
+#else
+    return false;
+#endif
+}
+
+void kryon_android_trigger_reload(void) {
+    KRYON_ANDROID_LOG_INFO("Manual reload triggered\n");
+
+    if (g_android_platform.hot_reload.callback) {
+        g_android_platform.hot_reload.callback("<manual>",
+                                             g_android_platform.hot_reload.callback_user_data);
+    }
+}
+
+const char* kryon_android_get_files_dir(void) {
+    if (!g_android_platform.hot_reload.files_dir_cached) {
+#ifdef __ANDROID__
+        JNIEnv* env = attach_current_thread();
+        if (env && g_android_platform.activity_object) {
+            // Get Context.getFilesDir()
+            jclass activity_class = (*env)->GetObjectClass(env, g_android_platform.activity_object);
+            jmethodID get_files_dir = (*env)->GetMethodID(env, activity_class, "getFilesDir",
+                                                         "()Ljava/io/File;");
+            if (get_files_dir) {
+                jobject file_obj = (*env)->CallObjectMethod(env, g_android_platform.activity_object,
+                                                           get_files_dir);
+                if (file_obj) {
+                    // Call File.getAbsolutePath()
+                    jclass file_class = (*env)->FindClass(env, "java/io/File");
+                    jmethodID get_abs_path = (*env)->GetMethodID(env, file_class, "getAbsolutePath",
+                                                                "()Ljava/lang/String;");
+                    if (get_abs_path) {
+                        jstring path_str = (*env)->CallObjectMethod(env, file_obj, get_abs_path);
+                        if (path_str) {
+                            const char* path = (*env)->GetStringUTFChars(env, path_str, NULL);
+                            strncpy(g_android_platform.hot_reload.files_dir, path, 511);
+                            g_android_platform.hot_reload.files_dir[511] = '\0';
+                            (*env)->ReleaseStringUTFChars(env, path_str, path);
+                            (*env)->DeleteLocalRef(env, path_str);
+                        }
+                    }
+                    (*env)->DeleteLocalRef(env, file_obj);
+                }
+            }
+            (*env)->DeleteLocalRef(env, activity_class);
+        }
+        g_android_platform.hot_reload.files_dir_cached = true;
+#endif
+    }
+
+    return g_android_platform.hot_reload.files_dir;
+}
+
+bool kryon_android_is_debug_build(void) {
+    if (!g_android_platform.hot_reload.debug_cached) {
+#ifdef __ANDROID__
+        // Check debug flag via ApplicationInfo.flags
+        JNIEnv* env = attach_current_thread();
+        if (env && g_android_platform.activity_object) {
+            jclass activity_class = (*env)->GetObjectClass(env, g_android_platform.activity_object);
+
+            // Get ApplicationInfo via getApplicationInfo()
+            jmethodID get_app_info = (*env)->GetMethodID(env, activity_class, "getApplicationInfo",
+                                                        "()Landroid/content/pm/ApplicationInfo;");
+            if (get_app_info) {
+                jobject app_info_obj = (*env)->CallObjectMethod(env, g_android_platform.activity_object,
+                                                               get_app_info);
+                if (app_info_obj) {
+                    jclass app_info_class = (*env)->FindClass(env, "android/content/pm/ApplicationInfo");
+                    jfieldID flags_field = (*env)->GetFieldID(env, app_info_class, "flags", "I");
+                    if (flags_field) {
+                        int flags = (*env)->GetIntField(env, app_info_obj, flags_field);
+                        // DEBUGgable = 0x2 (ApplicationInfo.FLAG_DEBUGGABLE)
+                        g_android_platform.hot_reload.is_debug = (flags & 0x2) != 0;
+                    }
+                    (*env)->DeleteLocalRef(env, app_info_obj);
+                }
+            }
+            (*env)->DeleteLocalRef(env, activity_class);
+        }
+        g_android_platform.hot_reload.debug_cached = true;
+#endif
+    }
+
+    return g_android_platform.hot_reload.is_debug;
 }
 
 // ============================================================================

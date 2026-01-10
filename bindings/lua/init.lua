@@ -3,6 +3,7 @@
 -- This module provides a clean, Lua-idiomatic interface to the Kryon C core
 
 local kryon = require("kryon")
+local Runtime = require("kryon.runtime")
 
 -- Module table
 local M = {}
@@ -16,6 +17,9 @@ local canvas = kryon.canvas
 local markdown = kryon.markdown
 local color_rgba = kryon.color_rgba
 local color_rgb = kryon.color_rgb
+
+-- Import C constants for event types
+local C = require("kryon.ffi").C
 
 -- ============================================================================
 -- Utility Functions
@@ -142,7 +146,7 @@ function M.button(config)
 
     -- Set click handler if provided
     if config.on_click then
-        -- TODO: Implement event handler registration
+        Runtime.registerHandler(comp, C.IR_EVENT_CLICK, config.on_click)
     end
 
     -- Add children if provided
@@ -180,11 +184,11 @@ function M.input(config)
 
     -- Set event handlers if provided
     if config.on_change then
-        -- TODO: Implement event handler registration
+        Runtime.registerHandler(comp, C.IR_EVENT_TEXT_CHANGE, config.on_change)
     end
 
     if config.on_submit then
-        -- TODO: Implement event handler registration
+        Runtime.registerHandler(comp, C.IR_EVENT_SUBMIT, config.on_submit)
     end
 
     -- Add children if provided
@@ -218,7 +222,10 @@ function M.canvas(config)
 
     -- Set draw handler if provided
     if config.on_draw then
-        -- TODO: Implement canvas draw handler registration
+        -- Store the draw handler in the component for runtime callback
+        -- The desktop renderer will invoke this via Runtime.canvasDrawCallbacks
+        local NativeCanvas = require("native_canvas")
+        NativeCanvas.registerCallback(comp.id, config.on_draw)
     end
 
     -- Add children if provided
@@ -252,14 +259,16 @@ function M.markdown(config)
 
     -- Set theme if provided
     if config.theme then
-        -- TODO: Set markdown theme in C bindings
-        print("Setting markdown theme:", config.theme.name or "custom")
+        -- Theme is handled by the markdown module
+        -- Store theme reference for the markdown renderer
+        comp._markdown_theme = config.theme
     end
 
     -- Set link click handler if provided
     if config.on_link_click then
-        -- TODO: Implement link click handler in C bindings
-        print("Setting markdown link click handler")
+        -- Register link click handler using the event system
+        Runtime.registerHandler(comp, C.IR_EVENT_LINK_CLICK, config.on_link_click)
+        comp._link_click_handler = config.on_link_click
     end
 
     -- Add children if provided
@@ -418,12 +427,6 @@ end
 function M.app(config)
     config = config or {}
 
-    local app_instance = kryon.app({
-        width = config.width or 800,
-        height = config.height or 600,
-        title = config.title or "Kryon App"
-    })
-
     -- Build the UI tree if body is provided
     if config.body then
         local root = config.body
@@ -434,10 +437,26 @@ function M.app(config)
         -- Set root component bounds to fill the window
         root:set_bounds(0, 0, config.width or 800, config.height or 600)
 
-        -- TODO: Set root component on app instance
-    end
+        -- Create app using Runtime with proper root component setup
+        local app_instance = Runtime.createApp({
+            body = root,
+            window = {
+                width = config.width or 800,
+                height = config.height or 600,
+                title = config.title or "Kryon App"
+            }
+        })
 
-    return app_instance
+        return app_instance
+    else
+        -- Fallback for app without body (creates empty app)
+        local app_instance = kryon.app({
+            width = config.width or 800,
+            height = config.height or 600,
+            title = config.title or "Kryon App"
+        })
+        return app_instance
+    end
 end
 
 -- ============================================================================

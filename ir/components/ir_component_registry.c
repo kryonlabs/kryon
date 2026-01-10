@@ -2,9 +2,15 @@
 #include "ir_component_text.h"
 #include "ir_component_flexbox.h"
 #include "ir_component_button.h"
+#include "ir_component_input.h"
 #include "ir_component_checkbox.h"
 #include "ir_component_dropdown.h"
 #include "ir_component_table.h"
+#include "ir_component_image.h"
+#include "ir_component_modal.h"
+#include "ir_component_canvas.h"
+#include "ir_component_misc.h"
+#include "ir_component_tabs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,6 +79,9 @@ void ir_layout_init_traits(void) {
     // Register Button component
     ir_button_component_init();
 
+    // Register Input component
+    ir_input_component_init();
+
     // Register Checkbox component
     ir_checkbox_component_init();
 
@@ -81,6 +90,21 @@ void ir_layout_init_traits(void) {
 
     // Register Table component
     ir_table_component_init();
+
+    // Register Image component
+    ir_image_component_init();
+
+    // Register Modal component
+    ir_modal_component_init();
+
+    // Register Canvas components (Canvas and NativeCanvas)
+    ir_canvas_components_init();
+
+    // Register misc components (Markdown, Sprite)
+    ir_misc_components_init();
+
+    // Register Tab components (TabGroup, TabBar, Tab, TabContent, TabPanel)
+    ir_tab_components_init();
 
     // Register ForEach component (layout-transparent - just passes through to children)
     ir_layout_register_trait(IR_COMPONENT_FOR_EACH, &IR_FOR_EACH_LAYOUT_TRAIT);
