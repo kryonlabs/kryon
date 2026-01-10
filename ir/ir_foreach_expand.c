@@ -370,6 +370,7 @@ static void update_foreach_component_text_legacy(IRComponent* component, cJSON* 
     cJSON* is_completed = cJSON_GetObjectItem(data_item, "isCompleted");
     cJSON* is_today = cJSON_GetObjectItem(data_item, "isToday");
     cJSON* date_str = cJSON_GetObjectItem(data_item, "date");
+    cJSON* theme_color = cJSON_GetObjectItem(data_item, "themeColor");
 
     if ((component->type == IR_COMPONENT_BUTTON || component->type == IR_COMPONENT_TEXT) && day_number) {
         if (cJSON_IsNumber(day_number)) {
@@ -397,13 +398,25 @@ static void update_foreach_component_text_legacy(IRComponent* component, cJSON* 
             if (component->style) {
                 // Set backgroundColor based on completion status
                 if (completed) {
-                    // Use theme color for completed days
-                    // Default theme color (purple) - ideally this would come from habit data
+                    // Use theme color from day data for completed days
                     component->style->background.type = IR_COLOR_SOLID;
-                    component->style->background.data.r = 0x6b;
-                    component->style->background.data.g = 0x5b;
-                    component->style->background.data.b = 0x95;
-                    component->style->background.data.a = 255;
+                    if (theme_color && cJSON_IsString(theme_color)) {
+                        const char* hex = theme_color->valuestring;
+                        if (hex[0] == '#' && strlen(hex) >= 7) {
+                            unsigned int r, g, b;
+                            sscanf(hex + 1, "%02x%02x%02x", &r, &g, &b);
+                            component->style->background.data.r = r;
+                            component->style->background.data.g = g;
+                            component->style->background.data.b = b;
+                            component->style->background.data.a = 255;
+                        }
+                    } else {
+                        // Fallback purple if no theme color
+                        component->style->background.data.r = 0x6b;
+                        component->style->background.data.g = 0x5b;
+                        component->style->background.data.b = 0x95;
+                        component->style->background.data.a = 255;
+                    }
                 } else if (!current_month) {
                     // Grayed out for non-current month
                     component->style->background.type = IR_COLOR_SOLID;
@@ -460,6 +473,39 @@ static void update_foreach_component_text_legacy(IRComponent* component, cJSON* 
                 } else {
                     component->style->opacity = 1.0f;
                 }
+            }
+
+            // Update custom_data with the actual date from this iteration
+            // This is critical for ForEach click handlers to know which day was clicked
+            if (date_str && cJSON_IsString(date_str)) {
+                // Parse existing custom_data if present
+                cJSON* custom_json = component->custom_data ? cJSON_Parse(component->custom_data) : NULL;
+                if (!custom_json) {
+                    custom_json = cJSON_CreateObject();
+                }
+
+                // Get or create the "data" object
+                cJSON* data_obj = cJSON_GetObjectItem(custom_json, "data");
+                if (!data_obj) {
+                    data_obj = cJSON_CreateObject();
+                    cJSON_AddItemToObject(custom_json, "data", data_obj);
+                }
+
+                // Update the date field
+                cJSON_DeleteItemFromObject(data_obj, "date");
+                cJSON_AddStringToObject(data_obj, "date", date_str->valuestring);
+
+                // Also add isCompleted for the handler to know current state
+                cJSON_DeleteItemFromObject(data_obj, "isCompleted");
+                cJSON_AddBoolToObject(data_obj, "isCompleted", completed);
+
+                // Serialize back and update component
+                char* new_custom_data = cJSON_PrintUnformatted(custom_json);
+                if (new_custom_data) {
+                    free(component->custom_data);
+                    component->custom_data = new_custom_data;
+                }
+                cJSON_Delete(custom_json);
             }
         }
     }

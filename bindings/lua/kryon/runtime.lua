@@ -148,7 +148,7 @@ end
 --- This is called from the desktop renderer when events fire
 --- @param handlerId number Handler ID from logic_id
 --- @param eventType number Event type
---- @param textData string|nil Text data for TEXT_CHANGE events (passed from C layer)
+--- @param textData string|nil Text data for TEXT_CHANGE events, or custom_data JSON for CLICK events
 function Runtime.dispatchEvent(handlerId, eventType, textData)
   local handler = Runtime.handlers[handlerId]
   if handler then
@@ -156,6 +156,22 @@ function Runtime.dispatchEvent(handlerId, eventType, textData)
     if eventType == C.IR_EVENT_TEXT_CHANGE then
       local text = textData or ""
       local success, err = pcall(handler.callback, text)
+      if not success then
+        print("❌ Error in Lua event handler: " .. tostring(err))
+      end
+    elseif eventType == C.IR_EVENT_CLICK and textData then
+      -- For CLICK events with custom_data, parse it and pass event data to callback
+      local eventData = nil
+      local ok, decoded = pcall(function()
+        local json = require("cjson")
+        return json.decode(textData)
+      end)
+      if ok and decoded and decoded.data then
+        eventData = decoded.data
+      end
+
+      -- Call callback with event data (handler can check for this)
+      local success, err = pcall(handler.callback, eventData)
       if not success then
         print("❌ Error in Lua event handler: " .. tostring(err))
       end

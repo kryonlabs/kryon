@@ -419,7 +419,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 uint32_t handler_id = 0;
                                 if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
                                     if (renderer->lua_event_callback) {
-                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
+                                        // Pass custom_data so ForEach-expanded handlers can read item data
+                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, clicked->custom_data);
                                     } else if (!handled_as_tab) {
                                         printf("⚠️ Lua event detected but no callback registered\n");
                                         printf("  💡 Hint: Run .lua files directly (don't compile to .kir first)\n");
