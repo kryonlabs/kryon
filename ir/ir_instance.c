@@ -202,8 +202,13 @@ void ir_instance_destroy(IRInstanceContext* inst) {
         inst->render.desktop = NULL;
     }
 
-    // TODO: Destroy commands when Phase 4 implemented
-    // TODO: Destroy hot reload watcher when Phase 6 implemented
+    // Destroy hot reload file watcher (if active)
+    if (inst->hot_reload.watcher) {
+        ir_file_watcher_destroy(inst->hot_reload.watcher);
+        inst->hot_reload.watcher = NULL;
+    }
+
+    // Note: Command buffers are owned by the rendering backend, not the instance
 
     // Remove from registry
     for (uint32_t i = 0; i < g_instance_registry.count; i++) {
@@ -592,31 +597,59 @@ static IRComponent* find_component_by_scope(IRComponent* new_root, const char* s
 /**
  * Copy state from old component to new component based on scope match
  * Preserves:
- * - Component scope matching
- * - Basic state migration (can be extended)
- *
- * TODO: Preserve input values, checkbox states, tab selections
+ * - text_content (input values, text labels)
+ * - tab_data->selected_index (tab selections)
+ * - Component scope
  */
 static void migrate_component_state(IRComponent* old_comp, IRComponent* new_comp,
                                      IRExecutorContext* executor) {
     if (!old_comp || !new_comp) return;
 
-    // For now, state migration is a placeholder
-    // Full implementation would:
-    // 1. Copy property values (value, checked, selectedIndex, etc.)
-    // 2. Migrate reactive state from executor context
-    // 3. Preserve focus/hover states
+    // Migrate text_content (preserves input values, text labels)
+    if (old_comp->text_content && new_comp->type == IR_COMPONENT_TEXT) {
+        // Free existing text_content if any
+        if (new_comp->text_content) {
+            free(new_comp->text_content);
+        }
+        // Copy the text content
+        new_comp->text_content = strdup(old_comp->text_content);
+    }
 
-    (void)executor;  // Suppress unused warning
+    // Migrate tab selection state
+    if (old_comp->tab_data && new_comp->tab_data) {
+        new_comp->tab_data->selected_index = old_comp->tab_data->selected_index;
+    }
+
+    // Migrate scope (critical for reactive state matching)
+    if (old_comp->scope) {
+        if (new_comp->scope) {
+            free(new_comp->scope);
+        }
+        new_comp->scope = strdup(old_comp->scope);
+    }
 
     // Recursively migrate children with matching scopes
-    for (uint32_t i = 0; i < old_comp->child_count && i < new_comp->child_count; i++) {
-        if (old_comp->children[i]->scope && new_comp->children[i]->scope) {
-            if (strcmp(old_comp->children[i]->scope, new_comp->children[i]->scope) == 0) {
-                migrate_component_state(old_comp->children[i], new_comp->children[i], executor);
+    // For each child in old component, find matching child in new component by scope
+    for (uint32_t i = 0; i < old_comp->child_count; i++) {
+        IRComponent* old_child = old_comp->children[i];
+        if (!old_child->scope) continue;
+
+        // Find matching child in new component by scope
+        IRComponent* new_child = NULL;
+        for (uint32_t j = 0; j < new_comp->child_count; j++) {
+            if (new_comp->children[j]->scope &&
+                strcmp(new_comp->children[j]->scope, old_child->scope) == 0) {
+                new_child = new_comp->children[j];
+                break;
             }
         }
+
+        if (new_child) {
+            migrate_component_state(old_child, new_child, executor);
+        }
     }
+
+    (void)executor;  // Reserved for future executor state migration
 }
 
 IRComponent* ir_instance_reload_kir(IRInstanceContext* inst, const char* filename) {

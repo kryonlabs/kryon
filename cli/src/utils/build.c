@@ -5,12 +5,17 @@
  * Eliminates duplication between cmd_run, cmd_build, and cmd_compile.
  */
 
+#define _DEFAULT_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
 #include "kryon_cli.h"
 #include "build.h"
 
 #include "../../../ir/ir_serialization.h"
 #include "../../../ir/ir_builder.h"
 #include "../../../ir/ir_executor.h"
+#include "../../../ir/ir_instance.h"
+#include "../../../ir/ir_hot_reload.h"
 #include "../../../ir/parsers/lua/lua_parser.h"
 #include "../../../backends/desktop/ir_desktop_renderer.h"
 #include "../template/docs_template.h"
@@ -624,6 +629,201 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
     ir_destroy_component(root);
 
     return success ? 0 : 1;
+}
+
+/* ============================================================================
+ * Hot Reload Desktop Runner
+ * ============================================================================ */
+
+/**
+ * Run a KIR file on desktop with hot reload support
+ * Uses the instance API for proper state management during reloads
+ */
+int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop_lib,
+                                        const char* renderer_override, const char* watch_path) {
+    (void)desktop_lib;  // Currently unused, kept for future flexibility
+
+    // Initialize instance registry
+    ir_instance_registry_init();
+
+    // Create instance
+    IRInstanceContext* inst = ir_instance_create("DesktopApp", NULL);
+    if (!inst) {
+        fprintf(stderr, "Error: Failed to create instance\n");
+        ir_instance_registry_shutdown();
+        return 1;
+    }
+
+    // Load KIR file into instance
+    IRComponent* root = ir_instance_load_kir(inst, kir_file);
+    if (!root) {
+        fprintf(stderr, "Error: Failed to load KIR file: %s\n", kir_file);
+        ir_instance_destroy(inst);
+        ir_instance_registry_shutdown();
+        return 1;
+    }
+
+    // Expand ForEach components
+    extern void ir_expand_foreach(IRComponent* root);
+    ir_expand_foreach(root);
+
+    // Setup executor
+    IRExecutorContext* executor = ir_executor_create();
+    if (executor) {
+        printf("[executor] Loading KIR file for event handling\n");
+        ir_executor_load_kir_file(executor, kir_file);
+        ir_executor_set_root(executor, root);
+        ir_executor_set_global(executor);
+        printf("[executor] Global executor initialized\n");
+    } else {
+        fprintf(stderr, "[executor] WARNING: Failed to create executor!\n");
+    }
+
+    // Configure renderer
+    int window_width = 800;
+    int window_height = 600;
+    const char* window_title = "Kryon App (Hot Reload)";
+
+    if (inst->ir_context && inst->ir_context->metadata) {
+        if (inst->ir_context->metadata->window_width > 0) {
+            window_width = inst->ir_context->metadata->window_width;
+        }
+        if (inst->ir_context->metadata->window_height > 0) {
+            window_height = inst->ir_context->metadata->window_height;
+        }
+        if (inst->ir_context->metadata->window_title) {
+            window_title = inst->ir_context->metadata->window_title;
+        }
+    }
+
+    DesktopRendererConfig config = desktop_renderer_config_sdl3(window_width, window_height, window_title);
+
+    // Determine renderer
+    const char* renderer = NULL;
+    if (renderer_override) {
+        renderer = renderer_override;
+        printf("Renderer: %s (from --target flag)\n", renderer);
+    } else {
+        KryonConfig* kryon_config = config_find_and_load();
+        if (kryon_config && kryon_config->desktop_renderer) {
+            renderer = kryon_config->desktop_renderer;
+            printf("Renderer: %s (from kryon.toml)\n", renderer);
+            config_free(kryon_config);
+        }
+    }
+
+    if (renderer && strcmp(renderer, "raylib") == 0) {
+        config.backend_type = DESKTOP_BACKEND_RAYLIB;
+    } else {
+        config.backend_type = DESKTOP_BACKEND_SDL3;
+        if (!renderer) printf("Renderer: sdl3 (default)\n");
+    }
+
+    // Enable hot reload
+    char watch_dir[512];
+    if (watch_path) {
+        strncpy(watch_dir, watch_path, sizeof(watch_dir) - 1);
+    } else {
+        // Use directory containing KIR file
+        const char* last_slash = strrchr(kir_file, '/');
+        if (last_slash) {
+            size_t dir_len = last_slash - kir_file;
+            strncpy(watch_dir, kir_file, dir_len);
+            watch_dir[dir_len] = '\0';
+        } else {
+            strcpy(watch_dir, ".");
+        }
+    }
+
+    if (ir_instance_enable_hot_reload(inst, watch_dir)) {
+        printf("[Hot Reload] Watching for changes in: %s\n", watch_dir);
+    } else {
+        fprintf(stderr, "[Hot Reload] Warning: Failed to enable hot reload\n");
+    }
+
+    // Create desktop renderer
+    DesktopIRRenderer* desktop_renderer = desktop_ir_renderer_create(&config);
+    if (!desktop_renderer) {
+        fprintf(stderr, "Error: Failed to create desktop renderer\n");
+        ir_instance_destroy(inst);
+        ir_instance_registry_shutdown();
+        return 1;
+    }
+
+    if (!desktop_ir_renderer_initialize(desktop_renderer)) {
+        fprintf(stderr, "Error: Failed to initialize desktop renderer\n");
+        desktop_ir_renderer_destroy(desktop_renderer);
+        ir_instance_destroy(inst);
+        ir_instance_registry_shutdown();
+        return 1;
+    }
+
+    printf("\n🚀 Running with hot reload (Press Ctrl+C to exit)\n");
+    printf("   File: %s\n", kir_file);
+    printf("   Watch: %s\n\n", watch_dir);
+
+    // Main loop with hot reload
+    bool running = true;
+    uint32_t frame_count = 0;
+
+    while (running) {
+        // Poll for hot reload (non-blocking)
+        int reload_result = ir_instance_hot_reload_poll(inst);
+
+        if (reload_result == 0) {  // IR_RELOAD_SUCCESS
+            printf("[Hot Reload] ✅ Reloading...\n");
+
+            // Get the new root
+            IRComponent* new_root = ir_instance_get_root(inst);
+            if (new_root) {
+                ir_expand_foreach(new_root);
+
+                // Update executor
+                if (executor) {
+                    ir_executor_set_root(executor, new_root);
+                    ir_executor_load_kir_file(executor, kir_file);
+                }
+
+                // Update desktop renderer with new root
+                desktop_ir_renderer_update_root(desktop_renderer, new_root);
+
+                printf("[Hot Reload] ✅ Reloaded successfully!\n");
+            }
+        } else if (reload_result == 1) {  // IR_RELOAD_BUILD_FAILED
+            printf("[Hot Reload] ❌ Reload failed, continuing with previous version\n");
+        }
+
+        // Render a frame
+        IRComponent* current_root = ir_instance_get_root(inst);
+        if (current_root) {
+            if (!desktop_ir_renderer_render_frame(desktop_renderer, current_root)) {
+                fprintf(stderr, "[Render] Frame render failed\n");
+            }
+        }
+
+        frame_count++;
+
+        // Simple frame rate limiting (~60 FPS)
+        usleep(16667);  // ~60 FPS
+
+        // Check if we should exit (renderer sets this on window close)
+        // For now, we'll run indefinitely until Ctrl+C
+    }
+
+    // Cleanup
+    printf("\n[Shutdown] Cleaning up...\n");
+
+    desktop_ir_renderer_destroy(desktop_renderer);
+
+    if (executor) {
+        ir_executor_destroy(executor);
+    }
+
+    ir_instance_destroy(inst);
+    ir_instance_registry_shutdown();
+
+    printf("[Shutdown] Done.\n");
+    return 0;
 }
 
 /* ============================================================================
