@@ -291,21 +291,28 @@ int generate_html_from_kir(const char* kir_file, const char* output_dir,
  * ============================================================================ */
 
 bool kir_needs_lua_runtime(const char* kir_file) {
+    fprintf(stderr, "[kir_needs_lua_runtime] About to load: %s\n", kir_file);
     // Load KIR to check metadata
     IRComponent* root = ir_read_json_file(kir_file);
+    fprintf(stderr, "[kir_needs_lua_runtime] Loaded root: %p\n", (void*)root);
     if (!root) {
         return false;
     }
 
     bool needs_lua = false;
+    fprintf(stderr, "[kir_needs_lua_runtime] Checking metadata, g_ir_context=%p\n", (void*)g_ir_context);
     if (g_ir_context && g_ir_context->source_metadata) {
         IRSourceMetadata* meta = g_ir_context->source_metadata;
+        fprintf(stderr, "[kir_needs_lua_runtime] meta=%p, source_language=%p\n",
+                (void*)meta, (void*)(meta->source_language));
         if (meta->source_language && strcmp(meta->source_language, "lua") == 0) {
             needs_lua = true;
         }
     }
 
+    fprintf(stderr, "[kir_needs_lua_runtime] About to destroy root\n");
     ir_destroy_component(root);
+    fprintf(stderr, "[kir_needs_lua_runtime] Destroyed root, returning needs_lua=%d\n", needs_lua);
     return needs_lua;
 }
 
@@ -546,7 +553,9 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib) {
 
     // Check for Lua runtime
     if (kir_needs_lua_runtime(kir_file)) {
+        fprintf(stderr, "[run_kir_on_desktop] kir_needs_lua_runtime returned true, destroying root=%p\n", (void*)root);
         ir_destroy_component(root);
+        fprintf(stderr, "[run_kir_on_desktop] Root destroyed, calling run_kir_with_lua_runtime\n");
         return run_kir_with_lua_runtime(kir_file);
     }
 

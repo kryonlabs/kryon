@@ -142,6 +142,7 @@ IRLogic* ir_find_logic_by_id(IRComponent* root, const char* id);
 void ir_set_text_content(IRComponent* component, const char* text);
 void ir_set_custom_data(IRComponent* component, const char* data);
 void ir_set_tag(IRComponent* component, const char* tag);
+void ir_set_each_source(IRComponent* component, const char* source);  // ForEach data source
 
 // Module Reference Management (for cross-file component references)
 void ir_set_component_module_ref(IRComponent* component, const char* module_ref, const char* export_name);

@@ -373,6 +373,13 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "  metadata.source_language = lang_str\n"
         "  metadata.compiler_version = ver_str\n"
         "  metadata.timestamp = time_str\n"
+        "  -- Add source file path for runtime re-execution\n"
+        "  local source_file = os.getenv('KRYON_SOURCE_FILE')\n"
+        "  if source_file then\n"
+        "    local source_file_str = ffi.new('char[?]', #source_file + 1)\n"
+        "    ffi.copy(source_file_str, source_file)\n"
+        "    metadata.source_file = source_file_str\n"
+        "  end\n"
         "\n"
         "  -- Serialize with metadata\n"
         "  local json = C.ir_serialize_json_complete(app.root, nil, nil, metadata, nil)\n"
@@ -1868,6 +1875,7 @@ char* ir_lua_file_to_kir(const char* filepath) {
                 cJSON* meta = cJSON_CreateObject();
                 cJSON_AddStringToObject(meta, "source_language", "lua");
                 cJSON_AddStringToObject(meta, "module_id", module->module_id);
+                cJSON_AddStringToObject(meta, "source_file", abs_path);
                 cJSON_AddItemToObject(root, "metadata", meta);
 
                 // Create sources section with original source
@@ -1910,6 +1918,9 @@ char* ir_lua_file_to_kir(const char* filepath) {
             }  // End of else block for skip_extraction
         }
 
+        fprintf(stderr, "[lua_parser] Processing module[%d]: %s, is_main=%d, root=%p\n",
+                i, module->module_id, module->is_main, (void*)root);
+
         if (root) {
             // Add imports array (dependencies of this module)
             RequireGraph* deps = lua_extract_requires(module->source, module->file_path);
@@ -1936,13 +1947,19 @@ char* ir_lua_file_to_kir(const char* filepath) {
 
             // For main modules, add metadata with source info (library modules already have it)
             if (module->is_main) {
+                fprintf(stderr, "[lua_parser] Adding metadata for main module, abs_path=%s\n", abs_path);
                 cJSON* meta = cJSON_GetObjectItem(root, "metadata");
                 if (!meta) {
+                    fprintf(stderr, "[lua_parser] Creating new metadata object\n");
                     meta = cJSON_CreateObject();
                     cJSON_AddItemToObject(root, "metadata", meta);
+                } else {
+                    fprintf(stderr, "[lua_parser] Found existing metadata\n");
                 }
                 cJSON_AddStringToObject(meta, "module_id", module->module_id);
                 cJSON_AddStringToObject(meta, "language", "lua");
+                cJSON_AddStringToObject(meta, "source_file", abs_path);
+                fprintf(stderr, "[lua_parser] Added source_file to metadata\n");
             }
 
             // Format readable JSON

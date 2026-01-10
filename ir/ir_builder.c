@@ -241,12 +241,9 @@ void ir_tabgroup_register_panel(TabGroupState* state, IRComponent* panel) {
 }
 
 void ir_tabgroup_select(TabGroupState* state, int index) {
-    fprintf(stderr, "[TAB_SELECT] ir_tabgroup_select called with index=%d, state=%p\n", index, (void*)state);
     if (!state) return;
     if (index < 0 || (uint32_t)index >= state->tab_count) return;
     state->selected_index = index;
-    fprintf(stderr, "[TAB_SELECT] panel_count=%u, panels[%d]=%p\n",
-            state->panel_count, index, (void*)(index < (int)state->panel_count ? state->panels[index] : NULL));
 
     // Panels: show only selected
     if (state->tab_content) {
@@ -791,29 +788,38 @@ void ir_destroy_component(IRComponent* component) {
 
     // Clean up TabGroupState if this component is a TabGroup
     // This prevents dangling pointers when UI rebuilds destroy and recreate component trees
+    // IMPORTANT: custom_data might be a JSON string (e.g., '{"selectedIndex":0}') from serialization,
+    // NOT a TabGroupState pointer. Only treat as TabGroupState if it doesn't start with '{'
     if (component->type == IR_COMPONENT_TAB_GROUP && component->custom_data) {
-        TabGroupState* state = (TabGroupState*)component->custom_data;
+        char* data_str = (char*)component->custom_data;
+        if (data_str[0] == '{') {
+            // This is a JSON string, not a TabGroupState - free it as a string
+            free(component->custom_data);
+            component->custom_data = NULL;
+        } else {
+            TabGroupState* state = (TabGroupState*)component->custom_data;
 
-        // Clear panel references to prevent dangling pointers
-        for (uint32_t i = 0; i < state->panel_count; i++) {
-            state->panels[i] = NULL;
+            // Clear panel references to prevent dangling pointers
+            for (uint32_t i = 0; i < state->panel_count; i++) {
+                state->panels[i] = NULL;
+            }
+            state->panel_count = 0;
+
+            // Clear tab references
+            for (uint32_t i = 0; i < state->tab_count; i++) {
+                state->tabs[i] = NULL;
+            }
+            state->tab_count = 0;
+
+            // Clear other references
+            state->tab_bar = NULL;
+            state->tab_content = NULL;
+            state->group = NULL;
+
+            // Free the state itself
+            free(state);
+            component->custom_data = NULL;
         }
-        state->panel_count = 0;
-
-        // Clear tab references
-        for (uint32_t i = 0; i < state->tab_count; i++) {
-            state->tabs[i] = NULL;
-        }
-        state->tab_count = 0;
-
-        // Clear other references
-        state->tab_bar = NULL;
-        state->tab_content = NULL;
-        state->group = NULL;
-
-        // Free the state itself
-        free(state);
-        component->custom_data = NULL;
     }
 
     // Free strings
@@ -1693,6 +1699,15 @@ void ir_set_custom_data(IRComponent* component, const char* data) {
     component->custom_data = data ? strdup(data) : NULL;
 }
 
+void ir_set_each_source(IRComponent* component, const char* source) {
+    if (!component) return;
+
+    if (component->each_source) {
+        free(component->each_source);
+    }
+    component->each_source = source ? strdup(source) : NULL;
+}
+
 // Module Reference Management (for cross-file component references)
 void ir_set_component_module_ref(IRComponent* component, const char* module_ref, const char* export_name) {
     if (!component) return;
@@ -1989,10 +2004,10 @@ void ir_set_tag(IRComponent* component, const char* tag) {
 // Convenience Functions
 IRComponent* ir_container(const char* tag) {
     IRComponent* component = ir_create_component(IR_COMPONENT_CONTAINER);
-    // Container requires explicit layout direction - no default
-    // Use UI.Row or UI.Column to get explicit direction
+    // Container is a generic block-level element like HTML <div>
+    // It stacks children vertically (block flow) without flex layout
     IRLayout* layout = ir_get_layout(component);
-    layout->flex.direction = 0xFF;  // Invalid value - requires explicit set
+    layout->flex.direction = 0xFF;  // Not a flex container - uses block layout
     layout->flex.justify_content = IR_ALIGNMENT_START;
     layout->flex.cross_axis = IR_ALIGNMENT_START;
     if (tag) ir_set_tag(component, tag);

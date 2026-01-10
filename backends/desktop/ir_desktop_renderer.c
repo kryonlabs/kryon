@@ -42,6 +42,7 @@ extern IRComponent* g_hovered_component;
 #include "../../ir/ir_hot_reload.h"
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_executor.h"
+#include "../../ir/ir_serialization.h"
 
 #ifdef ENABLE_SDL3
 #include "ir_to_commands.h"
@@ -641,7 +642,15 @@ void desktop_ir_renderer_set_lua_canvas_update_callback(DesktopIRRenderer* rende
 }
 
 void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root) {
+    fprintf(stderr, "[DESKTOP] desktop_ir_renderer_update_root called, renderer=%p, new_root=%p\n",
+            (void*)renderer, (void*)new_root);
     if (renderer && new_root) {
+        // Expand any ForEach components in the new tree before rendering
+        // This is critical for reactive updates where the UI is rebuilt
+        fprintf(stderr, "[DESKTOP] About to call ir_expand_foreach on new_root=%p\n", (void*)new_root);
+        ir_expand_foreach(new_root);
+        fprintf(stderr, "[DESKTOP] ir_expand_foreach completed\n");
+
         renderer->last_root = new_root;
         renderer->needs_relayout = true;
 

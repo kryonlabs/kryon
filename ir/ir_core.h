@@ -1014,10 +1014,13 @@ typedef struct IRComponent {
     char* visible_condition;           // Variable name that controls visibility (e.g., "showMessage")
     bool visible_when_true;            // True if visible when condition is true, false if visible when condition is false
 
-    // ForEach (dynamic list rendering) support
+    // ForEach (dynamic list rendering) support - legacy fields
     char* each_source;                 // Reactive variable name to iterate (e.g., "state.calendarDays")
     char* each_item_name;              // Variable name for each item (e.g., "day")
     char* each_index_name;             // Variable name for index (e.g., "index")
+
+    // ForEach (new modular system) - structured definition with bindings
+    struct IRForEachDef* foreach_def;  // New structured ForEach definition (see ir_foreach.h)
 
     // Interaction state
     bool is_disabled;                  // True if component is disabled (for buttons, inputs, etc.)
@@ -1058,6 +1061,7 @@ typedef struct IRSourceMetadata {
     char* source_language;    // Original language: "tsx", "c", "nim", "lua", "kry", "html", "md"
     char* compiler_version;   // Kryon compiler version (e.g., "kryon-1.0.0")
     char* timestamp;          // ISO8601 timestamp when KIR was generated
+    char* source_file;        // Path to original source file (for runtime re-execution)
 } IRSourceMetadata;
 
 // ============================================================================

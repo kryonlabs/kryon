@@ -802,9 +802,16 @@ local function buildComponent(componentType, props)
     -- Set module_ref to create a cross-file reference instead of inline expansion
     local currentModule = DSL._currentModule
     if currentModule and currentModule ~= originModule then
-      -- For Container components, set module_ref to use $module: syntax
-      -- The export_name is inferred from the function that created this
-      C.ir_set_component_module_ref(component, originModule, nil)
+      -- Skip module_ref for dynamic modules that generate unique per-instance content
+      -- These modules (like habit_panel) create content that varies per call,
+      -- so using module_ref would lose the unique data
+      local dynamicModules = {
+        ["components/habit_panel"] = true,
+        ["components/color_picker"] = true,
+      }
+      if not dynamicModules[originModule] then
+        C.ir_set_component_module_ref(component, originModule, nil)
+      end
     end
   end
 
@@ -1312,29 +1319,31 @@ DSL.ForEach = function(props)
                                  index_name:gsub('"', '\\"'))
 
   -- Serialize each_source for runtime expansion
-  -- Priority: 1) expression (template reference), 2) string (variable name), 3) table (data)
+  -- Check if we're in runtime mode (re-execution after KIR load)
+  local Runtime = package.loaded["kryon.runtime"]
+  local isRuntimeMode = Runtime and Runtime._isRuntimeMode
+
+  print("[DSL.ForEach] Runtime=", Runtime, "_isRuntimeMode=", isRuntimeMode, "each_source type=", type(each_source))
+
+  -- In compile mode: use marker (data will be fresh from runtime re-execution)
+  -- In runtime mode: use actual data (for immediate ForEach expansion)
   if source_expr and type(source_expr) == "string" then
-    -- Store expression reference for template KIR (not the evaluated data)
-    encoded = encoded .. string.format(',"each_source":"%s","each_source_is_expr":true', source_expr:gsub('"', '\\"'))
+    -- Store expression reference for runtime evaluation
+    encoded = encoded .. string.format(',"each_source_expr":"%s","each_source":"__runtime__"', source_expr:gsub('"', '\\"'))
   elseif type(each_source) == "string" then
     -- Variable reference (e.g., "state.items")
     encoded = encoded .. string.format(',"each_source":"%s"', each_source:gsub('"', '\\"'))
   elseif type(each_source) == "table" then
-    -- Check if we're in multi-file/template mode
-    -- In template mode, don't serialize table data - use a reference marker instead
-    local template_mode = os.getenv("KRYON_TEMPLATE_MODE")
-    if template_mode == "1" then
-      -- Template mode: store a reference marker for runtime re-evaluation
-      encoded = encoded .. string.format(',"each_source":"__dynamic__","each_source_is_expr":true')
-    else
-      -- Desktop mode: ALWAYS serialize the actual table data
-      -- This ensures ForEach components are expanded at compile-time for desktop rendering
-      -- The data (like calendar rows) is already computed at build-time
+    if isRuntimeMode then
+      -- Runtime mode: serialize actual data for ForEach expansion
       encoded = encoded .. ',"each_source":' .. serialize_json_value(each_source)
+    else
+      -- Compile mode: use marker (no stale data in KIR)
+      encoded = encoded .. ',"each_source":"__runtime__"'
     end
   elseif type(each_source) == "function" then
     -- Function source - store marker for runtime evaluation
-    encoded = encoded .. string.format(',"each_source":"__function"')
+    encoded = encoded .. ',"each_source":"__function__"'
   end
   encoded = encoded .. "}"
   C.ir_set_custom_data(component, encoded)
