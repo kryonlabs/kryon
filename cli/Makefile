@@ -1,12 +1,11 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../ir/third_party/cJSON -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../ir/third_party/cJSON -I../backends/desktop -D_POSIX_C_SOURCE=200809L
 # No plugin libraries linked at build time - they are loaded dynamically at runtime
-# Note: Desktop backend requires additional dependencies (SDL3, raylib)
-# To enable desktop, build the desktop backend first, then uncomment:
-# LDFLAGS += ../build/libkryon_desktop.a -lSDL3 -lraylib
-LDFLAGS = -L../build -lkryon_ir -lm -lpthread -ldl
+# Desktop backend is linked for hot reload support (--watch flag)
+# Requires SDL3 and raylib to be installed
+LDFLAGS = -L../build -lkryon_ir -lkryon_desktop -lm -lpthread -ldl -lSDL3 -lraylib
 
 # Directories
 SRC_DIR = src
@@ -82,9 +81,17 @@ $(CJSON_OBJ): ../ir/third_party/cJSON/cJSON.c
 	mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Build target
-$(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ)
+# Build target (depends on IR and desktop libraries)
+$(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_desktop.a
 	$(CC) $(OBJS) $(CODEGEN_OBJS) $(CJSON_OBJ) -o $(TARGET) $(LDFLAGS)
+
+# Build IR library
+../build/libkryon_ir.a:
+	$(MAKE) -C ../ir libkryon_ir.a
+
+# Build desktop library
+../build/libkryon_desktop.a:
+	$(MAKE) -C ../backends/desktop libkryon_desktop.a
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c

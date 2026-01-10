@@ -365,7 +365,11 @@ static int run_web_target(const char* kir_file) {
  * KIR File Execution
  * ============================================================================ */
 
-static int run_kir_file(const char* kir_file, const char* target_platform, const char* renderer) {
+static int run_kir_file(const char* kir_file, const char* target_platform, const char* renderer,
+                         bool hot_reload, const char* watch_path) {
+    (void)hot_reload;
+    (void)watch_path;
+
     if (strcmp(target_platform, "android") == 0) {
         return run_android(kir_file, kir_file);
     }
@@ -376,6 +380,9 @@ static int run_kir_file(const char* kir_file, const char* target_platform, const
         return run_web_target(kir_file);
     }
     // Default: desktop
+    if (hot_reload) {
+        return run_kir_on_desktop_with_hot_reload(kir_file, NULL, renderer, watch_path);
+    }
     return run_kir_on_desktop(kir_file, NULL, renderer);
 }
 
@@ -500,8 +507,10 @@ int cmd_run(int argc, char** argv) {
     const char* target_platform = NULL;
     bool explicit_target = false;
     const char* renderer_override = NULL;
+    bool enable_hot_reload = false;
+    const char* watch_path = NULL;
 
-    // Parse --target and --renderer flags
+    // Parse --target, --renderer, and --watch flags
     int new_argc = 0;
     char* new_argv[128];
     for (int i = 0; i < argc; i++) {
@@ -510,6 +519,11 @@ int cmd_run(int argc, char** argv) {
             explicit_target = true;
         } else if (strncmp(argv[i], "--renderer=", 11) == 0) {
             renderer_override = argv[i] + 11;
+        } else if (strcmp(argv[i], "--watch") == 0 || strcmp(argv[i], "-w") == 0) {
+            enable_hot_reload = true;
+        } else if (strncmp(argv[i], "--watch-path=", 13) == 0) {
+            enable_hot_reload = true;
+            watch_path = argv[i] + 13;
         } else if (strncmp(argv[i], "--", 2) == 0 && strchr(argv[i], '=')) {
             fprintf(stderr, "Error: Unknown flag '%s'\n", argv[i]);
             return 1;
@@ -640,7 +654,8 @@ int cmd_run(int argc, char** argv) {
 
     // KIR files: execute directly
     if (strcmp(frontend, "kir") == 0) {
-        result = run_kir_file(target_file, target_platform, renderer_override);
+        result = run_kir_file(target_file, target_platform, renderer_override,
+                             enable_hot_reload, watch_path);
         if (free_target) free((char*)target_file);
         return result;
     }
@@ -662,7 +677,8 @@ int cmd_run(int argc, char** argv) {
     }
 
     printf("✓ Compiled to KIR: %s\n", kir_file);
-    result = run_kir_file(kir_file, target_platform, renderer_override);
+    result = run_kir_file(kir_file, target_platform, renderer_override,
+                         enable_hot_reload, watch_path);
 
     if (free_target) free((char*)target_file);
     return result;
