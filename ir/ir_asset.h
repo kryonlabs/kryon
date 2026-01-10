@@ -298,6 +298,15 @@ void ir_asset_unload_all(void);
  */
 void ir_asset_preload(const char** paths, uint32_t count);
 
+/**
+ * Load an asset asynchronously
+ * Returns true if queued/successful, false on failure
+ *
+ * Note: Current implementation loads synchronously but provides
+ * the API for future async/background threading support
+ */
+bool ir_asset_load_async(const char* path);
+
 // ============================================================================
 // Custom Asset Types
 // ============================================================================

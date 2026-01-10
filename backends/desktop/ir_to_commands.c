@@ -10,6 +10,7 @@
  */
 
 #include "ir_to_commands.h"
+#include "ir_wireframe.h"
 #include "desktop_internal.h"
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_executor.h"
@@ -1175,6 +1176,39 @@ bool ir_generate_component_commands(
         ir_defer_to_overlay(ctx, component);
         ir_pop_opacity(ctx);
         return true;
+    }
+
+    /* Check wireframe mode - render reactive components as outlines */
+    ir_wireframe_config_t wf_config = {0};
+    ir_wireframe_load_config(&wf_config);
+
+    if (wf_config.enabled && ir_wireframe_should_render(component, &wf_config)) {
+        const char* label = NULL;
+        char label_buf[64];
+
+        /* Generate appropriate label */
+        if (component->type == IR_COMPONENT_FOR_EACH) {
+            label = "[FOREACH]";
+        } else if (component->type == IR_COMPONENT_FOR_LOOP) {
+            label = "[FORLOOP]";
+        } else if (component->text_expression) {
+            snprintf(label_buf, sizeof(label_buf), "{{%s}}", component->text_expression);
+            label = label_buf;
+        } else if (component->visible_condition) {
+            snprintf(label_buf, sizeof(label_buf), "?%s", component->visible_condition);
+            label = label_buf;
+        } else if (component->property_binding_count > 0) {
+            label = "[REACTIVE]";
+        }
+
+        /* Render wireframe outline */
+        bool wireframe_result = ir_wireframe_render_outline(
+            component, ctx, render_bounds,
+            wf_config.color, label
+        );
+
+        ir_pop_opacity(ctx);
+        return wireframe_result;
     }
 
     /* Generate commands based on component type */

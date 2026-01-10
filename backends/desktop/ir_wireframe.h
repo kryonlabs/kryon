@@ -4,10 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Forward declarations */
-typedef struct IRComponent IRComponent;
-typedef struct IRCommandContext IRCommandContext;
-typedef struct LayoutRect LayoutRect;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Wireframe configuration */
 typedef struct {
@@ -29,15 +28,19 @@ bool ir_wireframe_is_enabled(void);
 uint32_t ir_wireframe_get_color(void);
 
 /* Check if a component should render as wireframe */
-bool ir_wireframe_should_render(struct IRComponent* component, ir_wireframe_config_t* config);
+bool ir_wireframe_should_render(void* component, ir_wireframe_config_t* config);
 
 /* Generate wireframe outline commands */
 bool ir_wireframe_render_outline(
-    struct IRComponent* component,
-    struct IRCommandContext* ctx,
-    struct LayoutRect* bounds,
+    void* component,
+    void* ctx,
+    void* bounds,
     uint32_t color,
     const char* label
 );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* IR_WIREFRAME_H */

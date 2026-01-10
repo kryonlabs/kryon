@@ -268,6 +268,62 @@ kryon_android_capabilities_t kryon_android_get_capabilities(void);
 void kryon_android_print_info(void);
 
 // ============================================================================
+// Hot Reload Support
+// ============================================================================
+
+// Hot reload callback type (called when files change)
+typedef void (*kryon_android_reload_callback_t)(const char* changed_path, void* user_data);
+
+/**
+ * Initialize hot reload system
+ * Sets up file watching for development builds
+ */
+bool kryon_android_hot_reload_init(void);
+
+/**
+ * Shutdown hot reload system
+ */
+void kryon_android_hot_reload_shutdown(void);
+
+/**
+ * Add path to watch for changes
+ * Can watch directories in the app's data directory
+ */
+bool kryon_android_watch_path(const char* path, bool recursive);
+
+/**
+ * Set callback for file change notifications
+ */
+void kryon_android_set_reload_callback(kryon_android_reload_callback_t callback, void* user_data);
+
+/**
+ * Poll for file changes (call from main loop)
+ * Returns number of changes detected
+ */
+int kryon_android_hot_reload_poll(void);
+
+/**
+ * Check if hot reload is available
+ * Only available in debug/dev builds, not release
+ */
+bool kryon_android_hot_reload_available(void);
+
+/**
+ * Trigger manual reload (e.g., from dev menu)
+ */
+void kryon_android_trigger_reload(void);
+
+/**
+ * Get app's files directory for watching source files
+ */
+const char* kryon_android_get_files_dir(void);
+
+/**
+ * Check if running in debug/dev mode
+ */
+bool kryon_android_is_debug_build(void);
+
+// ============================================================================
 // Error Handling
 // ============================================================================
 

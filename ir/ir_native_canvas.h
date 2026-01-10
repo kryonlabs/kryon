@@ -85,6 +85,16 @@ bool ir_native_canvas_invoke_callback(uint32_t component_id);
 void ir_native_canvas_set_background_color(uint32_t component_id, uint32_t color);
 
 /**
+ * Set the root component for component lookup by ID
+ *
+ * This must be called before using any canvas functions that need to
+ * look up components by ID (like set_background_color).
+ *
+ * @param root The root component of the component tree
+ */
+void ir_native_canvas_set_root(IRComponent* root);
+
+/**
  * Get NativeCanvas data from component
  *
  * @param component Component to get data from

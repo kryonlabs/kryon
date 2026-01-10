@@ -59,7 +59,7 @@ endif
 # Core platform-agnostic sources
 DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c desktop_platform.c \
                   desktop_input_helpers.c desktop_test_events.c debug_backend.c \
-                  stb_image_impl.c ir_to_commands.c
+                  stb_image_impl.c ir_to_commands.c ir_wireframe.c
 
 # SDL3 renderer modules (in renderers/sdl3/)
 SDL3_RENDERER_SOURCES = renderers/sdl3/sdl3_renderer.c \
@@ -84,7 +84,7 @@ ifeq ($(ENABLE_RAYLIB),1)
     DESKTOP_SOURCES += $(RAYLIB_RENDERER_SOURCES)
 endif
 
-DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h
+DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h ir_wireframe.h
 
 # Output files
 DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop.a

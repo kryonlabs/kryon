@@ -7,6 +7,7 @@
 #define _POSIX_C_SOURCE 199309L
 
 #include "ir_asset.h"
+#include "ir_audio.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -46,6 +47,14 @@ static struct {
 
     // Default sprite atlas for individual sprites
     IRSpriteAtlasID default_atlas;
+
+    // Custom asset loaders
+    struct {
+        IRAssetLoadCallback load;
+        IRAssetUnloadCallback unload;
+        IRAssetReloadCallback reload;
+        bool registered;
+    } custom_loaders[IR_ASSET_CUSTOM + 1];  // One slot per asset type
 
     // Statistics
     uint64_t total_load_time_ms;
@@ -503,10 +512,70 @@ bool ir_asset_reload(const char* path) {
         return false;
     }
 
-    printf("[Asset] Reloading: %s\n", path);
+    printf("[Asset] Reloading: %s (type=%d)\n", path, asset->type);
 
-    // TODO: Implement type-specific reload
-    // For now, just update modification time
+    // Check if there's a custom reload callback for this asset type
+    if (asset->type >= 0 && asset->type <= IR_ASSET_CUSTOM &&
+        g_asset_system.custom_loaders[asset->type].registered &&
+        g_asset_system.custom_loaders[asset->type].reload) {
+
+        // Call custom reload callback
+        bool reloaded = g_asset_system.custom_loaders[asset->type].reload(asset);
+        if (reloaded) {
+            printf("[Asset] Successfully reloaded via custom callback\n");
+        } else {
+            printf("[Asset] Custom reload callback failed\n");
+            return false;
+        }
+    } else {
+        // Type-specific reload for built-in asset types
+        switch (asset->type) {
+            case IR_ASSET_SPRITE: {
+                // Reload sprite by unloading and reloading
+                if (asset->data) {
+                    // Unload old sprite data
+                    free(asset->data);
+                    asset->data = NULL;
+                }
+
+                // Reload the sprite
+                IRSpriteID sprite_id = ir_asset_load_sprite(path);
+                if (sprite_id != IR_INVALID_SPRITE) {
+                    // Update asset data with new sprite reference
+                    asset->data = (void*)(uintptr_t)sprite_id;
+                    printf("[Asset] Successfully reloaded SPRITE\n");
+                } else {
+                    printf("[Asset] Failed to reload SPRITE\n");
+                    return false;
+                }
+                break;
+            }
+
+            case IR_ASSET_SOUND: {
+                // Reload sound
+                if (asset->data) {
+                    // Sound would need to be unloaded via audio system
+                    // For now, just mark as needing reload
+                    printf("[Asset] SOUND reload requested (audio system integration needed)\n");
+                }
+                break;
+            }
+
+            case IR_ASSET_TEXTURE:
+            case IR_ASSET_SPRITE_ATLAS:
+            case IR_ASSET_FONT:
+            case IR_ASSET_MUSIC:
+            case IR_ASSET_DATA:
+            case IR_ASSET_SHADER:
+            default:
+                // For other types, just update modification time
+                // Full reload would require backend-specific code
+                printf("[Asset] Reload for type %d not fully implemented\n", asset->type);
+                break;
+        }
+    }
+
+    // Update modification time
     asset->file_mtime = get_file_mtime(asset->real_path);
 
     // Call hot reload callback
@@ -608,10 +677,55 @@ void ir_asset_unload_all(void) {
 }
 
 void ir_asset_preload(const char** paths, uint32_t count) {
-    // TODO: Implement background loading
+    // Load all assets immediately
+    // For true async background loading, a threading system would be needed
     for (uint32_t i = 0; i < count; i++) {
-        ir_asset_load_sprite(paths[i]);
+        const char* path = paths[i];
+        if (!path) continue;
+
+        // Try to determine asset type from extension and load accordingly
+        const char* ext = strrchr(path, '.');
+        if (ext) {
+            if (strcmp(ext, ".png") == 0 || strcmp(ext, ".jpg") == 0 ||
+                strcmp(ext, ".jpeg") == 0 || strcmp(ext, ".tga") == 0) {
+                ir_asset_load_sprite(path);
+            } else if (strcmp(ext, ".wav") == 0 || strcmp(ext, ".ogg") == 0) {
+                ir_audio_load_sound(path);
+            } else {
+                // Default to sprite loading
+                ir_asset_load_sprite(path);
+            }
+        } else {
+            ir_asset_load_sprite(path);
+        }
     }
+}
+
+// Queue an asset for background loading (to be processed later)
+// Returns true if successfully queued
+bool ir_asset_load_async(const char* path) {
+    // For true async loading, this would queue the asset to be loaded
+    // in a background thread. For now, we load synchronously.
+    // The API is here for future async implementation.
+
+    IRAsset* asset = find_asset(path);
+    if (asset && asset->state == IR_ASSET_LOADED) {
+        // Already loaded
+        return true;
+    }
+
+    // Load synchronously for now
+    const char* ext = strrchr(path, '.');
+    if (ext) {
+        if (strcmp(ext, ".png") == 0 || strcmp(ext, ".jpg") == 0 ||
+            strcmp(ext, ".jpeg") == 0 || strcmp(ext, ".tga") == 0) {
+            return ir_asset_load_sprite(path) != IR_INVALID_SPRITE;
+        } else if (strcmp(ext, ".wav") == 0 || strcmp(ext, ".ogg") == 0) {
+            return ir_audio_load_sound(path) != IR_INVALID_SOUND;
+        }
+    }
+
+    return ir_asset_load_sprite(path) != IR_INVALID_SPRITE;
 }
 
 // ============================================================================
@@ -622,8 +736,17 @@ void ir_asset_register_loader(IRAssetType type,
                               IRAssetLoadCallback load_cb,
                               IRAssetUnloadCallback unload_cb,
                               IRAssetReloadCallback reload_cb) {
-    // TODO: Implement custom loaders
-    (void)type; (void)load_cb; (void)unload_cb; (void)reload_cb;
+    if (type < 0 || type > IR_ASSET_CUSTOM) {
+        fprintf(stderr, "[Asset] Invalid asset type for loader registration: %d\n", type);
+        return;
+    }
+
+    g_asset_system.custom_loaders[type].load = load_cb;
+    g_asset_system.custom_loaders[type].unload = unload_cb;
+    g_asset_system.custom_loaders[type].reload = reload_cb;
+    g_asset_system.custom_loaders[type].registered = true;
+
+    printf("[Asset] Registered custom loader for type %d\n", type);
 }
 
 // ============================================================================

@@ -23,6 +23,9 @@ static NativeCanvasCallbackEntry g_canvas_callbacks[MAX_NATIVE_CANVAS_CALLBACKS]
 static uint32_t g_callback_count = 0;
 static bool g_registry_initialized = false;
 
+// Global root component for component lookup by ID
+static IRComponent* g_canvas_root = NULL;
+
 // Initialize the callback registry
 static void init_callback_registry(void) {
     if (g_registry_initialized) return;
@@ -162,15 +165,33 @@ bool ir_native_canvas_invoke_callback(uint32_t component_id) {
 // Property Setters/Getters
 // ============================================================================
 
-void ir_native_canvas_set_background_color(uint32_t component_id, uint32_t color) {
-    // Note: We need a way to get component by ID
-    // For now, this is a placeholder
-    // In a real implementation, we'd look up the component and update its data
-    (void)component_id;
-    (void)color;
+// Set the root component for component lookup by ID
+void ir_native_canvas_set_root(IRComponent* root) {
+    g_canvas_root = root;
+}
 
-    // TODO: Implement component lookup by ID
-    fprintf(stderr, "[NativeCanvas] Warning: ir_native_canvas_set_background_color not fully implemented\n");
+void ir_native_canvas_set_background_color(uint32_t component_id, uint32_t color) {
+    if (!g_canvas_root) {
+        fprintf(stderr, "[NativeCanvas] Error: Root component not set. Call ir_native_canvas_set_root() first.\n");
+        return;
+    }
+
+    // Look up component by ID using the existing IR builder function
+    IRComponent* component = ir_find_component_by_id(g_canvas_root, component_id);
+    if (!component) {
+        fprintf(stderr, "[NativeCanvas] Error: Component with ID %u not found\n", component_id);
+        return;
+    }
+
+    if (component->type != IR_COMPONENT_NATIVE_CANVAS) {
+        fprintf(stderr, "[NativeCanvas] Error: Component %u is not a NativeCanvas\n", component_id);
+        return;
+    }
+
+    IRNativeCanvasData* data = ir_native_canvas_get_data(component);
+    if (data) {
+        data->background_color = color;
+    }
 }
 
 IRNativeCanvasData* ir_native_canvas_get_data(IRComponent* component) {
