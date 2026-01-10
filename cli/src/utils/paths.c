@@ -78,6 +78,160 @@ char* paths_expand_home(const char* path) {
 }
 
 /**
+ * Get XDG base directory with fallback
+ */
+static char* get_xdg_dir(const char* env_var, const char* fallback_suffix) {
+    const char* env_val = getenv(env_var);
+    if (env_val && strlen(env_val) > 0) {
+        return str_copy(env_val);
+    }
+
+    char* home = paths_get_home_dir();
+    if (!home) {
+        return NULL;
+    }
+
+    char* result = path_join(home, fallback_suffix);
+    free(home);
+    return result;
+}
+
+/**
+ * Expand environment variables in path
+ * Supports: $HOME, ~, $XDG_DATA_HOME, $XDG_BIN_HOME, $XDG_STATE_HOME
+ */
+char* path_expand_env_vars(const char* path) {
+    if (!path) return NULL;
+
+    char* result = str_copy(path);
+    char* home = paths_get_home_dir();
+
+    // Expand $HOME or ~
+    if (home) {
+        char* pos = result;
+        while ((pos = strstr(pos, "$HOME")) != NULL) {
+            // Allocate new string with expansion
+            size_t prefix_len = pos - result;
+            size_t home_len = strlen(home);
+            size_t suffix_len = strlen(pos + 5);  // 5 = strlen("$HOME")
+            char* new_result = malloc(prefix_len + home_len + suffix_len + 1);
+            if (new_result) {
+                strncpy(new_result, result, prefix_len);
+                strcpy(new_result + prefix_len, home);
+                strcpy(new_result + prefix_len + home_len, pos + 5);
+                free(result);
+                result = new_result;
+                pos = result + prefix_len + home_len;
+            } else {
+                break;
+            }
+        }
+
+        // Also handle ~ at start or after /
+        if (result[0] == '~') {
+            char* expanded = paths_expand_home(result);
+            free(result);
+            result = expanded;
+        }
+    }
+
+    // Expand $XDG_DATA_HOME (default: ~/.local/share)
+    char* xdg_data = get_xdg_dir("XDG_DATA_HOME", ".local/share");
+    if (xdg_data) {
+        char* pos = result;
+        while ((pos = strstr(pos, "$XDG_DATA_HOME")) != NULL) {
+            size_t prefix_len = pos - result;
+            size_t xdg_len = strlen(xdg_data);
+            size_t suffix_len = strlen(pos + 13);  // 13 = strlen("$XDG_DATA_HOME")
+            char* new_result = malloc(prefix_len + xdg_len + suffix_len + 1);
+            if (new_result) {
+                strncpy(new_result, result, prefix_len);
+                strcpy(new_result + prefix_len, xdg_data);
+                strcpy(new_result + prefix_len + xdg_len, pos + 13);
+                free(result);
+                result = new_result;
+                pos = result + prefix_len + xdg_len;
+            } else {
+                break;
+            }
+        }
+        free(xdg_data);
+    }
+
+    // Expand $XDG_BIN_HOME (default: ~/.local/bin)
+    char* xdg_bin = get_xdg_dir("XDG_BIN_HOME", ".local/bin");
+    if (xdg_bin) {
+        char* pos = result;
+        while ((pos = strstr(pos, "$XDG_BIN_HOME")) != NULL) {
+            size_t prefix_len = pos - result;
+            size_t xdg_len = strlen(xdg_bin);
+            size_t suffix_len = strlen(pos + 12);  // 12 = strlen("$XDG_BIN_HOME")
+            char* new_result = malloc(prefix_len + xdg_len + suffix_len + 1);
+            if (new_result) {
+                strncpy(new_result, result, prefix_len);
+                strcpy(new_result + prefix_len, xdg_bin);
+                strcpy(new_result + prefix_len + xdg_len, pos + 12);
+                free(result);
+                result = new_result;
+                pos = result + prefix_len + xdg_len;
+            } else {
+                break;
+            }
+        }
+        free(xdg_bin);
+    }
+
+    // Expand $XDG_STATE_HOME (default: ~/.local/state)
+    char* xdg_state = get_xdg_dir("XDG_STATE_HOME", ".local/state");
+    if (xdg_state) {
+        char* pos = result;
+        while ((pos = strstr(pos, "$XDG_STATE_HOME")) != NULL) {
+            size_t prefix_len = pos - result;
+            size_t xdg_len = strlen(xdg_state);
+            size_t suffix_len = strlen(pos + 14);  // 14 = strlen("$XDG_STATE_HOME")
+            char* new_result = malloc(prefix_len + xdg_len + suffix_len + 1);
+            if (new_result) {
+                strncpy(new_result, result, prefix_len);
+                strcpy(new_result + prefix_len, xdg_state);
+                strcpy(new_result + prefix_len + xdg_len, pos + 14);
+                free(result);
+                result = new_result;
+                pos = result + prefix_len + xdg_len;
+            } else {
+                break;
+            }
+        }
+        free(xdg_state);
+    }
+
+    // Expand $XDG_CACHE_HOME (default: ~/.cache)
+    char* xdg_cache = get_xdg_dir("XDG_CACHE_HOME", ".cache");
+    if (xdg_cache) {
+        char* pos = result;
+        while ((pos = strstr(pos, "$XDG_CACHE_HOME")) != NULL) {
+            size_t prefix_len = pos - result;
+            size_t xdg_len = strlen(xdg_cache);
+            size_t suffix_len = strlen(pos + 13);  // 13 = strlen("$XDG_CACHE_HOME")
+            char* new_result = malloc(prefix_len + xdg_len + suffix_len + 1);
+            if (new_result) {
+                strncpy(new_result, result, prefix_len);
+                strcpy(new_result + prefix_len, xdg_cache);
+                strcpy(new_result + prefix_len + xdg_len, pos + 13);
+                free(result);
+                result = new_result;
+                pos = result + prefix_len + xdg_len;
+            } else {
+                break;
+            }
+        }
+        free(xdg_cache);
+    }
+
+    if (home) free(home);
+    return result;
+}
+
+/**
  * Resolve path (absolute, relative, or ~)
  * base_dir: Directory to resolve relative paths against
  */

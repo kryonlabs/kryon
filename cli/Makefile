@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I../ir -I../ir/third_party/cJSON -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../ir/third_party/cJSON -D_POSIX_C_SOURCE=200809L
 # No plugin libraries linked at build time - they are loaded dynamically at runtime
 # Note: Desktop backend requires additional dependencies (SDL3, raylib)
 # To enable desktop, build the desktop backend first, then uncomment:
@@ -38,7 +38,12 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_new.c \
        $(SRC_DIR)/commands/cmd_inspect.c \
        $(SRC_DIR)/commands/cmd_diff.c \
-       $(SRC_DIR)/commands/cmd_plugin.c
+       $(SRC_DIR)/commands/cmd_plugin.c \
+       $(SRC_DIR)/commands/cmd_install.c \
+       $(SRC_DIR)/commands/cmd_uninstall.c \
+       $(SRC_DIR)/build/luajit_compile.c \
+       $(SRC_DIR)/build/embed_bytecode.c \
+       $(SRC_DIR)/build/luajit_link.c
 
 # Object files
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)

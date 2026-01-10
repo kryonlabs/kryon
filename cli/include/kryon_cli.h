@@ -49,6 +49,7 @@ int dir_list_files(const char* dir, const char* ext, char*** files, int* count);
 char* path_join(const char* p1, const char* p2);
 char* path_resolve_canonical(const char* path, const char* base_dir);
 const char* path_extension(const char* path);
+char* path_expand_env_vars(const char* path);  // Expand $HOME, $XDG_* vars
 
 // ============================================================================
 // Path Discovery
@@ -103,6 +104,40 @@ typedef struct {
     char* resolved_path;     // Resolved absolute path (populated at runtime)
 } PluginDep;
 
+// ============================================================================
+// Install Configuration
+// ============================================================================
+
+typedef enum {
+    INSTALL_MODE_SYMLINK,
+    INSTALL_MODE_COPY,
+    INSTALL_MODE_SYSTEM
+} InstallMode;
+
+typedef struct {
+    char* source;            // Source file path (relative to project root)
+    char* target;            // Target installation path
+} InstallFile;
+
+typedef struct {
+    bool enabled;            // Whether to create desktop entry
+    char* name;              // Desktop entry name
+    char* icon;              // Icon file path
+    char** categories;       // Desktop categories array
+    int categories_count;    // Number of categories
+} InstallDesktop;
+
+typedef struct {
+    InstallMode mode;        // Installation mode (symlink, copy, system)
+    char* binary_path;       // Where to install binary
+    char* binary_name;       // Name of installed binary
+    bool binary_executable;  // Make binary executable
+    InstallFile* files;      // Additional files to install
+    int files_count;         // Number of additional files
+    InstallDesktop desktop;  // Desktop entry configuration
+    char* target;            // Target to install (desktop, web, etc.) - NULL for auto-detect
+} InstallConfig;
+
 typedef struct {
     // Project metadata
     char* project_name;
@@ -137,6 +172,9 @@ typedef struct {
 
     // Codegen output directory (optional, defaults to build_output_dir)
     char* codegen_output_dir;
+
+    // Install configuration
+    InstallConfig* install;
 } KryonConfig;
 
 KryonConfig* config_load(const char* config_path);
@@ -160,5 +198,7 @@ int cmd_config(int argc, char** argv);
 int cmd_test(int argc, char** argv);
 int cmd_dev(int argc, char** argv);
 int cmd_doctor(int argc, char** argv);
+int cmd_install(int argc, char** argv);
+int cmd_uninstall(int argc, char** argv);
 
 #endif // KRYON_CLI_H
