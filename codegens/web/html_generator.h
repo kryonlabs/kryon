@@ -44,6 +44,7 @@ typedef struct HTMLGenerator {
     HtmlGeneratorOptions options;  // Generation options
     IRLogicBlock* logic_block;     // Logic block for event handlers (transpile mode)
     IRReactiveManifest* manifest;  // Manifest for CSS variables (optional)
+    IRSourceMetadata* metadata;    // Source metadata for conditional code generation
 
     // Collected handlers for Lua registry generation
     CollectedHandler* handlers;
@@ -61,6 +62,7 @@ HtmlGeneratorOptions html_generator_default_options(void);
 
 void html_generator_set_pretty_print(HTMLGenerator* generator, bool pretty);
 void html_generator_set_manifest(HTMLGenerator* generator, IRReactiveManifest* manifest);
+void html_generator_set_metadata(HTMLGenerator* generator, IRSourceMetadata* metadata);
 
 bool html_generator_write_string(HTMLGenerator* generator, const char* string);
 bool html_generator_write_format(HTMLGenerator* generator, const char* format, ...);
