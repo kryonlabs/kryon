@@ -208,10 +208,10 @@ ffi.cdef[[
   // Source Metadata (for KIR compilation tracking)
   // ============================================================================
   typedef struct {
-    char* source_language;
-    char* source_file;
-    char* compiler_version;
-    char* timestamp;
+    char* source_language;    // Original language: "tsx", "c", "nim", "lua", "kry", "html", "md"
+    char* compiler_version;   // Kryon compiler version (e.g., "kryon-1.0.0")
+    char* timestamp;          // ISO8601 timestamp when KIR was generated
+    char* source_file;        // Path to original source file (for runtime re-execution)
   } IRSourceMetadata;
 
   // ============================================================================
@@ -361,6 +361,7 @@ ffi.cdef[[
   void ir_set_text_content(IRComponent* component, const char* text);
   void ir_set_custom_data(IRComponent* component, const char* data);
   void ir_set_tag(IRComponent* component, const char* tag);
+  void ir_set_each_source(IRComponent* component, const char* source);
   void ir_set_component_module_ref(IRComponent* component, const char* module_ref, const char* export_name);
   char* ir_clear_tree_module_refs_json(IRComponent* component);
   void ir_restore_tree_module_refs_json(IRComponent* component, const char* json_str);
@@ -486,6 +487,27 @@ ffi.cdef[[
 
   // ForEach expansion (call after loading KIR file to expand ForEach components)
   void ir_expand_foreach(IRComponent* root);
+
+  // ForEach new modular API (ir_foreach.h, ir_foreach_expand.h)
+  typedef struct IRForEachDef IRForEachDef;
+  typedef struct IRForEachBinding IRForEachBinding;
+
+  // ForEach definition builder
+  IRForEachDef* ir_foreach_def_create(const char* item_name, const char* index_name);
+  void ir_foreach_def_destroy(IRForEachDef* def);
+  void ir_foreach_set_source_literal(IRForEachDef* def, const char* json_array);
+  void ir_foreach_set_source_variable(IRForEachDef* def, const char* var_name);
+  void ir_foreach_set_source_expression(IRForEachDef* def, const char* expr);
+  void ir_foreach_set_template(IRForEachDef* def, IRComponent* template_component);
+  void ir_foreach_add_binding(IRForEachDef* def, const char* target_property,
+                              const char* source_expression, bool is_computed);
+  void ir_foreach_clear_bindings(IRForEachDef* def);
+
+  // ForEach tree expansion
+  void ir_foreach_expand_tree(IRComponent* root);
+
+  // Component deep copy utility
+  IRComponent* ir_component_deep_copy(IRComponent* src);
 
   // Context access
   IRContext* ir_get_global_context(void);

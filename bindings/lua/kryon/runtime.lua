@@ -410,23 +410,38 @@ function Runtime.loadKIR(kir_filepath)
 
   if ctx ~= nil and ctx.source_metadata ~= nil then
     local meta = ctx.source_metadata
+    print("[runtime.loadKIR] Got metadata:", meta)
 
     if meta.source_language ~= nil then
       local lang = ffi.string(meta.source_language)
+      print("[runtime.loadKIR] source_language:", lang)
       if lang == "lua" then
         if meta.source_file ~= nil then
           source_file = ffi.string(meta.source_file)
+          print("[runtime.loadKIR] source_file:", source_file)
           has_lua_events = true
+        else
+          print("[runtime.loadKIR] source_file is nil!")
         end
       end
+    else
+      print("[runtime.loadKIR] source_language is nil!")
     end
+  else
+    print("[runtime.loadKIR] ctx or source_metadata is nil!")
   end
+
+  print("[runtime.loadKIR] has_lua_events:", has_lua_events, "source_file:", source_file)
 
   if has_lua_events and source_file then
     -- CRITICAL: Reset handler registry before re-executing
     -- This ensures handler IDs match between compilation and runtime
     Runtime.handlers = {}
     Runtime.nextHandlerId = 1
+
+    -- Set runtime mode flag - tells DSL to use actual data for ForEach
+    -- (instead of marker for KIR serialization)
+    Runtime._isRuntimeMode = true
 
     -- Re-execute the Lua file to rebuild handler registry
     local chunk, err = loadfile(source_file)

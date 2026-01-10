@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "ir_serialization.h"
 #include "ir_builder.h"
+#include "ir_foreach_expand.h"  // New modular ForEach expansion
 #include "cJSON.h"
 #include <stdlib.h>
 #include <string.h>
@@ -1558,6 +1559,11 @@ IRComponent* ir_read_json_file(const char* filename) {
                     metadata->timestamp = strdup(ts->valuestring);
                 }
 
+                cJSON* sf = cJSON_GetObjectItem(metadataObj, "source_file");
+                if (sf && cJSON_IsString(sf)) {
+                    metadata->source_file = strdup(sf->valuestring);
+                }
+
                 // Store in global context
                 if (g_ir_context) {
                     // Free old source metadata if exists
@@ -1568,6 +1574,8 @@ IRComponent* ir_read_json_file(const char* filename) {
                             free(g_ir_context->source_metadata->compiler_version);
                         if (g_ir_context->source_metadata->timestamp)
                             free(g_ir_context->source_metadata->timestamp);
+                        if (g_ir_context->source_metadata->source_file)
+                            free(g_ir_context->source_metadata->source_file);
                         free(g_ir_context->source_metadata);
                     }
                     g_ir_context->source_metadata = metadata;
@@ -2094,13 +2102,24 @@ static void expand_foreach_component(IRComponent* component) {
         return;
     }
 
-    fprintf(stderr, "[ForEach] Found ForEach component ID=%d\n", (int)component->id);
-
     // ForEach data can be in two places:
     // 1. custom_data (from initial Lua compilation)
     // 2. each_source (from KIR file deserialization)
+
+    // Check for runtime marker - skip expansion if data should come from runtime
+    if (component->each_source &&
+        (strcmp(component->each_source, "__runtime__") == 0 ||
+         strcmp(component->each_source, "\"__runtime__\"") == 0)) {
+        // ForEach has runtime marker - skip expansion, process children as-is
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            if (component->children[i]) {
+                expand_foreach_component(component->children[i]);
+            }
+        }
+        return;
+    }
+
     if (!component->custom_data && !component->each_source) {
-        fprintf(stderr, "[ForEach] ID=%d has no custom_data or each_source\n", (int)component->id);
         // No data - process children
         for (uint32_t i = 0; i < component->child_count; i++) {
             if (component->children[i]) {
@@ -2125,13 +2144,11 @@ static void expand_foreach_component(IRComponent* component) {
 
     // Prefer each_source (from KIR) over custom_data (from initial compilation)
     if (component->each_source) {
-        fprintf(stderr, "[ForEach] ID=%d using each_source from KIR\n", (int)component->id);
         // Parse each_source directly (it should already be a JSON string)
         custom_json = cJSON_Parse(component->each_source);
         if (custom_json && cJSON_IsArray(custom_json)) {
             each_source_item = custom_json;
             num_items = cJSON_GetArraySize(custom_json);
-            fprintf(stderr, "[ForEach] ID=%d each_source is a direct array with %d items\n", (int)component->id, num_items);
         }
     }
 
@@ -2280,18 +2297,27 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
         return;
     }
 
-    fprintf(stderr, "[ForEach] Found ForEach component ID=%d\n", (int)component->id);
-
     // ForEach data can be in two places:
     // 1. custom_data (from initial Lua compilation)
     // 2. each_source (from KIR file deserialization)
-    if (!component->custom_data && !component->each_source) {
-        fprintf(stderr, "[ForEach] ID=%d has no custom_data or each_source\n", (int)component->id);
-        // No data - process children and then replace this ForEach with its single child (the template)
+
+    // Check for runtime marker - skip expansion if data should come from runtime
+    if (component->each_source &&
+        (strcmp(component->each_source, "__runtime__") == 0 ||
+         strcmp(component->each_source, "\"__runtime__\"") == 0)) {
+        // ForEach has runtime marker - replace with template child
         if (component->child_count > 0) {
-            // Replace this ForEach with its template child
             replace_foreach_with_children(parent, child_index, component->children, component->child_count);
-            // Don't free component->children - they're now owned by parent
+            component->children = NULL;
+            component->child_count = 0;
+        }
+        return;
+    }
+
+    if (!component->custom_data && !component->each_source) {
+        // No data - replace with template child
+        if (component->child_count > 0) {
+            replace_foreach_with_children(parent, child_index, component->children, component->child_count);
             component->children = NULL;
             component->child_count = 0;
         }
@@ -2313,13 +2339,11 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
 
     // Prefer each_source (from KIR) over custom_data (from initial compilation)
     if (component->each_source) {
-        fprintf(stderr, "[ForEach] ID=%d using each_source from KIR\n", (int)component->id);
         // Parse each_source directly (it should already be a JSON string)
         custom_json = cJSON_Parse(component->each_source);
         if (custom_json && cJSON_IsArray(custom_json)) {
             each_source_item = custom_json;
             num_items = cJSON_GetArraySize(custom_json);
-            fprintf(stderr, "[ForEach] ID=%d each_source is a direct array with %d items\n", (int)component->id, num_items);
         }
     }
 
@@ -2342,6 +2366,25 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
         fprintf(stderr, "[ForEach] ID=%d parsed custom_data successfully\n", (int)component->id);
 
         each_source_item = cJSON_GetObjectItem(custom_json, "each_source");
+
+        // Check for runtime marker in custom_data
+        extern int cJSON_IsString(const cJSON* item);
+        extern char* cJSON_GetStringValue(const cJSON* item);
+        if (each_source_item && cJSON_IsString(each_source_item)) {
+            char* marker = cJSON_GetStringValue(each_source_item);
+            if (marker && strcmp(marker, "__runtime__") == 0) {
+                fprintf(stderr, "[ForEach] ID=%d has __runtime__ marker in custom_data - replacing with template\n", (int)component->id);
+                cJSON_Delete(custom_json);
+                // Replace ForEach with its template children
+                if (component->child_count > 0) {
+                    replace_foreach_with_children(parent, child_index, component->children, component->child_count);
+                    component->children = NULL;
+                    component->child_count = 0;
+                }
+                return;
+            }
+        }
+
         if (each_source_item && cJSON_IsArray(each_source_item)) {
             num_items = cJSON_GetArraySize(each_source_item);
         }
@@ -2448,18 +2491,14 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
 /**
  * Expand all ForEach components in the tree
  * Call this after loading a KIR file to expand ForEach templates
+ *
+ * This function now delegates to the new modular ForEach expansion system
+ * in ir_foreach_expand.c which provides:
+ * - Generic property binding system (replaces hardcoded field updates)
+ * - Clean separation between definition, serialization, and expansion
+ * - Better nested ForEach support
  */
 void ir_expand_foreach(IRComponent* root) {
-    fprintf(stderr, "[ForEach] ir_expand_foreach called, root=%p\n", (void*)root);
-    if (!root) {
-        fprintf(stderr, "[ForEach] root is NULL, returning\n");
-        return;
-    }
-    fprintf(stderr, "[ForEach] starting expansion, root type=%d\n", (int)root->type);
-
-    // Use the new parent-tracking expansion
-    // Root has no parent, so pass NULL and 0
-    expand_foreach_with_parent(root, NULL, 0);
-
-    fprintf(stderr, "[ForEach] expansion complete\n");
+    // Delegate to the new modular ForEach expansion
+    ir_foreach_expand_tree(root);
 }

@@ -2647,6 +2647,9 @@ static cJSON* json_serialize_metadata(IRSourceMetadata* metadata) {
     if (metadata->timestamp) {
         cJSON_AddStringToObject(meta, "timestamp", metadata->timestamp);
     }
+    if (metadata->source_file) {
+        cJSON_AddStringToObject(meta, "source_file", metadata->source_file);
+    }
 
     return meta;
 }

@@ -381,21 +381,91 @@ void layout_column_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     layout_flexbox_single_pass(c, constraints, parent_x, parent_y, LAYOUT_AXIS_VERTICAL);
 }
 
-// Container layout (configurable direction)
+// Container layout - block-level element like HTML <div>
+// Children stack vertically in normal document flow
 void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                                   float parent_x, float parent_y) {
-    // Container MUST have explicit layout direction - no silent fallbacks
-    if (!c->layout || c->layout->flex.direction == 0xFF) {
-        fprintf(stderr, "ERROR: Container component has no explicit layout direction. "
-                "Please use UI.Row or UI.Column, or set flexDirection explicitly.\n");
-        return;
+    if (!c) return;
+
+    // Ensure layout state exists
+    if (!c->layout_state) {
+        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
     }
 
-    // direction == 1 means row (horizontal), 0 means column (vertical)
-    LayoutAxis axis = (c->layout->flex.direction == 1) ?
-        LAYOUT_AXIS_HORIZONTAL : LAYOUT_AXIS_VERTICAL;
+    // Get padding
+    float pad_left = c->style ? c->style->padding.left : 0;
+    float pad_top = c->style ? c->style->padding.top : 0;
+    float pad_right = c->style ? c->style->padding.right : 0;
+    float pad_bottom = c->style ? c->style->padding.bottom : 0;
 
-    layout_flexbox_single_pass(c, constraints, parent_x, parent_y, axis);
+    // Determine container dimensions
+    float own_width = constraints.max_width;
+    float own_height = constraints.max_height;
+
+    // Apply explicit dimensions from style if set
+    if (c->style) {
+        if (c->style->width.type == IR_DIMENSION_PX && c->style->width.value > 0) {
+            own_width = c->style->width.value;
+        }
+        if (c->style->height.type == IR_DIMENSION_PX && c->style->height.value > 0) {
+            own_height = c->style->height.value;
+        }
+    }
+
+    // Content area (inside padding)
+    float content_width = own_width - pad_left - pad_right;
+    float content_height = own_height - pad_top - pad_bottom;
+
+    // Layout children in block flow (vertical stacking)
+    float child_y = 0;
+    float max_child_width = 0;
+    float total_child_height = 0;
+
+    for (uint32_t i = 0; i < c->child_count; i++) {
+        IRComponent* child = c->children[i];
+        if (!child) continue;
+
+        // Skip invisible children
+        if (child->style && !child->style->visible) continue;
+
+        // Child constraints - full width available, remaining height
+        IRLayoutConstraints child_constraints = {
+            .max_width = content_width,
+            .max_height = content_height - child_y,
+            .min_width = 0,
+            .min_height = 0
+        };
+
+        // Layout child at current vertical position
+        ir_layout_single_pass(child, child_constraints,
+                              parent_x + pad_left,
+                              parent_y + pad_top + child_y);
+
+        // Advance vertical position
+        if (child->layout_state) {
+            float child_height = child->layout_state->computed.height;
+            float child_width = child->layout_state->computed.width;
+
+            child_y += child_height;
+            total_child_height += child_height;
+            if (child_width > max_child_width) {
+                max_child_width = child_width;
+            }
+        }
+    }
+
+    // If no explicit height, shrink to content
+    if (!c->style || c->style->height.type != IR_DIMENSION_PX) {
+        own_height = total_child_height + pad_top + pad_bottom;
+    }
+
+    // Set container's computed dimensions
+    c->layout_state->computed.x = parent_x;
+    c->layout_state->computed.y = parent_y;
+    c->layout_state->computed.width = own_width;
+    c->layout_state->computed.height = own_height;
+    c->layout_state->layout_valid = true;
+    c->layout_state->computed.valid = true;
 }
 
 // Center layout (centers child both horizontally and vertically)
