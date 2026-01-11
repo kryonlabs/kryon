@@ -11,7 +11,7 @@
 #include "../../desktop_platform.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
-#include "../../../../core/include/kryon.h"
+#include <kryon.h>
 
 #ifdef __cplusplus
 extern "C" {
