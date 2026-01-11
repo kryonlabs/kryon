@@ -538,10 +538,6 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
     int frame_count = 0;
     while (renderer->running && renderer->shutdown_state == KRYON_SHUTDOWN_RUNNING) {
         frame_count++;
-        if (frame_count % 60 == 0) {
-            printf("[MAIN_LOOP] Frame %d, running=%d, shutdown_state=%d\n",
-                   frame_count, renderer->running, renderer->shutdown_state);
-        }
 
         // Poll events via ops table
         if (renderer->ops->poll_events) {

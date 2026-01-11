@@ -87,7 +87,13 @@ jobs:
             libgl1-mesa-dev \
             libasound2-dev \
             libpulse-dev \
-            libraylib-dev
+            software-properties-common
+
+      - name: Install Raylib from PPA
+        run: |
+          sudo add-apt-repository ppa:texus/raylib -y
+          sudo apt-get update
+          sudo apt-get install -y libraylib5-dev
 
       - name: Cache SDL3
         id: cache-sdl3
@@ -240,7 +246,13 @@ jobs:
             libgl1-mesa-dev \
             libasound2-dev \
             libpulse-dev \
-            libraylib-dev
+            software-properties-common
+
+      - name: Install Raylib from PPA
+        run: |
+          sudo add-apt-repository ppa:texus/raylib -y
+          sudo apt-get update
+          sudo apt-get install -y libraylib5-dev
 
       - name: Cache SDL3
         id: cache-sdl3
