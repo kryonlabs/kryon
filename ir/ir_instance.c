@@ -125,12 +125,8 @@ IRInstanceContext* ir_instance_create(const char* name, IRInstanceCallbacks* cal
         // Continue anyway - assets will use global registry
     }
 
-    // Create audio state for this instance
-    inst->resources.audio = ir_audio_state_create(inst->instance_id);
-    if (!inst->resources.audio) {
-        fprintf(stderr, "Warning: Failed to create audio state for instance %s\n", inst->name);
-        // Continue anyway - audio will use global state
-    }
+    // Note: Audio has been moved to the audio plugin
+    // Each instance should use the audio plugin's API
 
     // Create desktop state for this instance (if desktop backend is linked)
     // The weak symbol check ensures this only works if desktop backend is available
@@ -189,11 +185,7 @@ void ir_instance_destroy(IRInstanceContext* inst) {
         inst->resources.assets = NULL;
     }
 
-    // Destroy audio state
-    if (inst->resources.audio) {
-        ir_audio_state_destroy(inst->resources.audio);
-        inst->resources.audio = NULL;
-    }
+    // Note: Audio state is managed by the audio plugin
 
     // Destroy desktop state (if desktop backend is linked)
     if (inst->render.desktop && ir_desktop_state_destroy != NULL) {

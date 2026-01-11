@@ -23,7 +23,6 @@
 // ============================================================================
 
 typedef struct IRAssetRegistry IRAssetRegistry;
-typedef struct IRAudioState IRAudioState;
 typedef struct IRCommandBuffer IRCommandBuffer;
 typedef struct IRFileWatcher IRFileWatcher;
 typedef struct IRDesktopState IRDesktopState;
@@ -100,7 +99,6 @@ typedef struct IRInstanceContext {
     // Per-Instance Resources
     struct {
         IRAssetRegistry* assets;       // Instance's asset cache
-        IRAudioState* audio;           // Instance's audio mixer
         IRCommandBuffer* commands;     // Instance's render commands
     } resources;
 

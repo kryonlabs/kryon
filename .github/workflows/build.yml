@@ -35,7 +35,9 @@ jobs:
             zlib-static \
             brotli-static \
             raylib-dev \
-            bash
+            bash \
+            curl \
+            unzip
 
       - uses: actions/checkout@v4
 
@@ -46,7 +48,7 @@ jobs:
 
       - name: Install Bun for TSX codegen
         run: |
-          wget -qO- https://bun.sh/install | bash
+          curl -fsSL https://bun.sh/install | bash
           echo "$HOME/.bun/bin" >> $GITHUB_PATH
 
       - name: Install Nim for Nim codegen
@@ -198,7 +200,9 @@ jobs:
             zlib-static \
             brotli-static \
             raylib-dev \
-            bash
+            bash \
+            curl \
+            unzip
 
       - uses: actions/checkout@v4
 
@@ -209,7 +213,7 @@ jobs:
 
       - name: Install Bun for TSX codegen
         run: |
-          wget -qO- https://bun.sh/install | bash
+          curl -fsSL https://bun.sh/install | bash
           echo "$HOME/.bun/bin" >> $GITHUB_PATH
 
       - name: Install Nim for Nim codegen
