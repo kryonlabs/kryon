@@ -6,9 +6,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// Forward declaration
-typedef struct IRBuffer IRBuffer;
-
 // ============================================================================
 // Write Functions
 // ============================================================================

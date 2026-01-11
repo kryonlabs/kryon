@@ -32,22 +32,6 @@ IRBuffer* ir_buffer_create(size_t initial_capacity) {
     buffer->base = buffer->data;
     buffer->capacity = initial_capacity;
     buffer->size = 0;
-    buffer->owns_memory = true;
-
-    return buffer;
-}
-
-IRBuffer* ir_buffer_create_from_data(void* data, size_t size, bool owns) {
-    if (!data || size == 0) return NULL;
-
-    IRBuffer* buffer = calloc(1, sizeof(IRBuffer));
-    if (!buffer) return NULL;
-
-    buffer->data = data;
-    buffer->base = data;
-    buffer->size = 0;  // Start at beginning
-    buffer->capacity = size;
-    buffer->owns_memory = owns;
 
     return buffer;
 }
@@ -84,7 +68,7 @@ IRBuffer* ir_buffer_create_from_file(const char* filename) {
 
     if (bytes_read != file_size) {
         IR_LOG_ERROR("BUFFER", "Failed to read complete file");
-        ir_buffer_free(buffer);
+        ir_buffer_destroy(buffer);
         return NULL;
     }
 
@@ -93,10 +77,10 @@ IRBuffer* ir_buffer_create_from_file(const char* filename) {
     return buffer;
 }
 
-void ir_buffer_free(IRBuffer* buffer) {
+void ir_buffer_destroy(IRBuffer* buffer) {
     if (!buffer) return;
 
-    if (buffer->owns_memory && buffer->base) {
+    if (buffer->base) {
         free(buffer->base);
     }
 
@@ -117,22 +101,8 @@ bool ir_buffer_reserve(IRBuffer* buffer, size_t capacity) {
         new_capacity *= GROWTH_FACTOR;
     }
 
-    // For read-only buffers, can't expand
-    if (!buffer->owns_memory) {
-        // Need to allocate new buffer and copy
-        char* new_data = malloc(new_capacity);
-        if (!new_data) return false;
-
-        memcpy(new_data, buffer->data, buffer->size);
-        buffer->data = new_data;
-        buffer->base = new_data;
-        buffer->capacity = new_capacity;
-        buffer->owns_memory = true;
-        return true;
-    }
-
     // Expand existing buffer
-    char* new_data = realloc(buffer->base, new_capacity);
+    uint8_t* new_data = realloc(buffer->base, new_capacity);
     if (!new_data) return false;
 
     // Update pointers
@@ -148,19 +118,6 @@ void ir_buffer_clear(IRBuffer* buffer) {
     if (!buffer) return;
     buffer->data = buffer->base;
     buffer->size = 0;
-}
-
-char* ir_buffer_release(IRBuffer* buffer) {
-    if (!buffer) return NULL;
-
-    char* data = buffer->base;
-    buffer->base = NULL;
-    buffer->data = NULL;
-    buffer->capacity = 0;
-    buffer->size = 0;
-    buffer->owns_memory = false;
-
-    return data;
 }
 
 void* ir_buffer_data(const IRBuffer* buffer) {
@@ -181,8 +138,7 @@ bool ir_buffer_write(IRBuffer* buffer, const void* data, size_t size) {
         }
     }
 
-    memcpy(buffer->data, data, size);
-    buffer->data += size;
+    memcpy(buffer->data + buffer->size, data, size);
     buffer->size += size;
 
     return true;
@@ -192,7 +148,7 @@ bool ir_buffer_read(IRBuffer* buffer, void* data, size_t size) {
     if (!buffer || !data || size == 0) return false;
 
     // Check if we have enough data
-    if ((buffer->data - buffer->base) + size > buffer->capacity) {
+    if (buffer->size + size > buffer->capacity) {
         IR_LOG_ERROR("BUFFER", "Read beyond buffer end");
         return false;
     }
@@ -218,24 +174,20 @@ bool ir_buffer_seek(IRBuffer* buffer, size_t position) {
     return true;
 }
 
-bool ir_buffer_skip(IRBuffer* buffer, size_t bytes) {
-    if (!buffer) return false;
-
-    return ir_buffer_seek(buffer, buffer->size + bytes);
+size_t ir_buffer_tell(const IRBuffer* buffer) {
+    return buffer ? (buffer->data - buffer->base) : 0;
 }
 
-size_t ir_buffer_tell(const IRBuffer* buffer) {
+size_t ir_buffer_size(const IRBuffer* buffer) {
     return buffer ? buffer->size : 0;
 }
 
 size_t ir_buffer_remaining(const IRBuffer* buffer) {
     if (!buffer) return 0;
-    size_t current_pos = buffer->data - buffer->base;
-    return buffer->capacity - current_pos;
+    return buffer->capacity - (buffer->data - buffer->base);
 }
 
 bool ir_buffer_at_end(const IRBuffer* buffer) {
     if (!buffer) return true;
-    size_t current_pos = buffer->data - buffer->base;
-    return current_pos >= buffer->capacity;
+    return (buffer->data - buffer->base) >= buffer->capacity;
 }

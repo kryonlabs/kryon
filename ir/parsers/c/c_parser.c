@@ -717,7 +717,7 @@ char* ir_c_to_kir(const char* source, size_t length) {
     char compile_cmd[4096];
     snprintf(compile_cmd, sizeof(compile_cmd),
              "%s \"%s\" -DKRYON_KIR_ONLY -I\"%s/bindings/c\" -I\"%s/ir\" -I\"%s/backends/desktop\" "
-             "-I\"%s/ir/third_party/cJSON\" -L\"%s/build\" -L\"%s/bindings/c\" "
+             "-I\"%s/third_party/cJSON\" -L\"%s/build\" -L\"%s/bindings/c\" "
              "-Wl,-rpath,%s/build -lkryon_c -lkryon_ir -lm -o \"%s\" 2>&1",
              compiler, src_file, kryon_root, kryon_root, kryon_root,
              kryon_root,

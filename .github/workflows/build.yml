@@ -136,6 +136,7 @@ jobs:
           # Build C libraries (both SDL3 and Raylib enabled by default)
           make -C ir all
           make build-desktop-backend
+          make build-c-codegens
           make -C cli all
           cp cli/kryon build/kryon-desktop
 
@@ -206,7 +207,7 @@ jobs:
       - name: Build web variant (static)
         run: |
           make -C ir all
-          make -C codegens/web all
+          make build-c-codegens
           make -C cli all
           cp cli/kryon build/kryon-web
 
@@ -296,7 +297,7 @@ jobs:
           # Build C libraries (both SDL3 and Raylib enabled by default)
           make -C ir all
           make build-desktop-backend
-          make -C codegens/web all
+          make build-c-codegens
           make -C cli all
           cp cli/kryon build/kryon-full
 

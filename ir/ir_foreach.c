@@ -3,7 +3,7 @@
 
 #include "ir_foreach.h"
 #include "ir_core.h"
-#include "third_party/cJSON/cJSON.h"
+#include "../third_party/cJSON/cJSON.h""
 #include "ir_json_helpers.h"
 #include <stdlib.h>
 #include <string.h>
