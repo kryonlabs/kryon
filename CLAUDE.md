@@ -56,7 +56,7 @@ kryon/
 ## Key Technologies
 
 - **C (C99)** - Core IR, parsers, codegens, backends
-- **TypeScript/Bun** - TSX parser (`cli/tsx_parser/`)
+- **TypeScript/Bun** - TSX parser (`ir/parsers/tsx/`)
 - **SDL3** - Desktop rendering backend
 - **cJSON** - JSON parsing (`ir/third_party/cJSON/`)
 
@@ -66,7 +66,7 @@ kryon/
 
 Convert source languages to KIR JSON format:
 
-- **TSX Parser** (`cli/tsx_parser/tsx_to_kir.ts`) - Parses React/TSX with hooks
+- **TSX Parser** (`ir/parsers/tsx/tsx_to_kir.ts`) - Parses React/TSX with hooks
 - **Kry Parser** (`ir/ir_kry_parser.c`) - Custom .kry DSL
 - **HTML Parser** (`ir/ir_html_parser.c`) - HTML5
 - **Markdown Parser** (`ir/ir_markdown_parser.c`) - Markdown
@@ -233,16 +233,16 @@ See `docs/IMPLEMENTATION_GUIDE.md` for detailed steps.
 
 ```bash
 # Round-trip test
-bun cli/tsx_parser/tsx_to_kir.ts test.tsx > test.kir
+bun ir/parsers/tsx/tsx_to_kir.ts test.tsx > test.kir
 ./cli/kryon codegen tsx test.kir test_gen.tsx
-bun cli/tsx_parser/tsx_to_kir.ts test_gen.tsx > test2.kir
+bun ir/parsers/tsx/tsx_to_kir.ts test_gen.tsx > test2.kir
 diff test.kir test2.kir
 
 # Run on desktop
 ./cli/kryon run test.kir
 
 # Full pipeline
-bun cli/tsx_parser/tsx_to_kir.ts app.tsx > app.kir
+bun ir/parsers/tsx/tsx_to_kir.ts app.tsx > app.kir
 ./cli/kryon codegen c app.kir app.c
 gcc app.c -lkryon_desktop -o app
 ./app
@@ -281,7 +281,7 @@ KRYON_SCREENSHOT=/tmp/screenshot.png KRYON_HEADLESS=1 ./kryon run app.kir
 
 ### TSX Pipeline
 
-- `cli/tsx_parser/tsx_to_kir.ts` - Parse TSX → KIR
+- `ir/parsers/tsx/tsx_to_kir.ts` - Parse TSX → KIR
 - `codegens/react_common.c` - Generate KIR → TSX
 - `codegens/tsx/tsx_codegen.c` - TSX-specific wrapper
 
@@ -356,7 +356,7 @@ Garbage collected, but be mindful of large arrays and closures.
 
 ```bash
 # TSX parser debug
-DEBUG_TSX_PARSER=1 bun cli/tsx_parser/tsx_to_kir.ts input.tsx
+DEBUG_TSX_PARSER=1 bun ir/parsers/tsx/tsx_to_kir.ts input.tsx
 
 # IR executor debug
 # (Already prints to stdout)

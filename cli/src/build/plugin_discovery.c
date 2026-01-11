@@ -6,6 +6,8 @@
  * MUST be explicitly listed in config with paths.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "plugin_discovery.h"
 #include "../../include/kryon_cli.h"
 #include <stdio.h>

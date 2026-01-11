@@ -69,7 +69,7 @@ KIR (Kryon Intermediate Representation) is JSON with three sections:
 
 ### 1. Parsers (Source → KIR)
 
-- **TSX** (`cli/tsx_parser/`, `ir/parsers/tsx/`) - TypeScript/React with hooks
+- **TSX** (`ir/parsers/tsx/`, `ir/parsers/tsx/`) - TypeScript/React with hooks
 - **Kry** (`ir/parsers/kry/`) - Custom DSL
 - **Lua** (`ir/parsers/lua/`) - Lua-based UI (perfect roundtrip)
 - **HTML** (`ir/parsers/html/`) - Standard HTML with CSS support
@@ -132,7 +132,7 @@ Kryon supports direct variable reactivity and React-style hooks:
 
 ```bash
 # Parse to KIR
-bun cli/tsx_parser/tsx_to_kir.ts app.tsx > app.kir
+bun ir/parsers/tsx/tsx_to_kir.ts app.tsx > app.kir
 
 # Run on desktop
 kryon run app.kir

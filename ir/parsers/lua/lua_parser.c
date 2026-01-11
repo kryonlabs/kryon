@@ -1733,8 +1733,10 @@ char* ir_lua_file_to_kir(const char* filepath) {
             // unsetenv("KRYON_TEMPLATE_MODE");
 
             if (!result) {
-                fprintf(stderr, "Warning: Failed to compile main module\n");
-                continue;
+                fprintf(stderr, "Error: Failed to compile main module - aborting\n");
+                if (modules) lua_module_collection_free(modules);
+                free(source);
+                return NULL;
             }
 
             root = cJSON_Parse(result);
@@ -2008,6 +2010,10 @@ char* ir_lua_file_to_kir(const char* filepath) {
         lua_module_collection_free(modules);
     }
 
-    // Return the main KIR content (for compatibility with existing code)
-    return main_result ? main_result : strdup("{}");
+    // Return the main KIR content - NULL if compilation failed
+    if (!main_result) {
+        fprintf(stderr, "Error: No main module compiled\n");
+        return NULL;
+    }
+    return main_result;
 }

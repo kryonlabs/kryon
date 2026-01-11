@@ -1280,16 +1280,12 @@ uint32_t ir_plugin_auto_discover_and_load(uint32_t max_plugins) {
     uint32_t loaded_count = 0;
     uint32_t to_load = (max_plugins == 0 || max_plugins > discovered_count) ? discovered_count : max_plugins;
 
-    printf("[kryon][plugin] Auto-discovering plugins (found %u, loading up to %u)...\n",
-           discovered_count, to_load);
-
     for (uint32_t i = 0; i < to_load; i++) {
         IRPluginDiscoveryInfo* info = discovered[i];
         if (!info) continue;
 
         // Skip if already loaded
         if (ir_plugin_is_loaded(info->name)) {
-            printf("[kryon][plugin] Plugin '%s' already loaded, skipping\n", info->name);
             continue;
         }
 
@@ -1318,7 +1314,6 @@ uint32_t ir_plugin_auto_discover_and_load(uint32_t max_plugins) {
 
             // Call init function if present
             if (handle->init_func) {
-                printf("[kryon][plugin] Calling init function for '%s'\n", info->name);
                 handle->init_func(NULL);
             }
         } else {
@@ -1328,7 +1323,6 @@ uint32_t ir_plugin_auto_discover_and_load(uint32_t max_plugins) {
     }
 
     ir_plugin_free_discovery(discovered, discovered_count);
-    printf("[kryon][plugin] Auto-discovery complete: loaded %u plugin(s)\n", loaded_count);
     return loaded_count;
 }
 

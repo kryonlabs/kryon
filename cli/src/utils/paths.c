@@ -568,13 +568,13 @@ char* paths_get_scripts_path(void) {
 
 /**
  * Get TSX parser path (tsx_to_kir.ts)
- * Checks: KRYON_ROOT, ~/.local/share/kryon/tsx_parser, /usr/local/share/kryon/tsx_parser
+ * Checks: KRYON_ROOT/ir/parsers/tsx/, ~/.local/share/kryon/tsx_parser, /usr/local/share/kryon/tsx_parser
  */
 char* paths_get_tsx_parser_path(void) {
     // First try KRYON_ROOT
     char* kryon_root = paths_get_kryon_root();
     if (kryon_root) {
-        char* tsx_path = path_join(kryon_root, "cli/tsx_parser/tsx_to_kir.ts");
+        char* tsx_path = path_join(kryon_root, "ir/parsers/tsx/tsx_to_kir.ts");
         if (file_exists(tsx_path)) {
             free(kryon_root);
             return tsx_path;

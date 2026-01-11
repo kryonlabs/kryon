@@ -36,7 +36,7 @@ export default kryonApp({
 
 ```bash
 # Parse to KIR
-bun cli/tsx_parser/tsx_to_kir.ts hello.tsx > hello.kir
+bun ir/parsers/tsx/tsx_to_kir.ts hello.tsx > hello.kir
 
 # Run on desktop
 kryon run hello.kir

@@ -101,7 +101,7 @@ const char* ir_tsx_get_parser_script(void) {
     // 2. Source tree location
     if (kryon_root) {
         snprintf(search_paths[num_paths++], 1024,
-                "%s/cli/tsx_parser/tsx_to_kir.ts", kryon_root);
+                "%s/ir/parsers/tsx/tsx_to_kir.ts", kryon_root);
     }
 
     // 3. Relative to current executable
@@ -115,7 +115,7 @@ const char* ir_tsx_get_parser_script(void) {
             snprintf(search_paths[num_paths++], 1024,
                     "%s/../share/kryon/tsx_parser/tsx_to_kir.ts", exe_path);
             snprintf(search_paths[num_paths++], 1024,
-                    "%s/cli/tsx_parser/tsx_to_kir.ts", exe_path);
+                    "%s/ir/parsers/tsx/tsx_to_kir.ts", exe_path);
         }
     }
 
