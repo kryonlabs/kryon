@@ -13,6 +13,11 @@
 #include "css_generator.h"
 #include "style_analyzer.h"
 
+// Data-driven modules for CSS generation
+#include "css_property_tables.h"
+#include "css_generator_core.h"
+#include "css_class_names.h"
+
 // CSS Generator Context
 typedef struct CSSGenerator {
     char* output_buffer;
@@ -32,9 +37,11 @@ typedef struct CSSGenerator {
 } CSSGenerator;
 
 // Forward declarations for animation functions
-static const char* easing_to_css(IREasingType easing);
-static const char* animation_property_to_css(IRAnimationProperty prop);
 static void generate_keyframes(CSSGenerator* generator, IRComponent* root);
+
+// Use formatter functions from css_property_tables module
+#define easing_to_css css_format_easing
+#define animation_property_to_css css_format_animation_property
 
 CSSGenerator* css_generator_create() {
     CSSGenerator* generator = malloc(sizeof(CSSGenerator));
@@ -2487,36 +2494,7 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
 // Animation and Keyframe Generation
 // ============================================================================
 
-static const char* easing_to_css(IREasingType easing) {
-    switch (easing) {
-        case IR_EASING_LINEAR: return "linear";
-        case IR_EASING_EASE_IN: return "ease-in";
-        case IR_EASING_EASE_OUT: return "ease-out";
-        case IR_EASING_EASE_IN_OUT: return "ease-in-out";
-        case IR_EASING_EASE_IN_QUAD: return "cubic-bezier(0.55, 0.085, 0.68, 0.53)";
-        case IR_EASING_EASE_OUT_QUAD: return "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-        case IR_EASING_EASE_IN_OUT_QUAD: return "cubic-bezier(0.455, 0.03, 0.515, 0.955)";
-        case IR_EASING_EASE_IN_CUBIC: return "cubic-bezier(0.55, 0.055, 0.675, 0.19)";
-        case IR_EASING_EASE_OUT_CUBIC: return "cubic-bezier(0.215, 0.61, 0.355, 1)";
-        case IR_EASING_EASE_IN_OUT_CUBIC: return "cubic-bezier(0.645, 0.045, 0.355, 1)";
-        default: return "ease";
-    }
-}
-
-static const char* animation_property_to_css(IRAnimationProperty prop) {
-    switch (prop) {
-        case IR_ANIM_PROP_OPACITY: return "opacity";
-        case IR_ANIM_PROP_TRANSLATE_X: return "transform";  // Will need special handling
-        case IR_ANIM_PROP_TRANSLATE_Y: return "transform";
-        case IR_ANIM_PROP_SCALE_X: return "transform";
-        case IR_ANIM_PROP_SCALE_Y: return "transform";
-        case IR_ANIM_PROP_ROTATE: return "transform";
-        case IR_ANIM_PROP_WIDTH: return "width";
-        case IR_ANIM_PROP_HEIGHT: return "height";
-        case IR_ANIM_PROP_BACKGROUND_COLOR: return "background-color";
-        default: return NULL;
-    }
-}
+// easing_to_css and animation_property_to_css are now from css_property_tables module
 
 static void generate_keyframe_property(CSSGenerator* generator, IRKeyframe* kf, int prop_idx) {
     if (!kf->properties[prop_idx].is_set) return;
