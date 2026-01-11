@@ -30,22 +30,56 @@ IRLayoutTrait* g_layout_traits[IR_COMPONENT_PLACEHOLDER + 1] = {0};
 
 /**
  * Layout function for ForEach components.
- * ForEach is "layout-transparent" - like CSS display: contents.
- * It doesn't render itself; it just recursively layouts its children.
- * The actual expansion of ForEach (duplicating template for each item)
- * happens via ir_expand_foreach() which is called after loading KIR.
+ * Normally ForEach is replaced by its expanded children in the parent.
+ * However, for root-level ForEach (parent is NULL), it remains in the tree
+ * and acts as a vertical container for its expanded children.
+ *
+ * This function stacks children vertically to handle the root-level case.
  */
 static void layout_foreach_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                                        float parent_x, float parent_y) {
     if (!c) return;
 
-    // ForEach is layout-transparent - just recursively layout children
-    // without adding any dimensions of its own
+    // Ensure layout state exists for position tracking
+    if (!c->layout_state) {
+        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
+    }
+
+    // ForEach acts as a vertical container - stack children vertically
+    float current_y = parent_y;
+    float max_width = 0;
+
     for (uint32_t i = 0; i < c->child_count; i++) {
         if (c->children[i]) {
-            ir_layout_dispatch(c->children[i], constraints, parent_x, parent_y);
+            // Skip invisible children
+            if (c->children[i]->style && !c->children[i]->style->visible) continue;
+
+            IRLayoutConstraints child_constraints = {
+                .max_width = constraints.max_width,
+                .max_height = constraints.max_height - (current_y - parent_y),
+                .min_width = 0,
+                .min_height = 0
+            };
+
+            ir_layout_dispatch(c->children[i], child_constraints, parent_x, current_y);
+
+            // Advance Y position based on child's computed height
+            if (c->children[i]->layout_state && c->children[i]->layout_state->computed.valid) {
+                current_y += c->children[i]->layout_state->computed.height;
+                if (c->children[i]->layout_state->computed.width > max_width) {
+                    max_width = c->children[i]->layout_state->computed.width;
+                }
+            }
         }
     }
+
+    // Set ForEach's own dimensions (sum of children heights, max child width)
+    c->layout_state->computed.x = parent_x;
+    c->layout_state->computed.y = parent_y;
+    c->layout_state->computed.width = max_width > 0 ? max_width : constraints.max_width;
+    c->layout_state->computed.height = current_y - parent_y;
+    c->layout_state->layout_valid = true;
+    c->layout_state->computed.valid = true;
 }
 
 static const IRLayoutTrait IR_FOR_EACH_LAYOUT_TRAIT = {

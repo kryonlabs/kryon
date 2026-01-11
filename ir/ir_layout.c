@@ -701,6 +701,16 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
         child->rendered_bounds.height = child_height;
         child->rendered_bounds.valid = true;
 
+        // Debug: Print Button positions to debug ForEach layout
+        if (child->type == IR_COMPONENT_BUTTON && getenv("DEBUG_BUTTON_POSITIONS")) {
+            const char* text = child->text_content ? child->text_content : "(null)";
+            printf("[LAYOUT] Button ID=%u type=%d text='%s' pos=[%.1f, %.1f] size=[%.1fx%.1f] parent_id=%d\n",
+                   child->id, (int)child->type, text,
+                   child->rendered_bounds.x, child->rendered_bounds.y,
+                   child->rendered_bounds.width, child->rendered_bounds.height,
+                   container->id);
+        }
+
         current_x += child_width + child->style->margin.right + layout->flex.gap + extra_gap;
     }
 }
@@ -2011,6 +2021,40 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                            float parent_x, float parent_y) {
     if (!c) return;
 
+    // Debug: Track layout calls - always print first 100
+    static int call_count = 0;
+    static int button_count = 0;
+    call_count++;
+
+    // DEBUG: Write to file
+    static FILE* debug_file = NULL;
+    if (!debug_file) {
+        debug_file = fopen("/tmp/kryon_layout_debug.txt", "a");
+    }
+
+    if (debug_file && call_count <= 200) {
+        const char* text_preview = c->text_content ? c->text_content : "";
+        char tbuf[32];
+        snprintf(tbuf, sizeof(tbuf), "%.20s", text_preview);
+        fprintf(debug_file, "[LAYOUT #%d] type=%d id=%u text='%s' pos=[%.1f,%.1f]\n",
+               call_count, c->type, c->id, tbuf, parent_x, parent_y);
+        fflush(debug_file);
+    }
+
+    if (c->type == IR_COMPONENT_BUTTON) {
+        button_count++;
+        if (debug_file) {
+            fprintf(debug_file, "[BUTTON #%d] ID=%u text='%s' pos=[%.1f,%.1f]\n",
+                   button_count, c->id, c->text_content ? c->text_content : "",
+                   parent_x, parent_y);
+            fflush(debug_file);
+        }
+        printf("[BUTTON #%d] ID=%u text='%s' pos=[%.1f,%.1f]\n",
+               button_count, c->id, c->text_content ? c->text_content : "",
+               parent_x, parent_y);
+        fflush(stdout);
+    }
+
     // Ensure layout state exists
     if (!c->layout_state) {
         c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
@@ -2241,10 +2285,25 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 
         // RECURSIVELY layout child (child computes FINAL dimensions)
         // Offset by padding
+        float child_final_x, child_final_y;
         if (is_row) {
-            ir_layout_single_pass(child, child_constraints, parent_x + pad_left + child_x, parent_y + pad_top);
+            child_final_x = parent_x + pad_left + child_x;
+            child_final_y = parent_y + pad_top;
+            ir_layout_single_pass(child, child_constraints, child_final_x, child_final_y);
         } else {
-            ir_layout_single_pass(child, child_constraints, parent_x + pad_left, parent_y + pad_top + child_y);
+            child_final_x = parent_x + pad_left;
+            child_final_y = parent_y + pad_top + child_y;
+            ir_layout_single_pass(child, child_constraints, child_final_x, child_final_y);
+        }
+
+        // Debug: Print Button positions to debug ForEach layout
+        if (child->type == IR_COMPONENT_BUTTON) {
+            const char* text = child->text_content ? child->text_content : "(null)";
+            float w = child->layout_state ? child->layout_state->computed.width : 0;
+            float h = child->layout_state ? child->layout_state->computed.height : 0;
+            printf("[LAYOUT] Button ID=%u text='%s' pos=[%.1f, %.1f] size=[%.1fx%.1f] parent_type=%d parent_id=%d\n",
+                   child->id, text, child_final_x, child_final_y, w, h,
+                   c->type, c->id);
         }
 
         // Track child dimensions for AUTO dimension calculation
@@ -2459,6 +2518,22 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
  * Single-pass recursive layout system
  */
 void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewport_height) {
+    static int call_count = 0;
+    call_count++;
+
+    // DEBUG: Write to file
+    static FILE* debug_file = NULL;
+    if (!debug_file) {
+        debug_file = fopen("/tmp/kryon_layout_debug.txt", "w");
+    }
+    if (debug_file) {
+        fprintf(debug_file, "[LAYOUT_TREE #%d] ENTRY viewport=(%.0fx%.0f)\n", call_count, viewport_width, viewport_height);
+        fflush(debug_file);
+    }
+
+    printf("[LAYOUT_TREE #%d] ENTRY viewport=(%.0fx%.0f)\n", call_count, viewport_width, viewport_height);
+    fflush(stdout);
+
     if (!root) return;
 
     // Track viewport changes and invalidate layout when viewport resizes

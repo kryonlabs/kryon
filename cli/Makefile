@@ -42,6 +42,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_uninstall.c \
        $(SRC_DIR)/build/luajit_compile.c \
        $(SRC_DIR)/build/embed_bytecode.c \
+       $(SRC_DIR)/build/plugin_discovery.c \
        $(SRC_DIR)/build/luajit_link.c
 
 # Object files
@@ -132,6 +133,9 @@ install: $(TARGET)
 	# Install dev server script
 	mkdir -p $(HOME)/.local/share/kryon/scripts
 	cp scripts/dev_server.ts $(HOME)/.local/share/kryon/scripts/
+	# Install luajit_runtime.c template for building Lua binaries
+	mkdir -p $(HOME)/.local/share/kryon/cli/src/build
+	cp src/build/luajit_runtime.c $(HOME)/.local/share/kryon/cli/src/build/
 
 # Clean
 clean:

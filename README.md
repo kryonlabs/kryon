@@ -27,7 +27,7 @@ App {
 }
 ```
 
-Run with: `kryon run hello.kry`
+Run with: `kryon run hello.kry --renderer=sdl3`
 
 ### Using Nim DSL (for reactive apps)
 

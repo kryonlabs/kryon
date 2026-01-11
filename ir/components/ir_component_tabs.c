@@ -300,7 +300,9 @@ const IRLayoutTrait IR_TAB_CONTENT_LAYOUT_TRAIT = {
 
 /**
  * Layout function for TabPanel components.
- * TabPanel fills the parent TabContent space.
+ * TabPanel fills the parent TabContent space and stacks children vertically.
+ * After ForEach expansion, TabPanel may contain multiple Row children that
+ * need to be positioned at different Y coordinates.
  */
 void layout_tab_panel_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                                    float parent_x, float parent_y) {
@@ -310,6 +312,12 @@ void layout_tab_panel_single_pass(IRComponent* c, IRLayoutConstraints constraint
     if (!c->layout_state) {
         c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
     }
+
+    // Get padding from style
+    float pad_left = c->style ? c->style->padding.left : 0;
+    float pad_top = c->style ? c->style->padding.top : 0;
+    float pad_right = c->style ? c->style->padding.right : 0;
+    float pad_bottom = c->style ? c->style->padding.bottom : 0;
 
     // TabPanel fills available space
     float panel_width = constraints.max_width > 0 ? constraints.max_width : 400.0f;
@@ -335,16 +343,38 @@ void layout_tab_panel_single_pass(IRComponent* c, IRLayoutConstraints constraint
     c->layout_state->computed.width = panel_width;
     c->layout_state->computed.height = panel_height;
 
-    // Layout children
-    IRLayoutConstraints child_constraints = {
-        .max_width = panel_width,
-        .max_height = panel_height,
-        .min_width = 0.0f,
-        .min_height = 0.0f
-    };
+    // Content area (inside padding)
+    float content_width = panel_width - pad_left - pad_right;
+    float content_height = panel_height - pad_top - pad_bottom;
+    float content_x = parent_x + pad_left;
+    float content_y = parent_y + pad_top;
+
+    // Get gap from layout if specified
+    float gap = (c->layout && c->layout->flex.gap > 0) ? (float)c->layout->flex.gap : 0.0f;
+
+    // Layout children vertically (like a Column), starting from content area
+    float current_y = content_y;
     for (uint32_t i = 0; i < c->child_count; i++) {
         if (c->children[i]) {
-            ir_layout_dispatch(c->children[i], child_constraints, parent_x, parent_y);
+            // Skip invisible children
+            if (c->children[i]->style && !c->children[i]->style->visible) continue;
+
+            IRLayoutConstraints child_constraints = {
+                .max_width = content_width,
+                .max_height = content_height - (current_y - content_y),
+                .min_width = 0.0f,
+                .min_height = 0.0f
+            };
+            ir_layout_dispatch(c->children[i], child_constraints, content_x, current_y);
+
+            // Update y position for next child
+            if (c->children[i]->layout_state && c->children[i]->layout_state->computed.valid) {
+                current_y += c->children[i]->layout_state->computed.height;
+                // Add gap between children (but not after the last one)
+                if (i < c->child_count - 1) {
+                    current_y += gap;
+                }
+            }
         }
     }
 
