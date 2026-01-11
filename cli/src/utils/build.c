@@ -678,6 +678,7 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
  * Run a KIR file on desktop with hot reload support
  * Uses the instance API for proper state management during reloads
  */
+#ifndef KRYON_MINIMAL_BUILD
 int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop_lib,
                                         const char* renderer_override, const char* watch_path) {
     (void)desktop_lib;  // Currently unused, kept for future flexibility
@@ -864,6 +865,7 @@ int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop
     printf("[Shutdown] Done.\n");
     return 0;
 }
+#endif  // KRYON_MINIMAL_BUILD
 
 /* ============================================================================
  * Build Pipeline

@@ -47,7 +47,7 @@ jobs:
       - name: Build terminal variant (static)
         run: |
           make -C ir all
-          make -C cli all
+          make -C cli minimal
           cp cli/kryon build/kryon-terminal
 
       - name: Verify build is static
@@ -207,8 +207,7 @@ jobs:
       - name: Build web variant (static)
         run: |
           make -C ir all
-          make build-c-codegens
-          make -C cli all
+          make -C cli minimal
           cp cli/kryon build/kryon-web
 
       - name: Verify build is static

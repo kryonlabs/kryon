@@ -75,6 +75,17 @@ CJSON_OBJ = $(BUILD_DIR)/cJSON.o
 # Default target
 all: $(TARGET)
 
+# Minimal target - no SDL3/desktop dependencies (for terminal/web builds)
+CFLAGS_MINIMAL = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -DKRYON_MINIMAL_BUILD -D_POSIX_C_SOURCE=200809L
+OBJS_MINIMAL = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_common.a
+	$(MAKE) -C . CFLAGS="$(CFLAGS_MINIMAL)" $(OBJS_MINIMAL)
+	$(CC) $(OBJS_MINIMAL) $(CODEGEN_OBJS) $(CJSON_OBJ) -o $(TARGET) \
+		-L../build -lkryon_ir \
+		../build/libkryon_common.a \
+		../build/libkryon_common.a \
+		-lm -lpthread -ldl
+
 # Create build directories
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/utils

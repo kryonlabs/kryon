@@ -379,11 +379,16 @@ static int run_kir_file(const char* kir_file, const char* target_platform, const
     if (strcmp(target_platform, "web") == 0) {
         return run_web_target(kir_file);
     }
+#ifndef KRYON_MINIMAL_BUILD
     // Default: desktop
     if (hot_reload) {
         return run_kir_on_desktop_with_hot_reload(kir_file, NULL, renderer, watch_path);
     }
     return run_kir_on_desktop(kir_file, NULL, renderer);
+#else
+    fprintf(stderr, "Error: Desktop target not available in minimal build (no SDL3/raylib support)\n");
+    return 1;
+#endif
 }
 
 /* ============================================================================
