@@ -5,6 +5,7 @@
 
 #include "kryon_cli.h"
 #include "build.h"
+#include "build/plugin_discovery.h"
 #include "../template/docs_template.h"
 #include "../utils/file_discovery.h"
 #include "build/luajit_build.h"
@@ -197,11 +198,49 @@ static int build_lua_desktop(KryonConfig* config) {
  * Build command entry point
  */
 int cmd_build(int argc, char** argv) {
-    // Load config
-    KryonConfig* config = config_find_and_load();
-    if (!config) {
-        fprintf(stderr, "Error: Could not find or load kryon.toml\n");
+    // Find config path
+    char* cwd = dir_get_current();
+    if (!cwd) {
+        fprintf(stderr, "Error: Could not determine current directory\n");
+        return 1;
+    }
+
+    char* config_path = path_join(cwd, "kryon.toml");
+    free(cwd);
+
+    if (!file_exists(config_path)) {
+        fprintf(stderr, "Error: Could not find kryon.toml\n");
         fprintf(stderr, "Run 'kryon new <name>' to create a new project\n");
+        free(config_path);
+        return 1;
+    }
+
+    // Load config WITHOUT loading plugins (plugins may not be compiled yet)
+    KryonConfig* config = config_load(config_path);
+    free(config_path);
+
+    if (!config) {
+        fprintf(stderr, "Error: Failed to load kryon.toml\n");
+        return 1;
+    }
+
+    // Auto-build plugins BEFORE loading them
+    if (config->plugins_count > 0) {
+        char* project_dir = dir_get_current();
+        if (project_dir) {
+            int plugin_count = 0;
+            BuildPluginInfo* plugins = discover_build_plugins(project_dir, config, &plugin_count);
+            if (plugins) {
+                free_build_plugins(plugins, plugin_count);
+            }
+            free(project_dir);
+        }
+    }
+
+    // Now load the compiled plugins
+    if (!config_load_plugins(config)) {
+        fprintf(stderr, "[kryon] Failed to load plugins - aborting\n");
+        config_free(config);
         return 1;
     }
 
