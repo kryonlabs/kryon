@@ -121,23 +121,48 @@ The `make install` command installs:
 
 ```bash
 # Run applications
-kryon run examples/kry/hello_world.kry   # Run .kry file
-kryon run examples/nim/button_demo.nim   # Run Nim app
-kryon run examples/md/documentation.md   # Run markdown file
-kryon run app.kir                        # Run pre-compiled IR
+kryon run <file> [options]               # Run .kry, .nim, .md, or .kir files
+kryon run app.kry --renderer=sdl3        # Use specific renderer
+kryon run app.kry --target=web           # Deploy to web with dev server
+kryon run app.kry --watch                # Enable hot reload
 
-# Parse to .kir (JSON IR)
-kryon parse hello.kry                    # .kry to .kir
-kryon parse docs.md                      # .md to .kir
-kryon parse-html build/app.html          # HTML to .kir (roundtrip)
+# Compile to KIR (JSON IR)
+kryon compile <source> [output.kir]      # Source to .kir
+kryon compile app.tsx --watch            # With hot reload
 
-# Inspect IR files
-kryon tree app.kir                       # Show component tree
-kryon inspect-detailed app.kir           # Full analysis
+# Generate code from KIR
+kryon codegen <target> [input.kir]       # Generate source code
+kryon codegen tsx app.kir app.tsx        # TSX generation
+kryon codegen lua app.kir --output=lua/  # Lua generation
 
-# Development mode with hot reload
-kryon dev examples/nim/habits.nim
+# Development
+kryon dev [entry]                        # Dev server with hot reload
+kryon build [--target=<platform>]        # Build entire project
+
+# Inspect and debug
+kryon inspect [--tree] [--full] app.kir  # Show component tree
+kryon diff app1.kir app2.kir             # Compare KIR files
+kryon config [show|validate]             # Show/validate kryon.toml
+
+# Project management
+kryon new <project-name>                 # Create new project
+kryon install [--mode=symlink]           # Install to system
+kryon uninstall [--all]                  # Uninstall from system
+
+# Plugins
+kryon plugin list                        # List installed plugins
+kryon plugin info <name>                 # Show plugin details
 ```
+
+### Available Targets
+
+| Target | Description |
+|--------|-------------|
+| `desktop` | Native desktop applications (default) |
+| `web` | HTML/CSS/JS for browsers with dev server |
+| `android` | Android APK generation and deployment |
+| `terminal` | Text-based UI using ANSI escape codes |
+| `embedded` | Embedded systems targets |
 
 ### Run Examples Script
 
@@ -152,28 +177,27 @@ KRYON_RENDERER=terminal ./run_example.sh hello_world  # Use terminal renderer
 ### Available Rendering Backends
 
 - **SDL3** - Modern cross-platform, hardware accelerated (default)
+- **Raylib** - Alternative rendering backend
 - **Terminal** - Text-based UI using ANSI escape sequences
 
 ```bash
-# Set renderer via environment variable
-KRYON_RENDERER=terminal kryon run app.kry
+# Runtime renderer selection (recommended)
+kryon run app.kry --renderer=sdl3
+kryon run app.kry --renderer=raylib
+
+# Or set via environment variable
+KRYON_RENDERER=raylib kryon run app.kry
 ```
 
-### Transpilation Targets
-
-- **HTML/Web** - Generate HTML/CSS/JS for browser deployment (codegen, not a renderer)
-
-```bash
-# Transpile to HTML/web
-kryon run app.kry --target web
-```
+**Renderer priority:** `--renderer` flag > `kryon.toml` config > environment variable > default (sdl3)
 
 ## Features
 
-- ✅ Multiple frontends (.kry, .nim, .tsx, .md)
+- ✅ Multiple frontends (.kry, .nim, .tsx, .lua, .md, .html)
 - ✅ Declarative DSL syntax
-- ✅ Rendering backends (SDL3, terminal)
-- ✅ HTML/web transpilation for browsers
+- ✅ Rendering backends (SDL3, Raylib, Terminal)
+- ✅ Multiple target platforms (desktop, web, android, terminal, embedded)
+- ✅ HTML/web transpilation with dev server
 - ✅ Full CommonMark markdown support
 - ✅ Native Mermaid flowchart integration
 - ✅ Event handlers (onClick, onChange, onSubmit, etc.)
@@ -183,6 +207,8 @@ kryon run app.kry --target web
 - ✅ Styling (colors, borders, padding, fonts)
 - ✅ Text rendering with custom fonts
 - ✅ Mouse and keyboard input
+- ✅ Hot reload with --watch flag
+- ✅ Runtime renderer selection
 
 ## Components
 
@@ -197,6 +223,150 @@ kryon run app.kry --target web
 - **Center** - Centered layout
 - **TabGroup/TabBar/Tab/TabContent** - Tab-based navigation
 - **Grid** - Grid layout (planned)
+
+## Code Generation
+
+Kryon can generate source code from KIR files for multiple target languages:
+
+| Target | Status | Description |
+|--------|--------|-------------|
+| `kry` | ✅ Production | Round-trip Kryon DSL |
+| `tsx` | ✅ Production | TypeScript React with hooks |
+| `nim` | ✅ Production | Nim DSL with reactive state |
+| `lua` | ✅ Production | Lua DSL (multi-file) |
+| `html` | ✅ Production | HTML/CSS/JS for web browsers |
+| `kotlin` | ✅ Production | Android MainActivity |
+| `markdown` | ✅ Production | Markdown documentation |
+| `c` | 🚧 Partial | C source code with Kryon API |
+| `jsx` | 🚧 Stubs | JavaScript React |
+
+```bash
+# Generate code from KIR
+kryon codegen tsx app.kir app.tsx
+kryon codegen lua app.kir --output=lua/
+kryon codegen kotlin app.kir MainActivity.kt
+```
+
+## Configuration
+
+Project configuration is managed through `kryon.toml`:
+
+```toml
+[project]
+name = "My App"
+version = "0.1.0"
+author = "Your Name"
+description = "A Kryon application"
+
+[build]
+target = "desktop"
+frontend = "lua"
+entry = "main.lua"
+output_dir = "dist"
+
+# Desktop renderer (sdl3 or raylib)
+desktop_renderer = "sdl3"
+
+[dev]
+hot_reload = true
+port = 3000          # Dev server port
+auto_open = true     # Auto-open browser
+
+[optimization]
+enabled = true
+minify_css = true
+minify_js = true
+```
+
+## Testing
+
+Kryon includes `kryon-test`, a visual regression testing framework for automated screenshot-based testing.
+
+### Installation
+
+```bash
+cd kryon-test
+make
+```
+
+### Usage
+
+```bash
+# Run tests
+./build/kryon-test run configs/habits.yaml
+./build/kryon-test run configs/habits.yaml sdl3    # Test specific renderer
+
+# Generate baseline screenshots
+./build/kryon-test baseline configs/habits.yaml
+./build/kryon-test baseline configs/habits.yaml raylib
+
+# Validate configuration
+./build/kryon-test validate configs/habits.yaml
+
+# List all test configurations
+./build/kryon-test list
+```
+
+### Configuration Format
+
+```yaml
+app_name: "Habits Tracker"
+
+app:
+  path: "/absolute/path/to/app"
+  entry: "main.lua"
+  frontend: "lua"
+  screenshot_delay_ms: 500
+  window:
+    width: 800
+    height: 600
+
+renderers:
+  - sdl3
+  - raylib
+
+failure_threshold: 0.05  # 5% pixel difference allowed
+```
+
+## Environment Variables
+
+### Rendering
+
+| Variable | Description |
+|----------|-------------|
+| `KRYON_RENDERER=sdl3\|raylib\|terminal` | Default renderer |
+| `KRYON_ENABLE_RAYLIB=1` | Enable Raylib renderer |
+| `KRYON_ENABLE_ESCAPE_QUIT=1` | Allow ESC to quit |
+
+### Debug & Tracing
+
+| Variable | Description |
+|----------|-------------|
+| `KRYON_TRACE_COMMANDS=1` | Trace rendering commands |
+| `KRYON_TRACE_LAYOUT=1` | Trace layout calculations |
+| `KRYON_TRACE_POLYGON=1` | Trace polygon rendering |
+| `KRYON_DEBUG_RENDERER=1` | Enable renderer debugging |
+| `KRYON_DEBUG_LAYOUT=1` | Debug layout system |
+| `KRYON_WIREFRAME=1` | Enable wireframe mode |
+| `KRYON_WIREFRAME_SHOW_FOR_EACH=1` | Show ForEach boundaries |
+| `KRYON_WIREFRAME_SHOW_REACTIVE=1` | Show reactive components |
+
+### Screenshot & Headless
+
+| Variable | Description |
+|----------|-------------|
+| `KRYON_SCREENSHOT=/path/file.png` | Capture screenshot after launch |
+| `KRYON_SCREENSHOT_AFTER_FRAMES=N` | Capture after N frames (default: 5) |
+| `KRYON_HEADLESS=1` | Exit after screenshot (CI mode) |
+
+### Development
+
+| Variable | Description |
+|----------|-------------|
+| `KRYON_DEV_MODE=1` | Enable development mode |
+| `KRYON_WS_PORT=3001` | WebSocket port for hot reload |
+| `KRYON_HOT_RELOAD=1` | Enable hot reload mode |
+| `KRYON_CACHE_DIR=/path/to/cache` | Override cache directory |
 
 ## Documentation
 
