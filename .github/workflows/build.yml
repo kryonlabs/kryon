@@ -53,7 +53,7 @@ jobs:
 
       - name: Install Nim for Nim codegen
         run: |
-          wget -qO- https://nim-lang.org/choosenim/init.sh | sh
+          wget -qO- https://nim-lang.org/choosenim/init.sh | sh -s -- -y
           echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
       - name: Build terminal variant
@@ -218,7 +218,7 @@ jobs:
 
       - name: Install Nim for Nim codegen
         run: |
-          wget -qO- https://nim-lang.org/choosenim/init.sh | sh
+          wget -qO- https://nim-lang.org/choosenim/init.sh | sh -s -- -y
           echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
       - name: Build web variant
