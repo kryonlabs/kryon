@@ -1330,14 +1330,6 @@ static bool has_property_binding(IRComponent* component, const char* property_na
 static cJSON* json_serialize_component_impl(IRComponent* component, bool as_template) {
     if (!component) return NULL;
 
-    // Debug: ForEach components
-    if (component->type == IR_COMPONENT_FOR_EACH) {
-        fprintf(stderr, "[serialize] ForEach component id=%u, children=%u, each_source=%s, custom_data=%s\n",
-                component->id, component->child_count,
-                component->each_source ? component->each_source : "(null)",
-                component->custom_data ? component->custom_data : "(null)");
-    }
-
     cJSON* obj = cJSON_CreateObject();
     if (!obj) {
         fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) in json_serialize_component_impl\n");
@@ -1492,20 +1484,8 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
     }
 
     // Serialize layout properties
-    if (getenv("KRYON_DEBUG_LAYOUT")) {
-        fprintf(stderr, "[JSON_SERIALIZE] Component %u type=%d: layout=%p\n",
-                component->id, component->type, (void*)component->layout);
-    }
     if (component->layout) {
         json_serialize_layout(obj, component->layout, component);
-        if (getenv("KRYON_DEBUG_LAYOUT")) {
-            fprintf(stderr, "[JSON_SERIALIZE]   Layout serialized (cross_axis=%d)\n",
-                    component->layout->flex.cross_axis);
-        }
-    } else {
-        if (getenv("KRYON_DEBUG_LAYOUT")) {
-            fprintf(stderr, "[JSON_SERIALIZE]   SKIPPING layout (NULL)\n");
-        }
     }
 
     // Serialize checkbox state (stored in custom_data)
@@ -2541,9 +2521,6 @@ static cJSON* json_serialize_stylesheet(IRStylesheet* stylesheet) {
 }
 
 static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
-    fprintf(stderr, "[DEBUG] json_serialize_reactive_manifest called\n");
-    fflush(stderr);
-
     if (!manifest || (manifest->variable_count == 0 && manifest->component_def_count == 0 &&
                       manifest->conditional_count == 0 && manifest->for_loop_count == 0)) return NULL;
 
@@ -2738,16 +2715,9 @@ static cJSON* json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 
     // Serialize component definitions
     if (manifest->component_def_count > 0) {
-        fprintf(stderr, "[DEBUG] Serializing %u component definitions...\n", manifest->component_def_count);
-        fflush(stderr);
         cJSON* component_defs = json_serialize_component_definitions(manifest);
         if (component_defs) {
             cJSON_AddItemToObject(obj, "component_definitions", component_defs);
-            fprintf(stderr, "[DEBUG] Component definitions added to manifest JSON\n");
-            fflush(stderr);
-        } else {
-            fprintf(stderr, "[DEBUG] json_serialize_component_definitions returned NULL\n");
-            fflush(stderr);
         }
     }
 
@@ -3456,38 +3426,23 @@ char* ir_serialize_json_complete(
 
     // Add window properties from global IR context
     IRContext* ctx = g_ir_context;
-    fprintf(stderr, "[JSON_SERIALIZE] g_ir_context=%p\n", (void*)ctx);
-    if (ctx) {
-        fprintf(stderr, "[JSON_SERIALIZE]   ctx->metadata=%p\n", (void*)ctx->metadata);
-        if (ctx->metadata) {
-            fprintf(stderr, "[JSON_SERIALIZE]   window_title=%s, width=%d, height=%d\n",
-                    ctx->metadata->window_title ? ctx->metadata->window_title : "NULL",
-                    ctx->metadata->window_width, ctx->metadata->window_height);
-        }
-    }
     if (ctx && ctx->metadata) {
         cJSON* appJson = cJSON_CreateObject();
         if (ctx->metadata->window_title) {
             cJSON_AddStringToObject(appJson, "windowTitle", ctx->metadata->window_title);
-            fprintf(stderr, "[JSON_SERIALIZE]   Added windowTitle\n");
         }
         if (ctx->metadata->window_width > 0) {
             cJSON_AddNumberToObject(appJson, "windowWidth", ctx->metadata->window_width);
-            fprintf(stderr, "[JSON_SERIALIZE]   Added windowWidth=%d\n", ctx->metadata->window_width);
         }
         if (ctx->metadata->window_height > 0) {
             cJSON_AddNumberToObject(appJson, "windowHeight", ctx->metadata->window_height);
-            fprintf(stderr, "[JSON_SERIALIZE]   Added windowHeight=%d\n", ctx->metadata->window_height);
         }
         // Only add app object if it has any properties
         int app_size = cJSON_GetArraySize(appJson);
-        fprintf(stderr, "[JSON_SERIALIZE]   app object size=%d\n", app_size);
         if (app_size > 0) {
             cJSON_AddItemToObject(wrapper, "app", appJson);
-            fprintf(stderr, "[JSON_SERIALIZE]   Added app object to wrapper\n");
         } else {
             cJSON_Delete(appJson);
-            fprintf(stderr, "[JSON_SERIALIZE]   Deleted empty app object\n");
         }
     }
 
@@ -3519,17 +3474,9 @@ char* ir_serialize_json_complete(
     }
 
     // Add source structures if present (for Kry→KIR→Kry round-trip)
-    fprintf(stderr, "[DEBUG_JSON] source_structures=%p\n", (void*)source_structures);
-    if (source_structures) {
-        fprintf(stderr, "[DEBUG_JSON] static_block_count=%u, var_decl_count=%u, for_loop_count=%u\n",
-                source_structures->static_block_count,
-                source_structures->var_decl_count,
-                source_structures->for_loop_count);
-    }
     if (source_structures && (source_structures->static_block_count > 0 ||
                               source_structures->var_decl_count > 0 ||
                               source_structures->for_loop_count > 0)) {
-        fprintf(stderr, "[DEBUG_JSON] Serializing source_structures!\n");
         cJSON* sourceStructsJson = json_serialize_source_structures(source_structures);
         if (sourceStructsJson) {
             cJSON_AddItemToObject(wrapper, "source_structures", sourceStructsJson);
@@ -5409,8 +5356,7 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                         event->type = (IREventType)plugin_event_id;
                         event->event_name = strdup(typeStr);  // Cache name for serialization
                     } else {
-                        // Unknown event type - treat as custom and log warning
-                        fprintf(stderr, "[ir_json] Warning: Unknown event type '%s', treating as custom\n", typeStr);
+                        // Unknown event type - treat as custom
                         event->type = IR_EVENT_CUSTOM;
                         event->event_name = strdup(typeStr);
                     }
@@ -6040,17 +5986,13 @@ static IRStylesheet* json_deserialize_stylesheet(cJSON* obj) {
  */
 IRComponent* ir_deserialize_json(const char* json_string) {
     if (!json_string) {
-        LOGE("[ir_json] json_string is NULL");
         return NULL;
     }
 
     cJSON* root = cJSON_Parse(json_string);
     if (!root) {
-        const char* error_ptr = cJSON_GetErrorPtr();
-        LOGE("[ir_json] cJSON_Parse failed: %s", error_ptr ? error_ptr : "unknown error");
         return NULL;
     }
-    LOGI("[ir_json] cJSON_Parse succeeded, root=%p", root);
 
     // Parse component_definitions for expansion
     ComponentDefContext* ctx = NULL;
@@ -6078,21 +6020,14 @@ IRComponent* ir_deserialize_json(const char* json_string) {
     cJSON* componentJson = cJSON_GetObjectItem(root, "root");
     if (!componentJson) {
         componentJson = cJSON_GetObjectItem(root, "component");
-        LOGI("[ir_json] No 'root' key, trying 'component': %p", componentJson);
-    } else {
-        LOGI("[ir_json] Found 'root' key: %p", componentJson);
     }
 
     if (componentJson && cJSON_IsObject(componentJson)) {
-        LOGI("[ir_json] Deserializing wrapped format");
         // Wrapped format: { "root": {...} } or { "component": {...} }
         component = json_deserialize_component_with_context(componentJson, ctx);
-        LOGI("[ir_json] Deserialized component: %p", component);
     } else {
-        LOGI("[ir_json] Deserializing unwrapped format");
         // Unwrapped format: just component tree at root
         component = json_deserialize_component_with_context(root, ctx);
-        LOGI("[ir_json] Deserialized component (unwrapped): %p", component);
     }
 
     // Parse plugin requirements if present
@@ -6156,7 +6091,6 @@ IRComponent* ir_deserialize_json(const char* json_string) {
                 ir_stylesheet_free(ir_ctx->stylesheet);
             }
             ir_ctx->stylesheet = stylesheet;
-            LOGI("[ir_json] Deserialized stylesheet with %u rules", stylesheet->rule_count);
         }
     }
 

@@ -1301,8 +1301,6 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
 
     // HYBRID MODE: Preserve for loop template (ONLY if inside static block)
     // NOTE: For loops outside static blocks are runtime reactive (IRReactiveForLoop)
-    fprintf(stderr, "[DEBUG] expand_for_loop: compile_mode=%d, current_static_block_id=%s\n",
-            ctx->compile_mode, ctx->current_static_block_id ? ctx->current_static_block_id : "NULL");
 
     // Track expanded component IDs for source structures
     IRForLoopData* loop_data = NULL;
@@ -1315,7 +1313,6 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
     if (collection->type == KRY_VALUE_ARRAY) {
         // HYBRID MODE: Create loop template metadata (only when we have the actual array)
         if (ctx->compile_mode == IR_COMPILE_MODE_HYBRID && ctx->current_static_block_id != NULL) {
-            fprintf(stderr, "[DEBUG] Preserving for loop template!\n");
             // Get collection reference as string
             const char* collection_ref = NULL;
             // If collection is an identifier, use its name; otherwise use a generic name
@@ -1327,20 +1324,8 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
 
             // Create template component (convert first child WITHOUT parameter substitution)
             IRComponent* template_comp = NULL;
-            fprintf(stderr, "[DEBUG] for_node->first_child=%p\n", (void*)for_node->first_child);
-            if (for_node->first_child) {
-                fprintf(stderr, "[DEBUG] for_node->first_child->type=%u (COMPONENT=%u)\n",
-                        for_node->first_child->type, KRY_NODE_COMPONENT);
-            }
             if (for_node->first_child && for_node->first_child->type == KRY_NODE_COMPONENT) {
-                fprintf(stderr, "[DEBUG] Creating template component from first child\n");
                 template_comp = convert_node(ctx, for_node->first_child);
-                if (template_comp) {
-                    fprintf(stderr, "[DEBUG] Template component created: tag=%s, id=%u\n",
-                            template_comp->tag ? template_comp->tag : "NULL", template_comp->id);
-                }
-            } else {
-                fprintf(stderr, "[DEBUG] Skipping template creation - no component child found\n");
             }
 
             loop_data = ir_source_structures_add_for_loop(
@@ -1504,14 +1489,8 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
     if (loop_data && expanded_ids && expanded_count > 0) {
         loop_data->expanded_component_ids = expanded_ids;
         loop_data->expanded_count = (uint32_t)expanded_count;
-        fprintf(stderr, "[DEBUG] Updated loop_data with %zu expanded component IDs\n", expanded_count);
-        for (size_t i = 0; i < expanded_count; i++) {
-            fprintf(stderr, "[DEBUG]   ID[%zu] = %u\n", i, expanded_ids[i]);
-        }
     } else if (expanded_ids) {
         // Clean up if we didn't use the array
-        fprintf(stderr, "[DEBUG] Cleaning up expanded_ids (loop_data=%p, expanded_count=%zu)\n",
-                (void*)loop_data, expanded_count);
         free(expanded_ids);
     }
 }

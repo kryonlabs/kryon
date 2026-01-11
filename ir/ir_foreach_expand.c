@@ -20,7 +20,6 @@ IRComponent* ir_component_deep_copy(IRComponent* src) {
 
     IRComponent* dest = ir_create_component(src->type);
     if (!dest) {
-        fprintf(stderr, "[ForEach] Failed to allocate component for deep copy\n");
         return NULL;
     }
 
@@ -332,19 +331,13 @@ void ir_foreach_apply_bindings(IRComponent* component, IRForEachDef* def, IRForE
         if (binding->is_computed) {
             // Computed bindings need expression evaluation (not implemented yet)
             // For now, skip computed bindings
-            fprintf(stderr, "[ForEach] Skipping computed binding: %s = %s\n",
-                    binding->target_property, binding->source_expression);
             continue;
         }
 
         // Resolve binding value
         char* value = ir_foreach_resolve_binding(binding->source_expression, ctx);
         if (value) {
-            bool set = ir_foreach_set_property(component, binding->target_property, value);
-            if (set) {
-                fprintf(stderr, "[ForEach] Applied binding: %s = %s\n",
-                        binding->target_property, value);
-            }
+            ir_foreach_set_property(component, binding->target_property, value);
             free(value);
         }
     }
@@ -571,7 +564,6 @@ void ir_foreach_replace_in_parent(IRComponent* parent, int foreach_index,
     if (!expanded_children || expanded_count == 0) return;
 
     if (!parent) {
-        fprintf(stderr, "[ForEach] Warning: root-level ForEach cannot be replaced\n");
         return;
     }
 
@@ -609,9 +601,6 @@ void ir_foreach_replace_in_parent(IRComponent* parent, int foreach_index,
     parent->children = new_children;
     parent->child_count = new_count;
 
-    fprintf(stderr, "[ForEach] Replaced ForEach at index %d with %u children (parent now has %d children)\n",
-            foreach_index, expanded_count, new_count);
-
     // Free the old ForEach component (its expanded children are now in parent)
     // The caller will NULL out its children pointer, so we do it here to be safe
     if (old_foreach) {
@@ -631,12 +620,6 @@ uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_
     if (!foreach_comp || !out_children) return 0;
     *out_children = NULL;
 
-    fprintf(stderr, "[ForEach] ir_foreach_expand_single called, comp=%p, type=%d, child_count=%u\n",
-            (void*)foreach_comp, (int)foreach_comp->type, foreach_comp->child_count);
-    fprintf(stderr, "[ForEach]   each_source=%s\n", foreach_comp->each_source ? foreach_comp->each_source : "(null)");
-    fprintf(stderr, "[ForEach]   custom_data=%s\n", foreach_comp->custom_data ? foreach_comp->custom_data : "(null)");
-    fprintf(stderr, "[ForEach]   foreach_def=%p\n", (void*)foreach_comp->foreach_def);
-
     // Get source data
     cJSON* source_array = NULL;
     bool should_free_source = false;
@@ -645,58 +628,44 @@ uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_
     if (foreach_comp->foreach_def) {
         source_array = ir_foreach_get_source_data(foreach_comp->foreach_def);
         should_free_source = true;
-        fprintf(stderr, "[ForEach] Got source from foreach_def: %p\n", (void*)source_array);
     }
 
     // Fall back to each_source field
     if (!source_array && foreach_comp->each_source) {
-        fprintf(stderr, "[ForEach] Checking each_source field: '%s'\n", foreach_comp->each_source);
         // Skip runtime markers
         if (strcmp(foreach_comp->each_source, "__runtime__") == 0 ||
             strcmp(foreach_comp->each_source, "\"__runtime__\"") == 0) {
-            fprintf(stderr, "[ForEach] Skipping __runtime__ marker\n");
             return 0;
         }
         source_array = cJSON_Parse(foreach_comp->each_source);
         should_free_source = true;
-        fprintf(stderr, "[ForEach] Parsed each_source, array=%p\n", (void*)source_array);
     }
 
     // Fall back to custom_data (legacy)
     if (!source_array && foreach_comp->custom_data) {
-        fprintf(stderr, "[ForEach] Checking custom_data for each_source\n");
         cJSON* custom_json = cJSON_Parse(foreach_comp->custom_data);
         if (custom_json) {
             cJSON* each_source_item = cJSON_GetObjectItem(custom_json, "each_source");
             if (each_source_item && cJSON_IsArray(each_source_item)) {
-                fprintf(stderr, "[ForEach] Found array in custom_data\n");
                 source_array = cJSON_Duplicate(each_source_item, 1);
                 should_free_source = true;
             } else if (each_source_item && cJSON_IsString(each_source_item)) {
                 const char* marker = each_source_item->valuestring;
-                fprintf(stderr, "[ForEach] Found string in custom_data: '%s'\n", marker);
                 if (strcmp(marker, "__runtime__") == 0) {
                     cJSON_Delete(custom_json);
                     return 0;
                 }
-            } else {
-                fprintf(stderr, "[ForEach] each_source in custom_data is neither array nor string\n");
             }
             cJSON_Delete(custom_json);
-        } else {
-            fprintf(stderr, "[ForEach] Failed to parse custom_data as JSON\n");
         }
     }
 
     if (!source_array || !cJSON_IsArray(source_array)) {
-        fprintf(stderr, "[ForEach] No valid source array, source_array=%p, isArray=%d\n",
-                (void*)source_array, source_array ? cJSON_IsArray(source_array) : 0);
         if (should_free_source && source_array) cJSON_Delete(source_array);
         return 0;
     }
 
     int num_items = cJSON_GetArraySize(source_array);
-    fprintf(stderr, "[ForEach] Expanding with %d items from source array\n", num_items);
     if (num_items == 0) {
         if (should_free_source) cJSON_Delete(source_array);
         return 0;
@@ -704,7 +673,6 @@ uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_
 
     // Get template
     if (foreach_comp->child_count == 0 || !foreach_comp->children[0]) {
-        fprintf(stderr, "[ForEach] Warning: no template child\n");
         if (should_free_source) cJSON_Delete(source_array);
         return 0;
     }
@@ -730,7 +698,6 @@ uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_
     for (int i = 0; i < num_items; i++) {
         IRComponent* copy = ir_component_deep_copy(tmpl);
         if (!copy) {
-            fprintf(stderr, "[ForEach] Failed to deep copy template for item %d\n", i);
             continue;
         }
 
@@ -786,8 +753,6 @@ static void expand_foreach_with_parent_internal(IRComponent* component, IRCompon
         // Update component with expanded children
         component->children = expanded_children;
         component->child_count = expanded_count;
-
-        fprintf(stderr, "[ForEach] Expanded to %u children\n", expanded_count);
 
         // Expand nested ForEach in each copy
         for (uint32_t i = 0; i < expanded_count; i++) {
