@@ -114,15 +114,22 @@ $(DYNAMIC_BIN): $(CLI_DEPS)
 # Variant builds for C CLI (GitHub Actions CI)
 # =============================================================================
 
+# Static IR build (for minimal targets that don't need shared library)
+build-ir-static:
+	@echo "Building IR library (static only)..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C ir static
+	@rm -f $(BUILD_DIR)/libkryon_ir.so  # Remove shared lib to force static linking
+
 # Terminal-only CLI (no SDL3/raylib dependencies - lightweight, static)
-build-terminal: build-ir build-codegens build-renderers-common
+build-terminal: build-ir-static build-codegens build-renderers-common
 	@echo "Building Kryon CLI (terminal-only, static)..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C cli minimal
 	@cp cli/kryon $(BUILD_DIR)/kryon-terminal
 
 # Web CLI (for HTML generation, no SDL3/raylib)
-build-web: build-ir build-codegens build-renderers-common
+build-web: build-ir-static build-codegens build-renderers-common
 	@echo "Building Kryon CLI (web codegen, static)..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C cli minimal
@@ -180,7 +187,8 @@ build-c-codegens: build-ir
 	$(MAKE) -C codegens/web all
 
 # Build code generators (needed by CLI)
-build-codegens: build-ir
+# Note: Does NOT depend on build-ir to allow minimal builds to use build-ir-static
+build-codegens:
 	@echo "Building code generators..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C codegens all

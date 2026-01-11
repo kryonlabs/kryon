@@ -3,6 +3,7 @@
 
 #include "ir_core.h"
 #include "ir_animation.h"
+#include "ir_tabgroup.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -194,75 +195,8 @@ void ir_gradient_destroy(IRGradient* gradient);
 bool ir_validate_component(IRComponent* component);
 void ir_optimize_component(IRComponent* component);
 
-// Tab Visual State (colors for active/inactive tabs)
-typedef struct TabVisualState {
-    uint32_t background_color;        // RGBA packed: 0xRRGGBBAA
-    uint32_t active_background_color;
-    uint32_t text_color;
-    uint32_t active_text_color;
-} TabVisualState;
-
-// Tab click callback type - called BEFORE tab selection
-// tab_index: which tab was clicked
-// user_data: user-provided context (e.g., component ID for frontend bridge)
-typedef void (*TabClickCallback)(uint32_t tab_index, void* user_data);
-
-// Maximum tabs per tab group (prevents realloc)
-#define IR_MAX_TABS_PER_GROUP 32
-
-// Tab Group Support (shared across frontends)
-typedef struct TabGroupState {
-    IRComponent* group;
-    IRComponent* tab_bar;
-    IRComponent* tab_content;
-    IRComponent* tabs[IR_MAX_TABS_PER_GROUP];         // Fixed-size array
-    IRComponent* panels[IR_MAX_TABS_PER_GROUP];       // Fixed-size array
-    TabVisualState tab_visuals[IR_MAX_TABS_PER_GROUP]; // Fixed-size array
-    TabClickCallback user_callbacks[IR_MAX_TABS_PER_GROUP]; // Fixed-size array
-    void* user_callback_data[IR_MAX_TABS_PER_GROUP];  // Fixed-size array
-    uint32_t tab_count;
-    uint32_t panel_count;
-    int selected_index;
-    bool reorderable;
-    bool dragging;
-    int drag_index;
-    float drag_x;
-} TabGroupState;
-
-TabGroupState* ir_tabgroup_create_state(IRComponent* group,
-                                        IRComponent* tab_bar,
-                                        IRComponent* tab_content,
-                                        int selected_index,
-                                        bool reorderable);
-void ir_tabgroup_register_bar(TabGroupState* state, IRComponent* tab_bar);
-void ir_tabgroup_register_content(TabGroupState* state, IRComponent* tab_content);
-void ir_tabgroup_register_tab(TabGroupState* state, IRComponent* tab);
-void ir_tabgroup_register_panel(TabGroupState* state, IRComponent* panel);
-void ir_tabgroup_finalize(TabGroupState* state);
-void ir_tabgroup_select(TabGroupState* state, int index);
-void ir_tabgroup_reorder(TabGroupState* state, int from_index, int to_index);
-void ir_tabgroup_handle_drag(TabGroupState* state, float x, float y, bool is_down, bool is_up);
-void ir_tabgroup_set_reorderable(TabGroupState* state, bool reorderable);
-void ir_tabgroup_set_tab_visual(TabGroupState* state, int index, TabVisualState visual);
-void ir_tabgroup_apply_visuals(TabGroupState* state);  // Apply active/inactive colors based on selected_index
-
-// Tab Group Query Functions
-uint32_t ir_tabgroup_get_tab_count(TabGroupState* state);
-uint32_t ir_tabgroup_get_panel_count(TabGroupState* state);
-int ir_tabgroup_get_selected(TabGroupState* state);
-IRComponent* ir_tabgroup_get_tab(TabGroupState* state, uint32_t index);
-IRComponent* ir_tabgroup_get_panel(TabGroupState* state, uint32_t index);
-
-// Tab User Callback Registration - callback called BEFORE tab selection
-void ir_tabgroup_set_tab_callback(TabGroupState* state, uint32_t index,
-                                   TabClickCallback callback, void* user_data);
-
-// Tab Click Handling - combines user callback + selection logic
-// Call this from renderer when a tab is clicked
-void ir_tabgroup_handle_tab_click(TabGroupState* state, uint32_t tab_index);
-
-// Cleanup
-void ir_tabgroup_destroy_state(TabGroupState* state);
+// Tab Group Support - types and functions moved to ir_tabgroup.h
+// (include ir_tabgroup.h for TabGroupState, TabVisualState, and all ir_tabgroup_* functions)
 
 // Hit Testing
 bool ir_is_point_in_component(IRComponent* component, float x, float y);

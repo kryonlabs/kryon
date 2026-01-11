@@ -2,6 +2,9 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../backends/desktop -D_POSIX_C_SOURCE=200809L
+
+# HarfBuzz libraries (for text shaping support in IR)
+HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
 # Desktop backend is linked for hot reload support (--watch flag)
 # Requires SDL3 and raylib to be installed
 # Link against static libraries to override weak symbols at link time
@@ -83,9 +86,11 @@ minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_comm
 	@echo "Building minimal CLI..."
 	$(MAKE) -C . CFLAGS="$(CFLAGS_MINIMAL)" $(OBJS_MINIMAL)
 	$(CC) $(OBJS_MINIMAL) $(CODEGEN_OBJS) $(CJSON_OBJ) -o $(TARGET) \
+		-Wl,--allow-multiple-definition \
 		-L../build -lkryon_ir \
 		../build/libkryon_common.a \
 		../build/libkryon_common.a \
+		$(HARFBUZZ_LIBS) \
 		-lm -lpthread -ldl
 
 # Create build directories
