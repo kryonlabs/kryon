@@ -134,7 +134,7 @@ jobs:
           export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
           # Build C libraries (both SDL3 and Raylib enabled by default)
           make -C ir all
-          make -C backends/desktop all
+          make build-desktop-backend
           make -C cli all
           cp cli/kryon build/kryon-desktop
 
@@ -293,7 +293,7 @@ jobs:
           export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
           # Build C libraries (both SDL3 and Raylib enabled by default)
           make -C ir all
-          make -C backends/desktop all
+          make build-desktop-backend
           make -C codegens/web all
           make -C cli all
           cp cli/kryon build/kryon-full
