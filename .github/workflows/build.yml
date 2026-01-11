@@ -44,6 +44,16 @@ jobs:
           git config --global --add safe.directory /__w/kryon/kryon
           git submodule update --init --recursive
 
+      - name: Install Bun for TSX codegen
+        run: |
+          wget -qO- https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Install Nim for Nim codegen
+        run: |
+          wget -qO- https://nim-lang.org/choosenim/init.sh | sh
+          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
+
       - name: Build terminal variant (static)
         run: |
           make -C ir all
@@ -203,6 +213,16 @@ jobs:
         run: |
           git config --global --add safe.directory /__w/kryon/kryon
           git submodule update --init --recursive
+
+      - name: Install Bun for TSX codegen
+        run: |
+          wget -qO- https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Install Nim for Nim codegen
+        run: |
+          wget -qO- https://nim-lang.org/choosenim/init.sh | sh
+          echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
       - name: Build web variant (static)
         run: |
