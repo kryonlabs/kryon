@@ -9,9 +9,12 @@ nimcache/
 *.o
 
 # Build artifacts
-build/
-bin/
-dist/
+/build/
+/bin/
+/dist/
+cli/build/
+backends/*/build/
+renderers/*/build/
 *.out
 .kryon
 cli/main
