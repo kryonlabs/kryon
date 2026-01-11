@@ -8,6 +8,11 @@
 #include "ir_layout_builder.h"
 #include "ir_event_builder.h"
 #include "ir_module_refs.h"
+#include "ir_table.h"
+#include "ir_markdown.h"
+#include "ir_animation_builder.h"
+#include "ir_gradient.h"
+#include "ir_hit_test.h"
 #include <stdlib.h>
 #include <string.h>
 

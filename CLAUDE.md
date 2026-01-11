@@ -2,302 +2,120 @@
 
 This file provides context for Claude Code (AI assistant) when working on the Kryon project.
 
+## Documentation
+
+**Read these first:**
+- `docs/ARCHITECTURE.md` - Full system architecture
+- `docs/GETTING_STARTED.md` - User guide
+
 ## Development Rules
 
 You are a senior software developer. Follow these rules:
 
 - **No fallbacks** - Never implement fallbacks unless explicitly requested
-- **No legacy preservation** - Never preserve or keep legacy code unless explicitly requested; delete unused code completely
-- **Respect architecture** - Always respect the full existing architecture; implement fixes and features aligned with the intended modular design
-- **Use Nix for dependencies** - When adding dependencies or running applications for testing, first check for `flake.nix` or `shell.nix`; if a required dependency is missing, update the appropriate file instead of using ad-hoc installation methods
+- **No legacy preservation** - Delete unused code completely; never preserve unless explicitly requested
+- **Respect architecture** - Implement fixes and features aligned with the modular design
+- **Use Nix for dependencies** - Check for `flake.nix` or `shell.nix` before using ad-hoc installation
 
 ## Project Overview
 
-**Kryon** is a universal UI framework with a three-stage pipeline architecture:
+**Kryon** is a universal UI framework with a three-stage pipeline:
 
 ```
 Source (.tsx, .kry, .html, .lua) → KIR (JSON IR) → Target (.tsx, .c, .lua, .nim) → Runtime
 ```
 
-**Core Philosophy**: Write UI code once in any source language, compile to KIR (Kryon Intermediate Representation), then generate code for any target platform.
+**Core Philosophy**: Write UI once, compile to KIR (Kryon Intermediate Representation), generate code for any platform.
 
 ## Project Structure
 
 ```
 kryon/
-├── cli/                    # Command-line interface (C)
-│   ├── src/commands/       # CLI commands (compile, run, codegen, etc.)
-│   └── tsx_parser/         # TypeScript/TSX parser (Bun/TypeScript)
-├── ir/                     # Core IR library (C)
+├── cli/            # Command-line interface (C)
+├── ir/             # Core IR library (C)
 │   ├── ir_core.h/c         # Component tree structures
 │   ├── ir_logic.h/c        # Logic block (event handlers)
 │   ├── ir_executor.h/c     # Universal logic executor
-│   └── ir_*_parser.c       # Parsers (Kry, HTML, Markdown)
-├── core/                   # Core runtime components
-├── codegens/               # Code generators
-│   ├── react_common.c      # Shared React/TSX generation
-│   ├── tsx/                # TSX-specific codegen
-│   ├── lua/                # Lua codegen
-│   ├── nim/                # Nim codegen
-│   └── c/                  # C codegen
-├── backends/               # Runtime backends
-│   └── desktop/            # SDL3 desktop renderer
-├── renderers/              # Rendering systems
-├── platforms/              # Platform-specific code
-├── bindings/               # Language bindings (C, Nim, TypeScript)
-├── examples/               # Example applications
-├── tests/                  # Test files
-├── docs/                   # Documentation
-├── packages/               # Package components
-├── scripts/                # Build/utility scripts
-└── third_party/            # External dependencies
+│   ├── ir_builder.h/c      # Component builder API
+│   ├── ir_layout_builder.c # Layout properties
+│   ├── ir_style_builder.c  # Style setters
+│   ├── ir_event_builder.c  # Event management
+│   ├── ir_tabgroup.c       # Tab component state
+│   └── parsers/            # Language parsers
+├── codegens/       # Code generators (TSX, Lua, Nim, C)
+├── backends/       # Runtime backends
+│   └── desktop/    # SDL3 desktop renderer
+├── renderers/      # Rendering systems (SDL3, Raylib)
+├── bindings/       # Language bindings (C, Nim, TypeScript)
+├── examples/       # Example applications
+└── docs/           # Documentation
 ```
 
 ## Key Technologies
 
 - **C (C99)** - Core IR, parsers, codegens, backends
-- **TypeScript/Bun** - TSX parser (`ir/parsers/tsx/`)
+- **TypeScript/Bun** - TSX parser
 - **SDL3** - Desktop rendering backend
-- **cJSON** - JSON parsing (`ir/third_party/cJSON/`)
+- **cJSON** - JSON parsing
 
-## Shared Utilities (Phase 1 Modules)
+## Shared Utilities
 
-### ir_log - Unified Logging System
+### ir_log - Unified Logging
 
-**Files:** `ir/ir_log.h`, `ir/ir_log.c`
-
-Platform-aware logging that works on desktop and Android:
+`ir/ir_log.h`, `ir/ir_log.c`
 
 ```c
-#include "ir_log.h"
-
-// Log levels: DEBUG, INFO, WARN, ERROR
-IR_LOG_DEBUG("TAG", "Debug message: %d", value);
-IR_LOG_INFO("TAG", "Info message");
-IR_LOG_WARN("TAG", "Warning: %s", warning_msg);
-IR_LOG_ERROR("TAG", "Error occurred");
-
-// Set minimum log level
-ir_log_set_level(IR_LOG_DEBUG);
+IR_LOG_DEBUG("TAG", "Debug: %d", value);
+IR_LOG_INFO("TAG", "Info");
+IR_LOG_WARN("TAG", "Warning: %s", msg);
+IR_LOG_ERROR("TAG", "Error");
 ```
 
-**Tags commonly used:**
-- `TEXT_SHAPING` - Font/text operations
-- `AUDIO` - Audio system
-- `ENTITY` - Entity system
-- `DESKTOP` - Desktop backend
-- `NAVIGATION` - Page routing
-- `JSON`, `SER`, `EXEC` - IR operations
+### ir_string_builder - String Builder
 
-**When to use:**
-- Use for all diagnostic output, not user-facing text
-- Replace `fprintf(stderr, ...)` calls
-- Keep user-facing statistics/info as `printf`
-
-### ir_string_builder - String Builder Utility
-
-**Files:** `ir/ir_string_builder.h`, `ir/ir_string_builder.c`
-
-Dynamic string buffer with auto-expansion for code generation:
+`ir/ir_string_builder.h`, `ir/ir_string_builder.c`
 
 ```c
-#include "ir_string_builder.h"
-
-IRStringBuilder* sb = ir_sb_create(8192);  // Initial capacity
+IRStringBuilder* sb = ir_sb_create(8192);
 ir_sb_append(sb, "Hello ");
 ir_sb_appendf(sb, "%s %d", "world", 42);
-ir_sb_indent(sb, 2);  // Add 2 spaces (indentation)
-ir_sb_append_line(sb, "next line");
-
-char* result = ir_sb_build(sb);  // Returns buffer (ownership transfers)
+char* result = ir_sb_build(sb);  // Ownership transfers
 ir_sb_free(sb);
-// result is now owned by caller - free() when done
 ```
-
-**Key functions:**
-- `ir_sb_create()` - Create builder with initial capacity
-- `ir_sb_append()` - Append string
-- `ir_sb_appendf()` - Append formatted string (va_list)
-- `ir_sb_append_line()` - Append string + newline
-- `ir_sb_indent()` - Add indentation spaces
-- `ir_sb_clone()` - Clone builder (for result extraction)
-- `ir_sb_build()` - Get buffer (ownership transfers)
-- `ir_sb_free()` - Free builder and buffer
-- `ir_sb_length()` - Get current length
-
-**When to use:**
-- Code generation (replaces local string builders)
-- Building dynamic strings
-- Anywhere you'd use repeated `strcat` or manual buffer management
 
 ### ir_json_helpers - Safe cJSON Wrappers
 
-**Files:** `ir/ir_json_helpers.h`, `ir/ir_json_helpers.c`
-
-NULL-safe cJSON operations to prevent crashes:
+`ir/ir_json_helpers.h`, `ir/ir_json_helpers.c`
 
 ```c
-#include "ir_json_helpers.h"
-
-// Safe string addition - handles NULL gracefully
 cJSON_AddStringOrNull(obj, "key", potentially_null_value);
-
-// Safe string creation - returns cJSON_CreateNull() if value is NULL
-cJSON* item = cJSON_CreateStringOrNull(potentially_null_value);
-
-// Additional safe getters
-const char* str = cJSON_GetStringSafe(item, "default");  // Returns NULL-safe string
-double num = cJSON_GetNumberSafe(item, 0.0);              // Returns 0.0 if not number
-int boolean = cJSON_GetBoolSafe(item, false);              // Returns false if not bool
+const char* str = cJSON_GetStringSafe(item, "default");
 ```
-
-**When to use:**
-- Replace `cJSON_AddStringToObject(obj, key, value)` when `value` may be NULL
-- Use instead of `value ? value : ""` fallback patterns
-- Anytime you serialize potentially NULL strings to JSON
-
-## Architecture Layers
-
-### 1. Parsers (Source → KIR)
-
-Convert source languages to KIR JSON format:
-
-- **TSX Parser** (`ir/parsers/tsx/tsx_to_kir.ts`) - Parses React/TSX with hooks
-- **Kry Parser** (`ir/ir_kry_parser.c`) - Custom .kry DSL
-- **HTML Parser** (`ir/ir_html_parser.c`) - HTML5
-- **Markdown Parser** (`ir/ir_markdown_parser.c`) - Markdown
-- **Lua Parser** (`parsers/lua/ir_lua_parser.c`) - Lua-based UI
-- **C Parser** (`parsers/c/ir_c_parser.c`) - C-based UI
-
-### 2. KIR Format
-
-JSON intermediate representation with three sections:
-
-```json
-{
-  "root": { /* Component tree */ },
-  "logic_block": { /* Event handlers */ },
-  "reactive_manifest": { /* State & hooks */ }
-}
-```
-
-### 3. Codegens (KIR → Target)
-
-Generate target language code from KIR:
-
-- **React/TSX** (`codegens/react_common.c`, `codegens/tsx/`)
-- **C** (`codegens/c/ir_c_codegen.c`)
-- **Lua** (`codegens/lua/lua_codegen.c`)
-- **Nim** (`codegens/nim/nim_codegen.c`)
-
-### 4. Runtimes
-
-Execute generated code or KIR directly:
-
-- **Desktop** (`backends/desktop/`) - SDL3 native windows
-- **IR Executor** (`ir/ir_executor.c`) - Runs KIR directly with universal logic
-
-## Current State (December 2025)
-
-### ✅ Completed Features
-
-- **TSX Parser** - Full React hook support (useState, useEffect, useCallback, useMemo, useReducer)
-- **Type Inference** - Automatic type detection from initial values
-- **Event Handlers** - All 9+ event types (onClick, onChange, onFocus, etc.)
-- **Universal Logic** - Simple handlers converted to executable IR (count + 1, etc.)
-- **TSX Codegen** - Round-trip verified (TSX → KIR → TSX)
-- **Desktop Renderer** - SDL3-based native windows
-- **Text Interpolation** - Preserves `{variable}` patterns
-- **Variable Names** - Preserves useCallback/useMemo variable names
-
-### 🚧 In Progress
-
-- Event handler execution testing
-- More complex universal logic patterns
-- Component props system
-
-### 📋 Planned
-
-- Conditional rendering preservation
-- Array mapping support  
-- More component types (Image, Video, Grid)
-- Mobile platform support
-- WebAssembly runtime
 
 ## Code Conventions
 
 ### C Code Style
 
-- Follow Linux kernel style
-- Use `snake_case` for functions and variables
-- Use `PascalCase` for type names
+- Linux kernel style
+- `snake_case` for functions/variables
+- `PascalCase` for types
 - Header guards: `FILENAME_H`
 - Max line length: ~100 characters
 
-Example:
-```c
-typedef struct IRComponent {
-    uint32_t id;
-    char* type;
-    IRComponent** children;
-    int child_count;
-} IRComponent;
-
-IRComponent* ir_component_create(const char* type) {
-    IRComponent* comp = calloc(1, sizeof(IRComponent));
-    comp->type = strdup(type);
-    return comp;
-}
-```
-
-### TypeScript Code Style
-
-- Use TypeScript strict mode
-- Use `camelCase` for functions and variables
-- Use `PascalCase` for types/interfaces
-- Prefer `const` over `let`
-
-Example:
-```typescript
-interface KIRComponent {
-  id?: number;
-  type: string;
-  children?: KIRComponent[];
-}
-
-function parseComponent(node: any): KIRComponent {
-  return {
-    id: nextId++,
-    type: node.type,
-    children: node.children?.map(parseComponent)
-  };
-}
-```
-
 ### File Naming
 
-- IR core: `ir_<module>.c/h` (e.g., `ir_core.c`)
-- Parsers: `<lang>_parser.c` (e.g., `tsx_parser.ts`)
-- Codegens: `<lang>_codegen.c` (e.g., `tsx_codegen.c`)
-- Tests: `test_<feature>.c`
+- IR core: `ir_<module>.c/h`
+- Parsers: `<lang>_parser.c`
+- Codegens: `<lang>_codegen.c`
 
-## Building the Project
+## Building
 
 ```bash
-# Build everything
-make
-
-# Build specific components
-make -C ir
-make -C cli
-make -C codegens/tsx
-make -C backends/desktop
-
-# Install CLI
-make -C cli install
-
-# Clean
-make clean
+make                    # Build everything
+make -C ir              # Build IR library
+make -C cli             # Build CLI
+make -C cli install     # Install CLI
+make clean              # Clean
 ```
 
 ## Common Tasks
@@ -307,16 +125,12 @@ make clean
 1. Create `parsers/mylang/mylang_parser.c`
 2. Implement `parse_mylang_to_kir_json()`
 3. Add to `cli/src/commands/cmd_compile.c`
-4. Update docs and capability matrix
-
-See `docs/IMPLEMENTATION_GUIDE.md` for detailed steps.
 
 ### Adding a New Codegen
 
 1. Create `codegens/mytarget/mytarget_codegen.c`
 2. Implement `mytarget_codegen_generate()`
 3. Add to `cli/src/commands/cmd_codegen.c`
-4. Update CLI Makefile `CODEGEN_OBJS`
 
 ### Adding a Component Type
 
@@ -336,188 +150,48 @@ diff test.kir test2.kir
 
 # Run on desktop
 ./cli/kryon run test.kir
-
-# Full pipeline
-bun ir/parsers/tsx/tsx_to_kir.ts app.tsx > app.kir
-./cli/kryon codegen c app.kir app.c
-gcc app.c -lkryon_desktop -o app
-./app
 ```
-
-### Screenshot Debugging
-
-The desktop backend has built-in screenshot capture for debugging. Use environment variables to capture screenshots automatically after launch:
-
-```bash
-# Basic screenshot (captures after 5 frames by default)
-KRYON_SCREENSHOT=/tmp/screenshot.png ./kryon run app.kir
-
-# Custom frame delay
-KRYON_SCREENSHOT=/tmp/screenshot.png KRYON_SCREENSHOT_AFTER_FRAMES=10 ./kryon run app.kir
-
-# Headless mode (exits after screenshot - useful for CI/automation)
-KRYON_SCREENSHOT=/tmp/screenshot.png KRYON_HEADLESS=1 ./kryon run app.kir
-```
-
-**Supported formats:** PNG (`.png` extension) and BMP (default)
-
-**Implementation files:**
-- `backends/desktop/ir_desktop_renderer.c` - Environment variable parsing
-- `backends/desktop/renderers/sdl3/sdl3_renderer.c` - Frame-end trigger
-- `renderers/sdl3/sdl3_backend.c` - Screenshot capture via SDL3
 
 ## Important Files
 
 ### Core IR
-
 - `ir/ir_core.h` - Component tree structures
 - `ir/ir_logic.h` - Logic block (handlers, universal statements)
-- `ir/ir_executor.c` - Universal logic execution engine
+- `ir/ir_executor.c` - Universal logic execution
 - `ir/ir_serialization.c` - KIR JSON parsing
 
 ### TSX Pipeline
-
-- `ir/parsers/tsx/tsx_to_kir.ts` - Parse TSX → KIR
-- `codegens/react_common.c` - Generate KIR → TSX
-- `codegens/tsx/tsx_codegen.c` - TSX-specific wrapper
+- `ir/parsers/tsx/tsx_to_kir.ts` - TSX → KIR
+- `codegens/react_common.c` - KIR → TSX
+- `codegens/tsx/tsx_codegen.c` - TSX wrapper
 
 ### Desktop Backend
-
 - `backends/desktop/desktop_renderer.c` - Main renderer
 - `backends/desktop/desktop_input.c` - Event handling
-- `backends/desktop/ir_to_commands.c` - Convert IR to render commands
 
-## Known Issues & Limitations
+## Known Limitations
 
-### Universal Logic
-
-Only simple patterns convert to universal logic:
-- ✅ `setCount(count + 1)` - Supported
-- ✅ `setCount(0)` - Supported
-- ❌ `setCount(count * 2 + foo.bar)` - Too complex
-
-Complex handlers remain as source strings and need language runtime.
-
-### Component Props
-
-Component-to-component data passing is limited. Props system needs enhancement.
-
-### Conditional Rendering
-
-Ternaries and `&&` operators are evaluated at parse time:
-- `{condition ? <A/> : <B/>}` → Evaluates to A or B, loses condition
-
-### Array Mapping
-
-`.map()` is evaluated at parse time:
-- `{items.map(item => <Text>{item}</Text>)}` → Expands at parse time
-
-## Development Workflow
-
-1. Make changes in appropriate files
-2. Rebuild affected components
-3. Test with round-trip verification
-4. Test on desktop renderer
-5. Update documentation
-6. Update capability matrix if needed
-
-## Memory Management
-
-### C Code
-
-```c
-// Always free allocated memory
-char* str = strdup(input);
-// ... use str
-free(str);
-
-// For cJSON
-cJSON* json = cJSON_Parse(input);
-// ... use json
-cJSON_Delete(json);
-
-// For IRComponent
-IRComponent* comp = ir_component_create("Text");
-// ... use comp
-ir_component_free(comp);
-```
-
-### TypeScript/Bun
-
-Garbage collected, but be mindful of large arrays and closures.
-
-## Debugging
-
-### Enable Debug Output
-
-```bash
-# TSX parser debug
-DEBUG_TSX_PARSER=1 bun ir/parsers/tsx/tsx_to_kir.ts input.tsx
-
-# IR executor debug
-# (Already prints to stdout)
-```
-
-### Common Issues
-
-**"Failed to parse KIR"**: Check JSON validity with `jq . file.kir`
-
-**"Component not found"**: Ensure component type is registered in parser
-
-**"Handler not executing"**: Check if universal logic was generated or if language runtime is needed
-
-**Segfault**: Run with `valgrind` to find memory issues
-
-## Extending Kryon
-
-See `docs/IMPLEMENTATION_GUIDE.md` for detailed guides on:
-- Adding parsers
-- Adding codegens
-- Adding components
-- Adding event types
-- Adding React hooks
-- Adding universal logic patterns
-
-## Documentation
-
-- **Architecture**: `docs/ARCHITECTURE.md` - Full system architecture
-- **Getting Started**: `docs/GETTING_STARTED.md` - User guide
-- **Implementation**: `docs/IMPLEMENTATION_GUIDE.md` - Developer guide
-- **Configuration**: `docs/configuration.md` - Config system
-
-## When Working on This Project
-
-1. **Read the docs** - Check architecture and implementation guides first
-2. **Follow conventions** - Match existing code style
-3. **Test thoroughly** - Verify round-trip and rendering
-4. **Update docs** - Keep documentation current
-5. **Maintain capability matrix** - Update when adding features
+- Universal Logic: Only simple patterns (`setCount(count + 1)`)
+- Component Props: Data passing is limited
+- Conditional Rendering: Ternaries evaluated at parse time
+- Array Mapping: `.map()` expanded at parse time
 
 ## Quick Reference
 
 ### File Extensions
-
 - `.kir` - KIR JSON format
-- `.kry` - Kryon DSL (planned)
-- `.krb` - Kryon binary format
+- `.kry` - Kryon DSL
 - `.tsx` - TypeScript React
 - `.c/.h` - C source/header
 
 ### CLI Commands
-
 - `kryon compile` - Source → KIR
 - `kryon codegen` - KIR → Target
 - `kryon run` - Execute KIR on desktop
 - `kryon inspect` - View KIR structure
 - `kryon diff` - Compare KIR files
 
-### Environment Variables
-
-- `DEBUG_TSX_PARSER` - Enable TSX parser debug output
-- `KRYON_ROOT` - Override project root path
-
 ---
 
-**Last Updated**: December 28, 2025  
-**Kryon Version**: 1.0.0  
-**Status**: TSX pipeline complete, desktop renderer working
+**Last Updated**: January 11, 2026
+**Kryon Version**: 1.0.0
