@@ -842,22 +842,13 @@ static void debug_print_tree_full(IRComponent* comp, int depth, int max_depth) {
 }
 
 void ir_foreach_expand_tree(IRComponent* root) {
-    fprintf(stderr, "[ForEach] ir_foreach_expand_tree called, root=%p\n", (void*)root);
     if (!root) {
-        fprintf(stderr, "[ForEach] root is NULL, returning\n");
         return;
     }
-    fprintf(stderr, "[ForEach] starting expansion, root type=%d\n", (int)root->type);
-
-    fprintf(stderr, "[ForEach] BEFORE expansion, full tree (depth 5):\n");
-    debug_print_tree_full(root, 0, 5);
 
     expand_foreach_with_parent_internal(root, NULL, 0);
 
     // Invalidate layout for entire tree after expansion
     // This ensures expanded children get proper layout computation
     ir_layout_invalidate_subtree(root);
-
-    fprintf(stderr, "[ForEach] expansion complete, tree structure:\n");
-    debug_print_tree(root, 0);
 }

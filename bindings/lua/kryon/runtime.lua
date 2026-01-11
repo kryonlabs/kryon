@@ -621,9 +621,7 @@ function Runtime.runDesktop(app)
   -- This is critical for standalone binaries where ForEach was serialized with
   -- "__runtime__" markers during build. Without this expansion, only the first
   -- ForEach item would render initially.
-  print("[runtime.runDesktop] Calling ir_expand_foreach on app.root")
   C.ir_expand_foreach(app.root)
-  print("[runtime.runDesktop] ir_expand_foreach completed")
 
   -- Run main loop (blocking - keeps Lua alive)
   -- Event handlers in Runtime.handlers will be called via dispatchEvent
