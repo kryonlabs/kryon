@@ -175,13 +175,7 @@ void kryon_cmd_buf_clear(kryon_cmd_buf_t* buf) {
         return;
     }
 
-    fprintf(stderr, "[CMDBUF_CLEAR] BUF=%p was head=%u tail=%u count=%u\n",
-            (void*)buf, buf->head, buf->tail, buf->count);
-    fflush(stderr);
-
     buf->head = 0;
-    fprintf(stderr, "[CMDBUF_CLEAR] Setting tail=0\n");
-    fflush(stderr);
     buf->tail = 0;
     buf->count = 0;
     buf->overflow = false;
@@ -564,21 +558,6 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
 
     uint16_t start_pos = iter->position;
 
-    // Debug: Print first 20 bytes from buffer before reading
-    static int iter_debug_count = 0;
-    if (iter_debug_count < 3) {
-        fprintf(stderr, "[CMDBUF_ITER] BUF=%p head=%u tail=%u count=%u\n",
-                (void*)iter->buf, iter->buf->head, iter->buf->tail, iter->buf->count);
-        fprintf(stderr, "[CMDBUF_ITER] Reading from position %u, first 20 bytes from buffer: ", start_pos);
-        for (int i = 0; i < 20; i++) {
-            uint16_t pos = (start_pos + i) % KRYON_CMD_BUF_SIZE;
-            fprintf(stderr, "%02x ", iter->buf->buffer[pos]);
-        }
-        fprintf(stderr, "\n");
-        fflush(stderr);
-        iter_debug_count++;
-    }
-
     for (uint32_t i = 0; i < kCommandSize; i++) {
         ((uint8_t*)cmd)[i] = iter->buf->buffer[iter->position];
         iter->position = (iter->position + 1) % KRYON_CMD_BUF_SIZE;
@@ -590,18 +569,6 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
     // It needs to point to the vertex_storage within THIS command
     if (cmd->type == KRYON_CMD_DRAW_POLYGON) {
         cmd->data.draw_polygon.vertices = cmd->data.draw_polygon.vertex_storage;
-    }
-
-    // Debug: Print first 3 DRAW_RECT commands read from buffer
-    static int rect_read_count = 0;
-    if (cmd->type == KRYON_CMD_DRAW_RECT && rect_read_count < 3) {
-        fprintf(stderr, "[CMDBUF_READ] RECT #%d: x=%d y=%d w=%d h=%d color=0x%08x\n",
-                rect_read_count,
-                cmd->data.draw_rect.x, cmd->data.draw_rect.y,
-                cmd->data.draw_rect.w, cmd->data.draw_rect.h,
-                cmd->data.draw_rect.color);
-        fflush(stderr);
-        rect_read_count++;
     }
 
     return true;

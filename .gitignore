@@ -90,7 +90,10 @@ docs/diagrams/*.svg
 # TypeScript/Bun
 node_modules/
 bindings/typescript/build/
+bindings/typescript/dist/
 bindings/typescript/node_modules/
+packages/*/dist/
+packages/*/build/
 *.tsbuildinfo
 examples/tsx/
 
