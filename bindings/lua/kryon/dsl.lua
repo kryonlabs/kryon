@@ -781,8 +781,6 @@ local function applyProperties(component, props)
         end
       end
     end
-    local componentType = tonumber(C.ir_get_component_type(component))
-    io.stderr:write("[applyProperties] Added " .. childCount .. " children to component type " .. tostring(componentType) .. "\n")
   end
 end
 
@@ -884,12 +882,7 @@ local function buildComponent(componentType, props)
       C.ir_tabgroup_register_content(state, context.tabContent)
 
       -- Register all tabs AND their visual states
-      io.stderr:write(string.format("📊 Found %d tabs to register", #tabs) .. "\n")
-
       for idx, tab in ipairs(tabs) do
-        local tabType = tonumber(C.ir_get_component_type(tab))
-        io.stderr:write(string.format("  Tab %d: type=%d", idx, tabType) .. "\n")
-
         -- Register tab with C core
         C.ir_tabgroup_register_tab(state, tab)
 
@@ -909,10 +902,6 @@ local function buildComponent(componentType, props)
 
           -- Register visual state with C core (0-indexed!)
           C.ir_tabgroup_set_tab_visual(state, idx - 1, visual)
-          io.stderr:write(string.format("  ✓ Registered visual state for tab %d (text: %s -> %s)",
-                              idx, visualState.textColor, visualState.activeTextColor))
-        else
-          io.stderr:write(string.format("  ⚠️ No visual state found for tab %d", idx) .. "\n")
         end
       end
 
@@ -924,31 +913,12 @@ local function buildComponent(componentType, props)
       end
 
       -- Register all panels
-      io.stderr:write("[TabGroup] Registering " .. #panels .. " panels\n")
       for idx, panel in ipairs(panels) do
-        local panelChildCount = C.ir_get_child_count(panel)
-        io.stderr:write("[TabGroup] Panel " .. idx .. " has " .. panelChildCount .. " children BEFORE registration\n")
-
-        -- Check child types before registration
-        for i = 0, panelChildCount - 1 do
-          local child = C.ir_get_child_at(panel, i)
-          local childType = tonumber(C.ir_get_component_type(child))
-          io.stderr:write("[TabGroup]   Child " .. i .. " type=" .. childType .. "\n")
-        end
-
         C.ir_tabgroup_register_panel(state, panel)
-
-        local panelChildCountAfter = C.ir_get_child_count(panel)
-        io.stderr:write("[TabGroup] Panel " .. idx .. " has " .. panelChildCountAfter .. " children AFTER registration\n")
       end
 
       -- Finalize (applies visuals, shows tabs)
       C.ir_tabgroup_finalize(state)
-
-      io.stderr:write(string.format("✅ TabGroup initialized: %d tabs, %d panels, selected=%d",
-                          #tabs, #panels, context.selectedIndex))
-    else
-      io.stderr:write("⚠️ TabGroup missing TabBar or TabContent!\n")
     end
   end
 
@@ -1322,8 +1292,6 @@ DSL.ForEach = function(props)
   -- Check if we're in runtime mode (re-execution after KIR load)
   local Runtime = package.loaded["kryon.runtime"]
   local isRuntimeMode = Runtime and Runtime._isRuntimeMode
-
-  print("[DSL.ForEach] Runtime=", Runtime, "_isRuntimeMode=", isRuntimeMode, "each_source type=", type(each_source))
 
   -- In compile mode: use marker (data will be fresh from runtime re-execution)
   -- In runtime mode: use actual data (for immediate ForEach expansion)

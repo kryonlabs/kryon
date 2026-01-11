@@ -2,10 +2,18 @@
 
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../ir/third_party/cJSON -I../backends/desktop -D_POSIX_C_SOURCE=200809L
-# No plugin libraries linked at build time - they are loaded dynamically at runtime
 # Desktop backend is linked for hot reload support (--watch flag)
 # Requires SDL3 and raylib to be installed
-LDFLAGS = -L../build -lkryon_ir -lkryon_desktop -lm -lpthread -ldl -lSDL3 -lraylib
+# Link against static libraries to override weak symbols at link time
+# Note: libraries specified multiple times to resolve internal dependencies
+LDFLAGS = -L../build -lkryon_ir \
+	../build/libkryon_common.a \
+	../build/libkryon_sdl3.a \
+	../build/libkryon_desktop.a \
+	../build/libkryon_common.a \
+	../build/libkryon_sdl3.a \
+	../build/libkryon_desktop.a \
+	-lm -lpthread -ldl -lSDL3 -lSDL3_ttf -lraylib
 
 # Directories
 SRC_DIR = src
@@ -83,16 +91,29 @@ $(CJSON_OBJ): ../ir/third_party/cJSON/cJSON.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Build target (depends on IR and desktop libraries)
-$(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_desktop.a
+$(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
+		../build/libkryon_ir.a \
+		../build/libkryon_common.a \
+		../build/libkryon_sdl3.a \
+		../build/libkryon_desktop.a
 	$(CC) $(OBJS) $(CODEGEN_OBJS) $(CJSON_OBJ) -o $(TARGET) $(LDFLAGS)
 
 # Build IR library
 ../build/libkryon_ir.a:
-	$(MAKE) -C ../ir libkryon_ir.a
+	$(MAKE) -C ../ir all
+
+# Build common renderer library
+../build/libkryon_common.a:
+	$(MAKE) -C ../renderers/common all
+	$(MAKE) -C ../renderers/common install
+
+# Build SDL3 renderer library
+../build/libkryon_sdl3.a:
+	$(MAKE) -C ../renderers/sdl3 all
 
 # Build desktop library
 ../build/libkryon_desktop.a:
-	$(MAKE) -C ../backends/desktop libkryon_desktop.a
+	$(MAKE) -C ../backends/desktop all
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
@@ -117,11 +138,6 @@ install: $(TARGET)
 	# Install Lua bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/lua
 	cp -r ../bindings/lua/* $(HOME)/.local/share/kryon/bindings/lua/
-	# Install plugin Lua bindings (e.g., storage plugin from kryon-storage)
-	@if [ -d /mnt/storage/Projects/KryonLabs/kryon-storage/bindings/lua ]; then \
-		cp /mnt/storage/Projects/KryonLabs/kryon-storage/bindings/lua/*.lua $(HOME)/.local/share/kryon/bindings/lua/ 2>/dev/null || true; \
-		echo "[install] Copied kryon-storage plugin Lua bindings"; \
-	fi
 	# Install C bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/c
 	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/

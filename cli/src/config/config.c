@@ -415,18 +415,10 @@ KryonConfig* config_load(const char* config_path) {
 }
 
 /**
- * Load plugins specified in config from their paths
- * Also auto-discovers and loads plugins from standard locations.
+ * Load plugins specified in config from their paths.
+ * ONLY loads plugins explicitly listed in kryon.toml - no auto-discovery.
  */
 bool config_load_plugins(KryonConfig* config) {
-    // First, auto-discover and load plugins from standard locations
-    // This allows plugins to "just work" without configuration
-    uint32_t auto_loaded = ir_plugin_auto_discover_and_load(0);
-    if (auto_loaded > 0) {
-        printf("[kryon][config] Auto-discovered and loaded %u plugin(s) from standard locations\n",
-               auto_loaded);
-    }
-
     // If no config plugins specified, we're done
     if (!config || !config->plugins || config->plugins_count == 0) {
         return true;
@@ -480,7 +472,6 @@ bool config_load_plugins(KryonConfig* config) {
 
         // Check if plugin is already loaded (e.g., by auto-discovery)
         if (ir_plugin_is_loaded(plugin->name)) {
-            printf("[kryon][config] Plugin '%s' already loaded (skipping config path)\n", plugin->name);
             plugin->resolved_path = str_copy(resolved_path);
             free(resolved_path);
             continue;
@@ -506,9 +497,17 @@ bool config_load_plugins(KryonConfig* config) {
         if (handle) {
             printf("[kryon][plugin] Loaded plugin '%s' from %s\n", plugin->name, resolved_path);
 
-            // Call init function if present
+            // Call init function if present - MUST succeed or we fail hard
             if (handle->init_func) {
-                handle->init_func(NULL);
+                if (!handle->init_func(NULL)) {
+                    fprintf(stderr, "[kryon][plugin] Plugin '%s' initialization failed\n", plugin->name);
+                    ir_plugin_free_discovery(discovered, count);
+                    if (resolved_path != plugin->path) {
+                        free(resolved_path);
+                    }
+                    free(cwd);
+                    return false;  // Hard fail - do not proceed
+                }
             }
 
             // Store resolved path in config
@@ -544,9 +543,13 @@ KryonConfig* config_find_and_load(void) {
         free(config_path);
         free(cwd);
 
-        // Load plugins after loading config
+        // Load plugins after loading config - MUST succeed or we fail
         if (config) {
-            config_load_plugins(config);
+            if (!config_load_plugins(config)) {
+                fprintf(stderr, "[kryon] Failed to load plugins - aborting\n");
+                config_free(config);
+                return NULL;
+            }
         }
 
         return config;

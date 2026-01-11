@@ -87,6 +87,45 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
 
     // Lua: use direct parser
     if (strcmp(frontend, "lua") == 0) {
+        // Set up plugin paths for Lua compilation
+        KryonConfig* config = config_find_and_load();
+        if (config && config->plugins_count > 0) {
+            char plugin_paths[4096] = "";
+            char* cwd = dir_get_current();
+
+            for (int i = 0; i < config->plugins_count; i++) {
+                if (!config->plugins[i].enabled || !config->plugins[i].path) {
+                    continue;
+                }
+
+                // Resolve plugin path to absolute
+                char* abs_path;
+                if (config->plugins[i].path[0] == '/') {
+                    abs_path = str_copy(config->plugins[i].path);
+                } else {
+                    abs_path = path_join(cwd, config->plugins[i].path);
+                }
+
+                // Add to plugin_paths string
+                if (plugin_paths[0] != '\0') {
+                    strncat(plugin_paths, ":", sizeof(plugin_paths) - strlen(plugin_paths) - 1);
+                }
+                strncat(plugin_paths, abs_path, sizeof(plugin_paths) - strlen(plugin_paths) - 1);
+
+                free(abs_path);
+            }
+
+            if (plugin_paths[0] != '\0') {
+                setenv("KRYON_PLUGIN_PATHS", plugin_paths, 1);
+            }
+
+            free(cwd);
+        }
+
+        if (config) {
+            config_free(config);
+        }
+
         char* json = ir_lua_file_to_kir(source_file);
         if (!json) {
             fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);

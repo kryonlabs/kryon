@@ -74,7 +74,7 @@ CODEGEN_OBJS = ... ../codegens/mytarget/mytarget_codegen.o
 
 ## Adding a Component
 
-1. Add to TSX parser component list in `cli/tsx_parser/tsx_to_kir.ts`
+1. Add to TSX parser component list in `ir/parsers/tsx/tsx_to_kir.ts`
 2. Add rendering in `codegens/react_common.c`
 3. Add desktop rendering in `backends/desktop/`
 4. Test roundtrip
@@ -95,7 +95,7 @@ Add to desktop backend in `backends/desktop/desktop_input.c` to handle the SDL e
 
 ## Adding Universal Logic
 
-In `cli/tsx_parser/tsx_to_kir.ts`, add to `convertToUniversalLogic()`:
+In `ir/parsers/tsx/tsx_to_kir.ts`, add to `convertToUniversalLogic()`:
 
 ```typescript
 // Pattern: setCount(count * 2)
@@ -136,7 +136,7 @@ diff input.mylang output.mylang
 ### Full Pipeline
 
 ```bash
-bun cli/tsx_parser/tsx_to_kir.ts app.tsx > app.kir
+bun ir/parsers/tsx/tsx_to_kir.ts app.tsx > app.kir
 ./cli/kryon codegen c app.kir app.c
 gcc app.c -lkryon_desktop -o app
 ./app

@@ -197,7 +197,7 @@ build-lib: build-c-libs $(LIB_FILE)
 
 # Build the C core libraries with proper dependency ordering
 .PHONY: build-ir build-renderers build-desktop-backend
-build-c-libs: build-ir build-renderers build-desktop-backend build-c-codegens
+build-c-libs: build-ir build-desktop-backend build-c-codegens
 
 build-ir:
 	@echo "Building IR library..."
@@ -206,12 +206,21 @@ build-ir:
 
 build-renderers: build-ir
 	@echo "Building renderers..."
+	@if [ -d renderers/common ]; then \
+		$(MAKE) -C renderers/common all; \
+		$(MAKE) -C renderers/common install; \
+	fi
+	@if [ -d renderers/sdl3 ]; then \
+		$(MAKE) -C renderers/sdl3 all; \
+	fi
+
+build-desktop-backend: build-ir
+	@echo "Building desktop backend..."
+	@echo "Building common renderer utilities..."
 	$(MAKE) -C renderers/common all
 	$(MAKE) -C renderers/common install
+	@echo "Building SDL3 renderer..."
 	$(MAKE) -C renderers/sdl3 all
-
-build-desktop-backend: build-ir build-renderers
-	@echo "Building desktop backend..."
 	$(MAKE) -C backends/desktop all
 
 build-c-codegens: build-ir
