@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
 #include "ir_builder.h"
+#include "ir_color_utils.h"
+#include "ir_component_factory.h"
 #include "ir_memory.h"
 #include "ir_hashmap.h"
 #include "ir_animation.h"
@@ -59,6 +61,7 @@ const char* ir_logic_type_to_string(LogicSourceType type) {
     }
 }
 
+// Case-insensitive string comparison (used by ir_parse_direction and ir_parse_unicode_bidi)
 static int ir_str_ieq(const char* a, const char* b) {
     if (!a || !b) return 0;
     while (*a && *b) {
@@ -70,40 +73,7 @@ static int ir_str_ieq(const char* a, const char* b) {
     return *a == '\0' && *b == '\0';
 }
 
-IRColor ir_color_named(const char* name) {
-    if (!name) return ir_color_rgba(255, 255, 255, 255);
-    // Core named colors (CSS-like)
-    struct { const char* name; uint8_t r, g, b; } colors[] = {
-        {"white", 255, 255, 255}, {"black", 0, 0, 0},
-        {"gray", 128, 128, 128}, {"grey", 128, 128, 128},
-        {"lightgray", 211, 211, 211}, {"lightgrey", 211, 211, 211},
-        {"darkgray", 169, 169, 169}, {"darkgrey", 169, 169, 169},
-        {"silver", 192, 192, 192}, {"red", 255, 0, 0},
-        {"green", 0, 255, 0}, {"blue", 0, 0, 255},
-        {"yellow", 255, 255, 0}, {"orange", 255, 165, 0},
-        {"purple", 128, 0, 128}, {"pink", 255, 192, 203},
-        {"brown", 165, 42, 42}, {"cyan", 0, 255, 255},
-        {"magenta", 255, 0, 255}, {"lime", 0, 255, 0},
-        {"olive", 128, 128, 0}, {"navy", 0, 0, 128},
-        {"teal", 0, 128, 128}, {"aqua", 0, 255, 255},
-        {"maroon", 128, 0, 0}, {"fuchsia", 255, 0, 255},
-        {"lightblue", 173, 216, 230}, {"lightgreen", 144, 238, 144},
-        {"lightpink", 255, 182, 193}, {"lightyellow", 255, 255, 224},
-        {"lightcyan", 224, 255, 255}, {"darkred", 139, 0, 0},
-        {"darkgreen", 0, 100, 0}, {"darkblue", 0, 0, 139},
-        {"darkorange", 255, 140, 0}, {"darkviolet", 148, 0, 211},
-        {"transparent", 0, 0, 0}, {NULL, 0, 0, 0}
-    };
-    for (int i = 0; colors[i].name; i++) {
-        if (ir_str_ieq(name, colors[i].name)) {
-            if (ir_str_ieq(name, "transparent")) {
-                return ir_color_rgba(0, 0, 0, 0);
-            }
-            return ir_color_rgba(colors[i].r, colors[i].g, colors[i].b, 255);
-        }
-    }
-    return ir_color_rgba(255, 255, 255, 255); // default to white
-}
+// ir_color_named moved to ir_color_utils.c
 
 static void ir_tabgroup_set_visible(IRComponent* component, bool visible) {
     if (!component) return;
@@ -628,329 +598,8 @@ void ir_set_root(IRComponent* root) {
     }
 }
 
-// Component Creation
-IRComponent* ir_create_component(IRComponentType type) {
-    return ir_create_component_with_id(type, 0);
-}
-
-IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
-    IRComponent* component = NULL;
-
-    // Use pool allocator if context exists
-    if (g_ir_context && g_ir_context->component_pool) {
-        component = ir_pool_alloc_component(g_ir_context->component_pool);
-        if (component) {
-            // Zero-initialize to clear any stale data from previous use
-            memset(component, 0, sizeof(IRComponent));
-            component->layout_cache.dirty = true;
-            component->dirty_flags = IR_DIRTY_LAYOUT;
-        }
-    } else {
-        // Fallback to malloc if no context/pool
-        component = malloc(sizeof(IRComponent));
-        if (component) {
-            memset(component, 0, sizeof(IRComponent));
-            component->layout_cache.dirty = true;
-            component->dirty_flags = IR_DIRTY_LAYOUT;
-        }
-    }
-
-    if (!component) return NULL;
-
-    component->type = type;
-
-    // Get active context (thread-local first, then global)
-    IRContext* active_ctx = get_active_context();
-
-    if (id == 0 && active_ctx) {
-        component->id = active_ctx->next_component_id++;
-    } else {
-        component->id = id;
-    }
-
-    // Add to hash map for fast lookups
-    if (active_ctx && active_ctx->component_map) {
-        ir_map_insert(active_ctx->component_map, component);
-    }
-
-    // Initialize layout state for two-pass layout system
-    component->layout_state = calloc(1, sizeof(IRLayoutState));
-    if (component->layout_state) {
-        component->layout_state->dirty = true;  // Start dirty, needs initial layout
-        // intrinsic_valid = false (default)
-        // layout_valid = false (default)
-        // cache_generation = 0 (default)
-    }
-
-    // Set flex direction based on component type
-    if (type == IR_COMPONENT_ROW) {
-        IRLayout* layout = ir_get_layout(component);
-        if (layout) {
-            layout->flex.direction = 1;  // Row = horizontal
-        }
-    } else if (type == IR_COMPONENT_COLUMN) {
-        IRLayout* layout = ir_get_layout(component);
-        if (layout) {
-            layout->flex.direction = 0;  // Column = vertical
-        }
-    }
-
-    return component;
-}
-
-void ir_destroy_component(IRComponent* component) {
-    if (!component) return;
-
-    // Destroy style
-    if (component->style) {
-        ir_destroy_style(component->style);
-    }
-
-    // Destroy events
-    IREvent* event = component->events;
-    while (event) {
-        IREvent* next = event->next;
-        ir_destroy_event(event);
-        event = next;
-    }
-
-    // Destroy logic
-    IRLogic* logic = component->logic;
-    while (logic) {
-        IRLogic* next = logic->next;
-        ir_destroy_logic(logic);
-        logic = next;
-    }
-
-    // Destroy children recursively
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        ir_destroy_component(component->children[i]);
-    }
-
-    // Destroy layout
-    if (component->layout) {
-        ir_destroy_layout(component->layout);
-    }
-
-    // Destroy layout state
-    if (component->layout_state) {
-        free(component->layout_state);
-        component->layout_state = NULL;
-    }
-
-    // Clean up TabGroupState if this component is a TabGroup
-    // This prevents dangling pointers when UI rebuilds destroy and recreate component trees
-    // IMPORTANT: custom_data might be a JSON string (e.g., '{"selectedIndex":0}') from serialization,
-    // NOT a TabGroupState pointer. Only treat as TabGroupState if it doesn't start with '{'
-    if (component->type == IR_COMPONENT_TAB_GROUP && component->custom_data) {
-        char* data_str = (char*)component->custom_data;
-        if (data_str[0] == '{') {
-            // This is a JSON string, not a TabGroupState - free it as a string
-            free(component->custom_data);
-            component->custom_data = NULL;
-        } else {
-            TabGroupState* state = (TabGroupState*)component->custom_data;
-
-            // Clear panel references to prevent dangling pointers
-            for (uint32_t i = 0; i < state->panel_count; i++) {
-                state->panels[i] = NULL;
-            }
-            state->panel_count = 0;
-
-            // Clear tab references
-            for (uint32_t i = 0; i < state->tab_count; i++) {
-                state->tabs[i] = NULL;
-            }
-            state->tab_count = 0;
-
-            // Clear other references
-            state->tab_bar = NULL;
-            state->tab_content = NULL;
-            state->group = NULL;
-
-            // Free the state itself
-            free(state);
-            component->custom_data = NULL;
-        }
-    }
-
-    // Free strings
-    if (component->tag) free(component->tag);
-    if (component->text_content) free(component->text_content);
-    if (component->css_class) free(component->css_class);
-    if (component->text_expression) free(component->text_expression);
-    if (component->component_ref) free(component->component_ref);
-    if (component->component_props) free(component->component_props);
-    if (component->module_ref) free(component->module_ref);
-    if (component->export_name) free(component->export_name);
-    if (component->scope) free(component->scope);
-    if (component->source_module) free(component->source_module);
-    if (component->each_source) free(component->each_source);
-    if (component->each_item_name) free(component->each_item_name);
-    if (component->each_index_name) free(component->each_index_name);
-
-    // Free custom_data based on component type
-    if (component->custom_data) {
-        switch (component->type) {
-            case IR_COMPONENT_LINK: {
-                IRLinkData* link_data = (IRLinkData*)component->custom_data;
-                if (link_data->url) free(link_data->url);
-                if (link_data->title) free(link_data->title);
-                if (link_data->target) free(link_data->target);
-                if (link_data->rel) free(link_data->rel);
-                free(link_data);
-                break;
-            }
-            case IR_COMPONENT_CODE_BLOCK: {
-                IRCodeBlockData* code_data = (IRCodeBlockData*)component->custom_data;
-                if (code_data->language) free(code_data->language);
-                if (code_data->code) free(code_data->code);
-                free(code_data);
-                break;
-            }
-            default:
-                free(component->custom_data);
-                break;
-        }
-        component->custom_data = NULL;
-    }
-    if (component->visible_condition) free(component->visible_condition);
-
-    // Free tab data
-    if (component->tab_data) {
-        if (component->tab_data->title) free(component->tab_data->title);
-        free(component->tab_data);
-    }
-
-    // Free text layout
-    if (component->text_layout) {
-        ir_text_layout_destroy(component->text_layout);
-        component->text_layout = NULL;
-    }
-
-    // Free children array
-    if (component->children) {
-        free(component->children);
-    }
-
-    // Remove from hash map
-    if (g_ir_context && g_ir_context->component_map) {
-        ir_map_remove(g_ir_context->component_map, component->id);
-    }
-
-    // Return to pool or free
-    if (g_ir_context && g_ir_context->component_pool) {
-        ir_pool_free_component(g_ir_context->component_pool, component);
-    } else {
-        free(component);
-    }
-}
-
-// Tree Structure Management
-void ir_add_child(IRComponent* parent, IRComponent* child) {
-    if (!parent || !child) return;
-
-    // Exponential growth strategy (like std::vector) - 90% fewer reallocs
-    if (parent->child_count >= parent->child_capacity) {
-        uint32_t new_capacity = parent->child_capacity == 0 ? 4 : parent->child_capacity * 2;
-        IRComponent** new_children = realloc(parent->children,
-                                            sizeof(IRComponent*) * new_capacity);
-        if (!new_children) return;  // Failed to allocate
-
-        parent->children = new_children;
-        parent->child_capacity = new_capacity;
-    }
-
-    parent->children[parent->child_count] = child;
-    parent->child_count++;
-    child->parent = parent;
-
-    // Mark parent dirty - children changed
-    ir_layout_mark_dirty(parent);
-    parent->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
-}
-
-void ir_remove_child(IRComponent* parent, IRComponent* child) {
-    if (!parent || !child || parent->child_count == 0) return;
-
-    // Find child
-    uint32_t index = 0;
-    bool found = false;
-    for (uint32_t i = 0; i < parent->child_count; i++) {
-        if (parent->children[i] == child) {
-            index = i;
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) return;
-
-    // Shift remaining children
-    for (uint32_t i = index; i < parent->child_count - 1; i++) {
-        parent->children[i] = parent->children[i + 1];
-    }
-
-    parent->child_count--;
-    child->parent = NULL;
-
-    // Mark parent dirty - children changed
-    ir_layout_mark_dirty(parent);
-    parent->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
-}
-
-void ir_insert_child(IRComponent* parent, IRComponent* child, uint32_t index) {
-    if (!parent || !child || index > parent->child_count) return;
-
-    // OPTIMIZATION: Exponential growth strategy (90% fewer reallocs, same as ir_add_child)
-    if (parent->child_count >= parent->child_capacity) {
-        uint32_t new_capacity = parent->child_capacity == 0 ? 4 : parent->child_capacity * 2;
-        IRComponent** new_children = realloc(parent->children,
-                                            sizeof(IRComponent*) * new_capacity);
-        if (!new_children) return;  // Failed to allocate
-
-        parent->children = new_children;
-        parent->child_capacity = new_capacity;
-    }
-
-    // Shift children to make space
-    for (uint32_t i = parent->child_count; i > index; i--) {
-        parent->children[i] = parent->children[i - 1];
-    }
-
-    parent->children[index] = child;
-    parent->child_count++;
-    child->parent = parent;
-}
-
-IRComponent* ir_get_child(IRComponent* component, uint32_t index) {
-    if (!component || index >= component->child_count) return NULL;
-    return component->children[index];
-}
-
-IRComponent* ir_find_component_by_id(IRComponent* root, uint32_t id) {
-    // Try hash map first for O(1) lookup
-    if (g_ir_context && g_ir_context->component_map) {
-        IRComponent* result = ir_map_lookup(g_ir_context->component_map, id);
-        if (result) {
-            printf("[find] Hash map hit for #%u\n", id);
-            return result;
-        }
-        printf("[find] Hash map miss for #%u, falling back to tree traversal\n", id);
-    }
-
-    // Tree traversal fallback
-    if (!root) return NULL;
-
-    if (root->id == id) return root;
-
-    for (uint32_t i = 0; i < root->child_count; i++) {
-        IRComponent* found = ir_find_component_by_id(root->children[i], id);
-        if (found) return found;
-    }
-
-    return NULL;
-}
+// Component Creation functions moved to ir_component_factory.c
+// Tree Structure Management functions moved to ir_component_factory.c
 
 // Style Management
 IRStyle* ir_create_style(void) {
@@ -1619,46 +1268,11 @@ IRLogic* ir_find_logic_by_id(IRComponent* root, const char* id) {
     return NULL;
 }
 
-// Content Management
-void ir_set_text_content(IRComponent* component, const char* text) {
-    if (!component) return;
-
-    if (component->text_content) {
-        free(component->text_content);
-    }
-    component->text_content = text ? strdup(text) : NULL;
-
-    // Invalidate text layout when content changes
-    if (component->text_layout) {
-        ir_text_layout_destroy(component->text_layout);
-        component->text_layout = NULL;
-    }
-
-    // Mark component dirty - content changed (two-pass layout system)
-    ir_layout_mark_dirty(component);
-
-    // Also invalidate old layout cache for backward compatibility
-    ir_layout_mark_dirty(component);
-    component->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
-}
-
-void ir_set_custom_data(IRComponent* component, const char* data) {
-    if (!component) return;
-
-    if (component->custom_data) {
-        free(component->custom_data);
-    }
-    component->custom_data = data ? strdup(data) : NULL;
-}
-
-void ir_set_each_source(IRComponent* component, const char* source) {
-    if (!component) return;
-
-    if (component->each_source) {
-        free(component->each_source);
-    }
-    component->each_source = source ? strdup(source) : NULL;
-}
+// Content Management functions moved to ir_component_factory.c
+// ir_set_text_content
+// ir_set_custom_data
+// ir_set_tag
+// ir_set_each_source
 
 // Module Reference Management (for cross-file component references)
 void ir_set_component_module_ref(IRComponent* component, const char* module_ref, const char* export_name) {
@@ -1831,127 +1445,9 @@ void ir_restore_component_module_ref(IRComponent* component, const char* json_st
     }
 }
 
-// Checkbox state helpers
-bool ir_get_checkbox_state(IRComponent* component) {
-    if (!component || !component->custom_data) return false;
-    return strcmp(component->custom_data, "checked") == 0;
-}
-
-void ir_set_checkbox_state(IRComponent* component, bool checked) {
-    if (!component) return;
-    ir_set_custom_data(component, checked ? "checked" : "unchecked");
-}
-
-void ir_toggle_checkbox_state(IRComponent* component) {
-    if (!component) return;
-    bool current = ir_get_checkbox_state(component);
-    printf("[CHECKBOX_TOGGLE] Component ID %u: %s -> %s\n",
-           component->id,
-           current ? "checked" : "unchecked",
-           !current ? "checked" : "unchecked");
-    ir_set_checkbox_state(component, !current);
-}
-
-// Dropdown state helpers
-IRDropdownState* ir_get_dropdown_state(IRComponent* component) {
-    if (!component || component->type != IR_COMPONENT_DROPDOWN || !component->custom_data) {
-        return NULL;
-    }
-    return (IRDropdownState*)component->custom_data;
-}
-
-int32_t ir_get_dropdown_selected_index(IRComponent* component) {
-    IRDropdownState* state = ir_get_dropdown_state(component);
-    return state ? state->selected_index : -1;
-}
-
-void ir_set_dropdown_selected_index(IRComponent* component, int32_t index) {
-    IRDropdownState* state = ir_get_dropdown_state(component);
-    if (!state) return;
-
-    // Validate index
-    if (index >= -1 && (uint32_t)index < state->option_count) {
-        state->selected_index = index;
-    }
-}
-
-void ir_set_dropdown_options(IRComponent* component, char** options, uint32_t count) {
-    IRDropdownState* state = ir_get_dropdown_state(component);
-    if (!state) return;
-
-    // Free existing options
-    if (state->options) {
-        for (uint32_t i = 0; i < state->option_count; i++) {
-            free(state->options[i]);
-        }
-        free(state->options);
-    }
-
-    // Copy new options
-    state->option_count = count;
-    if (count > 0 && options) {
-        state->options = (char**)malloc(sizeof(char*) * count);
-        for (uint32_t i = 0; i < count; i++) {
-            state->options[i] = options[i] ? strdup(options[i]) : NULL;
-        }
-    } else {
-        state->options = NULL;
-    }
-
-    // Reset selection if out of range
-    if (state->selected_index >= (int32_t)count) {
-        state->selected_index = -1;
-    }
-}
-
-bool ir_get_dropdown_open_state(IRComponent* component) {
-    IRDropdownState* state = ir_get_dropdown_state(component);
-    return state ? state->is_open : false;
-}
-
-void ir_set_dropdown_open_state(IRComponent* component, bool is_open) {
-    IRDropdownState* state = ir_get_dropdown_state(component);
-    if (state) {
-        state->is_open = is_open;
-        if (!is_open) {
-            state->hovered_index = -1;  // Reset hover when closing
-        }
-    }
-}
-
-void ir_toggle_dropdown_open_state(IRComponent* component) {
-    IRDropdownState* state = ir_get_dropdown_state(component);
-    if (state) {
-        state->is_open = !state->is_open;
-        if (!state->is_open) {
-            state->hovered_index = -1;  // Reset hover when closing
-        }
-    }
-}
-
-int32_t ir_get_dropdown_hovered_index(IRComponent* component) {
-    IRDropdownState* state = ir_get_dropdown_state(component);
-    return state ? state->hovered_index : -1;
-}
-
-void ir_set_dropdown_hovered_index(IRComponent* component, int32_t index) {
-    IRDropdownState* state = ir_get_dropdown_state(component);
-    if (!state) return;
-
-    // Validate index (-1 is valid for no hover)
-    if (index >= -1 && (uint32_t)index < state->option_count) {
-        state->hovered_index = index;
-    }
-}
-
-void ir_set_tag(IRComponent* component, const char* tag) {
-    if (!component) return;
-
-    if (component->tag) {
-        free(component->tag);
-    }
-    component->tag = tag ? strdup(tag) : NULL;
-}
+// Checkbox state helpers moved to ir_component_factory.c
+// Dropdown state helpers moved to ir_component_factory.c
+// ir_set_tag moved to ir_component_factory.c
 
 // Convenience Functions
 IRComponent* ir_container(const char* tag) {
@@ -2123,14 +1619,8 @@ IRDimension ir_dimension_flex(float value) {
     return dim;
 }
 
-// Color Helpers
-IRColor ir_color_rgb(uint8_t r, uint8_t g, uint8_t b) {
-    return IR_COLOR_RGBA(r, g, b, 255);
-}
-
-IRColor ir_color_transparent(void) {
-    return IR_COLOR_RGBA(0, 0, 0, 0);
-}
+// Color Helpers moved to ir_color_utils.c
+// ir_color_rgb, ir_color_transparent, ir_color_named
 
 // Validation and Optimization
 bool ir_validate_component(IRComponent* component) {

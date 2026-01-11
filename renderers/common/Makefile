@@ -1,5 +1,5 @@
 # Makefile for common renderer utilities
-CC = clang
+CC ?= gcc
 CFLAGS = -Wall -Wextra -std=c99 -O2 -DKRYON_TARGET_PLATFORM=0
 INCLUDES = -I../../core/include
 LIBS =
