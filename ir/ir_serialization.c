@@ -1745,7 +1745,6 @@ static IRComponent* ir_deep_copy_component(IRComponent* src) {
     // Allocate new component using the same allocator as the original
     IRComponent* dest = ir_create_component(src->type);
     if (!dest) {
-        fprintf(stderr, "[ForEach] Failed to allocate component for deep copy\n");
         return NULL;
     }
 
@@ -1964,8 +1963,6 @@ static void update_foreach_component_text(IRComponent* component, cJSON* data_it
                 char buf[16];
                 snprintf(buf, sizeof(buf), "%d", day_num);
                 component->text_content = strdup(buf);
-                fprintf(stderr, "[ForEach] Updated text to '%s' for component type=%d (Button=%d, Text=%d)\n",
-                        buf, (int)component->type, IR_COMPONENT_BUTTON, IR_COMPONENT_TEXT);
             } else {
                 // Empty string for non-current month days
                 component->text_content = strdup("");
@@ -2010,8 +2007,7 @@ static void update_nested_foreach_source(IRComponent* component, cJSON* source_a
         if (first_item) {
             cJSON* day_num = cJSON_GetObjectItem(first_item, "dayNumber");
             if (day_num) {
-                fprintf(stderr, "[ForEach] Updated nested ForEach ID=%u, first day=%d\n",
-                        component->id, (int)cJSON_GetNumberValue(day_num));
+                // day number found
             }
         }
         return;  // Don't recurse into ForEach children (template)
@@ -2040,7 +2036,6 @@ static void replace_foreach_with_children(IRComponent* parent, int foreach_index
     // Special case: parent is NULL (root-level ForEach)
     // This shouldn't happen in normal usage, but handle it gracefully
     if (!parent) {
-        fprintf(stderr, "[ForEach] Warning: root-level ForEach cannot be replaced, keeping as-is\n");
         return;
     }
 
@@ -2075,9 +2070,6 @@ static void replace_foreach_with_children(IRComponent* parent, int foreach_index
     // Update parent
     parent->children = new_children;
     parent->child_count = new_count;
-
-    fprintf(stderr, "[ForEach] Replaced ForEach at index %d with %d children (parent now has %d children)\n",
-            foreach_index, expanded_count, new_count);
 }
 
 /**
@@ -2092,8 +2084,6 @@ static void expand_foreach_component(IRComponent* component) {
     // Check if this is a ForEach component with serialized data
     if (component->type != IR_COMPONENT_FOR_EACH) {
         // Not a ForEach - process children
-        fprintf(stderr, "[ForEach] Not a ForEach (type=%d), processing %d children\n",
-                (int)component->type, component->child_count);
         for (uint32_t i = 0; i < component->child_count; i++) {
             if (component->children[i]) {
                 expand_foreach_component(component->children[i]);
@@ -2154,11 +2144,8 @@ static void expand_foreach_component(IRComponent* component) {
 
     // Fall back to custom_data (from initial compilation)
     if (!each_source_item && component->custom_data) {
-        fprintf(stderr, "[ForEach] ID=%d custom_data='%s'\n", (int)component->id, component->custom_data);
-
         custom_json = cJSON_Parse(component->custom_data);
         if (!custom_json) {
-            fprintf(stderr, "[ForEach] ID=%d failed to parse custom_data as JSON\n", (int)component->id);
             for (uint32_t i = 0; i < component->child_count; i++) {
                 if (component->children[i]) {
                     expand_foreach_component(component->children[i]);
@@ -2167,8 +2154,6 @@ static void expand_foreach_component(IRComponent* component) {
             return;
         }
 
-        fprintf(stderr, "[ForEach] ID=%d parsed custom_data successfully\n", (int)component->id);
-
         each_source_item = cJSON_GetObjectItem(custom_json, "each_source");
         if (each_source_item && cJSON_IsArray(each_source_item)) {
             num_items = cJSON_GetArraySize(each_source_item);
@@ -2176,7 +2161,6 @@ static void expand_foreach_component(IRComponent* component) {
     }
 
     if (!each_source_item || !cJSON_IsArray(each_source_item)) {
-        fprintf(stderr, "[ForEach] ID=%d each_source not found or not an array\n", (int)component->id);
         if (custom_json) cJSON_Delete(custom_json);
         for (uint32_t i = 0; i < component->child_count; i++) {
             if (component->children[i]) {
@@ -2193,15 +2177,11 @@ static void expand_foreach_component(IRComponent* component) {
 
     // Get the template child (first child is the template)
     if (component->child_count == 0 || !component->children[0]) {
-        fprintf(stderr, "[ForEach] Warning: ForEach has no template child\n");
         cJSON_Delete(custom_json);
         return;
     }
 
     IRComponent* template = component->children[0];
-
-    fprintf(stderr, "[ForEach] Expanding ForEach with %d items (template type=%d)\n",
-           num_items, template ? (int)template->type : 0);
 
     // FIXED: Don't expand nested ForEach first!
     // The old code did: expand_foreach_component(template);
@@ -2236,8 +2216,6 @@ static void expand_foreach_component(IRComponent* component) {
             }
 
             new_children[expanded_count++] = copy;
-        } else {
-            fprintf(stderr, "[ForEach] Failed to deep copy template for item %d\n", i);
         }
     }
 
@@ -2259,15 +2237,12 @@ static void expand_foreach_component(IRComponent* component) {
             }
         }
 
-        fprintf(stderr, "[ForEach] Expanded to %d children\n", expanded_count);
-
         // IMPORTANT: After copying, expand nested ForEach in each copy
         // This is the KEY FIX for nested ForEach support!
         // We do this AFTER all copies are made so each copy gets its
         // own nested ForEach with its original (uncorrupted) custom_data
         for (int i = 0; i < expanded_count; i++) {
             if (new_children[i]) {
-                fprintf(stderr, "[ForEach] Expanding nested ForEach in copy %d\n", i);
                 expand_foreach_component(new_children[i]);
             }
         }
@@ -2349,11 +2324,8 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
 
     // Fall back to custom_data (from initial compilation)
     if (!each_source_item && component->custom_data) {
-        fprintf(stderr, "[ForEach] ID=%d custom_data='%s'\n", (int)component->id, component->custom_data);
-
         custom_json = cJSON_Parse(component->custom_data);
         if (!custom_json) {
-            fprintf(stderr, "[ForEach] ID=%d failed to parse custom_data as JSON\n", (int)component->id);
             // Replace with template child and return
             if (component->child_count > 0) {
                 replace_foreach_with_children(parent, child_index, component->children, component->child_count);
@@ -2363,8 +2335,6 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
             return;
         }
 
-        fprintf(stderr, "[ForEach] ID=%d parsed custom_data successfully\n", (int)component->id);
-
         each_source_item = cJSON_GetObjectItem(custom_json, "each_source");
 
         // Check for runtime marker in custom_data
@@ -2373,7 +2343,6 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
         if (each_source_item && cJSON_IsString(each_source_item)) {
             char* marker = cJSON_GetStringValue(each_source_item);
             if (marker && strcmp(marker, "__runtime__") == 0) {
-                fprintf(stderr, "[ForEach] ID=%d has __runtime__ marker in custom_data - replacing with template\n", (int)component->id);
                 cJSON_Delete(custom_json);
                 // Replace ForEach with its template children
                 if (component->child_count > 0) {
@@ -2391,7 +2360,6 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
     }
 
     if (!each_source_item || !cJSON_IsArray(each_source_item)) {
-        fprintf(stderr, "[ForEach] ID=%d each_source not found or not an array\n", (int)component->id);
         if (custom_json) cJSON_Delete(custom_json);
         // Replace with template child and return
         if (component->child_count > 0) {
@@ -2403,21 +2371,16 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
     }
 
     if (num_items == 0) {
-        fprintf(stderr, "[ForEach] ID=%d has empty each_source\n", (int)component->id);
         if (custom_json) cJSON_Delete(custom_json);
         return;
     }
 
     if (component->child_count == 0 || !component->children[0]) {
-        fprintf(stderr, "[ForEach] Warning: ForEach has no template child\n");
         cJSON_Delete(custom_json);
         return;
     }
 
     IRComponent* template = component->children[0];
-
-    fprintf(stderr, "[ForEach] Expanding ForEach with %d items (template type=%d)\n",
-           num_items, template ? (int)template->type : 0);
 
     // Allocate new children array
     IRComponent** new_children = calloc(num_items, sizeof(IRComponent*));
@@ -2437,22 +2400,17 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
             // Update dynamic text content based on iteration data
             cJSON* data_item = cJSON_GetArrayItem(each_source_item, i);
             if (data_item) {
-                fprintf(stderr, "[ForEach] data_item for i=%d: isObject=%d, isArray=%d\n",
-                        i, cJSON_IsObject(data_item), cJSON_IsArray(data_item));
                 if (cJSON_IsObject(data_item)) {
                     // Leaf data - update text content directly
                     update_foreach_component_text(copy, data_item, component->each_item_name);
                 } else if (cJSON_IsArray(data_item)) {
                     // Nested array data - propagate to nested ForEach components
                     // This is crucial for nested ForEach (e.g., weeks containing days)
-                    fprintf(stderr, "[ForEach] Propagating nested array data to nested ForEach\n");
                     update_nested_foreach_source(copy, data_item);
                 }
             }
 
             new_children[expanded_count++] = copy;
-        } else {
-            fprintf(stderr, "[ForEach] Failed to deep copy template for item %d\n", i);
         }
     }
 
@@ -2461,13 +2419,10 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
         component->children = new_children;
         component->child_count = expanded_count;
 
-        fprintf(stderr, "[ForEach] Expanded to %d children\n", expanded_count);
-
         // IMPORTANT: Expand nested ForEach in each copy BEFORE replacing in parent
         // This ensures nested ForEach are also expanded and replaced
         for (int i = 0; i < expanded_count; i++) {
             if (new_children[i]) {
-                fprintf(stderr, "[ForEach] Expanding nested ForEach in copy %d\n", i);
                 expand_foreach_with_parent(new_children[i], component, i);
             }
         }

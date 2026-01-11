@@ -134,7 +134,7 @@ install: $(TARGET)
 	cp ../build/libkryon_ir.so $(HOME)/.local/lib/
 	# Install TSX parser
 	mkdir -p $(HOME)/.local/share/kryon/tsx_parser
-	cp tsx_parser/tsx_to_kir.ts $(HOME)/.local/share/kryon/tsx_parser/
+	cp ../ir/parsers/tsx/tsx_to_kir.ts $(HOME)/.local/share/kryon/tsx_parser/
 	# Install Lua bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/lua
 	cp -r ../bindings/lua/* $(HOME)/.local/share/kryon/bindings/lua/

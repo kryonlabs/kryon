@@ -139,7 +139,6 @@ bool ir_lua_check_luajit_available(void) {
  * Parse Lua source to KIR JSON by executing it with LuaJIT
  */
 char* ir_lua_to_kir(const char* source, size_t length) {
-    fprintf(stderr, "[DEBUG] ir_lua_to_kir called\n");
     if (!source) return NULL;
 
     if (length == 0) {
@@ -177,12 +176,8 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         return NULL;
     }
 
-    fprintf(stderr, "[DEBUG] temp_dir created: %s\n", temp_dir);
-    fflush(stderr);
-
     // Get source file path and directory from environment
     const char* source_file = getenv("KRYON_SOURCE_FILE");
-    fprintf(stderr, "[DEBUG] ir_lua_to_kir: KRYON_SOURCE_FILE = %s\n", source_file ? source_file : "(null)");
 
     // Determine main file path and source directory
     char* main_file_path = NULL;
@@ -217,16 +212,12 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         }
     }
 
-    fprintf(stderr, "[DEBUG] main_file_path = %s\n", main_file_path);
-    fprintf(stderr, "[DEBUG] source_dir = %s\n", source_dir);
-
     // Create wrapper script that serializes to JSON
     char wrapper_file[1200];
     snprintf(wrapper_file, sizeof(wrapper_file), "%s/wrapper.lua", temp_dir);
 
     FILE* f = fopen(wrapper_file, "w");
     if (!f) {
-        fprintf(stderr, "[DEBUG] Failed to create wrapper: %s\n", wrapper_file);
         perror("fopen wrapper");
         if (!source_file) {
             unlink(main_file_path);
@@ -302,7 +293,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "    module_id = subdir:gsub('%%.lua$', '')\n"
         "  end\n"
         "  DSL.setCurrentModule(module_id)\n"
-        "  io.stderr:write('[WRAPPER] Current module set to: ' .. module_id .. '\\n')\n"
         "end\n"
         "\n"
         "-- Wrap require() to tag imported functions with module origin\n"
@@ -338,15 +328,11 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "_G.require = wrapped_require\n"
         "\n"
         "-- Load the main Lua file (print is overridden to use stderr)\n"
-        "io.stderr:write('[WRAPPER] About to call dofile\\n')\n"
         "local ok, app = pcall(dofile, '%s')\n"
         "if not ok then\n"
         "  io.stderr:write('[WRAPPER] dofile error: ' .. tostring(app) .. '\\n')\n"
         "  os.exit(1)\n"
         "end\n"
-        "\n"
-        "-- DEBUG: Check what we got from dofile\n"
-        "io.stderr:write('[WRAPPER] app type: ' .. type(app) .. ', has root: ' .. tostring(app and app.root ~= nil) .. '\\n')\n"
         "\n"
         "-- Serialize and output JSON to stdout\n"
         "-- (print() goes to stderr, io.write() goes to stdout)\n"
@@ -392,9 +378,7 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "  end\n"
         "else\n"
         "  -- Debug: check if this is a component module\n"
-        "  io.stderr:write('[DEBUG] app type: ' .. type(app) .. '\\n')\n"
         "  if app and type(app) == 'table' then\n"
-        "    io.stderr:write('[DEBUG] Found component module with ' .. #app .. ' exports\\n')\n"
         "    -- Component module: exports functions/components but no root\n"
         "  -- Generate KIR with source code and exports metadata\n"
         "  local module_name = os.getenv('KRYON_SOURCE_FILE') or 'module'\n"
@@ -452,7 +436,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "local DSL = require('kryon.dsl')\n"
         "\n"
         "if DSL._capturedComponentTrees then\n"
-        "  io.stderr:write('[WRAPPER] Writing component definition files for captured trees\\n')\n"
         "  for module_id, module_functions in pairs(DSL._capturedComponentTrees) do\n"
         "    -- Skip if no functions captured for this module\n"
         "    local has_any = false\n"
@@ -464,8 +447,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "      goto continue\n"
         "    end\n"
         "\n"
-        "    io.stderr:write('[WRAPPER] Processing module: ' .. module_id .. '\\n')\n"
-        "\n"
         "    -- Create directory if needed\n"
         "    local module_dir = output_dir .. '/' .. module_id:gsub('/[^/]+$', '')\n"
         "    local mkdir_cmd = 'mkdir -p \"' .. module_dir .. '\"'\n"
@@ -475,7 +456,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "    local component_defs = {}\n"
         "    for fn_name, components in pairs(module_functions) do\n"
         "      if #components > 0 then\n"
-        "        io.stderr:write('[WRAPPER]   Function: ' .. fn_name .. ' with ' .. #components .. ' components\\n')\n"
         "        table.insert(component_defs, {\n"
         "          name = fn_name,\n"
         "          components = components\n"
@@ -515,13 +495,11 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "\n"
         "          local ok, old_ref = pcall(C.ir_clear_tree_module_refs_json, template_root)\n"
         "          if not ok then\n"
-        "            io.stderr:write('[WRAPPER]   Error clearing module_ref: ' .. tostring(old_ref) .. '\\n')\n"
         "            old_ref = nil\n"
         "          end\n"
         "\n"
         "          local ok2, json_str = pcall(C.ir_serialize_json_complete, template_root, nil, nil, nil, nil)\n"
         "          if not ok2 then\n"
-        "            io.stderr:write('[WRAPPER]   Error serializing: ' .. tostring(json_str) .. '\\n')\n"
         "            json_str = nil\n"
         "          end\n"
         "\n"
@@ -573,30 +551,20 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "      kf:write('  ]\\n')\n"
         "      kf:write('}\\n')\n"
         "      kf:close()\n"
-        "      io.stderr:write('[WRAPPER]   Wrote: ' .. kir_file_path .. '\\n')\n"
         "      end)\n"
         "\n"
         "      if not write_ok then\n"
-        "        io.stderr:write('[WRAPPER]   Error writing file: ' .. tostring(write_err) .. '\\n')\n"
         "        if kf then kf:close() end\n"
         "      end\n"
         "    else\n"
-        "      io.stderr:write('[WRAPPER]   Failed to open: ' .. kir_file_path .. '\\n')\n"
         "    end\n"
         "\n"
         "    ::continue::\n"
         "  end\n"
-        "else\n"
-        "  io.stderr:write('[WRAPPER] No captured component trees found\\n')\n"
-        "end\n"
-        "\n"
-        "-- Debug: print captured trees info\n"
-        "io.stderr:write('[WRAPPER] Component tree capture complete\\n')\n",
+        "end\n",
         main_file_path);
 
     fclose(f);
-    fprintf(stderr, "[DEBUG] Wrapper created at: %s\n", wrapper_file);
-    fflush(stderr);
 
     // Build LD_LIBRARY_PATH with plugin paths
     char ld_library_path[4096];
@@ -637,7 +605,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         free(main_file_path);
         // unlink(wrapper_file);  // DEBUG: Keep wrapper
         // rmdir(temp_dir);  // DEBUG: Keep temp dir
-        fprintf(stderr, "[DEBUG] Early exit at pipe open, wrapper: %s\n", wrapper_file);
         return NULL;
     }
 
@@ -661,7 +628,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
                 free(main_file_path);
                 // unlink(wrapper_file);  // DEBUG: Keep wrapper
                 // rmdir(temp_dir);  // DEBUG: Keep temp dir
-                fprintf(stderr, "[DEBUG] Early exit at realloc 1, wrapper: %s\n", wrapper_file);
                 return NULL;
             }
             result = new_result;
@@ -684,15 +650,12 @@ char* ir_lua_to_kir(const char* source, size_t length) {
                 free(main_file_path);
                 // unlink(wrapper_file);  // DEBUG: Keep wrapper
                 // rmdir(temp_dir);  // DEBUG: Keep temp dir
-                fprintf(stderr, "[DEBUG] Early exit at realloc 2, wrapper: %s\n", wrapper_file);
                 return NULL;
             }
             result = new_result;
         }
         result[result_size] = '\0';
     }
-
-    fprintf(stderr, "[DEBUG] pclose returned, exec_status=%d, wrapper=%s\n", exec_status, wrapper_file);
 
     // Check for execution errors
     if (exec_status != 0) {
@@ -707,7 +670,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         free(main_file_path);
         // unlink(wrapper_file);  // DEBUG: Keep wrapper
         // rmdir(temp_dir);  // DEBUG: Keep temp dir
-        fprintf(stderr, "[DEBUG] Early exit, wrapper at: %s\n", wrapper_file);
         return NULL;
     }
 
@@ -721,7 +683,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         free(main_file_path);
         // unlink(wrapper_file);  // DEBUG: Keep wrapper
         // rmdir(temp_dir);  // DEBUG: Keep temp dir
-        fprintf(stderr, "[DEBUG] Early exit, wrapper at: %s\n", wrapper_file);
         return NULL;
     }
 
@@ -732,7 +693,6 @@ char* ir_lua_to_kir(const char* source, size_t length) {
     free(main_file_path);
     // unlink(wrapper_file);  // DEBUG: Keep wrapper for inspection
     // rmdir(temp_dir);  // DEBUG: Keep temp dir for inspection
-    fprintf(stderr, "[DEBUG] Wrapper saved at: %s\n", wrapper_file);
 
     return result;
 }
@@ -1255,7 +1215,6 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
 
     FILE* f = fopen(wrapper_file, "w");
     if (!f) {
-        fprintf(stderr, "[DEBUG] Failed to create wrapper: %s\n", wrapper_file);
         perror("fopen wrapper");
         rmdir(temp_dir);
         return NULL;
@@ -1920,9 +1879,6 @@ char* ir_lua_file_to_kir(const char* filepath) {
             }  // End of else block for skip_extraction
         }
 
-        fprintf(stderr, "[lua_parser] Processing module[%d]: %s, is_main=%d, root=%p\n",
-                i, module->module_id, module->is_main, (void*)root);
-
         if (root) {
             // Add imports array (dependencies of this module)
             RequireGraph* deps = lua_extract_requires(module->source, module->file_path);
@@ -1949,19 +1905,14 @@ char* ir_lua_file_to_kir(const char* filepath) {
 
             // For main modules, add metadata with source info (library modules already have it)
             if (module->is_main) {
-                fprintf(stderr, "[lua_parser] Adding metadata for main module, abs_path=%s\n", abs_path);
                 cJSON* meta = cJSON_GetObjectItem(root, "metadata");
                 if (!meta) {
-                    fprintf(stderr, "[lua_parser] Creating new metadata object\n");
                     meta = cJSON_CreateObject();
                     cJSON_AddItemToObject(root, "metadata", meta);
-                } else {
-                    fprintf(stderr, "[lua_parser] Found existing metadata\n");
                 }
                 cJSON_AddStringToObject(meta, "module_id", module->module_id);
                 cJSON_AddStringToObject(meta, "language", "lua");
                 cJSON_AddStringToObject(meta, "source_file", abs_path);
-                fprintf(stderr, "[lua_parser] Added source_file to metadata\n");
             }
 
             // Format readable JSON
