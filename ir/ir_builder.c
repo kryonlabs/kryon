@@ -4,6 +4,7 @@
 #include "ir_hashmap.h"
 #include "ir_animation.h"
 #include "ir_plugin.h"
+#include "ir_component_handler.h"
 #include "components/ir_component_registry.h"
 #include "../third_party/cJSON/cJSON.h"
 #include "ir_json_helpers.h"
@@ -45,71 +46,6 @@ static void mark_style_dirty(IRComponent* component) {
     if (!component) return;
     ir_layout_mark_dirty(component);
     component->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
-}
-
-// Type system helper functions
-const char* ir_component_type_to_string(IRComponentType type) {
-    switch (type) {
-        case IR_COMPONENT_CONTAINER: return "Container";
-        case IR_COMPONENT_TEXT: return "Text";
-        case IR_COMPONENT_BUTTON: return "Button";
-        case IR_COMPONENT_INPUT: return "Input";
-        case IR_COMPONENT_CHECKBOX: return "Checkbox";
-        case IR_COMPONENT_ROW: return "Row";
-        case IR_COMPONENT_COLUMN: return "Column";
-        case IR_COMPONENT_CENTER: return "Center";
-        case IR_COMPONENT_IMAGE: return "Image";
-        case IR_COMPONENT_CANVAS: return "Canvas";
-        case IR_COMPONENT_DROPDOWN: return "Dropdown";
-        case IR_COMPONENT_MODAL: return "Modal";
-        case IR_COMPONENT_MARKDOWN: return "Markdown";
-        case IR_COMPONENT_TAB_GROUP: return "TabGroup";
-        case IR_COMPONENT_TAB_BAR: return "TabBar";
-        case IR_COMPONENT_TAB: return "Tab";
-        case IR_COMPONENT_TAB_CONTENT: return "TabContent";
-        case IR_COMPONENT_TAB_PANEL: return "TabPanel";
-        // Table components
-        case IR_COMPONENT_TABLE: return "Table";
-        case IR_COMPONENT_TABLE_HEAD: return "TableHead";
-        case IR_COMPONENT_TABLE_BODY: return "TableBody";
-        case IR_COMPONENT_TABLE_FOOT: return "TableFoot";
-        case IR_COMPONENT_TABLE_ROW: return "TableRow";
-        case IR_COMPONENT_TABLE_CELL: return "TableCell";
-        case IR_COMPONENT_TABLE_HEADER_CELL: return "TableHeaderCell";
-        // Markdown components
-        case IR_COMPONENT_HEADING: return "Heading";
-        case IR_COMPONENT_PARAGRAPH: return "Paragraph";
-        case IR_COMPONENT_BLOCKQUOTE: return "Blockquote";
-        case IR_COMPONENT_CODE_BLOCK: return "CodeBlock";
-        case IR_COMPONENT_HORIZONTAL_RULE: return "HorizontalRule";
-        case IR_COMPONENT_LIST: return "List";
-        case IR_COMPONENT_LIST_ITEM: return "ListItem";
-        case IR_COMPONENT_LINK: return "Link";
-        // Inline semantic components
-        case IR_COMPONENT_SPAN: return "Span";
-        case IR_COMPONENT_STRONG: return "Strong";
-        case IR_COMPONENT_EM: return "Em";
-        case IR_COMPONENT_CODE_INLINE: return "CodeInline";
-        case IR_COMPONENT_SMALL: return "Small";
-        case IR_COMPONENT_MARK: return "Mark";
-        case IR_COMPONENT_CUSTOM: return "Custom";
-        case IR_COMPONENT_FOR_EACH: return "ForEach";
-        default: return "Unknown";
-    }
-}
-
-const char* ir_event_type_to_string(IREventType type) {
-    switch (type) {
-        case IR_EVENT_CLICK: return "Click";
-        case IR_EVENT_HOVER: return "Hover";
-        case IR_EVENT_FOCUS: return "Focus";
-        case IR_EVENT_BLUR: return "Blur";
-        case IR_EVENT_KEY: return "Key";
-        case IR_EVENT_SCROLL: return "Scroll";
-        case IR_EVENT_TIMER: return "Timer";
-        case IR_EVENT_CUSTOM: return "Custom";
-        default: return "Unknown";
-    }
 }
 
 const char* ir_logic_type_to_string(LogicSourceType type) {
@@ -639,6 +575,7 @@ IRContext* ir_create_context(void) {
     static bool traits_initialized = false;
     if (!traits_initialized) {
         ir_layout_init_traits();
+        ir_component_handler_registry_init();
         traits_initialized = true;
     }
 
@@ -2181,21 +2118,6 @@ IRComponent* ir_mark(const char* text) {
 }
 
 // Dimension Helpers
-IRDimension ir_dimension_px(float value) {
-    IRDimension dim = { IR_DIMENSION_PX, value };
-    return dim;
-}
-
-IRDimension ir_dimension_percent(float value) {
-    IRDimension dim = { IR_DIMENSION_PERCENT, value };
-    return dim;
-}
-
-IRDimension ir_dimension_auto(void) {
-    IRDimension dim = { IR_DIMENSION_AUTO, 0.0f };
-    return dim;
-}
-
 IRDimension ir_dimension_flex(float value) {
     IRDimension dim = { IR_DIMENSION_FLEX, value };
     return dim;
@@ -2204,10 +2126,6 @@ IRDimension ir_dimension_flex(float value) {
 // Color Helpers
 IRColor ir_color_rgb(uint8_t r, uint8_t g, uint8_t b) {
     return IR_COLOR_RGBA(r, g, b, 255);
-}
-
-IRColor ir_color_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    return IR_COLOR_RGBA(r, g, b, a);
 }
 
 IRColor ir_color_transparent(void) {

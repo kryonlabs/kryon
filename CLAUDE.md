@@ -60,6 +60,102 @@ kryon/
 - **SDL3** - Desktop rendering backend
 - **cJSON** - JSON parsing (`ir/third_party/cJSON/`)
 
+## Shared Utilities (Phase 1 Modules)
+
+### ir_log - Unified Logging System
+
+**Files:** `ir/ir_log.h`, `ir/ir_log.c`
+
+Platform-aware logging that works on desktop and Android:
+
+```c
+#include "ir_log.h"
+
+// Log levels: DEBUG, INFO, WARN, ERROR
+IR_LOG_DEBUG("TAG", "Debug message: %d", value);
+IR_LOG_INFO("TAG", "Info message");
+IR_LOG_WARN("TAG", "Warning: %s", warning_msg);
+IR_LOG_ERROR("TAG", "Error occurred");
+
+// Set minimum log level
+ir_log_set_level(IR_LOG_DEBUG);
+```
+
+**Tags commonly used:**
+- `TEXT_SHAPING` - Font/text operations
+- `AUDIO` - Audio system
+- `ENTITY` - Entity system
+- `DESKTOP` - Desktop backend
+- `NAVIGATION` - Page routing
+- `JSON`, `SER`, `EXEC` - IR operations
+
+**When to use:**
+- Use for all diagnostic output, not user-facing text
+- Replace `fprintf(stderr, ...)` calls
+- Keep user-facing statistics/info as `printf`
+
+### ir_string_builder - String Builder Utility
+
+**Files:** `ir/ir_string_builder.h`, `ir/ir_string_builder.c`
+
+Dynamic string buffer with auto-expansion for code generation:
+
+```c
+#include "ir_string_builder.h"
+
+IRStringBuilder* sb = ir_sb_create(8192);  // Initial capacity
+ir_sb_append(sb, "Hello ");
+ir_sb_appendf(sb, "%s %d", "world", 42);
+ir_sb_indent(sb, 2);  // Add 2 spaces (indentation)
+ir_sb_append_line(sb, "next line");
+
+char* result = ir_sb_build(sb);  // Returns buffer (ownership transfers)
+ir_sb_free(sb);
+// result is now owned by caller - free() when done
+```
+
+**Key functions:**
+- `ir_sb_create()` - Create builder with initial capacity
+- `ir_sb_append()` - Append string
+- `ir_sb_appendf()` - Append formatted string (va_list)
+- `ir_sb_append_line()` - Append string + newline
+- `ir_sb_indent()` - Add indentation spaces
+- `ir_sb_clone()` - Clone builder (for result extraction)
+- `ir_sb_build()` - Get buffer (ownership transfers)
+- `ir_sb_free()` - Free builder and buffer
+- `ir_sb_length()` - Get current length
+
+**When to use:**
+- Code generation (replaces local string builders)
+- Building dynamic strings
+- Anywhere you'd use repeated `strcat` or manual buffer management
+
+### ir_json_helpers - Safe cJSON Wrappers
+
+**Files:** `ir/ir_json_helpers.h`, `ir/ir_json_helpers.c`
+
+NULL-safe cJSON operations to prevent crashes:
+
+```c
+#include "ir_json_helpers.h"
+
+// Safe string addition - handles NULL gracefully
+cJSON_AddStringOrNull(obj, "key", potentially_null_value);
+
+// Safe string creation - returns cJSON_CreateNull() if value is NULL
+cJSON* item = cJSON_CreateStringOrNull(potentially_null_value);
+
+// Additional safe getters
+const char* str = cJSON_GetStringSafe(item, "default");  // Returns NULL-safe string
+double num = cJSON_GetNumberSafe(item, 0.0);              // Returns 0.0 if not number
+int boolean = cJSON_GetBoolSafe(item, false);              // Returns false if not bool
+```
+
+**When to use:**
+- Replace `cJSON_AddStringToObject(obj, key, value)` when `value` may be NULL
+- Use instead of `value ? value : ""` fallback patterns
+- Anytime you serialize potentially NULL strings to JSON
+
 ## Architecture Layers
 
 ### 1. Parsers (Source → KIR)
