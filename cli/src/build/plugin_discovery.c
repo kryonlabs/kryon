@@ -16,6 +16,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <dirent.h>
+#include <errno.h>
 
 /* Path buffer size */
 #define DISCOVERY_PATH_MAX 4096
@@ -26,6 +28,166 @@
 static int dir_exists(const char* path) {
     struct stat st;
     return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+/**
+ * Copy a file from src to dst
+ */
+static int copy_file(const char* src, const char* dst) {
+    FILE* in = fopen(src, "rb");
+    if (!in) return -1;
+
+    FILE* out = fopen(dst, "wb");
+    if (!out) {
+        fclose(in);
+        return -1;
+    }
+
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) {
+            fclose(in);
+            fclose(out);
+            return -1;
+        }
+    }
+
+    fclose(in);
+    fclose(out);
+    return 0;
+}
+
+/**
+ * Get file modification time, returns 0 if file doesn't exist
+ */
+static time_t get_mtime(const char* path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+    return st.st_mtime;
+}
+
+/**
+ * Check if any source file in directory is newer than reference time
+ * Recursively scans src/ directory for .c and .h files
+ */
+static int source_files_newer_than(const char* plugin_dir, time_t ref_time) {
+    char src_dir[DISCOVERY_PATH_MAX];
+    snprintf(src_dir, sizeof(src_dir), "%s/src", plugin_dir);
+
+    DIR* dir = opendir(src_dir);
+    if (!dir) return 0;  /* No src dir, assume no rebuild needed */
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_name[0] == '.') continue;
+
+        /* Check .c and .h files */
+        size_t len = strlen(entry->d_name);
+        if (len > 2 && (strcmp(entry->d_name + len - 2, ".c") == 0 ||
+                        strcmp(entry->d_name + len - 2, ".h") == 0)) {
+            char filepath[DISCOVERY_PATH_MAX];
+            snprintf(filepath, sizeof(filepath), "%s/%s", src_dir, entry->d_name);
+            if (get_mtime(filepath) > ref_time) {
+                closedir(dir);
+                return 1;  /* Source is newer */
+            }
+        }
+    }
+    closedir(dir);
+
+    /* Also check Makefile */
+    char makefile[DISCOVERY_PATH_MAX];
+    snprintf(makefile, sizeof(makefile), "%s/Makefile", plugin_dir);
+    if (get_mtime(makefile) > ref_time) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * Check if plugin needs to be rebuilt
+ * Returns 1 if rebuild needed, 0 otherwise
+ */
+static int plugin_needs_rebuild(const char* plugin_dir, const char* plugin_name) {
+    char lib_path[DISCOVERY_PATH_MAX];
+    snprintf(lib_path, sizeof(lib_path), "%s/build/libkryon_%s.a", plugin_dir, plugin_name);
+
+    /* Check if .a exists */
+    time_t lib_mtime = get_mtime(lib_path);
+    if (lib_mtime == 0) {
+        return 1;  /* Missing = needs rebuild */
+    }
+
+    /* Check if any source file is newer than .a */
+    return source_files_newer_than(plugin_dir, lib_mtime);
+}
+
+/**
+ * Compile a plugin by running make in its directory
+ * Returns 0 on success, -1 on failure
+ */
+static int plugin_compile(const char* plugin_dir, const char* plugin_name) {
+    printf("[plugin] Compiling %s...\n", plugin_name);
+
+    char cmd[DISCOVERY_PATH_MAX + 64];
+    snprintf(cmd, sizeof(cmd), "make -C \"%s\" 2>&1", plugin_dir);
+
+    int result = system(cmd);
+    if (result != 0) {
+        fprintf(stderr, "[plugin] Failed to compile %s (exit code %d)\n", plugin_name, result);
+        return -1;
+    }
+
+    printf("[plugin] Successfully compiled %s\n", plugin_name);
+    return 0;
+}
+
+/**
+ * Install plugin's .so to ~/.local/lib for runtime FFI loading
+ * Returns 0 on success, -1 on failure
+ */
+static int plugin_install_runtime(const char* plugin_dir, const char* plugin_name) {
+    const char* home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "[plugin] Warning: HOME not set, skipping runtime install\n");
+        return -1;
+    }
+
+    /* Source .so path */
+    char src_path[DISCOVERY_PATH_MAX];
+    snprintf(src_path, sizeof(src_path), "%s/build/libkryon_%s.so", plugin_dir, plugin_name);
+
+    /* Check if .so exists */
+    if (!file_exists(src_path)) {
+        /* Not an error - some plugins might only have .a */
+        return 0;
+    }
+
+    /* Destination directory */
+    char lib_dir[DISCOVERY_PATH_MAX];
+    snprintf(lib_dir, sizeof(lib_dir), "%s/.local/lib", home);
+
+    /* Create ~/.local/lib if it doesn't exist */
+    if (!dir_exists(lib_dir)) {
+        char mkdir_cmd[DISCOVERY_PATH_MAX + 32];
+        snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", lib_dir);
+        system(mkdir_cmd);
+    }
+
+    /* Destination .so path */
+    char dst_path[DISCOVERY_PATH_MAX];
+    snprintf(dst_path, sizeof(dst_path), "%s/libkryon_%s.so", lib_dir, plugin_name);
+
+    /* Copy the file */
+    if (copy_file(src_path, dst_path) != 0) {
+        fprintf(stderr, "[plugin] Warning: Failed to install %s to %s\n", plugin_name, dst_path);
+        return -1;
+    }
+
+    printf("[plugin] Installed %s -> %s\n", plugin_name, dst_path);
+    return 0;
 }
 
 /**
@@ -148,6 +310,18 @@ BuildPluginInfo* discover_build_plugins(const char* project_dir,
             free(plugin_dir);
             free(plugins);
             exit(1);
+        }
+
+        /* Auto-compile plugin if needed */
+        if (plugin_needs_rebuild(plugin_dir, dep->name)) {
+            printf("  - %s: needs rebuild\n", dep->name);
+            if (plugin_compile(plugin_dir, dep->name) != 0) {
+                free(plugin_dir);
+                free(plugins);
+                exit(1);
+            }
+            /* Install .so to ~/.local/lib for runtime FFI loading */
+            plugin_install_runtime(plugin_dir, dep->name);
         }
 
         /* Verify plugin has all required files */
