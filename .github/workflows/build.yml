@@ -186,8 +186,7 @@ jobs:
             libpng-static \
             zlib-static \
             brotli-static \
-            nim \
-            nimble \
+            raylib-dev \
             bash
 
       - uses: actions/checkout@v4
@@ -197,19 +196,12 @@ jobs:
           git config --global --add safe.directory /__w/kryon/kryon
           git submodule update --init --recursive
 
-      - name: Install Nim dependencies
-        run: nimble install -y parsetoml cligen
-
       - name: Build web variant (static)
         run: |
-          export PATH="$HOME/.nimble/bin:$PATH"
           make -C ir all
           make -C codegens/web all
-          nim c --define:kryonVersion=0.2.0 -d:webBackend --opt:size \
-            --passL:"-static" \
-            --passL:"-Lbuild -lkryon_ir -lkryon_web" \
-            --passL:"-lharfbuzz -lgraphite2 -lfreetype -lfribidi -lbz2 -lpng -lz -lbrotlidec -lbrotlicommon" \
-            -o:build/kryon-web cli/main.nim
+          make -C cli all
+          cp cli/kryon build/kryon-web
 
       - name: Verify build is static
         run: |
@@ -247,7 +239,8 @@ jobs:
             libxi-dev \
             libgl1-mesa-dev \
             libasound2-dev \
-            libpulse-dev
+            libpulse-dev \
+            libraylib-dev
 
       - name: Cache SDL3
         id: cache-sdl3
@@ -283,26 +276,15 @@ jobs:
       - name: Update library cache
         run: sudo ldconfig
 
-      - name: Install Nim
-        uses: jiro4989/setup-nim-action@v2
-        with:
-          nim-version: ${{ env.NIM_VERSION }}
-
-      - name: Install Nim dependencies
-        run: nimble install -y parsetoml cligen
-
       - name: Build default variant with RPATH (all backends)
         run: |
           export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-          # Build C libraries (static and shared)
+          # Build C libraries (both SDL3 and Raylib enabled by default)
           make -C ir all
           make -C backends/desktop all
           make -C codegens/web all
-          # Build CLI with RPATH set to find libs in ./lib relative to binary
-          nim c --define:kryonVersion=0.2.0 -d:staticBackend --opt:speed \
-            --passL:"-Wl,-rpath,'\$ORIGIN/lib'" \
-            --passL:"-Lbuild -lkryon_ir -lkryon_desktop -lkryon_web $(pkg-config --libs sdl3 SDL3_ttf)" \
-            -o:build/kryon-full cli/main.nim
+          make -C cli all
+          cp cli/kryon build/kryon-full
 
       - name: Verify build
         run: |

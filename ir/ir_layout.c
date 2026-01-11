@@ -2049,10 +2049,6 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                    parent_x, parent_y);
             fflush(debug_file);
         }
-        printf("[BUTTON #%d] ID=%u text='%s' pos=[%.1f,%.1f]\n",
-               button_count, c->id, c->text_content ? c->text_content : "",
-               parent_x, parent_y);
-        fflush(stdout);
     }
 
     // Ensure layout state exists
@@ -2531,23 +2527,17 @@ void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewp
         fflush(debug_file);
     }
 
-    printf("[LAYOUT_TREE #%d] ENTRY viewport=(%.0fx%.0f)\n", call_count, viewport_width, viewport_height);
-    fflush(stdout);
-
     if (!root) return;
 
     // Track viewport changes and invalidate layout when viewport resizes
     static float last_width = 0, last_height = 0;
     if (viewport_width != last_width || viewport_height != last_height) {
-        printf("[LAYOUT] Viewport changed: %.0fx%.0f -> %.0fx%.0f\n",
-               last_width, last_height, viewport_width, viewport_height);
         last_width = viewport_width;
         last_height = viewport_height;
 
         // CRITICAL: Invalidate entire layout tree when viewport changes
         // This forces recomputation with new constraints
         ir_layout_invalidate_subtree(root);
-        printf("[LAYOUT] Invalidated layout tree for resize\n");
     }
 
     if (getenv("KRYON_DEBUG_LAYOUT_MODE")) {
