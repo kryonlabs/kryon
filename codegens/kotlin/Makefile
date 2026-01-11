@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -O2 -fPIC
-CJSON_DIR = ../../ir/third_party/cJSON
+CJSON_DIR = ../../third_party/cJSON
 
 # Source files
 SOURCES = kotlin_codegen.c

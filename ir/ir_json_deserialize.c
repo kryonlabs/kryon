@@ -16,7 +16,7 @@
 #include "ir_stylesheet.h"
 #include "ir_animation.h"
 #include "ir_c_metadata.h"
-#include "../third_party/cJSON/cJSON.h"
+#include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

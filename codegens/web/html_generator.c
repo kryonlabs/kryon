@@ -15,7 +15,7 @@
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_plugin.h"
 #include "../../ir/ir_logic.h"
-#include "../../ir/third_party/cJSON/cJSON.h"
+#include "../../third_party/cJSON/cJSON.h"
 #include "html_generator.h"
 #include "css_generator.h"
 #include "style_analyzer.h"

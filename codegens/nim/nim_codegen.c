@@ -7,7 +7,7 @@
 
 #include "nim_codegen.h"
 #include "../../ir/ir_serialization.h"
-#include "../../ir/third_party/cJSON/cJSON.h"
+#include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -2,7 +2,7 @@
 #define IR_JSON_SERIALIZE_H
 
 #include "ir_core.h"
-#include "../third_party/cJSON/cJSON.h"
+#include "cJSON.h"
 
 // Forward declarations
 typedef struct IRLogicBlock IRLogicBlock;

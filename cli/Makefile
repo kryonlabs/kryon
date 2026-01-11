@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../ir/third_party/cJSON -I../backends/desktop -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../backends/desktop -D_POSIX_C_SOURCE=200809L
 # Desktop backend is linked for hot reload support (--watch flag)
 # Requires SDL3 and raylib to be installed
 # Link against static libraries to override weak symbols at link time
@@ -86,7 +86,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/codegen
 
 # Build third-party libraries
-$(CJSON_OBJ): ../ir/third_party/cJSON/cJSON.c
+$(CJSON_OBJ): ../third_party/cJSON/cJSON.c
 	mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 

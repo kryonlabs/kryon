@@ -2,7 +2,7 @@
 #include "lua_bundler.h"
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_logic.h"
-#include "../../ir/third_party/cJSON/cJSON.h"
+#include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
