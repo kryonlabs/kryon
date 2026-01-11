@@ -179,6 +179,7 @@ typedef struct {
 
 KryonConfig* config_load(const char* config_path);
 KryonConfig* config_find_and_load(void);
+bool config_load_plugins(KryonConfig* config);
 bool config_validate(KryonConfig* config);
 void config_free(KryonConfig* config);
 
