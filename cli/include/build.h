@@ -115,6 +115,7 @@ int build_with_docs_template(const char* content_kir_file,
  * @param renderer      Override renderer: "sdl3", "raylib", or NULL (use config)
  * @return 0 on success, non-zero on failure
  */
+#ifndef KRYON_MINIMAL_BUILD
 int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char* renderer);
 
 /**
@@ -131,6 +132,7 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
  */
 int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop_lib,
                                         const char* renderer, const char* watch_path);
+#endif
 
 /**
  * Execute a KIR file using the Lua runtime.

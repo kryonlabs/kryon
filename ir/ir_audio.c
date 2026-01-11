@@ -263,31 +263,186 @@ IRAudioState* ir_audio_get_state_by_instance(uint32_t instance_id) {
 // ============================================================================
 
 IRSoundID ir_audio_load_sound_state(IRAudioState* state, const char* path) {
-    // Set current state and call global function
-    IRAudioState* prev = ir_audio_set_current_state(state);
-    // Note: This would need proper implementation for full per-instance support
-    // For now, it delegates to the global implementation which uses the current state
-    ir_audio_set_current_state(prev);
-    return IR_INVALID_SOUND;  // TODO: Implement properly
+    // Use global state if none provided
+    if (!state) {
+        state = get_global_audio_state();
+    }
+    if (!state) {
+        IR_LOG_ERROR("AUDIO", "No state available for loading sound");
+        return IR_INVALID_SOUND;
+    }
+
+    // Check capacity
+    if (state->sound_count >= IR_MAX_SOUNDS) {
+        IR_LOG_ERROR("AUDIO", "Max sounds reached for state");
+        return IR_INVALID_SOUND;
+    }
+
+    // Check if already loaded in this state
+    for (uint32_t i = 0; i < state->sound_count; i++) {
+        if (strcmp(state->sounds[i].path, path) == 0) {
+            IR_LOG_INFO("AUDIO", "Sound already loaded in state: %s", path);
+            return state->sounds[i].id;
+        }
+    }
+
+    // Load sound using global backend (sounds are shared across states)
+    // We store the backend pointer but have separate IDs per state
+    uint32_t duration_ms, sample_rate;
+    uint8_t channels;
+
+    // Use global backend to load
+    void* backend_data = NULL;
+    if (g_audio_system.backend.load_sound) {
+        backend_data = g_audio_system.backend.load_sound(path, &duration_ms, &sample_rate, &channels);
+    } else {
+        IR_LOG_ERROR("AUDIO", "No backend registered for loading sound");
+        return IR_INVALID_SOUND;
+    }
+
+    if (!backend_data) {
+        IR_LOG_ERROR("AUDIO", "Failed to load sound via backend: %s", path);
+        return IR_INVALID_SOUND;
+    }
+
+    // Allocate new sound slot in state
+    IRSound* sound = &state->sounds[state->sound_count];
+    memset(sound, 0, sizeof(IRSound));
+
+    sound->id = state->sound_count + 1;
+    strncpy(sound->path, path, sizeof(sound->path) - 1);
+    sound->backend_data = backend_data;
+    sound->duration_ms = duration_ms;
+    sound->sample_rate = sample_rate;
+    sound->channels = channels;
+    sound->loaded = true;
+
+    state->sound_count++;
+
+    IR_LOG_INFO("AUDIO", "Loaded sound in state: %s (id=%u)", path, sound->id);
+    return sound->id;
 }
 
 IRChannelID ir_audio_play_sound_state(IRAudioState* state, IRSoundID sound_id, float volume, float pan, bool loop) {
-    IRAudioState* prev = ir_audio_set_current_state(state);
-    // TODO: Implement properly
-    ir_audio_set_current_state(prev);
-    return IR_INVALID_CHANNEL;
+    // Use global state if none provided
+    if (!state) {
+        state = get_global_audio_state();
+    }
+    if (!state) {
+        IR_LOG_ERROR("AUDIO", "No state available for playing sound");
+        return IR_INVALID_CHANNEL;
+    }
+
+    // Find sound in state
+    IRSound* sound = find_sound_in_state(state, sound_id);
+    if (!sound || !sound->loaded) {
+        IR_LOG_ERROR("AUDIO", "Invalid sound ID for state: %u", sound_id);
+        return IR_INVALID_CHANNEL;
+    }
+
+    // Find free channel in state
+    IRChannel* channel = NULL;
+    for (uint32_t i = 0; i < IR_MAX_CHANNELS; i++) {
+        if (state->channels[i].state == IR_AUDIO_STOPPED) {
+            channel = &state->channels[i];
+            break;
+        }
+    }
+
+    if (!channel) {
+        IR_LOG_ERROR("AUDIO", "No free channels in state");
+        return IR_INVALID_CHANNEL;
+    }
+
+    // Play via global backend (channel management is per-state, but playback is global)
+    IRChannelID backend_channel_id = IR_INVALID_CHANNEL;
+    if (g_audio_system.backend.play_sound) {
+        float final_volume = volume * state->master_volume;
+        backend_channel_id = g_audio_system.backend.play_sound(
+            sound->backend_data,
+            final_volume,
+            pan,
+            loop
+        );
+    }
+
+    if (backend_channel_id == IR_INVALID_CHANNEL) {
+        IR_LOG_ERROR("AUDIO", "Backend failed to play sound");
+        return IR_INVALID_CHANNEL;
+    }
+
+    // Track in state
+    channel->id = backend_channel_id;
+    channel->sound_id = sound_id;
+    channel->state = IR_AUDIO_PLAYING;
+    channel->volume = volume;
+    channel->pan = pan;
+    channel->loop = loop;
+    channel->start_time_ms = get_time_ms();
+
+    IR_LOG_INFO("AUDIO", "Playing sound in state: id=%u, channel=%u", sound_id, backend_channel_id);
+    return backend_channel_id;
 }
 
 void ir_audio_stop_channel_state(IRAudioState* state, IRChannelID channel_id) {
-    IRAudioState* prev = ir_audio_set_current_state(state);
-    // TODO: Implement properly
-    ir_audio_set_current_state(prev);
+    // Use global state if none provided
+    if (!state) {
+        state = get_global_audio_state();
+    }
+    if (!state) return;
+
+    // Find channel in state
+    IRChannel* channel = NULL;
+    for (uint32_t i = 0; i < IR_MAX_CHANNELS; i++) {
+        if (state->channels[i].id == channel_id) {
+            channel = &state->channels[i];
+            break;
+        }
+    }
+
+    if (!channel || channel->state == IR_AUDIO_STOPPED) {
+        return;
+    }
+
+    // Stop via global backend
+    if (g_audio_system.backend.stop_channel) {
+        g_audio_system.backend.stop_channel(channel_id);
+    }
+
+    channel->state = IR_AUDIO_STOPPED;
+    channel->sound_id = IR_INVALID_SOUND;
+
+    IR_LOG_DEBUG("AUDIO", "Stopped channel in state: %u", channel_id);
 }
 
 void ir_audio_set_channel_volume_state(IRAudioState* state, IRChannelID channel_id, float volume) {
-    IRAudioState* prev = ir_audio_set_current_state(state);
-    // TODO: Implement properly
-    ir_audio_set_current_state(prev);
+    // Use global state if none provided
+    if (!state) {
+        state = get_global_audio_state();
+    }
+    if (!state) return;
+
+    // Find channel in state
+    IRChannel* channel = NULL;
+    for (uint32_t i = 0; i < IR_MAX_CHANNELS; i++) {
+        if (state->channels[i].id == channel_id) {
+            channel = &state->channels[i];
+            break;
+        }
+    }
+
+    if (!channel) {
+        IR_LOG_WARN("AUDIO", "Channel not found in state: %u", channel_id);
+        return;
+    }
+
+    channel->volume = fmaxf(0.0f, fminf(1.0f, volume));
+
+    // Update via global backend
+    if (g_audio_system.backend.set_channel_volume) {
+        float final_volume = volume * state->master_volume;
+        g_audio_system.backend.set_channel_volume(channel_id, final_volume);
+    }
 }
 
 void ir_audio_set_master_volume_state(IRAudioState* state, float volume) {
@@ -305,9 +460,43 @@ void ir_audio_set_listener_position_state(IRAudioState* state, float x, float y,
 }
 
 void ir_audio_update_state(IRAudioState* state, float dt) {
-    // TODO: Implement properly - update channels, streaming, etc.
-    (void)state;
-    (void)dt;
+    if (!state) {
+        state = get_global_audio_state();
+    }
+    if (!state) return;
+
+    // Update all channels in this state
+    for (uint32_t i = 0; i < IR_MAX_CHANNELS; i++) {
+        IRChannel* channel = &state->channels[i];
+        if (channel->state == IR_AUDIO_PLAYING) {
+            // Check if channel has finished (via backend)
+            if (g_audio_system.backend.get_channel_state) {
+                IRPlaybackState backend_state = g_audio_system.backend.get_channel_state(channel->id);
+                if (backend_state == IR_AUDIO_STOPPED) {
+                    // Handle looping if needed
+                    if (channel->loop) {
+                        IRSound* sound = find_sound_in_state(state, channel->sound_id);
+                        if (sound && sound->loaded && g_audio_system.backend.play_sound) {
+                            g_audio_system.backend.play_sound(
+                                sound->backend_data,
+                                channel->volume * state->master_volume,
+                                channel->pan,
+                                true
+                            );
+                        }
+                    } else {
+                        channel->state = IR_AUDIO_STOPPED;
+                        channel->sound_id = IR_INVALID_SOUND;
+                    }
+                }
+            }
+        }
+    }
+
+    // Update backend (for streaming, music updates, etc.)
+    if (g_audio_system.backend.update) {
+        g_audio_system.backend.update(dt);
+    }
 }
 
 // ============================================================================
