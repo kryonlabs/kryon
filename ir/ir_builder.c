@@ -6,6 +6,7 @@
 #include "ir_plugin.h"
 #include "components/ir_component_registry.h"
 #include "../third_party/cJSON/cJSON.h"
+#include "ir_json_helpers.h"
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -1748,9 +1749,9 @@ cJSON* ir_clear_tree_module_refs(IRComponent* component) {
     if (component->module_ref) {
         cJSON* ref = cJSON_CreateObject();
         cJSON_AddNumberToObject(ref, "id", component->id);
-        cJSON_AddStringToObject(ref, "module_ref", component->module_ref);
+        cJSON_AddStringOrNull(ref, "module_ref", component->module_ref);
         if (component->export_name) {
-            cJSON_AddStringToObject(ref, "export_name", component->export_name);
+            cJSON_AddStringOrNull(ref, "export_name", component->export_name);
         }
         cJSON_AddItemToArray(refs_array, ref);
 

@@ -6,6 +6,7 @@
 #include "ir_core.h"
 #include "ir_builder.h"
 #include "third_party/cJSON/cJSON.h"
+#include "ir_json_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -498,7 +499,7 @@ static void update_foreach_component_text_legacy(IRComponent* component, cJSON* 
 
                 // Update the date field
                 cJSON_DeleteItemFromObject(data_obj, "date");
-                cJSON_AddStringToObject(data_obj, "date", date_str->valuestring);
+                cJSON_AddStringOrNull(data_obj, "date", date_str ? date_str->valuestring : NULL);
 
                 // Also add isCompleted for the handler to know current state
                 cJSON_DeleteItemFromObject(data_obj, "isCompleted");

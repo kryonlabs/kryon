@@ -15,6 +15,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "desktop_internal.h"
 #include "../../ir/ir_executor.h"
+#include "../../ir/ir_log.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -96,7 +97,7 @@ __attribute__((weak)) void navigate_to_page(const char* path) {
     // Check if file exists
     FILE* test = fopen(kir_path, "r");
     if (!test) {
-        fprintf(stderr, "❌ Page not found: %s (tried %s)\n", path, kir_path);
+        IR_LOG_ERROR("NAVIGATION", "Page not found: %s (tried %s)", path, kir_path);
         return;
     }
     fclose(test);
@@ -104,7 +105,7 @@ __attribute__((weak)) void navigate_to_page(const char* path) {
     // Load new IR tree
     IRComponent* new_root = ir_read_json_file(kir_path);
     if (!new_root) {
-        fprintf(stderr, "❌ Failed to load IR from: %s\n", kir_path);
+        IR_LOG_ERROR("NAVIGATION", "Failed to load IR from: %s", kir_path);
         return;
     }
 
@@ -140,7 +141,7 @@ __attribute__((weak)) void open_external_url(const char* url) {
     // Validate URL for safety (prevent command injection)
     for (const char* p = url; *p; p++) {
         if (*p == '"' || *p == '\'' || *p == ';' || *p == '`' || *p == '$') {
-            fprintf(stderr, "❌ Unsafe characters in URL: %s\n", url);
+            IR_LOG_ERROR("NAVIGATION", "Unsafe characters in URL: %s", url);
             return;
         }
     }
@@ -156,7 +157,7 @@ __attribute__((weak)) void open_external_url(const char* url) {
 
     int result = system(command);
     if (result != 0) {
-        fprintf(stderr, "❌ Failed to open URL: %s (exit code: %d)\n", url, result);
+        IR_LOG_ERROR("NAVIGATION", "Failed to open URL: %s (exit code: %d)", url, result);
     }
 }
 

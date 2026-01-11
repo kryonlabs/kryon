@@ -3,6 +3,7 @@
 #include "ir_to_commands.h"
 #include "desktop_internal.h"
 #include "../ir/ir_core.h"
+#include "../ir/ir_log.h"
 #include "../../core/include/kryon.h"
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +52,7 @@ void ir_wireframe_load_config(ir_wireframe_config_t* config) {
     const char* color_str = getenv("KRYON_WIREFRAME_COLOR");
     if (color_str) {
         if (!parse_color(color_str, &config->color)) {
-            fprintf(stderr, "[kryon] Invalid wireframe color: %s\n", color_str);
+            IR_LOG_WARN("DESKTOP", "Invalid wireframe color: %s", color_str);
             config->color = 0xFF0000FF; /* Default red */
         }
     } else {

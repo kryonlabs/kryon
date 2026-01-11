@@ -3,6 +3,7 @@
  */
 
 #include "ir_entity.h"
+#include "ir_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -152,12 +153,12 @@ void ir_entity_update(float dt) {
 
 IREntityID ir_entity_create(IRSceneID scene_id, const char* name) {
     if (!g_entity_system.initialized) {
-        fprintf(stderr, "Entity system not initialized\n");
+        IR_LOG_ERROR("ENTITY", "Entity system not initialized");
         return IR_INVALID_ENTITY;
     }
 
     if (g_entity_system.entity_count >= IR_MAX_ENTITIES) {
-        fprintf(stderr, "Maximum entity count reached (%d)\n", IR_MAX_ENTITIES);
+        IR_LOG_ERROR("ENTITY", "Maximum entity count reached (%d)", IR_MAX_ENTITIES);
         return IR_INVALID_ENTITY;
     }
 
@@ -169,7 +170,7 @@ IREntityID ir_entity_create(IRSceneID scene_id, const char* name) {
     // Ensure scene exists
     IRScene* scene = get_scene_by_id(scene_id);
     if (!scene) {
-        fprintf(stderr, "Scene %u not found\n", scene_id);
+        IR_LOG_ERROR("ENTITY", "Scene %u not found", scene_id);
         return IR_INVALID_ENTITY;
     }
 
@@ -317,12 +318,12 @@ bool ir_entity_add_component(IREntityID entity_id, IRComponentType type,
                              const void* data, uint32_t data_size) {
     IREntity* entity = get_entity_by_id(entity_id);
     if (!entity) {
-        fprintf(stderr, "Entity %u not found\n", entity_id);
+        IR_LOG_ERROR("ENTITY", "Entity %u not found", entity_id);
         return false;
     }
 
     if (entity->component_count >= IR_MAX_COMPONENTS_PER_ENTITY) {
-        fprintf(stderr, "Entity %u has maximum components (%d)\n",
+        IR_LOG_ERROR("ENTITY", "Entity %u has maximum components (%d)",
                 entity_id, IR_MAX_COMPONENTS_PER_ENTITY);
         return false;
     }
@@ -330,7 +331,7 @@ bool ir_entity_add_component(IREntityID entity_id, IRComponentType type,
     // Check if component already exists
     for (uint32_t i = 0; i < entity->component_count; i++) {
         if (entity->components[i].type == type) {
-            fprintf(stderr, "Entity %u already has component type %d\n", entity_id, type);
+            IR_LOG_ERROR("ENTITY", "Entity %u already has component type %d", entity_id, type);
             return false;
         }
     }
@@ -338,7 +339,7 @@ bool ir_entity_add_component(IREntityID entity_id, IRComponentType type,
     // Allocate and copy component data
     void* component_data = malloc(data_size);
     if (!component_data) {
-        fprintf(stderr, "Failed to allocate component data (%u bytes)\n", data_size);
+        IR_LOG_ERROR("ENTITY", "Failed to allocate component data (%u bytes)", data_size);
         return false;
     }
     memcpy(component_data, data, data_size);
@@ -537,12 +538,12 @@ void ir_entity_set_parent(IREntityID entity_id, IREntityID parent_id) {
     if (parent_id != IR_INVALID_ENTITY) {
         IREntity* new_parent = get_entity_by_id(parent_id);
         if (!new_parent) {
-            fprintf(stderr, "Parent entity %u not found\n", parent_id);
+            IR_LOG_ERROR("ENTITY", "Parent entity %u not found", parent_id);
             return;
         }
 
         if (new_parent->child_count >= IR_MAX_CHILDREN_PER_ENTITY) {
-            fprintf(stderr, "Parent entity %u has maximum children (%d)\n",
+            IR_LOG_ERROR("ENTITY", "Parent entity %u has maximum children (%d)",
                     parent_id, IR_MAX_CHILDREN_PER_ENTITY);
             return;
         }
@@ -594,12 +595,12 @@ uint32_t ir_entity_get_child_count(IREntityID entity_id) {
 
 IRSceneID ir_scene_create(const char* name) {
     if (!g_entity_system.initialized) {
-        fprintf(stderr, "Entity system not initialized\n");
+        IR_LOG_ERROR("ENTITY", "Entity system not initialized");
         return IR_INVALID_SCENE;
     }
 
     if (g_entity_system.scene_count >= IR_MAX_SCENES) {
-        fprintf(stderr, "Maximum scene count reached (%d)\n", IR_MAX_SCENES);
+        IR_LOG_ERROR("ENTITY", "Maximum scene count reached (%d)", IR_MAX_SCENES);
         return IR_INVALID_SCENE;
     }
 
@@ -672,7 +673,7 @@ IRSceneID ir_scene_find_by_name(const char* name) {
 bool ir_scene_set_active(IRSceneID scene_id) {
     IRScene* scene = get_scene_by_id(scene_id);
     if (!scene) {
-        fprintf(stderr, "Scene %u not found\n", scene_id);
+        IR_LOG_ERROR("ENTITY", "Scene %u not found", scene_id);
         return false;
     }
 

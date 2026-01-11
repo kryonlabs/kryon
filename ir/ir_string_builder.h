@@ -118,6 +118,15 @@ size_t ir_sb_length(const IRStringBuilder* sb);
  */
 bool ir_sb_reserve(IRStringBuilder* sb, size_t capacity);
 
+/**
+ * Clone a string builder
+ * Creates a new string builder with a copy of the original's content.
+ * The original builder remains unchanged and usable.
+ * @param sb String builder to clone
+ * @return New string builder with copied content, or NULL on failure
+ */
+IRStringBuilder* ir_sb_clone(IRStringBuilder* sb);
+
 #ifdef __cplusplus
 }
 #endif

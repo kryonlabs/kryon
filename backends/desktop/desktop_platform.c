@@ -5,6 +5,7 @@
  */
 
 #include "desktop_platform.h"
+#include "../../ir/ir_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +19,7 @@ static DesktopRendererOps* g_backends[6] = {NULL};  // 6 = max backend types
 
 void desktop_register_backend(DesktopBackendType type, DesktopRendererOps* ops) {
     if (type < 0 || type >= 6) {
-        fprintf(stderr, "[desktop_platform] Invalid backend type: %d\n", type);
+        IR_LOG_ERROR("DESKTOP", "Invalid backend type: %d", type);
         return;
     }
 
@@ -28,18 +29,18 @@ void desktop_register_backend(DesktopBackendType type, DesktopRendererOps* ops) 
     }
 
     if (g_backends[type] != NULL) {
-        fprintf(stderr, "[desktop_platform] Warning: Backend %d already registered, overwriting\n", type);
+        IR_LOG_WARN("DESKTOP", "Backend %d already registered, overwriting", type);
     }
 
     g_backends[type] = ops;
 
     const char* backend_names[] = {"SDL3", "Raylib", "GLFW", "Win32", "Cocoa", "X11"};
-    printf("[desktop_platform] Registered backend: %s\n", backend_names[type]);
+    IR_LOG_INFO("DESKTOP", "Registered backend: %s", backend_names[type]);
 }
 
 DesktopRendererOps* desktop_get_backend_ops(DesktopBackendType type) {
     if (type < 0 || type >= 6) {
-        fprintf(stderr, "[desktop_platform] Invalid backend type: %d\n", type);
+        IR_LOG_ERROR("DESKTOP", "Invalid backend type: %d", type);
         return NULL;
     }
 
@@ -56,13 +57,13 @@ static int g_font_registry_count = 0;
 
 void desktop_register_font(const char* name, const char* path) {
     if (!name || !path) {
-        fprintf(stderr, "[desktop_platform] Invalid font registration: name=%p, path=%p\n",
+        IR_LOG_ERROR("DESKTOP", "Invalid font registration: name=%p, path=%p",
                 (void*)name, (void*)path);
         return;
     }
 
     if (g_font_registry_count >= 32) {
-        fprintf(stderr, "[desktop_platform] Font registry full (max 32 fonts)\n");
+        IR_LOG_ERROR("DESKTOP", "Font registry full (max 32 fonts)");
         return;
     }
 
@@ -85,7 +86,7 @@ void desktop_register_font(const char* name, const char* path) {
     strncpy(font->path, path, sizeof(font->path) - 1);
     font->path[sizeof(font->path) - 1] = '\0';
 
-    printf("[desktop_platform] Registered font: %s -> %s\n", name, path);
+    IR_LOG_INFO("DESKTOP", "Registered font: %s -> %s", name, path);
 }
 
 const char* desktop_find_font_path(const char* name) {
