@@ -12,7 +12,7 @@
 #include "components/ir_component_canvas.h"
 #include "components/ir_component_misc.h"
 #include "components/ir_component_tabs.h"
-#include "../third_party/cJSON/cJSON.h"
+#include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

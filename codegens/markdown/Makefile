@@ -7,7 +7,7 @@ ARFLAGS = rcs
 
 # Directories
 BUILD_DIR = ../../build
-CJSON_DIR = ../../ir/third_party/cJSON
+CJSON_DIR = ../../third_party/cJSON
 
 # Output
 LIB_NAME = libkryon_codegen_markdown

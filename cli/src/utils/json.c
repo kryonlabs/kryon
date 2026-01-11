@@ -5,7 +5,7 @@
 
 #include "kryon_cli.h"
 #include <stdlib.h>
-#include <cJSON.h>
+#include "cJSON.h"
 
 /**
  * Parse JSON string into cJSON object

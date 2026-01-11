@@ -7,7 +7,7 @@ ARFLAGS = rcs
 
 # Directories
 BUILD_DIR = ../build
-CJSON_DIR = ../ir/third_party/cJSON
+CJSON_DIR = ../third_party/cJSON
 
 # Output
 REACT_COMMON_OBJ = $(BUILD_DIR)/react_common.o

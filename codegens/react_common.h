@@ -2,7 +2,7 @@
 #define REACT_COMMON_H
 
 #include "../ir/ir_core.h"
-#include "../ir/third_party/cJSON/cJSON.h"
+#include "../third_party/cJSON/cJSON.h"
 #include <stdbool.h>
 
 #ifdef __cplusplus

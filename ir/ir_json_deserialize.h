@@ -4,7 +4,7 @@
 #include "ir_core.h"
 #include "ir_stylesheet.h"
 #include "ir_json_context.h"
-#include "../third_party/cJSON/cJSON.h"
+#include "cJSON.h"
 
 // Forward declarations
 typedef struct IRLogicBlock IRLogicBlock;

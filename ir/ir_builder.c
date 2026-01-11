@@ -8,7 +8,7 @@
 #include "ir_plugin.h"
 #include "ir_component_handler.h"
 #include "components/ir_component_registry.h"
-#include "../third_party/cJSON/cJSON.h"
+#include "cJSON.h"
 #include "ir_json_helpers.h"
 #include <stdio.h>
 #include <assert.h>

@@ -9,7 +9,7 @@
 #include "module_collector.h"
 #include "require_tracker.h"
 #include "../../ir_serialization.h"
-#include "../../third_party/cJSON/cJSON.h"
+#include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
