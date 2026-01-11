@@ -1,5 +1,5 @@
 # Makefile for framebuffer renderer
-CC = clang
+CC ?= gcc
 CFLAGS = -Wall -Wextra -std=c99 -O2 -DKRYON_PLATFORM_DESKTOP
 INCLUDES = -I../../core/include
 LIBS =
