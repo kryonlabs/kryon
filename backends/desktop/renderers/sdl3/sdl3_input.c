@@ -12,8 +12,8 @@
 
 #include "sdl3_renderer.h"
 #include "../../desktop_internal.h"
-#include "../../../../ir/ir_executor.h"
-#include "../../../../ir/ir_builder.h"
+#include <ir_executor.h>
+#include <ir_builder.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

@@ -10,9 +10,9 @@
 #include "sdl3_renderer.h"
 #include "../../desktop_internal.h"
 #include "../../ir_to_commands.h"
-#include "../../../../renderers/sdl3/sdl3.h"
-#include "../../../../ir/ir_core.h"
-#include "../../../../ir/ir_plugin.h"
+#include <sdl3.h>
+#include <ir_core.h>
+#include <ir_plugin.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

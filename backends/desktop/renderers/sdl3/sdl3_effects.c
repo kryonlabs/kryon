@@ -13,8 +13,8 @@
 #include <math.h>
 #include "sdl3_renderer.h"
 #include "../../desktop_internal.h"
-#include "../../../../ir/ir_text_shaping.h"
-#include "../../../../renderers/sdl3/sdl3_effects.h"
+#include <ir_text_shaping.h>
+#include <sdl3_effects.h>
 
 // Forward declarations from sdl3_fonts.c
 extern SDL_Texture* get_text_texture_cached(SDL_Renderer* sdl_renderer, TTF_Font* font,

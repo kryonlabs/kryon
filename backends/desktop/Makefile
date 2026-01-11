@@ -91,8 +91,13 @@ DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop.a
 DESKTOP_SHARED_LIB = $(BUILD_DIR)/libkryon_desktop.so
 DESKTOP_TEST = $(BUILD_DIR)/desktop_test
 
-# Include paths
-INCLUDES = -I$(INCLUDE_DIR) -I$(INCLUDE_IR_DIR)
+# Include paths - add all necessary directories for proper modular includes
+INCLUDES = -I$(INCLUDE_DIR) \
+           -I$(INCLUDE_IR_DIR) \
+           -I../../core/include \
+           -I../../renderers/sdl3 \
+           -I../../renderers/common \
+           -I../../bindings/c
 
 # Link libraries (excluding IR libs which are added separately)
 LINK_LIBS = -L$(BUILD_DIR) -lkryon_ir $(LIBS)

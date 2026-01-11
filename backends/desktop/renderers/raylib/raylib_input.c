@@ -14,8 +14,8 @@
 
 #include "../../desktop_internal.h"
 #include "raylib_renderer.h"
-#include "../../../../ir/ir_builder.h"
-#include "../../../../ir/ir_executor.h"
+#include <ir_builder.h>
+#include <ir_executor.h>
 
 // Forward declarations from desktop_input_helpers.c (platform-agnostic)
 extern InputRuntimeState* get_input_state(uint32_t id);

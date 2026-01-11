@@ -10,8 +10,8 @@
 
 #include "../../desktop_internal.h"
 #include "../../desktop_platform.h"
-#include "../../../../ir/ir_serialization.h"
-#include "../../../../ir/ir_native_canvas.h"
+#include <ir_serialization.h>
+#include <ir_native_canvas.h>
 #include "raylib_renderer.h"
 #include <raylib.h>
 #include <stdio.h>
