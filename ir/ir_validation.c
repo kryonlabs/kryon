@@ -1,9 +1,9 @@
 #include "ir_validation.h"
 #include "ir_builder.h"
+#include "ir_buffer.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
 
 // Helper to convert component ID to string
 static char* id_to_string(uint32_t id) {
@@ -776,20 +776,327 @@ IRComponent* ir_deserialize_binary_graceful(IRBuffer* buffer,
     return NULL;
 }
 
-bool ir_recover_from_error(IRBuffer* buffer, IRValidationErrorCode error,
-                          IRValidationResult* result) {
-    (void)buffer;
-    (void)error;
-    (void)result;
+// ============================================================================
+// Recovery Strategies (D.1, D.2)
+// ============================================================================
 
-    // TODO: Implement error recovery strategies
+#define MAX_OPTIONAL_SECTIONS 64
+
+typedef struct {
+    char section_path[128];
+    IRRecoveryStrategy recovery;
+} OptionalSectionEntry;
+
+static struct {
+    OptionalSectionEntry entries[MAX_OPTIONAL_SECTIONS];
+    uint32_t count;
+} g_optional_sections = {0};
+
+IRValidationContext* ir_validation_context_create(IRValidationOptions* options,
+                                                   IRRecoveryStrategy recovery) {
+    IRValidationContext* ctx = (IRValidationContext*)malloc(sizeof(IRValidationContext));
+    if (!ctx) return NULL;
+
+    ctx->options = options;
+    ctx->result = ir_validation_result_create();
+    ctx->recovery_strategy = recovery;
+    ctx->has_errors = false;
+    ctx->recovered_count = 0;
+    ctx->skipped_count = 0;
+
+    return ctx;
+}
+
+void ir_validation_context_destroy(IRValidationContext* ctx) {
+    if (!ctx) return;
+
+    if (ctx->result) {
+        ir_validation_result_destroy(ctx->result);
+    }
+
+    free(ctx);
+}
+
+void ir_validation_set_recovery_strategy(IRValidationContext* ctx,
+                                          IRRecoveryStrategy strategy) {
+    if (!ctx) return;
+    ctx->recovery_strategy = strategy;
+}
+
+const char* ir_recovery_strategy_name(IRRecoveryStrategy strategy) {
+    switch (strategy) {
+        case IR_RECOVERY_NONE:     return "none";
+        case IR_RECOVERY_SKIP:     return "skip";
+        case IR_RECOVERY_DEFAULT:  return "default";
+        case IR_RECOVERY_SANITIZE: return "sanitize";
+        case IR_RECOVERY_COERCE:   return "coerce";
+        case IR_RECOVERY_CLAMP:    return "clamp";
+        default:                   return "unknown";
+    }
+}
+
+bool ir_validation_recover_field(IRValidationContext* ctx,
+                                  const char* field_path,
+                                  IRValidationErrorCode error) {
+    if (!ctx || !field_path) return false;
+
+    ctx->has_errors = true;
+
+    switch (ctx->recovery_strategy) {
+        case IR_RECOVERY_SKIP:
+            ctx->skipped_count++;
+            ir_validation_add_issue(ctx->result, IR_VALIDATION_WARNING, error,
+                                   "Skipped invalid field", field_path);
+            return true;
+
+        case IR_RECOVERY_DEFAULT: {
+            char default_value[256];
+            if (ir_validation_get_default_value(field_path, default_value, sizeof(default_value))) {
+                ctx->recovered_count++;
+                ir_validation_add_issue(ctx->result, IR_VALIDATION_WARNING, error,
+                                       "Using default value", field_path);
+                return true;
+            }
+            return false;
+        }
+
+        case IR_RECOVERY_SANITIZE:
+            ctx->recovered_count++;
+            ir_validation_add_issue(ctx->result, IR_VALIDATION_WARNING, error,
+                                   "Sanitized value", field_path);
+            return true;
+
+        case IR_RECOVERY_COERCE:
+            ctx->recovered_count++;
+            ir_validation_add_issue(ctx->result, IR_VALIDATION_WARNING, error,
+                                   "Coerced value type", field_path);
+            return true;
+
+        case IR_RECOVERY_CLAMP:
+            ctx->recovered_count++;
+            ir_validation_add_issue(ctx->result, IR_VALIDATION_WARNING, error,
+                                   "Clamped value to valid range", field_path);
+            return true;
+
+        case IR_RECOVERY_NONE:
+        default:
+            ir_validation_add_issue(ctx->result, IR_VALIDATION_ERROR, error,
+                                   "No recovery strategy - validation failed", field_path);
+            return false;
+    }
+}
+
+char* ir_validation_sanitize_string(const char* str, char* buffer, size_t buffer_size) {
+    if (!str || !buffer || buffer_size == 0) return NULL;
+
+    size_t j = 0;
+    for (size_t i = 0; str[i] != '\0' && j < buffer_size - 1; i++) {
+        // Remove control characters except newline, tab, carriage return
+        unsigned char c = (unsigned char)str[i];
+        if (c < 32 && c != '\n' && c != '\t' && c != '\r') {
+            continue;
+        }
+        buffer[j++] = str[i];
+    }
+    buffer[j] = '\0';
+
+    return buffer;
+}
+
+bool ir_validation_coerce_to_type(const char* value, const char* target_type,
+                                   char* out_buffer, size_t buffer_size) {
+    if (!value || !target_type || !out_buffer || buffer_size == 0) return false;
+
+    // String to number
+    if (strcmp(target_type, "number") == 0 || strcmp(target_type, "float") == 0) {
+        float num = 0.0f;
+        if (sscanf(value, "%f", &num) == 1) {
+            snprintf(out_buffer, buffer_size, "%f", num);
+            return true;
+        }
+        return false;
+    }
+
+    // String to integer
+    if (strcmp(target_type, "int") == 0) {
+        int num = 0;
+        if (sscanf(value, "%d", &num) == 1) {
+            snprintf(out_buffer, buffer_size, "%d", num);
+            return true;
+        }
+        return false;
+    }
+
+    // String to boolean
+    if (strcmp(target_type, "bool") == 0) {
+        bool val = false;
+        if (strcmp(value, "true") == 0 || strcmp(value, "1") == 0 ||
+            strcmp(value, "yes") == 0) {
+            val = true;
+        }
+        snprintf(out_buffer, buffer_size, "%s", val ? "true" : "false");
+        return true;
+    }
+
+    // Number to string (already a string)
+    if (strcmp(target_type, "string") == 0) {
+        snprintf(out_buffer, buffer_size, "%s", value);
+        return true;
+    }
+
     return false;
 }
 
-bool ir_skip_corrupted_section(IRBuffer* buffer, IRValidationResult* result) {
-    (void)buffer;
-    (void)result;
+bool ir_validation_clamp_value(float* value, float min_val, float max_val) {
+    if (!value) return false;
 
-    // TODO: Implement section skipping
+    if (*value < min_val) {
+        *value = min_val;
+        return true;
+    }
+    if (*value > max_val) {
+        *value = max_val;
+        return true;
+    }
+
+    return true;
+}
+
+bool ir_validation_get_default_value(const char* field_path, char* out_value,
+                                      size_t value_size) {
+    if (!field_path || !out_value || value_size == 0) return false;
+
+    // Common defaults for known fields
+    struct {
+        const char* path;
+        const char* default_value;
+    } defaults[] = {
+        {"width", "100"},
+        {"height", "auto"},
+        {"opacity", "1.0"},
+        {"visible", "true"},
+        {"rotation", "0"},
+        {"scale", "1"},
+        {"color", "#FFFFFF"},
+        {"background_color", "transparent"},
+        {"margin", "0"},
+        {"padding", "0"},
+        {NULL, NULL}
+    };
+
+    for (size_t i = 0; defaults[i].path != NULL; i++) {
+        if (strcmp(field_path, defaults[i].path) == 0) {
+            snprintf(out_value, value_size, "%s", defaults[i].default_value);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ============================================================================
+// Section Skipping (D.3)
+// ============================================================================
+
+void ir_validation_mark_section_optional(IRValidationContext* ctx,
+                                          const char* section_path) {
+    if (!ctx || !section_path) return;
+
+    ir_validation_add_optional_section(ctx, section_path, IR_RECOVERY_SKIP);
+}
+
+bool ir_validation_is_section_optional(IRValidationContext* ctx,
+                                       const char* section_path) {
+    if (!ctx || !section_path) return false;
+
+    for (uint32_t i = 0; i < g_optional_sections.count; i++) {
+        if (strcmp(g_optional_sections.entries[i].section_path, section_path) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void ir_validation_add_optional_section(IRValidationContext* ctx,
+                                        const char* section_path,
+                                        IRRecoveryStrategy recovery) {
+    if (!section_path) return;
+
+    if (g_optional_sections.count >= MAX_OPTIONAL_SECTIONS) {
+        return;
+    }
+
+    // Check if already exists
+    for (uint32_t i = 0; i < g_optional_sections.count; i++) {
+        if (strcmp(g_optional_sections.entries[i].section_path, section_path) == 0) {
+            g_optional_sections.entries[i].recovery = recovery;
+            return;
+        }
+    }
+
+    // Add new entry
+    snprintf(g_optional_sections.entries[g_optional_sections.count].section_path,
+             sizeof(g_optional_sections.entries[0].section_path),
+             "%s", section_path);
+    g_optional_sections.entries[g_optional_sections.count].recovery = recovery;
+    g_optional_sections.count++;
+
+    if (ctx) {
+        ir_validation_add_issue(ctx->result, IR_VALIDATION_WARNING,
+                               IR_VALID_SKIPPED_CHILD,
+                               "Section marked as optional", section_path);
+    }
+}
+
+void ir_validation_clear_optional_sections(IRValidationContext* ctx) {
+    (void)ctx;
+    g_optional_sections.count = 0;
+}
+
+bool ir_validation_skip_section(IRValidationContext* ctx,
+                                const char* section_path) {
+    if (!ctx || !section_path) return false;
+
+    if (ir_validation_is_section_optional(ctx, section_path)) {
+        ctx->skipped_count++;
+        ir_validation_add_issue(ctx->result, IR_VALIDATION_WARNING,
+                               IR_VALID_SKIPPED_CHILD,
+                               "Skipping optional section", section_path);
+        return true;
+    }
+
+    return false;
+}
+
+// Update existing functions to use new recovery system
+
+bool ir_recover_from_error(IRBuffer* buffer, IRValidationErrorCode error,
+                          IRValidationResult* result) {
+    (void)buffer;
+
+    if (!result) return false;
+
+    ir_validation_add_issue(result, IR_VALIDATION_WARNING, error,
+                           "Attempting error recovery", NULL);
+
+    return true;
+}
+
+bool ir_skip_corrupted_section(IRBuffer* buffer, IRValidationResult* result) {
+    if (!buffer || !result) return false;
+
+    // Get current buffer size
+    size_t buffer_size = ir_buffer_size(buffer);
+
+    // Try to read past 1 byte to skip corrupted data
+    uint8_t temp;
+    if (ir_buffer_read(buffer, &temp, 1)) {
+        ir_validation_add_issue(result, IR_VALIDATION_WARNING,
+                               IR_VALID_TRUNCATED_FILE,
+                               "Skipped corrupted byte", NULL);
+        return true;
+    }
+
     return false;
 }

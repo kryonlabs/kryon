@@ -3,12 +3,14 @@
  *
  * Centralized asset loading, caching, and hot-reloading
  * Now with per-instance registry support
+ *
+ * Note: Sprite-specific functionality has been moved to the canvas plugin.
+ * Audio-specific functionality has been moved to the audio plugin.
  */
 
 #define _POSIX_C_SOURCE 199309L
 
 #include "ir_asset.h"
-#include "ir_audio.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -46,9 +48,6 @@ static struct {
     void* hot_reload_user_data;
     uint32_t hot_reload_check_count;
 
-    // Default sprite atlas for individual sprites
-    IRSpriteAtlasID default_atlas;
-
     // Custom asset loaders
     struct {
         IRAssetLoadCallback load;
@@ -71,8 +70,7 @@ static IRAssetRegistry g_global_registry_wrapper = {
     .search_path_count = 0,
     .hot_reload_callback = NULL,
     .hot_reload_user_data = NULL,
-    .custom_loaders = {0},
-    .default_atlas = 0
+    .custom_loaders = {0}
 };
 
 // Thread-local current registry (for instance-specific asset operations)
@@ -133,7 +131,6 @@ static IRAssetRegistry* get_global_registry(void) {
     g_global_registry_wrapper.search_path_count = g_asset_system.search_path_count;
     g_global_registry_wrapper.hot_reload_callback = g_asset_system.hot_reload_callback;
     g_global_registry_wrapper.hot_reload_user_data = g_asset_system.hot_reload_user_data;
-    g_global_registry_wrapper.default_atlas = g_asset_system.default_atlas;
 
     // Copy assets array
     memcpy(g_global_registry_wrapper.assets, g_asset_system.assets, sizeof(g_asset_system.assets));
@@ -178,7 +175,6 @@ IRAssetRegistry* ir_asset_registry_create(uint32_t instance_id) {
     }
 
     registry->instance_id = instance_id;
-    registry->default_atlas = IR_INVALID_SPRITE_ATLAS;
 
     // Register the registry
     g_registries[g_registry_count++] = registry;
@@ -359,33 +355,8 @@ bool ir_asset_resolve_path_ex(IRAssetRegistry* registry, const char* virtual_pat
     return true;
 }
 
-// For now, sprite loading functions delegate to the global implementation
-// TODO: Make these truly per-instance in future iterations
-
-IRSpriteAtlasID ir_asset_load_sprite_atlas_ex(IRAssetRegistry* registry, const char* path,
-                                              uint16_t width, uint16_t height) {
-    // Set current registry and call global function
-    IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
-    IRSpriteAtlasID result = ir_asset_load_sprite_atlas(path, width, height);
-    ir_asset_set_current_registry(prev);
-    return result;
-}
-
-IRSpriteID ir_asset_load_sprite_ex(IRAssetRegistry* registry, const char* path) {
-    IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
-    IRSpriteID result = ir_asset_load_sprite(path);
-    ir_asset_set_current_registry(prev);
-    return result;
-}
-
-IRSpriteID* ir_asset_load_sprite_sheet_ex(IRAssetRegistry* registry, const char* path,
-                                          uint16_t frame_width, uint16_t frame_height,
-                                          uint16_t* out_frame_count) {
-    IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
-    IRSpriteID* result = ir_asset_load_sprite_sheet(path, frame_width, frame_height, out_frame_count);
-    ir_asset_set_current_registry(prev);
-    return result;
-}
+// Note: Sprite loading functions have been moved to the canvas plugin.
+// Use kcanvas_sprite_* functions instead.
 
 void* ir_asset_load_data_ex(IRAssetRegistry* registry, const char* path, size_t* out_size) {
     IRAssetRegistry* prev = ir_asset_set_current_registry(registry);
@@ -407,13 +378,6 @@ char* ir_asset_load_text_ex(IRAssetRegistry* registry, const char* path) {
 
 void ir_asset_init(void) {
     memset(&g_asset_system, 0, sizeof(g_asset_system));
-
-    // Initialize sprite system if not already initialized
-    ir_sprite_init();
-
-    // Create default sprite atlas (2048x2048)
-    g_asset_system.default_atlas = ir_sprite_atlas_create(2048, 2048);
-
     g_asset_system.initialized = true;
 
     printf("[Asset] System initialized\n");
@@ -424,11 +388,6 @@ void ir_asset_shutdown(void) {
 
     // Unload all assets
     ir_asset_unload_all();
-
-    // Destroy sprite atlas
-    if (g_asset_system.default_atlas != IR_INVALID_SPRITE_ATLAS) {
-        ir_sprite_atlas_destroy(g_asset_system.default_atlas);
-    }
 
     memset(&g_asset_system, 0, sizeof(g_asset_system));
 
@@ -524,130 +483,8 @@ bool ir_asset_resolve_path(const char* virtual_path, char* out_real_path, size_t
 // Asset Loading (High-level API)
 // ============================================================================
 
-IRSpriteAtlasID ir_asset_load_sprite_atlas(const char* path, uint16_t width, uint16_t height) {
-    if (!g_asset_system.initialized) {
-        ir_asset_init();
-    }
-
-    // Resolve path
-    char real_path[IR_MAX_PATH_LENGTH];
-    if (!ir_asset_resolve_path(path, real_path, sizeof(real_path))) {
-        return IR_INVALID_SPRITE_ATLAS;
-    }
-
-    // Create atlas
-    IRSpriteAtlasID atlas = ir_sprite_atlas_create(width, height);
-    if (atlas == IR_INVALID_SPRITE_ATLAS) {
-        return IR_INVALID_SPRITE_ATLAS;
-    }
-
-    // Register in asset system
-    ir_asset_register(path, IR_ASSET_SPRITE_ATLAS, (void*)(uintptr_t)atlas, 0);
-
-    printf("[Asset] Loaded sprite atlas: %s\n", path);
-    return atlas;
-}
-
-IRSpriteID ir_asset_load_sprite(const char* path) {
-    if (!g_asset_system.initialized) {
-        ir_asset_init();
-    }
-
-    // Check if already loaded
-    IRAsset* asset = find_asset(path);
-    if (asset && asset->state == IR_ASSET_LOADED) {
-        asset->ref_count++;
-        return (IRSpriteID)(uintptr_t)asset->data;
-    }
-
-    // Resolve path
-    char real_path[IR_MAX_PATH_LENGTH];
-    if (!ir_asset_resolve_path(path, real_path, sizeof(real_path))) {
-        return IR_INVALID_SPRITE;
-    }
-
-    uint64_t start_time = get_time_ms();
-
-    // Load sprite into default atlas
-    IRSpriteID sprite = ir_sprite_atlas_add_image(g_asset_system.default_atlas, real_path);
-    if (sprite == IR_INVALID_SPRITE) {
-        fprintf(stderr, "[Asset] Failed to load sprite: %s\n", path);
-        return IR_INVALID_SPRITE;
-    }
-
-    // Pack atlas if needed
-    IRSpriteAtlas* atlas = ir_sprite_atlas_get(g_asset_system.default_atlas);
-    if (atlas && !atlas->is_packed) {
-        ir_sprite_atlas_pack(g_asset_system.default_atlas);
-    }
-
-    uint64_t load_time = get_time_ms() - start_time;
-
-    // Register in asset system
-    IRAssetID asset_id = ir_asset_register(path, IR_ASSET_SPRITE, (void*)(uintptr_t)sprite, 0);
-    asset = ir_asset_get_by_id(asset_id);
-    if (asset) {
-        asset->load_time = load_time;
-        asset->file_mtime = get_file_mtime(real_path);
-    }
-
-    g_asset_system.total_load_time_ms += load_time;
-    g_asset_system.total_loads++;
-
-    printf("[Asset] Loaded sprite: %s (%.2f ms)\n", path, (float)load_time);
-    return sprite;
-}
-
-IRSpriteID* ir_asset_load_sprite_sheet(const char* path,
-                                        uint16_t frame_width,
-                                        uint16_t frame_height,
-                                        uint16_t* out_frame_count) {
-    if (!g_asset_system.initialized) {
-        ir_asset_init();
-    }
-
-    // Resolve path
-    char real_path[IR_MAX_PATH_LENGTH];
-    if (!ir_asset_resolve_path(path, real_path, sizeof(real_path))) {
-        if (out_frame_count) *out_frame_count = 0;
-        return NULL;
-    }
-
-    uint64_t start_time = get_time_ms();
-
-    // Load sprite sheet into default atlas
-    IRSpriteID* sprite_ids = ir_sprite_load_sheet(g_asset_system.default_atlas,
-                                                   real_path,
-                                                   frame_width,
-                                                   frame_height,
-                                                   out_frame_count);
-
-    if (!sprite_ids) {
-        fprintf(stderr, "[Asset] Failed to load sprite sheet: %s\n", path);
-        if (out_frame_count) *out_frame_count = 0;
-        return NULL;
-    }
-
-    // Pack atlas to upload textures
-    IRSpriteAtlas* atlas = ir_sprite_atlas_get(g_asset_system.default_atlas);
-    if (atlas && !atlas->is_packed) {
-        ir_sprite_atlas_pack(g_asset_system.default_atlas);
-    }
-
-    uint64_t load_time = get_time_ms() - start_time;
-
-    // Register sprite sheet in asset system (store the first sprite ID as reference)
-    uint16_t frame_count = out_frame_count ? *out_frame_count : 0;
-    ir_asset_register(path, IR_ASSET_SPRITE, (void*)(uintptr_t)sprite_ids[0], 0);
-
-    g_asset_system.total_load_time_ms += load_time;
-    g_asset_system.total_loads++;
-
-    printf("[Asset] Loaded sprite sheet: %s (%u frames, %.2f ms)\n",
-           path, frame_count, (float)load_time);
-
-    return sprite_ids;
-}
+// Note: Sprite loading functions have been moved to the canvas plugin.
+// Use kcanvas_sprite_atlas_create, kcanvas_sprite_load, etc.
 
 void* ir_asset_load_data(const char* path, size_t* out_size) {
     if (!g_asset_system.initialized) {
@@ -838,39 +675,12 @@ bool ir_asset_reload(const char* path) {
     } else {
         // Type-specific reload for built-in asset types
         switch (asset->type) {
-            case IR_ASSET_SPRITE: {
-                // Reload sprite by unloading and reloading
-                if (asset->data) {
-                    // Unload old sprite data
-                    free(asset->data);
-                    asset->data = NULL;
-                }
-
-                // Reload the sprite
-                IRSpriteID sprite_id = ir_asset_load_sprite(path);
-                if (sprite_id != IR_INVALID_SPRITE) {
-                    // Update asset data with new sprite reference
-                    asset->data = (void*)(uintptr_t)sprite_id;
-                    printf("[Asset] Successfully reloaded SPRITE\n");
-                } else {
-                    printf("[Asset] Failed to reload SPRITE\n");
-                    return false;
-                }
+            case IR_ASSET_SOUND:
+                // Note: Audio has been moved to the audio plugin
+                printf("[Asset] SOUND reload requested (use audio plugin)\n");
                 break;
-            }
-
-            case IR_ASSET_SOUND: {
-                // Reload sound
-                if (asset->data) {
-                    // Sound would need to be unloaded via audio system
-                    // For now, just mark as needing reload
-                    printf("[Asset] SOUND reload requested (audio system integration needed)\n");
-                }
-                break;
-            }
 
             case IR_ASSET_TEXTURE:
-            case IR_ASSET_SPRITE_ATLAS:
             case IR_ASSET_FONT:
             case IR_ASSET_MUSIC:
             case IR_ASSET_DATA:
@@ -991,21 +801,9 @@ void ir_asset_preload(const char** paths, uint32_t count) {
         const char* path = paths[i];
         if (!path) continue;
 
-        // Try to determine asset type from extension and load accordingly
-        const char* ext = strrchr(path, '.');
-        if (ext) {
-            if (strcmp(ext, ".png") == 0 || strcmp(ext, ".jpg") == 0 ||
-                strcmp(ext, ".jpeg") == 0 || strcmp(ext, ".tga") == 0) {
-                ir_asset_load_sprite(path);
-            } else if (strcmp(ext, ".wav") == 0 || strcmp(ext, ".ogg") == 0) {
-                ir_audio_load_sound(path);
-            } else {
-                // Default to sprite loading
-                ir_asset_load_sprite(path);
-            }
-        } else {
-            ir_asset_load_sprite(path);
-        }
+        // Note: Sprite and audio loading have been moved to plugins
+        // For now, just log the preload request
+        printf("[Asset] Preload requested: %s (use canvas/audio plugins)\n", path);
     }
 }
 
@@ -1022,18 +820,10 @@ bool ir_asset_load_async(const char* path) {
         return true;
     }
 
-    // Load synchronously for now
-    const char* ext = strrchr(path, '.');
-    if (ext) {
-        if (strcmp(ext, ".png") == 0 || strcmp(ext, ".jpg") == 0 ||
-            strcmp(ext, ".jpeg") == 0 || strcmp(ext, ".tga") == 0) {
-            return ir_asset_load_sprite(path) != IR_INVALID_SPRITE;
-        } else if (strcmp(ext, ".wav") == 0 || strcmp(ext, ".ogg") == 0) {
-            return ir_audio_load_sound(path) != IR_INVALID_SOUND;
-        }
-    }
-
-    return ir_asset_load_sprite(path) != IR_INVALID_SPRITE;
+    // Note: Sprite and audio loading have been moved to plugins
+    // For now, just mark as queued
+    printf("[Asset] Async load requested: %s (use canvas/audio plugins)\n", path);
+    return true;
 }
 
 // ============================================================================
@@ -1072,8 +862,6 @@ void ir_asset_print_registry(void) {
         const char* type_str = "UNKNOWN";
         switch (asset->type) {
             case IR_ASSET_TEXTURE: type_str = "TEXTURE"; break;
-            case IR_ASSET_SPRITE: type_str = "SPRITE"; break;
-            case IR_ASSET_SPRITE_ATLAS: type_str = "ATLAS"; break;
             case IR_ASSET_FONT: type_str = "FONT"; break;
             case IR_ASSET_SOUND: type_str = "SOUND"; break;
             case IR_ASSET_MUSIC: type_str = "MUSIC"; break;

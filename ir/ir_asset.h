@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "ir_sprite.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,11 +53,9 @@ typedef uint32_t IRAssetHandle;
 // Asset types
 typedef enum {
     IR_ASSET_TEXTURE,     // Raw texture (atlas texture)
-    IR_ASSET_SPRITE,      // Sprite with metadata
-    IR_ASSET_SPRITE_ATLAS,// Sprite atlas
     IR_ASSET_FONT,        // TrueType font
-    IR_ASSET_SOUND,       // Sound effect (WAV, OGG)
-    IR_ASSET_MUSIC,       // Music track (streaming)
+    IR_ASSET_SOUND,       // Sound effect (WAV, OGG) - use audio plugin
+    IR_ASSET_MUSIC,       // Music track (streaming) - use audio plugin
     IR_ASSET_DATA,        // Generic data (JSON, XML, etc.)
     IR_ASSET_SHADER,      // Shader program
     IR_ASSET_CUSTOM       // User-defined type
@@ -147,9 +144,6 @@ typedef struct IRAssetRegistry {
 
     // Custom loaders (index by IRAssetType)
     IRAssetCustomLoader custom_loaders[IR_ASSET_CUSTOM + 1];
-
-    // Default sprite atlas
-    IRSpriteAtlasID default_atlas;
 } IRAssetRegistry;
 
 // ============================================================================
@@ -239,27 +233,6 @@ bool ir_asset_resolve_path(const char* virtual_path, char* out_real_path, size_t
 // ============================================================================
 
 /**
- * Load sprite atlas from image file
- * Returns atlas ID or IR_INVALID_SPRITE_ATLAS on failure
- */
-IRSpriteAtlasID ir_asset_load_sprite_atlas(const char* path, uint16_t width, uint16_t height);
-
-/**
- * Load individual sprite from image file
- * Automatically creates an atlas if needed
- */
-IRSpriteID ir_asset_load_sprite(const char* path);
-
-/**
- * Load sprite sheet (grid of sprites)
- * Returns array of sprite IDs (must be freed by caller)
- */
-IRSpriteID* ir_asset_load_sprite_sheet(const char* path,
-                                        uint16_t frame_width,
-                                        uint16_t frame_height,
-                                        uint16_t* out_frame_count);
-
-/**
  * Load data file (JSON, text, etc.)
  * Returns pointer to data (must be freed by caller)
  */
@@ -274,24 +247,6 @@ char* ir_asset_load_text(const char* path);
 // ============================================================================
 // Explicit Registry API (for multi-instance support)
 // ============================================================================
-
-/**
- * Load sprite atlas from image file (explicit registry)
- */
-IRSpriteAtlasID ir_asset_load_sprite_atlas_ex(IRAssetRegistry* registry, const char* path,
-                                              uint16_t width, uint16_t height);
-
-/**
- * Load individual sprite from image file (explicit registry)
- */
-IRSpriteID ir_asset_load_sprite_ex(IRAssetRegistry* registry, const char* path);
-
-/**
- * Load sprite sheet (grid of sprites) (explicit registry)
- */
-IRSpriteID* ir_asset_load_sprite_sheet_ex(IRAssetRegistry* registry, const char* path,
-                                          uint16_t frame_width, uint16_t frame_height,
-                                          uint16_t* out_frame_count);
 
 /**
  * Load data file (explicit registry)

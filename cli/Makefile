@@ -76,11 +76,10 @@ CJSON_OBJ = $(BUILD_DIR)/cJSON.o
 all: $(TARGET)
 
 # Minimal target - no SDL3/desktop dependencies (for terminal/web builds)
+# Note: Codegens must be built first (use 'make build-codegens' from project root)
 CFLAGS_MINIMAL = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -DKRYON_MINIMAL_BUILD -D_POSIX_C_SOURCE=200809L
 OBJS_MINIMAL = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_common.a
-	@echo "Building all codegens..."
-	$(MAKE) -C ../codegens all
 	@echo "Building minimal CLI..."
 	$(MAKE) -C . CFLAGS="$(CFLAGS_MINIMAL)" $(OBJS_MINIMAL)
 	$(CC) $(OBJS_MINIMAL) $(CODEGEN_OBJS) $(CJSON_OBJ) -o $(TARGET) \
