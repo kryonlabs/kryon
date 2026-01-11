@@ -6,6 +6,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "lua_codegen.h"
+#include "../../ir/ir_string_builder.h"
 #include "../../ir/third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,78 +15,67 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// String builder helper
+// String builder wrapper using IRStringBuilder
 typedef struct {
-    char* buffer;
-    size_t size;
-    size_t capacity;
+    IRStringBuilder* sb;
     int indent;
 } LuaCodeGen;
 
 static LuaCodeGen* lua_gen_create(void) {
-    LuaCodeGen* gen = malloc(sizeof(LuaCodeGen));
+    LuaCodeGen* gen = calloc(1, sizeof(LuaCodeGen));
     if (!gen) return NULL;
 
-    gen->capacity = 8192;
-    gen->size = 0;
-    gen->indent = 0;
-    gen->buffer = malloc(gen->capacity);
-    if (!gen->buffer) {
+    gen->sb = ir_sb_create(8192);
+    if (!gen->sb) {
         free(gen);
         return NULL;
     }
-    gen->buffer[0] = '\0';
+    gen->indent = 0;
     return gen;
 }
 
 static void lua_gen_free(LuaCodeGen* gen) {
     if (gen) {
-        free(gen->buffer);
+        ir_sb_free(gen->sb);
         free(gen);
     }
 }
 
 static bool lua_gen_append(LuaCodeGen* gen, const char* str) {
-    if (!gen || !str) return false;
-
-    size_t len = strlen(str);
-    while (gen->size + len >= gen->capacity) {
-        gen->capacity *= 2;
-        char* new_buffer = realloc(gen->buffer, gen->capacity);
-        if (!new_buffer) return false;
-        gen->buffer = new_buffer;
-    }
-
-    strcpy(gen->buffer + gen->size, str);
-    gen->size += len;
-    return true;
+    if (!gen || !gen->sb || !str) return false;
+    return ir_sb_append(gen->sb, str);
 }
 
 static bool lua_gen_append_fmt(LuaCodeGen* gen, const char* fmt, ...) {
-    char temp[4096];
+    if (!gen || !gen->sb || !fmt) return false;
+
     va_list args;
     va_start(args, fmt);
+    char temp[4096];
     vsnprintf(temp, sizeof(temp), fmt, args);
     va_end(args);
-    return lua_gen_append(gen, temp);
+    return ir_sb_append(gen->sb, temp);
 }
 
 static void lua_gen_add_line(LuaCodeGen* gen, const char* line) {
+    if (!gen || !gen->sb) return;
+
     // Add indentation
-    for (int i = 0; i < gen->indent; i++) {
-        lua_gen_append(gen, "  ");
-    }
-    lua_gen_append(gen, line);
-    lua_gen_append(gen, "\n");
+    ir_sb_indent(gen->sb, gen->indent);
+    ir_sb_append_line(gen->sb, line);
 }
 
 static void lua_gen_add_line_fmt(LuaCodeGen* gen, const char* fmt, ...) {
-    char temp[4096];
+    if (!gen || !gen->sb || !fmt) return;
+
     va_list args;
     va_start(args, fmt);
+    char temp[4096];
     vsnprintf(temp, sizeof(temp), fmt, args);
     va_end(args);
-    lua_gen_add_line(gen, temp);
+
+    ir_sb_indent(gen->sb, gen->indent);
+    ir_sb_append_line(gen->sb, temp);
 }
 
 /**
@@ -731,7 +721,9 @@ char* lua_codegen_from_json(const char* kir_json) {
         lua_gen_add_line(gen, "return root");
     }
 
-    char* result = strdup(gen->buffer);
+    // Clone the string builder to get the result without freeing the original
+    IRStringBuilder* clone = ir_sb_clone(gen->sb);
+    char* result = clone ? ir_sb_build(clone) : NULL;
     lua_gen_free(gen);
     cJSON_Delete(root);
     return result;

@@ -4,6 +4,7 @@
 #include "ir_foreach.h"
 #include "ir_core.h"
 #include "third_party/cJSON/cJSON.h"
+#include "ir_json_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -130,8 +131,8 @@ cJSON* ir_foreach_binding_to_json(IRForEachBinding* binding) {
     cJSON* json = cJSON_CreateObject();
     if (!json) return NULL;
 
-    cJSON_AddStringToObject(json, "target", binding->target_property);
-    cJSON_AddStringToObject(json, "source", binding->source_expression);
+    cJSON_AddStringOrNull(json, "target", binding->target_property);
+    cJSON_AddStringOrNull(json, "source", binding->source_expression);
     if (binding->is_computed) {
         cJSON_AddBoolToObject(json, "computed", true);
     }
@@ -168,10 +169,10 @@ cJSON* ir_foreach_def_to_json(IRForEachDef* def) {
 
     // Item and index names
     if (def->item_name) {
-        cJSON_AddStringToObject(json, "item_name", def->item_name);
+        cJSON_AddStringOrNull(json, "item_name", def->item_name);
     }
     if (def->index_name) {
-        cJSON_AddStringToObject(json, "index_name", def->index_name);
+        cJSON_AddStringOrNull(json, "index_name", def->index_name);
     }
 
     // Data source
@@ -184,10 +185,10 @@ cJSON* ir_foreach_def_to_json(IRForEachDef* def) {
             case FOREACH_SOURCE_EXPRESSION: type_str = "expression"; break;
             default: break;
         }
-        cJSON_AddStringToObject(source, "type", type_str);
+        cJSON_AddStringOrNull(source, "type", type_str);
 
         if (def->source.expression) {
-            cJSON_AddStringToObject(source, "expression", def->source.expression);
+            cJSON_AddStringOrNull(source, "expression", def->source.expression);
         }
         if (def->source.literal_json) {
             // Parse and add as raw JSON
@@ -196,7 +197,7 @@ cJSON* ir_foreach_def_to_json(IRForEachDef* def) {
                 cJSON_AddItemToObject(source, "data", data);
             } else {
                 // Store as string if parsing fails
-                cJSON_AddStringToObject(source, "data_raw", def->source.literal_json);
+                cJSON_AddStringOrNull(source, "data_raw", def->source.literal_json);
             }
         }
         cJSON_AddItemToObject(json, "source", source);

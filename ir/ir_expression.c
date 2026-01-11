@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ir_expression.h"
 #include "cJSON.h"
+#include "ir_json_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -520,7 +521,7 @@ cJSON* ir_expr_to_json(IRExpression* expr) {
             return cJSON_CreateNumber(expr->float_value);
 
         case EXPR_LITERAL_STRING:
-            return cJSON_CreateString(expr->string_value ? expr->string_value : "");
+            return cJSON_CreateStringOrNull(expr->string_value);
 
         case EXPR_LITERAL_BOOL:
             return cJSON_CreateBool(expr->bool_value);

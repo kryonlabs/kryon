@@ -8,6 +8,7 @@
 #define _POSIX_C_SOURCE 199309L
 
 #include "ir_audio.h"
+#include "ir_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -159,14 +160,14 @@ IRAudioState* ir_audio_state_create(uint32_t instance_id) {
 
     // Check capacity
     if (g_audio_state_count >= IR_MAX_AUDIO_STATES) {
-        fprintf(stderr, "[Audio] Maximum audio states reached (%d)\n", IR_MAX_AUDIO_STATES);
+        IR_LOG_ERROR("AUDIO", "Maximum audio states reached (%d)", IR_MAX_AUDIO_STATES);
         return NULL;
     }
 
     // Allocate new state
     IRAudioState* state = calloc(1, sizeof(IRAudioState));
     if (!state) {
-        fprintf(stderr, "[Audio] Failed to allocate audio state\n");
+        IR_LOG_ERROR("AUDIO", "Failed to allocate audio state");
         return NULL;
     }
 
@@ -351,7 +352,7 @@ bool ir_audio_init(void) {
 
 bool ir_audio_init_ex(IRAudioConfig* config) {
     if (g_audio_system.initialized) {
-        fprintf(stderr, "[Audio] Already initialized\n");
+        IR_LOG_WARN("AUDIO", "Already initialized");
         return false;
     }
 
@@ -377,7 +378,7 @@ bool ir_audio_init_ex(IRAudioConfig* config) {
     // Backend will be initialized by register_backend or SDL3 backend
     g_audio_system.initialized = true;
 
-    printf("[Audio] System initialized (backend: %d, rate: %u Hz)\n",
+    IR_LOG_INFO("AUDIO", "System initialized (backend: %d, rate: %u Hz)",
            config->backend, config->sample_rate);
 
     return true;
@@ -411,7 +412,7 @@ void ir_audio_shutdown(void) {
 
     memset(&g_audio_system, 0, sizeof(g_audio_system));
 
-    printf("[Audio] System shutdown\n");
+    IR_LOG_INFO("AUDIO", "System shutdown");
 }
 
 void ir_audio_update(float dt) {
@@ -435,12 +436,12 @@ void ir_audio_update(float dt) {
 
 bool ir_audio_register_backend(IRAudioBackend backend, IRAudioBackendPlugin* plugin) {
     if (!g_audio_system.initialized) {
-        fprintf(stderr, "[Audio] Not initialized\n");
+        IR_LOG_ERROR("AUDIO", "Not initialized");
         return false;
     }
 
     if (!plugin) {
-        fprintf(stderr, "[Audio] Invalid backend plugin\n");
+        IR_LOG_ERROR("AUDIO", "Invalid backend plugin");
         return false;
     }
 
@@ -450,12 +451,12 @@ bool ir_audio_register_backend(IRAudioBackend backend, IRAudioBackendPlugin* plu
     // Initialize backend
     if (g_audio_system.backend.init) {
         if (!g_audio_system.backend.init(&g_audio_system.config)) {
-            fprintf(stderr, "[Audio] Backend initialization failed\n");
+            IR_LOG_ERROR("AUDIO", "Backend initialization failed");
             return false;
         }
     }
 
-    printf("[Audio] Registered backend: %d\n", backend);
+    IR_LOG_INFO("AUDIO", "Registered backend: %d", backend);
     return true;
 }
 
@@ -465,19 +466,19 @@ bool ir_audio_register_backend(IRAudioBackend backend, IRAudioBackendPlugin* plu
 
 IRSoundID ir_audio_load_sound(const char* path) {
     if (!g_audio_system.initialized) {
-        fprintf(stderr, "[Audio] Not initialized\n");
+        IR_LOG_ERROR("AUDIO", "Not initialized");
         return IR_INVALID_SOUND;
     }
 
     if (g_audio_system.sound_count >= IR_MAX_SOUNDS) {
-        fprintf(stderr, "[Audio] Max sounds reached\n");
+        IR_LOG_ERROR("AUDIO", "Max sounds reached");
         return IR_INVALID_SOUND;
     }
 
     // Check if already loaded
     for (uint32_t i = 0; i < g_audio_system.sound_count; i++) {
         if (strcmp(g_audio_system.sounds[i].path, path) == 0) {
-            printf("[Audio] Sound already loaded: %s\n", path);
+            IR_LOG_INFO("AUDIO", "Sound already loaded: %s", path);
             return g_audio_system.sounds[i].id;
         }
     }
@@ -499,18 +500,18 @@ IRSoundID ir_audio_load_sound(const char* path) {
         );
 
         if (!sound->backend_data) {
-            fprintf(stderr, "[Audio] Failed to load sound: %s\n", path);
+            IR_LOG_ERROR("AUDIO", "Failed to load sound: %s", path);
             return IR_INVALID_SOUND;
         }
     } else {
-        fprintf(stderr, "[Audio] No backend registered\n");
+        IR_LOG_ERROR("AUDIO", "No backend registered");
         return IR_INVALID_SOUND;
     }
 
     sound->loaded = true;
     g_audio_system.sound_count++;
 
-    printf("[Audio] Loaded sound: %s (id=%u, %u ms, %u Hz, %u ch)\n",
+    IR_LOG_INFO("AUDIO", "Loaded sound: %s (id=%u, %u ms, %u Hz, %u ch)",
            path, sound->id, sound->duration_ms, sound->sample_rate, sound->channels);
 
     return sound->id;
@@ -518,24 +519,24 @@ IRSoundID ir_audio_load_sound(const char* path) {
 
 IRSoundID ir_audio_load_sound_from_memory(const char* name, const void* data, size_t size) {
     if (!g_audio_system.initialized) {
-        fprintf(stderr, "[Audio] Not initialized\n");
+        IR_LOG_ERROR("AUDIO", "Not initialized");
         return IR_INVALID_SOUND;
     }
 
     if (!name || !data || size == 0) {
-        fprintf(stderr, "[Audio] Invalid parameters for memory loading\n");
+        IR_LOG_ERROR("AUDIO", "Invalid parameters for memory loading");
         return IR_INVALID_SOUND;
     }
 
     if (g_audio_system.sound_count >= IR_MAX_SOUNDS) {
-        fprintf(stderr, "[Audio] Max sounds reached\n");
+        IR_LOG_ERROR("AUDIO", "Max sounds reached");
         return IR_INVALID_SOUND;
     }
 
     // Check if already loaded by name
     for (uint32_t i = 0; i < g_audio_system.sound_count; i++) {
         if (strcmp(g_audio_system.sounds[i].path, name) == 0) {
-            printf("[Audio] Sound already loaded: %s\n", name);
+            IR_LOG_INFO("AUDIO", "Sound already loaded: %s", name);
             return g_audio_system.sounds[i].id;
         }
     }
@@ -562,12 +563,12 @@ IRSoundID ir_audio_load_sound_from_memory(const char* name, const void* data, si
         );
 
         if (!sound->backend_data) {
-            fprintf(stderr, "[Audio] Failed to load sound from memory: %s (%zu bytes)\n", name, size);
+            IR_LOG_ERROR("AUDIO", "Failed to load sound from memory: %s (%zu bytes)", name, size);
             return IR_INVALID_SOUND;
         }
     } else {
         // Fallback: try to use the file loader if backend doesn't support memory loading
-        fprintf(stderr, "[Audio] Backend doesn't support memory loading\n");
+        IR_LOG_ERROR("AUDIO", "Backend doesn't support memory loading");
         return IR_INVALID_SOUND;
     }
 
@@ -577,7 +578,7 @@ IRSoundID ir_audio_load_sound_from_memory(const char* name, const void* data, si
     // Estimate memory usage
     g_audio_system.total_memory_bytes += (uint32_t)size;
 
-    printf("[Audio] Loaded sound from memory: %s (id=%u, %zu bytes, %u ms, %u Hz, %u ch)\n",
+    IR_LOG_INFO("AUDIO", "Loaded sound from memory: %s (id=%u, %zu bytes, %u ms, %u Hz, %u ch)",
            name, sound->id, size, sound->duration_ms, sound->sample_rate, sound->channels);
 
     return sound->id;
@@ -600,7 +601,7 @@ void ir_audio_unload_sound(IRSoundID sound_id) {
     }
 
     sound->loaded = false;
-    printf("[Audio] Unloaded sound: %s\n", sound->path);
+    IR_LOG_INFO("AUDIO", "Unloaded sound: %s", sound->path);
 }
 
 IRSound* ir_audio_get_sound(IRSoundID sound_id) {
@@ -613,19 +614,19 @@ IRSound* ir_audio_get_sound(IRSoundID sound_id) {
 
 IRMusicID ir_audio_load_music(const char* path) {
     if (!g_audio_system.initialized) {
-        fprintf(stderr, "[Audio] Not initialized\n");
+        IR_LOG_ERROR("AUDIO", "Not initialized");
         return IR_INVALID_MUSIC;
     }
 
     if (g_audio_system.music_count >= IR_MAX_MUSIC) {
-        fprintf(stderr, "[Audio] Max music reached\n");
+        IR_LOG_ERROR("AUDIO", "Max music reached");
         return IR_INVALID_MUSIC;
     }
 
     // Check if already loaded
     for (uint32_t i = 0; i < g_audio_system.music_count; i++) {
         if (strcmp(g_audio_system.music[i].path, path) == 0) {
-            printf("[Audio] Music already loaded: %s\n", path);
+            IR_LOG_INFO("AUDIO", "Music already loaded: %s", path);
             return g_audio_system.music[i].id;
         }
     }
@@ -642,18 +643,18 @@ IRMusicID ir_audio_load_music(const char* path) {
         music->backend_data = g_audio_system.backend.load_music(path, &music->duration_ms);
 
         if (!music->backend_data) {
-            fprintf(stderr, "[Audio] Failed to load music: %s\n", path);
+            IR_LOG_ERROR("AUDIO", "Failed to load music: %s", path);
             return IR_INVALID_MUSIC;
         }
     } else {
-        fprintf(stderr, "[Audio] No backend registered\n");
+        IR_LOG_ERROR("AUDIO", "No backend registered");
         return IR_INVALID_MUSIC;
     }
 
     music->loaded = true;
     g_audio_system.music_count++;
 
-    printf("[Audio] Loaded music: %s (id=%u, %u ms)\n", path, music->id, music->duration_ms);
+    IR_LOG_INFO("AUDIO", "Loaded music: %s (id=%u, %u ms)", path, music->id, music->duration_ms);
 
     return music->id;
 }
@@ -673,7 +674,7 @@ void ir_audio_unload_music(IRMusicID music_id) {
     }
 
     music->loaded = false;
-    printf("[Audio] Unloaded music: %s\n", music->path);
+    IR_LOG_INFO("AUDIO", "Unloaded music: %s", music->path);
 }
 
 IRMusic* ir_audio_get_music(IRMusicID music_id) {
@@ -690,20 +691,20 @@ IRChannelID ir_audio_play_sound(IRSoundID sound_id, float volume, float pan) {
 
 IRChannelID ir_audio_play_sound_ex(IRSoundID sound_id, float volume, float pan, bool loop) {
     if (!g_audio_system.initialized) {
-        fprintf(stderr, "[Audio] Not initialized\n");
+        IR_LOG_ERROR("AUDIO", "Not initialized");
         return IR_INVALID_CHANNEL;
     }
 
     IRSound* sound = find_sound(sound_id);
     if (!sound || !sound->loaded) {
-        fprintf(stderr, "[Audio] Invalid sound ID: %u\n", sound_id);
+        IR_LOG_ERROR("AUDIO", "Invalid sound ID: %u", sound_id);
         return IR_INVALID_CHANNEL;
     }
 
     // Find free channel
     IRChannel* channel = find_free_channel();
     if (!channel) {
-        fprintf(stderr, "[Audio] No free channels\n");
+        IR_LOG_ERROR("AUDIO", "No free channels");
         return IR_INVALID_CHANNEL;
     }
 
@@ -783,13 +784,13 @@ void ir_audio_stop_all_sounds(void) {
 
 void ir_audio_play_music(IRMusicID music_id, bool loop) {
     if (!g_audio_system.initialized) {
-        fprintf(stderr, "[Audio] Not initialized\n");
+        IR_LOG_ERROR("AUDIO", "Not initialized");
         return;
     }
 
     IRMusic* music = find_music(music_id);
     if (!music || !music->loaded) {
-        fprintf(stderr, "[Audio] Invalid music ID: %u\n", music_id);
+        IR_LOG_ERROR("AUDIO", "Invalid music ID: %u", music_id);
         return;
     }
 
@@ -807,7 +808,7 @@ void ir_audio_play_music(IRMusicID music_id, bool loop) {
     g_audio_system.current_music = music_id;
     g_audio_system.music_played++;
 
-    printf("[Audio] Playing music: %s (loop=%d)\n", music->path, loop);
+    IR_LOG_INFO("AUDIO", "Playing music: %s (loop=%d)", music->path, loop);
 }
 
 void ir_audio_stop_music(void) {

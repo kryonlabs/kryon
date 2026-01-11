@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ir_logic.h"
 #include "cJSON.h"
+#include "ir_json_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

@@ -6,6 +6,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "ir_text_shaping.h"
+#include "ir_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -33,12 +34,12 @@ bool ir_text_shaping_init(void) {
 
     FT_Error error = FT_Init_FreeType(&g_ft_library);
     if (error) {
-        fprintf(stderr, "[IR Text Shaping] Failed to initialize FreeType: %d\n", error);
+        IR_LOG_ERROR("TEXT_SHAPING", "Failed to initialize FreeType: %d", error);
         return false;
     }
 
     g_shaping_initialized = true;
-    printf("[IR Text Shaping] Initialized HarfBuzz text shaping\n");
+    IR_LOG_INFO("TEXT_SHAPING", "Initialized HarfBuzz text shaping");
     return true;
 }
 
@@ -79,7 +80,7 @@ IRFont* ir_font_load(const char* font_path, float size) {
     FT_Face ft_face;
     FT_Error error = FT_New_Face(g_ft_library, font_path, 0, &ft_face);
     if (error) {
-        fprintf(stderr, "[IR Text Shaping] Failed to load font '%s': %d\n", font_path, error);
+        IR_LOG_ERROR("TEXT_SHAPING", "Failed to load font '%s': %d", font_path, error);
         free(font);
         return NULL;
     }
@@ -87,7 +88,7 @@ IRFont* ir_font_load(const char* font_path, float size) {
     // Set font size (convert points to 26.6 fixed-point)
     error = FT_Set_Char_Size(ft_face, 0, (FT_F26Dot6)(size * 64), 0, 0);
     if (error) {
-        fprintf(stderr, "[IR Text Shaping] Failed to set font size: %d\n", error);
+        IR_LOG_ERROR("TEXT_SHAPING", "Failed to set font size: %d", error);
         FT_Done_Face(ft_face);
         free(font);
         return NULL;
@@ -96,7 +97,7 @@ IRFont* ir_font_load(const char* font_path, float size) {
     // Create HarfBuzz font from FreeType face
     hb_font_t* hb_font = hb_ft_font_create(ft_face, NULL);
     if (!hb_font) {
-        fprintf(stderr, "[IR Text Shaping] Failed to create HarfBuzz font\n");
+        IR_LOG_ERROR("TEXT_SHAPING", "Failed to create HarfBuzz font");
         FT_Done_Face(ft_face);
         free(font);
         return NULL;
@@ -112,7 +113,7 @@ IRFont* ir_font_load(const char* font_path, float size) {
     // HarfBuzz uses font units, we need to scale to pixels
     font->scale = size / (float)ft_face->units_per_EM;
 
-    printf("[IR Text Shaping] Loaded font: %s (%.1fpt)\n", font_path, size);
+    IR_LOG_INFO("TEXT_SHAPING", "Loaded font: %s (%.1fpt)", font_path, size);
     return font;
 }
 

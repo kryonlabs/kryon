@@ -150,3 +150,17 @@ void ir_sb_clear(IRStringBuilder* sb) {
 size_t ir_sb_length(const IRStringBuilder* sb) {
     return sb ? sb->size : 0;
 }
+
+IRStringBuilder* ir_sb_clone(IRStringBuilder* sb) {
+    if (!sb) return NULL;
+
+    IRStringBuilder* clone = ir_sb_create(sb->capacity);
+    if (!clone) return NULL;
+
+    if (!ir_sb_append_n(clone, sb->buffer, sb->size)) {
+        ir_sb_free(clone);
+        return NULL;
+    }
+
+    return clone;
+}
