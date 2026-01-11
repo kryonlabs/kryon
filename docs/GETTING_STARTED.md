@@ -19,7 +19,7 @@ import { kryonApp, Column, Text, Button, useState } from '@kryon/react';
 export default kryonApp({
   render: () => {
     const [count, setCount] = useState(0);
-    
+
     return (
       <Column>
         <Text>Count: {count}</Text>
@@ -68,6 +68,7 @@ kryon diff app1.kir app2.kir
 
 - **Layout**: Column, Row, Container
 - **UI**: Text, Button, Input
+- **Advanced**: Table, Image, Canvas, Modal
 
 ## Events
 
@@ -104,7 +105,7 @@ All standard DOM events:
 
 ```tsx
 <Column>
-  <Input 
+  <Input
     value={text}
     onChange={(e) => setText(e.target.value)}
     placeholder="Enter text"
@@ -144,8 +145,6 @@ brew install sdl3 sdl3_ttf
 ## Next Steps
 
 - Read `ARCHITECTURE.md` for system design
-- Review `IMPLEMENTATION_GUIDE.md` to extend Kryon
-- Check `CONFIGURATION.md` for `kryon.toml` reference
 
 ---
 
