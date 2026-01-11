@@ -4,6 +4,10 @@
 #include "ir_core.h"
 #include "ir_animation.h"
 #include "ir_tabgroup.h"
+#include "ir_style_builder.h"
+#include "ir_layout_builder.h"
+#include "ir_event_builder.h"
+#include "ir_module_refs.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,104 +37,10 @@ void ir_insert_child(IRComponent* parent, IRComponent* child, uint32_t index);
 IRComponent* ir_get_child(IRComponent* component, uint32_t index);
 IRComponent* ir_find_component_by_id(IRComponent* root, uint32_t id);
 
-// Style Management
-IRStyle* ir_create_style(void);
-void ir_destroy_style(IRStyle* style);
-void ir_set_style(IRComponent* component, IRStyle* style);
-IRStyle* ir_get_style(IRComponent* component);
-
-// Style Property Helpers
-void ir_set_width(IRComponent* component, IRDimensionType type, float value);
-void ir_set_height(IRComponent* component, IRDimensionType type, float value);
-void ir_set_visible(IRStyle* style, bool visible);
-void ir_set_background_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-void ir_set_border(IRStyle* style, float width, uint8_t r, uint8_t g, uint8_t b, uint8_t a, uint8_t radius);
-void ir_set_border_width(IRStyle* style, float width);
-void ir_set_border_radius(IRStyle* style, uint8_t radius);
-void ir_set_border_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-void ir_set_margin(IRComponent* component, float top, float right, float bottom, float left);
-void ir_set_padding(IRComponent* component, float top, float right, float bottom, float left);
-void ir_set_font(IRStyle* style, float size, const char* family, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool bold, bool italic);
-void ir_set_font_size(IRStyle* style, float size);
-void ir_set_font_family(IRStyle* style, const char* family);
-void ir_set_font_color(IRStyle* style, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-void ir_set_font_style(IRStyle* style, bool bold, bool italic);
-void ir_set_z_index(IRStyle* style, uint32_t z_index);
-
-// Style Variable Reference Setters (for theme support)
-void ir_set_background_color_var(IRStyle* style, IRStyleVarId var_id);
-void ir_set_text_color_var(IRStyle* style, IRStyleVarId var_id);
-void ir_set_border_color_var(IRStyle* style, IRStyleVarId var_id);
-
-// Text Effect Helpers
-void ir_set_text_overflow(IRStyle* style, IRTextOverflowType overflow);
-void ir_set_text_fade(IRStyle* style, IRTextFadeType fade_type, float fade_length);
-void ir_set_text_shadow(IRStyle* style, float offset_x, float offset_y, float blur_radius,
-                        uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-void ir_set_opacity(IRStyle* style, float opacity);
-void ir_set_disabled(IRComponent* component, bool disabled);
-
-// Text Layout (Phase 1: Multi-line wrapping)
-void ir_set_text_max_width(IRStyle* style, IRDimensionType type, float value);
-
-// Extended Typography (Phase 3)
-void ir_set_font_weight(IRStyle* style, uint16_t weight);  // 100-900 (400=normal, 700=bold)
-void ir_set_line_height(IRStyle* style, float line_height);  // Line height multiplier
-void ir_set_letter_spacing(IRStyle* style, float spacing);   // Letter spacing in pixels
-void ir_set_word_spacing(IRStyle* style, float spacing);     // Word spacing in pixels
-void ir_set_text_align(IRStyle* style, IRTextAlign align);   // Text alignment
-void ir_set_text_decoration(IRStyle* style, uint8_t decoration);  // Decoration flags (bitfield)
-
-// Box Shadow and Filters
-void ir_set_box_shadow(IRStyle* style, float offset_x, float offset_y, float blur_radius,
-                       float spread_radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, bool inset);
-void ir_add_filter(IRStyle* style, IRFilterType type, float value);
-void ir_clear_filters(IRStyle* style);
-
-// Layout Management
-IRLayout* ir_create_layout(void);
-void ir_destroy_layout(IRLayout* layout);
-void ir_set_layout(IRComponent* component, IRLayout* layout);
-IRLayout* ir_get_layout(IRComponent* component);
-
-// Layout Property Helpers
-void ir_set_flexbox(IRLayout* layout, bool wrap, uint32_t gap, IRAlignment main_axis, IRAlignment cross_axis);
-void ir_set_flex_properties(IRLayout* layout, uint8_t grow, uint8_t shrink, uint8_t direction);
-void ir_set_min_width(IRLayout* layout, IRDimensionType type, float value);
-void ir_set_min_height(IRLayout* layout, IRDimensionType type, float value);
-void ir_set_max_width(IRLayout* layout, IRDimensionType type, float value);
-void ir_set_max_height(IRLayout* layout, IRDimensionType type, float value);
-void ir_set_aspect_ratio(IRLayout* layout, float ratio);
-void ir_set_justify_content(IRLayout* layout, IRAlignment justify);
-void ir_set_align_items(IRLayout* layout, IRAlignment align);
-void ir_set_align_content(IRLayout* layout, IRAlignment align);
-
-// BiDi Direction Property Helpers
-void ir_set_base_direction(IRComponent* component, IRDirection dir);
-void ir_set_unicode_bidi(IRComponent* component, IRUnicodeBidi bidi);
-IRDirection ir_parse_direction(const char* str);
-IRUnicodeBidi ir_parse_unicode_bidi(const char* str);
-
-// Event Management
-IREvent* ir_create_event(IREventType type, const char* logic_id, const char* handler_data);
-void ir_destroy_event(IREvent* event);
-void ir_add_event(IRComponent* component, IREvent* event);
-void ir_remove_event(IRComponent* component, IREvent* event);
-IREvent* ir_find_event(IRComponent* component, IREventType type);
-
-// Event Bytecode Support (IR v2.1)
-void ir_event_set_bytecode_function_id(IREvent* event, uint32_t function_id);
-uint32_t ir_event_get_bytecode_function_id(IREvent* event);
-
-// Handler Source Management (for Lua source preservation in KIR)
-IRHandlerSource* ir_create_handler_source(const char* language, const char* code, const char* file, int line);
-void ir_destroy_handler_source(IRHandlerSource* source);
-void ir_event_set_handler_source(IREvent* event, IRHandlerSource* source);
-
-// Set closure metadata on a handler source
-// vars: array of variable name strings
-// count: number of variables
-int ir_handler_source_set_closures(IRHandlerSource* source, const char** vars, int count);
+// Style Management - see ir_style_builder.h
+// Layout Management - see ir_layout_builder.h
+// Event Management - see ir_event_builder.h
+// Module Reference Management - see ir_module_refs.h
 
 // Logic Management
 IRLogic* ir_create_logic(const char* id, LogicSourceType type, const char* source_code);
@@ -144,15 +54,6 @@ void ir_set_text_content(IRComponent* component, const char* text);
 void ir_set_custom_data(IRComponent* component, const char* data);
 void ir_set_tag(IRComponent* component, const char* tag);
 void ir_set_each_source(IRComponent* component, const char* source);  // ForEach data source
-
-// Module Reference Management (for cross-file component references)
-void ir_set_component_module_ref(IRComponent* component, const char* module_ref, const char* export_name);
-cJSON* ir_clear_tree_module_refs(IRComponent* component);  // Recursively clear all module_refs in tree
-void ir_restore_tree_module_refs(IRComponent* component, cJSON* refs_array);  // Restore from array
-char* ir_clear_tree_module_refs_json(IRComponent* component);  // JSON string wrapper for FFI
-void ir_restore_tree_module_refs_json(IRComponent* component, const char* json_str);  // JSON string wrapper for FFI
-char* ir_clear_component_module_ref(IRComponent* component);  // Returns JSON string with old values
-void ir_restore_component_module_ref(IRComponent* component, const char* json_str);
 
 // Convenience Functions for Common Components
 IRComponent* ir_container(const char* tag);
@@ -270,42 +171,7 @@ void ir_component_add_transition(IRComponent* component, IRTransition* transitio
 // Apply all animations to a component tree (call each frame from renderer)
 void ir_animation_tree_update(IRComponent* root, float current_time);
 
-// Grid Layout (Phase 5)
-void ir_set_grid_template_rows(IRLayout* layout, IRGridTrack* tracks, uint8_t count);
-void ir_set_grid_template_columns(IRLayout* layout, IRGridTrack* tracks, uint8_t count);
-void ir_set_grid_gap(IRLayout* layout, float row_gap, float column_gap);
-void ir_set_grid_auto_flow(IRLayout* layout, bool row_direction, bool dense);
-void ir_set_grid_alignment(IRLayout* layout, IRAlignment justify_items, IRAlignment align_items,
-                            IRAlignment justify_content, IRAlignment align_content);
-
-// Grid Item Placement
-void ir_set_grid_item_placement(IRStyle* style, int16_t row_start, int16_t row_end,
-                                  int16_t column_start, int16_t column_end);
-void ir_set_grid_item_alignment(IRStyle* style, IRAlignment justify_self, IRAlignment align_self);
-
-// Grid Track Helpers
-IRGridTrack ir_grid_track_px(float value);
-IRGridTrack ir_grid_track_percent(float value);
-IRGridTrack ir_grid_track_fr(float value);
-IRGridTrack ir_grid_track_auto(void);
-IRGridTrack ir_grid_track_min_content(void);
-IRGridTrack ir_grid_track_max_content(void);
-
-// Container Queries (Phase 6)
-void ir_set_container_type(IRStyle* style, IRContainerType type);
-void ir_set_container_name(IRStyle* style, const char* name);
-void ir_add_breakpoint(IRStyle* style, IRQueryCondition* conditions, uint8_t condition_count);
-void ir_breakpoint_set_width(IRStyle* style, uint8_t breakpoint_index, IRDimensionType type, float value);
-void ir_breakpoint_set_height(IRStyle* style, uint8_t breakpoint_index, IRDimensionType type, float value);
-void ir_breakpoint_set_visible(IRStyle* style, uint8_t breakpoint_index, bool visible);
-void ir_breakpoint_set_opacity(IRStyle* style, uint8_t breakpoint_index, float opacity);
-void ir_breakpoint_set_layout_mode(IRStyle* style, uint8_t breakpoint_index, IRLayoutMode mode);
-
-// Query Condition Helpers
-IRQueryCondition ir_query_min_width(float value);
-IRQueryCondition ir_query_max_width(float value);
-IRQueryCondition ir_query_min_height(float value);
-IRQueryCondition ir_query_max_height(float value);
+// Grid Layout, Container Queries - see ir_layout_builder.h
 
 // ============================================================================
 // Table Components
