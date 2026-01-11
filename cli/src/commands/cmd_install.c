@@ -3,6 +3,7 @@
  * Installs a Kryon application to the system
  */
 
+#define _DEFAULT_SOURCE
 #define _POSIX_C_SOURCE 200809L
 
 #include "kryon_cli.h"
@@ -322,7 +323,6 @@ static const char* detect_frontend_from_entry(const char* entry) {
 
 int cmd_install(int argc, char** argv) {
     bool dry_run = false;
-    bool rebuild = false;
     bool no_build = false;
     InstallMode cli_mode = INSTALL_MODE_SYMLINK;  // Default
     bool has_cli_mode = false;
@@ -336,14 +336,11 @@ int cmd_install(int argc, char** argv) {
             printf("  --mode <mode>    Install mode: symlink (default), copy, or system\n");
             printf("  --target <t>     Target to install: desktop, web (default: auto-detect)\n");
             printf("  --dry-run        Show what would be installed without installing\n");
-            printf("  --rebuild        Rebuild before installing (same as default behavior)\n");
             printf("  --no-build       Skip automatic build before installing\n");
             printf("  --help, -h       Show this help message\n");
             return 0;
         } else if (strcmp(argv[i], "--dry-run") == 0) {
             dry_run = true;
-        } else if (strcmp(argv[i], "--rebuild") == 0) {
-            rebuild = true;
         } else if (strcmp(argv[i], "--no-build") == 0) {
             no_build = true;
         } else if (strcmp(argv[i], "--mode") == 0) {
@@ -485,7 +482,6 @@ int cmd_install(int argc, char** argv) {
 
     char* source_path = NULL;
     char* wrapper_path = NULL;
-    bool using_wrapper = false;
 
     if (is_lua_app) {
         // First, check if there's a compiled binary from kryon build
@@ -556,7 +552,6 @@ int cmd_install(int argc, char** argv) {
             }
 
             source_path = wrapper_path;
-            using_wrapper = true;
             wrapper_path = NULL;  // Mark as owned by source_path
 
             free(apps_root);

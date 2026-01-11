@@ -151,21 +151,17 @@ static void remove_manifest(const char* project_name, bool dry_run) {
 
 int cmd_uninstall(int argc, char** argv) {
     bool dry_run = false;
-    bool all = false;
 
     // Parse arguments
     for (int i = 0; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printf("Usage: kryon uninstall [options]\n\n");
             printf("Options:\n");
-            printf("  --all            Remove all files including config and data\n");
             printf("  --dry-run        Show what would be removed without removing\n");
             printf("  --help, -h       Show this help message\n");
             return 0;
         } else if (strcmp(argv[i], "--dry-run") == 0) {
             dry_run = true;
-        } else if (strcmp(argv[i], "--all") == 0) {
-            all = true;
         }
     }
 

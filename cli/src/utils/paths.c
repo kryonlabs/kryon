@@ -257,30 +257,6 @@ char* paths_resolve(const char* path, const char* base_dir) {
 }
 
 /**
- * Check if directory is a Kryon git repository
- */
-static bool is_kryon_git_repo(const char* dir) {
-    char* git_config = path_join(dir, ".git/config");
-
-    if (!file_exists(git_config)) {
-        free(git_config);
-        return false;
-    }
-
-    // Read .git/config and check for kryon remote
-    char* content = file_read(git_config);
-    free(git_config);
-
-    if (!content) return false;
-
-    bool is_kryon = (strstr(content, "kryon") != NULL ||
-                     strstr(content, "Kryon") != NULL);
-    free(content);
-
-    return is_kryon;
-}
-
-/**
  * Walk up directory tree looking for Kryon root
  */
 static char* find_kryon_in_parents(const char* start_dir) {

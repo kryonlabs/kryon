@@ -173,30 +173,6 @@ build-lib: build-c-libs $(LIB_FILE)
 .PHONY: build-ir build-renderers build-desktop-backend
 build-c-libs: build-ir build-desktop-backend build-c-codegens
 
-build-ir:
-	@echo "Building IR library..."
-	@mkdir -p $(BUILD_DIR)
-	$(MAKE) -C ir all
-
-build-renderers: build-ir
-	@echo "Building renderers..."
-	@if [ -d renderers/common ]; then \
-		$(MAKE) -C renderers/common all; \
-		$(MAKE) -C renderers/common install; \
-	fi
-	@if [ -d renderers/sdl3 ]; then \
-		$(MAKE) -C renderers/sdl3 all; \
-	fi
-
-build-desktop-backend: build-ir
-	@echo "Building desktop backend..."
-	@echo "Building common renderer utilities..."
-	$(MAKE) -C renderers/common all
-	$(MAKE) -C renderers/common install
-	@echo "Building SDL3 renderer..."
-	$(MAKE) -C renderers/sdl3 all
-	$(MAKE) -C backends/desktop all
-
 build-c-codegens: build-ir
 	@echo "Building C/Kotlin code generators..."
 	$(MAKE) -C codegens/c all
@@ -204,11 +180,11 @@ build-c-codegens: build-ir
 	$(MAKE) -C codegens/web all
 
 # Build code generators (needed by CLI)
-build-codegens:
+build-codegens: build-ir
 	@echo "Building code generators..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C codegens all
-	@for dir in kry tsx nim lua markdown; do \
+	@for dir in kry tsx nim lua markdown c kotlin; do \
 		if [ -f codegens/$$dir/Makefile ]; then \
 			$(MAKE) -C codegens/$$dir all || true; \
 		fi \
