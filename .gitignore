@@ -118,3 +118,22 @@ examples/android/local.properties
 third_party/freetype/
 third_party/harfbuzz/
 third_party/stb/
+
+# Nix
+result/
+.direnv/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.in
+
+# Lua
+luac.out
+*.luac
+
+# IR build artifacts
+ir/layout/*.o
+ir/components/*.o
+ir/parsers/*/*.o

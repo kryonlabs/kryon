@@ -2,6 +2,7 @@
 #define IR_SERIALIZATION_H
 
 #include "ir_core.h"
+#include "ir_buffer.h"
 #include <stdio.h>
 
 // Forward declarations
@@ -65,16 +66,6 @@ void ir_expand_foreach(IRComponent* root);
 
 // Component type conversion (for parsers)
 IRComponentType ir_string_to_component_type(const char* str);
-
-// Buffer Management
-IRBuffer* ir_buffer_create(size_t initial_capacity);
-IRBuffer* ir_buffer_create_from_file(const char* filename);
-void ir_buffer_destroy(IRBuffer* buffer);
-bool ir_buffer_write(IRBuffer* buffer, const void* data, size_t size);
-bool ir_buffer_read(IRBuffer* buffer, void* data, size_t size);
-bool ir_buffer_seek(IRBuffer* buffer, size_t position);
-size_t ir_buffer_tell(IRBuffer* buffer);
-size_t ir_buffer_size(IRBuffer* buffer);
 
 // Validation Functions
 bool ir_validate_binary_format(IRBuffer* buffer);

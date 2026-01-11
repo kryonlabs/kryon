@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
 #include "ir_serialization.h"
+#include "ir_buffer.h"
+#include "ir_serialize_types.h"
 #include "ir_builder.h"
 #include "ir_foreach_expand.h"  // New modular ForEach expansion
 #include "cJSON.h"
@@ -109,112 +111,6 @@ static bool read_string(IRBuffer* buffer, char** string) {
     }
 
     return true;
-}
-
-// Buffer Management
-IRBuffer* ir_buffer_create(size_t initial_capacity) {
-    IRBuffer* buffer = malloc(sizeof(IRBuffer));
-    if (!buffer) return NULL;
-
-    buffer->data = malloc(initial_capacity);
-    if (!buffer->data) {
-        free(buffer);
-        return NULL;
-    }
-
-    buffer->base = buffer->data;  // Track original pointer for free
-    buffer->size = 0;
-    buffer->capacity = initial_capacity;
-
-    return buffer;
-}
-
-IRBuffer* ir_buffer_create_from_file(const char* filename) {
-    FILE* file = fopen(filename, "rb");
-    if (!file) return NULL;
-
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    size_t file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    // Create buffer
-    IRBuffer* buffer = ir_buffer_create(file_size);
-    if (!buffer) {
-        fclose(file);
-        return NULL;
-    }
-
-    // Read file into buffer
-    if (fread(buffer->data, 1, file_size, file) != file_size) {
-        fclose(file);
-        ir_buffer_destroy(buffer);
-        return NULL;
-    }
-    buffer->size = file_size;
-    fclose(file);
-
-    return buffer;
-}
-
-void ir_buffer_destroy(IRBuffer* buffer) {
-    if (!buffer) return;
-
-    if (buffer->base) {
-        free(buffer->base);  // Free original pointer, not current position
-    }
-    free(buffer);
-}
-
-bool ir_buffer_write(IRBuffer* buffer, const void* data, size_t size) {
-    if (!buffer || !data) return false;
-
-    // Check if we need to expand the buffer
-    if (buffer->size + size > buffer->capacity) {
-        size_t new_capacity = buffer->capacity * 2;
-        if (new_capacity < buffer->size + size) {
-            new_capacity = buffer->size + size + 1024;  // Add some extra space
-        }
-
-        uint8_t* new_data = realloc(buffer->base, new_capacity);
-        if (!new_data) return false;
-
-        buffer->base = new_data;
-        buffer->data = new_data;  // Reset to base since we're writing
-        buffer->capacity = new_capacity;
-    }
-
-    memcpy(buffer->data + buffer->size, data, size);
-    buffer->size += size;
-
-    return true;
-}
-
-bool ir_buffer_read(IRBuffer* buffer, void* data, size_t size) {
-    if (!buffer || !data) return false;
-
-    if (buffer->size < size) return false;  // Not enough data
-
-    memcpy(data, buffer->data, size);
-    buffer->data += size;
-    buffer->size -= size;
-
-    return true;
-}
-
-bool ir_buffer_seek(IRBuffer* buffer, size_t position) {
-    if (!buffer) return false;
-
-    // This is a simplified implementation - in practice you'd need to track the original data pointer
-    return false;  // Not implemented for this simple version
-}
-
-size_t ir_buffer_tell(IRBuffer* buffer) {
-    return buffer ? buffer->size : 0;
-}
-
-size_t ir_buffer_size(IRBuffer* buffer) {
-    return buffer ? buffer->size : 0;
 }
 
 // Serialization Helper Functions

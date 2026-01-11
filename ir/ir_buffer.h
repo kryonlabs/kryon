@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 // ============================================================================
 // Dynamic Buffer for Binary Serialization
@@ -11,15 +12,14 @@
 /**
  * IRBuffer - Dynamic buffer for binary serialization/deserialization
  *
- * Provides a simple buffer with read/write capabilities, automatic growth,
- * and ownership management for serialization operations.
+ * Note: This struct is defined in ir_core.h for backward compatibility.
+ * This header provides the buffer management functions.
  */
 typedef struct IRBuffer {
-    char* data;          // Current read/write position
-    char* base;          // Original pointer (for free)
-    size_t size;         // Current position in buffer
-    size_t capacity;     // Total capacity
-    bool owns_memory;    // Whether we should free the data
+    uint8_t* data;       // Current read/write position
+    uint8_t* base;        // Original pointer (for free)
+    size_t size;          // Remaining/used bytes
+    size_t capacity;      // Total capacity
 } IRBuffer;
 
 // ============================================================================
@@ -29,14 +29,11 @@ typedef struct IRBuffer {
 // Create a new buffer with specified initial capacity
 IRBuffer* ir_buffer_create(size_t initial_capacity);
 
-// Create a buffer wrapping existing data (takes ownership if owns=true)
-IRBuffer* ir_buffer_create_from_data(void* data, size_t size, bool owns);
-
 // Create a buffer by reading from a file
 IRBuffer* ir_buffer_create_from_file(const char* filename);
 
-// Free a buffer and its owned memory
-void ir_buffer_free(IRBuffer* buffer);
+// Free a buffer and its memory
+void ir_buffer_destroy(IRBuffer* buffer);
 
 // ============================================================================
 // Buffer Operations
@@ -48,14 +45,14 @@ bool ir_buffer_write(IRBuffer* buffer, const void* data, size_t size);
 // Read data from buffer
 bool ir_buffer_read(IRBuffer* buffer, void* data, size_t size);
 
-// Seek to absolute position
+// Seek to absolute position (relative to base)
 bool ir_buffer_seek(IRBuffer* buffer, size_t position);
 
-// Skip forward by specified bytes
-bool ir_buffer_skip(IRBuffer* buffer, size_t bytes);
-
-// Get current position
+// Get current position (bytes from base)
 size_t ir_buffer_tell(const IRBuffer* buffer);
+
+// Get current size/position
+size_t ir_buffer_size(const IRBuffer* buffer);
 
 // Get remaining bytes
 size_t ir_buffer_remaining(const IRBuffer* buffer);
@@ -72,9 +69,6 @@ void ir_buffer_clear(IRBuffer* buffer);
 
 // Ensure capacity (grows if needed)
 bool ir_buffer_reserve(IRBuffer* buffer, size_t capacity);
-
-// Release ownership of data (caller must free)
-char* ir_buffer_release(IRBuffer* buffer);
 
 // Get current data pointer (base)
 void* ir_buffer_data(const IRBuffer* buffer);

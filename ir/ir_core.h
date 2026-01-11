@@ -354,20 +354,11 @@ typedef struct IRComponent {
 } IRComponent;
 
 // ============================================================================
-// IR Buffer for serialization
-// ============================================================================
-typedef struct IRBuffer {
-    uint8_t* data;        // Current read/write position
-    uint8_t* base;        // Original pointer (for free)
-    size_t size;          // Remaining/used bytes
-    size_t capacity;      // Total capacity
-} IRBuffer;
-
-// ============================================================================
 // Forward declarations
 // ============================================================================
 typedef struct IRComponentPool IRComponentPool;
 typedef struct IRComponentMap IRComponentMap;
+typedef struct IRBuffer IRBuffer;
 
 // ============================================================================
 // IR Metadata (application-wide information)

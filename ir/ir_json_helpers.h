@@ -10,7 +10,7 @@
 #define IR_JSON_HELPERS_H
 
 #include <stdbool.h>
-#include "third_party/cJSON/cJSON.h"
+#include "../third_party/cJSON/cJSON.h"
 
 #ifdef __cplusplus
 extern "C" {
