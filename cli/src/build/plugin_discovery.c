@@ -6,6 +6,7 @@
  * MUST be explicitly listed in config with paths.
  */
 
+#define _DEFAULT_SOURCE
 #define _POSIX_C_SOURCE 200809L
 
 #include "plugin_discovery.h"

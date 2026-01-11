@@ -367,6 +367,7 @@ static int run_web_target(const char* kir_file) {
 
 static int run_kir_file(const char* kir_file, const char* target_platform, const char* renderer,
                          bool hot_reload, const char* watch_path) {
+    (void)renderer;
     (void)hot_reload;
     (void)watch_path;
 
