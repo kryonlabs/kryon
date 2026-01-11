@@ -111,85 +111,59 @@ $(DYNAMIC_BIN): $(CLI_DEPS)
 	@cp $(CLI_DIR)/kryon $(DYNAMIC_BIN)
 
 # =============================================================================
-# Renderer-specific builds (for GitHub Actions CI)
+# Variant builds for C CLI (GitHub Actions CI)
 # =============================================================================
 
-# Terminal-only CLI (no SDL3 dependencies - lightweight)
-build-terminal: $(TERMINAL_BIN)
-
-$(TERMINAL_BIN): $(CLI_SRC)
-	@echo "Building Kryon CLI (terminal-only)..."
+# Terminal-only CLI (no SDL3/raylib dependencies - lightweight, static)
+build-terminal: build-ir build-codegens build-renderers-common
+	@echo "Building Kryon CLI (terminal-only, static)..."
 	@mkdir -p $(BUILD_DIR)
-	$(MAKE) -C ir all
-	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
-	$(NIM) c $(NIMFLAGS) $(TERMINAL_FLAGS) \
-		--passL:"-L$(BUILD_DIR) -lkryon_ir" \
-		-o:$(TERMINAL_BIN) $(CLI_SRC)
-	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
+	$(MAKE) -C cli minimal
+	@cp cli/kryon $(BUILD_DIR)/kryon-terminal
 
-# Desktop CLI (requires SDL3)
-build-desktop: $(DESKTOP_BIN)
+# Web CLI (for HTML generation, no SDL3/raylib)
+build-web: build-ir build-codegens build-renderers-common
+	@echo "Building Kryon CLI (web codegen, static)..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C cli minimal
+	@cp cli/kryon $(BUILD_DIR)/kryon-web
 
-$(DESKTOP_BIN): $(CLI_SRC)
+# Desktop CLI (with SDL3 renderer - needs SDL3 installed)
+build-desktop: build-ir build-codegens build-desktop-backend
 	@echo "Building Kryon CLI (desktop/SDL3)..."
 	@mkdir -p $(BUILD_DIR)
-	$(MAKE) -C ir all
-	$(MAKE) -C backends/desktop all
-	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
-	$(NIM) c $(NIMFLAGS) $(DESKTOP_FLAGS) \
-		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_desktop $(SDL3_LIBS) $(SDL_TTF_LIBS)" \
-		-o:$(DESKTOP_BIN) $(CLI_SRC)
-	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
+	$(MAKE) -C cli all
+	@cp cli/kryon $(BUILD_DIR)/kryon-desktop
 
-# Raylib CLI (requires raylib - 3D rendering support)
-build-raylib: $(RAYLIB_BIN)
+# Default CLI (all backends: SDL3 + Raylib + desktop)
+build-default: build-ir build-codegens build-desktop-backend
+	@echo "Building Kryon CLI (full with all backends)..."
+	@mkdir -p $(BUILD_DIR)
+	$(MAKE) -C cli all
+	@cp cli/kryon $(BUILD_DIR)/kryon-full
 
-$(RAYLIB_BIN): $(CLI_SRC) $(LIB_FILE)
-	@echo "Building Kryon CLI (raylib/3D)..."
+# Build all variant binaries
+build-all-variants: build-terminal build-web build-desktop build-default
+	@echo "✅ All CLI variants built successfully!"
+
+# =============================================================================
+# Component builds (dependency management)
+# =============================================================================
+
+build-ir:
+	@echo "Building IR library..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C ir all
+
+build-renderers-common:
+	@echo "Building common renderer utilities..."
 	$(MAKE) -C renderers/common all
 	$(MAKE) -C renderers/common install
-	$(MAKE) -C renderers/raylib all
-	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
-	$(NIM) c $(NIMFLAGS) $(RAYLIB_FLAGS) \
-		--passL:"-L$(BUILD_DIR) -lkryon_raylib -lkryon_common -lkryon_ir -lkryon $(RAYLIB_LIBS)" \
-		-o:$(RAYLIB_BIN) $(CLI_SRC)
-	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
 
-# Web CLI (HTML/CSS/JS transpiler - codegen, not a renderer)
-build-web: $(WEB_BIN)
-
-$(WEB_BIN): $(CLI_SRC)
-	@echo "Building Kryon CLI (HTML/web transpiler)..."
-	@mkdir -p $(BUILD_DIR)
-	$(MAKE) -C ir all
-	$(MAKE) -C codegens/web all
-	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
-	$(NIM) c $(NIMFLAGS) $(WEB_FLAGS) \
-		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_web" \
-		-o:$(WEB_BIN) $(CLI_SRC)
-	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
-
-# Default CLI (all targets: renderers + transpilers)
-build-default: $(DEFAULT_BIN)
-
-$(DEFAULT_BIN): $(CLI_SRC)
-	@echo "Building Kryon CLI (all targets: renderers + transpilers)..."
-	@mkdir -p $(BUILD_DIR)
-	$(MAKE) -C ir all
+build-desktop-backend: build-ir build-renderers-common
+	@echo "Building desktop backend..."
+	$(MAKE) -C renderers/sdl3 all
 	$(MAKE) -C backends/desktop all
-	$(MAKE) -C renderers/raylib all
-	$(MAKE) -C codegens/web all
-	@if [ -f nim.cfg ]; then mv nim.cfg nim.cfg.tmp; fi
-	$(NIM) c $(NIMFLAGS) -d:staticBackend --opt:speed \
-		--passL:"-L$(BUILD_DIR) -lkryon_ir -lkryon_desktop -lkryon_raylib -lkryon_web $(SDL3_LIBS) $(SDL_TTF_LIBS) $(RAYLIB_LIBS)" \
-		-o:$(DEFAULT_BIN) $(CLI_SRC)
-	@if [ -f nim.cfg.tmp ]; then mv nim.cfg.tmp nim.cfg; fi
-
-# Build all renderer variants
-build-all-variants: build-terminal build-desktop build-raylib build-web build-default
-	@echo "✅ All renderer variants built successfully!"
 
 # Build library for use by other projects
 # This creates a combined archive with all C libraries needed for linking

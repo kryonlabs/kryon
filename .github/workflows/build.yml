@@ -54,11 +54,9 @@ jobs:
           wget -qO- https://nim-lang.org/choosenim/init.sh | sh
           echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
-      - name: Build terminal variant (static)
+      - name: Build terminal variant
         run: |
-          make -C ir all
-          make -C cli minimal
-          cp cli/kryon build/kryon-terminal
+          make build-terminal
 
       - name: Verify build is static
         run: |
@@ -140,15 +138,10 @@ jobs:
       - name: Update library cache
         run: sudo ldconfig
 
-      - name: Build desktop variant with RPATH
+      - name: Build desktop variant
         run: |
           export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-          # Build C libraries (both SDL3 and Raylib enabled by default)
-          make -C ir all
-          make build-desktop-backend
-          make build-c-codegens
-          make -C cli all
-          cp cli/kryon build/kryon-desktop
+          make build-desktop
 
       - name: Verify build
         run: |
@@ -224,11 +217,9 @@ jobs:
           wget -qO- https://nim-lang.org/choosenim/init.sh | sh
           echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
-      - name: Build web variant (static)
+      - name: Build web variant
         run: |
-          make -C ir all
-          make -C cli minimal
-          cp cli/kryon build/kryon-web
+          make build-web
 
       - name: Verify build is static
         run: |
@@ -310,15 +301,10 @@ jobs:
       - name: Update library cache
         run: sudo ldconfig
 
-      - name: Build default variant with RPATH (all backends)
+      - name: Build default variant (all backends)
         run: |
           export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-          # Build C libraries (both SDL3 and Raylib enabled by default)
-          make -C ir all
-          make build-desktop-backend
-          make build-c-codegens
-          make -C cli all
-          cp cli/kryon build/kryon-full
+          make build-default
 
       - name: Verify build
         run: |

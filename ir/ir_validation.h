@@ -84,6 +84,88 @@ typedef struct {
     uint32_t max_component_count;
 } IRValidationOptions;
 
+// ============================================================================
+// Recovery Strategies (D.1, D.2)
+// ============================================================================
+
+/**
+ * Recovery strategy for validation errors
+ */
+typedef enum {
+    IR_RECOVERY_NONE,        // Fail on error (default)
+    IR_RECOVERY_SKIP,        // Skip the invalid element/section
+    IR_RECOVERY_DEFAULT,     // Use default value
+    IR_RECOVERY_SANITIZE,    // Clean/sanitize the value
+    IR_RECOVERY_COERCE,      // Type coercion
+    IR_RECOVERY_CLAMP        // Clamp to valid range
+} IRRecoveryStrategy;
+
+/**
+ * Validation context with recovery support
+ */
+typedef struct {
+    IRValidationOptions* options;
+    IRValidationResult* result;
+    IRRecoveryStrategy recovery_strategy;
+    bool has_errors;
+    uint32_t recovered_count;
+    uint32_t skipped_count;
+} IRValidationContext;
+
+/**
+ * Create a validation context with recovery support
+ */
+IRValidationContext* ir_validation_context_create(IRValidationOptions* options,
+                                                   IRRecoveryStrategy recovery);
+
+/**
+ * Destroy validation context
+ */
+void ir_validation_context_destroy(IRValidationContext* ctx);
+
+/**
+ * Set recovery strategy
+ */
+void ir_validation_set_recovery_strategy(IRValidationContext* ctx,
+                                          IRRecoveryStrategy strategy);
+
+/**
+ * Get recovery strategy name
+ */
+const char* ir_recovery_strategy_name(IRRecoveryStrategy strategy);
+
+/**
+ * Attempt to recover a field based on recovery strategy
+ * @return true if recovery was successful, false otherwise
+ */
+bool ir_validation_recover_field(IRValidationContext* ctx,
+                                  const char* field_path,
+                                  IRValidationErrorCode error);
+
+/**
+ * Sanitize a string value (remove invalid characters)
+ */
+char* ir_validation_sanitize_string(const char* str, char* buffer, size_t buffer_size);
+
+/**
+ * Coerce value to type
+ */
+bool ir_validation_coerce_to_type(const char* value, const char* target_type,
+                                   char* out_buffer, size_t buffer_size);
+
+/**
+ * Clamp numeric value to range
+ */
+bool ir_validation_clamp_value(float* value, float min_val, float max_val);
+
+/**
+ * Get default value for field path
+ */
+bool ir_validation_get_default_value(const char* field_path, char* out_value,
+                                      size_t value_size);
+
+// ============================================================================
+
 // CRC32 Functions
 uint32_t ir_crc32(const uint8_t* data, size_t length);
 uint32_t ir_crc32_buffer(IRBuffer* buffer);
@@ -146,5 +228,52 @@ bool ir_skip_corrupted_section(IRBuffer* buffer, IRValidationResult* result);
 IRValidationOptions ir_default_validation_options(void);
 IRValidationOptions ir_strict_validation_options(void);
 IRValidationOptions ir_permissive_validation_options(void);
+
+// ============================================================================
+// Section Skipping (D.3)
+// ============================================================================
+
+/**
+ * Optional section for validation
+ */
+typedef struct {
+    const char* section_path;
+    bool optional;
+    IRRecoveryStrategy recovery;
+} IRValidationSection;
+
+/**
+ * Mark a section as optional during validation
+ * @param ctx Validation context
+ * @param section_path Path to section (e.g., "root.animations")
+ */
+void ir_validation_mark_section_optional(IRValidationContext* ctx,
+                                          const char* section_path);
+
+/**
+ * Check if a section is marked as optional
+ * @return true if optional
+ */
+bool ir_validation_is_section_optional(IRValidationContext* ctx,
+                                       const char* section_path);
+
+/**
+ * Add optional section to validation context
+ */
+void ir_validation_add_optional_section(IRValidationContext* ctx,
+                                        const char* section_path,
+                                        IRRecoveryStrategy recovery);
+
+/**
+ * Clear all optional sections
+ */
+void ir_validation_clear_optional_sections(IRValidationContext* ctx);
+
+/**
+ * Skip validation of a section
+ * @return true if section was skipped
+ */
+bool ir_validation_skip_section(IRValidationContext* ctx,
+                                const char* section_path);
 
 #endif // IR_VALIDATION_H
