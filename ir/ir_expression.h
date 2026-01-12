@@ -49,6 +49,11 @@ typedef enum {
     EXPR_UNARY,           // {"op": "neg", "operand": ...}
     EXPR_CALL,            // {"op": "call", "function": "name", "args": [...]}
     EXPR_TERNARY,         // {"op": "ternary", "condition": ..., "then": ..., "else": ...}
+    // NEW: Enhanced expression types for Phase 1
+    EXPR_MEMBER_ACCESS,    // Member access: obj.prop where obj is an expression
+    EXPR_COMPUTED_MEMBER, // Computed member: obj[key] where key is an expression
+    EXPR_METHOD_CALL,     // Method call: obj.method(args)
+    EXPR_GROUP,           // Grouped expression: (expr) for precedence
 } IRExprType;
 
 // Forward declarations
@@ -101,6 +106,29 @@ typedef struct IRExpression {
             struct IRExpression* then_expr;
             struct IRExpression* else_expr;
         } ternary;
+
+        // NEW: Enhanced expression types for Phase 1
+        struct {
+            struct IRExpression* object;    // The object being accessed
+            char* property;                  // Property name (static)
+            uint32_t property_hash;          // Pre-computed hash for fast lookup
+        } member_access;
+
+        struct {
+            struct IRExpression* object;    // The object being accessed
+            struct IRExpression* key;        // Dynamic key expression
+        } computed_member;
+
+        struct {
+            struct IRExpression* receiver;  // Object receiving the call
+            char* method_name;               // Method name
+            struct IRExpression** args;     // Argument expressions
+            int arg_count;
+        } method_call;
+
+        struct {
+            struct IRExpression* inner;     // Inner expression
+        } group;
     };
 } IRExpression;
 
@@ -199,6 +227,12 @@ IRExpression* ir_expr_ternary(IRExpression* condition, IRExpression* then_expr, 
 
 // Call expression
 IRExpression* ir_expr_call(const char* function, IRExpression** args, int arg_count);
+
+// NEW: Enhanced expression constructors for Phase 1
+IRExpression* ir_expr_member_access(IRExpression* object, const char* property);
+IRExpression* ir_expr_computed_member(IRExpression* object, IRExpression* key);
+IRExpression* ir_expr_method_call(IRExpression* receiver, const char* method_name, IRExpression** args, int arg_count);
+IRExpression* ir_expr_group(IRExpression* inner);
 
 // Convenience binary operators
 IRExpression* ir_expr_add(IRExpression* left, IRExpression* right);
