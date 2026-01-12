@@ -183,8 +183,6 @@ void* ir_arena_alloc(IRArena* arena, size_t size) {
 
     // Check if we have enough space
     if (arena->offset + aligned_size > arena->size) {
-        fprintf(stderr, "[ir_memory] Arena out of space: requested %zu, available %zu\n",
-                aligned_size, arena->size - arena->offset);
         return NULL;
     }
 

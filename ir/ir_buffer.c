@@ -149,7 +149,6 @@ bool ir_buffer_read(IRBuffer* buffer, void* data, size_t size) {
 
     // Check if we have enough data
     if (buffer->size + size > buffer->capacity) {
-        IR_LOG_ERROR("BUFFER", "Read beyond buffer end");
         return false;
     }
 
@@ -164,7 +163,6 @@ bool ir_buffer_seek(IRBuffer* buffer, size_t position) {
     if (!buffer) return false;
 
     if (position > buffer->capacity) {
-        IR_LOG_ERROR("BUFFER", "Seek beyond buffer end");
         return false;
     }
 

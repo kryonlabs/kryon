@@ -60,7 +60,7 @@ static const char* g_current_suite_name = NULL;
     fflush(stdout); \
     test_func(); \
     g_test_passed++; \
-    printf("\r" COLOR_GREEN "✓ Passed: %s" COLOR_RESET "\n", #test_func); \
+    printf("\r" COLOR_GREEN "✓ Passed: %s" COLOR_RESET "    \n", #test_func); \
   } while(0)
 
 // Test failure handling
