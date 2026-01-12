@@ -362,10 +362,10 @@ doctor:
 		echo "Configuration: not created yet"; \
 	fi
 
-# Testing
+# Testing - run organized IR tests
 test:
-	@echo "Running tests..."
-	$(NIM) c -r tests/test_all.nim
+	@echo "Running IR tests..."
+	$(MAKE) -C ir test
 
 # Modular test targets for IR pipeline
 test-serialization:

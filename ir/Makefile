@@ -367,10 +367,8 @@ clean:
 	rm -f $(CJSON_DIR)/*.o $(TOML_DIR)/*.o
 	rm -f $(IR_STATIC_LIB) $(IR_SHARED_LIB)
 
-# Build test
-test: $(IR_STATIC_LIB)
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -L$(BUILD_DIR) -lkryon_ir test_ir.c -o $(BUILD_DIR)/test_ir
-	$(BUILD_DIR)/test_ir
+# Build and run organized tests (Phase 1 + Phase 2)
+test: test-ir-organized
 
 # Build and run VM test
 test-vm: $(IR_STATIC_LIB)
@@ -433,6 +431,78 @@ test-integration: $(IR_STATIC_LIB)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test_integration.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_integration
 	$(BUILD_DIR)/test_integration
 
+# ============================================================================
+# Phase 1: Core IR Foundation Tests
+# These test fundamental utilities: buffer, memory, string builder, json, color
+# ============================================================================
+
+# Buffer tests (IRBuffer - dynamic buffer for binary serialization)
+test-ir-buffer: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_buffer.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_buffer
+	$(BUILD_DIR)/test_ir_buffer
+
+# Memory tests (pool and arena allocators)
+test-ir-memory: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_memory.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_memory
+	$(BUILD_DIR)/test_ir_memory
+
+# String builder tests (IRStringBuilder - dynamic string concatenation)
+test-ir-string-builder: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_string_builder.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_string_builder
+	$(BUILD_DIR)/test_ir_string_builder
+
+# JSON helpers tests (cJSON wrapper functions)
+test-ir-json-helpers: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_json_helpers.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_json_helpers
+	$(BUILD_DIR)/test_ir_json_helpers
+
+# Color utils tests (color creation and named colors)
+test-ir-color-utils: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_color_utils.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_color_utils
+	$(BUILD_DIR)/test_ir_color_utils
+
+# Run all Phase 1 core foundation tests
+test-ir-core: test-ir-buffer test-ir-memory test-ir-string-builder test-ir-json-helpers test-ir-color-utils
+
+# ============================================================================
+# Phase 2: IR Core Types Tests
+# These test core type systems: component types, layout, style, events, properties
+# ============================================================================
+
+# Component type tests (IRComponentType enum and conversion functions)
+test-ir-component-types: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_component_types.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_component_types
+	$(BUILD_DIR)/test_ir_component_types
+
+# Layout type tests (IRDimension, IRAlignment, layout structures)
+test-ir-layout-types: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_layout_types.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_layout_types
+	$(BUILD_DIR)/test_ir_layout_types
+
+# Style type tests (IRColor, IRGradient, style structures)
+test-ir-style-types: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_style_types.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_style_types
+	$(BUILD_DIR)/test_ir_style_types
+
+# Event type tests (IREventType enum and conversion functions)
+test-ir-event-types: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_event_types.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_event_types
+	$(BUILD_DIR)/test_ir_event_types
+
+# Property tests (IRFlexbox, IRGrid, IRSpacing, IRBorder, IRTypography, etc.)
+test-ir-properties: $(IR_STATIC_LIB)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) test/test_ir_properties.c $(IR_STATIC_LIB) -lm -o $(BUILD_DIR)/test_ir_properties
+	$(BUILD_DIR)/test_ir_properties
+
+# Run all Phase 2 core types tests
+test-ir-types: test-ir-component-types test-ir-layout-types test-ir-style-types test-ir-event-types test-ir-properties
+
+# Run all organized IR tests (Phase 1 + Phase 2)
+test-ir-organized: test-ir-core test-ir-types
+
+# Run ALL tests (organized tests + legacy tests)
+test-all: test-ir-organized test-expression-all test-integration
+
 # Debug build
 debug: CFLAGS += -g -DDEBUG
 debug: $(IR_STATIC_LIB) $(IR_SHARED_LIB)
@@ -469,17 +539,28 @@ help:
 	@echo "  all                - Build static and shared libraries"
 	@echo "  static             - Build static library only"
 	@echo "  shared             - Build shared library only"
-	@echo "  test               - Build and run test program"
+	@echo "  test               - Run organized tests (Phase 1 + Phase 2)"
+	@echo "  test-all           - Run ALL tests (Phase 1 + Phase 2 + expressions + integration)"
+	@echo "  test-ir-organized  - Run all Phase 1 + Phase 2 organized tests"
+	@echo "  test-ir-core       - Run Phase 1 Core IR Foundation tests (buffer, memory, etc)"
+	@echo "  test-ir-types      - Run Phase 2 IR Core Types tests"
+	@echo "  test-ir-buffer     - Test IRBuffer (dynamic buffer for serialization)"
+	@echo "  test-ir-memory     - Test pool/arena allocators"
+	@echo "  test-ir-string-builder - Test IRStringBuilder (string concatenation)"
+	@echo "  test-ir-json-helpers - Test cJSON wrapper functions"
+	@echo "  test-ir-color-utils - Test color utilities"
+	@echo "  test-ir-component-types - Test component type system"
+	@echo "  test-ir-layout-types - Test layout type system"
+	@echo "  test-ir-style-types - Test style type system"
+	@echo "  test-ir-event-types - Test event type system"
+	@echo "  test-ir-properties - Test property types"
 	@echo "  test-vm            - Build and run VM prototype test"
 	@echo "  test-vm-integration - Build and run VM integration test (Phase 1)"
 	@echo "  test-event-metadata - Build and run event metadata test (Phase 2)"
 	@echo "  test-phase3        - Build and run Phase 3 backend test"
 	@echo "  test-multi-instance - Build and run multi-instance test"
-	@echo "  test-expression-phase1 - Build and run expression Phase 1 test"
-	@echo "  test-expression-parser - Build and run expression parser test"
-	@echo "  test-expression-compiler - Build and run expression compiler test"
-	@echo "  test-expression-eval - Build and run expression evaluation test"
 	@echo "  test-expression-all - Run all expression tests"
+	@echo "  test-integration   - Build and run integration test (Phase 7)"
 	@echo "  clean              - Remove build artifacts"
 	@echo "  install-headers    - Copy headers to build directory"
 	@echo "  debug              - Build with debug symbols"
@@ -490,4 +571,4 @@ help:
 	@echo "  tsan               - Build with ThreadSanitizer"
 	@echo "  help               - Show this help"
 
-.PHONY: all static clean test test-vm test-vm-integration test-event-metadata test-phase3 test-multi-instance test-expression-phase1 test-expression-parser test-expression-compiler test-expression-eval test-expression-cache test-expression-all debug install-headers help asan ubsan asan-ubsan tsan
+.PHONY: all static clean test test-vm test-vm-integration test-event-metadata test-phase3 test-multi-instance test-expression-phase1 test-expression-parser test-expression-compiler test-expression-eval test-expression-cache test-expression-all test-integration test-ir-core test-ir-buffer test-ir-memory test-ir-string-builder test-ir-json-helpers test-ir-color-utils test-ir-component-types test-ir-layout-types test-ir-style-types test-ir-event-types test-ir-properties test-ir-types test-ir-organized test-all debug install-headers help asan ubsan asan-ubsan tsan
