@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ir_expression.h"
+#include "ir_expression_compiler.h"
 #include "cJSON.h"
 #include "ir_json_helpers.h"
 #include <stdlib.h>
@@ -137,6 +138,56 @@ IRExpression* ir_expr_call(const char* function, IRExpression** args, int arg_co
     } else {
         expr->call.args = NULL;
     }
+    return expr;
+}
+
+// ============================================================================
+// NEW: Enhanced expression constructors for Phase 1
+// ============================================================================
+
+IRExpression* ir_expr_member_access(IRExpression* object, const char* property) {
+    IRExpression* expr = calloc(1, sizeof(IRExpression));
+    if (!expr) return NULL;
+    expr->type = EXPR_MEMBER_ACCESS;
+    expr->member_access.object = object;
+    expr->member_access.property = safe_strdup(property);
+    expr->member_access.property_hash = (uint32_t)ir_hash_string(property);
+    return expr;
+}
+
+IRExpression* ir_expr_computed_member(IRExpression* object, IRExpression* key) {
+    IRExpression* expr = calloc(1, sizeof(IRExpression));
+    if (!expr) return NULL;
+    expr->type = EXPR_COMPUTED_MEMBER;
+    expr->computed_member.object = object;
+    expr->computed_member.key = key;
+    return expr;
+}
+
+IRExpression* ir_expr_method_call(IRExpression* receiver, const char* method_name,
+                                   IRExpression** args, int arg_count) {
+    IRExpression* expr = calloc(1, sizeof(IRExpression));
+    if (!expr) return NULL;
+    expr->type = EXPR_METHOD_CALL;
+    expr->method_call.receiver = receiver;
+    expr->method_call.method_name = safe_strdup(method_name);
+    expr->method_call.arg_count = arg_count;
+    if (arg_count > 0 && args) {
+        expr->method_call.args = calloc(arg_count, sizeof(IRExpression*));
+        if (expr->method_call.args) {
+            memcpy(expr->method_call.args, args, arg_count * sizeof(IRExpression*));
+        }
+    } else {
+        expr->method_call.args = NULL;
+    }
+    return expr;
+}
+
+IRExpression* ir_expr_group(IRExpression* inner) {
+    IRExpression* expr = calloc(1, sizeof(IRExpression));
+    if (!expr) return NULL;
+    expr->type = EXPR_GROUP;
+    expr->group.inner = inner;
     return expr;
 }
 
@@ -358,6 +409,26 @@ void ir_expr_free(IRExpression* expr) {
                 ir_expr_free(expr->call.args[i]);
             }
             free(expr->call.args);
+            break;
+        // NEW: Enhanced expression types for Phase 1
+        case EXPR_MEMBER_ACCESS:
+            free(expr->member_access.property);
+            ir_expr_free(expr->member_access.object);
+            break;
+        case EXPR_COMPUTED_MEMBER:
+            ir_expr_free(expr->computed_member.object);
+            ir_expr_free(expr->computed_member.key);
+            break;
+        case EXPR_METHOD_CALL:
+            free(expr->method_call.method_name);
+            ir_expr_free(expr->method_call.receiver);
+            for (int i = 0; i < expr->method_call.arg_count; i++) {
+                ir_expr_free(expr->method_call.args[i]);
+            }
+            free(expr->method_call.args);
+            break;
+        case EXPR_GROUP:
+            ir_expr_free(expr->group.inner);
             break;
         default:
             break;
@@ -585,6 +656,41 @@ cJSON* ir_expr_to_json(IRExpression* expr) {
             cJSON_AddItemToObject(json, "args", args);
             return json;
 
+        // NEW: Enhanced expression types for Phase 1
+        case EXPR_MEMBER_ACCESS:
+            json = cJSON_CreateObject();
+            cJSON_AddStringToObject(json, "op", "member_access");
+            cJSON_AddItemToObject(json, "object", ir_expr_to_json(expr->member_access.object));
+            cJSON_AddStringToObject(json, "property", expr->member_access.property ? expr->member_access.property : "");
+            return json;
+
+        case EXPR_COMPUTED_MEMBER:
+            json = cJSON_CreateObject();
+            cJSON_AddStringToObject(json, "op", "computed_member");
+            cJSON_AddItemToObject(json, "object", ir_expr_to_json(expr->computed_member.object));
+            cJSON_AddItemToObject(json, "key", ir_expr_to_json(expr->computed_member.key));
+            return json;
+
+        case EXPR_METHOD_CALL:
+            json = cJSON_CreateObject();
+            cJSON_AddStringToObject(json, "op", "method_call");
+            cJSON_AddItemToObject(json, "receiver", ir_expr_to_json(expr->method_call.receiver));
+            cJSON_AddStringToObject(json, "method", expr->method_call.method_name ? expr->method_call.method_name : "");
+            {
+                cJSON* method_args = cJSON_CreateArray();
+                for (int i = 0; i < expr->method_call.arg_count; i++) {
+                    cJSON_AddItemToArray(method_args, ir_expr_to_json(expr->method_call.args[i]));
+                }
+                cJSON_AddItemToObject(json, "args", method_args);
+            }
+            return json;
+
+        case EXPR_GROUP:
+            json = cJSON_CreateObject();
+            cJSON_AddStringToObject(json, "op", "group");
+            cJSON_AddItemToObject(json, "inner", ir_expr_to_json(expr->group.inner));
+            return json;
+
         default:
             return cJSON_CreateNull();
     }
@@ -789,6 +895,57 @@ IRExpression* ir_expr_from_json(cJSON* json) {
                     ir_expr_from_json(then_expr),
                     ir_expr_from_json(else_expr)
                 );
+            }
+
+            // NEW: Enhanced expression types for Phase 1
+            // Member access: {"op": "member_access", "object": expr, "property": "name"}
+            if (strcmp(op_str, "member_access") == 0) {
+                cJSON* object = cJSON_GetObjectItem(json, "object");
+                cJSON* property = cJSON_GetObjectItem(json, "property");
+                if (object && property && cJSON_IsString(property)) {
+                    return ir_expr_member_access(ir_expr_from_json(object), property->valuestring);
+                }
+            }
+
+            // Computed member: {"op": "computed_member", "object": expr, "key": expr}
+            if (strcmp(op_str, "computed_member") == 0) {
+                cJSON* object = cJSON_GetObjectItem(json, "object");
+                cJSON* key = cJSON_GetObjectItem(json, "key");
+                if (object && key) {
+                    return ir_expr_computed_member(ir_expr_from_json(object), ir_expr_from_json(key));
+                }
+            }
+
+            // Method call: {"op": "method_call", "receiver": expr, "method": "name", "args": [...]}
+            if (strcmp(op_str, "method_call") == 0) {
+                cJSON* receiver = cJSON_GetObjectItem(json, "receiver");
+                cJSON* method = cJSON_GetObjectItem(json, "method");
+                cJSON* args = cJSON_GetObjectItem(json, "args");
+                const char* method_name = method && cJSON_IsString(method) ? method->valuestring : "";
+                int arg_count = 0;
+                IRExpression** arg_exprs = NULL;
+
+                if (args && cJSON_IsArray(args)) {
+                    arg_count = cJSON_GetArraySize(args);
+                    if (arg_count > 0) {
+                        arg_exprs = calloc(arg_count, sizeof(IRExpression*));
+                        for (int i = 0; i < arg_count; i++) {
+                            arg_exprs[i] = ir_expr_from_json(cJSON_GetArrayItem(args, i));
+                        }
+                    }
+                }
+
+                IRExpression* result = ir_expr_method_call(ir_expr_from_json(receiver), method_name, arg_exprs, arg_count);
+                free(arg_exprs);
+                return result;
+            }
+
+            // Group: {"op": "group", "inner": expr}
+            if (strcmp(op_str, "group") == 0) {
+                cJSON* inner = cJSON_GetObjectItem(json, "inner");
+                if (inner) {
+                    return ir_expr_group(ir_expr_from_json(inner));
+                }
             }
 
             // Unary operators - check both "operand" and "expr" field names
@@ -1037,6 +1194,31 @@ void ir_expr_print(IRExpression* expr) {
                 if (i > 0) printf(", ");
                 ir_expr_print(expr->call.args[i]);
             }
+            printf(")");
+            break;
+        // NEW: Enhanced expression types for Phase 1
+        case EXPR_MEMBER_ACCESS:
+            ir_expr_print(expr->member_access.object);
+            printf(".%s", expr->member_access.property ? expr->member_access.property : "?");
+            break;
+        case EXPR_COMPUTED_MEMBER:
+            ir_expr_print(expr->computed_member.object);
+            printf("[");
+            ir_expr_print(expr->computed_member.key);
+            printf("]");
+            break;
+        case EXPR_METHOD_CALL:
+            ir_expr_print(expr->method_call.receiver);
+            printf(".%s(", expr->method_call.method_name ? expr->method_call.method_name : "?");
+            for (int i = 0; i < expr->method_call.arg_count; i++) {
+                if (i > 0) printf(", ");
+                ir_expr_print(expr->method_call.args[i]);
+            }
+            printf(")");
+            break;
+        case EXPR_GROUP:
+            printf("(");
+            ir_expr_print(expr->group.inner);
             printf(")");
             break;
     }
