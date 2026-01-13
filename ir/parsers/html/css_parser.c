@@ -13,12 +13,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// Helper: Skip whitespace
-static const char* skip_whitespace(const char* str) {
-    while (*str && isspace(*str)) str++;
-    return str;
-}
-
 // Helper: Trim whitespace from string (modifies string in place)
 static void trim_whitespace(char* str) {
     if (!str) return;
@@ -1379,6 +1373,38 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                 style->font.decoration = IR_TEXT_DECORATION_OVERLINE;
             }
         }
+        // Letter spacing (character spacing)
+        else if (strcmp(prop, "letter-spacing") == 0) {
+            float spacing;
+            char unit[16] = "";
+            if (sscanf(val, "%f%15s", &spacing, unit) >= 1) {
+                if (strcmp(unit, "px") == 0 || unit[0] == '\0') {
+                    style->font.letter_spacing = spacing;
+                } else if (strcmp(unit, "em") == 0) {
+                    style->font.letter_spacing = spacing * 16;  // Approximate conversion
+                } else if (strcmp(val, "normal") == 0) {
+                    style->font.letter_spacing = 0;
+                } else {
+                    style->font.letter_spacing = spacing;
+                }
+            }
+        }
+        // Word spacing
+        else if (strcmp(prop, "word-spacing") == 0) {
+            float spacing;
+            char unit[16] = "";
+            if (sscanf(val, "%f%15s", &spacing, unit) >= 1) {
+                if (strcmp(unit, "px") == 0 || unit[0] == '\0') {
+                    style->font.word_spacing = spacing;
+                } else if (strcmp(unit, "em") == 0) {
+                    style->font.word_spacing = spacing * 16;  // Approximate conversion
+                } else if (strcmp(val, "normal") == 0) {
+                    style->font.word_spacing = 0;
+                } else {
+                    style->font.word_spacing = spacing;
+                }
+            }
+        }
         // Text overflow (for truncating text with ellipsis)
         else if (strcmp(prop, "text-overflow") == 0) {
             if (strcmp(val, "clip") == 0) {
@@ -1417,6 +1443,89 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                 style->object_fit = IR_OBJECT_FIT_NONE;
             } else if (strcmp(val, "scale-down") == 0) {
                 style->object_fit = IR_OBJECT_FIT_SCALE_DOWN;
+            }
+        }
+        // Transform origin (for transform origin point)
+        else if (strcmp(prop, "transform-origin") == 0) {
+            // Parse transform-origin: <x> <y>
+            // Values can be: pixels, percentages, or keywords (center, top, bottom, left, right)
+            char buf[256];
+            strncpy(buf, val, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = '\0';
+
+            char* parts[2] = {NULL, NULL};
+            int count = 0;
+            char* token = strtok(buf, " \t");
+            while (token && count < 2) {
+                parts[count++] = token;
+                token = strtok(NULL, " \t");
+            }
+
+            // Parse X value
+            if (parts[0]) {
+                if (strcmp(parts[0], "left") == 0) {
+                    style->transform.origin_x = 0.0f;
+                    style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_X;
+                } else if (strcmp(parts[0], "center") == 0) {
+                    style->transform.origin_x = 0.5f;
+                    style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_X;
+                } else if (strcmp(parts[0], "right") == 0) {
+                    style->transform.origin_x = 1.0f;
+                    style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_X;
+                } else if (strcmp(parts[0], "top") == 0 || strcmp(parts[0], "bottom") == 0) {
+                    // For single value, if it's top/bottom, set both X and Y
+                    style->transform.origin_x = 0.5f;
+                    style->transform.origin_y = (strcmp(parts[0], "top") == 0) ? 0.0f : 1.0f;
+                    style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_X | IR_TRANSFORM_ORIGIN_SET_Y;
+                } else {
+                    // Try to parse as percentage or pixel value
+                    float val;
+                    char unit[16] = "";
+                    if (sscanf(parts[0], "%f%15s", &val, unit) >= 1) {
+                        if (strcmp(unit, "%") == 0) {
+                            style->transform.origin_x = val / 100.0f;
+                        } else if (strcmp(unit, "px") == 0 || unit[0] == '\0') {
+                            style->transform.origin_x = val;  // Store in pixels (may need normalization)
+                        } else {
+                            style->transform.origin_x = val;
+                        }
+                        style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_X;
+                    }
+                }
+            }
+
+            // Parse Y value (if provided)
+            if (count == 2 && parts[1]) {
+                if (strcmp(parts[1], "top") == 0) {
+                    style->transform.origin_y = 0.0f;
+                    style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_Y;
+                } else if (strcmp(parts[1], "center") == 0) {
+                    style->transform.origin_y = 0.5f;
+                    style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_Y;
+                } else if (strcmp(parts[1], "bottom") == 0) {
+                    style->transform.origin_y = 1.0f;
+                    style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_Y;
+                } else {
+                    // Try to parse as percentage or pixel value
+                    float val;
+                    char unit[16] = "";
+                    if (sscanf(parts[1], "%f%15s", &val, unit) >= 1) {
+                        if (strcmp(unit, "%") == 0) {
+                            style->transform.origin_y = val / 100.0f;
+                        } else if (strcmp(unit, "px") == 0 || unit[0] == '\0') {
+                            style->transform.origin_y = val;
+                        } else {
+                            style->transform.origin_y = val;
+                        }
+                        style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_Y;
+                    }
+                }
+            } else if (count == 1) {
+                // Single value: apply to both X and Y (unless it was top/bottom which was handled above)
+                if (strcmp(parts[0], "top") != 0 && strcmp(parts[0], "bottom") != 0) {
+                    style->transform.origin_y = style->transform.origin_x;
+                    style->transform.origin_flags |= IR_TRANSFORM_ORIGIN_SET_Y;
+                }
             }
         }
         // Overflow properties (for scroll behavior)
@@ -1915,6 +2024,70 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                 }
             }
         }
+        // Cursor property (for mouse cursor appearance)
+        else if (strcmp(prop, "cursor") == 0) {
+            if (strcmp(val, "auto") == 0) {
+                style->cursor = IR_CURSOR_AUTO;
+            } else if (strcmp(val, "default") == 0) {
+                style->cursor = IR_CURSOR_DEFAULT;
+            } else if (strcmp(val, "pointer") == 0) {
+                style->cursor = IR_CURSOR_POINTER;
+            } else if (strcmp(val, "wait") == 0) {
+                style->cursor = IR_CURSOR_WAIT;
+            } else if (strcmp(val, "text") == 0) {
+                style->cursor = IR_CURSOR_TEXT;
+            } else if (strcmp(val, "move") == 0) {
+                style->cursor = IR_CURSOR_MOVE;
+            } else if (strcmp(val, "not-allowed") == 0) {
+                style->cursor = IR_CURSOR_NOT_ALLOWED;
+            } else if (strcmp(val, "grab") == 0) {
+                style->cursor = IR_CURSOR_GRAB;
+            } else if (strcmp(val, "grabbing") == 0) {
+                style->cursor = IR_CURSOR_GRABBING;
+            } else if (strcmp(val, "crosshair") == 0) {
+                style->cursor = IR_CURSOR_CROSSHAIR;
+            } else if (strcmp(val, "help") == 0) {
+                style->cursor = IR_CURSOR_HELP;
+            } else if (strcmp(val, "progress") == 0) {
+                style->cursor = IR_CURSOR_PROGRESS;
+            }
+        }
+        // Pointer events property (for controlling hit testing)
+        else if (strcmp(prop, "pointer-events") == 0) {
+            if (strcmp(val, "auto") == 0) {
+                style->pointer_events = IR_POINTER_EVENTS_AUTO;
+            } else if (strcmp(val, "none") == 0) {
+                style->pointer_events = IR_POINTER_EVENTS_NONE;
+            } else if (strcmp(val, "visiblePainted") == 0 || strcmp(val, "visiblepainted") == 0) {
+                style->pointer_events = IR_POINTER_EVENTS_VISIBLEPAINTED;
+            }
+        }
+        // Opacity property (0.0 to 1.0)
+        else if (strcmp(prop, "opacity") == 0) {
+            float opacity_val;
+            if (sscanf(val, "%f", &opacity_val) == 1) {
+                style->opacity = opacity_val;
+                if (style->opacity < 0.0f) style->opacity = 0.0f;
+                if (style->opacity > 1.0f) style->opacity = 1.0f;
+            }
+        }
+        // Item-specific alignment properties (for grid/flex items)
+        else if (strcmp(prop, "align-self") == 0) {
+            if (strcmp(val, "auto") == 0) style->grid_item.align_self = IR_ALIGNMENT_AUTO;
+            else if (strcmp(val, "flex-start") == 0 || strcmp(val, "start") == 0) style->grid_item.align_self = IR_ALIGNMENT_START;
+            else if (strcmp(val, "center") == 0) style->grid_item.align_self = IR_ALIGNMENT_CENTER;
+            else if (strcmp(val, "flex-end") == 0 || strcmp(val, "end") == 0) style->grid_item.align_self = IR_ALIGNMENT_END;
+            else if (strcmp(val, "stretch") == 0) style->grid_item.align_self = IR_ALIGNMENT_STRETCH;
+            else if (strcmp(val, "baseline") == 0) style->grid_item.align_self = IR_ALIGNMENT_BASELINE;
+        }
+        else if (strcmp(prop, "justify-self") == 0) {
+            if (strcmp(val, "auto") == 0) style->grid_item.justify_self = IR_ALIGNMENT_AUTO;
+            else if (strcmp(val, "flex-start") == 0 || strcmp(val, "start") == 0) style->grid_item.justify_self = IR_ALIGNMENT_START;
+            else if (strcmp(val, "center") == 0) style->grid_item.justify_self = IR_ALIGNMENT_CENTER;
+            else if (strcmp(val, "flex-end") == 0 || strcmp(val, "end") == 0) style->grid_item.justify_self = IR_ALIGNMENT_END;
+            else if (strcmp(val, "stretch") == 0) style->grid_item.justify_self = IR_ALIGNMENT_STRETCH;
+            else if (strcmp(val, "baseline") == 0) style->grid_item.justify_self = IR_ALIGNMENT_BASELINE;
+        }
     }
 }
 
@@ -1967,6 +2140,14 @@ void ir_css_apply_to_layout(IRLayout* layout, const CSSProperty* props, uint32_t
             else if (strcmp(val, "center") == 0) layout->flex.cross_axis = IR_ALIGNMENT_CENTER;
             else if (strcmp(val, "flex-end") == 0) layout->flex.cross_axis = IR_ALIGNMENT_END;
             else if (strcmp(val, "stretch") == 0) layout->flex.cross_axis = IR_ALIGNMENT_STRETCH;
+        }
+        else if (strcmp(prop, "align-content") == 0) {
+            if (strcmp(val, "flex-start") == 0) layout->flex.align_content = IR_ALIGNMENT_START;
+            else if (strcmp(val, "center") == 0) layout->flex.align_content = IR_ALIGNMENT_CENTER;
+            else if (strcmp(val, "flex-end") == 0) layout->flex.align_content = IR_ALIGNMENT_END;
+            else if (strcmp(val, "stretch") == 0) layout->flex.align_content = IR_ALIGNMENT_STRETCH;
+            else if (strcmp(val, "space-between") == 0) layout->flex.align_content = IR_ALIGNMENT_SPACE_BETWEEN;
+            else if (strcmp(val, "space-around") == 0) layout->flex.align_content = IR_ALIGNMENT_SPACE_AROUND;
         }
         else if (strcmp(prop, "gap") == 0) {
             unsigned int gap;

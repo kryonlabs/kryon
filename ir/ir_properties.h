@@ -41,6 +41,7 @@ typedef struct {
     uint32_t gap;
     IRAlignment cross_axis;
     IRAlignment justify_content;
+    IRAlignment align_content;     // For wrapped flex lines (align-content CSS property)
     uint8_t grow;      // Flex grow factor (0-255)
     uint8_t shrink;    // Flex shrink factor (0-255)
     float basis;       // Flex basis in pixels (0 = auto/content)
@@ -216,7 +217,13 @@ typedef struct {
     float translate_x, translate_y;
     float scale_x, scale_y;
     float rotate;
+    float origin_x, origin_y;   // transform-origin (default: 0.5, 0.5 for center)
+    uint8_t origin_flags;       // Bitmask for which origin is explicitly set
 } IRTransform;
+
+// Transform origin flags
+#define IR_TRANSFORM_ORIGIN_SET_X (1 << 0)
+#define IR_TRANSFORM_ORIGIN_SET_Y (1 << 1)
 
 // ============================================================================
 // Animation
@@ -411,6 +418,27 @@ typedef enum {
     IR_OBJECT_FIT_SCALE_DOWN
 } IRObjectFit;
 
+typedef enum {
+    IR_CURSOR_AUTO = 0,         // Browser determines
+    IR_CURSOR_DEFAULT,          // Default arrow cursor
+    IR_CURSOR_POINTER,          // Pointer/hand cursor
+    IR_CURSOR_WAIT,             // Busy/waiting cursor
+    IR_CURSOR_TEXT,             // Text input cursor
+    IR_CURSOR_MOVE,             // Move cursor
+    IR_CURSOR_NOT_ALLOWED,      // Not allowed/prohibited cursor
+    IR_CURSOR_GRAB,             // Grab/open hand cursor
+    IR_CURSOR_GRABBING,         // Grabbing/closed hand cursor
+    IR_CURSOR_CROSSHAIR,        // Crosshair cursor
+    IR_CURSOR_HELP,             // Help cursor
+    IR_CURSOR_PROGRESS          // Progress cursor
+} IRCursorType;
+
+typedef enum {
+    IR_POINTER_EVENTS_AUTO = 0, // Default - element participates in pointer events
+    IR_POINTER_EVENTS_NONE,     // Element does not participate in pointer events
+    IR_POINTER_EVENTS_VISIBLEPAINTED  // Element participates only when painted
+} IRCursorPointerType;
+
 // ============================================================================
 // Responsive Design
 // ============================================================================
@@ -526,6 +554,8 @@ typedef struct IRStyle {
     IRPseudoStyle pseudo_styles[IR_MAX_PSEUDO_STYLES];
     uint8_t pseudo_style_count;
     uint32_t current_pseudo_states;
+    IRCursorType cursor;               // CSS cursor property
+    IRCursorPointerType pointer_events; // CSS pointer-events property
 } IRStyle;
 
 // ============================================================================

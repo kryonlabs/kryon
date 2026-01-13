@@ -313,7 +313,8 @@ static void update_active_transitions(IRTransitionContext* ctx,
 static void detect_and_start_transitions(IRTransitionContext* ctx,
                                         IRComponent* component,
                                         IRComponentTransitionState* state) {
-    if (!component || !component->style) return;
+    if (!ctx || !component || !state) return;
+    if (!component->style) return;
 
     uint32_t current_state = ir_transition_get_pseudo_state(component);
     uint32_t previous_state = state->previous_pseudo_state;
@@ -330,9 +331,7 @@ static void detect_and_start_transitions(IRTransitionContext* ctx,
     }
 
     IRStyle* style = component->style;
-
-    // Check if there are any transition definitions
-    if (style->transition_count == 0) {
+    if (!style || style->transition_count == 0) {
         state->previous_pseudo_state = current_state;
         return;
     }
@@ -340,6 +339,7 @@ static void detect_and_start_transitions(IRTransitionContext* ctx,
     // State changed - start transitions for defined properties
     for (uint32_t i = 0; i < style->transition_count; i++) {
         IRTransition* trans = style->transitions[i];
+        if (!trans) continue;
 
         // Check if this transition should trigger
         // trigger_state == 0 means "always trigger on any state change"
@@ -363,6 +363,19 @@ static void detect_and_start_transitions(IRTransitionContext* ctx,
 void ir_transition_tree_update(IRTransitionContext* ctx, IRComponent* root, float delta_time) {
     if (!ctx || !root) return;
 
+    // Skip if component has no style or no transitions defined
+    if (!root->style || root->style->transition_count == 0) {
+        // Still process children recursively
+        if (root->children) {
+            for (uint32_t i = 0; i < root->child_count; i++) {
+                if (root->children[i]) {
+                    ir_transition_tree_update(ctx, root->children[i], delta_time);
+                }
+            }
+        }
+        return;
+    }
+
     // Skip subtrees without any registered transitions
     if (ctx->count == 0) return;
 
@@ -377,8 +390,12 @@ void ir_transition_tree_update(IRTransitionContext* ctx, IRComponent* root, floa
     }
 
     // Recursively process children
-    for (uint32_t i = 0; i < root->child_count; i++) {
-        ir_transition_tree_update(ctx, root->children[i], delta_time);
+    if (root->children) {
+        for (uint32_t i = 0; i < root->child_count; i++) {
+            if (root->children[i]) {
+                ir_transition_tree_update(ctx, root->children[i], delta_time);
+            }
+        }
     }
 }
 

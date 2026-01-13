@@ -74,22 +74,35 @@ IRStyle* ir_create_style(void) {
 }
 
 void ir_destroy_style(IRStyle* style) {
-    if (!style) return;
+    if (!style) {
+        fprintf(stderr, "[ir_destroy_style] NULL style\n");
+        return;
+    }
+
+    fprintf(stderr, "[ir_destroy_style] START style=%p\n", (void*)style);
 
     // Free animations
     if (style->animations) {
+        fprintf(stderr, "[ir_destroy_style] Freeing %u animations\n", style->animation_count);
         for (uint32_t i = 0; i < style->animation_count; i++) {
-            ir_animation_destroy(style->animations[i]);
+            if (style->animations[i]) {
+                ir_animation_destroy(style->animations[i]);
+            }
         }
         free(style->animations);
+        fprintf(stderr, "[ir_destroy_style] Freed animations\n");
     }
 
     // Free transitions
     if (style->transitions) {
+        fprintf(stderr, "[ir_destroy_style] Freeing %u transitions\n", style->transition_count);
         for (uint32_t i = 0; i < style->transition_count; i++) {
-            ir_transition_destroy(style->transitions[i]);
+            if (style->transitions[i]) {
+                ir_transition_destroy(style->transitions[i]);
+            }
         }
         free(style->transitions);
+        fprintf(stderr, "[ir_destroy_style] Freed transitions\n");
     }
 
     // Free gradient objects
@@ -102,7 +115,9 @@ void ir_destroy_style(IRStyle* style) {
 
     if (style->font.family) free(style->font.family);
 
+    fprintf(stderr, "[ir_destroy_style] About to free style=%p\n", (void*)style);
     free(style);
+    fprintf(stderr, "[ir_destroy_style] DONE\n");
 }
 
 void ir_set_style(IRComponent* component, IRStyle* style) {
