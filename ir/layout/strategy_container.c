@@ -6,6 +6,7 @@
 #define _GNU_SOURCE
 #include "ir_layout_strategy.h"
 #include "../ir_core.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -42,6 +43,33 @@ static void measure_container(IRComponent* comp, IRLayoutConstraints* constraint
 
     comp->layout_state->computed.width = width;
     comp->layout_state->computed.height = height;
+
+    // Debug: Check absolute positioning for Container
+    if (comp->id == 2) {
+        fprintf(stderr, "[CONTAINER TRAIT ID=2] style=%p position_mode=%d ABSOLUTE=%d abs_x=%.1f abs_y=%.1f\n",
+                (void*)comp->style,
+                comp->style ? comp->style->position_mode : -1,
+                IR_POSITION_ABSOLUTE,
+                comp->style ? comp->style->absolute_x : -999,
+                comp->style ? comp->style->absolute_y : -999);
+    }
+
+    // Handle absolute positioning for containers
+    if (comp->style && comp->style->position_mode == IR_POSITION_ABSOLUTE) {
+        comp->layout_state->computed.x = comp->style->absolute_x;
+        comp->layout_state->computed.y = comp->style->absolute_y;
+        if (comp->id == 2) {
+            fprintf(stderr, "[CONTAINER TRAIT SET ABSOLUTE] ID=2: computed.x=%.1f computed.y=%.1f\n",
+                    comp->layout_state->computed.x, comp->layout_state->computed.y);
+        }
+    } else {
+        if (comp->id == 2) {
+            fprintf(stderr, "[CONTAINER TRAIT NOT ABSOLUTE] ID=2: computed.x=0 computed.y=0\n");
+        }
+        comp->layout_state->computed.x = 0;
+        comp->layout_state->computed.y = 0;
+    }
+
     comp->layout_state->layout_valid = true;
 }
 

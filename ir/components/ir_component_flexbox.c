@@ -412,9 +412,38 @@ void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraint
         }
     }
 
+    // IMPORTANT: Compute container's position FIRST, before laying out children
+    // This ensures children are positioned relative to the container's actual position
+    float container_x, container_y;
+    if (c->style && c->style->position_mode == IR_POSITION_ABSOLUTE) {
+        container_x = c->style->absolute_x;
+        container_y = c->style->absolute_y;
+    } else {
+        container_x = parent_x;
+        container_y = parent_y;
+    }
+
     // Content area (inside padding)
     float content_width = own_width - pad_left - pad_right;
     float content_height = own_height - pad_top - pad_bottom;
+
+    // Check if centering is enabled (both justifyContent and alignItems are center)
+    bool should_center_h = false;
+    bool should_center_v = false;
+    if (c->layout) {
+        should_center_h = (c->layout->flex.justify_content == IR_ALIGNMENT_CENTER);
+        should_center_v = (c->layout->flex.cross_axis == IR_ALIGNMENT_CENTER);
+    }
+
+    // Debug: Check centering for ID=2
+    if (c->id == 2) {
+        fprintf(stderr, "[CONTAINER] ID=2: layout=%p should_center_h=%d should_center_v=%d\n",
+                (void*)c->layout, should_center_h, should_center_v);
+        if (c->layout) {
+            fprintf(stderr, "[CONTAINER] ID=2: justify_content=%d cross_axis=%d\n",
+                    c->layout->flex.justify_content, c->layout->flex.cross_axis);
+        }
+    }
 
     // Layout children in block flow (vertical stacking)
     float child_y = 0;
@@ -436,12 +465,12 @@ void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraint
             .min_height = 0
         };
 
-        // Layout child at current vertical position
+        // Layout child at temporary position (we'll adjust for centering after)
         ir_layout_single_pass(child, child_constraints,
-                              parent_x + pad_left,
-                              parent_y + pad_top + child_y);
+                              container_x + pad_left,
+                              container_y + pad_top + child_y);
 
-        // Advance vertical position
+        // Advance vertical position for stacking (before centering adjustment)
         if (child->layout_state) {
             float child_height = child->layout_state->computed.height;
             float child_width = child->layout_state->computed.width;
@@ -459,9 +488,53 @@ void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraint
         own_height = total_child_height + pad_top + pad_bottom;
     }
 
+    // Apply centering to children if needed
+    if (should_center_h || should_center_v) {
+        float content_start_x = container_x + pad_left;
+        float content_start_y = container_y + pad_top;
+
+        for (uint32_t i = 0; i < c->child_count; i++) {
+            IRComponent* child = c->children[i];
+            if (!child || !child->layout_state) continue;
+            if (child->style && !child->style->visible) continue;
+
+            float child_x = child->layout_state->computed.x;
+            float child_y = child->layout_state->computed.y;
+            float child_w = child->layout_state->computed.width;
+            float child_h = child->layout_state->computed.height;
+
+            // Debug: Show before centering for ID=2's children
+            if (c->id == 2) {
+                fprintf(stderr, "[CONTAINER] Before centering: child ID=%d x=%.1f y=%.1f w=%.1f h=%.1f\n",
+                        child->id, child_x, child_y, child_w, child_h);
+            }
+
+            // Apply horizontal centering
+            if (should_center_h) {
+                float offset_x = (content_width - child_w) / 2.0f;
+                child_x = content_start_x + offset_x;
+            }
+
+            // Apply vertical centering
+            if (should_center_v) {
+                float offset_y = (content_height - child_h) / 2.0f;
+                child_y = content_start_y + offset_y;
+            }
+
+            child->layout_state->computed.x = child_x;
+            child->layout_state->computed.y = child_y;
+
+            // Debug: Show after centering for ID=2's children
+            if (c->id == 2) {
+                fprintf(stderr, "[CONTAINER] After centering: child ID=%d x=%.1f y=%.1f (content_w=%.1f content_h=%.1f)\n",
+                        child->id, child_x, child_y, content_width, content_height);
+            }
+        }
+    }
+
     // Set container's computed dimensions
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
+    c->layout_state->computed.x = container_x;
+    c->layout_state->computed.y = container_y;
     c->layout_state->computed.width = own_width;
     c->layout_state->computed.height = own_height;
     c->layout_state->layout_valid = true;

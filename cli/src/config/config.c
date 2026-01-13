@@ -10,7 +10,57 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <ir_plugin.h>
+
+// ============================================================================
+// Plugin Dependency Tracking
+// ============================================================================
+
+/**
+ * Track loaded plugins to prevent duplicate loading and detect cycles.
+ * Uses static state since plugin loading is a one-time operation.
+ */
+#define MAX_LOADED_PLUGINS 64
+
+static char* g_loaded_plugin_names[MAX_LOADED_PLUGINS];
+static int g_loaded_plugin_count = 0;
+
+/**
+ * Check if a plugin has already been loaded.
+ */
+static bool is_plugin_loaded(const char* name) {
+    if (!name) return false;
+    for (int i = 0; i < g_loaded_plugin_count; i++) {
+        if (strcmp(g_loaded_plugin_names[i], name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Mark a plugin as loaded.
+ */
+static void mark_plugin_loaded(const char* name) {
+    if (!name) return;
+    if (g_loaded_plugin_count < MAX_LOADED_PLUGINS) {
+        g_loaded_plugin_names[g_loaded_plugin_count++] = str_copy(name);
+    }
+}
+
+/**
+ * Free loaded plugin tracking state.
+ * Called when plugin loading is complete.
+ */
+static void free_loaded_plugin_tracking(void) {
+    for (int i = 0; i < g_loaded_plugin_count; i++) {
+        free(g_loaded_plugin_names[i]);
+    }
+    g_loaded_plugin_count = 0;
+}
 
 /**
  * Create empty config with defaults
@@ -488,8 +538,299 @@ static bool ensure_plugin_compiled(const char* plugin_path, const char* plugin_n
 }
 
 /**
+ * Copy a file from src to dst
+ */
+static int copy_file(const char* src, const char* dst) {
+    FILE* in = fopen(src, "rb");
+    if (!in) return -1;
+
+    FILE* out = fopen(dst, "wb");
+    if (!out) {
+        fclose(in);
+        return -1;
+    }
+
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) {
+            fclose(in);
+            fclose(out);
+            return -1;
+        }
+    }
+
+    fclose(in);
+    fclose(out);
+    return 0;
+}
+
+/**
+ * Create a directory and all parents (like mkdir -p)
+ */
+static int mkdir_p(const char* path) {
+    char tmp[1024];
+    char *p = NULL;
+    size_t len;
+
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/') {
+        tmp[len - 1] = 0;
+    }
+
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            if (!file_is_directory(tmp)) {
+                if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+                    return -1;
+                }
+            }
+            *p = '/';
+        }
+    }
+
+    if (!file_is_directory(tmp)) {
+        if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Ensure a plugin is installed to the discovery path
+ * Copies .so and plugin.toml to ~/.local/share/kryon/plugins/<name>/
+ * This is needed so kir_to_html can discover the plugin at runtime
+ */
+static void ensure_plugin_in_discovery_path(const char* plugin_name, const char* plugin_path) {
+    const char* home = getenv("HOME");
+    if (!home) {
+        return;
+    }
+
+    /* Source paths */
+    char src_so[1024], src_toml[1024];
+    snprintf(src_so, sizeof(src_so), "%s/build/libkryon_%s.so", plugin_path, plugin_name);
+    snprintf(src_toml, sizeof(src_toml), "%s/plugin.toml", plugin_path);
+
+    /* Check if .so exists in build/ */
+    if (!file_exists(src_so)) {
+        /* Try root directory */
+        snprintf(src_so, sizeof(src_so), "%s/libkryon_%s.so", plugin_path, plugin_name);
+        if (!file_exists(src_so)) {
+            /* No .so found, skip installation */
+            return;
+        }
+    }
+
+    /* Destination: ~/.local/share/kryon/plugins/<plugin_name>/ */
+    char dest_dir[1024];
+    snprintf(dest_dir, sizeof(dest_dir), "%s/.local/share/kryon/plugins/%s", home, plugin_name);
+
+    /* Check if already installed */
+    if (file_is_directory(dest_dir)) {
+        char existing_so[1024];
+        snprintf(existing_so, sizeof(existing_so), "%s/libkryon_%s.so", dest_dir, plugin_name);
+        if (file_exists(existing_so)) {
+            /* Already installed */
+            return;
+        }
+    }
+
+    /* Create destination directory */
+    if (mkdir_p(dest_dir) != 0) {
+        fprintf(stderr, "[kryon][plugin] Warning: Failed to create directory %s\n", dest_dir);
+        return;
+    }
+
+    /* Copy .so file */
+    char dest_so[1024];
+    snprintf(dest_so, sizeof(dest_so), "%s/libkryon_%s.so", dest_dir, plugin_name);
+    if (copy_file(src_so, dest_so) != 0) {
+        fprintf(stderr, "[kryon][plugin] Warning: Failed to copy .so for %s\n", plugin_name);
+        return;
+    }
+
+    /* Copy plugin.toml */
+    char dest_toml[1024];
+    snprintf(dest_toml, sizeof(dest_toml), "%s/plugin.toml", dest_dir);
+    if (file_exists(src_toml)) {
+        if (copy_file(src_toml, dest_toml) != 0) {
+            fprintf(stderr, "[kryon][plugin] Warning: Failed to copy plugin.toml for %s\n", plugin_name);
+        }
+    }
+
+    printf("[kryon][plugin] Installed %s to discovery path: %s/\n", plugin_name, dest_dir);
+}
+
+/**
+ * Load a plugin's own kryon.toml to discover its dependencies.
+ * Returns a config object containing the plugin's [plugins] section.
+ * Caller must free the returned config with config_free().
+ */
+static KryonConfig* config_load_plugin_toml(const char* plugin_dir) {
+    char toml_path[1024];
+    snprintf(toml_path, sizeof(toml_path), "%s/kryon.toml", plugin_dir);
+
+    if (!file_exists(toml_path)) {
+        return NULL;
+    }
+
+    return config_load(toml_path);
+}
+
+/**
+ * Recursively load a plugin and all its dependencies.
+ * Dependencies are loaded BEFORE the parent plugin to ensure proper initialization order.
+ *
+ * @param plugin       Plugin dependency to load
+ * @param base_dir     Base directory for resolving relative paths
+ * @param depth        Recursion depth (for cycle detection and debugging)
+ * @return true if plugin and all dependencies loaded successfully
+ */
+static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_dir, int depth) {
+    // Prevent infinite recursion (max depth of 32 should be more than enough)
+    if (depth > 32) {
+        fprintf(stderr, "[kryon][plugin] Error: Maximum dependency depth exceeded for '%s'\n",
+                plugin->name);
+        return false;
+    }
+
+    // Skip if already loaded
+    if (is_plugin_loaded(plugin->name)) {
+        printf("[kryon][plugin] Dependency '%s' already loaded, skipping\n", plugin->name);
+        return true;
+    }
+
+    // Skip disabled plugins
+    if (!plugin->enabled) {
+        printf("[kryon][plugin] Dependency '%s' is disabled, skipping\n", plugin->name);
+        return true;
+    }
+
+    printf("[kryon][plugin] Loading dependency '%s' (depth %d)...\n", plugin->name, depth);
+
+    // Resolve plugin path
+    char* resolved_path = NULL;
+
+    if (plugin->git) {
+        // Install from git URL
+        printf("[kryon][plugin]   Installing '%s' from git: %s\n", plugin->name, plugin->git);
+        resolved_path = plugin_install_from_git(plugin->git, plugin->branch, plugin->name);
+        if (!resolved_path) {
+            fprintf(stderr, "[kryon][plugin]   Failed to install '%s' from git\n", plugin->name);
+            return false;
+        }
+    } else if (plugin->path) {
+        // Resolve plugin path relative to base_dir
+        resolved_path = path_resolve_canonical(plugin->path, base_dir);
+    } else {
+        fprintf(stderr, "[kryon][plugin]   Plugin '%s' missing path or git URL\n", plugin->name);
+        return false;
+    }
+
+    if (!resolved_path) {
+        fprintf(stderr, "[kryon][plugin]   Plugin '%s' path resolution failed\n", plugin->name);
+        return false;
+    }
+
+    if (!file_is_directory(resolved_path)) {
+        fprintf(stderr, "[kryon][plugin]   Plugin '%s' path is not a directory: %s\n",
+                plugin->name, resolved_path);
+        free(resolved_path);
+        return false;
+    }
+
+    // Load the plugin's own kryon.toml to check for dependencies
+    KryonConfig* plugin_config = config_load_plugin_toml(resolved_path);
+    if (plugin_config && plugin_config->plugins_count > 0) {
+        printf("[kryon][plugin]   Loading %d dependency(s) for '%s'...\n",
+               plugin_config->plugins_count, plugin->name);
+
+        // Recursively load all dependencies first
+        for (int i = 0; i < plugin_config->plugins_count; i++) {
+            PluginDep* dep = &plugin_config->plugins[i];
+            if (!load_plugin_with_dependencies(dep, resolved_path, depth + 1)) {
+                fprintf(stderr, "[kryon][plugin]   Failed to load dependency '%s' for '%s'\n",
+                        dep->name, plugin->name);
+                config_free(plugin_config);
+                free(resolved_path);
+                return false;
+            }
+        }
+    }
+    config_free(plugin_config);
+
+    // Auto-compile if needed (only for local source plugins, not git)
+    if (!plugin->git) {
+        if (!ensure_plugin_compiled(resolved_path, plugin->name)) {
+            fprintf(stderr, "[kryon][plugin]   Plugin '%s' compilation failed\n", plugin->name);
+            free(resolved_path);
+            return false;
+        }
+    }
+
+    // Check if already loaded via dlopen (e.g., by another plugin)
+    if (ir_plugin_is_loaded(plugin->name)) {
+        printf("[kryon][plugin]   Plugin '%s' already initialized\n", plugin->name);
+        free(resolved_path);
+        mark_plugin_loaded(plugin->name);
+        return true;
+    }
+
+    // Discover plugin in the specified path
+    uint32_t count = 0;
+    IRPluginDiscoveryInfo** discovered = ir_plugin_discover(resolved_path, &count);
+
+    if (!discovered || count == 0) {
+        fprintf(stderr, "[kryon][plugin]   No plugin found at: %s\n", resolved_path);
+        free(resolved_path);
+        return false;
+    }
+
+    // Load the first discovered plugin
+    IRPluginDiscoveryInfo* info = discovered[0];
+    IRPluginHandle* handle = ir_plugin_load_with_metadata(info->path, info->name, info);
+
+    if (handle) {
+        printf("[kryon][plugin]   Loaded plugin '%s' from %s\n", plugin->name, resolved_path);
+
+        // Call init function if present - MUST succeed or we fail
+        if (handle->init_func) {
+            if (!handle->init_func(NULL)) {
+                fprintf(stderr, "[kryon][plugin]   Plugin '%s' initialization failed\n", plugin->name);
+                ir_plugin_free_discovery(discovered, count);
+                free(resolved_path);
+                return false;
+            }
+        }
+
+        mark_plugin_loaded(plugin->name);
+
+        // Ensure plugin is installed to discovery path for kir_to_html
+        ensure_plugin_in_discovery_path(plugin->name, resolved_path);
+    } else {
+        fprintf(stderr, "[kryon][plugin]   Failed to load plugin '%s' from %s\n",
+                plugin->name, resolved_path);
+        ir_plugin_free_discovery(discovered, count);
+        free(resolved_path);
+        return false;
+    }
+
+    ir_plugin_free_discovery(discovered, count);
+    free(resolved_path);
+
+    return true;
+}
+
+/**
  * Load plugins specified in config from their paths.
  * ONLY loads plugins explicitly listed in kryon.toml - no auto-discovery.
+ * Now supports recursive plugin dependency resolution - when a plugin is loaded,
+ * its own kryon.toml is checked for [plugins] and those are loaded first.
  */
 bool config_load_plugins(KryonConfig* config) {
     // If no config plugins specified, we're done
@@ -502,130 +843,30 @@ bool config_load_plugins(KryonConfig* config) {
 
     bool all_loaded = true;
 
-    // Load any additional plugins specified in kryon.toml
-    // These can override or supplement auto-discovered plugins
+    printf("[Plugins] Loading %d plugin(s) with recursive dependency resolution...\n",
+           config->plugins_count);
+
+    // Load each plugin and its dependencies
     for (int i = 0; i < config->plugins_count; i++) {
         PluginDep* plugin = &config->plugins[i];
 
-        // Skip disabled plugins
-        if (!plugin->enabled) {
-            continue;
-        }
-
-        // Handle git URL or local path
-        char* resolved_path = NULL;
-        bool should_free_resolved = true;
-
-        if (plugin->git) {
-            // Install from git URL
-            printf("[kryon][plugin] Installing plugin '%s' from git: %s\n",
-                   plugin->name, plugin->git);
-            resolved_path = plugin_install_from_git(plugin->git, plugin->branch, plugin->name);
-            if (!resolved_path) {
-                fprintf(stderr, "[kryon][config] Failed to install plugin '%s' from git\n",
-                        plugin->name);
-                all_loaded = false;
-                continue;
-            }
-        } else if (plugin->path) {
-            // Resolve plugin path (handle relative paths like "../kryon-syntax")
-            // This canonicalizes the path, resolving .., ., and symlinks
-            resolved_path = path_resolve_canonical(plugin->path, cwd);
-        } else {
-            fprintf(stderr, "[kryon][config] Plugin '%s' missing path or git URL\n", plugin->name);
+        // Use the recursive loading function
+        if (!load_plugin_with_dependencies(plugin, cwd, 0)) {
+            fprintf(stderr, "[kryon][config] Failed to load plugin '%s'\n", plugin->name);
             all_loaded = false;
-            continue;
-        }
-
-        if (!resolved_path) {
-            // Path doesn't exist, has permission issues, or resolution failed
-            const char* path_desc = plugin->path ? plugin->path : plugin->git;
-            fprintf(stderr, "[kryon][config] Plugin '%s' path not found or inaccessible: %s\n",
-                    plugin->name, path_desc);
-            if (errno == ENOENT) {
-                fprintf(stderr, "                 (path does not exist)\n");
-            } else if (errno == EACCES) {
-                fprintf(stderr, "                 (permission denied)\n");
-            }
-            all_loaded = false;
-            continue;
-        }
-
-        if (!file_is_directory(resolved_path)) {
-            fprintf(stderr, "[kryon][config] Plugin '%s' path is not a directory: %s\n",
-                    plugin->name, resolved_path);
-            free(resolved_path);
-            all_loaded = false;
-            continue;
-        }
-
-        // Skip auto-compilation for git plugins (already compiled during install)
-        // Only auto-compile local source paths
-        if (!plugin->git) {
-            if (!ensure_plugin_compiled(resolved_path, plugin->name)) {
-                fprintf(stderr, "[kryon][config] Plugin '%s' compilation or verification failed\n",
-                        plugin->name);
-                free(resolved_path);
-                all_loaded = false;
-                continue;
-            }
-        }
-
-        // Check if plugin is already loaded (e.g., by auto-discovery)
-        if (ir_plugin_is_loaded(plugin->name)) {
-            plugin->resolved_path = str_copy(resolved_path);
-            free(resolved_path);
-            continue;
-        }
-
-        // Discover plugin in the specified path
-        uint32_t count = 0;
-        IRPluginDiscoveryInfo** discovered = ir_plugin_discover(resolved_path, &count);
-
-        if (!discovered || count == 0) {
-            fprintf(stderr, "[kryon][config] No plugin found at: %s\n", resolved_path);
-            if (resolved_path != plugin->path) {
-                free(resolved_path);
-            }
-            all_loaded = false;
-            continue;
-        }
-
-        // Load the first discovered plugin
-        IRPluginDiscoveryInfo* info = discovered[0];
-        IRPluginHandle* handle = ir_plugin_load_with_metadata(info->path, info->name, info);
-
-        if (handle) {
-            printf("[kryon][plugin] Loaded plugin '%s' from %s\n", plugin->name, resolved_path);
-
-            // Call init function if present - MUST succeed or we fail hard
-            if (handle->init_func) {
-                if (!handle->init_func(NULL)) {
-                    fprintf(stderr, "[kryon][plugin] Plugin '%s' initialization failed\n", plugin->name);
-                    ir_plugin_free_discovery(discovered, count);
-                    if (resolved_path != plugin->path) {
-                        free(resolved_path);
-                    }
-                    free(cwd);
-                    return false;  // Hard fail - do not proceed
-                }
-            }
-
-            // Store resolved path in config
-            plugin->resolved_path = str_copy(resolved_path);
-        } else {
-            fprintf(stderr, "[kryon][config] Failed to load plugin '%s' from %s\n",
-                    plugin->name, resolved_path);
-            all_loaded = false;
-        }
-
-        ir_plugin_free_discovery(discovered, count);
-        if (resolved_path != plugin->path) {
-            free(resolved_path);
         }
     }
 
     free(cwd);
+
+    // Clean up tracking state (but keep plugin names for reference)
+    // Note: We don't call free_loaded_plugin_tracking() here because the
+    // loaded plugin list may be needed for other operations.
+
+    if (!all_loaded) {
+        fprintf(stderr, "[kryon][config] Some plugins failed to load\n");
+    }
+
     return all_loaded;
 }
 

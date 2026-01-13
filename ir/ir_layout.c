@@ -489,9 +489,17 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
     if (style->position_mode == IR_POSITION_ABSOLUTE) {
         root->rendered_bounds.x = style->absolute_x;
         root->rendered_bounds.y = style->absolute_y;
+        if (root->layout_state) {
+            root->layout_state->computed.x = style->absolute_x;
+            root->layout_state->computed.y = style->absolute_y;
+        }
     } else {
         root->rendered_bounds.x = 0.0f;
         root->rendered_bounds.y = 0.0f;
+        if (root->layout_state) {
+            root->layout_state->computed.x = 0.0f;
+            root->layout_state->computed.y = 0.0f;
+        }
     }
 
     root->rendered_bounds.width = width;
@@ -2021,6 +2029,16 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                            float parent_x, float parent_y) {
     if (!c) return;
 
+    // DEBUG: Always print for component ID=2
+    if (c->id == 2) {
+        fprintf(stderr, "[LAYOUT] Component ID=2 type=%d pos_mode=%d abs=[%.1f,%.1f]\n",
+                c->type, c->style ? c->style->position_mode : -1,
+                c->style ? c->style->absolute_x : -999, c->style ? c->style->absolute_y : -999);
+    }
+    if (c->id == 3) {
+        fprintf(stderr, "[LAYOUT] Component ID=3 type=%d (Text)\n", c->type);
+    }
+
     // Debug: Track layout calls - always print first 100
     static int call_count = 0;
     static int button_count = 0;
@@ -2112,9 +2130,28 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // Try to dispatch to component-specific trait first
     ir_layout_dispatch(c, constraints, parent_x, parent_y);
 
+    // Debug: Check computed dimensions after dispatch for ID=2
+    if (c->id == 2) {
+        fprintf(stderr, "[AFTER DISPATCH] ID=2: computed.w=%.1f computed.h=%.1f computed.x=%.1f computed.y=%.1f\n",
+                c->layout_state->computed.width, c->layout_state->computed.height,
+                c->layout_state->computed.x, c->layout_state->computed.y);
+    }
+    if (c->id == 3 && c->layout_state) {
+        fprintf(stderr, "[AFTER DISPATCH] ID=3 (Text): computed.x=%.1f computed.y=%.1f w=%.1f h=%.1f\n",
+                c->layout_state->computed.x, c->layout_state->computed.y,
+                c->layout_state->computed.width, c->layout_state->computed.height);
+    }
+
     // If dispatch handled it (trait registered), we're done
     // Check if computed dimensions are set (trait completed layout)
     if (c->layout_state->computed.width > 0 || c->layout_state->computed.height > 0) {
+        // Debug: Print final computed position for component ID=2 (before early return)
+        if (c->id == 2) {
+            fprintf(stderr, "[FINAL LAYOUT TRAIT] ID=2: computed.x=%.1f computed.y=%.1f size=%.1fx%.1f (from trait)\n",
+                    c->layout_state->computed.x, c->layout_state->computed.y,
+                    c->layout_state->computed.width, c->layout_state->computed.height);
+        }
+
         // Skip rendered_bounds sync for modal children - they are positioned
         // during overlay rendering with correct absolute coordinates.
         // Layout pass uses (0,0) as parent, but rendering repositions correctly.
@@ -2135,6 +2172,17 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
             c->rendered_bounds.width = c->layout_state->computed.width;
             c->rendered_bounds.height = c->layout_state->computed.height;
             c->rendered_bounds.valid = true;
+            // Debug: Verify rendered_bounds for ID=2 and ID=3
+            if (c->id == 2) {
+                fprintf(stderr, "[RENDERED_BOUNDS SYNC] ID=2: x=%.1f y=%.1f w=%.1f h=%.1f\n",
+                        c->rendered_bounds.x, c->rendered_bounds.y,
+                        c->rendered_bounds.width, c->rendered_bounds.height);
+            }
+            if (c->id == 3) {
+                fprintf(stderr, "[RENDERED_BOUNDS SYNC] ID=3 (Text): x=%.1f y=%.1f w=%.1f h=%.1f\n",
+                        c->rendered_bounds.x, c->rendered_bounds.y,
+                        c->rendered_bounds.width, c->rendered_bounds.height);
+            }
         }
         return;
     }
@@ -2171,15 +2219,20 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
             // Layout child at temporary position
             ir_layout_single_pass(child, child_constraints, parent_x + pad_left, parent_y + pad_top);
 
-            // Center the child
+            // Center the child (skip if absolutely positioned)
             if (child->layout_state) {
-                float child_width = child->layout_state->computed.width;
-                float child_height = child->layout_state->computed.height;
-                float offset_x = (available_width - child_width) / 2.0f;
-                float offset_y = (available_height - child_height) / 2.0f;
+                // Skip absolutely positioned children - they already have their final position
+                if (child->style && child->style->position_mode == IR_POSITION_ABSOLUTE) {
+                    // Don't override absolute position
+                } else {
+                    float child_width = child->layout_state->computed.width;
+                    float child_height = child->layout_state->computed.height;
+                    float offset_x = (available_width - child_width) / 2.0f;
+                    float offset_y = (available_height - child_height) / 2.0f;
 
-                child->layout_state->computed.x = parent_x + pad_left + offset_x;
-                child->layout_state->computed.y = parent_y + pad_top + offset_y;
+                    child->layout_state->computed.x = parent_x + pad_left + offset_x;
+                    child->layout_state->computed.y = parent_y + pad_top + offset_y;
+                }
             }
         }
 
@@ -2365,6 +2418,11 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
             IRComponent* child = c->children[i];
             if (!child || !child->layout_state) continue;
 
+            // Skip absolutely positioned children - they use their own coordinates
+            if (child->style && child->style->position_mode == IR_POSITION_ABSOLUTE) {
+                continue;
+            }
+
             // Apply main axis offset
             if (is_row) {
                 child->layout_state->computed.x += main_offset;
@@ -2452,8 +2510,15 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // Set final computed dimensions
     c->layout_state->computed.width = own_width;
     c->layout_state->computed.height = own_height;
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
+
+    // Use absolute position if specified, otherwise use parent position
+    if (c->style && c->style->position_mode == IR_POSITION_ABSOLUTE) {
+        c->layout_state->computed.x = c->style->absolute_x;
+        c->layout_state->computed.y = c->style->absolute_y;
+    } else {
+        c->layout_state->computed.x = parent_x;
+        c->layout_state->computed.y = parent_y;
+    }
 
     // DEBUG: Print layout positions for Text components
     if (c->type == IR_COMPONENT_TEXT && c->text_content && getenv("KRYON_DEBUG_TEXT")) {
@@ -2465,6 +2530,22 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // Mark layout as valid
     c->layout_state->layout_valid = true;
     c->layout_state->computed.valid = true;
+
+    // Debug: Print final computed position for component ID=2
+    if (c->id == 2) {
+        fprintf(stderr, "[FINAL LAYOUT] ID=2: computed.x=%.1f computed.y=%.1f size=%.1fx%.1f\n",
+                c->layout_state->computed.x, c->layout_state->computed.y,
+                c->layout_state->computed.width, c->layout_state->computed.height);
+    }
+
+    // Debug: Always print first few components
+    static int final_count = 0;
+    if (final_count < 10) {
+        fprintf(stderr, "[LAYOUT_COMPLETE] ID=%u type=%d final_pos=(%.1f,%.1f) size=(%.1f,%.1f)\n",
+                c->id, c->type, c->layout_state->computed.x, c->layout_state->computed.y,
+                c->layout_state->computed.width, c->layout_state->computed.height);
+        final_count++;
+    }
 
     // Sync computed layout to rendered_bounds for click detection
     // Skip for modal descendants - they get correct bounds during overlay rendering
@@ -2517,6 +2598,11 @@ void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewp
     static int call_count = 0;
     call_count++;
 
+    // DEBUG: Always print first call
+    if (call_count == 1) {
+        fprintf(stderr, "[DEBUG_TREE] ir_layout_compute_tree called! root=%p\n", (void*)root);
+    }
+
     // DEBUG: Write to file
     static FILE* debug_file = NULL;
     if (!debug_file) {
@@ -2557,7 +2643,9 @@ void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewp
         .min_width = 0,
         .min_height = 0
     };
+    fprintf(stderr, "[DEBUG_TREE] About to call ir_layout_single_pass for root ID=%u\n", root ? root->id : 0);
     ir_layout_single_pass(root, root_constraints, 0, 0);
+    fprintf(stderr, "[DEBUG_TREE] Returned from ir_layout_single_pass\n");
 }
 
 /**
