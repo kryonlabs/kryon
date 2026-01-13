@@ -2035,9 +2035,6 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                 c->type, c->style ? c->style->position_mode : -1,
                 c->style ? c->style->absolute_x : -999, c->style ? c->style->absolute_y : -999);
     }
-    if (c->id == 3) {
-        fprintf(stderr, "[LAYOUT] Component ID=3 type=%d (Text)\n", c->type);
-    }
 
     // Debug: Track layout calls - always print first 100
     static int call_count = 0;
@@ -2136,11 +2133,6 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                 c->layout_state->computed.width, c->layout_state->computed.height,
                 c->layout_state->computed.x, c->layout_state->computed.y);
     }
-    if (c->id == 3 && c->layout_state) {
-        fprintf(stderr, "[AFTER DISPATCH] ID=3 (Text): computed.x=%.1f computed.y=%.1f w=%.1f h=%.1f\n",
-                c->layout_state->computed.x, c->layout_state->computed.y,
-                c->layout_state->computed.width, c->layout_state->computed.height);
-    }
 
     // If dispatch handled it (trait registered), we're done
     // Check if computed dimensions are set (trait completed layout)
@@ -2172,17 +2164,6 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
             c->rendered_bounds.width = c->layout_state->computed.width;
             c->rendered_bounds.height = c->layout_state->computed.height;
             c->rendered_bounds.valid = true;
-            // Debug: Verify rendered_bounds for ID=2 and ID=3
-            if (c->id == 2) {
-                fprintf(stderr, "[RENDERED_BOUNDS SYNC] ID=2: x=%.1f y=%.1f w=%.1f h=%.1f\n",
-                        c->rendered_bounds.x, c->rendered_bounds.y,
-                        c->rendered_bounds.width, c->rendered_bounds.height);
-            }
-            if (c->id == 3) {
-                fprintf(stderr, "[RENDERED_BOUNDS SYNC] ID=3 (Text): x=%.1f y=%.1f w=%.1f h=%.1f\n",
-                        c->rendered_bounds.x, c->rendered_bounds.y,
-                        c->rendered_bounds.width, c->rendered_bounds.height);
-            }
         }
         return;
     }
