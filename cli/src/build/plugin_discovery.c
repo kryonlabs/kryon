@@ -355,13 +355,21 @@ BuildPluginInfo* discover_build_plugins(const char* project_dir,
             continue;
         }
 
-        /* Path is REQUIRED */
+        /* Skip git plugins - they are handled by config_load_plugins instead */
+        if (dep->git) {
+            printf("  - %s: git plugin, skipping (handled by plugin loader)\n", dep->name);
+            continue;
+        }
+
+        /* Path is REQUIRED for local plugins */
         if (!dep->path || dep->path[0] == '\0') {
             fprintf(stderr, "Error: Plugin '%s' missing required 'path' field in kryon.toml\n",
                     dep->name ? dep->name : "<unknown>");
             fprintf(stderr, "       Required format:\n");
             fprintf(stderr, "         [plugins.%s]\n", dep->name ? dep->name : "name");
             fprintf(stderr, "         path = \"../path/to/plugin\"\n");
+            fprintf(stderr, "       Or use git for remote plugins:\n");
+            fprintf(stderr, "         git = \"https://github.com/...\"\n");
             free(plugins);
             exit(1);
         }
