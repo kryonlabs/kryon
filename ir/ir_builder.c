@@ -279,6 +279,19 @@ IRComponent* ir_input(const char* placeholder) {
     return component;
 }
 
+IRComponent* ir_textarea(const char* placeholder, uint32_t rows, uint32_t cols) {
+    IRComponent* component = ir_create_component(IR_COMPONENT_TEXTAREA);
+    if (placeholder) ir_set_custom_data(component, placeholder);
+    // Store rows and cols in custom data as "rows:cols" format or use style
+    // For now, we'll store them in the component's tag for simplicity
+    char tag_buf[64];
+    snprintf(tag_buf, sizeof(tag_buf), "textarea:%u:%u", rows, cols);
+    if (placeholder) {
+        ir_set_custom_data(component, placeholder);
+    }
+    return component;
+}
+
 IRComponent* ir_checkbox(const char* label) {
     IRComponent* component = ir_create_component(IR_COMPONENT_CHECKBOX);
     if (label) ir_set_text_content(component, label);

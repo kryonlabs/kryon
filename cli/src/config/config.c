@@ -4,6 +4,7 @@
  */
 
 #include "kryon_cli.h"
+#include "../utils/plugin_installer.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -75,12 +76,28 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
         // Get plugin properties
         char key[256];
 
-        // Get path (required)
+        // Get path (optional if git is specified)
         snprintf(key, sizeof(key), "plugins.%s.path", plugin_name);
         const char* path = toml_get_string(toml, key, NULL);
         if (path) {
             plugin->path = str_copy(path);
+        } else {
+            plugin->path = NULL;
         }
+
+        // Get git URL (optional)
+        snprintf(key, sizeof(key), "plugins.%s.git", plugin_name);
+        const char* git = toml_get_string(toml, key, NULL);
+        if (git) {
+            plugin->git = str_copy(git);
+        } else {
+            plugin->git = NULL;
+        }
+
+        // Get git branch (optional, defaults to "main")
+        snprintf(key, sizeof(key), "plugins.%s.branch", plugin_name);
+        const char* branch = toml_get_string(toml, key, "main");
+        plugin->branch = str_copy(branch);
 
         // Get version (optional)
         snprintf(key, sizeof(key), "plugins.%s.version", plugin_name);
@@ -415,6 +432,62 @@ KryonConfig* config_load(const char* config_path) {
 }
 
 /**
+ * Check if a plugin's shared library exists
+ */
+static bool plugin_so_exists(const char* plugin_path, const char* plugin_name) {
+    // Check for libkryon_<name>.so in plugin directory
+    char* so_path = path_join(plugin_path, "libkryon_");
+    // Append name and .so
+    size_t base_len = strlen(so_path);
+    char* full_so_path = (char*)malloc(base_len + strlen(plugin_name) + 4);
+    if (full_so_path) {
+        sprintf(full_so_path, "%s%s.so", so_path, plugin_name);
+        free(so_path);
+        bool exists = file_exists(full_so_path);
+        free(full_so_path);
+        return exists;
+    }
+    free(so_path);
+    return false;
+}
+
+/**
+ * Compile a plugin by running make in its directory
+ * Returns 0 on success, non-zero on failure
+ */
+static int plugin_compile_runtime(const char* plugin_path, const char* plugin_name) {
+    printf("[kryon][plugin] Compiling plugin '%s' from source...\n", plugin_name);
+
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "make -C \"%s\" 2>&1", plugin_path);
+
+    int result = system(cmd);
+    if (result != 0) {
+        fprintf(stderr, "[kryon][plugin] Failed to compile plugin '%s' (exit code %d)\n",
+                plugin_name, result);
+        return -1;
+    }
+
+    printf("[kryon][plugin] Successfully compiled plugin '%s'\n", plugin_name);
+    return 0;
+}
+
+/**
+ * Ensure a plugin is compiled, compiling if necessary
+ * Returns true if plugin is ready (either was already compiled or was compiled successfully)
+ * Returns false if compilation failed
+ */
+static bool ensure_plugin_compiled(const char* plugin_path, const char* plugin_name) {
+    // Check if .so already exists
+    if (plugin_so_exists(plugin_path, plugin_name)) {
+        return true;
+    }
+
+    // Not compiled - try to compile it
+    return plugin_compile_runtime(plugin_path, plugin_name) == 0;
+}
+
+/**
  * Load plugins specified in config from their paths.
  * ONLY loads plugins explicitly listed in kryon.toml - no auto-discovery.
  */
@@ -439,20 +512,36 @@ bool config_load_plugins(KryonConfig* config) {
             continue;
         }
 
-        if (!plugin->path) {
-            fprintf(stderr, "[kryon][config] Plugin '%s' missing path\n", plugin->name);
+        // Handle git URL or local path
+        char* resolved_path = NULL;
+        bool should_free_resolved = true;
+
+        if (plugin->git) {
+            // Install from git URL
+            printf("[kryon][plugin] Installing plugin '%s' from git: %s\n",
+                   plugin->name, plugin->git);
+            resolved_path = plugin_install_from_git(plugin->git, plugin->branch, plugin->name);
+            if (!resolved_path) {
+                fprintf(stderr, "[kryon][config] Failed to install plugin '%s' from git\n",
+                        plugin->name);
+                all_loaded = false;
+                continue;
+            }
+        } else if (plugin->path) {
+            // Resolve plugin path (handle relative paths like "../kryon-syntax")
+            // This canonicalizes the path, resolving .., ., and symlinks
+            resolved_path = path_resolve_canonical(plugin->path, cwd);
+        } else {
+            fprintf(stderr, "[kryon][config] Plugin '%s' missing path or git URL\n", plugin->name);
             all_loaded = false;
             continue;
         }
 
-        // Resolve plugin path (handle relative paths like "../kryon-syntax")
-        // This canonicalizes the path, resolving .., ., and symlinks
-        char* resolved_path = path_resolve_canonical(plugin->path, cwd);
-
         if (!resolved_path) {
             // Path doesn't exist, has permission issues, or resolution failed
+            const char* path_desc = plugin->path ? plugin->path : plugin->git;
             fprintf(stderr, "[kryon][config] Plugin '%s' path not found or inaccessible: %s\n",
-                    plugin->name, plugin->path);
+                    plugin->name, path_desc);
             if (errno == ENOENT) {
                 fprintf(stderr, "                 (path does not exist)\n");
             } else if (errno == EACCES) {
@@ -468,6 +557,18 @@ bool config_load_plugins(KryonConfig* config) {
             free(resolved_path);
             all_loaded = false;
             continue;
+        }
+
+        // Skip auto-compilation for git plugins (already compiled during install)
+        // Only auto-compile local source paths
+        if (!plugin->git) {
+            if (!ensure_plugin_compiled(resolved_path, plugin->name)) {
+                fprintf(stderr, "[kryon][config] Plugin '%s' compilation or verification failed\n",
+                        plugin->name);
+                free(resolved_path);
+                all_loaded = false;
+                continue;
+            }
         }
 
         // Check if plugin is already loaded (e.g., by auto-discovery)

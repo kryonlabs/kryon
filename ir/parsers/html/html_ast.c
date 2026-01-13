@@ -111,11 +111,38 @@ void html_node_set_attribute(HtmlNode* node, const char* name, const char* value
         attr_ptr = &node->input_type;
     } else if (strcmp(name, "value") == 0) {
         attr_ptr = &node->value;
+    } else if (strcmp(name, "placeholder") == 0) {
+        attr_ptr = &node->placeholder;
+    } else if (strcmp(name, "name") == 0) {
+        attr_ptr = &node->name;
+    } else if (strcmp(name, "for") == 0) {
+        attr_ptr = &node->for_attr;
     } else if (strcmp(name, "checked") == 0) {
-        node->checked = (value && strcmp(value, "true") == 0);
+        node->checked = (value && (strcmp(value, "true") == 0 || strcmp(value, "checked") == 0));
+        return;
+    } else if (strcmp(name, "required") == 0) {
+        node->required = (value && (strcmp(value, "true") == 0 || strcmp(value, "required") == 0));
+        return;
+    } else if (strcmp(name, "readonly") == 0 || strcmp(name, "read-only") == 0) {
+        node->readonly = (value && (strcmp(value, "true") == 0 || strcmp(value, "readonly") == 0));
+        return;
+    } else if (strcmp(name, "disabled") == 0) {
+        node->disabled = (value && (strcmp(value, "true") == 0 || strcmp(value, "disabled") == 0));
         return;
     } else if (strcmp(name, "start") == 0) {
         if (value) node->start = (uint32_t)atoi(value);
+        return;
+    } else if (strcmp(name, "rows") == 0) {
+        if (value) node->rows = (uint32_t)atoi(value);
+        return;
+    } else if (strcmp(name, "cols") == 0) {
+        if (value) node->cols = (uint32_t)atoi(value);
+        return;
+    } else if (strcmp(name, "maxlength") == 0) {
+        if (value) node->maxlength = (uint32_t)atoi(value);
+        return;
+    } else if (strcmp(name, "minlength") == 0) {
+        if (value) node->minlength = (uint32_t)atoi(value);
         return;
     }
 
@@ -138,6 +165,9 @@ const char* html_node_get_attribute(HtmlNode* node, const char* name) {
     if (strcmp(name, "alt") == 0) return node->alt;
     if (strcmp(name, "type") == 0) return node->input_type;
     if (strcmp(name, "value") == 0) return node->value;
+    if (strcmp(name, "placeholder") == 0) return node->placeholder;
+    if (strcmp(name, "name") == 0) return node->name;
+    if (strcmp(name, "for") == 0) return node->for_attr;
 
     return NULL;
 }
@@ -183,6 +213,9 @@ void html_node_free(HtmlNode* node) {
     if (node->alt) free(node->alt);
     if (node->input_type) free(node->input_type);
     if (node->value) free(node->value);
+    if (node->placeholder) free(node->placeholder);
+    if (node->for_attr) free(node->for_attr);
+    if (node->name) free(node->name);
     if (node->data_ir_type) free(node->data_ir_type);
     if (node->data_list_type) free(node->data_list_type);
     if (node->data_value) free(node->data_value);
@@ -226,6 +259,9 @@ HtmlNode* html_node_clone(const HtmlNode* node) {
     CLONE_STR(alt);
     CLONE_STR(input_type);
     CLONE_STR(value);
+    CLONE_STR(placeholder);
+    CLONE_STR(for_attr);
+    CLONE_STR(name);
     CLONE_STR(data_ir_type);
     CLONE_STR(data_list_type);
     CLONE_STR(data_value);
@@ -236,6 +272,13 @@ HtmlNode* html_node_clone(const HtmlNode* node) {
     // Clone primitive fields
     clone->checked = node->checked;
     clone->start = node->start;
+    clone->rows = node->rows;
+    clone->cols = node->cols;
+    clone->maxlength = node->maxlength;
+    clone->minlength = node->minlength;
+    clone->required = node->required;
+    clone->readonly = node->readonly;
+    clone->disabled = node->disabled;
     clone->data_ir_id = node->data_ir_id;
     clone->data_level = node->data_level;
     clone->data_checked = node->data_checked;

@@ -351,6 +351,9 @@ typedef struct IRComponent {
 
     // Interaction state
     bool is_disabled;                  // True if component is disabled (for buttons, inputs, etc.)
+
+    // Memory management flag
+    bool is_externally_allocated;      // True if allocated via malloc/calloc (not from pool)
 } IRComponent;
 
 // ============================================================================

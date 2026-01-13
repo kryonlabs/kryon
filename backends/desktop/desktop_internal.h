@@ -7,6 +7,7 @@
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_builder.h"
 #include "../../ir/ir_animation.h"
+#include "../../ir/ir_transition.h"
 #include "../../ir/ir_hot_reload.h"
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_serialization.h"
@@ -92,6 +93,9 @@ struct DesktopIRRenderer {
 
     // Animation system
     IRAnimationContext* animation_ctx;
+
+    // Transition system
+    IRTransitionContext* transition_ctx;
 
     // Hot reload system
     IRHotReloadContext* hot_reload_ctx;

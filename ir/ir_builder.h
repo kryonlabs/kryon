@@ -65,6 +65,7 @@ IRComponent* ir_container(const char* tag);
 IRComponent* ir_text(const char* content);
 IRComponent* ir_button(const char* text);
 IRComponent* ir_input(const char* placeholder);
+IRComponent* ir_textarea(const char* placeholder, uint32_t rows, uint32_t cols);
 IRComponent* ir_checkbox(const char* label);
 IRComponent* ir_row(void);
 IRComponent* ir_column(void);

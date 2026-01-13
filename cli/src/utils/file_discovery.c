@@ -52,17 +52,36 @@ char* path_to_route(const char* source_path) {
     char* route = malloc(PATH_MAX);
     if (!route) return NULL;
 
-    // Remove extension
-    const char* dot = strrchr(source_path, '.');
-    size_t base_len = dot ? (size_t)(dot - source_path) : strlen(source_path);
+    // Check if the filename is "index" (with any extension)
+    const char* slash = strrchr(source_path, '/');
+    const char* basename = slash ? slash + 1 : source_path;
 
-    // Special case: index.html → "/"
-    if (strncmp(source_path, "index.", 6) == 0) {
-        strcpy(route, "/");
+    // Check if basename starts with "index."
+    bool is_index = (strncmp(basename, "index.", 6) == 0);
+
+    if (is_index) {
+        // For index files, the route is the directory path
+        // "index.html" → "/"
+        // "docs/index.html" → "/docs"
+        // "docs/subdir/index.html" → "/docs/subdir"
+
+        if (slash == NULL || slash == source_path) {
+            // index.html at root
+            strcpy(route, "/");
+        } else {
+            // index.html in subdirectory - copy up to the last slash
+            size_t dir_len = slash - source_path;
+            route[0] = '/';
+            strncpy(route + 1, source_path, dir_len);
+            route[dir_len + 1] = '\0';
+        }
         return route;
     }
 
-    // General case: docs/getting-started.md → "/docs/getting-started"
+    // Non-index files: remove extension and add leading slash
+    const char* dot = strrchr(source_path, '.');
+    size_t base_len = dot ? (size_t)(dot - source_path) : strlen(source_path);
+
     route[0] = '/';
     strncpy(route + 1, source_path, base_len);
     route[base_len + 1] = '\0';

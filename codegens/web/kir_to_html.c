@@ -15,6 +15,7 @@
 
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_serialization.h"
+#include "../../ir/ir_plugin.h"
 #include "ir_web_renderer.h"
 #include "html_generator.h"
 #include "lua_bundler.h"
@@ -53,6 +54,20 @@ int main(int argc, char** argv) {
     printf("  Output: %s/\n", output_dir);
     if (embedded_css) {
         printf("  Mode: Embedded CSS\n");
+    }
+
+    // Load plugins for web rendering (e.g., syntax highlighting)
+    uint32_t plugin_count = 0;
+    IRPluginDiscoveryInfo** plugins = ir_plugin_discover(NULL, &plugin_count);
+    if (plugins && plugin_count > 0) {
+        for (uint32_t i = 0; i < plugin_count; i++) {
+            IRPluginDiscoveryInfo* info = plugins[i];
+            if (ir_plugin_load_with_metadata(info->path, info->name, info)) {
+                fprintf(stderr, "[kryon][plugin] Loaded plugin '%s' v%s\n",
+                        info->name, info->version);
+            }
+        }
+        ir_plugin_free_discovery(plugins, plugin_count);
     }
 
     // Load KIR file with manifest (for CSS variable support)
