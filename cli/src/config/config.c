@@ -144,9 +144,9 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
             plugin->git = NULL;
         }
 
-        // Get git branch (optional, defaults to "main")
+        // Get git branch (optional, defaults to "master")
         snprintf(key, sizeof(key), "plugins.%s.branch", plugin_name);
-        const char* branch = toml_get_string(toml, key, "main");
+        const char* branch = toml_get_string(toml, key, "master");
         plugin->branch = str_copy(branch);
 
         // Get git subdir (optional, for sparse checkout)
@@ -780,13 +780,11 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
     }
     config_free(plugin_config);
 
-    // Auto-compile if needed (only for local source plugins, not git)
-    if (!plugin->git) {
-        if (!ensure_plugin_compiled(resolved_path, plugin->name)) {
-            fprintf(stderr, "[kryon][plugin]   Plugin '%s' compilation failed\n", plugin->name);
-            free(resolved_path);
-            return false;
-        }
+    // Auto-compile if needed (both local and git plugins need compilation)
+    if (!ensure_plugin_compiled(resolved_path, plugin->name)) {
+        fprintf(stderr, "[kryon][plugin]   Plugin '%s' compilation failed\n", plugin->name);
+        free(resolved_path);
+        return false;
     }
 
     // Check if already loaded via dlopen (e.g., by another plugin)
