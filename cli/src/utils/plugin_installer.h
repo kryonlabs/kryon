@@ -18,6 +18,17 @@
 char* plugin_clone_from_git(const char* git_url, const char* branch, const char* plugin_name);
 
 /**
+ * Clone a specific subdirectory from a git repository using sparse checkout
+ *
+ * @param git_url The git URL to clone
+ * @param subdirectory The subdirectory to checkout (e.g., "syntax")
+ * @param plugin_name The name of the plugin (for cache directory)
+ * @param branch The branch to checkout (NULL for default "master")
+ * @return The path to the plugin subdirectory (must be freed), or NULL on failure
+ */
+char* plugin_clone_from_git_sparse(const char* git_url, const char* subdirectory, const char* plugin_name, const char* branch);
+
+/**
  * Compile a plugin from source
  *
  * @param plugin_path Path to the plugin directory

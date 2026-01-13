@@ -149,6 +149,15 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
         const char* branch = toml_get_string(toml, key, "main");
         plugin->branch = str_copy(branch);
 
+        // Get git subdir (optional, for sparse checkout)
+        snprintf(key, sizeof(key), "plugins.%s.subdir", plugin_name);
+        const char* subdir = toml_get_string(toml, key, NULL);
+        if (subdir) {
+            plugin->subdir = str_copy(subdir);
+        } else {
+            plugin->subdir = NULL;
+        }
+
         // Get version (optional)
         snprintf(key, sizeof(key), "plugins.%s.version", plugin_name);
         const char* version = toml_get_string(toml, key, NULL);
@@ -718,8 +727,15 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
 
     if (plugin->git) {
         // Install from git URL
-        printf("[kryon][plugin]   Installing '%s' from git: %s\n", plugin->name, plugin->git);
-        resolved_path = plugin_install_from_git(plugin->git, plugin->branch, plugin->name);
+        if (plugin->subdir) {
+            // Use sparse checkout for subdirectory
+            printf("[kryon][plugin]   Installing '%s' from git (subdir: %s): %s\n",
+                   plugin->name, plugin->subdir, plugin->git);
+            resolved_path = plugin_clone_from_git_sparse(plugin->git, plugin->subdir, plugin->name, plugin->branch);
+        } else {
+            printf("[kryon][plugin]   Installing '%s' from git: %s\n", plugin->name, plugin->git);
+            resolved_path = plugin_install_from_git(plugin->git, plugin->branch, plugin->name);
+        }
         if (!resolved_path) {
             fprintf(stderr, "[kryon][plugin]   Failed to install '%s' from git\n", plugin->name);
             return false;
@@ -988,6 +1004,9 @@ void config_free(KryonConfig* config) {
         for (int i = 0; i < config->plugins_count; i++) {
             free(config->plugins[i].name);
             free(config->plugins[i].path);
+            free(config->plugins[i].git);
+            free(config->plugins[i].branch);
+            free(config->plugins[i].subdir);
             free(config->plugins[i].version);
             free(config->plugins[i].resolved_path);
         }

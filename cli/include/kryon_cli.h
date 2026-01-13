@@ -101,6 +101,7 @@ typedef struct {
     char* path;              // Path to plugin directory (absolute or relative)
     char* git;               // Git URL for auto-cloning (optional)
     char* branch;            // Git branch for auto-cloning (optional, defaults to "main")
+    char* subdir;            // Subdirectory within git repo (optional, for sparse checkout)
     char* version;           // Optional version constraint
     bool enabled;            // Whether plugin is enabled (default: true)
     char* resolved_path;     // Resolved absolute path (populated at runtime)
