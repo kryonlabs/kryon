@@ -222,6 +222,105 @@ char* plugin_clone_from_git(const char* git_url, const char* branch, const char*
 }
 
 /**
+ * Clone a specific subdirectory from a git repository using sparse checkout
+ *
+ * @param git_url The git URL to clone
+ * @param subdirectory The subdirectory to checkout (e.g., "syntax")
+ * @param plugin_name The name of the plugin (for cache directory)
+ * @param branch The branch to checkout (NULL for default)
+ * @return The path to the plugin subdirectory (must be freed), or NULL on failure
+ */
+char* plugin_clone_from_git_sparse(const char* git_url, const char* subdirectory, const char* plugin_name, const char* branch) {
+    if (!git_url || !subdirectory || !plugin_name) {
+        fprintf(stderr, "[kryon][plugin] Invalid git URL, subdirectory, or plugin name\n");
+        return NULL;
+    }
+
+    if (!git_is_available()) {
+        fprintf(stderr, "[kryon][plugin] Git is not available. Please install git.\n");
+        return NULL;
+    }
+
+    // Ensure cache directory exists
+    if (!ensure_plugin_cache_dir()) {
+        fprintf(stderr, "[kryon][plugin] Failed to create plugin cache directory\n");
+        return NULL;
+    }
+
+    char* cached_path = get_plugin_cached_path(plugin_name);
+    if (!cached_path) {
+        fprintf(stderr, "[kryon][plugin] Failed to get cached path for plugin '%s'\n", plugin_name);
+        return NULL;
+    }
+
+    // For sparse checkout, we need to:
+    // 1. Create empty directory
+    // 2. git init
+    // 3. git remote add origin
+    // 4. git config core.sparseCheckout true
+    // 5. Add subdirectory to .git/info/sparse-checkout
+    // 6. git pull --depth 1 origin <branch>
+
+    char cmd[2048];
+    const char* actual_branch = branch ? branch : "master";
+
+    // Create and initialize directory
+    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\" && cd \"%s\" && git init -q", cached_path, cached_path);
+    system(cmd);
+
+    // Add remote
+    snprintf(cmd, sizeof(cmd), "cd \"%s\" && git remote add origin \"%s\" 2>/dev/null", cached_path, git_url);
+    system(cmd);
+
+    // Enable sparse checkout
+    snprintf(cmd, sizeof(cmd), "cd \"%s\" && git config core.sparseCheckout true", cached_path);
+    system(cmd);
+
+    // Set sparse checkout path
+    char sparse_file[1024];
+    snprintf(sparse_file, sizeof(sparse_file), "%s/.git/info/sparse-checkout", cached_path);
+    FILE* f = fopen(sparse_file, "w");
+    if (f) {
+        fprintf(f, "%s\n", subdirectory);
+        fclose(f);
+    } else {
+        fprintf(stderr, "[kryon][plugin] Failed to create sparse-checkout file\n");
+        free(cached_path);
+        return NULL;
+    }
+
+    // Pull with depth 1
+    printf("[kryon][plugin] Cloning plugin '%s' from %s (sparse: %s)\n", plugin_name, git_url, subdirectory);
+    snprintf(cmd, sizeof(cmd), "cd \"%s\" && git pull --depth 1 --quiet origin %s 2>&1", cached_path, actual_branch);
+    int result = system(cmd);
+
+    if (result != 0) {
+        fprintf(stderr, "[kryon][plugin] Failed to sparse checkout (exit code %d)\n", result);
+        free(cached_path);
+        return NULL;
+    }
+
+    // The actual plugin is now in cached_path/subdirectory
+    char* plugin_path = path_join(cached_path, subdirectory);
+
+    // Verify the subdirectory exists
+    if (!file_is_directory(plugin_path)) {
+        fprintf(stderr, "[kryon][plugin] Subdirectory '%s' not found in cloned repository\n", subdirectory);
+        free(plugin_path);
+        free(cached_path);
+        return NULL;
+    }
+
+    // Free cached_path since we're returning plugin_path
+    // But wait - we need to keep cached_path for cleanup, just return plugin_path
+    // Actually, let's reorganize: keep cached_path as base, plugin_path is the full path
+
+    printf("[kryon][plugin] Successfully cloned plugin '%s' (sparse checkout)\n", plugin_name);
+    free(cached_path);
+    return plugin_path;
+}
+
+/**
  * Compile a plugin from source
  *
  * @param plugin_path Path to the plugin directory
