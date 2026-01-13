@@ -435,16 +435,6 @@ void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraint
         should_center_v = (c->layout->flex.cross_axis == IR_ALIGNMENT_CENTER);
     }
 
-    // Debug: Check centering for ID=2
-    if (c->id == 2) {
-        fprintf(stderr, "[CONTAINER] ID=2: layout=%p should_center_h=%d should_center_v=%d\n",
-                (void*)c->layout, should_center_h, should_center_v);
-        if (c->layout) {
-            fprintf(stderr, "[CONTAINER] ID=2: justify_content=%d cross_axis=%d\n",
-                    c->layout->flex.justify_content, c->layout->flex.cross_axis);
-        }
-    }
-
     // Layout children in block flow (vertical stacking)
     float child_y = 0;
     float max_child_width = 0;
@@ -503,12 +493,6 @@ void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraint
             float child_w = child->layout_state->computed.width;
             float child_h = child->layout_state->computed.height;
 
-            // Debug: Show before centering for ID=2's children
-            if (c->id == 2) {
-                fprintf(stderr, "[CONTAINER] Before centering: child ID=%d x=%.1f y=%.1f w=%.1f h=%.1f\n",
-                        child->id, child_x, child_y, child_w, child_h);
-            }
-
             // Apply horizontal centering
             if (should_center_h) {
                 float offset_x = (content_width - child_w) / 2.0f;
@@ -524,11 +508,12 @@ void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraint
             child->layout_state->computed.x = child_x;
             child->layout_state->computed.y = child_y;
 
-            // Debug: Show after centering for ID=2's children
-            if (c->id == 2) {
-                fprintf(stderr, "[CONTAINER] After centering: child ID=%d x=%.1f y=%.1f (content_w=%.1f content_h=%.1f)\n",
-                        child->id, child_x, child_y, content_width, content_height);
-            }
+            // CRITICAL: Also update rendered_bounds since renderer uses that for positioning
+            child->rendered_bounds.x = child_x;
+            child->rendered_bounds.y = child_y;
+            child->rendered_bounds.width = child_w;
+            child->rendered_bounds.height = child_h;
+            child->rendered_bounds.valid = true;
         }
     }
 
