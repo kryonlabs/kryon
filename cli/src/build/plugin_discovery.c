@@ -219,6 +219,10 @@ static char* resolve_path(const char* project_dir, const char* config_path) {
 /**
  * Verify plugin has all required files
  * Returns 0 on success, -1 on error (prints error message)
+ *
+ * A plugin must have either:
+ * - A Lua binding (<plugin_dir>/bindings/lua/<plugin_name>.lua), or
+ * - A C shared library (<plugin_dir>/build/libkryon_<plugin_name>.so) for web/native renderers
  */
 static int verify_plugin_files(const char* plugin_dir, const char* plugin_name,
                                char* out_lua_path, size_t lua_path_size,
@@ -226,22 +230,35 @@ static int verify_plugin_files(const char* plugin_dir, const char* plugin_name,
     /* Check for Lua binding: <plugin_dir>/bindings/lua/<plugin_name>.lua */
     snprintf(out_lua_path, lua_path_size, "%s/bindings/lua/%s.lua", plugin_dir, plugin_name);
 
-    if (!file_exists(out_lua_path)) {
-        fprintf(stderr, "Error: Plugin '%s' Lua binding not found: %s\n",
-                plugin_name, out_lua_path);
-        fprintf(stderr, "       Plugin must have: bindings/lua/%s.lua\n", plugin_name);
+    /* Check for C shared library: <plugin_dir>/build/libkryon_<plugin_name>.so */
+    char so_path[DISCOVERY_PATH_MAX];
+    snprintf(so_path, sizeof(so_path), "%s/build/libkryon_%s.so", plugin_dir, plugin_name);
+
+    /* Plugin must have either Lua binding OR C shared library */
+    bool has_lua = file_exists(out_lua_path);
+    bool has_so = file_exists(so_path);
+
+    if (!has_lua && !has_so) {
+        fprintf(stderr, "Error: Plugin '%s' has no Lua binding or C library:\n", plugin_name);
+        fprintf(stderr, "       Expected: %s\n", out_lua_path);
+        fprintf(stderr, "       OR: %s\n", so_path);
         return -1;
     }
 
-    /* Check for static library: <plugin_dir>/build/libkryon_<plugin_name>.a */
-    snprintf(out_lib_path, lib_path_size, "%s/build/libkryon_%s.a", plugin_dir, plugin_name);
+    /* If plugin has Lua binding, also check for static library */
+    if (has_lua) {
+        snprintf(out_lib_path, lib_path_size, "%s/build/libkryon_%s.a", plugin_dir, plugin_name);
 
-    if (!file_exists(out_lib_path)) {
-        fprintf(stderr, "Error: Plugin '%s' static library not found: %s\n",
-                plugin_name, out_lib_path);
-        fprintf(stderr, "       Plugin must have: build/libkryon_%s.a\n", plugin_name);
-        fprintf(stderr, "       Run 'make' in the plugin directory to build it.\n");
-        return -1;
+        if (!file_exists(out_lib_path)) {
+            fprintf(stderr, "Error: Plugin '%s' static library not found: %s\n",
+                    plugin_name, out_lib_path);
+            fprintf(stderr, "       Run 'make' in the plugin directory to build it.\n");
+            return -1;
+        }
+    } else {
+        /* Pure C plugin - copy .so path to lib_path output */
+        strncpy(out_lib_path, so_path, lib_path_size - 1);
+        out_lib_path[lib_path_size - 1] = '\0';
     }
 
     return 0;
@@ -341,12 +358,17 @@ BuildPluginInfo* discover_build_plugins(const char* project_dir,
         BuildPluginInfo* info = &plugins[valid_count];
         info->name = strdup(dep->name);
         info->plugin_dir = plugin_dir;
-        info->lua_binding = strdup(lua_path);
+        /* lua_binding is only set if Lua binding exists */
+        info->lua_binding = file_exists(lua_path) ? strdup(lua_path) : NULL;
         info->static_lib = strdup(lib_path);
 
         printf("  - %s: OK\n", dep->name);
         printf("    dir:  %s\n", plugin_dir);
-        printf("    lua:  %s\n", lua_path);
+        if (info->lua_binding) {
+            printf("    lua:  %s\n", lua_path);
+        } else {
+            printf("    type: C plugin (no Lua binding)\n");
+        }
         printf("    lib:  %s\n", lib_path);
 
         valid_count++;

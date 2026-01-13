@@ -7,6 +7,7 @@
 
 #include "kryon_cli.h"
 #include "build.h"
+#include "../utils/file_discovery.h"
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_executor.h"
@@ -329,7 +330,71 @@ static int run_terminal(const char* kir_file) {
  * Web Target
  * ============================================================================ */
 
+/**
+ * Build a single discovered file for web target.
+ * Similar to build_discovered_file in cmd_build.c but inline here for run command.
+ */
+static int build_web_file(DiscoveredFile* file, KryonConfig* config, const char* docs_template) {
+    if (!file || !file->source_path) {
+        return 1;
+    }
+
+    printf("  Building %s...\n", file->source_path);
+
+    // Create cache directory
+    if (!file_is_directory(".kryon_cache")) {
+        dir_create(".kryon_cache");
+    }
+
+    // Generate KIR filename
+    const char* slash = strrchr(file->source_path, '/');
+    const char* basename = slash ? slash + 1 : file->source_path;
+    char kir_name[512];
+    strncpy(kir_name, basename, sizeof(kir_name) - 1);
+    kir_name[sizeof(kir_name) - 1] = '\0';
+    char* dot = strrchr(kir_name, '.');
+    if (dot) *dot = '\0';
+
+    char content_kir_file[1024];
+    snprintf(content_kir_file, sizeof(content_kir_file), ".kryon_cache/%s_content.kir", kir_name);
+
+    // Compile to KIR
+    int result = compile_source_to_kir(file->source_path, content_kir_file);
+    if (result != 0 || !file_exists(content_kir_file)) {
+        fprintf(stderr, "Error: Compilation failed for %s\n", file->source_path);
+        return result != 0 ? result : 1;
+    }
+
+    // Extract directory from output path
+    char output_dir[2048];
+    strncpy(output_dir, file->output_path, sizeof(output_dir) - 1);
+    output_dir[sizeof(output_dir) - 1] = '\0';
+    char* last_slash = strrchr(output_dir, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+    }
+
+    // Create output directory
+    if (!file_is_directory(output_dir)) {
+        dir_create_recursive(output_dir);
+    }
+
+    // Use shared docs template function
+    result = build_with_docs_template(
+        content_kir_file,
+        file->source_path,
+        file->route,
+        output_dir,
+        docs_template,
+        config
+    );
+
+    return result;
+}
+
 static int run_web_target(const char* kir_file) {
+    (void)kir_file;  // We use file discovery instead
+
     KryonConfig* config = config_find_and_load();
     const char* output_dir = (config && config->build_output_dir) ?
                               config->build_output_dir : "build";
@@ -341,12 +406,30 @@ static int run_web_target(const char* kir_file) {
         dir_create_recursive(output_dir);
     }
 
-    printf("Generating HTML files...\n");
-    int result = generate_html_from_kir(kir_file, output_dir,
-                                        config ? config->project_name : NULL,
-                                        ".");
+    // Discover all buildable files in the project
+    printf("Scanning project files...\n");
+    DiscoveryResult* discovered = discover_project_files(".");
+
+    if (!discovered || discovered->count == 0) {
+        fprintf(stderr, "No buildable files found.\n");
+        fprintf(stderr, "Create index.html or docs/*.md to get started.\n");
+        if (discovered) free_discovery_result(discovered);
+        if (config) config_free(config);
+        return 1;
+    }
+
+    printf("Found %d file(s) to build.\n", discovered->count);
+
+    // Build all discovered files
+    int result = 0;
+    for (uint32_t i = 0; i < discovered->count && result == 0; i++) {
+        result = build_web_file(&discovered->files[i], config, discovered->docs_template);
+    }
+
+    free_discovery_result(discovered);
 
     if (result != 0) {
+        fprintf(stderr, "Error: Some files failed to build\n");
         if (config) config_free(config);
         return 1;
     }

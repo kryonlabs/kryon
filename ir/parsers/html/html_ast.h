@@ -35,8 +35,18 @@ typedef struct HtmlNode {
     char* alt;                // <img> alt text
     char* input_type;         // <input> type attribute
     char* value;              // <input> value
+    char* placeholder;        // <input>, <textarea> placeholder text
     bool checked;             // <input type="checkbox"> checked state
     uint32_t start;           // <ol> start attribute
+    uint32_t rows;            // <textarea> rows attribute
+    uint32_t cols;            // <textarea> cols attribute
+    uint32_t maxlength;       // <input>, <textarea> maxlength attribute
+    uint32_t minlength;       // <input>, <textarea> minlength attribute
+    bool required;            // <input>, <select>, <textarea> required attribute
+    bool readonly;            // <input>, <textarea> readonly attribute
+    bool disabled;            // <input>, <button>, <select>, <textarea> disabled attribute
+    char* for_attr;           // <label> for attribute (links to input id)
+    char* name;               // <input>, <select>, <textarea> name attribute
 
     // Data attributes (for roundtrip metadata)
     char* data_ir_type;       // data-ir-type: Component type (HEADING, LIST, etc.)

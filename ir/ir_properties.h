@@ -43,6 +43,7 @@ typedef struct {
     IRAlignment justify_content;
     uint8_t grow;      // Flex grow factor (0-255)
     uint8_t shrink;    // Flex shrink factor (0-255)
+    float basis;       // Flex basis in pixels (0 = auto/content)
     uint8_t direction; // Flexbox direction: 0=column, 1=row
     uint8_t base_direction;   // CSS direction property (IRDirection)
     uint8_t unicode_bidi;     // CSS unicode-bidi property (IRUnicodeBidi)
@@ -162,8 +163,20 @@ typedef struct {
     float width_bottom;
     float width_left;
     IRColor color;
-    uint8_t radius;
+    uint8_t radius;              // Legacy single radius value (for backward compatibility)
+    uint8_t radius_top_left;     // Individual corner radius (TL, TR, BR, BL)
+    uint8_t radius_top_right;
+    uint8_t radius_bottom_right;
+    uint8_t radius_bottom_left;
+    uint8_t radius_flags;        // Bitmask for which corners are explicitly set
 } IRBorder;
+
+// Border radius flags for radius_flags bitmask
+#define IR_RADIUS_SET_TOP_LEFT     (1 << 0)
+#define IR_RADIUS_SET_TOP_RIGHT    (1 << 1)
+#define IR_RADIUS_SET_BOTTOM_RIGHT (1 << 2)
+#define IR_RADIUS_SET_BOTTOM_LEFT  (1 << 3)
+#define IR_RADIUS_SET_ALL          (IR_RADIUS_SET_TOP_LEFT | IR_RADIUS_SET_TOP_RIGHT | IR_RADIUS_SET_BOTTOM_RIGHT | IR_RADIUS_SET_BOTTOM_LEFT)
 
 // ============================================================================
 // Typography
@@ -292,6 +305,14 @@ typedef enum {
 } IRTextOverflowType;
 
 typedef enum {
+    IR_WHITE_SPACE_NORMAL,      // Default: sequences of whitespace collapse into one
+    IR_WHITE_SPACE_NOWRAP,      // Sequences of whitespace collapse, text does not wrap to next line
+    IR_WHITE_SPACE_PRE,         // Whitespace is preserved, text only wraps on line breaks
+    IR_WHITE_SPACE_PRE_WRAP,    // Whitespace is preserved, text will wrap when necessary
+    IR_WHITE_SPACE_PRE_LINE     // Sequences of whitespace collapse, text wraps when necessary
+} IRWhiteSpaceType;
+
+typedef enum {
     IR_TEXT_FADE_NONE,
     IR_TEXT_FADE_HORIZONTAL,
     IR_TEXT_FADE_VERTICAL,
@@ -313,6 +334,7 @@ typedef struct IRTextEffect {
     IRTextShadow shadow;
     IRDimension max_width;
     IRTextDirection text_direction;
+    IRWhiteSpaceType white_space;   // CSS white-space property
     char* language;
 } IRTextEffect;
 
@@ -367,9 +389,11 @@ typedef struct IRFilter {
 // ============================================================================
 
 typedef enum {
-    IR_POSITION_RELATIVE,
-    IR_POSITION_ABSOLUTE,
-    IR_POSITION_FIXED
+    IR_POSITION_STATIC = 0,     // Default positioning (in flow)
+    IR_POSITION_RELATIVE,       // Relative to normal position
+    IR_POSITION_ABSOLUTE,       // Relative to nearest positioned ancestor
+    IR_POSITION_FIXED,          // Relative to viewport
+    IR_POSITION_STICKY          // Sticky positioning
 } IRPositionMode;
 
 typedef enum {

@@ -246,7 +246,11 @@ void ir_destroy_component(IRComponent* component) {
     }
 
     // Return to pool or free
-    if (g_ir_context && g_ir_context->component_pool) {
+    // Check if component was externally allocated (via malloc/calloc in JSON deserializer)
+    // If so, free it directly instead of returning to the pool
+    if (component->is_externally_allocated) {
+        free(component);
+    } else if (g_ir_context && g_ir_context->component_pool) {
         ir_pool_free_component(g_ir_context->component_pool, component);
     } else {
         free(component);

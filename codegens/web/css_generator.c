@@ -10,6 +10,7 @@
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_stylesheet.h"
 #include "../../ir/ir_builder.h"
+#include "../../ir/ir_plugin.h"
 #include "css_generator.h"
 #include "style_analyzer.h"
 
@@ -2191,6 +2192,58 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
     // to ensure they come after all base styles
 }
 
+/* ============================================================================
+ * Plugin CSS Integration
+ * ============================================================================*/
+
+/**
+ * Append CSS from all registered plugins.
+ * Plugins can register CSS generators that provide styles for custom components.
+ */
+static void append_plugin_css(CSSGenerator* generator, const char* theme) {
+    bool found_any = false;
+    FILE* debug_file = fopen("/tmp/kryon_css_debug.log", "a");
+    if (debug_file) {
+        fprintf(debug_file, "[append_plugin_css] Starting, theme=%s\n", theme);
+        fflush(debug_file);
+    }
+
+    // Iterate through all component types
+    for (uint32_t type = 0; type < 64; type++) {
+        // Check if this component type has a plugin web renderer
+        if (ir_plugin_has_web_renderer(type)) {
+            if (debug_file) {
+                fprintf(debug_file, "[append_plugin_css] Found renderer for type %u\n", type);
+                fflush(debug_file);
+            }
+            // Get CSS from the plugin for this component type
+            char* plugin_css = ir_plugin_get_web_css(type, theme);
+            if (plugin_css) {
+                // Append the plugin CSS to the generator output
+                css_generator_write_string(generator, plugin_css);
+                css_generator_write_string(generator, "\n");
+                free(plugin_css);
+                found_any = true;
+            } else {
+                if (debug_file) {
+                    fprintf(debug_file, "[append_plugin_css] No CSS returned for type %u\n", type);
+                    fflush(debug_file);
+                }
+            }
+        }
+    }
+
+    if (!found_any) {
+        // No plugin CSS found - this might mean plugins aren't loaded yet
+        // or no CSS generators were registered
+        if (debug_file) {
+            fprintf(debug_file, "[append_plugin_css] Warning: No plugin CSS found for theme '%s'\n", theme);
+            fflush(debug_file);
+        }
+    }
+    if (debug_file) fclose(debug_file);
+}
+
 const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     if (!generator || !root) return NULL;
 
@@ -2470,6 +2523,19 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     css_generator_write_string(generator, ".kryon-forEach {\n");
     css_generator_write_string(generator, "  display: contents;\n");
     css_generator_write_string(generator, "}\n\n");
+
+    // Append CSS from plugins (e.g., syntax highlighting)
+    // This should come after base styles but before media queries
+    FILE* debug_file = fopen("/tmp/kryon_css_debug.log", "a");
+    if (debug_file) {
+        fprintf(debug_file, "[css_generator] Calling append_plugin_css...\n");
+        fflush(debug_file);
+    }
+    append_plugin_css(generator, "dark");
+    if (debug_file) {
+        fprintf(debug_file, "[css_generator] append_plugin_css completed\n");
+        fclose(debug_file);
+    }
 
     // Output media queries at the very end (after all base styles)
     if (g_ir_context && g_ir_context->stylesheet) {

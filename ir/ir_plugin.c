@@ -81,7 +81,8 @@ typedef struct PluginSystem {
 
 // Global plugin system instance - shared across all dynamically loaded libraries
 // Removed 'static' keyword to make symbol globally visible
-PluginSystem g_plugin_system = {0};
+// Added visibility attribute to ensure symbol is shared across dlopen boundaries
+__attribute__((visibility("default"))) PluginSystem g_plugin_system = {0};
 
 // ============================================================================
 // Version Comparison Helpers
@@ -597,6 +598,9 @@ bool ir_plugin_dispatch_component_render(void* backend_ctx, uint32_t component_t
 bool ir_plugin_register_web_renderer(uint32_t component_type,
                                      IRPluginWebComponentRenderer renderer,
                                      IRPluginWebCSSGenerator css_gen) {
+    printf("[kryon][plugin] ir_plugin_register_web_renderer called: type=%u, renderer=%p, css_gen=%p\n",
+           component_type, (void*)renderer, (void*)css_gen);
+
     if (!renderer) {
         fprintf(stderr, "[kryon][plugin] NULL web component renderer provided\n");
         return false;
@@ -608,8 +612,27 @@ bool ir_plugin_register_web_renderer(uint32_t component_type,
     }
 
     // Check if already registered
+    FILE* debug_file = fopen("/tmp/kryon_css_debug.log", "a");
+    if (debug_file) {
+        fprintf(debug_file, "[ir_plugin_register_web_renderer] type=%u, renderer=%p, css_gen=%p, existing_renderer=%p\n",
+                component_type, (void*)renderer, (void*)css_gen,
+                (void*)g_plugin_system.web_renderers[component_type]);
+        fclose(debug_file);
+    }
+
     if (g_plugin_system.web_renderers[component_type] != NULL) {
-        fprintf(stderr, "[kryon][plugin] Component type %u already has a web renderer\n", component_type);
+        // If the same renderer is already registered, treat as success (plugin loaded twice)
+        // BUT still update the CSS generator in case it wasn't set before
+        if (g_plugin_system.web_renderers[component_type] == renderer) {
+            // Always update CSS generator - it might have been NULL in previous registration
+            g_plugin_system.web_css_generators[component_type] = css_gen;
+            printf("[kryon][plugin] Web renderer for component type %u already registered (same plugin)\n", component_type);
+            if (css_gen != NULL && g_plugin_system.web_css_generators[component_type] == css_gen) {
+                printf("[kryon][plugin] Updated CSS generator for component type %u\n", component_type);
+            }
+            return true;
+        }
+        fprintf(stderr, "[kryon][plugin] Component type %u already has a different web renderer\n", component_type);
         return false;
     }
 
@@ -657,8 +680,15 @@ char* ir_plugin_render_web_component(const IRComponent* component, const char* t
 }
 
 char* ir_plugin_get_web_css(uint32_t component_type, const char* theme) {
-    if (component_type >= 32) {
+    if (component_type >= 64) {
         return NULL;
+    }
+
+    FILE* debug_file = fopen("/tmp/kryon_css_debug.log", "a");
+    if (debug_file) {
+        fprintf(debug_file, "[ir_plugin_get_web_css] type=%u, css_gen=%p\n",
+                component_type, (void*)g_plugin_system.web_css_generators[component_type]);
+        fclose(debug_file);
     }
 
     IRPluginWebCSSGenerator css_gen = g_plugin_system.web_css_generators[component_type];
@@ -1192,6 +1222,19 @@ IRPluginHandle* ir_plugin_load_with_metadata(const char* plugin_path, const char
 
     if (!handle->shutdown_func) {
         fprintf(stderr, "[kryon][plugin] Warning: Plugin %s has no shutdown function (%s)\n", plugin_name, shutdown_name);
+    }
+
+    // Call init function if present (for web renderer registration, etc.)
+    if (handle->init_func) {
+        bool init_result = handle->init_func(NULL);
+        if (!init_result) {
+            fprintf(stderr, "[kryon][plugin] Plugin %s init function failed\n", plugin_name);
+            // Plugin init failed - clean up and return error
+            dlclose(handle->dl_handle);
+            free(handle->command_ids);
+            free(handle);
+            return NULL;
+        }
     }
 
     // Track this handle for symbol lookup

@@ -2235,6 +2235,10 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
     IRComponent* component = (IRComponent*)calloc(1, sizeof(IRComponent));
     if (!component) return NULL;
 
+    // Mark as externally allocated (not from component pool)
+    // This ensures ir_destroy_component will free it directly instead of returning to pool
+    component->is_externally_allocated = true;
+
     // Initialize basic fields
     component->style = ir_create_style();
     component->layout = ir_create_layout();
@@ -2438,6 +2442,136 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                 snprintf(state_str, sizeof(state_str), "%s", is_open ? "open" : "closed");
             }
             ir_set_custom_data(component, state_str);
+        }
+    }
+
+    // Parse Link component data (url, target, rel)
+    if (component->type == IR_COMPONENT_LINK && !component->custom_data) {
+        typedef struct { char* url; char* title; char* target; char* rel; } IRLinkData;
+        IRLinkData* link_data = (IRLinkData*)calloc(1, sizeof(IRLinkData));
+        if (link_data) {
+            // Read url field (new format)
+            cJSON* urlItem = cJSON_GetObjectItem(json, "url");
+            if (urlItem && cJSON_IsString(urlItem)) {
+                link_data->url = strdup(urlItem->valuestring);
+            }
+            // Read title field
+            cJSON* titleItem = cJSON_GetObjectItem(json, "title");
+            if (titleItem && cJSON_IsString(titleItem)) {
+                link_data->title = strdup(titleItem->valuestring);
+            }
+            // Read target field
+            cJSON* targetItem = cJSON_GetObjectItem(json, "target");
+            if (targetItem && cJSON_IsString(targetItem)) {
+                link_data->target = strdup(targetItem->valuestring);
+            }
+            // Read rel field
+            cJSON* relItem = cJSON_GetObjectItem(json, "rel");
+            if (relItem && cJSON_IsString(relItem)) {
+                link_data->rel = strdup(relItem->valuestring);
+            }
+            component->custom_data = (char*)link_data;
+        }
+    }
+
+    // Parse Heading component data (level, text, id)
+    if (component->type == IR_COMPONENT_HEADING && !component->custom_data) {
+        IRHeadingData* heading_data = (IRHeadingData*)calloc(1, sizeof(IRHeadingData));
+        if (heading_data) {
+            // Read level field
+            cJSON* levelItem = cJSON_GetObjectItem(json, "level");
+            if (levelItem && cJSON_IsNumber(levelItem)) {
+                heading_data->level = (uint8_t)levelItem->valueint;
+                if (heading_data->level < 1) heading_data->level = 1;
+                if (heading_data->level > 6) heading_data->level = 6;
+            } else {
+                heading_data->level = 1;  // Default to h1
+            }
+            // Read text field
+            cJSON* textItem = cJSON_GetObjectItem(json, "text");
+            if (textItem && cJSON_IsString(textItem)) {
+                heading_data->text = strdup(textItem->valuestring);
+            }
+            // Read id field
+            cJSON* idItem = cJSON_GetObjectItem(json, "id");
+            if (idItem && cJSON_IsString(idItem)) {
+                heading_data->id = strdup(idItem->valuestring);
+            }
+            component->custom_data = (char*)heading_data;
+        }
+    }
+
+    // Parse List component data (type, start, tight)
+    if (component->type == IR_COMPONENT_LIST && !component->custom_data) {
+        IRListData* list_data = (IRListData*)calloc(1, sizeof(IRListData));
+        if (list_data) {
+            // Read type field (0=unordered, 1=ordered)
+            cJSON* typeItem = cJSON_GetObjectItem(json, "list_type");
+            if (typeItem && cJSON_IsNumber(typeItem)) {
+                list_data->type = (IRListType)typeItem->valueint;
+            } else {
+                list_data->type = IR_LIST_UNORDERED;  // Default to unordered
+            }
+            // Read start field
+            cJSON* startItem = cJSON_GetObjectItem(json, "start");
+            if (startItem && cJSON_IsNumber(startItem)) {
+                list_data->start = (uint32_t)startItem->valueint;
+            } else {
+                list_data->start = 1;
+            }
+            // Read tight field
+            cJSON* tightItem = cJSON_GetObjectItem(json, "tight");
+            if (tightItem && cJSON_IsBool(tightItem)) {
+                list_data->tight = cJSON_IsTrue(tightItem);
+            } else {
+                list_data->tight = false;
+            }
+            component->custom_data = (char*)list_data;
+        }
+    }
+
+    // Parse CodeBlock component data (language, code, line numbers)
+    if (component->type == IR_COMPONENT_CODE_BLOCK && !component->custom_data) {
+        typedef struct {
+            char* language;
+            char* code;
+            size_t length;
+            bool show_line_numbers;
+            uint32_t start_line;
+        } IRCodeBlockData;
+
+        IRCodeBlockData* code_data = (IRCodeBlockData*)calloc(1, sizeof(IRCodeBlockData));
+        if (code_data) {
+            // Read language field
+            cJSON* langItem = cJSON_GetObjectItem(json, "language");
+            if (langItem && cJSON_IsString(langItem)) {
+                code_data->language = strdup(langItem->valuestring);
+            }
+
+            // Read code field
+            cJSON* codeItem = cJSON_GetObjectItem(json, "code");
+            if (codeItem && cJSON_IsString(codeItem)) {
+                code_data->code = strdup(codeItem->valuestring);
+                code_data->length = strlen(codeItem->valuestring);
+            }
+
+            // Read showLineNumbers field
+            cJSON* showLineNumbersItem = cJSON_GetObjectItem(json, "showLineNumbers");
+            if (showLineNumbersItem && cJSON_IsBool(showLineNumbersItem)) {
+                code_data->show_line_numbers = cJSON_IsTrue(showLineNumbersItem);
+            } else {
+                code_data->show_line_numbers = false;
+            }
+
+            // Read startLine field
+            cJSON* startLineItem = cJSON_GetObjectItem(json, "startLine");
+            if (startLineItem && cJSON_IsNumber(startLineItem)) {
+                code_data->start_line = (uint32_t)startLineItem->valueint;
+            } else {
+                code_data->start_line = 1;
+            }
+
+            component->custom_data = (char*)code_data;
         }
     }
 

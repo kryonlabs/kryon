@@ -11,6 +11,7 @@
 #include "../../ir_serialization.h"
 #include "../../ir_logic.h"
 #include "../../ir_stylesheet.h"
+#include "../../ir_animation_builder.h"
 #include "../html/css_parser.h"  // For ir_css_parse_color
 #include <stdlib.h>
 #include <string.h>
@@ -1196,6 +1197,128 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                     // Add animation to component
                     ir_component_add_animation(component, anim);
                 }
+            }
+        }
+        return;
+    }
+
+    // Transition property
+    if (strcmp(name, "transition") == 0) {
+        // Handle both string and array format
+        // String format: "opacity 0.3 ease-out"
+        // Array format: [{property: "opacity", duration: 0.3, easing: "ease-out"}]
+
+        if (value->type == KRY_VALUE_STRING) {
+            // Parse simple transition string: "property duration easing"
+            char prop_name[64] = {0};
+            float duration = 0.3f;
+            char easing_name[32] = "ease-in-out";
+
+            int parsed = sscanf(value->string_value, "%63s %f %31s", prop_name, &duration, easing_name);
+            if (parsed >= 2) {
+                // Map property name to IRAnimationProperty
+                IRAnimationProperty prop = IR_ANIM_PROP_CUSTOM;
+                if (strcmp(prop_name, "opacity") == 0) prop = IR_ANIM_PROP_OPACITY;
+                else if (strcmp(prop_name, "transform") == 0) prop = IR_ANIM_PROP_ROTATE;  // Generic transform
+                else if (strcmp(prop_name, "translateX") == 0) prop = IR_ANIM_PROP_TRANSLATE_X;
+                else if (strcmp(prop_name, "translateY") == 0) prop = IR_ANIM_PROP_TRANSLATE_Y;
+                else if (strcmp(prop_name, "scaleX") == 0) prop = IR_ANIM_PROP_SCALE_X;
+                else if (strcmp(prop_name, "scaleY") == 0) prop = IR_ANIM_PROP_SCALE_Y;
+                else if (strcmp(prop_name, "rotate") == 0) prop = IR_ANIM_PROP_ROTATE;
+                else if (strcmp(prop_name, "background") == 0) prop = IR_ANIM_PROP_BACKGROUND_COLOR;
+
+                // Map easing name to IREasingType
+                IREasingType easing = IR_EASING_EASE_IN_OUT;
+                if (strcmp(easing_name, "linear") == 0) easing = IR_EASING_LINEAR;
+                else if (strcmp(easing_name, "ease-in") == 0 || strcmp(easing_name, "easeIn") == 0) easing = IR_EASING_EASE_IN;
+                else if (strcmp(easing_name, "ease-out") == 0 || strcmp(easing_name, "easeOut") == 0) easing = IR_EASING_EASE_OUT;
+                else if (strcmp(easing_name, "ease-in-out") == 0 || strcmp(easing_name, "easeInOut") == 0) easing = IR_EASING_EASE_IN_OUT;
+                else if (strcmp(easing_name, "ease-in-quad") == 0) easing = IR_EASING_EASE_IN_QUAD;
+                else if (strcmp(easing_name, "ease-out-quad") == 0) easing = IR_EASING_EASE_OUT_QUAD;
+                else if (strcmp(easing_name, "ease-in-out-quad") == 0) easing = IR_EASING_EASE_IN_OUT_QUAD;
+                else if (strcmp(easing_name, "ease-in-cubic") == 0) easing = IR_EASING_EASE_IN_CUBIC;
+                else if (strcmp(easing_name, "ease-out-cubic") == 0) easing = IR_EASING_EASE_OUT_CUBIC;
+                else if (strcmp(easing_name, "ease-in-out-cubic") == 0) easing = IR_EASING_EASE_IN_OUT_CUBIC;
+
+                IRTransition* trans = ir_transition_create(prop, duration);
+                ir_transition_set_easing(trans, easing);
+
+                // Ensure style exists
+                if (!component->style) {
+                    component->style = (IRStyle*)calloc(1, sizeof(IRStyle));
+                }
+
+                ir_component_add_transition(component, trans);
+            }
+        }
+        else if (value->type == KRY_VALUE_ARRAY) {
+            // Array of transition definitions
+            for (size_t i = 0; i < value->array.count; i++) {
+                KryValue* item = value->array.elements[i];
+                if (!item || item->type != KRY_VALUE_OBJECT) continue;
+
+                // Extract properties from object
+                KryValue* prop_val = NULL;
+                KryValue* dur_val = NULL;
+                KryValue* easing_val = NULL;
+                KryValue* delay_val = NULL;
+
+                for (size_t j = 0; j < item->object.count; j++) {
+                    const char* key = item->object.keys[j];
+                    KryValue* val = item->object.values[j];
+
+                    if (strcmp(key, "property") == 0) prop_val = val;
+                    else if (strcmp(key, "duration") == 0) dur_val = val;
+                    else if (strcmp(key, "easing") == 0) easing_val = val;
+                    else if (strcmp(key, "delay") == 0) delay_val = val;
+                }
+
+                if (!prop_val || prop_val->type != KRY_VALUE_STRING) continue;
+                if (!dur_val || dur_val->type != KRY_VALUE_NUMBER) continue;
+
+                // Map property name
+                IRAnimationProperty prop = IR_ANIM_PROP_CUSTOM;
+                const char* prop_name = prop_val->string_value;
+                if (strcmp(prop_name, "opacity") == 0) prop = IR_ANIM_PROP_OPACITY;
+                else if (strcmp(prop_name, "transform") == 0) prop = IR_ANIM_PROP_ROTATE;
+                else if (strcmp(prop_name, "translateX") == 0) prop = IR_ANIM_PROP_TRANSLATE_X;
+                else if (strcmp(prop_name, "translateY") == 0) prop = IR_ANIM_PROP_TRANSLATE_Y;
+                else if (strcmp(prop_name, "scaleX") == 0) prop = IR_ANIM_PROP_SCALE_X;
+                else if (strcmp(prop_name, "scaleY") == 0) prop = IR_ANIM_PROP_SCALE_Y;
+                else if (strcmp(prop_name, "rotate") == 0) prop = IR_ANIM_PROP_ROTATE;
+                else if (strcmp(prop_name, "background") == 0) prop = IR_ANIM_PROP_BACKGROUND_COLOR;
+
+                IRTransition* trans = ir_transition_create(prop, (float)dur_val->number_value);
+
+                // Set easing if provided
+                if (easing_val && easing_val->type == KRY_VALUE_STRING) {
+                    const char* easing_name = easing_val->string_value;
+                    IREasingType easing = IR_EASING_EASE_IN_OUT;
+                    if (strcmp(easing_name, "linear") == 0) easing = IR_EASING_LINEAR;
+                    else if (strcmp(easing_name, "ease-in") == 0 || strcmp(easing_name, "easeIn") == 0) easing = IR_EASING_EASE_IN;
+                    else if (strcmp(easing_name, "ease-out") == 0 || strcmp(easing_name, "easeOut") == 0) easing = IR_EASING_EASE_OUT;
+                    else if (strcmp(easing_name, "ease-in-out") == 0 || strcmp(easing_name, "easeInOut") == 0) easing = IR_EASING_EASE_IN_OUT;
+                    else if (strcmp(easing_name, "ease-in-quad") == 0) easing = IR_EASING_EASE_IN_QUAD;
+                    else if (strcmp(easing_name, "ease-out-quad") == 0) easing = IR_EASING_EASE_OUT_QUAD;
+                    else if (strcmp(easing_name, "ease-in-out-quad") == 0) easing = IR_EASING_EASE_IN_OUT_QUAD;
+                    else if (strcmp(easing_name, "ease-in-cubic") == 0) easing = IR_EASING_EASE_IN_CUBIC;
+                    else if (strcmp(easing_name, "ease-out-cubic") == 0) easing = IR_EASING_EASE_OUT_CUBIC;
+                    else if (strcmp(easing_name, "ease-in-out-cubic") == 0) easing = IR_EASING_EASE_IN_OUT_CUBIC;
+
+                    ir_transition_set_easing(trans, easing);
+                }
+
+                // Set delay if provided
+                if (delay_val && delay_val->type == KRY_VALUE_NUMBER) {
+                    ir_transition_set_delay(trans, (float)delay_val->number_value);
+                }
+
+                // Ensure style exists
+                if (!component->style) {
+                    component->style = (IRStyle*)calloc(1, sizeof(IRStyle));
+                }
+
+                ir_component_add_transition(component, trans);
             }
         }
         return;

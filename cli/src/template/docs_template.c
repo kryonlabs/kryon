@@ -340,72 +340,143 @@ bool docs_template_scan_docs(DocsTemplateContext* ctx,
 // Sidebar Generation
 // ============================================================================
 
+/**
+ * Get category for a doc entry based on its filename
+ */
+static const char* get_doc_category(const char* filename) {
+    if (!filename) return "Other";
+
+    // Extract basename from path (e.g., "docs/getting-started.md" -> "getting-started.md")
+    const char* slash = strrchr(filename, '/');
+    const char* basename = slash ? slash + 1 : filename;
+
+    // Getting Started
+    if (strcmp(basename, "getting-started.md") == 0) {
+        return "Getting Started";
+    }
+
+    // Language Bindings
+    if (strcmp(basename, "typescript.md") == 0 ||
+        strcmp(basename, "lua-bindings.md") == 0 ||
+        strcmp(basename, "nim-bindings.md") == 0 ||
+        strcmp(basename, "js-bindings.md") == 0 ||
+        strcmp(basename, "c-frontend.md") == 0) {
+        return "Language Bindings";
+    }
+
+    // Core Concepts
+    if (strcmp(basename, "architecture.md") == 0 ||
+        strcmp(basename, "ir-pipeline.md") == 0 ||
+        strcmp(basename, "kry-format.md") == 0 ||
+        strcmp(basename, "codegens.md") == 0 ||
+        strcmp(basename, "targets.md") == 0 ||
+        strcmp(basename, "plugins.md") == 0) {
+        return "Core Concepts";
+    }
+
+    // Reference
+    if (strcmp(basename, "cli-reference.md") == 0) {
+        return "Reference";
+    }
+
+    // Advanced
+    if (strcmp(basename, "developer-guide.md") == 0 ||
+        strcmp(basename, "examples.md") == 0 ||
+        strcmp(basename, "testing.md") == 0) {
+        return "Advanced";
+    }
+
+    return "Other";
+}
+
 struct IRComponent* docs_template_build_sidebar(DocsTemplateContext* ctx,
                                                 const char* current_route) {
     if (!ctx || ctx->doc_count == 0) return NULL;
 
-    // Create a simple div wrapper without any class
+    // Create a simple div wrapper
     struct IRComponent* wrapper = ir_create_component(IR_COMPONENT_CONTAINER);
     if (!wrapper) return NULL;
 
     // Mark as element selector type to prevent auto-assignment of "container" class
     wrapper->selector_type = IR_SELECTOR_ELEMENT;
+    wrapper->css_class = str_copy("docs-sidebar-content");
 
     // Add title if specified
     if (ctx->sidebar_title && strlen(ctx->sidebar_title) > 0) {
         struct IRComponent* title = ir_heading(3, ctx->sidebar_title);
         if (title) {
+            title->css_class = str_copy("docs-sidebar-title");
             ir_add_child(wrapper, title);
         }
     }
 
-    // Create unordered list
-    struct IRComponent* list = ir_create_component(IR_COMPONENT_LIST);
-    if (!list) {
-        return wrapper;
-    }
+    // Define category order
+    const char* category_order[] = {
+        "Getting Started",
+        "Language Bindings",
+        "Core Concepts",
+        "Reference",
+        "Advanced",
+        NULL
+    };
 
-    IRListData* list_data = calloc(1, sizeof(IRListData));
-    if (list_data) {
-        list_data->type = IR_LIST_UNORDERED;
-        list->custom_data = (char*)list_data;
-    }
+    // Add docs by category in order
+    for (int cat_idx = 0; category_order[cat_idx] != NULL; cat_idx++) {
+        const char* category = category_order[cat_idx];
+        bool has_items = false;
 
-    // Add list item for each doc
-    for (int i = 0; i < ctx->doc_count; i++) {
-        DocEntry* doc = &ctx->docs[i];
-
-        struct IRComponent* item = ir_create_component(IR_COMPONENT_LIST_ITEM);
-        if (!item) continue;
-
-        // Create link
-        struct IRComponent* link = ir_create_component(IR_COMPONENT_LINK);
-        if (!link) {
-            // TODO: cleanup item
-            continue;
+        // First pass: check if this category has any items
+        for (int i = 0; i < ctx->doc_count; i++) {
+            DocEntry* doc = &ctx->docs[i];
+            const char* doc_category = get_doc_category(doc->filename);
+            if (strcmp(doc_category, category) == 0) {
+                has_items = true;
+                break;
+            }
         }
 
-        // Set link data
-        IRLinkData* link_data = calloc(1, sizeof(IRLinkData));
-        if (link_data) {
-            link_data->url = str_copy(doc->route);
-            link->custom_data = (char*)link_data;
+        if (!has_items) continue;
+
+        // Add category heading
+        struct IRComponent* heading = ir_heading(4, category);
+        if (heading) {
+            heading->css_class = str_copy("docs-sidebar-category");
+            ir_add_child(wrapper, heading);
         }
 
-        // Set link text
-        link->text_content = str_copy(doc->title ? doc->title : doc->route);
+        // Second pass: add all docs in this category
+        for (int i = 0; i < ctx->doc_count; i++) {
+            DocEntry* doc = &ctx->docs[i];
+            const char* doc_category = get_doc_category(doc->filename);
 
-        // Highlight current page
-        bool is_current = current_route && strcmp(doc->route, current_route) == 0;
-        if (is_current) {
-            link->css_class = str_copy("active");
+            if (strcmp(doc_category, category) != 0) continue;
+
+            // Create link (without list item wrapper - no bullets)
+            struct IRComponent* link = ir_create_component(IR_COMPONENT_LINK);
+            if (!link) continue;
+
+            // Set link data
+            IRLinkData* link_data = calloc(1, sizeof(IRLinkData));
+            if (link_data) {
+                link_data->url = str_copy(doc->route);
+                link->custom_data = (char*)link_data;
+            }
+
+            // Set link text
+            link->text_content = str_copy(doc->title ? doc->title : doc->route);
+
+            // Highlight current page
+            bool is_current = current_route && strcmp(doc->route, current_route) == 0;
+            if (is_current) {
+                link->css_class = str_copy("docs-sidebar-link active");
+            } else {
+                link->css_class = str_copy("docs-sidebar-link");
+            }
+
+            ir_add_child(wrapper, link);
         }
-
-        ir_add_child(item, link);
-        ir_add_child(list, item);
     }
 
-    ir_add_child(wrapper, list);
     return wrapper;
 }
 

@@ -104,7 +104,12 @@ typedef struct IRStyleProperties {
     float border_width_right;
     float border_width_bottom;
     float border_width_left;
-    uint8_t border_radius;
+    uint8_t border_radius;             // Legacy single radius (for backward compatibility)
+    uint8_t border_radius_top_left;    // Individual corner radius values
+    uint8_t border_radius_top_right;
+    uint8_t border_radius_bottom_right;
+    uint8_t border_radius_bottom_left;
+    uint8_t border_radius_flags;        // Bitmask for which corners are explicitly set
 
     // Spacing
     IRSpacing padding;

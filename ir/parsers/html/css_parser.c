@@ -1139,9 +1139,93 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                 }
             }
         } else if (strcmp(prop, "border-radius") == 0) {
+            // Parse border-radius shorthand: 1-4 values
+            // border-radius: 10px        -> all corners 10px
+            // border-radius: 10px 20px   -> TL/BR=10px, TR/BL=20px
+            // border-radius: 10px 20px 30px -> TL=10px, TR/BL=20px, BR=30px
+            // border-radius: 10px 20px 30px 40px -> TL=10px, TR=20px, BR=30px, BL=40px
+            char buf[256];
+            strncpy(buf, val, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = '\0';
+
+            char* parts[4] = {NULL, NULL, NULL, NULL};
+            int count = 0;
+            char* token = strtok(buf, " \t");
+            while (token && count < 4) {
+                parts[count++] = token;
+                token = strtok(NULL, " \t");
+            }
+
+            float r0 = 0, r1 = 0, r2 = 0, r3 = 0;
+            if (count == 1 && sscanf(parts[0], "%fpx", &r0) == 1) {
+                // All corners same
+                style->border.radius = (uint8_t)r0;
+                style->border.radius_top_left = (uint8_t)r0;
+                style->border.radius_top_right = (uint8_t)r0;
+                style->border.radius_bottom_right = (uint8_t)r0;
+                style->border.radius_bottom_left = (uint8_t)r0;
+                style->border.radius_flags = IR_RADIUS_SET_ALL;
+            } else if (count == 2) {
+                if (sscanf(parts[0], "%fpx", &r0) == 1 && sscanf(parts[1], "%fpx", &r1) == 1) {
+                    style->border.radius = (uint8_t)r0;  // Legacy
+                    style->border.radius_top_left = (uint8_t)r0;
+                    style->border.radius_bottom_right = (uint8_t)r0;
+                    style->border.radius_top_right = (uint8_t)r1;
+                    style->border.radius_bottom_left = (uint8_t)r1;
+                    style->border.radius_flags = IR_RADIUS_SET_ALL;
+                }
+            } else if (count == 3) {
+                if (sscanf(parts[0], "%fpx", &r0) == 1 &&
+                    sscanf(parts[1], "%fpx", &r1) == 1 &&
+                    sscanf(parts[2], "%fpx", &r2) == 1) {
+                    style->border.radius = (uint8_t)r0;  // Legacy
+                    style->border.radius_top_left = (uint8_t)r0;
+                    style->border.radius_top_right = (uint8_t)r1;
+                    style->border.radius_bottom_left = (uint8_t)r1;
+                    style->border.radius_bottom_right = (uint8_t)r2;
+                    style->border.radius_flags = IR_RADIUS_SET_ALL;
+                }
+            } else if (count == 4) {
+                if (sscanf(parts[0], "%fpx", &r0) == 1 &&
+                    sscanf(parts[1], "%fpx", &r1) == 1 &&
+                    sscanf(parts[2], "%fpx", &r2) == 1 &&
+                    sscanf(parts[3], "%fpx", &r3) == 1) {
+                    style->border.radius = (uint8_t)r0;  // Legacy
+                    style->border.radius_top_left = (uint8_t)r0;
+                    style->border.radius_top_right = (uint8_t)r1;
+                    style->border.radius_bottom_right = (uint8_t)r2;
+                    style->border.radius_bottom_left = (uint8_t)r3;
+                    style->border.radius_flags = IR_RADIUS_SET_ALL;
+                }
+            }
+        }
+        // Individual corner radius properties
+        else if (strcmp(prop, "border-top-left-radius") == 0) {
             float radius;
             if (sscanf(val, "%fpx", &radius) == 1) {
-                style->border.radius = (uint32_t)radius;
+                style->border.radius_top_left = (uint8_t)radius;
+                style->border.radius_flags |= IR_RADIUS_SET_TOP_LEFT;
+            }
+        }
+        else if (strcmp(prop, "border-top-right-radius") == 0) {
+            float radius;
+            if (sscanf(val, "%fpx", &radius) == 1) {
+                style->border.radius_top_right = (uint8_t)radius;
+                style->border.radius_flags |= IR_RADIUS_SET_TOP_RIGHT;
+            }
+        }
+        else if (strcmp(prop, "border-bottom-right-radius") == 0) {
+            float radius;
+            if (sscanf(val, "%fpx", &radius) == 1) {
+                style->border.radius_bottom_right = (uint8_t)radius;
+                style->border.radius_flags |= IR_RADIUS_SET_BOTTOM_RIGHT;
+            }
+        }
+        else if (strcmp(prop, "border-bottom-left-radius") == 0) {
+            float radius;
+            if (sscanf(val, "%fpx", &radius) == 1) {
+                style->border.radius_bottom_left = (uint8_t)radius;
+                style->border.radius_flags |= IR_RADIUS_SET_BOTTOM_LEFT;
             }
         }
         // Border color only (for hover states, etc.)
@@ -1295,6 +1379,32 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                 style->font.decoration = IR_TEXT_DECORATION_OVERLINE;
             }
         }
+        // Text overflow (for truncating text with ellipsis)
+        else if (strcmp(prop, "text-overflow") == 0) {
+            if (strcmp(val, "clip") == 0) {
+                style->text_effect.overflow = IR_TEXT_OVERFLOW_CLIP;
+            } else if (strcmp(val, "ellipsis") == 0) {
+                style->text_effect.overflow = IR_TEXT_OVERFLOW_ELLIPSIS;
+            } else if (strcmp(val, "fade") == 0) {
+                style->text_effect.overflow = IR_TEXT_OVERFLOW_FADE;
+            } else if (strcmp(val, "visible") == 0) {
+                style->text_effect.overflow = IR_TEXT_OVERFLOW_VISIBLE;
+            }
+        }
+        // White space (for text wrapping control)
+        else if (strcmp(prop, "white-space") == 0) {
+            if (strcmp(val, "normal") == 0) {
+                style->text_effect.white_space = IR_WHITE_SPACE_NORMAL;
+            } else if (strcmp(val, "nowrap") == 0) {
+                style->text_effect.white_space = IR_WHITE_SPACE_NOWRAP;
+            } else if (strcmp(val, "pre") == 0) {
+                style->text_effect.white_space = IR_WHITE_SPACE_PRE;
+            } else if (strcmp(val, "pre-wrap") == 0) {
+                style->text_effect.white_space = IR_WHITE_SPACE_PRE_WRAP;
+            } else if (strcmp(val, "pre-line") == 0) {
+                style->text_effect.white_space = IR_WHITE_SPACE_PRE_LINE;
+            }
+        }
         // Object-fit (for images/videos)
         else if (strcmp(prop, "object-fit") == 0) {
             if (strcmp(val, "fill") == 0) {
@@ -1307,6 +1417,502 @@ void ir_css_apply_to_style(IRStyle* style, const CSSProperty* props, uint32_t co
                 style->object_fit = IR_OBJECT_FIT_NONE;
             } else if (strcmp(val, "scale-down") == 0) {
                 style->object_fit = IR_OBJECT_FIT_SCALE_DOWN;
+            }
+        }
+        // Overflow properties (for scroll behavior)
+        else if (strcmp(prop, "overflow") == 0) {
+            // Parse overflow shorthand (applies to both x and y)
+            IROverflowMode mode = IR_OVERFLOW_VISIBLE;
+            if (strcmp(val, "visible") == 0) {
+                mode = IR_OVERFLOW_VISIBLE;
+            } else if (strcmp(val, "hidden") == 0) {
+                mode = IR_OVERFLOW_HIDDEN;
+            } else if (strcmp(val, "scroll") == 0) {
+                mode = IR_OVERFLOW_SCROLL;
+            } else if (strcmp(val, "auto") == 0) {
+                mode = IR_OVERFLOW_AUTO;
+            }
+            style->overflow_x = mode;
+            style->overflow_y = mode;
+        }
+        else if (strcmp(prop, "overflow-x") == 0) {
+            if (strcmp(val, "visible") == 0) {
+                style->overflow_x = IR_OVERFLOW_VISIBLE;
+            } else if (strcmp(val, "hidden") == 0) {
+                style->overflow_x = IR_OVERFLOW_HIDDEN;
+            } else if (strcmp(val, "scroll") == 0) {
+                style->overflow_x = IR_OVERFLOW_SCROLL;
+            } else if (strcmp(val, "auto") == 0) {
+                style->overflow_x = IR_OVERFLOW_AUTO;
+            }
+        }
+        else if (strcmp(prop, "overflow-y") == 0) {
+            if (strcmp(val, "visible") == 0) {
+                style->overflow_y = IR_OVERFLOW_VISIBLE;
+            } else if (strcmp(val, "hidden") == 0) {
+                style->overflow_y = IR_OVERFLOW_HIDDEN;
+            } else if (strcmp(val, "scroll") == 0) {
+                style->overflow_y = IR_OVERFLOW_SCROLL;
+            } else if (strcmp(val, "auto") == 0) {
+                style->overflow_y = IR_OVERFLOW_AUTO;
+            }
+        }
+        // Box shadow (for drop shadows and elevation effects)
+        else if (strcmp(prop, "box-shadow") == 0) {
+            // box-shadow: none
+            if (strcmp(val, "none") == 0) {
+                style->box_shadow.enabled = false;
+            } else {
+                // Parse box-shadow: <inset>? <offset-x> <offset-y> <blur-radius>? <spread-radius>? <color>?
+                // Examples: "10px 10px", "10px 10px 5px", "10px 10px 5px 5px rgba(0,0,0,0.5)", "inset 2px 2px 5px"
+
+                char buf[512];
+                strncpy(buf, val, sizeof(buf) - 1);
+                buf[sizeof(buf) - 1] = '\0';
+
+                // Default values
+                style->box_shadow.offset_x = 0;
+                style->box_shadow.offset_y = 0;
+                style->box_shadow.blur_radius = 0;
+                style->box_shadow.spread_radius = 0;
+                style->box_shadow.inset = false;
+                style->box_shadow.enabled = true;
+                style->box_shadow.color.type = IR_COLOR_SOLID;
+                style->box_shadow.color.data.r = 0;
+                style->box_shadow.color.data.g = 0;
+                style->box_shadow.color.data.b = 0;
+                style->box_shadow.color.data.a = 128;  // Semi-transparent black default
+
+                char* token = strtok(buf, " \t");
+                int token_count = 0;
+
+                while (token && token_count < 6) {
+                    // Check for inset keyword
+                    if (strcmp(token, "inset") == 0) {
+                        style->box_shadow.inset = true;
+                        token = strtok(NULL, " \t");
+                        continue;
+                    }
+
+                    // Try to parse as offset-x (required)
+                    float offset_x;
+                    if (token_count == 0 && sscanf(token, "%fpx", &offset_x) == 1) {
+                        style->box_shadow.offset_x = offset_x;
+                        token_count++;
+                        token = strtok(NULL, " \t");
+                        continue;
+                    }
+
+                    // Try to parse as offset-y (required)
+                    float offset_y;
+                    if (token_count == 1 && sscanf(token, "%fpx", &offset_y) == 1) {
+                        style->box_shadow.offset_y = offset_y;
+                        token_count++;
+                        token = strtok(NULL, " \t");
+                        continue;
+                    }
+
+                    // Try to parse as blur-radius (optional)
+                    float blur;
+                    if (token_count == 2 && sscanf(token, "%fpx", &blur) == 1) {
+                        style->box_shadow.blur_radius = blur;
+                        token_count++;
+                        token = strtok(NULL, " \t");
+                        continue;
+                    }
+
+                    // Try to parse as spread-radius (optional)
+                    float spread;
+                    if (token_count == 3 && sscanf(token, "%fpx", &spread) == 1) {
+                        style->box_shadow.spread_radius = spread;
+                        token_count++;
+                        token = strtok(NULL, " \t");
+                        continue;
+                    }
+
+                    // Try to parse as color (optional)
+                    // The remaining tokens might be the color (e.g., "rgba(0,", "0,", "0,", "0.5)")
+                    // Reconstruct the rest of the string for color parsing
+                    if (token) {
+                        char color_str[256] = "";
+                        strncat(color_str, token, sizeof(color_str) - 1);
+                        char* next_token = strtok(NULL, "");
+                        if (next_token) {
+                            // Remove leading whitespace from next_token
+                            while (*next_token == ' ' || *next_token == '\t') next_token++;
+                            strncat(color_str, " ", sizeof(color_str) - strlen(color_str) - 1);
+                            strncat(color_str, next_token, sizeof(color_str) - strlen(color_str) - 1);
+                        }
+                        ir_css_parse_color(color_str, &style->box_shadow.color);
+                    }
+                    break;
+                }
+            }
+        }
+        // Position property (for absolute/fixed/sticky positioning)
+        else if (strcmp(prop, "position") == 0) {
+            if (strcmp(val, "static") == 0) {
+                style->position_mode = IR_POSITION_STATIC;
+            } else if (strcmp(val, "relative") == 0) {
+                style->position_mode = IR_POSITION_RELATIVE;
+            } else if (strcmp(val, "absolute") == 0) {
+                style->position_mode = IR_POSITION_ABSOLUTE;
+            } else if (strcmp(val, "fixed") == 0) {
+                style->position_mode = IR_POSITION_FIXED;
+            } else if (strcmp(val, "sticky") == 0) {
+                style->position_mode = IR_POSITION_STICKY;
+            }
+        }
+        // Position offsets (for absolute/fixed positioning)
+        else if (strcmp(prop, "top") == 0) {
+            float offset;
+            if (sscanf(val, "%fpx", &offset) == 1) {
+                style->absolute_y = offset;
+            } else if (strcmp(val, "auto") == 0) {
+                // Keep default
+            }
+        }
+        else if (strcmp(prop, "right") == 0) {
+            float offset;
+            if (sscanf(val, "%fpx", &offset) == 1) {
+                // Note: right is distance from right edge, stored separately
+                // For now we just parse the value (full implementation requires layout engine support)
+            }
+        }
+        else if (strcmp(prop, "bottom") == 0) {
+            float offset;
+            if (sscanf(val, "%fpx", &offset) == 1) {
+                // Note: bottom is distance from bottom edge (requires layout engine support)
+            }
+        }
+        else if (strcmp(prop, "left") == 0) {
+            float offset;
+            if (sscanf(val, "%fpx", &offset) == 1) {
+                style->absolute_x = offset;
+            }
+        }
+        // CSS filters (blur, brightness, contrast, etc.)
+        else if (strcmp(prop, "filter") == 0) {
+            // filter: none | <filter-function-list>
+            if (strcmp(val, "none") == 0) {
+                style->filter_count = 0;
+            } else {
+                // Parse filter functions: blur(5px), brightness(1.5), contrast(0.8), etc.
+                // For now, parse a single filter function
+                // Full implementation would parse multiple space-separated functions
+
+                char buf[512];
+                strncpy(buf, val, sizeof(buf) - 1);
+                buf[sizeof(buf) - 1] = '\0';
+
+                // Try to parse each filter type
+                // blur()
+                if (strncmp(buf, "blur(", 5) == 0) {
+                    float blur;
+                    if (sscanf(buf + 5, "%fpx)", &blur) == 1 || sscanf(buf + 5, "%f)", &blur) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_BLUR;
+                            style->filters[style->filter_count].value = blur;
+                            style->filter_count++;
+                        }
+                    }
+                }
+                // brightness()
+                else if (strncmp(buf, "brightness(", 11) == 0) {
+                    float brightness;
+                    if (sscanf(buf + 11, "%f)", &brightness) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_BRIGHTNESS;
+                            style->filters[style->filter_count].value = brightness;
+                            style->filter_count++;
+                        }
+                    }
+                }
+                // contrast()
+                else if (strncmp(buf, "contrast(", 8) == 0) {
+                    float contrast;
+                    if (sscanf(buf + 8, "%f)", &contrast) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_CONTRAST;
+                            style->filters[style->filter_count].value = contrast;
+                            style->filter_count++;
+                        }
+                    }
+                }
+                // grayscale()
+                else if (strncmp(buf, "grayscale(", 10) == 0) {
+                    float grayscale;
+                    if (sscanf(buf + 10, "%f)", &grayscale) == 1 || sscanf(buf + 10, "%f%%)", &grayscale) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_GRAYSCALE;
+                            style->filters[style->filter_count].value = grayscale;
+                            style->filter_count++;
+                        }
+                    }
+                }
+                // hue-rotate()
+                else if (strncmp(buf, "hue-rotate(", 11) == 0) {
+                    float angle;
+                    if (sscanf(buf + 11, "%fdeg)", &angle) == 1 || sscanf(buf + 11, "%frad)", &angle) == 1 || sscanf(buf + 11, "%f)", &angle) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_HUE_ROTATE;
+                            style->filters[style->filter_count].value = angle;
+                            style->filter_count++;
+                        }
+                    }
+                }
+                // invert()
+                else if (strncmp(buf, "invert(", 7) == 0) {
+                    float invert;
+                    if (sscanf(buf + 7, "%f)", &invert) == 1 || sscanf(buf + 7, "%f%%)", &invert) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_INVERT;
+                            style->filters[style->filter_count].value = invert;
+                            style->filter_count++;
+                        }
+                    }
+                }
+                // opacity()
+                else if (strncmp(buf, "opacity(", 8) == 0) {
+                    float opacity;
+                    if (sscanf(buf + 8, "%f)", &opacity) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_OPACITY;
+                            style->filters[style->filter_count].value = opacity;
+                            style->filter_count++;
+                        }
+                    }
+                }
+                // saturate()
+                else if (strncmp(buf, "saturate(", 9) == 0) {
+                    float saturate;
+                    if (sscanf(buf + 9, "%f)", &saturate) == 1 || sscanf(buf + 9, "%f%%)", &saturate) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_SATURATE;
+                            style->filters[style->filter_count].value = saturate;
+                            style->filter_count++;
+                        }
+                    }
+                }
+                // sepia()
+                else if (strncmp(buf, "sepia(", 6) == 0) {
+                    float sepia;
+                    if (sscanf(buf + 6, "%f)", &sepia) == 1 || sscanf(buf + 6, "%f%%)", &sepia) == 1) {
+                        if (style->filter_count < IR_MAX_FILTERS) {
+                            style->filters[style->filter_count].type = IR_FILTER_SEPIA;
+                            style->filters[style->filter_count].value = sepia;
+                            style->filter_count++;
+                        }
+                    }
+                }
+            }
+        }
+        // Grid item placement (grid-column, grid-row, grid-area)
+        else if (strcmp(prop, "grid-column") == 0) {
+            // Parse grid-column: <start-line> / <end-line> or just <start-line>
+            // Examples: "1", "1 / 3", "span 2", "1 / span 2"
+            char buf[256];
+            strncpy(buf, val, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = '\0';
+
+            char* slash_pos = strchr(buf, '/');
+            if (slash_pos) {
+                // Has both start and end
+                *slash_pos = '\0';
+                char* start = buf;
+                char* end = slash_pos + 1;
+
+                // Trim whitespace
+                while (*start == ' ') start++;
+                while (*end == ' ') end++;
+
+                // Parse start
+                if (strncmp(start, "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(start + 5, "%d", &span) == 1) {
+                        style->grid_item.column_start = -span;  // Negative indicates span
+                    }
+                } else {
+                    int line;
+                    if (sscanf(start, "%d", &line) == 1) {
+                        style->grid_item.column_start = line;
+                    }
+                }
+
+                // Parse end
+                if (strncmp(end, "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(end + 5, "%d", &span) == 1) {
+                        style->grid_item.column_end = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(end, "%d", &line) == 1) {
+                        style->grid_item.column_end = line;
+                    }
+                }
+            } else {
+                // Only start line provided
+                char* ptr = buf;
+                while (*ptr == ' ') ptr++;
+                if (strncmp(ptr, "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(ptr + 5, "%d", &span) == 1) {
+                        style->grid_item.column_start = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(ptr, "%d", &line) == 1) {
+                        style->grid_item.column_start = line;
+                    }
+                }
+            }
+        }
+        else if (strcmp(prop, "grid-row") == 0) {
+            // Parse grid-row: <start-line> / <end-line> or just <start-line>
+            char buf[256];
+            strncpy(buf, val, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = '\0';
+
+            char* slash_pos = strchr(buf, '/');
+            if (slash_pos) {
+                // Has both start and end
+                *slash_pos = '\0';
+                char* start = buf;
+                char* end = slash_pos + 1;
+
+                // Trim whitespace
+                while (*start == ' ') start++;
+                while (*end == ' ') end++;
+
+                // Parse start
+                if (strncmp(start, "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(start + 5, "%d", &span) == 1) {
+                        style->grid_item.row_start = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(start, "%d", &line) == 1) {
+                        style->grid_item.row_start = line;
+                    }
+                }
+
+                // Parse end
+                if (strncmp(end, "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(end + 5, "%d", &span) == 1) {
+                        style->grid_item.row_end = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(end, "%d", &line) == 1) {
+                        style->grid_item.row_end = line;
+                    }
+                }
+            } else {
+                // Only start line provided
+                char* ptr = buf;
+                while (*ptr == ' ') ptr++;
+                if (strncmp(ptr, "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(ptr + 5, "%d", &span) == 1) {
+                        style->grid_item.row_start = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(ptr, "%d", &line) == 1) {
+                        style->grid_item.row_start = line;
+                    }
+                }
+            }
+        }
+        else if (strcmp(prop, "grid-area") == 0) {
+            // Parse grid-area: <row-start> / <column-start> / <row-end> / <column-end>
+            // Or: <row-start> / <column-start> (implicit end)
+            char buf[256];
+            strncpy(buf, val, sizeof(buf) - 1);
+            buf[sizeof(buf) - 1] = '\0';
+
+            // Split by '/'
+            char* parts[4] = {NULL, NULL, NULL, NULL};
+            int count = 0;
+            char* token = buf;
+            char* slash = buf;
+
+            while (slash && count < 4) {
+                slash = strchr(token, '/');
+                if (slash) {
+                    *slash = '\0';
+                    parts[count++] = token;
+                    token = slash + 1;
+                } else if (count < 4) {
+                    parts[count++] = token;
+                }
+            }
+
+            // Parse row-start
+            if (parts[0]) {
+                while (*parts[0] == ' ') parts[0]++;
+                if (strncmp(parts[0], "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(parts[0] + 5, "%d", &span) == 1) {
+                        style->grid_item.row_start = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(parts[0], "%d", &line) == 1) {
+                        style->grid_item.row_start = line;
+                    }
+                }
+            }
+
+            // Parse column-start
+            if (parts[1]) {
+                while (*parts[1] == ' ') parts[1]++;
+                if (strncmp(parts[1], "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(parts[1] + 5, "%d", &span) == 1) {
+                        style->grid_item.column_start = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(parts[1], "%d", &line) == 1) {
+                        style->grid_item.column_start = line;
+                    }
+                }
+            }
+
+            // Parse row-end (optional)
+            if (parts[2]) {
+                while (*parts[2] == ' ') parts[2]++;
+                if (strncmp(parts[2], "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(parts[2] + 5, "%d", &span) == 1) {
+                        style->grid_item.row_end = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(parts[2], "%d", &line) == 1) {
+                        style->grid_item.row_end = line;
+                    }
+                }
+            }
+
+            // Parse column-end (optional)
+            if (parts[3]) {
+                while (*parts[3] == ' ') parts[3]++;
+                if (strncmp(parts[3], "span ", 5) == 0) {
+                    int span;
+                    if (sscanf(parts[3] + 5, "%d", &span) == 1) {
+                        style->grid_item.column_end = -span;
+                    }
+                } else {
+                    int line;
+                    if (sscanf(parts[3], "%d", &line) == 1) {
+                        style->grid_item.column_end = line;
+                    }
+                }
             }
         }
     }
@@ -1383,6 +1989,30 @@ void ir_css_apply_to_layout(IRLayout* layout, const CSSProperty* props, uint32_t
                 layout->flex.shrink = shrink;
             }
         }
+        else if (strcmp(prop, "flex-basis") == 0) {
+            // Parse flex-basis: <length> | <percentage> | auto | content
+            if (strcmp(val, "auto") == 0 || strcmp(val, "content") == 0) {
+                layout->flex.basis = 0;  // 0 means auto/content
+            } else {
+                float basis;
+                char unit[16] = "";
+                if (sscanf(val, "%f%15s", &basis, unit) >= 1) {
+                    if (strcmp(unit, "px") == 0 || unit[0] == '\0') {
+                        layout->flex.basis = basis;
+                    } else if (strcmp(unit, "%") == 0) {
+                        // For percentage, store as negative value to indicate percentage
+                        // The layout engine would need to handle this
+                        layout->flex.basis = -basis;  // Negative indicates percentage
+                    } else if (strcmp(unit, "rem") == 0) {
+                        layout->flex.basis = basis * 16;  // Convert rem to px (assuming 16px base)
+                    } else if (strcmp(unit, "em") == 0) {
+                        layout->flex.basis = basis * 16;  // Convert em to px (approximate)
+                    } else {
+                        layout->flex.basis = basis;  // Unknown unit, store as-is
+                    }
+                }
+            }
+        }
 
         // Size constraints
         else if (strcmp(prop, "min-width") == 0) {
@@ -1396,6 +2026,19 @@ void ir_css_apply_to_layout(IRLayout* layout, const CSSProperty* props, uint32_t
         }
         else if (strcmp(prop, "max-height") == 0) {
             ir_css_parse_dimension(val, &layout->max_height);
+        }
+        // Aspect ratio (for maintaining proportional dimensions)
+        else if (strcmp(prop, "aspect-ratio") == 0) {
+            // Parse aspect-ratio: 16/9, 4/3, 1/1, etc.
+            float width, height;
+            if (sscanf(val, "%f/%f", &width, &height) == 2) {
+                if (height > 0) {
+                    layout->aspect_ratio = width / height;
+                }
+            } else if (sscanf(val, "%f", &width) == 1) {
+                // Single value is treated as width/height ratio
+                layout->aspect_ratio = width;
+            }
         }
 
         // Grid properties

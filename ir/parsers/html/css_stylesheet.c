@@ -703,6 +703,11 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
     out->border_width_bottom = temp_style.border.width_bottom;
     out->border_width_left = temp_style.border.width_left;
     out->border_radius = temp_style.border.radius;
+    out->border_radius_top_left = temp_style.border.radius_top_left;
+    out->border_radius_top_right = temp_style.border.radius_top_right;
+    out->border_radius_bottom_right = temp_style.border.radius_bottom_right;
+    out->border_radius_bottom_left = temp_style.border.radius_bottom_left;
+    out->border_radius_flags = temp_style.border.radius_flags;
     if (temp_style.border.width > 0) out->set_flags |= IR_PROP_BORDER;
     if (temp_style.border.width_top > 0) out->set_flags |= IR_PROP_BORDER_TOP;
     if (temp_style.border.width_right > 0) out->set_flags |= IR_PROP_BORDER_RIGHT;
@@ -821,7 +826,7 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
                 out->grid_template_rows = strdup(props[i].value);
                 out->set_flags |= IR_PROP_GRID_TEMPLATE_ROWS;
             } else if (strcmp(props[i].property, "transition") == 0) {
-                // Parse transition: "all 0.2s ease" or "color 0.3s ease-in-out"
+                // Parse transition: "all 0.2s ease" or "opacity 0.3s ease-in-out"
                 // Format: property duration [timing-function] [delay]
                 const char* val = props[i].value;
 
@@ -836,6 +841,29 @@ void ir_css_to_style_properties(const CSSProperty* props, uint32_t count, IRStyl
                     t->duration = 0.2f;  // default
                     t->delay = 0.0f;
                     t->easing = IR_EASING_EASE_IN_OUT;  // CSS default is "ease"
+
+                    // First, try to identify the property name
+                    char prop_name[32] = {0};
+                    if (sscanf(val, "%31s", prop_name) == 1) {
+                        // Map CSS property names to IRAnimationProperty
+                        if (strcmp(prop_name, "opacity") == 0) t->property = IR_ANIM_PROP_OPACITY;
+                        else if (strcmp(prop_name, "transform") == 0) t->property = IR_ANIM_PROP_ROTATE;
+                        else if (strcmp(prop_name, "translateX") == 0 ||
+                                 strcmp(prop_name, "translate-x") == 0 ||
+                                 strcmp(prop_name, "translate-x") == 0) t->property = IR_ANIM_PROP_TRANSLATE_X;
+                        else if (strcmp(prop_name, "translateY") == 0 ||
+                                 strcmp(prop_name, "translate-y") == 0) t->property = IR_ANIM_PROP_TRANSLATE_Y;
+                        else if (strcmp(prop_name, "scaleX") == 0 ||
+                                 strcmp(prop_name, "scale-x") == 0) t->property = IR_ANIM_PROP_SCALE_X;
+                        else if (strcmp(prop_name, "scaleY") == 0 ||
+                                 strcmp(prop_name, "scale-y") == 0) t->property = IR_ANIM_PROP_SCALE_Y;
+                        else if (strcmp(prop_name, "rotate") == 0) t->property = IR_ANIM_PROP_ROTATE;
+                        else if (strcmp(prop_name, "background") == 0 ||
+                                 strcmp(prop_name, "background-color") == 0 ||
+                                 strcmp(prop_name, "background-color") == 0) t->property = IR_ANIM_PROP_BACKGROUND_COLOR;
+                        else if (strcmp(prop_name, "color") == 0) t->property = IR_ANIM_PROP_CUSTOM;
+                        // "all" stays as CUSTOM (will transition all properties)
+                    }
 
                     // Parse duration (look for number followed by 's' or 'ms')
                     const char* p = val;

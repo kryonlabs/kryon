@@ -139,6 +139,14 @@ DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* confi
         return NULL;
     }
 
+    /* Initialize transition context */
+    renderer->transition_ctx = ir_transition_context_create();
+    if (!renderer->transition_ctx) {
+        ir_animation_context_destroy(renderer->animation_ctx);
+        free(renderer);
+        return NULL;
+    }
+
     /* Initialize hot reload if enabled */
     const char* hot_reload_env = getenv("KRYON_HOT_RELOAD");
     if (hot_reload_env && strcmp(hot_reload_env, "1") == 0) {
@@ -203,6 +211,11 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
     if (renderer->animation_ctx) {
         ir_animation_context_destroy(renderer->animation_ctx);
         renderer->animation_ctx = NULL;
+    }
+
+    if (renderer->transition_ctx) {
+        ir_transition_context_destroy(renderer->transition_ctx);
+        renderer->transition_ctx = NULL;
     }
 
     if (renderer->hot_reload_ctx) {
@@ -474,6 +487,11 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         ir_animation_update(renderer->animation_ctx, delta_time);
     }
     ir_animation_tree_update(root, (float)current_time);
+
+    // Update transitions (detect state changes and animate)
+    if (renderer->transition_ctx) {
+        ir_transition_tree_update(renderer->transition_ctx, root, delta_time);
+    }
 
     // Compute layout using two-pass system before rendering
     ir_layout_compute_tree(root, (float)renderer->config.window_width,

@@ -17,6 +17,7 @@
 #include "../../../ir/ir_instance.h"
 #include "../../../ir/ir_hot_reload.h"
 #include "../../../ir/parsers/lua/lua_parser.h"
+#include "../../../ir/parsers/kry/kry_parser.h"
 #include "../../../backends/desktop/ir_desktop_renderer.h"
 #include "../template/docs_template.h"
 #include "../../../codegens/kry/kry_codegen.h"
@@ -227,11 +228,49 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
         return 1;
     }
 
-    // .kry DSL: delegated to Nim CLI
+    // .kry DSL: use native C parser
     if (strcmp(frontend, "kry") == 0) {
-        fprintf(stderr, "Error: .kry frontend requires Nim CLI integration\n");
-        fprintf(stderr, "Use: kryon compile (Nim CLI) for .kry files\n");
-        return 1;
+        // Read the source file
+        char* source = NULL;
+        size_t source_size = 0;
+        FILE* f = fopen(source_file, "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            source_size = ftell(f);
+            fseek(f, 0, SEEK_SET);
+            source = malloc(source_size + 1);
+            if (source) {
+                fread(source, 1, source_size, f);
+                source[source_size] = '\0';
+            }
+            fclose(f);
+        }
+
+        if (!source) {
+            fprintf(stderr, "Error: Failed to read .kry file: %s\n", source_file);
+            return 1;
+        }
+
+        // Compile using native C parser
+        char* kir_json = ir_kry_to_kir(source, source_size);
+        free(source);
+
+        if (!kir_json) {
+            fprintf(stderr, "Error: Failed to compile .kry file\n");
+            return 1;
+        }
+
+        // Write KIR to output file
+        FILE* out = fopen(output_kir, "w");
+        if (!out) {
+            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+            free(kir_json);
+            return 1;
+        }
+        fprintf(out, "%s\n", kir_json);
+        fclose(out);
+        free(kir_json);
+        return 0;
     }
 
     // Nim: compile with KRYON_SERIALIZE_IR flag
@@ -383,7 +422,30 @@ int build_with_docs_template(const char* content_kir_file,
         route = route_buf;
     }
 
-    // No template: use content KIR directly
+    // Only apply docs template to files within the docs folder
+    // Check if route starts with "/docs" or source_path starts with "docs/"
+    bool is_docs_file = false;
+    if (route && strncmp(route, "/docs", 5) == 0) {
+        is_docs_file = true;
+    } else if (source_path && strncmp(source_path, "docs/", 5) == 0) {
+        is_docs_file = true;
+    }
+
+    // Non-docs files: use content KIR directly without template
+    if (!is_docs_file) {
+        return generate_html_from_kir(content_kir_file, output_dir,
+                                      config ? config->project_name : NULL,
+                                      ".");
+    }
+
+    // Exclude docs/index.html from template (it's a landing page with its own layout)
+    if (source_path && strcmp(source_path, "docs/index.html") == 0) {
+        return generate_html_from_kir(content_kir_file, output_dir,
+                                      config ? config->project_name : NULL,
+                                      ".");
+    }
+
+    // No template available: use content KIR directly
     if (!docs_template_path || !file_exists(docs_template_path)) {
         return generate_html_from_kir(content_kir_file, output_dir,
                                       config ? config->project_name : NULL,
@@ -414,9 +476,21 @@ int build_with_docs_template(const char* content_kir_file,
     }
 
     // Write combined KIR to temp file
+    // Sanitize route for filename: /docs/getting-started -> docs_getting-started_combined.kir
     char combined_kir_file[1024];
+    char safe_route[512];
+    const char* src = route;
+    char* dst = safe_route;
+    // Skip leading slash
+    if (*src == '/') src++;
+    while (*src && dst < safe_route + sizeof(safe_route) - 1) {
+        // Replace slashes with underscores
+        *dst++ = (*src == '/') ? '_' : *src;
+        src++;
+    }
+    *dst = '\0';
     snprintf(combined_kir_file, sizeof(combined_kir_file),
-             ".kryon_cache/%s_combined.kir", route);
+             ".kryon_cache/%s_combined.kir", safe_route);
 
     if (!ir_write_json_file(combined_kir, NULL, combined_kir_file)) {
         ir_destroy_component(content_kir);

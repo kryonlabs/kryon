@@ -99,6 +99,8 @@ void toml_free(TOMLTable* table);
 typedef struct {
     char* name;              // Plugin name (e.g., "storage")
     char* path;              // Path to plugin directory (absolute or relative)
+    char* git;               // Git URL for auto-cloning (optional)
+    char* branch;            // Git branch for auto-cloning (optional, defaults to "main")
     char* version;           // Optional version constraint
     bool enabled;            // Whether plugin is enabled (default: true)
     char* resolved_path;     // Resolved absolute path (populated at runtime)

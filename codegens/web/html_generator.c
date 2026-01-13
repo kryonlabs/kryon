@@ -405,6 +405,7 @@ HTMLGenerator* html_generator_create_with_options(HtmlGeneratorOptions options) 
     generator->options = options;
     generator->logic_block = NULL;
     generator->manifest = NULL;
+    generator->metadata = NULL;  // CRITICAL: initialize to NULL
 
     // Initialize handler collection
     generator->handlers = NULL;

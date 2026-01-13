@@ -42,9 +42,11 @@ IRComponentType ir_html_tag_to_component_type(const char* tag_name) {
     // UI components
     if (strcmp(tag_name, "button") == 0) return IR_COMPONENT_BUTTON;
     if (strcmp(tag_name, "input") == 0) return IR_COMPONENT_INPUT;
+    if (strcmp(tag_name, "textarea") == 0) return IR_COMPONENT_TEXTAREA;
     if (strcmp(tag_name, "select") == 0) return IR_COMPONENT_DROPDOWN;
     if (strcmp(tag_name, "img") == 0) return IR_COMPONENT_IMAGE;
     if (strcmp(tag_name, "a") == 0) return IR_COMPONENT_LINK;
+    if (strcmp(tag_name, "label") == 0) return IR_COMPONENT_SPAN;  // Label maps to span (inline container)
 
     // Inline semantic elements (for rich text)
     if (strcmp(tag_name, "span") == 0) return IR_COMPONENT_SPAN;
@@ -294,6 +296,14 @@ IRComponent* ir_html_node_to_component(HtmlNode* node) {
                 case IR_COMPONENT_INPUT: {
                     const char* placeholder = node->value ? node->value : "";
                     component = ir_input(placeholder);
+                    break;
+                }
+
+                case IR_COMPONENT_TEXTAREA: {
+                    const char* placeholder = node->placeholder ? node->placeholder : "";
+                    uint32_t rows = node->rows > 0 ? node->rows : 3;  // Default 3 rows
+                    uint32_t cols = node->cols > 0 ? node->cols : 40;  // Default 40 cols
+                    component = ir_textarea(placeholder, rows, cols);
                     break;
                 }
 
