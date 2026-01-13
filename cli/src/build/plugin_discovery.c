@@ -32,6 +32,41 @@ static int dir_exists(const char* path) {
 }
 
 /**
+ * Create a directory and all parents (like mkdir -p)
+ */
+static int mkdir_p(const char* path) {
+    char tmp[DISCOVERY_PATH_MAX];
+    char *p = NULL;
+    size_t len;
+
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/') {
+        tmp[len - 1] = 0;
+    }
+
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            if (!dir_exists(tmp)) {
+                if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+                    return -1;
+                }
+            }
+            *p = '/';
+        }
+    }
+
+    if (!dir_exists(tmp)) {
+        if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * Copy a file from src to dst
  */
 static int copy_file(const char* src, const char* dst) {
@@ -146,7 +181,14 @@ static int plugin_compile(const char* plugin_dir, const char* plugin_name) {
 }
 
 /**
- * Install plugin's .so to ~/.local/share/kryon/plugins/ for runtime loading
+ * Install plugin's .so to ~/.local/share/kryon/plugins/<plugin-name>/
+ * for runtime discovery by ir_plugin_discover().
+ *
+ * The runtime discovery expects:
+ *   ~/.local/share/kryon/plugins/<plugin-name>/
+ *     - plugin.toml (metadata)
+ *     - libkryon_<plugin-name>.so (shared library)
+ *
  * Returns 0 on success, -1 on failure
  */
 static int plugin_install_runtime(const char* plugin_dir, const char* plugin_name) {
@@ -157,37 +199,49 @@ static int plugin_install_runtime(const char* plugin_dir, const char* plugin_nam
     }
 
     /* Source .so path */
-    char src_path[DISCOVERY_PATH_MAX];
-    snprintf(src_path, sizeof(src_path), "%s/build/libkryon_%s.so", plugin_dir, plugin_name);
+    char src_so_path[DISCOVERY_PATH_MAX];
+    snprintf(src_so_path, sizeof(src_so_path), "%s/build/libkryon_%s.so", plugin_dir, plugin_name);
 
     /* Check if .so exists */
-    if (!file_exists(src_path)) {
+    if (!file_exists(src_so_path)) {
         /* Not an error - some plugins might only have .a */
         return 0;
     }
 
-    /* Destination directory - matches runtime plugin loader search path */
-    char lib_dir[DISCOVERY_PATH_MAX];
-    snprintf(lib_dir, sizeof(lib_dir), "%s/.local/share/kryon/plugins", home);
+    /* Destination directory: ~/.local/share/kryon/plugins/<plugin-name>/ */
+    char plugin_dest_dir[DISCOVERY_PATH_MAX];
+    snprintf(plugin_dest_dir, sizeof(plugin_dest_dir),
+             "%s/.local/share/kryon/plugins/%s", home, plugin_name);
 
     /* Create destination directory if it doesn't exist */
-    if (!dir_exists(lib_dir)) {
-        char mkdir_cmd[DISCOVERY_PATH_MAX + 32];
-        snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", lib_dir);
-        system(mkdir_cmd);
-    }
-
-    /* Destination .so path */
-    char dst_path[DISCOVERY_PATH_MAX];
-    snprintf(dst_path, sizeof(dst_path), "%s/libkryon_%s.so", lib_dir, plugin_name);
-
-    /* Copy the file */
-    if (copy_file(src_path, dst_path) != 0) {
-        fprintf(stderr, "[plugin] Warning: Failed to install %s to %s\n", plugin_name, dst_path);
+    if (mkdir_p(plugin_dest_dir) != 0) {
+        fprintf(stderr, "[plugin] Warning: Failed to create directory %s\n", plugin_dest_dir);
         return -1;
     }
 
-    printf("[plugin] Installed %s -> %s\n", plugin_name, dst_path);
+    /* Copy the .so file */
+    char dst_so_path[DISCOVERY_PATH_MAX];
+    snprintf(dst_so_path, sizeof(dst_so_path), "%s/libkryon_%s.so", plugin_dest_dir, plugin_name);
+
+    if (copy_file(src_so_path, dst_so_path) != 0) {
+        fprintf(stderr, "[plugin] Warning: Failed to install %s\n", plugin_name);
+        return -1;
+    }
+
+    /* Copy plugin.toml if it exists in the plugin directory */
+    char src_toml_path[DISCOVERY_PATH_MAX];
+    char dst_toml_path[DISCOVERY_PATH_MAX];
+    snprintf(src_toml_path, sizeof(src_toml_path), "%s/plugin.toml", plugin_dir);
+    snprintf(dst_toml_path, sizeof(dst_toml_path), "%s/plugin.toml", plugin_dest_dir);
+
+    if (file_exists(src_toml_path)) {
+        if (copy_file(src_toml_path, dst_toml_path) != 0) {
+            fprintf(stderr, "[plugin] Warning: Failed to copy plugin.toml for %s\n", plugin_name);
+            /* Continue anyway - .so is more critical */
+        }
+    }
+
+    printf("[plugin] Installed %s -> %s/\n", plugin_name, plugin_dest_dir);
     return 0;
 }
 

@@ -77,6 +77,73 @@ static char* get_plugin_cached_path(const char* plugin_name) {
 }
 
 // ============================================================================
+// File Utilities
+// ============================================================================
+
+/**
+ * Copy a file from src to dst
+ */
+static int copy_file(const char* src, const char* dst) {
+    FILE* in = fopen(src, "rb");
+    if (!in) return -1;
+
+    FILE* out = fopen(dst, "wb");
+    if (!out) {
+        fclose(in);
+        return -1;
+    }
+
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) {
+            fclose(in);
+            fclose(out);
+            return -1;
+        }
+    }
+
+    fclose(in);
+    fclose(out);
+    return 0;
+}
+
+/**
+ * Create a directory and all parents (like mkdir -p)
+ */
+static int mkdir_p(const char* path) {
+    char tmp[1024];
+    char *p = NULL;
+    size_t len;
+
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/') {
+        tmp[len - 1] = 0;
+    }
+
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            if (!file_is_directory(tmp)) {
+                if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+                    return -1;
+                }
+            }
+            *p = '/';
+        }
+    }
+
+    if (!file_is_directory(tmp)) {
+        if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+// ============================================================================
 // Git Cloning
 // ============================================================================
 
@@ -196,13 +263,64 @@ int plugin_compile_from_source(const char* plugin_path, const char* plugin_name)
     return 0;
 }
 
+/**
+ * Install a git-cloned plugin from cache to discovery path.
+ * This copies the compiled .so and plugin.toml to ~/.local/share/kryon/plugins/<name>/
+ *
+ * @param plugin_name The plugin name
+ * @param cache_dir The cache directory where the plugin was cloned
+ * @return 0 on success, non-zero on failure
+ */
+static int plugin_install_from_cache(const char* plugin_name, const char* cache_dir) {
+    const char* home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "[kryon][plugin] HOME not set\n");
+        return -1;
+    }
+
+    /* Source paths in cache */
+    char src_so[1024], src_toml[1024];
+    snprintf(src_so, sizeof(src_so), "%s/build/libkryon_%s.so", cache_dir, plugin_name);
+    snprintf(src_toml, sizeof(src_toml), "%s/plugin.toml", cache_dir);
+
+    /* Destination: ~/.local/share/kryon/plugins/<plugin_name>/ */
+    char dest_dir[1024];
+    snprintf(dest_dir, sizeof(dest_dir), "%s/.local/share/kryon/plugins/%s", home, plugin_name);
+
+    /* Create destination directory */
+    if (mkdir_p(dest_dir) != 0) {
+        fprintf(stderr, "[kryon][plugin] Failed to create directory %s\n", dest_dir);
+        return -1;
+    }
+
+    /* Copy .so file */
+    char dest_so[1024];
+    snprintf(dest_so, sizeof(dest_so), "%s/libkryon_%s.so", dest_dir, plugin_name);
+    if (copy_file(src_so, dest_so) != 0) {
+        fprintf(stderr, "[kryon][plugin] Failed to copy .so file\n");
+        return -1;
+    }
+
+    /* Copy plugin.toml */
+    char dest_toml[1024];
+    snprintf(dest_toml, sizeof(dest_toml), "%s/plugin.toml", dest_dir);
+    if (file_exists(src_toml)) {
+        if (copy_file(src_toml, dest_toml) != 0) {
+            fprintf(stderr, "[kryon][plugin] Warning: Failed to copy plugin.toml\n");
+        }
+    }
+
+    printf("[kryon][plugin] Installed %s to discovery path: %s/\n", plugin_name, dest_dir);
+    return 0;
+}
+
 // ============================================================================
 // Combined Installation
 // ============================================================================
 
 /**
  * Install a plugin from git URL
- * This clones the repo and compiles it
+ * This clones the repo, compiles it, and installs to discovery path
  *
  * @param git_url The git URL
  * @param branch The branch to checkout (can be NULL)
@@ -220,6 +338,12 @@ char* plugin_install_from_git(const char* git_url, const char* branch, const cha
     if (plugin_compile_from_source(cached_path, plugin_name) != 0) {
         free(cached_path);
         return NULL;
+    }
+
+    // Install to discovery path for runtime loading
+    if (plugin_install_from_cache(plugin_name, cached_path) != 0) {
+        fprintf(stderr, "[kryon][plugin] Warning: Failed to install plugin to discovery path\n");
+        /* Continue anyway - plugin may still be usable from cache */
     }
 
     return cached_path;
