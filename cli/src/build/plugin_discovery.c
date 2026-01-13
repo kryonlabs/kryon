@@ -146,7 +146,7 @@ static int plugin_compile(const char* plugin_dir, const char* plugin_name) {
 }
 
 /**
- * Install plugin's .so to ~/.local/lib for runtime FFI loading
+ * Install plugin's .so to ~/.local/share/kryon/plugins/ for runtime loading
  * Returns 0 on success, -1 on failure
  */
 static int plugin_install_runtime(const char* plugin_dir, const char* plugin_name) {
@@ -166,11 +166,11 @@ static int plugin_install_runtime(const char* plugin_dir, const char* plugin_nam
         return 0;
     }
 
-    /* Destination directory */
+    /* Destination directory - matches runtime plugin loader search path */
     char lib_dir[DISCOVERY_PATH_MAX];
-    snprintf(lib_dir, sizeof(lib_dir), "%s/.local/lib", home);
+    snprintf(lib_dir, sizeof(lib_dir), "%s/.local/share/kryon/plugins", home);
 
-    /* Create ~/.local/lib if it doesn't exist */
+    /* Create destination directory if it doesn't exist */
     if (!dir_exists(lib_dir)) {
         char mkdir_cmd[DISCOVERY_PATH_MAX + 32];
         snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", lib_dir);

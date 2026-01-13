@@ -34,15 +34,15 @@ typedef struct {
 // ============================================================================
 
 typedef enum {
-    IR_ALIGNMENT_AUTO,           // Automatic alignment (default)
     IR_ALIGNMENT_START,
     IR_ALIGNMENT_CENTER,
     IR_ALIGNMENT_END,
     IR_ALIGNMENT_STRETCH,
-    IR_ALIGNMENT_BASELINE,       // Baseline alignment (for flex/grid items)
     IR_ALIGNMENT_SPACE_BETWEEN,
     IR_ALIGNMENT_SPACE_AROUND,
-    IR_ALIGNMENT_SPACE_EVENLY
+    IR_ALIGNMENT_SPACE_EVENLY,
+    IR_ALIGNMENT_BASELINE,       // Baseline alignment (for flex/grid items)
+    IR_ALIGNMENT_AUTO            // Automatic alignment (default)
 } IRAlignment;
 
 // ============================================================================

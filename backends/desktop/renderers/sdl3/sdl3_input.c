@@ -260,6 +260,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
     // Static state (NOT thread-safe)
     static TabGroupState* dragging_tabgroup = NULL;
     static IRComponent* focused_input = NULL;
+    static IRComponent* prev_hovered = NULL;  // Track hover state for transitions
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -632,6 +633,17 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
 
                     // Update global hover state (used for hover effects in rendering)
                     g_hovered_component = hovered_is_valid ? hovered : NULL;
+
+                    // Update pseudo-state bitmask for hover transitions
+                    // Clear hover bit from previous component
+                    if (prev_hovered && prev_hovered != g_hovered_component && prev_hovered->style) {
+                        prev_hovered->style->current_pseudo_states &= ~(1u << 0);  // Clear bit 0 (hover)
+                    }
+                    // Set hover bit on new hovered component
+                    if (g_hovered_component && g_hovered_component->style && g_hovered_component != prev_hovered) {
+                        g_hovered_component->style->current_pseudo_states |= (1u << 0);  // Set bit 0 (hover)
+                    }
+                    prev_hovered = g_hovered_component;
 
                     // Set cursor to hand for clickable components
                     SDL_Cursor* desired_cursor;

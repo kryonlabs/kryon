@@ -107,15 +107,10 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
 void ir_destroy_component(IRComponent* component) {
     if (!component) return;
 
-    fprintf(stderr, "[ir_destroy_component] START id=%d type=%d ptr=%p\n",
-            component->id, component->type, (void*)component);
-
     // Destroy style
     if (component->style) {
-        fprintf(stderr, "[ir_destroy_component] About to destroy style=%p\n", (void*)component->style);
         ir_destroy_style(component->style);
         component->style = NULL;
-        fprintf(stderr, "[ir_destroy_component] Style destroyed\n");
     }
 
     // Destroy events
