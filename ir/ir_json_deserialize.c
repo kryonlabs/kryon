@@ -2532,6 +2532,14 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
 
     // Parse CodeBlock component data (language, code, line numbers)
     if (component->type == IR_COMPONENT_CODE_BLOCK && !component->custom_data) {
+        FILE* debug_file = fopen("/tmp/ir_deserialize_debug.log", "a");
+        if (debug_file) {
+            fprintf(debug_file, "[CODE_BLOCK deserialize] component=%p, type=%d, parsing custom_data\n",
+                    (void*)component, component->type);
+            fflush(debug_file);
+            fclose(debug_file);
+        }
+
         typedef struct {
             char* language;
             char* code;
@@ -2572,6 +2580,15 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
             }
 
             component->custom_data = (char*)code_data;
+
+            debug_file = fopen("/tmp/ir_deserialize_debug.log", "a");
+            if (debug_file) {
+                fprintf(debug_file, "[CODE_BLOCK deserialize] component=%p, custom_data=%p, language=%s, code=%p, length=%zu\n",
+                        (void*)component, (void*)component->custom_data,
+                        code_data->language ? code_data->language : "(null)",
+                        (void*)code_data->code, code_data->length);
+                fclose(debug_file);
+            }
         }
     }
 
