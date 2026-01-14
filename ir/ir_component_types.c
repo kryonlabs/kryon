@@ -16,6 +16,7 @@ const char* ir_component_type_to_string(IRComponentType type) {
         case IR_COMPONENT_INPUT: return "Input";
         case IR_COMPONENT_CHECKBOX: return "Checkbox";
         case IR_COMPONENT_DROPDOWN: return "Dropdown";
+        case IR_COMPONENT_TEXTAREA: return "Textarea";
         case IR_COMPONENT_ROW: return "Row";
         case IR_COMPONENT_COLUMN: return "Column";
         case IR_COMPONENT_CENTER: return "Center";
