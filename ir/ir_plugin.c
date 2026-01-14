@@ -653,6 +653,13 @@ void ir_plugin_unregister_web_renderer(uint32_t component_type) {
     }
 }
 
+// Helper function for plugins to get custom_data from a component
+// This is needed because plugins have an incomplete IRComponent definition
+char* ir_component_get_custom_data(const IRComponent* component) {
+    if (!component) return NULL;
+    return component->custom_data;
+}
+
 bool ir_plugin_has_web_renderer(uint32_t component_type) {
     if (component_type >= 64) {
         return false;
@@ -661,22 +668,58 @@ bool ir_plugin_has_web_renderer(uint32_t component_type) {
 }
 
 char* ir_plugin_render_web_component(const IRComponent* component, const char* theme) {
+    FILE* debug_file = fopen("/tmp/ir_plugin_render_debug.log", "a");
+    if (debug_file) {
+        fprintf(debug_file, "[ir_plugin_render_web_component] component=%p, type=%d, theme=%s\n",
+                (void*)component, component ? component->type : -1, theme ? theme : "NULL");
+        fflush(debug_file);
+    }
+
     if (!component) {
+        if (debug_file) fclose(debug_file);
         return NULL;
     }
 
     uint32_t component_type = component->type;
-    if (component_type >= 32) {
+    if (component_type >= 64) {
+        if (debug_file) {
+            fprintf(debug_file, "FAIL: component_type >= 64\n");
+            fclose(debug_file);
+        }
         return NULL;
     }
 
     IRPluginWebComponentRenderer renderer = g_plugin_system.web_renderers[component_type];
+    if (debug_file) {
+        fprintf(debug_file, "renderer=%p for type %d\n", (void*)renderer, component_type);
+        fflush(debug_file);
+    }
+
     if (renderer == NULL) {
+        if (debug_file) fclose(debug_file);
         return NULL;
     }
 
-    // Dispatch to renderer
-    return renderer(component, theme ? theme : "light");
+    if (debug_file) fclose(debug_file);
+
+    // Dispatch to renderer - add debug before calling
+    FILE* call_debug = fopen("/tmp/ir_plugin_render_call.log", "a");
+    if (call_debug) {
+        fprintf(call_debug, "About to call renderer at %p for component type %d, component=%p, custom_data=%p\n",
+                (void*)renderer, component_type, (void*)component, (void*)component->custom_data);
+        fflush(call_debug);
+        fclose(call_debug);
+    }
+
+    char* result = renderer(component, theme ? theme : "light");
+
+    call_debug = fopen("/tmp/ir_plugin_render_call.log", "a");
+    if (call_debug) {
+        fprintf(call_debug, "Renderer returned: %p\n", (void*)result);
+        fclose(call_debug);
+    }
+
+    return result;
 }
 
 char* ir_plugin_get_web_css(uint32_t component_type, const char* theme) {

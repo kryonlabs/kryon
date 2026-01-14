@@ -11,6 +11,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_plugin.h"
@@ -19,6 +21,16 @@
 #include "html_generator.h"
 #include "css_generator.h"
 #include "style_analyzer.h"
+
+// Debug: write to file when this translation unit is loaded
+__attribute__((constructor))
+static void debug_html_gen_loaded(void) {
+    FILE* f = fopen("/tmp/html_gen_loaded.txt", "w");
+    if (f) {
+        fprintf(f, "html_generator.c loaded successfully!\n");
+        fclose(f);
+    }
+}
 
 // Access global IR context for metadata
 extern IRContext* g_ir_context;
@@ -578,10 +590,31 @@ static bool has_only_inline_content(IRComponent* component) {
 static bool generate_component_html(HTMLGenerator* generator, IRComponent* component) {
     if (!generator || !component) return false;
 
+    // Debug: log to file immediately (no static state)
+    FILE* debug_log = fopen("/tmp/html_gen_debug.log", "a");
+    if (debug_log) {
+        static int call_count = 0;
+        fprintf(debug_log, "[html_gen] Call #%d: component type=%d (CODE_BLOCK=%d)\n",
+                call_count++, component->type, IR_COMPONENT_CODE_BLOCK);
+        fclose(debug_log);
+    }
+
     // Check if a plugin has registered a web renderer for this component type
-    if (ir_plugin_has_web_renderer(component->type)) {
+    bool has_plugin = ir_plugin_has_web_renderer(component->type);
+    if (component->type == IR_COMPONENT_CODE_BLOCK) {
+        printf("[html_gen] CodeBlock: type=%d, has_plugin=%d\n", component->type, has_plugin);
+        fflush(stdout);
+    }
+    if (has_plugin) {
         // Use plugin renderer - get HTML from plugin
         char* plugin_html = ir_plugin_render_web_component(component, "light");
+        if (component->type == IR_COMPONENT_CODE_BLOCK) {
+            printf("[html_gen] plugin_html=%p\n", (void*)plugin_html);
+            if (plugin_html) {
+                printf("[html_gen] HTML: %.100s...\n", plugin_html);
+            }
+            fflush(stdout);
+        }
         if (plugin_html) {
             html_generator_write_indent(generator);
             html_generator_write_string(generator, plugin_html);
@@ -1345,25 +1378,69 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
                 html_generator_write_format(generator, "%s\n", escaped_text);
             }
         } else if (component->type == IR_COMPONENT_CODE_BLOCK) {
-            IRCodeBlockData* data = (IRCodeBlockData*)component->custom_data;
-            if (data && data->code) {
+            // Check if a plugin has registered a web renderer for code blocks
+            extern char* ir_plugin_render_web_component(const IRComponent* component, const char* theme);
+            extern bool ir_plugin_has_web_renderer(uint32_t component_type);
+
+            printf("[html_gen] CODE_BLOCK component, checking for plugin renderer (type=%d)...\n", IR_COMPONENT_CODE_BLOCK);
+            bool has_renderer = ir_plugin_has_web_renderer(IR_COMPONENT_CODE_BLOCK);
+            printf("[html_gen] has_renderer=%d\n", has_renderer);
+
+            if (has_renderer) {
+                // Use plugin's web renderer for syntax highlighting
                 html_generator_write_indent(generator);
-                html_generator_write_string(generator, "<code");
-                if (data->language) {
-                    html_generator_write_format(generator, " class=\"language-%s\"", data->language);
-                }
-                html_generator_write_string(generator, ">");
+                printf("[html_gen] Calling plugin renderer...\n");
+                char* rendered_html = ir_plugin_render_web_component(component, "dark");
+                printf("[html_gen] Renderer returned: %p\n", (void*)rendered_html);
+                if (rendered_html) {
+                    printf("[html_gen] HTML snippet: %.100s...\n", rendered_html);
+                    html_generator_write_string(generator, rendered_html);
+                    html_generator_write_string(generator, "\n");
+                    free(rendered_html);
+                } else {
+                    // Fallback to plain code if renderer fails
+                    printf("[html_gen] Renderer returned NULL, using fallback\n");
+                    IRCodeBlockData* data = (IRCodeBlockData*)component->custom_data;
+                    if (data && data->code) {
+                        html_generator_write_indent(generator);
+                        html_generator_write_string(generator, "<code");
+                        if (data->language) {
+                            html_generator_write_format(generator, " class=\"language-%s\"", data->language);
+                        }
+                        html_generator_write_string(generator, ">");
 
-                // Output plain escaped code - plugins handle syntax highlighting via web renderer
-                size_t code_len = data->length ? data->length : strlen(data->code);
-                char* escaped_code = malloc(code_len * 6 + 1);
-                if (escaped_code) {
-                    escape_html_text_len(data->code, code_len, escaped_code, code_len * 6 + 1);
-                    html_generator_write_string(generator, escaped_code);
-                    free(escaped_code);
-                }
+                        size_t code_len = data->length ? data->length : strlen(data->code);
+                        char* escaped_code = malloc(code_len * 6 + 1);
+                        if (escaped_code) {
+                            escape_html_text_len(data->code, code_len, escaped_code, code_len * 6 + 1);
+                            html_generator_write_string(generator, escaped_code);
+                            free(escaped_code);
+                        }
 
-                html_generator_write_string(generator, "</code>\n");
+                        html_generator_write_string(generator, "</code>\n");
+                    }
+                }
+            } else {
+                // No plugin renderer - use plain code block
+                IRCodeBlockData* data = (IRCodeBlockData*)component->custom_data;
+                if (data && data->code) {
+                    html_generator_write_indent(generator);
+                    html_generator_write_string(generator, "<code");
+                    if (data->language) {
+                        html_generator_write_format(generator, " class=\"language-%s\"", data->language);
+                    }
+                    html_generator_write_string(generator, ">");
+
+                    size_t code_len = data->length ? data->length : strlen(data->code);
+                    char* escaped_code = malloc(code_len * 6 + 1);
+                    if (escaped_code) {
+                        escape_html_text_len(data->code, code_len, escaped_code, code_len * 6 + 1);
+                        html_generator_write_string(generator, escaped_code);
+                        free(escaped_code);
+                    }
+
+                    html_generator_write_string(generator, "</code>\n");
+                }
             }
         }
         // Write text content if present (for non-markdown components)
@@ -1391,6 +1468,14 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
 }
 
 const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root) {
+    // Debug: write directly to file using syscalls
+    int fd = open("/tmp/html_gen_generate.log", O_WRONLY|O_CREAT|O_APPEND, 0644);
+    if (fd >= 0) {
+        const char msg[] = "html_generator_generate called!\n";
+        write(fd, msg, sizeof(msg)-1);
+        close(fd);
+    }
+
     if (!generator || !root) return NULL;
 
     // Clear buffer
