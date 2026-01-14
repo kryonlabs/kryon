@@ -349,7 +349,7 @@ int plugin_compile_from_source(const char* plugin_path, const char* plugin_name)
     printf("[kryon][plugin] Compiling plugin '%s' from source...\n", plugin_name);
 
     char cmd[1024];
-    snprintf(cmd, sizeof(cmd), "make -C \"%s\" 2>&1", plugin_path);
+    snprintf(cmd, sizeof(cmd), "make -B -C \"%s\" 2>&1", plugin_path);
 
     int result = system(cmd);
     if (result != 0) {
