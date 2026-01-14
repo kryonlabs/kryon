@@ -2029,43 +2029,6 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                            float parent_x, float parent_y) {
     if (!c) return;
 
-    // DEBUG: Always print for component ID=2
-    if (c->id == 2) {
-        fprintf(stderr, "[LAYOUT] Component ID=2 type=%d pos_mode=%d abs=[%.1f,%.1f]\n",
-                c->type, c->style ? c->style->position_mode : -1,
-                c->style ? c->style->absolute_x : -999, c->style ? c->style->absolute_y : -999);
-    }
-
-    // Debug: Track layout calls - always print first 100
-    static int call_count = 0;
-    static int button_count = 0;
-    call_count++;
-
-    // DEBUG: Write to file
-    static FILE* debug_file = NULL;
-    if (!debug_file) {
-        debug_file = fopen("/tmp/kryon_layout_debug.txt", "a");
-    }
-
-    if (debug_file && call_count <= 200) {
-        const char* text_preview = c->text_content ? c->text_content : "";
-        char tbuf[32];
-        snprintf(tbuf, sizeof(tbuf), "%.20s", text_preview);
-        fprintf(debug_file, "[LAYOUT #%d] type=%d id=%u text='%s' pos=[%.1f,%.1f]\n",
-               call_count, c->type, c->id, tbuf, parent_x, parent_y);
-        fflush(debug_file);
-    }
-
-    if (c->type == IR_COMPONENT_BUTTON) {
-        button_count++;
-        if (debug_file) {
-            fprintf(debug_file, "[BUTTON #%d] ID=%u text='%s' pos=[%.1f,%.1f]\n",
-                   button_count, c->id, c->text_content ? c->text_content : "",
-                   parent_x, parent_y);
-            fflush(debug_file);
-        }
-    }
-
     // Ensure layout state exists
     if (!c->layout_state) {
         c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
@@ -2127,23 +2090,9 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     // Try to dispatch to component-specific trait first
     ir_layout_dispatch(c, constraints, parent_x, parent_y);
 
-    // Debug: Check computed dimensions after dispatch for ID=2
-    if (c->id == 2) {
-        fprintf(stderr, "[AFTER DISPATCH] ID=2: computed.w=%.1f computed.h=%.1f computed.x=%.1f computed.y=%.1f\n",
-                c->layout_state->computed.width, c->layout_state->computed.height,
-                c->layout_state->computed.x, c->layout_state->computed.y);
-    }
-
     // If dispatch handled it (trait registered), we're done
     // Check if computed dimensions are set (trait completed layout)
     if (c->layout_state->computed.width > 0 || c->layout_state->computed.height > 0) {
-        // Debug: Print final computed position for component ID=2 (before early return)
-        if (c->id == 2) {
-            fprintf(stderr, "[FINAL LAYOUT TRAIT] ID=2: computed.x=%.1f computed.y=%.1f size=%.1fx%.1f (from trait)\n",
-                    c->layout_state->computed.x, c->layout_state->computed.y,
-                    c->layout_state->computed.width, c->layout_state->computed.height);
-        }
-
         // Skip rendered_bounds sync for modal children - they are positioned
         // during overlay rendering with correct absolute coordinates.
         // Layout pass uses (0,0) as parent, but rendering repositions correctly.
@@ -2512,22 +2461,6 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     c->layout_state->layout_valid = true;
     c->layout_state->computed.valid = true;
 
-    // Debug: Print final computed position for component ID=2
-    if (c->id == 2) {
-        fprintf(stderr, "[FINAL LAYOUT] ID=2: computed.x=%.1f computed.y=%.1f size=%.1fx%.1f\n",
-                c->layout_state->computed.x, c->layout_state->computed.y,
-                c->layout_state->computed.width, c->layout_state->computed.height);
-    }
-
-    // Debug: Always print first few components
-    static int final_count = 0;
-    if (final_count < 10) {
-        fprintf(stderr, "[LAYOUT_COMPLETE] ID=%u type=%d final_pos=(%.1f,%.1f) size=(%.1f,%.1f)\n",
-                c->id, c->type, c->layout_state->computed.x, c->layout_state->computed.y,
-                c->layout_state->computed.width, c->layout_state->computed.height);
-        final_count++;
-    }
-
     // Sync computed layout to rendered_bounds for click detection
     // Skip for modal descendants - they get correct bounds during overlay rendering
     bool in_modal = false;
@@ -2576,24 +2509,6 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
  * Single-pass recursive layout system
  */
 void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewport_height) {
-    static int call_count = 0;
-    call_count++;
-
-    // DEBUG: Always print first call
-    if (call_count == 1) {
-        fprintf(stderr, "[DEBUG_TREE] ir_layout_compute_tree called! root=%p\n", (void*)root);
-    }
-
-    // DEBUG: Write to file
-    static FILE* debug_file = NULL;
-    if (!debug_file) {
-        debug_file = fopen("/tmp/kryon_layout_debug.txt", "w");
-    }
-    if (debug_file) {
-        fprintf(debug_file, "[LAYOUT_TREE #%d] ENTRY viewport=(%.0fx%.0f)\n", call_count, viewport_width, viewport_height);
-        fflush(debug_file);
-    }
-
     if (!root) return;
 
     // Track viewport changes and invalidate layout when viewport resizes
@@ -2607,26 +2522,13 @@ void ir_layout_compute_tree(IRComponent* root, float viewport_width, float viewp
         ir_layout_invalidate_subtree(root);
     }
 
-    if (getenv("KRYON_DEBUG_LAYOUT_MODE")) {
-        fprintf(stderr, "[Layout] Using SINGLE-PASS layout system\n");
-    }
-
-    if (getenv("KRYON_DEBUG_TAB_LAYOUT")) {
-        static int layout_call_count = 0;
-        layout_call_count++;
-        fprintf(stderr, "[LAYOUT_TREE] Call #%d: viewport=(%.0f x %.0f)\n",
-               layout_call_count, viewport_width, viewport_height);
-    }
-
     IRLayoutConstraints root_constraints = {
         .max_width = viewport_width,
         .max_height = viewport_height,
         .min_width = 0,
         .min_height = 0
     };
-    fprintf(stderr, "[DEBUG_TREE] About to call ir_layout_single_pass for root ID=%u\n", root ? root->id : 0);
     ir_layout_single_pass(root, root_constraints, 0, 0);
-    fprintf(stderr, "[DEBUG_TREE] Returned from ir_layout_single_pass\n");
 }
 
 /**
