@@ -62,14 +62,16 @@ int main(int argc, char** argv) {
     // Load plugins from standard plugin directories
     const char* home = getenv("HOME");
     if (home) {
+        // Try ~/.local/share/kryon/plugins first (where CLI installs them)
         char plugin_dir[PATH_MAX];
-        snprintf(plugin_dir, sizeof(plugin_dir), "%s/.kryon/plugins", home);
+        snprintf(plugin_dir, sizeof(plugin_dir), "%s/.local/share/kryon/plugins", home);
 
         // Try to load common plugins
         const char* plugin_names[] = {"syntax", "flowchart", NULL};
         for (int i = 0; plugin_names[i]; i++) {
             char so_path[PATH_MAX];
-            snprintf(so_path, sizeof(so_path), "%s/%s/lib%s.so", plugin_dir, plugin_names[i], plugin_names[i]);
+            // Use the kryon_ prefix that matches the actual library names
+            snprintf(so_path, sizeof(so_path), "%s/%s/libkryon_%s.so", plugin_dir, plugin_names[i], plugin_names[i]);
 
             if (ir_capability_load_plugin(so_path, plugin_names[i])) {
                 fprintf(stderr, "[kryon] Loaded plugin '%s'\n", plugin_names[i]);

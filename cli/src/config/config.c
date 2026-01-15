@@ -614,35 +614,32 @@ static int mkdir_p(const char* path) {
  * Copies .so and plugin.toml to ~/.local/share/kryon/plugins/<name>/
  * This is needed so kir_to_html can discover the plugin at runtime
  */
-static void ensure_plugin_in_discovery_path(const char* plugin_name, const char* plugin_path) {
+static void ensure_plugin_in_discovery_path(const char* plugin_name, const char* plugin_path, const char* so_path) {
     const char* home = getenv("HOME");
     if (!home) {
         return;
     }
 
     /* Source paths */
-    char src_so[1024], src_toml[1024];
-    snprintf(src_so, sizeof(src_so), "%s/build/libkryon_%s.so", plugin_path, plugin_name);
+    char src_toml[1024];
     snprintf(src_toml, sizeof(src_toml), "%s/plugin.toml", plugin_path);
-
-    /* Check if .so exists in build/ */
-    if (!file_exists(src_so)) {
-        /* Try root directory */
-        snprintf(src_so, sizeof(src_so), "%s/libkryon_%s.so", plugin_path, plugin_name);
-        if (!file_exists(src_so)) {
-            /* No .so found, skip installation */
-            return;
-        }
-    }
 
     /* Destination: ~/.local/share/kryon/plugins/<plugin_name>/ */
     char dest_dir[1024];
     snprintf(dest_dir, sizeof(dest_dir), "%s/.local/share/kryon/plugins/%s", home, plugin_name);
 
-    /* Check if already installed */
+    /* Check if already installed - compare file modification times */
     if (file_is_directory(dest_dir)) {
+        /* Extract just the filename from so_path */
+        const char* so_filename = strrchr(so_path, '/');
+        if (so_filename) {
+            so_filename++;
+        } else {
+            so_filename = so_path;
+        }
+
         char existing_so[1024];
-        snprintf(existing_so, sizeof(existing_so), "%s/libkryon_%s.so", dest_dir, plugin_name);
+        snprintf(existing_so, sizeof(existing_so), "%s/%s", dest_dir, so_filename);
         if (file_exists(existing_so)) {
             /* Already installed */
             return;
@@ -656,9 +653,16 @@ static void ensure_plugin_in_discovery_path(const char* plugin_name, const char*
     }
 
     /* Copy .so file */
+    const char* so_filename = strrchr(so_path, '/');
+    if (so_filename) {
+        so_filename++;
+    } else {
+        so_filename = so_path;
+    }
+
     char dest_so[1024];
-    snprintf(dest_so, sizeof(dest_so), "%s/libkryon_%s.so", dest_dir, plugin_name);
-    if (copy_file(src_so, dest_so) != 0) {
+    snprintf(dest_so, sizeof(dest_so), "%s/%s", dest_dir, so_filename);
+    if (copy_file(so_path, dest_so) != 0) {
         fprintf(stderr, "[kryon][plugin] Warning: Failed to copy .so for %s\n", plugin_name);
         return;
     }
@@ -942,15 +946,61 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
     }
 
     // Find the .so file in the plugin directory
+    // Read the library name from plugin.toml [build] section
+    char library_name[256] = {0};
+    char toml_path[1024];
+    snprintf(toml_path, sizeof(toml_path), "%s/plugin.toml", resolved_path);
+
+    FILE* toml_file = fopen(toml_path, "r");
+    if (!toml_file) {
+        fprintf(stderr, "[kryon][plugin]   Failed to open plugin.toml at: %s\n", toml_path);
+        free(resolved_path);
+        return false;
+    }
+
+    char line[512];
+    bool in_build_section = false;
+    while (fgets(line, sizeof(line), toml_file)) {
+        // Trim leading whitespace
+        char* start = line;
+        while (*start == ' ' || *start == '\t') start++;
+
+        // Check for [build] section
+        if (strncmp(start, "[build]", 7) == 0) {
+            in_build_section = true;
+            continue;
+        }
+
+        // Exit [build] section if we hit another section
+        if (start[0] == '[') {
+            if (in_build_section) break;
+            continue;
+        }
+
+        // Look for library = "..." in [build] section
+        if (in_build_section) {
+            if (sscanf(start, "library = \"%255[^\"]\"", library_name) == 1) {
+                break;
+            }
+        }
+    }
+    fclose(toml_file);
+
+    // library field is required
+    if (library_name[0] == '\0') {
+        fprintf(stderr, "[kryon][plugin]   Missing 'library' field in [build] section of %s\n", toml_path);
+        free(resolved_path);
+        return false;
+    }
+
+    // Construct full path to the .so file
     char so_path[1024];
-    snprintf(so_path, sizeof(so_path), "%s/lib%s.so", resolved_path, plugin->name);
+    snprintf(so_path, sizeof(so_path), "%s/%s", resolved_path, library_name);
 
     // Check if .so file exists
     struct stat st;
     if (stat(so_path, &st) != 0) {
-        // Try generic pattern
-        snprintf(so_path, sizeof(so_path), "%s/lib*.so", resolved_path);
-        fprintf(stderr, "[kryon][plugin]   No .so file found at: %s\n", resolved_path);
+        fprintf(stderr, "[kryon][plugin]   Library file not found: %s\n", so_path);
         free(resolved_path);
         return false;
     }
@@ -963,7 +1013,7 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
         mark_plugin_loaded(plugin->name);
 
         // Ensure plugin is installed to discovery path for kir_to_html
-        ensure_plugin_in_discovery_path(plugin->name, resolved_path);
+        ensure_plugin_in_discovery_path(plugin->name, resolved_path, so_path);
     } else {
         fprintf(stderr, "[kryon][plugin]   Failed to load plugin '%s' from %s\n",
                 plugin->name, resolved_path);
