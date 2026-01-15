@@ -13,7 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <ir_plugin.h>
+#include <ir_capability.h>
 
 // ============================================================================
 // Plugin Dependency Tracking
@@ -923,41 +923,43 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
         return false;
     }
 
-    // Check if already loaded via dlopen (e.g., by another plugin)
-    if (ir_plugin_is_loaded(plugin->name)) {
-        printf("[kryon][plugin]   Plugin '%s' already initialized\n", plugin->name);
+    // Check if already loaded via capability system
+    uint32_t loaded_count = ir_capability_get_plugin_count();
+    bool already_loaded = false;
+    for (uint32_t i = 0; i < loaded_count; i++) {
+        const char* loaded_name = ir_capability_get_plugin_name(i);
+        if (loaded_name && strcmp(loaded_name, plugin->name) == 0) {
+            already_loaded = true;
+            break;
+        }
+    }
+
+    if (already_loaded) {
+        printf("[kryon][plugin]   Plugin '%s' already loaded\n", plugin->name);
         free(resolved_path);
         mark_plugin_loaded(plugin->name);
         return true;
     }
 
-    // Discover plugin in the specified path
-    uint32_t count = 0;
-    IRPluginDiscoveryInfo** discovered = ir_plugin_discover(resolved_path, &count);
+    // Find the .so file in the plugin directory
+    char so_path[1024];
+    snprintf(so_path, sizeof(so_path), "%s/lib%s.so", resolved_path, plugin->name);
 
-    if (!discovered || count == 0) {
-        fprintf(stderr, "[kryon][plugin]   No plugin found at: %s\n", resolved_path);
+    // Check if .so file exists
+    struct stat st;
+    if (stat(so_path, &st) != 0) {
+        // Try generic pattern
+        snprintf(so_path, sizeof(so_path), "%s/lib*.so", resolved_path);
+        fprintf(stderr, "[kryon][plugin]   No .so file found at: %s\n", resolved_path);
         free(resolved_path);
         return false;
     }
 
-    // Load the first discovered plugin
-    IRPluginDiscoveryInfo* info = discovered[0];
-    IRPluginHandle* handle = ir_plugin_load_with_metadata(info->path, info->name, info);
+    // Load the plugin using capability system
+    bool success = ir_capability_load_plugin(so_path, plugin->name);
 
-    if (handle) {
+    if (success) {
         printf("[kryon][plugin]   Loaded plugin '%s' from %s\n", plugin->name, resolved_path);
-
-        // Call init function if present - MUST succeed or we fail
-        if (handle->init_func) {
-            if (!handle->init_func(NULL)) {
-                fprintf(stderr, "[kryon][plugin]   Plugin '%s' initialization failed\n", plugin->name);
-                ir_plugin_free_discovery(discovered, count);
-                free(resolved_path);
-                return false;
-            }
-        }
-
         mark_plugin_loaded(plugin->name);
 
         // Ensure plugin is installed to discovery path for kir_to_html
@@ -965,12 +967,10 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
     } else {
         fprintf(stderr, "[kryon][plugin]   Failed to load plugin '%s' from %s\n",
                 plugin->name, resolved_path);
-        ir_plugin_free_discovery(discovered, count);
         free(resolved_path);
         return false;
     }
 
-    ir_plugin_free_discovery(discovered, count);
     free(resolved_path);
 
     return true;

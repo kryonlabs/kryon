@@ -5,7 +5,6 @@
 #include "ir_serialization.h"
 #include "ir_builder.h"
 #include "ir_logic.h"
-#include "ir_plugin.h"
 #include "ir_c_metadata.h"
 #include "ir_stylesheet.h"
 #include "ir_animation.h"
@@ -280,34 +279,8 @@ char* ir_serialize_json_complete(
     }
     cJSON_AddItemToObject(wrapper, "root", componentJson);
 
-    // Scan and add plugin requirements
-    uint32_t plugin_count = 0;
-    char** required_plugins = ir_plugin_scan_requirements(root, &plugin_count);
-    if (required_plugins && plugin_count > 0) {
-        cJSON* pluginsArray = cJSON_CreateArray();
-        if (!pluginsArray) {
-            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for plugins array\n");
-            ir_plugin_free_requirements(required_plugins, plugin_count);
-            cJSON_Delete(wrapper);
-            return NULL;
-        }
-
-        for (uint32_t i = 0; i < plugin_count; i++) {
-            cJSON* pluginStr = cJSON_CreateString(required_plugins[i]);
-            if (!pluginStr) {
-                fprintf(stderr, "ERROR: cJSON_CreateString failed (OOM) for plugin: %s\n",
-                        required_plugins[i]);
-                cJSON_Delete(pluginsArray);
-                ir_plugin_free_requirements(required_plugins, plugin_count);
-                cJSON_Delete(wrapper);
-                return NULL;
-            }
-            cJSON_AddItemToArray(pluginsArray, pluginStr);
-        }
-
-        cJSON_AddItemToObject(wrapper, "required_plugins", pluginsArray);
-        ir_plugin_free_requirements(required_plugins, plugin_count);
-    }
+    // Plugin requirements are now handled by the capability system
+    // and do not need to be serialized in the KIR file
 
     // Add source code entries from manifest
     if (manifest && manifest->source_count > 0) {
@@ -392,22 +365,8 @@ IRComponent* ir_deserialize_json(const char* json_string) {
         component = ir_json_deserialize_component_with_context(root, ctx);
     }
 
-    // Parse plugin requirements if present
-    cJSON* pluginsArray = cJSON_GetObjectItem(root, "required_plugins");
-    if (pluginsArray && cJSON_IsArray(pluginsArray)) {
-        int plugin_count = cJSON_GetArraySize(pluginsArray);
-        if (plugin_count > 0) {
-            // Store globally for desktop renderer to access
-            char** plugin_names = malloc(sizeof(char*) * plugin_count);
-            for (int i = 0; i < plugin_count; i++) {
-                cJSON* plugin_name = cJSON_GetArrayItem(pluginsArray, i);
-                if (plugin_name && cJSON_IsString(plugin_name)) {
-                    plugin_names[i] = strdup(plugin_name->valuestring);
-                }
-            }
-            ir_plugin_set_requirements(plugin_names, plugin_count);
-        }
-    }
+    // Plugin requirements are now handled by the capability system
+    // The capability system will automatically load required plugins
 
     // Parse window properties from "app" object (canonical format)
     cJSON* appJson = cJSON_GetObjectItem(root, "app");

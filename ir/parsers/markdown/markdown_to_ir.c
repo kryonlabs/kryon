@@ -19,13 +19,7 @@
 #include "../../ir_core.h"
 #include "../../ir_markdown.h"
 
-/* Syntax highlighting - loaded dynamically from plugin at runtime */
-#include "../../ir_plugin.h"
-
-/* Function pointer types for syntax plugin (matches kryon_syntax.h) */
-typedef struct { uint32_t start; uint32_t length; int type; } RuntimeSyntaxToken;
-typedef RuntimeSyntaxToken* (*SyntaxTokenizeFn)(const char* code, size_t length, const char* language, uint32_t* token_count);
-typedef bool (*SyntaxSupportsLangFn)(const char* language);
+/* Syntax highlighting is now handled via the capability API */
 
 // ============================================================================
 // HELPER FUNCTIONS

@@ -5,7 +5,6 @@
 #include "ir_memory.h"
 #include "ir_hashmap.h"
 #include "ir_animation.h"
-#include "ir_plugin.h"
 #include "ir_component_handler.h"
 #include "components/ir_component_registry.h"
 #include "cJSON.h"

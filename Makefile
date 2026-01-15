@@ -283,11 +283,13 @@ install-lib: build-lib
 	fi
 	# Copy C headers for compilation (fix relative paths for flat install)
 	mkdir -p $(INCDIR)/c
-	cp core/include/*.h $(INCDIR)/c/
+	cp core/include/*.h $(INCDIR)/c/ 2>/dev/null || true
 	cp ir/*.h $(INCDIR)/c/
+	cp include/kryon/*.h $(INCDIR)/ 2>/dev/null || true
 	for h in backends/desktop/*.h; do \
 		sed 's|#include "../../ir/|#include "|g' "$$h" > $(INCDIR)/c/$$(basename "$$h"); \
 	done
+	@echo "✓ Installed capability.h to $(INCDIR)/capability.h"
 	# Create pkg-config file if it exists
 	@if [ -f kryon.pc ]; then \
 		sed -e 's/@PREFIX@/$(subst /,\/,$(PREFIX))/g' \

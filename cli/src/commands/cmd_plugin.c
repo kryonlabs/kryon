@@ -5,62 +5,12 @@
  */
 
 #include "kryon_cli.h"
-#include <ir_plugin.h>
+#include <ir_capability.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <errno.h>
-
-// Helper: Copy file
-static int copy_file(const char* src, const char* dst) {
-    FILE* in = fopen(src, "rb");
-    if (!in) return -1;
-
-    FILE* out = fopen(dst, "wb");
-    if (!out) {
-        fclose(in);
-        return -1;
-    }
-
-    char buffer[8192];
-    size_t n;
-    while ((n = fread(buffer, 1, sizeof(buffer), in)) > 0) {
-        if (fwrite(buffer, 1, n, out) != n) {
-            fclose(in);
-            fclose(out);
-            return -1;
-        }
-    }
-
-    fclose(in);
-    fclose(out);
-    return 0;
-}
-
-// Helper: Create directory recursively
-static int mkdir_p(const char* path) {
-    char tmp[512];
-    char* p = NULL;
-    size_t len;
-
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    len = strlen(tmp);
-
-    if (tmp[len - 1] == '/') {
-        tmp[len - 1] = 0;
-    }
-
-    for (p = tmp + 1; *p; p++) {
-        if (*p == '/') {
-            *p = 0;
-            mkdir(tmp, 0755);
-            *p = '/';
-        }
-    }
-
-    return mkdir(tmp, 0755);
-}
+#include <dirent.h>
 
 /**
  * List all discovered and loaded plugins
@@ -69,230 +19,290 @@ static int cmd_plugin_list(void) {
     printf("Kryon Plugins\n");
     printf("=============\n\n");
 
-    // Get plugin stats
-    IRPluginStats stats;
-    ir_plugin_get_stats(&stats);
+    // Get count of loaded plugins from capability system
+    uint32_t loaded_count = ir_capability_get_plugin_count();
 
-    // Discover plugins
-    uint32_t count = 0;
-    IRPluginDiscoveryInfo** plugins = ir_plugin_discover(NULL, &count);
-
-    if (count == 0) {
-        printf("No plugins found.\n\n");
-        printf("Plugin search paths:\n");
-        printf("  - ~/.kryon/plugins/\n");
-        printf("  - /usr/local/lib/kryon/plugins/\n");
-        printf("  - /usr/lib/kryon/plugins/\n\n");
-        printf("To install a plugin:\n");
-        printf("  kryon plugin install <path-to-plugin-dir>\n");
-        return 0;
-    }
-
-    printf("Found %u plugin(s):\n\n", count);
-
-    for (uint32_t i = 0; i < count; i++) {
-        IRPluginDiscoveryInfo* info = plugins[i];
-        bool is_loaded = ir_plugin_is_loaded(info->name);
-
-        printf("  %s v%s", info->name, info->version);
-        if (is_loaded) {
-            printf(" [loaded]");
-        }
-        printf("\n");
-        printf("    Path: %s\n", info->path);
-
-        // Show backends
-        if (info->backend_count > 0) {
-            printf("    Backends: ");
-            for (uint32_t j = 0; j < info->backend_count; j++) {
-                printf("%s%s", info->backends[j],
-                       (j < info->backend_count - 1) ? ", " : "");
+    // List loaded plugins
+    if (loaded_count > 0) {
+        printf("Loaded plugins (%u):\n\n", loaded_count);
+        for (uint32_t i = 0; i < loaded_count; i++) {
+            const char* name = ir_capability_get_plugin_name(i);
+            if (name) {
+                printf("  - %s\n", name);
             }
-            printf("\n");
         }
         printf("\n");
+    } else {
+        printf("No plugins currently loaded.\n\n");
     }
 
-    ir_plugin_free_discovery(plugins, count);
+    // Scan plugin directories for available plugins
+    const char* plugin_paths[] = {
+        getenv("HOME") ? : "",
+        "/usr/local/lib/kryon/plugins",
+        "/usr/lib/kryon/plugins",
+        NULL
+    };
+
+    printf("Plugin search paths:\n");
+    for (int i = 0; plugin_paths[i]; i++) {
+        if (i == 0 && strlen(plugin_paths[i]) > 0) {
+            char home_plugins[512];
+            snprintf(home_plugins, sizeof(home_plugins), "%s/.kryon/plugins", plugin_paths[i]);
+            printf("  - %s\n", home_plugins);
+        } else {
+            printf("  - %s\n", plugin_paths[i]);
+        }
+    }
+    printf("\n");
+
     return 0;
 }
 
 /**
- * Show detailed info about a plugin
+ * Load a plugin from a specific path
  */
-static int cmd_plugin_info(const char* plugin_name) {
-    if (!plugin_name) {
+static int cmd_plugin_load(int argc, char** argv) {
+    if (argc < 1) {
+        fprintf(stderr, "Usage: kryon plugin load <plugin.so> [name]\n");
+        return 1;
+    }
+
+    const char* path = argv[0];
+    const char* name = (argc >= 2) ? argv[1] : NULL;
+
+    if (!file_exists(path)) {
+        fprintf(stderr, "Error: Plugin file not found: %s\n", path);
+        return 1;
+    }
+
+    printf("Loading plugin from: %s\n", path);
+    bool success = ir_capability_load_plugin(path, name);
+
+    if (success) {
+        printf("Plugin loaded successfully!\n");
+        return 0;
+    } else {
+        fprintf(stderr, "Error: Failed to load plugin\n");
+        return 1;
+    }
+}
+
+/**
+ * Unload a plugin by name
+ */
+static int cmd_plugin_unload(int argc, char** argv) {
+    if (argc < 1) {
+        fprintf(stderr, "Usage: kryon plugin unload <name>\n");
+        return 1;
+    }
+
+    const char* name = argv[0];
+    printf("Unloading plugin: %s\n", name);
+
+    bool success = ir_capability_unload_plugin(name);
+
+    if (success) {
+        printf("Plugin unloaded successfully!\n");
+        return 0;
+    } else {
+        fprintf(stderr, "Error: Failed to unload plugin (not found?)\n");
+        return 1;
+    }
+}
+
+/**
+ * Show detailed information about a specific plugin
+ */
+static int cmd_plugin_info(int argc, char** argv) {
+    if (argc < 1) {
         fprintf(stderr, "Usage: kryon plugin info <name>\n");
         return 1;
     }
 
-    // Discover plugins
-    uint32_t count = 0;
-    IRPluginDiscoveryInfo** plugins = ir_plugin_discover(NULL, &count);
+    const char* name = argv[0];
+    printf("Plugin Info: %s\n", name);
+    printf("====================================\n\n");
 
-    IRPluginDiscoveryInfo* found = NULL;
+    // Check if plugin is loaded
+    bool is_loaded = false;
+    uint32_t count = ir_capability_get_plugin_count();
     for (uint32_t i = 0; i < count; i++) {
-        if (strcmp(plugins[i]->name, plugin_name) == 0) {
-            found = plugins[i];
+        const char* plugin_name = ir_capability_get_plugin_name(i);
+        if (plugin_name && strcmp(plugin_name, name) == 0) {
+            is_loaded = true;
             break;
         }
     }
 
-    if (!found) {
-        fprintf(stderr, "Plugin '%s' not found\n", plugin_name);
-        ir_plugin_free_discovery(plugins, count);
-        return 1;
-    }
+    printf("Status: %s\n", is_loaded ? "Loaded" : "Not loaded");
+    printf("\n");
 
-    printf("Plugin: %s\n", found->name);
-    printf("Version: %s\n", found->version);
-    printf("Library: %s\n", found->path);
-    printf("Loaded: %s\n", ir_plugin_is_loaded(found->name) ? "yes" : "no");
-
-    if (found->command_count > 0) {
-        printf("Command IDs: ");
-        for (uint32_t i = 0; i < found->command_count; i++) {
-            printf("%u%s", found->command_ids[i],
-                   (i < found->command_count - 1) ? ", " : "");
-        }
-        printf("\n");
-    }
-
-    if (found->backend_count > 0) {
-        printf("Backends: ");
-        for (uint32_t i = 0; i < found->backend_count; i++) {
-            printf("%s%s", found->backends[i],
-                   (i < found->backend_count - 1) ? ", " : "");
-        }
-        printf("\n");
-    }
-
-    ir_plugin_free_discovery(plugins, count);
     return 0;
 }
 
 /**
- * Install a plugin from a directory
+ * Install a plugin from a source directory to the plugin directory
  */
 static int cmd_plugin_install(int argc, char** argv) {
     if (argc < 1) {
-        fprintf(stderr, "Usage: kryon plugin install <path-to-plugin-dir>\n");
-        fprintf(stderr, "\nThe plugin directory should contain:\n");
-        fprintf(stderr, "  - plugin.toml (plugin metadata)\n");
-        fprintf(stderr, "  - libkryon_<name>.so (shared library)\n");
+        fprintf(stderr, "Usage: kryon plugin install <plugin-dir>\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Installs a plugin from a source directory to ~/.kryon/plugins/\n");
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Example:\n");
+        fprintf(stderr, "  kryon plugin install ./kryon-plugins/example\n");
         return 1;
     }
 
-    const char* source_dir = argv[0];
+    const char* src_dir = argv[0];
+    char install_dir[512];
 
-    // Check for plugin.toml
-    char toml_path[512];
-    snprintf(toml_path, sizeof(toml_path), "%s/plugin.toml", source_dir);
-
-    struct stat st;
-    if (stat(toml_path, &st) != 0) {
-        fprintf(stderr, "Error: No plugin.toml found in %s\n", source_dir);
-        return 1;
-    }
-
-    // Read plugin name from toml (simplified - just extract name)
-    FILE* f = fopen(toml_path, "r");
-    if (!f) {
-        fprintf(stderr, "Error: Cannot read plugin.toml\n");
-        return 1;
-    }
-
-    char plugin_name[64] = {0};
-    char line[256];
-    while (fgets(line, sizeof(line), f)) {
-        if (strncmp(line, "name", 4) == 0) {
-            char* eq = strchr(line, '=');
-            if (eq) {
-                eq++;
-                while (*eq == ' ' || *eq == '"') eq++;
-                char* end = eq;
-                while (*end && *end != '"' && *end != '\n') end++;
-                size_t len = end - eq;
-                if (len < sizeof(plugin_name)) {
-                    memcpy(plugin_name, eq, len);
-                    plugin_name[len] = '\0';
-                }
-                break;
-            }
-        }
-    }
-    fclose(f);
-
-    if (plugin_name[0] == '\0') {
-        fprintf(stderr, "Error: Cannot determine plugin name from plugin.toml\n");
-        return 1;
-    }
-
-    // Check for .so file
-    char so_path[512];
-    snprintf(so_path, sizeof(so_path), "%s/libkryon_%s.so", source_dir, plugin_name);
-    if (stat(so_path, &st) != 0) {
-        fprintf(stderr, "Error: No libkryon_%s.so found in %s\n", plugin_name, source_dir);
-        return 1;
-    }
-
-    // Create plugin directory
-    char* home = getenv("HOME");
+    // Get home directory
+    const char* home = getenv("HOME");
     if (!home) {
         fprintf(stderr, "Error: HOME environment variable not set\n");
         return 1;
     }
 
-    char dest_dir[512];
-    snprintf(dest_dir, sizeof(dest_dir), "%s/.kryon/plugins/%s", home, plugin_name);
-    mkdir_p(dest_dir);
+    // Determine plugin name from source directory
+    const char* plugin_name = strrchr(src_dir, '/');
+    if (plugin_name) {
+        plugin_name++;  // Skip the slash
+    } else {
+        plugin_name = src_dir;
+    }
 
-    // Copy files
-    char dest_toml[512], dest_so[512];
-    snprintf(dest_toml, sizeof(dest_toml), "%s/plugin.toml", dest_dir);
-    snprintf(dest_so, sizeof(dest_so), "%s/libkryon_%s.so", dest_dir, plugin_name);
+    // Create install directory path
+    snprintf(install_dir, sizeof(install_dir), "%s/.kryon/plugins/%s", home, plugin_name);
 
-    if (copy_file(toml_path, dest_toml) != 0) {
-        fprintf(stderr, "Error: Failed to copy plugin.toml\n");
+    // Check if source directory exists
+    if (!file_is_directory(src_dir)) {
+        fprintf(stderr, "Error: Source directory not found: %s\n", src_dir);
         return 1;
     }
 
-    if (copy_file(so_path, dest_so) != 0) {
-        fprintf(stderr, "Error: Failed to copy shared library\n");
+    printf("Installing plugin '%s'...\n", plugin_name);
+    printf("  Source: %s\n", src_dir);
+    printf("  Target: %s\n", install_dir);
+
+    // Create install directory
+    if (!dir_create(install_dir) && errno != EEXIST) {
+        fprintf(stderr, "Error: Failed to create install directory: %s\n", strerror(errno));
         return 1;
     }
 
-    printf("Installed plugin '%s' to %s\n", plugin_name, dest_dir);
-    printf("Restart kryon to load the new plugin.\n");
+    // Find the .so file and copy it
+    DIR* dir = opendir(src_dir);
+    if (!dir) {
+        fprintf(stderr, "Error: Failed to open source directory\n");
+        return 1;
+    }
+
+    bool found_so = false;
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strstr(entry->d_name, ".so") != NULL) {
+            char src_path[1024];
+            char dst_path[1024];
+            snprintf(src_path, sizeof(src_path), "%s/%s", src_dir, entry->d_name);
+            snprintf(dst_path, sizeof(dst_path), "%s/%s", install_dir, entry->d_name);
+
+            printf("  Copying: %s\n", entry->d_name);
+
+            // Copy file using system command
+            char cmd[2048];
+            snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s\"", src_path, dst_path);
+            if (system(cmd) != 0) {
+                fprintf(stderr, "Warning: Failed to copy %s\n", entry->d_name);
+            } else {
+                found_so = true;
+            }
+        }
+    }
+    closedir(dir);
+
+    // Copy plugin.toml if it exists
+    char src_toml[1024];
+    char dst_toml[1024];
+    snprintf(src_toml, sizeof(src_toml), "%s/plugin.toml", src_dir);
+    snprintf(dst_toml, sizeof(dst_toml), "%s/plugin.toml", install_dir);
+    if (file_exists(src_toml)) {
+        printf("  Copying: plugin.toml\n");
+        char cmd[2048];
+        snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s\"", src_toml, dst_toml);
+        system(cmd);
+    }
+
+    if (!found_so) {
+        fprintf(stderr, "Error: No .so file found in source directory\n");
+        return 1;
+    }
+
+    printf("\nPlugin installed successfully!\n");
+    printf("To load the plugin:\n");
+    printf("  kryon plugin load %s/lib%s.so\n", install_dir, plugin_name);
+    printf("Or restart kryon to auto-load plugins\n");
+
     return 0;
 }
 
 /**
- * Plugin command dispatcher
+ * Show help for plugin commands
+ */
+static int cmd_plugin_help(void) {
+    printf("Kryon Plugin Commands\n");
+    printf("=====================\n\n");
+    printf("Usage: kryon plugin <command> [options]\n\n");
+    printf("Commands:\n");
+    printf("  list                    List all discovered and loaded plugins\n");
+    printf("  load <path> [name]      Load a plugin from a .so file\n");
+    printf("  unload <name>           Unload a loaded plugin\n");
+    printf("  info <name>             Show information about a plugin\n");
+    printf("  install <dir>           Install a plugin from a directory\n");
+    printf("  help                   Show this help message\n");
+    printf("\n");
+    printf("Examples:\n");
+    printf("  kryon plugin list\n");
+    printf("  kryon plugin load ~/.kryon/plugins/example/libexample.so\n");
+    printf("  kryon plugin info syntax\n");
+    printf("  kryon plugin install ./kryon-plugins/example\n");
+    printf("\n");
+
+    return 0;
+}
+
+/**
+ * Main plugin command dispatcher
  */
 int cmd_plugin(int argc, char** argv) {
     if (argc < 1) {
-        return cmd_plugin_list();
+        return cmd_plugin_help();
     }
 
-    const char* subcmd = argv[0];
+    const char* subcommand = argv[0];
 
-    if (strcmp(subcmd, "list") == 0) {
+    if (strcmp(subcommand, "list") == 0 || strcmp(subcommand, "ls") == 0) {
         return cmd_plugin_list();
     }
-    else if (strcmp(subcmd, "info") == 0) {
-        return cmd_plugin_info(argc > 1 ? argv[1] : NULL);
+    else if (strcmp(subcommand, "load") == 0) {
+        return cmd_plugin_load(argc - 1, argv + 1);
     }
-    else if (strcmp(subcmd, "install") == 0) {
+    else if (strcmp(subcommand, "unload") == 0) {
+        return cmd_plugin_unload(argc - 1, argv + 1);
+    }
+    else if (strcmp(subcommand, "info") == 0) {
+        return cmd_plugin_info(argc - 1, argv + 1);
+    }
+    else if (strcmp(subcommand, "install") == 0) {
         return cmd_plugin_install(argc - 1, argv + 1);
     }
+    else if (strcmp(subcommand, "help") == 0 || strcmp(subcommand, "--help") == 0 || strcmp(subcommand, "-h") == 0) {
+        return cmd_plugin_help();
+    }
     else {
-        fprintf(stderr, "Unknown plugin command: %s\n", subcmd);
-        fprintf(stderr, "\nUsage: kryon plugin <command>\n");
-        fprintf(stderr, "\nCommands:\n");
-        fprintf(stderr, "  list              List installed plugins\n");
-        fprintf(stderr, "  info <name>       Show plugin details\n");
-        fprintf(stderr, "  install <path>    Install plugin from directory\n");
+        fprintf(stderr, "Error: Unknown plugin command '%s'\n", subcommand);
+        fprintf(stderr, "Run 'kryon plugin help' for usage\n");
         return 1;
     }
 }

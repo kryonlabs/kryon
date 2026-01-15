@@ -12,7 +12,6 @@
 #include "ir_core.h"
 #include "ir_builder.h"
 #include "ir_logic.h"
-#include "ir_plugin.h"
 #include "ir_stylesheet.h"
 #include "ir_c_metadata.h"
 #include "cJSON.h"
@@ -1268,13 +1267,11 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
             }
             // Plugin events - use cached name or lookup in registry
             else if (event->type >= IR_EVENT_PLUGIN_START && event->type <= IR_EVENT_PLUGIN_END) {
-                // Prefer cached name from IREvent.event_name (faster)
+                // Use cached name from IREvent.event_name
                 if (event->event_name) {
                     eventType = event->event_name;
                 } else {
-                    // Fallback to registry lookup
-                    const char* name = ir_plugin_get_event_type_name(event->type);
-                    eventType = name ? name : "unknown_plugin_event";
+                    eventType = "plugin_event";
                 }
             }
 
@@ -2603,34 +2600,8 @@ cJSON* ir_json_serialize_complete(
     }
     cJSON_AddItemToObject(wrapper, "root", componentJson);
 
-    // Scan and add plugin requirements
-    uint32_t plugin_count = 0;
-    char** required_plugins = ir_plugin_scan_requirements(root, &plugin_count);
-    if (required_plugins && plugin_count > 0) {
-        cJSON* pluginsArray = cJSON_CreateArray();
-        if (!pluginsArray) {
-            fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for plugins array\n");
-            ir_plugin_free_requirements(required_plugins, plugin_count);
-            cJSON_Delete(wrapper);
-            return NULL;
-        }
-
-        for (uint32_t i = 0; i < plugin_count; i++) {
-            cJSON* pluginStr = cJSON_CreateString(required_plugins[i]);
-            if (!pluginStr) {
-                fprintf(stderr, "ERROR: cJSON_CreateString failed (OOM) for plugin: %s\n",
-                        required_plugins[i]);
-                cJSON_Delete(pluginsArray);
-                ir_plugin_free_requirements(required_plugins, plugin_count);
-                cJSON_Delete(wrapper);
-                return NULL;
-            }
-            cJSON_AddItemToArray(pluginsArray, pluginStr);
-        }
-
-        cJSON_AddItemToObject(wrapper, "required_plugins", pluginsArray);
-        ir_plugin_free_requirements(required_plugins, plugin_count);
-    }
+    // Plugin requirements are now handled by the capability system
+    // and do not need to be serialized in the KIR file
 
     // Add source code entries from manifest
     if (manifest && manifest->source_count > 0) {
