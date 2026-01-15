@@ -16,6 +16,7 @@
 #include "../../../ir/ir_executor.h"
 #include "../../../ir/ir_instance.h"
 #include "../../../ir/ir_hot_reload.h"
+#include "../../../ir/ir_state_manager.h"
 #include "../../../ir/parsers/lua/lua_parser.h"
 #include "../../../ir/parsers/kry/kry_parser.h"
 #include "../../../backends/desktop/ir_desktop_renderer.h"

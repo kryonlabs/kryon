@@ -8,6 +8,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _GNU_SOURCE
 #include "kryon_reactive.h"
+#include "../ir/ir_constants.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -220,9 +221,17 @@ static void reactive_register_signal(KryonSignal* signal) {
     GLOBAL_LOCK;
 
     if (g_reactive.signal_count >= g_reactive.signal_capacity) {
-        g_reactive.signal_capacity *= 2;
-        g_reactive.signals = realloc(g_reactive.signals,
-                                    g_reactive.signal_capacity * sizeof(KryonSignal*));
+        if (!ir_grow_capacity(&g_reactive.signal_capacity)) {
+            GLOBAL_UNLOCK;
+            return;  // Cannot grow further
+        }
+        KryonSignal** new_signals = realloc(g_reactive.signals,
+                                             g_reactive.signal_capacity * sizeof(KryonSignal*));
+        if (!new_signals) {
+            GLOBAL_UNLOCK;
+            return;  // Allocation failed
+        }
+        g_reactive.signals = new_signals;
     }
 
     signal->id = g_reactive.next_id++;
@@ -437,13 +446,27 @@ static uint32_t signal_subscribe_internal(KryonSignal* signal, void* cb,
 
     // Expand capacity if needed
     if (signal->subscribers.count >= signal->subscribers.capacity) {
-        signal->subscribers.capacity *= 2;
-        signal->subscribers.callbacks = realloc(signal->subscribers.callbacks,
-                                                 signal->subscribers.capacity * sizeof(void*));
-        signal->subscribers.user_data = realloc(signal->subscribers.user_data,
-                                                 signal->subscribers.capacity * sizeof(void*));
-        signal->subscribers.types = realloc(signal->subscribers.types,
-                                              signal->subscribers.capacity * sizeof(uint32_t));
+        if (!ir_grow_capacity(&signal->subscribers.capacity)) {
+            MUTEX_UNLOCK(signal->mutex);
+            return 0;  // Cannot grow further
+        }
+        void** new_callbacks = realloc(signal->subscribers.callbacks,
+                                        signal->subscribers.capacity * sizeof(void*));
+        void** new_user_data = realloc(signal->subscribers.user_data,
+                                        signal->subscribers.capacity * sizeof(void*));
+        uint32_t* new_types = realloc(signal->subscribers.types,
+                                       signal->subscribers.capacity * sizeof(uint32_t));
+        if (!new_callbacks || !new_user_data || !new_types) {
+            // Rollback or keep old allocations on partial failure
+            free(new_callbacks);
+            free(new_user_data);
+            free(new_types);
+            MUTEX_UNLOCK(signal->mutex);
+            return 0;  // Allocation failed
+        }
+        signal->subscribers.callbacks = new_callbacks;
+        signal->subscribers.user_data = new_user_data;
+        signal->subscribers.types = new_types;
     }
 
     uint32_t index = signal->subscribers.count++;
@@ -502,9 +525,17 @@ static void signal_notify_subscribers(KryonSignal* signal) {
         GLOBAL_LOCK;
 
         if (g_reactive.pending.count >= g_reactive.pending.capacity) {
-            g_reactive.pending.capacity *= 2;
-            g_reactive.pending.signals = realloc(g_reactive.pending.signals,
-                                                g_reactive.pending.capacity * sizeof(KryonSignal*));
+            if (!ir_grow_capacity(&g_reactive.pending.capacity)) {
+                GLOBAL_UNLOCK;
+                return;  // Cannot grow further
+            }
+            KryonSignal** new_signals = realloc(g_reactive.pending.signals,
+                                                 g_reactive.pending.capacity * sizeof(KryonSignal*));
+            if (!new_signals) {
+                GLOBAL_UNLOCK;
+                return;  // Allocation failed
+            }
+            g_reactive.pending.signals = new_signals;
         }
 
         // Check if already pending
@@ -612,9 +643,19 @@ KryonComputed* kryon_computed_create(KryonComputedFn fn,
     // Register globally
     GLOBAL_LOCK;
     if (g_reactive.computed_count >= g_reactive.computed_capacity) {
-        g_reactive.computed_capacity *= 2;
-        g_reactive.computeds = realloc(g_reactive.computeds,
-                                      g_reactive.computed_capacity * sizeof(KryonComputed*));
+        if (!ir_grow_capacity(&g_reactive.computed_capacity)) {
+            GLOBAL_UNLOCK;
+            kryon_computed_destroy(computed);
+            return NULL;  // Cannot grow further
+        }
+        KryonComputed** new_computeds = realloc(g_reactive.computeds,
+                                                g_reactive.computed_capacity * sizeof(KryonComputed*));
+        if (!new_computeds) {
+            GLOBAL_UNLOCK;
+            kryon_computed_destroy(computed);
+            return NULL;  // Allocation failed
+        }
+        g_reactive.computeds = new_computeds;
     }
     g_reactive.computeds[g_reactive.computed_count++] = computed;
     GLOBAL_UNLOCK;
@@ -786,9 +827,19 @@ KryonEffect* kryon_effect_create(KryonEffectFn fn, void* user_data) {
     // Register globally
     GLOBAL_LOCK;
     if (g_reactive.effect_count >= g_reactive.effect_capacity) {
-        g_reactive.effect_capacity *= 2;
-        g_reactive.effects = realloc(g_reactive.effects,
-                                     g_reactive.effect_capacity * sizeof(KryonEffect*));
+        if (!ir_grow_capacity(&g_reactive.effect_capacity)) {
+            GLOBAL_UNLOCK;
+            kryon_effect_destroy(effect);
+            return NULL;  // Cannot grow further
+        }
+        KryonEffect** new_effects = realloc(g_reactive.effects,
+                                            g_reactive.effect_capacity * sizeof(KryonEffect*));
+        if (!new_effects) {
+            GLOBAL_UNLOCK;
+            kryon_effect_destroy(effect);
+            return NULL;  // Allocation failed
+        }
+        g_reactive.effects = new_effects;
     }
     g_reactive.effects[g_reactive.effect_count++] = effect;
     GLOBAL_UNLOCK;
