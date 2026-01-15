@@ -91,8 +91,10 @@ minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_comm
 		-L../build -lkryon_ir \
 		../build/libkryon_common.a \
 		../build/libkryon_common.a \
+		-Wl,-Bstatic \
 		-lharfbuzz -lfreetype -lfribidi \
 		-lgraphite2 -lpng16 -lbrotlidec -lbrotlicommon -lz -lbz2 \
+		-Wl,-Bdynamic \
 		-lm -lpthread -ldl
 
 # Create build directories
