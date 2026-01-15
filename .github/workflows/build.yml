@@ -59,8 +59,8 @@ jobs:
         run: |
           file build/kryon-terminal
           ./build/kryon-terminal --version
-          # Verify it's truly static (no dynamic linking)
-          ldd build/kryon-terminal 2>&1 | grep "not a dynamic executable"
+          # Verify it's truly static
+          file build/kryon-terminal | grep "statically linked"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -221,8 +221,8 @@ jobs:
         run: |
           file build/kryon-web
           ./build/kryon-web --version
-          # Verify it's truly static (no dynamic linking)
-          ldd build/kryon-web 2>&1 | grep "not a dynamic executable"
+          # Verify it's truly static
+          file build/kryon-web | grep "statically linked"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
