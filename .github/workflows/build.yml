@@ -89,6 +89,7 @@ jobs:
             pkg-config \
             cmake \
             ninja-build \
+            libxcursor-dev \
             libharfbuzz-dev \
             libfreetype6-dev \
             libfribidi-dev \
@@ -300,6 +301,7 @@ jobs:
             pkg-config \
             cmake \
             ninja-build \
+            libxcursor-dev \
             libharfbuzz-dev \
             libfreetype6-dev \
             libfribidi-dev \
