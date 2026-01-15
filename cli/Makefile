@@ -91,7 +91,8 @@ minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_comm
 		-L../build -lkryon_ir \
 		../build/libkryon_common.a \
 		../build/libkryon_common.a \
-		$(HARFBUZZ_LIBS) \
+		-lharfbuzz -lfreetype -lfribidi \
+		-lgraphite2 -lpng16 -lbrotlidec -lbrotlicommon -lz -lbz2 \
 		-static \
 		-lm -lpthread -ldl
 
