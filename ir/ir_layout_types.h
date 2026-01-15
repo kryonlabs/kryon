@@ -66,12 +66,28 @@ typedef struct {
     bool valid;        // Layout is current (not dirty)
 } IRComputedLayout;
 
+// Forward declaration
+typedef struct IRComponent IRComponent;
+
+// Dirty flags for efficient incremental layout
+// (moved here from ir_core.h for consolidation)
+typedef enum {
+    IR_DIRTY_NONE = 0,
+    IR_DIRTY_STYLE = 1 << 0,     // Style properties changed
+    IR_DIRTY_LAYOUT = 1 << 1,    // Layout needs recalculation
+    IR_DIRTY_CHILDREN = 1 << 2,  // Children added/removed
+    IR_DIRTY_CONTENT = 1 << 3,   // Text content changed
+    IR_DIRTY_SUBTREE = 1 << 4,   // Descendant needs layout
+    IR_DIRTY_RENDER = 1 << 5     // Visual-only changes (no layout recalc needed)
+} IRDirtyFlags;
+
 // Complete layout state per component
 typedef struct {
     IRComputedLayout computed;          // Final layout (single-pass)
     uint32_t cache_generation;          // For cache invalidation
-    bool dirty;                         // Needs recomputation
+    bool dirty;                         // Legacy: Needs recomputation
     bool layout_valid;                  // Layout complete
+    IRDirtyFlags dirty_flags;           // Consolidated dirty tracking
 } IRLayoutState;
 
 // ============================================================================

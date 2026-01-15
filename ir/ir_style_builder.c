@@ -20,7 +20,9 @@ extern void ir_gradient_destroy(struct IRGradient* gradient);
 static void mark_style_dirty(IRComponent* component) {
     if (!component) return;
     ir_layout_mark_dirty(component);
-    component->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
+    if (component->layout_state) {
+        component->layout_state->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
+    }
 }
 
 // ============================================================================

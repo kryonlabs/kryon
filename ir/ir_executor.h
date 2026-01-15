@@ -156,10 +156,18 @@ bool ir_executor_handle_event_by_logic_id(IRExecutorContext* ctx,
 bool ir_executor_call_handler(IRExecutorContext* ctx, const char* handler_name);
 
 // ============================================================================
-// GLOBAL EXECUTOR (for desktop backend integration)
+// GLOBAL STATE MANAGER (for desktop backend integration)
 // ============================================================================
 
-// Get/set the global executor context (used by desktop_input.c)
+// Forward declaration
+typedef struct IRStateManager IRStateManager;
+
+// Get/set the global state manager
+IRStateManager* ir_state_get_global(void);
+void ir_state_set_global(IRStateManager* mgr);
+
+// Legacy compatibility: Get/set the global executor context
+// Note: These now use the state manager internally
 IRExecutorContext* ir_executor_get_global(void);
 void ir_executor_set_global(IRExecutorContext* ctx);
 

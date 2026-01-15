@@ -82,10 +82,9 @@ IRComponent* ir_pool_alloc_component(IRComponentPool* pool) {
     // Zero out the component
     memset(component, 0, sizeof(IRComponent));
 
-    // Initialize cache and dirty flags
+    // Initialize cache
     component->layout_cache.dirty = true;
     component->layout_cache.cache_generation = 0;
-    component->dirty_flags = IR_DIRTY_LAYOUT;
 
     pool->total_allocated++;
 

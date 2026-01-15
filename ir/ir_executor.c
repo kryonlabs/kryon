@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ir_executor.h"
+#include "ir_state_manager.h"
 #include "ir_expression.h"
 #include "ir_core.h"
 #include "ir_builder.h"
@@ -10,6 +11,9 @@
 
 // Forward declarations
 static void ir_executor_update_conditionals(IRExecutorContext* ctx);
+
+// Forward declaration of state manager functions for global access
+extern IRStateManager* ir_state_get_global(void);
 
 // ============================================================================
 // VALUE HELPER FUNCTIONS
@@ -116,17 +120,37 @@ static IRRuntimeConditional g_conditionals[IR_EXECUTOR_MAX_CONDITIONALS];
 static int g_conditional_count = 0;
 
 // ============================================================================
-// GLOBAL STATE
+// GLOBAL STATE (now using state manager)
 // ============================================================================
 
-static IRExecutorContext* g_executor = NULL;
+// Global state manager - replaces g_executor
+static IRStateManager* g_state_manager = NULL;
 
-IRExecutorContext* ir_executor_get_global(void) {
-    return g_executor;
+// Set the global state manager (called by desktop backend during initialization)
+void ir_state_set_global(IRStateManager* mgr) {
+    g_state_manager = mgr;
 }
 
+// Get the global state manager
+IRStateManager* ir_state_get_global(void) {
+    return g_state_manager;
+}
+
+// Legacy compatibility - get executor from state manager
+IRExecutorContext* ir_executor_get_global(void) {
+    return g_state_manager ? ir_state_manager_get_executor(g_state_manager) : NULL;
+}
+
+// Legacy compatibility - set executor creates a state manager wrapper
 void ir_executor_set_global(IRExecutorContext* ctx) {
-    g_executor = ctx;
+    if (g_state_manager) {
+        // If state manager exists, update its executor
+        ir_state_manager_set_executor(g_state_manager, ctx);
+    } else if (ctx) {
+        // Create a new state manager for backward compatibility
+        g_state_manager = ir_state_manager_create(NULL);
+        ir_state_manager_set_executor(g_state_manager, ctx);
+    }
 }
 
 // ============================================================================
@@ -139,7 +163,8 @@ void ir_executor_set_global(IRExecutorContext* ctx) {
  * @return Allocated string with the value (caller must free), or NULL if not found
  */
 char* ir_executor_eval_text_expression(const char* expression, const char* scope) {
-    if (!expression || !g_executor) return NULL;
+    IRExecutorContext* executor = ir_executor_get_global();
+    if (!expression || !executor) return NULL;
 
     const char* lookup_scope = scope ? scope : "global";
     fprintf(stderr, "[eval_text_expr] Evaluating '%s' in scope '%s'\n", expression, lookup_scope);
@@ -147,8 +172,8 @@ char* ir_executor_eval_text_expression(const char* expression, const char* scope
 
     // Simple variable lookup (just the variable name, no complex expressions yet)
     // First try to find variable in the specified scope
-    for (uint32_t i = 0; i < g_executor->var_count; i++) {
-        IRExecutorVar* var = &g_executor->vars[i];
+    for (uint32_t i = 0; i < executor->var_count; i++) {
+        IRExecutorVar* var = &executor->vars[i];
         if (var->name && strcmp(var->name, expression) == 0) {
             // Check if scope matches
             if (var->scope && strcmp(var->scope, lookup_scope) == 0) {
@@ -385,11 +410,6 @@ void ir_executor_destroy(IRExecutorContext* ctx) {
 
     // Note: We don't own logic, manifest, or root - they're set externally
     free(ctx);
-
-    // Clear global if this was it
-    if (g_executor == ctx) {
-        g_executor = NULL;
-    }
 }
 
 // ============================================================================
@@ -1932,7 +1952,9 @@ static void update_text_recursive(IRExecutorContext* ctx, IRComponent* comp, uin
                         if (!old_text || strcmp(old_text, result) != 0) {
                             ir_layout_mark_dirty(comp);
                             ir_layout_mark_dirty(comp);
-                            comp->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
+                            if (comp->layout_state) {
+                                comp->layout_state->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
+                            }
                         }
                         if (old_text) {
                             free(old_text);
@@ -1979,7 +2001,9 @@ static void update_text_recursive(IRExecutorContext* ctx, IRComponent* comp, uin
                         if (!old_text || strcmp(old_text, newText) != 0) {
                             ir_layout_mark_dirty(comp);
                             ir_layout_mark_dirty(comp);
-                            comp->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
+                            if (comp->layout_state) {
+                                comp->layout_state->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
+                            }
                         }
                         if (old_text) {
                             free(old_text);

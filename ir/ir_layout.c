@@ -51,9 +51,10 @@ void ir_layout_mark_dirty(IRComponent* component) {
         fprintf(stderr, "[MARK_DIRTY] Component ID=%u type=%d\n", component->id, component->type);
     }
 
-    // Mark this component dirty
+    // Mark this component dirty (consolidated in layout_state)
     component->layout_state->dirty = true;
     component->layout_state->layout_valid = false;
+    component->layout_state->dirty_flags |= IR_DIRTY_LAYOUT;
 
     // Recursively invalidate entire subtree
     for (uint32_t i = 0; i < component->child_count; i++) {
@@ -63,9 +64,6 @@ void ir_layout_mark_dirty(IRComponent* component) {
         }
     }
 
-    // Keep old dirty_flags for compatibility
-    component->dirty_flags |= IR_DIRTY_LAYOUT;
-
     // Propagate dirty flag upward to parents
     IRComponent* parent = component->parent;
     while (parent) {
@@ -73,7 +71,7 @@ void ir_layout_mark_dirty(IRComponent* component) {
 
         parent->layout_state->dirty = true;
         parent->layout_state->layout_valid = false;
-        parent->dirty_flags |= IR_DIRTY_SUBTREE;
+        parent->layout_state->dirty_flags |= IR_DIRTY_SUBTREE;
         parent->layout_cache.dirty = true;
         parent->layout_cache.cached_intrinsic_width = -1.0f;
         parent->layout_cache.cached_intrinsic_height = -1.0f;
@@ -83,9 +81,10 @@ void ir_layout_mark_dirty(IRComponent* component) {
 }
 
 void ir_layout_mark_render_dirty(IRComponent* component) {
-    if (!component) return;
+    if (!component || !component->layout_state) return;
 
-    component->dirty_flags |= IR_DIRTY_RENDER;
+    // Use consolidated dirty_flags in layout_state
+    component->layout_state->dirty_flags |= IR_DIRTY_RENDER;
 
     // Do NOT propagate to parents - visual-only changes don't affect parent layout
 }
@@ -433,11 +432,14 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
     // DEBUG: Log all layout invocations
     if (getenv("KRYON_DEBUG_TABLE")) {
         fprintf(stderr, "[LAYOUT] id=%u type=%d dirty=0x%02x available=%.1fx%.1f\n",
-                root->id, root->type, root->dirty_flags, available_width, available_height);
+                root->id, root->type,
+                root->layout_state ? root->layout_state->dirty_flags : 0,
+                available_width, available_height);
     }
 
     // Skip layout if component is clean (not dirty)
-    if ((root->dirty_flags & (IR_DIRTY_LAYOUT | IR_DIRTY_SUBTREE)) == 0) {
+    IRDirtyFlags flags = root->layout_state ? root->layout_state->dirty_flags : 0;
+    if ((flags & (IR_DIRTY_LAYOUT | IR_DIRTY_SUBTREE)) == 0) {
         if (getenv("KRYON_DEBUG_TABLE")) {
             fprintf(stderr, "[LAYOUT] SKIPPING id=%u (not dirty)\n", root->id);
         }
@@ -567,7 +569,9 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
     }
 
     // Mark as clean
-    root->dirty_flags &= ~(IR_DIRTY_LAYOUT | IR_DIRTY_SUBTREE);
+    if (root->layout_state) {
+        root->layout_state->dirty_flags &= ~(IR_DIRTY_LAYOUT | IR_DIRTY_SUBTREE);
+    }
     root->layout_cache.dirty = false;
 }
 
