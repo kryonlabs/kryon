@@ -16,6 +16,7 @@
 #include "raylib_renderer.h"
 #include <ir_builder.h>
 #include <ir_executor.h>
+#include <ir_state_manager.h>
 
 // Forward declarations from desktop_input_helpers.c (platform-agnostic)
 extern InputRuntimeState* get_input_state(uint32_t id);
@@ -27,6 +28,13 @@ extern void kryon_c_event_bridge(const char* logic_id);
 
 // Forward declarations for shutdown API
 extern bool kryon_request_shutdown(DesktopIRRenderer* renderer, KryonShutdownReason reason);
+
+// Helper to get executor from global state manager
+static IRExecutorContext* get_executor_from_state_mgr(void) {
+    extern IRStateManager* ir_state_get_global(void);
+    IRStateManager* state_mgr = ir_state_get_global();
+    return state_mgr ? ir_state_manager_get_executor(state_mgr) : NULL;
+}
 
 // ============================================================================
 // EVENT HANDLERS
@@ -64,7 +72,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
             if (ir_event && ir_event->logic_id) {
                 // Nim button handler
                 if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
-                    IRExecutorContext* executor = ir_executor_get_global();
+                    IRExecutorContext* executor = get_executor_from_state_mgr();
                     if (executor) {
                         ir_executor_set_root(executor, renderer->last_root);
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -85,7 +93,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                 }
                 // Generic fallback - try executor
                 else {
-                    IRExecutorContext* executor = ir_executor_get_global();
+                    IRExecutorContext* executor = get_executor_from_state_mgr();
                     if (executor) {
                         ir_executor_set_root(executor, renderer->last_root);
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -103,7 +111,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
 
                 // Nim checkbox handler
                 if (strncmp(ir_event->logic_id, "nim_checkbox_", 13) == 0) {
-                    IRExecutorContext* executor = ir_executor_get_global();
+                    IRExecutorContext* executor = get_executor_from_state_mgr();
                     if (executor) {
                         ir_executor_set_root(executor, renderer->last_root);
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -124,7 +132,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                 }
                 // Generic fallback - try executor
                 else {
-                    IRExecutorContext* executor = ir_executor_get_global();
+                    IRExecutorContext* executor = get_executor_from_state_mgr();
                     if (executor) {
                         ir_executor_set_root(executor, renderer->last_root);
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -161,7 +169,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                         if (ir_event && ir_event->logic_id) {
                             // Nim dropdown handler
                             if (strncmp(ir_event->logic_id, "nim_dropdown_", 13) == 0) {
-                                IRExecutorContext* executor = ir_executor_get_global();
+                                IRExecutorContext* executor = get_executor_from_state_mgr();
                                 if (executor) {
                                     ir_executor_set_root(executor, renderer->last_root);
                                     ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -182,7 +190,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                             }
                             // Generic fallback - try executor
                             else {
-                                IRExecutorContext* executor = ir_executor_get_global();
+                                IRExecutorContext* executor = get_executor_from_state_mgr();
                                 if (executor) {
                                     ir_executor_set_root(executor, renderer->last_root);
                                     ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -209,7 +217,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
             if (ir_event && ir_event->logic_id) {
                 // Nim dropdown handler
                 if (strncmp(ir_event->logic_id, "nim_dropdown_", 13) == 0) {
-                    IRExecutorContext* executor = ir_executor_get_global();
+                    IRExecutorContext* executor = get_executor_from_state_mgr();
                     if (executor) {
                         ir_executor_set_root(executor, renderer->last_root);
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -230,7 +238,7 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                 }
                 // Generic fallback - try executor
                 else {
-                    IRExecutorContext* executor = ir_executor_get_global();
+                    IRExecutorContext* executor = get_executor_from_state_mgr();
                     if (executor) {
                         ir_executor_set_root(executor, renderer->last_root);
                         ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);

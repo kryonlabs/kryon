@@ -30,7 +30,7 @@ IRComponent* ir_component_deep_copy(IRComponent* src) {
     dest->child_capacity = src->child_count;
     dest->owner_instance_id = src->owner_instance_id;
     dest->is_disabled = src->is_disabled;
-    dest->dirty_flags = src->dirty_flags;
+    // Note: dirty_flags now consolidated in layout_state, not copied here
     dest->has_active_animations = src->has_active_animations;
 
     // Copy string fields

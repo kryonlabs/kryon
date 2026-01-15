@@ -13,6 +13,7 @@
 #include "sdl3_renderer.h"
 #include "../../desktop_internal.h"
 #include <ir_executor.h>
+#include <ir_state_manager.h>
 #include <ir_builder.h>
 #include <stdio.h>
 #include <string.h>
@@ -37,6 +38,13 @@ __attribute__((weak)) bool nimInputBridge(IRComponent* component, const char* te
 
 // Forward declaration from C bindings event bridge
 extern void kryon_c_event_bridge(const char* logic_id);
+
+// Helper to get executor from global state manager
+static IRExecutorContext* get_executor_from_state_mgr(void) {
+    extern IRStateManager* ir_state_get_global(void);
+    IRStateManager* state_mgr = ir_state_get_global();
+    return state_mgr ? ir_state_manager_get_executor(state_mgr) : NULL;
+}
 
 // ============================================================================
 // MODAL HANDLING
@@ -434,7 +442,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             // Check if this is a Nim button handler
                             else if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
                                 bool handled_as_tab = try_handle_as_tab_click(renderer, clicked);
-                                IRExecutorContext* executor = ir_executor_get_global();
+                                IRExecutorContext* executor = get_executor_from_state_mgr();
                                 if (executor) {
                                     ir_executor_set_root(executor, renderer->last_root);
                                     ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -447,7 +455,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 if (clicked->type == IR_COMPONENT_CHECKBOX) {
                                     ir_toggle_checkbox_state(clicked);
                                 }
-                                IRExecutorContext* executor = ir_executor_get_global();
+                                IRExecutorContext* executor = get_executor_from_state_mgr();
                                 if (executor) {
                                     ir_executor_set_root(executor, renderer->last_root);
                                     ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -493,7 +501,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             else {
                                 printf("Click on component ID %u (logic: %s)\n",
                                        clicked->id, ir_event->logic_id);
-                                IRExecutorContext* executor = ir_executor_get_global();
+                                IRExecutorContext* executor = get_executor_from_state_mgr();
                                 if (executor) {
                                     ir_executor_set_root(executor, renderer->last_root);
                                     ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
@@ -714,7 +722,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         }
 
                         // Sync to bound variable
-                        IRExecutorContext* exec_ctx = ir_executor_get_global();
+                        IRExecutorContext* exec_ctx = get_executor_from_state_mgr();
                         if (exec_ctx) {
                             ir_executor_sync_input_to_var(exec_ctx, focused_input);
                         }
@@ -818,7 +826,7 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             }
 
                             // Sync to bound variable
-                            IRExecutorContext* exec_ctx = ir_executor_get_global();
+                            IRExecutorContext* exec_ctx = get_executor_from_state_mgr();
                             if (exec_ctx) {
                                 ir_executor_sync_input_to_var(exec_ctx, focused_input);
                             }

@@ -1181,10 +1181,9 @@ bool ir_generate_component_commands(
 
     // Check conditional visibility
     if (component->visible_condition && component->visible_condition[0] != '\0') {
-        extern IRExecutorContext* ir_executor_get_global(void);
         extern int64_t ir_executor_get_var_int(IRExecutorContext* ctx, const char* name, uint32_t instance_id);
 
-        IRExecutorContext* executor = ir_executor_get_global();
+        IRExecutorContext* executor = ctx->state_mgr ? ir_state_manager_get_executor(ctx->state_mgr) : NULL;
         if (executor) {
             // Get variable value as int (0 = false, non-zero = true)
             int64_t var_value = ir_executor_get_var_int(executor, component->visible_condition, component->owner_instance_id);
@@ -1418,7 +1417,8 @@ bool ir_component_to_commands(
     kryon_cmd_buf_t* cmd_buf,
     LayoutRect* bounds,
     float opacity,
-    void* backend_ctx
+    void* backend_ctx,
+    IRStateManager* state_mgr
 ) {
     if (!component || !cmd_buf || !bounds) return false;
 
@@ -1433,6 +1433,7 @@ bool ir_component_to_commands(
     ctx.next_image_id = 1;
     ctx.overlay_count = 0;
     ctx.backend_ctx = backend_ctx;
+    ctx.state_mgr = state_mgr;
     ctx.is_root_component = true;  // Root component - skip background (SDL_RenderClear handles it)
 
     /* Pass 1: Main rendering */

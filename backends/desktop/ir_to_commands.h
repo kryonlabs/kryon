@@ -3,6 +3,7 @@
 
 #include "../../core/include/kryon.h"
 #include "../../ir/ir_core.h"
+#include "../../ir/ir_state_manager.h"
 #include "desktop_internal.h"
 
 #ifdef __cplusplus
@@ -64,6 +65,9 @@ typedef struct IRCommandContext {
     /* Root component flag - skip background for root since SDL_RenderClear handles it */
     bool is_root_component;
 
+    /* State manager for reactive state access */
+    IRStateManager* state_mgr;
+
 } IRCommandContext;
 
 /* ============================================================================
@@ -84,7 +88,8 @@ bool ir_component_to_commands(
     kryon_cmd_buf_t* cmd_buf,
     LayoutRect* bounds,
     float opacity,
-    void* backend_ctx
+    void* backend_ctx,
+    IRStateManager* state_mgr
 );
 
 /**

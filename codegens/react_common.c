@@ -9,6 +9,10 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <stdint.h>
+
+// Constants for buffer sizes
+#define TEMP_BUFFER_SIZE 4096
 
 // =============================================================================
 // String Builder Implementation
