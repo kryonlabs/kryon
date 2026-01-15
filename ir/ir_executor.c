@@ -106,18 +106,8 @@ static IRValue ir_value_copy(const IRValue* src) {
 // RUNTIME CONDITIONALS
 // ============================================================================
 
-#define IR_EXECUTOR_MAX_CONDITIONALS 32
-
-typedef struct {
-    IRExpression* condition;        // Parsed condition expression
-    uint32_t* then_ids;             // Component IDs to show when true
-    uint32_t then_count;
-    uint32_t* else_ids;             // Component IDs to show when false
-    uint32_t else_count;
-} IRRuntimeConditional;
-
-static IRRuntimeConditional g_conditionals[IR_EXECUTOR_MAX_CONDITIONALS];
-static int g_conditional_count = 0;
+// Note: IRRuntimeConditional and IR_EXECUTOR_MAX_CONDITIONALS now defined in ir_executor.h
+// Conditionals are stored in IRExecutorContext instead of global variables
 
 // ============================================================================
 // GLOBAL STATE (now using state manager)
@@ -398,6 +388,14 @@ void ir_executor_destroy(IRExecutorContext* ctx) {
     for (int i = 0; i < ctx->var_count; i++) {
         free(ctx->vars[i].name);
         ir_value_free(&ctx->vars[i].value);
+    }
+
+    // Free conditional arrays
+    for (int i = 0; i < ctx->conditional_count; i++) {
+        IRRuntimeConditional* cond = &ctx->conditionals[i];
+        // Note: cond->condition is owned by the expression cache, freed separately
+        free(cond->then_ids);
+        free(cond->else_ids);
     }
 
     // Free builtin function registry
@@ -747,7 +745,7 @@ void ir_executor_sync_input_to_var(IRExecutorContext* ctx, IRComponent* input_co
 
 void ir_executor_apply_initial_conditionals(IRExecutorContext* ctx) {
     if (!ctx || !ctx->root) return;
-    printf("[executor] Applying initial conditionals (%d total)\n", g_conditional_count);
+    printf("[executor] Applying initial conditionals (%d total)\n", ctx->conditional_count);
     ir_executor_update_conditionals(ctx);
 
     // Render for-loops after conditionals
@@ -1266,13 +1264,13 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
         // Parse conditionals
         cJSON* conditionals = cJSON_GetObjectItem(manifest, "conditionals");
         if (conditionals && cJSON_IsArray(conditionals)) {
-            g_conditional_count = 0;  // Reset
+            ctx->conditional_count = 0;  // Reset
 
             cJSON* condObj;
             cJSON_ArrayForEach(condObj, conditionals) {
-                if (g_conditional_count >= IR_EXECUTOR_MAX_CONDITIONALS) break;
+                if (ctx->conditional_count >= IR_EXECUTOR_MAX_CONDITIONALS) break;
 
-                IRRuntimeConditional* cond = &g_conditionals[g_conditional_count];
+                IRRuntimeConditional* cond = &ctx->conditionals[ctx->conditional_count];
                 memset(cond, 0, sizeof(IRRuntimeConditional));
 
                 // Parse condition expression
@@ -1333,9 +1331,9 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
                     }
                 }
 
-                g_conditional_count++;
+                ctx->conditional_count++;
             }
-            printf("[executor] Loaded %d conditionals from manifest\n", g_conditional_count);
+            printf("[executor] Loaded %d conditionals from manifest\n", ctx->conditional_count);
         }
 
         // Parse foreach_loops from manifest
@@ -1505,8 +1503,8 @@ static int64_t eval_expr(IRExecutorContext* ctx, IRExpression* expr, uint32_t in
 static void ir_executor_update_conditionals(IRExecutorContext* ctx) {
     if (!ctx || !ctx->root) return;
 
-    for (int i = 0; i < g_conditional_count; i++) {
-        IRRuntimeConditional* cond = &g_conditionals[i];
+    for (int i = 0; i < ctx->conditional_count; i++) {
+        IRRuntimeConditional* cond = &ctx->conditionals[i];
         if (!cond->condition) continue;
 
         // Evaluate the condition

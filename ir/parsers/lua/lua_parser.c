@@ -61,16 +61,16 @@ static char* find_kryon_root(void) {
     }
 
     // 4. Walk up parent directories from current working directory
-    char cwd[1024];
+    char cwd[IR_PATH_BUFFER_SIZE];
     if (getcwd(cwd, sizeof(cwd))) {
-        char check_path[1024];
+        char check_path[IR_PATH_BUFFER_SIZE];
         strncpy(check_path, cwd, sizeof(check_path) - 1);
         check_path[sizeof(check_path) - 1] = '\0';
 
-        // Walk up to 5 levels
-        for (int depth = 0; depth < 5; depth++) {
+        // Walk up parent directories looking for Kryon root
+        for (int depth = 0; depth < IR_MAX_DIRECTORY_DEPTH; depth++) {
             // Check for ir/ directory (characteristic of Kryon root)
-            char test_path[1024];
+            char test_path[IR_PATH_BUFFER_SIZE];
             snprintf(test_path, sizeof(test_path), "%s/ir/ir_core.h", check_path);
             if (access(test_path, F_OK) == 0) {
                 strncpy(cached_path, check_path, sizeof(cached_path) - 1);

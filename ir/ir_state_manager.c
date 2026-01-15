@@ -4,6 +4,8 @@
  * Centralized state management for the Kryon IR framework.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "ir_state_manager.h"
 #include "ir_log.h"
 #include "ir_executor.h"
@@ -338,8 +340,7 @@ void ir_state_manager_destroy(IRStateManager* mgr) {
         ir_executor_destroy(mgr->executor);
     }
     if (mgr->manifest) {
-        // Manifest is owned by state manager now
-        // ir_reactive_manifest_destroy(mgr->manifest);  // TODO: implement this
+        ir_reactive_manifest_destroy(mgr->manifest);
     }
 
     // Free callbacks
@@ -366,7 +367,10 @@ IRExecutorContext* ir_state_manager_get_executor(IRStateManager* mgr) {
 void ir_state_manager_set_manifest(IRStateManager* mgr, IRReactiveManifest* manifest) {
     if (!mgr) return;
 
-    // TODO: Free old manifest if needed
+    // Free old manifest if it exists
+    if (mgr->manifest && mgr->manifest != manifest) {
+        ir_reactive_manifest_destroy(mgr->manifest);
+    }
     mgr->manifest = manifest;
 }
 

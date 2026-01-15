@@ -4,15 +4,13 @@
  */
 
 #include "react_common.h"
+#include "../ir/ir_constants.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <stdint.h>
-
-// Constants for buffer sizes
-#define TEMP_BUFFER_SIZE 4096
 
 // =============================================================================
 // String Builder Implementation
@@ -52,7 +50,7 @@ bool sb_append(StringBuilder* sb, const char* str) {
 }
 
 bool sb_append_fmt(StringBuilder* sb, const char* fmt, ...) {
-    char temp[TEMP_BUFFER_SIZE];
+    char temp[IR_TEMP_BUFFER_SIZE];
     va_list args;
     va_start(args, fmt);
     vsnprintf(temp, sizeof(temp), fmt, args);

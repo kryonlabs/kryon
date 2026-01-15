@@ -6,6 +6,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "ir_core.h"
+#include "ir_constants.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -125,7 +126,10 @@ uint32_t ir_reactive_manifest_add_var(IRReactiveManifest* manifest,
 
     // Resize if needed
     if (manifest->variable_count >= manifest->variable_capacity) {
-        manifest->variable_capacity *= 2;
+        if (!ir_grow_capacity(&manifest->variable_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow variables array - would overflow\n");
+            return 0;
+        }
         IRReactiveVarDescriptor* new_vars = realloc(manifest->variables,
                                                      manifest->variable_capacity * sizeof(IRReactiveVarDescriptor));
         if (!new_vars) {
@@ -195,7 +199,10 @@ void ir_reactive_manifest_add_binding(IRReactiveManifest* manifest,
 
     // Resize if needed
     if (manifest->binding_count >= manifest->binding_capacity) {
-        manifest->binding_capacity *= 2;
+        if (!ir_grow_capacity(&manifest->binding_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow bindings array - would overflow\n");
+            return;
+        }
         IRReactiveBinding* new_bindings = realloc(manifest->bindings,
                                                    manifest->binding_capacity * sizeof(IRReactiveBinding));
         if (!new_bindings) {
@@ -222,7 +229,10 @@ void ir_reactive_manifest_add_conditional(IRReactiveManifest* manifest,
 
     // Resize if needed
     if (manifest->conditional_count >= manifest->conditional_capacity) {
-        manifest->conditional_capacity *= 2;
+        if (!ir_grow_capacity(&manifest->conditional_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow conditionals array - would overflow\n");
+            return;
+        }
         IRReactiveConditional* new_conds = realloc(manifest->conditionals,
                                                     manifest->conditional_capacity * sizeof(IRReactiveConditional));
         if (!new_conds) {
@@ -315,7 +325,10 @@ void ir_reactive_manifest_add_for_loop(IRReactiveManifest* manifest,
 
     // Resize if needed
     if (manifest->for_loop_count >= manifest->for_loop_capacity) {
-        manifest->for_loop_capacity *= 2;
+        if (!ir_grow_capacity(&manifest->for_loop_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow for_loops array - would overflow\n");
+            return;
+        }
         IRReactiveForLoop* new_loops = realloc(manifest->for_loops,
                                                manifest->for_loop_capacity * sizeof(IRReactiveForLoop));
         if (!new_loops) {
@@ -431,7 +444,10 @@ void ir_reactive_manifest_add_component_def(IRReactiveManifest* manifest,
 
     // Resize if needed
     if (manifest->component_def_count >= manifest->component_def_capacity) {
-        manifest->component_def_capacity *= 2;
+        if (!ir_grow_capacity(&manifest->component_def_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow component_defs array - would overflow\n");
+            return;
+        }
         IRComponentDefinition* new_defs = realloc(manifest->component_defs,
                                                    manifest->component_def_capacity * sizeof(IRComponentDefinition));
         if (!new_defs) {
@@ -508,7 +524,10 @@ void ir_reactive_manifest_add_source(IRReactiveManifest* manifest,
 
     // Resize if needed
     if (manifest->source_count >= manifest->source_capacity) {
-        manifest->source_capacity *= 2;
+        if (!ir_grow_capacity(&manifest->source_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow sources array - would overflow\n");
+            return;
+        }
         IRSourceEntry* new_sources = realloc(manifest->sources,
                                               manifest->source_capacity * sizeof(IRSourceEntry));
         if (!new_sources) {

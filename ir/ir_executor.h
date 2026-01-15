@@ -19,6 +19,7 @@ typedef struct {
 
 #define IR_EXECUTOR_MAX_SOURCES 8
 #define IR_EXECUTOR_MAX_VARS 64
+#define IR_EXECUTOR_MAX_CONDITIONALS 32
 
 // ============================================================================
 // VALUE TYPE SYSTEM (for mixed-type arrays and variables)
@@ -61,6 +62,15 @@ typedef struct {
     char* scope;  // Scope string (e.g., "global", "Counter#0", "Counter#1")
 } IRExecutorVar;
 
+// Runtime conditional storage for dynamic visibility
+typedef struct {
+    IRExpression* condition;        // Parsed condition expression
+    uint32_t* then_ids;             // Component IDs to show when true
+    uint32_t then_count;
+    uint32_t* else_ids;             // Component IDs to show when false
+    uint32_t else_count;
+} IRRuntimeConditional;
+
 // Executor context - ties together logic, sources, and component tree
 typedef struct IRExecutorContext {
     IRLogicBlock* logic;              // Logic block from .kir file
@@ -78,6 +88,10 @@ typedef struct IRExecutorContext {
     // Runtime variable storage
     IRExecutorVar vars[IR_EXECUTOR_MAX_VARS];
     int var_count;
+
+    // Runtime conditionals for dynamic visibility
+    IRRuntimeConditional conditionals[IR_EXECUTOR_MAX_CONDITIONALS];
+    int conditional_count;
 
     // Current execution context (which component instance we're executing for)
     uint32_t current_instance_id;
