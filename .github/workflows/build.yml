@@ -103,7 +103,27 @@ jobs:
             libpulse-dev \
             software-properties-common
 
+      - name: Cache SDL3 and Raylib
+        id: cache-sdl3
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/lib/libSDL3*
+            /usr/local/lib/libSDL3_ttf*
+            /usr/local/lib/pkgconfig/SDL3*.pc
+            /usr/local/lib/pkgconfig/SDL3_ttf.pc
+            /usr/local/lib/libraylib.a
+            /usr/local/lib/pkgconfig/raylib.pc
+            /usr/local/include/SDL3/
+            /usr/local/include/raylib.h
+            /usr/local/include/rlgl.h
+          key: sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-raylib-pic-${{ runner.os }}
+          restore-keys: |
+            sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-raylib-pic-
+            sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-
+
       - name: Build Raylib from source
+        if: steps.cache-sdl3.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 --branch 5.0 \
             https://github.com/raysan5/raylib.git /tmp/raylib
@@ -113,15 +133,8 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=/usr/local \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DBUILD_EXAMPLES=OFF
-          cmake --build build
+          cmake --build build --parallel
           sudo cmake --install build
-
-      - name: Cache SDL3
-        id: cache-sdl3
-        uses: actions/cache@v4
-        with:
-          path: /usr/local
-          key: sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-ubuntu-24.04
 
       - name: Build SDL3 from source
         if: steps.cache-sdl3.outputs.cache-hit != 'true'
@@ -132,7 +145,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local
-          cmake --build build
+          cmake --build build --parallel
           sudo cmake --install build
 
       - name: Build SDL3_ttf from source
@@ -144,7 +157,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local
-          cmake --build build
+          cmake --build build --parallel
           sudo cmake --install build
 
       - name: Update library cache
@@ -316,7 +329,27 @@ jobs:
             libpulse-dev \
             software-properties-common
 
+      - name: Cache SDL3 and Raylib
+        id: cache-sdl3
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/lib/libSDL3*
+            /usr/local/lib/libSDL3_ttf*
+            /usr/local/lib/pkgconfig/SDL3*.pc
+            /usr/local/lib/pkgconfig/SDL3_ttf.pc
+            /usr/local/lib/libraylib.a
+            /usr/local/lib/pkgconfig/raylib.pc
+            /usr/local/include/SDL3/
+            /usr/local/include/raylib.h
+            /usr/local/include/rlgl.h
+          key: sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-raylib-pic-${{ runner.os }}
+          restore-keys: |
+            sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-raylib-pic-
+            sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-
+
       - name: Build Raylib from source
+        if: steps.cache-sdl3.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 --branch 5.0 \
             https://github.com/raysan5/raylib.git /tmp/raylib
@@ -326,15 +359,8 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=/usr/local \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DBUILD_EXAMPLES=OFF
-          cmake --build build
+          cmake --build build --parallel
           sudo cmake --install build
-
-      - name: Cache SDL3
-        id: cache-sdl3
-        uses: actions/cache@v4
-        with:
-          path: /usr/local
-          key: sdl3-${{ env.SDL3_VERSION }}-ttf-${{ env.SDL3_TTF_VERSION }}-ubuntu-24.04
 
       - name: Build SDL3 from source
         if: steps.cache-sdl3.outputs.cache-hit != 'true'
@@ -345,7 +371,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local
-          cmake --build build
+          cmake --build build --parallel
           sudo cmake --install build
 
       - name: Build SDL3_ttf from source
@@ -357,7 +383,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local
-          cmake --build build
+          cmake --build build --parallel
           sudo cmake --install build
 
       - name: Update library cache
