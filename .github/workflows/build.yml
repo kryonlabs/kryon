@@ -221,6 +221,10 @@ jobs:
         run: |
           make build-web
 
+      - name: Generate Plugin SDK
+        run: |
+          make sdk
+
       - name: Verify build is static
         run: |
           file build/kryon-web
@@ -232,7 +236,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kryon-linux-x86_64-web
-          path: build/kryon-web
+          path: |
+            build/kryon-web
+            build/kryon-plugin-sdk-*.tar.gz
 
   # Job 4: Default build (all backends) - dynamic linking, glibc-based
   build-default:
@@ -378,6 +384,9 @@ jobs:
           mv kryon-linux-x86_64-desktop/kryon-desktop-bundle.tar.gz kryon-linux-x86_64-desktop.tar.gz
           mv kryon-linux-x86_64/kryon-bundle.tar.gz kryon-linux-x86_64.tar.gz
 
+          # Plugin SDK - for building Kryon plugins
+          mv kryon-linux-x86_64-web/kryon-plugin-sdk-*.tar.gz ./kryon-plugin-sdk.tar.gz
+
           ls -la
 
       - name: Delete existing release
@@ -413,6 +422,7 @@ jobs:
             kryon-linux-x86_64-terminal
             kryon-linux-x86_64-desktop.tar.gz
             kryon-linux-x86_64-web
+            kryon-plugin-sdk.tar.gz
           body: |
             Automated build from master branch.
 
@@ -426,6 +436,7 @@ jobs:
             | `kryon-linux-x86_64-terminal` | Static | Any Linux | Terminal UI, CI/CD, headless |
             | `kryon-linux-x86_64-desktop.tar.gz` | Bundle | Any Linux (glibc) | SDL3 desktop apps |
             | `kryon-linux-x86_64-web` | Static | Any Linux | Website generation (HTML/CSS/JS) |
+            | `kryon-plugin-sdk.tar.gz` | SDK | Any | Headers for building plugins |
 
             ## Download & Install
 
@@ -456,3 +467,12 @@ jobs:
             curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-linux-x86_64-web -o kryon
             chmod +x kryon
             ```
+
+            ### Plugin SDK (for building plugins)
+            ```bash
+            curl -fsSL https://github.com/kryonlabs/kryon/releases/download/latest/kryon-plugin-sdk.tar.gz | tar xz
+            cp -r include/* ~/.local/include/
+            ```
+
+            Plugins only need `kryon/capability.h` to compile. See [kryon-plugins](https://github.com/kryonlabs/kryon-plugins) for examples.
+
