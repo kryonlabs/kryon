@@ -1,7 +1,8 @@
 #ifndef IR_TRANSITION_H
 #define IR_TRANSITION_H
 
-#define _POSIX_C_SOURCE 199309L
+// _POSIX_C_SOURCE should be defined by the including .c file (typically 200809L)
+// to match the rest of the codebase
 
 #include <stdint.h>
 #include <stdbool.h>

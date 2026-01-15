@@ -4,7 +4,7 @@
  * Per-instance desktop rendering state for multi-instance support.
  */
 
-#define _POSIX_C_SOURCE 199309L
+// _POSIX_C_SOURCE defined by included headers (200809L from ir_transition.h)
 
 #include "ir_desktop_state.h"
 #include <stdlib.h>
