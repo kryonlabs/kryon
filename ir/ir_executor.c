@@ -136,21 +136,9 @@ IRStateManager* ir_state_get_global(void) {
     return g_state_manager;
 }
 
-// Legacy compatibility - get executor from state manager
+// Convenience: get executor from state manager
 IRExecutorContext* ir_executor_get_global(void) {
     return g_state_manager ? ir_state_manager_get_executor(g_state_manager) : NULL;
-}
-
-// Legacy compatibility - set executor creates a state manager wrapper
-void ir_executor_set_global(IRExecutorContext* ctx) {
-    if (g_state_manager) {
-        // If state manager exists, update its executor
-        ir_state_manager_set_executor(g_state_manager, ctx);
-    } else if (ctx) {
-        // Create a new state manager for backward compatibility
-        g_state_manager = ir_state_manager_create(NULL);
-        ir_state_manager_set_executor(g_state_manager, ctx);
-    }
 }
 
 // ============================================================================
@@ -252,10 +240,20 @@ static IRValue builtin_array_add(IRExecutorContext* ctx, IRValue* args, int arg_
 
     // Resize if needed
     if (args[0].array_val.count >= args[0].array_val.capacity) {
+        // Check for overflow before doubling
+        if (args[0].array_val.capacity > UINT32_MAX / 2) {
+            printf("[executor] array_add: Cannot grow array - would overflow\n");
+            return ir_value_null();
+        }
         args[0].array_val.capacity *= 2;
-        args[0].array_val.items = (IRValue*)realloc(args[0].array_val.items,
+        IRValue* new_items = (IRValue*)realloc(args[0].array_val.items,
             args[0].array_val.capacity * sizeof(IRValue));
-        printf("[executor] array_add: Resized array to capacity %d\n", args[0].array_val.capacity);
+        if (!new_items) {
+            printf("[executor] array_add: Reallocation failed\n");
+            return ir_value_null();
+        }
+        args[0].array_val.items = new_items;
+        printf("[executor] array_add: Resized array to capacity %u\n", args[0].array_val.capacity);
     }
 
     // Append value (deep copy)
@@ -1193,9 +1191,19 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
 
                                 // Resize if needed
                                 if (value.array_val.count >= value.array_val.capacity) {
+                                    // Check for overflow before doubling
+                                    if (value.array_val.capacity > UINT32_MAX / 2) {
+                                        // Cannot grow further - skip remaining elements
+                                        break;
+                                    }
                                     value.array_val.capacity *= 2;
-                                    value.array_val.items = (IRValue*)realloc(value.array_val.items,
+                                    IRValue* new_items = (IRValue*)realloc(value.array_val.items,
                                         value.array_val.capacity * sizeof(IRValue));
+                                    if (!new_items) {
+                                        // Realloc failed - skip remaining elements
+                                        break;
+                                    }
+                                    value.array_val.items = new_items;
                                 }
 
                                 value.array_val.items[value.array_val.count++] = elem_val;

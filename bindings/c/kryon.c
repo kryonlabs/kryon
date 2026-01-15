@@ -13,6 +13,7 @@
 #include "../../third_party/tomlc99/toml.h"
 #include "../../backends/desktop/ir_desktop_renderer.h"
 #include "../../ir/ir_executor.h"
+#include "../../ir/ir_state_manager.h"
 
 // ============================================================================
 // Internal State
@@ -296,13 +297,15 @@ void kryon_init(const char* title, int width, int height) {
     g_app_state.context = ir_create_context();
     ir_set_context(g_app_state.context);
 
-    // Create and set global executor for event handling
+    // Create state manager with executor for event handling
+    IRStateManager* state_mgr = ir_state_manager_create(NULL);
     IRExecutorContext* executor = ir_executor_create();
-    if (executor) {
-        ir_executor_set_global(executor);
-        printf("[kryon] Executor initialized\n");
+    if (state_mgr && executor) {
+        ir_state_manager_set_executor(state_mgr, executor);
+        ir_state_set_global(state_mgr);
+        printf("[kryon] State manager initialized\n");
     } else {
-        fprintf(stderr, "[kryon] Warning: Failed to create executor\n");
+        fprintf(stderr, "[kryon] Warning: Failed to create state manager\n");
     }
 
     // Store window config

@@ -96,6 +96,7 @@ jobs:
             libxext-dev \
             libxrandr-dev \
             libxi-dev \
+            libxinerama-dev \
             libgl1-mesa-dev \
             libasound2-dev \
             libpulse-dev \
@@ -306,6 +307,7 @@ jobs:
             libxext-dev \
             libxrandr-dev \
             libxi-dev \
+            libxinerama-dev \
             libgl1-mesa-dev \
             libasound2-dev \
             libpulse-dev \

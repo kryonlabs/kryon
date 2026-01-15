@@ -9,6 +9,7 @@
 #include "module_collector.h"
 #include "require_tracker.h"
 #include "../../ir_serialization.h"
+#include "../../ir_constants.h"
 #include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,14 +19,14 @@
 #include <sys/wait.h>
 #include <errno.h>
 
-static char cached_luajit_path[512] = "";
+static char cached_luajit_path[IR_PATH_BUFFER_SIZE] = "";
 
 /**
  * Find Kryon root directory using a fallback chain
  * Checks environment variable, then standard install locations
  */
 static char* find_kryon_root(void) {
-    static char cached_path[1024] = "";
+    static char cached_path[IR_PATH_BUFFER_SIZE] = "";
 
     // Return cached result if available
     if (cached_path[0] != '\0') {
