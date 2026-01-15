@@ -2461,6 +2461,21 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     css_generator_write_string(generator, "  padding: 24px;\n");
     css_generator_write_string(generator, "}\n\n");
 
+    // Table border styles for visibility
+    css_generator_write_string(generator, "/* Table Border Styles */\n");
+    css_generator_write_string(generator, "table {\n");
+    css_generator_write_string(generator, "  border-collapse: collapse;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, "th, td {\n");
+    css_generator_write_string(generator, "  border: 1px solid currentColor;\n");
+    css_generator_write_string(generator, "  padding: 8px 12px;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    css_generator_write_string(generator, "th {\n");
+    css_generator_write_string(generator, "  font-weight: 600;\n");
+    css_generator_write_string(generator, "  background: rgba(128, 128, 128, 0.1);\n");
+    css_generator_write_string(generator, "}\n\n");
 
     // Tab component styles
     css_generator_write_string(generator, "/* Tab Component Styles */\n");
