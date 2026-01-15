@@ -5,6 +5,10 @@ on:
     branches: [master]
   workflow_dispatch:
 
+concurrency:
+  group: build-and-release-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   SDL3_VERSION: "3.2.6"
   SDL3_TTF_VERSION: "3.2.2"
