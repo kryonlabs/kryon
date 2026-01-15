@@ -111,6 +111,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DBUILD_EXAMPLES=OFF
           cmake --build build
           sudo cmake --install build
@@ -323,6 +324,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DBUILD_EXAMPLES=OFF
           cmake --build build
           sudo cmake --install build
