@@ -194,7 +194,11 @@ char* plugin_clone_from_git(const char* git_url, const char* branch, const char*
         printf("[kryon][plugin] Plugin '%s' already cached at %s\n", plugin_name, cached_path);
         // Try to pull latest changes (use --ff-only to avoid divergent branch issues)
         char pull_cmd[1024];
-        snprintf(pull_cmd, sizeof(pull_cmd), "cd \"%s\" && git pull --ff-only > /dev/null 2>&1", cached_path);
+        snprintf(pull_cmd, sizeof(pull_cmd),
+            "cd \"%s\" && git fetch origin > /dev/null 2>&1 && "
+            "git reset --hard origin/master > /dev/null 2>&1 && "
+            "git clean -fdx > /dev/null 2>&1",
+            cached_path);
         system(pull_cmd);
         return cached_path;
     }
@@ -307,9 +311,13 @@ char* plugin_clone_from_git_sparse(const char* git_url, const char* subdirectory
         return NULL;
     }
 
-    // Pull with depth 1 (use --ff-only to avoid divergent branch issues)
+    // Pull with depth 1 (fetch + reset to avoid divergent branch issues)
     printf("[kryon][plugin] Cloning plugin '%s' from %s (sparse: %s)\n", plugin_name, git_url, subdirectory);
-    snprintf(cmd, sizeof(cmd), "cd \"%s\" && git pull --ff-only --depth 1 --quiet origin %s 2>&1", cached_path, actual_branch);
+    snprintf(cmd, sizeof(cmd),
+        "cd \"%s\" && git fetch origin %s --depth 1 --quiet 2>&1 && "
+        "git reset --hard origin/%s --quiet 2>&1 && "
+        "git clean -fdx --quiet 2>&1",
+        cached_path, actual_branch, actual_branch);
     int result = system(cmd);
 
     if (result != 0) {
@@ -483,9 +491,13 @@ int plugin_update_git_plugin(const char* plugin_name) {
 
     printf("[kryon][plugin] Updating plugin '%s'...\n", plugin_name);
 
-    // Pull latest changes (use --ff-only to avoid divergent branch issues)
+    // Pull latest changes (fetch + reset to avoid divergent branch issues)
     char pull_cmd[1024];
-    snprintf(pull_cmd, sizeof(pull_cmd), "cd \"%s\" && git pull --ff-only 2>&1", cached_path);
+    snprintf(pull_cmd, sizeof(pull_cmd),
+        "cd \"%s\" && git fetch origin > /dev/null 2>&1 && "
+        "git reset --hard origin/master > /dev/null 2>&1 && "
+        "git clean -fdx > /dev/null 2>&1",
+        cached_path);
     int result = system(pull_cmd);
     if (result != 0) {
         fprintf(stderr, "[kryon][plugin] Failed to update plugin '%s'\n", plugin_name);
@@ -679,9 +691,12 @@ bool plugin_clone_multi_sparse(const char* git_url, PluginGitDep* plugins, int c
         file_is_directory(path_join(shared_cache_path, ".git"))) {
         printf("[kryon][plugin] Repository already cached at %s\n", shared_cache_path);
 
-        // Update existing repo - pull latest changes
-        snprintf(cmd, sizeof(cmd), "cd \"%s\" && git pull --ff-only --depth 1 --quiet origin %s 2>&1",
-                 shared_cache_path, actual_branch);
+        // Update existing repo - fetch + reset to avoid divergent branch issues
+        snprintf(cmd, sizeof(cmd),
+            "cd \"%s\" && git fetch origin %s --depth 1 --quiet 2>&1 && "
+            "git reset --hard origin/%s --quiet 2>&1 && "
+            "git clean -fdx --quiet 2>&1",
+            shared_cache_path, actual_branch, actual_branch);
         system(cmd);
 
         // Note: We don't return here because we still need to verify/update sparse checkout
@@ -720,11 +735,13 @@ bool plugin_clone_multi_sparse(const char* git_url, PluginGitDep* plugins, int c
     }
     fclose(f);
 
-    // Pull with depth 1
+    // Pull with depth 1 (fetch + reset to avoid divergent branch issues)
     printf("[kryon][plugin] Cloning %d plugin(s) from %s\n", count, git_url);
     snprintf(cmd, sizeof(cmd),
-             "cd \"%s\" && git pull --ff-only --depth 1 --quiet origin %s 2>&1",
-             shared_cache_path, actual_branch);
+        "cd \"%s\" && git fetch origin %s --depth 1 --quiet 2>&1 && "
+        "git reset --hard origin/%s --quiet 2>&1 && "
+        "git clean -fdx --quiet 2>&1",
+        shared_cache_path, actual_branch, actual_branch);
     int result = system(cmd);
 
     if (result != 0) {
