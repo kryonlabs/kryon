@@ -38,6 +38,8 @@ bool sb_append(StringBuilder* sb, const char* str) {
 
     size_t len = strlen(str);
     while (sb->size + len >= sb->capacity) {
+        // Check for overflow before doubling
+        if (sb->capacity > SIZE_MAX / 2) return false;
         sb->capacity *= 2;
         char* new_buffer = realloc(sb->buffer, sb->capacity);
         if (!new_buffer) return false;
@@ -50,7 +52,7 @@ bool sb_append(StringBuilder* sb, const char* str) {
 }
 
 bool sb_append_fmt(StringBuilder* sb, const char* fmt, ...) {
-    char temp[4096];
+    char temp[TEMP_BUFFER_SIZE];
     va_list args;
     va_start(args, fmt);
     vsnprintf(temp, sizeof(temp), fmt, args);

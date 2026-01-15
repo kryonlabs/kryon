@@ -93,11 +93,18 @@ char** str_split(const char* str, char delim, int* count) {
         if (*end == delim) {
             size_t len = end - start;
             result[idx] = (char*)malloc(len + 1);
-            if (result[idx]) {
-                strncpy(result[idx], start, len);
-                result[idx][len] = '\0';
-                idx++;
+            if (!result[idx]) {
+                // Clean up previously allocated memory on failure
+                for (int i = 0; i < idx; i++) {
+                    free(result[i]);
+                }
+                free(result);
+                *count = 0;
+                return NULL;
             }
+            strncpy(result[idx], start, len);
+            result[idx][len] = '\0';
+            idx++;
             start = end + 1;
         }
         end++;
@@ -106,11 +113,18 @@ char** str_split(const char* str, char delim, int* count) {
     // Add final part
     size_t len = end - start;
     result[idx] = (char*)malloc(len + 1);
-    if (result[idx]) {
-        strncpy(result[idx], start, len);
-        result[idx][len] = '\0';
-        idx++;
+    if (!result[idx]) {
+        // Clean up previously allocated memory on failure
+        for (int i = 0; i < idx; i++) {
+            free(result[i]);
+        }
+        free(result);
+        *count = 0;
+        return NULL;
     }
+    strncpy(result[idx], start, len);
+    result[idx][len] = '\0';
+    idx++;
 
     *count = idx;
     return result;

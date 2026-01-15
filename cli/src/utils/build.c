@@ -677,14 +677,17 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
         return run_kir_with_lua_runtime(kir_file);
     }
 
-    // Setup executor
+    // Setup state manager with executor
+    IRStateManager* state_mgr = ir_state_manager_create(NULL);
     IRExecutorContext* executor = ir_executor_create();
-    if (executor) {
+    if (state_mgr && executor) {
         printf("[executor] Loading KIR file for event handling\n");
         ir_executor_load_kir_file(executor, kir_file);
         ir_executor_set_root(executor, root);
-        ir_executor_set_global(executor);
-        printf("[executor] Global executor initialized\n");
+        ir_state_manager_set_executor(state_mgr, executor);
+        ir_state_manager_set_root(state_mgr, root);
+        ir_state_set_global(state_mgr);
+        printf("[executor] State manager initialized\n");
     } else {
         fprintf(stderr, "[executor] WARNING: Failed to create executor!\n");
     }
@@ -781,14 +784,17 @@ int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop
     extern void ir_expand_foreach(IRComponent* root);
     ir_expand_foreach(root);
 
-    // Setup executor
+    // Setup state manager with executor
+    IRStateManager* state_mgr = ir_state_manager_create(NULL);
     IRExecutorContext* executor = ir_executor_create();
-    if (executor) {
+    if (state_mgr && executor) {
         printf("[executor] Loading KIR file for event handling\n");
         ir_executor_load_kir_file(executor, kir_file);
         ir_executor_set_root(executor, root);
-        ir_executor_set_global(executor);
-        printf("[executor] Global executor initialized\n");
+        ir_state_manager_set_executor(state_mgr, executor);
+        ir_state_manager_set_root(state_mgr, root);
+        ir_state_set_global(state_mgr);
+        printf("[executor] State manager initialized\n");
     } else {
         fprintf(stderr, "[executor] WARNING: Failed to create executor!\n");
     }

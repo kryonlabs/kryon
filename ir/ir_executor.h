@@ -166,10 +166,8 @@ typedef struct IRStateManager IRStateManager;
 IRStateManager* ir_state_get_global(void);
 void ir_state_set_global(IRStateManager* mgr);
 
-// Legacy compatibility: Get/set the global executor context
-// Note: These now use the state manager internally
+// Get executor from global state manager
 IRExecutorContext* ir_executor_get_global(void);
-void ir_executor_set_global(IRExecutorContext* ctx);
 
 /**
  * Evaluate a text expression and return the string representation
