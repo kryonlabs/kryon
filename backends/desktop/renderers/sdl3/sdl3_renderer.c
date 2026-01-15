@@ -12,6 +12,7 @@
 #include "../../ir_to_commands.h"
 #include <sdl3.h>
 #include <ir_core.h>
+#include <ir_state_manager.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -405,7 +406,11 @@ static bool sdl3_render_component(DesktopIRRenderer* renderer, IRComponent* root
         .user_data = data->white_texture  // Pass white texture for SDL_RenderGeometry
     };
 
-    if (!ir_component_to_commands(root, &cmd_buf, &root_rect, 1.0f, &backend_ctx)) {
+    // Get global state manager
+    extern IRStateManager* ir_state_get_global(void);
+    IRStateManager* state_mgr = ir_state_get_global();
+
+    if (!ir_component_to_commands(root, &cmd_buf, &root_rect, 1.0f, &backend_ctx, state_mgr)) {
         fprintf(stderr, "[sdl3] Failed to generate rendering commands\n");
         return false;
     }

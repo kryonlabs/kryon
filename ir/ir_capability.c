@@ -9,6 +9,7 @@
 
 #include "ir_capability.h"
 #include "ir_log.h"
+#include "ir_state_manager.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -176,26 +177,11 @@ const char* kryon_component_type_to_string(KryonComponentType type) {
  * These bridge the opaque data handle to the actual IR structures
  */
 
-/* Code block data contract */
-typedef struct {
-    const char* code;
-    const char* language;
-    size_t      length;
-    bool        show_line_numbers;
-    uint32_t    start_line;
-} IRCodeBlockData;
-
-/* Markdown data contract */
+/* Markdown data contract (not in ir_core.h) */
 typedef struct {
     const char* markdown;
     size_t      length;
 } IRMarkdownData;
-
-/* Link data contract */
-typedef struct {
-    const char* url;
-    const char* title;
-} IRLinkData;
 
 static const char* api_get_data_string(
     const KryonDataHandle* handle,
@@ -594,6 +580,76 @@ static const char* api_get_kryon_version(void) {
 }
 
 // ============================================================================
+// API Implementation - State Manager Access
+// ============================================================================
+
+// Helper to get global state manager
+static IRStateManager* get_global_state_mgr(void) {
+    extern IRStateManager* ir_state_get_global(void);
+    return ir_state_get_global();
+}
+
+static int64_t api_get_state_int(const char* var_name, const char* scope) {
+    IRStateManager* state_mgr = get_global_state_mgr();
+    if (!state_mgr) return 0;
+
+    extern IRValue ir_executor_get_var(IRExecutorContext* ctx, const char* name, uint32_t instance_id);
+    IRExecutorContext* executor = ir_state_manager_get_executor(state_mgr);
+    if (!executor) return 0;
+
+    IRValue val = ir_executor_get_var(executor, var_name, 0);
+    if (val.type == VAR_TYPE_INT) {
+        return val.int_val;
+    }
+    return 0;
+}
+
+static const char* api_get_state_string(const char* var_name, const char* scope) {
+    IRStateManager* state_mgr = get_global_state_mgr();
+    if (!state_mgr) return NULL;
+
+    extern IRValue ir_executor_get_var(IRExecutorContext* ctx, const char* name, uint32_t instance_id);
+    static char s_string_buf[512];  // Buffer for string return values
+    IRExecutorContext* executor = ir_state_manager_get_executor(state_mgr);
+    if (!executor) return NULL;
+
+    IRValue val = ir_executor_get_var(executor, var_name, 0);
+    if (val.type == VAR_TYPE_STRING && val.string_val) {
+        // Copy to buffer for persistence
+        strncpy(s_string_buf, val.string_val, sizeof(s_string_buf) - 1);
+        s_string_buf[sizeof(s_string_buf) - 1] = '\0';
+        return s_string_buf;
+    } else if (val.type == VAR_TYPE_INT) {
+        snprintf(s_string_buf, sizeof(s_string_buf), "%lld", (long long)val.int_val);
+        return s_string_buf;
+    }
+    return NULL;
+}
+
+static bool api_queue_state_update_int(const char* var_name, int64_t value) {
+    IRStateManager* state_mgr = get_global_state_mgr();
+    if (!state_mgr) return false;
+
+    IRValue val = { .type = VAR_TYPE_INT, .int_val = value };
+    return ir_state_queue_set_var(state_mgr, var_name, val, NULL);
+}
+
+static bool api_queue_state_update_string(const char* var_name, const char* value) {
+    IRStateManager* state_mgr = get_global_state_mgr();
+    if (!state_mgr) return false;
+
+    IRValue val = { .type = VAR_TYPE_STRING, .string_val = (char*)value };
+    return ir_state_queue_set_var(state_mgr, var_name, val, NULL);
+}
+
+static bool api_queue_dirty_mark(uint32_t component_id, uint32_t flags) {
+    IRStateManager* state_mgr = get_global_state_mgr();
+    if (!state_mgr) return false;
+
+    return ir_state_queue_mark_dirty(state_mgr, component_id, flags, false);
+}
+
+// ============================================================================
 // Registry Public API
 // ============================================================================
 
@@ -628,6 +684,11 @@ void ir_capability_registry_init(void) {
     g_registry.api.log_warn = api_log_warn;
     g_registry.api.log_error = api_log_error;
     g_registry.api.get_kryon_version = api_get_kryon_version;
+    g_registry.api.get_state_int = api_get_state_int;
+    g_registry.api.get_state_string = api_get_state_string;
+    g_registry.api.queue_state_update_int = api_queue_state_update_int;
+    g_registry.api.queue_state_update_string = api_queue_state_update_string;
+    g_registry.api.queue_dirty_mark = api_queue_dirty_mark;
 
     /* Allocate storage */
     g_registry.plugin_capacity = INITIAL_PLUGIN_CAPACITY;

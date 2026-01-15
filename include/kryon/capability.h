@@ -414,8 +414,50 @@ struct KryonCapabilityAPI {
      */
     const char* (*get_kryon_version)(void);
 
+    /* --- State Manager Access (reactive state) --- */
+
+    /**
+     * Get integer state variable value
+     * @param var_name Variable name
+     * @param scope Variable scope (NULL for global)
+     * @return Integer value, or 0 if not found
+     */
+    int64_t (*get_state_int)(const char* var_name, const char* scope);
+
+    /**
+     * Get string state variable value
+     * @param var_name Variable name
+     * @param scope Variable scope (NULL for global)
+     * @return String value (valid until next call), or NULL if not found
+     */
+    const char* (*get_state_string)(const char* var_name, const char* scope);
+
+    /**
+     * Queue a state variable update
+     * @param var_name Variable name
+     * @param value New integer value
+     * @return true on success, false on error
+     */
+    bool (*queue_state_update_int)(const char* var_name, int64_t value);
+
+    /**
+     * Queue a state variable update (string)
+     * @param var_name Variable name
+     * @param value New string value (copied)
+     * @return true on success, false on error
+     */
+    bool (*queue_state_update_string)(const char* var_name, const char* value);
+
+    /**
+     * Queue a dirty flag mark for a component
+     * @param component_id Component ID
+     * @param flags Dirty flags (IR_DIRTY_* values)
+     * @return true on success, false on error
+     */
+    bool (*queue_dirty_mark)(uint32_t component_id, uint32_t flags);
+
     /* Reserved for future expansion (maintains ABI stability) */
-    void* reserved[16];
+    void* reserved[11];  // Reduced from 16 to account for new fields
 };
 
 // ============================================================================

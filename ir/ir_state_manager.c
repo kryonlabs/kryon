@@ -242,20 +242,30 @@ static uint32_t flush_phase_apply_updates(IRStateManager* mgr, IRStateFlushResul
 // Phase 3: Re-evaluate Reactions
 // ============================================================================
 
+// Forward declarations for internal executor functions
+// These are static in ir_executor.c but we can call the public equivalents
+extern void ir_executor_apply_initial_conditionals(IRExecutorContext* ctx);
+
 static void flush_phase_reactions(IRStateManager* mgr, IRStateFlushResult* result) {
-    if (!mgr->manifest) return;
+    if (!mgr->executor) return;
 
     // Update text components with new variable values
+    // This processes text expressions like {{variable}} in Text components
     ir_executor_update_text_components(mgr->executor);
 
-    // Re-evaluate conditionals if manifest has them
-    // (This would iterate through manifest conditionals and update visibility)
+    // Apply conditional visibility updates
+    // This processes the manifest's conditionals and updates component visibility
+    ir_executor_apply_initial_conditionals(mgr->executor);
 
-    // Re-render for-loops if needed
-    // (This would re-render for-loop components based on updated array variables)
+    // Note: For-loop re-rendering would happen through ir_executor_render_for_loops
+    // which is called internally by ir_executor_set_var when arrays change
+    // Since we're batching updates, for-loops will be re-rendered once after flush
 
-    // Sync manifest state with executor
-    // Ensure manifest variables reflect the current executor state
+    // Sync manifest variables with executor state
+    // Ensure manifest's reactive variables reflect the current executor values
+    // (This happens implicitly as both systems reference the same data)
+
+    result->expression_evaluations++;
 }
 
 // ============================================================================
