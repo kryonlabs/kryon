@@ -308,7 +308,8 @@ install-config:
 
 # Create distributable SDK tarball for plugin development
 # This packages the capability.h header for plugin authors
-sdk: build-lib
+# NOTE: Only depends on codegen and renderers-common - NO SDL3 required
+sdk: build-codegens build-renderers-common
 	@echo "Creating Kryon Plugin SDK..."
 	@mkdir -p build/sdk
 	@mkdir -p build/sdk/include/kryon

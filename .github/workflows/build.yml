@@ -221,10 +221,6 @@ jobs:
         run: |
           make build-web
 
-      - name: Generate Plugin SDK
-        run: |
-          make sdk
-
       - name: Verify build is static
         run: |
           file build/kryon-web
@@ -236,11 +232,51 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kryon-linux-x86_64-web
-          path: |
-            build/kryon-web
-            build/kryon-plugin-sdk-*.tar.gz
+          path: build/kryon-web
 
-  # Job 4: Default build (all backends) - dynamic linking, glibc-based
+  # Job 4: Plugin SDK (header-only, no SDL3 needed)
+  build-sdk:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.20
+    steps:
+      - name: Install Alpine dependencies
+        run: |
+          apk add --no-cache \
+            git \
+            build-base \
+            pkgconf \
+            bash \
+            curl
+
+      - uses: actions/checkout@v4
+
+      - name: Fetch submodules
+        run: |
+          git config --global --add safe.directory /__w/kryon/kryon
+          git submodule update --init --recursive
+
+      - name: Install Bun for TSX codegen
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Build Plugin SDK
+        run: |
+          make sdk
+
+      - name: Verify SDK contents
+        run: |
+          ls -la build/kryon-plugin-sdk-*.tar.gz
+          tar -tzf build/kryon-plugin-sdk-*.tar.gz | grep capability.h
+
+      - name: Upload SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kryon-plugin-sdk
+          path: build/kryon-plugin-sdk-*.tar.gz
+
+  # Job 5: Default build (all backends) - dynamic linking, glibc-based
   build-default:
     runs-on: ubuntu-24.04
     steps:
@@ -345,9 +381,9 @@ jobs:
           name: kryon-linux-x86_64
           path: kryon-bundle.tar.gz
 
-  # Job 5: Create release with all variants
+  # Job 6: Create release with all variants
   release:
-    needs: [build-terminal, build-desktop, build-web, build-default]
+    needs: [build-terminal, build-desktop, build-web, build-default, build-sdk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -368,7 +404,7 @@ jobs:
       - name: Prepare release files
         run: |
           ls -la
-          ls -la kryon-linux-x86_64-terminal/ kryon-linux-x86_64-desktop/ kryon-linux-x86_64-web/ kryon-linux-x86_64/
+          ls -la kryon-linux-x86_64-terminal/ kryon-linux-x86_64-desktop/ kryon-linux-x86_64-web/ kryon-linux-x86_64/ kryon-plugin-sdk/
 
           # Static builds - extract from artifact directories
           # (artifact directories have same name as desired output files)
@@ -384,8 +420,8 @@ jobs:
           mv kryon-linux-x86_64-desktop/kryon-desktop-bundle.tar.gz kryon-linux-x86_64-desktop.tar.gz
           mv kryon-linux-x86_64/kryon-bundle.tar.gz kryon-linux-x86_64.tar.gz
 
-          # Plugin SDK - for building Kryon plugins
-          mv kryon-linux-x86_64-web/kryon-plugin-sdk-*.tar.gz ./kryon-plugin-sdk.tar.gz
+          # Plugin SDK - from dedicated SDK job
+          mv kryon-plugin-sdk/kryon-plugin-sdk-*.tar.gz ./kryon-plugin-sdk.tar.gz
 
           ls -la
 
