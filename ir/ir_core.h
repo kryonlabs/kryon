@@ -75,21 +75,10 @@ typedef struct IRLogic {
 } IRLogic;
 
 // ============================================================================
-// Dirty flags for efficient incremental layout
-// ============================================================================
-typedef enum {
-    IR_DIRTY_NONE = 0,
-    IR_DIRTY_STYLE = 1 << 0,     // Style properties changed
-    IR_DIRTY_LAYOUT = 1 << 1,    // Layout needs recalculation
-    IR_DIRTY_CHILDREN = 1 << 2,  // Children added/removed
-    IR_DIRTY_CONTENT = 1 << 3,   // Text content changed
-    IR_DIRTY_SUBTREE = 1 << 4,   // Descendant needs layout
-    IR_DIRTY_RENDER = 1 << 5     // Visual-only changes (no layout recalc needed)
-} IRDirtyFlags;
-
-// ============================================================================
 // Layout cache for performance optimization
 // ============================================================================
+// Note: IRDirtyFlags is now defined in ir_layout_types.h for consolidation
+// with IRLayoutState. This header is included by ir_layout_types.h.
 typedef struct {
     bool dirty;                          // Cache invalid flag
     float cached_intrinsic_width;        // Cached intrinsic width

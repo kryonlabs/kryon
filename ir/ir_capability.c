@@ -718,9 +718,10 @@ bool ir_capability_load_plugin(const char* path, const char* name) {
         return false;
     }
 #else
-    void* handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL);
+    void* handle = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
     if (!handle) {
-        IR_LOG_ERROR("capability", "Failed to load plugin: %s (%s)", path, dlerror());
+        IR_LOG_ERROR("capability", "Failed to load plugin '%s' from %s: %s",
+                     name ? name : "(unknown)", path, dlerror());
         return false;
     }
 #endif

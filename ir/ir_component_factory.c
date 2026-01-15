@@ -52,7 +52,6 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
             // Zero-initialize to clear any stale data from previous use
             memset(component, 0, sizeof(IRComponent));
             component->layout_cache.dirty = true;
-            component->dirty_flags = IR_DIRTY_LAYOUT;
         }
     } else {
         // Fallback to malloc if no context/pool
@@ -60,7 +59,6 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
         if (component) {
             memset(component, 0, sizeof(IRComponent));
             component->layout_cache.dirty = true;
-            component->dirty_flags = IR_DIRTY_LAYOUT;
         }
     }
 
@@ -86,6 +84,7 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
     component->layout_state = calloc(1, sizeof(IRLayoutState));
     if (component->layout_state) {
         component->layout_state->dirty = true;  // Start dirty, needs initial layout
+        component->layout_state->dirty_flags = IR_DIRTY_LAYOUT;  // Consolidated dirty tracking
     }
 
     // Set flex direction based on component type
@@ -282,7 +281,9 @@ void ir_add_child(IRComponent* parent, IRComponent* child) {
 
     // Mark parent dirty - children changed
     ir_layout_mark_dirty(parent);
-    parent->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
+    if (parent->layout_state) {
+        parent->layout_state->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
+    }
 }
 
 void ir_remove_child(IRComponent* parent, IRComponent* child) {
@@ -311,7 +312,9 @@ void ir_remove_child(IRComponent* parent, IRComponent* child) {
 
     // Mark parent dirty - children changed
     ir_layout_mark_dirty(parent);
-    parent->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
+    if (parent->layout_state) {
+        parent->layout_state->dirty_flags |= IR_DIRTY_CHILDREN | IR_DIRTY_LAYOUT;
+    }
 }
 
 void ir_insert_child(IRComponent* parent, IRComponent* child, uint32_t index) {
@@ -385,7 +388,9 @@ void ir_set_text_content(IRComponent* component, const char* text) {
 
     // Mark component dirty - content changed (two-pass layout system)
     ir_layout_mark_dirty(component);
-    component->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
+    if (component->layout_state) {
+        component->layout_state->dirty_flags |= IR_DIRTY_CONTENT | IR_DIRTY_LAYOUT;
+    }
 }
 
 void ir_set_custom_data(IRComponent* component, const char* data) {

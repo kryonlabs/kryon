@@ -101,11 +101,17 @@ jobs:
             libpulse-dev \
             software-properties-common
 
-      - name: Install Raylib from PPA
+      - name: Build Raylib from source
         run: |
-          sudo add-apt-repository ppa:texus/raylib -y
-          sudo apt-get update
-          sudo apt-get install -y libraylib5-dev
+          git clone --depth 1 --branch 5.0 \
+            https://github.com/raysan5/raylib.git /tmp/raylib
+          cd /tmp/raylib
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DBUILD_EXAMPLES=OFF
+          cmake --build build
+          sudo cmake --install build
 
       - name: Cache SDL3
         id: cache-sdl3
@@ -305,11 +311,17 @@ jobs:
             libpulse-dev \
             software-properties-common
 
-      - name: Install Raylib from PPA
+      - name: Build Raylib from source
         run: |
-          sudo add-apt-repository ppa:texus/raylib -y
-          sudo apt-get update
-          sudo apt-get install -y libraylib5-dev
+          git clone --depth 1 --branch 5.0 \
+            https://github.com/raysan5/raylib.git /tmp/raylib
+          cd /tmp/raylib
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DBUILD_EXAMPLES=OFF
+          cmake --build build
+          sudo cmake --install build
 
       - name: Cache SDL3
         id: cache-sdl3
