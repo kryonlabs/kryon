@@ -7,7 +7,7 @@
 # - Rendering backends: SDL3 (desktop), Terminal - use Kryon's renderer to draw UI
 # - Transpilation frontends: HTML/web (/codegens/web/) - codegen that outputs browser-renderable code
 
-.PHONY: all clean install install-dynamic install-static uninstall doctor dev test help
+.PHONY: all clean install install-dynamic install-static uninstall doctor dev test help sdk
 .PHONY: build-cli build-lib build-dynamic build-static build-c-libs build-codegens
 .PHONY: build-ir build-renderers build-desktop-backend build-c-codegens
 .PHONY: build-terminal build-desktop build-web build-default build-all-variants
@@ -305,6 +305,27 @@ install-config:
 	cp -r templates/* $(CONFIGDIR)/templates/ 2>/dev/null || true
 	echo "version: $(VERSION)" > $(CONFIGDIR)/config.yaml
 	echo "installed_at: $(shell date)" >> $(CONFIGDIR)/config.yaml
+
+# Create distributable SDK tarball for plugin development
+# This packages the capability.h header for plugin authors
+sdk: build-lib
+	@echo "Creating Kryon Plugin SDK..."
+	@mkdir -p build/sdk
+	@mkdir -p build/sdk/include/kryon
+	@cp include/kryon/capability.h build/sdk/include/kryon/
+	@echo "VERSION: $(VERSION)" > build/sdk/SDK_INFO
+	@echo "API_VERSION: 1.0.0" >> build/sdk/SDK_INFO
+	@echo "" >> build/sdk/SDK_INFO
+	@echo "The Kryon Plugin SDK provides the headers needed to build plugins." >> build/sdk/SDK_INFO
+	@echo "Only capability.h is required - no other Kryon headers needed." >> build/sdk/SDK_INFO
+	@echo "" >> build/sdk/SDK_INFO
+	@echo "Install: cp -r build/sdk/include/* ~/.local/include/" >> build/sdk/SDK_INFO
+	@echo "" >> build/sdk/SDK_INFO
+	@echo "Example plugin build:" >> build/sdk/SDK_INFO
+	@echo "  gcc -shared -fPIC -I~/.local/include plugin.c -o libmyplugin.so" >> build/sdk/SDK_INFO
+	@cd build/sdk && tar czf ../kryon-plugin-sdk-$(VERSION)-x86_64.tar.gz *
+	@echo "✓ Created SDK: build/kryon-plugin-sdk-$(VERSION)-x86_64.tar.gz"
+	@echo "  Include this in releases for plugin developers"
 
 # System-wide installation (requires sudo)
 install-system: PREFIX = /usr/local
