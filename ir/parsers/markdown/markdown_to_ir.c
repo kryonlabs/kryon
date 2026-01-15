@@ -17,6 +17,7 @@
 #include "markdown_ast.h"
 #include "../../ir_builder.h"
 #include "../../ir_core.h"
+#include "../../ir_markdown.h"
 
 /* Syntax highlighting - loaded dynamically from plugin at runtime */
 #include "../../ir_plugin.h"
@@ -114,27 +115,35 @@ static void render_inlines_to_ir(MdInline* inl, IRComponent* parent) {
                 break;
 
             case MD_INLINE_LINK:
-                // Links are rendered as styled text with URL in custom_data
-                // (IR doesn't have a dedicated LINK component type)
-                comp = ir_text("");
-                if (comp) {
-                    // Set link URL as custom data
+                // Create proper LINK component with IRLinkData
+                {
+                    char* url_str = NULL;
+                    char* text_str = NULL;
+
+                    // Extract URL string
                     if (inl->data.link.url && inl->data.link.url_length > 0) {
-                        char* url = (char*)malloc(inl->data.link.url_length + 1);
-                        if (url) {
-                            memcpy(url, inl->data.link.url, inl->data.link.url_length);
-                            url[inl->data.link.url_length] = '\0';
-                            ir_set_custom_data(comp, url);
-                            ir_set_text_content(comp, url);
-                            free(url);
+                        url_str = (char*)malloc(inl->data.link.url_length + 1);
+                        if (url_str) {
+                            memcpy(url_str, inl->data.link.url, inl->data.link.url_length);
+                            url_str[inl->data.link.url_length] = '\0';
                         }
                     }
-                    if (comp->style) {
-                        // Style as link with blue color
-                        ir_set_font(comp->style, 16.0f, NULL, 88, 166, 255, 255, false, false);
+
+                    // Extract link text string (stored in title field by parser)
+                    if (inl->data.link.title && inl->data.link.title_length > 0) {
+                        text_str = (char*)malloc(inl->data.link.title_length + 1);
+                        if (text_str) {
+                            memcpy(text_str, inl->data.link.title, inl->data.link.title_length);
+                            text_str[inl->data.link.title_length] = '\0';
+                        }
                     }
-                    // Mark as link via tag
-                    ir_set_tag(comp, "link");
+
+                    // Create LINK component using the helper function
+                    comp = ir_link(url_str, text_str);
+
+                    // Free temporary strings
+                    if (url_str) free(url_str);
+                    if (text_str) free(text_str);
                 }
                 break;
 

@@ -692,6 +692,133 @@ static KryonConfig* config_load_plugin_toml(const char* plugin_dir) {
 }
 
 /**
+ * Pre-process git plugins and group them by repository URL.
+ * This allows multiple plugins from the same repository to be cloned
+ * in a single sparse checkout operation.
+ *
+ * @param plugins Array of plugin dependencies
+ * @param count Number of plugins
+ * @return true on success, false on failure
+ */
+static bool preinstall_git_plugins_grouped(PluginDep* plugins, int count) {
+    if (count <= 0) return true;
+
+    // Build array of git plugins for grouping
+    PluginGitDep* git_deps = calloc(count, sizeof(PluginGitDep));
+    if (!git_deps) {
+        return false;
+    }
+
+    int git_count = 0;
+    for (int i = 0; i < count; i++) {
+        PluginDep* dep = &plugins[i];
+        if (dep->git) {
+            git_deps[git_count].name = dep->name;
+            git_deps[git_count].subdir = dep->subdir;
+            git_deps[git_count].git = dep->git;
+            git_deps[git_count].branch = dep->branch;
+            git_count++;
+        }
+    }
+
+    if (git_count == 0) {
+        free(git_deps);
+        return true;  // No git plugins
+    }
+
+    // Group by git URL
+    int group_count = 0;
+    PluginGitGroup* groups = plugin_group_by_git(git_deps, git_count, &group_count);
+
+    if (!groups || group_count == 0) {
+        free(git_deps);
+        return false;
+    }
+
+    // Install each group
+    bool success = true;
+    for (int i = 0; i < group_count; i++) {
+        if (groups[i].count == 1) {
+            // Single plugin - use existing single-plugin function
+            PluginGitDep* dep = &groups[i].plugins[0];
+            printf("[kryon][plugin] Installing git plugin '%s' from %s\n",
+                   dep->name, groups[i].git_url);
+            char* path = plugin_clone_from_git_sparse(groups[i].git_url, dep->subdir,
+                                                       dep->name, groups[i].branch);
+            if (!path) {
+                fprintf(stderr, "[kryon][plugin] Failed to install '%s'\n", dep->name);
+                success = false;
+            } else {
+                free(path);
+            }
+        } else {
+            // Multiple plugins from same repo - use multi-sparse checkout
+            printf("[kryon][plugin] Installing %d plugin(s) from shared repository: %s\n",
+                   groups[i].count, groups[i].git_url);
+            if (!plugin_clone_multi_sparse(groups[i].git_url, groups[i].plugins,
+                                           groups[i].count, groups[i].branch)) {
+                fprintf(stderr, "[kryon][plugin] Failed to install plugins from %s\n",
+                        groups[i].git_url);
+                success = false;
+            }
+        }
+    }
+
+    plugin_free_groups(groups, group_count);
+    free(git_deps);
+    return success;
+}
+
+/**
+ * Get the resolved path for a plugin that was pre-installed via grouped checkout.
+ * For plugins from git, this returns the shared cache path.
+ *
+ * @param plugin Plugin dependency
+ * @return Allocated path string (caller must free), or NULL if not found
+ */
+static char* get_preinstalled_plugin_path(PluginDep* plugin) {
+    if (!plugin->git || !plugin->subdir) {
+        return NULL;
+    }
+
+    // For sparse checkout, plugins are in cache/<repo_name>/<subdir>
+    char* cache_dir = NULL;
+    char* xdg_cache = getenv("XDG_CACHE_HOME");
+    if (xdg_cache && xdg_cache[0] != '\0') {
+        cache_dir = path_join(xdg_cache, "kryon/plugins");
+    } else {
+        char* home = getenv("HOME");
+        if (home) {
+            char* cache_base = path_join(home, ".cache/kryon");
+            cache_dir = path_join(cache_base, "plugins");
+            free(cache_base);
+        }
+    }
+
+    if (!cache_dir) {
+        return NULL;
+    }
+
+    // Extract repo name from git URL
+    const char* last_slash = strrchr(plugin->git, '/');
+    const char* repo_name = last_slash ? last_slash + 1 : plugin->git;
+    size_t repo_len = strlen(repo_name);
+    if (repo_len > 4 && strcmp(repo_name + repo_len - 4, ".git") == 0) {
+        repo_len -= 4;
+    }
+
+    // Build path: cache_dir/repo_name/subdir
+    char* repo_path = malloc(strlen(cache_dir) + repo_len + 2);
+    snprintf(repo_path, strlen(cache_dir) + repo_len + 2, "%s/%.*s", cache_dir, (int)repo_len, repo_name);
+    free(cache_dir);
+
+    char* full_path = path_join(repo_path, plugin->subdir);
+    free(repo_path);
+
+    return full_path;
+}
+
+/**
  * Recursively load a plugin and all its dependencies.
  * Dependencies are loaded BEFORE the parent plugin to ensure proper initialization order.
  *
@@ -726,19 +853,28 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
     char* resolved_path = NULL;
 
     if (plugin->git) {
-        // Install from git URL
-        if (plugin->subdir) {
-            // Use sparse checkout for subdirectory
-            printf("[kryon][plugin]   Installing '%s' from git (subdir: %s): %s\n",
-                   plugin->name, plugin->subdir, plugin->git);
-            resolved_path = plugin_clone_from_git_sparse(plugin->git, plugin->subdir, plugin->name, plugin->branch);
+        // Check if plugin was pre-installed via grouped checkout
+        resolved_path = get_preinstalled_plugin_path(plugin);
+        if (resolved_path && file_is_directory(resolved_path)) {
+            printf("[kryon][plugin]   Using pre-installed plugin at %s\n", resolved_path);
         } else {
-            printf("[kryon][plugin]   Installing '%s' from git: %s\n", plugin->name, plugin->git);
-            resolved_path = plugin_install_from_git(plugin->git, plugin->branch, plugin->name);
-        }
-        if (!resolved_path) {
-            fprintf(stderr, "[kryon][plugin]   Failed to install '%s' from git\n", plugin->name);
-            return false;
+            free(resolved_path);
+            resolved_path = NULL;
+
+            // Fallback: Install from git URL individually
+            if (plugin->subdir) {
+                printf("[kryon][plugin]   Installing '%s' from git (subdir: %s): %s\n",
+                       plugin->name, plugin->subdir, plugin->git);
+                resolved_path = plugin_clone_from_git_sparse(plugin->git, plugin->subdir,
+                                                             plugin->name, plugin->branch);
+            } else {
+                printf("[kryon][plugin]   Installing '%s' from git: %s\n", plugin->name, plugin->git);
+                resolved_path = plugin_install_from_git(plugin->git, plugin->branch, plugin->name);
+            }
+            if (!resolved_path) {
+                fprintf(stderr, "[kryon][plugin]   Failed to install '%s' from git\n", plugin->name);
+                return false;
+            }
         }
     } else if (plugin->path) {
         // Resolve plugin path relative to base_dir
@@ -845,6 +981,9 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
  * ONLY loads plugins explicitly listed in kryon.toml - no auto-discovery.
  * Now supports recursive plugin dependency resolution - when a plugin is loaded,
  * its own kryon.toml is checked for [plugins] and those are loaded first.
+ *
+ * Multi-plugin optimization: Plugins from the same git repository are cloned
+ * together using sparse checkout, reducing network overhead.
  */
 bool config_load_plugins(KryonConfig* config) {
     // If no config plugins specified, we're done
@@ -859,6 +998,14 @@ bool config_load_plugins(KryonConfig* config) {
 
     printf("[Plugins] Loading %d plugin(s) with recursive dependency resolution...\n",
            config->plugins_count);
+
+    // Pre-install git plugins in groups for efficiency
+    // This allows multiple plugins from the same repository to be cloned
+    // in a single sparse checkout operation
+    if (!preinstall_git_plugins_grouped(config->plugins, config->plugins_count)) {
+        fprintf(stderr, "[kryon][config] Warning: Some git plugins failed to pre-install\n");
+        // Continue anyway - individual plugins will be attempted below
+    }
 
     // Load each plugin and its dependencies
     for (int i = 0; i < config->plugins_count; i++) {

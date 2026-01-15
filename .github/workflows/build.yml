@@ -376,6 +376,28 @@ jobs:
 
           ls -la
 
+      - name: Delete existing release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: 'latest'
+            }).catch(() => ({ data: null }));
+
+            if (release) {
+              console.log(`Deleting existing release: ${release.id} (${release.name})`);
+              await github.rest.repos.deleteRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id
+              });
+              console.log('Release deleted successfully');
+            } else {
+              console.log('No existing release found, will create new one');
+            }
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:

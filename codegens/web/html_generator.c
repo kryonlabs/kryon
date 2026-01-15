@@ -1162,6 +1162,12 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
         }
 
+        case IR_COMPONENT_FLOWCHART: {
+            // Flowchart plugin will handle rendering via plugin system
+            // No special attributes needed for now
+            break;
+        }
+
         default:
             break;
     }

@@ -58,6 +58,11 @@ const char* ir_component_type_to_string(IRComponentType type) {
         case IR_COMPONENT_FOR_EACH: return "ForEach";
         case IR_COMPONENT_VAR_DECL: return "VarDecl";
         case IR_COMPONENT_PLACEHOLDER: return "Placeholder";
+        case IR_COMPONENT_FLOWCHART: return "Flowchart";
+        case IR_COMPONENT_FLOWCHART_NODE: return "FlowchartNode";
+        case IR_COMPONENT_FLOWCHART_EDGE: return "FlowchartEdge";
+        case IR_COMPONENT_FLOWCHART_SUBGRAPH: return "FlowchartSubgraph";
+        case IR_COMPONENT_FLOWCHART_LABEL: return "FlowchartLabel";
         default: return "Unknown";
     }
 }

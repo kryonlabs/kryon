@@ -58,11 +58,17 @@ typedef enum {
     IR_COMPONENT_FOR_EACH,            // ForEach (runtime dynamic list rendering)
     IR_COMPONENT_VAR_DECL,            // Variable declaration (const/let/var)
     // Template placeholder (for docs layout templates)
-    IR_COMPONENT_PLACEHOLDER          // Template placeholder ({{name}})
+    IR_COMPONENT_PLACEHOLDER,         // Template placeholder ({{name}})
+    // Flowchart/diagram components (for Mermaid support)
+    IR_COMPONENT_FLOWCHART,           // Flowchart container
+    IR_COMPONENT_FLOWCHART_NODE,      // Individual flowchart node
+    IR_COMPONENT_FLOWCHART_EDGE,      // Connection between nodes
+    IR_COMPONENT_FLOWCHART_SUBGRAPH,  // Grouped nodes (subgraph)
+    IR_COMPONENT_FLOWCHART_LABEL      // Text label for nodes/edges
 } IRComponentType;
 
 // Max value for registry array sizing
-#define IR_COMPONENT_MAX IR_COMPONENT_PLACEHOLDER
+#define IR_COMPONENT_MAX IR_COMPONENT_FLOWCHART_LABEL
 
 // Type conversion functions
 const char* ir_component_type_to_string(IRComponentType type);

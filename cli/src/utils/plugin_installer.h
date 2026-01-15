@@ -8,6 +8,26 @@
 #include <stdbool.h>
 
 /**
+ * Plugin dependency descriptor for grouped installations
+ */
+typedef struct {
+    char* name;           // Plugin name
+    char* subdir;         // Subdirectory within the repo (e.g., "syntax")
+    char* git;            // Git URL
+    char* branch;         // Branch to checkout (can be NULL)
+} PluginGitDep;
+
+/**
+ * Group of plugins from the same git repository
+ */
+typedef struct {
+    char* git_url;        // Shared git URL
+    char* branch;         // Shared branch (can be NULL)
+    PluginGitDep* plugins; // Array of plugins from this repo
+    int count;            // Number of plugins
+} PluginGitGroup;
+
+/**
  * Clone a git repository to the plugin cache
  *
  * @param git_url The git URL to clone
@@ -27,6 +47,36 @@ char* plugin_clone_from_git(const char* git_url, const char* branch, const char*
  * @return The path to the plugin subdirectory (must be freed), or NULL on failure
  */
 char* plugin_clone_from_git_sparse(const char* git_url, const char* subdirectory, const char* plugin_name, const char* branch);
+
+/**
+ * Clone multiple subdirectories from the same git repository using sparse checkout
+ * This is more efficient than cloning each subdirectory separately.
+ *
+ * @param git_url The git URL to clone
+ * @param plugins Array of plugin descriptors (name, subdir)
+ * @param count Number of plugins
+ * @param branch The branch to checkout (NULL for default)
+ * @return true on success, false on failure
+ */
+bool plugin_clone_multi_sparse(const char* git_url, PluginGitDep* plugins, int count, const char* branch);
+
+/**
+ * Group plugins by git URL for efficient batch installation
+ *
+ * @param deps Array of plugin dependencies
+ * @param count Number of dependencies
+ * @param group_count Output: number of groups returned
+ * @return Array of plugin groups (caller must free), or NULL on failure
+ */
+PluginGitGroup* plugin_group_by_git(PluginGitDep* deps, int count, int* group_count);
+
+/**
+ * Free plugin groups allocated by plugin_group_by_git
+ *
+ * @param groups Array of plugin groups
+ * @param count Number of groups
+ */
+void plugin_free_groups(PluginGitGroup* groups, int count);
 
 /**
  * Compile a plugin from source
