@@ -10,7 +10,7 @@
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_stylesheet.h"
 #include "../../ir/ir_builder.h"
-#include "../../ir/ir_plugin.h"
+#include "../../ir/ir_capability.h"
 #include "css_generator.h"
 #include "style_analyzer.h"
 
@@ -2210,14 +2210,14 @@ static void append_plugin_css(CSSGenerator* generator, const char* theme) {
 
     // Iterate through all component types
     for (uint32_t type = 0; type < 64; type++) {
-        // Check if this component type has a plugin web renderer
-        if (ir_plugin_has_web_renderer(type)) {
+        // Check if this component type has a capability-based web renderer
+        if (ir_capability_has_web_renderer(type)) {
             if (debug_file) {
                 fprintf(debug_file, "[append_plugin_css] Found renderer for type %u\n", type);
                 fflush(debug_file);
             }
             // Get CSS from the plugin for this component type
-            char* plugin_css = ir_plugin_get_web_css(type, theme);
+            char* plugin_css = ir_capability_generate_css(type, theme);
             if (plugin_css) {
                 // Append the plugin CSS to the generator output
                 css_generator_write_string(generator, plugin_css);

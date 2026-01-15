@@ -12,7 +12,6 @@
 #include "../../ir_to_commands.h"
 #include <sdl3.h>
 #include <ir_core.h>
-#include <ir_plugin.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -394,8 +393,13 @@ static bool sdl3_render_component(DesktopIRRenderer* renderer, IRComponent* root
     kryon_cmd_buf_t cmd_buf;
     kryon_cmd_buf_init(&cmd_buf);
 
-    // Create backend context for plugin renderers
-    IRPluginBackendContext backend_ctx = {
+    // Create backend context for renderers
+    // The capability system uses a simple void* for backend context
+    struct {
+        void* renderer;
+        void* font;
+        void* user_data;
+    } backend_ctx = {
         .renderer = data->renderer,
         .font = data->default_font,
         .user_data = data->white_texture  // Pass white texture for SDL_RenderGeometry

@@ -15,7 +15,7 @@
 #include <unistd.h>
 
 #include "../../ir/ir_core.h"
-#include "../../ir/ir_plugin.h"
+#include "../../ir/ir_capability.h"
 #include "../../ir/ir_logic.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include "html_generator.h"
@@ -600,14 +600,21 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
     }
 
     // Check if a plugin has registered a web renderer for this component type
-    bool has_plugin = ir_plugin_has_web_renderer(component->type);
+    bool has_plugin = ir_capability_has_web_renderer(component->type);
     if (component->type == IR_COMPONENT_CODE_BLOCK) {
         printf("[html_gen] CodeBlock: type=%d, has_plugin=%d\n", component->type, has_plugin);
         fflush(stdout);
     }
     if (has_plugin) {
-        // Use plugin renderer - get HTML from plugin
-        char* plugin_html = ir_plugin_render_web_component(component, "light");
+        // Use capability-based plugin renderer
+        // Create a data handle for the component
+        KryonDataHandle handle = ir_capability_create_data_handle(
+            component->custom_data,
+            0,  // size - not needed for most components
+            component->type,
+            component->id
+        );
+        char* plugin_html = ir_capability_render_web(component->type, &handle, "light");
         if (component->type == IR_COMPONENT_CODE_BLOCK) {
             printf("[html_gen] plugin_html=%p\n", (void*)plugin_html);
             if (plugin_html) {
@@ -1385,18 +1392,21 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             }
         } else if (component->type == IR_COMPONENT_CODE_BLOCK) {
             // Check if a plugin has registered a web renderer for code blocks
-            extern char* ir_plugin_render_web_component(const IRComponent* component, const char* theme);
-            extern bool ir_plugin_has_web_renderer(uint32_t component_type);
-
             printf("[html_gen] CODE_BLOCK component, checking for plugin renderer (type=%d)...\n", IR_COMPONENT_CODE_BLOCK);
-            bool has_renderer = ir_plugin_has_web_renderer(IR_COMPONENT_CODE_BLOCK);
+            bool has_renderer = ir_capability_has_web_renderer(IR_COMPONENT_CODE_BLOCK);
             printf("[html_gen] has_renderer=%d\n", has_renderer);
 
             if (has_renderer) {
-                // Use plugin's web renderer for syntax highlighting
+                // Use capability-based plugin renderer for syntax highlighting
                 html_generator_write_indent(generator);
                 printf("[html_gen] Calling plugin renderer...\n");
-                char* rendered_html = ir_plugin_render_web_component(component, "dark");
+                KryonDataHandle handle = ir_capability_create_data_handle(
+                    component->custom_data,
+                    0,
+                    component->type,
+                    component->id
+                );
+                char* rendered_html = ir_capability_render_web(component->type, &handle, "dark");
                 printf("[html_gen] Renderer returned: %p\n", (void*)rendered_html);
                 if (rendered_html) {
                     printf("[html_gen] HTML snippet: %.100s...\n", rendered_html);

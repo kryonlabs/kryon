@@ -15,7 +15,7 @@
 
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_serialization.h"
-#include "../../ir/ir_plugin.h"
+#include "../../ir/ir_capability.h"
 #include "ir_web_renderer.h"
 #include "html_generator.h"
 #include "lua_bundler.h"
@@ -56,18 +56,25 @@ int main(int argc, char** argv) {
         printf("  Mode: Embedded CSS\n");
     }
 
-    // Load plugins for web rendering (e.g., syntax highlighting)
-    uint32_t plugin_count = 0;
-    IRPluginDiscoveryInfo** plugins = ir_plugin_discover(NULL, &plugin_count);
-    if (plugins && plugin_count > 0) {
-        for (uint32_t i = 0; i < plugin_count; i++) {
-            IRPluginDiscoveryInfo* info = plugins[i];
-            if (ir_plugin_load_with_metadata(info->path, info->name, info)) {
-                fprintf(stderr, "[kryon][plugin] Loaded plugin '%s' v%s\n",
-                        info->name, info->version);
+    // Initialize capability system and load plugins for web rendering
+    ir_capability_registry_init();
+
+    // Load plugins from standard plugin directories
+    const char* home = getenv("HOME");
+    if (home) {
+        char plugin_dir[PATH_MAX];
+        snprintf(plugin_dir, sizeof(plugin_dir), "%s/.kryon/plugins", home);
+
+        // Try to load common plugins
+        const char* plugin_names[] = {"syntax", "flowchart", NULL};
+        for (int i = 0; plugin_names[i]; i++) {
+            char so_path[PATH_MAX];
+            snprintf(so_path, sizeof(so_path), "%s/%s/lib%s.so", plugin_dir, plugin_names[i], plugin_names[i]);
+
+            if (ir_capability_load_plugin(so_path, plugin_names[i])) {
+                fprintf(stderr, "[kryon] Loaded plugin '%s'\n", plugin_names[i]);
             }
         }
-        ir_plugin_free_discovery(plugins, plugin_count);
     }
 
     // Load KIR file with manifest (for CSS variable support)
@@ -234,6 +241,9 @@ int main(int argc, char** argv) {
     if (manifest) {
         ir_reactive_manifest_destroy(manifest);
     }
+
+    // Shutdown capability system and unload plugins
+    ir_capability_registry_shutdown();
 
     return success ? 0 : 1;
 }

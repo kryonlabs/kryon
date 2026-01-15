@@ -9,9 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "kryon_cli.h"
-#include <ir_plugin.h>
+#include <ir_capability.h>
 
 // Plugin loading is now per-project, handled by config system
+// Capability registry is initialized globally for all plugins
 
 static void print_version(void) {
     printf("Kryon CLI %s\n", KRYON_CLI_VERSION);
@@ -70,6 +71,10 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    // Initialize the capability registry
+    // This must be done before any plugin operations
+    ir_capability_registry_init();
+
     // Command dispatch
     int result = 1;
 
@@ -120,6 +125,10 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Run 'kryon --help' for usage information\n");
         result = 1;
     }
+
+    // Shutdown the capability registry
+    // This unloads all plugins and frees resources
+    ir_capability_registry_shutdown();
 
     cli_args_free(args);
     return result;

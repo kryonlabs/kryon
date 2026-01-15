@@ -106,13 +106,20 @@ type
     center_x*: cfloat        # For radial/conic (0.0 to 1.0)
     center_y*: cfloat        # For radial/conic (0.0 to 1.0)
 
-  # Plugin system bindings
-  IRPluginHandle* {.importc: "IRPluginHandle", header: "ir_plugin.h".} = object
-    dl_handle*: pointer
+  # Capability-based plugin system bindings
+  KryonDataHandle* {.importc: "KryonDataHandle", header: "kryon/capability.h".} = object
+    data_ptr*: pointer
+    data_size*: csize_t
+    component_type*: uint32
+    component_id*: uint32
+    user_data*: pointer
+
+  KryonPlugin* {.importc: "KryonPlugin", header: "kryon/capability.h".} = object
     name*: array[64, char]
-    path*: array[512, char]
-    init_func*: proc(ctx: pointer): bool {.cdecl.}
-    shutdown_func*: proc() {.cdecl.}
+    version*: array[32, char]
+    description*: array[256, char]
+    min_kryon_version*: array[32, char]
+    api_version*: uint32
 
   # Union data for IRColor - matches C union layout exactly
   # C has: union { struct { uint8_t r, g, b, a; }; IRStyleVarId var_id; ptr[IRGradient] gradient; }
@@ -289,9 +296,15 @@ proc ir_set_context*(context: ptr IRContext) {.importc, cdecl, header: "ir_build
 proc ir_get_root*(): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
 proc ir_set_root*(root: ptr IRComponent) {.importc, cdecl, header: "ir_builder.h".}
 
-# Plugin loading functions
-proc ir_plugin_load*(plugin_path: cstring; plugin_name: cstring): ptr IRPluginHandle {.importc, cdecl, header: "ir_plugin.h".}
-proc ir_plugin_unload*(handle: ptr IRPluginHandle) {.importc, cdecl, header: "ir_plugin.h".}
+# Capability-based plugin functions
+proc ir_capability_registry_init*() {.importc, cdecl, header: "ir_capability.h".}
+proc ir_capability_registry_shutdown*() {.importc, cdecl, header: "ir_capability.h".}
+proc ir_capability_load_plugin*(path: cstring; name: cstring): bool {.importc, cdecl, header: "ir_capability.h".}
+proc ir_capability_unload_plugin*(name: cstring): bool {.importc, cdecl, header: "ir_capability.h".}
+proc ir_capability_get_plugin_count*(): uint32 {.importc, cdecl, header: "ir_capability.h".}
+proc ir_capability_get_plugin_name*(index: uint32): cstring {.importc, cdecl, header: "ir_capability.h".}
+proc ir_capability_render_web*(component_type: uint32; handle: ptr KryonDataHandle; theme: cstring): cstring {.importc, cdecl, header: "ir_capability.h".}
+proc ir_capability_generate_css*(component_type: uint32; theme: cstring): cstring {.importc, cdecl, header: "ir_capability.h".}
 
 # Component Creation
 proc ir_create_component*(component_type: IRComponentType): ptr IRComponent {.importc, cdecl, header: "ir_builder.h".}
