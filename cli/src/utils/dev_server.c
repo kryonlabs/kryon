@@ -29,7 +29,10 @@ int start_dev_server(const char* document_root, int port, bool auto_open) {
         #elif _WIN32
         snprintf(open_cmd, sizeof(open_cmd), "start http://127.0.0.1:%d", port);
         #endif
-        system(open_cmd);
+        int open_result = system(open_cmd);
+        if (open_result != 0) {
+            fprintf(stderr, "Warning: Failed to open browser (code %d)\n", open_result);
+        }
     }
 
     // Run Bun dev server (blocks until Ctrl+C)

@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 // Forward declare text width estimation function
 extern float ir_get_text_width_estimate(const char* text, float font_size);
@@ -18,7 +17,7 @@ void layout_dropdown_single_pass(IRComponent* c, IRLayoutConstraints constraints
 
     // Get style or use defaults
     float font_size = 14.0f;
-    IRSpacing padding = {8, 8, 8, 8};  // Default padding for dropdown
+    IRSpacing padding = {8, 8, 8, 8, 0};  // Default padding for dropdown
 
     if (c->style) {
         font_size = (c->style->font.size > 0) ? c->style->font.size : 14.0f;

@@ -777,7 +777,7 @@ static void expand_foreach_with_parent_internal(IRComponent* component, IRCompon
     }
 }
 
-static void debug_print_tree(IRComponent* comp, int depth) {
+__attribute__((unused)) static void debug_print_tree(IRComponent* comp, int depth) {
     if (!comp) return;
     for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
     fprintf(stderr, "type=%d children=%u text=%s\n",
@@ -794,7 +794,7 @@ static void debug_print_tree(IRComponent* comp, int depth) {
     }
 }
 
-static void debug_print_tree_full(IRComponent* comp, int depth, int max_depth) {
+__attribute__((unused)) static void debug_print_tree_full(IRComponent* comp, int depth, int max_depth) {
     if (!comp) return;
     for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
     fprintf(stderr, "type=%d children=%u ptr=%p text=%s\n",

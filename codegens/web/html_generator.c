@@ -1488,7 +1488,8 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     int fd = open("/tmp/html_gen_generate.log", O_WRONLY|O_CREAT|O_APPEND, 0644);
     if (fd >= 0) {
         const char msg[] = "html_generator_generate called!\n";
-        write(fd, msg, sizeof(msg)-1);
+        ssize_t ret __attribute__((unused)) = write(fd, msg, sizeof(msg)-1);
+        (void)ret;
         close(fd);
     }
 

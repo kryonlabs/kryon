@@ -187,5 +187,5 @@ size_t ir_buffer_remaining(const IRBuffer* buffer) {
 
 bool ir_buffer_at_end(const IRBuffer* buffer) {
     if (!buffer) return true;
-    return (buffer->data - buffer->base) >= buffer->capacity;
+    return (size_t)(buffer->data - buffer->base) >= buffer->capacity;
 }

@@ -29,14 +29,17 @@ static bool write_uint32(IRBuffer* buffer, uint32_t value) {
     return ir_buffer_write(buffer, &value, sizeof(uint32_t));
 }
 
+__attribute__((unused))
 static bool write_int32(IRBuffer* buffer, int32_t value) {
     return ir_buffer_write(buffer, &value, sizeof(int32_t));
 }
 
+__attribute__((unused))
 static bool write_int64(IRBuffer* buffer, int64_t value) {
     return ir_buffer_write(buffer, &value, sizeof(int64_t));
 }
 
+__attribute__((unused))
 static bool write_double(IRBuffer* buffer, double value) {
     return ir_buffer_write(buffer, &value, sizeof(double));
 }
@@ -45,6 +48,7 @@ static bool write_float32(IRBuffer* buffer, float value) {
     return ir_buffer_write(buffer, &value, sizeof(float));
 }
 
+__attribute__((unused))
 static bool write_float64(IRBuffer* buffer, double value) {
     return ir_buffer_write(buffer, &value, sizeof(double));
 }
@@ -72,14 +76,17 @@ static bool read_uint32(IRBuffer* buffer, uint32_t* value) {
     return ir_buffer_read(buffer, value, sizeof(uint32_t));
 }
 
+__attribute__((unused))
 static bool read_int32(IRBuffer* buffer, int32_t* value) {
     return ir_buffer_read(buffer, value, sizeof(int32_t));
 }
 
+__attribute__((unused))
 static bool read_int64(IRBuffer* buffer, int64_t* value) {
     return ir_buffer_read(buffer, value, sizeof(int64_t));
 }
 
+__attribute__((unused))
 static bool read_double(IRBuffer* buffer, double* value) {
     return ir_buffer_read(buffer, value, sizeof(double));
 }
@@ -88,6 +95,7 @@ static bool read_float32(IRBuffer* buffer, float* value) {
     return ir_buffer_read(buffer, value, sizeof(float));
 }
 
+__attribute__((unused))
 static bool read_float64(IRBuffer* buffer, double* value) {
     return ir_buffer_read(buffer, value, sizeof(double));
 }
@@ -1817,6 +1825,7 @@ static IRComponent* ir_deep_copy_component(IRComponent* src) {
  * @param data_item The JSON data for this iteration (e.g., {"dayNumber": 1, "isCurrentMonth": true})
  * @param item_name The name of the iteration variable (e.g., "day", "weekRow")
  */
+__attribute__((unused))
 static void update_foreach_component_text(IRComponent* component, cJSON* data_item, const char* item_name) {
     if (!component || !data_item) return;
 
@@ -1974,6 +1983,7 @@ static void replace_foreach_with_children(IRComponent* parent, int foreach_index
  *
  * For the calendar: Outer ForEach (6 week rows) → Inner ForEach (7 days each)
  */
+__attribute__((unused))
 static void expand_foreach_component(IRComponent* component) {
     if (!component) return;
 
@@ -2154,6 +2164,7 @@ static void expand_foreach_component(IRComponent* component) {
  * This version tracks the parent and child index so we can replace the ForEach
  * with its expanded children, avoiding the layout-overlap issue.
  */
+__attribute__((unused))
 static void expand_foreach_with_parent(IRComponent* component, IRComponent* parent, int child_index) {
     if (!component) return;
 

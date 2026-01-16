@@ -1667,12 +1667,12 @@ static float table_get_cell_content_height(IRComponent* cell) {
 
 // Main table layout function
 void ir_layout_compute_table(IRComponent* table, float available_width, float available_height) {
-    fprintf(stderr, "[TABLE_LAYOUT_ENTRY] table=%p type=%d available=%.1fx%.1f\n",
-            (void*)table, table ? table->type : -1, available_width, available_height);
+    fprintf(stderr, "[TABLE_LAYOUT_ENTRY] table=%p type=%u available=%.1fx%.1f\n",
+            (void*)table, table ? (uint32_t)table->type : 0xFFFFFFFFu, available_width, available_height);
 
     if (!table || table->type != IR_COMPONENT_TABLE) {
-        fprintf(stderr, "[TABLE_LAYOUT_ENTRY] Early return: table=%p type=%d\n",
-                (void*)table, table ? table->type : -1);
+        fprintf(stderr, "[TABLE_LAYOUT_ENTRY] Early return: table=%p type=%u\n",
+                (void*)table, table ? (uint32_t)table->type : 0xFFFFFFFFu);
         return;
     }
 
@@ -1719,7 +1719,7 @@ void ir_layout_compute_table(IRComponent* table, float available_width, float av
         return;
     }
 
-    IRStyle* table_style = table->style;
+    IRStyle* table_style __attribute__((unused)) = table->style;
 
     uint32_t num_cols = table_count_columns(table);
     uint32_t num_rows = table_count_rows(table);
@@ -2207,8 +2207,8 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
                                c->type == IR_COMPONENT_INPUT || c->type == IR_COMPONENT_CHECKBOX);
     bool used_intrinsic_height = false;
     if (getenv("KRYON_DEBUG_TEXT") && has_intrinsic_size) {
-        fprintf(stderr, "[INTRINSIC CHECK] type=%d has_intrinsic=%d height_type=%d\n",
-               c->type, has_intrinsic_size, c->style ? c->style->height.type : -1);
+        fprintf(stderr, "[INTRINSIC CHECK] type=%u has_intrinsic=%d height_type=%u\n",
+               (uint32_t)c->type, has_intrinsic_size, c->style ? (uint32_t)c->style->height.type : 0xFFFFFFFFu);
     }
     if (has_intrinsic_size && (!c->style || c->style->height.type != IR_DIMENSION_PX)) {
         own_height = ir_get_component_intrinsic_height(c);
@@ -2242,12 +2242,12 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 
     if (getenv("KRYON_DEBUG_TAB_LAYOUT") &&
         (c->type == IR_COMPONENT_TAB_CONTENT || c->type == IR_COMPONENT_TAB_PANEL)) {
-        fprintf(stderr, "[LAYOUT_CHILDREN] Component ID=%u type=%d has %u children\n",
-               c->id, c->type, c->child_count);
+        fprintf(stderr, "[LAYOUT_CHILDREN] Component ID=%u type=%u has %u children\n",
+               c->id, (uint32_t)c->type, c->child_count);
         for (uint32_t i = 0; i < c->child_count; i++) {
-            fprintf(stderr, "[LAYOUT_CHILDREN]   Child %u: ID=%u type=%d\n",
+            fprintf(stderr, "[LAYOUT_CHILDREN]   Child %u: ID=%u type=%u\n",
                    i, c->children[i] ? c->children[i]->id : 0,
-                   c->children[i] ? c->children[i]->type : -1);
+                   c->children[i] ? (uint32_t)c->children[i]->type : 0xFFFFFFFFu);
         }
     }
 

@@ -22,7 +22,7 @@ static char* str_dup(const char* s) {
     return copy;
 }
 
-static char* str_trim(char* s) {
+__attribute__((unused)) static char* str_trim(char* s) {
     if (!s) return NULL;
     while (isspace((unsigned char)*s)) s++;
     if (*s == 0) return s;
@@ -230,7 +230,7 @@ static bool parse_selector_part(const char* str, IRSelectorPart* out_part) {
         str++;  // Skip the dot
 
         // Handle compound classes (.btn.primary)
-        const char* start = str;
+        const char* start __attribute__((unused)) = str;
         int class_count = 1;
         const char* p = str;
         while (*p) {
@@ -491,7 +491,7 @@ static bool selector_part_matches(const IRSelectorPart* part, IRComponent* compo
 /**
  * Get parent component (requires parent pointer in IRComponent)
  */
-static IRComponent* get_parent(IRComponent* component) {
+__attribute__((unused)) static IRComponent* get_parent(IRComponent* component) {
     // TODO: IRComponent needs a parent pointer for proper traversal
     // For now, we'll need to search from root
     return NULL;
@@ -500,7 +500,9 @@ static IRComponent* get_parent(IRComponent* component) {
 /**
  * Get previous sibling component
  */
-static IRComponent* get_previous_sibling(IRComponent* component, IRComponent* root) {
+__attribute__((unused)) static IRComponent* get_previous_sibling(IRComponent* component, IRComponent* root) {
+    (void)component;
+    (void)root;
     // TODO: Implement sibling traversal
     // This requires either a parent pointer or searching from root
     return NULL;
@@ -511,7 +513,7 @@ static IRComponent* get_previous_sibling(IRComponent* component, IRComponent* ro
  */
 static int find_child_index(IRComponent* parent, IRComponent* child) {
     if (!parent || !child) return -1;
-    for (int i = 0; i < parent->child_count; i++) {
+    for (int i = 0; i < (int)parent->child_count; i++) {
         if (parent->children[i] == child) return i;
     }
     return -1;
@@ -520,11 +522,12 @@ static int find_child_index(IRComponent* parent, IRComponent* child) {
 /**
  * Helper: Check if 'ancestor' is an ancestor of 'component' in tree rooted at 'root'
  */
-static bool is_ancestor_of(IRComponent* ancestor, IRComponent* component, IRComponent* root) {
+__attribute__((unused)) static bool is_ancestor_of(IRComponent* ancestor, IRComponent* component, IRComponent* root) {
+    (void)root;
     // Simple tree search - check if component is in ancestor's subtree
     if (!ancestor || !component || ancestor == component) return false;
 
-    for (int i = 0; i < ancestor->child_count; i++) {
+    for (int i = 0; i < (int)ancestor->child_count; i++) {
         if (ancestor->children[i] == component) return true;
         if (is_ancestor_of(ancestor->children[i], component, root)) return true;
     }
@@ -537,7 +540,7 @@ static bool is_ancestor_of(IRComponent* ancestor, IRComponent* component, IRComp
 static IRComponent* find_parent_in_tree(IRComponent* component, IRComponent* root) {
     if (!component || !root || root == component) return NULL;
 
-    for (int i = 0; i < root->child_count; i++) {
+    for (int i = 0; i < (int)root->child_count; i++) {
         if (root->children[i] == component) return root;
         IRComponent* parent = find_parent_in_tree(component, root->children[i]);
         if (parent) return parent;
@@ -956,7 +959,7 @@ static void apply_stylesheet_recursive(IRStylesheet* stylesheet, IRComponent* co
     if (rules) free(rules);
 
     // Recurse to children
-    for (int i = 0; i < component->child_count; i++) {
+    for (int i = 0; i < (int)component->child_count; i++) {
         apply_stylesheet_recursive(stylesheet, component->children[i], root);
     }
 }

@@ -46,9 +46,9 @@ static void measure_container(IRComponent* comp, IRLayoutConstraints* constraint
 
     // Debug: Check absolute positioning for Container
     if (comp->id == 2) {
-        fprintf(stderr, "[CONTAINER TRAIT ID=2] style=%p position_mode=%d ABSOLUTE=%d abs_x=%.1f abs_y=%.1f\n",
+        fprintf(stderr, "[CONTAINER TRAIT ID=2] style=%p position_mode=%u ABSOLUTE=%d abs_x=%.1f abs_y=%.1f\n",
                 (void*)comp->style,
-                comp->style ? comp->style->position_mode : -1,
+                comp->style ? (uint32_t)comp->style->position_mode : 0xFFFFFFFFu,
                 IR_POSITION_ABSOLUTE,
                 comp->style ? comp->style->absolute_x : -999,
                 comp->style ? comp->style->absolute_y : -999);

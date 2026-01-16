@@ -32,6 +32,9 @@ LINK_LIBS = -L$(BUILD_DIR) -lkryon_web -lkryon_ir
 # Default target
 all: $(WEB_STATIC_LIB) $(WEB_SHARED_LIB) $(KIR_TO_HTML)
 
+# Static library only (for embedding in CLI)
+static: $(WEB_STATIC_LIB)
+
 # Create build directory
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -141,4 +144,4 @@ help:
 	@echo "  tsan           - Build with ThreadSanitizer"
 	@echo "  help           - Show this help"
 
-.PHONY: all clean debug asan ubsan asan-ubsan tsan install-headers help
+.PHONY: all static clean debug asan ubsan asan-ubsan tsan install-headers help

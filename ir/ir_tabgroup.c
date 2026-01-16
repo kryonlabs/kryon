@@ -19,7 +19,7 @@ extern IRContext* g_ir_context;
 extern IRContext* ir_context_get_current(void);
 
 // Get the active IRContext (thread-local first, then global)
-static IRContext* get_active_context(void) {
+__attribute__((unused)) static IRContext* get_active_context(void) {
     IRContext* ctx = ir_context_get_current();
     return ctx ? ctx : g_ir_context;
 }
@@ -194,8 +194,8 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
                        panel->id, panel->child_count);
                 for (uint32_t i = 0; i < panel->child_count; i++) {
                     IRComponent* child = panel->children[i];
-                    fprintf(stderr, "[PANEL_ADD]   Child %u: ID=%u type=%d\n",
-                           i, child ? child->id : 0, child ? child->type : -1);
+                    fprintf(stderr, "[PANEL_ADD]   Child %u: ID=%u type=%u\n",
+                           i, child ? child->id : 0, child ? (uint32_t)child->type : 0xFFFFFFFFu);
                 }
             }
 
@@ -446,8 +446,8 @@ void ir_tabgroup_apply_visuals(TabGroupState* state) {
     if (!state) return;
 
     for (uint32_t i = 0; i < state->tab_count; i++) {
-        if (state->tabs[i] && i < state->tab_count) {
-            bool is_active = ((int)i == state->selected_index);
+        if (state->tabs[i]) {
+            bool is_active = (i == (uint32_t)state->selected_index);
             ir_tabgroup_apply_visual_to_tab(state->tabs[i], &state->tab_visuals[i], is_active);
         }
     }

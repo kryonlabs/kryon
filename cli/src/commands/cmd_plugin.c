@@ -231,7 +231,10 @@ static int cmd_plugin_install(int argc, char** argv) {
         printf("  Copying: plugin.toml\n");
         char cmd[2048];
         snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s\"", src_toml, dst_toml);
-        system(cmd);
+        int result = system(cmd);
+        if (result != 0) {
+            fprintf(stderr, "Warning: Failed to copy plugin.toml (code %d)\n", result);
+        }
     }
 
     if (!found_so) {

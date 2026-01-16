@@ -8,6 +8,7 @@
  */
 
 #include "ir_capability.h"
+#include "ir_component_types.h"
 #include "ir_log.h"
 #include "ir_state_manager.h"
 #include <stdlib.h>
@@ -112,59 +113,65 @@ typedef struct {
 static CapabilityRegistry g_registry = {0};
 
 // ============================================================================
-// Component Type to String
+// Component Type to String (snake_case for plugin API)
 // ============================================================================
 
-const char* kryon_component_type_to_string(KryonComponentType type) {
-    switch (type) {
-        case KRYON_COMPONENT_CONTAINER:         return "container";
-        case KRYON_COMPONENT_TEXT:              return "text";
-        case KRYON_COMPONENT_BUTTON:            return "button";
-        case KRYON_COMPONENT_INPUT:             return "input";
-        case KRYON_COMPONENT_CHECKBOX:          return "checkbox";
-        case KRYON_COMPONENT_DROPDOWN:          return "dropdown";
-        case KRYON_COMPONENT_TEXTAREA:          return "textarea";
-        case KRYON_COMPONENT_ROW:               return "row";
-        case KRYON_COMPONENT_COLUMN:            return "column";
-        case KRYON_COMPONENT_CENTER:            return "center";
-        case KRYON_COMPONENT_IMAGE:             return "image";
-        case KRYON_COMPONENT_CANVAS:            return "canvas";
-        case KRYON_COMPONENT_NATIVE_CANVAS:     return "native_canvas";
-        case KRYON_COMPONENT_MARKDOWN:          return "markdown";
-        case KRYON_COMPONENT_SPRITE:            return "sprite";
-        case KRYON_COMPONENT_TAB_GROUP:         return "tab_group";
-        case KRYON_COMPONENT_TAB_BAR:           return "tab_bar";
-        case KRYON_COMPONENT_TAB:               return "tab";
-        case KRYON_COMPONENT_TAB_CONTENT:       return "tab_content";
-        case KRYON_COMPONENT_TAB_PANEL:         return "tab_panel";
-        case KRYON_COMPONENT_MODAL:             return "modal";
-        case KRYON_COMPONENT_TABLE:             return "table";
-        case KRYON_COMPONENT_TABLE_HEAD:        return "table_head";
-        case KRYON_COMPONENT_TABLE_BODY:        return "table_body";
-        case KRYON_COMPONENT_TABLE_FOOT:        return "table_foot";
-        case KRYON_COMPONENT_TABLE_ROW:         return "table_row";
-        case KRYON_COMPONENT_TABLE_CELL:        return "table_cell";
-        case KRYON_COMPONENT_HEADING:           return "heading";
-        case KRYON_COMPONENT_PARAGRAPH:         return "paragraph";
-        case KRYON_COMPONENT_BLOCKQUOTE:        return "blockquote";
-        case KRYON_COMPONENT_CODE_BLOCK:        return "code_block";
-        case KRYON_COMPONENT_HORIZONTAL_RULE:   return "horizontal_rule";
-        case KRYON_COMPONENT_LIST:              return "list";
-        case KRYON_COMPONENT_LIST_ITEM:         return "list_item";
-        case KRYON_COMPONENT_LINK:              return "link";
-        case KRYON_COMPONENT_SPAN:              return "span";
-        case KRYON_COMPONENT_STRONG:            return "strong";
-        case KRYON_COMPONENT_EM:                return "em";
-        case KRYON_COMPONENT_CODE_INLINE:       return "code_inline";
-        case KRYON_COMPONENT_SMALL:             return "small";
-        case KRYON_COMPONENT_MARK:              return "mark";
-        case KRYON_COMPONENT_CUSTOM:            return "custom";
-        case KRYON_COMPONENT_FLOWCHART:         return "flowchart";
-        case KRYON_COMPONENT_FLOWCHART_NODE:    return "flowchart_node";
-        case KRYON_COMPONENT_FLOWCHART_EDGE:    return "flowchart_edge";
-        case KRYON_COMPONENT_FLOWCHART_SUBGRAPH:return "flowchart_subgraph";
-        case KRYON_COMPONENT_FLOWCHART_LABEL:   return "flowchart_label";
-        default:                                return "unknown";
+static const char* component_type_to_snake_case(uint32_t type) {
+    switch ((IRComponentType)type) {
+        case IR_COMPONENT_CONTAINER:         return "container";
+        case IR_COMPONENT_TEXT:              return "text";
+        case IR_COMPONENT_BUTTON:            return "button";
+        case IR_COMPONENT_INPUT:             return "input";
+        case IR_COMPONENT_CHECKBOX:          return "checkbox";
+        case IR_COMPONENT_DROPDOWN:          return "dropdown";
+        case IR_COMPONENT_TEXTAREA:          return "textarea";
+        case IR_COMPONENT_ROW:               return "row";
+        case IR_COMPONENT_COLUMN:            return "column";
+        case IR_COMPONENT_CENTER:            return "center";
+        case IR_COMPONENT_IMAGE:             return "image";
+        case IR_COMPONENT_CANVAS:            return "canvas";
+        case IR_COMPONENT_NATIVE_CANVAS:     return "native_canvas";
+        case IR_COMPONENT_MARKDOWN:          return "markdown";
+        case IR_COMPONENT_SPRITE:            return "sprite";
+        case IR_COMPONENT_TAB_GROUP:         return "tab_group";
+        case IR_COMPONENT_TAB_BAR:           return "tab_bar";
+        case IR_COMPONENT_TAB:               return "tab";
+        case IR_COMPONENT_TAB_CONTENT:       return "tab_content";
+        case IR_COMPONENT_TAB_PANEL:         return "tab_panel";
+        case IR_COMPONENT_MODAL:             return "modal";
+        case IR_COMPONENT_TABLE:             return "table";
+        case IR_COMPONENT_TABLE_HEAD:        return "table_head";
+        case IR_COMPONENT_TABLE_BODY:        return "table_body";
+        case IR_COMPONENT_TABLE_FOOT:        return "table_foot";
+        case IR_COMPONENT_TABLE_ROW:         return "table_row";
+        case IR_COMPONENT_TABLE_CELL:        return "table_cell";
+        case IR_COMPONENT_TABLE_HEADER_CELL: return "table_header_cell";
+        case IR_COMPONENT_HEADING:           return "heading";
+        case IR_COMPONENT_PARAGRAPH:         return "paragraph";
+        case IR_COMPONENT_BLOCKQUOTE:        return "blockquote";
+        case IR_COMPONENT_CODE_BLOCK:        return "code_block";
+        case IR_COMPONENT_HORIZONTAL_RULE:   return "horizontal_rule";
+        case IR_COMPONENT_LIST:              return "list";
+        case IR_COMPONENT_LIST_ITEM:         return "list_item";
+        case IR_COMPONENT_LINK:              return "link";
+        case IR_COMPONENT_SPAN:              return "span";
+        case IR_COMPONENT_STRONG:            return "strong";
+        case IR_COMPONENT_EM:                return "em";
+        case IR_COMPONENT_CODE_INLINE:       return "code_inline";
+        case IR_COMPONENT_SMALL:             return "small";
+        case IR_COMPONENT_MARK:              return "mark";
+        case IR_COMPONENT_CUSTOM:            return "custom";
+        case IR_COMPONENT_STATIC_BLOCK:      return "static_block";
+        case IR_COMPONENT_FOR_LOOP:          return "for_loop";
+        case IR_COMPONENT_FOR_EACH:          return "for_each";
+        case IR_COMPONENT_VAR_DECL:          return "var_decl";
+        case IR_COMPONENT_PLACEHOLDER:       return "placeholder";
+        case IR_COMPONENT_FLOWCHART:         return "flowchart";
+        case IR_COMPONENT_FLOWCHART_NODE:    return "flowchart_node";
+        case IR_COMPONENT_FLOWCHART_EDGE:    return "flowchart_edge";
+        case IR_COMPONENT_FLOWCHART_SUBGRAPH:return "flowchart_subgraph";
+        case IR_COMPONENT_FLOWCHART_LABEL:   return "flowchart_label";
+        default:                             return "unknown";
     }
 }
 
@@ -193,24 +200,24 @@ static const char* api_get_data_string(
 
     /* Dispatch based on component type */
     switch (handle->component_type) {
-        case KRYON_COMPONENT_CODE_BLOCK: {
+        case IR_COMPONENT_CODE_BLOCK: {
             const IRCodeBlockData* data = (const IRCodeBlockData*)handle->data_ptr;
             if (strcmp(key, "code") == 0) return data->code;
             if (strcmp(key, "language") == 0) return data->language;
             break;
         }
-        case KRYON_COMPONENT_MARKDOWN: {
+        case IR_COMPONENT_MARKDOWN: {
             const IRMarkdownData* data = (const IRMarkdownData*)handle->data_ptr;
             if (strcmp(key, "markdown") == 0) return data->markdown;
             break;
         }
-        case KRYON_COMPONENT_LINK: {
+        case IR_COMPONENT_LINK: {
             const IRLinkData* data = (const IRLinkData*)handle->data_ptr;
             if (strcmp(key, "url") == 0) return data->url;
             if (strcmp(key, "title") == 0) return data->title;
             break;
         }
-        case KRYON_COMPONENT_TEXT: {
+        case IR_COMPONENT_TEXT: {
             if (strcmp(key, "text") == 0) return (const char*)handle->data_ptr;
             break;
         }
@@ -230,7 +237,7 @@ static int64_t api_get_data_int(
     }
 
     switch (handle->component_type) {
-        case KRYON_COMPONENT_CODE_BLOCK: {
+        case IR_COMPONENT_CODE_BLOCK: {
             const IRCodeBlockData* data = (const IRCodeBlockData*)handle->data_ptr;
             if (strcmp(key, "length") == 0) return (int64_t)data->length;
             if (strcmp(key, "start_line") == 0) return data->start_line;
@@ -263,7 +270,7 @@ static bool api_get_data_bool(
     }
 
     switch (handle->component_type) {
-        case KRYON_COMPONENT_CODE_BLOCK: {
+        case IR_COMPONENT_CODE_BLOCK: {
             const IRCodeBlockData* data = (const IRCodeBlockData*)handle->data_ptr;
             if (strcmp(key, "show_line_numbers") == 0) return data->show_line_numbers;
             break;
@@ -401,19 +408,30 @@ static CapabilityRegistration* find_registration(uint32_t component_type) {
 }
 
 static bool api_register_web_renderer(
-    uint32_t component_type,
+    const char* component_name,
     kryon_web_renderer_fn renderer
 ) {
+    if (!component_name) {
+        IR_LOG_ERROR("capability", "Cannot register with NULL component name");
+        return false;
+    }
     if (!renderer) {
         IR_LOG_ERROR("capability", "Cannot register NULL renderer");
         return false;
     }
 
+    /* Convert component name to type ID */
+    if (!ir_component_type_name_valid(component_name)) {
+        IR_LOG_ERROR("capability", "Unknown component type: %s", component_name);
+        return false;
+    }
+    uint32_t component_type = (uint32_t)ir_component_type_from_snake_case(component_name);
+
     /* Check if already registered */
     CapabilityRegistration* existing = find_registration(component_type);
     if (existing && existing->web_renderer) {
-        IR_LOG_ERROR("capability", "Web renderer already registered for type %u",
-                     component_type);
+        IR_LOG_ERROR("capability", "Web renderer already registered for %s (type %u)",
+                     component_name, component_type);
         return false;
     }
 
@@ -439,25 +457,36 @@ static bool api_register_web_renderer(
 
     reg->web_renderer = renderer;
 
-    IR_LOG_INFO("capability", "Registered web renderer for type %u (%s)",
-                component_type, kryon_component_type_to_string(component_type));
+    IR_LOG_INFO("capability", "Registered web renderer for %s (type %u)",
+                component_name, component_type);
 
     return true;
 }
 
 static bool api_register_css_generator(
-    uint32_t component_type,
+    const char* component_name,
     kryon_css_generator_fn generator
 ) {
+    if (!component_name) {
+        IR_LOG_ERROR("capability", "Cannot register with NULL component name");
+        return false;
+    }
     if (!generator) {
         IR_LOG_ERROR("capability", "Cannot register NULL CSS generator");
         return false;
     }
 
+    /* Convert component name to type ID */
+    if (!ir_component_type_name_valid(component_name)) {
+        IR_LOG_ERROR("capability", "Unknown component type: %s", component_name);
+        return false;
+    }
+    uint32_t component_type = (uint32_t)ir_component_type_from_snake_case(component_name);
+
     CapabilityRegistration* existing = find_registration(component_type);
     if (existing && existing->css_generator) {
-        IR_LOG_ERROR("capability", "CSS generator already registered for type %u",
-                     component_type);
+        IR_LOG_ERROR("capability", "CSS generator already registered for %s (type %u)",
+                     component_name, component_type);
         return false;
     }
 
@@ -481,25 +510,36 @@ static bool api_register_css_generator(
 
     reg->css_generator = generator;
 
-    IR_LOG_INFO("capability", "Registered CSS generator for type %u (%s)",
-                component_type, kryon_component_type_to_string(component_type));
+    IR_LOG_INFO("capability", "Registered CSS generator for %s (type %u)",
+                component_name, component_type);
 
     return true;
 }
 
 static bool api_register_component_renderer(
-    uint32_t component_type,
+    const char* component_name,
     kryon_component_renderer_fn renderer
 ) {
+    if (!component_name) {
+        IR_LOG_ERROR("capability", "Cannot register with NULL component name");
+        return false;
+    }
     if (!renderer) {
         IR_LOG_ERROR("capability", "Cannot register NULL component renderer");
         return false;
     }
 
+    /* Convert component name to type ID */
+    if (!ir_component_type_name_valid(component_name)) {
+        IR_LOG_ERROR("capability", "Unknown component type: %s", component_name);
+        return false;
+    }
+    uint32_t component_type = (uint32_t)ir_component_type_from_snake_case(component_name);
+
     CapabilityRegistration* existing = find_registration(component_type);
     if (existing && existing->component_renderer) {
-        IR_LOG_ERROR("capability", "Component renderer already registered for type %u",
-                     component_type);
+        IR_LOG_ERROR("capability", "Component renderer already registered for %s (type %u)",
+                     component_name, component_type);
         return false;
     }
 
@@ -523,10 +563,22 @@ static bool api_register_component_renderer(
 
     reg->component_renderer = renderer;
 
-    IR_LOG_INFO("capability", "Registered component renderer for type %u (%s)",
-                component_type, kryon_component_type_to_string(component_type));
+    IR_LOG_INFO("capability", "Registered component renderer for %s (type %u)",
+                component_name, component_type);
 
     return true;
+}
+
+static uint32_t api_get_component_type_id(const char* component_name) {
+    if (!component_name) {
+        return UINT32_MAX;
+    }
+
+    if (!ir_component_type_name_valid(component_name)) {
+        return UINT32_MAX;
+    }
+
+    return (uint32_t)ir_component_type_from_snake_case(component_name);
 }
 
 static bool api_register_event_handler(
@@ -677,6 +729,7 @@ void ir_capability_registry_init(void) {
     g_registry.api.register_web_renderer = api_register_web_renderer;
     g_registry.api.register_css_generator = api_register_css_generator;
     g_registry.api.register_component_renderer = api_register_component_renderer;
+    g_registry.api.get_component_type_id = api_get_component_type_id;
     g_registry.api.register_event_handler = api_register_event_handler;
     g_registry.api.register_command_handler = api_register_command_handler;
     g_registry.api.log_debug = api_log_debug;
@@ -965,7 +1018,7 @@ void ir_capability_list_plugins(void) {
     for (uint32_t i = 0; i < g_registry.registration_count; i++) {
         CapabilityRegistration* reg = &g_registry.registrations[i];
         printf("  - Type %u (%s):\n", reg->component_type,
-               kryon_component_type_to_string(reg->component_type));
+               component_type_to_snake_case(reg->component_type));
         if (reg->web_renderer) printf("      Web renderer\n");
         if (reg->css_generator) printf("      CSS generator\n");
         if (reg->component_renderer) printf("      Component renderer\n");

@@ -199,7 +199,10 @@ char* plugin_clone_from_git(const char* git_url, const char* branch, const char*
             "git reset --hard origin/master > /dev/null 2>&1 && "
             "git clean -fdx > /dev/null 2>&1",
             cached_path);
-        system(pull_cmd);
+        int pull_result = system(pull_cmd);
+        if (pull_result != 0) {
+            fprintf(stderr, "[kryon][plugin] Warning: Failed to update cached repository (code %d)\n", pull_result);
+        }
         return cached_path;
     }
 
@@ -288,15 +291,24 @@ char* plugin_clone_from_git_sparse(const char* git_url, const char* subdirectory
 
     // Create and initialize directory
     snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\" && cd \"%s\" && git init -q", cached_path, cached_path);
-    system(cmd);
+    int init_result = system(cmd);
+    if (init_result != 0) {
+        fprintf(stderr, "[kryon][plugin] Warning: Failed to initialize git repository (code %d)\n", init_result);
+    }
 
     // Add remote
     snprintf(cmd, sizeof(cmd), "cd \"%s\" && git remote add origin \"%s\" 2>/dev/null", cached_path, git_url);
-    system(cmd);
+    int remote_result = system(cmd);
+    if (remote_result != 0) {
+        fprintf(stderr, "[kryon][plugin] Warning: Failed to add git remote (code %d)\n", remote_result);
+    }
 
     // Enable sparse checkout
     snprintf(cmd, sizeof(cmd), "cd \"%s\" && git config core.sparseCheckout true", cached_path);
-    system(cmd);
+    int config_result = system(cmd);
+    if (config_result != 0) {
+        fprintf(stderr, "[kryon][plugin] Warning: Failed to configure sparse checkout (code %d)\n", config_result);
+    }
 
     // Set sparse checkout path
     char sparse_file[1024];
@@ -416,7 +428,11 @@ static int plugin_install_from_cache(const char* plugin_name, const char* cache_
 
     /* Copy .so file */
     char dest_so[1024];
-    snprintf(dest_so, sizeof(dest_so), "%s/libkryon_%s.so", dest_dir, plugin_name);
+    int written = snprintf(dest_so, sizeof(dest_so), "%s/libkryon_%s.so", dest_dir, plugin_name);
+    if (written < 0 || (size_t)written >= sizeof(dest_so)) {
+        fprintf(stderr, "[kryon][plugin] Error: Path too long for .so file\n");
+        return -1;
+    }
     if (copy_file(src_so, dest_so) != 0) {
         fprintf(stderr, "[kryon][plugin] Failed to copy .so file\n");
         return -1;
@@ -424,8 +440,10 @@ static int plugin_install_from_cache(const char* plugin_name, const char* cache_
 
     /* Copy plugin.toml */
     char dest_toml[1024];
-    snprintf(dest_toml, sizeof(dest_toml), "%s/plugin.toml", dest_dir);
-    if (file_exists(src_toml)) {
+    written = snprintf(dest_toml, sizeof(dest_toml), "%s/plugin.toml", dest_dir);
+    if (written < 0 || (size_t)written >= sizeof(dest_toml)) {
+        fprintf(stderr, "[kryon][plugin] Warning: Path too long for plugin.toml\n");
+    } else if (file_exists(src_toml)) {
         if (copy_file(src_toml, dest_toml) != 0) {
             fprintf(stderr, "[kryon][plugin] Warning: Failed to copy plugin.toml\n");
         }
@@ -697,24 +715,36 @@ bool plugin_clone_multi_sparse(const char* git_url, PluginGitDep* plugins, int c
             "git reset --hard origin/%s --quiet 2>&1 && "
             "git clean -fdx --quiet 2>&1",
             shared_cache_path, actual_branch, actual_branch);
-        system(cmd);
+        int update_result = system(cmd);
+        if (update_result != 0) {
+            fprintf(stderr, "[kryon][plugin] Warning: Failed to update cached repository (code %d)\n", update_result);
+        }
 
         // Note: We don't return here because we still need to verify/update sparse checkout
     } else {
         // Create and initialize directory
         mkdir_p(shared_cache_path);
         snprintf(cmd, sizeof(cmd), "cd \"%s\" && git init -q", shared_cache_path);
-        system(cmd);
+        int init_result = system(cmd);
+        if (init_result != 0) {
+            fprintf(stderr, "[kryon][plugin] Warning: Failed to initialize git repository (code %d)\n", init_result);
+        }
 
         // Add remote
         snprintf(cmd, sizeof(cmd), "cd \"%s\" && git remote add origin \"%s\" 2>/dev/null",
                  shared_cache_path, git_url);
-        system(cmd);
+        int remote_result = system(cmd);
+        if (remote_result != 0) {
+            fprintf(stderr, "[kryon][plugin] Warning: Failed to add git remote (code %d)\n", remote_result);
+        }
 
         // Enable sparse checkout
         snprintf(cmd, sizeof(cmd), "cd \"%s\" && git config core.sparseCheckout true",
                  shared_cache_path);
-        system(cmd);
+        int config_result = system(cmd);
+        if (config_result != 0) {
+            fprintf(stderr, "[kryon][plugin] Warning: Failed to configure sparse checkout (code %d)\n", config_result);
+        }
     }
 
     // Update sparse-checkout file with all subdirectories

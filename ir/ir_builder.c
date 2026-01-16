@@ -22,7 +22,7 @@ IRContext* g_ir_context = NULL;
 extern IRContext* ir_context_get_current(void);
 
 // Get the active IRContext (thread-local first, then global)
-static IRContext* get_active_context(void) {
+__attribute__((unused)) static IRContext* get_active_context(void) {
     IRContext* ctx = ir_context_get_current();
     return ctx ? ctx : g_ir_context;
 }
@@ -53,7 +53,7 @@ const char* ir_logic_type_to_string(LogicSourceType type) {
 }
 
 // Case-insensitive string comparison (used by ir_parse_direction and ir_parse_unicode_bidi)
-static int ir_str_ieq(const char* a, const char* b) {
+__attribute__((unused)) static int ir_str_ieq(const char* a, const char* b) {
     if (!a || !b) return 0;
     while (*a && *b) {
         char ca = (char)tolower((unsigned char)*a);
@@ -68,7 +68,7 @@ static int ir_str_ieq(const char* a, const char* b) {
 // TabGroup functions moved to ir_tabgroup.c
 
 // Helper function to mark component dirty when style changes
-static void mark_style_dirty(IRComponent* component) {
+__attribute__((unused)) static void mark_style_dirty(IRComponent* component) {
     if (!component) return;
     ir_layout_mark_dirty(component);
     if (component->layout_state) {

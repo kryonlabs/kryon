@@ -14,7 +14,7 @@
 extern float ir_get_component_intrinsic_width(IRComponent* component);
 extern float ir_get_component_intrinsic_height(IRComponent* component);
 
-static void resolve_dimension(IRDimension dim, float parent_size, float* out_value) {
+__attribute__((unused)) static void resolve_dimension(IRDimension dim, float parent_size, float* out_value) {
     switch (dim.type) {
         case IR_DIMENSION_PX:
             *out_value = dim.value;

@@ -22,7 +22,7 @@ static uint64_t hash_string(const char* str) {
     return hash;
 }
 
-static uint32_t next_power_of_2(uint32_t value) {
+__attribute__((unused)) static uint32_t next_power_of_2(uint32_t value) {
     if (value == 0) return 1;
 
     value--;
@@ -608,13 +608,14 @@ static IRValue builtin_type_typeof(IREvalContext* ctx, IRValue* args, uint32_t a
 
     const char* type_str = "null";
     switch (args[0].type) {
-        case VAR_TYPE_INT:    type_str = "int"; break;
-        case VAR_TYPE_FLOAT:  type_str = "float"; break;
-        case VAR_TYPE_STRING: type_str = "string"; break;
-        case VAR_TYPE_BOOL:   type_str = "bool"; break;
-        case VAR_TYPE_ARRAY:  type_str = "array"; break;
-        case VAR_TYPE_OBJECT: type_str = "object"; break;
-        case VAR_TYPE_NULL:   type_str = "null"; break;
+        case VAR_TYPE_INT:      type_str = "int"; break;
+        case VAR_TYPE_FLOAT:    type_str = "float"; break;
+        case VAR_TYPE_STRING:   type_str = "string"; break;
+        case VAR_TYPE_BOOL:     type_str = "bool"; break;
+        case VAR_TYPE_ARRAY:    type_str = "array"; break;
+        case VAR_TYPE_OBJECT:   type_str = "object"; break;
+        case VAR_TYPE_NULL:     type_str = "null"; break;
+        case VAR_TYPE_FUNCTION: type_str = "function"; break;
     }
 
     return ir_value_string(type_str);

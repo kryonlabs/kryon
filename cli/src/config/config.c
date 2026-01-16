@@ -55,7 +55,7 @@ static void mark_plugin_loaded(const char* name) {
  * Free loaded plugin tracking state.
  * Called when plugin loading is complete.
  */
-static void free_loaded_plugin_tracking(void) {
+static void __attribute__((unused)) free_loaded_plugin_tracking(void) {
     for (int i = 0; i < g_loaded_plugin_count; i++) {
         free(g_loaded_plugin_names[i]);
     }

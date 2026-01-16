@@ -75,4 +75,22 @@ const char* ir_component_type_to_string(IRComponentType type);
 IRComponentType ir_component_type_from_string(const char* str);
 IRComponentType ir_component_type_from_string_insensitive(const char* str);
 
+/**
+ * Convert component name to type (snake_case or PascalCase).
+ * Used by the plugin capability API for string-based registration.
+ *
+ * @param name Component name (e.g., "code_block" or "CodeBlock")
+ * @return Component type, or IR_COMPONENT_CONTAINER if unknown
+ */
+IRComponentType ir_component_type_from_snake_case(const char* name);
+
+/**
+ * Check if a component name is valid.
+ *
+ * @param name Component name to validate
+ * @return true if name maps to a known component type
+ */
+#include <stdbool.h>
+bool ir_component_type_name_valid(const char* name);
+
 #endif // IR_COMPONENT_TYPES_H

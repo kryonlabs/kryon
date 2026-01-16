@@ -295,7 +295,7 @@ static bool generate_const_declarations(cJSON* declarations, char** buffer, size
 }
 
 // Generate static block with contents
-static bool generate_static_block(SourceStructuresContext* src_ctx, const char* static_block_id,
+__attribute__((unused)) static bool generate_static_block(SourceStructuresContext* src_ctx, const char* static_block_id,
                                   cJSON* kir_root, char** buffer, size_t* size,
                                   size_t* capacity, int indent, EventHandlerContext* event_ctx) {
     fprintf(stderr, "[CODEGEN_DEBUG] generate_static_block called with id=%s\n", static_block_id);
@@ -948,6 +948,7 @@ bool kry_codegen_generate(const char* kir_path, const char* output_path) {
 bool kry_codegen_generate_with_options(const char* kir_path,
                                         const char* output_path,
                                         KryCodegenOptions* options) {
+    (void)options;
     // Generate base .kry code
     return kry_codegen_generate(kir_path, output_path);
 }

@@ -63,7 +63,7 @@ static char peek_char(Tokenizer* tok) {
     return tok->input[tok->pos];
 }
 
-static char next_char(Tokenizer* tok) {
+__attribute__((unused)) static char next_char(Tokenizer* tok) {
     if (tok->pos >= tok->length) return '\0';
     return tok->input[tok->pos++];
 }

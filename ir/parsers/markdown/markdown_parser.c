@@ -307,11 +307,11 @@ static bool is_whitespace(char c) {
     return c == ' ' || c == '\t' || c == '\r';
 }
 
-static bool is_newline(char c) {
+__attribute__((unused)) static bool is_newline(char c) {
     return c == '\n';
 }
 
-static size_t skip_whitespace(const char* text, size_t len, size_t pos) {
+__attribute__((unused)) static size_t skip_whitespace(const char* text, size_t len, size_t pos) {
     while (pos < len && is_whitespace(text[pos])) pos++;
     return pos;
 }
