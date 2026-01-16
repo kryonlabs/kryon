@@ -69,7 +69,7 @@ OBJECTS = \
     $(BUILD_DIR)/sdl3_sdl3_input.o \
     $(BUILD_DIR)/sdl3_sdl3_fonts.o \
     $(BUILD_DIR)/sdl3_sdl3_effects.o \
-    $(BUILD_DIR)/sdl3_stb_image_impl.o
+    $(BUILD_DIR)/sdl3_stb_image_write_impl.o
 
 # ============================================================================
 # Build Targets
@@ -101,11 +101,10 @@ $(BUILD_DIR)/sdl3_%.o: %.c | $(BUILD_DIR)
 	@echo "Compiling SDL3 renderer: $<"
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Build stb_image_impl.c (from desktop backend)
-# Use external STB (from raylib) to avoid multiple definition conflicts
-$(BUILD_DIR)/sdl3_stb_image_impl.o: ../../backends/desktop/stb_image_impl.c | $(BUILD_DIR)
-	@echo "Compiling STB Image implementation: $<"
-	$(CC) $(CFLAGS) -DKRYON_USE_EXTERNAL_STB -I$(STB_DIR) -c $< -o $@
+# Build stb_image_write_impl.c - always include STB write for screenshot functionality
+$(BUILD_DIR)/sdl3_stb_image_write_impl.o: stb_image_write_impl.c | $(BUILD_DIR)
+	@echo "Compiling STB Image Write implementation: $<"
+	$(CC) $(CFLAGS) -I$(STB_DIR) -c $< -o $@
 
 # Create build directory
 $(BUILD_DIR):
