@@ -13,6 +13,7 @@
 #include "../../ir_stylesheet.h"
 #include "../../ir_animation_builder.h"
 #include "../html/css_parser.h"  // For ir_css_parse_color
+#include "../parser_utils.h"     // For parser_parse_color_packed
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -408,43 +409,7 @@ static IRComponentType get_component_type(const char* name) {
     return IR_COMPONENT_CONTAINER;
 }
 
-// ============================================================================
-// Color Parsing
-// ============================================================================
-
-static uint32_t parse_color(const char* color_str) {
-    if (!color_str) return 0x000000FF;
-
-    // Handle hex colors (#RRGGBB or #RRGGBBAA)
-    if (color_str[0] == '#') {
-        unsigned int r, g, b, a = 255;
-        int len = strlen(color_str);
-
-        if (len == 7) {  // #RRGGBB
-            sscanf(color_str + 1, "%02x%02x%02x", &r, &g, &b);
-        } else if (len == 9) {  // #RRGGBBAA
-            sscanf(color_str + 1, "%02x%02x%02x%02x", &r, &g, &b, &a);
-        } else {
-            return 0x000000FF;
-        }
-
-        return (r << 24) | (g << 16) | (b << 8) | a;
-    }
-
-    // Handle named colors
-    if (strcmp(color_str, "red") == 0) return 0xFF0000FF;
-    if (strcmp(color_str, "green") == 0) return 0x00FF00FF;
-    if (strcmp(color_str, "blue") == 0) return 0x0000FFFF;
-    if (strcmp(color_str, "yellow") == 0) return 0xFFFF00FF;
-    if (strcmp(color_str, "cyan") == 0) return 0x00FFFFFF;
-    if (strcmp(color_str, "magenta") == 0) return 0xFF00FFFF;
-    if (strcmp(color_str, "pink") == 0) return 0xFFC0CBFF;
-    if (strcmp(color_str, "white") == 0) return 0xFFFFFFFF;
-    if (strcmp(color_str, "black") == 0) return 0x000000FF;
-    if (strcmp(color_str, "gray") == 0 || strcmp(color_str, "grey") == 0) return 0x808080FF;
-
-    return 0x000000FF;
-}
+// Color parsing now uses parser_parse_color_packed() from parser_utils.h
 
 // ============================================================================
 // Property Application
@@ -854,7 +819,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                     ir_component_add_property_binding(component, name, original_expr, "#00000000", "static_template");
                 }
             }
-            uint32_t color = parse_color(color_str);
+            uint32_t color = parser_parse_color_packed(color_str);
             ir_set_background_color(style,
                 (color >> 24) & 0xFF,
                 (color >> 16) & 0xFF,
@@ -879,7 +844,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                     ir_component_add_property_binding(component, name, original_expr, "#00000000", "static_template");
                 }
             }
-            uint32_t color = parse_color(color_str);
+            uint32_t color = parser_parse_color_packed(color_str);
             style->font.color.type = IR_COLOR_SOLID;
             style->font.color.data.r = (color >> 24) & 0xFF;
             style->font.color.data.g = (color >> 16) & 0xFF;
@@ -904,7 +869,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                     ir_component_add_property_binding(component, name, original_expr, "#00000000", "static_template");
                 }
             }
-            uint32_t color = parse_color(color_str);
+            uint32_t color = parser_parse_color_packed(color_str);
             style->border.color.type = IR_COLOR_SOLID;
             style->border.color.data.r = (color >> 24) & 0xFF;
             style->border.color.data.g = (color >> 16) & 0xFF;

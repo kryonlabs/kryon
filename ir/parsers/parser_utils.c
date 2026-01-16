@@ -3,6 +3,8 @@
  * Shared utilities for all parsers to reduce code duplication
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "parser_utils.h"
 #include "../ir_builder.h"
 #include "../ir_memory.h"
@@ -168,6 +170,10 @@ bool parser_parse_color(const char* color_str, uint8_t* r, uint8_t* g, uint8_t* 
         *r = *b = 255; *g = 0;
         return true;
     }
+    if (parser_str_equal_ignore_case(color_str, "pink")) {
+        *r = 255; *g = 192; *b = 203;
+        return true;
+    }
     if (parser_str_equal_ignore_case(color_str, "gray") ||
         parser_str_equal_ignore_case(color_str, "grey")) {
         *r = *g = *b = 128;
@@ -242,6 +248,18 @@ bool parser_is_transparent_color(const char* color) {
     if (!color) return false;
     return strcmp(color, "#00000000") == 0 ||
            parser_str_equal_ignore_case(color, "transparent");
+}
+
+uint32_t parser_parse_color_packed(const char* color_str) {
+    uint8_t r = 0, g = 0, b = 0, a = 255;
+
+    if (!parser_parse_color(color_str, &r, &g, &b, &a)) {
+        // Return opaque black on failure
+        return 0x000000FF;
+    }
+
+    // Pack as (r << 24) | (g << 16) | (b << 8) | a
+    return ((uint32_t)r << 24) | ((uint32_t)g << 16) | ((uint32_t)b << 8) | (uint32_t)a;
 }
 
 // ============================================================================

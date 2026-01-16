@@ -71,6 +71,13 @@ float parser_parse_px_value(const char* str);
  */
 bool parser_is_transparent_color(const char* color);
 
+/**
+ * Parse a color string into a packed uint32_t (RGBA format)
+ * Returns color as (r << 24) | (g << 16) | (b << 8) | a
+ * Returns 0x000000FF (opaque black) on failure
+ */
+uint32_t parser_parse_color_packed(const char* color_str);
+
 // ============================================================================
 // String Utilities
 // ============================================================================
