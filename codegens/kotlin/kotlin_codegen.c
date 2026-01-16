@@ -263,7 +263,7 @@ static void generate_component_recursive(KotlinCodegenContext* ctx, cJSON* compo
     if (!component) return;
 
     cJSON* type_obj = cJSON_GetObjectItem(component, "type");
-    cJSON* text_obj = cJSON_GetObjectItem(component, "text");
+    cJSON* text_obj __attribute__((unused)) = cJSON_GetObjectItem(component, "text");
     cJSON* children_obj = cJSON_GetObjectItem(component, "children");
 
     if (!type_obj || !type_obj->valuestring) return;
@@ -382,7 +382,13 @@ bool ir_generate_kotlin_code(const char* kir_path, const char* output_path) {
         return false;
     }
 
-    fread(kir_json, 1, file_size, kir_file);
+    size_t bytes_read = fread(kir_json, 1, file_size, kir_file);
+    if (bytes_read != (size_t)file_size) {
+        fprintf(stderr, "Error: Failed to read complete KIR file\n");
+        free(kir_json);
+        fclose(kir_file);
+        return false;
+    }
     kir_json[file_size] = '\0';
     fclose(kir_file);
 

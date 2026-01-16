@@ -162,7 +162,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 
 # Build web library (for embedded kir_to_html)
 ../build/libkryon_web.a:
-	$(MAKE) -C ../codegens/web $(BUILD_DIR)/libkryon_web.a
+	$(MAKE) -C ../codegens/web static
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c

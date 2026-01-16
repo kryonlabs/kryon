@@ -330,7 +330,13 @@ bool nim_codegen_generate(const char* kir_path, const char* output_path) {
         return false;
     }
 
-    fread(kir_json, 1, file_size, kir_file);
+    size_t bytes_read = fread(kir_json, 1, file_size, kir_file);
+    if (bytes_read != (size_t)file_size) {
+        fprintf(stderr, "Error: Failed to read complete KIR file\n");
+        free(kir_json);
+        fclose(kir_file);
+        return false;
+    }
     kir_json[file_size] = '\0';
     fclose(kir_file);
 
