@@ -6,6 +6,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "kry_codegen.h"
+#include "../codegen_common.h"
 #include "../../ir/ir_serialization.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
@@ -900,26 +901,14 @@ char* kry_codegen_from_json(const char* kir_json) {
 
 // Generate .kry code from KIR file
 bool kry_codegen_generate(const char* kir_path, const char* output_path) {
-    // Read KIR file
-    FILE* kir_file = fopen(kir_path, "r");
-    if (!kir_file) {
-        fprintf(stderr, "Error: Could not open KIR file: %s\n", kir_path);
-        return false;
-    }
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("Kry");
 
-    fseek(kir_file, 0, SEEK_END);
-    long file_size = ftell(kir_file);
-    fseek(kir_file, 0, SEEK_SET);
-
-    char* kir_json = malloc(file_size + 1);
+    // Read KIR file using shared utility
+    char* kir_json = codegen_read_kir_file(kir_path, NULL);
     if (!kir_json) {
-        fclose(kir_file);
         return false;
     }
-
-    size_t bytes_read = fread(kir_json, 1, file_size, kir_file);
-    kir_json[bytes_read] = '\0';
-    fclose(kir_file);
 
     // Generate .kry code
     char* kry_code = kry_codegen_from_json(kir_json);
@@ -929,19 +918,11 @@ bool kry_codegen_generate(const char* kir_path, const char* output_path) {
         return false;
     }
 
-    // Write output file
-    FILE* output_file = fopen(output_path, "w");
-    if (!output_file) {
-        fprintf(stderr, "Error: Could not write output file: %s\n", output_path);
-        free(kry_code);
-        return false;
-    }
-
-    fprintf(output_file, "%s", kry_code);
-    fclose(output_file);
+    // Write output file using shared utility
+    bool success = codegen_write_output_file(output_path, kry_code);
     free(kry_code);
 
-    return true;
+    return success;
 }
 
 // Generate .kry code with options

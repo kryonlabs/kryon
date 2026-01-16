@@ -515,6 +515,7 @@ IRComponent* ir_get_child_at(IRComponent* component, uint32_t index);
 void ir_layout_compute(IRComponent* root, float available_width, float available_height);
 void ir_layout_compute_table(IRComponent* table, float available_width, float available_height);
 void ir_layout_mark_dirty(IRComponent* component);
+void ir_component_mark_style_dirty(IRComponent* component);  // Marks dirty for style changes
 void ir_layout_mark_render_dirty(IRComponent* component);
 void ir_layout_invalidate_subtree(IRComponent* component);
 float ir_get_component_intrinsic_width(IRComponent* component);

@@ -5,6 +5,7 @@
  */
 
 #include "kotlin_codegen.h"
+#include "../codegen_common.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -85,18 +86,7 @@ static void writeln(KotlinCodegenContext* ctx, const char* str) {
     fprintf(ctx->output, "%s\n", str);
 }
 
-// Parse px value from string like "200.0px"
-static float parse_px_value(const char* str) {
-    if (!str) return 0.0f;
-    float value = 0.0f;
-    sscanf(str, "%f", &value);
-    return value;
-}
-
-// Check if color is transparent (skip rendering)
-static bool is_transparent_color(const char* color) {
-    return color && (strcmp(color, "#00000000") == 0 || strcmp(color, "transparent") == 0);
-}
+// Use codegen_codegen_parse_px_value() and codegen_codegen_is_transparent_color() from codegen_common.h
 
 // ============================================================================
 // Component Property Generation
@@ -107,7 +97,7 @@ static void generate_property(KotlinCodegenContext* ctx, const char* key, cJSON*
 
     // Width
     if (strcmp(key, "width") == 0 && value->valuestring) {
-        float width = parse_px_value(value->valuestring);
+        float width = codegen_parse_px_value(value->valuestring);
         write_indent(ctx);
         fprintf(ctx->output, "width(%.1ff)\n", width);
         return;
@@ -115,7 +105,7 @@ static void generate_property(KotlinCodegenContext* ctx, const char* key, cJSON*
 
     // Height
     if (strcmp(key, "height") == 0 && value->valuestring) {
-        float height = parse_px_value(value->valuestring);
+        float height = codegen_parse_px_value(value->valuestring);
         write_indent(ctx);
         fprintf(ctx->output, "height(%.1ff)\n", height);
         return;
@@ -123,7 +113,7 @@ static void generate_property(KotlinCodegenContext* ctx, const char* key, cJSON*
 
     // Background color
     if (strcmp(key, "background") == 0 && value->valuestring) {
-        if (!is_transparent_color(value->valuestring)) {
+        if (!codegen_is_transparent_color(value->valuestring)) {
             write_indent(ctx);
             fprintf(ctx->output, "background(\"%s\")\n", value->valuestring);
         }
@@ -132,7 +122,7 @@ static void generate_property(KotlinCodegenContext* ctx, const char* key, cJSON*
 
     // Text color
     if (strcmp(key, "color") == 0 && value->valuestring) {
-        if (!is_transparent_color(value->valuestring)) {
+        if (!codegen_is_transparent_color(value->valuestring)) {
             write_indent(ctx);
             fprintf(ctx->output, "color(\"%s\")\n", value->valuestring);
         }
@@ -364,33 +354,14 @@ static void generate_class(KotlinCodegenContext* ctx) {
 bool ir_generate_kotlin_code(const char* kir_path, const char* output_path) {
     if (!kir_path || !output_path) return false;
 
-    // Read KIR file
-    FILE* kir_file = fopen(kir_path, "r");
-    if (!kir_file) {
-        fprintf(stderr, "Error: Failed to open KIR file: %s\n", kir_path);
-        return false;
-    }
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("Kotlin");
 
-    // Read file contents
-    fseek(kir_file, 0, SEEK_END);
-    long file_size = ftell(kir_file);
-    fseek(kir_file, 0, SEEK_SET);
-
-    char* kir_json = (char*)malloc(file_size + 1);
+    // Read KIR file using shared utility
+    char* kir_json = codegen_read_kir_file(kir_path, NULL);
     if (!kir_json) {
-        fclose(kir_file);
         return false;
     }
-
-    size_t bytes_read = fread(kir_json, 1, file_size, kir_file);
-    if (bytes_read != (size_t)file_size) {
-        fprintf(stderr, "Error: Failed to read complete KIR file\n");
-        free(kir_json);
-        fclose(kir_file);
-        return false;
-    }
-    kir_json[file_size] = '\0';
-    fclose(kir_file);
 
     // Parse KIR JSON
     cJSON* root = cJSON_Parse(kir_json);

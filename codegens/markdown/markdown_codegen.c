@@ -6,6 +6,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "markdown_codegen.h"
+#include "../codegen_common.h"
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_logic.h"
 #include "../../third_party/cJSON/cJSON.h"
@@ -315,55 +316,29 @@ char* markdown_codegen_from_json(const char* kir_json) {
 bool markdown_codegen_generate(const char* kir_path, const char* output_path) {
     if (!kir_path || !output_path) return false;
 
-    // Read KIR file
-    FILE* f = fopen(kir_path, "r");
-    if (!f) {
-        fprintf(stderr, "Error: Cannot open KIR file: %s\n", kir_path);
-        return false;
-    }
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("Markdown");
 
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* kir_json = malloc(size + 1);
+    // Read KIR file using shared utility
+    char* kir_json = codegen_read_kir_file(kir_path, NULL);
     if (!kir_json) {
-        fclose(f);
         return false;
     }
-
-    size_t bytes_read = fread(kir_json, 1, size, f);
-    if (bytes_read != (size_t)size) {
-        fprintf(stderr, "Error: Failed to read complete KIR file\n");
-        free(kir_json);
-        fclose(f);
-        return false;
-    }
-    kir_json[size] = '\0';
-    fclose(f);
 
     // Generate markdown
     char* markdown = markdown_codegen_from_json(kir_json);
     free(kir_json);
 
     if (!markdown) {
-        fprintf(stderr, "Error: Failed to generate Markdown from KIR\n");
+        codegen_error("Failed to generate Markdown from KIR");
         return false;
     }
 
-    // Write output
-    FILE* out = fopen(output_path, "w");
-    if (!out) {
-        fprintf(stderr, "Error: Cannot write output file: %s\n", output_path);
-        free(markdown);
-        return false;
-    }
-
-    fprintf(out, "%s", markdown);
-    fclose(out);
+    // Write output using shared utility
+    bool success = codegen_write_output_file(output_path, markdown);
     free(markdown);
 
-    return true;
+    return success;
 }
 
 // Generate with options
