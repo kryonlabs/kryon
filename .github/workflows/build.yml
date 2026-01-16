@@ -239,8 +239,8 @@ jobs:
         run: |
           file build/kryon-web
           ./build/kryon-web --version
-          # Verify it's musl-based
-          file build/kryon-web | grep "musl"
+          # Verify it's glibc-based (Ubuntu build for compatibility with kryon-website)
+          file build/kryon-web | grep "dynamically linked"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
