@@ -91,6 +91,9 @@ HAS_STATIC_LIBS := $(shell \
 		[ -f "$$path/libharfbuzz.a" ] && echo "yes" && break; \
 	done)
 
+# Check if harfbuzz is available
+HAS_HARFBUZZ = $(shell pkg-config --exists harfbuzz 2>/dev/null && echo 1 || echo 0)
+
 ifeq ($(HAS_STATIC_LIBS),yes)
 # Alpine: Use "mostly static" linking for portability with plugin support (-ldl needs dynamic)
 MINIMAL_LIBS = -Wl,-Bstatic \
@@ -98,10 +101,13 @@ MINIMAL_LIBS = -Wl,-Bstatic \
 	-lgraphite2 -lpng16 -lbrotlidec -lbrotlicommon -lz -lbz2 \
 	-Wl,-Bdynamic \
 	-lm -lpthread -ldl
-else
-# Ubuntu/glibc systems: Use dynamic linking (static libs not available)
+else ifeq ($(HAS_HARFBUZZ),1)
+# System has harfbuzz: link dynamically
 MINIMAL_LIBS = -lm -lpthread -ldl \
-	$(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "-lharfbuzz -lfreetype -lfribidi")
+	$(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null)
+else
+# No harfbuzz: use stub (no text shaping libs needed)
+MINIMAL_LIBS = -lm -lpthread -ldl
 endif
 
 minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_common.a ../build/libkryon_web.a

@@ -157,8 +157,11 @@ ir_text_shaping.o: ir_text_shaping.c $(IR_HEADERS)
 ifeq ($(HAS_HARFBUZZ),1)
 	$(CC) $(CFLAGS) $(HARFBUZZ_CFLAGS) -I$(INCLUDE_DIR) -c ir_text_shaping.c -o ir_text_shaping.o
 else
-	@echo "Skipping ir_text_shaping.c (harfbuzz not available)"
+	@echo "Skipping ir_text_shaping.c (harfbuzz not available, using stub)"
 endif
+
+ir_bidi_stub.o: ir_bidi_stub.c $(IR_HEADERS)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_bidi_stub.c -o ir_bidi_stub.o
 
 ir_hot_reload.o: ir_hot_reload.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_hot_reload.c -o ir_hot_reload.o
