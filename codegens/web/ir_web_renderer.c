@@ -13,6 +13,9 @@
 #include "css_generator.h"
 #include "wasm_bridge.h"
 
+// Global IR context for source language detection
+extern IRContext* g_ir_context;
+
 // Web IR Renderer Context
 typedef struct WebIRRenderer {
     HTMLGenerator* html_generator;
@@ -435,9 +438,17 @@ bool web_ir_renderer_render(WebIRRenderer* renderer, IRComponent* root) {
     }
     printf("✅ Generated JavaScript: %s/kryon.js\n", renderer->output_directory);
 
-    // Copy Fengari Lua VM (local file, no CDN dependency)
-    // Try: KRYON_ROOT env, ~/.local/share/kryon, /usr/share/kryon, relative to cwd
-    {
+    // Copy Fengari Lua VM only if the source language is Lua
+    // This avoids including the 220KB Lua runtime for non-Lua projects
+    bool needs_lua_runtime = false;
+    if (g_ir_context && g_ir_context->source_metadata &&
+        g_ir_context->source_metadata->source_language &&
+        strcmp(g_ir_context->source_metadata->source_language, "lua") == 0) {
+        needs_lua_runtime = true;
+    }
+
+    if (needs_lua_runtime) {
+        // Try: KRYON_ROOT env, ~/.local/share/kryon, /usr/share/kryon, relative to cwd
         char fengari_src[1024] = {0};
         char fengari_dst[1024];
         const char* kryon_root = getenv("KRYON_ROOT");
