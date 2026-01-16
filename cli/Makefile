@@ -83,6 +83,27 @@ all: $(TARGET)
 # Note: Codegens must be built first (use 'make build-codegens' from project root)
 CFLAGS_MINIMAL = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -DKRYON_MINIMAL_BUILD -D_POSIX_C_SOURCE=200809L
 OBJS_MINIMAL = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+
+# Check if static libraries are available (Alpine provides them, Ubuntu doesn't)
+HAS_STATIC_LIBS := $(shell \
+	$(CC) -print-search-dirs | sed 's/:/\n/g' | \
+	while read path; do \
+		[ -f "$$path/libharfbuzz.a" ] && echo "yes" && break; \
+	done)
+
+ifeq ($(HAS_STATIC_LIBS),yes)
+# Alpine: Use "mostly static" linking for portability with plugin support (-ldl needs dynamic)
+MINIMAL_LIBS = -Wl,-Bstatic \
+	-lharfbuzz -lfreetype -lfribidi \
+	-lgraphite2 -lpng16 -lbrotlidec -lbrotlicommon -lz -lbz2 \
+	-Wl,-Bdynamic \
+	-lm -lpthread -ldl
+else
+# Ubuntu/glibc systems: Use dynamic linking (static libs not available)
+MINIMAL_LIBS = -lm -lpthread -ldl \
+	$(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "-lharfbuzz -lfreetype -lfribidi")
+endif
+
 minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_common.a
 	@echo "Building minimal CLI..."
 	$(MAKE) -C . CFLAGS="$(CFLAGS_MINIMAL)" $(OBJS_MINIMAL)
@@ -91,11 +112,7 @@ minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_comm
 		-L../build -lkryon_ir \
 		../build/libkryon_common.a \
 		../build/libkryon_common.a \
-		-Wl,-Bstatic \
-		-lharfbuzz -lfreetype -lfribidi \
-		-lgraphite2 -lpng16 -lbrotlidec -lbrotlicommon -lz -lbz2 \
-		-Wl,-Bdynamic \
-		-lm -lpthread -ldl
+		$(MINIMAL_LIBS)
 
 # Create build directories
 $(BUILD_DIR):
