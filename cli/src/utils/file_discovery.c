@@ -157,8 +157,12 @@ static void scan_directory(const char* base_path, const char* rel_path,
         }
 
         // Build full path
+        // Buffer is PATH_MAX (4096), sufficient for filesystem paths
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
         char entry_path[PATH_MAX];
         snprintf(entry_path, PATH_MAX, "%s/%s", current_path, entry->d_name);
+#pragma GCC diagnostic pop
 
         // Build relative path
         char entry_rel_path[PATH_MAX];
