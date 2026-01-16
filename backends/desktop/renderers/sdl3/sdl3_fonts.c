@@ -99,11 +99,15 @@ static void cache_font_path(const char* family, uint16_t weight, bool italic, co
     const char* cache_family = family ? family : "";
 
     int idx = g_font_path_cache_count++;
-    strncpy(g_font_path_cache[idx].family, cache_family, sizeof(g_font_path_cache[idx].family) - 1);
-    g_font_path_cache[idx].family[sizeof(g_font_path_cache[idx].family) - 1] = '\0';
+    size_t family_len = strlen(cache_family);
+    if (family_len >= sizeof(g_font_path_cache[idx].family)) family_len = sizeof(g_font_path_cache[idx].family) - 1;
+    memcpy(g_font_path_cache[idx].family, cache_family, family_len);
+    g_font_path_cache[idx].family[family_len] = '\0';
 
-    strncpy(g_font_path_cache[idx].path, path, sizeof(g_font_path_cache[idx].path) - 1);
-    g_font_path_cache[idx].path[sizeof(g_font_path_cache[idx].path) - 1] = '\0';
+    size_t path_len = strlen(path);
+    if (path_len >= sizeof(g_font_path_cache[idx].path)) path_len = sizeof(g_font_path_cache[idx].path) - 1;
+    memcpy(g_font_path_cache[idx].path, path, path_len);
+    g_font_path_cache[idx].path[path_len] = '\0';
 
     g_font_path_cache[idx].weight = weight;
     g_font_path_cache[idx].italic = italic;
@@ -153,7 +157,10 @@ static const char* try_filesystem_font_variant(const char* base_path, uint16_t w
     else if (weight <= 350) variant = italic ? "-ExtraLight" : "-ExtraLight";
     else if (italic) variant = "-Oblique";
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
     snprintf(variant_path, sizeof(variant_path), "%s/%s%s%s", dir, base, variant, ext);
+#pragma GCC diagnostic pop
 
     // Check if file exists
     if (access(variant_path, R_OK) == 0) {

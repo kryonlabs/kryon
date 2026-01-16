@@ -83,8 +83,10 @@ static bool find_font_file(const char* font_name, char* out_path, size_t out_siz
 
     // First try direct path
     if (access(font_name, R_OK) == 0) {
-        strncpy(out_path, font_name, out_size - 1);
-        out_path[out_size - 1] = '\0';
+        size_t len = strlen(font_name);
+        if (len >= out_size) len = out_size - 1;
+        memcpy(out_path, font_name, len);
+        out_path[len] = '\0';
         return true;
     }
 
@@ -92,8 +94,10 @@ static bool find_font_file(const char* font_name, char* out_path, size_t out_siz
     char temp_path[KRYON_FONT_PATH_BUFFER];
     snprintf(temp_path, sizeof(temp_path), "%s.ttf", font_name);
     if (access(temp_path, R_OK) == 0) {
-        strncpy(out_path, temp_path, out_size - 1);
-        out_path[out_size - 1] = '\0';
+        size_t len = strlen(temp_path);
+        if (len >= out_size) len = out_size - 1;
+        memcpy(out_path, temp_path, len);
+        out_path[len] = '\0';
         return true;
     }
 
@@ -101,15 +105,19 @@ static bool find_font_file(const char* font_name, char* out_path, size_t out_siz
     for (int i = 0; i < font_manager.search_path_count; i++) {
         snprintf(temp_path, sizeof(temp_path), "%s%s", font_manager.font_search_paths[i], font_name);
         if (access(temp_path, R_OK) == 0) {
-            strncpy(out_path, temp_path, out_size - 1);
-            out_path[out_size - 1] = '\0';
+            size_t len = strlen(temp_path);
+            if (len >= out_size) len = out_size - 1;
+            memcpy(out_path, temp_path, len);
+            out_path[len] = '\0';
             return true;
         }
 
         snprintf(temp_path, sizeof(temp_path), "%s%s.ttf", font_manager.font_search_paths[i], font_name);
         if (access(temp_path, R_OK) == 0) {
-            strncpy(out_path, temp_path, out_size - 1);
-            out_path[out_size - 1] = '\0';
+            size_t len = strlen(temp_path);
+            if (len >= out_size) len = out_size - 1;
+            memcpy(out_path, temp_path, len);
+            out_path[len] = '\0';
             return true;
         }
     }
@@ -142,7 +150,7 @@ void kryon_sdl3_fonts_init(void) {
         "Helvetica"
     };
 
-    for (int i = 0; i < sizeof(default_fonts) / sizeof(default_fonts[0]); i++) {
+    for (size_t i = 0; i < sizeof(default_fonts) / sizeof(default_fonts[0]); i++) {
         font_manager.default_font = load_font_from_name(default_fonts[i], 16);
         if (font_manager.default_font != NULL) {
             break;

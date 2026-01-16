@@ -34,8 +34,8 @@ TestEventQueue* test_queue_init_from_file(const char* filepath) {
         return NULL;
     }
 
-    fread(content, 1, size, f);
-    content[size] = '\0';
+    size_t bytes_read = fread(content, 1, size, f);
+    content[bytes_read] = '\0';
     fclose(f);
 
     // Parse JSON

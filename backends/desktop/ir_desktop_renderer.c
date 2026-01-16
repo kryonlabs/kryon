@@ -419,7 +419,7 @@ static void invoke_canvas_callbacks_recursive(DesktopIRRenderer* renderer, IRCom
     }
 
     // Recurse into children
-    for (int i = 0; i < component->child_count; i++) {
+    for (int i = 0; i < (int)component->child_count; i++) {
         invoke_canvas_callbacks_recursive(renderer, component->children[i]);
     }
 }
@@ -457,7 +457,7 @@ static void invoke_canvas_update_callbacks_recursive(DesktopIRRenderer* renderer
     }
 
     // Recurse into children
-    for (int i = 0; i < component->child_count; i++) {
+    for (int i = 0; i < (int)component->child_count; i++) {
         invoke_canvas_update_callbacks_recursive(renderer, component->children[i], delta_time);
     }
 }
@@ -466,7 +466,7 @@ static void invoke_canvas_update_callbacks_recursive(DesktopIRRenderer* renderer
  * RENDERING - Frame rendering and main loop
  * ============================================================================ */
 
-static int g_debug_frame_count = 0;
+__attribute__((unused)) static int g_debug_frame_count = 0;
 
 bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* root) {
     if (!renderer || !root || !renderer->initialized) return false;
@@ -686,11 +686,13 @@ bool desktop_ir_renderer_load_font(DesktopIRRenderer* renderer, const char* font
 }
 
 bool desktop_ir_renderer_load_image(DesktopIRRenderer* renderer, const char* image_path) {
+    (void)renderer;  // Unused parameter
     printf("Image loading not yet implemented: %s\n", image_path);
     return false;
 }
 
 void desktop_ir_renderer_clear_resources(DesktopIRRenderer* renderer) {
+    (void)renderer;  // Unused parameter
     printf("Clearing desktop renderer resources\n");
 }
 

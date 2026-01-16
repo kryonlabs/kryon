@@ -110,7 +110,7 @@ static int raylib_wrap_text_heuristic(const char* text, float max_width,
 
     size_t text_len = strlen(text);
     float char_width = font_size * TEXT_CHAR_WIDTH_RATIO;
-    int chars_per_line = max_width > 0 ? (int)(max_width / char_width) : strlen(text);
+    int chars_per_line = max_width > 0 ? (int)(max_width / char_width) : (int)strlen(text);
 
     if (chars_per_line <= 0) chars_per_line = 1;
 

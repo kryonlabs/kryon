@@ -107,7 +107,7 @@ int wrap_text_into_lines(const char* text, float max_width, TTF_Font* font,
 
     // Heuristic fallback
     float char_width = font_size * TEXT_CHAR_WIDTH_RATIO;
-    int chars_per_line = max_width > 0 ? (int)(max_width / char_width) : strlen(text);
+    int chars_per_line = max_width > 0 ? (int)(max_width / char_width) : (int)strlen(text);
     if (chars_per_line < 1) chars_per_line = 1;
 
     size_t text_len = strlen(text);
@@ -116,7 +116,7 @@ int wrap_text_into_lines(const char* text, float max_width, TTF_Font* font,
 
     if (out_lines) {
         char** lines = malloc(sizeof(char*) * line_count);
-        for (int i = 0; i < line_count; i++) {
+        for (size_t i = 0; i < (size_t)line_count; i++) {
             size_t start = i * chars_per_line;
             size_t len = (start + chars_per_line <= text_len) ? chars_per_line : (text_len - start);
             lines[i] = strndup(text + start, len);
@@ -184,7 +184,7 @@ void desktop_text_measure_callback(const char* text, float font_size,
 
     size_t text_len = strlen(text);
     float char_width = font_size * TEXT_CHAR_WIDTH_RATIO;
-    int chars_per_line = max_width > 0 ? (int)(max_width / char_width) : text_len;
+    int chars_per_line = max_width > 0 ? (int)(max_width / char_width) : (int)text_len;
     if (chars_per_line < 1) chars_per_line = 1;
 
     *out_height = line_count * line_height;

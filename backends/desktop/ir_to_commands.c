@@ -999,6 +999,7 @@ bool ir_gen_canvas_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
     (void)ctx;  // Suppress unused warning
     (void)comp;  // Suppress unused warning
     (void)bounds;  // Suppress unused warning
+    (void)ir_set_rendered_bounds;  // Suppress unused warning
 
     return true;
 }
@@ -1137,7 +1138,7 @@ bool ir_gen_modal_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect*
             .max_height = content_height
         };
 
-        for (int i = 0; i < comp->child_count; i++) {
+        for (int i = 0; i < (int)comp->child_count; i++) {
             IRComponent* child = comp->children[i];
             if (!child) continue;
 
@@ -1385,7 +1386,7 @@ bool ir_generate_component_commands(
     /* Skip children for Modal components - they render their own children when open */
     bool skip_children = (component->type == IR_COMPONENT_MODAL);
     if (success && component->child_count > 0 && !skip_children) {
-        for (int i = 0; i < component->child_count; i++) {
+        for (int i = 0; i < (int)component->child_count; i++) {
             IRComponent* child = component->children[i];
             if (!child || !child->layout_state) continue;
 
