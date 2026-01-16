@@ -116,7 +116,7 @@ IRComponent* ir_list(IRListType type) {
     comp->custom_data = (char*)data;
 
     // Set default list styling
-    IRStyle* style = ir_get_style(comp);
+    IRStyle* style __attribute__((unused)) = ir_get_style(comp);
     ir_set_margin(comp, 0.0f, 0.0f, 16.0f, 0.0f);
     ir_set_padding(comp, 0.0f, 0.0f, 0.0f, 24.0f);  // Left padding for indentation
 
@@ -135,7 +135,7 @@ IRComponent* ir_list_item(void) {
     comp->custom_data = (char*)data;
 
     // Set default list item styling
-    IRStyle* style = ir_get_style(comp);
+    IRStyle* style __attribute__((unused)) = ir_get_style(comp);
     ir_set_margin(comp, 0.0f, 0.0f, 8.0f, 0.0f);
 
     return comp;

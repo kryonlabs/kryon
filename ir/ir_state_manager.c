@@ -118,7 +118,7 @@ static IRComponent* find_component_by_id(IRComponent* root, uint32_t id) {
 }
 
 // Notify all registered callbacks
-static void notify_callbacks(IRStateManager* mgr, uint32_t component_id, IRDirtyFlags flags) {
+__attribute__((unused)) static void notify_callbacks(IRStateManager* mgr, uint32_t component_id, IRDirtyFlags flags) {
     for (uint32_t i = 0; i < mgr->callbacks.count; i++) {
         if (mgr->callbacks.callbacks[i]) {
             mgr->callbacks.callbacks[i](component_id, flags, mgr->callbacks.user_data[i]);
@@ -275,6 +275,7 @@ static void flush_phase_reactions(IRStateManager* mgr, IRStateFlushResult* resul
 // ============================================================================
 
 static uint32_t flush_phase_layout(IRStateManager* mgr, IRStateFlushResult* result) {
+    (void)result;
     uint32_t layout_recomputations = 0;
 
     if (!mgr->root_component) return 0;
@@ -295,6 +296,7 @@ static uint32_t flush_phase_layout(IRStateManager* mgr, IRStateFlushResult* resu
 // ============================================================================
 
 static void flush_phase_notify(IRStateManager* mgr) {
+    (void)mgr;
     // Callbacks are invoked during update processing for immediate feedback
     // Additional batched notifications could go here
 }

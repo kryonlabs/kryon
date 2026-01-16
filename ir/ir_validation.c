@@ -1087,7 +1087,7 @@ bool ir_skip_corrupted_section(IRBuffer* buffer, IRValidationResult* result) {
     if (!buffer || !result) return false;
 
     // Get current buffer size
-    size_t buffer_size = ir_buffer_size(buffer);
+    size_t buffer_size __attribute__((unused)) = ir_buffer_size(buffer);
 
     // Try to read past 1 byte to skip corrupted data
     uint8_t temp;

@@ -262,7 +262,7 @@ bool css_gen_generate_spacing(CSSGenContext* ctx, const char* property_base, IRS
     } else {
         // Individual properties set - output only those that are set
         char prop_buffer[32];
-        const size_t base_len = strlen(property_base);
+        const size_t base_len __attribute__((unused)) = strlen(property_base);
 
         if (flags & IR_SPACING_SET_TOP) {
             snprintf(prop_buffer, sizeof(prop_buffer), "%s-top", property_base);

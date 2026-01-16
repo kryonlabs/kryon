@@ -20,7 +20,7 @@ static const char* get_extension(const char* filename) {
 /**
  * Check if string ends with suffix (case-insensitive)
  */
-static bool ends_with_ci(const char* str, const char* suffix) {
+__attribute__((unused)) static bool ends_with_ci(const char* str, const char* suffix) {
     size_t str_len = strlen(str);
     size_t suffix_len = strlen(suffix);
 

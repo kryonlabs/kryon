@@ -194,7 +194,7 @@ static char* resolve_module(LuaBundler* bundler, const char* module_name) {
                 // Remove .lua, add _web.lua
                 size_t len = strlen(rel_path);
                 if (len > 4) {
-                    strncpy(web_rel_path, rel_path, len - 4);
+                    memcpy(web_rel_path, rel_path, len - 4);
                     web_rel_path[len - 4] = '\0';
                     strcat(web_rel_path, "_web.lua");
                 }

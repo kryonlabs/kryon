@@ -61,7 +61,13 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
             return 1;
         }
 
-        fread(source, 1, size, f);
+        size_t bytes_read = fread(source, 1, (size_t)size, f);
+        if (bytes_read != (size_t)size) {
+            fprintf(stderr, "Error: Failed to read complete file (got %zu of %ld bytes)\n", bytes_read, size);
+            free(source);
+            fclose(f);
+            return 1;
+        }
         source[size] = '\0';
         fclose(f);
 

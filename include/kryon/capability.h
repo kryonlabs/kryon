@@ -48,61 +48,21 @@ typedef struct KryonRenderContext   KryonRenderContext;
 typedef struct KryonEventContext    KryonEventContext;
 
 // ============================================================================
-// Component Type Tags
+// Component Type Registration
 // ============================================================================
-
-typedef enum {
-    KRYON_COMPONENT_CONTAINER = 0,
-    KRYON_COMPONENT_TEXT = 1,
-    KRYON_COMPONENT_BUTTON = 2,
-    KRYON_COMPONENT_INPUT = 3,
-    KRYON_COMPONENT_CHECKBOX = 4,
-    KRYON_COMPONENT_DROPDOWN = 5,
-    KRYON_COMPONENT_TEXTAREA = 6,
-    KRYON_COMPONENT_ROW = 7,
-    KRYON_COMPONENT_COLUMN = 8,
-    KRYON_COMPONENT_CENTER = 9,
-    KRYON_COMPONENT_IMAGE = 10,
-    KRYON_COMPONENT_CANVAS = 11,
-    KRYON_COMPONENT_NATIVE_CANVAS = 12,
-    KRYON_COMPONENT_MARKDOWN = 13,
-    KRYON_COMPONENT_SPRITE = 14,
-    KRYON_COMPONENT_TAB_GROUP = 15,
-    KRYON_COMPONENT_TAB_BAR = 16,
-    KRYON_COMPONENT_TAB = 17,
-    KRYON_COMPONENT_TAB_CONTENT = 18,
-    KRYON_COMPONENT_TAB_PANEL = 19,
-    KRYON_COMPONENT_MODAL = 20,
-    KRYON_COMPONENT_TABLE = 21,
-    KRYON_COMPONENT_TABLE_HEAD = 22,
-    KRYON_COMPONENT_TABLE_BODY = 23,
-    KRYON_COMPONENT_TABLE_FOOT = 24,
-    KRYON_COMPONENT_TABLE_ROW = 25,
-    KRYON_COMPONENT_TABLE_CELL = 26,
-    KRYON_COMPONENT_HEADING = 27,
-    KRYON_COMPONENT_PARAGRAPH = 28,
-    KRYON_COMPONENT_BLOCKQUOTE = 29,
-    KRYON_COMPONENT_CODE_BLOCK = 42,     // Used by syntax plugin
-    KRYON_COMPONENT_HORIZONTAL_RULE = 43,
-    KRYON_COMPONENT_LIST = 44,
-    KRYON_COMPONENT_LIST_ITEM = 45,
-    KRYON_COMPONENT_LINK = 46,
-    KRYON_COMPONENT_SPAN = 47,
-    KRYON_COMPONENT_STRONG = 48,
-    KRYON_COMPONENT_EM = 49,
-    KRYON_COMPONENT_CODE_INLINE = 50,
-    KRYON_COMPONENT_SMALL = 51,
-    KRYON_COMPONENT_MARK = 52,
-    KRYON_COMPONENT_CUSTOM = 255,
-    KRYON_COMPONENT_FLOWCHART = 60,
-    KRYON_COMPONENT_FLOWCHART_NODE = 61,
-    KRYON_COMPONENT_FLOWCHART_EDGE = 62,
-    KRYON_COMPONENT_FLOWCHART_SUBGRAPH = 63,
-    KRYON_COMPONENT_FLOWCHART_LABEL = 64,
-} KryonComponentType;
-
-// Convert component type to string
-const char* kryon_component_type_to_string(KryonComponentType type);
+//
+// Plugins register capabilities using component type NAMES (strings), not
+// numeric IDs. This ensures:
+// - No conflicts between plugin and core enum values
+// - Self-documenting code ("code_block" vs magic number 31)
+// - Single source of truth for type IDs (Kryon core handles mapping)
+//
+// Supported component type names (case-insensitive, snake_case or PascalCase):
+// - "code_block" or "CodeBlock" - Fenced code with language tag
+// - "flowchart" or "Flowchart" - Flowchart container
+// - "markdown" or "Markdown" - Markdown content
+// - ... (see ir_component_types.h for full list)
+//
 
 // ============================================================================
 // Data Handle - Opaque Component Data Access
@@ -346,36 +306,48 @@ struct KryonCapabilityAPI {
 
     /**
      * Register a web renderer for a component type
-     * @param component_type Component type to handle
+     * @param component_name Component type name (e.g., "code_block", "flowchart")
      * @param renderer Renderer function
-     * @return true on success, false if type already registered
+     * @return true on success, false if name invalid or already registered
+     *
+     * Component names are case-insensitive and support both snake_case
+     * and PascalCase (e.g., "code_block" and "CodeBlock" are equivalent).
      */
     bool (*register_web_renderer)(
-        uint32_t component_type,
+        const char* component_name,
         kryon_web_renderer_fn renderer
     );
 
     /**
      * Register a CSS generator for a component type
-     * @param component_type Component type to handle
+     * @param component_name Component type name (e.g., "code_block", "flowchart")
      * @param generator CSS generator function
-     * @return true on success, false if type already registered
+     * @return true on success, false if name invalid or already registered
      */
     bool (*register_css_generator)(
-        uint32_t component_type,
+        const char* component_name,
         kryon_css_generator_fn generator
     );
 
     /**
      * Register a component renderer for desktop/terminal backends
-     * @param component_type Component type to handle
+     * @param component_name Component type name (e.g., "code_block", "flowchart")
      * @param renderer Renderer function
-     * @return true on success, false if type already registered
+     * @return true on success, false if name invalid or already registered
      */
     bool (*register_component_renderer)(
-        uint32_t component_type,
+        const char* component_name,
         kryon_component_renderer_fn renderer
     );
+
+    /**
+     * Get the numeric type ID for a component name
+     * @param component_name Component type name (e.g., "code_block")
+     * @return Numeric type ID, or UINT32_MAX if name is unknown
+     *
+     * Useful for plugins that need to validate handle->component_type.
+     */
+    uint32_t (*get_component_type_id)(const char* component_name);
 
     /**
      * Register an event handler
@@ -457,7 +429,7 @@ struct KryonCapabilityAPI {
     bool (*queue_dirty_mark)(uint32_t component_id, uint32_t flags);
 
     /* Reserved for future expansion (maintains ABI stability) */
-    void* reserved[11];  // Reduced from 16 to account for new fields
+    void* reserved[10];  // Reduced from 11 to account for get_component_type_id
 };
 
 // ============================================================================

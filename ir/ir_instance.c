@@ -563,14 +563,11 @@ typedef struct {
     const char* filename;
 } InstanceReloadData;
 
-// Forward declaration of reload callback
-static IRComponent* reload_instance_callback(void* user_data);
-
 /**
  * Find a component in the new tree by matching scope
  * This allows preserving state across hot reload
  */
-static IRComponent* find_component_by_scope(IRComponent* new_root, const char* scope) {
+__attribute__((unused)) static IRComponent* find_component_by_scope(IRComponent* new_root, const char* scope) {
     if (!new_root || !scope) return NULL;
 
     if (new_root->scope && strcmp(new_root->scope, scope) == 0) {

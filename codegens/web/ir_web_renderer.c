@@ -318,7 +318,7 @@ static void collect_assets(IRComponent* component, char** assets, int* count, in
     }
 
     // Recurse into children
-    for (int i = 0; i < component->child_count; i++) {
+    for (int i = 0; i < (int)component->child_count; i++) {
         collect_assets(component->children[i], assets, count, max);
     }
 }

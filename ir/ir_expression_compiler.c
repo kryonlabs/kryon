@@ -1791,7 +1791,7 @@ static IRValue eval_stack_pop(IREvalContext* ctx) {
     return ctx->stack[--ctx->stack_top];
 }
 
-static IRValue eval_stack_peek(IREvalContext* ctx, uint32_t offset) {
+__attribute__((unused)) static IRValue eval_stack_peek(IREvalContext* ctx, uint32_t offset) {
     if (ctx->stack_top <= offset) {
         return ir_value_null();
     }
@@ -1871,7 +1871,7 @@ static void ir_eval_context_destroy(IREvalContext* ctx) {
 // Convert executor IRValue to compiler IRValue
 // NOTE: This is a simplified version that doesn't directly access executor types
 // to avoid circular dependencies. Full integration would require accessor functions.
-static IRValue executor_value_to_compiler_value(void* exec_val) {
+__attribute__((unused)) static IRValue executor_value_to_compiler_value(void* exec_val) {
     (void)exec_val;
     // TODO: Implement proper conversion when executor integration is needed
     return ir_value_null();

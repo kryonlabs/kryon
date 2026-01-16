@@ -48,10 +48,8 @@ static uint32_t g_next_expansion_id = 1000;  // Start high to avoid conflicts
 // Forward declarations for helper functions
 static IRComponent* json_deserialize_component_with_context(cJSON* json, ComponentDefContext* ctx);
 static IRColor json_parse_color(const char* str);
-static IRDimension json_parse_dimension(const char* str);
 static IRAlignment json_parse_alignment(const char* str);
 static IRGridTrackType json_parse_grid_track_type(const char* str);
-static IRSpacing json_parse_spacing(cJSON* json);
 static IRTextAlign json_parse_text_align(const char* str);
 static void apply_animation_from_string(IRComponent* component, const char* animSpec);
 // ============================================================================

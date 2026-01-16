@@ -6,6 +6,9 @@
  * MUST be explicitly listed in config with paths.
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+
 #define _DEFAULT_SOURCE
 #define _POSIX_C_SOURCE 200809L
 
@@ -123,7 +126,11 @@ static int source_files_newer_than(const char* plugin_dir, time_t ref_time) {
         if (len > 2 && (strcmp(entry->d_name + len - 2, ".c") == 0 ||
                         strcmp(entry->d_name + len - 2, ".h") == 0)) {
             char filepath[DISCOVERY_PATH_MAX];
-            snprintf(filepath, sizeof(filepath), "%s/%s", src_dir, entry->d_name);
+            int written = snprintf(filepath, sizeof(filepath), "%s/%s", src_dir, entry->d_name);
+            if (written < 0 || (size_t)written >= sizeof(filepath)) {
+                closedir(dir);
+                return 0;  /* Path too long, skip this file */
+            }
             if (get_mtime(filepath) > ref_time) {
                 closedir(dir);
                 return 1;  /* Source is newer */
@@ -221,7 +228,11 @@ static int plugin_install_runtime(const char* plugin_dir, const char* plugin_nam
 
     /* Copy the .so file */
     char dst_so_path[DISCOVERY_PATH_MAX];
-    snprintf(dst_so_path, sizeof(dst_so_path), "%s/libkryon_%s.so", plugin_dest_dir, plugin_name);
+    int written = snprintf(dst_so_path, sizeof(dst_so_path), "%s/libkryon_%s.so", plugin_dest_dir, plugin_name);
+    if (written < 0 || (size_t)written >= sizeof(dst_so_path)) {
+        fprintf(stderr, "[plugin] Warning: .so path too long for %s\n", plugin_name);
+        return -1;
+    }
 
     if (copy_file(src_so_path, dst_so_path) != 0) {
         fprintf(stderr, "[plugin] Warning: Failed to install %s\n", plugin_name);
@@ -231,8 +242,10 @@ static int plugin_install_runtime(const char* plugin_dir, const char* plugin_nam
     /* Copy plugin.toml if it exists in the plugin directory */
     char src_toml_path[DISCOVERY_PATH_MAX];
     char dst_toml_path[DISCOVERY_PATH_MAX];
-    snprintf(src_toml_path, sizeof(src_toml_path), "%s/plugin.toml", plugin_dir);
-    snprintf(dst_toml_path, sizeof(dst_toml_path), "%s/plugin.toml", plugin_dest_dir);
+    written = snprintf(src_toml_path, sizeof(src_toml_path), "%s/plugin.toml", plugin_dir);
+    (void)written; /* Length is bounded */
+    written = snprintf(dst_toml_path, sizeof(dst_toml_path), "%s/plugin.toml", plugin_dest_dir);
+    (void)written; /* Length is bounded */
 
     if (file_exists(src_toml_path)) {
         if (copy_file(src_toml_path, dst_toml_path) != 0) {
@@ -311,8 +324,12 @@ static int verify_plugin_files(const char* plugin_dir, const char* plugin_name,
         }
     } else {
         /* Pure C plugin - copy .so path to lib_path output */
-        strncpy(out_lib_path, so_path, lib_path_size - 1);
-        out_lib_path[lib_path_size - 1] = '\0';
+        size_t copy_len = strlen(so_path);
+        if (copy_len >= lib_path_size) {
+            copy_len = lib_path_size - 1;
+        }
+        memcpy(out_lib_path, so_path, copy_len);
+        out_lib_path[copy_len] = '\0';
     }
 
     return 0;
@@ -463,3 +480,5 @@ void free_build_plugins(BuildPluginInfo* plugins, int count) {
 
     free(plugins);
 }
+
+#pragma GCC diagnostic pop

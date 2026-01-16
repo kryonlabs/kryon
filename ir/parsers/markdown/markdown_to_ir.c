@@ -341,7 +341,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
         case MD_BLOCK_CODE_BLOCK: {
             const char* lang = node->data.code_block.language;
             const char* code = node->data.code_block.code;
-            uint16_t code_len = node->data.code_block.length;
+            uint16_t code_len __attribute__((unused)) = node->data.code_block.length;
 
             // Use specialized code block builder
             comp = ir_code_block(lang, code);

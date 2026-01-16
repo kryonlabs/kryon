@@ -13,6 +13,9 @@
  * - Each plugin must have path, .lua binding, and .a library
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -520,8 +523,10 @@ int build_lua_binary(const char* project_name,
         char project_dir_copy[BUILD_PATH_MAX];
 
         /* Get project directory for plugin path resolution */
-        strncpy(project_dir_copy, entry_lua, BUILD_PATH_MAX - 1);
-        project_dir_copy[BUILD_PATH_MAX - 1] = '\0';
+        size_t copy_len = strlen(entry_lua);
+        if (copy_len >= BUILD_PATH_MAX) copy_len = BUILD_PATH_MAX - 1;
+        memcpy(project_dir_copy, entry_lua, copy_len);
+        project_dir_copy[copy_len] = '\0';
         char* project_dir = dirname(project_dir_copy);
 
         /* Load config and discover plugins */
@@ -555,18 +560,38 @@ int build_lua_binary(const char* project_name,
                 }
 
                 /* Embed bytecode as C array */
-                snprintf(plugin_c_paths[plugin_count], sizeof(plugin_c_paths[plugin_count]),
+                int written = snprintf(plugin_c_paths[plugin_count], sizeof(plugin_c_paths[plugin_count]),
                          "%s/plugin_%s_data.c", temp_dir, plugins[i].name);
+                if (written < 0 || (size_t)written >= sizeof(plugin_c_paths[plugin_count])) {
+                    fprintf(stderr, "Error: Plugin C path too long for %s\n", plugins[i].name);
+                    free_build_plugins(plugins, discovered_plugin_count);
+                    return -1;
+                }
 
                 /* Store static library path for linking */
-                snprintf(plugin_lib_paths[plugin_count], sizeof(plugin_lib_paths[plugin_count]),
+                written = snprintf(plugin_lib_paths[plugin_count], sizeof(plugin_lib_paths[plugin_count]),
                          "%s", plugins[i].static_lib);
+                if (written < 0 || (size_t)written >= sizeof(plugin_lib_paths[plugin_count])) {
+                    fprintf(stderr, "Error: Plugin lib path too long for %s\n", plugins[i].name);
+                    free_build_plugins(plugins, discovered_plugin_count);
+                    return -1;
+                }
 
                 /* Array name is plugin_<name> */
-                snprintf(plugin_array_names[plugin_count], sizeof(plugin_array_names[plugin_count]),
+                written = snprintf(plugin_array_names[plugin_count], sizeof(plugin_array_names[plugin_count]),
                          "plugin_%s", plugins[i].name);
-                snprintf(plugin_names[plugin_count], sizeof(plugin_names[plugin_count]),
+                if (written < 0 || (size_t)written >= sizeof(plugin_array_names[plugin_count])) {
+                    fprintf(stderr, "Error: Plugin array name too long for %s\n", plugins[i].name);
+                    free_build_plugins(plugins, discovered_plugin_count);
+                    return -1;
+                }
+                written = snprintf(plugin_names[plugin_count], sizeof(plugin_names[plugin_count]),
                          "%s", plugins[i].name);
+                if (written < 0 || (size_t)written >= sizeof(plugin_names[plugin_count])) {
+                    fprintf(stderr, "Error: Plugin name too long for %s\n", plugins[i].name);
+                    free_build_plugins(plugins, discovered_plugin_count);
+                    return -1;
+                }
 
                 if (embed_bytecode(plugin_bc_path, plugin_c_paths[plugin_count],
                                    plugin_array_names[plugin_count]) != 0) {
@@ -618,8 +643,10 @@ int build_lua_binary(const char* project_name,
                                  components_dir, entry->d_name);
 
                         if (file_exists(component_path)) {
-                            strncpy(component_files[component_count], entry->d_name, (BUILD_PATH_MAX) - 1);
-                            component_files[component_count][(BUILD_PATH_MAX) - 1] = '\0';
+                            size_t copy_len = len;
+                            if (copy_len >= (BUILD_PATH_MAX)) copy_len = (BUILD_PATH_MAX) - 1;
+                            memcpy(component_files[component_count], entry->d_name, copy_len);
+                            component_files[component_count][copy_len] = '\0';
                             component_count++;
                         }
                     }
@@ -661,10 +688,15 @@ int build_lua_binary(const char* project_name,
                     /* Embed bytecode with C array name (not module name, as C identifiers can't have dots) */
                     if (embed_bytecode(component_bc_path, component_c_paths[component_c_count], component_c_array_name) == 0) {
                         /* Store module name and C array name for registration */
-                        strncpy(component_module_names[component_c_count], module_name, (BUILD_PATH_MAX) - 1);
-                        component_module_names[component_c_count][(BUILD_PATH_MAX) - 1] = '\0';
-                        strncpy(component_c_names[component_c_count], component_c_array_name, (BUILD_PATH_MAX) - 1);
-                        component_c_names[component_c_count][(BUILD_PATH_MAX) - 1] = '\0';
+                        size_t copy_len = strlen(module_name);
+                        if (copy_len >= (BUILD_PATH_MAX)) copy_len = (BUILD_PATH_MAX) - 1;
+                        memcpy(component_module_names[component_c_count], module_name, copy_len);
+                        component_module_names[component_c_count][copy_len] = '\0';
+
+                        copy_len = strlen(component_c_array_name);
+                        if (copy_len >= (BUILD_PATH_MAX)) copy_len = (BUILD_PATH_MAX) - 1;
+                        memcpy(component_c_names[component_c_count], component_c_array_name, copy_len);
+                        component_c_names[component_c_count][copy_len] = '\0';
 
                         printf("  Embedded: %s\n", module_name);
                         component_c_count++;
@@ -797,22 +829,36 @@ int build_lua_binary(const char* project_name,
     if (plugin_count > 0) {
         /* Add plugin registration file first */
         if (plugin_registration_path[0] != '\0') {
-            snprintf(plugin_files_str, sizeof(plugin_files_str), "\"%s\" ", plugin_registration_path);
+            int written = snprintf(plugin_files_str, sizeof(plugin_files_str), "\"%s\" ", plugin_registration_path);
+            if (written < 0 || (size_t)written >= sizeof(plugin_files_str)) {
+                fprintf(stderr, "Error: Plugin files string too long\n");
+                return -1;
+            }
         }
 
         /* Add all plugin C files and build library link flags */
         for (int i = 0; i < plugin_count; i++) {
             size_t current_len = strlen(plugin_files_str);
-            if (current_len < sizeof(plugin_files_str) - PATH_MAX - 5) {
-                snprintf(plugin_files_str + current_len, sizeof(plugin_files_str) - current_len,
+            size_t remaining = sizeof(plugin_files_str) - current_len;
+            if (remaining > PATH_MAX + 5) {
+                int written = snprintf(plugin_files_str + current_len, remaining,
                          "\"%s\" ", plugin_c_paths[i]);
+                if (written < 0 || (size_t)written >= remaining) {
+                    fprintf(stderr, "Error: Plugin files string overflow\n");
+                    return -1;
+                }
             }
 
             /* Add static library path to link flags */
             current_len = strlen(plugin_lib_flags);
-            if (current_len < sizeof(plugin_lib_flags) - PATH_MAX - 5) {
-                snprintf(plugin_lib_flags + current_len, sizeof(plugin_lib_flags) - current_len,
+            remaining = sizeof(plugin_lib_flags) - current_len;
+            if (remaining > PATH_MAX + 5) {
+                int written = snprintf(plugin_lib_flags + current_len, remaining,
                          "\"%s\" ", plugin_lib_paths[i]);
+                if (written < 0 || (size_t)written >= remaining) {
+                    fprintf(stderr, "Error: Plugin lib flags overflow\n");
+                    return -1;
+                }
             }
         }
         printf("  Linking %d plugin(s)\n", plugin_count);
@@ -823,15 +869,24 @@ int build_lua_binary(const char* project_name,
     if (component_c_count > 0) {
         /* Add component registration file first */
         if (component_registration_path[0] != '\0') {
-            snprintf(component_files_str, sizeof(component_files_str), "\"%s\" ", component_registration_path);
+            int written = snprintf(component_files_str, sizeof(component_files_str), "\"%s\" ", component_registration_path);
+            if (written < 0 || (size_t)written >= sizeof(component_files_str)) {
+                fprintf(stderr, "Error: Component files string too long\n");
+                return -1;
+            }
         }
 
         /* Add all component C files */
         for (int i = 0; i < component_c_count; i++) {
             size_t current_len = strlen(component_files_str);
-            if (current_len < sizeof(component_files_str) - PATH_MAX - 5) {
-                snprintf(component_files_str + current_len, sizeof(component_files_str) - current_len,
+            size_t remaining = sizeof(component_files_str) - current_len;
+            if (remaining > PATH_MAX + 5) {
+                int written = snprintf(component_files_str + current_len, remaining,
                          "\"%s\" ", component_c_paths[i]);
+                if (written < 0 || (size_t)written >= remaining) {
+                    fprintf(stderr, "Error: Component files string overflow\n");
+                    return -1;
+                }
             }
         }
         printf("  Linking %d embedded component(s)\n", component_c_count);
@@ -842,15 +897,18 @@ int build_lua_binary(const char* project_name,
     /* Add KRYON_HAS_PLUGINS if we have embedded plugins */
     char components_flag[64] = "";
     char plugins_flag[64] = "";
+    int written;
     if (component_c_count > 0) {
-        snprintf(components_flag, sizeof(components_flag), "-DKRYON_HAS_COMPONENTS ");
+        written = snprintf(components_flag, sizeof(components_flag), "-DKRYON_HAS_COMPONENTS ");
+        (void)written; /* Fixed string, checked */
     }
     if (plugin_count > 0) {
-        snprintf(plugins_flag, sizeof(plugins_flag), "-DKRYON_HAS_PLUGINS ");
+        written = snprintf(plugins_flag, sizeof(plugins_flag), "-DKRYON_HAS_PLUGINS ");
+        (void)written; /* Fixed string, checked */
     }
 
     /* Build the gcc command with all embedded modules and plugins */
-    snprintf(gcc_cmd, sizeof(gcc_cmd),
+    written = snprintf(gcc_cmd, sizeof(gcc_cmd),
              "gcc -o \"%s\" "
              "-DAPP_NAME=\\\"%s\\\" "
              "%s "              /* embedded modules flag or empty */
@@ -882,6 +940,12 @@ int build_lua_binary(const char* project_name,
              component_files_str,
              lib_flags,
              plugin_lib_flags);
+
+    /* Check for truncation */
+    if (written < 0 || (size_t)written >= sizeof(gcc_cmd)) {
+        fprintf(stderr, "Error: GCC command too long, buffer truncated\n");
+        return -1;
+    }
 
     if (verbose) {
         printf("Compilation command: %s\n", gcc_cmd);
@@ -917,7 +981,10 @@ int build_lua_binary(const char* project_name,
     if (!verbose) {
         char cleanup_cmd[BUILD_PATH_MAX];
         snprintf(cleanup_cmd, sizeof(cleanup_cmd), "rm -rf \"%s\"", temp_dir);
-        system(cleanup_cmd);
+        int cleanup_result = system(cleanup_cmd);
+        if (cleanup_result != 0) {
+            fprintf(stderr, "Warning: Failed to cleanup temp directory (code %d)\n", cleanup_result);
+        }
     } else {
         printf("Temp files kept at: %s\n", temp_dir);
     }
@@ -933,3 +1000,5 @@ int check_luajit_available(void) {
     return find_luajit_include(path, sizeof(path)) &&
            find_luajit_lib(path, sizeof(path));
 }
+
+#pragma GCC diagnostic pop

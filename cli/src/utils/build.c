@@ -158,6 +158,7 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
 
     // TSX: use bun parser
     if (strcmp(frontend, "tsx") == 0 || strcmp(frontend, "jsx") == 0) {
+        int written;  /* For truncation checking */
         char* tsx_parser = paths_get_tsx_parser_path();
         if (!tsx_parser || !file_exists(tsx_parser)) {
             // Auto-download TSX parser from GitHub
@@ -168,24 +169,38 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
             }
 
             char tsx_dir[PATH_MAX];
-            snprintf(tsx_dir, sizeof(tsx_dir), "%s/.local/share/kryon/tsx_parser", home);
+            written = snprintf(tsx_dir, sizeof(tsx_dir), "%s/.local/share/kryon/tsx_parser", home);
+            (void)written; /* Checked by size */
 
             // Create directory
             {
                 char mkdir_cmd[PATH_MAX + 32];
                 snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", tsx_dir);
-                system(mkdir_cmd);
+                int mkdir_result = system(mkdir_cmd);
+                if (mkdir_result != 0) {
+                    fprintf(stderr, "Warning: Failed to create directory %s (code %d)\n", tsx_dir, mkdir_result);
+                }
             }
 
             // Download from GitHub
             char tsx_path[PATH_MAX];
-            snprintf(tsx_path, sizeof(tsx_path), "%s/tsx_to_kir.ts", tsx_dir);
+            written = snprintf(tsx_path, sizeof(tsx_path), "%s/tsx_to_kir.ts", tsx_dir);
+            if (written < 0 || (size_t)written >= sizeof(tsx_path)) {
+                fprintf(stderr, "Error: TSX path too long\n");
+                if (tsx_parser) free(tsx_parser);
+                return 1;
+            }
 
             printf("TSX parser not found, downloading from GitHub...\n");
             char download_cmd[PATH_MAX * 2];
-            snprintf(download_cmd, sizeof(download_cmd),
+            written = snprintf(download_cmd, sizeof(download_cmd),
                 "curl -fsSL https://raw.githubusercontent.com/kryonlabs/kryon/master/ir/parsers/tsx/tsx_to_kir.ts -o \"%s\"",
                 tsx_path);
+            if (written < 0 || (size_t)written >= sizeof(download_cmd)) {
+                fprintf(stderr, "Error: Download command too long\n");
+                if (tsx_parser) free(tsx_parser);
+                return 1;
+            }
             int download_result = system(download_cmd);
 
             if (download_result != 0 || !file_exists(tsx_path)) {
@@ -201,8 +216,13 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
         }
 
         char cmd[4096];
-        snprintf(cmd, sizeof(cmd), "bun run \"%s\" \"%s\" > \"%s\"",
+        written = snprintf(cmd, sizeof(cmd), "bun run \"%s\" \"%s\" > \"%s\"",
                  tsx_parser, source_file, output_kir);
+        if (written < 0 || (size_t)written >= sizeof(cmd)) {
+            fprintf(stderr, "Error: Bun command too long\n");
+            free(tsx_parser);
+            return 1;
+        }
         free(tsx_parser);
 
         char* output = NULL;
@@ -218,7 +238,10 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
     if (strcmp(frontend, "markdown") == 0) {
         char cmd[4096];
         snprintf(cmd, sizeof(cmd), "kryon compile \"%s\" > /dev/null 2>&1", source_file);
-        system(cmd);
+        int compile_result = system(cmd);
+        if (compile_result != 0) {
+            fprintf(stderr, "Warning: Markdown compilation may have issues (code %d)\n", compile_result);
+        }
 
         // Calculate generated KIR filename
         const char* slash = strrchr(source_file, '/');
@@ -237,7 +260,10 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
             if (strcmp(generated_kir, output_kir) != 0) {
                 char mv_cmd[2048];
                 snprintf(mv_cmd, sizeof(mv_cmd), "mv \"%s\" \"%s\"", generated_kir, output_kir);
-                system(mv_cmd);
+                int mv_result = system(mv_cmd);
+                if (mv_result != 0) {
+                    fprintf(stderr, "Warning: Failed to move file (code %d)\n", mv_result);
+                }
             }
             if (file_exists(output_kir)) {
                 return 0;
@@ -275,7 +301,12 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
             fseek(f, 0, SEEK_SET);
             source = malloc(source_size + 1);
             if (source) {
-                fread(source, 1, source_size, f);
+                size_t bytes_read = fread(source, 1, source_size, f);
+                if (bytes_read != source_size) {
+                    fprintf(stderr, "Warning: Only read %zu of %zu bytes from %s\n",
+                            bytes_read, source_size, source_file);
+                    source_size = bytes_read;
+                }
                 source[source_size] = '\0';
             }
             fclose(f);
@@ -329,7 +360,10 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
 
             char mv_cmd[4096];
             snprintf(mv_cmd, sizeof(mv_cmd), "mv \"%s\" \"%s\"", kir_file, output_kir);
-            system(mv_cmd);
+            int mv_result = system(mv_cmd);
+            if (mv_result != 0) {
+                fprintf(stderr, "Warning: Failed to move .kir file (code %d)\n", mv_result);
+            }
         }
         free(kir_file);
 

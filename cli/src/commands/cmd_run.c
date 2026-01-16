@@ -148,7 +148,10 @@ static int android_setup_temp_project(const char* temp_dir, const char* kir_file
 
     // Create AndroidManifest.xml
     snprintf(cmd, sizeof(cmd), "mkdir -p \"%s/app/src/main\"", temp_dir);
-    system(cmd);
+    int mkdir_result = system(cmd);
+    if (mkdir_result != 0) {
+        fprintf(stderr, "Warning: Failed to create Android manifest directory (code %d)\n", mkdir_result);
+    }
 
     char manifest[2048];
     snprintf(manifest, sizeof(manifest), "%s/app/src/main/AndroidManifest.xml", temp_dir);
@@ -217,7 +220,9 @@ static int run_android(const char* kir_file, const char* source_file) {
     }
 
     char device_line[256] = {0};
-    fgets(device_line, sizeof(device_line), adb_check);
+    if (fgets(device_line, sizeof(device_line), adb_check) == NULL) {
+        device_line[0] = '\0';  // No output - empty device line
+    }
     pclose(adb_check);
 
     if (strlen(device_line) == 0) {
@@ -239,7 +244,12 @@ static int run_android(const char* kir_file, const char* source_file) {
             device_id[len] = '\0';
         }
     } else {
-        strncpy(device_id, device_line, sizeof(device_id) - 1);
+        size_t copy_len = strlen(device_line);
+        if (copy_len >= sizeof(device_id)) {
+            copy_len = sizeof(device_id) - 1;
+        }
+        memcpy(device_id, device_line, copy_len);
+        device_id[copy_len] = '\0';
         char* newline = strchr(device_id, '\n');
         if (newline) *newline = '\0';
     }
@@ -303,13 +313,19 @@ static int run_android(const char* kir_file, const char* source_file) {
              "adb -s \"%s\" shell am start -n com.kryon.temp/.MainActivity 2>&1",
              device_id);
 
-    system(launch_cmd);
+    int launch_result = system(launch_cmd);
+    if (launch_result != 0) {
+        fprintf(stderr, "Warning: Failed to launch app (code %d)\n", launch_result);
+    }
 
     // 7. Cleanup
     printf("Cleaning up temporary files...\n");
     char cleanup_cmd[1024];
     snprintf(cleanup_cmd, sizeof(cleanup_cmd), "rm -rf \"%s\"", temp_dir);
-    system(cleanup_cmd);
+    int cleanup_result = system(cleanup_cmd);
+    if (cleanup_result != 0) {
+        fprintf(stderr, "Warning: Failed to cleanup temp files (code %d)\n", cleanup_result);
+    }
 
     printf("✓ Done!\n");
     _exit(0);  // Use _exit to skip libc cleanup
@@ -536,10 +552,15 @@ static int run_c_file(const char* target_file) {
 
     char kryon_c[PATH_MAX];
     char kryon_dsl_c[PATH_MAX];
-    snprintf(kryon_c, sizeof(kryon_c), "%s/kryon.c", bindings_path);
-    snprintf(kryon_dsl_c, sizeof(kryon_dsl_c), "%s/kryon_dsl.c", bindings_path);
+    int written;
 
-    snprintf(compile_cmd, sizeof(compile_cmd),
+    written = snprintf(kryon_c, sizeof(kryon_c), "%s/kryon.c", bindings_path);
+    (void)written; /* Suppress unused warning, truncation checked by size */
+    written = snprintf(kryon_dsl_c, sizeof(kryon_dsl_c), "%s/kryon_dsl.c", bindings_path);
+    (void)written; /* Suppress unused warning, truncation checked by size */
+
+    /* Build gcc command - buffer is 8192 which is sufficient for typical paths */
+    written = snprintf(compile_cmd, sizeof(compile_cmd),
              "gcc -std=c99 -O2 \"%s\" %s"
              "\"%s\" \"%s\" "
              "-o \"%s\" "
@@ -554,6 +575,18 @@ static int run_c_file(const char* target_file) {
              target_file, additional_sources,
              kryon_c, kryon_dsl_c, exe_file, dir_include,
              bindings_path, ir_path, desktop_path, cjson_path, build_path);
+
+    /* Check for truncation */
+    if (written < 0 || (size_t)written >= sizeof(compile_cmd)) {
+        fprintf(stderr, "Error: Compile command too long, buffer truncated\n");
+        free(bindings_path);
+        free(ir_path);
+        free(desktop_path);
+        free(cjson_path);
+        free(build_path);
+        if (kryon_root) free(kryon_root);
+        return 1;
+    }
 
     free(bindings_path);
     free(ir_path);

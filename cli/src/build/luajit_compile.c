@@ -61,7 +61,11 @@ int luajit_compile_multiple(const char** inputs, int count, const char* output_d
     if (stat(output_dir, &st) != 0) {
         char mkdir_cmd[PATH_MAX];
         snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
-        system(mkdir_cmd);
+        int mkdir_result = system(mkdir_cmd);
+        if (mkdir_result != 0) {
+            fprintf(stderr, "Warning: Failed to create output directory %s (code %d)\n",
+                    output_dir, mkdir_result);
+        }
     }
 
     int errors = 0;

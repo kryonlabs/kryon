@@ -102,9 +102,10 @@ $(BUILD_DIR)/sdl3_%.o: %.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Build stb_image_impl.c (from desktop backend)
+# Use external STB (from raylib) to avoid multiple definition conflicts
 $(BUILD_DIR)/sdl3_stb_image_impl.o: ../../backends/desktop/stb_image_impl.c | $(BUILD_DIR)
 	@echo "Compiling STB Image implementation: $<"
-	$(CC) $(CFLAGS) -I$(STB_DIR) -c $< -o $@
+	$(CC) $(CFLAGS) -DKRYON_USE_EXTERNAL_STB -I$(STB_DIR) -c $< -o $@
 
 # Create build directory
 $(BUILD_DIR):

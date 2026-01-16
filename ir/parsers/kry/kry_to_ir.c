@@ -111,8 +111,8 @@ static void parse_arguments(ConversionContext* ctx, const char* args, KryNode* d
 
     // Add parameter substitution: "initialValue" -> "5" (or "0", "10", etc.)
     if (param_value && ctx->param_count < MAX_PARAMS) {
-        ctx->params[ctx->param_count].name = param_name;
-        ctx->params[ctx->param_count].value = param_value;
+        ctx->params[ctx->param_count].name = (char*)param_name;
+        ctx->params[ctx->param_count].value = (char*)param_value;
         ctx->param_count++;
     }
 
@@ -134,8 +134,8 @@ static void parse_arguments(ConversionContext* ctx, const char* args, KryNode* d
                 // If the initializer matches our parameter name, create state variable substitution
                 if (init_expr && strcmp(init_expr, param_name) == 0) {
                     // Map state variable name to the resolved parameter value
-                    ctx->params[ctx->param_count].name = child->name;
-                    ctx->params[ctx->param_count].value = param_value;
+                    ctx->params[ctx->param_count].name = (char*)child->name;
+                    ctx->params[ctx->param_count].value = (char*)param_value;
                     ctx->param_count++;
                 }
             }
@@ -336,7 +336,7 @@ static bool is_unresolved_expr(ConversionContext* ctx, const char* expr) {
 // Component Definition Lookup
 // ============================================================================
 
-static KryNode* find_component_definition(ConversionContext* ctx, const char* name) {
+__attribute__((unused)) static KryNode* find_component_definition(ConversionContext* ctx, const char* name) {
     if (!ctx || !ctx->ast_root || !name) return NULL;
 
     // Search through top-level siblings for component definitions
@@ -1408,8 +1408,8 @@ static IRComponent* ir_component_clone_tree(IRComponent* source);
 static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode* for_node) {
     fprintf(stderr, "[DEBUG_FORLOOP] Called expand_for_loop\n");
     if (!for_node || for_node->type != KRY_NODE_FOR_LOOP) {
-        fprintf(stderr, "[DEBUG_FORLOOP] Early return: for_node=%p, type=%d\n",
-                (void*)for_node, for_node ? for_node->type : -1);
+        fprintf(stderr, "[DEBUG_FORLOOP] Early return: for_node=%p, type=%u\n",
+                (void*)for_node, for_node ? (uint32_t)for_node->type : 0xFFFFFFFFu);
         return;
     }
 
@@ -1798,8 +1798,8 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
         while (child) {
             if (child->type == KRY_NODE_PROPERTY) {
                 // Apply property
-                printf("[CONVERT_NODE] Applying property '%s', value=%p, value->type=%d\n",
-                       child->name, (void*)child->value, child->value ? child->value->type : -1);
+                printf("[CONVERT_NODE] Applying property '%s', value=%p, value->type=%u\n",
+                       child->name, (void*)child->value, child->value ? (uint32_t)child->value->type : 0xFFFFFFFFu);
                 fflush(stdout);
                 apply_property(ctx, component, child->name, child->value);
                 printf("[CONVERT_NODE] After apply_property for '%s'\n", child->name);
@@ -2549,7 +2549,7 @@ static IRComponent* expand_component_template(
     // For MVP, we just store them in the manifest
     // Full implementation would need runtime state management
     for (uint32_t i = 0; i < def->state_var_count; i++) {
-        IRComponentStateVar* state_var = &def->state_vars[i];
+        IRComponentStateVar* state_var __attribute__((unused)) = &def->state_vars[i];
         // State variables are already registered in the manifest during argument application
     }
 
@@ -2744,7 +2744,7 @@ char* ir_kry_to_kir(const char* source, size_t length) {
 
                 // Store the variable in ctx->params so for-loop expansion can access it
                 if (ctx.param_count < MAX_PARAMS && var_node->value) {
-                    ctx.params[ctx.param_count].name = var_name;
+                    ctx.params[ctx.param_count].name = (char*)var_name;
                     ctx.params[ctx.param_count].value = NULL;  // String representation
                     ctx.params[ctx.param_count].kry_value = var_node->value;  // Original KryValue
                     ctx.param_count++;

@@ -52,7 +52,7 @@ bool ir_sb_reserve(IRStringBuilder* sb, size_t capacity) {
     if (!new_buffer) return false;
 
     // Update buffer pointer (may have moved)
-    size_t offset = sb->buffer - (char*)NULL;
+    size_t offset __attribute__((unused)) = sb->buffer - (char*)NULL;
     sb->buffer = new_buffer;
     sb->capacity = new_capacity;
 

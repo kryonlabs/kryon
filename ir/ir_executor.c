@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <limits.h>
 
 // Forward declarations
 static void ir_executor_update_conditionals(IRExecutorContext* ctx);
@@ -150,7 +151,7 @@ char* ir_executor_eval_text_expression(const char* expression, const char* scope
 
     // Simple variable lookup (just the variable name, no complex expressions yet)
     // First try to find variable in the specified scope
-    for (uint32_t i = 0; i < executor->var_count; i++) {
+    for (int i = 0; i < executor->var_count; i++) {
         IRExecutorVar* var = &executor->vars[i];
         if (var->name && strcmp(var->name, expression) == 0) {
             // Check if scope matches
@@ -231,7 +232,7 @@ static IRValue builtin_array_add(IRExecutorContext* ctx, IRValue* args, int arg_
     // Resize if needed
     if (args[0].array_val.count >= args[0].array_val.capacity) {
         // Check for overflow before doubling
-        if (args[0].array_val.capacity > UINT32_MAX / 2) {
+        if (args[0].array_val.capacity > INT_MAX / 2) {
             printf("[executor] array_add: Cannot grow array - would overflow\n");
             return ir_value_null();
         }
@@ -797,7 +798,7 @@ static const char* extract_handler_function_name(IRLogicFunction* func) {
     }
 
     // Look for the var reference in statements
-    for (int i = 0; i < func->statement_count; i++) {
+    for (int i = 0; i < (int)func->statement_count; i++) {
         IRStatement* stmt = func->statements[i];
         if (!stmt) continue;
 
@@ -817,7 +818,7 @@ static const char* extract_handler_function_name(IRLogicFunction* func) {
 static const char* get_function_source(IRExecutorContext* ctx, IRLogicFunction* func, const char* lang) {
     // First check function-level sources (more specific)
     if (func && func->source_count > 0) {
-        for (int i = 0; i < func->source_count; i++) {
+        for (int i = 0; i < (int)func->source_count; i++) {
             if (func->sources[i].language && strcmp(func->sources[i].language, lang) == 0) {
                 return func->sources[i].source;
             }
@@ -1190,7 +1191,7 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
                                 // Resize if needed
                                 if (value.array_val.count >= value.array_val.capacity) {
                                     // Check for overflow before doubling
-                                    if (value.array_val.capacity > UINT32_MAX / 2) {
+                                    if (value.array_val.capacity > INT_MAX / 2) {
                                         // Cannot grow further - skip remaining elements
                                         break;
                                     }
@@ -1643,7 +1644,7 @@ static IRValue eval_expr_value(IRExecutorContext* ctx, IRExpression* expr, uint3
 
             // Evaluate arguments
             IRValue* args = (IRValue*)calloc(expr->call.arg_count, sizeof(IRValue));
-            for (int i = 0; i < expr->call.arg_count; i++) {
+            for (int i = 0; i < (int)expr->call.arg_count; i++) {
                 args[i] = eval_expr_value(ctx, expr->call.args[i], instance_id);
             }
 
@@ -1651,7 +1652,7 @@ static IRValue eval_expr_value(IRExecutorContext* ctx, IRExpression* expr, uint3
             IRValue result = func(ctx, args, expr->call.arg_count, instance_id);
 
             // Free arguments
-            for (int i = 0; i < expr->call.arg_count; i++) {
+            for (int i = 0; i < (int)expr->call.arg_count; i++) {
                 ir_value_free(&args[i]);
             }
             free(args);
@@ -1760,11 +1761,11 @@ static void exec_stmt(IRExecutorContext* ctx, IRStatement* stmt, uint32_t instan
         case STMT_IF: {
             int64_t cond = eval_expr(ctx, stmt->if_stmt.condition, instance_id);
             if (cond) {
-                for (int i = 0; i < stmt->if_stmt.then_count; i++) {
+                for (int i = 0; i < (int)stmt->if_stmt.then_count; i++) {
                     exec_stmt(ctx, stmt->if_stmt.then_body[i], instance_id);
                 }
             } else {
-                for (int i = 0; i < stmt->if_stmt.else_count; i++) {
+                for (int i = 0; i < (int)stmt->if_stmt.else_count; i++) {
                     exec_stmt(ctx, stmt->if_stmt.else_body[i], instance_id);
                 }
             }
@@ -1810,7 +1811,7 @@ static void exec_stmt(IRExecutorContext* ctx, IRStatement* stmt, uint32_t instan
 
                 args[0] = var->value;  // Direct reference (no copy)
 
-                for (int i = 1; i < stmt->call.arg_count; i++) {
+                for (int i = 1; i < (int)stmt->call.arg_count; i++) {
                     args[i] = eval_expr_value(ctx, stmt->call.args[i], instance_id);
                 }
 
@@ -1842,7 +1843,7 @@ static void exec_stmt(IRExecutorContext* ctx, IRStatement* stmt, uint32_t instan
                 ir_executor_render_for_loops(ctx);
 
                 // Free evaluated arguments (but not args[0] which is the variable)
-                for (int i = 1; i < stmt->call.arg_count; i++) {
+                for (int i = 1; i < (int)stmt->call.arg_count; i++) {
                     ir_value_free(&args[i]);
                 }
                 free(args);
@@ -1850,14 +1851,14 @@ static void exec_stmt(IRExecutorContext* ctx, IRStatement* stmt, uint32_t instan
             } else {
                 // Regular function call (pure, returns value)
                 IRValue* args = (IRValue*)calloc(stmt->call.arg_count, sizeof(IRValue));
-                for (int i = 0; i < stmt->call.arg_count; i++) {
+                for (int i = 0; i < (int)stmt->call.arg_count; i++) {
                     args[i] = eval_expr_value(ctx, stmt->call.args[i], instance_id);
                 }
 
                 IRValue result = func(ctx, args, stmt->call.arg_count, instance_id);
                 ir_value_free(&result);
 
-                for (int i = 0; i < stmt->call.arg_count; i++) {
+                for (int i = 0; i < (int)stmt->call.arg_count; i++) {
                     ir_value_free(&args[i]);
                 }
                 free(args);
@@ -1880,7 +1881,7 @@ bool ir_executor_run_universal(IRExecutorContext* ctx, IRLogicFunction* func, ui
 
     printf("[executor] Running universal logic for instance %u\n", instance_id);
 
-    for (int i = 0; i < func->statement_count; i++) {
+    for (int i = 0; i < (int)func->statement_count; i++) {
         exec_stmt(ctx, func->statements[i], instance_id);
     }
 
@@ -2022,7 +2023,7 @@ static void update_text_recursive(IRExecutorContext* ctx, IRComponent* comp, uin
     }
 
     // Recurse to children
-    for (int i = 0; i < comp->child_count; i++) {
+    for (int i = 0; i < (int)comp->child_count; i++) {
         update_text_recursive(ctx, comp->children[i], instance_id);
     }
 }
