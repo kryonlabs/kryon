@@ -344,6 +344,10 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
  * Web Codegen (HTML Generation)
  * ============================================================================ */
 
+// External function from codegens/web/kir_to_html.c
+extern int kir_to_html_main(const char* source_dir, const char* kir_file,
+                             const char* output_dir, const char* project_name);
+
 int generate_html_from_kir(const char* kir_file, const char* output_dir,
                            const char* project_name, const char* source_dir) {
     char* cwd = dir_get_current();
@@ -363,45 +367,10 @@ int generate_html_from_kir(const char* kir_file, const char* output_dir,
         snprintf(abs_output_dir, sizeof(abs_output_dir), "%s/%s", cwd, output_dir);
     }
 
-    // Run web codegen
-    char* home = getenv("HOME");
-    if (!home) {
-        fprintf(stderr, "Error: HOME environment variable not set\n");
-        free(cwd);
-        return 1;
-    }
-
-    char kir_to_html_path[PATH_MAX];
-    snprintf(kir_to_html_path, sizeof(kir_to_html_path),
-             "%s/.local/share/kryon/bin/kir_to_html", home);
-
-    if (!file_exists(kir_to_html_path)) {
-        fprintf(stderr, "Error: kir_to_html not found at %s\n", kir_to_html_path);
-        fprintf(stderr, "Please run 'make install' in the CLI directory\n");
-        free(cwd);
-        return 1;
-    }
-
-    char codegen_cmd[8192];
-    if (project_name) {
-        snprintf(codegen_cmd, sizeof(codegen_cmd),
-                 "\"%s\" \"%s\" \"%s\" \"%s\" --project-name \"%s\" 2>&1",
-                 kir_to_html_path, source_dir, abs_kir_path, abs_output_dir, project_name);
-    } else {
-        snprintf(codegen_cmd, sizeof(codegen_cmd),
-                 "\"%s\" \"%s\" \"%s\" \"%s\" 2>&1",
-                 kir_to_html_path, source_dir, abs_kir_path, abs_output_dir);
-    }
-
     free(cwd);
 
-    int result = system(codegen_cmd);
-    if (result != 0) {
-        fprintf(stderr, "Error: HTML generation failed\n");
-        return 1;
-    }
-
-    return 0;
+    // Call kir_to_html directly (linked into binary) instead of spawning subprocess
+    return kir_to_html_main(source_dir ? source_dir : ".", abs_kir_path, abs_output_dir, project_name);
 }
 
 /* ============================================================================

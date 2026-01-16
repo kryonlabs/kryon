@@ -60,12 +60,16 @@ RENDERER_SOURCES = \
     sdl3_fonts.c \
     sdl3_effects.c
 
+# STB Image implementation (needed for screenshot functionality)
+STB_DIR = ../../third_party/stb
+
 # Special handling for object files with different paths
 OBJECTS = \
     $(BUILD_DIR)/sdl3_sdl3_backend.o \
     $(BUILD_DIR)/sdl3_sdl3_input.o \
     $(BUILD_DIR)/sdl3_sdl3_fonts.o \
-    $(BUILD_DIR)/sdl3_sdl3_effects.o
+    $(BUILD_DIR)/sdl3_sdl3_effects.o \
+    $(BUILD_DIR)/sdl3_stb_image_impl.o
 
 # ============================================================================
 # Build Targets
@@ -96,6 +100,11 @@ $(SHARED_LIB): $(OBJECTS) | $(BUILD_DIR)
 $(BUILD_DIR)/sdl3_%.o: %.c | $(BUILD_DIR)
 	@echo "Compiling SDL3 renderer: $<"
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# Build stb_image_impl.c (from desktop backend)
+$(BUILD_DIR)/sdl3_stb_image_impl.o: ../../backends/desktop/stb_image_impl.c | $(BUILD_DIR)
+	@echo "Compiling STB Image implementation: $<"
+	$(CC) $(CFLAGS) -I$(STB_DIR) -c $< -o $@
 
 # Create build directory
 $(BUILD_DIR):

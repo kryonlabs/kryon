@@ -23,37 +23,29 @@
 // Global IR context (from ir_core.c)
 extern IRContext* g_ir_context;
 
-int main(int argc, char** argv) {
-    if (argc < 4) {
-        fprintf(stderr, "Usage: %s <source_dir> <input.kir> <output_dir> [--embedded-css] [--project-name <name>]\n", argv[0]);
-        fprintf(stderr, "Options:\n");
-        fprintf(stderr, "  source_dir         Directory containing source files (for asset copying)\n");
-        fprintf(stderr, "  --embedded-css     Embed CSS in <style> tag instead of external file\n");
-        fprintf(stderr, "  --project-name     Project name for handler namespace (e.g., 'habits')\n");
+/**
+ * Callable function for embedding into kryon CLI
+ * Converts KIR to HTML without spawning a subprocess
+ *
+ * @param source_dir Directory containing source files (for asset copying)
+ * @param kir_file Path to the KIR file to convert
+ * @param output_dir Directory where HTML will be written
+ * @param project_name Optional project name for Lua namespace (can be NULL)
+ * @return 0 on success, non-zero on failure
+ */
+int kir_to_html_main(const char* source_dir, const char* kir_file,
+                     const char* output_dir, const char* project_name) {
+    if (!source_dir || !kir_file || !output_dir) {
+        fprintf(stderr, "Error: source_dir, kir_file, and output_dir are required\n");
         return 1;
-    }
-
-    const char* source_dir = argv[1];
-    const char* kir_file = argv[2];
-    const char* output_dir = argv[3];
-    bool embedded_css = false;
-    const char* project_name = NULL;
-
-    // Parse optional flags
-    for (int i = 4; i < argc; i++) {
-        if (strcmp(argv[i], "--embedded-css") == 0) {
-            embedded_css = true;
-        } else if (strcmp(argv[i], "--project-name") == 0 && i + 1 < argc) {
-            project_name = argv[++i];
-        }
     }
 
     printf("Converting KIR to HTML...\n");
     printf("  Source: %s\n", source_dir);
     printf("  Input: %s\n", kir_file);
     printf("  Output: %s/\n", output_dir);
-    if (embedded_css) {
-        printf("  Mode: Embedded CSS\n");
+    if (project_name) {
+        printf("  Project: %s\n", project_name);
     }
 
     // Initialize capability system and load plugins for web rendering
@@ -126,7 +118,6 @@ int main(int argc, char** argv) {
             LuaBundler* bundler = lua_bundler_create();
             if (bundler) {
                 // Set up search paths using installed location
-                char* home = getenv("HOME");
                 char kryon_lua_path[PATH_MAX];
                 if (home) {
                     snprintf(kryon_lua_path, sizeof(kryon_lua_path),
@@ -249,3 +240,30 @@ int main(int argc, char** argv) {
 
     return success ? 0 : 1;
 }
+
+// Only compile main() when building standalone (not when embedded in CLI)
+#ifndef KRYON_EMBEDDED_CODEGEN
+int main(int argc, char** argv) {
+    if (argc < 4) {
+        fprintf(stderr, "Usage: %s <source_dir> <input.kir> <output_dir> [--project-name <name>]\n", argv[0]);
+        fprintf(stderr, "Options:\n");
+        fprintf(stderr, "  source_dir         Directory containing source files (for asset copying)\n");
+        fprintf(stderr, "  --project-name     Project name for handler namespace (e.g., 'habits')\n");
+        return 1;
+    }
+
+    const char* source_dir = argv[1];
+    const char* kir_file = argv[2];
+    const char* output_dir = argv[3];
+    const char* project_name = NULL;
+
+    // Parse optional flags
+    for (int i = 4; i < argc; i++) {
+        if (strcmp(argv[i], "--project-name") == 0 && i + 1 < argc) {
+            project_name = argv[++i];
+        }
+    }
+
+    return kir_to_html_main(source_dir, kir_file, output_dir, project_name);
+}
+#endif  // KRYON_EMBEDDED_CODEGEN
