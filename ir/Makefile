@@ -18,11 +18,12 @@ HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/nul
 HAS_HARFBUZZ = $(shell pkg-config --exists harfbuzz && echo 1 || echo 0)
 
 # Text shaping object file (only if harfbuzz is available)
+# When harfbuzz is not available, use the stub implementation
 ifeq ($(HAS_HARFBUZZ),1)
 IR_TEXT_SHAPING_OBJ = ir_text_shaping.o
 IR_TEXT_SHAPING_LIBS = $(HARFBUZZ_LIBS)
 else
-IR_TEXT_SHAPING_OBJ =
+IR_TEXT_SHAPING_OBJ = ir_bidi_stub.o
 IR_TEXT_SHAPING_LIBS =
 endif
 
