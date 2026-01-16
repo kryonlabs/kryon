@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../backends/desktop -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../backends/desktop -I../codegens/web -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
@@ -81,7 +81,7 @@ all: $(TARGET)
 
 # Minimal target - no SDL3/desktop dependencies (for terminal/web builds)
 # Note: Codegens must be built first (use 'make build-codegens' from project root)
-CFLAGS_MINIMAL = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -DKRYON_MINIMAL_BUILD -D_POSIX_C_SOURCE=200809L
+CFLAGS_MINIMAL = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../codegens/web -DKRYON_MINIMAL_BUILD -D_POSIX_C_SOURCE=200809L
 OBJS_MINIMAL = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Check if static libraries are available (Alpine provides them, Ubuntu doesn't)
@@ -104,13 +104,16 @@ MINIMAL_LIBS = -lm -lpthread -ldl \
 	$(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "-lharfbuzz -lfreetype -lfribidi")
 endif
 
-minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_common.a
+minimal: $(BUILD_DIR) $(CJSON_OBJ) ../build/libkryon_ir.a ../build/libkryon_common.a ../build/libkryon_web.a
 	@echo "Building minimal CLI..."
 	$(MAKE) -C . CFLAGS="$(CFLAGS_MINIMAL)" $(OBJS_MINIMAL)
-	$(CC) $(OBJS_MINIMAL) $(CODEGEN_OBJS) $(CJSON_OBJ) -o $(TARGET) \
+	# Build kir_to_html.o (embedded web codegen)
+	$(CC) $(CFLAGS_MINIMAL) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
+	$(CC) $(OBJS_MINIMAL) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) \
 		-Wl,--allow-multiple-definition \
-		-L../build -lkryon_ir \
 		../build/libkryon_common.a \
+		../build/libkryon_web.a \
+		-L../build -lkryon_ir \
 		../build/libkryon_common.a \
 		$(MINIMAL_LIBS)
 
@@ -134,8 +137,11 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_ir.a \
 		../build/libkryon_common.a \
 		../build/libkryon_sdl3.a \
-		../build/libkryon_desktop.a
-	$(CC) $(OBJS) $(CODEGEN_OBJS) $(CJSON_OBJ) -o $(TARGET) $(LDFLAGS)
+		../build/libkryon_desktop.a \
+		../build/libkryon_web.a
+	# Build kir_to_html.o (embedded web codegen)
+	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
+	$(CC) $(OBJS) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) $(LDFLAGS) -L../build -lkryon_web
 
 # Build IR library
 ../build/libkryon_ir.a:
@@ -153,6 +159,10 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 # Build desktop library
 ../build/libkryon_desktop.a:
 	$(MAKE) -C ../backends/desktop all
+
+# Build web library (for embedded kir_to_html)
+../build/libkryon_web.a:
+	$(MAKE) -C ../codegens/web $(BUILD_DIR)/libkryon_web.a
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
@@ -180,11 +190,8 @@ install: $(TARGET)
 	# Install C bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/c
 	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
-	# Build and install web codegen
-	$(MAKE) -C ../codegens/web kir_to_html
-	mkdir -p $(HOME)/.local/share/kryon/bin
-	cp ../codegens/web/kir_to_html $(HOME)/.local/share/kryon/bin/
-	chmod +x $(HOME)/.local/share/kryon/bin/kir_to_html
+	# Install vendor files (Fengari, etc.) for web codegen
+	$(MAKE) -C ../codegens/web install-vendor
 	# Install dev server script
 	mkdir -p $(HOME)/.local/share/kryon/scripts
 	cp scripts/dev_server.ts $(HOME)/.local/share/kryon/scripts/
@@ -194,7 +201,7 @@ install: $(TARGET)
 
 # Clean
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET)
+	rm -rf $(BUILD_DIR) $(TARGET) ../codegens/web/*.o
 
 # Rebuild
 rebuild: clean all
