@@ -89,7 +89,7 @@ static void sdl3_get_dimensions(kryon_renderer_t* renderer, uint16_t* width, uin
 static void sdl3_set_clear_color(kryon_renderer_t* renderer, uint32_t color);
 
 // Trace helper --------------------------------------------------------------
-static bool kryon_sdl3_should_trace(void) {
+__attribute__((unused)) static bool kryon_sdl3_should_trace(void) {
     static bool initialized = false;
     static bool enabled = false;
 
@@ -101,7 +101,7 @@ static bool kryon_sdl3_should_trace(void) {
     return enabled;
 }
 
-static void kryon_sdl3_trace_command(const kryon_command_t* cmd) {
+__attribute__((unused)) static void kryon_sdl3_trace_command(const kryon_command_t* cmd) {
     if (cmd == NULL) {
         return;
     }
@@ -1148,7 +1148,7 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
     }
 
     // Update dimensions if window changed
-    uint16_t current_width, current_height;
+    uint16_t current_width = 0, current_height = 0;
     sdl3_get_dimensions(renderer, &current_width, &current_height);
     if (current_width != backend->last_width || current_height != backend->last_height) {
         backend->last_width = current_width;
@@ -1348,6 +1348,7 @@ static void sdl3_execute_commands(kryon_renderer_t* renderer, kryon_cmd_buf_t* b
 }
 
 static void sdl3_end_frame(kryon_renderer_t* renderer) {
+    (void)renderer;  // Unused parameter
     // SDL3 doesn't need explicit end frame operations
     // Everything is handled in swap_buffers
 }
@@ -1623,6 +1624,7 @@ uint16_t kryon_load_font(const char* name, uint16_t size) {
 }
 
 void kryon_get_font_metrics(uint16_t font_id, uint16_t* width, uint16_t* height) {
+    (void)font_id;  // Unused parameter
     // Simplified font metrics - in a full implementation we'd cache actual font data
     if (width) *width = 8;  // Approximate monospace width
     if (height) *height = 16; // Approximate height

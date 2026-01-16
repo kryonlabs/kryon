@@ -255,6 +255,7 @@ void kryon_sdl3_set_cursor(SDL_SystemCursor cursor) {
 }
 
 void kryon_sdl3_show_cursor(bool show) {
+    (void)show;  // Parameter reserved for future use
     SDL_ShowCursor();
 }
 

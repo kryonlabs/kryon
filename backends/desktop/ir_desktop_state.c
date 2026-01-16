@@ -260,6 +260,8 @@ void* ir_desktop_get_render_target_window(IRDesktopState* state) {
 // ============================================================================
 
 IRInstanceContext* ir_desktop_route_input(float x, float y, void* window) {
+    (void)x;  // Unused parameters - reserved for future hit testing
+    (void)y;
     // Find instance with matching window
     for (uint32_t i = 0; i < g_desktop_state_count; i++) {
         IRDesktopState* state = g_desktop_states[i];
