@@ -80,6 +80,14 @@ void ir_layout_mark_dirty(IRComponent* component) {
     }
 }
 
+void ir_component_mark_style_dirty(IRComponent* component) {
+    if (!component) return;
+    ir_layout_mark_dirty(component);
+    if (component->layout_state) {
+        component->layout_state->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
+    }
+}
+
 void ir_layout_mark_render_dirty(IRComponent* component) {
     if (!component || !component->layout_state) return;
 

@@ -11,14 +11,8 @@
 #include <string.h>
 #include <ctype.h>
 
-// Helper function to mark component dirty when layout changes
-static void mark_style_dirty(IRComponent* component) {
-    if (!component) return;
-    ir_layout_mark_dirty(component);
-    if (component->layout_state) {
-        component->layout_state->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
-    }
-}
+// Use ir_component_mark_style_dirty() from ir_layout.c
+#define mark_style_dirty ir_component_mark_style_dirty
 
 // Case-insensitive string comparison
 static int ir_str_ieq(const char* a, const char* b) {

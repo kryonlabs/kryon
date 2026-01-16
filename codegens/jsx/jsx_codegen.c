@@ -4,6 +4,7 @@
  */
 
 #include "jsx_codegen.h"
+#include "../codegen_common.h"
 #include "../react_common.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
@@ -103,26 +104,14 @@ char* jsx_codegen_from_json(const char* kir_json) {
 bool jsx_codegen_generate(const char* kir_path, const char* output_path) {
     if (!kir_path || !output_path) return false;
 
-    // Read KIR file
-    FILE* f = fopen(kir_path, "r");
-    if (!f) {
-        fprintf(stderr, "Error: Could not open KIR file: %s\n", kir_path);
-        return false;
-    }
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("JSX");
 
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* kir_json = malloc(size + 1);
+    // Read KIR file using shared utility
+    char* kir_json = codegen_read_kir_file(kir_path, NULL);
     if (!kir_json) {
-        fclose(f);
         return false;
     }
-
-    fread(kir_json, 1, size, f);
-    kir_json[size] = '\0';
-    fclose(f);
 
     // Generate JSX code
     char* jsx_code = jsx_codegen_from_json(kir_json);
@@ -132,20 +121,14 @@ bool jsx_codegen_generate(const char* kir_path, const char* output_path) {
         return false;
     }
 
-    // Write output
-    f = fopen(output_path, "w");
-    if (!f) {
-        fprintf(stderr, "Error: Could not write output file: %s\n", output_path);
-        free(jsx_code);
-        return false;
-    }
-
-    fputs(jsx_code, f);
-    fclose(f);
+    // Write output using shared utility
+    bool success = codegen_write_output_file(output_path, jsx_code);
     free(jsx_code);
 
-    printf("✓ Generated JSX code: %s\n", output_path);
-    return true;
+    if (success) {
+        printf("✓ Generated JSX code: %s\n", output_path);
+    }
+    return success;
 }
 
 bool jsx_codegen_generate_with_options(const char* kir_path,
@@ -165,26 +148,14 @@ bool jsx_codegen_generate_with_options(const char* kir_path,
         options = &default_opts;
     }
 
-    // Read KIR file
-    FILE* f = fopen(kir_path, "r");
-    if (!f) {
-        fprintf(stderr, "Error: Could not open KIR file: %s\n", kir_path);
-        return false;
-    }
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("JSX");
 
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* kir_json = malloc(size + 1);
+    // Read KIR file using shared utility
+    char* kir_json = codegen_read_kir_file(kir_path, NULL);
     if (!kir_json) {
-        fclose(f);
         return false;
     }
-
-    fread(kir_json, 1, size, f);
-    kir_json[size] = '\0';
-    fclose(f);
 
     // Generate JSX code
     char* jsx_code = jsx_codegen_from_json(kir_json);
@@ -194,17 +165,13 @@ bool jsx_codegen_generate_with_options(const char* kir_path,
         return false;
     }
 
-    // Write output
-    f = fopen(output_path, "w");
-    if (!f) {
-        fprintf(stderr, "Error: Could not write output file: %s\n", output_path);
-        free(jsx_code);
+    // Write output using shared utility
+    bool success = codegen_write_output_file(output_path, jsx_code);
+    free(jsx_code);
+
+    if (!success) {
         return false;
     }
-
-    fputs(jsx_code, f);
-    fclose(f);
-    free(jsx_code);
 
     printf("✓ Generated JSX code: %s\n", output_path);
 

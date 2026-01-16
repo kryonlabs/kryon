@@ -67,14 +67,7 @@ __attribute__((unused)) static int ir_str_ieq(const char* a, const char* b) {
 // ir_color_named moved to ir_color_utils.c
 // TabGroup functions moved to ir_tabgroup.c
 
-// Helper function to mark component dirty when style changes
-__attribute__((unused)) static void mark_style_dirty(IRComponent* component) {
-    if (!component) return;
-    ir_layout_mark_dirty(component);
-    if (component->layout_state) {
-        component->layout_state->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
-    }
-}
+// mark_style_dirty has been consolidated into ir_component_mark_style_dirty() in ir_layout.c
 
 // Context Management
 IRContext* ir_create_context(void) {

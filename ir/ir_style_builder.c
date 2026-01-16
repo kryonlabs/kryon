@@ -16,14 +16,8 @@ extern void ir_animation_destroy(struct IRAnimation* anim);
 extern void ir_transition_destroy(struct IRTransition* transition);
 extern void ir_gradient_destroy(struct IRGradient* gradient);
 
-// Helper function to mark component dirty when style changes
-static void mark_style_dirty(IRComponent* component) {
-    if (!component) return;
-    ir_layout_mark_dirty(component);
-    if (component->layout_state) {
-        component->layout_state->dirty_flags |= IR_DIRTY_STYLE | IR_DIRTY_LAYOUT;
-    }
-}
+// Use ir_component_mark_style_dirty() from ir_layout.c
+#define mark_style_dirty ir_component_mark_style_dirty
 
 // ============================================================================
 // Style Management

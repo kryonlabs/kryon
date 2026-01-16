@@ -5,6 +5,7 @@
  */
 
 #include "ir_c_codegen.h"
+#include "../codegen_common.h"
 #include "../../ir/ir_c_metadata.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
@@ -711,32 +712,14 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
 bool ir_generate_c_code(const char* kir_path, const char* output_path) {
     if (!kir_path || !output_path) return false;
 
-    // Read KIR file
-    FILE* f = fopen(kir_path, "r");
-    if (!f) {
-        fprintf(stderr, "Error: Failed to open KIR file: %s\n", kir_path);
-        return false;
-    }
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("C");
 
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* content = malloc(size + 1);
+    // Read KIR file using shared utility
+    char* content = codegen_read_kir_file(kir_path, NULL);
     if (!content) {
-        fclose(f);
         return false;
     }
-
-    size_t bytes_read = fread(content, 1, size, f);
-    if (bytes_read != (size_t)size) {
-        fprintf(stderr, "Error: Failed to read complete KIR file\n");
-        free(content);
-        fclose(f);
-        return false;
-    }
-    content[size] = '\0';
-    fclose(f);
 
     // Generate code
     bool result = ir_generate_c_code_from_string(content, output_path);
