@@ -64,7 +64,8 @@ OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 TARGET = kryon
 
 # Codegen object files (only include existing ones)
-CODEGEN_OBJS = $(wildcard ../codegens/kry/kry_codegen.o) \
+CODEGEN_OBJS = $(wildcard ../build/codegen_common.o) \
+               $(wildcard ../codegens/kry/kry_codegen.o) \
                $(wildcard ../codegens/tsx/tsx_codegen.o) \
                $(wildcard ../codegens/nim/nim_codegen.o) \
                $(wildcard ../codegens/lua/lua_codegen.o) \
