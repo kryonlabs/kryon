@@ -198,32 +198,24 @@ jobs:
           name: kryon-linux-x86_64-desktop
           path: kryon-desktop-bundle.tar.gz
 
-  # Job 3: Web build - fully static with musl (works on any Linux)
+  # Job 3: Web build - glibc-based for Ubuntu compatibility (with plugins)
   build-web:
-    runs-on: ubuntu-latest
-    container:
-      image: alpine:3.20
+    runs-on: ubuntu-24.04
     steps:
-      - name: Install Alpine dependencies
+      - name: Install dependencies
         run: |
-          apk add --no-cache \
+          sudo apt-get update
+          sudo apt-get install -y \
             git \
-            build-base \
-            pkgconf \
-            harfbuzz-dev \
-            harfbuzz-static \
-            freetype-dev \
-            freetype-static \
-            fribidi-dev \
-            fribidi-static \
-            graphite2-dev \
-            graphite2-static \
-            bzip2-static \
-            libpng-static \
-            zlib-static \
-            brotli-static \
-            raylib-dev \
-            bash \
+            build-essential \
+            pkg-config \
+            libharfbuzz-dev \
+            libfreetype6-dev \
+            libfribidi-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            libpng-dev \
+            libbrotli-dev \
             curl \
             unzip
 
