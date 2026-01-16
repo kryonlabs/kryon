@@ -340,6 +340,8 @@ uninstall:
 	rm -rf $(INCDIR)
 	rm -f $(PKGCONFIGDIR)/kryon.pc
 	rm -rf $(CONFIGDIR)
+	rm -rf $(HOME)/.local/share/kryon
+	rm -rf $(HOME)/.local/lib/libkryon_*.so
 	@echo "Uninstallation complete!"
 
 # Health check and dependency verification

@@ -205,6 +205,7 @@ bool kryon_cmd_buf_is_empty(kryon_cmd_buf_t* buf) {
 
 static const uint16_t kCommandSize = sizeof(kryon_command_t);
 
+static void kryon_cmd_buf_write(kryon_cmd_buf_t* buf, const uint8_t* data, uint16_t size) __attribute__((unused));
 static void kryon_cmd_buf_write(kryon_cmd_buf_t* buf, const uint8_t* data, uint16_t size) {
     for (uint16_t i = 0; i < size; i++) {
         buf->buffer[buf->head] = data[i];
@@ -249,7 +250,7 @@ bool kryon_cmd_buf_push(kryon_cmd_buf_t* buf, const kryon_command_t* cmd) {
 
 
     // Write at head position, then advance head
-    uint32_t write_start = buf->head;
+    uint32_t write_start __attribute__((unused)) = buf->head;
     for (uint32_t i = 0; i < kCommandSize; i++) {
         buf->buffer[buf->head] = cmd_bytes[i];
         buf->head = (buf->head + 1) % KRYON_CMD_BUF_SIZE;
@@ -556,7 +557,7 @@ bool kryon_cmd_iter_next(kryon_cmd_iterator_t* iter, kryon_command_t* cmd) {
         return false;
     }
 
-    uint16_t start_pos = iter->position;
+    uint16_t start_pos __attribute__((unused)) = iter->position;
 
     for (uint32_t i = 0; i < kCommandSize; i++) {
         ((uint8_t*)cmd)[i] = iter->buf->buffer[iter->position];

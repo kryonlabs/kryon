@@ -332,7 +332,13 @@ bool markdown_codegen_generate(const char* kir_path, const char* output_path) {
         return false;
     }
 
-    fread(kir_json, 1, size, f);
+    size_t bytes_read = fread(kir_json, 1, size, f);
+    if (bytes_read != (size_t)size) {
+        fprintf(stderr, "Error: Failed to read complete KIR file\n");
+        free(kir_json);
+        fclose(f);
+        return false;
+    }
     kir_json[size] = '\0';
     fclose(f);
 

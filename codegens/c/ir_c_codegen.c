@@ -45,6 +45,7 @@ static void writeln(CCodegenContext* ctx, const char* str) {
     fprintf(ctx->output, "%s\n", str);
 }
 
+static void write_raw(CCodegenContext* ctx, const char* str) __attribute__((unused));
 static void write_raw(CCodegenContext* ctx, const char* str) {
     fprintf(ctx->output, "%s", str);
 }
@@ -727,7 +728,13 @@ bool ir_generate_c_code(const char* kir_path, const char* output_path) {
         return false;
     }
 
-    fread(content, 1, size, f);
+    size_t bytes_read = fread(content, 1, size, f);
+    if (bytes_read != (size_t)size) {
+        fprintf(stderr, "Error: Failed to read complete KIR file\n");
+        free(content);
+        fclose(f);
+        return false;
+    }
     content[size] = '\0';
     fclose(f);
 

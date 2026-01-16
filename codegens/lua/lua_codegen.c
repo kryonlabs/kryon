@@ -41,11 +41,13 @@ static void lua_gen_free(LuaCodeGen* gen) {
     }
 }
 
+static bool lua_gen_append(LuaCodeGen* gen, const char* str) __attribute__((unused));
 static bool lua_gen_append(LuaCodeGen* gen, const char* str) {
     if (!gen || !gen->sb || !str) return false;
     return ir_sb_append(gen->sb, str);
 }
 
+static bool lua_gen_append_fmt(LuaCodeGen* gen, const char* fmt, ...) __attribute__((unused));
 static bool lua_gen_append_fmt(LuaCodeGen* gen, const char* fmt, ...) {
     if (!gen || !gen->sb || !fmt) return false;
 
@@ -749,7 +751,13 @@ bool lua_codegen_generate(const char* kir_path, const char* output_path) {
         return false;
     }
 
-    fread(kir_json, 1, size, f);
+    size_t bytes_read = fread(kir_json, 1, size, f);
+    if (bytes_read != (size_t)size) {
+        fprintf(stderr, "Error: Failed to read complete KIR file\n");
+        free(kir_json);
+        fclose(f);
+        return false;
+    }
     kir_json[size] = '\0';
     fclose(f);
 
@@ -810,7 +818,13 @@ bool lua_codegen_generate_with_options(const char* kir_path,
         return false;
     }
 
-    fread(kir_json, 1, size, f);
+    size_t bytes_read = fread(kir_json, 1, size, f);
+    if (bytes_read != (size_t)size) {
+        fprintf(stderr, "Error: Failed to read complete KIR file\n");
+        free(kir_json);
+        fclose(f);
+        return false;
+    }
     kir_json[size] = '\0';
     fclose(f);
 
@@ -918,7 +932,7 @@ bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
     }
 
     // Write each source file
-    cJSON* module = NULL;
+    cJSON* module __attribute__((unused)) = NULL;
     cJSON* import_item = NULL;
     int files_written = 0;
 
@@ -978,7 +992,10 @@ bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
                             if (stat(file_path, &st2) == -1) {
                                 char mkdir_cmd[2048];
                                 snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", file_path);
-                                system(mkdir_cmd);
+                                int mkdir_result = system(mkdir_cmd);
+                                if (mkdir_result != 0) {
+                                    fprintf(stderr, "Warning: mkdir command failed with code %d\n", mkdir_result);
+                                }
                             }
                             *last_slash = '/';
                         }
