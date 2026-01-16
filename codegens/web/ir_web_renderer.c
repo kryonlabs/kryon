@@ -356,7 +356,8 @@ static bool copy_asset(const char* source_dir, const char* output_dir, const cha
     create_parent_dirs(dst_full);
 
     // Copy file
-    char cmd[4096];
+    // Buffer is 8192 bytes: worst case is 3 + 2048 + 2 + 2048 + 1 = 4102, well within limit
+    char cmd[8192];
     snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s\"", src_full, dst_full);
     int ret = system(cmd);
 

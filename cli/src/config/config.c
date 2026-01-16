@@ -638,7 +638,8 @@ static void ensure_plugin_in_discovery_path(const char* plugin_name, const char*
             so_filename = so_path;
         }
 
-        char existing_so[1024];
+        // Buffer is 2048 bytes to ensure room for dest_dir (1024) + "/" + so_filename
+        char existing_so[2048];
         snprintf(existing_so, sizeof(existing_so), "%s/%s", dest_dir, so_filename);
         if (file_exists(existing_so)) {
             /* Already installed */
@@ -660,7 +661,8 @@ static void ensure_plugin_in_discovery_path(const char* plugin_name, const char*
         so_filename = so_path;
     }
 
-    char dest_so[1024];
+    // Buffer is 2048 bytes to ensure room for dest_dir (1024) + "/" + so_filename
+    char dest_so[2048];
     snprintf(dest_so, sizeof(dest_so), "%s/%s", dest_dir, so_filename);
     if (copy_file(so_path, dest_so) != 0) {
         fprintf(stderr, "[kryon][plugin] Warning: Failed to copy .so for %s\n", plugin_name);
@@ -668,7 +670,8 @@ static void ensure_plugin_in_discovery_path(const char* plugin_name, const char*
     }
 
     /* Copy plugin.toml */
-    char dest_toml[1024];
+    // Buffer is 2048 bytes to ensure room for dest_dir (1024) + "/plugin.toml"
+    char dest_toml[2048];
     snprintf(dest_toml, sizeof(dest_toml), "%s/plugin.toml", dest_dir);
     if (file_exists(src_toml)) {
         if (copy_file(src_toml, dest_toml) != 0) {

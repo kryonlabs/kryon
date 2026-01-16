@@ -68,7 +68,11 @@ int kir_to_html_main(const char* source_dir, const char* kir_file,
             for (int i = 0; plugin_names[i]; i++) {
                 char so_path[PATH_MAX];
                 // Use the kryon_ prefix that matches the actual library names
+                // Buffer is PATH_MAX (4096), which is sufficient for plugin paths
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
                 snprintf(so_path, sizeof(so_path), "%s/%s/libkryon_%s.so", plugin_dir, plugin_names[i], plugin_names[i]);
+#pragma GCC diagnostic pop
 
                 if (ir_capability_load_plugin(so_path, plugin_names[i])) {
                     fprintf(stderr, "[kryon] Loaded plugin '%s'\n", plugin_names[i]);

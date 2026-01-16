@@ -211,7 +211,8 @@ static int cmd_plugin_install(int argc, char** argv) {
             printf("  Copying: %s\n", entry->d_name);
 
             // Copy file using system command
-            char cmd[2048];
+            // Buffer is 4096 bytes: worst case is 3 + 1024 + 2 + 1024 + 1 = 2054, well within limit
+            char cmd[4096];
             snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s\"", src_path, dst_path);
             if (system(cmd) != 0) {
                 fprintf(stderr, "Warning: Failed to copy %s\n", entry->d_name);
@@ -229,7 +230,8 @@ static int cmd_plugin_install(int argc, char** argv) {
     snprintf(dst_toml, sizeof(dst_toml), "%s/plugin.toml", install_dir);
     if (file_exists(src_toml)) {
         printf("  Copying: plugin.toml\n");
-        char cmd[2048];
+        // Buffer is 4096 bytes: worst case is 3 + 1024 + 2 + 1024 + 1 = 2054, well within limit
+        char cmd[4096];
         snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s\"", src_toml, dst_toml);
         int result = system(cmd);
         if (result != 0) {
