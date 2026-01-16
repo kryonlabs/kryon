@@ -160,10 +160,44 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
     if (strcmp(frontend, "tsx") == 0 || strcmp(frontend, "jsx") == 0) {
         char* tsx_parser = paths_get_tsx_parser_path();
         if (!tsx_parser || !file_exists(tsx_parser)) {
-            fprintf(stderr, "Error: TSX parser not found\n");
-            fprintf(stderr, "Please run 'make install' in the CLI directory\n");
+            // Auto-download TSX parser from GitHub
+            char* home = getenv("HOME");
+            if (!home) {
+                fprintf(stderr, "Error: HOME not set\n");
+                return 1;
+            }
+
+            char tsx_dir[PATH_MAX];
+            snprintf(tsx_dir, sizeof(tsx_dir), "%s/.local/share/kryon/tsx_parser", home);
+
+            // Create directory
+            {
+                char mkdir_cmd[PATH_MAX + 32];
+                snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", tsx_dir);
+                system(mkdir_cmd);
+            }
+
+            // Download from GitHub
+            char tsx_path[PATH_MAX];
+            snprintf(tsx_path, sizeof(tsx_path), "%s/tsx_to_kir.ts", tsx_dir);
+
+            printf("TSX parser not found, downloading from GitHub...\n");
+            char download_cmd[PATH_MAX * 2];
+            snprintf(download_cmd, sizeof(download_cmd),
+                "curl -fsSL https://raw.githubusercontent.com/kryonlabs/kryon/master/ir/parsers/tsx/tsx_to_kir.ts -o \"%s\"",
+                tsx_path);
+            int download_result = system(download_cmd);
+
+            if (download_result != 0 || !file_exists(tsx_path)) {
+                fprintf(stderr, "Error: Failed to download TSX parser\n");
+                if (tsx_parser) free(tsx_parser);
+                return 1;
+            }
+            printf("TSX parser installed to %s\n", tsx_path);
+
+            // Update tsx_parser path
             if (tsx_parser) free(tsx_parser);
-            return 1;
+            tsx_parser = str_copy(tsx_path);
         }
 
         char cmd[4096];
