@@ -667,32 +667,21 @@ char* lua_bundler_bundle(LuaBundler* bundler, const char* main_file) {
     strcat(output, "    window.kryon_lua_init_complete()\n");
     strcat(output, "end\n\n");
 
-    // Export local functions to namespace AFTER main code runs (so functions are defined)
-    // Also create global alias for easy handler access
+    // Export local functions to app namespace AFTER main code runs (so functions are defined)
+    // Uses local table instead of _G to avoid global namespace pollution
     if (bundler && bundler->project_name && bundler->local_function_count > 0) {
-        strcat(output, "-- Auto-export local functions to app namespace (after main runs)\n");
+        strcat(output, "-- Auto-export local functions to app namespace (no _G pollution)\n");
+        strcat(output, "local __kryon_app__ = {}\n");
         char namespace_line[512];
-
-        // Create namespace table
-        snprintf(namespace_line, sizeof(namespace_line),
-                "if _G.%s == nil then _G.%s = {} end\n",
-                bundler->project_name, bundler->project_name);
-        strcat(output, namespace_line);
 
         // Export each local function to namespace (functions are now defined after main ran)
         for (int i = 0; i < bundler->local_function_count; i++) {
             snprintf(namespace_line, sizeof(namespace_line),
-                    "_G.%s.%s = %s or _G.%s.%s\n",
-                    bundler->project_name, bundler->local_functions[i], bundler->local_functions[i],
-                    bundler->project_name, bundler->local_functions[i]);
+                    "__kryon_app__.%s = %s or __kryon_app__.%s\n",
+                    bundler->local_functions[i], bundler->local_functions[i],
+                    bundler->local_functions[i]);
             strcat(output, namespace_line);
         }
-
-        // Create global alias for easy handler access
-        snprintf(namespace_line, sizeof(namespace_line),
-                "%s = _G.%s\n",
-                bundler->project_name, bundler->project_name);
-        strcat(output, namespace_line);
 
         strcat(output, "\n");
     }
@@ -803,12 +792,12 @@ static char* generate_handler_registry(LuaBundler* bundler) {
     // Estimate size: header + handlers + dispatcher + namespace expansion
     size_t estimated_size = 2048;  // Base overhead
     for (size_t i = 0; i < g_handler_count; i++) {
-        // Add extra space for namespace prefixing (e.g., "habits." before each function call)
+        // Add extra space for namespace prefixing (e.g., "__kryon_app__." before each function call)
         size_t code_len = strlen(g_handlers[i].code);
         size_t namespace_extra = 0;
         if (bundler && bundler->project_name && bundler->local_function_count > 0) {
-            // Worst case: every function name gets prefixed with "namespace."
-            namespace_extra = bundler->local_function_count * strlen(bundler->project_name) * 2;
+            // Worst case: every function name gets prefixed with "__kryon_app__."
+            namespace_extra = bundler->local_function_count * 16 * 2;  // "__kryon_app__." is ~14 chars
         }
         estimated_size += code_len + namespace_extra + 64;
     }
@@ -828,7 +817,7 @@ static char* generate_handler_registry(LuaBundler* bundler) {
         snprintf(entry, sizeof(entry), "__kryon_handlers__[%u] = ", g_handlers[i].component_id);
         strcat(registry, entry);
 
-        // If project_name is set, prefix local function calls with namespace
+        // If project_name is set, prefix local function calls with __kryon_app__
         if (bundler && bundler->project_name && bundler->local_function_count > 0) {
             const char* code = g_handlers[i].code;
             char* processed_code = strdup(code);
@@ -839,13 +828,14 @@ static char* generate_handler_registry(LuaBundler* bundler) {
             for (int j = 0; j < bundler->local_function_count; j++) {
                 const char* func_name = bundler->local_functions[j];
                 size_t func_len = strlen(func_name);
-                size_t namespace_len = strlen(bundler->project_name);
+                const char* namespace_prefix = "__kryon_app__";
+                size_t namespace_len = strlen(namespace_prefix);
 
-                // We need to find and replace func_name with project_name.func_name
-                // Build the replacement string: "project_name.func_name"
+                // We need to find and replace func_name with __kryon_app__.func_name
+                // Build the replacement string: "__kryon_app__.func_name"
                 char* replacement = malloc(namespace_len + func_len + 2);
                 snprintf(replacement, namespace_len + func_len + 2, "%s.%s",
-                         bundler->project_name, func_name);
+                         namespace_prefix, func_name);
 
                 // Simple search and replace (only when followed by '(' or end of string)
                 char* found = strstr(temp, func_name);
@@ -960,6 +950,89 @@ char* lua_bundler_generate_script(LuaBundler* bundler, const char* main_file, IR
     strcat(output, "\n</script>\n");
 
     free(lua_code);
+    cleanup_handlers();
+    return output;
+}
+
+// ============================================================================
+// Self-Contained KIR Generation (Phase 1: No External File References)
+// ============================================================================
+
+// Generate script from KIR only - NO external file reading
+// All handler code comes from IRHandlerSource embedded in the KIR
+char* lua_bundler_generate_from_kir(LuaBundler* bundler, IRComponent* kir_root) {
+    if (!bundler || !kir_root) {
+        fprintf(stderr, "[LuaBundler] Error: bundler and kir_root are required\n");
+        return NULL;
+    }
+
+    printf("[LuaBundler] Generating script from KIR (self-contained, no file reading)\n");
+
+    // Extract handlers from KIR tree
+    extract_handlers_from_kir(kir_root);
+    printf("[LuaBundler] Extracted %zu handlers from KIR\n", g_handler_count);
+
+    if (g_handler_count == 0) {
+        printf("[LuaBundler] Warning: No handlers found in KIR\n");
+    }
+
+    // Generate handler registry (pass bundler for namespace prefixing)
+    char* handler_registry = generate_handler_registry(bundler);
+
+    // Calculate total size needed
+    // OS shim + init signal + handler registry + script wrapper
+    size_t os_shim_len = strlen(LUA_OS_SHIM);
+    size_t registry_len = handler_registry ? strlen(handler_registry) : 0;
+    size_t script_prefix_len = strlen("<script type=\"application/lua\">\n");
+    size_t script_suffix_len = strlen("\n</script>\n");
+
+    // Additional runtime code for web-only execution
+    const char* init_complete_code =
+        "\n-- Signal Lua initialization complete (no bundled main code)\n"
+        "local js = require(\"js\")\n"
+        "local window = js.global\n"
+        "if window and window.kryon_lua_init_complete then\n"
+        "    window.kryon_lua_init_complete()\n"
+        "end\n\n";
+
+    // Header comment explaining self-contained mode
+    const char* header_comment =
+        "-- Kryon Web: Self-Contained KIR Mode\n"
+        "-- Handler code extracted from IRHandlerSource in KIR\n"
+        "-- No external .lua files were read to generate this script\n\n";
+
+    size_t header_len = strlen(header_comment);
+    size_t init_complete_len = strlen(init_complete_code);
+
+    size_t total_size = script_prefix_len + header_len + os_shim_len +
+                        init_complete_len + registry_len + script_suffix_len + 1;
+
+    char* output = malloc(total_size);
+    if (!output) {
+        free(handler_registry);
+        cleanup_handlers();
+        return NULL;
+    }
+
+    // Build the output
+    output[0] = '\0';
+    strcat(output, "<script type=\"application/lua\">\n");
+    strcat(output, header_comment);
+    strcat(output, LUA_OS_SHIM);  // Fengari compatibility shims
+
+    // In self-contained mode, we don't bundle the main app code
+    // The component tree is already rendered as HTML, and handlers are in the registry
+    strcat(output, init_complete_code);
+
+    if (handler_registry) {
+        strcat(output, handler_registry);
+        free(handler_registry);
+    }
+
+    strcat(output, "\n</script>\n");
+
+    printf("[LuaBundler] Generated self-contained script (%zu bytes)\n", strlen(output));
+
     cleanup_handlers();
     return output;
 }

@@ -198,6 +198,30 @@ static int build_lua_desktop(KryonConfig* config) {
  * Build command entry point
  */
 int cmd_build(int argc, char** argv) {
+    // Parse command line arguments
+    const char* cli_target = NULL;
+    const char* cli_output_dir = NULL;
+    int file_arg_start = 0;
+
+    for (int i = 0; i < argc; i++) {
+        if (strncmp(argv[i], "--target=", 9) == 0) {
+            cli_target = argv[i] + 9;
+        } else if (strcmp(argv[i], "--target") == 0 && i + 1 < argc) {
+            cli_target = argv[++i];
+        } else if (strncmp(argv[i], "--output-dir=", 13) == 0) {
+            cli_output_dir = argv[i] + 13;
+        } else if (strcmp(argv[i], "--output-dir") == 0 && i + 1 < argc) {
+            cli_output_dir = argv[++i];
+        } else if (argv[i][0] == '-') {
+            fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
+            fprintf(stderr, "Supported options: --target=<web|desktop>, --output-dir=<dir>\n");
+            return 1;
+        } else if (file_arg_start == 0) {
+            // First non-option argument is the file
+            file_arg_start = i;
+        }
+    }
+
     // Find config path
     char* cwd = dir_get_current();
     if (!cwd) {
@@ -250,12 +274,34 @@ int cmd_build(int argc, char** argv) {
         return 1;
     }
 
+    // Override output_dir from CLI if specified
+    if (cli_output_dir) {
+        if (config->build_output_dir) {
+            free((char*)config->build_output_dir);
+        }
+        config->build_output_dir = str_copy(cli_output_dir);
+        printf("Using output directory from command line: %s\n", cli_output_dir);
+    }
+
     int result = 0;
 
     // Determine what to build based on targets
-    // ONLY build the first target by default - don't build all targets
-    const char* primary_target = config->build_targets_count > 0 ?
-                                  config->build_targets[0] : NULL;
+    // CLI --target= overrides config file
+    const char* primary_target;
+    if (cli_target) {
+        // Validate CLI target
+        if (strcmp(cli_target, "web") != 0 && strcmp(cli_target, "desktop") != 0) {
+            fprintf(stderr, "Error: Invalid target '%s'. Valid targets: web, desktop\n", cli_target);
+            config_free(config);
+            return 1;
+        }
+        primary_target = cli_target;
+        printf("Using target from command line: %s\n", primary_target);
+    } else {
+        // Use first target from config
+        primary_target = config->build_targets_count > 0 ?
+                          config->build_targets[0] : NULL;
+    }
     int is_desktop = primary_target && strcmp(primary_target, "desktop") == 0;
     int is_web = primary_target && strcmp(primary_target, "web") == 0;
 
@@ -274,14 +320,14 @@ int cmd_build(int argc, char** argv) {
     }
 
     // If specific file argument provided, build just that file (web only)
-    if (argc > 0) {
+    if (file_arg_start > 0 && file_arg_start < argc) {
         if (!is_web) {
             fprintf(stderr, "Error: Single file build only supports web targets\n");
             config_free(config);
             return 1;
         }
 
-        const char* source_file = argv[0];
+        const char* source_file = argv[file_arg_start];
 
         if (!file_exists(source_file)) {
             fprintf(stderr, "Error: Source file not found: %s\n", source_file);

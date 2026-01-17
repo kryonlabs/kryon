@@ -48,7 +48,8 @@ void lua_bundler_set_kryon_path(LuaBundler* bundler, const char* path);
 void lua_bundler_use_web_modules(LuaBundler* bundler, bool enable);
 
 // Set the project name for automatic handler namespace export
-// Creates _G.<project_name> table and auto-promotes local functions to it
+// Creates __kryon_app__ local table and auto-promotes local functions to it
+// Note: Uses local table instead of _G to avoid global namespace pollution
 void lua_bundler_set_project_name(LuaBundler* bundler, const char* name);
 
 // Note: lua_bundler_set_event_ids removed - direct index mapping is used instead
@@ -62,5 +63,11 @@ char* lua_bundler_bundle(LuaBundler* bundler, const char* main_file);
 // Returns HTML-safe script content with handler map injected from KIR
 // kir_root: IR component tree (used to build component_id -> handler_index mapping)
 char* lua_bundler_generate_script(LuaBundler* bundler, const char* main_file, struct IRComponent* kir_root);
+
+// Generate script from KIR only (no external file reading)
+// This is the self-contained approach: all handler code comes from IRHandlerSource in KIR
+// NO source files are read from disk - KIR is the single source of truth
+// kir_root: IR component tree with embedded handler source code
+char* lua_bundler_generate_from_kir(LuaBundler* bundler, struct IRComponent* kir_root);
 
 #endif // LUA_BUNDLER_H

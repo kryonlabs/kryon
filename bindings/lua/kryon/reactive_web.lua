@@ -86,6 +86,13 @@ function Reactive.reactive(initial)
             for _, subscriber in ipairs(subscribers) do
                 pcall(subscriber, k, v, oldValue)
             end
+
+            -- Notify JavaScript of state change for DOM updates
+            if window and window.kryonStateChanged then
+                pcall(function()
+                    window.kryonStateChanged(tostring(k))
+                end)
+            end
         end,
 
         __pairs = function(t)

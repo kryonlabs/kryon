@@ -49,6 +49,26 @@ char* ir_lua_file_to_kir(const char* filepath);
  */
 bool ir_lua_check_luajit_available(void);
 
+/**
+ * Generate KIR for a plugin from its Lua binding file
+ * This creates a proper KIR file describing the plugin's exports without executing it
+ *
+ * @param plugin_name Name of the plugin (e.g., "datetime")
+ * @param binding_path Path to the plugin's Lua binding file
+ * @return char* KIR JSON string, or NULL on error. Caller must free.
+ */
+char* ir_lua_generate_plugin_kir(const char* plugin_name, const char* binding_path);
+
+/**
+ * Generate plugin KIR files from kryon.toml configuration
+ * Reads the [plugins] section and generates KIR for each plugin
+ *
+ * @param toml_path Path to kryon.toml file
+ * @param output_dir Directory to write generated KIR files
+ * @return bool True if successful
+ */
+bool ir_lua_generate_plugin_kirs_from_toml(const char* toml_path, const char* output_dir);
+
 #ifdef __cplusplus
 }
 #endif

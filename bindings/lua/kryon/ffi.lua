@@ -477,17 +477,83 @@ ffi.cdef[[
   typedef struct IRSourceStructures IRSourceStructures;
 
   // JSON serialization
-  char* ir_serialize_json(IRComponent* root);
+  char* ir_serialize_json(IRComponent* root, IRReactiveManifest* manifest);
   char* ir_serialize_json_complete(IRComponent* root, IRReactiveManifest* manifest,
                                     IRLogicBlock* logic_block,
                                     IRSourceMetadata* source_metadata,
                                     IRSourceStructures* source_structures);
   IRComponent* ir_deserialize_json(const char* json_string);
-  bool ir_write_json_file(IRComponent* root, const char* filename);
+  // NOTE: ir_write_json_file takes manifest parameter (may be NULL)
+  bool ir_write_json_file(IRComponent* root, IRReactiveManifest* manifest, const char* filename);
   IRComponent* ir_read_json_file(const char* filename);
+  IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveManifest** out_manifest);
 
   // ForEach expansion (call after loading KIR file to expand ForEach components)
   void ir_expand_foreach(IRComponent* root);
+
+  // ============================================================================
+  // Reactive Manifest API (ir_reactive_manifest.h)
+  // Phase 3: Transpile Reactive State to KIR
+  // ============================================================================
+  typedef enum {
+    IR_REACTIVE_TYPE_INT = 0,
+    IR_REACTIVE_TYPE_FLOAT = 1,
+    IR_REACTIVE_TYPE_STRING = 2,
+    IR_REACTIVE_TYPE_BOOL = 3,
+    IR_REACTIVE_TYPE_CUSTOM = 4
+  } IRReactiveVarType;
+
+  typedef enum {
+    IR_BINDING_TEXT = 0,
+    IR_BINDING_CONDITIONAL = 1,
+    IR_BINDING_ATTRIBUTE = 2,
+    IR_BINDING_FOR_LOOP = 3,
+    IR_BINDING_CUSTOM = 4
+  } IRBindingType;
+
+  typedef union {
+    int64_t as_int;
+    double as_float;
+    char* as_string;
+    bool as_bool;
+  } IRReactiveValue;
+
+  // Manifest management
+  IRReactiveManifest* ir_reactive_manifest_create(void);
+  void ir_reactive_manifest_destroy(IRReactiveManifest* manifest);
+
+  // Variable registration - returns variable ID
+  uint32_t ir_reactive_manifest_add_var(IRReactiveManifest* manifest,
+                                        const char* name,
+                                        IRReactiveVarType type,
+                                        IRReactiveValue value);
+
+  // Set variable metadata (type string, initial value JSON, scope)
+  void ir_reactive_manifest_set_var_metadata(IRReactiveManifest* manifest,
+                                             uint32_t var_id,
+                                             const char* type_string,
+                                             const char* initial_value_json,
+                                             const char* scope);
+
+  // Binding registration
+  void ir_reactive_manifest_add_binding(IRReactiveManifest* manifest,
+                                        uint32_t component_id,
+                                        uint32_t reactive_var_id,
+                                        IRBindingType binding_type,
+                                        const char* expression);
+
+  // Conditional registration
+  void ir_reactive_manifest_add_conditional(IRReactiveManifest* manifest,
+                                            uint32_t component_id,
+                                            const char* condition,
+                                            const uint32_t* dependent_var_ids,
+                                            uint32_t dependent_var_count);
+
+  // ForLoop registration
+  void ir_reactive_manifest_add_for_loop(IRReactiveManifest* manifest,
+                                         uint32_t parent_component_id,
+                                         const char* collection_expr,
+                                         uint32_t collection_var_id);
 
   // ForEach new modular API (ir_foreach.h, ir_foreach_expand.h)
   typedef struct IRForEachDef IRForEachDef;

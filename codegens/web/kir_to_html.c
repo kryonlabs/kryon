@@ -116,6 +116,16 @@ int kir_to_html_main(const char* source_dir, const char* kir_file,
     web_ir_renderer_destroy(renderer);
 
     if (success) {
+        // Generate JavaScript reactive system from manifest (Phase 2: Self-Contained KIR)
+        // This creates kryon-reactive.js with state proxy and DOM bindings
+        if (manifest) {
+            printf("📦 Generating JavaScript reactive system from manifest...\n");
+            write_js_reactive_system(output_dir, manifest);
+        } else {
+            // Generate stub reactive system even without manifest
+            printf("📦 Generating stub JavaScript reactive system (no manifest)...\n");
+            write_js_reactive_system(output_dir, NULL);
+        }
         // Check if this is a Lua app and bundle the Lua code
         // IMPORTANT: This must happen BEFORE destroying root since we need to
         // walk the KIR tree to extract component_id -> handler_index mappings
@@ -123,36 +133,21 @@ int kir_to_html_main(const char* source_dir, const char* kir_file,
             g_ir_context->source_metadata->source_language &&
             strcmp(g_ir_context->source_metadata->source_language, "lua") == 0) {
 
-            printf("📦 Bundling Lua code for web...\n");
+            printf("📦 Generating Lua handlers from KIR (self-contained)...\n");
 
             LuaBundler* bundler = lua_bundler_create();
             if (bundler) {
-                // Set up search paths using installed location
-                char kryon_lua_path[PATH_MAX];
-                if (home) {
-                    snprintf(kryon_lua_path, sizeof(kryon_lua_path),
-                             "%s/.local/share/kryon/bindings/lua", home);
-                } else {
-                    snprintf(kryon_lua_path, sizeof(kryon_lua_path), "/usr/local/share/kryon/bindings/lua");
-                }
-
-                lua_bundler_set_kryon_path(bundler, kryon_lua_path);
-                lua_bundler_add_search_path(bundler, source_dir);
-                // Note: kryon-storage plugins should be configured in kryon.toml
-                // not hardcoded here
-                lua_bundler_use_web_modules(bundler, true);
-
                 // Set project name for automatic handler namespace export
                 if (project_name) {
                     lua_bundler_set_project_name(bundler, project_name);
-                    printf("  Using namespace: _G.%s\n", project_name);
+                    printf("  Using namespace: __kryon_app__ (project: %s)\n", project_name);
                 }
 
-                // Bundle the main Lua file with handler map from KIR
-                // The bundler extracts component_id -> handler_index mapping from root
-                // Pass input kir_file as the source file reference
-                char* bundled_script = lua_bundler_generate_script(bundler,
-                    kir_file, root);
+                // SELF-CONTAINED MODE: Generate from KIR only, no file reading
+                // All handler code is extracted from IRHandlerSource embedded in KIR
+                // The component tree is already rendered as HTML
+                printf("  Mode: Self-contained KIR (no external file references)\n");
+                char* bundled_script = lua_bundler_generate_from_kir(bundler, root);
 
                 if (bundled_script) {
                     // Append to HTML file

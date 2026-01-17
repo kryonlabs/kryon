@@ -218,10 +218,16 @@ int cmd_compile(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
         if (strncmp(argv[i], "--output=", 9) == 0) {
             output_file = argv[i] + 9;
+        } else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc) {
+            output_file = argv[++i];
         } else if (strcmp(argv[i], "--no-cache") == 0) {
             use_cache = false;
         } else if (strcmp(argv[i], "--preserve-static") == 0) {
             // TODO: implement preserve-static for codegen
+        } else if (argv[i][0] == '-') {
+            fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
+            fprintf(stderr, "Supported options: --output=<file>, --no-cache, --preserve-static\n");
+            return 1;
         }
     }
 

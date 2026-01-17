@@ -5,6 +5,140 @@
 local Reactive = {}
 
 -- ============================================================================
+-- KIR Manifest Integration (Phase 3: Self-Contained KIR)
+-- Register reactive variables with C manifest for serialization to KIR
+-- ============================================================================
+
+local ffi_available = false
+local C = nil
+local manifest = nil
+local next_var_id = 1
+
+-- Try to load FFI and create manifest (only works in compile mode, not in browser)
+local function init_manifest()
+  if manifest ~= nil then return manifest end  -- Already initialized
+
+  local ok, ffi_module = pcall(function()
+    return require("kryon.ffi")
+  end)
+
+  if ok and ffi_module and ffi_module.C then
+    ffi_available = true
+    C = ffi_module.C
+
+    -- Create manifest for this compilation
+    manifest = C.ir_reactive_manifest_create()
+    if manifest == nil then
+      print("[Reactive] Warning: Failed to create manifest")
+      ffi_available = false
+      return nil
+    end
+    print("[Reactive] KIR manifest created for reactive state transpilation")
+    return manifest
+  end
+
+  return nil
+end
+
+-- Get reactive type enum from Lua value
+local function get_reactive_type(value)
+  local t = type(value)
+  if t == "number" then
+    if math.floor(value) == value then
+      return 0  -- IR_REACTIVE_TYPE_INT
+    else
+      return 1  -- IR_REACTIVE_TYPE_FLOAT
+    end
+  elseif t == "string" then
+    return 2  -- IR_REACTIVE_TYPE_STRING
+  elseif t == "boolean" then
+    return 3  -- IR_REACTIVE_TYPE_BOOL
+  else
+    return 4  -- IR_REACTIVE_TYPE_CUSTOM (tables, etc.)
+  end
+end
+
+-- Serialize value to JSON for KIR
+local function serialize_to_json(value)
+  local t = type(value)
+  if t == "nil" then
+    return "null"
+  elseif t == "boolean" then
+    return value and "true" or "false"
+  elseif t == "number" then
+    return tostring(value)
+  elseif t == "string" then
+    -- Escape special characters
+    local escaped = value:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
+    return '"' .. escaped .. '"'
+  elseif t == "table" then
+    -- Check if array
+    local is_array = (#value > 0 and next(value, #value) == nil)
+    if is_array then
+      local parts = {}
+      for i, v in ipairs(value) do
+        table.insert(parts, serialize_to_json(v))
+      end
+      return "[" .. table.concat(parts, ",") .. "]"
+    else
+      local parts = {}
+      for k, v in pairs(value) do
+        if type(k) == "string" then
+          table.insert(parts, '"' .. k .. '":' .. serialize_to_json(v))
+        end
+      end
+      return "{" .. table.concat(parts, ",") .. "}"
+    end
+  else
+    return "null"
+  end
+end
+
+-- Register a reactive variable with the KIR manifest
+local function register_var_with_manifest(name, value)
+  if not ffi_available or not manifest then
+    init_manifest()
+  end
+
+  if not ffi_available or not manifest then
+    return nil  -- Can't register without FFI
+  end
+
+  local var_type = get_reactive_type(value)
+  local ffi = require("ffi")
+
+  -- Create value union
+  local ir_value = ffi.new("IRReactiveValue")
+  if var_type == 0 then  -- INT
+    ir_value.as_int = tonumber(value) or 0
+  elseif var_type == 1 then  -- FLOAT
+    ir_value.as_float = tonumber(value) or 0.0
+  elseif var_type == 2 then  -- STRING
+    ir_value.as_string = ffi.cast("char*", value or "")
+  elseif var_type == 3 then  -- BOOL
+    ir_value.as_bool = value and true or false
+  end
+
+  -- Add variable to manifest
+  local var_id = C.ir_reactive_manifest_add_var(manifest, name, var_type, ir_value)
+
+  -- Set metadata with JSON serialization of initial value
+  local initial_json = serialize_to_json(value)
+  local type_string = type(value)
+  C.ir_reactive_manifest_set_var_metadata(manifest, var_id, type_string, initial_json, "state")
+
+  return var_id
+end
+
+-- Export manifest for writing to KIR
+function Reactive.getManifest()
+  return manifest
+end
+
+-- Export registration function for DSL integration
+Reactive._registerVarWithManifest = register_var_with_manifest
+
+-- ============================================================================
 -- Reactive Context - Automatic Dependency Tracking
 -- ============================================================================
 
@@ -175,6 +309,16 @@ function Reactive.reactive(target, parent, parentKey)
   -- Return existing proxy if already reactive
   if reactiveMap[target] then
     return reactiveMap[target]
+  end
+
+  -- Phase 3: Register variables with KIR manifest (only for top-level state)
+  -- If no parent, this is the root state object - register all keys
+  if parent == nil then
+    for key, value in pairs(target) do
+      if type(key) == "string" then
+        register_var_with_manifest(key, value)
+      end
+    end
   end
 
   -- Create reactive proxy with metatable

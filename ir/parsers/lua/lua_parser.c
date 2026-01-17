@@ -14,10 +14,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include "../../../third_party/tomlc99/toml.h"
 
 static char cached_luajit_path[IR_PATH_BUFFER_SIZE] = "";
 
@@ -328,8 +330,386 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "end\n"
         "_G.require = wrapped_require\n"
         "\n"
+        "-- PHASE 1: Simple source preservation - just read the raw source\n"
+        "local source_file_path = '%s'\n"
+        "local source_content = nil\n"
+        "do\n"
+        "  local sf = io.open(source_file_path, 'r')\n"
+        "  if sf then\n"
+        "    source_content = sf:read('*a')\n"
+        "    sf:close()\n"
+        "  end\n"
+        "end\n"
+        "\n"
+        "-- Store raw source for later (simplified approach)\n"
+        "_G._kryon_source_content = source_content\n"
+        "\n"
+        "-- PHASE 1: Extract source declarations for codegen preservation\n"
+        "local source_declarations = {\n"
+        "  requires = {},\n"
+        "  functions = {},\n"
+        "  state_init = nil,\n"
+        "  initialization = nil,\n"
+        "  module_init = nil,\n"
+        "  module_constants = nil,\n"
+        "  conditional_blocks = nil,\n"
+        "  non_reactive_state = nil\n"
+        "}\n"
+        "\n"
+        "if source_content then\n"
+        "  -- Split into lines for multi-pass processing\n"
+        "  local lines = {}\n"
+        "  for line in source_content:gmatch('[^\\n]+') do\n"
+        "    table.insert(lines, line)\n"
+        "  end\n"
+        "\n"
+        "  -- Extract require statements: local X = require(\"Y\") or require('Y')\n"
+        "  for _, line in ipairs(lines) do\n"
+        "    local var, mod = line:match('local%%s+([%%w_]+)%%s*=%%s*require%%s*%%(%%s*[\"\\']([^\"\\']+)[\"\\']%%s*%%)')\n"
+        "    if var and mod then\n"
+        "      table.insert(source_declarations.requires, { variable = var, module = mod })\n"
+        "    end\n"
+        "  end\n"
+        "\n"
+        "  -- Find key line numbers\n"
+        "  local last_require_line = 0\n"
+        "  local last_early_require_line = 0  -- Last require BEFORE first function\n"
+        "  local first_function_line = 0\n"
+        "  local state_line = 0\n"
+        "  local state_end_line = 0\n"
+        "  local buildui_line = 0\n"
+        "  \n"
+        "  -- First pass: find first function line\n"
+        "  for i, line in ipairs(lines) do\n"
+        "    if first_function_line == 0 and line:match('local%%s+function%%s+[%%w_]+%%s*%%(') then\n"
+        "      first_function_line = i\n"
+        "      break\n"
+        "    end\n"
+        "  end\n"
+        "  \n"
+        "  -- Second pass: find all requires and track early vs late\n"
+        "  for i, line in ipairs(lines) do\n"
+        "    if line:match('require%%s*%%([\"\\']') then\n"
+        "      last_require_line = i\n"
+        "      if first_function_line == 0 or i < first_function_line then\n"
+        "        last_early_require_line = i\n"
+        "      end\n"
+        "    end\n"
+        "    if state_line == 0 and line:match('local%%s+state%%s*=%%s*Reactive%%.reactive') then\n"
+        "      state_line = i\n"
+        "    end\n"
+        "    if buildui_line == 0 and line:match('local%%s+function%%s+buildUI%%s*%%(') then\n"
+        "      buildui_line = i\n"
+        "    end\n"
+        "  end\n"
+        "\n"
+        "  -- Find state_end_line (closing paren of Reactive.reactive)\n"
+        "  if state_line > 0 then\n"
+        "    local depth = 0\n"
+        "    for i = state_line, #lines do\n"
+        "      local line = lines[i]\n"
+        "      for c in line:gmatch('.') do\n"
+        "        if c == '(' or c == '{' then depth = depth + 1 end\n"
+        "        if c == ')' or c == '}' then depth = depth - 1 end\n"
+        "      end\n"
+        "      if depth == 0 then\n"
+        "        state_end_line = i\n"
+        "        break\n"
+        "      end\n"
+        "    end\n"
+        "  end\n"
+        "\n"
+        "  -- Extract local function definitions with full bodies\n"
+        "  local i = 1\n"
+        "  while i <= #lines do\n"
+        "    local line = lines[i]\n"
+        "    local name, params = line:match('local%%s+function%%s+([%%w_]+)%%s*%%(' .. '([^%%)]*)')\n"
+        "    if name then\n"
+        "      local func_lines = {line}\n"
+        "      local depth = 1\n"
+        "      local j = i + 1\n"
+        "      while j <= #lines and depth > 0 do\n"
+        "        local l = lines[j]\n"
+        "        table.insert(func_lines, l)\n"
+        "        if l:match('%%f[%%w]function%%f[%%W]') or l:match('%%f[%%w]if%%f[%%W].*then') or\n"
+        "           l:match('%%f[%%w]for%%f[%%W].*do') or l:match('%%f[%%w]while%%f[%%W].*do') or\n"
+        "           l:match('%%f[%%w]repeat%%f[%%W]') then\n"
+        "          depth = depth + 1\n"
+        "        end\n"
+        "        if l:match('%%f[%%w]end%%f[%%W]') or l:match('%%f[%%w]until%%f[%%W]') then\n"
+        "          depth = depth - 1\n"
+        "        end\n"
+        "        j = j + 1\n"
+        "      end\n"
+        "      local func_source = table.concat(func_lines, '\\n')\n"
+        "      table.insert(source_declarations.functions, {\n"
+        "        name = name,\n"
+        "        params = params,\n"
+        "        line = i,\n"
+        "        source = func_source\n"
+        "      })\n"
+        "      i = j\n"
+        "    else\n"
+        "      i = i + 1\n"
+        "    end\n"
+        "  end\n"
+        "\n"
+        "  -- Extract state initialization expression\n"
+        "  local state_match = source_content:match('local%%s+state%%s*=%%s*(Reactive%%.reactive%%s*%%b())')\n"
+        "  if state_match then\n"
+        "    source_declarations.state_init = { expression = 'local state = ' .. state_match }\n"
+        "  end\n"
+        "\n"
+        "  -- =========================================================================\n"
+        "  -- MODULE_INIT: All non-require code before first function\n"
+        "  -- Includes: math.randomseed(), Storage.init(), simple assignments\n"
+        "  -- Captures code that may appear between requires (not just after last one)\n"
+        "  -- =========================================================================\n"
+        "  local module_init_lines = {}\n"
+        "  local init_end = first_function_line > 0 and first_function_line or state_line\n"
+        "  if init_end == 0 then init_end = #lines + 1 end\n"
+        "  \n"
+        "  -- Find the first require line to start from\n"
+        "  local first_require_line = 0\n"
+        "  for i, line in ipairs(lines) do\n"
+        "    if line:match('require%%s*%%([\"\\']') then\n"
+        "      first_require_line = i\n"
+        "      break\n"
+        "    end\n"
+        "  end\n"
+        "  \n"
+        "  -- Capture ALL initialization code between first require and first function\n"
+        "  -- EXCLUDING require statements themselves\n"
+        "  for i = first_require_line + 1, init_end - 1 do\n"
+        "    local line = lines[i]\n"
+        "    local trimmed = line:match('^%%s*(.-)%%s*$')\n"
+        "    -- Skip empty, comments, and require statements\n"
+        "    if trimmed and trimmed ~= '' and not trimmed:match('^%-%-') and not line:match('require%%s*%%([\"\\']') then\n"
+        "      table.insert(module_init_lines, line)\n"
+        "    end\n"
+        "  end\n"
+        "  if #module_init_lines > 0 then\n"
+        "    source_declarations.module_init = table.concat(module_init_lines, '\\n')\n"
+        "  end\n"
+        "\n"
+        "  -- =========================================================================\n"
+        "  -- MODULE_CONSTANTS: Local table/value declarations at module level\n"
+        "  -- Captures: local COLORS = {...}, local DEFAULT_COLOR = \"...\"\n"
+        "  -- For library modules that have data constants before functions\n"
+        "  -- =========================================================================\n"
+        "  local module_constants = {}\n"
+        "  local const_i = 1\n"
+        "  -- Skip to after last require line if there are any\n"
+        "  if first_require_line > 0 then\n"
+        "    const_i = first_require_line + 1\n"
+        "  end\n"
+        "  local const_end = first_function_line > 0 and first_function_line - 1 or #lines\n"
+        "  while const_i <= const_end do\n"
+        "    local line = lines[const_i]\n"
+        "    local trimmed = line:match('^%%s*(.-)%%s*$')\n"
+        "    -- Skip empty lines, comments, requires, and already-captured function calls like math.randomseed\n"
+        "    if trimmed and trimmed ~= '' and not trimmed:match('^%-%-') and not line:match('require%%s*%%([\"\\']') then\n"
+        "      -- Match: local NAME = (table or value, not function)\n"
+        "      if trimmed:match('^local%%s+[%%w_]+%%s*=') and not trimmed:match('function') then\n"
+        "        -- Check if multi-line table (ends with { optionally followed by comment)\n"
+        "        if trimmed:match('{%%s*$') or trimmed:match('{%%s*%-%-') then\n"
+        "          -- Extract complete table with brace depth tracking\n"
+        "          local table_lines = {line}\n"
+        "          local depth = 0\n"
+        "          for c in line:gmatch('.') do\n"
+        "            if c == '{' then depth = depth + 1 end\n"
+        "            if c == '}' then depth = depth - 1 end\n"
+        "          end\n"
+        "          local j = const_i + 1\n"
+        "          while j <= #lines and depth > 0 do\n"
+        "            local l = lines[j]\n"
+        "            table.insert(table_lines, l)\n"
+        "            for c in l:gmatch('.') do\n"
+        "              if c == '{' then depth = depth + 1 end\n"
+        "              if c == '}' then depth = depth - 1 end\n"
+        "            end\n"
+        "            j = j + 1\n"
+        "          end\n"
+        "          table.insert(module_constants, table.concat(table_lines, '\\n'))\n"
+        "          const_i = j\n"
+        "        else\n"
+        "          -- Single line constant (like local DEFAULT_COLOR = \"#4a90e2\")\n"
+        "          table.insert(module_constants, line)\n"
+        "          const_i = const_i + 1\n"
+        "        end\n"
+        "      else\n"
+        "        const_i = const_i + 1\n"
+        "      end\n"
+        "    else\n"
+        "      const_i = const_i + 1\n"
+        "    end\n"
+        "  end\n"
+        "  if #module_constants > 0 then\n"
+        "    source_declarations.module_constants = table.concat(module_constants, '\\n\\n')\n"
+        "  end\n"
+        "\n"
+        "  -- =========================================================================\n"
+        "  -- CONDITIONAL_BLOCKS: if X then ... end blocks at module level\n"
+        "  -- Specifically for: if Storage.get then ... end\n"
+        "  -- =========================================================================\n"
+        "  local conditional_blocks = {}\n"
+        "  local cond_i = last_early_require_line + 1\n"
+        "  while cond_i <= #lines do\n"
+        "    local line = lines[cond_i]\n"
+        "    -- Look for standalone if statements at module level (not inside functions)\n"
+        "    -- Pattern matches 'if X then' even with trailing comments\n"
+        "    local code_only = line:gsub('%-%-.*$', '')  -- Remove comments\n"
+        "    if code_only:match('^if%%s+') and code_only:match('%%s+then%%s*$') then\n"
+        "      -- Only capture if this is before state_line or state hasn't been found\n"
+        "      if state_line == 0 or cond_i < state_line then\n"
+        "        -- Capture the entire if block\n"
+        "        local block_lines = {line}\n"
+        "        local depth = 1\n"
+        "        local j = cond_i + 1\n"
+        "        while j <= #lines and depth > 0 do\n"
+        "          local l = lines[j]\n"
+        "          table.insert(block_lines, l)\n"
+        "          -- Track depth (if adds, end subtracts)\n"
+        "          if l:match('%%f[%%w]if%%f[%%W].*then') then\n"
+        "            depth = depth + 1\n"
+        "          end\n"
+        "          if l:match('^%%s*end%%s*$') or l:match('^end$') then\n"
+        "            depth = depth - 1\n"
+        "          end\n"
+        "          j = j + 1\n"
+        "        end\n"
+        "        local block_source = table.concat(block_lines, '\\n')\n"
+        "        table.insert(conditional_blocks, block_source)\n"
+        "        cond_i = j\n"
+        "      else\n"
+        "        cond_i = cond_i + 1\n"
+        "      end\n"
+        "    else\n"
+        "      cond_i = cond_i + 1\n"
+        "    end\n"
+        "  end\n"
+        "  if #conditional_blocks > 0 then\n"
+        "    source_declarations.conditional_blocks = table.concat(conditional_blocks, '\\n\\n')\n"
+        "  end\n"
+        "\n"
+        "  -- =========================================================================\n"
+        "  -- INITIALIZATION: Variable assignments between last function and state\n"
+        "  -- Captures: habitsData, currentDateTime, initialYear, initialMonth\n"
+        "  -- =========================================================================\n"
+        "  local init_code = {}\n"
+        "  -- Find the end of the last function that appears BEFORE state_line\n"
+        "  local last_func_end_before_state = 0  -- Initialize to 0, not last_require_line\n"
+        "  for _, fn in ipairs(source_declarations.functions) do\n"
+        "    if state_line > 0 and fn.line < state_line then\n"
+        "      -- Find end of this function\n"
+        "      local func_end = fn.line\n"
+        "      local depth = 1\n"
+        "      for j = fn.line + 1, #lines do\n"
+        "        local l = lines[j]\n"
+        "        if l:match('%%f[%%w]function%%f[%%W]') or l:match('%%f[%%w]if%%f[%%W].*then') or\n"
+        "           l:match('%%f[%%w]for%%f[%%W].*do') or l:match('%%f[%%w]while%%f[%%W].*do') then\n"
+        "          depth = depth + 1\n"
+        "        end\n"
+        "        if l:match('%%f[%%w]end%%f[%%W]') then\n"
+        "          depth = depth - 1\n"
+        "          if depth == 0 then\n"
+        "            func_end = j\n"
+        "            break\n"
+        "          end\n"
+        "        end\n"
+        "      end\n"
+        "      if func_end > last_func_end_before_state then\n"
+        "        last_func_end_before_state = func_end\n"
+        "      end\n"
+        "    end\n"
+        "  end\n"
+        "  \n"
+        "  -- Find where conditional blocks start (to stop init extraction there)\n"
+        "  local first_cond_line = state_line > 0 and state_line or #lines + 1\n"
+        "  for i = last_func_end_before_state + 1, (state_line > 0 and state_line - 1 or #lines) do\n"
+        "    local line = lines[i]\n"
+        "    local code_only = line:gsub('%-%-.*$', '')\n"
+        "    if code_only:match('^if%%s+') and code_only:match('%%s+then%%s*$') then\n"
+        "      first_cond_line = i\n"
+        "      break\n"
+        "    end\n"
+        "  end\n"
+        "  \n"
+        "  for i = last_func_end_before_state + 1, first_cond_line - 1 do\n"
+        "    local line = lines[i]\n"
+        "    local trimmed = line:match('^%%s*(.-)%%s*$')\n"
+        "    if trimmed and trimmed ~= '' and not trimmed:match('^%-%-') then\n"
+        "      if trimmed:match('^local%%s+[%%w_]+%%s*=') and not trimmed:match('function') then\n"
+        "        table.insert(init_code, line)\n"
+        "      end\n"
+        "    end\n"
+        "  end\n"
+        "  if #init_code > 0 then\n"
+        "    source_declarations.initialization = table.concat(init_code, '\\n')\n"
+        "  end\n"
+        "\n"
+        "  -- =========================================================================\n"
+        "  -- NON_REACTIVE_STATE: Local declarations after state init, before buildUI\n"
+        "  -- Specifically for: local editingState = { name = '' }\n"
+        "  -- =========================================================================\n"
+        "  local non_reactive_lines = {}\n"
+        "  if state_end_line > 0 then\n"
+        "    local end_line = buildui_line > 0 and buildui_line or #lines + 1\n"
+        "    -- Also stop at the next function definition\n"
+        "    for _, fn in ipairs(source_declarations.functions) do\n"
+        "      if fn.line > state_end_line and fn.line < end_line then\n"
+        "        end_line = fn.line\n"
+        "      end\n"
+        "    end\n"
+        "    \n"
+        "    for i = state_end_line + 1, end_line - 1 do\n"
+        "      local line = lines[i]\n"
+        "      local trimmed = line:match('^%%s*(.-)%%s*$')\n"
+        "      if trimmed and trimmed ~= '' and not trimmed:match('^%-%-') then\n"
+        "        -- Capture local declarations (tables, simple values, etc.)\n"
+        "        if trimmed:match('^local%%s+[%%w_]+%%s*=') and not trimmed:match('function') then\n"
+        "          -- Capture multi-line table literals\n"
+        "          if trimmed:match('{%%s*$') then\n"
+        "            local table_lines = {line}\n"
+        "            local depth = 1\n"
+        "            local j = i + 1\n"
+        "            while j <= #lines and depth > 0 do\n"
+        "              local l = lines[j]\n"
+        "              table.insert(table_lines, l)\n"
+        "              for c in l:gmatch('.') do\n"
+        "                if c == '{' then depth = depth + 1 end\n"
+        "                if c == '}' then depth = depth - 1 end\n"
+        "              end\n"
+        "              j = j + 1\n"
+        "            end\n"
+        "            table.insert(non_reactive_lines, table.concat(table_lines, '\\n'))\n"
+        "          else\n"
+        "            table.insert(non_reactive_lines, line)\n"
+        "          end\n"
+        "        end\n"
+        "      end\n"
+        "    end\n"
+        "  end\n"
+        "  if #non_reactive_lines > 0 then\n"
+        "    source_declarations.non_reactive_state = table.concat(non_reactive_lines, '\\n')\n"
+        "  end\n"
+        "\n"
+        "  -- Extract app export pattern (runtime.createReactiveApp ... return app)\n"
+        "  local app_start = source_content:find('local%%s+app%%s*=%%s*runtime%.createReactiveApp')\n"
+        "  if app_start then\n"
+        "    local app_end = source_content:find('return%%s+app', app_start)\n"
+        "    if app_end then\n"
+        "      local app_export = source_content:sub(app_start, app_end + 10)\n"
+        "      source_declarations.app_export = app_export\n"
+        "    end\n"
+        "  end\n"
+        "end\n"
+        "\n"
+        "-- Store for JSON output\n"
+        "_G._kryon_source_declarations = source_declarations\n"
+        "\n"
         "-- Load the main Lua file (print is overridden to use stderr)\n"
-        "local ok, app = pcall(dofile, '%s')\n"
+        "local ok, app = pcall(dofile, source_file_path)\n"
         "if not ok then\n"
         "  io.stderr:write('[WRAPPER] dofile error: ' .. tostring(app) .. '\\n')\n"
         "  os.exit(1)\n"
@@ -368,11 +748,119 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "    metadata.source_file = source_file_str\n"
         "  end\n"
         "\n"
-        "  -- Serialize with metadata\n"
-        "  local json = C.ir_serialize_json_complete(app.root, nil, nil, metadata, nil)\n"
+        "  -- Phase 3: Get reactive manifest for self-contained KIR\n"
+        "  local reactive_manifest = nil\n"
+        "  local ok_reactive, Reactive = pcall(require, 'kryon.reactive')\n"
+        "  if ok_reactive and Reactive and Reactive.getManifest then\n"
+        "    reactive_manifest = Reactive.getManifest()\n"
+        "    if reactive_manifest ~= nil then\n"
+        "      io.stderr:write('[Lua Parser] Including reactive manifest in KIR\\n')\n"
+        "    end\n"
+        "  end\n"
+        "\n"
+        "  -- Serialize with metadata and manifest\n"
+        "  local json = C.ir_serialize_json_complete(app.root, reactive_manifest, nil, metadata, nil)\n"
         "  if json ~= nil then\n"
-        "    io.write(ffi.string(json))\n"
+        "    local json_str = ffi.string(json)\n"
         "    C.free(json)\n"
+        "\n"
+        "    -- Inject source_declarations into the JSON\n"
+        "    local sd = _G._kryon_source_declarations\n"
+        "    if sd and (#sd.requires > 0 or #sd.functions > 0 or sd.state_init) then\n"
+        "      -- JSON escape helper\n"
+        "      local function jsonEscape(s)\n"
+        "        if not s then return 'null' end\n"
+        "        return '\"' .. s:gsub('\\\\', '\\\\\\\\'):gsub('\"', '\\\\\"'):gsub('\\n', '\\\\n'):gsub('\\r', '\\\\r'):gsub('\\t', '\\\\t') .. '\"'\n"
+        "      end\n"
+        "\n"
+        "      -- Build source_declarations JSON\n"
+        "      local sd_parts = {'  \"source_declarations\": {\\n'}\n"
+        "\n"
+        "      -- Add requires\n"
+        "      table.insert(sd_parts, '    \"requires\": [\\n')\n"
+        "      for i, req in ipairs(sd.requires) do\n"
+        "        table.insert(sd_parts, '      {\"variable\": ' .. jsonEscape(req.variable) .. ', \"module\": ' .. jsonEscape(req.module) .. '}')\n"
+        "        if i < #sd.requires then table.insert(sd_parts, ',') end\n"
+        "        table.insert(sd_parts, '\\n')\n"
+        "      end\n"
+        "      table.insert(sd_parts, '    ],\\n')\n"
+        "\n"
+        "      -- Add functions (with source bodies)\n"
+        "      table.insert(sd_parts, '    \"functions\": [\\n')\n"
+        "      for i, fn in ipairs(sd.functions) do\n"
+        "        local line_str = fn.line and tostring(fn.line) or '0'\n"
+        "        local source_str = fn.source and jsonEscape(fn.source) or 'null'\n"
+        "        table.insert(sd_parts, '      {\"name\": ' .. jsonEscape(fn.name) .. ', \"params\": ' .. jsonEscape(fn.params) .. ', \"line\": ' .. line_str .. ', \"source\": ' .. source_str .. '}')\n"
+        "        if i < #sd.functions then table.insert(sd_parts, ',') end\n"
+        "        table.insert(sd_parts, '\\n')\n"
+        "      end\n"
+        "      table.insert(sd_parts, '    ],\\n')\n"
+        "\n"
+        "      -- Add state_init\n"
+        "      if sd.state_init then\n"
+        "        table.insert(sd_parts, '    \"state_init\": {\\n')\n"
+        "        table.insert(sd_parts, '      \"expression\": ' .. jsonEscape(sd.state_init.expression) .. '\\n')\n"
+        "        table.insert(sd_parts, '    },\\n')\n"
+        "      else\n"
+        "        table.insert(sd_parts, '    \"state_init\": null,\\n')\n"
+        "      end\n"
+        "\n"
+        "      -- Add initialization (now a string, not array)\n"
+        "      if sd.initialization and type(sd.initialization) == 'string' then\n"
+        "        table.insert(sd_parts, '    \"initialization\": ' .. jsonEscape(sd.initialization) .. ',\\n')\n"
+        "      else\n"
+        "        table.insert(sd_parts, '    \"initialization\": null,\\n')\n"
+        "      end\n"
+        "\n"
+        "      -- Add module_init (code between requires and first function)\n"
+        "      if sd.module_init and type(sd.module_init) == 'string' then\n"
+        "        table.insert(sd_parts, '    \"module_init\": ' .. jsonEscape(sd.module_init) .. ',\\n')\n"
+        "      else\n"
+        "        table.insert(sd_parts, '    \"module_init\": null,\\n')\n"
+        "      end\n"
+        "\n"
+        "      -- Add module_constants (local table/value declarations at module level)\n"
+        "      if sd.module_constants and type(sd.module_constants) == 'string' then\n"
+        "        table.insert(sd_parts, '    \"module_constants\": ' .. jsonEscape(sd.module_constants) .. ',\\n')\n"
+        "      else\n"
+        "        table.insert(sd_parts, '    \"module_constants\": null,\\n')\n"
+        "      end\n"
+        "\n"
+        "      -- Add conditional_blocks (if X then ... end blocks at module level)\n"
+        "      if sd.conditional_blocks and type(sd.conditional_blocks) == 'string' then\n"
+        "        table.insert(sd_parts, '    \"conditional_blocks\": ' .. jsonEscape(sd.conditional_blocks) .. ',\\n')\n"
+        "      else\n"
+        "        table.insert(sd_parts, '    \"conditional_blocks\": null,\\n')\n"
+        "      end\n"
+        "\n"
+        "      -- Add non_reactive_state (local declarations after state init)\n"
+        "      if sd.non_reactive_state and type(sd.non_reactive_state) == 'string' then\n"
+        "        table.insert(sd_parts, '    \"non_reactive_state\": ' .. jsonEscape(sd.non_reactive_state) .. ',\\n')\n"
+        "      else\n"
+        "        table.insert(sd_parts, '    \"non_reactive_state\": null,\\n')\n"
+        "      end\n"
+        "\n"
+        "      -- Add app_export\n"
+        "      if sd.app_export and type(sd.app_export) == 'string' then\n"
+        "        table.insert(sd_parts, '    \"app_export\": ' .. jsonEscape(sd.app_export) .. '\\n')\n"
+        "      else\n"
+        "        table.insert(sd_parts, '    \"app_export\": null\\n')\n"
+        "      end\n"
+        "\n"
+        "      table.insert(sd_parts, '  },\\n')\n"
+        "      local sd_json = table.concat(sd_parts)\n"
+        "\n"
+        "      -- Insert source_declarations after the opening brace\n"
+        "      -- Find first newline after { and insert there\n"
+        "      local insert_pos = json_str:find('\\n')\n"
+        "      if insert_pos then\n"
+        "        json_str = json_str:sub(1, insert_pos) .. sd_json .. json_str:sub(insert_pos + 1)\n"
+        "      end\n"
+        "\n"
+        "      io.stderr:write('[Lua Parser] Added source_declarations: ' .. #sd.requires .. ' requires, ' .. #sd.functions .. ' functions\\n')\n"
+        "    end\n"
+        "\n"
+        "    io.write(json_str)\n"
         "  else\n"
         "    io.stderr:write('Error: Failed to serialize IR to JSON\\n')\n"
         "    os.exit(1)\n"
@@ -385,10 +873,34 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "  local module_name = os.getenv('KRYON_SOURCE_FILE') or 'module'\n"
         "  local module_id = module_name:gsub('^.*/', ''):gsub('%%.lua$', '')\n"
         "\n"
-        "  -- Build exports list\n"
+        "  -- Extract function source code using debug.getinfo\n"
+        "  local function extractFunctionSource(fn)\n"
+        "    if type(fn) ~= 'function' then return nil end\n"
+        "    local info = debug.getinfo(fn, 'S')\n"
+        "    if not info or not info.source or info.source:sub(1,1) ~= '@' then return nil end\n"
+        "    local filepath = info.source:sub(2)\n"
+        "    local file = io.open(filepath, 'r')\n"
+        "    if not file then return nil end\n"
+        "    local lines = {}\n"
+        "    local lineNum = 0\n"
+        "    for line in file:lines() do\n"
+        "      lineNum = lineNum + 1\n"
+        "      if lineNum >= info.linedefined and lineNum <= info.lastlinedefined then\n"
+        "        table.insert(lines, line)\n"
+        "      end\n"
+        "    end\n"
+        "    file:close()\n"
+        "    return table.concat(lines, '\\n')\n"
+        "  end\n"
+        "\n"
+        "  -- Build exports list with source code\n"
         "  local exports = {}\n"
         "  for k, v in pairs(app) do\n"
-        "    table.insert(exports, {name = k, type = type(v)})\n"
+        "    local exp = {name = k, type = type(v)}\n"
+        "    if type(v) == 'function' then\n"
+        "      exp.source = extractFunctionSource(v)\n"
+        "    end\n"
+        "    table.insert(exports, exp)\n"
         "  end\n"
         "\n"
         "  -- Generate KIR JSON\n"
@@ -402,6 +914,12 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "  io.write('  },\\n')\n"
         "  io.write('  \"root\": null,\\n')\n"
         "\n"
+        "  -- JSON escape helper\n"
+        "  local function jsonEscape(s)\n"
+        "    if not s then return nil end\n"
+        "    return s:gsub('\\\\', '\\\\\\\\'):gsub('\"', '\\\\\"'):gsub('\\n', '\\\\n'):gsub('\\r', '\\\\r'):gsub('\\t', '\\\\t')\n"
+        "  end\n"
+        "\n"
         "  -- Add exports if any\n"
         "  if #exports > 0 then\n"
         "    io.write('  \"exports\": [\\n')\n"
@@ -412,6 +930,28 @@ char* ir_lua_to_kir(const char* source, size_t length) {
         "    end\n"
         "    io.write('  ],\\n')\n"
         "  end\n"
+        "\n"
+        "  -- Add logic_block with function sources\n"
+        "  io.write('  \"logic_block\": {\\n')\n"
+        "  io.write('    \"functions\": {\\n')\n"
+        "  local funcCount = 0\n"
+        "  local funcExports = {}\n"
+        "  for _, exp in ipairs(exports) do\n"
+        "    if exp.type == 'function' and exp.source then\n"
+        "      table.insert(funcExports, exp)\n"
+        "    end\n"
+        "  end\n"
+        "  for i, exp in ipairs(funcExports) do\n"
+        "    io.write('      \"' .. exp.name .. '\": {\\n')\n"
+        "    io.write('        \"sources\": {\\n')\n"
+        "    io.write('          \"lua\": \"' .. jsonEscape(exp.source) .. '\"\\n')\n"
+        "    io.write('        }\\n')\n"
+        "    io.write('      }')\n"
+        "    if i < #funcExports then io.write(',') end\n"
+        "    io.write('\\n')\n"
+        "  end\n"
+        "  io.write('    }\\n')\n"
+        "  io.write('  },\\n')\n"
         "\n"
         "  io.write('  \"sources\": {\\n')\n"
         "  io.write('    \"' .. module_id .. '\": {\\n')\n"
@@ -707,6 +1247,7 @@ typedef struct ExportInfo {
     char* type;           // "function", "component", or "value"
     char** parameters;    // Parameter names
     int param_count;
+    char* source;         // Full function source code (for functions)
 } ExportInfo;
 
 typedef struct ExportList {
@@ -722,6 +1263,7 @@ static void export_info_free(ExportInfo* info) {
     if (!info) return;
     free(info->name);
     free(info->type);
+    free(info->source);
     if (info->parameters) {
         for (int i = 0; i < info->param_count; i++) {
             free(info->parameters[i]);
@@ -886,6 +1428,150 @@ static const char* find_local_function_def(const char* source, const char* func_
 }
 
 /**
+ * Extract full function source code from a Lua source file
+ * Finds "local function name(...)" or "local name = function(...)" and extracts to matching "end"
+ */
+static char* extract_function_source(const char* source, const char* func_name) {
+    if (!source || !func_name) return NULL;
+
+    char pattern[256];
+    const char* func_start = NULL;
+
+    // Try: local function name(params)
+    snprintf(pattern, sizeof(pattern), "local function %s", func_name);
+    func_start = strstr(source, pattern);
+
+    if (!func_start) {
+        // Try: local name = function(params)
+        snprintf(pattern, sizeof(pattern), "local %s = function", func_name);
+        func_start = strstr(source, pattern);
+    }
+
+    if (!func_start) return NULL;
+
+    // Find the end of this function by counting end/function keywords
+    const char* p = func_start;
+    int depth = 0;
+    bool in_string = false;
+    char string_char = 0;
+    bool found_function = false;
+
+    while (*p) {
+        // Skip strings
+        if (!in_string && (*p == '"' || *p == '\'')) {
+            in_string = true;
+            string_char = *p;
+            p++;
+            continue;
+        }
+        if (in_string) {
+            if (*p == '\\' && *(p+1)) {
+                p += 2;
+                continue;
+            }
+            if (*p == string_char) {
+                in_string = false;
+            }
+            p++;
+            continue;
+        }
+
+        // Skip long strings [[...]]
+        if (*p == '[' && *(p+1) == '[') {
+            p += 2;
+            while (*p && !(*p == ']' && *(p+1) == ']')) p++;
+            if (*p) p += 2;
+            continue;
+        }
+
+        // Skip comments
+        if (*p == '-' && *(p+1) == '-') {
+            if (*(p+2) == '[' && *(p+3) == '[') {
+                // Long comment
+                p += 4;
+                while (*p && !(*p == ']' && *(p+1) == ']')) p++;
+                if (*p) p += 2;
+            } else {
+                // Single line comment
+                while (*p && *p != '\n') p++;
+            }
+            continue;
+        }
+
+        // Track depth with function/if/for/while/repeat keywords
+        // Note: Don't count "do" separately - it's part of for/while, not a separate block
+        // In Lua: for-do-end and while-do-end are single blocks
+        if (strncmp(p, "function", 8) == 0 &&
+            (p == func_start || !isalnum((unsigned char)*(p-1))) &&
+            !isalnum((unsigned char)*(p+8)) && *(p+8) != '_') {
+            depth++;
+            found_function = true;
+            p += 8;
+            continue;
+        }
+        // Check for block-starting keywords: if, for, while, repeat
+        // Each of these pairs with exactly one "end"
+        if (strncmp(p, "if", 2) == 0 && !isalnum((unsigned char)*(p+2)) && *(p+2) != '_' &&
+            (p == func_start || !isalnum((unsigned char)*(p-1)))) {
+            depth++;
+            p += 2;
+            continue;
+        }
+        if (strncmp(p, "for", 3) == 0 && !isalnum((unsigned char)*(p+3)) && *(p+3) != '_' &&
+            (p == func_start || !isalnum((unsigned char)*(p-1)))) {
+            depth++;
+            p += 3;
+            continue;
+        }
+        if (strncmp(p, "while", 5) == 0 && !isalnum((unsigned char)*(p+5)) && *(p+5) != '_' &&
+            (p == func_start || !isalnum((unsigned char)*(p-1)))) {
+            depth++;
+            p += 5;
+            continue;
+        }
+        if (strncmp(p, "repeat", 6) == 0 && !isalnum((unsigned char)*(p+6)) && *(p+6) != '_' &&
+            (p == func_start || !isalnum((unsigned char)*(p-1)))) {
+            depth++;
+            p += 6;
+            continue;
+        }
+
+        // Check for "end" keyword
+        if (strncmp(p, "end", 3) == 0 &&
+            (p == source || !isalnum((unsigned char)*(p-1))) &&
+            !isalnum((unsigned char)*(p+3)) && *(p+3) != '_') {
+            depth--;
+            if (depth == 0 && found_function) {
+                // Found the matching end
+                const char* func_end = p + 3;
+                size_t len = func_end - func_start;
+                char* result = malloc(len + 1);
+                if (result) {
+                    memcpy(result, func_start, len);
+                    result[len] = '\0';
+                }
+                return result;
+            }
+            p += 3;
+            continue;
+        }
+
+        // Handle "until" for repeat blocks
+        if (strncmp(p, "until", 5) == 0 &&
+            (p == source || !isalnum((unsigned char)*(p-1))) &&
+            !isalnum((unsigned char)*(p+5)) && *(p+5) != '_') {
+            depth--;
+            p += 5;
+            continue;
+        }
+
+        p++;
+    }
+
+    return NULL;
+}
+
+/**
  * Extract exports from Lua source code
  * Looks for patterns like:
  * - return { ExportName = function(params) ... }
@@ -1031,11 +1717,14 @@ ExportList* lua_extract_exports(const char* source) {
         char* export_type = NULL;
         int param_count = 0;
         char** params = NULL;
+        char* func_source = NULL;
 
         if (strncmp(p, "function", 8) == 0) {
             // Inline function: return { Name = function(params) ... }
             export_type = strdup("function");
 
+            // Capture inline function source starting from "function"
+            const char* inline_func_start = p;
             p += 8;  // Skip "function"
             while (*p == ' ' || *p == '\t') p++;
 
@@ -1056,6 +1745,110 @@ ExportList* lua_extract_exports(const char* source) {
             char* params_str = strndup(params_start, p - params_start);
             params = extract_function_params(params_str, &param_count);
             free(params_str);
+
+            // Now find the end of this inline function
+            // Track depth to find matching "end"
+            int func_depth = 1;
+            const char* scan = p;
+            bool in_str = false;
+            char str_char = 0;
+
+            while (*scan && func_depth > 0) {
+                // Skip strings
+                if (!in_str && (*scan == '"' || *scan == '\'')) {
+                    in_str = true;
+                    str_char = *scan;
+                    scan++;
+                    continue;
+                }
+                if (in_str) {
+                    if (*scan == '\\' && *(scan+1)) {
+                        scan += 2;
+                        continue;
+                    }
+                    if (*scan == str_char) {
+                        in_str = false;
+                    }
+                    scan++;
+                    continue;
+                }
+
+                // Skip comments
+                if (*scan == '-' && *(scan+1) == '-') {
+                    if (*(scan+2) == '[' && *(scan+3) == '[') {
+                        scan += 4;
+                        while (*scan && !(*scan == ']' && *(scan+1) == ']')) scan++;
+                        if (*scan) scan += 2;
+                    } else {
+                        while (*scan && *scan != '\n') scan++;
+                    }
+                    continue;
+                }
+
+                // Track depth-increasing keywords
+                if ((strncmp(scan, "function", 8) == 0 || strncmp(scan, "if", 2) == 0 ||
+                     strncmp(scan, "for", 3) == 0 || strncmp(scan, "while", 5) == 0 ||
+                     strncmp(scan, "do", 2) == 0 || strncmp(scan, "repeat", 6) == 0) &&
+                    (scan == source || !isalnum((unsigned char)*(scan-1)))) {
+                    if (strncmp(scan, "function", 8) == 0 && !isalnum((unsigned char)*(scan+8))) {
+                        func_depth++;
+                        scan += 8;
+                        continue;
+                    }
+                    if (strncmp(scan, "if", 2) == 0 && !isalnum((unsigned char)*(scan+2))) {
+                        func_depth++;
+                        scan += 2;
+                        continue;
+                    }
+                    if (strncmp(scan, "for", 3) == 0 && !isalnum((unsigned char)*(scan+3))) {
+                        func_depth++;
+                        scan += 3;
+                        continue;
+                    }
+                    if (strncmp(scan, "while", 5) == 0 && !isalnum((unsigned char)*(scan+5))) {
+                        func_depth++;
+                        scan += 5;
+                        continue;
+                    }
+                    if (strncmp(scan, "do", 2) == 0 && !isalnum((unsigned char)*(scan+2))) {
+                        func_depth++;
+                        scan += 2;
+                        continue;
+                    }
+                    if (strncmp(scan, "repeat", 6) == 0 && !isalnum((unsigned char)*(scan+6))) {
+                        func_depth++;
+                        scan += 6;
+                        continue;
+                    }
+                }
+
+                // Track depth-decreasing keywords
+                if (strncmp(scan, "end", 3) == 0 &&
+                    (scan == source || !isalnum((unsigned char)*(scan-1))) &&
+                    !isalnum((unsigned char)*(scan+3))) {
+                    func_depth--;
+                    if (func_depth == 0) {
+                        // Found the end
+                        size_t func_len = (scan + 3) - inline_func_start;
+                        func_source = malloc(func_len + 1);
+                        if (func_source) {
+                            memcpy(func_source, inline_func_start, func_len);
+                            func_source[func_len] = '\0';
+                        }
+                    }
+                    scan += 3;
+                    continue;
+                }
+                if (strncmp(scan, "until", 5) == 0 &&
+                    (scan == source || !isalnum((unsigned char)*(scan-1))) &&
+                    !isalnum((unsigned char)*(scan+5))) {
+                    func_depth--;
+                    scan += 5;
+                    continue;
+                }
+
+                scan++;
+            }
         } else {
             // Variable reference: return { Name = variableName }
             // Extract the variable name
@@ -1078,7 +1871,8 @@ ExportList* lua_extract_exports(const char* source) {
                 // It's a function reference
                 export_type = strdup("function");
                 param_count = local_param_count;
-                // We don't have parameter names from the reference, but we know the count
+                // Extract full function source
+                func_source = extract_function_source(source, var_name);
             } else {
                 // It's a value/constant reference
                 export_type = strdup("value");
@@ -1095,6 +1889,7 @@ ExportList* lua_extract_exports(const char* source) {
                 ExportInfo* new_exports = realloc(list->exports, list->capacity * sizeof(ExportInfo));
                 if (!new_exports) {
                     free(export_type);
+                    free(func_source);
                     free(name_copy);
                     lua_export_list_free(list);
                     return NULL;
@@ -1107,8 +1902,10 @@ ExportList* lua_extract_exports(const char* source) {
             exp->type = export_type;
             exp->parameters = params;
             exp->param_count = param_count;
+            exp->source = func_source;  // Transfer ownership
         } else {
             free(export_type);
+            free(func_source);
         }
 
         free(name_copy);
@@ -1254,14 +2051,67 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         "-- Load the component module\n"
         "local module_exports = dofile('%s')\n"
         "\n"
+        "-- Extract source_declarations from source file\n"
+        "local source_declarations = { requires = {}, functions = {} }\n"
+        "local source_file_path = '%s'\n"
+        "local source_content = ''\n"
+        "local source_file = io.open(source_file_path, 'r')\n"
+        "if source_file then\n"
+        "  source_content = source_file:read('*a')\n"
+        "  source_file:close()\n"
+        "  \n"
+        "  -- Extract requires\n"
+        "  for line in source_content:gmatch('[^\\n]+') do\n"
+        "    local var, mod = line:match('local%%s+([%%w_]+)%%s*=%%s*require%%s*%%([\"\\']([^\"\\']+)[\"\\']%%)')\n"
+        "    if var and mod then\n"
+        "      table.insert(source_declarations.requires, { variable = var, module = mod })\n"
+        "    end\n"
+        "  end\n"
+        "  \n"
+        "  -- Extract function definitions with full bodies\n"
+        "  local lines = {}\n"
+        "  for line in source_content:gmatch('[^\\n]+') do\n"
+        "    table.insert(lines, line)\n"
+        "  end\n"
+        "  \n"
+        "  local i = 1\n"
+        "  while i <= #lines do\n"
+        "    local line = lines[i]\n"
+        "    local name, params = line:match('local%%s+function%%s+([%%w_]+)%%s*%%(' .. '([^%%)]*)' .. '%%)')\n"
+        "    if name then\n"
+        "      local func_lines = {line}\n"
+        "      local depth = 1\n"
+        "      local j = i + 1\n"
+        "      while j <= #lines and depth > 0 do\n"
+        "        local l = lines[j]\n"
+        "        table.insert(func_lines, l)\n"
+        "        if l:match('%%f[%%w]function%%f[%%W]') or l:match('%%f[%%w]if%%f[%%W].*then') or\n"
+        "           l:match('%%f[%%w]for%%f[%%W].*do') or l:match('%%f[%%w]while%%f[%%W].*do') or\n"
+        "           l:match('%%f[%%w]repeat%%f[%%W]') then\n"
+        "          depth = depth + 1\n"
+        "        end\n"
+        "        if l:match('%%f[%%w]end%%f[%%W]') or l:match('^%%s*end%%s*$') or l:match('%%f[%%w]until%%f[%%W]') then\n"
+        "          depth = depth - 1\n"
+        "        end\n"
+        "        j = j + 1\n"
+        "      end\n"
+        "      local func_source = table.concat(func_lines, '\\n')\n"
+        "      table.insert(source_declarations.functions, {\n"
+        "        name = name, params = params, line = i, source = func_source\n"
+        "      })\n"
+        "      i = j\n"
+        "    else\n"
+        "      i = i + 1\n"
+        "    end\n"
+        "  end\n"
+        "end\n"
+        "\n"
         "-- Track component definitions\n"
         "local component_defs = {}\n"
         "\n"
         "-- Helper function to check if a value is a component function\n"
-        "-- (i.e., it returns a component tree when called)\n"
         "local function is_component_function(fn)\n"
         "  if type(fn) ~= 'function' then return false end\n"
-        "  -- Try calling with empty props table to see if it returns a component\n"
         "  local success, result = pcall(fn, {})\n"
         "  return success and type(result) == 'cdata' and result.type ~= nil\n"
         "end\n"
@@ -1269,38 +2119,35 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         "-- Iterate through exports and find component definitions\n"
         "for name, export_value in pairs(module_exports) do\n"
         "  if is_component_function(export_value) then\n"
-        "    -- Call the component function with empty props to get the template\n"
         "    local success, component_root = pcall(export_value, {})\n"
         "    if success and component_root then\n"
-        "      -- Get function info for parameter extraction\n"
         "      local info = debug.getinfo(export_value)\n"
         "      local params = {}\n"
-        "      if info.what == 'Lua' and info.linedefined > 0 then\n"
-        "        -- Read source to extract parameters\n"
-        "        local filepath = info.source:sub(2)\n"
-        "        local file = io.open(filepath, 'r')\n"
-        "        if file then\n"
-        "          local content = file:read('*a')\n"
-        "          file:close()\n"
-        "          -- Find function definition and extract params\n"
-        "          local func_pattern = 'function[ %s]*' .. name .. '[ %s]*%%((.-)%%)'\n"
-        "          local param_str = content:match(func_pattern)\n"
-        "          if param_str then\n"
-        "            for param in param_str:gmatch('[^,]+') do\n"
-        "              param = param:match('^%s*(.-)%s*$')\n"
-        "              if param ~= '' and param ~= 'props' then\n"
+        "      local func_source = nil\n"
+        "      \n"
+        "      -- Find the function source from source_declarations\n"
+        "      for _, fn_def in ipairs(source_declarations.functions) do\n"
+        "        if fn_def.name == name then\n"
+        "          func_source = fn_def.source\n"
+        "          -- Parse params from source_declarations\n"
+        "          if fn_def.params then\n"
+        "            for param in fn_def.params:gmatch('[^,]+') do\n"
+        "              param = param:match('^%%s*(.-)%%s*$')\n"
+        "              if param ~= '' then\n"
         "                table.insert(params, param)\n"
         "              end\n"
         "            end\n"
         "          end\n"
+        "          break\n"
         "        end\n"
         "      end\n"
-        "\n"
-        "      -- Store component definition info\n"
+        "      \n"
+        "      -- Store component definition info with source\n"
         "      table.insert(component_defs, {\n"
         "        name = name,\n"
         "        root = component_root,\n"
-        "        params = params\n"
+        "        params = params,\n"
+        "        source = func_source\n"
         "      })\n"
         "    end\n"
         "  end\n"
@@ -1342,7 +2189,7 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         "      C.free(json_str)\n"
         "      -- Parse the JSON to extract the component tree\n"
         "      -- We'll use a simple approach: wrap it in a template field\n"
-        "      local template_json = json_str_lua:match('%b{}')\n"
+        "      local template_json = json_str_lua:match('%%b{}')\n"
         "      if template_json then\n"
         "        -- This is the component template\n"
         "        comp_def.template = template_json\n"
@@ -1404,6 +2251,12 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         "end\n"
         "\n"
         "-- For the template field, we need to insert raw JSON\n"
+        "-- JSON escape helper\n"
+        "local function json_escape(s)\n"
+        "  if not s then return '' end\n"
+        "  return s:gsub('\\\\', '\\\\\\\\'):gsub('\"', '\\\\\"'):gsub('\\n', '\\\\n'):gsub('\\r', '\\\\r'):gsub('\\t', '\\\\t')\n"
+        "end\n"
+        "\n"
         "-- So we'll do a custom serialization\n"
         "local json_parts = {}\n"
         "table.insert(json_parts, '{\\n')\n"
@@ -1414,6 +2267,25 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         "table.insert(json_parts, string.format('    \"module_id\": \"%%s\",\\n', module_id))\n"
         "table.insert(json_parts, '    \"compiler_version\": \"0.3.0\"\\n')\n"
         "table.insert(json_parts, '  },\\n')\n"
+        "\n"
+        "-- Add source_declarations\n"
+        "table.insert(json_parts, '  \"source_declarations\": {\\n')\n"
+        "table.insert(json_parts, '    \"requires\": [\\n')\n"
+        "for i, req in ipairs(source_declarations.requires) do\n"
+        "  table.insert(json_parts, string.format('      {\"variable\": \"%%s\", \"module\": \"%%s\"}', req.variable, req.module))\n"
+        "  if i < #source_declarations.requires then table.insert(json_parts, ',') end\n"
+        "  table.insert(json_parts, '\\n')\n"
+        "end\n"
+        "table.insert(json_parts, '    ],\\n')\n"
+        "table.insert(json_parts, '    \"functions\": [\\n')\n"
+        "for i, fn in ipairs(source_declarations.functions) do\n"
+        "  table.insert(json_parts, string.format('      {\"name\": \"%%s\", \"params\": \"%%s\", \"source\": \"%%s\"}', fn.name, fn.params or '', json_escape(fn.source or '')))\n"
+        "  if i < #source_declarations.functions then table.insert(json_parts, ',') end\n"
+        "  table.insert(json_parts, '\\n')\n"
+        "end\n"
+        "table.insert(json_parts, '    ]\\n')\n"
+        "table.insert(json_parts, '  },\\n')\n"
+        "\n"
         "table.insert(json_parts, '  \"root\": null,\\n')\n"
         "table.insert(json_parts, '  \"component_definitions\": [\\n')\n"
         "\n"
@@ -1430,6 +2302,13 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         "  end\n"
         "  table.insert(json_parts, '      ]')\n"
         "\n"
+        "  -- Add source field if available\n"
+        "  if def.source then\n"
+        "    table.insert(json_parts, ',\\n      \"source\": \"')\n"
+        "    table.insert(json_parts, json_escape(def.source))\n"
+        "    table.insert(json_parts, '\"')\n"
+        "  end\n"
+        "\n"
         "  -- Serialize and add the template\n"
         "  if def.root then\n"
         "    local json_str = C.ir_serialize_json_complete(def.root, nil, nil, nil, nil)\n"
@@ -1437,7 +2316,7 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         "      local json_cdata = ffi.string(json_str)\n"
         "      C.free(json_str)\n"
         "      -- Parse to get the root component\n"
-        "      local root_obj = json_cdata:match('%b{}')\n"
+        "      local root_obj = json_cdata:match('%%b{}')\n"
         "      if root_obj then\n"
         "        table.insert(json_parts, ',\\n      \"template\": ')\n"
         "        table.insert(json_parts, root_obj)\n"
@@ -1455,6 +2334,7 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         "\n"
         "io.write(table.concat(json_parts))\n",
         source_dir, source_dir, kryon_root, kryon_root,
+        source_file ? source_file : "module.lua",
         source_file ? source_file : "module.lua",
         module_id);
 
@@ -1528,6 +2408,450 @@ static char* ir_lua_component_to_kir_definitions(const char* source, size_t leng
         fprintf(stderr, "Warning: Component extraction failed for %s\n", module_id);
         free(result);
         return NULL;
+    }
+
+    return result;
+}
+
+/**
+ * Static source extraction for component modules (no execution)
+ *
+ * This is the key function for the KIR-to-Lua codegen overhaul.
+ * It extracts source_declarations from Lua source WITHOUT executing the code.
+ * This eliminates plugin dependency issues during compilation.
+ *
+ * Extracts:
+ * - require() statements -> source_declarations.requires
+ * - local function definitions -> source_declarations.functions
+ * - export declarations from return statement -> component_definitions
+ */
+static char* ir_lua_static_source_extract(const char* source, size_t length,
+                                          const char* source_file,
+                                          const char* module_id) {
+    if (!source) return NULL;
+
+    if (length == 0) {
+        length = strlen(source);
+    }
+
+    fprintf(stderr, "  [Static Extract] Processing %s (%zu bytes)\n", module_id, length);
+
+    cJSON* root = cJSON_CreateObject();
+    if (!root) return NULL;
+
+    // Add format and version
+    cJSON_AddStringToObject(root, "format", "kir");
+    cJSON_AddStringToObject(root, "version", "3.0");
+
+    // Add metadata
+    cJSON* meta = cJSON_CreateObject();
+    cJSON_AddStringToObject(meta, "source_language", "lua");
+    cJSON_AddStringToObject(meta, "module_id", module_id);
+    cJSON_AddStringToObject(meta, "compiler_version", "0.3.0");
+    if (source_file) {
+        cJSON_AddStringToObject(meta, "source_file", source_file);
+    }
+    cJSON_AddItemToObject(root, "metadata", meta);
+
+    // Add null root (component modules don't have a root component)
+    cJSON_AddNullToObject(root, "root");
+
+    // Create source_declarations object
+    cJSON* source_decls = cJSON_CreateObject();
+
+    // ========================================================================
+    // Extract requires: local X = require("Y")
+    // ========================================================================
+    cJSON* requires_array = cJSON_CreateArray();
+    const char* line_start = source;
+    const char* line_end;
+
+    while (*line_start) {
+        // Find end of line
+        line_end = line_start;
+        while (*line_end && *line_end != '\n') line_end++;
+
+        // Check for require pattern
+        const char* local_pos = strstr(line_start, "local ");
+        if (local_pos && local_pos < line_end) {
+            const char* require_pos = strstr(local_pos, "require");
+            if (require_pos && require_pos < line_end) {
+                // Extract variable name: local VARNAME = require(...)
+                const char* var_start = local_pos + 6;
+                while (*var_start == ' ' || *var_start == '\t') var_start++;
+
+                const char* var_end = var_start;
+                while (*var_end && (isalnum((unsigned char)*var_end) || *var_end == '_')) var_end++;
+
+                // Extract module name from quotes
+                const char* quote_start = strchr(require_pos, '"');
+                if (!quote_start || quote_start > line_end) {
+                    quote_start = strchr(require_pos, '\'');
+                }
+
+                if (quote_start && quote_start < line_end) {
+                    char quote_char = *quote_start;
+                    quote_start++;
+                    const char* quote_end = strchr(quote_start, quote_char);
+
+                    if (quote_end && quote_end < line_end && var_end > var_start) {
+                        // Create require entry
+                        cJSON* req = cJSON_CreateObject();
+                        char* var_name = strndup(var_start, var_end - var_start);
+                        char* mod_name = strndup(quote_start, quote_end - quote_start);
+
+                        cJSON_AddStringToObject(req, "variable", var_name);
+                        cJSON_AddStringToObject(req, "module", mod_name);
+                        cJSON_AddItemToArray(requires_array, req);
+
+                        free(var_name);
+                        free(mod_name);
+                    }
+                }
+            }
+        }
+
+        // Move to next line
+        if (*line_end == '\n') line_end++;
+        line_start = line_end;
+    }
+    cJSON_AddItemToObject(source_decls, "requires", requires_array);
+
+    // ========================================================================
+    // Extract function definitions: local function name(params) ... end
+    // ========================================================================
+    cJSON* functions_array = cJSON_CreateArray();
+
+    // Split source into lines for easier processing
+    char** lines = NULL;
+    int line_count = 0;
+    int line_capacity = 256;
+    lines = calloc(line_capacity, sizeof(char*));
+
+    line_start = source;
+    while (*line_start) {
+        line_end = line_start;
+        while (*line_end && *line_end != '\n') line_end++;
+
+        size_t line_len = line_end - line_start;
+        char* line = malloc(line_len + 1);
+        memcpy(line, line_start, line_len);
+        line[line_len] = '\0';
+
+        if (line_count >= line_capacity) {
+            line_capacity *= 2;
+            lines = realloc(lines, line_capacity * sizeof(char*));
+        }
+        lines[line_count++] = line;
+
+        if (*line_end == '\n') line_end++;
+        line_start = line_end;
+    }
+
+    // Process lines to find function definitions
+    int i = 0;
+    while (i < line_count) {
+        const char* line = lines[i];
+
+        // Look for "local function name(" pattern
+        const char* func_pattern = strstr(line, "local function ");
+        if (func_pattern) {
+            // Extract function name
+            const char* name_start = func_pattern + 15;  // strlen("local function ")
+            while (*name_start == ' ' || *name_start == '\t') name_start++;
+
+            const char* name_end = name_start;
+            while (*name_end && (isalnum((unsigned char)*name_end) || *name_end == '_')) name_end++;
+
+            if (name_end > name_start) {
+                char* func_name = strndup(name_start, name_end - name_start);
+
+                // Extract parameters
+                const char* params_start = strchr(name_end, '(');
+                const char* params_end = params_start ? strchr(params_start, ')') : NULL;
+                char* params = NULL;
+                if (params_start && params_end) {
+                    params_start++;
+                    params = strndup(params_start, params_end - params_start);
+                }
+
+                // Find the matching "end" by tracking depth
+                int depth = 1;
+                int func_start_line = i;
+                int j = i + 1;
+
+                while (j < line_count && depth > 0) {
+                    const char* l = lines[j];
+
+                    // Count block openers (skip comments)
+                    const char* comment_check = strstr(l, "--");
+                    size_t check_len = comment_check ? (size_t)(comment_check - l) : strlen(l);
+                    char* check_line = strndup(l, check_len);
+
+                    // Check for depth-increasing keywords
+                    // Count ALL function definitions (including anonymous callbacks)
+                    // Pattern: "function" followed by whitespace or "("
+                    const char* func_check = check_line;
+                    while ((func_check = strstr(func_check, "function")) != NULL) {
+                        // Check if it's a standalone keyword
+                        bool is_func_keyword = true;
+                        if (func_check > check_line) {
+                            char prev = *(func_check - 1);
+                            if (isalnum((unsigned char)prev) || prev == '_') is_func_keyword = false;
+                        }
+                        if (is_func_keyword) {
+                            char next = *(func_check + 8);
+                            // Must be followed by whitespace, (, or identifier
+                            if (next == ' ' || next == '\t' || next == '(' ||
+                                isalpha((unsigned char)next) || next == '_') {
+                                depth++;
+                            }
+                        }
+                        func_check += 8;
+                    }
+
+                    // Check if this is a single-line if/for/while (has both opener and end on same line)
+                    bool has_end = (strstr(check_line, " end") != NULL || strstr(check_line, "\tend") != NULL);
+
+                    // if ... then (but not single-line if, and not elseif)
+                    const char* if_pos = strstr(check_line, "if ");
+                    if (if_pos && strstr(check_line, " then") && !has_end) {
+                        // Make sure this is not "elseif" - check character before "if"
+                        bool is_elseif = (if_pos > check_line && *(if_pos - 1) == 'e');
+                        if (!is_elseif) {
+                            depth++;
+                        }
+                    }
+                    // for ... do
+                    if (strstr(check_line, "for ") && strstr(check_line, " do") && !has_end) {
+                        depth++;
+                    }
+                    // while ... do
+                    if (strstr(check_line, "while ") && strstr(check_line, " do") && !has_end) {
+                        depth++;
+                    }
+                    // repeat
+                    if (strstr(check_line, "repeat") && !strstr(check_line, "until")) {
+                        depth++;
+                    }
+
+                    // Count depth-decreasing keywords
+                    // For single-line constructs (if...then...end), don't count the end
+                    bool is_single_line_construct =
+                        (strstr(check_line, "if ") && strstr(check_line, " then") && has_end) ||
+                        (strstr(check_line, "for ") && strstr(check_line, " do") && has_end) ||
+                        (strstr(check_line, "while ") && strstr(check_line, " do") && has_end);
+
+                    if (!is_single_line_construct) {
+                        // Standalone "end"
+                        const char* end_check = check_line;
+                        while ((end_check = strstr(end_check, "end")) != NULL) {
+                            // Check if it's a standalone keyword (not "endif", "render", etc.)
+                            bool is_standalone = true;
+                            if (end_check > check_line) {
+                                char prev = *(end_check - 1);
+                                if (isalnum((unsigned char)prev) || prev == '_') is_standalone = false;
+                            }
+                            if (is_standalone) {
+                                char next = *(end_check + 3);
+                                if (isalnum((unsigned char)next) || next == '_') is_standalone = false;
+                            }
+                            if (is_standalone) {
+                                depth--;
+                            }
+                            end_check += 3;
+                        }
+                    }
+                    // until (for repeat blocks)
+                    if (strstr(check_line, "until")) {
+                        depth--;
+                    }
+
+                    free(check_line);
+                    j++;
+                }
+
+                // Collect function source
+                size_t source_size = 0;
+                for (int k = func_start_line; k < j; k++) {
+                    source_size += strlen(lines[k]) + 1;  // +1 for newline
+                }
+
+                char* func_source = malloc(source_size + 1);
+                func_source[0] = '\0';
+                for (int k = func_start_line; k < j; k++) {
+                    strcat(func_source, lines[k]);
+                    if (k < j - 1) strcat(func_source, "\n");
+                }
+
+                // Create function entry
+                cJSON* fn = cJSON_CreateObject();
+                cJSON_AddStringToObject(fn, "name", func_name);
+                cJSON_AddStringToObject(fn, "params", params ? params : "");
+                cJSON_AddNumberToObject(fn, "line", func_start_line + 1);
+                cJSON_AddStringToObject(fn, "source", func_source);
+                cJSON_AddItemToArray(functions_array, fn);
+
+                free(func_name);
+                free(params);
+                free(func_source);
+
+                i = j;  // Skip to after the function
+                continue;
+            }
+        }
+        i++;
+    }
+    cJSON_AddItemToObject(source_decls, "functions", functions_array);
+
+    // ========================================================================
+    // Extract module_constants: local NAME = value (tables, strings, numbers)
+    // ========================================================================
+    char* module_constants_buf = NULL;
+    size_t constants_len = 0;
+    size_t constants_cap = 0;
+
+    // Find first function line and last require line
+    int first_func_line = -1;
+    int last_req_line = -1;
+    for (int li = 0; li < line_count; li++) {
+        if (strstr(lines[li], "local function ")) {
+            first_func_line = li;
+            break;
+        }
+    }
+    for (int li = 0; li < line_count; li++) {
+        if (strstr(lines[li], "require")) {
+            last_req_line = li;
+        }
+    }
+
+    // Extract constants between last require and first function
+    int const_start = last_req_line >= 0 ? last_req_line + 1 : 0;
+    int const_end = first_func_line >= 0 ? first_func_line : line_count;
+
+    for (int li = const_start; li < const_end; li++) {
+        const char* line = lines[li];
+
+        // Skip empty lines and comments
+        while (*line == ' ' || *line == '\t') line++;
+        if (*line == '\0' || strncmp(line, "--", 2) == 0) continue;
+        if (strstr(lines[li], "require")) continue;
+
+        // Check for local NAME = pattern (not function)
+        if (strncmp(line, "local ", 6) == 0 && !strstr(line, "function")) {
+            // Check if it ends with { (multi-line table)
+            const char* stripped_end = lines[li] + strlen(lines[li]) - 1;
+            while (stripped_end > lines[li] && (*stripped_end == ' ' || *stripped_end == '\t')) stripped_end--;
+
+            if (*stripped_end == '{') {
+                // Multi-line table - track brace depth
+                int depth = 0;
+                int table_start = li;
+                for (int tj = li; tj < line_count; tj++) {
+                    for (const char* c = lines[tj]; *c; c++) {
+                        if (*c == '{') depth++;
+                        if (*c == '}') depth--;
+                    }
+                    if (depth == 0 && tj > table_start) {
+                        // Extract all lines from table_start to tj
+                        for (int tk = table_start; tk <= tj; tk++) {
+                            size_t llen = strlen(lines[tk]);
+                            if (constants_len + llen + 2 > constants_cap) {
+                                constants_cap = constants_cap == 0 ? 4096 : constants_cap * 2;
+                                module_constants_buf = realloc(module_constants_buf, constants_cap);
+                            }
+                            memcpy(module_constants_buf + constants_len, lines[tk], llen);
+                            constants_len += llen;
+                            module_constants_buf[constants_len++] = '\n';
+                        }
+                        module_constants_buf[constants_len++] = '\n';
+                        li = tj;  // Skip past the table
+                        break;
+                    }
+                }
+            } else {
+                // Single line constant
+                size_t llen = strlen(lines[li]);
+                if (constants_len + llen + 3 > constants_cap) {
+                    constants_cap = constants_cap == 0 ? 4096 : constants_cap * 2;
+                    module_constants_buf = realloc(module_constants_buf, constants_cap);
+                }
+                memcpy(module_constants_buf + constants_len, lines[li], llen);
+                constants_len += llen;
+                module_constants_buf[constants_len++] = '\n';
+                module_constants_buf[constants_len++] = '\n';
+            }
+        }
+    }
+
+    if (module_constants_buf && constants_len > 0) {
+        module_constants_buf[constants_len] = '\0';
+        cJSON_AddStringToObject(source_decls, "module_constants", module_constants_buf);
+        free(module_constants_buf);
+    } else {
+        cJSON_AddNullToObject(source_decls, "module_constants");
+    }
+
+    // Add source_declarations to root
+    cJSON_AddItemToObject(root, "source_declarations", source_decls);
+
+    // ========================================================================
+    // Extract exports from return statement -> component_definitions
+    // ========================================================================
+    cJSON* component_defs = cJSON_CreateArray();
+
+    // Find the return { ... } statement at the end
+    // Look backward from end of file for "return {"
+    ExportList* exports = lua_extract_exports(source);
+    if (exports && exports->count > 0) {
+        for (int e = 0; e < exports->count; e++) {
+            ExportInfo* exp = &exports->exports[e];
+
+            cJSON* comp_def = cJSON_CreateObject();
+            cJSON_AddStringToObject(comp_def, "name", exp->name);
+
+            // Add props from parameters
+            cJSON* props = cJSON_CreateArray();
+            if (exp->parameters && exp->param_count > 0) {
+                for (int p = 0; p < exp->param_count; p++) {
+                    cJSON* prop = cJSON_CreateObject();
+                    cJSON_AddStringToObject(prop, "name", exp->parameters[p]);
+                    cJSON_AddStringToObject(prop, "type", "any");
+                    cJSON_AddItemToArray(props, prop);
+                }
+            }
+            cJSON_AddItemToObject(comp_def, "props", props);
+
+            // Add source code if available
+            if (exp->source) {
+                cJSON_AddStringToObject(comp_def, "source", exp->source);
+            }
+
+            cJSON_AddItemToArray(component_defs, comp_def);
+        }
+        lua_export_list_free(exports);
+    }
+    cJSON_AddItemToObject(root, "component_definitions", component_defs);
+
+    // Free lines
+    for (int l = 0; l < line_count; l++) {
+        free(lines[l]);
+    }
+    free(lines);
+
+    // Get counts before deleting root (cJSON_Delete frees all child objects)
+    int requires_count = cJSON_GetArraySize(requires_array);
+    int functions_count = cJSON_GetArraySize(functions_array);
+    int exports_count = cJSON_GetArraySize(component_defs);
+
+    // Serialize to JSON
+    char* result = cJSON_Print(root);
+    cJSON_Delete(root);
+
+    if (result) {
+        fprintf(stderr, "  [Static Extract] ✓ Extracted %d requires, %d functions, %d exports\n",
+                requires_count, functions_count, exports_count);
     }
 
     return result;
@@ -1642,6 +2966,21 @@ char* ir_lua_file_to_kir(const char* filepath) {
     snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
     system(mkdir_cmd);
 
+    // Generate plugin KIR files from kryon.toml
+    // First, find kryon.toml in the source directory or parent
+    char kryon_toml_path[4096];
+    char source_dir[4096];
+    strncpy(source_dir, abs_path, sizeof(source_dir) - 1);
+    source_dir[sizeof(source_dir) - 1] = '\0';
+    char* last_slash = strrchr(source_dir, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+    }
+    snprintf(kryon_toml_path, sizeof(kryon_toml_path), "%s/kryon.toml", source_dir);
+    if (access(kryon_toml_path, R_OK) == 0) {
+        ir_lua_generate_plugin_kirs_from_toml(kryon_toml_path, output_dir);
+    }
+
     // For each module, generate a separate KIR file
     int files_written = 0;
     char* main_result = NULL;
@@ -1701,31 +3040,18 @@ char* ir_lua_file_to_kir(const char* filepath) {
 
             root = cJSON_Parse(result);
             free(result);
-
-            // Add sources section with original source for round-trip
-            if (root) {
-                cJSON* existing_sources = cJSON_GetObjectItem(root, "sources");
-                if (existing_sources) {
-                    cJSON_DeleteItemFromObject(root, "sources");
-                }
-                cJSON* sources = cJSON_CreateObject();
-                cJSON* module_source = cJSON_CreateObject();
-                cJSON_AddStringToObject(module_source, "language", "lua");
-                cJSON_AddStringToObject(module_source, "source", module->source);
-                cJSON_AddItemToObject(sources, "main", module_source);
-                cJSON_AddItemToObject(root, "sources", sources);
-            }
         } else {
             // For component modules: check if file was already written by main wrapper
             // with component_definitions
             char kir_file_path[2048];
             snprintf(kir_file_path, sizeof(kir_file_path), "%s/%s.kir", output_dir, module->module_id);
 
-            // Check if file exists and has component_definitions
+            // Check if file exists and has BOTH component_definitions AND source_declarations
+            // If only component_definitions exists (from main wrapper), we need to re-extract to add source
             bool skip_extraction = false;
             FILE* kf = fopen(kir_file_path, "r");
             if (kf) {
-                // Read file content to check for component_definitions
+                // Read file content to check for component_definitions and source_declarations
                 fseek(kf, 0, SEEK_END);
                 long ksize = ftell(kf);
                 if (ksize > 100) {  // File has substantial content
@@ -1734,8 +3060,11 @@ char* ir_lua_file_to_kir(const char* filepath) {
                     if (kcontent) {
                         fread(kcontent, 1, ksize, kf);
                         kcontent[ksize] = '\0';
-                        // Check if it contains component_definitions
-                        if (strstr(kcontent, "component_definitions")) {
+                        // Only skip if BOTH component_definitions AND source_declarations exist
+                        // This ensures we re-extract to add source if it's missing
+                        bool has_comp_defs = strstr(kcontent, "component_definitions") != NULL;
+                        bool has_source_decls = strstr(kcontent, "source_declarations") != NULL;
+                        if (has_comp_defs && has_source_decls) {
                             skip_extraction = true;
                             fprintf(stderr, "  Using existing component_definitions for: %s\n", module->module_id);
                         }
@@ -1761,19 +3090,6 @@ char* ir_lua_file_to_kir(const char* filepath) {
                     }
                     fclose(existing);
                 }
-
-                // Still add sources if missing
-                if (root) {
-                    cJSON* existing_sources = cJSON_GetObjectItem(root, "sources");
-                    if (!existing_sources) {
-                        cJSON* sources = cJSON_CreateObject();
-                        cJSON* module_source = cJSON_CreateObject();
-                        cJSON_AddStringToObject(module_source, "language", "lua");
-                        cJSON_AddStringToObject(module_source, "source", module->source);
-                        cJSON_AddItemToObject(sources, module->module_id, module_source);
-                        cJSON_AddItemToObject(root, "sources", sources);
-                    }
-                }
             } else {
                 // Check if this is a component module (has UI components)
                 bool has_ui = lua_has_ui_components(module->source);
@@ -1781,101 +3097,119 @@ char* ir_lua_file_to_kir(const char* filepath) {
                 if (has_ui) {
                     fprintf(stderr, "  Extracting component definitions from: %s\n", module->module_id);
 
-                // Execute the component module to extract component definitions
-                char* comp_result = ir_lua_component_to_kir_definitions(
+                    // Use STATIC source extraction - no execution required!
+                    // This eliminates plugin dependency issues during compilation.
+                    char* comp_result = ir_lua_static_source_extract(
+                        module->source,
+                        module->source_len,
+                        module->file_path,
+                        module->module_id
+                    );
+
+                    if (comp_result) {
+                        // Parse the result
+                        cJSON* comp_root = cJSON_Parse(comp_result);
+                        free(comp_result);
+
+                        if (comp_root) {
+                            root = comp_root;
+
+                            // Verify we got source_declarations and component_definitions
+                            cJSON* source_decls = cJSON_GetObjectItem(root, "source_declarations");
+                            cJSON* comp_defs = cJSON_GetObjectItem(root, "component_definitions");
+                            if (source_decls && comp_defs) {
+                                cJSON* funcs = cJSON_GetObjectItem(source_decls, "functions");
+                                fprintf(stderr, "    ✓ Static extraction: %d function(s), %d export(s)\n",
+                                        funcs ? cJSON_GetArraySize(funcs) : 0,
+                                        cJSON_GetArraySize(comp_defs));
+                            }
+                        } else {
+                            // Failed to parse, fall back to simple structure
+                            fprintf(stderr, "    Warning: Failed to parse static extraction, using fallback\n");
+                            root = cJSON_CreateObject();
+                            cJSON_AddStringToObject(root, "format", "kir");
+                            cJSON_AddNullToObject(root, "root");
+                        }
+                    } else {
+                        // Static extraction failed, fall back to simple structure
+                        fprintf(stderr, "    Warning: Static extraction failed, using fallback\n");
+                        root = cJSON_CreateObject();
+                        cJSON_AddStringToObject(root, "format", "kir");
+                        cJSON_AddNullToObject(root, "root");
+                    }
+            } else {
+                // For non-component library modules: use static extraction to get source_declarations
+                // This ensures requires, functions, and module_constants are preserved
+                fprintf(stderr, "  Extracting library module: %s\n", module->module_id);
+
+                char* lib_result = ir_lua_static_source_extract(
                     module->source,
                     module->source_len,
                     module->file_path,
                     module->module_id
                 );
 
-                if (comp_result) {
-                    // Parse the result and merge with source info
-                    cJSON* comp_root = cJSON_Parse(comp_result);
-                    free(comp_result);
+                if (lib_result) {
+                    root = cJSON_Parse(lib_result);
+                    free(lib_result);
 
-                    if (comp_root) {
-                        root = comp_root;
-
-                        // Add sources section with original source
-                        cJSON* existing_sources = cJSON_GetObjectItem(root, "sources");
-                        if (!existing_sources) {
-                            cJSON* sources = cJSON_CreateObject();
-                            cJSON* module_source = cJSON_CreateObject();
-                            cJSON_AddStringToObject(module_source, "language", "lua");
-                            cJSON_AddStringToObject(module_source, "source", module->source);
-                            cJSON_AddItemToObject(sources, module->module_id, module_source);
-                            cJSON_AddItemToObject(root, "sources", sources);
+                    if (root) {
+                        // Verify we got source_declarations
+                        cJSON* source_decls = cJSON_GetObjectItem(root, "source_declarations");
+                        if (source_decls) {
+                            cJSON* funcs = cJSON_GetObjectItem(source_decls, "functions");
+                            cJSON* reqs = cJSON_GetObjectItem(source_decls, "requires");
+                            fprintf(stderr, "    ✓ Static extraction: %d require(s), %d function(s)\n",
+                                    reqs ? cJSON_GetArraySize(reqs) : 0,
+                                    funcs ? cJSON_GetArraySize(funcs) : 0);
                         }
 
-                        // Verify we got component_definitions
-                        cJSON* comp_defs = cJSON_GetObjectItem(root, "component_definitions");
-                        if (comp_defs) {
-                            fprintf(stderr, "    ✓ Extracted %d component definition(s)\n",
-                                    cJSON_GetArraySize(comp_defs));
+                        // Also add exports for library module compatibility
+                        ExportList* exports = lua_extract_exports(module->source);
+                        if (exports && exports->count > 0) {
+                            cJSON* exports_array = cJSON_CreateArray();
+                            cJSON* logic_block = cJSON_CreateObject();
+                            cJSON* functions = cJSON_CreateObject();
+
+                            for (int e = 0; e < exports->count; e++) {
+                                ExportInfo* exp = &exports->exports[e];
+                                cJSON* exp_obj = cJSON_CreateObject();
+                                cJSON_AddStringToObject(exp_obj, "name", exp->name);
+                                cJSON_AddStringToObject(exp_obj, "type", exp->type);
+
+                                if (exp->parameters && exp->param_count > 0) {
+                                    cJSON* params = cJSON_CreateArray();
+                                    for (int j = 0; j < exp->param_count; j++) {
+                                        cJSON_AddItemToArray(params, cJSON_CreateString(exp->parameters[j]));
+                                    }
+                                    cJSON_AddItemToObject(exp_obj, "parameters", params);
+                                }
+                                cJSON_AddItemToArray(exports_array, exp_obj);
+
+                                if (exp->source && strcmp(exp->type, "function") == 0) {
+                                    cJSON* func_obj = cJSON_CreateObject();
+                                    cJSON* sources = cJSON_CreateObject();
+                                    cJSON_AddStringToObject(sources, "lua", exp->source);
+                                    cJSON_AddItemToObject(func_obj, "sources", sources);
+                                    cJSON_AddItemToObject(functions, exp->name, func_obj);
+                                }
+                            }
+                            cJSON_AddItemToObject(root, "exports", exports_array);
+                            cJSON_AddItemToObject(logic_block, "functions", functions);
+                            cJSON_AddItemToObject(root, "logic_block", logic_block);
+
+                            lua_export_list_free(exports);
                         }
-                    } else {
-                        // Failed to parse, fall back to simple structure
-                        fprintf(stderr, "    Warning: Failed to parse component definitions, using fallback\n");
-                        root = cJSON_CreateObject();
-                        cJSON_AddStringToObject(root, "format", "kir");
-                        cJSON_AddNullToObject(root, "root");
                     }
-                } else {
-                    // Execution failed, fall back to simple structure
-                    fprintf(stderr, "    Warning: Component extraction failed, using fallback\n");
+                }
+
+                if (!root) {
+                    // Fallback: create minimal KIR structure
+                    fprintf(stderr, "    Warning: Static extraction failed, using fallback\n");
                     root = cJSON_CreateObject();
                     cJSON_AddStringToObject(root, "format", "kir");
                     cJSON_AddNullToObject(root, "root");
                 }
-            } else {
-                // For non-component library modules: create a simple structure with source
-                root = cJSON_CreateObject();
-                cJSON_AddStringToObject(root, "format", "kir");
-
-                // Create metadata with source info
-                cJSON* meta = cJSON_CreateObject();
-                cJSON_AddStringToObject(meta, "source_language", "lua");
-                cJSON_AddStringToObject(meta, "module_id", module->module_id);
-                cJSON_AddStringToObject(meta, "source_file", abs_path);
-                cJSON_AddItemToObject(root, "metadata", meta);
-
-                // Create sources section with original source
-                cJSON* sources = cJSON_CreateObject();
-                cJSON* module_source = cJSON_CreateObject();
-                cJSON_AddStringToObject(module_source, "language", "lua");
-                cJSON_AddStringToObject(module_source, "source", module->source);
-                cJSON_AddItemToObject(sources, module->module_id, module_source);
-                cJSON_AddItemToObject(root, "sources", sources);
-
-                // Extract exports from the module source
-                ExportList* exports = lua_extract_exports(module->source);
-
-                // Add exports array if we found any
-                if (exports && exports->count > 0) {
-                    cJSON* exports_array = cJSON_CreateArray();
-                    for (int i = 0; i < exports->count; i++) {
-                        ExportInfo* exp = &exports->exports[i];
-                        cJSON* exp_obj = cJSON_CreateObject();
-                        cJSON_AddStringToObject(exp_obj, "name", exp->name);
-                        cJSON_AddStringToObject(exp_obj, "type", exp->type);
-
-                        // Add parameters array if present
-                        if (exp->parameters && exp->param_count > 0) {
-                            cJSON* params = cJSON_CreateArray();
-                            for (int j = 0; j < exp->param_count; j++) {
-                                cJSON_AddItemToArray(params, cJSON_CreateString(exp->parameters[j]));
-                            }
-                            cJSON_AddItemToObject(exp_obj, "parameters", params);
-                        }
-                        cJSON_AddItemToArray(exports_array, exp_obj);
-                    }
-                    cJSON_AddItemToObject(root, "exports", exports_array);
-                    lua_export_list_free(exports);
-                }
-
-                // Empty root component (library modules store source + exports)
-                cJSON_AddNullToObject(root, "root");
             }
             }  // End of else block for skip_extraction
         }
@@ -1968,4 +3302,344 @@ char* ir_lua_file_to_kir(const char* filepath) {
         return NULL;
     }
     return main_result;
+}
+
+// ============================================================================
+// Plugin KIR Generation from kryon.toml
+// ============================================================================
+
+/**
+ * Extract function definitions from a plugin Lua binding file
+ * Used to generate plugin KIR without executing the binding code
+ */
+static cJSON* extract_plugin_functions(const char* source) {
+    if (!source) return NULL;
+
+    cJSON* functions = cJSON_CreateArray();
+
+    // Find "function ModuleName.functionName(" patterns
+    const char* p = source;
+    while (*p) {
+        // Look for "function" keyword
+        const char* func_pos = strstr(p, "function ");
+        if (!func_pos) break;
+
+        // Check if it's a module function: "function Module.name("
+        const char* dot = strchr(func_pos + 9, '.');
+        const char* paren = strchr(func_pos + 9, '(');
+
+        if (dot && paren && dot < paren) {
+            // Extract function name (after the dot)
+            const char* name_start = dot + 1;
+            const char* name_end = paren;
+
+            // Trim whitespace
+            while (*name_start == ' ' || *name_start == '\t') name_start++;
+            while (name_end > name_start && (*(name_end-1) == ' ' || *(name_end-1) == '\t')) name_end--;
+
+            if (name_end > name_start) {
+                char* name = strndup(name_start, name_end - name_start);
+
+                // Extract parameters
+                const char* params_start = paren + 1;
+                const char* params_end = strchr(params_start, ')');
+                char* params = NULL;
+                if (params_end && params_end > params_start) {
+                    params = strndup(params_start, params_end - params_start);
+                }
+
+                // Find the end of the function to capture source
+                // Track depth to find matching "end"
+                int depth = 1;
+                const char* scan = params_end ? params_end + 1 : paren + 1;
+                bool in_string = false;
+                char string_char = 0;
+
+                while (*scan && depth > 0) {
+                    // Skip strings
+                    if (!in_string && (*scan == '"' || *scan == '\'')) {
+                        in_string = true;
+                        string_char = *scan;
+                        scan++;
+                        continue;
+                    }
+                    if (in_string) {
+                        if (*scan == '\\' && *(scan+1)) {
+                            scan += 2;
+                            continue;
+                        }
+                        if (*scan == string_char) {
+                            in_string = false;
+                        }
+                        scan++;
+                        continue;
+                    }
+
+                    // Skip comments
+                    if (*scan == '-' && *(scan+1) == '-') {
+                        while (*scan && *scan != '\n') scan++;
+                        continue;
+                    }
+
+                    // Track depth
+                    if (strncmp(scan, "function", 8) == 0 && !isalnum((unsigned char)*(scan+8))) {
+                        depth++;
+                        scan += 8;
+                        continue;
+                    }
+                    if (strncmp(scan, "if", 2) == 0 && !isalnum((unsigned char)*(scan+2))) {
+                        depth++;
+                        scan += 2;
+                        continue;
+                    }
+                    if (strncmp(scan, "for", 3) == 0 && !isalnum((unsigned char)*(scan+3))) {
+                        depth++;
+                        scan += 3;
+                        continue;
+                    }
+                    if (strncmp(scan, "while", 5) == 0 && !isalnum((unsigned char)*(scan+5))) {
+                        depth++;
+                        scan += 5;
+                        continue;
+                    }
+                    if (strncmp(scan, "repeat", 6) == 0 && !isalnum((unsigned char)*(scan+6))) {
+                        depth++;
+                        scan += 6;
+                        continue;
+                    }
+                    if (strncmp(scan, "end", 3) == 0 && !isalnum((unsigned char)*(scan+3)) &&
+                        (scan == source || !isalnum((unsigned char)*(scan-1)))) {
+                        depth--;
+                        if (depth == 0) {
+                            // Found the end - capture full source
+                            size_t func_len = (scan + 3) - func_pos;
+                            char* func_source = strndup(func_pos, func_len);
+
+                            // Create function entry
+                            cJSON* fn = cJSON_CreateObject();
+                            cJSON_AddStringToObject(fn, "name", name);
+                            cJSON_AddStringToObject(fn, "params", params ? params : "");
+                            cJSON_AddStringToObject(fn, "source", func_source);
+                            cJSON_AddItemToArray(functions, fn);
+
+                            free(func_source);
+                            break;
+                        }
+                        scan += 3;
+                        continue;
+                    }
+                    if (strncmp(scan, "until", 5) == 0 && !isalnum((unsigned char)*(scan+5))) {
+                        depth--;
+                        scan += 5;
+                        continue;
+                    }
+
+                    scan++;
+                }
+
+                free(name);
+                free(params);
+                p = scan;
+                continue;
+            }
+        }
+
+        p = func_pos + 1;
+    }
+
+    return functions;
+}
+
+/**
+ * Generate KIR for a plugin from its Lua binding file
+ * This creates a proper KIR file describing the plugin's exports without executing it
+ */
+char* ir_lua_generate_plugin_kir(const char* plugin_name, const char* binding_path) {
+    if (!plugin_name || !binding_path) return NULL;
+
+    fprintf(stderr, "  [Plugin KIR] Generating KIR for plugin: %s\n", plugin_name);
+
+    // Read the binding file
+    FILE* f = fopen(binding_path, "r");
+    if (!f) {
+        fprintf(stderr, "  [Plugin KIR] Warning: Could not read binding: %s\n", binding_path);
+        return NULL;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char* source = malloc(size + 1);
+    if (!source) {
+        fclose(f);
+        return NULL;
+    }
+
+    size_t read_size = fread(source, 1, size, f);
+    source[read_size] = '\0';
+    fclose(f);
+
+    // Create KIR structure
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "format", "kir");
+    cJSON_AddStringToObject(root, "version", "3.0");
+
+    // Metadata
+    cJSON* meta = cJSON_CreateObject();
+    cJSON_AddStringToObject(meta, "source_language", "plugin");
+    cJSON_AddStringToObject(meta, "module_id", plugin_name);
+    cJSON_AddStringToObject(meta, "compiler_version", "0.3.0");
+    cJSON_AddStringToObject(meta, "binding_file", binding_path);
+    cJSON_AddItemToObject(root, "metadata", meta);
+
+    // No root component (plugin, not UI module)
+    cJSON_AddNullToObject(root, "root");
+
+    // Extract functions from the binding
+    cJSON* source_decls = cJSON_CreateObject();
+    cJSON* functions = extract_plugin_functions(source);
+    cJSON_AddItemToObject(source_decls, "functions", functions);
+    cJSON_AddItemToObject(root, "source_declarations", source_decls);
+
+    // Build exports list from functions
+    cJSON* exports = cJSON_CreateArray();
+    cJSON* fn = NULL;
+    cJSON_ArrayForEach(fn, functions) {
+        cJSON* name_item = cJSON_GetObjectItem(fn, "name");
+        cJSON* params_item = cJSON_GetObjectItem(fn, "params");
+        if (name_item && cJSON_IsString(name_item)) {
+            cJSON* exp = cJSON_CreateObject();
+            cJSON_AddStringToObject(exp, "name", cJSON_GetStringValue(name_item));
+            cJSON_AddStringToObject(exp, "type", "function");
+            if (params_item && cJSON_IsString(params_item)) {
+                cJSON_AddStringToObject(exp, "params", cJSON_GetStringValue(params_item));
+            }
+            cJSON_AddItemToArray(exports, exp);
+        }
+    }
+    cJSON_AddItemToObject(root, "exports", exports);
+
+    free(source);
+
+    // Get export count before serializing (cJSON_Delete will free everything)
+    int export_count = cJSON_GetArraySize(exports);
+
+    // Serialize
+    char* result = cJSON_Print(root);
+    cJSON_Delete(root);
+
+    if (result) {
+        fprintf(stderr, "  [Plugin KIR] ✓ Generated %d exports for %s\n",
+                export_count, plugin_name);
+    }
+
+    return result;
+}
+
+/**
+ * Generate plugin KIR files from kryon.toml configuration
+ * Reads the [plugins] section and generates KIR for each plugin
+ */
+bool ir_lua_generate_plugin_kirs_from_toml(const char* toml_path, const char* output_dir) {
+    if (!toml_path || !output_dir) return false;
+
+    fprintf(stderr, "📦 Generating plugin KIR files from: %s\n", toml_path);
+
+    // Read the toml file
+    FILE* f = fopen(toml_path, "r");
+    if (!f) {
+        fprintf(stderr, "  Warning: Could not read kryon.toml\n");
+        return false;
+    }
+
+    char errbuf[256];
+    toml_table_t* conf = toml_parse_file(f, errbuf, sizeof(errbuf));
+    fclose(f);
+
+    if (!conf) {
+        fprintf(stderr, "  Warning: Failed to parse kryon.toml: %s\n", errbuf);
+        return false;
+    }
+
+    // Get [plugins] section
+    toml_table_t* plugins = toml_table_in(conf, "plugins");
+    if (!plugins) {
+        fprintf(stderr, "  No [plugins] section in kryon.toml\n");
+        toml_free(conf);
+        return true; // Not an error, just no plugins
+    }
+
+    // Get the directory containing kryon.toml for relative path resolution
+    char toml_dir[4096];
+    strncpy(toml_dir, toml_path, sizeof(toml_dir) - 1);
+    toml_dir[sizeof(toml_dir) - 1] = '\0';
+    char* last_slash = strrchr(toml_dir, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+    } else {
+        strcpy(toml_dir, ".");
+    }
+
+    int plugins_generated = 0;
+
+    // Iterate through plugins
+    for (int i = 0; ; i++) {
+        const char* key = toml_key_in(plugins, i);
+        if (!key) break;
+
+        // Get plugin config (table with "path" key)
+        toml_table_t* plugin_conf = toml_table_in(plugins, key);
+        if (!plugin_conf) continue;
+
+        // Get path
+        toml_datum_t path_datum = toml_string_in(plugin_conf, "path");
+        if (!path_datum.ok) continue;
+
+        const char* plugin_path = path_datum.u.s;
+
+        // Resolve relative path from toml directory
+        char full_plugin_path[4096];
+        if (plugin_path[0] == '/') {
+            strncpy(full_plugin_path, plugin_path, sizeof(full_plugin_path) - 1);
+        } else {
+            snprintf(full_plugin_path, sizeof(full_plugin_path), "%s/%s", toml_dir, plugin_path);
+        }
+
+        // Find the Lua binding file
+        char binding_path[4096];
+        snprintf(binding_path, sizeof(binding_path), "%s/bindings/lua/%s.lua",
+                 full_plugin_path, key);
+
+        // Check if binding file exists
+        if (access(binding_path, R_OK) != 0) {
+            fprintf(stderr, "  Warning: No Lua binding for plugin %s at %s\n", key, binding_path);
+            free(path_datum.u.s);
+            continue;
+        }
+
+        // Generate KIR for this plugin
+        char* plugin_kir = ir_lua_generate_plugin_kir(key, binding_path);
+        if (plugin_kir) {
+            // Write to output directory
+            char kir_path[4096];
+            snprintf(kir_path, sizeof(kir_path), "%s/%s.kir", output_dir, key);
+
+            FILE* kir_file = fopen(kir_path, "w");
+            if (kir_file) {
+                fputs(plugin_kir, kir_file);
+                fclose(kir_file);
+                fprintf(stderr, "  ✓ Generated plugin KIR: %s.kir\n", key);
+                plugins_generated++;
+            }
+            free(plugin_kir);
+        }
+
+        free(path_datum.u.s);
+    }
+
+    toml_free(conf);
+
+    fprintf(stderr, "📦 Generated %d plugin KIR files\n", plugins_generated);
+    return true;
 }

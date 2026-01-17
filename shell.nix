@@ -4,8 +4,6 @@
 pkgs.mkShell {
   buildInputs = with pkgs; [
     # Core toolchain
-    nim
-    nimble
     gcc
     gnumake
     pkg-config
@@ -72,7 +70,6 @@ pkgs.mkShell {
 
     echo "Kryon Development Environment"
     echo "============================="
-    echo "Nim version: $(nim --version | head -1)"
     echo "LuaJIT version: $(luajit -v 2>/dev/null || echo 'not available')"
     echo "Bun version: $(bun --version 2>/dev/null || echo 'not available')"
     echo ""
@@ -80,16 +77,16 @@ pkgs.mkShell {
     echo "  Build C Core: cd core && make"
     echo "  Build SDL3 renderer: cd renderers/sdl3 && make"
     echo "  Build Terminal renderer: cd renderers/terminal && make"
-    echo "  Run Nim examples: ./run_example.sh hello_world nim sdl3"
+    echo "  Run Lua examples: ./run_example.sh hello_world lua sdl3"
     echo "  Run TypeScript examples: ./run_example.sh hello_world ts"
-    echo "  Run terminal examples: ./run_example.sh hello_world nim terminal"
+    echo "  Run terminal examples: ./run_example.sh hello_world lua terminal"
     echo "  Run web examples: ./run_example.sh hello_world ts web"
     echo "  Android: ./cli/kryon run --target=android examples/kry/hello_world.kry"
     echo ""
     echo "Android SDK: $ANDROID_HOME"
     echo "Android NDK: $ANDROID_NDK_HOME"
     echo ""
-    echo "Available frontends: kry, nim, typescript (ts), lua, c"
+    echo "Available frontends: kry, typescript (ts), lua, c"
     echo "Available renderers: sdl3, raylib, terminal, framebuffer"
     echo "Available codegen targets: web, android"
     echo ""
