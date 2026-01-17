@@ -168,6 +168,113 @@ local function unrefValue(value)
 end
 
 -- ============================================================================
+-- Automatic Reactive Binding Detection (Phase 2)
+-- ============================================================================
+
+-- Check if a value is a reactive proxy
+-- @param value any Value to check
+-- @return boolean True if value is a reactive proxy
+local function isReactiveProxy(value)
+  if type(value) ~= "table" then return false end
+
+  -- Check for reactive proxy marker (_target is set by Reactive.reactive)
+  local target = rawget(value, "_target")
+  if target ~= nil then return true end
+
+  -- Also check metatable for reactive marker
+  local mt = getmetatable(value)
+  if mt and (mt.__reactive == true or rawget(mt, "_proxy") ~= nil) then
+    return true
+  end
+
+  return false
+end
+
+-- Extract the reactive path from a proxy if it has one
+-- Returns the full path like "displayedMonth.month" or nil
+-- @param value any Potentially reactive value
+-- @return string|nil The reactive path or nil
+local function extractReactivePath(value)
+  if type(value) ~= "table" then return nil end
+
+  -- Check for _path field (set by our enhanced reactive system)
+  local path = rawget(value, "_path")
+  if path then return path end
+
+  -- Fallback: try to get path from metatable
+  local mt = getmetatable(value)
+  if mt then
+    local mtPath = rawget(mt, "_path")
+    if mtPath then return mtPath end
+  end
+
+  return nil
+end
+
+-- Try to load Reactive module for manifest registration
+local Reactive = nil
+local function getReactiveModule()
+  if Reactive == nil then
+    local ok, mod = pcall(require, "kryon.reactive")
+    if ok then
+      Reactive = mod
+    end
+  end
+  return Reactive
+end
+
+-- Variable ID tracking for binding registration
+local varIdCache = {}
+local nextVarId = 1
+
+-- Get or create a variable ID for a reactive path
+-- @param path string The reactive path (e.g., "displayedMonth")
+-- @return number The variable ID
+local function getOrCreateVarId(path)
+  if varIdCache[path] then
+    return varIdCache[path]
+  end
+  local id = nextVarId
+  nextVarId = nextVarId + 1
+  varIdCache[path] = id
+  return id
+end
+
+-- Register a binding for automatic reactive updates
+-- @param component cdata The IR component
+-- @param path string The reactive state path
+-- @param bindingType string The binding type ("text", "visibility", etc.)
+local function registerReactiveBinding(component, path, bindingType)
+  -- Get the reactive module for manifest access
+  local reactive = getReactiveModule()
+  if not reactive then return end
+
+  local manifest = reactive.getManifest and reactive.getManifest()
+  if not manifest then return end
+
+  -- Get component ID
+  local componentId = C.ir_get_component_id(component)
+
+  -- Get or create variable ID
+  local varId = getOrCreateVarId(path)
+
+  -- Map binding type string to enum
+  local bindingEnum
+  if bindingType == "text" then
+    bindingEnum = C.IR_BINDING_TEXT
+  elseif bindingType == "visibility" then
+    bindingEnum = C.IR_BINDING_VISIBILITY
+  elseif bindingType == "attribute" then
+    bindingEnum = C.IR_BINDING_ATTRIBUTE
+  else
+    bindingEnum = C.IR_BINDING_CUSTOM
+  end
+
+  -- Register binding with manifest
+  C.ir_reactive_manifest_add_binding(manifest, componentId, varId, bindingEnum, path)
+end
+
+-- ============================================================================
 -- TabGroup Context Stack (for automatic initialization)
 -- ============================================================================
 
@@ -628,11 +735,29 @@ local function applyProperties(component, props)
 
     -- ========== Text ==========
     elseif key == "text" or key == "content" then
+      -- Set the text content with the current value
       C.ir_set_text_content(component, tostring(value))
+
+      -- AUTOMATIC BINDING DETECTION: Check if value is reactive
+      -- If so, register a binding so the web runtime can update it
+      if isReactiveProxy(value) then
+        local path = extractReactivePath(value)
+        if path then
+          registerReactiveBinding(component, path, "text")
+        end
+      end
 
     elseif key == "value" then
       -- For Input components, set the initial text value
       C.ir_set_text_content(component, tostring(value))
+
+      -- Auto-register binding for reactive input values
+      if isReactiveProxy(value) then
+        local path = extractReactivePath(value)
+        if path then
+          registerReactiveBinding(component, path, "text")
+        end
+      end
 
     elseif key == "placeholder" then
       -- For Input components, set the placeholder hint text
@@ -641,6 +766,14 @@ local function applyProperties(component, props)
     elseif key == "title" then
       -- Tab title is set as text content
       C.ir_set_text_content(component, tostring(value))
+
+      -- Auto-register binding for reactive tab titles
+      if isReactiveProxy(value) then
+        local path = extractReactivePath(value)
+        if path then
+          registerReactiveBinding(component, path, "text")
+        end
+      end
 
     elseif key == "fontSize" then
       local _, size = parseDimension(value)

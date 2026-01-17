@@ -93,7 +93,7 @@ static const char* javascript_runtime_template =
 " * @param {string} updateType - 'text', 'style', 'attr', 'class', 'visibility', or 'custom'\n"
 " * @param {Object} options - Additional options (styleProp, attrName, customFn)\n"
 " */\n"
-"function kryonRegisterBinding(stateKey, elementId, updateType, options) {\n"
+"function kryonRegisterBinding(stateKey, selector, updateType, options) {\n"
 "    if (!kryonBindingRegistry[stateKey]) {\n"
 "        kryonBindingRegistry[stateKey] = [];\n"
 "    }\n"
@@ -102,14 +102,16 @@ static const char* javascript_runtime_template =
 "    if (typeof options === 'string') {\n"
 "        try { opts = JSON.parse(options); } catch (e) { opts = {}; }\n"
 "    }\n"
-"    kryonBindingRegistry[stateKey].push({ elementId, updateType, options: opts });\n"
-"    console.log('[Kryon Reactive] Registered binding:', stateKey, '->', elementId, '(' + updateType + ')');\n"
+"    // Support both elementId (legacy) and selector (new)\n"
+"    const selectorValue = selector.startsWith('[') ? selector : '[data-kryon-id=\"' + selector + '\"]';\n"
+"    kryonBindingRegistry[stateKey].push({ selector: selectorValue, updateType, options: opts });\n"
+"    console.log('[Kryon Reactive] Registered binding:', stateKey, '->', selectorValue, '(' + updateType + ')');\n"
 "}\n\n"
 "/**\n"
 " * Apply a single binding update\n"
 " */\n"
 "function kryonApplyBinding(binding, value) {\n"
-"    const el = document.getElementById(binding.elementId);\n"
+"    const el = binding.selector ? document.querySelector(binding.selector) : null;\n"
 "    if (!el) return;\n"
 "    switch (binding.updateType) {\n"
 "        case 'text': el.textContent = String(value); break;\n"
@@ -119,6 +121,7 @@ static const char* javascript_runtime_template =
 "        case 'visibility': el.style.display = value ? '' : 'none'; break;\n"
 "        case 'class': value ? el.classList.add(binding.options.className) : el.classList.remove(binding.options.className); break;\n"
 "        case 'custom': if (binding.options.customFn && typeof window[binding.options.customFn] === 'function') window[binding.options.customFn](el, value); break;\n"
+"        default: el.textContent = String(value);\n"
 "    }\n"
 "}\n\n"
 "/**\n"
@@ -1138,8 +1141,9 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
             if (binding->reactive_var_id != var_id) continue;
 
             char binding_line[256];
+            // Use data-kryon-id attribute selector for reliable element lookups
             snprintf(binding_line, sizeof(binding_line),
-                     "    { elementId: 'kryon-%u', type: '%s'%s },\n",
+                     "    { selector: '[data-kryon-id=\"%u\"]', type: '%s'%s },\n",
                      binding->component_id,
                      js_binding_type_string(binding->binding_type),
                      binding->expression ? ", expr: true" : "");
@@ -1176,12 +1180,15 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
         "  console.log('[Kryon Reactive] State changed:', prop, '=', newValue);\n"
         "  const bindings = kryonBindings[prop] || [];\n"
         "  bindings.forEach(binding => {\n"
-        "    const el = document.getElementById(binding.elementId);\n"
+        "    // Use querySelector with data-kryon-id selector for reliable lookups\n"
+        "    const el = binding.selector ? document.querySelector(binding.selector) : null;\n"
         "    if (!el) {\n"
-        "      console.warn('[Kryon Reactive] Element not found:', binding.elementId);\n"
+        "      console.warn('[Kryon Reactive] Element not found:', binding.selector);\n"
         "      return;\n"
         "    }\n"
+        "    console.log('[Kryon Reactive] Updating element', binding.selector, 'with', newValue);\n"
         "    switch (binding.type) {\n"
+        "      case 'text':\n"
         "      case 'textContent':\n"
         "        el.textContent = String(newValue);\n"
         "        break;\n"
@@ -1196,6 +1203,9 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
         "        // ForEach requires re-rendering the list\n"
         "        console.log('[Kryon Reactive] ForEach update for', prop);\n"
         "        break;\n"
+        "      default:\n"
+        "        // Default to text update\n"
+        "        el.textContent = String(newValue);\n"
         "    }\n"
         "  });\n"
         "}\n\n"

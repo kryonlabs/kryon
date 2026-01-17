@@ -300,8 +300,9 @@ end
 --- @param target table The table to make reactive
 --- @param parent table|nil Parent reactive object (for nested reactivity)
 --- @param parentKey string|nil Key in parent (for nested reactivity)
+--- @param basePath string|nil Base path for tracking (e.g., "displayedMonth")
 --- @return table Reactive proxy
-function Reactive.reactive(target, parent, parentKey)
+function Reactive.reactive(target, parent, parentKey, basePath)
   if type(target) ~= "table" then
     error("[Reactive] reactive() requires a table, got " .. type(target))
   end
@@ -309,6 +310,21 @@ function Reactive.reactive(target, parent, parentKey)
   -- Return existing proxy if already reactive
   if reactiveMap[target] then
     return reactiveMap[target]
+  end
+
+  -- Build the path for this proxy
+  -- If we have a parent key, extend the base path with it
+  local proxyPath = basePath
+  if parentKey and type(parentKey) == "string" then
+    if basePath then
+      proxyPath = basePath .. "." .. parentKey
+    else
+      proxyPath = parentKey
+    end
+  elseif parentKey and type(parentKey) == "number" then
+    if basePath then
+      proxyPath = basePath .. "[" .. parentKey .. "]"
+    end
   end
 
   -- Phase 3: Register variables with KIR manifest (only for top-level state)
@@ -325,7 +341,7 @@ function Reactive.reactive(target, parent, parentKey)
   local proxy = setmetatable({}, {
     __index = function(t, key)
       -- Don't track internal keys
-      if key == "_target" or key == "_deps" then
+      if key == "_target" or key == "_deps" or key == "_path" then
         return rawget(t, key)
       end
 
@@ -363,8 +379,14 @@ function Reactive.reactive(target, parent, parentKey)
           return cachedProxy
         end
 
-        -- Create new proxy and cache it
-        local childProxy = Reactive.reactive(value, t, key)
+        -- Create new proxy and cache it with extended path
+        local childPath = proxyPath
+        if type(key) == "string" then
+          childPath = proxyPath and (proxyPath .. "." .. key) or key
+        elseif type(key) == "number" then
+          childPath = proxyPath and (proxyPath .. "[" .. key .. "]") or tostring(key)
+        end
+        local childProxy = Reactive.reactive(value, t, key, childPath)
         proxyCache[key] = childProxy
         return childProxy
       end
@@ -374,7 +396,7 @@ function Reactive.reactive(target, parent, parentKey)
 
     __newindex = function(t, key, newValue)
       -- Don't allow setting internal keys via metatable
-      if key == "_target" or key == "_deps" then
+      if key == "_target" or key == "_deps" or key == "_path" then
         rawset(t, key, newValue)
         return
       end
@@ -433,6 +455,7 @@ function Reactive.reactive(target, parent, parentKey)
   reactiveMap[target] = proxy
   proxy._target = target
   proxy._deps = {}
+  proxy._path = proxyPath  -- Store path for automatic binding detection
 
   -- LuaJIT Fix: Pre-populate array indices for ipairs/len to work
   -- LuaJIT (Lua 5.1) doesn't call __ipairs or __len on empty tables
@@ -440,7 +463,9 @@ function Reactive.reactive(target, parent, parentKey)
     for i = 1, #target do
       local value = target[i]
       if type(value) == "table" and not isReactive(value) then
-        local wrapped = Reactive.reactive(value, proxy, i)
+        -- Build path for array element
+        local elementPath = proxyPath and (proxyPath .. "[" .. i .. "]") or tostring(i)
+        local wrapped = Reactive.reactive(value, proxy, i, elementPath)
         -- MUST pre-populate proxy with wrapped value for ipairs/# to work
         rawset(proxy, i, wrapped)
       else
