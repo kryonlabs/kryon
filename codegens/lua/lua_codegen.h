@@ -55,18 +55,23 @@ bool lua_codegen_generate_with_options(const char* kir_path,
                                         LuaCodegenOptions* options);
 
 /**
- * Generate multiple Lua files from multi-file KIR with exact source preservation
+ * Generate multiple Lua files from multi-file KIR by reading linked KIR files
  *
- * This function checks if the KIR file contains a "sources" section. If present,
- * it regenerates the original Lua source files exactly as they were compiled.
- * This enables perfect round-trip compilation: Lua -> KIR -> Lua
+ * This function reads the main.kir file, generates Lua code from its KIR representation,
+ * then follows the imports array to find and process linked component KIR files.
+ * Each KIR file is transformed to Lua using lua_codegen_from_json().
  *
- * @param kir_path Path to .kir JSON file
+ * KIR Architecture:
+ * - main.kir contains the main module's KIR representation
+ * - Each import in main.kir references a component: "components/calendar" -> "components/calendar.kir"
+ * - All codegen output is generated FROM the KIR representation, never copied from source
+ *
+ * @param kir_path Path to main.kir JSON file (usually .kryon_cache/main.kir)
  * @param output_dir Directory where generated Lua files should be written
  * @return bool true on success, false on error
  *
  * @example
- *   bool success = lua_codegen_generate_multi("app.kir", "output/");
+ *   bool success = lua_codegen_generate_multi(".kryon_cache/main.kir", "output/");
  */
 bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir);
 

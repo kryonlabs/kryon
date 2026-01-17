@@ -14,18 +14,21 @@ CFLAGS += -DIR_USE_SINGLE_PASS_LAYOUT
 HARFBUZZ_CFLAGS ?= $(shell pkg-config --cflags harfbuzz freetype2 fribidi 2>/dev/null || echo "")
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
 
-# Check if harfbuzz is available
+# Check if harfbuzz is available - REQUIRED, no fallbacks
 HAS_HARFBUZZ = $(shell pkg-config --exists harfbuzz && echo 1 || echo 0)
+HAS_FRIBIDI = $(shell pkg-config --exists fribidi && echo 1 || echo 0)
 
-# Text shaping object file (only if harfbuzz is available)
-# When harfbuzz is not available, use the stub implementation
-ifeq ($(HAS_HARFBUZZ),1)
+ifeq ($(HAS_HARFBUZZ),0)
+$(error HarfBuzz is REQUIRED. Install with: apt install libharfbuzz-dev OR nix-shell)
+endif
+
+ifeq ($(HAS_FRIBIDI),0)
+$(error FriBidi is REQUIRED. Install with: apt install libfribidi-dev OR nix-shell)
+endif
+
+# Text shaping object file - no fallback, dependencies are required
 IR_TEXT_SHAPING_OBJ = ir_text_shaping.o
 IR_TEXT_SHAPING_LIBS = $(HARFBUZZ_LIBS)
-else
-IR_TEXT_SHAPING_OBJ = ir_bidi_stub.o
-IR_TEXT_SHAPING_LIBS =
-endif
 
 # Directories
 IR_DIR = .
@@ -154,14 +157,7 @@ ir_transition.o: ir_transition.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_transition.c -o ir_transition.o -lm
 
 ir_text_shaping.o: ir_text_shaping.c $(IR_HEADERS)
-ifeq ($(HAS_HARFBUZZ),1)
 	$(CC) $(CFLAGS) $(HARFBUZZ_CFLAGS) -I$(INCLUDE_DIR) -c ir_text_shaping.c -o ir_text_shaping.o
-else
-	@echo "Skipping ir_text_shaping.c (harfbuzz not available, using stub)"
-endif
-
-ir_bidi_stub.o: ir_bidi_stub.c $(IR_HEADERS)
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_bidi_stub.c -o ir_bidi_stub.o
 
 ir_hot_reload.o: ir_hot_reload.c $(IR_HEADERS)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c ir_hot_reload.c -o ir_hot_reload.o

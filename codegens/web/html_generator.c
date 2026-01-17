@@ -1557,6 +1557,8 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     // Add JavaScript runtime if requested
     if (generator->options.include_runtime) {
         html_generator_write_string(generator, "  <script src=\"kryon.js\"></script>\n");
+        // Add reactive system (Phase 2: Self-Contained KIR)
+        html_generator_write_string(generator, "  <script src=\"kryon-reactive.js\"></script>\n");
     }
 
     html_generator_write_string(generator, "</head>\n");

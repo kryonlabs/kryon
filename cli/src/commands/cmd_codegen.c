@@ -103,6 +103,12 @@ int cmd_codegen(int argc, char** argv) {
                 target = argv[i] + 7;
             } else if (strncmp(argv[i], "--output=", 9) == 0) {
                 output = argv[i] + 9;
+            } else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc) {
+                output = argv[++i];
+            } else if (argv[i][0] == '-') {
+                fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
+                fprintf(stderr, "Supported options: --lang=<target>, --output=<path>\n");
+                return 1;
             }
         }
         if (!target) {
@@ -122,8 +128,16 @@ int cmd_codegen(int argc, char** argv) {
         for (int i = 1; i < argc; i++) {
             if (strncmp(argv[i], "--output=", 9) == 0) {
                 output = argv[i] + 9;
+            } else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc) {
+                output = argv[++i];
             } else if (strncmp(argv[i], "--input=", 8) == 0) {
                 input = argv[i] + 8;  // Override config entry
+            } else if (strcmp(argv[i], "--input") == 0 && i + 1 < argc) {
+                input = argv[++i];
+            } else if (argv[i][0] == '-') {
+                fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
+                fprintf(stderr, "Supported options: --output=<dir>, --input=<file>\n");
+                return 1;
             }
         }
     }

@@ -45,4 +45,15 @@ bool web_render_ir_component_with_manifest(IRComponent* root, const char* output
 // Set manifest on renderer (for CSS variable output)
 void web_ir_renderer_set_manifest(WebIRRenderer* renderer, IRReactiveManifest* manifest);
 
+// Generate JavaScript reactive system from manifest
+// Creates kryon-reactive.js with:
+// - State object from manifest.variables
+// - Proxy for automatic DOM updates
+// - Bindings map from manifest.bindings
+// Returns allocated string that must be freed
+char* generate_js_reactive_system(IRReactiveManifest* manifest);
+
+// Write JavaScript reactive system to output directory
+bool write_js_reactive_system(const char* output_dir, IRReactiveManifest* manifest);
+
 #endif // IR_WEB_RENDERER_H

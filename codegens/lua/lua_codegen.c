@@ -657,13 +657,138 @@ char* lua_codegen_from_json(const char* kir_json) {
     lua_gen_add_line(gen, "-- Uses Smart DSL syntax for clean, readable code");
     lua_gen_add_line(gen, "-- Do not edit manually - regenerate from source");
     lua_gen_add_line(gen, "");
-    lua_gen_add_line(gen, "local Reactive = require(\"kryon.reactive\")");
-    lua_gen_add_line(gen, "local UI = require(\"kryon.dsl\")");
 
-    // Generate reactive variables if manifest exists
-    cJSON* manifest = cJSON_GetObjectItem(root, "reactive_manifest");
-    if (manifest) {
-        generate_reactive_vars(gen, manifest);
+    // Check for source_declarations (Phase 1: Source Preservation)
+    cJSON* source_decls = cJSON_GetObjectItem(root, "source_declarations");
+
+    // Check early if this is a component module (has component_definitions)
+    // Component modules handle function output differently to avoid duplication
+    cJSON* component_defs_early = cJSON_GetObjectItem(root, "component_definitions");
+    bool is_component_module = (component_defs_early && cJSON_IsArray(component_defs_early) &&
+                                cJSON_GetArraySize(component_defs_early) > 0);
+
+    if (source_decls && cJSON_IsObject(source_decls)) {
+        // Use preserved requires from original source
+        // NOTE: For component modules, requires are output later in the component_defs block
+        // to avoid duplicate output. Only output here for main modules.
+        if (!is_component_module) {
+            cJSON* requires = cJSON_GetObjectItem(source_decls, "requires");
+            if (requires && cJSON_IsArray(requires)) {
+                cJSON* req = NULL;
+                cJSON_ArrayForEach(req, requires) {
+                    cJSON* var = cJSON_GetObjectItem(req, "variable");
+                    cJSON* mod = cJSON_GetObjectItem(req, "module");
+                    if (var && mod && cJSON_IsString(var) && cJSON_IsString(mod)) {
+                        lua_gen_add_line_fmt(gen, "local %s = require(\"%s\")",
+                            cJSON_GetStringValue(var), cJSON_GetStringValue(mod));
+                    }
+                }
+                lua_gen_add_line(gen, "");
+            }
+            // Output helper functions from source_declarations
+            // NOTE: For component modules, functions are output in the component_defs block
+            cJSON* functions = cJSON_GetObjectItem(source_decls, "functions");
+            if (functions && cJSON_IsArray(functions) && cJSON_GetArraySize(functions) > 0) {
+                lua_gen_add_line(gen, "-- Helper Functions (preserved from source)");
+                cJSON* fn = NULL;
+                cJSON_ArrayForEach(fn, functions) {
+                    cJSON* source = cJSON_GetObjectItem(fn, "source");
+                    if (source && cJSON_IsString(source)) {
+                        // Split by newlines and add each line
+                        const char* fn_source = cJSON_GetStringValue(source);
+                        char* fn_copy = strdup(fn_source);
+                        if (fn_copy) {
+                            char* line = strtok(fn_copy, "\n");
+                            while (line) {
+                                lua_gen_add_line(gen, line);
+                                line = strtok(NULL, "\n");
+                            }
+                            free(fn_copy);
+                        }
+                        lua_gen_add_line(gen, "");
+                    }
+                }
+            }
+        }
+    } else {
+        // Fallback: hardcoded requires for backward compatibility
+        lua_gen_add_line(gen, "local Reactive = require(\"kryon.reactive\")");
+        lua_gen_add_line(gen, "local UI = require(\"kryon.dsl\")");
+    }
+
+    // Generate reactive state and initialization sections
+    // Only for main modules (non-component modules)
+    bool used_source_state_init = false;
+    if (source_decls && cJSON_IsObject(source_decls) && !is_component_module) {
+        // Helper lambda to output multiline strings
+        #define OUTPUT_MULTILINE(src_str) do { \
+            char* copy = strdup(src_str); \
+            if (copy) { \
+                char* saveptr = NULL; \
+                char* line = strtok_r(copy, "\n", &saveptr); \
+                while (line) { \
+                    lua_gen_add_line(gen, line); \
+                    line = strtok_r(NULL, "\n", &saveptr); \
+                } \
+                free(copy); \
+            } \
+        } while(0)
+
+        // 1. Output module_init (math.randomseed, Storage.init, etc.)
+        cJSON* module_init = cJSON_GetObjectItem(source_decls, "module_init");
+        if (module_init && cJSON_IsString(module_init)) {
+            lua_gen_add_line(gen, "");
+            lua_gen_add_line(gen, "-- Module Initialization (preserved from source)");
+            OUTPUT_MULTILINE(cJSON_GetStringValue(module_init));
+            lua_gen_add_line(gen, "");
+        }
+
+        // 2. Output initialization (local variables between functions and conditional blocks)
+        cJSON* initialization = cJSON_GetObjectItem(source_decls, "initialization");
+        if (initialization && cJSON_IsString(initialization)) {
+            lua_gen_add_line(gen, "");
+            lua_gen_add_line(gen, "-- Initialization (preserved from source)");
+            OUTPUT_MULTILINE(cJSON_GetStringValue(initialization));
+            lua_gen_add_line(gen, "");
+        }
+
+        // 3. Output conditional_blocks (if Storage.get then ... end)
+        cJSON* conditional_blocks = cJSON_GetObjectItem(source_decls, "conditional_blocks");
+        if (conditional_blocks && cJSON_IsString(conditional_blocks)) {
+            lua_gen_add_line(gen, "");
+            lua_gen_add_line(gen, "-- Conditional Blocks (preserved from source)");
+            OUTPUT_MULTILINE(cJSON_GetStringValue(conditional_blocks));
+            lua_gen_add_line(gen, "");
+        }
+
+        // 4. Output state initialization
+        cJSON* state_init = cJSON_GetObjectItem(source_decls, "state_init");
+        if (state_init && cJSON_IsObject(state_init)) {
+            cJSON* expression = cJSON_GetObjectItem(state_init, "expression");
+            if (expression && cJSON_IsString(expression)) {
+                lua_gen_add_line(gen, "-- Reactive State (preserved from source)");
+                lua_gen_add_line(gen, cJSON_GetStringValue(expression));
+                used_source_state_init = true;
+            }
+        }
+
+        // 5. Output non_reactive_state (local editingState = {}, etc.)
+        cJSON* non_reactive_state = cJSON_GetObjectItem(source_decls, "non_reactive_state");
+        if (non_reactive_state && cJSON_IsString(non_reactive_state)) {
+            lua_gen_add_line(gen, "");
+            lua_gen_add_line(gen, "-- Non-reactive State (preserved from source)");
+            OUTPUT_MULTILINE(cJSON_GetStringValue(non_reactive_state));
+            lua_gen_add_line(gen, "");
+        }
+
+        #undef OUTPUT_MULTILINE
+    }
+
+    if (!used_source_state_init) {
+        cJSON* manifest = cJSON_GetObjectItem(root, "reactive_manifest");
+        if (manifest) {
+            generate_reactive_vars(gen, manifest);
+        }
     }
 
     // Extract logic_block for event handlers
@@ -674,54 +799,348 @@ char* lua_codegen_from_json(const char* kir_json) {
         handler_ctx.event_bindings = cJSON_GetObjectItem(logic_block, "event_bindings");
     }
 
-    // Generate component tree
-    lua_gen_add_line(gen, "-- UI Component Tree");
-
+    // Check what type of module this is
     cJSON* component = cJSON_GetObjectItem(root, "root");
     if (!component) component = cJSON_GetObjectItem(root, "component");
 
-    if (component) {
-        generate_component_tree(gen, component, "root", &handler_ctx, false);
+    cJSON* component_defs = cJSON_GetObjectItem(root, "component_definitions");
+
+    // Check if we have a buildUI function - if so, use it directly instead of expanded tree
+    bool has_build_ui = false;
+    if (source_decls && cJSON_IsObject(source_decls)) {
+        cJSON* funcs = cJSON_GetObjectItem(source_decls, "functions");
+        if (funcs && cJSON_IsArray(funcs)) {
+            cJSON* fn = NULL;
+            cJSON_ArrayForEach(fn, funcs) {
+                cJSON* name = cJSON_GetObjectItem(fn, "name");
+                if (name && cJSON_IsString(name) && strcmp(cJSON_GetStringValue(name), "buildUI") == 0) {
+                    has_build_ui = true;
+                    break;
+                }
+            }
+        }
     }
 
-    // Footer - check for window metadata in app section
-    lua_gen_add_line(gen, "");
-    cJSON* app = cJSON_GetObjectItem(root, "app");
-    if (app && cJSON_IsObject(app)) {
-        cJSON* title = cJSON_GetObjectItem(app, "windowTitle");
-        cJSON* width = cJSON_GetObjectItem(app, "windowWidth");
-        cJSON* height = cJSON_GetObjectItem(app, "windowHeight");
+    bool already_returned = false;
+    if (has_build_ui) {
+        // Use preserved buildUI function - check for app_export first
+        cJSON* app_export = cJSON_GetObjectItem(source_decls, "app_export");
+        if (app_export && cJSON_IsString(app_export)) {
+            // Use preserved app export from source
+            lua_gen_add_line(gen, "");
+            lua_gen_add_line(gen, "-- App Export (preserved from source)");
+            const char* export_code = cJSON_GetStringValue(app_export);
+            char* export_copy = strdup(export_code);
+            if (export_copy) {
+                char* line = strtok(export_copy, "\n");
+                while (line) {
+                    lua_gen_add_line(gen, line);
+                    line = strtok(NULL, "\n");
+                }
+                free(export_copy);
+            }
+            already_returned = true;
+        } else {
+            // Fallback - minimal export using buildUI
+            lua_gen_add_line(gen, "");
+            lua_gen_add_line(gen, "-- App Export");
+            lua_gen_add_line(gen, "return { root = buildUI }");
+            already_returned = true;
+        }
+    } else if (component && !cJSON_IsNull(component)) {
+        // Main module with root component tree (fallback when no buildUI)
+        lua_gen_add_line(gen, "-- UI Component Tree");
+        generate_component_tree(gen, component, "root", &handler_ctx, false);
+    } else if (component_defs && cJSON_IsArray(component_defs) && cJSON_GetArraySize(component_defs) > 0) {
+        // Component module - check for preserved source
+        // Priority: 1) source_declarations.functions, 2) component_definitions[].source, 3) template fallback
+        bool has_preserved_source = false;
 
-        if (title || width || height) {
+        // Check source_declarations.functions first
+        if (source_decls) {
+            cJSON* sd_funcs = cJSON_GetObjectItem(source_decls, "functions");
+            if (sd_funcs && cJSON_IsArray(sd_funcs) && cJSON_GetArraySize(sd_funcs) > 0) {
+                has_preserved_source = true;
+            }
+        }
+
+        // Also check if component_definitions have source directly (from static extraction)
+        if (!has_preserved_source) {
+            cJSON* first_def = cJSON_GetArrayItem(component_defs, 0);
+            if (first_def && cJSON_GetObjectItem(first_def, "source")) {
+                has_preserved_source = true;
+            }
+        }
+
+        if (has_preserved_source) {
+            // Use preserved source - output requires first
+            cJSON* sd_requires = source_decls ? cJSON_GetObjectItem(source_decls, "requires") : NULL;
+            if (sd_requires && cJSON_IsArray(sd_requires)) {
+                cJSON* req = NULL;
+                cJSON_ArrayForEach(req, sd_requires) {
+                    cJSON* var = cJSON_GetObjectItem(req, "variable");
+                    cJSON* mod = cJSON_GetObjectItem(req, "module");
+                    if (var && mod && cJSON_IsString(var) && cJSON_IsString(mod)) {
+                        lua_gen_add_line_fmt(gen, "local %s = require(\"%s\")",
+                                             cJSON_GetStringValue(var),
+                                             cJSON_GetStringValue(mod));
+                    }
+                }
+                lua_gen_add_line(gen, "");
+            }
+
+            // Output module_constants (COLORS table, DEFAULT_COLOR, etc.)
+            cJSON* module_constants = source_decls ? cJSON_GetObjectItem(source_decls, "module_constants") : NULL;
+            if (module_constants && cJSON_IsString(module_constants)) {
+                const char* const_str = cJSON_GetStringValue(module_constants);
+                if (const_str && strlen(const_str) > 0) {
+                    char* const_copy = strdup(const_str);
+                    if (const_copy) {
+                        char* line = strtok(const_copy, "\n");
+                        while (line) {
+                            lua_gen_add_line(gen, line);
+                            line = strtok(NULL, "\n");
+                        }
+                        free(const_copy);
+                    }
+                    lua_gen_add_line(gen, "");
+                }
+            }
+
+            // Output all preserved functions from source_declarations OR component_definitions
+            cJSON* sd_funcs = source_decls ? cJSON_GetObjectItem(source_decls, "functions") : NULL;
+            if (sd_funcs && cJSON_IsArray(sd_funcs) && cJSON_GetArraySize(sd_funcs) > 0) {
+                // Use source_declarations.functions (preferred - has ALL functions)
+                cJSON* fn = NULL;
+                cJSON_ArrayForEach(fn, sd_funcs) {
+                    cJSON* fn_source = cJSON_GetObjectItem(fn, "source");
+                    if (fn_source && cJSON_IsString(fn_source)) {
+                        const char* src = cJSON_GetStringValue(fn_source);
+                        if (src && strlen(src) > 0) {
+                            // Output the function source line by line
+                            char* src_copy = strdup(src);
+                            if (src_copy) {
+                                char* line = strtok(src_copy, "\n");
+                                while (line) {
+                                    lua_gen_add_line(gen, line);
+                                    line = strtok(NULL, "\n");
+                                }
+                                free(src_copy);
+                            }
+                            lua_gen_add_line(gen, "");
+                        }
+                    }
+                }
+            } else {
+                // Fallback: use source from component_definitions (only exported functions)
+                cJSON* comp_def = NULL;
+                cJSON_ArrayForEach(comp_def, component_defs) {
+                    cJSON* def_source = cJSON_GetObjectItem(comp_def, "source");
+                    if (def_source && cJSON_IsString(def_source)) {
+                        const char* src = cJSON_GetStringValue(def_source);
+                        if (src && strlen(src) > 0) {
+                            // Output the function source line by line
+                            char* src_copy = strdup(src);
+                            if (src_copy) {
+                                char* line = strtok(src_copy, "\n");
+                                while (line) {
+                                    lua_gen_add_line(gen, line);
+                                    line = strtok(NULL, "\n");
+                                }
+                                free(src_copy);
+                            }
+                            lua_gen_add_line(gen, "");
+                        }
+                    }
+                }
+            }
+
+            // Generate return statement from exports
             lua_gen_add_line(gen, "return {");
             gen->indent++;
-            lua_gen_add_line(gen, "root = root,");
-
-            if (title && cJSON_IsString(title)) {
-                lua_gen_add_line_fmt(gen, "window = {title = \"%s\",",
-                                     cJSON_GetStringValue(title));
-            } else {
-                lua_gen_add_line(gen, "window = {");
-            }
-
-            gen->indent++;
-            if (width && cJSON_IsNumber(width)) {
-                int w = (int)cJSON_GetNumberValue(width);
-                lua_gen_add_line_fmt(gen, "width = %d,", w);
-            }
-            if (height && cJSON_IsNumber(height)) {
-                int h = (int)cJSON_GetNumberValue(height);
-                lua_gen_add_line_fmt(gen, "height = %d", h);
+            cJSON* comp_def = NULL;
+            int def_count = cJSON_GetArraySize(component_defs);
+            int i = 0;
+            cJSON_ArrayForEach(comp_def, component_defs) {
+                cJSON* name = cJSON_GetObjectItem(comp_def, "name");
+                if (name && cJSON_IsString(name)) {
+                    const char* func_name = cJSON_GetStringValue(name);
+                    if (i < def_count - 1) {
+                        lua_gen_add_line_fmt(gen, "%s = %s,", func_name, func_name);
+                    } else {
+                        lua_gen_add_line_fmt(gen, "%s = %s", func_name, func_name);
+                    }
+                }
+                i++;
             }
             gen->indent--;
             lua_gen_add_line(gen, "}");
-            gen->indent--;
-            lua_gen_add_line(gen, "}");
+            already_returned = true;
         } else {
-            lua_gen_add_line(gen, "return root");
+            // Fallback: generate from template (expanded UI tree)
+            lua_gen_add_line(gen, "-- Component Definitions");
+            lua_gen_add_line(gen, "local M = {}");
+            lua_gen_add_line(gen, "");
+
+            cJSON* comp_def = NULL;
+            cJSON_ArrayForEach(comp_def, component_defs) {
+                cJSON* name = cJSON_GetObjectItem(comp_def, "name");
+                cJSON* template = cJSON_GetObjectItem(comp_def, "template");
+
+                if (name && cJSON_IsString(name) && template) {
+                    const char* func_name = cJSON_GetStringValue(name);
+                    lua_gen_add_line_fmt(gen, "function M.%s(props)", func_name);
+                    gen->indent++;
+                    lua_gen_add_line(gen, "props = props or {}");
+                    lua_gen_add_line(gen, "return");
+                    gen->indent++;
+                    generate_component_tree(gen, template, NULL, &handler_ctx, true);
+                    gen->indent--;
+                    gen->indent--;
+                    lua_gen_add_line(gen, "end");
+                    lua_gen_add_line(gen, "");
+                }
+            }
         }
     } else {
-        lua_gen_add_line(gen, "return root");
+        // Library module with exports - use source_declarations for preservation
+        lua_gen_add_line(gen, "-- Library Module (no UI components)");
+
+        // Helper macro for outputting multiline strings
+        #define LIB_OUTPUT_MULTILINE(src_str) do { \
+            char* copy = strdup(src_str); \
+            if (copy) { \
+                char* saveptr = NULL; \
+                char* line = strtok_r(copy, "\n", &saveptr); \
+                while (line) { \
+                    lua_gen_add_line(gen, line); \
+                    line = strtok_r(NULL, "\n", &saveptr); \
+                } \
+                free(copy); \
+            } \
+        } while(0)
+
+        // 1. Output requires from source_declarations
+        cJSON* sd_requires = source_decls ? cJSON_GetObjectItem(source_decls, "requires") : NULL;
+        if (sd_requires && cJSON_IsArray(sd_requires) && cJSON_GetArraySize(sd_requires) > 0) {
+            cJSON* req = NULL;
+            cJSON_ArrayForEach(req, sd_requires) {
+                cJSON* var = cJSON_GetObjectItem(req, "variable");
+                cJSON* mod = cJSON_GetObjectItem(req, "module");
+                if (var && cJSON_IsString(var) && mod && cJSON_IsString(mod)) {
+                    lua_gen_add_line_fmt(gen, "local %s = require(\"%s\")",
+                        cJSON_GetStringValue(var), cJSON_GetStringValue(mod));
+                }
+            }
+            lua_gen_add_line(gen, "");
+        }
+
+        // 2. Output module constants (COLORS table, DEFAULT_COLOR, etc.)
+        cJSON* module_constants = source_decls ? cJSON_GetObjectItem(source_decls, "module_constants") : NULL;
+        if (module_constants && cJSON_IsString(module_constants)) {
+            const char* const_str = cJSON_GetStringValue(module_constants);
+            if (const_str && strlen(const_str) > 0) {
+                LIB_OUTPUT_MULTILINE(const_str);
+                lua_gen_add_line(gen, "");
+            }
+        }
+
+        // 3. Output functions from source_declarations
+        cJSON* sd_functions = source_decls ? cJSON_GetObjectItem(source_decls, "functions") : NULL;
+        if (sd_functions && cJSON_IsArray(sd_functions) && cJSON_GetArraySize(sd_functions) > 0) {
+            cJSON* fn = NULL;
+            cJSON_ArrayForEach(fn, sd_functions) {
+                cJSON* fn_source = cJSON_GetObjectItem(fn, "source");
+                if (fn_source && cJSON_IsString(fn_source)) {
+                    const char* src = cJSON_GetStringValue(fn_source);
+                    if (src && strlen(src) > 0) {
+                        LIB_OUTPUT_MULTILINE(src);
+                        lua_gen_add_line(gen, "");
+                    }
+                }
+            }
+        }
+
+        // 4. Generate return statement based on exports
+        cJSON* exports = cJSON_GetObjectItem(root, "exports");
+        if (exports && cJSON_IsArray(exports) && cJSON_GetArraySize(exports) > 0) {
+            lua_gen_add_line(gen, "return {");
+            gen->indent++;
+            int exp_count = cJSON_GetArraySize(exports);
+            int exp_i = 0;
+            cJSON* exp = NULL;
+            cJSON_ArrayForEach(exp, exports) {
+                cJSON* exp_name = cJSON_GetObjectItem(exp, "name");
+                if (exp_name && cJSON_IsString(exp_name)) {
+                    const char* name = cJSON_GetStringValue(exp_name);
+                    if (exp_i < exp_count - 1) {
+                        lua_gen_add_line_fmt(gen, "%s = %s,", name, name);
+                    } else {
+                        lua_gen_add_line_fmt(gen, "%s = %s", name, name);
+                    }
+                }
+                exp_i++;
+            }
+            gen->indent--;
+            lua_gen_add_line(gen, "}");
+            already_returned = true;
+        }
+
+        #undef LIB_OUTPUT_MULTILINE
+    }
+
+    // Footer - determine what to return based on module type
+    // Skip if we've already generated a return statement (e.g., from app_export)
+    if (!already_returned) {
+        lua_gen_add_line(gen, "");
+
+        // If this is a component or library module, return M
+        bool is_component_module = (component_defs && cJSON_IsArray(component_defs) &&
+                                    cJSON_GetArraySize(component_defs) > 0) ||
+                                   (!component || cJSON_IsNull(component));
+
+        if (is_component_module) {
+            lua_gen_add_line(gen, "return M");
+        } else {
+            // Main module - check for window metadata in app section
+            cJSON* app = cJSON_GetObjectItem(root, "app");
+            if (app && cJSON_IsObject(app)) {
+                cJSON* title = cJSON_GetObjectItem(app, "windowTitle");
+                cJSON* width = cJSON_GetObjectItem(app, "windowWidth");
+                cJSON* height = cJSON_GetObjectItem(app, "windowHeight");
+
+                if (title || width || height) {
+                    lua_gen_add_line(gen, "return {");
+                    gen->indent++;
+                    lua_gen_add_line(gen, "root = root,");
+
+                    if (title && cJSON_IsString(title)) {
+                        lua_gen_add_line_fmt(gen, "window = {title = \"%s\",",
+                                             cJSON_GetStringValue(title));
+                    } else {
+                        lua_gen_add_line(gen, "window = {");
+                    }
+
+                    gen->indent++;
+                    if (width && cJSON_IsNumber(width)) {
+                        int w = (int)cJSON_GetNumberValue(width);
+                        lua_gen_add_line_fmt(gen, "width = %d,", w);
+                    }
+                    if (height && cJSON_IsNumber(height)) {
+                        int h = (int)cJSON_GetNumberValue(height);
+                        lua_gen_add_line_fmt(gen, "height = %d", h);
+                    }
+                    gen->indent--;
+                    lua_gen_add_line(gen, "}");
+                    gen->indent--;
+                    lua_gen_add_line(gen, "}");
+                } else {
+                    lua_gen_add_line(gen, "return root");
+                }
+            } else {
+                lua_gen_add_line(gen, "return root");
+            }
+        }
     }
 
     // Clone the string builder to get the result without freeing the original
@@ -824,7 +1243,203 @@ bool lua_codegen_generate_with_options(const char* kir_path,
 }
 
 /**
- * Generate multiple Lua files from multi-file KIR with exact source preservation
+ * Helper to check if a module is a Kryon internal module
+ */
+static bool is_kryon_internal(const char* module_id) {
+    if (!module_id) return false;
+
+    // Check for kryon/ prefix
+    if (strncmp(module_id, "kryon/", 6) == 0) return true;
+
+    // Check for known internal module names
+    if (strcmp(module_id, "dsl") == 0) return true;
+    if (strcmp(module_id, "ffi") == 0) return true;
+    if (strcmp(module_id, "runtime") == 0) return true;
+    if (strcmp(module_id, "reactive") == 0) return true;
+    if (strcmp(module_id, "runtime_web") == 0) return true;
+    if (strcmp(module_id, "kryon") == 0) return true;
+
+    return false;
+}
+
+/**
+ * Helper to check if a module is an external plugin
+ */
+static bool is_external_plugin(const char* module_id) {
+    if (!module_id) return false;
+
+    // Known external plugins (runtime dependencies, not source modules)
+    if (strcmp(module_id, "datetime") == 0) return true;
+    if (strcmp(module_id, "storage") == 0) return true;
+
+    return false;
+}
+
+/**
+ * Helper to get the parent directory of a path
+ */
+static void get_parent_dir(const char* path, char* parent, size_t parent_size) {
+    if (!path || !parent) return;
+
+    strncpy(parent, path, parent_size - 1);
+    parent[parent_size - 1] = '\0';
+
+    char* last_slash = strrchr(parent, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+    } else {
+        parent[0] = '.';
+        parent[1] = '\0';
+    }
+}
+
+/**
+ * Helper to write file with automatic directory creation
+ */
+static bool write_file_with_mkdir(const char* path, const char* content) {
+    if (!path || !content) return false;
+
+    // Create a mutable copy for directory extraction
+    char dir_path[2048];
+    strncpy(dir_path, path, sizeof(dir_path) - 1);
+    dir_path[sizeof(dir_path) - 1] = '\0';
+
+    // Find and create parent directory
+    char* last_slash = strrchr(dir_path, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+        struct stat st = {0};
+        if (stat(dir_path, &st) == -1) {
+            char mkdir_cmd[2048];
+            snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", dir_path);
+            if (system(mkdir_cmd) != 0) {
+                fprintf(stderr, "Warning: Could not create directory: %s\n", dir_path);
+            }
+        }
+    }
+
+    // Write the file
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        fprintf(stderr, "Error: Could not write file: %s\n", path);
+        return false;
+    }
+    fputs(content, f);
+    fclose(f);
+    return true;
+}
+
+/**
+ * Processed modules tracking for recursive import processing
+ */
+#define MAX_PROCESSED_MODULES 256
+
+typedef struct {
+    char* modules[MAX_PROCESSED_MODULES];
+    int count;
+} ProcessedModules;
+
+static bool is_module_processed(ProcessedModules* pm, const char* module_id) {
+    for (int i = 0; i < pm->count; i++) {
+        if (strcmp(pm->modules[i], module_id) == 0) return true;
+    }
+    return false;
+}
+
+static void mark_module_processed(ProcessedModules* pm, const char* module_id) {
+    if (pm->count < MAX_PROCESSED_MODULES) {
+        pm->modules[pm->count++] = strdup(module_id);
+    }
+}
+
+static void free_processed_modules(ProcessedModules* pm) {
+    for (int i = 0; i < pm->count; i++) {
+        free(pm->modules[i]);
+    }
+    pm->count = 0;
+}
+
+/**
+ * Recursively process a module and its transitive imports
+ */
+static int process_module_recursive(const char* module_id, const char* kir_dir,
+                                    const char* output_dir, ProcessedModules* processed) {
+    // Skip if already processed
+    if (is_module_processed(processed, module_id)) return 0;
+    mark_module_processed(processed, module_id);
+
+    // Skip internal modules and external plugins
+    if (is_kryon_internal(module_id)) return 0;
+    if (is_external_plugin(module_id)) return 0;
+
+    // Build path to component's KIR file
+    char component_kir_path[2048];
+    snprintf(component_kir_path, sizeof(component_kir_path),
+             "%s/%s.kir", kir_dir, module_id);
+
+    // Read component's KIR
+    char* component_kir_json = codegen_read_kir_file(component_kir_path, NULL);
+    if (!component_kir_json) {
+        fprintf(stderr, "Warning: Cannot find KIR for '%s' at %s\n",
+                module_id, component_kir_path);
+        return 0;
+    }
+
+    // Parse to get transitive imports before generating
+    cJSON* component_root = cJSON_Parse(component_kir_json);
+    int files_written = 0;
+
+    // Generate Lua from KIR
+    char* component_lua = lua_codegen_from_json(component_kir_json);
+    free(component_kir_json);
+
+    if (component_lua) {
+        // Write to output directory maintaining hierarchy
+        char output_path[2048];
+        snprintf(output_path, sizeof(output_path),
+                 "%s/%s.lua", output_dir, module_id);
+
+        if (write_file_with_mkdir(output_path, component_lua)) {
+            printf("✓ Generated: %s.lua\n", module_id);
+            files_written++;
+        }
+        free(component_lua);
+    } else {
+        fprintf(stderr, "Warning: Failed to generate Lua for '%s'\n", module_id);
+    }
+
+    // Process transitive imports from this component
+    if (component_root) {
+        cJSON* imports = cJSON_GetObjectItem(component_root, "imports");
+        if (imports && cJSON_IsArray(imports)) {
+            cJSON* import_item = NULL;
+            cJSON_ArrayForEach(import_item, imports) {
+                if (!cJSON_IsString(import_item)) continue;
+                const char* sub_module_id = cJSON_GetStringValue(import_item);
+                if (sub_module_id) {
+                    files_written += process_module_recursive(sub_module_id, kir_dir,
+                                                              output_dir, processed);
+                }
+            }
+        }
+        cJSON_Delete(component_root);
+    }
+
+    return files_written;
+}
+
+/**
+ * Generate multiple Lua files from multi-file KIR by reading linked KIR files
+ *
+ * This function reads the main.kir file, generates Lua code from its KIR representation,
+ * then follows the imports array to find and process linked component KIR files.
+ * Transitive imports are processed recursively.
+ * Each KIR file is transformed to Lua using lua_codegen_from_json().
+ *
+ * KIR Architecture:
+ * - main.kir contains the main module's KIR representation
+ * - Each import in main.kir references a component: "components/calendar" -> "components/calendar.kir"
+ * - All codegen output is generated FROM the KIR representation, never copied from source
  */
 bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
     if (!kir_path || !output_dir) {
@@ -835,130 +1450,80 @@ bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
     // Set error prefix for this codegen
     codegen_set_error_prefix("Lua");
 
-    // Read KIR file using shared utility
-    char* kir_json = codegen_read_kir_file(kir_path, NULL);
-    if (!kir_json) {
+    // Read main KIR file
+    char* main_kir_json = codegen_read_kir_file(kir_path, NULL);
+    if (!main_kir_json) {
         return false;
     }
 
-    // Parse JSON
-    cJSON* root = cJSON_Parse(kir_json);
-    free(kir_json);
-
-    if (!root) {
-        fprintf(stderr, "Error: Failed to parse KIR JSON\n");
-        return false;
-    }
-
-    // Check for sources section
-    cJSON* sources = cJSON_GetObjectItem(root, "sources");
-    if (!sources) {
-        fprintf(stderr, "Error: KIR file does not contain sources section\n");
-        fprintf(stderr, "       Use lua_codegen_generate() for single-file codegen\n");
-        cJSON_Delete(root);
+    // Parse main KIR JSON
+    cJSON* main_root = cJSON_Parse(main_kir_json);
+    if (!main_root) {
+        fprintf(stderr, "Error: Failed to parse main KIR JSON\n");
+        free(main_kir_json);
         return false;
     }
 
     // Create output directory if it doesn't exist
     struct stat st = {0};
     if (stat(output_dir, &st) == -1) {
-        // Directory doesn't exist, create it
         char mkdir_cmd[2048];
         snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
         if (system(mkdir_cmd) != 0) {
             fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
-            cJSON_Delete(root);
+            cJSON_Delete(main_root);
+            free(main_kir_json);
             return false;
         }
     }
 
-    // Write each source file
-    cJSON* module __attribute__((unused)) = NULL;
-    cJSON* import_item = NULL;
     int files_written = 0;
 
-    // First, write main.lua (entry point)
-    cJSON* main_source = cJSON_GetObjectItem(sources, "main");
-    if (main_source) {
-        cJSON* source = cJSON_GetObjectItem(main_source, "source");
-        if (source && cJSON_IsString(source)) {
-            char main_path[2048];
-            snprintf(main_path, sizeof(main_path), "%s/main.lua", output_dir);
+    // 1. Generate main.lua from main.kir
+    char* main_lua = lua_codegen_from_json(main_kir_json);
+    free(main_kir_json);
 
-            FILE* out = fopen(main_path, "w");
-            if (out) {
-                fputs(source->valuestring, out);
-                fclose(out);
-                printf("✓ Generated: main.lua\n");
-                files_written++;
-            }
+    if (main_lua) {
+        char main_output_path[2048];
+        snprintf(main_output_path, sizeof(main_output_path), "%s/main.lua", output_dir);
+
+        if (write_file_with_mkdir(main_output_path, main_lua)) {
+            printf("✓ Generated: main.lua\n");
+            files_written++;
         }
+        free(main_lua);
+    } else {
+        fprintf(stderr, "Warning: Failed to generate main.lua from KIR\n");
     }
 
-    // Write all other modules
-    cJSON* imports = cJSON_GetObjectItem(root, "imports");
+    // 2. Get the KIR directory (parent of kir_path)
+    char kir_dir[2048];
+    get_parent_dir(kir_path, kir_dir, sizeof(kir_dir));
+
+    // 3. Track processed modules to avoid duplicates
+    ProcessedModules processed = {0};
+    mark_module_processed(&processed, "main");  // Mark main as processed
+
+    // 4. Process each import recursively (including transitive imports)
+    cJSON* imports = cJSON_GetObjectItem(main_root, "imports");
     if (imports && cJSON_IsArray(imports)) {
+        cJSON* import_item = NULL;
         cJSON_ArrayForEach(import_item, imports) {
-            if (cJSON_IsString(import_item)) {
-                const char* module_id = import_item->valuestring;
+            if (!cJSON_IsString(import_item)) continue;
 
-                // Skip "main" as it's already written
-                if (strcmp(module_id, "main") == 0) {
-                    continue;
-                }
-
-                // Skip Kryon internal modules
-                if (strcmp(module_id, "dsl") == 0 ||
-                    strcmp(module_id, "ffi") == 0 ||
-                    strcmp(module_id, "runtime") == 0 ||
-                    strcmp(module_id, "reactive") == 0 ||
-                    strcmp(module_id, "kryon") == 0) {
-                    continue;
-                }
-
-                cJSON* module_source = cJSON_GetObjectItem(sources, module_id);
-                if (module_source) {
-                    cJSON* source = cJSON_GetObjectItem(module_source, "source");
-                    if (source && cJSON_IsString(source)) {
-                        // Convert module_id to file path
-                        // e.g., "components/calendar" -> "components/calendar.lua"
-                        char file_path[2048];
-                        snprintf(file_path, sizeof(file_path), "%s/%s.lua", output_dir, module_id);
-
-                        // Create subdirectories if needed
-                        char* last_slash = strrchr(file_path, '/');
-                        if (last_slash) {
-                            *last_slash = '\0';
-                            struct stat st2 = {0};
-                            if (stat(file_path, &st2) == -1) {
-                                char mkdir_cmd[2048];
-                                snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", file_path);
-                                int mkdir_result = system(mkdir_cmd);
-                                if (mkdir_result != 0) {
-                                    fprintf(stderr, "Warning: mkdir command failed with code %d\n", mkdir_result);
-                                }
-                            }
-                            *last_slash = '/';
-                        }
-
-                        // Write file
-                        FILE* out = fopen(file_path, "w");
-                        if (out) {
-                            fputs(source->valuestring, out);
-                            fclose(out);
-                            printf("✓ Generated: %s.lua\n", module_id);
-                            files_written++;
-                        }
-                    }
-                }
+            const char* module_id = cJSON_GetStringValue(import_item);
+            if (module_id) {
+                files_written += process_module_recursive(module_id, kir_dir,
+                                                          output_dir, &processed);
             }
         }
     }
 
-    cJSON_Delete(root);
+    free_processed_modules(&processed);
+    cJSON_Delete(main_root);
 
     if (files_written == 0) {
-        fprintf(stderr, "Warning: No source files were written\n");
+        fprintf(stderr, "Warning: No Lua files were generated\n");
         return false;
     }
 
