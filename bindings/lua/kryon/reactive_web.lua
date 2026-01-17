@@ -3,9 +3,66 @@
 -- When state changes, notifies subscribers for DOM updates
 
 local js = require("js")
-local document = js.global.document
+local window = js.global
+local document = window.document
 
 local Reactive = {}
+
+-- ============================================================================
+-- JSON Serialization for JavaScript Bridge
+-- ============================================================================
+
+--- Serialize a Lua value to JSON string for JavaScript interop
+--- @param val any Value to serialize
+--- @return string JSON string
+local function toJson(val)
+    local t = type(val)
+    if t == "nil" then
+        return "null"
+    elseif t == "boolean" then
+        return val and "true" or "false"
+    elseif t == "number" then
+        return tostring(val)
+    elseif t == "string" then
+        -- Escape special characters
+        local escaped = val:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
+        return '"' .. escaped .. '"'
+    elseif t == "table" then
+        -- Check if it's a reactive proxy and unwrap it
+        local mt = getmetatable(val)
+        local data = (mt and mt.__data) and mt.__data or val
+
+        -- Check if array or object
+        local isArray = true
+        local n = 0
+        for k, _ in pairs(data) do
+            n = n + 1
+            if type(k) ~= "number" or k ~= n then
+                isArray = false
+                break
+            end
+        end
+        if n == 0 then isArray = true end
+
+        if isArray then
+            local parts = {}
+            for i, v in ipairs(data) do
+                parts[i] = toJson(v)
+            end
+            return "[" .. table.concat(parts, ",") .. "]"
+        else
+            local parts = {}
+            for k, v in pairs(data) do
+                table.insert(parts, '"' .. tostring(k) .. '":' .. toJson(v))
+            end
+            return "{" .. table.concat(parts, ",") .. "}"
+        end
+    else
+        return "null"
+    end
+end
+
+Reactive.toJson = toJson
 
 -- ============================================================================
 -- Effect System - Automatic Dependency Tracking
@@ -88,9 +145,11 @@ function Reactive.reactive(initial)
             end
 
             -- Notify JavaScript of state change for DOM updates
+            -- Serialize the new value so JS can update bindings
             if window and window.kryonStateChanged then
                 pcall(function()
-                    window.kryonStateChanged(tostring(k))
+                    local jsonValue = toJson(v)
+                    window.kryonStateChanged(tostring(k), jsonValue)
                 end)
             end
         end,
@@ -181,6 +240,35 @@ function Reactive.unsubscribe(reactive, callback)
             table.remove(mt.__subscribers, i)
             return
         end
+    end
+end
+
+-- ============================================================================
+-- JavaScript Binding Registration (Phase 1)
+-- ============================================================================
+
+--- Register a DOM binding with the JavaScript reactive system
+--- This allows state changes to automatically update DOM elements
+--- @param stateKey string State path (e.g., 'displayedMonth' or 'displayedMonth.month')
+--- @param elementId string DOM element ID to update
+--- @param updateType string Update type: 'text', 'style', 'attr', 'class', 'visibility', 'custom'
+--- @param options table|nil Additional options based on updateType
+function Reactive.registerBinding(stateKey, elementId, updateType, options)
+    if window and window.kryonRegisterBinding then
+        pcall(function()
+            local jsOptions = options and toJson(options) or "{}"
+            window.kryonRegisterBinding(stateKey, elementId, updateType or "text", jsOptions)
+        end)
+    else
+        print("[Reactive Web] Warning: kryonRegisterBinding not available yet")
+    end
+end
+
+--- Batch register multiple bindings
+--- @param bindings table Array of {stateKey, elementId, updateType, options}
+function Reactive.registerBindings(bindings)
+    for _, b in ipairs(bindings) do
+        Reactive.registerBinding(b.stateKey or b[1], b.elementId or b[2], b.updateType or b[3], b.options or b[4])
     end
 end
 
@@ -398,6 +486,63 @@ function Reactive.effect(effectFn)
             end
         end
     end
+end
+
+-- ============================================================================
+-- Template Interpolation (Phase 4 DSL Enhancement)
+-- ============================================================================
+
+--- Interpolate template strings with state values
+--- Supports ${key} and ${key.subkey} syntax
+--- @param template string Template string (e.g., "Month: ${month}, Year: ${year}")
+--- @param context table Context object to look up values from
+--- @return string Interpolated string
+function Reactive.interpolate(template, context)
+    if type(template) ~= "string" then return tostring(template) end
+    if type(context) ~= "table" then return template end
+
+    return template:gsub("%${([^}]+)}", function(path)
+        local value = context
+        for part in path:gmatch("[^.]+") do
+            if type(value) == "table" then
+                value = value[part]
+            else
+                return "${" .. path .. "}"
+            end
+        end
+        return value ~= nil and tostring(value) or ""
+    end)
+end
+
+--- Create a computed value that updates reactively
+--- @param computeFn function Function that returns the computed value
+--- @return function Getter function
+function Reactive.computed(computeFn)
+    local cachedValue = nil
+    local isDirty = true
+
+    local getter = function()
+        if isDirty then
+            cachedValue = computeFn()
+            isDirty = false
+        end
+        return cachedValue
+    end
+
+    -- Mark dirty when any effect runs (simple approach)
+    Reactive.effect(function()
+        isDirty = true
+        cachedValue = computeFn()
+    end)
+
+    return getter
+end
+
+--- Batch multiple state updates to avoid multiple renders
+--- @param updateFn function Function containing multiple state updates
+function Reactive.batch(updateFn)
+    -- For now, just run the function - the JS side handles debouncing
+    pcall(updateFn)
 end
 
 print("[Reactive Web] Reactive system loaded")

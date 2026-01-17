@@ -96,4 +96,11 @@ cJSON* ir_json_serialize_source_structures(IRSourceStructures* ss);
 // Serialize C metadata to JSON object
 cJSON* ir_json_serialize_c_metadata(void);
 
+// ============================================================================
+// Lua Module Serialization (for Lua->KIR->Web round-trip)
+// ============================================================================
+
+// Serialize Lua module collection to JSON object
+cJSON* ir_json_serialize_lua_modules(IRLuaModuleCollection* lua_modules);
+
 #endif // IR_JSON_SERIALIZE_H

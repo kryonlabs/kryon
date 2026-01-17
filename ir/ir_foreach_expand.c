@@ -771,9 +771,18 @@ static void expand_foreach_with_parent_internal(IRComponent* component, IRCompon
         // else: Root-level ForEach - keep children in the ForEach as a wrapper
         // The ForEach acts as a transparent container that holds its expanded children
     } else if (component->child_count > 0 && parent) {
-        // No data to expand - replace with template children (only if has parent)
-        // Note: ir_foreach_replace_in_parent() destroys the ForEach component
-        ir_foreach_replace_in_parent(parent, child_index, component->children, component->child_count);
+        // No data to expand - first recursively expand any nested ForEach in template children
+        // This is critical for runtime ForEach that contain static nested ForEach
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            if (component->children[i]) {
+                expand_foreach_with_parent_internal(component->children[i], component, (int)i);
+            }
+        }
+        // For runtime ForEach, keep the container - don't replace with template children
+        // This allows web codegen to render ForEach containers for JavaScript to handle
+        // Only replace for desktop where runtime ForEach gets expanded later
+        // NOTE: This is commented out to preserve ForEach containers for web
+        // ir_foreach_replace_in_parent(parent, child_index, component->children, component->child_count);
     }
 }
 

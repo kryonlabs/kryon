@@ -32,6 +32,7 @@ file(GLOB IR_SOURCES
     ir_json.c
     ir_logic.c
     ir_expression.c
+    ir_lua_modules.c
     ir_text_shaping.c  # Requires HarfBuzz - REQUIRED, no fallbacks
     components/ir_component_registry.c
     components/ir_component_flexbox.c
