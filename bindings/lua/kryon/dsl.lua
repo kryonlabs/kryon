@@ -1241,9 +1241,12 @@ DSL.ForEach = function(props)
   local render_fn = props.render
   -- New: 'expression' property provides a template reference instead of serializing data
   local source_expr = props.expression or props.sourceExpr or props.var
+  -- Provider function: returns data at runtime (web codegen extracts source)
+  local provider_fn = props.provider
 
-  if not each_source then
-    error("ForEach requires 'each' property (source array)")
+  -- Either each or provider is required
+  if not each_source and not provider_fn then
+    error("ForEach requires 'each' property (source array) or 'provider' function")
   end
   if not render_fn then
     error("ForEach requires 'render' function")
@@ -1255,12 +1258,32 @@ DSL.ForEach = function(props)
   -- ForEach is ALWAYS runtime/reactive - serialize the source for runtime expansion
   -- This allows re-rendering when the source data changes (e.g., month navigation)
 
+  -- Extract provider function source if present (for web codegen)
+  local provider_source = nil
+  if provider_fn and type(provider_fn) == "function" then
+    local extracted = extractFunctionSource(provider_fn)
+    if extracted and extracted.code then
+      provider_source = extracted.code
+    end
+  end
+
+  -- Get data source: use provider function result, or direct each value
+  local data_for_template = each_source
+  if provider_fn then
+    local success, result = pcall(provider_fn)
+    if success and type(result) == "table" then
+      data_for_template = result
+    else
+      data_for_template = {}
+    end
+  end
+
   -- Build template child (render function called with first item for structure)
   local template_child
-  if type(each_source) == "table" and #each_source > 0 then
-    template_child = render_fn(each_source[1], 1)
-  elseif type(each_source) == "function" then
-    local success, result = pcall(each_source)
+  if type(data_for_template) == "table" and #data_for_template > 0 then
+    template_child = render_fn(data_for_template[1], 1)
+  elseif type(data_for_template) == "function" then
+    local success, result = pcall(data_for_template)
     if success and type(result) == "table" and #result > 0 then
       template_child = render_fn(result[1], 1)
     else
@@ -1295,7 +1318,16 @@ DSL.ForEach = function(props)
 
   -- In compile mode: use marker (data will be fresh from runtime re-execution)
   -- In runtime mode: use actual data (for immediate ForEach expansion)
-  if source_expr and type(source_expr) == "string" then
+  if provider_fn then
+    -- Provider mode: serialize the actual data from provider call
+    -- (The provider function has closures that won't work when extracted,
+    -- so we serialize the result data directly for web expansion)
+    if type(data_for_template) == "table" and #data_for_template > 0 then
+      encoded = encoded .. ',"each_source":' .. serialize_json_value(data_for_template)
+    else
+      encoded = encoded .. ',"each_source":"__provider__"'
+    end
+  elseif source_expr and type(source_expr) == "string" then
     -- Store expression reference for runtime evaluation
     encoded = encoded .. string.format(',"each_source_expr":"%s","each_source":"__runtime__"', source_expr:gsub('"', '\\"'))
   elseif type(each_source) == "string" then
@@ -1313,6 +1345,12 @@ DSL.ForEach = function(props)
     -- Function source - store marker for runtime evaluation
     encoded = encoded .. ',"each_source":"__function__"'
   end
+
+  -- Add provider_source for web codegen (extracted function source)
+  if provider_source then
+    encoded = encoded .. ',"provider_source":' .. serialize_json_value(provider_source)
+  end
+
   encoded = encoded .. "}"
   C.ir_set_custom_data(component, encoded)
 

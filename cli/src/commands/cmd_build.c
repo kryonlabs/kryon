@@ -340,38 +340,21 @@ int cmd_build(int argc, char** argv) {
         return result;
     }
 
-    // Web build: auto-discover and build web files
+    // Web build: requires explicit entry point in kryon.toml
     if (is_web) {
         printf("Building web targets...\n");
 
-        // If entry file is explicitly specified, build only that file
-        if (config->build_entry) {
-            printf("Building entry file: %s\n", config->build_entry);
-            result = build_single_file(config->build_entry, config);
-        } else {
-            // No entry specified - auto-discover all buildable files in project
-            DiscoveryResult* discovered = discover_project_files(".");
-
-            if (!discovered || discovered->count == 0) {
-                fprintf(stderr, "No buildable files found.\n");
-                fprintf(stderr, "Create index.html or docs/*.md to get started.\n");
-                if (discovered) free_discovery_result(discovered);
-                config_free(config);
-                return 1;
-            }
-
-            // Build all discovered files
-            printf("Building %d web file(s)...\n", discovered->count);
-            for (uint32_t i = 0; i < discovered->count && result == 0; i++) {
-                result = build_discovered_file(&discovered->files[i], config, discovered->docs_template);
-            }
-
-            if (result == 0) {
-                printf("✓ Web build complete\n");
-            }
-
-            free_discovery_result(discovered);
+        if (!config->build_entry) {
+            fprintf(stderr, "Error: No entry point specified in kryon.toml\n");
+            fprintf(stderr, "Add [build].entry to your configuration, e.g.:\n");
+            fprintf(stderr, "  [build]\n");
+            fprintf(stderr, "  entry = \"main.lua\"\n");
+            config_free(config);
+            return 1;
         }
+
+        printf("Building entry file: %s\n", config->build_entry);
+        result = build_single_file(config->build_entry, config);
     }
 
     config_free(config);

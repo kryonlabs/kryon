@@ -89,6 +89,11 @@ int kir_to_html_main(const char* source_dir, const char* kir_file,
         return 1;
     }
 
+    // Expand ForEach components before rendering
+    // This is critical for web codegen - without expansion, ForEach renders as empty containers
+    extern void ir_expand_foreach(IRComponent* root);
+    ir_expand_foreach(root);
+
     if (manifest) {
         printf("  CSS Variables: %u found\n", manifest->variable_count);
     }
@@ -133,7 +138,7 @@ int kir_to_html_main(const char* source_dir, const char* kir_file,
             g_ir_context->source_metadata->source_language &&
             strcmp(g_ir_context->source_metadata->source_language, "lua") == 0) {
 
-            printf("📦 Generating Lua handlers from KIR (self-contained)...\n");
+            printf("📦 Bundling Lua app for web...\n");
 
             LuaBundler* bundler = lua_bundler_create();
             if (bundler) {
@@ -143,11 +148,33 @@ int kir_to_html_main(const char* source_dir, const char* kir_file,
                     printf("  Using namespace: __kryon_app__ (project: %s)\n", project_name);
                 }
 
-                // SELF-CONTAINED MODE: Generate from KIR only, no file reading
-                // All handler code is extracted from IRHandlerSource embedded in KIR
-                // The component tree is already rendered as HTML
-                printf("  Mode: Self-contained KIR (no external file references)\n");
-                char* bundled_script = lua_bundler_generate_from_kir(bundler, root);
+                // Setup bundler search paths for module resolution
+                lua_bundler_add_search_path(bundler, source_dir);
+                lua_bundler_use_web_modules(bundler, true);
+
+                // Set kryon bindings path for kryon.* modules
+                if (home) {
+                    char bindings_path[PATH_MAX];
+                    snprintf(bindings_path, sizeof(bindings_path), "%s/.local/share/kryon/bindings/lua", home);
+                    lua_bundler_set_kryon_path(bundler, bindings_path);
+                }
+
+                // Get source file path from metadata for full bundling
+                const char* source_file = g_ir_context->source_metadata->source_file;
+                char* bundled_script = NULL;
+
+                if (source_file && source_file[0] != '\0') {
+                    // FULL BUNDLING MODE: Read main.lua and bundle all dependencies
+                    // This includes all variables, functions, and modules that handlers need
+                    printf("  Mode: Full bundling from source file\n");
+                    printf("  Source: %s\n", source_file);
+                    bundled_script = lua_bundler_generate_script(bundler, source_file, root);
+                } else {
+                    // FALLBACK: Generate from KIR only (handlers might have undefined references)
+                    printf("  Mode: KIR-only (no source file path in metadata)\n");
+                    printf("  Warning: Handlers may reference undefined variables/functions\n");
+                    bundled_script = lua_bundler_generate_from_kir(bundler, root);
+                }
 
                 if (bundled_script) {
                     // Append to HTML file

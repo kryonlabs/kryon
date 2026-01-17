@@ -1562,6 +1562,11 @@ IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveMan
                     metadata->timestamp = strdup(ts->valuestring);
                 }
 
+                cJSON* sf = cJSON_GetObjectItem(metadataObj, "source_file");
+                if (sf && cJSON_IsString(sf)) {
+                    metadata->source_file = strdup(sf->valuestring);
+                }
+
                 // Free old source metadata if exists
                 if (g_ir_context->source_metadata) {
                     if (g_ir_context->source_metadata->source_language)
@@ -1570,6 +1575,8 @@ IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveMan
                         free(g_ir_context->source_metadata->compiler_version);
                     if (g_ir_context->source_metadata->timestamp)
                         free(g_ir_context->source_metadata->timestamp);
+                    if (g_ir_context->source_metadata->source_file)
+                        free(g_ir_context->source_metadata->source_file);
                     free(g_ir_context->source_metadata);
                 }
                 g_ir_context->source_metadata = metadata;

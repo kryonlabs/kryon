@@ -478,6 +478,83 @@ typedef struct IRSourceStructures {
 typedef struct IRStylesheet IRStylesheet;
 
 // ============================================================================
+// Lua Source Module System (for Lua → KIR → Codegen round-trip)
+// These structures capture the complete Lua source context in KIR so that
+// codegens can generate complete, working code without reading Lua files.
+// Note: Prefixed with "IRLua" to avoid conflict with IRLogicFunction in ir_logic.h
+// ============================================================================
+
+// Variable captured from Lua source
+typedef struct IRLuaVariable {
+    char* name;                    // Variable name (e.g., "state", "editingState")
+    char* initial_value_source;    // Lua source for initialization (e.g., "{ year = 2024 }")
+    bool is_reactive;              // True if created via Reactive.reactive()
+    char* var_type;                // "local" | "global" | "reactive"
+} IRLuaVariable;
+
+// Function captured from Lua source
+typedef struct IRLuaFunc {
+    char* name;                    // Function name (e.g., "navigateMonth", "toggleHabitCompletion")
+    char* source;                  // Complete function source including "function...end"
+    char** parameters;             // Array of parameter names
+    uint32_t parameter_count;
+    char** closure_vars;           // Variables captured from outer scope
+    uint32_t closure_var_count;
+    bool is_local;                 // true if "local function", false if global
+} IRLuaFunc;
+
+// ForEach data provider expression
+typedef struct IRLuaForEachProvider {
+    char* container_id;            // ID of the ForEach container (e.g., "foreach-38")
+    char* expression;              // Lua expression that generates data (e.g., "Calendar.generateRows(...)")
+    char* source_function;         // Function where this ForEach was defined
+} IRLuaForEachProvider;
+
+// Complete Lua module captured for codegen
+typedef struct IRLuaModule {
+    char* name;                    // Module identifier (e.g., "main", "components/calendar")
+    char* source_language;         // "lua"
+    char* full_source;             // Original complete source code (for debugging/reference)
+
+    // Parsed elements
+    IRLuaVariable* variables;
+    uint32_t variable_count;
+    uint32_t variable_capacity;
+
+    IRLuaFunc* functions;
+    uint32_t function_count;
+    uint32_t function_capacity;
+
+    IRLuaForEachProvider* foreach_providers;
+    uint32_t foreach_provider_count;
+    uint32_t foreach_provider_capacity;
+
+    // Module imports (require statements)
+    char** imports;                // Array of module names this module requires
+    uint32_t import_count;
+    uint32_t import_capacity;
+} IRLuaModule;
+
+// Collection of all Lua modules in the application
+typedef struct IRLuaModuleCollection {
+    IRLuaModule* modules;
+    uint32_t module_count;
+    uint32_t module_capacity;
+} IRLuaModuleCollection;
+
+// Lua module API
+IRLuaModuleCollection* ir_lua_modules_create(void);
+void ir_lua_modules_destroy(IRLuaModuleCollection* collection);
+
+IRLuaModule* ir_lua_modules_add(IRLuaModuleCollection* collection, const char* name, const char* source_language);
+IRLuaModule* ir_lua_modules_find(IRLuaModuleCollection* collection, const char* name);
+
+void ir_lua_module_add_variable(IRLuaModule* module, const char* name, const char* initial_value, bool is_reactive, const char* var_type);
+void ir_lua_module_add_function(IRLuaModule* module, const char* name, const char* source, bool is_local);
+void ir_lua_module_add_import(IRLuaModule* module, const char* import_name);
+void ir_lua_module_add_foreach_provider(IRLuaModule* module, const char* container_id, const char* expression, const char* source_function);
+
+// ============================================================================
 // Global IR Context
 // ============================================================================
 typedef struct IRContext {
@@ -492,6 +569,7 @@ typedef struct IRContext {
     IRSourceStructures* source_structures;  // Source preservation (for round-trip codegen)
     IRSourceMetadata* source_metadata;      // Source file metadata (language, file path, etc.)
     IRStylesheet* stylesheet;               // Global stylesheet with CSS rules and variables
+    IRLuaModuleCollection* lua_modules;     // Complete Lua source context (for web codegen)
 } IRContext;
 
 // ============================================================================

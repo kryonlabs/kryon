@@ -103,6 +103,65 @@ static const char* LUA_OS_SHIM =
     "end\n"
     "\n"
     "print(\"[Kryon Web] os shim loaded\")\n"
+    "\n"
+    "-- ForEach expansion bridge: call JavaScript to expand ForEach containers\n"
+    "-- Converts Lua tables to JSON and passes to kryonExpandForEach\n"
+    "local function encodeJsonValue(val)\n"
+    "    local t = type(val)\n"
+    "    if t == 'nil' then\n"
+    "        return 'null'\n"
+    "    elseif t == 'boolean' then\n"
+    "        return val and 'true' or 'false'\n"
+    "    elseif t == 'number' then\n"
+    "        return tostring(val)\n"
+    "    elseif t == 'string' then\n"
+    "        local escaped = val:gsub('\\\\', '\\\\\\\\'):gsub('\"', '\\\\\"'):gsub('\\n', '\\\\n'):gsub('\\r', '\\\\r'):gsub('\\t', '\\\\t')\n"
+    "        return '\"' .. escaped .. '\"'\n"
+    "    elseif t == 'table' then\n"
+    "        local isArray = true\n"
+    "        local n = 0\n"
+    "        for k, _ in pairs(val) do\n"
+    "            n = n + 1\n"
+    "            if type(k) ~= 'number' or k ~= n then\n"
+    "                isArray = false\n"
+    "                break\n"
+    "            end\n"
+    "        end\n"
+    "        if n == 0 then isArray = true end\n"
+    "        if isArray then\n"
+    "            local parts = {}\n"
+    "            for i, v in ipairs(val) do\n"
+    "                parts[i] = encodeJsonValue(v)\n"
+    "            end\n"
+    "            return '[' .. table.concat(parts, ',') .. ']'\n"
+    "        else\n"
+    "            local parts = {}\n"
+    "            for k, v in pairs(val) do\n"
+    "                table.insert(parts, '\"' .. tostring(k) .. '\":' .. encodeJsonValue(v))\n"
+    "            end\n"
+    "            return '{' .. table.concat(parts, ',') .. '}'\n"
+    "        end\n"
+    "    else\n"
+    "        return 'null'\n"
+    "    end\n"
+    "end\n"
+    "\n"
+    "function kryonEncodeJson(val)\n"
+    "    return encodeJsonValue(val)\n"
+    "end\n"
+    "\n"
+    "function kryonRefreshForEach(containerId, data, context)\n"
+    "    local jsonData = kryonEncodeJson(data)\n"
+    "    local contextJson = context and kryonEncodeJson(context) or '{}'\n"
+    "    local jsCode = string.format('kryonExpandForEach(\"%s\", %s, %s)', containerId, jsonData, contextJson)\n"
+    "    local ok, err = pcall(function()\n"
+    "        local jsFunc = window.eval\n"
+    "        if jsFunc then jsFunc(window, jsCode) end\n"
+    "    end)\n"
+    "    if not ok then print('[Kryon ForEach] Error:', containerId, err) end\n"
+    "end\n"
+    "\n"
+    "print(\"[Kryon Web] ForEach bridge loaded\")\n"
     "\n";
 
 // Read entire file into a string
@@ -738,8 +797,48 @@ static char* add_web_wrapper(const char* code, IRHandlerSource* handler_source) 
         // Add more closure variable types as needed
     }
 
-    // Add the original handler code
-    offset += snprintf(wrapped + offset, wrapper_len - offset, "%s\n", code);
+    // Strip outer function(...) wrapper from original code if present
+    // Original format: "function(params)\n  body...\n    end"
+    const char* body_start = code;
+    const char* body_end = code + code_len;
+
+    // Skip "function(" at start and find closing ")"
+    if (strncmp(code, "function(", 9) == 0) {
+        // Find the closing parenthesis
+        const char* paren_close = strchr(code + 9, ')');
+        if (paren_close) {
+            body_start = paren_close + 1;
+            // Skip whitespace/newline after function(...)
+            while (*body_start && (*body_start == ' ' || *body_start == '\n' || *body_start == '\r')) {
+                body_start++;
+            }
+        }
+
+        // Find and remove trailing "end" (with optional whitespace)
+        // Search backwards from end
+        body_end = code + code_len - 1;
+        while (body_end > body_start && (*body_end == ' ' || *body_end == '\n' || *body_end == '\r')) {
+            body_end--;
+        }
+        // Check if last 3 chars are "end"
+        if (body_end - 2 >= body_start && strncmp(body_end - 2, "end", 3) == 0) {
+            body_end -= 3;
+            // Skip any whitespace before 'end'
+            while (body_end > body_start && (*body_end == ' ' || *body_end == '\n' || *body_end == '\r')) {
+                body_end--;
+            }
+        }
+    }
+
+    // Add the handler body (without function()...end wrapper if it was stripped)
+    size_t body_len = body_end - body_start + 1;
+    if (body_start != code) {
+        // We stripped the wrapper, add just the body
+        offset += snprintf(wrapped + offset, wrapper_len - offset, "%.*s\n", (int)body_len, body_start);
+    } else {
+        // No wrapper detected, add original code as-is
+        offset += snprintf(wrapped + offset, wrapper_len - offset, "%s\n", code);
+    }
 
     // Close the wrapper function
     offset += snprintf(wrapped + offset, wrapper_len - offset, "end");
@@ -915,6 +1014,168 @@ static void cleanup_handlers(void) {
     g_handler_capacity = 0;
 }
 
+// ============================================================================
+// ForEach Provider Collection and Generation
+// ============================================================================
+
+// Provider collection for generating __kryon_forEach_providers__
+typedef struct {
+    uint32_t component_id;
+    char* provider_source;
+} CollectedProvider;
+
+static CollectedProvider* g_providers = NULL;
+static size_t g_provider_count = 0;
+static size_t g_provider_capacity = 0;
+
+// Recursively walk KIR tree and collect ForEach providers from custom_data
+static void collect_foreach_providers_recursive(IRComponent* comp) {
+    if (!comp) return;
+
+    // Check if this is a ForEach component with provider_source
+    if (comp->type == IR_COMPONENT_FOR_EACH && comp->custom_data) {
+        cJSON* json = cJSON_Parse(comp->custom_data);
+        if (json) {
+            cJSON* provider_src = cJSON_GetObjectItem(json, "provider_source");
+            if (provider_src && cJSON_IsString(provider_src)) {
+                // Grow array if needed
+                if (g_provider_count >= g_provider_capacity) {
+                    size_t new_capacity = g_provider_capacity == 0 ? 16 : g_provider_capacity * 2;
+                    CollectedProvider* new_providers = realloc(g_providers, new_capacity * sizeof(CollectedProvider));
+                    if (new_providers) {
+                        g_providers = new_providers;
+                        g_provider_capacity = new_capacity;
+                    }
+                }
+
+                if (g_provider_count < g_provider_capacity) {
+                    g_providers[g_provider_count].component_id = comp->id;
+                    g_providers[g_provider_count].provider_source = strdup(provider_src->valuestring);
+                    g_provider_count++;
+                }
+            }
+            cJSON_Delete(json);
+        }
+    }
+
+    // Recurse to children
+    for (uint32_t i = 0; i < comp->child_count; i++) {
+        collect_foreach_providers_recursive(comp->children[i]);
+    }
+}
+
+// Generate __kryon_forEach_providers__ table and init function
+static char* generate_foreach_providers(LuaBundler* bundler) {
+    if (g_provider_count == 0) return NULL;
+
+    // Estimate size: header + providers + init function
+    size_t estimated_size = 2048;
+    for (size_t i = 0; i < g_provider_count; i++) {
+        estimated_size += strlen(g_providers[i].provider_source) + 128;
+    }
+
+    char* output = malloc(estimated_size);
+    if (!output) return NULL;
+
+    output[0] = '\0';
+
+    // Generate providers table
+    strcat(output, "\n-- ForEach data providers (generated from provider functions)\n");
+    strcat(output, "__kryon_forEach_providers__ = {}\n\n");
+
+    // Add each provider
+    for (size_t i = 0; i < g_provider_count; i++) {
+        char entry[64];
+        snprintf(entry, sizeof(entry), "__kryon_forEach_providers__[%u] = ", g_providers[i].component_id);
+        strcat(output, entry);
+
+        // Prefix function calls with namespace if needed
+        if (bundler && bundler->project_name && bundler->local_function_count > 0) {
+            const char* code = g_providers[i].provider_source;
+            char* processed_code = strdup(code);
+            char* temp = processed_code;
+
+            // Replace each local function call with namespaced version
+            for (int j = 0; j < bundler->local_function_count; j++) {
+                const char* func_name = bundler->local_functions[j];
+                size_t func_len = strlen(func_name);
+                const char* namespace_prefix = "__kryon_app__";
+                size_t namespace_len = strlen(namespace_prefix);
+
+                char* replacement = malloc(namespace_len + func_len + 2);
+                snprintf(replacement, namespace_len + func_len + 2, "%s.%s",
+                         namespace_prefix, func_name);
+
+                char* found = strstr(temp, func_name);
+                while (found) {
+                    char next_char = found[func_len];
+                    bool is_call = (next_char == '(') ||
+                                   (next_char == ' ' && found[func_len + 1] == '(');
+
+                    if (is_call) {
+                        if (found == processed_code || found[-1] != '.') {
+                            size_t prefix_len = found - temp;
+                            size_t suffix_len = strlen(found + func_len);
+                            char* new_buf = malloc(prefix_len + strlen(replacement) + suffix_len + 1);
+
+                            strncpy(new_buf, temp, prefix_len);
+                            strcpy(new_buf + prefix_len, replacement);
+                            strcpy(new_buf + prefix_len + strlen(replacement), found + func_len);
+
+                            free(temp);
+                            temp = new_buf;
+                            found = temp + prefix_len + strlen(replacement);
+                        } else {
+                            found += func_len;
+                        }
+                    } else {
+                        found += func_len;
+                    }
+                    found = strstr(found, func_name);
+                }
+
+                free(replacement);
+            }
+
+            strcat(output, temp);
+            free(temp);
+        } else {
+            strcat(output, g_providers[i].provider_source);
+        }
+        strcat(output, "\n");
+    }
+
+    // Generate initialization function
+    strcat(output, "\n-- Initialize ForEach containers on page load\n");
+    strcat(output, "local function kryonInitForEachProviders()\n");
+    strcat(output, "  for containerId, provider in pairs(__kryon_forEach_providers__) do\n");
+    strcat(output, "    local ok, data = pcall(provider)\n");
+    strcat(output, "    if ok and data then\n");
+    strcat(output, "      kryonRefreshForEach(tostring(containerId), data, {})\n");
+    strcat(output, "    else\n");
+    strcat(output, "      print('[Kryon ForEach] Provider error for ' .. tostring(containerId) .. ': ' .. tostring(data))\n");
+    strcat(output, "    end\n");
+    strcat(output, "  end\n");
+    strcat(output, "end\n\n");
+
+    // Call init after a short delay to ensure DOM is ready
+    strcat(output, "-- Call providers after Lua initialization\n");
+    strcat(output, "kryonInitForEachProviders()\n");
+
+    return output;
+}
+
+// Clean up collected providers
+static void cleanup_providers(void) {
+    for (size_t i = 0; i < g_provider_count; i++) {
+        free(g_providers[i].provider_source);
+    }
+    free(g_providers);
+    g_providers = NULL;
+    g_provider_count = 0;
+    g_provider_capacity = 0;
+}
+
 char* lua_bundler_generate_script(LuaBundler* bundler, const char* main_file, IRComponent* kir_root) {
     char* lua_code = lua_bundler_bundle(bundler, main_file);
     if (!lua_code) return NULL;
@@ -924,20 +1185,31 @@ char* lua_bundler_generate_script(LuaBundler* bundler, const char* main_file, IR
         extract_handlers_from_kir(kir_root);
     }
 
+    // Collect ForEach providers from KIR tree
+    if (kir_root) {
+        collect_foreach_providers_recursive(kir_root);
+    }
+
     // Generate handler registry (pass bundler for namespace prefixing)
     char* handler_registry = generate_handler_registry(bundler);
+
+    // Generate ForEach providers table and init code
+    char* foreach_providers = generate_foreach_providers(bundler);
 
     // Calculate sizes
     size_t lua_len = strlen(lua_code);
     size_t registry_len = handler_registry ? strlen(handler_registry) : 0;
+    size_t providers_len = foreach_providers ? strlen(foreach_providers) : 0;
     size_t script_prefix_len = strlen("<script type=\"application/lua\">\n");
     size_t script_suffix_len = strlen("\n</script>\n");
 
-    char* output = malloc(script_prefix_len + lua_len + registry_len + script_suffix_len + 1);
+    char* output = malloc(script_prefix_len + lua_len + registry_len + providers_len + script_suffix_len + 1);
     if (!output) {
         free(lua_code);
         free(handler_registry);
+        free(foreach_providers);
         cleanup_handlers();
+        cleanup_providers();
         return NULL;
     }
 
@@ -947,10 +1219,16 @@ char* lua_bundler_generate_script(LuaBundler* bundler, const char* main_file, IR
         strcat(output, handler_registry);
         free(handler_registry);
     }
+    // Add ForEach providers after handlers (providers may call functions defined in main code)
+    if (foreach_providers) {
+        strcat(output, foreach_providers);
+        free(foreach_providers);
+    }
     strcat(output, "\n</script>\n");
 
     free(lua_code);
     cleanup_handlers();
+    cleanup_providers();
     return output;
 }
 
@@ -976,13 +1254,21 @@ char* lua_bundler_generate_from_kir(LuaBundler* bundler, IRComponent* kir_root) 
         printf("[LuaBundler] Warning: No handlers found in KIR\n");
     }
 
+    // Collect ForEach providers from KIR tree
+    collect_foreach_providers_recursive(kir_root);
+    printf("[LuaBundler] Collected %zu ForEach providers from KIR\n", g_provider_count);
+
     // Generate handler registry (pass bundler for namespace prefixing)
     char* handler_registry = generate_handler_registry(bundler);
 
+    // Generate ForEach providers table and init code
+    char* foreach_providers = generate_foreach_providers(bundler);
+
     // Calculate total size needed
-    // OS shim + init signal + handler registry + script wrapper
+    // OS shim + init signal + handler registry + providers + script wrapper
     size_t os_shim_len = strlen(LUA_OS_SHIM);
     size_t registry_len = handler_registry ? strlen(handler_registry) : 0;
+    size_t providers_len = foreach_providers ? strlen(foreach_providers) : 0;
     size_t script_prefix_len = strlen("<script type=\"application/lua\">\n");
     size_t script_suffix_len = strlen("\n</script>\n");
 
@@ -1005,12 +1291,14 @@ char* lua_bundler_generate_from_kir(LuaBundler* bundler, IRComponent* kir_root) 
     size_t init_complete_len = strlen(init_complete_code);
 
     size_t total_size = script_prefix_len + header_len + os_shim_len +
-                        init_complete_len + registry_len + script_suffix_len + 1;
+                        init_complete_len + registry_len + providers_len + script_suffix_len + 1;
 
     char* output = malloc(total_size);
     if (!output) {
         free(handler_registry);
+        free(foreach_providers);
         cleanup_handlers();
+        cleanup_providers();
         return NULL;
     }
 
@@ -1029,10 +1317,17 @@ char* lua_bundler_generate_from_kir(LuaBundler* bundler, IRComponent* kir_root) 
         free(handler_registry);
     }
 
+    // Add ForEach providers after handlers
+    if (foreach_providers) {
+        strcat(output, foreach_providers);
+        free(foreach_providers);
+    }
+
     strcat(output, "\n</script>\n");
 
     printf("[LuaBundler] Generated self-contained script (%zu bytes)\n", strlen(output));
 
     cleanup_handlers();
+    cleanup_providers();
     return output;
 }

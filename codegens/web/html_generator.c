@@ -1597,6 +1597,47 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     // The html_generator still collects handlers (for onclick attributes) but doesn't
     // generate the registry script anymore.
 
+    // Inject initial state from manifest (Phase 2.2)
+    if (generator->manifest && generator->manifest->variable_count > 0) {
+        html_generator_write_string(generator, "  <script>\n");
+        html_generator_write_string(generator, "  // Initial reactive state from IRReactiveManifest\n");
+        html_generator_write_string(generator, "  window.__KRYON_STATE__ = {\n");
+        for (uint32_t i = 0; i < generator->manifest->variable_count; i++) {
+            IRReactiveVarDescriptor* var = &generator->manifest->variables[i];
+            if (!var->name) continue;
+            const char* comma = (i < generator->manifest->variable_count - 1) ? "," : "";
+            if (var->initial_value_json && strlen(var->initial_value_json) > 0) {
+                html_generator_write_format(generator, "    %s: %s%s\n",
+                    var->name, var->initial_value_json, comma);
+            } else {
+                switch (var->type) {
+                    case IR_REACTIVE_TYPE_INT:
+                        html_generator_write_format(generator, "    %s: %ld%s\n",
+                            var->name, (long)var->value.as_int, comma);
+                        break;
+                    case IR_REACTIVE_TYPE_FLOAT:
+                        html_generator_write_format(generator, "    %s: %f%s\n",
+                            var->name, var->value.as_float, comma);
+                        break;
+                    case IR_REACTIVE_TYPE_STRING:
+                        html_generator_write_format(generator, "    %s: \"%s\"%s\n",
+                            var->name, var->value.as_string ? var->value.as_string : "", comma);
+                        break;
+                    case IR_REACTIVE_TYPE_BOOL:
+                        html_generator_write_format(generator, "    %s: %s%s\n",
+                            var->name, var->value.as_bool ? "true" : "false", comma);
+                        break;
+                    default:
+                        html_generator_write_format(generator, "    %s: null%s\n", var->name, comma);
+                        break;
+                }
+            }
+        }
+        html_generator_write_string(generator, "  };\n");
+        html_generator_write_string(generator, "  console.log('[Kryon] Initial state loaded:', Object.keys(window.__KRYON_STATE__).length, 'variables');\n");
+        html_generator_write_string(generator, "  </script>\n");
+    }
+
     // Inject hot reload script in dev mode
     const char* dev_mode = getenv("KRYON_DEV_MODE");
     const char* ws_port_str = getenv("KRYON_WS_PORT");

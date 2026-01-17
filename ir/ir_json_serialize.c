@@ -2592,6 +2592,14 @@ cJSON* ir_json_serialize_complete(
         }
     }
 
+    // Add Lua modules (for Lua->KIR->Web round-trip)
+    if (ctx && ctx->lua_modules && ctx->lua_modules->module_count > 0) {
+        cJSON* luaModulesJson = ir_json_serialize_lua_modules(ctx->lua_modules);
+        if (luaModulesJson) {
+            cJSON_AddItemToObject(wrapper, "lua_modules", luaModulesJson);
+        }
+    }
+
     // Add component tree
     cJSON* componentJson = ir_json_serialize_component_recursive(root);
     if (!componentJson) {
@@ -2794,4 +2802,127 @@ char* ir_json_serialize_component_tree(IRComponent* root) {
     cJSON_Delete(wrapper);
 
     return jsonString;
+}
+
+// ============================================================================
+// Lua Module Serialization (for Lua->KIR->Web round-trip)
+// ============================================================================
+
+/**
+ * Serialize Lua module collection to JSON object
+ * This captures the complete Lua source context for web codegen
+ */
+cJSON* ir_json_serialize_lua_modules(IRLuaModuleCollection* lua_modules) {
+    if (!lua_modules || lua_modules->module_count == 0) return NULL;
+
+    cJSON* modulesArray = cJSON_CreateArray();
+    if (!modulesArray) return NULL;
+
+    for (uint32_t i = 0; i < lua_modules->module_count; i++) {
+        IRLuaModule* mod = &lua_modules->modules[i];
+        cJSON* modObj = cJSON_CreateObject();
+        if (!modObj) continue;
+
+        // Basic module info
+        if (mod->name) {
+            cJSON_AddStringToObject(modObj, "name", mod->name);
+        }
+        if (mod->source_language) {
+            cJSON_AddStringToObject(modObj, "language", mod->source_language);
+        }
+        if (mod->full_source) {
+            cJSON_AddStringToObject(modObj, "full_source", mod->full_source);
+        }
+
+        // Serialize variables
+        if (mod->variable_count > 0) {
+            cJSON* varsArray = cJSON_CreateArray();
+            for (uint32_t j = 0; j < mod->variable_count; j++) {
+                IRLuaVariable* var = &mod->variables[j];
+                cJSON* varObj = cJSON_CreateObject();
+                if (var->name) {
+                    cJSON_AddStringToObject(varObj, "name", var->name);
+                }
+                if (var->initial_value_source) {
+                    cJSON_AddStringToObject(varObj, "initial_value", var->initial_value_source);
+                }
+                if (var->var_type) {
+                    cJSON_AddStringToObject(varObj, "type", var->var_type);
+                }
+                cJSON_AddBoolToObject(varObj, "is_reactive", var->is_reactive);
+                cJSON_AddItemToArray(varsArray, varObj);
+            }
+            cJSON_AddItemToObject(modObj, "variables", varsArray);
+        }
+
+        // Serialize functions
+        if (mod->function_count > 0) {
+            cJSON* funcsArray = cJSON_CreateArray();
+            for (uint32_t j = 0; j < mod->function_count; j++) {
+                IRLuaFunc* func = &mod->functions[j];
+                cJSON* funcObj = cJSON_CreateObject();
+                if (func->name) {
+                    cJSON_AddStringToObject(funcObj, "name", func->name);
+                }
+                if (func->source) {
+                    cJSON_AddStringToObject(funcObj, "source", func->source);
+                }
+                cJSON_AddBoolToObject(funcObj, "is_local", func->is_local);
+
+                // Serialize parameters
+                if (func->parameter_count > 0 && func->parameters) {
+                    cJSON* paramsArray = cJSON_CreateArray();
+                    for (uint32_t k = 0; k < func->parameter_count; k++) {
+                        cJSON_AddItemToArray(paramsArray, cJSON_CreateString(func->parameters[k]));
+                    }
+                    cJSON_AddItemToObject(funcObj, "parameters", paramsArray);
+                }
+
+                // Serialize closure vars
+                if (func->closure_var_count > 0 && func->closure_vars) {
+                    cJSON* closureArray = cJSON_CreateArray();
+                    for (uint32_t k = 0; k < func->closure_var_count; k++) {
+                        cJSON_AddItemToArray(closureArray, cJSON_CreateString(func->closure_vars[k]));
+                    }
+                    cJSON_AddItemToObject(funcObj, "closure_vars", closureArray);
+                }
+
+                cJSON_AddItemToArray(funcsArray, funcObj);
+            }
+            cJSON_AddItemToObject(modObj, "functions", funcsArray);
+        }
+
+        // Serialize imports
+        if (mod->import_count > 0) {
+            cJSON* importsArray = cJSON_CreateArray();
+            for (uint32_t j = 0; j < mod->import_count; j++) {
+                cJSON_AddItemToArray(importsArray, cJSON_CreateString(mod->imports[j]));
+            }
+            cJSON_AddItemToObject(modObj, "imports", importsArray);
+        }
+
+        // Serialize ForEach providers
+        if (mod->foreach_provider_count > 0) {
+            cJSON* providersArray = cJSON_CreateArray();
+            for (uint32_t j = 0; j < mod->foreach_provider_count; j++) {
+                IRLuaForEachProvider* provider = &mod->foreach_providers[j];
+                cJSON* providerObj = cJSON_CreateObject();
+                if (provider->container_id) {
+                    cJSON_AddStringToObject(providerObj, "container_id", provider->container_id);
+                }
+                if (provider->expression) {
+                    cJSON_AddStringToObject(providerObj, "expression", provider->expression);
+                }
+                if (provider->source_function) {
+                    cJSON_AddStringToObject(providerObj, "source_function", provider->source_function);
+                }
+                cJSON_AddItemToArray(providersArray, providerObj);
+            }
+            cJSON_AddItemToObject(modObj, "foreach_providers", providersArray);
+        }
+
+        cJSON_AddItemToArray(modulesArray, modObj);
+    }
+
+    return modulesArray;
 }
