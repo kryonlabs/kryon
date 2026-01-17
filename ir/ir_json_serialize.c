@@ -853,6 +853,12 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
             cJSON_AddStringToObject(obj, "type", type_str);
             free(type_str);
         }
+        // Preserve actual component type for fallback when module resolution fails
+        // This fixes the bug where buttons in tabs render as containers
+        const char* actual_type_str = ir_component_type_to_string(component->type);
+        if (actual_type_str) {
+            cJSON_AddStringToObject(obj, "actual_type", actual_type_str);
+        }
         cJSON_AddNumberToObject(obj, "id", component->id);
 
         // Flatten props to top-level fields (same as component_ref)

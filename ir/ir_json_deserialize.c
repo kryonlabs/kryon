@@ -2189,7 +2189,15 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
 
             free(moduleId);
 
-            // If we get here, module loading failed - fall through to create a placeholder component
+            // If we get here, module loading failed - check for actual_type fallback
+            // This preserves the original component type (e.g., Button) instead of defaulting to Container
+            cJSON* actualTypeItem = cJSON_GetObjectItem(json, "actual_type");
+            if (actualTypeItem && cJSON_IsString(actualTypeItem)) {
+                // Use the preserved actual type - replace the type item temporarily
+                // so the normal type parsing below uses the correct type
+                cJSON_ReplaceItemInObject(json, "type", cJSON_CreateString(actualTypeItem->valuestring));
+            }
+            // Fall through to create component with correct type
         }
 
         cJSON* definition = ir_json_context_lookup(ctx, typeName);

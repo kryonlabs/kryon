@@ -237,8 +237,35 @@ static void append_color_string(char* buffer, size_t size, IRColor color) {
     }
 }
 
-// Generate CSS variable inline styles for components with custom colors
-// Only outputs variables for colors that differ from defaults
+// Helper to format a dimension value as CSS string
+static void format_dimension_inline(char* buffer, size_t size, IRDimension dim) {
+    switch (dim.type) {
+        case IR_DIMENSION_PX:
+            snprintf(buffer, size, "%.0fpx", dim.value);
+            break;
+        case IR_DIMENSION_PERCENT:
+            snprintf(buffer, size, "%.0f%%", dim.value);
+            break;
+        case IR_DIMENSION_VW:
+            snprintf(buffer, size, "%.0fvw", dim.value);
+            break;
+        case IR_DIMENSION_VH:
+            snprintf(buffer, size, "%.0fvh", dim.value);
+            break;
+        case IR_DIMENSION_REM:
+            snprintf(buffer, size, "%.2frem", dim.value);
+            break;
+        case IR_DIMENSION_EM:
+            snprintf(buffer, size, "%.2fem", dim.value);
+            break;
+        default:
+            buffer[0] = '\0';  // Don't output for AUTO
+            break;
+    }
+}
+
+// Generate CSS variable inline styles for components with custom colors AND sizing
+// This outputs per-instance properties that can't be shared via CSS classes
 static void generate_css_var_styles(HTMLGenerator* generator, IRComponent* component) {
     if (!component || !component->style) return;
 
@@ -251,9 +278,9 @@ static void generate_css_var_styles(HTMLGenerator* generator, IRComponent* compo
                           component->parent && component->parent->type == IR_COMPONENT_TAB_BAR);
     if (is_tab_button) return;
 
-    char style_buffer[1024] = "";
+    char style_buffer[2048] = "";
     char temp[256];
-    bool has_vars = false;
+    bool has_styles = false;
 
     // Background color variable - only if solid and visible
     if (component->style->background.type == IR_COLOR_SOLID &&
@@ -262,7 +289,7 @@ static void generate_css_var_styles(HTMLGenerator* generator, IRComponent* compo
         snprintf(style_buffer + strlen(style_buffer),
                 sizeof(style_buffer) - strlen(style_buffer),
                 "--bg-color: %s; ", temp);
-        has_vars = true;
+        has_styles = true;
     }
 
     // Text color variable - only for text components
@@ -282,7 +309,7 @@ static void generate_css_var_styles(HTMLGenerator* generator, IRComponent* compo
         snprintf(style_buffer + strlen(style_buffer),
                 sizeof(style_buffer) - strlen(style_buffer),
                 "--text-color: %s; ", temp);
-        has_vars = true;
+        has_styles = true;
     }
 
     // Border color variable - only if border has width
@@ -292,11 +319,87 @@ static void generate_css_var_styles(HTMLGenerator* generator, IRComponent* compo
         snprintf(style_buffer + strlen(style_buffer),
                 sizeof(style_buffer) - strlen(style_buffer),
                 "--border-color: %s; ", temp);
-        has_vars = true;
+        has_styles = true;
     }
 
-    // Only write style attribute if we have CSS variables
-    if (has_vars && strlen(style_buffer) > 0) {
+    // ========================================================================
+    // Sizing properties - output as inline styles for per-component values
+    // ========================================================================
+
+    // Width (when not auto)
+    if (component->style->width.type != IR_DIMENSION_AUTO) {
+        format_dimension_inline(temp, sizeof(temp), component->style->width);
+        if (temp[0] != '\0') {
+            snprintf(style_buffer + strlen(style_buffer),
+                    sizeof(style_buffer) - strlen(style_buffer),
+                    "width: %s; ", temp);
+            has_styles = true;
+        }
+    }
+
+    // Height (when not auto)
+    if (component->style->height.type != IR_DIMENSION_AUTO) {
+        format_dimension_inline(temp, sizeof(temp), component->style->height);
+        if (temp[0] != '\0') {
+            snprintf(style_buffer + strlen(style_buffer),
+                    sizeof(style_buffer) - strlen(style_buffer),
+                    "height: %s; ", temp);
+            has_styles = true;
+        }
+    }
+
+    // Padding (when any side is non-zero)
+    if (component->style->padding.set_flags != 0) {
+        float top = component->style->padding.top;
+        float right = component->style->padding.right;
+        float bottom = component->style->padding.bottom;
+        float left = component->style->padding.left;
+
+        if (top > 0 || right > 0 || bottom > 0 || left > 0) {
+            // Use shortest shorthand notation
+            if (top == right && right == bottom && bottom == left) {
+                snprintf(style_buffer + strlen(style_buffer),
+                        sizeof(style_buffer) - strlen(style_buffer),
+                        "padding: %.0fpx; ", top);
+            } else if (top == bottom && left == right) {
+                snprintf(style_buffer + strlen(style_buffer),
+                        sizeof(style_buffer) - strlen(style_buffer),
+                        "padding: %.0fpx %.0fpx; ", top, right);
+            } else {
+                snprintf(style_buffer + strlen(style_buffer),
+                        sizeof(style_buffer) - strlen(style_buffer),
+                        "padding: %.0fpx %.0fpx %.0fpx %.0fpx; ", top, right, bottom, left);
+            }
+            has_styles = true;
+        }
+    }
+
+    // Border-radius (when > 0)
+    if (component->style->border.radius > 0) {
+        snprintf(style_buffer + strlen(style_buffer),
+                sizeof(style_buffer) - strlen(style_buffer),
+                "border-radius: %upx; ", component->style->border.radius);
+        has_styles = true;
+    }
+
+    // Gap (for flex containers)
+    if (component->layout && component->layout->flex.gap > 0) {
+        snprintf(style_buffer + strlen(style_buffer),
+                sizeof(style_buffer) - strlen(style_buffer),
+                "gap: %upx; ", component->layout->flex.gap);
+        has_styles = true;
+    }
+
+    // Font size (when specified)
+    if (component->style->font.size > 0) {
+        snprintf(style_buffer + strlen(style_buffer),
+                sizeof(style_buffer) - strlen(style_buffer),
+                "font-size: %.0fpx; ", component->style->font.size);
+        has_styles = true;
+    }
+
+    // Only write style attribute if we have any inline styles
+    if (has_styles && strlen(style_buffer) > 0) {
         html_generator_write_format(generator, " style=\"%s\"", style_buffer);
     }
 }
@@ -818,6 +921,10 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         html_generator_write_format(generator, " id=\"%s-%u\"", prefix, component->id);
     }
 
+    // Always add data-kryon-id for reactive binding lookups
+    // This allows the JS reactive system to find any component by ID
+    html_generator_write_format(generator, " data-kryon-id=\"%u\"", component->id);
+
     // Output data attributes if present
     if (custom_attrs.data_attrs) {
         output_data_attrs(generator, custom_attrs.data_attrs);
@@ -838,6 +945,12 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
         // These components handle their own class generation
     } else if (component->css_class && component->css_class[0] != '\0') {
         html_generator_write_format(generator, " class=\"%s\"", component->css_class);
+    } else if (component->type == IR_COMPONENT_ROW) {
+        // Row always needs class="row" for display:flex layout
+        html_generator_write_string(generator, " class=\"row\"");
+    } else if (component->type == IR_COMPONENT_COLUMN) {
+        // Column always needs class="column" for display:flex layout
+        html_generator_write_string(generator, " class=\"column\"");
     } else if (analysis && analysis->needs_css && analysis->suggested_class) {
         // Fallback: add class for components with custom styling but no explicit class
         // Skip elements that CSS can target directly (semantic elements or element selectors)

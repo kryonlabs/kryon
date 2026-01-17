@@ -2405,6 +2405,57 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     // Generate component-specific styles
     generate_component_css(generator, root);
 
+    // Add base layout component styles (Row, Column, Button)
+    // These provide proper flexbox layout for DSL-generated components
+    css_generator_write_string(generator, "/* Layout Component Styles */\n");
+
+    // Row: horizontal flex container
+    css_generator_write_string(generator, ".row {\n");
+    css_generator_write_string(generator, "  display: flex;\n");
+    css_generator_write_string(generator, "  flex-direction: row;\n");
+    css_generator_write_string(generator, "  align-items: center;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    // Column: vertical flex container
+    css_generator_write_string(generator, ".column {\n");
+    css_generator_write_string(generator, "  display: flex;\n");
+    css_generator_write_string(generator, "  flex-direction: column;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    // Button: base interactive styling
+    css_generator_write_string(generator, "button {\n");
+    css_generator_write_string(generator, "  padding: 8px 12px;\n");
+    css_generator_write_string(generator, "  border: 1px solid var(--border-color, transparent);\n");
+    css_generator_write_string(generator, "  border-radius: 4px;\n");
+    css_generator_write_string(generator, "  cursor: pointer;\n");
+    css_generator_write_string(generator, "  background-color: var(--bg-color, #3d3d3d);\n");
+    css_generator_write_string(generator, "  color: var(--text-color, #ffffff);\n");
+    css_generator_write_string(generator, "  font-size: inherit;\n");
+    css_generator_write_string(generator, "  font-family: inherit;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    // Button hover state
+    css_generator_write_string(generator, "button:hover:not(:disabled) {\n");
+    css_generator_write_string(generator, "  filter: brightness(1.1);\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    // Button disabled state
+    css_generator_write_string(generator, "button:disabled {\n");
+    css_generator_write_string(generator, "  opacity: 0.5;\n");
+    css_generator_write_string(generator, "  cursor: not-allowed;\n");
+    css_generator_write_string(generator, "}\n\n");
+
+    // Input fields base styling
+    css_generator_write_string(generator, "input[type=\"text\"] {\n");
+    css_generator_write_string(generator, "  padding: 8px 12px;\n");
+    css_generator_write_string(generator, "  border: 1px solid var(--border-color, #4c5057);\n");
+    css_generator_write_string(generator, "  border-radius: 4px;\n");
+    css_generator_write_string(generator, "  background-color: var(--bg-color, #2d2d2d);\n");
+    css_generator_write_string(generator, "  color: var(--text-color, #ffffff);\n");
+    css_generator_write_string(generator, "  font-size: inherit;\n");
+    css_generator_write_string(generator, "  font-family: inherit;\n");
+    css_generator_write_string(generator, "}\n\n");
+
     // Add Modal dialog styles (HTML <dialog> element)
     css_generator_write_string(generator, "/* Modal Dialog Styles */\n");
     css_generator_write_string(generator, "dialog.kryon-modal {\n");
