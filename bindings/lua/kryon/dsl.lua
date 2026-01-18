@@ -96,6 +96,11 @@ DSL._moduleRegistry = {}
 -- Structure: {module_id = {function_name = {component1, component2, ...}}}
 DSL._capturedComponentTrees = {}
 
+-- Table to track tab visual states for TabGroup registration
+-- Maps tab component pointer (as string) to visual state {backgroundColor, activeBackgroundColor, textColor, activeTextColor}
+-- Used by Tab component to store visual state, then retrieved during TabGroup finalization
+DSL._tabVisualStates = {}
+
 -- Set the current module context (called from wrapper)
 function DSL.setCurrentModule(module_id)
   DSL._currentModule = module_id
@@ -511,6 +516,16 @@ local function evaluateWithTracking(component, value, bindingType, propName)
 
   -- Get the path that was accessed during evaluation
   local accessedPaths = Reactive.getAccessedPaths()
+
+  -- DEBUG: Log accessed paths
+  local _debug = os.getenv("KRYON_DEBUG_REACTIVE")
+  if _debug then
+    if #accessedPaths > 0 then
+      print("[DSL] Accessed paths:", table.concat(accessedPaths, ", "))
+    else
+      print("[DSL] WARNING: No paths accessed for component (value type: " .. type(value) .. ")")
+    end
+  end
 
   -- Register bindings for all accessed paths
   for _, path in ipairs(accessedPaths) do
@@ -1199,16 +1214,21 @@ function DSL.Tab(props)
   -- The Nim DSL does this too (components.nim:1848)
   local button = buildComponent(C.IR_COMPONENT_BUTTON, tabProps)
 
-  -- Store visual state in component's custom_data for runtime registration
+  -- Store visual state for TabGroup finalization
+  -- This is needed by the TabGroup finalization code to register visual states with C core
+  local visualState = {
+    backgroundColor = backgroundColor,
+    activeBackgroundColor = activeBackgroundColor,
+    textColor = textColor,
+    activeTextColor = activeTextColor
+  }
+  local key = tostring(button)
+  DSL._tabVisualStates[key] = visualState
+
+  -- Also store visual state in component's custom_data for runtime registration
   -- This encapsulates the state with the component instead of using module-level state
   local json = ffi.cjson
   if json then
-    local visualState = {
-      backgroundColor = backgroundColor,
-      activeBackgroundColor = activeBackgroundColor,
-      textColor = textColor,
-      activeTextColor = activeTextColor
-    }
     local encoded = json.encode(visualState)
     if encoded then
       C.ir_set_custom_data(button, encoded)

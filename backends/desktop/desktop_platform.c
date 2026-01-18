@@ -15,10 +15,10 @@
 // ============================================================================
 
 // Global backend registry (one entry per backend type)
-static DesktopRendererOps* g_backends[6] = {NULL};  // 6 = max backend types
+static DesktopRendererOps* g_backends[7] = {NULL};  // 7 = max backend types
 
 void desktop_register_backend(DesktopBackendType type, DesktopRendererOps* ops) {
-    if (type < 0 || type >= 6) {
+    if (type < 0 || type >= 7) {
         IR_LOG_ERROR("DESKTOP", "Invalid backend type: %d", type);
         return;
     }
@@ -34,12 +34,12 @@ void desktop_register_backend(DesktopBackendType type, DesktopRendererOps* ops) 
 
     g_backends[type] = ops;
 
-    const char* backend_names[] = {"SDL3", "Raylib", "GLFW", "Win32", "Cocoa", "X11"};
+    const char* backend_names[] = {"SDL3", "Raylib", "GLFW", "Win32", "Cocoa", "X11", "Plan9"};
     IR_LOG_INFO("DESKTOP", "Registered backend: %s", backend_names[type]);
 }
 
 DesktopRendererOps* desktop_get_backend_ops(DesktopBackendType type) {
-    if (type < 0 || type >= 6) {
+    if (type < 0 || type >= 7) {
         IR_LOG_ERROR("DESKTOP", "Invalid backend type: %d", type);
         return NULL;
     }

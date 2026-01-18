@@ -29,7 +29,8 @@ typedef enum {
     DESKTOP_BACKEND_GLFW,
     DESKTOP_BACKEND_WIN32,
     DESKTOP_BACKEND_COCOA,
-    DESKTOP_BACKEND_X11
+    DESKTOP_BACKEND_X11,
+    DESKTOP_BACKEND_PLAN9
 } DesktopBackendType;
 
 // ============================================================================

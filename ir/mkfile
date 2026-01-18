@@ -136,6 +136,7 @@ CFLAGS=\
 	-I.\
 	-I../third_party/cJSON\
 	-I../third_party/tomlc99\
+	-I../core/include\
 	-DPLAN9\
 	-DIR_USE_SINGLE_PASS_LAYOUT\
 

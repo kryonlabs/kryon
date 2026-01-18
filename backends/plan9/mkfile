@@ -24,6 +24,7 @@ HFILES=\
 CFLAGS=\
 	-I.\
 	-I../../ir\
+	-I../../core/include\
 	-I../desktop\
 	-I../desktop/abstract\
 	-DPLAN9\
