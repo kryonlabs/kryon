@@ -401,15 +401,15 @@ function Runtime.closeModal(modalId)
 end
 
 -- ============================================================================
--- Reactive App Entry Point (Web Version)
+-- App Entry Point (Web Version)
 -- ============================================================================
 
---- Create a reactive app for web
+--- Create an app for web
 --- In web mode, this just calls the root function to register handlers
 --- The HTML is already pre-rendered by the codegen
 --- @param config table { root = function, window = { width, height, title } }
 --- @return table App instance
-function Runtime.createReactiveApp(config)
+function Runtime.createApp(config)
     if config.root and type(config.root) == "function" then
         -- Call root function to register all event handlers
         local success, err = pcall(config.root)

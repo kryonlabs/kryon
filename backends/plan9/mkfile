@@ -1,0 +1,66 @@
+# Kryon Plan 9 Backend (mkfile)
+#
+# Native Plan 9/9front rendering backend using libdraw
+# Implements the DesktopRendererOps interface for Plan 9
+
+</$objtype/mkfile
+
+LIB=libplan9_backend.a
+
+# Backend source files
+OFILES=\
+	plan9_renderer.$O\
+	plan9_input.$O\
+	plan9_fonts.$O\
+	plan9_layout.$O\
+	plan9_effects.$O\
+
+# Header files
+HFILES=\
+	plan9_renderer.h\
+	plan9_internal.h\
+
+# Include directories
+CFLAGS=\
+	-I.\
+	-I../../ir\
+	-I../desktop\
+	-I../desktop/abstract\
+	-DPLAN9\
+
+# Plan 9 graphics libraries
+# libdraw, libframe (Plan 9 standard graphics libraries)
+LDFLAGS=\
+	-ldraw\
+	-lframe\
+
+# Include standard library build rules
+</sys/src/cmd/mklib
+
+# Custom build rules
+
+plan9_renderer.$O: plan9_renderer.c plan9_renderer.h plan9_internal.h
+	$CC $CFLAGS plan9_renderer.c
+
+plan9_input.$O: plan9_input.c plan9_internal.h
+	$CC $CFLAGS plan9_input.c
+
+plan9_fonts.$O: plan9_fonts.c plan9_internal.h
+	$CC $CFLAGS plan9_fonts.c
+
+plan9_layout.$O: plan9_layout.c plan9_internal.h
+	$CC $CFLAGS plan9_layout.c
+
+plan9_effects.$O: plan9_effects.c plan9_internal.h
+	$CC $CFLAGS plan9_effects.c
+
+# Clean target
+clean:V:
+	rm -f *.$O
+	rm -f $LIB
+
+# Install target
+install:V: $LIB
+	mkdir -p /$objtype/lib/kryon
+	cp $LIB /$objtype/lib/kryon/
+	echo 'Plan 9 backend installed'

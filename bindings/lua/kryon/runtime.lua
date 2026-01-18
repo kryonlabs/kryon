@@ -187,7 +187,7 @@ function Runtime.dispatchEvent(handlerId, eventType, textData)
       -- Call callback with event data (handler can check for this)
       local success, err = pcall(handler.callback, eventData)
       if not success then
-        print("Error in Lua event handler: " .. tostring(err))
+        print("❌ Error in Lua event handler: " .. tostring(err))
       end
     else
       -- For other events, call callback with no arguments
@@ -222,46 +222,52 @@ end
 -- Application Lifecycle
 -- ============================================================================
 
---- Create a Kryon application
---- @param config table Configuration with window and body
---- @return table Application object
-function Runtime.createApp(config)
-  if not config or not config.body then
-    error("createApp requires config.body (root component)")
+--- Auto-wrap all global tables with reactive proxies
+--- This makes state variables reactive without requiring explicit Reactive.reactive() calls
+local function autoWrapGlobals()
+  local Reactive = require("kryon.reactive")
+
+  -- Standard library modules to exclude from auto-wrapping
+  local excludeModules = {
+    ["_G"] = true,
+    ["package"] = true,
+    ["string"] = true,
+    ["table"] = true,
+    ["math"] = true,
+    ["io"] = true,
+    ["os"] = true,
+    ["debug"] = true,
+    ["coroutine"] = true,
+    ["utf8"] = true,
+    ["bit"] = true,
+    ["jit"] = true,
+  }
+
+  -- Also exclude anything starting with "kryon." or "Reactive"
+  local function shouldWrap(name, value)
+    if excludeModules[name] then return false end
+    if type(value) ~= "table" then return false end
+    if name:match("^kryon") or name:match("^Reactive") then return false end
+    if Reactive.isReactive(value) then return false end
+    return true
   end
 
-  -- Create IR context (C call)
-  local ctx = C.ir_create_context()
-  C.ir_set_context(ctx)
-
-  -- Create animation context for smooth animations
-  local anim_ctx = C.ir_animation_context_create()
-
-  -- Set root component (C call)
-  C.ir_set_root(config.body)
-
-  return {
-    context = ctx,
-    animation_context = anim_ctx,
-    root = config.body,
-    window = config.window or {},
-    running = false,
-  }
+  -- Auto-wrap all qualifying global tables
+  for name, value in pairs(_G) do
+    if shouldWrap(name, value) then
+      _G[name] = Reactive.reactive(value)
+    end
+  end
 end
 
---- Create a reactive Kryon application with automatic re-rendering
---- @param config table Configuration with window and root function
+--- Create a Kryon application with automatic reactivity
+--- @param config table Configuration with window and body (component) or root (function)
 --- @return table Application object
-function Runtime.createReactiveApp(config)
-  if not config or not config.root then
-    error("createReactiveApp requires config.root (function that builds UI)")
-  end
-
-  if type(config.root) ~= "function" then
-    error("createReactiveApp requires config.root to be a function")
-  end
-
+function Runtime.createApp(config)
   local Reactive = require("kryon.reactive")
+
+  -- Auto-wrap all global tables with reactive proxies
+  autoWrapGlobals()
 
   -- Create IR context
   local ctx = C.ir_create_context()
@@ -270,57 +276,61 @@ function Runtime.createReactiveApp(config)
   -- Create animation context for smooth animations
   local anim_ctx = C.ir_animation_context_create()
 
-  local app = {
-    context = ctx,
-    animation_context = anim_ctx,
-    root = nil,
-    window = config.window or {},
-    running = false,
-    _rootFn = config.root,
-    _stopEffect = nil,
-  }
+  -- Support both pre-built components and root functions
+  local rootFn = config.root or config.body
+  local isReactive = type(rootFn) == "function"
 
-  -- Guard against recursive calls during effect execution
-  local isBuilding = false
+  if isReactive then
+    -- Create reactive app with effect-based re-rendering
+    local app = {
+      context = ctx,
+      animation_context = anim_ctx,
+      root = nil,
+      window = config.window or {},
+      running = false,
+      _rootFn = rootFn,
+      _stopEffect = nil,
+    }
 
-  -- Create effect that auto-rebuilds UI when reactive dependencies change
-  local function buildAndUpdateRoot()
-    -- Prevent recursive calls
-    if isBuilding then
-      return
-    end
+    local isBuilding = false
 
-    isBuilding = true
+    local function buildAndUpdateRoot()
+      if isBuilding then return end
+      isBuilding = true
 
-    -- Cleanup handlers from previous tree to prevent accumulation
-    if app.root then
-      Runtime.cleanupComponentTreeHandlers(app.root)
-    end
-
-    local newRoot = config.root()
-
-    if app.root then
-      -- Update existing root (triggers re-render)
-      C.ir_set_root(newRoot)
-      app.root = newRoot
-
-      -- Also update in renderer if available
-      if Runtime._globalRenderer then
-        Desktop.desktop_ir_renderer_update_root(Runtime._globalRenderer, newRoot)
+      if app.root then
+        Runtime.cleanupComponentTreeHandlers(app.root)
       end
-    else
-      -- Initial root setup
-      C.ir_set_root(newRoot)
-      app.root = newRoot
+
+      local newRoot = rootFn()
+
+      if app.root then
+        C.ir_set_root(newRoot)
+        app.root = newRoot
+        if Runtime._globalRenderer then
+          Desktop.desktop_ir_renderer_update_root(Runtime._globalRenderer, newRoot)
+        end
+      else
+        C.ir_set_root(newRoot)
+        app.root = newRoot
+      end
+
+      isBuilding = false
     end
 
-    isBuilding = false
+    app._stopEffect = Reactive.effect(buildAndUpdateRoot)
+    return app
+  else
+    -- Static app with pre-built component
+    C.ir_set_root(rootFn)
+    return {
+      context = ctx,
+      animation_context = anim_ctx,
+      root = rootFn,
+      window = config.window or {},
+      running = false,
+    }
   end
-
-  -- Run effect (auto-tracks dependencies and re-runs on changes)
-  app._stopEffect = Reactive.effect(buildAndUpdateRoot)
-
-  return app
 end
 
 --- Update loop - delegates to C IR animation system
@@ -487,7 +497,7 @@ function Runtime.loadKIR(kir_filepath)
     local app = chunk()  -- Execute, returns app table and registers handlers
 
     -- CRITICAL FIX: Use the app returned from source execution!
-    -- This preserves reactive effects created by createReactiveApp()
+    -- This preserves reactive effects created by createApp()
     if app and app.root then
       -- IMPORTANT: Expand ForEach on the NEW app.root (not the old KIR root)
       -- The KIR root was expanded earlier, but that root is discarded when we
@@ -523,8 +533,6 @@ function Runtime.runDesktop(app)
 
   -- Finalize TabGroups before starting renderer
   -- This registers tabs with TabGroupState so the C core can handle tab switching automatically
-  local dsl = require("kryon.dsl")
-  tabVisualStates = dsl._tabVisualStates  -- Make it available to registration functions
   Runtime.finalizeTabGroups(app.root)
 
   -- Check if desktop library is available
@@ -742,9 +750,20 @@ function Runtime._walkAndFinalizeTabGroups(component, processedGroups)
       for i = 0, tabBar.child_count - 1 do
         local child = tabBar.children[i]
         if child.type == C.IR_COMPONENT_BUTTON then
-          -- Get visual state from tabVisualStates table
-          local visualKey = tostring(child)
-          local visual = tabVisualStates[visualKey] or {}
+          -- Get visual state from component's custom_data (stored by DSL during Tab creation)
+          local visual = {}
+          local customData = C.ir_get_custom_data(child)
+
+          if customData ~= nil then
+            local json = require("cjson")
+            if json then
+              local success, decoded = pcall(json.decode, ffi.string(customData))
+              if success and decoded then
+                visual = decoded
+              end
+            end
+          end
+
           Runtime.registerTab(state, child, visual)
         end
       end

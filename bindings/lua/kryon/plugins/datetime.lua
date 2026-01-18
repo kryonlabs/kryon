@@ -251,18 +251,17 @@ local function getImpl()
     if _impl then return _impl end
 
     local target = Plugin.detectTarget()
+    print("[DateTime] Detected target: " .. tostring(target))
+
     if target == "web" then
-        local success, webImpl = pcall(createWebImpl)
-        if success then
-            _impl = webImpl
-            print("[DateTime] Loaded web implementation")
-        else
-            print("[DateTime] Web implementation failed, using native fallback")
-            _impl = createNativeImpl()
-        end
+        -- Web target: use JavaScript Date API (no fallback to native)
+        -- If this fails, let the error propagate - mixing platforms causes timezone issues
+        _impl = createWebImpl()
+        print("[DateTime] Using web implementation (JavaScript Date API)")
     else
+        -- Native target: use FFI datetime library or standard Lua os.date
         _impl = createNativeImpl()
-        print("[DateTime] Loaded native implementation")
+        print("[DateTime] Using native implementation")
     end
 
     return _impl

@@ -200,52 +200,97 @@ local function trackDependency(target, key, dep)
 end
 
 -- ============================================================================
--- Compile-Time Dependency Tracking (for computed value bindings)
--- Used by DSL to capture dependencies when evaluating text expressions
+-- Path Tracking (for automatic binding detection)
+-- Records reactive property accesses for automatic binding registration
 -- ============================================================================
 
-local compileTrackingStack = {}
+-- Store the last accessed reactive path and all accessed paths
+local lastAccessedPath = nil
+local lastAccessedPaths = {}
 
--- Start tracking dependencies for compile-time binding extraction
--- Returns a tracker object that will collect accessed reactive paths
+--- Get the last accessed reactive path
+-- Returns the most recent path like "displayedMonth.year" or nil
+-- @return string|nil The last accessed path
+function Reactive.getLastAccessedPath()
+  return lastAccessedPath
+end
+
+--- Get all paths accessed during the last tracking session
+-- @return table Array of paths accessed
+function Reactive.getAccessedPaths()
+  -- Return a copy of the paths table
+  local result = {}
+  for _, path in ipairs(lastAccessedPaths) do
+    table.insert(result, path)
+  end
+  return result
+end
+
+--- Clear the last accessed path (call this before starting a new tracking session)
+function Reactive.clearAccessedPaths()
+  lastAccessedPath = nil
+  lastAccessedPaths = {}
+end
+
+--- Record that a reactive path was accessed (called by __index metamethod)
+-- This is used by DSL to detect when properties like "state.displayedMonth.year"
+-- are accessed, so automatic bindings can be registered
+-- @param path string The full reactive path that was accessed
+local function recordAccessedPath(path)
+  if path then
+    lastAccessedPath = path
+    -- Also add to the list of all accessed paths (avoid duplicates)
+    local exists = false
+    for _, existing in ipairs(lastAccessedPaths) do
+      if existing == path then
+        exists = true
+        break
+      end
+    end
+    if not exists then
+      table.insert(lastAccessedPaths, path)
+    end
+  end
+end
+
+-- Export for internal use
+Reactive._recordAccessedPath = recordAccessedPath
+
+-- ============================================================================
+-- Scoped Path Tracking (for property-level binding detection)
+-- ============================================================================
+
+--- Start a new tracking session and return a tracker handle
+--- Call stopTracking() with this handle to get the paths accessed during the session
+--- @return table Tracker handle
 function Reactive.startTracking()
-  local tracker = { deps = {} }
-  table.insert(compileTrackingStack, tracker)
+  -- Create a new tracker that captures paths from this point forward
+  local tracker = {
+    startIndex = #lastAccessedPaths + 1,
+    paths = {}
+  }
   return tracker
 end
 
--- Stop tracking and return collected dependencies
--- @param tracker The tracker returned by startTracking()
--- @return table Array of dependency paths (e.g., {"displayedMonth.year", "displayedMonth.month"})
+--- Stop tracking and return paths accessed since startTracking()
+--- @param tracker table Tracker handle from startTracking()
+--- @return table Array of paths accessed during tracking
 function Reactive.stopTracking(tracker)
-  local removed = table.remove(compileTrackingStack)
-  if removed ~= tracker then
-    -- Stack mismatch - this shouldn't happen but handle gracefully
-    print("[Reactive] Warning: Tracking stack mismatch")
+  if not tracker then return {} end
+
+  -- Collect paths that were accessed after the tracker's start index
+  local result = {}
+  for i = tracker.startIndex, #lastAccessedPaths do
+    table.insert(result, lastAccessedPaths[i])
   end
-  return tracker and tracker.deps or {}
+  return result
 end
 
--- Record a dependency path during compile-time tracking
--- Called internally when reactive proxies are accessed
-local function recordCompileDependency(path)
-  if #compileTrackingStack > 0 and path then
-    local tracker = compileTrackingStack[#compileTrackingStack]
-    -- Avoid duplicates
-    for _, existing in ipairs(tracker.deps) do
-      if existing == path then
-        return
-      end
-    end
-    table.insert(tracker.deps, path)
-    if ReactiveContext.debugMode then
-      print(string.format("[Reactive] Recorded compile dependency: %s", path))
-    end
-  end
+--- Clear all tracked paths (useful before a tracking session)
+function Reactive.clearAccessedPaths()
+  lastAccessedPath = nil
+  lastAccessedPaths = {}
 end
-
--- Expose for use in reactive proxy __index
-Reactive._recordCompileDependency = recordCompileDependency
 
 -- Trigger all effects for a dependency (called during reactive writes)
 local function triggerEffects(target, key)
@@ -399,13 +444,12 @@ function Reactive.reactive(target, parent, parentKey, basePath)
         print(string.format("[Reactive READ] %s %s", tostring(key), effectName))
       end
 
-      -- Compile-time dependency tracking: record path for binding extraction
-      -- This is used by DSL when evaluating computed expressions like DateTime.format(state.year)
+      -- Record path for automatic binding detection
       if proxyPath and type(key) == "string" then
         local fullPath = proxyPath .. "." .. key
-        recordCompileDependency(fullPath)
+        recordAccessedPath(fullPath)
       elseif type(key) == "string" then
-        recordCompileDependency(key)
+        recordAccessedPath(key)
       end
 
       -- Check for pre-populated array indices (LuaJIT compatibility)
@@ -739,22 +783,6 @@ end
 --- @return boolean True if reactive
 function Reactive.isReactive(value)
   return isReactive(value)
-end
-
---- Unwrap a reactive value (get raw value)
---- @param value any Potentially reactive value
---- @return any Raw value
-function Reactive.unref(value)
-  -- If it's a function (signal getter or computed), call it
-  if type(value) == "function" then
-    return value()
-  end
-  -- If it's a reactive object, return raw
-  if isReactive(value) then
-    return Reactive.toRaw(value)
-  end
-  -- Otherwise return as-is
-  return value
 end
 
 -- ============================================================================
