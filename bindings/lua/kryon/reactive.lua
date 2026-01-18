@@ -199,6 +199,54 @@ local function trackDependency(target, key, dep)
   end
 end
 
+-- ============================================================================
+-- Compile-Time Dependency Tracking (for computed value bindings)
+-- Used by DSL to capture dependencies when evaluating text expressions
+-- ============================================================================
+
+local compileTrackingStack = {}
+
+-- Start tracking dependencies for compile-time binding extraction
+-- Returns a tracker object that will collect accessed reactive paths
+function Reactive.startTracking()
+  local tracker = { deps = {} }
+  table.insert(compileTrackingStack, tracker)
+  return tracker
+end
+
+-- Stop tracking and return collected dependencies
+-- @param tracker The tracker returned by startTracking()
+-- @return table Array of dependency paths (e.g., {"displayedMonth.year", "displayedMonth.month"})
+function Reactive.stopTracking(tracker)
+  local removed = table.remove(compileTrackingStack)
+  if removed ~= tracker then
+    -- Stack mismatch - this shouldn't happen but handle gracefully
+    print("[Reactive] Warning: Tracking stack mismatch")
+  end
+  return tracker and tracker.deps or {}
+end
+
+-- Record a dependency path during compile-time tracking
+-- Called internally when reactive proxies are accessed
+local function recordCompileDependency(path)
+  if #compileTrackingStack > 0 and path then
+    local tracker = compileTrackingStack[#compileTrackingStack]
+    -- Avoid duplicates
+    for _, existing in ipairs(tracker.deps) do
+      if existing == path then
+        return
+      end
+    end
+    table.insert(tracker.deps, path)
+    if ReactiveContext.debugMode then
+      print(string.format("[Reactive] Recorded compile dependency: %s", path))
+    end
+  end
+end
+
+-- Expose for use in reactive proxy __index
+Reactive._recordCompileDependency = recordCompileDependency
+
 -- Trigger all effects for a dependency (called during reactive writes)
 local function triggerEffects(target, key)
   if not target or type(target) ~= "table" then
@@ -351,6 +399,15 @@ function Reactive.reactive(target, parent, parentKey, basePath)
         print(string.format("[Reactive READ] %s %s", tostring(key), effectName))
       end
 
+      -- Compile-time dependency tracking: record path for binding extraction
+      -- This is used by DSL when evaluating computed expressions like DateTime.format(state.year)
+      if proxyPath and type(key) == "string" then
+        local fullPath = proxyPath .. "." .. key
+        recordCompileDependency(fullPath)
+      elseif type(key) == "string" then
+        recordCompileDependency(key)
+      end
+
       -- Check for pre-populated array indices (LuaJIT compatibility)
       local directValue = rawget(t, key)
       if directValue ~= nil then
@@ -379,14 +436,9 @@ function Reactive.reactive(target, parent, parentKey, basePath)
           return cachedProxy
         end
 
-        -- Create new proxy and cache it with extended path
-        local childPath = proxyPath
-        if type(key) == "string" then
-          childPath = proxyPath and (proxyPath .. "." .. key) or key
-        elseif type(key) == "number" then
-          childPath = proxyPath and (proxyPath .. "[" .. key .. "]") or tostring(key)
-        end
-        local childProxy = Reactive.reactive(value, t, key, childPath)
+        -- Create new proxy and cache it
+        -- Pass proxyPath (parent's path) as basePath - Reactive.reactive() will compute the child's path
+        local childProxy = Reactive.reactive(value, t, key, proxyPath)
         proxyCache[key] = childProxy
         return childProxy
       end

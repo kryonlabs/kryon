@@ -576,6 +576,29 @@ ffi.cdef[[
   // Component deep copy utility
   IRComponent* ir_component_deep_copy(IRComponent* src);
 
+  // ============================================================================
+  // Dynamic Binding API (for runtime Lua expression evaluation in web)
+  // ============================================================================
+  typedef struct IRDynamicBinding {
+    char* binding_id;
+    char* element_selector;
+    char* update_type;
+    char* lua_expr;
+  } IRDynamicBinding;
+
+  IRDynamicBinding* ir_dynamic_binding_create(const char* binding_id,
+                                               const char* element_selector,
+                                               const char* update_type,
+                                               const char* lua_expr);
+  void ir_dynamic_binding_destroy(IRDynamicBinding* binding);
+  void ir_component_add_dynamic_binding(IRComponent* component,
+                                         const char* binding_id,
+                                         const char* element_selector,
+                                         const char* update_type,
+                                         const char* lua_expr);
+  uint32_t ir_component_get_dynamic_binding_count(IRComponent* component);
+  IRDynamicBinding* ir_component_get_dynamic_binding(IRComponent* component, uint32_t index);
+
   // Context access
   IRContext* ir_get_global_context(void);
 
