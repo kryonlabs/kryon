@@ -327,3 +327,67 @@ IRForLoopData* ir_source_structures_find_for_loop(IRSourceStructures* ss, const 
     }
     return NULL;
 }
+
+// ============================================================================
+// Dynamic Binding Management (for runtime Lua expression evaluation in web)
+// ============================================================================
+
+IRDynamicBinding* ir_dynamic_binding_create(const char* binding_id,
+                                             const char* element_selector,
+                                             const char* update_type,
+                                             const char* lua_expr) {
+    IRDynamicBinding* binding = calloc(1, sizeof(IRDynamicBinding));
+    if (!binding) return NULL;
+
+    binding->binding_id = binding_id ? strdup(binding_id) : NULL;
+    binding->element_selector = element_selector ? strdup(element_selector) : NULL;
+    binding->update_type = update_type ? strdup(update_type) : strdup("text");
+    binding->lua_expr = lua_expr ? strdup(lua_expr) : NULL;
+
+    return binding;
+}
+
+void ir_dynamic_binding_destroy(IRDynamicBinding* binding) {
+    if (!binding) return;
+
+    free(binding->binding_id);
+    free(binding->element_selector);
+    free(binding->update_type);
+    free(binding->lua_expr);
+    free(binding);
+}
+
+void ir_component_add_dynamic_binding(IRComponent* component,
+                                       const char* binding_id,
+                                       const char* element_selector,
+                                       const char* update_type,
+                                       const char* lua_expr) {
+    if (!component || !lua_expr) return;
+
+    // Initialize array if needed
+    if (component->dynamic_bindings == NULL) {
+        component->dynamic_binding_capacity = 4;
+        component->dynamic_bindings = calloc(component->dynamic_binding_capacity, sizeof(IRDynamicBinding*));
+        component->dynamic_binding_count = 0;
+    }
+
+    // Grow array if needed
+    if (component->dynamic_binding_count >= component->dynamic_binding_capacity) {
+        component->dynamic_binding_capacity *= 2;
+        component->dynamic_bindings = realloc(component->dynamic_bindings,
+                                              component->dynamic_binding_capacity * sizeof(IRDynamicBinding*));
+    }
+
+    // Create and add the binding
+    IRDynamicBinding* binding = ir_dynamic_binding_create(binding_id, element_selector, update_type, lua_expr);
+    component->dynamic_bindings[component->dynamic_binding_count++] = binding;
+}
+
+uint32_t ir_component_get_dynamic_binding_count(IRComponent* component) {
+    return component ? component->dynamic_binding_count : 0;
+}
+
+IRDynamicBinding* ir_component_get_dynamic_binding(IRComponent* component, uint32_t index) {
+    if (!component || index >= component->dynamic_binding_count) return NULL;
+    return component->dynamic_bindings[index];
+}

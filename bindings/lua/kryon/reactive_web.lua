@@ -91,8 +91,10 @@ end
 --- Create a reactive proxy around a table
 --- Changes to the proxy trigger subscriber notifications
 --- @param initial table Initial data
+--- @param parentPath string|nil Parent path for nested proxies (e.g., "displayedMonth")
 --- @return table Reactive proxy
-function Reactive.reactive(initial)
+function Reactive.reactive(initial, parentPath)
+    parentPath = parentPath or ""
     local data = {}
     local subscribers = {}
     local deps = {}  -- For effect dependency tracking
@@ -101,8 +103,9 @@ function Reactive.reactive(initial)
     if initial then
         for k, v in pairs(initial) do
             if type(v) == "table" then
-                -- Recursively make nested tables reactive
-                data[k] = Reactive.reactive(v)
+                -- Recursively make nested tables reactive with full path
+                local fullPath = parentPath == "" and tostring(k) or (parentPath .. "." .. tostring(k))
+                data[k] = Reactive.reactive(v, fullPath)
             else
                 data[k] = v
             end
@@ -125,9 +128,12 @@ function Reactive.reactive(initial)
         __newindex = function(t, k, v)
             local oldValue = data[k]
 
-            -- Make nested tables reactive
+            -- Compute the full path for this key
+            local fullPath = parentPath == "" and tostring(k) or (parentPath .. "." .. tostring(k))
+
+            -- Make nested tables reactive with full path
             if type(v) == "table" and not Reactive.isReactive(v) then
-                v = Reactive.reactive(v)
+                v = Reactive.reactive(v, fullPath)
             end
 
             data[k] = v
@@ -145,11 +151,13 @@ function Reactive.reactive(initial)
             end
 
             -- Notify JavaScript of state change for DOM updates
-            -- Serialize the new value so JS can update bindings
-            if window and window.kryonStateChanged then
+            -- Use eval pattern to avoid Fengari multi-argument issues
+            if window and window.eval then
                 pcall(function()
                     local jsonValue = toJson(v)
-                    window.kryonStateChanged(tostring(k), jsonValue)
+                    -- Use %q for proper string escaping, %s for JSON (already escaped)
+                    local jsCode = string.format('kryonStateChanged(%q, %s)', fullPath, jsonValue)
+                    window:eval(jsCode)
                 end)
             end
         end,
@@ -254,13 +262,16 @@ end
 --- @param updateType string Update type: 'text', 'style', 'attr', 'class', 'visibility', 'custom'
 --- @param options table|nil Additional options based on updateType
 function Reactive.registerBinding(stateKey, elementId, updateType, options)
-    if window and window.kryonRegisterBinding then
+    if window and window.eval then
         pcall(function()
             local jsOptions = options and toJson(options) or "{}"
-            window.kryonRegisterBinding(stateKey, elementId, updateType or "text", jsOptions)
+            -- Use eval pattern to avoid Fengari multi-argument issues
+            local jsCode = string.format('kryonRegisterBinding(%q, %q, %q, %s)',
+                stateKey, elementId, updateType or "text", jsOptions)
+            window:eval(jsCode)
         end)
     else
-        print("[Reactive Web] Warning: kryonRegisterBinding not available yet")
+        print("[Reactive Web] Warning: window.eval not available yet")
     end
 end
 
@@ -543,6 +554,133 @@ end
 function Reactive.batch(updateFn)
     -- For now, just run the function - the JS side handles debouncing
     pcall(updateFn)
+end
+
+-- ============================================================================
+-- Dynamic Binding System: Runtime Lua Expression Evaluation with Tracking
+-- This is called by JavaScript's kryonEvalBinding() to evaluate Lua expressions
+-- and discover their reactive dependencies at runtime.
+-- ============================================================================
+
+-- Global tracking state for dependency discovery
+local isTracking = false
+local accessedPaths = {}
+
+--- Create a tracking proxy that records all property accesses
+--- @param target table The table to wrap
+--- @param path string The current path (e.g., "state.displayedMonth")
+--- @return table Tracking proxy
+local function createTrackingProxy(target, path)
+    path = path or ""
+
+    return setmetatable({}, {
+        __index = function(_, k)
+            local fullPath = path == "" and tostring(k) or (path .. "." .. tostring(k))
+
+            -- Record the access if we're tracking
+            if isTracking then
+                accessedPaths[fullPath] = true
+            end
+
+            local value = target[k]
+            if type(value) == "table" then
+                -- Recursively wrap nested tables
+                return createTrackingProxy(value, fullPath)
+            end
+            return value
+        end,
+
+        __newindex = function(_, k, v)
+            target[k] = v
+        end,
+
+        __pairs = function()
+            return pairs(target)
+        end,
+
+        __ipairs = function()
+            return ipairs(target)
+        end,
+
+        __len = function()
+            return #target
+        end
+    })
+end
+
+--- Evaluate a Lua expression with dependency tracking enabled
+--- Returns both the result and the discovered dependencies
+--- @param luaExpr string The Lua expression to evaluate
+--- @param context table Context variables (state, DateTime, etc.)
+--- @return any Result of evaluation
+--- @return table Array of dependency paths
+function Reactive.evalWithTracking(luaExpr, context)
+    -- Reset tracking state
+    accessedPaths = {}
+    isTracking = true
+
+    -- Wrap context variables in tracking proxies
+    local trackedContext = {}
+    for k, v in pairs(context or {}) do
+        if type(v) == "table" then
+            trackedContext[k] = createTrackingProxy(v, k)
+        else
+            trackedContext[k] = v
+        end
+    end
+
+    -- Add globals to context (with tracking for tables)
+    if _G.state and not trackedContext.state then
+        trackedContext.state = createTrackingProxy(_G.state, "state")
+    end
+    if _G.DateTime and not trackedContext.DateTime then
+        trackedContext.DateTime = _G.DateTime  -- DateTime is a module, not state
+    end
+
+    -- Compile and run the expression
+    local result = nil
+    local fn, err = load("return " .. luaExpr, "binding", "t", trackedContext)
+    if fn then
+        local ok, val = pcall(fn)
+        if ok then
+            result = val
+        else
+            print("[Reactive Web] Error evaluating expression:", val)
+        end
+    else
+        print("[Reactive Web] Error compiling expression:", err)
+    end
+
+    isTracking = false
+
+    -- Collect dependencies
+    local deps = {}
+    for path, _ in pairs(accessedPaths) do
+        table.insert(deps, path)
+    end
+
+    return result, deps
+end
+
+-- Global function for JavaScript to call
+-- This is the bridge that JavaScript uses to evaluate Lua expressions
+_G.kryonEvalWithTracking = function(luaExpr)
+    local result, deps = Reactive.evalWithTracking(luaExpr, {})
+
+    -- Return as a table that JavaScript can access
+    -- Fengari will convert this to a JS object
+    return {
+        result = result,
+        deps = deps
+    }
+end
+
+-- Expose to window for JavaScript access
+if window and window.eval then
+    pcall(function()
+        -- Create the global function that JavaScript can call
+        window.kryonEvalWithTracking = _G.kryonEvalWithTracking
+    end)
 end
 
 print("[Reactive Web] Reactive system loaded")

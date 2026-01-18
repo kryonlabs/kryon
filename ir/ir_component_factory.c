@@ -92,11 +92,15 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
         IRLayout* layout = ir_get_layout(component);
         if (layout) {
             layout->flex.direction = 1;  // Row = horizontal
+            layout->display_explicit = true;  // Enable flex CSS output
+            layout->mode = IR_LAYOUT_MODE_FLEX;
         }
     } else if (type == IR_COMPONENT_COLUMN) {
         IRLayout* layout = ir_get_layout(component);
         if (layout) {
             layout->flex.direction = 0;  // Column = vertical
+            layout->display_explicit = true;  // Enable flex CSS output
+            layout->mode = IR_LAYOUT_MODE_FLEX;
         }
     }
 

@@ -8,6 +8,7 @@
 #include <libgen.h>
 
 #include "../../ir/ir_core.h"
+#include "../../ir/ir_string_builder.h"
 #include "ir_web_renderer.h"
 #include "html_generator.h"
 #include "css_generator.h"
@@ -75,6 +76,10 @@ static const char* javascript_runtime_template =
 "        const componentId = kryon_call_queue.shift();\n"
 "        kryonCallHandler(componentId);\n"
 "    }\n"
+"    // Initialize dynamic bindings now that Lua is ready\n"
+"    if (typeof kryonInitDynamicBindings === 'function') {\n"
+"        kryonInitDynamicBindings();\n"
+"    }\n"
 "}\n\n"
 "// ============================================================================\n"
 "// Reactive Binding System (Phase 1 Implementation)\n"
@@ -120,6 +125,17 @@ static const char* javascript_runtime_template =
 "        case 'attr': if (binding.options.attrName) el.setAttribute(binding.options.attrName, value); break;\n"
 "        case 'visibility': el.style.display = value ? '' : 'none'; break;\n"
 "        case 'class': value ? el.classList.add(binding.options.className) : el.classList.remove(binding.options.className); break;\n"
+"        case 'property':\n"
+"            // Set DOM element property (e.g., disabled, checked, value)\n"
+"            if (binding.options.prop) {\n"
+"                el[binding.options.prop] = value;\n"
+"                // For disabled, also update visual state\n"
+"                if (binding.options.prop === 'disabled') {\n"
+"                    el.style.opacity = value ? '0.5' : '1';\n"
+"                    el.style.cursor = value ? 'default' : 'pointer';\n"
+"                }\n"
+"            }\n"
+"            break;\n"
 "        case 'custom': if (binding.options.customFn && typeof window[binding.options.customFn] === 'function') window[binding.options.customFn](el, value); break;\n"
 "        default: el.textContent = String(value);\n"
 "    }\n"
@@ -345,6 +361,134 @@ static const char* javascript_runtime_template =
 "}\n\n"
 "// Expose smart update to window/Lua\n"
 "window.kryonSmartUpdateForEach = kryonSmartUpdateForEach;\n\n"
+"// ============================================================================\n"
+"// Dynamic Binding System (Runtime Lua Expression Evaluation)\n"
+"// Dependencies are discovered at runtime, not build time.\n"
+"// ============================================================================\n\n"
+"// Dynamic binding registry - stores bindings with Lua expressions\n"
+"const kryonDynamicBindings = {};\n\n"
+"/**\n"
+" * Register a dynamic binding (dependencies discovered at runtime)\n"
+" * @param {Object} config - Binding configuration\n"
+" * @param {string} config.id - Unique binding ID\n"
+" * @param {string} config.selector - CSS selector for target element\n"
+" * @param {string} config.updateType - 'text', 'visibility', 'property:disabled', etc.\n"
+" * @param {string} config.luaExpr - Lua expression to evaluate at runtime\n"
+" */\n"
+"function kryonRegisterDynamicBinding(config) {\n"
+"    kryonDynamicBindings[config.id] = {\n"
+"        ...config,\n"
+"        deps: null,\n"
+"        initialized: false\n"
+"    };\n"
+"    console.log('[Kryon Dynamic] Registered binding:', config.id, '->', config.selector);\n"
+"}\n\n"
+"/**\n"
+" * Evaluate a dynamic binding and discover/cache dependencies\n"
+" * @param {Object} binding - The binding object\n"
+" * @returns {*} The evaluated result\n"
+" */\n"
+"function kryonEvalBinding(binding) {\n"
+"    if (!window.kryonEvalWithTracking) {\n"
+"        console.warn('[Kryon Dynamic] kryonEvalWithTracking not available');\n"
+"        return null;\n"
+"    }\n"
+"    try {\n"
+"        const response = window.kryonEvalWithTracking(binding.luaExpr);\n"
+"        if (!binding.initialized || !binding.deps) {\n"
+"            binding.deps = response.deps || [];\n"
+"            binding.initialized = true;\n"
+"            console.log('[Kryon Dynamic] Discovered deps for', binding.id, ':', binding.deps);\n"
+"        }\n"
+"        return response.result;\n"
+"    } catch (e) {\n"
+"        console.error('[Kryon Dynamic] Eval error:', binding.id, e);\n"
+"        return null;\n"
+"    }\n"
+"}\n\n"
+"/**\n"
+" * Apply a dynamic binding update to the DOM\n"
+" * @param {Object} binding - The binding object\n"
+" */\n"
+"function kryonApplyDynamicBinding(binding) {\n"
+"    const result = kryonEvalBinding(binding);\n"
+"    if (result === null || result === undefined) return;\n"
+"    const el = document.querySelector(binding.selector);\n"
+"    if (!el) {\n"
+"        console.warn('[Kryon Dynamic] Element not found:', binding.selector);\n"
+"        return;\n"
+"    }\n"
+"    const [type, prop] = (binding.updateType || 'text').split(':');\n"
+"    switch (type) {\n"
+"        case 'text':\n"
+"            el.textContent = String(result);\n"
+"            break;\n"
+"        case 'html':\n"
+"            el.innerHTML = String(result);\n"
+"            break;\n"
+"        case 'property':\n"
+"            if (prop) {\n"
+"                el[prop] = result;\n"
+"                if (prop === 'disabled') {\n"
+"                    el.style.opacity = result ? '0.5' : '1';\n"
+"                    el.style.cursor = result ? 'default' : 'pointer';\n"
+"                }\n"
+"            }\n"
+"            break;\n"
+"        case 'style':\n"
+"            if (prop) el.style[prop] = result;\n"
+"            break;\n"
+"        case 'visibility':\n"
+"            el.style.display = result ? '' : 'none';\n"
+"            break;\n"
+"        default:\n"
+"            el.textContent = String(result);\n"
+"    }\n"
+"    console.log('[Kryon Dynamic] Updated', binding.id, '=', result);\n"
+"}\n\n"
+"/**\n"
+" * Initialize all dynamic bindings on page load\n"
+" */\n"
+"function kryonInitDynamicBindings() {\n"
+"    console.log('[Kryon Dynamic] Initializing', Object.keys(kryonDynamicBindings).length, 'bindings');\n"
+"    for (const [id, binding] of Object.entries(kryonDynamicBindings)) {\n"
+"        kryonApplyDynamicBinding(binding);\n"
+"    }\n"
+"}\n\n"
+"/**\n"
+" * Check if a state key matches a dependency\n"
+" * @param {string} stateKey - The changed state key\n"
+" * @param {string} dep - The dependency path\n"
+" * @returns {boolean} True if they match\n"
+" */\n"
+"function kryonDepMatches(stateKey, dep) {\n"
+"    if (stateKey === dep) return true;\n"
+"    if (dep.startsWith(stateKey + '.')) return true;\n"
+"    if (stateKey.startsWith(dep + '.')) return true;\n"
+"    return false;\n"
+"}\n\n"
+"// Hook into kryonStateChanged to trigger dynamic bindings\n"
+"const originalKryonStateChanged = window.kryonStateChanged;\n"
+"window.kryonStateChanged = function(key, jsonValue) {\n"
+"    // Call original handler for simple bindings\n"
+"    if (originalKryonStateChanged) {\n"
+"        originalKryonStateChanged(key, jsonValue);\n"
+"    }\n"
+"    // Trigger dynamic bindings whose deps match\n"
+"    for (const [id, binding] of Object.entries(kryonDynamicBindings)) {\n"
+"        if (!binding.deps) continue;\n"
+"        const matches = binding.deps.some(dep => kryonDepMatches(key, dep));\n"
+"        if (matches) {\n"
+"            console.log('[Kryon Dynamic] State', key, 'triggers binding:', id);\n"
+"            kryonApplyDynamicBinding(binding);\n"
+"        }\n"
+"    }\n"
+"};\n\n"
+"// Expose dynamic binding API\n"
+"window.kryonRegisterDynamicBinding = kryonRegisterDynamicBinding;\n"
+"window.kryonApplyDynamicBinding = kryonApplyDynamicBinding;\n"
+"window.kryonInitDynamicBindings = kryonInitDynamicBindings;\n"
+"window.kryonDynamicBindings = kryonDynamicBindings;\n\n"
 "// ============================================================================\n"
 "// Modal Management Functions\n"
 "// ============================================================================\n\n"
@@ -708,6 +852,11 @@ bool web_ir_renderer_render(WebIRRenderer* renderer, IRComponent* root) {
         printf("Warning: Could not create output directory '%s'\n", renderer->output_directory);
     }
 
+    // Pass source metadata to HTML generator so it knows to include Fengari
+    if (g_ir_context && g_ir_context->source_metadata) {
+        html_generator_set_metadata(renderer->html_generator, g_ir_context->source_metadata);
+    }
+
     // Generate HTML
     if (renderer->generate_separate_files) {
         char html_filename[512];
@@ -941,10 +1090,19 @@ bool web_render_ir_component_with_manifest(IRComponent* root, const char* output
     return success;
 }
 
-// Set manifest on renderer
+// Set manifest on renderer (for CSS variables and reactive bindings)
 void web_ir_renderer_set_manifest(WebIRRenderer* renderer, IRReactiveManifest* manifest) {
-    if (!renderer || !manifest || !renderer->css_generator) return;
-    css_generator_set_manifest(renderer->css_generator, manifest);
+    if (!renderer || !manifest) return;
+
+    // Pass to CSS generator for CSS variable support
+    if (renderer->css_generator) {
+        css_generator_set_manifest(renderer->css_generator, manifest);
+    }
+
+    // Pass to HTML generator for reactive binding serialization
+    if (renderer->html_generator) {
+        html_generator_set_manifest(renderer->html_generator, manifest);
+    }
 }
 
 // ============================================================================
@@ -1012,20 +1170,12 @@ static const char* js_binding_type_string(IRBindingType type) {
 
 // Generate JavaScript reactive system from manifest
 char* generate_js_reactive_system(IRReactiveManifest* manifest) {
-    // Calculate buffer size
-    // Base template + variables + bindings + extra space
-    size_t base_size = 4096;  // Base template size
-    size_t var_size = manifest ? manifest->variable_count * 256 : 0;
-    size_t binding_size = manifest ? manifest->binding_count * 256 : 0;
-    size_t total_size = base_size + var_size + binding_size;
-
-    char* output = malloc(total_size);
-    if (!output) return NULL;
-
-    output[0] = '\0';
+    // Use IRStringBuilder for dynamic allocation to handle large JSON values
+    IRStringBuilder* sb = ir_sb_create(8192);
+    if (!sb) return NULL;
 
     // Header
-    strcat(output,
+    ir_sb_append(sb,
         "// Kryon Reactive System (Generated from IRReactiveManifest)\n"
         "// This file provides reactive state management for the web app\n"
         "// State changes automatically update the DOM via bindings\n\n"
@@ -1033,7 +1183,7 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
 
     // If no manifest or empty, generate stub
     if (!manifest || manifest->variable_count == 0) {
-        strcat(output,
+        ir_sb_append(sb,
             "// No reactive variables found in manifest\n"
             "const kryonState = {};\n"
             "const kryonBindings = {};\n\n"
@@ -1045,11 +1195,14 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
             "window.kryonState = kryonState;\n"
             "window.kryonUpdateBindings = kryonUpdateBindings;\n"
         );
+        char* result = ir_sb_build(sb);
+        char* output = strdup(result);
+        ir_sb_free(sb);
         return output;
     }
 
     // Generate state object from manifest.variables
-    strcat(output,
+    ir_sb_append(sb,
         "// Reactive state (from IRReactiveManifest.variables)\n"
         "const kryonStateData = {\n"
     );
@@ -1058,51 +1211,42 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
         IRReactiveVarDescriptor* var = &manifest->variables[i];
         if (!var->name) continue;
 
-        char var_line[512];
-
-        // Get initial value
+        // Get initial value - use ir_sb_appendf for dynamic allocation
         if (var->initial_value_json && strlen(var->initial_value_json) > 0) {
-            // Use provided initial value JSON
-            snprintf(var_line, sizeof(var_line), "  %s: %s,\n",
-                     var->name, var->initial_value_json);
+            // Use provided initial value JSON (can be arbitrarily large)
+            ir_sb_appendf(sb, "  %s: %s,\n", var->name, var->initial_value_json);
         } else {
             // Use default based on type
             switch (var->type) {
                 case IR_REACTIVE_TYPE_INT:
-                    snprintf(var_line, sizeof(var_line), "  %s: %ld,\n",
-                             var->name, (long)var->value.as_int);
+                    ir_sb_appendf(sb, "  %s: %ld,\n", var->name, (long)var->value.as_int);
                     break;
                 case IR_REACTIVE_TYPE_FLOAT:
-                    snprintf(var_line, sizeof(var_line), "  %s: %f,\n",
-                             var->name, var->value.as_float);
+                    ir_sb_appendf(sb, "  %s: %f,\n", var->name, var->value.as_float);
                     break;
                 case IR_REACTIVE_TYPE_STRING:
                     if (var->value.as_string) {
                         char escaped[256];
                         js_escape_string(escaped, var->value.as_string, sizeof(escaped));
-                        snprintf(var_line, sizeof(var_line), "  %s: \"%s\",\n",
-                                 var->name, escaped);
+                        ir_sb_appendf(sb, "  %s: \"%s\",\n", var->name, escaped);
                     } else {
-                        snprintf(var_line, sizeof(var_line), "  %s: \"\",\n", var->name);
+                        ir_sb_appendf(sb, "  %s: \"\",\n", var->name);
                     }
                     break;
                 case IR_REACTIVE_TYPE_BOOL:
-                    snprintf(var_line, sizeof(var_line), "  %s: %s,\n",
-                             var->name, var->value.as_bool ? "true" : "false");
+                    ir_sb_appendf(sb, "  %s: %s,\n", var->name, var->value.as_bool ? "true" : "false");
                     break;
                 default:
-                    snprintf(var_line, sizeof(var_line), "  %s: %s,\n",
-                             var->name, js_default_for_reactive_var(var->type));
+                    ir_sb_appendf(sb, "  %s: %s,\n", var->name, js_default_for_reactive_var(var->type));
                     break;
             }
         }
-        strcat(output, var_line);
     }
 
-    strcat(output, "};\n\n");
+    ir_sb_append(sb, "};\n\n");
 
     // Generate bindings map from manifest.bindings
-    strcat(output,
+    ir_sb_append(sb,
         "// DOM bindings (from IRReactiveManifest.bindings)\n"
         "const kryonBindings = {\n"
     );
@@ -1132,31 +1276,26 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
         const char* var_name = manifest->variables[v].name;
         if (!var_name) continue;
 
-        char binding_start[128];
-        snprintf(binding_start, sizeof(binding_start), "  '%s': [\n", var_name);
-        strcat(output, binding_start);
+        ir_sb_appendf(sb, "  '%s': [\n", var_name);
 
         for (uint32_t i = 0; i < manifest->binding_count; i++) {
             IRReactiveBinding* binding = &manifest->bindings[i];
             if (binding->reactive_var_id != var_id) continue;
 
-            char binding_line[256];
             // Use data-kryon-id attribute selector for reliable element lookups
-            snprintf(binding_line, sizeof(binding_line),
-                     "    { selector: '[data-kryon-id=\"%u\"]', type: '%s'%s },\n",
+            ir_sb_appendf(sb, "    { selector: '[data-kryon-id=\"%u\"]', type: '%s'%s },\n",
                      binding->component_id,
                      js_binding_type_string(binding->binding_type),
                      binding->expression ? ", expr: true" : "");
-            strcat(output, binding_line);
         }
 
-        strcat(output, "  ],\n");
+        ir_sb_append(sb, "  ],\n");
     }
 
-    strcat(output, "};\n\n");
+    ir_sb_append(sb, "};\n\n");
 
     // Generate reactive proxy
-    strcat(output,
+    ir_sb_append(sb,
         "// Reactive proxy for automatic DOM updates\n"
         "const kryonState = new Proxy(kryonStateData, {\n"
         "  set(target, prop, value) {\n"
@@ -1174,7 +1313,7 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
     );
 
     // Generate update function
-    strcat(output,
+    ir_sb_append(sb,
         "// Update DOM elements bound to a reactive property\n"
         "function kryonUpdateBindings(prop, newValue, oldValue) {\n"
         "  console.log('[Kryon Reactive] State changed:', prop, '=', newValue);\n"
@@ -1212,7 +1351,7 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
     );
 
     // Generate Lua bridge functions
-    strcat(output,
+    ir_sb_append(sb,
         "// Lua bridge: Allow Lua handlers to access/modify state\n"
         "window.kryonState = kryonState;\n"
         "window.kryonUpdateBindings = kryonUpdateBindings;\n\n"
@@ -1228,6 +1367,10 @@ char* generate_js_reactive_system(IRReactiveManifest* manifest) {
         "            Object.keys(kryonStateData).length, 'variables');\n"
     );
 
+    // Build and return output
+    char* result = ir_sb_build(sb);
+    char* output = strdup(result);
+    ir_sb_free(sb);
     return output;
 }
 

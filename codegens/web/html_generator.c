@@ -690,6 +690,74 @@ static bool has_only_inline_content(IRComponent* component) {
     return component->child_count > 0 || component->text_content;
 }
 
+// Helper: escape a string for JavaScript (single quotes)
+static void js_escape_lua_expr(char* dest, const char* src, size_t dest_size) {
+    if (!dest || !src || dest_size == 0) return;
+
+    size_t di = 0;
+    for (size_t si = 0; src[si] && di < dest_size - 2; si++) {
+        char c = src[si];
+        if (c == '\\' || c == '\'' || c == '\n' || c == '\r' || c == '\t') {
+            if (di + 2 >= dest_size) break;
+            dest[di++] = '\\';
+            switch (c) {
+                case '\n': dest[di++] = 'n'; break;
+                case '\r': dest[di++] = 'r'; break;
+                case '\t': dest[di++] = 't'; break;
+                default: dest[di++] = c; break;
+            }
+        } else {
+            dest[di++] = c;
+        }
+    }
+    dest[di] = '\0';
+}
+
+// Recursively collect and output dynamic bindings from the component tree
+static void output_dynamic_bindings_recursive(HTMLGenerator* generator, IRComponent* component) {
+    if (!generator || !component) return;
+
+    // Output dynamic bindings for this component
+    uint32_t count = ir_component_get_dynamic_binding_count(component);
+    for (uint32_t i = 0; i < count; i++) {
+        IRDynamicBinding* binding = ir_component_get_dynamic_binding(component, i);
+        if (!binding || !binding->lua_expr) continue;
+
+        // Escape the Lua expression for JavaScript
+        char escaped_expr[2048];
+        js_escape_lua_expr(escaped_expr, binding->lua_expr, sizeof(escaped_expr));
+
+        html_generator_write_format(generator,
+            "    kryonRegisterDynamicBinding({ id: '%s', selector: '%s', updateType: '%s', luaExpr: '%s' });\n",
+            binding->binding_id ? binding->binding_id : "unknown",
+            binding->element_selector ? binding->element_selector : "",
+            binding->update_type ? binding->update_type : "text",
+            escaped_expr);
+    }
+
+    // Recurse into children
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        output_dynamic_bindings_recursive(generator, component->children[i]);
+    }
+}
+
+// Check if component tree has any dynamic bindings
+static bool has_dynamic_bindings(IRComponent* component) {
+    if (!component) return false;
+
+    if (ir_component_get_dynamic_binding_count(component) > 0) {
+        return true;
+    }
+
+    for (uint32_t i = 0; i < component->child_count; i++) {
+        if (has_dynamic_bindings(component->children[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static bool generate_component_html(HTMLGenerator* generator, IRComponent* component) {
     if (!generator || !component) return false;
 
@@ -1748,6 +1816,89 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         }
         html_generator_write_string(generator, "  };\n");
         html_generator_write_string(generator, "  console.log('[Kryon] Initial state loaded:', Object.keys(window.__KRYON_STATE__).length, 'variables');\n");
+        html_generator_write_string(generator, "  </script>\n");
+    }
+
+    // Inject reactive bindings from manifest (Phase 3: Generic Reactive Binding Support)
+    // This allows the JS runtime to automatically update DOM elements when state changes
+    if (generator->manifest && generator->manifest->binding_count > 0) {
+        html_generator_write_string(generator, "  <script>\n");
+        html_generator_write_string(generator, "  // Reactive bindings from IRReactiveManifest\n");
+        html_generator_write_string(generator, "  (function() {\n");
+        html_generator_write_string(generator, "    const bindings = [\n");
+
+        for (uint32_t i = 0; i < generator->manifest->binding_count; i++) {
+            IRReactiveBinding* binding = &generator->manifest->bindings[i];
+
+            // Get the variable name from the expression (it contains the state path)
+            const char* stateKey = binding->expression ? binding->expression : "";
+
+            // Parse property name from path if it's a property binding (format: "path:propName")
+            char stateKeyBuf[256] = "";
+            char propName[64] = "";
+            const char* colonPos = stateKey ? strchr(stateKey, ':') : NULL;
+            if (colonPos) {
+                // Extract state key (before colon) and property name (after colon)
+                size_t keyLen = colonPos - stateKey;
+                if (keyLen < sizeof(stateKeyBuf)) {
+                    strncpy(stateKeyBuf, stateKey, keyLen);
+                    stateKeyBuf[keyLen] = '\0';
+                    strncpy(propName, colonPos + 1, sizeof(propName) - 1);
+                    propName[sizeof(propName) - 1] = '\0';
+                }
+            } else if (stateKey) {
+                strncpy(stateKeyBuf, stateKey, sizeof(stateKeyBuf) - 1);
+                stateKeyBuf[sizeof(stateKeyBuf) - 1] = '\0';
+            }
+
+            // Map binding type to JavaScript binding type string
+            const char* bindingType = "text";
+            switch (binding->binding_type) {
+                case IR_BINDING_TEXT: bindingType = "text"; break;
+                case IR_BINDING_CONDITIONAL: bindingType = "visibility"; break;
+                case IR_BINDING_ATTRIBUTE:
+                    // If we have a property name, use "property", otherwise "attribute"
+                    bindingType = propName[0] ? "property" : "attribute";
+                    break;
+                default: bindingType = "text"; break;
+            }
+
+            // Output binding registration
+            const char* comma = (i < generator->manifest->binding_count - 1) ? "," : "";
+            if (propName[0]) {
+                html_generator_write_format(generator,
+                    "      { stateKey: '%s', componentId: %u, type: '%s', prop: '%s' }%s\n",
+                    stateKeyBuf, binding->component_id, bindingType, propName, comma);
+            } else {
+                html_generator_write_format(generator,
+                    "      { stateKey: '%s', componentId: %u, type: '%s' }%s\n",
+                    stateKeyBuf[0] ? stateKeyBuf : stateKey, binding->component_id, bindingType, comma);
+            }
+        }
+
+        html_generator_write_string(generator, "    ];\n");
+        html_generator_write_string(generator, "    // Register bindings with Kryon reactive system\n");
+        html_generator_write_string(generator, "    bindings.forEach(function(b) {\n");
+        html_generator_write_string(generator, "      var selector = '[data-kryon-id=\"' + b.componentId + '\"]';\n");
+        html_generator_write_string(generator, "      var opts = b.prop ? { prop: b.prop } : {};\n");
+        html_generator_write_string(generator, "      if (window.kryonRegisterBinding) {\n");
+        html_generator_write_string(generator, "        window.kryonRegisterBinding(b.stateKey, selector, b.type, opts);\n");
+        html_generator_write_string(generator, "      }\n");
+        html_generator_write_string(generator, "    });\n");
+        html_generator_write_string(generator, "    console.log('[Kryon] Registered', bindings.length, 'reactive bindings');\n");
+        html_generator_write_string(generator, "  })();\n");
+        html_generator_write_string(generator, "  </script>\n");
+    }
+
+    // Inject dynamic bindings from component tree (Phase 5: Runtime Lua Expression Evaluation)
+    // These bindings have Lua expressions that are re-evaluated when state changes
+    if (has_dynamic_bindings(root)) {
+        html_generator_write_string(generator, "  <script>\n");
+        html_generator_write_string(generator, "  // Dynamic bindings (Lua expressions evaluated at runtime)\n");
+        html_generator_write_string(generator, "  (function() {\n");
+        output_dynamic_bindings_recursive(generator, root);
+        html_generator_write_string(generator, "    console.log('[Kryon] Registered dynamic bindings');\n");
+        html_generator_write_string(generator, "  })();\n");
         html_generator_write_string(generator, "  </script>\n");
     }
 

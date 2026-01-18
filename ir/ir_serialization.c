@@ -1619,6 +1619,42 @@ IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveMan
                             }
                         }
                     }
+
+                    // Parse bindings array
+                    cJSON* bindingsArray = cJSON_GetObjectItem(reactiveObj, "bindings");
+                    if (bindingsArray && cJSON_IsArray(bindingsArray)) {
+                        int binding_count = cJSON_GetArraySize(bindingsArray);
+                        for (int i = 0; i < binding_count; i++) {
+                            cJSON* bindingObj = cJSON_GetArrayItem(bindingsArray, i);
+                            if (!bindingObj || !cJSON_IsObject(bindingObj)) continue;
+
+                            cJSON* componentIdItem = cJSON_GetObjectItem(bindingObj, "component_id");
+                            cJSON* varIdItem = cJSON_GetObjectItem(bindingObj, "var_id");
+                            cJSON* expressionItem = cJSON_GetObjectItem(bindingObj, "expression");
+
+                            if (componentIdItem && varIdItem) {
+                                uint32_t component_id = (uint32_t)componentIdItem->valueint;
+                                uint32_t var_id = (uint32_t)varIdItem->valueint;
+                                const char* expression = expressionItem && cJSON_IsString(expressionItem) ?
+                                                        expressionItem->valuestring : "";
+
+                                // Determine binding type from expression
+                                // Format: "path" for text, "path:propName" for property
+                                IRBindingType binding_type = IR_BINDING_TEXT;
+                                if (strstr(expression, ":disabled") != NULL ||
+                                    strstr(expression, ":checked") != NULL ||
+                                    strstr(expression, ":value") != NULL) {
+                                    binding_type = IR_BINDING_ATTRIBUTE;
+                                } else if (strstr(expression, ":visible") != NULL) {
+                                    binding_type = IR_BINDING_CONDITIONAL;
+                                }
+
+                                ir_reactive_manifest_add_binding(manifest, component_id, var_id,
+                                                                binding_type, expression);
+                            }
+                        }
+                    }
+
                     *out_manifest = manifest;
                 }
             }

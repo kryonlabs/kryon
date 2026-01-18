@@ -95,17 +95,30 @@ bool ir_sb_appendf(IRStringBuilder* sb, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
-    char temp[4096];
-    int len = vsnprintf(temp, sizeof(temp), fmt, args);
-    va_end(args);
+    // Calculate required size first
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int needed = vsnprintf(NULL, 0, fmt, args_copy);
+    va_end(args_copy);
 
-    if (len < 0) return false;
-    if (len >= (int)sizeof(temp)) {
-        // For very long strings, would need dynamic allocation
-        len = sizeof(temp) - 1;
+    if (needed < 0) {
+        va_end(args);
+        return false;
     }
 
-    return ir_sb_append_n(sb, temp, len);
+    // Allocate exactly the right size
+    char* temp = malloc(needed + 1);
+    if (!temp) {
+        va_end(args);
+        return false;
+    }
+
+    vsnprintf(temp, needed + 1, fmt, args);
+    va_end(args);
+
+    bool result = ir_sb_append_n(sb, temp, needed);
+    free(temp);
+    return result;
 }
 
 bool ir_sb_append_line(IRStringBuilder* sb, const char* line) {
@@ -119,11 +132,30 @@ bool ir_sb_append_linef(IRStringBuilder* sb, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
-    char temp[4096];
-    vsnprintf(temp, sizeof(temp), fmt, args);
+    // Calculate required size first
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int needed = vsnprintf(NULL, 0, fmt, args_copy);
+    va_end(args_copy);
+
+    if (needed < 0) {
+        va_end(args);
+        return false;
+    }
+
+    // Allocate exactly the right size
+    char* temp = malloc(needed + 1);
+    if (!temp) {
+        va_end(args);
+        return false;
+    }
+
+    vsnprintf(temp, needed + 1, fmt, args);
     va_end(args);
 
-    return ir_sb_append_line(sb, temp);
+    bool result = ir_sb_append_line(sb, temp);
+    free(temp);
+    return result;
 }
 
 bool ir_sb_indent(IRStringBuilder* sb, int level) {

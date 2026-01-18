@@ -240,11 +240,41 @@ local function getOrCreateVarId(path)
   return id
 end
 
+-- Next ID counter for dynamic bindings
+local nextDynamicBindingId = 1
+
+-- Add a dynamic binding to a component for runtime Lua expression evaluation
+-- This is used for computed text/visible/disabled expressions that need re-evaluation when state changes
+-- @param component cdata The IR component
+-- @param updateType string The update type ("text", "visibility", "property:disabled", etc.)
+-- @param luaExpr string The Lua expression to evaluate at runtime
+-- @param props table The props table (to get elementId for selector)
+local function addDynamicBinding(component, updateType, luaExpr, props)
+  if not component or not luaExpr then return end
+
+  -- Generate binding ID
+  local componentId = C.ir_get_component_id(component)
+  local bindingId = string.format("db-%d-%s", componentId, updateType:gsub(":", "-"))
+  nextDynamicBindingId = nextDynamicBindingId + 1
+
+  -- Generate element selector
+  local selector
+  if props and props.elementId then
+    selector = "#" .. props.elementId
+  else
+    selector = string.format('[data-kryon-id="%d"]', componentId)
+  end
+
+  -- Add the dynamic binding to the component
+  C.ir_component_add_dynamic_binding(component, bindingId, selector, updateType, luaExpr)
+end
+
 -- Register a binding for automatic reactive updates
 -- @param component cdata The IR component
 -- @param path string The reactive state path
--- @param bindingType string The binding type ("text", "visibility", etc.)
-local function registerReactiveBinding(component, path, bindingType)
+-- @param bindingType string The binding type ("text", "visibility", "property", etc.)
+-- @param propName string|nil The property name for property bindings (e.g., "disabled")
+local function registerReactiveBinding(component, path, bindingType, propName)
   -- Get the reactive module for manifest access
   local reactive = getReactiveModule()
   if not reactive then return end
@@ -264,14 +294,20 @@ local function registerReactiveBinding(component, path, bindingType)
     bindingEnum = C.IR_BINDING_TEXT
   elseif bindingType == "visibility" then
     bindingEnum = C.IR_BINDING_VISIBILITY
-  elseif bindingType == "attribute" then
+  elseif bindingType == "attribute" or bindingType == "property" then
     bindingEnum = C.IR_BINDING_ATTRIBUTE
   else
     bindingEnum = C.IR_BINDING_CUSTOM
   end
 
+  -- For property bindings, append the property name to the path
+  local bindingPath = path
+  if bindingType == "property" and propName then
+    bindingPath = path .. ":" .. propName
+  end
+
   -- Register binding with manifest
-  C.ir_reactive_manifest_add_binding(manifest, componentId, varId, bindingEnum, path)
+  C.ir_reactive_manifest_add_binding(manifest, componentId, varId, bindingEnum, bindingPath)
 end
 
 -- ============================================================================
@@ -735,8 +771,50 @@ local function applyProperties(component, props)
 
     -- ========== Text ==========
     elseif key == "text" or key == "content" then
-      -- Set the text content with the current value
-      C.ir_set_text_content(component, tostring(value))
+      local actualValue = value
+      local dependencies = {}
+
+      -- AUTO-UNWRAP COMPUTED VALUES: If value is a function, call it with dependency tracking
+      -- This allows DateTime.format(state.year) and similar computed expressions to work
+      if type(value) == "function" then
+        local reactive = getReactiveModule()
+        if reactive and reactive.startTracking then
+          local tracker = reactive.startTracking()
+          local ok, result = pcall(value)
+          dependencies = reactive.stopTracking(tracker)
+          if ok then
+            actualValue = result
+          else
+            actualValue = ""  -- Fallback on error
+          end
+        else
+          -- No reactive module, just call the function
+          local ok, result = pcall(value)
+          actualValue = ok and result or ""
+        end
+
+        -- DYNAMIC BINDING: Extract function source for runtime re-evaluation
+        -- This allows web codegen to generate kryonRegisterDynamicBinding() calls
+        if #dependencies > 0 then
+          local sourceInfo = extractFunctionSource(value)
+          if sourceInfo and sourceInfo.code then
+            -- Extract just the function body (the return expression)
+            local funcBody = sourceInfo.code
+            -- Remove "function(...) return " and trailing "end"
+            funcBody = funcBody:gsub("^function%s*%([^)]*%)%s*return%s*", "")
+            funcBody = funcBody:gsub("%s*end%s*$", "")
+            addDynamicBinding(component, "text", funcBody, props)
+          end
+        end
+      end
+
+      -- Set the text content with the (possibly unwrapped) value
+      C.ir_set_text_content(component, tostring(actualValue))
+
+      -- Register bindings for tracked dependencies from computed values
+      for _, path in ipairs(dependencies) do
+        registerReactiveBinding(component, path, "text")
+      end
 
       -- AUTOMATIC BINDING DETECTION: Check if value is reactive
       -- If so, register a binding so the web runtime can update it
@@ -748,8 +826,30 @@ local function applyProperties(component, props)
       end
 
     elseif key == "value" then
+      local actualValue = value
+      local dependencies = {}
+
+      -- AUTO-UNWRAP COMPUTED VALUES for input values
+      if type(value) == "function" then
+        local reactive = getReactiveModule()
+        if reactive and reactive.startTracking then
+          local tracker = reactive.startTracking()
+          local ok, result = pcall(value)
+          dependencies = reactive.stopTracking(tracker)
+          if ok then actualValue = result end
+        else
+          local ok, result = pcall(value)
+          if ok then actualValue = result end
+        end
+      end
+
       -- For Input components, set the initial text value
-      C.ir_set_text_content(component, tostring(value))
+      C.ir_set_text_content(component, tostring(actualValue))
+
+      -- Register bindings for tracked dependencies from computed values
+      for _, path in ipairs(dependencies) do
+        registerReactiveBinding(component, path, "text")
+      end
 
       -- Auto-register binding for reactive input values
       if isReactiveProxy(value) then
@@ -764,8 +864,30 @@ local function applyProperties(component, props)
       C.ir_set_custom_data(component, tostring(value))
 
     elseif key == "title" then
+      local actualValue = value
+      local dependencies = {}
+
+      -- AUTO-UNWRAP COMPUTED VALUES for tab titles
+      if type(value) == "function" then
+        local reactive = getReactiveModule()
+        if reactive and reactive.startTracking then
+          local tracker = reactive.startTracking()
+          local ok, result = pcall(value)
+          dependencies = reactive.stopTracking(tracker)
+          if ok then actualValue = result end
+        else
+          local ok, result = pcall(value)
+          if ok then actualValue = result end
+        end
+      end
+
       -- Tab title is set as text content
-      C.ir_set_text_content(component, tostring(value))
+      C.ir_set_text_content(component, tostring(actualValue))
+
+      -- Register bindings for tracked dependencies from computed values
+      for _, path in ipairs(dependencies) do
+        registerReactiveBinding(component, path, "text")
+      end
 
       -- Auto-register binding for reactive tab titles
       if isReactiveProxy(value) then
@@ -801,10 +923,92 @@ local function applyProperties(component, props)
       C.ir_set_z_index(ensureStyle(), tonumber(value) or 0)
 
     elseif key == "visible" then
-      C.ir_set_visible(ensureStyle(), value == true)
+      local actualValue = value
+      local dependencies = {}
+
+      -- AUTO-UNWRAP COMPUTED VALUES: If value is a function, call it with dependency tracking
+      if type(value) == "function" then
+        local reactive = getReactiveModule()
+        if reactive and reactive.startTracking then
+          local tracker = reactive.startTracking()
+          local ok, result = pcall(value)
+          dependencies = reactive.stopTracking(tracker)
+          if ok then actualValue = result end
+        else
+          local ok, result = pcall(value)
+          if ok then actualValue = result end
+        end
+
+        -- DYNAMIC BINDING: Extract function source for runtime re-evaluation
+        if #dependencies > 0 then
+          local sourceInfo = extractFunctionSource(value)
+          if sourceInfo and sourceInfo.code then
+            local funcBody = sourceInfo.code
+            funcBody = funcBody:gsub("^function%s*%([^)]*%)%s*return%s*", "")
+            funcBody = funcBody:gsub("%s*end%s*$", "")
+            addDynamicBinding(component, "visibility", funcBody, props)
+          end
+        end
+      end
+
+      C.ir_set_visible(ensureStyle(), actualValue == true)
+
+      -- Register bindings for tracked dependencies from computed values
+      for _, path in ipairs(dependencies) do
+        registerReactiveBinding(component, path, "visibility")
+      end
+
+      -- Auto-register binding for reactive proxy values
+      if isReactiveProxy(value) then
+        local path = extractReactivePath(value)
+        if path then
+          registerReactiveBinding(component, path, "visibility")
+        end
+      end
 
     elseif key == "disabled" then
-      C.ir_set_disabled(component, value == true)
+      local actualValue = value
+      local dependencies = {}
+
+      -- AUTO-UNWRAP COMPUTED VALUES: If value is a function, call it with dependency tracking
+      if type(value) == "function" then
+        local reactive = getReactiveModule()
+        if reactive and reactive.startTracking then
+          local tracker = reactive.startTracking()
+          local ok, result = pcall(value)
+          dependencies = reactive.stopTracking(tracker)
+          if ok then actualValue = result end
+        else
+          local ok, result = pcall(value)
+          if ok then actualValue = result end
+        end
+
+        -- DYNAMIC BINDING: Extract function source for runtime re-evaluation
+        if #dependencies > 0 then
+          local sourceInfo = extractFunctionSource(value)
+          if sourceInfo and sourceInfo.code then
+            local funcBody = sourceInfo.code
+            funcBody = funcBody:gsub("^function%s*%([^)]*%)%s*return%s*", "")
+            funcBody = funcBody:gsub("%s*end%s*$", "")
+            addDynamicBinding(component, "property:disabled", funcBody, props)
+          end
+        end
+      end
+
+      C.ir_set_disabled(component, actualValue == true)
+
+      -- Register bindings for tracked dependencies from computed values
+      for _, path in ipairs(dependencies) do
+        registerReactiveBinding(component, path, "property", "disabled")
+      end
+
+      -- Auto-register binding for reactive proxy values
+      if isReactiveProxy(value) then
+        local path = extractReactivePath(value)
+        if path then
+          registerReactiveBinding(component, path, "property", "disabled")
+        end
+      end
 
     -- ========== Border ==========
     elseif key == "borderWidth" then

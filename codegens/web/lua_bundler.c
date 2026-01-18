@@ -282,6 +282,16 @@ static char* resolve_module(LuaBundler* bundler, const char* module_name) {
         }
     }
 
+    // Check if this is a datetime module (unified plugin that works on web and native)
+    if (strcmp(module_name, "datetime") == 0) {
+        if (bundler->kryon_bindings_path) {
+            snprintf(full_path, sizeof(full_path), "%s/kryon/plugins/datetime.lua", bundler->kryon_bindings_path);
+            if (file_exists(full_path)) {
+                return strdup(full_path);
+            }
+        }
+    }
+
     // Try each search path
     for (int i = 0; i < bundler->search_path_count; i++) {
         snprintf(full_path, sizeof(full_path), "%s/%s", bundler->search_paths[i], rel_path);
