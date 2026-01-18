@@ -106,6 +106,28 @@ local function createWebImpl()
         return math.floor(d:getDay()) + 1  -- Convert to 1-based (Sun=1)
     end
 
+    function impl.weekday(year, month, day)
+        -- Returns weekday: 0=Sunday, 1=Monday, ..., 6=Saturday
+        -- (matches kryon-plugins/datetime C library convention)
+        local d = js.new(JSDate, year, month - 1, day)
+        return math.floor(d:getDay())
+    end
+
+    function impl.makeDate(year, month, day)
+        -- Returns date string in YYYY-MM-DD format
+        return string.format("%04d-%02d-%02d", year, month, day)
+    end
+
+    function impl.isFuture(year, month, day)
+        -- Check if date is in the future
+        local now = impl.now()
+        if year > now.year then return true end
+        if year < now.year then return false end
+        if month > now.month then return true end
+        if month < now.month then return false end
+        return day > now.day
+    end
+
     return impl
 end
 
@@ -192,6 +214,28 @@ local function createNativeImpl()
     function impl.firstDayOfMonth(year, month)
         local timestamp = os.time({year = year, month = month, day = 1})
         return os.date("*t", timestamp).wday  -- 1=Sunday
+    end
+
+    function impl.weekday(year, month, day)
+        -- Returns weekday: 0=Sunday, 1=Monday, ..., 6=Saturday
+        -- (matches kryon-plugins/datetime C library convention)
+        local timestamp = os.time({year = year, month = month, day = day})
+        return os.date("*t", timestamp).wday - 1  -- Convert from 1-based to 0-based
+    end
+
+    function impl.makeDate(year, month, day)
+        -- Returns date string in YYYY-MM-DD format
+        return string.format("%04d-%02d-%02d", year, month, day)
+    end
+
+    function impl.isFuture(year, month, day)
+        -- Check if date is in the future
+        local now = impl.now()
+        if year > now.year then return true end
+        if year < now.year then return false end
+        if month > now.month then return true end
+        if month < now.month then return false end
+        return day > now.day
     end
 
     return impl
