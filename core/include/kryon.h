@@ -5,9 +5,13 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
+/* Use platform abstraction header for Plan 9 compatibility */
+#include "../../ir/ir_platform.h"
+
+#ifndef PLAN9
 #include <stdbool.h>
 #include <stddef.h>
+#endif
 
 // ============================================================================
 // Memory Constraints Platform Configuration

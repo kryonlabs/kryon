@@ -260,14 +260,81 @@ local function autoWrapGlobals()
   end
 end
 
+--- Auto-wrap local state variables in a function's upvalues
+--- This finds common state variable names (state, appState, store, data, etc.)
+--- in the function's closure and replaces them with reactive proxies
+--- @param fn function The function whose upvalues to inspect
+local function autoWrapUpvalues(fn)
+  if type(fn) ~= "function" then return end
+
+  local Reactive = require("kryon.reactive")
+  local debug = require("debug")
+
+  -- Common state variable names to look for
+  local stateNames = {
+    "state", "appState", "store", "data",
+    "config", "settings", "options", "props"
+  }
+
+  local _debug = os.getenv("KRYON_DEBUG_REACTIVE")
+  if _debug then
+    print("[Runtime] autoWrapUpvalues: Scanning function for state variables...")
+  end
+
+  -- Get all upvalues from the function
+  local i = 1
+  while true do
+    local name, value = debug.getupvalue(fn, i)
+    if not name then break end
+
+    -- Check if this is a state variable we should wrap
+    for _, stateName in ipairs(stateNames) do
+      if name == stateName and type(value) == "table" and not Reactive.isReactive(value) then
+        -- Replace the upvalue with a reactive proxy
+        if _debug then
+          print("[Runtime] autoWrapUpvalues: Found '" .. name .. "' upvalue, wrapping with reactive proxy...")
+        end
+        local reactiveProxy = Reactive.reactive(value)
+        debug.setupvalue(fn, i, reactiveProxy)
+
+        -- Verify the upvalue was replaced
+        local _, newValue = debug.getupvalue(fn, i)
+        if _debug then
+          print("[Runtime] autoWrapUpvalues: Upvalue '" .. name .. "' is now reactive: " .. tostring(Reactive.isReactive(newValue)))
+        end
+        break
+      end
+    end
+
+    i = i + 1
+  end
+
+  if _debug then
+    print("[Runtime] autoWrapUpvalues: Complete")
+  end
+end
+
+--- Automatically make all tables reactive in a function's environment
+--- This combines global wrapping and upvalue wrapping for comprehensive reactivity
+local function autoWrapAll(fn)
+  autoWrapGlobals()
+  autoWrapUpvalues(fn)
+end
+
 --- Create a Kryon application with automatic reactivity
 --- @param config table Configuration with window and body (component) or root (function)
 --- @return table Application object
 function Runtime.createApp(config)
   local Reactive = require("kryon.reactive")
 
-  -- Auto-wrap all global tables with reactive proxies
-  autoWrapGlobals()
+  -- Auto-wrap all tables (globals and upvalues) with reactive proxies
+  -- This makes state variables reactive without requiring explicit Reactive.reactive() calls
+  local rootFn = config.root or config.body
+  if type(rootFn) == "function" then
+    autoWrapAll(rootFn)
+  else
+    autoWrapGlobals()
+  end
 
   -- Create IR context
   local ctx = C.ir_create_context()
@@ -277,7 +344,6 @@ function Runtime.createApp(config)
   local anim_ctx = C.ir_animation_context_create()
 
   -- Support both pre-built components and root functions
-  local rootFn = config.root or config.body
   local isReactive = type(rootFn) == "function"
 
   if isReactive then
@@ -730,11 +796,13 @@ function Runtime._walkAndFinalizeTabGroups(component, processedGroups)
     local tabBar = nil
     local tabContent = nil
 
-    for i = 0, component.child_count - 1 do
-      local child = component.children[i]
-      if child.type == C.IR_COMPONENT_TAB_BAR then
+    local childCount = C.ir_get_child_count(component)
+    for i = 0, childCount - 1 do
+      local child = C.ir_get_child_at(component, i)
+      local childType = C.ir_get_component_type(child)
+      if childType == C.IR_COMPONENT_TAB_BAR then
         tabBar = child
-      elseif child.type == C.IR_COMPONENT_TAB_CONTENT then
+      elseif childType == C.IR_COMPONENT_TAB_CONTENT then
         tabContent = child
       end
     end
@@ -747,12 +815,15 @@ function Runtime._walkAndFinalizeTabGroups(component, processedGroups)
       Runtime.registerTabBar(state, tabBar)
 
       -- Register tabs (children of TabBar that are buttons)
-      for i = 0, tabBar.child_count - 1 do
-        local child = tabBar.children[i]
-        if child.type == C.IR_COMPONENT_BUTTON then
+      local tabBarChildCount = C.ir_get_child_count(tabBar)
+      for i = 0, tabBarChildCount - 1 do
+        local child = C.ir_get_child_at(tabBar, i)
+        local childType = C.ir_get_component_type(child)
+        if childType == C.IR_COMPONENT_BUTTON then
           -- Get visual state from component's custom_data (stored by DSL during Tab creation)
           local visual = {}
-          local customData = C.ir_get_custom_data(child)
+          -- Note: custom_data is accessed directly as a struct field
+          local customData = child.custom_data
 
           if customData ~= nil then
             local json = require("cjson")
@@ -772,9 +843,11 @@ function Runtime._walkAndFinalizeTabGroups(component, processedGroups)
       Runtime.registerTabContent(state, tabContent)
 
       -- Register panels (children of TabContent that are TabPanel)
-      for i = 0, tabContent.child_count - 1 do
-        local child = tabContent.children[i]
-        if child.type == C.IR_COMPONENT_TAB_PANEL then
+      local tabContentChildCount = C.ir_get_child_count(tabContent)
+      for i = 0, tabContentChildCount - 1 do
+        local child = C.ir_get_child_at(tabContent, i)
+        local childType = C.ir_get_component_type(child)
+        if childType == C.IR_COMPONENT_TAB_PANEL then
           Runtime.registerPanel(state, child)
         end
       end

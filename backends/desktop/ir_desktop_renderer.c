@@ -39,6 +39,10 @@ extern IRComponent* g_hovered_component;
 #ifdef ENABLE_RAYLIB
 #include "renderers/raylib/raylib_renderer.h"
 #endif
+
+#ifdef PLAN9
+#include "../plan9/plan9_renderer.h"
+#endif
 #include "../../ir/ir_hot_reload.h"
 #include "../../ir/ir_style_vars.h"
 #include "../../ir/ir_executor.h"
@@ -99,6 +103,9 @@ DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* confi
         if (getenv("KRYON_ENABLE_RAYLIB")) {
             raylib_backend_register();
         }
+#endif
+#ifdef PLAN9
+        plan9_backend_register();
 #endif
         backends_registered = true;
     }

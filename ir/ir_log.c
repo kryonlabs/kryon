@@ -3,9 +3,11 @@
  * @brief Unified logging system implementation
  */
 
+#ifndef PLAN9
 #define _GNU_SOURCE
+#endif
 #include "ir_log.h"
-#include <stdio.h>
+#include "ir_platform.h"
 #include <stdarg.h>
 
 #ifdef __ANDROID__

@@ -175,6 +175,11 @@ local function trackDependency(target, key, dep)
 
   dep = dep or ReactiveContext.activeEffect
 
+  local _debug = os.getenv("KRYON_DEBUG_REACTIVE")
+  if _debug then
+    print("[Reactive] trackDependency: key=" .. tostring(key))
+  end
+
   -- Initialize _deps if needed (use rawget/rawset to avoid triggering metatables)
   if not rawget(target, "_deps") then
     rawset(target, "_deps", {})
@@ -194,7 +199,7 @@ local function trackDependency(target, key, dep)
 
   table.insert(deps[key], dep)
 
-  if ReactiveContext.debugMode then
+  if _debug or ReactiveContext.debugMode then
     print(string.format("[trackDependency] Added dep, now %d deps for key %s", #deps[key], tostring(key)))
   end
 end
@@ -249,42 +254,18 @@ local function recordAccessedPath(path)
     end
     if not exists then
       table.insert(lastAccessedPaths, path)
+
+      -- DEBUG: Log path recording
+      local _debug = os.getenv("KRYON_DEBUG_REACTIVE")
+      if _debug then
+        print("[Reactive] recordAccessedPath: " .. path)
+      end
     end
   end
 end
 
 -- Export for internal use
 Reactive._recordAccessedPath = recordAccessedPath
-
--- ============================================================================
--- Scoped Path Tracking (for property-level binding detection)
--- ============================================================================
-
---- Start a new tracking session and return a tracker handle
---- Call stopTracking() with this handle to get the paths accessed during the session
---- @return table Tracker handle
-function Reactive.startTracking()
-  -- Create a new tracker that captures paths from this point forward
-  local tracker = {
-    startIndex = #lastAccessedPaths + 1,
-    paths = {}
-  }
-  return tracker
-end
-
---- Stop tracking and return paths accessed since startTracking()
---- @param tracker table Tracker handle from startTracking()
---- @return table Array of paths accessed during tracking
-function Reactive.stopTracking(tracker)
-  if not tracker then return {} end
-
-  -- Collect paths that were accessed after the tracker's start index
-  local result = {}
-  for i = tracker.startIndex, #lastAccessedPaths do
-    table.insert(result, lastAccessedPaths[i])
-  end
-  return result
-end
 
 --- Clear all tracked paths (useful before a tracking session)
 function Reactive.clearAccessedPaths()
@@ -705,6 +686,11 @@ function Reactive.effect(effectFn)
   local function runEffect()
     if stopped then return end
 
+    local _debug = os.getenv("KRYON_DEBUG_REACTIVE")
+    if _debug then
+      print("[Reactive] effect: Running effect...")
+    end
+
     -- Run cleanup from previous execution
     if cleanup then
       if type(cleanup) == "function" then
@@ -726,6 +712,10 @@ function Reactive.effect(effectFn)
 
     -- Pop effect stack
     popEffect()
+
+    if _debug then
+      print("[Reactive] effect: Effect execution complete")
+    end
   end
 
   -- Run immediately
