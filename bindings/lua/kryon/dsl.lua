@@ -531,6 +531,9 @@ end
 local function applyProperties(component, props)
   if not props then return end
 
+  -- Clear any previously tracked paths to ensure clean state for this component
+  Reactive.clearAccessedPaths()
+
   local style = nil
   local layout = nil
 
