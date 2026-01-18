@@ -1,0 +1,191 @@
+# Kryon IR Library (Plan 9 mkfile)
+#
+# Builds the core IR library for Plan 9/9front
+# Note: This is a minimal build without HarfBuzz/FriBidi dependencies
+# Text shaping is disabled on Plan 9 (uses simple glyph rendering)
+
+</$objtype/mkfile
+
+LIB=libkryon_ir.a
+
+# Core IR object files (Plan 9 compatible subset)
+# Note: Excludes modules requiring POSIX or external dependencies
+OFILES=\
+	ir_log.$O\
+	ir_string_builder.$O\
+	ir_json_helpers.$O\
+	ir_component_types.$O\
+	ir_event_types.$O\
+	ir_style_types.$O\
+	ir_color_utils.$O\
+	ir_component_factory.$O\
+	ir_builder.$O\
+	ir_instance.$O\
+	ir_buffer.$O\
+	ir_serialize_types.$O\
+	ir_serialization.$O\
+	ir_validation.$O\
+	ir_style_vars.$O\
+	ir_layout.$O\
+	ir_layout_debug.$O\
+	ir_memory.$O\
+	ir_hashmap.$O\
+	ir_animation.$O\
+	ir_transition.$O\
+	ir_json.$O\
+	ir_json_serialize.$O\
+	ir_json_deserialize.$O\
+	ir_json_context.$O\
+	ir_source_structures.$O\
+	ir_expression.$O\
+	ir_expression_compiler.$O\
+	ir_expression_cache.$O\
+	ir_logic.$O\
+	ir_executor.$O\
+	ir_krb.$O\
+	ir_stylesheet.$O\
+	ir_foreach.$O\
+	ir_foreach_expand.$O\
+	ir_component_handler.$O\
+	ir_state_manager.$O\
+	ir_capability.$O\
+	ir_input.$O\
+	ir_asset.$O\
+	ir_native_canvas.$O\
+	ir_tabgroup.$O\
+	ir_style_builder.$O\
+	ir_layout_builder.$O\
+	ir_event_builder.$O\
+	ir_module_refs.$O\
+	ir_table.$O\
+	ir_animation_builder.$O\
+	ir_gradient.$O\
+	ir_hit_test.$O\
+
+# Layout strategy modules
+LAYOUT_OFILES=\
+	layout/ir_layout_strategy.$O\
+	layout/strategy_container.$O\
+	layout/strategy_text.$O\
+	layout/strategy_row.$O\
+	layout/strategy_column.$O\
+	layout/strategy_image.$O\
+	layout/strategy_canvas.$O\
+	layout/strategy_foreach.$O\
+
+# Component modules
+COMPONENT_OFILES=\
+	components/ir_component_registry.$O\
+	components/ir_component_text.$O\
+	components/ir_component_flexbox.$O\
+	components/ir_component_button.$O\
+	components/ir_component_input.$O\
+	components/ir_component_checkbox.$O\
+	components/ir_component_dropdown.$O\
+	components/ir_component_table.$O\
+	components/ir_component_image.$O\
+	components/ir_component_modal.$O\
+	components/ir_component_canvas.$O\
+	components/ir_component_misc.$O\
+	components/ir_component_tabs.$O\
+
+# Parser modules (minimal set for Plan 9)
+PARSER_OFILES=\
+	parsers/kry/kry_parser.$O\
+	parsers/kry/kry_to_ir.$O\
+
+# Bindings
+BINDING_OFILES=\
+	../bindings/c/kryon.$O\
+
+# Third-party libraries (need Plan 9 porting)
+# Note: cJSON and tomlc99 will need compatibility fixes
+# For now, we assume they've been ported
+THIRDPARTY_OFILES=\
+	../third_party/cJSON/cJSON.$O\
+	../third_party/tomlc99/toml.$O\
+
+# All object files combined
+ALL_OFILES=\
+	$OFILES\
+	$LAYOUT_OFILES\
+	$COMPONENT_OFILES\
+	$PARSER_OFILES\
+	$BINDING_OFILES\
+	$THIRDPARTY_OFILES\
+
+# Header files (for dependency tracking)
+HFILES=\
+	ir_constants.h\
+	ir_log.h\
+	ir_string_builder.h\
+	ir_json_helpers.h\
+	ir_component_types.h\
+	ir_layout_types.h\
+	ir_style_types.h\
+	ir_color_utils.h\
+	ir_component_factory.h\
+	ir_properties.h\
+	ir_event_types.h\
+	ir_core.h\
+	ir_builder.h\
+
+# Compiler flags for Plan 9
+# Note: Plan 9 C doesn't support -std=c99, uses its own C dialect
+CFLAGS=\
+	-I.\
+	-I../third_party/cJSON\
+	-I../third_party/tomlc99\
+	-DPLAN9\
+	-DIR_USE_SINGLE_PASS_LAYOUT\
+
+# Include standard library build rules
+</sys/src/cmd/mklib
+
+# Custom rules
+
+# Build layout strategy objects
+layout/%.$O: layout/%.c $HFILES
+	$CC $CFLAGS layout/$stem.c
+
+# Build component objects
+components/%.$O: components/%.c $HFILES
+	$CC $CFLAGS components/$stem.c
+
+# Build parser objects
+parsers/kry/%.$O: parsers/kry/%.c $HFILES
+	$CC $CFLAGS parsers/kry/$stem.c
+
+# Build binding objects
+../bindings/c/%.$O: ../bindings/c/%.c
+	$CC $CFLAGS ../bindings/c/$stem.c
+
+# Build third-party objects
+../third_party/cJSON/cJSON.$O: ../third_party/cJSON/cJSON.c
+	$CC $CFLAGS ../third_party/cJSON/cJSON.c
+
+../third_party/tomlc99/toml.$O: ../third_party/tomlc99/toml.c
+	$CC $CFLAGS ../third_party/tomlc99/toml.c
+
+# Clean target
+clean:V:
+	rm -f *.$O
+	rm -f layout/*.$O
+	rm -f components/*.$O
+	rm -f parsers/kry/*.$O
+	rm -f ../bindings/c/*.$O
+	rm -f ../third_party/cJSON/*.$O
+	rm -f ../third_party/tomlc99/*.$O
+	rm -f $LIB
+
+# Test target (placeholder)
+test:V:
+	echo 'IR library tests not yet implemented for Plan 9'
+
+# Install target (copy headers and library)
+install:V: $LIB
+	mkdir -p /$objtype/lib
+	mkdir -p /sys/include/kryon
+	cp $LIB /$objtype/lib/
+	cp *.h /sys/include/kryon/
+	echo 'IR library installed'

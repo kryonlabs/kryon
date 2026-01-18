@@ -47,6 +47,12 @@ extern const unsigned char kryon_ffi[];
 extern const size_t kryon_ffi_size;
 extern const unsigned char kryon_utils[];
 extern const size_t kryon_utils_size;
+extern const unsigned char kryon_plugin[];
+extern const size_t kryon_plugin_size;
+extern const unsigned char kryon_plugins_storage[];
+extern const size_t kryon_plugins_storage_size;
+extern const unsigned char kryon_plugins_datetime[];
+extern const size_t kryon_plugins_datetime_size;
 #endif
 
 /* Embedded plugins (when KRYON_HAS_PLUGINS is defined) */
@@ -116,6 +122,9 @@ static void register_embedded_modules(lua_State* L) {
     register_module(L, "kryon.reactive_bindings", kryon_reactive_bindings, kryon_reactive_bindings_size);
     register_module(L, "kryon.ffi", kryon_ffi, kryon_ffi_size);
     register_module(L, "kryon.utils", kryon_utils, kryon_utils_size);
+    register_module(L, "kryon.plugin", kryon_plugin, kryon_plugin_size);
+    register_module(L, "kryon.plugins.storage", kryon_plugins_storage, kryon_plugins_storage_size);
+    register_module(L, "kryon.plugins.datetime", kryon_plugins_datetime, kryon_plugins_datetime_size);
 #endif
 }
 

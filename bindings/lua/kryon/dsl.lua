@@ -8,11 +8,9 @@ local C = ffi.C
 
 local DSL = {}
 
--- Module-level table to track tab visual states
--- Keys are tostring(component), values are {backgroundColor, activeBackgroundColor, textColor, activeTextColor}
--- This is needed because we create tabs before TabGroup finalization, so we need to preserve color info
--- Exported as DSL._tabVisualStates for runtime access during TabGroup finalization
-DSL._tabVisualStates = {}
+-- Shared no-op function for tabs (C core requires IR_EVENT_CLICK to exist for tab detection)
+-- This is a workaround for the C core's try_handle_as_tab_click() which requires an event
+local NOOP_FUNCTION = function() end
 
 -- ============================================================================
 -- Module Tracking (for cross-file component references)
@@ -145,83 +143,10 @@ local function getCurrentModuleFromEnv()
 end
 
 -- ============================================================================
--- Reactive Value Handling
+-- Reactive Module Reference
 -- ============================================================================
 
---- Unwrap a potentially reactive value to get its current raw value
---- @param value any Potentially reactive value
---- @return any Raw value
-local function unrefValue(value)
-  -- If it's a function (signal getter or computed), call it to get value
-  if type(value) == "function" then
-    local success, result = pcall(value)
-    if success then
-      return result
-    end
-    return value
-  end
-
-  -- If it's a reactive proxy, access it (triggers dependency tracking)
-  -- The proxy's __index metamethod will handle this automatically
-  -- We don't need to do anything special - just return it
-  return value
-end
-
--- ============================================================================
--- Automatic Reactive Binding Detection (Phase 2)
--- ============================================================================
-
--- Check if a value is a reactive proxy
--- @param value any Value to check
--- @return boolean True if value is a reactive proxy
-local function isReactiveProxy(value)
-  if type(value) ~= "table" then return false end
-
-  -- Check for reactive proxy marker (_target is set by Reactive.reactive)
-  local target = rawget(value, "_target")
-  if target ~= nil then return true end
-
-  -- Also check metatable for reactive marker
-  local mt = getmetatable(value)
-  if mt and (mt.__reactive == true or rawget(mt, "_proxy") ~= nil) then
-    return true
-  end
-
-  return false
-end
-
--- Extract the reactive path from a proxy if it has one
--- Returns the full path like "displayedMonth.month" or nil
--- @param value any Potentially reactive value
--- @return string|nil The reactive path or nil
-local function extractReactivePath(value)
-  if type(value) ~= "table" then return nil end
-
-  -- Check for _path field (set by our enhanced reactive system)
-  local path = rawget(value, "_path")
-  if path then return path end
-
-  -- Fallback: try to get path from metatable
-  local mt = getmetatable(value)
-  if mt then
-    local mtPath = rawget(mt, "_path")
-    if mtPath then return mtPath end
-  end
-
-  return nil
-end
-
--- Try to load Reactive module for manifest registration
-local Reactive = nil
-local function getReactiveModule()
-  if Reactive == nil then
-    local ok, mod = pcall(require, "kryon.reactive")
-    if ok then
-      Reactive = mod
-    end
-  end
-  return Reactive
-end
+local Reactive = require("kryon.reactive")
 
 -- Variable ID tracking for binding registration
 local varIdCache = {}
@@ -240,46 +165,13 @@ local function getOrCreateVarId(path)
   return id
 end
 
--- Next ID counter for dynamic bindings
-local nextDynamicBindingId = 1
-
--- Add a dynamic binding to a component for runtime Lua expression evaluation
--- This is used for computed text/visible/disabled expressions that need re-evaluation when state changes
--- @param component cdata The IR component
--- @param updateType string The update type ("text", "visibility", "property:disabled", etc.)
--- @param luaExpr string The Lua expression to evaluate at runtime
--- @param props table The props table (to get elementId for selector)
-local function addDynamicBinding(component, updateType, luaExpr, props)
-  if not component or not luaExpr then return end
-
-  -- Generate binding ID
-  local componentId = C.ir_get_component_id(component)
-  local bindingId = string.format("db-%d-%s", componentId, updateType:gsub(":", "-"))
-  nextDynamicBindingId = nextDynamicBindingId + 1
-
-  -- Generate element selector
-  local selector
-  if props and props.elementId then
-    selector = "#" .. props.elementId
-  else
-    selector = string.format('[data-kryon-id="%d"]', componentId)
-  end
-
-  -- Add the dynamic binding to the component
-  C.ir_component_add_dynamic_binding(component, bindingId, selector, updateType, luaExpr)
-end
-
 -- Register a binding for automatic reactive updates
 -- @param component cdata The IR component
 -- @param path string The reactive state path
 -- @param bindingType string The binding type ("text", "visibility", "property", etc.)
 -- @param propName string|nil The property name for property bindings (e.g., "disabled")
 local function registerReactiveBinding(component, path, bindingType, propName)
-  -- Get the reactive module for manifest access
-  local reactive = getReactiveModule()
-  if not reactive then return end
-
-  local manifest = reactive.getManifest and reactive.getManifest()
+  local manifest = Reactive.getManifest and Reactive.getManifest()
   if not manifest then return end
 
   -- Get component ID
@@ -410,9 +302,6 @@ end
 --- @return number dimensionType
 --- @return number dimensionValue
 local function parseDimension(value)
-  -- Unwrap reactive values
-  value = unrefValue(value)
-
   -- Plain number = pixels
   if type(value) == "number" then
     return C.IR_DIMENSION_PX, value
@@ -464,9 +353,6 @@ end
 --- @return number b
 --- @return number a
 local function parseColor(color)
-  -- Unwrap reactive values
-  color = unrefValue(color)
-
   if type(color) == "string" then
     -- Named colors
     if color:lower() == "transparent" then
@@ -602,6 +488,41 @@ end
 -- ============================================================================
 -- Component Builder
 -- ============================================================================
+
+--- Evaluate a property value with reactive path tracking
+--- Captures any reactive paths accessed during value evaluation and registers bindings
+--- @param component cdata IRComponent* pointer for binding registration
+--- @param value any The property value (can be a function or direct value)
+--- @param bindingType string Optional binding type (default: "text")
+--- @param propName string Optional property name for property bindings
+--- @return any The evaluated value
+local function evaluateWithTracking(component, value, bindingType, propName)
+  bindingType = bindingType or "text"
+
+  -- For non-function values, we can track the single access directly
+  -- For function values, we'd need to track inside the function which is complex
+  -- Current approach: clear paths, evaluate, then capture and bind
+
+  -- Clear paths to avoid cross-contamination from previous property evaluations
+  Reactive.clearAccessedPaths()
+
+  -- Evaluate the value (call function if needed)
+  local actualValue = type(value) == "function" and value() or value
+
+  -- Get the path that was accessed during evaluation
+  local accessedPaths = Reactive.getAccessedPaths()
+
+  -- Register bindings for all accessed paths
+  for _, path in ipairs(accessedPaths) do
+    local bindingPath = path
+    if bindingType == "property" and propName then
+      bindingPath = path .. ":" .. propName
+    end
+    registerReactiveBinding(component, bindingPath, bindingType, propName)
+  end
+
+  return actualValue
+end
 
 --- Apply properties to a component
 --- Each property becomes a C IR function call
@@ -771,131 +692,23 @@ local function applyProperties(component, props)
 
     -- ========== Text ==========
     elseif key == "text" or key == "content" then
-      local actualValue = value
-      local dependencies = {}
-
-      -- AUTO-UNWRAP COMPUTED VALUES: If value is a function, call it with dependency tracking
-      -- This allows DateTime.format(state.year) and similar computed expressions to work
-      if type(value) == "function" then
-        local reactive = getReactiveModule()
-        if reactive and reactive.startTracking then
-          local tracker = reactive.startTracking()
-          local ok, result = pcall(value)
-          dependencies = reactive.stopTracking(tracker)
-          if ok then
-            actualValue = result
-          else
-            actualValue = ""  -- Fallback on error
-          end
-        else
-          -- No reactive module, just call the function
-          local ok, result = pcall(value)
-          actualValue = ok and result or ""
-        end
-
-        -- DYNAMIC BINDING: Extract function source for runtime re-evaluation
-        -- This allows web codegen to generate kryonRegisterDynamicBinding() calls
-        if #dependencies > 0 then
-          local sourceInfo = extractFunctionSource(value)
-          if sourceInfo and sourceInfo.code then
-            -- Extract just the function body (the return expression)
-            local funcBody = sourceInfo.code
-            -- Remove "function(...) return " and trailing "end"
-            funcBody = funcBody:gsub("^function%s*%([^)]*%)%s*return%s*", "")
-            funcBody = funcBody:gsub("%s*end%s*$", "")
-            addDynamicBinding(component, "text", funcBody, props)
-          end
-        end
-      end
-
-      -- Set the text content with the (possibly unwrapped) value
+      -- Evaluate value with reactive tracking
+      local actualValue = evaluateWithTracking(component, value, "text")
       C.ir_set_text_content(component, tostring(actualValue))
-
-      -- Register bindings for tracked dependencies from computed values
-      for _, path in ipairs(dependencies) do
-        registerReactiveBinding(component, path, "text")
-      end
-
-      -- AUTOMATIC BINDING DETECTION: Check if value is reactive
-      -- If so, register a binding so the web runtime can update it
-      if isReactiveProxy(value) then
-        local path = extractReactivePath(value)
-        if path then
-          registerReactiveBinding(component, path, "text")
-        end
-      end
 
     elseif key == "value" then
-      local actualValue = value
-      local dependencies = {}
-
-      -- AUTO-UNWRAP COMPUTED VALUES for input values
-      if type(value) == "function" then
-        local reactive = getReactiveModule()
-        if reactive and reactive.startTracking then
-          local tracker = reactive.startTracking()
-          local ok, result = pcall(value)
-          dependencies = reactive.stopTracking(tracker)
-          if ok then actualValue = result end
-        else
-          local ok, result = pcall(value)
-          if ok then actualValue = result end
-        end
-      end
-
-      -- For Input components, set the initial text value
+      -- Evaluate value with reactive tracking
+      local actualValue = evaluateWithTracking(component, value, "text")
       C.ir_set_text_content(component, tostring(actualValue))
-
-      -- Register bindings for tracked dependencies from computed values
-      for _, path in ipairs(dependencies) do
-        registerReactiveBinding(component, path, "text")
-      end
-
-      -- Auto-register binding for reactive input values
-      if isReactiveProxy(value) then
-        local path = extractReactivePath(value)
-        if path then
-          registerReactiveBinding(component, path, "text")
-        end
-      end
 
     elseif key == "placeholder" then
       -- For Input components, set the placeholder hint text
       C.ir_set_custom_data(component, tostring(value))
 
     elseif key == "title" then
-      local actualValue = value
-      local dependencies = {}
-
-      -- AUTO-UNWRAP COMPUTED VALUES for tab titles
-      if type(value) == "function" then
-        local reactive = getReactiveModule()
-        if reactive and reactive.startTracking then
-          local tracker = reactive.startTracking()
-          local ok, result = pcall(value)
-          dependencies = reactive.stopTracking(tracker)
-          if ok then actualValue = result end
-        else
-          local ok, result = pcall(value)
-          if ok then actualValue = result end
-        end
-      end
-
-      -- Tab title is set as text content
+      -- Evaluate value with reactive tracking
+      local actualValue = evaluateWithTracking(component, value, "text")
       C.ir_set_text_content(component, tostring(actualValue))
-
-      -- Register bindings for tracked dependencies from computed values
-      for _, path in ipairs(dependencies) do
-        registerReactiveBinding(component, path, "text")
-      end
-
-      -- Auto-register binding for reactive tab titles
-      if isReactiveProxy(value) then
-        local path = extractReactivePath(value)
-        if path then
-          registerReactiveBinding(component, path, "text")
-        end
-      end
 
     elseif key == "fontSize" then
       local _, size = parseDimension(value)
@@ -923,92 +736,14 @@ local function applyProperties(component, props)
       C.ir_set_z_index(ensureStyle(), tonumber(value) or 0)
 
     elseif key == "visible" then
-      local actualValue = value
-      local dependencies = {}
-
-      -- AUTO-UNWRAP COMPUTED VALUES: If value is a function, call it with dependency tracking
-      if type(value) == "function" then
-        local reactive = getReactiveModule()
-        if reactive and reactive.startTracking then
-          local tracker = reactive.startTracking()
-          local ok, result = pcall(value)
-          dependencies = reactive.stopTracking(tracker)
-          if ok then actualValue = result end
-        else
-          local ok, result = pcall(value)
-          if ok then actualValue = result end
-        end
-
-        -- DYNAMIC BINDING: Extract function source for runtime re-evaluation
-        if #dependencies > 0 then
-          local sourceInfo = extractFunctionSource(value)
-          if sourceInfo and sourceInfo.code then
-            local funcBody = sourceInfo.code
-            funcBody = funcBody:gsub("^function%s*%([^)]*%)%s*return%s*", "")
-            funcBody = funcBody:gsub("%s*end%s*$", "")
-            addDynamicBinding(component, "visibility", funcBody, props)
-          end
-        end
-      end
-
+      -- Evaluate value with reactive tracking
+      local actualValue = evaluateWithTracking(component, value, "visibility")
       C.ir_set_visible(ensureStyle(), actualValue == true)
 
-      -- Register bindings for tracked dependencies from computed values
-      for _, path in ipairs(dependencies) do
-        registerReactiveBinding(component, path, "visibility")
-      end
-
-      -- Auto-register binding for reactive proxy values
-      if isReactiveProxy(value) then
-        local path = extractReactivePath(value)
-        if path then
-          registerReactiveBinding(component, path, "visibility")
-        end
-      end
-
     elseif key == "disabled" then
-      local actualValue = value
-      local dependencies = {}
-
-      -- AUTO-UNWRAP COMPUTED VALUES: If value is a function, call it with dependency tracking
-      if type(value) == "function" then
-        local reactive = getReactiveModule()
-        if reactive and reactive.startTracking then
-          local tracker = reactive.startTracking()
-          local ok, result = pcall(value)
-          dependencies = reactive.stopTracking(tracker)
-          if ok then actualValue = result end
-        else
-          local ok, result = pcall(value)
-          if ok then actualValue = result end
-        end
-
-        -- DYNAMIC BINDING: Extract function source for runtime re-evaluation
-        if #dependencies > 0 then
-          local sourceInfo = extractFunctionSource(value)
-          if sourceInfo and sourceInfo.code then
-            local funcBody = sourceInfo.code
-            funcBody = funcBody:gsub("^function%s*%([^)]*%)%s*return%s*", "")
-            funcBody = funcBody:gsub("%s*end%s*$", "")
-            addDynamicBinding(component, "property:disabled", funcBody, props)
-          end
-        end
-      end
-
+      -- Evaluate value with reactive tracking
+      local actualValue = evaluateWithTracking(component, value, "property", "disabled")
       C.ir_set_disabled(component, actualValue == true)
-
-      -- Register bindings for tracked dependencies from computed values
-      for _, path in ipairs(dependencies) do
-        registerReactiveBinding(component, path, "property", "disabled")
-      end
-
-      -- Auto-register binding for reactive proxy values
-      if isReactiveProxy(value) then
-        local path = extractReactivePath(value)
-        if path then
-          registerReactiveBinding(component, path, "property", "disabled")
-        end
-      end
 
     -- ========== Border ==========
     elseif key == "borderWidth" then
@@ -1452,23 +1187,30 @@ function DSL.Tab(props)
   -- The C core detects tab clicks via try_handle_as_tab_click() which requires
   -- an IR_EVENT_CLICK event to trigger the input handler check
   -- Tab switching happens in C after event detection
+  -- TODO: Modify C core to not require a handler for tab detection
   if not tabProps.onClick then
-    tabProps.onClick = function() end  -- Dummy handler creates IR_EVENT_CLICK
+    tabProps.onClick = NOOP_FUNCTION
   end
 
   -- Create a Button component instead of IR_COMPONENT_TAB
   -- The Nim DSL does this too (components.nim:1848)
   local button = buildComponent(C.IR_COMPONENT_BUTTON, tabProps)
 
-  -- Store visual state in module-level table for later registration
-  -- Use tostring() to convert cdata pointer to stable string key
-  local key = tostring(button)
-  DSL._tabVisualStates[key] = {
-    backgroundColor = backgroundColor,
-    activeBackgroundColor = activeBackgroundColor,
-    textColor = textColor,
-    activeTextColor = activeTextColor
-  }
+  -- Store visual state in component's custom_data for runtime registration
+  -- This encapsulates the state with the component instead of using module-level state
+  local json = ffi.cjson
+  if json then
+    local visualState = {
+      backgroundColor = backgroundColor,
+      activeBackgroundColor = activeBackgroundColor,
+      textColor = textColor,
+      activeTextColor = activeTextColor
+    }
+    local encoded = json.encode(visualState)
+    if encoded then
+      C.ir_set_custom_data(button, encoded)
+    end
+  end
 
   return button
 end

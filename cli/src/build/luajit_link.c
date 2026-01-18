@@ -468,6 +468,9 @@ int build_lua_binary(const char* project_name,
             "reactive_bindings.lua",
             "ffi.lua",
             "utils.lua",
+            "plugin.lua",
+            "plugins/storage.lua",
+            "plugins/datetime.lua",
             NULL
         };
 
@@ -490,8 +493,18 @@ int build_lua_binary(const char* project_name,
             /* Name the bytecode file as "kryon_<module_name>.bc" so embed_multiple_bytecode
              * creates arrays named "kryon_<module_name>" */
             char module_bc_name[BUILD_PATH_MAX];
-            snprintf(module_bc_name, sizeof(module_bc_name), "kryon_%.*s",
-                     (int)(strcspn(module_files[i], ".")), module_files[i]);
+            const char* module_file = module_files[i];
+            int module_name_len = (int)(strcspn(module_file, "."));
+
+            /* Convert slashes to underscores for valid C identifiers */
+            int name_idx = 0;
+            snprintf(module_bc_name, sizeof(module_bc_name), "kryon_");
+            name_idx = 6; /* strlen("kryon_") */
+            for (int j = 0; j < module_name_len && name_idx < (int)sizeof(module_bc_name) - 1; j++) {
+                char c = module_file[j];
+                module_bc_name[name_idx++] = (c == '/') ? '_' : c;
+            }
+            module_bc_name[name_idx] = '\0';
 
             snprintf(module_bc_paths[module_count], sizeof(module_bc_paths[module_count]),
                      "%s/%s.bc", temp_dir, module_bc_name);
