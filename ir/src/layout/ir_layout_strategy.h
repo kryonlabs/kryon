@@ -1,7 +1,7 @@
 #ifndef IR_LAYOUT_STRATEGY_H
 #define IR_LAYOUT_STRATEGY_H
 
-#include "../include/ir_component_types.h"
+#include "../include/ir_types.h"
 #include "../include/ir_layout_types.h"
 
 // Forward declarations

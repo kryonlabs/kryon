@@ -1,7 +1,7 @@
 #ifndef IR_BUILTIN_REGISTRY_H
 #define IR_BUILTIN_REGISTRY_H
 
-#include "../include/ir_expression_compiler.h"
+#include "ir_expression_compiler.h"
 #include <stdint.h>
 #include <stdbool.h>
 
