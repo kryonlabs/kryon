@@ -2824,10 +2824,11 @@ char* ir_kry_to_kir(const char* source, size_t length) {
             fprintf(stderr, "[ir_kry_to_kir]   Child: name='%s', is_component_definition=%d, type=%d\n",
                     child->name ? child->name : "(null)", child->is_component_definition, child->type);
             fflush(stderr);
-            // Skip component definitions, variable declarations, and style blocks
+            // Skip component definitions, variable declarations, style blocks, and imports
             if (!child->is_component_definition &&
                 child->type != KRY_NODE_VAR_DECL &&
-                child->type != KRY_NODE_STYLE_BLOCK) {
+                child->type != KRY_NODE_STYLE_BLOCK &&
+                child->type != KRY_NODE_IMPORT) {
                 root_node = child;
                 fprintf(stderr, "[ir_kry_to_kir]   Found root application: %s\n", root_node->name);
                 fflush(stderr);
@@ -2991,6 +2992,34 @@ char* ir_kry_to_kir(const char* source, size_t length) {
         }
     }
     fprintf(stderr, "[VAR_DECL] Finished processing top-level variables\n");
+    fflush(stderr);
+
+    // Process top-level import statements
+    fprintf(stderr, "[IMPORT] Processing top-level import statements...\n");
+    fflush(stderr);
+    if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
+        KryNode* import_node = ast->first_child;
+        while (import_node) {
+            if (import_node->type == KRY_NODE_IMPORT) {
+                fprintf(stderr, "[IMPORT] Found import: %s from %s\n",
+                        import_node->import_name ? import_node->import_name : "(null)",
+                        import_node->import_module ? import_node->import_module : "(null)");
+                fflush(stderr);
+
+                const char* import_name = import_node->import_name ? import_node->import_name : import_node->name;
+                const char* import_module = import_node->import_module;
+
+                if (import_name && import_module && ctx.source_structures) {
+                    // Add import to source structures
+                    ir_source_structures_add_import(ctx.source_structures, import_name, import_module);
+                    fprintf(stderr, "[IMPORT]   Added to source_structures: %s from %s\n", import_name, import_module);
+                    fflush(stderr);
+                }
+            }
+            import_node = import_node->next_sibling;
+        }
+    }
+    fprintf(stderr, "[IMPORT] Finished processing import statements\n");
     fflush(stderr);
 
     // Process top-level style blocks

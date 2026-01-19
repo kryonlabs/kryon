@@ -33,6 +33,9 @@ IRSourceStructures* ir_source_structures_create(void) {
     ss->for_loop_capacity = 16;
     ss->for_loops = calloc(ss->for_loop_capacity, sizeof(IRForLoopData*));
 
+    ss->import_capacity = 16;
+    ss->imports = calloc(ss->import_capacity, sizeof(IRImport*));
+
     ss->next_static_block_id = 1;
     ss->next_var_decl_id = 1;
     ss->next_for_loop_id = 1;
@@ -96,6 +99,17 @@ void ir_source_structures_destroy(IRSourceStructures* ss) {
         }
     }
     free(ss->for_loops);
+
+    // Free imports
+    for (uint32_t i = 0; i < ss->import_count; i++) {
+        IRImport* import = ss->imports[i];
+        if (import) {
+            free(import->variable);
+            free(import->module);
+            free(import);
+        }
+    }
+    free(ss->imports);
 
     free(ss);
 }
@@ -259,6 +273,29 @@ void ir_for_loop_add_expanded_component(IRForLoopData* loop, uint32_t component_
     }
 
     loop->expanded_component_ids[loop->expanded_count++] = component_id;
+}
+
+// ============================================================================
+// Import Management
+// ============================================================================
+
+IRImport* ir_source_structures_add_import(IRSourceStructures* ss,
+                                          const char* variable,
+                                          const char* module) {
+    if (!ss) return NULL;
+
+    // Grow array if needed
+    if (ss->import_count >= ss->import_capacity) {
+        ss->import_capacity *= 2;
+        ss->imports = realloc(ss->imports, ss->import_capacity * sizeof(IRImport*));
+    }
+
+    IRImport* import = calloc(1, sizeof(IRImport));
+    import->variable = strdup(variable);
+    import->module = strdup(module);
+
+    ss->imports[ss->import_count++] = import;
+    return import;
 }
 
 // ============================================================================

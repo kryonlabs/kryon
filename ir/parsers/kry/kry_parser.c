@@ -222,6 +222,8 @@ KryNode* kry_node_create(KryParser* parser, KryNodeType type) {
     node->else_branch = NULL;
     node->code_language = NULL;
     node->code_source = NULL;
+    node->import_module = NULL;
+    node->import_name = NULL;
     node->line = parser->line;
     node->column = parser->column;
 
@@ -861,6 +863,72 @@ static KryNode* parse_var_decl(KryParser* p, const char* var_type) {
     return var_node;
 }
 
+// Parse import statement: import Name from "module"
+// Returns KRY_NODE_IMPORT node with parsed data
+static KryNode* parse_import_statement(KryParser* p) {
+    fprintf(stderr, "[PARSER] parse_import_statement() called\n");
+
+    // Skip whitespace after 'import' keyword
+    skip_whitespace(p);
+
+    // Parse imported name/identifier (e.g., "Math", "Storage", "*")
+    if (!isalpha(peek(p)) && peek(p) != '*') {
+        kry_parser_error(p, "Expected import name or '*' after 'import'");
+        return NULL;
+    }
+
+    char* import_name = parse_identifier(p);
+    if (!import_name) return NULL;
+
+    skip_whitespace(p);
+
+    // Check for 'from' keyword - parse it and check
+    char* from_keyword = parse_identifier(p);
+    if (!from_keyword || !keyword_match(from_keyword, "from")) {
+        kry_parser_error(p, "Expected 'from' after import name");
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Parse module path (string literal)
+    if (peek(p) != '"' && peek(p) != '\'') {
+        kry_parser_error(p, "Expected module path string after 'from'");
+        return NULL;
+    }
+
+    char delim = peek(p);
+    advance(p);  // Consume opening quote
+
+    // Parse module path
+    const char* module_start = p->source + p->pos;
+    while (peek(p) != delim && peek(p) != '\0' && peek(p) != '\n') {
+        advance(p);
+    }
+
+    if (peek(p) != delim) {
+        kry_parser_error(p, "Unterminated module path string");
+        return NULL;
+    }
+
+    char* module_path = kry_strndup(p, module_start, (size_t)(p->source + p->pos - module_start));
+    advance(p);  // Consume closing quote
+
+    // Create import node
+    KryNode* import_node = kry_node_create(p, KRY_NODE_IMPORT);
+    if (!import_node) {
+        return NULL;
+    }
+
+    import_node->name = import_name;      // Store imported name (e.g., "Math")
+    import_node->import_module = module_path;  // Store module path (e.g., "math")
+    import_node->import_name = import_name;    // Also store in import_name field
+
+    fprintf(stderr, "[PARSER] Parsed import: %s from %s\n", import_name, module_path);
+
+    return import_node;
+}
+
 // Forward declaration
 static KryNode* parse_component_body(KryParser* p, KryNode* component);
 
@@ -1415,8 +1483,12 @@ KryNode* kry_parse(KryParser* parser) {
 
         KryNode* node = NULL;
 
+        // Check for import statement
+        if (keyword_match(id, "import")) {
+            node = parse_import_statement(parser);
+        }
         // Check for variable declarations (const/let/var)
-        if (keyword_match(id, "const") || keyword_match(id, "let") || keyword_match(id, "var")) {
+        else if (keyword_match(id, "const") || keyword_match(id, "let") || keyword_match(id, "var")) {
             node = parse_var_decl(parser, id);
         }
         // Check for static block
