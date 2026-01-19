@@ -741,9 +741,6 @@ void web_ir_renderer_destroy(WebIRRenderer* renderer) {
     if (renderer->css_generator) {
         css_generator_destroy(renderer->css_generator);
     }
-    if (renderer->wasm_bridge) {
-        wasm_bridge_destroy(renderer->wasm_bridge);
-    }
     if (renderer->source_directory) {
         free(renderer->source_directory);
     }
@@ -755,10 +752,6 @@ void web_ir_renderer_set_output_directory(WebIRRenderer* renderer, const char* d
 
     strncpy(renderer->output_directory, directory, sizeof(renderer->output_directory) - 1);
     renderer->output_directory[sizeof(renderer->output_directory) - 1] = '\0';
-
-    if (renderer->wasm_bridge) {
-        wasm_bridge_set_output_directory(renderer->wasm_bridge, directory);
-    }
 }
 
 void web_ir_renderer_set_source_directory(WebIRRenderer* renderer, const char* directory) {
@@ -784,11 +777,6 @@ void web_ir_renderer_set_include_javascript_runtime(WebIRRenderer* renderer, boo
     renderer->include_javascript_runtime = include;
 }
 
-void web_ir_renderer_set_include_wasm_modules(WebIRRenderer* renderer, bool include) {
-    if (!renderer) return;
-    renderer->include_wasm_modules = include;
-}
-
 static bool generate_javascript_runtime(WebIRRenderer* renderer) {
     if (!renderer || !renderer->include_javascript_runtime) return true;
 
@@ -802,15 +790,6 @@ static bool generate_javascript_runtime(WebIRRenderer* renderer) {
     fclose(js_file);
 
     return success;
-}
-
-static bool collect_wasm_modules(WebIRRenderer* renderer, IRComponent* component) {
-    if (!renderer || !renderer->wasm_bridge || !renderer->include_wasm_modules) {
-        return true; // Skip WASM if disabled
-    }
-
-    // Extract logic modules from IR
-    return wasm_bridge_extract_logic_from_ir(renderer->wasm_bridge, component);
 }
 
 // Collect image src paths from component tree
@@ -1030,22 +1009,6 @@ bool web_ir_renderer_render(WebIRRenderer* renderer, IRComponent* root) {
                 printf("⚠️  Warning: Could not copy Fengari runtime from %s\n", fengari_src);
             }
         }
-    }
-
-    // Collect and process WASM modules
-    if (!collect_wasm_modules(renderer, root)) {
-        printf("❌ Failed to collect WASM modules\n");
-        return false;
-    }
-    printf("✅ Collected WASM modules\n");
-
-    // Generate WASM files and JavaScript bindings
-    if (renderer->include_wasm_modules && renderer->wasm_bridge) {
-        if (!wasm_bridge_write_runtime_loader(renderer->wasm_bridge, renderer->output_directory)) {
-            printf("❌ Failed to write WASM runtime loader\n");
-            return false;
-        }
-        printf("✅ Generated WASM runtime loader\n");
     }
 
     // Copy referenced assets (images, etc.)

@@ -15,11 +15,11 @@
 | #16319 | 1:40 AM | 🟣 | Implemented recursive plugin dependency resolution | ~497 |
 | #16277 | 1:08 AM | 🟣 | Implemented recursive plugin dependency resolution with load_plugin_with_dependencies() | ~255 |
 | #16273 | " | 🟣 | Added plugin dependency tracking system to prevent duplicate loading | ~190 |
-| #16226 | 1:02 AM | 🔵 | Configuration loader parses plugins from kryon.toml with git and local path support | ~50 |
 
 ### Jan 18, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
 | #30104 | 11:03 PM | 🔄 | Nim language support completely removed from Kryon project | ~366 |
 </claude-mem-context>

@@ -10,7 +10,6 @@
 | #15585 | 11:02 PM | 🔵 | No CSS file references found in cmd_build.c | ~190 |
 | #14777 | 6:45 PM | 🔵 | .kry DSL Parser Already Implemented in C | ~234 |
 | #14723 | 6:38 PM | 🔵 | C CLI and Nim CLI have different frontend support with file discovery mismatch | ~190 |
-| #14716 | 6:37 PM | 🔵 | CLI Run Command Target Platform Handling | ~201 |
 
 ### Jan 13, 2026
 
@@ -24,6 +23,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
 | #30116 | 11:05 PM | 🔄 | CLI codegen command still includes deleted nim_codegen.h | ~148 |
 | #30110 | 11:04 PM | 🔄 | Deep scan reveals remaining Nim references throughout project | ~301 |
 | #30104 | 11:03 PM | 🔄 | Nim language support completely removed from Kryon project | ~366 |

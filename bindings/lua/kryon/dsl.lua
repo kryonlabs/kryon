@@ -1167,8 +1167,7 @@ DSL.TabBar = function(props)
 end
 
 function DSL.Tab(props)
-  -- Tabs in the Nim DSL are Button components with specific styling
-  -- This matches the Nim DSL implementation (components.nim:1745-1912)
+  -- Tabs are Button components with specific styling
   local tabProps = props or {}
 
   -- Extract tab-specific props
@@ -1178,7 +1177,7 @@ function DSL.Tab(props)
   local textColor = tabProps.textColor or "#C7C9CC"
   local activeTextColor = tabProps.activeTextColor or "#FFFFFF"
 
-  -- Set defaults matching Nim DSL tab layout (from components.nim:1816-1824)
+  -- Set defaults matching tab layout conventions
   if not tabProps.height then tabProps.height = "32px" end
   if not tabProps.minHeight then tabProps.minHeight = "28px" end
   if not tabProps.minWidth then tabProps.minWidth = "60px" end
@@ -1211,7 +1210,6 @@ function DSL.Tab(props)
   end
 
   -- Create a Button component instead of IR_COMPONENT_TAB
-  -- The Nim DSL does this too (components.nim:1848)
   local button = buildComponent(C.IR_COMPONENT_BUTTON, tabProps)
 
   -- Store visual state for TabGroup finalization
