@@ -2,15 +2,14 @@
 # ===========================
 # Unified build and execution for all test suites
 
-# Load shared configuration
-include ../build/config.mk
+# Build configuration (inline, no config.mk dependency)
+BUILD_DIR ?= ../build
+TEST_BIN_DIR := $(BUILD_DIR)/test-binaries
 
 # Test directories
 TEST_DIRS := unit integration functional
-BUILD_DIR := ../build
 
 # Test binary output directory
-TEST_BIN_DIR := $(BUILD_DIR)/test-binaries
 
 # Default target
 all: $(TEST_DIRS)

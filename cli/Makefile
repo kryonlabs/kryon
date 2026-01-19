@@ -41,6 +41,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/config/config.c \
        $(SRC_DIR)/template/docs_template.c \
        $(SRC_DIR)/commands/cmd_stubs.c \
+       $(SRC_DIR)/commands/cmd_test.c \
        $(SRC_DIR)/commands/cmd_config.c \
        $(SRC_DIR)/commands/cmd_build.c \
        $(SRC_DIR)/commands/cmd_compile.c \
