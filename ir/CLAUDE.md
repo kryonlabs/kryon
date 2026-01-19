@@ -7,8 +7,11 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #31860 | 2:36 PM | 🔵 | KRYON Framework Expression Transpiler Implementation Status | ~326 |
-| #31799 | 2:24 PM | ✅ | Makefile Updated to Include Expression Parser | ~170 |
-| #31751 | 2:17 PM | 🔵 | Discovered kry_universal.c still referenced in PARSER_SOURCES of Makefile | ~43 |
-| #31722 | 2:14 PM | 🔄 | Removed all @universal decorator infrastructure from KRY framework | ~210 |
+| #32907 | 4:02 PM | 🔄 | Re-enabled HTML parser files and removed stubs from IR Makefile | ~287 |
+| #32902 | " | 🔵 | Discovered parsers/stubs.c was not actually removed from IR Makefile | ~238 |
+| #32881 | 4:00 PM | 🔴 | Fixed kry_to_ir.c parser compilation errors and successfully built Kryon | ~278 |
+| #32878 | " | 🔵 | Discovered kry_to_ir.c now compiles successfully after fixes | ~301 |
+| #32863 | 3:59 PM | ✅ | Added parsers/stubs.c back to IR Makefile PARSER_SOURCES | ~355 |
+| #32822 | 3:56 PM | ✅ | Added kry_to_ir.c to IR Makefile parser sources and removed stubs.c | ~237 |
+| #32755 | 3:53 PM | ✅ | Reverted IR Makefile PARSER_SOURCES to original configuration | ~158 |
 </claude-mem-context>

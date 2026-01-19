@@ -136,26 +136,23 @@ UTIL_SOURCES = src/utils/ir_string_builder.c \
                src/utils/ir_source_structures.c \
                src/utils/ir_json.c
 
-# NOTE: Temporarily excluded parsers due to deprecated API usage:
-# - parsers/kry/kry_to_ir.c (has IRStyleProperties compilation errors)
-# - parsers/html/html_to_ir.c
-# - parsers/html/css_stylesheet.c
-# - parsers/html/html_parser.c (uses ir_stylesheet_free which doesn't exist)
-
 PARSER_SOURCES = parsers/kry/kry_parser.c \
+                 parsers/kry/kry_to_ir.c \
                  parsers/kry/kry_expression.c \
                  parsers/markdown/markdown_ast.c \
                  parsers/markdown/markdown_parser.c \
                  parsers/markdown/markdown_to_ir.c \
                  parsers/html/html_ast.c \
+                 parsers/html/html_to_ir.c \
+                 parsers/html/html_parser.c \
                  parsers/html/css_parser.c \
+                 parsers/html/css_stylesheet.c \
                  parsers/c/c_parser.c \
                  parsers/tsx/tsx_parser.c \
                  parsers/lua/lua_parser.c \
                  parsers/lua/module_collector.c \
                  parsers/lua/require_tracker.c \
-                 parsers/parser_utils.c \
-                 parsers/stubs.c
+                 parsers/parser_utils.c
 
 # All IR sources
 IR_SOURCES = $(CORE_SOURCES) \

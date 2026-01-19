@@ -16,6 +16,47 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// ============================================================================
+// File I/O Helpers
+// ============================================================================
+
+/**
+ * Check if a file exists
+ */
+static bool file_exists(const char* path) {
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+}
+
+/**
+ * Copy a file from src to dst
+ * Returns 0 on success, -1 on failure
+ */
+static int copy_file(const char* src, const char* dst) {
+    FILE* in = fopen(src, "rb");
+    if (!in) return -1;
+
+    FILE* out = fopen(dst, "wb");
+    if (!out) {
+        fclose(in);
+        return -1;
+    }
+
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) {
+            fclose(in);
+            fclose(out);
+            return -1;
+        }
+    }
+
+    fclose(in);
+    fclose(out);
+    return 0;
+}
+
 // String builder wrapper using IRStringBuilder
 typedef struct {
     IRStringBuilder* sb;
@@ -1397,9 +1438,32 @@ static int process_module_recursive(const char* module_id, const char* kir_dir,
     if (is_module_processed(processed, module_id)) return 0;
     mark_module_processed(processed, module_id);
 
-    // Skip internal modules and external plugins
+    // Skip internal modules
     if (is_kryon_internal(module_id)) return 0;
-    if (is_external_plugin(module_id)) return 0;
+
+    // Check if this is an external plugin with extracted code
+    if (is_external_plugin(module_id)) {
+        // Check if plugin file exists in build/plugins/<module_id>.lua
+        char plugin_src_path[2048];
+        snprintf(plugin_src_path, sizeof(plugin_src_path), "build/plugins/%s.lua", module_id);
+
+        if (file_exists(plugin_src_path)) {
+            // Copy plugin file to output directory
+            char plugin_dst_path[2048];
+            snprintf(plugin_dst_path, sizeof(plugin_dst_path), "%s/%s.lua", output_dir, module_id);
+
+            if (copy_file(plugin_src_path, plugin_dst_path) == 0) {
+                printf("  ✓ Copied plugin: %s.lua\n", module_id);
+                return 1;
+            } else {
+                fprintf(stderr, "  ✗ Failed to copy plugin: %s.lua\n", module_id);
+                return 0;
+            }
+        }
+
+        // Plugin file not found, skip
+        return 0;
+    }
 
     // Build path to component's KIR file
     char component_kir_path[2048];

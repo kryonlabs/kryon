@@ -1,5 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include "css_stylesheet.h"
+#include "../src/style/ir_stylesheet.h"
+#include "../../include/ir_style.h"
+#include "../../include/ir_layout.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

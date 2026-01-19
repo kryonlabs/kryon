@@ -19,7 +19,14 @@ typedef struct {
     char* name;              /* "storage", "syntax", etc. from config */
     char* plugin_dir;        /* Resolved absolute path to plugin root */
     char* lua_binding;       /* Path to .lua file (e.g., ".../bindings/lua/storage.lua") */
+    char* kry_file;          /* Path to .kry file (e.g., ".../plugin.kry") - NULL if not present */
     char* static_lib;        /* Path to .a file (e.g., ".../build/libkryon_storage.a") */
+    bool has_kry_file;       /* true if plugin has a plugin.kry file */
+
+    /* Extracted code from plugin.kry (NULL if not extracted) */
+    char* lua_code;          /* Extracted @lua block code */
+    char* js_code;           /* Extracted @js block code */
+    char* nim_code;          /* Extracted @nim block code */
 } BuildPluginInfo;
 
 /**
@@ -45,5 +52,16 @@ BuildPluginInfo* discover_build_plugins(const char* project_dir,
  * @param count    Number of plugins in array
  */
 void free_build_plugins(BuildPluginInfo* plugins, int count);
+
+/**
+ * Write extracted plugin code to build directory
+ * Creates build/plugins/<plugin_name>.lua and .js files from plugin.kry
+ *
+ * @param plugins    Array of plugin info (created by discover_build_plugins)
+ * @param count      Number of plugins
+ * @param build_dir  Build output directory (e.g., "build")
+ * @return 0 on success, -1 on error
+ */
+int write_plugin_code_files(BuildPluginInfo* plugins, int count, const char* build_dir);
 
 #endif /* PLUGIN_DISCOVERY_H */

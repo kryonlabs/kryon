@@ -255,6 +255,10 @@ int cmd_build(int argc, char** argv) {
             int plugin_count = 0;
             BuildPluginInfo* plugins = discover_build_plugins(project_dir, config, &plugin_count);
             if (plugins) {
+                // Write extracted plugin code to build directory
+                const char* build_dir = config->codegen_output_dir ? config->codegen_output_dir : "build";
+                write_plugin_code_files(plugins, plugin_count, build_dir);
+
                 free_build_plugins(plugins, plugin_count);
             }
             free(project_dir);
