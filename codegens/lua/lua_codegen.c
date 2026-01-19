@@ -143,15 +143,47 @@ static char* cJSON_to_lua_syntax(const cJSON* item) {
             break;
 
         case cJSON_String: {
-            append_char('"');
             const char* str = cJSON_GetStringValue(item);
-            for (size_t i = 0; str && str[i]; i++) {
-                if (str[i] == '"' || str[i] == '\\') {
-                    append_char('\\');
-                }
-                append_char(str[i]);
+            if (!str) {
+                append_str("\"\"");
+                break;
             }
-            append_char('"');
+
+            // Check if string contains newlines or other special chars that need bracket syntax
+            bool has_newline = false;
+            bool has_bracket = false;
+            for (size_t i = 0; str[i]; i++) {
+                if (str[i] == '\n' || str[i] == '\r') {
+                    has_newline = true;
+                }
+                if (str[i] == ']' && str[i+1] == ']') {
+                    has_bracket = true;
+                }
+            }
+
+            if (has_newline) {
+                // Use Lua bracket string syntax for multi-line strings
+                if (has_bracket) {
+                    // String contains ]], use [=[...]=] syntax
+                    append_str("[=[");
+                    append_str(str);
+                    append_str("]=]");
+                } else {
+                    append_str("[[");
+                    append_str(str);
+                    append_str("]]");
+                }
+            } else {
+                // Use regular quoted string for single-line strings
+                append_char('"');
+                for (size_t i = 0; str[i]; i++) {
+                    if (str[i] == '"' || str[i] == '\\') {
+                        append_char('\\');
+                    }
+                    append_char(str[i]);
+                }
+                append_char('"');
+            }
             break;
         }
 
@@ -254,11 +286,85 @@ static void generate_reactive_vars(LuaCodeGen* gen, cJSON* manifest) {
         const char* type = type_node ? cJSON_GetStringValue(type_node) : "any";
         const char* initial = initial_node ? cJSON_GetStringValue(initial_node) : "nil";
 
+        // Skip source-only variables that are also in source_declarations
+        // These should be output from source_declarations, not wrapped in Reactive.state()
+        if (strcmp(name, "app_export") == 0 ||
+            strcmp(name, "initialization") == 0 ||
+            strcmp(name, "module_init") == 0 ||
+            strcmp(name, "module_constants") == 0 ||
+            strcmp(name, "conditional_blocks") == 0 ||
+            strcmp(name, "non_reactive_state") == 0 ||
+            strcmp(name, "functions") == 0) {  // functions is metadata, not reactive state
+            continue;  // Skip these - they're handled by source_declarations
+        }
+
         // Format value based on type
         if (strcmp(type, "string") == 0) {
-            lua_gen_add_line_fmt(gen, "local %s = Reactive.state(\"%s\")", name, initial);
+            // Check if string contains \n escape sequences (indicating multi-line code)
+            bool has_escape_n = false;
+            for (size_t i = 0; initial[i]; i++) {
+                if (initial[i] == '\\' && initial[i+1] == 'n') {
+                    has_escape_n = true;
+                    break;
+                }
+            }
+
+            if (has_escape_n) {
+                // The initial_value contains Lua source code with \n escapes
+                // We need to convert \n to actual newlines for bracket syntax
+                size_t len = strlen(initial);
+                char* converted = malloc(len * 2);  // Worst case expansion
+                if (converted) {
+                    size_t j = 0;
+                    for (size_t i = 0; initial[i]; i++) {
+                        if (initial[i] == '\\' && initial[i+1] == 'n') {
+                            converted[j++] = '\n';
+                            i++;  // Skip the 'n'
+                        } else if (initial[i] == '\\' && initial[i+1] == 't') {
+                            converted[j++] = '\t';
+                            i++;  // Skip the 't'
+                        } else if (initial[i] == '\\' && initial[i+1] == '\\') {
+                            converted[j++] = '\\';
+                            i++;  // Skip one backslash
+                        } else if (initial[i] == '\\' && initial[i+1] == '"') {
+                            // This is an escaped quote inside a JSON string
+                            // In the Lua code, this should be a regular quote
+                            converted[j++] = '"';
+                            i++;  // Skip the quote
+                        } else {
+                            converted[j++] = initial[i];
+                        }
+                    }
+                    converted[j] = '\0';
+
+                    // Build the output directly: "local <name> = Reactive.state([[<converted>]])"
+                    // Use string builder directly to avoid snprintf limitations
+                    ir_sb_indent(gen->sb, gen->indent);
+                    ir_sb_append(gen->sb, "local ");
+                    ir_sb_append(gen->sb, name);
+                    ir_sb_append(gen->sb, " = Reactive.state([[");
+                    ir_sb_append(gen->sb, converted);
+                    ir_sb_append(gen->sb, "]])");
+                    ir_sb_append(gen->sb, "\n");
+                    free(converted);
+                }
+            } else {
+                lua_gen_add_line_fmt(gen, "local %s = Reactive.state(\"%s\")", name, initial);
+            }
         } else {
-            lua_gen_add_line_fmt(gen, "local %s = Reactive.state(%s)", name, initial);
+            // Parse JSON and convert to Lua table syntax
+            cJSON* initial_json = cJSON_Parse(initial);
+            if (initial_json) {
+                char* initial_lua = cJSON_to_lua_syntax(initial_json);
+                if (initial_lua) {
+                    lua_gen_add_line_fmt(gen, "local %s = Reactive.state(%s)", name, initial_lua);
+                    free(initial_lua);
+                }
+                cJSON_Delete(initial_json);
+            } else {
+                // Fallback for non-JSON values
+                lua_gen_add_line_fmt(gen, "local %s = Reactive.state(%s)", name, initial);
+            }
         }
     }
 
@@ -766,8 +872,12 @@ char* lua_codegen_from_json(const char* kir_json) {
         if (state_init && cJSON_IsObject(state_init)) {
             cJSON* expression = cJSON_GetObjectItem(state_init, "expression");
             if (expression && cJSON_IsString(expression)) {
+                const char* expr_str = cJSON_GetStringValue(expression);
+                lua_gen_add_line(gen, "");
                 lua_gen_add_line(gen, "-- Reactive State (preserved from source)");
-                lua_gen_add_line(gen, cJSON_GetStringValue(expression));
+                // Use OUTPUT_MULTILINE for multi-line expressions
+                OUTPUT_MULTILINE(expr_str);
+                lua_gen_add_line(gen, "");
                 used_source_state_init = true;
             }
         }
@@ -787,6 +897,35 @@ char* lua_codegen_from_json(const char* kir_json) {
     if (!used_source_state_init) {
         cJSON* manifest = cJSON_GetObjectItem(root, "reactive_manifest");
         if (manifest) {
+            // Check if there are any reactive variables (excluding non-reactive ones)
+            cJSON* variables = cJSON_GetObjectItem(manifest, "variables");
+            bool has_reactive_vars = false;
+            if (variables && cJSON_IsArray(variables)) {
+                cJSON* var = NULL;
+                cJSON_ArrayForEach(var, variables) {
+                    cJSON* name_node = cJSON_GetObjectItem(var, "name");
+                    if (name_node && cJSON_IsString(name_node)) {
+                        const char* name = cJSON_GetStringValue(name_node);
+                        // Skip non-reactive variables
+                        if (strcmp(name, "app_export") == 0 ||
+                            strcmp(name, "initialization") == 0 ||
+                            strcmp(name, "module_init") == 0 ||
+                            strcmp(name, "module_constants") == 0 ||
+                            strcmp(name, "conditional_blocks") == 0 ||
+                            strcmp(name, "non_reactive_state") == 0 ||
+                            strcmp(name, "functions") == 0) {
+                            continue;
+                        }
+                        has_reactive_vars = true;
+                        break;
+                    }
+                }
+            }
+            if (has_reactive_vars) {
+                // Add Reactive require if not already present
+                lua_gen_add_line(gen, "local Reactive = require(\"kryon.reactive\")");
+                lua_gen_add_line(gen, "");
+            }
             generate_reactive_vars(gen, manifest);
         }
     }

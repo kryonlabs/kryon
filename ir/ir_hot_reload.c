@@ -285,12 +285,11 @@ static void hot_reload_file_callback(const IRFileEvent* event, void* user_data) 
     IRHotReloadContext* ctx = (IRHotReloadContext*)user_data;
     if (!ctx || !ctx->enabled) return;
 
-    // Filter for relevant file types (.nim, .h, .c)
+    // Filter for relevant file types (.h, .c)
     const char* ext = strrchr(event->path, '.');
     if (!ext) return;
 
-    bool is_relevant = (strcmp(ext, ".nim") == 0 ||
-                       strcmp(ext, ".h") == 0 ||
+    bool is_relevant = (strcmp(ext, ".h") == 0 ||
                        strcmp(ext, ".c") == 0);
 
     if (!is_relevant) return;

@@ -22,7 +22,6 @@
 #include "../../../backends/desktop/ir_desktop_renderer.h"
 #include "../template/docs_template.h"
 #include "../../../codegens/kry/kry_codegen.h"
-#include "../../../codegens/nim/nim_codegen.h"
 #include "../../../codegens/lua/lua_codegen.h"
 #include "../../../codegens/tsx/tsx_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
@@ -54,9 +53,6 @@ const char* detect_frontend_type(const char* source_file) {
     }
     else if (strcmp(ext, ".kry") == 0) {
         return "kry";
-    }
-    else if (strcmp(ext, ".nim") == 0) {
-        return "nim";
     }
     else if (strcmp(ext, ".lua") == 0) {
         return "lua";
@@ -337,37 +333,6 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
         fclose(out);
         free(kir_json);
         return 0;
-    }
-
-    // Nim: compile with KRYON_SERIALIZE_IR flag
-    if (strcmp(frontend, "nim") == 0) {
-        char cmd[4096];
-        snprintf(cmd, sizeof(cmd), "nim c -d:KRYON_SERIALIZE_IR -r \"%s\"",
-                 source_file);
-
-        char* output = NULL;
-        int result = process_run(cmd, &output);
-        if (output) {
-            printf("%s", output);
-            free(output);
-        }
-
-        // Move generated KIR to output path
-        char* kir_file = str_copy(source_file);
-        char* dot = strrchr(kir_file, '.');
-        if (dot) {
-            strcpy(dot, ".kir");
-
-            char mv_cmd[4096];
-            snprintf(mv_cmd, sizeof(mv_cmd), "mv \"%s\" \"%s\"", kir_file, output_kir);
-            int mv_result = system(mv_cmd);
-            if (mv_result != 0) {
-                fprintf(stderr, "Warning: Failed to move .kir file (code %d)\n", mv_result);
-            }
-        }
-        free(kir_file);
-
-        return result;
     }
 
     fprintf(stderr, "Error: Unknown frontend type: %s\n", frontend);
@@ -1094,11 +1059,10 @@ int generate_from_kir(const char* kir_file, const char* target,
     bool success = false;
 
     if (strcmp(target, "kry") == 0) {
-        success = kry_codegen_generate(kir_file, output_path);
+        // Multi-file codegen is default for KRY
+        success = kry_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "tsx") == 0) {
         success = tsx_codegen_generate(kir_file, output_path);
-    } else if (strcmp(target, "nim") == 0) {
-        success = nim_codegen_generate(kir_file, output_path);
     } else if (strcmp(target, "lua") == 0) {
         // Multi-file codegen is default for Lua
         success = lua_codegen_generate_multi(kir_file, output_path);
@@ -1204,7 +1168,6 @@ int codegen_pipeline(const char* source_file, const char* target,
     // Determine file extension for target
     const char* ext = NULL;
     if (strcmp(target, "kry") == 0) ext = ".kry";
-    else if (strcmp(target, "nim") == 0) ext = ".nim";
     else if (strcmp(target, "c") == 0) ext = ".c";
     else if (strcmp(target, "tsx") == 0) ext = ".tsx";
     else if (strcmp(target, "lua") == 0) {

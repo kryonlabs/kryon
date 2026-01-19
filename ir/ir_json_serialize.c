@@ -13,6 +13,7 @@
 #include "ir_builder.h"
 #include "ir_logic.h"
 #include "ir_stylesheet.h"
+#include "ir_foreach.h"
 #include "ir_c_metadata.h"
 #include "cJSON.h"
 #include <stdio.h>
@@ -1379,6 +1380,14 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
                 }
             }
             cJSON_Delete(metadata);
+        }
+    }
+
+    // Serialize foreach_def (new structured ForEach definition)
+    if (component->type == IR_COMPONENT_FOR_EACH && component->foreach_def) {
+        cJSON* foreach_def_json = ir_foreach_def_to_json(component->foreach_def);
+        if (foreach_def_json) {
+            cJSON_AddItemToObject(obj, "foreach_def", foreach_def_json);
         }
     }
 

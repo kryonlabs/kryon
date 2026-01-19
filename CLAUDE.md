@@ -22,7 +22,7 @@ You are a senior software developer. Follow these rules:
 **Kryon** is a universal UI framework with a three-stage pipeline:
 
 ```
-Source (.tsx, .kry, .html, .lua) → KIR (JSON IR) → Target (.tsx, .c, .lua, .nim) → Runtime
+Source (.tsx, .kry, .html, .lua) → KIR (JSON IR) → Target (.tsx, .c, .lua) → Runtime
 ```
 
 **Core Philosophy**: Write UI once, compile to KIR (Kryon Intermediate Representation), generate code for any platform.

@@ -160,7 +160,7 @@ main() {
     echo ""
 
     # Check if running from correct directory
-    if [ ! -f "kryon.nimble" ] && [ ! -f "Makefile" ]; then
+    if [ ! -f "Makefile" ]; then
         print_error "Please run this script from the Kryon source directory!"
         exit 1
     fi

@@ -954,6 +954,48 @@ static KryNode* parse_for_loop(KryParser* p) {
     return for_node;
 }
 
+// Parse for each loop: for each item in collection { ... }
+// This creates a runtime ForEach component (IR_COMPONENT_FOR_EACH)
+// Unlike 'for', this does NOT expand at compile time
+static KryNode* parse_for_each_loop(KryParser* p) {
+    skip_whitespace(p);
+
+    // Parse iterator variable name
+    char* iter_name = parse_identifier(p);
+    if (!iter_name) return NULL;
+
+    skip_whitespace(p);
+
+    // Expect 'in' keyword
+    char* in_keyword = parse_identifier(p);
+    if (!in_keyword || !keyword_match(in_keyword, "in")) {
+        kry_parser_error(p, "Expected 'in' keyword in for each loop");
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Parse collection expression (can be identifier, array, or expression)
+    KryValue* collection = parse_value(p);
+    if (!collection) return NULL;
+
+    skip_whitespace(p);
+
+    // Create for each loop node
+    KryNode* for_each_node = kry_node_create(p, KRY_NODE_FOR_EACH);
+    if (!for_each_node) return NULL;
+
+    for_each_node->name = iter_name;  // Iterator variable name
+    for_each_node->value = collection;  // Collection to iterate over
+
+    // Parse loop body
+    if (!parse_component_body(p, for_each_node)) {
+        return NULL;
+    }
+
+    return for_each_node;
+}
+
 // Parse if statement: if condition { ... } else { ... }
 static KryNode* parse_if_statement(KryParser* p) {
     skip_whitespace(p);
@@ -1051,11 +1093,31 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
             if (!static_block) return NULL;
             kry_node_append_child(component, static_block);
         }
-        // Check for for loop
+        // Check for for loop / for each loop
         else if (keyword_match(name, "for")) {
-            KryNode* for_loop = parse_for_loop(p);
-            if (!for_loop) return NULL;
-            kry_node_append_child(component, for_loop);
+            // Look ahead to check if this is "for each" or just "for"
+            size_t saved_pos = p->pos;
+            uint32_t saved_line = p->line;
+            uint32_t saved_column = p->column;
+
+            skip_whitespace(p);
+            char* next_id = parse_identifier(p);
+
+            KryNode* loop_node = NULL;
+            if (next_id && keyword_match(next_id, "each")) {
+                // "for each" - runtime ForEach
+                loop_node = parse_for_each_loop(p);
+            } else {
+                // Just "for" - compile-time for loop
+                // Restore position and parse as regular for loop
+                p->pos = saved_pos;
+                p->line = saved_line;
+                p->column = saved_column;
+                loop_node = parse_for_loop(p);
+            }
+
+            if (!loop_node) return NULL;
+            kry_node_append_child(component, loop_node);
         }
         // Check for if statement
         else if (keyword_match(name, "if")) {

@@ -358,7 +358,6 @@ static const char* get_doc_category(const char* filename) {
     // Language Bindings
     if (strcmp(basename, "typescript.md") == 0 ||
         strcmp(basename, "lua-bindings.md") == 0 ||
-        strcmp(basename, "nim-bindings.md") == 0 ||
         strcmp(basename, "js-bindings.md") == 0 ||
         strcmp(basename, "c-frontend.md") == 0) {
         return "Language Bindings";

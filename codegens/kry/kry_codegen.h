@@ -52,6 +52,18 @@ bool kry_codegen_generate_with_options(const char* kir_path,
                                         const char* output_path,
                                         KryCodegenOptions* options);
 
+/**
+ * Generate multi-file .kry code from main KIR file
+ *
+ * Reads main.kir file, generates .kry code for main and all imported modules.
+ * Preserves directory structure similar to lua_codegen_generate_multi().
+ *
+ * @param kir_path Path to main .kir JSON file
+ * @param output_dir Directory where generated .kry files should be written
+ * @return bool true on success, false on error
+ */
+bool kry_codegen_generate_multi(const char* kir_path, const char* output_dir);
+
 #ifdef __cplusplus
 }
 #endif
