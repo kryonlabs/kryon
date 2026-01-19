@@ -141,6 +141,59 @@ typedef struct {
     char* target;            // Target to install (desktop, web, etc.) - NULL for auto-detect
 } InstallConfig;
 
+// ============================================================================
+// Target Configuration
+// ============================================================================
+
+/**
+ * Target-specific configuration
+ * Supports customization per target using [target.name] sections
+ */
+typedef struct {
+    char* name;              // Target name (e.g., "web", "desktop", "custom")
+
+    // Common options
+    char* output;            // Output format ("html", "binary", "kir", "json", etc.)
+
+    // Web options
+    bool minify;             // Minify CSS/JS (web target)
+    bool tree_shake;         // Remove unused code (web target)
+    bool bundle;             // Single-file bundle (web target)
+
+    // Desktop options
+    char* renderer;          // "sdl3" or "raylib" (desktop target)
+
+    // Terminal options (future)
+    char* color_depth;       // "auto", "16", "256", "truecolor" (terminal target)
+    bool mouse_support;      // Enable mouse support (terminal target)
+
+    // Custom options (extensible)
+    char** custom_options;   // Array of "key=value" pairs for custom targets
+    int custom_options_count;
+} TargetConfig;
+
+// ============================================================================
+// Development Configuration
+// ============================================================================
+
+/**
+ * Development configuration
+ * Separates build and run dev settings
+ */
+typedef struct {
+    // [dev.build] section
+    char** build_targets;    // Build targets for dev mode
+    int build_targets_count;
+    bool watch;              // Watch for file changes during dev build
+
+    // [dev.run] section
+    char** run_targets;      // Run targets for dev mode
+    int run_targets_count;
+    bool hot_reload;         // Enable hot reload during dev run
+    int port;                // Dev server port
+    bool auto_open;          // Auto-open browser/server
+} DevConfig;
+
 typedef struct {
     // Project metadata
     char* project_name;
