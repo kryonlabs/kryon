@@ -475,7 +475,7 @@ local function parseTextAlign(align)
 end
 
 --- Convert hex color string to packed RGBA uint32 (0xRRGGBBAA format)
---- Matches Nim rgba() function logic for C core compatibility
+--- Matches C core color packing logic for compatibility
 --- @param color string Hex color like "#FFFFFF" or "#FFFFFFFF"
 --- @return number Packed RGBA as uint32
 local function colorToRGBA(color)
@@ -1018,7 +1018,7 @@ end
 -- ============================================================================
 -- Smart Component Factory (Metaprogramming DSL Enhancement)
 -- ============================================================================
--- Enables Nim-like syntax by detecting children from array part of table
+-- Enables concise syntax by detecting children from array part of table
 -- Example:
 --   Column {
 --     backgroundColor = "#1a1a1a",  -- property (string key)

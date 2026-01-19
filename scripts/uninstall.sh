@@ -140,16 +140,10 @@ show_completion() {
     echo ""
     echo "Note: This script only removes files installed by the Kryon"
     echo "installation script. Any manually installed dependencies (like"
-    echo "Nim, raylib, SDL2, etc.) will need to be removed separately."
-    echo ""
-    echo "To remove Nim and nimble packages:"
-    echo "  # List installed packages"
-    echo "  nimble list -i"
-    echo "  # Remove specific packages"
-    echo "  nimble uninstall raylib"
+    echo "raylib, SDL2, etc.) will need to be removed separately."
     echo ""
     echo "To remove system packages (Ubuntu/Debian):"
-    echo "  sudo apt remove libsdl2-dev libsdl2-ttf-dev"
+    echo "  sudo apt remove libsdl2-dev libsdl2-ttf-dev libraylib-dev"
     echo ""
 }
 

@@ -27,23 +27,22 @@ __attribute__((unused)) static IRContext* get_active_context(void) {
     return ctx ? ctx : g_ir_context;
 }
 
-// Nim callback for cleanup when components are removed
-// This allows the Nim reactive system to clean up when tab panels change
-extern void nimOnComponentRemoved(IRComponent* component) __attribute__((weak));
+// Callback for cleanup when components are removed
+// This allows the reactive system to clean up when tab panels change
+extern void luaOnComponentRemoved(IRComponent* component) __attribute__((weak));
 
-// Nim callback to clean up button/canvas/input handlers when components are removed
-extern void nimCleanupHandlersForComponent(IRComponent* component) __attribute__((weak));
+// Callback to clean up button/canvas/input handlers when components are removed
+extern void luaCleanupHandlersForComponent(IRComponent* component) __attribute__((weak));
 
-// Nim callback when components are added to the tree
+// Callback when components are added to the tree
 // This resets cleanup tracking so panels can be cleaned up again when removed
-extern void nimOnComponentAdded(IRComponent* component) __attribute__((weak));
+extern void luaOnComponentAdded(IRComponent* component) __attribute__((weak));
 
 // Forward declarations
 void ir_destroy_handler_source(IRHandlerSource* source);
 
 const char* ir_logic_type_to_string(LogicSourceType type) {
     switch (type) {
-        case IR_LOGIC_NIM: return "Nim";
         case IR_LOGIC_C: return "C";
         case IR_LOGIC_LUA: return "Lua";
         case IR_LOGIC_WASM: return "WASM";

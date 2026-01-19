@@ -19,7 +19,7 @@
 #include "../../../ir/ir_state_manager.h"
 #include "../../../ir/parsers/lua/lua_parser.h"
 #include "../../../ir/parsers/kry/kry_parser.h"
-#include "../../../backends/desktop/ir_desktop_renderer.h"
+#include "../../../runtime/desktop/ir_desktop_renderer.h"
 #include "../template/docs_template.h"
 #include "../../../codegens/kry/kry_codegen.h"
 #include "../../../codegens/lua/lua_codegen.h"

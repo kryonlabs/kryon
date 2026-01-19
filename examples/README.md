@@ -11,7 +11,6 @@ examples/
 │   ├── button_demo.kry
 │   ├── counters_demo.kry
 │   └── ...
-├── nim/           # Generated Nim code (NOT tracked in git)
 ├── lua/           # Generated Lua code (NOT tracked in git)
 └── README.md
 ```
@@ -20,12 +19,12 @@ examples/
 
 **Only `.kry` files in `examples/kry/` are checked into git.**
 
-All other formats (`.nim`, `.lua`, etc.) are auto-generated from the `.kry` source files.
+All other formats (`.lua`, etc.) are auto-generated from the `.kry` source files.
 
 ## Generating Examples
 
 ```bash
-# Generate all examples (creates examples/nim/*.nim from examples/kry/*.kry)
+# Generate all examples (creates examples/lua/*.lua from examples/kry/*.kry)
 make generate-examples
 
 # Or run the script directly
@@ -49,13 +48,13 @@ make clean-generated
 ## Running Examples
 
 ```bash
-# Run any example (auto-generates .nim if missing)
+# Run any example (auto-generates .lua if needed)
 ./run_example.sh hello_world
 ./run_example.sh button_demo
 ./run_example.sh counters_demo
 
 # Use terminal renderer
-./run_example.sh button_demo nim terminal
+./run_example.sh button_demo lua terminal
 
 # With environment variables
 KRYON_RENDERER=terminal ./run_example.sh button_demo
@@ -66,12 +65,12 @@ KRYON_RENDERER=terminal ./run_example.sh button_demo
 The generation pipeline ensures perfect round-trip transpilation:
 
 ```
-.kry → .kir (static) → .nim → .kir (round-trip) → validate
+.kry → .kir (static) → .lua → .kir (round-trip) → validate
 ```
 
 1. `.kry → .kir (static)` - Parse .kry to JSON IR with `--preserve-static`
-2. `.kir → .nim` - Generate idiomatic Nim DSL code
-3. `.nim → .kir` - Compile generated Nim back to IR (round-trip test)
+2. `.kir → .lua` - Generate idiomatic Lua DSL code
+3. `.lua → .kir` - Compile generated Lua back to IR (round-trip test)
 4. **Validation** - Compare original and round-trip `.kir` files
 
 If validation fails, it indicates a transpilation bug.
@@ -103,7 +102,7 @@ If validation fails, it indicates a transpilation bug.
    vim examples/kry/my_example.kry
    ```
 
-2. Generate the Nim code:
+2. Generate the Lua code:
    ```bash
    ./scripts/generate_examples.sh my_example
    ```
@@ -120,7 +119,7 @@ If validation fails, it indicates a transpilation bug.
 
 ## Do NOT Edit Generated Files
 
-Files in `examples/nim/` are auto-generated and will be **overwritten** when you run `make generate-examples`.
+Files in `examples/lua/` are auto-generated and will be **overwritten** when you run `make generate-examples`.
 
 To make changes:
 1. Edit the source `.kry` file in `examples/kry/`

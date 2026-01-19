@@ -40,7 +40,6 @@ struct IRDynamicBinding {
 // Logic Source Types
 // ============================================================================
 typedef enum {
-    IR_LOGIC_NIM,
     IR_LOGIC_C,
     IR_LOGIC_LUA,
     IR_LOGIC_WASM,
@@ -52,7 +51,7 @@ typedef enum {
 // Used to preserve function source through KIR for roundtrip and web embedding
 // ============================================================================
 typedef struct IRHandlerSource {
-    char* language;      // "lua", "nim", "javascript", etc.
+    char* language;      // "lua", "javascript", etc.
     char* code;          // The actual function source code
     char* file;          // Source file name (for debugging/roundtrip)
     int line;            // Source line number
@@ -70,7 +69,7 @@ typedef struct IRHandlerSource {
 typedef struct IREvent {
     IREventType type;
     char* event_name;    // String name for plugin events (NULL for core events)
-    char* logic_id;      // References IRLogic (legacy, for Nim/C callbacks)
+    char* logic_id;      // References IRLogic (legacy, for C callbacks)
     char* handler_data;  // Event-specific data
     uint32_t bytecode_function_id;  // References bytecode function in IRMetadata (0 = none)
     IRHandlerSource* handler_source; // Embedded handler source code for web/roundtrip
@@ -394,7 +393,7 @@ typedef struct IRMetadata {
 // Source file metadata for round-trip serialization
 // ============================================================================
 typedef struct IRSourceMetadata {
-    char* source_language;    // Original language: "tsx", "c", "nim", "lua", "kry", "html", "md"
+    char* source_language;    // Original language: "tsx", "c", "lua", "kry", "html", "md"
     char* compiler_version;   // Kryon compiler version (e.g., "kryon-1.0.0")
     char* timestamp;          // ISO8601 timestamp when KIR was generated
     char* source_file;        // Path to original source file (for runtime re-execution)
@@ -761,7 +760,7 @@ typedef struct {
 
 // Source code entry (for round-trip serialization)
 typedef struct {
-    char* lang;  // Language identifier (e.g., "nim", "lua", "js", "c")
+    char* lang;  // Language identifier (e.g., "lua", "js", "c")
     char* code;  // Source code content
 } IRSourceEntry;
 

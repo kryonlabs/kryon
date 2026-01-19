@@ -863,7 +863,7 @@ bool ir_executor_call_handler(IRExecutorContext* ctx, const char* handler_name) 
         } else {
             // If no universal statements, check if function has per-function source
             // The source might just be the function name reference
-            const char* func_source = get_function_source(ctx, func, "nim");
+            const char* func_source = get_function_source(ctx, func, "lua");
             if (func_source) {
                 func_name = func_source;  // Use source as function name
                 printf("[executor] Handler function (from source): %s\n", func_name);
@@ -871,45 +871,7 @@ bool ir_executor_call_handler(IRExecutorContext* ctx, const char* handler_name) 
         }
 
         // Try to find and execute source code
-        // Priority: nim > lua > js > c
-
-        // Phase 1: Just print the source code to prove we found it
-        const char* nim_source = get_function_source(ctx, func, "nim");
-        if (nim_source && func_name) {
-            // Check if the source is a full proc definition
-            char search_pattern[256];
-            snprintf(search_pattern, sizeof(search_pattern), "proc %s", func_name);
-
-            if (strstr(nim_source, search_pattern)) {
-                printf("[executor] Found Nim handler '%s'\n", func_name);
-
-                // For Phase 1 POC: Execute print statements by parsing simple echo
-                // In a real implementation, this would call the Nim runtime
-
-                // Simple pattern matching for echo "..."
-                const char* echo_start = strstr(nim_source, "echo \"");
-                if (echo_start) {
-                    echo_start += 6;  // Skip 'echo "'
-                    const char* echo_end = strchr(echo_start, '"');
-                    if (echo_end) {
-                        int len = echo_end - echo_start;
-                        char* message = (char*)malloc(len + 1);
-                        strncpy(message, echo_start, len);
-                        message[len] = '\0';
-
-                        // Print the echo output!
-                        printf("%s\n", message);
-                        free(message);
-                        return true;
-                    }
-                }
-            } else {
-                // Source might just be the function name - log that we found the reference
-                printf("[executor] Found handler reference: %s (source: %s)\n", handler_name, nim_source);
-                // For now, we can't execute just a name reference without the full source
-                // In the future, this could look up the function in a symbol table
-            }
-        }
+        // Priority: lua > js > c
 
         // Try Lua source
         const char* lua_source = get_function_source(ctx, func, "lua");
@@ -1277,9 +1239,9 @@ bool ir_executor_load_kir_file(IRExecutorContext* ctx, const char* kir_path) {
                 // Parse condition expression
                 cJSON* condExpr = cJSON_GetObjectItem(condObj, "condition");
                 if (condExpr) {
-                    // Check if condition is a JSON string (Nim format) or object (.kry format)
+                    // Check if condition is a JSON string (Lua format) or object (.kry format)
                     if (cJSON_IsString(condExpr)) {
-                        // Nim exports condition as JSON string: "{\"var\":\"showMessage\"}"
+                        // Lua exports condition as JSON string: "{\"var\":\"showMessage\"}"
                         // Parse it first, then convert to expression
                         cJSON* parsedCondition = cJSON_Parse(condExpr->valuestring);
                         if (parsedCondition) {

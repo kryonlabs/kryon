@@ -2,7 +2,7 @@
 
 CC = gcc
 CFLAGS = -fPIC -shared -O2 -Wall
-INCLUDES = -I../../ir -I../../backends/desktop
+INCLUDES = -I../../ir -I../../runtime/desktop
 LIBS = -L../../build -lkryon_desktop
 
 BUILD_DIR = build

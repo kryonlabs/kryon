@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../backends/desktop -I../codegens/web -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../runtime/desktop -I../codegens/web -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
@@ -164,7 +164,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 
 # Build desktop library
 ../build/libkryon_desktop.a:
-	$(MAKE) -C ../backends/desktop all
+	$(MAKE) -C ../runtime/desktop all
 
 # Build web library (for embedded kir_to_html)
 ../build/libkryon_web.a:

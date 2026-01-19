@@ -1284,7 +1284,7 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
 
             cJSON_AddStringToObject(eventObj, "type", eventType);
 
-            // Legacy logic ID (for Nim/C callbacks)
+            // Legacy logic ID (for C callbacks)
             if (event->logic_id && event->logic_id[0] != '\0') {
                 cJSON_AddStringToObject(eventObj, "logic_id", event->logic_id);
             }

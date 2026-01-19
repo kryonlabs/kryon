@@ -165,7 +165,7 @@ build-renderers-common:
 build-desktop-backend: build-ir build-renderers-common
 	@echo "Building desktop backend..."
 	$(MAKE) -C renderers/sdl3 all
-	$(MAKE) -C backends/desktop all
+	$(MAKE) -C runtime/desktop all
 
 # Build library for use by other projects
 # This creates a combined archive with all C libraries needed for linking
@@ -187,7 +187,7 @@ build-codegens:
 	@echo "Building code generators..."
 	@mkdir -p $(BUILD_DIR)
 	$(MAKE) -C codegens all
-	@for dir in kry tsx nim lua markdown c kotlin; do \
+	@for dir in kry tsx lua markdown c kotlin; do \
 		if [ -f codegens/$$dir/Makefile ]; then \
 			$(MAKE) -C codegens/$$dir all || true; \
 		fi \
@@ -275,7 +275,7 @@ install-lib: build-lib
 	cp core/include/*.h $(INCDIR)/c/ 2>/dev/null || true
 	cp ir/*.h $(INCDIR)/c/
 	cp include/kryon/*.h $(INCDIR)/ 2>/dev/null || true
-	for h in backends/desktop/*.h; do \
+	for h in runtime/desktop/*.h; do \
 		sed 's|#include "../../ir/|#include "|g' "$$h" > $(INCDIR)/c/$$(basename "$$h"); \
 	done
 	@echo "✓ Installed capability.h to $(INCDIR)/capability.h"
@@ -355,10 +355,10 @@ doctor:
 	fi
 	@echo ""
 	@echo "Backend Libraries:"
-	@if pkg-config --exists raylib 2>/dev/null || nimble list raylib | grep -q raylib; then \
+	@if pkg-config --exists raylib 2>/dev/null; then \
 		echo "✓ Raylib: available"; \
 	else \
-		echo "✗ Raylib: not found (install with: nimble install raylib)"; \
+		echo "✗ Raylib: not found (install with: sudo apt install libraylib-dev)"; \
 	fi
 	@if pkg-config --exists sdl2 2>/dev/null; then \
 		echo "✓ SDL2: available"; \
@@ -416,7 +416,7 @@ test-backend:
 	@if [ -n "$$(ls -A tests/backend/*.c 2>/dev/null)" ]; then \
 		for test in tests/backend/*.c; do \
 			echo "  - Running $$test"; \
-			gcc $$test -o /tmp/test_backend -Iir -Ibackends/desktop -Lbuild -lkryon_desktop -lkryon_ir && /tmp/test_backend || exit 1; \
+			gcc $$test -o /tmp/test_backend -Iir -Iruntime/desktop -Lbuild -lkryon_desktop -lkryon_ir && /tmp/test_backend || exit 1; \
 		done; \
 	else \
 		echo "  ⚠️  No backend tests found (placeholder directory)"; \
@@ -427,7 +427,7 @@ test-integration:
 	@if [ -n "$$(ls -A tests/integration/*.c 2>/dev/null)" ]; then \
 		for test in tests/integration/*.c; do \
 			echo "  - Running $$test"; \
-			gcc $$test -o /tmp/test_integ -Iir -Ibackends/desktop -Lbuild -lkryon_desktop -lkryon_ir && /tmp/test_integ || exit 1; \
+			gcc $$test -o /tmp/test_integ -Iir -Iruntime/desktop -Lbuild -lkryon_desktop -lkryon_ir && /tmp/test_integ || exit 1; \
 		done; \
 	else \
 		echo "  ⚠️  No integration tests found (placeholder directory)"; \
@@ -452,8 +452,8 @@ asan-full:
 	$(MAKE) -C ir clean
 	$(MAKE) -C ir asan-ubsan
 	@echo "Step 2/3: Building Desktop backend with ASAN+UBSan..."
-	$(MAKE) -C backends/desktop clean
-	$(MAKE) -C backends/desktop asan-ubsan
+	$(MAKE) -C runtime/desktop clean
+	$(MAKE) -C runtime/desktop asan-ubsan
 	@ASAN_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
 		$(MAKE) build-cli-asan
 	@echo "✅ ASAN build complete!"
@@ -486,7 +486,7 @@ asan-test:
 clean-asan:
 	@echo "🧹 Cleaning ASAN build artifacts..."
 	$(MAKE) -C ir clean
-	$(MAKE) -C backends/desktop clean
+	$(MAKE) -C runtime/desktop clean
 	rm -f $(CLI_BIN)
 	rm -f /tmp/asan*.log /tmp/asan_output.txt
 	@echo "✅ ASAN clean complete!"
@@ -520,7 +520,7 @@ validate-examples:
 clean-generated:
 	@echo "Cleaning generated examples..."
 	@./scripts/generate_examples.sh --clean
-	@rm -rf examples/nim/ examples/lua/
+	@rm -rf examples/lua/
 
 # Generate plugin bindings
 generate-bindings:
@@ -577,12 +577,12 @@ clean:
 	rm -f ir/parsers/html/*.o
 	rm -f ir/parsers/kry/*.o
 	@echo "Cleaning backend object files..."
-	rm -f backends/desktop/*.o
-	rm -f backends/desktop/renderers/sdl3/*.o
-	rm -f backends/desktop/renderers/raylib/*.o
+	rm -f runtime/desktop/*.o
+	rm -f runtime/desktop/renderers/sdl3/*.o
+	rm -f runtime/desktop/renderers/raylib/*.o
 	@echo "Cleaning Android native builds..."
 	@rm -rf renderers/android/build
-	@rm -rf backends/android/build
+	@rm -rf runtime/android/build
 	@rm -rf bindings/kotlin/build
 	@echo "Cleaning Android project builds..."
 	@find /tmp -maxdepth 1 -name "kryon_android_*" -type d -exec rm -rf {}/build {}/app/build {}/.gradle \; 2>/dev/null || true

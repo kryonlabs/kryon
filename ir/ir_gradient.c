@@ -52,7 +52,7 @@ IRGradient* ir_gradient_create_conic(float center_x, float center_y) {
     return gradient;
 }
 
-// Unified gradient creation (for Nim bindings)
+// Unified gradient creation
 IRGradient* ir_gradient_create(IRGradientType type) {
     IRGradient* gradient = (IRGradient*)calloc(1, sizeof(IRGradient));
     if (!gradient) return NULL;

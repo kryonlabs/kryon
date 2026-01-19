@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "../../backends/desktop/ir_desktop_renderer.h"
+#include "../../runtime/desktop/ir_desktop_renderer.h"
 
 // Allocate and return a DesktopRendererConfig* instead of by-value
 DesktopRendererConfig* ts_desktop_renderer_config_sdl3(int width, int height, const char* title) {

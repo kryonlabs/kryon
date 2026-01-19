@@ -15,7 +15,7 @@ echo ""
 # Test row alignments
 echo "Testing row alignments..."
 cd "$PROJECT_ROOT"
-if bash run_example.sh row_alignments nim terminal; then
+if bash run_example.sh row_alignments lua terminal; then
     echo "✓ Row alignments passed"
 else
     echo "✗ Row alignments FAILED"
@@ -26,7 +26,7 @@ echo ""
 # Test column alignments
 echo "Testing column alignments..."
 cd "$PROJECT_ROOT"
-if bash run_example.sh column_alignments nim terminal; then
+if bash run_example.sh column_alignments lua terminal; then
     echo "✓ Column alignments passed"
 else
     echo "✗ Column alignments FAILED"

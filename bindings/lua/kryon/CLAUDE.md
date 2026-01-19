@@ -8,8 +8,6 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #10361 | 2:14 PM | 🔵 | Module Origin Tracking Via Stack During Function Execution | ~386 |
-| #10358 | 2:09 PM | ✅ | Added Debug Logging to Module Reference Assignment Logic | ~351 |
-| #10350 | 2:08 PM | 🔵 | TabPanel Components Explicitly Skip Module Reference Mechanism | ~434 |
 
 ### Jan 9, 2026
 
@@ -31,5 +29,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30257 | 11:26 PM | 🔄 | Nim language support completely removed from Kryon framework | ~210 |
+| #30205 | 11:15 PM | 🔄 | Removed Nim DSL implementation references from Lua bindings | ~222 |
 | #30110 | 11:04 PM | 🔄 | Deep scan reveals remaining Nim references throughout project | ~301 |
 </claude-mem-context>

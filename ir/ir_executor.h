@@ -13,7 +13,7 @@
 
 // Source code storage for language-specific handlers
 typedef struct {
-    char* lang;    // "nim", "lua", "js", "c"
+    char* lang;    // "lua", "js", "c"
     char* code;    // Full source code for this language
 } IRExecutorSource;
 

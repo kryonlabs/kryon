@@ -13,7 +13,7 @@ IRGradient* ir_gradient_create_linear(float angle);
 IRGradient* ir_gradient_create_radial(float center_x, float center_y);
 IRGradient* ir_gradient_create_conic(float center_x, float center_y);
 
-// Unified gradient creation (for Nim bindings)
+// Unified gradient creation
 IRGradient* ir_gradient_create(IRGradientType type);
 
 void ir_gradient_destroy(IRGradient* gradient);

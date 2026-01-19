@@ -209,7 +209,7 @@ ffi.cdef[[
   // Source Metadata (for KIR compilation tracking)
   // ============================================================================
   typedef struct {
-    char* source_language;    // Original language: "tsx", "c", "nim", "lua", "kry", "html", "md"
+    char* source_language;    -- Original language: "tsx", "c", "lua", "kry", "html", "md"
     char* compiler_version;   // Kryon compiler version (e.g., "kryon-1.0.0")
     char* timestamp;          // ISO8601 timestamp when KIR was generated
     char* source_file;        // Path to original source file (for runtime re-execution)

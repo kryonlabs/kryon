@@ -158,7 +158,7 @@ const char* codegen_format_rgba_hex(uint8_t r, uint8_t g, uint8_t b, uint8_t a,
  * Set the error prefix for codegen error messages.
  * This is used to identify which codegen is reporting an error.
  *
- * @param prefix Error prefix (e.g., "Lua", "Nim", "Kotlin")
+ * @param prefix Error prefix (e.g., "Lua", "Kotlin")
  */
 void codegen_set_error_prefix(const char* prefix);
 
