@@ -67,6 +67,8 @@ tests/*.out
 /tmp/
 
 
+CLAUDE.md
+
 # Benchmark results (hardware-dependent)
 benchmarks/*.log
 benchmarks/hello_world
