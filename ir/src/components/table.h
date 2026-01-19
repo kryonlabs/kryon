@@ -2,7 +2,7 @@
 #define IR_COMPONENT_TABLE_H
 
 #include "../include/ir_core.h"
-#include "../include/ir_component_registry.h"
+#include "registry.h"
 
 /**
  * Layout function for table components in single-pass system

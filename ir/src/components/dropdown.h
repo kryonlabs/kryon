@@ -2,7 +2,7 @@
 #define IR_COMPONENT_DROPDOWN_H
 
 #include "../include/ir_core.h"
-#include "../include/ir_component_registry.h"
+#include "registry.h"
 
 // Dropdown layout function
 void layout_dropdown_single_pass(IRComponent* c, IRLayoutConstraints constraints,

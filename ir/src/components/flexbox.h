@@ -2,7 +2,7 @@
 #define IR_COMPONENT_FLEXBOX_H
 
 #include "../include/ir_core.h"
-#include "../include/ir_component_registry.h"
+#include "registry.h"
 
 /**
  * Unified Flexbox Component - Axis-Parameterized Layout

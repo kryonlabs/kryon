@@ -2,7 +2,7 @@
 #define IR_COMPONENT_TEXT_H
 
 #include "../include/ir_core.h"
-#include "../include/ir_component_registry.h"
+#include "registry.h"
 
 /**
  * Text Component - Single-Pass Layout Implementation
