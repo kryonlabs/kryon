@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "../include/ir_core.h"
+#include "ir_core.h"
 
 // Forward declaration for cJSON (used in module reference functions)
 typedef struct cJSON cJSON;

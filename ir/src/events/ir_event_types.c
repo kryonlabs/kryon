@@ -3,7 +3,7 @@
  * @brief Event type definitions and conversion functions
  */
 
-#include "../include/ir_event_types.h"
+#include "../include/ir_events.h"
 
 const char* ir_event_type_to_string(IREventType type) {
     switch (type) {

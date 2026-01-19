@@ -7,7 +7,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "../include/ir_state.h"
-#include "../include/ir_log.h"
+#include "ir_log.h"
 #include "../include/ir_executor.h"
 
 #include <stdio.h>

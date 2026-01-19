@@ -1,7 +1,7 @@
 #ifndef IR_LUA_PARSER_H
 #define IR_LUA_PARSER_H
 
-#include "../../ir_core.h"
+#include "../include/ir_core.h"
 #include <stddef.h>
 #include <stdbool.h>
 

@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "../include/ir_expression.h"
+#include "ir_expression.h"
 #include "ir_expression_compiler.h"
 #include "cJSON.h"
 #include "../utils/ir_json_helpers.h"

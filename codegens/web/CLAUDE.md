@@ -7,14 +7,19 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #30306 | 11:34 PM | 🔵 | Verified no remaining Nim function calls in C source files | ~124 |
-| #30294 | 11:32 PM | 🔄 | Removed all Nim language support from Kryon framework | ~354 |
-| #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
-| #30144 | 11:07 PM | 🔄 | Removed all remaining WASM module collection and generation code from web renderer | ~303 |
-| #30139 | " | 🔵 | Only 3 remaining WASM references in web renderer | ~251 |
-| #30136 | " | 🔄 | Removed web_ir_renderer_set_include_wasm_modules() function | ~272 |
-| #30134 | 11:06 PM | 🔄 | Removed WASM bridge setter call from output directory configuration | ~252 |
-| #30132 | " | 🔄 | Removed WASM bridge from web renderer initialization | ~323 |
-| #30130 | " | 🔵 | Web rendering has two-phase WASM module processing | ~288 |
-| #30128 | " | 🔵 | Web renderer defaults include_wasm_modules to false | ~316 |
+| #30245 | 11:24 PM | 🔄 | Removed all Nim language support from Kryon framework | ~176 |
+| #30224 | 11:19 PM | 🔄 | Removed all Nim language support from Kryon codebase | ~450 |
+| #30222 | 11:18 PM | 🔄 | Removed all Nim language support from Kryon codebase | ~178 |
+| #30213 | 11:16 PM | 🔄 | Nim language support completely removed from Kryon codebase | ~220 |
+| #30211 | " | 🔄 | Removed all Nim language support from Kryon project | ~213 |
+| #30208 | 11:15 PM | 🔄 | Removed all Nim language support from Kryon project | ~473 |
+| #30253 | " | 🔄 | Nim language support completely removed from Kryon codebase | ~396 |
+| #30181 | 11:12 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~208 |
+| #30173 | " | 🔄 | Nim language support completely removed from Kryon codebase | ~1027 |
+
+### Jan 19, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #31045 | 1:06 AM | 🔄 | Kryon Build System Completely Rebuilt and Simplified | ~298 |
 </claude-mem-context>

@@ -1,7 +1,7 @@
 #ifndef IR_COMPONENT_FLEXBOX_H
 #define IR_COMPONENT_FLEXBOX_H
 
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 #include "registry.h"
 
 /**

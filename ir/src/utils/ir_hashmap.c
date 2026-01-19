@@ -1,7 +1,7 @@
 // IR Hash Map - Fast component ID lookups
 // Replaces O(n) tree traversal with O(1) hash lookups
 
-#include "../include/ir_hashmap.h"
+#include "ir_hashmap.h"
 #include "../include/ir_core.h"
 #include <stdlib.h>
 #include <stdio.h>

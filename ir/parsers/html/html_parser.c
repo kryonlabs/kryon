@@ -2,10 +2,10 @@
 #include "html_parser.h"
 #include "html_to_ir.h"
 #include "css_stylesheet.h"
-#include "../../ir_serialization.h"
-#include "../../ir_logic.h"
-#include "../../ir_builder.h"
-#include "../../ir_stylesheet.h"
+#include "../include/ir_serialization.h"
+#include "../include/ir_logic.h"
+#include "../include/ir_builder.h"
+#include "../../include/ir_style.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

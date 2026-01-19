@@ -3,8 +3,8 @@
 
 #include "../include/ir_core.h"
 #include "../include/ir_builder.h"
-#include "../include/ir_text_shaping.h"
-#include "components/ir_component_registry.h"
+#include "ir_text_shaping.h"
+#include "../components/registry.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

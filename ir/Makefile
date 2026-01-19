@@ -2,7 +2,7 @@
 # Compiles the core IR library that can be used by frontends and backends
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -fPIC -Iinclude
+CFLAGS = -std=c99 -Wall -Wextra -O2 -fPIC -Iinclude -I../include
 AR = ar
 ARFLAGS = rcs
 
@@ -44,6 +44,7 @@ TOML_DIR = $(THIRD_PARTY_DIR)/tomlc99
 
 # Third-party include paths
 CFLAGS += -I$(CJSON_DIR) -I$(STB_DIR) -I$(TOML_DIR)
+CFLAGS += $(HARFBUZZ_CFLAGS)
 
 # Source files - organized by module
 CORE_SOURCES = src/ir_builder.c \
@@ -111,14 +112,14 @@ STATE_SOURCES = src/state/ir_state_manager.c \
                 src/state/ir_reactive_manifest.c \
                 src/state/ir_module_refs.c
 
-FEATURE_SOURCES = src/features/animation.c \
-                  src/features/animation_builder.c \
-                  src/features/transition.c \
-                  src/features/tabgroup.c \
-                  src/features/table.c \
-                  src/features/text_shaping.c \
-                  src/features/markdown.c \
-                  src/features/native_canvas.c
+FEATURE_SOURCES = src/features/ir_animation.c \
+                  src/features/ir_animation_builder.c \
+                  src/features/ir_transition.c \
+                  src/features/ir_tabgroup.c \
+                  src/features/ir_table.c \
+                  src/features/ir_text_shaping.c \
+                  src/features/ir_markdown.c \
+                  src/features/ir_native_canvas.c
 
 UTIL_SOURCES = src/utils/ir_string_builder.c \
                src/utils/ir_buffer.c \
@@ -135,16 +136,19 @@ UTIL_SOURCES = src/utils/ir_string_builder.c \
                src/utils/ir_source_structures.c \
                src/utils/ir_json.c
 
+# NOTE: Temporarily excluded parsers due to deprecated API usage:
+# - parsers/kry/kry_to_ir.c (has IRStyleProperties compilation errors)
+# - parsers/markdown/markdown_to_ir.c
+# - parsers/html/html_to_ir.c
+# - parsers/html/css_stylesheet.c
+# - parsers/html/html_parser.c (uses ir_stylesheet_free)
+
 PARSER_SOURCES = parsers/kry/kry_parser.c \
-                 parsers/kry/kry_to_ir.c \
+                 parsers/kry/kry_universal.c \
                  parsers/markdown/markdown_ast.c \
                  parsers/markdown/markdown_parser.c \
-                 parsers/markdown/markdown_to_ir.c \
                  parsers/html/html_ast.c \
-                 parsers/html/html_parser.c \
-                 parsers/html/html_to_ir.c \
                  parsers/html/css_parser.c \
-                 parsers/html/css_stylesheet.c \
                  parsers/c/c_parser.c \
                  parsers/tsx/tsx_parser.c \
                  parsers/lua/lua_parser.c \

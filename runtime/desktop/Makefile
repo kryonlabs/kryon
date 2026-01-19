@@ -99,6 +99,7 @@ DESKTOP_TEST = $(BUILD_DIR)/desktop_test
 # Include paths - add all necessary directories for proper modular includes
 INCLUDES = -I$(INCLUDE_DIR) \
            -I$(INCLUDE_IR_DIR) \
+           -I$(INCLUDE_IR_DIR)/include \
            -I../../core/include \
            -I../../renderers/sdl3 \
            -I../../renderers/common \

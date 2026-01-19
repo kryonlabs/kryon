@@ -28,6 +28,9 @@ IRReactiveManifest* ir_reactive_manifest_create(void) {
     manifest->for_loop_capacity = 16;
     manifest->component_def_capacity = 8;
     manifest->source_capacity = 4;
+    manifest->computed_property_capacity = 8;
+    manifest->action_capacity = 16;
+    manifest->watcher_capacity = 8;
 
     manifest->variables = calloc(manifest->variable_capacity, sizeof(IRReactiveVarDescriptor));
     manifest->bindings = calloc(manifest->binding_capacity, sizeof(IRReactiveBinding));
@@ -35,15 +38,22 @@ IRReactiveManifest* ir_reactive_manifest_create(void) {
     manifest->for_loops = calloc(manifest->for_loop_capacity, sizeof(IRReactiveForLoop));
     manifest->component_defs = calloc(manifest->component_def_capacity, sizeof(IRComponentDefinition));
     manifest->sources = calloc(manifest->source_capacity, sizeof(IRSourceEntry));
+    manifest->computed_properties = calloc(manifest->computed_property_capacity, sizeof(IRComputedProperty));
+    manifest->actions = calloc(manifest->action_capacity, sizeof(IRAction));
+    manifest->watchers = calloc(manifest->watcher_capacity, sizeof(IRWatcher));
 
     if (!manifest->variables || !manifest->bindings || !manifest->conditionals ||
-        !manifest->for_loops || !manifest->component_defs || !manifest->sources) {
+        !manifest->for_loops || !manifest->component_defs || !manifest->sources ||
+        !manifest->computed_properties || !manifest->actions || !manifest->watchers) {
         fprintf(stderr, "[ReactiveManifest] Failed to allocate internal arrays\n");
         ir_reactive_manifest_destroy(manifest);
         return NULL;
     }
 
     manifest->next_var_id = 1;
+    manifest->next_computed_id = 1;
+    manifest->next_action_id = 1;
+    manifest->next_watcher_id = 1;
 
     return manifest;
 }
@@ -109,12 +119,55 @@ void ir_reactive_manifest_destroy(IRReactiveManifest* manifest) {
         free(manifest->sources[i].code);
     }
 
+    // Free computed properties
+    for (uint32_t i = 0; i < manifest->computed_property_count; i++) {
+        IRComputedProperty* computed = &manifest->computed_properties[i];
+        free(computed->name);
+        free(computed->function_name);
+        for (uint32_t j = 0; j < computed->dependency_count; j++) {
+            free(computed->dependencies[j]);
+        }
+        free(computed->dependencies);
+        if (computed->state == IR_COMPUTED_STATE_VALID &&
+            computed->cached_value.as_string) {
+            free(computed->cached_value.as_string);
+        }
+        free(computed->source_lua);
+        free(computed->source_js);
+    }
+
+    // Free actions
+    for (uint32_t i = 0; i < manifest->action_count; i++) {
+        IRAction* action = &manifest->actions[i];
+        free(action->name);
+        free(action->function_name);
+        for (uint32_t j = 0; j < action->watch_path_count; j++) {
+            free(action->watch_paths[j]);
+        }
+        free(action->watch_paths);
+        free(action->source_lua);
+        free(action->source_js);
+    }
+
+    // Free watchers
+    for (uint32_t i = 0; i < manifest->watcher_count; i++) {
+        IRWatcher* watcher = &manifest->watchers[i];
+        free(watcher->watched_path);
+        free(watcher->handler_function);
+        free(watcher->watched_var_ids);
+        free(watcher->source_lua);
+        free(watcher->source_js);
+    }
+
     free(manifest->variables);
     free(manifest->bindings);
     free(manifest->conditionals);
     free(manifest->for_loops);
     free(manifest->component_defs);
     free(manifest->sources);
+    free(manifest->computed_properties);
+    free(manifest->actions);
+    free(manifest->watchers);
     free(manifest);
 }
 
@@ -554,4 +607,279 @@ const char* ir_reactive_manifest_get_source(IRReactiveManifest* manifest,
     }
 
     return NULL;
+}
+
+// ============================================================================
+// Computed Property Management (for @computed decorator)
+// ============================================================================
+
+uint32_t ir_reactive_manifest_add_computed(IRReactiveManifest* manifest,
+                                           const char* name,
+                                           const char* function_name,
+                                           const char** dependencies,
+                                           uint32_t dependency_count) {
+    if (!manifest || !name || !function_name) return 0;
+
+    // Resize if needed
+    if (manifest->computed_property_count >= manifest->computed_property_capacity) {
+        if (!ir_grow_capacity(&manifest->computed_property_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow computed properties array - would overflow\n");
+            return 0;
+        }
+        IRComputedProperty* new_props = realloc(manifest->computed_properties,
+                                                manifest->computed_property_capacity * sizeof(IRComputedProperty));
+        if (!new_props) {
+            fprintf(stderr, "[ReactiveManifest] Failed to resize computed properties array\n");
+            return 0;
+        }
+        manifest->computed_properties = new_props;
+    }
+
+    uint32_t computed_id = manifest->next_computed_id++;
+    IRComputedProperty* computed = &manifest->computed_properties[manifest->computed_property_count++];
+
+    memset(computed, 0, sizeof(IRComputedProperty));
+    computed->id = computed_id;
+    computed->name = strdup(name);
+    computed->function_name = strdup(function_name);
+    computed->state = IR_COMPUTED_STATE_DIRTY;
+
+    // Copy dependencies
+    if (dependencies && dependency_count > 0) {
+        computed->dependency_capacity = dependency_count;
+        computed->dependencies = calloc(dependency_count, sizeof(char*));
+        computed->dependency_count = dependency_count;
+
+        for (uint32_t i = 0; i < dependency_count; i++) {
+            computed->dependencies[i] = strdup(dependencies[i]);
+        }
+    }
+
+    return computed_id;
+}
+
+IRComputedProperty* ir_reactive_manifest_find_computed(IRReactiveManifest* manifest,
+                                                       const char* name) {
+    if (!manifest || !name) return NULL;
+
+    for (uint32_t i = 0; i < manifest->computed_property_count; i++) {
+        if (manifest->computed_properties[i].name &&
+            strcmp(manifest->computed_properties[i].name, name) == 0) {
+            return &manifest->computed_properties[i];
+        }
+    }
+
+    return NULL;
+}
+
+IRComputedProperty* ir_reactive_manifest_get_computed(IRReactiveManifest* manifest,
+                                                      uint32_t computed_id) {
+    if (!manifest) return NULL;
+
+    for (uint32_t i = 0; i < manifest->computed_property_count; i++) {
+        if (manifest->computed_properties[i].id == computed_id) {
+            return &manifest->computed_properties[i];
+        }
+    }
+
+    return NULL;
+}
+
+void ir_reactive_manifest_invalidate_computed(IRReactiveManifest* manifest,
+                                              uint32_t var_id) {
+    if (!manifest) return;
+
+    // Mark all computed properties that depend on this variable as dirty
+    for (uint32_t i = 0; i < manifest->computed_property_count; i++) {
+        IRComputedProperty* computed = &manifest->computed_properties[i];
+
+        for (uint32_t j = 0; j < computed->dependency_count; j++) {
+            // Check if dependency string contains the variable ID
+            char dep_str[32];
+            snprintf(dep_str, sizeof(dep_str), "%u", var_id);
+
+            if (computed->dependencies[j] && strstr(computed->dependencies[j], dep_str)) {
+                computed->state = IR_COMPUTED_STATE_DIRTY;
+                break;
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Action Management (for @action decorator)
+// ============================================================================
+
+uint32_t ir_reactive_manifest_add_action(IRReactiveManifest* manifest,
+                                        const char* name,
+                                        const char* function_name,
+                                        bool is_batched,
+                                        bool auto_save) {
+    if (!manifest || !name || !function_name) return 0;
+
+    // Resize if needed
+    if (manifest->action_count >= manifest->action_capacity) {
+        if (!ir_grow_capacity(&manifest->action_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow actions array - would overflow\n");
+            return 0;
+        }
+        IRAction* new_actions = realloc(manifest->actions,
+                                       manifest->action_capacity * sizeof(IRAction));
+        if (!new_actions) {
+            fprintf(stderr, "[ReactiveManifest] Failed to resize actions array\n");
+            return 0;
+        }
+        manifest->actions = new_actions;
+    }
+
+    uint32_t action_id = manifest->next_action_id++;
+    IRAction* action = &manifest->actions[manifest->action_count++];
+
+    memset(action, 0, sizeof(IRAction));
+    action->id = action_id;
+    action->name = strdup(name);
+    action->function_name = strdup(function_name);
+    action->is_batched = is_batched;
+    action->auto_save = auto_save;
+
+    return action_id;
+}
+
+IRAction* ir_reactive_manifest_find_action(IRReactiveManifest* manifest,
+                                           const char* name) {
+    if (!manifest || !name) return NULL;
+
+    for (uint32_t i = 0; i < manifest->action_count; i++) {
+        if (manifest->actions[i].name &&
+            strcmp(manifest->actions[i].name, name) == 0) {
+            return &manifest->actions[i];
+        }
+    }
+
+    return NULL;
+}
+
+IRAction* ir_reactive_manifest_get_action(IRReactiveManifest* manifest,
+                                          uint32_t action_id) {
+    if (!manifest) return NULL;
+
+    for (uint32_t i = 0; i < manifest->action_count; i++) {
+        if (manifest->actions[i].id == action_id) {
+            return &manifest->actions[i];
+        }
+    }
+
+    return NULL;
+}
+
+void ir_reactive_manifest_add_action_watch_path(IRReactiveManifest* manifest,
+                                                uint32_t action_id,
+                                                const char* watch_path) {
+    if (!manifest || !watch_path) return;
+
+    IRAction* action = ir_reactive_manifest_get_action(manifest, action_id);
+    if (!action) {
+        fprintf(stderr, "[ReactiveManifest] Action ID %u not found\n", action_id);
+        return;
+    }
+
+    // Reallocate watch paths array
+    char** new_paths = realloc(action->watch_paths,
+                               (action->watch_path_count + 1) * sizeof(char*));
+    if (!new_paths) {
+        fprintf(stderr, "[ReactiveManifest] Failed to add watch path to action\n");
+        return;
+    }
+
+    action->watch_paths = new_paths;
+    action->watch_paths[action->watch_path_count++] = strdup(watch_path);
+}
+
+// ============================================================================
+// Watcher Management (for @watch decorator)
+// ============================================================================
+
+uint32_t ir_reactive_manifest_add_watcher(IRReactiveManifest* manifest,
+                                          const char* watched_path,
+                                          const char* handler_function,
+                                          IRWatchDepth depth,
+                                          bool immediate) {
+    if (!manifest || !watched_path || !handler_function) return 0;
+
+    // Resize if needed
+    if (manifest->watcher_count >= manifest->watcher_capacity) {
+        if (!ir_grow_capacity(&manifest->watcher_capacity)) {
+            fprintf(stderr, "[ReactiveManifest] Cannot grow watchers array - would overflow\n");
+            return 0;
+        }
+        IRWatcher* new_watchers = realloc(manifest->watchers,
+                                         manifest->watcher_capacity * sizeof(IRWatcher));
+        if (!new_watchers) {
+            fprintf(stderr, "[ReactiveManifest] Failed to resize watchers array\n");
+            return 0;
+        }
+        manifest->watchers = new_watchers;
+    }
+
+    uint32_t watcher_id = manifest->next_watcher_id++;
+    IRWatcher* watcher = &manifest->watchers[manifest->watcher_count++];
+
+    memset(watcher, 0, sizeof(IRWatcher));
+    watcher->id = watcher_id;
+    watcher->watched_path = strdup(watched_path);
+    watcher->handler_function = strdup(handler_function);
+    watcher->depth = depth;
+    watcher->immediate = immediate;
+
+    return watcher_id;
+}
+
+IRWatcher* ir_reactive_manifest_find_watcher(IRReactiveManifest* manifest,
+                                             const char* watched_path) {
+    if (!manifest || !watched_path) return NULL;
+
+    for (uint32_t i = 0; i < manifest->watcher_count; i++) {
+        if (manifest->watchers[i].watched_path &&
+            strcmp(manifest->watchers[i].watched_path, watched_path) == 0) {
+            return &manifest->watchers[i];
+        }
+    }
+
+    return NULL;
+}
+
+IRWatcher* ir_reactive_manifest_get_watcher(IRReactiveManifest* manifest,
+                                            uint32_t watcher_id) {
+    if (!manifest) return NULL;
+
+    for (uint32_t i = 0; i < manifest->watcher_count; i++) {
+        if (manifest->watchers[i].id == watcher_id) {
+            return &manifest->watchers[i];
+        }
+    }
+
+    return NULL;
+}
+
+void ir_reactive_manifest_add_watcher_dependency(IRReactiveManifest* manifest,
+                                                 uint32_t watcher_id,
+                                                 uint32_t var_id) {
+    if (!manifest) return;
+
+    IRWatcher* watcher = ir_reactive_manifest_get_watcher(manifest, watcher_id);
+    if (!watcher) {
+        fprintf(stderr, "[ReactiveManifest] Watcher ID %u not found\n", watcher_id);
+        return;
+    }
+
+    // Reallocate watched var IDs array
+    uint32_t* new_ids = realloc(watcher->watched_var_ids,
+                               (watcher->watched_var_count + 1) * sizeof(uint32_t));
+    if (!new_ids) {
+        fprintf(stderr, "[ReactiveManifest] Failed to add dependency to watcher\n");
+        return;
+    }
+
+    watcher->watched_var_ids = new_ids;
+    watcher->watched_var_ids[watcher->watched_var_count++] = var_id;
 }

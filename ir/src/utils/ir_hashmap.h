@@ -9,7 +9,7 @@ typedef struct IRComponent IRComponent;
 typedef struct IREvent IREvent;
 
 // IREventType is defined in ir_core.h
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 
 // ============================================================================
 // Component ID Hash Map (for fast lookups)

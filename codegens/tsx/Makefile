@@ -19,31 +19,31 @@ SOURCES = tsx_codegen.c
 OBJECTS = tsx_codegen.o
 HEADERS = tsx_codegen.h
 
-# Dependencies (react_common)
-REACT_COMMON_DIR = ..
-REACT_COMMON_OBJ = $(BUILD_DIR)/react_common.o
+# Dependencies (codegen_common)
+COMMON_DIR = ..
+COMMON_OBJ = $(BUILD_DIR)/codegen_common.o
 
 # Default target
-all: $(BUILD_DIR) $(REACT_COMMON_OBJ) $(STATIC_LIB) $(SHARED_LIB)
+all: $(BUILD_DIR) $(COMMON_OBJ) $(STATIC_LIB) $(SHARED_LIB)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Ensure react_common is built
-$(REACT_COMMON_OBJ):
-	cd $(REACT_COMMON_DIR) && $(MAKE) react_common.o
+# Ensure codegen_common is built
+$(COMMON_OBJ): $(COMMON_DIR)/codegen_common.c $(COMMON_DIR)/codegen_common.h
+	$(CC) $(CFLAGS) -I../../ir -I$(CJSON_DIR) -I$(COMMON_DIR) -c $(COMMON_DIR)/codegen_common.c -o $(COMMON_OBJ)
 
 # Compile object file
 tsx_codegen.o: tsx_codegen.c tsx_codegen.h
-	$(CC) $(CFLAGS) -I../../ir -I$(CJSON_DIR) -I$(REACT_COMMON_DIR) -c tsx_codegen.c -o tsx_codegen.o
+	$(CC) $(CFLAGS) -I../../ir -I$(CJSON_DIR) -I$(COMMON_DIR) -c tsx_codegen.c -o tsx_codegen.o
 
 # Create static library
-$(STATIC_LIB): tsx_codegen.o $(REACT_COMMON_OBJ)
-	$(AR) $(ARFLAGS) $@ tsx_codegen.o $(REACT_COMMON_OBJ)
+$(STATIC_LIB): tsx_codegen.o $(COMMON_OBJ)
+	$(AR) $(ARFLAGS) $@ tsx_codegen.o $(COMMON_OBJ)
 
 # Create shared library
-$(SHARED_LIB): tsx_codegen.o $(REACT_COMMON_OBJ)
-	$(CC) $(CFLAGS) -shared -o $@ tsx_codegen.o $(REACT_COMMON_OBJ)
+$(SHARED_LIB): tsx_codegen.o $(COMMON_OBJ)
+	$(CC) $(CFLAGS) -shared -o $@ tsx_codegen.o $(COMMON_OBJ)
 
 # Clean
 clean:

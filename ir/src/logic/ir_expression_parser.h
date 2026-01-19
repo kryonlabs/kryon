@@ -19,7 +19,7 @@
 #ifndef IR_EXPRESSION_PARSER_H
 #define IR_EXPRESSION_PARSER_H
 
-#include "../include/ir_expression.h"
+#include "ir_expression.h"
 
 #ifdef __cplusplus
 extern "C" {

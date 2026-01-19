@@ -2,8 +2,8 @@
 #define IR_CSS_STYLESHEET_H
 
 #include "css_parser.h"
-#include "../../ir_core.h"
-#include "../../ir_stylesheet.h"
+#include "../include/ir_core.h"
+#include "../../include/ir_style.h"
 #include <stdbool.h>
 #include <stdint.h>
 

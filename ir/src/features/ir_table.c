@@ -2,9 +2,9 @@
 // Table component implementation extracted from ir_builder.c
 
 #define _GNU_SOURCE
-#include "../features/ir_table.h"
+#include "ir_table.h"
 #include "../include/ir_builder.h"
-#include "../include/ir_color_utils.h"
+#include "../utils/ir_color_utils.h"
 #include "../include/ir_component_factory.h"
 #include "../utils/ir_memory.h"
 

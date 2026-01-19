@@ -1,7 +1,7 @@
 // IR Animation System - Foundation for animations
 // Provides timing, easing, and animation state management
 
-#include "../include/ir_animation.h"
+#include "ir_animation.h"
 #include "../include/ir_core.h"
 #include "../include/ir_builder.h"
 #include <stdlib.h>

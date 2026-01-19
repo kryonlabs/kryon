@@ -2,7 +2,7 @@
 // Module reference management functions extracted from ir_builder.c
 
 #define _GNU_SOURCE
-#include "../include/ir_module_refs.h"
+#include "ir_module_refs.h"
 #include "../utils/ir_memory.h"
 
 #include <stdio.h>

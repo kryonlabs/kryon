@@ -1,6 +1,6 @@
-#include "../include/ir_validation.h"
+#include "ir_validation.h"
 #include "../include/ir_builder.h"
-#include "../include/ir_buffer.h"
+#include "../utils/ir_buffer.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

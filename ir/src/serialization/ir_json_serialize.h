@@ -1,7 +1,7 @@
 #ifndef IR_JSON_SERIALIZE_H
 #define IR_JSON_SERIALIZE_H
 
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 #include "cJSON.h"
 
 // Forward declarations

@@ -7,14 +7,14 @@
  */
 
 #define _GNU_SOURCE
-#include "../include/ir_json_serialize.h"
-#include "../include/ir_json_context.h"
+#include "ir_json_serialize.h"
+#include "ir_json_context.h"
 #include "../include/ir_core.h"
 #include "../include/ir_builder.h"
 #include "../include/ir_logic.h"
-#include "../include/ir_stylesheet.h"
-#include "ir_foreach.h"
-#include "../include/ir_c_metadata.h"
+#include "../style/ir_stylesheet.h"
+#include "../logic/ir_foreach.h"
+#include "../utils/ir_c_metadata.h"
 #include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>

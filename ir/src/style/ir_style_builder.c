@@ -5,7 +5,7 @@
 #include "ir_style_builder.h"
 #include "../include/ir_builder.h"
 #include "../utils/ir_memory.h"
-#include "../include/ir_animation.h"
+#include "ir_animation.h"
 
 #include <stdio.h>
 #include <stdlib.h>

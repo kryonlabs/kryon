@@ -13,7 +13,7 @@
 #include "sdl3_renderer.h"
 #include "../../desktop_internal.h"
 #include <ir_executor.h>
-#include <ir_state_manager.h>
+#include "../../ir/include/ir_state.h"
 #include <ir_builder.h>
 #include <stdio.h>
 #include <string.h>

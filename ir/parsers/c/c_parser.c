@@ -6,9 +6,9 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "c_parser.h"
-#include "../../ir_serialization.h"
+#include "../include/ir_serialization.h"
 #include "../../../bindings/c/kryon.h"
-#include "../../ir_c_metadata.h"
+#include "../../src/utils/ir_c_metadata.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

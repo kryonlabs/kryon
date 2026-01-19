@@ -7,7 +7,7 @@
 
 #include "kry_parser.h"
 #include "kry_ast.h"
-#include "../../ir_serialization.h"
+#include "../include/ir_serialization.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -217,7 +217,14 @@ KryNode* kry_node_create(KryParser* parser, KryNodeType type) {
     node->value = NULL;
     node->is_component_definition = false;
     node->arguments = NULL;
+    node->var_type = NULL;
+    node->state_type = NULL;
     node->else_branch = NULL;
+    node->code_language = NULL;
+    node->code_source = NULL;
+    node->decorator_type = NULL;
+    node->decorator_target = NULL;
+    node->decorator_args = NULL;
     node->line = parser->line;
     node->column = parser->column;
 
@@ -306,6 +313,29 @@ KryValue* kry_value_create_object(KryParser* parser, char** keys, KryValue** val
     value->object.count = count;
     value->is_percentage = false;
     return value;
+}
+
+// ============================================================================
+// Code Block and Decorator Creation
+// ============================================================================
+
+KryNode* kry_node_create_code_block(KryParser* parser, const char* language, const char* source) {
+    KryNode* node = kry_node_create(parser, KRY_NODE_CODE_BLOCK);
+    if (!node) return NULL;
+
+    node->code_language = kry_strdup(parser, language);
+    node->code_source = kry_strdup(parser, source);
+    return node;
+}
+
+KryNode* kry_node_create_decorator(KryParser* parser, const char* type, const char* target, const char* args) {
+    KryNode* node = kry_node_create(parser, KRY_NODE_DECORATOR);
+    if (!node) return NULL;
+
+    node->decorator_type = kry_strdup(parser, type);
+    node->decorator_target = target ? kry_strdup(parser, target) : NULL;
+    node->decorator_args = args ? kry_strdup(parser, args) : NULL;
+    return node;
 }
 
 // ============================================================================
@@ -914,6 +944,153 @@ static KryNode* parse_static_block(KryParser* p) {
     return static_node;
 }
 
+// Parse code block: @lua { ... }, @js { ... }, @universal { ... }
+static KryNode* parse_code_block(KryParser* p, const char* language) {
+    skip_whitespace(p);
+
+    // Expect opening brace
+    if (!match(p, '{')) {
+        kry_parser_error(p, "Expected '{' after code block declaration");
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Collect source code until closing brace
+    size_t start = p->pos;
+    int brace_count = 1;
+    bool in_string = false;
+    char string_char = '\0';
+
+    while (peek(p) != '\0' && brace_count > 0) {
+        char c = peek(p);
+
+        // Handle string literals to avoid counting braces inside strings
+        if ((c == '"' || c == '\'' || c == '`') && !in_string) {
+            in_string = true;
+            string_char = c;
+            advance(p);
+            continue;
+        }
+
+        if (in_string) {
+            if (c == string_char) {
+                // Check for escape character
+                if (p->pos > 0 && p->source[p->pos - 1] != '\\') {
+                    in_string = false;
+                }
+            }
+            advance(p);
+            continue;
+        }
+
+        // Count braces (only when not in string)
+        if (c == '{') {
+            brace_count++;
+        } else if (c == '}') {
+            brace_count--;
+        }
+
+        advance(p);
+    }
+
+    if (brace_count > 0) {
+        kry_parser_error(p, "Unclosed code block - missing '}'");
+        return NULL;
+    }
+
+    // Extract source code (without braces)
+    size_t end = p->pos - 1;  // -1 to exclude closing brace
+    char* source = kry_strndup(p, p->source + start, end - start);
+
+    // Trim leading and trailing whitespace from source
+    char* trimmed = source;
+    while (*trimmed == ' ' || *trimmed == '\t' || *trimmed == '\n' || *trimmed == '\r') {
+        trimmed++;
+    }
+
+    char* end_trim = trimmed + strlen(trimmed) - 1;
+    while (end_trim > trimmed && (*end_trim == ' ' || *end_trim == '\t' ||
+           *end_trim == '\n' || *end_trim == '\r')) {
+        *end_trim = '\0';
+        end_trim--;
+    }
+
+    // Create code block node
+    KryNode* code_node = kry_node_create_code_block(p, language, trimmed);
+    if (!code_node) return NULL;
+
+    fprintf(stderr, "[KRY_PARSE] Parsed code block: language='%s', source_length=%zu\n",
+            language, strlen(trimmed));
+    fflush(stderr);
+
+    return code_node;
+}
+
+// Parse decorator: @reactive, @computed, @action, @watch(path), @context, @use(path)
+static KryNode* parse_decorator(KryParser* p, const char* decorator_name) {
+    skip_whitespace(p);
+
+    // Check if decorator has arguments (e.g., @watch("state.habits"))
+    char* args = NULL;
+    if (peek(p) == '(') {
+        advance(p);  // Skip '('
+
+        skip_whitespace(p);
+
+        // Parse arguments until closing paren
+        size_t start = p->pos;
+        int paren_count = 1;
+        bool in_string = false;
+        char string_char = '\0';
+
+        while (peek(p) != '\0' && paren_count > 0) {
+            char c = peek(p);
+
+            // Handle string literals
+            if ((c == '"' || c == '\'' || c == '`') && !in_string) {
+                in_string = true;
+                string_char = c;
+                advance(p);
+                continue;
+            }
+
+            if (in_string) {
+                if (c == string_char) {
+                    if (p->pos > 0 && p->source[p->pos - 1] != '\\') {
+                        in_string = false;
+                    }
+                }
+                advance(p);
+                continue;
+            }
+
+            if (c == '(') paren_count++;
+            if (c == ')') paren_count--;
+
+            advance(p);
+        }
+
+        if (paren_count > 0) {
+            kry_parser_error(p, "Unclosed decorator arguments - missing ')'");
+            return NULL;
+        }
+
+        // Extract arguments (without parentheses)
+        args = kry_strndup(p, p->source + start, (p->pos - 1) - start);
+    }
+
+    // Create decorator node
+    KryNode* decorator_node = kry_node_create_decorator(p, decorator_name, NULL, args);
+    if (!decorator_node) return NULL;
+
+    fprintf(stderr, "[KRY_PARSE] Parsed decorator: type='%s', args='%s'\n",
+            decorator_name, args ? args : "(null)");
+    fflush(stderr);
+
+    return decorator_node;
+}
+
 // Parse for loop: for item in collection { ... }
 static KryNode* parse_for_loop(KryParser* p) {
     skip_whitespace(p);
@@ -1063,6 +1240,52 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
         skip_whitespace(p);
 
         if (peek(p) == '}') break;
+
+        // Check for @ symbols (code blocks and decorators)
+        if (peek(p) == '@') {
+            advance(p);  // Consume '@'
+
+            // Parse the identifier after @
+            if (!isalpha(peek(p)) && peek(p) != '_') {
+                kry_parser_error(p, "Expected identifier after '@'");
+                return NULL;
+            }
+
+            char* at_name = parse_identifier(p);
+            if (!at_name) return NULL;
+
+            skip_whitespace(p);
+
+            // Check for code blocks (@lua, @js, @universal)
+            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js") ||
+                keyword_match(at_name, "universal")) {
+
+                if (peek(p) == '{') {
+                    // It's a code block
+                    KryNode* code_block = parse_code_block(p, at_name);
+                    if (!code_block) return NULL;
+                    kry_node_append_child(component, code_block);
+                } else {
+                    kry_parser_error(p, "Expected '{' after @lua/@js/@universal");
+                    return NULL;
+                }
+            }
+            // Check for decorators (@reactive, @computed, @action, @watch, @context, @use)
+            else if (keyword_match(at_name, "reactive") || keyword_match(at_name, "computed") ||
+                     keyword_match(at_name, "action") || keyword_match(at_name, "watch") ||
+                     keyword_match(at_name, "context") || keyword_match(at_name, "use")) {
+
+                KryNode* decorator = parse_decorator(p, at_name);
+                if (!decorator) return NULL;
+                kry_node_append_child(component, decorator);
+            } else {
+                kry_parser_error(p, "Unknown @ directive - expected @lua, @js, @universal, or decorator");
+                return NULL;
+            }
+
+            skip_whitespace(p);
+            continue;
+        }
 
         // Parse identifier
         if (!isalpha(peek(p)) && peek(p) != '_') {
@@ -1280,9 +1503,59 @@ KryNode* kry_parse(KryParser* parser) {
         skip_whitespace(parser);
         if (peek(parser) == '\0') break;
 
+        // Check for @ symbols (code blocks and decorators) at top level
+        if (peek(parser) == '@') {
+            advance(parser);  // Consume '@'
+
+            // Parse the identifier after @
+            if (!isalpha(peek(parser)) && peek(parser) != '_') {
+                kry_parser_error(parser, "Expected identifier after '@'");
+                break;
+            }
+
+            char* at_name = parse_identifier(parser);
+            if (!at_name) break;
+
+            skip_whitespace(parser);
+
+            KryNode* at_node = NULL;
+
+            // Check for code blocks (@lua, @js, @universal)
+            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js") ||
+                keyword_match(at_name, "universal")) {
+
+                if (peek(parser) == '{') {
+                    at_node = parse_code_block(parser, at_name);
+                } else {
+                    kry_parser_error(parser, "Expected '{' after @lua/@js/@universal");
+                    break;
+                }
+            }
+            // Check for decorators (@reactive, @computed, @action, @watch, @context, @use)
+            else if (keyword_match(at_name, "reactive") || keyword_match(at_name, "computed") ||
+                     keyword_match(at_name, "action") || keyword_match(at_name, "watch") ||
+                     keyword_match(at_name, "context") || keyword_match(at_name, "use")) {
+
+                at_node = parse_decorator(parser, at_name);
+            } else {
+                kry_parser_error(parser, "Unknown @ directive - expected @lua, @js, @universal, or decorator");
+                break;
+            }
+
+            if (!at_node) break;
+
+            // Add to root
+            kry_node_append_child(parser->root, at_node);
+
+            fprintf(stderr, "[KRY_PARSE] Added top-level @ node: type='%s'\n", at_name);
+            fflush(stderr);
+
+            continue;
+        }
+
         // Check if next character can start a declaration or component (alpha or _)
         if (!isalpha(peek(parser)) && peek(parser) != '_') {
-            // Hit something that's not valid (e.g., @c block)
+            // Hit something that's not valid
             // Stop parsing top-level declarations
             break;
         }

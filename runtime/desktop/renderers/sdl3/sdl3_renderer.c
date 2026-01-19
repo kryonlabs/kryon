@@ -12,7 +12,7 @@
 #include "../../ir_to_commands.h"
 #include <sdl3.h>
 #include <ir_core.h>
-#include <ir_state_manager.h>
+#include "../../ir/include/ir_state.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

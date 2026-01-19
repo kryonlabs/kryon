@@ -6,7 +6,7 @@
  */
 
 #include "markdown_ast.h"
-#include "../../ir_core.h"
+#include "../include/ir_core.h"
 #include <stdlib.h>
 #include <string.h>
 

@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/ir_properties.h"
+#include "ir_properties.h"
 
 // Forward declarations
 typedef struct IRComponent IRComponent;

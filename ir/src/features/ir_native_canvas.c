@@ -1,4 +1,4 @@
-#include "../include/ir_native_canvas.h"
+#include "ir_native_canvas.h"
 #include "../include/ir_builder.h"
 #include <stdlib.h>
 #include <string.h>

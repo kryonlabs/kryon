@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 // Include core IR header which defines all necessary types
-#include "../include/ir_core.h"
+#include "ir_core.h"
 
 // ============================================================================
 // Style Creation and Destruction

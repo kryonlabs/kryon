@@ -6,7 +6,7 @@
 #ifndef PLAN9
 #define _GNU_SOURCE
 #endif
-#include "../include/ir_log.h"
+#include "ir_log.h"
 #include "../include/ir_platform.h"
 #include <stdarg.h>
 

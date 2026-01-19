@@ -1,8 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include "html_to_ir.h"
-#include "../../ir_builder.h"
+#include "../include/ir_builder.h"
 #include "css_parser.h"
-#include "../../ir_serialization.h"  // For ir_string_to_component_type
+#include "../include/ir_serialization.h"  // For ir_string_to_component_type
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

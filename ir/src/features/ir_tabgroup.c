@@ -3,7 +3,7 @@
  */
 
 #define _GNU_SOURCE
-#include "../features/ir_tabgroup.h"
+#include "ir_tabgroup.h"
 #include "../include/ir_core.h"
 #include "../utils/ir_memory.h"
 #include "../include/ir_builder.h"  // For mark_style_dirty, ir_create_style, ir_set_style, ir_set_background_color, ir_set_font, etc.

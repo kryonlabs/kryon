@@ -4,7 +4,7 @@
  */
 
 #define _GNU_SOURCE
-#include "../include/ir_json_context.h"
+#include "ir_json_context.h"
 #include <stdlib.h>
 #include <string.h>
 

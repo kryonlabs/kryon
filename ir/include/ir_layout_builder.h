@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "../include/ir_core.h"
+#include "ir_core.h"
 
 // ============================================================================
 // Layout Management

@@ -4,7 +4,7 @@
  */
 
 #define _GNU_SOURCE
-#include "../include/ir_color_utils.h"
+#include "../utils/ir_color_utils.h"
 #include "../include/ir_style.h"
 #include <string.h>
 #include <ctype.h>

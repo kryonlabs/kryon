@@ -1,8 +1,8 @@
 #ifndef IR_KRB_H
 #define IR_KRB_H
 
-#include "../include/ir_core.h"
-#include "../include/ir_logic.h"
+#include "../../include/ir_core.h"
+#include "../../include/ir_logic.h"
 #include <stdint.h>
 #include <stdbool.h>
 

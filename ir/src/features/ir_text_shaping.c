@@ -5,14 +5,15 @@
 
 #define _POSIX_C_SOURCE 200809L
 
-#include "../include/ir_text_shaping.h"
-#include "../include/ir_log.h"
+#include "ir_text_shaping.h"
+#include "ir_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 // HarfBuzz headers
 #include <hb.h>
+#include <hb-ft.h>
 #include <hb-ft.h>
 
 // FreeType headers (used by HarfBuzz)

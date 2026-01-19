@@ -1,7 +1,7 @@
 #ifndef IR_COMPONENT_DROPDOWN_H
 #define IR_COMPONENT_DROPDOWN_H
 
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 #include "registry.h"
 
 // Dropdown layout function
