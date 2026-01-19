@@ -14,7 +14,7 @@ OBJECTS = $(SOURCES:.c=.o)
 TARGET = libkryon_common.a
 
 # Default target
-all: $(TARGET)
+all: $(TARGET) install
 
 $(TARGET): $(OBJECTS)
 	@echo "Creating static library: $(TARGET)"

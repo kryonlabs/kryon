@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #31860 | 2:36 PM | 🔵 | KRYON Framework Expression Transpiler Implementation Status | ~326 |
 | #31799 | 2:24 PM | ✅ | Makefile Updated to Include Expression Parser | ~170 |
 | #31751 | 2:17 PM | 🔵 | Discovered kry_universal.c still referenced in PARSER_SOURCES of Makefile | ~43 |
 | #31722 | 2:14 PM | 🔄 | Removed all @universal decorator infrastructure from KRY framework | ~210 |

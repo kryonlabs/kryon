@@ -695,8 +695,9 @@ static KryExprNode* parse_primary(ParserContext* ctx) {
     // Identifier
     if (isalpha(ch) || ch == '_' || ch == '$') {
         size_t start = ctx->pos;
-        while (is_identifier_char(peek(ctx))) {
-            consume(ctx);
+        // Don't use peek() here as it skips whitespace and modifies position
+        while (ctx->pos < ctx->length && is_identifier_char(ctx->input[ctx->pos])) {
+            ctx->pos++;
         }
         size_t len = ctx->pos - start;
 

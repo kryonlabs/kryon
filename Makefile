@@ -5,8 +5,31 @@
 # Author: Generated from build system improvement plan
 # Date: 2026-01-19
 
-# Load shared configuration
-include build/config.mk
+# ============================================================================
+# Configuration
+# ============================================================================
+
+# Build directories
+BUILD_DIR ?= build
+PREFIX ?= $(HOME)/.local
+
+# Module directories
+CLI_DIR = cli
+IR_DIR = ir
+CODEGENS_DIR = codegens
+RENDERERS_DIR = renderers
+RUNTIME_DIR = runtime
+TESTS_DIR = tests
+
+# Installation directories
+BINDIR = $(PREFIX)/bin
+LIBDIR = $(PREFIX)/lib
+INCLUDEDIR = $(PREFIX)/include/kryon
+PKGCONFIGDIR = $(PREFIX)/lib/pkgconfig
+
+# Library extensions
+STATIC_LIB_EXT = .a
+SHARED_LIB_EXT = .so
 
 # Default target
 all: cli ir codegens runtime
@@ -29,6 +52,11 @@ help:
 	@echo "  VARIANT=terminal  - Terminal-only CLI (no SDL3)"
 	@echo "  VARIANT=web       - Web-only CLI (no SDL3)"
 	@echo "  VARIANT=desktop  - Full CLI with SDL3 (default)"
+	@echo ""
+	@echo "Installation:"
+	@echo "  PREFIX=/path   - Installation prefix (default: ~/.local)"
+	@echo "  Example: make PREFIX=/usr/local install"
+	@echo "  Example: make install  (installs to ~/.local)"
 	@echo ""
 	@echo "Development:"
 	@echo "  test         - Run test suite"
@@ -53,18 +81,26 @@ $(BUILD_DIR)/libkryon_ir$(STATIC_LIB_EXT):
 	@$(MAKE) -C $(IR_DIR) static
 	@echo "✓ Built IR library"
 
-# Code generators (C, Lua, Kry, TypeScript, Markdown, etc.)
+# Code generators (C, Lua, Kry, Kotlin, TypeScript, Markdown, etc.)
 codegens: ir
 	@echo "Building code generators..."
 	@$(MAKE) -C $(CODEGENS_DIR)/c all
 	@$(MAKE) -C $(CODEGENS_DIR)/lua all
 	@$(MAKE) -C $(CODEGENS_DIR)/kry all
+	@$(MAKE) -C $(CODEGENS_DIR)/kotlin all
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
 	@$(MAKE) -C $(CODEGENS_DIR)/tsx all
 	@echo "✓ Built code generators"
 
 # Runtime backends (desktop rendering, terminal, etc.)
-runtime: ir renderers
+runtime: ir
+	@echo "Building rendering systems..."
+	@if [ -d $(RENDERERS_DIR)/common ]; then \
+		$(MAKE) -C $(RENDERERS_DIR)/common all; \
+	fi
+	@if [ -d $(RENDERERS_DIR)/sdl3 ]; then \
+		$(MAKE) -C $(RENDERERS_DIR)/sdl3 all; \
+	fi
 	@echo "Building runtime backends..."
 	@if [ -d $(RUNTIME_DIR)/desktop ]; then \
 		$(MAKE) -C $(RUNTIME_DIR)/desktop all; \
@@ -93,6 +129,7 @@ clean:
 	@$(MAKE) -C $(CODEGENS_DIR)/c clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/lua clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/kry clean || true
+	@$(MAKE) -C $(CODEGENS_DIR)/kotlin clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/tsx clean || true
 	@if [ -d $(RUNTIME_DIR)/desktop ]; then \

@@ -2383,10 +2383,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                         ir_logic_block_add_function(ctx->logic_block, func);
                     }
                 }
-            } else if (child->type == KRY_NODE_DECORATOR) {
-                // Decorators are no longer supported
-                printf("[KRY_TO_IR] Ignoring decorator: %s (decorator system removed)\n",
-                       child->decorator_type ? child->decorator_type : "(unknown)");
             }
 
             child = child->next_sibling;
@@ -3184,57 +3180,6 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     // Add function to logic block
                     ir_logic_block_add_function(result.logic_block, func);
                 }
-            } else if (code_node->type == KRY_NODE_DECORATOR) {
-                // Process top-level decorators (@reactive, @computed, @action, @watch)
-                // The reactive manifest is stored in the IRContext, not ConversionContext
-                fprintf(stderr, "[CODE_BLOCKS] Processing top-level decorator: type='%s'\n",
-                       code_node->decorator_type ? code_node->decorator_type : "(null)");
-                fflush(stderr);
-
-                // Access the reactive manifest from the IR context
-                if (!ir_ctx->reactive_manifest) {
-                    ir_ctx->reactive_manifest = ir_reactive_manifest_create();
-                }
-
-                // Process the decorator
-                if (strcmp(code_node->decorator_type, "reactive") == 0) {
-                    fprintf(stderr, "[CODE_BLOCKS] @reactive decorator (not yet implemented)\n");
-                } else if (strcmp(code_node->decorator_type, "computed") == 0) {
-                    if (code_node->decorator_target) {
-                        uint32_t computed_id = ir_reactive_manifest_add_computed(
-                            ir_ctx->reactive_manifest,
-                            code_node->decorator_target,
-                            code_node->decorator_target,
-                            NULL, 0
-                        );
-                        fprintf(stderr, "[CODE_BLOCKS] Created computed property '%s' with ID %u\n",
-                               code_node->decorator_target, computed_id);
-                    }
-                } else if (strcmp(code_node->decorator_type, "action") == 0) {
-                    if (code_node->decorator_target) {
-                        uint32_t action_id = ir_reactive_manifest_add_action(
-                            ir_ctx->reactive_manifest,
-                            code_node->decorator_target,
-                            code_node->decorator_target,
-                            true, true
-                        );
-                        fprintf(stderr, "[CODE_BLOCKS] Created action '%s' with ID %u\n",
-                               code_node->decorator_target, action_id);
-                    }
-                } else if (strcmp(code_node->decorator_type, "watch") == 0) {
-                    if (code_node->decorator_args && code_node->decorator_target) {
-                        uint32_t watcher_id = ir_reactive_manifest_add_watcher(
-                            ir_ctx->reactive_manifest,
-                            code_node->decorator_args,
-                            code_node->decorator_target,
-                            IR_WATCH_SHALLOW,
-                            false
-                        );
-                        fprintf(stderr, "[CODE_BLOCKS] Created watcher for '%s' with ID %u\n",
-                               code_node->decorator_args, watcher_id);
-                    }
-                }
-                fflush(stderr);
             }
             code_node = code_node->next_sibling;
         }

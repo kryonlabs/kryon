@@ -60,8 +60,8 @@ SRCS = $(SRC_DIR)/main.c \
 # Object files
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
-# Object files for linking (exclude toml_parser.o to avoid conflicts with tomlc99)
-OBJS_LINK = $(filter-out $(BUILD_DIR)/config/toml_parser.o,$(OBJS))
+# Object files for linking (include all OBJS now that TOML functions are renamed)
+OBJS_LINK = $(OBJS)
 
 # Target binary
 TARGET = kryon

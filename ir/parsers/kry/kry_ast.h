@@ -34,8 +34,7 @@ typedef enum {
     KRY_NODE_FOR_EACH,          // For each loop (for each item in collection { ... }) - runtime ForEach
     KRY_NODE_IF,                // If/else conditional (if condition { ... } else { ... })
     KRY_NODE_STYLE_BLOCK,       // Style block (style selector { property = value; })
-    KRY_NODE_CODE_BLOCK,        // Platform-specific code block (@lua, @js)
-    KRY_NODE_DECORATOR          // Decorator (@reactive, @computed, @action, @watch, @context, @use)
+    KRY_NODE_CODE_BLOCK         // Platform-specific code block (@lua, @js)
 } KryNodeType;
 
 // ============================================================================
@@ -111,11 +110,6 @@ struct KryNode {
     // Code block support (for KRY_NODE_CODE_BLOCK)
     char* code_language;        // "lua", "js"
     char* code_source;          // Source code content
-
-    // Decorator support (for KRY_NODE_DECORATOR)
-    char* decorator_type;       // "reactive", "computed", "action", "watch", "context", "use"
-    char* decorator_target;     // Target expression (e.g., "state.habits" for @watch, or context path for @use)
-    char* decorator_args;       // Arguments for the decorator
 
     // Source location (for error messages)
     uint32_t line;
@@ -198,7 +192,6 @@ void kry_parser_error(KryParser* parser, const char* message);
 KryNode* kry_node_create_code_block(KryParser* parser, const char* language, const char* source);
 
 // Decorator creation
-KryNode* kry_node_create_decorator(KryParser* parser, const char* type, const char* target, const char* args);
 
 #ifdef __cplusplus
 }
