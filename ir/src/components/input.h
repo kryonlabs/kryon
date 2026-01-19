@@ -2,7 +2,7 @@
 #define IR_COMPONENT_INPUT_H
 
 #include "../include/ir_core.h"
-#include "../include/ir_component_registry.h"
+#include "registry.h"
 
 #ifdef __cplusplus
 extern "C" {

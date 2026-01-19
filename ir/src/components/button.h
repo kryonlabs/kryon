@@ -2,7 +2,7 @@
 #define IR_COMPONENT_BUTTON_H
 
 #include "../include/ir_core.h"
-#include "../include/ir_component_registry.h"
+#include "registry.h"
 
 /**
  * Button Component - Single-Pass Layout

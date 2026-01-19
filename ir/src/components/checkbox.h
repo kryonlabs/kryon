@@ -2,7 +2,7 @@
 #define IR_COMPONENT_CHECKBOX_H
 
 #include "../include/ir_core.h"
-#include "../include/ir_component_registry.h"
+#include "registry.h"
 
 // Checkbox layout function
 void layout_checkbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
