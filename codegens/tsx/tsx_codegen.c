@@ -5,7 +5,7 @@
 
 #include "tsx_codegen.h"
 #include "../codegen_common.h"
-#include "codegen_common.h"
+// #include "codegen_common.h" - use ../codegen_common.h instead
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>

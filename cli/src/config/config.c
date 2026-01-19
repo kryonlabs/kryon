@@ -93,7 +93,7 @@ static KryonConfig* config_create_default(void) {
 static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
     // Get all plugin names from TOML
     int plugin_count = 0;
-    char** plugin_names = toml_get_plugin_names(toml, &plugin_count);
+    char** plugin_names = kryon_toml_get_plugin_names(toml, &plugin_count);
 
     if (!plugin_names || plugin_count == 0) {
         config->plugins_count = 0;
@@ -128,7 +128,7 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
 
         // Get path (optional if git is specified)
         snprintf(key, sizeof(key), "plugins.%s.path", plugin_name);
-        const char* path = toml_get_string(toml, key, NULL);
+        const char* path = kryon_toml_get_string(toml, key, NULL);
         if (path) {
             plugin->path = str_copy(path);
         } else {
@@ -137,7 +137,7 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
 
         // Get git URL (optional)
         snprintf(key, sizeof(key), "plugins.%s.git", plugin_name);
-        const char* git = toml_get_string(toml, key, NULL);
+        const char* git = kryon_toml_get_string(toml, key, NULL);
         if (git) {
             plugin->git = str_copy(git);
         } else {
@@ -146,12 +146,12 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
 
         // Get git branch (optional, defaults to "master")
         snprintf(key, sizeof(key), "plugins.%s.branch", plugin_name);
-        const char* branch = toml_get_string(toml, key, "master");
+        const char* branch = kryon_toml_get_string(toml, key, "master");
         plugin->branch = str_copy(branch);
 
         // Get git subdir (optional, for sparse checkout)
         snprintf(key, sizeof(key), "plugins.%s.subdir", plugin_name);
-        const char* subdir = toml_get_string(toml, key, NULL);
+        const char* subdir = kryon_toml_get_string(toml, key, NULL);
         if (subdir) {
             plugin->subdir = str_copy(subdir);
         } else {
@@ -160,7 +160,7 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
 
         // Get version (optional)
         snprintf(key, sizeof(key), "plugins.%s.version", plugin_name);
-        const char* version = toml_get_string(toml, key, NULL);
+        const char* version = kryon_toml_get_string(toml, key, NULL);
         if (version) {
             plugin->version = str_copy(version);
         } else {
@@ -169,7 +169,7 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
 
         // Get enabled flag (optional, default: true)
         snprintf(key, sizeof(key), "plugins.%s.enabled", plugin_name);
-        plugin->enabled = toml_get_bool(toml, key, true);
+        plugin->enabled = kryon_toml_get_bool(toml, key, true);
 
         // Resolved path will be set later
         plugin->resolved_path = NULL;
@@ -187,9 +187,9 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
  */
 static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
     // Only parse install section if it exists
-    if (!toml_get_string(toml, "install.mode", NULL) &&
-        !toml_get_string(toml, "install.binary.path", NULL) &&
-        !toml_get_string(toml, "install.binary.name", NULL)) {
+    if (!kryon_toml_get_string(toml, "install.mode", NULL) &&
+        !kryon_toml_get_string(toml, "install.binary.path", NULL) &&
+        !kryon_toml_get_string(toml, "install.binary.name", NULL)) {
         config->install = NULL;
         return;
     }
@@ -201,7 +201,7 @@ static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
     }
 
     // Parse install.mode (default: symlink)
-    const char* mode_str = toml_get_string(toml, "install.mode", "symlink");
+    const char* mode_str = kryon_toml_get_string(toml, "install.mode", "symlink");
     if (strcmp(mode_str, "copy") == 0) {
         install->mode = INSTALL_MODE_COPY;
     } else if (strcmp(mode_str, "system") == 0) {
@@ -211,7 +211,7 @@ static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
     }
 
     // Parse install.target (optional, NULL for auto-detect)
-    const char* target_str = toml_get_string(toml, "install.target", NULL);
+    const char* target_str = kryon_toml_get_string(toml, "install.target", NULL);
     if (target_str) {
         install->target = str_copy(target_str);
     } else {
@@ -219,15 +219,15 @@ static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
     }
 
     // Parse install.binary.path (default: $HOME/bin)
-    const char* binary_path = toml_get_string(toml, "install.binary.path", "$HOME/bin");
+    const char* binary_path = kryon_toml_get_string(toml, "install.binary.path", "$HOME/bin");
     install->binary_path = str_copy(binary_path);
 
     // Parse install.binary.name (default: project.name)
-    const char* binary_name = toml_get_string(toml, "install.binary.name", config->project_name);
+    const char* binary_name = kryon_toml_get_string(toml, "install.binary.name", config->project_name);
     install->binary_name = str_copy(binary_name);
 
     // Parse install.binary.executable (default: true)
-    install->binary_executable = toml_get_bool(toml, "install.binary.executable", true);
+    install->binary_executable = kryon_toml_get_bool(toml, "install.binary.executable", true);
 
     // Parse [[install.files]] array
     // Count files first
@@ -235,7 +235,7 @@ static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
     for (int i = 0; i < 100; i++) {  // max 100 files
         char key[256];
         snprintf(key, sizeof(key), "install.files.%d.source", i);
-        if (toml_get_string(toml, key, NULL)) {
+        if (kryon_toml_get_string(toml, key, NULL)) {
             file_count++;
         } else {
             break;
@@ -249,13 +249,13 @@ static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
             for (int i = 0; i < file_count; i++) {
                 char key[256];
                 snprintf(key, sizeof(key), "install.files.%d.source", i);
-                const char* source = toml_get_string(toml, key, NULL);
+                const char* source = kryon_toml_get_string(toml, key, NULL);
                 if (source) {
                     install->files[i].source = str_copy(source);
                 }
 
                 snprintf(key, sizeof(key), "install.files.%d.target", i);
-                const char* target = toml_get_string(toml, key, NULL);
+                const char* target = kryon_toml_get_string(toml, key, NULL);
                 if (target) {
                     install->files[i].target = str_copy(target);
                 }
@@ -264,11 +264,11 @@ static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
     }
 
     // Parse install.desktop section
-    install->desktop.enabled = toml_get_bool(toml, "install.desktop.enabled", false);
-    const char* desktop_name = toml_get_string(toml, "install.desktop.name", config->project_name);
+    install->desktop.enabled = kryon_toml_get_bool(toml, "install.desktop.enabled", false);
+    const char* desktop_name = kryon_toml_get_string(toml, "install.desktop.name", config->project_name);
     install->desktop.name = str_copy(desktop_name);
 
-    const char* desktop_icon = toml_get_string(toml, "install.desktop.icon", NULL);
+    const char* desktop_icon = kryon_toml_get_string(toml, "install.desktop.icon", NULL);
     if (desktop_icon) {
         install->desktop.icon = str_copy(desktop_icon);
     }
@@ -278,7 +278,7 @@ static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
     for (int i = 0; i < 20; i++) {  // max 20 categories
         char key[256];
         snprintf(key, sizeof(key), "install.desktop.categories.%d", i);
-        if (toml_get_string(toml, key, NULL)) {
+        if (kryon_toml_get_string(toml, key, NULL)) {
             category_count++;
         } else {
             break;
@@ -292,7 +292,7 @@ static void config_parse_install(KryonConfig* config, TOMLTable* toml) {
             for (int i = 0; i < category_count; i++) {
                 char key[256];
                 snprintf(key, sizeof(key), "install.desktop.categories.%d", i);
-                const char* category = toml_get_string(toml, key, NULL);
+                const char* category = kryon_toml_get_string(toml, key, NULL);
                 if (category) {
                     install->desktop.categories[i] = str_copy(category);
                 }
@@ -311,7 +311,7 @@ KryonConfig* config_load(const char* config_path) {
         return NULL;
     }
 
-    TOMLTable* toml = toml_parse_file(config_path);
+    TOMLTable* toml = kryon_toml_parse_file(config_path);
     if (!toml) {
         return NULL;
     }
@@ -319,39 +319,39 @@ KryonConfig* config_load(const char* config_path) {
     // Check for deprecated field names and show clear errors
     bool has_deprecated = false;
 
-    if (toml_get_string(toml, "build.entry_point", NULL)) {
+    if (kryon_toml_get_string(toml, "build.entry_point", NULL)) {
         fprintf(stderr, "Error: Invalid field 'entry_point' in [build]\n");
         fprintf(stderr, "       Use 'entry' instead\n");
         has_deprecated = true;
     }
 
-    if (toml_get_string(toml, "build.target", NULL)) {
+    if (kryon_toml_get_string(toml, "build.target", NULL)) {
         fprintf(stderr, "Error: Invalid field 'target' in [build]\n");
         fprintf(stderr, "       Use 'targets' (array) instead: targets = [\"web\"]\n");
         has_deprecated = true;
     }
 
-    if (toml_get_string(toml, "project.entry", NULL)) {
+    if (kryon_toml_get_string(toml, "project.entry", NULL)) {
         fprintf(stderr, "Error: Invalid field 'entry' in [project]\n");
         fprintf(stderr, "       Move to [build] section: build.entry = \"...\"\n");
         has_deprecated = true;
     }
 
-    if (toml_get_string(toml, "project.frontend", NULL)) {
+    if (kryon_toml_get_string(toml, "project.frontend", NULL)) {
         fprintf(stderr, "Error: Invalid field 'frontend' in [project]\n");
         fprintf(stderr, "       Move to [build] section: build.frontend = \"...\"\n");
         has_deprecated = true;
     }
 
-    if (toml_get_string(toml, "build.language", NULL)) {
+    if (kryon_toml_get_string(toml, "build.language", NULL)) {
         fprintf(stderr, "Error: Invalid field 'language' in [build]\n");
         fprintf(stderr, "       Use 'frontend' instead\n");
         has_deprecated = true;
     }
 
-    if (toml_get_string(toml, "desktop.window_title", NULL) ||
-        toml_get_string(toml, "desktop.window_width", NULL) ||
-        toml_get_string(toml, "desktop.window_height", NULL)) {
+    if (kryon_toml_get_string(toml, "desktop.window_title", NULL) ||
+        kryon_toml_get_string(toml, "desktop.window_width", NULL) ||
+        kryon_toml_get_string(toml, "desktop.window_height", NULL)) {
         fprintf(stderr, "Error: Invalid window fields in [desktop]\n");
         fprintf(stderr, "       Move to [window] section:\n");
         fprintf(stderr, "       [window]\n");
@@ -362,8 +362,8 @@ KryonConfig* config_load(const char* config_path) {
     }
 
     // Check for old pages format
-    if (toml_get_string(toml, "build.pages.0.file", NULL) ||
-        toml_get_string(toml, "build.pages.0.path", NULL)) {
+    if (kryon_toml_get_string(toml, "build.pages.0.file", NULL) ||
+        kryon_toml_get_string(toml, "build.pages.0.path", NULL)) {
         fprintf(stderr, "Error: Invalid fields in [[build.pages]]\n");
         fprintf(stderr, "       Use: name = \"...\", route = \"...\", source = \"...\"\n");
         fprintf(stderr, "       NOT: file = \"...\", path = \"...\"\n");
@@ -372,43 +372,43 @@ KryonConfig* config_load(const char* config_path) {
 
     if (has_deprecated) {
         fprintf(stderr, "\nSee docs/configuration.md for the complete configuration reference\n");
-        toml_free(toml);
+        kryon_toml_free(toml);
         return NULL;
     }
 
     KryonConfig* config = config_create_default();
     if (!config) {
-        toml_free(toml);
+        kryon_toml_free(toml);
         return NULL;
     }
 
     // Parse project metadata
-    const char* name = toml_get_string(toml, "project.name", NULL);
+    const char* name = kryon_toml_get_string(toml, "project.name", NULL);
     if (name) {
         free(config->project_name);
         config->project_name = str_copy(name);
     }
 
-    const char* version = toml_get_string(toml, "project.version", NULL);
+    const char* version = kryon_toml_get_string(toml, "project.version", NULL);
     if (version) {
         free(config->project_version);
         config->project_version = str_copy(version);
     }
 
-    const char* author = toml_get_string(toml, "project.author", NULL);
+    const char* author = kryon_toml_get_string(toml, "project.author", NULL);
     if (author) {
         free(config->project_author);
         config->project_author = str_copy(author);
     }
 
-    const char* description = toml_get_string(toml, "project.description", NULL);
+    const char* description = kryon_toml_get_string(toml, "project.description", NULL);
     if (description) {
         free(config->project_description);
         config->project_description = str_copy(description);
     }
 
     // Parse build settings - strict format enforcement
-    const char* output_dir = toml_get_string(toml, "build.output_dir", NULL);
+    const char* output_dir = kryon_toml_get_string(toml, "build.output_dir", NULL);
     if (output_dir) {
         free(config->build_output_dir);
         config->build_output_dir = str_copy(output_dir);
@@ -419,7 +419,7 @@ KryonConfig* config_load(const char* config_path) {
     }
 
     // Parse build.entry (optional entry point file)
-    const char* entry = toml_get_string(toml, "build.entry", NULL);
+    const char* entry = kryon_toml_get_string(toml, "build.entry", NULL);
     if (entry) {
         config->build_entry = str_copy(entry);
     }
@@ -430,7 +430,7 @@ KryonConfig* config_load(const char* config_path) {
     for (int i = 0; i < 10; i++) {
         char key[128];
         snprintf(key, sizeof(key), "build.targets.%d", i);
-        const char* target_val = toml_get_string(toml, key, NULL);
+        const char* target_val = kryon_toml_get_string(toml, key, NULL);
         if (target_val) {
             max_target_idx = i;
         }
@@ -443,7 +443,7 @@ KryonConfig* config_load(const char* config_path) {
             for (int i = 0; i <= max_target_idx; i++) {
                 char key[128];
                 snprintf(key, sizeof(key), "build.targets.%d", i);
-                const char* target_val = toml_get_string(toml, key, NULL);
+                const char* target_val = kryon_toml_get_string(toml, key, NULL);
                 if (target_val) {
                     config->build_targets[i] = str_copy(target_val);
                     // Also set build_target to first target for backward compat in commands
@@ -457,25 +457,25 @@ KryonConfig* config_load(const char* config_path) {
     }
 
     // Parse optimization settings
-    config->optimization_enabled = toml_get_bool(toml, "optimization.enabled", true);
-    config->optimization_minify_css = toml_get_bool(toml, "optimization.minify_css", true);
-    config->optimization_minify_js = toml_get_bool(toml, "optimization.minify_js", true);
-    config->optimization_tree_shake = toml_get_bool(toml, "optimization.tree_shake", true);
+    config->optimization_enabled = kryon_toml_get_bool(toml, "optimization.enabled", true);
+    config->optimization_minify_css = kryon_toml_get_bool(toml, "optimization.minify_css", true);
+    config->optimization_minify_js = kryon_toml_get_bool(toml, "optimization.minify_js", true);
+    config->optimization_tree_shake = kryon_toml_get_bool(toml, "optimization.tree_shake", true);
 
     // Parse dev settings
-    config->dev_hot_reload = toml_get_bool(toml, "dev.hot_reload", true);
-    config->dev_port = toml_get_int(toml, "dev.port", 3000);
-    config->dev_auto_open = toml_get_bool(toml, "dev.auto_open", true);
+    config->dev_hot_reload = kryon_toml_get_bool(toml, "dev.hot_reload", true);
+    config->dev_port = kryon_toml_get_int(toml, "dev.port", 3000);
+    config->dev_auto_open = kryon_toml_get_bool(toml, "dev.auto_open", true);
 
     // Parse desktop renderer
-    const char* renderer = toml_get_string(toml, "desktop.renderer", NULL);
+    const char* renderer = kryon_toml_get_string(toml, "desktop.renderer", NULL);
     if (renderer) {
         free(config->desktop_renderer);
         config->desktop_renderer = str_copy(renderer);
     }
 
     // Parse codegen.output_dir (optional)
-    const char* codegen_output_dir = toml_get_string(toml, "codegen.output_dir", NULL);
+    const char* codegen_output_dir = kryon_toml_get_string(toml, "codegen.output_dir", NULL);
     if (codegen_output_dir) {
         config->codegen_output_dir = str_copy(codegen_output_dir);
     }
@@ -486,7 +486,7 @@ KryonConfig* config_load(const char* config_path) {
     // Parse install configuration
     config_parse_install(config, toml);
 
-    toml_free(toml);
+    kryon_toml_free(toml);
     return config;
 }
 

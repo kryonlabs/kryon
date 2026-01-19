@@ -308,3 +308,225 @@ void codegen_warn(const char* fmt, ...) {
 
     va_end(args);
 }
+
+// ============================================================================
+// StringBuilder Implementation
+// ============================================================================
+
+struct StringBuilder {
+    char* buffer;
+    size_t capacity;
+    size_t length;
+};
+
+StringBuilder* sb_create(size_t initial_capacity) {
+    StringBuilder* sb = (StringBuilder*)malloc(sizeof(StringBuilder));
+    if (!sb) return NULL;
+    
+    sb->buffer = (char*)malloc(initial_capacity);
+    if (!sb->buffer) {
+        free(sb);
+        return NULL;
+    }
+    
+    sb->capacity = initial_capacity;
+    sb->length = 0;
+    sb->buffer[0] = '\0';
+    return sb;
+}
+
+void sb_append(StringBuilder* sb, const char* str) {
+    if (!sb || !str) return;
+    
+    size_t str_len = strlen(str);
+    size_t needed = sb->length + str_len + 1;
+    
+    if (needed > sb->capacity) {
+        size_t new_capacity = sb->capacity * 2;
+        while (new_capacity < needed) new_capacity *= 2;
+        
+        char* new_buffer = (char*)realloc(sb->buffer, new_capacity);
+        if (!new_buffer) return;
+        
+        sb->buffer = new_buffer;
+        sb->capacity = new_capacity;
+    }
+    
+    strcpy(sb->buffer + sb->length, str);
+    sb->length += str_len;
+}
+
+void sb_append_fmt(StringBuilder* sb, const char* fmt, ...) {
+    if (!sb || !fmt) return;
+    
+    va_list args;
+    va_start(args, fmt);
+    
+    // Try with current buffer
+    size_t available = sb->capacity - sb->length;
+    int needed = vsnprintf(sb->buffer + sb->length, available, fmt, args);
+    va_end(args);
+    
+    if (needed < 0) return;
+    
+    if ((size_t)needed >= available) {
+        // Need to resize
+        size_t new_capacity = sb->capacity + needed + 1;
+        char* new_buffer = (char*)realloc(sb->buffer, new_capacity);
+        if (!new_buffer) return;
+        
+        sb->buffer = new_buffer;
+        sb->capacity = new_capacity;
+        
+        // Try again with new buffer
+        va_start(args, fmt);
+        vsnprintf(sb->buffer + sb->length, sb->capacity - sb->length, fmt, args);
+        va_end(args);
+    }
+    
+    sb->length += needed;
+}
+
+char* sb_get(StringBuilder* sb) {
+    if (!sb) return NULL;
+    return strdup(sb->buffer ? sb->buffer : "");
+}
+
+void sb_free(StringBuilder* sb) {
+    if (!sb) return;
+    free(sb->buffer);
+    free(sb);
+}
+
+// ============================================================================
+// TSX/React Helper Implementation
+// ============================================================================
+
+WindowConfig react_extract_window_config(cJSON* root) {
+    WindowConfig config;
+
+    // Initialize with defaults
+    config.width = 800;
+    config.height = 600;
+    config.title = strdup("Kryon App");
+    config.background = strdup("#1E1E1E");
+
+    if (!root) return config;
+
+    // Try to get from app section
+    cJSON* app = cJSON_GetObjectItem(root, "app");
+    if (app && cJSON_IsObject(app)) {
+        cJSON* width = cJSON_GetObjectItem(app, "width");
+        cJSON* height = cJSON_GetObjectItem(app, "height");
+        cJSON* title = cJSON_GetObjectItem(app, "title");
+        cJSON* background = cJSON_GetObjectItem(app, "background");
+
+        if (width && cJSON_IsNumber(width)) config.width = width->valueint;
+        if (height && cJSON_IsNumber(height)) config.height = height->valueint;
+        if (title && cJSON_IsString(title)) {
+            free(config.title);
+            config.title = strdup(title->valuestring);
+        }
+        if (background && cJSON_IsString(background)) {
+            free(config.background);
+            config.background = strdup(background->valuestring);
+        }
+    } else {
+        // Try to get directly from root
+        cJSON* width = cJSON_GetObjectItem(root, "width");
+        cJSON* height = cJSON_GetObjectItem(root, "height");
+        cJSON* title = cJSON_GetObjectItem(root, "title");
+        cJSON* background = cJSON_GetObjectItem(root, "background");
+
+        if (width && cJSON_IsNumber(width)) config.width = width->valueint;
+        if (height && cJSON_IsNumber(height)) config.height = height->valueint;
+        if (title && cJSON_IsString(title)) {
+            free(config.title);
+            config.title = strdup(title->valuestring);
+        }
+        if (background && cJSON_IsString(background)) {
+            free(config.background);
+            config.background = strdup(background->valuestring);
+        }
+    }
+
+    return config;
+}
+
+void react_free_window_config(WindowConfig* config) {
+    if (!config) return;
+    free(config->title);
+    free(config->background);
+    config->title = NULL;
+    config->background = NULL;
+}
+
+char* react_generate_imports(int mode) {
+    return strdup("import React from 'react';\nimport { kryonApp } from '@kryon/react-runtime';\n");
+}
+
+char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx) {
+    if (!manifest || !cJSON_IsObject(manifest)) {
+        return strdup("");
+    }
+
+    StringBuilder* sb = sb_create(1024);
+    if (!sb) return strdup("");
+
+    // Iterate through manifest and generate useState hooks
+    cJSON* vars = cJSON_GetObjectItem(manifest, "variables");
+    if (vars && cJSON_IsArray(vars)) {
+        cJSON* var = NULL;
+        cJSON_ArrayForEach(var, vars) {
+            const char* name = cJSON_GetStringValue(var);
+            if (name) {
+                sb_append_fmt(sb, "    const [%s, set%s] = React.useState(initial%s);\n",
+                             name, name, name);
+            }
+        }
+    }
+
+    char* result = sb_get(sb);
+    sb_free(sb);
+    return result;
+}
+
+char* react_generate_element(cJSON* component, ReactContext* ctx, int indent) {
+    if (!component) return strdup("null");
+
+    const char* type = codegen_get_component_type(component);
+    if (!type) return strdup("null");
+
+    StringBuilder* sb = sb_create(4096);
+    if (!sb) return strdup("null");
+
+    // Add indentation
+    for (int i = 0; i < indent; i++) sb_append(sb, " ");
+
+    // Generate element opening
+    sb_append_fmt(sb, "<%s", type);
+
+    // Add properties (simplified - would need full implementation)
+    sb_append(sb, ">");
+
+    // Add children (simplified)
+    cJSON* children = cJSON_GetObjectItem(component, "children");
+    if (children && cJSON_IsArray(children) && cJSON_GetArraySize(children) > 0) {
+        sb_append(sb, "\n");
+        cJSON* child = NULL;
+        cJSON_ArrayForEach(child, children) {
+            char* child_str = react_generate_element(child, ctx, indent + 2);
+            sb_append(sb, child_str);
+            free(child_str);
+        }
+        for (int i = 0; i < indent; i++) sb_append(sb, " ");
+    }
+
+    // Close element
+    sb_append_fmt(sb, "</%s>\n", type);
+
+    char* result = sb_get(sb);
+    sb_free(sb);
+    return result;
+}
+

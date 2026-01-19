@@ -16,8 +16,8 @@
 #ifndef HTML_GENERATOR_H
 #define HTML_GENERATOR_H
 
-#include "../../ir/include/ir_core.h"
-#include "../../ir/include/ir_logic.h"
+#include "ir_core.h"
+#include "ir_logic.h"
 #include <stdbool.h>
 #include <stdarg.h>
 

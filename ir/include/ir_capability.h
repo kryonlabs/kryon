@@ -22,6 +22,23 @@
 extern "C" {
 #endif
 
+// ============================================================================
+// Capability API Types
+// ============================================================================
+// Note: KryonDataHandle and KryonCapabilityAPI are defined in <kryon/capability.h>
+// This internal header adds IR-specific functions that use those types.
+
+// Re-export public types for convenience
+typedef struct KryonPlugin KryonPlugin;
+typedef struct KryonCapabilityAPI KryonCapabilityAPI;
+typedef struct KryonDataHandle KryonDataHandle;
+typedef struct KryonRenderContext KryonRenderContext;
+typedef struct KryonEventContext KryonEventContext;
+
+// ============================================================================
+// IR-specific capability functions
+// ============================================================================
+
 /**
  * Initialize the capability registry
  *

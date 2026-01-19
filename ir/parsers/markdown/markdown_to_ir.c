@@ -17,7 +17,7 @@
 #include "markdown_ast.h"
 #include "../include/ir_builder.h"
 #include "../include/ir_core.h"
-#include "../src/features/ir_markdown.h"
+#include "../include/ir_markdown.h"
 
 /* Syntax highlighting is now handled via the capability API */
 

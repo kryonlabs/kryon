@@ -34,7 +34,7 @@ typedef enum {
     KRY_NODE_FOR_EACH,          // For each loop (for each item in collection { ... }) - runtime ForEach
     KRY_NODE_IF,                // If/else conditional (if condition { ... } else { ... })
     KRY_NODE_STYLE_BLOCK,       // Style block (style selector { property = value; })
-    KRY_NODE_CODE_BLOCK,        // Platform-specific code block (@lua, @js, @universal)
+    KRY_NODE_CODE_BLOCK,        // Platform-specific code block (@lua, @js)
     KRY_NODE_DECORATOR          // Decorator (@reactive, @computed, @action, @watch, @context, @use)
 } KryNodeType;
 
@@ -109,7 +109,7 @@ struct KryNode {
     KryNode* else_branch;       // Else branch for KRY_NODE_IF (NULL if no else)
 
     // Code block support (for KRY_NODE_CODE_BLOCK)
-    char* code_language;        // "lua", "js", "universal"
+    char* code_language;        // "lua", "js"
     char* code_source;          // Source code content
 
     // Decorator support (for KRY_NODE_DECORATOR)
