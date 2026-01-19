@@ -12,10 +12,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdarg.h>
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_properties.h"
-#include "../../ir/ir_layout_types.h"
-#include "../../ir/ir_string_builder.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_properties.h"
+#include "ir_layout.h""
+#include "../../ir/include/ir_string_builder.h"
 
 #ifdef __cplusplus
 extern "C" {

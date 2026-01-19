@@ -3,7 +3,7 @@
 
 #ifdef ENABLE_SDL3
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <SDL3/SDL.h>
 #include <stdbool.h>
 #include <stddef.h>

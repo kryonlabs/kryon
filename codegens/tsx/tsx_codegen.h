@@ -1,7 +1,7 @@
 #ifndef TSX_CODEGEN_H
 #define TSX_CODEGEN_H
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdbool.h>
 
 // TSX codegen options

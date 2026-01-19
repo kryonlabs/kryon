@@ -13,9 +13,9 @@
 #define PATH_MAX 4096
 #endif
 
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_serialization.h"
-#include "../../ir/ir_capability.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_serialization.h"
+#include "../../ir/include/ir_capability.h"
 #include "ir_web_renderer.h"
 #include "html_generator.h"
 #include "lua_bundler.h"

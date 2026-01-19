@@ -5,7 +5,7 @@
  */
 
 #include "desktop_platform.h"
-#include "../../ir/ir_log.h"
+#include "../../ir/include/ir_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

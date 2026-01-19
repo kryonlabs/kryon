@@ -7,7 +7,7 @@
 
 #include "plan9_internal.h"
 #include "../desktop/abstract/desktop_events.h"
-#include "../../ir/ir_log.h"
+#include "../../ir/include/ir_log.h"
 
 /* Convert Plan 9 mouse buttons to DesktopEvent button codes */
 static uint8_t

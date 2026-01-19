@@ -9,9 +9,6 @@
 |----|------|---|-------|------|
 | #15125 | 8:07 PM | 🔵 | HTML generation from KIR in build pipeline | ~141 |
 | #14844 | 6:59 PM | 🔵 | Build system supports multiple codegen targets with web generation implemented | ~133 |
-| #14795 | 6:50 PM | 🔵 | Build utilities module updated with additional functionality | ~114 |
-| #14793 | 6:49 PM | 🟣 | Native C Parser for .kry DSL Implemented | ~265 |
-| #14786 | " | 🔵 | Kryon source file type detection and compilation | ~239 |
 
 ### Jan 13, 2026
 
@@ -25,6 +22,9 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30321 | 11:36 PM | 🔵 | Examined IR header includes in CLI build utilities | ~150 |
+| #30318 | " | 🔵 | Searched for IR header includes in CLI directory | ~109 |
+| #30294 | 11:32 PM | 🔄 | Removed all Nim language support from Kryon framework | ~354 |
 | #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
 | #30104 | 11:03 PM | 🔄 | Nim language support completely removed from Kryon project | ~366 |
 </claude-mem-context>

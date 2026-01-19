@@ -38,15 +38,13 @@ mkdir -p build/ir
 # Always rebuild and install libraries to ensure we're testing latest code
 echo -e "${CYAN}Building and installing libraries...${NC}"
 if [ -n "$IN_NIX_SHELL" ]; then
-    if ! make install > /dev/null 2>&1; then
+    if ! make install; then
         echo -e "${RED}✗ Build failed${NC}"
-        echo "Run 'make' to see detailed error output"
         exit 1
     fi
 else
-    if ! nix-shell --run "make install" > /dev/null 2>&1; then
+    if ! nix-shell --run "make install"; then
         echo -e "${RED}✗ Build failed${NC}"
-        echo "Run 'nix-shell --run make' to see detailed error output"
         exit 1
     fi
 fi

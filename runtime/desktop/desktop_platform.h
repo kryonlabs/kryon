@@ -12,7 +12,7 @@
 #include "abstract/desktop_fonts.h"
 #include "abstract/desktop_text.h"
 #include "abstract/desktop_effects.h"
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdbool.h>
 
 #ifdef __cplusplus

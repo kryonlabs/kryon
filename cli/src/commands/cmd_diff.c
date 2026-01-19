@@ -4,7 +4,7 @@
  */
 
 #include "kryon_cli.h"
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

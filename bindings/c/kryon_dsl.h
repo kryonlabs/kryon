@@ -29,7 +29,7 @@
 #define KRYON_DSL_H
 
 #include "kryon.h"
-#include "../../ir/ir_native_canvas.h"
+#include "../../ir/include/ir_native_canvas.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -4,8 +4,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_builder.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_builder.h"
 #include "ir_web_renderer.h"
 
 // Simple test of IR → Web pipeline

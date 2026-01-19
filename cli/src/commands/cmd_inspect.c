@@ -4,9 +4,9 @@
  */
 
 #include "kryon_cli.h"
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_builder.h"
-#include "../../ir/ir_serialization.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_builder.h"
+#include "../../ir/include/ir_serialization.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>

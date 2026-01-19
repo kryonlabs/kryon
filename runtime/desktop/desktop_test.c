@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "desktop_internal.h"
-#include "../../ir/ir_builder.h"
-#include "../../ir/ir_serialization.h"
+#include "../../ir/include/ir_builder.h"
+#include "../../ir/include/ir_serialization.h"
 
 int main(void) {
     printf("=== Kryon Desktop Backend Test ===\n\n");

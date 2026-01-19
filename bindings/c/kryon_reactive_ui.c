@@ -12,8 +12,8 @@
 #include <pthread.h>
 
 // Include IR core for direct access (needed for text updates)
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_builder.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_builder.h"
 
 // ============================================================================
 // Internal Structures

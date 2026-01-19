@@ -13,6 +13,9 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30327 | 11:37 PM | 🔵 | Verified IR library include paths in CLI Makefile | ~127 |
+| #30325 | " | 🔵 | Examined IR include paths in CLI Makefile | ~138 |
+| #30294 | 11:32 PM | 🔄 | Removed all Nim language support from Kryon framework | ~354 |
 | #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
 | #30193 | " | 🔵 | Empty CLI Documentation File Found | ~217 |
 | #30182 | 11:12 PM | 🔵 | Kryon Project Structure Analysis Completed | ~398 |

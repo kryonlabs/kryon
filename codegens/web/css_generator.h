@@ -1,7 +1,7 @@
 #ifndef CSS_GENERATOR_H
 #define CSS_GENERATOR_H
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdbool.h>
 #include <stdarg.h>
 

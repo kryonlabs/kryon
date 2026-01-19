@@ -14,9 +14,9 @@
 #include "ir_to_commands.h"
 #include "ir_wireframe.h"
 #include "desktop_internal.h"
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_executor.h"
-#include "../../ir/ir_style_vars.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_executor.h"
+#include "../../ir/include/ir_style_vars.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

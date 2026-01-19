@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include "html_generator.h"
-#include "../../ir/ir_builder.h"
+#include "../../ir/include/ir_builder.h"
 
 // Test basic transpilation mode
 void test_transpilation_mode() {

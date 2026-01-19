@@ -2,8 +2,8 @@
 #define IR_TO_COMMANDS_H
 
 #include "../../core/include/kryon.h"
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_state_manager.h"
+#include "../../ir/include/ir_core.h"
+#include "ir_state.h""
 #include "desktop_internal.h"
 
 #ifdef __cplusplus

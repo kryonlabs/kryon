@@ -11,9 +11,9 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include "../../ir/ir_properties.h"
-#include "../../ir/ir_style_types.h"
-#include "../../ir/ir_layout_types.h"
+#include "../../ir/include/ir_properties.h"
+#include "ir_style.h""
+#include "ir_layout.h""
 
 #ifdef __cplusplus
 extern "C" {

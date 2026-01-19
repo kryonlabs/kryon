@@ -1,7 +1,7 @@
 #ifndef DEBUG_BACKEND_H
 #define DEBUG_BACKEND_H
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdbool.h>
 #include <stdio.h>
 

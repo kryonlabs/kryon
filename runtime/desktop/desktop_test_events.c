@@ -9,7 +9,7 @@
 #include "desktop_internal.h"
 #include "../../renderers/sdl3/sdl3.h"
 #include "../../third_party/cJSON/cJSON.h"
-#include "../../ir/ir_builder.h"
+#include "../../ir/include/ir_builder.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

@@ -7,7 +7,7 @@
 
 #include "lua_codegen.h"
 #include "../codegen_common.h"
-#include "../../ir/ir_string_builder.h"
+#include "../../ir/include/ir_string_builder.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>

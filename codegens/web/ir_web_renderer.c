@@ -7,8 +7,8 @@
 #include <sys/stat.h>
 #include <libgen.h>
 
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_string_builder.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_string_builder.h"
 #include "ir_web_renderer.h"
 #include "html_generator.h"
 #include "css_generator.h"

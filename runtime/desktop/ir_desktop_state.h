@@ -9,7 +9,7 @@
 #define IR_DESKTOP_STATE_H
 
 #include "desktop_internal.h"
-#include "../../ir/ir_instance.h"
+#include "../../ir/include/ir_instance.h"
 
 #ifdef __cplusplus
 extern "C" {

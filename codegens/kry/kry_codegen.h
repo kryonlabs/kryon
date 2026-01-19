@@ -1,7 +1,7 @@
 #ifndef KRY_CODEGEN_H
 #define KRY_CODEGEN_H
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdbool.h>
 
 // Kry codegen options

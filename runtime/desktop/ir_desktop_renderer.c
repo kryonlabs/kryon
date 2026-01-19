@@ -25,9 +25,9 @@
 #include "desktop_internal.h"
 #include "desktop_platform.h"
 #include "desktop_test_events.h"
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_builder.h"
-#include "../../ir/ir_animation.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_builder.h"
+#include "../../ir/include/ir_animation.h"
 
 // External reference to global hover state (defined in desktop_globals.c)
 extern IRComponent* g_hovered_component;
@@ -43,10 +43,10 @@ extern IRComponent* g_hovered_component;
 #ifdef PLAN9
 #include "../plan9/plan9_renderer.h"
 #endif
-#include "../../ir/ir_hot_reload.h"
-#include "../../ir/ir_style_vars.h"
-#include "../../ir/ir_executor.h"
-#include "../../ir/ir_serialization.h"
+#include "../../ir/include/ir_hot_reload.h"
+#include "../../ir/include/ir_style_vars.h"
+#include "../../ir/include/ir_executor.h"
+#include "../../ir/include/ir_serialization.h"
 
 #ifdef ENABLE_SDL3
 #include "ir_to_commands.h"
@@ -579,11 +579,6 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         // Exit if shutdown in progress
         if (renderer->shutdown_state != KRYON_SHUTDOWN_RUNNING) {
             break;
-        }
-
-        // Process reactive updates (platform-agnostic)
-        if (nimProcessReactiveUpdates) {
-            nimProcessReactiveUpdates();
         }
 
         // Check for style variable changes

@@ -13,7 +13,7 @@
 
 #include "terminal_ir_bridge.h"
 #include "terminal_box_drawing.h"
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 
 // ============================================================================
 // Coordinate Conversion

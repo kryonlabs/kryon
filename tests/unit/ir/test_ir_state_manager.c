@@ -10,7 +10,7 @@
  * 6. Callback registration
  */
 
-#include "../ir_state_manager.h"
+#include "ir_state.h""
 #include "../ir_executor.h"
 #include "../ir_builder.h"
 #include <assert.h>

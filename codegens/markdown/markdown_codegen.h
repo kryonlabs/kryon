@@ -1,7 +1,7 @@
 #ifndef MARKDOWN_CODEGEN_H
 #define MARKDOWN_CODEGEN_H
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdbool.h>
 
 // Markdown codegen options

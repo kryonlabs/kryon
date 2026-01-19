@@ -14,9 +14,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_capability.h"
-#include "../../ir/ir_logic.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_capability.h"
+#include "../../ir/include/ir_logic.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include "html_generator.h"
 #include "css_generator.h"
