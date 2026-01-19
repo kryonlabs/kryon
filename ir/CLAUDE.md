@@ -8,8 +8,6 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #15350 | 9:47 PM | 🔵 | Plugin registration includes debug logging and existing renderer check | ~176 |
-| #15342 | 9:43 PM | 🔵 | IR_COMPONENT_CODE_BLOCK is enum value 35 in ir_component_types.h | ~183 |
-| #15337 | 9:42 PM | 🔵 | IR_COMPONENT_CODE_BLOCK defined at line 41 of ir_component_types.h | ~189 |
 
 ### Jan 13, 2026
 
@@ -23,6 +21,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
+| #30199 | " | 🔵 | Empty IR Documentation File Found | ~235 |
 | #30110 | 11:04 PM | 🔄 | Deep scan reveals remaining Nim references throughout project | ~301 |
 | #27722 | 4:42 PM | 🟣 | Bool type compatibility added to ir_platform.h | ~209 |
 | #27712 | 4:41 PM | 🔵 | Re-reviewed platform abstraction header implementation | ~186 |

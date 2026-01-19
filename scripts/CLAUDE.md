@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
 | #30118 | 11:05 PM | 🔄 | Removed kryon.nimble check from uninstall script | ~135 |
 | #30111 | 11:04 PM | 🔄 | Found Nim dependency check in doctor.sh diagnostic script | ~166 |
 | #30110 | " | 🔄 | Deep scan reveals remaining Nim references throughout project | ~301 |

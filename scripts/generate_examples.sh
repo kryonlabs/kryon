@@ -8,7 +8,6 @@
 # Usage:
 #   ./scripts/generate_examples.sh                    # Generate all languages
 #   ./scripts/generate_examples.sh --lang=c           # Generate C only
-#   ./scripts/generate_examples.sh --lang=nim         # Generate Nim only
 #   ./scripts/generate_examples.sh --lang=tsx         # Generate TSX only
 #   ./scripts/generate_examples.sh --lang=jsx         # Generate JSX only
 #   ./scripts/generate_examples.sh --lang=lua         # Generate Lua only
@@ -21,11 +20,10 @@
 #   ./scripts/generate_examples.sh --parallel         # Parallel processing
 #
 # Supported Languages:
-#   nim, c, tsx, jsx, lua, html, markdown
+#   c, tsx, jsx, lua, html, markdown
 #
 # Output:
 #   examples/c/*.c                  # Generated C examples
-#   examples/nim/*.nim              # Generated Nim examples
 #   examples/tsx/*.tsx              # Generated TSX/JSX examples
 #   examples/lua/*.lua              # Generated Lua examples
 #   examples/html/*.html            # Generated HTML examples
@@ -39,7 +37,6 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 KRY_DIR="$PROJECT_DIR/examples/kry"
-OUTPUT_NIM_DIR="$PROJECT_DIR/examples/nim"
 OUTPUT_TSX_DIR="$PROJECT_DIR/examples/tsx"
 OUTPUT_JSX_DIR="$PROJECT_DIR/examples/jsx"
 OUTPUT_C_DIR="$PROJECT_DIR/examples/c"
@@ -67,7 +64,7 @@ LANG=""  # Empty = all languages
 ALL_LANGS=false
 
 # All supported languages
-SUPPORTED_LANGS=("nim" "c" "tsx" "jsx" "lua" "html" "markdown")
+SUPPORTED_LANGS=("c" "tsx" "jsx" "lua" "html" "markdown")
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -84,7 +81,7 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [example_name] [--lang=LANG|--all] [--validate] [--diff] [--clean] [--verbose] [--parallel] [-j N]"
       echo ""
       echo "Options:"
-      echo "  --lang=LANG   Target language (c, nim, tsx, jsx, lua, html, markdown). Default: all"
+      echo "  --lang=LANG   Target language (c, tsx, jsx, lua, html, markdown). Default: all"
       echo "  --all         Generate for all languages (default behavior)"
       echo "  --validate    Validate round-trip transpilation"
       echo "  --diff        Show detailed diffs for mismatches"
@@ -116,7 +113,6 @@ fi
 get_output_info() {
   local lang="$1"
   case "$lang" in
-    nim) echo "$OUTPUT_NIM_DIR:.nim" ;;
     tsx) echo "$OUTPUT_TSX_DIR:.tsx" ;;
     jsx) echo "$OUTPUT_JSX_DIR:.jsx" ;;
     c) echo "$OUTPUT_C_DIR:.c" ;;
@@ -130,7 +126,6 @@ get_output_info() {
 # Clean mode
 if [ "$CLEAN" = true ]; then
   echo -e "${YELLOW}Cleaning generated files...${NC}"
-  rm -rf "$OUTPUT_NIM_DIR"
   rm -rf "$OUTPUT_TSX_DIR"
   rm -rf "$OUTPUT_JSX_DIR"
   rm -rf "$OUTPUT_C_DIR"
@@ -224,8 +219,8 @@ process_example() {
   fi
 
   # Step 4: Validation (if requested and language supports it)
-  # Note: Nim and Lua support full round-trip validation
-  if [ "$VALIDATE" = true ] && { [ "$lang" = "nim" ] || [ "$lang" = "lua" ]; }; then
+  # Note: Lua supports full round-trip validation
+  if [ "$VALIDATE" = true ] && [ "$lang" = "lua" ]; then
     if ! "$KRYON" compile "$output_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
       echo "FAILED:$name:$lang:roundtrip"
       return 1
@@ -243,7 +238,7 @@ process_example() {
   return 0
 }
 export -f process_example get_output_info
-export KRYON GEN_KIR_DIR GEN_ROUNDTRIP_DIR VALIDATE COMPARE_SCRIPT PROJECT_DIR OUTPUT_NIM_DIR OUTPUT_TSX_DIR OUTPUT_JSX_DIR OUTPUT_C_DIR
+export KRYON GEN_KIR_DIR GEN_ROUNDTRIP_DIR VALIDATE COMPARE_SCRIPT PROJECT_DIR OUTPUT_TSX_DIR OUTPUT_JSX_DIR OUTPUT_C_DIR
 
 # ==============================================================================
 # Parallel Processing Mode
@@ -378,7 +373,7 @@ else
       [ "$VERBOSE" = true ] && echo -e "    ${GREEN}✓${NC} .kir → $lang"
 
       # Step 4: Validation (if requested and language supports it)
-      if [ "$VALIDATE" = true ] && [ "$lang" = "nim" ]; then
+      if [ "$VALIDATE" = true ] && [ "$lang" = "lua" ]; then
         # Compile generated file → .kir (round-trip)
         [ "$VERBOSE" = true ] && echo "  → Compiling $lang → .kir (round-trip)..."
         if ! "$KRYON" compile "$output_file" --output="$roundtrip_kir" --no-cache >/dev/null 2>&1; then
@@ -402,7 +397,7 @@ else
           echo -e "  ${YELLOW}⚠ Comparison script not found, skipping validation${NC}"
           lang_success[$lang]=$((${lang_success[$lang]} + 1))
         fi
-      elif [ "$VALIDATE" = true ] && [ "$lang" != "nim" ] && [ "$lang" != "lua" ]; then
+      elif [ "$VALIDATE" = true ] && [ "$lang" != "lua" ]; then
         echo -e "  ${YELLOW}⚠ Validation not yet supported for $lang${NC}"
         lang_success[$lang]=$((${lang_success[$lang]} + 1))
       else

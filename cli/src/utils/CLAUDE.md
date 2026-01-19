@@ -12,7 +12,6 @@
 | #14795 | 6:50 PM | 🔵 | Build utilities module updated with additional functionality | ~114 |
 | #14793 | 6:49 PM | 🟣 | Native C Parser for .kry DSL Implemented | ~265 |
 | #14786 | " | 🔵 | Kryon source file type detection and compilation | ~239 |
-| #14785 | " | 🔵 | Build system supports Lua and TSX frontend parsers | ~263 |
 
 ### Jan 13, 2026
 
@@ -26,5 +25,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
 | #30104 | 11:03 PM | 🔄 | Nim language support completely removed from Kryon project | ~366 |
 </claude-mem-context>

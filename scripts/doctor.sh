@@ -73,43 +73,6 @@ check_basic_tools() {
     echo ""
 }
 
-# Check Nim installation
-check_nim() {
-    print_header "Nim Installation"
-    echo "==================="
-
-    if command -v nim &> /dev/null; then
-        local nim_version=$(nim --version 2>/dev/null | head -n1 || echo "Unknown")
-        print_success "Nim: $nim_version"
-
-        # Check for nimble
-        if command -v nimble &> /dev/null; then
-            print_success "Nimble: Available"
-        else
-            print_error "Nimble: not found (should come with Nim)"
-        fi
-
-        # Check Nim configuration
-        local nim_cache="${HOME}/.nimcache"
-        if [ -d "$nim_cache" ]; then
-            print_success "Nim cache: $nim_cache"
-        else
-            print_warning "Nim cache not found (will be created on first compile)"
-        fi
-
-    else
-        print_error "Nim: not found"
-        echo "  Install from: https://nim-lang.org/install.html"
-        echo "  Or use package manager:"
-        echo "    Ubuntu/Debian: sudo apt install nim"
-        echo "    macOS: brew install nim"
-        echo "    Nix: nix-shell -p nim"
-        return 1
-    fi
-
-    echo ""
-}
-
 # Check backend libraries
 check_backends() {
     print_header "Rendering Backends"
@@ -118,15 +81,12 @@ check_backends() {
     local found_backends=0
 
     # Check Raylib
-    if nimble list raylib 2>/dev/null | grep -q raylib; then
-        print_success "Raylib: Available via nimble"
-        ((found_backends++))
-    elif pkg-config --exists raylib 2>/dev/null; then
+    if pkg-config --exists raylib 2>/dev/null; then
         print_success "Raylib: Available via system package"
         ((found_backends++))
     else
         print_warning "Raylib: Not found"
-        echo "  Install with: nimble install raylib"
+        echo "  Install with: sudo apt install libraylib-dev"
     fi
 
     # Check SDL2
@@ -207,7 +167,7 @@ check_kryon_installation() {
 
     # Check headers
     if [ -d "${INCDIR}" ]; then
-        local header_count=$(find "$INCDIR" -name "*.nim" 2>/dev/null | wc -l)
+        local header_count=$(find "$INCDIR" -name "*.h" 2>/dev/null | wc -l)
         print_success "Headers: ${INCDIR} ($header_count files)"
         ((components_found++))
         installation_status="Partially installed"
@@ -327,18 +287,12 @@ provide_recommendations() {
     print_header "Recommendations"
     echo "==============="
 
-    # Check for critical issues
-    if ! command -v nim &> /dev/null; then
-        print_error "CRITICAL: Install Nim compiler"
-        echo "  https://nim-lang.org/install.html"
-        return 1
-    fi
-
     # Check for backends
-    if ! (nimble list raylib 2>/dev/null | grep -q raylib) && ! pkg-config --exists sdl2 2>/dev/null; then
+    if ! pkg-config --exists sdl3 2>/dev/null && ! pkg-config --exists sdl2 2>/dev/null && ! pkg-config --exists raylib 2>/dev/null; then
         print_error "RECOMMENDED: Install at least one rendering backend"
-        echo "  Raylib: nimble install raylib"
+        echo "  SDL3: https://github.com/libsdl-org/SDL"
         echo "  SDL2: sudo apt install libsdl2-dev"
+        echo "  Raylib: https://raylib.dev/"
         return 1
     fi
 
@@ -368,7 +322,6 @@ main() {
 
     check_system
     check_basic_tools
-    check_nim
     check_backends
     check_kryon_installation
     check_environment

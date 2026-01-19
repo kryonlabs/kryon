@@ -14,8 +14,8 @@ INCLUDE_DIR = .
 INCLUDE_IR_DIR = ../../ir
 
 # Source files
-WEB_SOURCES = ir_web_renderer.c html_generator.c css_generator.c wasm_bridge.c style_analyzer.c lua_bundler.c css_property_tables.c css_generator_core.c css_class_names.c
-WEB_HEADERS = ir_web_renderer.h html_generator.h css_generator.h wasm_bridge.h style_analyzer.h lua_bundler.h css_property_tables.h css_generator_core.h css_class_names.h
+WEB_SOURCES = ir_web_renderer.c html_generator.c css_generator.c style_analyzer.c lua_bundler.c css_property_tables.c css_generator_core.c css_class_names.c
+WEB_HEADERS = ir_web_renderer.h html_generator.h css_generator.h style_analyzer.h lua_bundler.h css_property_tables.h css_generator_core.h css_class_names.h
 
 # Output files
 WEB_STATIC_LIB = $(BUILD_DIR)/libkryon_web.a
@@ -49,9 +49,6 @@ html_generator.o: html_generator.c html_generator.h
 css_generator.o: css_generator.c css_generator.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c css_generator.c -o css_generator.o
 
-wasm_bridge.o: wasm_bridge.c wasm_bridge.h
-	$(CC) $(CFLAGS) $(INCLUDES) -c wasm_bridge.c -o wasm_bridge.o
-
 style_analyzer.o: style_analyzer.c style_analyzer.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c style_analyzer.c -o style_analyzer.o
 
@@ -68,12 +65,12 @@ css_class_names.o: css_class_names.c css_class_names.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c css_class_names.c -o css_class_names.o
 
 # Create static library
-$(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o
-	$(AR) $(ARFLAGS) $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o
+$(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o
+	$(AR) $(ARFLAGS) $@ ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o
 
 # Create shared library (dynamically link libkryon_ir to avoid symbol conflicts)
-$(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o wasm_bridge.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o -L$(BUILD_DIR) -lkryon_ir
+$(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o
+	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o -L$(BUILD_DIR) -lkryon_ir
 
 # Build kir_to_html CLI tool
 $(KIR_TO_HTML): $(WEB_STATIC_LIB) kir_to_html.c
