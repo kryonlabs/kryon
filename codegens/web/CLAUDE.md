@@ -10,12 +10,12 @@
 | #30306 | 11:34 PM | 🔵 | Verified no remaining Nim function calls in C source files | ~124 |
 | #30294 | 11:32 PM | 🔄 | Removed all Nim language support from Kryon framework | ~354 |
 | #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
-| #30144 | 11:07 PM | 🔄 | Removed all remaining WASM module collection and generation code from web renderer | ~303 |
 
 ### Jan 19, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #32302 | 3:21 PM | 🔄 | Reorganized test files into centralized tests/ directory structure | ~297 |
 | #31606 | 12:44 PM | 🔴 | Added HarfBuzz libraries to web codegen shared library linking | ~193 |
 | #31605 | " | 🔴 | Added HarfBuzz text shaping libraries to web codegen linker flags | ~221 |
 | #31597 | " | 🔴 | Added IR style source directory to web codegen include paths | ~244 |

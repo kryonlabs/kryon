@@ -29,12 +29,4 @@ char* ir_clear_tree_module_refs_json(IRComponent* component);
 // JSON string wrapper for ir_restore_tree_module_refs (for FFI compatibility)
 void ir_restore_tree_module_refs_json(IRComponent* component, const char* json_str);
 
-// Temporarily clear module_ref for serialization (returns old values for restoration)
-// DEPRECATED: Use ir_clear_tree_module_refs instead
-char* ir_clear_component_module_ref(IRComponent* component);
-
-// Restore module_ref from the JSON string returned by ir_clear_component_module_ref
-// DEPRECATED: Use ir_restore_tree_module_refs instead
-void ir_restore_component_module_ref(IRComponent* component, const char* json_str);
-
 #endif // IR_MODULE_REFS_H
