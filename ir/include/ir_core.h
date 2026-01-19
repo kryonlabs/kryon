@@ -21,6 +21,7 @@
 typedef struct IRGradient IRGradient;
 typedef struct IRPropertyBinding IRPropertyBinding;
 typedef struct IRSourceStructures IRSourceStructures;
+typedef struct IRImport IRImport;
 typedef struct IRReactiveManifest IRReactiveManifest;
 typedef struct IRDynamicBinding IRDynamicBinding;
 
@@ -485,11 +486,22 @@ typedef struct IRSourceStructures {
     uint32_t for_loop_count;
     uint32_t for_loop_capacity;
 
+    // Import statements (import Name from "module")
+    IRImport** imports;       // Array of import statements
+    uint32_t import_count;
+    uint32_t import_capacity;
+
     // Next ID counters for generation
     uint32_t next_static_block_id;
     uint32_t next_var_decl_id;
     uint32_t next_for_loop_id;
 } IRSourceStructures;
+
+// Import statement structure (for KRY import statements: import Math from "math")
+typedef struct IRImport {
+    char* variable;       // Imported variable name (e.g., "Math", "Storage")
+    char* module;         // Module path (e.g., "math", "storage", "components.calendar")
+} IRImport;
 
 // Forward declaration for stylesheet (defined in ir_stylesheet.h)
 typedef struct IRStylesheet IRStylesheet;
@@ -900,6 +912,11 @@ IRForLoopData* ir_source_structures_add_for_loop(IRSourceStructures* ss,
                                                   const char* collection_ref,
                                                   IRComponent* template_component);
 void ir_for_loop_add_expanded_component(IRForLoopData* loop, uint32_t component_id);
+
+// Import management (for KRY import statements)
+IRImport* ir_source_structures_add_import(IRSourceStructures* ss,
+                                          const char* variable,
+                                          const char* module);
 
 // Property binding management
 IRPropertyBinding* ir_component_add_property_binding(IRComponent* component,

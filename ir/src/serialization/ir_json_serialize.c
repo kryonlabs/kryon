@@ -2505,6 +2505,21 @@ cJSON* ir_json_serialize_source_structures(IRSourceStructures* ss) {
         cJSON_AddItemToObject(obj, "for_loop_templates", loops_array);
     }
 
+    // Serialize import statements
+    if (ss->import_count > 0) {
+        cJSON* imports_array = cJSON_CreateArray();
+        for (uint32_t i = 0; i < ss->import_count; i++) {
+            IRImport* import = ss->imports[i];
+            if (import) {
+                cJSON* import_json = cJSON_CreateObject();
+                cJSON_AddStringToObject(import_json, "variable", import->variable);
+                cJSON_AddStringToObject(import_json, "module", import->module);
+                cJSON_AddItemToArray(imports_array, import_json);
+            }
+        }
+        cJSON_AddItemToObject(obj, "requires", imports_array);
+    }
+
     return obj;
 }
 

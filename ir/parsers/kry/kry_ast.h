@@ -29,6 +29,7 @@ typedef enum {
     KRY_NODE_STATE,             // State declaration (state count: int = 0)
     KRY_NODE_EXPRESSION,        // Inline expression ({ value + 1 })
     KRY_NODE_VAR_DECL,          // Variable declaration (const x = ..., let y = ..., var z = ...)
+    KRY_NODE_IMPORT,            // Import statement (import Math from "math")
     KRY_NODE_STATIC_BLOCK,      // Static block (static { ... })
     KRY_NODE_FOR_LOOP,          // For loop (for item in array { ... }) - compile-time expansion
     KRY_NODE_FOR_EACH,          // For each loop (for each item in collection { ... }) - runtime ForEach
@@ -111,6 +112,10 @@ struct KryNode {
     char* code_language;        // "lua", "js"
     char* code_source;          // Source code content
 
+    // Import statement support (for KRY_NODE_IMPORT)
+    char* import_module;        // Module path (e.g., "math", "components.calendar")
+    char* import_name;          // Imported name (e.g., "Math", "*")
+
     // Source location (for error messages)
     uint32_t line;
     uint32_t column;
@@ -190,6 +195,11 @@ void kry_parser_error(KryParser* parser, const char* message);
 
 // Code block creation
 KryNode* kry_node_create_code_block(KryParser* parser, const char* language, const char* source);
+
+// Import node helper
+static inline bool kry_node_is_import(KryNode* node) {
+    return node && node->type == KRY_NODE_IMPORT;
+}
 
 // Decorator creation
 
