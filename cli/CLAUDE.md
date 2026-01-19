@@ -7,6 +7,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #33212 | 4:37 PM | 🔵 | Verified all implementation requirements completed | ~316 |
+| #33141 | 4:23 PM | ✅ | Added cmd_test.c to cli/Makefile SRCS variable | ~224 |
 | #32858 | 3:59 PM | 🔵 | Discovered undefined reference to ir_html_file_to_kir function during build | ~280 |
 | #32450 | 3:26 PM | 🔴 | Fixed CLI Makefile to include missing cmd_doctor.c in build | ~345 |
 | #32415 | 3:25 PM | 🔵 | Discovered CLI Makefile structure and build configuration | ~487 |
@@ -15,6 +17,4 @@
 | #32070 | 3:01 PM | 🔴 | Fixed CLI build error by adding kotlin codegen to root Makefile | ~297 |
 | #31839 | 2:34 PM | 🔴 | Updated CLI Makefile to include all object files in link command | ~200 |
 | #31719 | 2:13 PM | 🔴 | Reordered CLI link command to place web library before IR library | ~268 |
-| #31714 | 2:11 PM | 🔴 | Changed CLI to link IR library statically instead of dynamically | ~244 |
-| #31660 | 12:49 PM | 🔴 | Added HarfBuzz libraries to CLI main link command | ~200 |
 </claude-mem-context>

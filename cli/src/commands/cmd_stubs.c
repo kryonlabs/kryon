@@ -16,12 +16,7 @@
 
 
 // cmd_plugin moved to cmd_plugin.c
-
-int cmd_test(int argc, char** argv) {
-    (void)argc; (void)argv;
-    printf("test command not yet implemented\n");
-    return 1;
-}
+// cmd_test moved to cmd_test.c
 
 // Global state for file watcher and reload server (accessed by callback)
 static WSReloadServer* g_reload_server = NULL;

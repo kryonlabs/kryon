@@ -53,6 +53,8 @@ extern const unsigned char kryon_plugins_storage[];
 extern const size_t kryon_plugins_storage_size;
 extern const unsigned char kryon_plugins_datetime[];
 extern const size_t kryon_plugins_datetime_size;
+extern const unsigned char kryon_math[];
+extern const size_t kryon_math_size;
 #endif
 
 /* Embedded plugins (when KRYON_HAS_PLUGINS is defined) */
@@ -125,6 +127,7 @@ static void register_embedded_modules(lua_State* L) {
     register_module(L, "kryon.plugin", kryon_plugin, kryon_plugin_size);
     register_module(L, "kryon.plugins.storage", kryon_plugins_storage, kryon_plugins_storage_size);
     register_module(L, "kryon.plugins.datetime", kryon_plugins_datetime, kryon_plugins_datetime_size);
+    register_module(L, "math", kryon_math, kryon_math_size);
 #endif
 }
 

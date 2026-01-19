@@ -672,6 +672,17 @@ char* lua_bundler_bundle(LuaBundler* bundler, const char* main_file) {
     // Inject os shim FIRST - Fengari doesn't have os library
     strcat(output, LUA_OS_SHIM);
 
+    // Inject Math built-in module (capital M to avoid Lua math conflict)
+    strcat(output, "-- Kryon Built-in: Math module\n");
+    strcat(output, "package.preload[\"math\"] = function()\n");
+    strcat(output, "  -- Math wrapper (capital M to avoid Lua math conflict)\n");
+    strcat(output, "  local Math = {}\n");
+    strcat(output, "  for k, v in pairs(math) do\n");
+    strcat(output, "    Math[k] = v\n");
+    strcat(output, "  end\n");
+    strcat(output, "  return Math\n");
+    strcat(output, "end\n\n");
+
     // __KRYON_EVENT_IDS__ injection removed - direct index mapping is used instead
     // Handler index N maps directly to event ID N (both use sequential counters
     // in the same code execution order)
@@ -1317,6 +1328,17 @@ char* lua_bundler_generate_from_kir(LuaBundler* bundler, IRComponent* kir_root) 
     strcat(output, "<script type=\"application/lua\">\n");
     strcat(output, header_comment);
     strcat(output, LUA_OS_SHIM);  // Fengari compatibility shims
+
+    // Inject Math built-in module (capital M to avoid Lua math conflict)
+    strcat(output, "-- Kryon Built-in: Math module\n");
+    strcat(output, "package.preload[\"math\"] = function()\n");
+    strcat(output, "  -- Math wrapper (capital M to avoid Lua math conflict)\n");
+    strcat(output, "  local Math = {}\n");
+    strcat(output, "  for k, v in pairs(math) do\n");
+    strcat(output, "    Math[k] = v\n");
+    strcat(output, "  end\n");
+    strcat(output, "  return Math\n");
+    strcat(output, "end\n\n");
 
     // In self-contained mode, we don't bundle the main app code
     // The component tree is already rendered as HTML, and handlers are in the registry
