@@ -192,9 +192,3 @@ int cmd_dev(int argc, char** argv) {
     config_free(config);
     return result;
 }
-
-int cmd_doctor(int argc, char** argv) {
-    (void)argc; (void)argv;
-    printf("doctor command not yet implemented\n");
-    return 1;
-}

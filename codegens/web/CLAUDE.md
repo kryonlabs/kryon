@@ -7,19 +7,19 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #30306 | 11:34 PM | 🔵 | Verified no remaining Nim function calls in C source files | ~124 |
-| #30294 | 11:32 PM | 🔄 | Removed all Nim language support from Kryon framework | ~354 |
-| #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
+| #27138 | 3:02 PM | 🔵 | Dynamic binding system added for runtime Lua expression evaluation | ~165 |
+| #27031 | 1:11 PM | 🔴 | Kryon successfully rebuilt with smart refresh changes | ~383 |
+| #27028 | " | 🔴 | Lua bridge updated to call kryonSmartRefresh instead of kryonExpandForEach | ~295 |
+| #27024 | 1:10 PM | 🔵 | Identified two references to kryonExpandForEach in lua_bundler.c | ~207 |
+| #27021 | " | 🔵 | Located Lua bridge function calling kryonExpandForEach | ~324 |
+| #27019 | 1:09 PM | 🔴 | Kryon JavaScript runtime updated with smart refresh functions | ~484 |
+| #27013 | " | 🔴 | Kryon Web Target calendar refresh now works with smart grid updates | ~582 |
+| #26995 | 1:05 PM | 🔵 | kryonRefreshForEach encodes data and calls kryonExpandForEach JavaScript | ~291 |
 
 ### Jan 19, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #32302 | 3:21 PM | 🔄 | Reorganized test files into centralized tests/ directory structure | ~297 |
-| #31606 | 12:44 PM | 🔴 | Added HarfBuzz libraries to web codegen shared library linking | ~193 |
-| #31605 | " | 🔴 | Added HarfBuzz text shaping libraries to web codegen linker flags | ~221 |
-| #31597 | " | 🔴 | Added IR style source directory to web codegen include paths | ~244 |
-| #31590 | 12:43 PM | 🔴 | Fixed hardcoded include paths in web codegen source files | ~233 |
-| #31586 | 12:41 PM | 🔴 | Updated web codegen Makefile include paths | ~188 |
-| #31483 | 12:32 PM | 🔴 | Discovered multiple include path errors in web codegen | ~188 |
+| #32768 | 3:54 PM | 🔵 | Examined web IR renderer implementation | ~302 |
+| #31491 | 12:33 PM | 🔄 | Removed Reactive Decorator System from KRY Framework | ~243 |
 </claude-mem-context>

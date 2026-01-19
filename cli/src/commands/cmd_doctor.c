@@ -8,8 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <limits.h>  // For PATH_MAX
 
 #define COLOR_RESET   "\033[0m"
 #define COLOR_GREEN   "\033[32m"
@@ -48,8 +50,15 @@ static void print_warning(const char* message) {
     printf("\n  %s⚠  %s%s\n", COLOR_YELLOW, message, COLOR_RESET);
 }
 
-static void print_info(const char* message) {
-    printf("    %s→%s %s\n", COLOR_CYAN, COLOR_RESET, message);
+static void print_info(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    printf("    %s→%s ", COLOR_CYAN, COLOR_RESET);
+    vprintf(format, args);
+    printf("\n");
+
+    va_end(args);
 }
 
 int cmd_doctor(int argc, char** argv) {

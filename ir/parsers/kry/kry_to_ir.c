@@ -12,6 +12,7 @@
 #include "../include/ir_serialization.h"
 #include "../include/ir_logic.h"
 #include "../include/ir_style.h"
+#include "../src/style/ir_stylesheet.h"
 #include "../include/ir_animation_builder.h"
 #include "../src/logic/ir_foreach.h"
 #include "../html/css_parser.h"  // For ir_css_parse_color
@@ -3178,7 +3179,7 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     fprintf(stderr, "[CODE_BLOCKS]   Added to logic block: func='%s'\n", func_name);
 
                     // Add function to logic block
-                    ir_logic_block_add_function(result.logic_block, func);
+                    ir_logic_block_add_function(ctx.logic_block, func);
                 }
             }
             code_node = code_node->next_sibling;

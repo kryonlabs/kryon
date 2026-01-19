@@ -6,6 +6,7 @@
 #include "../include/ir_logic.h"
 #include "../include/ir_builder.h"
 #include "../../include/ir_style.h"
+#include "../src/style/ir_stylesheet.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

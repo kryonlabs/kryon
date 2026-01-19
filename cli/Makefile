@@ -49,6 +49,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_new.c \
        $(SRC_DIR)/commands/cmd_inspect.c \
        $(SRC_DIR)/commands/cmd_diff.c \
+       $(SRC_DIR)/commands/cmd_doctor.c \
        $(SRC_DIR)/commands/cmd_plugin.c \
        $(SRC_DIR)/commands/cmd_install.c \
        $(SRC_DIR)/commands/cmd_uninstall.c \
