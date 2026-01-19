@@ -9,7 +9,7 @@
 
 #include "../include/ir_capability.h"
 #include "../include/ir_types.h"
-#include "../include/ir_log.h"
+#include "../utils/ir_log.h"
 #include "../include/ir_state.h"
 #include <stdlib.h>
 #include <string.h>
