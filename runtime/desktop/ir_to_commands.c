@@ -33,38 +33,8 @@ bool ir_generate_component_commands(IRComponent* component, IRCommandContext* ct
  * Resolve IRColor to RGBA components.
  * Returns true if color was successfully resolved to solid RGBA.
  * Returns false for gradients or unresolved variable references.
+ * NOTE: This function is now defined in ir/src/style/ir_style_vars.c
  */
-bool ir_color_resolve(const IRColor* color, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a) {
-    if (!color) return false;
-
-    switch (color->type) {
-        case IR_COLOR_SOLID:
-            *r = color->data.r;
-            *g = color->data.g;
-            *b = color->data.b;
-            *a = color->data.a;
-            return true;
-
-        case IR_COLOR_TRANSPARENT:
-            /* Fully transparent */
-            *r = 0;
-            *g = 0;
-            *b = 0;
-            *a = 0;
-            return true;
-
-        case IR_COLOR_GRADIENT:
-            /* Gradients need special handling - return false to indicate non-solid color */
-            return false;
-
-        case IR_COLOR_VAR_REF:
-            /* Resolve style variable reference using the global style variable registry */
-            return ir_color_resolve(color, r, g, b, a);
-
-        default:
-            return false;
-    }
-}
 
 uint32_t ir_apply_opacity_to_color(uint32_t color, float opacity) {
     uint8_t r = (color >> 24) & 0xFF;

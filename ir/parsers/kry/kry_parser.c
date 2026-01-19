@@ -222,9 +222,6 @@ KryNode* kry_node_create(KryParser* parser, KryNodeType type) {
     node->else_branch = NULL;
     node->code_language = NULL;
     node->code_source = NULL;
-    node->decorator_type = NULL;
-    node->decorator_target = NULL;
-    node->decorator_args = NULL;
     node->line = parser->line;
     node->column = parser->column;
 
@@ -325,16 +322,6 @@ KryNode* kry_node_create_code_block(KryParser* parser, const char* language, con
 
     node->code_language = kry_strdup(parser, language);
     node->code_source = kry_strdup(parser, source);
-    return node;
-}
-
-KryNode* kry_node_create_decorator(KryParser* parser, const char* type, const char* target, const char* args) {
-    KryNode* node = kry_node_create(parser, KRY_NODE_DECORATOR);
-    if (!node) return NULL;
-
-    node->decorator_type = kry_strdup(parser, type);
-    node->decorator_target = target ? kry_strdup(parser, target) : NULL;
-    node->decorator_args = args ? kry_strdup(parser, args) : NULL;
     return node;
 }
 
@@ -1027,70 +1014,6 @@ static KryNode* parse_code_block(KryParser* p, const char* language) {
     return code_node;
 }
 
-// Parse decorator: @reactive, @computed, @action, @watch(path), @context, @use(path)
-static KryNode* parse_decorator(KryParser* p, const char* decorator_name) {
-    skip_whitespace(p);
-
-    // Check if decorator has arguments (e.g., @watch("state.habits"))
-    char* args = NULL;
-    if (peek(p) == '(') {
-        advance(p);  // Skip '('
-
-        skip_whitespace(p);
-
-        // Parse arguments until closing paren
-        size_t start = p->pos;
-        int paren_count = 1;
-        bool in_string = false;
-        char string_char = '\0';
-
-        while (peek(p) != '\0' && paren_count > 0) {
-            char c = peek(p);
-
-            // Handle string literals
-            if ((c == '"' || c == '\'' || c == '`') && !in_string) {
-                in_string = true;
-                string_char = c;
-                advance(p);
-                continue;
-            }
-
-            if (in_string) {
-                if (c == string_char) {
-                    if (p->pos > 0 && p->source[p->pos - 1] != '\\') {
-                        in_string = false;
-                    }
-                }
-                advance(p);
-                continue;
-            }
-
-            if (c == '(') paren_count++;
-            if (c == ')') paren_count--;
-
-            advance(p);
-        }
-
-        if (paren_count > 0) {
-            kry_parser_error(p, "Unclosed decorator arguments - missing ')'");
-            return NULL;
-        }
-
-        // Extract arguments (without parentheses)
-        args = kry_strndup(p, p->source + start, (p->pos - 1) - start);
-    }
-
-    // Create decorator node
-    KryNode* decorator_node = kry_node_create_decorator(p, decorator_name, NULL, args);
-    if (!decorator_node) return NULL;
-
-    fprintf(stderr, "[KRY_PARSE] Parsed decorator: type='%s', args='%s'\n",
-            decorator_name, args ? args : "(null)");
-    fflush(stderr);
-
-    return decorator_node;
-}
-
 // Parse for loop: for item in collection { ... }
 static KryNode* parse_for_loop(KryParser* p) {
     skip_whitespace(p);
@@ -1129,48 +1052,6 @@ static KryNode* parse_for_loop(KryParser* p) {
     }
 
     return for_node;
-}
-
-// Parse for each loop: for each item in collection { ... }
-// This creates a runtime ForEach component (IR_COMPONENT_FOR_EACH)
-// Unlike 'for', this does NOT expand at compile time
-static KryNode* parse_for_each_loop(KryParser* p) {
-    skip_whitespace(p);
-
-    // Parse iterator variable name
-    char* iter_name = parse_identifier(p);
-    if (!iter_name) return NULL;
-
-    skip_whitespace(p);
-
-    // Expect 'in' keyword
-    char* in_keyword = parse_identifier(p);
-    if (!in_keyword || !keyword_match(in_keyword, "in")) {
-        kry_parser_error(p, "Expected 'in' keyword in for each loop");
-        return NULL;
-    }
-
-    skip_whitespace(p);
-
-    // Parse collection expression (can be identifier, array, or expression)
-    KryValue* collection = parse_value(p);
-    if (!collection) return NULL;
-
-    skip_whitespace(p);
-
-    // Create for each loop node
-    KryNode* for_each_node = kry_node_create(p, KRY_NODE_FOR_EACH);
-    if (!for_each_node) return NULL;
-
-    for_each_node->name = iter_name;  // Iterator variable name
-    for_each_node->value = collection;  // Collection to iterate over
-
-    // Parse loop body
-    if (!parse_component_body(p, for_each_node)) {
-        return NULL;
-    }
-
-    return for_each_node;
 }
 
 // Parse if statement: if condition { ... } else { ... }
@@ -1269,16 +1150,9 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
                     return NULL;
                 }
             }
-            // Check for decorators (@reactive, @computed, @action, @watch, @context, @use)
-            else if (keyword_match(at_name, "reactive") || keyword_match(at_name, "computed") ||
-                     keyword_match(at_name, "action") || keyword_match(at_name, "watch") ||
-                     keyword_match(at_name, "context") || keyword_match(at_name, "use")) {
-
-                KryNode* decorator = parse_decorator(p, at_name);
-                if (!decorator) return NULL;
-                kry_node_append_child(component, decorator);
-            } else {
-                kry_parser_error(p, "Unknown @ directive - expected @lua, @js, or decorator");
+            // Decorators are no longer supported - use @lua/@js blocks instead
+            else {
+                kry_parser_error(p, "Decorators (@reactive, @computed, @action, @watch) are no longer supported. Use @lua/@js blocks for platform-specific code.");
                 return NULL;
             }
 
@@ -1315,29 +1189,9 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
             if (!static_block) return NULL;
             kry_node_append_child(component, static_block);
         }
-        // Check for for loop / for each loop
+        // Check for for loop
         else if (keyword_match(name, "for")) {
-            // Look ahead to check if this is "for each" or just "for"
-            size_t saved_pos = p->pos;
-            uint32_t saved_line = p->line;
-            uint32_t saved_column = p->column;
-
-            skip_whitespace(p);
-            char* next_id = parse_identifier(p);
-
-            KryNode* loop_node = NULL;
-            if (next_id && keyword_match(next_id, "each")) {
-                // "for each" - runtime ForEach
-                loop_node = parse_for_each_loop(p);
-            } else {
-                // Just "for" - compile-time for loop
-                // Restore position and parse as regular for loop
-                p->pos = saved_pos;
-                p->line = saved_line;
-                p->column = saved_column;
-                loop_node = parse_for_loop(p);
-            }
-
+            KryNode* loop_node = parse_for_loop(p);
             if (!loop_node) return NULL;
             kry_node_append_child(component, loop_node);
         }
@@ -1529,14 +1383,9 @@ KryNode* kry_parse(KryParser* parser) {
                     break;
                 }
             }
-            // Check for decorators (@reactive, @computed, @action, @watch, @context, @use)
-            else if (keyword_match(at_name, "reactive") || keyword_match(at_name, "computed") ||
-                     keyword_match(at_name, "action") || keyword_match(at_name, "watch") ||
-                     keyword_match(at_name, "context") || keyword_match(at_name, "use")) {
-
-                at_node = parse_decorator(parser, at_name);
-            } else {
-                kry_parser_error(parser, "Unknown @ directive - expected @lua, @js, or decorator");
+            // Decorators are no longer supported
+            else {
+                kry_parser_error(parser, "Decorators (@reactive, @computed, @action, @watch) are no longer supported. Use @lua/@js blocks for platform-specific code.");
                 break;
             }
 

@@ -128,3 +128,10 @@ luac.out
 ir/layout/*.o
 ir/components/*.o
 ir/parsers/*/*.o
+
+# Dependency files
+*.d
+**/*.d
+
+# Build output directory (explicit)
+build/
