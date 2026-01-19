@@ -11,8 +11,8 @@
 #include "../include/ir_core.h"
 #include "../utils/ir_memory.h"
 #include "../include/ir_serialization.h"
-#include "../include/ir_asset.h"
-#include "../include/ir_hot_reload.h"
+#include "../utils/ir_asset.h"
+#include "ir_hot_reload.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

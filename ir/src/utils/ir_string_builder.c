@@ -4,7 +4,7 @@
  */
 
 #define _GNU_SOURCE
-#include "../include/ir_string_builder.h"
+#include "ir_string_builder.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

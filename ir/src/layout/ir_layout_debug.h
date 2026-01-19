@@ -1,7 +1,7 @@
 #ifndef IR_LAYOUT_DEBUG_H
 #define IR_LAYOUT_DEBUG_H
 
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 #include <stdbool.h>
 
 // ============================================================================

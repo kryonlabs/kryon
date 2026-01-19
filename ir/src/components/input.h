@@ -1,7 +1,7 @@
 #ifndef IR_COMPONENT_INPUT_H
 #define IR_COMPONENT_INPUT_H
 
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 #include "registry.h"
 
 #ifdef __cplusplus

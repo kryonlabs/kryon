@@ -1,7 +1,7 @@
 #ifndef IR_COMPONENT_IMAGE_H
 #define IR_COMPONENT_IMAGE_H
 
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 #include "registry.h"
 
 #ifdef __cplusplus

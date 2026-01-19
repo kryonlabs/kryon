@@ -1,9 +1,9 @@
 #ifndef IR_JSON_DESERIALIZE_H
 #define IR_JSON_DESERIALIZE_H
 
-#include "../include/ir_core.h"
-#include "../include/ir_stylesheet.h"
-#include "../include/ir_json_context.h"
+#include "../../include/ir_core.h"
+#include "../style/ir_stylesheet.h"
+#include "ir_json_context.h"
 #include "cJSON.h"
 
 // Forward declarations
@@ -93,6 +93,6 @@ IRStylesheet* ir_json_deserialize_stylesheet(cJSON* obj);
 // ============================================================================
 
 // The context functions are in ir_json_context.h
-#include "../include/ir_json_context.h"
+#include "ir_json_context.h"
 
 #endif // IR_JSON_DESERIALIZE_H

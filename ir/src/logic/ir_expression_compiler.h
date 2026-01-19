@@ -1,7 +1,7 @@
 #ifndef IR_EXPRESSION_COMPILER_H
 #define IR_EXPRESSION_COMPILER_H
 
-#include "../include/ir_expression.h"
+#include "ir_expression.h"
 #include <stdint.h>
 #include <stdbool.h>
 

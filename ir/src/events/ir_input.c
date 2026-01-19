@@ -4,7 +4,7 @@
  * Unified input handling for games with state tracking and virtual input mapping
  */
 
-#include "../include/ir_input.h"
+#include "ir_input.h"
 #include <string.h>
 #include <stdio.h>
 

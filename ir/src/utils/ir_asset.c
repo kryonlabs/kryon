@@ -10,7 +10,7 @@
 
 #define _POSIX_C_SOURCE 199309L
 
-#include "../include/ir_asset.h"
+#include "../utils/ir_asset.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

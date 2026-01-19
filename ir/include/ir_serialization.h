@@ -2,7 +2,7 @@
 #define IR_SERIALIZATION_H
 
 #include "ir_core.h"
-#include "ir_buffer.h"
+#include "../src/utils/ir_buffer.h"
 #include <stdio.h>
 
 // Forward declarations

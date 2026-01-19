@@ -4,7 +4,7 @@
  */
 
 #define _GNU_SOURCE
-#include "../utils/ir_json_helpers.h"
+#include "ir_json_helpers.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>

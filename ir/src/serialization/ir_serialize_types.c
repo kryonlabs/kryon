@@ -4,8 +4,8 @@
  */
 
 #define _GNU_SOURCE
-#include "../include/ir_serialize_types.h"
-#include "../include/ir_log.h"
+#include "ir_serialize_types.h"
+#include "ir_log.h"
 #include <stdlib.h>
 #include <string.h>
 

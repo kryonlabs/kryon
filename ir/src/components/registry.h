@@ -1,7 +1,7 @@
 #ifndef IR_COMPONENT_REGISTRY_H
 #define IR_COMPONENT_REGISTRY_H
 
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 
 // Component layout trait - defines how a component type handles layout
 typedef struct IRLayoutTrait {

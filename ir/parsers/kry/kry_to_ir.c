@@ -7,12 +7,13 @@
 #define _POSIX_C_SOURCE 200809L
 #include "kry_parser.h"
 #include "kry_ast.h"
-#include "../../ir_builder.h"
-#include "../../ir_serialization.h"
-#include "../../ir_logic.h"
-#include "../../ir_stylesheet.h"
-#include "../../ir_animation_builder.h"
-#include "../../ir_foreach.h"
+#include "kry_universal.h"  // Universal transpiler
+#include "../include/ir_builder.h"
+#include "../include/ir_serialization.h"
+#include "../include/ir_logic.h"
+#include "../include/ir_style.h"
+#include "../../src/features/ir_animation_builder.h"
+#include "../src/logic/ir_foreach.h"
 #include "../html/css_parser.h"  // For ir_css_parse_color
 #include "../parser_utils.h"     // For parser_parse_color_packed
 #include <stdlib.h>
@@ -2305,6 +2306,53 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                         else_child = else_child->next_sibling;
                     }
                 }
+            } else if (child->type == KRY_NODE_CODE_BLOCK) {
+                // Code block (@lua, @js, @universal) - add to logic block
+                if (ctx->logic_block && child->code_language && child->code_source) {
+                    // Generate a unique function name for this code block
+                    char func_name[256];
+                    static int code_block_counter = 0;
+                    snprintf(func_name, sizeof(func_name), "_code_block_%d", code_block_counter++);
+
+                    // Create logic function to hold the source code
+                    IRLogicFunction* func = ir_logic_function_create(func_name);
+                    if (func) {
+                        // Check if this is a @universal block
+                        if (strcmp(child->code_language, "universal") == 0) {
+                            // Transpile @universal to both Lua and JavaScript
+                            printf("[KRY_TO_IR] Transpiling @universal block: func='%s'\n", func_name);
+
+                            // Transpile to Lua
+                            size_t lua_length;
+                            char* lua_code = kry_universal_transpile(child->code_source, KRY_TARGET_LUA, &lua_length);
+                            if (lua_code) {
+                                ir_logic_function_add_source(func, "lua", lua_code);
+                                printf("[KRY_TO_IR]   Generated Lua: %zu bytes\n", lua_length);
+                                free(lua_code);
+                            }
+
+                            // Transpile to JavaScript
+                            size_t js_length;
+                            char* js_code = kry_universal_transpile(child->code_source, KRY_TARGET_JAVASCRIPT, &js_length);
+                            if (js_code) {
+                                ir_logic_function_add_source(func, "js", js_code);
+                                printf("[KRY_TO_IR]   Generated JavaScript: %zu bytes\n", js_length);
+                                free(js_code);
+                            }
+                        } else {
+                            // Direct @lua or @js block - just add the source
+                            ir_logic_function_add_source(func, child->code_language, child->code_source);
+                            printf("[KRY_TO_IR] Added code block to logic: language='%s', func='%s'\n",
+                                   child->code_language, func_name);
+                        }
+
+                        // Add function to logic block
+                        ir_logic_block_add_function(ctx->logic_block, func);
+                    }
+                }
+            } else if (child->type == KRY_NODE_DECORATOR) {
+                // Process reactive decorators (@reactive, @computed, @action, @watch)
+                process_reactive_decorator(child, ctx);
             }
 
             child = child->next_sibling;
@@ -2314,6 +2362,88 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
     }
 
     return NULL;
+}
+
+// ============================================================================
+// Reactive Decorator Processing
+// ============================================================================
+
+static void process_reactive_decorator(KryNode* decorator, ConversionContext* ctx) {
+    if (!decorator || !decorator->decorator_type || !ctx) return;
+
+    printf("[KRY_TO_IR] Processing decorator: type='%s'\n", decorator->decorator_type);
+
+    // Get or create reactive manifest from ConversionContext
+    if (!ctx->manifest) {
+        ctx->manifest = ir_reactive_manifest_create();
+        if (!ctx->manifest) {
+            fprintf(stderr, "[KRY_TO_IR] Failed to create reactive manifest\n");
+            return;
+        }
+    }
+
+    IRReactiveManifest* manifest = ctx->manifest;
+
+    // Process decorator type
+    if (strcmp(decorator->decorator_type, "reactive") == 0) {
+        // @reactive decorator - marks state variables as reactive
+        // The actual state variables are created elsewhere, this just marks them
+        printf("[KRY_TO_IR] @reactive decorator found for: %s\n",
+               decorator->decorator_target ? decorator->decorator_target : "(unknown)");
+
+    } else if (strcmp(decorator->decorator_type, "computed") == 0) {
+        // @computed decorator - creates a computed property
+        if (decorator->decorator_target) {
+            uint32_t computed_id = ir_reactive_manifest_add_computed(
+                manifest,
+                decorator->decorator_target,  // name
+                decorator->decorator_target,  // function_name (same for now)
+                NULL,  // dependencies (to be extracted from function body)
+                0      // dependency_count
+            );
+            printf("[KRY_TO_IR] Created computed property '%s' with ID %u\n",
+                   decorator->decorator_target, computed_id);
+        }
+
+    } else if (strcmp(decorator->decorator_type, "action") == 0) {
+        // @action decorator - creates an action with batching and auto-save
+        if (decorator->decorator_target) {
+            uint32_t action_id = ir_reactive_manifest_add_action(
+                manifest,
+                decorator->decorator_target,  // name
+                decorator->decorator_target,  // function_name
+                true,   // is_batched
+                true    // auto_save
+            );
+            printf("[KRY_TO_IR] Created action '%s' with ID %u (batched, auto-save)\n",
+                   decorator->decorator_target, action_id);
+        }
+
+    } else if (strcmp(decorator->decorator_type, "watch") == 0) {
+        // @watch decorator - creates a watcher for state changes
+        if (decorator->decorator_args && decorator->decorator_target) {
+            uint32_t watcher_id = ir_reactive_manifest_add_watcher(
+                manifest,
+                decorator->decorator_args,    // watched_path (e.g., "state.habits")
+                decorator->decorator_target,   // handler_function
+                IR_WATCH_SHALLOW,              // depth
+                false                          // immediate
+            );
+            printf("[KRY_TO_IR] Created watcher for '%s' with handler '%s' (ID %u)\n",
+                   decorator->decorator_args, decorator->decorator_target, watcher_id);
+        }
+
+    } else if (strcmp(decorator->decorator_type, "context") == 0) {
+        // @context decorator - Phase 4 (Context API)
+        printf("[KRY_TO_IR] @context decorator found (Phase 4 - not yet implemented)\n");
+
+    } else if (strcmp(decorator->decorator_type, "use") == 0) {
+        // @use decorator - Phase 4 (Context API)
+        printf("[KRY_TO_IR] @use decorator found (Phase 4 - not yet implemented)\n");
+
+    } else {
+        fprintf(stderr, "[KRY_TO_IR] Unknown decorator type: '%s'\n", decorator->decorator_type);
+    }
 }
 
 // ============================================================================
@@ -3072,6 +3202,113 @@ char* ir_kry_to_kir(const char* source, size_t length) {
         }
     }
     fprintf(stderr, "[STYLE_BLOCKS] Finished processing top-level style blocks\n");
+    fflush(stderr);
+
+    // Process top-level code blocks (@lua, @js, @universal)
+    fprintf(stderr, "[CODE_BLOCKS] Processing top-level code blocks...\n");
+    fflush(stderr);
+    if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
+        KryNode* code_node = ast->first_child;
+        while (code_node) {
+            if (code_node->type == KRY_NODE_CODE_BLOCK && code_node->code_language && code_node->code_source) {
+                fprintf(stderr, "[CODE_BLOCKS] Found code block: language='%s'\n", code_node->code_language);
+                fflush(stderr);
+
+                // Generate a unique function name for this code block
+                char func_name[256];
+                static int top_level_code_block_counter = 0;
+                snprintf(func_name, sizeof(func_name), "_top_level_code_block_%d", top_level_code_block_counter++);
+
+                // Create logic function to hold the source code
+                IRLogicFunction* func = ir_logic_function_create(func_name);
+                if (func) {
+                    // Check if this is a @universal block
+                    if (strcmp(code_node->code_language, "universal") == 0) {
+                        // Transpile @universal to both Lua and JavaScript
+                        fprintf(stderr, "[CODE_BLOCKS] Transpiling @universal block: func='%s'\n", func_name);
+
+                        // Transpile to Lua
+                        size_t lua_length;
+                        char* lua_code = kry_universal_transpile(code_node->code_source, KRY_TARGET_LUA, &lua_length);
+                        if (lua_code) {
+                            ir_logic_function_add_source(func, "lua", lua_code);
+                            fprintf(stderr, "[CODE_BLOCKS]   Generated Lua: %zu bytes\n", lua_length);
+                            free(lua_code);
+                        }
+
+                        // Transpile to JavaScript
+                        size_t js_length;
+                        char* js_code = kry_universal_transpile(code_node->code_source, KRY_TARGET_JAVASCRIPT, &js_length);
+                        if (js_code) {
+                            ir_logic_function_add_source(func, "js", js_code);
+                            fprintf(stderr, "[CODE_BLOCKS]   Generated JavaScript: %zu bytes\n", js_length);
+                            free(js_code);
+                        }
+                    } else {
+                        // Direct @lua or @js block - just add the source
+                        ir_logic_function_add_source(func, code_node->code_language, code_node->code_source);
+                        fprintf(stderr, "[CODE_BLOCKS]   Added to logic block: func='%s'\n", func_name);
+                    }
+
+                    // Add function to logic block
+                    ir_logic_block_add_function(result.logic_block, func);
+                }
+            } else if (code_node->type == KRY_NODE_DECORATOR) {
+                // Process top-level decorators (@reactive, @computed, @action, @watch)
+                // The reactive manifest is stored in the IRContext, not ConversionContext
+                fprintf(stderr, "[CODE_BLOCKS] Processing top-level decorator: type='%s'\n",
+                       code_node->decorator_type ? code_node->decorator_type : "(null)");
+                fflush(stderr);
+
+                // Access the reactive manifest from the IR context
+                if (!ir_ctx->reactive_manifest) {
+                    ir_ctx->reactive_manifest = ir_reactive_manifest_create();
+                }
+
+                // Process the decorator
+                if (strcmp(code_node->decorator_type, "reactive") == 0) {
+                    fprintf(stderr, "[CODE_BLOCKS] @reactive decorator (not yet implemented)\n");
+                } else if (strcmp(code_node->decorator_type, "computed") == 0) {
+                    if (code_node->decorator_target) {
+                        uint32_t computed_id = ir_reactive_manifest_add_computed(
+                            ir_ctx->reactive_manifest,
+                            code_node->decorator_target,
+                            code_node->decorator_target,
+                            NULL, 0
+                        );
+                        fprintf(stderr, "[CODE_BLOCKS] Created computed property '%s' with ID %u\n",
+                               code_node->decorator_target, computed_id);
+                    }
+                } else if (strcmp(code_node->decorator_type, "action") == 0) {
+                    if (code_node->decorator_target) {
+                        uint32_t action_id = ir_reactive_manifest_add_action(
+                            ir_ctx->reactive_manifest,
+                            code_node->decorator_target,
+                            code_node->decorator_target,
+                            true, true
+                        );
+                        fprintf(stderr, "[CODE_BLOCKS] Created action '%s' with ID %u\n",
+                               code_node->decorator_target, action_id);
+                    }
+                } else if (strcmp(code_node->decorator_type, "watch") == 0) {
+                    if (code_node->decorator_args && code_node->decorator_target) {
+                        uint32_t watcher_id = ir_reactive_manifest_add_watcher(
+                            ir_ctx->reactive_manifest,
+                            code_node->decorator_args,
+                            code_node->decorator_target,
+                            IR_WATCH_SHALLOW,
+                            false
+                        );
+                        fprintf(stderr, "[CODE_BLOCKS] Created watcher for '%s' with ID %u\n",
+                               code_node->decorator_args, watcher_id);
+                    }
+                }
+                fflush(stderr);
+            }
+            code_node = code_node->next_sibling;
+        }
+    }
+    fprintf(stderr, "[CODE_BLOCKS] Finished processing top-level code blocks\n");
     fflush(stderr);
 
     // Track all component definitions in the manifest

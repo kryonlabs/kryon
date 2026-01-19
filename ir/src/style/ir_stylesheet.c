@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "../include/ir_stylesheet.h"
+#include "ir_stylesheet.h"
 #include "../include/ir_core.h"
 
 // ============================================================================

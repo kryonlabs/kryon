@@ -1,7 +1,7 @@
 #ifndef IR_NATIVE_CANVAS_H
 #define IR_NATIVE_CANVAS_H
 
-#include "../include/ir_core.h"
+#include "ir_core.h"
 #include <stdint.h>
 #include <stdbool.h>
 

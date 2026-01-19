@@ -1,4 +1,4 @@
-#include "../include/ir_format_detect.h"
+#include "ir_format_detect.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>

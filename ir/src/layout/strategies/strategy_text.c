@@ -6,7 +6,7 @@
 #define _GNU_SOURCE
 #include "../ir_layout_strategy.h"
 #include "../include/ir_core.h"
-#include "../include/ir_text_shaping.h"
+#include "ir_text_shaping.h"
 #include <stdlib.h>
 #include <string.h>
 

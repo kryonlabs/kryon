@@ -33,7 +33,9 @@ typedef enum {
     KRY_NODE_FOR_LOOP,          // For loop (for item in array { ... }) - compile-time expansion
     KRY_NODE_FOR_EACH,          // For each loop (for each item in collection { ... }) - runtime ForEach
     KRY_NODE_IF,                // If/else conditional (if condition { ... } else { ... })
-    KRY_NODE_STYLE_BLOCK        // Style block (style selector { property = value; })
+    KRY_NODE_STYLE_BLOCK,       // Style block (style selector { property = value; })
+    KRY_NODE_CODE_BLOCK,        // Platform-specific code block (@lua, @js, @universal)
+    KRY_NODE_DECORATOR          // Decorator (@reactive, @computed, @action, @watch, @context, @use)
 } KryNodeType;
 
 // ============================================================================
@@ -105,6 +107,15 @@ struct KryNode {
 
     // If/else support
     KryNode* else_branch;       // Else branch for KRY_NODE_IF (NULL if no else)
+
+    // Code block support (for KRY_NODE_CODE_BLOCK)
+    char* code_language;        // "lua", "js", "universal"
+    char* code_source;          // Source code content
+
+    // Decorator support (for KRY_NODE_DECORATOR)
+    char* decorator_type;       // "reactive", "computed", "action", "watch", "context", "use"
+    char* decorator_target;     // Target expression (e.g., "state.habits" for @watch, or context path for @use)
+    char* decorator_args;       // Arguments for the decorator
 
     // Source location (for error messages)
     uint32_t line;
@@ -182,6 +193,12 @@ KryValue* kry_value_create_object(KryParser* parser, char** keys, KryValue** val
 
 // Error handling
 void kry_parser_error(KryParser* parser, const char* message);
+
+// Code block creation
+KryNode* kry_node_create_code_block(KryParser* parser, const char* language, const char* source);
+
+// Decorator creation
+KryNode* kry_node_create_decorator(KryParser* parser, const char* type, const char* target, const char* args);
 
 #ifdef __cplusplus
 }

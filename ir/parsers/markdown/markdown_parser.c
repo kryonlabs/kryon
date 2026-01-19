@@ -26,7 +26,7 @@
 
 #include "markdown_ast.h"
 #include "markdown_parser.h"
-#include "../../ir_logic.h"
+#include "../include/ir_logic.h"
 #include "../html/html_parser.h"
 
 // Forward declaration for AST to IR converter (defined in ir_markdown_to_ir.c)

@@ -1,8 +1,8 @@
 #ifndef IR_VALIDATION_H
 #define IR_VALIDATION_H
 
-#include "../include/ir_core.h"
-#include "../include/ir_serialization.h"
+#include "../../include/ir_core.h"
+#include "../../include/ir_serialization.h"
 #include <stdbool.h>
 #include <stdint.h>
 

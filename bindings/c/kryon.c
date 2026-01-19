@@ -104,7 +104,7 @@ static void cleanup_handlers(void) {
 // C Source Metadata (for round-trip conversion)
 // ============================================================================
 
-#include "../../ir/include/ir_c_metadata.h"
+#include "../ir/src/utils/ir_c_metadata.h"
 
 // Global metadata instance
 CSourceMetadata g_c_metadata = {0};

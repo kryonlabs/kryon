@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 
 #ifdef __cplusplus
 extern "C" {

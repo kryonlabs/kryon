@@ -8,8 +8,8 @@
 #include "lua_parser.h"
 #include "module_collector.h"
 #include "require_tracker.h"
-#include "../../ir_serialization.h"
-#include "../../ir_constants.h"
+#include "../include/ir_serialization.h"
+#include "../../src/utils/ir_constants.h"
 #include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>

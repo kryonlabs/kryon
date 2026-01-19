@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../include/ir_foreach.h"
+#include "../logic/ir_foreach.h"
 
 // Forward declarations
 struct IRComponent;

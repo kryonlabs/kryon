@@ -2,7 +2,7 @@
 #define IR_HIT_TEST_H
 
 #include <stdbool.h>
-#include "../include/ir_core.h"
+#include "ir_core.h"
 
 // ============================================================================
 // Hit Testing - Find component at a given point

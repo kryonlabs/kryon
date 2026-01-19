@@ -7,7 +7,7 @@
 
 #include "lua_codegen.h"
 #include "../codegen_common.h"
-#include "../../ir/include/ir_string_builder.h"
+#include "../../ir/src/utils/ir_string_builder.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -369,6 +369,155 @@ static void generate_reactive_vars(LuaCodeGen* gen, cJSON* manifest) {
     }
 
     lua_gen_add_line(gen, "");
+}
+
+// ============================================================================
+// Computed Properties Generation
+// ============================================================================
+
+static void generate_computed_properties(LuaCodeGen* gen, cJSON* manifest) {
+    if (!manifest || !cJSON_IsObject(manifest)) return;
+
+    cJSON* computed = cJSON_GetObjectItem(manifest, "computed_properties");
+    if (!computed || !cJSON_IsArray(computed) || cJSON_GetArraySize(computed) == 0) {
+        return;
+    }
+
+    lua_gen_add_line(gen, "");
+    lua_gen_add_line(gen, "-- Computed Properties");
+    lua_gen_add_line(gen, "-- Computed properties are cached and automatically invalidated when dependencies change");
+
+    cJSON* prop = NULL;
+    cJSON_ArrayForEach(prop, computed) {
+        cJSON* name = cJSON_GetObjectItem(prop, "name");
+        cJSON* function_name = cJSON_GetObjectItem(prop, "function_name");
+
+        if (!name || !cJSON_IsString(name)) continue;
+
+        const char* prop_name = cJSON_GetStringValue(name);
+        const char* func_name = function_name && cJSON_IsString(function_name) ?
+                                 cJSON_GetStringValue(function_name) : prop_name;
+
+        // Generate computed property wrapper
+        lua_gen_add_line_fmt(gen, "local function get_%s()", prop_name);
+        gen->indent++;
+
+        // TODO: Add dependency tracking and caching logic
+        // For now, just call the function directly
+        lua_gen_add_line_fmt(gen, "return %s()", func_name);
+
+        gen->indent--;
+        lua_gen_add_line(gen, "end");
+        lua_gen_add_line(gen, "");
+    }
+}
+
+// ============================================================================
+// Actions Generation
+// ============================================================================
+
+static void generate_actions(LuaCodeGen* gen, cJSON* manifest) {
+    if (!manifest || !cJSON_IsObject(manifest)) return;
+
+    cJSON* actions = cJSON_GetObjectItem(manifest, "actions");
+    if (!actions || !cJSON_IsArray(actions) || cJSON_GetArraySize(actions) == 0) {
+        return;
+    }
+
+    lua_gen_add_line(gen, "");
+    lua_gen_add_line(gen, "-- Actions");
+    lua_gen_add_line(gen, "-- Actions are batched and automatically save on completion");
+
+    cJSON* action = NULL;
+    cJSON_ArrayForEach(action, actions) {
+        cJSON* name = cJSON_GetObjectItem(action, "name");
+        cJSON* function_name = cJSON_GetObjectItem(action, "function_name");
+        cJSON* is_batched = cJSON_GetObjectItem(action, "is_batched");
+        cJSON* auto_save = cJSON_GetObjectItem(action, "auto_save");
+        cJSON* watch_paths = cJSON_GetObjectItem(action, "watch_paths");
+
+        if (!name || !cJSON_IsString(name)) continue;
+
+        const char* action_name = cJSON_GetStringValue(name);
+        const char* func_name = function_name && cJSON_IsString(function_name) ?
+                                 cJSON_GetStringValue(function_name) : action_name;
+        bool batched = is_batched && cJSON_IsBool(is_batched) && cJSON_IsTrue(is_batched);
+        bool save = auto_save && cJSON_IsBool(auto_save) && cJSON_IsTrue(auto_save);
+
+        // Generate action wrapper
+        lua_gen_add_line_fmt(gen, "local function action_%s()", action_name);
+        gen->indent++;
+
+        if (batched) {
+            lua_gen_add_line(gen, "Reactive.batch(function()");
+            gen->indent++;
+        }
+
+        // Call the actual function
+        lua_gen_add_line_fmt(gen, "%s()", func_name);
+
+        if (batched) {
+            gen->indent--;
+            lua_gen_add_line(gen, "end)");
+        }
+
+        if (save && watch_paths && cJSON_IsArray(watch_paths)) {
+            // Generate save calls for each watch path
+            cJSON* path = NULL;
+            cJSON_ArrayForEach(path, watch_paths) {
+                if (cJSON_IsString(path)) {
+                    const char* path_str = cJSON_GetStringValue(path);
+                    lua_gen_add_line_fmt(gen, "Storage.Collections.save(\"%s\", %s)",
+                                          path_str, path_str);
+                }
+            }
+        }
+
+        gen->indent--;
+        lua_gen_add_line(gen, "end");
+        lua_gen_add_line(gen, "");
+    }
+}
+
+// ============================================================================
+// Watchers Generation
+// ============================================================================
+
+static void generate_watchers(LuaCodeGen* gen, cJSON* manifest) {
+    if (!manifest || !cJSON_IsObject(manifest)) return;
+
+    cJSON* watchers = cJSON_GetObjectItem(manifest, "watchers");
+    if (!watchers || !cJSON_IsArray(watchers) || cJSON_GetArraySize(watchers) == 0) {
+        return;
+    }
+
+    lua_gen_add_line(gen, "");
+    lua_gen_add_line(gen, "-- Watchers");
+    lua_gen_add_line(gen, "-- Watchers execute side effects when state changes");
+
+    cJSON* watcher = NULL;
+    cJSON_ArrayForEach(watcher, watchers) {
+        cJSON* watched_path = cJSON_GetObjectItem(watcher, "watched_path");
+        cJSON* handler_function = cJSON_GetObjectItem(watcher, "handler_function");
+        cJSON* immediate = cJSON_GetObjectItem(watcher, "immediate");
+
+        if (!watched_path || !cJSON_IsString(watched_path) ||
+            !handler_function || !cJSON_IsString(handler_function)) {
+            continue;
+        }
+
+        const char* path = cJSON_GetStringValue(watched_path);
+        const char* handler = cJSON_GetStringValue(handler_function);
+        bool run_immediate = immediate && cJSON_IsBool(immediate) && cJSON_IsTrue(immediate);
+
+        // Generate watcher registration
+        lua_gen_add_line_fmt(gen, "Reactive.watch(\"%s\", function(new_value)", path);
+        gen->indent++;
+        lua_gen_add_line_fmt(gen, "%s(new_value)", handler);
+        gen->indent--;
+        lua_gen_add_line_fmt(gen, "end, %s)", run_immediate ? "true" : "false");
+        lua_gen_add_line(gen, "");
+    }
 }
 
 // Event handler context for storing logic_block data
@@ -927,6 +1076,9 @@ char* lua_codegen_from_json(const char* kir_json) {
                 lua_gen_add_line(gen, "");
             }
             generate_reactive_vars(gen, manifest);
+            generate_computed_properties(gen, manifest);
+            generate_actions(gen, manifest);
+            generate_watchers(gen, manifest);
         }
     }
 

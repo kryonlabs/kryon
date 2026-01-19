@@ -2,9 +2,9 @@
 // Animation builder functions extracted from ir_builder.c
 
 #define _GNU_SOURCE
-#include "../features/ir_animation_builder.h"
+#include "ir_animation_builder.h"
 #include "../include/ir_builder.h"
-#include "../include/ir_animation.h"
+#include "ir_animation.h"
 #include "ir_style_builder.h"
 #include "../utils/ir_memory.h"
 

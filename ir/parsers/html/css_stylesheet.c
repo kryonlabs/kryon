@@ -649,7 +649,7 @@ void ir_css_apply_stylesheet_rules(
 // IRStylesheet Conversion (Bridge to new stylesheet system)
 // ============================================================================
 
-#include "../../ir_stylesheet.h"
+#include "../../include/ir_style.h"
 
 /**
  * Convert CSSProperty array to IRStyleProperties

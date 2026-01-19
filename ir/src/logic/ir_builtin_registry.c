@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ir_builtin_registry.h"
-#include "../include/ir_log.h"
+#include "ir_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

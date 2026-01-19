@@ -13,6 +13,7 @@
 #define IR_CAPABILITY_H
 
 #include "ir_types.h"
+#include <kryon/capability.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

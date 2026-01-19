@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "../include/ir_executor.h"
 #include "../include/ir_state.h"
-#include "../include/ir_expression.h"
+#include "ir_expression.h"
 #include "../include/ir_core.h"
 #include "../include/ir_builder.h"
 #include "../include/ir_serialization.h"

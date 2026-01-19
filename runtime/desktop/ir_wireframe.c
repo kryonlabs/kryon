@@ -2,8 +2,8 @@
 #include "ir_wireframe.h"
 #include "ir_to_commands.h"
 #include "desktop_internal.h"
-#include "../../ir/include/include/ir_core.h"
-#include "../../ir/include/include/ir_log.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_log.h"
 #include "../../core/include/kryon.h"
 #include <stdlib.h>
 #include <string.h>

@@ -1,7 +1,7 @@
 #ifndef IR_COMPONENT_BUTTON_H
 #define IR_COMPONENT_BUTTON_H
 
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 #include "registry.h"
 
 /**

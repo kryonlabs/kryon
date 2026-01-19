@@ -1,4 +1,4 @@
-#include "../include/ir_style_vars.h"
+#include "ir_style_vars.h"
 #include "../include/ir_core.h"
 #include <string.h>
 

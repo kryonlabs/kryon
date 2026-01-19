@@ -2,7 +2,7 @@
 // Hit testing functions extracted from ir_builder.c
 
 #define _GNU_SOURCE
-#include "../events/ir_hit_test.h"
+#include "ir_hit_test.h"
 
 #include <stdio.h>
 #include <stdlib.h>

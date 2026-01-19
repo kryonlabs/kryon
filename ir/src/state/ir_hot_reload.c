@@ -5,7 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "../include/ir_core.h"
 #include "../include/ir_builder.h"
-#include "../include/ir_hot_reload.h"
+#include "ir_hot_reload.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,6 +1,6 @@
 #include "ir_expression_cache.h"
-#include "../include/ir_expression.h"
-#include "../include/ir_log.h"
+#include "ir_expression.h"
+#include "ir_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

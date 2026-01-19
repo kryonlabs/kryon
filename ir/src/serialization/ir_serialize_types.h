@@ -1,7 +1,7 @@
 #ifndef IR_SERIALIZE_TYPES_H
 #define IR_SERIALIZE_TYPES_H
 
-#include "../include/ir_buffer.h"
+#include "../utils/ir_buffer.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -11,7 +11,7 @@
 #include "../include/ir_builder.h"
 #include "../include/ir_core.h"
 #include "../utils/ir_memory.h"
-#include "../include/ir_hashmap.h"
+#include "../utils/ir_hashmap.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

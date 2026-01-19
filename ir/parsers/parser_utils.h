@@ -6,8 +6,8 @@
 #ifndef PARSER_UTILS_H
 #define PARSER_UTILS_H
 
-#include "../ir_core.h"
-#include "../ir_log.h"
+#include "../include/ir_core.h"
+#include "ir_log.h"
 #include <stdbool.h>
 #include <stdint.h>
 

@@ -6,10 +6,10 @@
 
 #define _POSIX_C_SOURCE 199309L
 
-#include "../include/ir_transition.h"
+#include "ir_transition.h"
 #include "../include/ir_core.h"
 #include "../include/ir_builder.h"
-#include "../include/ir_animation.h"
+#include "ir_animation.h"
 #include "../utils/ir_memory.h"
 #include <stdlib.h>
 #include <string.h>

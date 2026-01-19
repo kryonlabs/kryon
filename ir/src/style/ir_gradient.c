@@ -2,7 +2,7 @@
 // Gradient helper functions extracted from ir_builder.c
 
 #define _GNU_SOURCE
-#include "../style/ir_gradient.h"
+#include "ir_gradient.h"
 #include "../utils/ir_memory.h"
 
 #include <stdio.h>

@@ -5,7 +5,7 @@
 
 #include "tsx_codegen.h"
 #include "../codegen_common.h"
-#include "../react_common.h"
+#include "codegen_common.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>

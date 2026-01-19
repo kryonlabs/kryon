@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "../include/ir_core.h"
+#include "ir_core.h"
 
 // ============================================================================
 // Markdown Component Creation

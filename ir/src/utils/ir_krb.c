@@ -5,7 +5,7 @@
 
 #define _POSIX_C_SOURCE 200809L
 
-#include "../include/ir_krb.h"
+#include "ir_krb.h"
 #include "../include/ir_serialization.h"
 #include "../include/ir_logic.h"
 #include "cJSON.h"
