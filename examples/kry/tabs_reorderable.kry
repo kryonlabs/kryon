@@ -179,7 +179,7 @@ App {
                         }
 
                         Text {
-                            text = "Built with Nim and Raylib"
+                            text = "Built with Lua and Raylib"
                             fontSize = 16
                             color = "#cccccc"
                         }

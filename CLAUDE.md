@@ -6,7 +6,6 @@ This file provides context for Claude Code (AI assistant) when working on the Kr
 
 **Read these first:**
 - `docs/ARCHITECTURE.md` - Full system architecture
-- `docs/GETTING_STARTED.md` - User guide
 
 ## Development Rules
 
@@ -42,11 +41,14 @@ kryon/
 │   ├── ir_event_builder.c  # Event management
 │   ├── ir_tabgroup.c       # Tab component state
 │   └── parsers/            # Language parsers
-├── codegens/       # Code generators (TSX, Lua, Nim, C)
-├── backends/       # Runtime backends
-│   └── desktop/    # SDL3 desktop renderer
-├── renderers/      # Rendering systems (SDL3, Raylib)
-├── bindings/       # Language bindings (C, Nim, TypeScript)
+├── codegens/       # Code generators (TSX, Lua, Kotlin, Markdown, C)
+├── runtime/        # Runtime backends
+│   ├── desktop/    # SDL3 desktop renderer
+│   ├── android/    # Android runtime
+│   └── plan9/      # Plan 9/9front runtime
+├── renderers/      # Rendering systems (SDL3, Raylib, Terminal)
+├── bindings/       # Language bindings (C, TypeScript, Kotlin, Lua)
+├── tests/          # All tests (unit, integration, functional)
 ├── examples/       # Example applications
 └── docs/           # Documentation
 ```
@@ -136,7 +138,7 @@ make clean              # Clean
 
 1. Add to TSX parser component list
 2. Add rendering logic to `codegens/react_common.c`
-3. Add desktop rendering in `backends/desktop/`
+3. Add desktop rendering in `runtime/desktop/`
 4. Test round-trip
 
 ### Testing Changes
@@ -166,8 +168,8 @@ diff test.kir test2.kir
 - `codegens/tsx/tsx_codegen.c` - TSX wrapper
 
 ### Desktop Backend
-- `backends/desktop/desktop_renderer.c` - Main renderer
-- `backends/desktop/desktop_input.c` - Event handling
+- `runtime/desktop/desktop_renderer.c` - Main renderer
+- `runtime/desktop/desktop_input.c` - Event handling
 
 ## Known Limitations
 
@@ -193,5 +195,5 @@ diff test.kir test2.kir
 
 ---
 
-**Last Updated**: January 11, 2026
+**Last Updated**: January 18, 2026
 **Kryon Version**: 1.0.0

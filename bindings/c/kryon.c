@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include "../../third_party/tomlc99/toml.h"
-#include "../../backends/desktop/ir_desktop_renderer.h"
+#include "../../runtime/desktop/ir_desktop_renderer.h"
 #include "../../ir/ir_executor.h"
 #include "../../ir/ir_state_manager.h"
 

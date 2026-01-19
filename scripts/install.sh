@@ -40,14 +40,6 @@ print_error() {
 check_prerequisites() {
     print_status "Checking prerequisites..."
 
-    # Check for Nim
-    if ! command -v nim &> /dev/null; then
-        print_error "Nim compiler not found!"
-        echo "Please install Nim from https://nim-lang.org/install.html"
-        exit 1
-    fi
-    print_success "Nim compiler found: $(nim --version | head -n1)"
-
     # Check for make
     if ! command -v make &> /dev/null; then
         print_error "Make not found!"
@@ -57,10 +49,9 @@ check_prerequisites() {
     print_success "Make found"
 
     # Check for raylib
-    if ! nimble list raylib 2>/dev/null | grep -q raylib; then
-        print_warning "Raylib not found via nimble"
-        print_status "Installing raylib..."
-        nimble install -y raylib
+    if ! pkg-config --exists raylib 2>/dev/null; then
+        print_warning "Raylib not found via pkg-config"
+        print_status "Raylib is recommended for desktop rendering"
     else
         print_success "Raylib available"
     fi

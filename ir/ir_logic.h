@@ -17,7 +17,7 @@
 
 // Embedded source code for a specific language
 typedef struct {
-    char* language;  // "nim", "lua", "js", etc.
+    char* language;  // "lua", "js", etc.
     char* source;    // The actual source code
 } IRLogicSource;
 

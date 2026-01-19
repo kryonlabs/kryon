@@ -2,7 +2,7 @@
  * Kryon UI Framework - C DSL Frontend
  *
  * Beautiful declarative macro-based DSL for Kryon in C.
- * Provides a concise syntax similar to Nim DSL and .kry files.
+ * Provides a concise syntax similar to .kry files.
  *
  * Usage:
  *   #include <kryon_dsl.h>
@@ -472,7 +472,7 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 
 #ifndef KRYON_KIR_ONLY
 // Include desktop renderer header for standalone builds
-#include "../../backends/desktop/ir_desktop_renderer.h"
+#include "../../runtime/desktop/ir_desktop_renderer.h"
 #endif
 
 /**

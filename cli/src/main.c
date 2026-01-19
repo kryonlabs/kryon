@@ -2,7 +2,6 @@
  * Kryon CLI - Pure C Implementation
  *
  * Entry point for the Kryon command-line interface.
- * Replaces the previous Nim implementation with pure C.
  */
 
 #include <stdio.h>

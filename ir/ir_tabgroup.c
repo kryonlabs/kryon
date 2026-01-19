@@ -24,11 +24,11 @@ __attribute__((unused)) static IRContext* get_active_context(void) {
     return ctx ? ctx : g_ir_context;
 }
 
-// Nim callback for cleanup when components are removed
-extern void nimOnComponentRemoved(IRComponent* component) __attribute__((weak));
+// Lua callback for cleanup when components are removed
+extern void luaOnComponentRemoved(IRComponent* component) __attribute__((weak));
 
-// Nim callback when components are added to the tree
-extern void nimOnComponentAdded(IRComponent* component) __attribute__((weak));
+// Lua callback when components are added to the tree
+extern void luaOnComponentAdded(IRComponent* component) __attribute__((weak));
 
 // Recursively invalidate rendered bounds
 static void ir_invalidate_bounds_recursive(IRComponent* component) {
@@ -164,7 +164,7 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
 
     // Panels: show only selected
     if (state->tab_content) {
-        // Notify Nim to clean up reactive state before removing panels
+        // Notify Lua to clean up reactive state before removing panels
         // This prevents stale references in the reactive system
         for (uint32_t i = 0; i < state->panel_count; i++) {
             if (state->panels[i] && i != (uint32_t)index) {
@@ -172,8 +172,8 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
                 for (uint32_t c = 0; c < state->tab_content->child_count; c++) {
                     if (state->tab_content->children[c] == state->panels[i]) {
                         // Panel is currently visible and will be removed
-                        if (nimOnComponentRemoved) {
-                            nimOnComponentRemoved(state->panels[i]);
+                        if (luaOnComponentRemoved) {
+                            luaOnComponentRemoved(state->panels[i]);
                         }
                         break;
                     }
@@ -205,9 +205,9 @@ void ir_tabgroup_select(TabGroupState* state, int index) {
             // This is necessary because panels are removed from the tree when not selected
             ir_invalidate_bounds_recursive(panel);
 
-            // Notify Nim that this panel was added - resets cleanup tracking
-            if (nimOnComponentAdded) {
-                nimOnComponentAdded(panel);
+            // Notify Lua runtime that this panel was added - resets cleanup tracking
+            if (luaOnComponentAdded) {
+                luaOnComponentAdded(panel);
             }
         }
 

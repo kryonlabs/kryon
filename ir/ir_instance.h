@@ -30,7 +30,7 @@ typedef struct IRDesktopState IRDesktopState;
 // Forward declare IRInstanceContext for use in callbacks
 typedef struct IRInstanceContext IRInstanceContext;
 
-// Forward declare IRDesktopState (from backends/desktop)
+// Forward declare IRDesktopState (from runtime/desktop)
 typedef struct IRDesktopState IRDesktopState;
 
 // ============================================================================

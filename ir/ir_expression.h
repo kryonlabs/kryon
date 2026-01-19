@@ -9,7 +9,7 @@
 // UNIVERSAL EXPRESSION AST
 // ============================================================================
 // This defines a portable expression language that can be transpiled to
-// any target language (Nim, Lua, JavaScript, etc.)
+// any target language (Lua, JavaScript, C, etc.)
 
 // Binary operators
 typedef enum {

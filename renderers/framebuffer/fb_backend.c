@@ -612,7 +612,7 @@ void kryon_framebuffer_get_buffer(kryon_renderer_t* renderer, uint8_t** buffer, 
     if (stride) *stride = state->stride;
 }
 
-// Helper function for Nim bindings
+// Helper function for C bindings
 const kryon_renderer_ops_t* kryon_get_framebuffer_renderer_ops(void) {
     return &kryon_framebuffer_ops;
 }

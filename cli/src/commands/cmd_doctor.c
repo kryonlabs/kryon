@@ -133,7 +133,7 @@ int cmd_doctor(int argc, char** argv) {
 
     if (!found_desktop) {
         print_check("libkryon_desktop.so", false, "Not found in expected locations");
-        print_info("Run 'make' in the Kryon backends/desktop/ directory");
+        print_info("Run 'make' in the Kryon runtime/desktop/ directory");
         all_ok = false;
     }
 

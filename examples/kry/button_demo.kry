@@ -1,5 +1,5 @@
 // Button Demo - Interactive button with click handler
-// Multi-language support: Nim, Lua, JavaScript, C
+// Multi-language support: Lua, JavaScript, C
 
 App {
   windowTitle = "Interactive Button Demo"
@@ -18,12 +18,6 @@ App {
     }
   }
 }
-
-// Nim implementation
-@nim
-proc handleButtonClick*() =
-  echo "Button clicked! Hello from Kryon-Nim!"
-@end
 
 @lua
 function handleButtonClick()

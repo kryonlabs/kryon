@@ -1,5 +1,5 @@
 # Kryon Examples Makefile
-# Supports both Nim and Lua examples
+# Supports Lua examples
 
 # Compiler settings
 CC = gcc
@@ -10,41 +10,24 @@ INCLUDES = -I../core/include
 # Directories
 BUILD_DIR = ../build
 BIN_DIR = ../bin
-NIM_DIR = nim
 LUA_DIR = lua
-
-# Nim compiler settings
-NIM = nim
-NIM_FLAGS = -d:release --outdir:$(BIN_DIR)
 
 # Lua C bindings
 LUA_BINDINGS = ../bindings/lua/kryon_lua.c
 
 # Find all examples
-NIM_EXAMPLES = $(wildcard $(NIM_DIR)/*.nim)
 LUA_EXAMPLES = $(wildcard $(LUA_DIR)/*.lua)
 
 # Convert to targets
-NIM_TARGETS = $(patsubst $(NIM_DIR)/%.nim,$(BIN_DIR)/%,$(NIM_EXAMPLES))
 LUA_TARGETS = $(patsubst $(LUA_DIR)/%.lua,$(BIN_DIR)/%,$(LUA_EXAMPLES))
 
 # Default target
 .PHONY: all
-all: nim lua
-
-# Build all Nim examples
-.PHONY: nim
-nim: $(NIM_TARGETS)
+all: lua
 
 # Build all Lua examples
 .PHONY: lua
 lua: $(LUA_TARGETS)
-
-# Build Nim examples
-$(BIN_DIR)/%: $(NIM_DIR)/%.nim
-	@echo "Building Nim example: $<"
-	@mkdir -p $(BIN_DIR)
-	$(NIM) c $(NIM_FLAGS) $<
 
 # Build Lua examples (standalone executables)
 $(BIN_DIR)/%: $(LUA_DIR)/%.lua $(LUA_BINDINGS)
@@ -69,11 +52,6 @@ clean:
 	rm -rf $(BUILD_DIR)/libkryon_lua.so
 
 # Clean specific targets
-.PHONY: clean-nim
-clean-nim:
-	@echo "Cleaning Nim examples"
-	rm -f $(NIM_TARGETS)
-
 .PHONY: clean-lua
 clean-lua:
 	@echo "Cleaning Lua examples"
@@ -87,24 +65,20 @@ help:
 	@echo "======================"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  all          - Build all Nim and Lua examples"
-	@echo "  nim          - Build Nim examples only"
+	@echo "  all          - Build all Lua examples"
 	@echo "  lua          - Build Lua examples only"
 	@echo "  lua-bindings - Build Lua C bindings as shared library"
 	@echo "  clean        - Clean all build artifacts"
-	@echo "  clean-nim    - Clean Nim examples only"
 	@echo "  clean-lua    - Clean Lua examples only"
 	@echo "  help         - Show this help message"
 	@echo ""
 	@echo "Requirements:"
-	@echo "  - Nim compiler (for Nim examples)"
-	@echo "  - GCC compiler (for Lua examples)"
+	@echo "  - GCC compiler"
 	@echo "  - Lua development libraries (liblua5.4-dev on Ubuntu)"
 	@echo "  - Kryon C core (make -C ../core)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  Build all:          make"
-	@echo "  Build Nim only:     make nim"
 	@echo "  Build Lua only:     make lua"
 	@echo "  Build specific:     make $(BIN_DIR)/hello_world"
 	@echo "  Run example:        $(BIN_DIR)/hello_world"
@@ -112,14 +86,10 @@ help:
 # List available examples
 .PHONY: list
 list:
-	@echo "Nim Examples:"
-	@for f in $(NIM_EXAMPLES); do echo "  $$f"; done
-	@echo ""
 	@echo "Lua Examples:"
 	@for f in $(LUA_EXAMPLES); do echo "  $$f"; done
 
 # Dependencies
-$(NIM_TARGETS): | $(BUILD_DIR)/libkryon_core.a
 $(LUA_TARGETS): | $(BUILD_DIR)/libkryon_core.a
 
 # Build Kryon C core if not exists
@@ -135,13 +105,12 @@ deps-info:
 	@echo ""
 	@echo "System dependencies:"
 	@echo "  Ubuntu/Debian:"
-	@echo "    sudo apt install nim liblua5.4-dev lua5.4"
+	@echo "    sudo apt install liblua5.4-dev lua5.4"
 	@echo ""
 	@echo "  macOS:"
-	@echo "    brew install nim lua"
+	@echo "    brew install lua"
 	@echo ""
 	@echo "  Windows:"
-	@echo "    - Install Nim from https://nim-lang.org/"
 	@echo "    - Install Lua from https://lua.org/"
 	@echo ""
 	@echo "Kryon dependencies:"
@@ -150,4 +119,3 @@ deps-info:
 	@echo ""
 	@echo "Optional backends:"
 	@echo "  - SDL2: libsdl2-dev libsdl2-ttf-dev (Ubuntu)"
-	@echo "  - Raylib: naylib Nim package"

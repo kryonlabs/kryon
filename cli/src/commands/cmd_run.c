@@ -11,7 +11,7 @@
 #include "../../ir/ir_core.h"
 #include "../../ir/ir_serialization.h"
 #include "../../ir/ir_executor.h"
-#include "../../backends/desktop/ir_desktop_renderer.h"
+#include "../../runtime/desktop/ir_desktop_renderer.h"
 #include "../../codegens/kotlin/kotlin_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -474,7 +474,7 @@ static int run_c_file(const char* target_file) {
     char* kryon_root = paths_get_kryon_root();
     char* bindings_path = kryon_root ? path_join(kryon_root, "bindings/c") : paths_get_bindings_path();
     char* ir_path = kryon_root ? path_join(kryon_root, "ir") : str_copy("ir");
-    char* desktop_path = kryon_root ? path_join(kryon_root, "backends/desktop") : str_copy("backends/desktop");
+    char* desktop_path = kryon_root ? path_join(kryon_root, "runtime/desktop") : str_copy("runtime/desktop");
     char* cjson_path = kryon_root ? path_join(kryon_root, "ir/third_party/cJSON") : str_copy("ir/third_party/cJSON");
     char* build_path = kryon_root ? path_join(kryon_root, "build") : paths_get_build_path();
 
@@ -744,7 +744,7 @@ DesktopRendererConfig desktop_renderer_config_sdl3(int width, int height, const 
     (void)height;
     (void)title;
     fprintf(stderr, "Error: Desktop backend not available. Please build the desktop backend.\n");
-    fprintf(stderr, "Run: cd backends/desktop && make\n");
+    fprintf(stderr, "Run: cd runtime/desktop && make\n");
     DesktopRendererConfig config = {0};
     return config;
 }
@@ -754,6 +754,6 @@ bool desktop_render_ir_component(IRComponent* root, const DesktopRendererConfig*
     (void)root;
     (void)config;
     fprintf(stderr, "Error: Desktop backend not available. Please build the desktop backend.\n");
-    fprintf(stderr, "Run: cd backends/desktop && make\n");
+    fprintf(stderr, "Run: cd runtime/desktop && make\n");
     return false;
 }

@@ -473,7 +473,7 @@ void kryon_set_main_source_file(const char* filename);
 // ============================================================================
 
 // Types defined in desktop_platform.h (single source of truth)
-#include "../../backends/desktop/desktop_platform.h"
+#include "../../runtime/desktop/desktop_platform.h"
 
 // C-style naming aliases
 typedef KryonShutdownState kryon_shutdown_state_t;
