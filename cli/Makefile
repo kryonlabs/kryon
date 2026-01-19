@@ -67,7 +67,6 @@ TARGET = kryon
 CODEGEN_OBJS = $(wildcard ../build/codegen_common.o) \
                $(wildcard ../codegens/kry/kry_codegen.o) \
                $(wildcard ../codegens/tsx/tsx_codegen.o) \
-               $(wildcard ../codegens/nim/nim_codegen.o) \
                $(wildcard ../codegens/lua/lua_codegen.o) \
                $(wildcard ../codegens/markdown/markdown_codegen.o) \
                $(wildcard ../codegens/c/ir_c_codegen.o) \

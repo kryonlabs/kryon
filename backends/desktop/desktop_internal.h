@@ -213,9 +213,6 @@ extern size_t input_state_count;
 extern bool g_debug_renderer;
 #define DEBUG_LOG(...) do { if (g_debug_renderer) fprintf(stderr, __VA_ARGS__); } while(0)
 
-// Nim bridge declarations (weak symbols for Lua compatibility)
-__attribute__((weak)) void nimProcessReactiveUpdates(void);
-
 // ============================================================================
 // FONT MANAGEMENT (desktop_fonts.c)
 // ============================================================================

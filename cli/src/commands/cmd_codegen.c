@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../../codegens/kry/kry_codegen.h"
-#include "../../codegens/nim/nim_codegen.h"
 #include "../../codegens/lua/lua_codegen.h"
 #include "../../codegens/tsx/tsx_codegen.h"
 #include "../../codegens/c/ir_c_codegen.h"
@@ -26,7 +25,6 @@ static bool is_valid_target(const char* target) {
     if (!target) return false;
     return strcmp(target, "kry") == 0 ||
            strcmp(target, "tsx") == 0 ||
-           strcmp(target, "nim") == 0 ||
            strcmp(target, "lua") == 0 ||
            strcmp(target, "c") == 0;
 }
@@ -50,7 +48,6 @@ static void print_codegen_usage(const char* error) {
     fprintf(stderr, "Targets:\n");
     fprintf(stderr, "  kry    - Generate .kry source code (round-trip)\n");
     fprintf(stderr, "  tsx    - Generate TypeScript React code\n");
-    fprintf(stderr, "  nim    - Generate Nim source code\n");
     fprintf(stderr, "  lua    - Generate Lua source code (multi-file)\n");
     fprintf(stderr, "  c      - Generate C source code\n");
     fprintf(stderr, "\n");
@@ -58,8 +55,8 @@ static void print_codegen_usage(const char* error) {
     fprintf(stderr, "  kryon codegen kry\n");
     fprintf(stderr, "    Uses build.entry from kryon.toml, outputs to build/kry/\n");
     fprintf(stderr, "\n");
-    fprintf(stderr, "  kryon codegen nim --output=gen/\n");
-    fprintf(stderr, "    Uses build.entry, outputs to gen/nim/\n");
+    fprintf(stderr, "  kryon codegen lua --output=gen/\n");
+    fprintf(stderr, "    Uses build.entry, outputs to gen/lua/\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  kryon codegen lua --input=other.lua\n");
     fprintf(stderr, "    Uses other.lua as source, outputs to build/lua/\n");
@@ -94,8 +91,7 @@ int cmd_codegen(int argc, char** argv) {
     const char* first = argv[0];
     if (strstr(first, ".kir") != NULL || strstr(first, ".lua") != NULL ||
         strstr(first, ".kry") != NULL || strstr(first, ".tsx") != NULL ||
-        strstr(first, ".nim") != NULL || strstr(first, ".c") != NULL ||
-        strstr(first, ".h") != NULL) {
+        strstr(first, ".c") != NULL || strstr(first, ".h") != NULL) {
         // First arg is a file - old syntax: codegen <input.kir> --lang=<target>
         input = first;
         for (int i = 1; i < argc; i++) {

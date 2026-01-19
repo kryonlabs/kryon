@@ -16,7 +16,6 @@
 #
 # Output:
 #   build/ir/   - Generated .kir files
-#   build/nim/  - Generated .nim files
 #
 # =============================================================================
 
@@ -34,7 +33,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Ensure build directories exist
-mkdir -p build/ir build/nim
+mkdir -p build/ir
 
 # Always rebuild and install libraries to ensure we're testing latest code
 echo -e "${CYAN}Building and installing libraries...${NC}"
@@ -103,15 +102,12 @@ fi
 # Determine basename
 if [[ "$EXAMPLE" == *.kry ]]; then
     BASENAME=$(basename "$EXAMPLE" .kry)
-elif [[ "$EXAMPLE" == *.nim ]]; then
-    BASENAME=$(basename "$EXAMPLE" .nim)
 else
     BASENAME="$EXAMPLE"
 fi
 
 # Output paths
 KIR_FILE="build/ir/${BASENAME}.kir"
-NIM_FILE="build/nim/${BASENAME}.nim"
 
 # =============================================================================
 # MAIN: .kry → .kir → .nim → render
@@ -143,16 +139,6 @@ if [ -f "$KIR_FILE" ]; then
 else
     echo -e "      ${RED}✗${NC} Failed to generate .kir file"
     exit 1
-fi
-
-# Step 2: Generate .nim from .kir
-echo -e "${YELLOW}[2/3]${NC} Generating ${GREEN}$KIR_FILE${NC} → ${GREEN}$NIM_FILE${NC}"
-~/.local/bin/kryon codegen "$KIR_FILE" --lang=nim --output="$NIM_FILE"
-
-if [ -f "$NIM_FILE" ]; then
-    echo -e "      ${GREEN}✓${NC} Generated $(wc -l < "$NIM_FILE") lines"
-else
-    echo -e "      ${YELLOW}⚠${NC} Codegen not available for this format"
 fi
 
 echo ""

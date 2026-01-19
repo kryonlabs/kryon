@@ -12,8 +12,6 @@
 #include "ir_web_renderer.h"
 #include "html_generator.h"
 #include "css_generator.h"
-#include "wasm_bridge.h"
-
 // Global IR context for source language detection
 extern IRContext* g_ir_context;
 
@@ -21,12 +19,10 @@ extern IRContext* g_ir_context;
 typedef struct WebIRRenderer {
     HTMLGenerator* html_generator;
     CSSGenerator* css_generator;
-    WASMBridge* wasm_bridge;
     char output_directory[256];
     char* source_directory;  // Directory containing source HTML/assets
     bool generate_separate_files;
     bool include_javascript_runtime;
-    bool include_wasm_modules;
 } WebIRRenderer;
 
 // JavaScript runtime template
@@ -720,12 +716,10 @@ WebIRRenderer* web_ir_renderer_create() {
 
     renderer->html_generator = html_generator_create();
     renderer->css_generator = css_generator_create();
-    renderer->wasm_bridge = wasm_bridge_create();
 
-    if (!renderer->html_generator || !renderer->css_generator || !renderer->wasm_bridge) {
+    if (!renderer->html_generator || !renderer->css_generator) {
         if (renderer->html_generator) html_generator_destroy(renderer->html_generator);
         if (renderer->css_generator) css_generator_destroy(renderer->css_generator);
-        if (renderer->wasm_bridge) wasm_bridge_destroy(renderer->wasm_bridge);
         free(renderer);
         return NULL;
     }
@@ -734,7 +728,6 @@ WebIRRenderer* web_ir_renderer_create() {
     renderer->source_directory = NULL;
     renderer->generate_separate_files = true;
     renderer->include_javascript_runtime = true;
-    renderer->include_wasm_modules = false;  // Disabled by default
 
     return renderer;
 }

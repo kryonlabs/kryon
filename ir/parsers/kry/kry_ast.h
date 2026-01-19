@@ -30,7 +30,8 @@ typedef enum {
     KRY_NODE_EXPRESSION,        // Inline expression ({ value + 1 })
     KRY_NODE_VAR_DECL,          // Variable declaration (const x = ..., let y = ..., var z = ...)
     KRY_NODE_STATIC_BLOCK,      // Static block (static { ... })
-    KRY_NODE_FOR_LOOP,          // For loop (for item in array { ... })
+    KRY_NODE_FOR_LOOP,          // For loop (for item in array { ... }) - compile-time expansion
+    KRY_NODE_FOR_EACH,          // For each loop (for each item in collection { ... }) - runtime ForEach
     KRY_NODE_IF,                // If/else conditional (if condition { ... } else { ... })
     KRY_NODE_STYLE_BLOCK        // Style block (style selector { property = value; })
 } KryNodeType;

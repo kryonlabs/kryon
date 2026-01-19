@@ -24,10 +24,6 @@ INCDIR = $(PREFIX)/include/kryon
 PKGCONFIGDIR = $(PREFIX)/lib/pkgconfig
 CONFIGDIR = $(HOME)/.config/kryon
 
-# Compiler and flags
-NIM = nim
-NIMFLAGS = --define:kryonVersion=$(VERSION)
-
 # Static build flags (includes all rendering backends + transpilers)
 STATIC_FLAGS = -d:staticBackend --opt:size --passL:"-static"
 
@@ -60,7 +56,6 @@ endif
 CLI_DIR = cli
 CLI_SRC = $(CLI_DIR)/src/main.c
 CLI_DEPS = $(wildcard $(CLI_DIR)/src/**/*.c)
-LIB_SRC = bindings/nim/kryon_dsl
 
 # Build targets
 BUILD_DIR = build
@@ -216,7 +211,7 @@ $(LIB_FILE): build-c-libs
 # Development build (debug symbols, verbose)
 dev:
 	@echo "Building development version..."
-	$(NIM) c $(NIMFLAGS) -d:debug -d:verbose --opt:none -o:$(CLI_BIN) $(CLI_SRC)
+	-d:debug -d:verbose --opt:none -o:$(CLI_BIN) $(CLI_SRC)
 
 # Installation targets
 install: install-dynamic install-lib install-config
@@ -274,12 +269,6 @@ install-lib: build-lib
 	@if [ -f build/libkryon_web.so ]; then \
 		install -m 755 build/libkryon_web.so $(HOME)/.local/share/kryon/build/; \
 		echo "✓ Installed libkryon_web.so to ~/.local/share/kryon/build/"; \
-	fi
-	# Copy Nim bindings to include directory (optional - only if they exist)
-	@mkdir -p $(INCDIR)
-	@if [ -d bindings/nim ] && [ -n "$$(ls -A bindings/nim 2>/dev/null)" ]; then \
-		cp -r bindings/nim/* $(INCDIR)/ 2>/dev/null || true; \
-		echo "✓ Installed Nim bindings"; \
 	fi
 	# Copy C headers for compilation (fix relative paths for flat install)
 	mkdir -p $(INCDIR)/c
@@ -354,11 +343,6 @@ doctor:
 	@echo "Build: $(shell uname -s)-$(shell uname -m)"
 	@echo ""
 	@echo "Dependencies:"
-	@if command -v $(NIM) >/dev/null 2>&1; then \
-		echo "✓ Nim: $$($(NIM) --version | head -n1)"; \
-	else \
-		echo "✗ Nim: not found"; \
-	fi
 	@if [ -f $(LIBDIR)/libkryon.a ]; then \
 		echo "✓ Library: $(LIBDIR)/libkryon.a"; \
 	else \
@@ -470,20 +454,12 @@ asan-full:
 	@echo "Step 2/3: Building Desktop backend with ASAN+UBSan..."
 	$(MAKE) -C backends/desktop clean
 	$(MAKE) -C backends/desktop asan-ubsan
-	@echo "Step 3/3: Building Nim CLI with ASAN-instrumented libraries..."
 	@ASAN_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
 		$(MAKE) build-cli-asan
 	@echo "✅ ASAN build complete!"
 	@echo ""
 	@echo "Usage: LD_LIBRARY_PATH=build:\$$LD_LIBRARY_PATH ./run_example.sh <example>"
 	@echo "       ASAN_OPTIONS=detect_leaks=1 LD_LIBRARY_PATH=build:\$$LD_LIBRARY_PATH ./run_example.sh <example>"
-
-# Build Nim CLI with ASAN-instrumented libraries
-build-cli-asan: $(CLI_SRC)
-	@mkdir -p $(BUILD_DIR)
-	$(NIM) c $(NIMFLAGS) --opt:speed \
-		--passL:"-fsanitize=address,undefined -fno-omit-frame-pointer -L$(BUILD_DIR) -lkryon_ir -lkryon_desktop $(SDL3_LIBS) $(SDL_TTF_LIBS)" \
-		-o:$(CLI_BIN) $(CLI_SRC)
 
 # Run ASAN test on example
 asan-test:
@@ -558,11 +534,6 @@ generate-bindings:
 		echo "Error: plugins/$(PLUGIN)/bindings.json not found"; \
 		exit 1; \
 	fi
-	@echo "Compiling bindings generator..."
-	@$(NIM) c --hints:off --warnings:off -o:build/generate_bindings tools/generate_nim_bindings.nim
-	@echo "Generating Nim bindings for $(PLUGIN)..."
-	@build/generate_bindings plugins/$(PLUGIN)/bindings.json bindings/nim/$(PLUGIN)_generated.nim
-	@echo "✓ Bindings generated: bindings/nim/$(PLUGIN)_generated.nim"
 
 # Clean build artifacts
 # ============================================================================
@@ -592,12 +563,10 @@ clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BIN_DIR)
-	rm -rf nimcache/
 	@echo "Cleaning codegen object files..."
 	rm -f codegens/web/*.o codegens/web/kir_to_html
 	rm -f codegens/kry/*.o
 	rm -f codegens/tsx/*.o
-	rm -f codegens/nim/*.o
 	rm -f codegens/lua/*.o
 	rm -f codegens/c/*.o
 	rm -f codegens/markdown/*.o

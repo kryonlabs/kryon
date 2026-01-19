@@ -30,12 +30,6 @@ extern float measure_text_width(TTF_Font* font, const char* text);
 extern TTF_Font* desktop_ir_resolve_font(DesktopIRRenderer* renderer, IRComponent* component, float fallback_size);
 extern SDL_Color ir_color_to_sdl(IRColor color);
 
-// Nim bridge functions (optional, weak symbols for Lua compatibility)
-__attribute__((weak)) void nimButtonBridge(uint32_t componentId);
-__attribute__((weak)) void nimCheckboxBridge(uint32_t componentId);
-__attribute__((weak)) void nimDropdownBridge(uint32_t componentId, int32_t selectedIndex);
-__attribute__((weak)) bool nimInputBridge(IRComponent* component, const char* text);
-
 // Forward declaration from C bindings event bridge
 extern void kryon_c_event_bridge(const char* logic_id);
 
@@ -439,60 +433,6 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                             ir_event->logic_id);
                                 }
                             }
-                            // Check if this is a Nim button handler
-                            else if (strncmp(ir_event->logic_id, "nim_button_", 11) == 0) {
-                                bool handled_as_tab = try_handle_as_tab_click(renderer, clicked);
-                                IRExecutorContext* executor = get_executor_from_state_mgr();
-                                if (executor) {
-                                    ir_executor_set_root(executor, renderer->last_root);
-                                    ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
-                                } else if (nimButtonBridge) {
-                                    nimButtonBridge(clicked->id);
-                                }
-                            }
-                            // Check if this is a Nim checkbox handler
-                            else if (strncmp(ir_event->logic_id, "nim_checkbox_", 13) == 0) {
-                                if (clicked->type == IR_COMPONENT_CHECKBOX) {
-                                    ir_toggle_checkbox_state(clicked);
-                                }
-                                IRExecutorContext* executor = get_executor_from_state_mgr();
-                                if (executor) {
-                                    ir_executor_set_root(executor, renderer->last_root);
-                                    ir_executor_handle_event_by_logic_id(executor, clicked->id, ir_event->logic_id);
-                                } else if (nimCheckboxBridge) {
-                                    nimCheckboxBridge(clicked->id);
-                                }
-                            }
-                            // Check if this is a Nim dropdown handler
-                            else if (strncmp(ir_event->logic_id, "nim_dropdown_", 13) == 0) {
-                                if (clicked->type == IR_COMPONENT_DROPDOWN) {
-                                    IRDropdownState* state = ir_get_dropdown_state(clicked);
-                                    if (state) {
-                                        float click_y = (float)event.button.y;
-                                        IRRenderedBounds bounds = clicked->rendered_bounds;
-
-                                        if (state->is_open) {
-                                            float menu_y = bounds.y + bounds.height;
-                                            float menu_height = fminf(state->option_count * 35.0f, 200.0f);
-
-                                            if (click_y >= menu_y && click_y < menu_y + menu_height) {
-                                                uint32_t option_index = (uint32_t)((click_y - menu_y) / 35.0f);
-                                                if (option_index < state->option_count) {
-                                                    ir_set_dropdown_selected_index(clicked, (int32_t)option_index);
-                                                    ir_set_dropdown_open_state(clicked, false);
-                                                    if (nimDropdownBridge) {
-                                                        nimDropdownBridge(clicked->id, (int32_t)option_index);
-                                                    }
-                                                }
-                                            } else {
-                                                ir_set_dropdown_open_state(clicked, false);
-                                            }
-                                        } else {
-                                            ir_set_dropdown_open_state(clicked, true);
-                                        }
-                                    }
-                                }
-                            }
                             // C event (c_click_*, c_change_*, etc.)
                             else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
                                 kryon_c_event_bridge(ir_event->logic_id);
@@ -703,9 +643,6 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             istate->cursor_index = cursor + incoming_len;
                             ensure_caret_visible_sdl3(renderer, focused_input, istate, font, pad_left, pad_right);
                         }
-                        if (nimInputBridge) {
-                            nimInputBridge(focused_input, focused_input->text_content);
-                        }
 
                         // Fire IR_EVENT_TEXT_CHANGE for Lua handlers
                         IREvent* text_event = ir_find_event(focused_input, IR_EVENT_TEXT_CHANGE);
@@ -806,9 +743,6 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             if (istate) {
                                 istate->cursor_index = prefix_len;
                                 ensure_caret_visible_sdl3(renderer, focused_input, istate, font, pad_left, pad_right);
-                            }
-                            if (nimInputBridge) {
-                                nimInputBridge(focused_input, focused_input->text_content);
                             }
 
                             // Fire IR_EVENT_TEXT_CHANGE

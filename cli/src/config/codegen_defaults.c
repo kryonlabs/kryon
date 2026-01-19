@@ -16,14 +16,6 @@ WebCodegenOptions web_codegen_default_options(void) {
     return opts;
 }
 
-NimCodegenOptions nim_codegen_default_options(void) {
-    NimCodegenOptions opts = {
-        .format = true,               // Format with nimpretty
-        .optimize = false             // No optimization by default
-    };
-    return opts;
-}
-
 TsxCodegenOptions tsx_codegen_default_options(void) {
     TsxCodegenOptions opts = {
         .format = true,               // Format output

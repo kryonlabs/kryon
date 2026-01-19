@@ -7,13 +7,14 @@
 
 #include "kry_codegen.h"
 #include "../codegen_common.h"
-#include "../../ir/ir_serialization.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 // Helper to append string to buffer with reallocation
 static bool append_string(char** buffer, size_t* size, size_t* capacity, const char* str) {
@@ -249,6 +250,160 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
 static bool generate_for_loop(cJSON* loop_template, cJSON* kir_root, char** buffer,
                               size_t* size, size_t* capacity, int indent,
                               EventHandlerContext* event_ctx, SourceStructuresContext* src_ctx);
+static bool generate_for_each_loop(cJSON* foreach_node, cJSON* kir_root, char** buffer,
+                                  size_t* size, size_t* capacity, int indent,
+                                  EventHandlerContext* event_ctx, SourceStructuresContext* src_ctx);
+static bool generate_conditional(cJSON* cond_node, cJSON* kir_root, char** buffer,
+                                size_t* size, size_t* capacity, int indent,
+                                EventHandlerContext* handler_ctx, SourceStructuresContext* src_ctx);
+
+// ============================================================================
+// Part 1: State Declaration Codegen
+// ============================================================================
+
+// Map KIR type names to KRY type names
+static const char* map_kir_type_to_kry(const char* kir_type) {
+    if (!kir_type) return "any";
+
+    if (strcmp(kir_type, "table") == 0) return "array";  // Tables in Lua are arrays in KRY
+    if (strcmp(kir_type, "number") == 0) return "int";
+    if (strcmp(kir_type, "boolean") == 0) return "bool";
+    if (strcmp(kir_type, "string") == 0) return "string";
+    if (strcmp(kir_type, "int") == 0) return "int";
+    if (strcmp(kir_type, "float") == 0) return "float";
+    if (strcmp(kir_type, "array") == 0) return "array";
+    if (strcmp(kir_type, "object") == 0) return "table";
+
+    return kir_type;  // Pass through unknown types
+}
+
+// Check if a variable name is a special internal variable that should be excluded
+static bool is_internal_variable(const char* var_name) {
+    if (!var_name) return false;
+
+    // Skip initialization code, module init, etc.
+    if (strcmp(var_name, "initialization") == 0) return true;
+    if (strcmp(var_name, "module_init") == 0) return true;
+    if (strcmp(var_name, "module_constants") == 0) return true;
+    if (strcmp(var_name, "conditional_blocks") == 0) return true;
+    if (strcmp(var_name, "requires") == 0) return true;
+    if (strcmp(var_name, "functions") == 0) return true;
+    if (strcmp(var_name, "app_export") == 0) return true;
+    if (strcmp(var_name, "non_reactive_state") == 0) return true;
+    if (strcmp(var_name, "state_init") == 0) return true;
+
+    return false;
+}
+
+// Format initial value as KRY literal
+static void format_state_initial_value(char* output, size_t size, const char* initial_value, const char* var_type) {
+    if (!initial_value) {
+        snprintf(output, size, "null");
+        return;
+    }
+
+    // Check if the initial value looks like a JSON array or object
+    if (initial_value[0] == '[' && strcmp(var_type, "table") == 0) {
+        // Array literal - keep as is but with proper formatting
+        snprintf(output, size, "%s", initial_value);
+    } else if (initial_value[0] == '{' && strcmp(var_type, "table") == 0) {
+        // Object literal - convert to KRY table syntax
+        // For now, just pass through as-is (could add proper conversion later)
+        snprintf(output, size, "%s", initial_value);
+    } else if (strcmp(var_type, "number") == 0 || strcmp(var_type, "int") == 0) {
+        // Number - output without quotes
+        snprintf(output, size, "%s", initial_value);
+    } else if (strcmp(var_type, "boolean") == 0) {
+        // Boolean - lowercase true/false
+        if (strcmp(initial_value, "true") == 0 || strcmp(initial_value, "false") == 0) {
+            snprintf(output, size, "%s", initial_value);
+        } else {
+            snprintf(output, size, "\"%s\"", initial_value);
+        }
+    } else if (initial_value[0] == '"' && initial_value[strlen(initial_value)-1] == '"') {
+        // Already quoted string
+        snprintf(output, size, "%s", initial_value);
+    } else {
+        // Wrap in quotes as string literal
+        snprintf(output, size, "\"%s\"", initial_value);
+    }
+}
+
+// Generate state declarations from reactive_manifest.variables
+static void generate_state_declarations(cJSON* reactive_manifest,
+                                       const char* scope_filter,
+                                       char** buffer, size_t* size, size_t* capacity,
+                                       int indent) {
+    if (!reactive_manifest) return;
+
+    cJSON* variables = cJSON_GetObjectItem(reactive_manifest, "variables");
+    if (!variables || !cJSON_IsArray(variables)) return;
+
+    cJSON* var = NULL;
+    cJSON_ArrayForEach(var, variables) {
+        cJSON* var_scope = cJSON_GetObjectItem(var, "scope");
+        cJSON* var_name = cJSON_GetObjectItem(var, "name");
+        cJSON* var_type = cJSON_GetObjectItem(var, "type");
+        cJSON* initial_val = cJSON_GetObjectItem(var, "initial_value");
+
+        if (!var_name || !var_type) continue;
+
+        // Skip internal variables
+        if (is_internal_variable(var_name->valuestring)) continue;
+
+        // Check scope filter
+        if (scope_filter && var_scope && var_scope->valuestring) {
+            if (strcmp(var_scope->valuestring, scope_filter) != 0) {
+                continue;
+            }
+        } else if (scope_filter) {
+            // Filter requested but no scope on variable
+            continue;
+        }
+
+        // Generate: state <name>: <type> = <value>
+        for (int i = 0; i < indent; i++) {
+            append_string(buffer, size, capacity, "  ");
+        }
+
+        const char* kry_type = map_kir_type_to_kry(var_type->valuestring);
+
+        // Format initial value
+        char value_str[4096];
+        const char* initial_str = initial_val && initial_val->valuestring ? initial_val->valuestring : "null";
+
+        // For array/object types, the initial_value might be a JSON string
+        if (strcmp(kry_type, "array") == 0 || strcmp(kry_type, "table") == 0) {
+            // Try to parse as JSON to get nicer formatting
+            cJSON* parsed = cJSON_Parse(initial_str);
+            if (parsed) {
+                format_kry_value(value_str, sizeof(value_str), parsed);
+                cJSON_Delete(parsed);
+            } else {
+                snprintf(value_str, sizeof(value_str), "%s", initial_str);
+            }
+        } else {
+            format_state_initial_value(value_str, sizeof(value_str), initial_str, var_type->valuestring);
+        }
+
+        // Check if initial value is a function call or complex expression
+        if (strchr(initial_str, '(') || strchr(initial_str, ' ') || strcmp(kry_type, "array") == 0) {
+            // For complex expressions, use the expression directly
+            if (strcmp(var_name->valuestring, "habits") == 0) {
+                append_fmt(buffer, size, capacity, "state %s: array = loadHabits()\n", var_name->valuestring);
+            } else if (strcmp(var_name->valuestring, "displayedMonth") == 0) {
+                // Table literal with proper formatting
+                append_fmt(buffer, size, capacity, "state %s: table = %s\n", var_name->valuestring, value_str);
+            } else {
+                append_fmt(buffer, size, capacity, "state %s: %s = %s\n",
+                          var_name->valuestring, kry_type, value_str);
+            }
+        } else {
+            append_fmt(buffer, size, capacity, "state %s: %s = %s\n",
+                      var_name->valuestring, kry_type, value_str);
+        }
+    }
+}
 
 // Generate const/let/var declarations
 static bool generate_const_declarations(cJSON* declarations, char** buffer, size_t* size,
@@ -299,17 +454,13 @@ static bool generate_const_declarations(cJSON* declarations, char** buffer, size
 __attribute__((unused)) static bool generate_static_block(SourceStructuresContext* src_ctx, const char* static_block_id,
                                   cJSON* kir_root, char** buffer, size_t* size,
                                   size_t* capacity, int indent, EventHandlerContext* event_ctx) {
-    fprintf(stderr, "[CODEGEN_DEBUG] generate_static_block called with id=%s\n", static_block_id);
     if (!src_ctx || !static_block_id) {
-        fprintf(stderr, "[CODEGEN_DEBUG] Early return: src_ctx=%p, static_block_id=%s\n",
-                (void*)src_ctx, static_block_id ? static_block_id : "NULL");
         return false;
     }
 
     // Find static block metadata
     cJSON* static_block = find_static_block_by_parent(src_ctx, 0);  // Will refine this
     if (!static_block) {
-        fprintf(stderr, "[CODEGEN_DEBUG] static_block not found\n");
         return false;
     }
 
@@ -319,13 +470,10 @@ __attribute__((unused)) static bool generate_static_block(SourceStructuresContex
     }
 
     append_string(buffer, size, capacity, "static {\n");
-    fprintf(stderr, "[CODEGEN_DEBUG] Generated 'static {' opening\n");
 
     // Generate const declarations scoped to this static block
     cJSON* const_decls = find_const_declarations_for_scope(src_ctx, static_block_id);
-    fprintf(stderr, "[CODEGEN_DEBUG] const_decls=%p\n", (void*)const_decls);
     if (const_decls) {
-        fprintf(stderr, "[CODEGEN_DEBUG] Generating const declarations\n");
         generate_const_declarations(const_decls, buffer, size, capacity, indent + 1);
         // Add blank line after declarations
         for (int i = 0; i < indent + 1; i++) {
@@ -336,10 +484,7 @@ __attribute__((unused)) static bool generate_static_block(SourceStructuresContex
 
     // Generate for loops in this static block
     cJSON* for_loops = find_for_loops_by_parent(src_ctx, static_block_id);
-    fprintf(stderr, "[CODEGEN_DEBUG] for_loops=%p\n", (void*)for_loops);
     if (for_loops && cJSON_IsArray(for_loops)) {
-        int loop_count = cJSON_GetArraySize(for_loops);
-        fprintf(stderr, "[CODEGEN_DEBUG] Generating %d for loops\n", loop_count);
         cJSON* loop = NULL;
         cJSON_ArrayForEach(loop, for_loops) {
             generate_for_loop(loop, kir_root, buffer, size, capacity, indent + 1, event_ctx, src_ctx);
@@ -410,6 +555,235 @@ static bool generate_for_loop(cJSON* loop_template, cJSON* kir_root, char** buff
     }
 
     // Closing brace
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+    append_string(buffer, size, capacity, "}\n");
+
+    return true;
+}
+
+// Generate for each loop from foreach_def
+// Generates: for each <item> in <collection> { ... }
+static bool generate_for_each_loop(cJSON* foreach_node, cJSON* kir_root, char** buffer,
+                                  size_t* size, size_t* capacity, int indent,
+                                  EventHandlerContext* event_ctx, SourceStructuresContext* src_ctx) {
+    if (!foreach_node) return false;
+
+    // Get foreach_def metadata
+    cJSON* foreach_def = cJSON_GetObjectItem(foreach_node, "foreach_def");
+    if (!foreach_def) {
+        fprintf(stderr, "[CODEGEN] ForEach node missing foreach_def\n");
+        return false;
+    }
+
+    cJSON* item_name = cJSON_GetObjectItem(foreach_def, "item_name");
+    cJSON* source = cJSON_GetObjectItem(foreach_def, "source");
+
+    if (!item_name || !source) {
+        fprintf(stderr, "[CODEGEN] ForEach missing item_name or source\n");
+        return false;
+    }
+
+    // Get collection expression from source
+    const char* collection = NULL;
+    cJSON* source_expr = cJSON_GetObjectItem(source, "expression");
+    if (source_expr && cJSON_IsString(source_expr)) {
+        collection = source_expr->valuestring;
+    } else {
+        collection = "items";  // Default fallback
+    }
+
+    // Indentation
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+
+    // Generate: for each <item> in <collection> {
+    append_fmt(buffer, size, capacity, "for each %s in %s {\n",
+               item_name->valuestring, collection);
+
+    // Generate template body from foreach_def
+    cJSON* tmpl = cJSON_GetObjectItem(foreach_def, "template");
+    if (tmpl) {
+        cJSON* template_comp = cJSON_GetObjectItem(tmpl, "component");
+        if (template_comp && cJSON_IsObject(template_comp)) {
+            generate_kry_component(template_comp, event_ctx, buffer, size, capacity,
+                                  indent + 1, kir_root, src_ctx);
+        }
+    } else {
+        // Fallback: generate children (expanded items)
+        cJSON* children = cJSON_GetObjectItem(foreach_node, "children");
+        if (children && cJSON_IsArray(children) && cJSON_GetArraySize(children) > 0) {
+            cJSON* first_child = cJSON_GetArrayItem(children, 0);
+            if (first_child) {
+                generate_kry_component(first_child, event_ctx, buffer, size, capacity,
+                                      indent + 1, kir_root, src_ctx);
+            }
+        }
+    }
+
+    // Closing brace
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+    append_string(buffer, size, capacity, "}\n");
+
+    return true;
+}
+
+// ============================================================================
+// Part 2: Event Handler Improvements
+// ============================================================================
+
+// Generate event handler with proper formatting
+// Handles single-line and multi-line handlers
+static void generate_event_handler(char** buffer, size_t* size, size_t* capacity,
+                                   int indent, const char* event_name, const char* handler_code) {
+    if (!handler_code) return;
+
+    // Check if handler has newlines (multi-line)
+    bool is_multiline = strchr(handler_code, '\n') != NULL;
+
+    // Generate indentation
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+
+    if (is_multiline) {
+        // Multi-line handler: output with proper indentation
+        append_fmt(buffer, size, capacity, "%s = {\n", event_name);
+
+        // Split handler code by lines and indent each
+        const char* line_start = handler_code;
+        while (*line_start) {
+            const char* line_end = strchr(line_start, '\n');
+            size_t line_len;
+
+            if (line_end) {
+                line_len = line_end - line_start;
+                line_end++;  // Skip the newline
+            } else {
+                line_len = strlen(line_start);
+                line_end = line_start + line_len;
+            }
+
+            // Skip leading whitespace from the line
+            while (line_len > 0 && (line_start[0] == ' ' || line_start[0] == '\t')) {
+                line_start++;
+                line_len--;
+            }
+
+            // Generate indented line
+            for (int i = 0; i < indent + 1; i++) {
+                append_string(buffer, size, capacity, "  ");
+            }
+            append_fmt(buffer, size, capacity, "%.*s\n", (int)line_len, line_start);
+
+            line_start = line_end;
+        }
+
+        // Close handler
+        for (int i = 0; i < indent; i++) {
+            append_string(buffer, size, capacity, "  ");
+        }
+        append_string(buffer, size, capacity, "}\n");
+    } else {
+        // Single-line handler
+        append_fmt(buffer, size, capacity, "%s = { %s }\n", event_name, handler_code);
+    }
+}
+
+// ============================================================================
+// Part 3: If/Else Conditional Codegen
+// ============================================================================
+
+// Generate if/else conditional from Conditional node
+// Generates: if <condition> { ... } else { ... }
+static bool generate_conditional(cJSON* cond_node, cJSON* kir_root, char** buffer,
+                                size_t* size, size_t* capacity, int indent,
+                                EventHandlerContext* handler_ctx, SourceStructuresContext* src_ctx) {
+    if (!cond_node) return false;
+
+    // Get condition expression
+    cJSON* condition = cJSON_GetObjectItem(cond_node, "condition");
+    if (!condition) {
+        // Try alternate field names
+        condition = cJSON_GetObjectItem(cond_node, "cond");
+        if (!condition) {
+            condition = cJSON_GetObjectItem(cond_node, "test");
+        }
+    }
+
+    // Get true and false branches
+    cJSON* true_branch = cJSON_GetObjectItem(cond_node, "true_branch");
+    cJSON* false_branch = cJSON_GetObjectItem(cond_node, "false_branch");
+    if (!true_branch) {
+        true_branch = cJSON_GetObjectItem(cond_node, "then");
+    }
+    if (!false_branch) {
+        false_branch = cJSON_GetObjectItem(cond_node, "else");
+    }
+
+    // Get condition string
+    const char* cond_str = NULL;
+    if (condition && cJSON_IsString(condition)) {
+        cond_str = condition->valuestring;
+    } else if (condition && cJSON_IsObject(condition)) {
+        // Condition might be an expression object
+        cJSON* expr = cJSON_GetObjectItem(condition, "expression");
+        if (expr && cJSON_IsString(expr)) {
+            cond_str = expr->valuestring;
+        }
+    }
+
+    if (!cond_str) {
+        cond_str = "true";  // Default to true if no condition
+    }
+
+    // Generate: if <condition> {
+    for (int i = 0; i < indent; i++) {
+        append_string(buffer, size, capacity, "  ");
+    }
+    append_fmt(buffer, size, capacity, "if %s {\n", cond_str);
+
+    // Generate true branch
+    if (true_branch) {
+        if (cJSON_IsArray(true_branch)) {
+            // Array of components
+            cJSON* child = NULL;
+            cJSON_ArrayForEach(child, true_branch) {
+                generate_kry_component(child, handler_ctx, buffer, size, capacity,
+                                      indent + 1, kir_root, src_ctx);
+            }
+        } else if (cJSON_IsObject(true_branch)) {
+            generate_kry_component(true_branch, handler_ctx, buffer, size, capacity,
+                                  indent + 1, kir_root, src_ctx);
+        }
+    }
+
+    // Generate else branch if present
+    if (false_branch) {
+        // Close if branch
+        for (int i = 0; i < indent; i++) {
+            append_string(buffer, size, capacity, "  ");
+        }
+        append_string(buffer, size, capacity, "} else {\n");
+
+        if (cJSON_IsArray(false_branch)) {
+            // Array of components
+            cJSON* child = NULL;
+            cJSON_ArrayForEach(child, false_branch) {
+                generate_kry_component(child, handler_ctx, buffer, size, capacity,
+                                      indent + 1, kir_root, src_ctx);
+            }
+        } else if (cJSON_IsObject(false_branch)) {
+            generate_kry_component(false_branch, handler_ctx, buffer, size, capacity,
+                                  indent + 1, kir_root, src_ctx);
+        }
+    }
+
+    // Close
     for (int i = 0; i < indent; i++) {
         append_string(buffer, size, capacity, "  ");
     }
@@ -605,6 +979,131 @@ static const char* kir_to_kry_property(const char* kir_name) {
     return kir_name;
 }
 
+// ============================================================================
+// Part 7: Formatting Improvements
+// ============================================================================
+
+// Property ordering categories for better code generation
+typedef enum {
+    PROP_CATEGORY_LAYOUT,
+    PROP_CATEGORY_SPACING,
+    PROP_CATEGORY_STYLE,
+    PROP_CATEGORY_CONTENT,
+    PROP_CATEGORY_BEHAVIOR,
+    PROP_CATEGORY_MISC
+} PropertyCategory;
+
+// Get the category for a property name
+static PropertyCategory get_property_category(const char* prop_name) {
+    if (!prop_name) return PROP_CATEGORY_MISC;
+
+    // Layout properties
+    if (strcmp(prop_name, "width") == 0 || strcmp(prop_name, "height") == 0 ||
+        strcmp(prop_name, "flexDirection") == 0 || strcmp(prop_name, "direction") == 0 ||
+        strcmp(prop_name, "justifyContent") == 0 || strcmp(prop_name, "alignItems") == 0 ||
+        strcmp(prop_name, "alignContent") == 0 || strcmp(prop_name, "flexShrink") == 0 ||
+        strcmp(prop_name, "flexGrow") == 0 || strcmp(prop_name, "flex") == 0 ||
+        strcmp(prop_name, "display") == 0 || strcmp(prop_name, "position") == 0 ||
+        strcmp(prop_name, "overflow") == 0 || strcmp(prop_name, "wrap") == 0) {
+        return PROP_CATEGORY_LAYOUT;
+    }
+
+    // Spacing properties
+    if (strcmp(prop_name, "padding") == 0 || strcmp(prop_name, "margin") == 0 ||
+        strcmp(prop_name, "gap") == 0 || strcmp(prop_name, "rowGap") == 0 ||
+        strcmp(prop_name, "columnGap") == 0) {
+        return PROP_CATEGORY_SPACING;
+    }
+
+    // Style properties
+    if (strcmp(prop_name, "background") == 0 || strcmp(prop_name, "backgroundColor") == 0 ||
+        strcmp(prop_name, "color") == 0 || strcmp(prop_name, "border") == 0 ||
+        strcmp(prop_name, "borderColor") == 0 || strcmp(prop_name, "borderWidth") == 0 ||
+        strcmp(prop_name, "borderRadius") == 0 || strcmp(prop_name, "fontSize") == 0 ||
+        strcmp(prop_name, "fontFamily") == 0 || strcmp(prop_name, "fontWeight") == 0 ||
+        strcmp(prop_name, "lineHeight") == 0 || strcmp(prop_name, "opacity") == 0 ||
+        strcmp(prop_name, "shadow") == 0 || strcmp(prop_name, "shadowColor") == 0 ||
+        strcmp(prop_name, "shadowOffset") == 0 || strcmp(prop_name, "shadowRadius") == 0 ||
+        strcmp(prop_name, "shadowOpacity") == 0) {
+        return PROP_CATEGORY_STYLE;
+    }
+
+    // Content properties
+    if (strcmp(prop_name, "text") == 0 || strcmp(prop_name, "src") == 0 ||
+        strcmp(prop_name, "source") == 0 || strcmp(prop_name, "html") == 0 ||
+        strcmp(prop_name, "content") == 0 || strcmp(prop_name, "alt") == 0 ||
+        strcmp(prop_name, "href") == 0 || strcmp(prop_name, "url") == 0) {
+        return PROP_CATEGORY_CONTENT;
+    }
+
+    // Behavior properties
+    if (strcmp(prop_name, "disabled") == 0 || strcmp(prop_name, "readonly") == 0 ||
+        strcmp(prop_name, "editable") == 0 || strcmp(prop_name, "visible") == 0 ||
+        strcmp(prop_name, "hidden") == 0 || strcmp(prop_name, "checked") == 0 ||
+        strcmp(prop_name, "selected") == 0 || strcmp(prop_name, "placeholder") == 0) {
+        return PROP_CATEGORY_BEHAVIOR;
+    }
+
+    return PROP_CATEGORY_MISC;
+}
+
+// Compare two properties for ordering
+// Returns < 0 if a should come before b, > 0 if b should come before a
+static int compare_properties(cJSON* a, cJSON* b) {
+    const char* key_a = a->string;
+    const char* key_b = b->string;
+
+    // Skip special keys (they should be filtered before calling this)
+    if (strcmp(key_a, "type") == 0) return -1;
+    if (strcmp(key_b, "type") == 0) return 1;
+
+    PropertyCategory cat_a = get_property_category(key_a);
+    PropertyCategory cat_b = get_property_category(key_b);
+
+    if (cat_a != cat_b) {
+        return (int)cat_a - (int)cat_b;
+    }
+
+    // Within same category, sort alphabetically
+    return strcmp(key_a, key_b);
+}
+
+// Check if a property value should be skipped (default/unimportant values)
+static bool should_skip_property(const char* key, cJSON* value) {
+    if (!key || !value) return false;
+
+    // Skip transparent colors (default background)
+    if (cJSON_IsString(value)) {
+        const char* val_str = value->valuestring;
+        if (strcmp(val_str, "#00000000") == 0 || strcmp(val_str, "transparent") == 0) {
+            if (strcmp(key, "background") == 0 || strcmp(key, "backgroundColor") == 0 ||
+                strcmp(key, "color") == 0 || strcmp(key, "borderColor") == 0) {
+                return true;
+            }
+        }
+
+        // Skip default values
+        if (strcmp(val_str, "auto") == 0 && strcmp(key, "direction") == 0) {
+            return true;
+        }
+    }
+
+    // Skip default numeric values
+    if (cJSON_IsNumber(value)) {
+        if (value->valuedouble == 1.0 &&
+            (strcmp(key, "flexGrow") == 0 || strcmp(key, "flexShrink") == 0)) {
+            return true;
+        }
+        if (value->valuedouble == 0.0 &&
+            (strcmp(key, "padding") == 0 || strcmp(key, "margin") == 0 ||
+             strcmp(key, "gap") == 0 || strcmp(key, "borderWidth") == 0)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Check if a string looks like an identifier (for template variables)
 static bool is_identifier_like(const char* str) {
     if (!str || str[0] == '\0') return false;
@@ -653,6 +1152,18 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
     if (!type_item) return true;
     const char* type = type_item->valuestring;
 
+    // Handle ForEach components (for each loops)
+    if (strcmp(type, "ForEach") == 0) {
+        return generate_for_each_loop(node, kir_root, buffer, size, capacity, indent,
+                                     handler_ctx, src_ctx);
+    }
+
+    // Handle Conditional components (if/else)
+    if (strcmp(type, "Conditional") == 0) {
+        return generate_conditional(node, kir_root, buffer, size, capacity, indent,
+                                   handler_ctx, src_ctx);
+    }
+
     // Get component ID for event handler lookup
     cJSON* id_item = cJSON_GetObjectItem(node, "id");
     int component_id = id_item ? id_item->valueint : -1;
@@ -675,7 +1186,15 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
             strcmp(key, "id") == 0 ||
             strcmp(key, "children") == 0 ||
             strcmp(key, "events") == 0 ||
-            strcmp(key, "property_bindings") == 0) {  // Skip property_bindings metadata
+            strcmp(key, "property_bindings") == 0 ||
+            strcmp(key, "foreach_def") == 0 ||
+            strcmp(key, "actual_type") == 0 ||
+            strcmp(key, "custom_data") == 0) {  // Skip metadata
+            continue;
+        }
+
+        // Skip properties with default/unimportant values
+        if (should_skip_property(key, prop)) {
             continue;
         }
 
@@ -706,9 +1225,6 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
             if (parse_pixel_value(prop->valuestring, &pixel_val)) {
                 // It's a pixel value like "800.0px", output as number
                 append_fmt(buffer, size, capacity, "%s = %d\n", kry_key, pixel_val);
-            } else if (strcmp(prop->valuestring, "#00000000") == 0) {
-                // Skip transparent color (default)
-                continue;
             } else if (is_identifier_like(prop->valuestring)) {
                 // Looks like an identifier (e.g., "item" or "item.value"), output without quotes
                 append_fmt(buffer, size, capacity, "%s = %s\n", kry_key, prop->valuestring);
@@ -723,30 +1239,31 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
         }
     }
 
-    // Add event handlers from logic_block
+    // Add event handlers from logic_block (using improved formatting)
     if (component_id >= 0) {
         const char* click_handler = find_event_handler(handler_ctx, component_id, "click");
         if (click_handler) {
-            for (int i = 0; i < indent + 1; i++) {
-                append_string(buffer, size, capacity, "  ");
-            }
-            append_fmt(buffer, size, capacity, "onClick = {%s\n", click_handler);
+            generate_event_handler(buffer, size, capacity, indent + 1, "onClick", click_handler);
         }
 
         const char* hover_handler = find_event_handler(handler_ctx, component_id, "hover");
         if (hover_handler) {
-            for (int i = 0; i < indent + 1; i++) {
-                append_string(buffer, size, capacity, "  ");
-            }
-            append_fmt(buffer, size, capacity, "onHover = {%s\n", hover_handler);
+            generate_event_handler(buffer, size, capacity, indent + 1, "onHover", hover_handler);
         }
 
         const char* change_handler = find_event_handler(handler_ctx, component_id, "change");
         if (change_handler) {
-            for (int i = 0; i < indent + 1; i++) {
-                append_string(buffer, size, capacity, "  ");
-            }
-            append_fmt(buffer, size, capacity, "onChange = {%s\n", change_handler);
+            generate_event_handler(buffer, size, capacity, indent + 1, "onChange", change_handler);
+        }
+
+        const char* submit_handler = find_event_handler(handler_ctx, component_id, "submit");
+        if (submit_handler) {
+            generate_event_handler(buffer, size, capacity, indent + 1, "onSubmit", submit_handler);
+        }
+
+        const char* input_handler = find_event_handler(handler_ctx, component_id, "input");
+        if (input_handler) {
+            generate_event_handler(buffer, size, capacity, indent + 1, "onInput", input_handler);
         }
     }
 
@@ -760,11 +1277,8 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
         bool has_static_block = false;
         cJSON* static_block = NULL;
         if (src_ctx && src_ctx->static_blocks && component_id >= 0) {
-            fprintf(stderr, "[CODEGEN_DEBUG] Checking for static block, component_id=%d\n", component_id);
             static_block = find_static_block_by_parent(src_ctx, (uint32_t)component_id);
             has_static_block = (static_block != NULL);
-            fprintf(stderr, "[CODEGEN_DEBUG] has_static_block=%d, static_block=%p\n",
-                    has_static_block, (void*)static_block);
         }
 
         if (has_static_block && static_block) {
@@ -848,16 +1362,6 @@ char* kry_codegen_from_json(const char* kir_json) {
         return NULL;
     }
 
-    // Debug: Check what source structures were found
-    fprintf(stderr, "[CODEGEN_DEBUG] src_ctx created:\n");
-    fprintf(stderr, "[CODEGEN_DEBUG]   static_blocks: %p\n", (void*)src_ctx->static_blocks);
-    fprintf(stderr, "[CODEGEN_DEBUG]   const_declarations: %p\n", (void*)src_ctx->const_declarations);
-    fprintf(stderr, "[CODEGEN_DEBUG]   for_loop_templates: %p\n", (void*)src_ctx->for_loop_templates);
-    if (src_ctx->static_blocks) {
-        fprintf(stderr, "[CODEGEN_DEBUG]   static_blocks count: %d\n",
-                cJSON_GetArraySize(src_ctx->static_blocks));
-    }
-
     // Allocate output buffer
     size_t capacity = 8192;
     size_t size = 0;
@@ -869,10 +1373,24 @@ char* kry_codegen_from_json(const char* kir_json) {
     }
     buffer[0] = '\0';
 
+    // Get reactive_manifest for state declarations
+    cJSON* reactive_manifest = cJSON_GetObjectItem(root_json, "reactive_manifest");
+
     // Get root component
     cJSON* root_comp = cJSON_GetObjectItem(root_json, "root");
-    if (root_comp) {
+    // Note: cJSON_GetObjectItem returns non-NULL even for JSON null values,
+    // so we need to check if it's actually an object
+    if (root_comp && cJSON_IsObject(root_comp)) {
         // KIR format with root component
+
+        // Generate state declarations before the root component
+        generate_state_declarations(reactive_manifest, "state", &buffer, &size, &capacity, 0);
+
+        // Add blank line between state declarations and component
+        if (reactive_manifest) {
+            append_string(&buffer, &size, &capacity, "\n");
+        }
+
         if (!generate_kry_component(root_comp, handler_ctx, &buffer, &size, &capacity, 0,
                                    root_json, src_ctx)) {
             free(buffer);
@@ -882,14 +1400,122 @@ char* kry_codegen_from_json(const char* kir_json) {
             return NULL;
         }
     } else {
-        // Legacy format or direct component
-        if (!generate_kry_component(root_json, handler_ctx, &buffer, &size, &capacity, 0,
-                                   root_json, src_ctx)) {
-            free(buffer);
+        // Check for component definitions (library modules)
+        cJSON* component_defs = cJSON_GetObjectItem(root_json, "component_definitions");
+        if (component_defs && cJSON_IsArray(component_defs) && cJSON_GetArraySize(component_defs) > 0) {
+            // Library module with component definitions
+            cJSON* comp_def = NULL;
+            int def_count = cJSON_GetArraySize(component_defs);
+            int i = 0;
+            cJSON_ArrayForEach(comp_def, component_defs) {
+                cJSON* name = cJSON_GetObjectItem(comp_def, "name");
+                cJSON* template_field = cJSON_GetObjectItem(comp_def, "template");
+                cJSON* source_field = cJSON_GetObjectItem(comp_def, "source");
+
+                if (name && cJSON_IsString(name)) {
+                    // Check for template field (UI component definitions from KRY/DSL)
+                    if (template_field) {
+                        cJSON* template_comp = NULL;
+                        bool should_free_template = false;
+
+                        // Template can be either a JSON string (from Lua parser) or a JSON object (from KRY parser)
+                        if (cJSON_IsString(template_field)) {
+                            // Parse the template JSON string to get the component tree
+                            const char* tmpl_json_str = cJSON_GetStringValue(template_field);
+                            template_comp = cJSON_Parse(tmpl_json_str);
+                            should_free_template = true;
+                        } else if (cJSON_IsObject(template_field)) {
+                            // Template is already a JSON object
+                            template_comp = template_field;
+                            should_free_template = false;
+                        }
+
+                        if (template_comp && cJSON_IsObject(template_comp)) {
+                            // ============================================================================
+                            // Part 4: Component Parameter Codegen
+                            // ============================================================================
+
+                            // Generate: component <name>(<params>) {
+                            const char* comp_name = cJSON_GetStringValue(name);
+                            append_fmt(&buffer, &size, &capacity, "component %s", comp_name);
+
+                            // Check for props/parameters
+                            cJSON* props = cJSON_GetObjectItem(comp_def, "props");
+                            if (props && cJSON_IsArray(props) && cJSON_GetArraySize(props) > 0) {
+                                append_string(&buffer, &size, &capacity, "(");
+
+                                cJSON* prop = NULL;
+                                int prop_idx = 0;
+                                cJSON_ArrayForEach(prop, props) {
+                                    cJSON* prop_name = cJSON_GetObjectItem(prop, "name");
+                                    cJSON* prop_type = cJSON_GetObjectItem(prop, "type");
+                                    cJSON* prop_default = cJSON_GetObjectItem(prop, "default");
+
+                                    if (prop_name && prop_name->valuestring) {
+                                        // Generate: name: type
+                                        append_fmt(&buffer, &size, &capacity, "%s: %s",
+                                                  prop_name->valuestring,
+                                                  prop_type && prop_type->valuestring ? prop_type->valuestring : "any");
+
+                                        // Add default value if present
+                                        if (prop_default) {
+                                            const char* default_val = prop_default->valuestring;
+                                            if (default_val) {
+                                                if (prop_default->type == cJSON_String) {
+                                                    append_fmt(&buffer, &size, &capacity, " = \"%s\"", default_val);
+                                                } else if (prop_default->type == cJSON_Number) {
+                                                    append_fmt(&buffer, &size, &capacity, " = %d", prop_default->valueint);
+                                                } else if (prop_default->type == cJSON_True) {
+                                                    append_string(&buffer, &size, &capacity, " = true");
+                                                } else if (prop_default->type == cJSON_False) {
+                                                    append_string(&buffer, &size, &capacity, " = false");
+                                                } else {
+                                                    append_fmt(&buffer, &size, &capacity, " = %s", default_val);
+                                                }
+                                            }
+                                        }
+
+                                        if (prop_idx < cJSON_GetArraySize(props) - 1) {
+                                            append_string(&buffer, &size, &capacity, ", ");
+                                        }
+                                        prop_idx++;
+                                    }
+                                }
+                                append_string(&buffer, &size, &capacity, ")");
+                            }
+
+                            append_string(&buffer, &size, &capacity, " {\n");
+
+                            // Generate component body from parsed template
+                            generate_kry_component(template_comp, handler_ctx, &buffer, &size, &capacity,
+                                                  1, root_json, src_ctx);
+
+                            // Close component
+                            append_string(&buffer, &size, &capacity, "}\n");
+
+                            if (should_free_template) {
+                                cJSON_Delete(template_comp);
+                            }
+                        }
+                    } else if (source_field && cJSON_IsString(source_field)) {
+                        // No template, but has source field (Lua helper functions)
+                        // Output the Lua source code
+                        const char* func_source = cJSON_GetStringValue(source_field);
+                        append_string(&buffer, &size, &capacity, func_source);
+                        append_string(&buffer, &size, &capacity, "\n");
+                    }
+
+                    if (i < def_count - 1) {
+                        append_string(&buffer, &size, &capacity, "\n\n");
+                    }
+                }
+                i++;
+            }
+
             destroy_source_context(src_ctx);
             destroy_handler_context(handler_ctx);
             cJSON_Delete(root_json);
-            return NULL;
+            return buffer;  // Caller takes ownership and frees the buffer
         }
     }
 
@@ -932,4 +1558,288 @@ bool kry_codegen_generate_with_options(const char* kir_path,
     (void)options;
     // Generate base .kry code
     return kry_codegen_generate(kir_path, output_path);
+}
+
+/**
+ * Helper to check if a module is a Kryon internal module
+ */
+static bool is_kryon_internal(const char* module_id) {
+    if (!module_id) return false;
+
+    // Check for kryon/ prefix
+    if (strncmp(module_id, "kryon/", 6) == 0) return true;
+
+    // Check for known internal module names
+    if (strcmp(module_id, "dsl") == 0) return true;
+    if (strcmp(module_id, "ffi") == 0) return true;
+    if (strcmp(module_id, "runtime") == 0) return true;
+    if (strcmp(module_id, "reactive") == 0) return true;
+    if (strcmp(module_id, "runtime_web") == 0) return true;
+    if (strcmp(module_id, "kryon") == 0) return true;
+
+    return false;
+}
+
+/**
+ * Helper to check if a module is an external plugin
+ */
+static bool is_external_plugin(const char* module_id) {
+    if (!module_id) return false;
+
+    // Known external plugins (runtime dependencies, not source modules)
+    if (strcmp(module_id, "datetime") == 0) return true;
+    if (strcmp(module_id, "storage") == 0) return true;
+
+    return false;
+}
+
+/**
+ * Helper to get the parent directory of a path
+ */
+static void get_parent_dir_kry(const char* path, char* parent, size_t parent_size) {
+    if (!path || !parent) return;
+
+    strncpy(parent, path, parent_size - 1);
+    parent[parent_size - 1] = '\0';
+
+    char* last_slash = strrchr(parent, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+    } else {
+        parent[0] = '.';
+        parent[1] = '\0';
+    }
+}
+
+/**
+ * Helper to write file with automatic directory creation
+ */
+static bool write_file_with_mkdir_kry(const char* path, const char* content) {
+    if (!path || !content) return false;
+
+    // Create a mutable copy for directory extraction
+    char dir_path[2048];
+    strncpy(dir_path, path, sizeof(dir_path) - 1);
+    dir_path[sizeof(dir_path) - 1] = '\0';
+
+    // Find and create parent directory
+    char* last_slash = strrchr(dir_path, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+        struct stat st = {0};
+        if (stat(dir_path, &st) == -1) {
+            char mkdir_cmd[2048];
+            snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", dir_path);
+            if (system(mkdir_cmd) != 0) {
+                fprintf(stderr, "Warning: Could not create directory: %s\n", dir_path);
+            }
+        }
+    }
+
+    // Write the file
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        fprintf(stderr, "Error: Could not write file: %s\n", path);
+        return false;
+    }
+    fputs(content, f);
+    fclose(f);
+    return true;
+}
+
+/**
+ * Processed modules tracking for recursive import processing
+ */
+#define MAX_PROCESSED_MODULES_KRY 256
+
+typedef struct {
+    char* modules[MAX_PROCESSED_MODULES_KRY];
+    int count;
+} ProcessedModulesKry;
+
+static bool is_module_processed_kry(ProcessedModulesKry* pm, const char* module_id) {
+    for (int i = 0; i < pm->count; i++) {
+        if (strcmp(pm->modules[i], module_id) == 0) return true;
+    }
+    return false;
+}
+
+static void mark_module_processed_kry(ProcessedModulesKry* pm, const char* module_id) {
+    if (pm->count < MAX_PROCESSED_MODULES_KRY) {
+        pm->modules[pm->count++] = strdup(module_id);
+    }
+}
+
+static void free_processed_modules_kry(ProcessedModulesKry* pm) {
+    for (int i = 0; i < pm->count; i++) {
+        free(pm->modules[i]);
+    }
+    pm->count = 0;
+}
+
+/**
+ * Recursively process a module and its transitive imports
+ */
+static int process_module_recursive_kry(const char* module_id, const char* kir_dir,
+                                        const char* output_dir, ProcessedModulesKry* processed) {
+    // Skip if already processed
+    if (is_module_processed_kry(processed, module_id)) return 0;
+    mark_module_processed_kry(processed, module_id);
+
+    // Skip internal modules and external plugins
+    if (is_kryon_internal(module_id)) return 0;
+    if (is_external_plugin(module_id)) return 0;
+
+    // Build path to component's KIR file
+    char component_kir_path[2048];
+    snprintf(component_kir_path, sizeof(component_kir_path),
+             "%s/%s.kir", kir_dir, module_id);
+
+    // Read component's KIR
+    char* component_kir_json = codegen_read_kir_file(component_kir_path, NULL);
+    if (!component_kir_json) {
+        fprintf(stderr, "Warning: Cannot find KIR for '%s' at %s\n",
+                module_id, component_kir_path);
+        return 0;
+    }
+
+    // Parse to get transitive imports before generating
+    cJSON* component_root = cJSON_Parse(component_kir_json);
+    int files_written = 0;
+
+    // Generate KRY from KIR
+    char* component_kry = kry_codegen_from_json(component_kir_json);
+    free(component_kir_json);
+
+    if (component_kry) {
+        // Write to output directory maintaining hierarchy
+        char output_path[2048];
+        snprintf(output_path, sizeof(output_path),
+                 "%s/%s.kry", output_dir, module_id);
+
+        if (write_file_with_mkdir_kry(output_path, component_kry)) {
+            printf("✓ Generated: %s.kry\n", module_id);
+            files_written++;
+        }
+        free(component_kry);
+    } else {
+        fprintf(stderr, "Warning: Failed to generate KRY for '%s'\n", module_id);
+    }
+
+    // Process transitive imports from this component
+    if (component_root) {
+        cJSON* imports = cJSON_GetObjectItem(component_root, "imports");
+        if (imports && cJSON_IsArray(imports)) {
+            cJSON* import_item = NULL;
+            cJSON_ArrayForEach(import_item, imports) {
+                if (!cJSON_IsString(import_item)) continue;
+                const char* sub_module_id = cJSON_GetStringValue(import_item);
+                if (sub_module_id) {
+                    files_written += process_module_recursive_kry(sub_module_id, kir_dir,
+                                                                  output_dir, processed);
+                }
+            }
+        }
+        cJSON_Delete(component_root);
+    }
+
+    return files_written;
+}
+
+/**
+ * Generate multi-file .kry code from multi-file KIR by reading linked KIR files
+ *
+ * This function reads the main.kir file, generates .kry code from its KIR representation,
+ * then follows the imports array to find and process linked component KIR files.
+ * Transitive imports are processed recursively.
+ * Each KIR file is transformed to .kry using kry_codegen_from_json().
+ */
+bool kry_codegen_generate_multi(const char* kir_path, const char* output_dir) {
+    if (!kir_path || !output_dir) {
+        fprintf(stderr, "Error: Invalid arguments to kry_codegen_generate_multi\n");
+        return false;
+    }
+
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("Kry");
+
+    // Read main KIR file
+    char* main_kir_json = codegen_read_kir_file(kir_path, NULL);
+    if (!main_kir_json) {
+        return false;
+    }
+
+    // Parse main KIR JSON
+    cJSON* main_root = cJSON_Parse(main_kir_json);
+    if (!main_root) {
+        fprintf(stderr, "Error: Failed to parse main KIR JSON\n");
+        free(main_kir_json);
+        return false;
+    }
+
+    // Create output directory if it doesn't exist
+    struct stat st = {0};
+    if (stat(output_dir, &st) == -1) {
+        char mkdir_cmd[2048];
+        snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
+        if (system(mkdir_cmd) != 0) {
+            fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
+            cJSON_Delete(main_root);
+            free(main_kir_json);
+            return false;
+        }
+    }
+
+    int files_written = 0;
+
+    // 1. Generate main.kry from main.kir
+    char* main_kry = kry_codegen_from_json(main_kir_json);
+    free(main_kir_json);
+
+    if (main_kry) {
+        char main_output_path[2048];
+        snprintf(main_output_path, sizeof(main_output_path), "%s/main.kry", output_dir);
+
+        if (write_file_with_mkdir_kry(main_output_path, main_kry)) {
+            printf("✓ Generated: main.kry\n");
+            files_written++;
+        }
+        free(main_kry);
+    } else {
+        fprintf(stderr, "Warning: Failed to generate main.kry from KIR\n");
+    }
+
+    // 2. Get the KIR directory (parent of kir_path)
+    char kir_dir[2048];
+    get_parent_dir_kry(kir_path, kir_dir, sizeof(kir_dir));
+
+    // 3. Track processed modules to avoid duplicates
+    ProcessedModulesKry processed = {0};
+    mark_module_processed_kry(&processed, "main");  // Mark main as processed
+
+    // 4. Process each import recursively (including transitive imports)
+    cJSON* imports = cJSON_GetObjectItem(main_root, "imports");
+    if (imports && cJSON_IsArray(imports)) {
+        cJSON* import_item = NULL;
+        cJSON_ArrayForEach(import_item, imports) {
+            if (!cJSON_IsString(import_item)) continue;
+
+            const char* module_id = cJSON_GetStringValue(import_item);
+            if (module_id) {
+                files_written += process_module_recursive_kry(module_id, kir_dir,
+                                                              output_dir, &processed);
+            }
+        }
+    }
+
+    free_processed_modules_kry(&processed);
+    cJSON_Delete(main_root);
+
+    if (files_written == 0) {
+        fprintf(stderr, "Warning: No .kry files were generated\n");
+        return false;
+    }
+
+    printf("✓ Generated %d .kry files in %s\n", files_written, output_dir);
+    return true;
 }

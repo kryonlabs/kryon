@@ -12,6 +12,7 @@
 #include "../../ir_logic.h"
 #include "../../ir_stylesheet.h"
 #include "../../ir_animation_builder.h"
+#include "../../ir_foreach.h"
 #include "../html/css_parser.h"  // For ir_css_parse_color
 #include "../parser_utils.h"     // For parser_parse_color_packed
 #include <stdlib.h>
@@ -1583,6 +1584,86 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
     }
 }
 
+// Convert "for each" loop to ForEach IR component
+// This creates an IR_COMPONENT_FOR_EACH with foreach_def metadata
+// Unlike "for" loops, "for each" does NOT expand at compile time
+static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_each_node) {
+    fprintf(stderr, "[DEBUG_FOR_EACH] Called convert_for_each_node\n");
+    if (!for_each_node || for_each_node->type != KRY_NODE_FOR_EACH) {
+        fprintf(stderr, "[DEBUG_FOR_EACH] Early return: invalid node type\n");
+        return NULL;
+    }
+
+    const char* item_name = for_each_node->name;  // Iterator variable name
+    KryValue* collection = for_each_node->value;  // Collection to iterate over
+
+    if (!collection || !item_name) {
+        fprintf(stderr, "[DEBUG_FOR_EACH] Early return: missing collection or item_name\n");
+        return NULL;
+    }
+
+    // Get collection reference string
+    const char* collection_ref = NULL;
+    if (collection->type == KRY_VALUE_IDENTIFIER) {
+        collection_ref = collection->identifier;
+    } else if (collection->type == KRY_VALUE_EXPRESSION) {
+        collection_ref = collection->expression;
+    } else {
+        kry_parser_error(NULL, "for each collection must be an identifier or expression");
+        return NULL;
+    }
+
+    // Create ForEach component
+    IRComponent* for_each_comp = ir_create_component(IR_COMPONENT_FOR_EACH);
+    if (!for_each_comp) {
+        fprintf(stderr, "[DEBUG_FOR_EACH] Failed to create ForEach component\n");
+        return NULL;
+    }
+
+    // Create ForEach definition
+    struct IRForEachDef* def = ir_foreach_def_create(item_name, "index");
+    if (!def) {
+        fprintf(stderr, "[DEBUG_FOR_EACH] Failed to create ForEachDef\n");
+        // Note: ir_component_destroy may not be available, leak is acceptable for error case
+        return NULL;
+    }
+
+    // Set data source
+    ir_foreach_set_source_variable(def, collection_ref);
+
+    // Convert the loop body (first child should be a component)
+    // This becomes the template for each iteration
+    if (for_each_node->first_child && for_each_node->first_child->type == KRY_NODE_COMPONENT) {
+        KryNode* template_node = for_each_node->first_child;
+
+        // Create a child conversion context without parameter substitution
+        // We want to preserve the template properties as expressions
+        ConversionContext template_ctx = *ctx;
+        template_ctx.param_count = 0;  // Clear params for template
+
+        IRComponent* template_comp = convert_node(&template_ctx, template_node);
+        if (template_comp) {
+            ir_foreach_set_template(def, template_comp);
+
+            // Extract property bindings from the template
+            // Scan for expressions that reference the item variable
+            if (template_comp->text_expression &&
+                strstr(template_comp->text_expression, item_name) != NULL) {
+                // Text content references item
+                ir_foreach_add_binding(def, "text", template_comp->text_expression, true);
+            }
+        }
+    }
+
+    // Attach foreach_def to the component
+    for_each_comp->foreach_def = def;
+
+    fprintf(stderr, "[DEBUG_FOR_EACH] Created ForEach component: item=%s, source=%s\n",
+            item_name, collection_ref);
+
+    return for_each_comp;
+}
+
 static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
     if (!node) return NULL;
 
@@ -1925,6 +2006,12 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     } else if (static_child->type == KRY_NODE_FOR_LOOP) {
                         // Handle for loop expansion (unrolling)
                         expand_for_loop(ctx, component, static_child);
+                    } else if (static_child->type == KRY_NODE_FOR_EACH) {
+                        // Handle for each - convert to ForEach IR component
+                        IRComponent* for_each_comp = convert_for_each_node(ctx, static_child);
+                        if (for_each_comp) {
+                            ir_add_child(component, for_each_comp);
+                        }
                     } else if (static_child->type == KRY_NODE_VAR_DECL) {
                         // Process variable declaration in static context
                         const char* var_name = static_child->name;
@@ -2164,6 +2251,12 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
             } else if (child->type == KRY_NODE_FOR_LOOP) {
                 // For loop outside static block - expand/unroll
                 expand_for_loop(ctx, component, child);
+            } else if (child->type == KRY_NODE_FOR_EACH) {
+                // For each - convert to ForEach IR component
+                IRComponent* for_each_comp = convert_for_each_node(ctx, child);
+                if (for_each_comp) {
+                    ir_add_child(component, for_each_comp);
+                }
             } else if (child->type == KRY_NODE_IF) {
                 // Runtime conditional rendering support
                 // Render BOTH branches and mark each with visibility condition
