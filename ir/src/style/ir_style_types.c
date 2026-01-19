@@ -5,7 +5,7 @@
 
 #define _GNU_SOURCE
 #include "../include/ir_style.h"
-#include "../include/ir_layout_types.h"
+#include "../include/ir_layout.h"
 #include <stdlib.h>
 #include <string.h>
 

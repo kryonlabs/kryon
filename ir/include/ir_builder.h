@@ -2,17 +2,17 @@
 #define IR_BUILDER_H
 
 #include "ir_core.h"
-#include "ir_animation.h"
-#include "ir_tabgroup.h"
-#include "ir_style_builder.h"
-#include "ir_layout_builder.h"
-#include "ir_event_builder.h"
-#include "ir_module_refs.h"
-#include "ir_table.h"
-#include "ir_markdown.h"
-#include "ir_animation_builder.h"
-#include "ir_gradient.h"
-#include "ir_hit_test.h"
+#include "../src/features/ir_animation.h"
+#include "../src/features/ir_tabgroup.h"
+#include "../src/style/ir_style_builder.h"
+#include "../src/layout/ir_layout_builder.h"
+#include "../src/events/ir_event_builder.h"
+#include "../src/state/ir_module_refs.h"
+#include "../src/features/ir_table.h"
+#include "../src/features/ir_markdown.h"
+#include "../src/features/ir_animation_builder.h"
+#include "../src/style/ir_gradient.h"
+#include "../src/events/ir_hit_test.h"
 #include <stdlib.h>
 #include <string.h>
 

@@ -4,7 +4,7 @@
  */
 
 #define _GNU_SOURCE
-#include "../include/ir_layout_strategy.h"
+#include "../ir_layout_strategy.h"
 #include "../include/ir_core.h"
 #include <stdio.h>
 #include <stdlib.h>
