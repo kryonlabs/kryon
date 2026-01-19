@@ -1168,13 +1168,69 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
     cJSON* id_item = cJSON_GetObjectItem(node, "id");
     int component_id = id_item ? id_item->valueint : -1;
 
+    // Check if this component has a scope (indicates it's an instance of a custom component)
+    // When custom components are expanded, the scope field contains "ComponentName#instance"
+    // We need to extract the original component name to preserve custom component syntax
+    cJSON* scope_item = cJSON_GetObjectItem(node, "scope");
+    const char* original_component_name = type;  // Default to the actual type
+    bool has_custom_scope = false;
+
+    if (scope_item && scope_item->valuestring) {
+        const char* scope = scope_item->valuestring;
+        // Check if scope matches pattern "ComponentName#instance_number"
+        const char* hash_pos = strchr(scope, '#');
+        if (hash_pos && hash_pos > scope) {
+            // Extract component name from scope (before the #)
+            size_t name_len = hash_pos - scope;
+            char* extracted_name = malloc(name_len + 1);
+            if (extracted_name) {
+                strncpy(extracted_name, scope, name_len);
+                extracted_name[name_len] = '\0';
+
+                // Check if this is NOT a built-in component type
+                static const char* built_in_types[] = {
+                    "Container", "Row", "Column", "Text", "Button", "Input", "CheckBox",
+                    "Dropdown", "Modal", "TabPanel", "TabGroup", "TabBar", "TabContent",
+                    "Image", "Canvas", "Table", "ScrollView", "ForEach", "Conditional",
+                    NULL
+                };
+
+                bool is_built_in = false;
+                for (int i = 0; built_in_types[i]; i++) {
+                    if (strcmp(extracted_name, built_in_types[i]) == 0) {
+                        is_built_in = true;
+                        break;
+                    }
+                }
+
+                // If not built-in, use this as the original component name
+                if (!is_built_in) {
+                    original_component_name = extracted_name;
+                    has_custom_scope = true;
+                } else {
+                    free(extracted_name);
+                }
+            }
+        }
+    }
+
+    // Determine if this is a custom or built-in component
+    bool is_custom = has_custom_scope;  // Custom if we found a non-built-in scope
+
     // Generate indentation
     for (int i = 0; i < indent; i++) {
         append_string(buffer, size, capacity, "  ");
     }
 
-    // Write component type
-    append_fmt(buffer, size, capacity, "%s {\n", type);
+    // Write component type or custom component instantiation
+    if (is_custom) {
+        // Custom component: use function call syntax with original component name
+        // TODO: Add argument support in future
+        append_fmt(buffer, size, capacity, "%s()\n", original_component_name);
+    } else {
+        // Built-in component: use normal syntax
+        append_fmt(buffer, size, capacity, "%s {\n", type);
+    }
 
     // Iterate through all properties (KIR has flattened props)
     cJSON* prop = NULL;
@@ -1184,6 +1240,7 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
         // Skip special keys
         if (strcmp(key, "type") == 0 ||
             strcmp(key, "id") == 0 ||
+            strcmp(key, "scope") == 0 ||  // Skip internal scope metadata
             strcmp(key, "children") == 0 ||
             strcmp(key, "events") == 0 ||
             strcmp(key, "property_bindings") == 0 ||
@@ -1326,10 +1383,14 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
     }
 
     // Close component
-    for (int i = 0; i < indent; i++) {
-        append_string(buffer, size, capacity, "  ");
+    // For custom components (using function call syntax), no closing brace needed
+    // For built-in components, close with }
+    if (!is_custom) {
+        for (int i = 0; i < indent; i++) {
+            append_string(buffer, size, capacity, "  ");
+        }
+        append_string(buffer, size, capacity, "}\n");
     }
-    append_string(buffer, size, capacity, "}\n");
 
     return true;
 }

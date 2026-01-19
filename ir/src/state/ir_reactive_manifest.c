@@ -488,6 +488,11 @@ void ir_reactive_manifest_add_component_def(IRReactiveManifest* manifest,
         def->state_vars = NULL;
         def->state_var_count = 0;
     }
+
+    // Initialize module_path and source_module (for custom component loading)
+    // These can be set later by the caller if needed
+    def->module_path = NULL;
+    def->source_module = NULL;
 }
 
 IRComponentDefinition* ir_reactive_manifest_find_component_def(IRReactiveManifest* manifest,

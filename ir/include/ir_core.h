@@ -762,7 +762,9 @@ typedef struct {
 
 // Custom component definition
 typedef struct {
-    char* name;                     // Component name (e.g., "Counter")
+    char* name;                     // Component name (e.g., "Counter", "HabitPanel")
+    char* module_path;              // File path (e.g., "components/habit_panel")
+    char* source_module;            // Source module (for runtime loading)
     IRComponentProp* props;         // Array of prop definitions
     uint32_t prop_count;
     IRComponentStateVar* state_vars; // Array of state variable definitions

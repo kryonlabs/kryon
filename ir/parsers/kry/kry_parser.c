@@ -334,12 +334,25 @@ KryNode* kry_node_create_code_block(KryParser* parser, const char* language, con
 static char* parse_identifier(KryParser* p) {
     size_t start = p->pos;
 
+    fprintf(stderr, "[PARSE_ID] Starting at pos=%zu, char='%c'\n", start, peek(p));
+
     while (peek(p) != '\0' && (isalnum(peek(p)) || peek(p) == '_' || peek(p) == '-')) {
         advance(p);
     }
 
     size_t len = p->pos - start;
-    return kry_strndup(p, p->source + start, len);
+    char* result = kry_strndup(p, p->source + start, len);
+
+    fprintf(stderr, "[PARSE_ID] Parsed identifier: '%s' (len=%zu)\n", result ? result : "(null)", len);
+    if (result && len > 0) {
+        fprintf(stderr, "[PARSE_ID] Hex dump: ");
+        for (size_t i = 0; i < len; i++) {
+            fprintf(stderr, "%02x ", (unsigned char)result[i]);
+        }
+        fprintf(stderr, "\n");
+    }
+
+    return result;
 }
 
 static char* parse_string(KryParser* p) {
@@ -769,7 +782,19 @@ static KryNode* parse_component(KryParser* p);  // Forward declaration
 
 // Helper function to check if an identifier matches a keyword
 static bool keyword_match(const char* id, const char* keyword) {
-    return strcmp(id, keyword) == 0;
+    if (!id || !keyword) {
+        fprintf(stderr, "[KEYWORD_MATCH] NULL pointer: id=%p, keyword=%p\n", (void*)id, (void*)keyword);
+        return false;
+    }
+
+    fprintf(stderr, "[KEYWORD_MATCH] Comparing '%s' (len=%zu) with '%s' (len=%zu)\n",
+            id, strlen(id), keyword, strlen(keyword));
+
+    bool result = strcmp(id, keyword) == 0;
+
+    fprintf(stderr, "[KEYWORD_MATCH] Result: %s\n", result ? "MATCH" : "NO MATCH");
+
+    return result;
 }
 
 // Parse state declaration: state value: int = initialValue
@@ -1479,12 +1504,16 @@ KryNode* kry_parse(KryParser* parser) {
         char* id = parse_identifier(parser);
         if (!id) break;
 
+        fprintf(stderr, "[MAIN_LOOP] Parsed identifier in main loop: '%s'\n", id);
+
         skip_whitespace(parser);
 
         KryNode* node = NULL;
 
         // Check for import statement
+        fprintf(stderr, "[MAIN_LOOP] Checking if '%s' is 'import' keyword\n", id);
         if (keyword_match(id, "import")) {
+            fprintf(stderr, "[MAIN_LOOP] MATCHED 'import' - calling parse_import_statement()\n");
             node = parse_import_statement(parser);
         }
         // Check for variable declarations (const/let/var)
@@ -1543,6 +1572,7 @@ KryNode* kry_parse(KryParser* parser) {
         }
         // Must be a component instantiation
         else {
+            fprintf(stderr, "[MAIN_LOOP] No keyword match - treating '%s' as component instantiation\n", id);
             // Create component node
             node = kry_node_create(parser, KRY_NODE_COMPONENT);
             if (!node) break;
