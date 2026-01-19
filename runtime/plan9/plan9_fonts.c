@@ -7,7 +7,7 @@
 
 #include "plan9_internal.h"
 #include "../desktop/abstract/desktop_fonts.h"
-#include "../../ir/ir_log.h"
+#include "../../ir/include/ir_log.h"
 
 /* Global font cache (shared across all renderer instances) */
 static Plan9FontCacheEntry g_font_cache[PLAN9_MAX_FONT_CACHE];

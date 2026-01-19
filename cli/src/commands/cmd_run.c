@@ -8,9 +8,9 @@
 #include "kryon_cli.h"
 #include "build.h"
 // file_discovery.h removed - we only build explicit entry points from kryon.toml
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_serialization.h"
-#include "../../ir/ir_executor.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_serialization.h"
+#include "../../ir/include/ir_executor.h"
 #include "../../runtime/desktop/ir_desktop_renderer.h"
 #include "../../codegens/kotlin/kotlin_codegen.h"
 #include <stdio.h>

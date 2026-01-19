@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 
 #ifdef __cplusplus
 extern "C" {

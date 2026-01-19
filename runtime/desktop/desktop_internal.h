@@ -4,13 +4,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../../core/include/kryon.h"
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_builder.h"
-#include "../../ir/ir_animation.h"
-#include "../../ir/ir_transition.h"
-#include "../../ir/ir_hot_reload.h"
-#include "../../ir/ir_style_vars.h"
-#include "../../ir/ir_serialization.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_builder.h"
+#include "../../ir/include/ir_animation.h"
+#include "../../ir/include/ir_transition.h"
+#include "../../ir/include/ir_hot_reload.h"
+#include "../../ir/include/ir_style_vars.h"
+#include "../../ir/include/ir_serialization.h"
 #include "ir_desktop_renderer.h"
 
 // Platform-specific includes (conditional compilation)

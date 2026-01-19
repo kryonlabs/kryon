@@ -7,8 +7,8 @@
 
 #include "markdown_codegen.h"
 #include "../codegen_common.h"
-#include "../../ir/ir_serialization.h"
-#include "../../ir/ir_logic.h"
+#include "../../ir/include/ir_serialization.h"
+#include "../../ir/include/ir_logic.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>

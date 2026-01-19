@@ -6,7 +6,7 @@
 
 #include "ir_c_codegen.h"
 #include "../codegen_common.h"
-#include "../../ir/ir_c_metadata.h"
+#include "../../ir/include/ir_c_metadata.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>

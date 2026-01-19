@@ -20,8 +20,8 @@
 #include "terminal_backend.h"
 
 // IR integration (source-agnostic)
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_serialization.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_serialization.h"
 #include "terminal_ir_bridge.h"
 
 // ============================================================================

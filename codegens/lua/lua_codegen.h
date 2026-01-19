@@ -1,7 +1,7 @@
 #ifndef LUA_CODEGEN_H
 #define LUA_CODEGEN_H
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdbool.h>
 
 // Lua codegen options

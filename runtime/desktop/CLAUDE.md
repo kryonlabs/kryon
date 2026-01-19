@@ -7,5 +7,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30303 | 11:33 PM | 🔄 | Replaced nimProcessReactiveUpdates with luaProcessReactiveUpdates in desktop renderer | ~142 |
+| #30302 | " | 🔄 | Replaced nimProcessReactiveUpdates callback with luaProcessReactiveUpdates | ~123 |
+| #30294 | 11:32 PM | 🔄 | Removed all Nim language support from Kryon framework | ~354 |
 | #30257 | 11:26 PM | 🔄 | Nim language support completely removed from Kryon framework | ~210 |
 </claude-mem-context>

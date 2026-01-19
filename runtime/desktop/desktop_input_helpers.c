@@ -14,8 +14,8 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include "desktop_internal.h"
-#include "../../ir/ir_executor.h"
-#include "../../ir/ir_log.h"
+#include "../../ir/include/ir_executor.h"
+#include "../../ir/include/ir_log.h"
 
 #include <stdio.h>
 #include <string.h>

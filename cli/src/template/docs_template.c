@@ -3,8 +3,8 @@
  */
 
 #include "docs_template.h"
-#include "../../../ir/ir_core.h"
-#include "../../../ir/ir_builder.h"
+#include "../../../ir/include/ir_core.h"
+#include "../../../ir/include/ir_builder.h"
 #include "../../include/kryon_cli.h"
 #include <stdio.h>
 #include <stdlib.h>

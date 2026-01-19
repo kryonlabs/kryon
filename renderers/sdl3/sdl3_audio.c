@@ -9,8 +9,8 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "sdl3_audio.h"
-#include "../../ir/ir_audio_mixer.h"
-#include "../../ir/ir_audio_decoder.h"
+#include "../../ir/include/ir_audio_mixer.h"
+#include "../../ir/include/ir_audio_decoder.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>

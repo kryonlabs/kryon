@@ -7,7 +7,7 @@
 
 #include "plan9_internal.h"
 #include "../desktop/abstract/desktop_effects.h"
-#include "../../ir/ir_log.h"
+#include "../../ir/include/ir_log.h"
 
 /* Helper: interpolate between two color components */
 static uint8_t

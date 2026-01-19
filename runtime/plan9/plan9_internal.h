@@ -12,7 +12,7 @@
 #include <libc.h>
 #include <draw.h>
 #include <event.h>
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 
 #ifdef __cplusplus
 extern "C" {

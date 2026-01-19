@@ -21,7 +21,7 @@
 #define KRYON_REACTIVE_UI_H
 
 #include "kryon_reactive.h"
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 
 #ifdef __cplusplus
 extern "C" {

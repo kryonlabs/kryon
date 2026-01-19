@@ -1,7 +1,7 @@
 #ifndef IR_WEB_RENDERER_H
 #define IR_WEB_RENDERER_H
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include <stdbool.h>
 
 // Forward declarations for IR functions

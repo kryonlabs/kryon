@@ -1,7 +1,7 @@
 #ifndef IR_DESKTOP_RENDERER_H
 #define IR_DESKTOP_RENDERER_H
 
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 #include "desktop_platform.h"
 #include <stdbool.h>
 

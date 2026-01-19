@@ -7,6 +7,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #30306 | 11:34 PM | 🔵 | Verified no remaining Nim function calls in C source files | ~124 |
+| #30294 | 11:32 PM | 🔄 | Removed all Nim language support from Kryon framework | ~354 |
 | #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
 | #30144 | 11:07 PM | 🔄 | Removed all remaining WASM module collection and generation code from web renderer | ~303 |
 | #30139 | " | 🔵 | Only 3 remaining WASM references in web renderer | ~251 |
@@ -15,6 +17,4 @@
 | #30132 | " | 🔄 | Removed WASM bridge from web renderer initialization | ~323 |
 | #30130 | " | 🔵 | Web rendering has two-phase WASM module processing | ~288 |
 | #30128 | " | 🔵 | Web renderer defaults include_wasm_modules to false | ~316 |
-| #30127 | 11:05 PM | 🔵 | Web renderer has flags controlling WASM and JavaScript runtime inclusion | ~310 |
-| #30125 | " | 🔵 | Web renderer conditionally uses WASM bridge for logic extraction | ~335 |
 </claude-mem-context>

@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 /* Use platform abstraction header for Plan 9 compatibility */
-#include "../../ir/ir_platform.h"
+#include "../../ir/include/ir_platform.h"
 
 #ifndef PLAN9
 #include <stdbool.h>

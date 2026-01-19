@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_serialization.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_serialization.h"
 
 extern IRContext* g_ir_context;
 

@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 // ONLY IR headers - NO parser-specific headers
-#include "../../ir/ir_core.h"
+#include "../../ir/include/ir_core.h"
 
 #ifdef __cplusplus
 extern "C" {

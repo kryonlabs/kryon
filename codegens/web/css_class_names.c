@@ -5,7 +5,7 @@
 
 #define _GNU_SOURCE
 #include "css_class_names.h"
-#include "../../ir/ir_component_types.h"
+#include "ir_types.h""
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

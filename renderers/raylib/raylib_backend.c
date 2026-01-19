@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 #include "../../core/include/kryon.h"
-#include "../../ir/ir_native_canvas.h"
+#include "../../ir/include/ir_native_canvas.h"
 #include <raylib.h>
 #include <rlgl.h>
 #include <string.h>

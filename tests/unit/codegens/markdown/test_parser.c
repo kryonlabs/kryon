@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "../../ir/ir_core.h"
-#include "../../ir/ir_builder.h"
-#include "../../ir/parsers/markdown/markdown_parser.h"
+#include "../../ir/include/ir_core.h"
+#include "../../ir/include/ir_builder.h"
+#include "../../ir/include/parsers/markdown/markdown_parser.h"
 
 // Test counter
 static int tests_passed = 0;

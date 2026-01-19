@@ -7,7 +7,7 @@
 #include "plan9_internal.h"
 #include "../desktop/abstract/desktop_fonts.h"
 #include "../desktop/abstract/desktop_text.h"
-#include "../../ir/ir_log.h"
+#include "../../ir/include/ir_log.h"
 
 /* External font operations */
 extern DesktopFontOps g_plan9_font_ops;

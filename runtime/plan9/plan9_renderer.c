@@ -11,7 +11,7 @@
 #include "../desktop/desktop_internal.h"
 #include "../desktop/ir_to_commands.h"
 #include "../../core/include/kryon.h"
-#include "../../ir/ir_log.h"
+#include "../../ir/include/ir_log.h"
 
 /* Forward declarations of backend operations */
 static int plan9_initialize(DesktopIRRenderer* renderer);
