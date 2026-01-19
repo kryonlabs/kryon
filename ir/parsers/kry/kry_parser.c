@@ -944,7 +944,7 @@ static KryNode* parse_static_block(KryParser* p) {
     return static_node;
 }
 
-// Parse code block: @lua { ... }, @js { ... }, @universal { ... }
+// Parse code block: @lua { ... }, @js { ... }
 static KryNode* parse_code_block(KryParser* p, const char* language) {
     skip_whitespace(p);
 
@@ -1256,9 +1256,8 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
 
             skip_whitespace(p);
 
-            // Check for code blocks (@lua, @js, @universal)
-            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js") ||
-                keyword_match(at_name, "universal")) {
+            // Check for code blocks (@lua, @js)
+            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js")) {
 
                 if (peek(p) == '{') {
                     // It's a code block
@@ -1266,7 +1265,7 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
                     if (!code_block) return NULL;
                     kry_node_append_child(component, code_block);
                 } else {
-                    kry_parser_error(p, "Expected '{' after @lua/@js/@universal");
+                    kry_parser_error(p, "Expected '{' after @lua/@js");
                     return NULL;
                 }
             }
@@ -1279,7 +1278,7 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
                 if (!decorator) return NULL;
                 kry_node_append_child(component, decorator);
             } else {
-                kry_parser_error(p, "Unknown @ directive - expected @lua, @js, @universal, or decorator");
+                kry_parser_error(p, "Unknown @ directive - expected @lua, @js, or decorator");
                 return NULL;
             }
 
@@ -1520,14 +1519,13 @@ KryNode* kry_parse(KryParser* parser) {
 
             KryNode* at_node = NULL;
 
-            // Check for code blocks (@lua, @js, @universal)
-            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js") ||
-                keyword_match(at_name, "universal")) {
+            // Check for code blocks (@lua, @js)
+            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js")) {
 
                 if (peek(parser) == '{') {
                     at_node = parse_code_block(parser, at_name);
                 } else {
-                    kry_parser_error(parser, "Expected '{' after @lua/@js/@universal");
+                    kry_parser_error(parser, "Expected '{' after @lua/@js");
                     break;
                 }
             }
@@ -1538,7 +1536,7 @@ KryNode* kry_parse(KryParser* parser) {
 
                 at_node = parse_decorator(parser, at_name);
             } else {
-                kry_parser_error(parser, "Unknown @ directive - expected @lua, @js, @universal, or decorator");
+                kry_parser_error(parser, "Unknown @ directive - expected @lua, @js, or decorator");
                 break;
             }
 

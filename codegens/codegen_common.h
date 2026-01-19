@@ -183,3 +183,81 @@ void codegen_warn(const char* fmt, ...);
 #endif
 
 #endif // CODEGEN_COMMON_H
+
+// ============================================================================
+// StringBuilder Utility
+// ============================================================================
+
+typedef struct StringBuilder StringBuilder;
+
+/**
+ * Create a new string builder with initial capacity.
+ */
+StringBuilder* sb_create(size_t initial_capacity);
+
+/**
+ * Append a string to the builder.
+ */
+void sb_append(StringBuilder* sb, const char* str);
+
+/**
+ * Append a formatted string to the builder.
+ */
+void sb_append_fmt(StringBuilder* sb, const char* fmt, ...);
+
+/**
+ * Get the built string (caller must free).
+ */
+char* sb_get(StringBuilder* sb);
+
+/**
+ * Free the string builder.
+ */
+void sb_free(StringBuilder* sb);
+
+// ============================================================================
+// TSX/React Helper Types and Functions
+// ============================================================================
+
+#define REACT_MODE_TYPESCRIPT 1
+
+typedef struct {
+    int width;
+    int height;
+    char* title;
+    char* background;
+} WindowConfig;
+
+typedef struct ReactContext {
+    int mode;
+    cJSON* logic_functions;
+    cJSON* event_bindings;
+    int indent_level;
+} ReactContext;
+
+/**
+ * Extract window configuration from KIR JSON.
+ * Returns a WindowConfig struct that must be freed with react_free_window_config().
+ */
+WindowConfig react_extract_window_config(cJSON* root);
+
+/**
+ * Free window configuration resources.
+ */
+void react_free_window_config(WindowConfig* config);
+
+/**
+ * Generate React import statements.
+ */
+char* react_generate_imports(int mode);
+
+/**
+ * Generate React state hooks from reactive manifest.
+ */
+char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx);
+
+/**
+ * Generate a React element from component JSON.
+ */
+char* react_generate_element(cJSON* component, ReactContext* ctx, int indent);
+

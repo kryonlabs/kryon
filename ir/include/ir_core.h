@@ -763,73 +763,7 @@ typedef struct {
     char* lang;  // Language identifier (e.g., "lua", "js", "c")
     char* code;  // Source code content
 } IRSourceEntry;
-
 // ============================================================================
-// Computed Property (for @computed decorator)
-// ============================================================================
-typedef enum {
-    IR_COMPUTED_STATE_VALID,      // Value is up-to-date
-    IR_COMPUTED_STATE_DIRTY,      // Needs recalculation
-    IR_COMPUTED_STATE_COMPUTING   // Currently being calculated (detect circular deps)
-} IRComputedState;
-
-typedef struct {
-    uint32_t id;                  // Unique ID for this computed property
-    char* name;                   // Property name (e.g., "getSelectedHabit")
-    char* function_name;          // Function to call for calculation
-    char** dependencies;          // Array of reactive var IDs this depends on
-    uint32_t dependency_count;
-    uint32_t dependency_capacity;
-
-    IRComputedState state;        // Current cache state
-    IRReactiveValue cached_value; // Cached computed value
-
-    // Code generation support
-    char* source_lua;             // Lua source code
-    char* source_js;              // JavaScript source code
-} IRComputedProperty;
-
-// ============================================================================
-// Action Definition (for @action decorator)
-// ============================================================================
-typedef struct {
-    uint32_t id;                  // Unique ID for this action
-    char* name;                   // Action name (e.g., "addNewHabit")
-    char* function_name;          // Function to call
-    bool is_batched;              // Whether to batch mutations
-    bool auto_save;               // Whether to trigger save after execution
-    char** watch_paths;           // State paths to watch (for auto-save)
-    uint32_t watch_path_count;
-
-    // Code generation support
-    char* source_lua;             // Lua source code
-    char* source_js;              // JavaScript source code
-} IRAction;
-
-// ============================================================================
-// Watcher Definition (for @watch decorator)
-// ============================================================================
-typedef enum {
-    IR_WATCH_SHALLOW,             // Watch reference only (default)
-    IR_WATCH_DEEP                 // Watch nested properties
-} IRWatchDepth;
-
-typedef struct {
-    uint32_t id;                  // Unique ID for this watcher
-    char* watched_path;           // State path to watch (e.g., "state.habits")
-    char* handler_function;       // Function to call on change
-    IRWatchDepth depth;           // Shallow or deep watching
-    bool immediate;               // Call immediately on registration
-
-    // Dependencies
-    uint32_t* watched_var_ids;    // Array of reactive var IDs being watched
-    uint32_t watched_var_count;
-
-    // Code generation support
-    char* source_lua;             // Lua source code
-    char* source_js;              // JavaScript source code
-} IRWatcher;
-
 // Complete reactive manifest
 struct IRReactiveManifest {
     // Reactive variables
@@ -862,26 +796,8 @@ struct IRReactiveManifest {
     uint32_t source_count;
     uint32_t source_capacity;
 
-    // Computed properties (@computed decorator)
-    IRComputedProperty* computed_properties;
-    uint32_t computed_property_count;
-    uint32_t computed_property_capacity;
-
-    // Actions (@action decorator)
-    IRAction* actions;
-    uint32_t action_count;
-    uint32_t action_capacity;
-
-    // Watchers (@watch decorator)
-    IRWatcher* watchers;
-    uint32_t watcher_count;
-    uint32_t watcher_capacity;
-
     // Metadata
     uint32_t next_var_id;
-    uint32_t next_computed_id;
-    uint32_t next_action_id;
-    uint32_t next_watcher_id;
 };
 
 // ============================================================================
@@ -954,62 +870,6 @@ void ir_reactive_manifest_add_source(IRReactiveManifest* manifest,
 
 const char* ir_reactive_manifest_get_source(IRReactiveManifest* manifest,
                                             const char* lang);
-
-// ============================================================================
-// Computed Property Management (for @computed decorator)
-// ============================================================================
-uint32_t ir_reactive_manifest_add_computed(IRReactiveManifest* manifest,
-                                           const char* name,
-                                           const char* function_name,
-                                           const char** dependencies,
-                                           uint32_t dependency_count);
-
-IRComputedProperty* ir_reactive_manifest_find_computed(IRReactiveManifest* manifest,
-                                                       const char* name);
-
-IRComputedProperty* ir_reactive_manifest_get_computed(IRReactiveManifest* manifest,
-                                                      uint32_t computed_id);
-
-void ir_reactive_manifest_invalidate_computed(IRReactiveManifest* manifest,
-                                              uint32_t var_id);
-
-// ============================================================================
-// Action Management (for @action decorator)
-// ============================================================================
-uint32_t ir_reactive_manifest_add_action(IRReactiveManifest* manifest,
-                                        const char* name,
-                                        const char* function_name,
-                                        bool is_batched,
-                                        bool auto_save);
-
-IRAction* ir_reactive_manifest_find_action(IRReactiveManifest* manifest,
-                                           const char* name);
-
-IRAction* ir_reactive_manifest_get_action(IRReactiveManifest* manifest,
-                                          uint32_t action_id);
-
-void ir_reactive_manifest_add_action_watch_path(IRReactiveManifest* manifest,
-                                                uint32_t action_id,
-                                                const char* watch_path);
-
-// ============================================================================
-// Watcher Management (for @watch decorator)
-// ============================================================================
-uint32_t ir_reactive_manifest_add_watcher(IRReactiveManifest* manifest,
-                                          const char* watched_path,
-                                          const char* handler_function,
-                                          IRWatchDepth depth,
-                                          bool immediate);
-
-IRWatcher* ir_reactive_manifest_find_watcher(IRReactiveManifest* manifest,
-                                             const char* watched_path);
-
-IRWatcher* ir_reactive_manifest_get_watcher(IRReactiveManifest* manifest,
-                                            uint32_t watcher_id);
-
-void ir_reactive_manifest_add_watcher_dependency(IRReactiveManifest* manifest,
-                                                 uint32_t watcher_id,
-                                                 uint32_t var_id);
 
 // ============================================================================
 // Source Structures API (for Kry → KIR → Kry round-trip codegen)

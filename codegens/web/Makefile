@@ -11,7 +11,8 @@ WEB_DIR = .
 IR_DIR = ../../ir
 BUILD_DIR = ../../build
 INCLUDE_DIR = .
-INCLUDE_IR_DIR = ../../ir
+INCLUDE_IR_DIR = ../../ir/include
+INCLUDE_PUBLIC_DIR = ../../include
 
 # Source files
 WEB_SOURCES = ir_web_renderer.c html_generator.c css_generator.c style_analyzer.c lua_bundler.c css_property_tables.c css_generator_core.c css_class_names.c
@@ -24,10 +25,11 @@ WEB_TEST = $(BUILD_DIR)/web_test
 KIR_TO_HTML = kir_to_html
 
 # Include paths
-INCLUDES = -I$(INCLUDE_DIR) -I$(INCLUDE_IR_DIR)
+INCLUDES = -I$(INCLUDE_DIR) -I$(INCLUDE_IR_DIR) -I$(INCLUDE_PUBLIC_DIR) -I../../ir/src/style -I../../ir/src/utils
 
 # Link libraries
-LINK_LIBS = -L$(BUILD_DIR) -lkryon_web -lkryon_ir
+HARFBUZZ_LIBS = $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
+LINK_LIBS = -L$(BUILD_DIR) -lkryon_web -lkryon_ir $(HARFBUZZ_LIBS)
 
 # Default target
 all: $(WEB_STATIC_LIB) $(WEB_SHARED_LIB) $(KIR_TO_HTML)
@@ -70,7 +72,7 @@ $(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator
 
 # Create shared library (dynamically link libkryon_ir to avoid symbol conflicts)
 $(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o -L$(BUILD_DIR) -lkryon_ir
+	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o lua_bundler.o css_property_tables.o css_generator_core.o css_class_names.o -L$(BUILD_DIR) -lkryon_ir $(HARFBUZZ_LIBS)
 
 # Build kir_to_html CLI tool
 $(KIR_TO_HTML): $(WEB_STATIC_LIB) kir_to_html.c

@@ -163,7 +163,7 @@ static void toml_table_free(TOMLTable* table) {
  * Parse TOML file into table
  * Returns NULL on error
  */
-TOMLTable* toml_parse_file(const char* path) {
+TOMLTable* kryon_toml_parse_file(const char* path) {
     if (!path) return NULL;
 
     char* content = file_read(path);
@@ -321,7 +321,7 @@ TOMLTable* toml_parse_file(const char* path) {
 /**
  * Get string value from TOML table
  */
-const char* toml_get_string(TOMLTable* table, const char* key, const char* default_value) {
+const char* kryon_toml_get_string(TOMLTable* table, const char* key, const char* default_value) {
     const char* value = toml_table_get(table, key);
     return value ? value : default_value;
 }
@@ -329,7 +329,7 @@ const char* toml_get_string(TOMLTable* table, const char* key, const char* defau
 /**
  * Get integer value from TOML table
  */
-int toml_get_int(TOMLTable* table, const char* key, int default_value) {
+int kryon_toml_get_int(TOMLTable* table, const char* key, int default_value) {
     const char* value = toml_table_get(table, key);
     return value ? atoi(value) : default_value;
 }
@@ -337,7 +337,7 @@ int toml_get_int(TOMLTable* table, const char* key, int default_value) {
 /**
  * Get boolean value from TOML table
  */
-bool toml_get_bool(TOMLTable* table, const char* key, bool default_value) {
+bool kryon_toml_get_bool(TOMLTable* table, const char* key, bool default_value) {
     const char* value = toml_table_get(table, key);
     if (!value) return default_value;
 
@@ -349,7 +349,7 @@ bool toml_get_bool(TOMLTable* table, const char* key, bool default_value) {
  * Returns array of plugin names and sets count
  * Caller must free the returned array and each string
  */
-char** toml_get_plugin_names(TOMLTable* table, int* count) {
+char** kryon_toml_get_plugin_names(TOMLTable* table, int* count) {
     if (!table || !count) return NULL;
 
     *count = 0;
@@ -419,6 +419,6 @@ char** toml_get_plugin_names(TOMLTable* table, int* count) {
 /**
  * Free TOML table
  */
-void toml_free(TOMLTable* table) {
+void kryon_toml_free(TOMLTable* table) {
     toml_table_free(table);
 }

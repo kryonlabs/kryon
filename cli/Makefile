@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../runtime/desktop -I../codegens/web -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../runtime/desktop -I../codegens/web -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
@@ -9,13 +9,13 @@ HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/nul
 # Requires SDL3 and raylib to be installed
 # Link against static libraries to override weak symbols at link time
 # Note: libraries specified multiple times to resolve internal dependencies
-LDFLAGS = -L../build -lkryon_ir \
-	../build/libkryon_common.a \
+LDFLAGS = ../build/libkryon_common.a \
 	../build/libkryon_sdl3.a \
 	../build/libkryon_desktop.a \
 	../build/libkryon_common.a \
 	../build/libkryon_sdl3.a \
 	../build/libkryon_desktop.a \
+	../build/libkryon_ir.a \
 	-lm -lpthread -ldl -lSDL3 -lSDL3_ttf -lraylib
 
 # Directories
@@ -60,6 +60,9 @@ SRCS = $(SRC_DIR)/main.c \
 # Object files
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
+# Object files for linking (exclude toml_parser.o to avoid conflicts with tomlc99)
+OBJS_LINK = $(filter-out $(BUILD_DIR)/config/toml_parser.o,$(OBJS))
+
 # Target binary
 TARGET = kryon
 
@@ -81,7 +84,7 @@ all: $(TARGET)
 
 # Minimal target - no SDL3/desktop dependencies (for terminal/web builds)
 # Note: Codegens must be built first (use 'make build-codegens' from project root)
-CFLAGS_MINIMAL = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir -I../third_party/cJSON -I../codegens/web -DKRYON_MINIMAL_BUILD -D_POSIX_C_SOURCE=200809L
+CFLAGS_MINIMAL = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -DKRYON_MINIMAL_BUILD -D_POSIX_C_SOURCE=200809L
 OBJS_MINIMAL = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Check if static libraries are available (Alpine provides them, Ubuntu doesn't)
@@ -147,7 +150,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_web.a
 	# Build kir_to_html.o (embedded web codegen)
 	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
-	$(CC) $(OBJS) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) $(LDFLAGS) -L../build -lkryon_web
+	$(CC) $(OBJS_LINK) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) ../build/libkryon_web.a $(LDFLAGS) $(HARFBUZZ_LIBS)
 
 # Build IR library
 ../build/libkryon_ir.a:

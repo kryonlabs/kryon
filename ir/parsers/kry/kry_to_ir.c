@@ -7,12 +7,12 @@
 #define _POSIX_C_SOURCE 200809L
 #include "kry_parser.h"
 #include "kry_ast.h"
-#include "kry_universal.h"  // Universal transpiler
+#include "kry_expression.h"
 #include "../include/ir_builder.h"
 #include "../include/ir_serialization.h"
 #include "../include/ir_logic.h"
 #include "../include/ir_style.h"
-#include "../../src/features/ir_animation_builder.h"
+#include "../include/ir_animation_builder.h"
 #include "../src/logic/ir_foreach.h"
 #include "../html/css_parser.h"  // For ir_css_parse_color
 #include "../parser_utils.h"     // For parser_parse_color_packed
@@ -54,6 +54,7 @@ typedef struct {
     IRSourceStructures* source_structures;  // Source preservation (for round-trip codegen)
     uint32_t static_block_counter; // Counter for generating unique static block IDs
     const char* current_static_block_id;  // Current static block context (NULL if not in static block)
+    KryExprTarget target_platform; // Target platform for expression transpilation (Lua or JavaScript)
 } ConversionContext;
 
 // ============================================================================
@@ -285,6 +286,62 @@ static char* kry_value_to_json(KryValue* value) {
         default:
             return strdup("null");
     }
+}
+
+/**
+ * Transpile a KRY value expression to the target platform (Lua or JavaScript).
+ * Returns a dynamically allocated string that must be freed by the caller.
+ * If the value is not an expression or transpilation fails, returns NULL.
+ */
+static char* kry_value_transpile_expression(KryValue* value, KryExprTarget target) {
+    if (!value || value->type != KRY_VALUE_EXPRESSION) {
+        return NULL;
+    }
+
+    // Try to parse and transpile the expression
+    char* error = NULL;
+    KryExprNode* node = kry_expr_parse(value->expression, &error);
+    if (!node) {
+        // If parsing fails, fall back to raw expression (for compatibility)
+        printf("[TRANSPILE] Failed to parse expression '%s': %s\n", value->expression, error ? error : "unknown");
+        free(error);
+        return NULL;
+    }
+
+    // Transpile to target platform
+    KryExprOptions options = {target, false, 0};
+    size_t output_length = 0;
+    char* result = kry_expr_transpile(node, &options, &output_length);
+
+    kry_expr_free(node);
+
+    if (result) {
+        printf("[TRANSPILE] Successfully transpiled '%s' to '%s' (target: %s)\n",
+               value->expression, result, target == KRY_TARGET_LUA ? "Lua" : "JavaScript");
+    }
+
+    return result;
+}
+
+/**
+ * Convert a KryValue to the target platform code (Lua or JavaScript).
+ * This handles expression transpilation for cross-platform support.
+ * Returns a dynamically allocated string that must be freed by the caller.
+ */
+static char* kry_value_to_target_code(KryValue* value, KryExprTarget target) {
+    if (!value) return strdup("null");
+
+    // If it's an expression, try to transpile it
+    if (value->type == KRY_VALUE_EXPRESSION) {
+        char* transpiled = kry_value_transpile_expression(value, target);
+        if (transpiled) {
+            return transpiled;  // Successfully transpiled
+        }
+        // Fall through to raw expression if transpilation fails
+    }
+
+    // Fall back to JSON conversion for non-expressions or failed transpilation
+    return kry_value_to_json(value);
 }
 
 // ============================================================================
@@ -2307,7 +2364,7 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     }
                 }
             } else if (child->type == KRY_NODE_CODE_BLOCK) {
-                // Code block (@lua, @js, @universal) - add to logic block
+                // Code block (@lua, @js) - add to logic block
                 if (ctx->logic_block && child->code_language && child->code_source) {
                     // Generate a unique function name for this code block
                     char func_name[256];
@@ -2317,42 +2374,19 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     // Create logic function to hold the source code
                     IRLogicFunction* func = ir_logic_function_create(func_name);
                     if (func) {
-                        // Check if this is a @universal block
-                        if (strcmp(child->code_language, "universal") == 0) {
-                            // Transpile @universal to both Lua and JavaScript
-                            printf("[KRY_TO_IR] Transpiling @universal block: func='%s'\n", func_name);
-
-                            // Transpile to Lua
-                            size_t lua_length;
-                            char* lua_code = kry_universal_transpile(child->code_source, KRY_TARGET_LUA, &lua_length);
-                            if (lua_code) {
-                                ir_logic_function_add_source(func, "lua", lua_code);
-                                printf("[KRY_TO_IR]   Generated Lua: %zu bytes\n", lua_length);
-                                free(lua_code);
-                            }
-
-                            // Transpile to JavaScript
-                            size_t js_length;
-                            char* js_code = kry_universal_transpile(child->code_source, KRY_TARGET_JAVASCRIPT, &js_length);
-                            if (js_code) {
-                                ir_logic_function_add_source(func, "js", js_code);
-                                printf("[KRY_TO_IR]   Generated JavaScript: %zu bytes\n", js_length);
-                                free(js_code);
-                            }
-                        } else {
-                            // Direct @lua or @js block - just add the source
-                            ir_logic_function_add_source(func, child->code_language, child->code_source);
-                            printf("[KRY_TO_IR] Added code block to logic: language='%s', func='%s'\n",
-                                   child->code_language, func_name);
-                        }
+                        // Direct @lua or @js block - just add the source
+                        ir_logic_function_add_source(func, child->code_language, child->code_source);
+                        printf("[KRY_TO_IR] Added code block to logic: language='%s', func='%s'\n",
+                               child->code_language, func_name);
 
                         // Add function to logic block
                         ir_logic_block_add_function(ctx->logic_block, func);
                     }
                 }
             } else if (child->type == KRY_NODE_DECORATOR) {
-                // Process reactive decorators (@reactive, @computed, @action, @watch)
-                process_reactive_decorator(child, ctx);
+                // Decorators are no longer supported
+                printf("[KRY_TO_IR] Ignoring decorator: %s (decorator system removed)\n",
+                       child->decorator_type ? child->decorator_type : "(unknown)");
             }
 
             child = child->next_sibling;
@@ -2362,88 +2396,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
     }
 
     return NULL;
-}
-
-// ============================================================================
-// Reactive Decorator Processing
-// ============================================================================
-
-static void process_reactive_decorator(KryNode* decorator, ConversionContext* ctx) {
-    if (!decorator || !decorator->decorator_type || !ctx) return;
-
-    printf("[KRY_TO_IR] Processing decorator: type='%s'\n", decorator->decorator_type);
-
-    // Get or create reactive manifest from ConversionContext
-    if (!ctx->manifest) {
-        ctx->manifest = ir_reactive_manifest_create();
-        if (!ctx->manifest) {
-            fprintf(stderr, "[KRY_TO_IR] Failed to create reactive manifest\n");
-            return;
-        }
-    }
-
-    IRReactiveManifest* manifest = ctx->manifest;
-
-    // Process decorator type
-    if (strcmp(decorator->decorator_type, "reactive") == 0) {
-        // @reactive decorator - marks state variables as reactive
-        // The actual state variables are created elsewhere, this just marks them
-        printf("[KRY_TO_IR] @reactive decorator found for: %s\n",
-               decorator->decorator_target ? decorator->decorator_target : "(unknown)");
-
-    } else if (strcmp(decorator->decorator_type, "computed") == 0) {
-        // @computed decorator - creates a computed property
-        if (decorator->decorator_target) {
-            uint32_t computed_id = ir_reactive_manifest_add_computed(
-                manifest,
-                decorator->decorator_target,  // name
-                decorator->decorator_target,  // function_name (same for now)
-                NULL,  // dependencies (to be extracted from function body)
-                0      // dependency_count
-            );
-            printf("[KRY_TO_IR] Created computed property '%s' with ID %u\n",
-                   decorator->decorator_target, computed_id);
-        }
-
-    } else if (strcmp(decorator->decorator_type, "action") == 0) {
-        // @action decorator - creates an action with batching and auto-save
-        if (decorator->decorator_target) {
-            uint32_t action_id = ir_reactive_manifest_add_action(
-                manifest,
-                decorator->decorator_target,  // name
-                decorator->decorator_target,  // function_name
-                true,   // is_batched
-                true    // auto_save
-            );
-            printf("[KRY_TO_IR] Created action '%s' with ID %u (batched, auto-save)\n",
-                   decorator->decorator_target, action_id);
-        }
-
-    } else if (strcmp(decorator->decorator_type, "watch") == 0) {
-        // @watch decorator - creates a watcher for state changes
-        if (decorator->decorator_args && decorator->decorator_target) {
-            uint32_t watcher_id = ir_reactive_manifest_add_watcher(
-                manifest,
-                decorator->decorator_args,    // watched_path (e.g., "state.habits")
-                decorator->decorator_target,   // handler_function
-                IR_WATCH_SHALLOW,              // depth
-                false                          // immediate
-            );
-            printf("[KRY_TO_IR] Created watcher for '%s' with handler '%s' (ID %u)\n",
-                   decorator->decorator_args, decorator->decorator_target, watcher_id);
-        }
-
-    } else if (strcmp(decorator->decorator_type, "context") == 0) {
-        // @context decorator - Phase 4 (Context API)
-        printf("[KRY_TO_IR] @context decorator found (Phase 4 - not yet implemented)\n");
-
-    } else if (strcmp(decorator->decorator_type, "use") == 0) {
-        // @use decorator - Phase 4 (Context API)
-        printf("[KRY_TO_IR] @use decorator found (Phase 4 - not yet implemented)\n");
-
-    } else {
-        fprintf(stderr, "[KRY_TO_IR] Unknown decorator type: '%s'\n", decorator->decorator_type);
-    }
 }
 
 // ============================================================================
@@ -2494,6 +2446,7 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
     ctx.manifest = ir_reactive_manifest_create();  // Create reactive manifest for state tracking
     ctx.logic_block = ir_logic_block_create();     // Create logic block for event handlers
     ctx.next_handler_id = 1;                       // Start handler ID counter
+    ctx.target_platform = KRY_TARGET_LUA;          // Default to Lua target
 
     // Convert AST to IR
     IRComponent* root = convert_node(&ctx, root_node);
@@ -2580,6 +2533,7 @@ IRKryParseResult ir_kry_parse_ex(const char* source, size_t length) {
     ctx.source_structures = ir_source_structures_create();
     ctx.static_block_counter = 0;
     ctx.current_static_block_id = NULL;
+    ctx.target_platform = KRY_TARGET_LUA;          // Default to Lua target
 
     // Convert AST to IR
     result.root = convert_node(&ctx, root_node);
@@ -2912,6 +2866,7 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     ctx.source_structures = ir_source_structures_create();  // Create source structures
     ctx.static_block_counter = 0;               // Initialize static block counter
     ctx.current_static_block_id = NULL;         // Not in static block initially
+    ctx.target_platform = KRY_TARGET_LUA;       // Default to Lua target
 
     // Create IR context for component ID generation
     IRContext* ir_ctx = ir_create_context();
@@ -3204,7 +3159,7 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     fprintf(stderr, "[STYLE_BLOCKS] Finished processing top-level style blocks\n");
     fflush(stderr);
 
-    // Process top-level code blocks (@lua, @js, @universal)
+    // Process top-level code blocks (@lua, @js)
     fprintf(stderr, "[CODE_BLOCKS] Processing top-level code blocks...\n");
     fflush(stderr);
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
@@ -3222,33 +3177,9 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                 // Create logic function to hold the source code
                 IRLogicFunction* func = ir_logic_function_create(func_name);
                 if (func) {
-                    // Check if this is a @universal block
-                    if (strcmp(code_node->code_language, "universal") == 0) {
-                        // Transpile @universal to both Lua and JavaScript
-                        fprintf(stderr, "[CODE_BLOCKS] Transpiling @universal block: func='%s'\n", func_name);
-
-                        // Transpile to Lua
-                        size_t lua_length;
-                        char* lua_code = kry_universal_transpile(code_node->code_source, KRY_TARGET_LUA, &lua_length);
-                        if (lua_code) {
-                            ir_logic_function_add_source(func, "lua", lua_code);
-                            fprintf(stderr, "[CODE_BLOCKS]   Generated Lua: %zu bytes\n", lua_length);
-                            free(lua_code);
-                        }
-
-                        // Transpile to JavaScript
-                        size_t js_length;
-                        char* js_code = kry_universal_transpile(code_node->code_source, KRY_TARGET_JAVASCRIPT, &js_length);
-                        if (js_code) {
-                            ir_logic_function_add_source(func, "js", js_code);
-                            fprintf(stderr, "[CODE_BLOCKS]   Generated JavaScript: %zu bytes\n", js_length);
-                            free(js_code);
-                        }
-                    } else {
-                        // Direct @lua or @js block - just add the source
-                        ir_logic_function_add_source(func, code_node->code_language, code_node->code_source);
-                        fprintf(stderr, "[CODE_BLOCKS]   Added to logic block: func='%s'\n", func_name);
-                    }
+                    // Direct @lua or @js block - just add the source
+                    ir_logic_function_add_source(func, code_node->code_language, code_node->code_source);
+                    fprintf(stderr, "[CODE_BLOCKS]   Added to logic block: func='%s'\n", func_name);
 
                     // Add function to logic block
                     ir_logic_block_add_function(result.logic_block, func);

@@ -6,11 +6,11 @@
 #include <stdbool.h>
 #include <math.h>
 
-#include "../../ir/include/ir_core.h"
-#include "../../ir/include/ir_style_vars.h"
-#include "../../ir/include/ir_stylesheet.h"
-#include "../../ir/include/ir_builder.h"
-#include "../../ir/include/ir_capability.h"
+#include "ir_core.h"
+#include "ir_style_vars.h"
+#include "ir_stylesheet.h"
+#include "ir_builder.h"
+#include "ir_capability.h"
 #include "css_generator.h"
 #include "style_analyzer.h"
 

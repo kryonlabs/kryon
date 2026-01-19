@@ -9,13 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ir_core.h"
-#include "parsers/kry/kry_parser.h"
-#include "parsers/markdown/markdown_parser.h"
-#include "parsers/html/html_parser.h"
+#include "../../ir/parsers/kry/kry_parser.h"
+#include "../../ir/parsers/markdown/markdown_parser.h"
+#include "../../ir/parsers/html/html_parser.h"
 #include "ir_serialization.h"
-#include "parsers/c/c_parser.h"
-#include "parsers/tsx/tsx_parser.h"
-#include "parsers/lua/lua_parser.h"
+#include "../../ir/parsers/c/c_parser.h"
+#include "../../ir/parsers/tsx/tsx_parser.h"
+#include "../../ir/parsers/lua/lua_parser.h"
 
 static int compile_to_kir(const char* source_file, const char* output_kir, const char* frontend) {
     printf("Compiling %s → %s (frontend: %s)\n", source_file, output_kir, frontend);

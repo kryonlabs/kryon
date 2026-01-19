@@ -85,12 +85,12 @@ char* json_to_string(void* json);
 
 typedef struct TOMLTable TOMLTable;
 
-TOMLTable* toml_parse_file(const char* path);
-const char* toml_get_string(TOMLTable* table, const char* key, const char* default_value);
-int toml_get_int(TOMLTable* table, const char* key, int default_value);
-bool toml_get_bool(TOMLTable* table, const char* key, bool default_value);
-char** toml_get_plugin_names(TOMLTable* table, int* count);
-void toml_free(TOMLTable* table);
+TOMLTable* kryon_toml_parse_file(const char* path);
+const char* kryon_toml_get_string(TOMLTable* table, const char* key, const char* default_value);
+int kryon_toml_get_int(TOMLTable* table, const char* key, int default_value);
+bool kryon_toml_get_bool(TOMLTable* table, const char* key, bool default_value);
+char** kryon_toml_get_plugin_names(TOMLTable* table, int* count);
+void kryon_toml_free(TOMLTable* table);
 
 // ============================================================================
 // Configuration

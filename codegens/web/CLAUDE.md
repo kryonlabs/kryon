@@ -7,19 +7,19 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #30245 | 11:24 PM | 🔄 | Removed all Nim language support from Kryon framework | ~176 |
-| #30224 | 11:19 PM | 🔄 | Removed all Nim language support from Kryon codebase | ~450 |
-| #30222 | 11:18 PM | 🔄 | Removed all Nim language support from Kryon codebase | ~178 |
-| #30213 | 11:16 PM | 🔄 | Nim language support completely removed from Kryon codebase | ~220 |
-| #30211 | " | 🔄 | Removed all Nim language support from Kryon project | ~213 |
-| #30208 | 11:15 PM | 🔄 | Removed all Nim language support from Kryon project | ~473 |
-| #30253 | " | 🔄 | Nim language support completely removed from Kryon codebase | ~396 |
-| #30181 | 11:12 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~208 |
-| #30173 | " | 🔄 | Nim language support completely removed from Kryon codebase | ~1027 |
+| #30306 | 11:34 PM | 🔵 | Verified no remaining Nim function calls in C source files | ~124 |
+| #30294 | 11:32 PM | 🔄 | Removed all Nim language support from Kryon framework | ~354 |
+| #30201 | 11:14 PM | 🔄 | Removed all Nim language support from Kryon CLI | ~622 |
+| #30144 | 11:07 PM | 🔄 | Removed all remaining WASM module collection and generation code from web renderer | ~303 |
 
 ### Jan 19, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #31045 | 1:06 AM | 🔄 | Kryon Build System Completely Rebuilt and Simplified | ~298 |
+| #31606 | 12:44 PM | 🔴 | Added HarfBuzz libraries to web codegen shared library linking | ~193 |
+| #31605 | " | 🔴 | Added HarfBuzz text shaping libraries to web codegen linker flags | ~221 |
+| #31597 | " | 🔴 | Added IR style source directory to web codegen include paths | ~244 |
+| #31590 | 12:43 PM | 🔴 | Fixed hardcoded include paths in web codegen source files | ~233 |
+| #31586 | 12:41 PM | 🔴 | Updated web codegen Makefile include paths | ~188 |
+| #31483 | 12:32 PM | 🔴 | Discovered multiple include path errors in web codegen | ~188 |
 </claude-mem-context>

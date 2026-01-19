@@ -14,9 +14,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "../../ir/include/ir_core.h"
-#include "../../ir/include/ir_capability.h"
-#include "../../ir/include/ir_logic.h"
+#include "ir_core.h"
+#include "ir_capability.h"
+#include "ir_logic.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include "html_generator.h"
 #include "css_generator.h"
@@ -1738,8 +1738,6 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     // Add JavaScript runtime if requested
     if (generator->options.include_runtime) {
         html_generator_write_string(generator, "  <script src=\"kryon.js\"></script>\n");
-        // Add reactive system (Phase 2: Self-Contained KIR)
-        html_generator_write_string(generator, "  <script src=\"kryon-reactive.js\"></script>\n");
     }
 
     html_generator_write_string(generator, "</head>\n");
@@ -1886,93 +1884,6 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         html_generator_write_string(generator, "      }\n");
         html_generator_write_string(generator, "    });\n");
         html_generator_write_string(generator, "    console.log('[Kryon] Registered', bindings.length, 'reactive bindings');\n");
-        html_generator_write_string(generator, "  })();\n");
-        html_generator_write_string(generator, "  </script>\n");
-    }
-
-    // Inject computed properties from manifest (Phase 3: Computed Properties)
-    if (generator->manifest && generator->manifest->computed_property_count > 0) {
-        html_generator_write_string(generator, "  <script>\n");
-        html_generator_write_string(generator, "  // Computed properties from IRReactiveManifest\n");
-        html_generator_write_string(generator, "  (function() {\n");
-        html_generator_write_string(generator, "    const computed = {\n");
-
-        for (uint32_t i = 0; i < generator->manifest->computed_property_count; i++) {
-            IRComputedProperty* prop = &generator->manifest->computed_properties[i];
-            if (!prop->name) continue;
-
-            const char* comma = (i < generator->manifest->computed_property_count - 1) ? "," : "";
-            html_generator_write_format(generator, "      %s: function() { return %s(); }%s\n",
-                prop->name, prop->function_name ? prop->function_name : prop->name, comma);
-        }
-
-        html_generator_write_string(generator, "    };\n");
-        html_generator_write_string(generator, "    // Register computed properties\n");
-        html_generator_write_string(generator, "    Object.keys(computed).forEach(function(name) {\n");
-        html_generator_write_string(generator, "      window.__KRYON_COMPUTED__ = window.__KRYON_COMPUTED__ || {};\n");
-        html_generator_write_string(generator, "      window.__KRYON_COMPUTED__[name] = computed[name];\n");
-        html_generator_write_string(generator, "    });\n");
-        html_generator_write_string(generator, "    console.log('[Kryon] Registered', Object.keys(computed).length, 'computed properties');\n");
-        html_generator_write_string(generator, "  })();\n");
-        html_generator_write_string(generator, "  </script>\n");
-    }
-
-    // Inject actions from manifest (Phase 3: Actions)
-    if (generator->manifest && generator->manifest->action_count > 0) {
-        html_generator_write_string(generator, "  <script>\n");
-        html_generator_write_string(generator, "  // Actions from IRReactiveManifest\n");
-        html_generator_write_string(generator, "  (function() {\n");
-        html_generator_write_string(generator, "    const actions = {\n");
-
-        for (uint32_t i = 0; i < generator->manifest->action_count; i++) {
-            IRAction* action = &generator->manifest->actions[i];
-            if (!action->name) continue;
-
-            const char* comma = (i < generator->manifest->action_count - 1) ? "," : "";
-            html_generator_write_format(generator, "      %s: function() { %s%s }%s\n",
-                action->name,
-                action->is_batched ? "Reactive.batch(function() { " : "",
-                action->function_name ? action->function_name : action->name,
-                action->is_batched ? "(); })" : "()");
-            html_generator_write_format(generator, "      // auto-save: %s%s\n",
-                action->auto_save ? "true" : "false", comma);
-        }
-
-        html_generator_write_string(generator, "    };\n");
-        html_generator_write_string(generator, "    // Register actions\n");
-        html_generator_write_string(generator, "    window.__KRYON_ACTIONS__ = actions;\n");
-        html_generator_write_string(generator, "    console.log('[Kryon] Registered', Object.keys(actions).length, 'actions');\n");
-        html_generator_write_string(generator, "  })();\n");
-        html_generator_write_string(generator, "  </script>\n");
-    }
-
-    // Inject watchers from manifest (Phase 3: Watchers)
-    if (generator->manifest && generator->manifest->watcher_count > 0) {
-        html_generator_write_string(generator, "  <script>\n");
-        html_generator_write_string(generator, "  // Watchers from IRReactiveManifest\n");
-        html_generator_write_string(generator, "  (function() {\n");
-        html_generator_write_string(generator, "    const watchers = [\n");
-
-        for (uint32_t i = 0; i < generator->manifest->watcher_count; i++) {
-            IRWatcher* watcher = &generator->manifest->watchers[i];
-            if (!watcher->watched_path) continue;
-
-            const char* comma = (i < generator->manifest->watcher_count - 1) ? "," : "";
-            html_generator_write_format(generator, "      { path: '%s', handler: %s, immediate: %s }%s\n",
-                watcher->watched_path,
-                watcher->handler_function ? watcher->handler_function : "null",
-                watcher->immediate ? "true" : "false",
-                comma);
-        }
-
-        html_generator_write_string(generator, "    ];\n");
-        html_generator_write_string(generator, "    // Register watchers\n");
-        html_generator_write_string(generator, "    watchers.forEach(function(w) {\n");
-        html_generator_write_string(generator, "      if (window.kryonWatch) {\n");
-        html_generator_write_string(generator, "        window.kryonWatch(w.path, function(newVal) { w.handler(newVal); }, w.immediate);\n");
-        html_generator_write_string(generator, "      }\n");
-        html_generator_write_string(generator, "    });\n");
-        html_generator_write_string(generator, "    console.log('[Kryon] Registered', watchers.length, 'watchers');\n");
         html_generator_write_string(generator, "  })();\n");
         html_generator_write_string(generator, "  </script>\n");
     }
