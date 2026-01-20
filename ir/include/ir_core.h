@@ -475,12 +475,42 @@ typedef struct IRImport {
     char* module;         // Module path (e.g., "math", "storage", "components.calendar")
 } IRImport;
 
+// ============================================================================
+// Struct Type Support
+// ============================================================================
+
+// Struct field definition
+typedef struct IRStructField {
+    char* name;              // Field name
+    char* type;              // Field type: "string", "int", "float", "bool", "map"
+    char* default_value;     // Default value as string/expression
+    uint32_t line;           // Source line for error reporting
+} IRStructField;
+
+// Struct type definition
+typedef struct IRStructType {
+    char* name;              // Struct type name (e.g., "Habit")
+    IRStructField** fields;  // Array of field definitions
+    uint32_t field_count;    // Number of fields
+    uint32_t line;           // Source line for error reporting
+} IRStructType;
+
+// Struct instance (instantiation)
+typedef struct IRStructInstance {
+    char* struct_type;       // Type name being instantiated
+    char** field_names;      // Array of field names being set
+    char** field_values;     // Array of field values (as JSON/expression strings)
+    uint32_t field_count;    // Number of fields
+    uint32_t line;           // Source line for error reporting
+} IRStructInstance;
+
 // Module export descriptor (for module-level return statements)
 typedef struct IRModuleExport {
-    char* name;              // Export name (e.g., "COLORS", "getRandomColor")
-    char* type;              // "function", "constant", "array", "object"
+    char* name;              // Export name (e.g., "COLORS", "getRandomColor", "Habit")
+    char* type;              // "function", "constant", "array", "object", "struct"
     char* value_json;        // Value as JSON string (for constants/objects)
     char* function_name;     // If type is "function", reference to IRLogicFunction
+    IRStructType* struct_def; // If type is "struct", struct definition
     uint32_t line;           // Source line number
 } IRModuleExport;
 
@@ -510,6 +540,11 @@ typedef struct IRSourceStructures {
     IRModuleExport** exports;       // Array of module exports
     uint32_t export_count;
     uint32_t export_capacity;
+
+    // Struct type definitions
+    IRStructType** struct_types;    // Array of struct type definitions
+    uint32_t struct_type_count;
+    uint32_t struct_type_capacity;
 
     // Next ID counters for generation
     uint32_t next_static_block_id;

@@ -38,7 +38,10 @@ typedef enum {
     KRY_NODE_CODE_BLOCK,        // Platform-specific code block (@lua, @js)
     KRY_NODE_FUNCTION_DECL,     // Function declaration (func name(): type { ... })
     KRY_NODE_RETURN_STMT,       // Return statement in function (return expression)
-    KRY_NODE_MODULE_RETURN      // Module-level return: return { exports }
+    KRY_NODE_MODULE_RETURN,     // Module-level return: return { exports }
+    KRY_NODE_STRUCT_DECL,       // Struct declaration: struct Habit { ... }
+    KRY_NODE_STRUCT_INST,       // Struct instantiation: Habit { name = "..." }
+    KRY_NODE_STRUCT_FIELD       // Struct field: name: string = "default"
 } KryNodeType;
 
 // ============================================================================
@@ -61,6 +64,47 @@ typedef enum {
 typedef struct KryNode KryNode;
 typedef struct KryValue KryValue;
 typedef struct KryParser KryParser;
+
+// ============================================================================
+// Error Collection Structures
+// ============================================================================
+
+// Error severity levels
+typedef enum {
+    KRY_ERROR_WARNING,    // Non-fatal issues (missing optional properties)
+    KRY_ERROR_ERROR,      // Parse/semantic errors (syntax violations)
+    KRY_ERROR_FATAL       // Unrecoverable errors (allocation failures)
+} KryErrorLevel;
+
+// Error categories
+typedef enum {
+    KRY_ERROR_SYNTAX,           // Syntax errors
+    KRY_ERROR_SEMANTIC,         // Semantic errors
+    KRY_ERROR_LIMIT_EXCEEDED,   // Array/object limits
+    KRY_ERROR_BUFFER_OVERFLOW,  // Buffer overflow
+    KRY_ERROR_CONVERSION,       // IR conversion errors
+    KRY_ERROR_VALIDATION        // Post-validation errors
+} KryErrorCategory;
+
+// Individual error entry
+typedef struct KryError {
+    KryErrorLevel level;
+    KryErrorCategory category;
+    char* message;              // Allocated from chunk
+    uint32_t line;
+    uint32_t column;
+    char* context;              // Source snippet (optional)
+    struct KryError* next;      // Linked list
+} KryError;
+
+// Error collection
+typedef struct {
+    KryError* first;
+    KryError* last;
+    uint32_t error_count;
+    uint32_t warning_count;
+    bool has_fatal;
+} KryErrorList;
 
 // ============================================================================
 // Value Structure
@@ -133,6 +177,21 @@ struct KryNode {
     char** export_names;        // Array of export names ["COLORS", "DEFAULT_COLOR", ...]
     int export_count;           // Number of exports
 
+    // Struct declaration support (for KRY_NODE_STRUCT_DECL)
+    char* struct_name;          // Struct type name (e.g., "Habit")
+    KryNode** struct_fields;    // Array of KRY_NODE_STRUCT_FIELD
+    int field_count;            // Number of fields in struct
+
+    // Struct instance support (for KRY_NODE_STRUCT_INST)
+    char* instance_type;        // Type being instantiated
+    KryValue** field_values;    // Array of field values
+    char** field_names;         // Array of field names
+    int field_value_count;      // Number of fields in instance
+
+    // Struct field support (for KRY_NODE_STRUCT_FIELD)
+    char* field_type;           // Field type (string, int, float, bool, map)
+    KryValue* field_default;    // Default value expression
+
     // Source location (for error messages)
     uint32_t line;
     uint32_t column;
@@ -170,7 +229,10 @@ struct KryParser {
     // AST root
     KryNode* root;
 
-    // Error handling
+    // Error collection
+    KryErrorList errors;
+
+    // Legacy error handling (for backward compatibility - points to first error)
     bool has_error;
     char* error_message;
     uint32_t error_line;
@@ -209,6 +271,9 @@ KryValue* kry_value_create_object(KryParser* parser, char** keys, KryValue** val
 
 // Error handling
 void kry_parser_error(KryParser* parser, const char* message);
+void kry_parser_add_error(KryParser* parser, KryErrorLevel level, KryErrorCategory category, const char* message);
+void kry_parser_add_error_fmt(KryParser* parser, KryErrorLevel level, KryErrorCategory category, const char* fmt, ...);
+bool kry_parser_should_stop(KryParser* parser);
 
 // Code block creation
 KryNode* kry_node_create_code_block(KryParser* parser, const char* language, const char* source);

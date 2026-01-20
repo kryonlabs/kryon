@@ -144,6 +144,43 @@ IRComponent* ir_kry_parse_with_errors(const char* source, size_t length,
                                        uint32_t* error_column);
 
 /**
+ * Extended parse result with full error collection
+ */
+typedef struct {
+    IRComponent* root;              // Root component (may be NULL if errors)
+    IRReactiveManifest* manifest;   // Reactive manifest
+    IRLogicBlock* logic_block;      // Logic block
+    void* errors;                   // KryErrorList* (opaque to avoid exposing internals)
+} IRKryParseResultEx;
+
+/**
+ * Parse KRY source with full error collection
+ *
+ * Collects ALL errors during parsing and conversion (not just first error).
+ * Returns partial IR if possible with complete error list.
+ *
+ * @param source Source code
+ * @param length Source length
+ * @return Result with root (may be NULL) and error list
+ */
+IRKryParseResultEx ir_kry_parse_ex2(const char* source, size_t length);
+
+/**
+ * Format error list as human-readable string
+ *
+ * @param error_list Error list from parse result (void*)
+ * @return Formatted string (caller must free), or NULL if no errors
+ */
+char* kry_error_list_format(void* error_list);
+
+/**
+ * Free error list
+ *
+ * @param error_list Error list from parse result (void*)
+ */
+void kry_error_list_free(void* error_list);
+
+/**
  * Get parser version string
  *
  * @return const char* Version string (e.g., "1.0.0")

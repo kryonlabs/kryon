@@ -2535,11 +2535,68 @@ cJSON* ir_json_serialize_source_structures(IRSourceStructures* ss) {
                 if (export->function_name) {
                     cJSON_AddStringToObject(export_json, "function", export->function_name);
                 }
+                // Serialize struct exports
+                if (export->struct_def) {
+                    cJSON* struct_json = cJSON_CreateObject();
+                    cJSON_AddStringToObject(struct_json, "name", export->struct_def->name);
+
+                    cJSON* fields_array = cJSON_CreateArray();
+                    for (uint32_t j = 0; j < export->struct_def->field_count; j++) {
+                        IRStructField* field = export->struct_def->fields[j];
+                        if (field) {
+                            cJSON* field_json = cJSON_CreateObject();
+                            cJSON_AddStringToObject(field_json, "name", field->name);
+                            cJSON_AddStringToObject(field_json, "type", field->type);
+                            if (field->default_value && strlen(field->default_value) > 0) {
+                                cJSON_AddStringToObject(field_json, "default", field->default_value);
+                            }
+                            cJSON_AddNumberToObject(field_json, "line", field->line);
+                            cJSON_AddItemToArray(fields_array, field_json);
+                        }
+                    }
+                    cJSON_AddItemToObject(struct_json, "fields", fields_array);
+
+                    cJSON_AddItemToObject(export_json, "struct", struct_json);
+                }
                 cJSON_AddNumberToObject(export_json, "line", export->line);
                 cJSON_AddItemToArray(exports_array, export_json);
             }
         }
         cJSON_AddItemToObject(obj, "exports", exports_array);
+    }
+
+    // Serialize struct types
+    if (ss->struct_type_count > 0) {
+        cJSON* structs_array = cJSON_CreateArray();
+        for (uint32_t i = 0; i < ss->struct_type_count; i++) {
+            IRStructType* struct_type = ss->struct_types[i];
+            if (!struct_type) continue;
+
+            cJSON* struct_json = cJSON_CreateObject();
+            cJSON_AddStringToObject(struct_json, "name", struct_type->name);
+            cJSON_AddNumberToObject(struct_json, "line", struct_type->line);
+
+            // Serialize fields
+            cJSON* fields_array = cJSON_CreateArray();
+            for (uint32_t j = 0; j < struct_type->field_count; j++) {
+                IRStructField* field = struct_type->fields[j];
+                if (!field) continue;
+
+                cJSON* field_json = cJSON_CreateObject();
+                cJSON_AddStringToObject(field_json, "name", field->name);
+                cJSON_AddStringToObject(field_json, "type", field->type);
+                if (field->default_value && strlen(field->default_value) > 0) {
+                    cJSON_AddStringToObject(field_json, "default", field->default_value);
+                }
+                cJSON_AddNumberToObject(field_json, "line", field->line);
+
+                cJSON_AddItemToArray(fields_array, field_json);
+            }
+            cJSON_AddItemToObject(struct_json, "fields", fields_array);
+
+            cJSON_AddItemToArray(structs_array, struct_json);
+        }
+        cJSON_AddItemToObject(obj, "struct_types", structs_array);
     }
 
     return obj;
