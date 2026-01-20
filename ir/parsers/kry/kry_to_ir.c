@@ -226,18 +226,13 @@ char* kry_value_to_json(KryValue* value) {
 static const char* substitute_param(ConversionContext* ctx, const char* expr) {
     if (!ctx || !expr) return expr;
 
-    printf("[SUBSTITUTE_PARAM] Looking for '%s' in %d params\n", expr, ctx->param_count);
     // Check if expression is a parameter reference
     for (int i = 0; i < ctx->param_count; i++) {
-        printf("[SUBSTITUTE_PARAM]   param[%d]: name='%s', value='%s'\n",
-               i, ctx->params[i].name, ctx->params[i].value ? ctx->params[i].value : "NULL");
         if (strcmp(expr, ctx->params[i].name) == 0) {
-            printf("[SUBSTITUTE_PARAM]   MATCH! Returning '%s'\n", ctx->params[i].value);
             return ctx->params[i].value;
         }
     }
 
-    printf("[SUBSTITUTE_PARAM] No match found, returning original\n");
     return expr;  // No substitution found
 }
 
@@ -397,15 +392,6 @@ static const char* resolve_value_as_string(
         default:
             return NULL;
     }
-}
-
-// Get value as number (handles NUMBER type)
-static bool get_value_as_number(KryValue* value, double* out) {
-    if (value->type == KRY_VALUE_NUMBER) {
-        *out = value->number_value;
-        return true;
-    }
-    return false;
 }
 
 // Get value as boolean (handles IDENTIFIER: true/false)
@@ -1258,10 +1244,7 @@ static bool dispatch_property(
 // ============================================================================
 
 static bool apply_property(ConversionContext* ctx, IRComponent* component, const char* name, KryValue* value) {
-    fprintf(stderr, "[APPLY_PROP_ENTRY] name='%s', component=%p\n", name ? name : "NULL", (void*)component);
     if (!component || !name || !value) {
-        fprintf(stderr, "[APPLY_PROP_ENTRY]   Early return: component=%p, name=%p, value=%p\n",
-                (void*)component, (void*)name, (void*)value);
         if (ctx && ctx->parser) {
             kry_parser_add_error(ctx->parser, KRY_ERROR_ERROR, KRY_ERROR_CONVERSION,
                                  "Invalid property assignment (NULL component, name, or value)");
@@ -1271,18 +1254,13 @@ static bool apply_property(ConversionContext* ctx, IRComponent* component, const
 
     // Property aliases for App component (root container)
     // Map user-friendly names to internal window properties
-    fprintf(stderr, "[PROP_ALIAS] component->id=%u, name='%s'\n", component->id, name);
     if (component->id == 1) {  // Root component (App)
-        fprintf(stderr, "[PROP_ALIAS]   Is root component!\n");
         if (strcmp(name, "title") == 0) {
-            fprintf(stderr, "[PROP_ALIAS]   Aliasing 'title' -> 'windowTitle'\n");
             name = "windowTitle";
         } else if (strcmp(name, "width") == 0 && value->type == KRY_VALUE_NUMBER) {
-            fprintf(stderr, "[PROP_ALIAS]   Calling windowWidth for width\n");
             // For App, width sets window width, but also fall through to set container width
             apply_property(ctx, component, "windowWidth", value);
         } else if (strcmp(name, "height") == 0 && value->type == KRY_VALUE_NUMBER) {
-            fprintf(stderr, "[PROP_ALIAS]   Calling windowHeight for height\n");
             // For App, height sets window height, but also fall through to set container height
             apply_property(ctx, component, "windowHeight", value);
         }
@@ -1291,12 +1269,10 @@ static bool apply_property(ConversionContext* ctx, IRComponent* component, const
     // Dispatch to property handler
     bool handled = dispatch_property(ctx, component, name, value);
     if (handled) {
-        fprintf(stderr, "[APPLY_PROPERTY] Handled by dispatch table: %s\n", name);
         return true;
     }
 
     // Property not found in dispatch table
-    fprintf(stderr, "[APPLY_PROPERTY] Unknown property: %s\n", name);
     if (ctx && ctx->parser) {
         kry_parser_add_error_fmt(ctx->parser, KRY_ERROR_WARNING, KRY_ERROR_CONVERSION,
                                  "Unknown property '%s' - skipping", name);
@@ -1317,10 +1293,7 @@ static IRComponent* ir_component_clone_tree(IRComponent* source);
 
 // Expand for loop by unrolling at compile time
 static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode* for_node) {
-    fprintf(stderr, "[DEBUG_FORLOOP] Called expand_for_loop\n");
     if (!for_node || for_node->type != KRY_NODE_FOR_LOOP) {
-        fprintf(stderr, "[DEBUG_FORLOOP] Early return: for_node=%p, type=%u\n",
-                (void*)for_node, for_node ? (uint32_t)for_node->type : 0xFFFFFFFFu);
         return;
     }
 
@@ -1328,8 +1301,6 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
     KryValue* collection = for_node->value;  // Collection to iterate over
 
     if (!collection || !iter_name) {
-        fprintf(stderr, "[DEBUG_FORLOOP] Early return: collection=%p, iter_name=%s\n",
-                (void*)collection, iter_name ? iter_name : "NULL");
         return;
     }
 
@@ -1375,9 +1346,7 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             expanded_ids = (uint32_t*)malloc(expanded_capacity * sizeof(uint32_t));
         }
         // Iterate over array elements
-        fprintf(stderr, "[DEBUG_FORLOOP] Starting array iteration: count=%zu\n", collection->array.count);
         for (size_t i = 0; i < collection->array.count; i++) {
-            fprintf(stderr, "[DEBUG_FORLOOP]   Iteration %zu/%zu\n", i + 1, collection->array.count);
             KryValue* element = collection->array.elements[i];
 
             // Create new context with iterator variable bound
@@ -1455,18 +1424,11 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
 
             // Convert loop body children with the loop context
             KryNode* loop_body_child = for_node->first_child;
-            fprintf(stderr, "[DEBUG_FORLOOP]   Converting loop body (first_child=%p)\n", (void*)loop_body_child);
             while (loop_body_child) {
-                fprintf(stderr, "[DEBUG_FORLOOP]     loop_body_child type=%d (COMPONENT=%d)\n",
-                        loop_body_child->type, KRY_NODE_COMPONENT);
                 if (loop_body_child->type == KRY_NODE_COMPONENT) {
                     IRComponent* child_component = convert_node(&loop_ctx, loop_body_child);
-                    fprintf(stderr, "[DEBUG_FORLOOP]     child_component=%p\n", (void*)child_component);
                     if (child_component) {
-                        fprintf(stderr, "[DEBUG_FORLOOP]     Adding child (id=%u) to parent (id=%u, child_count=%d)\n",
-                                child_component->id, parent->id, parent->child_count);
                         ir_add_child(parent, child_component);
-                        fprintf(stderr, "[DEBUG_FORLOOP]     After add: parent->child_count=%d\n", parent->child_count);
 
                         // Track component ID for source structures
                         if (loop_data && expanded_ids) {
@@ -1492,31 +1454,22 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             ? collection->identifier
             : collection->expression;
 
-        fprintf(stderr, "[DEBUG_FORLOOP] Collection is IDENTIFIER/EXPRESSION: '%s'\n", collection_name);
-        fprintf(stderr, "[DEBUG_FORLOOP] Searching in %d params...\n", ctx->param_count);
 
         // Look up the variable in context
         for (int i = 0; i < ctx->param_count; i++) {
-            fprintf(stderr, "[DEBUG_FORLOOP]   param[%d]: name='%s', kry_value=%p\n",
-                    i, ctx->params[i].name, (void*)ctx->params[i].kry_value);
             if (strcmp(ctx->params[i].name, collection_name) == 0) {
-                fprintf(stderr, "[DEBUG_FORLOOP]   FOUND match!\n");
                 // Found the variable - check if it's a KryValue
                 if (ctx->params[i].kry_value != NULL) {
-                    fprintf(stderr, "[DEBUG_FORLOOP]   kry_value type=%d (ARRAY=%d)\n",
-                            ctx->params[i].kry_value->type, KRY_VALUE_ARRAY);
                     // Recursively call expand_for_loop with the resolved KryValue
                     KryNode temp_for_node = *for_node;
                     temp_for_node.value = ctx->params[i].kry_value;
                     expand_for_loop(ctx, parent, &temp_for_node);
                     return;
                 } else {
-                    fprintf(stderr, "[DEBUG_FORLOOP]   ERROR: kry_value is NULL!\n");
                 }
                 break;
             }
         }
-        fprintf(stderr, "[DEBUG_FORLOOP] Variable '%s' NOT FOUND in context\n", collection_name);
     }
 
     // Update loop_data with expanded component IDs
@@ -1566,10 +1519,8 @@ static bool convert_module_return(ConversionContext* ctx, KryNode* node) {
         return false;
     }
 
-    fprintf(stderr, "[MODULE_RETURN] Processing %d exports\n", node->export_count);
 
     if (!ctx->source_structures) {
-        fprintf(stderr, "[MODULE_RETURN] No source structures available\n");
         return false;
     }
 
@@ -1594,7 +1545,6 @@ static bool convert_module_return(ConversionContext* ctx, KryNode* node) {
         }
 
         if (!decl) {
-            fprintf(stderr, "[MODULE_RETURN] Warning: Export '%s' not found\n", export_name);
             continue;
         }
 
@@ -1624,7 +1574,6 @@ static bool convert_module_return(ConversionContext* ctx, KryNode* node) {
             IRStructType* struct_type = kry_convert_struct_decl(ctx, decl);
             export->struct_def = struct_type;
 
-            fprintf(stderr, "[MODULE_RETURN] Exported struct: %s\n", export_name);
         }
 
         // Add to source structures
@@ -1638,7 +1587,6 @@ static bool convert_module_return(ConversionContext* ctx, KryNode* node) {
         }
 
         ctx->source_structures->exports[ctx->source_structures->export_count++] = export;
-        fprintf(stderr, "[MODULE_RETURN] Exported: %s (type=%s)\n", export_name, export->type);
     }
 
     return true;
@@ -1651,7 +1599,6 @@ static IRLogicFunction* convert_function_decl(ConversionContext* ctx, KryNode* n
         return NULL;
     }
 
-    fprintf(stderr, "[FUNC_DECL] Converting function: %s\n", node->func_name ? node->func_name : "(null)");
 
     // Create function name with scope prefix
     char func_name[512];
@@ -1664,14 +1611,12 @@ static IRLogicFunction* convert_function_decl(ConversionContext* ctx, KryNode* n
     // Create IRLogicFunction
     IRLogicFunction* func = ir_logic_function_create(func_name);
     if (!func) {
-        fprintf(stderr, "[FUNC_DECL] Failed to create IRLogicFunction\n");
         return NULL;
     }
 
     // Set return type
     if (node->func_return_type) {
         func->return_type = strdup(node->func_return_type);
-        fprintf(stderr, "[FUNC_DECL] Return type: %s\n", node->func_return_type);
     }
 
     // Add parameters
@@ -1681,7 +1626,6 @@ static IRLogicFunction* convert_function_decl(ConversionContext* ctx, KryNode* n
             // Use the type from var_type field if available, otherwise default to "any"
             const char* param_type = param->var_type ? param->var_type : "any";
             ir_logic_function_add_param(func, param->name, param_type);
-            fprintf(stderr, "[FUNC_DECL] Added param: %s:%s\n", param->name, param_type);
         }
     }
 
@@ -1696,7 +1640,6 @@ static IRLogicFunction* convert_function_decl(ConversionContext* ctx, KryNode* n
                 ir_stmt = convert_return_stmt(stmt);
                 if (ir_stmt) {
                     ir_logic_function_add_stmt(func, ir_stmt);
-                    fprintf(stderr, "[FUNC_DECL] Added return statement\n");
                 }
             } else if (stmt->type == KRY_NODE_VAR_DECL) {
                 // Variable declaration: const/let/var name = value
@@ -1719,7 +1662,6 @@ static IRLogicFunction* convert_function_decl(ConversionContext* ctx, KryNode* n
                         IRStatement* assign_stmt = ir_stmt_assign(stmt->name, value_expr);
                         if (assign_stmt) {
                             ir_logic_function_add_stmt(func, assign_stmt);
-                            fprintf(stderr, "[FUNC_DECL] Added var declaration: %s\n", stmt->name);
                         }
                     }
                 }
@@ -1732,7 +1674,6 @@ static IRLogicFunction* convert_function_decl(ConversionContext* ctx, KryNode* n
         }
     }
 
-    fprintf(stderr, "[FUNC_DECL] Function converted: %s\n", func_name);
     return func;
 }
 
@@ -1740,9 +1681,7 @@ static IRLogicFunction* convert_function_decl(ConversionContext* ctx, KryNode* n
 // This creates an IR_COMPONENT_FOR_EACH with foreach_def metadata
 // Unlike "for" loops, "for each" does NOT expand at compile time
 static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_each_node) {
-    fprintf(stderr, "[DEBUG_FOR_EACH] Called convert_for_each_node\n");
     if (!for_each_node || for_each_node->type != KRY_NODE_FOR_EACH) {
-        fprintf(stderr, "[DEBUG_FOR_EACH] Early return: invalid node type\n");
         return NULL;
     }
 
@@ -1750,7 +1689,6 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
     KryValue* collection = for_each_node->value;  // Collection to iterate over
 
     if (!collection || !item_name) {
-        fprintf(stderr, "[DEBUG_FOR_EACH] Early return: missing collection or item_name\n");
         return NULL;
     }
 
@@ -1768,14 +1706,12 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
     // Create ForEach component
     IRComponent* for_each_comp = ir_create_component(IR_COMPONENT_FOR_EACH);
     if (!for_each_comp) {
-        fprintf(stderr, "[DEBUG_FOR_EACH] Failed to create ForEach component\n");
         return NULL;
     }
 
     // Create ForEach definition
     struct IRForEachDef* def = ir_foreach_def_create(item_name, "index");
     if (!def) {
-        fprintf(stderr, "[DEBUG_FOR_EACH] Failed to create ForEachDef\n");
         // Note: ir_component_destroy may not be available, leak is acceptable for error case
         return NULL;
     }
@@ -1810,8 +1746,6 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
     // Attach foreach_def to the component
     for_each_comp->foreach_def = def;
 
-    fprintf(stderr, "[DEBUG_FOR_EACH] Created ForEach component: item=%s, source=%s\n",
-            item_name, collection_ref);
 
     return for_each_comp;
 }
@@ -1822,8 +1756,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
     if (node->type == KRY_NODE_COMPONENT) {
         // Check if this is a custom component instantiation
         if (ctx->manifest && is_custom_component(node->name, ctx->manifest)) {
-            fprintf(stderr, "[CUSTOM_COMPONENT] Found custom component instantiation: %s\n", node->name);
-            fflush(stderr);
 
             // Generate unique instance ID
             static uint32_t instance_counter = 0;
@@ -1839,9 +1771,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
             );
 
             if (instance) {
-                fprintf(stderr, "[CUSTOM_COMPONENT] Successfully expanded %s (instance %d)\n",
-                        node->name, instance_counter - 1);
-                fflush(stderr);
 
                 // Apply instance arguments to initialize state variables
                 // Find the component definition
@@ -1854,8 +1783,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 }
 
                 if (node->arguments && def) {
-                    fprintf(stderr, "[CUSTOM_COMPONENT] Applying arguments: '%s'\n", node->arguments);
-                    fflush(stderr);
                     {
                         // Parse argument - for now support simple positional or named syntax
                         // "5" -> first positional arg
@@ -1892,9 +1819,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                                 }
 
                                 if (strcmp(state_var->initial_expr, prop_name_start) == 0) {
-                                    fprintf(stderr, "[CUSTOM_COMPONENT] Registering %s.%s with initial value %s\n",
-                                            instance_scope, state_var->name, arg_value);
-                                    fflush(stderr);
 
                                     // Register state variable in manifest with the actual value
                                     IRReactiveValue initial_value;
@@ -1919,9 +1843,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                                 *equals = '='; // Restore
                             } else if (state_var->initial_expr) {
                                 // Positional arg - just use the value directly
-                                fprintf(stderr, "[CUSTOM_COMPONENT] Registering %s.%s with initial value %s (positional)\n",
-                                        instance_scope, state_var->name, arg_value);
-                                fflush(stderr);
 
                                 IRReactiveValue initial_value;
                                 initial_value.as_int = atoi(arg_value);
@@ -1947,15 +1868,10 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     }
                 } else if (def) {
                     // No arguments provided - use default values
-                    fprintf(stderr, "[CUSTOM_COMPONENT] No arguments, using defaults\n");
-                    fflush(stderr);
 
                     for (uint32_t i = 0; i < def->state_var_count; i++) {
                         IRComponentStateVar* state_var = &def->state_vars[i];
                         // For Counter with no args, default is 0
-                        fprintf(stderr, "[CUSTOM_COMPONENT] Registering %s.%s with default value 0\n",
-                                instance_scope, state_var->name);
-                        fflush(stderr);
 
                         IRReactiveValue initial_value;
                         initial_value.as_int = 0;
@@ -1980,8 +1896,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 return instance;
             }
 
-            fprintf(stderr, "[CUSTOM_COMPONENT] Failed to expand %s\n", node->name);
-            fflush(stderr);
             // If expansion failed, fall through to create regular container
         }
 
@@ -1996,8 +1910,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
         while (child) {
             if (child->type == KRY_NODE_PROPERTY) {
                 // Apply property
-                printf("[CONVERT_NODE] Applying property '%s', value=%p, value->type=%u\n",
-                       child->name, (void*)child->value, child->value ? (uint32_t)child->value->type : 0xFFFFFFFFu);
                 fflush(stdout);
                 if (!apply_property(ctx, component, child->name, child->value)) {
                     // Log warning but continue conversion
@@ -2008,7 +1920,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                                                  child->name ? child->name : "(unknown)");
                     }
                 }
-                printf("[CONVERT_NODE] After apply_property for '%s'\n", child->name);
                 fflush(stdout);
             } else if (child->type == KRY_NODE_COMPONENT) {
                 // Recursively convert child component
@@ -2484,8 +2395,6 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     if (func) {
                         // Direct @lua or @js block - just add the source
                         ir_logic_function_add_source(func, child->code_language, child->code_source);
-                        printf("[KRY_TO_IR] Added code block to logic: language='%s', func='%s'\n",
-                               child->code_language, func_name);
 
                         // Add function to logic block
                         ir_logic_block_add_function(ctx->logic_block, func);
@@ -2496,15 +2405,12 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 if (ctx->logic_block) {
                     IRLogicFunction* func = convert_function_decl(ctx, child, component->tag);
                     if (func) {
-                        printf("[KRY_TO_IR] Added function declaration to logic: func='%s'\n",
-                               child->func_name ? child->func_name : "(null)");
                         ir_logic_block_add_function(ctx->logic_block, func);
                     }
                 }
             } else if (child->type == KRY_NODE_RETURN_STMT) {
                 // Return statement - should only appear inside function bodies
                 // This is handled in convert_function_decl
-                fprintf(stderr, "[KRY_TO_IR] Warning: Return statement outside function body\n");
             } else if (child->type == KRY_NODE_MODULE_RETURN) {
                 // Module-level return statement: return { exports }
                 // Convert to IRModuleExport entries
@@ -2536,9 +2442,6 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
 
     if (!ast || parser->has_error) {
         if (parser->has_error) {
-            fprintf(stderr, "Parse error at %u:%u: %s\n",
-                    parser->error_line, parser->error_column,
-                    parser->error_message ? parser->error_message : "Unknown error");
         }
         kry_parser_free(parser);
         return NULL;
@@ -2556,7 +2459,6 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
 
     if (!root_node) {
         // No root application found, only component definitions
-        fprintf(stderr, "Error: No root application found (only component definitions)\n");
         kry_parser_free(parser);
         return NULL;
     }
@@ -2601,7 +2503,6 @@ IRKryParseResult ir_kry_parse_ex(const char* source, size_t length) {
     IRKryParseResult result = {NULL, NULL, NULL};
 
     if (!source) {
-        fprintf(stderr, "Error: NULL source passed to ir_kry_parse_ex\n");
         return result;
     }
 
@@ -2612,20 +2513,16 @@ IRKryParseResult ir_kry_parse_ex(const char* source, size_t length) {
     // Parse source to AST
     KryParser* parser = kry_parser_create(source, length);
     if (!parser) {
-        fprintf(stderr, "Error: Failed to create parser\n");
         return result;
     }
 
     if (parser->has_error) {
-        fprintf(stderr, "Parse error at line %u: %s\n",
-                parser->error_line, parser->error_message ? parser->error_message : "Unknown error");
         kry_parser_free(parser);
         return result;
     }
 
     KryNode* ast = parser->root;
     if (!ast) {
-        fprintf(stderr, "Error: No AST generated\n");
         kry_parser_free(parser);
         return result;
     }
@@ -2640,7 +2537,6 @@ IRKryParseResult ir_kry_parse_ex(const char* source, size_t length) {
     }
 
     if (!root_node) {
-        fprintf(stderr, "Error: No root application found (only component definitions)\n");
         kry_parser_free(parser);
         return result;
     }
@@ -2750,21 +2646,14 @@ static IRComponent* ir_component_clone_tree(IRComponent* source) {
 // Check if a component name refers to a custom component definition
 static bool is_custom_component(const char* name, IRReactiveManifest* manifest) {
     if (!name || !manifest) {
-        fprintf(stderr, "[is_custom_component] NULL check failed: name=%p manifest=%p\n",
-                (void*)name, (void*)manifest);
         return false;
     }
 
-    fprintf(stderr, "[is_custom_component] Checking '%s' against %u component defs\n",
-            name, manifest->component_def_count);
     for (uint32_t i = 0; i < manifest->component_def_count; i++) {
-        fprintf(stderr, "[is_custom_component]   [%u] %s\n", i, manifest->component_defs[i].name);
         if (strcmp(manifest->component_defs[i].name, name) == 0) {
-            fprintf(stderr, "[is_custom_component] MATCH FOUND for %s!\n", name);
             return true;
         }
     }
-    fprintf(stderr, "[is_custom_component] No match for %s\n", name);
     return false;
 }
 
@@ -2795,7 +2684,6 @@ static IRComponent* expand_component_template(
     // while rendering children normally
     if (instance->scope) free(instance->scope);
     instance->scope = strdup(instance_scope);
-    fprintf(stderr, "[CUSTOM_COMPONENT] Set scope '%s' on component root\n", instance_scope);
 
     // Initialize state variables with instance scope
     // For MVP, we just store them in the manifest
@@ -2960,12 +2848,8 @@ static bool is_module_being_loaded(const char* module_path) {
 static bool push_import_stack(const char* module_path) {
     if (is_module_being_loaded(module_path)) {
         // Circular dependency detected!
-        fprintf(stderr, "CIRCULAR DEPENDENCY: Module '%s' is already being imported\n", module_path);
-        fprintf(stderr, "Import chain:\n");
         for (int i = 0; i < g_import_depth; i++) {
-            fprintf(stderr, "  %d. %s\n", i+1, g_import_stack[i].module_path);
         }
-        fprintf(stderr, "  %d. %s (CIRCULAR)\n", g_import_depth+1, module_path);
         return false;
     }
 
@@ -3017,8 +2901,6 @@ static void register_module_import(ConversionContext* ctx,
 static bool load_imported_module(ConversionContext* ctx, const char* import_name, const char* module_path) {
     if (!ctx || !import_name || !module_path) return false;
 
-    fprintf(stderr, "[MODULE] Loading module '%s' for import '%s'\n", module_path, import_name);
-    fflush(stderr);
 
     // Check for circular dependencies
     if (!push_import_stack(module_path)) {
@@ -3028,18 +2910,14 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     // Resolve module path to file path
     char* file_path = resolve_module_path(module_path, ctx->base_directory);
     if (!file_path) {
-        fprintf(stderr, "[MODULE] Failed to resolve module path: %s\n", module_path);
         pop_import_stack();
         return false;
     }
 
-    fprintf(stderr, "[MODULE] Resolved to file path: %s\n", file_path);
-    fflush(stderr);
 
     // Read the file
     FILE* f = fopen(file_path, "r");
     if (!f) {
-        fprintf(stderr, "[MODULE] Failed to open file: %s\n", file_path);
         free(file_path);
         pop_import_stack();
         return false;
@@ -3050,7 +2928,6 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     fseek(f, 0, SEEK_SET);
 
     if (size <= 0) {
-        fprintf(stderr, "[MODULE] Empty or invalid file: %s\n", file_path);
         free(file_path);
         fclose(f);
         pop_import_stack();
@@ -3059,7 +2936,6 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
 
     char* source = malloc(size + 1);
     if (!source) {
-        fprintf(stderr, "[MODULE] Out of memory reading file: %s\n", file_path);
         free(file_path);
         fclose(f);
         pop_import_stack();
@@ -3070,13 +2946,10 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     source[bytes_read] = '\0';
     fclose(f);
 
-    fprintf(stderr, "[MODULE] Read %zu bytes from %s\n", bytes_read, file_path);
-    fflush(stderr);
 
     // Parse the imported file
     KryParser* parser = kry_parser_create(source, bytes_read);
     if (!parser) {
-        fprintf(stderr, "[MODULE] Failed to create parser for: %s\n", file_path);
         free(source);
         free(file_path);
         pop_import_stack();
@@ -3086,8 +2959,6 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     KryNode* import_ast = kry_parse(parser);
     if (!import_ast || parser->has_error) {
         if (parser->has_error) {
-            fprintf(stderr, "[MODULE] Parse error in %s: %s\n",
-                    file_path, parser->error_message ? parser->error_message : "Unknown error");
         }
         kry_parser_free(parser);
         free(source);
@@ -3099,8 +2970,6 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     kry_parser_free(parser);
     free(source);
 
-    fprintf(stderr, "[MODULE] Successfully parsed %s\n", file_path);
-    fflush(stderr);
 
     // Find the root component (the component definition to import)
     // Look for components explicitly marked with 'component' keyword
@@ -3113,15 +2982,12 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
                 child->is_component_definition &&
                 child->name != NULL) {
                 import_root = child;
-                fprintf(stderr, "[MODULE] Found explicit component definition: %s\n", child->name);
                 break;
             }
             child = child->next_sibling;
         }
 
         if (!import_root) {
-            fprintf(stderr, "[MODULE] No explicit component definition found in %s\n", file_path);
-            fprintf(stderr, "[MODULE] (Use 'component ComponentName { ... }' to define a custom component)\n");
             free(file_path);
             pop_import_stack();
             return false;
@@ -3131,34 +2997,27 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     }
 
     if (!import_root || !import_root->name) {
-        fprintf(stderr, "[MODULE] No component definition found in %s\n", file_path);
         // Don't free import_ast here as it may be needed elsewhere
         free(file_path);
         pop_import_stack();
         return false;
     }
 
-    fprintf(stderr, "[MODULE] Processing component definition: %s\n", import_root->name);
-    fflush(stderr);
 
     // Save the component name before calling convert_node
     // (convert_node may modify or free the AST node)
     char* component_name = import_root->name ? strdup(import_root->name) : NULL;
     if (!component_name) {
-        fprintf(stderr, "[MODULE] ERROR: Component name is NULL!\n");
         free(file_path);
         pop_import_stack();
         return false;
     }
 
-    fprintf(stderr, "[MODULE] Saved component name: '%s'\n", component_name);
-    fflush(stderr);
 
     // Convert the component to IR
     IRComponent* template_comp = convert_node(ctx, import_root);
 
     if (!template_comp) {
-        fprintf(stderr, "[MODULE] Failed to convert component: %s\n", component_name);
         free(component_name);
         free(file_path);
         pop_import_stack();
@@ -3170,7 +3029,6 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     IRComponentStateVar* state_vars = extract_component_state_vars(import_root, &state_var_count);
 
     // Register the component definition in the manifest
-    fprintf(stderr, "[MODULE] Calling ir_reactive_manifest_add_component_def for '%s'...\n", component_name);
     ir_reactive_manifest_add_component_def(
         ctx->manifest,
         component_name,              // Component name
@@ -3179,8 +3037,6 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
         state_var_count,
         template_comp
     );
-    fprintf(stderr, "[MODULE] After add_component_def, component_def_count = %u\n",
-            ctx->manifest->component_def_count);
 
     // Set module path fields
     if (ctx->manifest->component_def_count > 0) {
@@ -3189,18 +3045,14 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
             def->module_path = file_path;  // Transfer ownership
             def->source_module = strdup(module_path);
 
-            fprintf(stderr, "[MODULE] Registered component '%s' from '%s'\n",
-                    component_name, file_path);
         } else {
             free(file_path);
         }
     } else {
-        fprintf(stderr, "[MODULE] ERROR: component_def_count is 0 after registration!\n");
         free(file_path);
     }
 
     free(component_name);  // Free the saved name
-    fflush(stderr);
 
     // Check for module exports (module-level return statement)
     // Look for KRY_NODE_MODULE_RETURN nodes in the imported AST
@@ -3211,14 +3063,12 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     while (child) {
         if (child->type == KRY_NODE_MODULE_RETURN) {
             // Convert module return to IRModuleExport entries
-            fprintf(stderr, "[MODULE] Found module-level return statement in %s\n", file_path);
 
             // Create a temporary conversion context for this module
             ConversionContext module_ctx = *ctx;  // Copy parent context
             module_ctx.ast_root = import_ast;
             module_ctx.source_structures = ir_source_structures_create();
             if (!module_ctx.source_structures) {
-                fprintf(stderr, "[MODULE] Failed to create source structures for module\n");
                 free(file_path);
                 pop_import_stack();
                 return false;
@@ -3239,7 +3089,6 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
             // Only free the structure itself, not the exports array
             free(module_ctx.source_structures);
 
-            fprintf(stderr, "[MODULE] Module exports %d items\n", module_export_count);
             break;
         }
         child = child->next_sibling;
@@ -3274,9 +3123,6 @@ char* ir_kry_to_kir(const char* source, size_t length) {
 
     if (!ast || parser->has_error) {
         if (parser->has_error) {
-            fprintf(stderr, "Parse error at %u:%u: %s\n",
-                    parser->error_line, parser->error_column,
-                    parser->error_message ? parser->error_message : "Unknown error");
         }
         kry_parser_free(parser);
         return NULL;
@@ -3284,35 +3130,23 @@ char* ir_kry_to_kir(const char* source, size_t length) {
 
     // Check if ast is a Root wrapper with children or a single component
     KryNode* root_node = NULL;
-    fprintf(stderr, "[ir_kry_to_kir] ast->name='%s', type=%d, is_component_definition=%d\n",
-            ast->name ? ast->name : "(null)", ast->type, ast->is_component_definition);
-    fflush(stderr);
 
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
         // Root wrapper with children - find the application node
-        fprintf(stderr, "[ir_kry_to_kir] Root wrapper detected, scanning children...\n");
-        fflush(stderr);
         KryNode* child = ast->first_child;
         while (child) {
-            fprintf(stderr, "[ir_kry_to_kir]   Child: name='%s', is_component_definition=%d, type=%d\n",
-                    child->name ? child->name : "(null)", child->is_component_definition, child->type);
-            fflush(stderr);
             // Skip component definitions, variable declarations, style blocks, and imports
             if (!child->is_component_definition &&
                 child->type != KRY_NODE_VAR_DECL &&
                 child->type != KRY_NODE_STYLE_BLOCK &&
                 child->type != KRY_NODE_IMPORT) {
                 root_node = child;
-                fprintf(stderr, "[ir_kry_to_kir]   Found root application: %s\n", root_node->name);
-                fflush(stderr);
                 break;
             }
             child = child->next_sibling;
         }
     } else {
         // Single component (old behavior for compatibility)
-        fprintf(stderr, "[ir_kry_to_kir] Single component (no Root wrapper)\n");
-        fflush(stderr);
         root_node = ast;
         while (root_node && root_node->is_component_definition) {
             root_node = root_node->next_sibling;
@@ -3321,7 +3155,6 @@ char* ir_kry_to_kir(const char* source, size_t length) {
 
     if (!root_node) {
         // No root application found, only component definitions
-        fprintf(stderr, "Error: No root application found (only component definitions)\n");
         kry_parser_free(parser);
         return NULL;
     }
@@ -3347,14 +3180,10 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     ir_set_context(ir_ctx);
 
     // Process top-level variable declarations (const/let/var)
-    fprintf(stderr, "[VAR_DECL] Processing top-level variable declarations...\n");
-    fflush(stderr);
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
         KryNode* var_node = ast->first_child;
         while (var_node) {
             if (var_node->type == KRY_NODE_VAR_DECL && var_node != root_node) {
-                fprintf(stderr, "[VAR_DECL] Found top-level var: %s\n", var_node->name ? var_node->name : "(null)");
-                fflush(stderr);
 
                 const char* var_type = var_node->var_type ? var_node->var_type : "const";
                 const char* var_name = var_node->name;
@@ -3365,8 +3194,6 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     ctx.params[ctx.param_count].value = NULL;  // String representation
                     ctx.params[ctx.param_count].kry_value = var_node->value;  // Original KryValue
                     ctx.param_count++;
-                    fprintf(stderr, "[VAR_DECL]   Added to ctx->params, count=%d\n", ctx.param_count);
-                    fflush(stderr);
                 }
 
                 // Add variable declaration to source_structures for serialization
@@ -3380,9 +3207,6 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                         var_value_json = strdup("null");
                     }
 
-                    fprintf(stderr, "[VAR_DECL]   Variable type=%s, name=%s, value_json=%s\n",
-                            var_type, var_name, var_value_json ? var_value_json : "(null)");
-                    fflush(stderr);
 
                     // Store the variable declaration
                     ir_source_structures_add_var_decl(ctx.source_structures,
@@ -3459,28 +3283,18 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                             }
                         }
 
-                        fprintf(stderr, "[VAR_DECL]   Added to reactive manifest: %s\n", var_name);
-                        fflush(stderr);
                     }
                 }
             }
             var_node = var_node->next_sibling;
         }
     }
-    fprintf(stderr, "[VAR_DECL] Finished processing top-level variables\n");
-    fflush(stderr);
 
     // Process top-level import statements
-    fprintf(stderr, "[IMPORT] Processing top-level import statements...\n");
-    fflush(stderr);
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
         KryNode* import_node = ast->first_child;
         while (import_node) {
             if (import_node->type == KRY_NODE_IMPORT) {
-                fprintf(stderr, "[IMPORT] Found import: %s from %s\n",
-                        import_node->import_name ? import_node->import_name : "(null)",
-                        import_node->import_module ? import_node->import_module : "(null)");
-                fflush(stderr);
 
                 const char* import_name = import_node->import_name ? import_node->import_name : import_node->name;
                 const char* import_module = import_node->import_module;
@@ -3489,30 +3303,21 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     // Add import to source structures
                     if (ctx.source_structures) {
                         ir_source_structures_add_import(ctx.source_structures, import_name, import_module);
-                        fprintf(stderr, "[IMPORT]   Added to source_structures: %s from %s\n", import_name, import_module);
                     }
 
                     // Load the imported module - ALL imports treated equally, no hardcoded plugins
                     load_imported_module(&ctx, import_name, import_module);
-                    fflush(stderr);
                 }
             }
             import_node = import_node->next_sibling;
         }
     }
-    fprintf(stderr, "[IMPORT] Finished processing import statements\n");
-    fflush(stderr);
 
     // Process struct declarations
-    fprintf(stderr, "[STRUCT] Processing struct declarations...\n");
-    fflush(stderr);
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
         KryNode* struct_node = ast->first_child;
         while (struct_node) {
             if (struct_node->type == KRY_NODE_STRUCT_DECL) {
-                fprintf(stderr, "[STRUCT] Found struct declaration: %s\n",
-                        struct_node->struct_name ? struct_node->struct_name : "(null)");
-                fflush(stderr);
 
                 // Convert struct to IRStructType
                 IRStructType* struct_type = kry_convert_struct_decl(&ctx, struct_node);
@@ -3533,27 +3338,18 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                         ctx.source_structures->struct_type_count++
                     ] = struct_type;
 
-                    fprintf(stderr, "[STRUCT]   Registered struct type '%s' with %d fields\n",
-                            struct_type->name, struct_type->field_count);
                 }
             }
             struct_node = struct_node->next_sibling;
         }
     }
-    fprintf(stderr, "[STRUCT] Finished processing struct declarations\n");
-    fflush(stderr);
 
     // Register explicitly defined custom components (marked with 'component' keyword)
-    fprintf(stderr, "[CUSTOM_COMPONENT] Checking for explicit custom component definitions...\n");
-    fflush(stderr);
 
     // Only register components that are explicitly marked with 'component' keyword
     // This is the NEW way: use 'component MyComponent { ... }' to define custom components
     // The OLD way (automatically treating non-App components as custom) is removed
     if (root_node && root_node->is_component_definition) {
-        fprintf(stderr, "[CUSTOM_COMPONENT] Registering custom component '%s' (explicit definition)\n",
-                root_node->name ? root_node->name : "(null)");
-        fflush(stderr);
 
         // Convert the root component to use as a template
         IRComponent* template_comp = convert_node(&ctx, root_node);
@@ -3587,33 +3383,19 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     def->module_path = strdup(module_path);
                     def->source_module = strdup(module_path);
 
-                    fprintf(stderr, "[CUSTOM_COMPONENT] Registered '%s' from '%s'\n",
-                            root_node->name, module_path);
                 }
             }
 
-            fflush(stderr);
         }
     } else if (root_node && root_node->name && strcmp(root_node->name, "App") != 0) {
-        fprintf(stderr, "[CUSTOM_COMPONENT] Root component '%s' is NOT marked as 'component', skipping registration\n",
-                root_node->name);
-        fprintf(stderr, "[CUSTOM_COMPONENT] (Use 'component %s { ... }' to define a custom component)\n",
-                root_node->name);
-        fflush(stderr);
     } else {
-        fprintf(stderr, "[CUSTOM_COMPONENT] Skipping App component (entry point)\n");
-        fflush(stderr);
     }
 
     // Process top-level style blocks
-    fprintf(stderr, "[STYLE_BLOCKS] Processing top-level style blocks...\n");
-    fflush(stderr);
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
         KryNode* style_node = ast->first_child;
         while (style_node) {
             if (style_node->type == KRY_NODE_STYLE_BLOCK && style_node->name) {
-                fprintf(stderr, "[STYLE_BLOCKS] Found style block: %s\n", style_node->name);
-                fflush(stderr);
 
                 // Ensure stylesheet exists in global context
                 if (g_ir_context && !g_ir_context->stylesheet) {
@@ -3755,8 +3537,6 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     // Add rule to stylesheet
                     if (props.set_flags != 0) {
                         ir_stylesheet_add_rule(g_ir_context->stylesheet, style_node->name, &props);
-                        fprintf(stderr, "[STYLE_BLOCKS]   Added rule for selector: %s\n", style_node->name);
-                        fflush(stderr);
                     }
 
                     ir_style_properties_cleanup(&props);
@@ -3765,18 +3545,12 @@ char* ir_kry_to_kir(const char* source, size_t length) {
             style_node = style_node->next_sibling;
         }
     }
-    fprintf(stderr, "[STYLE_BLOCKS] Finished processing top-level style blocks\n");
-    fflush(stderr);
 
     // Process top-level code blocks (@lua, @js)
-    fprintf(stderr, "[CODE_BLOCKS] Processing top-level code blocks...\n");
-    fflush(stderr);
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
         KryNode* code_node = ast->first_child;
         while (code_node) {
             if (code_node->type == KRY_NODE_CODE_BLOCK && code_node->code_language && code_node->code_source) {
-                fprintf(stderr, "[CODE_BLOCKS] Found code block: language='%s'\n", code_node->code_language);
-                fflush(stderr);
 
                 // Generate a unique function name for this code block
                 char func_name[256];
@@ -3788,7 +3562,6 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                 if (func) {
                     // Direct @lua or @js block - just add the source
                     ir_logic_function_add_source(func, code_node->code_language, code_node->code_source);
-                    fprintf(stderr, "[CODE_BLOCKS]   Added to logic block: func='%s'\n", func_name);
 
                     // Add function to logic block
                     ir_logic_block_add_function(ctx.logic_block, func);
@@ -3797,40 +3570,25 @@ char* ir_kry_to_kir(const char* source, size_t length) {
             code_node = code_node->next_sibling;
         }
     }
-    fprintf(stderr, "[CODE_BLOCKS] Finished processing top-level code blocks\n");
-    fflush(stderr);
 
     // Track all component definitions in the manifest
-    fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Starting component definition scan...\n");
-    fflush(stderr);
 
     // If ast is a Root wrapper, scan its children; otherwise scan ast and siblings
     KryNode* def_node = NULL;
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
-        fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Scanning children of Root wrapper...\n");
-        fflush(stderr);
         def_node = ast->first_child;
     } else {
-        fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Scanning ast and siblings...\n");
-        fflush(stderr);
         def_node = ast;
     }
 
     uint32_t node_count = 0;
     while (def_node) {
         node_count++;
-        fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Node %u: name='%s', is_component_definition=%d\n",
-                node_count, def_node->name ? def_node->name : "(null)", def_node->is_component_definition);
-        fflush(stderr);
 
         if (def_node->is_component_definition && def_node->name) {
-            fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Found component definition: %s\n", def_node->name);
-            fflush(stderr);
 
             // Convert the component definition template
             IRComponent* template_comp = convert_node(&ctx, def_node);
-            fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] template_comp = %p\n", (void*)template_comp);
-            fflush(stderr);
 
             if (template_comp) {
                 // Extract state variables from component definition
@@ -3839,12 +3597,8 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     def_node,
                     &state_var_count
                 );
-                fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Extracted %u state vars\n", state_var_count);
-                fflush(stderr);
 
                 // Add to manifest (will be serialized as component_definitions in KIR)
-                fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Calling ir_reactive_manifest_add_component_def...\n");
-                fflush(stderr);
                 ir_reactive_manifest_add_component_def(
                     ctx.manifest,
                     def_node->name,
@@ -3853,19 +3607,11 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                     state_var_count,
                     template_comp
                 );
-                fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] After registration, component_def_count = %u\n",
-                        ctx.manifest->component_def_count);
-                fflush(stderr);
             } else {
-                fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Failed to convert component template!\n");
-                fflush(stderr);
             }
         }
         def_node = def_node->next_sibling;
     }
-    fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Scan complete. Total nodes scanned: %u\n", node_count);
-    fprintf(stderr, "[COMPONENT_DEF_REGISTRATION] Final component_def_count: %u\n", ctx.manifest->component_def_count);
-    fflush(stderr);
 
     // Convert AST to IR
     IRComponent* root = convert_node(&ctx, root_node);
@@ -3971,14 +3717,12 @@ IRKryParseResultEx ir_kry_parse_ex2(const char* source, size_t length) {
     IRKryParseResultEx result = {NULL, NULL, NULL, NULL};
     
     if (!source) {
-        fprintf(stderr, "Error: NULL source\n");
         return result;
     }
 
     // Create parser
     KryParser* parser = kry_parser_create(source, length);
     if (!parser) {
-        fprintf(stderr, "Error: Failed to create parser\n");
         return result;
     }
 

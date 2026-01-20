@@ -424,6 +424,7 @@ void ir_reactive_manifest_print(IRReactiveManifest* manifest) {
 
 void ir_reactive_manifest_add_component_def(IRReactiveManifest* manifest,
                                             const char* name,
+                                            const char* extends_parent,
                                             IRComponentProp* props,
                                             uint32_t prop_count,
                                             IRComponentStateVar* state_vars,
@@ -459,6 +460,7 @@ void ir_reactive_manifest_add_component_def(IRReactiveManifest* manifest,
 
     IRComponentDefinition* def = &manifest->component_defs[manifest->component_def_count++];
     def->name = strdup(name);
+    def->extends_parent = extends_parent ? strdup(extends_parent) : NULL;
     def->template_root = template_root;
 
     // Copy props

@@ -149,6 +149,8 @@ struct KryNode {
     KryValue* value;            // Property value (NULL for components)
     bool is_component_definition; // True if this is a component definition (component Foo {...})
     char* arguments;            // Raw arguments for component instantiation (e.g., "5" or "initialValue=10")
+    char* extends_parent;       // Parent component name for inheritance (e.g., "TabPanel")
+                                // NULL if no inheritance, otherwise points to parent component name
     char* var_type;             // Variable declaration type: "const", "let", or "var" (for KRY_NODE_VAR_DECL)
     char* state_type;           // State variable type: "int", "string", etc. (for KRY_NODE_STATE)
 

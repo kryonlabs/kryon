@@ -502,6 +502,32 @@ static char* parse_identifier(KryParser* p) {
     return result;
 }
 
+// Peek at the next identifier without consuming it
+static char* peek_identifier(KryParser* p) {
+    skip_whitespace(p);
+
+    size_t start = p->pos;
+
+    // Check if we have an identifier start
+    if (!isalpha(peek(p)) && peek(p) != '_') {
+        return NULL;
+    }
+
+    // Consume identifier characters
+    while (isalnum(peek(p)) || peek(p) == '_' || peek(p) == '-') {
+        advance(p);
+    }
+
+    // Copy identifier to temp buffer
+    size_t len = p->pos - start;
+    char* ident = kry_strndup(p, p->source + start, len);
+
+    // Reset position (don't consume)
+    p->pos = start;
+
+    return ident;
+}
+
 static char* parse_string(KryParser* p) {
     if (!match(p, '"')) {
         kry_parser_error(p, "Expected string literal");
@@ -1996,11 +2022,34 @@ static KryNode* parse_component(KryParser* p) {
                     peek(p), (unsigned char)peek(p));
         }
 
+        // Check for extends clause
+        char* extends_parent = NULL;
+        char* next_identifier = peek_identifier(p);
+        if (next_identifier && keyword_match(next_identifier, "extends")) {
+            fprintf(stderr, "[PARSER] Found 'extends' keyword\n");
+
+            // Consume "extends" keyword
+            parse_identifier(p);  // This consumes "extends"
+            skip_whitespace(p);
+
+            // Parse parent component name
+            char* parent_name = parse_identifier(p);
+            if (!parent_name) {
+                kry_parser_error(p, "Expected parent component name after 'extends'");
+                return NULL;
+            }
+
+            extends_parent = parent_name;
+            fprintf(stderr, "[PARSER] Component extends: '%s'\n", extends_parent);
+            skip_whitespace(p);
+        }
+
         // Create component definition node
         KryNode* component = kry_node_create(p, KRY_NODE_COMPONENT);
         if (!component) return NULL;
         component->name = comp_def_name;
         component->is_component_definition = true;
+        component->extends_parent = extends_parent;  // Store parent name
 
         return parse_component_body(p, component);
     }
