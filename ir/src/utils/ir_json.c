@@ -251,7 +251,8 @@ char* ir_serialize_json_complete(
     if (source_structures && (source_structures->static_block_count > 0 ||
                               source_structures->var_decl_count > 0 ||
                               source_structures->for_loop_count > 0 ||
-                              source_structures->import_count > 0)) {
+                              source_structures->import_count > 0 ||
+                              source_structures->export_count > 0)) {
         cJSON* sourceStructsJson = ir_json_serialize_source_structures(source_structures);
         if (sourceStructsJson) {
             cJSON_AddItemToObject(wrapper, "source_structures", sourceStructsJson);

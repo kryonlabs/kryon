@@ -33,6 +33,7 @@ typedef struct {
 
     // Universal representation (if available)
     bool has_universal;
+    char* return_type;  // Return type: "void", "int", "string", "bool", "float", "array", "any", etc.
     IRLogicParam* params;
     int param_count;
     IRStatement** statements;

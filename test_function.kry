@@ -1,0 +1,40 @@
+// Test function declarations in KRY language
+
+// Simple function with no parameters
+func greet(): string {
+    return "Hello, World!"
+}
+
+// Function with parameters
+func calculateTotal(items: array, tax: float): float {
+    let total = 0.0
+    return total * (1.0 + tax)
+}
+
+// Function using database query
+func loadHabits(): array {
+    return db.query("SELECT * FROM habits")
+}
+
+// Main application component
+App {
+    state habits: array = []
+    state user_id: string = ""
+
+    Container {
+        Text {
+            text = "Welcome! " + greet()
+        }
+
+        Button {
+            text = "Load Habits"
+            onClick = {
+                habits = loadHabits()
+            }
+        }
+
+        Text {
+            text = "Total: $" + calculateTotal(cartItems, 0.08)
+        }
+    }
+}

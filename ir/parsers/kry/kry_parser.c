@@ -224,6 +224,12 @@ KryNode* kry_node_create(KryParser* parser, KryNodeType type) {
     node->code_source = NULL;
     node->import_module = NULL;
     node->import_name = NULL;
+    node->func_name = NULL;
+    node->func_return_type = NULL;
+    node->func_params = NULL;
+    node->param_count = 0;
+    node->func_body = NULL;
+    node->return_expr = NULL;
     node->line = parser->line;
     node->column = parser->column;
 
@@ -334,23 +340,12 @@ KryNode* kry_node_create_code_block(KryParser* parser, const char* language, con
 static char* parse_identifier(KryParser* p) {
     size_t start = p->pos;
 
-    fprintf(stderr, "[PARSE_ID] Starting at pos=%zu, char='%c'\n", start, peek(p));
-
     while (peek(p) != '\0' && (isalnum(peek(p)) || peek(p) == '_' || peek(p) == '-')) {
         advance(p);
     }
 
     size_t len = p->pos - start;
     char* result = kry_strndup(p, p->source + start, len);
-
-    fprintf(stderr, "[PARSE_ID] Parsed identifier: '%s' (len=%zu)\n", result ? result : "(null)", len);
-    if (result && len > 0) {
-        fprintf(stderr, "[PARSE_ID] Hex dump: ");
-        for (size_t i = 0; i < len; i++) {
-            fprintf(stderr, "%02x ", (unsigned char)result[i]);
-        }
-        fprintf(stderr, "\n");
-    }
 
     return result;
 }
@@ -647,16 +642,16 @@ static KryValue* parse_value(KryParser* p) {
         return value;
     }
 
-    // Identifier (with optional property access or array indexing)
+    // Identifier (with optional function call, property access, or array indexing)
     if (isalpha(c) || c == '_') {
         size_t start = p->pos;
         char* id = parse_identifier(p);
         if (!id) return NULL;
 
-        // Check for property access (.property) or array indexing ([index])
+        // Check for function call, property access (.property), or array indexing ([index])
         skip_whitespace(p);
-        if (peek(p) == '.' || peek(p) == '[') {
-            // Build full member access expression
+        if (peek(p) == '.' || peek(p) == '[' || peek(p) == '(') {
+            // Build full expression (function call, member access, or combination)
             char expr_buffer[512];
             size_t expr_len = 0;
 
@@ -667,8 +662,8 @@ static KryValue* parse_value(KryParser* p) {
                 expr_len = id_len;
             }
 
-            // Parse property chains and array indexing
-            while ((peek(p) == '.' || peek(p) == '[') && expr_len < sizeof(expr_buffer) - 1) {
+            // Parse function calls, property chains, and array indexing
+            while ((peek(p) == '.' || peek(p) == '[' || peek(p) == '(') && expr_len < sizeof(expr_buffer) - 1) {
                 if (peek(p) == '.') {
                     // Property access
                     expr_buffer[expr_len++] = '.';
@@ -717,6 +712,33 @@ static KryValue* parse_value(KryParser* p) {
                     if (expr_len < sizeof(expr_buffer) - 1) {
                         expr_buffer[expr_len++] = ']';
                     }
+                } else if (peek(p) == '(') {
+                    // Function call
+                    expr_buffer[expr_len++] = '(';
+                    advance(p);
+                    skip_whitespace(p);
+
+                    // Parse function arguments
+                    int paren_depth = 1;
+                    while (paren_depth > 0 && peek(p) != '\0') {
+                        if (peek(p) == '(') paren_depth++;
+                        else if (peek(p) == ')') paren_depth--;
+                        if (paren_depth > 0) {
+                            if (expr_len < sizeof(expr_buffer) - 1) {
+                                expr_buffer[expr_len++] = peek(p);
+                            }
+                            advance(p);
+                        }
+                    }
+
+                    if (!match(p, ')')) {
+                        kry_parser_error(p, "Expected ')' to close function call");
+                        return NULL;
+                    }
+
+                    if (expr_len < sizeof(expr_buffer) - 1) {
+                        expr_buffer[expr_len++] = ')';
+                    }
                 }
 
                 skip_whitespace(p);
@@ -728,7 +750,7 @@ static KryValue* parse_value(KryParser* p) {
             return kry_value_create_expression(p, expr_buffer);
         }
 
-        // Simple identifier (no member access)
+        // Simple identifier (no function call, property access, or array indexing)
         return kry_value_create_identifier(p, id);
     }
 
@@ -783,18 +805,10 @@ static KryNode* parse_component(KryParser* p);  // Forward declaration
 // Helper function to check if an identifier matches a keyword
 static bool keyword_match(const char* id, const char* keyword) {
     if (!id || !keyword) {
-        fprintf(stderr, "[KEYWORD_MATCH] NULL pointer: id=%p, keyword=%p\n", (void*)id, (void*)keyword);
         return false;
     }
 
-    fprintf(stderr, "[KEYWORD_MATCH] Comparing '%s' (len=%zu) with '%s' (len=%zu)\n",
-            id, strlen(id), keyword, strlen(keyword));
-
-    bool result = strcmp(id, keyword) == 0;
-
-    fprintf(stderr, "[KEYWORD_MATCH] Result: %s\n", result ? "MATCH" : "NO MATCH");
-
-    return result;
+    return strcmp(id, keyword) == 0;
 }
 
 // Parse state declaration: state value: int = initialValue
@@ -1024,64 +1038,47 @@ static KryNode* parse_static_block(KryParser* p) {
     return static_node;
 }
 
-// Parse code block: @lua { ... }, @js { ... }
+// Parse code block: @lua...@end, @js...@end, @c...@end
 static KryNode* parse_code_block(KryParser* p, const char* language) {
     skip_whitespace(p);
 
-    // Expect opening brace
-    if (!match(p, '{')) {
-        kry_parser_error(p, "Expected '{' after code block declaration");
-        return NULL;
-    }
+    // Read all content until @end marker
+    const char* start = p->source + p->pos;
+    const char* end_marker = "@end";
 
-    skip_whitespace(p);
-
-    // Collect source code until closing brace
-    size_t start = p->pos;
-    int brace_count = 1;
-    bool in_string = false;
-    char string_char = '\0';
-
-    while (peek(p) != '\0' && brace_count > 0) {
-        char c = peek(p);
-
-        // Handle string literals to avoid counting braces inside strings
-        if ((c == '"' || c == '\'' || c == '`') && !in_string) {
-            in_string = true;
-            string_char = c;
-            advance(p);
-            continue;
-        }
-
-        if (in_string) {
-            if (c == string_char) {
-                // Check for escape character
-                if (p->pos > 0 && p->source[p->pos - 1] != '\\') {
-                    in_string = false;
+    // Search for @end marker
+    const char* end_pos = start;
+    while (*end_pos != '\0' && (size_t)(end_pos - p->source) < p->length) {
+        // Check if we found @end
+        if (strncmp(end_pos, end_marker, 4) == 0) {
+            // Check it's a standalone @end (preceded by whitespace or start of content)
+            if (end_pos == start ||
+                *(end_pos - 1) == ' ' ||
+                *(end_pos - 1) == '\t' ||
+                *(end_pos - 1) == '\n' ||
+                *(end_pos - 1) == '\r') {
+                // Check what follows @end (should be whitespace, newline, or end of string)
+                const char* after_end = end_pos + 4;
+                if (*after_end == '\0' ||
+                    *after_end == ' ' ||
+                    *after_end == '\t' ||
+                    *after_end == '\n' ||
+                    *after_end == '\r') {
+                    break;
                 }
             }
-            advance(p);
-            continue;
         }
-
-        // Count braces (only when not in string)
-        if (c == '{') {
-            brace_count++;
-        } else if (c == '}') {
-            brace_count--;
-        }
-
-        advance(p);
+        end_pos++;
     }
 
-    if (brace_count > 0) {
-        kry_parser_error(p, "Unclosed code block - missing '}'");
+    if (*end_pos == '\0' || (size_t)(end_pos - p->source) >= p->length) {
+        kry_parser_error(p, "Expected @end to close code block");
         return NULL;
     }
 
-    // Extract source code (without braces)
-    size_t end = p->pos - 1;  // -1 to exclude closing brace
-    char* source = kry_strndup(p, p->source + start, end - start);
+    // Extract source code (start to end_pos)
+    size_t length = end_pos - start;
+    char* source = kry_strndup(p, start, length);
 
     // Trim leading and trailing whitespace from source
     char* trimmed = source;
@@ -1089,12 +1086,30 @@ static KryNode* parse_code_block(KryParser* p, const char* language) {
         trimmed++;
     }
 
-    char* end_trim = trimmed + strlen(trimmed) - 1;
-    while (end_trim > trimmed && (*end_trim == ' ' || *end_trim == '\t' ||
-           *end_trim == '\n' || *end_trim == '\r')) {
-        *end_trim = '\0';
-        end_trim--;
+    // Trim trailing whitespace
+    size_t trimmed_len = strlen(trimmed);
+    if (trimmed_len > 0) {
+        char* end_trim = trimmed + trimmed_len - 1;
+        while (end_trim > trimmed && (*end_trim == ' ' || *end_trim == '\t' ||
+               *end_trim == '\n' || *end_trim == '\r')) {
+            *end_trim = '\0';
+            end_trim--;
+        }
     }
+
+    // Advance parser past @end marker
+    // Manually update position and count newlines for accurate line tracking
+    const char* scan = start;
+    while (scan < end_pos + 4) {  // +4 to skip "@end"
+        if (*scan == '\n') {
+            p->line++;
+            p->column = 1;
+        } else {
+            p->column++;
+        }
+        scan++;
+    }
+    p->pos = (end_pos + 4) - p->source;
 
     // Create code block node
     KryNode* code_node = kry_node_create_code_block(p, language, trimmed);
@@ -1200,6 +1215,269 @@ static KryNode* parse_if_statement(KryParser* p) {
     return if_node;
 }
 
+// Parse function declaration: func name(param1: type, param2: type): return_type { ... }
+static KryNode* parse_function_declaration(KryParser* p) {
+    skip_whitespace(p);
+
+    // Parse function name
+    if (!isalpha(peek(p)) && peek(p) != '_') {
+        kry_parser_error(p, "Expected function name after 'func'");
+        return NULL;
+    }
+
+    char* func_name = parse_identifier(p);
+    if (!func_name) return NULL;
+
+    skip_whitespace(p);
+
+    // Expect '(' for parameter list
+    if (!match(p, '(')) {
+        kry_parser_error(p, "Expected '(' after function name");
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Create function declaration node
+    KryNode* func_node = kry_node_create(p, KRY_NODE_FUNCTION_DECL);
+    if (!func_node) return NULL;
+
+    func_node->func_name = func_name;
+    func_node->func_params = NULL;
+    func_node->param_count = 0;
+    func_node->func_return_type = NULL;
+    func_node->func_body = NULL;
+
+    // Parse parameter list
+    if (peek(p) != ')') {
+        // Allocate parameter array (max 32 parameters)
+        #define MAX_PARAMS 32
+        KryNode* params[MAX_PARAMS];
+        int param_idx = 0;
+
+        while (peek(p) != ')' && peek(p) != '\0' && param_idx < MAX_PARAMS) {
+            // Parse parameter name
+            if (!isalpha(peek(p)) && peek(p) != '_') {
+                kry_parser_error(p, "Expected parameter name");
+                return NULL;
+            }
+
+            char* param_name = parse_identifier(p);
+            if (!param_name) return NULL;
+
+            skip_whitespace(p);
+
+            // Optional type annotation: ": type"
+            char* param_type = NULL;
+            if (peek(p) == ':') {
+                match(p, ':');
+                skip_whitespace(p);
+                param_type = parse_identifier(p);
+                if (!param_type) {
+                    kry_parser_error(p, "Expected type name after ':'");
+                    return NULL;
+                }
+                skip_whitespace(p);
+            }
+
+            // Create a VAR_DECL node for this parameter
+            KryNode* param_node = kry_node_create(p, KRY_NODE_VAR_DECL);
+            if (!param_node) return NULL;
+            param_node->name = param_name;
+            param_node->var_type = param_type ? param_type : kry_strdup(p, "any");  // Default to "any"
+            param_node->value = NULL;
+
+            params[param_idx++] = param_node;
+
+            // Check for comma or end of parameter list
+            if (peek(p) == ',') {
+                match(p, ',');
+                skip_whitespace(p);
+            } else if (peek(p) != ')') {
+                kry_parser_error(p, "Expected ',' or ')' in parameter list");
+                return NULL;
+            }
+        }
+
+        // Allocate permanent parameter array from parser memory
+        if (param_idx > 0) {
+            func_node->func_params = (KryNode**)kry_alloc(p, sizeof(KryNode*) * param_idx);
+            if (!func_node->func_params) return NULL;
+            for (int i = 0; i < param_idx; i++) {
+                func_node->func_params[i] = params[i];
+            }
+            func_node->param_count = param_idx;
+        }
+    }
+
+    // Expect closing ')'
+    if (!match(p, ')')) {
+        kry_parser_error(p, "Expected ')' to close parameter list");
+        return NULL;
+    }
+
+    skip_whitespace(p);
+
+    // Parse optional return type: ": type"
+    if (peek(p) == ':') {
+        match(p, ':');
+        skip_whitespace(p);
+
+        char* return_type = parse_identifier(p);
+        if (!return_type) {
+            kry_parser_error(p, "Expected return type after ':'");
+            return NULL;
+        }
+
+        func_node->func_return_type = return_type;
+        skip_whitespace(p);
+    } else {
+        // Default to void return type
+        func_node->func_return_type = kry_strdup(p, "void");
+    }
+
+    // Parse function body as a component node (wrapper for statements)
+    KryNode* body_node = kry_node_create(p, KRY_NODE_COMPONENT);
+    if (!body_node) return NULL;
+    body_node->name = "FunctionBody";  // Internal marker
+
+    // Parse function body
+    if (!parse_component_body(p, body_node)) {
+        return NULL;
+    }
+
+    func_node->func_body = body_node;
+
+    return func_node;
+}
+
+// Parse module-level return: return { COLORS, DEFAULT_COLOR, getRandomColor }
+static KryNode* parse_module_return(KryParser* p) {
+    skip_whitespace(p);
+
+    KryNode* return_node = kry_node_create(p, KRY_NODE_MODULE_RETURN);
+    if (!return_node) return NULL;
+
+    return_node->export_names = NULL;
+    return_node->export_count = 0;
+
+    // Expect object literal with export list
+    if (peek(p) != '{') {
+        kry_parser_error(p, "Module return requires object literal: return { export1, export2, ... }");
+        return NULL;
+    }
+
+    match(p, '{');
+    skip_whitespace(p);
+
+    // Parse export list
+    #define MAX_EXPORTS 64
+    char* exports[MAX_EXPORTS];
+    int export_idx = 0;
+
+    while (peek(p) != '}' && peek(p) != '\0' && export_idx < MAX_EXPORTS) {
+        // Parse export name (identifier)
+        if (!isalpha(peek(p)) && peek(p) != '_') {
+            kry_parser_error(p, "Expected export identifier");
+            return NULL;
+        }
+
+        char* export_name = parse_identifier(p);
+        if (!export_name) break;
+
+        exports[export_idx++] = export_name;
+
+        skip_whitespace(p);
+
+        // Check for comma or end of list
+        if (peek(p) == ',') {
+            match(p, ',');
+            skip_whitespace(p);
+        }
+    }
+
+    if (!match(p, '}')) {
+        kry_parser_error(p, "Expected '}' to close export list");
+        return NULL;
+    }
+
+    // Allocate permanent export name array
+    if (export_idx > 0) {
+        return_node->export_names = (char**)kry_alloc(p, sizeof(char*) * export_idx);
+        if (!return_node->export_names) return NULL;
+
+        for (int i = 0; i < export_idx; i++) {
+            return_node->export_names[i] = exports[i];
+        }
+        return_node->export_count = export_idx;
+    }
+
+    return return_node;
+}
+
+// Parse return statement: return expression (or module-level return)
+static KryNode* parse_return_statement(KryParser* p) {
+    skip_whitespace(p);
+
+    // Check if this is a module-level return: return { exports }
+    // We can detect this by checking if the next non-whitespace character is '{'
+    skip_whitespace(p);
+    char next_char = peek(p);
+
+    if (next_char == '{') {
+        // Module-level return: return { exports }
+        return parse_module_return(p);
+    }
+
+    // Function return statement
+    // Create return statement node
+    KryNode* return_node = kry_node_create(p, KRY_NODE_RETURN_STMT);
+    if (!return_node) return NULL;
+
+    return_node->return_expr = NULL;
+
+    // Check if there's an expression to return
+    // Look ahead to see if we have a semicolon immediately
+    size_t saved_pos = p->pos;
+    uint32_t saved_line = p->line;
+    uint32_t saved_column = p->column;
+
+    skip_whitespace(p);
+
+    // Check if next token is semicolon or end of block (void return)
+    if (peek(p) == ';' || peek(p) == '}' || peek(p) == '\n') {
+        // Void return - no expression
+        p->pos = saved_pos;
+        p->line = saved_line;
+        p->column = saved_column;
+    } else {
+        // Restore position and parse expression
+        p->pos = saved_pos;
+        p->line = saved_line;
+        p->column = saved_column;
+
+        // Parse return value expression
+        // We need to create a value from the expression
+        // For simplicity, we'll parse the value and wrap it
+        KryValue* return_value = parse_value(p);
+        if (return_value) {
+            // For now, store the value in the return_expr field
+            // We'll create a node wrapper in the IR conversion phase
+            KryNode* expr_wrapper = kry_node_create(p, KRY_NODE_EXPRESSION);
+            if (expr_wrapper) {
+                expr_wrapper->value = return_value;
+                return_node->return_expr = expr_wrapper;
+            }
+        }
+    }
+
+    // Semicolon is optional - consume if present
+    skip_whitespace(p);
+    match(p, ';');  // Don't error if missing
+
+    return return_node;
+}
+
 static KryNode* parse_component_body(KryParser* p, KryNode* component) {
     skip_whitespace(p);
 
@@ -1230,22 +1508,16 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
 
             skip_whitespace(p);
 
-            // Check for code blocks (@lua, @js)
-            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js")) {
-
-                if (peek(p) == '{') {
-                    // It's a code block
-                    KryNode* code_block = parse_code_block(p, at_name);
-                    if (!code_block) return NULL;
-                    kry_node_append_child(component, code_block);
-                } else {
-                    kry_parser_error(p, "Expected '{' after @lua/@js");
-                    return NULL;
-                }
+            // Check for code blocks (@lua, @js, @c)
+            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js") || keyword_match(at_name, "c")) {
+                // It's a code block
+                KryNode* code_block = parse_code_block(p, at_name);
+                if (!code_block) return NULL;
+                kry_node_append_child(component, code_block);
             }
-            // Decorators are no longer supported - use @lua/@js blocks instead
+            // Decorators are no longer supported - use @lua/@js/@c blocks instead
             else {
-                kry_parser_error(p, "Decorators (@reactive, @computed, @action, @watch) are no longer supported. Use @lua/@js blocks for platform-specific code.");
+                kry_parser_error(p, "Decorators (@reactive, @computed, @action, @watch) are no longer supported. Use @lua/@js/@c blocks for platform-specific code.");
                 return NULL;
             }
 
@@ -1281,6 +1553,18 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
             KryNode* static_block = parse_static_block(p);
             if (!static_block) return NULL;
             kry_node_append_child(component, static_block);
+        }
+        // Check for function declaration
+        else if (keyword_match(name, "func")) {
+            KryNode* func_decl = parse_function_declaration(p);
+            if (!func_decl) return NULL;
+            kry_node_append_child(component, func_decl);
+        }
+        // Check for return statement
+        else if (keyword_match(name, "return")) {
+            KryNode* return_stmt = parse_return_statement(p);
+            if (!return_stmt) return NULL;
+            kry_node_append_child(component, return_stmt);
         }
         // Check for for loop
         else if (keyword_match(name, "for")) {
@@ -1466,19 +1750,13 @@ KryNode* kry_parse(KryParser* parser) {
 
             KryNode* at_node = NULL;
 
-            // Check for code blocks (@lua, @js)
-            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js")) {
-
-                if (peek(parser) == '{') {
-                    at_node = parse_code_block(parser, at_name);
-                } else {
-                    kry_parser_error(parser, "Expected '{' after @lua/@js");
-                    break;
-                }
+            // Check for code blocks (@lua, @js, @c)
+            if (keyword_match(at_name, "lua") || keyword_match(at_name, "js") || keyword_match(at_name, "c")) {
+                at_node = parse_code_block(parser, at_name);
             }
             // Decorators are no longer supported
             else {
-                kry_parser_error(parser, "Decorators (@reactive, @computed, @action, @watch) are no longer supported. Use @lua/@js blocks for platform-specific code.");
+                kry_parser_error(parser, "Decorators (@reactive, @computed, @action, @watch) are no longer supported. Use @lua/@js/@c blocks for platform-specific code.");
                 break;
             }
 
@@ -1523,6 +1801,14 @@ KryNode* kry_parse(KryParser* parser) {
         // Check for static block
         else if (keyword_match(id, "static")) {
             node = parse_static_block(parser);
+        }
+        // Check for function declaration
+        else if (keyword_match(id, "func")) {
+            node = parse_function_declaration(parser);
+        }
+        // Check for return statement (works for both function and module returns)
+        else if (keyword_match(id, "return")) {
+            node = parse_return_statement(parser);
         }
         // Check for style block at top level
         else if (keyword_match(id, "style")) {

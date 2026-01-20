@@ -74,6 +74,10 @@ int main(int argc, char** argv) {
     // This must be done before any plugin operations
     ir_capability_registry_init();
 
+    // Initialize the target handler registry
+    // This registers built-in target handlers (web, desktop, terminal)
+    target_handler_initialize();
+
     // Command dispatch
     int result = 1;
 

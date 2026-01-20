@@ -25,6 +25,7 @@ IRLogicFunction* ir_logic_function_create(const char* name) {
 
     func->name = safe_strdup(name);
     func->has_universal = false;
+    func->return_type = NULL;  // Default to NULL (void/unknown)
     func->params = NULL;
     func->param_count = 0;
     func->statements = NULL;
@@ -127,6 +128,7 @@ void ir_logic_function_free(IRLogicFunction* func) {
     if (!func) return;
 
     free(func->name);
+    free(func->return_type);
 
     for (int i = 0; i < func->param_count; i++) {
         free(func->params[i].name);

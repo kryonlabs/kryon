@@ -35,7 +35,10 @@ typedef enum {
     KRY_NODE_FOR_EACH,          // For each loop (for each item in collection { ... }) - runtime ForEach
     KRY_NODE_IF,                // If/else conditional (if condition { ... } else { ... })
     KRY_NODE_STYLE_BLOCK,       // Style block (style selector { property = value; })
-    KRY_NODE_CODE_BLOCK         // Platform-specific code block (@lua, @js)
+    KRY_NODE_CODE_BLOCK,        // Platform-specific code block (@lua, @js)
+    KRY_NODE_FUNCTION_DECL,     // Function declaration (func name(): type { ... })
+    KRY_NODE_RETURN_STMT,       // Return statement in function (return expression)
+    KRY_NODE_MODULE_RETURN      // Module-level return: return { exports }
 } KryNodeType;
 
 // ============================================================================
@@ -116,6 +119,20 @@ struct KryNode {
     char* import_module;        // Module path (e.g., "math", "components.calendar")
     char* import_name;          // Imported name (e.g., "Math", "*")
 
+    // Function declaration support (for KRY_NODE_FUNCTION_DECL)
+    char* func_name;            // Function name (e.g., "loadHabits")
+    char* func_return_type;     // Return type (e.g., "int", "string", "array", "void")
+    KryNode** func_params;      // Parameter declarations (array of VAR_DECL nodes)
+    int param_count;            // Number of parameters
+    KryNode* func_body;         // Function body (block containing statements)
+
+    // Return statement support (for KRY_NODE_RETURN_STMT)
+    KryNode* return_expr;       // Expression to return (NULL for void return)
+
+    // Module-level return support (for KRY_NODE_MODULE_RETURN)
+    char** export_names;        // Array of export names ["COLORS", "DEFAULT_COLOR", ...]
+    int export_count;           // Number of exports
+
     // Source location (for error messages)
     uint32_t line;
     uint32_t column;
@@ -125,7 +142,7 @@ struct KryNode {
 // Memory Management (chunk-based allocation like markdown parser)
 // ============================================================================
 
-#define KRY_CHUNK_SIZE 4096
+#define KRY_CHUNK_SIZE 32768  // Increased to support large plugin code blocks
 
 typedef struct KryChunk {
     uint8_t data[KRY_CHUNK_SIZE];

@@ -63,23 +63,311 @@ static void __attribute__((unused)) free_loaded_plugin_tracking(void) {
 }
 
 /**
+ * Free target configuration
+ */
+void target_config_free(TargetConfig* target) {
+    if (!target) return;
+
+    free(target->name);
+
+    // Free key-value arrays
+    if (target->keys) {
+        for (int i = 0; i < target->options_count; i++) {
+            free(target->keys[i]);
+        }
+        free(target->keys);
+    }
+
+    if (target->values) {
+        for (int i = 0; i < target->options_count; i++) {
+            free(target->values[i]);
+        }
+        free(target->values);
+    }
+
+    free(target);
+}
+
+/**
+ * Free development configuration
+ */
+void dev_config_free(DevConfig* dev) {
+    if (!dev) return;
+    free(dev);
+}
+
+/**
+ * Find target configuration by name
+ */
+TargetConfig* config_get_target(const KryonConfig* config, const char* target_name) {
+    if (!config || !target_name) return NULL;
+
+    for (int i = 0; i < config->targets_count; i++) {
+        if (strcmp(config->targets[i].name, target_name) == 0) {
+            // Return a non-const pointer (we know the underlying struct is mutable)
+            return (TargetConfig*)&config->targets[i];
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * Get option value from target config
+ * Returns NULL if key not found
+ */
+const char* target_config_get_option(const TargetConfig* target, const char* key) {
+    if (!target || !key) return NULL;
+
+    for (int i = 0; i < target->options_count; i++) {
+        if (strcmp(target->keys[i], key) == 0) {
+            return target->values[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * Parse [targets.name] sections from TOML
+ * Supports any target name with flexible key-value storage
+ * Format: [targets.web], [targets.desktop], [targets.custom_name]
+ * Each target can have any options - no hardcoded fields
+ */
+static void config_parse_targets(KryonConfig* config, TOMLTable* toml) {
+    // Use handler registry to discover known target names
+    // This allows dynamic target registration
+    const char** known_targets = target_handler_list_names();
+
+    // Count how many known targets we have
+    int known_target_count = 0;
+    for (; known_targets[known_target_count]; known_target_count++);
+
+    int target_count = 0;
+
+    // First, check for indexed targets [[targets]] with name field
+    for (int i = 0; i < 100; i++) {
+        char key[256];
+        snprintf(key, sizeof(key), "targets.%d.name", i);
+        if (kryon_toml_get_string(toml, key, NULL)) {
+            target_count++;
+        } else {
+            break;
+        }
+    }
+
+    // Count named targets that have at least one option
+    for (int i = 0; i < known_target_count; i++) {
+        // Check multiple possible keys to detect if target section exists
+        const char* possible_keys[] = {"output", "renderer", "minify", "tree_shake", "bundle"};
+        bool has_config = false;
+
+        for (size_t j = 0; j < sizeof(possible_keys) / sizeof(possible_keys[0]); j++) {
+            char check_key[256];
+            snprintf(check_key, sizeof(check_key), "targets.%s.%s", known_targets[i], possible_keys[j]);
+
+            // For string values
+            if (kryon_toml_get_string(toml, check_key, NULL)) {
+                has_config = true;
+                break;
+            }
+
+            // For boolean values (append a dummy default to check existence)
+            int dummy = kryon_toml_get_int(toml, check_key, -999);
+            if (dummy != -999) {
+                has_config = true;
+                break;
+            }
+        }
+
+        if (has_config) {
+            target_count++;
+        }
+    }
+
+    if (target_count == 0) {
+        config->targets = NULL;
+        config->targets_count = 0;
+        return;
+    }
+
+    // Allocate target array
+    config->targets = (TargetConfig*)calloc(target_count, sizeof(TargetConfig));
+    if (!config->targets) {
+        config->targets_count = 0;
+        return;
+    }
+
+    config->targets_count = 0;
+
+    // Parse indexed targets [[targets]] with flexible key-value collection
+    for (int i = 0; i < 100 && config->targets_count < target_count; i++) {
+        char key[256];
+        snprintf(key, sizeof(key), "targets.%d.name", i);
+        const char* name = kryon_toml_get_string(toml, key, NULL);
+
+        if (!name) break;  // No more indexed targets
+
+        TargetConfig* target = &config->targets[config->targets_count];
+        target->name = str_copy(name);
+
+        // Collect all possible options for this indexed target
+        // We check common option keys and store them flexibly
+        const char* option_keys[] = {
+            "output", "minify", "tree_shake", "bundle",
+            "renderer", "color_depth", "mouse_support"
+        };
+        int options_capacity = 16;  // Pre-allocate for common options
+        target->keys = (char**)calloc(options_capacity, sizeof(char*));
+        target->values = (char**)calloc(options_capacity, sizeof(char*));
+        target->options_count = 0;
+
+        for (size_t j = 0; j < sizeof(option_keys) / sizeof(option_keys[0]); j++) {
+            snprintf(key, sizeof(key), "targets.%d.%s", i, option_keys[j]);
+
+            // Try to get string value
+            const char* str_val = kryon_toml_get_string(toml, key, NULL);
+            if (str_val) {
+                target->keys[target->options_count] = str_copy(option_keys[j]);
+                target->values[target->options_count] = str_copy(str_val);
+                target->options_count++;
+                continue;
+            }
+
+            // Try to get boolean value and convert to string
+            bool bool_val = kryon_toml_get_bool(toml, key, false);
+            // Check if the key exists by trying both true and false defaults
+            bool exists = kryon_toml_get_bool(toml, key, true) != bool_val;
+            if (exists) {
+                target->keys[target->options_count] = str_copy(option_keys[j]);
+                target->values[target->options_count] = str_copy(bool_val ? "true" : "false");
+                target->options_count++;
+            }
+        }
+
+        config->targets_count++;
+    }
+
+    // Parse named targets (targets.web, targets.desktop, etc.) with flexible key-value
+    for (int i = 0; i < known_target_count; i++) {
+        const char* target_name = known_targets[i];
+
+        // Check if we already have this target from indexed parsing
+        bool already_exists = false;
+        for (int j = 0; j < config->targets_count; j++) {
+            if (config->targets[j].name && strcmp(config->targets[j].name, target_name) == 0) {
+                already_exists = true;
+                break;
+            }
+        }
+
+        if (already_exists) continue;
+
+        // Check if this named target has any configuration
+        char check_key[256];
+        snprintf(check_key, sizeof(check_key), "targets.%s.output", target_name);
+        bool has_config = kryon_toml_get_string(toml, check_key, NULL) != NULL;
+
+        if (!has_config) {
+            snprintf(check_key, sizeof(check_key), "targets.%s.renderer", target_name);
+            has_config = kryon_toml_get_string(toml, check_key, NULL) != NULL;
+        }
+
+        if (!has_config) {
+            snprintf(check_key, sizeof(check_key), "targets.%s.minify", target_name);
+            bool dummy = kryon_toml_get_bool(toml, check_key, false);
+            if (kryon_toml_get_bool(toml, check_key, true) != dummy) {
+                has_config = true;
+            }
+        }
+
+        if (!has_config) continue;  // No config for this target
+
+        // Add new target
+        TargetConfig* target = &config->targets[config->targets_count];
+        target->name = str_copy(target_name);
+
+        // Collect all possible options for this named target
+        const char* option_keys[] = {
+            "output", "minify", "tree_shake", "bundle",
+            "renderer", "color_depth", "mouse_support"
+        };
+        int options_capacity = 16;
+        target->keys = (char**)calloc(options_capacity, sizeof(char*));
+        target->values = (char**)calloc(options_capacity, sizeof(char*));
+        target->options_count = 0;
+
+        for (size_t j = 0; j < sizeof(option_keys) / sizeof(option_keys[0]); j++) {
+            snprintf(check_key, sizeof(check_key), "targets.%s.%s", target_name, option_keys[j]);
+
+            // Try to get string value
+            const char* str_val = kryon_toml_get_string(toml, check_key, NULL);
+            if (str_val) {
+                target->keys[target->options_count] = str_copy(option_keys[j]);
+                target->values[target->options_count] = str_copy(str_val);
+                target->options_count++;
+                continue;
+            }
+
+            // Try to get boolean value and convert to string
+            bool bool_val = kryon_toml_get_bool(toml, check_key, false);
+            bool exists = kryon_toml_get_bool(toml, check_key, true) != bool_val;
+            if (exists) {
+                target->keys[target->options_count] = str_copy(option_keys[j]);
+                target->values[target->options_count] = str_copy(bool_val ? "true" : "false");
+                target->options_count++;
+            }
+        }
+
+        config->targets_count++;
+    }
+}
+
+/**
+ * Parse [dev] section from TOML
+ */
+static void config_parse_dev(KryonConfig* config, TOMLTable* toml) {
+    // Check if any dev settings exist
+    bool has_dev_settings = false;
+
+    // Check for [dev] settings
+    if (kryon_toml_get_bool(toml, "dev.hot_reload", false) ||
+        kryon_toml_get_bool(toml, "dev.hot_reload", true) ||
+        kryon_toml_get_int(toml, "dev.port", 0) != 0 ||
+        kryon_toml_get_bool(toml, "dev.auto_open", false) ||
+        kryon_toml_get_bool(toml, "dev.auto_open", true)) {
+        has_dev_settings = true;
+    }
+
+    if (!has_dev_settings) {
+        config->dev = NULL;
+        return;
+    }
+
+    DevConfig* dev = (DevConfig*)calloc(1, sizeof(DevConfig));
+    if (!dev) {
+        config->dev = NULL;
+        return;
+    }
+
+    // Parse [dev] settings
+    dev->hot_reload = kryon_toml_get_bool(toml, "dev.hot_reload", true);
+    dev->port = kryon_toml_get_int(toml, "dev.port", 3000);
+    dev->auto_open = kryon_toml_get_bool(toml, "dev.auto_open", true);
+
+    config->dev = dev;
+}
+
+/**
  * Create empty config with defaults
  */
 static KryonConfig* config_create_default(void) {
     KryonConfig* config = (KryonConfig*)calloc(1, sizeof(KryonConfig));
     if (!config) return NULL;
 
-    // Set defaults
-    config->build_target = str_copy("web");
+    // Set defaults (no default target - must be explicitly specified)
+    config->build_target = NULL;
     config->build_output_dir = str_copy("build");
-    config->optimization_enabled = true;
-    config->optimization_minify_css = true;
-    config->optimization_minify_js = true;
-    config->optimization_tree_shake = true;
-    config->dev_hot_reload = true;
-    config->dev_port = 3000;
-    config->dev_auto_open = true;
-    config->desktop_renderer = str_copy("sdl3");  // Default to SDL3
+    config->build_frontend = str_copy("kry");
 
     return config;
 }
@@ -87,25 +375,53 @@ static KryonConfig* config_create_default(void) {
 
 /**
  * Parse plugins from TOML using named plugin syntax
- * Format: [plugins]
- *         storage = { path = "../kryon-storage", version = "1.0.0" }
+ * Supports two formats:
+ * 1. Individual plugins: [plugins.storage] path = "../kryon-storage"
+ * 2. Plugin group with use array: [plugins.kryon] path = "../plugins" use = ["math", "storage"]
  */
 static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
-    // Get all plugin names from TOML
-    int plugin_count = 0;
-    char** plugin_names = kryon_toml_get_plugin_names(toml, &plugin_count);
+    // First pass: count total plugins (including expanded use arrays)
+    int total_plugin_count = 0;
 
-    if (!plugin_names || plugin_count == 0) {
+    // Get all top-level plugin names
+    int top_level_count = 0;
+    char** plugin_names = kryon_toml_get_plugin_names(toml, &top_level_count);
+
+    if (!plugin_names || top_level_count == 0) {
         config->plugins_count = 0;
         config->plugins = NULL;
         return;
     }
 
+    // Count plugins, expanding use arrays
+    for (int i = 0; i < top_level_count; i++) {
+        const char* plugin_name = plugin_names[i];
+        char key[256];
+
+        // Check if this plugin has a "use" array
+        int use_count = 0;
+        snprintf(key, sizeof(key), "plugins.%s.use.0", plugin_name);
+        if (kryon_toml_get_string(toml, key, NULL)) {
+            // Count use array entries
+            for (int j = 0; j < 100; j++) {
+                snprintf(key, sizeof(key), "plugins.%s.use.%d", plugin_name, j);
+                if (kryon_toml_get_string(toml, key, NULL)) {
+                    use_count++;
+                } else {
+                    break;
+                }
+            }
+            total_plugin_count += use_count;
+        } else {
+            // Regular single plugin
+            total_plugin_count++;
+        }
+    }
+
     // Allocate plugin array
-    config->plugins = (PluginDep*)calloc(plugin_count, sizeof(PluginDep));
+    config->plugins = (PluginDep*)calloc(total_plugin_count, sizeof(PluginDep));
     if (!config->plugins) {
-        // Free plugin names
-        for (int i = 0; i < plugin_count; i++) {
+        for (int i = 0; i < top_level_count; i++) {
             free(plugin_names[i]);
         }
         free(plugin_names);
@@ -113,70 +429,104 @@ static void config_parse_plugins(KryonConfig* config, TOMLTable* toml) {
         return;
     }
 
-    config->plugins_count = plugin_count;
+    config->plugins_count = 0;
 
-    // Parse each plugin's properties
-    for (int i = 0; i < plugin_count; i++) {
-        const char* plugin_name = plugin_names[i];
-        PluginDep* plugin = &config->plugins[i];
-
-        // Set plugin name
-        plugin->name = str_copy(plugin_name);
-
-        // Get plugin properties
+    // Second pass: parse plugins, expanding use arrays
+    for (int i = 0; i < top_level_count; i++) {
+        const char* plugin_group_name = plugin_names[i];
         char key[256];
 
-        // Get path (optional if git is specified)
-        snprintf(key, sizeof(key), "plugins.%s.path", plugin_name);
-        const char* path = kryon_toml_get_string(toml, key, NULL);
-        if (path) {
-            plugin->path = str_copy(path);
+        // Check if this plugin has a "use" array
+        snprintf(key, sizeof(key), "plugins.%s.use.0", plugin_group_name);
+        bool has_use_array = kryon_toml_get_string(toml, key, NULL) != NULL;
+
+        if (has_use_array) {
+            // Get base path for the group
+            snprintf(key, sizeof(key), "plugins.%s.path", plugin_group_name);
+            const char* base_path = kryon_toml_get_string(toml, key, NULL);
+
+            // Get git URL for the group (if any)
+            snprintf(key, sizeof(key), "plugins.%s.git", plugin_group_name);
+            const char* git = kryon_toml_get_string(toml, key, NULL);
+
+            // Get git branch for the group
+            snprintf(key, sizeof(key), "plugins.%s.branch", plugin_group_name);
+            const char* branch = kryon_toml_get_string(toml, key, "master");
+
+            // Expand use array
+            for (int j = 0; j < 100; j++) {
+                snprintf(key, sizeof(key), "plugins.%s.use.%d", plugin_group_name, j);
+                const char* use_name = kryon_toml_get_string(toml, key, NULL);
+                if (!use_name) break;
+
+                PluginDep* plugin = &config->plugins[config->plugins_count];
+                plugin->name = str_copy(use_name);
+
+                // Build path: base_path + "/" + use_name
+                if (base_path) {
+                    size_t path_len = strlen(base_path) + strlen(use_name) + 2;
+                    char* full_path = (char*)malloc(path_len);
+                    if (full_path) {
+                        snprintf(full_path, path_len, "%s/%s", base_path, use_name);
+                        plugin->path = full_path;
+                    }
+                }
+
+                // Copy git info
+                plugin->git = git ? str_copy(git) : NULL;
+                plugin->branch = str_copy(branch);
+
+                // Other fields
+                plugin->subdir = str_copy(use_name);  // Use name as subdir
+                plugin->version = NULL;
+                plugin->enabled = true;
+                plugin->resolved_path = NULL;
+
+                config->plugins_count++;
+            }
         } else {
-            plugin->path = NULL;
+            // Regular single plugin
+            PluginDep* plugin = &config->plugins[config->plugins_count];
+            plugin->name = str_copy(plugin_group_name);
+
+            // Get path (optional if git is specified)
+            snprintf(key, sizeof(key), "plugins.%s.path", plugin_group_name);
+            const char* path = kryon_toml_get_string(toml, key, NULL);
+            plugin->path = path ? str_copy(path) : NULL;
+
+            // Get git URL (optional)
+            snprintf(key, sizeof(key), "plugins.%s.git", plugin_group_name);
+            const char* git = kryon_toml_get_string(toml, key, NULL);
+            plugin->git = git ? str_copy(git) : NULL;
+
+            // Get git branch (optional, defaults to "master")
+            snprintf(key, sizeof(key), "plugins.%s.branch", plugin_group_name);
+            const char* branch = kryon_toml_get_string(toml, key, "master");
+            plugin->branch = str_copy(branch);
+
+            // Get git subdir (optional, for sparse checkout)
+            snprintf(key, sizeof(key), "plugins.%s.subdir", plugin_group_name);
+            const char* subdir = kryon_toml_get_string(toml, key, NULL);
+            plugin->subdir = subdir ? str_copy(subdir) : NULL;
+
+            // Get version (optional)
+            snprintf(key, sizeof(key), "plugins.%s.version", plugin_group_name);
+            const char* version = kryon_toml_get_string(toml, key, NULL);
+            plugin->version = version ? str_copy(version) : NULL;
+
+            // Get enabled flag (optional, default: true)
+            snprintf(key, sizeof(key), "plugins.%s.enabled", plugin_group_name);
+            plugin->enabled = kryon_toml_get_bool(toml, key, true);
+
+            // Resolved path will be set later
+            plugin->resolved_path = NULL;
+
+            config->plugins_count++;
         }
-
-        // Get git URL (optional)
-        snprintf(key, sizeof(key), "plugins.%s.git", plugin_name);
-        const char* git = kryon_toml_get_string(toml, key, NULL);
-        if (git) {
-            plugin->git = str_copy(git);
-        } else {
-            plugin->git = NULL;
-        }
-
-        // Get git branch (optional, defaults to "master")
-        snprintf(key, sizeof(key), "plugins.%s.branch", plugin_name);
-        const char* branch = kryon_toml_get_string(toml, key, "master");
-        plugin->branch = str_copy(branch);
-
-        // Get git subdir (optional, for sparse checkout)
-        snprintf(key, sizeof(key), "plugins.%s.subdir", plugin_name);
-        const char* subdir = kryon_toml_get_string(toml, key, NULL);
-        if (subdir) {
-            plugin->subdir = str_copy(subdir);
-        } else {
-            plugin->subdir = NULL;
-        }
-
-        // Get version (optional)
-        snprintf(key, sizeof(key), "plugins.%s.version", plugin_name);
-        const char* version = kryon_toml_get_string(toml, key, NULL);
-        if (version) {
-            plugin->version = str_copy(version);
-        } else {
-            plugin->version = NULL;
-        }
-
-        // Get enabled flag (optional, default: true)
-        snprintf(key, sizeof(key), "plugins.%s.enabled", plugin_name);
-        plugin->enabled = kryon_toml_get_bool(toml, key, true);
-
-        // Resolved path will be set later
-        plugin->resolved_path = NULL;
     }
 
     // Free plugin names
-    for (int i = 0; i < plugin_count; i++) {
+    for (int i = 0; i < top_level_count; i++) {
         free(plugin_names[i]);
     }
     free(plugin_names);
@@ -352,12 +702,38 @@ KryonConfig* config_load(const char* config_path) {
     if (kryon_toml_get_string(toml, "desktop.window_title", NULL) ||
         kryon_toml_get_string(toml, "desktop.window_width", NULL) ||
         kryon_toml_get_string(toml, "desktop.window_height", NULL)) {
-        fprintf(stderr, "Error: Invalid window fields in [desktop]\n");
-        fprintf(stderr, "       Move to [window] section:\n");
-        fprintf(stderr, "       [window]\n");
-        fprintf(stderr, "       title = \"...\"\n");
-        fprintf(stderr, "       width = ...\n");
-        fprintf(stderr, "       height = ...\n");
+        fprintf(stderr, "Error: Window attributes not supported in config\n");
+        fprintf(stderr, "       Set window properties in your app source code:\n");
+        fprintf(stderr, "       App({ window = { title = \"...\", width = ..., height = ... } })\n");
+        has_deprecated = true;
+    }
+
+    // Reject old [desktop] section
+    if (kryon_toml_get_string(toml, "desktop.renderer", NULL)) {
+        fprintf(stderr, "Error: [desktop] section not supported\n");
+        fprintf(stderr, "       Use [targets.desktop] instead:\n");
+        fprintf(stderr, "       [targets.desktop]\n");
+        fprintf(stderr, "       renderer = \"sdl3\"\n");
+        has_deprecated = true;
+    }
+
+    // Reject old [optimization] section
+    if (kryon_toml_get_bool(toml, "optimization.enabled", false) ||
+        kryon_toml_get_bool(toml, "optimization.minify_css", false) ||
+        kryon_toml_get_bool(toml, "optimization.minify_js", false) ||
+        kryon_toml_get_bool(toml, "optimization.tree_shake", false)) {
+        fprintf(stderr, "Error: [optimization] section not supported\n");
+        fprintf(stderr, "       Use [targets.web] instead:\n");
+        fprintf(stderr, "       [targets.web]\n");
+        fprintf(stderr, "       minify = true\n");
+        fprintf(stderr, "       tree_shake = true\n");
+        has_deprecated = true;
+    }
+
+    // Reject old [codegen] section
+    if (kryon_toml_get_string(toml, "codegen.output_dir", NULL)) {
+        fprintf(stderr, "Error: [codegen] section not supported\n");
+        fprintf(stderr, "       Use build.output_dir instead\n");
         has_deprecated = true;
     }
 
@@ -395,19 +771,13 @@ KryonConfig* config_load(const char* config_path) {
         config->project_version = str_copy(version);
     }
 
-    const char* author = kryon_toml_get_string(toml, "project.author", NULL);
-    if (author) {
-        free(config->project_author);
-        config->project_author = str_copy(author);
-    }
-
     const char* description = kryon_toml_get_string(toml, "project.description", NULL);
     if (description) {
         free(config->project_description);
         config->project_description = str_copy(description);
     }
 
-    // Parse build settings - strict format enforcement
+    // Parse build settings
     const char* output_dir = kryon_toml_get_string(toml, "build.output_dir", NULL);
     if (output_dir) {
         free(config->build_output_dir);
@@ -422,6 +792,13 @@ KryonConfig* config_load(const char* config_path) {
     const char* entry = kryon_toml_get_string(toml, "build.entry", NULL);
     if (entry) {
         config->build_entry = str_copy(entry);
+    }
+
+    // Parse build.frontend (optional frontend language)
+    const char* frontend = kryon_toml_get_string(toml, "build.frontend", NULL);
+    if (frontend) {
+        free(config->build_frontend);
+        config->build_frontend = str_copy(frontend);
     }
 
     // Parse build.targets array (required)
@@ -456,29 +833,11 @@ KryonConfig* config_load(const char* config_path) {
         }
     }
 
-    // Parse optimization settings
-    config->optimization_enabled = kryon_toml_get_bool(toml, "optimization.enabled", true);
-    config->optimization_minify_css = kryon_toml_get_bool(toml, "optimization.minify_css", true);
-    config->optimization_minify_js = kryon_toml_get_bool(toml, "optimization.minify_js", true);
-    config->optimization_tree_shake = kryon_toml_get_bool(toml, "optimization.tree_shake", true);
+    // Parse new [targets.*] sections
+    config_parse_targets(config, toml);
 
-    // Parse dev settings
-    config->dev_hot_reload = kryon_toml_get_bool(toml, "dev.hot_reload", true);
-    config->dev_port = kryon_toml_get_int(toml, "dev.port", 3000);
-    config->dev_auto_open = kryon_toml_get_bool(toml, "dev.auto_open", true);
-
-    // Parse desktop renderer
-    const char* renderer = kryon_toml_get_string(toml, "desktop.renderer", NULL);
-    if (renderer) {
-        free(config->desktop_renderer);
-        config->desktop_renderer = str_copy(renderer);
-    }
-
-    // Parse codegen.output_dir (optional)
-    const char* codegen_output_dir = kryon_toml_get_string(toml, "codegen.output_dir", NULL);
-    if (codegen_output_dir) {
-        config->codegen_output_dir = str_copy(codegen_output_dir);
-    }
+    // Parse new [dev] section
+    config_parse_dev(config, toml);
 
     // Parse plugins
     config_parse_plugins(config, toml);
@@ -1135,40 +1494,43 @@ bool config_validate(KryonConfig* config) {
         has_errors = true;
     }
 
-    // Validate required [build] fields
+    // Require explicit targets - no default
     if (!config->build_targets || config->build_targets_count == 0) {
-        fprintf(stderr, "Error: build.targets is required in kryon.toml\n");
-        fprintf(stderr, "       Specify as array: targets = [\"web\"] or targets = [\"web\", \"desktop\"]\n");
+        fprintf(stderr, "Error: No build targets specified in kryon.toml\n");
+        fprintf(stderr, "Add to your [build] section: targets = [\"web\", \"desktop\", \"terminal\"]\n");
         has_errors = true;
     }
 
-    // Validate each target is supported
-    const char* valid_targets[] = {"web", "desktop", "terminal", "embedded"};
+    // Validate each target is supported using handler registry
     if (config->build_targets && config->build_targets_count > 0) {
         for (int i = 0; i < config->build_targets_count; i++) {
-            bool valid_target = false;
-            for (size_t j = 0; j < sizeof(valid_targets) / sizeof(valid_targets[0]); j++) {
-                if (strcmp(config->build_targets[i], valid_targets[j]) == 0) {
-                    valid_target = true;
-                    break;
-                }
-            }
+            TargetHandler* handler = target_handler_find(config->build_targets[i]);
 
-            if (!valid_target) {
+            if (!handler) {
                 fprintf(stderr, "Error: Invalid build target '%s'\n", config->build_targets[i]);
-                fprintf(stderr, "       Valid targets: web, desktop, terminal, embedded\n");
+                fprintf(stderr, "       Valid targets: ");
+                const char** targets = target_handler_list_names();
+                for (int j = 0; targets[j]; j++) {
+                    fprintf(stderr, "%s%s", j > 0 ? ", " : "", targets[j]);
+                }
+                fprintf(stderr, "\n");
                 has_errors = true;
             }
         }
     }
 
-    // Validate desktop.renderer value
-    if (config->desktop_renderer) {
-        if (strcmp(config->desktop_renderer, "sdl3") != 0 &&
-            strcmp(config->desktop_renderer, "raylib") != 0) {
-            fprintf(stderr, "Error: Invalid desktop.renderer '%s'\n", config->desktop_renderer);
-            fprintf(stderr, "       Valid values: sdl3, raylib\n");
-            has_errors = true;
+    // Validate target-specific options using accessor function
+    for (int i = 0; i < config->targets_count; i++) {
+        TargetConfig* target = &config->targets[i];
+
+        // Validate desktop.renderer value
+        if (target->name && strcmp(target->name, "desktop") == 0) {
+            const char* renderer = target_config_get_option(target, "renderer");
+            if (renderer && strcmp(renderer, "sdl3") != 0 && strcmp(renderer, "raylib") != 0) {
+                fprintf(stderr, "Error: Invalid renderer '%s' for desktop target\n", renderer);
+                fprintf(stderr, "       Valid values: sdl3, raylib\n");
+                has_errors = true;
+            }
         }
     }
 
@@ -1183,19 +1545,30 @@ void config_free(KryonConfig* config) {
 
     free(config->project_name);
     free(config->project_version);
-    free(config->project_author);
     free(config->project_description);
     free(config->build_target);
     free(config->build_output_dir);
     free(config->build_entry);
-    free(config->desktop_renderer);
-    free(config->codegen_output_dir);
+    free(config->build_frontend);
 
     if (config->build_targets) {
         for (int i = 0; i < config->build_targets_count; i++) {
             free(config->build_targets[i]);
         }
         free(config->build_targets);
+    }
+
+    // Free target configurations
+    if (config->targets) {
+        for (int i = 0; i < config->targets_count; i++) {
+            target_config_free(&config->targets[i]);
+        }
+        free(config->targets);
+    }
+
+    // Free dev configuration
+    if (config->dev) {
+        dev_config_free(config->dev);
     }
 
     if (config->plugins) {

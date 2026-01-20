@@ -256,7 +256,7 @@ int cmd_build(int argc, char** argv) {
             BuildPluginInfo* plugins = discover_build_plugins(project_dir, config, &plugin_count);
             if (plugins) {
                 // Write extracted plugin code to build directory
-                const char* build_dir = config->codegen_output_dir ? config->codegen_output_dir : "build";
+                const char* build_dir = config->build_output_dir ? config->build_output_dir : "build";
                 write_plugin_code_files(plugins, plugin_count, build_dir);
 
                 free_build_plugins(plugins, plugin_count);
@@ -293,9 +293,15 @@ int cmd_build(int argc, char** argv) {
     // CLI --target= overrides config file
     const char* primary_target;
     if (cli_target) {
-        // Validate CLI target
-        if (strcmp(cli_target, "web") != 0 && strcmp(cli_target, "desktop") != 0) {
-            fprintf(stderr, "Error: Invalid target '%s'. Valid targets: web, desktop\n", cli_target);
+        // Validate CLI target using handler registry
+        if (!target_handler_find(cli_target)) {
+            fprintf(stderr, "Error: Invalid target '%s'.\n", cli_target);
+            fprintf(stderr, "       Valid targets: ");
+            const char** targets = target_handler_list_names();
+            for (int i = 0; targets[i]; i++) {
+                fprintf(stderr, "%s%s", i > 0 ? ", " : "", targets[i]);
+            }
+            fprintf(stderr, "\n");
             config_free(config);
             return 1;
         }

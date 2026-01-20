@@ -460,10 +460,10 @@ int cmd_install(int argc, char** argv) {
     // Get current working directory (project directory)
     char* project_dir = dir_get_current();
 
-    // For web target, we can't install as a command
-    if (strcmp(target, "web") == 0) {
-        fprintf(stderr, "Error: Web target cannot be installed as a command.\n");
-        fprintf(stderr, "       Web builds are for deployment to web servers.\n");
+    // Check if target supports installation using capability check
+    if (!target_has_capability(target, TARGET_CAN_INSTALL)) {
+        fprintf(stderr, "Error: Target '%s' cannot be installed as a command.\n", target);
+        fprintf(stderr, "       This target type is meant for deployment or runtime only.\n");
         fprintf(stderr, "       Use 'kryon run' to test locally, or deploy the output directory.\n");
         free(project_dir);
         if (install != config->install) {

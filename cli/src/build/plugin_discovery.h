@@ -26,7 +26,7 @@ typedef struct {
     /* Extracted code from plugin.kry (NULL if not extracted) */
     char* lua_code;          /* Extracted @lua block code */
     char* js_code;           /* Extracted @js block code */
-    char* nim_code;          /* Extracted @nim block code */
+    char* c_code;            /* Extracted @c block code */
 } BuildPluginInfo;
 
 /**
