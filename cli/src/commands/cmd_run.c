@@ -360,8 +360,8 @@ static int run_web_target(const char* kir_file) {
     }
 
     const char* output_dir = config->build_output_dir ? config->build_output_dir : "build";
-    int port = config->dev_port > 0 ? config->dev_port : 3000;
-    bool auto_open = config->dev_auto_open;
+    int port = (config->dev && config->dev->port > 0) ? config->dev->port : 3000;
+    bool auto_open = config->dev ? config->dev->auto_open : true;
 
     // Create output directory
     if (!file_is_directory(output_dir)) {
@@ -398,25 +398,34 @@ static int run_kir_file(const char* kir_file, const char* target_platform, const
     (void)hot_reload;
     (void)watch_path;
 
+    // Android is a special case (not in handler registry)
     if (strcmp(target_platform, "android") == 0) {
         return run_android(kir_file, kir_file);
     }
+
+    // Use target handler registry for standard targets
+    TargetHandler* handler = target_handler_find(target_platform);
+    if (handler && handler->run_handler) {
+        // For desktop with hot reload, use special handling
+        if (strcmp(target_platform, "desktop") == 0 && hot_reload) {
+#ifndef KRYON_MINIMAL_BUILD
+            return run_kir_on_desktop_with_hot_reload(kir_file, NULL, renderer, watch_path);
+#else
+            fprintf(stderr, "Error: Desktop target not available in minimal build (no SDL3/raylib support)\n");
+            return 1;
+#endif
+        }
+        // Use handler's run function
+        return target_handler_run(target_platform, kir_file, NULL);
+    }
+
+    // If no handler found, check if it's a legacy target
     if (strcmp(target_platform, "terminal") == 0) {
         return run_terminal(kir_file);
     }
-    if (strcmp(target_platform, "web") == 0) {
-        return run_web_target(kir_file);
-    }
-#ifndef KRYON_MINIMAL_BUILD
-    // Default: desktop
-    if (hot_reload) {
-        return run_kir_on_desktop_with_hot_reload(kir_file, NULL, renderer, watch_path);
-    }
-    return run_kir_on_desktop(kir_file, NULL, renderer);
-#else
-    fprintf(stderr, "Error: Desktop target not available in minimal build (no SDL3/raylib support)\n");
+
+    fprintf(stderr, "Error: Target '%s' has no run handler\n", target_platform);
     return 1;
-#endif
 }
 
 /* ============================================================================
@@ -613,16 +622,23 @@ int cmd_run(int argc, char** argv) {
             target_platform = early_config->build_targets[0];
             fprintf(stderr, "[kryon] Using target from kryon.toml: %s\n", target_platform);
         } else {
-            target_platform = "desktop";
+            fprintf(stderr, "Error: No target specified and no targets in kryon.toml\n");
+            fprintf(stderr, "Use --target=<name> or add targets to kryon.toml\n");
+            return 1;
         }
     }
 
-    // Validate target platform
-    if (strcmp(target_platform, "desktop") != 0 &&
-        strcmp(target_platform, "android") != 0 &&
-        strcmp(target_platform, "terminal") != 0 &&
-        strcmp(target_platform, "web") != 0) {
+    // Validate target platform using handler registry
+    // Note: android is a special case not in the registry
+    if (strcmp(target_platform, "android") != 0 &&
+        !target_handler_find(target_platform)) {
         fprintf(stderr, "Error: Invalid target platform: %s\n", target_platform);
+        fprintf(stderr, "       Valid targets: ");
+        const char** targets = target_handler_list_names();
+        for (int i = 0; targets[i]; i++) {
+            fprintf(stderr, "%s%s", i > 0 ? ", " : "", targets[i]);
+        }
+        fprintf(stderr, ", android\n");
         return 1;
     }
 

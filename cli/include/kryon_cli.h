@@ -146,30 +146,15 @@ typedef struct {
 // ============================================================================
 
 /**
- * Target-specific configuration
- * Supports customization per target using [target.name] sections
+ * Target-specific configuration with flexible key-value storage
+ * Supports any target type with extensible options
+ * Each target only has the options relevant to it (no hardcoded fields)
  */
 typedef struct {
     char* name;              // Target name (e.g., "web", "desktop", "custom")
-
-    // Common options
-    char* output;            // Output format ("html", "binary", "kir", "json", etc.)
-
-    // Web options
-    bool minify;             // Minify CSS/JS (web target)
-    bool tree_shake;         // Remove unused code (web target)
-    bool bundle;             // Single-file bundle (web target)
-
-    // Desktop options
-    char* renderer;          // "sdl3" or "raylib" (desktop target)
-
-    // Terminal options (future)
-    char* color_depth;       // "auto", "16", "256", "truecolor" (terminal target)
-    bool mouse_support;      // Enable mouse support (terminal target)
-
-    // Custom options (extensible)
-    char** custom_options;   // Array of "key=value" pairs for custom targets
-    int custom_options_count;
+    char** keys;             // Array of option keys (e.g., "output", "renderer")
+    char** values;           // Array of option values (parallel to keys)
+    int options_count;       // Number of options
 } TargetConfig;
 
 // ============================================================================
@@ -178,17 +163,9 @@ typedef struct {
 
 /**
  * Development configuration
- * Separates build and run dev settings
+ * Uses [dev] section format
  */
 typedef struct {
-    // [dev.build] section
-    char** build_targets;    // Build targets for dev mode
-    int build_targets_count;
-    bool watch;              // Watch for file changes during dev build
-
-    // [dev.run] section
-    char** run_targets;      // Run targets for dev mode
-    int run_targets_count;
     bool hot_reload;         // Enable hot reload during dev run
     int port;                // Dev server port
     bool auto_open;          // Auto-open browser/server
@@ -198,36 +175,26 @@ typedef struct {
     // Project metadata
     char* project_name;
     char* project_version;
-    char* project_author;
     char* project_description;
 
     // Build settings
-    char* build_target;
-    char** build_targets;
+    char* build_target;         // For backward compat
+    char** build_targets;       // Array of target names (required)
     int build_targets_count;
     char* build_output_dir;
-    char* build_entry;  // Entry point file (e.g., "main.lua")
+    char* build_entry;          // Entry point file (e.g., "main.kry")
+    char* build_frontend;       // Frontend language (e.g., "kry", "tsx")
 
-    // Optimization
-    bool optimization_enabled;
-    bool optimization_minify_css;
-    bool optimization_minify_js;
-    bool optimization_tree_shake;
+    // Target-specific configurations
+    TargetConfig* targets;      // Array of target-specific configs
+    int targets_count;
 
-    // Development
-    bool dev_hot_reload;
-    int dev_port;
-    bool dev_auto_open;
+    // Development configuration
+    DevConfig* dev;             // NULL if [dev] section not present
 
     // Plugins
     PluginDep* plugins;
     int plugins_count;
-
-    // Desktop renderer configuration
-    char* desktop_renderer;  // "sdl3" or "raylib"
-
-    // Codegen output directory (optional, defaults to build_output_dir)
-    char* codegen_output_dir;
 
     // Install configuration
     InstallConfig* install;
@@ -238,6 +205,55 @@ KryonConfig* config_find_and_load(void);
 bool config_load_plugins(KryonConfig* config);
 bool config_validate(KryonConfig* config);
 void config_free(KryonConfig* config);
+
+// Target configuration functions
+TargetConfig* config_get_target(const KryonConfig* config, const char* target_name);
+const char* target_config_get_option(const TargetConfig* target, const char* key);
+void target_config_free(TargetConfig* target);
+void dev_config_free(DevConfig* dev);
+
+// ============================================================================
+// Target Handler Registry
+// ============================================================================
+
+/**
+ * Target capabilities flags
+ */
+typedef enum {
+    TARGET_CAN_INSTALL = (1 << 0),      // Target can be installed as a command
+    TARGET_REQUIRES_CODEGEN = (1 << 1), // Target requires code generation step
+} TargetCapability;
+
+/**
+ * Target handler structure
+ * Defines capabilities and handlers for a specific target type
+ */
+typedef struct TargetHandler {
+    char* name;                    // Target name (e.g., "web", "desktop")
+
+    // Target capabilities (bitfield)
+    int capabilities;
+
+    // Handler functions (function pointers)
+    int (*build_handler)(const char* kir_file, const char* output_dir,
+                        const char* project_name, const KryonConfig* config);
+    int (*run_handler)(const char* kir_file, const KryonConfig* config);
+
+} TargetHandler;
+
+// Target handler registry functions
+void target_handler_register(TargetHandler* handler);
+TargetHandler* target_handler_find(const char* target_name);
+bool target_has_capability(const char* target_name, TargetCapability capability);
+void target_handler_initialize(void);
+
+// Target handler helper functions for commands
+int target_handler_build(const char* target_name, const char* kir_file,
+                         const char* output_dir, const char* project_name,
+                         const KryonConfig* config);
+int target_handler_run(const char* target_name, const char* kir_file,
+                       const KryonConfig* config);
+const char** target_handler_list_names(void);
 
 // ============================================================================
 // Command Handlers

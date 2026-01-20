@@ -88,7 +88,7 @@ int cmd_dev(int argc, char** argv) {
         return 1;
     }
 
-    // Ensure we have a web target
+    // Ensure we have a web target (dev server is web-specific)
     bool has_web_target = false;
     for (int i = 0; i < config->build_targets_count; i++) {
         if (strcmp(config->build_targets[i], "web") == 0) {
@@ -97,7 +97,8 @@ int cmd_dev(int argc, char** argv) {
         }
     }
 
-    if (!has_web_target) {
+    // Also verify web handler is registered
+    if (!has_web_target || !target_handler_find("web")) {
         fprintf(stderr, "Error: dev server requires 'web' target in build.targets\n");
         fprintf(stderr, "Add to your kryon.toml:\n");
         fprintf(stderr, "  [build]\n");
@@ -110,7 +111,7 @@ int cmd_dev(int argc, char** argv) {
     printf("Building project...\n");
 
     // Get dev server port before setting env vars
-    int port = config->dev_port > 0 ? config->dev_port : 3000;
+    int port = (config->dev && config->dev->port > 0) ? config->dev->port : 3000;
     int ws_port = port + 1;
 
     // Store WebSocket port for hot reload callback
@@ -139,7 +140,7 @@ int cmd_dev(int argc, char** argv) {
 
     // Get dev server settings
     const char* output_dir = config->build_output_dir ? config->build_output_dir : "build";
-    bool auto_open = config->dev_auto_open;
+    bool auto_open = config->dev ? config->dev->auto_open : true;
 
     // WebSocket port already calculated above
     g_reload_server = ws_reload_start(ws_port);
@@ -151,7 +152,7 @@ int cmd_dev(int argc, char** argv) {
     FileWatcher* watcher = NULL;
     pthread_t watcher_thread_id;
 
-    if (config->dev_hot_reload) {
+    if (config->dev && config->dev->hot_reload) {
         watcher = file_watcher_create(".");
         if (watcher) {
             // Start file watcher in background thread

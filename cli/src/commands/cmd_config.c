@@ -36,14 +36,10 @@ int cmd_config(int argc, char** argv) {
             printf("  name = \"%s\"\n", config->project_name);
         if (config->project_version)
             printf("  version = \"%s\"\n", config->project_version);
-        if (config->project_author)
-            printf("  author = \"%s\"\n", config->project_author);
         if (config->project_description)
             printf("  description = \"%s\"\n", config->project_description);
 
         printf("\n[build]\n");
-        if (config->build_target)
-            printf("  target = \"%s\"\n", config->build_target);
         if (config->build_targets && config->build_targets_count > 0) {
             printf("  targets = [");
             for (int i = 0; i < config->build_targets_count; i++) {
@@ -54,17 +50,28 @@ int cmd_config(int argc, char** argv) {
         }
         if (config->build_output_dir)
             printf("  output_dir = \"%s\"\n", config->build_output_dir);
+        if (config->build_entry)
+            printf("  entry = \"%s\"\n", config->build_entry);
+        if (config->build_frontend)
+            printf("  frontend = \"%s\"\n", config->build_frontend);
 
-        printf("\n[optimization]\n");
-        printf("  enabled = %s\n", config->optimization_enabled ? "true" : "false");
-        printf("  minify_css = %s\n", config->optimization_minify_css ? "true" : "false");
-        printf("  minify_js = %s\n", config->optimization_minify_js ? "true" : "false");
-        printf("  tree_shake = %s\n", config->optimization_tree_shake ? "true" : "false");
+        // Show target-specific configurations
+        if (config->targets_count > 0) {
+            for (int i = 0; i < config->targets_count; i++) {
+                TargetConfig* target = &config->targets[i];
+                printf("\n[targets.%s]\n", target->name);
+                for (int j = 0; j < target->options_count; j++) {
+                    printf("  %s = \"%s\"\n", target->keys[j], target->values[j]);
+                }
+            }
+        }
 
         printf("\n[dev]\n");
-        printf("  hot_reload = %s\n", config->dev_hot_reload ? "true" : "false");
-        printf("  port = %d\n", config->dev_port);
-        printf("  auto_open = %s\n", config->dev_auto_open ? "true" : "false");
+        if (config->dev) {
+            printf("  hot_reload = %s\n", config->dev->hot_reload ? "true" : "false");
+            printf("  port = %d\n", config->dev->port);
+            printf("  auto_open = %s\n", config->dev->auto_open ? "true" : "false");
+        }
 
         if (config->plugins_count > 0) {
             printf("\n[plugins]\n");

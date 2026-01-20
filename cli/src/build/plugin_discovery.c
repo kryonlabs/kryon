@@ -14,6 +14,8 @@
 
 #include "plugin_discovery.h"
 #include "../../include/kryon_cli.h"
+#include "../../../ir/parsers/kry/kry_parser.h"
+#include "../../../ir/parsers/kry/kry_ast.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -284,108 +286,132 @@ static char* resolve_path(const char* project_dir, const char* config_path) {
 }
 
 /**
- * Extract code block from plugin.kry file
- * Finds @language { ... } blocks and extracts the source code
- * Returns allocated string that must be freed, or NULL if not found
+ * Structure to hold extracted code blocks from plugin.kry
  */
-static char* extract_code_block(const char* filepath, const char* language) {
-    FILE* f = fopen(filepath, "r");
-    if (!f) return NULL;
+typedef struct {
+    char* lua_code;
+    char* js_code;
+    char* c_code;
+} ExtractedPluginCode;
 
-    // Read entire file
+/**
+ * Extract code blocks from plugin.kry using the KRY parser
+ * Returns structure with extracted @lua, @js, and @c code
+ */
+static ExtractedPluginCode extract_plugin_code_with_parser(const char* plugin_kry_path) {
+    ExtractedPluginCode result = {NULL, NULL, NULL};
+
+    // Read plugin.kry file
+    FILE* f = fopen(plugin_kry_path, "r");
+    if (!f) {
+        fprintf(stderr, "[PLUGIN] Failed to open: %s\n", plugin_kry_path);
+        return result;
+    }
+
     fseek(f, 0, SEEK_END);
-    long file_size = ftell(f);
+    long size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    if (file_size <= 0) {
+    if (size <= 0) {
         fclose(f);
-        return NULL;
+        return result;
     }
 
-    char* content = malloc(file_size + 1);
+    char* content = malloc(size + 1);
     if (!content) {
         fclose(f);
-        return NULL;
+        return result;
     }
 
-    size_t read_size = fread(content, 1, file_size, f);
-    content[read_size] = '\0';
+    size_t bytes_read = fread(content, 1, size, f);
+    content[bytes_read] = '\0';
     fclose(f);
 
-    // Search for @language { ... }
-    char search_pattern[64];
-    snprintf(search_pattern, sizeof(search_pattern), "@%s {", language);
-
-    char* block_start = strstr(content, search_pattern);
-    if (!block_start) {
+    // Parse with KRY parser
+    KryParser* parser = kry_parser_create(content, bytes_read);
+    if (!parser) {
         free(content);
-        return NULL;
+        return result;
     }
 
-    // Find opening brace
-    char* code_start = strchr(block_start, '{');
-    if (!code_start) {
+    KryNode* ast = kry_parse(parser);
+    if (!ast) {
+        kry_parser_free(parser);
         free(content);
-        return NULL;
-    }
-    code_start++; // Skip '{'
-
-    // Skip whitespace after opening brace
-    while (*code_start == ' ' || *code_start == '\t' || *code_start == '\n' || *code_start == '\r') {
-        code_start++;
+        return result;
     }
 
-    // Find matching closing brace
-    int brace_count = 1;
-    bool in_string = false;
-    char string_char = '\0';
-    char* code_end = code_start;
+    // Traverse AST to find all code blocks
+    KryNode* node = (ast->name && strcmp(ast->name, "Root") == 0)
+                    ? ast->first_child
+                    : ast;
 
-    while (*code_end && brace_count > 0) {
-        if (!in_string) {
-            if (*code_end == '"' || *code_end == '\'' || *code_end == '`') {
-                in_string = true;
-                string_char = *code_end;
-            } else if (*code_end == '{') {
-                brace_count++;
-            } else if (*code_end == '}') {
-                brace_count--;
+    // Concatenate all code blocks of each language
+    size_t lua_capacity = 0, js_capacity = 0, c_capacity = 0;
+    size_t lua_size = 0, js_size = 0, c_size = 0;
+    char* lua_buffer = NULL;
+    char* js_buffer = NULL;
+    char* c_buffer = NULL;
+
+    while (node) {
+        if (node->type == KRY_NODE_CODE_BLOCK && node->code_source) {
+            size_t source_len = strlen(node->code_source);
+
+            if (strcmp(node->code_language, "lua") == 0) {
+                // Append to Lua buffer
+                size_t needed = lua_size + source_len + 3;  // +3 for "\n\n\0"
+                if (needed > lua_capacity) {
+                    lua_capacity = needed + 1024;  // Extra capacity
+                    lua_buffer = realloc(lua_buffer, lua_capacity);
+                }
+                if (lua_size > 0) {
+                    strcpy(lua_buffer + lua_size, "\n\n");
+                    lua_size += 2;
+                }
+                strcpy(lua_buffer + lua_size, node->code_source);
+                lua_size += source_len;
             }
-        } else {
-            if (*code_end == string_char) {
-                in_string = false;
+            else if (strcmp(node->code_language, "js") == 0) {
+                // Append to JS buffer
+                size_t needed = js_size + source_len + 3;
+                if (needed > js_capacity) {
+                    js_capacity = needed + 1024;
+                    js_buffer = realloc(js_buffer, js_capacity);
+                }
+                if (js_size > 0) {
+                    strcpy(js_buffer + js_size, "\n\n");
+                    js_size += 2;
+                }
+                strcpy(js_buffer + js_size, node->code_source);
+                js_size += source_len;
+            }
+            else if (strcmp(node->code_language, "c") == 0) {
+                // Append to C buffer
+                size_t needed = c_size + source_len + 3;
+                if (needed > c_capacity) {
+                    c_capacity = needed + 1024;
+                    c_buffer = realloc(c_buffer, c_capacity);
+                }
+                if (c_size > 0) {
+                    strcpy(c_buffer + c_size, "\n\n");
+                    c_size += 2;
+                }
+                strcpy(c_buffer + c_size, node->code_source);
+                c_size += source_len;
             }
         }
-        code_end++;
+        node = node->next_sibling;
     }
 
-    if (brace_count > 0) {
-        free(content);
-        return NULL; // Unclosed block
-    }
+    result.lua_code = lua_buffer;
+    result.js_code = js_buffer;
+    result.c_code = c_buffer;
 
-    // code_end now points to character after closing brace
-    // Move back to skip whitespace and closing brace
-    code_end--; // Now points to '}'
-    code_end--; // Skip the closing brace
-    while (code_end > code_start && (*code_end == ' ' || *code_end == '\t' ||
-           *code_end == '\n' || *code_end == '\r')) {
-        code_end--;
-    }
-
-    // Extract code (without braces)
-    size_t code_length = code_end - code_start + 1;
-    char* code = malloc(code_length + 1);
-    if (!code) {
-        free(content);
-        return NULL;
-    }
-
-    memcpy(code, code_start, code_length);
-    code[code_length] = '\0';
-
+    // Cleanup
+    kry_parser_free(parser);  // This frees the AST too
     free(content);
-    return code;
+
+    return result;
 }
 
 /**
@@ -432,17 +458,21 @@ static int verify_plugin_files(const char* plugin_dir, const char* plugin_name,
         return -1;
     }
 
-    /* If plugin has plugin.kry or Lua binding, also check for static library */
-    if (has_kry || has_lua) {
-        snprintf(out_lib_path, lib_path_size, "%s/build/libkryon_%s.a", plugin_dir, plugin_name);
+    /* Check for static library if needed */
+    snprintf(out_lib_path, lib_path_size, "%s/build/libkryon_%s.a", plugin_dir, plugin_name);
+    bool has_static_lib = file_exists(out_lib_path);
 
-        if (!file_exists(out_lib_path)) {
-            fprintf(stderr, "Error: Plugin '%s' static library not found: %s\n",
-                    plugin_name, out_lib_path);
-            fprintf(stderr, "       Run 'make' in the plugin directory to build it.\n");
-            return -1;
-        }
-    } else {
+    /* Pure KRY plugins don't need a static library */
+    /* Only require static library if plugin has Lua bindings (needs FFI) */
+    if (has_lua && !has_static_lib) {
+        fprintf(stderr, "Error: Plugin '%s' with Lua bindings requires static library: %s\n",
+                plugin_name, out_lib_path);
+        fprintf(stderr, "       Run 'make' in the plugin directory to build it.\n");
+        return -1;
+    }
+
+    /* If neither kry nor lua, must have shared library */
+    if (!has_kry && !has_lua) {
         /* Pure C plugin - copy .so path to lib_path output */
         size_t copy_len = strlen(so_path);
         if (copy_len >= lib_path_size) {
@@ -529,8 +559,13 @@ BuildPluginInfo* discover_build_plugins(const char* project_dir,
             exit(1);
         }
 
-        /* Auto-compile plugin if needed */
-        if (plugin_needs_rebuild(plugin_dir, dep->name)) {
+        /* Check if plugin has a Makefile (indicates it needs compilation) */
+        char makefile_path[DISCOVERY_PATH_MAX];
+        snprintf(makefile_path, sizeof(makefile_path), "%s/Makefile", plugin_dir);
+        bool has_makefile = file_exists(makefile_path);
+
+        /* Auto-compile plugin if needed (only for plugins with Makefiles) */
+        if (has_makefile && plugin_needs_rebuild(plugin_dir, dep->name)) {
             printf("  - %s: needs rebuild\n", dep->name);
             if (plugin_compile(plugin_dir, dep->name) != 0) {
                 free(plugin_dir);
@@ -571,13 +606,14 @@ BuildPluginInfo* discover_build_plugins(const char* project_dir,
         /* Extract code blocks from plugin.kry if present */
         info->lua_code = NULL;
         info->js_code = NULL;
-        info->nim_code = NULL;
+        info->c_code = NULL;
 
         if (has_kry_file) {
             printf("    Extracting code blocks from plugin.kry...\n");
-            info->lua_code = extract_code_block(kry_path, "lua");
-            info->js_code = extract_code_block(kry_path, "js");
-            info->nim_code = extract_code_block(kry_path, "nim");
+            ExtractedPluginCode extracted = extract_plugin_code_with_parser(kry_path);
+            info->lua_code = extracted.lua_code;
+            info->js_code = extracted.js_code;
+            info->c_code = extracted.c_code;
 
             if (info->lua_code) {
                 printf("      ✓ @lua block extracted (%zu bytes)\n", strlen(info->lua_code));
@@ -585,11 +621,11 @@ BuildPluginInfo* discover_build_plugins(const char* project_dir,
             if (info->js_code) {
                 printf("      ✓ @js block extracted (%zu bytes)\n", strlen(info->js_code));
             }
-            if (info->nim_code) {
-                printf("      ✓ @nim block extracted (%zu bytes)\n", strlen(info->nim_code));
+            if (info->c_code) {
+                printf("      ✓ @c block extracted (%zu bytes)\n", strlen(info->c_code));
             }
 
-            if (!info->lua_code && !info->js_code && !info->nim_code) {
+            if (!info->lua_code && !info->js_code && !info->c_code) {
                 printf("      ⚠ Warning: No code blocks found in plugin.kry\n");
             }
         }
@@ -682,6 +718,22 @@ int write_plugin_code_files(BuildPluginInfo* plugins, int count, const char* bui
                 fprintf(stderr, "Warning: Failed to write: %s\n", js_path);
             }
         }
+
+        // Write C code if available
+        if (plugin->c_code) {
+            char c_path[DISCOVERY_PATH_MAX];
+            snprintf(c_path, sizeof(c_path), "%s/%s.c", plugins_dir, plugin->name);
+
+            FILE* f = fopen(c_path, "w");
+            if (f) {
+                fwrite(plugin->c_code, 1, strlen(plugin->c_code), f);
+                fclose(f);
+                printf("[Plugins] Wrote: %s\n", c_path);
+                written_count++;
+            } else {
+                fprintf(stderr, "Warning: Failed to write: %s\n", c_path);
+            }
+        }
     }
 
     if (written_count > 0) {
@@ -705,7 +757,7 @@ void free_build_plugins(BuildPluginInfo* plugins, int count) {
         free(plugins[i].static_lib);
         free(plugins[i].lua_code);
         free(plugins[i].js_code);
-        free(plugins[i].nim_code);
+        free(plugins[i].c_code);
     }
 
     free(plugins);

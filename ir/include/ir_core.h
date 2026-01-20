@@ -469,6 +469,21 @@ typedef struct IRStaticBlockData {
     uint32_t for_loop_count;
 } IRStaticBlockData;
 
+// Import statement structure (for KRY import statements: import Math from "math")
+typedef struct IRImport {
+    char* variable;       // Imported variable name (e.g., "Math", "Storage")
+    char* module;         // Module path (e.g., "math", "storage", "components.calendar")
+} IRImport;
+
+// Module export descriptor (for module-level return statements)
+typedef struct IRModuleExport {
+    char* name;              // Export name (e.g., "COLORS", "getRandomColor")
+    char* type;              // "function", "constant", "array", "object"
+    char* value_json;        // Value as JSON string (for constants/objects)
+    char* function_name;     // If type is "function", reference to IRLogicFunction
+    uint32_t line;           // Source line number
+} IRModuleExport;
+
 // Container for all source preservation structures
 typedef struct IRSourceStructures {
     // Static blocks (compile-time execution)
@@ -491,17 +506,16 @@ typedef struct IRSourceStructures {
     uint32_t import_count;
     uint32_t import_capacity;
 
+    // Module exports (from module-level return statements)
+    IRModuleExport** exports;       // Array of module exports
+    uint32_t export_count;
+    uint32_t export_capacity;
+
     // Next ID counters for generation
     uint32_t next_static_block_id;
     uint32_t next_var_decl_id;
     uint32_t next_for_loop_id;
 } IRSourceStructures;
-
-// Import statement structure (for KRY import statements: import Math from "math")
-typedef struct IRImport {
-    char* variable;       // Imported variable name (e.g., "Math", "Storage")
-    char* module;         // Module path (e.g., "math", "storage", "components.calendar")
-} IRImport;
 
 // Forward declaration for stylesheet (defined in ir_stylesheet.h)
 typedef struct IRStylesheet IRStylesheet;

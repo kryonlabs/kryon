@@ -2520,6 +2520,28 @@ cJSON* ir_json_serialize_source_structures(IRSourceStructures* ss) {
         cJSON_AddItemToObject(obj, "requires", imports_array);
     }
 
+    // Serialize module exports
+    if (ss->export_count > 0) {
+        cJSON* exports_array = cJSON_CreateArray();
+        for (uint32_t i = 0; i < ss->export_count; i++) {
+            IRModuleExport* export = ss->exports[i];
+            if (export) {
+                cJSON* export_json = cJSON_CreateObject();
+                cJSON_AddStringToObject(export_json, "name", export->name);
+                cJSON_AddStringToObject(export_json, "type", export->type);
+                if (export->value_json) {
+                    cJSON_AddStringToObject(export_json, "value", export->value_json);
+                }
+                if (export->function_name) {
+                    cJSON_AddStringToObject(export_json, "function", export->function_name);
+                }
+                cJSON_AddNumberToObject(export_json, "line", export->line);
+                cJSON_AddItemToArray(exports_array, export_json);
+            }
+        }
+        cJSON_AddItemToObject(obj, "exports", exports_array);
+    }
+
     return obj;
 }
 

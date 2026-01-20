@@ -722,9 +722,13 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
     } else {
         // Read kryon.toml to determine renderer
         KryonConfig* kryon_config = config_find_and_load();
-        if (kryon_config && kryon_config->desktop_renderer) {
-            renderer = kryon_config->desktop_renderer;
-            printf("Renderer: %s (from kryon.toml)\n", renderer);
+        if (kryon_config) {
+            TargetConfig* desktop = config_get_target(kryon_config, "desktop");
+            const char* renderer_config = target_config_get_option(desktop, "renderer");
+            if (renderer_config) {
+                renderer = renderer_config;
+                printf("Renderer: %s (from kryon.toml)\n", renderer);
+            }
             config_free(kryon_config);
         }
     }
@@ -828,9 +832,13 @@ int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop
         printf("Renderer: %s (from --target flag)\n", renderer);
     } else {
         KryonConfig* kryon_config = config_find_and_load();
-        if (kryon_config && kryon_config->desktop_renderer) {
-            renderer = kryon_config->desktop_renderer;
-            printf("Renderer: %s (from kryon.toml)\n", renderer);
+        if (kryon_config) {
+            TargetConfig* desktop = config_get_target(kryon_config, "desktop");
+            const char* renderer_config = target_config_get_option(desktop, "renderer");
+            if (renderer_config) {
+                renderer = renderer_config;
+                printf("Renderer: %s (from kryon.toml)\n", renderer);
+            }
             config_free(kryon_config);
         }
     }
@@ -1000,28 +1008,20 @@ int build_source_file(const char* source_file, BuildOptions* opts, KryonConfig* 
         dir_create_recursive(output_dir);
     }
 
-    // Invoke codegen based on target
-    const char* target = opts && opts->target ? opts->target :
-                          (config && config->build_target ? config->build_target : "web");
+    // Invoke codegen based on target (must be explicitly specified)
+    const char* target = opts && opts->target ? opts->target : config->build_target;
+
+    if (!target) {
+        fprintf(stderr, "Error: No build target specified\n");
+        fprintf(stderr, "Use --target=<name> or specify targets in kryon.toml\n");
+        return 1;
+    }
 
     const char* project_name = opts && opts->project_name ? opts->project_name :
                                 (config ? config->project_name : NULL);
 
-    if (strcmp(target, "web") == 0) {
-        result = generate_html_from_kir(kir_file, output_dir, project_name, ".");
-    }
-    else if (strcmp(target, "desktop") == 0) {
-        fprintf(stderr, "Error: Desktop target not yet implemented\n");
-        return 1;
-    }
-    else if (strcmp(target, "terminal") == 0) {
-        fprintf(stderr, "Error: Terminal target not yet implemented\n");
-        return 1;
-    }
-    else {
-        fprintf(stderr, "Error: Unknown build target: %s\n", target);
-        return 1;
-    }
+    // Use target handler registry for build dispatch
+    result = target_handler_build(target, kir_file, output_dir, project_name, config);
 
     if (result != 0) {
         fprintf(stderr, "Error: Code generation failed\n");
@@ -1040,9 +1040,7 @@ char* get_codegen_output_dir(const char* target, KryonConfig* config) {
     char* base_dir;
 
     // Determine base directory from config
-    if (config && config->codegen_output_dir) {
-        base_dir = str_copy(config->codegen_output_dir);
-    } else if (config && config->build_output_dir) {
+    if (config && config->build_output_dir) {
         base_dir = str_copy(config->build_output_dir);
     } else {
         base_dir = str_copy("build");

@@ -58,6 +58,16 @@ typedef struct {
     KryExprTarget target_platform; // Target platform for expression transpilation (Lua or JavaScript)
     char* source_file_path;        // Path of source file (for resolving imports)
     char* base_directory;          // Base directory for resolving relative imports
+
+    // Module import registry (for expression resolution)
+    struct {
+        char* import_name;        // "Math", "Colors"
+        char* module_path;        // "math", "colors"
+        IRModuleExport** exports; // Cached exports from this module
+        uint32_t export_count;
+    }* module_imports;
+    uint32_t module_import_count;
+    uint32_t module_import_capacity;
 } ConversionContext;
 
 // ============================================================================
@@ -1483,6 +1493,203 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
     }
 }
 
+// Convert return statement to IRStatement
+// Returns NULL if node is not a return statement
+static IRStatement* convert_return_stmt(KryNode* node) {
+    if (!node || node->type != KRY_NODE_RETURN_STMT) {
+        return NULL;
+    }
+
+    // Create return statement with optional expression
+    IRExpression* return_value = NULL;
+
+    if (node->return_expr && node->return_expr->value) {
+        // Convert the return expression to IRExpression
+        // For now, we'll create a simple identifier or literal expression
+        KryValue* value = node->return_expr->value;
+
+        if (value->type == KRY_VALUE_IDENTIFIER) {
+            return_value = ir_expr_var(value->identifier);
+        } else if (value->type == KRY_VALUE_STRING) {
+            return_value = ir_expr_string(value->string_value);
+        } else if (value->type == KRY_VALUE_NUMBER) {
+            return_value = ir_expr_float(value->number_value);
+        } else if (value->type == KRY_VALUE_EXPRESSION) {
+            // For expression blocks, create an identifier expression
+            return_value = ir_expr_var(value->expression);
+        }
+    }
+
+    return ir_stmt_return(return_value);
+}
+
+// Convert module-level return statement to IRModuleExport entries
+// Returns true on success, false on failure
+static bool convert_module_return(ConversionContext* ctx, KryNode* node) {
+    if (!node || node->type != KRY_NODE_MODULE_RETURN) {
+        return false;
+    }
+
+    fprintf(stderr, "[MODULE_RETURN] Processing %d exports\n", node->export_count);
+
+    if (!ctx->source_structures) {
+        fprintf(stderr, "[MODULE_RETURN] No source structures available\n");
+        return false;
+    }
+
+    // For each export name, find the declaration and create IRModuleExport
+    for (int i = 0; i < node->export_count; i++) {
+        char* export_name = node->export_names[i];
+        if (!export_name) continue;
+
+        // Find the declaration in current scope
+        // Search through children of the root/component for matching name
+        KryNode* decl = NULL;
+        KryNode* child = ctx->ast_root->first_child;
+
+        while (child) {
+            if ((child->type == KRY_NODE_VAR_DECL && strcmp(child->name, export_name) == 0) ||
+                (child->type == KRY_NODE_FUNCTION_DECL && strcmp(child->func_name, export_name) == 0)) {
+                decl = child;
+                break;
+            }
+            child = child->next_sibling;
+        }
+
+        if (!decl) {
+            fprintf(stderr, "[MODULE_RETURN] Warning: Export '%s' not found\n", export_name);
+            continue;
+        }
+
+        // Create IRModuleExport
+        IRModuleExport* export = (IRModuleExport*)calloc(1, sizeof(IRModuleExport));
+        if (!export) continue;
+
+        export->name = strdup(export_name);
+        export->line = node->line;
+
+        if (decl->type == KRY_NODE_VAR_DECL) {
+            // Export constant
+            export->type = "constant";
+            // Convert value to JSON string
+            if (decl->value) {
+                export->value_json = kry_value_to_json(decl->value);
+            }
+        } else if (decl->type == KRY_NODE_FUNCTION_DECL) {
+            // Export function
+            export->type = "function";
+            export->function_name = strdup(decl->func_name);
+        }
+
+        // Add to source structures
+        // Expand exports array if needed
+        if (ctx->source_structures->export_count >= ctx->source_structures->export_capacity) {
+            ctx->source_structures->export_capacity = (ctx->source_structures->export_capacity == 0) ? 16 : ctx->source_structures->export_capacity * 2;
+            ctx->source_structures->exports = (IRModuleExport**)realloc(
+                ctx->source_structures->exports,
+                sizeof(IRModuleExport*) * ctx->source_structures->export_capacity
+            );
+        }
+
+        ctx->source_structures->exports[ctx->source_structures->export_count++] = export;
+        fprintf(stderr, "[MODULE_RETURN] Exported: %s (type=%s)\n", export_name, export->type);
+    }
+
+    return true;
+}
+
+// Convert function declaration to IRLogicFunction
+// Returns NULL if node is not a function declaration
+static IRLogicFunction* convert_function_decl(ConversionContext* ctx, KryNode* node, const char* scope) {
+    if (!node || node->type != KRY_NODE_FUNCTION_DECL) {
+        return NULL;
+    }
+
+    fprintf(stderr, "[FUNC_DECL] Converting function: %s\n", node->func_name ? node->func_name : "(null)");
+
+    // Create function name with scope prefix
+    char func_name[512];
+    if (scope && scope[0] != '\0') {
+        snprintf(func_name, sizeof(func_name), "%s:%s", scope, node->func_name);
+    } else {
+        snprintf(func_name, sizeof(func_name), "%s", node->func_name);
+    }
+
+    // Create IRLogicFunction
+    IRLogicFunction* func = ir_logic_function_create(func_name);
+    if (!func) {
+        fprintf(stderr, "[FUNC_DECL] Failed to create IRLogicFunction\n");
+        return NULL;
+    }
+
+    // Set return type
+    if (node->func_return_type) {
+        func->return_type = strdup(node->func_return_type);
+        fprintf(stderr, "[FUNC_DECL] Return type: %s\n", node->func_return_type);
+    }
+
+    // Add parameters
+    for (int i = 0; i < node->param_count; i++) {
+        KryNode* param = node->func_params[i];
+        if (param && param->name) {
+            // Use the type from var_type field if available, otherwise default to "any"
+            const char* param_type = param->var_type ? param->var_type : "any";
+            ir_logic_function_add_param(func, param->name, param_type);
+            fprintf(stderr, "[FUNC_DECL] Added param: %s:%s\n", param->name, param_type);
+        }
+    }
+
+    // Convert function body statements
+    if (node->func_body) {
+        KryNode* stmt = node->func_body->first_child;
+        while (stmt) {
+            IRStatement* ir_stmt = NULL;
+
+            // Handle different statement types
+            if (stmt->type == KRY_NODE_RETURN_STMT) {
+                ir_stmt = convert_return_stmt(stmt);
+                if (ir_stmt) {
+                    ir_logic_function_add_stmt(func, ir_stmt);
+                    fprintf(stderr, "[FUNC_DECL] Added return statement\n");
+                }
+            } else if (stmt->type == KRY_NODE_VAR_DECL) {
+                // Variable declaration: const/let/var name = value
+                // Convert to assignment statement
+                if (stmt->name && stmt->value) {
+                    IRExpression* value_expr = NULL;
+
+                    // Convert KryValue to IRExpression
+                    if (stmt->value->type == KRY_VALUE_IDENTIFIER) {
+                        value_expr = ir_expr_var(stmt->value->identifier);
+                    } else if (stmt->value->type == KRY_VALUE_STRING) {
+                        value_expr = ir_expr_string(stmt->value->string_value);
+                    } else if (stmt->value->type == KRY_VALUE_NUMBER) {
+                        value_expr = ir_expr_float(stmt->value->number_value);
+                    } else if (stmt->value->type == KRY_VALUE_EXPRESSION) {
+                        value_expr = ir_expr_var(stmt->value->expression);
+                    }
+
+                    if (value_expr) {
+                        IRStatement* assign_stmt = ir_stmt_assign(stmt->name, value_expr);
+                        if (assign_stmt) {
+                            ir_logic_function_add_stmt(func, assign_stmt);
+                            fprintf(stderr, "[FUNC_DECL] Added var declaration: %s\n", stmt->name);
+                        }
+                    }
+                }
+            } else if (stmt->type == KRY_NODE_COMPONENT) {
+                // Nested components in function body - ignore for now
+                // These could be embedded UI components in the future
+            }
+
+            stmt = stmt->next_sibling;
+        }
+    }
+
+    fprintf(stderr, "[FUNC_DECL] Function converted: %s\n", func_name);
+    return func;
+}
+
 // Convert "for each" loop to ForEach IR component
 // This creates an IR_COMPONENT_FOR_EACH with foreach_def metadata
 // Unlike "for" loops, "for each" does NOT expand at compile time
@@ -2224,6 +2431,24 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                         ir_logic_block_add_function(ctx->logic_block, func);
                     }
                 }
+            } else if (child->type == KRY_NODE_FUNCTION_DECL) {
+                // Function declaration - convert to IRLogicFunction and add to logic block
+                if (ctx->logic_block) {
+                    IRLogicFunction* func = convert_function_decl(ctx, child, component->tag);
+                    if (func) {
+                        printf("[KRY_TO_IR] Added function declaration to logic: func='%s'\n",
+                               child->func_name ? child->func_name : "(null)");
+                        ir_logic_block_add_function(ctx->logic_block, func);
+                    }
+                }
+            } else if (child->type == KRY_NODE_RETURN_STMT) {
+                // Return statement - should only appear inside function bodies
+                // This is handled in convert_function_decl
+                fprintf(stderr, "[KRY_TO_IR] Warning: Return statement outside function body\n");
+            } else if (child->type == KRY_NODE_MODULE_RETURN) {
+                // Module-level return statement: return { exports }
+                // Convert to IRModuleExport entries
+                convert_module_return(ctx, child);
             }
 
             child = child->next_sibling;
@@ -2647,6 +2872,83 @@ static char* resolve_module_path(const char* module_path, const char* base_direc
     return file_path;
 }
 
+// ============================================================================
+// Circular Dependency Detection
+// ============================================================================
+
+// Track imports during module loading
+typedef struct {
+    char* module_path;      // Module being loaded
+    int import_depth;       // Depth to detect deep imports
+} ImportStack;
+
+static ImportStack* g_import_stack = NULL;
+static int g_import_depth = 0;
+static int g_import_stack_capacity = 0;
+
+static bool is_module_being_loaded(const char* module_path) {
+    for (int i = 0; i < g_import_depth; i++) {
+        if (strcmp(g_import_stack[i].module_path, module_path) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool push_import_stack(const char* module_path) {
+    if (is_module_being_loaded(module_path)) {
+        // Circular dependency detected!
+        fprintf(stderr, "CIRCULAR DEPENDENCY: Module '%s' is already being imported\n", module_path);
+        fprintf(stderr, "Import chain:\n");
+        for (int i = 0; i < g_import_depth; i++) {
+            fprintf(stderr, "  %d. %s\n", i+1, g_import_stack[i].module_path);
+        }
+        fprintf(stderr, "  %d. %s (CIRCULAR)\n", g_import_depth+1, module_path);
+        return false;
+    }
+
+    // Add to stack
+    if (g_import_depth >= g_import_stack_capacity) {
+        g_import_stack_capacity = (g_import_stack_capacity == 0) ? 16 : g_import_stack_capacity * 2;
+        g_import_stack = realloc(g_import_stack, sizeof(ImportStack) * g_import_stack_capacity);
+    }
+
+    g_import_stack[g_import_depth].module_path = strdup(module_path);
+    g_import_stack[g_import_depth].import_depth = g_import_depth;
+    g_import_depth++;
+    return true;
+}
+
+static void pop_import_stack(void) {
+    if (g_import_depth > 0) {
+        g_import_depth--;
+        if (g_import_stack[g_import_depth].module_path) {
+            free(g_import_stack[g_import_depth].module_path);
+            g_import_stack[g_import_depth].module_path = NULL;
+        }
+    }
+}
+
+// Register a module import with its exports for expression resolution
+static void register_module_import(ConversionContext* ctx,
+                                     const char* import_name,
+                                     const char* module_path,
+                                     IRModuleExport** exports,
+                                     uint32_t export_count) {
+    // Expand module_imports array if needed
+    if (ctx->module_import_count >= ctx->module_import_capacity) {
+        ctx->module_import_capacity = (ctx->module_import_capacity == 0) ? 8 : ctx->module_import_capacity * 2;
+        ctx->module_imports = realloc(ctx->module_imports,
+                                      sizeof(*ctx->module_imports) * ctx->module_import_capacity);
+    }
+
+    ctx->module_imports[ctx->module_import_count].import_name = strdup(import_name);
+    ctx->module_imports[ctx->module_import_count].module_path = strdup(module_path);
+    ctx->module_imports[ctx->module_import_count].exports = exports;
+    ctx->module_imports[ctx->module_import_count].export_count = export_count;
+    ctx->module_import_count++;
+}
+
 /**
  * Load and parse an imported module, registering its component definition
  */
@@ -2656,10 +2958,16 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     fprintf(stderr, "[MODULE] Loading module '%s' for import '%s'\n", module_path, import_name);
     fflush(stderr);
 
+    // Check for circular dependencies
+    if (!push_import_stack(module_path)) {
+        return false;
+    }
+
     // Resolve module path to file path
     char* file_path = resolve_module_path(module_path, ctx->base_directory);
     if (!file_path) {
         fprintf(stderr, "[MODULE] Failed to resolve module path: %s\n", module_path);
+        pop_import_stack();
         return false;
     }
 
@@ -2671,6 +2979,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     if (!f) {
         fprintf(stderr, "[MODULE] Failed to open file: %s\n", file_path);
         free(file_path);
+        pop_import_stack();
         return false;
     }
 
@@ -2682,6 +2991,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
         fprintf(stderr, "[MODULE] Empty or invalid file: %s\n", file_path);
         free(file_path);
         fclose(f);
+        pop_import_stack();
         return false;
     }
 
@@ -2690,6 +3000,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
         fprintf(stderr, "[MODULE] Out of memory reading file: %s\n", file_path);
         free(file_path);
         fclose(f);
+        pop_import_stack();
         return false;
     }
 
@@ -2706,6 +3017,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
         fprintf(stderr, "[MODULE] Failed to create parser for: %s\n", file_path);
         free(source);
         free(file_path);
+        pop_import_stack();
         return false;
     }
 
@@ -2718,6 +3030,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
         kry_parser_free(parser);
         free(source);
         free(file_path);
+        pop_import_stack();
         return false;
     }
 
@@ -2748,6 +3061,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
             fprintf(stderr, "[MODULE] No explicit component definition found in %s\n", file_path);
             fprintf(stderr, "[MODULE] (Use 'component ComponentName { ... }' to define a custom component)\n");
             free(file_path);
+            pop_import_stack();
             return false;
         }
     } else if (import_ast->type == KRY_NODE_COMPONENT && import_ast->is_component_definition) {
@@ -2758,6 +3072,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
         fprintf(stderr, "[MODULE] No component definition found in %s\n", file_path);
         // Don't free import_ast here as it may be needed elsewhere
         free(file_path);
+        pop_import_stack();
         return false;
     }
 
@@ -2770,6 +3085,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     if (!component_name) {
         fprintf(stderr, "[MODULE] ERROR: Component name is NULL!\n");
         free(file_path);
+        pop_import_stack();
         return false;
     }
 
@@ -2783,6 +3099,7 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
         fprintf(stderr, "[MODULE] Failed to convert component: %s\n", component_name);
         free(component_name);
         free(file_path);
+        pop_import_stack();
         return false;
     }
 
@@ -2822,6 +3139,56 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
 
     free(component_name);  // Free the saved name
     fflush(stderr);
+
+    // Check for module exports (module-level return statement)
+    // Look for KRY_NODE_MODULE_RETURN nodes in the imported AST
+    IRModuleExport** module_exports = NULL;
+    uint32_t module_export_count = 0;
+
+    KryNode* child = import_ast->first_child;
+    while (child) {
+        if (child->type == KRY_NODE_MODULE_RETURN) {
+            // Convert module return to IRModuleExport entries
+            fprintf(stderr, "[MODULE] Found module-level return statement in %s\n", file_path);
+
+            // Create a temporary conversion context for this module
+            ConversionContext module_ctx = *ctx;  // Copy parent context
+            module_ctx.ast_root = import_ast;
+            module_ctx.source_structures = ir_source_structures_create();
+            if (!module_ctx.source_structures) {
+                fprintf(stderr, "[MODULE] Failed to create source structures for module\n");
+                free(file_path);
+                pop_import_stack();
+                return false;
+            }
+
+            // Convert the module return to exports
+            convert_module_return(&module_ctx, child);
+
+            // Get the exports
+            module_exports = module_ctx.source_structures->exports;
+            module_export_count = module_ctx.source_structures->export_count;
+
+            // Transfer ownership of exports array
+            module_ctx.source_structures->exports = NULL;
+            module_ctx.source_structures->export_count = 0;
+
+            // Free the temporary source structures (but keep the exports)
+            // Only free the structure itself, not the exports array
+            free(module_ctx.source_structures);
+
+            fprintf(stderr, "[MODULE] Module exports %d items\n", module_export_count);
+            break;
+        }
+        child = child->next_sibling;
+    }
+
+    // Register the module import with its exports
+    if (module_export_count > 0) {
+        register_module_import(ctx, import_name, module_path, module_exports, module_export_count);
+    }
+
+    pop_import_stack();
     return true;
 }
 
