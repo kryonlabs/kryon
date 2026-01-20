@@ -19,12 +19,44 @@ static int cmd_plugin_list(void) {
     printf("Kryon Plugins\n");
     printf("=============\n\n");
 
+    // Try to load kryon.toml from current directory
+    char* cwd = get_current_dir();
+    if (!cwd) {
+        fprintf(stderr, "Error: Failed to get current directory\n");
+        return 1;
+    }
+
+    char* config_path = path_join(cwd, "kryon.toml");
+    KryonConfig* config = NULL;
+
+    if (file_exists(config_path)) {
+        config = config_load(config_path, false); // Don't auto-load plugins
+        if (config && config->plugins_count > 0) {
+            printf("Plugins from kryon.toml (%d):\n\n", config->plugins_count);
+            for (int i = 0; i < config->plugins_count; i++) {
+                PluginDep* plugin = &config->plugins[i];
+                printf("  - %s", plugin->name);
+                if (plugin->path) {
+                    printf(" (path: %s)", plugin->path);
+                }
+                if (!plugin->enabled) {
+                    printf(" [disabled]");
+                }
+                printf("\n");
+            }
+            printf("\n");
+        }
+    }
+
+    free(config_path);
+    free(cwd);
+
     // Get count of loaded plugins from capability system
     uint32_t loaded_count = ir_capability_get_plugin_count();
 
     // List loaded plugins
     if (loaded_count > 0) {
-        printf("Loaded plugins (%u):\n\n", loaded_count);
+        printf("Currently loaded in IR (%u):\n\n", loaded_count);
         for (uint32_t i = 0; i < loaded_count; i++) {
             const char* name = ir_capability_get_plugin_name(i);
             if (name) {
@@ -33,7 +65,7 @@ static int cmd_plugin_list(void) {
         }
         printf("\n");
     } else {
-        printf("No plugins currently loaded.\n\n");
+        printf("No plugins currently loaded in IR.\n\n");
     }
 
     // Scan plugin directories for available plugins
@@ -55,6 +87,10 @@ static int cmd_plugin_list(void) {
         }
     }
     printf("\n");
+
+    if (config) {
+        config_free(config);
+    }
 
     return 0;
 }

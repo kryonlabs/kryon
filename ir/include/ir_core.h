@@ -812,6 +812,8 @@ typedef struct {
 // Custom component definition
 typedef struct {
     char* name;                     // Component name (e.g., "Counter", "HabitPanel")
+    char* extends_parent;           // Parent component name for inheritance (e.g., "TabPanel")
+                                    // NULL if no inheritance, defaults to "Container"
     char* module_path;              // File path (e.g., "components/habit_panel")
     char* source_module;            // Source module (for runtime loading)
     IRComponentProp* props;         // Array of prop definitions
@@ -918,6 +920,7 @@ void ir_reactive_manifest_print(IRReactiveManifest* manifest);
 
 void ir_reactive_manifest_add_component_def(IRReactiveManifest* manifest,
                                             const char* name,
+                                            const char* extends_parent,
                                             IRComponentProp* props,
                                             uint32_t prop_count,
                                             IRComponentStateVar* state_vars,
