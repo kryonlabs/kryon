@@ -503,30 +503,6 @@ static char* parse_identifier(KryParser* p) {
 }
 
 // Peek at the next identifier without consuming it
-static char* peek_identifier(KryParser* p) {
-    skip_whitespace(p);
-
-    size_t start = p->pos;
-
-    // Check if we have an identifier start
-    if (!isalpha(peek(p)) && peek(p) != '_') {
-        return NULL;
-    }
-
-    // Consume identifier characters
-    while (isalnum(peek(p)) || peek(p) == '_' || peek(p) == '-') {
-        advance(p);
-    }
-
-    // Copy identifier to temp buffer
-    size_t len = p->pos - start;
-    char* ident = kry_strndup(p, p->source + start, len);
-
-    // Reset position (don't consume)
-    p->pos = start;
-
-    return ident;
-}
 
 static char* parse_string(KryParser* p) {
     if (!match(p, '"')) {
@@ -861,6 +837,7 @@ static KryValue* parse_object(KryParser* p) {
         if (peek(p) == '"') {
             // String key
             char* key = parse_string(p);
+            (void)key;  // Unused - lookahead only
             skip_whitespace(p);
             if (peek(p) == ':') {
                 is_object = true;
@@ -868,6 +845,7 @@ static KryValue* parse_object(KryParser* p) {
         } else {
             // Identifier key
             char* key = parse_identifier(p);
+            (void)key;  // Unused - lookahead only
             skip_whitespace(p);
             if (peek(p) == ':') {
                 is_object = true;
@@ -1011,7 +989,6 @@ static KryValue* parse_value(KryParser* p) {
 
     // Identifier (with optional function call, property access, or array indexing)
     if (isalpha(c) || c == '_') {
-        size_t start = p->pos;
         char* id = parse_identifier(p);
         if (!id) return NULL;
 
@@ -1072,7 +1049,6 @@ static KryNode* parse_property(KryParser* p, char* name) {
     return prop;
 }
 
-static KryNode* parse_component(KryParser* p);  // Forward declaration
 
 // Helper function to check if an identifier matches a keyword
 static bool keyword_match(const char* id, const char* keyword) {
@@ -1975,94 +1951,6 @@ static KryNode* parse_component_body(KryParser* p, KryNode* component) {
     return component;
 }
 
-static KryNode* parse_component(KryParser* p) {
-    fprintf(stderr, "[PARSER] parse_component() called\n");
-    fflush(stderr);
-    skip_whitespace(p);
-
-    if (!isalpha(peek(p)) && peek(p) != '_') {
-        kry_parser_error(p, "Expected component name");
-        return NULL;
-    }
-
-    char* name = parse_identifier(p);
-    if (!name) return NULL;
-    fprintf(stderr, "[PARSER] Parsed component name: '%s'\n", name);
-    fflush(stderr);
-
-    skip_whitespace(p);
-
-    // Check if this is a component definition
-    if (keyword_match(name, "component")) {
-        fprintf(stderr, "[PARSER] Detected component definition!\n");
-        // Parse component definition name
-        if (!isalpha(peek(p)) && peek(p) != '_') {
-            kry_parser_error(p, "Expected component definition name after 'component'");
-            return NULL;
-        }
-
-        char* comp_def_name = parse_identifier(p);
-        if (!comp_def_name) return NULL;
-        fprintf(stderr, "[PARSER] Component definition name: '%s'\n", comp_def_name);
-
-        skip_whitespace(p);
-        fprintf(stderr, "[PARSER] After skip_whitespace, peek() = '%c' (0x%02x)\n",
-                peek(p), (unsigned char)peek(p));
-
-        // Parse parameter list if present
-        if (peek(p) == '(') {
-            fprintf(stderr, "[PARSER] Found '(' after component name, consuming parameters...\n");
-            // Consume parameters using balanced delimiter capture
-            KryBalancedCapture params;
-            kry_skip_balanced(p, &params);
-            fprintf(stderr, "[PARSER] After consuming params, peek() = '%c' (0x%02x)\n",
-                    peek(p), (unsigned char)peek(p));
-            skip_whitespace(p);
-            fprintf(stderr, "[PARSER] After skip_whitespace, peek() = '%c' (0x%02x)\n",
-                    peek(p), (unsigned char)peek(p));
-        }
-
-        // Check for extends clause
-        char* extends_parent = NULL;
-        char* next_identifier = peek_identifier(p);
-        if (next_identifier && keyword_match(next_identifier, "extends")) {
-            fprintf(stderr, "[PARSER] Found 'extends' keyword\n");
-
-            // Consume "extends" keyword
-            parse_identifier(p);  // This consumes "extends"
-            skip_whitespace(p);
-
-            // Parse parent component name
-            char* parent_name = parse_identifier(p);
-            if (!parent_name) {
-                kry_parser_error(p, "Expected parent component name after 'extends'");
-                return NULL;
-            }
-
-            extends_parent = parent_name;
-            fprintf(stderr, "[PARSER] Component extends: '%s'\n", extends_parent);
-            skip_whitespace(p);
-        }
-
-        // Create component definition node
-        KryNode* component = kry_node_create(p, KRY_NODE_COMPONENT);
-        if (!component) return NULL;
-        component->name = comp_def_name;
-        component->is_component_definition = true;
-        component->extends_parent = extends_parent;  // Store parent name
-
-        return parse_component_body(p, component);
-    }
-
-    // Regular component
-    KryNode* component = kry_node_create(p, KRY_NODE_COMPONENT);
-    if (!component) return NULL;
-
-    component->name = name;
-
-    return parse_component_body(p, component);
-}
-
 // ============================================================================
 // Struct Parsing
 // ============================================================================
@@ -2275,6 +2163,32 @@ KryNode* kry_parse_struct_instantiation(KryParser* p, char* type_name) {
 // Main Parse Function
 // ============================================================================
 
+// Peek at the next identifier without consuming it
+static char* peek_identifier(KryParser* p) {
+    skip_whitespace(p);
+
+    size_t start = p->pos;
+
+    // Check if we have an identifier start
+    if (!isalpha(peek(p)) && peek(p) != '_') {
+        return NULL;
+    }
+
+    // Consume identifier characters
+    while (isalnum(peek(p)) || peek(p) == '_' || peek(p) == '-') {
+        advance(p);
+    }
+
+    // Copy identifier to temp buffer
+    size_t len = p->pos - start;
+    char* ident = kry_strndup(p, p->source + start, len);
+
+    // Reset position (don't consume)
+    p->pos = start;
+
+    return ident;
+}
+
 KryNode* kry_parse(KryParser* parser) {
     if (!parser) return NULL;
 
@@ -2284,8 +2198,6 @@ KryNode* kry_parse(KryParser* parser) {
     parser->root = kry_node_create(parser, KRY_NODE_COMPONENT);
     if (!parser->root) return NULL;
     parser->root->name = "Root";  // Special root node
-
-    KryNode* current = NULL;
 
     // Parse top-level declarations (const/let/var/static) and components
     while (peek(parser) != '\0' && !kry_parser_should_stop(parser)) {
@@ -2352,6 +2264,27 @@ KryNode* kry_parse(KryParser* parser) {
                 skip_whitespace(parser);
             }
 
+            // Check for extends clause
+            char* next_identifier = peek_identifier(parser);
+            if (next_identifier && keyword_match(next_identifier, "extends")) {
+                fprintf(stderr, "[MAIN_LOOP] Found 'extends' keyword\n");
+
+                // Consume "extends" keyword
+                parse_identifier(parser);  // This consumes "extends"
+                skip_whitespace(parser);
+
+                // Parse parent component name
+                char* parent_name = parse_identifier(parser);
+                if (!parent_name) {
+                    kry_parser_error(parser, "Expected parent component name after 'extends'");
+                    // Don't break - continue to try to recover
+                } else {
+                    node->extends_parent = parent_name;
+                    fprintf(stderr, "[MAIN_LOOP] Component extends: '%s'\n", parent_name);
+                }
+                skip_whitespace(parser);
+            }
+
             // Parse component body
             if (!parse_component_body(parser, node)) {
                 break;
@@ -2395,7 +2328,6 @@ KryNode* kry_parse(KryParser* parser) {
 
         // Add node as child of root
         kry_node_append_child(parser->root, node);
-        current = node;
 
         fprintf(stderr, "[KRY_PARSE] Added node: name='%s', is_component_definition=%d\n",
                 node->name ? node->name : "(null)", node->is_component_definition);

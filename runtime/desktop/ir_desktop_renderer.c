@@ -99,10 +99,7 @@ DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* confi
         sdl3_backend_register();
 #endif
 #ifdef ENABLE_RAYLIB
-        // Only register Raylib backend if explicitly enabled via environment variable
-        if (getenv("KRYON_ENABLE_RAYLIB")) {
-            raylib_backend_register();
-        }
+        raylib_backend_register();
 #endif
 #ifdef PLAN9
         plan9_backend_register();

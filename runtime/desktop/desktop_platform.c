@@ -23,10 +23,6 @@ void desktop_register_backend(DesktopBackendType type, DesktopRendererOps* ops) 
         return;
     }
 
-    // Only register Raylib backend if explicitly enabled via environment variable
-    if (type == DESKTOP_BACKEND_RAYLIB && !getenv("KRYON_ENABLE_RAYLIB")) {
-        return;
-    }
 
     if (g_backends[type] != NULL) {
         IR_LOG_WARN("DESKTOP", "Backend %d already registered, overwriting", type);

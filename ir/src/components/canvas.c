@@ -32,10 +32,16 @@ void layout_canvas_single_pass(IRComponent* c, IRLayoutConstraints constraints,
 
     // Apply explicit dimensions from style
     if (c->style) {
-        if (c->style->width.type == IR_DIMENSION_PX) {
+        // Handle percentage dimensions (use max constraint as parent size)
+        if (c->style->width.type == IR_DIMENSION_PERCENT) {
+            canvas_width = constraints.max_width * (c->style->width.value / 100.0f);
+        } else if (c->style->width.type == IR_DIMENSION_PX) {
             canvas_width = c->style->width.value;
         }
-        if (c->style->height.type == IR_DIMENSION_PX) {
+
+        if (c->style->height.type == IR_DIMENSION_PERCENT) {
+            canvas_height = constraints.max_height * (c->style->height.value / 100.0f);
+        } else if (c->style->height.type == IR_DIMENSION_PX) {
             canvas_height = c->style->height.value;
         }
     }
@@ -93,10 +99,16 @@ void layout_native_canvas_single_pass(IRComponent* c, IRLayoutConstraints constr
 
     // Apply explicit dimensions from style
     if (c->style) {
-        if (c->style->width.type == IR_DIMENSION_PX) {
+        // Handle percentage dimensions (use max constraint as parent size)
+        if (c->style->width.type == IR_DIMENSION_PERCENT) {
+            canvas_width = constraints.max_width * (c->style->width.value / 100.0f);
+        } else if (c->style->width.type == IR_DIMENSION_PX) {
             canvas_width = c->style->width.value;
         }
-        if (c->style->height.type == IR_DIMENSION_PX) {
+
+        if (c->style->height.type == IR_DIMENSION_PERCENT) {
+            canvas_height = constraints.max_height * (c->style->height.value / 100.0f);
+        } else if (c->style->height.type == IR_DIMENSION_PX) {
             canvas_height = c->style->height.value;
         }
     }

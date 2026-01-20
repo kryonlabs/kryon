@@ -556,6 +556,9 @@ typedef struct IRStyle {
     uint32_t current_pseudo_states;
     IRCursorType cursor;               // CSS cursor property
     IRCursorPointerType pointer_events; // CSS pointer-events property
+
+    // Plugin data (opaque pointer for plugin use, core never touches this)
+    void* plugin_data;
 } IRStyle;
 
 // ============================================================================
