@@ -13,7 +13,7 @@
 #include "../../third_party/tomlc99/toml.h"
 #include "../../runtime/desktop/ir_desktop_renderer.h"
 #include "../../ir/include/ir_executor.h"
-#include "ir_state.h""
+#include "ir_state.h"
 
 // ============================================================================
 // Internal State
