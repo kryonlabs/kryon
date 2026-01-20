@@ -8,6 +8,8 @@
 #include "kry_parser.h"
 #include "kry_ast.h"
 #include "kry_expression.h"
+#include "kry_struct_to_ir.h"
+#include "kry_ir_validator.h"
 #include "../include/ir_builder.h"
 #include "../include/ir_serialization.h"
 #include "../include/ir_logic.h"
@@ -44,8 +46,9 @@ typedef struct {
     KryValue* kry_value;  // Full KryValue for arrays/objects (NULL for simple types)
 } ParamSubstitution;
 
-typedef struct {
+struct ConversionContext {
     KryNode* ast_root;  // Root of AST (for finding component definitions)
+    KryParser* parser;  // Parser for error reporting (NULL if unavailable)
     ParamSubstitution params[MAX_PARAMS];  // Parameter substitutions
     int param_count;
     IRReactiveManifest* manifest;  // Reactive manifest for state variables
@@ -68,7 +71,9 @@ typedef struct {
     }* module_imports;
     uint32_t module_import_count;
     uint32_t module_import_capacity;
-} ConversionContext;
+};
+
+typedef struct ConversionContext ConversionContext;
 
 // ============================================================================
 // Parameter Substitution
@@ -102,7 +107,7 @@ static void add_param_value(ConversionContext* ctx, const char* name, KryValue* 
  * Convert a KryValue to a JSON string representation.
  * Returns a dynamically allocated string that must be freed by the caller.
  */
-static char* kry_value_to_json(KryValue* value) {
+char* kry_value_to_json(KryValue* value) {
     if (!value) return strdup("null");
 
     switch (value->type) {
@@ -325,12 +330,16 @@ static IRComponentType get_component_type(const char* name) {
 // Property Application
 // ============================================================================
 
-static void apply_property(ConversionContext* ctx, IRComponent* component, const char* name, KryValue* value) {
+static bool apply_property(ConversionContext* ctx, IRComponent* component, const char* name, KryValue* value) {
     fprintf(stderr, "[APPLY_PROP_ENTRY] name='%s', component=%p\n", name ? name : "NULL", (void*)component);
     if (!component || !name || !value) {
         fprintf(stderr, "[APPLY_PROP_ENTRY]   Early return: component=%p, name=%p, value=%p\n",
                 (void*)component, (void*)name, (void*)value);
-        return;
+        if (ctx && ctx->parser) {
+            kry_parser_add_error(ctx->parser, KRY_ERROR_ERROR, KRY_ERROR_CONVERSION,
+                                 "Invalid property assignment (NULL component, name, or value)");
+        }
+        return false;
     }
 
     // Property aliases for App component (root container)
@@ -367,7 +376,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             component->css_class = strdup(value->string_value);
             fprintf(stderr, "[APPLY_PROPERTY] Set css_class = '%s'\n", component->css_class);
         }
-        return;
+        return true;
     }
 
     // Text content
@@ -378,7 +387,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         if (value->type == KRY_VALUE_STRING) {
             printf("[APPLY_PROPERTY]   Setting text to string: %s\n", value->string_value);
             ir_set_text_content(component, value->string_value);
-            return;
+            return true;
         } else if (value->type == KRY_VALUE_IDENTIFIER) {
             printf("[APPLY_PROPERTY]   Identifier: %s\n", value->identifier);
             // Handle identifiers - apply parameter substitution (for variables like item.name)
@@ -396,11 +405,11 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                     free(component->text_expression);
                 }
                 component->text_expression = strdup(value->identifier);
-                return;
+                return true;
             }
 
             ir_set_text_content(component, substituted);
-            return;
+            return true;
         } else if (value->type == KRY_VALUE_EXPRESSION) {
             printf("[APPLY_PROPERTY]   Expression: %s\n", value->expression);
             // Handle expressions - apply parameter substitution
@@ -418,11 +427,11 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                     free(component->text_expression);
                 }
                 component->text_expression = strdup(value->expression);
-                return;
+                return true;
             }
 
             ir_set_text_content(component, substituted);
-            return;
+            return true;
         } else {
             printf("[APPLY_PROPERTY]   Unknown type %d\n", value->type);
         }
@@ -431,7 +440,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
     // Checkbox label
     if (strcmp(name, "label") == 0 && value->type == KRY_VALUE_STRING) {
         ir_set_text_content(component, value->string_value);
-        return;
+        return true;
     }
 
     // Checkbox checked state
@@ -447,7 +456,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             checked = (value->number_value != 0);
         }
         ir_set_checkbox_state(component, checked);
-        return;
+        return true;
     }
 
     // Event handlers - create logic functions and event bindings
@@ -588,7 +597,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             if (event) {
                 ir_add_event(component, event);
             }
-            return;
+            return true;
         }
     }
 
@@ -614,7 +623,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             if (event) {
                 ir_add_event(component, event);
             }
-            return;
+            return true;
         }
     }
 
@@ -640,7 +649,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             if (event) {
                 ir_add_event(component, event);
             }
-            return;
+            return true;
         }
     }
 
@@ -668,7 +677,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 ir_set_width(component, IR_DIMENSION_PX, num);
             }
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "height") == 0) {
@@ -689,7 +698,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 ir_set_height(component, IR_DIMENSION_PX, num);
             }
         }
-        return;
+        return true;
     }
 
     // Position
@@ -698,7 +707,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             style->position_mode = IR_POSITION_ABSOLUTE;
             style->absolute_x = (float)value->number_value;
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "posY") == 0 || strcmp(name, "top") == 0) {
@@ -706,7 +715,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             style->position_mode = IR_POSITION_ABSOLUTE;
             style->absolute_y = (float)value->number_value;
         }
-        return;
+        return true;
     }
 
     // Colors
@@ -736,7 +745,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 (color >> 8) & 0xFF,
                 color & 0xFF);
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "color") == 0) {
@@ -761,7 +770,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             style->font.color.data.b = (color >> 8) & 0xFF;
             style->font.color.data.a = color & 0xFF;
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "borderColor") == 0) {
@@ -786,7 +795,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             style->border.color.data.b = (color >> 8) & 0xFF;
             style->border.color.data.a = color & 0xFF;
         }
-        return;
+        return true;
     }
 
     // Border
@@ -794,14 +803,14 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
         if (value->type == KRY_VALUE_NUMBER) {
             style->border.width = (float)value->number_value;
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "borderRadius") == 0) {
         if (value->type == KRY_VALUE_NUMBER) {
             style->border.radius = (uint8_t)value->number_value;
         }
-        return;
+        return true;
     }
 
     // Layout alignment
@@ -852,7 +861,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 }
             }
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "justifyContent") == 0) {
@@ -900,7 +909,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 layout->flex.justify_content = alignment;
             }
         }
-        return;
+        return true;
     }
 
     // Padding
@@ -909,7 +918,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             float p = (float)value->number_value;
             ir_set_padding(component, p, p, p, p);
         }
-        return;
+        return true;
     }
 
     // Gap (for flex layouts)
@@ -935,7 +944,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 layout->flex.gap = (uint32_t)gap_value;
             }
         }
-        return;
+        return true;
     }
 
     // Font properties
@@ -954,14 +963,14 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
 
             style->font.size = (float)atof(size_str);
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "fontWeight") == 0) {
         if (value->type == KRY_VALUE_NUMBER) {
             style->font.weight = (uint16_t)value->number_value;
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "fontFamily") == 0) {
@@ -970,7 +979,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                                 value->string_value : value->identifier;
             strncpy(style->font.family, family, sizeof(style->font.family) - 1);
         }
-        return;
+        return true;
     }
 
     // Window properties (for App component)
@@ -1000,7 +1009,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 }
             }
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "windowWidth") == 0) {
@@ -1017,7 +1026,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 }
             }
         }
-        return;
+        return true;
     }
 
     if (strcmp(name, "windowHeight") == 0) {
@@ -1034,7 +1043,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 }
             }
         }
-        return;
+        return true;
     }
 
     // Animation property
@@ -1074,7 +1083,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 }
             }
         }
-        return;
+        return true;
     }
 
     // Transition property
@@ -1196,7 +1205,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                 ir_component_add_transition(component, trans);
             }
         }
-        return;
+        return true;
     }
 
     // Dropdown-specific properties
@@ -1213,7 +1222,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             IRDropdownState* state = (IRDropdownState*)component->custom_data;
             if (state->placeholder) free(state->placeholder);
             state->placeholder = strdup(value->string_value);
-            return;
+            return true;
         }
 
         if (strcmp(name, "selectedIndex") == 0 && value->type == KRY_VALUE_NUMBER) {
@@ -1227,7 +1236,7 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
             }
             IRDropdownState* state = (IRDropdownState*)component->custom_data;
             state->selected_index = (int32_t)value->number_value;
-            return;
+            return true;
         }
 
         if (strcmp(name, "options") == 0 && value->type == KRY_VALUE_ARRAY) {
@@ -1260,11 +1269,12 @@ static void apply_property(ConversionContext* ctx, IRComponent* component, const
                     state->options[i] = strdup(""); // Default to empty string
                 }
             }
-            return;
+            return true;
         }
     }
 
     // Default: ignore unknown properties
+    return true;
 }
 
 // ============================================================================
@@ -1549,7 +1559,8 @@ static bool convert_module_return(ConversionContext* ctx, KryNode* node) {
 
         while (child) {
             if ((child->type == KRY_NODE_VAR_DECL && strcmp(child->name, export_name) == 0) ||
-                (child->type == KRY_NODE_FUNCTION_DECL && strcmp(child->func_name, export_name) == 0)) {
+                (child->type == KRY_NODE_FUNCTION_DECL && strcmp(child->func_name, export_name) == 0) ||
+                (child->type == KRY_NODE_STRUCT_DECL && strcmp(child->struct_name, export_name) == 0)) {
                 decl = child;
                 break;
             }
@@ -1579,6 +1590,15 @@ static bool convert_module_return(ConversionContext* ctx, KryNode* node) {
             // Export function
             export->type = "function";
             export->function_name = strdup(decl->func_name);
+        } else if (decl->type == KRY_NODE_STRUCT_DECL) {
+            // Export struct type
+            export->type = "struct";
+
+            // Convert struct to IRStructType
+            IRStructType* struct_type = kry_convert_struct_decl(ctx, decl);
+            export->struct_def = struct_type;
+
+            fprintf(stderr, "[MODULE_RETURN] Exported struct: %s\n", export_name);
         }
 
         // Add to source structures
@@ -1953,13 +1973,27 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 printf("[CONVERT_NODE] Applying property '%s', value=%p, value->type=%u\n",
                        child->name, (void*)child->value, child->value ? (uint32_t)child->value->type : 0xFFFFFFFFu);
                 fflush(stdout);
-                apply_property(ctx, component, child->name, child->value);
+                if (!apply_property(ctx, component, child->name, child->value)) {
+                    // Log warning but continue conversion
+                    if (ctx->parser) {
+                        kry_parser_add_error_fmt(ctx->parser, KRY_ERROR_WARNING,
+                                                 KRY_ERROR_CONVERSION,
+                                                 "Failed to apply property '%s'",
+                                                 child->name ? child->name : "(unknown)");
+                    }
+                }
                 printf("[CONVERT_NODE] After apply_property for '%s'\n", child->name);
                 fflush(stdout);
             } else if (child->type == KRY_NODE_COMPONENT) {
                 // Recursively convert child component
                 IRComponent* child_component = convert_node(ctx, child);
-                if (child_component) {
+                if (!child_component && ctx->parser) {
+                    // Log warning for failed child conversion
+                    kry_parser_add_error_fmt(ctx->parser, KRY_ERROR_WARNING,
+                                             KRY_ERROR_CONVERSION,
+                                             "Failed to convert child component '%s'",
+                                             child->name ? child->name : "(unknown)");
+                } else if (child_component) {
                     ir_add_child(component, child_component);
                 }
             } else if (child->type == KRY_NODE_STATE && ctx->manifest) {
@@ -2504,6 +2538,7 @@ IRComponent* ir_kry_parse(const char* source, size_t length) {
     // Create conversion context
     ConversionContext ctx;
     ctx.ast_root = ast;
+    ctx.parser = parser;  // For error reporting during conversion
     ctx.param_count = 0;  // Initialize with no parameters
     ctx.manifest = ir_reactive_manifest_create();  // Create reactive manifest for state tracking
     ctx.logic_block = ir_logic_block_create();     // Create logic block for event handlers
@@ -2587,6 +2622,7 @@ IRKryParseResult ir_kry_parse_ex(const char* source, size_t length) {
     // Create conversion context
     ConversionContext ctx;
     ctx.ast_root = ast;
+    ctx.parser = parser;  // For error reporting during conversion
     ctx.param_count = 0;
     ctx.manifest = ir_reactive_manifest_create();
     ctx.logic_block = ir_logic_block_create();
@@ -3267,6 +3303,7 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     // Create conversion context with manifest and logic block
     ConversionContext ctx;
     ctx.ast_root = ast;
+    ctx.parser = parser;  // For error reporting during conversion
     ctx.param_count = 0;
     ctx.manifest = ir_reactive_manifest_create();
     ctx.logic_block = ir_logic_block_create();  // NEW: Create logic block
@@ -3438,6 +3475,46 @@ char* ir_kry_to_kir(const char* source, size_t length) {
         }
     }
     fprintf(stderr, "[IMPORT] Finished processing import statements\n");
+    fflush(stderr);
+
+    // Process struct declarations
+    fprintf(stderr, "[STRUCT] Processing struct declarations...\n");
+    fflush(stderr);
+    if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
+        KryNode* struct_node = ast->first_child;
+        while (struct_node) {
+            if (struct_node->type == KRY_NODE_STRUCT_DECL) {
+                fprintf(stderr, "[STRUCT] Found struct declaration: %s\n",
+                        struct_node->struct_name ? struct_node->struct_name : "(null)");
+                fflush(stderr);
+
+                // Convert struct to IRStructType
+                IRStructType* struct_type = kry_convert_struct_decl(&ctx, struct_node);
+                if (struct_type && ctx.source_structures) {
+                    // Expand struct_types array
+                    if (ctx.source_structures->struct_type_count >=
+                        ctx.source_structures->struct_type_capacity) {
+                        ctx.source_structures->struct_type_capacity =
+                            (ctx.source_structures->struct_type_capacity == 0) ? 16 :
+                            ctx.source_structures->struct_type_capacity * 2;
+                        ctx.source_structures->struct_types = (IRStructType**)realloc(
+                            ctx.source_structures->struct_types,
+                            sizeof(IRStructType*) * ctx.source_structures->struct_type_capacity
+                        );
+                    }
+
+                    ctx.source_structures->struct_types[
+                        ctx.source_structures->struct_type_count++
+                    ] = struct_type;
+
+                    fprintf(stderr, "[STRUCT]   Registered struct type '%s' with %d fields\n",
+                            struct_type->name, struct_type->field_count);
+                }
+            }
+            struct_node = struct_node->next_sibling;
+        }
+    }
+    fprintf(stderr, "[STRUCT] Finished processing struct declarations\n");
     fflush(stderr);
 
     // Register explicitly defined custom components (marked with 'component' keyword)
@@ -3803,4 +3880,127 @@ char* ir_kry_to_kir(const char* source, size_t length) {
     ir_destroy_context(ir_ctx);  // Clean up IR context
 
     return json;
+}
+
+// ============================================================================
+// Extended API with Full Error Collection (Phase 5)
+// ============================================================================
+
+char* kry_error_list_format(void* error_list) {
+    if (!error_list) return NULL;
+    
+    KryErrorList* errors = (KryErrorList*)error_list;
+    if (!errors->error_count && !errors->warning_count) {
+        return NULL;
+    }
+
+    // Calculate required buffer size
+    size_t size = 256;  // Start with reasonable size
+    char* buffer = (char*)malloc(size);
+    if (!buffer) return NULL;
+    
+    size_t pos = 0;
+    KryError* err = errors->first;
+    while (err) {
+        const char* level_str = (err->level == KRY_ERROR_WARNING) ? "Warning" : "Error";
+        int written = snprintf(buffer + pos, size - pos, "%s at line %u:%u: %s\n",
+                              level_str, err->line, err->column, err->message);
+        
+        if (written >= (int)(size - pos)) {
+            // Need more space
+            size *= 2;
+            char* new_buffer = (char*)realloc(buffer, size);
+            if (!new_buffer) {
+                free(buffer);
+                return NULL;
+            }
+            buffer = new_buffer;
+            continue;  // Retry this error
+        }
+        
+        pos += written;
+        err = err->next;
+    }
+
+    return buffer;
+}
+
+void kry_error_list_free(void* error_list) {
+    if (!error_list) return;
+    
+    KryErrorList* errors = (KryErrorList*)error_list;
+    KryError* err = errors->first;
+    while (err) {
+        KryError* next = err->next;
+        // Note: error->message and error->context are allocated from parser chunks
+        // and will be freed when parser is freed, so we don't free them here
+        free(err);
+        err = next;
+    }
+    
+    free(errors);
+}
+
+IRKryParseResultEx ir_kry_parse_ex2(const char* source, size_t length) {
+    IRKryParseResultEx result = {NULL, NULL, NULL, NULL};
+    
+    if (!source) {
+        fprintf(stderr, "Error: NULL source\n");
+        return result;
+    }
+
+    // Create parser
+    KryParser* parser = kry_parser_create(source, length);
+    if (!parser) {
+        fprintf(stderr, "Error: Failed to create parser\n");
+        return result;
+    }
+
+    // Parse AST (continues on errors, doesn't stop at first error)
+    KryNode* ast = kry_parse(parser);
+
+    // Convert to IR even if errors exist (for partial results)
+    if (ast && !parser->errors.has_fatal) {
+        // Find root node
+        KryNode* root_node = ast;
+        while (root_node && root_node->is_component_definition) {
+            root_node = root_node->next_sibling;
+        }
+
+        if (root_node) {
+            ConversionContext ctx = {0};
+            ctx.ast_root = ast;
+            ctx.parser = parser;  // For error reporting
+            ctx.param_count = 0;
+            ctx.manifest = ir_reactive_manifest_create();
+            ctx.logic_block = ir_logic_block_create();
+            ctx.next_handler_id = 1;
+            ctx.target_platform = KRY_TARGET_LUA;
+
+            // Convert AST to IR
+            result.root = convert_node(&ctx, root_node);
+            result.manifest = ctx.manifest;
+            result.logic_block = ctx.logic_block;
+
+            // Validate IR if conversion succeeded
+            if (result.root) {
+                kry_validate_ir(parser, result.root);
+            }
+        }
+    }
+
+    // Copy error list (allocated separately from parser)
+    if (parser->errors.error_count > 0 || parser->errors.warning_count > 0) {
+        result.errors = (KryErrorList*)malloc(sizeof(KryErrorList));
+        if (result.errors) {
+            *((KryErrorList*)result.errors) = parser->errors;
+            
+            // Detach from parser so errors aren't freed twice
+            parser->errors.first = NULL;
+            parser->errors.last = NULL;
+        }
+    }
+
+    kry_parser_free(parser);
+    return result;
 }

@@ -7,11 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #32907 | 4:02 PM | 🔄 | Re-enabled HTML parser files and removed stubs from IR Makefile | ~287 |
-| #32902 | " | 🔵 | Discovered parsers/stubs.c was not actually removed from IR Makefile | ~238 |
-| #32881 | 4:00 PM | 🔴 | Fixed kry_to_ir.c parser compilation errors and successfully built Kryon | ~278 |
-| #32878 | " | 🔵 | Discovered kry_to_ir.c now compiles successfully after fixes | ~301 |
-| #32863 | 3:59 PM | ✅ | Added parsers/stubs.c back to IR Makefile PARSER_SOURCES | ~355 |
-| #32822 | 3:56 PM | ✅ | Added kry_to_ir.c to IR Makefile parser sources and removed stubs.c | ~237 |
-| #32755 | 3:53 PM | ✅ | Reverted IR Makefile PARSER_SOURCES to original configuration | ~158 |
+| #34798 | 9:35 PM | 🟣 | Completed struct type support implementation for KRY language | ~215 |
+| #34754 | 9:30 PM | 🟣 | Added struct parser sources to Makefile build system | ~36 |
+| #34751 | 9:29 PM | 🟣 | Updated Makefile PARSER_SOURCES for struct modules | ~134 |
 </claude-mem-context>
