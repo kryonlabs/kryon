@@ -11,6 +11,9 @@
 #include "../include/ir_types.h"
 #include "ir_log.h"
 #include "../include/ir_state.h"
+#include "../include/ir_property_registry.h"
+#include "../include/ir_lifecycle_hooks.h"
+#include "../include/ir_core.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -702,6 +705,58 @@ static bool api_queue_dirty_mark(uint32_t component_id, uint32_t flags) {
 }
 
 // ============================================================================
+// API Implementation - Property Parser and Lifecycle Hook Registration
+// ============================================================================
+
+static bool api_register_property_parser(const char* property_name, kryon_property_parser_fn parser) {
+    if (!property_name || !parser) {
+        IR_LOG_ERROR("capability", "Cannot register property parser: NULL parameter");
+        return false;
+    }
+
+    bool success = ir_register_property_parser(property_name, parser);
+    if (success) {
+        IR_LOG_INFO("capability", "Registered property parser for '%s'", property_name);
+    } else {
+        IR_LOG_ERROR("capability", "Failed to register property parser for '%s' (already registered or registry full)", property_name);
+    }
+    return success;
+}
+
+static bool api_register_lifecycle_hook(KryonLifecycleHook hook_type, kryon_lifecycle_hook_fn hook_fn, void* user_data) {
+    if (!hook_fn) {
+        IR_LOG_ERROR("capability", "Cannot register lifecycle hook: NULL function");
+        return false;
+    }
+
+    bool success = ir_register_lifecycle_hook(hook_type, hook_fn, user_data);
+    if (success) {
+        const char* hook_name = "UNKNOWN";
+        switch (hook_type) {
+            case KRYON_HOOK_PRE_RENDER: hook_name = "PRE_RENDER"; break;
+            case KRYON_HOOK_POST_RENDER: hook_name = "POST_RENDER"; break;
+            case KRYON_HOOK_PRE_LAYOUT: hook_name = "PRE_LAYOUT"; break;
+            case KRYON_HOOK_POST_LAYOUT: hook_name = "POST_LAYOUT"; break;
+            default: break;
+        }
+        IR_LOG_INFO("capability", "Registered lifecycle hook: %s", hook_name);
+    } else {
+        IR_LOG_ERROR("capability", "Failed to register lifecycle hook (invalid type or registry full)");
+    }
+    return success;
+}
+
+static void** api_get_component_plugin_data(uint32_t component_id) {
+    // We need to get the component by ID
+    extern IRComponent* ir_get_component_by_id(uint32_t id);
+    IRComponent* comp = ir_get_component_by_id(component_id);
+    if (!comp) {
+        return NULL;
+    }
+    return &comp->plugin_data;
+}
+
+// ============================================================================
 // Registry Public API
 // ============================================================================
 
@@ -742,6 +797,9 @@ void ir_capability_registry_init(void) {
     g_registry.api.queue_state_update_int = api_queue_state_update_int;
     g_registry.api.queue_state_update_string = api_queue_state_update_string;
     g_registry.api.queue_dirty_mark = api_queue_dirty_mark;
+    g_registry.api.register_property_parser = api_register_property_parser;
+    g_registry.api.register_lifecycle_hook = api_register_lifecycle_hook;
+    g_registry.api.get_component_plugin_data = api_get_component_plugin_data;
 
     /* Allocate storage */
     g_registry.plugin_capacity = INITIAL_PLUGIN_CAPACITY;

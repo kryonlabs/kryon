@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <dirent.h>
 
@@ -19,37 +20,49 @@ static int cmd_plugin_list(void) {
     printf("Kryon Plugins\n");
     printf("=============\n\n");
 
-    // Try to load kryon.toml from current directory
-    char* cwd = get_current_dir();
-    if (!cwd) {
-        fprintf(stderr, "Error: Failed to get current directory\n");
-        return 1;
-    }
+    // Try to read kryon.toml from current directory to show configured plugins
+    char* cwd = dir_get_current();
+    bool found_config = false;
 
-    char* config_path = path_join(cwd, "kryon.toml");
-    KryonConfig* config = NULL;
+    if (cwd) {
+        char* config_path = path_join(cwd, "kryon.toml");
 
-    if (file_exists(config_path)) {
-        config = config_load(config_path, false); // Don't auto-load plugins
-        if (config && config->plugins_count > 0) {
-            printf("Plugins from kryon.toml (%d):\n\n", config->plugins_count);
-            for (int i = 0; i < config->plugins_count; i++) {
-                PluginDep* plugin = &config->plugins[i];
-                printf("  - %s", plugin->name);
-                if (plugin->path) {
-                    printf(" (path: %s)", plugin->path);
+        if (file_exists(config_path)) {
+            // Parse TOML directly to avoid double-free issues
+            TOMLTable* toml = kryon_toml_parse_file(config_path);
+            if (toml) {
+                found_config = true;
+                printf("Plugins from kryon.toml:\n\n");
+
+                // Check for [plugins.kryon] style (multi-plugin repository)
+                const char* kryon_path = kryon_toml_get_string(toml, "plugins.kryon.path", NULL);
+                if (kryon_path) {
+                    printf("  Repository: %s\n", kryon_path);
+                    printf("  Plugins:\n");
+
+                    // List plugins from use array
+                    for (int i = 0; i < 100; i++) {
+                        char key[256];
+                        snprintf(key, sizeof(key), "plugins.kryon.use.%d", i);
+                        const char* plugin_name = kryon_toml_get_string(toml, key, NULL);
+                        if (!plugin_name) break;
+
+                        printf("    - %s\n", plugin_name);
+                    }
+                    printf("\n");
                 }
-                if (!plugin->enabled) {
-                    printf(" [disabled]");
-                }
-                printf("\n");
+
+                kryon_toml_free(toml);
             }
-            printf("\n");
         }
+
+        free(config_path);
+        free(cwd);
     }
 
-    free(config_path);
-    free(cwd);
+    if (!found_config) {
+        printf("No kryon.toml found in current directory.\n\n");
+    }
 
     // Get count of loaded plugins from capability system
     uint32_t loaded_count = ir_capability_get_plugin_count();
@@ -87,10 +100,6 @@ static int cmd_plugin_list(void) {
         }
     }
     printf("\n");
-
-    if (config) {
-        config_free(config);
-    }
 
     return 0;
 }

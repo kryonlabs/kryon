@@ -51,7 +51,9 @@ CORE_SOURCES = src/ir_builder.c \
               src/core/ir_component_types.c \
               src/core/ir_component_factory.c \
               src/core/ir_component_handler.c \
-              src/core/ir_capability.c
+              src/core/ir_capability.c \
+              src/core/ir_property_registry.c \
+              src/core/ir_lifecycle_hooks.c
 
 COMPONENT_SOURCES = src/components/button.c \
                    src/components/text.c \

@@ -361,6 +361,9 @@ typedef struct IRComponent {
 
     // Memory management flag
     bool is_externally_allocated;      // True if allocated via malloc/calloc (not from pool)
+
+    // Plugin data (opaque pointer for plugin use, core never touches this)
+    void* plugin_data;
 } IRComponent;
 
 // ============================================================================

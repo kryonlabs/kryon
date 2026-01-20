@@ -120,6 +120,45 @@ struct KryonPlugin {
 // ============================================================================
 
 /**
+ * Property parser: parse custom property from KRY source
+ *
+ * @param component_id Component ID being parsed
+ * @param property_name Property name (e.g., "animation")
+ * @param property_value Property value string (e.g., "pulse(2.0, -1)")
+ * @param plugin_data Pointer to component's plugin_data field
+ * @return true on success, false on parse error
+ */
+typedef bool (*kryon_property_parser_fn)(
+    uint32_t component_id,
+    const char* property_name,
+    const char* property_value,
+    void** plugin_data
+);
+
+/**
+ * Lifecycle hook types
+ */
+typedef enum {
+    KRYON_HOOK_PRE_RENDER,   /* Called before rendering starts */
+    KRYON_HOOK_POST_RENDER,  /* Called after rendering completes */
+    KRYON_HOOK_PRE_LAYOUT,   /* Called before layout computation */
+    KRYON_HOOK_POST_LAYOUT,  /* Called after layout computation */
+} KryonLifecycleHook;
+
+/**
+ * Lifecycle hook function
+ *
+ * @param root Root component of the tree
+ * @param delta_time Time since last frame (seconds)
+ * @param user_data Plugin-specific data
+ */
+typedef void (*kryon_lifecycle_hook_fn)(
+    void* root,              /* IRComponent* but opaque to plugin */
+    float delta_time,
+    void* user_data
+);
+
+/**
  * Web renderer: generate HTML from component
  *
  * @param handle Opaque data handle for the component
@@ -428,8 +467,51 @@ struct KryonCapabilityAPI {
      */
     bool (*queue_dirty_mark)(uint32_t component_id, uint32_t flags);
 
+    /* --- Property Parser and Lifecycle Hook Registration --- */
+
+    /**
+     * Register a property parser for custom properties
+     * @param property_name Property name (e.g., "animation", "transition")
+     * @param parser Parser function that handles the property
+     * @return true on success, false if already registered
+     *
+     * When the KRY parser encounters this property, it calls the
+     * registered parser. If no parser is registered, the parser
+     * throws a hard error for unknown property.
+     */
+    bool (*register_property_parser)(
+        const char* property_name,
+        kryon_property_parser_fn parser
+    );
+
+    /**
+     * Register a lifecycle hook
+     * @param hook_type Hook type (PRE_RENDER, POST_RENDER, etc.)
+     * @param hook_fn Hook function to call
+     * @param user_data User data passed to hook function
+     * @return true on success, false on error
+     *
+     * Multiple plugins can register hooks of the same type.
+     * All hooks are called in registration order.
+     */
+    bool (*register_lifecycle_hook)(
+        KryonLifecycleHook hook_type,
+        kryon_lifecycle_hook_fn hook_fn,
+        void* user_data
+    );
+
+    /**
+     * Get component's plugin data pointer
+     * @param component_id Component ID
+     * @return Pointer to plugin_data field, or NULL if not found
+     *
+     * This allows plugins to access and modify the opaque
+     * plugin_data pointer stored in IRComponent.
+     */
+    void** (*get_component_plugin_data)(uint32_t component_id);
+
     /* Reserved for future expansion (maintains ABI stability) */
-    void* reserved[10];  // Reduced from 11 to account for get_component_type_id
+    void* reserved[7];  // Reduced from 10 to account for 3 new functions
 };
 
 // ============================================================================

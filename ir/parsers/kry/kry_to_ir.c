@@ -1288,8 +1288,11 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node);
 static bool is_custom_component(const char* name, IRReactiveManifest* manifest);
 static IRComponent* expand_component_template(const char* comp_name,
                                                 IRReactiveManifest* manifest,
-                                                const char* instance_scope);
+                                                const char* instance_scope,
+                                                const char** inheritance_chain,
+                                                int chain_depth);
 static IRComponent* ir_component_clone_tree(IRComponent* source);
+static void merge_component_trees(IRComponent* parent, IRComponent* child_template);
 
 // Expand for loop by unrolling at compile time
 static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode* for_node) {
@@ -1767,7 +1770,9 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
             IRComponent* instance = expand_component_template(
                 node->name,
                 ctx->manifest,
-                instance_scope
+                instance_scope,
+                NULL,  // inheritance_chain
+                0     // chain_depth
             );
 
             if (instance) {
@@ -2643,6 +2648,130 @@ static IRComponent* ir_component_clone_tree(IRComponent* source) {
     return clone;
 }
 
+// Merge child template into parent component (for inheritance)
+// Child properties override parent properties, child children are added to parent
+static void merge_component_trees(IRComponent* parent, IRComponent* child_template) {
+    if (!parent || !child_template) return;
+
+    fprintf(stderr, "[MERGE] Merging child template into parent (parent type=%d, child type=%d)\n",
+            parent->type, child_template->type);
+
+    // 1. Merge style - carefully copy each field
+    if (child_template->style) {
+        if (!parent->style) {
+            parent->style = calloc(1, sizeof(IRStyle));
+            fprintf(stderr, "[MERGE] Allocated parent style\n");
+        }
+        if (parent->style) {
+            // Copy value types (not pointers)
+            parent->style->width = child_template->style->width;
+            parent->style->height = child_template->style->height;
+            parent->style->padding = child_template->style->padding;
+            parent->style->margin = child_template->style->margin;
+            parent->style->background = child_template->style->background;
+            parent->style->text_fill_color = child_template->style->text_fill_color;
+            parent->style->border_color = child_template->style->border_color;
+            parent->style->border = child_template->style->border;
+            parent->style->font = child_template->style->font;
+            parent->style->visible = child_template->style->visible;
+            parent->style->opacity = child_template->style->opacity;
+            parent->style->z_index = child_template->style->z_index;
+            parent->style->overflow_x = child_template->style->overflow_x;
+            parent->style->overflow_y = child_template->style->overflow_y;
+            parent->style->position_mode = child_template->style->position_mode;
+            parent->style->absolute_x = child_template->style->absolute_x;
+            parent->style->absolute_y = child_template->style->absolute_y;
+
+            // Deep copy string pointers
+            if (child_template->style->background_image) {
+                if (parent->style->background_image) free(parent->style->background_image);
+                parent->style->background_image = strdup(child_template->style->background_image);
+            }
+        }
+    }
+
+    // 2. Merge layout properties
+    if (child_template->layout) {
+        if (!parent->layout) {
+            parent->layout = calloc(1, sizeof(IRLayout));
+            fprintf(stderr, "[MERGE] Allocated parent layout\n");
+        }
+        if (parent->layout) {
+            // Copy value types
+            parent->layout->mode = child_template->layout->mode;
+            parent->layout->display_explicit = child_template->layout->display_explicit;
+            parent->layout->min_width = child_template->layout->min_width;
+            parent->layout->min_height = child_template->layout->min_height;
+            parent->layout->max_width = child_template->layout->max_width;
+            parent->layout->max_height = child_template->layout->max_height;
+            parent->layout->flex = child_template->layout->flex;
+            parent->layout->grid = child_template->layout->grid;
+            parent->layout->margin = child_template->layout->margin;
+            parent->layout->padding = child_template->layout->padding;
+            parent->layout->aspect_ratio = child_template->layout->aspect_ratio;
+        }
+    }
+
+    // 3. Copy other attributes
+    if (child_template->tag && !parent->tag) {
+        parent->tag = strdup(child_template->tag);
+    }
+    if (child_template->text_content && !parent->text_content) {
+        parent->text_content = strdup(child_template->text_content);
+    }
+    if (child_template->text_expression && !parent->text_expression) {
+        parent->text_expression = strdup(child_template->text_expression);
+    }
+    if (child_template->custom_data && !parent->custom_data) {
+        parent->custom_data = strdup(child_template->custom_data);
+    }
+
+    // 4. Merge event handlers (append child's handlers to parent's)
+    if (child_template->events) {
+        IREvent* child_event = child_template->events;
+        IREvent* parent_last_event = parent->events;
+
+        // Find the last event in parent's list
+        if (parent_last_event) {
+            while (parent_last_event->next) {
+                parent_last_event = parent_last_event->next;
+            }
+        }
+
+        // Clone and append each child event
+        while (child_event) {
+            IREvent* event_clone = calloc(1, sizeof(IREvent));
+            event_clone->type = child_event->type;
+            event_clone->event_name = child_event->event_name ? strdup(child_event->event_name) : NULL;
+            event_clone->logic_id = child_event->logic_id ? strdup(child_event->logic_id) : NULL;
+            event_clone->handler_data = child_event->handler_data ? strdup(child_event->handler_data) : NULL;
+            event_clone->bytecode_function_id = child_event->bytecode_function_id;
+
+            if (parent_last_event) {
+                parent_last_event->next = event_clone;
+                parent_last_event = event_clone;
+            } else {
+                parent->events = event_clone;
+                parent_last_event = event_clone;
+            }
+
+            child_event = child_event->next;
+        }
+    }
+
+    // 5. Add child's children to parent's children
+    if (child_template->child_count > 0) {
+        for (uint32_t i = 0; i < child_template->child_count; i++) {
+            IRComponent* child_clone = ir_component_clone_tree(child_template->children[i]);
+            if (child_clone) {
+                ir_add_child(parent, child_clone);
+            }
+        }
+    }
+
+    fprintf(stderr, "[MERGE] Merge complete\n");
+}
+
 // Check if a component name refers to a custom component definition
 static bool is_custom_component(const char* name, IRReactiveManifest* manifest) {
     if (!name || !manifest) {
@@ -2660,9 +2789,30 @@ static bool is_custom_component(const char* name, IRReactiveManifest* manifest) 
 static IRComponent* expand_component_template(
     const char* comp_name,
     IRReactiveManifest* manifest,
-    const char* instance_scope
+    const char* instance_scope,
+    const char** inheritance_chain,
+    int chain_depth
 ) {
     if (!comp_name || !manifest) return NULL;
+
+    // Check for circular inheritance
+    if (inheritance_chain && chain_depth > 0) {
+        for (int i = 0; i < chain_depth; i++) {
+            if (inheritance_chain[i] && strcmp(inheritance_chain[i], comp_name) == 0) {
+                // Circular dependency detected!
+                fprintf(stderr, "[EXPAND] ERROR: Circular component inheritance detected!\n");
+                fprintf(stderr, "[EXPAND] Chain: ");
+                for (int j = 0; j < chain_depth; j++) {
+                    if (inheritance_chain[j]) {
+                        fprintf(stderr, "%s", inheritance_chain[j]);
+                        if (j < chain_depth - 1) fprintf(stderr, " -> ");
+                    }
+                }
+                fprintf(stderr, " -> %s\n", comp_name);
+                return NULL;
+            }
+        }
+    }
 
     // Find component definition
     IRComponentDefinition* def = NULL;
@@ -2673,10 +2823,100 @@ static IRComponent* expand_component_template(
         }
     }
 
-    if (!def || !def->template_root) return NULL;
+    if (!def) {
+        fprintf(stderr, "[EXPAND] ERROR: Component '%s' not found in manifest\n", comp_name);
+        return NULL;
+    }
 
-    // Clone the template tree
-    IRComponent* instance = ir_component_clone_tree(def->template_root);
+    if (!def->template_root) {
+        fprintf(stderr, "[EXPAND] ERROR: Component '%s' has no template_root\n", comp_name);
+        return NULL;
+    }
+
+    // Validate parent exists if specified
+    if (def->extends_parent) {
+        IRComponentType parent_type = ir_component_type_from_string(def->extends_parent);
+        bool is_builtin = (strcmp(ir_component_type_to_string(parent_type), def->extends_parent) == 0);
+
+        if (!is_builtin) {
+            // Check if parent custom component exists
+            bool parent_found = false;
+            for (uint32_t i = 0; i < manifest->component_def_count; i++) {
+                if (strcmp(manifest->component_defs[i].name, def->extends_parent) == 0) {
+                    parent_found = true;
+                    break;
+                }
+            }
+            if (!parent_found) {
+                fprintf(stderr, "[EXPAND] ERROR: Parent component '%s' not found for '%s'\n",
+                        def->extends_parent, def->name);
+                return NULL;
+            }
+        }
+    }
+
+    // Add current component to inheritance chain
+    const char** new_chain = NULL;
+    if (inheritance_chain) {
+        new_chain = calloc(chain_depth + 1, sizeof(char*));
+        for (int i = 0; i < chain_depth; i++) {
+            new_chain[i] = inheritance_chain[i];
+        }
+        new_chain[chain_depth] = comp_name;
+    }
+
+    IRComponent* instance = NULL;
+
+    // Handle inheritance
+    if (def->extends_parent) {
+        fprintf(stderr, "[EXPAND] Component '%s' extends '%s' (depth=%d)\n", comp_name, def->extends_parent, chain_depth);
+
+        // Check if parent is a built-in component
+        IRComponentType parent_type = ir_component_type_from_string(def->extends_parent);
+
+        // Check if parent_type is actually a built-in component (not CUSTOM/CONTAINER default)
+        bool is_builtin = (strcmp(ir_component_type_to_string(parent_type), def->extends_parent) == 0);
+
+        if (is_builtin) {
+            // Parent is a built-in component
+            fprintf(stderr, "[EXPAND] Parent '%s' is a built-in component type\n", def->extends_parent);
+            instance = ir_create_component(parent_type);
+            if (!instance) {
+                fprintf(stderr, "[EXPAND] Failed to create built-in component of type '%s'\n", def->extends_parent);
+                if (new_chain) free(new_chain);
+                return NULL;
+            }
+        } else {
+            // Parent is a custom component - recursive expansion
+            fprintf(stderr, "[EXPAND] Parent '%s' is a custom component, expanding recursively\n", def->extends_parent);
+            instance = expand_component_template(def->extends_parent, manifest, instance_scope, new_chain, chain_depth + 1);
+            if (!instance) {
+                fprintf(stderr, "[EXPAND] Failed to expand parent component '%s'\n", def->extends_parent);
+                if (new_chain) free(new_chain);
+                return NULL;
+            }
+        }
+
+        // Merge child's template into parent
+        fprintf(stderr, "[EXPAND] About to merge '%s' template into parent\n", comp_name);
+        fprintf(stderr, "[EXPAND] parent=%p, template_root=%p\n", instance, def->template_root);
+        merge_component_trees(instance, def->template_root);
+
+    } else {
+        // No inheritance - default to Container if no explicit extends
+        fprintf(stderr, "[EXPAND] Component '%s' has no extends, defaulting to Container\n", comp_name);
+        instance = ir_create_component(IR_COMPONENT_CONTAINER);
+        if (!instance) {
+            if (new_chain) free(new_chain);
+            return NULL;
+        }
+
+        // Merge child's template into Container
+        merge_component_trees(instance, def->template_root);
+    }
+
+    if (new_chain) free(new_chain);
+
     if (!instance) return NULL;
 
     // Set scope only on the root component (not children)
@@ -3032,7 +3272,8 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     ir_reactive_manifest_add_component_def(
         ctx->manifest,
         component_name,              // Component name
-        NULL, 0,                     // TODO: Extract props
+        NULL,                       // extends_parent (TODO: extract from component definition)
+        NULL, 0,                    // TODO: Extract props
         state_vars,
         state_var_count,
         template_comp
@@ -3366,6 +3607,7 @@ char* ir_kry_to_kir(const char* source, size_t length) {
             ir_reactive_manifest_add_component_def(
                 ctx.manifest,
                 root_node->name,           // Component name (export name)
+                NULL,                      // extends_parent (TODO: extract from component definition)
                 NULL, 0,                   // TODO: Extract props
                 state_vars,
                 state_var_count,
@@ -3602,6 +3844,7 @@ char* ir_kry_to_kir(const char* source, size_t length) {
                 ir_reactive_manifest_add_component_def(
                     ctx.manifest,
                     def_node->name,
+                    def_node->extends_parent,  // Parent component name for inheritance
                     NULL, 0,  // TODO: Extract props from component definition
                     state_vars,
                     state_var_count,
