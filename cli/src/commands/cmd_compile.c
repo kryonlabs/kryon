@@ -74,8 +74,24 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         // Convert to KIR JSON based on frontend type
         char* json = NULL;
         if (strcmp(frontend, "kry") == 0) {
-            // Use ir_kry_to_kir for complete manifest serialization
-            json = ir_kry_to_kir(source, size);
+            // Extract base directory from source file path for import resolution
+            char* base_dir = NULL;
+            const char* last_slash = strrchr(source_file, '/');
+            if (last_slash) {
+                size_t dir_len = last_slash - source_file;
+                base_dir = (char*)malloc(dir_len + 1);
+                if (base_dir) {
+                    memcpy(base_dir, source_file, dir_len);
+                    base_dir[dir_len] = '\0';
+                }
+            } else {
+                // No slash - use current directory
+                base_dir = strdup(".");
+            }
+
+            // Use ir_kry_to_kir_with_base_dir for complete manifest serialization with import support
+            json = ir_kry_to_kir_with_base_dir(source, size, base_dir);
+            free(base_dir);
         } else if (strcmp(frontend, "markdown") == 0) {
             json = ir_markdown_to_kir(source, size);
         }

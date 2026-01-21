@@ -66,9 +66,7 @@ bool ir_style_has_custom_values(IRStyle* style) {
     if (style->text_effect.fade_type != IR_TEXT_FADE_NONE) return true;
     if (style->filter_count > 0) return true;
 
-    // Check animations and transitions
-    if (style->animation_count > 0) return true;
-    if (style->transition_count > 0) return true;
+    // Animations and transitions moved to plugin system
 
     // Check responsive design
     if (style->breakpoint_count > 0) return true;

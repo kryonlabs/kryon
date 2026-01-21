@@ -109,6 +109,9 @@ typedef struct {
     /* The API structure passed to plugins */
     KryonCapabilityAPI       api;
 
+    /* Component tree root (for global component lookup) */
+    IRComponent*            root_component;
+
     /* Initialization state */
     bool                    is_initialized;
 } CapabilityRegistry;
@@ -746,14 +749,33 @@ static bool api_register_lifecycle_hook(KryonLifecycleHook hook_type, kryon_life
     return success;
 }
 
+// Helper to find component by ID recursively
+static IRComponent* find_component_by_id_recursive(IRComponent* root, uint32_t id) {
+    if (!root) return NULL;
+    if (root->id == id) return root;
+
+    for (uint32_t i = 0; i < root->child_count; i++) {
+        IRComponent* found = find_component_by_id_recursive(root->children[i], id);
+        if (found) return found;
+    }
+    return NULL;
+}
+
+// Global component lookup function (used by capability API)
+IRComponent* ir_get_component_by_id(uint32_t id) {
+    return find_component_by_id_recursive(g_registry.root_component, id);
+}
+
 static void** api_get_component_plugin_data(uint32_t component_id) {
-    // We need to get the component by ID
-    extern IRComponent* ir_get_component_by_id(uint32_t id);
     IRComponent* comp = ir_get_component_by_id(component_id);
     if (!comp) {
         return NULL;
     }
     return &comp->plugin_data;
+}
+
+static void* api_get_component_by_id(uint32_t component_id) {
+    return (void*)ir_get_component_by_id(component_id);
 }
 
 // ============================================================================
@@ -800,6 +822,7 @@ void ir_capability_registry_init(void) {
     g_registry.api.register_property_parser = api_register_property_parser;
     g_registry.api.register_lifecycle_hook = api_register_lifecycle_hook;
     g_registry.api.get_component_plugin_data = api_get_component_plugin_data;
+    g_registry.api.get_component_by_id = api_get_component_by_id;
 
     /* Allocate storage */
     g_registry.plugin_capacity = INITIAL_PLUGIN_CAPACITY;
@@ -841,6 +864,10 @@ void ir_capability_registry_init(void) {
                 KRYON_CAPABILITY_API_VERSION_PATCH);
 }
 
+void ir_capability_set_root_component(IRComponent* root) {
+    g_registry.root_component = root;
+}
+
 void ir_capability_registry_shutdown(void) {
     if (!g_registry.is_initialized) {
         return;
@@ -880,6 +907,17 @@ bool ir_capability_load_plugin(const char* path, const char* name) {
     if (!path) {
         IR_LOG_ERROR("capability", "NULL plugin path");
         return false;
+    }
+
+    /* Check if plugin already loaded - prevents double-load crash */
+    const char* plugin_name = name ? name : path;
+    for (uint32_t i = 0; i < g_registry.plugin_count; i++) {
+        if (strcmp(g_registry.plugins[i].name, plugin_name) == 0
+            && g_registry.plugins[i].is_loaded
+            && g_registry.plugins[i].dl_handle) {
+            IR_LOG_DEBUG("capability", "Plugin '%s' already loaded, skipping", plugin_name);
+            return true;
+        }
     }
 
     /* Load the shared library */

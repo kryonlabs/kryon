@@ -307,39 +307,6 @@ const char* css_format_layout_mode(IRLayoutMode mode) {
     }
 }
 
-const char* css_format_easing(IREasingType easing) {
-    switch (easing) {
-        case IR_EASING_LINEAR: return "linear";
-        case IR_EASING_EASE_IN: return "ease-in";
-        case IR_EASING_EASE_OUT: return "ease-out";
-        case IR_EASING_EASE_IN_OUT: return "ease-in-out";
-        case IR_EASING_EASE_IN_QUAD: return "cubic-bezier(0.55, 0.085, 0.68, 0.53)";
-        case IR_EASING_EASE_OUT_QUAD: return "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-        case IR_EASING_EASE_IN_OUT_QUAD: return "cubic-bezier(0.455, 0.03, 0.515, 0.955)";
-        case IR_EASING_EASE_IN_CUBIC: return "cubic-bezier(0.55, 0.055, 0.675, 0.19)";
-        case IR_EASING_EASE_OUT_CUBIC: return "cubic-bezier(0.215, 0.61, 0.355, 1)";
-        case IR_EASING_EASE_IN_OUT_CUBIC: return "cubic-bezier(0.645, 0.045, 0.355, 1)";
-        case IR_EASING_EASE_IN_BOUNCE: return "cubic-bezier(0.6, -0.28, 0.735, 0.045)";
-        case IR_EASING_EASE_OUT_BOUNCE: return "cubic-bezier(0.68, -0.55, 0.265, 1.55)";
-        default: return "ease";
-    }
-}
-
-const char* css_format_animation_property(IRAnimationProperty prop) {
-    switch (prop) {
-        case IR_ANIM_PROP_OPACITY: return "opacity";
-        case IR_ANIM_PROP_TRANSLATE_X: return "transform";
-        case IR_ANIM_PROP_TRANSLATE_Y: return "transform";
-        case IR_ANIM_PROP_SCALE_X: return "transform";
-        case IR_ANIM_PROP_SCALE_Y: return "transform";
-        case IR_ANIM_PROP_ROTATE: return "transform";
-        case IR_ANIM_PROP_WIDTH: return "width";
-        case IR_ANIM_PROP_HEIGHT: return "height";
-        case IR_ANIM_PROP_BACKGROUND_COLOR: return "background-color";
-        default: return NULL;
-    }
-}
-
 const char* css_format_pseudo_class(IRPseudoState state) {
     switch (state) {
         case IR_PSEUDO_HOVER: return "hover";
@@ -543,19 +510,19 @@ const CSSPropertyMapping css_effects_properties[] = {
 };
 const size_t css_effects_property_count = sizeof(css_effects_properties) / sizeof(css_effects_properties[0]);
 
-// Animation properties
+// Animation properties - formatters removed, animation system moved to plugin
 const CSSPropertyMapping css_animation_properties[] = {
     { "animation", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "none" },
     { "animation-name", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "none" },
     { "animation-duration", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "0s" },
-    { "animation-timing-function", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_ENUM, 0, (CSSFormatterFn)css_format_easing, "ease" },
+    { "animation-timing-function", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_ENUM, 0, NULL, "ease" },
     { "animation-delay", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "0s" },
     { "animation-iteration-count", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "1" },
     { "animation-direction", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "normal" },
     { "transition", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "none" },
     { "transition-property", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "all" },
     { "transition-duration", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "0s" },
-    { "transition-timing-function", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_ENUM, 0, (CSSFormatterFn)css_format_easing, "ease" },
+    { "transition-timing-function", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_ENUM, 0, NULL, "ease" },
     { "transition-delay", CSS_PROP_CATEGORY_ANIMATION, CSS_PROP_TYPE_STRING, 0, NULL, "0s" },
 };
 const size_t css_animation_property_count = sizeof(css_animation_properties) / sizeof(css_animation_properties[0]);

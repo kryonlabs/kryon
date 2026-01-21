@@ -565,12 +565,6 @@ static struct IRComponent* clone_component_recursive(struct IRComponent* source,
                 clone->style->font.color.var_name = str_copy(source->style->font.color.var_name);
             }
 
-            // Null out complex pointers (animations, transitions) - not needed for templates
-            clone->style->animations = NULL;
-            clone->style->animation_count = 0;
-            clone->style->transitions = NULL;
-            clone->style->transition_count = 0;
-
             // Null out breakpoints and pseudo styles (keep simple for now)
             clone->style->breakpoint_count = 0;
             clone->style->pseudo_style_count = 0;

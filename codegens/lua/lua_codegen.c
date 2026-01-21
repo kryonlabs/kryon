@@ -17,45 +17,8 @@
 #include <unistd.h>
 
 // ============================================================================
-// File I/O Helpers
-// ============================================================================
-
-/**
- * Check if a file exists
- */
-static bool file_exists(const char* path) {
-    struct stat st;
-    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
-}
-
-/**
- * Copy a file from src to dst
- * Returns 0 on success, -1 on failure
- */
-static int copy_file(const char* src, const char* dst) {
-    FILE* in = fopen(src, "rb");
-    if (!in) return -1;
-
-    FILE* out = fopen(dst, "wb");
-    if (!out) {
-        fclose(in);
-        return -1;
-    }
-
-    char buf[8192];
-    size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
-        if (fwrite(buf, 1, n, out) != n) {
-            fclose(in);
-            fclose(out);
-            return -1;
-        }
-    }
-
-    fclose(in);
-    fclose(out);
-    return 0;
-}
+// NOTE: file_exists and copy_file are now provided by codegen_common
+// Use codegen_file_exists() and codegen_copy_file() instead
 
 // String builder wrapper using IRStringBuilder
 typedef struct {
@@ -1312,147 +1275,40 @@ bool lua_codegen_generate_with_options(const char* kir_path,
     return true;
 }
 
-/**
- * Helper to check if a module is a Kryon internal module
- */
-static bool is_kryon_internal(const char* module_id) {
-    if (!module_id) return false;
-
-    // Check for kryon/ prefix
-    if (strncmp(module_id, "kryon/", 6) == 0) return true;
-
-    // Check for known internal module names
-    if (strcmp(module_id, "dsl") == 0) return true;
-    if (strcmp(module_id, "ffi") == 0) return true;
-    if (strcmp(module_id, "runtime") == 0) return true;
-    if (strcmp(module_id, "reactive") == 0) return true;
-    if (strcmp(module_id, "runtime_web") == 0) return true;
-    if (strcmp(module_id, "kryon") == 0) return true;
-
-    return false;
-}
-
-/**
- * Helper to check if a module is an external plugin
- */
-static bool is_external_plugin(const char* module_id) {
-    if (!module_id) return false;
-
-    // Known external plugins (runtime dependencies, not source modules)
-    if (strcmp(module_id, "datetime") == 0) return true;
-    if (strcmp(module_id, "storage") == 0) return true;
-
-    return false;
-}
-
-/**
- * Helper to get the parent directory of a path
- */
-static void get_parent_dir(const char* path, char* parent, size_t parent_size) {
-    if (!path || !parent) return;
-
-    strncpy(parent, path, parent_size - 1);
-    parent[parent_size - 1] = '\0';
-
-    char* last_slash = strrchr(parent, '/');
-    if (last_slash) {
-        *last_slash = '\0';
-    } else {
-        parent[0] = '.';
-        parent[1] = '\0';
-    }
-}
-
-/**
- * Helper to write file with automatic directory creation
- */
-static bool write_file_with_mkdir(const char* path, const char* content) {
-    if (!path || !content) return false;
-
-    // Create a mutable copy for directory extraction
-    char dir_path[2048];
-    strncpy(dir_path, path, sizeof(dir_path) - 1);
-    dir_path[sizeof(dir_path) - 1] = '\0';
-
-    // Find and create parent directory
-    char* last_slash = strrchr(dir_path, '/');
-    if (last_slash) {
-        *last_slash = '\0';
-        struct stat st = {0};
-        if (stat(dir_path, &st) == -1) {
-            char mkdir_cmd[2048];
-            snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", dir_path);
-            if (system(mkdir_cmd) != 0) {
-                fprintf(stderr, "Warning: Could not create directory: %s\n", dir_path);
-            }
-        }
-    }
-
-    // Write the file
-    FILE* f = fopen(path, "w");
-    if (!f) {
-        fprintf(stderr, "Error: Could not write file: %s\n", path);
-        return false;
-    }
-    fputs(content, f);
-    fclose(f);
-    return true;
-}
-
-/**
- * Processed modules tracking for recursive import processing
- */
-#define MAX_PROCESSED_MODULES 256
-
-typedef struct {
-    char* modules[MAX_PROCESSED_MODULES];
-    int count;
-} ProcessedModules;
-
-static bool is_module_processed(ProcessedModules* pm, const char* module_id) {
-    for (int i = 0; i < pm->count; i++) {
-        if (strcmp(pm->modules[i], module_id) == 0) return true;
-    }
-    return false;
-}
-
-static void mark_module_processed(ProcessedModules* pm, const char* module_id) {
-    if (pm->count < MAX_PROCESSED_MODULES) {
-        pm->modules[pm->count++] = strdup(module_id);
-    }
-}
-
-static void free_processed_modules(ProcessedModules* pm) {
-    for (int i = 0; i < pm->count; i++) {
-        free(pm->modules[i]);
-    }
-    pm->count = 0;
-}
+// NOTE: The following helper functions are now provided by codegen_common.h:
+// - codegen_is_internal_module() (was is_kryon_internal)
+// - codegen_is_external_plugin() (was is_external_plugin)
+// - codegen_get_parent_dir() (was get_parent_dir)
+// - codegen_write_file_with_mkdir() (was write_file_with_mkdir)
+// - CodegenProcessedModules (was ProcessedModules)
+// - codegen_processed_modules_contains() (was is_module_processed)
+// - codegen_processed_modules_add() (was mark_module_processed)
+// - codegen_processed_modules_free() (was free_processed_modules)
 
 /**
  * Recursively process a module and its transitive imports
  */
-static int process_module_recursive(const char* module_id, const char* kir_dir,
-                                    const char* output_dir, ProcessedModules* processed) {
+static int lua_process_module_recursive(const char* module_id, const char* kir_dir,
+                                        const char* output_dir, CodegenProcessedModules* processed) {
     // Skip if already processed
-    if (is_module_processed(processed, module_id)) return 0;
-    mark_module_processed(processed, module_id);
+    if (codegen_processed_modules_contains(processed, module_id)) return 0;
+    codegen_processed_modules_add(processed, module_id);
 
     // Skip internal modules
-    if (is_kryon_internal(module_id)) return 0;
+    if (codegen_is_internal_module(module_id)) return 0;
 
     // Check if this is an external plugin with extracted code
-    if (is_external_plugin(module_id)) {
+    if (codegen_is_external_plugin(module_id)) {
         // Check if plugin file exists in build/plugins/<module_id>.lua
         char plugin_src_path[2048];
         snprintf(plugin_src_path, sizeof(plugin_src_path), "build/plugins/%s.lua", module_id);
 
-        if (file_exists(plugin_src_path)) {
+        if (codegen_file_exists(plugin_src_path)) {
             // Copy plugin file to output directory
             char plugin_dst_path[2048];
             snprintf(plugin_dst_path, sizeof(plugin_dst_path), "%s/%s.lua", output_dir, module_id);
 
-            if (copy_file(plugin_src_path, plugin_dst_path) == 0) {
+            if (codegen_copy_file(plugin_src_path, plugin_dst_path) == 0) {
                 printf("  ✓ Copied plugin: %s.lua\n", module_id);
                 return 1;
             } else {
@@ -1492,7 +1348,7 @@ static int process_module_recursive(const char* module_id, const char* kir_dir,
         snprintf(output_path, sizeof(output_path),
                  "%s/%s.lua", output_dir, module_id);
 
-        if (write_file_with_mkdir(output_path, component_lua)) {
+        if (codegen_write_file_with_mkdir(output_path, component_lua)) {
             printf("✓ Generated: %s.lua\n", module_id);
             files_written++;
         }
@@ -1510,8 +1366,8 @@ static int process_module_recursive(const char* module_id, const char* kir_dir,
                 if (!cJSON_IsString(import_item)) continue;
                 const char* sub_module_id = cJSON_GetStringValue(import_item);
                 if (sub_module_id) {
-                    files_written += process_module_recursive(sub_module_id, kir_dir,
-                                                              output_dir, processed);
+                    files_written += lua_process_module_recursive(sub_module_id, kir_dir,
+                                                                  output_dir, processed);
                 }
             }
         }
@@ -1558,16 +1414,11 @@ bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
     }
 
     // Create output directory if it doesn't exist
-    struct stat st = {0};
-    if (stat(output_dir, &st) == -1) {
-        char mkdir_cmd[2048];
-        snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
-        if (system(mkdir_cmd) != 0) {
-            fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
-            cJSON_Delete(main_root);
-            free(main_kir_json);
-            return false;
-        }
+    if (!codegen_mkdir_p(output_dir)) {
+        fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
+        cJSON_Delete(main_root);
+        free(main_kir_json);
+        return false;
     }
 
     int files_written = 0;
@@ -1580,7 +1431,7 @@ bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
         char main_output_path[2048];
         snprintf(main_output_path, sizeof(main_output_path), "%s/main.lua", output_dir);
 
-        if (write_file_with_mkdir(main_output_path, main_lua)) {
+        if (codegen_write_file_with_mkdir(main_output_path, main_lua)) {
             printf("✓ Generated: main.lua\n");
             files_written++;
         }
@@ -1591,11 +1442,11 @@ bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
 
     // 2. Get the KIR directory (parent of kir_path)
     char kir_dir[2048];
-    get_parent_dir(kir_path, kir_dir, sizeof(kir_dir));
+    codegen_get_parent_dir(kir_path, kir_dir, sizeof(kir_dir));
 
     // 3. Track processed modules to avoid duplicates
-    ProcessedModules processed = {0};
-    mark_module_processed(&processed, "main");  // Mark main as processed
+    CodegenProcessedModules processed = {0};
+    codegen_processed_modules_add(&processed, "main");  // Mark main as processed
 
     // 4. Process each import recursively (including transitive imports)
     cJSON* imports = cJSON_GetObjectItem(main_root, "imports");
@@ -1606,13 +1457,13 @@ bool lua_codegen_generate_multi(const char* kir_path, const char* output_dir) {
 
             const char* module_id = cJSON_GetStringValue(import_item);
             if (module_id) {
-                files_written += process_module_recursive(module_id, kir_dir,
-                                                          output_dir, &processed);
+                files_written += lua_process_module_recursive(module_id, kir_dir,
+                                                              output_dir, &processed);
             }
         }
     }
 
-    free_processed_modules(&processed);
+    codegen_processed_modules_free(&processed);
     cJSON_Delete(main_root);
 
     if (files_written == 0) {

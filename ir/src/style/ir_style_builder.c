@@ -5,15 +5,12 @@
 #include "ir_style_builder.h"
 #include "../include/ir_builder.h"
 #include "../utils/ir_memory.h"
-#include "ir_animation.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 // Forward declarations for destroy functions
-extern void ir_animation_destroy(struct IRAnimation* anim);
-extern void ir_transition_destroy(struct IRTransition* transition);
 extern void ir_gradient_destroy(struct IRGradient* gradient);
 
 // Use ir_component_mark_style_dirty() from ir_layout.c
@@ -71,26 +68,6 @@ IRStyle* ir_create_style(void) {
 
 void ir_destroy_style(IRStyle* style) {
     if (!style) return;
-
-    // Free animations
-    if (style->animations) {
-        for (uint32_t i = 0; i < style->animation_count; i++) {
-            if (style->animations[i]) {
-                ir_animation_destroy(style->animations[i]);
-            }
-        }
-        free(style->animations);
-    }
-
-    // Free transitions
-    if (style->transitions) {
-        for (uint32_t i = 0; i < style->transition_count; i++) {
-            if (style->transitions[i]) {
-                ir_transition_destroy(style->transitions[i]);
-            }
-        }
-        free(style->transitions);
-    }
 
     // Free gradient objects
     if (style->background.type == IR_COLOR_GRADIENT && style->background.data.gradient) {

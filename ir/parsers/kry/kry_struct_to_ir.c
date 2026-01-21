@@ -44,8 +44,52 @@ IRStructType* kry_convert_struct_decl(ConversionContext* ctx, KryNode* node) {
 
         IRStructField* field = (IRStructField*)calloc(1, sizeof(IRStructField));
         field->name = strdup(field_node->name);
-        field->type = strdup(field_node->field_type);
         field->line = field_node->line;
+
+        // Handle type - either explicit or inferred from default value
+        if (field_node->field_type) {
+            field->type = strdup(field_node->field_type);
+        } else if (field_node->field_default) {
+            // Infer type from default value
+            switch (field_node->field_default->type) {
+                case KRY_VALUE_STRING:
+                    field->type = strdup("string");
+                    break;
+                case KRY_VALUE_NUMBER:
+                    field->type = strdup("number");
+                    break;
+                case KRY_VALUE_IDENTIFIER:
+                    // Identifier - could be a constant reference
+                    field->type = strdup("any");
+                    break;
+                case KRY_VALUE_OBJECT:
+                    field->type = strdup("object");
+                    break;
+                case KRY_VALUE_ARRAY:
+                    field->type = strdup("array");
+                    break;
+                case KRY_VALUE_EXPRESSION:
+                    // Expression - type is dynamic/unknown
+                    field->type = strdup("any");
+                    break;
+                case KRY_VALUE_STRUCT_INSTANCE:
+                    // Struct instance - get type from struct_instance.struct_name
+                    if (field_node->field_default->struct_instance.struct_name) {
+                        field->type = strdup(field_node->field_default->struct_instance.struct_name);
+                    } else {
+                        field->type = strdup("any");
+                    }
+                    break;
+                case KRY_VALUE_RANGE:
+                    field->type = strdup("range");
+                    break;
+                default:
+                    field->type = strdup("any");
+                    break;
+            }
+        } else {
+            field->type = strdup("any");
+        }
 
         // Convert default value
         if (field_node->field_default) {

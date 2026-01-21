@@ -143,6 +143,7 @@ typedef enum {
     STMT_RETURN,          // {"op": "return", "value": ...}
     STMT_BREAK,           // {"op": "break"}
     STMT_CONTINUE,        // {"op": "continue"}
+    STMT_DELETE,          // {"op": "delete", "target": ...}
 } IRStmtType;
 
 // Assignment operators for STMT_ASSIGN_OP
@@ -200,6 +201,10 @@ typedef struct IRStatement {
         struct {
             IRExpression* value;  // NULL for void return
         } return_stmt;
+
+        struct {
+            IRExpression* target;  // Expression identifying what to delete
+        } delete_stmt;
     };
 } IRStatement;
 
@@ -262,6 +267,7 @@ IRStatement* ir_stmt_call(const char* function, IRExpression** args, int arg_cou
 IRStatement* ir_stmt_return(IRExpression* value);
 IRStatement* ir_stmt_break(void);
 IRStatement* ir_stmt_continue(void);
+IRStatement* ir_stmt_delete(IRExpression* target);
 
 // ============================================================================
 // MEMORY MANAGEMENT

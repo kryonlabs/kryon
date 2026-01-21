@@ -13,7 +13,6 @@
 #include "../include/ir_builder.h"
 #include "../include/ir_logic.h"
 #include "../style/ir_stylesheet.h"
-#include "ir_animation.h"
 #include "../utils/ir_c_metadata.h"
 #include "cJSON.h"
 #include <stdio.h>
@@ -51,7 +50,6 @@ static IRColor json_parse_color(const char* str);
 static IRAlignment json_parse_alignment(const char* str);
 static IRGridTrackType json_parse_grid_track_type(const char* str);
 static IRTextAlign json_parse_text_align(const char* str);
-static void apply_animation_from_string(IRComponent* component, const char* animSpec);
 // ============================================================================
 // Text Expression Substitution for Component Expansion
 // ============================================================================
@@ -1412,37 +1410,6 @@ void ir_json_deserialize_style_properties(cJSON* propsObj, IRStyleProperties* pr
         props->grid_template_rows = strdup(item->valuestring);
     }
 
-    // Transitions - parse IRTransition array
-    if ((item = cJSON_GetObjectItem(propsObj, "transitions")) && cJSON_IsArray(item)) {
-        int count = cJSON_GetArraySize(item);
-        if (count > 0) {
-            props->transitions = malloc(count * sizeof(IRTransition));
-            if (props->transitions) {
-                memset(props->transitions, 0, count * sizeof(IRTransition));
-                props->transition_count = count;
-                for (int i = 0; i < count; i++) {
-                    cJSON* t_obj = cJSON_GetArrayItem(item, i);
-                    if (t_obj && cJSON_IsObject(t_obj)) {
-                        cJSON* prop_item;
-                        if ((prop_item = cJSON_GetObjectItem(t_obj, "property")) && cJSON_IsNumber(prop_item)) {
-                            props->transitions[i].property = (IRAnimationProperty)prop_item->valueint;
-                        }
-                        if ((prop_item = cJSON_GetObjectItem(t_obj, "duration")) && cJSON_IsNumber(prop_item)) {
-                            props->transitions[i].duration = (float)prop_item->valuedouble;
-                        }
-                        if ((prop_item = cJSON_GetObjectItem(t_obj, "delay")) && cJSON_IsNumber(prop_item)) {
-                            props->transitions[i].delay = (float)prop_item->valuedouble;
-                        }
-                        if ((prop_item = cJSON_GetObjectItem(t_obj, "easing")) && cJSON_IsNumber(prop_item)) {
-                            props->transitions[i].easing = (IREasingType)prop_item->valueint;
-                        }
-                    }
-                }
-                props->set_flags |= IR_PROP_TRANSITION;
-            }
-        }
-    }
-
     // Transform - parse IRTransform object
     if ((item = cJSON_GetObjectItem(propsObj, "transform")) && cJSON_IsObject(item)) {
         cJSON* prop_item;
@@ -1556,9 +1523,6 @@ static IRStylesheet* json_deserialize_stylesheet(cJSON* obj) {
             }
             if (props.grid_template_rows) {
                 free(props.grid_template_rows);
-            }
-            if (props.transitions) {
-                free(props.transitions);
             }
         }
     }
@@ -1949,46 +1913,6 @@ IRComponentType ir_string_to_component_type(const char* str) {
 }
 
 // ============================================================================
-// Animation Helper
-// ============================================================================
-
-/**
- * Parse animation string and apply to component
- * Formats: "pulse(duration, iterations)", "fadeInOut(duration, iterations)", "slideInLeft(duration)"
- */
-static void apply_animation_from_string(IRComponent* component, const char* animSpec) {
-    if (!component || !animSpec) return;
-
-    char funcName[64] = {0};
-    float param1 = 0, param2 = 0;
-    int paramCount = 0;
-
-    // Parse "funcName(p1, p2)" or "funcName(p1)"
-    if (sscanf(animSpec, "%63[^(](%f, %f)", funcName, &param1, &param2) == 3) {
-        paramCount = 2;
-    } else if (sscanf(animSpec, "%63[^(](%f)", funcName, &param1) == 2) {
-        paramCount = 1;
-    } else {
-        return;  // Invalid format
-    }
-
-    IRAnimation* anim = NULL;
-
-    if (strcmp(funcName, "pulse") == 0) {
-        anim = ir_animation_pulse(param1);
-        if (anim && paramCount >= 2) ir_animation_set_iterations(anim, (int32_t)param2);
-    } else if (strcmp(funcName, "fadeInOut") == 0) {
-        anim = ir_animation_fade_in_out(param1);
-        if (anim && paramCount >= 2) ir_animation_set_iterations(anim, (int32_t)param2);
-    } else if (strcmp(funcName, "slideInLeft") == 0) {
-        anim = ir_animation_slide_in_left(param1);
-    }
-
-    if (anim) {
-        ir_component_add_animation(component, anim);
-    }
-}
-
 // ============================================================================
 // Component ID Remapping Helpers
 // ============================================================================
@@ -2344,11 +2268,6 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         component->layout = ir_get_layout(component);
     }
     json_deserialize_layout(json, component->layout);
-
-    // Parse animation property
-    if ((item = cJSON_GetObjectItem(json, "animation")) != NULL && cJSON_IsString(item)) {
-        apply_animation_from_string(component, item->valuestring);
-    }
 
     // Parse checkbox state
     if (component->type == IR_COMPONENT_CHECKBOX) {
@@ -2918,11 +2837,6 @@ IRComponent* ir_json_deserialize_from_cjson(cJSON* root) {
     // Clean up context before deleting JSON (context references JSON nodes)
     ir_json_context_free(ctx);
     cJSON_Delete(root);
-
-    // Propagate animation flags after full tree construction
-    if (component) {
-        ir_animation_propagate_flags(component);
-    }
 
     return component;
 }

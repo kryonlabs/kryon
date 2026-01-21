@@ -22,6 +22,9 @@ struct IRComponentMap {
 
 // Simple hash function for component IDs
 static uint32_t hash_component_id(uint32_t id, uint32_t bucket_count) {
+    // Safety check to prevent division by zero (SIGFPE)
+    if (bucket_count == 0) return 0;
+
     // FNV-1a hash
     uint32_t hash = 2166136261u;
     hash ^= (id & 0xFF);
@@ -101,6 +104,11 @@ bool ir_map_insert(IRComponentMap* map, IRComponent* component) {
         return false;
     }
 
+    // Safety check: prevent division by zero in load factor and modulo operations
+    if (map->bucket_count == 0) {
+        return false;
+    }
+
     // Check if we need to resize
     float load_factor = (float)map->item_count / (float)map->bucket_count;
     if (load_factor > LOAD_FACTOR_THRESHOLD) {
@@ -142,6 +150,11 @@ IRComponent* ir_map_lookup(IRComponentMap* map, uint32_t id) {
         return NULL;
     }
 
+    // Safety check: prevent division by zero in modulo operations
+    if (map->bucket_count == 0) {
+        return NULL;
+    }
+
     uint32_t hash = hash_component_id(id, map->bucket_count);
     uint32_t start_hash = hash;
 
@@ -166,6 +179,11 @@ bool ir_map_remove(IRComponentMap* map, uint32_t id) {
 
     // Validate component ID (0 is reserved/invalid)
     if (id == 0) {
+        return false;
+    }
+
+    // Safety check: prevent division by zero in modulo operations
+    if (map->bucket_count == 0) {
         return false;
     }
 

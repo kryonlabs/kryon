@@ -10,6 +10,7 @@
 #include <string.h>
 #include <time.h>
 #include "android_internal.h"
+#include "../../ir/include/ir_capability.h"
 
 // ============================================================================
 // GLOBAL STATE
@@ -108,9 +109,7 @@ bool android_ir_renderer_initialize(AndroidIRRenderer* ir_renderer,
     }
 
     // Initialize animation system if enabled
-    if (ir_renderer->config.enable_animations) {
-        ir_renderer->animation_ctx = ir_animation_context_create();
-    }
+    // Animation system handled by plugin
 
     // Initialize hot reload if enabled
     // TODO: Hot reload not yet implemented for Android
@@ -216,6 +215,9 @@ void android_ir_renderer_set_root(AndroidIRRenderer* ir_renderer,
 
     ir_renderer->last_root = root;
     ir_renderer->needs_relayout = true;
+
+    // Set root component for plugin access
+    ir_capability_set_root_component(root);
 }
 
 void android_ir_renderer_update(AndroidIRRenderer* ir_renderer,
@@ -223,9 +225,7 @@ void android_ir_renderer_update(AndroidIRRenderer* ir_renderer,
     if (!ir_renderer) return;
 
     // Update animations
-    if (ir_renderer->animation_ctx) {
-        ir_animation_update(ir_renderer->animation_ctx, delta_time);
-    }
+    // Animation updates handled by plugin
 
     // Check for hot reload
     // TODO: Hot reload not yet implemented for Android
@@ -362,9 +362,7 @@ void android_ir_renderer_set_event_callback(AndroidIRRenderer* ir_renderer,
 void android_ir_renderer_destroy(AndroidIRRenderer* ir_renderer) {
     if (!ir_renderer) return;
 
-    if (ir_renderer->animation_ctx) {
-        ir_animation_context_destroy(ir_renderer->animation_ctx);
-    }
+    // Animation cleanup handled by plugin
 
     // TODO: Hot reload not yet implemented for Android
     // if (ir_renderer->hot_reload_ctx) {

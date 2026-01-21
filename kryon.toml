@@ -1,8 +1,10 @@
 [project]
-name = "CountersDemo"
-version = "0.1.0"
+name = "kryon"
+version = "1.0.0"
 
-[build]
-entry = "examples/kry/counters_demo.kry"
-targets = ["desktop"]
-output_dir = "build/ir"
+[plugins]
+
+[plugins.animations]
+enabled = true
+required = true   # Animation functionality requires this plugin
+path = "../kryon-plugins/animations/build/libkryon_animations.so"

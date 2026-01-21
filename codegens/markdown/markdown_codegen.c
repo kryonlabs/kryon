@@ -349,3 +349,190 @@ bool markdown_codegen_generate_with_options(const char* kir_path,
     (void)options;
     return markdown_codegen_generate(kir_path, output_path);
 }
+
+/**
+ * Recursively process a module and its transitive imports for Markdown
+ */
+static int markdown_process_module_recursive(const char* module_id, const char* kir_dir,
+                                             const char* output_dir, CodegenProcessedModules* processed,
+                                             char** toc_entries, int* toc_count) {
+    // Skip if already processed
+    if (codegen_processed_modules_contains(processed, module_id)) return 0;
+    codegen_processed_modules_add(processed, module_id);
+
+    // Skip internal modules
+    if (codegen_is_internal_module(module_id)) return 0;
+
+    // Skip external plugins (they're runtime dependencies, not source)
+    if (codegen_is_external_plugin(module_id)) return 0;
+
+    // Build path to component's KIR file
+    char component_kir_path[2048];
+    snprintf(component_kir_path, sizeof(component_kir_path),
+             "%s/%s.kir", kir_dir, module_id);
+
+    // Read component's KIR
+    char* component_kir_json = codegen_read_kir_file(component_kir_path, NULL);
+    if (!component_kir_json) {
+        fprintf(stderr, "Warning: Cannot find KIR for '%s' at %s\n",
+                module_id, component_kir_path);
+        return 0;
+    }
+
+    // Parse to get transitive imports before generating
+    cJSON* component_root = cJSON_Parse(component_kir_json);
+    int files_written = 0;
+
+    // Generate Markdown from KIR
+    char* component_md = markdown_codegen_from_json(component_kir_json);
+    free(component_kir_json);
+
+    if (component_md) {
+        // Write to output directory maintaining hierarchy
+        char output_path[2048];
+        snprintf(output_path, sizeof(output_path),
+                 "%s/%s.md", output_dir, module_id);
+
+        if (codegen_write_file_with_mkdir(output_path, component_md)) {
+            printf("✓ Generated: %s.md\n", module_id);
+            files_written++;
+
+            // Add to TOC entries
+            if (toc_entries && toc_count && *toc_count < 256) {
+                char toc_entry[512];
+                snprintf(toc_entry, sizeof(toc_entry), "- [%s](./%s.md)\n", module_id, module_id);
+                toc_entries[*toc_count] = strdup(toc_entry);
+                (*toc_count)++;
+            }
+        }
+        free(component_md);
+    } else {
+        fprintf(stderr, "Warning: Failed to generate Markdown for '%s'\n", module_id);
+    }
+
+    // Process transitive imports from this component
+    if (component_root) {
+        cJSON* imports = cJSON_GetObjectItem(component_root, "imports");
+        if (imports && cJSON_IsArray(imports)) {
+            cJSON* import_item = NULL;
+            cJSON_ArrayForEach(import_item, imports) {
+                if (!cJSON_IsString(import_item)) continue;
+                const char* sub_module_id = cJSON_GetStringValue(import_item);
+                if (sub_module_id) {
+                    files_written += markdown_process_module_recursive(sub_module_id, kir_dir,
+                                                                       output_dir, processed,
+                                                                       toc_entries, toc_count);
+                }
+            }
+        }
+        cJSON_Delete(component_root);
+    }
+
+    return files_written;
+}
+
+bool markdown_codegen_generate_multi(const char* kir_path, const char* output_dir) {
+    if (!kir_path || !output_dir) {
+        fprintf(stderr, "Error: Invalid arguments to markdown_codegen_generate_multi\n");
+        return false;
+    }
+
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("Markdown");
+
+    // Read main KIR file
+    char* main_kir_json = codegen_read_kir_file(kir_path, NULL);
+    if (!main_kir_json) {
+        return false;
+    }
+
+    // Parse main KIR JSON
+    cJSON* main_root = cJSON_Parse(main_kir_json);
+    if (!main_root) {
+        fprintf(stderr, "Error: Failed to parse main KIR JSON\n");
+        free(main_kir_json);
+        return false;
+    }
+
+    // Create output directory if it doesn't exist
+    if (!codegen_mkdir_p(output_dir)) {
+        fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
+        cJSON_Delete(main_root);
+        free(main_kir_json);
+        return false;
+    }
+
+    int files_written = 0;
+
+    // Track TOC entries for index.md
+    char* toc_entries[256] = {0};
+    int toc_count = 0;
+
+    // 1. Generate index.md from main.kir
+    char* main_md = markdown_codegen_from_json(main_kir_json);
+    free(main_kir_json);
+
+    if (main_md) {
+        char main_output_path[2048];
+        snprintf(main_output_path, sizeof(main_output_path), "%s/index.md", output_dir);
+
+        if (codegen_write_file_with_mkdir(main_output_path, main_md)) {
+            printf("✓ Generated: index.md\n");
+            files_written++;
+        }
+        free(main_md);
+    } else {
+        fprintf(stderr, "Warning: Failed to generate index.md from KIR\n");
+    }
+
+    // 2. Get the KIR directory (parent of kir_path)
+    char kir_dir[2048];
+    codegen_get_parent_dir(kir_path, kir_dir, sizeof(kir_dir));
+
+    // 3. Track processed modules to avoid duplicates
+    CodegenProcessedModules processed = {0};
+    codegen_processed_modules_add(&processed, "main");  // Mark main as processed
+
+    // 4. Process each import recursively (including transitive imports)
+    cJSON* imports = cJSON_GetObjectItem(main_root, "imports");
+    if (imports && cJSON_IsArray(imports)) {
+        cJSON* import_item = NULL;
+        cJSON_ArrayForEach(import_item, imports) {
+            if (!cJSON_IsString(import_item)) continue;
+
+            const char* module_id = cJSON_GetStringValue(import_item);
+            if (module_id) {
+                files_written += markdown_process_module_recursive(module_id, kir_dir,
+                                                                   output_dir, &processed,
+                                                                   toc_entries, &toc_count);
+            }
+        }
+    }
+
+    // 5. Append TOC to index.md if we have entries
+    if (toc_count > 0) {
+        char index_path[2048];
+        snprintf(index_path, sizeof(index_path), "%s/index.md", output_dir);
+
+        FILE* f = fopen(index_path, "a");
+        if (f) {
+            fprintf(f, "\n## Components\n\n");
+            for (int i = 0; i < toc_count; i++) {
+                fprintf(f, "%s", toc_entries[i]);
+                free(toc_entries[i]);
+            }
+            fclose(f);
+        }
+    }
+
+    codegen_processed_modules_free(&processed);
+    cJSON_Delete(main_root);
+
+    if (files_written == 0) {
+        fprintf(stderr, "Warning: No Markdown files were generated\n");
+        return false;
+    }
+
+    printf("✓ Generated %d Markdown files in %s\n", files_written, output_dir);
+    return true;
+}

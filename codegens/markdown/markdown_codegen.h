@@ -52,6 +52,22 @@ bool markdown_codegen_generate_with_options(const char* kir_path,
                                              const char* output_path,
                                              MarkdownCodegenOptions* options);
 
+/**
+ * Generate multiple Markdown files from multi-file KIR by reading linked KIR files
+ *
+ * This function reads the main.kir file, generates Markdown from its KIR representation,
+ * then follows the imports array to find and process linked component KIR files.
+ * Generates index.md with table of contents and linked documents per component.
+ *
+ * @param kir_path Path to main.kir JSON file (usually .kryon_cache/main.kir)
+ * @param output_dir Directory where generated Markdown files should be written
+ * @return bool true on success, false on error
+ *
+ * @example
+ *   bool success = markdown_codegen_generate_multi(".kryon_cache/main.kir", "output/");
+ */
+bool markdown_codegen_generate_multi(const char* kir_path, const char* output_dir);
+
 #ifdef __cplusplus
 }
 #endif

@@ -31,7 +31,6 @@ IRComponent* ir_component_deep_copy(IRComponent* src) {
     dest->owner_instance_id = src->owner_instance_id;
     dest->is_disabled = src->is_disabled;
     // Note: dirty_flags now consolidated in layout_state, not copied here
-    dest->has_active_animations = src->has_active_animations;
 
     // Copy string fields
     if (src->tag) dest->tag = strdup(src->tag);
@@ -80,39 +79,6 @@ IRComponent* ir_component_deep_copy(IRComponent* src) {
                 dest->style->background.data.gradient = malloc(sizeof(IRGradient));
                 if (dest->style->background.data.gradient) {
                     memcpy(dest->style->background.data.gradient, src->style->background.data.gradient, sizeof(IRGradient));
-                }
-            }
-
-            // Copy animations
-            if (src->style->animation_count > 0) {
-                dest->style->animations = calloc(src->style->animation_count, sizeof(IRAnimation*));
-                if (dest->style->animations) {
-                    for (uint32_t i = 0; i < src->style->animation_count; i++) {
-                        if (src->style->animations[i]) {
-                            dest->style->animations[i] = malloc(sizeof(IRAnimation));
-                            if (dest->style->animations[i]) {
-                                memcpy(dest->style->animations[i], src->style->animations[i], sizeof(IRAnimation));
-                                if (src->style->animations[i]->name) {
-                                    dest->style->animations[i]->name = strdup(src->style->animations[i]->name);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Copy transitions
-            if (src->style->transition_count > 0) {
-                dest->style->transitions = calloc(src->style->transition_count, sizeof(IRTransition*));
-                if (dest->style->transitions) {
-                    for (uint32_t i = 0; i < src->style->transition_count; i++) {
-                        if (src->style->transitions[i]) {
-                            dest->style->transitions[i] = malloc(sizeof(IRTransition));
-                            if (dest->style->transitions[i]) {
-                                memcpy(dest->style->transitions[i], src->style->transitions[i], sizeof(IRTransition));
-                            }
-                        }
-                    }
                 }
             }
         }

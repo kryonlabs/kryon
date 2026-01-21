@@ -519,97 +519,6 @@ static bool deserialize_filter(IRBuffer* buffer, IRFilter* filter) {
     return true;
 }
 
-// Animation Keyframe serialization
-static bool serialize_keyframe(IRBuffer* buffer, IRKeyframe* keyframe) {
-    if (!write_float32(buffer, keyframe->offset)) return false;
-    if (!write_uint8(buffer, keyframe->easing)) return false;
-    if (!write_uint8(buffer, keyframe->property_count)) return false;
-
-    // Serialize each property inline
-    for (uint8_t i = 0; i < keyframe->property_count; i++) {
-        if (!write_uint8(buffer, keyframe->properties[i].property)) return false;
-        if (!write_float32(buffer, keyframe->properties[i].value)) return false;
-        if (!serialize_color(buffer, keyframe->properties[i].color_value)) return false;
-        if (!write_uint8(buffer, keyframe->properties[i].is_set)) return false;
-    }
-    return true;
-}
-
-static bool deserialize_keyframe(IRBuffer* buffer, IRKeyframe* keyframe) {
-    if (!read_float32(buffer, &keyframe->offset)) return false;
-    if (!read_uint8(buffer, (uint8_t*)&keyframe->easing)) return false;
-    if (!read_uint8(buffer, &keyframe->property_count)) return false;
-
-    // Deserialize each property inline
-    for (uint8_t i = 0; i < keyframe->property_count; i++) {
-        if (!read_uint8(buffer, (uint8_t*)&keyframe->properties[i].property)) return false;
-        if (!read_float32(buffer, &keyframe->properties[i].value)) return false;
-        if (!deserialize_color(buffer, &keyframe->properties[i].color_value)) return false;
-        if (!read_uint8(buffer, (uint8_t*)&keyframe->properties[i].is_set)) return false;
-    }
-    return true;
-}
-
-// Animation serialization
-static bool serialize_animation(IRBuffer* buffer, IRAnimation* animation) {
-    if (!write_string(buffer, animation->name)) return false;
-    if (!write_float32(buffer, animation->duration)) return false;
-    if (!write_float32(buffer, animation->delay)) return false;
-    if (!write_uint32(buffer, (uint32_t)animation->iteration_count)) return false;
-    if (!write_uint8(buffer, animation->alternate)) return false;
-    if (!write_uint8(buffer, animation->default_easing)) return false;
-    if (!write_uint8(buffer, animation->keyframe_count)) return false;
-
-    for (uint8_t i = 0; i < animation->keyframe_count; i++) {
-        if (!serialize_keyframe(buffer, &animation->keyframes[i])) return false;
-    }
-    return true;
-}
-
-static bool deserialize_animation(IRBuffer* buffer, IRAnimation* animation) {
-    if (!read_string(buffer, &animation->name)) return false;
-    if (!read_float32(buffer, &animation->duration)) return false;
-    if (!read_float32(buffer, &animation->delay)) return false;
-
-    uint32_t tmp;
-    if (!read_uint32(buffer, &tmp)) return false;
-    animation->iteration_count = (int32_t)tmp;
-
-    if (!read_uint8(buffer, (uint8_t*)&animation->alternate)) return false;
-    if (!read_uint8(buffer, (uint8_t*)&animation->default_easing)) return false;
-    if (!read_uint8(buffer, &animation->keyframe_count)) return false;
-
-    for (uint8_t i = 0; i < animation->keyframe_count; i++) {
-        if (!deserialize_keyframe(buffer, &animation->keyframes[i])) return false;
-    }
-
-    // Initialize runtime state (not serialized)
-    animation->current_time = 0.0f;
-    animation->current_iteration = 0;
-    animation->is_paused = false;
-
-    return true;
-}
-
-// Transition serialization
-static bool serialize_transition(IRBuffer* buffer, IRTransition* transition) {
-    if (!write_uint8(buffer, transition->property)) return false;
-    if (!write_float32(buffer, transition->duration)) return false;
-    if (!write_float32(buffer, transition->delay)) return false;
-    if (!write_uint8(buffer, transition->easing)) return false;
-    if (!write_uint32(buffer, transition->trigger_state)) return false;
-    return true;
-}
-
-static bool deserialize_transition(IRBuffer* buffer, IRTransition* transition) {
-    if (!read_uint8(buffer, (uint8_t*)&transition->property)) return false;
-    if (!read_float32(buffer, &transition->duration)) return false;
-    if (!read_float32(buffer, &transition->delay)) return false;
-    if (!read_uint8(buffer, (uint8_t*)&transition->easing)) return false;
-    if (!read_uint32(buffer, &transition->trigger_state)) return false;
-    return true;
-}
-
 // Pseudo Style serialization
 static bool serialize_pseudo_style(IRBuffer* buffer, IRPseudoStyle* pseudo) {
     if (!write_uint32(buffer, pseudo->state)) return false;
@@ -759,22 +668,6 @@ static bool serialize_style(IRBuffer* buffer, IRStyle* style) {
     if (!write_float32(buffer, style->transform.scale_y)) return false;
     if (!write_float32(buffer, style->transform.rotate)) return false;
 
-    // V2.0: Animations (pointer array)
-    if (!write_uint32(buffer, style->animation_count)) return false;
-    for (uint32_t i = 0; i < style->animation_count; i++) {
-        if (style->animations && style->animations[i]) {
-            if (!serialize_animation(buffer, style->animations[i])) return false;
-        }
-    }
-
-    // V2.0: Transitions (pointer array)
-    if (!write_uint32(buffer, style->transition_count)) return false;
-    for (uint32_t i = 0; i < style->transition_count; i++) {
-        if (style->transitions && style->transitions[i]) {
-            if (!serialize_transition(buffer, style->transitions[i])) return false;
-        }
-    }
-
     // Serialize z-index, visibility, opacity
     if (!write_uint32(buffer, style->z_index)) return false;
     if (!write_uint8(buffer, style->visible)) return false;
@@ -883,32 +776,6 @@ static bool deserialize_style(IRBuffer* buffer, IRStyle** style_ptr) {
     if (!read_float32(buffer, &style->transform.scale_x)) goto error;
     if (!read_float32(buffer, &style->transform.scale_y)) goto error;
     if (!read_float32(buffer, &style->transform.rotate)) goto error;
-
-    // V2.0: Animations (pointer array)
-    if (!read_uint32(buffer, &style->animation_count)) goto error;
-    if (style->animation_count > 0) {
-        style->animations = malloc(sizeof(IRAnimation*) * style->animation_count);
-        if (!style->animations) goto error;
-
-        for (uint32_t i = 0; i < style->animation_count; i++) {
-            style->animations[i] = malloc(sizeof(IRAnimation));
-            if (!style->animations[i]) goto error;
-            if (!deserialize_animation(buffer, style->animations[i])) goto error;
-        }
-    }
-
-    // V2.0: Transitions (pointer array)
-    if (!read_uint32(buffer, &style->transition_count)) goto error;
-    if (style->transition_count > 0) {
-        style->transitions = malloc(sizeof(IRTransition*) * style->transition_count);
-        if (!style->transitions) goto error;
-
-        for (uint32_t i = 0; i < style->transition_count; i++) {
-            style->transitions[i] = malloc(sizeof(IRTransition));
-            if (!style->transitions[i]) goto error;
-            if (!deserialize_transition(buffer, style->transitions[i])) goto error;
-        }
-    }
 
     // Deserialize z-index, visibility, opacity
     if (!read_uint32(buffer, &style->z_index)) goto error;
@@ -1702,7 +1569,6 @@ static IRComponent* ir_deep_copy_component(IRComponent* src) {
     dest->owner_instance_id = src->owner_instance_id;
     dest->is_disabled = src->is_disabled;
     // Note: dirty_flags now consolidated in layout_state, not copied here
-    dest->has_active_animations = src->has_active_animations;
 
     // Copy string fields
     if (src->tag) dest->tag = strdup(src->tag);
@@ -1746,39 +1612,6 @@ static IRComponent* ir_deep_copy_component(IRComponent* src) {
                 dest->style->background.data.gradient = malloc(sizeof(IRGradient));
                 if (dest->style->background.data.gradient) {
                     memcpy(dest->style->background.data.gradient, src->style->background.data.gradient, sizeof(IRGradient));
-                }
-            }
-
-            // Copy animations
-            if (src->style->animation_count > 0) {
-                dest->style->animations = calloc(src->style->animation_count, sizeof(IRAnimation*));
-                if (dest->style->animations) {
-                    for (uint32_t i = 0; i < src->style->animation_count; i++) {
-                        if (src->style->animations[i]) {
-                            dest->style->animations[i] = malloc(sizeof(IRAnimation));
-                            if (dest->style->animations[i]) {
-                                memcpy(dest->style->animations[i], src->style->animations[i], sizeof(IRAnimation));
-                                if (src->style->animations[i]->name) {
-                                    dest->style->animations[i]->name = strdup(src->style->animations[i]->name);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Copy transitions
-            if (src->style->transition_count > 0) {
-                dest->style->transitions = calloc(src->style->transition_count, sizeof(IRTransition*));
-                if (dest->style->transitions) {
-                    for (uint32_t i = 0; i < src->style->transition_count; i++) {
-                        if (src->style->transitions[i]) {
-                            dest->style->transitions[i] = malloc(sizeof(IRTransition));
-                            if (dest->style->transitions[i]) {
-                                memcpy(dest->style->transitions[i], src->style->transitions[i], sizeof(IRTransition));
-                            }
-                        }
-                    }
                 }
             }
         }

@@ -27,7 +27,8 @@
 #include "desktop_test_events.h"
 #include "../../ir/include/ir_core.h"
 #include "../../ir/include/ir_builder.h"
-#include "../../ir/include/ir_animation.h"
+#include "../../ir/include/ir_lifecycle_hooks.h"
+#include "../../ir/include/ir_capability.h"
 
 // External reference to global hover state (defined in desktop_globals.c)
 extern IRComponent* g_hovered_component;
@@ -136,20 +137,7 @@ DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* confi
         printf("Headless mode enabled\n");
     }
 
-    /* Initialize animation context */
-    renderer->animation_ctx = ir_animation_context_create();
-    if (!renderer->animation_ctx) {
-        free(renderer);
-        return NULL;
-    }
-
-    /* Initialize transition context */
-    renderer->transition_ctx = ir_transition_context_create();
-    if (!renderer->transition_ctx) {
-        ir_animation_context_destroy(renderer->animation_ctx);
-        free(renderer);
-        return NULL;
-    }
+    /* Animation system has been moved to plugin - no initialization needed here */
 
     /* Initialize hot reload if enabled */
     const char* hot_reload_env = getenv("KRYON_HOT_RELOAD");
@@ -211,16 +199,7 @@ void desktop_ir_renderer_destroy(DesktopIRRenderer* renderer) {
         g_desktop_renderer = NULL;
     }
 
-    // Destroy animation and hot reload contexts
-    if (renderer->animation_ctx) {
-        ir_animation_context_destroy(renderer->animation_ctx);
-        renderer->animation_ctx = NULL;
-    }
-
-    if (renderer->transition_ctx) {
-        ir_transition_context_destroy(renderer->transition_ctx);
-        renderer->transition_ctx = NULL;
-    }
+    // Animation system moved to plugin - no cleanup needed here
 
     if (renderer->hot_reload_ctx) {
         ir_hot_reload_destroy(renderer->hot_reload_ctx);
@@ -479,27 +458,25 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
     g_frame_counter++;
     renderer->needs_relayout = false;
 
-    // Calculate delta time for animations (platform-agnostic timing)
+    // Calculate delta time (platform-agnostic timing)
     // Note: This uses a simple frame counter for now; backends can provide better timing
     static double last_time = 0;
     double current_time = (double)g_frame_counter / 60.0; // Assume 60 FPS for now
     float delta_time = (float)(current_time - last_time);
     last_time = current_time;
 
-    // Update animation contexts
-    if (renderer->animation_ctx) {
-        ir_animation_update(renderer->animation_ctx, delta_time);
-    }
-    ir_animation_tree_update(root, (float)current_time);
-
-    // Update transitions (detect state changes and animate)
-    if (renderer->transition_ctx) {
-        ir_transition_tree_update(renderer->transition_ctx, root, delta_time);
-    }
+    // Invoke PRE_LAYOUT lifecycle hooks
+    ir_invoke_lifecycle_hooks(KRYON_HOOK_PRE_LAYOUT, root, delta_time);
 
     // Compute layout using two-pass system before rendering
     ir_layout_compute_tree(root, (float)renderer->config.window_width,
                            (float)renderer->config.window_height);
+
+    // Invoke POST_LAYOUT lifecycle hooks
+    ir_invoke_lifecycle_hooks(KRYON_HOOK_POST_LAYOUT, root, delta_time);
+
+    // Invoke PRE_RENDER lifecycle hooks (plugins update animations here)
+    ir_invoke_lifecycle_hooks(KRYON_HOOK_PRE_RENDER, root, delta_time);
 
     // Invoke canvas onUpdate callbacks with delta time
     invoke_canvas_update_callbacks_recursive(renderer, root, delta_time);
@@ -532,6 +509,9 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
 
     renderer->ops->end_frame(renderer);
 
+    // Invoke POST_RENDER lifecycle hooks
+    ir_invoke_lifecycle_hooks(KRYON_HOOK_POST_RENDER, root, delta_time);
+
     // Update frame stats
     renderer->frame_count++;
     renderer->last_frame_time = current_time;
@@ -556,6 +536,9 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
     renderer->last_root = root;
     renderer->shutdown_state = KRYON_SHUTDOWN_RUNNING;
     renderer->shutdown_reason = KRYON_SHUTDOWN_REASON_NONE;
+
+    // Set root component for plugin access
+    ir_capability_set_root_component(root);
 
     int frame_count = 0;
     while (renderer->running && renderer->shutdown_state == KRYON_SHUTDOWN_RUNNING) {
@@ -662,6 +645,9 @@ void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* n
 
         renderer->last_root = new_root;
         renderer->needs_relayout = true;
+
+        // Set root component for plugin access
+        ir_capability_set_root_component(new_root);
 
         // Clear hover state when tree changes to prevent stale references
         g_hovered_component = NULL;

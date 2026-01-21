@@ -6,8 +6,6 @@
 #include "../../core/include/kryon.h"
 #include "../../ir/include/ir_core.h"
 #include "../../ir/include/ir_builder.h"
-#include "../../ir/include/ir_animation.h"
-#include "../../ir/include/ir_transition.h"
 #include "../../ir/include/ir_hot_reload.h"
 #include "../../ir/include/ir_style_vars.h"
 #include "../../ir/include/ir_serialization.h"
@@ -91,11 +89,7 @@ struct DesktopIRRenderer {
     IRComponent* last_root;
     bool needs_relayout;
 
-    // Animation system
-    IRAnimationContext* animation_ctx;
-
-    // Transition system
-    IRTransitionContext* transition_ctx;
+    // Animation system moved to plugin - no fields needed here
 
     // Hot reload system
     IRHotReloadContext* hot_reload_ctx;

@@ -301,23 +301,7 @@ bool css_gen_generate_overflow(CSSGenContext* ctx, const char* property, IROverf
  */
 bool css_gen_generate_layout_mode(CSSGenContext* ctx, IRLayoutMode mode);
 
-/**
- * Generate CSS for animations list
- * @param ctx CSS generator context
- * @param animations Array of animation pointers
- * @param count Number of animations
- * @return true if property was written
- */
-bool css_gen_generate_animations(CSSGenContext* ctx, IRAnimation** animations, uint32_t count);
-
-/**
- * Generate CSS for transitions list
- * @param ctx CSS generator context
- * @param transitions Array of transition pointers
- * @param count Number of transitions
- * @return true if property was written
- */
-bool css_gen_generate_transitions(CSSGenContext* ctx, IRTransition** transitions, uint32_t count);
+// Animation and transition generation removed - moved to plugin system
 
 /**
  * Generate CSS for IRTextEffect
@@ -369,13 +353,7 @@ typedef bool (*CSSPseudoStyleFn)(CSSGenContext* ctx, void* user_data);
 bool css_gen_generate_pseudo_class(CSSGenContext* ctx, const char* selector, const char* pseudo_class,
                                     CSSPseudoStyleFn style_callback, void* user_data);
 
-/**
- * Generate CSS for @keyframes animation
- * @param ctx CSS generator context
- * @param animation IR animation definition
- * @return true if keyframes were written
- */
-bool css_gen_generate_keyframes(CSSGenContext* ctx, IRAnimation* animation);
+// Keyframes generation removed - moved to plugin system
 
 /**
  * Generate CSS for :root variables block

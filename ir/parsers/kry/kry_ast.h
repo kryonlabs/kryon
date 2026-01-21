@@ -41,7 +41,8 @@ typedef enum {
     KRY_NODE_MODULE_RETURN,     // Module-level return: return { exports }
     KRY_NODE_STRUCT_DECL,       // Struct declaration: struct Habit { ... }
     KRY_NODE_STRUCT_INST,       // Struct instantiation: Habit { name = "..." }
-    KRY_NODE_STRUCT_FIELD       // Struct field: name: string = "default"
+    KRY_NODE_STRUCT_FIELD,      // Struct field: name: string = "default"
+    KRY_NODE_DELETE_STMT        // Delete statement: delete object.property or delete array[index]
 } KryNodeType;
 
 // ============================================================================
@@ -54,7 +55,9 @@ typedef enum {
     KRY_VALUE_IDENTIFIER,       // variableName, center, etc.
     KRY_VALUE_EXPRESSION,       // { code block }
     KRY_VALUE_ARRAY,            // [item1, item2, item3]
-    KRY_VALUE_OBJECT            // {key: value, key2: value2}
+    KRY_VALUE_OBJECT,           // {key: value, key2: value2}
+    KRY_VALUE_STRUCT_INSTANCE,  // Habit { name = "x"; color = "y" }
+    KRY_VALUE_RANGE             // 0..10 (range expression for for loops)
 } KryValueType;
 
 // ============================================================================
@@ -126,6 +129,16 @@ struct KryValue {
             KryValue** values;
             size_t count;
         } object;
+        struct {
+            char* struct_name;  // "Habit", "Item", etc.
+            char** field_names;
+            KryValue** field_values;
+            size_t field_count;
+        } struct_instance;
+        struct {
+            KryValue* start;    // Range start (number or expression)
+            KryValue* end;      // Range end (number or expression)
+        } range;
     };
     bool is_percentage;         // True if number has % suffix (e.g., 100%)
 };
@@ -163,7 +176,8 @@ struct KryNode {
 
     // Import statement support (for KRY_NODE_IMPORT)
     char* import_module;        // Module path (e.g., "math", "components.calendar")
-    char* import_name;          // Imported name (e.g., "Math", "*")
+    char* import_name;          // Imported name (e.g., "Math", "*") or comma-separated names for destructured
+    bool is_destructured_import; // True for { name1, name2 } style imports
 
     // Function declaration support (for KRY_NODE_FUNCTION_DECL)
     char* func_name;            // Function name (e.g., "loadHabits")
@@ -174,6 +188,9 @@ struct KryNode {
 
     // Return statement support (for KRY_NODE_RETURN_STMT)
     KryNode* return_expr;       // Expression to return (NULL for void return)
+
+    // Delete statement support (for KRY_NODE_DELETE_STMT)
+    KryNode* delete_target;     // Expression representing what to delete
 
     // Module-level return support (for KRY_NODE_MODULE_RETURN)
     char** export_names;        // Array of export names ["COLORS", "DEFAULT_COLOR", ...]
@@ -270,6 +287,9 @@ KryValue* kry_value_create_identifier(KryParser* parser, const char* id);
 KryValue* kry_value_create_expression(KryParser* parser, const char* expr);
 KryValue* kry_value_create_array(KryParser* parser, KryValue** elements, size_t count);
 KryValue* kry_value_create_object(KryParser* parser, char** keys, KryValue** values, size_t count);
+KryValue* kry_value_create_struct_instance(KryParser* parser, const char* struct_name,
+                                            char** field_names, KryValue** field_values, size_t count);
+KryValue* kry_value_create_range(KryParser* parser, KryValue* start, KryValue* end);
 
 // Error handling
 void kry_parser_error(KryParser* parser, const char* message);

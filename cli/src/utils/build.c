@@ -25,6 +25,9 @@
 #include "../../../codegens/lua/lua_codegen.h"
 #include "../../../codegens/tsx/tsx_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
+#include "../../../codegens/python/python_codegen.h"
+#include "../../../codegens/kotlin/kotlin_codegen.h"
+#include "../../../codegens/markdown/markdown_codegen.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -377,28 +380,21 @@ int generate_html_from_kir(const char* kir_file, const char* output_dir,
  * ============================================================================ */
 
 bool kir_needs_lua_runtime(const char* kir_file) {
-    fprintf(stderr, "[kir_needs_lua_runtime] About to load: %s\n", kir_file);
     // Load KIR to check metadata
     IRComponent* root = ir_read_json_file(kir_file);
-    fprintf(stderr, "[kir_needs_lua_runtime] Loaded root: %p\n", (void*)root);
     if (!root) {
         return false;
     }
 
     bool needs_lua = false;
-    fprintf(stderr, "[kir_needs_lua_runtime] Checking metadata, g_ir_context=%p\n", (void*)g_ir_context);
     if (g_ir_context && g_ir_context->source_metadata) {
         IRSourceMetadata* meta = g_ir_context->source_metadata;
-        fprintf(stderr, "[kir_needs_lua_runtime] meta=%p, source_language=%p\n",
-                (void*)meta, (void*)(meta->source_language));
         if (meta->source_language && strcmp(meta->source_language, "lua") == 0) {
             needs_lua = true;
         }
     }
 
-    fprintf(stderr, "[kir_needs_lua_runtime] About to destroy root\n");
     ir_destroy_component(root);
-    fprintf(stderr, "[kir_needs_lua_runtime] Destroyed root, returning needs_lua=%d\n", needs_lua);
     return needs_lua;
 }
 
@@ -746,8 +742,10 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
     bool success = desktop_render_ir_component(root, &config);
 
     // Cleanup
-    if (executor) {
-        ir_executor_destroy(executor);
+    // Note: state_mgr takes ownership of executor, so destroying state_mgr also destroys executor
+    if (state_mgr) {
+        ir_state_set_global(NULL);  // Clear global reference first
+        ir_state_manager_destroy(state_mgr);
     }
     ir_destroy_component(root);
 
@@ -946,8 +944,10 @@ int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop
 
     desktop_ir_renderer_destroy(desktop_renderer);
 
-    if (executor) {
-        ir_executor_destroy(executor);
+    // Note: state_mgr takes ownership of executor, so destroying state_mgr also destroys executor
+    if (state_mgr) {
+        ir_state_set_global(NULL);  // Clear global reference first
+        ir_state_manager_destroy(state_mgr);
     }
 
     ir_instance_destroy(inst);
@@ -1056,18 +1056,24 @@ int generate_from_kir(const char* kir_file, const char* target,
                       const char* output_path) {
     bool success = false;
 
+    // All codegens use multi-file output by default
     if (strcmp(target, "kry") == 0) {
-        // Multi-file codegen is default for KRY
         success = kry_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "tsx") == 0) {
-        success = tsx_codegen_generate(kir_file, output_path);
+        success = tsx_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "lua") == 0) {
-        // Multi-file codegen is default for Lua
         success = lua_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "c") == 0) {
-        success = ir_generate_c_code(kir_file, output_path);
+        success = ir_generate_c_code_multi(kir_file, output_path);
+    } else if (strcmp(target, "python") == 0) {
+        success = python_codegen_generate_multi(kir_file, output_path);
+    } else if (strcmp(target, "kotlin") == 0) {
+        success = ir_generate_kotlin_code_multi(kir_file, output_path);
+    } else if (strcmp(target, "markdown") == 0) {
+        success = markdown_codegen_generate_multi(kir_file, output_path);
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
+        fprintf(stderr, "Supported targets: kry, tsx, lua, c, python, kotlin, markdown\n");
         return 1;
     }
 

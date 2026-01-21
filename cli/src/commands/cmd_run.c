@@ -564,6 +564,7 @@ int cmd_run(int argc, char** argv) {
     const char* target_file = NULL;
     bool free_target = false;
     const char* target_platform = NULL;
+    bool free_target_platform = false;
     bool explicit_target = false;
     const char* renderer_override = NULL;
     bool enable_hot_reload = false;
@@ -619,7 +620,8 @@ int cmd_run(int argc, char** argv) {
     // If no explicit target specified, try to get it from config
     if (!target_platform) {
         if (early_config && early_config->build_targets_count > 0 && early_config->build_targets[0]) {
-            target_platform = early_config->build_targets[0];
+            target_platform = strdup(early_config->build_targets[0]);
+            free_target_platform = true;
             fprintf(stderr, "[kryon] Using target from kryon.toml: %s\n", target_platform);
         } else {
             fprintf(stderr, "Error: No target specified and no targets in kryon.toml\n");
@@ -639,43 +641,48 @@ int cmd_run(int argc, char** argv) {
             fprintf(stderr, "%s%s", i > 0 ? ", " : "", targets[i]);
         }
         fprintf(stderr, ", android\n");
+        if (free_target_platform) free((char*)target_platform);
         return 1;
     }
 
     // If no file specified, use entry from config
     if (argc < 1) {
-        KryonConfig* config = config_find_and_load();
-        if (!config) {
+        if (!early_config) {
             fprintf(stderr, "Error: No file specified and no kryon.toml found\n");
+            if (free_target_platform) free((char*)target_platform);
             return 1;
         }
 
-        if (!config_validate(config)) {
-            config_free(config);
+        if (!config_validate(early_config)) {
+            config_free(early_config);
+            if (free_target_platform) free((char*)target_platform);
             return 1;
         }
 
-        if (!config->build_entry) {
+        if (!early_config->build_entry) {
             fprintf(stderr, "Error: No file specified and no build.entry in kryon.toml\n");
-            config_free(config);
+            config_free(early_config);
+            if (free_target_platform) free((char*)target_platform);
             return 1;
         }
 
-        target_file = str_copy(config->build_entry);
+        target_file = str_copy(early_config->build_entry);
         free_target = true;
-        config_free(config);
+        config_free(early_config);
+        early_config = NULL;  // Mark as freed
     } else {
         target_file = argv[0];
 
-        // Validate config if it exists
-        KryonConfig* config = config_find_and_load();
-        if (config) {
-            if (!config_validate(config)) {
-                config_free(config);
+        // Validate config if it exists (reuse early_config)
+        if (early_config) {
+            if (!config_validate(early_config)) {
+                config_free(early_config);
                 if (free_target) free((char*)target_file);
+                if (free_target_platform) free((char*)target_platform);
                 return 1;
             }
-            config_free(config);
+            config_free(early_config);
+            early_config = NULL;  // Mark as freed
         }
     }
 
@@ -683,6 +690,7 @@ int cmd_run(int argc, char** argv) {
     if (!file_exists(target_file)) {
         fprintf(stderr, "Error: File not found: %s\n", target_file);
         if (free_target) free((char*)target_file);
+        if (free_target_platform) free((char*)target_platform);
         return 1;
     }
 
@@ -692,6 +700,7 @@ int cmd_run(int argc, char** argv) {
         const char* ext = path_extension(target_file);
         fprintf(stderr, "Error: Unsupported file type: %s\n", ext);
         if (free_target) free((char*)target_file);
+        if (free_target_platform) free((char*)target_platform);
         return 1;
     }
 
@@ -704,6 +713,7 @@ int cmd_run(int argc, char** argv) {
         if (!found_lib) {
             fprintf(stderr, "Error: Desktop renderer library not found\n");
             if (free_target) free((char*)target_file);
+            if (free_target_platform) free((char*)target_platform);
             return 1;
         }
         desktop_lib = found_lib;  // Note: leaked but used immediately
@@ -715,6 +725,7 @@ int cmd_run(int argc, char** argv) {
     if (strcmp(frontend, "c") == 0) {
         result = run_c_file(target_file);
         if (free_target) free((char*)target_file);
+        if (free_target_platform) free((char*)target_platform);
         return result;
     }
 
@@ -723,6 +734,7 @@ int cmd_run(int argc, char** argv) {
         result = run_kir_file(target_file, target_platform, renderer_override,
                              enable_hot_reload, watch_path);
         if (free_target) free((char*)target_file);
+        if (free_target_platform) free((char*)target_platform);
         return result;
     }
 
@@ -739,6 +751,7 @@ int cmd_run(int argc, char** argv) {
     if (compile_result != 0) {
         fprintf(stderr, "Error: Failed to compile %s\n", target_file);
         if (free_target) free((char*)target_file);
+        if (free_target_platform) free((char*)target_platform);
         return 1;
     }
 
@@ -747,6 +760,7 @@ int cmd_run(int argc, char** argv) {
                          enable_hot_reload, watch_path);
 
     if (free_target) free((char*)target_file);
+    if (free_target_platform) free((char*)target_platform);
     return result;
 }
 

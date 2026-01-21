@@ -9,8 +9,6 @@
 
 // Forward declarations
 typedef struct IRGradient IRGradient;
-typedef struct IRAnimation IRAnimation;
-typedef struct IRTransition IRTransition;
 
 // ============================================================================
 // Direction and BiDi Support
@@ -224,75 +222,6 @@ typedef struct {
 // Transform origin flags
 #define IR_TRANSFORM_ORIGIN_SET_X (1 << 0)
 #define IR_TRANSFORM_ORIGIN_SET_Y (1 << 1)
-
-// ============================================================================
-// Animation
-// ============================================================================
-
-typedef enum {
-    IR_ANIM_PROP_OPACITY,
-    IR_ANIM_PROP_TRANSLATE_X,
-    IR_ANIM_PROP_TRANSLATE_Y,
-    IR_ANIM_PROP_SCALE_X,
-    IR_ANIM_PROP_SCALE_Y,
-    IR_ANIM_PROP_ROTATE,
-    IR_ANIM_PROP_WIDTH,
-    IR_ANIM_PROP_HEIGHT,
-    IR_ANIM_PROP_BACKGROUND_COLOR,
-    IR_ANIM_PROP_CUSTOM
-} IRAnimationProperty;
-
-typedef enum {
-    IR_EASING_LINEAR,
-    IR_EASING_EASE_IN,
-    IR_EASING_EASE_OUT,
-    IR_EASING_EASE_IN_OUT,
-    IR_EASING_EASE_IN_QUAD,
-    IR_EASING_EASE_OUT_QUAD,
-    IR_EASING_EASE_IN_OUT_QUAD,
-    IR_EASING_EASE_IN_CUBIC,
-    IR_EASING_EASE_OUT_CUBIC,
-    IR_EASING_EASE_IN_OUT_CUBIC,
-    IR_EASING_EASE_IN_BOUNCE,
-    IR_EASING_EASE_OUT_BOUNCE
-} IREasingType;
-
-#define IR_MAX_KEYFRAME_PROPERTIES 8
-#define IR_MAX_KEYFRAMES 16
-
-typedef struct IRKeyframe {
-    float offset;
-    IREasingType easing;
-    struct {
-        IRAnimationProperty property;
-        float value;
-        IRColor color_value;
-        bool is_set;
-    } properties[IR_MAX_KEYFRAME_PROPERTIES];
-    uint8_t property_count;
-} IRKeyframe;
-
-struct IRAnimation {
-    char* name;
-    float duration;
-    float delay;
-    int32_t iteration_count;
-    bool alternate;
-    IREasingType default_easing;
-    IRKeyframe keyframes[IR_MAX_KEYFRAMES];
-    uint8_t keyframe_count;
-    float current_time;
-    int32_t current_iteration;
-    bool is_paused;
-};
-
-typedef struct IRTransition {
-    IRAnimationProperty property;
-    float duration;
-    float delay;
-    IREasingType easing;
-    uint32_t trigger_state;
-} IRTransition;
 
 // ============================================================================
 // Text Effects
@@ -529,10 +458,7 @@ typedef struct IRStyle {
     IRSpacing margin, padding;
     IRTypography font;
     IRTransform transform;
-    IRAnimation** animations;
-    uint32_t animation_count;
-    IRTransition** transitions;
-    uint32_t transition_count;
+
     uint32_t z_index;
     bool visible;
     float opacity;

@@ -146,10 +146,6 @@ typedef struct IRStyleProperties {
     // Transforms (uses IRTransform from ir_core.h)
     IRTransform transform;         // Transform: translate, scale, rotate
 
-    // Transitions (array of IRTransition from ir_core.h)
-    IRTransition* transitions;     // Array of transition definitions
-    uint32_t transition_count;     // Number of transitions
-
     // Text decoration (uses IR_TEXT_DECORATION_* flags from ir_core.h)
     uint8_t text_decoration;       // Bitmask: IR_TEXT_DECORATION_NONE, _UNDERLINE, _LINE_THROUGH
 

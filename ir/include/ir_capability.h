@@ -39,6 +39,9 @@ typedef struct KryonEventContext KryonEventContext;
 // IR-specific capability functions
 // ============================================================================
 
+// Forward declaration
+typedef struct IRComponent IRComponent;
+
 /**
  * Initialize the capability registry
  *
@@ -46,6 +49,15 @@ typedef struct KryonEventContext KryonEventContext;
  * Sets up the API structure and allocates storage for plugins.
  */
 void ir_capability_registry_init(void);
+
+/**
+ * Set the root component for global component lookup
+ *
+ * @param root The root component of the component tree
+ *
+ * This allows plugins to lookup components by ID through the capability API.
+ */
+void ir_capability_set_root_component(IRComponent* root);
 
 /**
  * Shutdown and cleanup the capability registry

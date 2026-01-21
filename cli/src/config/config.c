@@ -85,7 +85,8 @@ void target_config_free(TargetConfig* target) {
         free(target->values);
     }
 
-    free(target);
+    // NOTE: Don't free(target) here - it's an element in config->targets array,
+    // which is freed as a whole in config_free()
 }
 
 /**
@@ -156,26 +157,26 @@ static void config_parse_targets(KryonConfig* config, TOMLTable* toml) {
     }
 
     // Count named targets that have at least one option
+    // This MUST match the logic in the adding loop below
     for (int i = 0; i < known_target_count; i++) {
-        // Check multiple possible keys to detect if target section exists
-        const char* possible_keys[] = {"output", "renderer", "minify", "tree_shake", "bundle"};
-        bool has_config = false;
+        const char* target_name = known_targets[i];
 
-        for (size_t j = 0; j < sizeof(possible_keys) / sizeof(possible_keys[0]); j++) {
-            char check_key[256];
-            snprintf(check_key, sizeof(check_key), "targets.%s.%s", known_targets[i], possible_keys[j]);
+        // Check if this named target has any configuration
+        // Must match EXACTLY the same checks as the adding loop
+        char check_key[256];
+        snprintf(check_key, sizeof(check_key), "targets.%s.output", target_name);
+        bool has_config = kryon_toml_get_string(toml, check_key, NULL) != NULL;
 
-            // For string values
-            if (kryon_toml_get_string(toml, check_key, NULL)) {
+        if (!has_config) {
+            snprintf(check_key, sizeof(check_key), "targets.%s.renderer", target_name);
+            has_config = kryon_toml_get_string(toml, check_key, NULL) != NULL;
+        }
+
+        if (!has_config) {
+            snprintf(check_key, sizeof(check_key), "targets.%s.minify", target_name);
+            bool dummy = kryon_toml_get_bool(toml, check_key, false);
+            if (kryon_toml_get_bool(toml, check_key, true) != dummy) {
                 has_config = true;
-                break;
-            }
-
-            // For boolean values (append a dummy default to check existence)
-            int dummy = kryon_toml_get_int(toml, check_key, -999);
-            if (dummy != -999) {
-                has_config = true;
-                break;
             }
         }
 
@@ -1397,9 +1398,20 @@ static bool load_plugin_with_dependencies(PluginDep* plugin, const char* base_di
  * Multi-plugin optimization: Plugins from the same git repository are cloned
  * together using sparse checkout, reducing network overhead.
  */
+// Static flag to track if plugins have been loaded this session
+// This prevents double-free crashes when config_load_plugins is called multiple times
+static bool g_plugins_loaded_this_session = false;
+
 bool config_load_plugins(KryonConfig* config) {
     // If no config plugins specified, we're done
     if (!config || !config->plugins || config->plugins_count == 0) {
+        return true;
+    }
+
+    // CRITICAL: Skip entirely if we've already loaded plugins this session
+    // This prevents heap corruption from running preinstall_git_plugins_grouped() multiple times
+    if (g_plugins_loaded_this_session) {
+        printf("[Plugins] Already loaded this session, skipping\n");
         return true;
     }
 
@@ -1432,9 +1444,8 @@ bool config_load_plugins(KryonConfig* config) {
 
     free(cwd);
 
-    // Clean up tracking state (but keep plugin names for reference)
-    // Note: We don't call free_loaded_plugin_tracking() here because the
-    // loaded plugin list may be needed for other operations.
+    // Mark that we've loaded plugins this session to prevent double-loading
+    g_plugins_loaded_this_session = true;
 
     if (!all_loaded) {
         fprintf(stderr, "[kryon][config] Some plugins failed to load\n");

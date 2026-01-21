@@ -475,6 +475,15 @@ static void compile_statement(BytecodeBuilder* bb, StringTable* st, IRStatement*
             }
             break;
 
+        case STMT_DELETE:
+            // Delete statement - compile target expression and emit delete op
+            // For now, just compile the target (future: add OP_DELETE opcode)
+            if (stmt->delete_stmt.target) {
+                compile_expression(bb, st, stmt->delete_stmt.target);
+                bytecode_emit_u8(bb, OP_POP);  // Placeholder - discard result
+            }
+            break;
+
         default:
             break;
     }

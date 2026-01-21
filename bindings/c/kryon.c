@@ -880,35 +880,6 @@ void kryon_on_focus(IRComponent* component, KryonEventHandler handler, const cha
 }
 
 // ============================================================================
-// Animation
-// ============================================================================
-
-IRAnimation* kryon_animation_create(const char* name, float duration_ms) {
-    return ir_animation_create_keyframe(name, duration_ms);
-}
-
-void kryon_animation_add_keyframe(IRAnimation* anim, float offset, IRAnimationProperty property, float value) {
-    if (!anim) return;
-    IRKeyframe* kf = ir_animation_add_keyframe(anim, offset);
-    ir_keyframe_set_property(kf, property, value);
-}
-
-void kryon_animation_set_iterations(IRAnimation* anim, int32_t count) {
-    if (!anim) return;
-    ir_animation_set_iterations(anim, count);
-}
-
-void kryon_animation_set_alternate(IRAnimation* anim, bool alternate) {
-    if (!anim) return;
-    ir_animation_set_alternate(anim, alternate);
-}
-
-void kryon_component_add_animation(IRComponent* c, IRAnimation* anim) {
-    if (!c || !anim) return;
-    ir_component_add_animation(c, anim);
-}
-
-// ============================================================================
 // Shutdown API
 // ============================================================================
 

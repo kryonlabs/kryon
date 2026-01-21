@@ -4,7 +4,6 @@
 #include "../include/ir_component_factory.h"
 #include "utils/ir_memory.h"
 #include "utils/ir_hashmap.h"
-#include "ir_animation.h"
 #include "../include/ir_component_handler.h"
 #include "components/registry.h"
 #include "cJSON.h"

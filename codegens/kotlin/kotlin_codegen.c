@@ -4,6 +4,8 @@
  * Generates idiomatic Kotlin code with Kryon DSL from KIR JSON files
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "kotlin_codegen.h"
 #include "../codegen_common.h"
 #include "../../third_party/cJSON/cJSON.h"
@@ -437,5 +439,225 @@ bool ir_generate_kotlin_code_from_string(const char* kir_json, const char* outpu
     fclose(output);
     cJSON_Delete(root);
 
+    return true;
+}
+
+/**
+ * Convert module_id like "components/calendar" to PascalCase "Calendar"
+ */
+static char* kotlin_module_to_class_name(const char* module_id) {
+    if (!module_id) return strdup("Component");
+
+    // Find the last part after the final slash
+    const char* name_start = strrchr(module_id, '/');
+    if (name_start) {
+        name_start++;  // Skip the slash
+    } else {
+        name_start = module_id;
+    }
+
+    // Allocate and copy
+    char* result = strdup(name_start);
+    if (!result) return strdup("Component");
+
+    // Capitalize first letter (simple PascalCase)
+    if (result[0] >= 'a' && result[0] <= 'z') {
+        result[0] = result[0] - 'a' + 'A';
+    }
+
+    return result;
+}
+
+/**
+ * Convert module_id to Kotlin package path (dots instead of slashes)
+ */
+static char* kotlin_module_to_package(const char* base_package, const char* module_id) {
+    if (!module_id) return strdup(base_package);
+
+    // Find the directory portion (without the file name)
+    const char* last_slash = strrchr(module_id, '/');
+    if (!last_slash) {
+        // No subdirectory, use base package
+        return strdup(base_package);
+    }
+
+    // Build package: base_package.subdir1.subdir2
+    size_t dir_len = (size_t)(last_slash - module_id);
+    size_t base_len = strlen(base_package);
+    char* result = malloc(base_len + 1 + dir_len + 1);
+    if (!result) return strdup(base_package);
+
+    strcpy(result, base_package);
+    strcat(result, ".");
+
+    // Copy directory part, converting / to .
+    size_t pos = base_len + 1;
+    for (size_t i = 0; i < dir_len; i++) {
+        if (module_id[i] == '/') {
+            result[pos++] = '.';
+        } else {
+            result[pos++] = module_id[i];
+        }
+    }
+    result[pos] = '\0';
+
+    return result;
+}
+
+/**
+ * Recursively process a module and its transitive imports for Kotlin
+ */
+static int kotlin_process_module_recursive(const char* module_id, const char* kir_dir,
+                                           const char* output_dir, const char* base_package,
+                                           CodegenProcessedModules* processed) {
+    // Skip if already processed
+    if (codegen_processed_modules_contains(processed, module_id)) return 0;
+    codegen_processed_modules_add(processed, module_id);
+
+    // Skip internal modules
+    if (codegen_is_internal_module(module_id)) return 0;
+
+    // Skip external plugins (they're runtime dependencies, not source)
+    if (codegen_is_external_plugin(module_id)) return 0;
+
+    // Build path to component's KIR file
+    char component_kir_path[2048];
+    snprintf(component_kir_path, sizeof(component_kir_path),
+             "%s/%s.kir", kir_dir, module_id);
+
+    // Read component's KIR
+    char* component_kir_json = codegen_read_kir_file(component_kir_path, NULL);
+    if (!component_kir_json) {
+        fprintf(stderr, "Warning: Cannot find KIR for '%s' at %s\n",
+                module_id, component_kir_path);
+        return 0;
+    }
+
+    // Parse to get transitive imports before generating
+    cJSON* component_root = cJSON_Parse(component_kir_json);
+    int files_written = 0;
+
+    // Get class name and package for this component
+    char* class_name = kotlin_module_to_class_name(module_id);
+    char* package_name = kotlin_module_to_package(base_package, module_id);
+
+    // Write Kotlin file
+    char output_path[2048];
+    snprintf(output_path, sizeof(output_path), "%s/%s.kt", output_dir, module_id);
+
+    if (ir_generate_kotlin_code_from_string(component_kir_json, output_path)) {
+        printf("✓ Generated: %s.kt\n", module_id);
+        files_written++;
+    } else {
+        fprintf(stderr, "Warning: Failed to generate Kotlin code for '%s'\n", module_id);
+    }
+
+    free(class_name);
+    free(package_name);
+    free(component_kir_json);
+
+    // Process transitive imports from this component
+    if (component_root) {
+        cJSON* imports = cJSON_GetObjectItem(component_root, "imports");
+        if (imports && cJSON_IsArray(imports)) {
+            cJSON* import_item = NULL;
+            cJSON_ArrayForEach(import_item, imports) {
+                if (!cJSON_IsString(import_item)) continue;
+                const char* sub_module_id = cJSON_GetStringValue(import_item);
+                if (sub_module_id) {
+                    files_written += kotlin_process_module_recursive(sub_module_id, kir_dir,
+                                                                     output_dir, base_package,
+                                                                     processed);
+                }
+            }
+        }
+        cJSON_Delete(component_root);
+    }
+
+    return files_written;
+}
+
+bool ir_generate_kotlin_code_multi(const char* kir_path, const char* output_dir) {
+    if (!kir_path || !output_dir) {
+        fprintf(stderr, "Error: Invalid arguments to ir_generate_kotlin_code_multi\n");
+        return false;
+    }
+
+    // Set error prefix for this codegen
+    codegen_set_error_prefix("Kotlin");
+
+    // Read main KIR file
+    char* main_kir_json = codegen_read_kir_file(kir_path, NULL);
+    if (!main_kir_json) {
+        return false;
+    }
+
+    // Parse main KIR JSON
+    cJSON* main_root = cJSON_Parse(main_kir_json);
+    if (!main_root) {
+        fprintf(stderr, "Error: Failed to parse main KIR JSON\n");
+        free(main_kir_json);
+        return false;
+    }
+
+    // Create output directory if it doesn't exist
+    if (!codegen_mkdir_p(output_dir)) {
+        fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
+        cJSON_Delete(main_root);
+        free(main_kir_json);
+        return false;
+    }
+
+    // Get base package from main KIR metadata or use default
+    const char* base_package = get_package_name(main_root);
+
+    int files_written = 0;
+
+    // 1. Generate MainActivity.kt from main.kir
+    char main_output_path[2048];
+    snprintf(main_output_path, sizeof(main_output_path), "%s/MainActivity.kt", output_dir);
+
+    if (ir_generate_kotlin_code_from_string(main_kir_json, main_output_path)) {
+        printf("✓ Generated: MainActivity.kt\n");
+        files_written++;
+    } else {
+        fprintf(stderr, "Warning: Failed to generate MainActivity.kt from KIR\n");
+    }
+
+    free(main_kir_json);
+
+    // 2. Get the KIR directory (parent of kir_path)
+    char kir_dir[2048];
+    codegen_get_parent_dir(kir_path, kir_dir, sizeof(kir_dir));
+
+    // 3. Track processed modules to avoid duplicates
+    CodegenProcessedModules processed = {0};
+    codegen_processed_modules_add(&processed, "main");  // Mark main as processed
+
+    // 4. Process each import recursively (including transitive imports)
+    cJSON* imports = cJSON_GetObjectItem(main_root, "imports");
+    if (imports && cJSON_IsArray(imports)) {
+        cJSON* import_item = NULL;
+        cJSON_ArrayForEach(import_item, imports) {
+            if (!cJSON_IsString(import_item)) continue;
+
+            const char* module_id = cJSON_GetStringValue(import_item);
+            if (module_id) {
+                files_written += kotlin_process_module_recursive(module_id, kir_dir,
+                                                                 output_dir, base_package,
+                                                                 &processed);
+            }
+        }
+    }
+
+    codegen_processed_modules_free(&processed);
+    cJSON_Delete(main_root);
+
+    if (files_written == 0) {
+        fprintf(stderr, "Warning: No Kotlin files were generated\n");
+        return false;
+    }
+
+    printf("✓ Generated %d Kotlin files in %s\n", files_written, output_dir);
     return true;
 }
