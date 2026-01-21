@@ -261,3 +261,103 @@ char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx);
  */
 char* react_generate_element(cJSON* component, ReactContext* ctx, int indent);
 
+// ============================================================================
+// Multi-File Codegen Utilities
+// ============================================================================
+
+#define CODEGEN_MAX_PROCESSED_MODULES 256
+
+/**
+ * Tracks which modules have been processed during multi-file codegen
+ * to prevent duplicate processing and circular dependencies.
+ */
+typedef struct {
+    char* modules[CODEGEN_MAX_PROCESSED_MODULES];
+    int count;
+} CodegenProcessedModules;
+
+/**
+ * Check if a module has already been processed.
+ *
+ * @param pm ProcessedModules tracker
+ * @param module_id Module identifier
+ * @return true if already processed, false otherwise
+ */
+bool codegen_processed_modules_contains(CodegenProcessedModules* pm, const char* module_id);
+
+/**
+ * Mark a module as processed.
+ *
+ * @param pm ProcessedModules tracker
+ * @param module_id Module identifier to mark as processed
+ */
+void codegen_processed_modules_add(CodegenProcessedModules* pm, const char* module_id);
+
+/**
+ * Free all memory associated with the processed modules tracker.
+ *
+ * @param pm ProcessedModules tracker to free
+ */
+void codegen_processed_modules_free(CodegenProcessedModules* pm);
+
+/**
+ * Check if a module is a Kryon internal module (not user code).
+ * Internal modules include kryon/, dsl, ffi, runtime, reactive, etc.
+ *
+ * @param module_id Module identifier
+ * @return true if internal module, false otherwise
+ */
+bool codegen_is_internal_module(const char* module_id);
+
+/**
+ * Check if a module is an external plugin (runtime dependency, not source).
+ * External plugins include datetime, storage, etc.
+ *
+ * @param module_id Module identifier
+ * @return true if external plugin, false otherwise
+ */
+bool codegen_is_external_plugin(const char* module_id);
+
+/**
+ * Get the parent directory of a file path.
+ *
+ * @param path Input file path
+ * @param parent Output buffer for parent directory
+ * @param parent_size Size of output buffer
+ */
+void codegen_get_parent_dir(const char* path, char* parent, size_t parent_size);
+
+/**
+ * Write content to a file, creating parent directories as needed.
+ *
+ * @param path Output file path
+ * @param content Content to write
+ * @return true on success, false on failure
+ */
+bool codegen_write_file_with_mkdir(const char* path, const char* content);
+
+/**
+ * Create a directory and all parent directories as needed.
+ *
+ * @param path Directory path to create
+ * @return true on success, false on failure
+ */
+bool codegen_mkdir_p(const char* path);
+
+/**
+ * Check if a file exists.
+ *
+ * @param path File path to check
+ * @return true if file exists, false otherwise
+ */
+bool codegen_file_exists(const char* path);
+
+/**
+ * Copy a file from src to dst.
+ *
+ * @param src Source file path
+ * @param dst Destination file path
+ * @return 0 on success, -1 on failure
+ */
+int codegen_copy_file(const char* src, const char* dst);
+

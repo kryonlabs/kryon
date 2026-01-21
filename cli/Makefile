@@ -150,10 +150,26 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_common.a \
 		../build/libkryon_sdl3.a \
 		../build/libkryon_desktop.a \
-		../build/libkryon_web.a
+		../build/libkryon_web.a \
+		../build/libkryon_codegen_c.a \
+		../build/libkryon_codegen_tsx.a \
+		../build/libkryon_codegen_kry.a \
+		../build/libkryon_codegen_lua.a \
+		../build/libkryon_codegen_python.a \
+		../build/libkryon_codegen_markdown.a \
+		../codegens/kotlin/libkotlin_codegen.a
 	# Build kir_to_html.o (embedded web codegen)
 	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
-	$(CC) $(OBJS_LINK) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) ../build/libkryon_web.a $(LDFLAGS) $(HARFBUZZ_LIBS)
+	$(CC) $(OBJS_LINK) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) \
+		../build/libkryon_web.a \
+		../build/libkryon_codegen_c.a \
+		../build/libkryon_codegen_tsx.a \
+		../build/libkryon_codegen_kry.a \
+		../build/libkryon_codegen_lua.a \
+		../build/libkryon_codegen_python.a \
+		../build/libkryon_codegen_markdown.a \
+		../codegens/kotlin/libkotlin_codegen.a \
+		$(LDFLAGS) $(HARFBUZZ_LIBS)
 
 # Build IR library
 ../build/libkryon_ir.a:
@@ -175,6 +191,28 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 # Build web library (for embedded kir_to_html)
 ../build/libkryon_web.a:
 	$(MAKE) -C ../codegens/web static
+
+# Build codegen libraries
+../build/libkryon_codegen_c.a:
+	$(MAKE) -C ../codegens/c
+
+../build/libkryon_codegen_tsx.a:
+	$(MAKE) -C ../codegens/tsx
+
+../build/libkryon_codegen_kry.a:
+	$(MAKE) -C ../codegens/kry
+
+../build/libkryon_codegen_lua.a:
+	$(MAKE) -C ../codegens/lua
+
+../build/libkryon_codegen_python.a:
+	$(MAKE) -C ../codegens/python
+
+../build/libkryon_codegen_markdown.a:
+	$(MAKE) -C ../codegens/markdown
+
+../codegens/kotlin/libkotlin_codegen.a:
+	$(MAKE) -C ../codegens/kotlin
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c

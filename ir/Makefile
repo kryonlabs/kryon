@@ -114,14 +114,12 @@ STATE_SOURCES = src/state/ir_state_manager.c \
                 src/state/ir_reactive_manifest.c \
                 src/state/ir_module_refs.c
 
-FEATURE_SOURCES = src/features/ir_animation.c \
-                  src/features/ir_animation_builder.c \
-                  src/features/ir_transition.c \
-                  src/features/ir_tabgroup.c \
+FEATURE_SOURCES = src/features/ir_tabgroup.c \
                   src/features/ir_table.c \
                   src/features/ir_text_shaping.c \
                   src/features/ir_markdown.c \
                   src/features/ir_native_canvas.c
+# Note: Animation system moved to kryon-plugins/animations
 
 UTIL_SOURCES = src/utils/ir_string_builder.c \
                src/utils/ir_buffer.c \

@@ -1391,22 +1391,6 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         }
     }
 
-    // Serialize animations (stored in style)
-    if (component->style && component->style->animation_count > 0) {
-        IRAnimation* anim = component->style->animations[0];
-        if (anim && anim->name) {
-            char animStr[128];
-            // Format: "name(duration, iterations)" or "name(duration)"
-            if (anim->iteration_count != 1) {
-                snprintf(animStr, sizeof(animStr), "%s(%.1f, %d)",
-                         anim->name, anim->duration, anim->iteration_count);
-            } else {
-                snprintf(animStr, sizeof(animStr), "%s(%.1f)", anim->name, anim->duration);
-            }
-            cJSON_AddStringToObject(obj, "animation", animStr);
-        }
-    }
-
     // Serialize property bindings (for round-trip codegen)
     if (component->property_binding_count > 0 && component->property_bindings) {
         cJSON* bindings = cJSON_CreateObject();
@@ -1888,20 +1872,6 @@ static cJSON* json_serialize_style_properties(const IRStyleProperties* props) {
     // Grid template rows (raw CSS string for roundtrip)
     if (props->set_flags & IR_PROP_GRID_TEMPLATE_ROWS) {
         cJSON_AddStringToObject(obj, "gridTemplateRows", props->grid_template_rows);
-    }
-
-    // Transitions
-    if (props->set_flags & IR_PROP_TRANSITION) {
-        cJSON* transitions = cJSON_CreateArray();
-        for (uint32_t i = 0; i < props->transition_count; i++) {
-            cJSON* t = cJSON_CreateObject();
-            cJSON_AddNumberToObject(t, "property", props->transitions[i].property);
-            cJSON_AddNumberToObject(t, "duration", props->transitions[i].duration);
-            cJSON_AddNumberToObject(t, "delay", props->transitions[i].delay);
-            cJSON_AddNumberToObject(t, "easing", props->transitions[i].easing);
-            cJSON_AddItemToArray(transitions, t);
-        }
-        cJSON_AddItemToObject(obj, "transitions", transitions);
     }
 
     // Transform

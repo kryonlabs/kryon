@@ -206,7 +206,6 @@ bool ir_validate_component_full(IRComponent* component, IRValidationOptions* opt
                                  IRValidationResult* result);
 bool ir_validate_style(IRStyle* style, IRValidationResult* result);
 bool ir_validate_layout(IRLayout* layout, IRValidationResult* result);
-bool ir_validate_animation(IRAnimation* animation, IRValidationResult* result);
 bool ir_validate_dimension(IRDimension dim, IRValidationResult* result);
 bool ir_validate_color(IRColor color, IRValidationResult* result);
 

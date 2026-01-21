@@ -118,6 +118,26 @@ IRKryParseResult ir_kry_parse_ex(const char* source, size_t length);
 char* ir_kry_to_kir(const char* source, size_t length);
 
 /**
+ * Convert .kry source to KIR JSON string with base directory for imports
+ *
+ * Same as ir_kry_to_kir() but allows specifying a base directory
+ * for resolving import paths. This is critical for multi-file projects
+ * where imports like "components.habit_panel" need to resolve relative
+ * to the source file's directory.
+ *
+ * @param source .kry source text (UTF-8 encoded)
+ * @param length Length of source in bytes (0 for null-terminated string)
+ * @param base_directory Directory containing the source file (for import resolution)
+ * @return char* JSON string in KIR v3.0 format (caller must free), or NULL on error
+ *
+ * @example
+ *   const char* kry = readFile("/app/main.kry");
+ *   char* kir_json = ir_kry_to_kir_with_base_dir(kry, 0, "/app");
+ *   // Now "import HabitPanel from components.habit_panel" resolves to /app/components/habit_panel.kry
+ */
+char* ir_kry_to_kir_with_base_dir(const char* source, size_t length, const char* base_directory);
+
+/**
  * Parse .kry and report errors
  *
  * Same as ir_kry_parse(), but also provides detailed error messages.

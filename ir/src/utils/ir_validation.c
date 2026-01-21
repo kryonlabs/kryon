@@ -553,25 +553,6 @@ bool ir_validate_layout(IRLayout* layout, IRValidationResult* result) {
     return true;
 }
 
-bool ir_validate_animation(IRAnimation* animation, IRValidationResult* result) {
-    if (!animation) return true;
-
-    // Validate duration
-    if (animation->duration <= 0) {
-        ir_validation_add_issue(result, IR_VALIDATION_ERROR, IR_VALID_INVALID_ANIMATION,
-                               "Animation duration must be positive", NULL);
-        return false;
-    }
-
-    // Validate iteration count
-    if (animation->iteration_count < 0 && animation->iteration_count != -1) {
-        ir_validation_add_issue(result, IR_VALIDATION_WARNING, IR_VALID_INVALID_ANIMATION,
-                               "Invalid iteration count (use -1 for infinite)", NULL);
-    }
-
-    return true;
-}
-
 bool ir_validate_style(IRStyle* style, IRValidationResult* result) {
     if (!style) return true;
 
@@ -589,13 +570,6 @@ bool ir_validate_style(IRStyle* style, IRValidationResult* result) {
         snprintf(msg, sizeof(msg), "Unusual font size: %.1f", style->font.size);
         ir_validation_add_issue(result, IR_VALIDATION_WARNING, IR_VALID_INVALID_DIMENSION,
                                msg, NULL);
-    }
-
-    // Validate animations
-    for (uint32_t i = 0; i < style->animation_count; i++) {
-        if (style->animations && style->animations[i]) {
-            ir_validate_animation(style->animations[i], result);
-        }
     }
 
     return true;

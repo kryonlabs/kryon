@@ -417,34 +417,6 @@ void kryon_c_event_bridge(const char* logic_id);
 #define KRYON_COLOR_TRANSPARENT 0x00000000
 
 // ============================================================================
-// Animation (Advanced)
-// ============================================================================
-
-/**
- * Create a keyframe animation
- */
-IRAnimation* kryon_animation_create(const char* name, float duration_ms);
-
-/**
- * Add a keyframe to an animation
- */
-void kryon_animation_add_keyframe(IRAnimation* anim, float offset, IRAnimationProperty property, float value);
-
-/**
- * Set animation iterations (-1 for infinite)
- */
-void kryon_animation_set_iterations(IRAnimation* anim, int32_t count);
-
-/**
- * Set animation to alternate direction
- */
-void kryon_animation_set_alternate(IRAnimation* anim, bool alternate);
-
-/**
- * Add animation to a component
- */
-void kryon_component_add_animation(IRComponent* c, IRAnimation* anim);
-
 // ============================================================================
 // C Source Metadata API (for round-trip conversion)
 // ============================================================================

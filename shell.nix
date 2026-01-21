@@ -31,6 +31,13 @@ pkgs.mkShell {
     bun
     nodejs  # For npm compatibility if needed
 
+    # Python bindings support
+    python3
+    python3Packages.cffi
+    python3Packages.build
+    python3Packages.wheel
+    python3Packages.pytest
+
     # Android development (uses system-installed SDK)
     jdk17
     gradle

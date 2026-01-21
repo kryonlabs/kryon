@@ -43,7 +43,8 @@ typedef enum {
     KRY_EXPR_ARRAY,        // [1, 2, 3]
     KRY_EXPR_OBJECT,       // {key: val}
     KRY_EXPR_ARROW_FUNC,   // x => x * 2
-    KRY_EXPR_MEMBER_EXPR   // arr.length, arr.push(x)
+    KRY_EXPR_MEMBER_EXPR,  // arr.length, arr.push(x)
+    KRY_EXPR_CONDITIONAL   // condition ? consequent : alternate
 } KryExprType;
 
 // Forward declaration
@@ -160,6 +161,13 @@ typedef struct KryExprNode {
             struct KryExprNode* object;
             char* member;
         } member_expr;
+
+        // KRY_EXPR_CONDITIONAL (ternary: condition ? consequent : alternate)
+        struct {
+            struct KryExprNode* condition;
+            struct KryExprNode* consequent;
+            struct KryExprNode* alternate;
+        } conditional;
     };
 } KryExprNode;
 

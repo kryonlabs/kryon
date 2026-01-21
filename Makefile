@@ -32,7 +32,7 @@ STATIC_LIB_EXT = .a
 SHARED_LIB_EXT = .so
 
 # Default target
-all: cli ir codegens runtime
+all: cli ir codegens runtime python-bindings
 
 # Help
 help:
@@ -45,6 +45,7 @@ help:
 	@echo "  codegens     - Build all code generators"
 	@echo "  runtime      - Build runtime backends"
 	@echo "  renderers    - Build rendering systems"
+	@echo "  python-bindings - Build Python bindings"
 	@echo "  clean        - Remove all build artifacts"
 	@echo "  install      - Install to $(PREFIX)"
 	@echo ""
@@ -74,14 +75,12 @@ cli: ir codegens
 	@echo "✓ Built CLI"
 
 # IR library (core intermediate representation)
-ir: $(BUILD_DIR)/libkryon_ir$(STATIC_LIB_EXT)
-
-$(BUILD_DIR)/libkryon_ir$(STATIC_LIB_EXT):
+ir:
 	@echo "Building IR library..."
 	@$(MAKE) -C $(IR_DIR) static
 	@echo "✓ Built IR library"
 
-# Code generators (C, Lua, Kry, Kotlin, TypeScript, Markdown, etc.)
+# Code generators (C, Lua, Kry, Kotlin, TypeScript, Markdown, Python, etc.)
 codegens: ir
 	@echo "Building code generators..."
 	@$(MAKE) -C $(CODEGENS_DIR)/c all
@@ -90,7 +89,14 @@ codegens: ir
 	@$(MAKE) -C $(CODEGENS_DIR)/kotlin all
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
 	@$(MAKE) -C $(CODEGENS_DIR)/tsx all
+	@$(MAKE) -C $(CODEGENS_DIR)/python all
 	@echo "✓ Built code generators"
+
+# Python bindings
+python-bindings: ir
+	@echo "Building Python bindings..."
+	@$(MAKE) -C bindings/python package
+	@echo "✓ Built Python bindings"
 
 # Runtime backends (desktop rendering, terminal, etc.)
 runtime: ir
@@ -132,6 +138,8 @@ clean:
 	@$(MAKE) -C $(CODEGENS_DIR)/kotlin clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/tsx clean || true
+	@$(MAKE) -C $(CODEGENS_DIR)/python clean || true
+	@$(MAKE) -C bindings/python clean || true
 	@if [ -d $(RUNTIME_DIR)/desktop ]; then \
 		$(MAKE) -C $(RUNTIME_DIR)/desktop clean || true; \
 	fi
@@ -151,8 +159,8 @@ clean:
 install: all
 	@echo "Installing Kryon to $(PREFIX)..."
 	@mkdir -p $(BINDIR) $(LIBDIR) $(INCLUDEDIR) $(PKGCONFIGDIR)
-	@if [ -f $(BUILD_DIR)/kryon ]; then \
-		cp $(BUILD_DIR)/kryon $(BINDIR)/; \
+	@if [ -f $(CLI_DIR)/kryon ]; then \
+		cp $(CLI_DIR)/kryon $(BINDIR)/; \
 		echo "  Installed $(BINDIR)/kryon"; \
 	fi
 	@cp $(BUILD_DIR)/libkryon_ir.* $(LIBDIR)/ 2>/dev/null || true
@@ -198,7 +206,7 @@ docs:
 # Phony Targets
 # ============================================================================
 
-.PHONY: all cli ir codegens runtime renderers clean install uninstall
+.PHONY: all cli ir codegens runtime renderers python-bindings clean install uninstall
 .PHONY: help test check docs
 
 # ============================================================================

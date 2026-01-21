@@ -91,20 +91,6 @@ const char* css_format_grid_track_minmax(IRGridTrackType type, float value,
                                          char* buffer, size_t size);
 
 /**
- * Format an easing type value (linear, ease-in, ease-out, etc.)
- * @param easing The easing type to format
- * @return CSS easing function string
- */
-const char* css_format_easing(IREasingType easing);
-
-/**
- * Format an animation property name (opacity, transform, width, etc.)
- * @param prop The animation property to format
- * @return CSS property name string
- */
-const char* css_format_animation_property(IRAnimationProperty prop);
-
-/**
  * Format a pseudo-class state name (hover, active, focus, etc.)
  * @param state The pseudo state to format
  * @return CSS pseudo-class string (without colon)

@@ -368,6 +368,17 @@ IRStatement* ir_stmt_continue(void) {
     return stmt;
 }
 
+IRStatement* ir_stmt_delete(IRExpression* target) {
+    if (!target) return NULL;
+
+    IRStatement* stmt = calloc(1, sizeof(IRStatement));
+    if (!stmt) return NULL;
+
+    stmt->type = STMT_DELETE;
+    stmt->delete_stmt.target = target;
+    return stmt;
+}
+
 // ============================================================================
 // MEMORY MANAGEMENT
 // ============================================================================
@@ -486,6 +497,9 @@ void ir_stmt_free(IRStatement* stmt) {
             break;
         case STMT_RETURN:
             ir_expr_free(stmt->return_stmt.value);
+            break;
+        case STMT_DELETE:
+            ir_expr_free(stmt->delete_stmt.target);
             break;
         default:
             break;
@@ -791,6 +805,13 @@ cJSON* ir_stmt_to_json(IRStatement* stmt) {
 
         case STMT_CONTINUE:
             cJSON_AddStringToObject(json, "op", "continue");
+            break;
+
+        case STMT_DELETE:
+            cJSON_AddStringToObject(json, "op", "delete");
+            if (stmt->delete_stmt.target) {
+                cJSON_AddItemToObject(json, "target", ir_expr_to_json(stmt->delete_stmt.target));
+            }
             break;
     }
 
@@ -1103,6 +1124,12 @@ IRStatement* ir_stmt_from_json(cJSON* json) {
         return ir_stmt_continue();
     }
 
+    // Delete
+    if (strcmp(op_str, "delete") == 0) {
+        cJSON* target = cJSON_GetObjectItem(json, "target");
+        return ir_stmt_delete(ir_expr_from_json(target));
+    }
+
     return NULL;
 }
 
@@ -1310,6 +1337,14 @@ void ir_stmt_print(IRStatement* stmt, int indent) {
 
         case STMT_CONTINUE:
             printf("continue\n");
+            break;
+
+        case STMT_DELETE:
+            printf("delete ");
+            if (stmt->delete_stmt.target) {
+                ir_expr_print(stmt->delete_stmt.target);
+            }
+            printf("\n");
             break;
     }
 }

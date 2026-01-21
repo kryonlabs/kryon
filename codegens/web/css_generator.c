@@ -1241,62 +1241,7 @@ static void generate_style_rules(CSSGenerator* generator, IRComponent* component
         }
     }
 
-    // Animations
-    if (component->style->animations && component->style->animation_count > 0) {
-        css_generator_write_string(generator, "  animation:");
-
-        for (uint32_t i = 0; i < component->style->animation_count; i++) {
-            IRAnimation* anim = component->style->animations[i];
-            if (!anim || !anim->name) continue;
-
-            if (i > 0) css_generator_write_string(generator, ",");
-
-            // animation-name duration timing-function delay iteration-count direction
-            css_generator_write_format(generator, " %s %.2fs %s %.2fs",
-                                      anim->name,
-                                      anim->duration,
-                                      easing_to_css(anim->default_easing),
-                                      anim->delay);
-
-            // Iteration count
-            if (anim->iteration_count < 0) {
-                css_generator_write_string(generator, " infinite");
-            } else if (anim->iteration_count != 1) {
-                css_generator_write_format(generator, " %d", anim->iteration_count);
-            }
-
-            // Alternate direction
-            if (anim->alternate) {
-                css_generator_write_string(generator, " alternate");
-            }
-        }
-
-        css_generator_write_string(generator, ";\n");
-    }
-
-    // Transitions
-    if (component->style->transitions && component->style->transition_count > 0) {
-        css_generator_write_string(generator, "  transition:");
-
-        for (uint32_t i = 0; i < component->style->transition_count; i++) {
-            IRTransition* trans = component->style->transitions[i];
-            if (!trans) continue;
-
-            if (i > 0) css_generator_write_string(generator, ",");
-
-            const char* prop = animation_property_to_css(trans->property);
-            if (prop) {
-                // property duration timing-function delay
-                css_generator_write_format(generator, " %s %.2fs %s %.2fs",
-                                          prop,
-                                          trans->duration,
-                                          easing_to_css(trans->easing),
-                                          trans->delay);
-            }
-        }
-
-        css_generator_write_string(generator, ";\n");
-    }
+    // Animations and transitions moved to plugin system
 
     // Add layout properties if present
     if (component->layout) {
@@ -2051,28 +1996,7 @@ static void generate_stylesheet_rules(CSSGenerator* generator, IRStylesheet* sty
             css_generator_write_string(generator, "  color: transparent;\n");
         }
 
-        // Transition - convert IRTransition to CSS
-        if (props->set_flags & IR_PROP_TRANSITION) {
-            if (props->transitions && props->transition_count > 0) {
-                IRTransition* t = &props->transitions[0];
-
-                // Get easing function string
-                const char* easing_str = "linear";
-                switch (t->easing) {
-                    case IR_EASING_EASE_IN: easing_str = "ease-in"; break;
-                    case IR_EASING_EASE_OUT: easing_str = "ease-out"; break;
-                    case IR_EASING_EASE_IN_OUT: easing_str = "ease"; break;
-                    case IR_EASING_EASE_IN_QUAD: easing_str = "ease-in"; break;
-                    case IR_EASING_EASE_OUT_QUAD: easing_str = "ease-out"; break;
-                    case IR_EASING_EASE_IN_OUT_QUAD: easing_str = "ease-in-out"; break;
-                    default: break;
-                }
-
-                // "all" for IR_ANIM_PROP_CUSTOM (generic transition)
-                css_generator_write_format(generator, "  transition: all %.1fs %s;\n",
-                                           t->duration, easing_str);
-            }
-        }
+        // Transition code removed - moved to plugin system
 
         // Transform - convert IRTransform to CSS
         if (props->set_flags & IR_PROP_TRANSFORM) {
@@ -2626,180 +2550,14 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
 // Animation and Keyframe Generation
 // ============================================================================
 
-// easing_to_css and animation_property_to_css are now from css_property_tables module
+// Animation keyframe generation removed - moved to plugin system
 
-static void generate_keyframe_property(CSSGenerator* generator, IRKeyframe* kf, int prop_idx) {
-    if (!kf->properties[prop_idx].is_set) return;
-
-    IRAnimationProperty prop = kf->properties[prop_idx].property;
-
-    switch (prop) {
-        case IR_ANIM_PROP_OPACITY:
-            css_generator_write_format(generator, "    opacity: %.2f;\n",
-                                        kf->properties[prop_idx].value);
-            break;
-
-        case IR_ANIM_PROP_TRANSLATE_X:
-        case IR_ANIM_PROP_TRANSLATE_Y:
-        case IR_ANIM_PROP_SCALE_X:
-        case IR_ANIM_PROP_SCALE_Y:
-        case IR_ANIM_PROP_ROTATE:
-            // Transform properties need to be combined
-            css_generator_write_string(generator, "    transform:");
-
-            // Check all transform properties in this keyframe
-            for (int i = 0; i < kf->property_count; i++) {
-                if (!kf->properties[i].is_set) continue;
-
-                switch (kf->properties[i].property) {
-                    case IR_ANIM_PROP_TRANSLATE_X:
-                    case IR_ANIM_PROP_TRANSLATE_Y: {
-                        float tx = 0, ty = 0;
-                        for (int j = 0; j < kf->property_count; j++) {
-                            if (kf->properties[j].property == IR_ANIM_PROP_TRANSLATE_X)
-                                tx = kf->properties[j].value;
-                            if (kf->properties[j].property == IR_ANIM_PROP_TRANSLATE_Y)
-                                ty = kf->properties[j].value;
-                        }
-                        css_generator_write_format(generator, " translate(%.1fpx, %.1fpx)", tx, ty);
-                        i++;  // Skip Y since we handled both
-                        break;
-                    }
-                    case IR_ANIM_PROP_SCALE_X:
-                    case IR_ANIM_PROP_SCALE_Y: {
-                        float sx = 1, sy = 1;
-                        for (int j = 0; j < kf->property_count; j++) {
-                            if (kf->properties[j].property == IR_ANIM_PROP_SCALE_X)
-                                sx = kf->properties[j].value;
-                            if (kf->properties[j].property == IR_ANIM_PROP_SCALE_Y)
-                                sy = kf->properties[j].value;
-                        }
-                        css_generator_write_format(generator, " scale(%.2f, %.2f)", sx, sy);
-                        i++;  // Skip Y since we handled both
-                        break;
-                    }
-                    case IR_ANIM_PROP_ROTATE:
-                        css_generator_write_format(generator, " rotate(%.1fdeg)",
-                                                    kf->properties[i].value);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            css_generator_write_string(generator, ";\n");
-            return;  // Don't process other transform props
-
-        case IR_ANIM_PROP_BACKGROUND_COLOR: {
-            IRColor color = kf->properties[prop_idx].color_value;
-            if (color.type == IR_COLOR_SOLID) {
-                css_generator_write_format(generator, "    background-color: rgba(%d, %d, %d, %.2f);\n",
-                                            color.data.r, color.data.g, color.data.b,
-                                            color.data.a / 255.0f);
-            }
-            break;
-        }
-
-        default:
-            break;
-    }
-}
-
-static void generate_animation_keyframes(CSSGenerator* generator, IRAnimation* anim) {
-    if (!anim || !anim->name || anim->keyframe_count == 0) return;
-
-    // @keyframes animationName {
-    css_generator_write_format(generator, "@keyframes %s {\n", anim->name);
-
-    // Generate each keyframe
-    for (uint8_t i = 0; i < anim->keyframe_count; i++) {
-        IRKeyframe* kf = &anim->keyframes[i];
-
-        // Keyframe selector (percentage)
-        css_generator_write_format(generator, "  %.1f%% {\n", kf->offset * 100.0f);
-
-        // Track which properties we've generated
-        bool generated_transform = false;
-        bool generated_bg_color = false;
-
-        // Generate properties
-        for (uint8_t j = 0; j < kf->property_count; j++) {
-            if (!kf->properties[j].is_set) continue;
-
-            IRAnimationProperty prop = kf->properties[j].property;
-
-            // Handle transform properties (only once)
-            if (!generated_transform && (prop == IR_ANIM_PROP_TRANSLATE_X || prop == IR_ANIM_PROP_TRANSLATE_Y ||
-                prop == IR_ANIM_PROP_SCALE_X || prop == IR_ANIM_PROP_SCALE_Y || prop == IR_ANIM_PROP_ROTATE)) {
-                generate_keyframe_property(generator, kf, j);
-                generated_transform = true;
-            }
-            // Handle opacity
-            else if (prop == IR_ANIM_PROP_OPACITY) {
-                css_generator_write_format(generator, "    opacity: %.2f;\n", kf->properties[j].value);
-            }
-            // Handle background color (only once)
-            else if (!generated_bg_color && prop == IR_ANIM_PROP_BACKGROUND_COLOR) {
-                IRColor color = kf->properties[j].color_value;
-                if (color.type == IR_COLOR_SOLID) {
-                    css_generator_write_format(generator, "    background-color: rgba(%d, %d, %d, %.2f);\n",
-                                                color.data.r, color.data.g, color.data.b,
-                                                color.data.a / 255.0f);
-                }
-                generated_bg_color = true;
-            }
-        }
-
-        css_generator_write_string(generator, "  }\n");
-    }
-
-    css_generator_write_string(generator, "}\n\n");
-}
-
-static void collect_animations_recursive(CSSGenerator* generator, IRComponent* component) {
-    if (!component) return;
-
-    // Generate keyframes for this component's animations
-    if (component->style && component->style->animations) {
-        for (uint32_t i = 0; i < component->style->animation_count; i++) {
-            generate_animation_keyframes(generator, component->style->animations[i]);
-        }
-    }
-
-    // Recursively process children
-    if (component->children) {
-        for (uint32_t i = 0; i < component->child_count; i++) {
-            collect_animations_recursive(generator, component->children[i]);
-        }
-    }
-}
-
-static bool has_animations_recursive(IRComponent* component) {
-    if (!component) return false;
-
-    // Check this component for animations
-    if (component->style && component->style->animations && component->style->animation_count > 0) {
-        return true;
-    }
-
-    // Check children recursively
-    if (component->children) {
-        for (uint32_t i = 0; i < component->child_count; i++) {
-            if (has_animations_recursive(component->children[i])) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
+// Animation and transition functions removed - moved to plugin system
 
 static void generate_keyframes(CSSGenerator* generator, IRComponent* root) {
-    if (!generator || !root) return;
-
-    // Only output comment and animations if there are actually animations
-    if (has_animations_recursive(root)) {
-        css_generator_write_string(generator, "/* Keyframe Animations */\n");
-        collect_animations_recursive(generator, root);
-    }
+    // Animation keyframe generation removed - moved to plugin system
+    (void)generator;
+    (void)root;
 }
 
 bool css_generator_write_to_file(CSSGenerator* generator, IRComponent* root, const char* filename) {

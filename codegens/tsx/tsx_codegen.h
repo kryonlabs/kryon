@@ -55,6 +55,22 @@ bool tsx_codegen_generate_with_options(const char* kir_path,
                                         const char* output_path,
                                         TsxCodegenOptions* options);
 
+/**
+ * Generate multiple TSX files from multi-file KIR by reading linked KIR files
+ *
+ * This function reads the main.kir file, generates TSX code from its KIR representation,
+ * then follows the imports array to find and process linked component KIR files.
+ * Generates App.tsx as entry, one .tsx per component, and index.ts barrel exports.
+ *
+ * @param kir_path Path to main.kir JSON file (usually .kryon_cache/main.kir)
+ * @param output_dir Directory where generated TSX files should be written
+ * @return bool true on success, false on error
+ *
+ * @example
+ *   bool success = tsx_codegen_generate_multi(".kryon_cache/main.kir", "output/");
+ */
+bool tsx_codegen_generate_multi(const char* kir_path, const char* output_dir);
+
 #ifdef __cplusplus
 }
 #endif

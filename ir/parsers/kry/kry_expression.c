@@ -116,6 +116,12 @@ void kry_expr_free(KryExprNode* node) {
             kry_expr_free(node->member_expr.object);
             free(node->member_expr.member);
             break;
+
+        case KRY_EXPR_CONDITIONAL:
+            kry_expr_free(node->conditional.condition);
+            kry_expr_free(node->conditional.consequent);
+            kry_expr_free(node->conditional.alternate);
+            break;
     }
 
     free(node);
@@ -176,6 +182,7 @@ static bool is_identifier_char(char c) {
 
 // Forward declarations
 static KryExprNode* parse_expression(ParserContext* ctx);
+static KryExprNode* parse_conditional(ParserContext* ctx);
 static KryExprNode* parse_assignment(ParserContext* ctx);
 static KryExprNode* parse_logical_or(ParserContext* ctx);
 static KryExprNode* parse_logical_and(ParserContext* ctx);
@@ -216,7 +223,48 @@ KryExprNode* kry_expr_parse(const char* source, char** error_output) {
 }
 
 static KryExprNode* parse_expression(ParserContext* ctx) {
-    return parse_assignment(ctx);
+    return parse_conditional(ctx);
+}
+
+static KryExprNode* parse_conditional(ParserContext* ctx) {
+    KryExprNode* condition = parse_assignment(ctx);
+    if (!condition) return NULL;
+
+    // Check for ternary operator
+    if (peek(ctx) == '?') {
+        consume(ctx);  // Consume '?'
+
+        KryExprNode* consequent = parse_expression(ctx);  // Full expression for then-branch
+        if (!consequent) {
+            kry_expr_free(condition);
+            return NULL;
+        }
+
+        if (peek(ctx) != ':') {
+            set_error("Expected ':' in ternary expression");
+            kry_expr_free(condition);
+            kry_expr_free(consequent);
+            return NULL;
+        }
+        consume(ctx);  // Consume ':'
+
+        KryExprNode* alternate = parse_conditional(ctx);  // Right-associative
+        if (!alternate) {
+            kry_expr_free(condition);
+            kry_expr_free(consequent);
+            return NULL;
+        }
+
+        KryExprNode* node = create_node(KRY_EXPR_CONDITIONAL);
+        if (node) {
+            node->conditional.condition = condition;
+            node->conditional.consequent = consequent;
+            node->conditional.alternate = alternate;
+        }
+        return node;
+    }
+
+    return condition;
 }
 
 static KryExprNode* parse_assignment(ParserContext* ctx) {
@@ -573,12 +621,25 @@ static KryExprNode* parse_arrow_func_params(ParserContext* ctx, KryExprNode* lef
     // Parse body (expression or block)
     char ch = peek(ctx);
     if (ch == '{') {
-        // Block body: { return x; }
+        // Block body: { statements }
         node->arrow_func.is_expression_body = false;
-        // TODO: Parse block statement
-        set_error("Block arrow functions not yet implemented");
-        kry_expr_free(node);
-        return NULL;
+        consume(ctx);  // skip '{'
+        size_t body_start = ctx->pos;
+        int brace_depth = 1;
+        while (brace_depth > 0 && ctx->pos < ctx->length) {
+            char c = ctx->input[ctx->pos];
+            if (c == '{') brace_depth++;
+            else if (c == '}') brace_depth--;
+            if (brace_depth > 0) ctx->pos++;
+        }
+        size_t body_len = ctx->pos - body_start;
+        char* body_text = strndup(ctx->input + body_start, body_len);
+        // Create a node to hold block body text
+        KryExprNode* body_node = create_node(KRY_EXPR_LITERAL);
+        body_node->literal.literal_type = KRY_LITERAL_STRING;
+        body_node->literal.string_val = body_text;
+        node->arrow_func.body = body_node;
+        if (ctx->pos < ctx->length) ctx->pos++;  // skip closing '}'
     } else {
         // Expression body: x * 2
         node->arrow_func.is_expression_body = true;
@@ -653,8 +714,168 @@ static KryExprNode* parse_primary(ParserContext* ctx) {
         return parse_object_literal(ctx);
     }
 
-    // Parenthesized expression
+    // Parenthesized expression or arrow function with parenthesized params
     if (match(ctx, '(')) {
+        // Save position to potentially backtrack
+        size_t saved_pos = ctx->pos;
+
+        // Check for parameterless arrow function: () => expr
+        if (peek(ctx) == ')') {
+            consume(ctx);  // consume ')'
+            // Skip whitespace manually to check for =>
+            while (ctx->pos < ctx->length && isspace(ctx->input[ctx->pos])) {
+                ctx->pos++;
+            }
+            if (ctx->pos + 1 < ctx->length &&
+                ctx->input[ctx->pos] == '=' && ctx->input[ctx->pos + 1] == '>') {
+                // This is a parameterless arrow function
+                ctx->pos += 2;  // consume '=>'
+                KryExprNode* node = create_node(KRY_EXPR_ARROW_FUNC);
+                node->arrow_func.params = NULL;
+                node->arrow_func.param_count = 0;
+
+                // Parse body (expression or block)
+                char ch = peek(ctx);
+                if (ch == '{') {
+                    // Block body
+                    node->arrow_func.is_expression_body = false;
+                    consume(ctx);  // skip '{'
+                    size_t body_start = ctx->pos;
+                    int brace_depth = 1;
+                    while (brace_depth > 0 && ctx->pos < ctx->length) {
+                        char c = ctx->input[ctx->pos];
+                        if (c == '{') brace_depth++;
+                        else if (c == '}') brace_depth--;
+                        if (brace_depth > 0) ctx->pos++;
+                    }
+                    size_t body_len = ctx->pos - body_start;
+                    // Store raw body text for later processing
+                    char* body_text = strndup(ctx->input + body_start, body_len);
+                    // Create a special node to hold block body text
+                    KryExprNode* body_node = create_node(KRY_EXPR_LITERAL);
+                    body_node->literal.literal_type = KRY_LITERAL_STRING;
+                    body_node->literal.string_val = body_text;
+                    node->arrow_func.body = body_node;
+                    if (ctx->pos < ctx->length) ctx->pos++;  // skip closing '}'
+                } else {
+                    // Expression body
+                    node->arrow_func.is_expression_body = true;
+                    node->arrow_func.body = parse_expression(ctx);
+                    if (!node->arrow_func.body) {
+                        kry_expr_free(node);
+                        return NULL;
+                    }
+                }
+                return node;
+            }
+            // Not an arrow function, restore position
+            ctx->pos = saved_pos;
+        }
+
+        // Check for multi-parameter arrow function: (a, b, ...) => expr
+        // Try to parse as parameter list
+        char** params = NULL;
+        size_t param_count = 0;
+        size_t param_capacity = 4;
+        params = (char**)malloc(sizeof(char*) * param_capacity);
+        bool is_valid_params = true;
+
+        while (is_valid_params && peek(ctx) != ')') {
+            // Skip whitespace
+            while (ctx->pos < ctx->length && isspace(ctx->input[ctx->pos])) {
+                ctx->pos++;
+            }
+
+            // Parse identifier
+            if (!isalpha(peek(ctx)) && peek(ctx) != '_' && peek(ctx) != '$') {
+                is_valid_params = false;
+                break;
+            }
+
+            size_t id_start = ctx->pos;
+            while (ctx->pos < ctx->length && is_identifier_char(ctx->input[ctx->pos])) {
+                ctx->pos++;
+            }
+            size_t id_len = ctx->pos - id_start;
+
+            if (param_count >= param_capacity) {
+                param_capacity *= 2;
+                params = (char**)realloc(params, sizeof(char*) * param_capacity);
+            }
+            params[param_count++] = strndup(ctx->input + id_start, id_len);
+
+            // Skip whitespace
+            while (ctx->pos < ctx->length && isspace(ctx->input[ctx->pos])) {
+                ctx->pos++;
+            }
+
+            // Check for comma or end
+            if (peek(ctx) == ',') {
+                consume(ctx);
+            } else if (peek(ctx) != ')') {
+                is_valid_params = false;
+            }
+        }
+
+        if (is_valid_params && peek(ctx) == ')') {
+            consume(ctx);  // consume ')'
+            // Skip whitespace
+            while (ctx->pos < ctx->length && isspace(ctx->input[ctx->pos])) {
+                ctx->pos++;
+            }
+            // Check for =>
+            if (ctx->pos + 1 < ctx->length &&
+                ctx->input[ctx->pos] == '=' && ctx->input[ctx->pos + 1] == '>') {
+                // This is a multi-parameter arrow function
+                ctx->pos += 2;  // consume '=>'
+                KryExprNode* node = create_node(KRY_EXPR_ARROW_FUNC);
+                node->arrow_func.params = params;
+                node->arrow_func.param_count = param_count;
+
+                // Parse body (expression or block)
+                char ch = peek(ctx);
+                if (ch == '{') {
+                    // Block body
+                    node->arrow_func.is_expression_body = false;
+                    consume(ctx);  // skip '{'
+                    size_t body_start = ctx->pos;
+                    int brace_depth = 1;
+                    while (brace_depth > 0 && ctx->pos < ctx->length) {
+                        char c = ctx->input[ctx->pos];
+                        if (c == '{') brace_depth++;
+                        else if (c == '}') brace_depth--;
+                        if (brace_depth > 0) ctx->pos++;
+                    }
+                    size_t body_len = ctx->pos - body_start;
+                    char* body_text = strndup(ctx->input + body_start, body_len);
+                    KryExprNode* body_node = create_node(KRY_EXPR_LITERAL);
+                    body_node->literal.literal_type = KRY_LITERAL_STRING;
+                    body_node->literal.string_val = body_text;
+                    node->arrow_func.body = body_node;
+                    if (ctx->pos < ctx->length) ctx->pos++;  // skip closing '}'
+                } else {
+                    // Expression body
+                    node->arrow_func.is_expression_body = true;
+                    node->arrow_func.body = parse_expression(ctx);
+                    if (!node->arrow_func.body) {
+                        for (size_t i = 0; i < param_count; i++) free(params[i]);
+                        free(params);
+                        kry_expr_free(node);
+                        return NULL;
+                    }
+                }
+                return node;
+            }
+        }
+
+        // Not an arrow function, free params and restore position
+        for (size_t i = 0; i < param_count; i++) {
+            free(params[i]);
+        }
+        free(params);
+        ctx->pos = saved_pos;
+
+        // Parse as normal parenthesized expression
         KryExprNode* expr = parse_expression(ctx);
         if (!expr) return NULL;
         if (!match(ctx, ')')) {
@@ -1065,9 +1286,27 @@ static void generate_lua(KryExprNode* node, CodeBuffer* out) {
                 generate_lua(node->arrow_func.body, out);
                 buffer_append(out, "; end");
             } else {
-                // Block body - not yet implemented
-                buffer_append(out, "end");
+                // Block body - stored as literal string in body node
+                if (node->arrow_func.body &&
+                    node->arrow_func.body->type == KRY_EXPR_LITERAL &&
+                    node->arrow_func.body->literal.literal_type == KRY_LITERAL_STRING) {
+                    buffer_append(out, node->arrow_func.body->literal.string_val);
+                }
+                buffer_append(out, " end");
             }
+            break;
+        }
+
+        case KRY_EXPR_CONDITIONAL: {
+            // Lua doesn't have ternary - use: (condition and consequent) or alternate
+            // Note: This has edge cases with falsy values, but works for most cases
+            buffer_append(out, "((");
+            generate_lua(node->conditional.condition, out);
+            buffer_append(out, ") and (");
+            generate_lua(node->conditional.consequent, out);
+            buffer_append(out, ") or (");
+            generate_lua(node->conditional.alternate, out);
+            buffer_append(out, "))");
             break;
         }
 
@@ -1165,9 +1404,27 @@ static void generate_javascript(KryExprNode* node, CodeBuffer* out) {
             if (node->arrow_func.is_expression_body) {
                 generate_javascript(node->arrow_func.body, out);
             } else {
-                // Block body - not yet implemented
-                buffer_append(out, "{ }");
+                // Block body - stored as literal string in body node
+                buffer_append_char(out, '{');
+                if (node->arrow_func.body &&
+                    node->arrow_func.body->type == KRY_EXPR_LITERAL &&
+                    node->arrow_func.body->literal.literal_type == KRY_LITERAL_STRING) {
+                    buffer_append(out, node->arrow_func.body->literal.string_val);
+                }
+                buffer_append_char(out, '}');
             }
+            break;
+        }
+
+        case KRY_EXPR_CONDITIONAL: {
+            // JavaScript native ternary
+            buffer_append_char(out, '(');
+            generate_javascript(node->conditional.condition, out);
+            buffer_append(out, " ? ");
+            generate_javascript(node->conditional.consequent, out);
+            buffer_append(out, " : ");
+            generate_javascript(node->conditional.alternate, out);
+            buffer_append_char(out, ')');
             break;
         }
 

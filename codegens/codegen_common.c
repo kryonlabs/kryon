@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 // Thread-local error prefix for error reporting
 static __thread char g_error_prefix[32] = "Codegen";
@@ -528,5 +529,168 @@ char* react_generate_element(cJSON* component, ReactContext* ctx, int indent) {
     char* result = sb_get(sb);
     sb_free(sb);
     return result;
+}
+
+// ============================================================================
+// Multi-File Codegen Utilities
+// ============================================================================
+
+bool codegen_processed_modules_contains(CodegenProcessedModules* pm, const char* module_id) {
+    if (!pm || !module_id) return false;
+
+    for (int i = 0; i < pm->count; i++) {
+        if (pm->modules[i] && strcmp(pm->modules[i], module_id) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void codegen_processed_modules_add(CodegenProcessedModules* pm, const char* module_id) {
+    if (!pm || !module_id) return;
+
+    if (pm->count >= CODEGEN_MAX_PROCESSED_MODULES) {
+        codegen_warn("Processed modules limit reached (%d), cannot add: %s",
+                     CODEGEN_MAX_PROCESSED_MODULES, module_id);
+        return;
+    }
+
+    pm->modules[pm->count++] = strdup(module_id);
+}
+
+void codegen_processed_modules_free(CodegenProcessedModules* pm) {
+    if (!pm) return;
+
+    for (int i = 0; i < pm->count; i++) {
+        free(pm->modules[i]);
+        pm->modules[i] = NULL;
+    }
+    pm->count = 0;
+}
+
+bool codegen_is_internal_module(const char* module_id) {
+    if (!module_id) return false;
+
+    // Check for kryon/ prefix
+    if (strncmp(module_id, "kryon/", 6) == 0) return true;
+
+    // Check for known internal module names
+    if (strcmp(module_id, "dsl") == 0) return true;
+    if (strcmp(module_id, "ffi") == 0) return true;
+    if (strcmp(module_id, "runtime") == 0) return true;
+    if (strcmp(module_id, "reactive") == 0) return true;
+    if (strcmp(module_id, "runtime_web") == 0) return true;
+    if (strcmp(module_id, "kryon") == 0) return true;
+
+    return false;
+}
+
+bool codegen_is_external_plugin(const char* module_id) {
+    if (!module_id) return false;
+
+    // Known external plugins (runtime dependencies, not source modules)
+    if (strcmp(module_id, "datetime") == 0) return true;
+    if (strcmp(module_id, "storage") == 0) return true;
+    if (strcmp(module_id, "animations") == 0) return true;
+    if (strcmp(module_id, "http") == 0) return true;
+    if (strcmp(module_id, "audio") == 0) return true;
+    if (strcmp(module_id, "filesystem") == 0) return true;
+    if (strcmp(module_id, "database") == 0) return true;
+
+    return false;
+}
+
+void codegen_get_parent_dir(const char* path, char* parent, size_t parent_size) {
+    if (!path || !parent || parent_size == 0) return;
+
+    strncpy(parent, path, parent_size - 1);
+    parent[parent_size - 1] = '\0';
+
+    char* last_slash = strrchr(parent, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+    } else {
+        parent[0] = '.';
+        parent[1] = '\0';
+    }
+}
+
+bool codegen_mkdir_p(const char* path) {
+    if (!path) return false;
+
+    struct stat st = {0};
+    if (stat(path, &st) == 0) {
+        // Path exists
+        return S_ISDIR(st.st_mode);
+    }
+
+    // Need to create - use mkdir -p (portable)
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", path);
+    int result = system(cmd);
+
+    return result == 0;
+}
+
+bool codegen_write_file_with_mkdir(const char* path, const char* content) {
+    if (!path || !content) return false;
+
+    // Create a mutable copy for directory extraction
+    char dir_path[2048];
+    strncpy(dir_path, path, sizeof(dir_path) - 1);
+    dir_path[sizeof(dir_path) - 1] = '\0';
+
+    // Find and create parent directory
+    char* last_slash = strrchr(dir_path, '/');
+    if (last_slash) {
+        *last_slash = '\0';
+        if (!codegen_mkdir_p(dir_path)) {
+            codegen_warn("Could not create directory: %s", dir_path);
+        }
+    }
+
+    // Write the file
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        codegen_error("Could not write file: %s (%s)", path, strerror(errno));
+        return false;
+    }
+    fputs(content, f);
+    fclose(f);
+    return true;
+}
+
+bool codegen_file_exists(const char* path) {
+    if (!path) return false;
+
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+}
+
+int codegen_copy_file(const char* src, const char* dst) {
+    if (!src || !dst) return -1;
+
+    FILE* in = fopen(src, "rb");
+    if (!in) return -1;
+
+    FILE* out = fopen(dst, "wb");
+    if (!out) {
+        fclose(in);
+        return -1;
+    }
+
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, n, out) != n) {
+            fclose(in);
+            fclose(out);
+            return -1;
+        }
+    }
+
+    fclose(in);
+    fclose(out);
+    return 0;
 }
 

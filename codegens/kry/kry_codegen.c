@@ -1622,134 +1622,18 @@ bool kry_codegen_generate_with_options(const char* kir_path,
 }
 
 /**
- * Helper to check if a module is a Kryon internal module
- */
-static bool is_kryon_internal(const char* module_id) {
-    if (!module_id) return false;
-
-    // Check for kryon/ prefix
-    if (strncmp(module_id, "kryon/", 6) == 0) return true;
-
-    // Check for known internal module names
-    if (strcmp(module_id, "dsl") == 0) return true;
-    if (strcmp(module_id, "ffi") == 0) return true;
-    if (strcmp(module_id, "runtime") == 0) return true;
-    if (strcmp(module_id, "reactive") == 0) return true;
-    if (strcmp(module_id, "runtime_web") == 0) return true;
-    if (strcmp(module_id, "kryon") == 0) return true;
-
-    return false;
-}
-
-/**
- * Helper to check if a module is an external plugin
- */
-static bool is_external_plugin(const char* module_id) {
-    if (!module_id) return false;
-
-    // Known external plugins (runtime dependencies, not source modules)
-    if (strcmp(module_id, "datetime") == 0) return true;
-    if (strcmp(module_id, "storage") == 0) return true;
-
-    return false;
-}
-
-/**
- * Helper to get the parent directory of a path
- */
-static void get_parent_dir_kry(const char* path, char* parent, size_t parent_size) {
-    if (!path || !parent) return;
-
-    strncpy(parent, path, parent_size - 1);
-    parent[parent_size - 1] = '\0';
-
-    char* last_slash = strrchr(parent, '/');
-    if (last_slash) {
-        *last_slash = '\0';
-    } else {
-        parent[0] = '.';
-        parent[1] = '\0';
-    }
-}
-
-/**
- * Helper to write file with automatic directory creation
- */
-static bool write_file_with_mkdir_kry(const char* path, const char* content) {
-    if (!path || !content) return false;
-
-    // Create a mutable copy for directory extraction
-    char dir_path[2048];
-    strncpy(dir_path, path, sizeof(dir_path) - 1);
-    dir_path[sizeof(dir_path) - 1] = '\0';
-
-    // Find and create parent directory
-    char* last_slash = strrchr(dir_path, '/');
-    if (last_slash) {
-        *last_slash = '\0';
-        struct stat st = {0};
-        if (stat(dir_path, &st) == -1) {
-            char mkdir_cmd[2048];
-            snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", dir_path);
-            if (system(mkdir_cmd) != 0) {
-                fprintf(stderr, "Warning: Could not create directory: %s\n", dir_path);
-            }
-        }
-    }
-
-    // Write the file
-    FILE* f = fopen(path, "w");
-    if (!f) {
-        fprintf(stderr, "Error: Could not write file: %s\n", path);
-        return false;
-    }
-    fputs(content, f);
-    fclose(f);
-    return true;
-}
-
-/**
- * Processed modules tracking for recursive import processing
- */
-#define MAX_PROCESSED_MODULES_KRY 256
-
-typedef struct {
-    char* modules[MAX_PROCESSED_MODULES_KRY];
-    int count;
-} ProcessedModulesKry;
-
-static bool is_module_processed_kry(ProcessedModulesKry* pm, const char* module_id) {
-    for (int i = 0; i < pm->count; i++) {
-        if (strcmp(pm->modules[i], module_id) == 0) return true;
-    }
-    return false;
-}
-
-static void mark_module_processed_kry(ProcessedModulesKry* pm, const char* module_id) {
-    if (pm->count < MAX_PROCESSED_MODULES_KRY) {
-        pm->modules[pm->count++] = strdup(module_id);
-    }
-}
-
-static void free_processed_modules_kry(ProcessedModulesKry* pm) {
-    for (int i = 0; i < pm->count; i++) {
-        free(pm->modules[i]);
-    }
-    pm->count = 0;
-}
-
-/**
  * Recursively process a module and its transitive imports
+ * (Uses shared utilities from codegen_common)
  */
 static int process_module_recursive_kry(const char* module_id, const char* kir_dir,
-                                        const char* output_dir, ProcessedModulesKry* processed) {
+                                        const char* output_dir, CodegenProcessedModules* processed) {
     // Skip if already processed
-    if (is_module_processed_kry(processed, module_id)) return 0;
-    mark_module_processed_kry(processed, module_id);
+    if (codegen_processed_modules_contains(processed, module_id)) return 0;
+    codegen_processed_modules_add(processed, module_id);
 
     // Skip internal modules and external plugins
-    if (is_kryon_internal(module_id)) return 0;
-    if (is_external_plugin(module_id)) return 0;
+    if (codegen_is_internal_module(module_id)) return 0;
+    if (codegen_is_external_plugin(module_id)) return 0;
 
     // Build path to component's KIR file
     char component_kir_path[2048];
@@ -1778,7 +1662,7 @@ static int process_module_recursive_kry(const char* module_id, const char* kir_d
         snprintf(output_path, sizeof(output_path),
                  "%s/%s.kry", output_dir, module_id);
 
-        if (write_file_with_mkdir_kry(output_path, component_kry)) {
+        if (codegen_write_file_with_mkdir(output_path, component_kry)) {
             printf("✓ Generated: %s.kry\n", module_id);
             files_written++;
         }
@@ -1839,16 +1723,11 @@ bool kry_codegen_generate_multi(const char* kir_path, const char* output_dir) {
     }
 
     // Create output directory if it doesn't exist
-    struct stat st = {0};
-    if (stat(output_dir, &st) == -1) {
-        char mkdir_cmd[2048];
-        snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
-        if (system(mkdir_cmd) != 0) {
-            fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
-            cJSON_Delete(main_root);
-            free(main_kir_json);
-            return false;
-        }
+    if (!codegen_mkdir_p(output_dir)) {
+        fprintf(stderr, "Error: Could not create output directory: %s\n", output_dir);
+        cJSON_Delete(main_root);
+        free(main_kir_json);
+        return false;
     }
 
     int files_written = 0;
@@ -1861,7 +1740,7 @@ bool kry_codegen_generate_multi(const char* kir_path, const char* output_dir) {
         char main_output_path[2048];
         snprintf(main_output_path, sizeof(main_output_path), "%s/main.kry", output_dir);
 
-        if (write_file_with_mkdir_kry(main_output_path, main_kry)) {
+        if (codegen_write_file_with_mkdir(main_output_path, main_kry)) {
             printf("✓ Generated: main.kry\n");
             files_written++;
         }
@@ -1872,11 +1751,11 @@ bool kry_codegen_generate_multi(const char* kir_path, const char* output_dir) {
 
     // 2. Get the KIR directory (parent of kir_path)
     char kir_dir[2048];
-    get_parent_dir_kry(kir_path, kir_dir, sizeof(kir_dir));
+    codegen_get_parent_dir(kir_path, kir_dir, sizeof(kir_dir));
 
     // 3. Track processed modules to avoid duplicates
-    ProcessedModulesKry processed = {0};
-    mark_module_processed_kry(&processed, "main");  // Mark main as processed
+    CodegenProcessedModules processed = {0};
+    codegen_processed_modules_add(&processed, "main");  // Mark main as processed
 
     // 4. Process each import recursively (including transitive imports)
     cJSON* imports = cJSON_GetObjectItem(main_root, "imports");
@@ -1893,7 +1772,7 @@ bool kry_codegen_generate_multi(const char* kir_path, const char* output_dir) {
         }
     }
 
-    free_processed_modules_kry(&processed);
+    codegen_processed_modules_free(&processed);
     cJSON_Delete(main_root);
 
     if (files_written == 0) {

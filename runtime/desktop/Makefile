@@ -100,6 +100,7 @@ DESKTOP_TEST = $(BUILD_DIR)/desktop_test
 INCLUDES = -I$(INCLUDE_DIR) \
            -I$(INCLUDE_IR_DIR) \
            -I$(INCLUDE_IR_DIR)/include \
+           -I../../include \
            -I../../core/include \
            -I../../renderers/sdl3 \
            -I../../renderers/common \

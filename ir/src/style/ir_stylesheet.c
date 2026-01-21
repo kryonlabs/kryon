@@ -61,12 +61,6 @@ void ir_style_properties_cleanup(IRStyleProperties* props) {
         free(props->grid_template_rows);
         props->grid_template_rows = NULL;
     }
-    // Free transitions array
-    if (props->transitions) {
-        free(props->transitions);
-        props->transitions = NULL;
-        props->transition_count = 0;
-    }
     // Free color var_names (safe after deep copy owns them)
     if (props->background.var_name) {
         free(props->background.var_name);
@@ -172,16 +166,6 @@ void ir_style_properties_deep_copy(const IRStyleProperties* src, IRStyleProperti
     dst->opacity = src->opacity;
     dst->z_index = src->z_index;
     dst->set_flags = src->set_flags;
-
-    // Deep copy transitions array
-    if (src->transitions && src->transition_count > 0) {
-        dst->transitions = malloc(src->transition_count * sizeof(IRTransition));
-        if (dst->transitions) {
-            memcpy(dst->transitions, src->transitions,
-                   src->transition_count * sizeof(IRTransition));
-            dst->transition_count = src->transition_count;
-        }
-    }
 }
 
 // ============================================================================

@@ -630,7 +630,7 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
     float current_x = style->padding.left;
 
     // Apply main-axis alignment (justify_content) for row layout
-    if (remaining_width > 0 && total_flex_grow == 0) {
+    if (remaining_width > 0 && total_flex_grow == 0 && visible_count > 0) {
         switch (layout->flex.justify_content) {
             case IR_ALIGNMENT_CENTER:
                 current_x += remaining_width / 2.0f;
@@ -782,7 +782,7 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
     float current_y = style->padding.top;
 
     // Apply main-axis alignment (justify_content) for column layout
-    if (remaining_height > 0 && total_flex_grow == 0) {
+    if (remaining_height > 0 && total_flex_grow == 0 && visible_count > 0) {
         switch (layout->flex.justify_content) {
             case IR_ALIGNMENT_CENTER:
                 current_y += remaining_height / 2.0f;

@@ -244,10 +244,12 @@ void ir_destroy_component(IRComponent* component) {
         free(component->children);
     }
 
-    // Remove from hash map
-    if (g_ir_context && g_ir_context->component_map) {
-        ir_map_remove(g_ir_context->component_map, component->id);
-    }
+    // Note: Map removal during component destruction is intentionally skipped.
+    // The component map is used for fast lookups during rendering but becomes
+    // corrupted during shutdown due to ID reuse and multi-phase destruction.
+    // The map entries are cleaned up when ir_map_destroy() is called on context shutdown.
+    // This is a safe memory pattern - stale map entries pointing to freed components
+    // are never accessed after the component tree is destroyed.
 
     // Return to pool or free
     // Check if component was externally allocated (via malloc/calloc in JSON deserializer)

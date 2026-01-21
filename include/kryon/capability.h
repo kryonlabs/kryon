@@ -143,6 +143,7 @@ typedef enum {
     KRYON_HOOK_POST_RENDER,  /* Called after rendering completes */
     KRYON_HOOK_PRE_LAYOUT,   /* Called before layout computation */
     KRYON_HOOK_POST_LAYOUT,  /* Called after layout computation */
+    KRYON_HOOK_COUNT         /* Sentinel: number of hook types */
 } KryonLifecycleHook;
 
 /**
@@ -510,8 +511,18 @@ struct KryonCapabilityAPI {
      */
     void** (*get_component_plugin_data)(uint32_t component_id);
 
+    /**
+     * Get component by ID (opaque pointer to IRComponent)
+     * @param component_id Component ID
+     * @return Opaque pointer to component, or NULL if not found
+     *
+     * The returned pointer is opaque to plugins but can be passed
+     * to other API functions that need component references.
+     */
+    void* (*get_component_by_id)(uint32_t component_id);
+
     /* Reserved for future expansion (maintains ABI stability) */
-    void* reserved[7];  // Reduced from 10 to account for 3 new functions
+    void* reserved[6];  // Reduced from 7 to account for 1 new function
 };
 
 // ============================================================================

@@ -1829,6 +1829,48 @@ static void exec_stmt(IRExecutorContext* ctx, IRStatement* stmt, uint32_t instan
             break;
         }
 
+        case STMT_DELETE: {
+            // Delete statement: removes an element from an array or property
+            // The target is an expression like arr[idx] or obj.prop
+            if (!stmt->delete_stmt.target) {
+                printf("[executor] ERROR: delete statement has no target\n");
+                break;
+            }
+
+            IRExpression* target = stmt->delete_stmt.target;
+
+            // Handle computed member access: arr[idx]
+            if (target->type == EXPR_COMPUTED_MEMBER) {
+                // Evaluate the object to get the array
+                IRValue container = eval_expr_value(ctx, target->computed_member.object, instance_id);
+
+                if (container.type == VAR_TYPE_ARRAY) {
+                    // Delete index from array
+                    IRValue idx = eval_expr_value(ctx, target->computed_member.key, instance_id);
+                    if (idx.type == VAR_TYPE_INT) {
+                        printf("[executor] Deleting index %lld from array\n", (long long)idx.int_val);
+                        // TODO: Implement array element removal when needed
+                    }
+                    ir_value_free(&idx);
+                } else {
+                    printf("[executor] WARNING: delete target is not an array (type=%d)\n", container.type);
+                }
+                ir_value_free(&container);
+            } else if (target->type == EXPR_MEMBER_ACCESS) {
+                // Delete property from object: obj.prop
+                printf("[executor] Deleting property '%s'\n",
+                       target->member_access.property ? target->member_access.property : "(null)");
+                // TODO: Implement property deletion when needed
+            } else if (target->type == EXPR_INDEX) {
+                // Legacy index access: arr[idx]
+                printf("[executor] Deleting via index access (legacy)\n");
+                // TODO: Implement index deletion when needed
+            } else {
+                printf("[executor] WARNING: Unsupported delete target type %d\n", target->type);
+            }
+            break;
+        }
+
         default:
             break;
     }

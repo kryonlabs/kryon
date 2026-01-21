@@ -808,62 +808,9 @@ bool css_gen_generate_layout_mode(CSSGenContext* ctx, IRLayoutMode mode) {
     return css_gen_write_property(ctx, "display", value);
 }
 
-bool css_gen_generate_animations(CSSGenContext* ctx, IRAnimation** animations, uint32_t count) {
-    if (!ctx || !animations || count == 0) return false;
+// Animation generation removed - moved to plugin system
 
-    ir_sb_indent(ctx->builder, 1);
-    ir_sb_append(ctx->builder, "animation:");
-
-    for (uint32_t i = 0; i < count; i++) {
-        IRAnimation* anim = animations[i];
-        if (!anim || !anim->name) continue;
-
-        if (i > 0) ir_sb_append(ctx->builder, ",");
-
-        const char* easing = css_format_easing(anim->default_easing);
-        ir_sb_appendf(ctx->builder, " %s %.2fs %s %.2fs",
-                     anim->name, anim->duration, easing, anim->delay);
-
-        if (anim->iteration_count < 0) {
-            ir_sb_append(ctx->builder, " infinite");
-        } else if (anim->iteration_count != 1) {
-            ir_sb_appendf(ctx->builder, " %d", anim->iteration_count);
-        }
-
-        if (anim->alternate) {
-            ir_sb_append(ctx->builder, " alternate");
-        }
-    }
-
-    ir_sb_append_line(ctx->builder, ";");
-    ctx->has_output = true;
-    return true;
-}
-
-bool css_gen_generate_transitions(CSSGenContext* ctx, IRTransition** transitions, uint32_t count) {
-    if (!ctx || !transitions || count == 0) return false;
-
-    ir_sb_indent(ctx->builder, 1);
-    ir_sb_append(ctx->builder, "transition:");
-
-    for (uint32_t i = 0; i < count; i++) {
-        IRTransition* trans = transitions[i];
-        if (!trans) continue;
-
-        if (i > 0) ir_sb_append(ctx->builder, ",");
-
-        const char* prop = css_format_animation_property(trans->property);
-        const char* easing = css_format_easing(trans->easing);
-        if (prop) {
-            ir_sb_appendf(ctx->builder, " %s %.2fs %s %.2fs",
-                         prop, trans->duration, easing, trans->delay);
-        }
-    }
-
-    ir_sb_append_line(ctx->builder, ";");
-    ctx->has_output = true;
-    return true;
-}
+// Transition generation removed - moved to plugin system
 
 bool css_gen_generate_text_effect(CSSGenContext* ctx, IRTextEffect* effect) {
     if (!ctx || !effect) return false;
@@ -1013,84 +960,7 @@ bool css_gen_generate_pseudo_class(CSSGenContext* ctx, const char* selector, con
     return true;
 }
 
-bool css_gen_generate_keyframes(CSSGenContext* ctx, IRAnimation* animation) {
-    if (!ctx || !animation || !animation->name || animation->keyframe_count == 0) return false;
-
-    ir_sb_appendf(ctx->builder, "@keyframes %s {\n", animation->name);
-
-    for (uint8_t i = 0; i < animation->keyframe_count; i++) {
-        IRKeyframe* kf = &animation->keyframes[i];
-
-        ir_sb_indent(ctx->builder, 1);
-        ir_sb_appendf(ctx->builder, "%.1f%% {\n", kf->offset * 100.0f);
-
-        bool generated_transform = false;
-
-        for (uint8_t j = 0; j < kf->property_count; j++) {
-            if (!kf->properties[j].is_set) continue;
-
-            IRAnimationProperty prop = kf->properties[j].property;
-
-            if (!generated_transform &&
-                (prop == IR_ANIM_PROP_TRANSLATE_X || prop == IR_ANIM_PROP_TRANSLATE_Y ||
-                 prop == IR_ANIM_PROP_SCALE_X || prop == IR_ANIM_PROP_SCALE_Y ||
-                 prop == IR_ANIM_PROP_ROTATE)) {
-
-                // Collect transform values
-                float tx = 0, ty = 0, sx = 1, sy = 1, rot = 0;
-                for (uint8_t k = 0; k < kf->property_count; k++) {
-                    if (!kf->properties[k].is_set) continue;
-                    switch (kf->properties[k].property) {
-                        case IR_ANIM_PROP_TRANSLATE_X:
-                            tx = kf->properties[k].value;
-                            break;
-                        case IR_ANIM_PROP_TRANSLATE_Y:
-                            ty = kf->properties[k].value;
-                            break;
-                        case IR_ANIM_PROP_SCALE_X:
-                            sx = kf->properties[k].value;
-                            break;
-                        case IR_ANIM_PROP_SCALE_Y:
-                            sy = kf->properties[k].value;
-                            break;
-                        case IR_ANIM_PROP_ROTATE:
-                            rot = kf->properties[k].value;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-
-                ir_sb_indent(ctx->builder, 2);
-                ir_sb_appendf(ctx->builder, "transform: translate(%.1fpx, %.1fpx) scale(%.2f, %.2f)",
-                             tx, ty, sx, sy);
-                if (rot != 0) {
-                    ir_sb_appendf(ctx->builder, " rotate(%.1fdeg)", rot);
-                }
-                ir_sb_append_line(ctx->builder, ";");
-                generated_transform = true;
-            } else if (prop == IR_ANIM_PROP_OPACITY) {
-                ir_sb_indent(ctx->builder, 2);
-                ir_sb_appendf(ctx->builder, "opacity: %.2f;\n", kf->properties[j].value);
-            } else if (prop == IR_ANIM_PROP_BACKGROUND_COLOR) {
-                IRColor color = kf->properties[j].color_value;
-                if (color.type == IR_COLOR_SOLID) {
-                    ir_sb_indent(ctx->builder, 2);
-                    ir_sb_appendf(ctx->builder, "background-color: rgba(%d, %d, %d, %.2f);\n",
-                                 color.data.r, color.data.g, color.data.b,
-                                 color.data.a / 255.0f);
-                }
-            }
-        }
-
-        ir_sb_indent(ctx->builder, 1);
-        ir_sb_append_line(ctx->builder, "}");
-    }
-
-    ir_sb_append_line(ctx->builder, "}");
-    ctx->has_output = true;
-    return true;
-}
+// Keyframes generation removed - moved to plugin system
 
 bool css_gen_generate_root_variables(CSSGenContext* ctx, CSSVariableEntry* variables, size_t count) {
     if (!ctx || !variables || count == 0) return false;

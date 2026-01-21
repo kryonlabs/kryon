@@ -7,7 +7,6 @@
 #include "../include/ir_logic.h"
 #include "../utils/ir_c_metadata.h"
 #include "../style/ir_stylesheet.h"
-#include "ir_animation.h"
 #include "../serialization/ir_json_serialize.h"
 #include "../serialization/ir_json_deserialize.h"
 #include "../serialization/ir_json_context.h"
@@ -420,11 +419,6 @@ IRComponent* ir_deserialize_json(const char* json_string) {
     // Clean up context before deleting JSON (context references JSON nodes)
     ir_json_context_free(ctx);
     cJSON_Delete(root);
-
-    // Propagate animation flags after full tree construction
-    if (component) {
-        ir_animation_propagate_flags(component);
-    }
 
     return component;
 }
