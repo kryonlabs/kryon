@@ -438,9 +438,19 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 #define FLEX_COLUMN_CENTER JUSTIFY_CENTER, ALIGN_CENTER
 
 /**
- * FULL_SIZE - Make component fill parent
+ * FULL_SIZE - Make component fill parent (both dimensions)
  */
 #define FULL_SIZE WIDTH_PCT(100), HEIGHT_PCT(100)
+
+/**
+ * FULL_WIDTH - Make component fill parent width
+ */
+#define FULL_WIDTH WIDTH_PCT(100)
+
+/**
+ * FULL_HEIGHT - Make component fill parent height
+ */
+#define FULL_HEIGHT HEIGHT_PCT(100)
 
 /**
  * SIZE - Set both width and height in pixels

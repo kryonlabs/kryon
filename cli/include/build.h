@@ -62,20 +62,6 @@ int generate_html_from_kir(const char* kir_file, const char* output_dir,
                            const char* project_name, const char* source_dir);
 
 /* ============================================================================
- * Lua Runtime Detection
- * ============================================================================ */
-
-/**
- * Check if a KIR file requires the Lua runtime for execution.
- *
- * Loads the KIR file and checks the source metadata.
- *
- * @param kir_file Path to the KIR file
- * @return true if Lua runtime is needed, false otherwise
- */
-bool kir_needs_lua_runtime(const char* kir_file);
-
-/* ============================================================================
  * Docs Template
  * ============================================================================ */
 
@@ -107,11 +93,11 @@ int build_with_docs_template(const char* content_kir_file,
 /**
  * Execute a KIR file on the desktop backend.
  *
- * Handles both standard C execution and Lua runtime delegation.
+ * Always compiles through C codegen: KIR → C → native binary → execute.
  *
  * @param kir_file      Path to the KIR file
- * @param desktop_lib   Path to desktop renderer library (NULL to detect)
- * @param renderer      Override renderer: "sdl3", "raylib", or NULL (use config)
+ * @param desktop_lib   Path to desktop renderer library (unused, kept for API compatibility)
+ * @param renderer      Override renderer (unused, kept for API compatibility)
  * @return 0 on success, non-zero on failure
  */
 #ifndef KRYON_MINIMAL_BUILD
@@ -132,16 +118,6 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
 int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop_lib,
                                         const char* renderer, const char* watch_path);
 #endif
-
-/**
- * Execute a KIR file using the Lua runtime.
- *
- * Delegates to LuaJIT with Runtime.loadKIR/Runtime.runDesktop.
- *
- * @param kir_file  Path to the KIR file
- * @return 0 on success, non-zero on failure
- */
-int run_kir_with_lua_runtime(const char* kir_file);
 
 /* ============================================================================
  * Build Pipeline

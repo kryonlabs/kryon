@@ -713,245 +713,132 @@ int build_with_docs_template(const char* content_kir_file,
  * Desktop Execution
  * ============================================================================ */
 
-int run_kir_with_lua_runtime(const char* kir_file) {
-    char* kryon_root = paths_get_kryon_root();
-    if (!kryon_root) {
-        // Fallback to user install location
-        char* home = paths_get_home_dir();
-        if (home) {
-            kryon_root = path_join(home, ".local/share/kryon");
-            free(home);
-        } else {
-            kryon_root = str_copy("/usr/local/share/kryon");
-        }
-    }
-
-    KryonConfig* kryon_config = config_find_and_load();
-
-    // Build plugin paths from config and environment
-    char plugin_paths_buffer[2048] = "";
-    char* plugin_paths = getenv("KRYON_PLUGIN_PATHS");
-
-    // If config has plugins, build paths
-    if (kryon_config && kryon_config->plugins && kryon_config->plugins_count > 0) {
-        char* cwd = dir_get_current();
-        for (int i = 0; i < kryon_config->plugins_count; i++) {
-            PluginDep* plugin = &kryon_config->plugins[i];
-            if (!plugin->enabled || !plugin->path) continue;
-
-            // Resolve relative paths
-            char* resolved_path = NULL;
-            if (plugin->path[0] == '/') {
-                resolved_path = str_copy(plugin->path);
-            } else {
-                resolved_path = path_join(cwd, plugin->path);
-            }
-
-            // Add to plugin_paths_buffer
-            if (strlen(plugin_paths_buffer) > 0) {
-                strncat(plugin_paths_buffer, ":", sizeof(plugin_paths_buffer) - strlen(plugin_paths_buffer) - 1);
-            }
-            strncat(plugin_paths_buffer, resolved_path, sizeof(plugin_paths_buffer) - strlen(plugin_paths_buffer) - 1);
-            free(resolved_path);
-        }
-        free(cwd);
-
-        // If env var is also set, append it
-        if (plugin_paths && strlen(plugin_paths) > 0) {
-            if (strlen(plugin_paths_buffer) > 0) {
-                strncat(plugin_paths_buffer, ":", sizeof(plugin_paths_buffer) - strlen(plugin_paths_buffer) - 1);
-            }
-            strncat(plugin_paths_buffer, plugin_paths, sizeof(plugin_paths_buffer) - strlen(plugin_paths_buffer) - 1);
-        }
-
-        // Use the combined paths
-        if (strlen(plugin_paths_buffer) > 0) {
-            plugin_paths = plugin_paths_buffer;
-        }
-    }
-
-    char lua_cmd[8192];
-    if (plugin_paths && strlen(plugin_paths) > 0) {
-        // Build LUA_PATH, LUA_CPATH, and LD_LIBRARY_PATH from plugin paths
-        char lua_path[4096] = "";
-        char lua_cpath[2048] = "";
-        char ld_library_path[2048] = "";
-
-        // Start with kryon root paths
-        snprintf(lua_path, sizeof(lua_path),
-                 "%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua",
-                 kryon_root, kryon_root);
-
-        // Parse plugin_paths (colon-separated)
-        char* paths_copy = strdup(plugin_paths);
-        char* path_token = strtok(paths_copy, ":");
-        while (path_token != NULL) {
-            // Append to LUA_PATH
-            size_t len = strlen(lua_path);
-            snprintf(lua_path + len, sizeof(lua_path) - len,
-                     ";%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua",
-                     path_token, path_token);
-
-            // Append to LUA_CPATH
-            if (strlen(lua_cpath) > 0) {
-                strncat(lua_cpath, ";", sizeof(lua_cpath) - strlen(lua_cpath) - 1);
-            }
-            len = strlen(lua_cpath);
-            snprintf(lua_cpath + len, sizeof(lua_cpath) - len,
-                     "%s/build/?.so", path_token);
-
-            // Append to LD_LIBRARY_PATH
-            if (strlen(ld_library_path) > 0) {
-                strncat(ld_library_path, ":", sizeof(ld_library_path) - strlen(ld_library_path) - 1);
-            }
-            strncat(ld_library_path, path_token, sizeof(ld_library_path) - strlen(ld_library_path) - 1);
-            strncat(ld_library_path, "/build", sizeof(ld_library_path) - strlen(ld_library_path) - 1);
-
-            path_token = strtok(NULL, ":");
-        }
-        free(paths_copy);
-
-        // Terminate LUA_PATH and LUA_CPATH
-        strncat(lua_path, ";;", sizeof(lua_path) - strlen(lua_path) - 1);
-        strncat(lua_cpath, ";;", sizeof(lua_cpath) - strlen(lua_cpath) - 1);
-
-        snprintf(lua_cmd, sizeof(lua_cmd),
-                 "KRYON_PLUGIN_PATHS=\"%s\" "
-                 "LUA_PATH=\"%s\" "
-                 "LUA_CPATH=\"%s\" "
-                 "LD_LIBRARY_PATH=\"%s:%s/build:$LD_LIBRARY_PATH\" "
-                 "luajit -e '"
-                 "local Runtime = require(\"kryon.runtime\"); "
-                 "local app = Runtime.loadKIR(\"%s\"); "
-                 "Runtime.runDesktop(app)'",
-                 plugin_paths, lua_path, lua_cpath, ld_library_path, kryon_root, kir_file);
-    } else {
-        snprintf(lua_cmd, sizeof(lua_cmd),
-                 "LUA_PATH=\"%s/bindings/lua/?.lua;%s/bindings/lua/?/init.lua;;\" "
-                 "LD_LIBRARY_PATH=\"%s/build:$LD_LIBRARY_PATH\" "
-                 "luajit -e '"
-                 "local Runtime = require(\"kryon.runtime\"); "
-                 "local app = Runtime.loadKIR(\"%s\"); "
-                 "Runtime.runDesktop(app)'",
-                 kryon_root, kryon_root, kryon_root, kir_file);
-    }
-
-    if (kryon_config) config_free(kryon_config);
-    free(kryon_root);
-
-    int result = system(lua_cmd);
-    return (result == 0) ? 0 : 1;
-}
+/* run_kir_with_lua_runtime() removed - we always compile through C codegen now */
 
 int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char* renderer_override) {
-    // Get desktop lib path if not provided
-    const char* lib = desktop_lib;
-    if (!lib) {
-        lib = getenv("KRYON_DESKTOP_LIB");
-        if (!lib) {
-            char* found_lib = paths_find_library("libkryon_desktop.so");
-            if (!found_lib) {
-                fprintf(stderr, "Error: Desktop renderer library not found\n");
-                fprintf(stderr, "Please run: make install\n");
-                return 1;
+    (void)desktop_lib;
+    (void)renderer_override;
+
+    // 1. Generate C code from KIR to a temp directory
+    char c_output_dir[1024];
+    snprintf(c_output_dir, sizeof(c_output_dir), "/tmp/kryon_build_%d", getpid());
+
+    printf("Generating C code from KIR...\n");
+    if (!ir_generate_c_code_multi(kir_file, c_output_dir)) {
+        fprintf(stderr, "Error: Failed to generate C code from KIR\n");
+        return 1;
+    }
+    printf("✓ C code generated in %s\n", c_output_dir);
+
+    // 2. Compile C to native binary
+    char main_c[1024];
+    snprintf(main_c, sizeof(main_c), "%s/main.c", c_output_dir);
+
+    char exe_file[1024];
+    snprintf(exe_file, sizeof(exe_file), "/tmp/kryon_app_%d", getpid());
+
+    printf("Compiling to native executable...\n");
+
+    // Find all .c files in the generated directory
+    char additional_sources[4096] = "";
+    {
+        char find_cmd[2048];
+        snprintf(find_cmd, sizeof(find_cmd),
+                 "find \"%s\" -name '*.c' ! -name 'main.c' 2>/dev/null",
+                 c_output_dir);
+
+        FILE* fp = popen(find_cmd, "r");
+        if (fp) {
+            char line[512];
+            while (fgets(line, sizeof(line), fp)) {
+                line[strcspn(line, "\n")] = 0;
+                if (strlen(line) > 0) {
+                    strncat(additional_sources, "\"", sizeof(additional_sources) - strlen(additional_sources) - 1);
+                    strncat(additional_sources, line, sizeof(additional_sources) - strlen(additional_sources) - 1);
+                    strncat(additional_sources, "\" ", sizeof(additional_sources) - strlen(additional_sources) - 1);
+                }
             }
-            lib = found_lib;  // Note: leaked but used immediately
+            pclose(fp);
         }
     }
 
-    // Load KIR file
-    IRComponent* root = ir_read_json_file(kir_file);
-    if (!root) {
-        fprintf(stderr, "Error: Failed to load KIR file: %s\n", kir_file);
+    // Get paths for compilation
+    char* kryon_root = paths_get_kryon_root();
+    char* bindings_path = kryon_root ? path_join(kryon_root, "bindings/c") : paths_get_bindings_path();
+    char* ir_path = kryon_root ? path_join(kryon_root, "ir") : str_copy("ir");
+    char* desktop_path = kryon_root ? path_join(kryon_root, "runtime/desktop") : str_copy("runtime/desktop");
+    char* cjson_path = kryon_root ? path_join(kryon_root, "ir/third_party/cJSON") : str_copy("ir/third_party/cJSON");
+    char* build_path = kryon_root ? path_join(kryon_root, "build") : paths_get_build_path();
+
+    char kryon_c[PATH_MAX];
+    char kryon_dsl_c[PATH_MAX];
+    snprintf(kryon_c, sizeof(kryon_c), "%s/kryon.c", bindings_path);
+    snprintf(kryon_dsl_c, sizeof(kryon_dsl_c), "%s/kryon_dsl.c", bindings_path);
+
+    char compile_cmd[8192];
+    int written = snprintf(compile_cmd, sizeof(compile_cmd),
+             "gcc -std=c99 -O2 \"%s\" %s"
+             "\"%s\" \"%s\" "
+             "-o \"%s\" "
+             "-I\"%s\" "
+             "-I\"%s\" "
+             "-I\"%s\" "
+             "-I\"%s\" "
+             "-I\"%s\" "
+             "-L\"%s\" "
+             "-lkryon_desktop -lkryon_ir -lm "
+             "$(pkg-config --libs raylib 2>/dev/null || echo '-lraylib') "
+             "$(pkg-config --libs sdl3 2>/dev/null || echo '')",
+             main_c, additional_sources,
+             kryon_c, kryon_dsl_c, exe_file,
+             c_output_dir, bindings_path, ir_path, desktop_path, cjson_path, build_path);
+
+    free(bindings_path);
+    free(ir_path);
+    free(desktop_path);
+    free(cjson_path);
+    free(build_path);
+    if (kryon_root) free(kryon_root);
+
+    if (written < 0 || (size_t)written >= sizeof(compile_cmd)) {
+        fprintf(stderr, "Error: Compile command too long\n");
         return 1;
     }
 
-    // Expand ForEach components
-    extern void ir_expand_foreach(IRComponent* root);
-    ir_expand_foreach(root);
-
-    // Check for Lua runtime
-    if (kir_needs_lua_runtime(kir_file)) {
-        fprintf(stderr, "[run_kir_on_desktop] kir_needs_lua_runtime returned true, destroying root=%p\n", (void*)root);
-        ir_destroy_component(root);
-        fprintf(stderr, "[run_kir_on_desktop] Root destroyed, calling run_kir_with_lua_runtime\n");
-        return run_kir_with_lua_runtime(kir_file);
+    int compile_result = system(compile_cmd);
+    if (compile_result != 0) {
+        fprintf(stderr, "Error: Failed to compile C code\n");
+        // Cleanup temp directory
+        char cleanup_cmd[1024];
+        snprintf(cleanup_cmd, sizeof(cleanup_cmd), "rm -rf \"%s\"", c_output_dir);
+        int cleanup_result = system(cleanup_cmd);
+        (void)cleanup_result;
+        return 1;
     }
 
-    // Setup state manager with executor
-    IRStateManager* state_mgr = ir_state_manager_create(NULL);
-    IRExecutorContext* executor = ir_executor_create();
-    if (state_mgr && executor) {
-        printf("[executor] Loading KIR file for event handling\n");
-        ir_executor_load_kir_file(executor, kir_file);
-        ir_executor_set_root(executor, root);
-        ir_state_manager_set_executor(state_mgr, executor);
-        ir_state_manager_set_root(state_mgr, root);
-        ir_state_set_global(state_mgr);
-        printf("[executor] State manager initialized\n");
-    } else {
-        fprintf(stderr, "[executor] WARNING: Failed to create executor!\n");
-    }
+    printf("✓ Compiled successfully\n");
 
-    // Configure renderer from metadata
-    int window_width = 800;
-    int window_height = 600;
-    const char* window_title = "Kryon App";
-
-    if (g_ir_context && g_ir_context->metadata) {
-        if (g_ir_context->metadata->window_width > 0) {
-            window_width = g_ir_context->metadata->window_width;
-        }
-        if (g_ir_context->metadata->window_height > 0) {
-            window_height = g_ir_context->metadata->window_height;
-        }
-        if (g_ir_context->metadata->window_title) {
-            window_title = g_ir_context->metadata->window_title;
-        }
-    }
-
-    DesktopRendererConfig config = desktop_renderer_config_sdl3(window_width, window_height, window_title);
-
-    // Determine renderer: override flag (from --target={renderer}) > kryon.toml > default
-    const char* renderer = NULL;
-    if (renderer_override) {
-        renderer = renderer_override;
-        printf("Renderer: %s (from --target flag)\n", renderer);
-    } else {
-        // Read kryon.toml to determine renderer
-        KryonConfig* kryon_config = config_find_and_load();
-        if (kryon_config) {
-            TargetConfig* desktop = config_get_target(kryon_config, "desktop");
-            const char* renderer_config = target_config_get_option(desktop, "renderer");
-            if (renderer_config) {
-                renderer = renderer_config;
-                printf("Renderer: %s (from kryon.toml)\n", renderer);
-            }
-            config_free(kryon_config);
-        }
-    }
-
-    // Set backend type based on renderer
-    if (renderer && strcmp(renderer, "raylib") == 0) {
-        config.backend_type = DESKTOP_BACKEND_RAYLIB;
-    } else {
-        config.backend_type = DESKTOP_BACKEND_SDL3;
-        if (!renderer) printf("Renderer: sdl3 (default)\n");
-    }
-
-    // Run the application
+    // 3. Run the executable
     printf("Running application...\n");
-    bool success = desktop_render_ir_component(root, &config);
+    char* lib_build_path = paths_get_build_path();
+    char run_cmd[2048];
+    snprintf(run_cmd, sizeof(run_cmd),
+             "LD_LIBRARY_PATH=\"%s:$LD_LIBRARY_PATH\" \"%s\"",
+             lib_build_path, exe_file);
+    free(lib_build_path);
 
-    // Cleanup
-    // Note: state_mgr takes ownership of executor, so destroying state_mgr also destroys executor
-    if (state_mgr) {
-        ir_state_set_global(NULL);  // Clear global reference first
-        ir_state_manager_destroy(state_mgr);
+    int result = system(run_cmd);
+
+    // 4. Cleanup
+    remove(exe_file);
+    {
+        char cleanup_cmd[1024];
+        snprintf(cleanup_cmd, sizeof(cleanup_cmd), "rm -rf \"%s\"", c_output_dir);
+        int cleanup_result = system(cleanup_cmd);
+        (void)cleanup_result;
     }
-    ir_destroy_component(root);
 
-    return success ? 0 : 1;
+    return result == 0 ? 0 : 1;
 }
 
 /* ============================================================================
