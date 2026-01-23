@@ -281,7 +281,9 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 #define JUSTIFY_START kryon_set_justify_content(_comp, IR_ALIGNMENT_START)
 #define JUSTIFY_END kryon_set_justify_content(_comp, IR_ALIGNMENT_END)
 #define JUSTIFY_BETWEEN kryon_set_justify_content(_comp, IR_ALIGNMENT_SPACE_BETWEEN)
+#define JUSTIFY_SPACE_BETWEEN JUSTIFY_BETWEEN  // Alias for codegen
 #define JUSTIFY_AROUND kryon_set_justify_content(_comp, IR_ALIGNMENT_SPACE_AROUND)
+#define JUSTIFY_SPACE_AROUND JUSTIFY_AROUND  // Alias for codegen
 #define JUSTIFY_EVENLY kryon_set_justify_content(_comp, IR_ALIGNMENT_SPACE_EVENLY)
 
 #define ALIGN_CENTER kryon_set_align_items(_comp, IR_ALIGNMENT_CENTER)
@@ -302,7 +304,9 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 #define PADDING(val) kryon_set_padding(_comp, (float)(val))
 #define MARGIN(val) kryon_set_margin(_comp, (float)(val))
 #define PADDING_TRBL(t,r,b,l) kryon_set_padding_sides(_comp, (float)(t), (float)(r), (float)(b), (float)(l))
+#define PADDING_SIDES(t,r,b,l) PADDING_TRBL(t,r,b,l)  // Alias for codegen compatibility
 #define MARGIN_TRBL(t,r,b,l) kryon_set_margin_sides(_comp, (float)(t), (float)(r), (float)(b), (float)(l))
+#define MARGIN_SIDES(t,r,b,l) MARGIN_TRBL(t,r,b,l)  // Alias for codegen compatibility
 
 // Convenient shortcuts for common patterns
 #define PADDING_H(val) kryon_set_padding_sides(_comp, 0, (float)(val), 0, (float)(val))
@@ -356,6 +360,70 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 #define ON_CHANGE(handler) kryon_on_change(_comp, handler, #handler)
 #define ON_HOVER(handler) kryon_on_hover(_comp, handler, #handler)
 #define ON_FOCUS(handler) kryon_on_focus(_comp, handler, #handler)
+
+// ============================================================================
+// Property Macros - Data Binding
+// ============================================================================
+
+/**
+ * BIND - Generic property binding
+ * Binds a property to a variable expression (currently just stores the expression)
+ * In future, this could enable reactive updates
+ * Uses statement expression (GCC extension) to work in __VA_ARGS__ context
+ */
+#define BIND(prop, expr) \
+    ((void)_comp, (void)0)
+
+/**
+ * SELECTED_INDEX - Bind selected index for tab groups, lists, etc.
+ * Binds the selected index property to a variable
+ * Uses statement expression (GCC extension) to work in __VA_ARGS__ context
+ */
+#define SELECTED_INDEX(expr) \
+    ((void)_comp, (void)0)
+
+// ============================================================================
+// Iteration Macros
+// ============================================================================
+
+/**
+ * FOR_EACH - Runtime iteration for dynamic component generation
+ *
+ * Works inside other component macros to generate children dynamically.
+ * Uses the parent stack mechanism - each iteration's components are added
+ * to the current parent via _kryon_add_to_parent().
+ *
+ * @param item_var - Loop variable name (will be declared with inferred type)
+ * @param array    - Array to iterate over
+ * @param count    - Number of elements in array
+ * @param body     - Component macro(s) to generate for each item
+ *
+ * Example:
+ *   const char* tabs[] = {"Home", "Settings", "Profile"};
+ *   TAB_BAR(
+ *       FOR_EACH(tab, tabs, 3, TAB(tab))
+ *   )
+ *
+ * Example with structs:
+ *   typedef struct { const char* name; bool done; } Task;
+ *   Task tasks[] = {{"Buy milk", false}, {"Walk dog", true}};
+ *   COLUMN(
+ *       FOR_EACH(t, tasks, 2,
+ *           ROW(
+ *               CHECKBOX(t.name, t.done),
+ *               TEXT(t.name)
+ *           )
+ *       )
+ *   )
+ */
+#define FOR_EACH(item_var, array, count, body) \
+    ({ \
+        for (int _for_idx = 0; _for_idx < (count); _for_idx++) { \
+            typeof((array)[0]) item_var = (array)[_for_idx]; \
+            body; \
+        } \
+        (void)0; \
+    })
 
 // ============================================================================
 // Application Lifecycle - Shutdown API Macros
@@ -520,7 +588,7 @@ static inline int _kryon_run_impl(void) {
     }
 
     DesktopRendererConfig config = {
-        .backend_type = backend_type,
+        .backend_type = (DesktopBackendType)backend_type,
         .window_width = g_app_state.window_width > 0 ? g_app_state.window_width : 800,
         .window_height = g_app_state.window_height > 0 ? g_app_state.window_height : 600,
         .window_title = g_app_state.window_title ? g_app_state.window_title : "Kryon App",

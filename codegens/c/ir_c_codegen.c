@@ -1059,7 +1059,7 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
 
     const char* type = type_obj->valuestring;
 
-    // Special handling for For loops
+    // Special handling for For loops - emit FOR_EACH macro
     if (strcmp(type, "For") == 0) {
         cJSON* for_def = cJSON_GetObjectItem(component, "for_def");
         if (for_def) {
@@ -1067,13 +1067,17 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
             cJSON* source = cJSON_GetObjectItem(for_def, "source");
             cJSON* source_expr = source ? cJSON_GetObjectItem(source, "expression") : NULL;
 
+            const char* item_var = item_name ? item_name->valuestring : "item";
+            const char* source_var = source_expr ? source_expr->valuestring : "items";
+
+            // Generate FOR_EACH macro call
             write_indent(ctx);
-            fprintf(ctx->output, "FOR_EACH(%s, %s,\n",
-                    item_name ? item_name->valuestring : "item",
-                    source_expr ? source_expr->valuestring : "items");
+            fprintf(ctx->output, "FOR_EACH(%s, %s, %s_count,\n",
+                    item_var, source_var, source_var);
 
             ctx->indent_level++;
-            // Generate template children
+
+            // Generate template children as the body
             if (children_obj && cJSON_IsArray(children_obj)) {
                 int child_count = cJSON_GetArraySize(children_obj);
                 for (int i = 0; i < child_count; i++) {
@@ -1081,12 +1085,12 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
                     generate_component_recursive(ctx, child, false);
                     if (i < child_count - 1) {
                         fprintf(ctx->output, ",\n");
-                    } else {
-                        fprintf(ctx->output, "\n");
                     }
                 }
             }
+
             ctx->indent_level--;
+            fprintf(ctx->output, "\n");
             write_indent(ctx);
             fprintf(ctx->output, ")");
             return;

@@ -883,23 +883,49 @@ void ir_capability_registry_shutdown(void) {
         return;
     }
 
+    // Mark as not initialized FIRST to prevent re-entry
+    g_registry.is_initialized = false;
+
     /* Unload all plugins */
-    for (uint32_t i = 0; i < g_registry.plugin_count; i++) {
-        CapabilityPlugin* plugin = &g_registry.plugins[i];
-        if (plugin->dl_handle) {
-            IR_LOG_INFO("capability", "Unloading plugin: %s", plugin->name);
-            DLCLOSE(plugin->dl_handle);
+    if (g_registry.plugins) {
+        for (uint32_t i = 0; i < g_registry.plugin_count; i++) {
+            CapabilityPlugin* plugin = &g_registry.plugins[i];
+            if (plugin->dl_handle) {
+                IR_LOG_INFO("capability", "Unloading plugin: %s", plugin->name);
+                DLCLOSE(plugin->dl_handle);
+                plugin->dl_handle = NULL;
+            }
         }
     }
 
-    /* Free storage */
-    free(g_registry.plugins);
-    free(g_registry.registrations);
-    free(g_registry.commands);
-    free(g_registry.events);
+    /* Free storage - NULL check each pointer and set to NULL after free */
+    if (g_registry.plugins) {
+        free(g_registry.plugins);
+        g_registry.plugins = NULL;
+    }
+    if (g_registry.registrations) {
+        free(g_registry.registrations);
+        g_registry.registrations = NULL;
+    }
+    if (g_registry.commands) {
+        free(g_registry.commands);
+        g_registry.commands = NULL;
+    }
+    if (g_registry.events) {
+        free(g_registry.events);
+        g_registry.events = NULL;
+    }
 
-    /* Zero everything */
-    memset(&g_registry, 0, sizeof(g_registry));
+    /* Zero remaining fields */
+    g_registry.plugin_count = 0;
+    g_registry.plugin_capacity = 0;
+    g_registry.registration_count = 0;
+    g_registry.registration_capacity = 0;
+    g_registry.command_count = 0;
+    g_registry.command_capacity = 0;
+    g_registry.event_count = 0;
+    g_registry.event_capacity = 0;
+    g_registry.root_component = NULL;
 
     IR_LOG_INFO("capability", "Capability registry shutdown complete");
 }

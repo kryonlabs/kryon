@@ -56,18 +56,9 @@ pkgs.mkShell {
     gdb
     which
     tree
-
-    # Plan 9/9front development (for Plan 9 backend)
-    plan9port  # Plan 9 from User Space
-    # 9base     # Lightweight alternative (uncomment if needed)
   ];
 
   shellHook = ''
-    # Set Plan 9 environment variables (for Plan 9 backend development)
-    export PLAN9="${pkgs.plan9port}/plan9"
-    export PATH="$PATH:$PLAN9/bin"  # Add to END of PATH to avoid conflicts
-    export MKPATH="$PLAN9/bin/mk"
-
     # Set Android environment variables (using user's existing SDK)
     export ANDROID_HOME="$HOME/Android/Sdk"
     export ANDROID_SDK_ROOT="$ANDROID_HOME"
@@ -88,7 +79,6 @@ pkgs.mkShell {
     echo "============================="
     echo "LuaJIT version: $(luajit -v 2>/dev/null || echo 'not available')"
     echo "Bun version: $(bun --version 2>/dev/null || echo 'not available')"
-    echo "Plan 9 tools: $([ -d "$PLAN9" ] && echo 'available' || echo 'not available')"
     echo ""
     echo "Quick start:"
     echo "  Build C Core: cd core && make"
@@ -104,7 +94,7 @@ pkgs.mkShell {
     echo "Android NDK: $ANDROID_NDK_HOME"
     echo ""
     echo "Available frontends: kry, typescript (ts), lua, c"
-    echo "Available renderers: sdl3, raylib, terminal, framebuffer, plan9"
+    echo "Available renderers: sdl3, raylib, terminal, framebuffer"
     echo "Available codegen targets: web, android"
     echo ""
   '';
