@@ -1,21 +1,20 @@
 /**
  * KRY Expression Transpiler
  *
- * Transpiles ES6-style expressions to both Lua and JavaScript.
- * This enables "write once, run everywhere" syntax without needing
- * separate @lua and @js blocks for simple expressions.
+ * Transpiles KRY expressions to Lua, JavaScript, or C.
  *
- * Supported Features:
- * - Literals: strings, numbers, booleans, null, undefined
- * - Identifiers: variable names
- * - Binary operators: +, -, *, /, %, ==, !=, <, >, <=, >=, &&, ||, !
- * - Property access: obj.prop, obj["prop"]
- * - Array access: arr[index]
- * - Function calls: func(arg1, arg2)
- * - Array literals: [1, 2, 3]
- * - Object literals: {key: val, key2: val2}
- * - Arrow functions: x => x * 2, (x, y) => { return x + y; }
- * - Array methods: arr.map(x => ...), arr.filter(x => ...), arr.length
+ * Targets:
+ *   KRY_TARGET_LUA        - Lua 5.x (1-indexed arrays, `and`/`or`/`not`)
+ *   KRY_TARGET_JAVASCRIPT - ES6 JavaScript
+ *   KRY_TARGET_C          - Native C99 (designated initializers, NULL)
+ *
+ * Supported Expressions:
+ *   Literals      strings, numbers, booleans, null
+ *   Operators     + - * / % == != < > <= >= && || ! =
+ *   Ternary       condition ? then : else
+ *   Access        obj.prop, arr[index], func(args)
+ *   Literals      [1, 2, 3], {key: val}
+ *   Arrow funcs   x => x * 2 (all targets - C uses registry)
  */
 
 #ifndef KRY_EXPRESSION_H
@@ -23,6 +22,9 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+
+// Forward declaration for arrow registry
+struct KryArrowRegistry;
 
 #ifdef __cplusplus
 extern "C" {
@@ -177,13 +179,16 @@ typedef struct KryExprNode {
 
 typedef enum {
     KRY_TARGET_LUA,
-    KRY_TARGET_JAVASCRIPT
+    KRY_TARGET_JAVASCRIPT,
+    KRY_TARGET_C  // Native C code generation
 } KryExprTarget;
 
 typedef struct {
     KryExprTarget target;
     bool pretty_print;
     int indent_level;
+    struct KryArrowRegistry* arrow_registry;  // For C target: deferred arrow generation
+    const char* context_hint;                 // Optional context hint: "click", "map", etc.
 } KryExprOptions;
 
 // ============================================================================

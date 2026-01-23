@@ -382,6 +382,7 @@ KryNode* kry_node_create(KryParser* parser, KryNodeType type) {
     node->param_count = 0;
     node->func_body = NULL;
     node->return_expr = NULL;
+    node->extends_parent = NULL;  // Initialize to NULL for component inheritance
     node->line = parser->line;
     node->column = parser->column;
 
@@ -610,6 +611,8 @@ static double parse_number(KryParser* p) {
 
 static KryValue* parse_value(KryParser* p);  // Forward declaration
 static bool keyword_match(const char* id, const char* keyword);  // Forward declaration
+static bool peek_is_binary_operator(KryParser* p);  // Forward declaration
+static KryValue* parse_expression_text(KryParser* p);  // Forward declaration
 
 // ============================================================================
 // Expression Component Parsers
@@ -1040,10 +1043,26 @@ static KryValue* parse_struct_instantiation(KryParser* p, char* struct_name) {
 
         skip_whitespace(p);
 
+        // Save position to potentially re-parse as full expression
+        KryParserCheckpoint saved = kry_checkpoint_save(p);
+
         // Parse field value
         KryValue* value = parse_value(p);
         if (!value) {
             return NULL;
+        }
+
+        // Check if there's a binary operator following - if so, this is a full expression
+        // e.g., "themeColor || \"#4a90e2\""
+        skip_whitespace(p);
+        if (peek_is_binary_operator(p)) {
+            // Restore position and parse as full expression
+            kry_checkpoint_restore(p, saved);
+            value = parse_expression_text(p);
+            if (!value) {
+                kry_parser_error(p, "Failed to parse expression in struct field");
+                return NULL;
+            }
         }
 
         field_names[count] = field_name;
@@ -1463,24 +1482,11 @@ static KryValue* parse_value(KryParser* p) {
         // Not an arrow function, restore and continue
         kry_checkpoint_restore(p, saved);
 
-        // Handle parenthesized expressions: (expr)
-        advance(p);  // Skip '('
-        skip_whitespace(p);
-
-        // Parse the inner expression
-        KryValue* inner = parse_value(p);
-        if (!inner) {
-            kry_parser_error(p, "Expected expression inside parentheses");
-            return NULL;
-        }
-
-        skip_whitespace(p);
-        if (!match(p, ')')) {
-            kry_parser_error(p, "Expected ')' after expression");
-            return NULL;
-        }
-
-        return inner;  // Return the inner value
+        // Handle parenthesized expressions: (expr) or (expr) op expr
+        // Use parse_expression_text to capture the full expression including
+        // any binary operators that may follow the closing parenthesis
+        // e.g., (firstWeekday + 6) % 7
+        return parse_expression_text(p);
     }
 
     // String literal
@@ -1583,7 +1589,76 @@ static KryValue* parse_value(KryParser* p) {
                     skip_whitespace(p);
                     // Struct fields use '=' for assignment
                     if (peek(p) == '=') {
-                        is_struct = true;
+                        // To distinguish struct from block body with assignment:
+                        // Scan ahead to look for ',' or ';' before '}' at depth 0
+                        // If found, it's a struct. If not, it might be a block body.
+                        advance(p);  // Skip '='
+                        skip_whitespace(p);
+
+                        // Scan for separator or closing brace
+                        int depth = 0;
+                        bool found_separator = false;
+                        bool in_string = false;
+                        char string_char = 0;
+
+                        while (peek(p) != '\0') {
+                            char ch = peek(p);
+
+                            // Handle strings
+                            if (!in_string && (ch == '"' || ch == '\'')) {
+                                in_string = true;
+                                string_char = ch;
+                                advance(p);
+                                continue;
+                            }
+                            if (in_string) {
+                                if (ch == '\\') {
+                                    advance(p);
+                                    if (peek(p) != '\0') advance(p);
+                                } else if (ch == string_char) {
+                                    in_string = false;
+                                    advance(p);
+                                } else {
+                                    advance(p);
+                                }
+                                continue;
+                            }
+
+                            // Track nesting
+                            if (ch == '(' || ch == '[' || ch == '{') {
+                                depth++;
+                                advance(p);
+                                continue;
+                            }
+                            if (ch == ')' || ch == ']') {
+                                if (depth > 0) depth--;
+                                advance(p);
+                                continue;
+                            }
+                            if (ch == '}') {
+                                if (depth > 0) {
+                                    depth--;
+                                    advance(p);
+                                    continue;
+                                }
+                                // Found closing } at depth 0 - no separator found
+                                break;
+                            }
+
+                            // Check for separators at depth 0
+                            if (depth == 0 && (ch == ',' || ch == ';')) {
+                                found_separator = true;
+                                break;
+                            }
+
+                            advance(p);
+                        }
+
+                        // Only treat as struct if we found a separator (multi-field struct)
+                        // or it's a single field on same line (compact struct)
+                        if (found_separator) {
+                            is_struct = true;
+                        }
                     }
                 }
             }
@@ -2059,9 +2134,25 @@ static KryNode* parse_var_decl(KryParser* p, const char* var_type) {
 
     skip_whitespace(p);
 
-    // Parse value
+    // Save position to potentially re-parse as full expression
+    KryParserCheckpoint saved = kry_checkpoint_save(p);
+
+    // Try parsing as simple value first
     KryValue* value = parse_value(p);
     if (!value) return NULL;
+
+    // Check if there's a binary operator following - if so, this is a full expression
+    // e.g., "month - 1", "count + 1", etc.
+    skip_whitespace(p);
+    if (peek_is_binary_operator(p)) {
+        // Restore position and parse as full expression
+        kry_checkpoint_restore(p, saved);
+        value = parse_expression_text(p);
+        if (!value) {
+            kry_parser_error(p, "Failed to parse expression");
+            return NULL;
+        }
+    }
 
     // Create variable declaration node
     KryNode* var_node = kry_node_create(p, KRY_NODE_VAR_DECL);
@@ -3128,9 +3219,21 @@ KryNode* kry_parse_struct_instantiation(KryParser* p, char* type_name) {
         match(p, '=');
         skip_whitespace(p);
 
+        // Save position to potentially re-parse as full expression
+        KryParserCheckpoint saved = kry_checkpoint_save(p);
+
         // Parse value
         KryValue* value = parse_value(p);
         if (!value) break;
+
+        // Check if there's a binary operator following - if so, this is a full expression
+        skip_whitespace(p);
+        if (peek_is_binary_operator(p)) {
+            // Restore position and parse as full expression
+            kry_checkpoint_restore(p, saved);
+            value = parse_expression_text(p);
+            if (!value) break;
+        }
 
         names[field_idx] = field_name;
         values[field_idx] = value;

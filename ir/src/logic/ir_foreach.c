@@ -17,6 +17,7 @@ IRForEachDef* ir_foreach_def_create(const char* item_name, const char* index_nam
     IRForEachDef* def = calloc(1, sizeof(IRForEachDef));
     if (!def) return NULL;
 
+    def->loop_type = IR_LOOP_TYPE_FOR_IN;  // Default to for-in loop
     def->item_name = item_name ? strdup(item_name) : strdup("item");
     def->index_name = index_name ? strdup(index_name) : strdup("index");
     def->source.type = FOREACH_SOURCE_NONE;
@@ -167,6 +168,15 @@ cJSON* ir_foreach_def_to_json(IRForEachDef* def) {
     cJSON* json = cJSON_CreateObject();
     if (!json) return NULL;
 
+    // Loop type
+    const char* loop_type_str = "for_in";
+    switch (def->loop_type) {
+        case IR_LOOP_TYPE_FOR_IN: loop_type_str = "for_in"; break;
+        case IR_LOOP_TYPE_FOR_RANGE: loop_type_str = "for_range"; break;
+        case IR_LOOP_TYPE_FOR_EACH: loop_type_str = "for_each"; break;
+    }
+    cJSON_AddStringOrNull(json, "loop_type", loop_type_str);
+
     // Item and index names
     if (def->item_name) {
         cJSON_AddStringOrNull(json, "item_name", def->item_name);
@@ -234,6 +244,19 @@ IRForEachDef* ir_foreach_def_from_json(cJSON* json) {
     );
     if (!def) return NULL;
 
+    // Parse loop type
+    cJSON* loop_type = cJSON_GetObjectItem(json, "loop_type");
+    if (loop_type && cJSON_IsString(loop_type)) {
+        const char* type_str = loop_type->valuestring;
+        if (strcmp(type_str, "for_in") == 0) {
+            def->loop_type = IR_LOOP_TYPE_FOR_IN;
+        } else if (strcmp(type_str, "for_range") == 0) {
+            def->loop_type = IR_LOOP_TYPE_FOR_RANGE;
+        } else if (strcmp(type_str, "for_each") == 0) {
+            def->loop_type = IR_LOOP_TYPE_FOR_EACH;
+        }
+    }
+
     // Parse data source
     cJSON* source = cJSON_GetObjectItem(json, "source");
     if (source) {
@@ -299,6 +322,9 @@ IRForEachDef* ir_foreach_def_copy(IRForEachDef* src) {
 
     IRForEachDef* copy = ir_foreach_def_create(src->item_name, src->index_name);
     if (!copy) return NULL;
+
+    // Copy loop type
+    copy->loop_type = src->loop_type;
 
     // Copy source
     copy->source.type = src->source.type;

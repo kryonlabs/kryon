@@ -6,10 +6,12 @@
 
 #define _POSIX_C_SOURCE 200809L
 #include "kry_expression.h"
+#include "kry_arrow_registry.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <stdint.h>
 
 // ============================================================================
 // Error Handling
@@ -1153,6 +1155,42 @@ static void generate_javascript_literal(KryExprNode* node, CodeBuffer* out) {
     }
 }
 
+static void generate_c_literal(KryExprNode* node, CodeBuffer* out) {
+    switch (node->literal.literal_type) {
+        case KRY_LITERAL_STRING: {
+            buffer_append_char(out, '"');
+            // Escape special characters for C strings
+            const char* s = node->literal.string_val;
+            while (*s) {
+                switch (*s) {
+                    case '"':  buffer_append(out, "\\\""); break;
+                    case '\\': buffer_append(out, "\\\\"); break;
+                    case '\n': buffer_append(out, "\\n"); break;
+                    case '\t': buffer_append(out, "\\t"); break;
+                    case '\r': buffer_append(out, "\\r"); break;
+                    default:   buffer_append_char(out, *s); break;
+                }
+                s++;
+            }
+            buffer_append_char(out, '"');
+            break;
+        }
+        case KRY_LITERAL_NUMBER: {
+            char num_buf[64];
+            snprintf(num_buf, sizeof(num_buf), "%g", node->literal.number_val);
+            buffer_append(out, num_buf);
+            break;
+        }
+        case KRY_LITERAL_BOOLEAN:
+            buffer_append(out, node->literal.bool_val ? "true" : "false");
+            break;
+        case KRY_LITERAL_NULL:
+        case KRY_LITERAL_UNDEFINED:
+            buffer_append(out, "NULL");
+            break;
+    }
+}
+
 static const char* binary_op_to_lua(KryBinaryOp op) {
     switch (op) {
         case KRY_BIN_OP_ADD: return " + ";
@@ -1188,6 +1226,26 @@ static const char* binary_op_to_javascript(KryBinaryOp op) {
         case KRY_BIN_OP_GTE: return " >= ";
         case KRY_BIN_OP_AND: return " && ";
         case KRY_BIN_OP_OR: return " || ";
+        case KRY_BIN_OP_ASSIGN: return " = ";
+    }
+    return "?";
+}
+
+static const char* binary_op_to_c(KryBinaryOp op) {
+    switch (op) {
+        case KRY_BIN_OP_ADD: return " + ";
+        case KRY_BIN_OP_SUB: return " - ";
+        case KRY_BIN_OP_MUL: return " * ";
+        case KRY_BIN_OP_DIV: return " / ";
+        case KRY_BIN_OP_MOD: return " % ";
+        case KRY_BIN_OP_EQ: return " == ";
+        case KRY_BIN_OP_NEQ: return " != ";   // C uses != (like JS, not Lua's ~=)
+        case KRY_BIN_OP_LT: return " < ";
+        case KRY_BIN_OP_GT: return " > ";
+        case KRY_BIN_OP_LTE: return " <= ";
+        case KRY_BIN_OP_GTE: return " >= ";
+        case KRY_BIN_OP_AND: return " && ";   // C uses && (like JS, not Lua's "and")
+        case KRY_BIN_OP_OR: return " || ";    // C uses || (like JS, not Lua's "or")
         case KRY_BIN_OP_ASSIGN: return " = ";
     }
     return "?";
@@ -1434,13 +1492,184 @@ static void generate_javascript(KryExprNode* node, CodeBuffer* out) {
     }
 }
 
+static void generate_c_with_opts(KryExprNode* node, CodeBuffer* out, KryExprOptions* options);
+
+static void generate_c(KryExprNode* node, CodeBuffer* out) {
+    generate_c_with_opts(node, out, NULL);
+}
+
+static void generate_c_with_opts(KryExprNode* node, CodeBuffer* out, KryExprOptions* options) {
+    if (!node) return;
+
+    switch (node->type) {
+        case KRY_EXPR_LITERAL:
+            generate_c_literal(node, out);
+            break;
+
+        case KRY_EXPR_IDENTIFIER:
+            buffer_append(out, node->identifier);
+            break;
+
+        case KRY_EXPR_BINARY_OP:
+            buffer_append_char(out, '(');
+            generate_c_with_opts(node->binary_op.left, out, options);
+            buffer_append(out, binary_op_to_c(node->binary_op.op));
+            generate_c_with_opts(node->binary_op.right, out, options);
+            buffer_append_char(out, ')');
+            break;
+
+        case KRY_EXPR_UNARY_OP:
+            if (node->unary_op.op == KRY_UNARY_OP_NOT) {
+                buffer_append_char(out, '!');
+            } else if (node->unary_op.op == KRY_UNARY_OP_NEGATE) {
+                buffer_append_char(out, '-');
+            } else if (node->unary_op.op == KRY_UNARY_OP_TYPEOF) {
+                // C has no runtime typeof - emit warning comment
+                buffer_append(out, "/* typeof unsupported */ 0");
+                return;
+            }
+            generate_c_with_opts(node->unary_op.operand, out, options);
+            break;
+
+        case KRY_EXPR_PROPERTY_ACCESS:
+            generate_c_with_opts(node->property_access.object, out, options);
+            buffer_append_char(out, '.');
+            buffer_append(out, node->property_access.property);
+            break;
+
+        case KRY_EXPR_ELEMENT_ACCESS:
+            generate_c_with_opts(node->element_access.array, out, options);
+            buffer_append_char(out, '[');
+            // C arrays are 0-indexed (like JS) - NO +1 adjustment like Lua!
+            generate_c_with_opts(node->element_access.index, out, options);
+            buffer_append_char(out, ']');
+            break;
+
+        case KRY_EXPR_CALL: {
+            generate_c_with_opts(node->call.callee, out, options);
+            buffer_append_char(out, '(');
+            for (size_t i = 0; i < node->call.arg_count; i++) {
+                if (i > 0) buffer_append(out, ", ");
+                generate_c_with_opts(node->call.args[i], out, options);
+            }
+            buffer_append_char(out, ')');
+            break;
+        }
+
+        case KRY_EXPR_ARRAY: {
+            buffer_append_char(out, '{');
+            for (size_t i = 0; i < node->array.element_count; i++) {
+                if (i > 0) buffer_append(out, ", ");
+                generate_c_with_opts(node->array.elements[i], out, options);
+            }
+            buffer_append_char(out, '}');
+            break;
+        }
+
+        case KRY_EXPR_OBJECT: {
+            buffer_append_char(out, '{');
+            for (size_t i = 0; i < node->object.prop_count; i++) {
+                if (i > 0) buffer_append(out, ", ");
+                buffer_append_char(out, '.');
+                buffer_append(out, node->object.keys[i]);
+                buffer_append(out, " = ");
+                generate_c_with_opts(node->object.values[i], out, options);
+            }
+            buffer_append_char(out, '}');
+            break;
+        }
+
+        case KRY_EXPR_ARROW_FUNC: {
+            // Check if we have a registry for deferred generation
+            if (options && options->arrow_registry) {
+                // Analyze captures
+                char** captures = NULL;
+                size_t cap_count = 0;
+                kry_arrow_get_captures(node, &captures, &cap_count);
+
+                // Transpile body to C (recursively, without registry to avoid infinite loop)
+                KryExprOptions body_opts = {KRY_TARGET_C, false, 0, NULL, NULL};
+                char* body_code = kry_expr_transpile(node->arrow_func.body, &body_opts, NULL);
+
+                // Register the arrow function
+                uint32_t id = kry_arrow_register(
+                    options->arrow_registry,
+                    (const char**)node->arrow_func.params,
+                    node->arrow_func.param_count,
+                    body_code,
+                    (const char**)captures,
+                    cap_count,
+                    options->context_hint,
+                    node->arrow_func.is_expression_body
+                );
+
+                free(body_code);
+
+                // Get the registered arrow function to retrieve its actual name
+                KryArrowDef* def = kry_arrow_get(options->arrow_registry, id);
+                const char* func_name = def ? def->name : "kry_arrow_unknown";
+
+                // Emit function pointer reference
+                char buf[128];
+                if (cap_count == 0) {
+                    // No captures - just function pointer
+                    buffer_append(out, func_name);
+                } else {
+                    // Has captures - emit callback struct
+                    snprintf(buf, sizeof(buf), "(KryCallback){.func = %s, .ctx = &_ctx_%u}", func_name, id);
+                    buffer_append(out, buf);
+                }
+
+                // Free captures
+                if (captures) {
+                    for (size_t i = 0; i < cap_count; i++) {
+                        free(captures[i]);
+                    }
+                    free(captures);
+                }
+            } else {
+                // No registry - emit as comment placeholder (backward compatibility)
+                buffer_append(out, "/* arrow function: (");
+                for (size_t i = 0; i < node->arrow_func.param_count; i++) {
+                    if (i > 0) buffer_append(out, ", ");
+                    buffer_append(out, node->arrow_func.params[i]);
+                }
+                buffer_append(out, ") => ... */ NULL");
+            }
+            break;
+        }
+
+        case KRY_EXPR_CONDITIONAL: {
+            // C native ternary (same syntax as JavaScript)
+            buffer_append_char(out, '(');
+            generate_c_with_opts(node->conditional.condition, out, options);
+            buffer_append(out, " ? ");
+            generate_c_with_opts(node->conditional.consequent, out, options);
+            buffer_append(out, " : ");
+            generate_c_with_opts(node->conditional.alternate, out, options);
+            buffer_append_char(out, ')');
+            break;
+        }
+
+        case KRY_EXPR_MEMBER_EXPR:
+            generate_c_with_opts(node->member_expr.object, out, options);
+            buffer_append_char(out, '.');
+            buffer_append(out, node->member_expr.member);
+            break;
+
+        default:
+            buffer_append(out, "/* unsupported expression */");
+            break;
+    }
+}
+
 char* kry_expr_transpile(KryExprNode* node, KryExprOptions* options, size_t* output_length) {
     if (!node) {
         set_error("Null expression node");
         return NULL;
     }
 
-    KryExprOptions default_opts = {KRY_TARGET_JAVASCRIPT, false, 0};
+    KryExprOptions default_opts = {KRY_TARGET_JAVASCRIPT, false, 0, NULL, NULL};
     if (!options) {
         options = &default_opts;
     }
@@ -1450,6 +1679,8 @@ char* kry_expr_transpile(KryExprNode* node, KryExprOptions* options, size_t* out
 
     if (options->target == KRY_TARGET_LUA) {
         generate_lua(node, &buf);
+    } else if (options->target == KRY_TARGET_C) {
+        generate_c_with_opts(node, &buf, options);
     } else {
         generate_javascript(node, &buf);
     }
@@ -1470,7 +1701,7 @@ char* kry_expr_transpile_source(const char* source, KryExprTarget target, size_t
         return NULL;
     }
 
-    KryExprOptions options = {target, false, 0};
+    KryExprOptions options = {target, false, 0, NULL, NULL};
     char* result = kry_expr_transpile(node, &options, output_length);
     kry_expr_free(node);
     return result;

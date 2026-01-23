@@ -69,6 +69,15 @@ const char* detect_frontend_type(const char* source_file) {
 }
 
 /* ============================================================================
+ * KIR Compilation Helper Forward Declarations
+ * ============================================================================ */
+
+static char* read_file_contents(const char* path, size_t* out_size);
+static char* module_to_file_path(const char* module_path, const char* base_dir);
+static char* module_to_kir_path(const char* module_path);
+static char** extract_imports_from_kir(const char* kir_json, int* out_count);
+
+/* ============================================================================
  * KIR Compilation
  * ============================================================================ */
 
@@ -316,26 +325,236 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
             return 1;
         }
 
-        // Compile using native C parser
-        char* kir_json = ir_kry_to_kir(source, source_size);
+        // Extract base directory from source_file for import resolution
+        char base_dir[2048] = ".";
+        const char* last_slash = strrchr(source_file, '/');
+        if (last_slash) {
+            size_t dir_len = last_slash - source_file;
+            if (dir_len < sizeof(base_dir)) {
+                memcpy(base_dir, source_file, dir_len);
+                base_dir[dir_len] = '\0';
+            }
+        }
+
+        // Get module name (filename without extension)
+        char module_name[256] = "main";
+        const char* basename = last_slash ? last_slash + 1 : source_file;
+        const char* dot = strrchr(basename, '.');
+        if (dot) {
+            size_t name_len = dot - basename;
+            if (name_len < sizeof(module_name)) {
+                memcpy(module_name, basename, name_len);
+                module_name[name_len] = '\0';
+            }
+        }
+
+        // Compile using native C parser - single module mode for multi-file KIR
+        // This generates KIR for just this file without expanding imports inline
+        char* main_kir = ir_kry_to_kir_single_module(source, source_size, base_dir);
         free(source);
 
-        if (!kir_json) {
+        if (!main_kir) {
             fprintf(stderr, "Error: Failed to compile .kry file\n");
             return 1;
         }
 
-        // Write KIR to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
-            free(kir_json);
-            return 1;
+        // Check if output_kir is a directory (ends with '/' or is an existing directory)
+        size_t output_len = strlen(output_kir);
+        bool is_multi_file = (output_len > 0 && output_kir[output_len - 1] == '/') ||
+                             file_is_directory(output_kir);
+
+        if (is_multi_file) {
+            // Multi-file output: generate separate KIR files for main and all imports
+            dir_create_recursive(output_kir);
+
+            // Write main KIR
+            char main_kir_path[2048];
+            snprintf(main_kir_path, sizeof(main_kir_path), "%s/%s.kir",
+                     output_kir[output_len - 1] == '/' ?
+                     (char*)output_kir : output_kir, module_name);
+            // Remove double slashes if any
+            if (output_kir[output_len - 1] == '/') {
+                snprintf(main_kir_path, sizeof(main_kir_path), "%s%s.kir", output_kir, module_name);
+            }
+
+            FILE* out = fopen(main_kir_path, "w");
+            if (!out) {
+                fprintf(stderr, "Error: Could not write %s\n", main_kir_path);
+                free(main_kir);
+                return 1;
+            }
+            fprintf(out, "%s\n", main_kir);
+            fclose(out);
+            printf("✓ Generated: %s.kir\n", module_name);
+            int files_written = 1;
+
+            // Extract initial imports and process recursively
+            int initial_count = 0;
+            char** initial_imports = extract_imports_from_kir(main_kir, &initial_count);
+            free(main_kir);
+            main_kir = NULL;
+
+            // Use fixed-size queue for BFS processing of imports
+            char* import_queue[256];
+            int queue_count = 0;
+
+            // Copy initial imports to queue
+            if (initial_imports) {
+                for (int i = 0; i < initial_count && queue_count < 256; i++) {
+                    if (initial_imports[i]) {
+                        import_queue[queue_count++] = initial_imports[i];
+                    }
+                }
+                free(initial_imports);
+            }
+
+            // Track processed modules to avoid duplicates
+            char* processed[256];
+            int processed_count = 0;
+
+            // Process imports queue (BFS)
+            for (int i = 0; i < queue_count; i++) {
+                char* mod = import_queue[i];
+                if (!mod) continue;
+
+                // Skip already processed
+                bool already_done = false;
+                for (int j = 0; j < processed_count; j++) {
+                    if (strcmp(processed[j], mod) == 0) {
+                        already_done = true;
+                        break;
+                    }
+                }
+                if (already_done) {
+                    free(mod);
+                    import_queue[i] = NULL;
+                    continue;
+                }
+
+                // Skip internal/plugin modules
+                if (strncmp(mod, "kryon/", 6) == 0 ||
+                    strcmp(mod, "storage") == 0 ||
+                    strcmp(mod, "datetime") == 0 ||
+                    strcmp(mod, "math") == 0 ||
+                    strcmp(mod, "uuid") == 0) {
+                    free(mod);
+                    import_queue[i] = NULL;
+                    continue;
+                }
+
+                // Resolve module to file path
+                char* mod_file = module_to_file_path(mod, base_dir);
+                if (!mod_file) {
+                    free(mod);
+                    import_queue[i] = NULL;
+                    continue;
+                }
+
+                // Read module source
+                size_t mod_len = 0;
+                char* mod_source = read_file_contents(mod_file, &mod_len);
+                if (!mod_source) {
+                    free(mod_file);
+                    free(mod);
+                    import_queue[i] = NULL;
+                    continue;
+                }
+
+                // Get module's base directory for its imports
+                char mod_base[2048];
+                const char* mod_slash = strrchr(mod_file, '/');
+                if (mod_slash) {
+                    size_t len = mod_slash - mod_file;
+                    memcpy(mod_base, mod_file, len);
+                    mod_base[len] = '\0';
+                } else {
+                    strcpy(mod_base, ".");
+                }
+
+                // Generate KIR for module - single module mode (no import expansion)
+                char* mod_kir = ir_kry_to_kir_single_module(mod_source, mod_len, mod_base);
+                free(mod_source);
+                free(mod_file);
+
+                if (mod_kir) {
+                    // Write module KIR
+                    char* kir_path = module_to_kir_path(mod);
+                    if (kir_path) {
+                        char full_path[2048];
+                        snprintf(full_path, sizeof(full_path), "%s/%s",
+                                 output_kir[output_len - 1] == '/' ?
+                                 (char*)output_kir : output_kir, kir_path);
+                        // Handle trailing slash
+                        if (output_kir[output_len - 1] == '/') {
+                            snprintf(full_path, sizeof(full_path), "%s%s", output_kir, kir_path);
+                        }
+
+                        // Create parent directories
+                        char* dir_copy = strdup(full_path);
+                        if (dir_copy) {
+                            char* dir_end = strrchr(dir_copy, '/');
+                            if (dir_end) {
+                                *dir_end = '\0';
+                                dir_create_recursive(dir_copy);
+                            }
+                            free(dir_copy);
+                        }
+
+                        FILE* mod_out = fopen(full_path, "w");
+                        if (mod_out) {
+                            fprintf(mod_out, "%s\n", mod_kir);
+                            fclose(mod_out);
+                            printf("✓ Generated: %s\n", kir_path);
+                            files_written++;
+                        }
+                        free(kir_path);
+                    }
+
+                    // Extract sub-imports and add to queue
+                    int sub_count = 0;
+                    char** sub_imports = extract_imports_from_kir(mod_kir, &sub_count);
+                    if (sub_imports) {
+                        for (int j = 0; j < sub_count && queue_count < 256; j++) {
+                            if (sub_imports[j]) {
+                                import_queue[queue_count++] = sub_imports[j];
+                            }
+                        }
+                        free(sub_imports);
+                    }
+                    free(mod_kir);
+                    mod_kir = NULL;
+                }
+
+                // Mark as processed
+                if (processed_count < 256) {
+                    processed[processed_count++] = strdup(mod);
+                }
+                free(mod);
+                import_queue[i] = NULL;
+            }
+
+            // Cleanup processed list
+            for (int i = 0; i < processed_count; i++) {
+                if (processed[i]) {
+                    free(processed[i]);
+                }
+            }
+
+            printf("✓ Generated %d KIR files in %s\n", files_written, output_kir);
+            return 0;
+        } else {
+            // Single-file output (for caching or explicit single file)
+            FILE* out = fopen(output_kir, "w");
+            if (!out) {
+                fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+                free(main_kir);
+                return 1;
+            }
+            fprintf(out, "%s\n", main_kir);
+            fclose(out);
+            free(main_kir);
+            return 0;
         }
-        fprintf(out, "%s\n", kir_json);
-        fclose(out);
-        free(kir_json);
-        return 0;
     }
 
     fprintf(stderr, "Error: Unknown frontend type: %s\n", frontend);
@@ -376,27 +595,10 @@ int generate_html_from_kir(const char* kir_file, const char* output_dir,
 }
 
 /* ============================================================================
- * Lua Runtime Detection
+ * Lua Runtime Detection (REMOVED)
  * ============================================================================ */
 
-bool kir_needs_lua_runtime(const char* kir_file) {
-    // Load KIR to check metadata
-    IRComponent* root = ir_read_json_file(kir_file);
-    if (!root) {
-        return false;
-    }
-
-    bool needs_lua = false;
-    if (g_ir_context && g_ir_context->source_metadata) {
-        IRSourceMetadata* meta = g_ir_context->source_metadata;
-        if (meta->source_language && strcmp(meta->source_language, "lua") == 0) {
-            needs_lua = true;
-        }
-    }
-
-    ir_destroy_component(root);
-    return needs_lua;
-}
+/* kir_needs_lua_runtime() removed - we always compile through C codegen now */
 
 /* ============================================================================
  * Docs Template
@@ -1052,6 +1254,161 @@ char* get_codegen_output_dir(const char* target, KryonConfig* config) {
     return result;
 }
 
+/**
+ * Helper: Read file contents
+ */
+static char* read_file_contents(const char* path, size_t* out_size) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return NULL;
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (size <= 0) {
+        fclose(f);
+        return NULL;
+    }
+
+    char* content = (char*)malloc(size + 1);
+    if (!content) {
+        fclose(f);
+        return NULL;
+    }
+
+    size_t bytes_read = fread(content, 1, (size_t)size, f);
+    content[bytes_read] = '\0';
+    fclose(f);
+
+    if (out_size) *out_size = bytes_read;
+    return content;
+}
+
+/**
+ * Helper: Convert module path (e.g., "components.habit_panel") to file path
+ */
+static char* module_to_file_path(const char* module_path, const char* base_dir) {
+    if (!module_path) return NULL;
+
+    // Convert dots to slashes
+    char* path = strdup(module_path);
+    if (!path) return NULL;
+
+    for (char* p = path; *p; p++) {
+        if (*p == '.') *p = '/';
+    }
+
+    // Build full path with .kry extension
+    size_t base_len = base_dir ? strlen(base_dir) : 0;
+    size_t path_len = strlen(path);
+    char* full_path = (char*)malloc(base_len + path_len + 6); // +1 for /, +4 for .kry, +1 for null
+    if (!full_path) {
+        free(path);
+        return NULL;
+    }
+
+    if (base_dir && base_len > 0) {
+        sprintf(full_path, "%s/%s.kry", base_dir, path);
+    } else {
+        sprintf(full_path, "%s.kry", path);
+    }
+
+    free(path);
+    return full_path;
+}
+
+/**
+ * Helper: Convert module path to KIR output path
+ */
+static char* module_to_kir_path(const char* module_path) {
+    if (!module_path) return NULL;
+
+    char* path = strdup(module_path);
+    if (!path) return NULL;
+
+    for (char* p = path; *p; p++) {
+        if (*p == '.') *p = '/';
+    }
+
+    char* kir_path = (char*)malloc(strlen(path) + 5); // +4 for .kir, +1 for null
+    if (!kir_path) {
+        free(path);
+        return NULL;
+    }
+    sprintf(kir_path, "%s.kir", path);
+    free(path);
+    return kir_path;
+}
+
+/**
+ * Helper: Extract imports from KIR JSON
+ * Looks in source_structures.requires[].module
+ */
+static char** extract_imports_from_kir(const char* kir_json, int* out_count) {
+    *out_count = 0;
+    if (!kir_json) return NULL;
+
+    // Find source_structures.requires array
+    const char* requires_start = strstr(kir_json, "\"requires\"");
+    if (!requires_start) return NULL;
+
+    const char* arr_start = strchr(requires_start, '[');
+    if (!arr_start) return NULL;
+
+    // Find matching closing bracket (handle nested objects)
+    int depth = 1;
+    const char* arr_end = arr_start + 1;
+    while (*arr_end && depth > 0) {
+        if (*arr_end == '[' || *arr_end == '{') depth++;
+        else if (*arr_end == ']' || *arr_end == '}') depth--;
+        arr_end++;
+    }
+    if (depth != 0) return NULL;
+    arr_end--; // Point to the ]
+
+    // Count "module" entries
+    int count = 0;
+    const char* p = arr_start;
+    while ((p = strstr(p + 1, "\"module\"")) && p < arr_end) {
+        count++;
+    }
+
+    if (count == 0) return NULL;
+
+    char** imports = (char**)malloc(sizeof(char*) * count);
+    if (!imports) return NULL;
+
+    // Extract module values
+    int idx = 0;
+    p = arr_start;
+    while (idx < count && (p = strstr(p + 1, "\"module\"")) && p < arr_end) {
+        // Find the colon after "module"
+        const char* colon = strchr(p, ':');
+        if (!colon || colon >= arr_end) break;
+
+        // Find the opening quote of the value
+        const char* val_start = strchr(colon, '"');
+        if (!val_start || val_start >= arr_end) break;
+        val_start++; // Skip the quote
+
+        // Find the closing quote
+        const char* val_end = strchr(val_start, '"');
+        if (!val_end || val_end >= arr_end) break;
+
+        size_t len = val_end - val_start;
+        imports[idx] = (char*)malloc(len + 1);
+        if (imports[idx]) {
+            memcpy(imports[idx], val_start, len);
+            imports[idx][len] = '\0';
+            idx++;
+        }
+        p = val_end;
+    }
+
+    *out_count = idx;
+    return imports;
+}
+
 int generate_from_kir(const char* kir_file, const char* target,
                       const char* output_path) {
     bool success = false;
@@ -1071,9 +1428,43 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = ir_generate_kotlin_code_multi(kir_file, output_path);
     } else if (strcmp(target, "markdown") == 0) {
         success = markdown_codegen_generate_multi(kir_file, output_path);
+    } else if (strcmp(target, "kir") == 0) {
+        // KIR target: just copy the KIR file to output (for single-file case)
+        // Multi-file case is handled in codegen_pipeline
+        char output_file[2048];
+        snprintf(output_file, sizeof(output_file), "%s/main.kir", output_path);
+
+        // Create output directory
+        dir_create_recursive(output_path);
+
+        // Read input KIR
+        FILE* in = fopen(kir_file, "r");
+        if (!in) {
+            fprintf(stderr, "Error: Could not open KIR file: %s\n", kir_file);
+            return 1;
+        }
+
+        FILE* out = fopen(output_file, "w");
+        if (!out) {
+            fclose(in);
+            fprintf(stderr, "Error: Could not create output file: %s\n", output_file);
+            return 1;
+        }
+
+        // Copy content
+        char buffer[4096];
+        size_t n;
+        while ((n = fread(buffer, 1, sizeof(buffer), in)) > 0) {
+            fwrite(buffer, 1, n, out);
+        }
+
+        fclose(in);
+        fclose(out);
+        printf("✓ Generated: main.kir\n");
+        success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, tsx, lua, c, python, kotlin, markdown\n");
+        fprintf(stderr, "Supported targets: kry, tsx, lua, c, python, kotlin, markdown, kir\n");
         return 1;
     }
 
@@ -1110,6 +1501,74 @@ int codegen_pipeline(const char* source_file, const char* target,
         fprintf(stderr, "Error: Could not detect frontend for %s\n", source);
         if (free_config) config_free(config);
         return 1;
+    }
+
+    // Special handling for kir target: use compile_source_to_kir with directory output
+    // This generates multi-file KIR for .kry sources (main + imports)
+    if (strcmp(target, "kir") == 0) {
+        // Determine output directory
+        const char* output = output_dir;
+        char* output_to_free = NULL;
+        if (!output) {
+            output = output_to_free = get_codegen_output_dir(target, config);
+        }
+
+        // Build output path with trailing slash to trigger multi-file mode
+        char output_with_slash[2048];
+        size_t output_len = strlen(output);
+        if (output_len > 0 && output[output_len - 1] != '/') {
+            snprintf(output_with_slash, sizeof(output_with_slash), "%s/", output);
+        } else {
+            snprintf(output_with_slash, sizeof(output_with_slash), "%s", output);
+        }
+
+        printf("Generating KIR: %s → %s\n", source, output);
+
+        // For .kry source, compile_source_to_kir handles multi-file output
+        if (strcmp(frontend, "kry") == 0) {
+            int result = compile_source_to_kir(source, output_with_slash);
+            if (output_to_free) free(output_to_free);
+            if (free_config) config_free(config);
+            return result;
+        } else if (strcmp(frontend, "kir") == 0) {
+            // Source is already KIR - just copy it
+            dir_create_recursive(output);
+            char output_file[2048];
+            const char* basename = strrchr(source, '/');
+            basename = basename ? basename + 1 : source;
+            snprintf(output_file, sizeof(output_file), "%s/%s", output, basename);
+
+            FILE* in = fopen(source, "r");
+            FILE* out_f = fopen(output_file, "w");
+            if (in && out_f) {
+                char buffer[4096];
+                size_t n;
+                while ((n = fread(buffer, 1, sizeof(buffer), in)) > 0) {
+                    fwrite(buffer, 1, n, out_f);
+                }
+                fclose(in);
+                fclose(out_f);
+                printf("✓ Copied: %s\n", basename);
+            } else {
+                if (in) fclose(in);
+                if (out_f) fclose(out_f);
+                fprintf(stderr, "Error: Could not copy KIR file\n");
+                if (output_to_free) free(output_to_free);
+                if (free_config) config_free(config);
+                return 1;
+            }
+
+            if (output_to_free) free(output_to_free);
+            if (free_config) config_free(config);
+            return 0;
+        } else {
+            // For other sources (lua, tsx, etc.), use compile_source_to_kir with directory
+            // to generate multi-file output
+            int result = compile_source_to_kir(source, output_with_slash);
+            if (output_to_free) free(output_to_free);
+            if (free_config) config_free(config);
+            return result;
+        }
     }
 
     // If source is already KIR, skip compilation

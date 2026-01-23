@@ -1383,11 +1383,11 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         }
     }
 
-    // Serialize foreach_def (new structured ForEach definition)
+    // Serialize for_def (structured For loop definition with loop_type)
     if (component->type == IR_COMPONENT_FOR_EACH && component->foreach_def) {
-        cJSON* foreach_def_json = ir_foreach_def_to_json(component->foreach_def);
-        if (foreach_def_json) {
-            cJSON_AddItemToObject(obj, "foreach_def", foreach_def_json);
+        cJSON* for_def_json = ir_foreach_def_to_json(component->foreach_def);
+        if (for_def_json) {
+            cJSON_AddItemToObject(obj, "for_def", for_def_json);
         }
     }
 
@@ -1537,33 +1537,19 @@ static cJSON* json_serialize_property_binding(IRPropertyBinding* binding) {
  * Serialize component definitions to JSON
  */
 cJSON* ir_json_serialize_component_definitions(IRReactiveManifest* manifest) {
-    fprintf(stderr, "[json_serialize_component_definitions] Called\n");
-    fflush(stderr);
     if (!manifest || manifest->component_def_count == 0) {
-        fprintf(stderr, "[json_serialize_component_definitions] Returning NULL: manifest=%p, count=%u\n",
-                (void*)manifest, manifest ? manifest->component_def_count : 0);
-        fflush(stderr);
         return NULL;
     }
 
-    fprintf(stderr, "[json_serialize_component_definitions] Creating array for %u defs\n",
-            manifest->component_def_count);
-    fflush(stderr);
-
     cJSON* arr = cJSON_CreateArray();
     if (!arr) {
-        fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for component definitions\n");
         return NULL;
     }
 
     for (uint32_t i = 0; i < manifest->component_def_count; i++) {
         IRComponentDefinition* def = &manifest->component_defs[i];
-        fprintf(stderr, "[json_serialize_component_definitions] Def %u: name='%s'\n",
-                i, def->name ? def->name : "(null)");
-        fflush(stderr);
         cJSON* defObj = cJSON_CreateObject();
         if (!defObj) {
-            fprintf(stderr, "ERROR: cJSON_CreateObject failed (OOM) for component definition\n");
             cJSON_Delete(arr);
             return NULL;
         }

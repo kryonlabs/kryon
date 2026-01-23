@@ -13,7 +13,7 @@
 #include "../../third_party/tomlc99/toml.h"
 #include "../../runtime/desktop/ir_desktop_renderer.h"
 #include "../../ir/include/ir_executor.h"
-#include "ir_state.h"
+#include "../../ir/include/ir_state.h"
 
 // ============================================================================
 // Internal State
@@ -104,7 +104,7 @@ static void cleanup_handlers(void) {
 // C Source Metadata (for round-trip conversion)
 // ============================================================================
 
-#include "../ir/src/utils/ir_c_metadata.h"
+#include "../../ir/src/utils/ir_c_metadata.h"
 
 // Global metadata instance
 CSourceMetadata g_c_metadata = {0};

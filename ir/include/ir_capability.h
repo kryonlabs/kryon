@@ -60,6 +60,12 @@ void ir_capability_registry_init(void);
 void ir_capability_set_root_component(IRComponent* root);
 
 /**
+ * Called when the global IR context changes to clear stale pointers.
+ * This should be called from ir_set_context() when the context is replaced.
+ */
+void ir_capability_on_context_change(void);
+
+/**
  * Shutdown and cleanup the capability registry
  *
  * Unloads all plugins and frees all allocated memory.

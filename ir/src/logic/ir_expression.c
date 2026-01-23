@@ -191,6 +191,64 @@ IRExpression* ir_expr_group(IRExpression* inner) {
     return expr;
 }
 
+// NEW: Literal and function expression constructors
+IRExpression* ir_expr_array_literal(IRExpression** elements, int count) {
+    IRExpression* expr = calloc(1, sizeof(IRExpression));
+    if (!expr) return NULL;
+    expr->type = EXPR_ARRAY_LITERAL;
+    expr->array_literal.element_count = count;
+    if (count > 0 && elements) {
+        expr->array_literal.elements = calloc(count, sizeof(IRExpression*));
+        if (expr->array_literal.elements) {
+            memcpy(expr->array_literal.elements, elements, count * sizeof(IRExpression*));
+        }
+    } else {
+        expr->array_literal.elements = NULL;
+    }
+    return expr;
+}
+
+IRExpression* ir_expr_object_literal(char** keys, IRExpression** values, int count) {
+    IRExpression* expr = calloc(1, sizeof(IRExpression));
+    if (!expr) return NULL;
+    expr->type = EXPR_OBJECT_LITERAL;
+    expr->object_literal.property_count = count;
+    if (count > 0 && keys && values) {
+        expr->object_literal.keys = calloc(count, sizeof(char*));
+        expr->object_literal.values = calloc(count, sizeof(IRExpression*));
+        if (expr->object_literal.keys && expr->object_literal.values) {
+            for (int i = 0; i < count; i++) {
+                expr->object_literal.keys[i] = keys[i] ? strdup(keys[i]) : NULL;
+                expr->object_literal.values[i] = values[i];
+            }
+        }
+    } else {
+        expr->object_literal.keys = NULL;
+        expr->object_literal.values = NULL;
+    }
+    return expr;
+}
+
+IRExpression* ir_expr_arrow_function(char** params, int param_count, IRExpression* body, bool is_expr_body) {
+    IRExpression* expr = calloc(1, sizeof(IRExpression));
+    if (!expr) return NULL;
+    expr->type = EXPR_ARROW_FUNCTION;
+    expr->arrow_function.param_count = param_count;
+    expr->arrow_function.body = body;
+    expr->arrow_function.is_expression_body = is_expr_body;
+    if (param_count > 0 && params) {
+        expr->arrow_function.params = calloc(param_count, sizeof(char*));
+        if (expr->arrow_function.params) {
+            for (int i = 0; i < param_count; i++) {
+                expr->arrow_function.params[i] = params[i] ? strdup(params[i]) : NULL;
+            }
+        }
+    } else {
+        expr->arrow_function.params = NULL;
+    }
+    return expr;
+}
+
 // Convenience binary operators
 IRExpression* ir_expr_add(IRExpression* left, IRExpression* right) {
     return ir_expr_binary(BINARY_OP_ADD, left, right);
@@ -441,6 +499,28 @@ void ir_expr_free(IRExpression* expr) {
         case EXPR_GROUP:
             ir_expr_free(expr->group.inner);
             break;
+        // NEW: Literal and function expression types
+        case EXPR_ARRAY_LITERAL:
+            for (int i = 0; i < expr->array_literal.element_count; i++) {
+                ir_expr_free(expr->array_literal.elements[i]);
+            }
+            free(expr->array_literal.elements);
+            break;
+        case EXPR_OBJECT_LITERAL:
+            for (int i = 0; i < expr->object_literal.property_count; i++) {
+                free(expr->object_literal.keys[i]);
+                ir_expr_free(expr->object_literal.values[i]);
+            }
+            free(expr->object_literal.keys);
+            free(expr->object_literal.values);
+            break;
+        case EXPR_ARROW_FUNCTION:
+            for (int i = 0; i < expr->arrow_function.param_count; i++) {
+                free(expr->arrow_function.params[i]);
+            }
+            free(expr->arrow_function.params);
+            ir_expr_free(expr->arrow_function.body);
+            break;
         default:
             break;
     }
@@ -563,6 +643,7 @@ static const char* unary_op_to_string(IRUnaryOp op) {
     switch (op) {
         case UNARY_OP_NEG: return "neg";
         case UNARY_OP_NOT: return "not";
+        case UNARY_OP_TYPEOF: return "typeof";
         default: return "unknown";
     }
 }
@@ -571,6 +652,7 @@ static IRUnaryOp string_to_unary_op(const char* str) {
     if (!str) return UNARY_OP_NEG;
     if (strcmp(str, "neg") == 0) return UNARY_OP_NEG;
     if (strcmp(str, "not") == 0) return UNARY_OP_NOT;
+    if (strcmp(str, "typeof") == 0) return UNARY_OP_TYPEOF;
     return UNARY_OP_NEG;
 }
 
@@ -704,6 +786,45 @@ cJSON* ir_expr_to_json(IRExpression* expr) {
             cJSON_AddStringToObject(json, "op", "group");
             cJSON_AddItemToObject(json, "inner", ir_expr_to_json(expr->group.inner));
             return json;
+
+        // NEW: Literal and function expression types
+        case EXPR_ARRAY_LITERAL: {
+            json = cJSON_CreateObject();
+            cJSON_AddStringToObject(json, "op", "array_literal");
+            cJSON* arr = cJSON_CreateArray();
+            for (int i = 0; i < expr->array_literal.element_count; i++) {
+                cJSON_AddItemToArray(arr, ir_expr_to_json(expr->array_literal.elements[i]));
+            }
+            cJSON_AddItemToObject(json, "elements", arr);
+            return json;
+        }
+
+        case EXPR_OBJECT_LITERAL: {
+            json = cJSON_CreateObject();
+            cJSON_AddStringToObject(json, "op", "object_literal");
+            cJSON* props = cJSON_CreateArray();
+            for (int i = 0; i < expr->object_literal.property_count; i++) {
+                cJSON* prop = cJSON_CreateObject();
+                cJSON_AddStringToObject(prop, "key", expr->object_literal.keys[i] ? expr->object_literal.keys[i] : "");
+                cJSON_AddItemToObject(prop, "value", ir_expr_to_json(expr->object_literal.values[i]));
+                cJSON_AddItemToArray(props, prop);
+            }
+            cJSON_AddItemToObject(json, "properties", props);
+            return json;
+        }
+
+        case EXPR_ARROW_FUNCTION: {
+            json = cJSON_CreateObject();
+            cJSON_AddStringToObject(json, "op", "arrow_function");
+            cJSON* params = cJSON_CreateArray();
+            for (int i = 0; i < expr->arrow_function.param_count; i++) {
+                cJSON_AddItemToArray(params, cJSON_CreateString(expr->arrow_function.params[i] ? expr->arrow_function.params[i] : ""));
+            }
+            cJSON_AddItemToObject(json, "params", params);
+            cJSON_AddItemToObject(json, "body", ir_expr_to_json(expr->arrow_function.body));
+            cJSON_AddBoolToObject(json, "is_expression_body", expr->arrow_function.is_expression_body);
+            return json;
+        }
 
         default:
             return cJSON_CreateNull();
@@ -967,6 +1088,62 @@ IRExpression* ir_expr_from_json(cJSON* json) {
                 if (inner) {
                     return ir_expr_group(ir_expr_from_json(inner));
                 }
+            }
+
+            // NEW: Array literal: {"op": "array_literal", "elements": [...]}
+            if (strcmp(op_str, "array_literal") == 0) {
+                cJSON* elements = cJSON_GetObjectItem(json, "elements");
+                int count = elements && cJSON_IsArray(elements) ? cJSON_GetArraySize(elements) : 0;
+                IRExpression** elems = count > 0 ? calloc(count, sizeof(IRExpression*)) : NULL;
+                for (int i = 0; i < count; i++) {
+                    elems[i] = ir_expr_from_json(cJSON_GetArrayItem(elements, i));
+                }
+                IRExpression* result = ir_expr_array_literal(elems, count);
+                free(elems);
+                return result;
+            }
+
+            // NEW: Object literal: {"op": "object_literal", "properties": [{key, value}, ...]}
+            if (strcmp(op_str, "object_literal") == 0) {
+                cJSON* props = cJSON_GetObjectItem(json, "properties");
+                int count = props && cJSON_IsArray(props) ? cJSON_GetArraySize(props) : 0;
+                char** keys = count > 0 ? calloc(count, sizeof(char*)) : NULL;
+                IRExpression** values = count > 0 ? calloc(count, sizeof(IRExpression*)) : NULL;
+                for (int i = 0; i < count; i++) {
+                    cJSON* prop = cJSON_GetArrayItem(props, i);
+                    cJSON* key_item = cJSON_GetObjectItem(prop, "key");
+                    keys[i] = key_item && cJSON_IsString(key_item) ? strdup(key_item->valuestring) : strdup("");
+                    values[i] = ir_expr_from_json(cJSON_GetObjectItem(prop, "value"));
+                }
+                IRExpression* result = ir_expr_object_literal(keys, values, count);
+                // Free the temporary arrays (keys are duplicated in ir_expr_object_literal)
+                for (int i = 0; i < count; i++) {
+                    free(keys[i]);
+                }
+                free(keys);
+                free(values);
+                return result;
+            }
+
+            // NEW: Arrow function: {"op": "arrow_function", "params": [...], "body": expr, "is_expression_body": bool}
+            if (strcmp(op_str, "arrow_function") == 0) {
+                cJSON* params_arr = cJSON_GetObjectItem(json, "params");
+                int param_count = params_arr && cJSON_IsArray(params_arr) ? cJSON_GetArraySize(params_arr) : 0;
+                char** params = param_count > 0 ? calloc(param_count, sizeof(char*)) : NULL;
+                for (int i = 0; i < param_count; i++) {
+                    cJSON* param_item = cJSON_GetArrayItem(params_arr, i);
+                    params[i] = param_item && cJSON_IsString(param_item) ? strdup(param_item->valuestring) : strdup("");
+                }
+                IRExpression* body = ir_expr_from_json(cJSON_GetObjectItem(json, "body"));
+                cJSON* is_expr_body_item = cJSON_GetObjectItem(json, "is_expression_body");
+                bool is_expr_body = is_expr_body_item && cJSON_IsTrue(is_expr_body_item);
+                IRExpression* result = ir_expr_arrow_function(params, param_count, body, is_expr_body);
+                // Free the temporary array (params are duplicated in ir_expr_arrow_function)
+                for (int i = 0; i < param_count; i++) {
+                    free(params[i]);
+                }
+                free(params);
+                return result;
             }
 
             // Unary operators - check both "operand" and "expr" field names
@@ -1247,6 +1424,33 @@ void ir_expr_print(IRExpression* expr) {
             printf("(");
             ir_expr_print(expr->group.inner);
             printf(")");
+            break;
+        // NEW: Literal and function expression types
+        case EXPR_ARRAY_LITERAL:
+            printf("[");
+            for (int i = 0; i < expr->array_literal.element_count; i++) {
+                if (i > 0) printf(", ");
+                ir_expr_print(expr->array_literal.elements[i]);
+            }
+            printf("]");
+            break;
+        case EXPR_OBJECT_LITERAL:
+            printf("{");
+            for (int i = 0; i < expr->object_literal.property_count; i++) {
+                if (i > 0) printf(", ");
+                printf("%s: ", expr->object_literal.keys[i] ? expr->object_literal.keys[i] : "?");
+                ir_expr_print(expr->object_literal.values[i]);
+            }
+            printf("}");
+            break;
+        case EXPR_ARROW_FUNCTION:
+            printf("(");
+            for (int i = 0; i < expr->arrow_function.param_count; i++) {
+                if (i > 0) printf(", ");
+                printf("%s", expr->arrow_function.params[i] ? expr->arrow_function.params[i] : "?");
+            }
+            printf(") => ");
+            ir_expr_print(expr->arrow_function.body);
             break;
     }
 }

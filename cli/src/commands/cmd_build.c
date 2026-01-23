@@ -6,12 +6,15 @@
 #include "kryon_cli.h"
 #include "build.h"
 #include "build/plugin_discovery.h"
+#include "build/c_desktop.h"
 #include "../template/docs_template.h"
 #include "../utils/file_discovery.h"
 #include "build/luajit_build.h"
+#include "../../../codegens/c/ir_c_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 /**
  * Build a single source file
@@ -146,6 +149,71 @@ static int has_desktop_target(KryonConfig* config) {
         }
     }
     return 0;
+}
+
+/**
+ * Build C desktop binary from KRY frontend
+ * Pipeline: KRY → KIR → C codegen → compile → native binary
+ */
+static int build_c_desktop(KryonConfig* config) {
+    const char* entry = config->build_entry;
+    const char* project_name = config->project_name;
+
+    /* Validate entry file */
+    if (!entry) {
+        fprintf(stderr, "Error: No entry file specified in kryon.toml\n");
+        return 1;
+    }
+
+    if (!str_ends_with(entry, ".kry")) {
+        fprintf(stderr, "Error: C desktop build requires .kry entry file, got: %s\n", entry);
+        return 1;
+    }
+
+    if (!file_exists(entry)) {
+        fprintf(stderr, "Error: Entry file not found: %s\n", entry);
+        return 1;
+    }
+
+    printf("[C Desktop] Building %s...\n", project_name);
+
+    /* Step 1: Compile KRY to KIR */
+    if (!file_is_directory(".kryon_cache")) {
+        dir_create(".kryon_cache");
+    }
+
+    char kir_path[PATH_MAX];
+    snprintf(kir_path, sizeof(kir_path), ".kryon_cache/main.kir");
+
+    printf("[C Desktop] Compiling KRY → KIR...\n");
+    if (compile_source_to_kir(entry, kir_path) != 0) {
+        fprintf(stderr, "Error: Failed to compile KRY to KIR\n");
+        return 1;
+    }
+
+    if (!file_exists(kir_path)) {
+        fprintf(stderr, "Error: KIR file was not generated: %s\n", kir_path);
+        return 1;
+    }
+
+    /* Step 2: Generate C code from KIR */
+    const char* output_dir = config->build_output_dir ? config->build_output_dir : "build";
+    char gen_dir[PATH_MAX];
+    snprintf(gen_dir, sizeof(gen_dir), "%s/generated", output_dir);
+
+    if (!file_is_directory(gen_dir)) {
+        dir_create_recursive(gen_dir);
+    }
+
+    printf("[C Desktop] Generating C code → %s\n", gen_dir);
+    if (!ir_generate_c_code_multi(kir_path, gen_dir)) {
+        fprintf(stderr, "Error: Failed to generate C code from KIR\n");
+        return 1;
+    }
+
+    /* Step 3: Compile and link C code to binary */
+    printf("[C Desktop] Compiling C → native binary...\n");
+    return compile_and_link_c_desktop(gen_dir, project_name, config);
 }
 
 /**
@@ -315,10 +383,44 @@ int cmd_build(int argc, char** argv) {
     int is_desktop = primary_target && strcmp(primary_target, "desktop") == 0;
     int is_web = primary_target && strcmp(primary_target, "web") == 0;
 
-    // Desktop build (Lua binary) takes priority
+    // Desktop build - route based on frontend configuration
     if (is_desktop) {
         printf("Building desktop targets...\n");
-        int desktop_result = build_lua_desktop(config);
+
+        const char* frontend = config->build_frontend;
+        int desktop_result;
+
+        if (frontend && strcmp(frontend, "kry") == 0) {
+            // KRY frontend → C codegen → native binary
+            printf("Frontend: kry (C code generation)\n");
+            desktop_result = build_c_desktop(config);
+        } else if (frontend && strcmp(frontend, "lua") == 0) {
+            // Lua frontend → LuaJIT binary
+            printf("Frontend: lua (LuaJIT compilation)\n");
+            desktop_result = build_lua_desktop(config);
+        } else if (!frontend || strcmp(frontend, "auto") == 0) {
+            // Auto-detect based on entry file extension
+            const char* entry = config->build_entry;
+            if (entry && str_ends_with(entry, ".kry")) {
+                printf("Frontend: auto-detected kry (C code generation)\n");
+                desktop_result = build_c_desktop(config);
+            } else if (entry && str_ends_with(entry, ".lua")) {
+                printf("Frontend: auto-detected lua (LuaJIT compilation)\n");
+                desktop_result = build_lua_desktop(config);
+            } else {
+                fprintf(stderr, "Error: Cannot auto-detect frontend for entry '%s'\n",
+                        entry ? entry : "(none)");
+                fprintf(stderr, "Specify frontend = \"kry\" or \"lua\" in [build] section\n");
+                config_free(config);
+                return 1;
+            }
+        } else {
+            fprintf(stderr, "Error: Unknown frontend '%s'\n", frontend);
+            fprintf(stderr, "Supported frontends: kry, lua, auto\n");
+            config_free(config);
+            return 1;
+        }
+
         if (desktop_result != 0) {
             // Desktop build failed
             config_free(config);

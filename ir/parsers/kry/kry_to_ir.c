@@ -18,6 +18,7 @@
 // Animation system moved to plugin - no longer included here
 #include "../src/logic/ir_foreach.h"
 #include "../../include/kryon/capability.h"  // For kryon_property_parser_fn
+#include "../include/ir_capability.h"  // For ir_capability_on_context_change
 #include "../html/css_parser.h"  // For ir_css_parse_color
 #include "../parser_utils.h"     // For parser_parse_color_packed
 #include <stdlib.h>
@@ -62,6 +63,7 @@ struct ConversionContext {
     KryExprTarget target_platform; // Target platform for expression transpilation (Lua or JavaScript)
     char* source_file_path;        // Path of source file (for resolving imports)
     char* base_directory;          // Base directory for resolving relative imports
+    bool skip_import_expansion;    // If true, don't expand imports (for multi-file KIR codegen)
 
     // Module import registry (for expression resolution)
     struct {
@@ -303,6 +305,11 @@ static const ComponentTypeMapping component_type_table[] = {
     {"small", IR_COMPONENT_SMALL},
     {"span", IR_COMPONENT_SPAN},
     {"strong", IR_COMPONENT_STRONG},
+    {"tab", IR_COMPONENT_TAB},
+    {"tabbar", IR_COMPONENT_TAB_BAR},
+    {"tabcontent", IR_COMPONENT_TAB_CONTENT},
+    {"tabgroup", IR_COMPONENT_TAB_GROUP},
+    {"tabpanel", IR_COMPONENT_TAB_PANEL},
     {"table", IR_COMPONENT_TABLE},
     {"tablebody", IR_COMPONENT_TABLE_BODY},
     {"tablecell", IR_COMPONENT_TABLE_CELL},
@@ -1069,6 +1076,70 @@ static bool handle_windowHeight_property(
 }
 
 // ============================================================================
+// Tab Component Property Handlers
+// ============================================================================
+
+// Handle selectedIndex property (for TabGroup)
+static bool handle_selectedIndex_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    // Handle numeric literal - set directly
+    if (value->type == KRY_VALUE_NUMBER) {
+        // Ensure tab_data exists
+        if (!component->tab_data) {
+            component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+        }
+        if (component->tab_data) {
+            component->tab_data->selected_index = (int32_t)value->number_value;
+        }
+        return true;
+    }
+
+    // Handle identifier or expression - create property binding for runtime
+    if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+        const char* expr = (value->type == KRY_VALUE_IDENTIFIER)
+                          ? value->identifier : value->expression;
+
+        // Try to substitute if it's a known parameter
+        const char* substituted = substitute_param(ctx, expr);
+
+        // Try to parse as number if substituted
+        if (substituted && substituted != expr) {
+            char* endptr;
+            long val = strtol(substituted, &endptr, 10);
+            if (*endptr == '\0') {
+                // Substituted to a numeric value - set directly
+                if (!component->tab_data) {
+                    component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+                }
+                if (component->tab_data) {
+                    component->tab_data->selected_index = (int32_t)val;
+                }
+                return true;
+            }
+        }
+
+        // Variable reference or expression - always create property binding for runtime evaluation
+        // This allows selectedIndex to be reactive to state changes
+        ir_component_add_property_binding(component, name, expr, "0", "static_template");
+
+        // Initialize tab_data with default value
+        if (!component->tab_data) {
+            component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+        }
+        if (component->tab_data) {
+            component->tab_data->selected_index = 0;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================================
 // Alignment Property Handlers
 // ============================================================================
 
@@ -1199,6 +1270,9 @@ static const PropertyDispatchEntry property_dispatch_table[] = {
     {"contentAlignment", handle_contentAlignment_property, false},
     {"alignItems",       handle_contentAlignment_property, false},  // Alias
     {"justifyContent",   handle_justifyContent_property,   false},
+
+    // Tab component properties
+    {"selectedIndex",    handle_selectedIndex_property,    false},
 
     // Sentinel (marks end of table)
     {NULL,               NULL,                           false}
@@ -1513,6 +1587,8 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
                         IRComponent* template_comp = convert_node(&template_ctx, template_node);
                         if (template_comp) {
                             ir_foreach_set_template(def, template_comp);
+                            // Add template as child[0] for serialization
+                            ir_add_child(for_each_comp, template_comp);
                         }
                     }
 
@@ -1607,7 +1683,7 @@ static IRUnaryOp convert_unary_op(KryUnaryOp op) {
     switch (op) {
         case KRY_UNARY_OP_NEGATE: return UNARY_OP_NEG;
         case KRY_UNARY_OP_NOT:    return UNARY_OP_NOT;
-        case KRY_UNARY_OP_TYPEOF: return UNARY_OP_NOT; // typeof not directly supported, fallback
+        case KRY_UNARY_OP_TYPEOF: return UNARY_OP_TYPEOF;
         default: return UNARY_OP_NEG;
     }
 }
@@ -1697,20 +1773,90 @@ static IRExpression* convert_kry_expr_to_ir(KryExprNode* node) {
         }
 
         case KRY_EXPR_ARRAY: {
-            // Array literals not fully supported in IR yet, return NULL
-            // TODO: Add array literal support to IR
-            return NULL;
+            int count = (int)node->array.element_count;
+            IRExpression** elements = NULL;
+            if (count > 0) {
+                elements = calloc(count, sizeof(IRExpression*));
+                bool failed = false;
+                for (int i = 0; i < count; i++) {
+                    elements[i] = convert_kry_expr_to_ir(node->array.elements[i]);
+                    if (!elements[i]) {
+                        failed = true;
+                        break;
+                    }
+                }
+                if (failed) {
+                    for (int i = 0; i < count; i++) {
+                        if (elements[i]) ir_expr_free(elements[i]);
+                    }
+                    free(elements);
+                    return NULL;
+                }
+            }
+            IRExpression* result = ir_expr_array_literal(elements, count);
+            free(elements);
+            return result;
         }
 
         case KRY_EXPR_OBJECT: {
-            // Object literals not fully supported in IR yet, return NULL
-            // TODO: Add object literal support to IR
-            return NULL;
+            int count = (int)node->object.prop_count;
+            char** keys = NULL;
+            IRExpression** values = NULL;
+            if (count > 0) {
+                keys = calloc(count, sizeof(char*));
+                values = calloc(count, sizeof(IRExpression*));
+                bool failed = false;
+                for (int i = 0; i < count; i++) {
+                    keys[i] = strdup(node->object.keys[i] ? node->object.keys[i] : "");
+                    values[i] = convert_kry_expr_to_ir(node->object.values[i]);
+                    if (!values[i]) {
+                        failed = true;
+                        break;
+                    }
+                }
+                if (failed) {
+                    for (int i = 0; i < count; i++) {
+                        free(keys[i]);
+                        if (values[i]) ir_expr_free(values[i]);
+                    }
+                    free(keys);
+                    free(values);
+                    return NULL;
+                }
+            }
+            IRExpression* result = ir_expr_object_literal(keys, values, count);
+            // Free temporary arrays (keys and values are copied in ir_expr_object_literal)
+            for (int i = 0; i < count; i++) {
+                free(keys[i]);
+            }
+            free(keys);
+            free(values);
+            return result;
         }
 
         case KRY_EXPR_ARROW_FUNC: {
-            // Arrow functions not supported in IR expressions
-            return NULL;
+            int param_count = (int)node->arrow_func.param_count;
+            char** params = NULL;
+            if (param_count > 0) {
+                params = calloc(param_count, sizeof(char*));
+                for (int i = 0; i < param_count; i++) {
+                    params[i] = strdup(node->arrow_func.params[i] ? node->arrow_func.params[i] : "");
+                }
+            }
+            IRExpression* body = convert_kry_expr_to_ir(node->arrow_func.body);
+            if (!body && node->arrow_func.body) {
+                // Body conversion failed
+                for (int i = 0; i < param_count; i++) free(params[i]);
+                free(params);
+                return NULL;
+            }
+            IRExpression* result = ir_expr_arrow_function(params, param_count, body, node->arrow_func.is_expression_body);
+            // Free temporary params array (params are copied in ir_expr_arrow_function)
+            for (int i = 0; i < param_count; i++) {
+                free(params[i]);
+            }
+            free(params);
+            return result;
         }
 
         case KRY_EXPR_MEMBER_EXPR: {
@@ -1752,12 +1898,54 @@ static IRExpression* kry_value_to_ir_expr(KryValue* value) {
             // Fallback: treat as variable reference (for backward compatibility)
             return ir_expr_var(value->expression);
         }
-        case KRY_VALUE_ARRAY:
-            // TODO: Convert array literal to IR array expression
-            return NULL;
-        case KRY_VALUE_OBJECT:
-            // TODO: Convert object literal to IR object expression
-            return NULL;
+        case KRY_VALUE_ARRAY: {
+            int count = (int)value->array.count;
+            IRExpression** elements = NULL;
+            if (count > 0) {
+                elements = calloc(count, sizeof(IRExpression*));
+                for (int i = 0; i < count; i++) {
+                    elements[i] = kry_value_to_ir_expr(value->array.elements[i]);
+                    if (!elements[i]) {
+                        for (int j = 0; j < i; j++) ir_expr_free(elements[j]);
+                        free(elements);
+                        return NULL;
+                    }
+                }
+            }
+            IRExpression* result = ir_expr_array_literal(elements, count);
+            free(elements);
+            return result;
+        }
+        case KRY_VALUE_OBJECT: {
+            int count = (int)value->object.count;
+            char** keys = NULL;
+            IRExpression** values_arr = NULL;
+            if (count > 0) {
+                keys = calloc(count, sizeof(char*));
+                values_arr = calloc(count, sizeof(IRExpression*));
+                for (int i = 0; i < count; i++) {
+                    keys[i] = strdup(value->object.keys[i] ? value->object.keys[i] : "");
+                    values_arr[i] = kry_value_to_ir_expr(value->object.values[i]);
+                    if (!values_arr[i]) {
+                        for (int j = 0; j <= i; j++) {
+                            free(keys[j]);
+                            if (values_arr[j]) ir_expr_free(values_arr[j]);
+                        }
+                        free(keys);
+                        free(values_arr);
+                        return NULL;
+                    }
+                }
+            }
+            IRExpression* result = ir_expr_object_literal(keys, values_arr, count);
+            // Free temporary arrays (keys and values are copied in ir_expr_object_literal)
+            for (int i = 0; i < count; i++) {
+                free(keys[i]);
+            }
+            free(keys);
+            free(values_arr);
+            return result;
+        }
         case KRY_VALUE_RANGE: {
             // Range expression: start..end
             // Convert to a __range__(start, end) call that transpiler handles
@@ -2139,6 +2327,9 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
         return NULL;
     }
 
+    // Set loop type to explicit for_each
+    def->loop_type = IR_LOOP_TYPE_FOR_EACH;
+
     // Set data source
     ir_foreach_set_source_variable(def, collection_ref);
 
@@ -2156,6 +2347,10 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
         if (template_comp) {
             ir_foreach_set_template(def, template_comp);
 
+            // Add template as child[0] for serialization
+            // The serializer expects the template to be in children array
+            ir_add_child(for_each_comp, template_comp);
+
             // Extract property bindings from the template
             // Scan for expressions that reference the item variable
             if (template_comp->text_expression &&
@@ -2169,8 +2364,22 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
     // Attach foreach_def to the component
     for_each_comp->foreach_def = def;
 
-
     return for_each_comp;
+}
+
+// Helper: Check if an argument string looks like a variable reference (not a literal)
+static bool is_variable_reference(const char* arg) {
+    if (!arg) return false;
+    // Skip leading whitespace
+    while (*arg == ' ') arg++;
+    // Check if it starts with a digit or quote (literal)
+    if (*arg >= '0' && *arg <= '9') return false;
+    if (*arg == '"' || *arg == '\'') return false;
+    if (*arg == '[' || *arg == '{') return false;  // Array/object literal
+    if (strcmp(arg, "true") == 0 || strcmp(arg, "false") == 0) return false;
+    if (strcmp(arg, "null") == 0) return false;
+    // Looks like a variable reference (identifier)
+    return (*arg >= 'a' && *arg <= 'z') || (*arg >= 'A' && *arg <= 'Z') || *arg == '_';
 }
 
 static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
@@ -2179,6 +2388,24 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
     if (node->type == KRY_NODE_COMPONENT) {
         // Check if this is a custom component instantiation
         if (ctx->manifest && is_custom_component(node->name, ctx->manifest)) {
+
+            // SPECIAL CASE: When in template context (param_count == 0) and the component
+            // has arguments that look like variable references, preserve it as a component
+            // reference for runtime instantiation. This supports patterns like HabitPanel(habit)
+            // inside for loops.
+            if (ctx->param_count == 0 && node->arguments && is_variable_reference(node->arguments)) {
+                // Create a placeholder component with component_ref and component_props
+                IRComponent* ref_comp = ir_create_component(IR_COMPONENT_CUSTOM);
+                if (ref_comp) {
+                    ref_comp->component_ref = strdup(node->name);
+                    // Store props as JSON for serialization
+                    // Format: {"arg": "expression"}
+                    char props_json[256];
+                    snprintf(props_json, sizeof(props_json), "{\"arg\":\"%s\"}", node->arguments);
+                    ref_comp->component_props = strdup(props_json);
+                }
+                return ref_comp;
+            }
 
             // Generate unique instance ID
             static uint32_t instance_counter = 0;
@@ -2561,6 +2788,7 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                             // Clean up dynamically allocated JSON
                             if (json_buffer_ptr) {
                                 free(json_buffer_ptr);
+                                json_buffer_ptr = NULL;  // Reset to avoid use-after-free
                             }
                         }
 
@@ -3079,14 +3307,10 @@ static IRComponent* ir_component_clone_tree(IRComponent* source) {
 static void merge_component_trees(IRComponent* parent, IRComponent* child_template) {
     if (!parent || !child_template) return;
 
-    fprintf(stderr, "[MERGE] Merging child template into parent (parent type=%d, child type=%d)\n",
-            parent->type, child_template->type);
-
     // 1. Merge style - carefully copy each field
     if (child_template->style) {
         if (!parent->style) {
             parent->style = calloc(1, sizeof(IRStyle));
-            fprintf(stderr, "[MERGE] Allocated parent style\n");
         }
         if (parent->style) {
             // Copy value types (not pointers)
@@ -3120,7 +3344,6 @@ static void merge_component_trees(IRComponent* parent, IRComponent* child_templa
     if (child_template->layout) {
         if (!parent->layout) {
             parent->layout = calloc(1, sizeof(IRLayout));
-            fprintf(stderr, "[MERGE] Allocated parent layout\n");
         }
         if (parent->layout) {
             // Copy value types
@@ -3194,8 +3417,6 @@ static void merge_component_trees(IRComponent* parent, IRComponent* child_templa
             }
         }
     }
-
-    fprintf(stderr, "[MERGE] Merge complete\n");
 }
 
 // Check if a component name refers to a custom component definition
@@ -3295,8 +3516,6 @@ static IRComponent* expand_component_template(
 
     // Handle inheritance
     if (def->extends_parent) {
-        fprintf(stderr, "[EXPAND] Component '%s' extends '%s' (depth=%d)\n", comp_name, def->extends_parent, chain_depth);
-
         // Check if parent is a built-in component
         IRComponentType parent_type = ir_component_type_from_string(def->extends_parent);
 
@@ -3305,32 +3524,25 @@ static IRComponent* expand_component_template(
 
         if (is_builtin) {
             // Parent is a built-in component
-            fprintf(stderr, "[EXPAND] Parent '%s' is a built-in component type\n", def->extends_parent);
             instance = ir_create_component(parent_type);
             if (!instance) {
-                fprintf(stderr, "[EXPAND] Failed to create built-in component of type '%s'\n", def->extends_parent);
                 if (new_chain) free(new_chain);
                 return NULL;
             }
         } else {
             // Parent is a custom component - recursive expansion
-            fprintf(stderr, "[EXPAND] Parent '%s' is a custom component, expanding recursively\n", def->extends_parent);
             instance = expand_component_template(def->extends_parent, manifest, instance_scope, new_chain, chain_depth + 1);
             if (!instance) {
-                fprintf(stderr, "[EXPAND] Failed to expand parent component '%s'\n", def->extends_parent);
                 if (new_chain) free(new_chain);
                 return NULL;
             }
         }
 
         // Merge child's template into parent
-        fprintf(stderr, "[EXPAND] About to merge '%s' template into parent\n", comp_name);
-        fprintf(stderr, "[EXPAND] parent=%p, template_root=%p\n", instance, def->template_root);
         merge_component_trees(instance, def->template_root);
 
     } else {
         // No inheritance - default to Container if no explicit extends
-        fprintf(stderr, "[EXPAND] Component '%s' has no extends, defaulting to Container\n", comp_name);
         instance = ir_create_component(IR_COMPONENT_CONTAINER);
         if (!instance) {
             if (new_chain) free(new_chain);
@@ -3650,6 +3862,19 @@ static void pop_import_stack(void) {
     }
 }
 
+// Reset the import stack for a fresh top-level parse
+static void reset_import_stack(void) {
+    // Free all remaining entries
+    for (int i = 0; i < g_import_depth; i++) {
+        if (g_import_stack[i].module_path) {
+            free(g_import_stack[i].module_path);
+            g_import_stack[i].module_path = NULL;
+        }
+    }
+    g_import_depth = 0;
+    // Keep the allocated capacity for reuse
+}
+
 // Register a module import with its exports for expression resolution
 static void register_module_import(ConversionContext* ctx,
                                      const char* import_name,
@@ -3889,13 +4114,16 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
 // KIR Generation (with manifest serialization)
 // ============================================================================
 
-// Internal implementation with base_directory support
-static char* ir_kry_to_kir_internal(const char* source, size_t length, const char* base_directory) {
+// Internal implementation with base_directory support and import expansion control
+static char* ir_kry_to_kir_internal_ex(const char* source, size_t length, const char* base_directory, bool skip_import_expansion) {
     if (!source) return NULL;
 
     if (length == 0) {
         length = strlen(source);
     }
+
+    // Reset import stack for fresh parse (important when called multiple times)
+    reset_import_stack();
 
     // Create parser
     KryParser* parser = kry_parser_create(source, length);
@@ -3924,12 +4152,16 @@ static char* ir_kry_to_kir_internal(const char* source, size_t length, const cha
         // Root wrapper with children - find the application node
         KryNode* child = ast->first_child;
         while (child) {
-            // Skip component definitions, variable declarations, style blocks, imports, and function declarations
+            // Skip component definitions, variable declarations, style blocks, imports,
+            // function declarations, struct declarations, and module returns
             if (!child->is_component_definition &&
                 child->type != KRY_NODE_VAR_DECL &&
                 child->type != KRY_NODE_STYLE_BLOCK &&
                 child->type != KRY_NODE_IMPORT &&
-                child->type != KRY_NODE_FUNCTION_DECL) {
+                child->type != KRY_NODE_FUNCTION_DECL &&
+                child->type != KRY_NODE_STRUCT_DECL &&
+                child->type != KRY_NODE_RETURN_STMT &&
+                child->type != KRY_NODE_MODULE_RETURN) {
                 root_node = child;
                 break;
             }
@@ -3943,11 +4175,8 @@ static char* ir_kry_to_kir_internal(const char* source, size_t length, const cha
         }
     }
 
-    if (!root_node) {
-        // No root application found, only component definitions
-        kry_parser_free(parser);
-        return NULL;
-    }
+    // Module-only files (no UI root) are valid - they contain just struct types and exports
+    // We'll proceed with a NULL root_node and still process structs/exports below
 
     // Create conversion context with manifest and logic block
     ConversionContext ctx;
@@ -3964,10 +4193,15 @@ static char* ir_kry_to_kir_internal(const char* source, size_t length, const cha
     ctx.target_platform = KRY_TARGET_LUA;       // Default to Lua target
     ctx.source_file_path = NULL;                // No source file path available yet
     ctx.base_directory = base_directory ? strdup(base_directory) : NULL;  // Set from parameter for import resolution
+    ctx.skip_import_expansion = skip_import_expansion;  // Control import expansion for multi-file KIR
 
-    // Create IR context for component ID generation
+    // Always create a fresh IR context for component ID generation
+    // Save any existing context to avoid losing plugin state
+    IRContext* old_context = g_ir_context;
     IRContext* ir_ctx = ir_create_context();
     ir_set_context(ir_ctx);
+    bool created_new_context = true;  // Always true now since we always create fresh
+    (void)old_context;  // May be used later if we need to preserve plugin state
 
     // Process top-level variable declarations (const/let/var)
     if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
@@ -4097,8 +4331,12 @@ static char* ir_kry_to_kir_internal(const char* source, size_t length, const cha
                         ir_source_structures_add_import(ctx.source_structures, import_name, import_module);
                     }
 
-                    // Load the imported module - ALL imports treated equally, no hardcoded plugins
-                    load_imported_module(&ctx, import_name, import_module);
+                    // Load the imported module - but skip expansion for multi-file KIR
+                    // When skip_import_expansion is true, we only record the import reference
+                    // and let the separate KIR file contain the actual component definition
+                    if (!ctx.skip_import_expansion) {
+                        load_imported_module(&ctx, import_name, import_module);
+                    }
                 }
             }
             import_node = import_node->next_sibling;
@@ -4133,6 +4371,19 @@ static char* ir_kry_to_kir_internal(const char* source, size_t length, const cha
                 }
             }
             struct_node = struct_node->next_sibling;
+        }
+    }
+
+    // Process module-level return statements (exports)
+    // This handles module-only files like types.kry that only export structs/functions
+    if (ast->name && strcmp(ast->name, "Root") == 0 && ast->first_child) {
+        KryNode* export_node = ast->first_child;
+        while (export_node) {
+            if (export_node->type == KRY_NODE_MODULE_RETURN) {
+                // Convert module return to exports
+                convert_module_return(&ctx, export_node);
+            }
+            export_node = export_node->next_sibling;
         }
     }
 
@@ -4402,7 +4653,6 @@ static char* ir_kry_to_kir_internal(const char* source, size_t length, const cha
         node_count++;
 
         if (def_node->is_component_definition && def_node->name) {
-
             // Convert the component definition template
             IRComponent* template_comp = convert_node(&ctx, def_node);
 
@@ -4433,27 +4683,43 @@ static char* ir_kry_to_kir_internal(const char* source, size_t length, const cha
         def_node = def_node->next_sibling;
     }
 
-    // Convert AST to IR
-    IRComponent* root = convert_node(&ctx, root_node);
+    // Convert AST to IR (may be NULL for module-only files like types.kry)
+    IRComponent* root = root_node ? convert_node(&ctx, root_node) : NULL;
 
     // Free parser (includes AST)
     kry_parser_free(parser);
 
-    if (!root) {
+    // Module-only files are valid even without a UI root component
+    // They contain struct types, exports, imports, variables, etc.
+    bool has_content = root != NULL ||
+                       (ctx.source_structures && (
+                           ctx.source_structures->struct_type_count > 0 ||
+                           ctx.source_structures->export_count > 0 ||
+                           ctx.source_structures->import_count > 0 ||
+                           ctx.source_structures->var_decl_count > 0));
+
+    if (!has_content) {
         if (ctx.manifest) {
             ir_reactive_manifest_destroy(ctx.manifest);
         }
         if (ctx.logic_block) {
             ir_logic_block_free(ctx.logic_block);
         }
+        if (ctx.source_structures) {
+            ir_source_structures_destroy(ctx.source_structures);
+        }
+        if (ctx.base_directory) {
+            free((char*)ctx.base_directory);
+        }
         return NULL;
     }
 
-    // Create source metadata
-    IRSourceMetadata metadata;
+    // Create source metadata (initialize ALL fields to avoid garbage pointers)
+    IRSourceMetadata metadata = {0};  // Zero-initialize all fields
     metadata.source_language = "kry";
     metadata.compiler_version = "kryon-1.0.0";
-    metadata.timestamp = NULL;  // TODO: Add timestamp
+    metadata.timestamp = NULL;
+    metadata.source_file = NULL;
 
     // Serialize with complete KIR format (manifest + logic_block + metadata + source_structures)
     char* json = ir_serialize_json_complete(root, ctx.manifest, ctx.logic_block, &metadata, ctx.source_structures);
@@ -4472,19 +4738,29 @@ static char* ir_kry_to_kir_internal(const char* source, size_t length, const cha
     if (ctx.base_directory) {
         free((char*)ctx.base_directory);
     }
-    ir_destroy_context(ir_ctx);  // Clean up IR context
+    // Only destroy context if we created it (don't destroy context from plugin loading)
+    if (created_new_context) {
+        ir_destroy_context(ir_ctx);
+        ir_set_context(NULL);  // Clear global pointer to avoid dangling reference
+    }
 
     return json;
 }
 
 // Public API: Convert .kry source to KIR JSON without base directory
 char* ir_kry_to_kir(const char* source, size_t length) {
-    return ir_kry_to_kir_internal(source, length, NULL);
+    return ir_kry_to_kir_internal_ex(source, length, NULL, false);
 }
 
 // Public API: Convert .kry source to KIR JSON with base directory for import resolution
 char* ir_kry_to_kir_with_base_dir(const char* source, size_t length, const char* base_directory) {
-    return ir_kry_to_kir_internal(source, length, base_directory);
+    return ir_kry_to_kir_internal_ex(source, length, base_directory, false);
+}
+
+// Public API: Convert .kry source to KIR JSON for single-module output (no import expansion)
+// This is used for multi-file KIR codegen where each module gets its own KIR file
+char* ir_kry_to_kir_single_module(const char* source, size_t length, const char* base_directory) {
+    return ir_kry_to_kir_internal_ex(source, length, base_directory, true);
 }
 
 // ============================================================================
@@ -4607,3 +4883,4 @@ IRKryParseResultEx ir_kry_parse_ex2(const char* source, size_t length) {
     kry_parser_free(parser);
     return result;
 }
+

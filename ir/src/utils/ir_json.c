@@ -178,7 +178,14 @@ char* ir_serialize_json_complete(
     IRSourceMetadata* source_metadata,
     IRSourceStructures* source_structures
 ) {
-    if (!root) return NULL;
+    // Allow module-only files (no root) if they have source structures with content
+    bool has_source_content = source_structures && (
+        source_structures->struct_type_count > 0 ||
+        source_structures->export_count > 0 ||
+        source_structures->import_count > 0 ||
+        source_structures->var_decl_count > 0);
+
+    if (!root && !has_source_content) return NULL;
 
     // Create wrapper object
     cJSON* wrapper = cJSON_CreateObject();
@@ -272,13 +279,13 @@ char* ir_serialize_json_complete(
         }
     }
 
-    // Add component tree
-    cJSON* componentJson = ir_json_serialize_component_recursive(root);
-    if (!componentJson) {
-        cJSON_Delete(wrapper);
-        return NULL;
+    // Add component tree (only if we have a root component)
+    if (root) {
+        cJSON* componentJson = ir_json_serialize_component_recursive(root);
+        if (componentJson) {
+            cJSON_AddItemToObject(wrapper, "root", componentJson);
+        }
     }
-    cJSON_AddItemToObject(wrapper, "root", componentJson);
 
     // Plugin requirements are now handled by the capability system
     // and do not need to be serialized in the KIR file

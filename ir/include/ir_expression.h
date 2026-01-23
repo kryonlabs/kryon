@@ -33,6 +33,7 @@ typedef enum {
 typedef enum {
     UNARY_OP_NEG,         // -x
     UNARY_OP_NOT,         // !x
+    UNARY_OP_TYPEOF,      // typeof x
 } IRUnaryOp;
 
 // Expression types
@@ -54,6 +55,10 @@ typedef enum {
     EXPR_COMPUTED_MEMBER, // Computed member: obj[key] where key is an expression
     EXPR_METHOD_CALL,     // Method call: obj.method(args)
     EXPR_GROUP,           // Grouped expression: (expr) for precedence
+    // NEW: Literal and function expression types
+    EXPR_ARRAY_LITERAL,   // Array literal: [1, 2, 3]
+    EXPR_OBJECT_LITERAL,  // Object literal: {key: value}
+    EXPR_ARROW_FUNCTION,  // Arrow function: (x) => x * 2
 } IRExprType;
 
 // Forward declarations
@@ -129,6 +134,27 @@ typedef struct IRExpression {
         struct {
             struct IRExpression* inner;     // Inner expression
         } group;
+
+        // NEW: Array literal: [1, 2, 3]
+        struct {
+            struct IRExpression** elements;
+            int element_count;
+        } array_literal;
+
+        // NEW: Object literal: {key: value}
+        struct {
+            char** keys;
+            struct IRExpression** values;
+            int property_count;
+        } object_literal;
+
+        // NEW: Arrow function: (x) => x * 2
+        struct {
+            char** params;
+            int param_count;
+            struct IRExpression* body;
+            bool is_expression_body;
+        } arrow_function;
     };
 } IRExpression;
 
@@ -238,6 +264,11 @@ IRExpression* ir_expr_member_access(IRExpression* object, const char* property);
 IRExpression* ir_expr_computed_member(IRExpression* object, IRExpression* key);
 IRExpression* ir_expr_method_call(IRExpression* receiver, const char* method_name, IRExpression** args, int arg_count);
 IRExpression* ir_expr_group(IRExpression* inner);
+
+// NEW: Literal and function expression constructors
+IRExpression* ir_expr_array_literal(IRExpression** elements, int count);
+IRExpression* ir_expr_object_literal(char** keys, IRExpression** values, int count);
+IRExpression* ir_expr_arrow_function(char** params, int param_count, IRExpression* body, bool is_expr_body);
 
 // Convenience binary operators
 IRExpression* ir_expr_add(IRExpression* left, IRExpression* right);

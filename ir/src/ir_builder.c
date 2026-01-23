@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "../include/ir_builder.h"
+#include "../include/ir_capability.h"
 #include "utils/ir_color_utils.h"
 #include "../include/ir_component_factory.h"
 #include "utils/ir_memory.h"
@@ -138,6 +139,8 @@ void ir_destroy_context(IRContext* context) {
 
 void ir_set_context(IRContext* context) {
     g_ir_context = context;
+    // Notify capability system that context changed to clear stale pointers
+    ir_capability_on_context_change();
 }
 
 IRContext* ir_get_global_context(void) {
