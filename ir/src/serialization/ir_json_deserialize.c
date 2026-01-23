@@ -14,6 +14,7 @@
 #include "../include/ir_logic.h"
 #include "../style/ir_stylesheet.h"
 #include "../utils/ir_c_metadata.h"
+#include "../logic/ir_foreach.h"
 #include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1900,13 +1901,13 @@ IRComponentType ir_string_to_component_type(const char* str) {
     // Source structure types (for round-trip codegen)
     if (strcmp(str, "StaticBlock") == 0) return IR_COMPONENT_STATIC_BLOCK;
     if (strcmp(str, "ForLoop") == 0) return IR_COMPONENT_FOR_LOOP;
-    if (strcmp(str, "ForEach") == 0) return IR_COMPONENT_FOR_EACH;
+    if (strcmp(str, "For") == 0) return IR_COMPONENT_FOR_EACH;
     if (strcmp(str, "VarDecl") == 0) return IR_COMPONENT_VAR_DECL;
     if (strcmp(str, "Placeholder") == 0) return IR_COMPONENT_PLACEHOLDER;
     // Uppercase variants for source structure types
     if (strcmp(str, "STATICBLOCK") == 0) return IR_COMPONENT_STATIC_BLOCK;
     if (strcmp(str, "FORLOOP") == 0) return IR_COMPONENT_FOR_LOOP;
-    if (strcmp(str, "FOREACH") == 0) return IR_COMPONENT_FOR_EACH;
+    if (strcmp(str, "FOR") == 0) return IR_COMPONENT_FOR_EACH;
     if (strcmp(str, "VARDECL") == 0) return IR_COMPONENT_VAR_DECL;
     if (strcmp(str, "PLACEHOLDER") == 0) return IR_COMPONENT_PLACEHOLDER;
     return IR_COMPONENT_CONTAINER;
@@ -2648,6 +2649,12 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
     }
     if ((item = cJSON_GetObjectItem(json, "each_index_name")) != NULL && cJSON_IsString(item)) {
         component->each_index_name = strdup(item->valuestring);
+    }
+
+    // Parse for_def (unified For loop definition with loop_type)
+    cJSON* for_def = cJSON_GetObjectItem(json, "for_def");
+    if (for_def && cJSON_IsObject(for_def)) {
+        component->foreach_def = ir_foreach_def_from_json(for_def);
     }
 
     // Generic custom_data (for elementId, data-* attributes, etc.)

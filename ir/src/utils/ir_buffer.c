@@ -4,7 +4,7 @@
  */
 
 #define _GNU_SOURCE
-#include "../utils/ir_buffer.h"
+#include "../../include/ir_buffer.h"
 #include "ir_log.h"
 #include <stdlib.h>
 #include <string.h>

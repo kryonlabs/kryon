@@ -1186,6 +1186,48 @@ static IRExpression* ir_expr_copy(IRExpression* expr) {
             copy->index_access.index = ir_expr_copy(expr->index_access.index);
             break;
 
+        // NEW: Literal and function expression types
+        case EXPR_ARRAY_LITERAL:
+            copy->array_literal.element_count = expr->array_literal.element_count;
+            if (expr->array_literal.element_count > 0 && expr->array_literal.elements) {
+                copy->array_literal.elements = (IRExpression**)calloc(expr->array_literal.element_count, sizeof(IRExpression*));
+                for (int i = 0; i < expr->array_literal.element_count; i++) {
+                    copy->array_literal.elements[i] = ir_expr_copy(expr->array_literal.elements[i]);
+                }
+            } else {
+                copy->array_literal.elements = NULL;
+            }
+            break;
+
+        case EXPR_OBJECT_LITERAL:
+            copy->object_literal.property_count = expr->object_literal.property_count;
+            if (expr->object_literal.property_count > 0 && expr->object_literal.keys && expr->object_literal.values) {
+                copy->object_literal.keys = (char**)calloc(expr->object_literal.property_count, sizeof(char*));
+                copy->object_literal.values = (IRExpression**)calloc(expr->object_literal.property_count, sizeof(IRExpression*));
+                for (int i = 0; i < expr->object_literal.property_count; i++) {
+                    copy->object_literal.keys[i] = expr->object_literal.keys[i] ? strdup(expr->object_literal.keys[i]) : NULL;
+                    copy->object_literal.values[i] = ir_expr_copy(expr->object_literal.values[i]);
+                }
+            } else {
+                copy->object_literal.keys = NULL;
+                copy->object_literal.values = NULL;
+            }
+            break;
+
+        case EXPR_ARROW_FUNCTION:
+            copy->arrow_function.param_count = expr->arrow_function.param_count;
+            copy->arrow_function.is_expression_body = expr->arrow_function.is_expression_body;
+            copy->arrow_function.body = ir_expr_copy(expr->arrow_function.body);
+            if (expr->arrow_function.param_count > 0 && expr->arrow_function.params) {
+                copy->arrow_function.params = (char**)calloc(expr->arrow_function.param_count, sizeof(char*));
+                for (int i = 0; i < expr->arrow_function.param_count; i++) {
+                    copy->arrow_function.params[i] = expr->arrow_function.params[i] ? strdup(expr->arrow_function.params[i]) : NULL;
+                }
+            } else {
+                copy->arrow_function.params = NULL;
+            }
+            break;
+
         default:
             break;
     }

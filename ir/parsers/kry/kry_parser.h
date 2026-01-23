@@ -138,6 +138,19 @@ char* ir_kry_to_kir(const char* source, size_t length);
 char* ir_kry_to_kir_with_base_dir(const char* source, size_t length, const char* base_directory);
 
 /**
+ * Convert .kry source to KIR JSON without expanding imports.
+ *
+ * Used for multi-file KIR codegen where each module gets its own KIR file.
+ * Imports are recorded as references but not expanded inline.
+ *
+ * @param source .kry source text (UTF-8 encoded)
+ * @param length Length of source in bytes (0 for null-terminated string)
+ * @param base_directory Directory containing the source file (for import resolution)
+ * @return char* JSON string in KIR format (caller must free), or NULL on error
+ */
+char* ir_kry_to_kir_single_module(const char* source, size_t length, const char* base_directory);
+
+/**
  * Parse .kry and report errors
  *
  * Same as ir_kry_parse(), but also provides detailed error messages.

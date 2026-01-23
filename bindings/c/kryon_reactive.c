@@ -8,7 +8,7 @@
 #define _POSIX_C_SOURCE 200809L
 #define _GNU_SOURCE
 #include "kryon_reactive.h"
-#include "../../ir/include/include/ir_constants.h"
+#include "../../ir/src/utils/ir_constants.h"  // For ir_grow_capacity
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

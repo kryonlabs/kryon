@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 #include "../include/ir_serialization.h"
-#include "../utils/ir_buffer.h"
+#include "../../include/ir_buffer.h"
 #include "ir_serialize_types.h"
 #include "../include/ir_builder.h"
 #include "../logic/ir_foreach_expand.h"  // New modular ForEach expansion

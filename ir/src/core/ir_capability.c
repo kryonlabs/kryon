@@ -868,6 +868,16 @@ void ir_capability_set_root_component(IRComponent* root) {
     g_registry.root_component = root;
 }
 
+/**
+ * Called when the global IR context changes to clear stale pointers
+ * that may reference components from the old context.
+ */
+void ir_capability_on_context_change(void) {
+    if (g_registry.is_initialized) {
+        g_registry.root_component = NULL;
+    }
+}
+
 void ir_capability_registry_shutdown(void) {
     if (!g_registry.is_initialized) {
         return;

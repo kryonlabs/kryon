@@ -3,6 +3,7 @@
  */
 
 #include "kry_expression.h"
+#include "kry_arrow_registry.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -105,6 +106,99 @@ int main(void) {
 
     // Complex expressions
     TEST("Complex expression", "items.map(x => x * 2)", "items.map(function(x) return (x * 2); end)", "items.map((x) => (x * 2))");
+
+    // Test C arrow function code generation
+    printf("========================================\n");
+    printf("C Arrow Function Tests\n");
+    printf("========================================\n\n");
+
+    // Test 1: Simple arrow function without captures
+    {
+        printf("Test: Simple arrow function (no captures)\n");
+        char* error = NULL;
+        KryExprNode* node = kry_expr_parse("x => x * 2", &error);
+        if (node) {
+            KryArrowRegistry* reg = kry_arrow_registry_create();
+            KryExprOptions opts = {KRY_TARGET_C, false, 0, reg, "test"};
+            char* c_code = kry_expr_transpile(node, &opts, NULL);
+
+            printf("  Expression: x => x * 2\n");
+            printf("  Inline C:   %s\n", c_code);
+
+            char* stubs = kry_arrow_generate_stubs(reg);
+            printf("  Generated stubs:\n%s", stubs);
+
+            free(c_code);
+            free(stubs);
+            kry_arrow_registry_free(reg);
+            kry_expr_free(node);
+        } else {
+            printf("  FAIL: Parse error: %s\n", error);
+            free(error);
+        }
+        printf("\n");
+    }
+
+    // Test 2: Arrow function with captures
+    {
+        printf("Test: Arrow function with captures\n");
+        char* error = NULL;
+        KryExprNode* node = kry_expr_parse("() => deleteHabit(habit, index)", &error);
+        if (node) {
+            KryArrowRegistry* reg = kry_arrow_registry_create();
+            KryExprOptions opts = {KRY_TARGET_C, false, 0, reg, "click"};
+            char* c_code = kry_expr_transpile(node, &opts, NULL);
+
+            printf("  Expression: () => deleteHabit(habit, index)\n");
+            printf("  Inline C:   %s\n", c_code);
+
+            char* stubs = kry_arrow_generate_stubs(reg);
+            printf("  Generated stubs:\n%s", stubs);
+
+            // Generate context init
+            char* ctx_init = kry_arrow_generate_ctx_init(reg, 0);
+            if (ctx_init) {
+                printf("  Context init: %s\n", ctx_init);
+                free(ctx_init);
+            }
+
+            free(c_code);
+            free(stubs);
+            kry_arrow_registry_free(reg);
+            kry_expr_free(node);
+        } else {
+            printf("  FAIL: Parse error: %s\n", error);
+            free(error);
+        }
+        printf("\n");
+    }
+
+    // Test 3: Arrow function with parameter and captures
+    {
+        printf("Test: Arrow function with parameter and captures\n");
+        char* error = NULL;
+        KryExprNode* node = kry_expr_parse("value => habit.name = value", &error);
+        if (node) {
+            KryArrowRegistry* reg = kry_arrow_registry_create();
+            KryExprOptions opts = {KRY_TARGET_C, false, 0, reg, "change"};
+            char* c_code = kry_expr_transpile(node, &opts, NULL);
+
+            printf("  Expression: value => habit.name = value\n");
+            printf("  Inline C:   %s\n", c_code);
+
+            char* stubs = kry_arrow_generate_stubs(reg);
+            printf("  Generated stubs:\n%s", stubs);
+
+            free(c_code);
+            free(stubs);
+            kry_arrow_registry_free(reg);
+            kry_expr_free(node);
+        } else {
+            printf("  FAIL: Parse error: %s\n", error);
+            free(error);
+        }
+        printf("\n");
+    }
 
     printf("========================================\n");
     printf("Results: %d/%d tests passed\n", pass_count, test_count);

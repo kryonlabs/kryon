@@ -26,7 +26,8 @@ static bool is_valid_target(const char* target) {
     return strcmp(target, "kry") == 0 ||
            strcmp(target, "tsx") == 0 ||
            strcmp(target, "lua") == 0 ||
-           strcmp(target, "c") == 0;
+           strcmp(target, "c") == 0 ||
+           strcmp(target, "kir") == 0;
 }
 
 /**
@@ -50,6 +51,7 @@ static void print_codegen_usage(const char* error) {
     fprintf(stderr, "  tsx    - Generate TypeScript React code\n");
     fprintf(stderr, "  lua    - Generate Lua source code (multi-file)\n");
     fprintf(stderr, "  c      - Generate C source code\n");
+    fprintf(stderr, "  kir    - Generate KIR files (multi-file, preserves module structure)\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Examples:\n");
     fprintf(stderr, "  kryon codegen kry\n");
@@ -111,8 +113,9 @@ int cmd_codegen(int argc, char** argv) {
             print_codegen_usage("--lang= required when using file input");
             return 1;
         }
-    } else if (argc >= 3 && strstr(argv[1], ".kir") != NULL) {
-        // Old positional syntax: codegen <target> <input.kir> <output>
+    } else if (argc >= 3 && (strstr(argv[1], ".kir") != NULL || strstr(argv[1], ".kry") != NULL ||
+                             strstr(argv[1], ".lua") != NULL || strstr(argv[1], ".tsx") != NULL)) {
+        // Positional syntax: codegen <target> <input> <output>
         target = first;
         input = argv[1];
         output = argv[2];
@@ -160,6 +163,16 @@ int cmd_codegen(int argc, char** argv) {
     if (!file_exists(input)) {
         fprintf(stderr, "Error: Input file not found: %s\n", input);
         return 1;
+    }
+
+    // Special handling for kir target: use multi-file KIR generation for .kry source
+    if (strcmp(target, "kir") == 0) {
+        // Check if input is a .kry file
+        const char* ext = strrchr(input, '.');
+        if (ext && strcmp(ext, ".kry") == 0) {
+            // Use codegen_pipeline for multi-file KIR generation
+            return codegen_pipeline(input, target, output, NULL);
+        }
     }
 
     // Compile to KIR first if needed

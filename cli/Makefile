@@ -58,7 +58,8 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/build/luajit_compile.c \
        $(SRC_DIR)/build/embed_bytecode.c \
        $(SRC_DIR)/build/plugin_discovery.c \
-       $(SRC_DIR)/build/luajit_link.c
+       $(SRC_DIR)/build/luajit_link.c \
+       $(SRC_DIR)/build/c_desktop.c
 
 # Object files
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
@@ -228,6 +229,11 @@ install: $(TARGET)
 	$(MAKE) -C ../ir all
 	mkdir -p $(HOME)/.local/share/kryon/build
 	cp ../build/libkryon_ir.so $(HOME)/.local/share/kryon/build/
+	# Install static libraries for C desktop builds
+	cp ../build/libkryon_ir.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+	cp ../build/libkryon_desktop.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+	cp ../build/libkryon_sdl3.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+	cp ../build/libkryon_common.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
 	# Also install to .local/lib for dynamic linker
 	mkdir -p $(HOME)/.local/lib
 	cp ../build/libkryon_ir.so $(HOME)/.local/lib/
@@ -240,6 +246,13 @@ install: $(TARGET)
 	# Install C bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/c
 	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
+	# Install IR headers (required by C bindings - relative path ../../ir/include/)
+	mkdir -p $(HOME)/.local/share/kryon/ir/include
+	cp ../ir/include/*.h $(HOME)/.local/share/kryon/ir/include/
+	# Install runtime desktop headers (required by C bindings - relative path ../../runtime/desktop/)
+	mkdir -p $(HOME)/.local/share/kryon/runtime/desktop/abstract
+	cp ../runtime/desktop/*.h $(HOME)/.local/share/kryon/runtime/desktop/
+	cp ../runtime/desktop/abstract/*.h $(HOME)/.local/share/kryon/runtime/desktop/abstract/
 	# Install vendor files (Fengari, etc.) for web codegen
 	$(MAKE) -C ../codegens/web install-vendor
 	# Install dev server script

@@ -5,6 +5,7 @@
 *.a
 *.lib
 *.o
+__pycache__
 
 # Build artifacts
 /build/

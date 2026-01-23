@@ -139,6 +139,7 @@ UTIL_SOURCES = src/utils/ir_string_builder.c \
 PARSER_SOURCES = parsers/kry/kry_parser.c \
                  parsers/kry/kry_to_ir.c \
                  parsers/kry/kry_expression.c \
+                 parsers/kry/kry_arrow_registry.c \
                  parsers/kry/kry_struct_parser.c \
                  parsers/kry/kry_struct_to_ir.c \
                  parsers/kry/kry_ir_validator.c \

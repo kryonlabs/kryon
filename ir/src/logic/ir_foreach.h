@@ -30,6 +30,13 @@ typedef struct IRForEachTemplate {
     uint32_t binding_capacity;
 } IRForEachTemplate;
 
+// Loop type enum - distinguishes different loop syntaxes
+typedef enum {
+    IR_LOOP_TYPE_FOR_IN = 0,        // for item in collection { }
+    IR_LOOP_TYPE_FOR_RANGE,         // for i in 0..10 { }
+    IR_LOOP_TYPE_FOR_EACH           // for each item in collection { } (explicit runtime)
+} IRLoopType;
+
 // Data source types
 typedef enum {
     FOREACH_SOURCE_NONE = 0,        // Not set
@@ -47,6 +54,7 @@ typedef struct IRForEachDataSource {
 
 // Complete ForEach definition
 typedef struct IRForEachDef {
+    IRLoopType loop_type;           // Type of loop (for_in, for_range, for_each)
     char* item_name;                // Loop variable name (e.g., "day", "item")
     char* index_name;               // Index variable name (e.g., "i", "index")
     IRForEachDataSource source;     // Data source specification
