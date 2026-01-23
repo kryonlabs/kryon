@@ -29,12 +29,16 @@ extern "C" {
 // App State Structure
 // ============================================================================
 
+// Forward declaration for state manager
+struct IRStateManager;
+
 typedef struct {
     IRContext* context;
     IRComponent* root;
     char* window_title;
     int window_width;
     int window_height;
+    struct IRStateManager* state_manager;  // For cleanup
 } KryonAppState;
 
 extern KryonAppState g_app_state;

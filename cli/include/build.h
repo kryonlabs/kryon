@@ -102,21 +102,6 @@ int build_with_docs_template(const char* content_kir_file,
  */
 #ifndef KRYON_MINIMAL_BUILD
 int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char* renderer);
-
-/**
- * Execute a KIR file on desktop with hot reload support.
- *
- * Uses per-instance API for state preservation during reloads.
- * Watches for file changes and automatically reloads the KIR file.
- *
- * @param kir_file  Path to the KIR file
- * @param desktop_lib   Path to desktop renderer library (NULL to detect)
- * @param renderer  Override renderer: "sdl3", "raylib", or NULL (use config)
- * @param watch_path  Directory to watch for file changes (NULL for KIR file directory)
- * @return 0 on success, non-zero on failure
- */
-int run_kir_on_desktop_with_hot_reload(const char* kir_file, const char* desktop_lib,
-                                        const char* renderer, const char* watch_path);
 #endif
 
 /* ============================================================================

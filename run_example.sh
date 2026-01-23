@@ -2,20 +2,19 @@
 # =============================================================================
 # Kryon Example Runner
 # =============================================================================
-# Runs .kry examples through the full pipeline:
+# Runs .kry examples through the full native pipeline:
+#   .kry → .kir → .c → native executable
 #
-# Basic usage (.kry → .kir → render on desktop):
+# Basic usage:
 #   ./run_example.sh hello_world
 #
-# Specify target platform (.kry → .kir → render on target):
-#   ./run_example.sh hello_world terminal
-#   ./run_example.sh 10 desktop
-#   ./run_example.sh 5 android
+# Specify example by number:
+#   ./run_example.sh 8
 #
-# Available targets: desktop (default), terminal, android
-#
-# Output:
-#   build/ir/   - Generated .kir files
+# Output (all in build/ir/):
+#   build/ir/<name>.kir      - Intermediate representation
+#   build/ir/<name>/main.c   - Generated C code
+#   build/ir/<name>/app      - Native executable
 #
 # =============================================================================
 
@@ -61,18 +60,13 @@ done
 
 # Get example name
 if [ -z "$1" ]; then
-    echo -e "${YELLOW}Usage:${NC} ./run_example.sh <number|name> [target]"
+    echo -e "${YELLOW}Usage:${NC} ./run_example.sh <number|name>"
+    echo ""
+    echo -e "${BLUE}Pipeline:${NC} .kry → .kir → .c → native"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
-    echo "  ./run_example.sh 8                 # Run example #8 with desktop (default)"
-    echo "  ./run_example.sh 8 terminal        # Run example #8 in terminal"
-    echo "  ./run_example.sh hello_world       # Run by name with desktop"
-    echo "  ./run_example.sh hello_world terminal  # Run by name in terminal"
-    echo ""
-    echo -e "${BLUE}Available targets:${NC}"
-    echo "  • desktop   - SDL3 desktop window (default)"
-    echo "  • terminal  - Terminal UI (TUI)"
-    echo "  • android   - Android device"
+    echo "  ./run_example.sh 8            # Run example #8"
+    echo "  ./run_example.sh hello_world  # Run by name"
     echo ""
     echo -e "${BLUE}Available examples:${NC}"
     i=1
@@ -84,7 +78,6 @@ if [ -z "$1" ]; then
 fi
 
 EXAMPLE="$1"
-TARGET="${2:-desktop}"  # Default to desktop target
 
 # If input is a number, convert to example name
 if [[ "$EXAMPLE" =~ ^[0-9]+$ ]]; then
@@ -104,11 +97,14 @@ else
     BASENAME="$EXAMPLE"
 fi
 
-# Output paths
+# Output paths (all in build/ir/)
 KIR_FILE="build/ir/${BASENAME}.kir"
+C_DIR="build/ir/${BASENAME}"
+C_FILE="${C_DIR}/main.c"
+NATIVE_BIN="${C_DIR}/app"
 
 # =============================================================================
-# MAIN: .kry → .kir → render
+# MAIN: .kry → .kir → .c → native
 # =============================================================================
 
 # Determine input file path
@@ -124,12 +120,12 @@ if [ ! -f "$INPUT_FILE" ]; then
 fi
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}Kryon Example Runner${NC}"
+echo -e "${BLUE}Kryon Example Runner${NC} - Native Pipeline"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 # Step 1: Compile .kry to .kir
-echo -e "${YELLOW}[1/3]${NC} Parsing ${GREEN}$INPUT_FILE${NC} → ${GREEN}$KIR_FILE${NC}"
+echo -e "${YELLOW}[1/4]${NC} Parsing ${GREEN}$INPUT_FILE${NC} → ${GREEN}$KIR_FILE${NC}"
 ~/.local/bin/kryon compile "$INPUT_FILE" --output="$KIR_FILE" --no-cache
 
 if [ -f "$KIR_FILE" ]; then
@@ -141,13 +137,47 @@ fi
 
 echo ""
 
-# Step 3: Run the .kir file (not the original .kry)
-echo -e "${YELLOW}[3/3]${NC} Running ${GREEN}$KIR_FILE${NC} on ${CYAN}$TARGET${NC} target"
+# Step 2: Generate C code from .kir
+echo -e "${YELLOW}[2/4]${NC} Codegen ${GREEN}$KIR_FILE${NC} → ${GREEN}$C_FILE${NC}"
+rm -rf "$C_DIR"
+~/.local/bin/kryon codegen c "$KIR_FILE" "$C_DIR"
+
+if [ -f "$C_FILE" ]; then
+    echo -e "      ${GREEN}✓${NC} Generated $(wc -l < "$C_FILE") lines of C code"
+else
+    echo -e "      ${RED}✗${NC} Failed to generate C code"
+    exit 1
+fi
+
+echo ""
+
+# Step 3: Compile C to native executable
+echo -e "${YELLOW}[3/4]${NC} Compiling ${GREEN}$C_FILE${NC} → ${GREEN}$NATIVE_BIN${NC}"
+
+# Compiler flags
+CC="${CC:-gcc}"
+CFLAGS="-std=gnu99 -O2"
+INCLUDES="-I./bindings/c -I./ir/include"
+LIBS="-L./build -L./bindings/c -lkryon_desktop -lkryon_c -lkryon_ir -lraylib -lm"
+
+if $CC $CFLAGS $INCLUDES "$C_FILE" -o "$NATIVE_BIN" $LIBS 2>&1; then
+    echo -e "      ${GREEN}✓${NC} Compiled native executable"
+else
+    echo -e "      ${RED}✗${NC} Compilation failed"
+    exit 1
+fi
+
+echo ""
+
+# Step 4: Run native executable
+echo -e "${YELLOW}[4/4]${NC} Running ${GREEN}$NATIVE_BIN${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-~/.local/bin/kryon run "$KIR_FILE" --target="$TARGET"
+"$NATIVE_BIN"
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}Output files:${NC}"
-echo "  • IR:  $KIR_FILE"
+echo "  • KIR:    $KIR_FILE"
+echo "  • C:      $C_FILE"
+echo "  • Native: $NATIVE_BIN"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

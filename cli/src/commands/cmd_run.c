@@ -392,11 +392,8 @@ static int run_web_target(const char* kir_file) {
  * KIR File Execution
  * ============================================================================ */
 
-static int run_kir_file(const char* kir_file, const char* target_platform, const char* renderer,
-                         bool hot_reload, const char* watch_path) {
+static int run_kir_file(const char* kir_file, const char* target_platform, const char* renderer) {
     (void)renderer;
-    (void)hot_reload;
-    (void)watch_path;
 
     // Android is a special case (not in handler registry)
     if (strcmp(target_platform, "android") == 0) {
@@ -406,16 +403,6 @@ static int run_kir_file(const char* kir_file, const char* target_platform, const
     // Use target handler registry for standard targets
     TargetHandler* handler = target_handler_find(target_platform);
     if (handler && handler->run_handler) {
-        // For desktop with hot reload, use special handling
-        if (strcmp(target_platform, "desktop") == 0 && hot_reload) {
-#ifndef KRYON_MINIMAL_BUILD
-            return run_kir_on_desktop_with_hot_reload(kir_file, NULL, renderer, watch_path);
-#else
-            fprintf(stderr, "Error: Desktop target not available in minimal build (no SDL3/raylib support)\n");
-            return 1;
-#endif
-        }
-        // Use handler's run function
         return target_handler_run(target_platform, kir_file, NULL);
     }
 
@@ -567,36 +554,28 @@ int cmd_run(int argc, char** argv) {
     bool free_target_platform = false;
     bool explicit_target = false;
     const char* renderer_override = NULL;
-    bool enable_hot_reload = false;
-    const char* watch_path = NULL;
 
-    // Parse --target, --renderer, and --watch flags
-    int new_argc = 0;
-    char* new_argv[128];
+    // Parse --target and --renderer flags, collecting non-flag args in new_argv
+    // IMPORTANT: Do NOT modify the original argv array to avoid double-free issues
+    int pos_argc = 0;  // Count of positional (non-flag) arguments
+    char* pos_argv[128];  // Positional arguments only
     for (int i = 0; i < argc; i++) {
         if (strncmp(argv[i], "--target=", 9) == 0) {
             target_platform = argv[i] + 9;
             explicit_target = true;
         } else if (strncmp(argv[i], "--renderer=", 11) == 0) {
             renderer_override = argv[i] + 11;
-        } else if (strcmp(argv[i], "--watch") == 0 || strcmp(argv[i], "-w") == 0) {
-            enable_hot_reload = true;
-        } else if (strncmp(argv[i], "--watch-path=", 13) == 0) {
-            enable_hot_reload = true;
-            watch_path = argv[i] + 13;
         } else if (strncmp(argv[i], "--", 2) == 0 && strchr(argv[i], '=')) {
             fprintf(stderr, "Error: Unknown flag '%s'\n", argv[i]);
             return 1;
-        } else if (new_argc < 128) {
-            new_argv[new_argc++] = argv[i];
+        } else if (pos_argc < 128) {
+            pos_argv[pos_argc++] = argv[i];
         }
     }
 
-    // Update argc/argv to exclude --target flag
-    argc = new_argc;
-    for (int i = 0; i < new_argc; i++) {
-        argv[i] = new_argv[i];
-    }
+    // Use positional args from now on (don't modify original argv)
+    argc = pos_argc;
+    // Note: We use pos_argv directly below instead of modifying argv
 
     // Load config early to check for target names in positional args
     KryonConfig* early_config = config_find_and_load();
@@ -604,12 +583,12 @@ int cmd_run(int argc, char** argv) {
     // Check if first positional argument is a target name
     if (!explicit_target && argc >= 1 && early_config && early_config->build_targets_count > 0) {
         for (int i = 0; i < early_config->build_targets_count; i++) {
-            if (early_config->build_targets[i] && strcmp(argv[0], early_config->build_targets[i]) == 0) {
-                target_platform = argv[0];
+            if (early_config->build_targets[i] && strcmp(pos_argv[0], early_config->build_targets[i]) == 0) {
+                target_platform = pos_argv[0];
                 explicit_target = true;
-                // Shift args
+                // Shift args in pos_argv (safe - it's our local array)
                 for (int j = 0; j < argc - 1; j++) {
-                    argv[j] = argv[j + 1];
+                    pos_argv[j] = pos_argv[j + 1];
                 }
                 argc--;
                 break;
@@ -671,7 +650,7 @@ int cmd_run(int argc, char** argv) {
         config_free(early_config);
         early_config = NULL;  // Mark as freed
     } else {
-        target_file = argv[0];
+        target_file = pos_argv[0];
 
         // Validate config if it exists (reuse early_config)
         if (early_config) {
@@ -731,8 +710,7 @@ int cmd_run(int argc, char** argv) {
 
     // KIR files: execute directly
     if (strcmp(frontend, "kir") == 0) {
-        result = run_kir_file(target_file, target_platform, renderer_override,
-                             enable_hot_reload, watch_path);
+        result = run_kir_file(target_file, target_platform, renderer_override);
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
         return result;
@@ -756,8 +734,7 @@ int cmd_run(int argc, char** argv) {
     }
 
     printf("✓ Compiled to KIR: %s\n", kir_file);
-    result = run_kir_file(kir_file, target_platform, renderer_override,
-                         enable_hot_reload, watch_path);
+    result = run_kir_file(kir_file, target_platform, renderer_override);
 
     if (free_target) free((char*)target_file);
     if (free_target_platform) free((char*)target_platform);

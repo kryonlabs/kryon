@@ -14,13 +14,14 @@
 #include "../../runtime/desktop/ir_desktop_renderer.h"
 #include "../../ir/include/ir_executor.h"
 #include "../../ir/include/ir_state.h"
+#include "../../ir/include/ir_capability.h"
 
 // ============================================================================
 // Internal State
 // ============================================================================
 
 // App state is now defined in kryon.h
-KryonAppState g_app_state = {NULL, NULL, NULL, 800, 600};
+KryonAppState g_app_state = {NULL, NULL, NULL, 800, 600, NULL};
 
 // ============================================================================
 // Event Handler Registry
@@ -303,6 +304,7 @@ void kryon_init(const char* title, int width, int height) {
     if (state_mgr && executor) {
         ir_state_manager_set_executor(state_mgr, executor);
         ir_state_set_global(state_mgr);
+        g_app_state.state_manager = state_mgr;  // Store for cleanup
         printf("[kryon] State manager initialized\n");
     } else {
         fprintf(stderr, "[kryon] Warning: Failed to create state manager\n");
@@ -356,10 +358,24 @@ bool kryon_finalize(const char* output_path) {
 }
 
 void kryon_cleanup(void) {
+    // Clear capability registry's root reference BEFORE destroying the component tree
+    ir_capability_set_root_component(NULL);
+
+    // Clear global state manager reference BEFORE destroying it
+    ir_state_set_global(NULL);
+
+    // Destroy state manager (this also destroys the executor)
+    if (g_app_state.state_manager) {
+        ir_state_manager_destroy(g_app_state.state_manager);
+        g_app_state.state_manager = NULL;
+    }
+
+    // Destroy context (this destroys the root component)
     if (g_app_state.context) {
         ir_destroy_context(g_app_state.context);
         g_app_state.context = NULL;
     }
+
     if (g_app_state.window_title) {
         free(g_app_state.window_title);
         g_app_state.window_title = NULL;
@@ -367,6 +383,8 @@ void kryon_cleanup(void) {
     cleanup_handlers();
     cleanup_metadata();
     g_app_state.root = NULL;
+
+    printf("[kryon] Shutdown complete\n");
 }
 
 int kryon_get_renderer_backend_from_config(void) {
