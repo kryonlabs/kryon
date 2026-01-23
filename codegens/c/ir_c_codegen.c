@@ -1314,7 +1314,14 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
     if (strcmp(key, "background") == 0 && value->valuestring) {
         if (!*first_prop) fprintf(ctx->output, ",\n");
         write_indent(ctx);
-        fprintf(ctx->output, "BG_COLOR(\"%s\")", value->valuestring);
+        // Convert color string "#RRGGBB" to hex 0xRRGGBB
+        const char* color_str = value->valuestring;
+        if (color_str[0] == '#' && strlen(color_str) >= 7) {
+            fprintf(ctx->output, "BG_COLOR(0x%s)", color_str + 1);  // Skip '#'
+        } else {
+            // Fallback for non-hex colors
+            fprintf(ctx->output, "BG_COLOR(0x%s)", color_str);
+        }
         *first_prop = false;
         return true;
     }
@@ -1345,7 +1352,13 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
         } else if (strcmp(value->valuestring, "#800080") == 0) {
             fprintf(ctx->output, "COLOR_PURPLE");
         } else {
-            fprintf(ctx->output, "COLOR(\"%s\")", value->valuestring);
+            // Convert color string "#RRGGBB" to hex 0xRRGGBB
+            const char* color_str = value->valuestring;
+            if (color_str[0] == '#' && strlen(color_str) >= 7) {
+                fprintf(ctx->output, "TEXT_COLOR(0x%s)", color_str + 1);  // Skip '#'
+            } else {
+                fprintf(ctx->output, "TEXT_COLOR(0x%s)", color_str);
+            }
         }
         *first_prop = false;
         return true;
