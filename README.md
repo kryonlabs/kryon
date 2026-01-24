@@ -18,7 +18,7 @@ Converts KRY expressions (`x => x * 2`, `obj.prop + 1`) to target language synta
 | TypeScript | ❌ | |
 | Swift | ❌ | |
 | Go | ❌ | |
-| [Hare](https://harelang.org/) | ❌ | |
+| [Hare](https://harelang.org/) | ⚠️ | Basic support (no templates) |
 
 ### Code Generators
 
@@ -50,10 +50,10 @@ FFI bindings for using Kryon from other languages.
 | TypeScript | ✅ | `bindings/typescript/` |
 | Lua | ✅ | `bindings/lua/` |
 | Kotlin | ✅ | `bindings/kotlin/` |
+| [Hare](https://harelang.org/) | ✅ | `bindings/hare/` |
 | Swift | ❌ | |
 | Go | ❌ | |
 | Rust | ❌ | |
-| [Hare](https://harelang.org/) | ❌ | |
 
 ### Expression Features
 
@@ -87,10 +87,13 @@ FFI bindings for using Kryon from other languages.
 | Pipeline | Status | Notes |
 |----------|--------|-------|
 | KRY -> KIR | ✅ | Native C parser |
+| Hare -> KIR | ✅ | NEW - Hare DSL parser |
 | KIR -> Web (HTML/CSS/JS) | ✅ | Full support |
 | KIR -> Lua source | ⚠️ | Skeleton only |
 | KIR -> C source | ✅ | Via codegen |
+| KIR -> Hare source | ✅ | Via codegen |
 | KRY -> Desktop (C/SDL3) | ❌ | `build_c_desktop()` not implemented |
+| Hare -> Desktop binary | ✅ | Via Hare compiler |
 | Lua -> Desktop binary | ✅ | Via LuaJIT |
 | Hot reload (desktop) | ✅ | Lua runtime only |
 | Hot reload (web) | ✅ | Dev server |
@@ -106,7 +109,7 @@ FFI bindings for using Kryon from other languages.
 ## Architecture
 
 ```
-Source (.kry/.lua/.tsx/.c)
+Source (.kry/.lua/.tsx/.c/.ha)
     ↓
 Parser (ir/parsers/)
     ↓
@@ -116,7 +119,7 @@ Code Generator (codegens/)
     ↓
 Target Source Code
     ↓
-Runtime (renderers/)
+Runtime (renderers/ or bindings/)
 ```
 
 ## Directory Structure
@@ -131,7 +134,8 @@ kryon/
 │       ├── lua/            # Lua parser
 │       ├── tsx/            # TSX parser
 │       ├── html/           # HTML parser
-│       └── c/              # C parser
+│       ├── c/              # C parser
+│       └── hare/           # Hare DSL parser
 ├── codegens/               # Code generators
 │   ├── lua/
 │   ├── tsx/
@@ -141,15 +145,15 @@ kryon/
 │   ├── hare/
 │   ├── kry/
 │   ├── markdown/
-│   ├── web/
-│   └── codegen_common.c    # Shared utilities
+│   └── web/
 ├── bindings/               # Language bindings
 │   ├── c/
 │   ├── python/
 │   ├── javascript/
 │   ├── typescript/
 │   ├── lua/
-│   └── kotlin/
+│   ├── kotlin/
+│   └── hare/               # Hare FFI bindings + DSL
 ├── renderers/              # Platform renderers
 │   ├── sdl3/
 │   ├── raylib/
