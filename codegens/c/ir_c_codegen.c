@@ -34,11 +34,15 @@ typedef struct {
     cJSON* reactive_manifest;   // reactive_manifest from KIR
     cJSON* reactive_vars;       // reactive_manifest.variables array
     bool has_reactive_state;    // True if any reactive variables exist
+    const char* current_scope;  // Current component scope during tree traversal (e.g., "Counter#0")
 } CCodegenContext;
 
 // ============================================================================
 // Utility Functions
 // ============================================================================
+
+// Forward declarations
+static char* generate_scoped_var_name(const char* name, const char* scope);
 
 static void write_indent(CCodegenContext* ctx) {
     for (int i = 0; i < ctx->indent_level; i++) {
@@ -1085,17 +1089,17 @@ static void generate_event_handlers(CCodegenContext* ctx) {
  *   - value += 1  →  kryon_signal_set(value_signal, kryon_signal_get(value_signal) + 1)
  *   - value -= 1  →  kryon_signal_set(value_signal, kryon_signal_get(value_signal) - 1)
  */
-static void transpile_kry_expression_to_c(CCodegenContext* ctx, const char* var_name, const char* op, int delta) {
-    if (!var_name || !op) return;
+static void transpile_kry_expression_to_c(CCodegenContext* ctx, const char* scoped_var_name, const char* op, int delta) {
+    if (!scoped_var_name || !op) return;
 
-    fprintf(ctx->output, "    int current_%s = kryon_signal_get(%s_signal);\n", var_name, var_name);
+    fprintf(ctx->output, "    int current_%s = kryon_signal_get(%s_signal);\n", scoped_var_name, scoped_var_name);
 
     if (strcmp(op, "+=") == 0) {
-        fprintf(ctx->output, "    kryon_signal_set(%s_signal, current_%s + %d);\n", var_name, var_name, delta);
+        fprintf(ctx->output, "    kryon_signal_set(%s_signal, current_%s + %d);\n", scoped_var_name, scoped_var_name, delta);
     } else if (strcmp(op, "-=") == 0) {
-        fprintf(ctx->output, "    kryon_signal_set(%s_signal, current_%s - %d);\n", var_name, var_name, delta);
+        fprintf(ctx->output, "    kryon_signal_set(%s_signal, current_%s - %d);\n", scoped_var_name, scoped_var_name, delta);
     } else if (strcmp(op, "=") == 0) {
-        fprintf(ctx->output, "    kryon_signal_set(%s_signal, %d);\n", var_name, delta);
+        fprintf(ctx->output, "    kryon_signal_set(%s_signal, %d);\n", scoped_var_name, delta);
     }
 }
 
@@ -1182,24 +1186,19 @@ static void generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block
         // Fall back to KRY source transpilation
         if (!kry_source) continue;
 
-        // Parse KRY expression and generate C function
-        fprintf(ctx->output, "void %s(void) {\n", name->valuestring);
-
-        // Simple expression parser for increment/decrement
-        // Pattern: "variable += number" or "variable -= number"
+        // Parse KRY expression to extract variable name, operator, and delta
         char var_name[128] = {0};
         char op[4] = {0};
         int delta = 0;
+        bool parsed = false;
 
         if (sscanf(kry_source, "() => { %127s %3s %d }", var_name, op, &delta) == 3) {
-            transpile_kry_expression_to_c(ctx, var_name, op, delta);
+            parsed = true;
         } else if (sscanf(kry_source, "()=>{%127s %3s %d}", var_name, op, &delta) == 3) {
-            // Compact format without spaces
-            transpile_kry_expression_to_c(ctx, var_name, op, delta);
+            parsed = true;
         } else {
             // Fallback: try to match += 1 or -= 1 patterns
             if (strstr(kry_source, "+= 1")) {
-                // Extract variable name before "+= 1"
                 const char* start = strchr(kry_source, '{');
                 if (start) {
                     start++;
@@ -1210,7 +1209,9 @@ static void generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block
                         if (len < sizeof(var_name) - 1) {
                             strncpy(var_name, start, len);
                             var_name[len] = '\0';
-                            transpile_kry_expression_to_c(ctx, var_name, "+=", 1);
+                            strcpy(op, "+=");
+                            delta = 1;
+                            parsed = true;
                         }
                     }
                 }
@@ -1225,16 +1226,66 @@ static void generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block
                         if (len < sizeof(var_name) - 1) {
                             strncpy(var_name, start, len);
                             var_name[len] = '\0';
-                            transpile_kry_expression_to_c(ctx, var_name, "-=", 1);
+                            strcpy(op, "-=");
+                            delta = 1;
+                            parsed = true;
                         }
                     }
                 }
-            } else {
-                fprintf(ctx->output, "    // TODO: Transpile expression: %s\n", kry_source);
             }
         }
 
-        fprintf(ctx->output, "}\n\n");
+        if (!parsed) {
+            fprintf(ctx->output, "    // TODO: Transpile expression: %s\n", kry_source);
+            continue;
+        }
+
+        // Find all scopes for this variable and generate a scoped handler for each
+        // For each variable, check if there are multiple scopes
+        cJSON* scopes_for_var[16];  // Max 16 scopes per variable (should be enough)
+        int scope_count = 0;
+        const char* base_var_name = var_name;
+
+        // Collect all scopes for this variable
+        if (ctx->reactive_vars && cJSON_IsArray(ctx->reactive_vars)) {
+            int var_count = cJSON_GetArraySize(ctx->reactive_vars);
+            for (int i = 0; i < var_count && scope_count < 16; i++) {
+                cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
+                cJSON* vname = cJSON_GetObjectItem(var, "name");
+                cJSON* scope = cJSON_GetObjectItem(var, "scope");
+
+                if (vname && vname->valuestring &&
+                    strcmp(vname->valuestring, base_var_name) == 0 &&
+                    scope && scope->valuestring) {
+                    scopes_for_var[scope_count++] = scope;
+                }
+            }
+        }
+
+        // Generate a handler function for each scope
+        for (int s = 0; s < scope_count; s++) {
+            cJSON* scope_item = scopes_for_var[s];
+            const char* scope_str = scope_item->valuestring;
+
+            // Skip component scope (will use the base handler name)
+            if (strcmp(scope_str, "component") == 0) {
+                // Generate base handler (for component definition)
+                fprintf(ctx->output, "void %s(void) {\n", name->valuestring);
+                transpile_kry_expression_to_c(ctx, base_var_name, op, delta);
+                fprintf(ctx->output, "}\n\n");
+            } else {
+                // Generate scoped handler (e.g., "handler_1_click_Counter_0")
+                char* scoped_handler_name = generate_scoped_var_name(name->valuestring, scope_str);
+                char* scoped_var_name = generate_scoped_var_name(base_var_name, scope_str);
+
+                fprintf(ctx->output, "void %s(void) {\n", scoped_handler_name);
+                transpile_kry_expression_to_c(ctx, scoped_var_name, op, delta);
+                fprintf(ctx->output, "}\n\n");
+
+                free(scoped_handler_name);
+                free(scoped_var_name);
+            }
+        }
     }
 }
 
@@ -1263,6 +1314,41 @@ static bool is_reactive_variable(CCodegenContext* ctx, const char* name) {
 }
 
 /**
+ * Get the scoped variable name for a given variable name in the current scope
+ * Returns a string that must be freed by the caller, or NULL if not found
+ * If there's no current scope, returns a strdup of the base name
+ */
+static char* get_scoped_var_name(CCodegenContext* ctx, const char* name) {
+    if (!name) return NULL;
+
+    // If no current scope or scope is "component" (global), use base name
+    if (!ctx->current_scope || strcmp(ctx->current_scope, "component") == 0) {
+        return strdup(name);
+    }
+
+    // Look for a variable that matches both name and current scope
+    if (ctx->reactive_vars && cJSON_IsArray(ctx->reactive_vars)) {
+        int var_count = cJSON_GetArraySize(ctx->reactive_vars);
+        for (int i = 0; i < var_count; i++) {
+            cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
+            cJSON* var_name = cJSON_GetObjectItem(var, "name");
+            cJSON* scope = cJSON_GetObjectItem(var, "scope");
+
+            if (var_name && var_name->valuestring &&
+                strcmp(var_name->valuestring, name) == 0 &&
+                scope && scope->valuestring &&
+                strcmp(scope->valuestring, ctx->current_scope) == 0) {
+                // Found a variable with matching name and scope
+                return generate_scoped_var_name(name, scope->valuestring);
+            }
+        }
+    }
+
+    // Not found with current scope, fall back to base name
+    return strdup(name);
+}
+
+/**
  * Map KIR type to C signal creation function
  */
 static const char* get_signal_creator(const char* kir_type) {
@@ -1275,6 +1361,59 @@ static const char* get_signal_creator(const char* kir_type) {
         return "kryon_signal_create_bool";
     }
     return "kryon_signal_create";  // Default: float signal
+}
+
+/**
+ * Generate a unique C variable name from variable name and scope
+ * Converts scope like "Counter#0" to "_Counter_0" for valid C identifiers
+ *
+ * Input: name="value", scope="Counter#0"
+ * Output: "value_Counter_0"
+ */
+static char* generate_scoped_var_name(const char* name, const char* scope) {
+    if (!name) return NULL;
+
+    // If no scope or scope is "component" (global), use base name
+    if (!scope || strcmp(scope, "component") == 0) {
+        return strdup(name);
+    }
+
+    // Calculate length: name + "_" + sanitized_scope
+    size_t len = strlen(name) + 1;
+    const char* s = scope;
+    while (*s) {
+        // Replace special chars with underscore
+        if ((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') ||
+            (*s >= '0' && *s <= '9')) {
+            len++;
+        } else {
+            len++;  // underscore for special chars
+        }
+        s++;
+    }
+
+    char* result = calloc(1, len + 1);  // +1 for null terminator
+    if (!result) return NULL;
+
+    // Copy name
+    strcpy(result, name);
+    strcat(result, "_");
+
+    // Sanitize scope (replace special chars with underscore)
+    s = scope;
+    char* dest = result + strlen(result);
+    while (*s) {
+        if ((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') ||
+            (*s >= '0' && *s <= '9')) {
+            *dest++ = *s;
+        } else {
+            *dest++ = '_';  // Replace #, -, etc with _
+        }
+        s++;
+    }
+    *dest = '\0';
+
+    return result;
 }
 
 /**
@@ -1294,10 +1433,17 @@ static void generate_reactive_signal_declarations(CCodegenContext* ctx) {
     for (int i = 0; i < var_count; i++) {
         cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
         cJSON* name = cJSON_GetObjectItem(var, "name");
+        cJSON* scope = cJSON_GetObjectItem(var, "scope");
 
         if (!name || !name->valuestring) continue;
 
-        fprintf(ctx->output, "KryonSignal* %s_signal;\n", name->valuestring);
+        char* scoped_name = generate_scoped_var_name(
+            name->valuestring,
+            (scope && scope->valuestring) ? scope->valuestring : NULL
+        );
+
+        fprintf(ctx->output, "KryonSignal* %s_signal;\n", scoped_name);
+        free(scoped_name);
     }
     fprintf(ctx->output, "\n");
 }
@@ -1338,10 +1484,16 @@ static void generate_reactive_signal_initialization(CCodegenContext* ctx) {
     for (int i = 0; i < var_count; i++) {
         cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
         cJSON* name = cJSON_GetObjectItem(var, "name");
+        cJSON* scope = cJSON_GetObjectItem(var, "scope");
         cJSON* type = cJSON_GetObjectItem(var, "type");
         cJSON* init = cJSON_GetObjectItem(var, "initial_value");
 
         if (!name || !name->valuestring) continue;
+
+        char* scoped_name = generate_scoped_var_name(
+            name->valuestring,
+            (scope && scope->valuestring) ? scope->valuestring : NULL
+        );
 
         const char* var_name = name->valuestring;
         const char* init_val_raw = (init && init->valuestring) ? init->valuestring : "0";
@@ -1362,15 +1514,17 @@ static void generate_reactive_signal_initialization(CCodegenContext* ctx) {
 
         if (strcmp(signal_creator, "kryon_signal_create_string") == 0) {
             fprintf(ctx->output, "    %s_signal = %s(\"%s\");\n",
-                    var_name, signal_creator, init_val);
+                    scoped_name, signal_creator, init_val);
         } else if (strcmp(signal_creator, "kryon_signal_create_bool") == 0) {
             bool bool_val = (strcmp(init_val, "true") == 0);
             fprintf(ctx->output, "    %s_signal = %s(%s);\n",
-                    var_name, signal_creator, bool_val ? "true" : "false");
+                    scoped_name, signal_creator, bool_val ? "true" : "false");
         } else {
             fprintf(ctx->output, "    %s_signal = %s(%s);\n",
-                    var_name, signal_creator, init_val);
+                    scoped_name, signal_creator, init_val);
         }
+
+        free(scoped_name);
     }
     fprintf(ctx->output, "\n");
 }
@@ -1391,10 +1545,17 @@ static void generate_reactive_signal_cleanup(CCodegenContext* ctx) {
     for (int i = 0; i < var_count; i++) {
         cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
         cJSON* name = cJSON_GetObjectItem(var, "name");
+        cJSON* scope = cJSON_GetObjectItem(var, "scope");
 
         if (!name || !name->valuestring) continue;
 
-        fprintf(ctx->output, "    kryon_signal_destroy(%s_signal);\n", name->valuestring);
+        char* scoped_name = generate_scoped_var_name(
+            name->valuestring,
+            (scope && scope->valuestring) ? scope->valuestring : NULL
+        );
+
+        fprintf(ctx->output, "    kryon_signal_destroy(%s_signal);\n", scoped_name);
+        free(scoped_name);
     }
     fprintf(ctx->output, "\n");
 }
@@ -1410,10 +1571,17 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
     cJSON* id_obj = cJSON_GetObjectItem(component, "id");
     cJSON* children_obj = cJSON_GetObjectItem(component, "children");
     cJSON* text_obj = cJSON_GetObjectItem(component, "text");
+    cJSON* scope_obj = cJSON_GetObjectItem(component, "scope");
 
     if (!type_obj || !type_obj->valuestring) return;
 
     const char* type = type_obj->valuestring;
+
+    // Save and set current scope for scoped components
+    const char* prev_scope = ctx->current_scope;
+    if (scope_obj && scope_obj->valuestring) {
+        ctx->current_scope = scope_obj->valuestring;
+    }
 
     // Special handling for For loops - emit FOR_EACH macro
     if (strcmp(type, "For") == 0) {
@@ -1681,9 +1849,11 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
             if (!has_property_binding) {
                 if (!first_prop) fprintf(ctx->output, ",\n");
                 write_indent(ctx);
+                char* scoped_name = get_scoped_var_name(ctx, text_expr_obj->valuestring);
                 char signal_name[256];
-                snprintf(signal_name, sizeof(signal_name), "%s_signal", text_expr_obj->valuestring);
+                snprintf(signal_name, sizeof(signal_name), "%s_signal", scoped_name);
                 fprintf(ctx->output, "BIND_TEXT_EXPR(%s)", signal_name);
+                free(scoped_name);
                 first_prop = false;
             }
         }
@@ -1763,6 +1933,9 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
     ctx->indent_level--;
     write_indent(ctx);
     fprintf(ctx->output, ")");
+
+    // Restore previous scope
+    ctx->current_scope = prev_scope;
 }
 
 static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* value, bool* first_prop) {
@@ -2024,6 +2197,7 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
                 // For KRY handlers, logic_id is the function name directly (e.g., "handler_1_click")
                 // For C metadata handlers, we need to look up the function name
                 const char* func_name = logic_id->valuestring;  // Default: use logic_id as function name
+                bool is_c_handler = false;  // Track if this is a C metadata handler
 
                 // Try to find function name in c_metadata.event_handlers (legacy C handlers)
                 if (ctx->event_handlers) {
@@ -2037,9 +2211,19 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
                             h_func_name && h_func_name->valuestring &&
                             strcmp(h_logic_id->valuestring, logic_id->valuestring) == 0) {
                             func_name = h_func_name->valuestring;
+                            is_c_handler = true;  // This is a C metadata handler
                             break;
                         }
                     }
+                }
+
+                // For KRY handlers, scope the function name based on current_scope
+                // C handlers are already defined by the user, so don't scope them
+                char* scoped_func_name = NULL;
+                if (!is_c_handler && ctx->current_scope && strcmp(ctx->current_scope, "component") != 0) {
+                    // Generate scoped handler name (e.g., "handler_1_click_Counter_0")
+                    scoped_func_name = generate_scoped_var_name(func_name, ctx->current_scope);
+                    func_name = scoped_func_name;
                 }
 
                 if (strcmp(event_type->valuestring, "click") == 0) {
@@ -2048,6 +2232,10 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
                     fprintf(ctx->output, "ON_CLICK(%s)", func_name);
                     *first_prop = false;
                     printed = true;
+                }
+
+                if (scoped_func_name) {
+                    free(scoped_func_name);
                 }
             }
         }

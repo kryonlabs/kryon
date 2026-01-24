@@ -23,6 +23,7 @@ struct DocsTemplateContext;
  * - .kry        -> "kry"
  * - .lua        -> "lua"
  * - .c, .h      -> "c"
+ * - .ha         -> "hare"
  *
  * @param source_file Path to the source file
  * @return Frontend type string, or NULL if unknown

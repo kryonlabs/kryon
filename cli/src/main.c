@@ -38,6 +38,7 @@ static void print_help(void) {
     printf("  install                 Install application\n");
     printf("  uninstall               Uninstall application\n");
     printf("  doctor                  System diagnostics\n\n");
+    printf("Supported languages/formats: KRY, Lua, TypeScript/JSX, HTML, Markdown, C, Hare\n\n");
     printf("Options:\n");
     printf("  -h, --help              Show this help\n");
     printf("  -v, --version           Show version\n");

@@ -263,7 +263,7 @@ int cmd_compile(int argc, char** argv) {
     const char* frontend = detect_frontend_type(source_file);
     if (!frontend) {
         fprintf(stderr, "Error: Could not detect frontend for %s\n", source_file);
-        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .lua, .c\n");
+        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .lua, .c, .ha\n");
         return 1;
     }
 
