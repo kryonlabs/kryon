@@ -19,6 +19,9 @@
 // Internal Structures
 // ============================================================================
 
+// Forward declare global renderer from desktop renderer
+extern struct DesktopIRRenderer* g_desktop_renderer;
+
 struct KryonTextBinding {
     IRComponent* component;
     KryonSignal* signal;
@@ -125,6 +128,12 @@ static void text_binding_callback_float(float value, void* user_data) {
     } else {
         update_text_component(binding->component, formatted);
     }
+
+    // Mark renderer as reactive dirty to trigger re-render
+    extern void desktop_ir_renderer_mark_reactive_dirty(struct DesktopIRRenderer* renderer);
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+    }
 }
 
 static void text_binding_callback_string(const char* value, void* user_data) {
@@ -140,6 +149,12 @@ static void text_binding_callback_string(const char* value, void* user_data) {
         update_text_component(binding->component, buffer);
     } else {
         update_text_component(binding->component, value ? value : "");
+    }
+
+    // Mark renderer as reactive dirty to trigger re-render
+    extern void desktop_ir_renderer_mark_reactive_dirty(struct DesktopIRRenderer* renderer);
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
     }
 }
 

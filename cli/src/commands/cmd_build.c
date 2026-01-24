@@ -341,8 +341,15 @@ int cmd_build(int argc, char** argv) {
             cli_output_dir = argv[++i];
         } else if (argv[i][0] == '-') {
             fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
-            fprintf(stderr, "Supported options: --target=<web|desktop>, --output-dir=<dir>\n");
-            fprintf(stderr, "Desktop builds support KRY, Lua, and Hare frontends\n");
+            fprintf(stderr, "Supported options: --target=<name>, --output-dir=<dir>\n");
+
+            // List available targets dynamically
+            fprintf(stderr, "\nAvailable targets:\n");
+            const char** targets = target_handler_list_names();
+            for (int i = 0; targets[i]; i++) {
+                fprintf(stderr, "  - %s\n", targets[i]);
+            }
+            fprintf(stderr, "\nDesktop builds support KRY, Lua, and Hare frontends\n");
             return 1;
         } else if (file_arg_start == 0) {
             // First non-option argument is the file
@@ -430,6 +437,20 @@ int cmd_build(int argc, char** argv) {
                 fprintf(stderr, "%s%s", i > 0 ? ", " : "", targets[i]);
             }
             fprintf(stderr, "\n");
+
+            // Show which targets support which operations
+            fprintf(stderr, "\nTarget capabilities:\n");
+            for (int i = 0; targets[i]; i++) {
+                TargetHandler* handler = target_handler_find(targets[i]);
+                if (handler) {
+                    fprintf(stderr, "  %s: ", targets[i]);
+                    if (handler->build_handler) fprintf(stderr, "build ");
+                    if (handler->run_handler) fprintf(stderr, "run ");
+                    fprintf(stderr, "\n");
+                }
+            }
+            fprintf(stderr, "\n");
+
             config_free(config);
             return 1;
         }

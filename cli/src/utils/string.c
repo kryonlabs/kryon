@@ -8,6 +8,44 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdarg.h>
+
+/**
+ * Format a string into a dynamically allocated buffer
+ * Caller must free the result
+ *
+ * This replaces fixed-size buffers with dynamic allocation
+ * to avoid magic numbers and buffer overflows
+ */
+char* str_format(const char* fmt, ...) {
+    if (!fmt) return NULL;
+
+    va_list args;
+    va_start(args, fmt);
+
+    // First pass: get size
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int size = vsnprintf(NULL, 0, fmt, args_copy);
+    va_end(args_copy);
+
+    if (size < 0) {
+        va_end(args);
+        return NULL;
+    }
+
+    // Allocate and format
+    char* result = malloc(size + 1);
+    if (!result) {
+        va_end(args);
+        return NULL;
+    }
+
+    vsprintf(result, fmt, args);
+    va_end(args);
+
+    return result;
+}
 
 /**
  * Concatenate two strings, returning a newly allocated string
@@ -141,4 +179,50 @@ void str_free_array(char** arr, int count) {
         free(arr[i]);
     }
     free(arr);
+}
+
+/**
+ * Replace all occurrences of a substring in a string
+ * Returns a newly allocated string (caller must free)
+ */
+char* string_replace(const char* str, const char* old, const char* new_str) {
+    if (!str || !old || !new_str) return NULL;
+
+    // Count occurrences to calculate result size
+    int count = 0;
+    const char* p = str;
+    while ((p = strstr(p, old)) != NULL) {
+        count++;
+        p += strlen(old);
+    }
+
+    if (count == 0) {
+        return str_copy(str);
+    }
+
+    // Calculate result size
+    size_t str_len = strlen(str);
+    size_t old_len = strlen(old);
+    size_t new_len = strlen(new_str);
+    size_t result_len = str_len + count * (new_len - old_len);
+
+    // Allocate result buffer
+    char* result = (char*)malloc(result_len + 1);
+    if (!result) return NULL;
+
+    // Build result string
+    const char* src = str;
+    char* dst = result;
+    while (*src) {
+        if (strncmp(src, old, old_len) == 0) {
+            strncpy(dst, new_str, new_len);
+            dst += new_len;
+            src += old_len;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    *dst = '\0';
+
+    return result;
 }

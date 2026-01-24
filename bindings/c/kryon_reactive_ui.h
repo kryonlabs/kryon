@@ -27,6 +27,10 @@
 extern "C" {
 #endif
 
+// Forward declaration for DSL helper function (defined in kryon_dsl.h)
+// This allows kryon_reactive_ui.h to be used independently
+extern IRComponent* _kryon_get_current_parent(void);
+
 // ============================================================================
 // Text Binding
 // ============================================================================

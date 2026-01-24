@@ -2283,21 +2283,27 @@ static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON
                 if (!*first_prop) fprintf(ctx->output, ",\n");
                 write_indent(ctx);
 
+                // Get scoped variable name for the current scope
+                char* scoped_name = get_scoped_var_name(ctx, source_expr->valuestring);
+                char signal_name[256];
+                snprintf(signal_name, sizeof(signal_name), "%s_signal", scoped_name);
+
                 // Generate binding macro call
                 if (strcmp(prop_name, "text") == 0) {
-                    fprintf(ctx->output, "BIND_TEXT(%s_signal)", source_expr->valuestring);
+                    fprintf(ctx->output, "BIND_TEXT(%s)", signal_name);
                 } else if (strcmp(prop_name, "visible") == 0) {
-                    fprintf(ctx->output, "BIND_VISIBLE(%s_signal)", source_expr->valuestring);
+                    fprintf(ctx->output, "BIND_VISIBLE(%s)", signal_name);
                 } else if (strcmp(prop_name, "background") == 0) {
-                    fprintf(ctx->output, "BIND_BACKGROUND(%s_signal)", source_expr->valuestring);
+                    fprintf(ctx->output, "BIND_BACKGROUND(%s)", signal_name);
                 } else if (strcmp(prop_name, "color") == 0) {
-                    fprintf(ctx->output, "BIND_COLOR(%s_signal)", source_expr->valuestring);
+                    fprintf(ctx->output, "BIND_COLOR(%s)", signal_name);
                 } else if (strcmp(prop_name, "selectedIndex") == 0) {
                     fprintf(ctx->output, "SELECTED_INDEX(%s)", source_expr->valuestring);
                 } else {
-                    fprintf(ctx->output, "BIND(%s, %s)", prop_name, source_expr->valuestring);
+                    fprintf(ctx->output, "BIND(%s, %s)", prop_name, scoped_name);
                 }
 
+                free(scoped_name);
                 *first_prop = false;
                 printed = true;
             }

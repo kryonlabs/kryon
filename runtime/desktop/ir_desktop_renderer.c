@@ -114,6 +114,7 @@ DesktopIRRenderer* desktop_ir_renderer_create(const DesktopRendererConfig* confi
     memset(renderer, 0, sizeof(DesktopIRRenderer));
     renderer->config = *config;
     renderer->last_frame_time = 0;
+    renderer->reactive_dirty = false;
 
     /* Initialize screenshot capture from environment variables */
     const char* screenshot_path = getenv("KRYON_SCREENSHOT");
@@ -366,6 +367,26 @@ static void complete_shutdown(DesktopIRRenderer* renderer) {
 }
 
 /* ============================================================================
+ * REACTIVE DIRTY TRACKING - Track when reactive signals have changed
+ * ============================================================================ */
+
+void desktop_ir_renderer_mark_reactive_dirty(DesktopIRRenderer* renderer) {
+    if (renderer) {
+        renderer->reactive_dirty = true;
+    }
+}
+
+bool desktop_ir_renderer_is_reactive_dirty(const DesktopIRRenderer* renderer) {
+    return renderer ? renderer->reactive_dirty : false;
+}
+
+void desktop_ir_renderer_clear_reactive_dirty(DesktopIRRenderer* renderer) {
+    if (renderer) {
+        renderer->reactive_dirty = false;
+    }
+}
+
+/* ============================================================================
  * CANVAS CALLBACKS - Invoke onDraw/onUpdate before rendering
  * ============================================================================ */
 
@@ -545,6 +566,7 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
         frame_count++;
 
         // Poll events via ops table
+        // This may trigger signal changes that mark the renderer as reactive dirty
         if (renderer->ops->poll_events) {
             renderer->ops->poll_events(renderer);
         }
@@ -566,12 +588,16 @@ bool desktop_ir_renderer_run_main_loop(DesktopIRRenderer* renderer, IRComponent*
             ir_style_vars_clear_dirty();
         }
 
+        // Clear reactive dirty flag if set (values already updated in IR components)
+        // The next render will show the updated values whether from reactive changes or normal frames
+        desktop_ir_renderer_clear_reactive_dirty(renderer);
+
         // Hot reload polling
         if (renderer->hot_reload_enabled && renderer->hot_reload_ctx) {
             ir_file_watcher_poll(ir_hot_reload_get_watcher(renderer->hot_reload_ctx), 0);
         }
 
-        // Render frame
+        // Single render pass - covers both normal frames and reactive updates
         if (!desktop_ir_renderer_render_frame(renderer, renderer->last_root)) {
             printf("Frame rendering failed\n");
             kryon_request_shutdown_internal(renderer, KRYON_SHUTDOWN_REASON_ERROR);
