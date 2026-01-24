@@ -136,7 +136,12 @@ UTIL_SOURCES = src/utils/ir_string_builder.c \
                src/utils/ir_source_structures.c \
                src/utils/ir_json.c
 
-PARSER_SOURCES = parsers/kry/kry_parser.c \
+PARSER_SOURCES = parsers/kry/kry_allocator.c \
+                 parsers/kry/kry_lexer.c \
+                 parsers/kry/kry_ast_factory.c \
+                 parsers/kry/kry_tokens.c \
+                 parsers/kry/kry_to_ir_context.c \
+                 parsers/kry/kry_parser.c \
                  parsers/kry/kry_to_ir.c \
                  parsers/kry/kry_expression.c \
                  parsers/kry/kry_arrow_registry.c \
