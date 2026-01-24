@@ -9,8 +9,8 @@ App {
     Column {
         justifyContent = "center"
         alignItems = "center"
-        width = 100%
-        height = 100%
+        width = "100%"
+        height = "100%"
         gap = 20
         padding = 40
 

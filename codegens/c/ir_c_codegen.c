@@ -1530,7 +1530,7 @@ static void generate_reactive_signal_initialization(CCodegenContext* ctx) {
 }
 
 /**
- * Generate signal cleanup code (before KRYON_RUN)
+ * Generate signal cleanup code (after KRYON_RUN returns)
  *
  * C output: kryon_signal_destroy(value_signal);
  */
@@ -2484,13 +2484,13 @@ static void generate_main_function(CCodegenContext* ctx) {
     writeln(ctx, ");");
     fprintf(ctx->output, "\n");
 
-    // Cleanup reactive signals before KRYON_RUN
+    // KRYON_RUN macro
+    writeln(ctx, "KRYON_RUN();");
+
+    // Cleanup reactive signals AFTER KRYON_RUN returns
     if (ctx->has_reactive_state) {
         generate_reactive_signal_cleanup(ctx);
     }
-
-    // KRYON_RUN macro
-    writeln(ctx, "KRYON_RUN();");
 
     ctx->indent_level--;
     fprintf(ctx->output, "}\n");
