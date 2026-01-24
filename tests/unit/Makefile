@@ -2,7 +2,7 @@
 # Delegates to subdirectory test suites
 
 # Test subdirectories (codegens subdirectories have their own Makefiles)
-TEST_SUBDIRS := ir
+TEST_SUBDIRS := ir parsers
 
 # Default target: build all tests
 all:

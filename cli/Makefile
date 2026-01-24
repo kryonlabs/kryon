@@ -251,6 +251,9 @@ install: $(TARGET)
 	# Install C bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/c
 	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
+	# Install Hare bindings
+	mkdir -p $(HOME)/.local/share/kryon/bindings/hare
+	cp -r ../bindings/hare/* $(HOME)/.local/share/kryon/bindings/hare/
 	# Install IR headers (required by C bindings - relative path ../../ir/include/)
 	mkdir -p $(HOME)/.local/share/kryon/ir/include
 	cp ../ir/include/*.h $(HOME)/.local/share/kryon/ir/include/
