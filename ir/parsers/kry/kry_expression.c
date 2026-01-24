@@ -124,6 +124,17 @@ void kry_expr_free(KryExprNode* node) {
             kry_expr_free(node->conditional.consequent);
             kry_expr_free(node->conditional.alternate);
             break;
+
+        case KRY_EXPR_TEMPLATE:
+            for (size_t i = 0; i < node->template_str.part_count; i++) {
+                free(node->template_str.parts[i]);
+            }
+            free(node->template_str.parts);
+            for (size_t i = 0; i < node->template_str.expr_count; i++) {
+                kry_expr_free(node->template_str.expressions[i]);
+            }
+            free(node->template_str.expressions);
+            break;
     }
 
     free(node);
@@ -198,6 +209,7 @@ static KryExprNode* parse_primary(ParserContext* ctx);
 static KryExprNode* parse_arrow_func_params(ParserContext* ctx, KryExprNode* left);
 static KryExprNode* parse_object_literal(ParserContext* ctx);
 static KryExprNode* parse_array_literal(ParserContext* ctx);
+static KryExprNode* parse_template_string(ParserContext* ctx);
 
 // Parse starting point
 KryExprNode* kry_expr_parse(const char* source, char** error_output) {
@@ -686,6 +698,11 @@ static KryExprNode* parse_primary(ParserContext* ctx) {
         return node;
     }
 
+    // Template string (backtick strings with ${} interpolation)
+    if (ch == '`') {
+        return parse_template_string(ctx);
+    }
+
     // Number literal
     if (isdigit(ch) || (ch == '.' && isdigit(ctx->input[ctx->pos + 1]))) {
         size_t start = ctx->pos;
@@ -1062,6 +1079,153 @@ error:
     return NULL;
 }
 
+/**
+ * Parse template string (backtick strings with ${} interpolation)
+ * Syntax: `literal ${expr} literal ${expr}`
+ * Example: `Hello ${name}!` → parts=["Hello ", "!"], expressions=[name]
+ */
+static KryExprNode* parse_template_string(ParserContext* ctx) {
+    if (!match(ctx, '`')) {
+        set_error("Expected '`' at start of template string");
+        return NULL;
+    }
+
+    KryExprNode* node = create_node(KRY_EXPR_TEMPLATE);
+    if (!node) {
+        return NULL;
+    }
+
+    // Initialize arrays for parts and expressions
+    size_t part_capacity = 4;
+    size_t expr_capacity = 4;
+    char** parts = (char**)malloc(sizeof(char*) * part_capacity);
+    KryExprNode** expressions = (KryExprNode**)malloc(sizeof(KryExprNode*) * expr_capacity);
+
+    if (!parts || !expressions) {
+        set_error("Out of memory");
+        if (parts) free(parts);
+        if (expressions) free(expressions);
+        kry_expr_free(node);
+        return NULL;
+    }
+
+    size_t part_count = 0;
+    size_t expr_count = 0;
+
+    size_t lit_start = ctx->pos;
+    bool in_interp = false;
+
+    while (ctx->pos < ctx->length) {
+        if (!in_interp) {
+            // Looking for ${ or closing `
+            if (ctx->pos + 1 < ctx->length &&
+                ctx->input[ctx->pos] == '$' &&
+                ctx->input[ctx->pos + 1] == '{') {
+
+                // Save literal part before ${
+                size_t lit_len = ctx->pos - lit_start;
+                char* lit = strndup(ctx->input + lit_start, lit_len);
+                if (!lit) goto error;
+
+                // Expand parts array if needed
+                if (part_count >= part_capacity) {
+                    part_capacity *= 2;
+                    char** new_parts = (char**)realloc(parts, sizeof(char*) * part_capacity);
+                    if (!new_parts) {
+                        free(lit);
+                        goto error;
+                    }
+                    parts = new_parts;
+                }
+                parts[part_count++] = lit;
+
+                // Skip ${
+                ctx->pos += 2;
+                in_interp = true;
+
+                // Parse expression inside ${}
+                KryExprNode* expr = parse_expression(ctx);
+                if (!expr) {
+                    set_error("Failed to parse template expression");
+                    goto error;
+                }
+
+                // Expand expressions array if needed
+                if (expr_count >= expr_capacity) {
+                    expr_capacity *= 2;
+                    KryExprNode** new_exprs = (KryExprNode**)realloc(expressions, sizeof(KryExprNode*) * expr_capacity);
+                    if (!new_exprs) {
+                        kry_expr_free(expr);
+                        goto error;
+                    }
+                    expressions = new_exprs;
+                }
+                expressions[expr_count++] = expr;
+
+                // Expect closing }
+                if (!match(ctx, '}')) {
+                    set_error("Expected '}' after template expression");
+                    goto error;
+                }
+
+                // Reset interpolation mode and continue parsing literal
+                in_interp = false;
+                lit_start = ctx->pos;
+            } else if (ctx->input[ctx->pos] == '`') {
+                // End of template string
+                consume(ctx);  // consume closing `
+
+                // Save final literal part
+                size_t lit_len = ctx->pos - 1 - lit_start;
+                char* lit = strndup(ctx->input + lit_start, lit_len);
+                if (!lit) goto error;
+
+                // Expand parts array if needed
+                if (part_count >= part_capacity) {
+                    part_capacity *= 2;
+                    char** new_parts = (char**)realloc(parts, sizeof(char*) * part_capacity);
+                    if (!new_parts) {
+                        free(lit);
+                        goto error;
+                    }
+                    parts = new_parts;
+                }
+                parts[part_count++] = lit;
+
+                // Success - set node values
+                node->template_str.parts = parts;
+                node->template_str.part_count = part_count;
+                node->template_str.expressions = expressions;
+                node->template_str.expr_count = expr_count;
+
+                return node;
+            } else {
+                // Regular character - consume it
+                consume(ctx);
+            }
+        } else {
+            // Should not happen - in_interp should be reset after }
+            consume(ctx);
+        }
+    }
+
+    // If we get here, the string was not terminated
+    set_error("Unterminated template string");
+
+error:
+    // Cleanup on error
+    for (size_t i = 0; i < part_count; i++) {
+        free(parts[i]);
+    }
+    for (size_t i = 0; i < expr_count; i++) {
+        kry_expr_free(expressions[i]);
+    }
+    free(parts);
+    free(expressions);
+    kry_expr_free(node);
+    return NULL;
+}
+
 // ============================================================================
 // Code Generation
 // ============================================================================
@@ -1425,6 +1589,33 @@ static void generate_lua(KryExprNode* node, CodeBuffer* out) {
             break;
         }
 
+        case KRY_EXPR_TEMPLATE: {
+            // Lua doesn't have native template strings - use string concatenation
+            // `Hello ${name}!` → "Hello " .. name .. "!"
+            for (size_t i = 0; i < node->template_str.part_count; i++) {
+                // Add literal part
+                buffer_append_char(out, '"');
+                buffer_append(out, node->template_str.parts[i]);
+                buffer_append_char(out, '"');
+
+                // Add concatenation operator if more parts coming
+                if (i < node->template_str.expr_count) {
+                    buffer_append(out, " .. ");
+                }
+            }
+
+            // Add expressions with concatenation
+            for (size_t i = 0; i < node->template_str.expr_count; i++) {
+                generate_lua(node->template_str.expressions[i], out);
+
+                // Add concatenation operator if not last expression
+                if (i < node->template_str.expr_count - 1) {
+                    buffer_append(out, " .. ");
+                }
+            }
+            break;
+        }
+
         default:
             buffer_append(out, "/* TODO */");
             break;
@@ -1540,6 +1731,28 @@ static void generate_javascript(KryExprNode* node, CodeBuffer* out) {
             buffer_append(out, " : ");
             generate_javascript(node->conditional.alternate, out);
             buffer_append_char(out, ')');
+            break;
+        }
+
+        case KRY_EXPR_TEMPLATE: {
+            // JavaScript natively supports template strings - reconstruct original format
+            // `Hello ${name}!` → `Hello ${name}!`
+            buffer_append_char(out, '`');
+
+            for (size_t i = 0; i < node->template_str.part_count; i++) {
+                // Add literal part
+                buffer_append(out, node->template_str.parts[i]);
+
+                // Add interpolated expression
+                if (i < node->template_str.expr_count) {
+                    buffer_append_char(out, '$');
+                    buffer_append_char(out, '{');
+                    generate_javascript(node->template_str.expressions[i], out);
+                    buffer_append_char(out, '}');
+                }
+            }
+
+            buffer_append_char(out, '`');
             break;
         }
 
@@ -1714,6 +1927,41 @@ static void generate_c_with_opts(KryExprNode* node, CodeBuffer* out, KryExprOpti
             buffer_append(out, node->member_expr.member);
             break;
 
+        case KRY_EXPR_TEMPLATE: {
+            // C doesn't have native template strings - use snprintf-style format
+            // For now, use string concatenation
+            // `Hello ${name}!` → "strcat("Hello ", name, "!")"
+
+            buffer_append(out, "strcat(");
+
+            // Add literal parts and expressions
+            for (size_t i = 0; i < node->template_str.part_count; i++) {
+                // Add literal part
+                buffer_append_char(out, '"');
+                // TODO: escape special characters for C strings
+                buffer_append(out, node->template_str.parts[i]);
+                buffer_append_char(out, '"');
+
+                // Add comma if more parts coming
+                if (i < node->template_str.expr_count) {
+                    buffer_append(out, ", ");
+                }
+            }
+
+            // Add expressions
+            for (size_t i = 0; i < node->template_str.expr_count; i++) {
+                generate_c_with_opts(node->template_str.expressions[i], out, options);
+
+                // Add comma if not last expression
+                if (i < node->template_str.expr_count - 1) {
+                    buffer_append(out, ", ");
+                }
+            }
+
+            buffer_append_char(out, ')');
+            break;
+        }
+
         default:
             buffer_append(out, "/* unsupported expression */");
             break;
@@ -1841,6 +2089,50 @@ static void generate_hare(KryExprNode* node, CodeBuffer* out) {
             buffer_append_char(out, '.');
             buffer_append(out, node->member_expr.member);
             break;
+
+        case KRY_EXPR_TEMPLATE: {
+            // Transpile to Hare fmt::fprintf
+            // `Hello ${name}!` → fmt::fprintf(stout, "Hello {}!", name)
+
+            buffer_append(out, "fmt::fprintf(stout, \"");
+
+            // Build format string with {} placeholders
+            for (size_t i = 0; i < node->template_str.part_count; i++) {
+                // Escape literal parts for Hare strings
+                const char* lit = node->template_str.parts[i];
+                for (size_t j = 0; lit[j]; j++) {
+                    switch (lit[j]) {
+                        case '"':  buffer_append(out, "\\\""); break;
+                        case '\\': buffer_append(out, "\\\\"); break;
+                        case '\n': buffer_append(out, "\\n"); break;
+                        case '\t': buffer_append(out, "\\t"); break;
+                        case '\r': buffer_append(out, "\\r"); break;
+                        case '{':  buffer_append(out, "{{"); break;  // Escape {
+                        case '}':  buffer_append(out, "}}"); break;  // Escape }
+                        default: {
+                            char buf[2] = {lit[j], '\0'};
+                            buffer_append(out, buf);
+                        }
+                    }
+                }
+
+                // Add placeholder if not last part
+                if (i < node->template_str.expr_count) {
+                    buffer_append(out, "{}");
+                }
+            }
+
+            buffer_append(out, "\"");
+
+            // Add arguments
+            for (size_t i = 0; i < node->template_str.expr_count; i++) {
+                buffer_append(out, ", ");
+                generate_hare(node->template_str.expressions[i], out);
+            }
+
+            buffer_append(out, ")");
+            break;
+        }
 
         default:
             buffer_append(out, "/* unsupported expression */");

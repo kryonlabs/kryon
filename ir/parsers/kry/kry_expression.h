@@ -16,6 +16,7 @@
  *   Access        obj.prop, arr[index], func(args)
  *   Literals      [1, 2, 3], {key: val}
  *   Arrow funcs   x => x * 2 (all targets - C uses registry)
+ *   Templates     `Hello ${name}!` (template strings with interpolation)
  */
 
 #ifndef KRY_EXPRESSION_H
@@ -47,7 +48,8 @@ typedef enum {
     KRY_EXPR_OBJECT,       // {key: val}
     KRY_EXPR_ARROW_FUNC,   // x => x * 2
     KRY_EXPR_MEMBER_EXPR,  // arr.length, arr.push(x)
-    KRY_EXPR_CONDITIONAL   // condition ? consequent : alternate
+    KRY_EXPR_CONDITIONAL,  // condition ? consequent : alternate
+    KRY_EXPR_TEMPLATE      // Template strings: `Hello ${name}!`
 } KryExprType;
 
 // Forward declaration
@@ -171,6 +173,14 @@ typedef struct KryExprNode {
             struct KryExprNode* consequent;
             struct KryExprNode* alternate;
         } conditional;
+
+        // KRY_EXPR_TEMPLATE (template strings: `Hello ${name}!`)
+        struct {
+            char** parts;             // Literal string parts
+            size_t part_count;        // Number of literal parts
+            struct KryExprNode** expressions;  // Interpolated expressions
+            size_t expr_count;        // Number of expressions
+        } template_str;
     };
 } KryExprNode;
 

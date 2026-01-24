@@ -51,6 +51,19 @@ KryonTextBinding* kryon_bind_text(IRComponent* component,
                                    const char* format);
 
 /**
+ * Helper function for binding text in expression context (returns 0 for comma operator)
+ * This allows BIND_TEXT to be used inside macro argument lists.
+ * Must be defined after kryon_bind_text declaration to avoid implicit declaration errors.
+ */
+static inline int _kryon_bind_text_expr(KryonSignal* signal_expr, const char* fmt) {
+    IRComponent* __bind_comp = _kryon_get_current_parent();
+    if (__bind_comp) {
+        kryon_bind_text(__bind_comp, signal_expr, fmt);
+    }
+    return 0;  // Return 0 so it can be used in comma expressions
+}
+
+/**
  * Bind a string signal with a prefix/suffix template
  * Example: signal="value", prefix="Count: ", suffix="" -> "Count: value"
  *
@@ -284,6 +297,12 @@ void kryon_binding_group_destroy(KryonBindingGroup* group);
         } \
     } while(0)
 
+/**
+ * Expression-compatible version of BIND_TEXT for use inside macro argument lists
+ * Usage: TEXT("Value", FONT_SIZE(12), BIND_TEXT_EXPR(value_signal))
+ */
+#define BIND_TEXT_EXPR(signal_expr) _kryon_bind_text_expr((signal_expr), NULL)
+
 #define BIND_TEXT_FMT(signal_expr, fmt) \
     do { \
         IRComponent* __bind_comp = _kryon_get_current_parent(); \
@@ -291,6 +310,8 @@ void kryon_binding_group_destroy(KryonBindingGroup* group);
             kryon_bind_text(__bind_comp, (signal_expr), (fmt)); \
         } \
     } while(0)
+
+#define BIND_TEXT_FMT_EXPR(signal_expr, fmt) _kryon_bind_text_expr((signal_expr), (fmt))
 
 #define BIND_VISIBLE(signal_expr) \
     do { \

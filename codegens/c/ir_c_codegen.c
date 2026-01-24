@@ -1502,10 +1502,15 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
     // Component macro
     fprintf(ctx->output, "%s(", macro);
 
-    // Text/label parameter for components that need it
+    // Note: BIND_TEXT for reactive text should be handled specially
+    // It should be output immediately after the TEXT component, not as a separate child
+
+    // Output text parameter
+    cJSON* text_expr_obj = cJSON_GetObjectItem(component, "text_expression");
+
     // Check for reactive text binding via property_bindings
     cJSON* property_bindings = cJSON_GetObjectItem(component, "property_bindings");
-    bool has_reactive_text = false;
+    bool has_property_binding_bind_text = false;
 
     if (property_bindings) {
         cJSON* text_binding = cJSON_GetObjectItem(property_bindings, "text");
@@ -1513,24 +1518,21 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
             cJSON* binding_type = cJSON_GetObjectItem(text_binding, "binding_type");
             if (binding_type && binding_type->valuestring &&
                 strcmp(binding_type->valuestring, "static_template") == 0) {
-                has_reactive_text = true;
+                has_property_binding_bind_text = true;
             }
         }
     }
 
-    // Output text parameter (empty for reactive, will be bound via BIND_TEXT)
-    cJSON* text_expr_obj = cJSON_GetObjectItem(component, "text_expression");
-    bool has_text = (text_obj && text_obj->valuestring) || (text_expr_obj && text_expr_obj->valuestring);
-
     // Fallback: check if text_expression references a reactive variable
     // (property_bindings may not be present in expanded component instances)
-    if (!has_reactive_text && text_expr_obj && text_expr_obj->valuestring) {
-        if (is_reactive_variable(ctx, text_expr_obj->valuestring)) {
-            has_reactive_text = true;
-        }
-    }
+    bool has_fallback_bind_text = !has_property_binding_bind_text &&
+                                     text_expr_obj && text_expr_obj->valuestring &&
+                                     is_reactive_variable(ctx, text_expr_obj->valuestring);
 
-    if (has_reactive_text) {
+    // Output text parameter
+    bool has_text = (text_obj && text_obj->valuestring) || (text_expr_obj && text_expr_obj->valuestring);
+
+    if (has_property_binding_bind_text || has_fallback_bind_text) {
         // Reactive binding - use empty string, actual value comes from signal
         fprintf(ctx->output, "\"\"");
     } else if (text_obj && text_obj->valuestring) {
@@ -1656,6 +1658,37 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
         }
     }
 
+    // Special handling for TEXT components with reactive text_expression
+    // Generate BIND_TEXT_EXPR as a property for fallback case (no property_bindings)
+    if (strcmp(type, "Text") == 0) {
+        cJSON* text_expr_obj = cJSON_GetObjectItem(component, "text_expression");
+        if (text_expr_obj && text_expr_obj->valuestring && is_reactive_variable(ctx, text_expr_obj->valuestring)) {
+            // Check that there's no property_bindings (which would be handled elsewhere)
+            cJSON* property_bindings = cJSON_GetObjectItem(component, "property_bindings");
+            bool has_property_binding = false;
+            if (property_bindings) {
+                cJSON* text_binding = cJSON_GetObjectItem(property_bindings, "text");
+                if (text_binding) {
+                    cJSON* binding_type = cJSON_GetObjectItem(text_binding, "binding_type");
+                    if (binding_type && binding_type->valuestring &&
+                        strcmp(binding_type->valuestring, "static_template") == 0) {
+                        has_property_binding = true;
+                    }
+                }
+            }
+
+            // Only generate BIND_TEXT_EXPR for fallback case (no property_bindings)
+            if (!has_property_binding) {
+                if (!first_prop) fprintf(ctx->output, ",\n");
+                write_indent(ctx);
+                char signal_name[256];
+                snprintf(signal_name, sizeof(signal_name), "%s_signal", text_expr_obj->valuestring);
+                fprintf(ctx->output, "BIND_TEXT_EXPR(%s)", signal_name);
+                first_prop = false;
+            }
+        }
+    }
+
     // Generate properties
     cJSON* prop2 = NULL;
     cJSON_ArrayForEach(prop2, component) {
@@ -1703,18 +1736,6 @@ static void generate_component_recursive(CCodegenContext* ctx, cJSON* component,
 
         // Generate the property (comma handling is internal now)
         generate_property_macro(ctx, key, prop2, &first_prop);
-    }
-
-    // Generate BIND_TEXT for reactive text_expression when property_bindings is not present
-    // (fallback for expanded component instances that don't have property_bindings)
-    if (text_expr_obj && text_expr_obj->valuestring &&
-        is_reactive_variable(ctx, text_expr_obj->valuestring) &&
-        !cJSON_GetObjectItem(component, "property_bindings")) {
-
-        if (!first_prop) fprintf(ctx->output, ",\n");
-        write_indent(ctx);
-        fprintf(ctx->output, "BIND_TEXT(%s_signal)", text_expr_obj->valuestring);
-        first_prop = false;
     }
 
     // Generate children
