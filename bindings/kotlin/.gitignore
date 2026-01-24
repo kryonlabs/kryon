@@ -1,0 +1,20 @@
+# Android build artifacts
+.cxx/
+.gradle/
+build/
+*.apk
+*.aab
+*.ap_
+
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Android NDK
+.cxx/
+.externalNativeBuild
+
+# IntelliJ IDEA
+.idea/
+*.iml

@@ -2010,6 +2010,7 @@ cJSON* ir_json_serialize_reactive_manifest(IRReactiveManifest* manifest) {
 
     // Serialize variables
     if (manifest->variable_count > 0) {
+        fprintf(stderr, "[DEBUG] ir_json_serialize_reactive_manifest: serializing %u variables\n", manifest->variable_count);
         cJSON* vars = cJSON_CreateArray();
         if (!vars) {
             fprintf(stderr, "ERROR: cJSON_CreateArray failed (OOM) for reactive variables\n");

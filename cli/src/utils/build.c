@@ -23,6 +23,7 @@
 #include "../../../codegens/python/python_codegen.h"
 #include "../../../codegens/kotlin/kotlin_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
+#include "../../../codegens/hare/hare_codegen.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,6 +58,9 @@ const char* detect_frontend_type(const char* source_file) {
     }
     else if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0) {
         return "c";
+    }
+    else if (strcmp(ext, ".ha") == 0) {
+        return "hare";
     }
     else {
         return NULL;
@@ -769,13 +773,17 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
 
     char kryon_c[PATH_MAX];
     char kryon_dsl_c[PATH_MAX];
+    char kryon_reactive_c[PATH_MAX];
+    char kryon_reactive_ui_c[PATH_MAX];
     snprintf(kryon_c, sizeof(kryon_c), "%s/kryon.c", bindings_path);
     snprintf(kryon_dsl_c, sizeof(kryon_dsl_c), "%s/kryon_dsl.c", bindings_path);
+    snprintf(kryon_reactive_c, sizeof(kryon_reactive_c), "%s/kryon_reactive.c", bindings_path);
+    snprintf(kryon_reactive_ui_c, sizeof(kryon_reactive_ui_c), "%s/kryon_reactive_ui.c", bindings_path);
 
     char compile_cmd[8192];
     int written = snprintf(compile_cmd, sizeof(compile_cmd),
-             "gcc -std=c99 -O2 \"%s\" %s"
-             "\"%s\" \"%s\" "
+             "gcc -std=gnu99 -O2 \"%s\" %s"
+             "\"%s\" \"%s\" \"%s\" \"%s\" "
              "-o \"%s\" "
              "-I\"%s\" "
              "-I\"%s\" "
@@ -785,11 +793,11 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
              "-I\"%s\" "
              "-I\"%s\" "
              "-L\"%s\" "
-             "-lkryon_desktop -lkryon_ir -lm "
+             "-lkryon_desktop -lkryon_sdl3 -lkryon_common -lkryon_ir -lm "
              "$(pkg-config --libs raylib 2>/dev/null || echo '-lraylib') "
-             "$(pkg-config --libs sdl3 2>/dev/null || echo '')",
+             "$(pkg-config --libs sdl3 sdl3-ttf harfbuzz freetype2 fribidi 2>/dev/null || echo '')",
              main_c, additional_sources,
-             kryon_c, kryon_dsl_c, exe_file,
+             kryon_c, kryon_dsl_c, kryon_reactive_c, kryon_reactive_ui_c, exe_file,
              c_output_dir, bindings_path, ir_path, ir_include_path, desktop_path, cjson_path, sdk_include_path, build_path);
 
     free(bindings_path);
@@ -1116,6 +1124,8 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = ir_generate_kotlin_code_multi(kir_file, output_path);
     } else if (strcmp(target, "markdown") == 0) {
         success = markdown_codegen_generate_multi(kir_file, output_path);
+    } else if (strcmp(target, "hare") == 0) {
+        success = hare_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "kir") == 0) {
         // KIR target: just copy the KIR file to output (for single-file case)
         // Multi-file case is handled in codegen_pipeline
@@ -1152,7 +1162,7 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, tsx, lua, c, python, kotlin, markdown, kir\n");
+        fprintf(stderr, "Supported targets: kry, tsx, lua, c, python, kotlin, hare, markdown, kir\n");
         return 1;
     }
 

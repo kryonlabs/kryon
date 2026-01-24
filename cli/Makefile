@@ -78,6 +78,7 @@ CODEGEN_OBJS = $(wildcard ../build/codegen_common.o) \
                $(wildcard ../codegens/markdown/markdown_codegen.o) \
                $(wildcard ../codegens/c/ir_c_codegen.o) \
                $(wildcard ../codegens/kotlin/kotlin_codegen.o) \
+               $(wildcard ../codegens/hare/hare_codegen.o) \
                $(wildcard ../codegens/react_common.o)
 
 # Third-party libraries
@@ -214,6 +215,10 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 
 ../codegens/kotlin/libkotlin_codegen.a:
 	$(MAKE) -C ../codegens/kotlin
+
+# Hare codegen object file
+../codegens/hare/hare_codegen.o:
+	$(MAKE) -C ../codegens/hare
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c

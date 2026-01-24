@@ -1,12 +1,13 @@
 /**
  * KRY Expression Transpiler
  *
- * Transpiles KRY expressions to Lua, JavaScript, or C.
+ * Transpiles KRY expressions to Lua, JavaScript, C, or Hare.
  *
  * Targets:
  *   KRY_TARGET_LUA        - Lua 5.x (1-indexed arrays, `and`/`or`/`not`)
  *   KRY_TARGET_JAVASCRIPT - ES6 JavaScript
  *   KRY_TARGET_C          - Native C99 (designated initializers, NULL)
+ *   KRY_TARGET_HARE       - Hare (void instead of null, match for ternary)
  *
  * Supported Expressions:
  *   Literals      strings, numbers, booleans, null
@@ -180,7 +181,8 @@ typedef struct KryExprNode {
 typedef enum {
     KRY_TARGET_LUA,
     KRY_TARGET_JAVASCRIPT,
-    KRY_TARGET_C  // Native C code generation
+    KRY_TARGET_C,    // Native C code generation
+    KRY_TARGET_HARE  // Hare code generation
 } KryExprTarget;
 
 typedef struct {

@@ -2095,7 +2095,11 @@ static KryNode* dispatch_keyword(KryParser* p, const char* keyword, bool* handle
         }
     }
 
-    fprintf(stderr, "[DISPATCH] No match for keyword '%s'\n", keyword);
+    // Don't log "No match for keyword" - this is expected behavior for:
+    // - Custom components (Counter, HabitPanel, etc.)
+    // - Properties (text, color, fontSize, etc.)
+    // - Component names (Row, Column, Button, etc.)
+    // These are handled by other parts of the parser and don't need to be logged
     return NULL;  // Not a keyword
 }
 

@@ -18,6 +18,10 @@ SDL_TTF_LIBS = $(shell pkg-config --libs SDL3_ttf 2>/dev/null || echo "-lSDL3_tt
 RAYLIB_CFLAGS = $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/usr/include")
 RAYLIB_LIBS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-lraylib -lm")
 
+# Text shaping libraries (HarfBuzz, FreeType, FriBidi)
+HARFBUZZ_CFLAGS = $(shell pkg-config --cflags harfbuzz freetype2 fribidi 2>/dev/null || echo "")
+HARFBUZZ_LIBS = $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
+
 # Enable/disable renderer support (can enable BOTH)
 # ENABLE_SDL3 = 1
 # ENABLE_RAYLIB = 1
@@ -47,6 +51,10 @@ ifeq ($(ENABLE_RAYLIB),1)
     CFLAGS += -DENABLE_RAYLIB $(RAYLIB_CFLAGS)
     LIBS += $(RAYLIB_LIBS)
 endif
+
+# Add text shaping libraries
+CFLAGS += $(HARFBUZZ_CFLAGS)
+LIBS += $(HARFBUZZ_LIBS)
 
 # Error if no backend enabled
 ifndef ENABLE_SDL3

@@ -272,21 +272,49 @@ void kryon_binding_group_destroy(KryonBindingGroup* group);
 /**
  * Bind existing component's text
  * Usage: TEXT("Hello"), BIND_TEXT(count_signal)
+ *
+ * Note: Uses _kryon_get_current_parent() to get the current component context,
+ * which works both inside and outside component macros.
  */
 #define BIND_TEXT(signal_expr) \
-    kryon_bind_text(_comp, (signal_expr), NULL)
+    do { \
+        IRComponent* __bind_comp = _kryon_get_current_parent(); \
+        if (__bind_comp) { \
+            kryon_bind_text(__bind_comp, (signal_expr), NULL); \
+        } \
+    } while(0)
 
 #define BIND_TEXT_FMT(signal_expr, fmt) \
-    kryon_bind_text(_comp, (signal_expr), fmt)
+    do { \
+        IRComponent* __bind_comp = _kryon_get_current_parent(); \
+        if (__bind_comp) { \
+            kryon_bind_text(__bind_comp, (signal_expr), (fmt)); \
+        } \
+    } while(0)
 
 #define BIND_VISIBLE(signal_expr) \
-    kryon_bind_visible(_comp, (signal_expr))
+    do { \
+        IRComponent* __bind_comp = _kryon_get_current_parent(); \
+        if (__bind_comp) { \
+            kryon_bind_visible(__bind_comp, (signal_expr)); \
+        } \
+    } while(0)
 
 #define BIND_BACKGROUND(signal_expr) \
-    kryon_bind_background(_comp, (signal_expr))
+    do { \
+        IRComponent* __bind_comp = _kryon_get_current_parent(); \
+        if (__bind_comp) { \
+            kryon_bind_background(__bind_comp, (signal_expr)); \
+        } \
+    } while(0)
 
 #define BIND_COLOR(signal_expr) \
-    kryon_bind_color(_comp, (signal_expr))
+    do { \
+        IRComponent* __bind_comp = _kryon_get_current_parent(); \
+        if (__bind_comp) { \
+            kryon_bind_color(__bind_comp, (signal_expr)); \
+        } \
+    } while(0)
 
 #endif // KRYON_DSL_H
 

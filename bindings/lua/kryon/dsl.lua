@@ -774,6 +774,26 @@ local function applyProperties(component, props)
     elseif key == "borderRadius" then
       C.ir_set_border(ensureStyle(), 1, 0, 0, 0, 255, tonumber(value) or 0)
 
+    -- ========== Dropdown-specific ==========
+    elseif key == "options" then
+      -- Handle options array for dropdown components
+      if type(value) == "table" then
+        local optionCount = #value
+        if optionCount > 0 then
+          -- Create cdata array of char* pointers
+          local ffi = require("ffi")
+          local optionsArray = ffi.new("const char*[?]", optionCount)
+          for i, opt in ipairs(value) do
+            optionsArray[i - 1] = tostring(opt)
+          end
+          C.ir_set_dropdown_options(component, optionsArray, optionCount)
+        end
+      end
+
+    elseif key == "selectedIndex" then
+      -- Handle selectedIndex for dropdown/tab components
+      C.ir_set_dropdown_selected_index(component, tonumber(value) or 0)
+
     -- ========== Events (already processed in fixed-order loop above) ==========
     -- Event handlers are now processed before this loop to ensure deterministic handler IDs
 
