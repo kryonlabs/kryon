@@ -369,6 +369,10 @@ ffi.cdef[[
   char* ir_clear_component_module_ref(IRComponent* component);
   void ir_restore_component_module_ref(IRComponent* component, const char* json_str);
 
+  // Dropdown-specific functions (ir_component_factory.h)
+  void ir_set_dropdown_options(IRComponent* component, char** options, uint32_t count);
+  void ir_set_dropdown_selected_index(IRComponent* component, int32_t index);
+
   // ============================================================================
   // Event Management (ir_builder.h)
   // ============================================================================

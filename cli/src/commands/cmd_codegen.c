@@ -27,6 +27,11 @@ static bool is_valid_target(const char* target) {
            strcmp(target, "tsx") == 0 ||
            strcmp(target, "lua") == 0 ||
            strcmp(target, "c") == 0 ||
+           strcmp(target, "python") == 0 ||
+           strcmp(target, "kotlin") == 0 ||
+           strcmp(target, "html") == 0 ||
+           strcmp(target, "markdown") == 0 ||
+           strcmp(target, "hare") == 0 ||
            strcmp(target, "kir") == 0;
 }
 
@@ -47,11 +52,16 @@ static void print_codegen_usage(const char* error) {
     fprintf(stderr, "    kryon codegen <input.kir> --lang=<target> --output=<output>\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Targets:\n");
-    fprintf(stderr, "  kry    - Generate .kry source code (round-trip)\n");
-    fprintf(stderr, "  tsx    - Generate TypeScript React code\n");
-    fprintf(stderr, "  lua    - Generate Lua source code (multi-file)\n");
-    fprintf(stderr, "  c      - Generate C source code\n");
-    fprintf(stderr, "  kir    - Generate KIR files (multi-file, preserves module structure)\n");
+    fprintf(stderr, "  kry       - Generate .kry source code (round-trip)\n");
+    fprintf(stderr, "  tsx       - Generate TypeScript React code\n");
+    fprintf(stderr, "  lua       - Generate Lua source code (multi-file)\n");
+    fprintf(stderr, "  c         - Generate C source code\n");
+    fprintf(stderr, "  python    - Generate Python DSL code\n");
+    fprintf(stderr, "  kotlin    - Generate Kotlin Android code\n");
+    fprintf(stderr, "  html      - Generate HTML/CSS/JS for web\n");
+    fprintf(stderr, "  markdown  - Generate Markdown documentation\n");
+    fprintf(stderr, "  hare      - Generate Hare source code\n");
+    fprintf(stderr, "  kir       - Generate KIR files (multi-file, preserves module structure)\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Examples:\n");
     fprintf(stderr, "  kryon codegen kry\n");
@@ -93,7 +103,8 @@ int cmd_codegen(int argc, char** argv) {
     const char* first = argv[0];
     if (strstr(first, ".kir") != NULL || strstr(first, ".lua") != NULL ||
         strstr(first, ".kry") != NULL || strstr(first, ".tsx") != NULL ||
-        strstr(first, ".c") != NULL || strstr(first, ".h") != NULL) {
+        strstr(first, ".c") != NULL || strstr(first, ".h") != NULL ||
+        strstr(first, ".ha") != NULL) {
         // First arg is a file - old syntax: codegen <input.kir> --lang=<target>
         input = first;
         for (int i = 1; i < argc; i++) {
@@ -114,7 +125,8 @@ int cmd_codegen(int argc, char** argv) {
             return 1;
         }
     } else if (argc >= 3 && (strstr(argv[1], ".kir") != NULL || strstr(argv[1], ".kry") != NULL ||
-                             strstr(argv[1], ".lua") != NULL || strstr(argv[1], ".tsx") != NULL)) {
+                             strstr(argv[1], ".lua") != NULL || strstr(argv[1], ".tsx") != NULL ||
+                             strstr(argv[1], ".ha") != NULL)) {
         // Positional syntax: codegen <target> <input> <output>
         target = first;
         input = argv[1];

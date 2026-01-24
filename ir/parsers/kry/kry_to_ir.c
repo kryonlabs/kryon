@@ -251,6 +251,13 @@ static bool is_unresolved_expr(ConversionContext* ctx, const char* expr) {
     for (int i = 0; i < ctx->param_count; i++) {
         // Direct match (e.g., "item")
         if (strcmp(expr, ctx->params[i].name) == 0) {
+            // Check if this is a self-referencing param (state variable marker)
+            // State variables are added with name=value to mark them as known
+            // but still need to be treated as unresolved for text_expression
+            if (ctx->params[i].value && strcmp(expr, ctx->params[i].value) == 0) {
+                // Self-reference: this is a state variable, treat as unresolved
+                return true;
+            }
             return false;  // Resolved!
         }
 
@@ -450,6 +457,17 @@ static bool handle_text_property(
     const char* text = resolve_value_as_string(ctx, value, &is_unresolved);
 
     if (!text) {
+        // Hard error if we can't resolve at all
+        const char* expr = (value->type == KRY_VALUE_IDENTIFIER)
+                          ? value->identifier
+                          : (value->type == KRY_VALUE_EXPRESSION)
+                          ? value->expression
+                          : "(unknown)";
+        if (ctx->parser) {
+            kry_parser_add_error_fmt(ctx->parser, KRY_ERROR_ERROR,
+                                     KRY_ERROR_VALIDATION,
+                                     "Cannot resolve text property value: %s", expr);
+        }
         return false;
     }
 
@@ -514,24 +532,59 @@ static bool create_event_handler(
     const char* event_type,
     KryValue* value
 ) {
-    if (value->type != KRY_VALUE_EXPRESSION || !ctx->logic_block) {
+    fprintf(stderr, "[DEBUG] create_event_handler called: event_type=%s, value_type=%d, logic_block=%p\n",
+            event_type, value ? value->type : -1, ctx ? ctx->logic_block : NULL);
+
+    // Accept both IDENTIFIER and EXPRESSION types
+    // IDENTIFIER: onClick = handleButtonClick
+    // EXPRESSION: onClick = () => { ... }
+    if ((value->type != KRY_VALUE_EXPRESSION && value->type != KRY_VALUE_IDENTIFIER) || !ctx->logic_block) {
+        fprintf(stderr, "[DEBUG] create_event_handler returning false: value_type=%d (need %d or %d), logic_block=%p\n",
+                value ? value->type : -1, KRY_VALUE_EXPRESSION, KRY_VALUE_IDENTIFIER, ctx ? ctx->logic_block : NULL);
         return false;
     }
 
-    // Generate unique handler name
-    char handler_name[64];
-    snprintf(handler_name, sizeof(handler_name), "handler_%u_%s",
-             ctx->next_handler_id++, event_type);
+    const char* handler_name;
+    char gen_handler_name[64];
+    bool is_lambda_expression = false;
+    IRLogicFunction* func = NULL;
 
-    // Create handler function
-    IRLogicFunction* func = ir_logic_function_create(handler_name);
-    if (!func) return false;
+    // Get the handler name from either identifier or expression
+    const char* expr = (value->type == KRY_VALUE_IDENTIFIER)
+        ? value->identifier
+        : value->expression;
 
-    // Add source code to function
-    ir_logic_function_add_source(func, "kry", value->expression);
+    // Check if the expression is a simple identifier (just a function name)
+    // Simple identifiers are alphanumeric with underscores, no spaces or special chars
+    bool is_simple_identifier = true;
+    for (size_t i = 0; expr[i] != '\0'; i++) {
+        char c = expr[i];
+        if (!isalnum((unsigned char)c) && c != '_') {
+            is_simple_identifier = false;
+            break;
+        }
+    }
 
-    // Add function to logic block
-    ir_logic_block_add_function(ctx->logic_block, func);
+    if (is_simple_identifier) {
+        // Use the function name directly (it's defined in @c, @lua, @js blocks)
+        handler_name = expr;
+    } else {
+        // Lambda expression: generate a unique handler name
+        snprintf(gen_handler_name, sizeof(gen_handler_name), "handler_%u_%s",
+                 ctx->next_handler_id++, event_type);
+        handler_name = gen_handler_name;
+        is_lambda_expression = true;
+
+        // Create handler function for lambda expression
+        func = ir_logic_function_create(handler_name);
+        if (!func) return false;
+
+        // Add source code to function
+        ir_logic_function_add_source(func, "kry", value->expression);
+
+        // Add function to logic block
+        ir_logic_block_add_function(ctx->logic_block, func);
+    }
 
     // Create event binding
     IREventBinding* binding = ir_event_binding_create(
@@ -554,9 +607,16 @@ static bool create_event_handler(
     }
 
     // Create legacy IREvent for backwards compatibility
-    IREvent* event = ir_create_event(event_enum, handler_name, value->expression);
+    // For simple identifiers, logic_id is the function name; for lambdas, it's the generated name
+    IREvent* event = ir_create_event(event_enum, handler_name,
+                                     is_lambda_expression ? value->expression : NULL);
     if (event) {
         ir_add_event(component, event);
+        fprintf(stderr, "[DEBUG] Created event for component %d: type=%s, logic_id=%s\n",
+                component->id, event_type, handler_name);
+    } else {
+        fprintf(stderr, "[DEBUG] Failed to create event for component %d: type=%s\n",
+                component->id, event_type);
     }
 
     return true;
@@ -570,6 +630,7 @@ static bool handle_onClick_property(
     KryValue* value
 ) {
     (void)name; // Unused
+    fprintf(stderr, "[DEBUG] handle_onClick_property called: value_type=%d\n", value ? value->type : -1);
     return create_event_handler(ctx, component, "click", value);
 }
 
@@ -658,6 +719,134 @@ static bool handle_height_property(
         return true;
     }
 
+    return false;
+}
+
+// Handle minWidth property
+static bool handle_minWidth_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx;
+    (void)name;
+
+    IRLayout* layout = ir_get_layout(component);
+    if (!layout) {
+        layout = ir_create_layout();
+        ir_set_layout(component, layout);
+    }
+
+    if (value->type == KRY_VALUE_NUMBER) {
+        IRDimensionType dim_type = value->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
+        ir_set_min_width(layout, dim_type, (float)value->number_value);
+        return true;
+    } else if (value->type == KRY_VALUE_STRING) {
+        const char* str = value->string_value;
+        if (strstr(str, "%")) {
+            ir_set_min_width(layout, IR_DIMENSION_PERCENT, (float)atof(str));
+        } else {
+            ir_set_min_width(layout, IR_DIMENSION_PX, (float)atof(str));
+        }
+        return true;
+    }
+    return false;
+}
+
+// Handle maxWidth property
+static bool handle_maxWidth_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx;
+    (void)name;
+
+    IRLayout* layout = ir_get_layout(component);
+    if (!layout) {
+        layout = ir_create_layout();
+        ir_set_layout(component, layout);
+    }
+
+    if (value->type == KRY_VALUE_NUMBER) {
+        IRDimensionType dim_type = value->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
+        ir_set_max_width(layout, dim_type, (float)value->number_value);
+        return true;
+    } else if (value->type == KRY_VALUE_STRING) {
+        const char* str = value->string_value;
+        if (strstr(str, "%")) {
+            ir_set_max_width(layout, IR_DIMENSION_PERCENT, (float)atof(str));
+        } else {
+            ir_set_max_width(layout, IR_DIMENSION_PX, (float)atof(str));
+        }
+        return true;
+    }
+    return false;
+}
+
+// Handle minHeight property
+static bool handle_minHeight_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx;
+    (void)name;
+
+    IRLayout* layout = ir_get_layout(component);
+    if (!layout) {
+        layout = ir_create_layout();
+        ir_set_layout(component, layout);
+    }
+
+    if (value->type == KRY_VALUE_NUMBER) {
+        IRDimensionType dim_type = value->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
+        ir_set_min_height(layout, dim_type, (float)value->number_value);
+        return true;
+    } else if (value->type == KRY_VALUE_STRING) {
+        const char* str = value->string_value;
+        if (strstr(str, "%")) {
+            ir_set_min_height(layout, IR_DIMENSION_PERCENT, (float)atof(str));
+        } else {
+            ir_set_min_height(layout, IR_DIMENSION_PX, (float)atof(str));
+        }
+        return true;
+    }
+    return false;
+}
+
+// Handle maxHeight property
+static bool handle_maxHeight_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx;
+    (void)name;
+
+    IRLayout* layout = ir_get_layout(component);
+    if (!layout) {
+        layout = ir_create_layout();
+        ir_set_layout(component, layout);
+    }
+
+    if (value->type == KRY_VALUE_NUMBER) {
+        IRDimensionType dim_type = value->is_percentage ? IR_DIMENSION_PERCENT : IR_DIMENSION_PX;
+        ir_set_max_height(layout, dim_type, (float)value->number_value);
+        return true;
+    } else if (value->type == KRY_VALUE_STRING) {
+        const char* str = value->string_value;
+        if (strstr(str, "%")) {
+            ir_set_max_height(layout, IR_DIMENSION_PERCENT, (float)atof(str));
+        } else {
+            ir_set_max_height(layout, IR_DIMENSION_PX, (float)atof(str));
+        }
+        return true;
+    }
     return false;
 }
 
@@ -1079,27 +1268,19 @@ static bool handle_windowHeight_property(
 // Tab Component Property Handlers
 // ============================================================================
 
-// Handle selectedIndex property (for TabGroup)
+// Handle selectedIndex property (for TabGroup and Dropdown components)
 static bool handle_selectedIndex_property(
     ConversionContext* ctx,
     IRComponent* component,
     const char* name,
     KryValue* value
 ) {
-    // Handle numeric literal - set directly
-    if (value->type == KRY_VALUE_NUMBER) {
-        // Ensure tab_data exists
-        if (!component->tab_data) {
-            component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
-        }
-        if (component->tab_data) {
-            component->tab_data->selected_index = (int32_t)value->number_value;
-        }
-        return true;
-    }
+    int32_t index_value = 0;
 
-    // Handle identifier or expression - create property binding for runtime
-    if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
+    // Get the numeric value
+    if (value->type == KRY_VALUE_NUMBER) {
+        index_value = (int32_t)value->number_value;
+    } else if (value->type == KRY_VALUE_IDENTIFIER || value->type == KRY_VALUE_EXPRESSION) {
         const char* expr = (value->type == KRY_VALUE_IDENTIFIER)
                           ? value->identifier : value->expression;
 
@@ -1111,32 +1292,106 @@ static bool handle_selectedIndex_property(
             char* endptr;
             long val = strtol(substituted, &endptr, 10);
             if (*endptr == '\0') {
-                // Substituted to a numeric value - set directly
-                if (!component->tab_data) {
-                    component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
-                }
-                if (component->tab_data) {
-                    component->tab_data->selected_index = (int32_t)val;
-                }
-                return true;
+                index_value = (int32_t)val;
+            } else {
+                // Variable reference or expression - create property binding for runtime evaluation
+                ir_component_add_property_binding(component, name, expr, "0", "static_template");
+                index_value = 0;  // Default value
             }
+        } else {
+            // Variable reference or expression - create property binding for runtime evaluation
+            ir_component_add_property_binding(component, name, expr, "0", "static_template");
+            index_value = 0;  // Default value
         }
+    } else {
+        return false;
+    }
 
-        // Variable reference or expression - always create property binding for runtime evaluation
-        // This allows selectedIndex to be reactive to state changes
-        ir_component_add_property_binding(component, name, expr, "0", "static_template");
+    // Handle Dropdown components
+    if (component->type == IR_COMPONENT_DROPDOWN) {
+        // Ensure dropdown state exists
+        if (!component->custom_data) {
+            component->custom_data = calloc(1, sizeof(IRDropdownState));
+        }
+        ir_set_dropdown_selected_index(component, index_value);
+        return true;
+    }
 
-        // Initialize tab_data with default value
+    // Handle TabGroup components
+    if (component->type == IR_COMPONENT_TAB_GROUP) {
+        // Ensure tab_data exists
         if (!component->tab_data) {
             component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
         }
         if (component->tab_data) {
-            component->tab_data->selected_index = 0;
+            component->tab_data->selected_index = index_value;
         }
         return true;
     }
 
     return false;
+}
+
+// ============================================================================
+// Dropdown Property Handlers
+// ============================================================================
+
+// Handle options property (for Dropdown components)
+static bool handle_options_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx;
+    (void)name;
+
+    // Only handle array values for Dropdown components
+    if (component->type != IR_COMPONENT_DROPDOWN) {
+        return false;
+    }
+
+    if (value->type != KRY_VALUE_ARRAY) {
+        if (ctx && ctx->parser) {
+            kry_parser_add_error(ctx->parser, KRY_ERROR_ERROR, KRY_ERROR_CONVERSION,
+                                "options property must be an array");
+        }
+        return false;
+    }
+
+    // Ensure dropdown state exists
+    if (!component->custom_data) {
+        component->custom_data = calloc(1, sizeof(IRDropdownState));
+    }
+
+    IRDropdownState* state = (IRDropdownState*)component->custom_data;
+    if (!state) {
+        return false;
+    }
+
+    // Convert KryValue array to C string array
+    uint32_t count = (uint32_t)value->array.count;
+    if (count > 0) {
+        char** options = (char**)malloc(sizeof(char*) * count);
+        for (uint32_t i = 0; i < count; i++) {
+            KryValue* item = value->array.elements[i];
+            if (item->type == KRY_VALUE_STRING) {
+                options[i] = item->string_value;
+            } else if (item->type == KRY_VALUE_IDENTIFIER) {
+                options[i] = item->identifier;
+            } else {
+                options[i] = "";  // Empty string for non-string values
+            }
+        }
+
+        // Call IR function to set options (takes ownership of strings)
+        ir_set_dropdown_options(component, options, count);
+
+        // Free the temporary array (strings are now owned by IRDropdownState)
+        free(options);
+    }
+
+    return true;
 }
 
 // ============================================================================
@@ -1239,12 +1494,16 @@ static const PropertyDispatchEntry property_dispatch_table[] = {
     {"onChange",         handle_onChange_property,       false},
 
     // Layout properties
-    {"width",            handle_width_property,          false},
-    {"height",           handle_height_property,         false},
+    {"width",            handle_width_property,          true},
+    {"height",           handle_height_property,         true},
     {"posX",             handle_posX_property,           false},
     {"posY",             handle_posY_property,           false},
     {"left",             handle_posX_property,           false},  // Alias for posX
     {"top",              handle_posY_property,           false},  // Alias for posY
+    {"minWidth",         handle_minWidth_property,       false},
+    {"maxWidth",         handle_maxWidth_property,       false},
+    {"minHeight",        handle_minHeight_property,      false},
+    {"maxHeight",        handle_maxHeight_property,      false},
     {"padding",          handle_padding_property,        false},
     {"gap",              handle_gap_property,            false},
 
@@ -1273,6 +1532,9 @@ static const PropertyDispatchEntry property_dispatch_table[] = {
 
     // Tab component properties
     {"selectedIndex",    handle_selectedIndex_property,    false},
+
+    // Dropdown component properties
+    {"options",          handle_options_property,          false},
 
     // Sentinel (marks end of table)
     {NULL,               NULL,                           false}
@@ -2434,6 +2696,12 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     }
                 }
 
+                if (def) {
+                    fprintf(stderr, "[DEBUG] Found component definition '%s' with %u state vars\n", node->name, def->state_var_count);
+                } else {
+                    fprintf(stderr, "[DEBUG] Component definition '%s' not found\n", node->name);
+                }
+
                 if (node->arguments && def) {
                     {
                         // Parse argument - for now support simple positional or named syntax
@@ -2458,8 +2726,14 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                         // Apply to state variables that reference this prop
                         for (uint32_t i = 0; i < def->state_var_count; i++) {
                             IRComponentStateVar* state_var = &def->state_vars[i];
+                            fprintf(stderr, "[DEBUG]   State var %u: name=%s, initial_expr=%s\n",
+                                    i, state_var->name, state_var->initial_expr ? state_var->initial_expr : "(null)");
                             // If the initial_expr is the prop name, substitute with actual value
+                            fprintf(stderr, "[DEBUG]     Checking: initial_expr=%s, equals=%s\n",
+                                    state_var->initial_expr ? state_var->initial_expr : "(null)",
+                                    equals ? "set" : "NULL");
                             if (state_var->initial_expr && equals) {
+                                fprintf(stderr, "[DEBUG]     Taking NAMED arg path\n");
                                 // Named arg: check if initial_expr matches prop name
                                 char* prop_name_start = arg_copy;
                                 *equals = '\0'; // Temporarily terminate
@@ -2471,7 +2745,8 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                                 }
 
                                 if (strcmp(state_var->initial_expr, prop_name_start) == 0) {
-
+                                    fprintf(stderr, "[DEBUG]     MATCH! Adding variable with value %s, scope %s\n",
+                                            arg_value, instance_scope);
                                     // Register state variable in manifest with the actual value
                                     IRReactiveValue initial_value;
                                     initial_value.as_int = atoi(arg_value);
@@ -2494,8 +2769,9 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                                 }
                                 *equals = '='; // Restore
                             } else if (state_var->initial_expr) {
+                                fprintf(stderr, "[DEBUG]     Taking POSITIONAL arg path, value=%s, scope=%s\n",
+                                        arg_value, instance_scope);
                                 // Positional arg - just use the value directly
-
                                 IRReactiveValue initial_value;
                                 initial_value.as_int = atoi(arg_value);
 
@@ -2675,6 +2951,7 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                 }
             } else if (child->type == KRY_NODE_VAR_DECL) {
                 // Handle variable declaration (const/let/var)
+                // NOTE: In component definitions, 'var' statements represent state variables
                 // Store in context for later substitution
                 const char* var_name = child->name;
                 const char* var_value = NULL;
@@ -2697,7 +2974,76 @@ static IRComponent* convert_node(ConversionContext* ctx, KryNode* node) {
                     }
                 }
 
-                if (var_value) {
+                // For 'var' declarations in component templates, we need special handling:
+                // - State variables should NOT have their initial value substituted
+                // - Instead, references like $value should become text_expression bindings
+                // We detect state variables by checking if they have a type annotation (child->var_type)
+                // For state variables, add a self-reference param to mark the variable name as known
+                // but still trigger the unresolved expression path in handle_text_property
+                bool is_state_var = (child->var_type != NULL);
+                if (is_state_var) {
+                    // State variable: add self-reference to param context
+                    // This allows is_unresolved_expr() to recognize the variable name
+                    add_param(ctx, var_name, var_name);
+                    // Also store for reactive manifest (if we have one)
+                    if (ctx->manifest) {
+                        // Add to reactive manifest with proper initial value
+                        IRReactiveVarType ir_type = IR_REACTIVE_TYPE_INT;
+                        const char* type_str = "int";
+
+                        if (child->var_type) {
+                            if (strcmp(child->var_type, "string") == 0) {
+                                ir_type = IR_REACTIVE_TYPE_STRING;
+                                type_str = "string";
+                            } else if (strcmp(child->var_type, "float") == 0 ||
+                                       strcmp(child->var_type, "double") == 0 ||
+                                       strcmp(child->var_type, "number") == 0) {
+                                ir_type = IR_REACTIVE_TYPE_FLOAT;
+                                type_str = child->var_type;
+                            } else if (strcmp(child->var_type, "bool") == 0 ||
+                                       strcmp(child->var_type, "boolean") == 0) {
+                                ir_type = IR_REACTIVE_TYPE_BOOL;
+                                type_str = child->var_type;
+                            }
+                        }
+
+                        IRReactiveValue react_value = {.as_int = 0};
+                        if (var_value) {
+                            switch (ir_type) {
+                                case IR_REACTIVE_TYPE_INT:
+                                    react_value.as_int = atoi(var_value);
+                                    break;
+                                case IR_REACTIVE_TYPE_FLOAT:
+                                    react_value.as_float = atof(var_value);
+                                    break;
+                                case IR_REACTIVE_TYPE_BOOL:
+                                    react_value.as_bool = (strcmp(var_value, "true") == 0);
+                                    break;
+                                case IR_REACTIVE_TYPE_STRING:
+                                    react_value.as_string = (char*)var_value;
+                                    break;
+                            }
+                        }
+
+                        uint32_t var_id = ir_reactive_manifest_add_var(
+                            ctx->manifest,
+                            var_name,
+                            ir_type,
+                            react_value
+                        );
+
+                        if (var_id > 0) {
+                            ir_reactive_manifest_set_var_metadata(
+                                ctx->manifest,
+                                var_id,
+                                type_str,
+                                var_value,
+                                "component"
+                            );
+                        }
+                    }
+                } else if (var_value) {
+                    // Regular const/let variable: add with actual value for substitution
                     add_param(ctx, var_name, var_value);
                 }
             } else if (child->type == KRY_NODE_STATIC_BLOCK) {
@@ -3693,11 +4039,13 @@ static IRComponentStateVar* extract_component_state_vars(
         return NULL;
     }
 
-    // Count state declarations
+    // Count state declarations (both 'state' and 'var' inside components)
     uint32_t count = 0;
     KryNode* child = component_body->first_child;
     while (child) {
-        if (child->type == KRY_NODE_STATE) {
+        // Include both KRY_NODE_STATE (state value: int = 0) and
+        // KRY_NODE_VAR_DECL (var value: int = initialValue) as component state
+        if (child->type == KRY_NODE_STATE || child->type == KRY_NODE_VAR_DECL) {
             count++;
         }
         child = child->next_sibling;
@@ -3719,18 +4067,20 @@ static IRComponentStateVar* extract_component_state_vars(
     uint32_t idx = 0;
     child = component_body->first_child;
     while (child && idx < count) {
-        if (child->type != KRY_NODE_STATE) {
+        if (child->type != KRY_NODE_STATE && child->type != KRY_NODE_VAR_DECL) {
             child = child->next_sibling;
             continue;
         }
 
-        // Parse state declaration: "state value: int = initialValue"
+        // Parse state declaration: "state value: int = initialValue" or "var value: int = initialValue"
         // child->name = "value"
-        // child->state_type = "int"
+        // child->state_type = "int" (for KRY_NODE_STATE)
         // child->value = initial expression (KryValue)
 
         state_vars[idx].name = child->name ? strdup(child->name) : strdup("unknown");
-        state_vars[idx].type = child->state_type ? strdup(child->state_type) : strdup("any");
+        // Use state_type if available (KRY_NODE_STATE), otherwise use var_type (KRY_NODE_VAR_DECL)
+        const char* type_str = child->state_type ? child->state_type : child->var_type;
+        state_vars[idx].type = type_str ? strdup(type_str) : strdup("any");
 
         // Convert initial expression to string
         if (child->value) {
@@ -4722,6 +5072,15 @@ static char* ir_kry_to_kir_internal_ex(const char* source, size_t length, const 
     metadata.source_file = NULL;
 
     // Serialize with complete KIR format (manifest + logic_block + metadata + source_structures)
+    fprintf(stderr, "[DEBUG] Before serialization: manifest has %u variables\n", ctx.manifest->variable_count);
+    for (uint32_t i = 0; i < ctx.manifest->variable_count; i++) {
+        fprintf(stderr, "[DEBUG]   Var %u: id=%u, name=%s, initial_value=%s, scope=%s\n",
+                i,
+                ctx.manifest->variables[i].id,
+                ctx.manifest->variables[i].name ? ctx.manifest->variables[i].name : "(null)",
+                ctx.manifest->variables[i].initial_value_json ? ctx.manifest->variables[i].initial_value_json : "(null)",
+                ctx.manifest->variables[i].scope ? ctx.manifest->variables[i].scope : "(null)");
+    }
     char* json = ir_serialize_json_complete(root, ctx.manifest, ctx.logic_block, &metadata, ctx.source_structures);
 
     // Clean up

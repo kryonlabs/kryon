@@ -31,12 +31,12 @@ Converts KIR (JSON IR) to complete source files.
 | C | ✅ | `codegens/c/` | |
 | Python | ✅ | `codegens/python/` | |
 | Kotlin | ✅ | `codegens/kotlin/` | |
+| Hare | ✅ | `codegens/hare/` | NEW - Beta |
 | KRY | ✅ | `codegens/kry/` | Round-trip |
 | Markdown | ✅ | `codegens/markdown/` | |
 | HTML/CSS/JS | ✅ | `codegens/web/` | |
 | Swift | ❌ | | |
 | Go | ❌ | | |
-| [Hare](https://harelang.org/) | ❌ | | |
 
 ### Runtime Bindings
 
@@ -79,7 +79,7 @@ FFI bindings for using Kryon from other languages.
 | Category | Done | Missing |
 |----------|------|---------|
 | Expression Transpiler Targets | 3 | 6 |
-| Code Generators | 8 | 3 |
+| Code Generators | 9 | 2 |
 | Runtime Bindings | 6 | 4 |
 
 ### Build Pipeline Status
@@ -138,6 +138,7 @@ kryon/
 │   ├── c/
 │   ├── python/
 │   ├── kotlin/
+│   ├── hare/
 │   ├── kry/
 │   ├── markdown/
 │   ├── web/

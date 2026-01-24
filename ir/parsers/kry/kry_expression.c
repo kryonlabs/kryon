@@ -1102,6 +1102,7 @@ static char* buffer_extract(CodeBuffer* buf) {
 
 static void generate_lua(KryExprNode* node, CodeBuffer* out);
 static void generate_javascript(KryExprNode* node, CodeBuffer* out);
+static void generate_hare(KryExprNode* node, CodeBuffer* out);
 
 static void generate_lua_literal(KryExprNode* node, CodeBuffer* out) {
     switch (node->literal.literal_type) {
@@ -1191,6 +1192,42 @@ static void generate_c_literal(KryExprNode* node, CodeBuffer* out) {
     }
 }
 
+static void generate_hare_literal(KryExprNode* node, CodeBuffer* out) {
+    switch (node->literal.literal_type) {
+        case KRY_LITERAL_STRING: {
+            buffer_append_char(out, '"');
+            // Escape special characters for Hare strings
+            const char* s = node->literal.string_val;
+            while (*s) {
+                switch (*s) {
+                    case '"':  buffer_append(out, "\\\""); break;
+                    case '\\': buffer_append(out, "\\\\"); break;
+                    case '\n': buffer_append(out, "\\n"); break;
+                    case '\t': buffer_append(out, "\\t"); break;
+                    case '\r': buffer_append(out, "\\r"); break;
+                    default:   buffer_append_char(out, *s); break;
+                }
+                s++;
+            }
+            buffer_append_char(out, '"');
+            break;
+        }
+        case KRY_LITERAL_NUMBER: {
+            char num_buf[64];
+            snprintf(num_buf, sizeof(num_buf), "%g", node->literal.number_val);
+            buffer_append(out, num_buf);
+            break;
+        }
+        case KRY_LITERAL_BOOLEAN:
+            buffer_append(out, node->literal.bool_val ? "true" : "false");
+            break;
+        case KRY_LITERAL_NULL:
+        case KRY_LITERAL_UNDEFINED:
+            buffer_append(out, "void");
+            break;
+    }
+}
+
 static const char* binary_op_to_lua(KryBinaryOp op) {
     switch (op) {
         case KRY_BIN_OP_ADD: return " + ";
@@ -1246,6 +1283,26 @@ static const char* binary_op_to_c(KryBinaryOp op) {
         case KRY_BIN_OP_GTE: return " >= ";
         case KRY_BIN_OP_AND: return " && ";   // C uses && (like JS, not Lua's "and")
         case KRY_BIN_OP_OR: return " || ";    // C uses || (like JS, not Lua's "or")
+        case KRY_BIN_OP_ASSIGN: return " = ";
+    }
+    return "?";
+}
+
+static const char* binary_op_to_hare(KryBinaryOp op) {
+    switch (op) {
+        case KRY_BIN_OP_ADD: return " + ";
+        case KRY_BIN_OP_SUB: return " - ";
+        case KRY_BIN_OP_MUL: return " * ";
+        case KRY_BIN_OP_DIV: return " / ";
+        case KRY_BIN_OP_MOD: return " % ";
+        case KRY_BIN_OP_EQ: return " == ";
+        case KRY_BIN_OP_NEQ: return " != ";
+        case KRY_BIN_OP_LT: return " < ";
+        case KRY_BIN_OP_GT: return " > ";
+        case KRY_BIN_OP_LTE: return " <= ";
+        case KRY_BIN_OP_GTE: return " >= ";
+        case KRY_BIN_OP_AND: return " && ";
+        case KRY_BIN_OP_OR: return " || ";
         case KRY_BIN_OP_ASSIGN: return " = ";
     }
     return "?";
@@ -1663,6 +1720,134 @@ static void generate_c_with_opts(KryExprNode* node, CodeBuffer* out, KryExprOpti
     }
 }
 
+static void generate_hare(KryExprNode* node, CodeBuffer* out) {
+    if (!node) return;
+
+    switch (node->type) {
+        case KRY_EXPR_LITERAL:
+            generate_hare_literal(node, out);
+            break;
+
+        case KRY_EXPR_IDENTIFIER:
+            buffer_append(out, node->identifier);
+            break;
+
+        case KRY_EXPR_BINARY_OP:
+            buffer_append_char(out, '(');
+            generate_hare(node->binary_op.left, out);
+            buffer_append(out, binary_op_to_hare(node->binary_op.op));
+            generate_hare(node->binary_op.right, out);
+            buffer_append_char(out, ')');
+            break;
+
+        case KRY_EXPR_UNARY_OP:
+            if (node->unary_op.op == KRY_UNARY_OP_NOT) {
+                buffer_append_char(out, '!');
+            } else if (node->unary_op.op == KRY_UNARY_OP_NEGATE) {
+                buffer_append_char(out, '-');
+            } else if (node->unary_op.op == KRY_UNARY_OP_TYPEOF) {
+                buffer_append(out, "/* typeof unsupported */ void");
+                return;
+            }
+            generate_hare(node->unary_op.operand, out);
+            break;
+
+        case KRY_EXPR_PROPERTY_ACCESS:
+            generate_hare(node->property_access.object, out);
+            buffer_append_char(out, '.');
+            buffer_append(out, node->property_access.property);
+            break;
+
+        case KRY_EXPR_ELEMENT_ACCESS:
+            generate_hare(node->element_access.array, out);
+            buffer_append_char(out, '[');
+            generate_hare(node->element_access.index, out);
+            buffer_append_char(out, ']');
+            break;
+
+        case KRY_EXPR_CALL: {
+            generate_hare(node->call.callee, out);
+            buffer_append_char(out, '(');
+            for (size_t i = 0; i < node->call.arg_count; i++) {
+                if (i > 0) buffer_append(out, ", ");
+                generate_hare(node->call.args[i], out);
+            }
+            buffer_append_char(out, ')');
+            break;
+        }
+
+        case KRY_EXPR_ARRAY: {
+            buffer_append_char(out, '[');
+            for (size_t i = 0; i < node->array.element_count; i++) {
+                if (i > 0) buffer_append(out, ", ");
+                generate_hare(node->array.elements[i], out);
+            }
+            buffer_append_char(out, ']');
+            break;
+        }
+
+        case KRY_EXPR_OBJECT: {
+            buffer_append_char(out, '{');
+            for (size_t i = 0; i < node->object.prop_count; i++) {
+                if (i > 0) buffer_append(out, ", ");
+                buffer_append(out, node->object.keys[i]);
+                buffer_append(out, " = ");
+                generate_hare(node->object.values[i], out);
+            }
+            buffer_append_char(out, '}');
+            break;
+        }
+
+        case KRY_EXPR_ARROW_FUNC: {
+            // Hare fn syntax
+            buffer_append(out, "fn(");
+            for (size_t i = 0; i < node->arrow_func.param_count; i++) {
+                if (i > 0) buffer_append(out, ", ");
+                buffer_append(out, node->arrow_func.params[i]);
+            }
+            buffer_append(out, ") ");
+            if (node->arrow_func.is_expression_body) {
+                buffer_append(out, "= ");
+                generate_hare(node->arrow_func.body, out);
+            } else {
+                // Block body
+                buffer_append_char(out, '{');
+                if (node->arrow_func.body &&
+                    node->arrow_func.body->type == KRY_EXPR_LITERAL &&
+                    node->arrow_func.body->literal.literal_type == KRY_LITERAL_STRING) {
+                    buffer_append(out, node->arrow_func.body->literal.string_val);
+                }
+                buffer_append_char(out, '}');
+            }
+            break;
+        }
+
+        case KRY_EXPR_CONDITIONAL: {
+            // Hare match expression for ternary (no native ternary)
+            buffer_append(out, "match (");
+            generate_hare(node->conditional.condition, out);
+            buffer_append(out, ") {");
+            buffer_append(out, "case true => ");
+            generate_hare(node->conditional.consequent, out);
+            buffer_append(out, ", ");
+            buffer_append(out, "case => ");
+            generate_hare(node->conditional.alternate, out);
+            buffer_append_char(out, '}');
+            break;
+        }
+
+        case KRY_EXPR_MEMBER_EXPR:
+            generate_hare(node->member_expr.object, out);
+            buffer_append_char(out, '.');
+            buffer_append(out, node->member_expr.member);
+            break;
+
+        default:
+            buffer_append(out, "/* unsupported expression */");
+            break;
+    }
+}
+
 char* kry_expr_transpile(KryExprNode* node, KryExprOptions* options, size_t* output_length) {
     if (!node) {
         set_error("Null expression node");
@@ -1681,6 +1866,8 @@ char* kry_expr_transpile(KryExprNode* node, KryExprOptions* options, size_t* out
         generate_lua(node, &buf);
     } else if (options->target == KRY_TARGET_C) {
         generate_c_with_opts(node, &buf, options);
+    } else if (options->target == KRY_TARGET_HARE) {
+        generate_hare(node, &buf);
     } else {
         generate_javascript(node, &buf);
     }

@@ -906,7 +906,12 @@ bool ir_executor_call_handler(IRExecutorContext* ctx, const char* handler_name) 
         printf("[executor] Handler not found in logic block\n");
     }
 
-    return false;
+    // FALLBACK: Try C runtime event bridge for transpiled KRY handlers
+    // This handles KRY handlers that were transpiled to C functions
+    extern void kryon_c_event_bridge(const char* logic_id);
+    printf("[executor] Trying C event bridge for: %s\n", handler_name);
+    kryon_c_event_bridge(handler_name);
+    return true;  // Return true even if bridge didn't find it (to avoid duplicate errors)
 }
 
 // Helper: Find component by ID in tree

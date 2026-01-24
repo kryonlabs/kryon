@@ -30,6 +30,7 @@
 
 #include "kryon.h"
 #include "../../ir/include/ir_native_canvas.h"
+#include "../../ir/include/ir_component_factory.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +44,160 @@ extern "C" {
 void _kryon_push_parent(IRComponent* parent);
 void _kryon_pop_parent(void);
 IRComponent* _kryon_get_current_parent(void);
+
+// Helper wrapper functions for property setters (return int for comma operator compatibility)
+static inline int _set_width(IRComponent* comp, float val, const char* unit) {
+    kryon_set_width(comp, val, unit);
+    return 0;
+}
+static inline int _set_height(IRComponent* comp, float val, const char* unit) {
+    kryon_set_height(comp, val, unit);
+    return 0;
+}
+static inline int _set_min_width(IRComponent* comp, float val, const char* unit) {
+    kryon_set_min_width(comp, val, unit);
+    return 0;
+}
+static inline int _set_max_width(IRComponent* comp, float val, const char* unit) {
+    kryon_set_max_width(comp, val, unit);
+    return 0;
+}
+static inline int _set_min_height(IRComponent* comp, float val, const char* unit) {
+    kryon_set_min_height(comp, val, unit);
+    return 0;
+}
+static inline int _set_max_height(IRComponent* comp, float val, const char* unit) {
+    kryon_set_max_height(comp, val, unit);
+    return 0;
+}
+static inline int _set_background(IRComponent* comp, uint32_t color) {
+    kryon_set_background(comp, color);
+    return 0;
+}
+static inline int _set_color(IRComponent* comp, uint32_t color) {
+    kryon_set_color(comp, color);
+    return 0;
+}
+static inline int _set_border_color(IRComponent* comp, uint32_t color) {
+    kryon_set_border_color(comp, color);
+    return 0;
+}
+static inline int _set_justify_content(IRComponent* comp, int alignment) {
+    kryon_set_justify_content(comp, alignment);
+    return 0;
+}
+static inline int _set_align_items(IRComponent* comp, int alignment) {
+    kryon_set_align_items(comp, alignment);
+    return 0;
+}
+static inline int _set_gap(IRComponent* comp, float gap) {
+    kryon_set_gap(comp, gap);
+    return 0;
+}
+static inline int _set_flex_grow(IRComponent* comp, uint8_t val) {
+    kryon_set_flex_grow(comp, val);
+    return 0;
+}
+static inline int _set_flex_shrink(IRComponent* comp, uint8_t val) {
+    kryon_set_flex_shrink(comp, val);
+    return 0;
+}
+static inline int _set_flex_wrap(IRComponent* comp, bool wrap) {
+    kryon_set_flex_wrap(comp, wrap);
+    return 0;
+}
+static inline int _set_padding(IRComponent* comp, float padding) {
+    kryon_set_padding(comp, padding);
+    return 0;
+}
+static inline int _set_margin(IRComponent* comp, float margin) {
+    kryon_set_margin(comp, margin);
+    return 0;
+}
+static inline int _set_padding_sides(IRComponent* comp, float t, float r, float b, float l) {
+    kryon_set_padding_sides(comp, t, r, b, l);
+    return 0;
+}
+static inline int _set_margin_sides(IRComponent* comp, float t, float r, float b, float l) {
+    kryon_set_margin_sides(comp, t, r, b, l);
+    return 0;
+}
+static inline int _set_dropdown_options(IRComponent* comp, const char** opts, uint32_t count) {
+    ir_set_dropdown_options(comp, (char**)opts, count);
+    return 0;
+}
+static inline int _set_dropdown_selected_index(IRComponent* comp, int32_t index) {
+    ir_set_dropdown_selected_index(comp, index);
+    return 0;
+}
+static inline int _set_font_size(IRComponent* comp, float size) {
+    kryon_set_font_size(comp, size);
+    return 0;
+}
+static inline int _set_font_family(IRComponent* comp, const char* family) {
+    kryon_set_font_family(comp, family);
+    return 0;
+}
+static inline int _set_font_weight(IRComponent* comp, uint16_t weight) {
+    kryon_set_font_weight(comp, weight);
+    return 0;
+}
+static inline int _set_font_bold(IRComponent* comp, bool bold) {
+    kryon_set_font_bold(comp, bold);
+    return 0;
+}
+static inline int _set_font_italic(IRComponent* comp, bool italic) {
+    kryon_set_font_italic(comp, italic);
+    return 0;
+}
+static inline int _set_line_height(IRComponent* comp, float height) {
+    kryon_set_line_height(comp, height);
+    return 0;
+}
+static inline int _set_letter_spacing(IRComponent* comp, float spacing) {
+    kryon_set_letter_spacing(comp, spacing);
+    return 0;
+}
+static inline int _set_text_align(IRComponent* comp, int align) {
+    kryon_set_text_align(comp, align);
+    return 0;
+}
+static inline int _set_border_width(IRComponent* comp, float width) {
+    kryon_set_border_width(comp, width);
+    return 0;
+}
+static inline int _set_border_radius(IRComponent* comp, float radius) {
+    kryon_set_border_radius(comp, radius);
+    return 0;
+}
+static inline int _set_opacity(IRComponent* comp, float opacity) {
+    kryon_set_opacity(comp, opacity);
+    return 0;
+}
+static inline int _set_z_index(IRComponent* comp, int32_t z_index) {
+    kryon_set_z_index(comp, z_index);
+    return 0;
+}
+static inline int _set_visible(IRComponent* comp, bool visible) {
+    kryon_set_visible(comp, visible);
+    return 0;
+}
+static inline int _on_click(IRComponent* comp, KryonEventHandler handler, const char* name) {
+    kryon_on_click(comp, handler, name);
+    return 0;
+}
+static inline int _on_change(IRComponent* comp, KryonEventHandler handler, const char* name) {
+    kryon_on_change(comp, handler, name);
+    return 0;
+}
+static inline int _on_hover(IRComponent* comp, KryonEventHandler handler, const char* name) {
+    kryon_on_hover(comp, handler, name);
+    return 0;
+}
+static inline int _on_focus(IRComponent* comp, KryonEventHandler handler, const char* name) {
+    kryon_on_focus(comp, handler, name);
+    return 0;
+}
 
 // Helper to add component to current parent
 static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
@@ -133,7 +288,9 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
     ({ \
         IRComponent* _comp = kryon_input(placeholder); \
         _kryon_add_to_parent(_comp); \
+        _kryon_push_parent(_comp); \
         (void)0, ##__VA_ARGS__; \
+        _kryon_pop_parent(); \
         _comp; \
     })
 
@@ -149,7 +306,9 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
     ({ \
         IRComponent* _comp = kryon_dropdown(placeholder); \
         _kryon_add_to_parent(_comp); \
+        _kryon_push_parent(_comp); \
         (void)0, ##__VA_ARGS__; \
+        _kryon_pop_parent(); \
         _comp; \
     })
 
@@ -230,136 +389,136 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 // Property Macros - Dimensions
 // ============================================================================
 
-#define WIDTH(val) kryon_set_width(_comp, (float)(val), "px")
-#define HEIGHT(val) kryon_set_height(_comp, (float)(val), "px")
-#define WIDTH_PCT(val) kryon_set_width(_comp, (float)(val), "%")
-#define HEIGHT_PCT(val) kryon_set_height(_comp, (float)(val), "%")
-#define MIN_WIDTH(val) kryon_set_min_width(_comp, (float)(val), "px")
-#define MAX_WIDTH(val) kryon_set_max_width(_comp, (float)(val), "px")
-#define MIN_HEIGHT(val) kryon_set_min_height(_comp, (float)(val), "px")
-#define MAX_HEIGHT(val) kryon_set_max_height(_comp, (float)(val), "px")
+#define WIDTH(val) (_set_width(_comp, (float)(val), "px"), 0)
+#define HEIGHT(val) _set_height(_comp, (float)(val), "px")
+#define WIDTH_PCT(val) _set_width(_comp, (float)(val), "%")
+#define HEIGHT_PCT(val) _set_height(_comp, (float)(val), "%")
+#define MIN_WIDTH(val) _set_min_width(_comp, (float)(val), "px")
+#define MAX_WIDTH(val) _set_max_width(_comp, (float)(val), "px")
+#define MIN_HEIGHT(val) _set_min_height(_comp, (float)(val), "px")
+#define MAX_HEIGHT(val) _set_max_height(_comp, (float)(val), "px")
 
 // ============================================================================
 // Property Macros - Colors
 // ============================================================================
 
-#define BG_COLOR(hex) kryon_set_background(_comp, (uint32_t)(hex))
-#define TEXT_COLOR(hex) kryon_set_color(_comp, (uint32_t)(hex))
-#define BORDER_COLOR(hex) kryon_set_border_color(_comp, (uint32_t)(hex))
+#define BG_COLOR(hex) _set_background(_comp, (uint32_t)(hex))
+#define TEXT_COLOR(hex) _set_color(_comp, (uint32_t)(hex))
+#define BORDER_COLOR(hex) _set_border_color(_comp, (uint32_t)(hex))
 
 // Named color shortcuts (using existing KRYON_COLOR_* constants)
-#define COLOR_WHITE kryon_set_color(_comp, KRYON_COLOR_WHITE)
-#define COLOR_BLACK kryon_set_color(_comp, KRYON_COLOR_BLACK)
-#define COLOR_RED kryon_set_color(_comp, KRYON_COLOR_RED)
-#define COLOR_GREEN kryon_set_color(_comp, KRYON_COLOR_GREEN)
-#define COLOR_BLUE kryon_set_color(_comp, KRYON_COLOR_BLUE)
-#define COLOR_YELLOW kryon_set_color(_comp, KRYON_COLOR_YELLOW)
-#define COLOR_CYAN kryon_set_color(_comp, KRYON_COLOR_CYAN)
-#define COLOR_MAGENTA kryon_set_color(_comp, KRYON_COLOR_MAGENTA)
-#define COLOR_GRAY kryon_set_color(_comp, KRYON_COLOR_GRAY)
-#define COLOR_ORANGE kryon_set_color(_comp, KRYON_COLOR_ORANGE)
-#define COLOR_PURPLE kryon_set_color(_comp, KRYON_COLOR_PURPLE)
+#define COLOR_WHITE _set_color(_comp, KRYON_COLOR_WHITE)
+#define COLOR_BLACK _set_color(_comp, KRYON_COLOR_BLACK)
+#define COLOR_RED _set_color(_comp, KRYON_COLOR_RED)
+#define COLOR_GREEN _set_color(_comp, KRYON_COLOR_GREEN)
+#define COLOR_BLUE _set_color(_comp, KRYON_COLOR_BLUE)
+#define COLOR_YELLOW _set_color(_comp, KRYON_COLOR_YELLOW)
+#define COLOR_CYAN _set_color(_comp, KRYON_COLOR_CYAN)
+#define COLOR_MAGENTA _set_color(_comp, KRYON_COLOR_MAGENTA)
+#define COLOR_GRAY _set_color(_comp, KRYON_COLOR_GRAY)
+#define COLOR_ORANGE _set_color(_comp, KRYON_COLOR_ORANGE)
+#define COLOR_PURPLE _set_color(_comp, KRYON_COLOR_PURPLE)
 
 // Background color shortcuts
-#define BG_WHITE kryon_set_background(_comp, KRYON_COLOR_WHITE)
-#define BG_BLACK kryon_set_background(_comp, KRYON_COLOR_BLACK)
-#define BG_RED kryon_set_background(_comp, KRYON_COLOR_RED)
-#define BG_GREEN kryon_set_background(_comp, KRYON_COLOR_GREEN)
-#define BG_BLUE kryon_set_background(_comp, KRYON_COLOR_BLUE)
-#define BG_YELLOW kryon_set_background(_comp, KRYON_COLOR_YELLOW)
-#define BG_CYAN kryon_set_background(_comp, KRYON_COLOR_CYAN)
-#define BG_MAGENTA kryon_set_background(_comp, KRYON_COLOR_MAGENTA)
-#define BG_GRAY kryon_set_background(_comp, KRYON_COLOR_GRAY)
-#define BG_ORANGE kryon_set_background(_comp, KRYON_COLOR_ORANGE)
-#define BG_PURPLE kryon_set_background(_comp, KRYON_COLOR_PURPLE)
+#define BG_WHITE _set_background(_comp, KRYON_COLOR_WHITE)
+#define BG_BLACK _set_background(_comp, KRYON_COLOR_BLACK)
+#define BG_RED _set_background(_comp, KRYON_COLOR_RED)
+#define BG_GREEN _set_background(_comp, KRYON_COLOR_GREEN)
+#define BG_BLUE _set_background(_comp, KRYON_COLOR_BLUE)
+#define BG_YELLOW _set_background(_comp, KRYON_COLOR_YELLOW)
+#define BG_CYAN _set_background(_comp, KRYON_COLOR_CYAN)
+#define BG_MAGENTA _set_background(_comp, KRYON_COLOR_MAGENTA)
+#define BG_GRAY _set_background(_comp, KRYON_COLOR_GRAY)
+#define BG_ORANGE _set_background(_comp, KRYON_COLOR_ORANGE)
+#define BG_PURPLE _set_background(_comp, KRYON_COLOR_PURPLE)
 
 // ============================================================================
 // Property Macros - Layout & Flexbox
 // ============================================================================
 
-#define JUSTIFY_CENTER kryon_set_justify_content(_comp, IR_ALIGNMENT_CENTER)
-#define JUSTIFY_START kryon_set_justify_content(_comp, IR_ALIGNMENT_START)
-#define JUSTIFY_END kryon_set_justify_content(_comp, IR_ALIGNMENT_END)
-#define JUSTIFY_BETWEEN kryon_set_justify_content(_comp, IR_ALIGNMENT_SPACE_BETWEEN)
+#define JUSTIFY_CENTER _set_justify_content(_comp, IR_ALIGNMENT_CENTER)
+#define JUSTIFY_START _set_justify_content(_comp, IR_ALIGNMENT_START)
+#define JUSTIFY_END _set_justify_content(_comp, IR_ALIGNMENT_END)
+#define JUSTIFY_BETWEEN _set_justify_content(_comp, IR_ALIGNMENT_SPACE_BETWEEN)
 #define JUSTIFY_SPACE_BETWEEN JUSTIFY_BETWEEN  // Alias for codegen
-#define JUSTIFY_AROUND kryon_set_justify_content(_comp, IR_ALIGNMENT_SPACE_AROUND)
+#define JUSTIFY_AROUND _set_justify_content(_comp, IR_ALIGNMENT_SPACE_AROUND)
 #define JUSTIFY_SPACE_AROUND JUSTIFY_AROUND  // Alias for codegen
-#define JUSTIFY_EVENLY kryon_set_justify_content(_comp, IR_ALIGNMENT_SPACE_EVENLY)
+#define JUSTIFY_EVENLY _set_justify_content(_comp, IR_ALIGNMENT_SPACE_EVENLY)
 
-#define ALIGN_CENTER kryon_set_align_items(_comp, IR_ALIGNMENT_CENTER)
-#define ALIGN_START kryon_set_align_items(_comp, IR_ALIGNMENT_START)
-#define ALIGN_END kryon_set_align_items(_comp, IR_ALIGNMENT_END)
-#define ALIGN_STRETCH kryon_set_align_items(_comp, IR_ALIGNMENT_STRETCH)
-#define ALIGN_BASELINE kryon_set_align_items(_comp, IR_ALIGNMENT_BASELINE)
+#define ALIGN_CENTER _set_align_items(_comp, IR_ALIGNMENT_CENTER)
+#define ALIGN_START _set_align_items(_comp, IR_ALIGNMENT_START)
+#define ALIGN_END _set_align_items(_comp, IR_ALIGNMENT_END)
+#define ALIGN_STRETCH _set_align_items(_comp, IR_ALIGNMENT_STRETCH)
+#define ALIGN_BASELINE _set_align_items(_comp, IR_ALIGNMENT_BASELINE)
 
-#define GAP(val) kryon_set_gap(_comp, (float)(val))
-#define FLEX_GROW(val) kryon_set_flex_grow(_comp, (uint8_t)(val))
-#define FLEX_SHRINK(val) kryon_set_flex_shrink(_comp, (uint8_t)(val))
-#define FLEX_WRAP kryon_set_flex_wrap(_comp, true)
+#define GAP(val) _set_gap(_comp, (float)(val))
+#define FLEX_GROW(val) _set_flex_grow(_comp, (uint8_t)(val))
+#define FLEX_SHRINK(val) _set_flex_shrink(_comp, (uint8_t)(val))
+#define FLEX_WRAP _set_flex_wrap(_comp, true)
 
 // ============================================================================
 // Property Macros - Spacing
 // ============================================================================
 
-#define PADDING(val) kryon_set_padding(_comp, (float)(val))
-#define MARGIN(val) kryon_set_margin(_comp, (float)(val))
-#define PADDING_TRBL(t,r,b,l) kryon_set_padding_sides(_comp, (float)(t), (float)(r), (float)(b), (float)(l))
+#define PADDING(val) _set_padding(_comp, (float)(val))
+#define MARGIN(val) _set_margin(_comp, (float)(val))
+#define PADDING_TRBL(t,r,b,l) _set_padding_sides(_comp, (float)(t), (float)(r), (float)(b), (float)(l))
 #define PADDING_SIDES(t,r,b,l) PADDING_TRBL(t,r,b,l)  // Alias for codegen compatibility
-#define MARGIN_TRBL(t,r,b,l) kryon_set_margin_sides(_comp, (float)(t), (float)(r), (float)(b), (float)(l))
+#define MARGIN_TRBL(t,r,b,l) _set_margin_sides(_comp, (float)(t), (float)(r), (float)(b), (float)(l))
 #define MARGIN_SIDES(t,r,b,l) MARGIN_TRBL(t,r,b,l)  // Alias for codegen compatibility
 
 // Convenient shortcuts for common patterns
-#define PADDING_H(val) kryon_set_padding_sides(_comp, 0, (float)(val), 0, (float)(val))
-#define PADDING_V(val) kryon_set_padding_sides(_comp, (float)(val), 0, (float)(val), 0)
-#define MARGIN_H(val) kryon_set_margin_sides(_comp, 0, (float)(val), 0, (float)(val))
-#define MARGIN_V(val) kryon_set_margin_sides(_comp, (float)(val), 0, (float)(val), 0)
+#define PADDING_H(val) ({ kryon_set_padding_sides(_comp, 0, (float)(val), 0, (float)(val)); 0; })
+#define PADDING_V(val) ({ kryon_set_padding_sides(_comp, (float)(val), 0, (float)(val), 0); 0; })
+#define MARGIN_H(val) ({ kryon_set_margin_sides(_comp, 0, (float)(val), 0, (float)(val)); 0; })
+#define MARGIN_V(val) ({ kryon_set_margin_sides(_comp, (float)(val), 0, (float)(val), 0); 0; })
 
 // ============================================================================
 // Property Macros - Typography
 // ============================================================================
 
-#define FONT_SIZE(size) kryon_set_font_size(_comp, (float)(size))
-#define FONT_FAMILY(family) kryon_set_font_family(_comp, family)
-#define FONT_WEIGHT(weight) kryon_set_font_weight(_comp, (uint16_t)(weight))
-#define FONT_BOLD kryon_set_font_bold(_comp, true)
-#define FONT_ITALIC kryon_set_font_italic(_comp, true)
-#define LINE_HEIGHT(height) kryon_set_line_height(_comp, (float)(height))
-#define LETTER_SPACING(spacing) kryon_set_letter_spacing(_comp, (float)(spacing))
+#define FONT_SIZE(size) _set_font_size(_comp, (float)(size))
+#define FONT_FAMILY(family) _set_font_family(_comp, family)
+#define FONT_WEIGHT(weight) _set_font_weight(_comp, (uint16_t)(weight))
+#define FONT_BOLD _set_font_bold(_comp, true)
+#define FONT_ITALIC _set_font_italic(_comp, true)
+#define LINE_HEIGHT(height) _set_line_height(_comp, (float)(height))
+#define LETTER_SPACING(spacing) _set_letter_spacing(_comp, (float)(spacing))
 
-#define TEXT_ALIGN_LEFT kryon_set_text_align(_comp, IR_TEXT_ALIGN_LEFT)
-#define TEXT_ALIGN_CENTER kryon_set_text_align(_comp, IR_TEXT_ALIGN_CENTER)
-#define TEXT_ALIGN_RIGHT kryon_set_text_align(_comp, IR_TEXT_ALIGN_RIGHT)
-#define TEXT_ALIGN_JUSTIFY kryon_set_text_align(_comp, IR_TEXT_ALIGN_JUSTIFY)
+#define TEXT_ALIGN_LEFT _set_text_align(_comp, IR_TEXT_ALIGN_LEFT)
+#define TEXT_ALIGN_CENTER _set_text_align(_comp, IR_TEXT_ALIGN_CENTER)
+#define TEXT_ALIGN_RIGHT _set_text_align(_comp, IR_TEXT_ALIGN_RIGHT)
+#define TEXT_ALIGN_JUSTIFY _set_text_align(_comp, IR_TEXT_ALIGN_JUSTIFY)
 
 // Font weight shortcuts
-#define FONT_THIN kryon_set_font_weight(_comp, 100)
-#define FONT_EXTRA_LIGHT kryon_set_font_weight(_comp, 200)
-#define FONT_LIGHT kryon_set_font_weight(_comp, 300)
-#define FONT_NORMAL kryon_set_font_weight(_comp, 400)
-#define FONT_MEDIUM kryon_set_font_weight(_comp, 500)
-#define FONT_SEMI_BOLD kryon_set_font_weight(_comp, 600)
-#define FONT_EXTRA_BOLD kryon_set_font_weight(_comp, 800)
-#define FONT_BLACK kryon_set_font_weight(_comp, 900)
+#define FONT_THIN _set_font_weight(_comp, 100)
+#define FONT_EXTRA_LIGHT _set_font_weight(_comp, 200)
+#define FONT_LIGHT _set_font_weight(_comp, 300)
+#define FONT_NORMAL _set_font_weight(_comp, 400)
+#define FONT_MEDIUM _set_font_weight(_comp, 500)
+#define FONT_SEMI_BOLD _set_font_weight(_comp, 600)
+#define FONT_EXTRA_BOLD _set_font_weight(_comp, 800)
+#define FONT_BLACK _set_font_weight(_comp, 900)
 
 // ============================================================================
 // Property Macros - Border & Effects
 // ============================================================================
 
-#define BORDER_WIDTH(width) kryon_set_border_width(_comp, (float)(width))
-#define BORDER_RADIUS(radius) kryon_set_border_radius(_comp, (float)(radius))
-#define OPACITY(val) kryon_set_opacity(_comp, (float)(val))
-#define Z_INDEX(val) kryon_set_z_index(_comp, (int32_t)(val))
-#define VISIBLE(val) kryon_set_visible(_comp, (bool)(val))
-#define HIDDEN kryon_set_visible(_comp, false)
+#define BORDER_WIDTH(width) _set_border_width(_comp, (float)(width))
+#define BORDER_RADIUS(radius) _set_border_radius(_comp, (float)(radius))
+#define OPACITY(val) _set_opacity(_comp, (float)(val))
+#define Z_INDEX(val) _set_z_index(_comp, (int32_t)(val))
+#define VISIBLE(val) _set_visible(_comp, (bool)(val))
+#define HIDDEN _set_visible(_comp, false)
 
 // ============================================================================
 // Property Macros - Event Handlers
 // ============================================================================
 
-#define ON_CLICK(handler) kryon_on_click(_comp, handler, #handler)
-#define ON_CHANGE(handler) kryon_on_change(_comp, handler, #handler)
-#define ON_HOVER(handler) kryon_on_hover(_comp, handler, #handler)
-#define ON_FOCUS(handler) kryon_on_focus(_comp, handler, #handler)
+#define ON_CLICK(handler) _on_click(_comp, handler, #handler)
+#define ON_CHANGE(handler) _on_change(_comp, handler, #handler)
+#define ON_HOVER(handler) _on_hover(_comp, handler, #handler)
+#define ON_FOCUS(handler) _on_focus(_comp, handler, #handler)
 
 // ============================================================================
 // Property Macros - Data Binding
@@ -375,12 +534,18 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
     ((void)_comp, (void)0)
 
 /**
- * SELECTED_INDEX - Bind selected index for tab groups, lists, etc.
- * Binds the selected index property to a variable
- * Uses statement expression (GCC extension) to work in __VA_ARGS__ context
+ * OPTIONS - Set dropdown options from string array
+ * Uses compound literal (C99) + helper function
+ */
+#define OPTIONS(count, ...) \
+    ((void)_set_dropdown_options(_comp, (const char*[]){__VA_ARGS__}, (uint32_t)(count)), (void)0)
+
+/**
+ * SELECTED_INDEX - Set selected index for dropdown/tab components
+ * Uses comma operator for side effect in __VA_ARGS__ context
  */
 #define SELECTED_INDEX(expr) \
-    ((void)_comp, (void)0)
+    ((void)_set_dropdown_selected_index(_comp, (int32_t)(expr)), (void)0)
 
 // ============================================================================
 // Iteration Macros
@@ -581,10 +746,10 @@ static inline int _kryon_run_impl(void) {
     // For standalone builds - run with desktop renderer using kryon_init() values
     extern KryonAppState g_app_state;
 
-    // Get renderer backend from kryon.toml config, fallback to raylib
+    // Get renderer backend from kryon.toml config, fallback to SDL3
     int backend_type = kryon_get_renderer_backend_from_config();
     if (backend_type < 0) {
-        backend_type = DESKTOP_BACKEND_RAYLIB;  // Default to raylib if config not found
+        backend_type = DESKTOP_BACKEND_SDL3;  // Default to SDL3 if config not found
     }
 
     DesktopRendererConfig config = {

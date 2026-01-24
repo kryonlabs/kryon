@@ -485,7 +485,7 @@ static int run_c_file(const char* target_file) {
 
     /* Build gcc command - buffer is 8192 which is sufficient for typical paths */
     written = snprintf(compile_cmd, sizeof(compile_cmd),
-             "gcc -std=c99 -O2 \"%s\" %s"
+             "gcc -std=gnu99 -O2 \"%s\" %s"
              "\"%s\" \"%s\" "
              "-o \"%s\" "
              "%s"

@@ -1,7 +1,7 @@
 // Counters Demo - Reusable component with state
 
 component Counter(initialValue: int = 0) {
-    state value: int = initialValue
+    var value: int = initialValue
 
     Row {
         alignItems = "center"
@@ -13,7 +13,7 @@ component Counter(initialValue: int = 0) {
             height = 50
             backgroundColor = "#E74C3C"
             fontSize = 24
-            onClick = { value -= 1 }
+            onClick = () => { value -= 1 }
         }
 
         Text {
@@ -28,7 +28,7 @@ component Counter(initialValue: int = 0) {
             height = 50
             backgroundColor = "#2ECC71"
             fontSize = 24
-            onClick = { value += 1 }
+            onClick = () => { value += 1 }
         }
     }
 }

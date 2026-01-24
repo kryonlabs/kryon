@@ -41,9 +41,16 @@ static uint32_t g_handler_id_counter = 0;
 static void update_metadata_logic_id(const char* function_name, const char* logic_id);
 
 static void register_handler(uint32_t component_id, const char* event_type, KryonEventHandler handler, const char* handler_name) {
-    // Generate unique logic_id
+    // Use handler_name directly as logic_id for KRY handlers
+    // For legacy C handlers without a name, generate a unique logic_id
     char logic_id[128];
-    snprintf(logic_id, sizeof(logic_id), "c_%s_%u_%u", event_type, component_id, g_handler_id_counter++);
+    if (handler_name && strncmp(handler_name, "handler_", 8) == 0) {
+        // KRY handler - use the handler_name as logic_id directly
+        snprintf(logic_id, sizeof(logic_id), "%s", handler_name);
+    } else {
+        // Legacy C handler - generate unique logic_id
+        snprintf(logic_id, sizeof(logic_id), "c_%s_%u_%u", event_type, component_id, g_handler_id_counter++);
+    }
 
     // Update g_c_metadata with the logic_id
     if (handler_name) {
@@ -61,6 +68,8 @@ static void register_handler(uint32_t component_id, const char* event_type, Kryo
     g_handler_registry[g_handler_count].component_id = component_id;
     g_handler_registry[g_handler_count].logic_id = strdup(logic_id);
     g_handler_registry[g_handler_count].handler = handler;
+    printf("[kryon] Registered handler: logic_id=%s, handler_name=%s, component_id=%u\n",
+           logic_id, handler_name ? handler_name : "(null)", component_id);
     g_handler_count++;
 
     // Create IR event
