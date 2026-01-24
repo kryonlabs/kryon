@@ -23,7 +23,7 @@ static int build_single_file(const char* source_file, KryonConfig* config) {
     const char* frontend = detect_frontend_type(source_file);
     if (!frontend) {
         fprintf(stderr, "Error: Could not detect frontend for %s\n", source_file);
-        fprintf(stderr, "Use a supported file extension (.tsx, .html, .md, .kry, etc.)\n");
+        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .lua, .c, .ha\n");
         return 1;
     }
 
@@ -342,6 +342,7 @@ int cmd_build(int argc, char** argv) {
         } else if (argv[i][0] == '-') {
             fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
             fprintf(stderr, "Supported options: --target=<web|desktop>, --output-dir=<dir>\n");
+            fprintf(stderr, "Desktop builds support KRY, Lua, and Hare frontends\n");
             return 1;
         } else if (file_arg_start == 0) {
             // First non-option argument is the file

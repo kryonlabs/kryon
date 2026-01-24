@@ -620,6 +620,7 @@ int cmd_run(int argc, char** argv) {
             fprintf(stderr, "%s%s", i > 0 ? ", " : "", targets[i]);
         }
         fprintf(stderr, ", android\n");
+        fprintf(stderr, "Frontend languages: KRY, Lua, TypeScript/JSX, HTML, Markdown, C, Hare\n");
         if (free_target_platform) free((char*)target_platform);
         return 1;
     }
@@ -678,6 +679,7 @@ int cmd_run(int argc, char** argv) {
     if (!frontend) {
         const char* ext = path_extension(target_file);
         fprintf(stderr, "Error: Unsupported file type: %s\n", ext);
+        fprintf(stderr, "Supported file types: .kry, .kir, .md, .html, .tsx, .jsx, .lua, .c, .ha\n");
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
         return 1;
