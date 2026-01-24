@@ -88,6 +88,7 @@ struct DesktopIRRenderer {
     // Component rendering cache
     IRComponent* last_root;
     bool needs_relayout;
+    bool reactive_dirty;  // Track when reactive signals have changed
 
     // Animation system moved to plugin - no fields needed here
 

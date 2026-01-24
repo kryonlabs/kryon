@@ -27,12 +27,14 @@ void cli_args_free(CLIArgs* args);
 // String Utilities
 // ============================================================================
 
+char* str_format(const char* fmt, ...);  // NEW: Dynamic string formatting
 char* str_concat(const char* s1, const char* s2);
 char* str_copy(const char* src);
 bool str_ends_with(const char* str, const char* suffix);
 bool str_starts_with(const char* str, const char* prefix);
 char** str_split(const char* str, char delim, int* count);
 void str_free_array(char** arr, int count);
+char* string_replace(const char* str, const char* old, const char* new_str);
 
 // ============================================================================
 // File Utilities
@@ -152,6 +154,20 @@ typedef struct {
  */
 typedef struct {
     char* name;              // Target name (e.g., "web", "desktop", "custom")
+
+    // For command-based targets (auto-detected by presence):
+    char* build_cmd;         // Build command to execute
+    char* run_cmd;           // Run command to execute
+    char* install_cmd;       // Install command to execute
+
+    // For alias targets (references another target):
+    char* alias_target;      // Name of target to alias (e.g., "web")
+
+    // For composite targets (builds multiple targets):
+    char** composite_targets;  // Array of target names to build
+    int composite_count;       // Number of targets in composite
+
+    // For builtin targets (flexible options):
     char** keys;             // Array of option keys (e.g., "output", "renderer")
     char** values;           // Array of option values (parallel to keys)
     int options_count;       // Number of options
@@ -225,6 +241,18 @@ typedef enum {
 } TargetCapability;
 
 /**
+ * Handler context structure
+ * Provides explicit context to handlers instead of fragile globals
+ */
+typedef struct TargetHandlerContext {
+    const char* target_name;
+    const KryonConfig* config;
+    const char* kir_file;
+    const char* output_dir;
+    const char* project_name;
+} TargetHandlerContext;
+
+/**
  * Target handler structure
  * Defines capabilities and handlers for a specific target type
  */
@@ -239,13 +267,24 @@ typedef struct TargetHandler {
                         const char* project_name, const KryonConfig* config);
     int (*run_handler)(const char* kir_file, const KryonConfig* config);
 
+    // Context pointer for dynamic targets (e.g., command targets)
+    // For command targets, this points to the target name string
+    void* context;
+
+    // Optional cleanup function for dynamically allocated handlers
+    void (*cleanup)(struct TargetHandler* handler);
+
 } TargetHandler;
 
 // Target handler registry functions
 void target_handler_register(TargetHandler* handler);
+void target_handler_unregister(const char* name);  // NEW: Unregister with cleanup
+void target_handler_cleanup(void);  // NEW: Cleanup all dynamic handlers
 TargetHandler* target_handler_find(const char* target_name);
 bool target_has_capability(const char* target_name, TargetCapability capability);
 void target_handler_initialize(void);
+const char* target_handler_get_current_name(void);
+void target_handler_register_command_targets(const KryonConfig* config);
 
 // Target handler helper functions for commands
 int target_handler_build(const char* target_name, const char* kir_file,

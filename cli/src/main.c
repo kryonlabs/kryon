@@ -25,9 +25,9 @@ static void print_help(void) {
     printf("  kryon <command> [options]\n\n");
     printf("Commands:\n");
     printf("  new <name>              Create new project\n");
-    printf("  build [targets]         Build project\n");
+    printf("  build [targets]         Build project (targets from kryon.toml)\n");
     printf("  compile <file>          Compile to KIR\n");
-    printf("  run <target>            Run compiled app\n");
+    printf("  run <target>            Run compiled app (web|desktop|android|custom)\n");
     printf("  dev <file>              Development server\n");
     printf("  test <file.kyt>         Run tests\n");
     printf("  plugin <cmd>            Plugin management\n");
@@ -39,6 +39,11 @@ static void print_help(void) {
     printf("  uninstall               Uninstall application\n");
     printf("  doctor                  System diagnostics\n\n");
     printf("Supported languages/formats: KRY, Lua, TypeScript/JSX, HTML, Markdown, C, Hare\n\n");
+    printf("Targets:\n");
+    printf("  Targets are defined in kryon.toml [build] section\n");
+    printf("  Built-in: web, desktop, terminal, android\n");
+    printf("  Custom: Add build/run fields in [targets.NAME] to create command targets\n");
+    printf("  See documentation for target configuration examples\n\n");
     printf("Options:\n");
     printf("  -h, --help              Show this help\n");
     printf("  -v, --version           Show version\n");

@@ -70,6 +70,22 @@ void target_config_free(TargetConfig* target) {
 
     free(target->name);
 
+    // Free command-based target fields
+    free(target->build_cmd);
+    free(target->run_cmd);
+    free(target->install_cmd);
+
+    // Free alias target field
+    free(target->alias_target);
+
+    // Free composite targets array
+    if (target->composite_targets) {
+        for (int i = 0; i < target->composite_count; i++) {
+            free(target->composite_targets[i]);
+        }
+        free(target->composite_targets);
+    }
+
     // Free key-value arrays
     if (target->keys) {
         for (int i = 0; i < target->options_count; i++) {
@@ -133,8 +149,36 @@ const char* target_config_get_option(const TargetConfig* target, const char* key
  * Supports any target name with flexible key-value storage
  * Format: [targets.web], [targets.desktop], [targets.custom_name]
  * Each target can have any options - no hardcoded fields
+ *
+ * IMPORTANT: Legacy [[targets]] indexed format is NO LONGER SUPPORTED
+ * Use named format only: [targets.web], [targets.desktop], etc.
  */
 static void config_parse_targets(KryonConfig* config, TOMLTable* toml) {
+    // HARD ERROR: Check for legacy indexed [[targets]] format
+    for (int i = 0; i < 100; i++) {
+        char key[256];
+        snprintf(key, sizeof(key), "targets.%d.name", i);
+        if (kryon_toml_get_string(toml, key, NULL)) {
+            fprintf(stderr, "\n╔════════════════════════════════════════════════════════════╗\n");
+            fprintf(stderr, "║  ERROR: Legacy [[targets]] format is no longer supported    ║\n");
+            fprintf(stderr, "╠════════════════════════════════════════════════════════════╣\n");
+            fprintf(stderr, "║  The indexed [[targets]] format has been removed.          ║\n");
+            fprintf(stderr, "║                                                            ║\n");
+            fprintf(stderr, "║  OLD (will fail):                                        ║\n");
+            fprintf(stderr, "║    [[targets]]                                           ║\n");
+            fprintf(stderr, "║    name = \"web\"                                          ║\n");
+            fprintf(stderr, "║    output = \"dist\"                                       ║\n");
+            fprintf(stderr, "║                                                            ║\n");
+            fprintf(stderr, "║  NEW (correct way):                                      ║\n");
+            fprintf(stderr, "║    [targets.web]                                         ║\n");
+            fprintf(stderr, "║    output = \"dist\"                                       ║\n");
+            fprintf(stderr, "║                                                            ║\n");
+            fprintf(stderr, "║  Update your kryon.toml to use the named format.          ║\n");
+            fprintf(stderr, "╚════════════════════════════════════════════════════════════╝\n\n");
+            return;
+        }
+    }
+
     // Use handler registry to discover known target names
     // This allows dynamic target registration
     const char** known_targets = target_handler_list_names();
@@ -143,33 +187,50 @@ static void config_parse_targets(KryonConfig* config, TOMLTable* toml) {
     int known_target_count = 0;
     for (; known_targets[known_target_count]; known_target_count++);
 
+    // Count named targets that have configuration
     int target_count = 0;
 
-    // First, check for indexed targets [[targets]] with name field
-    for (int i = 0; i < 100; i++) {
-        char key[256];
-        snprintf(key, sizeof(key), "targets.%d.name", i);
-        if (kryon_toml_get_string(toml, key, NULL)) {
-            target_count++;
-        } else {
-            break;
-        }
-    }
-
-    // Count named targets that have at least one option
-    // This MUST match the logic in the adding loop below
     for (int i = 0; i < known_target_count; i++) {
         const char* target_name = known_targets[i];
 
         // Check if this named target has any configuration
-        // Must match EXACTLY the same checks as the adding loop
         char check_key[256];
-        snprintf(check_key, sizeof(check_key), "targets.%s.output", target_name);
-        bool has_config = kryon_toml_get_string(toml, check_key, NULL) != NULL;
+        bool has_config = false;
+
+        // Check for command target indicators
+        snprintf(check_key, sizeof(check_key), "targets.%s.build", target_name);
+        if (kryon_toml_get_string(toml, check_key, NULL)) {
+            has_config = true;
+        }
+
+        if (!has_config) {
+            snprintf(check_key, sizeof(check_key), "targets.%s.run", target_name);
+            if (kryon_toml_get_string(toml, check_key, NULL)) {
+                has_config = true;
+            }
+        }
+
+        // Check for alias target indicator
+        if (!has_config) {
+            snprintf(check_key, sizeof(check_key), "targets.%s.target", target_name);
+            if (kryon_toml_get_string(toml, check_key, NULL)) {
+                has_config = true;
+            }
+        }
+
+        // Check for option indicators
+        if (!has_config) {
+            snprintf(check_key, sizeof(check_key), "targets.%s.output", target_name);
+            if (kryon_toml_get_string(toml, check_key, NULL)) {
+                has_config = true;
+            }
+        }
 
         if (!has_config) {
             snprintf(check_key, sizeof(check_key), "targets.%s.renderer", target_name);
-            has_config = kryon_toml_get_string(toml, check_key, NULL) != NULL;
+            if (kryon_toml_get_string(toml, check_key, NULL)) {
+                has_config = true;
+            }
         }
 
         if (!has_config) {
@@ -200,122 +261,89 @@ static void config_parse_targets(KryonConfig* config, TOMLTable* toml) {
 
     config->targets_count = 0;
 
-    // Parse indexed targets [[targets]] with flexible key-value collection
-    for (int i = 0; i < 100 && config->targets_count < target_count; i++) {
-        char key[256];
-        snprintf(key, sizeof(key), "targets.%d.name", i);
-        const char* name = kryon_toml_get_string(toml, key, NULL);
-
-        if (!name) break;  // No more indexed targets
-
-        TargetConfig* target = &config->targets[config->targets_count];
-        target->name = str_copy(name);
-
-        // Collect all possible options for this indexed target
-        // We check common option keys and store them flexibly
-        const char* option_keys[] = {
-            "output", "minify", "tree_shake", "bundle",
-            "renderer", "color_depth", "mouse_support"
-        };
-        int options_capacity = 16;  // Pre-allocate for common options
-        target->keys = (char**)calloc(options_capacity, sizeof(char*));
-        target->values = (char**)calloc(options_capacity, sizeof(char*));
-        target->options_count = 0;
-
-        for (size_t j = 0; j < sizeof(option_keys) / sizeof(option_keys[0]); j++) {
-            snprintf(key, sizeof(key), "targets.%d.%s", i, option_keys[j]);
-
-            // Try to get string value
-            const char* str_val = kryon_toml_get_string(toml, key, NULL);
-            if (str_val) {
-                target->keys[target->options_count] = str_copy(option_keys[j]);
-                target->values[target->options_count] = str_copy(str_val);
-                target->options_count++;
-                continue;
-            }
-
-            // Try to get boolean value and convert to string
-            bool bool_val = kryon_toml_get_bool(toml, key, false);
-            // Check if the key exists by trying both true and false defaults
-            bool exists = kryon_toml_get_bool(toml, key, true) != bool_val;
-            if (exists) {
-                target->keys[target->options_count] = str_copy(option_keys[j]);
-                target->values[target->options_count] = str_copy(bool_val ? "true" : "false");
-                target->options_count++;
-            }
-        }
-
-        config->targets_count++;
-    }
-
-    // Parse named targets (targets.web, targets.desktop, etc.) with flexible key-value
+    // Parse named targets only (targets.web, targets.desktop, etc.) with flexible key-value
     for (int i = 0; i < known_target_count; i++) {
         const char* target_name = known_targets[i];
 
-        // Check if we already have this target from indexed parsing
-        bool already_exists = false;
-        for (int j = 0; j < config->targets_count; j++) {
-            if (config->targets[j].name && strcmp(config->targets[j].name, target_name) == 0) {
-                already_exists = true;
-                break;
-            }
-        }
-
-        if (already_exists) continue;
-
         // Check if this named target has any configuration
+        // This now includes command target detection
         char check_key[256];
+        bool has_config = false;
+
+        snprintf(check_key, sizeof(check_key), "targets.%s.build", target_name);
+        const char* build_cmd = kryon_toml_get_string(toml, check_key, NULL);
+
+        snprintf(check_key, sizeof(check_key), "targets.%s.run", target_name);
+        const char* run_cmd = kryon_toml_get_string(toml, check_key, NULL);
+
+        snprintf(check_key, sizeof(check_key), "targets.%s.target", target_name);
+        const char* alias_target = kryon_toml_get_string(toml, check_key, NULL);
+
         snprintf(check_key, sizeof(check_key), "targets.%s.output", target_name);
-        bool has_config = kryon_toml_get_string(toml, check_key, NULL) != NULL;
+        const char* output = kryon_toml_get_string(toml, check_key, NULL);
 
-        if (!has_config) {
-            snprintf(check_key, sizeof(check_key), "targets.%s.renderer", target_name);
-            has_config = kryon_toml_get_string(toml, check_key, NULL) != NULL;
-        }
+        snprintf(check_key, sizeof(check_key), "targets.%s.renderer", target_name);
+        const char* renderer = kryon_toml_get_string(toml, check_key, NULL);
 
-        if (!has_config) {
+        // Must have at least one configuration to include
+        if (!build_cmd && !run_cmd && !alias_target && !output && !renderer) {
+            // Check for boolean options
             snprintf(check_key, sizeof(check_key), "targets.%s.minify", target_name);
             bool dummy = kryon_toml_get_bool(toml, check_key, false);
-            if (kryon_toml_get_bool(toml, check_key, true) != dummy) {
-                has_config = true;
+            if (kryon_toml_get_bool(toml, check_key, true) == dummy) {
+                continue;  // No boolean option either
             }
         }
-
-        if (!has_config) continue;  // No config for this target
 
         // Add new target
         TargetConfig* target = &config->targets[config->targets_count];
         target->name = str_copy(target_name);
 
-        // Collect all possible options for this named target
-        const char* option_keys[] = {
-            "output", "minify", "tree_shake", "bundle",
-            "renderer", "color_depth", "mouse_support"
-        };
-        int options_capacity = 16;
-        target->keys = (char**)calloc(options_capacity, sizeof(char*));
-        target->values = (char**)calloc(options_capacity, sizeof(char*));
-        target->options_count = 0;
+        // Auto-detect command targets by checking for build/run fields
+        if (build_cmd || run_cmd) {
+            target->build_cmd = build_cmd ? strdup(build_cmd) : NULL;
+            target->run_cmd = run_cmd ? strdup(run_cmd) : NULL;
 
-        for (size_t j = 0; j < sizeof(option_keys) / sizeof(option_keys[0]); j++) {
-            snprintf(check_key, sizeof(check_key), "targets.%s.%s", target_name, option_keys[j]);
-
-            // Try to get string value
-            const char* str_val = kryon_toml_get_string(toml, check_key, NULL);
-            if (str_val) {
-                target->keys[target->options_count] = str_copy(option_keys[j]);
-                target->values[target->options_count] = str_copy(str_val);
-                target->options_count++;
-                continue;
+            // Parse optional install command
+            snprintf(check_key, sizeof(check_key), "targets.%s.install", target_name);
+            const char* install_cmd = kryon_toml_get_string(toml, check_key, NULL);
+            if (install_cmd) {
+                target->install_cmd = strdup(install_cmd);
             }
+        } else if (alias_target) {
+            // Alias target - references another target
+            target->alias_target = strdup(alias_target);
+        } else {
+            // Regular builtin target - collect options
+            const char* option_keys[] = {
+                "output", "minify", "tree_shake", "bundle",
+                "renderer", "color_depth", "mouse_support"
+            };
+            int options_capacity = 16;
+            target->keys = (char**)calloc(options_capacity, sizeof(char*));
+            target->values = (char**)calloc(options_capacity, sizeof(char*));
+            target->options_count = 0;
 
-            // Try to get boolean value and convert to string
-            bool bool_val = kryon_toml_get_bool(toml, check_key, false);
-            bool exists = kryon_toml_get_bool(toml, check_key, true) != bool_val;
-            if (exists) {
-                target->keys[target->options_count] = str_copy(option_keys[j]);
-                target->values[target->options_count] = str_copy(bool_val ? "true" : "false");
-                target->options_count++;
+            for (size_t j = 0; j < sizeof(option_keys) / sizeof(option_keys[0]); j++) {
+                snprintf(check_key, sizeof(check_key), "targets.%s.%s", target_name, option_keys[j]);
+
+                // Try to get string value
+                const char* str_val = kryon_toml_get_string(toml, check_key, NULL);
+                if (str_val) {
+                    target->keys[target->options_count] = str_copy(option_keys[j]);
+                    target->values[target->options_count] = str_copy(str_val);
+                    target->options_count++;
+                    continue;
+                }
+
+                // Try to get boolean value and convert to string
+                bool bool_val = kryon_toml_get_bool(toml, check_key, false);
+                bool exists = kryon_toml_get_bool(toml, check_key, true) != bool_val;
+                if (exists) {
+                    target->keys[target->options_count] = str_copy(option_keys[j]);
+                    target->values[target->options_count] = str_copy(bool_val ? "true" : "false");
+                    target->options_count++;
+                }
             }
         }
 
@@ -836,6 +864,10 @@ KryonConfig* config_load(const char* config_path) {
 
     // Parse new [targets.*] sections
     config_parse_targets(config, toml);
+
+    // Register command targets dynamically
+    // This registers handlers for targets with build/run commands
+    target_handler_register_command_targets(config);
 
     // Parse new [dev] section
     config_parse_dev(config, toml);
@@ -1525,6 +1557,20 @@ bool config_validate(KryonConfig* config) {
                     fprintf(stderr, "%s%s", j > 0 ? ", " : "", targets[j]);
                 }
                 fprintf(stderr, "\n");
+
+                // Show which targets support which operations
+                fprintf(stderr, "\nTarget capabilities:\n");
+                for (int j = 0; targets[j]; j++) {
+                    TargetHandler* h = target_handler_find(targets[j]);
+                    if (h) {
+                        fprintf(stderr, "  %s: ", targets[j]);
+                        if (h->build_handler) fprintf(stderr, "build ");
+                        if (h->run_handler) fprintf(stderr, "run ");
+                        fprintf(stderr, "\n");
+                    }
+                }
+                fprintf(stderr, "\n");
+
                 has_errors = true;
             }
         }

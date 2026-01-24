@@ -70,4 +70,9 @@ DesktopRendererConfig desktop_renderer_config_default(void);
 DesktopRendererConfig desktop_renderer_config_sdl3(int width, int height, const char* title);
 bool desktop_render_ir_component(IRComponent* root, const DesktopRendererConfig* config);
 
+// Reactive dirty tracking
+void desktop_ir_renderer_mark_reactive_dirty(DesktopIRRenderer* renderer);
+bool desktop_ir_renderer_is_reactive_dirty(const DesktopIRRenderer* renderer);
+void desktop_ir_renderer_clear_reactive_dirty(DesktopIRRenderer* renderer);
+
 #endif // IR_DESKTOP_RENDERER_H
