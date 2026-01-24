@@ -156,6 +156,7 @@ PARSER_SOURCES = parsers/kry/kry_parser.c \
                  parsers/lua/lua_parser.c \
                  parsers/lua/module_collector.c \
                  parsers/lua/require_tracker.c \
+                 parsers/hare/hare_parser.c \
                  parsers/parser_utils.c
 
 # All IR sources
