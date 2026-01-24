@@ -24,6 +24,7 @@
 #include "../../../codegens/kotlin/kotlin_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
 #include "../../../codegens/hare/hare_codegen.h"
+#include "../../ir/parsers/hare/hare_parser.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -294,6 +295,32 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
 
         fprintf(stderr, "Error: Failed to compile HTML (exit code: %d)\n", result);
         return 1;
+    }
+
+    // Hare: use Hare parser
+    if (strcmp(frontend, "hare") == 0) {
+        char* json = ir_hare_file_to_kir(source_file);
+        if (!json) {
+            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
+            const char* err = ir_hare_get_error();
+            if (err) {
+                fprintf(stderr, "Hare parser error: %s\n", err);
+            }
+            return 1;
+        }
+
+        // Write to output file
+        FILE* out = fopen(output_kir, "w");
+        if (!out) {
+            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+            free(json);
+            return 1;
+        }
+
+        fprintf(out, "%s\n", json);
+        fclose(out);
+        free(json);
+        return 0;
     }
 
     // .kry DSL: use native C parser

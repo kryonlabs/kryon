@@ -263,6 +263,65 @@ static int build_lua_desktop(KryonConfig* config) {
 }
 
 /**
+ * Build Hare desktop binary
+ */
+static int build_hare_desktop(KryonConfig* config) {
+    // Check if entry file is Hare
+    if (!config->build_entry) {
+        return 1;  // No entry file, not a Hare build
+    }
+
+    size_t entry_len = strlen(config->build_entry);
+    if (entry_len < 3 || strcmp(config->build_entry + entry_len - 3, ".ha") != 0) {
+        return 1;  // Not a Hare file
+    }
+
+    // Check if desktop is a target
+    if (!has_desktop_target(config)) {
+        return 1;  // Desktop not in targets
+    }
+
+    // Check if Hare compiler is available
+    int hare_check = system("command -v hare >/dev/null 2>&1");
+    if (hare_check != 0) {
+        fprintf(stderr, "Error: Hare compiler not found, skipping desktop binary build\n");
+        fprintf(stderr, "Install Hare to enable desktop binary builds\n");
+        fprintf(stderr, "See: https://harelang.org/installation.html\n");
+        return 1;
+    }
+
+    // Create output directory
+    const char* output_dir = config->build_output_dir ? config->build_output_dir : "dist";
+    if (!file_is_directory(output_dir)) {
+        dir_create_recursive(output_dir);
+    }
+
+    // Generate binary path
+    char binary_path[1024];
+    snprintf(binary_path, sizeof(binary_path), "%s/%s", output_dir, config->project_name);
+
+    printf("[Hare Desktop] Building %s...\n", config->project_name);
+
+    // Build the Hare source directly
+    // Unlike Lua which needs KIR → Lua codegen, Hare compiles directly
+    // because the source IS Hare DSL
+    char build_cmd[2048];
+    snprintf(build_cmd, sizeof(build_cmd), "hare build -o \"%s\" \"%s\"",
+             binary_path, config->build_entry);
+
+    printf("[Hare Desktop] Running: %s\n", build_cmd);
+    int result = system(build_cmd);
+
+    if (result != 0) {
+        fprintf(stderr, "Error: Hare compilation failed\n");
+        return 1;
+    }
+
+    printf("Hare Desktop] Binary built: %s\n", binary_path);
+    return 0;
+}
+
+/**
  * Build command entry point
  */
 int cmd_build(int argc, char** argv) {
@@ -398,6 +457,10 @@ int cmd_build(int argc, char** argv) {
             // Lua frontend → LuaJIT binary
             printf("Frontend: lua (LuaJIT compilation)\n");
             desktop_result = build_lua_desktop(config);
+        } else if (frontend && strcmp(frontend, "hare") == 0) {
+            // Hare frontend → Hare compiler → native binary
+            printf("Frontend: hare (Hare compilation)\n");
+            desktop_result = build_hare_desktop(config);
         } else if (!frontend || strcmp(frontend, "auto") == 0) {
             // Auto-detect based on entry file extension
             const char* entry = config->build_entry;
@@ -407,16 +470,19 @@ int cmd_build(int argc, char** argv) {
             } else if (entry && str_ends_with(entry, ".lua")) {
                 printf("Frontend: auto-detected lua (LuaJIT compilation)\n");
                 desktop_result = build_lua_desktop(config);
+            } else if (entry && str_ends_with(entry, ".ha")) {
+                printf("Frontend: auto-detected hare (Hare compilation)\n");
+                desktop_result = build_hare_desktop(config);
             } else {
                 fprintf(stderr, "Error: Cannot auto-detect frontend for entry '%s'\n",
                         entry ? entry : "(none)");
-                fprintf(stderr, "Specify frontend = \"kry\" or \"lua\" in [build] section\n");
+                fprintf(stderr, "Specify frontend = \"kry\", \"lua\", or \"hare\" in [build] section\n");
                 config_free(config);
                 return 1;
             }
         } else {
             fprintf(stderr, "Error: Unknown frontend '%s'\n", frontend);
-            fprintf(stderr, "Supported frontends: kry, lua, auto\n");
+            fprintf(stderr, "Supported frontends: kry, lua, hare, auto\n");
             config_free(config);
             return 1;
         }
