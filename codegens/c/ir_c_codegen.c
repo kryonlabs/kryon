@@ -5,6 +5,10 @@
  */
 
 #include "ir_c_codegen.h"
+#include "ir_c_internal.h"
+#include "ir_c_output.h"
+#include "ir_c_types.h"
+#include "ir_c_reactive.h"
 #include "../codegen_common.h"
 #include "../../ir/src/utils/ir_c_metadata.h"
 #include "../../third_party/cJSON/cJSON.h"
@@ -15,50 +19,26 @@
 #include <ctype.h>
 
 // ============================================================================
-// Code Generation Context
+// Internal Aliases for Utility Functions
 // ============================================================================
 
-typedef struct {
-    FILE* output;
-    int indent_level;
-    cJSON* root_json;           // Full KIR JSON
-    cJSON* component_tree;      // Root component
-    cJSON* c_metadata;          // C metadata section
-    cJSON* variables;           // Variables array
-    cJSON* event_handlers;      // Event handlers array
-    cJSON* helper_functions;    // Helper functions array
-    cJSON* includes;            // Includes array
-    cJSON* preprocessor_dirs;   // Preprocessor directives array
+// These aliases allow existing code to use the shorter names
+#define write_indent(ctx) c_write_indent(ctx)
+#define writeln(ctx, str) c_writeln(ctx, str)
+#define write_raw(ctx, str) c_write_raw(ctx, str)
 
-    // Reactive state tracking
-    cJSON* reactive_manifest;   // reactive_manifest from KIR
-    cJSON* reactive_vars;       // reactive_manifest.variables array
-    bool has_reactive_state;    // True if any reactive variables exist
-    const char* current_scope;  // Current component scope during tree traversal (e.g., "Counter#0")
-} CCodegenContext;
+// Reactive function aliases
+#define is_reactive_variable(ctx, name) c_is_reactive_variable(ctx, name)
+#define get_scoped_var_name(ctx, name) c_get_scoped_var_name(ctx, name)
+#define generate_scoped_var_name(name, scope) c_generate_scoped_var_name(name, scope)
+#define get_signal_creator(type) c_get_signal_creator(type)
+#define generate_reactive_signal_declarations(ctx) c_generate_reactive_signal_declarations(ctx)
+#define generate_reactive_signal_initialization(ctx) c_generate_reactive_signal_initialization(ctx)
+#define generate_reactive_signal_cleanup(ctx) c_generate_reactive_signal_cleanup(ctx)
 
 // ============================================================================
 // Utility Functions
 // ============================================================================
-
-// Forward declarations
-static char* generate_scoped_var_name(const char* name, const char* scope);
-
-static void write_indent(CCodegenContext* ctx) {
-    for (int i = 0; i < ctx->indent_level; i++) {
-        fprintf(ctx->output, "    ");
-    }
-}
-
-static void writeln(CCodegenContext* ctx, const char* str) {
-    write_indent(ctx);
-    fprintf(ctx->output, "%s\n", str);
-}
-
-static void write_raw(CCodegenContext* ctx, const char* str) __attribute__((unused));
-static void write_raw(CCodegenContext* ctx, const char* str) {
-    fprintf(ctx->output, "%s", str);
-}
 
 // Get variable name for a component ID
 static const char* get_variable_for_component_id(CCodegenContext* ctx, int component_id) {
@@ -78,33 +58,7 @@ static const char* get_variable_for_component_id(CCodegenContext* ctx, int compo
     return NULL;
 }
 
-// Map component type to C DSL macro name
-static const char* get_component_macro(const char* type) {
-    if (strcmp(type, "Container") == 0) return "CONTAINER";
-    if (strcmp(type, "Column") == 0) return "COLUMN";
-    if (strcmp(type, "Row") == 0) return "ROW";
-    if (strcmp(type, "Center") == 0) return "CENTER";
-    if (strcmp(type, "Text") == 0) return "TEXT";
-    if (strcmp(type, "Button") == 0) return "BUTTON";
-    if (strcmp(type, "Input") == 0) return "INPUT";
-    if (strcmp(type, "Checkbox") == 0) return "CHECKBOX";
-    if (strcmp(type, "Dropdown") == 0) return "DROPDOWN";
-    if (strcmp(type, "Image") == 0) return "IMAGE";
-    if (strcmp(type, "TabGroup") == 0) return "TAB_GROUP";
-    if (strcmp(type, "TabBar") == 0) return "TAB_BAR";
-    if (strcmp(type, "Tab") == 0) return "TAB";
-    if (strcmp(type, "TabContent") == 0) return "TAB_CONTENT";
-    if (strcmp(type, "TabPanel") == 0) return "TAB_PANEL";
-    if (strcmp(type, "Table") == 0) return "TABLE";
-    if (strcmp(type, "TableHead") == 0) return "TABLE_HEAD";
-    if (strcmp(type, "TableBody") == 0) return "TABLE_BODY";
-    if (strcmp(type, "TableRow") == 0) return "TABLE_ROW";
-    if (strcmp(type, "TableCell") == 0) return "TABLE_CELL";
-    if (strcmp(type, "TableHeaderCell") == 0) return "TABLE_HEADER_CELL";
-    if (strcmp(type, "For") == 0) return "FOR_EACH";
-    if (strcmp(type, "Custom") == 0) return "COMPONENT";
-    return "CONTAINER";  // Fallback
-}
+// get_component_macro moved to ir_c_types.c
 
 // ============================================================================
 // Header Generation
@@ -847,35 +801,7 @@ static bool stmt_to_c(FILE* output, cJSON* stmt, int indent, const char* output_
 /**
  * Map KIR type to C type string
  */
-static const char* kir_type_to_c(const char* kir_type) {
-    if (!kir_type) return "void";
-
-    if (strcmp(kir_type, "string") == 0) return "const char*";
-    if (strcmp(kir_type, "int") == 0) return "int";
-    if (strcmp(kir_type, "number") == 0) return "double";
-    if (strcmp(kir_type, "float") == 0) return "float";
-    if (strcmp(kir_type, "double") == 0) return "double";
-    if (strcmp(kir_type, "bool") == 0) return "bool";
-    if (strcmp(kir_type, "void") == 0) return "void";
-
-    // Array types like "string[]" -> "const char**"
-    size_t len = strlen(kir_type);
-    if (len > 2 && kir_type[len-2] == '[' && kir_type[len-1] == ']') {
-        // Create base type string
-        char base[64];
-        strncpy(base, kir_type, len - 2);
-        base[len - 2] = '\0';
-
-        if (strcmp(base, "string") == 0) return "const char**";
-        if (strcmp(base, "int") == 0) return "int*";
-        if (strcmp(base, "number") == 0) return "double*";
-        if (strcmp(base, "float") == 0) return "float*";
-        if (strcmp(base, "double") == 0) return "double*";
-        if (strcmp(base, "bool") == 0) return "bool*";
-    }
-
-    return "void*";  // Unknown type
-}
+// kir_type_to_c moved to ir_c_types.c
 
 /**
  * Generate exported functions from logic_block
@@ -1290,275 +1216,11 @@ static void generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block
 }
 
 // ============================================================================
-// Reactive Signal Generation
+// Reactive Signal Generation (moved to ir_c_reactive.c)
 // ============================================================================
-
-/**
- * Check if a name matches any reactive variable
- * Returns true if the name is in reactive_manifest.variables
- */
-static bool is_reactive_variable(CCodegenContext* ctx, const char* name) {
-    if (!ctx->reactive_vars || !cJSON_IsArray(ctx->reactive_vars) || !name) {
-        return false;
-    }
-
-    int var_count = cJSON_GetArraySize(ctx->reactive_vars);
-    for (int i = 0; i < var_count; i++) {
-        cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
-        cJSON* var_name = cJSON_GetObjectItem(var, "name");
-        if (var_name && var_name->valuestring && strcmp(name, var_name->valuestring) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
- * Get the scoped variable name for a given variable name in the current scope
- * Returns a string that must be freed by the caller, or NULL if not found
- * If there's no current scope, returns a strdup of the base name
- */
-static char* get_scoped_var_name(CCodegenContext* ctx, const char* name) {
-    if (!name) return NULL;
-
-    // If no current scope or scope is "component" (global), use base name
-    if (!ctx->current_scope || strcmp(ctx->current_scope, "component") == 0) {
-        return strdup(name);
-    }
-
-    // Look for a variable that matches both name and current scope
-    if (ctx->reactive_vars && cJSON_IsArray(ctx->reactive_vars)) {
-        int var_count = cJSON_GetArraySize(ctx->reactive_vars);
-        for (int i = 0; i < var_count; i++) {
-            cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
-            cJSON* var_name = cJSON_GetObjectItem(var, "name");
-            cJSON* scope = cJSON_GetObjectItem(var, "scope");
-
-            if (var_name && var_name->valuestring &&
-                strcmp(var_name->valuestring, name) == 0 &&
-                scope && scope->valuestring &&
-                strcmp(scope->valuestring, ctx->current_scope) == 0) {
-                // Found a variable with matching name and scope
-                return generate_scoped_var_name(name, scope->valuestring);
-            }
-        }
-    }
-
-    // Not found with current scope, fall back to base name
-    return strdup(name);
-}
-
-/**
- * Map KIR type to C signal creation function
- */
-static const char* get_signal_creator(const char* kir_type) {
-    if (!kir_type) return "kryon_signal_create";
-
-    if (strcmp(kir_type, "string") == 0) {
-        return "kryon_signal_create_string";
-    }
-    if (strcmp(kir_type, "bool") == 0 || strcmp(kir_type, "boolean") == 0) {
-        return "kryon_signal_create_bool";
-    }
-    return "kryon_signal_create";  // Default: float signal
-}
-
-/**
- * Generate a unique C variable name from variable name and scope
- * Converts scope like "Counter#0" to "_Counter_0" for valid C identifiers
- *
- * Input: name="value", scope="Counter#0"
- * Output: "value_Counter_0"
- */
-static char* generate_scoped_var_name(const char* name, const char* scope) {
-    if (!name) return NULL;
-
-    // If no scope or scope is "component" (global), use base name
-    if (!scope || strcmp(scope, "component") == 0) {
-        return strdup(name);
-    }
-
-    // Calculate length: name + "_" + sanitized_scope
-    size_t len = strlen(name) + 1;
-    const char* s = scope;
-    while (*s) {
-        // Replace special chars with underscore
-        if ((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') ||
-            (*s >= '0' && *s <= '9')) {
-            len++;
-        } else {
-            len++;  // underscore for special chars
-        }
-        s++;
-    }
-
-    char* result = calloc(1, len + 1);  // +1 for null terminator
-    if (!result) return NULL;
-
-    // Copy name
-    strcpy(result, name);
-    strcat(result, "_");
-
-    // Sanitize scope (replace special chars with underscore)
-    s = scope;
-    char* dest = result + strlen(result);
-    while (*s) {
-        if ((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') ||
-            (*s >= '0' && *s <= '9')) {
-            *dest++ = *s;
-        } else {
-            *dest++ = '_';  // Replace #, -, etc with _
-        }
-        s++;
-    }
-    *dest = '\0';
-
-    return result;
-}
-
-/**
- * Generate signal declarations from reactive_manifest.variables
- *
- * KIR input: {"id": 1, "name": "value", "type": "int", "initial_value": "0"}
- * C output: KryonSignal* value_signal;
- */
-static void generate_reactive_signal_declarations(CCodegenContext* ctx) {
-    if (!ctx->reactive_vars || !cJSON_IsArray(ctx->reactive_vars)) return;
-
-    int var_count = cJSON_GetArraySize(ctx->reactive_vars);
-    if (var_count == 0) return;
-
-    fprintf(ctx->output, "// Reactive state signals\n");
-
-    for (int i = 0; i < var_count; i++) {
-        cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
-        cJSON* name = cJSON_GetObjectItem(var, "name");
-        cJSON* scope = cJSON_GetObjectItem(var, "scope");
-
-        if (!name || !name->valuestring) continue;
-
-        char* scoped_name = generate_scoped_var_name(
-            name->valuestring,
-            (scope && scope->valuestring) ? scope->valuestring : NULL
-        );
-
-        fprintf(ctx->output, "KryonSignal* %s_signal;\n", scoped_name);
-        free(scoped_name);
-    }
-    fprintf(ctx->output, "\n");
-}
-
-/**
- * Check if a string is a numeric literal (integer or float)
- */
-static bool is_numeric(const char* str) {
-    if (!str) return false;
-    if (*str == '-' || *str == '+') str++;
-    bool has_digit = false;
-    while (*str) {
-        if (*str >= '0' && *str <= '9') {
-            has_digit = true;
-        } else if (*str == '.') {
-            // Allow decimal point
-        } else {
-            return false;  // Non-numeric character
-        }
-        str++;
-    }
-    return has_digit;
-}
-
-/**
- * Generate signal initialization code
- *
- * C output: value_signal = kryon_signal_create(0);
- */
-static void generate_reactive_signal_initialization(CCodegenContext* ctx) {
-    if (!ctx->reactive_vars || !cJSON_IsArray(ctx->reactive_vars)) return;
-
-    int var_count = cJSON_GetArraySize(ctx->reactive_vars);
-    if (var_count == 0) return;
-
-    fprintf(ctx->output, "    // Initialize reactive state\n");
-
-    for (int i = 0; i < var_count; i++) {
-        cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
-        cJSON* name = cJSON_GetObjectItem(var, "name");
-        cJSON* scope = cJSON_GetObjectItem(var, "scope");
-        cJSON* type = cJSON_GetObjectItem(var, "type");
-        cJSON* init = cJSON_GetObjectItem(var, "initial_value");
-
-        if (!name || !name->valuestring) continue;
-
-        char* scoped_name = generate_scoped_var_name(
-            name->valuestring,
-            (scope && scope->valuestring) ? scope->valuestring : NULL
-        );
-
-        const char* var_name = name->valuestring;
-        const char* init_val_raw = (init && init->valuestring) ? init->valuestring : "0";
-
-        // For component definitions, initial_value may be a prop reference (e.g., "initialValue")
-        // In this case, use the default value "0" instead
-        const char* init_val;
-        if (is_numeric(init_val_raw)) {
-            init_val = init_val_raw;
-        } else {
-            // Non-numeric values are prop references - use default
-            init_val = "0";
-        }
-
-        const char* signal_creator = get_signal_creator(
-            type && type->valuestring ? type->valuestring : "int"
-        );
-
-        if (strcmp(signal_creator, "kryon_signal_create_string") == 0) {
-            fprintf(ctx->output, "    %s_signal = %s(\"%s\");\n",
-                    scoped_name, signal_creator, init_val);
-        } else if (strcmp(signal_creator, "kryon_signal_create_bool") == 0) {
-            bool bool_val = (strcmp(init_val, "true") == 0);
-            fprintf(ctx->output, "    %s_signal = %s(%s);\n",
-                    scoped_name, signal_creator, bool_val ? "true" : "false");
-        } else {
-            fprintf(ctx->output, "    %s_signal = %s(%s);\n",
-                    scoped_name, signal_creator, init_val);
-        }
-
-        free(scoped_name);
-    }
-    fprintf(ctx->output, "\n");
-}
-
-/**
- * Generate signal cleanup code (after KRYON_RUN returns)
- *
- * C output: kryon_signal_destroy(value_signal);
- */
-static void generate_reactive_signal_cleanup(CCodegenContext* ctx) {
-    if (!ctx->reactive_vars || !cJSON_IsArray(ctx->reactive_vars)) return;
-
-    int var_count = cJSON_GetArraySize(ctx->reactive_vars);
-    if (var_count == 0) return;
-
-    fprintf(ctx->output, "    // Cleanup reactive state\n");
-
-    for (int i = 0; i < var_count; i++) {
-        cJSON* var = cJSON_GetArrayItem(ctx->reactive_vars, i);
-        cJSON* name = cJSON_GetObjectItem(var, "name");
-        cJSON* scope = cJSON_GetObjectItem(var, "scope");
-
-        if (!name || !name->valuestring) continue;
-
-        char* scoped_name = generate_scoped_var_name(
-            name->valuestring,
-            (scope && scope->valuestring) ? scope->valuestring : NULL
-        );
-
-        fprintf(ctx->output, "    kryon_signal_destroy(%s_signal);\n", scoped_name);
-        free(scoped_name);
-    }
-    fprintf(ctx->output, "\n");
-}
+// Functions: is_reactive_variable, get_scoped_var_name, generate_scoped_var_name,
+// get_signal_creator, generate_reactive_signal_declarations,
+// generate_reactive_signal_initialization, generate_reactive_signal_cleanup
 
 // ============================================================================
 // Component Tree Generation
