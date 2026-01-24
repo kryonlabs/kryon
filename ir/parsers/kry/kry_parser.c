@@ -580,9 +580,11 @@ static double parse_number(KryParser* p) {
         }
     }
 
-    // Skip optional % suffix (for percentage values like 100%)
+    // Reject % suffix - percentages must be quoted strings (e.g., "100%" not 100%)
     if (peek(p) == '%') {
-        advance(p);
+        kry_parser_add_error(p, KRY_ERROR_ERROR, KRY_ERROR_SYNTAX,
+            "Percentage values must be quoted (e.g., \"100%%\" not 100%%)");
+        advance(p);  // Consume the % for error recovery
     }
 
     size_t len = p->pos - start;

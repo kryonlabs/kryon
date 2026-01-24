@@ -19,8 +19,8 @@
 // Internal Structures
 // ============================================================================
 
-// Forward declare global renderer from desktop renderer
-extern struct DesktopIRRenderer* g_desktop_renderer;
+// Include desktop internals for g_desktop_renderer and renderer functions
+#include "../../runtime/desktop/desktop_internal.h"
 
 struct KryonTextBinding {
     IRComponent* component;
@@ -59,24 +59,44 @@ struct KryonBindingGroup {
 static void background_color_callback(float value, void* user_data) {
     KryonVisibilityBinding* b = (KryonVisibilityBinding*)user_data;
     kryon_set_background(b->component, (uint32_t)value);
+
+    // Mark renderer as reactive dirty to trigger re-render
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+    }
 }
 
 /* Text color change callback */
 static void text_color_callback(float value, void* user_data) {
     KryonVisibilityBinding* b = (KryonVisibilityBinding*)user_data;
     kryon_set_color(b->component, (uint32_t)value);
+
+    // Mark renderer as reactive dirty to trigger re-render
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+    }
 }
 
 /* Opacity callback for enabled binding */
 static void opacity_from_float_callback(float value, void* user_data) {
     KryonVisibilityBinding* b = (KryonVisibilityBinding*)user_data;
     kryon_set_opacity(b->component, value != 0.0f ? 1.0f : 0.5f);
+
+    // Mark renderer as reactive dirty to trigger re-render
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+    }
 }
 
 /* Opacity callback from bool */
 static void opacity_from_bool_callback(bool value, void* user_data) {
     KryonVisibilityBinding* b = (KryonVisibilityBinding*)user_data;
     kryon_set_opacity(b->component, value ? 1.0f : 0.5f);
+
+    // Mark renderer as reactive dirty to trigger re-render
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+    }
 }
 
 /* Generic property setter callback */
@@ -84,6 +104,11 @@ static void property_setter_callback(float value, void* user_data) {
     KryonTextBinding* b = (KryonTextBinding*)user_data;
     KryonPropertySetter setter = (KryonPropertySetter)(uintptr_t)b->format;
     setter(b->component, value);
+
+    // Mark renderer as reactive dirty to trigger re-render
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+    }
 }
 
 // ============================================================================
@@ -113,6 +138,10 @@ static const char* format_float_value(float value, const char* format) {
 static void text_binding_callback_float(float value, void* user_data) {
     KryonTextBinding* binding = (KryonTextBinding*)user_data;
 
+    // Debug logging
+    printf("[BINDING] text_binding_callback_float called: value=%f, component=%p\n",
+           value, (void*)binding->component);
+
     // Format the value
     const char* formatted = format_float_value(value, binding->format);
 
@@ -124,15 +153,19 @@ static void text_binding_callback_float(float value, void* user_data) {
                  binding->prefix ? binding->prefix : "",
                  formatted,
                  binding->suffix ? binding->suffix : "");
+        printf("[BINDING] Updating text component to: %s\n", buffer);
         update_text_component(binding->component, buffer);
     } else {
+        printf("[BINDING] Updating text component to: %s\n", formatted);
         update_text_component(binding->component, formatted);
     }
 
     // Mark renderer as reactive dirty to trigger re-render
-    extern void desktop_ir_renderer_mark_reactive_dirty(struct DesktopIRRenderer* renderer);
     if (g_desktop_renderer) {
         desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+        printf("[BINDING] Marked renderer as reactive dirty\n");
+    } else {
+        printf("[BINDING] WARNING: g_desktop_renderer is NULL!\n");
     }
 }
 
@@ -152,7 +185,6 @@ static void text_binding_callback_string(const char* value, void* user_data) {
     }
 
     // Mark renderer as reactive dirty to trigger re-render
-    extern void desktop_ir_renderer_mark_reactive_dirty(struct DesktopIRRenderer* renderer);
     if (g_desktop_renderer) {
         desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
     }
@@ -238,6 +270,11 @@ static void visibility_callback_bool(bool value, void* user_data) {
 
     bool visible = binding->invert ? !value : value;
     kryon_set_visible(binding->component, visible);
+
+    // Mark renderer as reactive dirty to trigger re-render
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+    }
 }
 
 static void visibility_callback_float(float value, void* user_data) {
@@ -246,6 +283,11 @@ static void visibility_callback_float(float value, void* user_data) {
     // Treat non-zero as visible
     bool visible = binding->invert ? (value == 0.0f) : (value != 0.0f);
     kryon_set_visible(binding->component, visible);
+
+    // Mark renderer as reactive dirty to trigger re-render
+    if (g_desktop_renderer) {
+        desktop_ir_renderer_mark_reactive_dirty(g_desktop_renderer);
+    }
 }
 
 KryonVisibilityBinding* kryon_bind_visible(IRComponent* component,

@@ -289,6 +289,10 @@ KryonSignal* kryon_signal_create(float initial_value) {
     if (!signal) return NULL;
 
     signal->value.float_value = initial_value;
+
+    printf("[SIGNAL_CREATE] Created float signal %p, type=%u, value=%f\n",
+           (void*)signal, signal->type, initial_value);
+
     return signal;
 }
 
@@ -363,14 +367,25 @@ bool kryon_signal_get_bool(KryonSignal* signal) {
 }
 
 void kryon_signal_set(KryonSignal* signal, float value) {
-    if (!signal || signal->type != KRYON_SIGNAL_TYPE_FLOAT) return;
+    if (!signal) {
+        printf("[SIGNAL] ERROR: signal is NULL!\n");
+        return;
+    }
+    if (signal->type != KRYON_SIGNAL_TYPE_FLOAT) {
+        printf("[SIGNAL] ERROR: signal type is %u, not FLOAT!\n", signal->type);
+        return;
+    }
 
     MUTEX_LOCK(signal->mutex);
 
     bool changed = (signal->value.float_value != value);
     if (changed) {
+        float old_value = signal->value.float_value;
         signal->value.float_value = value;
         signal->dirty = true;
+
+        printf("[SIGNAL] Signal %p set to %f (changed from %f), notifying %u subscribers\n",
+               (void*)signal, value, old_value, signal->subscribers.count);
 
         if (g_reactive.debug_mode) {
             printf("[Reactive] Signal %p set to %f\n", (void*)signal, value);
@@ -555,10 +570,14 @@ static void signal_notify_subscribers(KryonSignal* signal) {
     // Direct notification
     MUTEX_LOCK(signal->mutex);
 
+    printf("[NOTIFY] Notifying %u subscribers for signal %p\n", signal->subscribers.count, (void*)signal);
+
     for (uint32_t i = 0; i < signal->subscribers.count; i++) {
         void* cb = signal->subscribers.callbacks[i];
         void* user_data = signal->subscribers.user_data[i];
         uint32_t type = signal->subscribers.types[i];
+
+        printf("[NOTIFY] Calling subscriber %u: cb=%p, user_data=%p, type=%u\n", i, cb, user_data, type);
 
         MUTEX_UNLOCK(signal->mutex);
 

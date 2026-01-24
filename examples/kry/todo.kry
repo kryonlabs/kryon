@@ -12,7 +12,7 @@ App {
     Column {
         gap = 20
         padding = 30
-        width = 100%
+        width = "100%"
 
         Text {
             text = "Simple Todo App"
