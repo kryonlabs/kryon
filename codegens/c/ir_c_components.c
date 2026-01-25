@@ -18,11 +18,29 @@
 #define write_indent(ctx) c_write_indent(ctx)
 #define writeln(ctx, str) c_writeln(ctx, str)
 #define write_raw(ctx, str) c_write_raw(ctx, str)
-#define get_component_macro(type) c_get_component_macro(type)
 #define is_reactive_variable(ctx, name) c_is_reactive_variable(ctx, name)
 #define get_scoped_var_name(ctx, name) c_get_scoped_var_name(ctx, name)
-#define kir_type_to_c(type) c_kir_type_to_c(type)
+#define generate_scoped_var_name(name, scope) c_generate_scoped_var_name(name, scope)
 #define expr_to_c(expr) c_expr_to_c(expr)
+// Note: get_component_macro and kir_type_to_c are from ir_c_types.h (no c_ prefix)
+
+// Get variable name for a component ID (internal utility)
+static const char* get_variable_for_component_id(CCodegenContext* ctx, int component_id) {
+    if (!ctx->variables) return NULL;
+
+    int var_count = cJSON_GetArraySize(ctx->variables);
+    for (int i = 0; i < var_count; i++) {
+        cJSON* var = cJSON_GetArrayItem(ctx->variables, i);
+        cJSON* id_item = cJSON_GetObjectItem(var, "component_id");
+        if (id_item && id_item->valueint == component_id) {
+            cJSON* name = cJSON_GetObjectItem(var, "name");
+            if (name && name->valuestring) {
+                return name->valuestring;
+            }
+        }
+    }
+    return NULL;
+}
 
 // Forward declaration
 static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* value, bool* first_prop);

@@ -141,6 +141,7 @@ PARSER_SOURCES = parsers/kry/kry_allocator.c \
                  parsers/kry/kry_ast_factory.c \
                  parsers/kry/kry_tokens.c \
                  parsers/kry/kry_to_ir_context.c \
+                 parsers/kry/kry_to_ir_expressions.c \
                  parsers/kry/kry_parser.c \
                  parsers/kry/kry_to_ir.c \
                  parsers/kry/kry_expression.c \

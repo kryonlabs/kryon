@@ -70,6 +70,12 @@ void c_generate_reactive_signal_initialization(CCodegenContext* ctx);
  */
 void c_generate_reactive_signal_cleanup(CCodegenContext* ctx);
 
+/**
+ * Generate event handlers from logic_block
+ * Transpiles KRY event handlers to C functions
+ */
+void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block);
+
 #ifdef __cplusplus
 }
 #endif

@@ -38,6 +38,20 @@ typedef struct {
     const char* current_scope;  // Current component scope during tree traversal (e.g., "Counter#0")
 } CCodegenContext;
 
+// ============================================================================
+// Internal Code Generation Functions (ir_c_codegen.c)
+// ============================================================================
+
+// Header generation
+void generate_includes(CCodegenContext* ctx);
+void generate_preprocessor_directives(CCodegenContext* ctx);
+void generate_variable_declarations(CCodegenContext* ctx);
+void generate_helper_functions(CCodegenContext* ctx);
+void generate_event_handlers(CCodegenContext* ctx);
+
+// Exported function generation
+bool generate_exported_functions(FILE* output, cJSON* logic_block, cJSON* exports, const char* output_path);
+
 #ifdef __cplusplus
 }
 #endif

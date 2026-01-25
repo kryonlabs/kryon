@@ -178,12 +178,6 @@ void codegen_error(const char* fmt, ...);
  */
 void codegen_warn(const char* fmt, ...);
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // CODEGEN_COMMON_H
-
 // ============================================================================
 // StringBuilder Utility
 // ============================================================================
@@ -361,3 +355,8 @@ bool codegen_file_exists(const char* path);
  */
 int codegen_copy_file(const char* src, const char* dst);
 
+#ifdef __cplusplus
+}
+#endif
+
+#endif // CODEGEN_COMMON_H
