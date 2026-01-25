@@ -1241,6 +1241,9 @@ static bool handle_contentAlignment_property(
         IRAlignment alignment = kry_parse_alignment(align);
         IRLayout* layout = ir_get_layout(component);
         if (layout) {
+            // Set cross axis (alignItems in CSS terms)
+            // Note: Do NOT automatically set justify_content when alignItems is center,
+            // as this would override any explicit justifyContent value
             layout->flex.cross_axis = alignment;
         }
         return true;
@@ -1278,6 +1281,146 @@ static bool handle_justifyContent_property(
         return true;
     }
 
+    return false;
+}
+
+// ============================================================================
+// Table Component Property Handlers
+// ============================================================================
+
+// Helper to get or create table state
+static IRTableState* get_or_create_table_state(IRComponent* component) {
+    if (!component) return NULL;
+    IRTableState* state = ir_get_table_state(component);
+    if (!state) {
+        state = ir_table_create_state();
+        component->custom_data = (char*)state;
+    }
+    return state;
+}
+
+static bool handle_table_cellPadding_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx; (void)name;
+    if (value->type == KRY_VALUE_NUMBER) {
+        IRTableState* state = get_or_create_table_state(component);
+        if (state) {
+            ir_table_set_cell_padding(state, (float)value->number_value);
+        }
+        return true;
+    }
+    return false;
+}
+
+static bool handle_table_striped_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx; (void)name;
+    bool val = false;
+    if (value->type == KRY_VALUE_IDENTIFIER && strcmp(value->identifier, "true") == 0) {
+        val = true;
+    }
+    if (val) {
+        IRTableState* state = get_or_create_table_state(component);
+        if (state) {
+            ir_table_set_striped(state, true);
+        }
+    }
+    return true;
+}
+
+static bool handle_table_showBorders_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx; (void)name;
+    bool val = false;
+    if (value->type == KRY_VALUE_IDENTIFIER && strcmp(value->identifier, "true") == 0) {
+        val = true;
+    }
+    if (val) {
+        IRTableState* state = get_or_create_table_state(component);
+        if (state) {
+            ir_table_set_show_borders(state, true);
+        }
+    }
+    return true;
+}
+
+// Helper to parse hex color from string
+static void parse_hex_color(const char* str, uint8_t* r, uint8_t* g, uint8_t* b) {
+    if (!str) { *r = *g = *b = 0; return; }
+    if (str[0] == '#') str++;
+    unsigned int val = 0;
+    sscanf(str, "%x", &val);
+    *r = (val >> 16) & 0xFF;
+    *g = (val >> 8) & 0xFF;
+    *b = val & 0xFF;
+}
+
+static bool handle_table_headerBackground_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx; (void)name;
+    if (value->type == KRY_VALUE_STRING) {
+        IRTableState* state = get_or_create_table_state(component);
+        if (state) {
+            uint8_t r, g, b;
+            parse_hex_color(value->string_value, &r, &g, &b);
+            ir_table_set_header_background(state, r, g, b, 255);
+        }
+        return true;
+    }
+    return false;
+}
+
+static bool handle_table_evenRowBackground_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx; (void)name;
+    if (value->type == KRY_VALUE_STRING) {
+        IRTableState* state = get_or_create_table_state(component);
+        if (state) {
+            uint8_t r, g, b;
+            parse_hex_color(value->string_value, &r, &g, &b);
+            state->style.even_row_background = IR_COLOR_RGBA(r, g, b, 255);
+        }
+        return true;
+    }
+    return false;
+}
+
+static bool handle_table_oddRowBackground_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx; (void)name;
+    if (value->type == KRY_VALUE_STRING) {
+        IRTableState* state = get_or_create_table_state(component);
+        if (state) {
+            uint8_t r, g, b;
+            parse_hex_color(value->string_value, &r, &g, &b);
+            state->style.odd_row_background = IR_COLOR_RGBA(r, g, b, 255);
+        }
+        return true;
+    }
     return false;
 }
 
@@ -1342,6 +1485,14 @@ static const PropertyDispatchEntry property_dispatch_table[] = {
     // Dropdown component properties
     {"placeholder",      handle_placeholder_property,      false},
     {"options",          handle_options_property,          false},
+
+    // Table component properties
+    {"cellPadding",      handle_table_cellPadding_property, false},
+    {"striped",          handle_table_striped_property,     false},
+    {"showBorders",      handle_table_showBorders_property, false},
+    {"headerBackground", handle_table_headerBackground_property, false},
+    {"evenRowBackground", handle_table_evenRowBackground_property, false},
+    {"oddRowBackground", handle_table_oddRowBackground_property, false},
 
     // Sentinel (marks end of table)
     {NULL,               NULL,                           false}

@@ -13,6 +13,16 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <stdint.h>
+
+// Parse color string (e.g., "#1a1a2e" or "0x1a1a2e") to uint32_t
+static uint32_t parse_color_string(const char* str) {
+    if (!str) return 0;
+    // Skip # or 0x prefix
+    if (str[0] == '#') str++;
+    else if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) str += 2;
+    return (uint32_t)strtoul(str, NULL, 16);
+}
 
 // Internal aliases for shorter function names
 #define write_indent(ctx) c_write_indent(ctx)
@@ -338,6 +348,113 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
         }
     }
 
+    // Check for conditional visibility (if/else)
+    cJSON* visible_cond = cJSON_GetObjectItem(component, "visible_condition");
+    cJSON* visible_when = cJSON_GetObjectItem(component, "visible_when_true");
+
+    if (visible_cond && visible_cond->valuestring && visible_cond->valuestring[0]) {
+        bool when_true = visible_when ? cJSON_IsTrue(visible_when) : true;
+
+        // Build signal name from condition variable
+        char signal_name[256];
+        const char* var_name = visible_cond->valuestring;
+
+        // Check scope from reactive_vars
+        const char* scope = "component";
+        if (ctx->reactive_vars && cJSON_IsArray(ctx->reactive_vars)) {
+            cJSON* var;
+            cJSON_ArrayForEach(var, ctx->reactive_vars) {
+                cJSON* vname = cJSON_GetObjectItem(var, "name");
+                cJSON* vscope = cJSON_GetObjectItem(var, "scope");
+                if (vname && vname->valuestring && strcmp(vname->valuestring, var_name) == 0) {
+                    if (vscope && vscope->valuestring) {
+                        scope = vscope->valuestring;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (strcmp(scope, "global") == 0) {
+            snprintf(signal_name, sizeof(signal_name), "%s_global_signal", var_name);
+        } else if (strcmp(scope, "component") != 0) {
+            snprintf(signal_name, sizeof(signal_name), "%s_%s_signal", var_name, scope);
+        } else {
+            snprintf(signal_name, sizeof(signal_name), "%s_signal", var_name);
+        }
+
+        // Generate binding (use _EXPR versions for macro argument context)
+        if (!first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        if (when_true) {
+            fprintf(ctx->output, "BIND_VISIBLE_EXPR(%s)", signal_name);
+        } else {
+            fprintf(ctx->output, "BIND_VISIBLE_NOT_EXPR(%s)", signal_name);
+        }
+        first_prop = false;
+    }
+
+    // Handle table_config for Table components
+    cJSON* table_config = cJSON_GetObjectItem(component, "table_config");
+    if (table_config && cJSON_IsObject(table_config)) {
+        // Cell padding
+        cJSON* cell_padding = cJSON_GetObjectItem(table_config, "cellPadding");
+        if (cell_padding && cJSON_IsNumber(cell_padding)) {
+            if (!first_prop) fprintf(ctx->output, ",\n");
+            write_indent(ctx);
+            fprintf(ctx->output, "CELL_PADDING(%.0f)", cell_padding->valuedouble);
+            first_prop = false;
+        }
+
+        // Striped rows
+        cJSON* striped = cJSON_GetObjectItem(table_config, "striped");
+        if (striped && cJSON_IsTrue(striped)) {
+            if (!first_prop) fprintf(ctx->output, ",\n");
+            write_indent(ctx);
+            fprintf(ctx->output, "TABLE_STRIPED");
+            first_prop = false;
+        }
+
+        // Show borders
+        cJSON* show_borders = cJSON_GetObjectItem(table_config, "showBorders");
+        if (show_borders && cJSON_IsTrue(show_borders)) {
+            if (!first_prop) fprintf(ctx->output, ",\n");
+            write_indent(ctx);
+            fprintf(ctx->output, "TABLE_BORDERS");
+            first_prop = false;
+        }
+
+        // Header background
+        cJSON* header_bg = cJSON_GetObjectItem(table_config, "headerBackground");
+        if (header_bg && header_bg->valuestring) {
+            if (!first_prop) fprintf(ctx->output, ",\n");
+            write_indent(ctx);
+            uint32_t color = parse_color_string(header_bg->valuestring);
+            fprintf(ctx->output, "HEADER_BG(0x%06x)", color);
+            first_prop = false;
+        }
+
+        // Even row background
+        cJSON* even_row_bg = cJSON_GetObjectItem(table_config, "evenRowBackground");
+        if (even_row_bg && even_row_bg->valuestring) {
+            if (!first_prop) fprintf(ctx->output, ",\n");
+            write_indent(ctx);
+            uint32_t color = parse_color_string(even_row_bg->valuestring);
+            fprintf(ctx->output, "EVEN_ROW_BG(0x%06x)", color);
+            first_prop = false;
+        }
+
+        // Odd row background
+        cJSON* odd_row_bg = cJSON_GetObjectItem(table_config, "oddRowBackground");
+        if (odd_row_bg && odd_row_bg->valuestring) {
+            if (!first_prop) fprintf(ctx->output, ",\n");
+            write_indent(ctx);
+            uint32_t color = parse_color_string(odd_row_bg->valuestring);
+            fprintf(ctx->output, "ODD_ROW_BG(0x%06x)", color);
+            first_prop = false;
+        }
+    }
+
     // Generate properties
     cJSON* prop2 = NULL;
     cJSON_ArrayForEach(prop2, component) {
@@ -350,7 +467,10 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
             strcmp(key, "TEST_MARKER") == 0 || strcmp(key, "direction") == 0 ||
             strcmp(key, "placeholder") == 0 ||  // Skip placeholder for Dropdown/Input (handled as argument)
             strcmp(key, "checked") == 0 ||      // Skip checked for Checkbox (handled as argument)
-            strcmp(key, "dropdown_state") == 0) { // Skip dropdown_state (handled separately below)
+            strcmp(key, "dropdown_state") == 0 || // Skip dropdown_state (handled separately below)
+            strcmp(key, "visible_condition") == 0 ||  // Skip (handled separately for if/else)
+            strcmp(key, "visible_when_true") == 0 ||  // Skip (handled separately for if/else)
+            strcmp(key, "table_config") == 0) {  // Skip table_config (handled above)
             continue;
         }
 
@@ -425,10 +545,11 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
     if (strcmp(key, "width") == 0 && value->valuestring) {
         if (!*first_prop) fprintf(ctx->output, ",\n");
         write_indent(ctx);
-        if (strcmp(value->valuestring, "100.0px") == 0 || strcmp(value->valuestring, "100.0%") == 0) {
+        // Only 100% is FULL_WIDTH, not 100px
+        if (strcmp(value->valuestring, "100.0%") == 0) {
             fprintf(ctx->output, "FULL_WIDTH");
         } else {
-            // Parse numeric value (e.g., "200.0px" → 200)
+            // Parse numeric value (e.g., "200.0px" → 200, "100.0px" → 100)
             int width_val = 0;
             if (sscanf(value->valuestring, "%d", &width_val) == 1 && width_val > 0) {
                 fprintf(ctx->output, "WIDTH(%d)", width_val);
@@ -442,10 +563,11 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
     if (strcmp(key, "height") == 0 && value->valuestring) {
         if (!*first_prop) fprintf(ctx->output, ",\n");
         write_indent(ctx);
-        if (strcmp(value->valuestring, "100.0px") == 0 || strcmp(value->valuestring, "100.0%") == 0) {
+        // Only 100% is FULL_HEIGHT, not 100px
+        if (strcmp(value->valuestring, "100.0%") == 0) {
             fprintf(ctx->output, "FULL_HEIGHT");
         } else {
-            // Parse numeric value (e.g., "60.0px" → 60)
+            // Parse numeric value (e.g., "60.0px" → 60, "100.0px" → 100)
             int height_val = 0;
             if (sscanf(value->valuestring, "%d", &height_val) == 1 && height_val > 0) {
                 fprintf(ctx->output, "HEIGHT(%d)", height_val);
@@ -505,6 +627,52 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
             fprintf(ctx->output, "MAX_HEIGHT(\"%s\")", value->valuestring);
         }
         *first_prop = false;
+        return true;
+    }
+
+    // Positioning - "left" and "top" are used together for absolute positioning
+    if (strcmp(key, "left") == 0 && cJSON_IsNumber(value)) {
+        if (!*first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        fprintf(ctx->output, "POS_X(%.0f)", value->valuedouble);
+        *first_prop = false;
+        return true;
+    }
+    if (strcmp(key, "top") == 0 && cJSON_IsNumber(value)) {
+        if (!*first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        fprintf(ctx->output, "POS_Y(%.0f)", value->valuedouble);
+        *first_prop = false;
+        return true;
+    }
+    // Skip "position" key as we handle it via left/top
+    if (strcmp(key, "position") == 0) {
+        return false;  // Don't generate anything, handled by left/top
+    }
+
+    // Border (object with width and color)
+    if (strcmp(key, "border") == 0 && cJSON_IsObject(value)) {
+        cJSON* border_width = cJSON_GetObjectItem(value, "width");
+        cJSON* border_color = cJSON_GetObjectItem(value, "color");
+
+        if (border_width && cJSON_IsNumber(border_width)) {
+            if (!*first_prop) fprintf(ctx->output, ",\n");
+            write_indent(ctx);
+            fprintf(ctx->output, "BORDER_WIDTH(%.0f)", border_width->valuedouble);
+            *first_prop = false;
+        }
+
+        if (border_color && border_color->valuestring) {
+            if (!*first_prop) fprintf(ctx->output, ",\n");
+            write_indent(ctx);
+            const char* color_str = border_color->valuestring;
+            if (color_str[0] == '#' && strlen(color_str) >= 7) {
+                fprintf(ctx->output, "BORDER_COLOR(0x%s)", color_str + 1);
+            } else {
+                fprintf(ctx->output, "BORDER_COLOR(0x%s)", color_str);
+            }
+            *first_prop = false;
+        }
         return true;
     }
 
@@ -622,8 +790,10 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
             fprintf(ctx->output, "JUSTIFY_SPACE_BETWEEN");
         } else if (strcmp(value->valuestring, "space-around") == 0) {
             fprintf(ctx->output, "JUSTIFY_SPACE_AROUND");
+        } else if (strcmp(value->valuestring, "space-evenly") == 0) {
+            fprintf(ctx->output, "JUSTIFY_EVENLY");
         } else {
-            fprintf(ctx->output, "JUSTIFY_CENTER");
+            fprintf(ctx->output, "JUSTIFY_START");  // Default to start, not center
         }
         *first_prop = false;
         return true;
@@ -649,6 +819,53 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
         if (!*first_prop) fprintf(ctx->output, ",\n");
         write_indent(ctx);
         fprintf(ctx->output, "FLEX_SHRINK(%.0f)", value->valuedouble);
+        *first_prop = false;
+        return true;
+    }
+
+    // Table properties
+    if (strcmp(key, "cellPadding") == 0 && cJSON_IsNumber(value)) {
+        if (!*first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        fprintf(ctx->output, "CELL_PADDING(%.0f)", value->valuedouble);
+        *first_prop = false;
+        return true;
+    }
+    if (strcmp(key, "striped") == 0 && cJSON_IsTrue(value)) {
+        if (!*first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        fprintf(ctx->output, "TABLE_STRIPED");
+        *first_prop = false;
+        return true;
+    }
+    if (strcmp(key, "showBorders") == 0 && cJSON_IsTrue(value)) {
+        if (!*first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        fprintf(ctx->output, "TABLE_BORDERS");
+        *first_prop = false;
+        return true;
+    }
+    if (strcmp(key, "headerBackground") == 0 && value->valuestring) {
+        if (!*first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        uint32_t color = parse_color_string(value->valuestring);
+        fprintf(ctx->output, "HEADER_BG(0x%06x)", color);
+        *first_prop = false;
+        return true;
+    }
+    if (strcmp(key, "evenRowBackground") == 0 && value->valuestring) {
+        if (!*first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        uint32_t color = parse_color_string(value->valuestring);
+        fprintf(ctx->output, "EVEN_ROW_BG(0x%06x)", color);
+        *first_prop = false;
+        return true;
+    }
+    if (strcmp(key, "oddRowBackground") == 0 && value->valuestring) {
+        if (!*first_prop) fprintf(ctx->output, ",\n");
+        write_indent(ctx);
+        uint32_t color = parse_color_string(value->valuestring);
+        fprintf(ctx->output, "ODD_ROW_BG(0x%06x)", color);
         *first_prop = false;
         return true;
     }
@@ -766,11 +983,11 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
                 char signal_name[256];
                 snprintf(signal_name, sizeof(signal_name), "%s_signal", scoped_name);
 
-                // Generate binding macro call
+                // Generate binding macro call (use _EXPR versions for macro argument context)
                 if (strcmp(prop_name, "text") == 0) {
                     fprintf(ctx->output, "BIND_TEXT(%s)", signal_name);
                 } else if (strcmp(prop_name, "visible") == 0) {
-                    fprintf(ctx->output, "BIND_VISIBLE(%s)", signal_name);
+                    fprintf(ctx->output, "BIND_VISIBLE_EXPR(%s)", signal_name);
                 } else if (strcmp(prop_name, "background") == 0) {
                     fprintf(ctx->output, "BIND_BACKGROUND(%s)", signal_name);
                 } else if (strcmp(prop_name, "color") == 0) {

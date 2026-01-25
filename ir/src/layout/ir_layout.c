@@ -714,7 +714,17 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
             }
         }
 
-        // Set child bounds
+        // Set child bounds - skip absolutely positioned children
+        if (child->style->position_mode == IR_POSITION_ABSOLUTE) {
+            // Use absolute position from style
+            child->rendered_bounds.x = child->style->absolute_x;
+            child->rendered_bounds.y = child->style->absolute_y;
+            child->rendered_bounds.width = child_width;
+            child->rendered_bounds.height = child_height;
+            child->rendered_bounds.valid = true;
+            // Don't add to current_x - absolute children are out of flow
+            continue;
+        }
         child->rendered_bounds.x = current_x + child->style->margin.left;
         child->rendered_bounds.y = child_y;
         child->rendered_bounds.width = child_width;
@@ -866,7 +876,17 @@ static void ir_layout_compute_column(IRComponent* container, float available_wid
             }
         }
 
-        // Set child bounds
+        // Set child bounds - skip absolutely positioned children
+        if (child->style->position_mode == IR_POSITION_ABSOLUTE) {
+            // Use absolute position from style
+            child->rendered_bounds.x = child->style->absolute_x;
+            child->rendered_bounds.y = child->style->absolute_y;
+            child->rendered_bounds.width = child_width;
+            child->rendered_bounds.height = child_height;
+            child->rendered_bounds.valid = true;
+            // Don't add to current_y - absolute children are out of flow
+            continue;
+        }
         child->rendered_bounds.x = child_x;
         child->rendered_bounds.y = current_y + child->style->margin.top;
         child->rendered_bounds.width = child_width;
@@ -2277,6 +2297,17 @@ void ir_layout_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         // RECURSIVELY layout child (child computes FINAL dimensions)
         // Offset by padding
         float child_final_x, child_final_y;
+
+        // Check for absolute positioning - use absolute coordinates directly
+        bool is_absolute = (child->style && child->style->position_mode == IR_POSITION_ABSOLUTE);
+        if (is_absolute) {
+            child_final_x = child->style->absolute_x;
+            child_final_y = child->style->absolute_y;
+            ir_layout_single_pass(child, child_constraints, child_final_x, child_final_y);
+            // Absolute children are out of flow - don't advance child_x/child_y
+            continue;
+        }
+
         if (is_row) {
             child_final_x = parent_x + pad_left + child_x;
             child_final_y = parent_y + pad_top;

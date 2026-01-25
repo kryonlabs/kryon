@@ -4,6 +4,7 @@ App {
     windowTitle = "Hello World Example"
     windowWidth = 800
     windowHeight = 600
+    backgroundColor = "#1a1a2e"
 
     Container {
         posX = 200

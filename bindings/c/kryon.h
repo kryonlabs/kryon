@@ -148,6 +148,15 @@ IRComponent* kryon_table_row(void);
 IRComponent* kryon_table_cell(const char* content);
 IRComponent* kryon_table_header_cell(const char* content);
 
+// Table styling
+void kryon_table_set_cell_padding(IRComponent* table, float padding);
+void kryon_table_set_striped(IRComponent* table, bool striped);
+void kryon_table_set_show_borders(IRComponent* table, bool show);
+void kryon_table_set_header_background(IRComponent* table, uint32_t color);
+void kryon_table_set_even_row_background(IRComponent* table, uint32_t color);
+void kryon_table_set_odd_row_background(IRComponent* table, uint32_t color);
+void kryon_table_set_border_color(IRComponent* table, uint32_t color);
+
 // ============================================================================
 // Component Properties - Dimensions
 // ============================================================================
@@ -181,6 +190,11 @@ void kryon_set_max_width(IRComponent* c, float value, const char* unit);
  * Set max-height with unit
  */
 void kryon_set_max_height(IRComponent* c, float value, const char* unit);
+
+/**
+ * Set absolute positioning with coordinates
+ */
+void kryon_set_position_absolute(IRComponent* c, float x, float y);
 
 // ============================================================================
 // Component Properties - Colors

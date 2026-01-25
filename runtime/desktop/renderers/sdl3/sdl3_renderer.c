@@ -355,12 +355,28 @@ static bool sdl3_begin_frame(DesktopIRRenderer* renderer) {
     data->blend_mode_set = false;
 
     // Clear screen with background color
+    // Try root->style->background first, then check first child if root has no style
     IRComponent* root = renderer->last_root;
-    if (root && root->style) {
-        // Use ir_color_to_sdl from desktop_effects.c
+    IRComponent* bg_source = NULL;
+
+    // Find component with background: root style, or first child with style
+    if (root && root->style && root->style->background.data.a > 0) {
+        bg_source = root;
+    } else if (root && root->child_count > 0 && root->children && root->children[0]) {
+        IRComponent* first_child = root->children[0];
+        if (first_child->style && first_child->style->background.data.a > 0) {
+            bg_source = first_child;
+        }
+    }
+
+    if (bg_source) {
         extern SDL_Color ir_color_to_sdl(IRColor color);
-        SDL_Color bg = ir_color_to_sdl(root->style->background);
-        SDL_SetRenderDrawColor(data->renderer, bg.r, bg.g, bg.b, bg.a);
+        SDL_Color bg = ir_color_to_sdl(bg_source->style->background);
+        if (bg.a > 0) {
+            SDL_SetRenderDrawColor(data->renderer, bg.r, bg.g, bg.b, bg.a);
+        } else {
+            SDL_SetRenderDrawColor(data->renderer, 240, 240, 240, 255);
+        }
     } else {
         SDL_SetRenderDrawColor(data->renderer, 240, 240, 240, 255);
     }

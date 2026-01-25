@@ -109,9 +109,44 @@ KryonVisibilityBinding* kryon_bind_visible(IRComponent* component,
                                             KryonSignal* signal);
 
 /**
+ * Bind a boolean signal to component visibility (inverted)
+ * When true, component is hidden; when false, visible.
+ *
+ * @param component The component
+ * @param signal Boolean signal
+ * @return Binding handle, or NULL on failure
+ */
+KryonVisibilityBinding* kryon_bind_visible_inverted(IRComponent* component,
+                                                     KryonSignal* signal);
+
+/**
  * Unbind a visibility binding
  */
 void kryon_unbind_visible(KryonVisibilityBinding* binding);
+
+/**
+ * Helper function for binding visibility in expression context (returns 0 for comma operator)
+ * This allows BIND_VISIBLE to be used inside macro argument lists.
+ */
+static inline int _kryon_bind_visible_expr(KryonSignal* signal_expr) {
+    IRComponent* __bind_comp = _kryon_get_current_parent();
+    if (__bind_comp) {
+        kryon_bind_visible(__bind_comp, signal_expr);
+    }
+    return 0;  // Return 0 so it can be used in comma expressions
+}
+
+/**
+ * Helper function for binding inverted visibility in expression context (returns 0 for comma operator)
+ * This allows BIND_VISIBLE_NOT to be used inside macro argument lists.
+ */
+static inline int _kryon_bind_visible_inverted_expr(KryonSignal* signal_expr) {
+    IRComponent* __bind_comp = _kryon_get_current_parent();
+    if (__bind_comp) {
+        kryon_bind_visible_inverted(__bind_comp, signal_expr);
+    }
+    return 0;  // Return 0 so it can be used in comma expressions
+}
 
 // ============================================================================
 // Property Binding (Generic)
@@ -324,6 +359,21 @@ void kryon_binding_group_destroy(KryonBindingGroup* group);
             kryon_bind_visible(__bind_comp, (signal_expr)); \
         } \
     } while(0)
+
+#define BIND_VISIBLE_NOT(signal_expr) \
+    do { \
+        IRComponent* __bind_comp = _kryon_get_current_parent(); \
+        if (__bind_comp) { \
+            kryon_bind_visible_inverted(__bind_comp, (signal_expr)); \
+        } \
+    } while(0)
+
+/**
+ * Expression-compatible versions of BIND_VISIBLE and BIND_VISIBLE_NOT
+ * for use inside macro argument lists (e.g., CONTAINER(..., BIND_VISIBLE_EXPR(...)))
+ */
+#define BIND_VISIBLE_EXPR(signal_expr) _kryon_bind_visible_expr((signal_expr))
+#define BIND_VISIBLE_NOT_EXPR(signal_expr) _kryon_bind_visible_inverted_expr((signal_expr))
 
 #define BIND_BACKGROUND(signal_expr) \
     do { \

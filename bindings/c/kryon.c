@@ -593,6 +593,9 @@ IRComponent* kryon_table_cell(const char* content) {
     if (content) {
         ir_set_text_content(c, content);
     }
+    // Set default white text color for visibility on dark backgrounds
+    c->style = ir_create_style();
+    ir_set_font_color(c->style, 255, 255, 255, 255);
     return c;
 }
 
@@ -601,7 +604,107 @@ IRComponent* kryon_table_header_cell(const char* content) {
     if (content) {
         ir_set_text_content(c, content);
     }
+    // Set default white text color for visibility on dark backgrounds
+    c->style = ir_create_style();
+    ir_set_font_color(c->style, 255, 255, 255, 255);
     return c;
+}
+
+// Table styling functions
+void kryon_table_set_cell_padding(IRComponent* table, float padding) {
+    if (!table) return;
+    IRTableState* state = ir_get_table_state(table);
+    if (!state) {
+        state = ir_table_create_state();
+        table->custom_data = (char*)state;
+    }
+    if (state) {
+        ir_table_set_cell_padding(state, padding);
+    }
+}
+
+void kryon_table_set_striped(IRComponent* table, bool striped) {
+    if (!table) return;
+    IRTableState* state = ir_get_table_state(table);
+    if (!state) {
+        state = ir_table_create_state();
+        table->custom_data = (char*)state;
+    }
+    if (state) {
+        ir_table_set_striped(state, striped);
+    }
+}
+
+void kryon_table_set_show_borders(IRComponent* table, bool show) {
+    if (!table) return;
+    IRTableState* state = ir_get_table_state(table);
+    if (!state) {
+        state = ir_table_create_state();
+        table->custom_data = (char*)state;
+    }
+    if (state) {
+        ir_table_set_show_borders(state, show);
+    }
+}
+
+void kryon_table_set_header_background(IRComponent* table, uint32_t color) {
+    if (!table) return;
+    IRTableState* state = ir_get_table_state(table);
+    if (!state) {
+        state = ir_table_create_state();
+        table->custom_data = (char*)state;
+    }
+    if (state) {
+        uint8_t r = (color >> 16) & 0xFF;
+        uint8_t g = (color >> 8) & 0xFF;
+        uint8_t b = color & 0xFF;
+        ir_table_set_header_background(state, r, g, b, 255);
+    }
+}
+
+void kryon_table_set_even_row_background(IRComponent* table, uint32_t color) {
+    if (!table) return;
+    IRTableState* state = ir_get_table_state(table);
+    if (!state) {
+        state = ir_table_create_state();
+        table->custom_data = (char*)state;
+    }
+    if (state) {
+        uint8_t r = (color >> 16) & 0xFF;
+        uint8_t g = (color >> 8) & 0xFF;
+        uint8_t b = color & 0xFF;
+        state->style.even_row_background = IR_COLOR_RGBA(r, g, b, 255);
+    }
+}
+
+void kryon_table_set_odd_row_background(IRComponent* table, uint32_t color) {
+    if (!table) return;
+    IRTableState* state = ir_get_table_state(table);
+    if (!state) {
+        state = ir_table_create_state();
+        table->custom_data = (char*)state;
+    }
+    if (state) {
+        uint8_t r = (color >> 16) & 0xFF;
+        uint8_t g = (color >> 8) & 0xFF;
+        uint8_t b = color & 0xFF;
+        state->style.odd_row_background = IR_COLOR_RGBA(r, g, b, 255);
+    }
+}
+
+void kryon_table_set_border_color(IRComponent* table, uint32_t color) {
+    if (!table) return;
+    IRTableState* state = ir_get_table_state(table);
+    if (!state) {
+        state = ir_table_create_state();
+        table->custom_data = (char*)state;
+    }
+    if (state) {
+        uint8_t r = (color >> 16) & 0xFF;
+        uint8_t g = (color >> 8) & 0xFF;
+        uint8_t b = color & 0xFF;
+        ir_table_set_border_color(state, r, g, b, 255);
+    }
 }
 
 // ============================================================================
@@ -666,6 +769,14 @@ void kryon_set_max_height(IRComponent* c, float value, const char* unit) {
     if (!c) return;
     IRLayout* layout = get_or_create_layout(c);
     ir_set_max_height(layout, parse_unit(unit), value);
+}
+
+void kryon_set_position_absolute(IRComponent* c, float x, float y) {
+    if (!c) return;
+    IRStyle* style = get_or_create_style(c);
+    style->position_mode = IR_POSITION_ABSOLUTE;
+    style->absolute_x = x;
+    style->absolute_y = y;
 }
 
 // ============================================================================
