@@ -3,9 +3,10 @@
 CC = gcc
 AR = ar
 CFLAGS = -Wall -Wextra -std=c11 -O2 -fPIC
-INCLUDES = -I../../include -I../../ir/include -I../../runtime/desktop -I../../third_party/cJSON
+INCLUDES = -I../../include -I../../ir/include -I../../runtime/desktop -I../../third_party/cJSON \
+           -I../../third_party/tomlc99 -I../../ir/src/utils -I../../core/include
 
-SOURCES = kryon.c kryon_dsl.c kryon_reactive.c kryon_reactive_ui.c
+SOURCES = kryon.c kryon_dsl.c kryon_reactive.c kryon_reactive_ui.c kryon_plugins.c
 OBJECTS = $(SOURCES:.c=.o)
 LIBRARY = libkryon_c.a
 

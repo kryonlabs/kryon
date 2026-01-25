@@ -15,6 +15,9 @@
 extern "C" {
 #endif
 
+// Forward declaration for context type (defined in ir_c_internal.h)
+struct CCodegenContext;
+
 /**
  * Check if expression is a __range__ call and extract start/end
  *
@@ -64,6 +67,17 @@ char* c_expr_to_c(cJSON* expr);
  * @return true on success, false on unsupported construct (hard error)
  */
 bool c_stmt_to_c(FILE* output, cJSON* stmt, int indent, const char* output_path);
+
+/**
+ * Convert KIR statement to C code with context for variable tracking
+ * @param ctx Codegen context (for local variable tracking, can be NULL)
+ * @param output The output file to write to
+ * @param stmt The KIR statement JSON
+ * @param indent Indentation level (spaces)
+ * @param output_path Path to output file (for error messages)
+ * @return true on success, false on unsupported construct
+ */
+bool c_stmt_to_c_ctx(struct CCodegenContext* ctx, FILE* output, cJSON* stmt, int indent, const char* output_path);
 
 #ifdef __cplusplus
 }

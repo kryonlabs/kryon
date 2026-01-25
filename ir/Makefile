@@ -45,6 +45,8 @@ TOML_DIR = $(THIRD_PARTY_DIR)/tomlc99
 # Third-party include paths
 CFLAGS += -I$(CJSON_DIR) -I$(STB_DIR) -I$(TOML_DIR)
 CFLAGS += $(HARFBUZZ_CFLAGS)
+# Internal utils and bindings paths (for ir_constants.h, ir_c_metadata.h, etc.)
+CFLAGS += -Isrc/utils -I../bindings/c
 
 # Source files - organized by module
 CORE_SOURCES = src/ir_builder.c \

@@ -585,10 +585,56 @@ bool codegen_is_internal_module(const char* module_id) {
     return false;
 }
 
+// ============================================================================
+// Plugin Manifest Loading
+// ============================================================================
+
+// Static storage for discovered plugins from manifest
+static char* g_discovered_plugins[64];
+static int g_discovered_plugin_count = 0;
+static bool g_plugins_loaded = false;
+
+void codegen_load_plugin_manifest(const char* build_dir) {
+    if (g_plugins_loaded) return;
+
+    char manifest_path[2048];
+    snprintf(manifest_path, sizeof(manifest_path), "%s/plugins.txt",
+             build_dir ? build_dir : "build");
+
+    FILE* f = fopen(manifest_path, "r");
+    if (f) {
+        char line[256];
+        while (fgets(line, sizeof(line), f) && g_discovered_plugin_count < 64) {
+            // Strip newline
+            size_t len = strlen(line);
+            if (len > 0 && line[len-1] == '\n') line[len-1] = '\0';
+            if (len > 1 && line[len-2] == '\r') line[len-2] = '\0';
+            if (strlen(line) > 0) {
+                g_discovered_plugins[g_discovered_plugin_count++] = strdup(line);
+            }
+        }
+        fclose(f);
+    }
+    g_plugins_loaded = true;
+}
+
 bool codegen_is_external_plugin(const char* module_id) {
     if (!module_id) return false;
 
-    // Known external plugins (runtime dependencies, not source modules)
+    // Load manifest if not already loaded
+    if (!g_plugins_loaded) {
+        codegen_load_plugin_manifest(NULL);
+    }
+
+    // Check against discovered plugins from manifest
+    for (int i = 0; i < g_discovered_plugin_count; i++) {
+        if (strcmp(module_id, g_discovered_plugins[i]) == 0) {
+            return true;
+        }
+    }
+
+    // Fallback: known external plugins for backwards compatibility
+    // (covers case where manifest doesn't exist or wasn't written)
     if (strcmp(module_id, "datetime") == 0) return true;
     if (strcmp(module_id, "storage") == 0) return true;
     if (strcmp(module_id, "animations") == 0) return true;
@@ -596,6 +642,8 @@ bool codegen_is_external_plugin(const char* module_id) {
     if (strcmp(module_id, "audio") == 0) return true;
     if (strcmp(module_id, "filesystem") == 0) return true;
     if (strcmp(module_id, "database") == 0) return true;
+    if (strcmp(module_id, "math") == 0) return true;
+    if (strcmp(module_id, "uuid") == 0) return true;
 
     return false;
 }

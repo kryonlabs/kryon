@@ -55,6 +55,31 @@
 #define generate_main_function(ctx) c_generate_main_function(ctx)
 
 // ============================================================================
+// Handler Deduplication Helpers
+// ============================================================================
+
+/**
+ * Check if a handler has already been generated
+ */
+static bool is_handler_already_generated(CCodegenContext* ctx, const char* handler_name) {
+    if (!ctx || !handler_name) return false;
+    for (int i = 0; i < ctx->generated_handler_count; i++) {
+        if (ctx->generated_handlers[i] && strcmp(ctx->generated_handlers[i], handler_name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Mark a handler as generated (to prevent duplicates)
+ */
+static void mark_handler_generated(CCodegenContext* ctx, const char* handler_name) {
+    if (!ctx || !handler_name || ctx->generated_handler_count >= 256) return;
+    ctx->generated_handlers[ctx->generated_handler_count++] = strdup(handler_name);
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -115,6 +140,7 @@ void generate_includes(CCodegenContext* ctx) {
         }
         fprintf(ctx->output, "#include <stdio.h>\n");
         fprintf(ctx->output, "#include <stdbool.h>\n");
+        fprintf(ctx->output, "#include <kryon_plugins.h>\n");
     }
 
     // Add stdlib.h and string.h for array support (malloc, strdup)
@@ -143,6 +169,70 @@ void generate_includes(CCodegenContext* ctx) {
         }
     }
     fprintf(ctx->output, "\n");
+
+    // Add default framework constants/defines that may be referenced in user code
+    fprintf(ctx->output, "// Default framework constants\n");
+    fprintf(ctx->output, "#ifndef DEFAULT_COLOR\n");
+    fprintf(ctx->output, "#define DEFAULT_COLOR \"#808080\"\n");
+    fprintf(ctx->output, "#endif\n");
+    fprintf(ctx->output, "\n");
+
+    // Generate placeholder structs for imported types from requires
+    // This allows code like habit->name to compile even without full type definitions
+    cJSON* source_structures = cJSON_GetObjectItem(ctx->root_json, "source_structures");
+    cJSON* requires = source_structures ? cJSON_GetObjectItem(source_structures, "requires") : NULL;
+    if (requires && cJSON_IsArray(requires)) {
+        bool has_placeholder_structs = false;
+        cJSON* req;
+        cJSON_ArrayForEach(req, requires) {
+            cJSON* module = cJSON_GetObjectItem(req, "module");
+            cJSON* variable = cJSON_GetObjectItem(req, "variable");
+
+            if (!module || !module->valuestring || !variable || !variable->valuestring) continue;
+
+            // Check if this looks like a type import from "types" module
+            // e.g., {"variable": "Habit", "module": "types"}
+            if (strstr(module->valuestring, "types") != NULL) {
+                // Split the variable string by comma (may have multiple imports)
+                char vars[512];
+                strncpy(vars, variable->valuestring, sizeof(vars) - 1);
+                vars[sizeof(vars) - 1] = '\0';
+
+                char* var = strtok(vars, ",");
+                while (var) {
+                    // Trim whitespace
+                    while (*var == ' ') var++;
+                    char* end = var + strlen(var) - 1;
+                    while (end > var && *end == ' ') *end-- = '\0';
+
+                    // Check if it starts with uppercase (looks like a type name)
+                    if (var[0] >= 'A' && var[0] <= 'Z') {
+                        if (!has_placeholder_structs) {
+                            fprintf(ctx->output, "// ============================================================================\n");
+                            fprintf(ctx->output, "// Placeholder struct definitions for imported types\n");
+                            fprintf(ctx->output, "// ============================================================================\n\n");
+                            has_placeholder_structs = true;
+                        }
+
+                        // Generate a placeholder struct with common fields
+                        fprintf(ctx->output, "typedef struct {\n");
+                        fprintf(ctx->output, "    char* id;\n");
+                        fprintf(ctx->output, "    char* name;\n");
+                        fprintf(ctx->output, "    char* color;\n");
+                        fprintf(ctx->output, "    char* createdAt;\n");
+                        fprintf(ctx->output, "    void* completions;\n");
+                        fprintf(ctx->output, "    void* data;\n");
+                        fprintf(ctx->output, "} %s;\n\n", var);
+                    }
+
+                    var = strtok(NULL, ",");
+                }
+            }
+        }
+        if (has_placeholder_structs) {
+            fprintf(ctx->output, "\n");
+        }
+    }
 }
 
 void generate_preprocessor_directives(CCodegenContext* ctx) {
@@ -381,6 +471,10 @@ void generate_event_handlers(CCodegenContext* ctx) {
 
         if (!name || !name->valuestring || !return_type || !return_type->valuestring) continue;
 
+        // Skip if this handler was already generated (deduplication)
+        if (is_handler_already_generated(ctx, name->valuestring)) continue;
+        mark_handler_generated(ctx, name->valuestring);
+
         fprintf(ctx->output, "%s %s(%s) {\n",
                 return_type->valuestring,
                 name->valuestring,
@@ -411,18 +505,26 @@ void generate_array_declarations(CCodegenContext* ctx) {
     cJSON* const_decls = cJSON_GetObjectItem(source_structures, "const_declarations");
     if (!const_decls || !cJSON_IsArray(const_decls)) return;
 
-    // Check if we have any arrays
+    // Check if we have any arrays or function_result types
     bool has_arrays = false;
+    bool has_function_results = false;
     cJSON* decl;
     cJSON_ArrayForEach(decl, const_decls) {
         cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
-        if (value_type && value_type->valuestring && strcmp(value_type->valuestring, "array") == 0) {
-            has_arrays = true;
-            break;
+        if (value_type && value_type->valuestring) {
+            if (strcmp(value_type->valuestring, "array") == 0) {
+                has_arrays = true;
+            } else if (strcmp(value_type->valuestring, "function_result") == 0) {
+                has_function_results = true;
+            }
         }
     }
 
-    if (!has_arrays) return;
+    // Early exit only if we have neither arrays nor function_result types
+    if (!has_arrays && !has_function_results) return;
+
+    // Only generate array support code if we actually have arrays
+    if (!has_arrays) goto function_result_section;
 
     // Generate array type definition and helper macros
     fprintf(ctx->output, "// ============================================================================\n");
@@ -584,6 +686,55 @@ void generate_array_declarations(CCodegenContext* ctx) {
         fprintf(ctx->output, "    kryon_array_free(&%s_array);\n", name->valuestring);
     }
     fprintf(ctx->output, "}\n\n");
+
+function_result_section:
+    // FIX: Generate declarations for function_result typed variables
+    // These are variables initialized from function calls (e.g., var habits = loadHabits())
+    if (has_function_results) {
+        fprintf(ctx->output, "// ============================================================================\n");
+        fprintf(ctx->output, "// Function-initialized Dynamic Arrays\n");
+        fprintf(ctx->output, "// ============================================================================\n\n");
+
+        fprintf(ctx->output, "// Variables initialized from function calls - FOR_EACH needs these\n");
+        cJSON_ArrayForEach(decl, const_decls) {
+            cJSON* name = cJSON_GetObjectItem(decl, "name");
+            cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+            cJSON* value_json = cJSON_GetObjectItem(decl, "value_json");
+
+            if (!name || !name->valuestring) continue;
+            if (!value_type || !value_type->valuestring || strcmp(value_type->valuestring, "function_result") != 0) continue;
+
+            // Declare the array pointer and count for use with FOR_EACH
+            fprintf(ctx->output, "void* %s = NULL;  // Initialized by %s\n",
+                    name->valuestring,
+                    value_json && value_json->valuestring ? value_json->valuestring : "function call");
+            fprintf(ctx->output, "size_t %s_count = 0;\n", name->valuestring);
+        }
+        fprintf(ctx->output, "\n");
+
+        // Generate initialization function for function-result variables
+        fprintf(ctx->output, "// Initialize function-result arrays (call this in main before UI creation)\n");
+        fprintf(ctx->output, "static void kryon_init_function_arrays(void) {\n");
+        cJSON_ArrayForEach(decl, const_decls) {
+            cJSON* name = cJSON_GetObjectItem(decl, "name");
+            cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+            cJSON* value_json = cJSON_GetObjectItem(decl, "value_json");
+
+            if (!name || !name->valuestring) continue;
+            if (!value_type || !value_type->valuestring || strcmp(value_type->valuestring, "function_result") != 0) continue;
+
+            if (value_json && value_json->valuestring) {
+                // Generate call to the initializer function
+                fprintf(ctx->output, "    %s = %s;\n", name->valuestring, value_json->valuestring);
+                // Note: count must be set by the function or obtained separately
+                // For now, generate a placeholder that the user can modify
+                fprintf(ctx->output, "    // TODO: Set %s_count to the actual array length\n", name->valuestring);
+                fprintf(ctx->output, "    // %s_count = get_%s_count(%s);\n",
+                        name->valuestring, name->valuestring, name->valuestring);
+            }
+        }
+        fprintf(ctx->output, "}\n\n");
+    }
 }
 
 // ============================================================================
@@ -1164,6 +1315,9 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
         cJSON* sources = cJSON_GetObjectItem(func, "sources");
         if (!name || !name->valuestring || !sources || !cJSON_IsArray(sources)) continue;
 
+        // Skip if this handler was already generated (deduplication with generate_event_handlers)
+        if (is_handler_already_generated(ctx, name->valuestring)) continue;
+
         // Skip auto-generated top-level code block functions (they contain the @c/@lua/@js blocks)
         // The actual handlers will be extracted from the sources
         if (strncmp(name->valuestring, "_top_level_code_block_", 21) == 0) {
@@ -1205,6 +1359,7 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
 
         // Output C source directly if found
         if (c_source) {
+            mark_handler_generated(ctx, name->valuestring);
             fprintf(ctx->output, "%s\n", c_source);
             continue;
         }
@@ -1268,27 +1423,14 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
 
         if (!parsed) {
             // Try the new multi-statement parser
+            // Note: transpile_kry_statements_to_c always generates a function (even if incomplete)
+            // so we must mark it generated before calling, not after
+            mark_handler_generated(ctx, name->valuestring);
             if (transpile_kry_statements_to_c(ctx, kry_source, name->valuestring)) {
                 continue;  // Successfully transpiled
             }
-
-            // Final fallback: generate stub handler with multiline comment
-            fprintf(ctx->output, "void %s(void) {\n", name->valuestring);
-            fprintf(ctx->output, "    /* TODO: Transpile expression:\n");
-            // Output each line of source as a comment
-            const char* line = kry_source;
-            while (*line) {
-                const char* end = strchr(line, '\n');
-                if (end) {
-                    fprintf(ctx->output, "     * %.*s\n", (int)(end - line), line);
-                    line = end + 1;
-                } else {
-                    fprintf(ctx->output, "     * %s\n", line);
-                    break;
-                }
-            }
-            fprintf(ctx->output, "     */\n");
-            fprintf(ctx->output, "}\n\n");
+            // If transpilation failed, the function was still generated (as a stub)
+            // so we just continue - no need for another fallback
             continue;
         }
 
@@ -1315,13 +1457,19 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
         }
 
         // Generate a handler function for each scope
+        bool base_handler_generated = false;  // Track if base handler already generated
         for (int s = 0; s < scope_count; s++) {
             cJSON* scope_item = scopes_for_var[s];
             const char* scope_str = scope_item->valuestring;
 
             // For component and global scope, use the base handler name
             if (strcmp(scope_str, "component") == 0 || strcmp(scope_str, "global") == 0) {
+                // Skip if base handler already generated (avoid duplicates)
+                if (base_handler_generated) continue;
+                base_handler_generated = true;
+
                 // Generate base handler (for component definition or global scope)
+                mark_handler_generated(ctx, name->valuestring);
                 fprintf(ctx->output, "void %s(void) {\n", name->valuestring);
                 if (strcmp(op, "!") == 0) {
                     // Boolean toggle
@@ -1336,6 +1484,7 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
                 char* scoped_handler_name = generate_scoped_var_name(name->valuestring, scope_str);
                 char* scoped_var_name = generate_scoped_var_name(base_var_name, scope_str);
 
+                mark_handler_generated(ctx, scoped_handler_name);
                 fprintf(ctx->output, "void %s(void) {\n", scoped_handler_name);
                 if (strcmp(op, "!") == 0) {
                     // Boolean toggle
@@ -1350,6 +1499,167 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
                 free(scoped_var_name);
             }
         }
+    }
+}
+
+// ============================================================================
+// Universal Function Generation
+// ============================================================================
+
+/**
+ * Generate C functions from logic_block functions with "universal" statements.
+ * These are regular functions (not event handlers) defined in KRY.
+ * Event handlers have "sources" (KRY lambdas or C code), while
+ * universal functions have "universal.statements" blocks.
+ */
+
+/**
+ * Generate forward declarations for universal functions.
+ * Must be called BEFORE generate_array_declarations since init functions may call user functions.
+ */
+void generate_universal_function_declarations(CCodegenContext* ctx, cJSON* logic_block) {
+    if (!ctx || !logic_block) return;
+
+    cJSON* functions = cJSON_GetObjectItem(logic_block, "functions");
+    if (!functions || !cJSON_IsArray(functions)) return;
+
+    // Check if we have any universal functions
+    bool has_universal_functions = false;
+    cJSON* func;
+    cJSON_ArrayForEach(func, functions) {
+        cJSON* name = cJSON_GetObjectItem(func, "name");
+        cJSON* universal = cJSON_GetObjectItem(func, "universal");
+        cJSON* sources = cJSON_GetObjectItem(func, "sources");
+
+        if (sources && cJSON_IsArray(sources)) continue;
+        if (name && name->valuestring && strncmp(name->valuestring, "handler_", 8) == 0) continue;
+        if (!universal) continue;
+
+        cJSON* statements = cJSON_GetObjectItem(universal, "statements");
+        if (!statements || !cJSON_IsArray(statements)) continue;
+
+        has_universal_functions = true;
+        break;
+    }
+
+    if (!has_universal_functions) return;
+
+    fprintf(ctx->output, "// ============================================================================\n");
+    fprintf(ctx->output, "// Forward Declarations for User-defined Functions\n");
+    fprintf(ctx->output, "// ============================================================================\n\n");
+
+    cJSON_ArrayForEach(func, functions) {
+        cJSON* name = cJSON_GetObjectItem(func, "name");
+        cJSON* universal = cJSON_GetObjectItem(func, "universal");
+        cJSON* sources = cJSON_GetObjectItem(func, "sources");
+
+        if (sources && cJSON_IsArray(sources)) continue;
+        if (!name || !name->valuestring || !universal) continue;
+        if (strncmp(name->valuestring, "handler_", 8) == 0) continue;
+
+        cJSON* statements = cJSON_GetObjectItem(universal, "statements");
+        if (!statements || !cJSON_IsArray(statements)) continue;
+
+        // Determine return type
+        const char* return_type = "void*";
+        cJSON* return_type_json = cJSON_GetObjectItem(func, "return_type");
+        if (return_type_json && cJSON_IsString(return_type_json)) {
+            const char* kir_type = return_type_json->valuestring;
+            if (strcmp(kir_type, "void") == 0) return_type = "void";
+            else if (strcmp(kir_type, "int") == 0 || strcmp(kir_type, "number") == 0) return_type = "int";
+            else if (strcmp(kir_type, "string") == 0) return_type = "const char*";
+            else if (strcmp(kir_type, "bool") == 0) return_type = "bool";
+        }
+
+        fprintf(ctx->output, "static %s %s(void);\n", return_type, name->valuestring);
+    }
+    fprintf(ctx->output, "\n");
+}
+
+/**
+ * Generate implementations for universal functions.
+ * Must be called AFTER generate_universal_function_declarations.
+ */
+void generate_universal_functions(CCodegenContext* ctx, cJSON* logic_block) {
+    if (!ctx || !logic_block) return;
+
+    cJSON* functions = cJSON_GetObjectItem(logic_block, "functions");
+    if (!functions || !cJSON_IsArray(functions)) return;
+
+    // Check if we have any universal functions to generate
+    bool has_universal_functions = false;
+    cJSON* func;
+    cJSON_ArrayForEach(func, functions) {
+        cJSON* name = cJSON_GetObjectItem(func, "name");
+        cJSON* universal = cJSON_GetObjectItem(func, "universal");
+        cJSON* sources = cJSON_GetObjectItem(func, "sources");
+
+        if (sources && cJSON_IsArray(sources)) continue;
+        if (name && name->valuestring && strncmp(name->valuestring, "handler_", 8) == 0) continue;
+        if (!universal) continue;
+
+        cJSON* statements = cJSON_GetObjectItem(universal, "statements");
+        if (!statements || !cJSON_IsArray(statements)) continue;
+
+        has_universal_functions = true;
+        break;
+    }
+
+    if (!has_universal_functions) return;
+
+    fprintf(ctx->output, "// ============================================================================\n");
+    fprintf(ctx->output, "// User-defined Function Implementations\n");
+    fprintf(ctx->output, "// ============================================================================\n\n");
+
+    // Generate function implementations
+    cJSON_ArrayForEach(func, functions) {
+        cJSON* name = cJSON_GetObjectItem(func, "name");
+        cJSON* universal = cJSON_GetObjectItem(func, "universal");
+        cJSON* sources = cJSON_GetObjectItem(func, "sources");
+
+        // Skip functions with sources (event handlers - already generated)
+        if (sources && cJSON_IsArray(sources)) continue;
+
+        // Skip if no name or no universal block
+        if (!name || !name->valuestring || !universal) continue;
+
+        // Skip handler functions (they're generated separately)
+        if (strncmp(name->valuestring, "handler_", 8) == 0) continue;
+
+        cJSON* statements = cJSON_GetObjectItem(universal, "statements");
+        if (!statements || !cJSON_IsArray(statements)) continue;
+
+        // Determine return type - default to void* for array-returning functions
+        // Check the last statement for return type hint
+        const char* return_type = "void*";
+        cJSON* return_type_json = cJSON_GetObjectItem(func, "return_type");
+        if (return_type_json && cJSON_IsString(return_type_json)) {
+            const char* kir_type = return_type_json->valuestring;
+            if (strcmp(kir_type, "void") == 0) {
+                return_type = "void";
+            } else if (strcmp(kir_type, "int") == 0 || strcmp(kir_type, "number") == 0) {
+                return_type = "int";
+            } else if (strcmp(kir_type, "string") == 0) {
+                return_type = "const char*";
+            } else if (strcmp(kir_type, "bool") == 0) {
+                return_type = "bool";
+            }
+            // else: keep void* for arrays, objects, etc.
+        }
+
+        // Generate function signature
+        fprintf(ctx->output, "static %s %s(void) {\n", return_type, name->valuestring);
+
+        // Reset local variable tracking for this function
+        c_reset_local_vars(ctx);
+
+        // Generate statements using context-aware function
+        cJSON* stmt;
+        cJSON_ArrayForEach(stmt, statements) {
+            c_stmt_to_c_ctx(ctx, ctx->output, stmt, 4, NULL);
+        }
+
+        fprintf(ctx->output, "}\n\n");
     }
 }
 
@@ -1378,6 +1688,21 @@ bool ir_generate_c_code_multi(const char* kir_path, const char* output_dir) {
 
     // Set error prefix for this codegen
     codegen_set_error_prefix("C");
+
+    // Load plugin manifest from build directory (derived from kir_path)
+    // e.g., if kir_path is "build/kir/main.kir", build_dir is "build"
+    char build_dir[2048];
+    strncpy(build_dir, kir_path, sizeof(build_dir) - 1);
+    build_dir[sizeof(build_dir) - 1] = '\0';
+    char* last_slash = strrchr(build_dir, '/');
+    if (last_slash) {
+        *last_slash = '\0';  // Remove filename: "build/kir"
+        last_slash = strrchr(build_dir, '/');
+        if (last_slash) {
+            *last_slash = '\0';  // Remove "kir": "build"
+        }
+    }
+    codegen_load_plugin_manifest(build_dir);
 
     // Read main KIR file
     char* main_kir_json = codegen_read_kir_file(kir_path, NULL);

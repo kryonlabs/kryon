@@ -31,6 +31,9 @@ extern "C" {
 // This allows kryon_reactive_ui.h to be used independently
 extern IRComponent* _kryon_get_current_parent(void);
 
+// Forward declaration for ir_set_text_content (defined in ir_component_factory.c)
+extern void ir_set_text_content(IRComponent* component, const char* text);
+
 // ============================================================================
 // Text Binding
 // ============================================================================
@@ -63,6 +66,19 @@ static inline int _kryon_bind_text_expr(KryonSignal* signal_expr, const char* fm
     IRComponent* __bind_comp = _kryon_get_current_parent();
     if (__bind_comp) {
         kryon_bind_text(__bind_comp, signal_expr, fmt);
+    }
+    return 0;  // Return 0 so it can be used in comma expressions
+}
+
+/**
+ * Helper function for setting static text content in expression context (returns 0 for comma operator)
+ * This allows SET_TEXT_EXPR to be used inside macro argument lists for non-reactive text.
+ * Use this for loop variables or other non-signal string values.
+ */
+static inline int _kryon_set_text_expr(const char* text) {
+    IRComponent* __bind_comp = _kryon_get_current_parent();
+    if (__bind_comp && text) {
+        ir_set_text_content(__bind_comp, text);
     }
     return 0;  // Return 0 so it can be used in comma expressions
 }
@@ -356,6 +372,13 @@ void kryon_binding_group_destroy(KryonBindingGroup* group);
  */
 #define BIND_TEXT_EXPR(signal_expr) _kryon_bind_text_expr((signal_expr), NULL)
 
+/**
+ * Set static text content (non-reactive) in expression context
+ * Usage: TAB("", SET_TEXT_EXPR(habit->name)) for loop variables
+ * Unlike BIND_TEXT_EXPR, this doesn't bind to a signal - it sets the text once.
+ */
+#define SET_TEXT_EXPR(text_expr) _kryon_set_text_expr((text_expr))
+
 #define BIND_TEXT_FMT(signal_expr, fmt) \
     do { \
         IRComponent* __bind_comp = _kryon_get_current_parent(); \
@@ -397,20 +420,22 @@ void kryon_binding_group_destroy(KryonBindingGroup* group);
 #define BIND_VISIBLE_NOT_EXPR(signal_expr) _kryon_bind_visible_inverted_expr((signal_expr))
 
 #define BIND_BACKGROUND(signal_expr) \
-    do { \
+    ({ \
         IRComponent* __bind_comp = _kryon_get_current_parent(); \
         if (__bind_comp) { \
             kryon_bind_background(__bind_comp, (signal_expr)); \
         } \
-    } while(0)
+        (void)0; \
+    })
 
 #define BIND_COLOR(signal_expr) \
-    do { \
+    ({ \
         IRComponent* __bind_comp = _kryon_get_current_parent(); \
         if (__bind_comp) { \
             kryon_bind_color(__bind_comp, (signal_expr)); \
         } \
-    } while(0)
+        (void)0; \
+    })
 
 #endif // KRYON_DSL_H
 

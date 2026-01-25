@@ -658,6 +658,36 @@ BuildPluginInfo* discover_build_plugins(const char* project_dir,
 }
 
 /**
+ * Write plugin manifest to build directory for codegen consumption
+ * Creates build/plugins.txt with one plugin name per line
+ * Returns 0 on success, -1 on error
+ */
+int write_plugin_manifest(BuildPluginInfo* plugins, int count, const char* build_dir) {
+    if (!build_dir) {
+        return -1;
+    }
+
+    char manifest_path[DISCOVERY_PATH_MAX];
+    snprintf(manifest_path, sizeof(manifest_path), "%s/plugins.txt", build_dir);
+
+    FILE* manifest = fopen(manifest_path, "w");
+    if (!manifest) {
+        fprintf(stderr, "Warning: Failed to create plugin manifest: %s\n", manifest_path);
+        return -1;
+    }
+
+    for (int i = 0; i < count; i++) {
+        if (plugins[i].name) {
+            fprintf(manifest, "%s\n", plugins[i].name);
+        }
+    }
+
+    fclose(manifest);
+    printf("[Plugins] Wrote manifest: %s (%d plugin(s))\n", manifest_path, count);
+    return 0;
+}
+
+/**
  * Write extracted plugin code to build directory
  * Creates build/plugins/<plugin_name>.lua and .js files
  * Returns 0 on success, -1 on error

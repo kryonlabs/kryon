@@ -106,25 +106,34 @@ void c_generate_main_function(CCodegenContext* ctx) {
     fprintf(ctx->output, "    kryon_init(\"%s\", %d, %d);\n", title, width, height);
     fprintf(ctx->output, "\n");
 
-    // Initialize arrays (if any)
-    // Check if there are array variables in source_structures.const_declarations
+    // Initialize arrays and function-result variables (if any)
+    // Check if there are array or function_result variables in source_structures.const_declarations
     cJSON* source_structures = cJSON_GetObjectItem(ctx->root_json, "source_structures");
     cJSON* const_decls = source_structures ?
                          cJSON_GetObjectItem(source_structures, "const_declarations") : NULL;
     bool has_arrays = false;
+    bool has_function_results = false;
     if (const_decls && cJSON_IsArray(const_decls)) {
         cJSON* decl;
         cJSON_ArrayForEach(decl, const_decls) {
             cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
-            if (value_type && value_type->valuestring && strcmp(value_type->valuestring, "array") == 0) {
-                has_arrays = true;
-                break;
+            if (value_type && value_type->valuestring) {
+                if (strcmp(value_type->valuestring, "array") == 0) {
+                    has_arrays = true;
+                } else if (strcmp(value_type->valuestring, "function_result") == 0) {
+                    has_function_results = true;
+                }
             }
         }
     }
     if (has_arrays) {
         fprintf(ctx->output, "    // Initialize arrays\n");
         fprintf(ctx->output, "    kryon_init_arrays();\n");
+        fprintf(ctx->output, "\n");
+    }
+    if (has_function_results) {
+        fprintf(ctx->output, "    // Initialize function-result variables\n");
+        fprintf(ctx->output, "    kryon_init_function_arrays();\n");
         fprintf(ctx->output, "\n");
     }
 
@@ -211,6 +220,9 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
                                   cJSON_GetArraySize(ctx.reactive_vars) > 0);
     }
 
+    // Initialize global variable list for proper variable tracking
+    c_init_global_vars(&ctx);
+
     // Check if this is a component module (has component_definitions but no root)
     cJSON* component_defs = cJSON_GetObjectItem(root, "component_definitions");
     bool is_component_module = (component_defs && cJSON_IsArray(component_defs) &&
@@ -239,6 +251,9 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
     bool is_utility_module = (has_exports || has_const_decls) &&
                              !ctx.component_tree && !is_component_module;
 
+    // Get logic_block early - needed for multiple generators
+    cJSON* logic_block = cJSON_GetObjectItem(root, "logic_block");
+
     // Generate code sections
     generate_includes(&ctx);
     generate_preprocessor_directives(&ctx);
@@ -248,9 +263,17 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
         generate_struct_definitions(&ctx, struct_types);
     }
 
-    // Generate array declarations from source_structures.const_declarations
-    // (must come before handlers that use arrays)
+    // Generate forward declarations for user-defined functions FIRST
+    // This is needed because kryon_init_function_arrays() may call these functions
+    generate_universal_function_declarations(&ctx, logic_block);
+
+    // Generate global variable declarations (so functions can reference them)
+    // This includes array variables like 'habits' and their _count companions
     generate_array_declarations(&ctx);
+
+    // Generate user-defined function implementations
+    // Must come AFTER global declarations since functions may reference globals
+    generate_universal_functions(&ctx, logic_block);
 
     generate_variable_declarations(&ctx);
     generate_helper_functions(&ctx);
@@ -263,7 +286,6 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
 
     // Generate KRY event handlers from logic_block (transpiled from KRY expressions)
     // Must come after signal declarations so handlers can reference the signals
-    cJSON* logic_block = cJSON_GetObjectItem(root, "logic_block");
     generate_kry_event_handlers(&ctx, logic_block);
 
     if (is_component_module) {
@@ -271,7 +293,6 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
         generate_component_definitions(&ctx, component_defs);
     } else if (is_utility_module) {
         // Utility modules: generate exported functions and constants
-        cJSON* logic_block = cJSON_GetObjectItem(root, "logic_block");
         if (!generate_exported_functions(output, logic_block, exports, output_path)) {
             // Hard error occurred - cleanup and return false
             fclose(output);

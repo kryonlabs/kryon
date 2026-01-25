@@ -795,6 +795,8 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
     char* ir_include_path = kryon_root ? path_join(kryon_root, "ir/include") : str_copy("ir/include");
     char* desktop_path = kryon_root ? path_join(kryon_root, "runtime/desktop") : str_copy("runtime/desktop");
     char* cjson_path = kryon_root ? path_join(kryon_root, "ir/third_party/cJSON") : str_copy("ir/third_party/cJSON");
+    char* tomlc99_path = kryon_root ? path_join(kryon_root, "third_party/tomlc99") : NULL;  // Only for dev builds
+    char* ir_utils_path = kryon_root ? path_join(kryon_root, "ir/src/utils") : NULL;  // Only for dev builds
     char* sdk_include_path = kryon_root ? path_join(kryon_root, "include") : str_copy("include");
     char* build_path = kryon_root ? path_join(kryon_root, "build") : paths_get_build_path();
 
@@ -806,6 +808,17 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
     snprintf(kryon_dsl_c, sizeof(kryon_dsl_c), "%s/kryon_dsl.c", bindings_path);
     snprintf(kryon_reactive_c, sizeof(kryon_reactive_c), "%s/kryon_reactive.c", bindings_path);
     snprintf(kryon_reactive_ui_c, sizeof(kryon_reactive_ui_c), "%s/kryon_reactive_ui.c", bindings_path);
+
+    // Build extra include paths for dev builds (tomlc99 and ir_utils contain headers needed by bindings)
+    char extra_includes[512] = "";
+    if (tomlc99_path) {
+        snprintf(extra_includes + strlen(extra_includes), sizeof(extra_includes) - strlen(extra_includes),
+                 "-I\"%s\" ", tomlc99_path);
+    }
+    if (ir_utils_path) {
+        snprintf(extra_includes + strlen(extra_includes), sizeof(extra_includes) - strlen(extra_includes),
+                 "-I\"%s\" ", ir_utils_path);
+    }
 
     char compile_cmd[8192];
     int written = snprintf(compile_cmd, sizeof(compile_cmd),
@@ -819,19 +832,23 @@ int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char
              "-I\"%s\" "
              "-I\"%s\" "
              "-I\"%s\" "
+             "%s"
              "-L\"%s\" "
              "-lkryon_desktop -lkryon_sdl3 -lkryon_common -lkryon_ir -lm "
              "$(pkg-config --libs raylib 2>/dev/null || echo '-lraylib') "
              "$(pkg-config --libs sdl3 sdl3-ttf harfbuzz freetype2 fribidi 2>/dev/null || echo '')",
              main_c, additional_sources,
              kryon_c, kryon_dsl_c, kryon_reactive_c, kryon_reactive_ui_c, exe_file,
-             c_output_dir, bindings_path, ir_path, ir_include_path, desktop_path, cjson_path, sdk_include_path, build_path);
+             c_output_dir, bindings_path, ir_path, ir_include_path, desktop_path, cjson_path, sdk_include_path,
+             extra_includes, build_path);
 
     free(bindings_path);
     free(ir_path);
     free(ir_include_path);
     free(desktop_path);
     free(cjson_path);
+    if (tomlc99_path) free(tomlc99_path);
+    if (ir_utils_path) free(ir_utils_path);
     free(sdk_include_path);
     free(build_path);
     if (kryon_root) free(kryon_root);
