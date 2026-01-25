@@ -15,6 +15,7 @@
 #include "../style/ir_stylesheet.h"
 #include "../utils/ir_c_metadata.h"
 #include "../logic/ir_foreach.h"
+#include "../../include/ir_tabgroup.h"
 #include "cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -2370,6 +2371,64 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
         }
     }
 
+    // Parse Tab component properties
+    if (component->type == IR_COMPONENT_TAB) {
+        if (!component->tab_data) {
+            component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+        }
+        if (component->tab_data) {
+            // Title
+            cJSON* titleItem = cJSON_GetObjectItem(json, "title");
+            if (titleItem && cJSON_IsString(titleItem)) {
+                if (component->tab_data->title) free(component->tab_data->title);
+                component->tab_data->title = strdup(titleItem->valuestring);
+            }
+            // Active background color
+            cJSON* activeBgItem = cJSON_GetObjectItem(json, "activeBackground");
+            if (activeBgItem && cJSON_IsString(activeBgItem)) {
+                IRColor color = json_parse_color(activeBgItem->valuestring);
+                if (color.type == IR_COLOR_SOLID) {
+                    component->tab_data->active_background =
+                        ((uint32_t)color.data.r << 24) | ((uint32_t)color.data.g << 16) |
+                        ((uint32_t)color.data.b << 8) | (uint32_t)color.data.a;
+                }
+            }
+            // Text color
+            cJSON* textColorItem = cJSON_GetObjectItem(json, "textColor");
+            if (textColorItem && cJSON_IsString(textColorItem)) {
+                IRColor color = json_parse_color(textColorItem->valuestring);
+                if (color.type == IR_COLOR_SOLID) {
+                    component->tab_data->text_color =
+                        ((uint32_t)color.data.r << 24) | ((uint32_t)color.data.g << 16) |
+                        ((uint32_t)color.data.b << 8) | (uint32_t)color.data.a;
+                }
+            }
+            // Active text color
+            cJSON* activeTextColorItem = cJSON_GetObjectItem(json, "activeTextColor");
+            if (activeTextColorItem && cJSON_IsString(activeTextColorItem)) {
+                IRColor color = json_parse_color(activeTextColorItem->valuestring);
+                if (color.type == IR_COLOR_SOLID) {
+                    component->tab_data->active_text_color =
+                        ((uint32_t)color.data.r << 24) | ((uint32_t)color.data.g << 16) |
+                        ((uint32_t)color.data.b << 8) | (uint32_t)color.data.a;
+                }
+            }
+        }
+    }
+
+    // Parse TabBar component properties (reorderable)
+    if (component->type == IR_COMPONENT_TAB_BAR) {
+        cJSON* reorderableItem = cJSON_GetObjectItem(json, "reorderable");
+        if (reorderableItem && cJSON_IsBool(reorderableItem)) {
+            if (!component->tab_data) {
+                component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+            }
+            if (component->tab_data) {
+                component->tab_data->reorderable = cJSON_IsTrue(reorderableItem);
+            }
+        }
+    }
+
     // Parse Link component data (url, target, rel)
     if (component->type == IR_COMPONENT_LINK && !component->custom_data) {
         typedef struct { char* url; char* title; char* target; char* rel; } IRLinkData;
@@ -2719,6 +2778,47 @@ static IRComponent* json_deserialize_component_with_context(cJSON* json, Compone
                     component->children[component->child_count++] = child;
                 }
             }
+        }
+    }
+
+    // Initialize TabGroupState for TabGroup components after children are deserialized
+    // This allows click handling to work properly
+    if (component->type == IR_COMPONENT_TAB_GROUP) {
+        // Create TabGroupState (will be linked with children after tree is built)
+        TabGroupState* state = ir_tabgroup_create_state(component, NULL, NULL, 0, false);
+        if (state) {
+            component->custom_data = (char*)state;
+
+            // Link TabBar, TabContent, Tabs, and Panels
+            for (uint32_t i = 0; i < component->child_count; i++) {
+                IRComponent* child = component->children[i];
+                if (!child) continue;
+
+                if (child->type == IR_COMPONENT_TAB_BAR) {
+                    ir_tabgroup_register_bar(state, child);
+                    // Apply reorderable property from TabBar's tab_data
+                    if (child->tab_data && child->tab_data->reorderable) {
+                        ir_tabgroup_set_reorderable(state, true);
+                    }
+                    // Register all Tab children
+                    for (uint32_t j = 0; j < child->child_count; j++) {
+                        if (child->children[j] && child->children[j]->type == IR_COMPONENT_TAB) {
+                            ir_tabgroup_register_tab(state, child->children[j]);
+                        }
+                    }
+                } else if (child->type == IR_COMPONENT_TAB_CONTENT) {
+                    ir_tabgroup_register_content(state, child);
+                    // Register all TabPanel children
+                    for (uint32_t j = 0; j < child->child_count; j++) {
+                        if (child->children[j] && child->children[j]->type == IR_COMPONENT_TAB_PANEL) {
+                            ir_tabgroup_register_panel(state, child->children[j]);
+                        }
+                    }
+                }
+            }
+
+            // Finalize state (extract colors, apply initial selection)
+            ir_tabgroup_finalize(state);
         }
     }
 

@@ -246,6 +246,38 @@ KryonTextBinding* kryon_bind_text_template(IRComponent* component,
     return text_binding_create(component, signal, NULL, prefix, suffix);
 }
 
+int _kryon_bind_input_value_expr(KryonSignal* signal) {
+    IRComponent* comp = _kryon_get_current_parent();
+    if (!comp || !signal) return 0;
+
+    // One-way: signal -> input display (updates input when signal changes)
+    kryon_bind_text(comp, signal, NULL);
+
+    // Two-way: store signal reference on component for change handler
+    // The input component's change event will call kryon_signal_set_string()
+    // Uses plugin_data as it's the opaque pointer field for plugin/binding use
+    comp->plugin_data = signal;
+
+    return 0;
+}
+
+/**
+ * Called by input handlers when text changes to sync to bound signal.
+ * Checks if component has a bound signal (via plugin_data) and updates it.
+ */
+void kryon_sync_input_to_signal(IRComponent* component) {
+    if (!component || !component->plugin_data) return;
+
+    // plugin_data holds the bound KryonSignal* for two-way bound inputs
+    KryonSignal* signal = (KryonSignal*)component->plugin_data;
+
+    // Get current text from component
+    const char* text = component->text_content ? component->text_content : "";
+
+    // Update the signal with new value
+    kryon_signal_set_string(signal, text);
+}
+
 void kryon_unbind_text(KryonTextBinding* binding) {
     if (!binding) return;
 

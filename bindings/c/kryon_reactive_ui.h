@@ -68,6 +68,20 @@ static inline int _kryon_bind_text_expr(KryonSignal* signal_expr, const char* fm
 }
 
 /**
+ * Helper function for two-way INPUT value binding in expression context.
+ * Binds signal to input display AND sets up input change -> signal update.
+ * Returns 0 for use in comma expressions within macro arguments.
+ */
+int _kryon_bind_input_value_expr(KryonSignal* signal);
+
+/**
+ * Sync input component text to its bound signal.
+ * Called by input handlers when text changes to complete two-way binding.
+ * Checks if component has a bound signal (via plugin_data) and updates it.
+ */
+void kryon_sync_input_to_signal(IRComponent* component);
+
+/**
  * Bind a string signal with a prefix/suffix template
  * Example: signal="value", prefix="Count: ", suffix="" -> "Count: value"
  *
@@ -351,6 +365,13 @@ void kryon_binding_group_destroy(KryonBindingGroup* group);
     } while(0)
 
 #define BIND_TEXT_FMT_EXPR(signal_expr, fmt) _kryon_bind_text_expr((signal_expr), (fmt))
+
+/**
+ * Expression-compatible INPUT value binding (two-way)
+ * Usage: INPUT("", BIND_INPUT_VALUE(text_signal))
+ * When the input changes, the signal updates. When the signal changes, the input updates.
+ */
+#define BIND_INPUT_VALUE(signal_expr) _kryon_bind_input_value_expr((signal_expr))
 
 #define BIND_VISIBLE(signal_expr) \
     do { \

@@ -1045,6 +1045,39 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         }
     }
 
+    // Serialize tab_data for Tab components
+    if (component->type == IR_COMPONENT_TAB && component->tab_data) {
+        IRTabData* tab_data = component->tab_data;
+        if (tab_data->title && tab_data->title[0] != '\0') {
+            cJSON_AddStringToObject(obj, "title", tab_data->title);
+        }
+        if (tab_data->active_background != 0) {
+            char color_str[16];
+            uint32_t c = tab_data->active_background;
+            json_rgba_to_hex(color_str, sizeof(color_str), (c>>24)&0xFF, (c>>16)&0xFF, (c>>8)&0xFF, c&0xFF);
+            cJSON_AddStringToObject(obj, "activeBackground", color_str);
+        }
+        if (tab_data->text_color != 0) {
+            char color_str[16];
+            uint32_t c = tab_data->text_color;
+            json_rgba_to_hex(color_str, sizeof(color_str), (c>>24)&0xFF, (c>>16)&0xFF, (c>>8)&0xFF, c&0xFF);
+            cJSON_AddStringToObject(obj, "textColor", color_str);
+        }
+        if (tab_data->active_text_color != 0) {
+            char color_str[16];
+            uint32_t c = tab_data->active_text_color;
+            json_rgba_to_hex(color_str, sizeof(color_str), (c>>24)&0xFF, (c>>16)&0xFF, (c>>8)&0xFF, c&0xFF);
+            cJSON_AddStringToObject(obj, "activeTextColor", color_str);
+        }
+    }
+
+    // Serialize tab_data for TabBar components (reorderable)
+    if (component->type == IR_COMPONENT_TAB_BAR && component->tab_data) {
+        if (component->tab_data->reorderable) {
+            cJSON_AddBoolToObject(obj, "reorderable", true);
+        }
+    }
+
     // Serialize table state (stored in custom_data as IRTableState*)
     if (component->type == IR_COMPONENT_TABLE && component->custom_data) {
         IRTableState* state = (IRTableState*)component->custom_data;

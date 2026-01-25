@@ -162,29 +162,35 @@ void c_generate_reactive_signal_initialization(CCodegenContext* ctx) {
         );
 
         const char* init_val_raw = (init && init->valuestring) ? init->valuestring : "0";
+        const char* var_type = (type && type->valuestring) ? type->valuestring : "int";
 
-        // For component definitions, initial_value may be a prop reference (e.g., "initialValue")
-        // In this case, use the default value "0" instead
-        const char* init_val;
-        if (is_numeric(init_val_raw)) {
-            init_val = init_val_raw;
-        } else {
-            // Non-numeric values are prop references - use default
-            init_val = "0";
-        }
-
-        const char* signal_creator = c_get_signal_creator(
-            type && type->valuestring ? type->valuestring : "int"
-        );
+        const char* signal_creator = c_get_signal_creator(var_type);
 
         if (strcmp(signal_creator, "kryon_signal_create_string") == 0) {
+            // For strings, initial_value is a JSON string like "\"actual value\""
+            // Strip the outer quotes if present
+            const char* str_val = init_val_raw;
+            size_t len = strlen(str_val);
+            char* unquoted = NULL;
+            if (len >= 2 && str_val[0] == '"' && str_val[len-1] == '"') {
+                // Strip outer quotes
+                unquoted = malloc(len - 1);
+                if (unquoted) {
+                    strncpy(unquoted, str_val + 1, len - 2);
+                    unquoted[len - 2] = '\0';
+                    str_val = unquoted;
+                }
+            }
             fprintf(ctx->output, "    %s_signal = %s(\"%s\");\n",
-                    scoped_name, signal_creator, init_val);
+                    scoped_name, signal_creator, str_val);
+            free(unquoted);
         } else if (strcmp(signal_creator, "kryon_signal_create_bool") == 0) {
-            bool bool_val = (strcmp(init_val, "true") == 0);
+            bool bool_val = (strcmp(init_val_raw, "true") == 0);
             fprintf(ctx->output, "    %s_signal = %s(%s);\n",
                     scoped_name, signal_creator, bool_val ? "true" : "false");
         } else {
+            // For numeric values, use as-is or default to 0 if non-numeric
+            const char* init_val = is_numeric(init_val_raw) ? init_val_raw : "0";
             fprintf(ctx->output, "    %s_signal = %s(%s);\n",
                     scoped_name, signal_creator, init_val);
         }

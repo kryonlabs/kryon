@@ -24,6 +24,7 @@
 /* Forward declarations */
 bool ir_generate_component_commands(IRComponent* component, IRCommandContext* ctx,
                                      LayoutRect* bounds, float inherited_opacity);
+bool ir_gen_tab_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds);
 
 /* ============================================================================
  * Utility Functions
@@ -482,6 +483,86 @@ bool ir_gen_button_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect
         cmd.data.draw_text.color = text_color;
 
         strncpy(cmd.data.draw_text.text_storage, comp->text_content, 127);
+        cmd.data.draw_text.text_storage[127] = '\0';
+        cmd.data.draw_text.text = NULL;
+        cmd.data.draw_text.max_length = strlen(cmd.data.draw_text.text_storage);
+
+        kryon_cmd_buf_push(ctx->cmd_buf, &cmd);
+    }
+
+    return true;
+}
+
+/* Tab Component Generator - renders individual tabs in the tab bar */
+bool ir_gen_tab_commands(IRComponent* comp, IRCommandContext* ctx, LayoutRect* bounds) {
+    /* Check if tab is being hovered */
+    bool is_hovered = (g_hovered_component == comp);
+
+    /* Save original background color for hover effect */
+    uint8_t original_bg_r = 0, original_bg_g = 0, original_bg_b = 0, original_bg_a = 0;
+    if (is_hovered && comp->style) {
+        if (ir_color_resolve(&comp->style->background, &original_bg_r, &original_bg_g, &original_bg_b, &original_bg_a)) {
+            comp->style->background.data.r = (uint8_t)(original_bg_r + (255 - original_bg_r) * 0.3f);
+            comp->style->background.data.g = (uint8_t)(original_bg_g + (255 - original_bg_g) * 0.3f);
+            comp->style->background.data.b = (uint8_t)(original_bg_b + (255 - original_bg_b) * 0.3f);
+        }
+    }
+
+    /* Render tab background */
+    ir_gen_container_commands(comp, ctx, bounds);
+
+    /* Restore original background color */
+    if (is_hovered && comp->style && original_bg_a > 0) {
+        comp->style->background.data.r = original_bg_r;
+        comp->style->background.data.g = original_bg_g;
+        comp->style->background.data.b = original_bg_b;
+        comp->style->background.data.a = original_bg_a;
+    }
+
+    /* Get tab title - check tab_data first, then text_content */
+    const char* title = NULL;
+    if (comp->tab_data && comp->tab_data->title) {
+        title = comp->tab_data->title;
+    } else if (comp->text_content) {
+        title = comp->text_content;
+    }
+
+    /* Render tab title text centered */
+    if (title && title[0] != '\0') {
+        IRStyle* style = comp->style;
+
+        /* Get text color - default to white for dark tabs */
+        uint32_t base_color = 0xFFFFFFFF;
+        if (style) {
+            uint8_t r, g, b, a;
+            if (ir_color_resolve(&style->font.color, &r, &g, &b, &a) && a > 0) {
+                base_color = (r << 24) | (g << 16) | (b << 8) | a;
+            }
+        }
+        uint32_t text_color = ir_apply_opacity_to_color(base_color, ctx->current_opacity);
+
+        /* Get font size */
+        float font_size = style && style->font.size > 0 ? style->font.size : 14;
+
+        /* Estimate text dimensions for centering */
+        float text_width = ir_get_text_width_estimate(title, font_size);
+        float text_height = font_size;
+
+        /* Calculate centered position */
+        float text_x = bounds->x + (bounds->width - text_width) / 2.0f;
+        float text_y = bounds->y + (bounds->height - text_height) / 2.0f;
+
+        kryon_command_t cmd = {0};
+        cmd.type = KRYON_CMD_DRAW_TEXT;
+        cmd.data.draw_text.x = text_x;
+        cmd.data.draw_text.y = text_y;
+        cmd.data.draw_text.font_id = 0;
+        cmd.data.draw_text.font_size = font_size;
+        cmd.data.draw_text.font_weight = style && style->font.bold ? 1 : 0;
+        cmd.data.draw_text.font_style = style && style->font.italic ? 1 : 0;
+        cmd.data.draw_text.color = text_color;
+
+        strncpy(cmd.data.draw_text.text_storage, title, 127);
         cmd.data.draw_text.text_storage[127] = '\0';
         cmd.data.draw_text.text = NULL;
         cmd.data.draw_text.max_length = strlen(cmd.data.draw_text.text_storage);
@@ -1339,6 +1420,18 @@ bool ir_generate_component_commands(
                         component->id, component->child_count);
             }
             success = true;
+            break;
+
+        case IR_COMPONENT_TAB:
+            success = ir_gen_tab_commands(component, ctx, render_bounds);
+            break;
+
+        case IR_COMPONENT_TAB_GROUP:
+        case IR_COMPONENT_TAB_BAR:
+        case IR_COMPONENT_TAB_CONTENT:
+        case IR_COMPONENT_TAB_PANEL:
+            /* Tab containers render as normal containers - children handle their own rendering */
+            success = ir_gen_container_commands(component, ctx, render_bounds);
             break;
 
         default:

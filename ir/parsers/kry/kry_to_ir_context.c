@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
+
+// Forward declaration
+static char* evaluate_string_concat(const char* expr);
 
 // ============================================================================
 // Parameter Substitution
@@ -35,14 +39,78 @@ void kry_ctx_add_param_value(ConversionContext* ctx, const char* name, KryValue*
 const char* kry_ctx_substitute_param(ConversionContext* ctx, const char* expr) {
     if (!ctx || !expr) return expr;
 
-    // Check if expression is a parameter reference
+    // First try exact match (fast path for simple identifiers)
     for (int i = 0; i < ctx->param_count; i++) {
         if (strcmp(expr, ctx->params[i].name) == 0) {
             return ctx->params[i].value;
         }
     }
 
-    return expr;  // No substitution found
+    // Check if any param name appears in the expression (compound expression case)
+    bool needs_substitution = false;
+    for (int i = 0; i < ctx->param_count; i++) {
+        if (ctx->params[i].value && strstr(expr, ctx->params[i].name) != NULL) {
+            needs_substitution = true;
+            break;
+        }
+    }
+
+    if (!needs_substitution) {
+        return expr;
+    }
+
+    // Build substituted expression
+    static char result_buf[4096];
+    char* result = result_buf;
+    const char* p = expr;
+
+    while (*p && (result - result_buf) < 4090) {
+        bool matched = false;
+
+        // Try to match any param at current position
+        for (int i = 0; i < ctx->param_count; i++) {
+            if (!ctx->params[i].value) continue;
+
+            size_t name_len = strlen(ctx->params[i].name);
+
+            // Check for identifier match (must not be part of larger identifier)
+            if (strncmp(p, ctx->params[i].name, name_len) == 0) {
+                char prev = (p > expr) ? *(p - 1) : ' ';
+                char next = *(p + name_len);
+
+                // Verify it's a standalone identifier (not part of larger word)
+                bool prev_ok = !isalnum((unsigned char)prev) && prev != '_';
+                bool next_ok = !isalnum((unsigned char)next) && next != '_';
+
+                if (prev_ok && next_ok) {
+                    // Substitute: wrap value in quotes if it's a string value
+                    *result++ = '"';
+                    const char* val = ctx->params[i].value;
+                    while (*val && (result - result_buf) < 4090) {
+                        *result++ = *val++;
+                    }
+                    *result++ = '"';
+
+                    p += name_len;
+                    matched = true;
+                    break;
+                }
+            }
+        }
+
+        if (!matched) {
+            *result++ = *p++;
+        }
+    }
+    *result = '\0';
+
+    // Try to evaluate the substituted expression if it's a simple string concatenation
+    char* evaluated = evaluate_string_concat(result_buf);
+    if (evaluated) {
+        return evaluated;
+    }
+
+    return result_buf;
 }
 
 bool kry_ctx_is_unresolved_expr(ConversionContext* ctx, const char* expr) {
@@ -51,7 +119,7 @@ bool kry_ctx_is_unresolved_expr(ConversionContext* ctx, const char* expr) {
     // If no params registered, everything is unresolved
     if (ctx->param_count == 0) return true;
 
-    // Check if this expression matches any param name or starts with a param
+    // Check if this expression matches any param name or contains a param reference
     for (int i = 0; i < ctx->param_count; i++) {
         // Direct match (e.g., "item")
         if (strcmp(expr, ctx->params[i].name) == 0) {
@@ -71,9 +139,96 @@ bool kry_ctx_is_unresolved_expr(ConversionContext* ctx, const char* expr) {
             (expr[param_len] == '.' || expr[param_len] == '[')) {
             return false;  // Resolved - it's a property/index access on a param
         }
+
+        // Check if param appears anywhere in compound expression (e.g., "- " + todo)
+        const char* found = strstr(expr, ctx->params[i].name);
+        if (found) {
+            // Verify it's a standalone identifier
+            char prev = (found > expr) ? *(found - 1) : ' ';
+            char next = *(found + param_len);
+            bool prev_ok = !isalnum((unsigned char)prev) && prev != '_';
+            bool next_ok = !isalnum((unsigned char)next) && next != '_';
+
+            if (prev_ok && next_ok) {
+                // Check if self-reference (for reactive/state vars)
+                if (ctx->params[i].value &&
+                    strcmp(ctx->params[i].name, ctx->params[i].value) == 0) {
+                    return true;  // Unresolved - reactive var
+                }
+                return false;  // Resolved - loop var with actual value
+            }
+        }
     }
 
     return true;  // Unresolved
+}
+
+// ============================================================================
+// Simple Expression Evaluation (String Concatenation)
+// ============================================================================
+
+/**
+ * Evaluate simple string concatenation expressions.
+ * Handles patterns like: "str1" + "str2" + "str3"
+ * Returns a newly allocated string, or NULL if not evaluable.
+ */
+static char* evaluate_string_concat(const char* expr) {
+    if (!expr) return NULL;
+
+    static char result[4096];
+    char* out = result;
+    const char* p = expr;
+
+    // Skip leading whitespace
+    while (*p && isspace((unsigned char)*p)) p++;
+
+    while (*p) {
+        // Skip whitespace
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+
+        // Expect a quoted string
+        if (*p == '"') {
+            p++;  // Skip opening quote
+            // Copy string content until closing quote
+            while (*p && *p != '"' && (out - result) < 4090) {
+                if (*p == '\\' && *(p+1)) {
+                    // Handle escape sequences
+                    p++;
+                    switch (*p) {
+                        case 'n': *out++ = '\n'; break;
+                        case 't': *out++ = '\t'; break;
+                        case 'r': *out++ = '\r'; break;
+                        case '\\': *out++ = '\\'; break;
+                        case '"': *out++ = '"'; break;
+                        default: *out++ = *p; break;
+                    }
+                    p++;
+                } else {
+                    *out++ = *p++;
+                }
+            }
+            if (*p == '"') p++;  // Skip closing quote
+        } else {
+            // Not a string literal - can't evaluate
+            return NULL;
+        }
+
+        // Skip whitespace
+        while (*p && isspace((unsigned char)*p)) p++;
+
+        // Check for concatenation operator
+        if (*p == '+') {
+            p++;  // Skip the +
+            // Continue to next string
+        } else if (*p) {
+            // Unexpected character - can't evaluate
+            return NULL;
+        }
+    }
+
+    *out = '\0';
+    return result[0] ? result : NULL;
 }
 
 // ============================================================================

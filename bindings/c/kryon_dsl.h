@@ -849,6 +849,10 @@ static inline int _kryon_run_impl(void) {
         return 1;
     }
 
+    // Initialize TabGroupState for any TabGroup components in the tree
+    // This enables tab switching, click handling, and panel visibility
+    kryon_initialize_tabgroups(root);
+
     desktop_ir_renderer_run_main_loop(renderer, root);
     desktop_ir_renderer_destroy(renderer);
     kryon_cleanup();

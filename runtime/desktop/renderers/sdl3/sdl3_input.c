@@ -33,6 +33,9 @@ extern SDL_Color ir_color_to_sdl(IRColor color);
 // Forward declaration from C bindings event bridge
 extern void kryon_c_event_bridge(const char* logic_id);
 
+// Forward declaration for two-way input binding sync
+extern void kryon_sync_input_to_signal(IRComponent* component);
+
 // Helper to get executor from global state manager
 static IRExecutorContext* get_executor_from_state_mgr(void) {
     extern IRStateManager* ir_state_get_global(void);
@@ -664,6 +667,9 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             ir_executor_sync_input_to_var(exec_ctx, focused_input);
                         }
 
+                        // Sync to bound reactive signal (two-way binding)
+                        kryon_sync_input_to_signal(focused_input);
+
                         free(combined);
                     }
                 }
@@ -764,6 +770,9 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             if (exec_ctx) {
                                 ir_executor_sync_input_to_var(exec_ctx, focused_input);
                             }
+
+                            // Sync to bound reactive signal (two-way binding)
+                            kryon_sync_input_to_signal(focused_input);
 
                             free(combined);
                         }

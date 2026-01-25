@@ -36,6 +36,14 @@ typedef struct {
     cJSON* reactive_vars;       // reactive_manifest.variables array
     bool has_reactive_state;    // True if any reactive variables exist
     const char* current_scope;  // Current component scope during tree traversal (e.g., "Counter#0")
+
+    // For-loop context tracking
+    const char* current_loop_var;  // Current for-loop iterator variable (e.g., "todo")
+
+    // Pending text format info for non-reactive loop variable text templates
+    // Set during property_bindings scan, used by TEXT component generation
+    char* pending_text_format;     // Format string e.g., "- %s"
+    char* pending_text_var;        // Variable name e.g., "todo"
 } CCodegenContext;
 
 // ============================================================================
@@ -48,6 +56,9 @@ void generate_preprocessor_directives(CCodegenContext* ctx);
 void generate_variable_declarations(CCodegenContext* ctx);
 void generate_helper_functions(CCodegenContext* ctx);
 void generate_event_handlers(CCodegenContext* ctx);
+
+// Array/const declarations from source_structures
+void generate_array_declarations(CCodegenContext* ctx);
 
 // Exported function generation
 bool generate_exported_functions(FILE* output, cJSON* logic_block, cJSON* exports, const char* output_path);

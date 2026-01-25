@@ -106,6 +106,28 @@ void c_generate_main_function(CCodegenContext* ctx) {
     fprintf(ctx->output, "    kryon_init(\"%s\", %d, %d);\n", title, width, height);
     fprintf(ctx->output, "\n");
 
+    // Initialize arrays (if any)
+    // Check if there are array variables in source_structures.const_declarations
+    cJSON* source_structures = cJSON_GetObjectItem(ctx->root_json, "source_structures");
+    cJSON* const_decls = source_structures ?
+                         cJSON_GetObjectItem(source_structures, "const_declarations") : NULL;
+    bool has_arrays = false;
+    if (const_decls && cJSON_IsArray(const_decls)) {
+        cJSON* decl;
+        cJSON_ArrayForEach(decl, const_decls) {
+            cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+            if (value_type && value_type->valuestring && strcmp(value_type->valuestring, "array") == 0) {
+                has_arrays = true;
+                break;
+            }
+        }
+    }
+    if (has_arrays) {
+        fprintf(ctx->output, "    // Initialize arrays\n");
+        fprintf(ctx->output, "    kryon_init_arrays();\n");
+        fprintf(ctx->output, "\n");
+    }
+
     // Initialize reactive signals
     if (ctx->has_reactive_state) {
         generate_reactive_signal_initialization(ctx);
@@ -130,6 +152,12 @@ void c_generate_main_function(CCodegenContext* ctx) {
     // Cleanup reactive signals AFTER KRYON_RUN returns
     if (ctx->has_reactive_state) {
         generate_reactive_signal_cleanup(ctx);
+    }
+
+    // Cleanup arrays (if any)
+    if (has_arrays) {
+        fprintf(ctx->output, "    // Cleanup arrays\n");
+        fprintf(ctx->output, "    kryon_cleanup_arrays();\n");
     }
 
     ctx->indent_level--;
@@ -219,6 +247,10 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
     if (has_struct_types) {
         generate_struct_definitions(&ctx, struct_types);
     }
+
+    // Generate array declarations from source_structures.const_declarations
+    // (must come before handlers that use arrays)
+    generate_array_declarations(&ctx);
 
     generate_variable_declarations(&ctx);
     generate_helper_functions(&ctx);

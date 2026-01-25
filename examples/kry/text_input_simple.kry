@@ -1,6 +1,6 @@
 // Simple Text Input Example
 
-state textValue: string = ""
+var textValue: string = ""
 
 App {
     width = 500

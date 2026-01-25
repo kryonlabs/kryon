@@ -83,10 +83,11 @@ void ir_tabgroup_finalize(TabGroupState* state) {
     if (!state) return;
 
     // Extract visual colors from Tab components into tab_visuals array
-    // (needed when loading from .kir files where colors are in IRTabData)
+    // When tab_data is NULL (e.g., from C codegen path), use defaults
     for (uint32_t i = 0; i < state->tab_count; i++) {
         IRComponent* tab = state->tabs[i];
-        if (tab && tab->tab_data) {
+
+        if (tab) {
             // Get background color from style if available, otherwise use default
             uint32_t bg_color = 0x3d3d3dff;  // Default dark gray
             if (tab->style && tab->style->background.type == IR_COLOR_SOLID) {
@@ -94,11 +95,36 @@ void ir_tabgroup_finalize(TabGroupState* state) {
                 bg_color = (bg_data->r << 24) | (bg_data->g << 16) | (bg_data->b << 8) | bg_data->a;
             }
 
+            // Get active background - use tab_data if set, otherwise compute lighter version
+            uint32_t active_bg = (tab->tab_data) ? tab->tab_data->active_background : 0;
+            if (active_bg == 0) {
+                // Default: lighter version of background (add 30% brightness)
+                uint8_t r = (bg_color >> 24) & 0xFF;
+                uint8_t g = (bg_color >> 16) & 0xFF;
+                uint8_t b = (bg_color >> 8) & 0xFF;
+                uint8_t a = bg_color & 0xFF;
+                r = (uint8_t)(r + (255 - r) * 0.3f);
+                g = (uint8_t)(g + (255 - g) * 0.3f);
+                b = (uint8_t)(b + (255 - b) * 0.3f);
+                active_bg = (r << 24) | (g << 16) | (b << 8) | a;
+            }
+
+            // Get text colors - use tab_data if set, otherwise use defaults
+            uint32_t text_color = (tab->tab_data) ? tab->tab_data->text_color : 0;
+            if (text_color == 0) {
+                text_color = 0xccccccff;  // Default: light gray
+            }
+
+            uint32_t active_text = (tab->tab_data) ? tab->tab_data->active_text_color : 0;
+            if (active_text == 0) {
+                active_text = 0xffffffff;  // Default: white
+            }
+
             TabVisualState visual = {
                 .background_color = bg_color,
-                .active_background_color = tab->tab_data->active_background,
-                .text_color = tab->tab_data->text_color,
-                .active_text_color = tab->tab_data->active_text_color
+                .active_background_color = active_bg,
+                .text_color = text_color,
+                .active_text_color = active_text
             };
 
             state->tab_visuals[i] = visual;
