@@ -666,8 +666,40 @@ bool c_stmt_to_c_ctx(struct CCodegenContext* ctx, FILE* output, cJSON* stmt, int
 
         char* expr_c = expr ? c_expr_to_c(expr) : strdup("NULL");
 
+        // Check if target is a reactive variable (need to use kryon_signal_set)
+        bool is_reactive = false;
+        char* signal_name = NULL;
+        if (ctx && is_simple_var) {
+            // Check if this is a reactive variable
+            if (ctx->reactive_vars && cJSON_IsArray(ctx->reactive_vars)) {
+                cJSON* var;
+                cJSON_ArrayForEach(var, ctx->reactive_vars) {
+                    cJSON* vname = cJSON_GetObjectItem(var, "name");
+                    cJSON* vscope = cJSON_GetObjectItem(var, "scope");
+                    if (vname && vname->valuestring && strcmp(vname->valuestring, target_c) == 0) {
+                        is_reactive = true;
+                        // Build signal name based on scope
+                        const char* scope = (vscope && vscope->valuestring) ? vscope->valuestring : "component";
+                        signal_name = malloc(strlen(target_c) + strlen(scope) + 16);
+                        if (strcmp(scope, "global") == 0) {
+                            sprintf(signal_name, "%s_global_signal", target_c);
+                        } else if (strcmp(scope, "component") != 0) {
+                            sprintf(signal_name, "%s_%s_signal", target_c, scope);
+                        } else {
+                            sprintf(signal_name, "%s_signal", target_c);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
         // Check if this is a simple variable that needs declaration
-        if (is_simple_var && ctx) {
+        if (is_reactive && signal_name) {
+            // Reactive variable - use signal setter
+            fprintf(output, "%*skryon_signal_set(%s, %s);\n", indent, "", signal_name, expr_c);
+            free(signal_name);
+        } else if (is_simple_var && ctx) {
             // Check if global or already declared as local
             if (c_is_global_var(ctx, target_c) || c_is_local_var(ctx, target_c)) {
                 // Already declared, just assign
