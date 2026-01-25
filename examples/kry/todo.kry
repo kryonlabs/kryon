@@ -1,7 +1,7 @@
 // Simple Todo App
 
-state todos: array = ["Test todo", "Another item"]
-state newTodo: string = ""
+var todos: array = ["Test todo", "Another item"]
+var newTodo: string = ""
 
 App {
     width = 600
@@ -31,7 +31,7 @@ App {
                 borderColor = "#cccccc"
                 borderWidth = 1
                 padding = 10
-                value = $newTodo
+                value = newTodo
             }
 
             Button {

@@ -146,6 +146,7 @@ $(DESKTOP_SHARED_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
 	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) \
 		$(BUILD_DIR)/libkryon_common.a \
 		$(BUILD_DIR)/libkryon_sdl3.a \
+		$(BUILD_DIR)/libkryon_c.a \
 		-L$(BUILD_DIR) -lkryon_ir $(LIBS)
 
 # Build test program

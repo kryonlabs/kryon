@@ -52,8 +52,286 @@ static const char* get_variable_for_component_id(CCodegenContext* ctx, int compo
     return NULL;
 }
 
+/**
+ * Parse a string template expression like "\"prefix\" + varname" or "varname + \"suffix\""
+ * Returns true if successfully parsed, with out parameters filled in.
+ * The prefix/suffix will include the quotes and be ready for use in a format string.
+ * Sets out_is_reactive to indicate if the variable is a reactive signal or a plain variable.
+ */
+static bool parse_string_template_expr_ex(CCodegenContext* ctx, const char* expr,
+                                          char* out_var_name, size_t var_size,
+                                          char* out_format, size_t format_size,
+                                          bool* out_is_reactive) {
+    if (!expr) return false;
+
+    *out_is_reactive = false;
+
+    // Look for pattern: "string" + varname or varname + "string"
+    const char* plus = strstr(expr, " + ");
+    if (!plus) return false;
+
+    // Get the parts before and after the +
+    size_t left_len = plus - expr;
+    const char* right = plus + 3;
+
+    // Check which side is the string literal
+    bool left_is_string = (expr[0] == '"');
+    bool right_is_string = (right[0] == '"');
+
+    if (!left_is_string && !right_is_string) return false;
+    if (left_is_string && right_is_string) return false; // Both strings, not a simple template
+
+    const char* var_part;
+    size_t var_part_len;
+    const char* str_part;
+    size_t str_part_len;
+    bool prefix_mode;
+
+    if (left_is_string) {
+        // "string" + varname
+        str_part = expr;
+        str_part_len = left_len;
+        var_part = right;
+        var_part_len = strlen(right);
+        prefix_mode = true;
+    } else {
+        // varname + "string"
+        var_part = expr;
+        var_part_len = left_len;
+        str_part = right;
+        str_part_len = strlen(right);
+        prefix_mode = false;
+    }
+
+    // Trim whitespace from var_part
+    while (var_part_len > 0 && isspace((unsigned char)var_part[var_part_len - 1])) var_part_len--;
+    while (var_part_len > 0 && isspace((unsigned char)*var_part)) { var_part++; var_part_len--; }
+
+    // Check if variable is valid identifier (alphanumeric or underscore)
+    bool valid_identifier = var_part_len > 0;
+    for (size_t i = 0; i < var_part_len && valid_identifier; i++) {
+        char c = var_part[i];
+        if (i == 0) {
+            valid_identifier = isalpha((unsigned char)c) || c == '_';
+        } else {
+            valid_identifier = isalnum((unsigned char)c) || c == '_';
+        }
+    }
+    if (!valid_identifier) return false;
+
+    // Copy the variable name
+    size_t copy_len = var_part_len < var_size - 1 ? var_part_len : var_size - 1;
+    strncpy(out_var_name, var_part, copy_len);
+    out_var_name[copy_len] = '\0';
+
+    // Check if it's a reactive variable
+    if (ctx->reactive_vars) {
+        cJSON* var;
+        cJSON_ArrayForEach(var, ctx->reactive_vars) {
+            cJSON* vname = cJSON_GetObjectItem(var, "name");
+            cJSON* vscope = cJSON_GetObjectItem(var, "scope");
+
+            if (!vname || !vname->valuestring) continue;
+
+            const char* var_name = vname->valuestring;
+            if (strlen(var_name) != var_part_len || strncmp(var_name, var_part, var_part_len) != 0) continue;
+
+            // Found as reactive variable! Build the signal name
+            *out_is_reactive = true;
+            const char* scope = (vscope && vscope->valuestring) ? vscope->valuestring : "component";
+            if (strcmp(scope, "global") == 0) {
+                snprintf(out_var_name, var_size, "%s_global_signal", var_name);
+            } else if (strcmp(scope, "component") != 0) {
+                snprintf(out_var_name, var_size, "%s_%s_signal", var_name, scope);
+            } else {
+                snprintf(out_var_name, var_size, "%s_signal", var_name);
+            }
+            break;
+        }
+    }
+
+    // Build the format string: extract content between quotes and add %s
+    // str_part is like "\"prefix\"" - we need "prefix%s"
+    if (str_part_len >= 2 && str_part[0] == '"') {
+        // Find closing quote
+        const char* end_quote = strrchr(str_part, '"');
+        if (end_quote && end_quote > str_part) {
+            size_t content_len = end_quote - str_part - 1;
+            if (prefix_mode) {
+                // "prefix" + var -> "prefix%s"
+                snprintf(out_format, format_size, "\"%.*s%%s\"", (int)content_len, str_part + 1);
+            } else {
+                // var + "suffix" -> "%ssuffix"
+                snprintf(out_format, format_size, "\"%%s%.*s\"", (int)content_len, str_part + 1);
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Wrapper for backward compatibility
+static bool parse_string_template_expr(CCodegenContext* ctx, const char* expr,
+                                       char* out_signal_name, size_t signal_size,
+                                       char* out_format, size_t format_size) {
+    bool is_reactive = false;
+    if (parse_string_template_expr_ex(ctx, expr, out_signal_name, signal_size, out_format, format_size, &is_reactive)) {
+        return is_reactive; // Only return true for reactive variables (backward compatibility)
+    }
+    return false;
+}
+
+/**
+ * Transform an expression by replacing variable names with their scoped signal names.
+ * E.g., "\"You typed: \" + textValue" -> "\"You typed: \" + textValue_global_signal"
+ * Returns newly allocated string that must be freed.
+ */
+static char* transform_expr_to_signal_refs(CCodegenContext* ctx, const char* expr) {
+    if (!expr || !ctx->reactive_vars) return strdup(expr);
+
+    // Start with a copy of the expression
+    size_t result_size = strlen(expr) * 2 + 256; // Allow room for signal name expansion
+    char* result = malloc(result_size);
+    if (!result) return strdup(expr);
+    strcpy(result, expr);
+
+    // For each reactive variable, replace occurrences of its name with the signal name
+    cJSON* var;
+    cJSON_ArrayForEach(var, ctx->reactive_vars) {
+        cJSON* vname = cJSON_GetObjectItem(var, "name");
+        cJSON* vscope = cJSON_GetObjectItem(var, "scope");
+
+        if (!vname || !vname->valuestring) continue;
+
+        const char* var_name = vname->valuestring;
+        const char* scope = (vscope && vscope->valuestring) ? vscope->valuestring : "component";
+
+        // Build the signal name
+        char signal_name[256];
+        if (strcmp(scope, "global") == 0) {
+            snprintf(signal_name, sizeof(signal_name), "%s_global_signal", var_name);
+        } else if (strcmp(scope, "component") != 0) {
+            snprintf(signal_name, sizeof(signal_name), "%s_%s_signal", var_name, scope);
+        } else {
+            snprintf(signal_name, sizeof(signal_name), "%s_signal", var_name);
+        }
+
+        // Replace all occurrences of var_name with signal_name
+        // (only when var_name is a complete identifier, not part of another word)
+        size_t var_len = strlen(var_name);
+        size_t sig_len = strlen(signal_name);
+        char* pos = result;
+
+        while ((pos = strstr(pos, var_name)) != NULL) {
+            // Check that this is a complete identifier (not part of a larger word)
+            bool is_start = (pos == result) || !isalnum((unsigned char)*(pos - 1)) && *(pos - 1) != '_';
+            bool is_end = !isalnum((unsigned char)*(pos + var_len)) && *(pos + var_len) != '_';
+
+            if (is_start && is_end) {
+                // Replace: shift the rest and insert signal name
+                size_t tail_len = strlen(pos + var_len);
+                size_t new_len = (pos - result) + sig_len + tail_len;
+
+                if (new_len >= result_size) {
+                    // Need to reallocate
+                    result_size = new_len + 256;
+                    size_t offset = pos - result;
+                    result = realloc(result, result_size);
+                    if (!result) return strdup(expr);
+                    pos = result + offset;
+                }
+
+                memmove(pos + sig_len, pos + var_len, tail_len + 1);
+                memcpy(pos, signal_name, sig_len);
+                pos += sig_len;
+            } else {
+                pos++;
+            }
+        }
+    }
+
+    return result;
+}
+
 // Forward declaration
 static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* value, bool* first_prop);
+
+/**
+ * Check if a component has a non-reactive text template binding (e.g., "- " + todo in a for-loop).
+ * Also handles plain variable references (e.g., text = todo).
+ * If so, extracts the format string and variable name.
+ * Returns true if found, with format_out and var_out filled in.
+ */
+static bool check_nonreactive_text_template(CCodegenContext* ctx, cJSON* component,
+                                            char* format_out, size_t format_size,
+                                            char* var_out, size_t var_size) {
+    if (!ctx->current_loop_var) return false;  // Only relevant in for-loop context
+
+    cJSON* property_bindings = cJSON_GetObjectItem(component, "property_bindings");
+    if (!property_bindings) return false;
+
+    cJSON* text_binding = cJSON_GetObjectItem(property_bindings, "text");
+    if (!text_binding) return false;
+
+    cJSON* binding_type = cJSON_GetObjectItem(text_binding, "binding_type");
+    if (!binding_type || !binding_type->valuestring ||
+        strcmp(binding_type->valuestring, "static_template") != 0) {
+        return false;
+    }
+
+    cJSON* source_expr = cJSON_GetObjectItem(text_binding, "source_expr");
+    if (!source_expr || !source_expr->valuestring) return false;
+
+    // First, check if this is a plain variable reference that matches the loop variable
+    // (no string concatenation, just "text = item")
+    if (strcmp(source_expr->valuestring, ctx->current_loop_var) == 0) {
+        // Check it's not a reactive variable
+        bool is_reactive_var = false;
+        if (ctx->reactive_vars) {
+            cJSON* var;
+            cJSON_ArrayForEach(var, ctx->reactive_vars) {
+                cJSON* vname = cJSON_GetObjectItem(var, "name");
+                if (vname && vname->valuestring &&
+                    strcmp(vname->valuestring, ctx->current_loop_var) == 0) {
+                    is_reactive_var = true;
+                    break;
+                }
+            }
+        }
+        if (!is_reactive_var) {
+            // Plain loop variable reference - use "%s" format
+            snprintf(format_out, format_size, "\"%%s\"");
+            strncpy(var_out, ctx->current_loop_var, var_size - 1);
+            var_out[var_size - 1] = '\0';
+            return true;
+        }
+    }
+
+    // Try to parse as string template (e.g., "- " + item)
+    char var_name[256];
+    char format_str[256];
+    bool is_reactive = false;
+
+    if (!parse_string_template_expr_ex(ctx, source_expr->valuestring,
+                                        var_name, sizeof(var_name),
+                                        format_str, sizeof(format_str),
+                                        &is_reactive)) {
+        return false;
+    }
+
+    // Only handle non-reactive variables that match the loop variable
+    if (is_reactive) return false;
+    if (strcmp(var_name, ctx->current_loop_var) != 0) return false;
+
+    // Found a non-reactive loop variable text template
+    strncpy(format_out, format_str, format_size - 1);
+    format_out[format_size - 1] = '\0';
+    strncpy(var_out, var_name, var_size - 1);
+    var_out[var_size - 1] = '\0';
+
+    return true;
+}
 
 void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool is_root) {
     cJSON* type_obj = cJSON_GetObjectItem(component, "type");
@@ -83,12 +361,52 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
             const char* item_var = item_name ? item_name->valuestring : "item";
             const char* source_var = source_expr ? source_expr->valuestring : "items";
 
+            // Check if source is a KryonStringArray (from const_declarations)
+            bool is_string_array = false;
+            cJSON* source_structures = cJSON_GetObjectItem(ctx->root_json, "source_structures");
+            if (source_structures) {
+                cJSON* const_decls = cJSON_GetObjectItem(source_structures, "const_declarations");
+                if (const_decls && cJSON_IsArray(const_decls)) {
+                    cJSON* decl;
+                    cJSON_ArrayForEach(decl, const_decls) {
+                        cJSON* decl_name = cJSON_GetObjectItem(decl, "name");
+                        cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+                        if (decl_name && decl_name->valuestring &&
+                            strcmp(decl_name->valuestring, source_var) == 0 &&
+                            value_type && value_type->valuestring &&
+                            strcmp(value_type->valuestring, "array") == 0) {
+                            is_string_array = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Generate debug print and dynamic list registration wrapper
+            write_indent(ctx);
+            fprintf(ctx->output, "({\n");
+            ctx->indent_level++;
+
+            // Capture parent container for dynamic list registration
+            write_indent(ctx);
+            fprintf(ctx->output, "IRComponent* _for_each_parent = _kryon_get_current_parent();\n");
+
             // Generate FOR_EACH macro call
             write_indent(ctx);
-            fprintf(ctx->output, "FOR_EACH(%s, %s, %s_count,\n",
-                    item_var, source_var, source_var);
+            if (is_string_array) {
+                // Use KryonStringArray struct access
+                fprintf(ctx->output, "FOR_EACH(%s, %s_array.items, %s_array.count,\n",
+                        item_var, source_var, source_var);
+            } else {
+                fprintf(ctx->output, "FOR_EACH(%s, %s, %s_count,\n",
+                        item_var, source_var, source_var);
+            }
 
             ctx->indent_level++;
+
+            // Save and set for-loop context
+            const char* prev_loop_var = ctx->current_loop_var;
+            ctx->current_loop_var = item_var;
 
             // Generate template children as the body
             if (children_obj && cJSON_IsArray(children_obj)) {
@@ -102,10 +420,24 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
                 }
             }
 
+            // Restore for-loop context
+            ctx->current_loop_var = prev_loop_var;
+
             ctx->indent_level--;
             fprintf(ctx->output, "\n");
             write_indent(ctx);
-            fprintf(ctx->output, ")");
+            fprintf(ctx->output, ");\n");
+
+            // Register dynamic list for runtime updates
+            write_indent(ctx);
+            if (is_string_array) {
+                fprintf(ctx->output, "kryon_register_dynamic_list(_for_each_parent, &%s_array, \"- %%s\");\n",
+                        source_var);
+            }
+
+            ctx->indent_level--;
+            write_indent(ctx);
+            fprintf(ctx->output, "(void)0; })");
             return;
         }
     }
@@ -148,8 +480,30 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
         var_name = get_variable_for_component_id(ctx, id_obj->valueint);
     }
 
+    // Check for non-reactive text template (e.g., "- " + todo in a for-loop)
+    // For TEXT components with such templates, we need to wrap with snprintf
+    char nr_format[256] = {0};
+    char nr_var[256] = {0};
+    bool has_nonreactive_text_template = false;
+
+    if (strcmp(type, "Text") == 0) {
+        has_nonreactive_text_template = check_nonreactive_text_template(
+            ctx, component, nr_format, sizeof(nr_format), nr_var, sizeof(nr_var));
+    }
+
     // Write indentation
     write_indent(ctx);
+
+    // For non-reactive text templates, generate snprintf wrapper
+    if (has_nonreactive_text_template) {
+        fprintf(ctx->output, "({\n");
+        ctx->indent_level++;
+        write_indent(ctx);
+        fprintf(ctx->output, "char _fmt_buf[256];\n");
+        write_indent(ctx);
+        fprintf(ctx->output, "snprintf(_fmt_buf, sizeof(_fmt_buf), %s, %s);\n", nr_format, nr_var);
+        write_indent(ctx);
+    }
 
     // Variable assignment if needed
     if (var_name && !is_root) {
@@ -189,7 +543,11 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
     // Output text parameter
     bool has_text = (text_obj && text_obj->valuestring) || (text_expr_obj && text_expr_obj->valuestring);
 
-    if (has_property_binding_bind_text || has_fallback_bind_text) {
+    if (has_nonreactive_text_template) {
+        // Non-reactive loop variable template - use the formatted buffer
+        fprintf(ctx->output, "_fmt_buf");
+        has_text = true;  // Treat as having text for comma handling
+    } else if (has_property_binding_bind_text || has_fallback_bind_text) {
         // Reactive binding - use empty string, actual value comes from signal
         fprintf(ctx->output, "\"\"");
     } else if (text_obj && text_obj->valuestring) {
@@ -216,6 +574,14 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
         }
     }
 
+    // Special handling for Tab: output 'title' as first argument
+    if (strcmp(type, "Tab") == 0) {
+        cJSON* title_obj = cJSON_GetObjectItem(component, "title");
+        const char* title_val = title_obj && title_obj->valuestring ?
+                                title_obj->valuestring : "Tab";
+        fprintf(ctx->output, "\"%s\"", title_val);
+    }
+
     // Check for FULL_SIZE pattern (width=100.0px AND height=100.0px)
     cJSON* width_prop = cJSON_GetObjectItem(component, "width");
     cJSON* height_prop = cJSON_GetObjectItem(component, "height");
@@ -237,7 +603,12 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
             strcmp(key, "TEST_MARKER") != 0 && strcmp(key, "direction") != 0 &&
             strcmp(key, "background") != 0 && strcmp(key, "color") != 0 &&
             strcmp(key, "placeholder") != 0 &&  // Skip placeholder for Dropdown/Input
-            strcmp(key, "checked") != 0) {     // Skip checked for Checkbox
+            strcmp(key, "checked") != 0 &&      // Skip checked for Checkbox
+            strcmp(key, "text_expression") != 0) { // Skip text_expression (handled separately)
+            // Skip property_bindings for non-reactive text templates (handled via snprintf wrapper)
+            if (has_nonreactive_text_template && strcmp(key, "property_bindings") == 0) {
+                continue;
+            }
             has_properties = true;
             break;
         }
@@ -254,15 +625,16 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
 
     bool has_children = (children_obj && cJSON_GetArraySize(children_obj) > 0);
 
-    // Check if this component has a placeholder argument (Dropdown/Input)
+    // Check if this component has a first argument (Dropdown/Input placeholder, Tab title)
     // For Dropdown/Input, we always output a placeholder (even if empty), so check based on type and !has_text
-    bool has_placeholder = (strcmp(type, "Dropdown") == 0 || strcmp(type, "Input") == 0) &&
-                          !has_text;
+    // For Tab, we always output the title
+    bool has_first_arg = ((strcmp(type, "Dropdown") == 0 || strcmp(type, "Input") == 0) && !has_text) ||
+                         (strcmp(type, "Tab") == 0);
 
-    // Add comma after text/placeholder if there are properties or children
-    if ((has_text || has_placeholder) && (has_properties || has_children)) {
+    // Add comma after text/first_arg if there are properties or children
+    if ((has_text || has_first_arg) && (has_properties || has_children)) {
         fprintf(ctx->output, ",\n");
-    } else if (!has_text && !has_placeholder) {
+    } else if (!has_text && !has_first_arg) {
         fprintf(ctx->output, "\n");
     } else if (!has_properties && !has_children) {
         fprintf(ctx->output, "\n");
@@ -338,11 +710,18 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
             if (!has_property_binding) {
                 if (!first_prop) fprintf(ctx->output, ",\n");
                 write_indent(ctx);
-                char* scoped_name = get_scoped_var_name(ctx, text_expr_obj->valuestring);
+
+                // Try to parse as string template first (e.g., "prefix" + varname)
                 char signal_name[256];
-                snprintf(signal_name, sizeof(signal_name), "%s_signal", scoped_name);
-                fprintf(ctx->output, "BIND_TEXT_EXPR(%s)", signal_name);
-                free(scoped_name);
+                char format_str[256];
+                if (parse_string_template_expr(ctx, text_expr_obj->valuestring, signal_name, sizeof(signal_name), format_str, sizeof(format_str))) {
+                    fprintf(ctx->output, "BIND_TEXT_FMT_EXPR(%s, %s)", signal_name, format_str);
+                } else {
+                    // Fallback: transform the expression to replace variable names with signal names
+                    char* transformed_expr = transform_expr_to_signal_refs(ctx, text_expr_obj->valuestring);
+                    fprintf(ctx->output, "BIND_TEXT_EXPR(%s)", transformed_expr);
+                    free(transformed_expr);
+                }
                 first_prop = false;
             }
         }
@@ -467,6 +846,7 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
             strcmp(key, "TEST_MARKER") == 0 || strcmp(key, "direction") == 0 ||
             strcmp(key, "placeholder") == 0 ||  // Skip placeholder for Dropdown/Input (handled as argument)
             strcmp(key, "checked") == 0 ||      // Skip checked for Checkbox (handled as argument)
+            strcmp(key, "title") == 0 ||        // Skip title for Tab (handled as argument)
             strcmp(key, "dropdown_state") == 0 || // Skip dropdown_state (handled separately below)
             strcmp(key, "visible_condition") == 0 ||  // Skip (handled separately for if/else)
             strcmp(key, "visible_when_true") == 0 ||  // Skip (handled separately for if/else)
@@ -476,6 +856,11 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
 
         // Skip width/height if we already generated FULL_SIZE
         if (is_full_size && (strcmp(key, "width") == 0 || strcmp(key, "height") == 0)) {
+            continue;
+        }
+
+        // Skip property_bindings for TEXT with non-reactive text template (already handled via snprintf wrapper)
+        if (has_nonreactive_text_template && strcmp(key, "property_bindings") == 0) {
             continue;
         }
 
@@ -532,6 +917,14 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
     ctx->indent_level--;
     write_indent(ctx);
     fprintf(ctx->output, ")");
+
+    // Close snprintf wrapper if we opened one
+    if (has_nonreactive_text_template) {
+        fprintf(ctx->output, ";\n");
+        ctx->indent_level--;
+        write_indent(ctx);
+        fprintf(ctx->output, "})");
+    }
 
     // Restore previous scope
     ctx->current_scope = prev_scope;
@@ -971,34 +1364,75 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
             cJSON* source_expr = cJSON_GetObjectItem(binding, "source_expr");
             cJSON* binding_type = cJSON_GetObjectItem(binding, "binding_type");
 
-            if (source_expr && source_expr->valuestring &&
-                binding_type && binding_type->valuestring &&
-                strcmp(binding_type->valuestring, "static_template") == 0) {
+            if (!source_expr || !source_expr->valuestring || !binding_type || !binding_type->valuestring) {
+                continue;
+            }
 
+            // Handle two-way bindings (e.g., INPUT value)
+            if (strcmp(binding_type->valuestring, "two_way") == 0) {
                 if (!*first_prop) fprintf(ctx->output, ",\n");
                 write_indent(ctx);
 
-                // Get scoped variable name for the current scope
-                char* scoped_name = get_scoped_var_name(ctx, source_expr->valuestring);
-                char signal_name[256];
-                snprintf(signal_name, sizeof(signal_name), "%s_signal", scoped_name);
+                // Transform variable to signal name
+                char* transformed = transform_expr_to_signal_refs(ctx, source_expr->valuestring);
+                fprintf(ctx->output, "BIND_INPUT_VALUE(%s)", transformed);
+                free(transformed);
+
+                *first_prop = false;
+                printed = true;
+                continue;
+            }
+
+            if (strcmp(binding_type->valuestring, "static_template") == 0) {
 
                 // Generate binding macro call (use _EXPR versions for macro argument context)
                 if (strcmp(prop_name, "text") == 0) {
-                    fprintf(ctx->output, "BIND_TEXT(%s)", signal_name);
-                } else if (strcmp(prop_name, "visible") == 0) {
-                    fprintf(ctx->output, "BIND_VISIBLE_EXPR(%s)", signal_name);
-                } else if (strcmp(prop_name, "background") == 0) {
-                    fprintf(ctx->output, "BIND_BACKGROUND(%s)", signal_name);
-                } else if (strcmp(prop_name, "color") == 0) {
-                    fprintf(ctx->output, "BIND_COLOR(%s)", signal_name);
-                } else if (strcmp(prop_name, "selectedIndex") == 0) {
-                    fprintf(ctx->output, "SELECTED_INDEX(%s)", source_expr->valuestring);
+                    // Try to parse as string template first (e.g., "prefix" + varname)
+                    char var_name[256];
+                    char format_str[256];
+                    bool is_reactive = false;
+                    if (parse_string_template_expr_ex(ctx, source_expr->valuestring, var_name, sizeof(var_name), format_str, sizeof(format_str), &is_reactive)) {
+                        if (is_reactive) {
+                            // Reactive variable - use BIND_TEXT_FMT_EXPR
+                            if (!*first_prop) fprintf(ctx->output, ",\n");
+                            write_indent(ctx);
+                            fprintf(ctx->output, "BIND_TEXT_FMT_EXPR(%s, %s)", var_name, format_str);
+                            *first_prop = false;
+                            printed = true;
+                        } else {
+                            // Non-reactive variable (e.g., for-loop iterator)
+                            // This should be handled by the snprintf wrapper in c_generate_component_recursive
+                            // If we reach here, it means the wrapper wasn't applied - skip to avoid invalid code
+                            // The TEXT content was already set to _fmt_buf by the wrapper
+                            continue;
+                        }
+                    } else {
+                        // Fallback: transform the expression to replace variable names with signal names
+                        if (!*first_prop) fprintf(ctx->output, ",\n");
+                        write_indent(ctx);
+                        char* transformed_expr = transform_expr_to_signal_refs(ctx, source_expr->valuestring);
+                        fprintf(ctx->output, "BIND_TEXT_EXPR(%s)", transformed_expr);
+                        free(transformed_expr);
+                        *first_prop = false;
+                        printed = true;
+                    }
+                    continue;
                 } else {
-                    fprintf(ctx->output, "BIND(%s, %s)", prop_name, scoped_name);
+                    // For non-text bindings, just transform variable names to signal names
+                    char* transformed_expr = transform_expr_to_signal_refs(ctx, source_expr->valuestring);
+                    if (strcmp(prop_name, "visible") == 0) {
+                        fprintf(ctx->output, "BIND_VISIBLE_EXPR(%s)", transformed_expr);
+                    } else if (strcmp(prop_name, "background") == 0) {
+                        fprintf(ctx->output, "BIND_BACKGROUND(%s)", transformed_expr);
+                    } else if (strcmp(prop_name, "color") == 0) {
+                        fprintf(ctx->output, "BIND_COLOR(%s)", transformed_expr);
+                    } else if (strcmp(prop_name, "selectedIndex") == 0) {
+                        fprintf(ctx->output, "SELECTED_INDEX(%s)", transformed_expr);
+                    } else {
+                        fprintf(ctx->output, "BIND(%s, %s)", prop_name, transformed_expr);
+                    }
+                    free(transformed_expr);
                 }
-
-                free(scoped_name);
                 *first_prop = false;
                 printed = true;
             }

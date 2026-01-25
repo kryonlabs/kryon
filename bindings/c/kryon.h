@@ -137,6 +137,13 @@ IRComponent* kryon_tab(const char* title);
 IRComponent* kryon_tab_content(void);
 IRComponent* kryon_tab_panel(void);
 
+/**
+ * Initialize TabGroupState for all TabGroup components in a tree.
+ * Call this after building the UI tree but before rendering.
+ * Sets up internal state needed for tab switching and click handling.
+ */
+void kryon_initialize_tabgroups(IRComponent* root);
+
 // ============================================================================
 // Table Components
 // ============================================================================

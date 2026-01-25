@@ -274,6 +274,37 @@ static bool handle_checked_property(
     return false;
 }
 
+// Handle value property (two-way binding for INPUT components)
+static bool handle_value_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    // Only INPUT components support value binding
+    if (component->type != IR_COMPONENT_INPUT) {
+        return false;
+    }
+
+    bool is_unresolved;
+    const char* resolved = kry_resolve_value_as_string(ctx, value, &is_unresolved);
+
+    if (!resolved) return false;
+
+    if (is_unresolved) {
+        // Create property binding for runtime two-way binding
+        const char* original = (value->type == KRY_VALUE_IDENTIFIER)
+                              ? value->identifier : value->expression;
+        ir_component_add_property_binding(component, name, original, resolved, "two_way");
+
+        // Store expression for runtime tracking (reuse text_expression field)
+        if (component->text_expression) free(component->text_expression);
+        component->text_expression = strdup(original);
+    }
+
+    return true;
+}
+
 // ============================================================================
 // Event Property Handlers
 // ============================================================================
@@ -1021,6 +1052,125 @@ static bool handle_windowHeight_property(
 // Tab Component Property Handlers
 // ============================================================================
 
+// Handle title property (for Tab components)
+static bool handle_tab_title_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx;
+    (void)name;
+
+    // Only handle Tab components
+    if (component->type != IR_COMPONENT_TAB) {
+        return false;
+    }
+
+    if (value->type == KRY_VALUE_STRING) {
+        // Ensure tab_data exists
+        if (!component->tab_data) {
+            component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+        }
+        if (component->tab_data) {
+            if (component->tab_data->title) {
+                free(component->tab_data->title);
+            }
+            component->tab_data->title = strdup(value->string_value);
+        }
+        return true;
+    }
+    return false;
+}
+
+// Handle reorderable property (for TabBar components)
+static bool handle_tab_reorderable_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx;
+    (void)name;
+
+    if (component->type != IR_COMPONENT_TAB_BAR) {
+        return false;
+    }
+
+    bool reorderable_val = false;
+    if (!kry_get_value_as_bool(value, &reorderable_val)) {
+        return false;
+    }
+
+    if (!component->tab_data) {
+        component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+    }
+    if (component->tab_data) {
+        component->tab_data->reorderable = reorderable_val;
+    }
+    return true;
+}
+
+// Handle activeBackground property (for Tab components)
+static bool handle_tab_active_background_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    if (component->type != IR_COMPONENT_TAB) {
+        return false;
+    }
+
+    if (!component->tab_data) {
+        component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+    }
+    if (component->tab_data) {
+        component->tab_data->active_background = kry_parse_color_value(ctx, value, name, component);
+    }
+    return true;
+}
+
+// Handle textColor property (for Tab components)
+static bool handle_tab_text_color_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    if (component->type != IR_COMPONENT_TAB) {
+        return false;
+    }
+
+    if (!component->tab_data) {
+        component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+    }
+    if (component->tab_data) {
+        component->tab_data->text_color = kry_parse_color_value(ctx, value, name, component);
+    }
+    return true;
+}
+
+// Handle activeTextColor property (for Tab components)
+static bool handle_tab_active_text_color_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    if (component->type != IR_COMPONENT_TAB) {
+        return false;
+    }
+
+    if (!component->tab_data) {
+        component->tab_data = (IRTabData*)calloc(1, sizeof(IRTabData));
+    }
+    if (component->tab_data) {
+        component->tab_data->active_text_color = kry_parse_color_value(ctx, value, name, component);
+    }
+    return true;
+}
+
 // Handle selectedIndex property (for TabGroup and Dropdown components)
 static bool handle_selectedIndex_property(
     ConversionContext* ctx,
@@ -1436,6 +1586,7 @@ static const PropertyDispatchEntry property_dispatch_table[] = {
     {"text",             handle_text_property,           false},
     {"label",            handle_label_property,          false},
     {"checked",          handle_checked_property,        false},
+    {"value",            handle_value_property,          false},
 
     // Event properties
     {"onClick",          handle_onClick_property,        false},
@@ -1480,7 +1631,12 @@ static const PropertyDispatchEntry property_dispatch_table[] = {
     {"justifyContent",   handle_justifyContent_property,   false},
 
     // Tab component properties
+    {"title",            handle_tab_title_property,        false},
     {"selectedIndex",    handle_selectedIndex_property,    false},
+    {"reorderable",      handle_tab_reorderable_property,  false},
+    {"activeBackground", handle_tab_active_background_property, false},
+    {"textColor",        handle_tab_text_color_property,   false},
+    {"activeTextColor",  handle_tab_active_text_color_property, false},
 
     // Dropdown component properties
     {"placeholder",      handle_placeholder_property,      false},

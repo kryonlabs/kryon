@@ -15,6 +15,7 @@
 #include "../../ir/include/ir_executor.h"
 #include "../../ir/include/ir_state.h"
 #include "../../ir/include/ir_capability.h"
+#include "../../ir/include/ir_tabgroup.h"
 
 // ============================================================================
 // Internal State
@@ -566,6 +567,69 @@ IRComponent* kryon_tab_content(void) {
 
 IRComponent* kryon_tab_panel(void) {
     return ir_create_component(IR_COMPONENT_TAB_PANEL);
+}
+
+/**
+ * Initialize TabGroupState for a single TabGroup component.
+ * This sets up the internal state needed for tab switching and click handling.
+ */
+static void init_tabgroup_state(IRComponent* tab_group) {
+    if (!tab_group || tab_group->type != IR_COMPONENT_TAB_GROUP) return;
+    if (tab_group->custom_data) return;  // Already initialized
+
+    TabGroupState* state = ir_tabgroup_create_state(tab_group, NULL, NULL, 0, false);
+    if (!state) return;
+
+    tab_group->custom_data = (char*)state;
+
+    // Find and register TabBar, TabContent, Tabs, and Panels
+    for (uint32_t i = 0; i < tab_group->child_count; i++) {
+        IRComponent* child = tab_group->children[i];
+        if (!child) continue;
+
+        if (child->type == IR_COMPONENT_TAB_BAR) {
+            ir_tabgroup_register_bar(state, child);
+            // Apply reorderable from tab_data if present
+            if (child->tab_data && child->tab_data->reorderable) {
+                ir_tabgroup_set_reorderable(state, true);
+            }
+            // Register all Tab children
+            for (uint32_t j = 0; j < child->child_count; j++) {
+                if (child->children[j] && child->children[j]->type == IR_COMPONENT_TAB) {
+                    ir_tabgroup_register_tab(state, child->children[j]);
+                }
+            }
+        } else if (child->type == IR_COMPONENT_TAB_CONTENT) {
+            ir_tabgroup_register_content(state, child);
+            // Register all TabPanel children
+            for (uint32_t j = 0; j < child->child_count; j++) {
+                if (child->children[j] && child->children[j]->type == IR_COMPONENT_TAB_PANEL) {
+                    ir_tabgroup_register_panel(state, child->children[j]);
+                }
+            }
+        }
+    }
+
+    // Finalize state (extract colors, apply initial selection)
+    ir_tabgroup_finalize(state);
+}
+
+/**
+ * Recursively initialize all TabGroups in a component tree.
+ * Call this after building your UI tree but before rendering.
+ */
+void kryon_initialize_tabgroups(IRComponent* root) {
+    if (!root) return;
+
+    // Initialize this component if it's a TabGroup
+    if (root->type == IR_COMPONENT_TAB_GROUP) {
+        init_tabgroup_state(root);
+    }
+
+    // Recursively process children
+    for (uint32_t i = 0; i < root->child_count; i++) {
+        kryon_initialize_tabgroups(root->children[i]);
+    }
 }
 
 // ============================================================================

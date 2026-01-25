@@ -235,60 +235,45 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             }
         }
     } else if (collection->type == KRY_VALUE_IDENTIFIER || collection->type == KRY_VALUE_EXPRESSION) {
-        // Try to resolve the collection from context
+        // For named variables (identifiers), ALWAYS create a runtime ForEach component
+        // This allows arrays to be modified at runtime (e.g., todos.add()) and
+        // have the UI update dynamically when re-rendered
         const char* collection_name = (collection->type == KRY_VALUE_IDENTIFIER)
             ? collection->identifier
             : collection->expression;
 
-        // Look up the variable in context
-        bool resolved = false;
-        for (int i = 0; i < ctx->param_count; i++) {
-            if (strcmp(ctx->params[i].name, collection_name) == 0) {
-                // Found the variable - check if it's a KryValue
-                if (ctx->params[i].kry_value != NULL) {
-                    // Recursively call expand_for_loop with the resolved KryValue
-                    KryNode temp_for_node = *for_node;
-                    temp_for_node.value = ctx->params[i].kry_value;
-                    expand_for_loop(ctx, parent, &temp_for_node);
-                    resolved = true;
-                }
-                break;
-            }
-        }
+        // Create ForEach component for runtime iteration
+        IRComponent* for_each_comp = ir_create_component(IR_COMPONENT_FOR_EACH);
+        if (for_each_comp) {
+            // Create ForEach definition
+            struct IRForEachDef* def = ir_foreach_def_create(iter_name, "index");
+            if (def) {
+                // Set data source
+                ir_foreach_set_source_variable(def, collection_name);
 
-        // If collection couldn't be resolved at compile time, create a runtime ForEach component
-        if (!resolved) {
-            // Create ForEach component for runtime iteration
-            IRComponent* for_each_comp = ir_create_component(IR_COMPONENT_FOR_EACH);
-            if (for_each_comp) {
-                // Create ForEach definition
-                struct IRForEachDef* def = ir_foreach_def_create(iter_name, "index");
-                if (def) {
-                    // Set data source
-                    ir_foreach_set_source_variable(def, collection_name);
+                // Convert the loop body template
+                if (for_node->first_child && for_node->first_child->type == KRY_NODE_COMPONENT) {
+                    KryNode* template_node = for_node->first_child;
 
-                    // Convert the loop body template
-                    if (for_node->first_child && for_node->first_child->type == KRY_NODE_COMPONENT) {
-                        KryNode* template_node = for_node->first_child;
+                    // Create a child conversion context without parameter substitution
+                    // Keep the iterator variable name so template can reference it
+                    ConversionContext template_ctx = *ctx;
+                    // Don't clear params - we want to preserve the iterator reference
+                    // The template should use the iterator variable name (e.g., "todo")
 
-                        // Create a child conversion context without parameter substitution
-                        ConversionContext template_ctx = *ctx;
-                        template_ctx.param_count = 0;  // Clear params for template
-
-                        IRComponent* template_comp = convert_node(&template_ctx, template_node);
-                        if (template_comp) {
-                            ir_foreach_set_template(def, template_comp);
-                            // Add template as child[0] for serialization
-                            ir_add_child(for_each_comp, template_comp);
-                        }
+                    IRComponent* template_comp = convert_node(&template_ctx, template_node);
+                    if (template_comp) {
+                        ir_foreach_set_template(def, template_comp);
+                        // Add template as child[0] for serialization
+                        ir_add_child(for_each_comp, template_comp);
                     }
-
-                    // Attach foreach_def to the component
-                    for_each_comp->foreach_def = def;
                 }
 
-                ir_add_child(parent, for_each_comp);
+                // Attach foreach_def to the component
+                for_each_comp->foreach_def = def;
             }
+
+            ir_add_child(parent, for_each_comp);
         }
         return;
     } else if (collection->type == KRY_VALUE_RANGE) {
@@ -2353,7 +2338,10 @@ static char* ir_kry_to_kir_internal_ex(const char* source, size_t length, const 
                 // Store the variable in ctx->params so for-loop expansion can access it
                 if (ctx.param_count < MAX_PARAMS && var_node->value) {
                     ctx.params[ctx.param_count].name = (char*)var_name;
-                    ctx.params[ctx.param_count].value = NULL;  // String representation
+                    // For typed variables (reactive state), add self-reference so
+                    // is_unresolved_expr() returns true and creates two-way bindings
+                    bool is_reactive_var = (var_node->var_type != NULL);
+                    ctx.params[ctx.param_count].value = is_reactive_var ? (char*)var_name : NULL;
                     ctx.params[ctx.param_count].kry_value = var_node->value;  // Original KryValue
                     ctx.param_count++;
                 }

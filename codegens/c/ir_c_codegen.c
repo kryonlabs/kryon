@@ -65,6 +65,26 @@
 // Header Generation
 // ============================================================================
 
+// Helper to check if the KIR has any array variables
+static bool has_array_variables(CCodegenContext* ctx) {
+    if (!ctx || !ctx->root_json) return false;
+
+    cJSON* source_structures = cJSON_GetObjectItem(ctx->root_json, "source_structures");
+    if (!source_structures) return false;
+
+    cJSON* const_decls = cJSON_GetObjectItem(source_structures, "const_declarations");
+    if (!const_decls || !cJSON_IsArray(const_decls)) return false;
+
+    cJSON* decl;
+    cJSON_ArrayForEach(decl, const_decls) {
+        cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+        if (value_type && value_type->valuestring && strcmp(value_type->valuestring, "array") == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void generate_includes(CCodegenContext* ctx) {
     fprintf(ctx->output, "/**\n");
     fprintf(ctx->output, " * Auto-generated C code from .kir file\n");
@@ -73,6 +93,7 @@ void generate_includes(CCodegenContext* ctx) {
 
     // Check if we need reactive includes
     bool needs_reactive = ctx->has_reactive_state;
+    bool needs_arrays = has_array_variables(ctx);
 
     // Generate includes from metadata
     if (ctx->includes && cJSON_IsArray(ctx->includes)) {
@@ -94,6 +115,12 @@ void generate_includes(CCodegenContext* ctx) {
         }
         fprintf(ctx->output, "#include <stdio.h>\n");
         fprintf(ctx->output, "#include <stdbool.h>\n");
+    }
+
+    // Add stdlib.h and string.h for array support (malloc, strdup)
+    if (needs_arrays) {
+        fprintf(ctx->output, "#include <stdlib.h>\n");
+        fprintf(ctx->output, "#include <string.h>\n");
     }
 
     // ALWAYS add reactive headers if needed (even if metadata has includes)
@@ -368,8 +395,660 @@ void generate_event_handlers(CCodegenContext* ctx) {
 }
 
 // ============================================================================
+// Array Declarations and Helper Functions
+// ============================================================================
+
+/**
+ * Generate array declarations from source_structures.const_declarations
+ * Also generates helper array manipulation functions
+ */
+void generate_array_declarations(CCodegenContext* ctx) {
+    if (!ctx || !ctx->root_json) return;
+
+    cJSON* source_structures = cJSON_GetObjectItem(ctx->root_json, "source_structures");
+    if (!source_structures) return;
+
+    cJSON* const_decls = cJSON_GetObjectItem(source_structures, "const_declarations");
+    if (!const_decls || !cJSON_IsArray(const_decls)) return;
+
+    // Check if we have any arrays
+    bool has_arrays = false;
+    cJSON* decl;
+    cJSON_ArrayForEach(decl, const_decls) {
+        cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+        if (value_type && value_type->valuestring && strcmp(value_type->valuestring, "array") == 0) {
+            has_arrays = true;
+            break;
+        }
+    }
+
+    if (!has_arrays) return;
+
+    // Generate array type definition and helper macros
+    fprintf(ctx->output, "// ============================================================================\n");
+    fprintf(ctx->output, "// Dynamic Array Support\n");
+    fprintf(ctx->output, "// ============================================================================\n\n");
+
+    fprintf(ctx->output, "#define KRYON_ARRAY_INITIAL_CAPACITY 16\n\n");
+
+    fprintf(ctx->output, "typedef struct {\n");
+    fprintf(ctx->output, "    char** items;\n");
+    fprintf(ctx->output, "    size_t count;\n");
+    fprintf(ctx->output, "    size_t capacity;\n");
+    fprintf(ctx->output, "} KryonStringArray;\n\n");
+
+    // Generate array helper functions
+    fprintf(ctx->output, "static void kryon_array_init(KryonStringArray* arr) {\n");
+    fprintf(ctx->output, "    arr->items = malloc(sizeof(char*) * KRYON_ARRAY_INITIAL_CAPACITY);\n");
+    fprintf(ctx->output, "    arr->count = 0;\n");
+    fprintf(ctx->output, "    arr->capacity = KRYON_ARRAY_INITIAL_CAPACITY;\n");
+    fprintf(ctx->output, "}\n\n");
+
+    fprintf(ctx->output, "static void kryon_array_push_string(KryonStringArray* arr, const char* str) {\n");
+    fprintf(ctx->output, "    if (arr->count >= arr->capacity) {\n");
+    fprintf(ctx->output, "        arr->capacity *= 2;\n");
+    fprintf(ctx->output, "        arr->items = realloc(arr->items, sizeof(char*) * arr->capacity);\n");
+    fprintf(ctx->output, "    }\n");
+    fprintf(ctx->output, "    arr->items[arr->count++] = strdup(str);\n");
+    fprintf(ctx->output, "}\n\n");
+
+    fprintf(ctx->output, "static void kryon_array_free(KryonStringArray* arr) {\n");
+    fprintf(ctx->output, "    for (size_t i = 0; i < arr->count; i++) {\n");
+    fprintf(ctx->output, "        free(arr->items[i]);\n");
+    fprintf(ctx->output, "    }\n");
+    fprintf(ctx->output, "    free(arr->items);\n");
+    fprintf(ctx->output, "    arr->items = NULL;\n");
+    fprintf(ctx->output, "    arr->count = 0;\n");
+    fprintf(ctx->output, "    arr->capacity = 0;\n");
+    fprintf(ctx->output, "}\n\n");
+
+    // Generate dynamic list container tracking
+    fprintf(ctx->output, "// Dynamic list support - tracks FOR_EACH containers for runtime updates\n");
+    fprintf(ctx->output, "typedef struct {\n");
+    fprintf(ctx->output, "    IRComponent* container;      // Parent component containing list items\n");
+    fprintf(ctx->output, "    KryonStringArray* array;     // Pointer to source array\n");
+    fprintf(ctx->output, "    size_t rendered_count;       // Number of items currently rendered\n");
+    fprintf(ctx->output, "    const char* format_str;      // Format string for text (e.g., \"- %%s\")\n");
+    fprintf(ctx->output, "} KryonDynamicList;\n\n");
+
+    fprintf(ctx->output, "#define MAX_DYNAMIC_LISTS 8\n");
+    fprintf(ctx->output, "static KryonDynamicList _dynamic_lists[MAX_DYNAMIC_LISTS];\n");
+    fprintf(ctx->output, "static int _dynamic_list_count = 0;\n\n");
+
+    fprintf(ctx->output, "static void kryon_register_dynamic_list(IRComponent* container, KryonStringArray* array, const char* format) {\n");
+    fprintf(ctx->output, "    if (_dynamic_list_count >= MAX_DYNAMIC_LISTS) return;\n");
+    fprintf(ctx->output, "    _dynamic_lists[_dynamic_list_count].container = container;\n");
+    fprintf(ctx->output, "    _dynamic_lists[_dynamic_list_count].array = array;\n");
+    fprintf(ctx->output, "    _dynamic_lists[_dynamic_list_count].rendered_count = array->count;\n");
+    fprintf(ctx->output, "    _dynamic_lists[_dynamic_list_count].format_str = format;\n");
+    fprintf(ctx->output, "    _dynamic_list_count++;\n");
+    fprintf(ctx->output, "}\n\n");
+
+    fprintf(ctx->output, "// Update dynamic lists - adds new items to FOR_EACH containers\n");
+    fprintf(ctx->output, "static void kryon_update_dynamic_lists(void) {\n");
+    fprintf(ctx->output, "    for (int i = 0; i < _dynamic_list_count; i++) {\n");
+    fprintf(ctx->output, "        KryonDynamicList* list = &_dynamic_lists[i];\n");
+    fprintf(ctx->output, "        if (!list->container || !list->array) continue;\n");
+    fprintf(ctx->output, "        \n");
+    fprintf(ctx->output, "        // Check if new items were added\n");
+    fprintf(ctx->output, "        while (list->rendered_count < list->array->count) {\n");
+    fprintf(ctx->output, "            const char* item = list->array->items[list->rendered_count];\n");
+    fprintf(ctx->output, "            \n");
+    fprintf(ctx->output, "            // Create new TEXT component\n");
+    fprintf(ctx->output, "            char buf[256];\n");
+    fprintf(ctx->output, "            snprintf(buf, sizeof(buf), list->format_str, item);\n");
+    fprintf(ctx->output, "            IRComponent* text = kryon_text(buf);\n");
+    fprintf(ctx->output, "            kryon_set_font_size(text, 16);\n");
+    fprintf(ctx->output, "            kryon_set_color(text, 0x333333);\n");
+    fprintf(ctx->output, "            \n");
+    fprintf(ctx->output, "            // Add to container\n");
+    fprintf(ctx->output, "            kryon_add_child(list->container, text);\n");
+    fprintf(ctx->output, "            \n");
+    fprintf(ctx->output, "            list->rendered_count++;\n");
+    fprintf(ctx->output, "        }\n");
+    fprintf(ctx->output, "    }\n");
+    fprintf(ctx->output, "}\n\n");
+
+    fprintf(ctx->output, "// UI update request - updates dynamic lists\n");
+    fprintf(ctx->output, "static void kryon_request_rerender(void) {\n");
+    fprintf(ctx->output, "    kryon_update_dynamic_lists();\n");
+    fprintf(ctx->output, "}\n\n");
+
+    // Generate TEXT_FMT helper for formatted strings in for-loops
+    fprintf(ctx->output, "// Helper for formatted text in for-loops\n");
+    fprintf(ctx->output, "static char _kryon_text_fmt_buf[512];\n");
+    fprintf(ctx->output, "#define TEXT_FMT(fmt, val, ...) \\\n");
+    fprintf(ctx->output, "    (snprintf(_kryon_text_fmt_buf, sizeof(_kryon_text_fmt_buf), fmt, val), \\\n");
+    fprintf(ctx->output, "     TEXT(_kryon_text_fmt_buf, ##__VA_ARGS__))\n\n");
+
+    // Generate TEXT_ITEM helper for use inside component property lists
+    // This is used when a text template uses a for-loop iterator variable
+    fprintf(ctx->output, "#define TEXT_ITEM(fmt, val) \\\n");
+    fprintf(ctx->output, "    (snprintf(_kryon_text_fmt_buf, sizeof(_kryon_text_fmt_buf), fmt, val), \\\n");
+    fprintf(ctx->output, "     _kryon_set_component_text(_comp, _kryon_text_fmt_buf), (void)0)\n\n");
+
+    // Generate array variable declarations
+    fprintf(ctx->output, "// Array variables\n");
+    cJSON_ArrayForEach(decl, const_decls) {
+        cJSON* name = cJSON_GetObjectItem(decl, "name");
+        cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+        cJSON* value_json = cJSON_GetObjectItem(decl, "value_json");
+
+        if (!name || !name->valuestring) continue;
+        if (!value_type || !value_type->valuestring || strcmp(value_type->valuestring, "array") != 0) continue;
+
+        // Declare the array
+        fprintf(ctx->output, "KryonStringArray %s_array;\n", name->valuestring);
+    }
+    fprintf(ctx->output, "\n");
+
+    // Generate array initialization function
+    fprintf(ctx->output, "static void kryon_init_arrays(void) {\n");
+    cJSON_ArrayForEach(decl, const_decls) {
+        cJSON* name = cJSON_GetObjectItem(decl, "name");
+        cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+        cJSON* value_json = cJSON_GetObjectItem(decl, "value_json");
+
+        if (!name || !name->valuestring) continue;
+        if (!value_type || !value_type->valuestring || strcmp(value_type->valuestring, "array") != 0) continue;
+
+        fprintf(ctx->output, "    kryon_array_init(&%s_array);\n", name->valuestring);
+
+        // Parse initial values from value_json (e.g., "[\"item1\", \"item2\"]")
+        if (value_json && value_json->valuestring) {
+            cJSON* initial_array = cJSON_Parse(value_json->valuestring);
+            if (initial_array && cJSON_IsArray(initial_array)) {
+                cJSON* item;
+                cJSON_ArrayForEach(item, initial_array) {
+                    if (cJSON_IsString(item)) {
+                        // Escape quotes in string
+                        fprintf(ctx->output, "    kryon_array_push_string(&%s_array, \"%s\");\n",
+                                name->valuestring, item->valuestring);
+                    }
+                }
+                cJSON_Delete(initial_array);
+            }
+        }
+    }
+    fprintf(ctx->output, "}\n\n");
+
+    // Generate array cleanup function
+    fprintf(ctx->output, "static void kryon_cleanup_arrays(void) {\n");
+    cJSON_ArrayForEach(decl, const_decls) {
+        cJSON* name = cJSON_GetObjectItem(decl, "name");
+        cJSON* value_type = cJSON_GetObjectItem(decl, "value_type");
+
+        if (!name || !name->valuestring) continue;
+        if (!value_type || !value_type->valuestring || strcmp(value_type->valuestring, "array") != 0) continue;
+
+        fprintf(ctx->output, "    kryon_array_free(&%s_array);\n", name->valuestring);
+    }
+    fprintf(ctx->output, "}\n\n");
+}
+
+// ============================================================================
 // KRY Event Handler Transpilation
 // ============================================================================
+
+// Statement types for KRY parser
+typedef enum {
+    KRY_STMT_UNKNOWN,
+    KRY_STMT_METHOD_CALL,     // object.method(args)
+    KRY_STMT_ASSIGNMENT,      // variable = value
+    KRY_STMT_COMPOUND_ASSIGN, // variable += value, variable -= value
+    KRY_STMT_BOOL_TOGGLE      // variable = !variable
+} KryStmtType;
+
+typedef struct {
+    KryStmtType type;
+    char object[128];     // For method calls: the object (e.g., "todos")
+    char method[64];      // For method calls: the method (e.g., "add")
+    char args[256];       // For method calls: the arguments (e.g., "newTodo")
+    char target[128];     // For assignments: the target variable
+    char value[256];      // For assignments: the value
+    char op[4];           // For compound assignments: the operator (+= / -=)
+    int delta;            // For compound assignments: the numeric delta
+} KryParsedStmt;
+
+/**
+ * Skip whitespace in a string
+ */
+static const char* skip_whitespace(const char* s) {
+    while (*s && (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')) {
+        s++;
+    }
+    return s;
+}
+
+/**
+ * Parse an identifier (variable name, method name)
+ * Returns pointer to character after identifier, or NULL on failure
+ */
+static const char* parse_identifier(const char* s, char* out, size_t out_size) {
+    s = skip_whitespace(s);
+    size_t len = 0;
+
+    // First char must be letter or underscore
+    if (!*s || !((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') || *s == '_')) {
+        return NULL;
+    }
+
+    while (*s && ((*s >= 'a' && *s <= 'z') || (*s >= 'A' && *s <= 'Z') ||
+                  (*s >= '0' && *s <= '9') || *s == '_')) {
+        if (len < out_size - 1) {
+            out[len++] = *s;
+        }
+        s++;
+    }
+    out[len] = '\0';
+    return s;
+}
+
+/**
+ * Parse a string literal (including quotes)
+ * Returns pointer to character after closing quote, or NULL on failure
+ */
+static const char* parse_string_literal(const char* s, char* out, size_t out_size) {
+    s = skip_whitespace(s);
+    if (*s != '"') return NULL;
+
+    size_t len = 0;
+    out[len++] = *s++; // Opening quote
+
+    while (*s && *s != '"') {
+        if (*s == '\\' && s[1]) {
+            // Handle escape sequences
+            if (len < out_size - 2) {
+                out[len++] = *s++;
+                out[len++] = *s++;
+            } else {
+                s += 2;
+            }
+        } else {
+            if (len < out_size - 1) {
+                out[len++] = *s;
+            }
+            s++;
+        }
+    }
+
+    if (*s == '"') {
+        if (len < out_size - 1) {
+            out[len++] = *s;
+        }
+        s++;
+    }
+    out[len] = '\0';
+    return s;
+}
+
+/**
+ * Parse a simple value (identifier or string literal)
+ * Returns pointer to character after value, or NULL on failure
+ */
+static const char* parse_value(const char* s, char* out, size_t out_size) {
+    s = skip_whitespace(s);
+    if (*s == '"') {
+        return parse_string_literal(s, out, out_size);
+    } else {
+        return parse_identifier(s, out, out_size);
+    }
+}
+
+/**
+ * Parse a single KRY statement
+ * Returns true if parsed successfully
+ */
+static bool parse_kry_statement(const char* stmt, KryParsedStmt* out) {
+    if (!stmt || !out) return false;
+
+    memset(out, 0, sizeof(*out));
+    out->type = KRY_STMT_UNKNOWN;
+
+    const char* p = skip_whitespace(stmt);
+    if (!*p || *p == '}') return false; // Empty or closing brace
+
+    // Parse the first identifier
+    char first_ident[128] = {0};
+    const char* after_first = parse_identifier(p, first_ident, sizeof(first_ident));
+    if (!after_first) return false;
+
+    const char* after_ws = skip_whitespace(after_first);
+
+    // Check what follows the first identifier
+    if (*after_ws == '.') {
+        // Method call: object.method(args)
+        after_ws++; // Skip '.'
+
+        char method[64] = {0};
+        const char* after_method = parse_identifier(after_ws, method, sizeof(method));
+        if (!after_method) return false;
+
+        after_ws = skip_whitespace(after_method);
+        if (*after_ws != '(') return false;
+        after_ws++; // Skip '('
+
+        // Parse arguments (for now, just capture until closing paren)
+        char args[256] = {0};
+        size_t arg_len = 0;
+        int paren_depth = 1;
+
+        while (*after_ws && paren_depth > 0) {
+            if (*after_ws == '(') paren_depth++;
+            else if (*after_ws == ')') paren_depth--;
+
+            if (paren_depth > 0 && arg_len < sizeof(args) - 1) {
+                args[arg_len++] = *after_ws;
+            }
+            after_ws++;
+        }
+        args[arg_len] = '\0';
+
+        // Trim whitespace from args
+        while (arg_len > 0 && (args[arg_len-1] == ' ' || args[arg_len-1] == '\t')) {
+            args[--arg_len] = '\0';
+        }
+
+        out->type = KRY_STMT_METHOD_CALL;
+        strncpy(out->object, first_ident, sizeof(out->object) - 1);
+        strncpy(out->method, method, sizeof(out->method) - 1);
+        strncpy(out->args, args, sizeof(out->args) - 1);
+        return true;
+
+    } else if (*after_ws == '+' && after_ws[1] == '=') {
+        // Compound assignment: variable += value
+        after_ws += 2; // Skip '+='
+
+        char value[256] = {0};
+        const char* after_val = parse_value(after_ws, value, sizeof(value));
+        if (!after_val) return false;
+
+        out->type = KRY_STMT_COMPOUND_ASSIGN;
+        strncpy(out->target, first_ident, sizeof(out->target) - 1);
+        strcpy(out->op, "+=");
+        out->delta = atoi(value);
+        return true;
+
+    } else if (*after_ws == '-' && after_ws[1] == '=') {
+        // Compound assignment: variable -= value
+        after_ws += 2; // Skip '-='
+
+        char value[256] = {0};
+        const char* after_val = parse_value(after_ws, value, sizeof(value));
+        if (!after_val) return false;
+
+        out->type = KRY_STMT_COMPOUND_ASSIGN;
+        strncpy(out->target, first_ident, sizeof(out->target) - 1);
+        strcpy(out->op, "-=");
+        out->delta = atoi(value);
+        return true;
+
+    } else if (*after_ws == '=') {
+        // Assignment or boolean toggle
+        after_ws++; // Skip '='
+        after_ws = skip_whitespace(after_ws);
+
+        // Save position for regular assignment parsing
+        const char* value_start = after_ws;
+
+        // Check for boolean toggle: variable = !variable
+        if (*after_ws == '!') {
+            const char* after_bang = after_ws + 1; // Skip '!'
+            char negated[128] = {0};
+            parse_identifier(after_bang, negated, sizeof(negated));
+
+            if (strcmp(first_ident, negated) == 0) {
+                out->type = KRY_STMT_BOOL_TOGGLE;
+                strncpy(out->target, first_ident, sizeof(out->target) - 1);
+                return true;
+            }
+            // Not a toggle, fall through to regular assignment
+        }
+
+        // Regular assignment - parse value from saved position
+        char value[256] = {0};
+        const char* after_val = parse_value(value_start, value, sizeof(value));
+        if (!after_val) {
+            // parse_value failed, try parsing as raw expression
+            size_t val_len = 0;
+            const char* p = value_start;
+            while (*p && *p != '\n' && *p != ';' && *p != '}') {
+                if (val_len < sizeof(value) - 1) {
+                    value[val_len++] = *p;
+                }
+                p++;
+            }
+            value[val_len] = '\0';
+            // Trim trailing whitespace
+            while (val_len > 0 && (value[val_len-1] == ' ' || value[val_len-1] == '\t')) {
+                value[--val_len] = '\0';
+            }
+        }
+
+        out->type = KRY_STMT_ASSIGNMENT;
+        strncpy(out->target, first_ident, sizeof(out->target) - 1);
+        strncpy(out->value, value, sizeof(out->value) - 1);
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Check if a variable is an array (from source_structures.const_declarations)
+ */
+static bool is_array_variable(CCodegenContext* ctx, const char* name) {
+    if (!ctx || !ctx->root_json || !name) return false;
+
+    cJSON* source_structures = cJSON_GetObjectItem(ctx->root_json, "source_structures");
+    if (!source_structures) return false;
+
+    cJSON* const_decls = cJSON_GetObjectItem(source_structures, "const_declarations");
+    if (!const_decls || !cJSON_IsArray(const_decls)) return false;
+
+    cJSON* decl;
+    cJSON_ArrayForEach(decl, const_decls) {
+        cJSON* decl_name = cJSON_GetObjectItem(decl, "name");
+        cJSON* decl_type = cJSON_GetObjectItem(decl, "value_type");
+
+        if (decl_name && decl_name->valuestring &&
+            strcmp(decl_name->valuestring, name) == 0 &&
+            decl_type && decl_type->valuestring &&
+            strcmp(decl_type->valuestring, "array") == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Get the type of a reactive variable
+ * Returns NULL if not found
+ */
+static const char* get_reactive_var_type(CCodegenContext* ctx, const char* name) {
+    if (!ctx || !ctx->reactive_vars || !name) return NULL;
+
+    cJSON* var;
+    cJSON_ArrayForEach(var, ctx->reactive_vars) {
+        cJSON* var_name = cJSON_GetObjectItem(var, "name");
+        cJSON* var_type = cJSON_GetObjectItem(var, "type");
+
+        if (var_name && var_name->valuestring &&
+            strcmp(var_name->valuestring, name) == 0 &&
+            var_type && var_type->valuestring) {
+            return var_type->valuestring;
+        }
+    }
+    return NULL;
+}
+
+/**
+ * Transpile a KRY method call to C code
+ * Handles: array.add(value) → kryon_array_push_*(array_name, value)
+ */
+static void transpile_kry_method_call_to_c(CCodegenContext* ctx, KryParsedStmt* stmt) {
+    if (!ctx || !stmt) return;
+
+    const char* object = stmt->object;
+    const char* method = stmt->method;
+    const char* args = stmt->args;
+
+    // Check if object is an array
+    if (is_array_variable(ctx, object)) {
+        if (strcmp(method, "add") == 0 || strcmp(method, "push") == 0) {
+            // array.add(value) → kryon_array_push_string(array_name, value)
+            // Check if arg is a reactive variable
+            const char* arg_type = get_reactive_var_type(ctx, args);
+
+            if (arg_type && strcmp(arg_type, "string") == 0) {
+                // Get the signal value first
+                fprintf(ctx->output, "    const char* _new_item = kryon_signal_get_string(%s_global_signal);\n", args);
+                fprintf(ctx->output, "    kryon_array_push_string(&%s_array, _new_item);\n", object);
+            } else if (arg_type) {
+                // Other reactive types - get as string
+                fprintf(ctx->output, "    kryon_array_push_string(&%s_array, kryon_signal_get_string(%s_global_signal));\n", object, args);
+            } else {
+                // Literal or unknown - pass directly
+                fprintf(ctx->output, "    kryon_array_push_string(&%s_array, %s);\n", object, args);
+            }
+            return;
+        }
+    }
+
+    // Fallback: generate generic method call comment
+    fprintf(ctx->output, "    // TODO: %s.%s(%s)\n", object, method, args);
+}
+
+/**
+ * Transpile a KRY assignment to C code
+ * Handles: variable = value → kryon_signal_set_*(signal, value)
+ */
+static void transpile_kry_assignment_to_c(CCodegenContext* ctx, KryParsedStmt* stmt) {
+    if (!ctx || !stmt) return;
+
+    const char* target = stmt->target;
+    const char* value = stmt->value;
+
+    // Check if target is a reactive variable
+    const char* var_type = get_reactive_var_type(ctx, target);
+
+    if (var_type) {
+        if (strcmp(var_type, "string") == 0) {
+            // String assignment: kryon_signal_set_string(signal, value)
+            // Value might be a string literal with quotes or a variable
+            fprintf(ctx->output, "    kryon_signal_set_string(%s_global_signal, %s);\n", target, value);
+        } else if (strcmp(var_type, "bool") == 0 || strcmp(var_type, "boolean") == 0) {
+            fprintf(ctx->output, "    kryon_signal_set_bool(%s_global_signal, %s);\n", target, value);
+        } else {
+            // Numeric assignment
+            fprintf(ctx->output, "    kryon_signal_set(%s_global_signal, %s);\n", target, value);
+        }
+    } else {
+        // Non-reactive variable - direct assignment
+        fprintf(ctx->output, "    %s = %s;\n", target, value);
+    }
+}
+
+/**
+ * Transpile multiple KRY statements to C code
+ * Parses the source and generates C code for each statement
+ */
+static bool transpile_kry_statements_to_c(CCodegenContext* ctx, const char* kry_source, const char* handler_name) {
+    if (!ctx || !kry_source || !handler_name) return false;
+
+    // Generate function header
+    fprintf(ctx->output, "void %s(void) {\n", handler_name);
+
+    // Parse and process each statement
+    // Statements are separated by newlines or semicolons
+    const char* p = kry_source;
+    bool any_statement = false;
+
+    while (*p) {
+        // Skip whitespace and statement separators
+        while (*p && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == ';')) {
+            p++;
+        }
+
+        if (!*p || *p == '}') break;
+
+        // Find end of statement (newline, semicolon, or closing brace)
+        const char* end = p;
+        while (*end && *end != '\n' && *end != ';' && *end != '}') {
+            end++;
+        }
+
+        if (end > p) {
+            // Extract statement
+            size_t stmt_len = end - p;
+            char* stmt_str = malloc(stmt_len + 1);
+            if (stmt_str) {
+                strncpy(stmt_str, p, stmt_len);
+                stmt_str[stmt_len] = '\0';
+
+                // Parse and transpile the statement
+                KryParsedStmt parsed;
+                if (parse_kry_statement(stmt_str, &parsed)) {
+                    any_statement = true;
+
+                    switch (parsed.type) {
+                        case KRY_STMT_METHOD_CALL:
+                            transpile_kry_method_call_to_c(ctx, &parsed);
+                            break;
+
+                        case KRY_STMT_ASSIGNMENT:
+                            transpile_kry_assignment_to_c(ctx, &parsed);
+                            break;
+
+                        case KRY_STMT_COMPOUND_ASSIGN: {
+                            // Handle += and -=
+                            const char* var_type = get_reactive_var_type(ctx, parsed.target);
+                            if (var_type) {
+                                fprintf(ctx->output, "    int _current = kryon_signal_get(%s_global_signal);\n", parsed.target);
+                                if (strcmp(parsed.op, "+=") == 0) {
+                                    fprintf(ctx->output, "    kryon_signal_set(%s_global_signal, _current + %d);\n", parsed.target, parsed.delta);
+                                } else {
+                                    fprintf(ctx->output, "    kryon_signal_set(%s_global_signal, _current - %d);\n", parsed.target, parsed.delta);
+                                }
+                            } else {
+                                fprintf(ctx->output, "    %s %s %d;\n", parsed.target, parsed.op, parsed.delta);
+                            }
+                            break;
+                        }
+
+                        case KRY_STMT_BOOL_TOGGLE: {
+                            const char* var_type = get_reactive_var_type(ctx, parsed.target);
+                            if (var_type && (strcmp(var_type, "bool") == 0 || strcmp(var_type, "boolean") == 0)) {
+                                fprintf(ctx->output, "    bool _current = kryon_signal_get_bool(%s_global_signal);\n", parsed.target);
+                                fprintf(ctx->output, "    kryon_signal_set_bool(%s_global_signal, !_current);\n", parsed.target);
+                            } else {
+                                fprintf(ctx->output, "    %s = !%s;\n", parsed.target, parsed.target);
+                            }
+                            break;
+                        }
+
+                        default:
+                            fprintf(ctx->output, "    // TODO: %s\n", stmt_str);
+                            break;
+                    }
+                }
+
+                free(stmt_str);
+            }
+        }
+
+        p = end;
+    }
+
+    // Add rerender call if any statements were processed
+    if (any_statement) {
+        fprintf(ctx->output, "\n    // Trigger UI update\n");
+        fprintf(ctx->output, "    kryon_request_rerender();\n");
+    }
+
+    fprintf(ctx->output, "}\n\n");
+    return any_statement;
+}
 
 /**
  * Transpile a KRY expression to C code
@@ -588,7 +1267,12 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
         }
 
         if (!parsed) {
-            // Fallback: generate stub handler with multiline comment
+            // Try the new multi-statement parser
+            if (transpile_kry_statements_to_c(ctx, kry_source, name->valuestring)) {
+                continue;  // Successfully transpiled
+            }
+
+            // Final fallback: generate stub handler with multiline comment
             fprintf(ctx->output, "void %s(void) {\n", name->valuestring);
             fprintf(ctx->output, "    /* TODO: Transpile expression:\n");
             // Output each line of source as a comment

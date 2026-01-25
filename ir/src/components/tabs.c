@@ -185,11 +185,21 @@ void layout_tab_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         padding_horizontal = c->style->padding.left + c->style->padding.right;
     }
 
-    // Compute intrinsic width based on text content
+    // Compute intrinsic width based on text content or tab_data->title
     float intrinsic_width = 80.0f; // Default minimum
-    if (c->text_content) {
-        // Rough text width estimate
-        intrinsic_width = strlen(c->text_content) * font_size * 0.6f + padding_horizontal;
+    const char* tab_text = NULL;
+
+    // Check tab_data->title first (from KIR deserialization), then text_content
+    if (c->tab_data && c->tab_data->title) {
+        tab_text = c->tab_data->title;
+    } else if (c->text_content) {
+        tab_text = c->text_content;
+    }
+
+    if (tab_text) {
+        // Improved text width estimate with proper padding for clickability
+        float measured_width = strlen(tab_text) * font_size * 0.55f;
+        intrinsic_width = measured_width + padding_horizontal + 24.0f; // Extra padding for clickability
     }
 
     float tab_width = intrinsic_width;
