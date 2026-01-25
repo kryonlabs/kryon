@@ -64,4 +64,15 @@ void free_build_plugins(BuildPluginInfo* plugins, int count);
  */
 int write_plugin_code_files(BuildPluginInfo* plugins, int count, const char* build_dir);
 
+/**
+ * Write plugin manifest to build directory for codegen consumption
+ * Creates build/plugins.txt with one plugin name per line
+ *
+ * @param plugins    Array of plugin info (created by discover_build_plugins)
+ * @param count      Number of plugins
+ * @param build_dir  Build output directory (e.g., "build")
+ * @return 0 on success, -1 on error
+ */
+int write_plugin_manifest(BuildPluginInfo* plugins, int count, const char* build_dir);
+
 #endif /* PLUGIN_DISCOVERY_H */

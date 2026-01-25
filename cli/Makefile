@@ -251,12 +251,22 @@ install: $(TARGET)
 	# Install C bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/c
 	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
+	# Copy required headers that bindings depend on (for installed builds)
+	cp ../third_party/tomlc99/toml.h $(HOME)/.local/share/kryon/bindings/c/
+	cp ../ir/src/utils/ir_constants.h $(HOME)/.local/share/kryon/bindings/c/
+	cp ../ir/src/utils/ir_c_metadata.h $(HOME)/.local/share/kryon/bindings/c/
 	# Install Hare bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/hare
 	cp -r ../bindings/hare/* $(HOME)/.local/share/kryon/bindings/hare/
 	# Install IR headers (required by C bindings - relative path ../../ir/include/)
 	mkdir -p $(HOME)/.local/share/kryon/ir/include
 	cp ../ir/include/*.h $(HOME)/.local/share/kryon/ir/include/
+	# Install public kryon headers (capability.h, etc.)
+	mkdir -p $(HOME)/.local/share/kryon/include/kryon
+	cp ../include/kryon/*.h $(HOME)/.local/share/kryon/include/kryon/
+	# Install core headers (kryon.h)
+	mkdir -p $(HOME)/.local/share/kryon/core/include
+	cp ../core/include/*.h $(HOME)/.local/share/kryon/core/include/
 	# Install runtime desktop headers (required by C bindings - relative path ../../runtime/desktop/)
 	mkdir -p $(HOME)/.local/share/kryon/runtime/desktop/abstract
 	cp ../runtime/desktop/*.h $(HOME)/.local/share/kryon/runtime/desktop/

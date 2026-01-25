@@ -242,6 +242,25 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             ? collection->identifier
             : collection->expression;
 
+        // FIX: If collection_name is a function call expression (like "loadHabits()"),
+        // look up the variable name that has this expression as its initializer.
+        // This handles the case where for_node->value was set to the variable's kry_value
+        // instead of just the variable identifier.
+        if (collection_name && strchr(collection_name, '(') != NULL) {
+            // Looks like a function call - search ctx.params for matching initializer
+            for (int i = 0; i < ctx->param_count; i++) {
+                if (ctx->params[i].kry_value &&
+                    ctx->params[i].kry_value->type == KRY_VALUE_EXPRESSION &&
+                    ctx->params[i].kry_value->expression &&
+                    strcmp(ctx->params[i].kry_value->expression, collection_name) == 0) {
+                    // Found the variable with this expression as initializer
+                    // Use the variable NAME instead of the expression
+                    collection_name = ctx->params[i].name;
+                    break;
+                }
+            }
+        }
+
         // Create ForEach component for runtime iteration
         IRComponent* for_each_comp = ir_create_component(IR_COMPONENT_FOR_EACH);
         if (for_each_comp) {
@@ -347,6 +366,23 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
     } else {
         kry_parser_error(NULL, "for each collection must be an identifier or expression");
         return NULL;
+    }
+
+    // FIX: If collection_ref is a function call expression (like "loadHabits()"),
+    // look up the variable name that has this expression as its initializer.
+    if (collection_ref && strchr(collection_ref, '(') != NULL) {
+        // Looks like a function call - search ctx.params for matching initializer
+        for (int i = 0; i < ctx->param_count; i++) {
+            if (ctx->params[i].kry_value &&
+                ctx->params[i].kry_value->type == KRY_VALUE_EXPRESSION &&
+                ctx->params[i].kry_value->expression &&
+                strcmp(ctx->params[i].kry_value->expression, collection_ref) == 0) {
+                // Found the variable with this expression as initializer
+                // Use the variable NAME instead of the expression
+                collection_ref = ctx->params[i].name;
+                break;
+            }
+        }
     }
 
     // Create ForEach component

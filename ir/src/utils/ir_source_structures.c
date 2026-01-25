@@ -221,6 +221,10 @@ IRVarDecl* ir_source_structures_add_var_decl(IRSourceStructures* ss,
             var->value_type = strdup("bool");
         } else if (*json >= '0' && *json <= '9') {
             var->value_type = strchr(json, '.') ? strdup("float") : strdup("number");
+        } else if (strchr(json, '(') != NULL) {
+            // FIX: Function call expression - mark as "function_result"
+            // C codegen will need to call the function to initialize
+            var->value_type = strdup("function_result");
         } else {
             var->value_type = strdup("unknown");
         }

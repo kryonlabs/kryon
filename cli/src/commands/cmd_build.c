@@ -390,9 +390,13 @@ int cmd_build(int argc, char** argv) {
             int plugin_count = 0;
             BuildPluginInfo* plugins = discover_build_plugins(project_dir, config, &plugin_count);
             if (plugins) {
-                // Write extracted plugin code to build directory
-                const char* build_dir = config->build_output_dir ? config->build_output_dir : "build";
-                write_plugin_code_files(plugins, plugin_count, build_dir);
+                // Write extracted plugin code to output directory
+                const char* output_dir = config->build_output_dir ? config->build_output_dir : "build";
+                write_plugin_code_files(plugins, plugin_count, output_dir);
+
+                // Write plugin manifest to build/ (where KIR files live) for codegen to use
+                // Codegen derives build_dir from kir_path (build/kir/*.kir -> build/)
+                write_plugin_manifest(plugins, plugin_count, "build");
 
                 free_build_plugins(plugins, plugin_count);
             }

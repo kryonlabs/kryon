@@ -1,6 +1,92 @@
-# Deep Refactoring Plan
+# Kryon Refactoring Plan: Native Toolchain Integration
 
-## Current Status (2026-01-24)
+## Executive Summary (Updated 2026-01-25)
+
+Kryon is undergoing a major refactoring to natively integrate the QVM toolchain (QBE + Hare + cproc). This refactoring serves two purposes:
+
+1. **Code Modularity** - Breaking down large files into focused modules (original plan)
+2. **Toolchain Integration** - Making QBE, Hare, and cproc native parts of Kryon (NEW)
+
+## Toolchain Integration (NEW)
+
+### Native Toolchain Components
+
+The following tools are now **native parts of Kryon**:
+
+| Component | Purpose | Location | Status |
+|-----------|---------|----------|--------|
+| **QBE** | Compiler IR backend | `toolchain/qbe/` | ✅ Integrated |
+| **Hare (harec)** | Hare compiler | `toolchain/hare/` | ✅ Integrated |
+| **cproc** | C compiler | `toolchain/cproc/` | 🚧 In Progress |
+| **XVM Runtime** | XVM bytecode interpreter | `toolchain/runtimes/xvm/` | ✅ Integrated |
+
+### Two-Tier Architecture
+
+Kryon now uses a **two-tier intermediate representation**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Tier 1: UI Layer (KIR)                    │
+│  Purpose: Describe component trees, reactive properties     │
+│  Source: KRY DSL, Hare annotations                          │
+│  Format: JSON-based KIR                                     │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Tier 2: Logic Layer (QBE SSA)             │
+│  Purpose: Business logic, algorithms                        │
+│  Source: Hare, C                                            │
+│  Format: QBE SSA                                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Language Strategy
+
+**Supported Languages:**
+- ✅ **Hare** - Primary business logic language
+- ✅ **C** - Secondary business logic (via cproc)
+- ✅ **KRY** - UI scripting language (lightweight)
+
+**Deprecated Languages:**
+- ❌ Lua, Python, Kotlin, TypeScript, Swift, Go
+- Reason: No QBE frontend, maintenance burden
+- **Action:** COMPLETELY REMOVE - See Phase 4 in `/kryon-redesign/README.md`
+
+**Legacy Removal Policy:**
+All legacy language support will be **COMPLETELY REMOVED** including:
+- All parsers
+- All codegens
+- All bindings
+- All examples
+- All documentation references
+- No backward compatibility
+
+This is a **HARD BREAKING CHANGE** with no migration path other than manual rewrite.
+
+### Build Integration
+
+The toolchain is now part of Kryon's build system:
+
+```bash
+# Build QBE
+make qbe
+
+# Build Hare runtime
+make hare-runtime
+
+# Build XVM runtime
+make xvm-runtime
+
+# Build everything
+make all
+```
+
+---
+
+## Code Modularity Refactoring
+
+### Current Status (2026-01-24)
 
 ### Completed Extractions
 
@@ -308,3 +394,57 @@ codegens/c/
 3. **Clear dependencies** - Header files define interfaces
 4. **Testable** - Each module can be unit tested independently
 5. **No circular deps** - Layered architecture with clear hierarchy
+
+---
+
+## Related Plans
+
+### Toolchain Integration Plan
+
+The complete toolchain integration plan is documented in:
+- **Main Plan:** `/kryon-redesign/README.md`
+- **Phase 1:** `/kryon-redesign/phase1-foundation.md` (QBE + Hare setup)
+- **Phase 2:** `/kryon-redesign/phase2-hare-integration.md` (Hare bindings)
+- **Phase 5:** `/kryon-redesign/phase5-dual-output.md` (Dual KIR + QBE generation)
+
+### Phases Overview
+
+| Phase | Focus | Duration | Status |
+|-------|-------|----------|--------|
+| 1 | Foundation (QBE + Hare setup) | 4 weeks | 📋 Planned |
+| 2 | Hare Integration | 4 weeks | 📋 Planned |
+| 3 | C Integration | 4 weeks | 📋 Planned |
+| 4 | KRY Simplification | 4 weeks | 📋 Planned |
+| **5** | **Dual Output Generation** | **4 weeks** | 📋 **Critical** |
+| 6 | QBE JS Backend | 4 weeks | 📋 Planned |
+| 7 | Native Desktop | 4 weeks | 📋 Planned |
+| 8 | Dual Syscall Support | 4 weeks | 📋 Planned |
+| 9 | Advanced Features | 4 weeks | 📋 Planned |
+| 10 | Documentation | 4 weeks | 📋 Planned |
+
+### Integration with Code Modularity
+
+The toolchain integration complements the code modularity refactoring:
+
+1. **This refactoring** makes the codebase more maintainable
+2. **Toolchain integration** adds QBE/Hare/cproc as native components
+3. **Together** they create a unified, simplified Kryon ecosystem
+
+### Dependencies
+
+- **This refactoring (Phases 1-4)** should complete **before** toolchain Phase 5 (Dual Output)
+- **Toolchain Phase 1-2** can proceed **in parallel** with this refactoring
+- **Toolchain Phase 5** depends on clean module structure for code generation
+
+### Next Steps
+
+1. **Complete code modularity refactoring** (this plan)
+2. **Review toolchain integration plan** (see `/kryon-redesign/`)
+3. **Align timelines** between both efforts
+4. **Begin implementation** of both plans in parallel
+
+---
+
+**Last Updated:** 2026-01-25
+**Status:** Active Refactoring
+**Maintainer:** Kryon Team

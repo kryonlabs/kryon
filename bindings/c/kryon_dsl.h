@@ -662,6 +662,25 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
         (void)0; \
     })
 
+/**
+ * FOR_EACH_TYPED - Typed iteration for void* arrays
+ * Use when the array type cannot be inferred (e.g., function result arrays)
+ *
+ * @param item_type  The type of each element (e.g., HabitItem*)
+ * @param item_var   Variable name for the current item
+ * @param array      The array to iterate (can be void*)
+ * @param count      Number of elements
+ * @param body       Code to execute for each element
+ */
+#define FOR_EACH_TYPED(item_type, item_var, array, count, body) \
+    ({ \
+        for (int _for_idx = 0; _for_idx < (count); _for_idx++) { \
+            item_type item_var = ((item_type*)(array))[_for_idx]; \
+            body; \
+        } \
+        (void)0; \
+    })
+
 // ============================================================================
 // Application Lifecycle - Shutdown API Macros
 // ============================================================================

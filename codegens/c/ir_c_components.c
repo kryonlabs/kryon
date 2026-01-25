@@ -34,6 +34,65 @@ static uint32_t parse_color_string(const char* str) {
 #define expr_to_c(expr) c_expr_to_c(expr)
 // Note: get_component_macro and kir_type_to_c are from ir_c_types.h (no c_ prefix)
 
+/**
+ * Transform expression strings with dot access to arrow access for pointer types
+ * e.g., "habit.name" -> "habit->name"
+ * Returns newly allocated string that must be freed.
+ */
+static char* transform_dot_to_arrow(const char* expr) {
+    if (!expr) return strdup("NULL");
+
+    // Find first dot that represents member access (not method call - no parentheses after)
+    char* result = strdup(expr);
+    if (!result) return strdup(expr);
+
+    char* dot = strchr(result, '.');
+    while (dot) {
+        // Check if this looks like object.property (no parentheses before the dot)
+        // and the left side looks like a simple identifier
+        char* left_start = result;
+        char* p = dot - 1;
+
+        // Find start of the identifier before the dot
+        while (p >= result && (isalnum((unsigned char)*p) || *p == '_')) {
+            p--;
+        }
+        char* id_start = p + 1;
+
+        // Check if it's a simple identifier (not a module call like Storage.load)
+        // Modules that should use dot notation, not arrow
+        bool is_module = false;
+        size_t id_len = dot - id_start;
+        if (id_len == 7 && strncmp(id_start, "Storage", 7) == 0) is_module = true;
+        if (id_len == 8 && strncmp(id_start, "DateTime", 8) == 0) is_module = true;
+        if (id_len == 4 && strncmp(id_start, "Math", 4) == 0) is_module = true;
+        if (id_len == 4 && strncmp(id_start, "UUID", 4) == 0) is_module = true;
+
+        if (!is_module && id_start < dot) {
+            // Replace dot with arrow
+            // Need to reallocate to fit the extra character
+            size_t pos = dot - result;
+            size_t len = strlen(result);
+            char* new_result = malloc(len + 2);
+            if (new_result) {
+                strncpy(new_result, result, pos);
+                new_result[pos] = '-';
+                new_result[pos + 1] = '>';
+                strcpy(new_result + pos + 2, dot + 1);
+                free(result);
+                result = new_result;
+                dot = strchr(result + pos + 2, '.');  // Continue from after the arrow
+            } else {
+                break;
+            }
+        } else {
+            dot = strchr(dot + 1, '.');  // Skip this dot
+        }
+    }
+
+    return result;
+}
+
 // Get variable name for a component ID (internal utility)
 static const char* get_variable_for_component_id(CCodegenContext* ctx, int component_id) {
     if (!ctx->variables) return NULL;
@@ -258,6 +317,36 @@ static char* transform_expr_to_signal_refs(CCodegenContext* ctx, const char* exp
 static bool generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* value, bool* first_prop);
 
 /**
+ * Check if an expression references the current loop variable.
+ * Handles simple variable names and member access (e.g., "habit" or "habit.name").
+ * Returns true if the base variable matches the current loop variable.
+ */
+static bool expr_references_loop_var(CCodegenContext* ctx, const char* expr) {
+    if (!expr || !ctx->current_loop_var) return false;
+
+    // Extract the base variable (before any . or -> access)
+    char base_var[256];
+    const char* dot = strchr(expr, '.');
+    const char* arrow = strstr(expr, "->");
+
+    size_t len;
+    if (dot && (!arrow || dot < arrow)) {
+        len = dot - expr;
+    } else if (arrow) {
+        len = arrow - expr;
+    } else {
+        len = strlen(expr);
+    }
+
+    if (len >= sizeof(base_var)) len = sizeof(base_var) - 1;
+    strncpy(base_var, expr, len);
+    base_var[len] = '\0';
+
+    // Check if this matches the loop variable
+    return strcmp(base_var, ctx->current_loop_var) == 0;
+}
+
+/**
  * Check if a component has a non-reactive text template binding (e.g., "- " + todo in a for-loop).
  * Also handles plain variable references (e.g., text = todo).
  * If so, extracts the format string and variable name.
@@ -394,12 +483,24 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
             // Generate FOR_EACH macro call
             write_indent(ctx);
             if (is_string_array) {
-                // Use KryonStringArray struct access
+                // Use KryonStringArray struct access - typed array, can use FOR_EACH
                 fprintf(ctx->output, "FOR_EACH(%s, %s_array.items, %s_array.count,\n",
                         item_var, source_var, source_var);
             } else {
-                fprintf(ctx->output, "FOR_EACH(%s, %s, %s_count,\n",
-                        item_var, source_var, source_var);
+                // Use FOR_EACH_TYPED for void* arrays (function results, state variables)
+                // This avoids the typeof(void) compilation error
+                // Try to infer the element type from the item variable name
+                // e.g., "habit" -> "Habit*" (capitalize first letter and add pointer)
+                char inferred_type[128];
+                if (item_var && item_var[0] >= 'a' && item_var[0] <= 'z') {
+                    // Capitalize first letter and make it a pointer type
+                    snprintf(inferred_type, sizeof(inferred_type), "%c%s*",
+                             item_var[0] - 32, item_var + 1);
+                } else {
+                    strcpy(inferred_type, "void*");
+                }
+                fprintf(ctx->output, "FOR_EACH_TYPED(%s, %s, %s, %s_count,\n",
+                        inferred_type, item_var, source_var, source_var);
             }
 
             ctx->indent_level++;
@@ -718,7 +819,10 @@ void c_generate_component_recursive(CCodegenContext* ctx, cJSON* component, bool
                     fprintf(ctx->output, "BIND_TEXT_FMT_EXPR(%s, %s)", signal_name, format_str);
                 } else {
                     // Fallback: transform the expression to replace variable names with signal names
-                    char* transformed_expr = transform_expr_to_signal_refs(ctx, text_expr_obj->valuestring);
+                    char* signal_transformed = transform_expr_to_signal_refs(ctx, text_expr_obj->valuestring);
+                    // Also transform dot access to arrow for pointer types (e.g., habit.name -> habit->name)
+                    char* transformed_expr = transform_dot_to_arrow(signal_transformed);
+                    free(signal_transformed);
                     fprintf(ctx->output, "BIND_TEXT_EXPR(%s)", transformed_expr);
                     free(transformed_expr);
                 }
@@ -1407,11 +1511,22 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
                             continue;
                         }
                     } else {
-                        // Fallback: transform the expression to replace variable names with signal names
+                        // Fallback: check if this is a loop variable expression
                         if (!*first_prop) fprintf(ctx->output, ",\n");
                         write_indent(ctx);
-                        char* transformed_expr = transform_expr_to_signal_refs(ctx, source_expr->valuestring);
-                        fprintf(ctx->output, "BIND_TEXT_EXPR(%s)", transformed_expr);
+                        // Transform dot access to arrow for pointer types (e.g., habit.name -> habit->name)
+                        char* transformed_expr = transform_dot_to_arrow(source_expr->valuestring);
+
+                        // Check if this references the loop variable (non-reactive)
+                        if (expr_references_loop_var(ctx, source_expr->valuestring)) {
+                            // Use SET_TEXT_EXPR for loop variable member access
+                            fprintf(ctx->output, "SET_TEXT_EXPR(%s)", transformed_expr);
+                        } else {
+                            // Reactive case: transform variable names to signal names
+                            char* signal_transformed = transform_expr_to_signal_refs(ctx, transformed_expr);
+                            fprintf(ctx->output, "BIND_TEXT_EXPR(%s)", signal_transformed);
+                            free(signal_transformed);
+                        }
                         free(transformed_expr);
                         *first_prop = false;
                         printed = true;
@@ -1419,7 +1534,12 @@ bool c_generate_property_macro(CCodegenContext* ctx, const char* key, cJSON* val
                     continue;
                 } else {
                     // For non-text bindings, just transform variable names to signal names
-                    char* transformed_expr = transform_expr_to_signal_refs(ctx, source_expr->valuestring);
+                    if (!*first_prop) fprintf(ctx->output, ",\n");
+                    write_indent(ctx);
+                    char* signal_transformed = transform_expr_to_signal_refs(ctx, source_expr->valuestring);
+                    // Also transform dot access to arrow for pointer types (e.g., habit.color -> habit->color)
+                    char* transformed_expr = transform_dot_to_arrow(signal_transformed);
+                    free(signal_transformed);
                     if (strcmp(prop_name, "visible") == 0) {
                         fprintf(ctx->output, "BIND_VISIBLE_EXPR(%s)", transformed_expr);
                     } else if (strcmp(prop_name, "background") == 0) {

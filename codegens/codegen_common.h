@@ -304,8 +304,18 @@ void codegen_processed_modules_free(CodegenProcessedModules* pm);
 bool codegen_is_internal_module(const char* module_id);
 
 /**
+ * Load the plugin manifest from build directory.
+ * Call this early in the codegen pipeline before processing imports.
+ * Safe to call multiple times - subsequent calls are no-ops.
+ *
+ * @param build_dir Build directory path (uses "build" if NULL)
+ */
+void codegen_load_plugin_manifest(const char* build_dir);
+
+/**
  * Check if a module is an external plugin (runtime dependency, not source).
- * External plugins include datetime, storage, etc.
+ * Uses the plugin manifest loaded by codegen_load_plugin_manifest().
+ * Falls back to known plugins if manifest not loaded.
  *
  * @param module_id Module identifier
  * @return true if external plugin, false otherwise

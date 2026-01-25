@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../core/include/kryon.h"
+#include <kryon.h>
 #include "../../ir/include/ir_core.h"
 #include "../../ir/include/ir_builder.h"
 #include "../../ir/include/ir_hot_reload.h"
