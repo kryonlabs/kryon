@@ -70,6 +70,28 @@ static inline int _set_max_height(IRComponent* comp, float val, const char* unit
     kryon_set_max_height(comp, val, unit);
     return 0;
 }
+static inline int _set_position_absolute(IRComponent* comp, float x, float y) {
+    kryon_set_position_absolute(comp, x, y);
+    return 0;
+}
+static inline int _set_pos_x(IRComponent* comp, float x) {
+    // Set position mode to absolute and update x
+    // Use kryon_set_position_absolute to ensure style is created
+    if (comp) {
+        float current_y = (comp->style) ? comp->style->absolute_y : 0;
+        kryon_set_position_absolute(comp, x, current_y);
+    }
+    return 0;
+}
+static inline int _set_pos_y(IRComponent* comp, float y) {
+    // Set position mode to absolute and update y
+    // Use kryon_set_position_absolute to ensure style is created
+    if (comp) {
+        float current_x = (comp->style) ? comp->style->absolute_x : 0;
+        kryon_set_position_absolute(comp, current_x, y);
+    }
+    return 0;
+}
 static inline int _set_background(IRComponent* comp, uint32_t color) {
     kryon_set_background(comp, color);
     return 0;
@@ -196,6 +218,36 @@ static inline int _on_hover(IRComponent* comp, KryonEventHandler handler, const 
 }
 static inline int _on_focus(IRComponent* comp, KryonEventHandler handler, const char* name) {
     kryon_on_focus(comp, handler, name);
+    return 0;
+}
+
+// Table styling helpers
+static inline int _set_table_cell_padding(IRComponent* comp, float padding) {
+    kryon_table_set_cell_padding(comp, padding);
+    return 0;
+}
+static inline int _set_table_striped(IRComponent* comp, bool striped) {
+    kryon_table_set_striped(comp, striped);
+    return 0;
+}
+static inline int _set_table_show_borders(IRComponent* comp, bool show) {
+    kryon_table_set_show_borders(comp, show);
+    return 0;
+}
+static inline int _set_table_header_bg(IRComponent* comp, uint32_t color) {
+    kryon_table_set_header_background(comp, color);
+    return 0;
+}
+static inline int _set_table_even_row_bg(IRComponent* comp, uint32_t color) {
+    kryon_table_set_even_row_background(comp, color);
+    return 0;
+}
+static inline int _set_table_odd_row_bg(IRComponent* comp, uint32_t color) {
+    kryon_table_set_odd_row_background(comp, color);
+    return 0;
+}
+static inline int _set_table_border_color(IRComponent* comp, uint32_t color) {
+    kryon_table_set_border_color(comp, color);
     return 0;
 }
 
@@ -350,23 +402,35 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 #define TABLE(...) _KRYON_COMP(kryon_table(), ##__VA_ARGS__)
 #define TABLE_HEAD(...) _KRYON_COMP(kryon_table_head(), ##__VA_ARGS__)
 #define TABLE_BODY(...) _KRYON_COMP(kryon_table_body(), ##__VA_ARGS__)
-#define TR(...) _KRYON_COMP(kryon_table_row(), ##__VA_ARGS__)
+#define TABLE_ROW(...) _KRYON_COMP(kryon_table_row(), ##__VA_ARGS__)
+#define TR(...) TABLE_ROW(__VA_ARGS__)  // Alias
 
-#define TH(content, ...) \
+#define TABLE_HEADER_CELL(content, ...) \
     ({ \
         IRComponent* _comp = kryon_table_header_cell(content); \
         _kryon_add_to_parent(_comp); \
         (void)0, ##__VA_ARGS__; \
         _comp; \
     })
+#define TH(content, ...) TABLE_HEADER_CELL(content, ##__VA_ARGS__)  // Alias
 
-#define TD(content, ...) \
+#define TABLE_CELL(content, ...) \
     ({ \
         IRComponent* _comp = kryon_table_cell(content); \
         _kryon_add_to_parent(_comp); \
         (void)0, ##__VA_ARGS__; \
         _comp; \
     })
+#define TD(content, ...) TABLE_CELL(content, ##__VA_ARGS__)  // Alias
+
+// Table styling macros
+#define CELL_PADDING(val) _set_table_cell_padding(_comp, (float)(val))
+#define TABLE_STRIPED _set_table_striped(_comp, true)
+#define TABLE_BORDERS _set_table_show_borders(_comp, true)
+#define HEADER_BG(hex) _set_table_header_bg(_comp, (uint32_t)(hex))
+#define EVEN_ROW_BG(hex) _set_table_even_row_bg(_comp, (uint32_t)(hex))
+#define ODD_ROW_BG(hex) _set_table_odd_row_bg(_comp, (uint32_t)(hex))
+#define TABLE_BORDER_COLOR(hex) _set_table_border_color(_comp, (uint32_t)(hex))
 
 // ============================================================================
 // Tab Components
@@ -397,6 +461,14 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 #define MAX_WIDTH(val) _set_max_width(_comp, (float)(val), "px")
 #define MIN_HEIGHT(val) _set_min_height(_comp, (float)(val), "px")
 #define MAX_HEIGHT(val) _set_max_height(_comp, (float)(val), "px")
+
+// ============================================================================
+// Property Macros - Positioning
+// ============================================================================
+
+#define POSITION_ABSOLUTE(x, y) _set_position_absolute(_comp, (float)(x), (float)(y))
+#define POS_X(val) _set_pos_x(_comp, (float)(val))
+#define POS_Y(val) _set_pos_y(_comp, (float)(val))
 
 // ============================================================================
 // Property Macros - Colors

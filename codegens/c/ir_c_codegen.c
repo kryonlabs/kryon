@@ -392,6 +392,65 @@ static void transpile_kry_expression_to_c(CCodegenContext* ctx, const char* scop
 }
 
 /**
+ * Transpile a boolean toggle expression to C code
+ * Handles: variable = !variable
+ */
+static void transpile_kry_bool_toggle_to_c(CCodegenContext* ctx, const char* var_name, const char* scope) {
+    if (!var_name) return;
+
+    // Build scoped signal name
+    char signal_name[256];
+    if (scope && strcmp(scope, "global") == 0) {
+        snprintf(signal_name, sizeof(signal_name), "%s_global_signal", var_name);
+    } else if (scope && strcmp(scope, "component") != 0) {
+        snprintf(signal_name, sizeof(signal_name), "%s_%s_signal", var_name, scope);
+    } else {
+        snprintf(signal_name, sizeof(signal_name), "%s_signal", var_name);
+    }
+
+    fprintf(ctx->output, "    bool _current = kryon_signal_get_bool(%s);\n", signal_name);
+    fprintf(ctx->output, "    kryon_signal_set_bool(%s, !_current);\n", signal_name);
+}
+
+/**
+ * Parse arrow function: () => { variable = !variable }
+ * Returns true if parsed successfully, fills var_name and op
+ */
+static bool parse_arrow_function_toggle(const char* source, char* var_name, size_t var_size, char* op) {
+    if (!source || !var_name || !op) return false;
+
+    // Find "= !" pattern for boolean toggle
+    const char* toggle = strstr(source, "= !");
+    if (!toggle) return false;
+
+    // Find start of variable name (skip "() => {" and whitespace)
+    const char* start = source;
+    const char* brace = strchr(source, '{');
+    if (brace && brace < toggle) {
+        start = brace + 1;
+    }
+    // Skip whitespace and newlines
+    while (*start && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r')) {
+        start++;
+    }
+
+    // Extract variable name (from start to "= !")
+    size_t len = toggle - start;
+    // Trim trailing whitespace
+    while (len > 0 && (start[len-1] == ' ' || start[len-1] == '\t' || start[len-1] == '\n')) {
+        len--;
+    }
+
+    if (len > 0 && len < var_size - 1) {
+        strncpy(var_name, start, len);
+        var_name[len] = '\0';
+        strcpy(op, "!");
+        return true;
+    }
+    return false;
+}
+
+/**
  * Generate C event handler functions from KRY logic_block.functions
  *
  * KIR input (C source from @c blocks):
@@ -523,8 +582,29 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
             }
         }
 
+        // Pattern: () => { variable = !variable } (boolean toggle)
+        if (!parsed && strstr(kry_source, "= !")) {
+            parsed = parse_arrow_function_toggle(kry_source, var_name, sizeof(var_name), op);
+        }
+
         if (!parsed) {
-            fprintf(ctx->output, "    // TODO: Transpile expression: %s\n", kry_source);
+            // Fallback: generate stub handler with multiline comment
+            fprintf(ctx->output, "void %s(void) {\n", name->valuestring);
+            fprintf(ctx->output, "    /* TODO: Transpile expression:\n");
+            // Output each line of source as a comment
+            const char* line = kry_source;
+            while (*line) {
+                const char* end = strchr(line, '\n');
+                if (end) {
+                    fprintf(ctx->output, "     * %.*s\n", (int)(end - line), line);
+                    line = end + 1;
+                } else {
+                    fprintf(ctx->output, "     * %s\n", line);
+                    break;
+                }
+            }
+            fprintf(ctx->output, "     */\n");
+            fprintf(ctx->output, "}\n\n");
             continue;
         }
 
@@ -555,11 +635,17 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
             cJSON* scope_item = scopes_for_var[s];
             const char* scope_str = scope_item->valuestring;
 
-            // Skip component scope (will use the base handler name)
-            if (strcmp(scope_str, "component") == 0) {
-                // Generate base handler (for component definition)
+            // For component and global scope, use the base handler name
+            if (strcmp(scope_str, "component") == 0 || strcmp(scope_str, "global") == 0) {
+                // Generate base handler (for component definition or global scope)
                 fprintf(ctx->output, "void %s(void) {\n", name->valuestring);
-                transpile_kry_expression_to_c(ctx, base_var_name, op, delta);
+                if (strcmp(op, "!") == 0) {
+                    // Boolean toggle
+                    transpile_kry_bool_toggle_to_c(ctx, base_var_name, scope_str);
+                } else {
+                    // Arithmetic operations (+= / -=)
+                    transpile_kry_expression_to_c(ctx, base_var_name, op, delta);
+                }
                 fprintf(ctx->output, "}\n\n");
             } else {
                 // Generate scoped handler (e.g., "handler_1_click_Counter_0")
@@ -567,7 +653,13 @@ void c_generate_kry_event_handlers(CCodegenContext* ctx, cJSON* logic_block) {
                 char* scoped_var_name = generate_scoped_var_name(base_var_name, scope_str);
 
                 fprintf(ctx->output, "void %s(void) {\n", scoped_handler_name);
-                transpile_kry_expression_to_c(ctx, scoped_var_name, op, delta);
+                if (strcmp(op, "!") == 0) {
+                    // Boolean toggle
+                    transpile_kry_bool_toggle_to_c(ctx, base_var_name, scope_str);
+                } else {
+                    // Arithmetic operations (+= / -=)
+                    transpile_kry_expression_to_c(ctx, scoped_var_name, op, delta);
+                }
                 fprintf(ctx->output, "}\n\n");
 
                 free(scoped_handler_name);

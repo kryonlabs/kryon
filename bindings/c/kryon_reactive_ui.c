@@ -320,6 +320,39 @@ KryonVisibilityBinding* kryon_bind_visible(IRComponent* component,
     return binding;
 }
 
+KryonVisibilityBinding* kryon_bind_visible_inverted(IRComponent* component,
+                                                     KryonSignal* signal) {
+    if (!component || !signal) return NULL;
+
+    KryonVisibilityBinding* binding = calloc(1, sizeof(KryonVisibilityBinding));
+    if (!binding) return NULL;
+
+    binding->component = component;
+    binding->signal = signal;
+    binding->is_bool = kryon_signal_is_bool(signal);
+    binding->invert = true;  // Inverted visibility
+
+    // Subscribe to signal changes
+    if (binding->is_bool) {
+        binding->subscription_id = kryon_signal_subscribe_bool(
+            signal, visibility_callback_bool, binding);
+    } else {
+        binding->subscription_id = kryon_signal_subscribe(
+            signal, visibility_callback_float, binding);
+    }
+
+    // Trigger initial update (inverted)
+    if (binding->is_bool) {
+        bool value = kryon_signal_get_bool(signal);
+        kryon_set_visible(component, !value);
+    } else {
+        float value = kryon_signal_get(signal);
+        kryon_set_visible(component, value == 0.0f);
+    }
+
+    return binding;
+}
+
 void kryon_unbind_visible(KryonVisibilityBinding* binding) {
     if (!binding) return;
 

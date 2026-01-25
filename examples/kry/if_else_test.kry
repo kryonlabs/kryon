@@ -24,7 +24,9 @@ App {
             height = 50
             backgroundColor = "#3498DB"
             fontSize = 16
-            onClick = { showMessage = !showMessage }
+            onClick = () => {
+                showMessage = !showMessage
+            }
         }
 
         if showMessage {

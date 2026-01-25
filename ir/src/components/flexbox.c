@@ -456,6 +456,15 @@ void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraint
             .min_height = 0
         };
 
+        // Check for absolute positioning - use absolute coordinates directly
+        if (child->style && child->style->position_mode == IR_POSITION_ABSOLUTE) {
+            ir_layout_single_pass(child, child_constraints,
+                                  child->style->absolute_x,
+                                  child->style->absolute_y);
+            // Absolute children are out of flow - don't advance child_y
+            continue;
+        }
+
         // Layout child at temporary position (we'll adjust for centering after)
         ir_layout_single_pass(child, child_constraints,
                               container_x + pad_left,
