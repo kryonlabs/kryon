@@ -267,22 +267,23 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
     // This is needed because kryon_init_function_arrays() may call these functions
     generate_universal_function_declarations(&ctx, logic_block);
 
+    // Generate reactive signal declarations early (so user functions can use kryon_signal_set)
+    // Must come before function implementations since functions may set signal values
+    if (ctx.has_reactive_state) {
+        generate_reactive_signal_declarations(&ctx);
+    }
+
     // Generate global variable declarations (so functions can reference them)
     // This includes array variables like 'habits' and their _count companions
     generate_array_declarations(&ctx);
 
     // Generate user-defined function implementations
-    // Must come AFTER global declarations since functions may reference globals
+    // Must come AFTER global declarations and signal declarations
     generate_universal_functions(&ctx, logic_block);
 
     generate_variable_declarations(&ctx);
     generate_helper_functions(&ctx);
     generate_event_handlers(&ctx);
-
-    // Generate reactive signal declarations if needed (must come before KRY handlers)
-    if (ctx.has_reactive_state) {
-        generate_reactive_signal_declarations(&ctx);
-    }
 
     // Generate KRY event handlers from logic_block (transpiled from KRY expressions)
     // Must come after signal declarations so handlers can reference the signals

@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include "kryon_plugins.h"
 
 // ============================================================================
 // Storage Plugin Stubs
@@ -82,15 +83,7 @@ void Storage_shutdown(void) {
 // DateTime Plugin Stubs
 // ============================================================================
 
-typedef struct {
-    int year;
-    int month;
-    int day;
-    int hour;
-    int minute;
-    int second;
-    char iso_string[32];
-} KryonDate;
+// KryonDate is already defined in kryon_plugins.h
 
 static KryonDate g_date;
 
