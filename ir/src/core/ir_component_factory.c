@@ -102,6 +102,16 @@ IRComponent* ir_create_component_with_id(IRComponentType type, uint32_t id) {
             layout->display_explicit = true;  // Enable flex CSS output
             layout->mode = IR_LAYOUT_MODE_FLEX;
         }
+    } else if (type == IR_COMPONENT_DROPDOWN) {
+        // Initialize dropdown state during component creation
+        // This ensures state ALWAYS exists when the component is created
+        component->custom_data = calloc(1, sizeof(IRDropdownState));
+        if (component->custom_data) {
+            IRDropdownState* state = (IRDropdownState*)component->custom_data;
+            state->selected_index = -1;  // No selection by default
+            state->is_open = false;
+            state->hovered_index = -1;
+        }
     }
 
     return component;
@@ -217,6 +227,18 @@ void ir_destroy_component(IRComponent* component) {
                 if (code_data->language) free(code_data->language);
                 if (code_data->code) free(code_data->code);
                 free(code_data);
+                break;
+            }
+            case IR_COMPONENT_DROPDOWN: {
+                IRDropdownState* dropdown = (IRDropdownState*)component->custom_data;
+                if (dropdown->placeholder) free(dropdown->placeholder);
+                if (dropdown->options) {
+                    for (uint32_t i = 0; i < dropdown->option_count; i++) {
+                        if (dropdown->options[i]) free(dropdown->options[i]);
+                    }
+                    free(dropdown->options);
+                }
+                free(dropdown);
                 break;
             }
             default:
@@ -469,8 +491,9 @@ void ir_set_dropdown_selected_index(IRComponent* component, int32_t index) {
     IRDropdownState* state = ir_get_dropdown_state(component);
     if (!state) return;
 
-    // Validate index
-    if (index >= -1 && (uint32_t)index < state->option_count) {
+    // Allow -1 (no selection) or any non-negative index
+    // Validation against option_count happens at render time
+    if (index >= -1) {
         state->selected_index = index;
     }
 }

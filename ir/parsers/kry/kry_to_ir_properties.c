@@ -1065,6 +1065,10 @@ static bool handle_selectedIndex_property(
         // Ensure dropdown state exists
         if (!component->custom_data) {
             component->custom_data = calloc(1, sizeof(IRDropdownState));
+            IRDropdownState* state = (IRDropdownState*)component->custom_data;
+            if (state) {
+                state->selected_index = -1;  // No selection by default
+            }
         }
         ir_set_dropdown_selected_index(component, index_value);
         return true;
@@ -1088,6 +1092,45 @@ static bool handle_selectedIndex_property(
 // ============================================================================
 // Dropdown Property Handlers
 // ============================================================================
+
+// Handle placeholder property (for Dropdown components)
+static bool handle_placeholder_property(
+    ConversionContext* ctx,
+    IRComponent* component,
+    const char* name,
+    KryValue* value
+) {
+    (void)ctx;
+    (void)name;
+
+    if (component->type != IR_COMPONENT_DROPDOWN) {
+        return false;
+    }
+
+    if (value->type != KRY_VALUE_STRING) {
+        return false;
+    }
+
+    // Ensure dropdown state exists
+    if (!component->custom_data) {
+        component->custom_data = calloc(1, sizeof(IRDropdownState));
+        IRDropdownState* state = (IRDropdownState*)component->custom_data;
+        if (state) state->selected_index = -1;  // No selection by default
+    }
+
+    IRDropdownState* state = (IRDropdownState*)component->custom_data;
+    if (!state) return false;
+
+    // Free existing placeholder
+    if (state->placeholder) {
+        free(state->placeholder);
+    }
+
+    // Set new placeholder
+    state->placeholder = value->string_value ? strdup(value->string_value) : NULL;
+
+    return true;
+}
 
 // Handle options property (for Dropdown components)
 static bool handle_options_property(
@@ -1115,6 +1158,10 @@ static bool handle_options_property(
     // Ensure dropdown state exists
     if (!component->custom_data) {
         component->custom_data = calloc(1, sizeof(IRDropdownState));
+        IRDropdownState* init_state = (IRDropdownState*)component->custom_data;
+        if (init_state) {
+            init_state->selected_index = -1;  // No selection by default
+        }
     }
 
     IRDropdownState* state = (IRDropdownState*)component->custom_data;
@@ -1158,8 +1205,14 @@ IRAlignment kry_parse_alignment(const char* align_str) {
     else if (strcmp(align_str, "end") == 0) return IR_ALIGNMENT_END;
     else if (strcmp(align_str, "flex-start") == 0) return IR_ALIGNMENT_START;
     else if (strcmp(align_str, "flex-end") == 0) return IR_ALIGNMENT_END;
+    // Kebab-case (CSS-style)
     else if (strcmp(align_str, "space-between") == 0) return IR_ALIGNMENT_SPACE_BETWEEN;
     else if (strcmp(align_str, "space-around") == 0) return IR_ALIGNMENT_SPACE_AROUND;
+    else if (strcmp(align_str, "space-evenly") == 0) return IR_ALIGNMENT_SPACE_EVENLY;
+    // CamelCase (KRY-style)
+    else if (strcmp(align_str, "spaceBetween") == 0) return IR_ALIGNMENT_SPACE_BETWEEN;
+    else if (strcmp(align_str, "spaceAround") == 0) return IR_ALIGNMENT_SPACE_AROUND;
+    else if (strcmp(align_str, "spaceEvenly") == 0) return IR_ALIGNMENT_SPACE_EVENLY;
     else if (strcmp(align_str, "stretch") == 0) return IR_ALIGNMENT_STRETCH;
     return IR_ALIGNMENT_START;
 }
@@ -1287,6 +1340,7 @@ static const PropertyDispatchEntry property_dispatch_table[] = {
     {"selectedIndex",    handle_selectedIndex_property,    false},
 
     // Dropdown component properties
+    {"placeholder",      handle_placeholder_property,      false},
     {"options",          handle_options_property,          false},
 
     // Sentinel (marks end of table)
