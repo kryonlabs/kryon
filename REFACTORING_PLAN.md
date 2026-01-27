@@ -49,7 +49,7 @@ Kryon now uses a **two-tier intermediate representation**:
 - ✅ **KRY** - UI scripting language (lightweight)
 
 **Deprecated Languages:**
-- ❌ Lua, Python, Kotlin, TypeScript, Swift, Go
+- ❌ Lua, Kotlin, TypeScript, Swift, Go
 - Reason: No QBE frontend, maintenance burden
 - **Action:** COMPLETELY REMOVE - See Phase 4 in `/kryon-redesign/README.md`
 

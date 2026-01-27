@@ -29,7 +29,6 @@ Converts KIR (JSON IR) to complete source files.
 | Lua | ⚠️ | `codegens/lua/` | Skeleton only, missing events/bindings |
 | TSX/React | ✅ | `codegens/tsx/` | |
 | C | ✅ | `codegens/c/` | |
-| Python | ✅ | `codegens/python/` | |
 | Kotlin | ✅ | `codegens/kotlin/` | |
 | Hare | ✅ | `codegens/hare/` | NEW - Beta |
 | KRY | ✅ | `codegens/kry/` | Round-trip |
@@ -45,7 +44,6 @@ FFI bindings for using Kryon from other languages.
 | Language | Status | Location |
 |----------|--------|----------|
 | C | ✅ | `bindings/c/` |
-| Python | ✅ | `bindings/python/` |
 | JavaScript | ✅ | `bindings/javascript/` |
 | TypeScript | ✅ | `bindings/typescript/` |
 | Lua | ✅ | `bindings/lua/` |
@@ -102,7 +100,7 @@ FFI bindings for using Kryon from other languages.
 
 - **Desktop build hardcoded to Lua**: `cmd_build.c:321` calls `build_lua_desktop()` for ALL desktop builds. Missing `build_c_desktop()` for KRY frontend. KRY should use: KRY→KIR→C codegen→compile with SDL3.
 - **Lua codegen incomplete**: Missing component definitions, event handlers, property bindings, ForEach expansion, logic blocks. Output is skeleton only.
-- **Expression transpiler gaps**: Python/Kotlin code generators exist but expression transpiler doesn't support them (uses raw expressions).
+- **Expression transpiler gaps**: Kotlin code generator exists but expression transpiler doesn't support it (uses raw expressions).
 
 ---
 
@@ -140,7 +138,6 @@ kryon/
 │   ├── lua/
 │   ├── tsx/
 │   ├── c/
-│   ├── python/
 │   ├── kotlin/
 │   ├── hare/
 │   ├── kry/
@@ -148,7 +145,6 @@ kryon/
 │   └── web/
 ├── bindings/               # Language bindings
 │   ├── c/
-│   ├── python/
 │   ├── javascript/
 │   ├── typescript/
 │   ├── lua/

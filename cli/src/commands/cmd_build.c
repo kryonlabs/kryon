@@ -9,7 +9,6 @@
 #include "build/c_desktop.h"
 #include "../template/docs_template.h"
 #include "../utils/file_discovery.h"
-#include "build/luajit_build.h"
 #include "../../../codegens/c/ir_c_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +22,7 @@ static int build_single_file(const char* source_file, KryonConfig* config) {
     const char* frontend = detect_frontend_type(source_file);
     if (!frontend) {
         fprintf(stderr, "Error: Could not detect frontend for %s\n", source_file);
-        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .lua, .c, .ha\n");
+        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .c, .ha\n");
         return 1;
     }
 
@@ -217,52 +216,6 @@ static int build_c_desktop(KryonConfig* config) {
 }
 
 /**
- * Build Lua desktop binary
- */
-static int build_lua_desktop(KryonConfig* config) {
-    // Check if entry file is Lua
-    if (!config->build_entry) {
-        return 1;  // No entry file, not a Lua build
-    }
-
-    size_t entry_len = strlen(config->build_entry);
-    if (entry_len < 4 || strcmp(config->build_entry + entry_len - 4, ".lua") != 0) {
-        return 1;  // Not a Lua file
-    }
-
-    // Check if desktop is a target
-    if (!has_desktop_target(config)) {
-        return 1;  // Desktop not in targets
-    }
-
-    // Check if LuaJIT is available
-    if (!check_luajit_available()) {
-        fprintf(stderr, "Warning: LuaJIT not found, skipping desktop binary build\n");
-        fprintf(stderr, "Install LuaJIT to enable desktop binary builds\n");
-        return 1;
-    }
-
-    // Create output directory
-    const char* output_dir = config->build_output_dir ? config->build_output_dir : "dist";
-    if (!file_is_directory(output_dir)) {
-        dir_create_recursive(output_dir);
-    }
-
-    // Generate binary path
-    char binary_path[1024];
-    snprintf(binary_path, sizeof(binary_path), "%s/%s", output_dir, config->project_name);
-
-    // Build the binary
-    int result = build_lua_binary(config->project_name,
-                                   config->build_entry,
-                                   binary_path,
-                                   NULL,  /* runtime_dir - use standard paths */
-                                   0);    /* verbose */
-
-    return result;
-}
-
-/**
  * Build Hare desktop binary
  */
 static int build_hare_desktop(KryonConfig* config) {
@@ -303,8 +256,7 @@ static int build_hare_desktop(KryonConfig* config) {
     printf("[Hare Desktop] Building %s...\n", config->project_name);
 
     // Build the Hare source directly
-    // Unlike Lua which needs KIR → Lua codegen, Hare compiles directly
-    // because the source IS Hare DSL
+    // Hare compiles directly because the source IS Hare DSL
     char build_cmd[2048];
     snprintf(build_cmd, sizeof(build_cmd), "hare build -o \"%s\" \"%s\"",
              binary_path, config->build_entry);
@@ -349,7 +301,7 @@ int cmd_build(int argc, char** argv) {
             for (int i = 0; targets[i]; i++) {
                 fprintf(stderr, "  - %s\n", targets[i]);
             }
-            fprintf(stderr, "\nDesktop builds support KRY, Lua, and Hare frontends\n");
+            fprintf(stderr, "\nDesktop builds support KRY and Hare frontends\n");
             return 1;
         } else if (file_arg_start == 0) {
             // First non-option argument is the file
@@ -479,10 +431,6 @@ int cmd_build(int argc, char** argv) {
             // KRY frontend → C codegen → native binary
             printf("Frontend: kry (C code generation)\n");
             desktop_result = build_c_desktop(config);
-        } else if (frontend && strcmp(frontend, "lua") == 0) {
-            // Lua frontend → LuaJIT binary
-            printf("Frontend: lua (LuaJIT compilation)\n");
-            desktop_result = build_lua_desktop(config);
         } else if (frontend && strcmp(frontend, "hare") == 0) {
             // Hare frontend → Hare compiler → native binary
             printf("Frontend: hare (Hare compilation)\n");
@@ -493,22 +441,19 @@ int cmd_build(int argc, char** argv) {
             if (entry && str_ends_with(entry, ".kry")) {
                 printf("Frontend: auto-detected kry (C code generation)\n");
                 desktop_result = build_c_desktop(config);
-            } else if (entry && str_ends_with(entry, ".lua")) {
-                printf("Frontend: auto-detected lua (LuaJIT compilation)\n");
-                desktop_result = build_lua_desktop(config);
             } else if (entry && str_ends_with(entry, ".ha")) {
                 printf("Frontend: auto-detected hare (Hare compilation)\n");
                 desktop_result = build_hare_desktop(config);
             } else {
                 fprintf(stderr, "Error: Cannot auto-detect frontend for entry '%s'\n",
                         entry ? entry : "(none)");
-                fprintf(stderr, "Specify frontend = \"kry\", \"lua\", or \"hare\" in [build] section\n");
+                fprintf(stderr, "Specify frontend = \"kry\" or \"hare\" in [build] section\n");
                 config_free(config);
                 return 1;
             }
         } else {
             fprintf(stderr, "Error: Unknown frontend '%s'\n", frontend);
-            fprintf(stderr, "Supported frontends: kry, lua, hare, auto\n");
+            fprintf(stderr, "Supported frontends: kry, hare, auto\n");
             config_free(config);
             return 1;
         }
@@ -552,7 +497,7 @@ int cmd_build(int argc, char** argv) {
             fprintf(stderr, "Error: No entry point specified in kryon.toml\n");
             fprintf(stderr, "Add [build].entry to your configuration, e.g.:\n");
             fprintf(stderr, "  [build]\n");
-            fprintf(stderr, "  entry = \"main.lua\"\n");
+            fprintf(stderr, "  entry = \"main.kry\"\n");
             config_free(config);
             return 1;
         }

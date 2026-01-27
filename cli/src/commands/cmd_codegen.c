@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../../codegens/kry/kry_codegen.h"
-#include "../../codegens/lua/lua_codegen.h"
 #include "../../codegens/tsx/tsx_codegen.h"
 #include "../../codegens/c/ir_c_codegen.h"
 
@@ -25,9 +24,7 @@ static bool is_valid_target(const char* target) {
     if (!target) return false;
     return strcmp(target, "kry") == 0 ||
            strcmp(target, "tsx") == 0 ||
-           strcmp(target, "lua") == 0 ||
            strcmp(target, "c") == 0 ||
-           strcmp(target, "python") == 0 ||
            strcmp(target, "kotlin") == 0 ||
            strcmp(target, "html") == 0 ||
            strcmp(target, "markdown") == 0 ||
@@ -54,9 +51,7 @@ static void print_codegen_usage(const char* error) {
     fprintf(stderr, "Targets:\n");
     fprintf(stderr, "  kry       - Generate .kry source code (round-trip)\n");
     fprintf(stderr, "  tsx       - Generate TypeScript React code\n");
-    fprintf(stderr, "  lua       - Generate Lua source code (multi-file)\n");
     fprintf(stderr, "  c         - Generate C source code\n");
-    fprintf(stderr, "  python    - Generate Python DSL code\n");
     fprintf(stderr, "  kotlin    - Generate Kotlin Android code\n");
     fprintf(stderr, "  html      - Generate HTML/CSS/JS for web\n");
     fprintf(stderr, "  markdown  - Generate Markdown documentation\n");
@@ -67,18 +62,18 @@ static void print_codegen_usage(const char* error) {
     fprintf(stderr, "  kryon codegen kry\n");
     fprintf(stderr, "    Uses build.entry from kryon.toml, outputs to build/kry/\n");
     fprintf(stderr, "\n");
-    fprintf(stderr, "  kryon codegen lua --output=gen/\n");
-    fprintf(stderr, "    Uses build.entry, outputs to gen/lua/\n");
+    fprintf(stderr, "  kryon codegen kry --output=gen/\n");
+    fprintf(stderr, "    Uses build.entry, outputs to gen/kry/\n");
     fprintf(stderr, "\n");
-    fprintf(stderr, "  kryon codegen lua --input=other.lua\n");
-    fprintf(stderr, "    Uses other.lua as source, outputs to build/lua/\n");
+    fprintf(stderr, "  kryon codegen kry --input=other.kry\n");
+    fprintf(stderr, "    Uses other.kry as source, outputs to build/kry/\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  kryon codegen kry app.kir output.kry\n");
     fprintf(stderr, "    Direct KIR to codegen (legacy)\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "kryon.toml:\n");
     fprintf(stderr, "  [build]\n");
-    fprintf(stderr, "    entry = \"main.lua\"\n");
+    fprintf(stderr, "    entry = \"main.kry\"\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  [codegen]\n");
     fprintf(stderr, "    output_dir = \"gen\"  # optional, defaults to build\n");
@@ -101,7 +96,7 @@ int cmd_codegen(int argc, char** argv) {
 
     // Check if first arg is a target (not a file)
     const char* first = argv[0];
-    if (strstr(first, ".kir") != NULL || strstr(first, ".lua") != NULL ||
+    if (strstr(first, ".kir") != NULL ||
         strstr(first, ".kry") != NULL || strstr(first, ".tsx") != NULL ||
         strstr(first, ".c") != NULL || strstr(first, ".h") != NULL ||
         strstr(first, ".ha") != NULL) {
@@ -125,7 +120,7 @@ int cmd_codegen(int argc, char** argv) {
             return 1;
         }
     } else if (argc >= 3 && (strstr(argv[1], ".kir") != NULL || strstr(argv[1], ".kry") != NULL ||
-                             strstr(argv[1], ".lua") != NULL || strstr(argv[1], ".tsx") != NULL ||
+                             strstr(argv[1], ".tsx") != NULL ||
                              strstr(argv[1], ".ha") != NULL)) {
         // Positional syntax: codegen <target> <input> <output>
         target = first;
