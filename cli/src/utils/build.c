@@ -13,17 +13,12 @@
 
 #include "../../../ir/include/ir_serialization.h"
 #include "../../../ir/include/ir_builder.h"
-#include "../../ir/parsers/lua/lua_parser.h"
 #include "../../ir/parsers/kry/kry_parser.h"
 #include "../template/docs_template.h"
 #include "../../../codegens/kry/kry_codegen.h"
-#include "../../../codegens/lua/lua_codegen.h"
-#include "../../../codegens/tsx/tsx_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
 #include "../../../codegens/kotlin/kotlin_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
-#include "../../../codegens/hare/hare_codegen.h"
-#include "../../ir/parsers/hare/hare_parser.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,10 +33,7 @@
 const char* detect_frontend_type(const char* source_file) {
     const char* ext = path_extension(source_file);
 
-    if (strcmp(ext, ".tsx") == 0 || strcmp(ext, ".jsx") == 0) {
-        return "tsx";
-    }
-    else if (strcmp(ext, ".kir") == 0) {
+    if (strcmp(ext, ".kir") == 0) {
         return "kir";
     }
     else if (strcmp(ext, ".md") == 0) {
@@ -58,9 +50,6 @@ const char* detect_frontend_type(const char* source_file) {
     }
     else if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0) {
         return "c";
-    }
-    else if (strcmp(ext, ".ha") == 0) {
-        return "hare";
     }
     else {
         return NULL;
@@ -1157,8 +1146,6 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = kry_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "tsx") == 0) {
         success = tsx_codegen_generate_multi(kir_file, output_path);
-    } else if (strcmp(target, "lua") == 0) {
-        success = lua_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "c") == 0) {
         success = ir_generate_c_code_multi(kir_file, output_path);
     } else if (strcmp(target, "kotlin") == 0) {

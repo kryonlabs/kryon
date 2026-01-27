@@ -124,9 +124,9 @@ static bool copy_file(const char* source, const char* target) {
 }
 
 /**
- * Create wrapper script for Lua/Kry desktop apps
+ * Create wrapper script for Kry desktop apps
  */
-static bool create_lua_wrapper(const char* project_dir, const char* entry_file,
+static bool create_kry_wrapper(const char* project_dir, const char* entry_file,
                                 const char* wrapper_path, const char* project_name) {
     // Create directory if needed
     char* wrapper_dir = str_copy(wrapper_path);
@@ -312,7 +312,6 @@ static const char* detect_frontend_from_entry(const char* entry) {
 
     ext++;  // Skip the dot
 
-    if (strcmp(ext, "lua") == 0) return "lua";
     if (strcmp(ext, "kry") == 0) return "kry";
     if (strcmp(ext, "c") == 0) return "c";
     if (strcmp(ext, "tsx") == 0 || strcmp(ext, "ts") == 0) return "tsx";
@@ -476,14 +475,14 @@ int cmd_install(int argc, char** argv) {
         return 1;
     }
 
-    // For Lua/Kry desktop apps, check for compiled binary or create wrapper
-    bool is_lua_app = (frontend && (strcmp(frontend, "lua") == 0 || strcmp(frontend, "kry") == 0));
+    // For Kry desktop apps, check for compiled binary or create wrapper
+    bool is_kry_app = (frontend && strcmp(frontend, "kry") == 0);
     bool is_c_app = (frontend && strcmp(frontend, "c") == 0);
 
     char* source_path = NULL;
     char* wrapper_path = NULL;
 
-    if (is_lua_app) {
+    if (is_kry_app) {
         // First, check if there's a compiled binary from kryon build
         char* build_output_dir = config->build_output_dir ?
                                  str_copy(config->build_output_dir) : str_copy("dist");
@@ -510,7 +509,7 @@ int cmd_install(int argc, char** argv) {
             free(build_output_dir);
         } else {
             free(build_output_dir);
-            // No compiled binary found, create wrapper script for Lua apps
+            // No compiled binary found, create wrapper script for Kry apps
             printf("  No compiled binary found, creating wrapper script...\n");
 
             // Get XDG data directory for wrapper
@@ -532,7 +531,7 @@ int cmd_install(int argc, char** argv) {
             wrapper_path = path_join(app_dir, "wrapper.sh");
 
             if (!dry_run) {
-                if (!create_lua_wrapper(project_dir, config->build_entry, wrapper_path, config->project_name)) {
+                if (!create_kry_wrapper(project_dir, config->build_entry, wrapper_path, config->project_name)) {
                     fprintf(stderr, "Error: Failed to create wrapper script\n");
                     free(project_dir);
                     free(apps_root);
@@ -598,7 +597,7 @@ int cmd_install(int argc, char** argv) {
         free(build_output_dir);
     } else {
         fprintf(stderr, "Error: Unsupported frontend for installation: %s\n", frontend ? frontend : "unknown");
-        fprintf(stderr, "       Only lua, kry, and c frontends are supported.\n");
+        fprintf(stderr, "       Only kry and c frontends are supported.\n");
         free(project_dir);
         if (install != config->install) {
             free(install->binary_path);

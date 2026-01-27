@@ -162,11 +162,9 @@ PARSER_SOURCES = parsers/kry/kry_allocator.c \
                  parsers/html/css_parser.c \
                  parsers/html/css_stylesheet.c \
                  parsers/c/c_parser.c \
-                 parsers/tsx/tsx_parser.c \
                  parsers/lua/lua_parser.c \
                  parsers/lua/module_collector.c \
                  parsers/lua/require_tracker.c \
-                 parsers/hare/hare_parser.c \
                  parsers/parser_utils.c
 
 # All IR sources

@@ -55,10 +55,8 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_plugin.c \
        $(SRC_DIR)/commands/cmd_install.c \
        $(SRC_DIR)/commands/cmd_uninstall.c \
-       $(SRC_DIR)/build/luajit_compile.c \
        $(SRC_DIR)/build/embed_bytecode.c \
        $(SRC_DIR)/build/plugin_discovery.c \
-       $(SRC_DIR)/build/luajit_link.c \
        $(SRC_DIR)/build/c_desktop.c
 
 # Object files
@@ -73,13 +71,9 @@ TARGET = kryon
 # Codegen object files (only include existing ones)
 CODEGEN_OBJS = $(wildcard ../build/codegen_common.o) \
                $(wildcard ../codegens/kry/kry_codegen.o) \
-               $(wildcard ../codegens/tsx/tsx_codegen.o) \
-               $(wildcard ../codegens/lua/lua_codegen.o) \
                $(wildcard ../codegens/markdown/markdown_codegen.o) \
                $(wildcard ../codegens/c/ir_c_codegen.o) \
-               $(wildcard ../codegens/kotlin/kotlin_codegen.o) \
-               $(wildcard ../codegens/hare/hare_codegen.o) \
-               $(wildcard ../codegens/react_common.o)
+               $(wildcard ../codegens/kotlin/kotlin_codegen.o)
 
 # Third-party libraries
 CJSON_OBJ = $(BUILD_DIR)/cJSON.o
@@ -154,9 +148,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_desktop.a \
 		../build/libkryon_web.a \
 		../build/libkryon_codegen_c.a \
-		../build/libkryon_codegen_tsx.a \
 		../build/libkryon_codegen_kry.a \
-		../build/libkryon_codegen_lua.a \
 		../build/libkryon_codegen_markdown.a \
 		../codegens/kotlin/libkotlin_codegen.a
 	# Build kir_to_html.o (embedded web codegen)
@@ -164,9 +156,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 	$(CC) $(OBJS_LINK) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) \
 		../build/libkryon_web.a \
 		../build/libkryon_codegen_c.a \
-		../build/libkryon_codegen_tsx.a \
 		../build/libkryon_codegen_kry.a \
-		../build/libkryon_codegen_lua.a \
 		../build/libkryon_codegen_markdown.a \
 		../codegens/kotlin/libkotlin_codegen.a \
 		$(LDFLAGS) $(HARFBUZZ_LIBS)
@@ -196,24 +186,14 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 ../build/libkryon_codegen_c.a:
 	$(MAKE) -C ../codegens/c
 
-../build/libkryon_codegen_tsx.a:
-	$(MAKE) -C ../codegens/tsx
-
 ../build/libkryon_codegen_kry.a:
 	$(MAKE) -C ../codegens/kry
-
-../build/libkryon_codegen_lua.a:
-	$(MAKE) -C ../codegens/lua
 
 ../build/libkryon_codegen_markdown.a:
 	$(MAKE) -C ../codegens/markdown
 
 ../codegens/kotlin/libkotlin_codegen.a:
 	$(MAKE) -C ../codegens/kotlin
-
-# Hare codegen object file
-../codegens/hare/hare_codegen.o:
-	$(MAKE) -C ../codegens/hare
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
@@ -225,7 +205,7 @@ install: $(TARGET)
 	mkdir -p $(INSTALL_DIR)
 	cp $(TARGET) $(INSTALL_DIR)/$(TARGET)
 	chmod +x $(INSTALL_DIR)/$(TARGET)
-	# Build and install IR library (needed for Lua runtime)
+	# Build and install IR library
 	$(MAKE) -C ../ir all
 	mkdir -p $(HOME)/.local/share/kryon/build
 	cp ../build/libkryon_ir.so $(HOME)/.local/share/kryon/build/
@@ -237,12 +217,6 @@ install: $(TARGET)
 	# Also install to .local/lib for dynamic linker
 	mkdir -p $(HOME)/.local/lib
 	cp ../build/libkryon_ir.so $(HOME)/.local/lib/
-	# Install TSX parser
-	mkdir -p $(HOME)/.local/share/kryon/tsx_parser
-	cp ../ir/parsers/tsx/tsx_to_kir.ts $(HOME)/.local/share/kryon/tsx_parser/
-	# Install Lua bindings
-	mkdir -p $(HOME)/.local/share/kryon/bindings/lua
-	cp -r ../bindings/lua/* $(HOME)/.local/share/kryon/bindings/lua/
 	# Install C bindings
 	mkdir -p $(HOME)/.local/share/kryon/bindings/c
 	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
@@ -250,9 +224,6 @@ install: $(TARGET)
 	cp ../third_party/tomlc99/toml.h $(HOME)/.local/share/kryon/bindings/c/
 	cp ../ir/src/utils/ir_constants.h $(HOME)/.local/share/kryon/bindings/c/
 	cp ../ir/src/utils/ir_c_metadata.h $(HOME)/.local/share/kryon/bindings/c/
-	# Install Hare bindings
-	mkdir -p $(HOME)/.local/share/kryon/bindings/hare
-	cp -r ../bindings/hare/* $(HOME)/.local/share/kryon/bindings/hare/
 	# Install IR headers (required by C bindings - relative path ../../ir/include/)
 	mkdir -p $(HOME)/.local/share/kryon/ir/include
 	cp ../ir/include/*.h $(HOME)/.local/share/kryon/ir/include/
@@ -266,14 +237,11 @@ install: $(TARGET)
 	mkdir -p $(HOME)/.local/share/kryon/runtime/desktop/abstract
 	cp ../runtime/desktop/*.h $(HOME)/.local/share/kryon/runtime/desktop/
 	cp ../runtime/desktop/abstract/*.h $(HOME)/.local/share/kryon/runtime/desktop/abstract/
-	# Install vendor files (Fengari, etc.) for web codegen
+	# Install vendor files for web codegen
 	$(MAKE) -C ../codegens/web install-vendor
 	# Install dev server script
 	mkdir -p $(HOME)/.local/share/kryon/scripts
 	cp scripts/dev_server.ts $(HOME)/.local/share/kryon/scripts/
-	# Install luajit_runtime.c template for building Lua binaries
-	mkdir -p $(HOME)/.local/share/kryon/cli/src/build
-	cp src/build/luajit_runtime.c $(HOME)/.local/share/kryon/cli/src/build/
 
 # Clean
 clean:
