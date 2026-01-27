@@ -20,7 +20,6 @@
 #include "../../../codegens/lua/lua_codegen.h"
 #include "../../../codegens/tsx/tsx_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
-#include "../../../codegens/python/python_codegen.h"
 #include "../../../codegens/kotlin/kotlin_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
 #include "../../../codegens/hare/hare_codegen.h"
@@ -1162,8 +1161,6 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = lua_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "c") == 0) {
         success = ir_generate_c_code_multi(kir_file, output_path);
-    } else if (strcmp(target, "python") == 0) {
-        success = python_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "kotlin") == 0) {
         success = ir_generate_kotlin_code_multi(kir_file, output_path);
     } else if (strcmp(target, "markdown") == 0) {
@@ -1206,7 +1203,7 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, tsx, lua, c, python, kotlin, hare, markdown, kir\n");
+        fprintf(stderr, "Supported targets: kry, tsx, lua, c, kotlin, hare, markdown, kir\n");
         return 1;
     }
 

@@ -15,7 +15,6 @@
 #include "ir_serialization.h"
 #include "../../ir/parsers/c/c_parser.h"
 #include "../../ir/parsers/tsx/tsx_parser.h"
-#include "../../ir/parsers/lua/lua_parser.h"
 #include "../../ir/parsers/hare/hare_parser.h"
 
 static int compile_to_kir(const char* source_file, const char* output_kir, const char* frontend) {
@@ -164,37 +163,6 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         free(json);
         return 0;
     }
-    else if (strcmp(frontend, "lua") == 0) {
-        // Use Lua parser (execute-and-serialize approach, takes file path directly)
-        char* json = ir_lua_file_to_kir(source_file);
-
-        if (!json) {
-            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
-            return 1;
-        }
-
-        // Strip any debug output before the JSON (find first '{')
-        char* json_start = strchr(json, '{');
-        if (!json_start) {
-            fprintf(stderr, "Error: No valid JSON found in parser output\n");
-            free(json);
-            return 1;
-        }
-
-        // Write to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
-            free(json);
-            return 1;
-        }
-
-        fprintf(out, "%s\n", json_start);
-        fclose(out);
-
-        free(json);
-        return 0;
-    }
     else if (strcmp(frontend, "hare") == 0) {
         // Use Hare parser
         char* json = ir_hare_file_to_kir(source_file);
@@ -263,7 +231,7 @@ int cmd_compile(int argc, char** argv) {
     const char* frontend = detect_frontend_type(source_file);
     if (!frontend) {
         fprintf(stderr, "Error: Could not detect frontend for %s\n", source_file);
-        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .lua, .c, .ha\n");
+        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .c, .ha\n");
         return 1;
     }
 
@@ -303,50 +271,6 @@ int cmd_compile(int argc, char** argv) {
             dir_create(dir_path);
         }
         free(dir_path);
-    }
-
-    // Load kryon.toml and set up plugin paths for Lua compilation
-    if (strcmp(frontend, "lua") == 0) {
-        KryonConfig* config = config_find_and_load();
-        if (config && config->plugins_count > 0) {
-            // Build plugin paths string (colon-separated absolute paths)
-            char plugin_paths[4096] = "";
-            char* cwd = dir_get_current();
-
-            for (int i = 0; i < config->plugins_count; i++) {
-                if (!config->plugins[i].enabled || !config->plugins[i].path) {
-                    continue;
-                }
-
-                // Resolve plugin path to absolute
-                char* abs_path;
-                if (config->plugins[i].path[0] == '/') {
-                    // Already absolute
-                    abs_path = str_copy(config->plugins[i].path);
-                } else {
-                    // Relative to current directory
-                    abs_path = path_join(cwd, config->plugins[i].path);
-                }
-
-                // Add to plugin_paths string
-                if (plugin_paths[0] != '\0') {
-                    strncat(plugin_paths, ":", sizeof(plugin_paths) - strlen(plugin_paths) - 1);
-                }
-                strncat(plugin_paths, abs_path, sizeof(plugin_paths) - strlen(plugin_paths) - 1);
-
-                free(abs_path);
-            }
-
-            if (plugin_paths[0] != '\0') {
-                setenv("KRYON_PLUGIN_PATHS", plugin_paths, 1);
-            }
-
-            free(cwd);
-        }
-
-        if (config) {
-            config_free(config);
-        }
     }
 
     // Compile to KIR

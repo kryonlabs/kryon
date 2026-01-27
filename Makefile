@@ -32,7 +32,7 @@ STATIC_LIB_EXT = .a
 SHARED_LIB_EXT = .so
 
 # Default target
-all: cli ir codegens runtime python-bindings
+all: cli ir codegens runtime
 
 # Help
 help:
@@ -45,7 +45,6 @@ help:
 	@echo "  codegens     - Build all code generators"
 	@echo "  runtime      - Build runtime backends"
 	@echo "  renderers    - Build rendering systems"
-	@echo "  python-bindings - Build Python bindings"
 	@echo "  clean        - Remove all build artifacts"
 	@echo "  install      - Install to $(PREFIX)"
 	@echo ""
@@ -89,14 +88,7 @@ codegens: ir
 	@$(MAKE) -C $(CODEGENS_DIR)/kotlin all
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
 	@$(MAKE) -C $(CODEGENS_DIR)/tsx all
-	@$(MAKE) -C $(CODEGENS_DIR)/python all
 	@echo "✓ Built code generators"
-
-# Python bindings
-python-bindings: ir
-	@echo "Building Python bindings..."
-	@$(MAKE) -C bindings/python package
-	@echo "✓ Built Python bindings"
 
 # Runtime backends (desktop rendering, terminal, etc.)
 runtime: ir
@@ -138,8 +130,6 @@ clean:
 	@$(MAKE) -C $(CODEGENS_DIR)/kotlin clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/tsx clean || true
-	@$(MAKE) -C $(CODEGENS_DIR)/python clean || true
-	@$(MAKE) -C bindings/python clean || true
 	@if [ -d $(RUNTIME_DIR)/desktop ]; then \
 		$(MAKE) -C $(RUNTIME_DIR)/desktop clean || true; \
 	fi
@@ -206,7 +196,7 @@ docs:
 # Phony Targets
 # ============================================================================
 
-.PHONY: all cli ir codegens runtime renderers python-bindings clean install uninstall
+.PHONY: all cli ir codegens runtime renderers clean install uninstall
 .PHONY: help test check docs
 
 # ============================================================================

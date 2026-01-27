@@ -157,7 +157,6 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_tsx.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_lua.a \
-		../build/libkryon_codegen_python.a \
 		../build/libkryon_codegen_markdown.a \
 		../codegens/kotlin/libkotlin_codegen.a
 	# Build kir_to_html.o (embedded web codegen)
@@ -168,7 +167,6 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_tsx.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_lua.a \
-		../build/libkryon_codegen_python.a \
 		../build/libkryon_codegen_markdown.a \
 		../codegens/kotlin/libkotlin_codegen.a \
 		$(LDFLAGS) $(HARFBUZZ_LIBS)
@@ -206,9 +204,6 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 
 ../build/libkryon_codegen_lua.a:
 	$(MAKE) -C ../codegens/lua
-
-../build/libkryon_codegen_python.a:
-	$(MAKE) -C ../codegens/python
 
 ../build/libkryon_codegen_markdown.a:
 	$(MAKE) -C ../codegens/markdown
