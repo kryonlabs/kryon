@@ -314,7 +314,7 @@ int cmd_run(int argc, char** argv) {
             }
         }
         fprintf(stderr, "\n");
-        fprintf(stderr, "Frontend languages: KRY, TypeScript/JSX, HTML, Markdown, C, Hare\n");
+        fprintf(stderr, "Frontend languages: KRY, HTML, Markdown, C\n");
 
         if (free_target_platform) free((char*)target_platform);
         return 1;
@@ -374,7 +374,7 @@ int cmd_run(int argc, char** argv) {
     if (!frontend) {
         const char* ext = path_extension(target_file);
         fprintf(stderr, "Error: Unsupported file type: %s\n", ext);
-        fprintf(stderr, "Supported file types: .kry, .kir, .md, .html, .tsx, .jsx, .c, .ha\n");
+        fprintf(stderr, "Supported file types: .kry, .kir, .md, .html, .c\n");
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
         return 1;

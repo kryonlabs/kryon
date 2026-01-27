@@ -16,14 +16,12 @@ struct DocsTemplateContext;
  * Detect the frontend type based on file extension.
  *
  * Supported extensions:
- * - .tsx, .jsx  -> "tsx"
  * - .kir        -> "kir"
  * - .md         -> "markdown"
  * - .html       -> "html"
  * - .kry        -> "kry"
  * - .lua        -> "lua"
  * - .c, .h      -> "c"
- * - .ha         -> "hare"
  *
  * @param source_file Path to the source file
  * @return Frontend type string, or NULL if unknown
@@ -146,7 +144,7 @@ int build_source_file(const char* source_file, BuildOptions* opts, KryonConfig* 
  *
  * The result is always "<base>/<target>" for organization.
  *
- * @param target    Codegen target (kry, lua, c, tsx)
+ * @param target    Codegen target (kry, lua, c)
  * @param config    Kryon config (optional, can be NULL)
  * @return Default output directory path (caller must free)
  */
@@ -158,7 +156,7 @@ char* get_codegen_output_dir(const char* target, KryonConfig* config);
  * Calls the appropriate codegen function based on target.
  *
  * @param kir_file      Path to the KIR file
- * @param target        Codegen target (kry, lua, c, tsx)
+ * @param target        Codegen target (kry, lua, c)
  * @param output_path   Output file/directory path
  * @return 0 on success, non-zero on failure
  */
@@ -172,7 +170,7 @@ int generate_from_kir(const char* kir_file, const char* target,
  * If output_dir is not provided, uses get_codegen_output_dir().
  *
  * @param source_file   Source file path (uses build.entry if NULL)
- * @param target        Codegen target (kry, lua, c, tsx, web)
+ * @param target        Codegen target (kry, lua, c, web)
  * @param output_dir    Output directory (uses default if NULL)
  * @param config        Kryon config (loaded if NULL)
  * @return 0 on success, non-zero on failure

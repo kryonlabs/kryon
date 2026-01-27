@@ -134,7 +134,6 @@ UTIL_SOURCES = src/utils/ir_string_builder.c \
                src/utils/ir_format_detect.c \
                src/utils/ir_asset.c \
                src/utils/ir_krb.c \
-               src/utils/ir_lua_modules.c \
                src/utils/ir_source_structures.c \
                src/utils/ir_json.c
 
@@ -162,9 +161,6 @@ PARSER_SOURCES = parsers/kry/kry_allocator.c \
                  parsers/html/css_parser.c \
                  parsers/html/css_stylesheet.c \
                  parsers/c/c_parser.c \
-                 parsers/lua/lua_parser.c \
-                 parsers/lua/module_collector.c \
-                 parsers/lua/require_tracker.c \
                  parsers/parser_utils.c
 
 # All IR sources

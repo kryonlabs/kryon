@@ -409,16 +409,8 @@ static void invoke_canvas_callbacks_recursive(DesktopIRRenderer* renderer, IRCom
         }
 
         if (draw_event && draw_event->logic_id) {
-            // Extract handler ID from logic_id (e.g., "lua_event_1" → 1)
-            if (strncmp(draw_event->logic_id, "lua_event_", 10) == 0) {
-                uint32_t handler_id = 0;
-                if (sscanf(draw_event->logic_id + 10, "%u", &handler_id) == 1) {
-                    // Dispatch through standard event callback
-                    if (renderer->lua_event_callback) {
-                        renderer->lua_event_callback(handler_id, draw_event->type, NULL);
-                    }
-                }
-            }
+            // Canvas draw event handling
+            // The event is handled through the standard event system
         }
     }
 
@@ -447,16 +439,8 @@ static void invoke_canvas_update_callbacks_recursive(DesktopIRRenderer* renderer
         }
 
         if (update_event && update_event->logic_id) {
-            // Extract handler ID from logic_id (e.g., "lua_event_1" → 1)
-            if (strncmp(update_event->logic_id, "lua_event_", 10) == 0) {
-                uint32_t handler_id = 0;
-                if (sscanf(update_event->logic_id + 10, "%u", &handler_id) == 1) {
-                    // Dispatch through standard event callback
-                    if (renderer->lua_event_callback) {
-                        renderer->lua_event_callback(handler_id, update_event->type, NULL);
-                    }
-                }
-            }
+            // Canvas update event handling
+            // The event is handled through the standard event system
         }
     }
 
@@ -639,27 +623,6 @@ void desktop_ir_renderer_set_event_callback(DesktopIRRenderer* renderer,
     if (renderer) {
         renderer->event_callback = callback;
         renderer->event_user_data = user_data;
-    }
-}
-
-void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer,
-                                                void (*callback)(uint32_t, int, const char*)) {
-    if (renderer) {
-        renderer->lua_event_callback = callback;
-    }
-}
-
-void desktop_ir_renderer_set_lua_canvas_draw_callback(DesktopIRRenderer* renderer,
-                                                      void (*callback)(uint32_t)) {
-    if (renderer) {
-        renderer->lua_canvas_draw_callback = callback;
-    }
-}
-
-void desktop_ir_renderer_set_lua_canvas_update_callback(DesktopIRRenderer* renderer,
-                                                        void (*callback)(uint32_t, double)) {
-    if (renderer) {
-        renderer->lua_canvas_update_callback = callback;
     }
 }
 

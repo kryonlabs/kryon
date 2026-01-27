@@ -294,29 +294,17 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                     if (open_modal && is_click_on_modal_backdrop(open_modal,
                             (float)event.button.x, (float)event.button.y)) {
                         // Clicked on modal backdrop - close the modal
-                        // Dispatch close event to Lua via the event callback
-                        IREvent* close_event = ir_find_event(open_modal, IR_EVENT_CLICK);
-                        if (close_event && close_event->logic_id &&
-                            strncmp(close_event->logic_id, "lua_event_", 10) == 0) {
-                            uint32_t handler_id = 0;
-                            if (sscanf(close_event->logic_id + 10, "%u", &handler_id) == 1) {
-                                if (renderer->lua_event_callback) {
-                                    // Pass "backdrop_click" as extra info
-                                    renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, "backdrop_click");
-                                }
-                            }
-                        } else {
-                            // Mark the modal as closed by updating custom_data string
-                            // This will cause the modal to not render on next frame
-                            // Note: The reactive system should rebuild UI when state changes
-                            if (open_modal->custom_data) {
-                                const char* state_str = (const char*)open_modal->custom_data;
-                                if (strncmp(state_str, "open", 4) == 0) {
-                                    // Format: "open|title" -> "closed|title"
-                                    const char* title_part = strchr(state_str, '|');
-                                    if (title_part) {
-                                        // Construct "closed|title"
-                                        size_t title_len = strlen(title_part);  // includes the '|'
+                        // Mark the modal as closed by updating custom_data string
+                        // This will cause the modal to not render on next frame
+                        // Note: The reactive system should rebuild UI when state changes
+                        if (open_modal->custom_data) {
+                            const char* state_str = (const char*)open_modal->custom_data;
+                            if (strncmp(state_str, "open", 4) == 0) {
+                                // Format: "open|title" -> "closed|title"
+                                const char* title_part = strchr(state_str, '|');
+                                if (title_part) {
+                                    // Construct "closed|title"
+                                    size_t title_len = strlen(title_part);  // includes the '|'
                                         char* new_state = malloc(6 + title_len + 1);  // "closed" + "|title" + null
                                         if (new_state) {
                                             memcpy(new_state, "closed", 6);
@@ -419,25 +407,8 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                         // Find and trigger IR_EVENT_CLICK handler
                         IREvent* ir_event = ir_find_event(clicked, IR_EVENT_CLICK);
                         if (ir_event && ir_event->logic_id) {
-                            // Check if this is a Lua event handler
-                            if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
-                                bool handled_as_tab = try_handle_as_tab_click(renderer, clicked);
-                                uint32_t handler_id = 0;
-                                if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
-                                    if (renderer->lua_event_callback) {
-                                        // Pass custom_data so ForEach-expanded handlers can read item data
-                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, clicked->custom_data);
-                                    } else if (!handled_as_tab) {
-                                        printf("⚠️ Lua event detected but no callback registered\n");
-                                        printf("  💡 Hint: Run .lua files directly (don't compile to .kir first)\n");
-                                    }
-                                } else if (!handled_as_tab) {
-                                    fprintf(stderr, "⚠️ Failed to parse handler ID from logic_id: %s\n",
-                                            ir_event->logic_id);
-                                }
-                            }
                             // C event (c_click_*, c_change_*, etc.)
-                            else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                            if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
                                 kryon_c_event_bridge(ir_event->logic_id);
                             }
                             // Generic fallback - handle via executor
@@ -647,20 +618,6 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             ensure_caret_visible_sdl3(renderer, focused_input, istate, font, pad_left, pad_right);
                         }
 
-                        // Fire IR_EVENT_TEXT_CHANGE for Lua handlers
-                        IREvent* text_event = ir_find_event(focused_input, IR_EVENT_TEXT_CHANGE);
-                        if (text_event && text_event->logic_id) {
-                            if (strncmp(text_event->logic_id, "lua_event_", 10) == 0) {
-                                uint32_t handler_id = 0;
-                                if (sscanf(text_event->logic_id + 10, "%u", &handler_id) == 1) {
-                                    if (renderer->lua_event_callback) {
-                                        const char* text = focused_input->text_content ? focused_input->text_content : "";
-                                        renderer->lua_event_callback(handler_id, IR_EVENT_TEXT_CHANGE, text);
-                                    }
-                                }
-                            }
-                        }
-
                         // Sync to bound variable
                         IRExecutorContext* exec_ctx = get_executor_from_state_mgr();
                         if (exec_ctx) {
@@ -749,20 +706,6 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                             if (istate) {
                                 istate->cursor_index = prefix_len;
                                 ensure_caret_visible_sdl3(renderer, focused_input, istate, font, pad_left, pad_right);
-                            }
-
-                            // Fire IR_EVENT_TEXT_CHANGE
-                            IREvent* text_event = ir_find_event(focused_input, IR_EVENT_TEXT_CHANGE);
-                            if (text_event && text_event->logic_id) {
-                                if (strncmp(text_event->logic_id, "lua_event_", 10) == 0) {
-                                    uint32_t handler_id = 0;
-                                    if (sscanf(text_event->logic_id + 10, "%u", &handler_id) == 1) {
-                                        if (renderer->lua_event_callback) {
-                                            const char* text = focused_input->text_content ? focused_input->text_content : "";
-                                            renderer->lua_event_callback(handler_id, IR_EVENT_TEXT_CHANGE, text);
-                                        }
-                                    }
-                                }
                             }
 
                             // Sync to bound variable

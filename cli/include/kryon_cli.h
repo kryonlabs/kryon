@@ -62,7 +62,6 @@ char* paths_get_home_dir(void);
 char* paths_get_build_path(void);
 char* paths_get_bindings_path(void);
 char* paths_get_scripts_path(void);
-char* paths_get_tsx_parser_path(void);
 char* paths_find_library(const char* lib_name);
 char* paths_find_plugin(const char* plugin_name, const char* explicit_path, const char* config_dir);
 
@@ -199,7 +198,7 @@ typedef struct {
     int build_targets_count;
     char* build_output_dir;
     char* build_entry;          // Entry point file (e.g., "main.kry")
-    char* build_frontend;       // Frontend language (e.g., "kry", "tsx")
+    char* build_frontend;       // Frontend language (e.g., "kry")
 
     // Target-specific configurations
     TargetConfig* targets;      // Array of target-specific configs

@@ -314,7 +314,6 @@ static const char* detect_frontend_from_entry(const char* entry) {
 
     if (strcmp(ext, "kry") == 0) return "kry";
     if (strcmp(ext, "c") == 0) return "c";
-    if (strcmp(ext, "tsx") == 0 || strcmp(ext, "ts") == 0) return "tsx";
     if (strcmp(ext, "html") == 0) return "html";
 
     return NULL;

@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Template: Basic TSX project
+// Template: Basic Kry project
 static const char* TEMPLATE_KRYON_TOML =
 "[project]\n"
 "name = \"%s\"\n"
@@ -19,8 +19,8 @@ static const char* TEMPLATE_KRYON_TOML =
 "[build]\n"
 "target = \"web\"\n"
 "output_dir = \"dist\"\n"
-"entry = \"index.tsx\"\n"
-"frontend = \"tsx\"\n"
+"entry = \"main.kry\"\n"
+"frontend = \"kry\"\n"
 "\n"
 "[optimization]\n"
 "enabled = true\n"
@@ -33,23 +33,21 @@ static const char* TEMPLATE_KRYON_TOML =
 "port = 3000\n"
 "auto_open = true\n";
 
-static const char* TEMPLATE_INDEX_TSX =
+static const char* TEMPLATE_MAIN_KRY =
 "import { Text, Column, Button } from 'kryon';\n"
 "\n"
-"export default function App() {\n"
-"  return (\n"
-"    <Column style={{ padding: '20px', gap: '10px' }}>\n"
-"      <Text style={{ fontSize: '24px', fontWeight: 'bold' }}>\n"
-"        Welcome to Kryon!\n"
-"      </Text>\n"
-"      <Text>\n"
-"        Edit this file to get started.\n"
-"      </Text>\n"
-"      <Button onClick={() => console.log('Hello!')}>\n"
-"        Click me\n"
-"      </Button>\n"
-"    </Column>\n"
-"  );\n"
+"component App {\n"
+"  Column(style = { padding: '20px', gap: '10px' }) {\n"
+"    Text(style = { fontSize: '24px', fontWeight: 'bold' }) {\n"
+"      \"Welcome to Kryon!\"\n"
+"    }\n"
+"    Text {\n"
+"      \"Edit this file to get started.\"\n"
+"    }\n"
+"    Button(onClick = { || print(\"Hello!\") }) {\n"
+"      \"Click me\"\n"
+"    }\n"
+"  }\n"
 "}\n";
 
 static const char* TEMPLATE_README =
@@ -64,7 +62,7 @@ static const char* TEMPLATE_README =
 "kryon build\n"
 "\n"
 "# Run development server\n"
-"kryon dev index.tsx\n"
+"kryon dev main.kry\n"
 "\n"
 "# Build for production\n"
 "kryon build --target=web\n"
@@ -72,7 +70,7 @@ static const char* TEMPLATE_README =
 "\n"
 "## Project Structure\n"
 "\n"
-"- `index.tsx` - Main application entry point\n"
+"- `main.kry` - Main application entry point\n"
 "- `kryon.toml` - Project configuration\n"
 "- `dist/` - Build output directory\n"
 "\n"
@@ -144,15 +142,15 @@ int cmd_new(int argc, char** argv) {
     printf("  ✓ Created kryon.toml\n");
     free(toml_path);
 
-    // Create index.tsx
-    char* tsx_path = path_join(project_name, "index.tsx");
-    if (!file_write(tsx_path, TEMPLATE_INDEX_TSX)) {
-        fprintf(stderr, "Error: Failed to create index.tsx\n");
-        free(tsx_path);
+    // Create main.kry
+    char* kry_path = path_join(project_name, "main.kry");
+    if (!file_write(kry_path, TEMPLATE_MAIN_KRY)) {
+        fprintf(stderr, "Error: Failed to create main.kry\n");
+        free(kry_path);
         return 1;
     }
-    printf("  ✓ Created index.tsx\n");
-    free(tsx_path);
+    printf("  ✓ Created main.kry\n");
+    free(kry_path);
 
     // Create README.md
     char* readme_path = path_join(project_name, "README.md");
@@ -188,7 +186,7 @@ int cmd_new(int argc, char** argv) {
     printf("Next steps:\n");
     printf("  cd %s\n", project_name);
     printf("  kryon build        # Build the project\n");
-    printf("  kryon dev index.tsx # Start development server\n");
+    printf("  kryon dev main.kry  # Start development server\n");
 
     return 0;
 }

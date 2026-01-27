@@ -18,7 +18,6 @@ Converts KRY expressions (`x => x * 2`, `obj.prop + 1`) to target language synta
 | TypeScript | ❌ | |
 | Swift | ❌ | |
 | Go | ❌ | |
-| [Hare](https://harelang.org/) | ⚠️ | Basic support (no templates) |
 
 ### Code Generators
 
@@ -27,10 +26,8 @@ Converts KIR (JSON IR) to complete source files.
 | Target | Status | Location | Notes |
 |--------|--------|----------|-------|
 | Lua | ⚠️ | `codegens/lua/` | Skeleton only, missing events/bindings |
-| TSX/React | ✅ | `codegens/tsx/` | |
 | C | ✅ | `codegens/c/` | |
 | Kotlin | ✅ | `codegens/kotlin/` | |
-| Hare | ✅ | `codegens/hare/` | NEW - Beta |
 | KRY | ✅ | `codegens/kry/` | Round-trip |
 | Markdown | ✅ | `codegens/markdown/` | |
 | HTML/CSS/JS | ✅ | `codegens/web/` | |
@@ -45,10 +42,8 @@ FFI bindings for using Kryon from other languages.
 |----------|--------|----------|
 | C | ✅ | `bindings/c/` |
 | JavaScript | ✅ | `bindings/javascript/` |
-| TypeScript | ✅ | `bindings/typescript/` |
 | Lua | ✅ | `bindings/lua/` |
 | Kotlin | ✅ | `bindings/kotlin/` |
-| [Hare](https://harelang.org/) | ✅ | `bindings/hare/` |
 | Swift | ❌ | |
 | Go | ❌ | |
 | Rust | ❌ | |
@@ -76,22 +71,19 @@ FFI bindings for using Kryon from other languages.
 
 | Category | Done | Missing |
 |----------|------|---------|
-| Expression Transpiler Targets | 3 | 6 |
-| Code Generators | 9 | 2 |
-| Runtime Bindings | 6 | 4 |
+| Expression Transpiler Targets | 3 | 5 |
+| Code Generators | 6 | 2 |
+| Runtime Bindings | 4 | 4 |
 
 ### Build Pipeline Status
 
 | Pipeline | Status | Notes |
 |----------|--------|-------|
 | KRY -> KIR | ✅ | Native C parser |
-| Hare -> KIR | ✅ | NEW - Hare DSL parser |
 | KIR -> Web (HTML/CSS/JS) | ✅ | Full support |
 | KIR -> Lua source | ⚠️ | Skeleton only |
 | KIR -> C source | ✅ | Via codegen |
-| KIR -> Hare source | ✅ | Via codegen |
 | KRY -> Desktop (C/SDL3) | ❌ | `build_c_desktop()` not implemented |
-| Hare -> Desktop binary | ✅ | Via Hare compiler |
 | Lua -> Desktop binary | ✅ | Via LuaJIT |
 | Hot reload (desktop) | ✅ | Lua runtime only |
 | Hot reload (web) | ✅ | Dev server |

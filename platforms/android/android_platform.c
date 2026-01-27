@@ -936,7 +936,6 @@ int kryon_android_hot_reload_poll(void) {
         const char* ext = strrchr(full_path, '.');
         if (ext) {
             bool is_relevant = (strcmp(ext, ".lua") == 0 ||
-                               strcmp(ext, ".tsx") == 0 ||
                                strcmp(ext, ".kry") == 0 ||
                                strcmp(ext, ".kir") == 0 ||
                                strcmp(ext, ".h") == 0 ||
