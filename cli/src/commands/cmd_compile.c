@@ -14,8 +14,6 @@
 #include "../../ir/parsers/html/html_parser.h"
 #include "ir_serialization.h"
 #include "../../ir/parsers/c/c_parser.h"
-#include "../../ir/parsers/tsx/tsx_parser.h"
-#include "../../ir/parsers/hare/hare_parser.h"
 
 static int compile_to_kir(const char* source_file, const char* output_kir, const char* frontend) {
     printf("Compiling %s → %s (frontend: %s)\n", source_file, output_kir, frontend);
@@ -117,29 +115,6 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         free(json);
         return 0;
     }
-    else if (strcmp(frontend, "tsx") == 0 || strcmp(frontend, "jsx") == 0) {
-        // Use C TSX parser (takes file path directly)
-        char* json = ir_tsx_file_to_kir(source_file);
-
-        if (!json) {
-            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
-            return 1;
-        }
-
-        // Write to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
-            free(json);
-            return 1;
-        }
-
-        fprintf(out, "%s\n", json);
-        fclose(out);
-
-        free(json);
-        return 0;
-    }
     else if (strcmp(frontend, "c") == 0) {
         // Use C parser (compile-and-execute approach, takes file path directly)
         char* json = ir_c_file_to_kir(source_file);
@@ -160,31 +135,6 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         fprintf(out, "%s\n", json);
         fclose(out);
 
-        free(json);
-        return 0;
-    }
-    else if (strcmp(frontend, "hare") == 0) {
-        // Use Hare parser
-        char* json = ir_hare_file_to_kir(source_file);
-        if (!json) {
-            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
-            const char* err = ir_hare_get_error();
-            if (err) {
-                fprintf(stderr, "Hare parser error: %s\n", err);
-            }
-            return 1;
-        }
-
-        // Write to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
-            free(json);
-            return 1;
-        }
-
-        fprintf(out, "%s\n", json);
-        fclose(out);
         free(json);
         return 0;
     }

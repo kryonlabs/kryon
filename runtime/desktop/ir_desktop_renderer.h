@@ -33,17 +33,6 @@ void desktop_ir_renderer_stop(DesktopIRRenderer* renderer);
 // Event callback
 void desktop_ir_renderer_set_event_callback(DesktopIRRenderer* renderer, DesktopEventCallback callback, void* user_data);
 
-// Lua event callback (for LuaJIT FFI bindings)
-// text_data is non-NULL for TEXT_CHANGE events, NULL for other events
-void desktop_ir_renderer_set_lua_event_callback(DesktopIRRenderer* renderer,
-                                                void (*callback)(uint32_t component_id, int event_type, const char* text_data));
-
-// Lua canvas callbacks (for Canvas onDraw/onUpdate)
-void desktop_ir_renderer_set_lua_canvas_draw_callback(DesktopIRRenderer* renderer,
-                                                      void (*callback)(uint32_t component_id));
-void desktop_ir_renderer_set_lua_canvas_update_callback(DesktopIRRenderer* renderer,
-                                                        void (*callback)(uint32_t component_id, double delta_time));
-
 // Dynamic root update (for reactive UI rebuilds)
 void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root);
 

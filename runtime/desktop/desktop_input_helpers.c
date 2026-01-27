@@ -167,7 +167,6 @@ __attribute__((weak)) void open_external_url(const char* url) {
 
 /**
  * Check if clicked button is a tab in a TabGroup and handle tab switching.
- * This works for Lua tabs.
  * Returns true if handled as tab, false otherwise.
  */
 __attribute__((weak)) bool try_handle_as_tab_click(DesktopIRRenderer* renderer, IRComponent* clicked) {
@@ -206,7 +205,6 @@ __attribute__((weak)) bool try_handle_as_tab_click(DesktopIRRenderer* renderer, 
             ir_tabgroup_handle_tab_click(tg_state, i);
 
             // Trigger user's onClick callback if they provided one
-            // For Lua tabs, this will be called via lua_event_callback
 
             return true;
         }

@@ -70,17 +70,8 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
     switch (clicked->type) {
         case IR_COMPONENT_BUTTON: {
             if (ir_event && ir_event->logic_id) {
-                // Lua event handler
-                if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
-                    uint32_t handler_id = 0;
-                    if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
-                        if (renderer->lua_event_callback) {
-                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
-                        }
-                    }
-                }
                 // C event (c_click_*, c_change_*, etc.)
-                else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
                     kryon_c_event_bridge(ir_event->logic_id);
                 }
                 // Generic fallback - try executor
@@ -101,17 +92,8 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
                 // Toggle checkbox state FIRST (before calling handlers)
                 ir_toggle_checkbox_state(clicked);
 
-                // Lua event handler
-                if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
-                    uint32_t handler_id = 0;
-                    if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
-                        if (renderer->lua_event_callback) {
-                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
-                        }
-                    }
-                }
                 // C event
-                else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
                     kryon_c_event_bridge(ir_event->logic_id);
                 }
                 // Generic fallback - try executor
@@ -151,17 +133,8 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
 
                         // Fire event if handler exists
                         if (ir_event && ir_event->logic_id) {
-                            // Lua event handler
-                            if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
-                                uint32_t handler_id = 0;
-                                if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
-                                    if (renderer->lua_event_callback) {
-                                        renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
-                                    }
-                                }
-                            }
                             // C event
-                            else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                            if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
                                 kryon_c_event_bridge(ir_event->logic_id);
                             }
                             // Generic fallback - try executor
@@ -191,17 +164,8 @@ static void handle_mouse_click(DesktopIRRenderer* renderer, IRComponent* root, f
 
             // Fire event for toggle action
             if (ir_event && ir_event->logic_id) {
-                // Lua event handler
-                if (strncmp(ir_event->logic_id, "lua_event_", 10) == 0) {
-                    uint32_t handler_id = 0;
-                    if (sscanf(ir_event->logic_id + 10, "%u", &handler_id) == 1) {
-                        if (renderer->lua_event_callback) {
-                            renderer->lua_event_callback(handler_id, IR_EVENT_CLICK, NULL);
-                        }
-                    }
-                }
                 // C event
-                else if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
+                if (strncmp(ir_event->logic_id, "c_", 2) == 0) {
                     kryon_c_event_bridge(ir_event->logic_id);
                 }
                 // Generic fallback - try executor

@@ -16,24 +16,6 @@ WebCodegenOptions web_codegen_default_options(void) {
     return opts;
 }
 
-TsxCodegenOptions tsx_codegen_default_options(void) {
-    TsxCodegenOptions opts = {
-        .format = true,               // Format output
-        .use_prettier = false,        // Don't use Prettier by default
-        .semicolons = true            // Include semicolons (TypeScript style)
-    };
-    return opts;
-}
-
-JsxCodegenOptions jsx_codegen_default_options(void) {
-    JsxCodegenOptions opts = {
-        .format = true,               // Format output
-        .use_prettier = false,        // Don't use Prettier by default
-        .semicolons = false           // No semicolons (JavaScript style)
-    };
-    return opts;
-}
-
 LuaCodegenOptions lua_codegen_default_options(void) {
     LuaCodegenOptions opts = {
         .format = true,               // Format output

@@ -152,84 +152,6 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
         return 0;
     }
 
-    // TSX: use bun parser
-    if (strcmp(frontend, "tsx") == 0 || strcmp(frontend, "jsx") == 0) {
-        int written;  /* For truncation checking */
-        char* tsx_parser = paths_get_tsx_parser_path();
-        if (!tsx_parser || !file_exists(tsx_parser)) {
-            // Auto-download TSX parser from GitHub
-            char* home = getenv("HOME");
-            if (!home) {
-                fprintf(stderr, "Error: HOME not set\n");
-                return 1;
-            }
-
-            char tsx_dir[PATH_MAX];
-            written = snprintf(tsx_dir, sizeof(tsx_dir), "%s/.local/share/kryon/tsx_parser", home);
-            (void)written; /* Checked by size */
-
-            // Create directory
-            {
-                char mkdir_cmd[PATH_MAX + 32];
-                snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", tsx_dir);
-                int mkdir_result = system(mkdir_cmd);
-                if (mkdir_result != 0) {
-                    fprintf(stderr, "Warning: Failed to create directory %s (code %d)\n", tsx_dir, mkdir_result);
-                }
-            }
-
-            // Download from GitHub
-            char tsx_path[PATH_MAX];
-            written = snprintf(tsx_path, sizeof(tsx_path), "%s/tsx_to_kir.ts", tsx_dir);
-            if (written < 0 || (size_t)written >= sizeof(tsx_path)) {
-                fprintf(stderr, "Error: TSX path too long\n");
-                if (tsx_parser) free(tsx_parser);
-                return 1;
-            }
-
-            printf("TSX parser not found, downloading from GitHub...\n");
-            char download_cmd[PATH_MAX * 2];
-            written = snprintf(download_cmd, sizeof(download_cmd),
-                "curl -fsSL https://raw.githubusercontent.com/kryonlabs/kryon/master/ir/parsers/tsx/tsx_to_kir.ts -o \"%s\"",
-                tsx_path);
-            if (written < 0 || (size_t)written >= sizeof(download_cmd)) {
-                fprintf(stderr, "Error: Download command too long\n");
-                if (tsx_parser) free(tsx_parser);
-                return 1;
-            }
-            int download_result = system(download_cmd);
-
-            if (download_result != 0 || !file_exists(tsx_path)) {
-                fprintf(stderr, "Error: Failed to download TSX parser\n");
-                if (tsx_parser) free(tsx_parser);
-                return 1;
-            }
-            printf("TSX parser installed to %s\n", tsx_path);
-
-            // Update tsx_parser path
-            if (tsx_parser) free(tsx_parser);
-            tsx_parser = str_copy(tsx_path);
-        }
-
-        char cmd[4096];
-        written = snprintf(cmd, sizeof(cmd), "bun run \"%s\" \"%s\" > \"%s\"",
-                 tsx_parser, source_file, output_kir);
-        if (written < 0 || (size_t)written >= sizeof(cmd)) {
-            fprintf(stderr, "Error: Bun command too long\n");
-            free(tsx_parser);
-            return 1;
-        }
-        free(tsx_parser);
-
-        char* output = NULL;
-        int result = process_run(cmd, &output);
-        if (output && strlen(output) > 0) {
-            fprintf(stderr, "%s", output);
-            free(output);
-        }
-        return result;
-    }
-
     // Markdown: use kryon compile (simpler than reimplementing)
     if (strcmp(frontend, "markdown") == 0) {
         char cmd[4096];
@@ -283,32 +205,6 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
 
         fprintf(stderr, "Error: Failed to compile HTML (exit code: %d)\n", result);
         return 1;
-    }
-
-    // Hare: use Hare parser
-    if (strcmp(frontend, "hare") == 0) {
-        char* json = ir_hare_file_to_kir(source_file);
-        if (!json) {
-            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
-            const char* err = ir_hare_get_error();
-            if (err) {
-                fprintf(stderr, "Hare parser error: %s\n", err);
-            }
-            return 1;
-        }
-
-        // Write to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
-            free(json);
-            return 1;
-        }
-
-        fprintf(out, "%s\n", json);
-        fclose(out);
-        free(json);
-        return 0;
     }
 
     // .kry DSL: use native C parser
@@ -1144,16 +1040,12 @@ int generate_from_kir(const char* kir_file, const char* target,
     // All codegens use multi-file output by default
     if (strcmp(target, "kry") == 0) {
         success = kry_codegen_generate_multi(kir_file, output_path);
-    } else if (strcmp(target, "tsx") == 0) {
-        success = tsx_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "c") == 0) {
         success = ir_generate_c_code_multi(kir_file, output_path);
     } else if (strcmp(target, "kotlin") == 0) {
         success = ir_generate_kotlin_code_multi(kir_file, output_path);
     } else if (strcmp(target, "markdown") == 0) {
         success = markdown_codegen_generate_multi(kir_file, output_path);
-    } else if (strcmp(target, "hare") == 0) {
-        success = hare_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "kir") == 0) {
         // KIR target: just copy the KIR file to output (for single-file case)
         // Multi-file case is handled in codegen_pipeline
@@ -1190,7 +1082,7 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, tsx, lua, c, kotlin, hare, markdown, kir\n");
+        fprintf(stderr, "Supported targets: kry, lua, c, kotlin, markdown, kir\n");
         return 1;
     }
 
@@ -1288,7 +1180,7 @@ int codegen_pipeline(const char* source_file, const char* target,
             if (free_config) config_free(config);
             return 0;
         } else {
-            // For other sources (lua, tsx, etc.), use compile_source_to_kir with directory
+            // For other sources (lua, etc.), use compile_source_to_kir with directory
             // to generate multi-file output
             int result = compile_source_to_kir(source, output_with_slash);
             if (output_to_free) free(output_to_free);
@@ -1358,7 +1250,6 @@ int codegen_pipeline(const char* source_file, const char* target,
     const char* ext = NULL;
     if (strcmp(target, "kry") == 0) ext = ".kry";
     else if (strcmp(target, "c") == 0) ext = ".c";
-    else if (strcmp(target, "tsx") == 0) ext = ".tsx";
     else if (strcmp(target, "lua") == 0) {
         // Lua multi-file: output is the directory itself
         snprintf(output_path, sizeof(output_path), "%s", output);
