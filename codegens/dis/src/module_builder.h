@@ -3,12 +3,88 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Forward declarations
+// Forward declarations for types used in module builder
+typedef struct HashEntry HashEntry;
+
+// Dynamic Array
+typedef struct {
+    void** items;
+    size_t count;
+    size_t capacity;
+} DynamicArray;
+
+// Hash Entry
+struct HashEntry {
+    char* key;
+    void* value;
+    struct HashEntry* next;
+};
+
+// Hash Table
+typedef struct {
+    HashEntry* entries[256];
+} HashTable;
+
+// ============================================================================
+// Dynamic Array and Hash Table Functions
+// ============================================================================
+
+DynamicArray* dynamic_array_create(size_t initial_capacity);
+bool dynamic_array_add(DynamicArray* array, void* item);
+void dynamic_array_destroy(DynamicArray* array);
+
+HashTable* hash_table_create(void);
+bool hash_table_set(HashTable* table, const char* key, void* value);
+void* hash_table_get(HashTable* table, const char* key);
+void hash_table_destroy(HashTable* table);
+
+// ============================================================================
+// Complete DISModuleBuilder definition
+// ============================================================================
+struct DISModuleBuilder {
+    // Output
+    FILE* output_file;
+
+    // Module metadata
+    char* module_name;
+    uint32_t entry_pc;
+    uint32_t entry_type;
+
+    // Sections
+    DynamicArray* code_section;
+    DynamicArray* type_section;
+    DynamicArray* data_section;
+    DynamicArray* link_section;
+    DynamicArray* import_section;
+
+    // Type tracking
+    HashTable* type_descriptors;
+    HashTable* type_indices;
+    uint32_t next_type_index;
+
+    // Symbol tracking
+    HashTable* symbols;
+    HashTable* functions;
+
+    // Codegen state
+    uint32_t current_pc;
+    uint32_t current_frame_offset;
+    uint32_t global_offset;
+
+    // Options
+    bool optimize;
+    bool debug_info;
+    uint32_t stack_extent;
+    bool share_mp;
+};
+
 typedef struct DISModuleBuilder DISModuleBuilder;
 
 /**
@@ -99,6 +175,13 @@ uint32_t module_builder_allocate_global(DISModuleBuilder* builder, uint32_t size
 bool module_builder_write_file(DISModuleBuilder* builder, const char* path);
 
 /**
+ * Get output file handle (internal use)
+ * @param builder Module builder
+ * @return FILE handle, or NULL if not open
+ */
+FILE* module_builder_get_output_file(DISModuleBuilder* builder);
+
+/**
  * Emit an instruction to the code section
  * @param builder Module builder
  * @param opcode Instruction opcode
@@ -114,6 +197,29 @@ uint32_t emit_insn(DISModuleBuilder* builder,
                    int32_t middle,
                    int32_t src,
                    int32_t dst);
+
+// ============================================================================
+// Instruction Emitter Functions (from instruction_emitter.c)
+// ============================================================================
+
+uint32_t emit_add_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst);
+uint32_t emit_sub_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst);
+uint32_t emit_mul_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst);
+uint32_t emit_div_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst);
+uint32_t emit_mov_w(DISModuleBuilder* builder, int32_t src, int32_t dst);
+uint32_t emit_mov_p(DISModuleBuilder* builder, int32_t src, int32_t dst);
+uint32_t emit_mov_imm_w(DISModuleBuilder* builder, int32_t imm, int32_t dst);
+uint32_t emit_call(DISModuleBuilder* builder, uint32_t target_pc);
+uint32_t emit_ret(DISModuleBuilder* builder);
+uint32_t emit_jmp(DISModuleBuilder* builder, uint32_t target_pc);
+uint32_t emit_branch_eq_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, uint32_t target_pc);
+uint32_t emit_branch_ne_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, uint32_t target_pc);
+uint32_t emit_branch_lt_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, uint32_t target_pc);
+uint32_t emit_branch_gt_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, uint32_t target_pc);
+uint32_t emit_new(DISModuleBuilder* builder, uint32_t type_idx, int32_t dst);
+uint32_t emit_newa(DISModuleBuilder* builder, int32_t count, uint32_t type_idx, int32_t dst);
+uint32_t emit_frame(DISModuleBuilder* builder, uint32_t type_idx, int32_t dst);
+uint32_t emit_exit(DISModuleBuilder* builder, int32_t code);
 
 #ifdef __cplusplus
 }

@@ -14,7 +14,6 @@
 
 #include "kryon_cli.h"
 #include "build.h"
-#include "../../../codegens/kotlin/kotlin_codegen.h"
 #include "../../../codegens/dis/include/dis_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,394 +109,9 @@ static int web_target_run(const char* kir_file, const KryonConfig* config) {
     return 1;
 }
 
-/**
- * Desktop target build handler
- * Currently not implemented - returns error
- */
-static int desktop_target_build(const char* kir_file, const char* output_dir,
-                                const char* project_name, const KryonConfig* config) {
-    (void)kir_file;
-    (void)output_dir;
-    (void)project_name;
-    (void)config;
-    fprintf(stderr, "Error: Desktop target build not yet implemented\n");
-    return 1;
-}
+// Desktop and terminal targets removed - migrated to DIS VM target
 
-/**
- * Desktop target run handler
- * Runs KIR on desktop using the desktop renderer
- */
-static int desktop_target_run(const char* kir_file, const KryonConfig* config) {
-    (void)config;
-    // Get renderer from config if available
-    const char* renderer = NULL;
-    if (config) {
-        TargetConfig* desktop = config_get_target(config, "desktop");
-        if (desktop) {
-            renderer = target_config_get_option(desktop, "renderer");
-        }
-    }
-    return run_kir_on_desktop(kir_file, NULL, renderer);
-}
-
-/**
- * Terminal target build handler
- */
-static int terminal_target_build(const char* kir_file, const char* output_dir,
-                                 const char* project_name, const KryonConfig* config) {
-    (void)kir_file;
-    (void)output_dir;
-    (void)project_name;
-    (void)config;
-    fprintf(stderr, "Error: Terminal target build not yet implemented\n");
-    return 1;
-}
-
-/**
- * Terminal target run handler
- */
-static int terminal_target_run(const char* kir_file, const KryonConfig* config) {
-    (void)kir_file;
-    (void)config;
-    fprintf(stderr, "Error: Terminal target not yet implemented\n");
-    return 1;
-}
-
-/* ============================================================================
- * Android Target Handler
- * ============================================================================ */
-
-/**
- * Setup Android project structure from KIR
- * Extracted and refactored from cmd_run.c:android_setup_temp_project
- */
-static int android_setup_project(const char* output_dir, const char* kir_file) {
-    char cmd[4096];
-
-    // Create directory structure
-    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s/app/src/main/assets\"", output_dir);
-    if (system(cmd) != 0) return -1;
-
-    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s/app/src/main/kotlin/com/kryon/temp\"", output_dir);
-    if (system(cmd) != 0) return -1;
-
-    // Copy KIR file to assets
-    snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s/app/src/main/assets/app.kir\"", kir_file, output_dir);
-    if (system(cmd) != 0) return -1;
-
-    // Create local.properties with SDK location
-    char local_props[2048];
-    snprintf(local_props, sizeof(local_props), "%s/local.properties", output_dir);
-    FILE* props_f = fopen(local_props, "w");
-    if (props_f) {
-        const char* android_sdk = getenv("ANDROID_HOME");
-        if (android_sdk) {
-            fprintf(props_f, "sdk.dir=%s\n", android_sdk);
-        }
-        fclose(props_f);
-    }
-
-    // Create settings.gradle.kts with plugin management
-    char settings_file[2048];
-    snprintf(settings_file, sizeof(settings_file), "%s/settings.gradle.kts", output_dir);
-    FILE* f = fopen(settings_file, "w");
-    if (!f) return -1;
-    fprintf(f, "pluginManagement {\n");
-    fprintf(f, "    repositories {\n");
-    fprintf(f, "        google()\n");
-    fprintf(f, "        mavenCentral()\n");
-    fprintf(f, "        gradlePluginPortal()\n");
-    fprintf(f, "    }\n");
-    fprintf(f, "}\n\n");
-    fprintf(f, "dependencyResolutionManagement {\n");
-    fprintf(f, "    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)\n");
-    fprintf(f, "    repositories {\n");
-    fprintf(f, "        google()\n");
-    fprintf(f, "        mavenCentral()\n");
-    fprintf(f, "    }\n");
-    fprintf(f, "}\n\n");
-    fprintf(f, "rootProject.name = \"kryon-temp\"\n");
-    fprintf(f, "include(\":app\")\n");
-    fprintf(f, "include(\":kryon\")\n");
-
-    // Use dynamic path for Kotlin bindings
-    char* kryon_root = paths_get_kryon_root();
-    char* kotlin_path = kryon_root ? path_join(kryon_root, "bindings/kotlin") : str_copy("bindings/kotlin");
-    fprintf(f, "project(\":kryon\").projectDir = file(\"%s\")\n", kotlin_path);
-    free(kotlin_path);
-    if (kryon_root) free(kryon_root);
-
-    fclose(f);
-
-    // Create gradle.properties with AndroidX enabled
-    char gradle_props[2048];
-    snprintf(gradle_props, sizeof(gradle_props), "%s/gradle.properties", output_dir);
-    f = fopen(gradle_props, "w");
-    if (!f) return -1;
-    fprintf(f, "android.useAndroidX=true\n");
-    fprintf(f, "android.enableJetifier=true\n");
-    fclose(f);
-
-    // Create root build.gradle.kts
-    char root_build[2048];
-    snprintf(root_build, sizeof(root_build), "%s/build.gradle.kts", output_dir);
-    f = fopen(root_build, "w");
-    if (!f) return -1;
-    fprintf(f, "// Top-level build file for Kryon temporary Android project\n");
-    fprintf(f, "plugins {\n");
-    fprintf(f, "    id(\"com.android.application\") version \"8.2.0\" apply false\n");
-    fprintf(f, "    id(\"com.android.library\") version \"8.2.0\" apply false\n");
-    fprintf(f, "    id(\"org.jetbrains.kotlin.android\") version \"1.9.20\" apply false\n");
-    fprintf(f, "}\n\n");
-    fprintf(f, "allprojects {\n");
-    fprintf(f, "    repositories {\n");
-    fprintf(f, "        google()\n");
-    fprintf(f, "        mavenCentral()\n");
-    fprintf(f, "    }\n");
-    fprintf(f, "}\n");
-    fclose(f);
-
-    // Create app/build.gradle.kts
-    char app_build[2048];
-    snprintf(app_build, sizeof(app_build), "%s/app/build.gradle.kts", output_dir);
-    f = fopen(app_build, "w");
-    if (!f) return -1;
-    fprintf(f, "plugins {\n");
-    fprintf(f, "    id(\"com.android.application\")\n");
-    fprintf(f, "    id(\"org.jetbrains.kotlin.android\")\n");
-    fprintf(f, "}\n\n");
-    fprintf(f, "android {\n");
-    fprintf(f, "    namespace = \"com.kryon.temp\"\n");
-    fprintf(f, "    compileSdk = 34\n\n");
-    fprintf(f, "    defaultConfig {\n");
-    fprintf(f, "        applicationId = \"com.kryon.temp\"\n");
-    fprintf(f, "        minSdk = 26\n");
-    fprintf(f, "        targetSdk = 34\n");
-    fprintf(f, "        versionCode = 1\n");
-    fprintf(f, "        versionName = \"1.0\"\n");
-    fprintf(f, "    }\n\n");
-    fprintf(f, "    compileOptions {\n");
-    fprintf(f, "        sourceCompatibility = JavaVersion.VERSION_17\n");
-    fprintf(f, "        targetCompatibility = JavaVersion.VERSION_17\n");
-    fprintf(f, "    }\n\n");
-    fprintf(f, "    kotlinOptions {\n");
-    fprintf(f, "        jvmTarget = \"17\"\n");
-    fprintf(f, "    }\n");
-    fprintf(f, "}\n\n");
-    fprintf(f, "dependencies {\n");
-    fprintf(f, "    implementation(project(\":kryon\"))\n");
-    fprintf(f, "}\n");
-    fclose(f);
-
-    // Create AndroidManifest.xml
-    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s/app/src/main\"", output_dir);
-    int mkdir_result = system(cmd);
-    if (mkdir_result != 0) {
-        fprintf(stderr, "Warning: Failed to create Android manifest directory (code %d)\n", mkdir_result);
-    }
-
-    char manifest[2048];
-    snprintf(manifest, sizeof(manifest), "%s/app/src/main/AndroidManifest.xml", output_dir);
-    f = fopen(manifest, "w");
-    if (!f) return -1;
-    fprintf(f, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
-    fprintf(f, "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n");
-    fprintf(f, "    <application\n");
-    fprintf(f, "        android:label=\"Kryon App\"\n");
-    fprintf(f, "        android:theme=\"@android:style/Theme.NoTitleBar.Fullscreen\">\n");
-    fprintf(f, "        <activity\n");
-    fprintf(f, "            android:name=\".MainActivity\"\n");
-    fprintf(f, "            android:exported=\"true\"\n");
-    fprintf(f, "            android:screenOrientation=\"portrait\">\n");
-    fprintf(f, "            <intent-filter>\n");
-    fprintf(f, "                <action android:name=\"android.intent.action.MAIN\" />\n");
-    fprintf(f, "                <category android:name=\"android.intent.category.LAUNCHER\" />\n");
-    fprintf(f, "            </intent-filter>\n");
-    fprintf(f, "        </activity>\n");
-    fprintf(f, "    </application>\n");
-    fprintf(f, "</manifest>\n");
-    fclose(f);
-
-    // Generate MainActivity.kt from KIR using Kotlin codegen
-    char mainactivity[2048];
-    snprintf(mainactivity, sizeof(mainactivity), "%s/app/src/main/kotlin/com/kryon/temp/MainActivity.kt", output_dir);
-
-    printf("Generating Kotlin code: %s\n", mainactivity);
-    if (!ir_generate_kotlin_code(kir_file, mainactivity)) {
-        fprintf(stderr, "Error: Failed to generate Kotlin code from KIR\n");
-        return -1;
-    }
-    printf("✓ Generated MainActivity.kt from KIR\n");
-
-    return 0;
-}
-
-/**
- * Android target build handler
- * Generates Android project structure from KIR
- */
-static int android_target_build(const char* kir_file, const char* output_dir,
-                                const char* project_name, const KryonConfig* config) {
-    (void)project_name;
-    (void)config;
-
-    printf("[android] Building project to %s\n", output_dir);
-
-    // Generate Android project structure
-    if (android_setup_project(output_dir, kir_file) != 0) {
-        fprintf(stderr, "Error: Failed to setup Android project\n");
-        return 1;
-    }
-
-    return 0;
-}
-
-/**
- * Android target run handler
- * Builds and installs to connected device
- */
-static int android_target_run(const char* kir_file, const KryonConfig* config) {
-    (void)config;
-    printf("Android target selected\n");
-
-    // 1. Validate environment variables
-    const char* android_home = getenv("ANDROID_HOME");
-    const char* android_ndk = getenv("ANDROID_NDK_HOME");
-
-    if (!android_home) {
-        fprintf(stderr, "Error: ANDROID_HOME not set\n");
-        fprintf(stderr, "Set it to your Android SDK path, e.g.:\n");
-        fprintf(stderr, "  export ANDROID_HOME=$HOME/Android/Sdk\n");
-        return 1;
-    }
-
-    if (!android_ndk) {
-        fprintf(stderr, "Error: ANDROID_NDK_HOME not set\n");
-        fprintf(stderr, "Install NDK via: sdkmanager --install 'ndk;26.1.10909125'\n");
-        fprintf(stderr, "Then set: export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125\n");
-        return 1;
-    }
-
-    // 2. Check for connected device
-    printf("Checking for connected devices...\n");
-    FILE* adb_check = popen("adb devices 2>&1 | grep -w 'device' | head -1", "r");
-    if (!adb_check) {
-        fprintf(stderr, "Error: Failed to run adb command\n");
-        return 1;
-    }
-
-    char device_line[256] = {0};
-    if (fgets(device_line, sizeof(device_line), adb_check) == NULL) {
-        device_line[0] = '\0';
-    }
-    pclose(adb_check);
-
-    if (strlen(device_line) == 0) {
-        fprintf(stderr, "\n");
-        fprintf(stderr, "╭────────────────────────────────────────────────────────╮\n");
-        fprintf(stderr, "│  No Android devices found                             │\n");
-        fprintf(stderr, "╰────────────────────────────────────────────────────────╯\n");
-        fprintf(stderr, "\n");
-        return 1;
-    }
-
-    // Extract device ID
-    char device_id[128] = {0};
-    char* tab = strchr(device_line, '\t');
-    if (tab) {
-        size_t len = tab - device_line;
-        if (len < sizeof(device_id)) {
-            strncpy(device_id, device_line, len);
-            device_id[len] = '\0';
-        }
-    } else {
-        size_t copy_len = strlen(device_line);
-        if (copy_len >= sizeof(device_id)) {
-            copy_len = sizeof(device_id) - 1;
-        }
-        memcpy(device_id, device_line, copy_len);
-        device_id[copy_len] = '\0';
-        char* newline = strchr(device_id, '\n');
-        if (newline) *newline = '\0';
-    }
-
-    printf("Using device: %s\n", device_id);
-
-    // 3. Create temporary project directory
-    char temp_dir[512];
-    snprintf(temp_dir, sizeof(temp_dir), "/tmp/kryon_android_%d", getpid());
-
-    printf("Creating temporary Android project: %s\n", temp_dir);
-    if (android_setup_project(temp_dir, kir_file) != 0) {
-        fprintf(stderr, "Error: Failed to setup Android project\n");
-        return 1;
-    }
-
-    // 4. Build APK
-    printf("Building APK (this may take a minute)...\n");
-
-    int gradle_check = system("command -v gradle >/dev/null 2>&1");
-    if (gradle_check != 0) {
-        fprintf(stderr, "Error: Gradle not found in PATH\n");
-        return 1;
-    }
-
-    char build_cmd[2048];
-    snprintf(build_cmd, sizeof(build_cmd),
-             "cd \"%s\" && gradle assembleDebug 2>&1",
-             temp_dir);
-
-    int build_result = system(build_cmd);
-    if (build_result != 0) {
-        fprintf(stderr, "Error: Gradle build failed\n");
-        return 1;
-    }
-
-    printf("✓ APK built successfully\n");
-
-    // 5. Install APK
-    char apk_path[1024];
-    snprintf(apk_path, sizeof(apk_path), "%s/app/build/outputs/apk/debug/app-debug.apk", temp_dir);
-
-    printf("Installing APK on device %s...\n", device_id);
-    char install_cmd[2048];
-    snprintf(install_cmd, sizeof(install_cmd),
-             "adb -s \"%s\" install -r \"%s\" 2>&1",
-             device_id, apk_path);
-
-    int install_result = system(install_cmd);
-    if (install_result != 0) {
-        fprintf(stderr, "Error: Failed to install APK\n");
-        return 1;
-    }
-
-    printf("✓ APK installed\n");
-
-    // 6. Launch app
-    printf("Launching app...\n");
-    char launch_cmd[2048];
-    snprintf(launch_cmd, sizeof(launch_cmd),
-             "adb -s \"%s\" shell am start -n com.kryon.temp/.MainActivity 2>&1",
-             device_id);
-
-    int launch_result = system(launch_cmd);
-    if (launch_result != 0) {
-        fprintf(stderr, "Warning: Failed to launch app (code %d)\n", launch_result);
-    }
-
-    // 7. Cleanup
-    printf("Cleaning up temporary files...\n");
-    char cleanup_cmd[1024];
-    snprintf(cleanup_cmd, sizeof(cleanup_cmd), "rm -rf \"%s\"", temp_dir);
-    int cleanup_result = system(cleanup_cmd);
-    if (cleanup_result != 0) {
-        fprintf(stderr, "Warning: Failed to cleanup temp files (code %d)\n", cleanup_result);
-    }
-
-    printf("✓ Done!\n");
-    _exit(0);
-}
+// Android target removed - migrated to DIS VM target
 
 /* ============================================================================
  * DIS Target Handler
@@ -530,11 +144,9 @@ static int dis_target_build(const char* kir_file, const char* output_dir,
 
 /**
  * DIS target run handler
- * Generates .dis bytecode and executes with DIS VM
+ * Generates .dis bytecode and executes with TaijiOS DIS VM
  */
 static int dis_target_run(const char* kir_file, const KryonConfig* config) {
-    (void)config;
-
     // Build DIS file first
     const char* output_dir = ".";
     const char* project_name = "app";
@@ -543,17 +155,77 @@ static int dis_target_run(const char* kir_file, const KryonConfig* config) {
         return 1;
     }
 
-    // Run with DIS VM
+    // Get TaijiOS configuration
+    const char* taiji_path = config && config->taiji_path
+        ? config->taiji_path
+        : "/home/wao/Projects/TaijiOS";
+
+    bool use_run_app = config && config->taiji_use_run_app
+        ? config->taiji_use_run_app
+        : true;  // Default to run-app.sh
+
+    const char* arch = config && config->taiji_arch
+        ? config->taiji_arch
+        : "x86_64";
+
+    // Build DIS file path
     char dis_path[1024];
     snprintf(dis_path, sizeof(dis_path), "%s/%s.dis", output_dir, project_name);
 
-    printf("Running DIS VM: %s\n", dis_path);
+    printf("Running DIS bytecode with TaijiOS\n");
+    printf("DIS file: %s\n", dis_path);
+    printf("TaijiOS path: %s\n", taiji_path);
+    printf("Method: %s\n", use_run_app ? "run-app.sh" : "emu");
 
-    // For now, just report that we need a DIS VM
-    fprintf(stderr, "Note: DIS VM execution not yet implemented\n");
-    fprintf(stderr, "Generated file: %s\n", dis_path);
-    fprintf(stderr, "To run, use: disvm %s\n", dis_path);
+    // Validate TaijiOS installation
+    char run_app_path[1024];
+    snprintf(run_app_path, sizeof(run_app_path), "%s/run-app.sh", taiji_path);
 
+    if (access(run_app_path, X_OK) != 0) {
+        fprintf(stderr, "Error: TaijiOS run-app.sh not found at %s\n", run_app_path);
+        fprintf(stderr, "Expected: %s\n", run_app_path);
+        fprintf(stderr, "\n");
+        fprintf(stderr, "To fix:\n");
+        fprintf(stderr, "  1. Ensure TaijiOS is installed at: %s\n", taiji_path);
+        fprintf(stderr, "  2. Or configure path in kryon.toml:\n");
+        fprintf(stderr, "     [taiji]\n");
+        fprintf(stderr, "     path = /path/to/TaijiOS\n");
+        return 1;
+    }
+
+    char cmd[2048];
+
+    if (use_run_app) {
+        // Use run-app.sh wrapper (recommended)
+        // run-app.sh expects: ./run-app.sh app.dis [args...]
+        // It handles emu invocation, X11 setup, etc.
+        snprintf(cmd, sizeof(cmd), "cd \"%s\" && ./run-app.sh \"%s/%s.dis\"",
+                taiji_path, output_dir, project_name);
+    } else {
+        // Direct emu invocation (for debugging)
+        char emu_path[1024];
+        snprintf(emu_path, sizeof(emu_path), "%s/Linux/%s/bin/emu",
+                taiji_path, arch);
+
+        if (access(emu_path, X_OK) != 0) {
+            fprintf(stderr, "Error: emu binary not found at %s\n", emu_path);
+            return 1;
+        }
+
+        snprintf(cmd, sizeof(cmd), "%s -r \"%s\" \"%s/%s.dis\"",
+                emu_path, taiji_path, output_dir, project_name);
+    }
+
+    printf("Executing: %s\n", cmd);
+
+    // Execute TaijiOS
+    int result = system(cmd);
+    if (result != 0) {
+        fprintf(stderr, "Warning: TaijiOS exited with code %d\n", result);
+        return result;
+    }
+
+    printf("✓ DIS execution complete\n");
     return 0;
 }
 
@@ -566,27 +238,6 @@ static TargetHandler g_web_handler = {
     .capabilities = TARGET_REQUIRES_CODEGEN,  // Web requires codegen
     .build_handler = web_target_build,
     .run_handler = web_target_run,
-};
-
-static TargetHandler g_desktop_handler = {
-    .name = "desktop",
-    .capabilities = TARGET_CAN_INSTALL,  // Desktop can be installed
-    .build_handler = desktop_target_build,
-    .run_handler = desktop_target_run,
-};
-
-static TargetHandler g_terminal_handler = {
-    .name = "terminal",
-    .capabilities = 0,  // No special capabilities
-    .build_handler = terminal_target_build,
-    .run_handler = terminal_target_run,
-};
-
-static TargetHandler g_android_handler = {
-    .name = "android",
-    .capabilities = TARGET_CAN_INSTALL,
-    .build_handler = android_target_build,
-    .run_handler = android_target_run,
 };
 
 /* ============================================================================
@@ -897,9 +548,6 @@ void target_handler_initialize(void) {
 
     // Register built-in handlers (static, not freed)
     target_handler_register(&g_web_handler);
-    target_handler_register(&g_desktop_handler);
-    target_handler_register(&g_terminal_handler);
-    target_handler_register(&g_android_handler);
 
     // Register DIS handler
     static TargetHandler g_dis_handler = {

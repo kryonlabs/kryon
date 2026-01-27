@@ -11,8 +11,6 @@
 #include "../../ir/include/ir_core.h"
 #include "../../ir/include/ir_serialization.h"
 #include "../../ir/include/ir_executor.h"
-#include "../../runtime/desktop/ir_desktop_renderer.h"
-#include "../../codegens/kotlin/kotlin_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -438,26 +436,3 @@ int cmd_run(int argc, char** argv) {
     return result;
 }
 
-/* ============================================================================
- * Weak Stub Implementations (for when desktop backend not linked)
- * ============================================================================ */
-
-__attribute__((weak))
-DesktopRendererConfig desktop_renderer_config_sdl3(int width, int height, const char* title) {
-    (void)width;
-    (void)height;
-    (void)title;
-    fprintf(stderr, "Error: Desktop backend not available. Please build the desktop backend.\n");
-    fprintf(stderr, "Run: cd runtime/desktop && make\n");
-    DesktopRendererConfig config = {0};
-    return config;
-}
-
-__attribute__((weak))
-bool desktop_render_ir_component(IRComponent* root, const DesktopRendererConfig* config) {
-    (void)root;
-    (void)config;
-    fprintf(stderr, "Error: Desktop backend not available. Please build the desktop backend.\n");
-    fprintf(stderr, "Run: cd runtime/desktop && make\n");
-    return false;
-}

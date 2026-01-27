@@ -1,22 +1,13 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../runtime/desktop -I../codegens/web -I../codegens/dis -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/dis -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
-# Desktop backend is linked for hot reload support (--watch flag)
-# Requires SDL3 and raylib to be installed
-# Link against static libraries to override weak symbols at link time
-# Note: libraries specified multiple times to resolve internal dependencies
-LDFLAGS = ../build/libkryon_common.a \
-	../build/libkryon_sdl3.a \
-	../build/libkryon_desktop.a \
-	../build/libkryon_common.a \
-	../build/libkryon_sdl3.a \
-	../build/libkryon_desktop.a \
-	../build/libkryon_ir.a \
-	-lm -lpthread -ldl -lSDL3 -lSDL3_ttf -lraylib
+# Link against IR library and codegens
+LDFLAGS = ../build/libkryon_ir.a \
+	-lm -lpthread -ldl
 
 # Directories
 SRC_DIR = src
@@ -72,8 +63,7 @@ TARGET = kryon
 CODEGEN_OBJS = $(wildcard ../build/codegen_common.o) \
                $(wildcard ../codegens/kry/kry_codegen.o) \
                $(wildcard ../codegens/markdown/markdown_codegen.o) \
-               $(wildcard ../codegens/c/ir_c_codegen.o) \
-               $(wildcard ../codegens/kotlin/kotlin_codegen.o)
+               $(wildcard ../codegens/c/ir_c_codegen.o)
 
 # Third-party libraries
 CJSON_OBJ = $(BUILD_DIR)/cJSON.o
@@ -140,18 +130,14 @@ $(CJSON_OBJ): ../third_party/cJSON/cJSON.c
 	mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Build target (depends on IR and desktop libraries)
+# Build target (depends on IR library and codegens)
 $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_ir.a \
-		../build/libkryon_common.a \
-		../build/libkryon_sdl3.a \
-		../build/libkryon_desktop.a \
 		../build/libkryon_web.a \
 		../build/codegen_common.o \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
-		../codegens/kotlin/libkotlin_codegen.a \
 		../codegens/dis/libdiscodegen.a
 	# Build kir_to_html.o (embedded web codegen)
 	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
@@ -160,26 +146,12 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
-		../codegens/kotlin/libkotlin_codegen.a \
 		../codegens/dis/libdiscodegen.a \
 		$(LDFLAGS) $(HARFBUZZ_LIBS)
 
 # Build IR library
 ../build/libkryon_ir.a:
 	$(MAKE) -C ../ir all
-
-# Build common renderer library
-../build/libkryon_common.a:
-	$(MAKE) -C ../renderers/common all
-	$(MAKE) -C ../renderers/common install
-
-# Build SDL3 renderer library
-../build/libkryon_sdl3.a:
-	$(MAKE) -C ../renderers/sdl3 all
-
-# Build desktop library
-../build/libkryon_desktop.a:
-	$(MAKE) -C ../runtime/desktop all
 
 # Build web library (for embedded kir_to_html)
 ../build/libkryon_web.a:
@@ -198,9 +170,6 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 
 ../build/libkryon_codegen_markdown.a:
 	$(MAKE) -C ../codegens/markdown
-
-../codegens/kotlin/libkotlin_codegen.a:
-	$(MAKE) -C ../codegens/kotlin
 
 ../codegens/dis/libdiscodegen.a:
 	$(MAKE) -C ../codegens/dis all
@@ -221,9 +190,6 @@ install: $(TARGET)
 	cp ../build/libkryon_ir.so $(HOME)/.local/share/kryon/build/
 	# Install static libraries for C desktop builds
 	cp ../build/libkryon_ir.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
-	cp ../build/libkryon_desktop.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
-	cp ../build/libkryon_sdl3.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
-	cp ../build/libkryon_common.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
 	# Also install to .local/lib for dynamic linker
 	mkdir -p $(HOME)/.local/lib
 	cp ../build/libkryon_ir.so $(HOME)/.local/lib/
@@ -243,10 +209,6 @@ install: $(TARGET)
 	# Install core headers (kryon.h)
 	mkdir -p $(HOME)/.local/share/kryon/core/include
 	cp ../core/include/*.h $(HOME)/.local/share/kryon/core/include/
-	# Install runtime desktop headers (required by C bindings - relative path ../../runtime/desktop/)
-	mkdir -p $(HOME)/.local/share/kryon/runtime/desktop/abstract
-	cp ../runtime/desktop/*.h $(HOME)/.local/share/kryon/runtime/desktop/
-	cp ../runtime/desktop/abstract/*.h $(HOME)/.local/share/kryon/runtime/desktop/abstract/
 	# Install vendor files for web codegen
 	$(MAKE) -C ../codegens/web install-vendor
 	# Install dev server script

@@ -801,12 +801,11 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
     })
 
 // ============================================================================
-// Desktop Renderer Macros
+// Desktop Renderer Macros (DEPRECATED - Desktop rendering removed)
 // ============================================================================
 
 #ifndef KRYON_KIR_ONLY
-// Include desktop renderer header for standalone builds
-#include "../../runtime/desktop/ir_desktop_renderer.h"
+// Desktop rendering has been removed - see KRYON_RUN implementation
 #endif
 
 /**
@@ -834,48 +833,17 @@ static inline int _kryon_run_impl(void) {
     kryon_cleanup();
     return 0;
 #else
-    // For standalone builds - run with desktop renderer using kryon_init() values
-    extern KryonAppState g_app_state;
-
-    // Get renderer backend from kryon.toml config, fallback to SDL3
-    int backend_type = kryon_get_renderer_backend_from_config();
-    if (backend_type < 0) {
-        backend_type = DESKTOP_BACKEND_SDL3;  // Default to SDL3 if config not found
-    }
-
-    DesktopRendererConfig config = {
-        .backend_type = (DesktopBackendType)backend_type,
-        .window_width = g_app_state.window_width > 0 ? g_app_state.window_width : 800,
-        .window_height = g_app_state.window_height > 0 ? g_app_state.window_height : 600,
-        .window_title = g_app_state.window_title ? g_app_state.window_title : "Kryon App",
-        .resizable = true,
-        .fullscreen = false,
-        .vsync_enabled = true,
-        .target_fps = 60
-    };
-
-    DesktopIRRenderer* renderer = desktop_ir_renderer_create(&config);
-    if (!renderer) {
-        fprintf(stderr, "Failed to create desktop renderer\n");
-        kryon_cleanup();
-        return 1;
-    }
-
-    if (!desktop_ir_renderer_initialize(renderer)) {
-        fprintf(stderr, "Failed to initialize desktop renderer\n");
-        desktop_ir_renderer_destroy(renderer);
-        kryon_cleanup();
-        return 1;
-    }
-
-    // Initialize TabGroupState for any TabGroup components in the tree
-    // This enables tab switching, click handling, and panel visibility
-    kryon_initialize_tabgroups(root);
-
-    desktop_ir_renderer_run_main_loop(renderer, root);
-    desktop_ir_renderer_destroy(renderer);
+    // Desktop rendering has been removed
+    // Use the Web or DIS targets instead:
+    // - Web: kryon build web --input app.kry --output app.html
+    // - DIS: kryon build dis --input app.kry --output app.dis
+    fprintf(stderr, "Error: Desktop rendering is no longer supported.\n");
+    fprintf(stderr, "Please use one of these targets instead:\n");
+    fprintf(stderr, "  - Web: kryon build web --input app.kry --output app.html\n");
+    fprintf(stderr, "  - DIS: kryon build dis --input app.kry --output app.dis\n");
+    fprintf(stderr, "Then run: kryon run web|dis\n");
     kryon_cleanup();
-    return 0;
+    return 1;
 #endif
 }
 
