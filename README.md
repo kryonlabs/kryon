@@ -1,36 +1,45 @@
 # Kryon
 
-Cross-platform UI framework with multi-language code generation.
+UI framework with two-target architecture: Web (HTML/CSS/JS) and DIS VM (TaijiOS bytecode).
 
-## Feature Matrix
+## Architecture
+
+Kryon is a simplified cross-platform framework that compiles KRY source code to either:
+- **Web**: HTML/CSS/JavaScript for browser deployment
+- **DIS VM**: TaijiOS DIS bytecode for native execution
+
+```
+Source (.kry)
+    ↓
+Parser (ir/parsers/kry/)
+    ↓
+KIR (JSON Intermediate Representation)
+    ↓
+Code Generator (codegens/dis/ or codegens/web/)
+    ↓
+Target (DIS bytecode or HTML/CSS/JS)
+```
+
+## Features
+
+### Code Generators
+
+| Target | Status | Location | Notes |
+|--------|--------|----------|-------|
+| DIS (TaijiOS) | ✅ | `codegens/dis/` | Primary target |
+| HTML/CSS/JS | ✅ | `codegens/web/` | Full support |
+| C | ✅ | `codegens/c/` | For reference |
+| KRY | ✅ | `codegens/kry/` | Round-trip |
+| Markdown | ✅ | `codegens/markdown/` | Documentation |
 
 ### Expression Transpiler
 
-Converts KRY expressions (`x => x * 2`, `obj.prop + 1`) to target language syntax.
+Converts KRY expressions to target language syntax.
 
 | Target | Status | Notes |
 |--------|--------|-------|
 | JavaScript | ✅ | ES6 syntax |
 | C | ✅ | Arrow functions via registry |
-| Python | ❌ | |
-| Kotlin | ❌ | |
-| TypeScript | ❌ | |
-| Swift | ❌ | |
-| Go | ❌ | |
-
-### Code Generators
-
-Converts KIR (JSON IR) to complete source files.
-
-| Target | Status | Location | Notes |
-|--------|--------|----------|-------|
-| C | ✅ | `codegens/c/` | |
-| Kotlin | ✅ | `codegens/kotlin/` | |
-| KRY | ✅ | `codegens/kry/` | Round-trip |
-| Markdown | ✅ | `codegens/markdown/` | |
-| HTML/CSS/JS | ✅ | `codegens/web/` | |
-| Swift | ❌ | | |
-| Go | ❌ | | |
 
 ### Runtime Bindings
 
@@ -40,71 +49,6 @@ FFI bindings for using Kryon from other languages.
 |----------|--------|----------|
 | C | ✅ | `bindings/c/` |
 | JavaScript | ✅ | `bindings/javascript/` |
-| Kotlin | ✅ | `bindings/kotlin/` |
-| Swift | ❌ | |
-| Go | ❌ | |
-| Rust | ❌ | |
-
-### Expression Features
-
-| Feature | JS | C |
-|---------|----|----|
-| Literals | ✅ | ✅ |
-| Binary ops | ✅ | ✅ |
-| Logical ops | ✅ | ✅ |
-| Property access | ✅ | ✅ |
-| Array access | ✅ | ✅ |
-| Function calls | ✅ | ✅ |
-| Array literals | ✅ | ✅ |
-| Object literals | ✅ | ✅ | ✅ |
-| Arrow functions | ✅ | ✅ |
-| Ternary | ✅ | ✅ |
-| Template strings | ❌ | ❌ |
-| Spread operator | ❌ | ❌ |
-| Destructuring | ❌ | ❌ |
-| Optional chaining | ❌ | ❌ |
-
-### Summary
-
-| Category | Done | Missing |
-|----------|------|---------|
-| Expression Transpiler Targets | 2 | 5 |
-| Code Generators | 5 | 2 |
-| Runtime Bindings | 3 | 4 |
-
-### Build Pipeline Status
-
-| Pipeline | Status | Notes |
-|----------|--------|-------|
-| KRY -> KIR | ✅ | Native C parser |
-| KIR -> Web (HTML/CSS/JS) | ✅ | Full support |
-| KIR -> C source | ✅ | Via codegen |
-| KRY -> Desktop (C/SDL3) | ❌ | `build_c_desktop()` not implemented |
-| Hot reload (desktop) | ❌ | Not implemented |
-| Hot reload (web) | ✅ | Dev server |
-
-### Known Issues
-
-- **Desktop build not implemented**: Missing `build_c_desktop()` for KRY frontend. KRY should use: KRY→KIR→C codegen→compile with SDL3.
-- **Expression transpiler gaps**: Kotlin code generator exists but expression transpiler doesn't support it (uses raw expressions).
-
----
-
-## Architecture
-
-```
-Source (.kry/.c)
-    ↓
-Parser (ir/parsers/)
-    ↓
-KIR (JSON Intermediate Representation)
-    ↓
-Code Generator (codegens/)
-    ↓
-Target Source Code
-    ↓
-Runtime (renderers/ or bindings/)
-```
 
 ## Directory Structure
 
@@ -118,29 +62,143 @@ kryon/
 │       ├── html/           # HTML parser
 │       └── c/              # C parser
 ├── codegens/               # Code generators
-│   ├── c/
-│   ├── kotlin/
-│   ├── kry/
-│   ├── markdown/
-│   └── web/
+│   ├── dis/                # DIS bytecode (TaijiOS)
+│   ├── web/                # HTML/CSS/JS
+│   ├── c/                  # C source
+│   ├── kry/                # KRY round-trip
+│   └── markdown/           # Markdown documentation
 ├── bindings/               # Language bindings
-│   ├── c/
-│   ├── javascript/
-│   └── kotlin/
-├── renderers/              # Platform renderers
-│   ├── sdl3/
-│   ├── raylib/
-│   └── terminal/
+│   ├── c/                  # C FFI
+│   └── javascript/         # JavaScript bindings
 ├── cli/                    # Command-line tools
 ├── examples/               # Example applications
 └── build/                  # Build output
 ```
 
+## Requirements
+
+### For Web Target
+- No additional requirements
+- Modern web browser
+
+### For DIS Target
+- **TaijiOS** installation at `/home/wao/Projects/TaijiOS` (or custom path)
+- TaijiOS must be built with emu (DIS VM) available
+
+#### Installing TaijiOS
+
+```bash
+# Clone TaijiOS repository
+git clone https://github.com/taiji-os/TaijiOS.git /home/wao/Projects/TaijiOS
+cd /home/wao/Projects/TaijiOS
+
+# Build TaijiOS (follow TaijiOS build instructions)
+# Ensure emu binary is available at: Linux/amd64/bin/emu
+```
+
 ## Building
 
 ```bash
-cd ir && make -j8
+# Build everything
+make
+
+# Build specific components
+make cli       # Build CLI tool only
+make ir        # Build IR library only
+make codegens  # Build all code generators
+
+# Clean build artifacts
+make clean
 ```
+
+## Usage
+
+### Web Target
+
+```bash
+# Build for web
+kryon build web
+
+# Run with dev server
+kryon dev
+```
+
+### DIS Target
+
+```bash
+# Build DIS bytecode
+kryon build dis
+
+# Run with TaijiOS emu
+kryon run dis
+
+# Or run manually with TaijiOS
+/home/wao/Projects/TaijiOS/Linux/amd64/bin/emu -r /home/wao/Projects/TaijiOS app.dis
+
+# Using run-app.sh wrapper
+/home/wao/Projects/TaijiOS/run-app.sh app.dis
+```
+
+## Configuration
+
+Create `kryon.toml` in your project:
+
+```toml
+[project]
+name = "myapp"
+version = "0.1.0"
+author = "Your Name"
+description = "A Kryon application"
+
+[build]
+targets = ["dis", "web"]  # Build both targets
+output_dir = "dist"
+entry = "main.kry"
+frontend = "kry"
+
+[taiji]
+path = "/home/wao/Projects/TaijiOS"  # TaijiOS installation path
+
+[dev]
+hot_reload = true
+port = 3000
+auto_open = true
+```
+
+## TaijiOS Integration
+
+### DIS Execution
+
+Kryon generates `.dis` files compatible with TaijiOS DIS VM:
+
+- **File Format**: Standard TaijiOS .dis format (header, code, types, data, links)
+- **Execution**: Via TaijiOS `emu` or `run-app.sh` wrapper
+- **Windowing**: Automatic X11 window creation for UI apps
+- **Graphics**: Uses TaijiOS libdraw for rendering
+
+### TaijiOS Path Configuration
+
+Set TaijiOS path in `kryon.toml`:
+
+```toml
+[taiji]
+path = "/home/wao/Projects/TaijiOS"
+```
+
+Or use environment variable:
+
+```bash
+export TAIJI_PATH=/home/wao/Projects/TaijiOS
+```
+
+## Migration from Old Targets
+
+If you were using desktop, android, or terminal targets:
+
+1. Update `kryon.toml` to use `targets = ["dis"]`
+2. Install TaijiOS (see requirements above)
+3. Run `kryon build dis` to generate DIS bytecode
+4. Run `kryon run dis` to execute with TaijiOS
 
 ## License
 

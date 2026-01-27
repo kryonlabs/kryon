@@ -17,8 +17,6 @@ PREFIX ?= $(HOME)/.local
 CLI_DIR = cli
 IR_DIR = ir
 CODEGENS_DIR = codegens
-RENDERERS_DIR = renderers
-RUNTIME_DIR = runtime
 TESTS_DIR = tests
 
 # Installation directories
@@ -32,7 +30,7 @@ STATIC_LIB_EXT = .a
 SHARED_LIB_EXT = .so
 
 # Default target
-all: cli ir codegens runtime
+all: cli ir codegens
 
 # Help
 help:
@@ -43,15 +41,8 @@ help:
 	@echo "  cli          - Build CLI tool"
 	@echo "  ir           - Build IR library"
 	@echo "  codegens     - Build all code generators"
-	@echo "  runtime      - Build runtime backends"
-	@echo "  renderers    - Build rendering systems"
 	@echo "  clean        - Remove all build artifacts"
 	@echo "  install      - Install to $(PREFIX)"
-	@echo ""
-	@echo "Variants (use VARIANT=variant):"
-	@echo "  VARIANT=terminal  - Terminal-only CLI (no SDL3)"
-	@echo "  VARIANT=web       - Web-only CLI (no SDL3)"
-	@echo "  VARIANT=desktop  - Full CLI with SDL3 (default)"
 	@echo ""
 	@echo "Installation:"
 	@echo "  PREFIX=/path   - Installation prefix (default: ~/.local)"
@@ -79,42 +70,15 @@ ir:
 	@$(MAKE) -C $(IR_DIR) static
 	@echo "✓ Built IR library"
 
-# Code generators (C, Kry, Kotlin, Markdown, DIS)
+# Code generators (C, Kry, Web, DIS)
 codegens: ir
 	@echo "Building code generators..."
 	@$(MAKE) -C $(CODEGENS_DIR)/c all
 	@$(MAKE) -C $(CODEGENS_DIR)/kry all
-	@$(MAKE) -C $(CODEGENS_DIR)/kotlin all
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
 	@$(MAKE) -C $(CODEGENS_DIR)/web all
 	@$(MAKE) -C $(CODEGENS_DIR)/dis all
 	@echo "✓ Built code generators"
-
-# Runtime backends (desktop rendering, terminal, etc.)
-runtime: ir
-	@echo "Building rendering systems..."
-	@if [ -d $(RENDERERS_DIR)/common ]; then \
-		$(MAKE) -C $(RENDERERS_DIR)/common all; \
-	fi
-	@if [ -d $(RENDERERS_DIR)/sdl3 ]; then \
-		$(MAKE) -C $(RENDERERS_DIR)/sdl3 all; \
-	fi
-	@echo "Building runtime backends..."
-	@if [ -d $(RUNTIME_DIR)/desktop ]; then \
-		$(MAKE) -C $(RUNTIME_DIR)/desktop all; \
-	fi
-	@echo "✓ Built runtime backends"
-
-# Rendering systems (SDL3, common, etc.)
-renderers: ir
-	@echo "Building rendering systems..."
-	@if [ -d $(RENDERERS_DIR)/common ]; then \
-		$(MAKE) -C $(RENDERERS_DIR)/common all; \
-	fi
-	@if [ -d $(RENDERERS_DIR)/sdl3 ]; then \
-		$(MAKE) -C $(RENDERERS_DIR)/sdl3 all; \
-	fi
-	@echo "✓ Built rendering systems"
 
 # ============================================================================
 # Clean Target
@@ -126,17 +90,9 @@ clean:
 	@$(MAKE) -C $(IR_DIR) clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/c clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/kry clean || true
-	@$(MAKE) -C $(CODEGENS_DIR)/kotlin clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
-	@if [ -d $(RUNTIME_DIR)/desktop ]; then \
-		$(MAKE) -C $(RUNTIME_DIR)/desktop clean || true; \
-	fi
-	@if [ -d $(RENDERERS_DIR)/common ]; then \
-		$(MAKE) -C $(RENDERERS_DIR)/common clean || true; \
-	fi
-	@if [ -d $(RENDERERS_DIR)/sdl3 ]; then \
-		$(MAKE) -C $(RENDERERS_DIR)/sdl3 clean || true; \
-	fi
+	@$(MAKE) -C $(CODEGENS_DIR)/web clean || true
+	@$(MAKE) -C $(CODEGENS_DIR)/dis clean || true
 	@$(MAKE) -C $(CLI_DIR) clean || true
 	@echo "✓ Clean complete"
 
@@ -194,7 +150,7 @@ docs:
 # Phony Targets
 # ============================================================================
 
-.PHONY: all cli ir codegens runtime renderers clean install uninstall
+.PHONY: all cli ir codegens clean install uninstall
 .PHONY: help test check docs
 
 # ============================================================================

@@ -397,6 +397,9 @@ static KryonConfig* config_create_default(void) {
     config->build_target = NULL;
     config->build_output_dir = str_copy("build");
     config->build_frontend = str_copy("kry");
+    config->taiji_path = str_copy("/home/wao/Projects/TaijiOS");  // Default TaijiOS path
+    config->taiji_use_run_app = true;  // Default to run-app.sh wrapper
+    config->taiji_arch = str_copy("x86_64");  // Default architecture
 
     return config;
 }
@@ -828,6 +831,23 @@ KryonConfig* config_load(const char* config_path) {
     if (frontend) {
         free(config->build_frontend);
         config->build_frontend = str_copy(frontend);
+    }
+
+    // Parse taiji.path (optional TaijiOS installation path)
+    const char* taiji_path = kryon_toml_get_string(toml, "taiji.path", NULL);
+    if (taiji_path) {
+        free(config->taiji_path);
+        config->taiji_path = str_copy(taiji_path);
+    }
+
+    // Parse taiji.use_run_app (optional - use run-app.sh wrapper vs direct emu)
+    config->taiji_use_run_app = kryon_toml_get_bool(toml, "taiji.use_run_app", true);
+
+    // Parse taiji.arch (optional architecture)
+    const char* taiji_arch = kryon_toml_get_string(toml, "taiji.arch", NULL);
+    if (taiji_arch) {
+        free(config->taiji_arch);
+        config->taiji_arch = str_copy(taiji_arch);
     }
 
     // Parse build.targets array (required)
@@ -1607,6 +1627,8 @@ void config_free(KryonConfig* config) {
     free(config->build_output_dir);
     free(config->build_entry);
     free(config->build_frontend);
+    free(config->taiji_path);  // Free TaijiOS path
+    free(config->taiji_arch);  // Free TaijiOS architecture
 
     if (config->build_targets) {
         for (int i = 0; i < config->build_targets_count; i++) {

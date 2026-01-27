@@ -1,0 +1,14 @@
+[project]
+name = "test_counter"
+version = "0.1.0"
+description = "Simple counter test for DIS codegen"
+
+[build]
+targets = ["dis"]
+frontend = "kry"
+
+[targets.desktop]
+renderer = "sdl3"
+
+[taiji]
+path = "/home/wao/Projects/TaijiOS"

@@ -23,7 +23,6 @@ static bool is_valid_target(const char* target) {
     if (!target) return false;
     return strcmp(target, "kry") == 0 ||
            strcmp(target, "c") == 0 ||
-           strcmp(target, "kotlin") == 0 ||
            strcmp(target, "html") == 0 ||
            strcmp(target, "markdown") == 0 ||
            strcmp(target, "kir") == 0;
@@ -48,7 +47,6 @@ static void print_codegen_usage(const char* error) {
     fprintf(stderr, "Targets:\n");
     fprintf(stderr, "  kry       - Generate .kry source code (round-trip)\n");
     fprintf(stderr, "  c         - Generate C source code\n");
-    fprintf(stderr, "  kotlin    - Generate Kotlin Android code\n");
     fprintf(stderr, "  html      - Generate HTML/CSS/JS for web\n");
     fprintf(stderr, "  markdown  - Generate Markdown documentation\n");
     fprintf(stderr, "  kir       - Generate KIR files (multi-file, preserves module structure)\n");

@@ -200,6 +200,11 @@ typedef struct {
     char* build_entry;          // Entry point file (e.g., "main.kry")
     char* build_frontend;       // Frontend language (e.g., "kry")
 
+    // TaijiOS DIS VM configuration
+    char* taiji_path;          // Path to TaijiOS installation (for DIS target)
+    bool taiji_use_run_app;    // Use run-app.sh wrapper (true) or direct emu invocation (false)
+    char* taiji_arch;          // Architecture: x86_64, aarch64, etc.
+
     // Target-specific configurations
     TargetConfig* targets;      // Array of target-specific configs
     int targets_count;

@@ -17,7 +17,6 @@
 #include "../template/docs_template.h"
 #include "../../../codegens/kry/kry_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
-#include "../../../codegens/kotlin/kotlin_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
 
 #include <stdio.h>
@@ -962,8 +961,6 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = kry_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "c") == 0) {
         success = ir_generate_c_code_multi(kir_file, output_path);
-    } else if (strcmp(target, "kotlin") == 0) {
-        success = ir_generate_kotlin_code_multi(kir_file, output_path);
     } else if (strcmp(target, "markdown") == 0) {
         success = markdown_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "kir") == 0) {
@@ -1002,7 +999,7 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, c, kotlin, markdown, kir\n");
+        fprintf(stderr, "Supported targets: kry, c, markdown, kir\n");
         return 1;
     }
 

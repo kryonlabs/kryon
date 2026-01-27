@@ -1,8 +1,8 @@
 /**
- * DIS Instruction Emitter
+ * DIS Instruction Emitter for TaijiOS
  *
- * Emits DIS VM instructions with proper encoding and addressing modes.
- * Based on DIS VM opcode specification.
+ * Emits DIS VM instructions matching TaijiOS isa.h format.
+ * Based on /home/wao/Projects/TaijiOS/include/isa.h
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -12,80 +12,191 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
-#include "module_builder.h"
+#include "internal.h"
 
 // ============================================================================
-// Opcode Definitions (from DIS VM spec)
+// Opcode Definitions (from TaijiOS include/isa.h)
 // ============================================================================
-
-// Load/Store operations
-#define OP_MOVB   0   // Move byte
-#define OP_MOVW   1   // Move word
-#define OP_MOVF   2   // Move float
-#define OP_MOVP   3   // Move pointer
-
-// Arithmetic operations (word)
-#define OP_ADDW   10
-#define OP_SUBW   11
-#define OP_MULW   12
-#define OP_DIVW   13
-#define OP_MODW   14
-#define OP_ANDW   15
-#define OP_ORW    16
-#define OP_XORW   17
-#define OP_SHLW   18
-#define OP_SHRW   19
-
-// Arithmetic operations (float)
-#define OP_ADDF   20
-#define OP_SUBF   21
-#define OP_MULF   22
-#define OP_DIVF   23
-
-// Comparison operations
-#define OP_CMPW   30
-#define OP_CMPF   31
 
 // Control flow
-#define OP_CALL   40
-#define OP_RET    41
-#define OP_JMP    42
-#define OP_BEQW   43  // Branch if equal (word)
-#define OP_BNEW   44  // Branch if not equal (word)
-#define OP_BLTW   45  // Branch if less than (word)
-#define OP_BGTW   46  // Branch if greater than (word)
-#define OP_BLEW   47  // Branch if less or equal (word)
-#define OP_BGEW   48  // Branch if greater or equal (word)
+#define INOP    0
+#define IALT    1
+#define INBALT  2
+#define IGOTO   3
+#define ICALL   4
+#define IFRAME  5
+#define ISPAWN  6
+#define IRUNT   7
+#define ILOAD   8
+#define IMCALL  9
+#define IMSPAWN 10
+#define IMFRAME 11
+#define IRET    12
+#define IJMP    13
+#define ICASE   14
+#define IEXIT   15
 
-// Memory operations
-#define OP_NEW    50   // Allocate new object
-#define OP_NEWA   51   // Allocate new array
-#define OP_FRAME  52   // Allocate stack frame
+// Object operations
+#define INEW    16
+#define INEWA   17
+#define INEWCB  18
+#define INEWCW  19
+#define INEWCF  20
+#define INEWCP  21
+#define INEWCM  22
+#define INEWCMP 23
+#define ISEND   24
+#define IRECV   25
 
-// Stack operations
-#define OP_PUSH   60
-#define OP_POP    61
+// Array constants
+#define ICONSB  26
+#define ICONSW  27
+#define ICONSP  28
+#define ICONSF  29
+#define ICONSM  30
+#define ICONSMP 31
+
+// Array operations
+#define IHEADB  32
+#define IHEADW  33
+#define IHEADP  34
+#define IHEADF  35
+#define IHEADM  36
+#define IHEADMP 37
+#define ITAIL   38
+#define ILEA    39
+#define IINDX   40
+
+// Move operations
+#define IMOVP   41
+#define IMOVM   42
+#define IMOVMP  43
+#define IMOVB   44
+#define IMOVW   45
+#define IMOVF   46
 
 // Type conversions
-#define OP_CVTFW  70  // Convert float to word
-#define OP_CVTWF  71  // Convert word to float
+#define ICVTBW  47
+#define ICVTWB  48
+#define ICVTFW  49
+#define ICVTWF  50
+#define ICVTCA  51
+#define ICVTAC  52
+#define ICVTWC  53
+#define ICVTCW  54
+#define ICVTFC  55
+#define ICVTCF  56
 
-// Addressing modes
-#define AMP     0x00  // Offset from MP (global)
-#define AFP     0x01  // Offset from FP (local)
-#define AIMM    0x02  // Immediate
-#define AXXX    0x03  // None
+// Arithmetic (byte)
+#define IADDB   57
+#define ISUBB   58
+#define IMULB   59
+#define IDIVB   60
+#define IMODB   61
+#define IANDB   62
+#define IORB    63
+#define IXORB   64
+#define ISHLB   65
+#define ISHRB   66
+
+// Arithmetic (word)
+#define IADDW   67
+#define ISUBW   68
+#define IMULW   69
+#define IDIVW   70
+#define IMODW   71
+#define IANDW   72
+#define IORW    73
+#define IXORW   74
+#define ISHLW   75
+#define ISHRW   76
+
+// Arithmetic (float)
+#define IADDF   77
+#define ISUBF   78
+#define IMULF   79
+#define IDIVF   80
+
+// Arithmetic (big)
+#define IMOVL   81
+#define IADDL   82
+#define ISUBL   83
+#define IDIVL   84
+#define IMODL   85
+#define IMULL   86
+#define IANDL   87
+#define IORL    88
+#define IXORL   89
+#define ISHLL   90
+#define ISHRL   91
+
+// Comparison
+#define IBEQB   92
+#define IBNEB   93
+#define IBLTB   94
+#define IBLEB   95
+#define IBGTB   96
+#define IBGEB   97
+#define IBEQW   98
+#define IBNEW   99
+#define IBLTW   100
+#define IBLEW   101
+#define IBGTW   102
+#define IBGEW   103
+#define IBEQF   104
+#define IBNEF   105
+#define IBLTF   106
+#define IBLEF   107
+#define IBGTF   108
+#define IBGEF   109
+#define IBEQC   110
+#define IBNEC   111
+#define IBLTC   112
+#define IBLEC   113
+#define IBGTC   114
+#define IBGEC   115
+#define IBNEL   116
+#define IBLTL   117
+#define IBLEL   118
+#define IBGTL   119
+#define IBGEL   120
+#define IBEQL   121
+
+// Addressing modes (from TaijiOS isa.h)
+#define AMP     0x00  // Offset from MP (module pointer / global)
+#define AFP     0x01  // Offset from FP (frame pointer / local)
+#define AIMM    0x02  // Immediate value
+#define AXXX    0x03  // No operand
+#define AIND    0x04  // Indirect
+#define AMASK   0x07  // Mask for addressing mode
+#define AOFF    0x08  // Offset flag
+#define AVAL    0x10  // Value flag
+
+#define ARM     0xC0  // Mask for middle operand addressing
+#define AXNON   0x00  // No middle operand
+#define AXIMM   0x40  // Immediate middle operand
+#define AXINF   0x80  // Frame offset middle operand
+#define AXINM   0xC0  // Module offset middle operand
+
+// Macros for encoding addressing modes
+#define SRC(x)  ((x) << 3)
+#define DST(x)  ((x) << 0)
 
 // ============================================================================
-// Instruction Encoding
+// Instruction Encoding (TaijiOS format)
 // ============================================================================
-
 /**
- * DIS Instruction encoding (32-bit)
+ * TaijiOS DIS Instruction format:
  *
- * Format: [opcode:8 | address_mode:8 | unused:16]
+ * Byte 0: Opcode
+ * Byte 1: Addressing mode (src|dst with ARM middle bits)
+ * Bytes 2+: Variable-length encoded operands
  *
- * Operands are encoded as separate 32-bit values following the instruction
+ * Operands are encoded with variable-length encoding:
+ * - 0x00-0x3F: Single byte, value 0-63
+ * - 0x40-0x7F: Single byte, value -64 to -1 (sign-extended)
+ * - 0x80-0xBF: Two bytes, value 0-16383 or signed
+ * - 0xC0-0xFF: Four bytes, full 32-bit value
  */
 
 typedef struct {
@@ -97,16 +208,41 @@ typedef struct {
 } DISInstruction;
 
 /**
- * Encode operand with addressing mode
- *
- * @param value Operand value
- * @param mode Addressing mode (AMP, AFP, AIMM, AXXX)
- * @return Encoded operand
+ * Encode a 32-bit operand using TaijiOS variable-length encoding
+ * Returns the number of bytes written (1, 2, or 4)
  */
-static int32_t encode_operand(int32_t value, uint8_t mode) {
-    // For DIS, the addressing mode is encoded in the instruction
-    // The operand value is stored as-is (offset or immediate)
-    return value;
+static int encode_operand(char* buf, int32_t value) {
+    // Try to fit in 1 byte (0x00-0x3F for positive, 0x40-0x7F for negative)
+    if (value >= 0 && value <= 0x3F) {
+        buf[0] = (char)value;
+        return 1;
+    }
+    if (value >= -64 && value < 0) {
+        buf[0] = (char)(value | 0x80);
+        return 1;
+    }
+
+    // Try to fit in 2 bytes (0x80-0xBF range)
+    if ((value >= -16384 && value < 16384) && value != -32768) {
+        if (value < 0) {
+            buf[0] = (char)(((value >> 8) & 0x3F) | 0xA0);
+        } else {
+            buf[0] = (char)(((value >> 8) & 0x3F) | 0x80);
+        }
+        buf[1] = (char)(value & 0xFF);
+        return 2;
+    }
+
+    // Use 4 bytes (0xC0-0xFF range)
+    if (value < 0) {
+        buf[0] = (char)(((value >> 24) & 0x3F) | 0xE0);
+    } else {
+        buf[0] = (char)(((value >> 24) & 0x3F) | 0xC0);
+    }
+    buf[1] = (char)((value >> 16) & 0xFF);
+    buf[2] = (char)((value >> 8) & 0xFF);
+    buf[3] = (char)(value & 0xFF);
+    return 4;
 }
 
 /**
@@ -121,19 +257,60 @@ uint32_t emit_insn_full(DISModuleBuilder* builder, DISInstruction* insn) {
         return -1;
     }
 
-    // Allocate instruction
-    DISInstruction* new_insn = (DISInstruction*)malloc(sizeof(DISInstruction));
-    if (!new_insn) {
-        return -1;
+    // Allocate buffer for encoded instruction
+    char buffer[256];  // Maximum instruction size
+    int offset = 0;
+
+    // Write opcode and addressing mode
+    buffer[offset++] = (char)insn->opcode;
+    buffer[offset++] = (char)insn->address_mode;
+
+    // Write middle operand (if present)
+    switch (insn->address_mode & ARM) {
+    case AXIMM:
+    case AXINF:
+    case AXINM:
+        offset += encode_operand(buffer + offset, insn->middle_operand);
+        break;
     }
 
-    *new_insn = *insn;
+    // Write source operand (if present)
+    switch (SRC(AMASK) & insn->address_mode) {
+    case SRC(AFP):
+    case SRC(AMP):
+    case SRC(AIMM):
+        offset += encode_operand(buffer + offset, insn->source_operand);
+        break;
+    case SRC(AIND|AFP):
+    case SRC(AIND|AMP):
+        // Indirect: write frame and offset
+        offset += encode_operand(buffer + offset, insn->source_operand);
+        offset += encode_operand(buffer + offset, insn->middle_operand);  // reuse middle for offset
+        break;
+    }
 
-    // Add to code section and get PC
-    uint32_t pc = module_builder_get_pc(builder);
+    // Write destination operand (if present)
+    switch (DST(AMASK) & insn->address_mode) {
+    case DST(AFP):
+    case DST(AMP):
+        offset += encode_operand(buffer + offset, insn->dest_operand);
+        break;
+    case DST(AIMM):
+        // Immediate destination (for branches)
+        offset += encode_operand(buffer + offset, insn->dest_operand);
+        break;
+    case DST(AIND|AFP):
+    case DST(AIND|AMP):
+        // Indirect: write frame and offset
+        offset += encode_operand(buffer + offset, insn->dest_operand);
+        offset += encode_operand(buffer + offset, insn->middle_operand);
+        break;
+    }
 
-    // TODO: Add to code section via dynamic_array_add
-    // dynamic_array_add(builder->code_section, new_insn);
+    // TODO: Add to code section
+    // For now, just increment PC
+    uint32_t pc = builder->current_pc;
+    builder->current_pc++;
 
     return pc;
 }
@@ -142,8 +319,8 @@ uint32_t emit_insn_full(DISModuleBuilder* builder, DISInstruction* insn) {
  * Emit instruction with simplified interface
  *
  * @param builder Module builder
- * @param opcode Opcode
- * @param addr_mode Addressing mode
+ * @param opcode Opcode (from TaijiOS isa.h)
+ * @param addr_mode Addressing mode (AMP, AFP, AIMM, AXXX, or combinations)
  * @param middle Middle operand (or AIMM value)
  * @param src Source operand
  * @param dst Destination operand
@@ -174,28 +351,28 @@ uint32_t emit_insn(DISModuleBuilder* builder,
  * Emit add word: dst = src1 + src2
  */
 uint32_t emit_add_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst) {
-    return emit_insn(builder, OP_ADDW, AMP, src2, src1, dst);
+    return emit_insn(builder, IADDW, SRC(AMP) | DST(AMP), 0, src1, dst);
 }
 
 /**
  * Emit subtract word: dst = src1 - src2
  */
 uint32_t emit_sub_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst) {
-    return emit_insn(builder, OP_SUBW, AMP, src2, src1, dst);
+    return emit_insn(builder, ISUBW, SRC(AMP) | DST(AMP), 0, src1, dst);
 }
 
 /**
  * Emit multiply word: dst = src1 * src2
  */
 uint32_t emit_mul_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst) {
-    return emit_insn(builder, OP_MULW, AMP, src2, src1, dst);
+    return emit_insn(builder, IMULW, SRC(AMP) | DST(AMP), 0, src1, dst);
 }
 
 /**
  * Emit divide word: dst = src1 / src2
  */
 uint32_t emit_div_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst) {
-    return emit_insn(builder, OP_DIVW, AMP, src2, src1, dst);
+    return emit_insn(builder, IDIVW, SRC(AMP) | DST(AMP), 0, src1, dst);
 }
 
 // ============================================================================
@@ -206,14 +383,14 @@ uint32_t emit_div_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32
  * Emit add float: dst = src1 + src2
  */
 uint32_t emit_add_f(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst) {
-    return emit_insn(builder, OP_ADDF, AMP, src2, src1, dst);
+    return emit_insn(builder, IADDF, SRC(AMP) | DST(AMP), 0, src1, dst);
 }
 
 /**
  * Emit subtract float: dst = src1 - src2
  */
 uint32_t emit_sub_f(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32_t dst) {
-    return emit_insn(builder, OP_SUBF, AMP, src2, src1, dst);
+    return emit_insn(builder, ISUBF, SRC(AMP) | DST(AMP), 0, src1, dst);
 }
 
 // ============================================================================
@@ -224,21 +401,21 @@ uint32_t emit_sub_f(DISModuleBuilder* builder, int32_t src1, int32_t src2, int32
  * Emit move word: dst = src
  */
 uint32_t emit_mov_w(DISModuleBuilder* builder, int32_t src, int32_t dst) {
-    return emit_insn(builder, OP_MOVW, AMP, 0, src, dst);
+    return emit_insn(builder, IMOVW, SRC(AMP) | DST(AMP), 0, src, dst);
 }
 
 /**
  * Emit move pointer: dst = src
  */
 uint32_t emit_mov_p(DISModuleBuilder* builder, int32_t src, int32_t dst) {
-    return emit_insn(builder, OP_MOVP, AMP, 0, src, dst);
+    return emit_insn(builder, IMOVP, SRC(AMP) | DST(AMP), 0, src, dst);
 }
 
 /**
- * Emit move immediate: dst = immediate
+ * Emit move immediate word: dst = immediate
  */
 uint32_t emit_mov_imm_w(DISModuleBuilder* builder, int32_t imm, int32_t dst) {
-    return emit_insn(builder, OP_MOVW, AIMM, 0, imm, dst);
+    return emit_insn(builder, IMOVW, SRC(AIMM) | DST(AMP), 0, imm, dst);
 }
 
 // ============================================================================
@@ -248,19 +425,18 @@ uint32_t emit_mov_imm_w(DISModuleBuilder* builder, int32_t imm, int32_t dst) {
 /**
  * Emit call instruction
  * @param builder Module builder
- * @param frame_size Stack frame size
  * @param target_pc Target function PC
  * @return PC of call instruction
  */
-uint32_t emit_call(DISModuleBuilder* builder, uint32_t frame_size, uint32_t target_pc) {
-    return emit_insn(builder, OP_CALL, AIMM, frame_size, target_pc, 0);
+uint32_t emit_call(DISModuleBuilder* builder, uint32_t target_pc) {
+    return emit_insn(builder, ICALL, SRC(AIMM), 0, 0, target_pc);
 }
 
 /**
  * Emit return instruction
  */
 uint32_t emit_ret(DISModuleBuilder* builder) {
-    return emit_insn(builder, OP_RET, AXXX, 0, 0, 0);
+    return emit_insn(builder, IRET, AXXX, 0, 0, 0);
 }
 
 /**
@@ -270,7 +446,7 @@ uint32_t emit_ret(DISModuleBuilder* builder) {
  * @return PC of jump instruction
  */
 uint32_t emit_jmp(DISModuleBuilder* builder, uint32_t target_pc) {
-    return emit_insn(builder, OP_JMP, AIMM, 0, target_pc, 0);
+    return emit_insn(builder, IGOTO, SRC(AIMM), 0, 0, target_pc);
 }
 
 /**
@@ -282,28 +458,28 @@ uint32_t emit_jmp(DISModuleBuilder* builder, uint32_t target_pc) {
  * @return PC of branch instruction
  */
 uint32_t emit_branch_eq_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, uint32_t target_pc) {
-    return emit_insn(builder, OP_BEQW, AMP, src2, src1, target_pc);
+    return emit_insn(builder, IBEQW, SRC(AMP) | DST(AIMM), 0, src1, target_pc);
 }
 
 /**
  * Emit branch if not equal (word)
  */
 uint32_t emit_branch_ne_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, uint32_t target_pc) {
-    return emit_insn(builder, OP_BNEW, AMP, src2, src1, target_pc);
+    return emit_insn(builder, IBNEW, SRC(AMP) | DST(AIMM), 0, src1, target_pc);
 }
 
 /**
  * Emit branch if less than (word)
  */
 uint32_t emit_branch_lt_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, uint32_t target_pc) {
-    return emit_insn(builder, OP_BLTW, AMP, src2, src1, target_pc);
+    return emit_insn(builder, IBLTW, SRC(AMP) | DST(AIMM), 0, src1, target_pc);
 }
 
 /**
  * Emit branch if greater than (word)
  */
 uint32_t emit_branch_gt_w(DISModuleBuilder* builder, int32_t src1, int32_t src2, uint32_t target_pc) {
-    return emit_insn(builder, OP_BGTW, AMP, src2, src1, target_pc);
+    return emit_insn(builder, IBGTW, SRC(AMP) | DST(AIMM), 0, src1, target_pc);
 }
 
 // ============================================================================
@@ -318,7 +494,7 @@ uint32_t emit_branch_gt_w(DISModuleBuilder* builder, int32_t src1, int32_t src2,
  * @return PC of new instruction
  */
 uint32_t emit_new(DISModuleBuilder* builder, uint32_t type_idx, int32_t dst) {
-    return emit_insn(builder, OP_NEW, AIMM, type_idx, 0, dst);
+    return emit_insn(builder, INEW, SRC(AIMM) | DST(AMP), 0, type_idx, dst);
 }
 
 /**
@@ -330,7 +506,7 @@ uint32_t emit_new(DISModuleBuilder* builder, uint32_t type_idx, int32_t dst) {
  * @return PC of newa instruction
  */
 uint32_t emit_newa(DISModuleBuilder* builder, int32_t count, uint32_t type_idx, int32_t dst) {
-    return emit_insn(builder, OP_NEWA, AIMM, type_idx, count, dst);
+    return emit_insn(builder, INEWA, AXIMM | SRC(AMP) | DST(AMP), type_idx, count, dst);
 }
 
 /**
@@ -341,7 +517,7 @@ uint32_t emit_newa(DISModuleBuilder* builder, int32_t count, uint32_t type_idx, 
  * @return PC of frame instruction
  */
 uint32_t emit_frame(DISModuleBuilder* builder, uint32_t type_idx, int32_t dst) {
-    return emit_insn(builder, OP_FRAME, AIMM, type_idx, 0, dst);
+    return emit_insn(builder, IFRAME, SRC(AIMM) | DST(AMP), 0, type_idx, dst);
 }
 
 // ============================================================================
@@ -349,21 +525,24 @@ uint32_t emit_frame(DISModuleBuilder* builder, uint32_t type_idx, int32_t dst) {
 // ============================================================================
 
 /**
- * Emit compare words (sets flags)
+ * Emit compare words (sets flags for subsequent branches)
  * @param builder Module builder
  * @param src1 First operand
  * @param src2 Second operand
  * @return PC of cmp instruction
  */
 uint32_t emit_cmp_w(DISModuleBuilder* builder, int32_t src1, int32_t src2) {
-    return emit_insn(builder, OP_CMPW, AMP, src2, src1, 0);
+    // DIS doesn't have a separate compare - use branches directly
+    // This is a placeholder for compatibility
+    return emit_insn(builder, INOP, AXXX, 0, 0, 0);
 }
 
 /**
  * Emit compare floats (sets flags)
  */
 uint32_t emit_cmp_f(DISModuleBuilder* builder, int32_t src1, int32_t src2) {
-    return emit_insn(builder, OP_CMPF, AMP, src2, src1, 0);
+    // DIS doesn't have a separate compare - use branches directly
+    return emit_insn(builder, INOP, AXXX, 0, 0, 0);
 }
 
 // ============================================================================
@@ -374,30 +553,23 @@ uint32_t emit_cmp_f(DISModuleBuilder* builder, int32_t src1, int32_t src2) {
  * Emit convert float to word
  */
 uint32_t emit_cvt_f_w(DISModuleBuilder* builder, int32_t src, int32_t dst) {
-    return emit_insn(builder, OP_CVTFW, AMP, 0, src, dst);
+    return emit_insn(builder, ICVTFW, SRC(AMP) | DST(AMP), 0, src, dst);
 }
 
 /**
  * Emit convert word to float
  */
 uint32_t emit_cvt_w_f(DISModuleBuilder* builder, int32_t src, int32_t dst) {
-    return emit_insn(builder, OP_CVTWF, AMP, 0, src, dst);
+    return emit_insn(builder, ICVTWF, SRC(AMP) | DST(AMP), 0, src, dst);
 }
 
 // ============================================================================
-// Stack Operations
+// Exit Instruction
 // ============================================================================
 
 /**
- * Emit push word onto stack
+ * Emit exit with status code
  */
-uint32_t emit_push_w(DISModuleBuilder* builder, int32_t src) {
-    return emit_insn(builder, OP_PUSH, AMP, 0, src, 0);
-}
-
-/**
- * Emit pop word from stack
- */
-uint32_t emit_pop_w(DISModuleBuilder* builder, int32_t dst) {
-    return emit_insn(builder, OP_POP, AMP, 0, 0, dst);
+uint32_t emit_exit(DISModuleBuilder* builder, int32_t code) {
+    return emit_insn(builder, IEXIT, SRC(AIMM), 0, 0, code);
 }

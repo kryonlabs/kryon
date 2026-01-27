@@ -11,7 +11,8 @@
 #include <unistd.h>
 #include <limits.h>
 #include "toml.h"
-#include "../../runtime/desktop/ir_desktop_renderer.h"
+// Desktop renderer removed - DIS and Web targets only
+// #include "../../runtime/desktop/ir_desktop_renderer.h"
 #include "../../ir/include/ir_executor.h"
 #include "../../ir/include/ir_state.h"
 #include "../../ir/include/ir_capability.h"
@@ -397,77 +398,6 @@ void kryon_cleanup(void) {
     printf("[kryon] Shutdown complete\n");
 }
 
-int kryon_get_renderer_backend_from_config(void) {
-    // Search for kryon.toml in current directory and parent directories
-    char cwd[PATH_MAX];
-    if (!getcwd(cwd, sizeof(cwd))) {
-        return -1;
-    }
-
-    char config_path[PATH_MAX];
-    char search_dir[PATH_MAX];
-    strncpy(search_dir, cwd, sizeof(search_dir) - 1);
-
-    // Search up to 5 parent directories
-    for (int i = 0; i < 5; i++) {
-        snprintf(config_path, sizeof(config_path), "%s/kryon.toml", search_dir);
-
-        FILE* f = fopen(config_path, "r");
-        if (f) {
-            fclose(f);
-            break;  // Found it
-        }
-
-        // Go up one directory
-        char* last_slash = strrchr(search_dir, '/');
-        if (!last_slash || last_slash == search_dir) {
-            return -1;  // Reached root without finding config
-        }
-        *last_slash = '\0';
-    }
-
-    // Parse the TOML file
-    FILE* fp = fopen(config_path, "r");
-    if (!fp) {
-        return -1;
-    }
-
-    char errbuf[200];
-    toml_table_t* conf = toml_parse_file(fp, errbuf, sizeof(errbuf));
-    fclose(fp);
-
-    if (!conf) {
-        return -1;
-    }
-
-    // Get [desktop] table
-    toml_table_t* desktop = toml_table_in(conf, "desktop");
-    if (!desktop) {
-        toml_free(conf);
-        return -1;
-    }
-
-    // Get renderer value
-    toml_datum_t renderer = toml_string_in(desktop, "renderer");
-    if (!renderer.ok) {
-        toml_free(conf);
-        return -1;
-    }
-
-    // Map renderer string to backend enum
-    int backend = -1;
-    if (strcmp(renderer.u.s, "raylib") == 0) {
-        backend = DESKTOP_BACKEND_RAYLIB;
-    } else if (strcmp(renderer.u.s, "sdl3") == 0) {
-        backend = DESKTOP_BACKEND_SDL3;
-    } else if (strcmp(renderer.u.s, "glfw") == 0) {
-        backend = DESKTOP_BACKEND_GLFW;
-    }
-
-    free(renderer.u.s);
-    toml_free(conf);
-    return backend;
-}
 
 // ============================================================================
 // Component Creation
@@ -1081,57 +1011,3 @@ void kryon_on_focus(IRComponent* component, KryonEventHandler handler, const cha
     register_handler(component->id, "focus", handler, handler_name);
 }
 
-// ============================================================================
-// Shutdown API
-// ============================================================================
-
-// Forward declarations for internal shutdown functions (in ir_desktop_renderer.c)
-// Use weak symbols so these can be missing when desktop backend is not linked
-extern bool kryon_request_shutdown_internal(DesktopIRRenderer* renderer, KryonShutdownReason reason) __attribute__((weak));
-extern bool kryon_register_shutdown_callback_internal(DesktopIRRenderer* renderer,
-                                                       KryonShutdownCallback callback,
-                                                       void* user_data, int priority) __attribute__((weak));
-extern void kryon_set_cleanup_callback_internal(DesktopIRRenderer* renderer,
-                                                 KryonCleanupCallback callback, void* user_data) __attribute__((weak));
-extern KryonShutdownState kryon_get_shutdown_state_internal(DesktopIRRenderer* renderer) __attribute__((weak));
-extern bool kryon_is_shutting_down_internal(DesktopIRRenderer* renderer) __attribute__((weak));
-
-// Global renderer pointer (from desktop backend) - weak so it can be missing
-extern DesktopIRRenderer* g_desktop_renderer __attribute__((weak));
-
-bool kryon_request_shutdown(void* renderer, kryon_shutdown_reason_t reason) {
-    // Check if desktop backend is linked
-    if (!kryon_request_shutdown_internal) return false;
-    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
-    if (!r) return false;
-    return kryon_request_shutdown_internal(r, (KryonShutdownReason)reason);
-}
-
-bool kryon_register_shutdown_callback(void* renderer, kryon_shutdown_callback_t callback,
-                                       void* user_data, int priority) {
-    if (!kryon_register_shutdown_callback_internal) return false;
-    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
-    if (!r) return false;
-    return kryon_register_shutdown_callback_internal(r, (KryonShutdownCallback)callback, user_data, priority);
-}
-
-void kryon_set_cleanup_callback(void* renderer, kryon_cleanup_callback_t callback, void* user_data) {
-    if (!kryon_set_cleanup_callback_internal) return;
-    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
-    if (!r) return;
-    kryon_set_cleanup_callback_internal(r, (KryonCleanupCallback)callback, user_data);
-}
-
-kryon_shutdown_state_t kryon_get_shutdown_state(void* renderer) {
-    if (!kryon_get_shutdown_state_internal) return KRYON_SHUTDOWN_COMPLETE;
-    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
-    if (!r) return KRYON_SHUTDOWN_COMPLETE;
-    return (kryon_shutdown_state_t)kryon_get_shutdown_state_internal(r);
-}
-
-bool kryon_is_shutting_down(void* renderer) {
-    if (!kryon_is_shutting_down_internal) return true;
-    DesktopIRRenderer* r = renderer ? (DesktopIRRenderer*)renderer : (g_desktop_renderer ? g_desktop_renderer : NULL);
-    if (!r) return true;
-    return kryon_is_shutting_down_internal(r);
-}

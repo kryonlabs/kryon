@@ -1,28 +1,30 @@
 /**
  * Build Command
- * Orchestrates the build pipeline: Frontend → KIR → Codegen
+ * Orchestrates the build pipeline: Frontend → KIR → Target Codegen
+ *
+ * Supported targets:
+ *   - web:  KRY → KIR → HTML/CSS/JS
+ *   - dis:  KRY → KIR → DIS bytecode (TaijiOS)
  */
 
 #include "kryon_cli.h"
 #include "build.h"
 #include "build/plugin_discovery.h"
-#include "build/c_desktop.h"
 #include "../template/docs_template.h"
 #include "../utils/file_discovery.h"
-#include "../../../codegens/c/ir_c_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 
 /**
- * Build a single source file
+ * Build a single source file for web target
  */
-static int build_single_file(const char* source_file, KryonConfig* config) {
+static int build_single_file_web(const char* source_file, KryonConfig* config) {
     const char* frontend = detect_frontend_type(source_file);
     if (!frontend) {
         fprintf(stderr, "Error: Could not detect frontend for %s\n", source_file);
-        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html, .tsx, .jsx, .c, .ha\n");
+        fprintf(stderr, "Supported extensions: .kry, .kir, .md, .html\n");
         return 1;
     }
 
@@ -73,180 +75,25 @@ static int build_single_file(const char* source_file, KryonConfig* config) {
     return 0;
 }
 
-/**
- * Build a discovered file with template application if needed
- */
-static int build_discovered_file(DiscoveredFile* file, KryonConfig* config, const char* docs_template) {
-    if (!file || !file->source_path) {
-        fprintf(stderr, "Error: Invalid file entry\n");
-        return 1;
-    }
+/* ============================================================================
+ * Command Entry Point
+ * ============================================================================ */
 
-    printf("  %s → %s\n", file->source_path, file->output_path);
-
-    // Create cache directory
-    if (!file_is_directory(".kryon_cache")) {
-        dir_create(".kryon_cache");
-    }
-
-    // Generate KIR filename
-    const char* slash = strrchr(file->source_path, '/');
-    const char* basename = slash ? slash + 1 : file->source_path;
-    char kir_name[512];
-    strncpy(kir_name, basename, sizeof(kir_name) - 1);
-    kir_name[sizeof(kir_name) - 1] = '\0';
-    char* dot = strrchr(kir_name, '.');
-    if (dot) *dot = '\0';
-
-    char content_kir_file[1024];
-    snprintf(content_kir_file, sizeof(content_kir_file), ".kryon_cache/%s_content.kir", kir_name);
-
-    // Compile to KIR
-    int result = compile_source_to_kir(file->source_path, content_kir_file);
-    if (result != 0 || !file_exists(content_kir_file)) {
-        fprintf(stderr, "Error: Compilation failed\n");
-        return result != 0 ? result : 1;
-    }
-
-    // Extract directory from output path
-    char output_dir[2048];
-    strncpy(output_dir, file->output_path, sizeof(output_dir) - 1);
-    output_dir[sizeof(output_dir) - 1] = '\0';
-    char* last_slash = strrchr(output_dir, '/');
-    if (last_slash) {
-        *last_slash = '\0';
-    }
-
-    // Create output directory
-    if (!file_is_directory(output_dir)) {
-        dir_create_recursive(output_dir);
-    }
-
-    // Use shared docs template function
-    result = build_with_docs_template(
-        content_kir_file,
-        file->source_path,
-        file->route,
-        output_dir,
-        docs_template,
-        config
-    );
-
-    return result;
-}
-
-/**
- * Check if "desktop" is in build targets
- */
-static int has_desktop_target(KryonConfig* config) {
-    if (!config->build_targets || config->build_targets_count == 0) {
-        return 0;
-    }
-    for (int i = 0; i < config->build_targets_count; i++) {
-        if (strcmp(config->build_targets[i], "desktop") == 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-/**
- * Build C desktop binary from KRY frontend
- * Pipeline: KRY → KIR → C codegen → compile → native binary
- */
-static int build_c_desktop(KryonConfig* config) {
-    const char* entry = config->build_entry;
-    const char* project_name = config->project_name;
-
-    /* Validate entry file */
-    if (!entry) {
-        fprintf(stderr, "Error: No entry file specified in kryon.toml\n");
-        return 1;
-    }
-
-    if (!str_ends_with(entry, ".kry")) {
-        fprintf(stderr, "Error: C desktop build requires .kry entry file, got: %s\n", entry);
-        return 1;
-    }
-
-    if (!file_exists(entry)) {
-        fprintf(stderr, "Error: Entry file not found: %s\n", entry);
-        return 1;
-    }
-
-    printf("[C Desktop] Building %s...\n", project_name);
-
-    /* Step 1: Compile KRY to KIR */
-    if (!file_is_directory(".kryon_cache")) {
-        dir_create(".kryon_cache");
-    }
-
-    char kir_path[PATH_MAX];
-    snprintf(kir_path, sizeof(kir_path), ".kryon_cache/main.kir");
-
-    printf("[C Desktop] Compiling KRY → KIR...\n");
-    if (compile_source_to_kir(entry, kir_path) != 0) {
-        fprintf(stderr, "Error: Failed to compile KRY to KIR\n");
-        return 1;
-    }
-
-    if (!file_exists(kir_path)) {
-        fprintf(stderr, "Error: KIR file was not generated: %s\n", kir_path);
-        return 1;
-    }
-
-    /* Step 2: Generate C code from KIR */
-    const char* output_dir = config->build_output_dir ? config->build_output_dir : "build";
-    char gen_dir[PATH_MAX];
-    snprintf(gen_dir, sizeof(gen_dir), "%s/generated", output_dir);
-
-    if (!file_is_directory(gen_dir)) {
-        dir_create_recursive(gen_dir);
-    }
-
-    printf("[C Desktop] Generating C code → %s\n", gen_dir);
-    if (!ir_generate_c_code_multi(kir_path, gen_dir)) {
-        fprintf(stderr, "Error: Failed to generate C code from KIR\n");
-        return 1;
-    }
-
-    /* Step 3: Compile and link C code to binary */
-    printf("[C Desktop] Compiling C → native binary...\n");
-    return compile_and_link_c_desktop(gen_dir, project_name, config);
-}
-
-/**
- * Build command entry point
- */
 int cmd_build(int argc, char** argv) {
-    // Parse command line arguments
+    (void)argc;  // Unused
+
     const char* cli_target = NULL;
     const char* cli_output_dir = NULL;
     int file_arg_start = 0;
 
-    for (int i = 0; i < argc; i++) {
+    // Parse command-line arguments
+    for (int i = 1; i < argc && argv[i]; i++) {
         if (strncmp(argv[i], "--target=", 9) == 0) {
             cli_target = argv[i] + 9;
-        } else if (strcmp(argv[i], "--target") == 0 && i + 1 < argc) {
-            cli_target = argv[++i];
         } else if (strncmp(argv[i], "--output-dir=", 13) == 0) {
             cli_output_dir = argv[i] + 13;
-        } else if (strcmp(argv[i], "--output-dir") == 0 && i + 1 < argc) {
-            cli_output_dir = argv[++i];
-        } else if (argv[i][0] == '-') {
-            fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
-            fprintf(stderr, "Supported options: --target=<name>, --output-dir=<dir>\n");
-
-            // List available targets dynamically
-            fprintf(stderr, "\nAvailable targets:\n");
-            const char** targets = target_handler_list_names();
-            for (int i = 0; targets[i]; i++) {
-                fprintf(stderr, "  - %s\n", targets[i]);
-            }
-            fprintf(stderr, "\nDesktop builds support KRY frontend\n");
-            return 1;
-        } else if (file_arg_start == 0) {
-            // First non-option argument is the file
+        } else if (argv[i][0] != '-' && argv[i][0] != '\0') {
+            // First positional argument - could be a source file
             file_arg_start = i;
         }
     }
@@ -289,7 +136,6 @@ int cmd_build(int argc, char** argv) {
                 write_plugin_code_files(plugins, plugin_count, output_dir);
 
                 // Write plugin manifest to build/ (where KIR files live) for codegen to use
-                // Codegen derives build_dir from kir_path (build/kir/*.kir -> build/)
                 write_plugin_manifest(plugins, plugin_count, "build");
 
                 free_build_plugins(plugins, plugin_count);
@@ -359,54 +205,22 @@ int cmd_build(int argc, char** argv) {
         primary_target = config->build_targets_count > 0 ?
                           config->build_targets[0] : NULL;
     }
-    int is_desktop = primary_target && strcmp(primary_target, "desktop") == 0;
-    int is_web = primary_target && strcmp(primary_target, "web") == 0;
 
-    // Desktop build - route based on frontend configuration
-    if (is_desktop) {
-        printf("Building desktop targets...\n");
-
-        const char* frontend = config->build_frontend;
-        int desktop_result;
-
-        if (frontend && strcmp(frontend, "kry") == 0) {
-            // KRY frontend → C codegen → native binary
-            printf("Frontend: kry (C code generation)\n");
-            desktop_result = build_c_desktop(config);
-        } else if (!frontend || strcmp(frontend, "auto") == 0) {
-            // Auto-detect based on entry file extension
-            const char* entry = config->build_entry;
-            if (entry && str_ends_with(entry, ".kry")) {
-                printf("Frontend: auto-detected kry (C code generation)\n");
-                desktop_result = build_c_desktop(config);
-            } else {
-                fprintf(stderr, "Error: Cannot auto-detect frontend for entry '%s'\n",
-                        entry ? entry : "(none)");
-                fprintf(stderr, "Specify frontend = \"kry\" in [build] section\n");
-                config_free(config);
-                return 1;
-            }
-        } else {
-            fprintf(stderr, "Error: Unknown frontend '%s'\n", frontend);
-            fprintf(stderr, "Supported frontends: kry, auto\n");
-            config_free(config);
-            return 1;
-        }
-
-        if (desktop_result != 0) {
-            // Desktop build failed
-            config_free(config);
-            return 1;
-        }
-        // Desktop only, we're done
+    if (!primary_target) {
+        fprintf(stderr, "Error: No target specified\n");
+        fprintf(stderr, "Use --target=<name> or specify targets in kryon.toml\n");
+        fprintf(stderr, "Valid targets: web, dis\n");
         config_free(config);
-        return 0;
+        return 1;
     }
+
+    int is_web = strcmp(primary_target, "web") == 0;
+    int is_dis = strcmp(primary_target, "dis") == 0;
 
     // If specific file argument provided, build just that file (web only)
     if (file_arg_start > 0 && file_arg_start < argc) {
         if (!is_web) {
-            fprintf(stderr, "Error: Single file build only supports web targets\n");
+            fprintf(stderr, "Error: Single file build only supports web target\n");
             config_free(config);
             return 1;
         }
@@ -419,14 +233,14 @@ int cmd_build(int argc, char** argv) {
             return 1;
         }
 
-        result = build_single_file(source_file, config);
+        result = build_single_file_web(source_file, config);
         config_free(config);
         return result;
     }
 
-    // Web build: requires explicit entry point in kryon.toml
+    // WEB TARGET: Build web application
     if (is_web) {
-        printf("Building web targets...\n");
+        printf("Building web target...\n");
 
         if (!config->build_entry) {
             fprintf(stderr, "Error: No entry point specified in kryon.toml\n");
@@ -438,9 +252,47 @@ int cmd_build(int argc, char** argv) {
         }
 
         printf("Building entry file: %s\n", config->build_entry);
-        result = build_single_file(config->build_entry, config);
+        result = build_single_file_web(config->build_entry, config);
+        config_free(config);
+        return result;
     }
 
+    // DIS TARGET: Build DIS bytecode using target handler
+    if (is_dis) {
+        printf("Building DIS bytecode target...\n");
+
+        if (!config->build_entry) {
+            fprintf(stderr, "Error: No entry point specified in kryon.toml\n");
+            fprintf(stderr, "Add [build].entry to your configuration, e.g.:\n");
+            fprintf(stderr, "  [build]\n");
+            fprintf(stderr, "  entry = \"main.kry\"\n");
+            config_free(config);
+            return 1;
+        }
+
+        // Compile source to KIR
+        const char* kir_file = ".kryon_cache/output.kir";
+        printf("Compiling entry file: %s\n", config->build_entry);
+
+        if (compile_source_to_kir(config->build_entry, kir_file) != 0) {
+            fprintf(stderr, "Error: Failed to compile entry file\n");
+            config_free(config);
+            return 1;
+        }
+
+        // Get output directory and project name
+        const char* output_dir = config->build_output_dir ? config->build_output_dir : "dist";
+        const char* project_name = config->project_name ? config->project_name : "app";
+
+        printf("Building DIS from %s...\n", kir_file);
+        result = target_handler_build("dis", kir_file, output_dir, project_name, config);
+        config_free(config);
+        return result;
+    }
+
+    // UNKNOWN TARGET
+    fprintf(stderr, "Error: Unknown target '%s'\n", primary_target);
+    fprintf(stderr, "Supported targets: web, dis\n");
     config_free(config);
-    return result;
+    return 1;
 }
