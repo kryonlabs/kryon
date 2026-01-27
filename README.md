@@ -10,7 +10,6 @@ Converts KRY expressions (`x => x * 2`, `obj.prop + 1`) to target language synta
 
 | Target | Status | Notes |
 |--------|--------|-------|
-| Lua | ✅ | 1-indexed arrays, and/or/not |
 | JavaScript | ✅ | ES6 syntax |
 | C | ✅ | Arrow functions via registry |
 | Python | ❌ | |
@@ -25,7 +24,6 @@ Converts KIR (JSON IR) to complete source files.
 
 | Target | Status | Location | Notes |
 |--------|--------|----------|-------|
-| Lua | ⚠️ | `codegens/lua/` | Skeleton only, missing events/bindings |
 | C | ✅ | `codegens/c/` | |
 | Kotlin | ✅ | `codegens/kotlin/` | |
 | KRY | ✅ | `codegens/kry/` | Round-trip |
@@ -42,7 +40,6 @@ FFI bindings for using Kryon from other languages.
 |----------|--------|----------|
 | C | ✅ | `bindings/c/` |
 | JavaScript | ✅ | `bindings/javascript/` |
-| Lua | ✅ | `bindings/lua/` |
 | Kotlin | ✅ | `bindings/kotlin/` |
 | Swift | ❌ | |
 | Go | ❌ | |
@@ -50,30 +47,30 @@ FFI bindings for using Kryon from other languages.
 
 ### Expression Features
 
-| Feature | Lua | JS | C |
-|---------|-----|----|----|
-| Literals | ✅ | ✅ | ✅ |
-| Binary ops | ✅ | ✅ | ✅ |
-| Logical ops | ✅ | ✅ | ✅ |
-| Property access | ✅ | ✅ | ✅ |
-| Array access | ✅ | ✅ | ✅ |
-| Function calls | ✅ | ✅ | ✅ |
-| Array literals | ✅ | ✅ | ✅ |
+| Feature | JS | C |
+|---------|----|----|
+| Literals | ✅ | ✅ |
+| Binary ops | ✅ | ✅ |
+| Logical ops | ✅ | ✅ |
+| Property access | ✅ | ✅ |
+| Array access | ✅ | ✅ |
+| Function calls | ✅ | ✅ |
+| Array literals | ✅ | ✅ |
 | Object literals | ✅ | ✅ | ✅ |
-| Arrow functions | ✅ | ✅ | ✅ |
-| Ternary | ✅ | ✅ | ✅ |
-| Template strings | ❌ | ❌ | ❌ |
-| Spread operator | ❌ | ❌ | ❌ |
-| Destructuring | ❌ | ❌ | ❌ |
-| Optional chaining | ❌ | ❌ | ❌ |
+| Arrow functions | ✅ | ✅ |
+| Ternary | ✅ | ✅ |
+| Template strings | ❌ | ❌ |
+| Spread operator | ❌ | ❌ |
+| Destructuring | ❌ | ❌ |
+| Optional chaining | ❌ | ❌ |
 
 ### Summary
 
 | Category | Done | Missing |
 |----------|------|---------|
-| Expression Transpiler Targets | 3 | 5 |
-| Code Generators | 6 | 2 |
-| Runtime Bindings | 4 | 4 |
+| Expression Transpiler Targets | 2 | 5 |
+| Code Generators | 5 | 2 |
+| Runtime Bindings | 3 | 4 |
 
 ### Build Pipeline Status
 
@@ -81,17 +78,14 @@ FFI bindings for using Kryon from other languages.
 |----------|--------|-------|
 | KRY -> KIR | ✅ | Native C parser |
 | KIR -> Web (HTML/CSS/JS) | ✅ | Full support |
-| KIR -> Lua source | ⚠️ | Skeleton only |
 | KIR -> C source | ✅ | Via codegen |
 | KRY -> Desktop (C/SDL3) | ❌ | `build_c_desktop()` not implemented |
-| Lua -> Desktop binary | ✅ | Via LuaJIT |
-| Hot reload (desktop) | ✅ | Lua runtime only |
+| Hot reload (desktop) | ❌ | Not implemented |
 | Hot reload (web) | ✅ | Dev server |
 
 ### Known Issues
 
-- **Desktop build hardcoded to Lua**: `cmd_build.c:321` calls `build_lua_desktop()` for ALL desktop builds. Missing `build_c_desktop()` for KRY frontend. KRY should use: KRY→KIR→C codegen→compile with SDL3.
-- **Lua codegen incomplete**: Missing component definitions, event handlers, property bindings, ForEach expansion, logic blocks. Output is skeleton only.
+- **Desktop build not implemented**: Missing `build_c_desktop()` for KRY frontend. KRY should use: KRY→KIR→C codegen→compile with SDL3.
 - **Expression transpiler gaps**: Kotlin code generator exists but expression transpiler doesn't support it (uses raw expressions).
 
 ---
@@ -99,7 +93,7 @@ FFI bindings for using Kryon from other languages.
 ## Architecture
 
 ```
-Source (.kry/.lua/.tsx/.c/.ha)
+Source (.kry/.c)
     ↓
 Parser (ir/parsers/)
     ↓
@@ -121,27 +115,18 @@ kryon/
 │   ├── include/            # Public headers
 │   └── parsers/            # Source language parsers
 │       ├── kry/            # KRY DSL parser + expression transpiler
-│       ├── lua/            # Lua parser
-│       ├── tsx/            # TSX parser
 │       ├── html/           # HTML parser
-│       ├── c/              # C parser
-│       └── hare/           # Hare DSL parser
+│       └── c/              # C parser
 ├── codegens/               # Code generators
-│   ├── lua/
-│   ├── tsx/
 │   ├── c/
 │   ├── kotlin/
-│   ├── hare/
 │   ├── kry/
 │   ├── markdown/
 │   └── web/
 ├── bindings/               # Language bindings
 │   ├── c/
 │   ├── javascript/
-│   ├── typescript/
-│   ├── lua/
-│   ├── kotlin/
-│   └── hare/               # Hare FFI bindings + DSL
+│   └── kotlin/
 ├── renderers/              # Platform renderers
 │   ├── sdl3/
 │   ├── raylib/

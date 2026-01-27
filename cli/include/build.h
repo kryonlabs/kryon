@@ -20,7 +20,6 @@ struct DocsTemplateContext;
  * - .md         -> "markdown"
  * - .html       -> "html"
  * - .kry        -> "kry"
- * - .lua        -> "lua"
  * - .c, .h      -> "c"
  *
  * @param source_file Path to the source file
@@ -144,7 +143,7 @@ int build_source_file(const char* source_file, BuildOptions* opts, KryonConfig* 
  *
  * The result is always "<base>/<target>" for organization.
  *
- * @param target    Codegen target (kry, lua, c)
+ * @param target    Codegen target (kry, c)
  * @param config    Kryon config (optional, can be NULL)
  * @return Default output directory path (caller must free)
  */
@@ -156,7 +155,7 @@ char* get_codegen_output_dir(const char* target, KryonConfig* config);
  * Calls the appropriate codegen function based on target.
  *
  * @param kir_file      Path to the KIR file
- * @param target        Codegen target (kry, lua, c)
+ * @param target        Codegen target (kry, c)
  * @param output_path   Output file/directory path
  * @return 0 on success, non-zero on failure
  */
@@ -170,7 +169,7 @@ int generate_from_kir(const char* kir_file, const char* target,
  * If output_dir is not provided, uses get_codegen_output_dir().
  *
  * @param source_file   Source file path (uses build.entry if NULL)
- * @param target        Codegen target (kry, lua, c, web)
+ * @param target        Codegen target (kry, c, web)
  * @param output_dir    Output directory (uses default if NULL)
  * @param config        Kryon config (loaded if NULL)
  * @return 0 on success, non-zero on failure

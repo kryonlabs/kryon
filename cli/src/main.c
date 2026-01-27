@@ -38,7 +38,7 @@ static void print_help(void) {
     printf("  install                 Install application\n");
     printf("  uninstall               Uninstall application\n");
     printf("  doctor                  System diagnostics\n\n");
-    printf("Supported languages/formats: KRY, Lua, HTML, Markdown, C\n\n");
+    printf("Supported languages/formats: KRY, HTML, Markdown, C\n\n");
     printf("Targets:\n");
     printf("  Targets are defined in kryon.toml [build] section\n");
     printf("  Built-in: web, desktop, terminal, android\n");
