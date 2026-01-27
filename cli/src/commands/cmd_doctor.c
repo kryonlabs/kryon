@@ -205,3 +205,5 @@ int cmd_doctor(int argc, char** argv) {
         print_warning("This is normal for SSH sessions or CI environments");
     }
 
+    return all_ok ? 0 : 1;
+}

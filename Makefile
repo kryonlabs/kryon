@@ -79,13 +79,15 @@ ir:
 	@$(MAKE) -C $(IR_DIR) static
 	@echo "✓ Built IR library"
 
-# Code generators (C, Kry, Kotlin, Markdown)
+# Code generators (C, Kry, Kotlin, Markdown, DIS)
 codegens: ir
 	@echo "Building code generators..."
 	@$(MAKE) -C $(CODEGENS_DIR)/c all
 	@$(MAKE) -C $(CODEGENS_DIR)/kry all
 	@$(MAKE) -C $(CODEGENS_DIR)/kotlin all
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
+	@$(MAKE) -C $(CODEGENS_DIR)/web all
+	@$(MAKE) -C $(CODEGENS_DIR)/dis all
 	@echo "✓ Built code generators"
 
 # Runtime backends (desktop rendering, terminal, etc.)

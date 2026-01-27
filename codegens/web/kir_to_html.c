@@ -18,7 +18,6 @@
 #include "ir_capability.h"
 #include "ir_web_renderer.h"
 #include "html_generator.h"
-#include "lua_bundler.h"
 
 // Global IR context (from ir_core.c)
 extern IRContext* g_ir_context;
@@ -132,130 +131,6 @@ int kir_to_html_main(const char* source_dir, const char* kir_file,
             write_js_reactive_system(output_dir, NULL);
         }
         // Check if this is a Lua app and bundle the Lua code
-        // IMPORTANT: This must happen BEFORE destroying root since we need to
-        // walk the KIR tree to extract component_id -> handler_index mappings
-        if (g_ir_context && g_ir_context->source_metadata &&
-            g_ir_context->source_metadata->source_language &&
-            strcmp(g_ir_context->source_metadata->source_language, "lua") == 0) {
-
-            printf("📦 Bundling Lua app for web...\n");
-
-            LuaBundler* bundler = lua_bundler_create();
-            if (bundler) {
-                // Set project name for automatic handler namespace export
-                if (project_name) {
-                    lua_bundler_set_project_name(bundler, project_name);
-                    printf("  Using namespace: __kryon_app__ (project: %s)\n", project_name);
-                }
-
-                // Setup bundler search paths for module resolution
-                lua_bundler_add_search_path(bundler, source_dir);
-                lua_bundler_use_web_modules(bundler, true);
-
-                // Set kryon bindings path for kryon.* modules
-                if (home) {
-                    char bindings_path[PATH_MAX];
-                    snprintf(bindings_path, sizeof(bindings_path), "%s/.local/share/kryon/bindings/lua", home);
-                    lua_bundler_set_kryon_path(bundler, bindings_path);
-                }
-
-                // Get source file path from metadata for full bundling
-                const char* source_file = g_ir_context->source_metadata->source_file;
-                char* bundled_script = NULL;
-
-                if (source_file && source_file[0] != '\0') {
-                    // FULL BUNDLING MODE: Read main.lua and bundle all dependencies
-                    // This includes all variables, functions, and modules that handlers need
-                    printf("  Mode: Full bundling from source file\n");
-                    printf("  Source: %s\n", source_file);
-                    bundled_script = lua_bundler_generate_script(bundler, source_file, root);
-                } else {
-                    // FALLBACK: Generate from KIR only (handlers might have undefined references)
-                    printf("  Mode: KIR-only (no source file path in metadata)\n");
-                    printf("  Warning: Handlers may reference undefined variables/functions\n");
-                    bundled_script = lua_bundler_generate_from_kir(bundler, root);
-                }
-
-                if (bundled_script) {
-                    // Append to HTML file
-                    char html_path[512];
-                    snprintf(html_path, sizeof(html_path), "%s/index.html", output_dir);
-
-                    // Read existing HTML
-                    FILE* html_file = fopen(html_path, "r");
-                    if (html_file) {
-                        fseek(html_file, 0, SEEK_END);
-                        long html_size = ftell(html_file);
-                        fseek(html_file, 0, SEEK_SET);
-
-                        char* html_content = malloc(html_size + 1);
-                        if (html_content) {
-                            size_t read = fread(html_content, 1, html_size, html_file);
-                            html_content[read] = '\0';
-                            fclose(html_file);
-
-                            // Find </body> and insert script tag before it
-                            char* body_end = strstr(html_content, "</body>");
-                            if (body_end) {
-                                // Strip <script type="application/lua"> wrapper for external file
-                                const char* script_start = "<script type=\"application/lua\">\n";
-                                const char* script_end = "\n</script>";
-                                char* lua_code_start = bundled_script;
-                                char* lua_code_only = NULL;
-
-                                // Skip the opening script tag if present
-                                if (strncmp(lua_code_start, script_start, strlen(script_start)) == 0) {
-                                    lua_code_start += strlen(script_start);
-                                }
-
-                                // Find and remove the closing script tag
-                                char* closing_tag = strstr(lua_code_start, script_end);
-                                if (closing_tag) {
-                                    size_t lua_len = closing_tag - lua_code_start;
-                                    lua_code_only = malloc(lua_len + 1);
-                                    if (lua_code_only) {
-                                        memcpy(lua_code_only, lua_code_start, lua_len);
-                                        lua_code_only[lua_len] = '\0';
-                                    }
-                                }
-
-                                // Write Lua code to external file (without HTML script tags)
-                                char lua_path[512];
-                                snprintf(lua_path, sizeof(lua_path), "%s/app.lua", output_dir);
-                                FILE* lua_file = fopen(lua_path, "w");
-                                if (lua_file) {
-                                    fputs(lua_code_only ? lua_code_only : lua_code_start, lua_file);
-                                    fclose(lua_file);
-                                    printf("✅ Wrote Lua code to app.lua\n");
-                                }
-                                if (lua_code_only) free(lua_code_only);
-
-                                // Write new HTML with external script reference
-                                html_file = fopen(html_path, "w");
-                                if (html_file) {
-                                    // Write everything before </body>
-                                    fwrite(html_content, 1, body_end - html_content, html_file);
-                                    // Write script tag to load external Lua file
-                                    fprintf(html_file, "\n<script src=\"app.lua\" type=\"application/lua\"></script>\n");
-                                    // Write </body></html>
-                                    fprintf(html_file, "%s", body_end);
-                                    fclose(html_file);
-                                }
-                            }
-                            free(html_content);
-                        } else {
-                            fclose(html_file);
-                        }
-                    }
-                    free(bundled_script);
-                } else {
-                    fprintf(stderr, "⚠️  Warning: Could not bundle Lua code\n");
-                }
-
-                lua_bundler_destroy(bundler);
-            }
-        }
-
         printf("✓ HTML files generated successfully in %s/\n", output_dir);
     } else {
         fprintf(stderr, "✗ HTML generation failed\n");

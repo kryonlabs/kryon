@@ -8,7 +8,7 @@
 
 // File extensions we can build
 static const char* buildable_extensions[] = {
-    ".html", ".md", ".kry", ".c", ".lua", NULL
+    ".html", ".md", ".kry", ".c", NULL
 };
 
 // Directories to skip during discovery

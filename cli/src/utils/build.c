@@ -45,9 +45,6 @@ const char* detect_frontend_type(const char* source_file) {
     else if (strcmp(ext, ".kry") == 0) {
         return "kry";
     }
-    else if (strcmp(ext, ".lua") == 0) {
-        return "lua";
-    }
     else if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0) {
         return "c";
     }
@@ -81,75 +78,6 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
     // Ensure cache directory exists
     if (!file_is_directory(".kryon_cache")) {
         dir_create(".kryon_cache");
-    }
-
-    // Lua: use direct parser
-    if (strcmp(frontend, "lua") == 0) {
-        // Set up plugin paths for Lua compilation
-        KryonConfig* config = config_find_and_load();
-        if (config && config->plugins_count > 0) {
-            char plugin_paths[4096] = "";
-            char* cwd = dir_get_current();
-
-            for (int i = 0; i < config->plugins_count; i++) {
-                if (!config->plugins[i].enabled || !config->plugins[i].path) {
-                    continue;
-                }
-
-                // Resolve plugin path to absolute
-                char* abs_path;
-                if (config->plugins[i].path[0] == '/') {
-                    abs_path = str_copy(config->plugins[i].path);
-                } else {
-                    abs_path = path_join(cwd, config->plugins[i].path);
-                }
-
-                // Add to plugin_paths string
-                if (plugin_paths[0] != '\0') {
-                    strncat(plugin_paths, ":", sizeof(plugin_paths) - strlen(plugin_paths) - 1);
-                }
-                strncat(plugin_paths, abs_path, sizeof(plugin_paths) - strlen(plugin_paths) - 1);
-
-                free(abs_path);
-            }
-
-            if (plugin_paths[0] != '\0') {
-                setenv("KRYON_PLUGIN_PATHS", plugin_paths, 1);
-            }
-
-            free(cwd);
-        }
-
-        if (config) {
-            config_free(config);
-        }
-
-        char* json = ir_lua_file_to_kir(source_file);
-        if (!json) {
-            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
-            return 1;
-        }
-
-        // Strip any debug output before the JSON (find first '{')
-        char* json_start = strchr(json, '{');
-        if (!json_start) {
-            fprintf(stderr, "Error: No valid JSON found in parser output\n");
-            free(json);
-            return 1;
-        }
-
-        // Write to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
-            free(json);
-            return 1;
-        }
-
-        fprintf(out, "%s\n", json_start);
-        fclose(out);
-        free(json);
-        return 0;
     }
 
     // Markdown: use kryon compile (simpler than reimplementing)
@@ -505,12 +433,6 @@ int generate_html_from_kir(const char* kir_file, const char* output_dir,
 }
 
 /* ============================================================================
- * Lua Runtime Detection (REMOVED)
- * ============================================================================ */
-
-/* kir_needs_lua_runtime() removed - we always compile through C codegen now */
-
-/* ============================================================================
  * Docs Template
  * ============================================================================ */
 
@@ -622,8 +544,6 @@ int build_with_docs_template(const char* content_kir_file,
 /* ============================================================================
  * Desktop Execution
  * ============================================================================ */
-
-/* run_kir_with_lua_runtime() removed - we always compile through C codegen now */
 
 int run_kir_on_desktop(const char* kir_file, const char* desktop_lib, const char* renderer_override) {
     (void)desktop_lib;
@@ -1082,7 +1002,7 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, lua, c, kotlin, markdown, kir\n");
+        fprintf(stderr, "Supported targets: kry, c, kotlin, markdown, kir\n");
         return 1;
     }
 
@@ -1180,7 +1100,7 @@ int codegen_pipeline(const char* source_file, const char* target,
             if (free_config) config_free(config);
             return 0;
         } else {
-            // For other sources (lua, etc.), use compile_source_to_kir with directory
+            // For other sources, use compile_source_to_kir with directory
             // to generate multi-file output
             int result = compile_source_to_kir(source, output_with_slash);
             if (output_to_free) free(output_to_free);
@@ -1250,10 +1170,7 @@ int codegen_pipeline(const char* source_file, const char* target,
     const char* ext = NULL;
     if (strcmp(target, "kry") == 0) ext = ".kry";
     else if (strcmp(target, "c") == 0) ext = ".c";
-    else if (strcmp(target, "lua") == 0) {
-        // Lua multi-file: output is the directory itself
-        snprintf(output_path, sizeof(output_path), "%s", output);
-    } else {
+    else {
         fprintf(stderr, "Error: Unknown target: %s\n", target);
         free(name_copy);
         if (output_to_free) free(output_to_free);
@@ -1261,10 +1178,8 @@ int codegen_pipeline(const char* source_file, const char* target,
         return 1;
     }
 
-    if (strcmp(target, "lua") != 0) {
-        // Single-file output: build/<target>/main.ext
-        snprintf(output_path, sizeof(output_path), "%s/%s%s", output, name_copy, ext);
-    }
+    // Single-file output: build/<target>/main.ext
+    snprintf(output_path, sizeof(output_path), "%s/%s%s", output, name_copy, ext);
     free(name_copy);
 
     // Run codegen

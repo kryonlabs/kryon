@@ -15,6 +15,7 @@
 #include "kryon_cli.h"
 #include "build.h"
 #include "../../../codegens/kotlin/kotlin_codegen.h"
+#include "../../../codegens/dis/include/dis_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,6 +44,11 @@ static TargetHandlerRegistry g_registry = {
     .count = 0,
     .capacity = 0
 };
+
+// Target capability flags
+#define TARGET_CAN_BUILD  (1 << 0)
+#define TARGET_CAN_RUN    (1 << 1)
+#define TARGET_CAN_INSTALL (1 << 2)
 
 static bool g_initialized = false;
 
@@ -494,6 +500,64 @@ static int android_target_run(const char* kir_file, const KryonConfig* config) {
 }
 
 /* ============================================================================
+ * DIS Target Handler
+ * ============================================================================ */
+
+/**
+ * DIS target build handler
+ * Generates .dis bytecode from KIR
+ */
+static int dis_target_build(const char* kir_file, const char* output_dir,
+                            const char* project_name, const KryonConfig* config) {
+    (void)config;  // Not used in DIS build
+
+    // Generate output path
+    char output_path[1024];
+    snprintf(output_path, sizeof(output_path), "%s/%s.dis", output_dir, project_name);
+
+    printf("Generating DIS bytecode: %s\n", output_path);
+
+    // Call DIS codegen
+    if (!dis_codegen_generate(kir_file, output_path)) {
+        fprintf(stderr, "Error: DIS code generation failed: %s\n",
+                dis_codegen_get_error());
+        return 1;
+    }
+
+    printf("✓ DIS bytecode generated: %s\n", output_path);
+    return 0;
+}
+
+/**
+ * DIS target run handler
+ * Generates .dis bytecode and executes with DIS VM
+ */
+static int dis_target_run(const char* kir_file, const KryonConfig* config) {
+    (void)config;
+
+    // Build DIS file first
+    const char* output_dir = ".";
+    const char* project_name = "app";
+
+    if (dis_target_build(kir_file, output_dir, project_name, config) != 0) {
+        return 1;
+    }
+
+    // Run with DIS VM
+    char dis_path[1024];
+    snprintf(dis_path, sizeof(dis_path), "%s/%s.dis", output_dir, project_name);
+
+    printf("Running DIS VM: %s\n", dis_path);
+
+    // For now, just report that we need a DIS VM
+    fprintf(stderr, "Note: DIS VM execution not yet implemented\n");
+    fprintf(stderr, "Generated file: %s\n", dis_path);
+    fprintf(stderr, "To run, use: disvm %s\n", dis_path);
+
+    return 0;
+}
+
+/* ============================================================================
  * Built-in Handler Definitions
  * ============================================================================ */
 
@@ -836,6 +900,15 @@ void target_handler_initialize(void) {
     target_handler_register(&g_desktop_handler);
     target_handler_register(&g_terminal_handler);
     target_handler_register(&g_android_handler);
+
+    // Register DIS handler
+    static TargetHandler g_dis_handler = {
+        .name = "dis",
+        .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
+        .build_handler = dis_target_build,
+        .run_handler = dis_target_run,
+    };
+    target_handler_register(&g_dis_handler);
 
     g_initialized = true;
 }

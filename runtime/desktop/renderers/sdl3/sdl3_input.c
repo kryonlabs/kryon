@@ -305,17 +305,16 @@ void handle_sdl3_events(DesktopIRRenderer* renderer) {
                                 if (title_part) {
                                     // Construct "closed|title"
                                     size_t title_len = strlen(title_part);  // includes the '|'
-                                        char* new_state = malloc(6 + title_len + 1);  // "closed" + "|title" + null
-                                        if (new_state) {
-                                            memcpy(new_state, "closed", 6);
-                                            memcpy(new_state + 6, title_part, title_len + 1);
-                                            ir_set_custom_data(open_modal, new_state);
-                                            free(new_state);
-                                        }
-                                    } else {
-                                        // No title, just set to "closed"
-                                        ir_set_custom_data(open_modal, "closed");
+                                    char* new_state = malloc(6 + title_len + 1);  // "closed" + "|title" + null
+                                    if (new_state) {
+                                        memcpy(new_state, "closed", 6);
+                                        memcpy(new_state + 6, title_part, title_len + 1);
+                                        ir_set_custom_data(open_modal, new_state);
+                                        free(new_state);
                                     }
+                                } else {
+                                    // No title, just set to "closed"
+                                    ir_set_custom_data(open_modal, "closed");
                                 }
                             }
                         }
