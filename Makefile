@@ -79,15 +79,13 @@ ir:
 	@$(MAKE) -C $(IR_DIR) static
 	@echo "✓ Built IR library"
 
-# Code generators (C, Lua, Kry, Kotlin, TypeScript, Markdown, Python, etc.)
+# Code generators (C, Kry, Kotlin, Markdown)
 codegens: ir
 	@echo "Building code generators..."
 	@$(MAKE) -C $(CODEGENS_DIR)/c all
-	@$(MAKE) -C $(CODEGENS_DIR)/lua all
 	@$(MAKE) -C $(CODEGENS_DIR)/kry all
 	@$(MAKE) -C $(CODEGENS_DIR)/kotlin all
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
-	@$(MAKE) -C $(CODEGENS_DIR)/tsx all
 	@echo "✓ Built code generators"
 
 # Runtime backends (desktop rendering, terminal, etc.)
@@ -125,11 +123,9 @@ clean:
 	@rm -rf $(BUILD_DIR)
 	@$(MAKE) -C $(IR_DIR) clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/c clean || true
-	@$(MAKE) -C $(CODEGENS_DIR)/lua clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/kry clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/kotlin clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
-	@$(MAKE) -C $(CODEGENS_DIR)/tsx clean || true
 	@if [ -d $(RUNTIME_DIR)/desktop ]; then \
 		$(MAKE) -C $(RUNTIME_DIR)/desktop clean || true; \
 	fi

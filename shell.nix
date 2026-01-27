@@ -24,9 +24,6 @@ pkgs.mkShell {
     # Terminal rendering backend
     libtickit
 
-    # Lua frontend support (LuaJIT for FFI)
-    luajit
-
     # TypeScript/JavaScript frontend support
     bun
     nodejs  # For npm compatibility if needed
@@ -77,23 +74,21 @@ pkgs.mkShell {
 
     echo "Kryon Development Environment"
     echo "============================="
-    echo "LuaJIT version: $(luajit -v 2>/dev/null || echo 'not available')"
     echo "Bun version: $(bun --version 2>/dev/null || echo 'not available')"
     echo ""
     echo "Quick start:"
     echo "  Build C Core: cd core && make"
     echo "  Build SDL3 renderer: cd renderers/sdl3 && make"
     echo "  Build Terminal renderer: cd renderers/terminal && make"
-    echo "  Run Lua examples: ./run_example.sh hello_world lua sdl3"
+    echo "  Run KRY examples: ./cli/kryon run examples/kry/hello_world.kry"
     echo "  Run TypeScript examples: ./run_example.sh hello_world ts"
-    echo "  Run terminal examples: ./run_example.sh hello_world lua terminal"
     echo "  Run web examples: ./run_example.sh hello_world ts web"
     echo "  Android: ./cli/kryon run --target=android examples/kry/hello_world.kry"
     echo ""
     echo "Android SDK: $ANDROID_HOME"
     echo "Android NDK: $ANDROID_NDK_HOME"
     echo ""
-    echo "Available frontends: kry, typescript (ts), lua, c"
+    echo "Available frontends: kry, typescript (ts), c, hare"
     echo "Available renderers: sdl3, raylib, terminal, framebuffer"
     echo "Available codegen targets: web, android"
     echo ""

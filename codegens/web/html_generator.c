@@ -35,25 +35,6 @@ static void debug_html_gen_loaded(void) {
 // Access global IR context for metadata
 extern IRContext* g_ir_context;
 
-// Helper to collect a handler for the Lua registry
-static void collect_handler(HTMLGenerator* generator, uint32_t component_id, const char* code) {
-    if (!generator || !code) return;
-
-    // Grow array if needed
-    if (generator->handler_count >= generator->handler_capacity) {
-        size_t new_capacity = generator->handler_capacity == 0 ? 16 : generator->handler_capacity * 2;
-        CollectedHandler* new_handlers = realloc(generator->handlers, new_capacity * sizeof(CollectedHandler));
-        if (!new_handlers) return;
-        generator->handlers = new_handlers;
-        generator->handler_capacity = new_capacity;
-    }
-
-    // Add handler
-    generator->handlers[generator->handler_count].component_id = component_id;
-    generator->handlers[generator->handler_count].code = strdup(code);
-    generator->handler_count++;
-}
-
 // HTML semantic tag mapping (NO kryon-* classes)
 // Returns NULL for components that should output raw content without wrapper tags
 static const char* get_html_tag(IRComponentType type) {
@@ -537,16 +518,6 @@ void html_generator_destroy(HTMLGenerator* generator) {
         free(generator->output_buffer);
     }
 
-    // Free collected handlers
-    if (generator->handlers) {
-        for (size_t i = 0; i < generator->handler_count; i++) {
-            if (generator->handlers[i].code) {
-                free(generator->handlers[i].code);
-            }
-        }
-        free(generator->handlers);
-    }
-
     free(generator);
 }
 
@@ -688,74 +659,6 @@ static bool has_only_inline_content(IRComponent* component) {
 
     // Has only inline children (or text + inline children)
     return component->child_count > 0 || component->text_content;
-}
-
-// Helper: escape a string for JavaScript (single quotes)
-static void js_escape_lua_expr(char* dest, const char* src, size_t dest_size) {
-    if (!dest || !src || dest_size == 0) return;
-
-    size_t di = 0;
-    for (size_t si = 0; src[si] && di < dest_size - 2; si++) {
-        char c = src[si];
-        if (c == '\\' || c == '\'' || c == '\n' || c == '\r' || c == '\t') {
-            if (di + 2 >= dest_size) break;
-            dest[di++] = '\\';
-            switch (c) {
-                case '\n': dest[di++] = 'n'; break;
-                case '\r': dest[di++] = 'r'; break;
-                case '\t': dest[di++] = 't'; break;
-                default: dest[di++] = c; break;
-            }
-        } else {
-            dest[di++] = c;
-        }
-    }
-    dest[di] = '\0';
-}
-
-// Recursively collect and output dynamic bindings from the component tree
-static void output_dynamic_bindings_recursive(HTMLGenerator* generator, IRComponent* component) {
-    if (!generator || !component) return;
-
-    // Output dynamic bindings for this component
-    uint32_t count = ir_component_get_dynamic_binding_count(component);
-    for (uint32_t i = 0; i < count; i++) {
-        IRDynamicBinding* binding = ir_component_get_dynamic_binding(component, i);
-        if (!binding || !binding->lua_expr) continue;
-
-        // Escape the Lua expression for JavaScript
-        char escaped_expr[2048];
-        js_escape_lua_expr(escaped_expr, binding->lua_expr, sizeof(escaped_expr));
-
-        html_generator_write_format(generator,
-            "    kryonRegisterDynamicBinding({ id: '%s', selector: '%s', updateType: '%s', luaExpr: '%s' });\n",
-            binding->binding_id ? binding->binding_id : "unknown",
-            binding->element_selector ? binding->element_selector : "",
-            binding->update_type ? binding->update_type : "text",
-            escaped_expr);
-    }
-
-    // Recurse into children
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        output_dynamic_bindings_recursive(generator, component->children[i]);
-    }
-}
-
-// Check if component tree has any dynamic bindings
-static bool has_dynamic_bindings(IRComponent* component) {
-    if (!component) return false;
-
-    if (ir_component_get_dynamic_binding_count(component) > 0) {
-        return true;
-    }
-
-    for (uint32_t i = 0; i < component->child_count; i++) {
-        if (has_dynamic_bindings(component->children[i])) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 static bool generate_component_html(HTMLGenerator* generator, IRComponent* component) {
@@ -1278,19 +1181,6 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             html_generator_write_format(generator, " data-tab=\"%d\"", tab_index);
             html_generator_write_format(generator, " aria-selected=\"%s\"", is_selected ? "true" : "false");
             html_generator_write_format(generator, " onclick=\"kryonSelectTab(this.closest('.kryon-tabs'), %d)\"", tab_index);
-            // Store handler ID for Lua callback if there's a click event
-            if (component->events) {
-                IREvent* event = component->events;
-                while (event) {
-                    if (event->type == IR_EVENT_CLICK && event->logic_id) {
-                        if (strncmp(event->logic_id, "lua_event_", 10) == 0) {
-                            int handler_id = atoi(event->logic_id + 10);
-                            html_generator_write_format(generator, " data-handler-id=\"%d\"", handler_id);
-                        }
-                    }
-                    event = event->next;
-                }
-            }
             break;
         }
 
@@ -1411,49 +1301,6 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
                     }
                 }
             }
-        }
-    }
-
-    // Generate event handlers from component's events array (for Lua events)
-    // This handles lua_event_N style handlers from Lua source files
-    // NOTE: Tab-buttons already have onclick generated above (kryonSelectTab + data-handler-id)
-    if (component->events) {
-        IREvent* event = component->events;
-        while (event) {
-            if (event->logic_id && strncmp(event->logic_id, "lua_event_", 10) == 0) {
-                // Map IR event type to HTML event attribute
-                const char* html_event = NULL;
-                switch (event->type) {
-                    case IR_EVENT_CLICK: html_event = "onclick"; break;
-                    case IR_EVENT_HOVER: html_event = "onmouseenter"; break;
-                    case IR_EVENT_FOCUS: html_event = "onfocus"; break;
-                    case IR_EVENT_BLUR: html_event = "onblur"; break;
-                    case IR_EVENT_TEXT_CHANGE: html_event = "oninput"; break;
-                    default: break;
-                }
-
-                if (html_event) {
-                    // Skip onclick for tab-buttons - they use kryonSelectTab which calls handler via data-handler-id
-                    if (is_tab_button && event->type == IR_EVENT_CLICK) {
-                        // Already handled above with kryonSelectTab + data-handler-id
-                        event = event->next;
-                        continue;
-                    }
-
-                    // Handler source-based dispatch using embedded Lua code from KIR
-                    // The handler source is extracted at compile time and stored in the event
-                    if (event->handler_source && event->handler_source->code) {
-                        // Collect handler for Lua registry generation
-                        collect_handler(generator, component->id, event->handler_source->code);
-
-                        // Generate onclick to call handler by component ID
-                        // Pass event object so handlers can access event.target for data attributes
-                        html_generator_write_format(generator,
-                            " %s=\"kryonCallHandler(%u, event)\"", html_event, component->id);
-                    }
-                }
-            }
-            event = event->next;
         }
     }
 
@@ -1682,16 +1529,6 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         generator->output_buffer[0] = '\0';
     }
 
-    // Reset handler collection for fresh generation
-    if (generator->handlers) {
-        for (size_t i = 0; i < generator->handler_count; i++) {
-            if (generator->handlers[i].code) {
-                free(generator->handlers[i].code);
-            }
-        }
-    }
-    generator->handler_count = 0;
-
     // Generate HTML document
     html_generator_write_string(generator, "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n");
     html_generator_write_string(generator, "  <meta charset=\"UTF-8\">\n");
@@ -1722,17 +1559,6 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
     } else {
         // Link to external CSS file
         html_generator_write_string(generator, "  <link rel=\"stylesheet\" href=\"kryon.css\">\n");
-    }
-
-    // Add Fengari Lua VM for Lua event execution (local file, no CDN)
-    // Only include if the source language is Lua
-    bool needs_fengari = false;
-    if (generator->metadata && generator->metadata->source_language) {
-        needs_fengari = (strcmp(generator->metadata->source_language, "lua") == 0);
-    }
-
-    if (needs_fengari) {
-        html_generator_write_string(generator, "  <script src=\"fengari-web.min.js\"></script>\n");
     }
 
     // Add JavaScript runtime if requested
@@ -1770,11 +1596,6 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         generate_component_html(generator, root);
         generator->indent_level = 0;
     }
-
-    // NOTE: Handler registry is now generated by lua_bundler and appended to the
-    // bundled Lua code. This ensures handlers share the same scope as app functions.
-    // The html_generator still collects handlers (for onclick attributes) but doesn't
-    // generate the registry script anymore.
 
     // Inject initial state from manifest (Phase 2.2)
     if (generator->manifest && generator->manifest->variable_count > 0) {
@@ -1884,18 +1705,6 @@ const char* html_generator_generate(HTMLGenerator* generator, IRComponent* root)
         html_generator_write_string(generator, "      }\n");
         html_generator_write_string(generator, "    });\n");
         html_generator_write_string(generator, "    console.log('[Kryon] Registered', bindings.length, 'reactive bindings');\n");
-        html_generator_write_string(generator, "  })();\n");
-        html_generator_write_string(generator, "  </script>\n");
-    }
-
-    // Inject dynamic bindings from component tree (Phase 5: Runtime Lua Expression Evaluation)
-    // These bindings have Lua expressions that are re-evaluated when state changes
-    if (has_dynamic_bindings(root)) {
-        html_generator_write_string(generator, "  <script>\n");
-        html_generator_write_string(generator, "  // Dynamic bindings (Lua expressions evaluated at runtime)\n");
-        html_generator_write_string(generator, "  (function() {\n");
-        output_dynamic_bindings_recursive(generator, root);
-        html_generator_write_string(generator, "    console.log('[Kryon] Registered dynamic bindings');\n");
         html_generator_write_string(generator, "  })();\n");
         html_generator_write_string(generator, "  </script>\n");
     }

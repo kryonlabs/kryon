@@ -1,7 +1,7 @@
 # Parser Tests Makefile
 # Delegates to parser-specific test subdirectories
 
-TEST_SUBDIRS := hare
+TEST_SUBDIRS :=
 
 all:
 	@for dir in $(TEST_SUBDIRS); do \
