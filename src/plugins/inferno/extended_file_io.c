@@ -135,19 +135,19 @@ static int64_t inferno_file_seek(KryonExtendedFile *file, int64_t offset, KryonS
     int whence;
     switch (mode) {
         case KRYON_SEEK_SET:
-            whence = 0; // SEEK_SET
+            whence = SEEK_SET;
             break;
         case KRYON_SEEK_CUR:
-            whence = 1; // SEEK_CUR
+            whence = SEEK_CUR;
             break;
         case KRYON_SEEK_END:
-            whence = 2; // SEEK_END
+            whence = SEEK_END;
             break;
         default:
             return -1;
     }
 
-    return seek(file->fd, offset, whence);
+    return lseek(file->fd, offset, whence);
 }
 
 // =============================================================================

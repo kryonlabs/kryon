@@ -80,32 +80,22 @@ Example:
 
 ### Directives
 
-#### For Loops
-```lisp
-(@for varName in arrayName
-  ...)
-```
-
-#### Conditionals
-```lisp
-(@if condition
-  ...)
-```
-
 #### Constants
 ```lisp
-(@const name value)
+(const name value)
 ```
 
 #### Variables
 ```lisp
-(@var name value)
+(var name value)
 ```
 
 #### State
 ```lisp
-(@state name value)
+(state name value)
 ```
+
+Note: Directives like `for` and `if` are not yet fully implemented in the KRL transpiler.
 
 ### Variables
 
@@ -233,11 +223,9 @@ kryon run button.krb --renderer sdl2
 | `(style ...)` | `STYLE_BLOCK` |
 | `(function ...)` | `FUNCTION_DEFINITION` |
 | `(ElementType ...)` | `ELEMENT` |
-| `(@for ...)` | `FOR_DIRECTIVE` |
-| `(@if ...)` | `IF_DIRECTIVE` |
-| `(@const ...)` | `CONST_DEFINITION` |
-| `(@var ...)` | `VARIABLE_DEFINITION` |
-| `(@state ...)` | `STATE_DEFINITION` |
+| `(const ...)` | `CONST_DEFINITION` |
+| `(var ...)` | `VARIABLE_DEFINITION` |
+| `(state ...)` | `STATE_DEFINITION` |
 | `$variable` | `VARIABLE` |
 | `(+ a b)` | `BINARY_OP` |
 | `(. obj prop)` | `MEMBER_ACCESS` |

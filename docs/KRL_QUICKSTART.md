@@ -128,17 +128,17 @@ kryon compile examples/hello-world.krl -o hello.krb
 
 ### Directives
 ```lisp
-; For loop
-(@for item in items
-  (Text (text item)))
-
-; Conditional
-(@if (> count 0)
-  (Text (text "Positive")))
-
 ; Constants
-(@const maxWidth 800)
+(const maxWidth 800)
+
+; Variables
+(var counter 0)
+
+; State
+(state isActive true)
 ```
+
+Note: Advanced directives (for, if, etc.) are not yet implemented in KRL.
 
 ## File Structure
 
