@@ -1,14 +1,7 @@
 [project]
-name = "test_counter"
+name = "hello_libdraw"
 version = "0.1.0"
-description = "Simple counter test for DIS codegen"
 
 [build]
+entry = "examples/hello_libdraw.kry"
 targets = ["dis"]
-frontend = "kry"
-
-[targets.desktop]
-renderer = "sdl3"
-
-[taiji]
-path = "/home/wao/Projects/TaijiOS"

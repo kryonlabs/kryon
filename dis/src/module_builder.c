@@ -397,6 +397,9 @@ bool module_builder_write_file(DISModuleBuilder* builder, const char* path) {
         runtime_flag |= SHAREMP;
     }
 
+    // Note: We don't set HASLDT flag because imports are handled
+    // through ILOAD/ICALL instructions, not a separate import section
+
     // Write magic number
     write_operand(f, XMAGIC);
 
@@ -415,11 +418,18 @@ bool module_builder_write_file(DISModuleBuilder* builder, const char* path) {
     write_operand(f, builder->entry_type);
 
     // Write code section (encoded instructions)
+    // Each instruction is stored as: [size (4 bytes)][instruction bytes...]
     for (size_t i = 0; i < builder->code_section->count; i++) {
-        // Each instruction is stored as a malloc'd block
         uint8_t* insn_data = (uint8_t*)builder->code_section->items[i];
-        // TODO: Need to store instruction size with each instruction
-        // For now, skip this
+        if (!insn_data) continue;
+
+        // First 4 bytes are the size
+        uint32_t insn_size = *((uint32_t*)insn_data);
+        // Following bytes are the instruction
+        uint8_t* insn_bytes = insn_data + 4;
+
+        // Write instruction bytes
+        fwrite(insn_bytes, 1, insn_size, f);
     }
 
     // Write type section
@@ -464,11 +474,19 @@ bool module_builder_write_file(DISModuleBuilder* builder, const char* path) {
         if (!entry) continue;
 
         write_operand(f, (int32_t)entry->pc);
-        write_operand(f, (int32_t)entry->type);
+        // Type is written as raw 4-byte big-endian value, not variable-length encoded
+        write_bigendian_32(f, entry->type);
         write_operand(f, (int32_t)entry->sig);
         fputs(entry->name, f);
         fputc(0, f);
     }
+
+    // Write module path (source file path)
+    // For generated modules, we use a synthetic path
+    char module_path[256];
+    snprintf(module_path, sizeof(module_path), "/dis/%s.b", builder->module_name);
+    fputs(module_path, f);
+    fputc(0, f);
 
     // Close file
     fclose(f);

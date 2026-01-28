@@ -4,7 +4,7 @@
  */
 
 #include "kryon_cli.h"
-#include "../../../codegens/dis/include/dis_codegen.h"
+#include "../../../dis/include/dis_codegen.h"
 
 WebCodegenOptions web_codegen_default_options(void) {
     WebCodegenOptions opts = {

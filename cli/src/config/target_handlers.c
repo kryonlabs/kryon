@@ -14,7 +14,7 @@
 
 #include "kryon_cli.h"
 #include "build.h"
-#include "../../../codegens/dis/include/dis_codegen.h"
+#include "../../../dis/include/dis_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
