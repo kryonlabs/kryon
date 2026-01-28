@@ -30,7 +30,7 @@ STATIC_LIB_EXT = .a
 SHARED_LIB_EXT = .so
 
 # Default target
-all: cli ir codegens
+all: cli ir dis codegens
 
 # Help
 help:
@@ -70,15 +70,20 @@ ir:
 	@$(MAKE) -C $(IR_DIR) static
 	@echo "✓ Built IR library"
 
-# Code generators (C, Kry, Web, DIS)
+# Code generators (C, Kry, Web)
 codegens: ir
 	@echo "Building code generators..."
 	@$(MAKE) -C $(CODEGENS_DIR)/c all
 	@$(MAKE) -C $(CODEGENS_DIR)/kry all
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
 	@$(MAKE) -C $(CODEGENS_DIR)/web all
-	@$(MAKE) -C $(CODEGENS_DIR)/dis all
 	@echo "✓ Built code generators"
+
+# DIS bytecode compiler (top-level directory, NOT a codegen)
+dis: ir
+	@echo "Building DIS bytecode compiler..."
+	@$(MAKE) -C dis all
+	@echo "✓ Built DIS"
 
 # ============================================================================
 # Clean Target
@@ -92,7 +97,7 @@ clean:
 	@$(MAKE) -C $(CODEGENS_DIR)/kry clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/web clean || true
-	@$(MAKE) -C $(CODEGENS_DIR)/dis clean || true
+	@$(MAKE) -C dis clean || true
 	@$(MAKE) -C $(CLI_DIR) clean || true
 	@echo "✓ Clean complete"
 
@@ -150,7 +155,7 @@ docs:
 # Phony Targets
 # ============================================================================
 
-.PHONY: all cli ir codegens clean install uninstall
+.PHONY: all cli ir dis codegens clean install uninstall
 .PHONY: help test check docs
 
 # ============================================================================

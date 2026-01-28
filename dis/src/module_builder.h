@@ -221,6 +221,46 @@ uint32_t emit_newa(DISModuleBuilder* builder, int32_t count, uint32_t type_idx, 
 uint32_t emit_frame(DISModuleBuilder* builder, uint32_t type_idx, int32_t dst);
 uint32_t emit_exit(DISModuleBuilder* builder, int32_t code);
 
+// ============================================================================
+// Module Loading and Import Instructions
+// ============================================================================
+
+uint32_t emit_load(DISModuleBuilder* builder, const char* module_name);
+uint32_t emit_call_import(DISModuleBuilder* builder, const char* module, const char* func);
+
+// ============================================================================
+// String Operations
+// ============================================================================
+
+uint32_t emit_load_string_address(DISModuleBuilder* builder, const char* str, int32_t dst);
+bool emit_string_to_data(DISModuleBuilder* builder, const char* str, uint32_t* offset);
+
+// ============================================================================
+// Channel Operations (for Event Loop)
+// ============================================================================
+
+uint32_t emit_alt(DISModuleBuilder* builder);
+uint32_t emit_chan_recv(DISModuleBuilder* builder, int32_t channel_reg, int32_t dst);
+
+// ============================================================================
+// Method Calls (for libdraw API)
+// ============================================================================
+
+uint32_t emit_method_call(DISModuleBuilder* builder, uint32_t method_offset, int32_t argc);
+
+// ============================================================================
+// Frame Operations
+// ============================================================================
+
+uint32_t emit_enter_frame(DISModuleBuilder* builder, uint32_t size);
+uint32_t emit_leave_frame(DISModuleBuilder* builder);
+
+// ============================================================================
+// Additional Move Operations
+// ============================================================================
+
+uint32_t emit_mov_address(DISModuleBuilder* builder, uint32_t addr, int32_t dst);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,8 +1,8 @@
-# DIS Codegen Makefile
+# DIS Bytecode Compiler Makefile
 
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -O2 -Iinclude -Isrc -I../../ir/include
-LDFLAGS =
+CFLAGS = -Wall -Wextra -std=c11 -O2 -Iinclude -Isrc -I../ir/include -I../third_party/cJSON
+CJSON_O = ../third_party/cJSON/cJSON.o
 
 # Source files
 SRCS = src/dis_codegen.c \
@@ -22,9 +22,12 @@ LIB = libdiscodegen.a
 # Main targets
 .PHONY: all clean
 
-all: $(LIB)
+all: $(CJSON_O) $(LIB)
 
-$(LIB): $(OBJS)
+$(CJSON_O):
+	$(MAKE) -C ../third_party/cJSON cJSON.o
+
+$(LIB): $(OBJS) $(CJSON_O)
 	ar rcs $@ $^
 
 %.o: %.c
@@ -32,6 +35,7 @@ $(LIB): $(OBJS)
 
 clean:
 	rm -f $(OBJS) $(LIB)
+	$(MAKE) -C ../third_party/cJSON clean
 
 # Dependencies
 src/dis_codegen.o: src/dis_codegen.c include/dis_codegen.h src/module_builder.h src/internal.h

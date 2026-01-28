@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/dis -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../dis -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
@@ -138,7 +138,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
-		../codegens/dis/libdiscodegen.a
+		../dis/libdiscodegen.a
 	# Build kir_to_html.o (embedded web codegen)
 	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
 	$(CC) $(OBJS_LINK) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) \
@@ -146,7 +146,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
-		../codegens/dis/libdiscodegen.a \
+		../dis/libdiscodegen.a \
 		$(LDFLAGS) $(HARFBUZZ_LIBS)
 
 # Build IR library
@@ -171,8 +171,8 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 ../build/libkryon_codegen_markdown.a:
 	$(MAKE) -C ../codegens/markdown
 
-../codegens/dis/libdiscodegen.a:
-	$(MAKE) -C ../codegens/dis all
+../dis/libdiscodegen.a:
+	$(MAKE) -C ../dis all
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
