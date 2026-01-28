@@ -193,9 +193,34 @@ static KRLSExp *parse_list(KRLParser *parser) {
     return list;
 }
 
+static KRLSExp *parse_array(KRLParser *parser) {
+    int line = parser->previous.line;
+    int column = parser->previous.column;
+
+    KRLSExp *list = krl_sexp_create_list(line, column);
+
+    // Add a special marker symbol to indicate this is an array
+    KRLSExp *marker = krl_sexp_create_symbol("@array", line, column);
+    krl_sexp_list_add(list, marker);
+
+    while (!check(parser, KRL_TOKEN_RBRACKET) && !check(parser, KRL_TOKEN_EOF)) {
+        KRLSExp *item = parse_sexp(parser);
+        if (item) {
+            krl_sexp_list_add(list, item);
+        }
+    }
+
+    consume(parser, KRL_TOKEN_RBRACKET, "Expected ']' after array");
+    return list;
+}
+
 static KRLSExp *parse_sexp(KRLParser *parser) {
     if (match(parser, KRL_TOKEN_LPAREN)) {
         return parse_list(parser);
+    }
+
+    if (match(parser, KRL_TOKEN_LBRACKET)) {
+        return parse_array(parser);
     }
 
     if (match(parser, KRL_TOKEN_STRING)) {

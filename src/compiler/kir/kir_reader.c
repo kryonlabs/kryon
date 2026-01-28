@@ -530,6 +530,32 @@ static KryonASTNode *deserialize_node(KryonKIRReader *reader, cJSON *json) {
                 node->data.component.parent_component = strdup(parent->valuestring);
             }
 
+            // Handle stateVars, functions, and uiRoot from KRL output
+            cJSON *state_vars = cJSON_GetObjectItem(json, "stateVars");
+            if (state_vars) {
+                node->data.component.state_vars = deserialize_array(reader, state_vars,
+                                                                    &node->data.component.state_count);
+            }
+
+            cJSON *functions = cJSON_GetObjectItem(json, "functions");
+            if (functions) {
+                node->data.component.functions = deserialize_array(reader, functions,
+                                                                   &node->data.component.function_count);
+            }
+
+            // Handle uiRoot from KRL output - convert to body_elements array
+            cJSON *ui_root = cJSON_GetObjectItem(json, "uiRoot");
+            if (ui_root) {
+                KryonASTNode *root_node = deserialize_node(reader, ui_root);
+                if (root_node) {
+                    node->data.component.body_elements = calloc(1, sizeof(KryonASTNode*));
+                    node->data.component.body_elements[0] = root_node;
+                    node->data.component.body_count = 1;
+                    node->data.component.body_capacity = 1;
+                }
+            }
+
+            // Also handle legacy bodyElements for compatibility (overrides uiRoot if present)
             cJSON *body = cJSON_GetObjectItem(json, "bodyElements");
             if (body) {
                 node->data.component.body_elements = deserialize_array(reader, body,
@@ -555,6 +581,96 @@ static KryonASTNode *deserialize_node(KryonKIRReader *reader, cJSON *json) {
                 node->data.object_literal.properties = deserialize_array(reader, properties,
                                                                          &node->data.object_literal.property_count);
                 node->data.object_literal.property_capacity = node->data.object_literal.property_count;
+            }
+            break;
+        }
+
+        case KRYON_AST_CONST_FOR_LOOP: {
+            cJSON *var_name = cJSON_GetObjectItem(json, "varName");
+            if (var_name && cJSON_IsString(var_name)) {
+                node->data.const_for_loop.var_name = strdup(var_name->valuestring);
+            }
+
+            cJSON *index_var = cJSON_GetObjectItem(json, "indexVarName");
+            if (index_var && cJSON_IsString(index_var)) {
+                node->data.const_for_loop.index_var_name = strdup(index_var->valuestring);
+            }
+
+            cJSON *is_range = cJSON_GetObjectItem(json, "isRange");
+            if (is_range && cJSON_IsBool(is_range)) {
+                node->data.const_for_loop.is_range = cJSON_IsTrue(is_range);
+            }
+
+            cJSON *array_name = cJSON_GetObjectItem(json, "arrayName");
+            if (array_name && cJSON_IsString(array_name)) {
+                node->data.const_for_loop.array_name = strdup(array_name->valuestring);
+            }
+
+            cJSON *range_start = cJSON_GetObjectItem(json, "rangeStart");
+            if (range_start && cJSON_IsNumber(range_start)) {
+                node->data.const_for_loop.range_start = (int)range_start->valuedouble;
+            }
+
+            cJSON *range_end = cJSON_GetObjectItem(json, "rangeEnd");
+            if (range_end && cJSON_IsNumber(range_end)) {
+                node->data.const_for_loop.range_end = (int)range_end->valuedouble;
+            }
+
+            cJSON *body = cJSON_GetObjectItem(json, "body");
+            if (body) {
+                node->data.const_for_loop.body = deserialize_array(reader, body,
+                                                                   &node->data.const_for_loop.body_count);
+                node->data.const_for_loop.body_capacity = node->data.const_for_loop.body_count;
+            }
+            break;
+        }
+
+        case KRYON_AST_FOR_DIRECTIVE: {
+            cJSON *var_name = cJSON_GetObjectItem(json, "varName");
+            if (var_name && cJSON_IsString(var_name)) {
+                node->data.for_loop.var_name = strdup(var_name->valuestring);
+            }
+
+            cJSON *index_var = cJSON_GetObjectItem(json, "indexVarName");
+            if (index_var && cJSON_IsString(index_var)) {
+                node->data.for_loop.index_var_name = strdup(index_var->valuestring);
+            }
+
+            cJSON *array_name = cJSON_GetObjectItem(json, "arrayName");
+            if (array_name && cJSON_IsString(array_name)) {
+                node->data.for_loop.array_name = strdup(array_name->valuestring);
+            }
+
+            cJSON *body = cJSON_GetObjectItem(json, "body");
+            if (body) {
+                node->data.for_loop.body = deserialize_array(reader, body,
+                                                             &node->data.for_loop.body_count);
+                node->data.for_loop.body_capacity = node->data.for_loop.body_count;
+            }
+            break;
+        }
+
+        case KRYON_AST_IF_DIRECTIVE:
+        case KRYON_AST_CONST_IF_DIRECTIVE: {
+            node->data.conditional.is_const = (type == KRYON_AST_CONST_IF_DIRECTIVE);
+
+            cJSON *condition = cJSON_GetObjectItem(json, "condition");
+            if (condition) {
+                node->data.conditional.condition = deserialize_node(reader, condition);
+            }
+
+            cJSON *then_branch = cJSON_GetObjectItem(json, "thenBranch");
+            if (then_branch) {
+                node->data.conditional.then_body = deserialize_array(reader, then_branch,
+                                                                     &node->data.conditional.then_count);
+                node->data.conditional.then_capacity = node->data.conditional.then_count;
+            }
+
+            cJSON *else_branch = cJSON_GetObjectItem(json, "elseBranch");
+            if (else_branch) {
+                node->data.conditional.else_body = deserialize_array(reader, else_branch,
+                                                                     &node->data.conditional.else_count);
+                node->data.conditional.else_capacity = node->data.conditional.else_count;
             }
             break;
         }

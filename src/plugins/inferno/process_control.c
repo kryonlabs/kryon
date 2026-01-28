@@ -70,14 +70,14 @@ static bool read_proc_status_file(int pid, KryonProcessInfo *info) {
     char path[64];
     snprintf(path, sizeof(path), "/prog/%d/status", pid);
 
-    int fd = open(path, OREAD);
+    int fd = inferno_open(path, OREAD);
     if (fd < 0) {
         return false;
     }
 
     char buf[512];
-    int n = read(fd, buf, sizeof(buf) - 1);
-    close(fd);
+    int n = inferno_read(fd, buf, sizeof(buf) - 1);
+    inferno_close(fd);
 
     if (n <= 0) {
         return false;
@@ -120,7 +120,7 @@ static bool inferno_list_processes(KryonProcessInfo **procs, int *count) {
     }
 
     // Open /prog directory
-    int fd = open("/prog", OREAD);
+    int fd = inferno_open("/prog", OREAD);
     if (fd < 0) {
         return false;
     }
@@ -129,15 +129,15 @@ static bool inferno_list_processes(KryonProcessInfo **procs, int *count) {
     int max_procs = 64;
     KryonProcessInfo *proc_list = malloc(max_procs * sizeof(KryonProcessInfo));
     if (!proc_list) {
-        close(fd);
+        inferno_close(fd);
         return false;
     }
 
     int num_procs = 0;
-    Dir *dir;
-    int nr;
+    InfernoDir *dir;
+    long nr;
 
-    while ((nr = dirread(fd, &dir)) > 0) {
+    while ((nr = inferno_dirread(fd, &dir)) > 0) {
         // Skip non-directory entries
         if (!(dir->mode & DMDIR)) {
             free(dir);
@@ -163,7 +163,7 @@ static bool inferno_list_processes(KryonProcessInfo **procs, int *count) {
                 }
                 free(proc_list);
                 free(dir);
-                close(fd);
+                inferno_close(fd);
                 return false;
             }
             proc_list = new_list;
@@ -177,7 +177,7 @@ static bool inferno_list_processes(KryonProcessInfo **procs, int *count) {
         free(dir);
     }
 
-    close(fd);
+    inferno_close(fd);
 
     *procs = proc_list;
     *count = num_procs;
@@ -247,14 +247,14 @@ static bool inferno_send_signal(int pid, const char *signal) {
     char path[64];
     snprintf(path, sizeof(path), "/prog/%d/ctl", pid);
 
-    int fd = open(path, OWRITE);
+    int fd = inferno_open(path, OWRITE);
     if (fd < 0) {
         return false;
     }
 
     // Write signal command
-    int result = write(fd, (void*)signal, strlen(signal));
-    close(fd);
+    int result = inferno_write(fd, (void*)signal, strlen(signal));
+    inferno_close(fd);
 
     return result > 0;
 }
@@ -271,7 +271,7 @@ static KryonProcessControl* inferno_open_proc_control(int pid) {
     char path[64];
     snprintf(path, sizeof(path), "/prog/%d/ctl", pid);
 
-    int fd = open(path, OWRITE);
+    int fd = inferno_open(path, OWRITE);
     if (fd < 0) {
         return NULL;
     }
@@ -279,7 +279,7 @@ static KryonProcessControl* inferno_open_proc_control(int pid) {
     // Allocate handle
     KryonProcessControl *ctl = malloc(sizeof(KryonProcessControl));
     if (!ctl) {
-        close(fd);
+        inferno_close(fd);
         return NULL;
     }
 
@@ -298,7 +298,7 @@ static void inferno_close_proc_control(KryonProcessControl *ctl) {
     }
 
     if (ctl->ctl_fd >= 0) {
-        close(ctl->ctl_fd);
+        inferno_close(ctl->ctl_fd);
     }
 
     free(ctl);
@@ -312,7 +312,7 @@ static bool inferno_write_control(KryonProcessControl *ctl, const char *command)
         return false;
     }
 
-    int result = write(ctl->ctl_fd, (void*)command, strlen(command));
+    int result = inferno_write(ctl->ctl_fd, (void*)command, strlen(command));
     return result > 0;
 }
 
@@ -327,7 +327,7 @@ static char* inferno_read_status(int pid) {
     char path[64];
     snprintf(path, sizeof(path), "/prog/%d/status", pid);
 
-    int fd = open(path, OREAD);
+    int fd = inferno_open(path, OREAD);
     if (fd < 0) {
         return NULL;
     }
@@ -335,12 +335,12 @@ static char* inferno_read_status(int pid) {
     // Read entire file
     char *buf = malloc(1024);
     if (!buf) {
-        close(fd);
+        inferno_close(fd);
         return NULL;
     }
 
-    int n = read(fd, buf, 1023);
-    close(fd);
+    int n = inferno_read(fd, buf, 1023);
+    inferno_close(fd);
 
     if (n <= 0) {
         free(buf);
@@ -372,7 +372,7 @@ static bool inferno_wait_for_exit(int pid, int *exit_status, int timeout_ms) {
     char path[64];
     snprintf(path, sizeof(path), "/prog/%d/wait", pid);
 
-    int fd = open(path, OREAD);
+    int fd = inferno_open(path, OREAD);
     if (fd < 0) {
         return false;
     }
@@ -382,8 +382,8 @@ static bool inferno_wait_for_exit(int pid, int *exit_status, int timeout_ms) {
     (void)timeout_ms; // Unused for now
 
     char buf[256];
-    int n = read(fd, buf, sizeof(buf) - 1);
-    close(fd);
+    int n = inferno_read(fd, buf, sizeof(buf) - 1);
+    inferno_close(fd);
 
     if (n <= 0) {
         return false;

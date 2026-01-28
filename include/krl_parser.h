@@ -24,6 +24,8 @@ extern "C" {
 typedef enum {
     KRL_TOKEN_LPAREN,           // (
     KRL_TOKEN_RPAREN,           // )
+    KRL_TOKEN_LBRACKET,         // [
+    KRL_TOKEN_RBRACKET,         // ]
     KRL_TOKEN_SYMBOL,           // identifier or keyword
     KRL_TOKEN_STRING,           // "string"
     KRL_TOKEN_INTEGER,          // 42

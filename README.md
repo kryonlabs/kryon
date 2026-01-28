@@ -182,10 +182,18 @@ ctest --verbose
 
 ## Documentation
 
-See the `docs/` directory for:
-- KRY Language Specification  
-- KRB Binary Format
-- Architecture Overview
+**Quick Start:**
+- [docs/KRYON_OVERVIEW.md](docs/KRYON_OVERVIEW.md) - System architecture
+- [docs/KRY_LANGUAGE_SPEC.md](docs/KRY_LANGUAGE_SPEC.md) - KRY language guide
+- [docs/KRL_QUICKSTART.md](docs/KRL_QUICKSTART.md) - KRL (Lisp) alternative syntax
+
+**Full Documentation Index:** [docs/README.md](docs/README.md)
+
+**Key Topics:**
+- Language specs (KRY, KRL, RC Shell)
+- Compilation pipeline (KIR, KRB formats)
+- Plugin development
+- Platform integrations (Inferno, Plan 9, TaijOS)
 
 ## License
 

@@ -125,7 +125,8 @@ static bool is_alpha(char c) {
 }
 
 static bool is_symbol_char(char c) {
-    return is_alpha(c) || is_digit(c) || c == '@' || c == '#' || c == '.' || c == '/';
+    return is_alpha(c) || is_digit(c) || c == '@' || c == '#' || c == '.' || c == '/' ||
+           c == '+' || c == '*' || c == '=' || c == '<' || c == '>' || c == '&' || c == '|' || c == '!';
 }
 
 static KRLToken number_token(KRLLexer *lexer) {
@@ -207,9 +208,20 @@ KRLToken krl_lexer_next_token(KRLLexer *lexer) {
         return symbol_token(lexer);
     }
 
+    // Operator symbols (+, -, *, /, >, <, =, etc.)
+    if (c == '+' || c == '*' || c == '/' || c == '>' || c == '<' || c == '=' ||
+        c == '&' || c == '|' || c == '!' || (c == '-' && !is_digit(peek(lexer)))) {
+        while (is_symbol_char(peek(lexer)) && !is_alpha(peek(lexer)) && !is_digit(peek(lexer))) {
+            advance(lexer);
+        }
+        return make_token(lexer, KRL_TOKEN_SYMBOL);
+    }
+
     switch (c) {
         case '(': return make_token(lexer, KRL_TOKEN_LPAREN);
         case ')': return make_token(lexer, KRL_TOKEN_RPAREN);
+        case '[': return make_token(lexer, KRL_TOKEN_LBRACKET);
+        case ']': return make_token(lexer, KRL_TOKEN_RBRACKET);
         case '"': return string_token(lexer);
         case ':':
             // Keyword-style identifier

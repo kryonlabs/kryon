@@ -1,0 +1,281 @@
+# Makefile.taijios
+# Build kryon as native TaijiOS binary using GNU Make
+#
+# Usage:
+#   make -f Makefile.taijios         - Build TaijiOS native version
+#   make -f Makefile.taijios clean   - Clean build artifacts
+#
+# Run with:
+#   cd /home/wao/Projects/TaijiOS && emu /path/to/kryon-taijios [args]
+
+# =============================================================================
+# TAIJIOS CONFIGURATION
+# =============================================================================
+
+# TaijiOS paths
+TAIJIOS := /home/wao/Projects/TaijiOS
+SYSHOST := Linux
+SYSTARG := Linux
+OBJTYPE := amd64
+
+# Export for compatibility
+export TAIJIOS SYSHOST SYSTARG OBJTYPE
+
+# =============================================================================
+# COMPILER AND FLAGS
+# =============================================================================
+
+# Compiler (matching TaijiOS mk settings)
+CC := gcc
+LD := gcc
+
+# Base compiler flags (matching TaijiOS emu environment)
+CFLAGS := -g -O2 -std=c11 -fPIC -fno-strict-aliasing \
+          -Wno-implicit-function-declaration -Wno-incompatible-pointer-types \
+          -Wno-unused-function -Wno-unused-parameter -Wno-unused-variable \
+          -D_GNU_SOURCE
+
+# TaijiOS-specific flags
+CFLAGS += -DEMU -DKRYON_PLUGIN_INFERNO -DLINUX_AMD64
+
+# Include paths (order matters: arch-specific first, then generic)
+INCLUDES := -I$(TAIJIOS)/$(SYSTARG)/$(OBJTYPE)/include \
+            -I$(TAIJIOS)/include \
+            -I$(TAIJIOS)/libinterp \
+            -Iinclude \
+            -Isrc \
+            -Ithird-party/cjson
+
+CFLAGS += $(INCLUDES)
+
+# Linker flags
+LDFLAGS := -L$(TAIJIOS)/$(SYSTARG)/$(OBJTYPE)/lib
+
+# Libraries
+LIBS := -linterp -l9 -lm -lpthread
+
+# =============================================================================
+# DIRECTORIES
+# =============================================================================
+
+SRC_DIR := src
+INCLUDE_DIR := include
+BUILD_DIR := build
+BIN_DIR := $(BUILD_DIR)/bin
+OBJ_DIR := $(BUILD_DIR)/obj
+THIRD_PARTY_DIR := third-party
+
+# =============================================================================
+# SOURCE FILES
+# =============================================================================
+
+# Shared sources
+SHARED_SRC := \
+	src/shared/kryon_mappings.c \
+	src/shared/krb_schema.c
+
+# Core sources
+CORE_SRC := \
+	src/core/memory_manager.c \
+	src/core/binary_io.c \
+	src/core/arena.c \
+	src/core/color_utils.c \
+	src/core/error_system.c \
+	src/core/containers.c
+
+# Compiler sources
+COMPILER_SRC := \
+	src/compiler/lexer/unicode.c \
+	src/compiler/lexer/lexer.c \
+	src/compiler/parser/parser.c \
+	src/compiler/parser/ast_utils.c \
+	src/compiler/diagnostics/diagnostics.c \
+	src/compiler/codegen/krb_file.c \
+	src/compiler/codegen/krb_writer.c \
+	src/compiler/codegen/krb_reader.c \
+	src/compiler/codegen/string_table.c \
+	src/compiler/codegen/ast_expression_serializer.c \
+	src/compiler/codegen/event_serializer.c \
+	src/compiler/codegen/element_serializer.c \
+	src/compiler/codegen/directive_serializer.c \
+	src/compiler/codegen/codegen.c \
+	src/compiler/codegen/ast_expander.c \
+	src/compiler/kir/kir_writer.c \
+	src/compiler/kir/kir_reader.c \
+	src/compiler/kir/kir_utils.c \
+	src/compiler/kir/kir_printer.c \
+	src/compiler/krb/krb_decompiler.c \
+	src/compiler/krl/krl_lexer.c \
+	src/compiler/krl/krl_parser.c \
+	src/compiler/krl/krl_to_kir.c
+
+# Runtime sources
+RUNTIME_SRC := \
+	src/runtime/core/runtime.c \
+	src/runtime/core/validation.c \
+	src/runtime/core/component_state.c \
+	src/runtime/core/krb_loader.c \
+	src/runtime/core/state.c \
+	src/runtime/elements.c \
+	src/runtime/element_behaviors.c \
+	src/runtime/compilation/runtime_compiler.c \
+	src/runtime/behavior_integration.c \
+	src/runtime/expression_evaluator.c \
+	src/runtime/navigation/navigation.c \
+	src/runtime/elements/slider.c \
+	src/runtime/elements/container.c \
+	src/runtime/elements/dropdown.c \
+	src/runtime/elements/tabgroup.c \
+	src/runtime/elements/element_mixins.c \
+	src/runtime/elements/input.c \
+	src/runtime/elements/tab.c \
+	src/runtime/elements/tab_content.c \
+	src/runtime/elements/tabpanel.c \
+	src/runtime/elements/text.c \
+	src/runtime/elements/app.c \
+	src/runtime/elements/navigation_utils.c \
+	src/runtime/elements/button.c \
+	src/runtime/elements/checkbox.c \
+	src/runtime/elements/link.c \
+	src/runtime/elements/tabbar.c \
+	src/runtime/elements/image.c \
+	src/runtime/elements/grid.c
+
+# Events sources
+EVENTS_SRC := src/events/events.c
+
+# Renderers (web/html only - no SDL2/raylib under emu)
+RENDERERS_SRC := \
+	src/renderers/html/html_renderer.c \
+	src/renderers/web/web_renderer.c \
+	src/renderers/web/dom_manager.c \
+	src/renderers/web/css_generator.c
+
+# CLI sources
+CLI_SRC := \
+	src/cli/main.c \
+	src/cli/run_command.c \
+	src/cli/compile_command.c \
+	src/cli/decompile_command.c \
+	src/cli/print_command.c \
+	src/cli/kir_commands.c \
+	src/cli/debug_command.c \
+	src/cli/package_command.c \
+	src/cli/dev_command.c
+
+# Services sources
+SERVICES_SRC := \
+	src/services/services_registry.c \
+	src/services/services_null.c
+
+# Inferno plugin sources (REQUIRED for TaijiOS build)
+PLUGIN_SRC := \
+	src/plugins/inferno/plugin.c \
+	src/plugins/inferno/extended_file_io.c \
+	src/plugins/inferno/namespace.c \
+	src/plugins/inferno/process_control.c
+
+# Third-party sources
+THIRD_PARTY_SRC := third-party/cjson/cJSON.c
+
+# All sources
+ALL_SRC := $(SHARED_SRC) $(CORE_SRC) $(COMPILER_SRC) $(RUNTIME_SRC) \
+           $(EVENTS_SRC) $(RENDERERS_SRC) $(CLI_SRC) $(SERVICES_SRC) \
+           $(PLUGIN_SRC) $(THIRD_PARTY_SRC)
+
+# =============================================================================
+# OBJECT FILES
+# =============================================================================
+
+ALL_OBJ := $(patsubst src/%.c,$(OBJ_DIR)/%.o,$(filter src/%,$(ALL_SRC))) \
+           $(patsubst third-party/%.c,$(OBJ_DIR)/third-party/%.o,$(filter third-party/%,$(ALL_SRC)))
+
+# =============================================================================
+# TARGET
+# =============================================================================
+
+TARGET := $(BIN_DIR)/kryon-taijios
+
+# =============================================================================
+# BUILD RULES
+# =============================================================================
+
+.PHONY: all clean help check-taijios
+
+all: check-taijios $(TARGET)
+
+# Check TaijiOS installation
+check-taijios:
+	@if [ ! -d "$(TAIJIOS)" ]; then \
+		echo "Error: TaijiOS not found at $(TAIJIOS)"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(TAIJIOS)/$(SYSTARG)/$(OBJTYPE)/lib/libinterp.a" ]; then \
+		echo "Error: libinterp.a not found at $(TAIJIOS)/$(SYSTARG)/$(OBJTYPE)/lib/libinterp.a"; \
+		echo "Please build TaijiOS first: cd $(TAIJIOS) && mk"; \
+		exit 1; \
+	fi
+	@echo "TaijiOS environment verified."
+
+# Create directories
+$(OBJ_DIR):
+	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(OBJ_DIR)/plugins/inferno
+	@mkdir -p $(OBJ_DIR)/third-party/cjson
+	@mkdir -p $(sort $(dir $(ALL_OBJ)))
+
+$(BIN_DIR):
+	@mkdir -p $(BIN_DIR)
+
+# Compile C files
+$(OBJ_DIR)/%.o: src/%.c | $(OBJ_DIR)
+	@mkdir -p $(dir $@)
+	@echo "[CC] $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/third-party/%.o: third-party/%.c | $(OBJ_DIR)
+	@mkdir -p $(dir $@)
+	@echo "[CC] $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+# Link binary
+$(TARGET): $(ALL_OBJ) | $(BIN_DIR)
+	@echo "[LD] $@"
+	@$(LD) $(LDFLAGS) -o $@ $(ALL_OBJ) $(LIBS)
+	@echo ""
+	@echo "=============================================="
+	@echo "Build complete: $@"
+	@echo "=============================================="
+	@echo ""
+	@echo "To run kryon under TaijiOS emu:"
+	@echo "  cd $(TAIJIOS)"
+	@echo "  emu $(realpath $(TARGET)) --version"
+	@echo ""
+	@echo "To run a Kryon application:"
+	@echo "  cd $(TAIJIOS)"
+	@echo "  emu $(realpath $(TARGET)) run examples/hello.kry"
+	@echo ""
+
+# Clean
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(BUILD_DIR)
+
+# Help
+help:
+	@echo "TaijiOS Native Kryon Build System"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all (default)  - Build kryon-taijios binary"
+	@echo "  clean          - Remove build artifacts"
+	@echo "  help           - Show this help message"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  TAIJIOS = $(TAIJIOS)"
+	@echo "  OBJTYPE = $(OBJTYPE)"
+	@echo "  CC      = $(CC)"
+	@echo ""
+	@echo "Usage:"
+	@echo "  make -f Makefile.taijios"
+	@echo "  make -f Makefile.taijios clean"
+	@echo ""

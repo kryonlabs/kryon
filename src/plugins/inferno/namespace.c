@@ -42,7 +42,7 @@ struct KryonFileServer {
 /**
  * Mount a filesystem
  */
-static bool inferno_mount(int fd, const char *mountpoint, int flags, const char *spec) {
+static bool inferno_ns_mount(int fd, const char *mountpoint, int flags, const char *spec) {
     if (fd < 0 || !mountpoint) {
         return false;
     }
@@ -62,9 +62,9 @@ static bool inferno_mount(int fd, const char *mountpoint, int flags, const char 
         inferno_flags |= MCACHE;
     }
 
-    // Call Inferno mount syscall
+    // Call Inferno mount syscall wrapper
     const char *aname = spec ? spec : "";
-    int result = mount(fd, -1, mountpoint, inferno_flags, aname);
+    int result = inferno_mount(fd, -1, mountpoint, inferno_flags, aname);
 
     return result >= 0;
 }
@@ -72,7 +72,7 @@ static bool inferno_mount(int fd, const char *mountpoint, int flags, const char 
 /**
  * Bind directory
  */
-static bool inferno_bind(const char *source, const char *target, int flags) {
+static bool inferno_ns_bind(const char *source, const char *target, int flags) {
     if (!source || !target) {
         return false;
     }
@@ -89,8 +89,8 @@ static bool inferno_bind(const char *source, const char *target, int flags) {
         inferno_flags |= MCREATE;
     }
 
-    // Call Inferno bind syscall
-    int result = bind(source, target, inferno_flags);
+    // Call Inferno bind syscall wrapper
+    int result = inferno_bind(source, target, inferno_flags);
 
     return result >= 0;
 }
@@ -98,13 +98,13 @@ static bool inferno_bind(const char *source, const char *target, int flags) {
 /**
  * Unmount a filesystem
  */
-static bool inferno_unmount(const char *mountpoint) {
+static bool inferno_ns_unmount(const char *mountpoint) {
     if (!mountpoint) {
         return false;
     }
 
-    // Call Inferno unmount syscall
-    int result = unmount(NULL, mountpoint);
+    // Call Inferno unmount syscall wrapper
+    int result = inferno_unmount(NULL, mountpoint);
 
     return result >= 0;
 }
@@ -146,7 +146,7 @@ static void inferno_destroy_server(KryonFileServer *server) {
     }
 
     if (server->fd >= 0) {
-        close(server->fd);
+        inferno_close(server->fd);
     }
 
     if (server->name) {
@@ -196,9 +196,9 @@ static int inferno_server_fd(KryonFileServer *server) {
  * Namespace service interface for Inferno
  */
 static KryonNamespaceService inferno_namespace_service = {
-    .mount = inferno_mount,
-    .bind = inferno_bind,
-    .unmount = inferno_unmount,
+    .mount = inferno_ns_mount,
+    .bind = inferno_ns_bind,
+    .unmount = inferno_ns_unmount,
     .create_server = inferno_create_server,
     .destroy_server = inferno_destroy_server,
     .serve = inferno_serve,

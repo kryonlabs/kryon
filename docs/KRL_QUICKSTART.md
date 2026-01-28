@@ -1,176 +1,146 @@
-# KRL (KRyon Lisp) Quick Start
+# KRL Quick Start
 
 ## What is KRL?
 
-KRL is a Lisp-style S-expression syntax for Kryon that compiles to KIR JSON. It provides an alternative frontend to the `.kry` syntax while maintaining full compatibility with the Kryon compilation pipeline.
+KRL is a Lisp-style S-expression syntax for Kryon. Files use `.krl` extension.
 
 ## Installation
 
-KRL support is built directly into the `kryon` compiler. No additional installation needed.
+Built into `kryon` compiler. No extra setup needed.
 
 ```bash
-make clean && make
+make
 ```
 
 ## Basic Usage
 
-### Compile KRL to KRB
-
 ```bash
+# Compile
 kryon compile hello.krl -o hello.krb
-```
 
-### Generate KIR only
-
-```bash
+# View KIR
 kryon compile hello.krl --no-krb -k output.kir
+
+# Run
+kryon run hello.krb --renderer sdl2
 ```
 
-### View generated KIR
+## Examples
 
-```bash
-kryon compile hello.krl --no-krb -k /tmp/output.kir
-cat /tmp/output.kir
-```
+### Hello World
 
-## Example: Hello World
-
-**hello-world.krl:**
 ```lisp
-; Hello World in KRL
 (App
   (windowWidth 800)
   (windowHeight 600)
-  (windowTitle "Hello World")
-
   (Center
-    (Text
-      (text "Hello, World!")
-      (fontSize 32))))
+    (Text (text "Hello, World!"))))
 ```
 
-**Compile and view:**
-```bash
-kryon compile examples/hello-world.krl -o hello.krb
-```
+### Counter with State
 
-## Example: Button with Event Handler
-
-**button.krl:**
 ```lisp
-(style "base"
-  (backgroundColor "#F5F5F5"))
-
-(function "rc" handleClick ()
-  "print('Button clicked!')")
-
-(App
-  (windowWidth 600)
-  (windowHeight 400)
-  (Button
-    (text "Click Me!")
-    (onClick "handleClick")))
-```
-
-## Example: Counter
-
-**counter.krl:**
-```lisp
-(function "rc" increment () "count = count + 1")
-(function "rc" decrement () "count = count - 1")
+(var count 0)
+(function "rc" increment () "count++;")
+(function "rc" decrement () "count--;")
 
 (App
   (windowWidth 400)
-  (Center
-    (Column
-      (gap 20)
-      (Text (text $count) (fontSize 48))
-      (Row
-        (gap 10)
-        (Button (text "-") (onClick "decrement"))
-        (Button (text "+") (onClick "increment"))))))
+  (Column
+    (Text (text $count) (fontSize 48))
+    (Row
+      (Button (text "-") (onClick decrement))
+      (Button (text "+") (onClick increment)))))
 ```
 
-## Syntax Reference
+### Arrays and Loops
 
-### Elements
 ```lisp
-(ElementType
-  (property value)
-  (childElement ...))
+(const colors ["red" "green" "blue"])
+
+(App
+  (Column
+    ; Compile-time loop
+    (const_for color in colors
+      (Box (backgroundColor $color) (width 100px)))
+
+    ; Runtime loop
+    (var items ["A" "B" "C"])
+    (for (i item) in items
+      (Text (text $item)))))
 ```
 
-### Properties
+### Conditionals
+
 ```lisp
-(ElementType
-  (width 400)
-  (height 300)
-  (text "Hello"))
+(var score 85)
+
+(App
+  (if (>= $score 90)
+    (Text (text "A"))
+    (else
+      (if (>= $score 80)
+        (Text (text "B"))
+        (else
+          (Text (text "C")))))))
 ```
 
-### Variables
+### Reusable Components
+
 ```lisp
-(Text (text $variableName))
+(component Counter ((initialValue 0) (label "Count"))
+  (var count initialValue)
+  (function "rc" inc () "count++;")
+  (function "rc" dec () "count--;")
+
+  (Column
+    (Text (text $label))
+    (Text (text $count))
+    (Row
+      (Button (text "-") (onClick dec))
+      (Button (text "+") (onClick inc)))))
+
+(App
+  (Row
+    (Counter (initialValue 0) (label "First"))
+    (Counter (initialValue 10) (label "Second"))))
 ```
 
-### Functions
-```lisp
-(function "rc" functionName ()
-  "code here")
-```
+## Syntax Quick Reference
 
-### Styles
 ```lisp
-(style "styleName"
-  (backgroundColor "#007AFF")
-  (color "white"))
-```
-
-### Directives
-```lisp
-; Constants
-(const maxWidth 800)
+; Elements & Properties
+(ElementType (prop value) (Child ...))
 
 ; Variables
-(var counter 0)
+(const name value)
+(var name initialValue)
+$varName
 
-; State
-(state isActive true)
+; Arrays
+["item1" "item2"]
+
+; Loops
+(const_for item in array ...)
+(for item in array ...)
+
+; Conditionals
+(if condition ... (else ...))
+
+; Components
+(component Name ((param default)) ...)
+
+; Functions & Styles
+(function "rc" name () "code")
+(style "name" (prop value) ...)
+
+; Expressions
+(+ a b)  (> a b)  (. obj prop)
+
+; Comments
+; Line comment
 ```
 
-Note: Advanced directives (for, if, etc.) are not yet implemented in KRL.
+## More Info
 
-## File Structure
-
-- `examples/*.krl` - Example KRL files
-- `examples/.kryon_cache/*.kir` - Generated KIR files
-- `src/compiler/krl/` - KRL implementation
-- `include/krl_parser.h` - KRL API
-
-## Implementation
-
-The KRL implementation consists of:
-
-1. **Lexer** (`krl_lexer.c`) - Tokenizes S-expressions
-2. **Parser** (`krl_parser.c`) - Builds S-expression AST
-3. **KIR Generator** (`krl_to_kir.c`) - Generates KIR JSON
-4. **CLI Integration** (`compile_command.c`) - Auto-detects `.krl` files
-
-## Compilation Pipeline
-
-```
-.krl → S-expr Parser → KIR JSON → KIR Reader → AST → KRB Binary
-```
-
-The `.krl` file is automatically transpiled to KIR JSON, then processed through the existing Kryon pipeline.
-
-## Advantages
-
-- **Homoiconic**: Code structure is explicit in S-expressions
-- **Consistent syntax**: Everything is a list
-- **Full compatibility**: Generates standard KIR JSON
-- **Zero overhead**: No runtime cost, compiles to same KRB
-
-## More Information
-
-See `docs/KRL_IMPLEMENTATION.md` for detailed implementation documentation.
+See `docs/KRL_IMPLEMENTATION.md` for detailed documentation.

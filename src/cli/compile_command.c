@@ -1195,31 +1195,58 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
         if (kir_path) {
             KRYON_LOG_INFO("Writing KIR to: %s", kir_path);
 
-            KryonKIRConfig kir_config = kryon_kir_default_config();
-            kir_config.source_file = input_file;
-
-            KryonKIRWriter *kir_writer = kryon_kir_writer_create(&kir_config);
-            if (!kir_writer) {
-                KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to create KIR writer");
-                result = KRYON_ERROR_COMPILATION_FAILED;
-                goto cleanup;
-            }
-
-            if (!kryon_kir_write_file(kir_writer, transformed_ast, kir_path)) {
-                size_t kir_error_count;
-                const char **kir_errors = kryon_kir_writer_get_errors(kir_writer, &kir_error_count);
-                KRYON_LOG_ERROR("Failed to write KIR file:");
-                for (size_t i = 0; i < kir_error_count; i++) {
-                    KRYON_LOG_ERROR("  %s", kir_errors[i]);
+            // For .krl files, the KIR was already generated - just copy if needed
+            if (is_krl_input && temp_kir_file && strcmp(temp_kir_file, kir_path) != 0) {
+                // Copy temp KIR file to output location
+                FILE *src = fopen(temp_kir_file, "rb");
+                FILE *dst = fopen(kir_path, "wb");
+                if (src && dst) {
+                    char buffer[4096];
+                    size_t n;
+                    while ((n = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+                        fwrite(buffer, 1, n, dst);
+                    }
+                    fclose(src);
+                    fclose(dst);
+                    printf("KIR written: %s\n", kir_path);
+                } else {
+                    if (src) fclose(src);
+                    if (dst) fclose(dst);
+                    KRYON_ERROR_SET(KRYON_ERROR_FILE_WRITE_ERROR, KRYON_SEVERITY_ERROR, "Failed to copy KIR file");
+                    result = KRYON_ERROR_FILE_WRITE_ERROR;
+                    goto cleanup;
                 }
-                kryon_kir_writer_destroy(kir_writer);
-                KRYON_ERROR_SET(KRYON_ERROR_FILE_WRITE_ERROR, KRYON_SEVERITY_ERROR, "Failed to write KIR file");
-                result = KRYON_ERROR_FILE_WRITE_ERROR;
-                goto cleanup;
-            }
+            } else if (!is_krl_input) {
+                // For .kry files, generate KIR from AST
+                KryonKIRConfig kir_config = kryon_kir_default_config();
+                kir_config.source_file = input_file;
 
-            kryon_kir_writer_destroy(kir_writer);
-            printf("KIR written: %s\n", kir_path);
+                KryonKIRWriter *kir_writer = kryon_kir_writer_create(&kir_config);
+                if (!kir_writer) {
+                    KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to create KIR writer");
+                    result = KRYON_ERROR_COMPILATION_FAILED;
+                    goto cleanup;
+                }
+
+                if (!kryon_kir_write_file(kir_writer, transformed_ast, kir_path)) {
+                    size_t kir_error_count;
+                    const char **kir_errors = kryon_kir_writer_get_errors(kir_writer, &kir_error_count);
+                    KRYON_LOG_ERROR("Failed to write KIR file:");
+                    for (size_t i = 0; i < kir_error_count; i++) {
+                        KRYON_LOG_ERROR("  %s", kir_errors[i]);
+                    }
+                    kryon_kir_writer_destroy(kir_writer);
+                    KRYON_ERROR_SET(KRYON_ERROR_FILE_WRITE_ERROR, KRYON_SEVERITY_ERROR, "Failed to write KIR file");
+                    result = KRYON_ERROR_FILE_WRITE_ERROR;
+                    goto cleanup;
+                }
+
+                kryon_kir_writer_destroy(kir_writer);
+                printf("KIR written: %s\n", kir_path);
+            } else {
+                // KIR already at correct location (temp_kir_file == kir_path)
+                printf("KIR written: %s\n", kir_path);
+            }
         }
     }
 

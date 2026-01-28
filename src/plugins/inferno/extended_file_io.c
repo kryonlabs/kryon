@@ -64,8 +64,8 @@ static KryonExtendedFile* inferno_file_open(const char *path, int flags) {
         lib9_flags |= OTRUNC;
     }
 
-    // Open file using lib9
-    int fd = open(path, lib9_flags);
+    // Open file using inferno syscall wrapper
+    int fd = inferno_open(path, lib9_flags);
     if (fd < 0) {
         return NULL;
     }
@@ -73,7 +73,7 @@ static KryonExtendedFile* inferno_file_open(const char *path, int flags) {
     // Allocate handle
     KryonExtendedFile *file = malloc(sizeof(KryonExtendedFile));
     if (!file) {
-        close(fd);
+        inferno_close(fd);
         return NULL;
     }
 
@@ -92,7 +92,7 @@ static void inferno_file_close(KryonExtendedFile *file) {
     }
 
     if (file->fd >= 0) {
-        close(file->fd);
+        inferno_close(file->fd);
     }
 
     if (file->path) {
@@ -110,7 +110,7 @@ static int inferno_file_read(KryonExtendedFile *file, void *buf, int count) {
         return -1;
     }
 
-    return read(file->fd, buf, count);
+    return inferno_read(file->fd, buf, count);
 }
 
 /**
@@ -121,7 +121,7 @@ static int inferno_file_write(KryonExtendedFile *file, const void *buf, int coun
         return -1;
     }
 
-    return write(file->fd, (void*)buf, count);
+    return inferno_write(file->fd, (void*)buf, count);
 }
 
 /**
@@ -147,7 +147,7 @@ static int64_t inferno_file_seek(KryonExtendedFile *file, int64_t offset, KryonS
             return -1;
     }
 
-    return lseek(file->fd, offset, whence);
+    return inferno_seek(file->fd, offset, whence);
 }
 
 // =============================================================================
@@ -233,8 +233,8 @@ static bool inferno_stat_extended(const char *path, KryonExtendedFileStat *stat)
         return false;
     }
 
-    // Use lib9 stat
-    Dir *dir = dirstat(path);
+    // Use inferno stat wrapper
+    InfernoDir *dir = inferno_dirstat(path);
     if (!dir) {
         return false;
     }
@@ -267,8 +267,8 @@ static bool inferno_fstat_extended(KryonExtendedFile *file, KryonExtendedFileSta
         return false;
     }
 
-    // Use lib9 dirfstat
-    Dir *dir = dirfstat(file->fd);
+    // Use inferno fstat wrapper
+    InfernoDir *dir = inferno_dirfstat(file->fd);
     if (!dir) {
         return false;
     }
@@ -306,7 +306,7 @@ static bool inferno_read_dir(const char *path, char ***entries, int *count) {
     }
 
     // Open directory
-    int fd = open(path, OREAD);
+    int fd = inferno_open(path, OREAD);
     if (fd < 0) {
         return false;
     }
@@ -315,15 +315,15 @@ static bool inferno_read_dir(const char *path, char ***entries, int *count) {
     int max_entries = 64;
     char **entry_list = malloc(max_entries * sizeof(char*));
     if (!entry_list) {
-        close(fd);
+        inferno_close(fd);
         return false;
     }
 
     int num_entries = 0;
-    Dir *dir;
-    int nr;
+    InfernoDir *dir;
+    long nr;
 
-    while ((nr = dirread(fd, &dir)) > 0) {
+    while ((nr = inferno_dirread(fd, &dir)) > 0) {
         // Expand array if needed
         if (num_entries >= max_entries) {
             max_entries *= 2;
@@ -335,7 +335,7 @@ static bool inferno_read_dir(const char *path, char ***entries, int *count) {
                 }
                 free(entry_list);
                 free(dir);
-                close(fd);
+                inferno_close(fd);
                 return false;
             }
             entry_list = new_list;
@@ -348,7 +348,7 @@ static bool inferno_read_dir(const char *path, char ***entries, int *count) {
         free(dir);
     }
 
-    close(fd);
+    inferno_close(fd);
 
     *entries = entry_list;
     *count = num_entries;
