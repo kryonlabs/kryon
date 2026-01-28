@@ -168,11 +168,11 @@ typedef struct {
 // ELEMENT EVENT STRUCTURE
 // =============================================================================
 
-typedef struct {
+typedef struct ElementEvent {
     ElementEventType type;
     uint64_t timestamp;
     bool handled;
-    
+
     union {
         ElementMousePos mousePos;        // For MOUSE_MOVED, CLICKED, etc.
         ElementKeyTyped keyTyped;        // For KEY_TYPED

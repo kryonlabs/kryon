@@ -40,6 +40,8 @@ typedef struct {
     int height;
     bool initialized;
     int frame_counter;
+    KryonEventCallback event_callback;
+    void* callback_data;
 } HtmlRendererImpl;
 
 // =============================================================================
@@ -75,6 +77,10 @@ static KryonRenderResult html_get_input_state(KryonInputState* input_state);
 static bool html_point_in_widget(KryonVec2 point, KryonRect widget_bounds);
 static bool html_handle_event(const KryonEvent* event);
 static void* html_get_native_window(void);
+static float html_measure_text_width(const char* text, float font_size);
+static KryonRenderResult html_set_cursor(KryonCursorType cursor_type);
+static KryonRenderResult html_update_window_size(int width, int height);
+static KryonRenderResult html_update_window_title(const char* title);
 
 static KryonRendererVTable g_html_vtable = {
     .initialize = html_initialize,
@@ -84,35 +90,39 @@ static KryonRendererVTable g_html_vtable = {
     .resize = html_resize,
     .viewport_size = html_viewport_size,
     .destroy = html_destroy,
-    .get_input_state = html_get_input_state,
-    .point_in_widget = html_point_in_widget,
+    .point_in_element = html_point_in_widget,  // Reuse existing function
     .handle_event = html_handle_event,
-    .get_native_window = html_get_native_window
+    .measure_text_width = html_measure_text_width,
+    .get_native_window = html_get_native_window,
+    .set_cursor = html_set_cursor,
+    .update_window_size = html_update_window_size,
+    .update_window_title = html_update_window_title
 };
 
 // =============================================================================
 // PUBLIC API
 // =============================================================================
 
-KryonRenderer* kryon_html_renderer_create(void* surface) {
+KryonRenderer* kryon_html_renderer_create(const KryonRendererConfig* config) {
     KryonRenderer* renderer = malloc(sizeof(KryonRenderer));
     if (!renderer) {
         return NULL;
     }
-    
+
     renderer->vtable = &g_html_vtable;
     renderer->impl_data = &g_html_impl;
     renderer->name = strdup("HTML Renderer");
     renderer->backend = strdup("html");
-    
-    // Initialize with provided surface
-    if (html_initialize(surface) != KRYON_RENDER_SUCCESS) {
-        free(renderer->name);
-        free(renderer->backend);
-        free(renderer);
-        return NULL;
+
+    // Store event callback from config
+    if (config) {
+        g_html_impl.event_callback = config->event_callback;
+        g_html_impl.callback_data = config->callback_data;
     }
-    
+
+    // HTML renderer doesn't need initialization
+    g_html_impl.initialized = true;
+
     return renderer;
 }
 
@@ -424,8 +434,8 @@ static KryonRenderResult html_execute_commands(KryonRenderContext* context,
                 const KryonDrawButtonData* data = &cmd->data.draw_button;
                 
                 char element_id[64];
-                if (data->widget_id) {
-                    strncpy(element_id, data->widget_id, sizeof(element_id) - 1);
+                if (data->element_id) {
+                    strncpy(element_id, data->element_id, sizeof(element_id) - 1);
                     element_id[sizeof(element_id) - 1] = '\0';
                 } else {
                     generate_element_id(element_id, sizeof(element_id), "button", ctx->element_counter++);
@@ -434,9 +444,8 @@ static KryonRenderResult html_execute_commands(KryonRenderContext* context,
                 // Generate HTML button element
                 fprintf(ctx->html_file, "<button id=\"%s\" type=\"button\"", element_id);
                 
-                if (data->onclick_handler) {
-                    fprintf(ctx->html_file, " onclick=\"%s()\"", data->onclick_handler);
-                }
+                // onclick_handler would be provided by event system in browser
+                // This is a placeholder for future event binding
                 
                 if (!data->enabled) {
                     fprintf(ctx->html_file, " disabled");
@@ -489,8 +498,8 @@ static KryonRenderResult html_execute_commands(KryonRenderContext* context,
                 const KryonDrawDropdownData* data = &cmd->data.draw_dropdown;
                 
                 char element_id[64];
-                if (data->widget_id) {
-                    strncpy(element_id, data->widget_id, sizeof(element_id) - 1);
+                if (data->element_id) {
+                    strncpy(element_id, data->element_id, sizeof(element_id) - 1);
                     element_id[sizeof(element_id) - 1] = '\0';
                 } else {
                     generate_element_id(element_id, sizeof(element_id), "dropdown", ctx->element_counter++);
@@ -555,8 +564,8 @@ static KryonRenderResult html_execute_commands(KryonRenderContext* context,
                 const KryonDrawInputData* data = &cmd->data.draw_input;
                 
                 char element_id[64];
-                if (data->widget_id) {
-                    strncpy(element_id, data->widget_id, sizeof(element_id) - 1);
+                if (data->element_id) {
+                    strncpy(element_id, data->element_id, sizeof(element_id) - 1);
                     element_id[sizeof(element_id) - 1] = '\0';
                 } else {
                     generate_element_id(element_id, sizeof(element_id), "input", ctx->element_counter++);
@@ -625,8 +634,8 @@ static KryonRenderResult html_execute_commands(KryonRenderContext* context,
                 const KryonDrawCheckboxData* data = &cmd->data.draw_checkbox;
                 
                 char element_id[64];
-                if (data->widget_id) {
-                    strncpy(element_id, data->widget_id, sizeof(element_id) - 1);
+                if (data->element_id) {
+                    strncpy(element_id, data->element_id, sizeof(element_id) - 1);
                     element_id[sizeof(element_id) - 1] = '\0';
                 } else {
                     generate_element_id(element_id, sizeof(element_id), "checkbox", ctx->element_counter++);
@@ -686,8 +695,8 @@ static KryonRenderResult html_execute_commands(KryonRenderContext* context,
                 break;
             }
             
-            case KRYON_CMD_UPDATE_WIDGET_STATE: {
-                // Widget state updates would be handled by JavaScript in the browser
+            case KRYON_CMD_UPDATE_ELEMENT_STATE: {
+                // Element state updates would be handled by JavaScript in the browser
                 // This is a placeholder for state synchronization
                 break;
             }
@@ -868,4 +877,37 @@ static bool html_handle_event(const KryonEvent* event) {
 static void* html_get_native_window(void) {
     // HTML renderer has no native window
     return NULL;
+}
+
+static float html_measure_text_width(const char* text, float font_size) {
+    // Approximate text width for HTML renderer
+    // In a real implementation, this would use browser text metrics
+    if (!text) return 0.0f;
+    return (float)strlen(text) * font_size * 0.5f;
+}
+
+static KryonRenderResult html_set_cursor(KryonCursorType cursor_type) {
+    // HTML renderer sets cursor via CSS
+    // This would be implemented by updating CSS cursor property
+    return KRYON_RENDER_SUCCESS;
+}
+
+static KryonRenderResult html_update_window_size(int width, int height) {
+    if (!g_html_impl.initialized) {
+        return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
+    }
+    g_html_impl.width = width;
+    g_html_impl.height = height;
+    return KRYON_RENDER_SUCCESS;
+}
+
+static KryonRenderResult html_update_window_title(const char* title) {
+    if (!g_html_impl.initialized) {
+        return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
+    }
+    if (g_html_impl.title) {
+        free(g_html_impl.title);
+    }
+    g_html_impl.title = title ? strdup(title) : NULL;
+    return KRYON_RENDER_SUCCESS;
 }

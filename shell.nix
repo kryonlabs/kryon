@@ -3,19 +3,18 @@
 pkgs.mkShell {
   buildInputs = with pkgs; [
     # Build system
-    cmake
     gnumake
     pkg-config
-    
+
     # Compilers and tools
     gcc
     clang
     gdb
     valgrind
-    
+
     # Core libraries
     stdenv.cc.libc
-    
+
     # Graphics and windowing
     xorg.libX11
     xorg.libXext
@@ -28,56 +27,56 @@ pkgs.mkShell {
     libGL
     libGLU
     mesa
-    
+
     # SDL2 for one of our renderers
     SDL2
     SDL2_image
     SDL2_ttf
     SDL2_mixer
-    
+
     # Raylib for another renderer
     raylib
-    
+
     # Font rendering
     freetype
     fontconfig
-    
+
     # Audio (optional)
     alsa-lib
     pulseaudio
-    
+
     # Networking
     curl
     openssl
-    
+
     # Image processing
     libpng
     libjpeg
-    
+
     # Text processing and Unicode
     icu
-    
+
     # Math libraries
     gsl
-    
+
     # Development tools
     bear  # for compile_commands.json generation
     clang-tools  # clang-format, clang-tidy
     doxygen  # documentation
-    
+
     # Testing
     cunit
-    
+
     # Optional: JavaScript engine (for HTML renderer)
     nodejs
-    
+
     # Optional: Python (if needed for tools)
     python3
-    
+
     # Git (for development)
     git
   ];
-  
+
   shellHook = ''
     echo "🚀 Kryon-C Development Environment"
     echo "================================="
@@ -87,9 +86,9 @@ pkgs.mkShell {
     echo "  • OpenGL: $(pkg-config --modversion gl 2>/dev/null || echo 'system GL')"
     echo ""
     echo "Build with:"
-    echo "  mkdir build && cd build"
-    echo "  cmake .."
-    echo "  make"
+    echo "  make          # Release build"
+    echo "  make debug    # Debug build"
+    echo "  make clean    # Clean build"
     echo ""
     echo "Environment ready! 🎉"
     

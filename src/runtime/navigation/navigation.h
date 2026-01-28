@@ -58,21 +58,21 @@ typedef struct {
 /**
  * @brief Navigation manager state.
  */
-typedef struct {
+typedef struct KryonNavigationManager {
     NavigationHistoryItem* current;              // Current page in history
     NavigationHistoryItem* head;                 // Start of history list
     NavigationHistoryItem* tail;                 // End of history list
     size_t history_count;                        // Number of items in history
     size_t max_history;                          // Maximum history items to keep
-    
+
     // Compilation cache
     struct CompilationCacheEntry* cache_head;    // Compilation cache list
     size_t cache_count;                          // Number of cached compilations
     size_t max_cache;                            // Maximum cache entries
-    
+
     // Runtime reference
     KryonRuntime* runtime;                       // Associated runtime
-    
+
     // Current overlay to inject (if any)
     KryonNavigationOverlay* pending_overlay;     // Overlay to inject on next navigation
 } KryonNavigationManager;

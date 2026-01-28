@@ -631,7 +631,7 @@ static KryonRenderResult sdl2_execute_commands(KryonRenderContext* context,
                 break;
             }
             
-            case KRYON_CMD_UPDATE_WIDGET_STATE: {
+            case KRYON_CMD_UPDATE_ELEMENT_STATE: {
                 // Widget state updates would be handled by the element management system
                 // This is a placeholder for state synchronization
                 break;
