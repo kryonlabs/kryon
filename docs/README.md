@@ -31,10 +31,6 @@
 
 - **[plugin_development.md](plugin_development.md)** - Plugin development guide
 
-## Platform Integrations
-
-See [integrations/](integrations/) directory for platform-specific integration guides.
-
 ## Quick Links
 
 | Topic | Document |

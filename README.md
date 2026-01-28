@@ -193,7 +193,6 @@ ctest --verbose
 - Language specs (KRY, KRL, RC Shell)
 - Compilation pipeline (KIR, KRB formats)
 - Plugin development
-- Platform integrations (Inferno, Plan 9, TaijOS)
 
 ## License
 
