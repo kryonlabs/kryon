@@ -33,10 +33,7 @@ extern "C" {
 // KIR VERSION
 // =============================================================================
 
-#define KIR_FORMAT_VERSION_MAJOR 0
-#define KIR_FORMAT_VERSION_MINOR 1
-#define KIR_FORMAT_VERSION_PATCH 0
-#define KIR_FORMAT_VERSION "0.1.0"
+#define KIR_FORMAT_VERSION "alpha"
 #define KIR_FORMAT_NAME "kir-json"
 
 // =============================================================================
@@ -330,6 +327,17 @@ bool kryon_is_kir_file(const char *file_path);
  * @return Allocated KIR output path (caller must free), or NULL on error
  */
 char *kryon_kir_get_output_path(const char *source_path);
+
+/**
+ * @brief Generate output path in .kryon_cache folder
+ * @param source_path Path to source file
+ * @param extension Output extension (".kir" or ".krb")
+ * @param create_dir Whether to create directory if it doesn't exist
+ * @return Allocated path string (caller must free), or NULL on failure
+ */
+char *kryon_cache_get_output_path(const char *source_path,
+                                   const char *extension,
+                                   bool create_dir);
 
 /**
  * @brief Compare two KIR files for semantic equivalence

@@ -133,12 +133,77 @@ static KryonASTNode *decompile_property_value(KryonKrbDecompiler *decompiler,
         }
 
         case KRYON_PROPERTY_SIZE: {
-            // For now, just use width value as a simple float
-            // TODO: Properly reconstruct as object literal with width/height
-            value_node = create_ast_node(KRYON_AST_LITERAL);
+            // Reconstruct as object literal with width/height
+            value_node = create_ast_node(KRYON_AST_OBJECT_LITERAL);
             if (!value_node) return NULL;
 
-            value_node->data.literal.value = kryon_ast_value_float(property->value.size_value.width);
+            value_node->data.object_literal.properties = NULL;
+            value_node->data.object_literal.property_count = 0;
+            value_node->data.object_literal.property_capacity = 0;
+
+            // Create width property
+            KryonASTNode *width_prop = create_ast_node(KRYON_AST_PROPERTY);
+            if (!width_prop) {
+                free(value_node);
+                return NULL;
+            }
+            width_prop->data.property.name = strdup("width");
+
+            KryonASTNode *width_value = create_ast_node(KRYON_AST_LITERAL);
+            if (!width_value) {
+                free(width_prop->data.property.name);
+                free(width_prop);
+                free(value_node);
+                return NULL;
+            }
+            width_value->data.literal.value = kryon_ast_value_float(property->value.size_value.width);
+            width_prop->data.property.value = width_value;
+            width_value->parent = width_prop;
+
+            // Create height property
+            KryonASTNode *height_prop = create_ast_node(KRYON_AST_PROPERTY);
+            if (!height_prop) {
+                free(width_value);
+                free(width_prop->data.property.name);
+                free(width_prop);
+                free(value_node);
+                return NULL;
+            }
+            height_prop->data.property.name = strdup("height");
+
+            KryonASTNode *height_value = create_ast_node(KRYON_AST_LITERAL);
+            if (!height_value) {
+                free(height_prop->data.property.name);
+                free(height_prop);
+                free(width_value);
+                free(width_prop->data.property.name);
+                free(width_prop);
+                free(value_node);
+                return NULL;
+            }
+            height_value->data.literal.value = kryon_ast_value_float(property->value.size_value.height);
+            height_prop->data.property.value = height_value;
+            height_value->parent = height_prop;
+
+            // Add properties to object literal
+            value_node->data.object_literal.property_capacity = 2;
+            value_node->data.object_literal.property_count = 2;
+            value_node->data.object_literal.properties = malloc(2 * sizeof(KryonASTNode*));
+            if (!value_node->data.object_literal.properties) {
+                free(height_value);
+                free(height_prop->data.property.name);
+                free(height_prop);
+                free(width_value);
+                free(width_prop->data.property.name);
+                free(width_prop);
+                free(value_node);
+                return NULL;
+            }
+            value_node->data.object_literal.properties[0] = width_prop;
+            value_node->data.object_literal.properties[1] = height_prop;
+            width_prop->parent = value_node;
+            height_prop->parent = value_node;
+
             break;
         }
 

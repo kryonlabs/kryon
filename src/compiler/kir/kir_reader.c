@@ -7,6 +7,7 @@
 
 #include "kir_format.h"
 #include "parser.h"
+#include "lexer.h"
 #include "memory.h"
 #include "cJSON.h"
 #include <string.h>
@@ -92,6 +93,37 @@ static KryonValueType string_to_value_type(const char *type_str) {
     if (strcmp(type_str, "UNIT") == 0) return KRYON_VALUE_UNIT;
 
     return KRYON_VALUE_NULL;
+}
+
+static KryonTokenType string_to_operator_token(const char *op_str) {
+    if (!op_str) return KRYON_TOKEN_EOF;
+
+    // Arithmetic operators
+    if (strcmp(op_str, "+") == 0) return KRYON_TOKEN_PLUS;
+    if (strcmp(op_str, "-") == 0) return KRYON_TOKEN_MINUS;
+    if (strcmp(op_str, "*") == 0) return KRYON_TOKEN_MULTIPLY;
+    if (strcmp(op_str, "/") == 0) return KRYON_TOKEN_DIVIDE;
+    if (strcmp(op_str, "%") == 0) return KRYON_TOKEN_MODULO;
+
+    // Comparison operators
+    if (strcmp(op_str, "==") == 0) return KRYON_TOKEN_EQUALS;
+    if (strcmp(op_str, "!=") == 0) return KRYON_TOKEN_NOT_EQUALS;
+    if (strcmp(op_str, "<") == 0) return KRYON_TOKEN_LESS_THAN;
+    if (strcmp(op_str, "<=") == 0) return KRYON_TOKEN_LESS_EQUAL;
+    if (strcmp(op_str, ">") == 0) return KRYON_TOKEN_GREATER_THAN;
+    if (strcmp(op_str, ">=") == 0) return KRYON_TOKEN_GREATER_EQUAL;
+
+    // Logical operators
+    if (strcmp(op_str, "&&") == 0) return KRYON_TOKEN_LOGICAL_AND;
+    if (strcmp(op_str, "||") == 0) return KRYON_TOKEN_LOGICAL_OR;
+    if (strcmp(op_str, "!") == 0) return KRYON_TOKEN_LOGICAL_NOT;
+
+    // Other operators
+    if (strcmp(op_str, "=") == 0) return KRYON_TOKEN_ASSIGN;
+    if (strcmp(op_str, ".") == 0) return KRYON_TOKEN_DOT;
+    if (strcmp(op_str, "..") == 0) return KRYON_TOKEN_RANGE;
+
+    return KRYON_TOKEN_EOF;
 }
 
 // Forward declaration
@@ -334,8 +366,7 @@ static KryonASTNode *deserialize_node(KryonKIRReader *reader, cJSON *json) {
         case KRYON_AST_BINARY_OP: {
             cJSON *op = cJSON_GetObjectItem(json, "operator");
             if (op && cJSON_IsString(op)) {
-                // TODO: Convert string to operator token type
-                // For now, just store as placeholder
+                node->data.binary_op.operator = string_to_operator_token(op->valuestring);
             }
 
             cJSON *left = cJSON_GetObjectItem(json, "left");
@@ -353,7 +384,7 @@ static KryonASTNode *deserialize_node(KryonKIRReader *reader, cJSON *json) {
         case KRYON_AST_UNARY_OP: {
             cJSON *op = cJSON_GetObjectItem(json, "operator");
             if (op && cJSON_IsString(op)) {
-                // TODO: Convert string to operator token type
+                node->data.unary_op.operator = string_to_operator_token(op->valuestring);
             }
 
             cJSON *operand = cJSON_GetObjectItem(json, "operand");
@@ -624,21 +655,12 @@ bool kryon_kir_read_string(KryonKIRReader *reader, const char *json_string,
         return false;
     }
 
-    // Parse version
-    sscanf(version->valuestring, "%d.%d.%d",
-           &reader->format_major, &reader->format_minor, &reader->format_patch);
-
-    // Check version compatibility
-    if (reader->format_major != KIR_FORMAT_VERSION_MAJOR) {
-        char error_msg[256];
-        snprintf(error_msg, sizeof(error_msg),
-                "Incompatible KIR format version: %d.%d.%d (expected %d.x.x)",
-                reader->format_major, reader->format_minor, reader->format_patch,
-                KIR_FORMAT_VERSION_MAJOR);
-        reader_error(reader, error_msg);
-        cJSON_Delete(kir);
-        return false;
-    }
+    // Version validation removed for alpha
+    // Accept any version string during alpha development
+    // Optional: log version for debugging
+    #ifdef DEBUG
+        printf("KIR version: %s\n", version->valuestring);
+    #endif
 
     // Parse root node
     cJSON *root = cJSON_GetObjectItem(kir, "root");

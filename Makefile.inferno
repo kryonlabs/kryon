@@ -1,0 +1,35 @@
+# Makefile.inferno
+# Build configuration for standalone kryon with Inferno plugin
+#
+# Usage:
+#   make -f Makefile.inferno          - Build for Inferno with auto-detect
+#   make -f Makefile.inferno clean    - Clean build artifacts
+#   INFERNO=/path make -f Makefile.inferno - Override Inferno path
+
+# Auto-detect Inferno installation
+ifndef INFERNO
+    # Try common locations
+    ifneq ($(wildcard /opt/inferno),)
+        INFERNO := /opt/inferno
+    else ifneq ($(wildcard ~/inferno),)
+        INFERNO := ~/inferno
+    else ifneq ($(wildcard /usr/local/inferno),)
+        INFERNO := /usr/local/inferno
+    else
+        $(error INFERNO environment variable not set. Please set it to your Inferno installation path)
+    endif
+endif
+
+# Export for main Makefile
+export INFERNO
+
+# Enable Inferno plugin
+PLUGINS := inferno
+
+# Include main Makefile
+include Makefile
+
+# Display configuration
+$(info Building standalone kryon with Inferno plugin)
+$(info INFERNO = $(INFERNO))
+$(info Plugin: inferno)

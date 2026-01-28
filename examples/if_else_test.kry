@@ -5,7 +5,7 @@ metadata {
 
 var showMessage = true
 
-function toggleMessage() {
+function "rc" toggleMessage() {
     showMessage = !showMessage
     print("Toggled showMessage to: " .. showMessage)
 }

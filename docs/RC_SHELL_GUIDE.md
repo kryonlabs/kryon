@@ -183,12 +183,12 @@ function "rc" reset() {
 
 App {
     Column {
-        Text { text: "Count: ${count}" }
+        Text { text = "Count: ${count}" }
 
         Row {
-            Button { text: "+"; onClick: "increment" }
-            Button { text: "-"; onClick: "decrement" }
-            Button { text: "Reset"; onClick: "reset" }
+            Button { text = "+"; onClick = "increment" }
+            Button { text = "-"; onClick = "decrement" }
+            Button { text = "Reset"; onClick = "reset" }
         }
     }
 }
@@ -212,11 +212,11 @@ function "rc" refreshFiles() {
 
 App {
     Column {
-        Text { text: "Files: ${fileList}" }
-        Text { text: "Count: ${fileCount}" }
+        Text { text = "Files: ${fileList}" }
+        Text { text = "Count: ${fileCount}" }
         Button {
-            text: "Refresh"
-            onClick: "refreshFiles"
+            text = "Refresh"
+            onClick = "refreshFiles"
         }
     }
 }
@@ -240,11 +240,11 @@ function "rc" updateTime() {
 
 App {
     Column {
-        Text { text: "Time: ${currentTime}" }
-        Text { text: "Date: ${formattedDate}" }
+        Text { text = "Time: ${currentTime}" }
+        Text { text = "Date: ${formattedDate}" }
         Button {
-            text: "Update"
-            onClick: "updateTime"
+            text = "Update"
+            onClick = "updateTime"
         }
     }
 }
@@ -268,11 +268,11 @@ function "rc" getSystemInfo() {
 
 App {
     Column {
-        Text { text: "Disk Usage: ${diskUsage}" }
-        Text { text: "Memory: ${memoryInfo}" }
+        Text { text = "Disk Usage: ${diskUsage}" }
+        Text { text = "Memory: ${memoryInfo}" }
         Button {
-            text: "Refresh"
-            onClick: "getSystemInfo"
+            text = "Refresh"
+            onClick = "getSystemInfo"
         }
     }
 }
@@ -300,13 +300,13 @@ function "rc" validateEmail() {
 App {
     Column {
         Input {
-            value: email
-            onChange: "validateEmail"
+            value = email
+            onChange = "validateEmail"
         }
 
         Text {
-            text: isValid ? "✓ Valid" : "✗ Invalid"
-            color: isValid ? "#00ff00" : "#ff0000"
+            text = isValid ? "✓ Valid" : "✗ Invalid"
+            color = isValid ? "#00ff00" : "#ff0000"
         }
     }
 }
@@ -431,13 +431,13 @@ function "rc" incrementAndLog() {
 App {
     Column {
         Button {
-            text: "Fast Increment"
-            onClick: "incrementNative"
+            text = "Fast Increment"
+            onClick = "incrementNative"
         }
 
         Button {
-            text: "Increment + Log"
-            onClick: "incrementAndLog"
+            text = "Increment + Log"
+            onClick = "incrementAndLog"
         }
     }
 }

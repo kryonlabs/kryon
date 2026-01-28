@@ -7,7 +7,7 @@
  #include <stdlib.h>
  #include <string.h>
  
- #define KRYON_VERSION "v1.0.0"
+ #define KRYON_VERSION "alpha"
  
  extern int compile_command(int argc, char *argv[]);
  extern int decompile_command(int argc, char *argv[]);

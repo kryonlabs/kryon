@@ -64,12 +64,14 @@ COMPILER_SRC = $(SRC_DIR)/compiler/lexer/unicode.c \
                $(SRC_DIR)/compiler/codegen/directive_serializer.c \
                $(SRC_DIR)/compiler/codegen/codegen.c \
                $(SRC_DIR)/compiler/codegen/ast_expander.c \
-               $(SRC_DIR)/compiler/expansion/expansion_context.c \
                $(SRC_DIR)/compiler/kir/kir_writer.c \
                $(SRC_DIR)/compiler/kir/kir_reader.c \
                $(SRC_DIR)/compiler/kir/kir_utils.c \
                $(SRC_DIR)/compiler/kir/kir_printer.c \
-               $(SRC_DIR)/compiler/krb/krb_decompiler.c
+               $(SRC_DIR)/compiler/krb/krb_decompiler.c \
+               $(SRC_DIR)/compiler/krl/krl_lexer.c \
+               $(SRC_DIR)/compiler/krl/krl_parser.c \
+               $(SRC_DIR)/compiler/krl/krl_to_kir.c
 
 RUNTIME_SRC = $(SRC_DIR)/runtime/core/runtime.c \
               $(SRC_DIR)/runtime/core/validation.c \
@@ -146,9 +148,43 @@ CLI_SRC = $(SRC_DIR)/cli/main.c \
           $(SRC_DIR)/cli/package_command.c \
           $(SRC_DIR)/cli/dev_command.c
 
+# =============================================================================
+# PLATFORM SERVICES PLUGIN SYSTEM
+# =============================================================================
+
+# Services core (always included)
+SERVICES_SRC = $(SRC_DIR)/services/services_registry.c \
+               $(SRC_DIR)/services/services_null.c
+
+# Plugin configuration
+PLUGINS ?=
+PLUGIN_SRC =
+PLUGIN_OBJ =
+PLUGIN_CFLAGS =
+PLUGIN_LDFLAGS =
+PLUGIN_INCLUDES =
+
+# Auto-detect Inferno build environment
+ifdef INFERNO
+    # Building for Inferno emu - enable Inferno plugin
+    PLUGINS += inferno
+    $(info Detected INFERNO=$(INFERNO), enabling Inferno plugin)
+endif
+
+# Include plugin makefiles
+ifneq ($(filter inferno,$(PLUGINS)),)
+    include $(SRC_DIR)/plugins/inferno/Makefile
+    $(info Building with Inferno platform services plugin)
+endif
+
+# Add plugin flags to compiler
+CFLAGS += $(PLUGIN_CFLAGS)
+INCLUDES += $(PLUGIN_INCLUDES)
+LDFLAGS += $(PLUGIN_LDFLAGS)
+
 # All source files
 ALL_SRC = $(SHARED_SRC) $(CORE_SRC) $(COMPILER_SRC) $(RUNTIME_SRC) \
-          $(EVENTS_SRC) $(RENDERERS_SRC) $(CLI_SRC)
+          $(EVENTS_SRC) $(RENDERERS_SRC) $(CLI_SRC) $(SERVICES_SRC) $(PLUGIN_SRC)
 
 # Object files
 ALL_OBJ = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(ALL_SRC))
@@ -175,7 +211,7 @@ all: $(TARGET) completions/kryon.bash
 
 # Create directories
 $(OBJ_DIR) $(BIN_DIR):
-	@mkdir -p $@ $(sort $(dir $(ALL_OBJ)))
+	@mkdir -p $@ $(sort $(dir $(ALL_OBJ))) $(sort $(dir $(PLUGIN_OBJ)))
 
 # Build third-party cjson
 $(OBJ_DIR)/third-party/cjson:
@@ -193,10 +229,13 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 # Link binary
 $(TARGET): $(ALL_OBJ) $(CJSON_OBJ) | $(BIN_DIR)
 	@echo "[LD] $@"
-	@$(CC) -o $@ $(ALL_OBJ) $(CJSON_OBJ) $(LDFLAGS) $(SDL2_LDFLAGS) $(RAYLIB_LDFLAGS)
+	@$(CC) -o $@ $(ALL_OBJ) $(CJSON_OBJ) $(LDFLAGS) $(SDL2_LDFLAGS) $(RAYLIB_LDFLAGS) $(PLUGIN_LDFLAGS)
 	@echo ""
 	@echo "Build complete: $@"
 	@echo "Build type: $(BUILD_TYPE)"
+ifneq ($(PLUGINS),)
+	@echo "Plugins: $(PLUGINS)"
+endif
 
 # Debug build
 .PHONY: debug

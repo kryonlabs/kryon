@@ -7,6 +7,7 @@
 
 #include "kir_format.h"
 #include "parser.h"
+#include "lexer.h"
 #include "memory.h"
 #include "cJSON.h"
 #include <string.h>
@@ -75,9 +76,6 @@ static const char *node_type_to_string(KryonASTNodeType type) {
         case KRYON_AST_PROPS: return "PROPS";
         case KRYON_AST_SLOTS: return "SLOTS";
         case KRYON_AST_LIFECYCLE: return "LIFECYCLE";
-        case KRYON_AST_DEFINE: return "DEFINE";
-        case KRYON_AST_PROPERTIES: return "PROPERTIES";
-        case KRYON_AST_SCRIPT: return "SCRIPT";
         case KRYON_AST_LITERAL: return "LITERAL";
         case KRYON_AST_VARIABLE: return "VARIABLE";
         case KRYON_AST_IDENTIFIER: return "IDENTIFIER";
@@ -105,6 +103,37 @@ static const char *value_type_to_string(KryonValueType type) {
         case KRYON_VALUE_COLOR: return "COLOR";
         case KRYON_VALUE_UNIT: return "UNIT";
         default: return "UNKNOWN";
+    }
+}
+
+static const char *operator_token_to_string(KryonTokenType token) {
+    switch (token) {
+        // Arithmetic operators
+        case KRYON_TOKEN_PLUS: return "+";
+        case KRYON_TOKEN_MINUS: return "-";
+        case KRYON_TOKEN_MULTIPLY: return "*";
+        case KRYON_TOKEN_DIVIDE: return "/";
+        case KRYON_TOKEN_MODULO: return "%";
+
+        // Comparison operators
+        case KRYON_TOKEN_EQUALS: return "==";
+        case KRYON_TOKEN_NOT_EQUALS: return "!=";
+        case KRYON_TOKEN_LESS_THAN: return "<";
+        case KRYON_TOKEN_LESS_EQUAL: return "<=";
+        case KRYON_TOKEN_GREATER_THAN: return ">";
+        case KRYON_TOKEN_GREATER_EQUAL: return ">=";
+
+        // Logical operators
+        case KRYON_TOKEN_LOGICAL_AND: return "&&";
+        case KRYON_TOKEN_LOGICAL_OR: return "||";
+        case KRYON_TOKEN_LOGICAL_NOT: return "!";
+
+        // Other operators
+        case KRYON_TOKEN_ASSIGN: return "=";
+        case KRYON_TOKEN_DOT: return ".";
+        case KRYON_TOKEN_RANGE: return "..";
+
+        default: return "UNKNOWN_OP";
     }
 }
 
@@ -291,8 +320,8 @@ static cJSON *serialize_node(KryonKIRWriter *writer, const KryonASTNode *node) {
         }
 
         case KRYON_AST_BINARY_OP: {
-            // TODO: Convert operator token to string
-            cJSON_AddStringToObject(json, "operator", "+"); // Placeholder
+            const char *op_str = operator_token_to_string(node->data.binary_op.operator);
+            cJSON_AddStringToObject(json, "operator", op_str);
             if (node->data.binary_op.left) {
                 cJSON *left = serialize_node(writer, node->data.binary_op.left);
                 cJSON_AddItemToObject(json, "left", left);
@@ -305,8 +334,8 @@ static cJSON *serialize_node(KryonKIRWriter *writer, const KryonASTNode *node) {
         }
 
         case KRYON_AST_UNARY_OP: {
-            // TODO: Convert operator token to string
-            cJSON_AddStringToObject(json, "operator", "!"); // Placeholder
+            const char *op_str = operator_token_to_string(node->data.unary_op.operator);
+            cJSON_AddStringToObject(json, "operator", op_str);
             if (node->data.unary_op.operand) {
                 cJSON *operand = serialize_node(writer, node->data.unary_op.operand);
                 cJSON_AddItemToObject(json, "operand", operand);

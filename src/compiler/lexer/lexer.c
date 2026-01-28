@@ -806,7 +806,9 @@ static bool scan_token(KryonLexer *lexer) {
             add_token(lexer, KRYON_TOKEN_COLON);
             break;
             
-        // Legacy '@' prefix (kept for diagnostics)
+        // '@' prefix - Required for compile-time and lifecycle directives only
+        // Valid: @const_if, @const_for, @on_mount, @on_unmount, @onload
+        // Invalid: @if, @for (use bare if/for for runtime control flow)
         case '@':
             add_token(lexer, KRYON_TOKEN_AT);
             break;

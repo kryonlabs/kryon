@@ -31,7 +31,7 @@ KRY Source → Lexer → Parser → Hybrid AST → Optimizer → Generator → K
 | RBRACKET | ] | Right bracket |
 | LPAREN | ( | Left parenthesis |
 | RPAREN | ) | Right parenthesis |
-| COLON | : | Property separator |
+| EQUALS | = | Property separator |
 | COMMA | , | List separator |
 | DOT | . | Member access for variables |
 | DOLLAR_BRACE | ${ | String interpolation start |
@@ -101,7 +101,7 @@ HybridASTNode
 2. **Style**: `style "name" { properties }` or `style "name" extends "parent" { properties }`
 3. **Theme**: `theme groupName { variables }`
 4. **Widget**: `WidgetType { properties and children }`
-5. **Property**: `name: value` with optional responsive values
+5. **Property**: `name = value` with optional responsive values
 6. **Variable**: `variableName` or `groupName.variableName` (used directly, no $ prefix)
 
 ## 3. Semantic Analysis

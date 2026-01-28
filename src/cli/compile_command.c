@@ -9,6 +9,7 @@
 #include "memory.h"
 #include "error.h"
 #include "kir_format.h"
+#include "krl_parser.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -791,7 +792,9 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
     bool optimize = false;
     bool debug = false;
     bool no_krb = false;                   // Skip KRB generation
+    bool no_cache = false;                 // Output to same directory instead of .kryon_cache
     bool is_kir_input = false;             // Input is .kir file
+    bool is_krl_input = false;             // Input is .krl file
 
     // --- Resource Handles for Centralized Cleanup ---
     FILE *file = NULL;
@@ -818,25 +821,28 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
         {"debug", no_argument, 0, 'd'},
         {"kir-output", required_argument, 0, 'k'},  // KIR output
         {"no-krb", no_argument, 0, 'n'},            // KIR only
+        {"no-cache", no_argument, 0, 'C'},          // Disable .kryon_cache
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
 
     int c;
-    while ((c = getopt_long(argc, argv, "o:k:nvOdh", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "o:k:nvOdCh", long_options, NULL)) != -1) {
         switch (c) {
             case 'o': output_file = optarg; break;
             case 'k': kir_output_file = optarg; break;
             case 'n': no_krb = true; break;
+            case 'C': no_cache = true; break;
             case 'v': verbose = true; break;
             case 'O': optimize = true; break;
             case 'd': debug = true; break;
             case 'h':
-                printf("Usage: kryon compile <file.kry|file.kir> [options]\n");
+                printf("Usage: kryon compile <file.kry|file.kir|file.krl> [options]\n");
                 printf("Options:\n");
                 printf("  -o, --output <file>      Output .krb file name\n");
                 printf("  -k, --kir-output <file>  Output .kir file name\n");
                 printf("  -n, --no-krb             Generate KIR only (skip KRB)\n");
+                printf("  -C, --no-cache           Output to same directory instead of .kryon_cache/\n");
                 printf("  -v, --verbose            Verbose output\n");
                 printf("  -O, --optimize           Enable optimizations\n");
                 printf("  -d, --debug              Enable debug mode with inspector\n");
@@ -859,24 +865,47 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
     }
     input_file = argv[optind];
 
-    // --- Detect KIR input files ---
+    // --- Detect KIR and KRL input files ---
     size_t input_len = strlen(input_file);
     if (input_len > 4 && strcmp(input_file + input_len - 4, ".kir") == 0) {
         is_kir_input = true;
         KRYON_LOG_INFO("Detected KIR input file");
+    } else if (input_len > 4 && strcmp(input_file + input_len - 4, ".krl") == 0) {
+        is_krl_input = true;
+        KRYON_LOG_INFO("Detected KRL (KRyon Lisp) input file");
     }
 
     // --- Output Filename Generation ---
     char output_buffer[256];
+    char *auto_krb_cache_path = NULL;  // For .kryon_cache output
     if (!output_file && !no_krb) {
-        const char *dot = strrchr(input_file, '.');
-        if (dot && (strcmp(dot, ".kry") == 0 || strcmp(dot, ".kir") == 0)) {
-            size_t len = dot - input_file;
-            snprintf(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
+        if (no_cache) {
+            // Old behavior: same directory
+            const char *dot = strrchr(input_file, '.');
+            if (dot && (strcmp(dot, ".kry") == 0 || strcmp(dot, ".kir") == 0 || strcmp(dot, ".krl") == 0)) {
+                size_t len = dot - input_file;
+                snprintf(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
+            } else {
+                snprintf(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
+            }
+            output_file = output_buffer;
         } else {
-            snprintf(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
+            // New behavior: .kryon_cache directory
+            auto_krb_cache_path = kryon_cache_get_output_path(input_file, ".krb", true);
+            if (auto_krb_cache_path) {
+                output_file = auto_krb_cache_path;
+            } else {
+                // Fallback to old behavior on error
+                const char *dot = strrchr(input_file, '.');
+                if (dot && (strcmp(dot, ".kry") == 0 || strcmp(dot, ".kir") == 0 || strcmp(dot, ".krl") == 0)) {
+                    size_t len = dot - input_file;
+                    snprintf(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
+                } else {
+                    snprintf(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
+                }
+                output_file = output_buffer;
+            }
         }
-        output_file = output_buffer;
     }
 
     if (no_krb) {
@@ -925,6 +954,74 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
 
     KRYON_LOG_INFO("Read %ld bytes from %s", file_size, input_file);
     KRYON_LOG_DEBUG("Source preview (first 200 chars): %.200s%s", source, file_size > 200 ? "..." : "");
+
+    // --- Check if input is KRL file - convert to KIR first ---
+    char *temp_kir_file = NULL;
+    if (is_krl_input) {
+        KRYON_LOG_INFO("Transpiling KRL to KIR: %s", input_file);
+
+        // Generate temp KIR file path
+        if (no_cache) {
+            const char *dot = strrchr(input_file, '.');
+            if (dot) {
+                size_t len = dot - input_file;
+                char temp_buffer[256];
+                snprintf(temp_buffer, sizeof(temp_buffer), "%.*s.kir", (int)len, input_file);
+                temp_kir_file = strdup(temp_buffer);
+            }
+        } else {
+            temp_kir_file = kryon_cache_get_output_path(input_file, ".kir", true);
+        }
+
+        if (!temp_kir_file) {
+            KRYON_ERROR_SET(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_ERROR, "Failed to generate KIR output path");
+            result = KRYON_ERROR_OUT_OF_MEMORY;
+            goto cleanup;
+        }
+
+        // Convert KRL to KIR
+        if (!krl_compile_to_kir(input_file, temp_kir_file)) {
+            KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to transpile KRL to KIR");
+            result = KRYON_ERROR_COMPILATION_FAILED;
+            free(temp_kir_file);
+            goto cleanup;
+        }
+
+        KRYON_LOG_INFO("Generated KIR file: %s", temp_kir_file);
+
+        // Now treat it as KIR input
+        is_kir_input = true;
+        input_file = temp_kir_file;
+
+        // Re-read the generated KIR file
+        kryon_free(source);
+        file = fopen(input_file, "r");
+        if (!file) {
+            KRYON_ERROR_SET(KRYON_ERROR_FILE_NOT_FOUND, KRYON_SEVERITY_ERROR, "Cannot open generated KIR file");
+            result = KRYON_ERROR_FILE_NOT_FOUND;
+            free(temp_kir_file);
+            goto cleanup;
+        }
+
+        fseek(file, 0, SEEK_END);
+        file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        source = kryon_alloc(file_size + 1);
+        if (!source) {
+            KRYON_ERROR_SET(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_FATAL, "Memory allocation failed for KIR file");
+            result = KRYON_ERROR_OUT_OF_MEMORY;
+            fclose(file);
+            file = NULL;
+            free(temp_kir_file);
+            goto cleanup;
+        }
+
+        fread(source, 1, file_size, file);
+        source[file_size] = '\0';
+        fclose(file);
+        file = NULL;
+    }
 
     // --- Check if input is KIR file ---
     KryonASTNode *transformed_ast = NULL;
@@ -1083,7 +1180,15 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
 
         // Auto-generate KIR path if not specified
         if (!kir_path && no_krb) {
-            auto_kir_path = kryon_kir_get_output_path(input_file);
+            if (no_cache) {
+                auto_kir_path = kryon_kir_get_output_path(input_file);
+            } else {
+                auto_kir_path = kryon_cache_get_output_path(input_file, ".kir", true);
+                if (!auto_kir_path) {
+                    // Fallback to old behavior on error
+                    auto_kir_path = kryon_kir_get_output_path(input_file);
+                }
+            }
             kir_path = auto_kir_path;
         }
 
@@ -1172,6 +1277,7 @@ cleanup:
     if (file) fclose(file);
     if (base_dir) free(base_dir);
     if (auto_kir_path) free(auto_kir_path);
+    if (auto_krb_cache_path) free(auto_krb_cache_path);
     if (codegen) kryon_codegen_destroy(codegen);
     if (parser) kryon_parser_destroy(parser);
     if (lexer) kryon_lexer_destroy(lexer);

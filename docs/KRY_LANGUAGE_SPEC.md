@@ -13,22 +13,22 @@ KRY combines familiar CSS-like properties for styling with powerful widget eleme
 ```kry
 # CSS-like styles for appearance
 style "styleName" {
-    background: "#ffffff"
-    color: "#000000"
-    fontSize: 16
-    padding: 12
-    borderRadius: 6
+    background = "#ffffff"
+    color = "#000000"
+    fontSize = 16
+    padding = 12
+    borderRadius = 6
 }
 
 # Widget elements for layout and structure
 Widget {
-    property: value
-    style: "styleName"
-    
-    child: ChildWidget { }
-    
+    property = value
+    style = "styleName"
+
+    child = ChildWidget { }
+
     # Or multiple children
-    children: [
+    children = [
         ChildWidget1 { }
         ChildWidget2 { }
     ]
@@ -41,7 +41,7 @@ Widget {
 - **Boolean**: `true`, `false` (never quoted)
 - **Color**: `"#RRGGBBAA"`, `"#RGB"`, `"red"`, `"rgb(255,0,0)"`, `"hsl(120,50%,50%)"` (always quoted)
 - **Array**: `["item1", "item2", "item3"]`, `[1, 2, 3]`
-- **Object**: `{ key: value, key2: value2 }`
+- **Object**: `{ key = value, key2 = value2 }`
 - **Function**: `"functionName"` (quoted function reference)
 - **Variable**: `variableName` (used directly)
 - **String Interpolation**: `"text ${expression} more text"`
@@ -51,27 +51,27 @@ Widget {
 ### Style Definitions
 ```kry
 style "button" {
-    background: "#007AFF"
-    color: "#ffffff"
-    fontSize: 16
-    fontWeight: 600
-    borderRadius: 6
-    padding: "12px 24px"
-    border: "none"
-    cursor: "pointer"
-    transition: "all 0.2s ease"
+    background = "#007AFF"
+    color = "#ffffff"
+    fontSize = 16
+    fontWeight = 600
+    borderRadius = 6
+    padding = "12px 24px"
+    border = "none"
+    cursor = "pointer"
+    transition = "all 0.2s ease"
 }
 
 style "primaryButton" extends "button" {
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    background = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
 }
 
 style "card" {
-    background: "#ffffff"
-    borderRadius: 8
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-    padding: 16
-    border: "1px solid #e5e5e7"
+    background = "#ffffff"
+    borderRadius = 8
+    boxShadow = "0 2px 4px rgba(0,0,0,0.1)"
+    padding = 16
+    border = "1px solid #e5e5e7"
 }
 ```
 
@@ -112,57 +112,57 @@ style "card" {
 ```kry
 # Theme as organized variable groups
 theme colors {
-    primary: "#007AFF"
-    secondary: "#34C759"
-    success: "#30D158"
-    warning: "#FF9500"
-    error: "#FF3B30"
-    background: "#ffffff"
-    surface: "#f2f2f7"
-    text: "#000000"
-    textSecondary: "#8E8E93"
-    border: "#C6C6C8"
+    primary = "#007AFF"
+    secondary = "#34C759"
+    success = "#30D158"
+    warning = "#FF9500"
+    error = "#FF3B30"
+    background = "#ffffff"
+    surface = "#f2f2f7"
+    text = "#000000"
+    textSecondary = "#8E8E93"
+    border = "#C6C6C8"
 }
 
 theme spacing {
-    xs: 4
-    sm: 8
-    md: 16
-    lg: 24
-    xl: 32
-    xxl: 48
+    xs = 4
+    sm = 8
+    md = 16
+    lg = 24
+    xl = 32
+    xxl = 48
 }
 
 theme typography {
-    caption: 12
-    body: 16
-    subheading: 18
-    h3: 24
-    h2: 32
-    h1: 48
+    caption = 12
+    body = 16
+    subheading = 18
+    h3 = 24
+    h2 = 32
+    h1 = 48
 }
 
 theme radius {
-    sm: 4
-    md: 8
-    lg: 16
-    xl: 24
+    sm = 4
+    md = 8
+    lg = 16
+    xl = 24
 }
 ```
 
 ### Using Theme Variables
 ```kry
 style "primaryButton" {
-    background: colors.primary
-    color: colors.background
-    fontSize: typography.body
-    padding: spacing.sm spacing.md
-    borderRadius: radius.md
+    background = colors.primary
+    color = colors.background
+    fontSize = typography.body
+    padding = spacing.sm spacing.md
+    borderRadius = radius.md
 }
 
 Button {
-    style: "primaryButton"
-    text: "Click Me"
+    style = "primaryButton"
+    text = "Click Me"
 }
 ```
 
@@ -170,32 +170,32 @@ Button {
 ```kry
 # Define multiple themes
 theme light {
-    background: "#ffffff"
-    surface: "#f2f2f7"
-    text: "#000000"
-    textSecondary: "#8E8E93"
-    primary: "#007AFF"
+    background = "#ffffff"
+    surface = "#f2f2f7"
+    text = "#000000"
+    textSecondary = "#8E8E93"
+    primary = "#007AFF"
 }
 
 theme dark {
-    background: "#000000"
-    surface: "#1C1C1E"
-    text: "#ffffff"
-    textSecondary: "#8E8E93"
-    primary: "#0A84FF"
+    background = "#000000"
+    surface = "#1C1C1E"
+    text = "#ffffff"
+    textSecondary = "#8E8E93"
+    primary = "#0A84FF"
 }
 
 # App can switch themes
 App {
-    theme: "light"  # or "dark"
-    
+    theme = "light"  # or "dark"
+
     Container {
-        background: background
-        color: text
-        
+        background = background
+        color = text
+
         Button {
-            background: primary
-            color: background
+            background = primary
+            color = background
         }
     }
 }
@@ -204,9 +204,9 @@ App {
 ### Regular Variables (Existing)
 ```kry
 variables {
-    userName: String = "John Doe"
-    count: Int = 0
-    isLoggedIn: Boolean = false
+    userName = String = "John Doe"
+    count = Int = 0
+    isLoggedIn = Boolean = false
 }
 
 # Shorthand syntax
@@ -219,28 +219,28 @@ var maxItems = 10
 ### Column - Vertical Layout
 ```kry
 Column {
-    spacing: 16                    # Space between children
-    mainAxis: "start"              # start, center, end, spaceBetween, spaceAround, spaceEvenly
-    crossAxis: "center"            # start, center, end, stretch
-    
-    children: [
-        Text { text: "Item 1" }
-        Text { text: "Item 2" }
-        Text { text: "Item 3" }
+    spacing = 16                    # Space between children
+    mainAxis = "start"              # start, center, end, spaceBetween, spaceAround, spaceEvenly
+    crossAxis = "center"            # start, center, end, stretch
+
+    children = [
+        Text { text = "Item 1" }
+        Text { text = "Item 2" }
+        Text { text = "Item 3" }
     ]
 }
 ```
 
-### Row - Horizontal Layout  
+### Row - Horizontal Layout
 ```kry
 Row {
-    spacing: 8
-    mainAxis: "spaceBetween"
-    crossAxis: "center"
-    
-    children: [
-        Button { text: "Cancel" }
-        Button { text: "Save", style: "primaryButton" }
+    spacing = 8
+    mainAxis = "spaceBetween"
+    crossAxis = "center"
+
+    children = [
+        Button { text = "Cancel" }
+        Button { text = "Save", style = "primaryButton" }
     ]
 }
 ```
@@ -248,15 +248,15 @@ Row {
 ### Container - Basic Container
 ```kry
 Container {
-    width: 200
-    height: 100
-    background: colors.surface
-    borderRadius: radius.md
-    padding: spacing.md
-    
-    child: Text { 
-        text: "Hello, World!"
-        color: colors.text
+    width = 200
+    height = 100
+    background = colors.surface
+    borderRadius = radius.md
+    padding = spacing.md
+
+    child = Text {
+        text = "Hello, World!"
+        color = colors.text
     }
 }
 ```
@@ -264,9 +264,9 @@ Container {
 ### Center - Center Child
 ```kry
 Center {
-    child: Button {
-        text: "Centered Button"
-        style: "primaryButton"
+    child = Button {
+        text = "Centered Button"
+        style = "primaryButton"
     }
 }
 ```
@@ -274,10 +274,10 @@ Center {
 ### Spacer - Flexible Space
 ```kry
 Row {
-    children: [
-        Text { text: "Left" }
+    children = [
+        Text { text = "Left" }
         Spacer {}  # Pushes content apart
-        Text { text: "Right" }
+        Text { text = "Right" }
     ]
 }
 ```
@@ -285,16 +285,16 @@ Row {
 ### Flex - Flexible Layout
 ```kry
 Flex {
-    direction: "row"      # row, column
-    wrap: "nowrap"        # nowrap, wrap
-    align: "center"       # start, center, end, stretch
-    justify: "spaceBetween" # start, center, end, spaceBetween, spaceAround, spaceEvenly
-    gap: 12
-    
-    children: [
-        Container { flex: 1, background: colors.primary }
-        Container { flex: 2, background: colors.secondary }  
-        Container { flex: 1, background: colors.success }
+    direction = "row"      # row, column
+    wrap = "nowrap"        # nowrap, wrap
+    align = "center"       # start, center, end, stretch
+    justify = "spaceBetween" # start, center, end, spaceBetween, spaceAround, spaceEvenly
+    gap = 12
+
+    children = [
+        Container { flex = 1, background = colors.primary }
+        Container { flex = 2, background = colors.secondary }
+        Container { flex = 1, background = colors.success }
     ]
 }
 ```
@@ -304,42 +304,42 @@ Flex {
 ### Text - Text Display
 ```kry
 Text {
-    text: "Hello, World!"
-    fontSize: typography.body
-    fontWeight: 600
-    color: colors.text
-    textAlign: "center"
+    text = "Hello, World!"
+    fontSize = typography.body
+    fontWeight = 600
+    color = colors.text
+    textAlign = "center"
 }
 ```
 
 ### Button - Interactive Button
 ```kry
 Button {
-    text: "Click Me"
-    style: "primaryButton"
-    onClick: "handleClick"
-    disabled: false
+    text = "Click Me"
+    style = "primaryButton"
+    onClick = "handleClick"
+    disabled = false
 }
 ```
 
 ### Image - Image Display
 ```kry
 Image {
-    src: "avatar.jpg"
-    width: 100
-    height: 100
-    borderRadius: radius.xl
-    objectFit: "cover"  # cover, contain, fill
+    src = "avatar.jpg"
+    width = 100
+    height = 100
+    borderRadius = radius.xl
+    objectFit = "cover"  # cover, contain, fill
 }
 ```
 
 ### Input - Text Input
 ```kry
 Input {
-    placeholder: "Enter your name"
-    value: userName
-    onChange: "handleNameChange"
-    style: "inputField"
+    placeholder = "Enter your name"
+    value = userName
+    onChange = "handleNameChange"
+    style = "inputField"
 }
 ```
 
@@ -348,84 +348,84 @@ Input {
 ```kry
 # Theme variables
 theme colors {
-    primary: "#007AFF"
-    background: "#ffffff"
-    surface: "#f2f2f7"
-    text: "#000000"
-    border: "#e5e5e7"
+    primary = "#007AFF"
+    background = "#ffffff"
+    surface = "#f2f2f7"
+    text = "#000000"
+    border = "#e5e5e7"
 }
 
 theme spacing {
-    sm: 8
-    md: 16
-    lg: 24
+    sm = 8
+    md = 16
+    lg = 24
 }
 
 # Styles
 style "card" {
-    background: colors.surface
-    borderRadius: 12
-    padding: spacing.lg
-    border: "1px solid ${colors.border}"
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+    background = colors.surface
+    borderRadius = 12
+    padding = spacing.lg
+    border = "1px solid ${colors.border}"
+    boxShadow = "0 2px 8px rgba(0,0,0,0.1)"
 }
 
 style "primaryButton" {
-    background: colors.primary
-    color: colors.background
-    fontSize: 16
-    fontWeight: 600
-    borderRadius: 8
-    padding: spacing.sm spacing.md
-    border: "none"
-    cursor: "pointer"
+    background = colors.primary
+    color = colors.background
+    fontSize = 16
+    fontWeight = 600
+    borderRadius = 8
+    padding = spacing.sm spacing.md
+    border = "none"
+    cursor = "pointer"
 }
 
 # Layout with widgets + styles
 App {
-    windowWidth: 800
-    windowHeight: 600
-    background: colors.background
-    
+    windowWidth = 800
+    windowHeight = 600
+    background = colors.background
+
     Center {
-        child: Container {
-            style: "card"
-            width: 400
-            
+        child = Container {
+            style = "card"
+            width = 400
+
             Column {
-                spacing: spacing.md
-                
+                spacing = spacing.md
+
                 Text {
-                    text: "User Profile"
-                    fontSize: 24
-                    fontWeight: 700
-                    color: colors.text
+                    text = "User Profile"
+                    fontSize = 24
+                    fontWeight = 700
+                    color = colors.text
                 }
-                
+
                 Row {
-                    spacing: spacing.sm
-                    crossAxis: "center"
-                    
+                    spacing = spacing.sm
+                    crossAxis = "center"
+
                     Image {
-                        src: "avatar.jpg"
-                        width: 60
-                        height: 60
-                        borderRadius: 30
+                        src = "avatar.jpg"
+                        width = 60
+                        height = 60
+                        borderRadius = 30
                     }
-                    
+
                     Column {
-                        spacing: 4
-                        
-                        Text { text: "John Doe", fontWeight: 600 }
-                        Text { text: "Designer", color: colors.textSecondary }
+                        spacing = 4
+
+                        Text { text = "John Doe", fontWeight = 600 }
+                        Text { text = "Designer", color = colors.textSecondary }
                     }
-                    
+
                     Spacer {}
-                    
+
                     Button {
-                        text: "Edit"
-                        style: "primaryButton"
-                        onClick: "handleEdit"
+                        text = "Edit"
+                        style = "primaryButton"
+                        onClick = "handleEdit"
                     }
                 }
             }
@@ -439,37 +439,37 @@ App {
 ### Style Inheritance
 ```kry
 style "button" {
-    fontSize: 16
-    padding: "8px 16px"
-    borderRadius: 6
-    border: "none"
-    cursor: "pointer"
+    fontSize = 16
+    padding = "8px 16px"
+    borderRadius = 6
+    border = "none"
+    cursor = "pointer"
 }
 
 style "primaryButton" extends "button" {
-    background: colors.primary
-    color: colors.background
+    background = colors.primary
+    color = colors.background
 }
 
 style "secondaryButton" extends "button" {
-    background: "transparent"
-    color: colors.primary
-    border: "1px solid ${colors.primary}"
+    background = "transparent"
+    color = colors.primary
+    border = "1px solid ${colors.primary}"
 }
 ```
 
 ### Responsive Properties
 ```kry
 Container {
-    width: {
-        mobile: "100%"
-        tablet: 600
-        desktop: 800
+    width = {
+        mobile = "100%"
+        tablet = 600
+        desktop = 800
     }
-    padding: {
-        mobile: spacing.sm
-        tablet: spacing.md
-        desktop: spacing.lg
+    padding = {
+        mobile = spacing.sm
+        tablet = spacing.md
+        desktop = spacing.lg
     }
 }
 ```
@@ -477,9 +477,9 @@ Container {
 ### Conditional Styling
 ```kry
 Button {
-    text: "Submit"
-    style: isValid ? "primaryButton" : "disabledButton"
-    disabled: !isValid
+    text = "Submit"
+    style = isValid ? "primaryButton" : "disabledButton"
+    disabled = !isValid
 }
 ```
 
@@ -585,17 +585,17 @@ For simple cases, use a string reference to the function name:
 
 ```kry
 Button {
-    text: "Click Me"
-    onClick: "handleClick"
-    onMouseEnter: "handleHover"
-    onMouseLeave: "handleUnhover"
+    text = "Click Me"
+    onClick = "handleClick"
+    onMouseEnter = "handleHover"
+    onMouseLeave = "handleUnhover"
 }
 
 Input {
-    value: inputValue
-    onChange: "handleInputChange"
-    onFocus: "handleFocus"
-    onBlur: "handleBlur"
+    value = inputValue
+    onChange = "handleInputChange"
+    onFocus = "handleFocus"
+    onBlur = "handleBlur"
 }
 ```
 
@@ -604,23 +604,23 @@ For advanced scenarios with parameters, async handling, or event options:
 
 ```kry
 Button {
-    text: "Submit Form"
-    onClick: {
-        handler: "submitForm"
-        args: ["userId", "formData"]
-        async: true
-        preventDefault: true
-        debounce: 300
+    text = "Submit Form"
+    onClick = {
+        handler = "submitForm"
+        args = ["userId", "formData"]
+        async = true
+        preventDefault = true
+        debounce = 300
     }
 }
 
 Button {
-    text: "Delete Item"
-    onClick: {
-        handler: "deleteItem"
-        args: [itemId]
-        confirm: "Are you sure you want to delete this item?"
-        async: true
+    text = "Delete Item"
+    onClick = {
+        handler = "deleteItem"
+        args = [itemId]
+        confirm = "Are you sure you want to delete this item?"
+        async = true
     }
 }
 ```
@@ -695,24 +695,24 @@ Button {
 ```kry
 # Define themes
 theme light {
-    background: "#ffffff"
-    text: "#000000" 
-    primary: "#007AFF"
+    background = "#ffffff"
+    text = "#000000"
+    primary = "#007AFF"
 }
 
 theme dark {
-    background: "#000000"
-    text: "#ffffff"
-    primary: "#0A84FF" 
+    background = "#000000"
+    text = "#ffffff"
+    primary = "#0A84FF"
 }
 
 # App-level theme switching
 App {
-    theme: currentTheme  # reactive variable controls active theme
-    
+    theme = currentTheme  # reactive variable controls active theme
+
     Container {
-        background: background  # automatically uses active theme
-        color: text
+        background = background  # automatically uses active theme
+        color = text
     }
 }
 
@@ -731,12 +731,12 @@ When the same property is defined in multiple places, KRY follows this precedenc
 3. **Theme Variables** (lowest precedence)
 
 ```kry
-style "button" { fontSize: 16, color: "blue" }
+style "button" { fontSize = 16, color = "blue" }
 
 Button {
-    style: "button"
-    fontSize: 20      # Widget property OVERRIDES style property
-    text: "Click"     # Final: fontSize=20, color="blue"
+    style = "button"
+    fontSize = 20      # Widget property OVERRIDES style property
+    text = "Click"     # Final: fontSize=20, color="blue"
 }
 ```
 

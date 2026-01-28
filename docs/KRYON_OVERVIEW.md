@@ -112,76 +112,76 @@ Kryon is a cross-platform UI framework that combines the familiar styling power 
 ```kry
 # Enhanced theme variables (organized variable groups)
 theme colors {
-    primary: "#007AFF"
-    secondary: "#34C759"
-    background: "#ffffff"
-    text: "#000000"
-    border: "#e5e5e7"
+    primary = "#007AFF"
+    secondary = "#34C759"
+    background = "#ffffff"
+    text = "#000000"
+    border = "#e5e5e7"
 }
 
 theme spacing {
-    sm: 8
-    md: 16
-    lg: 24
+    sm = 8
+    md = 16
+    lg = 24
 }
 
 # CSS-like styles with theme variables
 style "card" {
-    background: colors.background
-    borderRadius: 12
-    padding: spacing.lg
-    border: "1px solid ${colors.border}"
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+    background = colors.background
+    borderRadius = 12
+    padding = spacing.lg
+    border = "1px solid ${colors.border}"
+    boxShadow = "0 2px 8px rgba(0,0,0,0.1)"
 }
 
 style "primaryButton" {
-    background: colors.primary
-    color: colors.background
-    fontSize: 16
-    fontWeight: 600
-    borderRadius: 8
-    padding: spacing.sm pacing.md
-    border: "none"
-    cursor: "pointer"
-    transition: "all 0.2s ease"
+    background = colors.primary
+    color = colors.background
+    fontSize = 16
+    fontWeight = 600
+    borderRadius = 8
+    padding = spacing.sm spacing.md
+    border = "none"
+    cursor = "pointer"
+    transition = "all 0.2s ease"
 }
 
 # Widget layout for structure
 App {
-    windowWidth: 800
-    windowHeight: 600
-    background: colors.background
-    
+    windowWidth = 800
+    windowHeight = 600
+    background = colors.background
+
     Center {
-        child: Container {
-            style: "card"
-            width: 400
-            
+        child = Container {
+            style = "card"
+            width = 400
+
             Column {
-                spacing: spacing.md
-                
+                spacing = spacing.md
+
                 Text {
-                    text: "Smart Hybrid Demo"
-                    fontSize: 24
-                    fontWeight: 700
-                    color: colors.text
+                    text = "Smart Hybrid Demo"
+                    fontSize = 24
+                    fontWeight = 700
+                    color = colors.text
                 }
-                
+
                 Row {
-                    spacing: spacing.sm
-                    mainAxis: "spaceBetween"
-                    
+                    spacing = spacing.sm
+                    mainAxis = "spaceBetween"
+
                     Button {
-                        text: "Cancel"
-                        background: "transparent"
-                        color: colors.text
-                        border: "1px solid ${colors.border}"
+                        text = "Cancel"
+                        background = "transparent"
+                        color = colors.text
+                        border = "1px solid ${colors.border}"
                     }
-                    
+
                     Button {
-                        text: "Save"
-                        style: "primaryButton"
-                        onClick: "handleSave"
+                        text = "Save"
+                        style = "primaryButton"
+                        onClick = "handleSave"
                     }
                 }
             }

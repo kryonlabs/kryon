@@ -728,12 +728,12 @@ Optional metadata can be attached to any node for decompilation hints:
 **Source** (`button.kry`):
 ```kry
 Button {
-  text: "Click Me"
-  backgroundColor: #007BFF
-  onClick: handleClick
+  text = "Click Me"
+  backgroundColor = #007BFF
+  onClick = handleClick
 }
 
-@function js handleClick() {
+function "js" handleClick() {
   console.log("Button clicked");
 }
 ```
@@ -810,23 +810,23 @@ Button {
 
 **Source** (`counter.kry`):
 ```kry
-@component Counter(initialValue: 0) {
-  @state count: initialValue
+component Counter(initialValue = 0) {
+  state count = initialValue
 
-  @function js increment() {
+  function "js" increment() {
     this.count += 1;
   }
 
   Container {
-    Text { text: "Count: ${count}" }
+    Text { text = "Count: ${count}" }
     Button {
-      text: "Increment"
-      onClick: increment
+      text = "Increment"
+      onClick = increment
     }
   }
 }
 
-Counter { initialValue: 5 }
+Counter { initialValue = 5 }
 ```
 
 **KIR** (component instance **expanded**):
@@ -924,12 +924,12 @@ Counter { initialValue: 5 }
 
 **Source**:
 ```kry
-@const colors: ["red", "green", "blue"]
+const colors = ["red", "green", "blue"]
 
-@const_for color in colors {
+const_for color in colors {
   Button {
-    text: color
-    backgroundColor: color
+    text = color
+    backgroundColor = color
   }
 }
 ```

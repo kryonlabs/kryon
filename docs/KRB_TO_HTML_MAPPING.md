@@ -12,15 +12,15 @@ KRY style definitions map directly to CSS classes:
 
 ```kry
 style "primaryButton" {
-    background: "#007AFF"
-    color: "#ffffff"
-    fontSize: 16
-    fontWeight: 600
-    borderRadius: 6
-    padding: "12px 24px"
-    border: "none"
-    cursor: "pointer"
-    transition: "all 0.2s ease"
+    background = "#007AFF"
+    color = "#ffffff"
+    fontSize = 16
+    fontWeight = 600
+    borderRadius = 6
+    padding = "12px 24px"
+    border = "none"
+    cursor = "pointer"
+    transition = "all 0.2s ease"
 }
 ```
 
@@ -44,16 +44,16 @@ Maps to:
 
 ```kry
 style "button" {
-    fontSize: 16
-    padding: "8px 16px"
-    borderRadius: 6
-    border: "none"
-    cursor: "pointer"
+    fontSize = 16
+    padding = "8px 16px"
+    borderRadius = 6
+    border = "none"
+    cursor = "pointer"
 }
 
 style "primaryButton" extends "button" {
-    background: "#007AFF"
-    color: "#ffffff"
+    background = "#007AFF"
+    color = "#ffffff"
 }
 ```
 
@@ -87,16 +87,16 @@ Maps to:
 
 ```kry
 theme colors {
-    primary: "#007AFF"
-    secondary: "#34C759"
-    background: "#ffffff"
-    text: "#000000"
+    primary = "#007AFF"
+    secondary = "#34C759"
+    background = "#ffffff"
+    text = "#000000"
 }
 
 theme spacing {
-    sm: 8
-    md: 16
-    lg: 24
+    sm = 8
+    md = 16
+    lg = 24
 }
 ```
 
@@ -118,9 +118,9 @@ Maps to:
 
 ```kry
 style "card" {
-    background: colors.background
-    color: colors.text
-    padding: spacing.md
+    background = colors.background
+    color = colors.text
+    padding = spacing.md
 }
 ```
 
@@ -138,13 +138,13 @@ Maps to:
 
 ```kry
 theme light {
-    background: "#ffffff"
-    text: "#000000"
+    background = "#ffffff"
+    text = "#000000"
 }
 
 theme dark {
-    background: "#000000"
-    text: "#ffffff"
+    background = "#000000"
+    text = "#ffffff"
 }
 ```
 
@@ -190,54 +190,54 @@ Maps to:
 
 ```kry
 theme colors {
-    primary: "#007AFF"
-    background: "#ffffff"
-    text: "#000000"
+    primary = "#007AFF"
+    background = "#ffffff"
+    text = "#000000"
 }
 
 theme spacing {
-    sm: 8
-    md: 16
+    sm = 8
+    md = 16
 }
 
 style "card" {
-    background: colors.background
-    borderRadius: 8
-    padding: spacing.md
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+    background = colors.background
+    borderRadius = 8
+    padding = spacing.md
+    boxShadow = "0 2px 4px rgba(0,0,0,0.1)"
 }
 
 style "primaryButton" {
-    background: colors.primary
-    color: colors.background
-    fontSize: 16
-    padding: spacing.sm spacing.md
-    borderRadius: 6
-    border: "none"
+    background = colors.primary
+    color = colors.background
+    fontSize = 16
+    padding = spacing.sm spacing.md
+    borderRadius = 6
+    border = "none"
 }
 
 App {
-    windowWidth: 800
-    windowHeight: 600
-    
+    windowWidth = 800
+    windowHeight = 600
+
     Center {
-        child: Container {
-            style: "card"
-            width: 400
-            
+        child = Container {
+            style = "card"
+            width = 400
+
             Column {
-                spacing: spacing.md
-                
+                spacing = spacing.md
+
                 Text {
-                    text: "Hello, World!"
-                    fontSize: 24
-                    color: colors.text
+                    text = "Hello, World!"
+                    fontSize = 24
+                    color = colors.text
                 }
-                
+
                 Button {
-                    text: "Click Me"
-                    style: "primaryButton"
-                    onClick: "handleClick"
+                    text = "Click Me"
+                    style = "primaryButton"
+                    onClick = "handleClick"
                 }
             }
         }
@@ -341,9 +341,9 @@ App {
 
 ```kry
 Column {
-    spacing: 16
-    mainAxis: "center"
-    crossAxis: "stretch"
+    spacing = 16
+    mainAxis = "center"
+    crossAxis = "stretch"
 }
 ```
 
@@ -366,9 +366,9 @@ Maps to:
 
 ```kry
 Row {
-    spacing: 8
-    mainAxis: "spaceBetween"
-    crossAxis: "center"
+    spacing = 8
+    mainAxis = "spaceBetween"
+    crossAxis = "center"
 }
 ```
 
@@ -388,10 +388,10 @@ Maps to:
 
 ```kry
 Flex {
-    direction: "row"
-    align: "center"
-    justify: "spaceBetween"
-    gap: 12
+    direction = "row"
+    align = "center"
+    justify = "spaceBetween"
+    gap = 12
 }
 ```
 
@@ -413,15 +413,15 @@ Maps to:
 
 ```kry
 Container {
-    width: {
-        mobile: "100%"
-        tablet: 600
-        desktop: 800
+    width = {
+        mobile = "100%"
+        tablet = 600
+        desktop = 800
     }
-    padding: {
-        mobile: spacing.sm
-        tablet: spacing.md
-        desktop: spacing.lg
+    padding = {
+        mobile = spacing.sm
+        tablet = spacing.md
+        desktop = spacing.lg
     }
 }
 ```
@@ -516,13 +516,13 @@ prefersDark.addEventListener('change', (e) => {
 
 ```kry
 Button {
-    onClick: "handleClick"
-    onMouseEnter: "handleHover"
+    onClick = "handleClick"
+    onMouseEnter = "handleHover"
 }
 
 Input {
-    onChange: "handleChange"
-    onFocus: "handleFocus"
+    onChange = "handleChange"
+    onFocus = "handleFocus"
 }
 ```
 
@@ -543,8 +543,8 @@ Maps to:
 Identical styles are automatically deduplicated:
 
 ```kry
-style "button1" { background: "#007AFF" }
-style "button2" { background: "#007AFF" }
+style "button1" { background = "#007AFF" }
+style "button2" { background = "#007AFF" }
 ```
 
 Results in single CSS rule:

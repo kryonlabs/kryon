@@ -5,7 +5,7 @@ style "base" {
     borderWidth = 1
 }
 
-function handleButtonClick() {
+function "rc" handleButtonClick() {
     print("🎯 Button clicked! Hello from the scripting runtime!")
 }
 

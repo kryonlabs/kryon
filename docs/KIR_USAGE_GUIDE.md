@@ -349,7 +349,7 @@ Complete cycle demonstrating lossless preservation:
 
 ```bash
 # Start with source
-echo "Button { text = \"Hello\" }" > original.kry
+echo 'Button { text = "Hello" }' > original.kry
 
 # 1. Compile to KIR + KRB
 kryon compile original.kry --kir-output original.kir

@@ -77,11 +77,6 @@ typedef enum {
     KRYON_AST_SLOTS,                 // @slots block
     KRYON_AST_LIFECYCLE,             // @lifecycle block
     
-    // Legacy (deprecated)
-    KRYON_AST_DEFINE,                // Define custom element (deprecated)
-    KRYON_AST_PROPERTIES,            // Properties block (deprecated)
-    KRYON_AST_SCRIPT,                // @script block
-    
     // Expressions
     KRYON_AST_LITERAL,               // String, number, boolean literals
     KRYON_AST_VARIABLE,              // $variable

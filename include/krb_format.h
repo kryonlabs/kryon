@@ -38,8 +38,9 @@ typedef struct KryonKrbWriter KryonKrbWriter;
 // =============================================================================
 
 #define KRYON_KRB_MAGIC 0x4B52594E  // "KRYN" in big-endian
-#define KRYON_KRB_VERSION_MAJOR 1
-#define KRYON_KRB_VERSION_MINOR 0
+#define KRYON_KRB_VERSION "alpha"
+#define KRYON_KRB_VERSION_MAJOR 0
+#define KRYON_KRB_VERSION_MINOR 1
 #define KRYON_KRB_VERSION_PATCH 0
 
 #define KRYON_KRB_MAX_NESTING_DEPTH 256

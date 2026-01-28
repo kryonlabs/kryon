@@ -219,21 +219,15 @@ static bool parse_header(KryonKrbReader *reader, KryonKrbHeader *header) {
         return false;
     }
     
-    // Read version
+    // Read version (validation removed for alpha)
     if (!read_uint16(reader, &header->version_major) ||
         !read_uint16(reader, &header->version_minor) ||
         !read_uint16(reader, &header->version_patch)) {
         return false;
     }
-    
-    // Check version compatibility
-    if (header->version_major > KRYON_KRB_VERSION_MAJOR) {
-        snprintf(reader->error_message, sizeof(reader->error_message),
-                "Unsupported version: %d.%d.%d (maximum supported: %d.%d.%d)",
-                header->version_major, header->version_minor, header->version_patch,
-                KRYON_KRB_VERSION_MAJOR, KRYON_KRB_VERSION_MINOR, KRYON_KRB_VERSION_PATCH);
-        return false;
-    }
+
+    // Version validation removed - accepting any version during alpha phase
+    // All KRB files are compatible during alpha development
     
     // Read remaining header fields
     if (!read_uint16(reader, &header->flags) ||

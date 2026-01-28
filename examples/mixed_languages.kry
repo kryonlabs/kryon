@@ -7,7 +7,7 @@ var rcOps = 0
 var message = ""
 
 // Native Kryon function - fast, simple
-function incrementNative() {
+function "rc" incrementNative() {
     count += 1
     nativeOps += 1
     message = "Incremented using native Kryon"
@@ -27,7 +27,7 @@ function "rc" incrementRC() {
 }
 
 // Native Kryon function - direct manipulation
-function decrementNative() {
+function "rc" decrementNative() {
     count -= 1
     nativeOps += 1
     message = "Decremented using native Kryon"
@@ -47,7 +47,7 @@ function "rc" decrementRC() {
 }
 
 // Native Kryon function - fast reset
-function resetNative() {
+function "rc" resetNative() {
     count = 0
     message = "Reset using native Kryon"
     nativeOps += 1
@@ -64,7 +64,7 @@ function "rc" resetRC() {
 }
 
 // Native Kryon function - clear stats
-function clearStats() {
+function "rc" clearStats() {
     nativeOps = 0
     rcOps = 0
     message = "Statistics cleared"

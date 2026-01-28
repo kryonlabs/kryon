@@ -335,7 +335,32 @@ static KryonASTNode *parse_document(KryonParser *parser) {
         KryonASTNode *node = NULL;
         const KryonToken *current = peek(parser);
         printf("[DEBUG] Processing token type %d at index %zu\n", current->type, parser->current_token);
-        
+
+        // Check for invalid @if or @for usage
+        if (check_token(parser, KRYON_TOKEN_AT)) {
+            advance(parser); // consume @
+
+            if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
+                parser_error(parser,
+                    "@ prefix not allowed for runtime 'if'. "
+                    "Use bare 'if' for runtime conditionals. "
+                    "For compile-time, use @const_if.");
+                return NULL;
+            }
+
+            if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
+                parser_error(parser,
+                    "@ prefix not allowed for runtime 'for'. "
+                    "Use bare 'for' for runtime loops. "
+                    "For compile-time, use @const_for.");
+                return NULL;
+            }
+
+            // For other directives after @, continue normal processing
+            // The next iteration will handle the directive token
+            continue;
+        }
+
         if (check_token(parser, KRYON_TOKEN_STYLE_DIRECTIVE) ||
             check_token(parser, KRYON_TOKEN_STYLES_DIRECTIVE)) {
             printf("[DEBUG] Parsing style block\n");
@@ -1429,12 +1454,26 @@ static KryonASTNode *parse_onload_directive(KryonParser *parser) {
     const KryonToken *onload_token = advance(parser);
     printf("[DEBUG] parse_onload_directive: Found lifecycle directive\n");
     
-    const KryonToken *language_token = NULL;
-    if (check_token(parser, KRYON_TOKEN_STRING)) {
-        language_token = advance(parser);
-        printf("[DEBUG] parse_onload_directive: Language: %s\n", language_token->value.string_value);
-    } else {
-        printf("[DEBUG] parse_onload_directive: No language specified (default)\n");
+    // REQUIRED language specification for lifecycle directives
+    if (!check_token(parser, KRYON_TOKEN_STRING)) {
+        parser_error(parser,
+            "Language specification required for lifecycle directive. "
+            "Use @on_mount \"rc\" { ... } for rc shell or "
+            "@on_mount \"\" { ... } for native Kryon.");
+        return NULL;
+    }
+
+    const KryonToken *language_token = advance(parser);
+    printf("[DEBUG] parse_onload_directive: Language: %s\n", language_token->value.string_value);
+
+    // Validate language identifier
+    if (!is_supported_language(language_token->value.string_value)) {
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+                "Unsupported language: '%s'. Supported languages: '', 'rc', 'js', 'lua'",
+                language_token->value.string_value);
+        parser_error(parser, error_msg);
+        return NULL;
     }
 
     // Expect opening brace for script content
@@ -1529,7 +1568,8 @@ static KryonASTNode *parse_onload_directive(KryonParser *parser) {
     }
     
     // Store language and code in script structure
-    onload_node->data.script.language = kryon_strdup(language_token ? language_token->value.string_value : "");
+    // Language is now mandatory, always present
+    onload_node->data.script.language = kryon_strdup(language_token->value.string_value);
     onload_node->data.script.code = script_code;
     
     printf("[DEBUG] parse_onload_directive: Created onload node with lang='%s', code_len=%zu\n",
@@ -1805,21 +1845,27 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
     const KryonToken *function_token = advance(parser);
     printf("[DEBUG] parse_function_definition: Found function directive\n");
     
-    // Optional language string (defaults to empty if omitted)
-    const KryonToken *language_token = NULL;
-    if (check_token(parser, KRYON_TOKEN_STRING)) {
-        language_token = advance(parser);
-        printf("[DEBUG] parse_function_definition: Language: %s\n", language_token->value.string_value);
+    // REQUIRED language string
+    if (!check_token(parser, KRYON_TOKEN_STRING)) {
+        parser_error(parser,
+            "Language specification required for function. "
+            "Use function \"rc\" name() {} for rc shell, "
+            "function \"\" name() {} for native Kryon, "
+            "or function \"js\"/\"lua\" for other languages.");
+        return NULL;
+    }
 
-        // Validate language identifier
-        if (!is_supported_language(language_token->value.string_value)) {
-            char error_msg[256];
-            snprintf(error_msg, sizeof(error_msg),
-                    "Unsupported language: '%s'. Supported languages: '', 'rc', 'js', 'lua'",
-                    language_token->value.string_value);
-            parser_error(parser, error_msg);
-            // Continue with warning - store the language anyway for debugging
-        }
+    const KryonToken *language_token = advance(parser);
+    printf("[DEBUG] parse_function_definition: Language: %s\n", language_token->value.string_value);
+
+    // Validate language identifier
+    if (!is_supported_language(language_token->value.string_value)) {
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+                "Unsupported language: '%s'. Supported languages: '', 'rc', 'js', 'lua'",
+                language_token->value.string_value);
+        parser_error(parser, error_msg);
+        return NULL;  // Hard error, not warning
     }
 
     // Expect function name
@@ -1841,11 +1887,8 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
     }
     printf("[DEBUG] parse_function_definition: Created function node\n");
     
-    if (language_token) {
-        func_def->data.function_def.language = kryon_strdup(language_token->value.string_value);
-    } else {
-        func_def->data.function_def.language = kryon_strdup("");
-    }
+    // Language is now mandatory, always present
+    func_def->data.function_def.language = kryon_strdup(language_token->value.string_value);
     func_def->data.function_def.name = kryon_token_copy_lexeme(name_token);
     func_def->data.function_def.parameters = NULL;
     func_def->data.function_def.parameter_count = 0;
