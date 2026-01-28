@@ -500,6 +500,82 @@ function calculateTotal(items) {
 }
 ```
 
+### Multi-Language Function Support
+
+Kryon supports multiple scripting languages for functions. Specify the language using a string literal before the function name:
+
+#### Syntax
+```kry
+function "language-id" functionName(params) {
+    // code in specified language
+}
+```
+
+#### Supported Languages
+
+- **`""` (empty) or omitted** - Native Kryon scripting (default)
+- **`"rc"`** - rc shell (Plan 9/Inferno shell)
+- **`"js"`** - JavaScript (reserved for future use)
+- **`"lua"`** - Lua (reserved for future use)
+
+#### Examples
+
+**Native Kryon function** (default):
+```kry
+function increment() {
+    count += 1
+}
+```
+
+**rc shell function**:
+```kry
+function "rc" handleClick() {
+    echo Button clicked!
+}
+```
+
+**rc shell with variable access**:
+```kry
+function "rc" increment() {
+    count=`{kryonget count}
+    count=`{expr $count + 1}
+    kryonset count $count
+}
+```
+
+**Mixing languages in one file**:
+```kry
+var count = 0
+
+// Native Kryon
+function resetNative() {
+    count = 0
+}
+
+// rc shell
+function "rc" resetRC() {
+    kryonset count 0
+}
+```
+
+#### Built-in Commands for Shell Functions
+
+When using rc shell functions, these commands are available for interacting with Kryon state:
+
+- **`kryonget varname`** - Get the value of a Kryon variable
+- **`kryonset varname value`** - Set a Kryon variable to a value
+
+#### Language Selection Guidelines
+
+- Use **native Kryon** for most application logic (simpler, more direct)
+- Use **rc shell** when you need to:
+  - Call system commands
+  - Use shell utilities (grep, sed, awk, etc.)
+  - Integrate with TaijiOS/Inferno services
+  - Leverage existing shell scripts
+
+For more details on using rc shell in Kryon, see the [RC Shell Guide](RC_SHELL_GUIDE.md).
+
 ### Event Handling
 
 KRY supports two forms of event handler syntax:

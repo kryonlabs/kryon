@@ -11,6 +11,7 @@
  
  extern int compile_command(int argc, char *argv[]);
  extern int decompile_command(int argc, char *argv[]);
+ extern int print_command(int argc, char *argv[]);
  extern int run_command(int argc, char *argv[]);
  extern int dev_command(int argc, char *argv[]);
  extern int debug_command(int argc, char *argv[]);
@@ -22,6 +23,7 @@
      printf("Commands:\n");
      printf("  compile <file.kry>     Compile KRY file to KRB binary\n");
      printf("  decompile <file.krb>   Decompile KRB binary to KIR format\n");
+     printf("  print <file.kir>       Generate readable .kry source from KIR\n");
      printf("  run <file.krb>         Run KRB application\n");
      printf("  dev <file.kry>         Development mode with hot reload\n");
      printf("  debug <file.krb>       Debug KRB application\n");
@@ -74,6 +76,8 @@
          return compile_command(argc - 1, argv + 1);
     } else if (strcmp(command, "decompile") == 0) {
         return decompile_command(argc - 1, argv + 1);
+    } else if (strcmp(command, "print") == 0) {
+        return print_command(argc - 1, argv + 1);
      } else if (strcmp(command, "run") == 0) {
          return run_command(argc - 1, argv + 1);
      } else if (strcmp(command, "dev") == 0) {

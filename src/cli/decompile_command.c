@@ -57,7 +57,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
                 printf("  -h, --help           Show this help message\n");
                 return KRYON_SUCCESS;
             default:
-                return KRYON_ERROR_INVALID_ARGUMENTS;
+                return KRYON_ERROR_INVALID_ARGUMENT;
         }
     }
 
@@ -65,7 +65,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
     if (optind >= argc) {
         fprintf(stderr, "Error: No input file specified\n");
         fprintf(stderr, "Usage: kryon decompile <input.krb> [-o output.kir]\n");
-        return KRYON_ERROR_INVALID_ARGUMENTS;
+        return KRYON_ERROR_INVALID_ARGUMENT;
     }
 
     input_file = argv[optind];
