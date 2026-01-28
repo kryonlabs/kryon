@@ -67,7 +67,8 @@ COMPILER_SRC = $(SRC_DIR)/compiler/lexer/unicode.c \
                $(SRC_DIR)/compiler/expansion/expansion_context.c \
                $(SRC_DIR)/compiler/kir/kir_writer.c \
                $(SRC_DIR)/compiler/kir/kir_reader.c \
-               $(SRC_DIR)/compiler/kir/kir_utils.c
+               $(SRC_DIR)/compiler/kir/kir_utils.c \
+               $(SRC_DIR)/compiler/krb/krb_decompiler.c
 
 RUNTIME_SRC = $(SRC_DIR)/runtime/core/runtime.c \
               $(SRC_DIR)/runtime/core/validation.c \
@@ -133,6 +134,7 @@ RENDERERS_SRC += $(SRC_DIR)/renderers/html/html_renderer.c \
 CLI_SRC = $(SRC_DIR)/cli/main.c \
           $(SRC_DIR)/cli/run_command.c \
           $(SRC_DIR)/cli/compile_command.c \
+          $(SRC_DIR)/cli/decompile_command.c \
           $(SRC_DIR)/cli/debug_command.c \
           $(SRC_DIR)/cli/package_command.c \
           $(SRC_DIR)/cli/dev_command.c

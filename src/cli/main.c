@@ -10,6 +10,7 @@
  #define KRYON_VERSION "v1.0.0"
  
  extern int compile_command(int argc, char *argv[]);
+ extern int decompile_command(int argc, char *argv[]);
  extern int run_command(int argc, char *argv[]);
  extern int dev_command(int argc, char *argv[]);
  extern int debug_command(int argc, char *argv[]);
@@ -20,6 +21,7 @@
      printf("Usage: %s <command> [options] [arguments]\n\n", program_name);
      printf("Commands:\n");
      printf("  compile <file.kry>     Compile KRY file to KRB binary\n");
+     printf("  decompile <file.krb>   Decompile KRB binary to KIR format\n");
      printf("  run <file.krb>         Run KRB application\n");
      printf("  dev <file.kry>         Development mode with hot reload\n");
      printf("  debug <file.krb>       Debug KRB application\n");
@@ -70,6 +72,8 @@
  
      if (strcmp(command, "compile") == 0) {
          return compile_command(argc - 1, argv + 1);
+    } else if (strcmp(command, "decompile") == 0) {
+        return decompile_command(argc - 1, argv + 1);
      } else if (strcmp(command, "run") == 0) {
          return run_command(argc - 1, argv + 1);
      } else if (strcmp(command, "dev") == 0) {
