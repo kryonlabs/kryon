@@ -1,0 +1,332 @@
+{
+	"version":	"0.1.0",
+	"format":	"kir-json",
+	"metadata":	{
+		"sourceFile":	"examples/hello-world.kry",
+		"compiler":	"kryon",
+		"compilerVersion":	"1.0.0",
+		"timestamp":	"2026-01-28T05:13:04Z"
+	},
+	"root":	{
+		"type":	"ROOT",
+		"nodeId":	0,
+		"location":	{
+			"line":	0,
+			"column":	0
+		},
+		"children":	[{
+				"type":	"METADATA_DIRECTIVE",
+				"nodeId":	2,
+				"location":	{
+					"line":	1,
+					"column":	2,
+					"file":	"examples/hello-world.kry"
+				}
+			}, {
+				"type":	"ELEMENT",
+				"nodeId":	0,
+				"location":	{
+					"line":	0,
+					"column":	0
+				},
+				"elementType":	"App",
+				"properties":	[{
+						"type":	"PROPERTY",
+						"nodeId":	3,
+						"location":	{
+							"line":	2,
+							"column":	6,
+							"file":	"examples/hello-world.kry"
+						},
+						"name":	"title",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	4,
+							"location":	{
+								"line":	2,
+								"column":	15,
+								"file":	"examples/hello-world.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"STRING",
+							"value":	"Hello World Example"
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	5,
+						"location":	{
+							"line":	3,
+							"column":	6,
+							"file":	"examples/hello-world.kry"
+						},
+						"name":	"version",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	6,
+							"location":	{
+								"line":	3,
+								"column":	17,
+								"file":	"examples/hello-world.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"STRING",
+							"value":	"1.0.0"
+						}
+					}],
+				"children":	[{
+						"type":	"ELEMENT",
+						"nodeId":	7,
+						"location":	{
+							"line":	6,
+							"column":	2,
+							"file":	"examples/hello-world.kry"
+						},
+						"elementType":	"Container",
+						"properties":	[{
+								"type":	"PROPERTY",
+								"nodeId":	8,
+								"location":	{
+									"line":	7,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"posX",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	9,
+									"location":	{
+										"line":	7,
+										"column":	14,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	200
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	10,
+								"location":	{
+									"line":	8,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"posY",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	11,
+									"location":	{
+										"line":	8,
+										"column":	14,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	100
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	12,
+								"location":	{
+									"line":	9,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"width",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	13,
+									"location":	{
+										"line":	9,
+										"column":	15,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	200
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	14,
+								"location":	{
+									"line":	10,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"height",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	15,
+									"location":	{
+										"line":	10,
+										"column":	16,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	100
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	16,
+								"location":	{
+									"line":	11,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"backgroundColor",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	17,
+									"location":	{
+										"line":	11,
+										"column":	25,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"STRING",
+									"value":	"#191970FF"
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	18,
+								"location":	{
+									"line":	12,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"borderColor",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	19,
+									"location":	{
+										"line":	12,
+										"column":	21,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"STRING",
+									"value":	"#0099FFFF"
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	20,
+								"location":	{
+									"line":	13,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"borderWidth",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	21,
+									"location":	{
+										"line":	13,
+										"column":	21,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	1
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	22,
+								"location":	{
+									"line":	14,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"padding",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	23,
+									"location":	{
+										"line":	14,
+										"column":	17,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"UNIT",
+									"value":	20,
+									"unit":	"px"
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	24,
+								"location":	{
+									"line":	15,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"name":	"contentAlignment",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	25,
+									"location":	{
+										"line":	15,
+										"column":	26,
+										"file":	"examples/hello-world.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"STRING",
+									"value":	"center"
+								}
+							}],
+						"children":	[{
+								"type":	"ELEMENT",
+								"nodeId":	26,
+								"location":	{
+									"line":	17,
+									"column":	6,
+									"file":	"examples/hello-world.kry"
+								},
+								"elementType":	"Text",
+								"properties":	[{
+										"type":	"PROPERTY",
+										"nodeId":	27,
+										"location":	{
+											"line":	18,
+											"column":	10,
+											"file":	"examples/hello-world.kry"
+										},
+										"name":	"text",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	28,
+											"location":	{
+												"line":	18,
+												"column":	18,
+												"file":	"examples/hello-world.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"Hello World"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	29,
+										"location":	{
+											"line":	19,
+											"column":	10,
+											"file":	"examples/hello-world.kry"
+										},
+										"name":	"color",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	30,
+											"location":	{
+												"line":	19,
+												"column":	19,
+												"file":	"examples/hello-world.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"yellow"
+										}
+									}]
+							}]
+					}]
+			}]
+	}
+}
