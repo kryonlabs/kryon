@@ -89,21 +89,25 @@ pkgs.mkShell {
     echo "  make          # Release build"
     echo "  make debug    # Debug build"
     echo "  make clean    # Clean build"
+    echo "  make install  # Install to ~/.local/bin"
+    echo "  make uninstall  # Remove installation"
+    echo ""
+    echo "Run with:"
+    echo "  ./build/bin/kryon run <file.kry|krb>  # Auto-compiles .kry files"
+    echo "  ./build/bin/kryon compile <file.kry>   # Manual compile"
     echo ""
     echo "Environment ready! 🎉"
-    
+
     # Set some useful environment variables
-    export CMAKE_BUILD_TYPE=Debug
     export PKG_CONFIG_PATH="${pkgs.xorg.libX11.dev}/lib/pkgconfig:${pkgs.xorg.libXext.dev}/lib/pkgconfig:${pkgs.libGL.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
-    
+
     # Ensure proper library paths
     export LD_LIBRARY_PATH="${pkgs.libGL}/lib:${pkgs.xorg.libX11}/lib:${pkgs.SDL2}/lib:${pkgs.raylib}/lib:$LD_LIBRARY_PATH"
-    
+
     # For development convenience
-    alias build="mkdir -p build && cd build && cmake .. && make"
-    alias clean="rm -rf build && rm -f *.o"
-    alias test="cd build && ctest"
-    alias run-examples="cd build/bin/examples"
+    alias build="make"
+    alias clean="make clean"
+    alias rebuild="make clean && make"
   '';
   
   # Ensure we have the right C compiler flags

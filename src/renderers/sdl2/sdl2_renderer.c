@@ -39,6 +39,8 @@ typedef struct {
     int height;
     bool initialized;
     bool quit_requested;
+    KryonEventCallback event_callback;
+    void* callback_data;
 } SDL2RendererImpl;
 
 // =============================================================================
@@ -72,6 +74,10 @@ static KryonRenderResult sdl2_get_input_state(KryonInputState* input_state);
 static bool sdl2_point_in_element(KryonVec2 point, KryonRect element_bounds);
 static bool sdl2_handle_event(const KryonEvent* event);
 static void* sdl2_get_native_window(void);
+static float sdl2_measure_text_width(const char* text, float font_size);
+static KryonRenderResult sdl2_set_cursor(KryonCursorType cursor_type);
+static KryonRenderResult sdl2_update_window_size(int width, int height);
+static KryonRenderResult sdl2_update_window_title(const char* title);
 
 static KryonRendererVTable g_sdl2_vtable = {
     .initialize = sdl2_initialize,
@@ -81,35 +87,44 @@ static KryonRendererVTable g_sdl2_vtable = {
     .resize = sdl2_resize,
     .viewport_size = sdl2_viewport_size,
     .destroy = sdl2_destroy,
-    .get_input_state = sdl2_get_input_state,
     .point_in_element = sdl2_point_in_element,
     .handle_event = sdl2_handle_event,
-    .get_native_window = sdl2_get_native_window
+    .measure_text_width = sdl2_measure_text_width,
+    .get_native_window = sdl2_get_native_window,
+    .set_cursor = sdl2_set_cursor,
+    .update_window_size = sdl2_update_window_size,
+    .update_window_title = sdl2_update_window_title
 };
 
 // =============================================================================
 // PUBLIC API
 // =============================================================================
 
-KryonRenderer* kryon_sdl2_renderer_create(void* surface) {
+KryonRenderer* kryon_sdl2_renderer_create(const KryonRendererConfig* config) {
     KryonRenderer* renderer = malloc(sizeof(KryonRenderer));
     if (!renderer) {
         return NULL;
     }
-    
+
     renderer->vtable = &g_sdl2_vtable;
     renderer->impl_data = &g_sdl2_impl;
     renderer->name = strdup("SDL2 Renderer");
     renderer->backend = strdup("sdl2");
-    
-    // Initialize with provided surface
-    if (sdl2_initialize(surface) != KRYON_RENDER_SUCCESS) {
+
+    // Store event callback from config
+    if (config) {
+        g_sdl2_impl.event_callback = config->event_callback;
+        g_sdl2_impl.callback_data = config->callback_data;
+    }
+
+    // Initialize SDL2 renderer
+    if (sdl2_initialize(NULL) != KRYON_RENDER_SUCCESS) {
         free(renderer->name);
         free(renderer->backend);
         free(renderer);
         return NULL;
     }
-    
+
     return renderer;
 }
 
@@ -834,4 +849,76 @@ static bool sdl2_handle_event(const KryonEvent* event) {
 
 static void* sdl2_get_native_window(void) {
     return g_sdl2_impl.window;
+}
+
+static float sdl2_measure_text_width(const char* text, float font_size) {
+    if (!text || !g_sdl2_impl.default_font) {
+        return strlen(text) * font_size * 0.5f;  // Fallback estimate
+    }
+
+    int width;
+    TTF_SizeText(g_sdl2_impl.default_font, text, &width, NULL);
+    return (float)width;
+}
+
+static KryonRenderResult sdl2_set_cursor(KryonCursorType cursor_type) {
+    if (!g_sdl2_impl.initialized) {
+        return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
+    }
+
+    // Map KryonCursorType to SDL system cursor
+    SDL_SystemCursor sdl_cursor = SDL_SYSTEM_CURSOR_ARROW;
+    switch (cursor_type) {
+        case KRYON_CURSOR_POINTER:
+            sdl_cursor = SDL_SYSTEM_CURSOR_HAND;
+            break;
+        case KRYON_CURSOR_TEXT:
+            sdl_cursor = SDL_SYSTEM_CURSOR_IBEAM;
+            break;
+        case KRYON_CURSOR_CROSSHAIR:
+            sdl_cursor = SDL_SYSTEM_CURSOR_CROSSHAIR;
+            break;
+        case KRYON_CURSOR_RESIZE_H:
+        case KRYON_CURSOR_RESIZE_V:
+        case KRYON_CURSOR_RESIZE_NESW:
+        case KRYON_CURSOR_RESIZE_NWSE:
+        case KRYON_CURSOR_RESIZE_ALL:
+            sdl_cursor = SDL_SYSTEM_CURSOR_SIZEALL;
+            break;
+        case KRYON_CURSOR_NOT_ALLOWED:
+            sdl_cursor = SDL_SYSTEM_CURSOR_NO;
+            break;
+        default:
+            sdl_cursor = SDL_SYSTEM_CURSOR_ARROW;
+            break;
+    }
+
+    SDL_Cursor* cursor = SDL_CreateSystemCursor(sdl_cursor);
+    if (cursor) {
+        SDL_SetCursor(cursor);
+        return KRYON_RENDER_SUCCESS;
+    }
+
+    return KRYON_RENDER_ERROR_COMMAND_FAILED;
+}
+
+static KryonRenderResult sdl2_update_window_size(int width, int height) {
+    if (!g_sdl2_impl.initialized) {
+        return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
+    }
+
+    SDL_SetWindowSize(g_sdl2_impl.window, width, height);
+    g_sdl2_impl.width = width;
+    g_sdl2_impl.height = height;
+
+    return KRYON_RENDER_SUCCESS;
+}
+
+static KryonRenderResult sdl2_update_window_title(const char* title) {
+    if (!g_sdl2_impl.initialized) {
+        return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
+    }
+
+    SDL_SetWindowTitle(g_sdl2_impl.window, title);
+    return KRYON_RENDER_SUCCESS;
 }

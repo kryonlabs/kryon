@@ -30,8 +30,8 @@ endif
 
 # Detect SDL2 and Raylib using pkg-config
 # If pkg-config is not available, leave the flags empty
-SDL2_CFLAGS := $(shell pkg-config --cflags sdl2 2>/dev/null || echo "")
-SDL2_LDFLAGS := $(shell pkg-config --libs sdl2 2>/dev/null || echo "")
+SDL2_CFLAGS := $(shell pkg-config --cflags sdl2 SDL2_image SDL2_ttf 2>/dev/null || echo "")
+SDL2_LDFLAGS := $(shell pkg-config --libs sdl2 SDL2_image SDL2_ttf 2>/dev/null || echo "")
 RAYLIB_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null || echo "")
 RAYLIB_LDFLAGS := $(shell pkg-config --libs raylib 2>/dev/null || echo "")
 
@@ -144,9 +144,19 @@ CJSON_OBJ = $(OBJ_DIR)/third-party/cjson/cjson.o
 # Target binary
 TARGET = $(BIN_DIR)/kryon
 
+# Installation paths (can be overridden)
+PREFIX ?= $(HOME)/.local
+BINDIR ?= $(PREFIX)/bin
+DATADIR ?= $(PREFIX)/share
+COMPLETIONDIR ?= $(DATADIR)/bash-completion/completions
+KRYON_DATADIR ?= $(DATADIR)/kryon
+
+# Binary name
+BINARY_NAME = kryon
+
 # Default target
 .PHONY: all
-all: $(TARGET)
+all: $(TARGET) completions/kryon.bash
 
 # Create directories
 $(OBJ_DIR) $(BIN_DIR):
@@ -168,7 +178,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 # Link binary
 $(TARGET): $(ALL_OBJ) $(CJSON_OBJ) | $(BIN_DIR)
 	@echo "[LD] $@"
-	@$(CC) $(ALL_OBJ) $(CJSON_OBJ) $(LDFLAGS) $(SDL2_LDFLAGS) $(RAYLIB_LDFLAGS) $(NIX_LDFLAGS) -o $@
+	@$(CC) -o $@ $(ALL_OBJ) $(CJSON_OBJ) $(LDFLAGS) $(SDL2_LDFLAGS) $(RAYLIB_LDFLAGS)
 	@echo ""
 	@echo "Build complete: $@"
 	@echo "Build type: $(BUILD_TYPE)"
@@ -220,6 +230,8 @@ help:
 	@echo "  run            - Build and run (usage: make run ARGS='...')"
 	@echo "  list-examples  - List available examples"
 	@echo "  run-example    - Run example (usage: make run-example EXAMPLE=hello-world RENDERER=raylib)"
+	@echo "  install        - Install to ~/.local/bin (or PREFIX)"
+	@echo "  uninstall      - Remove installation"
 	@echo "  help           - Show this help"
 	@echo ""
 	@echo "Variables:"
@@ -227,12 +239,49 @@ help:
 	@echo "  ARGS=...       - Arguments for 'make run'"
 	@echo "  EXAMPLE=name   - Example name for 'make run-example'"
 	@echo "  RENDERER=name  - Renderer for 'make run-example' (default: raylib)"
+	@echo "  PREFIX=path    - Installation prefix (default: ~/.local)"
+	@echo "  DESTDIR=path   - Destination dir for packaging"
 
 # Dependencies
 -include $(ALL_OBJ:.o=.d)
 
-# Generate dependencies
-$(OBJ_DIR)/%.d: $(SRC_DIR)/%.c | $(OBJ_DIR)
+# Generate dependencies (only for actual source files being compiled)
+DEPS = $(ALL_OBJ:.o=.d)
+$(DEPS): | $(OBJ_DIR)
+
+$(OBJ_DIR)/%.d: $(SRC_DIR)/%.c
+	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) $(INCLUDES) -MM -MT $(OBJ_DIR)/$*.o $< -MF $@
 
-.PHONY: all debug clean run list-examples run-example help
+# Install target
+.PHONY: install
+install: $(TARGET)
+	@echo "[INSTALL] Installing $(BINARY_NAME) to $(BINDIR)"
+	@mkdir -p $(BINDIR)
+	@install -m 0755 $(TARGET) $(BINDIR)/$(BINARY_NAME)
+	@echo "[INSTALL] Installing completion to $(COMPLETIONDIR)"
+	@mkdir -p $(COMPLETIONDIR)
+	@install -m 0644 completions/kryon.bash $(COMPLETIONDIR)/kryon
+	@echo "[INSTALL] Installing examples to $(KRYON_DATADIR)/examples"
+	@mkdir -p $(KRYON_DATADIR)/examples
+	@cp -r examples/* $(KRYON_DATADIR)/examples/
+	@echo ""
+	@echo "Installation complete!"
+	@echo "  Binary: $(BINDIR)/$(BINARY_NAME)"
+	@echo "  Completion: $(COMPLETIONDIR)/kryon"
+	@echo "  Examples: $(KRYON_DATADIR)/examples/"
+	@echo ""
+	@echo "Make sure $(BINDIR) is in your PATH"
+
+# Uninstall target
+.PHONY: uninstall
+uninstall:
+	@echo "[UNINSTALL] Removing $(BINARY_NAME)"
+	@rm -f $(BINDIR)/$(BINARY_NAME)
+	@echo "[UNINSTALL] Removing completion"
+	@rm -f $(COMPLETIONDIR)/kryon
+	@echo "[UNINSTALL] Removing examples"
+	@rm -rf $(KRYON_DATADIR)
+	@echo "Uninstall complete"
+
+.PHONY: all debug clean run list-examples run-example help install uninstall

@@ -35,7 +35,7 @@ print_error() {
 
 # Parse arguments
 CLEAN_BUILD=false
-BUILD_TYPE="Release"
+BUILD_TYPE=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --debug)
-            BUILD_TYPE="Debug"
+            BUILD_TYPE="DEBUG=1"
             shift
             ;;
         --help)
@@ -66,42 +66,27 @@ done
 # Get script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-BUILD_DIR="$PROJECT_ROOT/build"
 
 print_status "Building Kryon-C project..."
 print_status "Project root: $PROJECT_ROOT"
-print_status "Build type: $BUILD_TYPE"
 
 # Clean build directory if requested
 if [ "$CLEAN_BUILD" = true ]; then
     print_status "Cleaning build directory..."
-    rm -rf "$BUILD_DIR"
+    make clean
 fi
 
-# Create build directory if it doesn't exist
-if [ ! -d "$BUILD_DIR" ]; then
-    print_status "Creating build directory..."
-    mkdir -p "$BUILD_DIR"
-fi
-
-cd "$BUILD_DIR"
-
-# Configure with CMake
-print_status "Configuring with CMake..."
-if ! cmake .. -DCMAKE_BUILD_TYPE="$BUILD_TYPE"; then
-    print_error "CMake configuration failed"
-    exit 1
-fi
+cd "$PROJECT_ROOT"
 
 # Build the project
 print_status "Building project..."
-if ! make -j$(nproc); then
+if ! make $BUILD_TYPE; then
     print_error "Build failed"
     exit 1
 fi
 
 # Verify binary was created
-KRYON_BIN="$BUILD_DIR/bin/kryon"
+KRYON_BIN="$PROJECT_ROOT/build/bin/kryon"
 if [ ! -f "$KRYON_BIN" ]; then
     print_error "Kryon binary not found at $KRYON_BIN"
     exit 1

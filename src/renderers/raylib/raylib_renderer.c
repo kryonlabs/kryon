@@ -402,11 +402,12 @@ static KryonRenderResult raylib_execute_commands(KryonRenderContext* context,
                 // Draw border
                 if (data->border_width > 0) {
                     if (data->border_radius > 0) {
+                        // Draw rounded border (raylib 5.5 doesn't support border width for rounded rectangles)
+                        // Draw the outline without width
                         DrawRectangleRoundedLines(
                             (Rectangle){data->position.x, data->position.y, data->size.x, data->size.y},
                             data->border_radius / (data->size.x < data->size.y ? data->size.x : data->size.y),
                             16,
-                            data->border_width,
                             border_color
                         );
                     } else {

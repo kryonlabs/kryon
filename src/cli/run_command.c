@@ -6,6 +6,10 @@
 #include "memory.h"
 #include "runtime.h"
 #include "renderer_interface.h"
+#include "lexer.h"
+#include "parser.h"
+#include "codegen.h"
+#include "error.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +17,8 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <limits.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 // Global for debug mode
 static bool g_debug_mode = false;
@@ -24,6 +30,289 @@ static KryonRenderer* create_web_renderer(KryonRuntime* runtime, bool debug, con
 
 // Forward declaration for runtime event callback function (defined in runtime.c)
 extern void runtime_receive_input_event(const KryonEvent* event, void* userData);
+
+// Forward declarations for AST validation
+extern size_t kryon_ast_validate(const KryonASTNode *node, char **errors, size_t max_errors);
+
+/**
+ * @brief Get file modification time
+ * @return 0 on failure, modification time on success
+ */
+static time_t get_file_mtime(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        return 0;
+    }
+    return st.st_mtime;
+}
+
+/**
+ * @brief Compute a simple file identifier (based on path and size)
+ * @return String (must be freed by caller) or NULL on failure
+ */
+static char* compute_file_id(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        return NULL;
+    }
+
+    // Use filename + size + mtime as cache key
+    const char *filename = strrchr(path, '/');
+    if (!filename) filename = path;
+    else filename++;
+
+    // Allocate enough space for the ID
+    char *file_id = malloc(256);
+    if (!file_id) {
+        return NULL;
+    }
+
+    // Create a simple ID: filename_size_mtime
+    snprintf(file_id, 256, "%s_%ld_%ld",
+             filename,
+             (long)st.st_size,
+             (long)st.st_mtime);
+
+    // Sanitize the ID (replace problematic characters)
+    for (char *p = file_id; *p; p++) {
+        if (*p == '/' || *p == ' ') *p = '_';
+    }
+
+    return file_id;
+}
+
+/**
+ * @brief Compile a .kry file to a cached .krb file
+ * @param kry_path Path to the .kry source file
+ * @return Path to the compiled .krb file (must be freed by caller) or NULL on failure
+ */
+static char* compile_kry_to_cached_krb(const char *kry_path) {
+    printf("🔨 Compiling %s...\n", kry_path);
+
+    // Initialize error system if needed
+    if (kryon_error_init() != KRYON_SUCCESS) {
+        fprintf(stderr, "Error: Could not initialize error system\n");
+        return NULL;
+    }
+
+    // Initialize memory manager if needed
+    if (!g_kryon_memory_manager) {
+        KryonMemoryConfig config = {
+            .initial_heap_size = 16 * 1024 * 1024,
+            .max_heap_size = 256 * 1024 * 1024,
+            .enable_leak_detection = false,
+            .enable_bounds_checking = false,
+            .enable_statistics = false,
+            .use_system_malloc = true,
+            .large_alloc_threshold = 64 * 1024
+        };
+        g_kryon_memory_manager = kryon_memory_init(&config);
+        if (!g_kryon_memory_manager) {
+            fprintf(stderr, "Error: Failed to initialize memory manager\n");
+            kryon_error_shutdown();
+            return NULL;
+        }
+    }
+
+    // Compute file ID for caching
+    char *file_id = compute_file_id(kry_path);
+    if (!file_id) {
+        fprintf(stderr, "Error: Failed to compute file ID\n");
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    // Create cache directory: ~/.cache/kryon/
+    char cache_dir[PATH_MAX];
+    const char *home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "Error: HOME environment variable not set\n");
+        free(file_id);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    snprintf(cache_dir, sizeof(cache_dir), "%s/.cache/kryon", home);
+
+    // Create directory if it doesn't exist
+    struct stat st;
+    if (stat(cache_dir, &st) != 0) {
+        if (mkdir(cache_dir, 0755) != 0 && errno != EEXIST) {
+            fprintf(stderr, "Error: Failed to create cache directory %s\n", cache_dir);
+            free(file_id);
+            kryon_error_shutdown();
+            return NULL;
+        }
+    }
+
+    // Path to cached .krb file
+    char *cached_krb_path = malloc(PATH_MAX);
+    if (!cached_krb_path) {
+        free(file_id);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    snprintf(cached_krb_path, PATH_MAX, "%s/%s.krb", cache_dir, file_id);
+    free(file_id);
+
+    // Check if we need to recompile
+    time_t kry_mtime = get_file_mtime(kry_path);
+    time_t krb_mtime = get_file_mtime(cached_krb_path);
+
+    if (krb_mtime > 0 && krb_mtime > kry_mtime) {
+        // Cache is up to date
+        printf("✅ Using cached compilation: %s\n", cached_krb_path);
+        kryon_error_shutdown();
+        return cached_krb_path;
+    }
+
+    // Read source file
+    FILE *file = fopen(kry_path, "r");
+    if (!file) {
+        fprintf(stderr, "Error: Cannot open source file: %s\n", kry_path);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char *source = kryon_alloc(file_size + 1);
+    if (!source) {
+        fprintf(stderr, "Error: Memory allocation failed\n");
+        fclose(file);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    fread(source, 1, file_size, file);
+    source[file_size] = '\0';
+    fclose(file);
+
+    // Lexing
+    KryonLexer *lexer = kryon_lexer_create(source, file_size, kry_path, NULL);
+    if (!lexer) {
+        fprintf(stderr, "Error: Failed to create lexer\n");
+        kryon_free(source);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    if (!kryon_lexer_tokenize(lexer)) {
+        fprintf(stderr, "Error: %s\n", kryon_lexer_get_error(lexer));
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    // Parsing
+    KryonParser *parser = kryon_parser_create(lexer, NULL);
+    if (!parser) {
+        fprintf(stderr, "Error: Failed to create parser\n");
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    if (!kryon_parser_parse(parser)) {
+        size_t error_count;
+        const char **errors = kryon_parser_get_errors(parser, &error_count);
+        fprintf(stderr, "Error: Parse errors:\n");
+        for (size_t i = 0; i < error_count; i++) {
+            fprintf(stderr, "  %s\n", errors[i]);
+        }
+        kryon_parser_destroy(parser);
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    const KryonASTNode *ast = kryon_parser_get_root(parser);
+    if (!ast) {
+        fprintf(stderr, "Error: Failed to get AST\n");
+        kryon_parser_destroy(parser);
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    // AST Validation (skip for auto-compile, just warn)
+    char *validation_errors[100];
+    size_t validation_count = kryon_ast_validate(ast, validation_errors, 100);
+    if (validation_count > 0) {
+        fprintf(stderr, "Warning: AST validation issues:\n");
+        for (size_t i = 0; i < validation_count && i < 5; i++) {
+            fprintf(stderr, "  %s\n", validation_errors[i]);
+            kryon_free(validation_errors[i]);
+        }
+        // Continue anyway
+    }
+
+    // Code Generation
+    KryonCodeGenConfig config = kryon_codegen_default_config();
+    KryonCodeGenerator *codegen = kryon_codegen_create(&config);
+    if (!codegen) {
+        fprintf(stderr, "Error: Failed to create code generator\n");
+        kryon_parser_destroy(parser);
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    if (!kryon_codegen_generate(codegen, ast)) {
+        size_t error_count;
+        const char **errors = kryon_codegen_get_errors(codegen, &error_count);
+        fprintf(stderr, "Error: Code generation failed:\n");
+        for (size_t i = 0; i < error_count; i++) {
+            fprintf(stderr, "  %s\n", errors[i]);
+        }
+        kryon_codegen_destroy(codegen);
+        kryon_parser_destroy(parser);
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    // Write to cache
+    if (!kryon_write_file(codegen, cached_krb_path)) {
+        fprintf(stderr, "Error: Failed to write compiled file\n");
+        kryon_codegen_destroy(codegen);
+        kryon_parser_destroy(parser);
+        kryon_lexer_destroy(lexer);
+        kryon_free(source);
+        free(cached_krb_path);
+        kryon_error_shutdown();
+        return NULL;
+    }
+
+    printf("✅ Compilation complete: %s\n", cached_krb_path);
+
+    // Cleanup
+    kryon_codegen_destroy(codegen);
+    kryon_parser_destroy(parser);
+    kryon_lexer_destroy(lexer);
+    kryon_free(source);
+    kryon_error_shutdown();
+
+    return cached_krb_path;
+}
 
 int run_command(int argc, char *argv[]) {
     const char *krb_file_path = NULL;
@@ -75,8 +364,20 @@ int run_command(int argc, char *argv[]) {
         fprintf(stderr, "Error: No KRB file specified\n");
         return 1;
     }
-    
+
     krb_file_path = argv[optind];
+
+    // Auto-compile .kry files
+    char *temp_krb = NULL;
+    if (strstr(krb_file_path, ".kry") != NULL) {
+        temp_krb = compile_kry_to_cached_krb(krb_file_path);
+        if (!temp_krb) {
+            fprintf(stderr, "❌ Failed to compile %s\n", krb_file_path);
+            return 1;
+        }
+        krb_file_path = temp_krb;
+    }
+
     g_debug_mode = debug;
     
     // Initialize memory manager if needed
@@ -259,7 +560,12 @@ int run_command(int argc, char *argv[]) {
     
     // Cleanup
     kryon_runtime_destroy(runtime);
-    
+
+    // Free temp krb file if we auto-compiled
+    if (temp_krb) {
+        free(temp_krb);
+    }
+
     return 0;
 }
 
