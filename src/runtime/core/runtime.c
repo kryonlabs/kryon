@@ -1024,8 +1024,12 @@ static bool runtime_event_handler(const KryonEvent* event, void* userData) {
         // Update root variables when window resizes
         float new_width = (float)event->data.windowResize.width;
         float new_height = (float)event->data.windowResize.height;
-        
+
         kryon_runtime_update_viewport_size(runtime, new_width, new_height);
+    } else if (event->type == KRYON_EVENT_WINDOW_CLOSE) {
+        // Set is_running to false to exit the render loop
+        runtime->is_running = false;
+        return true; // Event handled
     } else if (event->type == KRYON_EVENT_KEY_DOWN) {
         // Handle Ctrl+I for debug inspector
         if (event->data.key.ctrlPressed && event->data.key.keyCode == 73) { // 73 = 'I' key

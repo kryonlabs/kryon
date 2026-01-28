@@ -6,6 +6,7 @@
  */
 
 #include "renderer_interface.h"
+#include "runtime.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
@@ -13,10 +14,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <signal.h>
 
 #ifdef USE_FONTCONFIG
 #include <fontconfig/fontconfig.h>
 #endif
+
+// Forward declarations
+typedef struct KryonRuntime KryonRuntime;
 
 // =============================================================================
 // SDL2 SPECIFIC TYPES
@@ -103,6 +108,13 @@ static void draw_text_with_font(SDL_Renderer* renderer, const char* text,
 
 static SDL2RendererImpl g_sdl2_impl = {0};
 
+// Signal handler for Ctrl+C
+static void handle_sigint(int sig) {
+    if (g_sdl2_impl.initialized) {
+        g_sdl2_impl.quit_requested = true;
+    }
+}
+
 // Forward declarations for input handling
 static KryonRenderResult sdl2_get_input_state(KryonInputState* input_state);
 static bool sdl2_point_in_element(KryonVec2 point, KryonRect element_bounds);
@@ -179,7 +191,10 @@ static KryonRenderResult sdl2_initialize(void* surface) {
         fprintf(stderr, "SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
     }
-    
+
+    // Set up SIGINT handler for Ctrl+C
+    signal(SIGINT, handle_sigint);
+
     // Initialize SDL_ttf
     if (TTF_Init() == -1) {
         fprintf(stderr, "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
@@ -243,6 +258,7 @@ static KryonRenderResult sdl2_initialize(void* surface) {
 
     if (font_path) {
         printf("Loading font from: %s\n", font_path);
+        fflush(stdout);
         g_sdl2_impl.default_font = TTF_OpenFont(font_path, 16);
         free(font_path);
     }
@@ -265,8 +281,9 @@ static KryonRenderResult sdl2_initialize(void* surface) {
     g_sdl2_impl.width = surf->width;
     g_sdl2_impl.height = surf->height;
     g_sdl2_impl.initialized = true;
-    
+
     printf("SDL2 Renderer initialized: %dx%d\n", surf->width, surf->height);
+    fflush(stdout);
     return KRYON_RENDER_SUCCESS;
 }
 
@@ -274,7 +291,14 @@ static KryonRenderResult sdl2_begin_frame(KryonRenderContext** context, KryonCol
     if (!g_sdl2_impl.initialized) {
         return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
     }
-    
+
+    // Check if window close was requested (follow raylib's pattern)
+    if (g_sdl2_impl.quit_requested) {
+        printf("🔲 SDL2 window close requested\n");
+        fflush(stdout);
+        return KRYON_RENDER_ERROR_SURFACE_LOST;  // Same code raylib uses
+    }
+
     SDL2RenderContext* ctx = malloc(sizeof(SDL2RenderContext));
     if (!ctx) {
         return KRYON_RENDER_ERROR_OUT_OF_MEMORY;
@@ -293,8 +317,13 @@ static KryonRenderResult sdl2_begin_frame(KryonRenderContext** context, KryonCol
 }
 
 static KryonRenderResult sdl2_end_frame(KryonRenderContext* context) {
+    // Check if window close was requested
+    if (g_sdl2_impl.quit_requested) {
+        return KRYON_RENDER_ERROR_SURFACE_LOST;
+    }
+
     if (!context) return KRYON_RENDER_ERROR_INVALID_PARAM;
-    
+
     SDL_RenderPresent(g_sdl2_impl.renderer);
     free(context);
     return KRYON_RENDER_SUCCESS;
@@ -916,7 +945,11 @@ static float sdl2_measure_text_width(const char* text, float font_size) {
 
     int width;
     TTF_SizeText(g_sdl2_impl.default_font, text, &width, NULL);
-    return (float)width;
+
+    // Scale width based on the requested font size
+    // The default font is loaded at size 16, so we scale proportionally
+    float scale = font_size / 16.0f;
+    return (float)width * scale;
 }
 
 static KryonRenderResult sdl2_set_cursor(KryonCursorType cursor_type) {
@@ -990,14 +1023,25 @@ static KryonRenderResult sdl2_poll_events(void) {
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
             case SDL_QUIT: {
+                printf("🔲 SDL_QUIT event received\n");
+                fflush(stdout);
+
+                // Set quit flag immediately
+                g_sdl2_impl.quit_requested = true;
+
                 // Send window close event through callback
                 if (g_sdl2_impl.event_callback) {
                     KryonEvent kryon_event = {
                         .type = KRYON_EVENT_WINDOW_CLOSE
                     };
                     g_sdl2_impl.event_callback(&kryon_event, g_sdl2_impl.callback_data);
+
+                    // Also directly set runtime is_running for immediate effect
+                    KryonRuntime* runtime = (KryonRuntime*)g_sdl2_impl.callback_data;
+                    if (runtime) {
+                        runtime->is_running = false;
+                    }
                 }
-                g_sdl2_impl.quit_requested = true;
                 break;
             }
 
