@@ -3,8 +3,6 @@
 
 _kryon_completion() {
     local cur prev words cword
-    _init_completion || return
-
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
@@ -36,10 +34,11 @@ _kryon_compile() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     local prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    # Complete options
+    # Complete options with arguments
     case "${prev}" in
         -o|--output)
-            _filedir
+            compopt -o filenames
+            COMPREPLY=( $(compgen -f -- "${cur}") )
             return 0
             ;;
     esac
@@ -50,8 +49,9 @@ _kryon_compile() {
         return 0
     fi
 
-    # Complete .kry files
-    _filedir kry
+    # Complete .kry files with directory support
+    compopt -o filenames
+    COMPREPLY=( $(compgen -f -X '!*.kry' -- "${cur}") )
 }
 
 _kryon_run() {
@@ -61,11 +61,12 @@ _kryon_run() {
     # Complete options with arguments
     case "${prev}" in
         -r|--renderer)
-            COMPREPLY=( $(compgen -W "text raylib web" -- "${cur}") )
+            COMPREPLY=( $(compgen -W "text raylib sdl2 web" -- "${cur}") )
             return 0
             ;;
         -o|--output)
-            _filedir -d
+            compopt -o filenames
+            COMPREPLY=( $(compgen -d -- "${cur}") )
             return 0
             ;;
     esac
@@ -76,16 +77,10 @@ _kryon_run() {
         return 0
     fi
 
-    # Complete .krb and .kry files
-    local IFS=$'\n'
-    local krb_files=($(compgen -G "*.krb" -X "*(^)" -- "${cur}"))
-    local kry_files=($(compgen -G "*.kry" -X "*(^)" -- "${cur}"))
-    COMPREPLY+=("${krb_files[@]}" "${kry_files[@]}")
-
-    # Auto-add extension if only basename given
-    if [[ ${#COMPREPLY[@]} -eq 0 && -n "${cur}" ]]; then
-        COMPREPLY=($(compgen -W "$(ls ${cur}*.krb 2>/dev/null) $(ls ${cur}*.kry 2>/dev/null)"))
-    fi
+    # Complete .krb and .kry files with directory support
+    compopt -o filenames
+    COMPREPLY=( $(compgen -f -X '!*.krb' -- "${cur}") )
+    COMPREPLY+=( $(compgen -f -X '!*.kry' -- "${cur}") )
 }
 
 _kryon_debug() {
@@ -98,8 +93,9 @@ _kryon_debug() {
         return 0
     fi
 
-    # Complete .krb files
-    _filedir krb
+    # Complete .krb files with directory support
+    compopt -o filenames
+    COMPREPLY=( $(compgen -f -X '!*.krb' -- "${cur}") )
 }
 
 _kryon_stubs() {

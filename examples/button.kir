@@ -1,0 +1,343 @@
+{
+	"version":	"0.1.0",
+	"format":	"kir-json",
+	"metadata":	{
+		"sourceFile":	"examples/button.kry",
+		"compiler":	"kryon",
+		"compilerVersion":	"1.0.0",
+		"timestamp":	"2026-01-28T04:38:54Z"
+	},
+	"root":	{
+		"type":	"ROOT",
+		"nodeId":	1,
+		"location":	{
+			"line":	1,
+			"column":	2,
+			"file":	"examples/button.kry"
+		},
+		"children":	[{
+				"type":	"STYLE_BLOCK",
+				"nodeId":	2,
+				"location":	{
+					"line":	1,
+					"column":	2,
+					"file":	"examples/button.kry"
+				}
+			}, {
+				"type":	"FUNCTION_DEFINITION",
+				"nodeId":	11,
+				"location":	{
+					"line":	8,
+					"column":	2,
+					"file":	"examples/button.kry"
+				},
+				"language":	"",
+				"name":	"handleButtonClick",
+				"code":	"\n    print(\"🎯 Button clicked! Hello from the scripting runtime!\")\n"
+			}, {
+				"type":	"ELEMENT",
+				"nodeId":	12,
+				"location":	{
+					"line":	12,
+					"column":	2,
+					"file":	"examples/button.kry"
+				},
+				"elementType":	"App",
+				"properties":	[{
+						"type":	"PROPERTY",
+						"nodeId":	13,
+						"location":	{
+							"line":	13,
+							"column":	6,
+							"file":	"examples/button.kry"
+						},
+						"name":	"windowWidth",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	14,
+							"location":	{
+								"line":	13,
+								"column":	21,
+								"file":	"examples/button.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"INTEGER",
+							"value":	600
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	15,
+						"location":	{
+							"line":	14,
+							"column":	6,
+							"file":	"examples/button.kry"
+						},
+						"name":	"windowHeight",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	16,
+							"location":	{
+								"line":	14,
+								"column":	22,
+								"file":	"examples/button.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"INTEGER",
+							"value":	400
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	17,
+						"location":	{
+							"line":	15,
+							"column":	6,
+							"file":	"examples/button.kry"
+						},
+						"name":	"windowTitle",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	18,
+							"location":	{
+								"line":	15,
+								"column":	21,
+								"file":	"examples/button.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"STRING",
+							"value":	"Interactive Button Demo"
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	19,
+						"location":	{
+							"line":	16,
+							"column":	6,
+							"file":	"examples/button.kry"
+						},
+						"name":	"windowResizable",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	20,
+							"location":	{
+								"line":	16,
+								"column":	25,
+								"file":	"examples/button.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"BOOLEAN",
+							"value":	true
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	21,
+						"location":	{
+							"line":	17,
+							"column":	6,
+							"file":	"examples/button.kry"
+						},
+						"name":	"keepAspectRatio",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	22,
+							"location":	{
+								"line":	17,
+								"column":	25,
+								"file":	"examples/button.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"BOOLEAN",
+							"value":	false
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	23,
+						"location":	{
+							"line":	18,
+							"column":	6,
+							"file":	"examples/button.kry"
+						},
+						"name":	"class",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	24,
+							"location":	{
+								"line":	18,
+								"column":	15,
+								"file":	"examples/button.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"STRING",
+							"value":	"base"
+						}
+					}],
+				"children":	[{
+						"type":	"ELEMENT",
+						"nodeId":	25,
+						"location":	{
+							"line":	20,
+							"column":	6,
+							"file":	"examples/button.kry"
+						},
+						"elementType":	"Center",
+						"children":	[{
+								"type":	"ELEMENT",
+								"nodeId":	26,
+								"location":	{
+									"line":	21,
+									"column":	10,
+									"file":	"examples/button.kry"
+								},
+								"elementType":	"Button",
+								"properties":	[{
+										"type":	"PROPERTY",
+										"nodeId":	27,
+										"location":	{
+											"line":	22,
+											"column":	14,
+											"file":	"examples/button.kry"
+										},
+										"name":	"width",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	28,
+											"location":	{
+												"line":	22,
+												"column":	23,
+												"file":	"examples/button.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	150
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	29,
+										"location":	{
+											"line":	23,
+											"column":	14,
+											"file":	"examples/button.kry"
+										},
+										"name":	"height",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	30,
+											"location":	{
+												"line":	23,
+												"column":	24,
+												"file":	"examples/button.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	50
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	31,
+										"location":	{
+											"line":	24,
+											"column":	14,
+											"file":	"examples/button.kry"
+										},
+										"name":	"text",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	32,
+											"location":	{
+												"line":	24,
+												"column":	22,
+												"file":	"examples/button.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"Click Me!"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	33,
+										"location":	{
+											"line":	25,
+											"column":	14,
+											"file":	"examples/button.kry"
+										},
+										"name":	"textAlign",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	34,
+											"location":	{
+												"line":	25,
+												"column":	27,
+												"file":	"examples/button.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"center"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	35,
+										"location":	{
+											"line":	26,
+											"column":	14,
+											"file":	"examples/button.kry"
+										},
+										"name":	"backgroundColor",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	36,
+											"location":	{
+												"line":	26,
+												"column":	33,
+												"file":	"examples/button.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"#404080FF"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	37,
+										"location":	{
+											"line":	27,
+											"column":	14,
+											"file":	"examples/button.kry"
+										},
+										"name":	"borderColor",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	38,
+											"location":	{
+												"line":	27,
+												"column":	29,
+												"file":	"examples/button.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"#0099FFFF"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	39,
+										"location":	{
+											"line":	28,
+											"column":	14,
+											"file":	"examples/button.kry"
+										},
+										"name":	"onClick",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	40,
+											"location":	{
+												"line":	28,
+												"column":	25,
+												"file":	"examples/button.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"handleButtonClick"
+										}
+									}]
+							}]
+					}]
+			}]
+	}
+}

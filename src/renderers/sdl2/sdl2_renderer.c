@@ -101,24 +101,26 @@ static KryonRendererVTable g_sdl2_vtable = {
 // =============================================================================
 
 KryonRenderer* kryon_sdl2_renderer_create(const KryonRendererConfig* config) {
+    if (!config) {
+        return NULL;
+    }
+
     KryonRenderer* renderer = malloc(sizeof(KryonRenderer));
     if (!renderer) {
         return NULL;
     }
+
+    // Store event callback from config
+    g_sdl2_impl.event_callback = config->event_callback;
+    g_sdl2_impl.callback_data = config->callback_data;
 
     renderer->vtable = &g_sdl2_vtable;
     renderer->impl_data = &g_sdl2_impl;
     renderer->name = strdup("SDL2 Renderer");
     renderer->backend = strdup("sdl2");
 
-    // Store event callback from config
-    if (config) {
-        g_sdl2_impl.event_callback = config->event_callback;
-        g_sdl2_impl.callback_data = config->callback_data;
-    }
-
-    // Initialize SDL2 renderer
-    if (sdl2_initialize(NULL) != KRYON_RENDER_SUCCESS) {
+    // Initialize SDL2 renderer with platform context from config
+    if (sdl2_initialize(config->platform_context) != KRYON_RENDER_SUCCESS) {
         free(renderer->name);
         free(renderer->backend);
         free(renderer);

@@ -26,13 +26,14 @@ static bool g_debug_mode = false;
 // Forward declarations for proper renderer integration
 static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, bool debug, const char* output_dir);
 static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug);
+static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug);
 static KryonRenderer* create_web_renderer(KryonRuntime* runtime, bool debug, const char* output_dir);
 
 // Forward declaration for runtime event callback function (defined in runtime.c)
 extern void runtime_receive_input_event(const KryonEvent* event, void* userData);
 
-// Forward declarations for AST validation
-extern size_t kryon_ast_validate(const KryonASTNode *node, char **errors, size_t max_errors);
+// Forward declaration for compile_command (from compile_command.c)
+extern KryonResult compile_command(int argc, char *argv[]);
 
 /**
  * @brief Get file modification time
@@ -89,36 +90,17 @@ static char* compute_file_id(const char *path) {
 static char* compile_kry_to_cached_krb(const char *kry_path) {
     printf("🔨 Compiling %s...\n", kry_path);
 
-    // Initialize error system if needed
-    if (kryon_error_init() != KRYON_SUCCESS) {
-        fprintf(stderr, "Error: Could not initialize error system\n");
+    // Convert to absolute path to avoid issues with working directory
+    char *real_kry_path = realpath(kry_path, NULL);
+    if (!real_kry_path) {
+        fprintf(stderr, "Error: Cannot resolve path: %s\n", kry_path);
         return NULL;
     }
 
-    // Initialize memory manager if needed
-    if (!g_kryon_memory_manager) {
-        KryonMemoryConfig config = {
-            .initial_heap_size = 16 * 1024 * 1024,
-            .max_heap_size = 256 * 1024 * 1024,
-            .enable_leak_detection = false,
-            .enable_bounds_checking = false,
-            .enable_statistics = false,
-            .use_system_malloc = true,
-            .large_alloc_threshold = 64 * 1024
-        };
-        g_kryon_memory_manager = kryon_memory_init(&config);
-        if (!g_kryon_memory_manager) {
-            fprintf(stderr, "Error: Failed to initialize memory manager\n");
-            kryon_error_shutdown();
-            return NULL;
-        }
-    }
-
     // Compute file ID for caching
-    char *file_id = compute_file_id(kry_path);
+    char *file_id = compute_file_id(real_kry_path);
     if (!file_id) {
         fprintf(stderr, "Error: Failed to compute file ID\n");
-        kryon_error_shutdown();
         return NULL;
     }
 
@@ -128,7 +110,6 @@ static char* compile_kry_to_cached_krb(const char *kry_path) {
     if (!home) {
         fprintf(stderr, "Error: HOME environment variable not set\n");
         free(file_id);
-        kryon_error_shutdown();
         return NULL;
     }
 
@@ -140,7 +121,6 @@ static char* compile_kry_to_cached_krb(const char *kry_path) {
         if (mkdir(cache_dir, 0755) != 0 && errno != EEXIST) {
             fprintf(stderr, "Error: Failed to create cache directory %s\n", cache_dir);
             free(file_id);
-            kryon_error_shutdown();
             return NULL;
         }
     }
@@ -149,7 +129,6 @@ static char* compile_kry_to_cached_krb(const char *kry_path) {
     char *cached_krb_path = malloc(PATH_MAX);
     if (!cached_krb_path) {
         free(file_id);
-        kryon_error_shutdown();
         return NULL;
     }
 
@@ -163,154 +142,36 @@ static char* compile_kry_to_cached_krb(const char *kry_path) {
     if (krb_mtime > 0 && krb_mtime > kry_mtime) {
         // Cache is up to date
         printf("✅ Using cached compilation: %s\n", cached_krb_path);
-        kryon_error_shutdown();
         return cached_krb_path;
     }
 
-    // Read source file
-    FILE *file = fopen(kry_path, "r");
-    if (!file) {
-        fprintf(stderr, "Error: Cannot open source file: %s\n", kry_path);
+    // Need to compile - use compile_command with constructed arguments
+    // compile_command expects: argv[0] = "compile", argv[1] = input, argv[2] = "-o", argv[3] = output
+    char *compile_argv[] = {
+        "compile",
+        real_kry_path,
+        "-o",
+        cached_krb_path,
+        NULL
+    };
+    int compile_argc = 4;
+
+    // Reset getopt state before calling compile_command
+    optind = 0;
+    optarg = NULL;
+    optopt = 0;
+
+    // Call the compile command
+    KryonResult result = compile_command(compile_argc, compile_argv);
+    free(real_kry_path);
+
+    if (result != KRYON_SUCCESS) {
+        fprintf(stderr, "❌ Compilation failed (error code: %d)\n", result);
         free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char *source = kryon_alloc(file_size + 1);
-    if (!source) {
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        fclose(file);
-        free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    fread(source, 1, file_size, file);
-    source[file_size] = '\0';
-    fclose(file);
-
-    // Lexing
-    KryonLexer *lexer = kryon_lexer_create(source, file_size, kry_path, NULL);
-    if (!lexer) {
-        fprintf(stderr, "Error: Failed to create lexer\n");
-        kryon_free(source);
-        free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    if (!kryon_lexer_tokenize(lexer)) {
-        fprintf(stderr, "Error: %s\n", kryon_lexer_get_error(lexer));
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    // Parsing
-    KryonParser *parser = kryon_parser_create(lexer, NULL);
-    if (!parser) {
-        fprintf(stderr, "Error: Failed to create parser\n");
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    if (!kryon_parser_parse(parser)) {
-        size_t error_count;
-        const char **errors = kryon_parser_get_errors(parser, &error_count);
-        fprintf(stderr, "Error: Parse errors:\n");
-        for (size_t i = 0; i < error_count; i++) {
-            fprintf(stderr, "  %s\n", errors[i]);
-        }
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    const KryonASTNode *ast = kryon_parser_get_root(parser);
-    if (!ast) {
-        fprintf(stderr, "Error: Failed to get AST\n");
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    // AST Validation (skip for auto-compile, just warn)
-    char *validation_errors[100];
-    size_t validation_count = kryon_ast_validate(ast, validation_errors, 100);
-    if (validation_count > 0) {
-        fprintf(stderr, "Warning: AST validation issues:\n");
-        for (size_t i = 0; i < validation_count && i < 5; i++) {
-            fprintf(stderr, "  %s\n", validation_errors[i]);
-            kryon_free(validation_errors[i]);
-        }
-        // Continue anyway
-    }
-
-    // Code Generation
-    KryonCodeGenConfig config = kryon_codegen_default_config();
-    KryonCodeGenerator *codegen = kryon_codegen_create(&config);
-    if (!codegen) {
-        fprintf(stderr, "Error: Failed to create code generator\n");
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    if (!kryon_codegen_generate(codegen, ast)) {
-        size_t error_count;
-        const char **errors = kryon_codegen_get_errors(codegen, &error_count);
-        fprintf(stderr, "Error: Code generation failed:\n");
-        for (size_t i = 0; i < error_count; i++) {
-            fprintf(stderr, "  %s\n", errors[i]);
-        }
-        kryon_codegen_destroy(codegen);
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        free(cached_krb_path);
-        kryon_error_shutdown();
-        return NULL;
-    }
-
-    // Write to cache
-    if (!kryon_write_file(codegen, cached_krb_path)) {
-        fprintf(stderr, "Error: Failed to write compiled file\n");
-        kryon_codegen_destroy(codegen);
-        kryon_parser_destroy(parser);
-        kryon_lexer_destroy(lexer);
-        kryon_free(source);
-        free(cached_krb_path);
-        kryon_error_shutdown();
         return NULL;
     }
 
     printf("✅ Compilation complete: %s\n", cached_krb_path);
-
-    // Cleanup
-    kryon_codegen_destroy(codegen);
-    kryon_parser_destroy(parser);
-    kryon_lexer_destroy(lexer);
-    kryon_free(source);
-    kryon_error_shutdown();
-
     return cached_krb_path;
 }
 
@@ -596,6 +457,16 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
         fprintf(stderr, "💡 To use raylib, install raylib-dev and recompile\n");
         return false;
 #endif
+    } else if (strcmp(renderer_name, "sdl2") == 0) {
+#ifdef KRYON_RENDERER_SDL2
+        renderer = create_sdl2_renderer(runtime, debug);
+#else
+        fprintf(stderr, "❌ SDL2 NOT AVAILABLE\n");
+        fprintf(stderr, "❌ This build was compiled without SDL2 support\n");
+        fprintf(stderr, "💡 Available renderers: text, web, raylib\n");
+        fprintf(stderr, "💡 To use SDL2, install SDL2-dev and recompile\n");
+        return false;
+#endif
     } else if (strcmp(renderer_name, "text") == 0) {
         // For text mode, we don't need a real renderer
         if (debug) {
@@ -604,7 +475,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
         return true;
     } else {
         fprintf(stderr, "❌ Unknown renderer: %s\n", renderer_name);
-        fprintf(stderr, "Available renderers: web, raylib, text\n");
+        fprintf(stderr, "Available renderers: web, raylib, sdl2, text\n");
         return false;
     }
     
@@ -728,6 +599,109 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
     fprintf(stderr, "❌ This build was compiled without raylib support\n");
     fprintf(stderr, "💡 Available renderers: text\n");
     fprintf(stderr, "💡 To use raylib, install raylib-dev and recompile\n");
+
+    return NULL;
+#endif
+}
+
+// Create SDL2 renderer using internal interface
+static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
+#ifdef KRYON_RENDERER_SDL2
+    if (debug) {
+        printf("🐛 Debug: Creating SDL2 renderer\n");
+    }
+
+    // Create surface with default values, then override from App element metadata
+    typedef struct {
+        int width;
+        int height;
+        const char* title;
+        bool fullscreen;
+    } SDL2Surface;
+
+    SDL2Surface surface = {
+        .width = 800,
+        .height = 600,
+        .title = "Kryon Application",
+        .fullscreen = false
+    };
+
+    // Extract surface properties from App element metadata if available
+    if (runtime && runtime->root) {
+        KryonElement* app_element = runtime->root;
+
+        // Look for title property in App element
+        for (size_t i = 0; i < app_element->property_count; i++) {
+            if (app_element->properties[i] && app_element->properties[i]->name) {
+                if (strcmp(app_element->properties[i]->name, "title") == 0 &&
+                    app_element->properties[i]->value.string_value) {
+                    surface.title = app_element->properties[i]->value.string_value;
+                    if (debug) {
+                        printf("🐛 Debug: Using title from App metadata: %s\n", surface.title);
+                    }
+                }
+                else if (strcmp(app_element->properties[i]->name, "windowWidth") == 0 ||
+                         strcmp(app_element->properties[i]->name, "winWidth") == 0) {
+                    surface.width = (int)app_element->properties[i]->value.float_value;
+                    if (debug) {
+                        printf("🐛 Debug: Using windowWidth from App metadata: %d\n", surface.width);
+                    }
+                }
+                else if (strcmp(app_element->properties[i]->name, "windowHeight") == 0 ||
+                         strcmp(app_element->properties[i]->name, "winHeight") == 0) {
+                    surface.height = (int)app_element->properties[i]->value.float_value;
+                    if (debug) {
+                        printf("🐛 Debug: Using windowHeight from App metadata: %d\n", surface.height);
+                    }
+                }
+                else if (strcmp(app_element->properties[i]->name, "windowTitle") == 0 ||
+                         strcmp(app_element->properties[i]->name, "winTitle") == 0) {
+                    if (app_element->properties[i]->value.string_value) {
+                        surface.title = app_element->properties[i]->value.string_value;
+                        if (debug) {
+                            printf("🐛 Debug: Using windowTitle from App metadata: %s\n", surface.title);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (debug) {
+        printf("🐛 Debug: Creating SDL2 surface: %dx%d '%s'\n",
+               surface.width, surface.height, surface.title);
+    }
+
+    // Create renderer configuration with event callback
+    KryonRendererConfig config = {
+        .event_callback = runtime_receive_input_event,
+        .callback_data = runtime,
+        .platform_context = &surface
+    };
+
+    // Forward declaration from SDL2 renderer
+    extern KryonRenderer* kryon_sdl2_renderer_create(const KryonRendererConfig* config);
+
+    KryonRenderer* renderer = kryon_sdl2_renderer_create(&config);
+
+    if (!renderer) {
+        fprintf(stderr, "❌ Failed to create SDL2 renderer\n");
+        if (debug) {
+            printf("🐛 Debug: SDL2 renderer creation failed\n");
+        }
+        return NULL;
+    }
+
+    if (debug) {
+        printf("🐛 Debug: SDL2 renderer created successfully\n");
+    }
+
+    return renderer;
+#else
+    fprintf(stderr, "❌ SDL2 NOT AVAILABLE\n");
+    fprintf(stderr, "❌ This build was compiled without SDL2 support\n");
+    fprintf(stderr, "💡 Available renderers: text\n");
+    fprintf(stderr, "💡 To use SDL2, install SDL2-dev and recompile\n");
 
     return NULL;
 #endif

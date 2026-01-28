@@ -1,0 +1,545 @@
+{
+	"version":	"0.1.0",
+	"format":	"kir-json",
+	"metadata":	{
+		"sourceFile":	"examples/checkbox.kry",
+		"compiler":	"kryon",
+		"compilerVersion":	"1.0.0",
+		"timestamp":	"2026-01-28T04:39:06Z"
+	},
+	"root":	{
+		"type":	"ROOT",
+		"nodeId":	1,
+		"location":	{
+			"line":	1,
+			"column":	2,
+			"file":	"examples/checkbox.kry"
+		},
+		"children":	[{
+				"type":	"FUNCTION_DEFINITION",
+				"nodeId":	2,
+				"location":	{
+					"line":	1,
+					"column":	2,
+					"file":	"examples/checkbox.kry"
+				},
+				"language":	"",
+				"name":	"testClick",
+				"code":	"\n    print(\"Checkbox clicked!\")\n"
+			}, {
+				"type":	"ELEMENT",
+				"nodeId":	3,
+				"location":	{
+					"line":	5,
+					"column":	2,
+					"file":	"examples/checkbox.kry"
+				},
+				"elementType":	"App",
+				"properties":	[{
+						"type":	"PROPERTY",
+						"nodeId":	4,
+						"location":	{
+							"line":	6,
+							"column":	6,
+							"file":	"examples/checkbox.kry"
+						},
+						"name":	"windowTitle",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	5,
+							"location":	{
+								"line":	6,
+								"column":	21,
+								"file":	"examples/checkbox.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"STRING",
+							"value":	"Simple Checkbox Test"
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	6,
+						"location":	{
+							"line":	7,
+							"column":	6,
+							"file":	"examples/checkbox.kry"
+						},
+						"name":	"windowWidth",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	7,
+							"location":	{
+								"line":	7,
+								"column":	21,
+								"file":	"examples/checkbox.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"INTEGER",
+							"value":	400
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	8,
+						"location":	{
+							"line":	8,
+							"column":	6,
+							"file":	"examples/checkbox.kry"
+						},
+						"name":	"windowHeight",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	9,
+							"location":	{
+								"line":	8,
+								"column":	22,
+								"file":	"examples/checkbox.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"INTEGER",
+							"value":	300
+						}
+					}, {
+						"type":	"PROPERTY",
+						"nodeId":	10,
+						"location":	{
+							"line":	9,
+							"column":	6,
+							"file":	"examples/checkbox.kry"
+						},
+						"name":	"backgroundColor",
+						"value":	{
+							"type":	"LITERAL",
+							"nodeId":	11,
+							"location":	{
+								"line":	9,
+								"column":	25,
+								"file":	"examples/checkbox.kry"
+							},
+							"type":	"LITERAL",
+							"valueType":	"STRING",
+							"value":	"#f0f0f0"
+						}
+					}],
+				"children":	[{
+						"type":	"ELEMENT",
+						"nodeId":	12,
+						"location":	{
+							"line":	11,
+							"column":	6,
+							"file":	"examples/checkbox.kry"
+						},
+						"elementType":	"Column",
+						"properties":	[{
+								"type":	"PROPERTY",
+								"nodeId":	13,
+								"location":	{
+									"line":	12,
+									"column":	10,
+									"file":	"examples/checkbox.kry"
+								},
+								"name":	"gap",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	14,
+									"location":	{
+										"line":	12,
+										"column":	17,
+										"file":	"examples/checkbox.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	20
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	15,
+								"location":	{
+									"line":	13,
+									"column":	10,
+									"file":	"examples/checkbox.kry"
+								},
+								"name":	"padding",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	16,
+									"location":	{
+										"line":	13,
+										"column":	21,
+										"file":	"examples/checkbox.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	30
+								}
+							}],
+						"children":	[{
+								"type":	"ELEMENT",
+								"nodeId":	17,
+								"location":	{
+									"line":	15,
+									"column":	10,
+									"file":	"examples/checkbox.kry"
+								},
+								"elementType":	"Text",
+								"properties":	[{
+										"type":	"PROPERTY",
+										"nodeId":	18,
+										"location":	{
+											"line":	16,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"text",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	19,
+											"location":	{
+												"line":	16,
+												"column":	22,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"Simple Checkbox Test"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	20,
+										"location":	{
+											"line":	17,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"fontSize",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	21,
+											"location":	{
+												"line":	17,
+												"column":	26,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	20
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	22,
+										"location":	{
+											"line":	18,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"fontWeight",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	23,
+											"location":	{
+												"line":	18,
+												"column":	28,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"bold"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	24,
+										"location":	{
+											"line":	19,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"color",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	25,
+											"location":	{
+												"line":	19,
+												"column":	23,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"#333333"
+										}
+									}]
+							}, {
+								"type":	"ELEMENT",
+								"nodeId":	26,
+								"location":	{
+									"line":	22,
+									"column":	10,
+									"file":	"examples/checkbox.kry"
+								},
+								"elementType":	"Checkbox",
+								"properties":	[{
+										"type":	"PROPERTY",
+										"nodeId":	27,
+										"location":	{
+											"line":	23,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"label",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	28,
+											"location":	{
+												"line":	23,
+												"column":	23,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"Test checkbox"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	29,
+										"location":	{
+											"line":	24,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"checked",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	30,
+											"location":	{
+												"line":	24,
+												"column":	25,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"BOOLEAN",
+											"value":	true
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	31,
+										"location":	{
+											"line":	25,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"width",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	32,
+											"location":	{
+												"line":	25,
+												"column":	23,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	250
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	33,
+										"location":	{
+											"line":	26,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"height",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	34,
+											"location":	{
+												"line":	26,
+												"column":	24,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	30
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	35,
+										"location":	{
+											"line":	27,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"fontSize",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	36,
+											"location":	{
+												"line":	27,
+												"column":	26,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	14
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	37,
+										"location":	{
+											"line":	28,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"onClick",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	38,
+											"location":	{
+												"line":	28,
+												"column":	25,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"testClick"
+										}
+									}]
+							}, {
+								"type":	"ELEMENT",
+								"nodeId":	39,
+								"location":	{
+									"line":	31,
+									"column":	10,
+									"file":	"examples/checkbox.kry"
+								},
+								"elementType":	"Checkbox",
+								"properties":	[{
+										"type":	"PROPERTY",
+										"nodeId":	40,
+										"location":	{
+											"line":	32,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"label",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	41,
+											"location":	{
+												"line":	32,
+												"column":	23,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"Unchecked checkbox"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	42,
+										"location":	{
+											"line":	33,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"checked",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	43,
+											"location":	{
+												"line":	33,
+												"column":	25,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"BOOLEAN",
+											"value":	false
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	44,
+										"location":	{
+											"line":	34,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"width",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	45,
+											"location":	{
+												"line":	34,
+												"column":	23,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	250
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	46,
+										"location":	{
+											"line":	35,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"height",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	47,
+											"location":	{
+												"line":	35,
+												"column":	24,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	30
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	48,
+										"location":	{
+											"line":	36,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"fontSize",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	49,
+											"location":	{
+												"line":	36,
+												"column":	26,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	14
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	50,
+										"location":	{
+											"line":	37,
+											"column":	14,
+											"file":	"examples/checkbox.kry"
+										},
+										"name":	"onClick",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	51,
+											"location":	{
+												"line":	37,
+												"column":	25,
+												"file":	"examples/checkbox.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"testClick"
+										}
+									}]
+							}]
+					}]
+			}]
+	}
+}

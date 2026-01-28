@@ -4,10 +4,11 @@
  */
 
 #include "lexer.h"
-#include "parser.h" 
+#include "parser.h"
 #include "codegen.h"
 #include "memory.h"
 #include "error.h"
+#include "kir_format.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -785,10 +786,13 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
  KryonResult compile_command(int argc, char *argv[]) {
     const char *input_file = NULL;
     const char *output_file = NULL;
+    const char *kir_output_file = NULL;  // KIR output path
     bool verbose = false;
     bool optimize = false;
     bool debug = false;
-    
+    bool no_krb = false;                   // Skip KRB generation
+    bool is_kir_input = false;             // Input is .kir file
+
     // --- Resource Handles for Centralized Cleanup ---
     FILE *file = NULL;
     char *source = NULL;
@@ -796,6 +800,8 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
     KryonParser *parser = NULL;
     KryonCodeGenerator *codegen = NULL;
     char *base_dir = NULL;
+    char *auto_kir_path = NULL;
+    size_t error_count = 0;
     KryonResult result = KRYON_SUCCESS;
 
     // Initialize the error and logging system
@@ -810,25 +816,31 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
         {"verbose", no_argument, 0, 'v'},
         {"optimize", no_argument, 0, 'O'},
         {"debug", no_argument, 0, 'd'},
+        {"kir-output", required_argument, 0, 'k'},  // KIR output
+        {"no-krb", no_argument, 0, 'n'},            // KIR only
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
-    
+
     int c;
-    while ((c = getopt_long(argc, argv, "o:vOdh", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "o:k:nvOdh", long_options, NULL)) != -1) {
         switch (c) {
             case 'o': output_file = optarg; break;
+            case 'k': kir_output_file = optarg; break;
+            case 'n': no_krb = true; break;
             case 'v': verbose = true; break;
             case 'O': optimize = true; break;
             case 'd': debug = true; break;
             case 'h':
-                printf("Usage: kryon compile <file.kry> [options]\n");
+                printf("Usage: kryon compile <file.kry|file.kir> [options]\n");
                 printf("Options:\n");
-                printf("  -o, --output <file>    Output file name\n");
-                printf("  -v, --verbose          Verbose output\n");
-                printf("  -O, --optimize         Enable optimizations\n");
-                printf("  -d, --debug            Enable debug mode with inspector\n");
-                printf("  -h, --help             Show this help\n");
+                printf("  -o, --output <file>      Output .krb file name\n");
+                printf("  -k, --kir-output <file>  Output .kir file name\n");
+                printf("  -n, --no-krb             Generate KIR only (skip KRB)\n");
+                printf("  -v, --verbose            Verbose output\n");
+                printf("  -O, --optimize           Enable optimizations\n");
+                printf("  -d, --debug              Enable debug mode with inspector\n");
+                printf("  -h, --help               Show this help\n");
                 result = KRYON_SUCCESS;
                 goto cleanup;
             case '?':
@@ -846,12 +858,19 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
         KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_INVALID_ARGUMENT, KRYON_SEVERITY_ERROR, "No input file specified");
     }
     input_file = argv[optind];
-    
+
+    // --- Detect KIR input files ---
+    size_t input_len = strlen(input_file);
+    if (input_len > 4 && strcmp(input_file + input_len - 4, ".kir") == 0) {
+        is_kir_input = true;
+        KRYON_LOG_INFO("Detected KIR input file");
+    }
+
     // --- Output Filename Generation ---
     char output_buffer[256];
-    if (!output_file) {
+    if (!output_file && !no_krb) {
         const char *dot = strrchr(input_file, '.');
-        if (dot && strcmp(dot, ".kry") == 0) {
+        if (dot && (strcmp(dot, ".kry") == 0 || strcmp(dot, ".kir") == 0)) {
             size_t len = dot - input_file;
             snprintf(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
         } else {
@@ -859,9 +878,13 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
         }
         output_file = output_buffer;
     }
-    
-    KRYON_LOG_INFO("Compiling: %s -> %s", input_file, output_file);
-    
+
+    if (no_krb) {
+        KRYON_LOG_INFO("Compiling (KIR only): %s", input_file);
+    } else {
+        KRYON_LOG_INFO("Compiling: %s -> %s", input_file, output_file);
+    }
+
     // --- File Reading ---
     file = fopen(input_file, "r");
     if (!file) {
@@ -902,9 +925,45 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
 
     KRYON_LOG_INFO("Read %ld bytes from %s", file_size, input_file);
     KRYON_LOG_DEBUG("Source preview (first 200 chars): %.200s%s", source, file_size > 200 ? "..." : "");
-    
-    // --- Lexing ---
-    lexer = kryon_lexer_create(source, file_size, input_file, NULL);
+
+    // --- Check if input is KIR file ---
+    KryonASTNode *transformed_ast = NULL;
+
+    if (is_kir_input) {
+        // --- Read KIR file ---
+        KRYON_LOG_INFO("Reading KIR file: %s", input_file);
+
+        KryonKIRReader *kir_reader = kryon_kir_reader_create(NULL);
+        if (!kir_reader) {
+            KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to create KIR reader");
+            result = KRYON_ERROR_COMPILATION_FAILED;
+            goto cleanup;
+        }
+
+        KryonASTNode *kir_ast = NULL;
+        if (!kryon_kir_read_file(kir_reader, input_file, &kir_ast)) {
+            size_t kir_error_count;
+            const char **kir_errors = kryon_kir_reader_get_errors(kir_reader, &kir_error_count);
+            KRYON_LOG_ERROR("Failed to read KIR file:");
+            for (size_t i = 0; i < kir_error_count; i++) {
+                KRYON_LOG_ERROR("  %s", kir_errors[i]);
+            }
+            kryon_kir_reader_destroy(kir_reader);
+            KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "KIR parsing failed");
+            result = KRYON_ERROR_COMPILATION_FAILED;
+            goto cleanup;
+        }
+
+        kryon_kir_reader_destroy(kir_reader);
+        KRYON_LOG_INFO("KIR file read successfully");
+
+        // KIR contains post-expansion AST, skip transformation
+        transformed_ast = kir_ast;
+    } else {
+        // --- Standard compilation path: Lexing, Parsing, Transformation ---
+
+        // --- Lexing ---
+        lexer = kryon_lexer_create(source, file_size, input_file, NULL);
     if (!lexer) {
         KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to create lexer");
         result = KRYON_ERROR_COMPILATION_FAILED;
@@ -1008,15 +1067,64 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
         goto cleanup;
     }
     
-    // --- AST Transformation ---
-    KryonASTNode *transformed_ast = ensure_app_root_container(ast, parser, debug);
-    if (!transformed_ast) {
-        KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to transform AST");
-        result = KRYON_ERROR_COMPILATION_FAILED;
+        // --- AST Transformation ---
+        transformed_ast = ensure_app_root_container(ast, parser, debug);
+        if (!transformed_ast) {
+            KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to transform AST");
+            result = KRYON_ERROR_COMPILATION_FAILED;
+            goto cleanup;
+        }
+        KRYON_LOG_INFO("AST transformed successfully.");
+    } // End of standard compilation path
+
+    // --- KIR Generation (if requested) ---
+    if (kir_output_file || no_krb) {
+        const char *kir_path = kir_output_file;
+
+        // Auto-generate KIR path if not specified
+        if (!kir_path && no_krb) {
+            auto_kir_path = kryon_kir_get_output_path(input_file);
+            kir_path = auto_kir_path;
+        }
+
+        if (kir_path) {
+            KRYON_LOG_INFO("Writing KIR to: %s", kir_path);
+
+            KryonKIRConfig kir_config = kryon_kir_default_config();
+            kir_config.source_file = input_file;
+
+            KryonKIRWriter *kir_writer = kryon_kir_writer_create(&kir_config);
+            if (!kir_writer) {
+                KRYON_ERROR_SET(KRYON_ERROR_COMPILATION_FAILED, KRYON_SEVERITY_ERROR, "Failed to create KIR writer");
+                result = KRYON_ERROR_COMPILATION_FAILED;
+                goto cleanup;
+            }
+
+            if (!kryon_kir_write_file(kir_writer, transformed_ast, kir_path)) {
+                size_t kir_error_count;
+                const char **kir_errors = kryon_kir_writer_get_errors(kir_writer, &kir_error_count);
+                KRYON_LOG_ERROR("Failed to write KIR file:");
+                for (size_t i = 0; i < kir_error_count; i++) {
+                    KRYON_LOG_ERROR("  %s", kir_errors[i]);
+                }
+                kryon_kir_writer_destroy(kir_writer);
+                KRYON_ERROR_SET(KRYON_ERROR_FILE_WRITE_ERROR, KRYON_SEVERITY_ERROR, "Failed to write KIR file");
+                result = KRYON_ERROR_FILE_WRITE_ERROR;
+                goto cleanup;
+            }
+
+            kryon_kir_writer_destroy(kir_writer);
+            printf("KIR written: %s\n", kir_path);
+        }
+    }
+
+    // If --no-krb is set, skip code generation
+    if (no_krb) {
+        printf("Compilation successful (KIR only)\n");
+        result = KRYON_SUCCESS;
         goto cleanup;
     }
-    KRYON_LOG_INFO("AST transformed successfully.");
-    
+
     // --- Code Generation ---
     KryonCodeGenConfig config = optimize ? kryon_codegen_speed_config() : kryon_codegen_default_config();
     codegen = kryon_codegen_create(&config);
@@ -1063,6 +1171,7 @@ cleanup:
     KRYON_LOG_DEBUG("Cleaning up compilation resources...");
     if (file) fclose(file);
     if (base_dir) free(base_dir);
+    if (auto_kir_path) free(auto_kir_path);
     if (codegen) kryon_codegen_destroy(codegen);
     if (parser) kryon_parser_destroy(parser);
     if (lexer) kryon_lexer_destroy(lexer);

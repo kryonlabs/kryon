@@ -63,7 +63,11 @@ COMPILER_SRC = $(SRC_DIR)/compiler/lexer/unicode.c \
                $(SRC_DIR)/compiler/codegen/element_serializer.c \
                $(SRC_DIR)/compiler/codegen/directive_serializer.c \
                $(SRC_DIR)/compiler/codegen/codegen.c \
-               $(SRC_DIR)/compiler/codegen/ast_expander.c
+               $(SRC_DIR)/compiler/codegen/ast_expander.c \
+               $(SRC_DIR)/compiler/expansion/expansion_context.c \
+               $(SRC_DIR)/compiler/kir/kir_writer.c \
+               $(SRC_DIR)/compiler/kir/kir_reader.c \
+               $(SRC_DIR)/compiler/kir/kir_utils.c
 
 RUNTIME_SRC = $(SRC_DIR)/runtime/core/runtime.c \
               $(SRC_DIR)/runtime/core/validation.c \
@@ -104,6 +108,7 @@ RENDERERS_SRC =
 ifeq ($(shell pkg-config --exists raylib && echo yes),yes)
     RENDERERS_SRC += $(SRC_DIR)/renderers/raylib/raylib_renderer.c
     RAYLIB_AVAILABLE := 1
+    CFLAGS += -DKRYON_RENDERER_RAYLIB=1
 else
     RAYLIB_AVAILABLE := 0
     $(warning Raylib not found - raylib renderer will be disabled)
@@ -113,6 +118,7 @@ endif
 ifeq ($(shell pkg-config --exists sdl2 && echo yes),yes)
     RENDERERS_SRC += $(SRC_DIR)/renderers/sdl2/sdl2_renderer.c
     SDL2_AVAILABLE := 1
+    CFLAGS += -DKRYON_RENDERER_SDL2=1
 else
     SDL2_AVAILABLE := 0
     $(warning SDL2 not found - SDL2 renderer will be disabled)
