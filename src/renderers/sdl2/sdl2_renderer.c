@@ -14,6 +14,10 @@
 #include <string.h>
 #include <math.h>
 
+#ifdef USE_FONTCONFIG
+#include <fontconfig/fontconfig.h>
+#endif
+
 // =============================================================================
 // SDL2 SPECIFIC TYPES
 // =============================================================================
@@ -47,6 +51,36 @@ typedef struct {
 // FORWARD DECLARATIONS
 // =============================================================================
 
+#ifdef USE_FONTCONFIG
+static char* find_system_font(const char* font_name) {
+    FcConfig *config = FcInitLoadConfigAndFonts();
+    if (!config) return NULL;
+
+    FcPattern *pattern = FcPatternCreate();
+    FcPatternAddString(pattern, FC_FAMILY, (FcChar8*)font_name);
+    FcConfigSubstitute(config, pattern, FcMatchPattern);
+    FcDefaultSubstitute(pattern);
+
+    FcResult result;
+    FcPattern *match = FcFontMatch(config, pattern, &result);
+    if (match) {
+        FcChar8 *file;
+        if (FcPatternGetString(match, FC_FILE, 0, &file) == FcResultMatch) {
+            char *font_path = strdup((char*)file);
+            FcPatternDestroy(pattern);
+            FcPatternDestroy(match);
+            FcConfigDestroy(config);
+            return font_path;
+        }
+        FcPatternDestroy(match);
+    }
+
+    FcPatternDestroy(pattern);
+    FcConfigDestroy(config);
+    return NULL;
+}
+#endif
+
 static KryonRenderResult sdl2_initialize(void* surface);
 static KryonRenderResult sdl2_begin_frame(KryonRenderContext** context, KryonColor clear_color);
 static KryonRenderResult sdl2_end_frame(KryonRenderContext* context);
@@ -78,6 +112,7 @@ static float sdl2_measure_text_width(const char* text, float font_size);
 static KryonRenderResult sdl2_set_cursor(KryonCursorType cursor_type);
 static KryonRenderResult sdl2_update_window_size(int width, int height);
 static KryonRenderResult sdl2_update_window_title(const char* title);
+static KryonRenderResult sdl2_poll_events(void);
 
 static KryonRendererVTable g_sdl2_vtable = {
     .initialize = sdl2_initialize,
@@ -93,7 +128,8 @@ static KryonRendererVTable g_sdl2_vtable = {
     .get_native_window = sdl2_get_native_window,
     .set_cursor = sdl2_set_cursor,
     .update_window_size = sdl2_update_window_size,
-    .update_window_title = sdl2_update_window_title
+    .update_window_title = sdl2_update_window_title,
+    .poll_events = sdl2_poll_events
 };
 
 // =============================================================================
@@ -195,15 +231,35 @@ static KryonRenderResult sdl2_initialize(void* surface) {
         return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
     }
     
-    // Load default font
-    g_sdl2_impl.default_font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16);
+    // Load default font using fontconfig
+    char *font_path = NULL;
+
+#ifdef USE_FONTCONFIG
+    // Try to find system fonts using fontconfig
+    font_path = find_system_font("DejaVu Sans");
+    if (!font_path) font_path = find_system_font("Liberation Sans");
+    if (!font_path) font_path = find_system_font("FreeSans");
+    if (!font_path) font_path = find_system_font("Arial");
+
+    if (font_path) {
+        printf("Loading font from: %s\n", font_path);
+        g_sdl2_impl.default_font = TTF_OpenFont(font_path, 16);
+        free(font_path);
+    }
+#endif
+
+    // Fallback to hardcoded paths if fontconfig failed or isn't available
     if (!g_sdl2_impl.default_font) {
-        // Try alternative font paths
+        g_sdl2_impl.default_font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16);
+    }
+
+    if (!g_sdl2_impl.default_font) {
         g_sdl2_impl.default_font = TTF_OpenFont("/System/Library/Fonts/Helvetica.ttc", 16);
-        if (!g_sdl2_impl.default_font) {
-            // Create a basic font as fallback
-            fprintf(stderr, "Warning: Could not load font. Text rendering may not work.\n");
-        }
+    }
+
+    if (!g_sdl2_impl.default_font) {
+        fprintf(stderr, "Warning: Could not load font. Text rendering may not work.\n");
+        fprintf(stderr, "Hint: Install dejavu-fonts or liberation-fonts package\n");
     }
     
     g_sdl2_impl.width = surf->width;
@@ -922,5 +978,59 @@ static KryonRenderResult sdl2_update_window_title(const char* title) {
     }
 
     SDL_SetWindowTitle(g_sdl2_impl.window, title);
+    return KRYON_RENDER_SUCCESS;
+}
+
+static KryonRenderResult sdl2_poll_events(void) {
+    if (!g_sdl2_impl.initialized) {
+        return KRYON_RENDER_ERROR_BACKEND_INIT_FAILED;
+    }
+
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_QUIT: {
+                // Send window close event through callback
+                if (g_sdl2_impl.event_callback) {
+                    KryonEvent kryon_event = {
+                        .type = KRYON_EVENT_WINDOW_CLOSE
+                    };
+                    g_sdl2_impl.event_callback(&kryon_event, g_sdl2_impl.callback_data);
+                }
+                g_sdl2_impl.quit_requested = true;
+                break;
+            }
+
+            case SDL_WINDOWEVENT: {
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    if (g_sdl2_impl.event_callback) {
+                        KryonEvent kryon_event = {
+                            .type = KRYON_EVENT_WINDOW_RESIZE,
+                            .data.windowResize = {
+                                .width = event.window.data1,
+                                .height = event.window.data2
+                            }
+                        };
+                        g_sdl2_impl.event_callback(&kryon_event, g_sdl2_impl.callback_data);
+                    }
+                    g_sdl2_impl.width = event.window.data1;
+                    g_sdl2_impl.height = event.window.data2;
+                }
+                break;
+            }
+
+            case SDL_MOUSEMOTION:
+            case SDL_MOUSEBUTTONDOWN:
+            case SDL_MOUSEBUTTONUP:
+            case SDL_MOUSEWHEEL:
+            case SDL_KEYDOWN:
+            case SDL_KEYUP:
+            case SDL_TEXTINPUT:
+                // These will be handled by getting input state
+                // For now, just let them pass through
+                break;
+        }
+    }
+
     return KRYON_RENDER_SUCCESS;
 }

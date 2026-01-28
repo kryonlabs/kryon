@@ -487,6 +487,109 @@ static bool parse_element(KryonKrbReader *reader, KryonKrbElement *element) {
 }
 
 // =============================================================================
+// FUNCTION PARSING
+// =============================================================================
+
+static bool parse_function(KryonKrbReader *reader, KryonKrbFunction *function) {
+    if (!reader || !function) return false;
+
+    // Read and verify function magic
+    uint32_t magic;
+    if (!read_uint32(reader, &magic)) return false;
+
+    if (magic != 0x46554E43) {  // "FUNC"
+        strcpy(reader->error_message, "Invalid function magic number");
+        return false;
+    }
+
+    // Read function header (matches KRBFunctionHeader from schema)
+    uint32_t language_id_32, name_id_32, code_id_32;
+    if (!read_uint32(reader, &language_id_32) ||
+        !read_uint32(reader, &name_id_32) ||
+        !read_uint16(reader, &function->param_count) ||
+        !read_uint16(reader, &function->flags) ||
+        !read_uint32(reader, &code_id_32)) {
+        return false;
+    }
+
+    // Store as uint16_t (string table indices)
+    function->language_id = (uint16_t)language_id_32;
+    function->name_id = (uint16_t)name_id_32;
+    function->code_id = (uint16_t)code_id_32;
+
+    // Allocate and read parameter string table indices
+    if (function->param_count > 0) {
+        function->param_ids = kryon_alloc_array(uint16_t, function->param_count);
+        if (!function->param_ids) {
+            strcpy(reader->error_message, "Failed to allocate parameter IDs array");
+            return false;
+        }
+
+        for (uint16_t i = 0; i < function->param_count; i++) {
+            uint32_t param_id_32;
+            if (!read_uint32(reader, &param_id_32)) {
+                kryon_free(function->param_ids);
+                function->param_ids = NULL;
+                return false;
+            }
+            function->param_ids[i] = (uint16_t)param_id_32;
+        }
+    } else {
+        function->param_ids = NULL;
+    }
+
+    return true;
+}
+
+static bool parse_script_section(KryonKrbReader *reader, KryonKrbFile *krb_file) {
+    if (!reader || !krb_file) return false;
+
+    // Try to read section magic (optional section)
+    uint32_t magic;
+    size_t saved_position = reader->position;
+
+    if (!read_uint32(reader, &magic)) {
+        // End of file - no script section
+        return true;
+    }
+
+    if (magic != 0x53435054) {  // "SCPT"
+        // Not a script section - rewind and continue
+        reader->position = saved_position;
+        return true;
+    }
+
+    // Read section header
+    uint32_t section_size, function_count;
+    if (!read_uint32(reader, &section_size) ||
+        !read_uint32(reader, &function_count)) {
+        return false;
+    }
+
+    if (function_count == 0) {
+        return true;
+    }
+
+    // Allocate functions array
+    krb_file->functions = kryon_alloc_array(KryonKrbFunction, function_count);
+    if (!krb_file->functions) {
+        strcpy(reader->error_message, "Failed to allocate functions array");
+        return false;
+    }
+    krb_file->function_count = function_count;
+
+    // Parse each function
+    for (uint32_t i = 0; i < function_count; i++) {
+        if (!parse_function(reader, &krb_file->functions[i])) {
+            return false;
+        }
+        krb_file->functions[i].id = i;  // Assign sequential ID
+    }
+
+    return true;
+}
+
+// =============================================================================
 // MAIN PARSING FUNCTION
 // =============================================================================
 
@@ -532,12 +635,19 @@ KryonKrbFile *kryon_krb_reader_parse(KryonKrbReader *reader) {
             }
         }
     }
-    
+
+    // Parse script section (optional - functions)
+    if (!parse_script_section(reader, krb_file)) {
+        kryon_krb_file_destroy(krb_file);
+        return NULL;
+    }
+
     // Store the parsed file in reader
     reader->krb_file = krb_file;
-    
-    KRYON_LOG_INFO("Successfully parsed KRB file: %u elements, %u strings",
-                  krb_file->header.element_count, krb_file->string_count);
+
+    KRYON_LOG_INFO("Successfully parsed KRB file: %u elements, %u strings, %u functions",
+                  krb_file->header.element_count, krb_file->string_count,
+                  krb_file->function_count);
     
     return krb_file;
 }

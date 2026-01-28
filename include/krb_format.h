@@ -92,13 +92,15 @@ struct KryonKrbHeader {
     uint32_t element_count;             ///< Number of elements
     uint32_t property_count;            ///< Number of properties
     uint32_t template_count;            ///< Number of reactive templates (@for, @if, etc.)
+    uint32_t function_count;            ///< Number of function definitions
     uint32_t string_table_size;         ///< Size of string table
     uint32_t data_size;                 ///< Size of element data
     uint32_t template_data_size;        ///< Size of template data
+    uint32_t script_section_size;       ///< Size of script section
     uint32_t checksum;                  ///< CRC32 checksum
     KryonKrbCompressionType compression; ///< Compression type
     uint32_t uncompressed_size;         ///< Uncompressed data size
-    uint8_t reserved[28];               ///< Reserved bytes (reduced to fit new fields)
+    uint8_t reserved[20];               ///< Reserved bytes (reduced to fit new fields)
 };
 
 /**
@@ -167,6 +169,19 @@ struct KryonKrbTemplate {
 };
 
 /**
+ * @brief KRB function definition
+ */
+typedef struct {
+    uint32_t id;                    ///< Unique function ID
+    uint16_t language_id;           ///< String table index for language ("", "rc", "js", etc.)
+    uint16_t name_id;               ///< String table index for function name
+    uint16_t param_count;           ///< Number of parameters
+    uint16_t flags;                 ///< Function flags (async, exported, etc.)
+    uint16_t *param_ids;            ///< Array of string table indices for parameter names
+    uint16_t code_id;               ///< String table index for function code
+} KryonKrbFunction;
+
+/**
  * @brief KRB file structure
  */
 struct KryonKrbFile {
@@ -175,6 +190,8 @@ struct KryonKrbFile {
     uint32_t string_count;          ///< Number of strings
     KryonKrbElement *elements;      ///< Array of elements
     KryonKrbTemplate *templates;    ///< Array of reactive templates
+    KryonKrbFunction *functions;    ///< Array of function definitions
+    uint32_t function_count;        ///< Number of functions
     uint8_t *raw_data;              ///< Raw file data (for memory mapping)
     size_t file_size;               ///< Total file size
     bool owns_data;                 ///< Whether file owns the data
@@ -400,6 +417,59 @@ KryonKrbProperty *kryon_krb_element_get_property(const KryonKrbElement *element,
  * @return true on success, false on failure
  */
 bool kryon_krb_element_add_child(KryonKrbElement *element, uint32_t child_id);
+
+// =============================================================================
+// KRB FUNCTION UTILITIES
+// =============================================================================
+
+/**
+ * @brief Create new KRB function
+ * @param id Function ID
+ * @param language_id String table index for language identifier
+ * @param name_id String table index for function name
+ * @param code_id String table index for function code
+ * @return Pointer to new function, or NULL on failure
+ */
+KryonKrbFunction *kryon_krb_function_create(uint32_t id, uint16_t language_id,
+                                           uint16_t name_id, uint16_t code_id);
+
+/**
+ * @brief Destroy KRB function
+ * @param function Function to destroy
+ */
+void kryon_krb_function_destroy(KryonKrbFunction *function);
+
+/**
+ * @brief Add parameter to function
+ * @param function The function
+ * @param param_id String table index for parameter name
+ * @return true on success, false on failure
+ */
+bool kryon_krb_function_add_parameter(KryonKrbFunction *function, uint16_t param_id);
+
+/**
+ * @brief Add function to KRB file
+ * @param krb_file The KRB file
+ * @param function Function to add (will be copied)
+ * @return true on success, false on failure
+ */
+bool kryon_krb_file_add_function(KryonKrbFile *krb_file, const KryonKrbFunction *function);
+
+/**
+ * @brief Get function by ID
+ * @param krb_file The KRB file
+ * @param id Function ID
+ * @return Pointer to function, or NULL if not found
+ */
+KryonKrbFunction *kryon_krb_file_get_function(const KryonKrbFile *krb_file, uint32_t id);
+
+/**
+ * @brief Get function by name
+ * @param krb_file The KRB file
+ * @param name Function name
+ * @return Pointer to function, or NULL if not found
+ */
+KryonKrbFunction *kryon_krb_file_get_function_by_name(const KryonKrbFile *krb_file, const char *name);
 
 // =============================================================================
 // KRB PROPERTY UTILITIES

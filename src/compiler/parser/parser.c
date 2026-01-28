@@ -61,6 +61,38 @@ static void enter_panic_mode(KryonParser *parser);
 static void exit_panic_mode(KryonParser *parser);
 
 // =============================================================================
+// LANGUAGE VALIDATION
+// =============================================================================
+
+/**
+ * @brief Check if a language identifier is supported
+ * @param lang Language identifier string
+ * @return true if supported, false otherwise
+ */
+static bool is_supported_language(const char *lang) {
+    if (lang == NULL) {
+        return false;
+    }
+
+    // Supported languages
+    const char *supported[] = {
+        "",      // Native Kryon (default)
+        "rc",    // rc shell (Plan 9/Inferno)
+        "js",    // JavaScript (reserved)
+        "lua",   // Lua (reserved)
+        NULL
+    };
+
+    for (int i = 0; supported[i] != NULL; i++) {
+        if (strcmp(lang, supported[i]) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// =============================================================================
 // PARSER CONFIGURATION
 // =============================================================================
 
@@ -1778,6 +1810,16 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
     if (check_token(parser, KRYON_TOKEN_STRING)) {
         language_token = advance(parser);
         printf("[DEBUG] parse_function_definition: Language: %s\n", language_token->value.string_value);
+
+        // Validate language identifier
+        if (!is_supported_language(language_token->value.string_value)) {
+            char error_msg[256];
+            snprintf(error_msg, sizeof(error_msg),
+                    "Unsupported language: '%s'. Supported languages: '', 'rc', 'js', 'lua'",
+                    language_token->value.string_value);
+            parser_error(parser, error_msg);
+            // Continue with warning - store the language anyway for debugging
+        }
     }
 
     // Expect function name

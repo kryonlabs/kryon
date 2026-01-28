@@ -370,26 +370,99 @@ Reserved for user-defined widgets
 [Handler Flags: u8]
 ```
 
-## Script Section
+## Script Section (Optional)
 
-### Script Definition
+Magic: `0x53435054` ("SCPT")
 
-```
-[Script ID: u32]
-[Script Language String ID: u16]   # Reserved for future scripting engines (empty when unused)
-[Function Count: u16]
-[Functions]
-```
+The script section contains function definitions with support for multiple scripting languages.
 
-### Function Definition
+### Section Header
 
 ```
-[Function Name String ID: u16]
-[Parameter Count: u8]
-[Parameter Names]
-[Code Size: u32]
-[Code Data]
+[Magic: u32]                        # 0x53435054 "SCPT"
+[Section Size: u32]                 # Total section size in bytes
+[Function Count: u32]               # Number of functions
 ```
+
+### Function Header (24 bytes fixed)
+
+For each function:
+
+```
+[Magic: u32]                        # 0x46554E43 "FUNC"
+[Language Ref: u32]                 # String table index for language
+[Name Ref: u32]                     # String table index for name
+[Param Count: u16]                  # Number of parameters
+[Flags: u16]                        # Function flags (see below)
+[Code Ref: u32]                     # String table index for code
+[Parameter References]              # u32 array[param_count]
+```
+
+### Function Flags
+
+| Flag | Value | Description |
+|------|-------|-------------|
+| None | 0x0000 | Standard function |
+| Async | 0x0001 | Asynchronous function |
+| Exported | 0x0002 | Exported from module |
+| Bytecode | 0x0004 | Bytecode, not source |
+| ExecuteOnLoad | 0x0008 | Execute when file loads |
+
+### Parameter References
+
+Following the function header, param_count u32 values reference the parameter names in the string table:
+
+```
+[Parameter 1 Ref: u32]              # String table index
+[Parameter 2 Ref: u32]              # String table index
+...
+```
+
+### Supported Language Identifiers
+
+Language is identified by string in string table referenced by Language Ref:
+
+| Identifier | Language | Status |
+|------------|----------|--------|
+| "" (empty) | Native Kryon | Active |
+| "rc" | rc shell (Plan 9/Inferno) | Active |
+| "js" | JavaScript | Reserved |
+| "lua" | Lua | Reserved |
+
+### Example Script Section Layout
+
+```
+0x000: 53 43 50 54           # "SCPT" magic
+0x004: 00 00 00 C8           # Section size = 200 bytes
+0x008: 00 00 00 02           # Function count = 2
+
+# Function 1
+0x00C: 46 55 4E 43           # "FUNC" magic
+0x010: 00 00 00 00           # Language ref = 0 (empty string, native)
+0x014: 00 00 00 10           # Name ref = 16 (function name)
+0x018: 00 00                 # Param count = 0
+0x01A: 00 00                 # Flags = 0
+0x01C: 00 00 00 20           # Code ref = 32 (code string)
+
+# Function 2 (rc shell)
+0x020: 46 55 4E 43           # "FUNC" magic
+0x024: 00 00 00 04           # Language ref = 4 ("rc")
+0x028: 00 00 00 30           # Name ref = 48 (function name)
+0x02C: 00 02                 # Param count = 2
+0x02E: 00 00                 # Flags = 0
+0x030: 00 00 00 40           # Code ref = 64 (code string)
+0x034: 00 00 00 50           # Param 1 ref = 80
+0x038: 00 00 00 60           # Param 2 ref = 96
+```
+
+### Notes
+
+- Script section is optional - if no functions are defined, this section is omitted
+- Function code is stored as strings in the string table for deduplication
+- Language identifier "" (empty string) indicates native Kryon scripting
+- Language identifier "rc" indicates rc shell (Plan 9/Inferno shell)
+- Future language support can be added by introducing new language identifiers
+- All string references point to offsets in the string table section
 
 ## Resource Section
 

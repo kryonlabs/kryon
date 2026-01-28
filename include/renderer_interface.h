@@ -516,7 +516,13 @@ typedef struct {
      * @return KRYON_RENDER_SUCCESS on success
      */
     KryonRenderResult (*update_window_title)(const char* title);
-    
+
+    /**
+     * Poll for platform events (SDL, window system, etc.)
+     * @return KRYON_RENDER_SUCCESS on success
+     */
+    KryonRenderResult (*poll_events)(void);
+
 } KryonRendererVTable;
 
 // =============================================================================

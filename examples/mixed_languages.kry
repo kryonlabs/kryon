@@ -1,0 +1,333 @@
+// Mixed Language Demo
+// Demonstrates using both native Kryon and rc shell in the same file
+
+var count = 0
+var nativeOps = 0
+var rcOps = 0
+var message = ""
+
+// Native Kryon function - fast, simple
+function incrementNative() {
+    count += 1
+    nativeOps += 1
+    message = "Incremented using native Kryon"
+}
+
+// rc shell function - for system integration
+function "rc" incrementRC() {
+    count=`{kryonget count}
+    count=`{expr $count + 1}
+    kryonset count $count
+
+    rcOps=`{kryonget rcOps}
+    rcOps=`{expr $rcOps + 1}
+    kryonset rcOps $rcOps
+
+    kryonset message 'Incremented using rc shell'
+}
+
+// Native Kryon function - direct manipulation
+function decrementNative() {
+    count -= 1
+    nativeOps += 1
+    message = "Decremented using native Kryon"
+}
+
+// rc shell function - shell-based
+function "rc" decrementRC() {
+    count=`{kryonget count}
+    count=`{expr $count - 1}
+    kryonset count $count
+
+    rcOps=`{kryonget rcOps}
+    rcOps=`{expr $rcOps + 1}
+    kryonset rcOps $rcOps
+
+    kryonset message 'Decremented using rc shell'
+}
+
+// Native Kryon function - fast reset
+function resetNative() {
+    count = 0
+    message = "Reset using native Kryon"
+    nativeOps += 1
+}
+
+// rc shell function - shell reset
+function "rc" resetRC() {
+    kryonset count 0
+    kryonset message 'Reset using rc shell'
+
+    rcOps=`{kryonget rcOps}
+    rcOps=`{expr $rcOps + 1}
+    kryonset rcOps $rcOps
+}
+
+// Native Kryon function - clear stats
+function clearStats() {
+    nativeOps = 0
+    rcOps = 0
+    message = "Statistics cleared"
+}
+
+// rc shell function - get system info
+function "rc" getSystemInfo() {
+    # Get current directory
+    dir=`{pwd}
+
+    # Get date
+    now=`{date '+%Y-%m-%d %H:%M'}
+
+    # Build message
+    msg='Directory: '^$dir^' | Time: '^$now
+    kryonset message $msg
+
+    rcOps=`{kryonget rcOps}
+    rcOps=`{expr $rcOps + 1}
+    kryonset rcOps $rcOps
+}
+
+App {
+    title: "Mixed Language Demo"
+    width: 700
+    height: 600
+
+    Column {
+        spacing: 20
+        padding: 20
+
+        // Title
+        Text {
+            text: "Native Kryon vs rc Shell"
+            fontSize: 24
+            fontWeight: "bold"
+            color: "#333333"
+        }
+
+        // Counter display
+        Container {
+            background: "#f5f5f5"
+            borderRadius: 8
+            padding: 15
+
+            Column {
+                spacing: 10
+
+                Text {
+                    text: "Count: ${count}"
+                    fontSize: 28
+                    fontWeight: "bold"
+                    color: "#1976D2"
+                }
+
+                Row {
+                    spacing: 20
+
+                    Column {
+                        spacing: 5
+
+                        Text {
+                            text: "Native operations: ${nativeOps}"
+                            fontSize: 14
+                            color: "#4CAF50"
+                        }
+
+                        Text {
+                            text: "rc shell operations: ${rcOps}"
+                            fontSize: 14
+                            color: "#FF9800"
+                        }
+                    }
+                }
+            }
+        }
+
+        // Native Kryon controls
+        Container {
+            background: "#e8f5e9"
+            borderRadius: 8
+            padding: 15
+
+            Column {
+                spacing: 10
+
+                Text {
+                    text: "Native Kryon Functions"
+                    fontSize: 16
+                    fontWeight: "bold"
+                    color: "#2E7D32"
+                }
+
+                Text {
+                    text: "Fast, direct state manipulation"
+                    fontSize: 12
+                    color: "#666666"
+                }
+
+                Row {
+                    spacing: 10
+
+                    Button {
+                        text: "+ Native"
+                        onClick: "incrementNative"
+                        background: "#4CAF50"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "- Native"
+                        onClick: "decrementNative"
+                        background: "#388E3C"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "Reset Native"
+                        onClick: "resetNative"
+                        background: "#1B5E20"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+                }
+            }
+        }
+
+        // rc shell controls
+        Container {
+            background: "#fff3e0"
+            borderRadius: 8
+            padding: 15
+
+            Column {
+                spacing: 10
+
+                Text {
+                    text: "rc Shell Functions"
+                    fontSize: 16
+                    fontWeight: "bold"
+                    color: "#E65100"
+                }
+
+                Text {
+                    text: "System integration, shell utilities access"
+                    fontSize: 12
+                    color: "#666666"
+                }
+
+                Row {
+                    spacing: 10
+
+                    Button {
+                        text: "+ rc"
+                        onClick: "incrementRC"
+                        background: "#FF9800"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "- rc"
+                        onClick: "decrementRC"
+                        background: "#F57C00"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "Reset rc"
+                        onClick: "resetRC"
+                        background: "#E65100"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "System Info"
+                        onClick: "getSystemInfo"
+                        background: "#BF360C"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+                }
+            }
+        }
+
+        // Message display
+        Container {
+            background: "#e3f2fd"
+            borderRadius: 8
+            padding: 15
+
+            Column {
+                spacing: 10
+
+                Text {
+                    text: "Status"
+                    fontSize: 14
+                    fontWeight: "bold"
+                    color: "#1976D2"
+                }
+
+                Text {
+                    text: message
+                    fontSize: 13
+                    color: "#333333"
+                }
+
+                Button {
+                    text: "Clear Statistics"
+                    onClick: "clearStats"
+                    background: "#2196F3"
+                    color: "#ffffff"
+                    padding: 8
+                    borderRadius: 4
+                }
+            }
+        }
+
+        // Usage guide
+        Container {
+            background: "#f3e5f5"
+            borderRadius: 8
+            padding: 15
+
+            Column {
+                spacing: 5
+
+                Text {
+                    text: "Language Selection Guide"
+                    fontSize: 14
+                    fontWeight: "bold"
+                    color: "#6A1B9A"
+                }
+
+                Text {
+                    text: "✓ Use Native Kryon for: Simple logic, fast operations, direct state access"
+                    fontSize: 11
+                    color: "#333333"
+                }
+
+                Text {
+                    text: "✓ Use rc shell for: System commands, file operations, shell utilities"
+                    fontSize: 11
+                    color: "#333333"
+                }
+
+                Text {
+                    text: "Note: rc shell has overhead - use native for performance-critical code"
+                    fontSize: 10
+                    color: "#666666"
+                }
+            }
+        }
+    }
+}

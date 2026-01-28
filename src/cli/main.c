@@ -12,6 +12,10 @@
  extern int compile_command(int argc, char *argv[]);
  extern int decompile_command(int argc, char *argv[]);
  extern int print_command(int argc, char *argv[]);
+ extern int kir_dump_command(int argc, char *argv[]);
+ extern int kir_validate_command(int argc, char *argv[]);
+ extern int kir_stats_command(int argc, char *argv[]);
+ extern int kir_diff_command(int argc, char *argv[]);
  extern int run_command(int argc, char *argv[]);
  extern int dev_command(int argc, char *argv[]);
  extern int debug_command(int argc, char *argv[]);
@@ -28,6 +32,12 @@
      printf("  dev <file.kry>         Development mode with hot reload\n");
      printf("  debug <file.krb>       Debug KRB application\n");
      printf("  package <project>      Package for distribution\n");
+     printf("\n");
+     printf("KIR Utilities:\n");
+     printf("  kir-dump <file.kir>    Pretty-print KIR structure\n");
+     printf("  kir-validate <file>    Validate KIR file structure\n");
+     printf("  kir-stats <file>       Show KIR statistics\n");
+     printf("  kir-diff <f1> <f2>     Compare two KIR files\n");
      printf("  --help, -h             Show this help message\n");
      printf("  --version, -v          Show version information\n\n");
      printf("Examples:\n");
@@ -78,6 +88,14 @@
         return decompile_command(argc - 1, argv + 1);
     } else if (strcmp(command, "print") == 0) {
         return print_command(argc - 1, argv + 1);
+    } else if (strcmp(command, "kir-dump") == 0) {
+        return kir_dump_command(argc - 1, argv + 1);
+    } else if (strcmp(command, "kir-validate") == 0) {
+        return kir_validate_command(argc - 1, argv + 1);
+    } else if (strcmp(command, "kir-stats") == 0) {
+        return kir_stats_command(argc - 1, argv + 1);
+    } else if (strcmp(command, "kir-diff") == 0) {
+        return kir_diff_command(argc - 1, argv + 1);
      } else if (strcmp(command, "run") == 0) {
          return run_command(argc - 1, argv + 1);
      } else if (strcmp(command, "dev") == 0) {

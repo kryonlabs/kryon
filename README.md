@@ -82,6 +82,80 @@ make -j$(nproc)
 ./build/bin/kryon run examples/hello-world.kry --renderer raylib
 ```
 
+## Multi-Language Scripting
+
+Kryon supports multiple scripting languages for event handlers and functions:
+
+### Supported Languages
+
+- **Native Kryon** (default) - Built-in scripting language for fast, direct state manipulation
+- **rc shell** - Plan 9/Inferno rc shell for system integration and shell utilities
+
+### Using rc Shell
+
+Specify the language before the function name:
+
+```kry
+function "rc" handleClick() {
+    echo Button clicked!
+}
+```
+
+Access Kryon variables from rc shell:
+```kry
+var count = 0
+
+function "rc" increment() {
+    count=`{kryonget count}
+    count=`{expr $count + 1}
+    kryonset count $count
+}
+```
+
+### Built-in Commands
+
+When using rc shell functions, these commands interact with Kryon state:
+- **`kryonget varname`** - Get the value of a Kryon variable
+- **`kryonset varname value`** - Set a Kryon variable to a value
+
+### Running rc Shell (TaijiOS)
+
+Kryon uses the Inferno emulator to execute rc shell scripts:
+```bash
+emu -r. dis/sh.dis
+```
+
+This is configured automatically in the Kryon runtime. The rc shell provides access to system commands, file operations, and shell utilities within your Kryon applications.
+
+### When to Use Each Language
+
+**Use Native Kryon for:**
+- Simple application logic
+- Performance-critical operations
+- Direct state manipulation
+- UI state updates
+
+**Use rc shell for:**
+- System command integration
+- File system operations
+- Text processing (grep, sed, awk)
+- Integration with TaijiOS/Inferno services
+- Existing shell scripts
+
+For more details, see:
+- [KRY Language Spec - Multi-Language Functions](docs/KRY_LANGUAGE_SPEC.md#multi-language-function-support)
+- [RC Shell Guide](docs/RC_SHELL_GUIDE.md)
+
+### Example Applications
+
+```bash
+# rc shell demo - counter and file operations
+./scripts/run_example.sh rc_shell_demo raylib
+
+# Mixed languages - compare native vs rc shell
+./scripts/run_example.sh mixed_languages raylib
+```
+
 ## Examples
 
 See the [examples/](examples/) directory for KRY application samples. Use the scripts to run them:

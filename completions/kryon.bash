@@ -77,10 +77,11 @@ _kryon_run() {
         return 0
     fi
 
-    # Complete .krb and .kry files with directory support
+    # Complete directories and .krb/.kry files
     compopt -o filenames
-    COMPREPLY=( $(compgen -f -X '!*.krb' -- "${cur}") )
-    COMPREPLY+=( $(compgen -f -X '!*.kry' -- "${cur}") )
+    COMPREPLY=( $(compgen -d -- "${cur}") )  # Add directories
+    COMPREPLY+=( $(compgen -f -X '!*.krb' -- "${cur}") )  # Add .krb files
+    COMPREPLY+=( $(compgen -f -X '!*.kry' -- "${cur}") )  # Add .kry files
 }
 
 _kryon_debug() {

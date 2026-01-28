@@ -1,0 +1,213 @@
+// rc Shell Function Demo
+// Demonstrates using rc shell (Plan 9/Inferno shell) for event handlers
+
+var count = 0
+var message = "Hello from rc!"
+var timestamp = ""
+
+// rc shell function to increment counter
+function "rc" increment() {
+    count=`{kryonget count}
+    count=`{expr $count + 1}
+    kryonset count $count
+}
+
+// rc shell function to decrement counter
+function "rc" decrement() {
+    count=`{kryonget count}
+    count=`{expr $count - 1}
+    kryonset count $count
+}
+
+// rc shell function to reset
+function "rc" reset() {
+    kryonset count 0
+}
+
+// rc shell function with shell utilities
+function "rc" updateMessage() {
+    # Get current time using rc shell
+    now=`{date '+%Y-%m-%d %H:%M:%S'}
+    kryonset timestamp $now
+    kryonset message 'Updated at: '^$now
+}
+
+// rc shell function with file operations
+function "rc" checkFiles() {
+    # Count .kry files in examples directory
+    count=`{ls *.kry | wc -l | tr -d ' '}
+    msg='Found '^$count^' example files'
+    kryonset message $msg
+}
+
+// rc shell function with conditionals
+function "rc" checkCount() {
+    val=`{kryonget count}
+
+    if (test $val -gt 10) {
+        kryonset message 'Count is greater than 10'
+    }
+    if not if (test $val -lt 0) {
+        kryonset message 'Count is negative'
+    }
+    if not {
+        kryonset message 'Count is between 0 and 10'
+    }
+}
+
+App {
+    title: "rc Shell Demo - TaijiOS/Inferno"
+    width: 600
+    height: 500
+
+    Column {
+        spacing: 20
+        padding: 20
+
+        // Title
+        Text {
+            text: "rc Shell Integration Demo"
+            fontSize: 24
+            fontWeight: "bold"
+            color: "#333333"
+        }
+
+        // Counter section
+        Container {
+            background: "#f0f0f0"
+            borderRadius: 8
+            padding: 15
+
+            Column {
+                spacing: 10
+
+                Text {
+                    text: "Counter: ${count}"
+                    fontSize: 20
+                    fontWeight: "bold"
+                }
+
+                Row {
+                    spacing: 10
+
+                    Button {
+                        text: "Increment"
+                        onClick: "increment"
+                        background: "#4CAF50"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "Decrement"
+                        onClick: "decrement"
+                        background: "#f44336"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "Reset"
+                        onClick: "reset"
+                        background: "#2196F3"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "Check"
+                        onClick: "checkCount"
+                        background: "#FF9800"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+                }
+            }
+        }
+
+        // Message section
+        Container {
+            background: "#e3f2fd"
+            borderRadius: 8
+            padding: 15
+
+            Column {
+                spacing: 10
+
+                Text {
+                    text: message
+                    fontSize: 16
+                    color: "#1976D2"
+                }
+
+                Text {
+                    text: timestamp
+                    fontSize: 12
+                    color: "#666666"
+                }
+
+                Row {
+                    spacing: 10
+
+                    Button {
+                        text: "Update Message"
+                        onClick: "updateMessage"
+                        background: "#9C27B0"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+
+                    Button {
+                        text: "Check Files"
+                        onClick: "checkFiles"
+                        background: "#00BCD4"
+                        color: "#ffffff"
+                        padding: 10
+                        borderRadius: 4
+                    }
+                }
+            }
+        }
+
+        // Info section
+        Container {
+            background: "#fff3e0"
+            borderRadius: 8
+            padding: 15
+
+            Column {
+                spacing: 5
+
+                Text {
+                    text: "About rc Shell"
+                    fontSize: 16
+                    fontWeight: "bold"
+                    color: "#E65100"
+                }
+
+                Text {
+                    text: "rc is the shell from Plan 9 and Inferno operating systems"
+                    fontSize: 12
+                    color: "#666666"
+                }
+
+                Text {
+                    text: "Functions marked with \"rc\" run in the Inferno emulator"
+                    fontSize: 12
+                    color: "#666666"
+                }
+
+                Text {
+                    text: "Use kryonget/kryonset to interact with app state"
+                    fontSize: 12
+                    color: "#666666"
+                }
+            }
+        }
+    }
+}

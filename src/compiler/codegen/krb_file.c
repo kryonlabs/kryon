@@ -117,7 +117,17 @@ void kryon_krb_file_destroy(KryonKrbFile *krb_file) {
         }
         kryon_free(krb_file->elements);
     }
-    
+
+    // Free functions
+    if (krb_file->functions) {
+        for (uint32_t i = 0; i < krb_file->function_count; i++) {
+            if (krb_file->functions[i].param_ids) {
+                kryon_free(krb_file->functions[i].param_ids);
+            }
+        }
+        kryon_free(krb_file->functions);
+    }
+
     // Free raw data if owned
     if (krb_file->owns_data && krb_file->raw_data) {
         kryon_free(krb_file->raw_data);
@@ -579,4 +589,111 @@ const char *kryon_krb_property_type_name(KryonPropertyType type) {
         case KRYON_PROPERTY_EVENT_HANDLER: return "event_handler";
         default: return "unknown";
     }
+}
+
+// =============================================================================
+// FUNCTION UTILITIES
+// =============================================================================
+
+KryonKrbFunction *kryon_krb_function_create(uint32_t id, uint16_t language_id,
+                                           uint16_t name_id, uint16_t code_id) {
+    KryonKrbFunction *function = kryon_alloc_type(KryonKrbFunction);
+    if (!function) {
+        KRYON_LOG_ERROR("Failed to allocate function");
+        return NULL;
+    }
+
+    function->id = id;
+    function->language_id = language_id;
+    function->name_id = name_id;
+    function->code_id = code_id;
+    function->param_count = 0;
+    function->flags = 0;
+    function->param_ids = NULL;
+
+    return function;
+}
+
+void kryon_krb_function_destroy(KryonKrbFunction *function) {
+    if (!function) return;
+
+    if (function->param_ids) {
+        kryon_free(function->param_ids);
+    }
+
+    kryon_free(function);
+}
+
+bool kryon_krb_function_add_parameter(KryonKrbFunction *function, uint16_t param_id) {
+    if (!function) return false;
+
+    uint16_t new_count = function->param_count + 1;
+    uint16_t *new_params = realloc(function->param_ids, new_count * sizeof(uint16_t));
+    if (!new_params) {
+        KRYON_LOG_ERROR("Failed to allocate parameter array");
+        return false;
+    }
+
+    new_params[function->param_count] = param_id;
+    function->param_ids = new_params;
+    function->param_count = new_count;
+
+    return true;
+}
+
+bool kryon_krb_file_add_function(KryonKrbFile *krb_file, const KryonKrbFunction *function) {
+    if (!krb_file || !function) return false;
+
+    uint32_t new_count = krb_file->function_count + 1;
+    KryonKrbFunction *new_functions = realloc(krb_file->functions,
+                                              new_count * sizeof(KryonKrbFunction));
+    if (!new_functions) {
+        KRYON_LOG_ERROR("Failed to allocate functions array");
+        return false;
+    }
+
+    // Copy function data
+    new_functions[krb_file->function_count] = *function;
+
+    // Deep copy parameter IDs if present
+    if (function->param_count > 0 && function->param_ids) {
+        uint16_t *param_copy = kryon_alloc_array(uint16_t, function->param_count);
+        if (!param_copy) {
+            KRYON_LOG_ERROR("Failed to allocate parameter IDs copy");
+            return false;
+        }
+        memcpy(param_copy, function->param_ids, function->param_count * sizeof(uint16_t));
+        new_functions[krb_file->function_count].param_ids = param_copy;
+    }
+
+    krb_file->functions = new_functions;
+    krb_file->function_count = new_count;
+    krb_file->header.function_count = new_count;
+
+    return true;
+}
+
+KryonKrbFunction *kryon_krb_file_get_function(const KryonKrbFile *krb_file, uint32_t id) {
+    if (!krb_file || !krb_file->functions) return NULL;
+
+    for (uint32_t i = 0; i < krb_file->function_count; i++) {
+        if (krb_file->functions[i].id == id) {
+            return &krb_file->functions[i];
+        }
+    }
+
+    return NULL;
+}
+
+KryonKrbFunction *kryon_krb_file_get_function_by_name(const KryonKrbFile *krb_file, const char *name) {
+    if (!krb_file || !krb_file->functions || !name) return NULL;
+
+    for (uint32_t i = 0; i < krb_file->function_count; i++) {
+        const char *func_name = kryon_krb_file_get_string(krb_file, krb_file->functions[i].name_id);
+        if (func_name && strcmp(func_name, name) == 0) {
+            return &krb_file->functions[i];
+        }
+    }
+
+    return NULL;
 }

@@ -1,0 +1,5 @@
+Button {
+  text = "Click Me"
+  width = 120
+  height = 40
+}

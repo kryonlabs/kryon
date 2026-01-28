@@ -1,0 +1,30 @@
+Container {
+  width = 800
+  height = 600
+
+  Container {
+    width = 700
+    height = 100
+
+    Text {
+      content = "Header"
+    }
+  }
+
+  Container {
+    width = 700
+    height = 400
+
+    Button { text = "Option 1" }
+    Button { text = "Option 2" }
+    Button { text = "Option 3" }
+  }
+
+  Container {
+    width = 700
+    height = 80
+
+    Button { text = "OK" width = 100 }
+    Button { text = "Cancel" width = 100 }
+  }
+}

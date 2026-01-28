@@ -1,0 +1,101 @@
+{
+	"version":	"0.1.0",
+	"format":	"kir-json",
+	"metadata":	{
+		"sourceFile":	"tests/golden/simple_button.kry",
+		"compiler":	"kryon",
+		"compilerVersion":	"1.0.0",
+		"timestamp":	"2026-01-28T05:11:45Z"
+	},
+	"root":	{
+		"type":	"ROOT",
+		"nodeId":	0,
+		"location":	{
+			"line":	0,
+			"column":	0
+		},
+		"children":	[{
+				"type":	"ELEMENT",
+				"nodeId":	0,
+				"location":	{
+					"line":	0,
+					"column":	0
+				},
+				"elementType":	"App",
+				"children":	[{
+						"type":	"ELEMENT",
+						"nodeId":	2,
+						"location":	{
+							"line":	1,
+							"column":	2,
+							"file":	"tests/golden/simple_button.kry"
+						},
+						"elementType":	"Button",
+						"properties":	[{
+								"type":	"PROPERTY",
+								"nodeId":	3,
+								"location":	{
+									"line":	2,
+									"column":	4,
+									"file":	"tests/golden/simple_button.kry"
+								},
+								"name":	"text",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	4,
+									"location":	{
+										"line":	2,
+										"column":	12,
+										"file":	"tests/golden/simple_button.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"STRING",
+									"value":	"Click Me"
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	5,
+								"location":	{
+									"line":	3,
+									"column":	4,
+									"file":	"tests/golden/simple_button.kry"
+								},
+								"name":	"width",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	6,
+									"location":	{
+										"line":	3,
+										"column":	13,
+										"file":	"tests/golden/simple_button.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	120
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	7,
+								"location":	{
+									"line":	4,
+									"column":	4,
+									"file":	"tests/golden/simple_button.kry"
+								},
+								"name":	"height",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	8,
+									"location":	{
+										"line":	4,
+										"column":	14,
+										"file":	"tests/golden/simple_button.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	40
+								}
+							}]
+					}]
+			}]
+	}
+}

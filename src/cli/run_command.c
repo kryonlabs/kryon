@@ -373,6 +373,11 @@ int run_command(int argc, char *argv[]) {
         // Update runtime (process events, update state)
         kryon_runtime_update(runtime, delta_time);
 
+        // Poll events for renderers that need it (like SDL2)
+        if (runtime->renderer && ((KryonRenderer*)runtime->renderer)->vtable->poll_events) {
+            ((KryonRenderer*)runtime->renderer)->vtable->poll_events();
+        }
+
         // For web renderer, skip actual rendering and just generate output once
         if (strcmp(renderer, "web") == 0) {
             printf("🌐 Web renderer: Generating HTML/CSS/JS output\n");
@@ -399,9 +404,9 @@ int run_command(int argc, char *argv[]) {
             break;
         }
 
-        // For raylib, check if window should close
-        if (strcmp(renderer, "raylib") == 0) {
-            // The raylib renderer should set runtime->is_running = false when window closes
+        // For raylib and SDL2, check if window should close
+        if (strcmp(renderer, "raylib") == 0 || strcmp(renderer, "sdl2") == 0) {
+            // The renderer should set runtime->is_running = false when window closes
             if (!runtime->is_running) {
                 printf("🔲 Window closed by user\n");
                 break;

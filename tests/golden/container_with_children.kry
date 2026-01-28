@@ -1,0 +1,21 @@
+Container {
+  width = 400
+  height = 300
+
+  Text {
+    content = "Title"
+    fontSize = 24
+  }
+
+  Button {
+    text = "Submit"
+    width = 100
+    height = 40
+  }
+
+  Button {
+    text = "Cancel"
+    width = 100
+    height = 40
+  }
+}

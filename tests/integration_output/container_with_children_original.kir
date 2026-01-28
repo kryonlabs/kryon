@@ -1,0 +1,279 @@
+{
+	"version":	"0.1.0",
+	"format":	"kir-json",
+	"metadata":	{
+		"sourceFile":	"tests/golden/container_with_children.kry",
+		"compiler":	"kryon",
+		"compilerVersion":	"1.0.0",
+		"timestamp":	"2026-01-28T05:11:45Z"
+	},
+	"root":	{
+		"type":	"ROOT",
+		"nodeId":	0,
+		"location":	{
+			"line":	0,
+			"column":	0
+		},
+		"children":	[{
+				"type":	"ELEMENT",
+				"nodeId":	0,
+				"location":	{
+					"line":	0,
+					"column":	0
+				},
+				"elementType":	"App",
+				"children":	[{
+						"type":	"ELEMENT",
+						"nodeId":	2,
+						"location":	{
+							"line":	1,
+							"column":	2,
+							"file":	"tests/golden/container_with_children.kry"
+						},
+						"elementType":	"Container",
+						"properties":	[{
+								"type":	"PROPERTY",
+								"nodeId":	3,
+								"location":	{
+									"line":	2,
+									"column":	4,
+									"file":	"tests/golden/container_with_children.kry"
+								},
+								"name":	"width",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	4,
+									"location":	{
+										"line":	2,
+										"column":	13,
+										"file":	"tests/golden/container_with_children.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	400
+								}
+							}, {
+								"type":	"PROPERTY",
+								"nodeId":	5,
+								"location":	{
+									"line":	3,
+									"column":	4,
+									"file":	"tests/golden/container_with_children.kry"
+								},
+								"name":	"height",
+								"value":	{
+									"type":	"LITERAL",
+									"nodeId":	6,
+									"location":	{
+										"line":	3,
+										"column":	14,
+										"file":	"tests/golden/container_with_children.kry"
+									},
+									"type":	"LITERAL",
+									"valueType":	"INTEGER",
+									"value":	300
+								}
+							}],
+						"children":	[{
+								"type":	"ELEMENT",
+								"nodeId":	7,
+								"location":	{
+									"line":	5,
+									"column":	4,
+									"file":	"tests/golden/container_with_children.kry"
+								},
+								"elementType":	"Text",
+								"properties":	[{
+										"type":	"PROPERTY",
+										"nodeId":	8,
+										"location":	{
+											"line":	6,
+											"column":	6,
+											"file":	"tests/golden/container_with_children.kry"
+										},
+										"name":	"content",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	9,
+											"location":	{
+												"line":	6,
+												"column":	17,
+												"file":	"tests/golden/container_with_children.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"Title"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	10,
+										"location":	{
+											"line":	7,
+											"column":	6,
+											"file":	"tests/golden/container_with_children.kry"
+										},
+										"name":	"fontSize",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	11,
+											"location":	{
+												"line":	7,
+												"column":	18,
+												"file":	"tests/golden/container_with_children.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	24
+										}
+									}]
+							}, {
+								"type":	"ELEMENT",
+								"nodeId":	12,
+								"location":	{
+									"line":	10,
+									"column":	4,
+									"file":	"tests/golden/container_with_children.kry"
+								},
+								"elementType":	"Button",
+								"properties":	[{
+										"type":	"PROPERTY",
+										"nodeId":	13,
+										"location":	{
+											"line":	11,
+											"column":	6,
+											"file":	"tests/golden/container_with_children.kry"
+										},
+										"name":	"text",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	14,
+											"location":	{
+												"line":	11,
+												"column":	14,
+												"file":	"tests/golden/container_with_children.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"Submit"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	15,
+										"location":	{
+											"line":	12,
+											"column":	6,
+											"file":	"tests/golden/container_with_children.kry"
+										},
+										"name":	"width",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	16,
+											"location":	{
+												"line":	12,
+												"column":	15,
+												"file":	"tests/golden/container_with_children.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	100
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	17,
+										"location":	{
+											"line":	13,
+											"column":	6,
+											"file":	"tests/golden/container_with_children.kry"
+										},
+										"name":	"height",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	18,
+											"location":	{
+												"line":	13,
+												"column":	16,
+												"file":	"tests/golden/container_with_children.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	40
+										}
+									}]
+							}, {
+								"type":	"ELEMENT",
+								"nodeId":	19,
+								"location":	{
+									"line":	16,
+									"column":	4,
+									"file":	"tests/golden/container_with_children.kry"
+								},
+								"elementType":	"Button",
+								"properties":	[{
+										"type":	"PROPERTY",
+										"nodeId":	20,
+										"location":	{
+											"line":	17,
+											"column":	6,
+											"file":	"tests/golden/container_with_children.kry"
+										},
+										"name":	"text",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	21,
+											"location":	{
+												"line":	17,
+												"column":	14,
+												"file":	"tests/golden/container_with_children.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"STRING",
+											"value":	"Cancel"
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	22,
+										"location":	{
+											"line":	18,
+											"column":	6,
+											"file":	"tests/golden/container_with_children.kry"
+										},
+										"name":	"width",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	23,
+											"location":	{
+												"line":	18,
+												"column":	15,
+												"file":	"tests/golden/container_with_children.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	100
+										}
+									}, {
+										"type":	"PROPERTY",
+										"nodeId":	24,
+										"location":	{
+											"line":	19,
+											"column":	6,
+											"file":	"tests/golden/container_with_children.kry"
+										},
+										"name":	"height",
+										"value":	{
+											"type":	"LITERAL",
+											"nodeId":	25,
+											"location":	{
+												"line":	19,
+												"column":	16,
+												"file":	"tests/golden/container_with_children.kry"
+											},
+											"type":	"LITERAL",
+											"valueType":	"INTEGER",
+											"value":	40
+										}
+									}]
+							}]
+					}]
+			}]
+	}
+}

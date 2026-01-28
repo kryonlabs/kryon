@@ -35,6 +35,7 @@ extern "C" {
 #define KRB_MAGIC_VARS      0x56415253  // "VARS" - Variables section
 #define KRB_MAGIC_EVENTS    0x4556544E  // "EVNT" - Events section
 #define KRB_MAGIC_STYLES    0x5354594C  // "STYL" - Styles section
+#define KRB_SECTION_SCRIPT  0x53435054  // "SCPT" - Script section
 
 // =============================================================================
 // KRB FUNCTION FORMAT (Binary Layout)
@@ -66,6 +67,22 @@ typedef enum {
     KRB_FUNC_FLAG_BYTECODE   = 0x0004,  // Code is bytecode, not source
     KRB_FUNC_FLAG_ONLOAD     = 0x0008,  // Function should be executed on load
 } KRBFunctionFlags;
+
+// =============================================================================
+// LANGUAGE IDENTIFIERS
+// =============================================================================
+
+/**
+ * @brief Supported language identifiers for validation
+ *
+ * These constants define the language identifiers that can be used
+ * in function definitions. The actual language string is stored in
+ * the string table and referenced by lang_ref in KRBFunctionHeader.
+ */
+#define KRB_LANG_NATIVE     ""          // Native Kryon scripting (default)
+#define KRB_LANG_RC         "rc"        // rc shell (Plan 9/Inferno)
+#define KRB_LANG_JAVASCRIPT "js"        // JavaScript (reserved)
+#define KRB_LANG_LUA        "lua"       // Lua (reserved)
 
 // =============================================================================
 // KRB ELEMENT FORMAT (Binary Layout)

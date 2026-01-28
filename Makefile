@@ -30,8 +30,8 @@ endif
 
 # Detect SDL2 and Raylib using pkg-config
 # If pkg-config is not available, leave the flags empty
-SDL2_CFLAGS := $(shell pkg-config --cflags sdl2 SDL2_image SDL2_ttf 2>/dev/null || echo "")
-SDL2_LDFLAGS := $(shell pkg-config --libs sdl2 SDL2_image SDL2_ttf 2>/dev/null || echo "")
+SDL2_CFLAGS := $(shell pkg-config --cflags sdl2 SDL2_image SDL2_ttf fontconfig 2>/dev/null || echo "")
+SDL2_LDFLAGS := $(shell pkg-config --libs sdl2 SDL2_image SDL2_ttf fontconfig 2>/dev/null || echo "")
 RAYLIB_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null || echo "")
 RAYLIB_LDFLAGS := $(shell pkg-config --libs raylib 2>/dev/null || echo "")
 
@@ -121,6 +121,10 @@ ifeq ($(shell pkg-config --exists sdl2 && echo yes),yes)
     RENDERERS_SRC += $(SRC_DIR)/renderers/sdl2/sdl2_renderer.c
     SDL2_AVAILABLE := 1
     CFLAGS += -DKRYON_RENDERER_SDL2=1
+    # Check if fontconfig is available
+    ifeq ($(shell pkg-config --exists fontconfig && echo yes),yes)
+        CFLAGS += -DUSE_FONTCONFIG=1
+    endif
 else
     SDL2_AVAILABLE := 0
     $(warning SDL2 not found - SDL2 renderer will be disabled)
@@ -137,6 +141,7 @@ CLI_SRC = $(SRC_DIR)/cli/main.c \
           $(SRC_DIR)/cli/compile_command.c \
           $(SRC_DIR)/cli/decompile_command.c \
           $(SRC_DIR)/cli/print_command.c \
+          $(SRC_DIR)/cli/kir_commands.c \
           $(SRC_DIR)/cli/debug_command.c \
           $(SRC_DIR)/cli/package_command.c \
           $(SRC_DIR)/cli/dev_command.c

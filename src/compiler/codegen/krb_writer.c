@@ -424,6 +424,68 @@ static bool write_element(KryonKrbWriter *writer, const KryonKrbElement *element
     return true;
 }
 
+static bool write_function(KryonKrbWriter *writer, const KryonKrbFunction *function) {
+    if (!writer || !function) return false;
+
+    // Write function header (matches KRBFunctionHeader from schema)
+    if (!write_uint32(writer, 0x46554E43)) {  // "FUNC" magic
+        return false;
+    }
+
+    if (!write_uint32(writer, function->language_id) ||
+        !write_uint32(writer, function->name_id) ||
+        !write_uint16(writer, function->param_count) ||
+        !write_uint16(writer, function->flags) ||
+        !write_uint32(writer, function->code_id)) {
+        return false;
+    }
+
+    // Write parameter string table indices
+    for (uint16_t i = 0; i < function->param_count; i++) {
+        if (!write_uint32(writer, function->param_ids[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool write_script_section(KryonKrbWriter *writer, const KryonKrbFile *krb_file) {
+    if (!writer || !krb_file) return false;
+
+    // Skip if no functions
+    if (krb_file->function_count == 0) {
+        return true;
+    }
+
+    // Write section header
+    if (!write_uint32(writer, 0x53435054)) {  // "SCPT" magic
+        return false;
+    }
+
+    // Calculate section size
+    uint32_t section_size = 8;  // magic + size + count
+    for (uint32_t i = 0; i < krb_file->function_count; i++) {
+        const KryonKrbFunction *func = &krb_file->functions[i];
+        // Function header: 24 bytes + (param_count * 4 bytes)
+        section_size += 24 + (func->param_count * 4);
+    }
+
+    if (!write_uint32(writer, section_size) ||
+        !write_uint32(writer, krb_file->function_count)) {
+        return false;
+    }
+
+    // Write each function
+    for (uint32_t i = 0; i < krb_file->function_count; i++) {
+        if (!write_function(writer, &krb_file->functions[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 // =============================================================================
 // MAIN WRITING FUNCTION
 // =============================================================================
@@ -455,7 +517,12 @@ bool kryon_krb_writer_write(KryonKrbWriter *writer, const KryonKrbFile *krb_file
             return false;
         }
     }
-    
+
+    // Write script section (functions)
+    if (!write_script_section(writer, krb_file)) {
+        return false;
+    }
+
     // Flush file if writing to file
     if (writer->file) {
         if (fflush(writer->file) != 0) {
