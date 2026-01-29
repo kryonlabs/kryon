@@ -24,12 +24,8 @@
 #include "renderer_interface.h"
 #include "shader_compiler.h"
 
-// Renderer types for specific implementations
-typedef enum {
-    KRYON_RENDERER_RAYLIB,
-    KRYON_RENDERER_SDL2,
-    KRYON_RENDERER_HTML
-} KryonRendererType;
+// NOTE: KryonRendererType is defined in target.h to avoid circular dependencies
+// Include target.h before this file if you need the renderer type enum
 
 
 // Texture formats

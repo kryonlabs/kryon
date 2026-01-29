@@ -1,4 +1,4 @@
-function "rc" testClick() {
+function "sh" testClick() {
     print("Checkbox clicked!")
 }
 

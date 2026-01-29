@@ -19,6 +19,7 @@
 #include "memory.h"
 #include "events.h"
 #include "elements/element_mixins.h"
+#include "language_plugins.h"
 #include <math.h>
 #include <time.h>
 #include <ctype.h>
@@ -2368,7 +2369,9 @@ static char* extract_multiline_block_statement(const char** cursor, const char* 
     return result;
 }
 
-static bool execute_script_function(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function) {
+// Implementation of native script function execution
+// This is called by the native language plugin
+bool execute_script_function_impl(KryonRuntime* runtime, KryonElement* element, KryonScriptFunction* function) {
     if (!runtime || !function || !function->code) {
         return false;
     }
@@ -2494,10 +2497,19 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
         return false;
     }
 
-    bool handled = execute_script_function(runtime, element, function);
-    if (!handled) {
-        fprintf(stderr, "⚠️ SCRIPT: Function '%s' executed without supported operations\n",
-               function->name ? function->name : handler_name);
+    // Use language plugin system to execute the function
+    char error_buffer[256];
+    KryonLanguageExecutionResult result = kryon_language_execute_function(
+        runtime, element, function, error_buffer, sizeof(error_buffer)
+    );
+
+    if (result == KRYON_LANG_RESULT_NOT_AVAILABLE) {
+        fprintf(stderr, "⚠️ SCRIPT: Language not available: %s\n", error_buffer);
+        return false;
+    }
+
+    if (result == KRYON_LANG_RESULT_ERROR) {
+        fprintf(stderr, "⚠️ SCRIPT: Execution error: %s\n", error_buffer);
         return false;
     }
 

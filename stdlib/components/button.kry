@@ -1,0 +1,68 @@
+/**
+ * Kryon Standard Library - Button Components
+ *
+ * Reusable button components with different styles.
+ */
+
+include "../styles/theme.kry"
+
+// Primary button - main call-to-action
+component PrimaryButton(text, onClick) {
+    Button {
+        text = text
+        onClick = onClick
+        backgroundColor = theme.accent
+        color = "#ffffff"
+        padding = 12
+        borderRadius = 6
+        borderWidth = 0
+        fontSize = 16
+        fontWeight = "bold"
+    }
+}
+
+// Secondary button - less prominent actions
+component SecondaryButton(text, onClick) {
+    Button {
+        text = text
+        onClick = onClick
+        backgroundColor = theme.secondary
+        color = theme.text
+        padding = 12
+        borderRadius = 6
+        borderWidth = 1
+        borderColor = theme.border
+        fontSize = 16
+    }
+}
+
+// Outline button - minimal style
+component OutlineButton(text, onClick) {
+    Button {
+        text = text
+        onClick = onClick
+        backgroundColor = "transparent"
+        color = theme.accent
+        padding = 12
+        borderRadius = 6
+        borderWidth = 2
+        borderColor = theme.accent
+        fontSize = 16
+    }
+}
+
+// Icon button - small button with icon
+component IconButton(icon, onClick) {
+    Button {
+        text = icon
+        onClick = onClick
+        backgroundColor = theme.secondary
+        color = theme.text
+        padding = 8
+        borderRadius = 4
+        borderWidth = 0
+        fontSize = 18
+        width = 36
+        height = 36
+    }
+}

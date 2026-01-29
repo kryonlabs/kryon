@@ -1,11 +1,11 @@
 // Define a reusable Counter component
 component Counter(value = 0) {
 
-    function "rc" increment() {
+    function "sh" increment() {
         value += 1
     }
 
-    function "rc" decrement() {
+    function "sh" decrement() {
         value -= 1
     }
 

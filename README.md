@@ -76,7 +76,7 @@ make
 
 ### 2. Inferno Build (Recommended for Development)
 
-Links against Inferno's lib9 and enables the Inferno plugin for rc shell support.
+Links against Inferno's lib9 and enables the Inferno plugin for sh (Inferno shell) support.
 
 **Dependencies:**
 - Inferno installation (auto-detected in common locations)
@@ -90,7 +90,7 @@ make -f Makefile.inferno
 
 **Output:** `build/bin/kryon` (with Inferno services)
 
-**Use when:** You want rc shell scripting and Plan 9 integration on standard Linux.
+**Use when:** You want sh (Inferno shell) scripting and Plan 9 integration on standard Linux.
 
 **Installing Inferno:**
 ```bash
@@ -141,7 +141,7 @@ This means the build system can't find lib9. Solutions:
 **Which build mode should I use?**
 
 - **New to Kryon?** Start with Standard Linux build (`make`)
-- **Want rc shell features?** Use Inferno build (`make -f Makefile.inferno`)
+- **Want sh (Inferno shell) features?** Use Inferno build (`make -f Makefile.inferno`)
 - **Working with TaijiOS?** Use TaijiOS build (`make -f Makefile.taijios`)
 
 For detailed build instructions, see [docs/BUILD.md](docs/BUILD.md).
@@ -183,23 +183,23 @@ Kryon supports multiple scripting languages for event handlers and functions:
 ### Supported Languages
 
 - **Native Kryon** (default) - Built-in scripting language for fast, direct state manipulation
-- **rc shell** - Plan 9/Inferno rc shell for system integration and shell utilities
+- **sh (Inferno shell)** - Plan 9/Inferno sh (Inferno shell) for system integration and shell utilities
 
 ### Using rc Shell
 
 Specify the language before the function name:
 
 ```kry
-function "rc" handleClick() {
+function "sh" handleClick() {
     echo Button clicked!
 }
 ```
 
-Access Kryon variables from rc shell:
+Access Kryon variables from sh (Inferno shell):
 ```kry
 var count = 0
 
-function "rc" increment() {
+function "sh" increment() {
     count=`{kryonget count}
     count=`{expr $count + 1}
     kryonset count $count
@@ -208,18 +208,18 @@ function "rc" increment() {
 
 ### Built-in Commands
 
-When using rc shell functions, these commands interact with Kryon state:
+When using sh (Inferno shell) functions, these commands interact with Kryon state:
 - **`kryonget varname`** - Get the value of a Kryon variable
 - **`kryonset varname value`** - Set a Kryon variable to a value
 
 ### Running rc Shell (TaijiOS)
 
-Kryon uses the Inferno emulator to execute rc shell scripts:
+Kryon uses the Inferno emulator to execute sh (Inferno shell) scripts:
 ```bash
 emu -r. dis/sh.dis
 ```
 
-This is configured automatically in the Kryon runtime. The rc shell provides access to system commands, file operations, and shell utilities within your Kryon applications.
+This is configured automatically in the Kryon runtime. The sh (Inferno shell) provides access to system commands, file operations, and shell utilities within your Kryon applications.
 
 ### When to Use Each Language
 
@@ -229,7 +229,7 @@ This is configured automatically in the Kryon runtime. The rc shell provides acc
 - Direct state manipulation
 - UI state updates
 
-**Use rc shell for:**
+**Use sh (Inferno shell) for:**
 - System command integration
 - File system operations
 - Text processing (grep, sed, awk)
@@ -238,15 +238,15 @@ This is configured automatically in the Kryon runtime. The rc shell provides acc
 
 For more details, see:
 - [KRY Language Spec - Multi-Language Functions](docs/KRY_LANGUAGE_SPEC.md#multi-language-function-support)
-- [RC Shell Guide](docs/RC_SHELL_GUIDE.md)
+- [Inferno Shell (sh) Guide](docs/SH_LANGUAGE_GUIDE.md)
 
 ### Example Applications
 
 ```bash
-# rc shell demo - counter and file operations
+# sh (Inferno shell) demo - counter and file operations
 ./scripts/run_example.sh rc_shell_demo raylib
 
-# Mixed languages - compare native vs rc shell
+# Mixed languages - compare native vs sh (Inferno shell)
 ./scripts/run_example.sh mixed_languages raylib
 ```
 
@@ -284,7 +284,7 @@ ctest --verbose
 **Full Documentation Index:** [docs/README.md](docs/README.md)
 
 **Key Topics:**
-- Language specs (KRY, KRL, RC Shell)
+- Language specs (KRY, KRL, Inferno Shell (sh))
 - Compilation pipeline (KIR, KRB formats)
 - Plugin development
 

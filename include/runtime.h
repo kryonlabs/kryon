@@ -49,7 +49,7 @@ typedef struct {
 // RUNTIME STRUCTURE
 // =============================================================================
 
-typedef struct {
+typedef struct KryonScriptFunction {
     char *name;
     char *language;
     char *code;

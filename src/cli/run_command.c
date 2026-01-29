@@ -13,6 +13,7 @@
 #include "parser.h"
 #include "codegen.h"
 #include "error.h"
+#include "target.h"
 #include <getopt.h>
 #include <libgen.h>
 #include <limits.h>
@@ -177,28 +178,39 @@ static char* compile_kry_to_cached_krb(const char *kry_path) {
 
 int run_command(int argc, char *argv[]) {
     const char *krb_file_path = NULL;
-    const char *renderer = "text";  // Default to text renderer
+    const char *target_str = NULL;
+    const char *renderer = NULL;
     const char *output_dir = "./web_output"; // Default web output directory
     bool debug = false;
 
-    // Check for KRYON_RENDERER environment variable
+    // Check for KRYON_TARGET environment variable (takes precedence over KRYON_RENDERER)
+    const char *env_target = getenv("KRYON_TARGET");
+    if (env_target) {
+        target_str = env_target;
+    }
+
+    // Check for KRYON_RENDERER environment variable (legacy)
     const char *env_renderer = getenv("KRYON_RENDERER");
-    if (env_renderer) {
+    if (env_renderer && !target_str) {
         renderer = env_renderer;
     }
 
     // Parse command line options
     static struct option long_options[] = {
+        {"target", required_argument, 0, 't'},
         {"renderer", required_argument, 0, 'r'},
         {"output", required_argument, 0, 'o'},
         {"debug", no_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
-    
+
     int c;
-    while ((c = getopt_long(argc, argv, "r:o:dh", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "t:r:o:dh", long_options, NULL)) != -1) {
         switch (c) {
+            case 't':
+                target_str = optarg;
+                break;
             case 'r':
                 renderer = optarg;
                 break;
@@ -211,10 +223,17 @@ int run_command(int argc, char *argv[]) {
             case 'h':
                 fprintf(stderr, "Usage: kryon run <file.krb> [options]\n");
                 fprintf(stderr, "Options:\n");
-                fprintf(stderr, "  -r, --renderer <name>  Renderer to use (text, raylib, web)\n");
+                fprintf(stderr, "  -t, --target <name>    Target platform (native, emu, web, terminal)\n");
+                fprintf(stderr, "  -r, --renderer <name>  Specific renderer (sdl2, raylib, krbview, web, terminal)\n");
                 fprintf(stderr, "  -o, --output <dir>     Output directory for web renderer\n");
                 fprintf(stderr, "  -d, --debug            Enable debug output\n");
                 fprintf(stderr, "  -h, --help             Show this help\n");
+                fprintf(stderr, "\n");
+                fprintf(stderr, "Targets:\n");
+                fprintf(stderr, "  native    - Desktop GUI application (uses SDL2 or Raylib)\n");
+                fprintf(stderr, "  emu       - TaijiOS emu environment (uses krbview)\n");
+                fprintf(stderr, "  web       - Static HTML/CSS/JS output\n");
+                fprintf(stderr, "  terminal  - Text-only output\n");
                 return 0;
             default:
                 return 1;
@@ -225,6 +244,58 @@ int run_command(int argc, char *argv[]) {
         fprint(2, "Error: No KRB file specified\n");
         return 1;
     }
+
+    // Resolve target to renderer
+    KryonTargetType target = KRYON_TARGET_NATIVE;  // Default
+    KryonRendererType renderer_type = KRYON_RENDERER_TYPE_NONE;
+
+    // Parse target if specified
+    if (target_str) {
+        if (!kryon_target_parse(target_str, &target)) {
+            fprintf(stderr, "Error: Unknown target '%s'\n", target_str);
+            fprintf(stderr, "Valid targets: native, emu, web, terminal\n");
+            return 1;
+        }
+    }
+
+    // Parse renderer if specified
+    if (renderer) {
+        if (!kryon_renderer_parse(renderer, &renderer_type)) {
+            fprintf(stderr, "Error: Unknown renderer '%s'\n", renderer);
+            fprintf(stderr, "Valid renderers: sdl2, raylib, krbview, web, terminal\n");
+            return 1;
+        }
+    }
+
+    // Resolve target to renderer
+    KryonTargetResolution resolution = kryon_target_resolve(target, renderer_type);
+
+    if (!resolution.available) {
+        fprintf(stderr, "Error: Target '%s' is not available.\n\n", kryon_target_name(target));
+        fprintf(stderr, "%s\n", resolution.error_message);
+
+        // Show available targets
+        fprintf(stderr, "\nAvailable targets in this build:\n");
+        for (int i = 0; i < KRYON_TARGET_COUNT; i++) {
+            if (kryon_target_is_available((KryonTargetType)i)) {
+                fprintf(stderr, "  - %s\n", kryon_target_name((KryonTargetType)i));
+            }
+        }
+        return 1;
+    }
+
+    // Validate target+renderer combination if both specified
+    if (target_str && renderer) {
+        char error_buffer[512];
+        if (!kryon_target_validate(target, renderer_type, error_buffer, sizeof(error_buffer))) {
+            fprintf(stderr, "Error: Invalid target/renderer combination.\n\n");
+            fprintf(stderr, "%s\n", error_buffer);
+            return 1;
+        }
+    }
+
+    // Convert resolved renderer back to string for setup_renderer
+    renderer = kryon_renderer_name(resolution.renderer);
 
     krb_file_path = argv[optind];
 
@@ -379,7 +450,7 @@ int run_command(int argc, char *argv[]) {
         }
 
         // For web renderer, skip actual rendering and just generate output once
-#ifdef KRYON_RENDERER_WEB
+#ifdef KRYON_RENDERER_TYPE_WEB
         if (strcmp(renderer, "web") == 0) {
             fprintf(stderr, "🌐 Web renderer: Generating HTML/CSS/JS output\n");
 
@@ -462,7 +533,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
 
     // Create renderer based on name
     if (strcmp(renderer_name, "web") == 0) {
-#ifdef KRYON_RENDERER_WEB
+#ifdef KRYON_RENDERER_TYPE_WEB
         renderer = create_web_renderer(runtime, debug, output_dir);
 #else
         fprint(2, "❌ WEB RENDERER NOT AVAILABLE\n");
@@ -470,7 +541,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
         return false;
 #endif
     } else if (strcmp(renderer_name, "raylib") == 0) {
-#ifdef KRYON_RENDERER_RAYLIB
+#ifdef KRYON_RENDERER_TYPE_RAYLIB
         renderer = create_raylib_renderer(runtime, debug);
 #else
         fprint(2, "❌ RAYLIB NOT AVAILABLE\n");
@@ -480,7 +551,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
         return false;
 #endif
     } else if (strcmp(renderer_name, "sdl2") == 0) {
-#ifdef KRYON_RENDERER_SDL2
+#ifdef HAVE_RENDERER_SDL2
         renderer = create_sdl2_renderer(runtime, debug);
 #else
         fprint(2, "❌ SDL2 NOT AVAILABLE\n");
@@ -518,7 +589,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
 
 // Create raylib renderer using internal interface
 static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) {
-#ifdef KRYON_RENDERER_RAYLIB
+#ifdef KRYON_RENDERER_TYPE_RAYLIB
     if (debug) {
         fprintf(stderr, "🐛 Debug: Creating raylib renderer\n");
     }
@@ -628,7 +699,7 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
 
 // Create SDL2 renderer using internal interface
 static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
-#ifdef KRYON_RENDERER_SDL2
+#ifdef HAVE_RENDERER_SDL2
     if (debug) {
         fprintf(stderr, "🐛 Debug: Creating SDL2 renderer\n");
     }
@@ -731,7 +802,7 @@ static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
 
 // Create web renderer using internal interface
 static KryonRenderer* create_web_renderer(KryonRuntime* runtime, bool debug, const char* output_dir) {
-#ifdef KRYON_RENDERER_WEB
+#ifdef KRYON_RENDERER_TYPE_WEB
     // Forward declare from web_renderer.h
     extern KryonRenderer* kryon_web_renderer_create(const KryonRendererConfig* config);
 

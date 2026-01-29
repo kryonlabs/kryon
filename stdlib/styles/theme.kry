@@ -1,0 +1,50 @@
+/**
+ * Kryon Standard Library - Theme Styles
+ *
+ * Common color schemes and style utilities for Kryon applications.
+ */
+
+// Dark theme colors
+var darkTheme = {
+    background: "#1a1a2e",
+    foreground: "#eee",
+    primary: "#0f3460",
+    secondary: "#16213e",
+    accent: "#e94560",
+    text: "#ffffff",
+    textMuted: "#aaaaaa",
+    border: "#333344",
+    success: "#2ecc71",
+    warning: "#f39c12",
+    error: "#e74c3c"
+}
+
+// Light theme colors
+var lightTheme = {
+    background: "#ffffff",
+    foreground: "#222",
+    primary: "#3498db",
+    secondary: "#ecf0f1",
+    accent: "#e74c3c",
+    text: "#2c3e50",
+    textMuted: "#7f8c8d",
+    border: "#bdc3c7",
+    success: "#27ae60",
+    warning: "#f39c12",
+    error: "#c0392b"
+}
+
+// Default theme (dark)
+var theme = darkTheme
+
+function setTheme(newTheme) {
+    theme = newTheme
+}
+
+function getDarkTheme() {
+    theme = darkTheme
+}
+
+function getLightTheme() {
+    theme = lightTheme
+}

@@ -80,7 +80,7 @@ typedef enum {
  * the string table and referenced by lang_ref in KRBFunctionHeader.
  */
 #define KRB_LANG_NATIVE     ""          // Native Kryon scripting (default)
-#define KRB_LANG_RC         "rc"        // rc shell (Plan 9/Inferno)
+#define KRB_LANG_SH         "sh"        // Inferno shell
 #define KRB_LANG_JAVASCRIPT "js"        // JavaScript (reserved)
 #define KRB_LANG_LUA        "lua"       // Lua (reserved)
 

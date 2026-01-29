@@ -4,7 +4,7 @@
 (style "base"
   (backgroundColor "#F5F5F5"))
 
-(function "rc" handleButtonClick ()
+(function "sh" handleButtonClick ()
   "
     print(\"🎯 Button clicked! Hello from the scripting runtime!\")
 ")

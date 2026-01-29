@@ -1,0 +1,65 @@
+/**
+ * Kryon Standard Library - Helper Utilities
+ *
+ * Common utility functions for Kryon applications.
+ */
+
+// String utilities
+function capitalize(str) {
+    // TODO: Implement when string manipulation is supported
+    return str
+}
+
+function trim(str) {
+    // TODO: Implement when string manipulation is supported
+    return str
+}
+
+// Number utilities
+function clamp(value, min, max) {
+    if (value < min) {
+        return min
+    }
+    if (value > max) {
+        return max
+    }
+    return value
+}
+
+function randomInt(min, max) {
+    // TODO: Implement when random is available
+    return min
+}
+
+// Array utilities
+function isEmpty(arr) {
+    // TODO: Implement when array length is available
+    return false
+}
+
+function contains(arr, item) {
+    // TODO: Implement when array operations are available
+    return false
+}
+
+// Validation utilities
+function isEmail(str) {
+    // TODO: Implement regex validation
+    return true
+}
+
+function isUrl(str) {
+    // TODO: Implement URL validation
+    return true
+}
+
+// Color utilities
+function hexToRgb(hex) {
+    // TODO: Implement color conversion
+    return hex
+}
+
+function rgbToHex(r, g, b) {
+    // TODO: Implement color conversion
+    return "#000000"
+}

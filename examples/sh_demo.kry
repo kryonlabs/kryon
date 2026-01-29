@@ -6,26 +6,26 @@ var message = "Hello from rc!"
 var timestamp = ""
 
 // rc shell function to increment counter
-function "rc" increment() {
+function "sh" increment() {
     count=`{kryonget count}
     count=`{expr $count + 1}
     kryonset count $count
 }
 
 // rc shell function to decrement counter
-function "rc" decrement() {
+function "sh" decrement() {
     count=`{kryonget count}
     count=`{expr $count - 1}
     kryonset count $count
 }
 
 // rc shell function to reset
-function "rc" reset() {
+function "sh" reset() {
     kryonset count 0
 }
 
 // rc shell function with shell utilities
-function "rc" updateMessage() {
+function "sh" updateMessage() {
     # Get current time using rc shell
     now=`{date '+%Y-%m-%d %H:%M:%S'}
     kryonset timestamp $now
@@ -33,7 +33,7 @@ function "rc" updateMessage() {
 }
 
 // rc shell function with file operations
-function "rc" checkFiles() {
+function "sh" checkFiles() {
     # Count .kry files in examples directory
     count=`{ls *.kry | wc -l | tr -d ' '}
     msg='Found '^$count^' example files'
@@ -41,7 +41,7 @@ function "rc" checkFiles() {
 }
 
 // rc shell function with conditionals
-function "rc" checkCount() {
+function "sh" checkCount() {
     val=`{kryonget count}
 
     if (test $val -gt 10) {

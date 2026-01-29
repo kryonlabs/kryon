@@ -1,20 +1,20 @@
-# RC Shell in Kryon
+# Inferno Shell (sh) in Kryon
 
-This guide explains how to use rc shell (Plan 9/Inferno shell) for writing event handlers and functions in Kryon applications.
+This guide explains how to use sh shell (Plan 9/Inferno shell) for writing event handlers and functions in Kryon applications.
 
 ## Overview
 
-rc is the shell from Plan 9 and Inferno operating systems. It provides a clean, powerful scripting language with excellent support for pipelines and system integration. Kryon allows you to write functions in rc shell to leverage existing shell scripts, system utilities, and TaijiOS/Inferno services.
+sh is the shell from Plan 9 and Inferno operating systems. It provides a clean, powerful scripting language with excellent support for pipelines and system integration. Kryon allows you to write functions in sh shell to leverage existing shell scripts, system utilities, and TaijiOS/Inferno services.
 
 ## Basic Syntax
 
-### Declaring rc Shell Functions
+### Declaring sh Shell Functions
 
-Specify the language as `"rc"` before the function name:
+Specify the language as `"sh"` before the function name:
 
 ```kry
-function "rc" myFunction() {
-    echo Hello from rc shell!
+function "sh" myFunction() {
+    echo Hello from sh shell!
 }
 ```
 
@@ -25,7 +25,7 @@ Use built-in commands to interact with Kryon application state:
 ```kry
 var count = 0
 
-function "rc" increment() {
+function "sh" increment() {
     # Get current value
     count=`{kryonget count}
 
@@ -52,7 +52,7 @@ value=`{kryonget varname}
 ```kry
 var username = "Alice"
 
-function "rc" greet() {
+function "sh" greet() {
     name=`{kryonget username}
     echo Hello, $name!
 }
@@ -71,12 +71,12 @@ kryonset varname value
 ```kry
 var message = ""
 
-function "rc" updateMessage() {
+function "sh" updateMessage() {
     kryonset message 'Updated at: '^`{date}
 }
 ```
 
-## rc Shell Language Basics
+## sh Shell Language Basics
 
 ### Variables
 
@@ -165,19 +165,19 @@ greet Alice
 ```kry
 var count = 0
 
-function "rc" increment() {
+function "sh" increment() {
     count=`{kryonget count}
     count=`{expr $count + 1}
     kryonset count $count
 }
 
-function "rc" decrement() {
+function "sh" decrement() {
     count=`{kryonget count}
     count=`{expr $count - 1}
     kryonset count $count
 }
 
-function "rc" reset() {
+function "sh" reset() {
     kryonset count 0
 }
 
@@ -200,7 +200,7 @@ App {
 var fileList = ""
 var fileCount = 0
 
-function "rc" refreshFiles() {
+function "sh" refreshFiles() {
     # Get list of .kry files
     files=`{ls *.kry | tr '\n' ', '}
     kryonset fileList $files
@@ -228,7 +228,7 @@ App {
 var currentTime = ""
 var formattedDate = ""
 
-function "rc" updateTime() {
+function "sh" updateTime() {
     # Get current time
     time=`{date '+%H:%M:%S'}
     kryonset currentTime $time
@@ -256,7 +256,7 @@ App {
 var diskUsage = ""
 var memoryInfo = ""
 
-function "rc" getSystemInfo() {
+function "sh" getSystemInfo() {
     # Get disk usage
     usage=`{du -sh . | awk '{print $1}'}
     kryonset diskUsage $usage
@@ -284,7 +284,7 @@ App {
 var email = ""
 var isValid = false
 
-function "rc" validateEmail() {
+function "sh" validateEmail() {
     # Get email value
     addr=`{kryonget email}
 
@@ -314,9 +314,9 @@ App {
 
 ## TaijiOS/Inferno Configuration
 
-### How rc is Executed
+### How sh is Executed
 
-Kryon uses the Inferno emulator to execute rc shell scripts. The runtime configuration is:
+Kryon uses the Inferno emulator to execute sh shell scripts. The runtime configuration is:
 
 ```sh
 emu -r. dis/sh.dis
@@ -325,19 +325,19 @@ emu -r. dis/sh.dis
 This:
 - Launches the Inferno emulator (`emu`)
 - Sets the root directory to current directory (`-r.`)
-- Runs the rc shell bytecode (`dis/sh.dis`)
+- Runs the sh shell bytecode (`dis/sh.dis`)
 
 ### Environment Setup
 
 The Kryon runtime automatically:
-1. Creates a temporary rc script file with your function code
+1. Creates a temporary sh script file with your function code
 2. Injects `kryonget` and `kryonset` as shell functions
 3. Executes the script using `emu -r. dis/sh.dis`
 4. Captures the output and updates Kryon state accordingly
 
 ### Available Utilities
 
-Since rc runs in the Inferno environment, you have access to:
+Since sh runs in the Inferno environment, you have access to:
 
 - **Text processing**: `grep`, `sed`, `awk`, `tr`, `cut`, `sort`, `uniq`
 - **File operations**: `ls`, `cat`, `cp`, `mv`, `rm`, `mkdir`, `du`
@@ -347,7 +347,7 @@ Since rc runs in the Inferno environment, you have access to:
 
 ## Best Practices
 
-### When to Use rc Shell
+### When to Use sh Shell
 
 ✅ **Good use cases:**
 - Calling system commands
@@ -357,7 +357,7 @@ Since rc runs in the Inferno environment, you have access to:
 - System monitoring
 - Batch operations
 
-❌ **Avoid rc shell for:**
+❌ **Avoid sh shell for:**
 - Simple arithmetic (use native Kryon)
 - Direct widget state management (use native Kryon)
 - Complex application logic (use native Kryon)
@@ -365,7 +365,7 @@ Since rc runs in the Inferno environment, you have access to:
 
 ### Performance Considerations
 
-Each rc shell function call:
+Each sh shell function call:
 1. Creates a temporary script file
 2. Spawns an Inferno emulator process
 3. Executes the script
@@ -376,7 +376,7 @@ This has overhead compared to native Kryon functions. For performance-critical o
 ### Error Handling
 
 ```kry
-function "rc" safeOperation() {
+function "sh" safeOperation() {
     # Check if file exists before processing
     if (test -f data.txt) {
         result=`{cat data.txt}
@@ -390,10 +390,10 @@ function "rc" safeOperation() {
 
 ### Debugging
 
-Add debug output to your rc functions:
+Add debug output to your sh functions:
 
 ```kry
-function "rc" debugExample() {
+function "sh" debugExample() {
     echo 'Starting function' >[1=2]  # Stderr
 
     value=`{kryonget myvar}
@@ -407,7 +407,7 @@ The Kryon runtime will capture stderr output for debugging.
 
 ## Mixing Languages
 
-You can mix rc shell and native Kryon functions in the same file:
+You can mix sh shell and native Kryon functions in the same file:
 
 ```kry
 var count = 0
@@ -418,8 +418,8 @@ function incrementNative() {
     count += 1
 }
 
-// rc shell - for system integration
-function "rc" incrementAndLog() {
+// sh shell - for system integration
+function "sh" incrementAndLog() {
     count=`{kryonget count}
     count=`{expr $count + 1}
     kryonset count $count
@@ -450,7 +450,7 @@ App {
 ```kry
 var userInput = ""
 
-function "rc" processInput() {
+function "sh" processInput() {
     input=`{kryonget userInput}
 
     # Process the input
@@ -465,14 +465,14 @@ function "rc" processInput() {
 ```kry
 var fileContent = ""
 
-function "rc" loadFile() {
+function "sh" loadFile() {
     if (test -f config.txt) {
         content=`{cat config.txt}
         kryonset fileContent $content
     }
 }
 
-function "rc" saveFile() {
+function "sh" saveFile() {
     content=`{kryonget fileContent}
     echo $content > config.txt
 }
@@ -484,7 +484,7 @@ function "rc" saveFile() {
 var value = 0
 var message = ""
 
-function "rc" updateConditionally() {
+function "sh" updateConditionally() {
     val=`{kryonget value}
 
     if (test $val -gt 10) {
@@ -498,7 +498,7 @@ function "rc" updateConditionally() {
 
 ## References
 
-- **rc shell documentation**: See Plan 9 or Inferno documentation
+- **sh shell documentation**: See Plan 9 or Inferno documentation
 - **TaijiOS setup**: Check your TaijiOS installation for available utilities
 - **Kryon language spec**: [KRY_LANGUAGE_SPEC.md](KRY_LANGUAGE_SPEC.md)
 - **KRB binary format**: [KRB_BINARY_SPEC.md](KRB_BINARY_SPEC.md)
@@ -521,11 +521,11 @@ function "rc" updateConditionally() {
 
 1. Check that the command exists in your Inferno environment
 2. Use full paths if necessary: `/bin/ls` instead of `ls`
-3. Check PATH environment variable in the rc shell
+3. Check PATH environment variable in the sh shell
 
 ### Syntax Errors
 
-1. Remember rc shell syntax is different from bash/sh
+1. Remember sh shell syntax is different from bash/sh
 2. Use `~` for string comparison, not `==`
 3. Use `test` for file/number comparisons
 4. Parentheses are required for conditionals: `if (test ...) { ... }`

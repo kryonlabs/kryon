@@ -15,9 +15,9 @@
   (var count initialValue)
 
   ; Component functions
-  (function "rc" increment () "count = count + step;")
-  (function "rc" decrement () "count = count - step;")
-  (function "rc" reset () "count = initialValue;")
+  (function "sh" increment () "count = count + step;")
+  (function "sh" decrement () "count = count - step;")
+  (function "sh" reset () "count = initialValue;")
 
   ; Component UI
   (Column

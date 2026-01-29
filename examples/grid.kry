@@ -1,0 +1,144 @@
+metadata {
+    title = "Grid Layout Demo"
+    description = "Demonstrates the Grid widget with various configurations"
+    version = "1.0.0"
+}
+
+// Define arrays for loop iterations
+var items1 = [1, 2, 3, 4, 5, 6]
+var items2 = [1, 2, 3, 4, 5, 6, 7, 8]
+var cells = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48]
+
+App {
+    windowWidth = 800
+    windowHeight = 600
+    windowTitle = "Grid Layout Demo"
+    backgroundColor = "#f0f0f0"
+
+    Column {
+        padding = 20
+        gap = 20
+
+        // Header
+        Text {
+            text = "Grid Layout Examples"
+            fontSize = 32
+            fontWeight = "bold"
+            textAlign = "center"
+        }
+
+        // Example 1: Basic 3-column grid
+        Container {
+            padding = 10
+            backgroundColor = "white"
+            borderRadius = 8
+
+            Column {
+                gap = 10
+
+                Text {
+                    text = "Example 1: Basic 3-Column Grid"
+                    fontSize = 18
+                    fontWeight = "bold"
+                }
+
+                Grid {
+                    columns = 3
+                    gap = 10
+                    padding = 10
+
+                    for i in items1 {
+                        Container {
+                            backgroundColor = i % 2 == 0 ? "#3498db" : "#e74c3c"
+                            padding = 20
+                            borderRadius = 4
+
+                            Text {
+                                text = "Item ${i}"
+                                color = "white"
+                                fontWeight = "bold"
+                                textAlign = "center"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Example 2: 4-column grid with custom spacing
+        Container {
+            padding = 10
+            backgroundColor = "white"
+            borderRadius = 8
+
+            Column {
+                gap = 10
+
+                Text {
+                    text = "Example 2: 4-Column Grid with Custom Spacing"
+                    fontSize = 18
+                    fontWeight = "bold"
+                }
+
+                Grid {
+                    columns = 4
+                    column_spacing = 15
+                    row_spacing = 5
+                    padding = 10
+
+                    for i in items2 {
+                        Container {
+                            backgroundColor = "#2ecc71"
+                            padding = 15
+                            borderRadius = 4
+
+                            Text {
+                                text = "${i}"
+                                color = "white"
+                                fontWeight = "bold"
+                                textAlign = "center"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Example 3: Timeline-style grid (like life.kry)
+        Container {
+            padding = 10
+            backgroundColor = "white"
+            borderRadius = 8
+
+            Column {
+                gap = 10
+
+                Text {
+                    text = "Example 3: Timeline Grid (48 columns)"
+                    fontSize = 18
+                    fontWeight = "bold"
+                }
+
+                Grid {
+                    columns = 48
+                    gap = 1
+                    padding = 5
+
+                    for i in cells {
+                        Container {
+                            width = 15
+                            height = 15
+                            backgroundColor = i % 12 == 0 ? "#2c3e50" : "#ecf0f1"
+                        }
+                    }
+                }
+
+                Text {
+                    text = "Each cell represents one time unit (darker = year boundary)"
+                    fontSize = 12
+                    color = "#7f8c8d"
+                }
+            }
+        }
+    }
+}

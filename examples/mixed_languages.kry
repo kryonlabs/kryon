@@ -7,14 +7,14 @@ var rcOps = 0
 var message = ""
 
 // Native Kryon function - fast, simple
-function "rc" incrementNative() {
+function "sh" incrementNative() {
     count += 1
     nativeOps += 1
     message = "Incremented using native Kryon"
 }
 
 // rc shell function - for system integration
-function "rc" incrementRC() {
+function "sh" incrementRC() {
     count=`{kryonget count}
     count=`{expr $count + 1}
     kryonset count $count
@@ -27,14 +27,14 @@ function "rc" incrementRC() {
 }
 
 // Native Kryon function - direct manipulation
-function "rc" decrementNative() {
+function "sh" decrementNative() {
     count -= 1
     nativeOps += 1
     message = "Decremented using native Kryon"
 }
 
 // rc shell function - shell-based
-function "rc" decrementRC() {
+function "sh" decrementRC() {
     count=`{kryonget count}
     count=`{expr $count - 1}
     kryonset count $count
@@ -47,14 +47,14 @@ function "rc" decrementRC() {
 }
 
 // Native Kryon function - fast reset
-function "rc" resetNative() {
+function "sh" resetNative() {
     count = 0
     message = "Reset using native Kryon"
     nativeOps += 1
 }
 
 // rc shell function - shell reset
-function "rc" resetRC() {
+function "sh" resetRC() {
     kryonset count 0
     kryonset message 'Reset using rc shell'
 
@@ -64,14 +64,14 @@ function "rc" resetRC() {
 }
 
 // Native Kryon function - clear stats
-function "rc" clearStats() {
+function "sh" clearStats() {
     nativeOps = 0
     rcOps = 0
     message = "Statistics cleared"
 }
 
 // rc shell function - get system info
-function "rc" getSystemInfo() {
+function "sh" getSystemInfo() {
     # Get current directory
     dir=`{pwd}
 

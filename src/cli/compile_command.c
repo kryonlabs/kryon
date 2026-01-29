@@ -13,6 +13,7 @@
 #include "error.h"
 #include "kir_format.h"
 #include "krl_parser.h"
+#include "module_resolver.h"
 #include <getopt.h>
 #include <stdbool.h>
 #include <libgen.h>
@@ -493,13 +494,30 @@ static KryonResult process_single_include(KryonASTNode *include_node, KryonASTNo
         KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_PARSE_ERROR, KRYON_SEVERITY_ERROR, "Include directive is missing a file path");
     }
 
-    char full_path[1024];
-    snprint(full_path, sizeof(full_path), "%s/%s", base_dir, include_path);
-    KRYON_LOG_INFO("Processing include: %s", full_path);
-
-    if (access(full_path, R_OK) != 0) {
-        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_FILE_NOT_FOUND, KRYON_SEVERITY_ERROR, "Cannot read included file");
+    // Use module resolver for enhanced path resolution
+    ModuleResolver *resolver = module_resolver_create(base_dir);
+    if (!resolver) {
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_OUT_OF_MEMORY, KRYON_SEVERITY_ERROR, "Failed to create module resolver");
     }
+
+    ModuleResolution resolution = module_resolver_resolve(resolver, include_path);
+    module_resolver_destroy(resolver);
+
+    if (!resolution.found) {
+        char error_msg[512];
+        snprint(error_msg, sizeof(error_msg),
+                "Cannot find module '%s': %s\n"
+                "Searched in:\n"
+                "  - Relative to: %s\n"
+                "  - System paths: /usr/lib/kryon, /usr/local/lib/kryon\n"
+                "  - Environment: $KRYON_MODULE_PATH",
+                include_path, resolution.error_message ? resolution.error_message : "unknown error",
+                base_dir);
+        KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_FILE_NOT_FOUND, KRYON_SEVERITY_ERROR, error_msg);
+    }
+
+    const char *full_path = resolution.resolved_path;
+    KRYON_LOG_INFO("Processing include: %s -> %s", include_path, full_path);
 
     // --- Resources for this function ---
     FILE *file = NULL;
@@ -563,7 +581,8 @@ include_cleanup:
     if (include_parser) kryon_parser_destroy(include_parser);
     if (include_lexer) kryon_lexer_destroy(include_lexer);
     if (source) kryon_free(source);
-    
+    if (resolution.resolved_path) free(resolution.resolved_path);
+
     return result;
 }
 

@@ -1,13 +1,13 @@
 ; Counter component in KRL
 ; Demonstrates state management and event handlers
 
-(function "rc" increment ()
+(function "sh" increment ()
   "count = count + 1")
 
-(function "rc" decrement ()
+(function "sh" decrement ()
   "count = count - 1")
 
-(function "rc" reset ()
+(function "sh" reset ()
   "count = 0")
 
 (App

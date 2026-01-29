@@ -89,7 +89,8 @@ CORE_SRC = $(SRC_DIR)/core/memory_manager.c \
            $(SRC_DIR)/core/arena.c \
            $(SRC_DIR)/core/color_utils.c \
            $(SRC_DIR)/core/error_system.c \
-           $(SRC_DIR)/core/containers.c
+           $(SRC_DIR)/core/containers.c \
+           $(SRC_DIR)/core/target_resolver.c
 
 COMPILER_SRC = $(SRC_DIR)/compiler/lexer/unicode.c \
                $(SRC_DIR)/compiler/lexer/lexer.c \
@@ -106,6 +107,8 @@ COMPILER_SRC = $(SRC_DIR)/compiler/lexer/unicode.c \
                $(SRC_DIR)/compiler/codegen/directive_serializer.c \
                $(SRC_DIR)/compiler/codegen/codegen.c \
                $(SRC_DIR)/compiler/codegen/ast_expander.c \
+               $(SRC_DIR)/compiler/module_resolver.c \
+               $(SRC_DIR)/compiler/module_loader.c \
                $(SRC_DIR)/compiler/kir/kir_writer.c \
                $(SRC_DIR)/compiler/kir/kir_reader.c \
                $(SRC_DIR)/compiler/kir/kir_utils.c \
@@ -145,6 +148,21 @@ RUNTIME_SRC = $(SRC_DIR)/runtime/core/runtime.c \
               $(SRC_DIR)/runtime/elements/image.c \
               $(SRC_DIR)/runtime/elements/grid.c
 
+# =============================================================================
+# LANGUAGE PLUGIN SYSTEM
+# =============================================================================
+
+# Language plugin core (always included)
+LANGUAGE_SRC = $(SRC_DIR)/runtime/languages/language_registry.c \
+               $(SRC_DIR)/runtime/languages/native_language.c
+
+# Conditional sh language plugin (enabled for Inferno builds)
+ifneq ($(filter inferno,$(PLUGINS)),)
+    LANGUAGE_SRC += $(SRC_DIR)/runtime/languages/sh_language.c
+    CFLAGS += -DKRYON_PLUGIN_INFERNO
+    $(info Building with sh (Inferno shell) language plugin)
+endif
+
 EVENTS_SRC = $(SRC_DIR)/events/events.c
 
 # Detect optional renderers
@@ -154,7 +172,7 @@ RENDERERS_SRC =
 ifeq ($(shell pkg-config --exists raylib && echo yes),yes)
     RENDERERS_SRC += $(SRC_DIR)/renderers/raylib/raylib_renderer.c
     RAYLIB_AVAILABLE := 1
-    CFLAGS += -DKRYON_RENDERER_RAYLIB=1
+    CFLAGS += -DHAVE_RENDERER_RAYLIB=1
 else
     RAYLIB_AVAILABLE := 0
     $(warning Raylib not found - raylib renderer will be disabled)
@@ -164,7 +182,7 @@ endif
 ifeq ($(shell pkg-config --exists sdl2 && echo yes),yes)
     RENDERERS_SRC += $(SRC_DIR)/renderers/sdl2/sdl2_renderer.c
     SDL2_AVAILABLE := 1
-    CFLAGS += -DKRYON_RENDERER_SDL2=1
+    CFLAGS += -DHAVE_RENDERER_SDL2=1
     # Check if fontconfig is available
     ifeq ($(shell pkg-config --exists fontconfig && echo yes),yes)
         CFLAGS += -DUSE_FONTCONFIG=1
@@ -174,11 +192,19 @@ else
     $(warning SDL2 not found - SDL2 renderer will be disabled)
 endif
 
+# KRBView renderer (only for Inferno/TaijiOS builds)
+ifneq ($(filter inferno,$(PLUGINS)),)
+    RENDERERS_SRC += $(SRC_DIR)/renderers/krbview/krbview_renderer.c
+    CFLAGS += -DHAVE_RENDERER_KRBVIEW=1
+    $(info Building with krbview renderer for TaijiOS emu)
+endif
+
 # Web renderer (always available - merged html + web)
 RENDERERS_SRC += $(SRC_DIR)/renderers/html/html_renderer.c \
                 $(SRC_DIR)/renderers/web/web_renderer.c \
                 $(SRC_DIR)/renderers/web/dom_manager.c \
                 $(SRC_DIR)/renderers/web/css_generator.c
+CFLAGS += -DHAVE_RENDERER_WEB=1
 
 CLI_SRC = $(SRC_DIR)/cli/main.c \
           $(SRC_DIR)/cli/run_command.c \
@@ -225,7 +251,7 @@ INCLUDES += $(PLUGIN_INCLUDES)
 LDFLAGS += $(PLUGIN_LDFLAGS)
 
 # All source files
-ALL_SRC = $(SHARED_SRC) $(CORE_SRC) $(COMPILER_SRC) $(RUNTIME_SRC) \
+ALL_SRC = $(SHARED_SRC) $(CORE_SRC) $(COMPILER_SRC) $(RUNTIME_SRC) $(LANGUAGE_SRC) \
           $(EVENTS_SRC) $(RENDERERS_SRC) $(CLI_SRC) $(SERVICES_SRC) $(PLUGIN_SRC)
 
 # Object files

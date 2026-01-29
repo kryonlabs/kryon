@@ -24,6 +24,7 @@
 #include "shared/kryon_mappings.h"
 #include "validation.h"
 #include "../navigation/navigation.h"
+#include "language_plugins.h"
 #include <ctype.h>
 #include <time.h>
 #include <math.h>
@@ -223,7 +224,12 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_KEY_UP, runtime_event_handler, runtime);
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_WINDOW_FOCUS, runtime_event_handler, runtime);
     kryon_event_add_listener(runtime->event_system, KRYON_EVENT_WINDOW_RESIZE, runtime_event_handler, runtime);
-    
+
+    // Initialize language plugin system
+    if (!kryon_language_init(runtime)) {
+        fprintf(stderr, "⚠️ Warning: Language plugin system initialization failed\n");
+    }
+
     // Initialize global state
     runtime->global_state = kryon_state_create("global", KRYON_STATE_OBJECT);
     if (!runtime->global_state) {
@@ -350,7 +356,10 @@ void kryon_runtime_destroy(KryonRuntime *runtime) {
     
     // Cleanup element type registry
     element_registry_cleanup();
-    
+
+    // Shutdown language plugin system
+    kryon_language_shutdown(runtime);
+
     // Destroy event system (with null check)
     if (runtime->event_system) {
         kryon_event_system_destroy(runtime->event_system);

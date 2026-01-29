@@ -5,8 +5,8 @@
   (var count initialValue)
 
   ; Functions
-  (function "rc" increment () "count = count + step;")
-  (function "rc" decrement () "count = count - step;")
+  (function "sh" increment () "count = count + step;")
+  (function "sh" decrement () "count = count - step;")
 
   ; UI tree
   (Column

@@ -299,6 +299,42 @@ Flex {
 }
 ```
 
+### Grid - 2D Grid Layout
+```kry
+Grid {
+    columns = 3                    # Number of columns (default: 3)
+    gap = 10                       # Default spacing for both axes
+    column_spacing = 12            # Horizontal spacing (overrides gap)
+    row_spacing = 8                # Vertical spacing (overrides gap)
+    padding = 16                   # Inner padding
+
+    children = [
+        Container { background = "#FF5733" }
+        Container { background = "#33FF57" }
+        Container { background = "#3357FF" }
+        Container { background = "#F333FF" }
+        Container { background = "#FF33F3" }
+        Container { background = "#33FFF3" }
+    ]
+}
+```
+
+**Properties:**
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| columns | Integer | 3 | Number of columns in the grid |
+| gap | Float | 10.0 | Default spacing for both axes |
+| column_spacing | Float | gap | Horizontal space between columns |
+| row_spacing | Float | gap | Vertical space between rows |
+| padding | Float | 0.0 | Inner padding around content |
+
+**Behavior:**
+- Auto-calculates rows based on child count and column count
+- Positions children in row-major order (left-to-right, top-to-bottom)
+- Divides available space equally among cells
+- Respects child width/height but caps at cell boundaries
+- Supports recursive child positioning
+
 ## Content Widgets
 
 ### Text - Text Display

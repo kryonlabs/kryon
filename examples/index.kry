@@ -5,7 +5,7 @@ metadata {
 
 var files = []
 
-function "rc" loadExampleFiles() {
+function "sh" loadExampleFiles() {
     local examples = {}
     
     -- Use the scripting runtime to list files in current directory (where index.kry is located)
@@ -32,7 +32,7 @@ function "rc" loadExampleFiles() {
 }
 
 component BackButton() {
-    function "rc" navigateBack() {
+    function "sh" navigateBack() {
         kryon.navigation.navigateTo("index.kry")
         print("🔙 Navigating back to examples index")
     }

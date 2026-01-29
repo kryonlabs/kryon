@@ -27,7 +27,7 @@ cd kryon
 # Option 1: Standard Linux (no external dependencies)
 make
 
-# Option 2: Inferno (recommended for development with rc shell)
+# Option 2: Inferno (recommended for development with sh language)
 make -f Makefile.inferno
 
 # Option 3: TaijiOS (native Plan 9 environment)
@@ -43,7 +43,7 @@ mk
 | Mode | Makefile | Dependencies | Output | Use Case |
 |------|----------|--------------|--------|----------|
 | **Standard Linux** | `Makefile` | SDL2, Raylib, OpenGL | `build/bin/kryon` | Standalone Linux app |
-| **Inferno** | `Makefile.inferno` | Inferno, lib9 | `build/bin/kryon` | Linux + rc shell + Plan 9 integration |
+| **Inferno** | `Makefile.inferno` | Inferno, lib9 | `build/bin/kryon` | Linux + sh language + Plan 9 integration |
 | **TaijiOS** | `Makefile.taijios` / `mkfile` | TaijiOS, libinterp, lib9 | `kryon-taijios` | Native TaijiOS emu environment |
 
 ---
@@ -136,9 +136,11 @@ sudo make install
 
 ### Features NOT Included
 
-- rc shell scripting
+- sh (Inferno shell) language plugin - Language plugin available but won't execute without Inferno
 - Plan 9/Inferno integration
 - Inferno namespace support
+- krbview renderer (emu target)
+- TaijiOS module access
 
 ---
 
@@ -147,10 +149,12 @@ sudo make install
 ### Why Use Inferno Build?
 
 The Inferno build adds:
-- **rc shell scripting** - Write event handlers in Plan 9's rc shell
+- **sh language plugin** - Write event handlers in Inferno shell (formerly rc)
 - **lib9 integration** - Plan 9 type system and utilities
 - **Inferno services** - Access to Inferno's namespace and devices
-- **kryonget/kryonset** - Bridge between rc shell and Kryon state
+- **kryonget/kryonset** - Bridge between sh language and Kryon state
+- **krbview renderer** - Run apps directly in TaijiOS emu (--target emu)
+- **TaijiOS module access** - Import TaijiOS libraries and system resources
 
 ### Prerequisites
 
@@ -208,18 +212,177 @@ make -f Makefile.inferno DEBUG=1
 - `libinterp` - Inferno interpreter (optional)
 
 **Additional features:**
-- Inferno plugin enabled
-- rc shell function support
+- Inferno plugin enabled (`KRYON_PLUGIN_INFERNO`)
+- sh language plugin for Inferno shell functions
 - kryonget/kryonset commands
+- krbview renderer for emu target (`HAVE_RENDERER_KRBVIEW`)
+- Module resolver with TaijiOS path support
+- Standard library at `/lib/kryon/` (TaijiOS) or `$KRYON_MODULE_PATH`
 
 ### Verifying Inferno Build
 
 ```bash
-# Run an rc shell example
-./build/bin/kryon run examples/rc_shell_demo.kry --renderer raylib
+# Run a sh language example
+./build/bin/kryon run examples/sh_demo.kry --target native --renderer raylib
 
-# The example should execute rc shell functions
-# Look for "Using rc shell" in debug output
+# The example should execute sh language functions
+# Look for "Language plugin: sh" in debug output
+
+# Test emu target (TaijiOS krbview renderer)
+./build/bin/kryon run examples/sh_demo.kry --target emu
+```
+
+### Language Plugin System
+
+Kryon uses an extensible language plugin architecture for writing event handlers in different scripting languages.
+
+**Available Languages:**
+
+| Language | Identifier | Availability | Execution Environment |
+|----------|------------|--------------|----------------------|
+| Native Kryon | `""` (empty) | Always | Built-in interpreter |
+| Inferno Shell | `"sh"` | Requires `KRYON_PLUGIN_INFERNO` | `emu -r. dis/sh.dis` |
+
+**Usage Example:**
+```kry
+var count = 0
+
+// Native Kryon function (default)
+function increment() {
+    count = count + 1
+}
+
+// Inferno shell function
+function "sh" incrementShell() {
+    count=`{kryonget count}
+    count=`{expr $count + 1}
+    kryonset count $count
+}
+
+Button {
+    text = "Count: {count}"
+    onClick = "increment"
+}
+```
+
+**Plugin Auto-Registration:**
+- Language plugins use GCC `__attribute__((constructor))` for zero-cost registration
+- If a plugin is not available at runtime, clear error messages guide the user
+- Plugins are only loaded when functions using that language exist
+
+**Build Flags:**
+- `KRYON_PLUGIN_INFERNO=1` - Enables sh language plugin (Inferno shell)
+
+### Target System
+
+Kryon supports multiple deployment targets via the `--target` option, which describes where the app will run.
+
+**Available Targets:**
+
+| Target | Description | Renderers | Use Case |
+|--------|-------------|-----------|----------|
+| `native` | Desktop GUI | SDL2, Raylib | Linux desktop applications |
+| `emu` | TaijiOS emu | krbview | Apps running in TaijiOS emulator |
+| `web` | Static HTML | Web generator | Browser-based applications |
+| `terminal` | Text output | Text renderer | CLI applications |
+
+**Usage:**
+```bash
+# Desktop app with SDL2
+kryon run app.kry --target native --renderer sdl2
+
+# TaijiOS emu app (requires Inferno build)
+kryon run app.kry --target emu
+
+# Generate static website
+kryon run app.kry --target web --output ./dist
+
+# Text-based output
+kryon run app.kry --target terminal
+```
+
+**Target Resolution:**
+- `native` → Prefers SDL2, falls back to Raylib
+- `emu` → Requires krbview renderer (Inferno build only)
+- Incompatible combinations (e.g., `--target emu --renderer sdl2`) produce clear error messages
+
+**Build Flags:**
+- `HAVE_RENDERER_SDL2=1` - SDL2 renderer available
+- `HAVE_RENDERER_RAYLIB=1` - Raylib renderer available
+- `HAVE_RENDERER_KRBVIEW=1` - krbview renderer available (Inferno builds)
+- `HAVE_RENDERER_WEB=1` - Web generator available
+
+### Module System and Standard Library
+
+Kryon has an enhanced module system for code reuse and organization.
+
+**Include Directive:**
+```kry
+// Relative paths
+include "./utils/helpers.kry"
+include "../common/styles.kry"
+
+// System modules (angle brackets)
+include <kryon/styles/theme.kry>
+include <kryon/components/button.kry>
+
+// Environment variables
+include "$KRYON_LIB/custom.kry"
+```
+
+**Module Search Path (in order):**
+1. Relative to current file
+2. Project modules: `/kryon/modules/` (TaijiOS)
+3. System library: `/lib/kryon/` (TaijiOS standard library)
+4. Environment: `$KRYON_MODULE_PATH` (colon-separated)
+5. Built-in: Angle bracket syntax `<kryon/*>`
+
+**Standard Library Modules:**
+
+Located at `/lib/kryon/` (TaijiOS) or `$KRYON_MODULE_PATH`:
+
+- `stdlib/styles/theme.kry` - Dark/light themes, color schemes
+- `stdlib/components/button.kry` - PrimaryButton, SecondaryButton, OutlineButton, IconButton
+- `stdlib/utils/helpers.kry` - clamp(), capitalize(), validation helpers
+- `stdlib/taijios/console.kry` - TaijiOS console integration (requires emu target)
+- `stdlib/taijios/process.kry` - Process management (requires emu target)
+- `stdlib/taijios/namespace.kry` - Namespace operations (requires emu target)
+
+**Usage Example:**
+```kry
+include <kryon/styles/theme.kry>
+include <kryon/components/button.kry>
+
+App {
+    backgroundColor = theme.background
+
+    Container {
+        PrimaryButton(text: "Submit", onClick: "handleSubmit")
+        SecondaryButton(text: "Cancel", onClick: "handleCancel")
+    }
+}
+```
+
+**TaijiOS Module Access (Inferno build only):**
+```kry
+include <kryon/taijios/console.kry>
+
+function "sh" writeToConsole() {
+    console.write("Hello from Kryon!")
+}
+```
+
+**Future: Import Directive (Planned):**
+```kry
+// Planned syntax (not yet implemented)
+import "mymodule" as mod
+import { Button, Input } from <kryon/ui/forms>
+
+module {
+    name = "my-app"
+    version = "1.0.0"
+    exports = ["MyComponent"]
+}
 ```
 
 ### lib9.h Overview
@@ -462,24 +625,25 @@ INFERNO=/path/to/inferno make -f Makefile.inferno
 export INFERNO=/opt/inferno
 ```
 
-### Build Succeeds but rc Shell Functions Don't Work
+### Build Succeeds but sh Language Functions Don't Work
 
-**Problem:** Built successfully but rc shell functions fail at runtime.
+**Problem:** Built successfully but sh language functions fail at runtime.
 
 **Diagnostics:**
 ```bash
 # Check if Inferno plugin is loaded
-./build/bin/kryon run examples/rc_shell_demo.kry --renderer raylib --debug
+./build/bin/kryon run examples/sh_demo.kry --target native --renderer raylib --debug
 
 # Look for:
-# "Loaded plugin: inferno" - Should appear
-# "rc shell function not available" - Indicates plugin not loaded
+# "Language plugin registered: sh" - Should appear
+# "Language 'sh' is not available" - Indicates plugin not loaded or emu not found
 ```
 
 **Solution:**
 - Ensure you used `Makefile.inferno` for the build
-- Verify `$INFERNO` is set at runtime
-- Check that Inferno emu is executable
+- Verify `$INFERNO` is set and emu is in PATH at runtime
+- Check that Inferno emu is executable: `which emu`
+- Verify `KRYON_PLUGIN_INFERNO` flag was set during compilation
 
 ### mk: command not found (TaijiOS Build)
 
@@ -570,6 +734,13 @@ mkfile                - TaijiOS mk build (alternative)
 - `-I$INFERNO/include` - lib9 headers
 - `-L$INFERNO/Linux/amd64/lib` - lib9 libraries
 - `-l9 -linterp` - Link lib9 and libinterp
+- `-DKRYON_PLUGIN_INFERNO=1` - Enable Inferno plugin (sh language, krbview)
+
+**Renderer flags:**
+- `-DHAVE_RENDERER_SDL2=1` - SDL2 renderer available
+- `-DHAVE_RENDERER_RAYLIB=1` - Raylib renderer available
+- `-DHAVE_RENDERER_KRBVIEW=1` - krbview renderer available (Inferno only)
+- `-DHAVE_RENDERER_WEB=1` - Web generator available
 
 **TaijiOS-specific:**
 - `-I$TAIJIOS_ROOT/include` - TaijiOS headers
@@ -624,7 +795,7 @@ kryon-taijios         # TaijiOS executable
 | If you want... | Use this build |
 |----------------|----------------|
 | Simple Linux app | `make` |
-| rc shell scripting | `make -f Makefile.inferno` |
+| sh language scripting + emu target | `make -f Makefile.inferno` |
 | Full Plan 9 environment | `make -f Makefile.taijios` |
 | Development environment | `nix-shell` then choose build |
 
@@ -634,13 +805,28 @@ kryon-taijios         # TaijiOS executable
 # 1. Enter development environment
 nix-shell
 
-# 2. Build with Inferno support
+# 2. Build with Inferno support (recommended)
 make -f Makefile.inferno
 
-# 3. Run examples
-./scripts/run_example.sh rc_shell_demo raylib
+# 3. Run examples with different targets
+./build/bin/kryon run examples/sh_demo.kry --target native --renderer raylib
+./build/bin/kryon run examples/sh_demo.kry --target emu
+./build/bin/kryon run examples/hello-world.kry --target web -o dist
 
-# 4. Test changes
+# 4. Use standard library
+cat > myapp.kry << 'EOF'
+include <kryon/styles/theme.kry>
+include <kryon/components/button.kry>
+
+App {
+    backgroundColor = theme.background
+    PrimaryButton(text: "Click Me", onClick: "handleClick")
+}
+EOF
+
+./build/bin/kryon run myapp.kry --target native
+
+# 5. Test changes
 make -f Makefile.inferno test
 ```
 

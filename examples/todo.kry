@@ -6,7 +6,7 @@ metadata {
 var todos = ["Test todo", "Another item"]
 var newTodo = ""
 
-function "rc" addTodo() {
+function "sh" addTodo() {
     if (newTodo != "") {
         print("Adding todo: " .. newTodo)
         todos.push(newTodo)
