@@ -1,9 +1,18 @@
 # Makefile for Kryon-C
 # Usage:
-#   make              - Build release version
+#   make              - Build release version (Standard Linux)
 #   make debug        - Build debug version
 #   make clean        - Clean build artifacts
 #   make run ARGS=... - Build and run with arguments
+#
+# Build Modes:
+#   make                       - Standard Linux build (this file)
+#   make -f Makefile.inferno   - Build with Inferno support (enables rc shell, lib9)
+#   make -f Makefile.taijios   - Build for TaijiOS environment
+#
+# Note: If you get "lib9.h: No such file or directory" errors,
+#       use: make -f Makefile.inferno
+#       See docs/BUILD.md for details.
 
 # Directories
 SRC_DIR = src

@@ -1471,46 +1471,6 @@ static uint32_t count_elements_recursive(const KryonASTNode *node) {
         }
         
         return count;
-    } else if (node->type == KRYON_AST_CONST_FOR_LOOP) {
-        uint32_t iteration_count = 0;
-        
-        if (node->data.const_for_loop.is_range) {
-            // Handle range-based loop
-            int start = node->data.const_for_loop.range_start;
-            int end = node->data.const_for_loop.range_end;
-            iteration_count = (uint32_t)(end - start + 1);
-            
-            print("DEBUG: count_elements_recursive found range const_for - Range %d..%d has %u iterations\n",
-                   start, end, iteration_count);
-        } else {
-            // Handle array-based loop
-            // Hardcode for alignments array (6 elements) - TODO: fix properly with codegen context
-            if (node->data.const_for_loop.array_name && 
-                strcmp(node->data.const_for_loop.array_name, "alignments") == 0) {
-                iteration_count = 6;
-            } else {
-                // Fallback for unknown arrays
-                iteration_count = 1;
-            }
-            
-            print("DEBUG: count_elements_recursive found array const_for - Array '%s' has %u elements\n",
-                   node->data.const_for_loop.array_name ? node->data.const_for_loop.array_name : "NULL", 
-                   iteration_count);
-        }
-        
-        uint32_t elements_per_iteration = 0;
-        
-        // Count elements in each body element recursively
-        for (size_t i = 0; i < node->data.const_for_loop.body_count; i++) {
-            const KryonASTNode *body_element = node->data.const_for_loop.body[i];
-            elements_per_iteration += count_elements_recursive(body_element);
-        }
-        
-        uint32_t total = iteration_count * elements_per_iteration;
-        print("DEBUG: count_elements_recursive const_for total: %u iterations * %u elements per iteration = %u total\n",
-               iteration_count, elements_per_iteration, total);
-        
-        return total;
     } else if (node->type == KRYON_AST_FOR_DIRECTIVE) {
         // Count @for directive itself as 1 element plus its body
         uint32_t count = 1; // Count the @for directive element
@@ -1526,7 +1486,7 @@ static uint32_t count_elements_recursive(const KryonASTNode *node) {
                node->data.for_loop.body_count, count);
 
         return count;
-    } else if (node->type == KRYON_AST_IF_DIRECTIVE || node->type == KRYON_AST_CONST_IF_DIRECTIVE) {
+    } else if (node->type == KRYON_AST_IF_DIRECTIVE) {
         // Count @if directive as 1 element plus all its branches
         uint32_t count = 1;
 

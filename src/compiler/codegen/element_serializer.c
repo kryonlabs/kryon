@@ -210,8 +210,6 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
         for (size_t i = 0; i < children_count; i++) {
             const KryonASTNode *child = children[i];
             if (child && (child->type == KRYON_AST_ELEMENT ||
-                         child->type == KRYON_AST_CONST_FOR_LOOP ||
-                         child->type == KRYON_AST_CONST_IF_DIRECTIVE ||
                          child->type == KRYON_AST_FOR_DIRECTIVE ||
                          child->type == KRYON_AST_IF_DIRECTIVE)) {
                 if (!kryon_write_element_instance(codegen, child, ast_root)) {
@@ -1196,7 +1194,7 @@ uint32_t kryon_count_elements_recursive(const KryonASTNode *node) {
         for (size_t i = 0; i < node->data.for_loop.body_count; i++) {
             count += kryon_count_elements_recursive(node->data.for_loop.body[i]);
         }
-    } else if (node->type == KRYON_AST_IF_DIRECTIVE || node->type == KRYON_AST_CONST_IF_DIRECTIVE) {
+    } else if (node->type == KRYON_AST_IF_DIRECTIVE) {
         // Count @if directive as 1 element, plus its branches
         count = 1;
         for (size_t i = 0; i < node->data.conditional.then_count; i++) {
@@ -1239,7 +1237,7 @@ uint32_t kryon_count_properties_recursive(const KryonASTNode *node) {
         for (size_t i = 0; i < node->data.for_loop.body_count; i++) {
             count += kryon_count_properties_recursive(node->data.for_loop.body[i]);
         }
-    } else if (node->type == KRYON_AST_IF_DIRECTIVE || node->type == KRYON_AST_CONST_IF_DIRECTIVE) {
+    } else if (node->type == KRYON_AST_IF_DIRECTIVE) {
         // @if directive has 1 property (condition), plus body properties
         count = 1;
         for (size_t i = 0; i < node->data.conditional.then_count; i++) {

@@ -2571,10 +2571,8 @@ static KryonASTNode *parse_if_directive(KryonParser *parser) {
             body_element = parse_element(parser);
         } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
             body_element = parse_for_directive(parser);
-        } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE) ||
-                   check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
-            bool nested_is_const = check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE);
-            body_element = parse_if_directive(parser, nested_is_const);
+        } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
+            body_element = parse_if_directive(parser);
         } else {
             parser_error(parser, "Expected element in conditional body");
             break;
@@ -2647,10 +2645,8 @@ static KryonASTNode *parse_if_directive(KryonParser *parser) {
                 body_element = parse_element(parser);
             } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
                 body_element = parse_for_directive(parser);
-            } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE) ||
-                       check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
-                bool nested_is_const = check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE);
-                body_element = parse_if_directive(parser, nested_is_const);
+            } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
+                body_element = parse_if_directive(parser);
             } else {
                 parser_error(parser, "Expected element in elif body");
                 break;
@@ -2698,10 +2694,8 @@ static KryonASTNode *parse_if_directive(KryonParser *parser) {
                 body_element = parse_element(parser);
             } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
                 body_element = parse_for_directive(parser);
-            } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE) ||
-                       check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
-                bool nested_is_const = check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE);
-                body_element = parse_if_directive(parser, nested_is_const);
+            } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
+                body_element = parse_if_directive(parser);
             } else {
                 parser_error(parser, "Expected element in else body");
                 break;

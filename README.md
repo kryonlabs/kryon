@@ -52,6 +52,100 @@ cmake ..
 make -j$(nproc)
 ```
 
+## Build Modes
+
+Kryon supports three build configurations depending on your needs and available dependencies:
+
+### 1. Standard Linux Build (Default)
+
+The standard build uses native Linux libraries for graphics and UI.
+
+**Dependencies:**
+- SDL2, Raylib, OpenGL
+- Standard C development tools (gcc, make, pkg-config)
+- X11 libraries
+
+**Command:**
+```bash
+make
+```
+
+**Output:** `build/bin/kryon`
+
+**Use when:** You want a standalone Linux application without Plan 9/Inferno features.
+
+### 2. Inferno Build (Recommended for Development)
+
+Links against Inferno's lib9 and enables the Inferno plugin for rc shell support.
+
+**Dependencies:**
+- Inferno installation (auto-detected in common locations)
+- lib9 (from Inferno)
+- All Standard Linux dependencies
+
+**Command:**
+```bash
+make -f Makefile.inferno
+```
+
+**Output:** `build/bin/kryon` (with Inferno services)
+
+**Use when:** You want rc shell scripting and Plan 9 integration on standard Linux.
+
+**Installing Inferno:**
+```bash
+# Download and build Inferno
+git clone https://github.com/inferno-os/inferno-os.git /opt/inferno
+cd /opt/inferno
+./makemk.sh
+mk install
+```
+
+### 3. Native TaijiOS Build
+
+Builds for the TaijiOS environment using the mk build system.
+
+**Dependencies:**
+- TaijiOS installation at `/home/wao/Projects/TaijiOS`
+- libinterp, lib9 (from TaijiOS)
+- mk build tool
+
+**Commands:**
+```bash
+make -f Makefile.taijios
+# Or using mk directly:
+mk
+```
+
+**Output:** `kryon-taijios`
+
+**Use when:** You're running in the TaijiOS emu environment and want full Plan 9 namespace/device file access.
+
+**Installing TaijiOS:**
+```bash
+git clone https://github.com/Plan9-Archive/TaijiOS.git ~/Projects/TaijiOS
+cd ~/Projects/TaijiOS
+# Follow TaijiOS build instructions
+```
+
+### Troubleshooting
+
+**Error: "lib9.h: No such file or directory"**
+
+This means the build system can't find lib9. Solutions:
+
+1. Use the Inferno build: `make -f Makefile.inferno`
+2. Install Inferno (see above)
+3. Or install TaijiOS and use: `make -f Makefile.taijios`
+
+**Which build mode should I use?**
+
+- **New to Kryon?** Start with Standard Linux build (`make`)
+- **Want rc shell features?** Use Inferno build (`make -f Makefile.inferno`)
+- **Working with TaijiOS?** Use TaijiOS build (`make -f Makefile.taijios`)
+
+For detailed build instructions, see [docs/BUILD.md](docs/BUILD.md).
+
 ## Running Examples
 
 ```bash

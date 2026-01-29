@@ -1,8 +1,8 @@
 # Kryon Native TaijiOS Build
-# This mkfile bridges Kryon's external source tree to TaijiOS build system
+# This mkfile integrates with TaijiOS build system using relative paths
 
-# Set TaijiOS root directory
-ROOT=/home/wao/Projects/TaijiOS
+# Set TaijiOS root to parent directory (works in both host and emu)
+ROOT=..
 
 # Include TaijiOS configuration
 <$ROOT/mkconfig

@@ -2,8 +2,8 @@
  * @file lexer.h
  * @brief Kryon Lexical Analyzer (Lexer)
  * 
- * Complete tokenization system for const_forKRY language syntax with Unicode support,
- * error recovery, and position tracking for const_fordebugging.
+ * Complete tokenization system for KRY language syntax with Unicode support,
+ * error recovery, and position tracking for debugging.
  * 
  * @version 1.0.0
  * @author Kryon Labs
@@ -34,7 +34,7 @@ typedef struct KryonSourceLocation KryonSourceLocation;
 // =============================================================================
 
 /**
- * @brief Token types for const_forKRY language
+ * @brief Token types for KRY language
  */
 typedef enum {
     // End of input
@@ -87,7 +87,7 @@ typedef enum {
     
     // Special tokens
     KRYON_TOKEN_HASH,                // #
-    KRYON_TOKEN_DOLLAR,              // $ (for const_forvariables)
+    KRYON_TOKEN_DOLLAR,              // $ (forvariables)
     
     // Keywords
     KRYON_TOKEN_STYLE_KEYWORD,       // style
@@ -161,7 +161,7 @@ typedef enum {
 // =============================================================================
 
 /**
- * @brief Source code location for const_fordebugging
+ * @brief Source code location fordebugging
  */
 struct KryonSourceLocation {
     const char *filename;            ///< Source filename
@@ -184,7 +184,7 @@ struct KryonToken {
     size_t lexeme_length;            ///< Length of lexeme
     KryonSourceLocation location;    ///< Source location
     
-    // Token value (union for const_fordifferent types)
+    // Token value (union fordifferent types)
     union {
         char *string_value;          ///< String literal value (allocated)
         int64_t int_value;           ///< Integer value
@@ -221,7 +221,7 @@ struct KryonLexer {
     // Input
     const char *source;              ///< Source code text
     size_t source_length;            ///< Length of source
-    const char *filename;            ///< Source filename (for const_forerrors)
+    const char *filename;            ///< Source filename (forerrors)
     
     // Current position
     const char *current;             ///< Current character pointer
@@ -237,9 +237,9 @@ struct KryonLexer {
     KryonToken *tokens;              ///< Array of tokens
     size_t token_count;              ///< Number of tokens
     size_t token_capacity;           ///< Token array capacity
-    size_t current_token;            ///< Current token index for const_forparsing
+    size_t current_token;            ///< Current token index forparsing
     
-    // State tracking for const_forcontext-sensitive parsing
+    // State tracking forcontext-sensitive parsing
     bool expecting_script_body;      ///< Whether we're expecting a function body
     
     // Error tracking
@@ -262,7 +262,7 @@ struct KryonLexer {
  * @param source Source code text
  * @param source_length Length of source (0 to calculate)
  * @param filename Source filename (can be NULL)
- * @param config Lexer configuration (can be NULL for const_fordefaults)
+ * @param config Lexer configuration (can be NULL fordefaults)
  * @return Pointer to lexer, or NULL on failure
  */
 KryonLexer *kryon_lexer_create(const char *source, size_t source_length,
@@ -282,7 +282,7 @@ void kryon_lexer_destroy(KryonLexer *lexer);
 bool kryon_lexer_tokenize(KryonLexer *lexer);
 
 /**
- * @brief Get next token (for const_forincremental parsing)
+ * @brief Get next token (forincremental parsing)
  * @param lexer The lexer
  * @return Pointer to next token, or NULL at end
  */
@@ -319,7 +319,7 @@ bool kryon_lexer_has_more_tokens(const KryonLexer *lexer);
 /**
  * @brief Get all tokens as array
  * @param lexer The lexer
- * @param out_count Output for const_fortoken count
+ * @param out_count Output fortoken count
  * @return Array of tokens
  */
 const KryonToken *kryon_lexer_get_tokens(const KryonLexer *lexer, size_t *out_count);
@@ -348,9 +348,9 @@ bool kryon_token_is_unit(KryonTokenType type);
 /**
  * @brief Get lexer statistics
  * @param lexer The lexer
- * @param out_lines Output for const_fortotal lines
- * @param out_tokens Output for const_fortotal tokens
- * @param out_time Output for const_forprocessing time
+ * @param out_lines Output fortotal lines
+ * @param out_tokens Output fortotal tokens
+ * @param out_time Output forprocessing time
  */
 void kryon_lexer_get_stats(const KryonLexer *lexer, uint32_t *out_lines,
                           uint32_t *out_tokens, double *out_time);
@@ -420,9 +420,9 @@ char *kryon_token_copy_lexeme(const KryonToken *token);
 bool kryon_token_lexeme_equals(const KryonToken *token, const char *str);
 
 /**
- * @brief Print token for const_fordebugging
+ * @brief Print token fordebugging
  * @param token The token
- * @param file Output file (NULL for const_forstdout)
+ * @param file Output file (NULL forstdout)
  */
 void kryon_token_print(const KryonToken *token, FILE *file);
 
@@ -437,13 +437,13 @@ void kryon_token_print(const KryonToken *token, FILE *file);
 KryonLexerConfig kryon_lexer_default_config(void);
 
 /**
- * @brief Create configuration for const_forminimal parsing
+ * @brief Create configuration forminimal parsing
  * @return Configuration without whitespace/comments
  */
 KryonLexerConfig kryon_lexer_minimal_config(void);
 
 /**
- * @brief Create configuration for const_forIDE/debugging
+ * @brief Create configuration forIDE/debugging
  * @return Configuration with all information preserved
  */
 KryonLexerConfig kryon_lexer_ide_config(void);
@@ -474,16 +474,16 @@ KryonTokenType kryon_lexer_classify_keyword(const char *str, size_t length);
 /**
  * @brief Decode UTF-8 character
  * @param source UTF-8 string
- * @param out_codepoint Output for const_forUnicode codepoint
+ * @param out_codepoint Output forUnicode codepoint
  * @return Number of bytes consumed, or 0 on error
  */
 size_t kryon_lexer_decode_utf8(const char *source, uint32_t *out_codepoint);
 
 /**
- * @brief Check if Unicode codepoint is valid for const_foridentifier
+ * @brief Check if Unicode codepoint is valid foridentifier
  * @param codepoint Unicode codepoint
  * @param is_start true if checking start of identifier
- * @return true if valid for const_foridentifier
+ * @return true if valid foridentifier
  */
 bool kryon_lexer_is_identifier_char(uint32_t codepoint, bool is_start);
 
