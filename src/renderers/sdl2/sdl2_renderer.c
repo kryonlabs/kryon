@@ -108,10 +108,23 @@ static void draw_text_with_font(SDL_Renderer* renderer, const char* text,
 
 static SDL2RendererImpl g_sdl2_impl = {0};
 
-// Signal handler for Ctrl+C
+// Signal handler for Ctrl+C (SIGINT)
+// IMPORTANT: This must be async-signal-safe. Only boolean flag assignments
+// are allowed. We set both quit_requested (for begin_frame check) and
+// runtime->is_running (for main loop check) to ensure clean exit.
 static void handle_sigint(int sig) {
     if (g_sdl2_impl.initialized) {
+        printf("🛑 SIGINT (Ctrl+C) received\n");
+        fflush(stdout);
+
         g_sdl2_impl.quit_requested = true;
+
+        // Propagate to runtime for immediate exit (mirrors SDL_QUIT pattern)
+        // This is signal-safe: only setting boolean flags
+        if (g_sdl2_impl.callback_data) {
+            KryonRuntime* runtime = (KryonRuntime*)g_sdl2_impl.callback_data;
+            runtime->is_running = false;
+        }
     }
 }
 

@@ -17,6 +17,7 @@
 #include <libgen.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <sys/select.h>
 #include <errno.h>
 
 // Global for debug mode
@@ -414,8 +415,23 @@ int run_command(int argc, char *argv[]) {
             }
         }
 
-        // Basic frame limiting (should be handled by renderer)
-        usleep(16666); // ~60fps
+        // Frame timing with signal-safe sleep
+        // Using pselect() instead of usleep() because:
+        // - usleep() can block signals, causing Ctrl+C to be delayed
+        // - pselect() returns immediately when SIGINT arrives
+        // - Allows instant response to Ctrl+C without multiple presses
+        struct timespec frame_time = {
+            .tv_sec = 0,
+            .tv_nsec = 16666666  // 16.666ms in nanoseconds (~60fps)
+        };
+
+        // pselect returns immediately when interrupted by signals (like SIGINT)
+        // This allows Ctrl+C to work instantly without waiting for sleep to complete
+        int ret = pselect(0, NULL, NULL, NULL, &frame_time, NULL);
+        if (ret == -1 && errno == EINTR) {
+            // Signal interrupted - quit flag will be checked on next loop iteration
+            // This is expected behavior for Ctrl+C
+        }
     }
     
     fprintf(stderr, "✅ Rendering completed successfully with %s (%d frames)\n", renderer, frame_count);
