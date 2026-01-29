@@ -222,18 +222,18 @@ int run_command(int argc, char *argv[]) {
                 break;
             case 'h':
                 fprintf(stderr, "Usage: kryon run <file.krb> [options]\n");
+                fprintf(stderr, "\n");
                 fprintf(stderr, "Options:\n");
-                fprintf(stderr, "  -t, --target <name>    Target platform (native, emu, web, terminal)\n");
-                fprintf(stderr, "  -r, --renderer <name>  Specific renderer (sdl2, raylib, krbview, web, terminal)\n");
+                fprintf(stderr, "  -t, --target <name>    Target platform (sdl2, raylib, web)\n");
+                fprintf(stderr, "  -r, --renderer <name>  Specific renderer (sdl2, raylib, web)\n");
                 fprintf(stderr, "  -o, --output <dir>     Output directory for web renderer\n");
                 fprintf(stderr, "  -d, --debug            Enable debug output\n");
                 fprintf(stderr, "  -h, --help             Show this help\n");
                 fprintf(stderr, "\n");
                 fprintf(stderr, "Targets:\n");
-                fprintf(stderr, "  native    - Desktop GUI application (uses SDL2 or Raylib)\n");
-                fprintf(stderr, "  emu       - TaijiOS emu environment (uses krbview)\n");
+                fprintf(stderr, "  sdl2      - Desktop GUI via SDL2\n");
+                fprintf(stderr, "  raylib    - Desktop GUI via Raylib\n");
                 fprintf(stderr, "  web       - Static HTML/CSS/JS output\n");
-                fprintf(stderr, "  terminal  - Text-only output\n");
                 return 0;
             default:
                 return 1;
@@ -246,29 +246,36 @@ int run_command(int argc, char *argv[]) {
     }
 
     // Resolve target to renderer
-    KryonTargetType target = KRYON_TARGET_NATIVE;  // Default
-    KryonRendererType renderer_type = KRYON_RENDERER_TYPE_NONE;
+    KryonTargetType target;
+    const char *effective_target = target_str;
 
-    // Parse target if specified
-    if (target_str) {
-        if (!kryon_target_parse(target_str, &target)) {
-            fprintf(stderr, "Error: Unknown target '%s'\n", target_str);
-            fprintf(stderr, "Valid targets: native, emu, web, terminal\n");
-            return 1;
-        }
+    // If renderer is specified directly, use that as target
+    if (renderer) {
+        effective_target = renderer;
     }
 
-    // Parse renderer if specified
-    if (renderer) {
-        if (!kryon_renderer_parse(renderer, &renderer_type)) {
-            fprintf(stderr, "Error: Unknown renderer '%s'\n", renderer);
-            fprintf(stderr, "Valid renderers: sdl2, raylib, krbview, web, terminal\n");
-            return 1;
+    // Require target to be specified
+    if (!effective_target) {
+        fprintf(stderr, "Error: No target specified\n\n");
+        fprintf(stderr, "Usage: kryon run <file.krb> --target <sdl2|raylib|web>\n\n");
+        fprintf(stderr, "Available targets in this build:\n");
+        for (int i = 0; i < KRYON_TARGET_COUNT; i++) {
+            if (kryon_target_is_available((KryonTargetType)i)) {
+                fprintf(stderr, "  - %s\n", kryon_target_name((KryonTargetType)i));
+            }
         }
+        return 1;
+    }
+
+    // Parse target
+    if (!kryon_target_parse(effective_target, &target)) {
+        fprintf(stderr, "Error: Unknown target '%s'\n", effective_target);
+        fprintf(stderr, "Valid targets: sdl2, raylib, web\n");
+        return 1;
     }
 
     // Resolve target to renderer
-    KryonTargetResolution resolution = kryon_target_resolve(target, renderer_type);
+    KryonTargetResolution resolution = kryon_target_resolve(target);
 
     if (!resolution.available) {
         fprintf(stderr, "Error: Target '%s' is not available.\n\n", kryon_target_name(target));
@@ -282,16 +289,6 @@ int run_command(int argc, char *argv[]) {
             }
         }
         return 1;
-    }
-
-    // Validate target+renderer combination if both specified
-    if (target_str && renderer) {
-        char error_buffer[512];
-        if (!kryon_target_validate(target, renderer_type, error_buffer, sizeof(error_buffer))) {
-            fprintf(stderr, "Error: Invalid target/renderer combination.\n\n");
-            fprintf(stderr, "%s\n", error_buffer);
-            return 1;
-        }
     }
 
     // Convert resolved renderer back to string for setup_renderer

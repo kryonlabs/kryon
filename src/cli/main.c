@@ -20,6 +20,7 @@
  extern int dev_command(int argc, char *argv[]);
  extern int debug_command(int argc, char *argv[]);
  extern int package_command(int argc, char *argv[]);
+ extern int targets_command(int argc, char *argv[]);
  
  static void print_usage(const char *program_name) {
      fprintf(stderr, "Kryon-C %s - Complete UI Framework\n", KRYON_VERSION);

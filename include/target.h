@@ -3,16 +3,14 @@
  * @brief Kryon Target System - Deployment target selection and validation
  *
  * This header defines the target system that maps user intent (where to deploy)
- * to concrete renderers (how to render). This provides a more intuitive interface
- * than directly selecting renderers.
+ * to concrete renderers (how to render).
  *
  * Targets describe WHERE the app runs:
- * - native: Desktop GUI application (SDL2/Raylib)
- * - emu: TaijiOS emu environment (krbview)
+ * - sdl2: Desktop GUI via SDL2
+ * - raylib: Desktop GUI via Raylib
  * - web: Browser (static HTML/CSS/JS)
- * - terminal: Text-only output
  *
- * @version 1.0.0
+ * @version 2.0.0
  * @author Kryon Labs
  */
 
@@ -34,27 +32,23 @@ extern "C" {
  * @brief Deployment targets for Kryon applications
  *
  * Each target represents a deployment environment with specific capabilities
- * and constraints. The target system automatically selects appropriate renderers.
+ * and constraints.
  */
 typedef enum {
-    KRYON_TARGET_NATIVE,    /**< Desktop GUI (SDL2/Raylib) */
-    KRYON_TARGET_EMU,       /**< TaijiOS emu (krbview renderer) */
+    KRYON_TARGET_SDL2,      /**< Desktop GUI via SDL2 */
+    KRYON_TARGET_RAYLIB,    /**< Desktop GUI via Raylib */
     KRYON_TARGET_WEB,       /**< Static HTML/CSS/JS */
-    KRYON_TARGET_TERMINAL,  /**< Text output only */
     KRYON_TARGET_COUNT      /**< Number of target types */
 } KryonTargetType;
 
 /**
  * @brief Renderer types that can be selected for a target
- * Note: Enum names avoid conflict with build flags (KRYON_RENDERER_SDL2=1)
  */
 typedef enum {
     KRYON_RENDERER_TYPE_NONE = 0,
     KRYON_RENDERER_TYPE_SDL2,
     KRYON_RENDERER_TYPE_RAYLIB,
-    KRYON_RENDERER_TYPE_KRBVIEW,
-    KRYON_RENDERER_TYPE_WEB,
-    KRYON_RENDERER_TYPE_TERMINAL
+    KRYON_RENDERER_TYPE_WEB
 } KryonRendererType;
 
 /**
@@ -86,54 +80,19 @@ bool kryon_target_is_available(KryonTargetType target);
 /**
  * @brief Resolve target to concrete renderer
  *
- * Maps a target to the best available renderer for that target.
- * Uses fallback logic (e.g., native tries SDL2 first, then Raylib).
- *
  * @param target Target type
- * @param preferred_renderer Optional preferred renderer (KRYON_RENDERER_NONE for auto)
  * @return Resolution result with selected renderer or error
  */
-KryonTargetResolution kryon_target_resolve(
-    KryonTargetType target,
-    KryonRendererType preferred_renderer
-);
-
-/**
- * @brief Validate target+renderer combination
- *
- * Performs hard validation of compatibility. Some combinations are invalid
- * (e.g., emu target with SDL2 renderer).
- *
- * @param target Target type
- * @param renderer Renderer type
- * @param error_buffer Buffer for error message (can be NULL)
- * @param error_buffer_size Size of error buffer
- * @return true if combination is valid, false otherwise
- */
-bool kryon_target_validate(
-    KryonTargetType target,
-    KryonRendererType renderer,
-    char *error_buffer,
-    size_t error_buffer_size
-);
+KryonTargetResolution kryon_target_resolve(KryonTargetType target);
 
 /**
  * @brief Parse target name string to enum
  *
- * @param name Target name ("native", "emu", "web", "terminal")
+ * @param name Target name ("sdl2", "raylib", "web")
  * @param out_target Output target type
  * @return true if parsed successfully, false if unknown
  */
 bool kryon_target_parse(const char *name, KryonTargetType *out_target);
-
-/**
- * @brief Parse renderer name string to enum
- *
- * @param name Renderer name ("sdl2", "raylib", "krbview", "web", "terminal")
- * @param out_renderer Output renderer type
- * @return true if parsed successfully, false if unknown
- */
-bool kryon_renderer_parse(const char *name, KryonRendererType *out_renderer);
 
 /**
  * @brief Get target name string
