@@ -1,4 +1,5 @@
 /**
+
  * @file button_element.c
  * @brief Implementation of the Button element.
  *
@@ -7,6 +8,8 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
  #include "elements.h"
  #include "runtime.h"
@@ -14,8 +17,6 @@
  #include "color_utils.h"
  #include "element_mixins.h"
  #include "navigation_utils.h"
- #include <stdio.h>
- #include <string.h>
  #include <math.h>
  
  // Forward declarations for the VTable functions
@@ -97,7 +98,7 @@
      if (!button_id_str || button_id_str[0] == '\0') {
          char* current_buffer = id_buffer[buffer_index];
          buffer_index = (buffer_index + 1) % 4;
-         snprintf(current_buffer, 32, "kryon-id-%u", element->id);
+         snprint(current_buffer, 32, "kryon-id-%u", element->id);
          button_id_str = current_buffer;
      }
      

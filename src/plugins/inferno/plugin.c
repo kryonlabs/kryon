@@ -1,4 +1,5 @@
 /**
+
  * @file plugin.c
  * @brief Inferno Platform Services Plugin
  *
@@ -12,6 +13,8 @@
  * @version 1.0.0
  * @author Kryon Labs
  */
+#include "lib9.h"
+
 
 #ifdef KRYON_PLUGIN_INFERNO
 
@@ -19,8 +22,6 @@
 #include "services/extended_file_io.h"
 #include "services/namespace.h"
 #include "services/process_control.h"
-#include <stdio.h>
-#include <string.h>
 
 // Forward declarations from other plugin files
 extern KryonExtendedFileIO* inferno_get_extended_file_io(void);
@@ -118,7 +119,7 @@ static KryonPlatformServices inferno_plugin = {
 __attribute__((constructor))
 static void register_inferno_plugin(void) {
     if (!kryon_services_register(&inferno_plugin)) {
-        fprintf(stderr, "[Kryon Inferno Plugin] Failed to register\n");
+        fprint(2, "[Kryon Inferno Plugin] Failed to register\n");
     }
 }
 

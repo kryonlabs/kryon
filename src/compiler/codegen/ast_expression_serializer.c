@@ -1,16 +1,16 @@
 /**
+
  * @file ast_expression_serializer.c
  * @brief AST Expression to String Serializer Implementation
  */
+#include "lib9.h"
+
 
 #include "ast_expression_serializer.h"
 #include "memory.h"
 #include "lexer.h"
 #include "codegen.h"
-#include <stdio.h>
-#include <string.h>
 #include <strings.h>
-#include <stdlib.h>
 #include <math.h>
 
 // Helper function to get operator string from token type
@@ -42,13 +42,13 @@ static char *evaluate_const_node_to_string(const KryonASTNode *node) {
             if (node->data.literal.value.type == KRYON_VALUE_INTEGER) {
                 char *result = malloc(32);
                 if (result) {
-                    snprintf(result, 32, "%lld", (long long)node->data.literal.value.data.int_value);
+                    snprint(result, 32, "%lld", (long long)node->data.literal.value.data.int_value);
                 }
                 return result;
             } else if (node->data.literal.value.type == KRYON_VALUE_FLOAT) {
                 char *result = malloc(32);
                 if (result) {
-                    snprintf(result, 32, "%.6g", node->data.literal.value.data.float_value);
+                    snprint(result, 32, "%.6g", node->data.literal.value.data.float_value);
                 }
                 return result;
             } else if (node->data.literal.value.type == KRYON_VALUE_STRING) {
@@ -116,7 +116,7 @@ char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerato
                     size_t len = strlen(op_str) + strlen(operand_str) + 1;
                     char* result = kryon_alloc(len);
                     if (result) {
-                        snprintf(result, len, "%s%s", op_str, operand_str);
+                        snprint(result, len, "%s%s", op_str, operand_str);
                     }
                     kryon_free(operand_str);
                     return result;
@@ -130,7 +130,7 @@ char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerato
                 size_t len = strlen(node->data.function_call.function_name) + 3; // name + "()"
                 char* result = kryon_alloc(len);
                 if (result) {
-                    snprintf(result, len, "%s()", node->data.function_call.function_name);
+                    snprint(result, len, "%s()", node->data.function_call.function_name);
                 }
                 return result;
             }
@@ -145,7 +145,7 @@ char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerato
                     size_t len = strlen(array_str) + strlen(index_str) + 4; // array + "[" + index + "]"
                     char* result = kryon_alloc(len);
                     if (result) {
-                        snprintf(result, len, "%s[%s]", array_str, index_str);
+                        snprint(result, len, "%s[%s]", array_str, index_str);
                     }
                     kryon_free(array_str);
                     kryon_free(index_str);
@@ -217,7 +217,7 @@ char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerato
                             size_t len = strlen(condition_str) + strlen(true_str) + strlen(false_str) + 8; // " ? " + " : " + null
                             char* result = kryon_alloc(len);
                             if (result) {
-                                snprintf(result, len, "%s ? %s : %s", condition_str, true_str, false_str);
+                                snprint(result, len, "%s ? %s : %s", condition_str, true_str, false_str);
                             }
                             kryon_free(condition_str);
                             kryon_free(true_str);
@@ -234,7 +234,7 @@ char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerato
             
         default:
             // For unsupported node types, return a placeholder
-            printf("Warning: Unsupported AST node type %d in expression serializer\n", node->type);
+            print("Warning: Unsupported AST node type %d in expression serializer\n", node->type);
             return kryon_strdup("[unsupported]");
     }
 }
@@ -300,9 +300,9 @@ char* kryon_ast_binary_op_to_string(const KryonASTNode* node, KryonCodeGenerator
             if (result) {
                 // Check if result is a whole number to avoid unnecessary decimal places
                 if (result_num == floor(result_num)) {
-                    snprintf(result, 32, "%.0f", result_num);
+                    snprint(result, 32, "%.0f", result_num);
                 } else {
-                    snprintf(result, 32, "%.6g", result_num);
+                    snprint(result, 32, "%.6g", result_num);
                 }
             }
             return result;
@@ -317,7 +317,7 @@ char* kryon_ast_binary_op_to_string(const KryonASTNode* node, KryonCodeGenerator
     char* result = kryon_alloc(len);
     
     if (result) {
-        snprintf(result, len, "%s %s %s", left_str, op_str, right_str);
+        snprint(result, len, "%s %s %s", left_str, op_str, right_str);
     }
     
     kryon_free(left_str);
@@ -341,7 +341,7 @@ char* kryon_ast_member_access_to_string(const KryonASTNode* node, KryonCodeGener
     char* result = kryon_alloc(len);
     
     if (result) {
-        snprintf(result, len, "%s.%s", object_str, member_str);
+        snprint(result, len, "%s.%s", object_str, member_str);
     }
     
     kryon_free(object_str);
@@ -359,7 +359,7 @@ char* kryon_ast_variable_to_string(const KryonASTNode* node, KryonCodeGenerator 
     char* result = kryon_alloc(len);
     
     if (result) {
-        snprintf(result, len, "$%s", var_name);
+        snprint(result, len, "$%s", var_name);
     }
     
     return result;
@@ -377,7 +377,7 @@ char* kryon_ast_literal_to_string(const KryonASTNode* node, KryonCodeGenerator *
                 size_t len = strlen(value->data.string_value) + 3; // "string"
                 char* result = kryon_alloc(len);
                 if (result) {
-                    snprintf(result, len, "\"%s\"", value->data.string_value);
+                    snprint(result, len, "\"%s\"", value->data.string_value);
                 }
                 return result;
             }
@@ -386,7 +386,7 @@ char* kryon_ast_literal_to_string(const KryonASTNode* node, KryonCodeGenerator *
         case KRYON_VALUE_INTEGER: {
             char* result = kryon_alloc(32); // Enough for 64-bit int
             if (result) {
-                snprintf(result, 32, "%lld", (long long)value->data.int_value);
+                snprint(result, 32, "%lld", (long long)value->data.int_value);
             }
             return result;
         }
@@ -394,7 +394,7 @@ char* kryon_ast_literal_to_string(const KryonASTNode* node, KryonCodeGenerator *
         case KRYON_VALUE_FLOAT: {
             char* result = kryon_alloc(32); // Enough for double
             if (result) {
-                snprintf(result, 32, "%.6g", value->data.float_value);
+                snprint(result, 32, "%.6g", value->data.float_value);
             }
             return result;
         }
@@ -408,7 +408,7 @@ char* kryon_ast_literal_to_string(const KryonASTNode* node, KryonCodeGenerator *
         case KRYON_VALUE_COLOR: {
             char* result = kryon_alloc(16); // Enough for #RRGGBBAA
             if (result) {
-                snprintf(result, 16, "#%08X", value->data.color_value);
+                snprint(result, 16, "#%08X", value->data.color_value);
             }
             return result;
         }
@@ -416,7 +416,7 @@ char* kryon_ast_literal_to_string(const KryonASTNode* node, KryonCodeGenerator *
         case KRYON_VALUE_UNIT: {
             char* result = kryon_alloc(32);
             if (result) {
-                snprintf(result, 32, "%.6g%s", value->data.unit_value.value, value->data.unit_value.unit);
+                snprint(result, 32, "%.6g%s", value->data.unit_value.value, value->data.unit_value.unit);
             }
             return result;
         }

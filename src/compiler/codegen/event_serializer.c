@@ -1,10 +1,13 @@
 /**
+
  * @file event_serializer.c
  * @brief Event handler serialization for KRB format
  * 
  * Handles serialization of @event directives and event handlers to the KRB format.
  * Implements Phase 4 event handler section.
  */
+#include "lib9.h"
+
 
 #include "codegen.h"
 #include "memory.h"
@@ -13,8 +16,6 @@
 #include "events.h"
 #include "krb_sections.h"
 #include "string_table.h"
-#include <string.h>
-#include <stdio.h>
 
 /**
  * @brief Parse event type string to enum

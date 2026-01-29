@@ -1,17 +1,17 @@
 /**
+
  * @file expression_evaluator.c
  * @brief Runtime expression evaluation for Kryon
  * 
  * Evaluates parsed expression AST nodes at runtime, supporting arithmetic,
  * comparison, logical operations and variable resolution.
  */
+#include "lib9.h"
+
 
 #include "runtime.h"
 #include "types.h"
-#include <stdlib.h>
-#include <string.h>
 #include <math.h>
-#include <stdio.h>
 
 // =============================================================================
 // INTERNAL HELPERS
@@ -239,7 +239,7 @@ char *kryon_expression_value_to_string(const KryonExpressionValue *value) {
         case KRYON_EXPR_VALUE_NUMBER: {
             char *result = malloc(32);
             if (result) {
-                snprintf(result, 32, "%.6g", value->data.number_value);
+                snprint(result, 32, "%.6g", value->data.number_value);
             }
             return result;
         }

@@ -1,8 +1,11 @@
 /**
+
  * @file runtime_compiler.c
  * @brief Runtime compilation implementation for on-the-fly .kry to .krb compilation.
  * (CORRECTED to use the modern compilation pipeline and error system)
  */
+#include "lib9.h"
+
 
  #include "runtime_compiler.h"
  #include "memory.h"
@@ -10,12 +13,8 @@
  #include "lexer.h"
  #include "parser.h"
  #include "codegen.h"
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
  #include <sys/stat.h>
  #include <time.h>
- #include <unistd.h>
  #include <libgen.h>
  #include <stdbool.h>
  
@@ -58,7 +57,7 @@
  
      // --- CRITICAL FIX: INITIALIZE GLOBAL SYSTEMS ---
      if (kryon_error_init() != KRYON_SUCCESS) {
-         fprintf(stderr, "❌ FATAL: Failed to initialize error system for runtime compiler.\n");
+         fprint(2, "❌ FATAL: Failed to initialize error system for runtime compiler.\n");
          return false;
      }
  
@@ -69,7 +68,7 @@
          };
          g_kryon_memory_manager = kryon_memory_init(&mem_config);
          if (!g_kryon_memory_manager) {
-             fprintf(stderr, "❌ FATAL: Failed to initialize memory manager for runtime compiler.\n");
+             fprint(2, "❌ FATAL: Failed to initialize memory manager for runtime compiler.\n");
              kryon_error_shutdown();
              return false;
          }
@@ -168,7 +167,7 @@
      if (!source_code || !output_path) return KRYON_ERROR_INVALID_ARGUMENT;
      
      char temp_source[256];
-     snprintf(temp_source, sizeof(temp_source), "%s/temp_source_%ld.kry", KRYON_COMPILE_DEFAULT_TEMP_DIR, (long)time(NULL));
+     snprint(temp_source, sizeof(temp_source), "%s/temp_source_%ld.kry", KRYON_COMPILE_DEFAULT_TEMP_DIR, (long)time(NULL));
      
      if (!write_file_content(temp_source, source_code)) {
          KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_FILE_WRITE_ERROR, KRYON_SEVERITY_ERROR, "Failed to create temp source file");
@@ -387,7 +386,7 @@
      const char *include_path = include_node->data.element.element_type;
      if (!include_path) KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_PARSE_ERROR, KRYON_SEVERITY_ERROR, "Include directive missing path");
      char full_path[1024];
-     snprintf(full_path, sizeof(full_path), "%s/%s", base_dir, include_path);
+     snprint(full_path, sizeof(full_path), "%s/%s", base_dir, include_path);
      if (access(full_path, R_OK) != 0) KRYON_SET_ERROR_AND_RETURN(KRYON_ERROR_FILE_NOT_FOUND, KRYON_SEVERITY_ERROR, "Cannot read included file");
      FILE *file = NULL; char *source = NULL; KryonLexer *include_lexer = NULL; KryonParser *include_parser = NULL; KryonResult result = KRYON_SUCCESS;
      file = fopen(full_path, "r");

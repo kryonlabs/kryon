@@ -1,14 +1,15 @@
 /**
+
  * @file krl_lexer.c
  * @brief KRL Lexer Implementation
  *
  * Tokenizes S-expression syntax.
  */
+#include "lib9.h"
+
 
 #include "krl_parser.h"
-#include <string.h>
 #include <ctype.h>
-#include <stdio.h>
 #include <stdbool.h>
 
 // =============================================================================

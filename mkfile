@@ -12,6 +12,7 @@ BIN=$ROOT/$OBJDIR/bin
 
 # Core object files (relative to Kryon directory)
 OFILES=\
+	third-party/cjson/cJSON.$O\
 	src/shared/kryon_mappings.$O\
 	src/shared/krb_schema.$O\
 	src/core/memory_manager.$O\
@@ -89,11 +90,12 @@ OFILES=\
 	src/plugins/inferno/namespace.$O\
 	src/plugins/inferno/process_control.$O\
 
-# Include paths: Kryon's headers + TaijiOS's lib9.h
-CFLAGS=-Iinclude -Isrc '-I'$ROOT'/Linux/amd64/include'
+# Append Kryon's include paths to TaijiOS CFLAGS
+CFLAGS=$CFLAGS -Iinclude -Isrc -Ithird-party/cjson
 
-# Link with lib9 (Plan 9 API)
+# Link with lib9 (Plan 9 API) and math library
 LIBS=9
+SYSLIBS=-lm
 
 # Use TaijiOS build template
 <$ROOT/mkfiles/mkone-$SHELLTYPE

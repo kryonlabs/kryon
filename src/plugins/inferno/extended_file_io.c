@@ -1,4 +1,5 @@
 /**
+
  * @file extended_file_io.c
  * @brief Inferno Extended File I/O Implementation
  *
@@ -9,17 +10,15 @@
  * @version 1.0.0
  * @author Kryon Labs
  */
+#include "lib9.h"
+
 
 #ifdef KRYON_PLUGIN_INFERNO
 
 #include "services/extended_file_io.h"
 #include "inferno_compat.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <unistd.h>
 
 // =============================================================================
 // EXTENDED FILE HANDLE

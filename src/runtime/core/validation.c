@@ -1,7 +1,8 @@
+
+#include "lib9.h"
+
 #include "validation.h"
 #include "memory.h" 
-#include <stdio.h>
-#include <string.h>
 
 /**
  * @brief Check if a pointer looks valid
@@ -174,7 +175,7 @@ KryonValidationResult kryon_validate_element_deep(const KryonElement* element, K
         if (result != KRYON_VALID) {
             char* error_buf = kryon_alloc(256);
             if (error_buf) {
-                snprintf(error_buf, 256, "Property %zu validation failed: %s", i, ctx->error_message);
+                snprint(error_buf, 256, "Property %zu validation failed: %s", i, ctx->error_message);
                 ctx->error_message = error_buf;
             }
             return result;
@@ -231,7 +232,7 @@ size_t kryon_safe_strlen(const char* str) {
 void kryon_report_validation_error(const KryonValidationContext* ctx) {
     if (!ctx) return;
     
-    printf("❌ VALIDATION ERROR [%s]: %s (pointer=0x%lx, result=%d)\n", 
+    print("❌ VALIDATION ERROR [%s]: %s (pointer=0x%lx, result=%d)\n", 
            ctx->context ? ctx->context : "unknown",
            ctx->error_message ? ctx->error_message : "no message",
            ctx->pointer_value,

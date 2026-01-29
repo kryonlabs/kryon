@@ -1,14 +1,15 @@
 /**
+
  * @file krb_reader.c
  * @brief KRB File Reader Implementation
  */
+#include "lib9.h"
+
 
 #include "krb_format.h"
 #include "memory.h"
 #include "error.h"
 #include "binary_io.h"
-#include <string.h>
-#include <stdlib.h>
 
 // =============================================================================
 // READER CREATION AND DESTRUCTION
@@ -87,13 +88,13 @@ static bool read_bytes(KryonKrbReader *reader, void *buffer, size_t size) {
     if (reader->file) {
         size_t read = fread(buffer, 1, size, reader->file);
         if (read != size) {
-            snprintf(reader->error_message, sizeof(reader->error_message),
+            snprint(reader->error_message, sizeof(reader->error_message),
                     "Failed to read %zu bytes from file", size);
             return false;
         }
     } else if (reader->data) {
         if (reader->position + size > reader->data_size) {
-            snprintf(reader->error_message, sizeof(reader->error_message),
+            snprint(reader->error_message, sizeof(reader->error_message),
                     "Not enough data remaining (%zu bytes needed, %zu available)",
                     size, reader->data_size - reader->position);
             return false;
@@ -213,7 +214,7 @@ static bool parse_header(KryonKrbReader *reader, KryonKrbHeader *header) {
     // Read magic number
     if (!read_uint32(reader, &header->magic)) return false;
     if (header->magic != KRYON_KRB_MAGIC) {
-        snprintf(reader->error_message, sizeof(reader->error_message),
+        snprint(reader->error_message, sizeof(reader->error_message),
                 "Invalid magic number: 0x%08X (expected 0x%08X)", 
                 header->magic, KRYON_KRB_MAGIC);
         return false;
@@ -251,14 +252,14 @@ static bool parse_header(KryonKrbReader *reader, KryonKrbHeader *header) {
     
     // Validate header values
     if (header->element_count > KRYON_KRB_MAX_ELEMENTS) {
-        snprintf(reader->error_message, sizeof(reader->error_message),
+        snprint(reader->error_message, sizeof(reader->error_message),
                 "Too many elements: %u (maximum: %u)", 
                 header->element_count, KRYON_KRB_MAX_ELEMENTS);
         return false;
     }
     
     if (header->property_count > KRYON_KRB_MAX_PROPERTIES) {
-        snprintf(reader->error_message, sizeof(reader->error_message),
+        snprint(reader->error_message, sizeof(reader->error_message),
                 "Too many properties: %u (maximum: %u)", 
                 header->property_count, KRYON_KRB_MAX_PROPERTIES);
         return false;
@@ -399,7 +400,7 @@ static bool parse_property_value(KryonKrbReader *reader, KryonPropertyType type,
         }
         
         default:
-            snprintf(reader->error_message, sizeof(reader->error_message),
+            snprint(reader->error_message, sizeof(reader->error_message),
                     "Unsupported property type: %d", type);
             return false;
     }

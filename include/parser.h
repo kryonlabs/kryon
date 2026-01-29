@@ -52,8 +52,7 @@ typedef enum {
     KRYON_AST_FUNCTION_DEFINITION,   // @function language name() { ... }
     KRYON_AST_STATE_DEFINITION,      // @state name: value
     KRYON_AST_CONST_DEFINITION,      // @const name: value
-    KRYON_AST_CONST_FOR_LOOP,        // @const_for var in array { ... }
-    
+
     // Directives
     KRYON_AST_STORE_DIRECTIVE,       // @store
     KRYON_AST_WATCH_DIRECTIVE,       // @watch
@@ -69,7 +68,6 @@ typedef enum {
     KRYON_AST_IF_DIRECTIVE,          // @if
     KRYON_AST_ELIF_DIRECTIVE,        // @elif
     KRYON_AST_ELSE_DIRECTIVE,        // @else
-    KRYON_AST_CONST_IF_DIRECTIVE,    // @const_if
 
     // Component system
     KRYON_AST_COMPONENT,             // @component directive
@@ -286,18 +284,6 @@ struct KryonASTNode {
         } const_def;
         
         struct {
-            char *index_var_name;    // Optional index variable (e.g., "i" in "@const_for i, item")
-            char *var_name;          // Loop variable name (e.g., "alignment")
-            char *array_name;        // Array name to iterate over (e.g., "alignments") - NULL if using range
-            bool is_range;           // True if using range (e.g., 1..30), false if using array
-            int range_start;         // Range start value (e.g., 1 in "1..30")
-            int range_end;           // Range end value (e.g., 30 in "1..30")
-            KryonASTNode **body;     // Loop body elements
-            size_t body_count;       // Number of body elements
-            size_t body_capacity;    // Body array capacity
-        } const_for_loop;
-
-        struct {
             char *index_var_name;    // Optional index variable name (e.g., "i" in "@for i, item")
             char *var_name;          // Loop variable name (value)
             char *array_name;        // Array name to iterate over
@@ -307,7 +293,6 @@ struct KryonASTNode {
         } for_loop;
 
         struct {
-            bool is_const;           // True if this is @const_if, false for @if
             KryonASTNode *condition; // Condition expression
             KryonASTNode **then_body; // Body for true condition
             size_t then_count;       // Number of then body elements

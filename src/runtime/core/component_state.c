@@ -1,4 +1,5 @@
 /**
+
  * @file component_state.c
  * @brief Kryon Component State Management Implementation
  *
@@ -7,14 +8,13 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "component_state.h"
 #include "memory.h"
 #include "runtime.h"
 #include "elements.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #define COMPONENT_STATE_INITIAL_CAPACITY 16
 #define MAX_ID_LENGTH 256
@@ -87,13 +87,13 @@ char* kryon_component_generate_unique_id(const char *component_name, const char 
 
     if (user_id && strlen(user_id) > 0) {
         // Use user-provided ID with suffix to ensure uniqueness
-        snprintf(unique_id, MAX_ID_LENGTH, "%s_%u", user_id, g_component_id_counter++);
+        snprint(unique_id, MAX_ID_LENGTH, "%s_%u", user_id, g_component_id_counter++);
     } else if (component_name && strlen(component_name) > 0) {
         // Generate ID based on component name
-        snprintf(unique_id, MAX_ID_LENGTH, "%s_%u", component_name, g_component_id_counter++);
+        snprint(unique_id, MAX_ID_LENGTH, "%s_%u", component_name, g_component_id_counter++);
     } else {
         // Generate generic ID
-        snprintf(unique_id, MAX_ID_LENGTH, "component_%u", g_component_id_counter++);
+        snprint(unique_id, MAX_ID_LENGTH, "component_%u", g_component_id_counter++);
     }
 
     return unique_id;
@@ -439,10 +439,10 @@ char* kryon_component_state_get_as_string(KryonComponentStateTable *table, const
             kryon_free(result);
             return kryon_strdup(var->value.string_value);
         case KRYON_COMPONENT_STATE_INTEGER:
-            snprintf(result, 64, "%lld", (long long)var->value.int_value);
+            snprint(result, 64, "%lld", (long long)var->value.int_value);
             return result;
         case KRYON_COMPONENT_STATE_FLOAT:
-            snprintf(result, 64, "%.6f", var->value.float_value);
+            snprint(result, 64, "%.6f", var->value.float_value);
             return result;
         case KRYON_COMPONENT_STATE_BOOLEAN:
             kryon_free(result);

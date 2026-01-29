@@ -1,4 +1,5 @@
 /**
+
  * @file input.c
  * @brief Clean Text Input Element - Full Implementation
  * 
@@ -7,15 +8,14 @@
  * 
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
 #include "element_mixins.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
 
@@ -100,7 +100,7 @@ static InputState* ensure_input_state(struct KryonElement* element) {
                 state->has_focus = true;
                 state->cursor_visible = true;
                 state->cursor_blink_timer = 0.0f;
-                printf("🔍 INPUT: autoFocus enabled, input will receive focus\n");
+                print("🔍 INPUT: autoFocus enabled, input will receive focus\n");
             }
 
             // Check input type for special behavior
@@ -319,7 +319,7 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
             // Check for onBlur callback
             const char* onBlur = get_element_property_string(element, "onBlur");
             if (onBlur) {
-                printf("🔍 INPUT: Focus lost, calling onBlur: '%s'\n", onBlur);
+                print("🔍 INPUT: Focus lost, calling onBlur: '%s'\n", onBlur);
                 // Invoke the configured script handler (no-op when scripting disabled)
                 generic_script_event_handler(runtime, element, event);
             }
@@ -408,7 +408,7 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
                     // Check for onEnter callback
                     const char* onEnter = get_element_property_string(element, "onEnter");
                     if (onEnter) {
-                        printf("🔍 INPUT: Enter pressed, calling onEnter: '%s'\n", onEnter);
+                        print("🔍 INPUT: Enter pressed, calling onEnter: '%s'\n", onEnter);
                         // Invoke the configured script handler (no-op when scripting disabled)
                         generic_script_event_handler(runtime, element, event);
                         return true;

@@ -1,4 +1,5 @@
 /**
+
  * @file tab.c
  * @brief Implementation of the Tab element.
  *
@@ -7,14 +8,14 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
 #include "element_mixins.h"
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
 
 // Forward declarations for TabBar state management  
@@ -292,22 +293,22 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
 static bool tab_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
     if (!element || !event) return false;
 
-    printf("🔍 TAB EVENT: Tab '%s' received event type %d\n", 
+    print("🔍 TAB EVENT: Tab '%s' received event type %d\n", 
            get_tab_title(element), event->type);
 
     bool is_disabled = is_tab_disabled(element);
     if (is_disabled) {
-        printf("🔍 TAB EVENT: Tab is disabled, ignoring event\n");
+        print("🔍 TAB EVENT: Tab is disabled, ignoring event\n");
         return false;
     }
 
     // Handle click events to notify parent TabBar
     if (event->type == ELEMENT_EVENT_CLICKED) {
-        printf("🔍 TAB CLICK: Tab '%s' processing click event\n", get_tab_title(element));
+        print("🔍 TAB CLICK: Tab '%s' processing click event\n", get_tab_title(element));
 
         // Check if this tab has a custom onClick handler that overrides default navigation
         if (has_custom_click_handler(element)) {
-            printf("🔍 TAB CLICK: Tab has custom onClick handler, delegating to script handler\n");
+            print("🔍 TAB CLICK: Tab has custom onClick handler, delegating to script handler\n");
             return generic_script_event_handler(runtime, element, event);
         }
 
@@ -321,10 +322,10 @@ static bool tab_handle_event(KryonRuntime* runtime, KryonElement* element, const
                 KryonElement* child = parent->children[i];
                 if (child && strcmp(child->type_name, "Tab") == 0) {
                     if (child == element) {
-                        printf("🔍 TAB CLICK: Found tab at index %d, setting as selected\n", current_tab_index);
+                        print("🔍 TAB CLICK: Found tab at index %d, setting as selected\n", current_tab_index);
                         // Use the helper function to set selected index
                         tabbar_set_selected_index(runtime, parent, current_tab_index);
-                        printf("🔍 TAB CLICK: Tab selection completed\n");
+                        print("🔍 TAB CLICK: Tab selection completed\n");
                         return true;
                     }
                     current_tab_index++;

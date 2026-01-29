@@ -1,4 +1,5 @@
 /**
+
  * @file state.c
  * @brief Kryon State Management System Implementation
  * 
@@ -6,10 +7,11 @@
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.
  */
+#include "lib9.h"
+
 
 #include "state.h"
 #include "memory.h"
-#include <string.h>
 
 #define STATE_MANAGER_INITIAL_CAPACITY 16
 

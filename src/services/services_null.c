@@ -1,4 +1,5 @@
 /**
+
  * @file services_null.c
  * @brief Null Platform Services Implementation
  *
@@ -12,9 +13,10 @@
  * @version 1.0.0
  * @author Kryon Labs
  */
+#include "lib9.h"
+
 
 #include "platform_services.h"
-#include <stdio.h>
 
 // =============================================================================
 // NULL PLUGIN IMPLEMENTATION

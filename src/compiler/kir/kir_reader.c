@@ -1,17 +1,18 @@
 /**
+
  * @file kir_reader.c
  * @brief KIR Reader Implementation - Parses JSON to AST
  *
  * Implements JSON deserialization to reconstruct AST from KIR format.
  */
+#include "lib9.h"
+
 
 #include "kir_format.h"
 #include "parser.h"
 #include "lexer.h"
 #include "memory.h"
 #include "cJSON.h"
-#include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
 
 // =============================================================================
@@ -268,7 +269,7 @@ static KryonASTNode *deserialize_node(KryonKIRReader *reader, cJSON *json) {
     KryonASTNodeType type = string_to_node_type(type_json->valuestring);
     if (type == KRYON_AST_ERROR) {
         char error_msg[256];
-        snprintf(error_msg, sizeof(error_msg), "Unknown node type: %s", type_json->valuestring);
+        snprint(error_msg, sizeof(error_msg), "Unknown node type: %s", type_json->valuestring);
         reader_error(reader, error_msg);
         return NULL;
     }
@@ -755,7 +756,7 @@ bool kryon_kir_read_string(KryonKIRReader *reader, const char *json_string,
         const char *error_ptr = cJSON_GetErrorPtr();
         if (error_ptr) {
             char error_msg[512];
-            snprintf(error_msg, sizeof(error_msg), "JSON parse error: %s", error_ptr);
+            snprint(error_msg, sizeof(error_msg), "JSON parse error: %s", error_ptr);
             reader_error(reader, error_msg);
         } else {
             reader_error(reader, "Failed to parse JSON");
@@ -775,7 +776,7 @@ bool kryon_kir_read_string(KryonKIRReader *reader, const char *json_string,
     // Accept any version string during alpha development
     // Optional: log version for debugging
     #ifdef DEBUG
-        printf("KIR version: %s\n", version->valuestring);
+        print("KIR version: %s\n", version->valuestring);
     #endif
 
     // Parse root node

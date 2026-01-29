@@ -1,4 +1,5 @@
 /**
+
  * @file events.c
  * @brief Kryon Core Event System Implementation
  * 
@@ -6,11 +7,11 @@
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.
  */
+#include "lib9.h"
+
 
 #include "events.h"
 #include "memory.h"
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
 
 // =============================================================================

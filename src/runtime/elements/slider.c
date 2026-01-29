@@ -1,4 +1,5 @@
 /**
+
  * @file slider.c
  * @brief Slider Element - Full Implementation
  * 
@@ -7,15 +8,14 @@
  * 
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
 #include "element_mixins.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
 // =============================================================================
@@ -367,9 +367,9 @@ static void slider_render(struct KryonRuntime* runtime, struct KryonElement* ele
     if (state->show_value && *command_count < max_commands) {
         static char value_text[32];
         if (state->step >= 1.0f) {
-            snprintf(value_text, sizeof(value_text), "%.0f", state->value);
+            snprint(value_text, sizeof(value_text), "%.0f", state->value);
         } else {
-            snprintf(value_text, sizeof(value_text), "%.2f", state->value);
+            snprint(value_text, sizeof(value_text), "%.2f", state->value);
         }
         
         // Position text above or below slider

@@ -1,4 +1,5 @@
 /**
+
  * @file element_mixins.c
  * @brief Shared element functionality - mixins for common element behaviors
  * 
@@ -7,6 +8,8 @@
  * 
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "element_mixins.h"
 #include "elements.h" 
@@ -14,8 +17,6 @@
 #include "color_utils.h"
 #include "../navigation/navigation.h"
 #include "../../shared/kryon_mappings.h"
-#include <string.h>
-#include <stdio.h>
 
 // =============================================================================
 // SHARED RENDERING MIXINS

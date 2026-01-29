@@ -1,17 +1,17 @@
 /**
+
  * @file krl_to_kir.c
  * @brief KRL to KIR Converter
  *
  * Converts KRL S-expressions to KIR JSON format.
  */
+#include "lib9.h"
+
 
 #include "krl_parser.h"
 #include "kir_format.h"
 #include "memory.h"
 #include "cJSON.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
@@ -800,7 +800,7 @@ bool krl_compile_to_kir(const char *input_path, const char *output_path) {
     // Read source file
     FILE *f = fopen(input_path, "r");
     if (!f) {
-        fprintf(stderr, "Error: Cannot open file: %s\n", input_path);
+        fprint(2, "Error: Cannot open file: %s\n", input_path);
         return false;
     }
 
@@ -823,7 +823,7 @@ bool krl_compile_to_kir(const char *input_path, const char *output_path) {
     free(source);
 
     if (!sexps || parser.had_error) {
-        fprintf(stderr, "Error: Failed to parse KRL file\n");
+        fprint(2, "Error: Failed to parse KRL file\n");
         return false;
     }
 

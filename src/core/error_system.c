@@ -1,13 +1,13 @@
 /**
+
  * @file error_system.c
  * @brief Kryon Error Handling System Implementation
  */
+#include "lib9.h"
+
 
 #include "error.h"
 #include "memory.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
 
@@ -18,7 +18,6 @@
 #else
     #include <pthread.h>
     #include <execinfo.h>
-    #include <unistd.h>
     #include <sys/time.h>
 #endif
 
@@ -405,7 +404,7 @@ size_t kryon_error_format(const KryonError *error, char *buffer, size_t buffer_s
     size_t written = 0;
     
     // Format main error
-    written += snprintf(buffer + written, buffer_size - written,
+    written += snprint(buffer + written, buffer_size - written,
                        "Error %d (%s): %s",
                        error->code,
                        error->severity == KRYON_SEVERITY_FATAL ? "FATAL" :
@@ -418,7 +417,7 @@ size_t kryon_error_format(const KryonError *error, char *buffer, size_t buffer_s
     
     // Add location information
     if (error->file && written < buffer_size) {
-        written += snprintf(buffer + written, buffer_size - written,
+        written += snprint(buffer + written, buffer_size - written,
                            "\n  at %s:%d in %s()",
                            error->file, error->line,
                            error->function ? error->function : "unknown");
@@ -426,13 +425,13 @@ size_t kryon_error_format(const KryonError *error, char *buffer, size_t buffer_s
     
     // Add details if available
     if (error->details && written < buffer_size) {
-        written += snprintf(buffer + written, buffer_size - written,
+        written += snprint(buffer + written, buffer_size - written,
                            "\n  Details: %s", error->details);
     }
     
     // Add stack trace if available
     if (error->stack_trace && written < buffer_size) {
-        written += snprintf(buffer + written, buffer_size - written, "\n  Stack trace:");
+        written += snprint(buffer + written, buffer_size - written, "\n  Stack trace:");
         if (written < buffer_size) {
             written += kryon_error_format_stack_trace(error->stack_trace,
                                                      buffer + written,
@@ -443,11 +442,11 @@ size_t kryon_error_format(const KryonError *error, char *buffer, size_t buffer_s
     // Add chained errors
     const KryonError *cause = error->cause;
     while (cause && written < buffer_size) {
-        written += snprintf(buffer + written, buffer_size - written,
+        written += snprint(buffer + written, buffer_size - written,
                            "\nCaused by: Error %d: %s",
                            cause->code, cause->message);
         if (cause->file && written < buffer_size) {
-            written += snprintf(buffer + written, buffer_size - written,
+            written += snprint(buffer + written, buffer_size - written,
                                " at %s:%d", cause->file, cause->line);
         }
         cause = cause->cause;
@@ -527,16 +526,16 @@ size_t kryon_error_format_stack_trace(const KryonStackTrace *trace, char *buffer
     for (size_t i = 0; i < trace->frame_count && written < buffer_size; i++) {
         const KryonStackFrame *frame = &trace->frames[i];
         
-        written += snprintf(buffer + written, buffer_size - written,
+        written += snprint(buffer + written, buffer_size - written,
                            "\n    #%zu: %p", i, frame->address);
         
         if (frame->function && written < buffer_size) {
-            written += snprintf(buffer + written, buffer_size - written,
+            written += snprint(buffer + written, buffer_size - written,
                                " in %s()", frame->function);
         }
         
         if (frame->file && written < buffer_size) {
-            written += snprintf(buffer + written, buffer_size - written,
+            written += snprint(buffer + written, buffer_size - written,
                                " at %s:%d", frame->file, frame->line);
         }
     }

@@ -1,13 +1,13 @@
 /**
+
  * @file debug_command.c
  * @brief Kryon Debug Command Implementation
  */
+#include "lib9.h"
+
 
 #include "memory.h"
 #include "runtime.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <getopt.h>
 
 // Forward declarations
@@ -17,11 +17,11 @@ static const char* get_property_value_string(const KryonProperty *prop);
 
 int debug_command(int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Error: No KRB file specified\n");
-        printf("Usage: kryon debug <file.krb> [options]\n");
-        printf("Options:\n");
-        printf("  --tree    Show element tree structure (default)\n");
-        printf("  --help    Show this help\n");
+        fprint(2, "Error: No KRB file specified\n");
+        print("Usage: kryon debug <file.krb> [options]\n");
+        print("Options:\n");
+        print("  --tree    Show element tree structure (default)\n");
+        print("  --help    Show this help\n");
         return 1;
     }
     
@@ -46,17 +46,17 @@ int debug_command(int argc, char *argv[]) {
                 show_tree = true;
                 break;
             case 'h':
-                printf("Usage: kryon debug <file.krb> [options]\n");
-                printf("Options:\n");
-                printf("  --tree    Show element tree structure (default)\n");
-                printf("  --help    Show this help\n");
+                print("Usage: kryon debug <file.krb> [options]\n");
+                print("Options:\n");
+                print("  --tree    Show element tree structure (default)\n");
+                print("  --help    Show this help\n");
                 return 0;
             default:
                 break;
         }
     }
     
-    printf("🔍 Kryon Debug: Analyzing KRB file: %s\n\n", krb_file_path);
+    print("🔍 Kryon Debug: Analyzing KRB file: %s\n\n", krb_file_path);
     
     // Initialize memory manager if not already done
     if (!g_kryon_memory_manager) {
@@ -72,7 +72,7 @@ int debug_command(int argc, char *argv[]) {
         
         g_kryon_memory_manager = kryon_memory_init(&config);
         if (!g_kryon_memory_manager) {
-            fprintf(stderr, "❌ Error: Failed to initialize memory manager\n");
+            fprint(2, "❌ Error: Failed to initialize memory manager\n");
             return 1;
         }
     }
@@ -80,32 +80,32 @@ int debug_command(int argc, char *argv[]) {
     // Create runtime system
     KryonRuntime* runtime = kryon_runtime_create(NULL);
     if (!runtime) {
-        fprintf(stderr, "❌ Failed to create runtime system\n");
+        fprint(2, "❌ Failed to create runtime system\n");
         return 1;
     }
     
     // Load KRB file into runtime
     if (!kryon_runtime_load_file(runtime, krb_file_path)) {
-        fprintf(stderr, "❌ Failed to load KRB file: %s\n", krb_file_path);
+        fprint(2, "❌ Failed to load KRB file: %s\n", krb_file_path);
         kryon_runtime_destroy(runtime);
         return 1;
     }
     
-    printf("✅ KRB file loaded successfully\n\n");
+    print("✅ KRB file loaded successfully\n\n");
     
     if (show_tree) {
-        printf("📋 Element Tree Structure:\n");
-        printf("═══════════════════════════\n");
+        print("📋 Element Tree Structure:\n");
+        print("═══════════════════════════\n");
         
         if (runtime->root) {
             print_element_tree(runtime->root, 0);
         } else {
-            printf("❌ No root element found\n");
+            print("❌ No root element found\n");
         }
         
-        printf("\n📊 Summary:\n");
-        printf("───────────\n");
-        printf("Total elements: %zu\n", runtime->element_count);
+        print("\n📊 Summary:\n");
+        print("───────────\n");
+        print("Total elements: %zu\n", runtime->element_count);
     }
     
     // Cleanup
@@ -120,10 +120,10 @@ static void print_element_tree(const KryonElement *element, int indent) {
     }
     
     print_indent(indent);
-    printf("%s", element->type_name ? element->type_name : "Unknown");
+    print("%s", element->type_name ? element->type_name : "Unknown");
     
     if (element->child_count > 0) {
-        printf(" (%zu children)", element->child_count);
+        print(" (%zu children)", element->child_count);
     }
     
     // Show key properties
@@ -140,24 +140,24 @@ static void print_element_tree(const KryonElement *element, int indent) {
             
             const char *value = get_property_value_string(prop);
             if (value) {
-                printf(" [%s: %s]", prop->name, value);
+                print(" [%s: %s]", prop->name, value);
             }
         }
     }
     
-    printf("\n");
+    print("\n");
     
     // Print children recursively
     for (size_t i = 0; i < element->child_count; i++) {
         if (i == element->child_count - 1) {
             // Last child - use └── 
             print_indent(indent);
-            printf("└── ");
+            print("└── ");
             print_element_tree(element->children[i], indent + 1);
         } else {
             // Not last child - use ├──
             print_indent(indent);
-            printf("├── ");
+            print("├── ");
             print_element_tree(element->children[i], indent + 1);
         }
     }
@@ -165,7 +165,7 @@ static void print_element_tree(const KryonElement *element, int indent) {
 
 static void print_indent(int indent) {
     for (int i = 0; i < indent; i++) {
-        printf("    ");
+        print("    ");
     }
 }
 
@@ -181,22 +181,22 @@ static const char* get_property_value_string(const KryonProperty *prop) {
             return prop->value.string_value ? prop->value.string_value : "(null)";
         
         case KRYON_RUNTIME_PROP_INTEGER:
-            snprintf(buffer, sizeof(buffer), "%lld", (long long)prop->value.int_value);
+            snprint(buffer, sizeof(buffer), "%lld", (long long)prop->value.int_value);
             return buffer;
         
         case KRYON_RUNTIME_PROP_FLOAT:
-            snprintf(buffer, sizeof(buffer), "%.2f", prop->value.float_value);
+            snprint(buffer, sizeof(buffer), "%.2f", prop->value.float_value);
             return buffer;
         
         case KRYON_RUNTIME_PROP_BOOLEAN:
             return prop->value.bool_value ? "true" : "false";
         
         case KRYON_RUNTIME_PROP_COLOR:
-            snprintf(buffer, sizeof(buffer), "#%08X", prop->value.color_value);
+            snprint(buffer, sizeof(buffer), "#%08X", prop->value.color_value);
             return buffer;
         
         case KRYON_RUNTIME_PROP_REFERENCE:
-            snprintf(buffer, sizeof(buffer), "@%u", prop->value.ref_id);
+            snprint(buffer, sizeof(buffer), "@%u", prop->value.ref_id);
             return buffer;
         
         case KRYON_RUNTIME_PROP_EXPRESSION:

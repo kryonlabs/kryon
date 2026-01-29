@@ -1,8 +1,9 @@
-#include "color_utils.h"
-#include <string.h>
+
+#include "lib9.h"
 #include <stdio.h>
+
+#include "color_utils.h"
 #include <ctype.h>
-#include <stdlib.h>
 #include <math.h>
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))

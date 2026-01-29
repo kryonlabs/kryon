@@ -51,7 +51,7 @@ component BackButton() {
     }
 }
 
-@onload "rc" {
+onload "rc" {
     files = loadExampleFiles()
 }
 

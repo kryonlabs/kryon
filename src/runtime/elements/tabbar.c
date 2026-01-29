@@ -1,4 +1,5 @@
 /**
+
  * @file tabbar.c
  * @brief Implementation of the TabBar element.
  *
@@ -7,14 +8,14 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
 #include "element_mixins.h"
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
 
 // Forward declarations for TabGroup integration
@@ -78,7 +79,7 @@ void tabbar_set_selected_index(KryonRuntime* runtime, KryonElement* tabbar_eleme
         if (runtime) {
             // Convert index to string since variables are strings
             char index_str[32];
-            snprintf(index_str, sizeof(index_str), "%d", index);
+            snprint(index_str, sizeof(index_str), "%d", index);
             // Update the selectedTab variable (hardcoded for now, but could be made dynamic)
             bool success = kryon_runtime_set_variable(runtime, "selectedTab", index_str);
         }

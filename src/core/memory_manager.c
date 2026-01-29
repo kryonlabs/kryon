@@ -1,14 +1,14 @@
 /**
+
  * @file memory_manager.c
  * @brief Kryon Memory Management System Implementation
  * 
  * High-performance memory management with pools, tracking, and debugging.
  */
+#include "lib9.h"
+
 
 #include "memory.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <assert.h>
 #include <time.h>
 #include <stdint.h>
@@ -18,7 +18,6 @@
     #include <process.h>
 #else
     #include <pthread.h>
-    #include <unistd.h>
     #include <sys/mman.h>
 #endif
 

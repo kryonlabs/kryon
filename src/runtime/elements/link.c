@@ -1,4 +1,5 @@
 /**
+
  * @file link.c
  * @brief Implementation of the Link element for navigation.
  *
@@ -7,6 +8,8 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
@@ -14,8 +17,6 @@
 #include "color_utils.h"
 #include "element_mixins.h"
 #include "navigation_utils.h"
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
 
 // Forward declarations for the VTable functions
@@ -71,7 +72,7 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
     static void* last_rendered_element = NULL;
     static char last_to_value[256] = "";
     if (element != last_rendered_element || strcmp(to, last_to_value) != 0) {
-        printf("🎨 RENDER DEBUG: Link element %p, text='%s', to='%s'\n", (void*)element, text, to);
+        print("🎨 RENDER DEBUG: Link element %p, text='%s', to='%s'\n", (void*)element, text, to);
         last_rendered_element = element;
         strncpy(last_to_value, to, sizeof(last_to_value) - 1);
         last_to_value[sizeof(last_to_value) - 1] = '\0';
@@ -165,7 +166,7 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
             
             if (component) {
                 // Component overlay - render the component instance
-                printf("🔍 Link: Rendering component overlay '%s'\n", overlay_content);
+                print("🔍 Link: Rendering component overlay '%s'\n", overlay_content);
                 
                 // TODO: Implement component instance rendering for overlays
                 // For now, render the component as positioned element
@@ -188,7 +189,7 @@ static void link_render(KryonRuntime* runtime, KryonElement* element, KryonRende
                 
             } else {
                 // Text overlay - render as before
-                printf("🔍 Link: Rendering text overlay '%s'\n", overlay_content);
+                print("🔍 Link: Rendering text overlay '%s'\n", overlay_content);
                 
                 KryonVec2 overlay_pos = { position.x, position.y - 40.0f };
                 KryonVec2 overlay_size = { size.x + 20.0f, 30.0f };
@@ -235,7 +236,7 @@ static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, cons
         // Debug output for click event
         const char* clicked_text = get_element_property_string(element, "text");
         const char* clicked_to = get_element_property_string(element, "to");
-        printf("🖱️ CLICK DEBUG: Link element %p clicked, text='%s', to='%s'\n", 
+        print("🖱️ CLICK DEBUG: Link element %p clicked, text='%s', to='%s'\n", 
                (void*)element, clicked_text ? clicked_text : "NULL", clicked_to ? clicked_to : "NULL");
         
         // Try navigation first using shared utility
@@ -246,14 +247,14 @@ static bool link_handle_event(KryonRuntime* runtime, KryonElement* element, cons
         // Show overlay on hover if overlay content exists
         const char* overlay_content = get_element_property_string(element, "overlay");
         if (overlay_content && strlen(overlay_content) > 0) {
-            printf("🔍 Link: Showing overlay on hover\n");
+            print("🔍 Link: Showing overlay on hover\n");
             return true;
         }
     } else if (event->type == ELEMENT_EVENT_UNHOVERED) {
         // Hide overlay when not hovering
         const char* overlay_content = get_element_property_string(element, "overlay");
         if (overlay_content && strlen(overlay_content) > 0) {
-            printf("🔍 Link: Hiding overlay on unhover\n");
+            print("🔍 Link: Hiding overlay on unhover\n");
             return true;
         }
     }
@@ -305,7 +306,7 @@ static KryonComponentDefinition* find_component_by_name(KryonRuntime* runtime, c
     
     // Check if runtime has components
     if (!runtime->components || runtime->component_count == 0) {
-        printf("⚠️  No components available in runtime\n");
+        print("⚠️  No components available in runtime\n");
         return NULL;
     }
     
@@ -313,12 +314,12 @@ static KryonComponentDefinition* find_component_by_name(KryonRuntime* runtime, c
     for (size_t i = 0; i < runtime->component_count; i++) {
         KryonComponentDefinition* component = runtime->components[i];
         if (component && component->name && strcmp(component->name, name) == 0) {
-            printf("✅ Found component: %s\n", name);
+            print("✅ Found component: %s\n", name);
             return component;
         }
     }
     
-    printf("⚠️  Component '%s' not found in registry\n", name);
+    print("⚠️  Component '%s' not found in registry\n", name);
     return NULL;
 }
 

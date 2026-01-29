@@ -1,4 +1,5 @@
 /**
+
  * @file grid.c
  * @brief Implementation of the Grid element.
  *
@@ -8,14 +9,14 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
 #include "element_mixins.h"
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
 
 // Forward declarations for the VTable functions

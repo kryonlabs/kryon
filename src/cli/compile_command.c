@@ -1,7 +1,10 @@
 /**
+
  * @file compile_command.c
  * @brief Kryon Compile Command Implementation
  */
+#include "lib9.h"
+
 
 #include "lexer.h"
 #include "parser.h"
@@ -10,13 +13,9 @@
 #include "error.h"
 #include "kir_format.h"
 #include "krl_parser.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <getopt.h>
 #include <stdbool.h>
 #include <libgen.h>
-#include <unistd.h>
 
 // For AST validation
 extern size_t kryon_ast_validate(const KryonASTNode *node, char **errors, size_t max_errors);
@@ -214,56 +213,56 @@ static void print_element_content(const KryonASTNode *element, int indent) {
     if (!element || element->type != KRYON_AST_ELEMENT) return;
     
     // Print indentation
-    for (int i = 0; i < indent; i++) printf("    ");
+    for (int i = 0; i < indent; i++) print("    ");
     
     // Print element type
-    printf("%s", element->data.element.element_type ? element->data.element.element_type : "Unknown");
+    print("%s", element->data.element.element_type ? element->data.element.element_type : "Unknown");
     
     // Print properties if any
     if (element->data.element.property_count > 0) {
-        printf(" {\n");
+        print(" {\n");
         
         // Print properties
         for (size_t i = 0; i < element->data.element.property_count; i++) {
             KryonASTNode *prop = element->data.element.properties[i];
             if (prop && prop->data.property.name) {
-                for (int j = 0; j < indent + 1; j++) printf("    ");
-                printf("%s: (value)\n", prop->data.property.name);
+                for (int j = 0; j < indent + 1; j++) print("    ");
+                print("%s: (value)\n", prop->data.property.name);
             }
         }
         
         // Print children
         for (size_t i = 0; i < element->data.element.child_count; i++) {
             if (element->data.element.children[i]) {
-                printf("\n");
+                print("\n");
                 print_element_content(element->data.element.children[i], indent + 1);
             }
         }
         
         // Close brace
-        for (int i = 0; i < indent; i++) printf("    ");
-        printf("}\n");
+        for (int i = 0; i < indent; i++) print("    ");
+        print("}\n");
     } else if (element->data.element.child_count > 0) {
-        printf(" {\n");
+        print(" {\n");
         for (size_t i = 0; i < element->data.element.child_count; i++) {
             if (element->data.element.children[i]) {
                 print_element_content(element->data.element.children[i], indent + 1);
             }
         }
-        for (int i = 0; i < indent; i++) printf("    ");
-        printf("}\n");
+        for (int i = 0; i < indent; i++) print("    ");
+        print("}\n");
     } else {
-        printf(" { }\n");
+        print(" { }\n");
     }
 }
 
 
 static void print_generated_kry_content(const KryonASTNode *ast, const char *title) {
-    printf("\n🔍 %s:\n", title);
-    printf("================================\n");
+    print("\n🔍 %s:\n", title);
+    print("================================\n");
     
     if (!ast || ast->type != KRYON_AST_ROOT) {
-        printf("(Invalid AST)\n");
+        print("(Invalid AST)\n");
         return;
     }
     
@@ -273,29 +272,29 @@ static void print_generated_kry_content(const KryonASTNode *ast, const char *tit
         if (!child) continue;
         
         if (child->type == KRYON_AST_INCLUDE_DIRECTIVE) {
-            printf("@include \"%s\"\n\n", child->data.element.element_type ? child->data.element.element_type : "unknown");
+            print("@include \"%s\"\n\n", child->data.element.element_type ? child->data.element.element_type : "unknown");
         } else if (child->type == KRYON_AST_METADATA_DIRECTIVE) {
-            printf("@metadata {\n");
+            print("@metadata {\n");
             for (size_t j = 0; j < child->data.element.property_count; j++) {
                 KryonASTNode *prop = child->data.element.properties[j];
                 if (prop && prop->data.property.name) {
-                    printf("    %s: ", prop->data.property.name);
+                    print("    %s: ", prop->data.property.name);
                     if (prop->data.property.value && 
                         prop->data.property.value->type == KRYON_AST_LITERAL &&
                         prop->data.property.value->data.literal.value.type == KRYON_VALUE_STRING) {
-                        printf("\"%s\"\n", prop->data.property.value->data.literal.value.data.string_value);
+                        print("\"%s\"\n", prop->data.property.value->data.literal.value.data.string_value);
                     } else {
-                        printf("(value)\n");
+                        print("(value)\n");
                     }
                 }
             }
-            printf("}\n\n");
+            print("}\n\n");
         } else if (child->type == KRYON_AST_ELEMENT) {
             print_element_content(child, 0);
         }
     }
     
-    printf("================================\n\n");
+    print("================================\n\n");
 }
 
 
@@ -495,7 +494,7 @@ static KryonResult process_single_include(KryonASTNode *include_node, KryonASTNo
     }
 
     char full_path[1024];
-    snprintf(full_path, sizeof(full_path), "%s/%s", base_dir, include_path);
+    snprint(full_path, sizeof(full_path), "%s/%s", base_dir, include_path);
     KRYON_LOG_INFO("Processing include: %s", full_path);
 
     if (access(full_path, R_OK) != 0) {
@@ -629,19 +628,19 @@ static void debug_print_ast(const KryonASTNode *node, int depth) {
     if (!node) return;
     
     // Print indentation
-    for (int i = 0; i < depth; i++) printf("  ");
+    for (int i = 0; i < depth; i++) print("  ");
     
     // Print node type and basic info
     switch (node->type) {
         case KRYON_AST_ROOT:
-            printf("ROOT (children: %zu)\n", node->data.element.child_count);
+            print("ROOT (children: %zu)\n", node->data.element.child_count);
             for (size_t i = 0; i < node->data.element.child_count; i++) {
                 debug_print_ast(node->data.element.children[i], depth + 1);
             }
             break;
             
         case KRYON_AST_ELEMENT:
-            printf("ELEMENT: %s (props: %zu, children: %zu)\n", 
+            print("ELEMENT: %s (props: %zu, children: %zu)\n", 
                    node->data.element.element_type ? node->data.element.element_type : "NULL",
                    node->data.element.property_count,
                    node->data.element.child_count);
@@ -662,16 +661,16 @@ static void debug_print_ast(const KryonASTNode *node, int depth) {
             break;
             
         case KRYON_AST_PROPERTY:
-            printf("PROPERTY: %s = ", node->data.property.name ? node->data.property.name : "NULL");
+            print("PROPERTY: %s = ", node->data.property.name ? node->data.property.name : "NULL");
             if (node->data.property.value) {
                 debug_print_ast(node->data.property.value, 0);
             } else {
-                printf("NULL\n");
+                print("NULL\n");
             }
             break;
             
         case KRYON_AST_STYLE_BLOCK:
-            printf("STYLE_BLOCK: %s (props: %zu)\n", 
+            print("STYLE_BLOCK: %s (props: %zu)\n", 
                    node->data.style.name ? node->data.style.name : "NULL",
                    node->data.style.property_count);
             for (size_t i = 0; i < node->data.style.property_count; i++) {
@@ -682,58 +681,58 @@ static void debug_print_ast(const KryonASTNode *node, int depth) {
             break;
             
         case KRYON_AST_FUNCTION_DEFINITION:
-            printf("FUNCTION_DEF: %s (%s)\n", 
+            print("FUNCTION_DEF: %s (%s)\n", 
                    node->data.function_def.name ? node->data.function_def.name : "NULL",
                    node->data.function_def.language ? node->data.function_def.language : "NULL");
             break;
             
         case KRYON_AST_THEME_DEFINITION:
-            printf("THEME_DEF: %s (vars: %zu)\n", 
+            print("THEME_DEF: %s (vars: %zu)\n", 
                    node->data.theme.group_name ? node->data.theme.group_name : "NULL",
                    node->data.theme.variable_count);
             break;
             
         case KRYON_AST_VARIABLE_DEFINITION:
-            printf("VAR_DEF: %s = ", node->data.variable_def.name ? node->data.variable_def.name : "NULL");
+            print("VAR_DEF: %s = ", node->data.variable_def.name ? node->data.variable_def.name : "NULL");
             if (node->data.variable_def.value) {
                 debug_print_ast(node->data.variable_def.value, 0);
             } else {
-                printf("NULL\n");
+                print("NULL\n");
             }
             break;
             
         case KRYON_AST_LITERAL:
-            printf("LITERAL: ");
+            print("LITERAL: ");
             switch (node->data.literal.value.type) {
                 case KRYON_VALUE_STRING:
-                    printf("STRING \"%s\"\n", node->data.literal.value.data.string_value ? node->data.literal.value.data.string_value : "NULL");
+                    print("STRING \"%s\"\n", node->data.literal.value.data.string_value ? node->data.literal.value.data.string_value : "NULL");
                     break;
                 case KRYON_VALUE_INTEGER:
-                    printf("INT %ld\n", node->data.literal.value.data.int_value);
+                    print("INT %ld\n", node->data.literal.value.data.int_value);
                     break;
                 case KRYON_VALUE_FLOAT:
-                    printf("FLOAT %f\n", node->data.literal.value.data.float_value);
+                    print("FLOAT %f\n", node->data.literal.value.data.float_value);
                     break;
                 case KRYON_VALUE_BOOLEAN:
-                    printf("BOOL %s\n", node->data.literal.value.data.bool_value ? "true" : "false");
+                    print("BOOL %s\n", node->data.literal.value.data.bool_value ? "true" : "false");
                     break;
                 case KRYON_VALUE_NULL:
-                    printf("NULL\n");
+                    print("NULL\n");
                     break;
                 case KRYON_VALUE_COLOR:
-                    printf("COLOR #%08X\n", node->data.literal.value.data.color_value);
+                    print("COLOR #%08X\n", node->data.literal.value.data.color_value);
                     break;
                 case KRYON_VALUE_UNIT:
-                    printf("UNIT %f%s\n", node->data.literal.value.data.unit_value.value, node->data.literal.value.data.unit_value.unit);
+                    print("UNIT %f%s\n", node->data.literal.value.data.unit_value.value, node->data.literal.value.data.unit_value.unit);
                     break;
                 default:
-                    printf("UNKNOWN_VALUE_TYPE\n");
+                    print("UNKNOWN_VALUE_TYPE\n");
                     break;
             }
             break;
             
         case KRYON_AST_METADATA_DIRECTIVE:
-            printf("METADATA_DIRECTIVE (props: %zu)\n", node->data.properties.property_count);
+            print("METADATA_DIRECTIVE (props: %zu)\n", node->data.properties.property_count);
             for (size_t i = 0; i < node->data.properties.property_count; i++) {
                 if (node->data.properties.properties[i]) {
                     debug_print_ast(node->data.properties.properties[i], depth + 1);
@@ -742,7 +741,7 @@ static void debug_print_ast(const KryonASTNode *node, int depth) {
             break;
             
         default:
-            printf("UNKNOWN_NODE_TYPE: %d\n", node->type);
+            print("UNKNOWN_NODE_TYPE: %d\n", node->type);
             break;
     }
 }
@@ -809,7 +808,7 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
 
     // Initialize the error and logging system
     if (kryon_error_init() != KRYON_SUCCESS) {
-        fprintf(stderr, "Fatal: Could not initialize the error system.\n");
+        fprint(2, "Fatal: Could not initialize the error system.\n");
         return KRYON_ERROR_PLATFORM_ERROR;
     }
 
@@ -837,16 +836,16 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
             case 'O': optimize = true; break;
             case 'd': debug = true; break;
             case 'h':
-                printf("Usage: kryon compile <file.kry|file.kir|file.krl> [options]\n");
-                printf("Options:\n");
-                printf("  -o, --output <file>      Output .krb file name\n");
-                printf("  -k, --kir-output <file>  Output .kir file name\n");
-                printf("  -n, --no-krb             Generate KIR only (skip KRB)\n");
-                printf("  -C, --no-cache           Output to same directory instead of .kryon_cache/\n");
-                printf("  -v, --verbose            Verbose output\n");
-                printf("  -O, --optimize           Enable optimizations\n");
-                printf("  -d, --debug              Enable debug mode with inspector\n");
-                printf("  -h, --help               Show this help\n");
+                print("Usage: kryon compile <file.kry|file.kir|file.krl> [options]\n");
+                print("Options:\n");
+                print("  -o, --output <file>      Output .krb file name\n");
+                print("  -k, --kir-output <file>  Output .kir file name\n");
+                print("  -n, --no-krb             Generate KIR only (skip KRB)\n");
+                print("  -C, --no-cache           Output to same directory instead of .kryon_cache/\n");
+                print("  -v, --verbose            Verbose output\n");
+                print("  -O, --optimize           Enable optimizations\n");
+                print("  -d, --debug              Enable debug mode with inspector\n");
+                print("  -h, --help               Show this help\n");
                 result = KRYON_SUCCESS;
                 goto cleanup;
             case '?':
@@ -884,9 +883,9 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
             const char *dot = strrchr(input_file, '.');
             if (dot && (strcmp(dot, ".kry") == 0 || strcmp(dot, ".kir") == 0 || strcmp(dot, ".krl") == 0)) {
                 size_t len = dot - input_file;
-                snprintf(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
+                snprint(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
             } else {
-                snprintf(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
+                snprint(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
             }
             output_file = output_buffer;
         } else {
@@ -899,9 +898,9 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
                 const char *dot = strrchr(input_file, '.');
                 if (dot && (strcmp(dot, ".kry") == 0 || strcmp(dot, ".kir") == 0 || strcmp(dot, ".krl") == 0)) {
                     size_t len = dot - input_file;
-                    snprintf(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
+                    snprint(output_buffer, sizeof(output_buffer), "%.*s.krb", (int)len, input_file);
                 } else {
-                    snprintf(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
+                    snprint(output_buffer, sizeof(output_buffer), "%s.krb", input_file);
                 }
                 output_file = output_buffer;
             }
@@ -966,7 +965,7 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
             if (dot) {
                 size_t len = dot - input_file;
                 char temp_buffer[256];
-                snprintf(temp_buffer, sizeof(temp_buffer), "%.*s.kir", (int)len, input_file);
+                snprint(temp_buffer, sizeof(temp_buffer), "%.*s.kir", (int)len, input_file);
                 temp_kir_file = strdup(temp_buffer);
             }
         } else {
@@ -1208,7 +1207,7 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
                     }
                     fclose(src);
                     fclose(dst);
-                    printf("KIR written: %s\n", kir_path);
+                    print("KIR written: %s\n", kir_path);
                 } else {
                     if (src) fclose(src);
                     if (dst) fclose(dst);
@@ -1242,17 +1241,17 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
                 }
 
                 kryon_kir_writer_destroy(kir_writer);
-                printf("KIR written: %s\n", kir_path);
+                print("KIR written: %s\n", kir_path);
             } else {
                 // KIR already at correct location (temp_kir_file == kir_path)
-                printf("KIR written: %s\n", kir_path);
+                print("KIR written: %s\n", kir_path);
             }
         }
     }
 
     // If --no-krb is set, skip code generation
     if (no_krb) {
-        printf("Compilation successful (KIR only)\n");
+        print("Compilation successful (KIR only)\n");
         result = KRYON_SUCCESS;
         goto cleanup;
     }
@@ -1287,7 +1286,7 @@ static KryonASTNode *inject_debug_inspector_include(KryonParser *parser) {
     }
     
     // --- Final Report ---
-    printf("Compilation successful: %s\n", output_file);
+    print("Compilation successful: %s\n", output_file);
     if (verbose) {
         const KryonCodeGenStats *stats = kryon_codegen_get_stats(codegen);
         KRYON_LOG_INFO("Statistics:");

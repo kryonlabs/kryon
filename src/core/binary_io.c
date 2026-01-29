@@ -1,14 +1,16 @@
 /**
+
  * @file binary_io.c
  * @brief Cross-platform binary I/O utilities implementation
  * 
  * Implements consistent big-endian binary reading/writing functions
  * for the KRB file format across all platforms.
  */
+#include "lib9.h"
+
 
 #include "binary_io.h"
 #include <endian.h>
-#include <string.h>
 
 // =============================================================================
 // BINARY WRITING FUNCTIONS

@@ -36,7 +36,7 @@ kry source → [Lex/Parse/Expand] → KIR → [Codegen] → krb binary
 
 **Key Properties**:
 - **Lossless**: Complete AST information for perfect reconstruction
-- **Post-expansion**: Components, @const_for, @const_if all expanded
+- **Post-expansion**: Components, const_for, const_if all expanded
 - **Machine-readable**: JSON format for AI/LLM compatibility
 - **Self-contained**: All necessary information for compilation or decompilation
 
@@ -523,7 +523,7 @@ Template string with interpolation:
 }
 ```
 
-**ON_MOUNT_DIRECTIVE** - @on_mount
+**ON_MOUNT_DIRECTIVE** - on_mount
 ```json
 {
   "type": "ON_MOUNT_DIRECTIVE",
@@ -532,7 +532,7 @@ Template string with interpolation:
 }
 ```
 
-**ON_UNMOUNT_DIRECTIVE** - @on_unmount
+**ON_UNMOUNT_DIRECTIVE** - on_unmount
 ```json
 {
   "type": "ON_UNMOUNT_DIRECTIVE",
@@ -543,7 +543,7 @@ Template string with interpolation:
 
 ### Import/Export Directives
 
-**IMPORT_DIRECTIVE** - @import
+**IMPORT_DIRECTIVE** - import
 ```json
 {
   "type": "IMPORT_DIRECTIVE",
@@ -553,7 +553,7 @@ Template string with interpolation:
 }
 ```
 
-**EXPORT_DIRECTIVE** - @export
+**EXPORT_DIRECTIVE** - export
 ```json
 {
   "type": "EXPORT_DIRECTIVE",
@@ -562,7 +562,7 @@ Template string with interpolation:
 }
 ```
 
-**INCLUDE_DIRECTIVE** - @include (processed, may be expanded)
+**INCLUDE_DIRECTIVE** - include (processed, may be expanded)
 ```json
 {
   "type": "INCLUDE_DIRECTIVE",
@@ -1014,9 +1014,9 @@ AST(original.kry) ≈ AST(roundtrip.kry)  // Semantically identical
 ### Expansion Preservation
 
 **Components**: Definitions preserved, instances expanded inline
-**@const_for**: Unrolled (loop body repeated with substitutions)
-**@const_if**: Evaluated (only matching branch included)
-**@include**: Processed (file contents inlined)
+**const_for**: Unrolled (loop body repeated with substitutions)
+**const_if**: Evaluated (only matching branch included)
+**include**: Processed (file contents inlined)
 
 ### Lossless Guarantees
 

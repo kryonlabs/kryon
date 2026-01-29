@@ -112,7 +112,7 @@ kryon compile original.kry --kir-output original.kir
 **What happens internally:**
 1. Lexer: `original.kry` → Tokens
 2. Parser: Tokens → Raw AST
-3. Transformer: Raw AST → Transformed AST (App root, @include)
+3. Transformer: Raw AST → Transformed AST (App root, include)
 4. **KIR Writer: Transformed AST → `original.kir`** ✨
 5. KIR Reader: `original.kir` → AST (validates round-trip)
 6. Codegen: AST → `original.krb`

@@ -86,7 +86,6 @@ typedef enum {
     KRYON_TOKEN_RIGHT_PAREN,         // )
     
     // Special tokens
-    KRYON_TOKEN_AT,                  // 
     KRYON_TOKEN_HASH,                // #
     KRYON_TOKEN_DOLLAR,              // $ (for const_forvariables)
     

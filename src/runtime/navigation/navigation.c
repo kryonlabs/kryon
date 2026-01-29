@@ -1,4 +1,5 @@
 /**
+
  * @file navigation.c
  * @brief Navigation system implementation for Kryon Link elements.
  *
@@ -7,19 +8,17 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "navigation.h"
 #include "memory.h"
 #include "../compilation/runtime_compiler.h"
 #include "runtime.h"
 #include "error.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <libgen.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <unistd.h>
 
 // Default configuration values
 #define KRYON_NAV_DEFAULT_MAX_HISTORY 50
@@ -74,7 +73,7 @@ KryonNavigationManager* kryon_navigation_create(KryonRuntime* runtime) {
     
     // Initialize runtime compiler for .kry file compilation
     if (!kryon_runtime_compiler_init()) {
-        printf("⚠️  Failed to initialize runtime compiler\n");
+        print("⚠️  Failed to initialize runtime compiler\n");
         kryon_free(nav_manager);
         return NULL;
     }
@@ -82,7 +81,7 @@ KryonNavigationManager* kryon_navigation_create(KryonRuntime* runtime) {
     // Ensure cache directory exists
     ensure_cache_directory();
     
-    printf("🧭 Navigation manager created\n");
+    print("🧭 Navigation manager created\n");
     return nav_manager;
 }
 
@@ -122,7 +121,7 @@ void kryon_navigation_destroy(KryonNavigationManager* nav_manager) {
     kryon_runtime_compiler_shutdown();
     
     kryon_free(nav_manager);
-    printf("🧭 Navigation manager destroyed\n");
+    print("🧭 Navigation manager destroyed\n");
 }
 
 KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, const char* target, bool external) {
@@ -130,13 +129,13 @@ KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, con
         return KRYON_NAV_ERROR_INVALID_PATH;
     }
     
-    printf("🔗 Navigating to: %s %s\n", target, external ? "(external)" : "(internal)");
+    print("🔗 Navigating to: %s %s\n", target, external ? "(external)" : "(internal)");
     
     // Debug current navigation state
     if (nav_manager->current && nav_manager->current->path) {
-        printf("🧭 Current navigation path: %s\n", nav_manager->current->path);
+        print("🧭 Current navigation path: %s\n", nav_manager->current->path);
     } else {
-        printf("🧭 No current navigation path set!\n");
+        print("🧭 No current navigation path set!\n");
     }
     
     if (external || kryon_navigation_is_external_url(target)) {
@@ -148,7 +147,7 @@ KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, con
     if (target[0] == '/') {
         // Absolute path - use as-is
         resolved_path = kryon_strdup(target);
-        printf("🔗 Using absolute path: %s\n", resolved_path);
+        print("🔗 Using absolute path: %s\n", resolved_path);
     } else {
         // Relative path - resolve based on current location
         if (nav_manager->current && nav_manager->current->path) {
@@ -156,18 +155,18 @@ KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, con
             char* current_path_copy = kryon_strdup(nav_manager->current->path);
             char* current_dir = dirname(current_path_copy);
             
-            printf("🔗 Current file directory: %s\n", current_dir);
+            print("🔗 Current file directory: %s\n", current_dir);
             
             // Construct resolved path
             size_t path_len = strlen(current_dir) + strlen(target) + 2; // +2 for '/' and '\0'
             resolved_path = kryon_alloc(path_len);
             if (resolved_path) {
-                snprintf(resolved_path, path_len, "%s/%s", current_dir, target);
+                snprint(resolved_path, path_len, "%s/%s", current_dir, target);
             }
             kryon_free(current_path_copy);
         } else {
             // No current location - use target as-is
-            printf("🔗 No current location, using target as-is\n");
+            print("🔗 No current location, using target as-is\n");
             resolved_path = kryon_strdup(target);
         }
     }
@@ -176,7 +175,7 @@ KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, con
         return KRYON_NAV_ERROR_MEMORY;
     }
     
-    printf("🔗 Resolved path: %s\n", resolved_path);
+    print("🔗 Resolved path: %s\n", resolved_path);
     
     KryonNavigationResult result;
     
@@ -185,7 +184,7 @@ KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, con
     } else if (ends_with(resolved_path, ".kry")) {
         result = kryon_navigation_compile_and_load(nav_manager, resolved_path);
     } else {
-        printf("❓ Unknown file type: %s\n", resolved_path);
+        print("❓ Unknown file type: %s\n", resolved_path);
         kryon_free(resolved_path);
         return KRYON_NAV_ERROR_INVALID_PATH;
     }
@@ -195,7 +194,7 @@ KryonNavigationResult kryon_navigate_to(KryonNavigationManager* nav_manager, con
         // Inject overlay ONCE after successful navigation
         inject_pending_overlay(nav_manager);
         add_to_history(nav_manager, resolved_path, NULL);
-        printf("✅ Link navigation successful\n");
+        print("✅ Link navigation successful\n");
     }
     
     kryon_free(resolved_path);
@@ -208,7 +207,7 @@ KryonNavigationResult kryon_navigate_back(KryonNavigationManager* nav_manager) {
     }
     
     nav_manager->current = nav_manager->current->prev;
-    printf("⬅️  Navigating back to: %s\n", nav_manager->current->path);
+    print("⬅️  Navigating back to: %s\n", nav_manager->current->path);
     
     // Navigate to the previous item without adding to history
     if (ends_with(nav_manager->current->path, ".krb")) {
@@ -226,7 +225,7 @@ KryonNavigationResult kryon_navigate_forward(KryonNavigationManager* nav_manager
     }
     
     nav_manager->current = nav_manager->current->next;
-    printf("➡️  Navigating forward to: %s\n", nav_manager->current->path);
+    print("➡️  Navigating forward to: %s\n", nav_manager->current->path);
     
     // Navigate to the next item without adding to history
     if (ends_with(nav_manager->current->path, ".krb")) {
@@ -253,13 +252,13 @@ void kryon_navigation_set_current_path(KryonNavigationManager* nav_manager, cons
             nav_manager->current->title = NULL; // Will be set later if needed
             nav_manager->current->next = NULL;
             nav_manager->current->prev = NULL;
-            printf("🧭 Set initial navigation path: %s\n", path);
+            print("🧭 Set initial navigation path: %s\n", path);
         }
     } else {
         // Update existing current path
         kryon_free(nav_manager->current->path);
         nav_manager->current->path = kryon_strdup(path);
-        printf("🧭 Updated navigation path: %s\n", path);
+        print("🧭 Updated navigation path: %s\n", path);
     }
 }
 
@@ -275,14 +274,14 @@ void kryon_navigation_set_overlay(KryonNavigationManager* nav_manager, const cha
             KryonComponentDefinition* comp = source_runtime->components[i];
             if (comp && comp->name && strcmp(comp->name, component_name) == 0) {
                 source_component = comp;
-                printf("✅ Found source component for overlay: %s\n", comp->name);
+                print("✅ Found source component for overlay: %s\n", comp->name);
                 break;
             }
         }
     }
     
     if (!source_component) {
-        printf("⚠️  Component '%s' not found in source runtime for overlay\n", component_name);
+        print("⚠️  Component '%s' not found in source runtime for overlay\n", component_name);
         return;
     }
     
@@ -304,9 +303,9 @@ void kryon_navigation_set_overlay(KryonNavigationManager* nav_manager, const cha
         nav_manager->pending_overlay->component_def = deep_copy_component(source_component);
         
         if (nav_manager->pending_overlay->component_def) {
-            printf("🔀 Overlay set for next navigation with deep copy: %s\n", component_name);
+            print("🔀 Overlay set for next navigation with deep copy: %s\n", component_name);
         } else {
-            printf("⚠️  Failed to create deep copy of component for overlay\n");
+            print("⚠️  Failed to create deep copy of component for overlay\n");
             kryon_free(nav_manager->pending_overlay->component_name);
             kryon_free(nav_manager->pending_overlay);
             nav_manager->pending_overlay = NULL;
@@ -332,22 +331,22 @@ KryonNavigationResult kryon_navigation_load_krb(KryonNavigationManager* nav_mana
     }
     
     if (!kryon_navigation_file_exists(krb_path)) {
-        printf("❌ KRB file not found: %s\n", krb_path);
+        print("❌ KRB file not found: %s\n", krb_path);
         return KRYON_NAV_ERROR_FILE_NOT_FOUND;
     }
     
-    printf("📄 Loading KRB file: %s\n", krb_path);
+    print("📄 Loading KRB file: %s\n", krb_path);
     
     // Clear all existing content before loading new file
     kryon_runtime_clear_all_content(nav_manager->runtime);
     
     // Load KRB file into runtime
     if (!kryon_runtime_load_file(nav_manager->runtime, krb_path)) {
-        printf("❌ Failed to load KRB file: %s\n", krb_path);
+        print("❌ Failed to load KRB file: %s\n", krb_path);
         return KRYON_NAV_ERROR_FILE_NOT_FOUND;
     }
     
-    printf("✅ KRB file loaded successfully: %s\n", krb_path);
+    print("✅ KRB file loaded successfully: %s\n", krb_path);
     
     return KRYON_NAV_SUCCESS;
 }
@@ -422,27 +421,27 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
         return;
     }
     
-    printf("🔀 Injecting overlay component: %s\n", nav_manager->pending_overlay->component_name);
+    print("🔀 Injecting overlay component: %s\n", nav_manager->pending_overlay->component_name);
     
     KryonComponentDefinition* overlay_component = nav_manager->pending_overlay->component_def;
     
     if (!overlay_component || !nav_manager->runtime || !nav_manager->runtime->root) {
-        printf("⚠️  Invalid overlay component or runtime state\n");
+        print("⚠️  Invalid overlay component or runtime state\n");
         return;
     }
     
-    printf("🔍 Overlay component found: name='%s'\n", 
+    print("🔍 Overlay component found: name='%s'\n", 
            overlay_component->name ? overlay_component->name : "null");
     
-    printf("🔀 Creating Button element directly for BackButton overlay\n");
-    printf("🔍 DEBUG: Before Button creation, root has %zu children\n", nav_manager->runtime->root->child_count);
+    print("🔀 Creating Button element directly for BackButton overlay\n");
+    print("🔍 DEBUG: Before Button creation, root has %zu children\n", nav_manager->runtime->root->child_count);
     // Create element WITHOUT parent to avoid automatic parent addition
     KryonElement* element = kryon_element_create(nav_manager->runtime, 0x0401, NULL);
     if (!element) {
-        printf("⚠️  Failed to create Button element for overlay\n");
+        print("⚠️  Failed to create Button element for overlay\n");
         return;
     }
-    printf("🔍 DEBUG: Button element created with ID=%u\n", element->id);
+    print("🔍 DEBUG: Button element created with ID=%u\n", element->id);
     
     // Set the type name to Button
     element->type_name = kryon_strdup("Button");
@@ -458,7 +457,7 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
     element->property_count = 0;
     
     if (!element->properties) {
-        printf("⚠️  Failed to allocate properties array for Button\n");
+        print("⚠️  Failed to allocate properties array for Button\n");
         kryon_element_destroy(nav_manager->runtime, element);
         return;
     }
@@ -476,15 +475,15 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
     // Check if any property creation failed
     for (size_t i = 0; i < element->property_count; i++) {
         if (!element->properties[i]) {
-            printf("⚠️  Failed to create property %zu for Button\n", i);
+            print("⚠️  Failed to create property %zu for Button\n", i);
             kryon_element_destroy(nav_manager->runtime, element);
             return;
         }
     }
     
-    printf("🔀 Button properties created: %zu properties (text, colors, styling)\n", element->property_count);
+    print("🔀 Button properties created: %zu properties (text, colors, styling)\n", element->property_count);
     
-    printf("🔀 Button element configured: %dx%d with posX=20, posY=20\n", 
+    print("🔀 Button element configured: %dx%d with posX=20, posY=20\n", 
            (int)element->width, (int)element->height);
     
     // Add to root element as child
@@ -498,7 +497,7 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
         }
     }
     
-    printf("🔍 DEBUG: About to inject Button into root. Current child_count=%zu, capacity=%zu\n", 
+    print("🔍 DEBUG: About to inject Button into root. Current child_count=%zu, capacity=%zu\n", 
            nav_manager->runtime->root->child_count, nav_manager->runtime->root->child_capacity);
     
     if (nav_manager->runtime->root->child_count < nav_manager->runtime->root->child_capacity) {
@@ -508,13 +507,13 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
         element->parent = nav_manager->runtime->root;
         nav_manager->runtime->root->needs_render = true;
         
-        printf("✅ Overlay Button element injected at index %zu (ID=%u)\n", injection_index, element->id);
+        print("✅ Overlay Button element injected at index %zu (ID=%u)\n", injection_index, element->id);
         
         // Debug: Show DETAILED element tree structure after injection
-        printf("🔍 DEBUG: Root element now has %zu children:\n", nav_manager->runtime->root->child_count);
+        print("🔍 DEBUG: Root element now has %zu children:\n", nav_manager->runtime->root->child_count);
         for (size_t i = 0; i < nav_manager->runtime->root->child_count; i++) {
             KryonElement* child = nav_manager->runtime->root->children[i];
-            printf("  [%zu] ID=%u %s (type=0x%04X) ptr=%p\n", i, 
+            print("  [%zu] ID=%u %s (type=0x%04X) ptr=%p\n", i, 
                    child->id, 
                    child->type_name ? child->type_name : "unknown",
                    child->type,
@@ -522,42 +521,42 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
         }
         
         // CRITICAL: Validate element tree integrity after injection
-        printf("🔍 VALIDATION: Checking element tree integrity after overlay injection\n");
+        print("🔍 VALIDATION: Checking element tree integrity after overlay injection\n");
         
         // Validate root element
         if (!nav_manager->runtime->root) {
-            printf("❌ VALIDATION: Root element is NULL after injection!\n");
+            print("❌ VALIDATION: Root element is NULL after injection!\n");
         } else if (!nav_manager->runtime->root->type_name) {
-            printf("❌ VALIDATION: Root element type_name is NULL after injection!\n");
+            print("❌ VALIDATION: Root element type_name is NULL after injection!\n");
         } else {
-            printf("✅ VALIDATION: Root element OK: %s\n", nav_manager->runtime->root->type_name);
+            print("✅ VALIDATION: Root element OK: %s\n", nav_manager->runtime->root->type_name);
         }
         
         // Validate all children
         for (size_t i = 0; i < nav_manager->runtime->root->child_count; i++) {
             KryonElement* child = nav_manager->runtime->root->children[i];
             if (!child) {
-                printf("❌ VALIDATION: Child %zu is NULL!\n", i);
+                print("❌ VALIDATION: Child %zu is NULL!\n", i);
                 continue;
             }
             if (!child->type_name) {
-                printf("❌ VALIDATION: Child %zu type_name is NULL!\n", i);
+                print("❌ VALIDATION: Child %zu type_name is NULL!\n", i);
                 continue;
             }
             if (child->property_count > 0 && !child->properties) {
-                printf("❌ VALIDATION: Child %zu (%s) has properties count %zu but NULL array!\n", 
+                print("❌ VALIDATION: Child %zu (%s) has properties count %zu but NULL array!\n", 
                        i, child->type_name, child->property_count);
                 continue;
             }
             if (child->child_count > 0 && !child->children) {
-                printf("❌ VALIDATION: Child %zu (%s) has child_count %zu but NULL array!\n", 
+                print("❌ VALIDATION: Child %zu (%s) has child_count %zu but NULL array!\n", 
                        i, child->type_name, child->child_count);
                 continue;
             }
-            printf("✅ VALIDATION: Child %zu (%s) is valid\n", i, child->type_name);
+            print("✅ VALIDATION: Child %zu (%s) is valid\n", i, child->type_name);
         }
     } else {
-        printf("⚠️  Cannot inject overlay: children array full\n");
+        print("⚠️  Cannot inject overlay: children array full\n");
         kryon_element_destroy(nav_manager->runtime, element);
     }
     
@@ -572,7 +571,7 @@ static void inject_pending_overlay(KryonNavigationManager* nav_manager) {
     nav_manager->pending_overlay = NULL;
     
     // Calculate layout positions after overlay injection
-    printf("🧮 Navigation: Calculating layout after overlay injection\n");
+    print("🧮 Navigation: Calculating layout after overlay injection\n");
     kryon_runtime_calculate_layout(nav_manager->runtime);
     
     // Update window properties from new App element
@@ -585,11 +584,11 @@ KryonNavigationResult kryon_navigation_compile_and_load(KryonNavigationManager* 
     }
     
     if (!kryon_navigation_file_exists(kry_path)) {
-        printf("❌ KRY file not found: %s\n", kry_path);
+        print("❌ KRY file not found: %s\n", kry_path);
         return KRYON_NAV_ERROR_FILE_NOT_FOUND;
     }
     
-    printf("⚡ Compiling KRY file: %s\n", kry_path);
+    print("⚡ Compiling KRY file: %s\n", kry_path);
     
     char* compiled_krb_path = NULL;
     KryonNavigationResult result = kryon_compile_kry_to_temp(nav_manager, kry_path, &compiled_krb_path);
@@ -610,36 +609,36 @@ KryonNavigationResult kryon_navigation_open_external(const char* url) {
         return KRYON_NAV_ERROR_INVALID_PATH;
     }
     
-    printf("🌐 Opening external URL: %s\n", url);
+    print("🌐 Opening external URL: %s\n", url);
     
     #ifdef __linux__
         char command[2048];
-        snprintf(command, sizeof(command), "xdg-open '%s' 2>/dev/null &", url);
+        snprint(command, sizeof(command), "xdg-open '%s' 2>/dev/null &", url);
         int result = system(command);
         if (result == 0) {
-            printf("✅ External URL opened successfully\n");
+            print("✅ External URL opened successfully\n");
             return KRYON_NAV_SUCCESS;
         } else {
-            printf("❌ Failed to open external URL\n");
+            print("❌ Failed to open external URL\n");
             return KRYON_NAV_ERROR_EXTERNAL_FAILED;
         }
     #elif __APPLE__
         char command[2048];
-        snprintf(command, sizeof(command), "open '%s' &", url);
+        snprint(command, sizeof(command), "open '%s' &", url);
         int result = system(command);
         if (result == 0) {
-            printf("✅ External URL opened successfully\n");
+            print("✅ External URL opened successfully\n");
             return KRYON_NAV_SUCCESS;
         } else {
-            printf("❌ Failed to open external URL\n");
+            print("❌ Failed to open external URL\n");
             return KRYON_NAV_ERROR_EXTERNAL_FAILED;
         }
     #elif _WIN32
         // TODO: Implement Windows support with ShellExecuteA
-        printf("🌐 External URL (Windows support coming soon): %s\n", url);
+        print("🌐 External URL (Windows support coming soon): %s\n", url);
         return KRYON_NAV_SUCCESS;
     #else
-        printf("🌐 External URL (Platform not supported): %s\n", url);
+        print("🌐 External URL (Platform not supported): %s\n", url);
         return KRYON_NAV_ERROR_EXTERNAL_FAILED;
     #endif
 }
@@ -658,7 +657,7 @@ KryonNavigationResult kryon_compile_kry_to_temp(KryonNavigationManager* nav_mana
     time_t kry_mtime = kryon_navigation_file_mtime(kry_path);
     
     if (cached && cached->krb_mtime >= kry_mtime && kryon_navigation_file_exists(cached->krb_path)) {
-        printf("⚡ Using cached compilation: %s\n", cached->krb_path);
+        print("⚡ Using cached compilation: %s\n", cached->krb_path);
         *output_krb_path = kryon_strdup(cached->krb_path);
         return KRYON_NAV_SUCCESS;
     }
@@ -669,13 +668,13 @@ KryonNavigationResult kryon_compile_kry_to_temp(KryonNavigationManager* nav_mana
         return KRYON_NAV_ERROR_MEMORY;
     }
     
-    printf("⚡ Compiling %s -> %s\n", kry_path, cache_path);
+    print("⚡ Compiling %s -> %s\n", kry_path, cache_path);
     
     // Use the runtime compiler to compile the .kry file
     KryonResult compile_result = kryon_compile_file(kry_path, cache_path, NULL);
     if (compile_result != KRYON_SUCCESS) {
         // The error message now comes from the unified error handler
-        printf("❌ Compilation failed: %s\n", kryon_error_get_message(compile_result));
+        print("❌ Compilation failed: %s\n", kryon_error_get_message(compile_result));
         kryon_free(cache_path);
         return KRYON_NAV_ERROR_COMPILATION_FAILED;
     }
@@ -684,7 +683,7 @@ KryonNavigationResult kryon_compile_kry_to_temp(KryonNavigationManager* nav_mana
     add_to_cache(nav_manager, kry_path, cache_path);
     
     *output_krb_path = cache_path;
-    printf("✅ Compilation successful: %s\n", cache_path);
+    print("✅ Compilation successful: %s\n", cache_path);
     return KRYON_NAV_SUCCESS;
 }
 
@@ -707,7 +706,7 @@ void kryon_navigation_clear_cache(KryonNavigationManager* nav_manager) {
     nav_manager->cache_head = NULL;
     nav_manager->cache_count = 0;
     
-    printf("🧹 Compilation cache cleared\n");
+    print("🧹 Compilation cache cleared\n");
 }
 
 // =============================================================================
@@ -724,39 +723,39 @@ static void update_window_from_app_element(KryonRuntime* runtime) {
         return;
     }
     
-    printf("🪟 Checking window properties from new App element...\n");
+    print("🪟 Checking window properties from new App element...\n");
     
     // Get window properties from App element
     float window_width = get_element_property_float(runtime->root, "windowWidth", 800.0f);
     float window_height = get_element_property_float(runtime->root, "windowHeight", 600.0f);
     const char* window_title = get_element_property_string(runtime->root, "windowTitle");
     
-    printf("🪟 New window properties: %gx%g, title: '%s'\n", 
+    print("🪟 New window properties: %gx%g, title: '%s'\n", 
            window_width, window_height, window_title ? window_title : "null");
     
     // Get renderer from runtime (assuming it's available)
     KryonRenderer* renderer = runtime->renderer;
     if (!renderer) {
-        printf("⚠️  No renderer available for window updates\n");
+        print("⚠️  No renderer available for window updates\n");
         return;
     }
     
     // Update window size if different using renderer abstraction
     if (window_width != 800.0f || window_height != 600.0f) {
-        printf("🪟 Updating window size to %gx%g\n", window_width, window_height);
+        print("🪟 Updating window size to %gx%g\n", window_width, window_height);
         KryonRenderResult result = kryon_renderer_update_window_size(
             renderer, (int)window_width, (int)window_height);
         if (result != KRYON_RENDER_SUCCESS) {
-            printf("⚠️  Failed to update window size\n");
+            print("⚠️  Failed to update window size\n");
         }
     }
     
     // Update window title if provided using renderer abstraction
     if (window_title && strlen(window_title) > 0) {
-        printf("🪟 Updating window title to: '%s'\n", window_title);
+        print("🪟 Updating window title to: '%s'\n", window_title);
         KryonRenderResult result = kryon_renderer_update_window_title(renderer, window_title);
         if (result != KRYON_RENDER_SUCCESS) {
-            printf("⚠️  Failed to update window title\n");
+            print("⚠️  Failed to update window title\n");
         }
     }
 }
@@ -936,7 +935,7 @@ static char* get_cache_path(const char* kry_path) {
     char* dot = strrchr(base_name, '.');
     if (dot) *dot = '\0'; // Remove extension
     
-    snprintf(cache_path, strlen(KRYON_NAV_CACHE_DIR) + strlen(filename) + 10, 
+    snprint(cache_path, strlen(KRYON_NAV_CACHE_DIR) + strlen(filename) + 10, 
              "%s/%s.krb", KRYON_NAV_CACHE_DIR, base_name);
     
     kryon_free(base_name);
@@ -1048,7 +1047,7 @@ static KryonComponentDefinition* deep_copy_component(const KryonComponentDefinit
     // Copy UI template (this is the important part for overlay injection)
     copy->ui_template = source->ui_template; // Shallow copy for now - elements are shared
     
-    printf("🔀 Deep copied component: %s\n", copy->name ? copy->name : "unnamed");
+    print("🔀 Deep copied component: %s\n", copy->name ? copy->name : "unnamed");
     return copy;
 }
 

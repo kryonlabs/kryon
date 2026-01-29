@@ -1,4 +1,5 @@
 /**
+
  * @file tabgroup.c
  * @brief Implementation of the TabGroup element.
  *
@@ -8,15 +9,14 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
 #include "element_mixins.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 
 // =============================================================================
 // TABGROUP STATE (Element-Owned)
@@ -68,16 +68,16 @@ int tabgroup_get_selected_index(KryonElement* tabgroup_element) {
  * This allows child Tab elements to update the parent's state
  */
 void tabgroup_set_selected_index(KryonRuntime* runtime, KryonElement* tabgroup_element, int index) {
-    printf("🔍 TABGROUP: tabgroup_set_selected_index called with index %d\n", index);
+    print("🔍 TABGROUP: tabgroup_set_selected_index called with index %d\n", index);
 
     if (!tabgroup_element || strcmp(tabgroup_element->type_name, "TabGroup") != 0) {
-        printf("🔍 TABGROUP: Invalid TabGroup element\n");
+        print("🔍 TABGROUP: Invalid TabGroup element\n");
         return;
     }
 
     TabGroupState* state = ensure_tabgroup_state(tabgroup_element);
     if (state) {
-        printf("🔍 TABGROUP: Setting TabGroup state selected_tab_index to %d\n", index);
+        print("🔍 TABGROUP: Setting TabGroup state selected_tab_index to %d\n", index);
         state->selected_tab_index = index;
 
         // Update the bound variable if one exists
@@ -86,12 +86,12 @@ void tabgroup_set_selected_index(KryonRuntime* runtime, KryonElement* tabgroup_e
             if (selected_index_str) {
                 // If selectedIndex is bound to a variable, update it
                 char index_str[32];
-                snprintf(index_str, sizeof(index_str), "%d", index);
+                snprint(index_str, sizeof(index_str), "%d", index);
 
-                printf("🔍 TABGROUP: Attempting to update bound variable '%s' to '%s'\n",
+                print("🔍 TABGROUP: Attempting to update bound variable '%s' to '%s'\n",
                        selected_index_str, index_str);
                 bool success = kryon_runtime_set_variable(runtime, selected_index_str, index_str);
-                printf("🔍 TABGROUP: Variable update %s\n", success ? "succeeded" : "failed");
+                print("🔍 TABGROUP: Variable update %s\n", success ? "succeeded" : "failed");
 
                 // Track this value - we know we set it, so don't sync back from it
                 if (success) {
@@ -100,7 +100,7 @@ void tabgroup_set_selected_index(KryonRuntime* runtime, KryonElement* tabgroup_e
             }
         }
     } else {
-        printf("🔍 TABGROUP: Failed to get/create TabGroup state\n");
+        print("🔍 TABGROUP: Failed to get/create TabGroup state\n");
     }
 }
 
@@ -158,9 +158,9 @@ static void tabgroup_render(KryonRuntime* runtime, KryonElement* element, KryonR
 
             // Only sync if property changed AND it's not the value we just set
             if (property_value != state->last_synced_value) {
-                printf("🔧 TABGROUP: External change detected! Property: %d, Last synced: %d, Current state: %d\n",
+                print("🔧 TABGROUP: External change detected! Property: %d, Last synced: %d, Current state: %d\n",
                        property_value, state->last_synced_value, state->selected_tab_index);
-                printf("🔧 TABGROUP: Syncing state from external property change: %d -> %d\n",
+                print("🔧 TABGROUP: Syncing state from external property change: %d -> %d\n",
                        state->selected_tab_index, property_value);
 
                 // External change - sync property -> state

@@ -1,4 +1,5 @@
 /**
+
  * @file parser.c
  * @brief Kryon Parser Implementation
  * 
@@ -9,11 +10,11 @@
  * Recursive descent parser for KRY language that creates AST nodes from
  * tokenized input with comprehensive error recovery and validation.
  */
+#include "lib9.h"
+
 
 #include "parser.h"
 #include "memory.h"
-#include <stdlib.h>
-#include <string.h>
 #include <time.h>
 #include <assert.h>
 
@@ -31,9 +32,8 @@ static KryonASTNode *parse_component_definition(KryonParser *parser);
 static bool parse_component_prop_declaration(KryonParser *parser, KryonASTNode *component);
 static KryonASTNode *parse_state_definition(KryonParser *parser);
 static KryonASTNode *parse_const_definition(KryonParser *parser);
-static KryonASTNode *parse_const_for_loop(KryonParser *parser);
 static KryonASTNode *parse_for_directive(KryonParser *parser);
-static KryonASTNode *parse_if_directive(KryonParser *parser, bool is_const);
+static KryonASTNode *parse_if_directive(KryonParser *parser);
 static KryonASTNode *parse_event_directive(KryonParser *parser);
 static KryonASTNode *parse_onload_directive(KryonParser *parser);
 static KryonASTNode *parse_directive(KryonParser *parser);
@@ -144,9 +144,9 @@ KryonParser *kryon_parser_create(KryonLexer *lexer, const KryonParserConfig *con
     // Get tokens from lexer
     size_t token_count;
     const KryonToken *tokens = kryon_lexer_get_tokens(lexer, &token_count);
-    printf("[DEBUG] Lexer produced %zu tokens\n", token_count);
+    print("[DEBUG] Lexer produced %zu tokens\n", token_count);
     if (!tokens || token_count == 0) {
-        printf("[DEBUG] No tokens produced by lexer\n");
+        print("[DEBUG] No tokens produced by lexer\n");
         return NULL;
     }
     
@@ -311,93 +311,62 @@ bool kryon_parser_parse(KryonParser *parser) {
 }
 
 static KryonASTNode *parse_document(KryonParser *parser) {
-    printf("[DEBUG] Starting parse_document\n");
+    print("[DEBUG] Starting parse_document\n");
     
     KryonASTNode *root = kryon_ast_create_node(parser, KRYON_AST_ROOT, 
                                               &parser->tokens[0].location);
     if (!root) {
-        printf("[DEBUG] Failed to create root node\n");
+        print("[DEBUG] Failed to create root node\n");
         return NULL;
     }
-    printf("[DEBUG] Created root node\n");
+    print("[DEBUG] Created root node\n");
     
     // Parse top-level declarations  
-    printf("[DEBUG] Starting parsing loop, current_token=%zu, token_count=%zu\n", parser->current_token, parser->token_count);
+    print("[DEBUG] Starting parsing loop, current_token=%zu, token_count=%zu\n", parser->current_token, parser->token_count);
     
     // Debug: Show first 10 tokens
-    printf("[DEBUG] First 10 tokens:\n");
+    print("[DEBUG] First 10 tokens:\n");
     for (size_t i = 0; i < (parser->token_count < 10 ? parser->token_count : 10); i++) {
         const KryonToken* tok = &parser->tokens[i];
-        printf("  [%zu] type=%d, lexeme='%.*s'\n", i, tok->type, (int)tok->lexeme_length, tok->lexeme ? tok->lexeme : "NULL");
+        print("  [%zu] type=%d, lexeme='%.*s'\n", i, tok->type, (int)tok->lexeme_length, tok->lexeme ? tok->lexeme : "NULL");
     }
     
     while (!at_end(parser)) {
         KryonASTNode *node = NULL;
         const KryonToken *current = peek(parser);
-        printf("[DEBUG] Processing token type %d at index %zu\n", current->type, parser->current_token);
-
-        // Check for invalid @if or @for usage
-        if (check_token(parser, KRYON_TOKEN_AT)) {
-            advance(parser); // consume @
-
-            if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
-                parser_error(parser,
-                    "@ prefix not allowed for runtime 'if'. "
-                    "Use bare 'if' for runtime conditionals. "
-                    "For compile-time, use @const_if.");
-                return NULL;
-            }
-
-            if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
-                parser_error(parser,
-                    "@ prefix not allowed for runtime 'for'. "
-                    "Use bare 'for' for runtime loops. "
-                    "For compile-time, use @const_for.");
-                return NULL;
-            }
-
-            // For other directives after @, continue normal processing
-            // The next iteration will handle the directive token
-            continue;
-        }
+        print("[DEBUG] Processing token type %d at index %zu\n", current->type, parser->current_token);
 
         if (check_token(parser, KRYON_TOKEN_STYLE_DIRECTIVE) ||
             check_token(parser, KRYON_TOKEN_STYLES_DIRECTIVE)) {
-            printf("[DEBUG] Parsing style block\n");
+            print("[DEBUG] Parsing style block\n");
             node = parse_style_block(parser);
         } else if (check_token(parser, KRYON_TOKEN_THEME_DIRECTIVE)) {
-            printf("[DEBUG] Parsing theme definition\n");
+            print("[DEBUG] Parsing theme definition\n");
             node = parse_theme_definition(parser);
         } else if (check_token(parser, KRYON_TOKEN_VARIABLE_DIRECTIVE) ||
                    check_token(parser, KRYON_TOKEN_VARIABLES_DIRECTIVE)) {
-            printf("[DEBUG] Parsing variable definition\n");
+            print("[DEBUG] Parsing variable definition\n");
             node = parse_variable_definition(parser);
         } else if (check_token(parser, KRYON_TOKEN_FUNCTION_DIRECTIVE)) {
-            printf("[DEBUG] Parsing function definition\n");
+            print("[DEBUG] Parsing function definition\n");
             node = parse_function_definition(parser);
         } else if (check_token(parser, KRYON_TOKEN_COMPONENT_DIRECTIVE)) {
-            printf("[DEBUG] Parsing component definition\n");
+            print("[DEBUG] Parsing component definition\n");
             node = parse_component_definition(parser);
         } else if (check_token(parser, KRYON_TOKEN_CONST_DIRECTIVE)) {
-            printf("[DEBUG] Parsing const definition\n");
+            print("[DEBUG] Parsing const definition\n");
             node = parse_const_definition(parser);
-        } else if (check_token(parser, KRYON_TOKEN_CONST_FOR_DIRECTIVE)) {
-            printf("[DEBUG] Parsing const_for loop\n");
-            node = parse_const_for_loop(parser);
         } else if (check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE)) {
-            printf("[DEBUG] Parsing onload directive\n");
+            print("[DEBUG] Parsing onload directive\n");
             node = parse_onload_directive(parser);
         } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
-            printf("[DEBUG] Parsing for directive\n");
+            print("[DEBUG] Parsing for directive\n");
             node = parse_for_directive(parser);
         } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
-            printf("[DEBUG] Parsing if directive\n");
-            node = parse_if_directive(parser, false);
-        } else if (check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
-            printf("[DEBUG] Parsing const_if directive\n");
-            node = parse_if_directive(parser, true);
+            print("[DEBUG] Parsing if directive\n");
+            node = parse_if_directive(parser);
         } else if (kryon_token_is_directive(peek(parser)->type)) {
-            printf("[DEBUG] Parsing directive\n");
+            print("[DEBUG] Parsing directive\n");
             // Handle specialized directive parsers
             if (check_token(parser, KRYON_TOKEN_EVENT_DIRECTIVE)) {
                 node = parse_event_directive(parser);
@@ -405,10 +374,10 @@ static KryonASTNode *parse_document(KryonParser *parser) {
                 node = parse_directive(parser);
             }
         } else if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
-            printf("[DEBUG] Parsing element\n");
+            print("[DEBUG] Parsing element\n");
             node = parse_element(parser);
         } else {
-            printf("[DEBUG] Unknown token type %d, error\n", current->type);
+            print("[DEBUG] Unknown token type %d, error\n", current->type);
             // Don't fail the entire parse for unknown tokens - just skip them
             // parser_error(parser, "Expected element, style definition, theme definition, or directive");
             advance(parser); // Skip invalid token
@@ -416,49 +385,49 @@ static KryonASTNode *parse_document(KryonParser *parser) {
         }
         
         if (node) {
-            printf("[DEBUG] Successfully parsed node of type %s\n", kryon_ast_node_type_name(node->type));
+            print("[DEBUG] Successfully parsed node of type %s\n", kryon_ast_node_type_name(node->type));
             if (!kryon_ast_add_child(root, node)) {
-                printf("[DEBUG] Failed to add node to AST\n");
+                print("[DEBUG] Failed to add node to AST\n");
                 parser_error(parser, "Failed to add node to AST");
             } else {
-                printf("[DEBUG] Successfully added node to root (children: %zu)\n", root->data.element.child_count);
+                print("[DEBUG] Successfully added node to root (children: %zu)\n", root->data.element.child_count);
             }
         } else {
-            printf("[DEBUG] Failed to parse node\n");
+            print("[DEBUG] Failed to parse node\n");
         }
     }
     
-    printf("[DEBUG] Finished parsing document, root has %zu children\n", root->data.element.child_count);
+    print("[DEBUG] Finished parsing document, root has %zu children\n", root->data.element.child_count);
     return root;
 }
 
 static KryonASTNode *parse_element(KryonParser *parser) {
-    printf("[DEBUG] parse_element: Starting\n");
+    print("[DEBUG] parse_element: Starting\n");
     
     if (!check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
-        printf("[DEBUG] parse_element: Not an element type token\n");
+        print("[DEBUG] parse_element: Not an element type token\n");
         parser_error(parser, "Expected element type");
         return NULL;
     }
     
     // Check nesting depth
     if (parser->nesting_depth >= parser->config.max_nesting_depth) {
-        printf("[DEBUG] parse_element: Maximum nesting depth exceeded\n");
+        print("[DEBUG] parse_element: Maximum nesting depth exceeded\n");
         parser_error(parser, "Maximum nesting depth exceeded");
         return NULL;
     }
     
     const KryonToken *type_token = advance(parser);
-    printf("[DEBUG] parse_element: Creating element of type %.*s\n", 
+    print("[DEBUG] parse_element: Creating element of type %.*s\n", 
            (int)type_token->lexeme_length, type_token->lexeme);
     
     KryonASTNode *element = kryon_ast_create_node(parser, KRYON_AST_ELEMENT,
                                                  &type_token->location);
     if (!element) {
-        printf("[DEBUG] parse_element: Failed to create AST node\n");
+        print("[DEBUG] parse_element: Failed to create AST node\n");
         return NULL;
     }
-    printf("[DEBUG] parse_element: Created AST node\n");
+    print("[DEBUG] parse_element: Created AST node\n");
     
     // Copy element type name
     element->data.element.element_type = kryon_token_copy_lexeme(type_token);
@@ -499,18 +468,6 @@ static KryonASTNode *parse_element(KryonParser *parser) {
             if (if_directive && !kryon_ast_add_child(element, if_directive)) {
                 parser_error(parser, "Failed to add if directive");
             }
-        } else if (check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
-            // @const_if directive - parse as compile-time conditional and add as child
-            KryonASTNode *const_if_directive = parse_if_directive(parser, true);
-            if (const_if_directive && !kryon_ast_add_child(element, const_if_directive)) {
-                parser_error(parser, "Failed to add const_if directive");
-            }
-        } else if (check_token(parser, KRYON_TOKEN_CONST_FOR_DIRECTIVE)) {
-            // @const_for loop - expand inline
-            KryonASTNode *const_for = parse_const_for_loop(parser);
-            if (const_for && !kryon_ast_add_child(element, const_for)) {
-                parser_error(parser, "Failed to add const_for loop");
-            }
         } else if (check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
             // Property (potentially comma-separated list)
             do {
@@ -522,7 +479,7 @@ static KryonASTNode *parse_element(KryonParser *parser) {
                     }
                 } else {
                     // Property parsing failed, skip to next property or element
-                    printf("[DEBUG] parse_element: Property parsing failed, skipping to recovery\n");
+                    print("[DEBUG] parse_element: Property parsing failed, skipping to recovery\n");
                     // Skip until we find a recognizable token
                     while (!at_end(parser) && 
                            !check_token(parser, KRYON_TOKEN_IDENTIFIER) &&
@@ -542,7 +499,7 @@ static KryonASTNode *parse_element(KryonParser *parser) {
                 }
             } while (check_token(parser, KRYON_TOKEN_IDENTIFIER) && !at_end(parser));
         } else {
-            printf("[DEBUG] parse_element: Unexpected token type %d (lexeme: %.*s) at position %zu - skipping\n", 
+            print("[DEBUG] parse_element: Unexpected token type %d (lexeme: %.*s) at position %zu - skipping\n", 
                    peek(parser)->type, (int)peek(parser)->lexeme_length, 
                    peek(parser)->lexeme, parser->current_token);
             // Skip unexpected tokens but still mark as error for critical failures
@@ -561,35 +518,35 @@ static KryonASTNode *parse_element(KryonParser *parser) {
 }
 
 static KryonASTNode *parse_style_block(KryonParser *parser) {
-    printf("[DEBUG] parse_style_block: Starting\n");
+    print("[DEBUG] parse_style_block: Starting\n");
     
     if (!check_token(parser, KRYON_TOKEN_STYLE_DIRECTIVE) &&
         !check_token(parser, KRYON_TOKEN_STYLES_DIRECTIVE)) {
-        printf("[DEBUG] parse_style_block: Not a style directive\n");
+        print("[DEBUG] parse_style_block: Not a style directive\n");
         parser_error(parser, "Expected 'style' or 'styles' directive");
         return NULL;
     }
     
     const KryonToken *directive_token = advance(parser);
-    printf("[DEBUG] parse_style_block: Found style directive\n");
+    print("[DEBUG] parse_style_block: Found style directive\n");
     
     // Expect style name
     if (!check_token(parser, KRYON_TOKEN_STRING)) {
-        printf("[DEBUG] parse_style_block: Expected string after style\n");
+        print("[DEBUG] parse_style_block: Expected string after style\n");
         parser_error(parser, "Expected style name string");
         return NULL;
     }
     
     const KryonToken *name_token = advance(parser);
-    printf("[DEBUG] parse_style_block: Style name: %s\n", name_token->value.string_value);
+    print("[DEBUG] parse_style_block: Style name: %s\n", name_token->value.string_value);
     
     KryonASTNode *style = kryon_ast_create_node(parser, KRYON_AST_STYLE_BLOCK,
                                                &directive_token->location);
     if (!style) {
-        printf("[DEBUG] parse_style_block: Failed to create style node\n");
+        print("[DEBUG] parse_style_block: Failed to create style node\n");
         return NULL;
     }
-    printf("[DEBUG] parse_style_block: Created style node\n");
+    print("[DEBUG] parse_style_block: Created style node\n");
     
     // Copy style name (remove quotes)
     style->data.style.name = kryon_strdup(name_token->value.string_value);
@@ -1057,8 +1014,8 @@ static KryonASTNode *parse_literal(KryonParser *parser) {
             
             // Check if string contains template variables like ${variable}
             if (str_value && strstr(str_value, "${") != NULL) {
-                printf("🔄 Detected template variables in string: '%s' - parsing into segments\n", str_value);
-                printf("🔍 DEBUG: About to call parse_template_string with parser=%p\n", (void*)parser);
+                print("🔄 Detected template variables in string: '%s' - parsing into segments\n", str_value);
+                print("🔍 DEBUG: About to call parse_template_string with parser=%p\n", (void*)parser);
                 
                 // Parse template string into segments and replace the literal node
                 KryonASTNode *template_node = parse_template_string(parser, str_value);
@@ -1375,7 +1332,7 @@ static KryonASTNode *parse_event_directive(KryonParser *parser) {
     while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
         // Parse event binding: "pattern": functionCall()
         if (!check_token(parser, KRYON_TOKEN_STRING)) {
-            printf("[DEBUG] Event binding parser: Expected STRING, got token type %d\n", peek(parser)->type);
+            print("[DEBUG] Event binding parser: Expected STRING, got token type %d\n", peek(parser)->type);
             parser_error(parser, "Expected event pattern string");
             break;
         }
@@ -1441,18 +1398,18 @@ static KryonASTNode *parse_event_directive(KryonParser *parser) {
 }
 
 static KryonASTNode *parse_onload_directive(KryonParser *parser) {
-    printf("[DEBUG] parse_onload_directive: Starting\n");
+    print("[DEBUG] parse_onload_directive: Starting\n");
 
     if (!check_token(parser, KRYON_TOKEN_ONLOAD_DIRECTIVE) &&
         !check_token(parser, KRYON_TOKEN_ON_MOUNT_DIRECTIVE) &&
         !check_token(parser, KRYON_TOKEN_ON_CREATE_DIRECTIVE)) {
-        printf("[DEBUG] parse_onload_directive: Not a lifecycle directive\n");
+        print("[DEBUG] parse_onload_directive: Not a lifecycle directive\n");
         parser_error(parser, "Expected 'onload', 'mount', or 'oncreate' directive");
         return NULL;
     }
 
     const KryonToken *onload_token = advance(parser);
-    printf("[DEBUG] parse_onload_directive: Found lifecycle directive\n");
+    print("[DEBUG] parse_onload_directive: Found lifecycle directive\n");
     
     // REQUIRED language specification for lifecycle directives
     if (!check_token(parser, KRYON_TOKEN_STRING)) {
@@ -1464,12 +1421,12 @@ static KryonASTNode *parse_onload_directive(KryonParser *parser) {
     }
 
     const KryonToken *language_token = advance(parser);
-    printf("[DEBUG] parse_onload_directive: Language: %s\n", language_token->value.string_value);
+    print("[DEBUG] parse_onload_directive: Language: %s\n", language_token->value.string_value);
 
     // Validate language identifier
     if (!is_supported_language(language_token->value.string_value)) {
         char error_msg[256];
-        snprintf(error_msg, sizeof(error_msg),
+        snprint(error_msg, sizeof(error_msg),
                 "Unsupported language: '%s'. Supported languages: '', 'rc', 'js', 'lua'",
                 language_token->value.string_value);
         parser_error(parser, error_msg);
@@ -1555,7 +1512,7 @@ static KryonASTNode *parse_onload_directive(KryonParser *parser) {
         }
     }
     
-    printf("[DEBUG] parse_onload_directive: Extracted script code (%zu chars): %.100s...\n", 
+    print("[DEBUG] parse_onload_directive: Extracted script code (%zu chars): %.100s...\n", 
            strlen(script_code), script_code);
     
     // Create onload directive node
@@ -1572,7 +1529,7 @@ static KryonASTNode *parse_onload_directive(KryonParser *parser) {
     onload_node->data.script.language = kryon_strdup(language_token->value.string_value);
     onload_node->data.script.code = script_code;
     
-    printf("[DEBUG] parse_onload_directive: Created onload node with lang='%s', code_len=%zu\n",
+    print("[DEBUG] parse_onload_directive: Created onload node with lang='%s', code_len=%zu\n",
            onload_node->data.script.language ? onload_node->data.script.language : "",
            strlen(onload_node->data.script.code));
     
@@ -1834,16 +1791,16 @@ static KryonASTNode *parse_variable_definition(KryonParser *parser) {
 }
 
 static KryonASTNode *parse_function_definition(KryonParser *parser) {
-    printf("[DEBUG] parse_function_definition: Starting\n");
+    print("[DEBUG] parse_function_definition: Starting\n");
     
     if (!check_token(parser, KRYON_TOKEN_FUNCTION_DIRECTIVE)) {
-        printf("[DEBUG] parse_function_definition: Not a function directive\n");
+        print("[DEBUG] parse_function_definition: Not a function directive\n");
         parser_error(parser, "Expected 'function' directive");
         return NULL;
     }
     
     const KryonToken *function_token = advance(parser);
-    printf("[DEBUG] parse_function_definition: Found function directive\n");
+    print("[DEBUG] parse_function_definition: Found function directive\n");
     
     // REQUIRED language string
     if (!check_token(parser, KRYON_TOKEN_STRING)) {
@@ -1856,12 +1813,12 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
     }
 
     const KryonToken *language_token = advance(parser);
-    printf("[DEBUG] parse_function_definition: Language: %s\n", language_token->value.string_value);
+    print("[DEBUG] parse_function_definition: Language: %s\n", language_token->value.string_value);
 
     // Validate language identifier
     if (!is_supported_language(language_token->value.string_value)) {
         char error_msg[256];
-        snprintf(error_msg, sizeof(error_msg),
+        snprint(error_msg, sizeof(error_msg),
                 "Unsupported language: '%s'. Supported languages: '', 'rc', 'js', 'lua'",
                 language_token->value.string_value);
         parser_error(parser, error_msg);
@@ -1870,22 +1827,22 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
 
     // Expect function name
     if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
-        printf("[DEBUG] parse_function_definition: Expected function name\n");
+        print("[DEBUG] parse_function_definition: Expected function name\n");
         parser_error(parser, "Expected function name");
         return NULL;
     }
     
     const KryonToken *name_token = advance(parser);
-    printf("[DEBUG] parse_function_definition: Function name: %.*s\n", 
+    print("[DEBUG] parse_function_definition: Function name: %.*s\n", 
            (int)name_token->lexeme_length, name_token->lexeme);
     
     KryonASTNode *func_def = kryon_ast_create_node(parser, KRYON_AST_FUNCTION_DEFINITION,
                                                   &function_token->location);
     if (!func_def) {
-        printf("[DEBUG] parse_function_definition: Failed to create function node\n");
+        print("[DEBUG] parse_function_definition: Failed to create function node\n");
         return NULL;
     }
-    printf("[DEBUG] parse_function_definition: Created function node\n");
+    print("[DEBUG] parse_function_definition: Created function node\n");
     
     // Language is now mandatory, always present
     func_def->data.function_def.language = kryon_strdup(language_token->value.string_value);
@@ -1964,7 +1921,7 @@ static KryonASTNode *parse_function_definition(KryonParser *parser) {
 }
 
 static KryonASTNode *parse_component_definition(KryonParser *parser) {
-    printf("[DEBUG] parse_component_definition: Starting\n");
+    print("[DEBUG] parse_component_definition: Starting\n");
     const KryonToken *directive_token = advance(parser); // consume component keyword
     
     if (!check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
@@ -2058,7 +2015,7 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
         } else {
             const KryonToken *parent_token = advance(parser);
             component->data.component.parent_component = kryon_token_copy_lexeme(parent_token);
-            printf("[DEBUG] parse_component_definition: Component extends '%s'\n",
+            print("[DEBUG] parse_component_definition: Component extends '%s'\n",
                    component->data.component.parent_component);
         }
     }
@@ -2127,11 +2084,11 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
         }
     }
 
-    printf("[DEBUG] parse_component_definition: Starting component body parsing at token %zu\n", parser->current_token);
+    print("[DEBUG] parse_component_definition: Starting component body parsing at token %zu\n", parser->current_token);
     
     // Parse component contents (state variables, functions, and UI)
     while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
-        printf("[DEBUG] parse_component_definition: Processing token %zu (type %d) in component body\n",
+        print("[DEBUG] parse_component_definition: Processing token %zu (type %d) in component body\n",
                parser->current_token, peek(parser)->type);
         if (check_token(parser, KRYON_TOKEN_PROPS_DIRECTIVE)) {
             if (!parse_component_prop_declaration(parser, component)) {
@@ -2269,7 +2226,7 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
             }
         } else if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
             // Parse UI body element
-            printf("[DEBUG] parse_component_definition: Parsing component UI body element at token %zu\n", parser->current_token);
+            print("[DEBUG] parse_component_definition: Parsing component UI body element at token %zu\n", parser->current_token);
             KryonASTNode *element = parse_element(parser);
             if (element) {
                 // Expand body_elements array if needed
@@ -2287,25 +2244,25 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
                 // Add element to body_elements array
                 if (component->data.component.body_count < component->data.component.body_capacity) {
                     component->data.component.body_elements[component->data.component.body_count++] = element;
-                    printf("[DEBUG] parse_component_definition: Added body element %zu\n", component->data.component.body_count);
+                    print("[DEBUG] parse_component_definition: Added body element %zu\n", component->data.component.body_count);
                 }
             }
-            printf("[DEBUG] parse_component_definition: Finished parsing UI body, now at token %zu\n", parser->current_token);
+            print("[DEBUG] parse_component_definition: Finished parsing UI body, now at token %zu\n", parser->current_token);
         } else {
-            printf("[DEBUG] parse_component_definition: Unexpected token type %d in component body\n", peek(parser)->type);
+            print("[DEBUG] parse_component_definition: Unexpected token type %d in component body\n", peek(parser)->type);
             parser_error(parser, "Unexpected token in component body");
             advance(parser);
         }
     }
     
-    printf("[DEBUG] parse_component_definition: Finished component body parsing at token %zu\n", parser->current_token);
+    print("[DEBUG] parse_component_definition: Finished component body parsing at token %zu\n", parser->current_token);
     
     if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
         parser_error(parser, "Expected '}' after component body");
     }
     
-    printf("[DEBUG] parse_component_definition: Component parsing complete at token %zu\n", parser->current_token);
-    printf("[DEBUG] parse_component_definition: Created component '%s' with %zu parameters, %zu state vars, %zu functions\n",
+    print("[DEBUG] parse_component_definition: Component parsing complete at token %zu\n", parser->current_token);
+    print("[DEBUG] parse_component_definition: Created component '%s' with %zu parameters, %zu state vars, %zu functions\n",
            component->data.component.name, 
            component->data.component.parameter_count,
            component->data.component.state_count,
@@ -2317,7 +2274,7 @@ static KryonASTNode *parse_component_definition(KryonParser *parser) {
 }
 
 static KryonASTNode *parse_state_definition(KryonParser *parser) {
-    printf("[DEBUG] parse_state_definition: Starting\n");
+    print("[DEBUG] parse_state_definition: Starting\n");
     const KryonToken *directive_token = advance(parser); // consume state directive
     
     if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
@@ -2349,14 +2306,14 @@ static KryonASTNode *parse_state_definition(KryonParser *parser) {
         parser_error(parser, "Expected state variable value");
     }
     
-    printf("[DEBUG] parse_state_definition: Created state variable '%s'\n", 
+    print("[DEBUG] parse_state_definition: Created state variable '%s'\n", 
            state_def->data.variable_def.name);
     
     return state_def;
 }
 
 static KryonASTNode *parse_const_definition(KryonParser *parser) {
-    printf("[DEBUG] parse_const_definition: Starting\n");
+    print("[DEBUG] parse_const_definition: Starting\n");
     const KryonToken *directive_token = advance(parser); // consume const directive
     
     if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
@@ -2387,174 +2344,15 @@ static KryonASTNode *parse_const_definition(KryonParser *parser) {
         parser_error(parser, "Expected constant value");
     }
     
-    printf("[DEBUG] parse_const_definition: Created constant '%s'\n", 
+    print("[DEBUG] parse_const_definition: Created constant '%s'\n", 
            const_def->data.const_def.name);
     
     return const_def;
 }
-
-static KryonASTNode *parse_const_for_loop(KryonParser *parser) {
-    printf("[DEBUG] parse_const_for_loop: Starting\n");
-    const KryonToken *directive_token = advance(parser); // consume const_for directive
-
-    if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
-        parser_error(parser, "Expected loop variable name");
-        return NULL;
-    }
-
-    const KryonToken *first_var_token = advance(parser);
-    const KryonToken *index_token = NULL;
-    const KryonToken *value_token = NULL;
-
-    // Check for comma - indicates index, value syntax
-    if (match_token(parser, KRYON_TOKEN_COMMA)) {
-        // First token is index, parse value token
-        index_token = first_var_token;
-
-        if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
-            parser_error(parser, "Expected value variable name after comma");
-            return NULL;
-        }
-
-        value_token = advance(parser);
-    } else {
-        // Only one variable - it's the value
-        value_token = first_var_token;
-    }
-
-    // Expect 'in' keyword
-    if (!match_token(parser, KRYON_TOKEN_IN_KEYWORD)) {
-        parser_error(parser, "Expected 'in' after loop variable(s)");
-        return NULL;
-    }
-
-    KryonASTNode *const_for = kryon_ast_create_node(parser, KRYON_AST_CONST_FOR_LOOP,
-                                                    &directive_token->location);
-    if (!const_for) {
-        return NULL;
-    }
-
-    const_for->data.const_for_loop.index_var_name = index_token ? kryon_token_copy_lexeme(index_token) : NULL;
-    const_for->data.const_for_loop.var_name = kryon_token_copy_lexeme(value_token);
-    const_for->data.const_for_loop.array_name = NULL;
-    const_for->data.const_for_loop.is_range = false;
-    const_for->data.const_for_loop.range_start = 0;
-    const_for->data.const_for_loop.range_end = 0;
-    const_for->data.const_for_loop.body = NULL;
-    const_for->data.const_for_loop.body_count = 0;
-    const_for->data.const_for_loop.body_capacity = 0;
-    
-    // Parse either array name or range expression
-    if (check_token(parser, KRYON_TOKEN_INTEGER) || check_token(parser, KRYON_TOKEN_FLOAT)) {
-        // Range expression: start..end
-        const KryonToken *start_token = advance(parser);
-        
-        if (!match_token(parser, KRYON_TOKEN_RANGE)) {
-            parser_error(parser, "Expected '..' after range start value");
-            return const_for;
-        }
-        
-        if (!(check_token(parser, KRYON_TOKEN_INTEGER) || check_token(parser, KRYON_TOKEN_FLOAT))) {
-            parser_error(parser, "Expected end value after '..'");
-            return const_for;
-        }
-        
-        const KryonToken *end_token = advance(parser);
-        
-        // Parse the range values
-        const_for->data.const_for_loop.is_range = true;
-        const_for->data.const_for_loop.range_start = (int)strtol(start_token->lexeme, NULL, 10);
-        const_for->data.const_for_loop.range_end = (int)strtol(end_token->lexeme, NULL, 10);
-        
-    } else if (check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
-        // Array name
-        const KryonToken *array_token = advance(parser);
-        const_for->data.const_for_loop.is_range = false;
-        const_for->data.const_for_loop.array_name = kryon_token_copy_lexeme(array_token);
-        
-    } else {
-        parser_error(parser, "Expected array name or range expression after 'in'");
-        return const_for;
-    }
-    
-    // Expect opening brace
-    if (!match_token(parser, KRYON_TOKEN_LEFT_BRACE)) {
-        parser_error(parser, "Expected '{' before loop body");
-        return const_for;
-    }
-    
-    // Parse loop body (elements)
-    while (!check_token(parser, KRYON_TOKEN_RIGHT_BRACE) && !at_end(parser)) {
-        KryonASTNode *body_element = NULL;
-        
-        if (check_token(parser, KRYON_TOKEN_ELEMENT_TYPE)) {
-            body_element = parse_element(parser);
-        } else {
-            parser_error(parser, "Expected element in loop body");
-            synchronize(parser);
-            continue;
-        }
-        
-        if (body_element) {
-            // Ensure we have space for the new element
-            if (const_for->data.const_for_loop.body_count >= const_for->data.const_for_loop.body_capacity) {
-                size_t new_capacity = const_for->data.const_for_loop.body_capacity == 0 ? 4 : 
-                                      const_for->data.const_for_loop.body_capacity * 2;
-                KryonASTNode **new_body = kryon_realloc(const_for->data.const_for_loop.body, 
-                                                        new_capacity * sizeof(KryonASTNode *));
-                if (!new_body) {
-                    parser_error(parser, "Failed to allocate memory for loop body");
-                    return const_for;
-                }
-                const_for->data.const_for_loop.body = new_body;
-                const_for->data.const_for_loop.body_capacity = new_capacity;
-            }
-            
-            const_for->data.const_for_loop.body[const_for->data.const_for_loop.body_count++] = body_element;
-            body_element->parent = const_for;
-        }
-    }
-    
-    // Expect closing brace
-    if (!match_token(parser, KRYON_TOKEN_RIGHT_BRACE)) {
-        parser_error(parser, "Expected '}' after loop body");
-    }
-    
-    if (const_for->data.const_for_loop.index_var_name) {
-        if (const_for->data.const_for_loop.is_range) {
-            printf("[DEBUG] parse_const_for_loop: Created range loop '%s, %s' in %d..%d with %zu body elements\n",
-                   const_for->data.const_for_loop.index_var_name,
-                   const_for->data.const_for_loop.var_name,
-                   const_for->data.const_for_loop.range_start,
-                   const_for->data.const_for_loop.range_end,
-                   const_for->data.const_for_loop.body_count);
-        } else {
-            printf("[DEBUG] parse_const_for_loop: Created array loop '%s, %s' in '%s' with %zu body elements\n",
-                   const_for->data.const_for_loop.index_var_name,
-                   const_for->data.const_for_loop.var_name,
-                   const_for->data.const_for_loop.array_name,
-                   const_for->data.const_for_loop.body_count);
-        }
-    } else {
-        if (const_for->data.const_for_loop.is_range) {
-            printf("[DEBUG] parse_const_for_loop: Created range loop '%s' in %d..%d with %zu body elements\n",
-                   const_for->data.const_for_loop.var_name,
-                   const_for->data.const_for_loop.range_start,
-                   const_for->data.const_for_loop.range_end,
-                   const_for->data.const_for_loop.body_count);
-        } else {
-            printf("[DEBUG] parse_const_for_loop: Created array loop '%s' in '%s' with %zu body elements\n",
-                   const_for->data.const_for_loop.var_name,
-                   const_for->data.const_for_loop.array_name,
-                   const_for->data.const_for_loop.body_count);
-        }
-    }
-    
-    return const_for;
 }
 
 static KryonASTNode *parse_for_directive(KryonParser *parser) {
-    printf("[DEBUG] parse_for_directive: Starting\n");
+    print("[DEBUG] parse_for_directive: Starting\n");
     const KryonToken *directive_token = advance(parser); // consume for directive
 
     if (!check_token(parser, KRYON_TOKEN_IDENTIFIER)) {
@@ -2626,9 +2424,7 @@ static KryonASTNode *parse_for_directive(KryonParser *parser) {
         } else if (check_token(parser, KRYON_TOKEN_FOR_DIRECTIVE)) {
             body_element = parse_for_directive(parser);
         } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
-            body_element = parse_if_directive(parser, false);
-        } else if (check_token(parser, KRYON_TOKEN_CONST_IF_DIRECTIVE)) {
-            body_element = parse_if_directive(parser, true);
+            body_element = parse_if_directive(parser);
         } else {
             parser_error(parser, "Expected element or directive in for loop body");
             break;
@@ -2649,13 +2445,13 @@ static KryonASTNode *parse_for_directive(KryonParser *parser) {
     }
     
     if (for_directive->data.for_loop.index_var_name) {
-        printf("[DEBUG] parse_for_directive: Created for loop '%s, %s' in '%s' with %zu body elements\n",
+        print("[DEBUG] parse_for_directive: Created for loop '%s, %s' in '%s' with %zu body elements\n",
                for_directive->data.for_loop.index_var_name,
                for_directive->data.for_loop.var_name,
                for_directive->data.for_loop.array_name,
                for_directive->data.for_loop.body_count);
     } else {
-        printf("[DEBUG] parse_for_directive: Created for loop '%s' in '%s' with %zu body elements\n",
+        print("[DEBUG] parse_for_directive: Created for loop '%s' in '%s' with %zu body elements\n",
                for_directive->data.for_loop.var_name,
                for_directive->data.for_loop.array_name,
                for_directive->data.for_loop.body_count);
@@ -2714,7 +2510,7 @@ static bool parse_component_prop_declaration(KryonParser *parser, KryonASTNode *
     component->data.component.param_defaults[component->data.component.parameter_count] = default_value;
     component->data.component.parameter_count = new_count;
 
-    printf("[DEBUG] parse_component_definition: Added prop '%s' with default '%s'\n",
+    print("[DEBUG] parse_component_definition: Added prop '%s' with default '%s'\n",
            param_name, default_value ? default_value : "<none>");
 
     return true;
@@ -2726,19 +2522,17 @@ static bool parse_component_prop_declaration(KryonParser *parser, KryonASTNode *
  * @param is_const True if this is const_if (compile-time), false for if (runtime)
  * @return AST node for the conditional, or NULL on error
  */
-static KryonASTNode *parse_if_directive(KryonParser *parser, bool is_const) {
-    printf("[DEBUG] parse_if_directive: Starting (is_const=%d)\n", is_const);
-    const KryonToken *directive_token = advance(parser); // consume if or const_if directive
+static KryonASTNode *parse_if_directive(KryonParser *parser) {
+    print("[DEBUG] parse_if_directive: Starting\n");
+    const KryonToken *directive_token = advance(parser); // consume if directive
 
     // Create the conditional node
-    KryonASTNodeType node_type = is_const ? KRYON_AST_CONST_IF_DIRECTIVE : KRYON_AST_IF_DIRECTIVE;
-    KryonASTNode *conditional = kryon_ast_create_node(parser, node_type, &directive_token->location);
+    KryonASTNode *conditional = kryon_ast_create_node(parser, KRYON_AST_IF_DIRECTIVE, &directive_token->location);
     if (!conditional) {
         return NULL;
     }
 
     // Initialize conditional structure
-    conditional->data.conditional.is_const = is_const;
     conditional->data.conditional.condition = NULL;
     conditional->data.conditional.then_body = NULL;
     conditional->data.conditional.then_count = 0;
@@ -2930,7 +2724,7 @@ static KryonASTNode *parse_if_directive(KryonParser *parser, bool is_const) {
         }
     }
 
-    printf("[DEBUG] parse_if_directive: Created conditional with %zu then, %zu elif, %zu else elements\n",
+    print("[DEBUG] parse_if_directive: Created conditional with %zu then, %zu elif, %zu else elements\n",
            conditional->data.conditional.then_count,
            conditional->data.conditional.elif_count,
            conditional->data.conditional.else_count);
@@ -3021,7 +2815,7 @@ static void parser_error(KryonParser *parser, const char *message) {
     size_t msg_len = strlen(message) + strlen(location_str) + 16;
     char *error_msg = kryon_alloc(msg_len);
     if (error_msg) {
-        snprintf(error_msg, msg_len, "%s at %s", message, location_str);
+        snprint(error_msg, msg_len, "%s at %s", message, location_str);
         parser->error_messages[parser->error_count++] = error_msg;
     }
     
@@ -3121,7 +2915,6 @@ bool kryon_ast_add_child(KryonASTNode *parent, KryonASTNode *child) {
             case KRYON_AST_VARIABLE_DEFINITION:
             case KRYON_AST_FUNCTION_DEFINITION:
             case KRYON_AST_CONST_DEFINITION:
-            case KRYON_AST_CONST_FOR_LOOP:
             case KRYON_AST_METADATA_DIRECTIVE:
             case KRYON_AST_EVENT_DIRECTIVE:
             case KRYON_AST_ONLOAD_DIRECTIVE:
@@ -3396,7 +3189,7 @@ void add_property_to_element_node(KryonASTNode* element_node, KryonASTNode* prop
         KryonASTNode** new_props = realloc(element_node->data.element.properties, new_capacity * sizeof(KryonASTNode*));
         if (!new_props) {
             // In a real application, you'd handle this error more gracefully
-            fprintf(stderr, "ERROR: Failed to reallocate property array in optimizer.\n");
+            fprint(2, "ERROR: Failed to reallocate property array in optimizer.\n");
             return;
         }
         element_node->data.element.properties = new_props;
@@ -3419,12 +3212,10 @@ const char *kryon_ast_node_type_name(KryonASTNodeType type) {
         case KRYON_AST_VARIABLE_DEFINITION: return "VariableDefinition";
         case KRYON_AST_FUNCTION_DEFINITION: return "FunctionDefinition";
         case KRYON_AST_CONST_DEFINITION: return "ConstDefinition";
-        case KRYON_AST_CONST_FOR_LOOP: return "ConstForLoop";
         case KRYON_AST_FOR_DIRECTIVE: return "ForDirective";
         case KRYON_AST_IF_DIRECTIVE: return "IfDirective";
         case KRYON_AST_ELIF_DIRECTIVE: return "ElifDirective";
         case KRYON_AST_ELSE_DIRECTIVE: return "ElseDirective";
-        case KRYON_AST_CONST_IF_DIRECTIVE: return "ConstIfDirective";
         case KRYON_AST_LITERAL: return "Literal";
         case KRYON_AST_VARIABLE: return "Variable";
         case KRYON_AST_TEMPLATE: return "Template";
@@ -3450,7 +3241,7 @@ const char *kryon_ast_node_type_name(KryonASTNodeType type) {
  */
 static KryonASTNode *parse_template_string(KryonParser *parser, const char* template_str) {
     if (!parser || !template_str) {
-        printf("❌ parse_template_string: Invalid parameters (parser=%p, template_str=%p)\n", 
+        print("❌ parse_template_string: Invalid parameters (parser=%p, template_str=%p)\n", 
                (void*)parser, (void*)template_str);
         return NULL;
     }
@@ -3459,7 +3250,7 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
     const KryonToken *current_token = &parser->tokens[parser->current_token - 1];
     KryonASTNode *template_node = kryon_ast_create_node(parser, KRYON_AST_TEMPLATE, &current_token->location);
     if (!template_node) {
-        printf("❌ parse_template_string: Failed to create template node\n");
+        print("❌ parse_template_string: Failed to create template node\n");
         return NULL;
     }
     
@@ -3471,7 +3262,7 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
     const char *current = template_str;
     const char *start = current;
     
-    printf("🔍 Parsing template string: '%s'\n", template_str);
+    print("🔍 Parsing template string: '%s'\n", template_str);
     
     while (*current) {
         // Look for ${variable} pattern
@@ -3493,7 +3284,7 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
                         template_node->data.template.segment_capacity = new_capacity;
                     }
                     template_node->data.template.segments[template_node->data.template.segment_count++] = literal_segment;
-                    printf("  📝 Added literal segment: '%s'\n", current);
+                    print("  📝 Added literal segment: '%s'\n", current);
                 }
             }
             break;
@@ -3520,7 +3311,7 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
                         template_node->data.template.segment_capacity = new_capacity;
                     }
                     template_node->data.template.segments[template_node->data.template.segment_count++] = literal_segment;
-                    printf("  📝 Added literal segment: '%s'\n", literal_text);
+                    print("  📝 Added literal segment: '%s'\n", literal_text);
                 }
                 kryon_free(literal_text);
             }
@@ -3529,7 +3320,7 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
         // Parse ${variable} 
         const char *var_end = strstr(var_start, "}");
         if (!var_end) {
-            printf("❌ Error: Unclosed variable reference in template\n");
+            print("❌ Error: Unclosed variable reference in template\n");
             break;
         }
         
@@ -3568,7 +3359,7 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
                                 object_node->data.identifier.name = kryon_strdup(object_name);
                                 var_segment->data.member_access.object = object_node;
                                 var_segment->data.member_access.member = kryon_strdup(property_name);
-                                printf("  🔗 Added member access segment: '%s.%s'\n", object_name, property_name);
+                                print("  🔗 Added member access segment: '%s.%s'\n", object_name, property_name);
                             } else {
                                 kryon_free(var_segment);
                                 var_segment = NULL;
@@ -3583,7 +3374,7 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
                     var_segment = kryon_ast_create_node(parser, KRYON_AST_VARIABLE, &current_token->location);
                     if (var_segment) {
                         var_segment->data.variable.name = kryon_strdup(var_name);
-                        printf("  🔗 Added variable segment: '%s'\n", var_name);
+                        print("  🔗 Added variable segment: '%s'\n", var_name);
                     }
                 }
                 
@@ -3606,6 +3397,6 @@ static KryonASTNode *parse_template_string(KryonParser *parser, const char* temp
         current = var_end + 1;
     }
     
-    printf("✅ Template parsed into %zu segments\n", template_node->data.template.segment_count);
+    print("✅ Template parsed into %zu segments\n", template_node->data.template.segment_count);
     return template_node;
 }

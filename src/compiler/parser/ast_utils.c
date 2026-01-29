@@ -1,4 +1,5 @@
 /**
+
  * @file ast_utils.c
  * @brief AST Utility Functions
  * 
@@ -8,12 +9,11 @@
  * 
  * Additional AST functions for traversal, validation, and pretty printing.
  */
+#include "lib9.h"
+
 
 #include "parser.h"
 #include "memory.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 // =============================================================================
 // AST PRINTING UTILITIES
@@ -174,7 +174,7 @@ static bool validate_element_node(const KryonASTNode *node, char **errors, size_
         if (*error_count < max_errors) {
             errors[(*error_count)++] = kryon_alloc(64);
             if (errors[*error_count - 1]) {
-                snprintf(errors[*error_count - 1], 64, "Element node missing element_type");
+                snprint(errors[*error_count - 1], 64, "Element node missing element_type");
             }
         }
         return false;
@@ -186,7 +186,7 @@ static bool validate_element_node(const KryonASTNode *node, char **errors, size_
             if (*error_count < max_errors) {
                 errors[(*error_count)++] = kryon_alloc(64);
                 if (errors[*error_count - 1]) {
-                    snprintf(errors[*error_count - 1], 64, "Element has null child at index %zu", i);
+                    snprint(errors[*error_count - 1], 64, "Element has null child at index %zu", i);
                 }
             }
         }
@@ -198,7 +198,7 @@ static bool validate_element_node(const KryonASTNode *node, char **errors, size_
             if (*error_count < max_errors) {
                 errors[(*error_count)++] = kryon_alloc(64);
                 if (errors[*error_count - 1]) {
-                    snprintf(errors[*error_count - 1], 64, "Element has null property at index %zu", i);
+                    snprint(errors[*error_count - 1], 64, "Element has null property at index %zu", i);
                 }
             }
         }
@@ -213,7 +213,7 @@ static bool validate_property_node(const KryonASTNode *node, char **errors, size
         if (*error_count < max_errors) {
             errors[(*error_count)++] = kryon_alloc(64);
             if (errors[*error_count - 1]) {
-                snprintf(errors[*error_count - 1], 64, "Property node missing name");
+                snprint(errors[*error_count - 1], 64, "Property node missing name");
             }
         }
         return false;
@@ -223,7 +223,7 @@ static bool validate_property_node(const KryonASTNode *node, char **errors, size
         if (*error_count < max_errors) {
             errors[(*error_count)++] = kryon_alloc(64);
             if (errors[*error_count - 1]) {
-                snprintf(errors[*error_count - 1], 64, "Property '%s' missing value", node->data.property.name);
+                snprint(errors[*error_count - 1], 64, "Property '%s' missing value", node->data.property.name);
             }
         }
         return false;
@@ -277,7 +277,7 @@ size_t kryon_ast_validate(const KryonASTNode *node, char **errors, size_t max_er
                 if (error_count < max_errors) {
                     errors[error_count++] = kryon_alloc(64);
                     if (errors[error_count - 1]) {
-                        snprintf(errors[error_count - 1], 64, "Style block missing name");
+                        snprint(errors[error_count - 1], 64, "Style block missing name");
                     }
                 }
             }
@@ -307,7 +307,7 @@ size_t kryon_ast_validate(const KryonASTNode *node, char **errors, size_t max_er
                 if (error_count < max_errors) {
                     errors[error_count++] = kryon_alloc(64);
                     if (errors[error_count - 1]) {
-                        snprintf(errors[error_count - 1], 64, "Function call missing name");
+                        snprint(errors[error_count - 1], 64, "Function call missing name");
                     }
                 }
             }
@@ -530,7 +530,7 @@ char *kryon_ast_value_to_string(const KryonASTValue *value) {
                 len = strlen(value->data.string_value) + 3; // quotes + null
                 result = kryon_alloc(len);
                 if (result) {
-                    snprintf(result, len, "\"%s\"", value->data.string_value);
+                    snprint(result, len, "\"%s\"", value->data.string_value);
                 }
             } else {
                 result = kryon_alloc(8);
@@ -543,14 +543,14 @@ char *kryon_ast_value_to_string(const KryonASTValue *value) {
         case KRYON_VALUE_INTEGER:
             result = kryon_alloc(32);
             if (result) {
-                snprintf(result, 32, "%lld", (long long)value->data.int_value);
+                snprint(result, 32, "%lld", (long long)value->data.int_value);
             }
             break;
             
         case KRYON_VALUE_FLOAT:
             result = kryon_alloc(32);
             if (result) {
-                snprintf(result, 32, "%.6g", value->data.float_value);
+                snprint(result, 32, "%.6g", value->data.float_value);
             }
             break;
             
@@ -571,14 +571,14 @@ char *kryon_ast_value_to_string(const KryonASTValue *value) {
         case KRYON_VALUE_COLOR:
             result = kryon_alloc(16);
             if (result) {
-                snprintf(result, 16, "#%08X", value->data.color_value);
+                snprint(result, 16, "#%08X", value->data.color_value);
             }
             break;
             
         case KRYON_VALUE_UNIT:
             result = kryon_alloc(32);
             if (result) {
-                snprintf(result, 32, "%.6g%s", value->data.unit_value.value, value->data.unit_value.unit);
+                snprint(result, 32, "%.6g%s", value->data.unit_value.value, value->data.unit_value.unit);
             }
             break;
             

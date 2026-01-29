@@ -1,7 +1,10 @@
 /**
+
  * @file unicode.c
  * @brief Unicode Support for Kryon Lexer
  */
+#include "lib9.h"
+
 
 #include "lexer.h"
 #include <stdint.h>

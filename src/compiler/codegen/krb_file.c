@@ -1,15 +1,16 @@
 /**
+
  * @file krb_file.c
  * @brief KRB File Management and Utilities Implementation
  */
+#include "lib9.h"
+
 
 #include "krb_format.h"
 #include "memory.h"
 #include "error.h"
 #include "containers.h"
 #include "../../shared/kryon_mappings.h"
-#include <string.h>
-#include <stdlib.h>
 
 // =============================================================================
 // CRC32 CHECKSUM IMPLEMENTATION
@@ -478,26 +479,26 @@ KryonKrbProperty kryon_krb_property_color(uint16_t name_id, uint32_t rgba) {
 
 bool kryon_krb_file_validate(const KryonKrbFile *krb_file, char *out_error, size_t error_size) {
     if (!krb_file) {
-        if (out_error) snprintf(out_error, error_size, "KRB file is NULL");
+        if (out_error) snprint(out_error, error_size, "KRB file is NULL");
         return false;
     }
     
     // Validate header
     if (krb_file->header.magic != KRYON_KRB_MAGIC) {
-        if (out_error) snprintf(out_error, error_size, "Invalid magic number");
+        if (out_error) snprint(out_error, error_size, "Invalid magic number");
         return false;
     }
     
     // Validate element count
     if (krb_file->header.element_count > KRYON_KRB_MAX_ELEMENTS) {
-        if (out_error) snprintf(out_error, error_size, "Too many elements: %u", 
+        if (out_error) snprint(out_error, error_size, "Too many elements: %u", 
                                krb_file->header.element_count);
         return false;
     }
     
     // Validate elements exist if count > 0
     if (krb_file->header.element_count > 0 && !krb_file->elements) {
-        if (out_error) snprintf(out_error, error_size, "Elements array is NULL");
+        if (out_error) snprint(out_error, error_size, "Elements array is NULL");
         return false;
     }
     
@@ -505,7 +506,7 @@ bool kryon_krb_file_validate(const KryonKrbFile *krb_file, char *out_error, size
     for (uint32_t i = 0; i < krb_file->header.element_count; i++) {
         for (uint32_t j = i + 1; j < krb_file->header.element_count; j++) {
             if (krb_file->elements[i].id == krb_file->elements[j].id) {
-                if (out_error) snprintf(out_error, error_size, 
+                if (out_error) snprint(out_error, error_size, 
                                        "Duplicate element ID: %u", krb_file->elements[i].id);
                 return false;
             }
@@ -520,7 +521,7 @@ bool kryon_krb_file_validate(const KryonKrbFile *krb_file, char *out_error, size
         if (element->parent_id != 0) {
             KryonKrbElement *parent = kryon_krb_file_get_element(krb_file, element->parent_id);
             if (!parent) {
-                if (out_error) snprintf(out_error, error_size,
+                if (out_error) snprint(out_error, error_size,
                                        "Element %u has non-existent parent %u",
                                        element->id, element->parent_id);
                 return false;
@@ -531,7 +532,7 @@ bool kryon_krb_file_validate(const KryonKrbFile *krb_file, char *out_error, size
         for (uint16_t j = 0; j < element->child_count; j++) {
             KryonKrbElement *child = kryon_krb_file_get_element(krb_file, element->child_ids[j]);
             if (!child) {
-                if (out_error) snprintf(out_error, error_size,
+                if (out_error) snprint(out_error, error_size,
                                        "Element %u has non-existent child %u",
                                        element->id, element->child_ids[j]);
                 return false;
@@ -539,7 +540,7 @@ bool kryon_krb_file_validate(const KryonKrbFile *krb_file, char *out_error, size
             
             // Check child points back to this parent
             if (child->parent_id != element->id) {
-                if (out_error) snprintf(out_error, error_size,
+                if (out_error) snprint(out_error, error_size,
                                        "Child %u doesn't point back to parent %u",
                                        element->child_ids[j], element->id);
                 return false;

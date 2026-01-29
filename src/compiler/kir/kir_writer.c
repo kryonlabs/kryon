@@ -1,17 +1,18 @@
 /**
+
  * @file kir_writer.c
  * @brief KIR Writer Implementation - Serializes AST to JSON format
  *
  * Implements lossless JSON serialization of post-expansion AST for KIR format.
  */
+#include "lib9.h"
+
 
 #include "kir_format.h"
 #include "parser.h"
 #include "lexer.h"
 #include "memory.h"
 #include "cJSON.h"
-#include <string.h>
-#include <stdlib.h>
 #include <time.h>
 
 // =============================================================================
@@ -190,7 +191,7 @@ static cJSON *serialize_value(const KryonASTValue *value) {
             break;
         case KRYON_VALUE_COLOR: {
             char color_str[16];
-            snprintf(color_str, sizeof(color_str), "#%08X", value->data.color_value);
+            snprint(color_str, sizeof(color_str), "#%08X", value->data.color_value);
             cJSON_AddStringToObject(val_obj, "value", color_str);
             break;
         }

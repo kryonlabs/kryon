@@ -1,14 +1,13 @@
 /**
  * @file krb_schema.c
  * @brief KRB Format Schema Implementation
- * 
+ *
  * Centralized format validation and utilities to ensure writer/loader consistency.
  */
+#include "lib9.h"
+
 
 #include "krb_schema.h"
-#include <string.h>
-#include <stdbool.h>
-#include <stdio.h>
 
 // =============================================================================
 // VALIDATION FUNCTIONS
@@ -142,7 +141,7 @@ bool krb_validate_element_header(const uint8_t *data, size_t size, size_t *offse
     
     // Validate reasonable bounds
     if (header->property_count > 1000 || header->child_count > 1000 || header->event_count > 100) {
-        printf("❌ DEBUG: Element header bounds check failed - id=%u type=0x%x props=%u children=%u events=%u\n",
+        print("❌ DEBUG: Element header bounds check failed - id=%u type=0x%x props=%u children=%u events=%u\n",
                header->instance_id, header->element_type, header->property_count, 
                header->child_count, header->event_count);
         return false;
@@ -155,7 +154,7 @@ bool krb_validate_element_header(const uint8_t *data, size_t size, size_t *offse
     
     // Ensure we have enough remaining data
     if (*offset + properties_size + children_size + events_size > size) {
-        printf("❌ DEBUG: Element header size validation failed - offset=%zu + props=%zu + children=%zu + events=%zu = %zu > size=%zu\n",
+        print("❌ DEBUG: Element header size validation failed - offset=%zu + props=%zu + children=%zu + events=%zu = %zu > size=%zu\n",
                *offset, properties_size, children_size, events_size, 
                *offset + properties_size + children_size + events_size, size);
         return false;

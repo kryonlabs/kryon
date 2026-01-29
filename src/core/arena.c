@@ -1,15 +1,15 @@
 /**
+
  * @file arena.c
  * @brief Kryon Memory Arena System
  * 
  * High-performance arena allocator for temporary allocations with fast reset.
  * Based on our memory management patterns but optimized for layout engine usage.
  */
+#include "lib9.h"
+
 
 #include "memory.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <assert.h>
 
 // =============================================================================
@@ -33,24 +33,24 @@ typedef struct {
  */
 KryonArena* kryon_arena_create(size_t size, size_t alignment) {
     if (size == 0) {
-        fprintf(stderr, "Kryon Arena: Cannot create zero-size arena\n");
+        fprint(2, "Kryon Arena: Cannot create zero-size arena\n");
         return NULL;
     }
     
     if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
-        fprintf(stderr, "Kryon Arena: Alignment must be power of 2\n");
+        fprint(2, "Kryon Arena: Alignment must be power of 2\n");
         return NULL;
     }
     
     KryonArena* arena = malloc(sizeof(KryonArena));
     if (!arena) {
-        fprintf(stderr, "Kryon Arena: Failed to allocate arena structure\n");
+        fprint(2, "Kryon Arena: Failed to allocate arena structure\n");
         return NULL;
     }
     
     arena->memory = malloc(size);
     if (!arena->memory) {
-        fprintf(stderr, "Kryon Arena: Failed to allocate %zu bytes\n", size);
+        fprint(2, "Kryon Arena: Failed to allocate %zu bytes\n", size);
         free(arena);
         return NULL;
     }
@@ -90,7 +90,7 @@ void* kryon_arena_alloc(KryonArena* arena, size_t size, size_t alignment) {
     size_t aligned_used = (arena->used + alignment - 1) & ~(alignment - 1);
     
     if (aligned_used + size > arena->size) {
-        fprintf(stderr, "Kryon Arena: Out of memory (requested %zu bytes, %zu available)\n", 
+        fprint(2, "Kryon Arena: Out of memory (requested %zu bytes, %zu available)\n", 
                 size, arena->size - aligned_used);
         return NULL;
     }
@@ -146,7 +146,7 @@ void* kryon_arena_alloc_array(KryonArena* arena, size_t count,
     
     // Check for overflow
     if (count > SIZE_MAX / element_size) {
-        fprintf(stderr, "Kryon Arena: Array allocation overflow\n");
+        fprint(2, "Kryon Arena: Array allocation overflow\n");
         return NULL;
     }
     

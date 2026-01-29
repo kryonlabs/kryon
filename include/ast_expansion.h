@@ -7,8 +7,6 @@
  *
  * Expansions performed:
  * - Component instances → Inline expansion with parameter substitution
- * - @const_for loops → Unrolled iterations
- * - @const_if directives → Evaluated branches
  * - Component inheritance → Resolved parent-child merging
  * - @include directives → File content inlining
  *
@@ -42,8 +40,6 @@ typedef struct KryonExpansionContext KryonExpansionContext;
  */
 typedef struct {
     bool expand_components;         // Expand component instances
-    bool expand_const_for;          // Unroll @const_for loops
-    bool expand_const_if;           // Evaluate @const_if directives
     bool expand_includes;           // Process @include directives
     bool resolve_inheritance;       // Resolve component inheritance
     bool preserve_definitions;      // Keep component definitions in output
@@ -51,7 +47,6 @@ typedef struct {
     bool validate_before_expand;    // Validate AST before expansion
     bool validate_after_expand;     // Validate AST after expansion
     size_t max_expansion_depth;     // Maximum recursion depth (default: 32)
-    size_t max_const_for_iterations; // Maximum @const_for iterations (default: 1000)
 } KryonExpansionConfig;
 
 // =============================================================================
@@ -63,12 +58,10 @@ typedef struct {
  */
 typedef struct {
     size_t components_expanded;      // Number of component instances expanded
-    size_t const_for_unrolled;       // Number of @const_for loops unrolled
-    size_t const_if_evaluated;       // Number of @const_if directives evaluated
     size_t includes_processed;       // Number of @include directives processed
     size_t inheritance_resolved;     // Number of component inheritances resolved
     size_t nodes_created;            // Total new nodes created during expansion
-    size_t nodes_removed;            // Nodes removed (e.g., false @const_if branches)
+    size_t nodes_removed;            // Nodes removed during expansion
     double expansion_time;           // Time spent expanding (seconds)
 } KryonExpansionStats;
 
@@ -171,36 +164,6 @@ KryonASTNode *kryon_expansion_resolve_inheritance(const KryonASTNode *component_
 KryonASTNode *kryon_expansion_expand_component(KryonExpansionContext *context,
                                                const KryonASTNode *component_element,
                                                const KryonASTNode *ast_root);
-
-/**
- * @brief Expand @const_for loop
- * @param context Expansion context
- * @param const_for_node @const_for loop node
- * @param ast_root Root AST node (for constant lookup)
- * @param out_elements Output array for expanded elements
- * @param out_count Output for element count
- * @return true on success, false on error
- */
-bool kryon_expansion_expand_const_for(KryonExpansionContext *context,
-                                      const KryonASTNode *const_for_node,
-                                      const KryonASTNode *ast_root,
-                                      KryonASTNode ***out_elements,
-                                      size_t *out_count);
-
-/**
- * @brief Evaluate @const_if directive
- * @param context Expansion context
- * @param const_if_node @const_if node
- * @param ast_root Root AST node (for constant lookup)
- * @param out_elements Output array for selected branch elements
- * @param out_count Output for element count
- * @return true on success, false on error
- */
-bool kryon_expansion_expand_const_if(KryonExpansionContext *context,
-                                     const KryonASTNode *const_if_node,
-                                     const KryonASTNode *ast_root,
-                                     KryonASTNode ***out_elements,
-                                     size_t *out_count);
 
 // =============================================================================
 // CONFIGURATION HELPERS

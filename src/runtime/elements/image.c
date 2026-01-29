@@ -1,4 +1,5 @@
 /**
+
  * @file image.c
  * @brief Implementation of the Image element.
  *
@@ -8,13 +9,13 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
 #include "element_mixins.h"
-#include <stdio.h>
-#include <string.h>
 
 // Forward declarations for the VTable functions
 static void image_render(KryonRuntime* runtime, KryonElement* element, KryonRenderCommand* commands, size_t* command_count, size_t max_commands);

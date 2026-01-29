@@ -11,13 +11,10 @@
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.
  */
+#include "lib9.h"
 
- #include "kryon_mappings.h"
- #include <string.h>
- #include <stddef.h>
- #include <stdlib.h>
- #include <stdio.h>
- #include <time.h>
+
+#include "kryon_mappings.h"
  
  //==============================================================================
  // PROPERTY CATEGORIES (Hierarchical Organization)
@@ -565,13 +562,13 @@ bool kryon_is_property_inheritable(uint16_t property_hex) {
 //==============================================================================
  
  void kryon_mappings_test(void) {
-     printf("🔍 KRYON MAPPINGS TEST (Refactored System)\n");
-     printf("===========================================\n");
+     print("🔍 KRYON MAPPINGS TEST (Refactored System)\n");
+     print("===========================================\n");
  
      // Test hash lookups with various properties
      const char* test_properties[] = {"width", "height", "backgroundColor", "bg", "text", "value", "onClick", "onTap"};
  
-     printf("📊 Property Hash Lookup Test:\n");
+     print("📊 Property Hash Lookup Test:\n");
      for (size_t i = 0; i < sizeof(test_properties) / sizeof(test_properties[0]); i++) {
          const char* prop_name = test_properties[i];
          uint16_t hex = kryon_get_property_hex(prop_name);
@@ -579,38 +576,38 @@ bool kryon_is_property_inheritable(uint16_t property_hex) {
          const char* name_type = is_alias ? "alias" : "canonical";
  
          if (hex != 0) {
-             printf("  ✅ %-15s → 0x%04X (%s)\n", prop_name, hex, name_type);
+             print("  ✅ %-15s → 0x%04X (%s)\n", prop_name, hex, name_type);
          } else {
-             printf("  ❌ %-15s → NOT FOUND\n", prop_name);
+             print("  ❌ %-15s → NOT FOUND\n", prop_name);
          }
      }
  
      // Debug: Show hash table statistics
-     printf("\n🔧 Hash Table Statistics:\n");
-     printf("  Hash table size: %u\n", property_hash_table.size);
-     printf("  Entries used: %u\n", property_hash_table.count);
-     printf("  Load factor: %.2f%%\n", (float)property_hash_table.count / property_hash_table.size * 100);
+     print("\n🔧 Hash Table Statistics:\n");
+     print("  Hash table size: %u\n", property_hash_table.size);
+     print("  Entries used: %u\n", property_hash_table.count);
+     print("  Load factor: %.2f%%\n", (float)property_hash_table.count / property_hash_table.size * 100);
  
      // Test data-driven validation
-     printf("\n🛡️ Data-Driven Validation Test:\n");
+     print("\n🛡️ Data-Driven Validation Test:\n");
      
      // Test Text (0x0400)
      bool text_allows_fontSize = kryon_is_valid_property_for_element(0x0400, 0x0300); // Typography
      bool text_rejects_onClick = !kryon_is_valid_property_for_element(0x0400, 0x0510); // Interactive
-     printf("  Text allows 'fontSize': %s\n", text_allows_fontSize ? "✅ PASSED" : "❌ FAILED");
-     printf("  Text rejects 'onClick': %s\n", text_rejects_onClick ? "✅ PASSED" : "❌ FAILED");
+     print("  Text allows 'fontSize': %s\n", text_allows_fontSize ? "✅ PASSED" : "❌ FAILED");
+     print("  Text rejects 'onClick': %s\n", text_rejects_onClick ? "✅ PASSED" : "❌ FAILED");
      
      // Test Button (0x0401)
      bool btn_allows_onClick = kryon_is_valid_property_for_element(0x0401, 0x0510); // Interactive
      bool btn_rejects_checked = !kryon_is_valid_property_for_element(0x0401, 0x0801); // Checkbox
-     printf("  Button allows 'onClick': %s\n", btn_allows_onClick ? "✅ PASSED" : "❌ FAILED");
-     printf("  Button rejects 'checked': %s\n", btn_rejects_checked ? "✅ PASSED" : "❌ FAILED");
+     print("  Button allows 'onClick': %s\n", btn_allows_onClick ? "✅ PASSED" : "❌ FAILED");
+     print("  Button rejects 'checked': %s\n", btn_rejects_checked ? "✅ PASSED" : "❌ FAILED");
      
      // Test Checkbox (0x0404)
      bool check_allows_checked = kryon_is_valid_property_for_element(0x0404, 0x0801); // Checkbox
      bool check_allows_onClick = kryon_is_valid_property_for_element(0x0404, 0x0510); // Interactive
-     printf("  Checkbox allows 'checked': %s\n", check_allows_checked ? "✅ PASSED" : "❌ FAILED");
-     printf("  Checkbox allows 'onClick': %s\n", check_allows_onClick ? "✅ PASSED" : "❌ FAILED");
+     print("  Checkbox allows 'checked': %s\n", check_allows_checked ? "✅ PASSED" : "❌ FAILED");
+     print("  Checkbox allows 'onClick': %s\n", check_allows_onClick ? "✅ PASSED" : "❌ FAILED");
  
-     printf("\n✅ Test completed successfully.\n");
+     print("\n✅ Test completed successfully.\n");
  }

@@ -1,4 +1,5 @@
 /**
+
  * @file diagnostics.c
  * @brief Kryon Compiler Diagnostics System
  * 
@@ -6,12 +7,11 @@
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted.
  */
+#include "lib9.h"
+
 
 #include "diagnostics.h"
 #include "memory.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdarg.h>
 #include <time.h>
 

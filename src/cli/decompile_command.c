@@ -1,15 +1,15 @@
 /**
+
  * @file decompile_command.c
  * @brief KRB Decompiler CLI Command
  */
+#include "lib9.h"
+
 
 #include "krb_decompiler.h"
 #include "kir_format.h"
 #include "error.h"
 #include "memory.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
 #include <getopt.h>
 
@@ -28,7 +28,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
 
     // Initialize error system
     if (kryon_error_init() != KRYON_SUCCESS) {
-        fprintf(stderr, "Fatal: Could not initialize error system.\n");
+        fprint(2, "Fatal: Could not initialize error system.\n");
         return KRYON_ERROR_PLATFORM_ERROR;
     }
 
@@ -50,11 +50,11 @@ KryonResult decompile_command(int argc, char *argv[]) {
                 verbose = true;
                 break;
             case 'h':
-                printf("Usage: kryon decompile <input.krb> [options]\n");
-                printf("Options:\n");
-                printf("  -o, --output <file>  Output .kir file path (default: input.kir)\n");
-                printf("  -v, --verbose        Enable verbose output\n");
-                printf("  -h, --help           Show this help message\n");
+                print("Usage: kryon decompile <input.krb> [options]\n");
+                print("Options:\n");
+                print("  -o, --output <file>  Output .kir file path (default: input.kir)\n");
+                print("  -v, --verbose        Enable verbose output\n");
+                print("  -h, --help           Show this help message\n");
                 return KRYON_SUCCESS;
             default:
                 return KRYON_ERROR_INVALID_ARGUMENT;
@@ -63,8 +63,8 @@ KryonResult decompile_command(int argc, char *argv[]) {
 
     // Get input file
     if (optind >= argc) {
-        fprintf(stderr, "Error: No input file specified\n");
-        fprintf(stderr, "Usage: kryon decompile <input.krb> [-o output.kir]\n");
+        fprint(2, "Error: No input file specified\n");
+        fprint(2, "Usage: kryon decompile <input.krb> [-o output.kir]\n");
         return KRYON_ERROR_INVALID_ARGUMENT;
     }
 
@@ -78,7 +78,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
         if (len > 4 && strcmp(input_file + len - 4, ".krb") == 0) {
             auto_output_file = malloc(len + 1);
             if (!auto_output_file) {
-                fprintf(stderr, "Error: Memory allocation failed\n");
+                fprint(2, "Error: Memory allocation failed\n");
                 return KRYON_ERROR_OUT_OF_MEMORY;
             }
             strcpy(auto_output_file, input_file);
@@ -88,7 +88,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
             // Just append .kir
             auto_output_file = malloc(len + 5);
             if (!auto_output_file) {
-                fprintf(stderr, "Error: Memory allocation failed\n");
+                fprint(2, "Error: Memory allocation failed\n");
                 return KRYON_ERROR_OUT_OF_MEMORY;
             }
             sprintf(auto_output_file, "%s.kir", input_file);
@@ -108,7 +108,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
 
     KryonKrbDecompiler *decompiler = kryon_decompiler_create(&config);
     if (!decompiler) {
-        fprintf(stderr, "Error: Failed to create decompiler\n");
+        fprint(2, "Error: Failed to create decompiler\n");
         result = KRYON_ERROR_COMPILATION_FAILED;
         goto cleanup;
     }
@@ -118,9 +118,9 @@ KryonResult decompile_command(int argc, char *argv[]) {
     if (!kryon_decompile_file(decompiler, input_file, &ast)) {
         size_t error_count;
         const char **errors = kryon_decompiler_get_errors(decompiler, &error_count);
-        fprintf(stderr, "Error: Decompilation failed:\n");
+        fprint(2, "Error: Decompilation failed:\n");
         for (size_t i = 0; i < error_count; i++) {
-            fprintf(stderr, "  %s\n", errors[i]);
+            fprint(2, "  %s\n", errors[i]);
         }
         result = KRYON_ERROR_COMPILATION_FAILED;
         goto cleanup_decompiler;
@@ -144,7 +144,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
 
     KryonKIRWriter *kir_writer = kryon_kir_writer_create(&kir_config);
     if (!kir_writer) {
-        fprintf(stderr, "Error: Failed to create KIR writer\n");
+        fprint(2, "Error: Failed to create KIR writer\n");
         result = KRYON_ERROR_COMPILATION_FAILED;
         goto cleanup_ast;
     }
@@ -153,9 +153,9 @@ KryonResult decompile_command(int argc, char *argv[]) {
     if (!kryon_kir_write_file(kir_writer, ast, output_file)) {
         size_t kir_error_count;
         const char **kir_errors = kryon_kir_writer_get_errors(kir_writer, &kir_error_count);
-        fprintf(stderr, "Error: Failed to write KIR file:\n");
+        fprint(2, "Error: Failed to write KIR file:\n");
         for (size_t i = 0; i < kir_error_count; i++) {
-            fprintf(stderr, "  %s\n", kir_errors[i]);
+            fprint(2, "  %s\n", kir_errors[i]);
         }
         result = KRYON_ERROR_FILE_WRITE_ERROR;
         kryon_kir_writer_destroy(kir_writer);
@@ -164,7 +164,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
 
     kryon_kir_writer_destroy(kir_writer);
 
-    printf("Decompilation successful: %s\n", output_file);
+    print("Decompilation successful: %s\n", output_file);
 
 cleanup_ast:
     // Note: AST cleanup would go here if we had a destroy function

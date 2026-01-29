@@ -1,11 +1,9 @@
 /**
-
  * @file main.c
  * @brief Kryon CLI Main Entry Point
  */
-#include "lib9.h"
 
-
+#include <lib9.h>
  
  #define KRYON_VERSION "alpha"
  
@@ -82,33 +80,32 @@
          exits(nil);
      }
  
-    int result;
-    if (strcmp(command, "compile") == 0) {
-        result = compile_command(argc - 1, argv + 1);
-   } else if (strcmp(command, "decompile") == 0) {
-       result = decompile_command(argc - 1, argv + 1);
-   } else if (strcmp(command, "print") == 0) {
-       result = print_command(argc - 1, argv + 1);
-   } else if (strcmp(command, "kir-dump") == 0) {
-       result = kir_dump_command(argc - 1, argv + 1);
-   } else if (strcmp(command, "kir-validate") == 0) {
-       result = kir_validate_command(argc - 1, argv + 1);
-   } else if (strcmp(command, "kir-stats") == 0) {
-       result = kir_stats_command(argc - 1, argv + 1);
-   } else if (strcmp(command, "kir-diff") == 0) {
-       result = kir_diff_command(argc - 1, argv + 1);
-    } else if (strcmp(command, "run") == 0) {
-        result = run_command(argc - 1, argv + 1);
-    } else if (strcmp(command, "dev") == 0) {
-        result = dev_command(argc - 1, argv + 1);
-    } else if (strcmp(command, "debug") == 0) {
-        result = debug_command(argc - 1, argv + 1);
-    } else if (strcmp(command, "package") == 0) {
-        result = package_command(argc - 1, argv + 1);
-    } else {
-        fprint(2, "Unknown command: %s\n", command);
-        print_usage(argv[0]);
-        exits("unknown command");
-    }
-    exits(result == 0 ? nil : "command failed");
-}
+     if (strcmp(command, "compile") == 0) {
+         compile_command; exits(argc - 1, argv + 1);
+    } else if (strcmp(command, "decompile") == 0) {
+        decompile_command; exits(argc - 1, argv + 1);
+    } else if (strcmp(command, "print") == 0) {
+        print_command; exits(argc - 1, argv + 1);
+    } else if (strcmp(command, "kir-dump") == 0) {
+        kir_dump_command; exits(argc - 1, argv + 1);
+    } else if (strcmp(command, "kir-validate") == 0) {
+        kir_validate_command; exits(argc - 1, argv + 1);
+    } else if (strcmp(command, "kir-stats") == 0) {
+        kir_stats_command; exits(argc - 1, argv + 1);
+    } else if (strcmp(command, "kir-diff") == 0) {
+        kir_diff_command; exits(argc - 1, argv + 1);
+     } else if (strcmp(command, "run") == 0) {
+         run_command; exits(argc - 1, argv + 1);
+     } else if (strcmp(command, "dev") == 0) {
+         dev_command; exits(argc - 1, argv + 1);
+     } else if (strcmp(command, "debug") == 0) {
+         debug_command; exits(argc - 1, argv + 1);
+     } else if (strcmp(command, "package") == 0) {
+         package_command; exits(argc - 1, argv + 1);
+     } else {
+         fprint(2, "Unknown command: %s\n", command);
+         print_usage(argv[0]);
+         exits("error");
+     }
+ }
+ 

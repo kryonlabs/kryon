@@ -1,14 +1,15 @@
 /**
+
  * @file krb_writer.c
  * @brief KRB File Writer Implementation
  */
+#include "lib9.h"
+
 
 #include "krb_format.h"
 #include "memory.h"
 #include "error.h"
 #include "binary_io.h"
-#include <string.h>
-#include <stdlib.h>
 
 // =============================================================================
 // WRITER CREATION AND DESTRUCTION
@@ -139,7 +140,7 @@ static bool write_bytes(KryonKrbWriter *writer, const void *data, size_t size) {
     if (writer->file) {
         size_t written = fwrite(data, 1, size, writer->file);
         if (written != size) {
-            snprintf(writer->error_message, sizeof(writer->error_message),
+            snprint(writer->error_message, sizeof(writer->error_message),
                     "Failed to write %zu bytes to file", size);
             return false;
         }
@@ -282,7 +283,7 @@ static bool write_string(KryonKrbWriter *writer, const char *str) {
     
     size_t length = strlen(str);
     if (length > KRYON_KRB_MAX_STRING_LENGTH) {
-        snprintf(writer->error_message, sizeof(writer->error_message),
+        snprint(writer->error_message, sizeof(writer->error_message),
                 "String too long: %zu characters (maximum: %u)", 
                 length, KRYON_KRB_MAX_STRING_LENGTH);
         return false;
@@ -374,7 +375,7 @@ static bool write_property_value(KryonKrbWriter *writer, const KryonKrbProperty 
             return write_uint32(writer, property->value.reference_id);
         
         default:
-            snprintf(writer->error_message, sizeof(writer->error_message),
+            snprint(writer->error_message, sizeof(writer->error_message),
                     "Unsupported property type: %d", property->type);
             return false;
     }

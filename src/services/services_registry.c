@@ -1,4 +1,5 @@
 /**
+
  * @file services_registry.c
  * @brief Platform Services Registry Implementation
  *
@@ -8,10 +9,10 @@
  * @version 1.0.0
  * @author Kryon Labs
  */
+#include "lib9.h"
+
 
 #include "platform_services.h"
-#include <stdio.h>
-#include <string.h>
 
 // =============================================================================
 // GLOBAL STATE
@@ -63,18 +64,18 @@ const char* kryon_service_type_name(KryonServiceType service) {
  */
 bool kryon_services_register(KryonPlatformServices *services) {
     if (!services) {
-        fprintf(stderr, "kryon_services_register: NULL services pointer\n");
+        fprint(2, "kryon_services_register: NULL services pointer\n");
         return false;
     }
 
     if (!services->name) {
-        fprintf(stderr, "kryon_services_register: Plugin has no name\n");
+        fprint(2, "kryon_services_register: Plugin has no name\n");
         return false;
     }
 
     // Check if plugin already registered
     if (g_active_plugin) {
-        fprintf(stderr, "kryon_services_register: Plugin '%s' already registered, "
+        fprint(2, "kryon_services_register: Plugin '%s' already registered, "
                         "ignoring '%s'\n",
                 g_active_plugin->name, services->name);
         return false;
@@ -86,14 +87,14 @@ bool kryon_services_register(KryonPlatformServices *services) {
     // Initialize if services system is already initialized
     if (g_services_initialized && services->init) {
         if (!services->init(NULL)) {
-            fprintf(stderr, "kryon_services_register: Failed to initialize '%s' plugin\n",
+            fprint(2, "kryon_services_register: Failed to initialize '%s' plugin\n",
                     services->name);
             g_active_plugin = NULL;
             return false;
         }
     }
 
-    printf("[Kryon Services] Registered plugin: %s v%s\n",
+    print("[Kryon Services] Registered plugin: %s v%s\n",
            services->name,
            services->version ? services->version : "unknown");
 
@@ -158,13 +159,13 @@ bool kryon_services_init(void) {
     // Initialize active plugin if present
     if (g_active_plugin && g_active_plugin->init) {
         if (!g_active_plugin->init(NULL)) {
-            fprintf(stderr, "[Kryon Services] Failed to initialize plugin: %s\n",
+            fprint(2, "[Kryon Services] Failed to initialize plugin: %s\n",
                     g_active_plugin->name);
             return false;
         }
-        printf("[Kryon Services] Initialized plugin: %s\n", g_active_plugin->name);
+        print("[Kryon Services] Initialized plugin: %s\n", g_active_plugin->name);
     } else if (!g_active_plugin) {
-        printf("[Kryon Services] No plugin registered, services unavailable\n");
+        print("[Kryon Services] No plugin registered, services unavailable\n");
     }
 
     return true;
@@ -181,7 +182,7 @@ void kryon_services_shutdown(void) {
     // Shutdown active plugin
     if (g_active_plugin && g_active_plugin->shutdown) {
         g_active_plugin->shutdown();
-        printf("[Kryon Services] Shutdown plugin: %s\n", g_active_plugin->name);
+        print("[Kryon Services] Shutdown plugin: %s\n", g_active_plugin->name);
     }
 
     g_services_initialized = false;

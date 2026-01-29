@@ -1,4 +1,5 @@
 /**
+
  * @file namespace.c
  * @brief Inferno Namespace Service Implementation
  *
@@ -11,16 +12,14 @@
  * @version 1.0.0
  * @author Kryon Labs
  */
+#include "lib9.h"
+
 
 #ifdef KRYON_PLUGIN_INFERNO
 
 #include "services/namespace.h"
 #include "inferno_compat.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
-#include <unistd.h>
 
 // =============================================================================
 // FILE SERVER
@@ -170,8 +169,8 @@ static bool inferno_serve(KryonFileServer *server, const char *srv_path) {
 
     // TODO: Implement 9P server using file2chan or similar
     // For now, this is a stub that indicates the interface exists
-    fprintf(stderr, "[Kryon Namespace] 9P server serving not yet fully implemented\n");
-    fprintf(stderr, "[Kryon Namespace] Would serve '%s' at '%s'\n",
+    fprint(2, "[Kryon Namespace] 9P server serving not yet fully implemented\n");
+    fprint(2, "[Kryon Namespace] Would serve '%s' at '%s'\n",
             server->name, srv_path);
 
     return false; // Not yet implemented

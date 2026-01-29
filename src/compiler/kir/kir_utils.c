@@ -1,13 +1,13 @@
 /**
+
  * @file kir_utils.c
  * @brief KIR Utility Functions
  */
+#include "lib9.h"
+
 
 #include "kir_format.h"
-#include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <sys/stat.h>
 #include <libgen.h>
 
@@ -84,14 +84,14 @@ char *kryon_cache_get_output_path(const char *source_path,
         free(name_copy);
         return NULL;
     }
-    snprintf(cache_dir, cache_dir_len, "%s/.kryon_cache", dir);
+    snprint(cache_dir, cache_dir_len, "%s/.kryon_cache", dir);
 
     // Create directory if requested
     if (create_dir) {
         struct stat st = {0};
         if (stat(cache_dir, &st) == -1) {
             if (mkdir(cache_dir, 0755) != 0) {
-                fprintf(stderr, "Warning: Failed to create .kryon_cache directory: %s\n", cache_dir);
+                fprint(2, "Warning: Failed to create .kryon_cache directory: %s\n", cache_dir);
                 free(path_copy);
                 free(name_copy);
                 free(cache_dir);
@@ -109,7 +109,7 @@ char *kryon_cache_get_output_path(const char *source_path,
         free(cache_dir);
         return NULL;
     }
-    snprintf(output_path, output_len, "%s/%s%s", cache_dir, name_copy, extension);
+    snprint(output_path, output_len, "%s/%s%s", cache_dir, name_copy, extension);
 
     free(path_copy);
     free(name_copy);

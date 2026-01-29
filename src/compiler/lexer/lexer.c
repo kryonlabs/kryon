@@ -6,8 +6,6 @@
 #include "lexer.h"
 #include "memory.h"
 #include "error.h"
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
 #include <time.h>
 #include <math.h>
@@ -55,7 +53,6 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_RIGHT_BRACKET] = "RIGHT_BRACKET",
     [KRYON_TOKEN_LEFT_PAREN] = "LEFT_PAREN",
     [KRYON_TOKEN_RIGHT_PAREN] = "RIGHT_PAREN",
-    [KRYON_TOKEN_AT] = "AT",
     [KRYON_TOKEN_HASH] = "HASH",
     [KRYON_TOKEN_DOLLAR] = "DOLLAR",
     [KRYON_TOKEN_STYLE_KEYWORD] = "STYLE_KEYWORD",
@@ -805,14 +802,7 @@ static bool scan_token(KryonLexer *lexer) {
         case ':':
             add_token(lexer, KRYON_TOKEN_COLON);
             break;
-            
-        // '@' prefix - Required for compile-time and lifecycle directives only
-        // Valid: @const_if, @const_for, @on_mount, @on_unmount, @onload
-        // Invalid: @if, @for (use bare if/for for runtime control flow)
-        case '@':
-            add_token(lexer, KRYON_TOKEN_AT);
-            break;
-            
+
         // $ variable or theme variable
         case '$':
             if (is_alpha(peek(lexer))) {
@@ -1128,10 +1118,10 @@ size_t kryon_source_location_format(const KryonSourceLocation *location,
     if (!location || !buffer || buffer_size == 0) return 0;
     
     if (location->filename) {
-        return snprintf(buffer, buffer_size, "%s:%u:%u", 
+        return snprint(buffer, buffer_size, "%s:%u:%u", 
                        location->filename, location->line, location->column);
     } else {
-        return snprintf(buffer, buffer_size, "%u:%u", 
+        return snprint(buffer, buffer_size, "%u:%u", 
                        location->line, location->column);
     }
 }

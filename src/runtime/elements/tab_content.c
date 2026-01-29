@@ -1,4 +1,5 @@
 /**
+
  * @file tab_content.c
  * @brief Implementation of the TabContent element.
  *
@@ -8,15 +9,14 @@
  *
  * 0BSD License
  */
+#include "lib9.h"
+
 
 #include "elements.h"
 #include "runtime.h"
 #include "memory.h"
 #include "color_utils.h"
 #include "element_mixins.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <math.h>
 
 // Forward declarations for TabGroup integration

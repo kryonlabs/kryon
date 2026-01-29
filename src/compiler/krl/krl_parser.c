@@ -1,15 +1,15 @@
 /**
+
  * @file krl_parser.c
  * @brief KRL S-expression Parser Implementation
  *
  * Parses S-expressions from tokenized input.
  */
+#include "lib9.h"
+
 
 #include "krl_parser.h"
 #include "memory.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -120,17 +120,17 @@ static void parser_error_at(KRLParser *parser, KRLToken *token, const char *mess
     parser->panic_mode = true;
     parser->had_error = true;
 
-    fprintf(stderr, "[%s:%d:%d] Error", parser->lexer.filename, token->line, token->column);
+    fprint(2, "[%s:%d:%d] Error", parser->lexer.filename, token->line, token->column);
 
     if (token->type == KRL_TOKEN_EOF) {
-        fprintf(stderr, " at end");
+        fprint(2, " at end");
     } else if (token->type == KRL_TOKEN_ERROR) {
         // Nothing
     } else {
-        fprintf(stderr, " at '%.*s'", (int)token->length, token->start);
+        fprint(2, " at '%.*s'", (int)token->length, token->start);
     }
 
-    fprintf(stderr, ": %s\n", message);
+    fprint(2, ": %s\n", message);
 }
 
 static void parser_error(KRLParser *parser, const char *message) {

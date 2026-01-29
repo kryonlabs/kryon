@@ -1,27 +1,27 @@
 /**
+
  * @file string_table.c
  * @brief String table management for KRB format
  * 
  * Handles string deduplication, storage, and serialization for the KRB binary format.
  * Provides efficient string table operations for the code generator.
  */
+#include "lib9.h"
+
 
 #include "codegen.h"
 #include "binary_io.h"
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
 
 bool kryon_write_string_table(KryonCodeGenerator *codegen) {
     if (!codegen) return false;
     
-    printf("DEBUG: Writing string table with %zu strings (capacity=%zu):\n", codegen->string_count, codegen->string_capacity);
+    print("DEBUG: Writing string table with %zu strings (capacity=%zu):\n", codegen->string_count, codegen->string_capacity);
     for (size_t i = 0; i < codegen->string_count && i < 10; i++) {
-        printf("  [%zu] '%s'\n", i, codegen->string_table[i] ? codegen->string_table[i] : "(null)");
+        print("  [%zu] '%s'\n", i, codegen->string_table[i] ? codegen->string_table[i] : "(null)");
     }
     if (codegen->string_count > 10) {
-        printf("  ... (%zu more strings)\n", codegen->string_count - 10);
+        print("  ... (%zu more strings)\n", codegen->string_count - 10);
     }
     
     // Write actual string count
@@ -82,6 +82,6 @@ uint32_t add_string_to_table(KryonCodeGenerator *codegen, const char *str) {
     }
     
     uint32_t index = (uint32_t)(codegen->string_count++); // 0-based index
-    printf("DEBUG: Added string [%u]: '%s'\n", index, str);
+    print("DEBUG: Added string [%u]: '%s'\n", index, str);
     return index; // Return 0-based index
 }

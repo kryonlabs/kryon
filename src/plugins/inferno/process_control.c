@@ -1,4 +1,5 @@
 /**
+
  * @file process_control.c
  * @brief Inferno Process Control Service Implementation
  *
@@ -11,16 +12,14 @@
  * @version 1.0.0
  * @author Kryon Labs
  */
+#include "lib9.h"
+
 
 #ifdef KRYON_PLUGIN_INFERNO
 
 #include "services/process_control.h"
 #include "inferno_compat.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
-#include <unistd.h>
 
 // =============================================================================
 // PROCESS CONTROL HANDLE
@@ -68,7 +67,7 @@ static KryonProcessState parse_process_state(const char *state_str) {
  */
 static bool read_proc_status_file(int pid, KryonProcessInfo *info) {
     char path[64];
-    snprintf(path, sizeof(path), "/prog/%d/status", pid);
+    snprint(path, sizeof(path), "/prog/%d/status", pid);
 
     int fd = inferno_open(path, OREAD);
     if (fd < 0) {
@@ -245,7 +244,7 @@ static bool inferno_send_signal(int pid, const char *signal) {
 
     // Open control file
     char path[64];
-    snprintf(path, sizeof(path), "/prog/%d/ctl", pid);
+    snprint(path, sizeof(path), "/prog/%d/ctl", pid);
 
     int fd = inferno_open(path, OWRITE);
     if (fd < 0) {
@@ -269,7 +268,7 @@ static KryonProcessControl* inferno_open_proc_control(int pid) {
 
     // Open control file
     char path[64];
-    snprintf(path, sizeof(path), "/prog/%d/ctl", pid);
+    snprint(path, sizeof(path), "/prog/%d/ctl", pid);
 
     int fd = inferno_open(path, OWRITE);
     if (fd < 0) {
@@ -325,7 +324,7 @@ static char* inferno_read_status(int pid) {
     }
 
     char path[64];
-    snprintf(path, sizeof(path), "/prog/%d/status", pid);
+    snprint(path, sizeof(path), "/prog/%d/status", pid);
 
     int fd = inferno_open(path, OREAD);
     if (fd < 0) {
@@ -370,7 +369,7 @@ static bool inferno_wait_for_exit(int pid, int *exit_status, int timeout_ms) {
 
     // Open wait file
     char path[64];
-    snprintf(path, sizeof(path), "/prog/%d/wait", pid);
+    snprint(path, sizeof(path), "/prog/%d/wait", pid);
 
     int fd = inferno_open(path, OREAD);
     if (fd < 0) {

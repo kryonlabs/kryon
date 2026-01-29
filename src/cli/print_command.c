@@ -1,14 +1,14 @@
 /**
+
  * @file print_command.c
  * @brief KIR Printer CLI Command - Convert KIR to readable .kry source
  */
+#include "lib9.h"
+
 
 #include "kir_printer.h"
 #include "error.h"
 #include "memory.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
 #include <getopt.h>
 
@@ -29,7 +29,7 @@ KryonResult print_command(int argc, char *argv[]) {
 
     // Initialize error system
     if (kryon_error_init() != KRYON_SUCCESS) {
-        fprintf(stderr, "Fatal: Could not initialize error system.\n");
+        fprint(2, "Fatal: Could not initialize error system.\n");
         return KRYON_ERROR_PLATFORM_ERROR;
     }
 
@@ -59,13 +59,13 @@ KryonResult print_command(int argc, char *argv[]) {
                 readable = true;
                 break;
             case 'h':
-                printf("Usage: kryon print <input.kir> [options]\n");
-                printf("Options:\n");
-                printf("  -o, --output <file>  Output .kry file path (default: input.kry)\n");
-                printf("  -c, --compact        Use compact formatting (minimal whitespace)\n");
-                printf("  -r, --readable       Use readable formatting (generous whitespace)\n");
-                printf("  -v, --verbose        Enable verbose output\n");
-                printf("  -h, --help           Show this help message\n");
+                print("Usage: kryon print <input.kir> [options]\n");
+                print("Options:\n");
+                print("  -o, --output <file>  Output .kry file path (default: input.kry)\n");
+                print("  -c, --compact        Use compact formatting (minimal whitespace)\n");
+                print("  -r, --readable       Use readable formatting (generous whitespace)\n");
+                print("  -v, --verbose        Enable verbose output\n");
+                print("  -h, --help           Show this help message\n");
                 return KRYON_SUCCESS;
             default:
                 return KRYON_ERROR_INVALID_ARGUMENT;
@@ -74,8 +74,8 @@ KryonResult print_command(int argc, char *argv[]) {
 
     // Get input file
     if (optind >= argc) {
-        fprintf(stderr, "Error: No input file specified\n");
-        fprintf(stderr, "Usage: kryon print <input.kir> [-o output.kry]\n");
+        fprint(2, "Error: No input file specified\n");
+        fprint(2, "Usage: kryon print <input.kir> [-o output.kry]\n");
         return KRYON_ERROR_INVALID_ARGUMENT;
     }
 
@@ -89,7 +89,7 @@ KryonResult print_command(int argc, char *argv[]) {
         if (len > 4 && strcmp(input_file + len - 4, ".kir") == 0) {
             auto_output_file = malloc(len + 1);
             if (!auto_output_file) {
-                fprintf(stderr, "Error: Memory allocation failed\n");
+                fprint(2, "Error: Memory allocation failed\n");
                 return KRYON_ERROR_OUT_OF_MEMORY;
             }
             strcpy(auto_output_file, input_file);
@@ -99,7 +99,7 @@ KryonResult print_command(int argc, char *argv[]) {
             // Just append .kry
             auto_output_file = malloc(len + 5);
             if (!auto_output_file) {
-                fprintf(stderr, "Error: Memory allocation failed\n");
+                fprint(2, "Error: Memory allocation failed\n");
                 return KRYON_ERROR_OUT_OF_MEMORY;
             }
             sprintf(auto_output_file, "%s.kry", input_file);
@@ -125,7 +125,7 @@ KryonResult print_command(int argc, char *argv[]) {
 
     KryonKIRPrinter *printer = kryon_printer_create(&config);
     if (!printer) {
-        fprintf(stderr, "Error: Failed to create printer\n");
+        fprint(2, "Error: Failed to create printer\n");
         result = KRYON_ERROR_COMPILATION_FAILED;
         goto cleanup;
     }
@@ -134,9 +134,9 @@ KryonResult print_command(int argc, char *argv[]) {
     if (!kryon_printer_kir_to_source(printer, input_file, output_file)) {
         size_t error_count;
         const char **errors = kryon_printer_get_errors(printer, &error_count);
-        fprintf(stderr, "Error: Printing failed:\n");
+        fprint(2, "Error: Printing failed:\n");
         for (size_t i = 0; i < error_count; i++) {
-            fprintf(stderr, "  %s\n", errors[i]);
+            fprint(2, "  %s\n", errors[i]);
         }
         result = KRYON_ERROR_COMPILATION_FAILED;
         goto cleanup_printer;
@@ -151,7 +151,7 @@ KryonResult print_command(int argc, char *argv[]) {
         KRYON_LOG_INFO("  Bytes: %zu", stats->total_bytes);
     }
 
-    printf("Source code generated: %s\n", output_file);
+    print("Source code generated: %s\n", output_file);
 
 cleanup_printer:
     kryon_printer_destroy(printer);

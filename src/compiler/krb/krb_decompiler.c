@@ -1,16 +1,16 @@
 /**
+
  * @file krb_decompiler.c
  * @brief KRB Decompiler Implementation
  */
+#include "lib9.h"
+
 
 #include "krb_decompiler.h"
 #include "krb_format.h"
 #include "../../shared/kryon_mappings.h"
 #include "memory.h"
 #include "error.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdarg.h>
 
 // =============================================================================
@@ -247,7 +247,7 @@ static KryonASTNode *decompile_element(KryonKrbDecompiler *decompiler,
     const char *element_type_name = kryon_get_element_name(krb_element->type);
     if (!element_type_name) {
         char hex_str[16];
-        snprintf(hex_str, sizeof(hex_str), "0x%04X", krb_element->type);
+        snprint(hex_str, sizeof(hex_str), "0x%04X", krb_element->type);
         element_type_name = hex_str;
     }
 
