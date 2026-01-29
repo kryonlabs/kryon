@@ -1,0 +1,66 @@
+metadata {
+    title = "Simple Grid Test"
+    description = "Simple Grid without loops"
+    version = "1.0.0"
+}
+
+App {
+    windowWidth = 600
+    windowHeight = 400
+    windowTitle = "Simple Grid Test"
+    backgroundColor = "#f0f0f0"
+
+    Column {
+        padding = 20
+        gap = 20
+
+        Text {
+            text = "Simple Grid Test"
+            fontSize = 24
+            fontWeight = "bold"
+            textAlign = "center"
+        }
+
+        Grid {
+            columns = 3
+            gap = 10
+            padding = 10
+
+            Container {
+                width = 100
+                height = 100
+                backgroundColor = "#FF5733"
+            }
+
+            Container {
+                width = 100
+                height = 100
+                backgroundColor = "#33FF57"
+            }
+
+            Container {
+                width = 100
+                height = 100
+                backgroundColor = "#3357FF"
+            }
+
+            Container {
+                width = 100
+                height = 100
+                backgroundColor = "#F333FF"
+            }
+
+            Container {
+                width = 100
+                height = 100
+                backgroundColor = "#FF33F3"
+            }
+
+            Container {
+                width = 100
+                height = 100
+                backgroundColor = "#33FFF3"
+            }
+        }
+    }
+}
