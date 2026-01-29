@@ -11,21 +11,8 @@ ROOT=..
 # Include TaijiOS configuration
 <$ROOT/mkconfig
 
-# CRITICAL: Force Linux/amd64 architecture
-# Override any incorrect settings from mkconfig or environment
-SYSHOST=Linux
-SYSTARG=Linux
-OBJTYPE=amd64
-OBJDIR=$SYSTARG/$OBJTYPE
-
-# Use Plan 9 AMD64 toolchain (6c/6l) for full Inferno integration
-O=6
-OS=v851ok0q2t6
-CC=6c
-LD=6l
-AS=6a
-AR=ar
-ARFLAGS=vu
+# DO NOT override SYSHOST/SYSTARG/OBJTYPE here!
+# Let mkconfig set them correctly to Linux/amd64
 
 TARG=kryon
 BIN=$ROOT/$OBJDIR/bin
@@ -110,12 +97,8 @@ OFILES=\
 	src/plugins/inferno/namespace.$O\
 	src/plugins/inferno/process_control.$O\
 
-# Set CFLAGS for Plan 9 AMD64 build (override any inherited 386 flags)
-CFLAGS=-wFVT \
-	-I$ROOT/Plan9/amd64/include \
-	-I$ROOT/Plan9/include \
-	-I$ROOT/include \
-	-Iinclude -Isrc -Ithird-party/cjson
+# Append Kryon's include paths (DON'T override CFLAGS completely)
+CFLAGS=$CFLAGS -Iinclude -Isrc -Ithird-party/cjson
 
 # Link with lib9 (Plan 9 API) and math library
 LIBS=9

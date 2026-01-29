@@ -2532,6 +2532,7 @@ static KryonASTNode *parse_if_directive(KryonParser *parser) {
     }
 
     // Initialize conditional structure
+    conditional->data.conditional.is_const = false;  /* Initialize to runtime if by default */
     conditional->data.conditional.condition = NULL;
     conditional->data.conditional.then_body = NULL;
     conditional->data.conditional.then_count = 0;

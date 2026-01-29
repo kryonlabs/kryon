@@ -293,6 +293,7 @@ struct KryonASTNode {
         } for_loop;
 
         struct {
+            bool is_const;                  /* True for const_if (compile-time), false for if (runtime) */
             KryonASTNode *condition; // Condition expression
             KryonASTNode **then_body; // Body for true condition
             size_t then_count;       // Number of then body elements
