@@ -73,12 +73,12 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
         element_type_name = element->data.element.element_type;
     }
     
-    print("DEBUG: write_element_instance - Element '%s' has hex 0x%04X\n", 
+    fprintf(stderr, "DEBUG: write_element_instance - Element '%s' has hex 0x%04X\n", 
            element_type_name, element_hex);
            
     if (kryon_element_in_range(element_hex, KRYON_ELEMENT_RANGE_CUSTOM_START, KRYON_ELEMENT_RANGE_CUSTOM_END)) {
         // This is a custom component - expand it (but not syntax elements)
-        print("🔧 Expanding custom component in write_element_instance: %s\n", element_type_name);
+        fprintf(stderr, "🔧 Expanding custom component in write_element_instance: %s\n", element_type_name);
         
         KryonASTNode *expanded = expand_component_instance(codegen, element, ast_root);
         if (expanded) {
@@ -86,7 +86,7 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
             // The expanded node IS the component body element (e.g., Row), so write it as a normal element
             return kryon_write_element_instance(codegen, expanded, ast_root);
         } else {
-            print("❌ Failed to expand component in write_element_instance: %s\n", element_type_name);
+            fprintf(stderr, "❌ Failed to expand component in write_element_instance: %s\n", element_type_name);
             return false;
         }
     }
@@ -115,7 +115,7 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
         .flags = 0  // No flags for now
     };
 
-    print("🏗️  Writing element header: id=%u type=0x%x props=%u children=%u\n",
+    fprintf(stderr, "🏗️  Writing element header: id=%u type=0x%x props=%u children=%u\n",
            instance_id, element_hex, header.property_count, header.child_count);
 
     // Write header using centralized schema validation
@@ -139,7 +139,7 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
         const char *var_name = element->data.for_loop.var_name;
         const char *array_name = element->data.for_loop.array_name;
 
-        print("🔍 DEBUG: Writing @for metadata: index='%s', var='%s', array='%s'\n",
+        fprintf(stderr, "🔍 DEBUG: Writing @for metadata: index='%s', var='%s', array='%s'\n",
                index_var_name ? index_var_name : "NULL",
                var_name ? var_name : "NULL",
                array_name ? array_name : "NULL");
@@ -158,7 +158,7 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
                 snprint(combined, buffer_len, "%s|%s", var_name, array_name);
             }
 
-            print("🔍 DEBUG: Combined string = '%s'\n", combined);
+            fprintf(stderr, "🔍 DEBUG: Combined string = '%s'\n", combined);
 
             // Write property header in native byte order (same as other properties)
             uint16_t prop_id = 0x9000;
@@ -172,7 +172,7 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
             write_binary_data(codegen, combined, str_len);
             kryon_free(combined);
         } else {
-            print("❌ DEBUG: var_name or array_name is NULL!\n");
+            fprintf(stderr, "❌ DEBUG: var_name or array_name is NULL!\n");
         }
     } else if (element->type == KRYON_AST_IF_DIRECTIVE) {
         // Write @if condition as property (hex 0x9100)
@@ -233,17 +233,17 @@ bool kryon_write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *e
     // Check if this is a custom component instance that needs expansion
     if (element->type == KRYON_AST_ELEMENT) {
         uint16_t element_hex = kryon_codegen_get_element_hex(element->data.element.element_type);
-        print("🔍 DEBUG: Element '%s' has hex 0x%04X\n", element->data.element.element_type, element_hex);
+        fprintf(stderr, "🔍 DEBUG: Element '%s' has hex 0x%04X\n", element->data.element.element_type, element_hex);
         if (element_hex >= 0x2000) {
             // This is a custom component - expand it
-            print("🔧 Expanding custom component in recursive call: %s\n", element->data.element.element_type);
+            fprintf(stderr, "🔧 Expanding custom component in recursive call: %s\n", element->data.element.element_type);
             KryonASTNode *expanded = expand_component_instance(codegen, element, ast_root);
             if (expanded) {
                 bool result = kryon_write_element_node(codegen, expanded, ast_root);
                 // TODO: Free expanded node memory
                 return result;
             } else {
-                print("❌ Failed to expand component in recursive call: %s\n", element->data.element.element_type);
+                fprintf(stderr, "❌ Failed to expand component in recursive call: %s\n", element->data.element.element_type);
                 return false;
             }
         }
@@ -252,14 +252,14 @@ bool kryon_write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *e
     // Get element type hex code for standard elements
     // Handle @for directives as templates, not elements
     if (element->type == KRYON_AST_FOR_DIRECTIVE) {
-        print("🔄 Skipping @for directive serialization for now\n");
+        fprintf(stderr, "🔄 Skipping @for directive serialization for now\n");
         // TODO: Implement proper @for template storage
         return true;
     }
 
     // Handle @if directives as conditional structures in component templates
     if (element->type == KRYON_AST_IF_DIRECTIVE) {
-        print("🔄 Writing @if directive in component definition\n");
+        fprintf(stderr, "🔄 Writing @if directive in component definition\n");
 
         // Get @if element hex
         uint16_t if_hex = kryon_get_syntax_hex("if");
@@ -273,11 +273,11 @@ bool kryon_write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *e
         // Write condition as serialized expression string
         char *condition_str = serialize_condition_expression(element->data.conditional.condition);
         if (!condition_str) {
-            print("ERROR: Failed to serialize @if condition in component definition\n");
+            fprintf(stderr, "ERROR: Failed to serialize @if condition in component definition\n");
             return false;
         }
 
-        print("DEBUG: Serialized @if condition: '%s'\n", condition_str);
+        fprintf(stderr, "DEBUG: Serialized @if condition: '%s'\n", condition_str);
 
         // Write condition as a property
         uint32_t condition_ref = add_string_to_table(codegen, condition_str);
@@ -321,7 +321,7 @@ bool kryon_write_element_node(KryonCodeGenerator *codegen, const KryonASTNode *e
             }
         }
 
-        print("✅ @if directive written to component definition\n");
+        fprintf(stderr, "✅ @if directive written to component definition\n");
         return true;
     }
     
@@ -406,16 +406,16 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
         // Only validate against known elements (custom elements are allowed all properties)
         if (element_hex != 0 && element_hex < 0x2000 && !is_custom_property) {
             if (!kryon_is_valid_property_for_element(element_hex, property_hex)) {
-                print("⚠️  WARNING: Property '%s' (0x%04X) may not be valid for element '%s' (0x%04X)\n",
+                fprintf(stderr, "⚠️  WARNING: Property '%s' (0x%04X) may not be valid for element '%s' (0x%04X)\n",
                        property->data.property.name, property_hex,
                        parent_element->data.element.element_type, element_hex);
-                print("⚠️  Allowed categories for this element:\n");
+                fprintf(stderr, "⚠️  Allowed categories for this element:\n");
                 
                 // Show allowed categories for debugging
                 const KryonPropertyCategoryIndex* allowed = kryon_get_element_allowed_categories(element_hex);
                 if (allowed) {
                     for (int i = 0; allowed[i] != KRYON_CATEGORY_COUNT; i++) {
-                        print("    - %s\n", kryon_property_categories[allowed[i]].name);
+                        fprintf(stderr, "    - %s\n", kryon_property_categories[allowed[i]].name);
                     }
                 }
                 // Continue anyway for flexibility during development
@@ -423,7 +423,7 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
         }
     }
     
-    print("🔍 Processing property: '%s' -> 0x%04X (%s)\n", 
+    fprintf(stderr, "🔍 Processing property: '%s' -> 0x%04X (%s)\n", 
            property->data.property.name, property_hex,
            is_custom_property ? "custom" : "built-in");
     
@@ -534,12 +534,12 @@ bool write_property_node(KryonCodeGenerator *codegen, const KryonASTNode *proper
     
     // Write property value using enhanced processing
     if (property->data.property.value) {
-        print("🔍 Processing property value: '%s' (type=%d, hint=%d)\n", 
+        fprintf(stderr, "🔍 Processing property value: '%s' (type=%d, hint=%d)\n", 
                property->data.property.name, property->data.property.value->type, type_hint);
                
         return write_enhanced_property_value(codegen, property->data.property.value, property_hex, type_hint);
                 } else {
-        print("⚠️  Property '%s' has no value - writing empty value\n", property->data.property.name);
+        fprintf(stderr, "⚠️  Property '%s' has no value - writing empty value\n", property->data.property.name);
         return write_empty_property_value(codegen, property_hex, type_hint);
     }
 }
@@ -549,7 +549,7 @@ static bool write_property_value(KryonCodeGenerator *codegen, const KryonASTValu
     KryonValueTypeHint type_hint = get_property_type_hint(property_hex);
     
     // Debug output
-    print("DEBUG: Property 0x%04X has type hint %d, value type %d\n", 
+    fprintf(stderr, "DEBUG: Property 0x%04X has type hint %d, value type %d\n", 
            property_hex, type_hint, value->type);
     
     // Write value based on property type hint, not AST value type
@@ -562,7 +562,7 @@ static bool write_property_value(KryonCodeGenerator *codegen, const KryonASTValu
         } else if (value->type == KRYON_VALUE_STRING) {
             // Parse string color to u32
             color_value = kryon_color_parse_string(value->data.string_value);
-            print("DEBUG: Parsed color '%s' -> 0x%08X\n", value->data.string_value, color_value);
+            fprintf(stderr, "DEBUG: Parsed color '%s' -> 0x%08X\n", value->data.string_value, color_value);
         } else {
             codegen_error(codegen, "Cannot convert value type to color");
             return false;
@@ -640,7 +640,7 @@ static bool write_property_value(KryonCodeGenerator *codegen, const KryonASTValu
         
         if (value->type == KRYON_VALUE_STRING) {
             str = value->data.string_value;
-            print("🔍 DEBUG: Writing string value: '%s' (length=%zu)\n", str ? str : "(null)", str ? strlen(str) : 0);
+            fprintf(stderr, "🔍 DEBUG: Writing string value: '%s' (length=%zu)\n", str ? str : "(null)", str ? strlen(str) : 0);
         } else if (value->type == KRYON_VALUE_INTEGER) {
             // Convert integer to string for properties that expect strings (like text)
             allocated_str = malloc(32);
@@ -650,7 +650,7 @@ static bool write_property_value(KryonCodeGenerator *codegen, const KryonASTValu
             }
             snprint(allocated_str, 32, "%lld", (long long)value->data.int_value);
             str = allocated_str;
-            print("🔍 DEBUG: Converting integer %lld to string '%s' for string property\n", 
+            fprintf(stderr, "🔍 DEBUG: Converting integer %lld to string '%s' for string property\n", 
                    (long long)value->data.int_value, str);
         } else if (value->type == KRYON_VALUE_FLOAT) {
             // Convert float to string for properties that expect strings
@@ -661,12 +661,12 @@ static bool write_property_value(KryonCodeGenerator *codegen, const KryonASTValu
             }
             snprint(allocated_str, 32, "%.6g", value->data.float_value);
             str = allocated_str;
-            print("🔍 DEBUG: Converting float %.6g to string '%s' for string property\n", 
+            fprintf(stderr, "🔍 DEBUG: Converting float %.6g to string '%s' for string property\n", 
                    value->data.float_value, str);
         } else if (value->type == KRYON_VALUE_BOOLEAN) {
             // Convert boolean to string for properties that expect strings
             str = value->data.bool_value ? "true" : "false";
-            print("🔍 DEBUG: Converting boolean %s to string for string property\n", str);
+            fprintf(stderr, "🔍 DEBUG: Converting boolean %s to string for string property\n", str);
         } else {
             codegen_error(codegen, "Cannot convert value type to string");
             return false;
@@ -699,8 +699,8 @@ static bool write_variable_reference(KryonCodeGenerator *codegen, const char *va
     
     // Enhanced validation - check for unresolved const variable patterns that should have been substituted
     if (strstr(variable_name, "alignment.") == variable_name) {
-        print("❌ ERROR: Found alignment variable reference that should have been substituted: '%s'\n", variable_name);
-        print("❌ ERROR: This indicates a template substitution bug - alignment references should be resolved at compile time!\n");
+        fprintf(stderr, "❌ ERROR: Found alignment variable reference that should have been substituted: '%s'\n", variable_name);
+        fprintf(stderr, "❌ ERROR: This indicates a template substitution bug - alignment references should be resolved at compile time!\n");
         
         // For safety, reject writing this corrupted reference
         codegen_error(codegen, "Alignment variable reference found - should have been substituted");
@@ -714,22 +714,22 @@ static bool write_variable_reference(KryonCodeGenerator *codegen, const char *va
     if (!is_component_instance_variable && 
         (strstr(variable_name, ".colors[") != NULL || strstr(variable_name, ".value") != NULL || 
          strstr(variable_name, ".gap") != NULL || strstr(variable_name, ".name") != NULL)) {
-        print("❌ ERROR: Found unresolved const property access: '%s'\n", variable_name);
-        print("❌ ERROR: This should have been resolved during @const evaluation\n");
-        print("❌ ERROR: Check that template substitution is working for MEMBER_ACCESS and ARRAY_ACCESS nodes\n");
+        fprintf(stderr, "❌ ERROR: Found unresolved const property access: '%s'\n", variable_name);
+        fprintf(stderr, "❌ ERROR: This should have been resolved during @const evaluation\n");
+        fprintf(stderr, "❌ ERROR: Check that template substitution is working for MEMBER_ACCESS and ARRAY_ACCESS nodes\n");
         codegen_error(codegen, "Unresolved const property access found");
         return false;
     }
     
     // Log successful component instance variable detection
     if (is_component_instance_variable) {
-        print("✅ Allowing component instance variable: '%s'\n", variable_name);
+        fprintf(stderr, "✅ Allowing component instance variable: '%s'\n", variable_name);
     }
     
     // Validate variable name format
     size_t name_len = strlen(variable_name);
     if (name_len == 0 || name_len > 1024) {
-        print("❌ ERROR: Invalid variable name length: %zu (name='%s')\n", name_len, variable_name);
+        fprintf(stderr, "❌ ERROR: Invalid variable name length: %zu (name='%s')\n", name_len, variable_name);
         codegen_error(codegen, "Invalid variable name length");
         return false;
     }
@@ -743,7 +743,7 @@ static bool write_variable_reference(KryonCodeGenerator *codegen, const char *va
     
     // Validate the string table reference is reasonable
     if (variable_name_ref > 10000) {
-        print("❌ ERROR: String table reference is suspiciously large: %u for variable '%s'\n", 
+        fprintf(stderr, "❌ ERROR: String table reference is suspiciously large: %u for variable '%s'\n", 
                variable_name_ref, variable_name);
         codegen_error(codegen, "String table reference out of range");
         return false;
@@ -761,7 +761,7 @@ static bool write_variable_reference(KryonCodeGenerator *codegen, const char *va
         return false;
     }
     
-    print("    Wrote variable reference: name='%s' (string_ref=%u, type=REFERENCE)\n", 
+    fprintf(stderr, "    Wrote variable reference: name='%s' (string_ref=%u, type=REFERENCE)\n", 
            variable_name, variable_name_ref);
     
     return true;
@@ -789,7 +789,7 @@ static uint16_t get_or_create_custom_property_hex(const char *property_name) {
     // Create new custom property entry
     if (custom_property_count >= 512) {
         // Registry full
-        print("❌ Custom property registry full, cannot register: %s\n", property_name);
+        fprintf(stderr, "❌ Custom property registry full, cannot register: %s\n", property_name);
         return 0;
     }
     
@@ -802,7 +802,7 @@ static uint16_t get_or_create_custom_property_hex(const char *property_name) {
     strcpy(custom_property_registry[custom_property_count].name, property_name);
     custom_property_registry[custom_property_count].hex = next_custom_property_hex++;
     
-    print("🔧 Registered custom property: %s -> 0x%04X\n", 
+    fprintf(stderr, "🔧 Registered custom property: %s -> 0x%04X\n", 
            property_name, custom_property_registry[custom_property_count].hex);
     
     return custom_property_registry[custom_property_count++].hex;
@@ -936,24 +936,24 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
     
     switch (value_node->type) {
         case KRYON_AST_LITERAL:
-            print("🔍 Writing literal value with type hint %d\n", type_hint);
+            fprintf(stderr, "🔍 Writing literal value with type hint %d\n", type_hint);
             return write_property_value(codegen, &value_node->data.literal.value, property_hex);
             
         case KRYON_AST_VARIABLE:
             // Check if this is a runtime variable reference (e.g., @for array property)
             if (property_hex == 0x8202) { // @for array property - runtime variable expected
-                print("🔗 Property 'array' bound to variable '%s'\n", value_node->data.variable.name);
+                fprintf(stderr, "🔗 Property 'array' bound to variable '%s'\n", value_node->data.variable.name);
                 return write_variable_reference(codegen, value_node->data.variable.name, property_hex);
             } else {
                 // For other properties, this might be an unresolved compile-time constant
-                print("❌ Found unresolved variable reference: '%s' for property (0x%04X)\n", 
+                fprintf(stderr, "❌ Found unresolved variable reference: '%s' for property (0x%04X)\n", 
                        value_node->data.variable.name, property_hex);
-                print("❌ This variable should have been substituted during const evaluation!\n");
+                fprintf(stderr, "❌ This variable should have been substituted during const evaluation!\n");
                 return write_variable_reference(codegen, value_node->data.variable.name, property_hex);
             }
             
         case KRYON_AST_TEMPLATE:
-            print("🔄 Writing structured template with segments\n");
+            fprintf(stderr, "🔄 Writing structured template with segments\n");
             return write_template_property(codegen, value_node, property_hex);
             
         case KRYON_AST_ARRAY_LITERAL:
@@ -966,7 +966,7 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
         case KRYON_AST_IDENTIFIER: {
             const char *identifier_name = value_node->data.identifier.name;
             
-            print("🔍 Processing IDENTIFIER node '%s' for property (0x%04X)\n", 
+            fprintf(stderr, "🔍 Processing IDENTIFIER node '%s' for property (0x%04X)\n", 
                    identifier_name, property_hex);
             
             if (!identifier_name || strlen(identifier_name) == 0) {
@@ -977,7 +977,7 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
             // Check if this identifier is a const definition
             const char *const_value = lookup_constant_value(codegen, identifier_name);
             if (const_value) {
-                print("✅ Const resolved: %s = %s - writing as literal\n", identifier_name, const_value);
+                fprintf(stderr, "✅ Const resolved: %s = %s - writing as literal\n", identifier_name, const_value);
                 
                 // Create a temporary literal value and write it directly
                 KryonASTValue literal_value = {0};
@@ -998,17 +998,17 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
                 return write_property_value(codegen, &literal_value, property_hex);
             } else {
                 // Not a const, treat as runtime variable reference  
-                print("✅ Writing identifier '%s' as variable reference\n", identifier_name);
+                fprintf(stderr, "✅ Writing identifier '%s' as variable reference\n", identifier_name);
                 return write_variable_reference(codegen, identifier_name, property_hex);
             }
         }
         
         default: {
             // Complex expression - convert to string representation 
-            print("🔄 Converting complex expression (type %d) to string for runtime evaluation\n", value_node->type);
+            fprintf(stderr, "🔄 Converting complex expression (type %d) to string for runtime evaluation\n", value_node->type);
             char* expression_str = kryon_ast_expression_to_string(value_node, codegen);
             if (!expression_str) {
-                print("❌ Failed to serialize expression to string\n");
+                fprintf(stderr, "❌ Failed to serialize expression to string\n");
                 codegen_error(codegen, "Failed to serialize complex expression");
                 return false;
             }
@@ -1019,7 +1019,7 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
             
             if (*end_ptr == '\0') {
                 // Expression resolved to a pure number - write as literal
-                print("✅ Expression resolved to literal number: %s - writing as literal\n", expression_str);
+                fprintf(stderr, "✅ Expression resolved to literal number: %s - writing as literal\n", expression_str);
                 
                 KryonASTValue literal_value = {0};
                 
@@ -1036,7 +1036,7 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
                 
             } else if (strcmp(expression_str, "true") == 0 || strcmp(expression_str, "false") == 0) {
                 // Expression resolved to a boolean
-                print("✅ Expression resolved to literal boolean: %s - writing as literal\n", expression_str);
+                fprintf(stderr, "✅ Expression resolved to literal boolean: %s - writing as literal\n", expression_str);
                 
                 KryonASTValue literal_value = {0};
                 literal_value.type = KRYON_VALUE_BOOLEAN;
@@ -1047,7 +1047,7 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
                 
             } else if (expression_str[0] == '"' && expression_str[strlen(expression_str)-1] == '"') {
                 // Expression resolved to a string literal
-                print("✅ Expression resolved to literal string: %s - writing as literal\n", expression_str);
+                fprintf(stderr, "✅ Expression resolved to literal string: %s - writing as literal\n", expression_str);
                 
                 size_t len = strlen(expression_str);
                 char* unquoted = malloc(len - 1);
@@ -1067,7 +1067,7 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
                 
             } else if (expression_str[0] == '#' && strlen(expression_str) == 7) {
                 // Expression resolved to a color hex string
-                print("✅ Expression resolved to literal color: %s - writing as literal\n", expression_str);
+                fprintf(stderr, "✅ Expression resolved to literal color: %s - writing as literal\n", expression_str);
                 
                 KryonASTValue literal_value = {0};
                 literal_value.type = KRYON_VALUE_STRING;
@@ -1079,7 +1079,7 @@ static bool write_enhanced_property_value(KryonCodeGenerator *codegen, const Kry
                 
             } else {
                 // Still a complex expression - write as variable reference
-                print("🔄 Writing complex expression as reactive reference: '%s'\n", expression_str);
+                fprintf(stderr, "🔄 Writing complex expression as reactive reference: '%s'\n", expression_str);
                 bool result = write_variable_reference(codegen, expression_str, property_hex);
                 kryon_free(expression_str);
                 return result;
@@ -1306,7 +1306,7 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
     
     // If all segments are literals, concatenate them and write as a simple string
     if (all_literals) {
-        print("✅ Template fully resolved to literals - writing as string property\n");
+        fprintf(stderr, "✅ Template fully resolved to literals - writing as string property\n");
         
         // Allocate buffer for concatenated string
         char *concatenated = kryon_alloc(total_length + 1);
@@ -1326,7 +1326,7 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
             }
         }
         
-        print("📝 Concatenated template to: '%s'\n", concatenated);
+        fprintf(stderr, "📝 Concatenated template to: '%s'\n", concatenated);
         
         // Create a literal value and write as string property
         KryonASTValue string_value = {
@@ -1341,7 +1341,7 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
     }
     
     // Template has runtime variables - write as complex TEMPLATE property
-    print("🔄 Template has runtime variables - writing as complex template\n");
+    fprintf(stderr, "🔄 Template has runtime variables - writing as complex template\n");
     
     // Write property type as TEMPLATE
     if (!write_uint8(codegen, (uint8_t)KRYON_RUNTIME_PROP_TEMPLATE)) {
@@ -1356,7 +1356,7 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
         return false;
     }
     
-    print("📝 Writing template with %u segments\n", segment_count);
+    fprintf(stderr, "📝 Writing template with %u segments\n", segment_count);
     
     // Write each segment
     for (size_t i = 0; i < segment_count; i++) {
@@ -1387,7 +1387,7 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
                 return false;
             }
             
-            print("  📝 Literal segment: '%s' (%u bytes)\n", text ? text : "", text_len);
+            fprintf(stderr, "  📝 Literal segment: '%s' (%u bytes)\n", text ? text : "", text_len);
             
         } else if (segment->type == KRYON_AST_VARIABLE) {
             // Write VARIABLE segment type
@@ -1403,7 +1403,7 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
                 return false;
             }
 
-            print("  🔗 DEBUG: VARIABLE segment has name='%s' (ptr=%p)\n", var_name, (void*)var_name);
+            fprintf(stderr, "  🔗 DEBUG: VARIABLE segment has name='%s' (ptr=%p)\n", var_name, (void*)var_name);
 
             uint32_t var_name_ref = add_string_to_table(codegen, var_name);
             if (var_name_ref == UINT32_MAX) {
@@ -1416,16 +1416,16 @@ static bool write_template_property(KryonCodeGenerator *codegen, const KryonASTN
                 return false;
             }
 
-            print("  🔗 Variable segment: '%s' (string_ref=%u)\n", var_name, var_name_ref);
+            fprintf(stderr, "  🔗 Variable segment: '%s' (string_ref=%u)\n", var_name, var_name_ref);
             
         } else {
-            print("❌ Error: Unsupported template segment type: %d\n", segment->type);
+            fprintf(stderr, "❌ Error: Unsupported template segment type: %d\n", segment->type);
             codegen_error(codegen, "Unsupported template segment type");
             return false;
         }
     }
     
-    print("✅ Template property written successfully\n");
+    fprintf(stderr, "✅ Template property written successfully\n");
     return true;
 }
 
@@ -1444,7 +1444,7 @@ bool serialize_for_template(KryonCodeGenerator* codegen, const KryonASTNode* ele
         return false;
     }
     
-    print("DEBUG: Serializing @for template with %zu children\n", element->data.element.child_count);
+    fprintf(stderr, "DEBUG: Serializing @for template with %zu children\n", element->data.element.child_count);
     
     // Store template metadata instead of writing as element
     // For now, just store in a special templates array in the codegen context
@@ -1467,7 +1467,7 @@ bool serialize_for_template(KryonCodeGenerator* codegen, const KryonASTNode* ele
         }
     }
     
-    print("DEBUG: @for template - variable: %s, array: %s\n", 
+    fprintf(stderr, "DEBUG: @for template - variable: %s, array: %s\n", 
            var_name ? var_name : "NULL", 
            array_name ? array_name : "NULL");
     

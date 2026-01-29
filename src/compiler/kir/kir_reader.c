@@ -731,7 +731,7 @@ bool kryon_kir_read_string(KryonKIRReader *reader, const char *json_string,
     // Accept any version string during alpha development
     // Optional: log version for debugging
     #ifdef DEBUG
-        print("KIR version: %s\n", version->valuestring);
+        fprintf(stderr, "KIR version: %s\n", version->valuestring);
     #endif
 
     // Parse root node

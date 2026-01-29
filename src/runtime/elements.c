@@ -156,50 +156,50 @@ bool element_registry_init_with_all_elements(void) {
     
     // Auto-register all available elements
     if (!register_dropdown_element()) {
-        print("ERROR: Failed to register Dropdown element\n");
+        fprintf(stderr, "ERROR: Failed to register Dropdown element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_input_element()) {
-        print("ERROR: Failed to register Input element\n");
+        fprintf(stderr, "ERROR: Failed to register Input element\n");
         element_registry_cleanup();
         return false;
     }
 
     if (!register_button_element()) {
-        print("ERROR: Failed to register Button element\n");
+        fprintf(stderr, "ERROR: Failed to register Button element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_checkbox_element()) {
-        print("ERROR: Failed to register Checkbox element\n");
+        fprintf(stderr, "ERROR: Failed to register Checkbox element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_slider_element()) {
-        print("ERROR: Failed to register Slider element\n");
+        fprintf(stderr, "ERROR: Failed to register Slider element\n");
         element_registry_cleanup();
         return false;
     }
 
 
     if (!register_text_element()) {
-        print("ERROR: Failed to register Text element\n");
+        fprintf(stderr, "ERROR: Failed to register Text element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_container_element()) {
-        print("ERROR: Failed to register Container element\n");
+        fprintf(stderr, "ERROR: Failed to register Container element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_image_element()) {
-        print("ERROR: Failed to register Image element\n");
+        fprintf(stderr, "ERROR: Failed to register Image element\n");
         element_registry_cleanup();
         return false;
     }
@@ -207,49 +207,49 @@ bool element_registry_init_with_all_elements(void) {
     // Layout elements (Column, Row, Center) are now registered by register_container_element()
     
     if (!register_app_element()) {
-        print("ERROR: Failed to register App element\n");
+        fprintf(stderr, "ERROR: Failed to register App element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_grid_element()) {
-        print("ERROR: Failed to register Grid element\n");
+        fprintf(stderr, "ERROR: Failed to register Grid element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_tabbar_element()) {
-        print("ERROR: Failed to register TabBar element\n");
+        fprintf(stderr, "ERROR: Failed to register TabBar element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_tab_element()) {
-        print("ERROR: Failed to register Tab element\n");
+        fprintf(stderr, "ERROR: Failed to register Tab element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_tab_content_element()) {
-        print("ERROR: Failed to register TabContent element\n");
+        fprintf(stderr, "ERROR: Failed to register TabContent element\n");
         element_registry_cleanup();
         return false;
     }
     
     if (!register_tabpanel_element()) {
-        print("ERROR: Failed to register TabPanel element\n");
+        fprintf(stderr, "ERROR: Failed to register TabPanel element\n");
         element_registry_cleanup();
         return false;
     }
 
     if (!register_tabgroup_element()) {
-        print("ERROR: Failed to register TabGroup element\n");
+        fprintf(stderr, "ERROR: Failed to register TabGroup element\n");
         element_registry_cleanup();
         return false;
     }
 
     if (!register_link_element()) {
-        print("ERROR: Failed to register Link element\n");
+        fprintf(stderr, "ERROR: Failed to register Link element\n");
         element_registry_cleanup();
         return false;
     }
@@ -278,24 +278,24 @@ void element_registry_cleanup(void) {
 
 bool element_register_type(const char* type_name, const ElementVTable* vtable) {
     if (!g_element_registry.initialized) {
-        print("ERROR: Element registry not initialized\n");
+        fprintf(stderr, "ERROR: Element registry not initialized\n");
         return false;
     }
     
     if (!type_name || !vtable) {
-        print("ERROR: Invalid parameters for element registration\n");
+        fprintf(stderr, "ERROR: Invalid parameters for element registration\n");
         return false;
     }
     
     if (g_element_registry.count >= MAX_ELEMENT_TYPES) {
-        print("ERROR: Element registry full (max %d types)\n", MAX_ELEMENT_TYPES);
+        fprintf(stderr, "ERROR: Element registry full (max %d types)\n", MAX_ELEMENT_TYPES);
         return false;
     }
     
     // Check for duplicates
     for (size_t i = 0; i < g_element_registry.count; i++) {
         if (strcmp(g_element_registry.entries[i].type_name, type_name) == 0) {
-            print("WARNING: Element type '%s' already registered, updating\n", type_name);
+            fprintf(stderr, "WARNING: Element type '%s' already registered, updating\n", type_name);
             g_element_registry.entries[i].vtable = vtable;
             return true;
         }
@@ -307,7 +307,7 @@ bool element_register_type(const char* type_name, const ElementVTable* vtable) {
     g_element_registry.entries[index].vtable = vtable;
     
     if (!g_element_registry.entries[index].type_name) {
-        print("ERROR: Failed to allocate memory for type name '%s'\n", type_name);
+        fprintf(stderr, "ERROR: Failed to allocate memory for type name '%s'\n", type_name);
         return false;
     }
     
@@ -507,7 +507,7 @@ static bool execute_print_call(const char **cursor, KryonScriptFunction *functio
         p++;
     }
 
-    print("%s\n", message);
+    fprintf(stderr, "%s\n", message);
     fflush(stdout);
     kryon_free(message);
 
@@ -559,7 +559,7 @@ static bool find_component_binding(KryonRuntime* runtime, KryonElement* element,
         if (current->component_scope_id) {
             out_binding->scope_id = current->component_scope_id;
             out_binding->variable_name = name;
-            print("[binding] element=%s scope=%s variable=%s\n",
+            fprintf(stderr, "[binding] element=%s scope=%s variable=%s\n",
                    current->type_name ? current->type_name : "<anon>",
                    current->component_scope_id,
                    name);
@@ -1174,7 +1174,7 @@ static bool parse_numeric_token(KryonRuntime* runtime, KryonElement* element, co
     if (is_identifier(token)) {
         ComponentBinding binding;
         if (!find_component_binding(runtime, element, token, &binding)) {
-            print("[script] unknown identifier '%s'\n", token);
+            fprintf(stderr, "[script] unknown identifier '%s'\n", token);
             return false;
         }
 
@@ -1187,7 +1187,7 @@ static bool parse_numeric_token(KryonRuntime* runtime, KryonElement* element, co
         char* end_ptr = NULL;
         double parsed = strtod(value_str, &end_ptr);
         if (end_ptr == value_str) {
-            print("[script] value '%s' for '%s' not numeric, treating as 0\n", value_str, token);
+            fprintf(stderr, "[script] value '%s' for '%s' not numeric, treating as 0\n", value_str, token);
             parsed = 0.0;
         }
         *out_value = parsed;
@@ -1197,7 +1197,7 @@ static bool parse_numeric_token(KryonRuntime* runtime, KryonElement* element, co
     char* end_ptr = NULL;
     double parsed = strtod(token, &end_ptr);
     if (end_ptr == token || *end_ptr != '\0') {
-        print("[script] unable to parse numeric token '%s'\n", token);
+        fprintf(stderr, "[script] unable to parse numeric token '%s'\n", token);
         return false;
     }
 
@@ -1930,7 +1930,7 @@ static bool execute_print_statement(KryonRuntime* runtime, KryonElement* element
         return false;
     }
 
-    print("%s\n", evaluated);
+    fprintf(stderr, "%s\n", evaluated);
     fflush(stdout);
     kryon_free(evaluated);
     return true;
@@ -1959,7 +1959,7 @@ static bool execute_statement(KryonRuntime* runtime, KryonElement* element, Kryo
         return execute_if_statement(runtime, element, function, statement);
     }
 
-    print("⚠️ SCRIPT: Unsupported statement '%s'\n", statement);
+    fprintf(stderr, "⚠️ SCRIPT: Unsupported statement '%s'\n", statement);
     return false;
 }
 
@@ -1968,7 +1968,7 @@ static bool execute_if_statement(KryonRuntime* runtime, KryonElement* element, K
         return false;
     }
 
-    print("🔍 SCRIPT: Parsing if statement: '%s'\n", statement);
+    fprintf(stderr, "🔍 SCRIPT: Parsing if statement: '%s'\n", statement);
 
     // Parse "if (condition) { ... }" format
     const char* cursor = statement;
@@ -1983,7 +1983,7 @@ static bool execute_if_statement(KryonRuntime* runtime, KryonElement* element, K
 
     // Expect '('
     if (*cursor != '(') {
-        print("⚠️ SCRIPT: Expected '(' after 'if'\n");
+        fprintf(stderr, "⚠️ SCRIPT: Expected '(' after 'if'\n");
         return false;
     }
     cursor++;
@@ -1995,7 +1995,7 @@ static bool execute_if_statement(KryonRuntime* runtime, KryonElement* element, K
     }
 
     if (!*cursor) {
-        print("⚠️ SCRIPT: Unterminated if condition\n");
+        fprintf(stderr, "⚠️ SCRIPT: Unterminated if condition\n");
         return false;
     }
 
@@ -2030,7 +2030,7 @@ static bool execute_if_statement(KryonRuntime* runtime, KryonElement* element, K
     // Evaluate condition using the unified runtime condition evaluator
     bool condition_result = kryon_evaluate_runtime_condition(runtime, condition);
 
-    print("🔍 SCRIPT: if (%s) = %s\n", condition, condition_result ? "true" : "false");
+    fprintf(stderr, "🔍 SCRIPT: if (%s) = %s\n", condition, condition_result ? "true" : "false");
 
     kryon_free(condition);
 
@@ -2097,7 +2097,7 @@ static bool execute_if_statement(KryonRuntime* runtime, KryonElement* element, K
                                 // Trim whitespace
                                 char* trimmed = trim_statement_copy(stmt, stmt_len);
                                 if (trimmed && trimmed[0] != '\0') {
-                                    print("🔍 SCRIPT: Executing statement inside if: '%s'\n", trimmed);
+                                    fprintf(stderr, "🔍 SCRIPT: Executing statement inside if: '%s'\n", trimmed);
                                     execute_statement(runtime, element, function, trimmed);
                                 }
                                 if (trimmed) {
@@ -2123,7 +2123,7 @@ static bool execute_if_statement(KryonRuntime* runtime, KryonElement* element, K
                     kryon_free(body_copy);
                 }
             } else {
-                print("⚠️ SCRIPT: Unterminated if block\n");
+                fprintf(stderr, "⚠️ SCRIPT: Unterminated if block\n");
                 return false;
             }
         } else {
@@ -2427,7 +2427,7 @@ static bool execute_script_function(KryonRuntime* runtime, KryonElement* element
         }
 
         if (full_statement && full_statement[0] != '\0') {
-            print("🔍 SCRIPT: Executing statement: '%s'\n", full_statement);
+            fprintf(stderr, "🔍 SCRIPT: Executing statement: '%s'\n", full_statement);
             if (execute_statement(runtime, element, function, full_statement)) {
                 executed_any = true;
             }
@@ -2485,18 +2485,18 @@ bool generic_script_event_handler(KryonRuntime* runtime, KryonElement* element, 
 
     KryonScriptFunction* function = find_script_function(runtime, handler_name);
     if (!function) {
-        print("⚠️ SCRIPT: Handler '%s' not found in runtime\n", handler_name);
+        fprintf(stderr, "⚠️ SCRIPT: Handler '%s' not found in runtime\n", handler_name);
         return false;
     }
 
     if (!function->code || function->code[0] == '\0') {
-        print("⚠️ SCRIPT: Function '%s' has no executable code\n", function->name ? function->name : handler_name);
+        fprintf(stderr, "⚠️ SCRIPT: Function '%s' has no executable code\n", function->name ? function->name : handler_name);
         return false;
     }
 
     bool handled = execute_script_function(runtime, element, function);
     if (!handled) {
-        print("⚠️ SCRIPT: Function '%s' executed without supported operations\n",
+        fprintf(stderr, "⚠️ SCRIPT: Function '%s' executed without supported operations\n",
                function->name ? function->name : handler_name);
         return false;
     }
@@ -3551,7 +3551,7 @@ static struct KryonElement* find_interactive_element_at_point(struct KryonElemen
             if (root->type_name && strcmp(root->type_name, "Link") == 0) {
                 const char* debug_text = get_element_property_string(root, "text");
                 const char* debug_to = get_element_property_string(root, "to");
-                print("🎯 HIT TEST: Found Link element %p, text='%s', to='%s'\n", 
+                fprintf(stderr, "🎯 HIT TEST: Found Link element %p, text='%s', to='%s'\n", 
                        (void*)root, debug_text ? debug_text : "NULL", debug_to ? debug_to : "NULL");
             }
             return root;

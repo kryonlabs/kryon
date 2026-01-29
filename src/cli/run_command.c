@@ -87,7 +87,7 @@ static char* compute_file_id(const char *path) {
  * @return Path to the compiled .krb file (must be freed by caller) or NULL on failure
  */
 static char* compile_kry_to_cached_krb(const char *kry_path) {
-    print("🔨 Compiling %s...\n", kry_path);
+    fprintf(stderr, "🔨 Compiling %s...\n", kry_path);
 
     // Convert to absolute path to avoid issues with working directory
     char *real_kry_path = realpath(kry_path, NULL);
@@ -140,7 +140,7 @@ static char* compile_kry_to_cached_krb(const char *kry_path) {
 
     if (krb_mtime > 0 && krb_mtime > kry_mtime) {
         // Cache is up to date
-        print("✅ Using cached compilation: %s\n", cached_krb_path);
+        fprintf(stderr, "✅ Using cached compilation: %s\n", cached_krb_path);
         return cached_krb_path;
     }
 
@@ -170,7 +170,7 @@ static char* compile_kry_to_cached_krb(const char *kry_path) {
         return NULL;
     }
 
-    print("✅ Compilation complete: %s\n", cached_krb_path);
+    fprintf(stderr, "✅ Compilation complete: %s\n", cached_krb_path);
     return cached_krb_path;
 }
 
@@ -208,12 +208,12 @@ int run_command(int argc, char *argv[]) {
                 debug = true;
                 break;
             case 'h':
-                print("Usage: kryon run <file.krb> [options]\n");
-                print("Options:\n");
-                print("  -r, --renderer <name>  Renderer to use (text, raylib, web)\n");
-                print("  -o, --output <dir>     Output directory for web renderer\n");
-                print("  -d, --debug            Enable debug output\n");
-                print("  -h, --help             Show this help\n");
+                fprintf(stderr, "Usage: kryon run <file.krb> [options]\n");
+                fprintf(stderr, "Options:\n");
+                fprintf(stderr, "  -r, --renderer <name>  Renderer to use (text, raylib, web)\n");
+                fprintf(stderr, "  -o, --output <dir>     Output directory for web renderer\n");
+                fprintf(stderr, "  -d, --debug            Enable debug output\n");
+                fprintf(stderr, "  -h, --help             Show this help\n");
                 return 0;
             default:
                 return 1;
@@ -261,7 +261,7 @@ int run_command(int argc, char *argv[]) {
     }
     
     if (debug) {
-        print("🐛 Debug: Creating runtime system\n");
+        fprintf(stderr, "🐛 Debug: Creating runtime system\n");
     }
     
     // Create runtime system
@@ -272,7 +272,7 @@ int run_command(int argc, char *argv[]) {
     }
     
     if (debug) {
-        print("🐛 Debug: Loading KRB file: %s\n", krb_file_path);
+        fprintf(stderr, "🐛 Debug: Loading KRB file: %s\n", krb_file_path);
     }
     
     // Save current working directory
@@ -290,8 +290,8 @@ int run_command(int argc, char *argv[]) {
     char *krb_filename = basename(krb_filename_copy);
     
     if (debug) {
-        print("🐛 Debug: Changing to directory: %s\n", krb_dir);
-        print("🐛 Debug: Loading filename: %s\n", krb_filename);
+        fprintf(stderr, "🐛 Debug: Changing to directory: %s\n", krb_dir);
+        fprintf(stderr, "🐛 Debug: Loading filename: %s\n", krb_filename);
     }
     
     // Change to the KRB file's directory
@@ -319,7 +319,7 @@ int run_command(int argc, char *argv[]) {
         kryon_free(runtime->current_file_path);
     }
     runtime->current_file_path = kryon_strdup(krb_file_path);
-    print("🧭 Override runtime file path for navigation: %s\n", krb_file_path);
+    fprintf(stderr, "🧭 Override runtime file path for navigation: %s\n", krb_file_path);
     
     // Clean up path strings
     free(krb_path_copy);
@@ -331,7 +331,7 @@ int run_command(int argc, char *argv[]) {
     }
     
     if (debug) {
-        print("🐛 Debug: KRB file loaded successfully into runtime\n");
+        fprintf(stderr, "🐛 Debug: KRB file loaded successfully into runtime\n");
     }
     
     // Setup renderer
@@ -342,7 +342,7 @@ int run_command(int argc, char *argv[]) {
     }
     
     if (debug) {
-        print("🐛 Debug: Renderer setup successfully: %s\n", renderer);
+        fprintf(stderr, "🐛 Debug: Renderer setup successfully: %s\n", renderer);
     }
     
     // Start the runtime
@@ -353,11 +353,11 @@ int run_command(int argc, char *argv[]) {
     }
     
     if (debug) {
-        print("🐛 Debug: Runtime started successfully\n");
+        fprintf(stderr, "🐛 Debug: Runtime started successfully\n");
     }
     
     // Execute rendering loop
-    print("🎬 Starting render loop with %s\n", renderer);
+    fprintf(stderr, "🎬 Starting render loop with %s\n", renderer);
     
     // Simple render loop for now - in future this should be event-driven  
     bool running = true;
@@ -380,7 +380,7 @@ int run_command(int argc, char *argv[]) {
         // For web renderer, skip actual rendering and just generate output once
 #ifdef KRYON_RENDERER_WEB
         if (strcmp(renderer, "web") == 0) {
-            print("🌐 Web renderer: Generating HTML/CSS/JS output\n");
+            fprintf(stderr, "🌐 Web renderer: Generating HTML/CSS/JS output\n");
 
             // Call finalize to write files - pass runtime for element tree access
             extern bool kryon_web_renderer_finalize_with_runtime(KryonRenderer* renderer, KryonRuntime* runtime);
@@ -401,7 +401,7 @@ int run_command(int argc, char *argv[]) {
 
         // Exit after a reasonable number of frames for text renderer or testing
         if (strcmp(renderer, "text") == 0 && frame_count >= 60) {
-            print("📝 Text renderer: completed %d frames\n", frame_count);
+            fprintf(stderr, "📝 Text renderer: completed %d frames\n", frame_count);
             break;
         }
 
@@ -409,7 +409,7 @@ int run_command(int argc, char *argv[]) {
         if (strcmp(renderer, "raylib") == 0 || strcmp(renderer, "sdl2") == 0) {
             // The renderer should set runtime->is_running = false when window closes
             if (!runtime->is_running) {
-                print("🔲 Window closed by user\n");
+                fprintf(stderr, "🔲 Window closed by user\n");
                 break;
             }
         }
@@ -418,7 +418,7 @@ int run_command(int argc, char *argv[]) {
         usleep(16666); // ~60fps
     }
     
-    print("✅ Rendering completed successfully with %s (%d frames)\n", renderer, frame_count);
+    fprintf(stderr, "✅ Rendering completed successfully with %s (%d frames)\n", renderer, frame_count);
     
     // Restore original working directory
     if (chdir(original_cwd) != 0) {
@@ -476,7 +476,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
     } else if (strcmp(renderer_name, "text") == 0) {
         // For text mode, we don't need a real renderer
         if (debug) {
-            print("🐛 Debug: Using text mode (no renderer needed)\n");
+            fprintf(stderr, "🐛 Debug: Using text mode (no renderer needed)\n");
         }
         return true;
     } else {
@@ -494,7 +494,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
     runtime->renderer = (void*)renderer;
     
     if (debug) {
-        print("🐛 Debug: Renderer '%s' setup successfully\n", renderer_name);
+        fprintf(stderr, "🐛 Debug: Renderer '%s' setup successfully\n", renderer_name);
     }
     
     return true;
@@ -504,7 +504,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
 static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) {
 #ifdef KRYON_RENDERER_RAYLIB
     if (debug) {
-        print("🐛 Debug: Creating raylib renderer\n");
+        fprintf(stderr, "🐛 Debug: Creating raylib renderer\n");
     }
     
     // Create surface with default values, then override from App element metadata
@@ -528,13 +528,13 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
     if (runtime && runtime->root) {
         KryonElement* app_element = runtime->root;
         
-        print("🔍 DEBUG: App element pointer: %p\n", (void*)app_element);
-        print("🔍 DEBUG: App element type: %u (%s)\n", app_element->type, app_element->type_name ? app_element->type_name : "NULL");
-        print("🔍 DEBUG: App element properties pointer: %p\n", (void*)app_element->properties);
-        print("🔍 DEBUG: App element has %zu properties:\n", app_element->property_count);
+        fprintf(stderr, "🔍 DEBUG: App element pointer: %p\n", (void*)app_element);
+        fprintf(stderr, "🔍 DEBUG: App element type: %u (%s)\n", app_element->type, app_element->type_name ? app_element->type_name : "NULL");
+        fprintf(stderr, "🔍 DEBUG: App element properties pointer: %p\n", (void*)app_element->properties);
+        fprintf(stderr, "🔍 DEBUG: App element has %zu properties:\n", app_element->property_count);
         for (size_t j = 0; j < app_element->property_count; j++) {
             if (app_element->properties[j] && app_element->properties[j]->name) {
-                print("  - %s (type=%d)\n", app_element->properties[j]->name, app_element->properties[j]->type);
+                fprintf(stderr, "  - %s (type=%d)\n", app_element->properties[j]->name, app_element->properties[j]->type);
             }
         }
         
@@ -544,20 +544,20 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
                 if (strcmp(app_element->properties[i]->name, "title") == 0 && 
                     app_element->properties[i]->value.string_value) {
                     surface.title = app_element->properties[i]->value.string_value;
-                    print("🐛 Debug: Using title from App metadata: %s\n", surface.title);
+                    fprintf(stderr, "🐛 Debug: Using title from App metadata: %s\n", surface.title);
                 }
                 else if (strcmp(app_element->properties[i]->name, "windowWidth") == 0 ||
                          strcmp(app_element->properties[i]->name, "winWidth") == 0) {
                     surface.width = (int)app_element->properties[i]->value.float_value;
                     if (debug) {
-                        print("🐛 Debug: Using windowWidth from App metadata: %d\n", surface.width);
+                        fprintf(stderr, "🐛 Debug: Using windowWidth from App metadata: %d\n", surface.width);
                     }
                 }
                 else if (strcmp(app_element->properties[i]->name, "windowHeight") == 0 ||
                          strcmp(app_element->properties[i]->name, "winHeight") == 0) {
                     surface.height = (int)app_element->properties[i]->value.float_value;
                     if (debug) {
-                        print("🐛 Debug: Using windowHeight from App metadata: %d\n", surface.height);
+                        fprintf(stderr, "🐛 Debug: Using windowHeight from App metadata: %d\n", surface.height);
                     }
                 }
                 else if (strcmp(app_element->properties[i]->name, "windowTitle") == 0 ||
@@ -565,7 +565,7 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
                     if (app_element->properties[i]->value.string_value) {
                         surface.title = app_element->properties[i]->value.string_value;
                         if (debug) {
-                            print("🐛 Debug: Using windowTitle from App metadata: %s\n", surface.title);
+                            fprintf(stderr, "🐛 Debug: Using windowTitle from App metadata: %s\n", surface.title);
                         }
                     }
                 }
@@ -574,7 +574,7 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
     }
     
     if (debug) {
-        print("🐛 Debug: Creating raylib surface: %dx%d '%s'\n", 
+        fprintf(stderr, "🐛 Debug: Creating raylib surface: %dx%d '%s'\n", 
                surface.width, surface.height, surface.title);
     }
     
@@ -590,13 +590,13 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
     if (!renderer) {
         fprint(2, "❌ Failed to create raylib renderer\n");
         if (debug) {
-            print("🐛 Debug: Raylib renderer creation failed\n");
+            fprintf(stderr, "🐛 Debug: Raylib renderer creation failed\n");
         }
         return NULL;
     }
     
     if (debug) {
-        print("🐛 Debug: Raylib renderer created successfully\n");
+        fprintf(stderr, "🐛 Debug: Raylib renderer created successfully\n");
     }
     
     return renderer;
@@ -614,7 +614,7 @@ static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) 
 static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
 #ifdef KRYON_RENDERER_SDL2
     if (debug) {
-        print("🐛 Debug: Creating SDL2 renderer\n");
+        fprintf(stderr, "🐛 Debug: Creating SDL2 renderer\n");
     }
 
     // Create surface with default values, then override from App element metadata
@@ -643,21 +643,21 @@ static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
                     app_element->properties[i]->value.string_value) {
                     surface.title = app_element->properties[i]->value.string_value;
                     if (debug) {
-                        print("🐛 Debug: Using title from App metadata: %s\n", surface.title);
+                        fprintf(stderr, "🐛 Debug: Using title from App metadata: %s\n", surface.title);
                     }
                 }
                 else if (strcmp(app_element->properties[i]->name, "windowWidth") == 0 ||
                          strcmp(app_element->properties[i]->name, "winWidth") == 0) {
                     surface.width = (int)app_element->properties[i]->value.float_value;
                     if (debug) {
-                        print("🐛 Debug: Using windowWidth from App metadata: %d\n", surface.width);
+                        fprintf(stderr, "🐛 Debug: Using windowWidth from App metadata: %d\n", surface.width);
                     }
                 }
                 else if (strcmp(app_element->properties[i]->name, "windowHeight") == 0 ||
                          strcmp(app_element->properties[i]->name, "winHeight") == 0) {
                     surface.height = (int)app_element->properties[i]->value.float_value;
                     if (debug) {
-                        print("🐛 Debug: Using windowHeight from App metadata: %d\n", surface.height);
+                        fprintf(stderr, "🐛 Debug: Using windowHeight from App metadata: %d\n", surface.height);
                     }
                 }
                 else if (strcmp(app_element->properties[i]->name, "windowTitle") == 0 ||
@@ -665,7 +665,7 @@ static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
                     if (app_element->properties[i]->value.string_value) {
                         surface.title = app_element->properties[i]->value.string_value;
                         if (debug) {
-                            print("🐛 Debug: Using windowTitle from App metadata: %s\n", surface.title);
+                            fprintf(stderr, "🐛 Debug: Using windowTitle from App metadata: %s\n", surface.title);
                         }
                     }
                 }
@@ -674,7 +674,7 @@ static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
     }
 
     if (debug) {
-        print("🐛 Debug: Creating SDL2 surface: %dx%d '%s'\n",
+        fprintf(stderr, "🐛 Debug: Creating SDL2 surface: %dx%d '%s'\n",
                surface.width, surface.height, surface.title);
     }
 
@@ -693,13 +693,13 @@ static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
     if (!renderer) {
         fprint(2, "❌ Failed to create SDL2 renderer\n");
         if (debug) {
-            print("🐛 Debug: SDL2 renderer creation failed\n");
+            fprintf(stderr, "🐛 Debug: SDL2 renderer creation failed\n");
         }
         return NULL;
     }
 
     if (debug) {
-        print("🐛 Debug: SDL2 renderer created successfully\n");
+        fprintf(stderr, "🐛 Debug: SDL2 renderer created successfully\n");
     }
 
     return renderer;
@@ -720,8 +720,8 @@ static KryonRenderer* create_web_renderer(KryonRuntime* runtime, bool debug, con
     extern KryonRenderer* kryon_web_renderer_create(const KryonRendererConfig* config);
 
     if (debug) {
-        print("🐛 Debug: Creating web renderer\n");
-        print("🐛 Debug: Output directory: %s\n", output_dir);
+        fprintf(stderr, "🐛 Debug: Creating web renderer\n");
+        fprintf(stderr, "🐛 Debug: Output directory: %s\n", output_dir);
     }
 
     // Create renderer configuration
@@ -736,13 +736,13 @@ static KryonRenderer* create_web_renderer(KryonRuntime* runtime, bool debug, con
     if (!renderer) {
         fprint(2, "❌ Failed to create web renderer\n");
         if (debug) {
-            print("🐛 Debug: Web renderer creation failed\n");
+            fprintf(stderr, "🐛 Debug: Web renderer creation failed\n");
         }
         return NULL;
     }
 
     if (debug) {
-        print("🐛 Debug: Web renderer created successfully\n");
+        fprintf(stderr, "🐛 Debug: Web renderer created successfully\n");
     }
 
     return renderer;

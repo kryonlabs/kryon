@@ -90,7 +90,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
     
     // Variable name (as string reference)
     uint32_t name_ref = add_string_to_table(codegen, variable->data.variable_def.name);
-    print("DEBUG: Variable name '%s' string ref: %u\n", variable->data.variable_def.name, name_ref);
+    fprintf(stderr, "DEBUG: Variable name '%s' string ref: %u\n", variable->data.variable_def.name, name_ref);
     if (!write_uint32(codegen, name_ref)) {
         return false;
     }
@@ -109,10 +109,10 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
         } else if (try_evaluate_constant_unary(variable->data.variable_def.value, &evaluated_value)) {
             // Successfully evaluated UNARY_OP to a constant
             value_to_use = &evaluated_value;
-            print("DEBUG: Evaluated UNARY_OP for '%s' to type=%d\n",
+            fprintf(stderr, "DEBUG: Evaluated UNARY_OP for '%s' to type=%d\n",
                    variable->data.variable_def.name, evaluated_value.type);
             if (evaluated_value.type == KRYON_VALUE_INTEGER) {
-                print("DEBUG: Integer value = %lld\n", (long long)evaluated_value.data.int_value);
+                fprintf(stderr, "DEBUG: Integer value = %lld\n", (long long)evaluated_value.data.int_value);
             }
         }
 
@@ -138,7 +138,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
         }
     }
     
-    print("DEBUG: Writing variable '%s': type=%u, reactive=%d\n",
+    fprintf(stderr, "DEBUG: Writing variable '%s': type=%u, reactive=%d\n",
            variable->data.variable_def.name, (uint8_t)var_type, is_reactive);
     if (!write_uint8(codegen, (uint8_t)var_type)) {
         return false;
@@ -151,14 +151,14 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
     }
     // TODO: Add more flags based on variable modifiers (@private, @readonly, etc.)
 
-    print("DEBUG: Writing flags=%u for variable '%s'\n", flags, variable->data.variable_def.name);
+    fprintf(stderr, "DEBUG: Writing flags=%u for variable '%s'\n", flags, variable->data.variable_def.name);
     if (!write_uint8(codegen, flags)) {
         return false;
     }
     
     // Variable initial value
     if (variable->data.variable_def.value) {
-        print("DEBUG: Variable '%s' has value node type=%d\n",
+        fprintf(stderr, "DEBUG: Variable '%s' has value node type=%d\n",
                variable->data.variable_def.name ? variable->data.variable_def.name : "unknown",
                variable->data.variable_def.value->type);
 
@@ -172,7 +172,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
                 }
                 const char* str_value = value_to_use->data.string_value ? value_to_use->data.string_value : "";
                 uint32_t str_ref = add_string_to_table(codegen, str_value);
-                print("DEBUG: Variable literal string value string ref: %u for value '%s'\n", str_ref, str_value);
+                fprintf(stderr, "DEBUG: Variable literal string value string ref: %u for value '%s'\n", str_ref, str_value);
                 if (!write_uint32(codegen, str_ref)) {
                     return false;
                 }
@@ -194,7 +194,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
                 }
                 const char* str_value = literal_value->data.string_value ? literal_value->data.string_value : "";
                 uint32_t str_ref = add_string_to_table(codegen, str_value);
-                print("DEBUG: Variable literal string value string ref: %u for value '%s'\n", str_ref, str_value);
+                fprintf(stderr, "DEBUG: Variable literal string value string ref: %u for value '%s'\n", str_ref, str_value);
                 if (!write_uint32(codegen, str_ref)) {
                     return false;
                 }
@@ -208,7 +208,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
             }
         } else {
             // For non-literal values (like arrays), convert to string representation
-            print("DEBUG: Non-literal variable value, writing as string\n");
+            fprintf(stderr, "DEBUG: Non-literal variable value, writing as string\n");
             
             // Try to get the raw value as string from the AST
             const char* raw_value = NULL;
@@ -255,7 +255,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
                 json_buffer[json_len] = '\0';
                 
                 raw_value = json_buffer;
-                print("DEBUG: Converted array AST to JSON: %s\n", raw_value);
+                fprintf(stderr, "DEBUG: Converted array AST to JSON: %s\n", raw_value);
             }
             
             if (raw_value) {
@@ -264,7 +264,7 @@ bool kryon_write_single_variable(KryonCodeGenerator *codegen, const KryonASTNode
                     return false;
                 }
                 uint32_t str_ref = add_string_to_table(codegen, raw_value);
-                print("DEBUG: Variable value string ref: %u for value '%s'\n", str_ref, raw_value);
+                fprintf(stderr, "DEBUG: Variable value string ref: %u for value '%s'\n", str_ref, raw_value);
                 
                 // Free the allocated JSON buffer if it was dynamically created
                 if (variable->data.variable_def.value->type == KRYON_AST_ARRAY_LITERAL) {
@@ -335,7 +335,7 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
         return false;
     }
     
-    print("📝 Writing component definition: '%s'\n", component->data.component.name ? component->data.component.name : "unnamed");
+    fprintf(stderr, "📝 Writing component definition: '%s'\n", component->data.component.name ? component->data.component.name : "unnamed");
     
     // Write component header
     if (!write_uint32(codegen, 0x434F4D50)) { // "COMP"
@@ -380,7 +380,7 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
     
     // State variable count
     uint16_t state_count = (uint16_t)component->data.component.state_count;
-    print("📝 Writing state_count=%u for component '%s'\n",
+    fprintf(stderr, "📝 Writing state_count=%u for component '%s'\n",
            state_count, component->data.component.name);
     if (!write_uint16(codegen, state_count)) {
         return false;
@@ -388,7 +388,7 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
 
     // Write state variables
     for (size_t i = 0; i < component->data.component.state_count; i++) {
-        print("📝 Writing state variable %zu\n", i);
+        fprintf(stderr, "📝 Writing state variable %zu\n", i);
         if (!kryon_write_single_variable(codegen, component->data.component.state_vars[i])) {
             return false;
         }
@@ -430,7 +430,7 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
         if (!write_uint8(codegen, 1)) { // Has body
             return false;
         }
-        print("📝 Writing %zu component body elements\n", component->data.component.body_count);
+        fprintf(stderr, "📝 Writing %zu component body elements\n", component->data.component.body_count);
         // Write count of body elements
         if (!write_uint16(codegen, (uint16_t)component->data.component.body_count)) {
             return false;
@@ -438,11 +438,11 @@ bool kryon_write_component_node(KryonCodeGenerator *codegen, const KryonASTNode 
         // Write each body element
         for (size_t i = 0; i < component->data.component.body_count; i++) {
             if (!kryon_write_element_node(codegen, component->data.component.body_elements[i], NULL)) {
-                print("❌ Failed to write component body element %zu\n", i);
+                fprintf(stderr, "❌ Failed to write component body element %zu\n", i);
                 return false;
             }
         }
-        print("✅ Successfully wrote %zu component body elements\n", component->data.component.body_count);
+        fprintf(stderr, "✅ Successfully wrote %zu component body elements\n", component->data.component.body_count);
     } else {
         if (!write_uint8(codegen, 0)) { // No body
             return false;
@@ -546,18 +546,18 @@ bool kryon_write_onload_directive(KryonCodeGenerator *codegen, const KryonASTNod
         return false;
     }
     
-    print("📝 Writing onload directive\n");
+    fprintf(stderr, "📝 Writing onload directive\n");
     
     // Extract language and code from the script structure
     const char *language = onload->data.script.language ? onload->data.script.language : "";
     const char *code = onload->data.script.code;
     
     if (!code) {
-        print("⚠️  Onload directive has no code content\n");
+        fprintf(stderr, "⚠️  Onload directive has no code content\n");
         return false;
     }
     
-    print("📝 Writing onload directive: lang='%s', code_length=%zu\n", 
+    fprintf(stderr, "📝 Writing onload directive: lang='%s', code_length=%zu\n", 
            language, strlen(code));
     
     // Write onload function header

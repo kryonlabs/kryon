@@ -65,7 +65,7 @@ bool element_behavior_system_init(void) {
     memset(&g_behavior_system, 0, sizeof(g_behavior_system));
     g_behavior_system.initialized = true;
     
-    print("✓ Element Behavior System initialized\n");
+    fprintf(stderr, "✓ Element Behavior System initialized\n");
     return true;
 }
 
@@ -87,25 +87,25 @@ void element_behavior_system_cleanup(void) {
 
 bool element_behavior_register(const ElementBehavior* behavior) {
     if (!behavior || !behavior->name) {
-        print("ERROR: Invalid behavior (NULL or no name)\n");
+        fprintf(stderr, "ERROR: Invalid behavior (NULL or no name)\n");
         return false;
     }
     
     if (g_behavior_system.behavior_count >= MAX_BEHAVIORS) {
-        print("ERROR: Maximum number of behaviors (%d) exceeded\n", MAX_BEHAVIORS);
+        fprintf(stderr, "ERROR: Maximum number of behaviors (%d) exceeded\n", MAX_BEHAVIORS);
         return false;
     }
     
     // Check for duplicate behavior names
     for (size_t i = 0; i < g_behavior_system.behavior_count; i++) {
         if (strcmp(g_behavior_system.behaviors[i]->name, behavior->name) == 0) {
-            print("ERROR: Behavior '%s' already registered\n", behavior->name);
+            fprintf(stderr, "ERROR: Behavior '%s' already registered\n", behavior->name);
             return false;
         }
     }
     
     g_behavior_system.behaviors[g_behavior_system.behavior_count++] = behavior;
-    print("✓ Registered behavior: %s\n", behavior->name);
+    fprintf(stderr, "✓ Registered behavior: %s\n", behavior->name);
     return true;
 }
 
@@ -132,7 +132,7 @@ ElementBehaviorState* element_get_behavior_state(struct KryonElement* element) {
     if (!element->user_data) {
         ElementBehaviorState* state = kryon_alloc(sizeof(ElementBehaviorState));
         if (!state) {
-            print("ERROR: Failed to allocate element behavior state\n");
+            fprintf(stderr, "ERROR: Failed to allocate element behavior state\n");
             return NULL;
         }
         
@@ -305,17 +305,17 @@ static void composed_destroy(struct KryonRuntime* runtime,
 
 bool element_definition_register(const ElementDefinition* definition) {
     if (!definition || !definition->type_name || !definition->behavior_names) {
-        print("ERROR: Invalid element definition\n");
+        fprintf(stderr, "ERROR: Invalid element definition\n");
         return false;
     }
     
     if (g_behavior_system.definition_count >= MAX_ELEMENT_DEFINITIONS) {
-        print("ERROR: Maximum element definitions (%d) exceeded\n", MAX_ELEMENT_DEFINITIONS);
+        fprintf(stderr, "ERROR: Maximum element definitions (%d) exceeded\n", MAX_ELEMENT_DEFINITIONS);
         return false;
     }
     
     if (g_composed_vtable_count >= MAX_ELEMENT_DEFINITIONS) {
-        print("ERROR: Maximum composed VTables (%d) exceeded\n", MAX_ELEMENT_DEFINITIONS);
+        fprintf(stderr, "ERROR: Maximum composed VTables (%d) exceeded\n", MAX_ELEMENT_DEFINITIONS);
         return false;
     }
     
@@ -323,14 +323,14 @@ bool element_definition_register(const ElementDefinition* definition) {
     size_t behavior_count = 0;
     for (const char** name = definition->behavior_names; *name; name++) {
         if (!element_behavior_get(*name)) {
-            print("ERROR: Behavior '%s' not found for element '%s'\n", *name, definition->type_name);
+            fprintf(stderr, "ERROR: Behavior '%s' not found for element '%s'\n", *name, definition->type_name);
             return false;
         }
         behavior_count++;
     }
     
     if (behavior_count == 0) {
-        print("ERROR: Element '%s' has no behaviors\n", definition->type_name);
+        fprintf(stderr, "ERROR: Element '%s' has no behaviors\n", definition->type_name);
         return false;
     }
     
@@ -341,7 +341,7 @@ bool element_definition_register(const ElementDefinition* definition) {
     // Allocate behavior array (use malloc since this runs during constructor phase)
     composed->behaviors = malloc(sizeof(ElementBehavior*) * behavior_count);
     if (!composed->behaviors) {
-        print("ERROR: Failed to allocate behavior array for element '%s'\n", definition->type_name);
+        fprintf(stderr, "ERROR: Failed to allocate behavior array for element '%s'\n", definition->type_name);
         g_composed_vtable_count--;
         return false;
     }
@@ -365,19 +365,19 @@ bool element_definition_register(const ElementDefinition* definition) {
     
     // Register with element system
     if (!element_register_type(definition->type_name, &composed->base_vtable)) {
-        print("ERROR: Failed to register element type '%s'\n", definition->type_name);
+        fprintf(stderr, "ERROR: Failed to register element type '%s'\n", definition->type_name);
         free((void*)composed->behaviors);
         g_composed_vtable_count--;
         g_behavior_system.definition_count--;
         return false;
     }
     
-    print("✓ Registered element: %s (", definition->type_name);
+    fprintf(stderr, "✓ Registered element: %s (", definition->type_name);
     for (size_t i = 0; i < behavior_count; i++) {
-        print("%s", composed->behaviors[i]->name);
-        if (i < behavior_count - 1) print(", ");
+        fprintf(stderr, "%s", composed->behaviors[i]->name);
+        if (i < behavior_count - 1) fprintf(stderr, ", ");
     }
-    print(")\n");
+    fprintf(stderr, ")\n");
     
     return true;
 }
@@ -412,7 +412,7 @@ bool element_initialize_behaviors(struct KryonElement* element) {
     // Call custom init if present
     if (composed->definition->custom_init) {
         if (!composed->definition->custom_init(element)) {
-            print("ERROR: Custom init failed for element '%s'\n", element->type_name);
+            fprintf(stderr, "ERROR: Custom init failed for element '%s'\n", element->type_name);
             return false;
         }
     }
@@ -422,7 +422,7 @@ bool element_initialize_behaviors(struct KryonElement* element) {
         const ElementBehavior* behavior = composed->behaviors[i];
         if (behavior && behavior->init) {
             if (!behavior->init(element)) {
-                print("ERROR: Behavior '%s' init failed for element '%s'\n", 
+                fprintf(stderr, "ERROR: Behavior '%s' init failed for element '%s'\n", 
                        behavior->name, element->type_name);
                 return false;
             }

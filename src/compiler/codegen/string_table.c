@@ -16,12 +16,12 @@
 bool kryon_write_string_table(KryonCodeGenerator *codegen) {
     if (!codegen) return false;
     
-    print("DEBUG: Writing string table with %zu strings (capacity=%zu):\n", codegen->string_count, codegen->string_capacity);
+    fprintf(stderr, "DEBUG: Writing string table with %zu strings (capacity=%zu):\n", codegen->string_count, codegen->string_capacity);
     for (size_t i = 0; i < codegen->string_count && i < 10; i++) {
-        print("  [%zu] '%s'\n", i, codegen->string_table[i] ? codegen->string_table[i] : "(null)");
+        fprintf(stderr, "  [%zu] '%s'\n", i, codegen->string_table[i] ? codegen->string_table[i] : "(null)");
     }
     if (codegen->string_count > 10) {
-        print("  ... (%zu more strings)\n", codegen->string_count - 10);
+        fprintf(stderr, "  ... (%zu more strings)\n", codegen->string_count - 10);
     }
     
     // Write actual string count
@@ -82,6 +82,6 @@ uint32_t add_string_to_table(KryonCodeGenerator *codegen, const char *str) {
     }
     
     uint32_t index = (uint32_t)(codegen->string_count++); // 0-based index
-    print("DEBUG: Added string [%u]: '%s'\n", index, str);
+    fprintf(stderr, "DEBUG: Added string [%u]: '%s'\n", index, str);
     return index; // Return 0-based index
 }

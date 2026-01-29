@@ -234,7 +234,7 @@ char* kryon_ast_expression_to_string(const KryonASTNode* node, KryonCodeGenerato
             
         default:
             // For unsupported node types, return a placeholder
-            print("Warning: Unsupported AST node type %d in expression serializer\n", node->type);
+            fprintf(stderr, "Warning: Unsupported AST node type %d in expression serializer\n", node->type);
             return kryon_strdup("[unsupported]");
     }
 }

@@ -44,8 +44,41 @@ SDL2_LDFLAGS := $(shell pkg-config --libs sdl2 SDL2_image SDL2_ttf fontconfig 2>
 RAYLIB_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null || echo "")
 RAYLIB_LDFLAGS := $(shell pkg-config --libs raylib 2>/dev/null || echo "")
 
+# =============================================================================
+# LIB9 COMPATIBILITY LAYER
+# =============================================================================
+# Provides Plan 9 lib9 functionality for standalone Linux builds
+# When building with INFERNO env var set, uses real lib9 from TaijiOS instead
+
+LIB9_DIR = $(THIRD_PARTY_DIR)/lib9
+
+ifdef INFERNO
+    # Native TaijiOS/Inferno build - use real lib9
+    LIB9_CFLAGS = -DKRYON_LIB9_NATIVE
+    LIB9_INCLUDES = -I$(INFERNO)/include
+    LIB9_LDFLAGS = -L$(INFERNO)/Linux/amd64/lib -l9
+    LIB9_SRC =
+    LIB9_OBJ =
+    $(info Building with native TaijiOS lib9)
+else
+    # Standalone compatibility build
+    LIB9_CFLAGS = -DKRYON_LIB9_COMPAT
+    LIB9_INCLUDES = -I$(LIB9_DIR)/include
+    LIB9_LDFLAGS =
+
+    # Lib9 compat sources
+    LIB9_FMT_SRC = $(wildcard $(LIB9_DIR)/src/fmt/*.c)
+    LIB9_UTF_SRC = $(wildcard $(LIB9_DIR)/src/utf/*.c)
+    LIB9_UTIL_SRC = $(wildcard $(LIB9_DIR)/src/util/*.c)
+    LIB9_SRC = $(LIB9_FMT_SRC) $(LIB9_UTF_SRC) $(LIB9_UTIL_SRC)
+    LIB9_OBJ = $(patsubst $(LIB9_DIR)/src/%.c,$(OBJ_DIR)/lib9/%.o,$(LIB9_SRC))
+    $(info Building with lib9 compatibility layer)
+endif
+
+CFLAGS += $(LIB9_CFLAGS)
+
 # Include paths - also use NIX_CFLAGS_COMPILE from nix shell
-INCLUDES = -I$(INCLUDE_DIR) -I$(SRC_DIR) -I$(THIRD_PARTY_DIR)/cjson $(SDL2_CFLAGS) $(RAYLIB_CFLAGS) $(NIX_CFLAGS_COMPILE)
+INCLUDES = -I$(INCLUDE_DIR) -I$(SRC_DIR) -I$(THIRD_PARTY_DIR)/cjson $(LIB9_INCLUDES) $(SDL2_CFLAGS) $(RAYLIB_CFLAGS) $(NIX_CFLAGS_COMPILE)
 
 # Source files (grouped by module)
 SHARED_SRC = $(SRC_DIR)/shared/kryon_mappings.c \
@@ -201,6 +234,11 @@ ALL_OBJ = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(ALL_SRC))
 # Third-party objects
 CJSON_OBJ = $(OBJ_DIR)/third-party/cjson/cjson.o
 
+# Lib9 objects (only for standalone build)
+ifndef INFERNO
+ALL_OBJ += $(LIB9_OBJ)
+endif
+
 # Target binary
 TARGET = $(BIN_DIR)/kryon
 
@@ -229,6 +267,30 @@ $(OBJ_DIR)/third-party/cjson:
 $(CJSON_OBJ): $(THIRD_PARTY_DIR)/cjson/cJSON.c | $(OBJ_DIR)/third-party/cjson
 	@echo "[CC] $<"
 	@$(CC) $(CFLAGS) $(INCLUDES) -fPIC -c $< -o $@
+
+# Build lib9 compatibility layer objects
+ifndef INFERNO
+$(OBJ_DIR)/lib9/fmt:
+	@mkdir -p $@
+
+$(OBJ_DIR)/lib9/utf:
+	@mkdir -p $@
+
+$(OBJ_DIR)/lib9/util:
+	@mkdir -p $@
+
+$(OBJ_DIR)/lib9/fmt/%.o: $(LIB9_DIR)/src/fmt/%.c | $(OBJ_DIR)/lib9/fmt
+	@echo "[CC] $<"
+	@$(CC) $(CFLAGS) -I$(LIB9_DIR)/include -I$(LIB9_DIR)/src/fmt -c $< -o $@
+
+$(OBJ_DIR)/lib9/utf/%.o: $(LIB9_DIR)/src/utf/%.c | $(OBJ_DIR)/lib9/utf
+	@echo "[CC] $<"
+	@$(CC) $(CFLAGS) -I$(LIB9_DIR)/include -I$(LIB9_DIR)/src/fmt -c $< -o $@
+
+$(OBJ_DIR)/lib9/util/%.o: $(LIB9_DIR)/src/util/%.c | $(OBJ_DIR)/lib9/util
+	@echo "[CC] $<"
+	@$(CC) $(CFLAGS) -I$(LIB9_DIR)/include -I$(LIB9_DIR)/src/fmt -c $< -o $@
+endif
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)

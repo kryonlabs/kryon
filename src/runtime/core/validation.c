@@ -232,7 +232,7 @@ size_t kryon_safe_strlen(const char* str) {
 void kryon_report_validation_error(const KryonValidationContext* ctx) {
     if (!ctx) return;
     
-    print("❌ VALIDATION ERROR [%s]: %s (pointer=0x%lx, result=%d)\n", 
+    fprintf(stderr, "❌ VALIDATION ERROR [%s]: %s (pointer=0x%lx, result=%d)\n", 
            ctx->context ? ctx->context : "unknown",
            ctx->error_message ? ctx->error_message : "no message",
            ctx->pointer_value,

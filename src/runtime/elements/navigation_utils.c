@@ -25,14 +25,14 @@ void navigation_ensure_manager(struct KryonRuntime* runtime, const char* element
     if (!runtime->navigation_manager) {
         runtime->navigation_manager = kryon_navigation_create(runtime);
         if (!runtime->navigation_manager) {
-            print("⚠️  Failed to create navigation manager for %s element\n", element_name);
+            fprintf(stderr, "⚠️  Failed to create navigation manager for %s element\n", element_name);
         } else {
-            print("🧭 Navigation manager created (%s element with navigation detected)\n", element_name);
+            fprintf(stderr, "🧭 Navigation manager created (%s element with navigation detected)\n", element_name);
             
             // Set current path from runtime's loaded file if available
             if (runtime->current_file_path) {
                 kryon_navigation_set_current_path(runtime->navigation_manager, runtime->current_file_path);
-                print("🧭 Set navigation path from runtime: %s\n", runtime->current_file_path);
+                fprintf(stderr, "🧭 Set navigation path from runtime: %s\n", runtime->current_file_path);
             }
         }
     }
@@ -54,19 +54,19 @@ bool navigation_handle_click(struct KryonRuntime* runtime,
     const char* overlay = get_element_property_string(element, "overlay");
     bool external = get_element_property_bool(element, "external", false);
     
-    print("🐛 CLICK DEBUG: Initial 'to' property = '%s'\n", to ? to : "NULL");
+    fprintf(stderr, "🐛 CLICK DEBUG: Initial 'to' property = '%s'\n", to ? to : "NULL");
     
     if (!to || strlen(to) == 0) {
-        print("🐛 CLICK DEBUG: 'to' property is empty or NULL, not navigating\n");
+        fprintf(stderr, "🐛 CLICK DEBUG: 'to' property is empty or NULL, not navigating\n");
         return false; // No navigation properties
     }
     
     // Auto-detect external URLs or use explicit external flag
     bool is_external = external || navigation_is_external_url(to);
     
-    print("🔗 %s navigation: %s %s\n", element_name, to, is_external ? "(external)" : "(internal)");
+    fprintf(stderr, "🔗 %s navigation: %s %s\n", element_name, to, is_external ? "(external)" : "(internal)");
     if (overlay && strlen(overlay) > 0) {
-        print("🔀 With overlay component: %s\n", overlay);
+        fprintf(stderr, "🔀 With overlay component: %s\n", overlay);
     }
     
     if (is_external) {
@@ -82,38 +82,38 @@ bool navigation_handle_click(struct KryonRuntime* runtime,
         #elif _WIN32
             // Will need to include windows.h for ShellExecuteA
             // ShellExecuteA(NULL, "open", to, NULL, NULL, SW_SHOWNORMAL);
-            print("🌐 External %s link: %s (Windows support coming soon)\n", element_name, to);
+            fprintf(stderr, "🌐 External %s link: %s (Windows support coming soon)\n", element_name, to);
         #else
-            print("🌐 External %s link: %s (Platform not supported)\n", element_name, to);
+            fprintf(stderr, "🌐 External %s link: %s (Platform not supported)\n", element_name, to);
         #endif
     } else {
         // Handle internal navigation using the navigation manager
         if (runtime->navigation_manager) {
             // Set overlay component if specified
             if (overlay && strlen(overlay) > 0) {
-                print("🔀 Setting overlay '%s' for navigation\n", overlay);
+                fprintf(stderr, "🔀 Setting overlay '%s' for navigation\n", overlay);
                 kryon_navigation_set_overlay(runtime->navigation_manager, overlay, runtime);
             }
             
-            print("📄 %s navigating to internal file: %s\n", element_name, to);
+            fprintf(stderr, "📄 %s navigating to internal file: %s\n", element_name, to);
             
             // Check 'to' property before navigation
             const char* to_before_nav = get_element_property_string(element, "to");
-            print("🐛 CLICK DEBUG: 'to' property before navigation = '%s'\n", to_before_nav ? to_before_nav : "NULL");
+            fprintf(stderr, "🐛 CLICK DEBUG: 'to' property before navigation = '%s'\n", to_before_nav ? to_before_nav : "NULL");
             
             KryonNavigationResult result = kryon_navigate_to(runtime->navigation_manager, to, false);
             
             // CRITICAL FIX: DO NOT access element after navigation!
             // Navigation destroys the old element tree, making 'element' invalid
-            print("🔧 NAVIGATION DEBUG: Navigation completed, element is now invalid\n");
+            fprintf(stderr, "🔧 NAVIGATION DEBUG: Navigation completed, element is now invalid\n");
             
             if (result == KRYON_NAV_SUCCESS) {
-                print("✅ %s navigation successful\n", element_name);
+                fprintf(stderr, "✅ %s navigation successful\n", element_name);
             } else {
-                print("❌ %s navigation failed with result: %d\n", element_name, result);
+                fprintf(stderr, "❌ %s navigation failed with result: %d\n", element_name, result);
             }
         } else {
-            print("⚠️  Navigation manager not available for %s internal navigation\n", element_name);
+            fprintf(stderr, "⚠️  Navigation manager not available for %s internal navigation\n", element_name);
         }
     }
     

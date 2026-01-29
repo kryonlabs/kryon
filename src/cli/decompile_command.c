@@ -50,11 +50,11 @@ KryonResult decompile_command(int argc, char *argv[]) {
                 verbose = true;
                 break;
             case 'h':
-                print("Usage: kryon decompile <input.krb> [options]\n");
-                print("Options:\n");
-                print("  -o, --output <file>  Output .kir file path (default: input.kir)\n");
-                print("  -v, --verbose        Enable verbose output\n");
-                print("  -h, --help           Show this help message\n");
+                fprintf(stderr, "Usage: kryon decompile <input.krb> [options]\n");
+                fprintf(stderr, "Options:\n");
+                fprintf(stderr, "  -o, --output <file>  Output .kir file path (default: input.kir)\n");
+                fprintf(stderr, "  -v, --verbose        Enable verbose output\n");
+                fprintf(stderr, "  -h, --help           Show this help message\n");
                 return KRYON_SUCCESS;
             default:
                 return KRYON_ERROR_INVALID_ARGUMENT;
@@ -164,7 +164,7 @@ KryonResult decompile_command(int argc, char *argv[]) {
 
     kryon_kir_writer_destroy(kir_writer);
 
-    print("Decompilation successful: %s\n", output_file);
+    fprintf(stderr, "Decompilation successful: %s\n", output_file);
 
 cleanup_ast:
     // Note: AST cleanup would go here if we had a destroy function

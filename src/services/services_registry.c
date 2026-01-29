@@ -94,7 +94,7 @@ bool kryon_services_register(KryonPlatformServices *services) {
         }
     }
 
-    print("[Kryon Services] Registered plugin: %s v%s\n",
+    fprintf(stderr, "[Kryon Services] Registered plugin: %s v%s\n",
            services->name,
            services->version ? services->version : "unknown");
 
@@ -163,9 +163,9 @@ bool kryon_services_init(void) {
                     g_active_plugin->name);
             return false;
         }
-        print("[Kryon Services] Initialized plugin: %s\n", g_active_plugin->name);
+        fprintf(stderr, "[Kryon Services] Initialized plugin: %s\n", g_active_plugin->name);
     } else if (!g_active_plugin) {
-        print("[Kryon Services] No plugin registered, services unavailable\n");
+        fprintf(stderr, "[Kryon Services] No plugin registered, services unavailable\n");
     }
 
     return true;
@@ -182,7 +182,7 @@ void kryon_services_shutdown(void) {
     // Shutdown active plugin
     if (g_active_plugin && g_active_plugin->shutdown) {
         g_active_plugin->shutdown();
-        print("[Kryon Services] Shutdown plugin: %s\n", g_active_plugin->name);
+        fprintf(stderr, "[Kryon Services] Shutdown plugin: %s\n", g_active_plugin->name);
     }
 
     g_services_initialized = false;

@@ -24,21 +24,21 @@
  * This is called automatically when the element system starts up
  */
 bool behavior_system_integration_init(void) {
-    print("🚀 Initializing Element Behavior System...\n");
+    fprintf(stderr, "🚀 Initializing Element Behavior System...\n");
     
     // Initialize behavior system infrastructure
     if (!element_behavior_system_init()) {
-        print("❌ Failed to initialize behavior system infrastructure\n");
+        fprintf(stderr, "❌ Failed to initialize behavior system infrastructure\n");
         return false;
     }
     
     // The behaviors themselves are registered automatically via constructor attributes
     // The element definitions are also registered automatically
     
-    print("✅ Element Behavior System initialized successfully\n");
-    print("   - Core behaviors: Renderable, Clickable, Text, Layout, Selectable\n");
-    print("   - Auto-registered elements: Button, Container, Row, Column, etc.\n");
-    print("   - Advanced elements: TabBar, Checkbox, ToggleButton, etc.\n");
+    fprintf(stderr, "✅ Element Behavior System initialized successfully\n");
+    fprintf(stderr, "   - Core behaviors: Renderable, Clickable, Text, Layout, Selectable\n");
+    fprintf(stderr, "   - Auto-registered elements: Button, Container, Row, Column, etc.\n");
+    fprintf(stderr, "   - Advanced elements: TabBar, Checkbox, ToggleButton, etc.\n");
     
     return true;
 }
@@ -47,7 +47,7 @@ bool behavior_system_integration_init(void) {
  * @brief Cleanup behavior system during element registry cleanup
  */
 void behavior_system_integration_cleanup(void) {
-    print("🧹 Cleaning up Element Behavior System...\n");
+    fprintf(stderr, "🧹 Cleaning up Element Behavior System...\n");
     element_behavior_system_cleanup();
 }
 
@@ -66,7 +66,7 @@ KryonElement* kryon_element_create_with_behaviors(KryonRuntime* runtime, uint16_
     
     // Initialize behaviors for this element
     if (!element_initialize_behaviors(element)) {
-        print("WARNING: Failed to initialize behaviors for element '%s'\n", 
+        fprintf(stderr, "WARNING: Failed to initialize behaviors for element '%s'\n", 
                element->type_name ? element->type_name : "unknown");
         // Don't fail element creation, just log the warning
     }
@@ -187,30 +187,30 @@ ElementCapabilities element_get_capabilities(KryonElement* element) {
  */
 void element_print_info(KryonElement* element) {
     if (!element) {
-        print("Element: NULL\n");
+        fprintf(stderr, "Element: NULL\n");
         return;
     }
     
-    print("Element: %s (ID: %u)\n", 
+    fprintf(stderr, "Element: %s (ID: %u)\n", 
            element->type_name ? element->type_name : "unknown", 
            element->id);
     
     ElementBehaviorState* state = element_get_behavior_state(element);
     if (state) {
-        print("  Behavior State: initialized=%s\n", state->initialized ? "true" : "false");
-        print("    Hover: %s, Clicked: %s, Selected: %s\n",
+        fprintf(stderr, "  Behavior State: initialized=%s\n", state->initialized ? "true" : "false");
+        fprintf(stderr, "    Hover: %s, Clicked: %s, Selected: %s\n",
                state->hovered ? "true" : "false",
                state->clicked ? "true" : "false", 
                state->selected ? "true" : "false");
         if (state->selected_index >= 0) {
-            print("    Selected Index: %d\n", state->selected_index);
+            fprintf(stderr, "    Selected Index: %d\n", state->selected_index);
         }
     } else {
-        print("  Behavior State: none (legacy element)\n");
+        fprintf(stderr, "  Behavior State: none (legacy element)\n");
     }
     
     ElementCapabilities caps = element_get_capabilities(element);
-    print("  Capabilities: render=%s, click=%s, select=%s, layout=%s, text=%s\n",
+    fprintf(stderr, "  Capabilities: render=%s, click=%s, select=%s, layout=%s, text=%s\n",
            caps.can_render ? "✓" : "✗",
            caps.can_click ? "✓" : "✗", 
            caps.can_select ? "✓" : "✗",
@@ -222,13 +222,13 @@ void element_print_info(KryonElement* element) {
  * @brief Print behavior system statistics
  */
 void behavior_system_print_stats(void) {
-    print("=== Element Behavior System Statistics ===\n");
-    print("Status: Active and integrated\n");
-    print("Benefits achieved:\n");
-    print("  - 95%% reduction in boilerplate code\n");
-    print("  - Automatic element registration\n");
-    print("  - Unified state management\n");
-    print("  - Composable element architecture\n");
-    print("  - Zero-code element definitions\n");
-    print("===========================================\n");
+    fprintf(stderr, "=== Element Behavior System Statistics ===\n");
+    fprintf(stderr, "Status: Active and integrated\n");
+    fprintf(stderr, "Benefits achieved:\n");
+    fprintf(stderr, "  - 95%% reduction in boilerplate code\n");
+    fprintf(stderr, "  - Automatic element registration\n");
+    fprintf(stderr, "  - Unified state management\n");
+    fprintf(stderr, "  - Composable element architecture\n");
+    fprintf(stderr, "  - Zero-code element definitions\n");
+    fprintf(stderr, "===========================================\n");
 }

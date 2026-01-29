@@ -59,13 +59,13 @@ KryonResult print_command(int argc, char *argv[]) {
                 readable = true;
                 break;
             case 'h':
-                print("Usage: kryon print <input.kir> [options]\n");
-                print("Options:\n");
-                print("  -o, --output <file>  Output .kry file path (default: input.kry)\n");
-                print("  -c, --compact        Use compact formatting (minimal whitespace)\n");
-                print("  -r, --readable       Use readable formatting (generous whitespace)\n");
-                print("  -v, --verbose        Enable verbose output\n");
-                print("  -h, --help           Show this help message\n");
+                fprintf(stderr, "Usage: kryon print <input.kir> [options]\n");
+                fprintf(stderr, "Options:\n");
+                fprintf(stderr, "  -o, --output <file>  Output .kry file path (default: input.kry)\n");
+                fprintf(stderr, "  -c, --compact        Use compact formatting (minimal whitespace)\n");
+                fprintf(stderr, "  -r, --readable       Use readable formatting (generous whitespace)\n");
+                fprintf(stderr, "  -v, --verbose        Enable verbose output\n");
+                fprintf(stderr, "  -h, --help           Show this help message\n");
                 return KRYON_SUCCESS;
             default:
                 return KRYON_ERROR_INVALID_ARGUMENT;
@@ -151,7 +151,7 @@ KryonResult print_command(int argc, char *argv[]) {
         KRYON_LOG_INFO("  Bytes: %zu", stats->total_bytes);
     }
 
-    print("Source code generated: %s\n", output_file);
+    fprintf(stderr, "Source code generated: %s\n", output_file);
 
 cleanup_printer:
     kryon_printer_destroy(printer);

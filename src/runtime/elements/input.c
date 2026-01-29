@@ -100,7 +100,7 @@ static InputState* ensure_input_state(struct KryonElement* element) {
                 state->has_focus = true;
                 state->cursor_visible = true;
                 state->cursor_blink_timer = 0.0f;
-                print("🔍 INPUT: autoFocus enabled, input will receive focus\n");
+                fprintf(stderr, "🔍 INPUT: autoFocus enabled, input will receive focus\n");
             }
 
             // Check input type for special behavior
@@ -319,7 +319,7 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
             // Check for onBlur callback
             const char* onBlur = get_element_property_string(element, "onBlur");
             if (onBlur) {
-                print("🔍 INPUT: Focus lost, calling onBlur: '%s'\n", onBlur);
+                fprintf(stderr, "🔍 INPUT: Focus lost, calling onBlur: '%s'\n", onBlur);
                 // Invoke the configured script handler (no-op when scripting disabled)
                 generic_script_event_handler(runtime, element, event);
             }
@@ -408,7 +408,7 @@ static bool input_handle_event(struct KryonRuntime* runtime, struct KryonElement
                     // Check for onEnter callback
                     const char* onEnter = get_element_property_string(element, "onEnter");
                     if (onEnter) {
-                        print("🔍 INPUT: Enter pressed, calling onEnter: '%s'\n", onEnter);
+                        fprintf(stderr, "🔍 INPUT: Enter pressed, calling onEnter: '%s'\n", onEnter);
                         // Invoke the configured script handler (no-op when scripting disabled)
                         generic_script_event_handler(runtime, element, event);
                         return true;

@@ -123,10 +123,10 @@ KryonResult kir_stats_command(int argc, char *argv[]) {
                 verbose = true;
                 break;
             case 'h':
-                print("Usage: kryon kir-stats <file.kir> [options]\n");
-                print("Options:\n");
-                print("  -v, --verbose        Show detailed statistics\n");
-                print("  -h, --help           Show this help message\n");
+                fprintf(stderr, "Usage: kryon kir-stats <file.kir> [options]\n");
+                fprintf(stderr, "Options:\n");
+                fprintf(stderr, "  -v, --verbose        Show detailed statistics\n");
+                fprintf(stderr, "  -h, --help           Show this help message\n");
                 return KRYON_SUCCESS;
             default:
                 return KRYON_ERROR_INVALID_ARGUMENT;
@@ -168,22 +168,22 @@ KryonResult kir_stats_command(int argc, char *argv[]) {
     collect_stats(ast, &stats);
 
     // Print statistics
-    print("KIR Statistics: %s\n", input_file);
-    print("================================\n");
-    print("Total nodes:      %zu\n", stats.total_nodes);
-    print("Elements:         %zu\n", stats.elements);
-    print("Properties:       %zu\n", stats.properties);
-    print("Literals:         %zu\n", stats.literals);
-    print("Variables:        %zu\n", stats.variables);
-    print("Function calls:   %zu\n", stats.function_calls);
-    print("Binary ops:       %zu\n", stats.binary_ops);
-    print("Max depth:        %zu\n", stats.max_depth);
+    fprintf(stderr, "KIR Statistics: %s\n", input_file);
+    fprintf(stderr, "================================\n");
+    fprintf(stderr, "Total nodes:      %zu\n", stats.total_nodes);
+    fprintf(stderr, "Elements:         %zu\n", stats.elements);
+    fprintf(stderr, "Properties:       %zu\n", stats.properties);
+    fprintf(stderr, "Literals:         %zu\n", stats.literals);
+    fprintf(stderr, "Variables:        %zu\n", stats.variables);
+    fprintf(stderr, "Function calls:   %zu\n", stats.function_calls);
+    fprintf(stderr, "Binary ops:       %zu\n", stats.binary_ops);
+    fprintf(stderr, "Max depth:        %zu\n", stats.max_depth);
 
     if (verbose) {
-        print("\nRatios:\n");
+        fprintf(stderr, "\nRatios:\n");
         if (stats.elements > 0) {
-            print("  Props/element:  %.2f\n", (double)stats.properties / stats.elements);
-            print("  Children/elem:  %.2f\n", (double)(stats.elements - 1) / stats.elements);
+            fprintf(stderr, "  Props/element:  %.2f\n", (double)stats.properties / stats.elements);
+            fprintf(stderr, "  Children/elem:  %.2f\n", (double)(stats.elements - 1) / stats.elements);
         }
     }
 
@@ -218,10 +218,10 @@ KryonResult kir_validate_command(int argc, char *argv[]) {
                 verbose = true;
                 break;
             case 'h':
-                print("Usage: kryon kir-validate <file.kir> [options]\n");
-                print("Options:\n");
-                print("  -v, --verbose        Show detailed validation info\n");
-                print("  -h, --help           Show this help message\n");
+                fprintf(stderr, "Usage: kryon kir-validate <file.kir> [options]\n");
+                fprintf(stderr, "Options:\n");
+                fprintf(stderr, "  -v, --verbose        Show detailed validation info\n");
+                fprintf(stderr, "  -h, --help           Show this help message\n");
                 return KRYON_SUCCESS;
             default:
                 return KRYON_ERROR_INVALID_ARGUMENT;
@@ -238,7 +238,7 @@ KryonResult kir_validate_command(int argc, char *argv[]) {
     input_file = argv[optind];
 
     if (verbose) {
-        print("Validating: %s\n", input_file);
+        fprintf(stderr, "Validating: %s\n", input_file);
     }
 
     // Read and validate KIR file
@@ -263,12 +263,12 @@ KryonResult kir_validate_command(int argc, char *argv[]) {
     kryon_kir_reader_destroy(reader);
 
     // Additional AST validation could go here
-    print("✅ Validation PASSED: %s\n", input_file);
+    fprintf(stderr, "✅ Validation PASSED: %s\n", input_file);
 
     if (verbose) {
         ASTStats stats = {0};
         collect_stats(ast, &stats);
-        print("  Nodes: %zu, Elements: %zu, Properties: %zu\n",
+        fprintf(stderr, "  Nodes: %zu, Elements: %zu, Properties: %zu\n",
                stats.total_nodes, stats.elements, stats.properties);
     }
 
@@ -281,7 +281,7 @@ KryonResult kir_validate_command(int argc, char *argv[]) {
 
 static void dump_indent(int level) {
     for (int i = 0; i < level; i++) {
-        print("  ");
+        fprintf(stderr, "  ");
     }
 }
 
@@ -290,28 +290,28 @@ static void dump_node(const KryonASTNode *node, int level);
 static void dump_value(const KryonASTValue *value) {
     switch (value->type) {
         case KRYON_VALUE_STRING:
-            print("\"%s\"", value->data.string_value ? value->data.string_value : "");
+            fprintf(stderr, "\"%s\"", value->data.string_value ? value->data.string_value : "");
             break;
         case KRYON_VALUE_INTEGER:
-            print("%lld", (long long)value->data.int_value);
+            fprintf(stderr, "%lld", (long long)value->data.int_value);
             break;
         case KRYON_VALUE_FLOAT:
-            print("%.2f", value->data.float_value);
+            fprintf(stderr, "%.2f", value->data.float_value);
             break;
         case KRYON_VALUE_BOOLEAN:
-            print("%s", value->data.bool_value ? "true" : "false");
+            fprintf(stderr, "%s", value->data.bool_value ? "true" : "false");
             break;
         case KRYON_VALUE_NULL:
-            print("null");
+            fprintf(stderr, "null");
             break;
         case KRYON_VALUE_COLOR:
-            print("#%08X", value->data.color_value);
+            fprintf(stderr, "#%08X", value->data.color_value);
             break;
         case KRYON_VALUE_UNIT:
-            print("%.2f%s", value->data.unit_value.value, value->data.unit_value.unit);
+            fprintf(stderr, "%.2f%s", value->data.unit_value.value, value->data.unit_value.unit);
             break;
         default:
-            print("<?>");
+            fprintf(stderr, "<?>");
             break;
     }
 }
@@ -319,7 +319,7 @@ static void dump_value(const KryonASTValue *value) {
 static void dump_node(const KryonASTNode *node, int level) {
     if (!node) {
         dump_indent(level);
-        print("(null)\n");
+        fprintf(stderr, "(null)\n");
         return;
     }
 
@@ -327,14 +327,14 @@ static void dump_node(const KryonASTNode *node, int level) {
 
     switch (node->type) {
         case KRYON_AST_ROOT:
-            print("ROOT (%zu children)\n", node->data.element.child_count);
+            fprintf(stderr, "ROOT (%zu children)\n", node->data.element.child_count);
             for (size_t i = 0; i < node->data.element.child_count; i++) {
                 dump_node(node->data.element.children[i], level + 1);
             }
             break;
 
         case KRYON_AST_ELEMENT:
-            print("ELEMENT: %s (%zu props, %zu children)\n",
+            fprintf(stderr, "ELEMENT: %s (%zu props, %zu children)\n",
                    node->data.element.element_type,
                    node->data.element.property_count,
                    node->data.element.child_count);
@@ -349,32 +349,32 @@ static void dump_node(const KryonASTNode *node, int level) {
             break;
 
         case KRYON_AST_PROPERTY:
-            print("PROP: %s = ", node->data.property.name);
+            fprintf(stderr, "PROP: %s = ", node->data.property.name);
             dump_node(node->data.property.value, 0);
             break;
 
         case KRYON_AST_LITERAL:
-            print("LITERAL: ");
+            fprintf(stderr, "LITERAL: ");
             dump_value(&node->data.literal.value);
-            print("\n");
+            fprintf(stderr, "\n");
             break;
 
         case KRYON_AST_VARIABLE:
-            print("VAR: $%s\n", node->data.variable.name);
+            fprintf(stderr, "VAR: $%s\n", node->data.variable.name);
             break;
 
         case KRYON_AST_IDENTIFIER:
-            print("ID: %s\n", node->data.identifier.name);
+            fprintf(stderr, "ID: %s\n", node->data.identifier.name);
             break;
 
         case KRYON_AST_BINARY_OP:
-            print("BINARY_OP\n");
+            fprintf(stderr, "BINARY_OP\n");
             dump_node(node->data.binary_op.left, level + 1);
             dump_node(node->data.binary_op.right, level + 1);
             break;
 
         case KRYON_AST_FUNCTION_CALL:
-            print("CALL: %s(%zu args)\n",
+            fprintf(stderr, "CALL: %s(%zu args)\n",
                    node->data.function_call.function_name,
                    node->data.function_call.argument_count);
             for (size_t i = 0; i < node->data.function_call.argument_count; i++) {
@@ -383,7 +383,7 @@ static void dump_node(const KryonASTNode *node, int level) {
             break;
 
         default:
-            print("NODE: type=%d\n", node->type);
+            fprintf(stderr, "NODE: type=%d\n", node->type);
             break;
     }
 }
@@ -407,8 +407,8 @@ KryonResult kir_dump_command(int argc, char *argv[]) {
     while ((c = getopt_long(argc, argv, "h", long_options, NULL)) != -1) {
         switch (c) {
             case 'h':
-                print("Usage: kryon kir-dump <file.kir>\n");
-                print("Pretty-print KIR file structure in human-readable format\n");
+                fprintf(stderr, "Usage: kryon kir-dump <file.kir>\n");
+                fprintf(stderr, "Pretty-print KIR file structure in human-readable format\n");
                 return KRYON_SUCCESS;
             default:
                 return KRYON_ERROR_INVALID_ARGUMENT;
@@ -446,7 +446,7 @@ KryonResult kir_dump_command(int argc, char *argv[]) {
     kryon_kir_reader_destroy(reader);
 
     // Dump AST
-    print("=== KIR Dump: %s ===\n\n", input_file);
+    fprintf(stderr, "=== KIR Dump: %s ===\n\n", input_file);
     dump_node(ast, 0);
 
     return KRYON_SUCCESS;
@@ -551,8 +551,8 @@ KryonResult kir_diff_command(int argc, char *argv[]) {
     while ((c = getopt_long(argc, argv, "h", long_options, NULL)) != -1) {
         switch (c) {
             case 'h':
-                print("Usage: kryon kir-diff <file1.kir> <file2.kir>\n");
-                print("Compare two KIR files structurally\n");
+                fprintf(stderr, "Usage: kryon kir-diff <file1.kir> <file2.kir>\n");
+                fprintf(stderr, "Compare two KIR files structurally\n");
                 return KRYON_SUCCESS;
             default:
                 return KRYON_ERROR_INVALID_ARGUMENT;
@@ -608,13 +608,13 @@ KryonResult kir_diff_command(int argc, char *argv[]) {
     int diff_count = 0;
     bool identical = compare_nodes(ast1, ast2, &diff_count);
 
-    print("Comparing: %s <-> %s\n", file1, file2);
-    print("================================\n");
+    fprintf(stderr, "Comparing: %s <-> %s\n", file1, file2);
+    fprintf(stderr, "================================\n");
 
     if (identical) {
-        print("✅ Files are structurally identical\n");
+        fprintf(stderr, "✅ Files are structurally identical\n");
     } else {
-        print("❌ Files differ (%d differences found)\n", diff_count);
+        fprintf(stderr, "❌ Files differ (%d differences found)\n", diff_count);
     }
 
     return identical ? KRYON_SUCCESS : KRYON_ERROR_COMPILATION_FAILED;

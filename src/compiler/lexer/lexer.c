@@ -6,6 +6,7 @@
 #include "lexer.h"
 #include "memory.h"
 #include "error.h"
+#include "lib9.h"
 #include <ctype.h>
 #include <time.h>
 #include <math.h>

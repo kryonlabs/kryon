@@ -118,8 +118,15 @@ build_kryon() {
 
     cd "$KRYON_ROOT"
 
-    # Build using Makefile.taijios
-    if make -f Makefile.taijios "$@"; then
+    # Build using mk (Plan 9 make)
+    local MK="$TAIJIOS/Linux/amd64/bin/mk"
+    if [ ! -f "$MK" ]; then
+        error "mk not found at $MK"
+        error "Please build TaijiOS first: cd $TAIJIOS && mk"
+        exit 1
+    fi
+
+    if "$MK" "$@"; then
         echo ""
         success "Build successful!"
         echo ""
@@ -136,7 +143,7 @@ build_kryon() {
 # =============================================================================
 
 show_usage_instructions() {
-    local KRYON_BIN="$KRYON_ROOT/build/bin/kryon-taijios"
+    local KRYON_BIN="$TAIJIOS/Linux/amd64/bin/kryon"
 
     echo "=============================================="
     echo "  TaijiOS Native Kryon - Usage Instructions"
@@ -145,17 +152,15 @@ show_usage_instructions() {
     echo "Binary location:"
     echo "  $KRYON_BIN"
     echo ""
-    echo "Run kryon under TaijiOS emu:"
+    echo "Test kryon:"
+    echo "  $KRYON_BIN --version"
+    echo "  $KRYON_BIN --help"
     echo ""
-    echo "  1. Test version:"
-    echo "     cd $TAIJIOS"
-    echo "     emu $KRYON_BIN --version"
+    echo "Compile a Kryon file:"
+    echo "  $KRYON_BIN compile examples/hello-world.kry -o /tmp/hello.krb"
     echo ""
-    echo "  2. Compile a Kryon file:"
-    echo "     emu $KRYON_BIN compile examples/hello.kry"
-    echo ""
-    echo "  3. Run a compiled application:"
-    echo "     emu $KRYON_BIN run examples/hello.krb"
+    echo "Run a compiled application:"
+    echo "  $KRYON_BIN run /tmp/hello.krb"
     echo ""
     echo "  4. Access TaijiOS devices:"
     echo "     # Kryon can now use device files like:"
@@ -179,7 +184,13 @@ show_usage_instructions() {
 clean_build() {
     info "Cleaning build artifacts..."
     cd "$KRYON_ROOT"
-    make -f Makefile.taijios clean
+    local MK="$TAIJIOS/Linux/amd64/bin/mk"
+    if [ -f "$MK" ]; then
+        "$MK" clean
+    else
+        error "mk not found at $MK"
+        exit 1
+    fi
     success "Clean complete"
 }
 

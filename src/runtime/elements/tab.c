@@ -293,22 +293,22 @@ static void tab_render(KryonRuntime* runtime, KryonElement* element, KryonRender
 static bool tab_handle_event(KryonRuntime* runtime, KryonElement* element, const ElementEvent* event) {
     if (!element || !event) return false;
 
-    print("🔍 TAB EVENT: Tab '%s' received event type %d\n", 
+    fprintf(stderr, "🔍 TAB EVENT: Tab '%s' received event type %d\n", 
            get_tab_title(element), event->type);
 
     bool is_disabled = is_tab_disabled(element);
     if (is_disabled) {
-        print("🔍 TAB EVENT: Tab is disabled, ignoring event\n");
+        fprintf(stderr, "🔍 TAB EVENT: Tab is disabled, ignoring event\n");
         return false;
     }
 
     // Handle click events to notify parent TabBar
     if (event->type == ELEMENT_EVENT_CLICKED) {
-        print("🔍 TAB CLICK: Tab '%s' processing click event\n", get_tab_title(element));
+        fprintf(stderr, "🔍 TAB CLICK: Tab '%s' processing click event\n", get_tab_title(element));
 
         // Check if this tab has a custom onClick handler that overrides default navigation
         if (has_custom_click_handler(element)) {
-            print("🔍 TAB CLICK: Tab has custom onClick handler, delegating to script handler\n");
+            fprintf(stderr, "🔍 TAB CLICK: Tab has custom onClick handler, delegating to script handler\n");
             return generic_script_event_handler(runtime, element, event);
         }
 
@@ -322,10 +322,10 @@ static bool tab_handle_event(KryonRuntime* runtime, KryonElement* element, const
                 KryonElement* child = parent->children[i];
                 if (child && strcmp(child->type_name, "Tab") == 0) {
                     if (child == element) {
-                        print("🔍 TAB CLICK: Found tab at index %d, setting as selected\n", current_tab_index);
+                        fprintf(stderr, "🔍 TAB CLICK: Found tab at index %d, setting as selected\n", current_tab_index);
                         // Use the helper function to set selected index
                         tabbar_set_selected_index(runtime, parent, current_tab_index);
-                        print("🔍 TAB CLICK: Tab selection completed\n");
+                        fprintf(stderr, "🔍 TAB CLICK: Tab selection completed\n");
                         return true;
                     }
                     current_tab_index++;

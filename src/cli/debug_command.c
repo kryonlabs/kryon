@@ -18,10 +18,10 @@ static const char* get_property_value_string(const KryonProperty *prop);
 int debug_command(int argc, char *argv[]) {
     if (argc < 2) {
         fprint(2, "Error: No KRB file specified\n");
-        print("Usage: kryon debug <file.krb> [options]\n");
-        print("Options:\n");
-        print("  --tree    Show element tree structure (default)\n");
-        print("  --help    Show this help\n");
+        fprintf(stderr, "Usage: kryon debug <file.krb> [options]\n");
+        fprintf(stderr, "Options:\n");
+        fprintf(stderr, "  --tree    Show element tree structure (default)\n");
+        fprintf(stderr, "  --help    Show this help\n");
         return 1;
     }
     
@@ -46,17 +46,17 @@ int debug_command(int argc, char *argv[]) {
                 show_tree = true;
                 break;
             case 'h':
-                print("Usage: kryon debug <file.krb> [options]\n");
-                print("Options:\n");
-                print("  --tree    Show element tree structure (default)\n");
-                print("  --help    Show this help\n");
+                fprintf(stderr, "Usage: kryon debug <file.krb> [options]\n");
+                fprintf(stderr, "Options:\n");
+                fprintf(stderr, "  --tree    Show element tree structure (default)\n");
+                fprintf(stderr, "  --help    Show this help\n");
                 return 0;
             default:
                 break;
         }
     }
     
-    print("🔍 Kryon Debug: Analyzing KRB file: %s\n\n", krb_file_path);
+    fprintf(stderr, "🔍 Kryon Debug: Analyzing KRB file: %s\n\n", krb_file_path);
     
     // Initialize memory manager if not already done
     if (!g_kryon_memory_manager) {
@@ -91,21 +91,21 @@ int debug_command(int argc, char *argv[]) {
         return 1;
     }
     
-    print("✅ KRB file loaded successfully\n\n");
+    fprintf(stderr, "✅ KRB file loaded successfully\n\n");
     
     if (show_tree) {
-        print("📋 Element Tree Structure:\n");
-        print("═══════════════════════════\n");
+        fprintf(stderr, "📋 Element Tree Structure:\n");
+        fprintf(stderr, "═══════════════════════════\n");
         
         if (runtime->root) {
             print_element_tree(runtime->root, 0);
         } else {
-            print("❌ No root element found\n");
+            fprintf(stderr, "❌ No root element found\n");
         }
         
-        print("\n📊 Summary:\n");
-        print("───────────\n");
-        print("Total elements: %zu\n", runtime->element_count);
+        fprintf(stderr, "\n📊 Summary:\n");
+        fprintf(stderr, "───────────\n");
+        fprintf(stderr, "Total elements: %zu\n", runtime->element_count);
     }
     
     // Cleanup
@@ -120,10 +120,10 @@ static void print_element_tree(const KryonElement *element, int indent) {
     }
     
     print_indent(indent);
-    print("%s", element->type_name ? element->type_name : "Unknown");
+    fprintf(stderr, "%s", element->type_name ? element->type_name : "Unknown");
     
     if (element->child_count > 0) {
-        print(" (%zu children)", element->child_count);
+        fprintf(stderr, " (%zu children)", element->child_count);
     }
     
     // Show key properties
@@ -140,24 +140,24 @@ static void print_element_tree(const KryonElement *element, int indent) {
             
             const char *value = get_property_value_string(prop);
             if (value) {
-                print(" [%s: %s]", prop->name, value);
+                fprintf(stderr, " [%s: %s]", prop->name, value);
             }
         }
     }
     
-    print("\n");
+    fprintf(stderr, "\n");
     
     // Print children recursively
     for (size_t i = 0; i < element->child_count; i++) {
         if (i == element->child_count - 1) {
             // Last child - use └── 
             print_indent(indent);
-            print("└── ");
+            fprintf(stderr, "└── ");
             print_element_tree(element->children[i], indent + 1);
         } else {
             // Not last child - use ├──
             print_indent(indent);
-            print("├── ");
+            fprintf(stderr, "├── ");
             print_element_tree(element->children[i], indent + 1);
         }
     }
@@ -165,7 +165,7 @@ static void print_element_tree(const KryonElement *element, int indent) {
 
 static void print_indent(int indent) {
     for (int i = 0; i < indent; i++) {
-        print("    ");
+        fprintf(stderr, "    ");
     }
 }
 

@@ -22,33 +22,33 @@
  extern int package_command(int argc, char *argv[]);
  
  static void print_usage(const char *program_name) {
-     print("Kryon-C %s - Complete UI Framework\n", KRYON_VERSION);
-     print("Usage: %s <command> [options] [arguments]\n\n", program_name);
-     print("Commands:\n");
-     print("  compile <file.kry>     Compile KRY file to KRB binary\n");
-     print("  decompile <file.krb>   Decompile KRB binary to KIR format\n");
-     print("  print <file.kir>       Generate readable .kry source from KIR\n");
-     print("  run <file.krb>         Run KRB application\n");
-     print("  dev <file.kry>         Development mode with hot reload\n");
-     print("  debug <file.krb>       Debug KRB application\n");
-     print("  package <project>      Package for distribution\n");
-     print("\n");
-     print("KIR Utilities:\n");
-     print("  kir-dump <file.kir>    Pretty-print KIR structure\n");
-     print("  kir-validate <file>    Validate KIR file structure\n");
-     print("  kir-stats <file>       Show KIR statistics\n");
-     print("  kir-diff <f1> <f2>     Compare two KIR files\n");
-     print("  --help, -h             Show this help message\n");
-     print("  --version, -v          Show version information\n\n");
-     print("Examples:\n");
-     print("  %s compile hello-world.kry\n", program_name);
-     print("  %s run hello-world.krb\n", program_name);
-     print("  %s dev hello-world.kry --renderer=sdl2\n", program_name);
+     fprintf(stderr, "Kryon-C %s - Complete UI Framework\n", KRYON_VERSION);
+     fprintf(stderr, "Usage: %s <command> [options] [arguments]\n\n", program_name);
+     fprintf(stderr, "Commands:\n");
+     fprintf(stderr, "  compile <file.kry>     Compile KRY file to KRB binary\n");
+     fprintf(stderr, "  decompile <file.krb>   Decompile KRB binary to KIR format\n");
+     fprintf(stderr, "  print <file.kir>       Generate readable .kry source from KIR\n");
+     fprintf(stderr, "  run <file.krb>         Run KRB application\n");
+     fprintf(stderr, "  dev <file.kry>         Development mode with hot reload\n");
+     fprintf(stderr, "  debug <file.krb>       Debug KRB application\n");
+     fprintf(stderr, "  package <project>      Package for distribution\n");
+     fprintf(stderr, "\n");
+     fprintf(stderr, "KIR Utilities:\n");
+     fprintf(stderr, "  kir-dump <file.kir>    Pretty-print KIR structure\n");
+     fprintf(stderr, "  kir-validate <file>    Validate KIR file structure\n");
+     fprintf(stderr, "  kir-stats <file>       Show KIR statistics\n");
+     fprintf(stderr, "  kir-diff <f1> <f2>     Compare two KIR files\n");
+     fprintf(stderr, "  --help, -h             Show this help message\n");
+     fprintf(stderr, "  --version, -v          Show version information\n\n");
+     fprintf(stderr, "Examples:\n");
+     fprintf(stderr, "  %s compile hello-world.kry\n", program_name);
+     fprintf(stderr, "  %s run hello-world.krb\n", program_name);
+     fprintf(stderr, "  %s dev hello-world.kry --renderer=sdl2\n", program_name);
  }
  
  static void print_version(void) {
-     print("Kryon-C %s\n", KRYON_VERSION);
-     print("Platform: %s\n",
+     fprintf(stderr, "Kryon-C %s\n", KRYON_VERSION);
+     fprintf(stderr, "Platform: %s\n",
  #ifdef __linux__
             "Linux"
  #elif defined(__APPLE__)
@@ -61,7 +61,7 @@
             "Unknown"
  #endif
      );
-     print("Built: %s %s\n", __DATE__, __TIME__);
+     fprintf(stderr, "Built: %s %s\n", __DATE__, __TIME__);
  }
  
  void main(int argc, char *argv[]) {
