@@ -57,7 +57,6 @@ static const char *node_type_to_string(KryonASTNodeType type) {
         case KRYON_AST_FUNCTION_DEFINITION: return "FUNCTION_DEFINITION";
         case KRYON_AST_STATE_DEFINITION: return "STATE_DEFINITION";
         case KRYON_AST_CONST_DEFINITION: return "CONST_DEFINITION";
-        case KRYON_AST_CONST_FOR_LOOP: return "CONST_FOR_LOOP";
         case KRYON_AST_STORE_DIRECTIVE: return "STORE_DIRECTIVE";
         case KRYON_AST_WATCH_DIRECTIVE: return "WATCH_DIRECTIVE";
         case KRYON_AST_ON_MOUNT_DIRECTIVE: return "ON_MOUNT_DIRECTIVE";
@@ -72,7 +71,6 @@ static const char *node_type_to_string(KryonASTNodeType type) {
         case KRYON_AST_IF_DIRECTIVE: return "IF_DIRECTIVE";
         case KRYON_AST_ELIF_DIRECTIVE: return "ELIF_DIRECTIVE";
         case KRYON_AST_ELSE_DIRECTIVE: return "ELSE_DIRECTIVE";
-        case KRYON_AST_CONST_IF_DIRECTIVE: return "CONST_IF_DIRECTIVE";
         case KRYON_AST_COMPONENT: return "COMPONENT";
         case KRYON_AST_PROPS: return "PROPS";
         case KRYON_AST_SLOTS: return "SLOTS";

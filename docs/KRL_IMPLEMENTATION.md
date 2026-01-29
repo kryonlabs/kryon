@@ -30,11 +30,6 @@ $varName
 ### Control Flow
 
 ```lisp
-; Compile-time loops
-(const_for item in array ...)
-(const_for (i item) in array ...)
-(const_for i in (range 1 10) ...)
-
 ; Runtime loops
 (for item in array ...)
 (for (i item) in array ...)
@@ -86,8 +81,6 @@ $varName
 
 (App
   (windowWidth 800)
-  (const_for color in colors
-    (Box (backgroundColor $color)))
   (Counter (initialValue 10)))
 ```
 

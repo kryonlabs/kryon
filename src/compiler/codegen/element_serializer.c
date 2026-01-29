@@ -49,16 +49,6 @@ bool kryon_write_element_instance(KryonCodeGenerator *codegen, const KryonASTNod
         return false;
     }
 
-    // Handle const_for loops by expanding them
-    if (element->type == KRYON_AST_CONST_FOR_LOOP) {
-        return kryon_expand_const_for_loop(codegen, element, ast_root);
-    }
-
-    // Handle @const_if by evaluating at compile time and emitting only matching branch
-    if (element->type == KRYON_AST_CONST_IF_DIRECTIVE) {
-        return kryon_expand_const_if(codegen, element, ast_root);
-    }
-
     // Handle @if as runtime conditional (emit all branches with condition metadata)
     if (element->type == KRYON_AST_IF_DIRECTIVE) {
         return kryon_write_if_directive(codegen, element, ast_root);
@@ -1166,38 +1156,14 @@ uint16_t count_expanded_children(KryonCodeGenerator *codegen, const KryonASTNode
         const KryonASTNode *child = children[i];
         if (!child) continue;
         
-        if (child->type == KRYON_AST_CONST_FOR_LOOP) {
-            // Count how many elements this const_for will expand to
-            uint32_t iteration_count = 0;
-            
-            if (child->data.const_for_loop.is_range) {
-                // Handle range-based loop
-                int start = child->data.const_for_loop.range_start;
-                int end = child->data.const_for_loop.range_end;
-                iteration_count = (uint32_t)(end - start + 1);
-            } else {
-                // Handle array-based loop
-                const char *array_name = child->data.const_for_loop.array_name;
-                const KryonASTNode *array_const = find_constant_value(codegen, array_name);
-                
-                if (array_const && array_const->type == KRYON_AST_ARRAY_LITERAL) {
-                    iteration_count = (uint32_t)array_const->data.array_literal.element_count;
-                } else {
-                    // Fallback: count as 1 if we can't find the array
-                    iteration_count = 1;
-                }
-            }
-            
-            // Each iteration creates elements from the loop body
-            expanded_count += (uint16_t)iteration_count;
-        } else if (child->type == KRYON_AST_ELEMENT) {
+        if (child->type == KRYON_AST_ELEMENT) {
             // Regular element counts as 1
             expanded_count += 1;
         } else if (child->type == KRYON_AST_FOR_DIRECTIVE) {
             // @for directive counts as 1 element (will be expanded at runtime)
             expanded_count += 1;
-        } else if (child->type == KRYON_AST_IF_DIRECTIVE || child->type == KRYON_AST_CONST_IF_DIRECTIVE) {
-            // @if and @const_if directives count as 1 element
+        } else if (child->type == KRYON_AST_IF_DIRECTIVE) {
+            // @if directive counts as 1 element
             expanded_count += 1;
         }
         // Skip other types (constants, etc.)

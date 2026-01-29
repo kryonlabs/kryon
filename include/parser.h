@@ -686,13 +686,8 @@ static inline KryonASTNode **kryon_ast_get_children(const KryonASTNode *node, si
             return node->data.for_loop.body;
 
         case KRYON_AST_IF_DIRECTIVE:
-        case KRYON_AST_CONST_IF_DIRECTIVE:
             *out_count = node->data.conditional.then_count;
             return node->data.conditional.then_body;
-
-        case KRYON_AST_CONST_FOR_LOOP:
-            *out_count = node->data.const_for_loop.body_count;
-            return node->data.const_for_loop.body;
 
         default:
             *out_count = 0;

@@ -266,7 +266,6 @@ const KryonElementGroup kryon_element_groups[] = {
      {"if", (const char*[]){"when", NULL}, 0x8300, KRYON_TYPE_HINT_BOOLEAN},
      {"elif", (const char*[]){"elseif", NULL}, 0x8301, KRYON_TYPE_HINT_BOOLEAN},
      {"else", (const char*[]){NULL}, 0x8302, KRYON_TYPE_HINT_ANY},
-     {"const_if", (const char*[]){NULL}, 0x8303, KRYON_TYPE_HINT_BOOLEAN},
      {NULL, NULL, 0, 0} // Sentinel
  };
  

@@ -477,77 +477,6 @@ static cJSON *transpile_const(KRLSExp *sexp, const char *filename) {
     return node;
 }
 
-static cJSON *transpile_const_for(KRLSExp *sexp, const char *filename) {
-    if (sexp->data.list.count < 5) return NULL;
-
-    cJSON *node = cJSON_CreateObject();
-    cJSON_AddStringToObject(node, "type", "CONST_FOR_LOOP");
-    cJSON_AddNumberToObject(node, "nodeId", get_next_node_id());
-    cJSON_AddItemToObject(node, "location", create_location(sexp->line, sexp->column, filename));
-
-    // Parse loop variables: item 1 is either a symbol or a list (index value)
-    KRLSExp *var_spec = sexp->data.list.items[1];
-    if (var_spec->type == KRL_SEXP_LIST && var_spec->data.list.count == 2) {
-        // (i value) pair
-        cJSON_AddStringToObject(node, "indexVarName", var_spec->data.list.items[0]->data.symbol);
-        cJSON_AddStringToObject(node, "varName", var_spec->data.list.items[1]->data.symbol);
-    } else if (var_spec->type == KRL_SEXP_SYMBOL) {
-        // Single variable
-        cJSON_AddNullToObject(node, "indexVarName");
-        cJSON_AddStringToObject(node, "varName", var_spec->data.symbol);
-    } else {
-        return NULL;
-    }
-
-    // Check for 'in' keyword at position 2
-    if (sexp->data.list.items[2]->type != KRL_SEXP_SYMBOL ||
-        strcmp(sexp->data.list.items[2]->data.symbol, "in") != 0) {
-        return NULL;
-    }
-
-    // Parse iteration target at position 3: array name or (range start end)
-    KRLSExp *target = sexp->data.list.items[3];
-    if (target->type == KRL_SEXP_SYMBOL) {
-        // Array name
-        cJSON_AddBoolToObject(node, "isRange", false);
-        cJSON_AddStringToObject(node, "arrayName", target->data.symbol);
-    } else if (target->type == KRL_SEXP_LIST && target->data.list.count == 3 &&
-               is_symbol(target->data.list.items[0], "range")) {
-        // (range start end)
-        cJSON_AddBoolToObject(node, "isRange", true);
-
-        // Range start
-        KRLSExp *start = target->data.list.items[1];
-        if (start->type == KRL_SEXP_INTEGER) {
-            cJSON_AddNumberToObject(node, "rangeStart", start->data.integer);
-        } else {
-            return NULL;
-        }
-
-        // Range end
-        KRLSExp *end = target->data.list.items[2];
-        if (end->type == KRL_SEXP_INTEGER) {
-            cJSON_AddNumberToObject(node, "rangeEnd", end->data.integer);
-        } else {
-            return NULL;
-        }
-    } else {
-        return NULL;
-    }
-
-    // Parse body elements (starting from position 4)
-    cJSON *body = cJSON_CreateArray();
-    for (size_t i = 4; i < sexp->data.list.count; i++) {
-        cJSON *child = transpile_element(sexp->data.list.items[i], filename);
-        if (child) {
-            cJSON_AddItemToArray(body, child);
-        }
-    }
-    cJSON_AddItemToObject(node, "body", body);
-
-    return node;
-}
-
 static cJSON *transpile_component(KRLSExp *sexp, const char *filename) {
     if (sexp->data.list.count < 3) return NULL;
 
@@ -629,9 +558,6 @@ static cJSON *transpile_directive(KRLSExp *sexp, const char *filename) {
     if (strcmp(directive, "component") == 0) {
         return transpile_component(sexp, filename);
     }
-    if (strcmp(directive, "const_for") == 0) {
-        return transpile_const_for(sexp, filename);
-    }
     if (strcmp(directive, "for") == 0) {
         return transpile_for(sexp, filename);
     }
@@ -673,9 +599,9 @@ static cJSON *transpile_element(KRLSExp *sexp, const char *filename) {
         return transpile_function(sexp, filename);
     }
 
-    // Check for directives (component, const, var, const_for, for, if)
+    // Check for directives (component, const, var, for, if)
     if (strcmp(head, "component") == 0 || strcmp(head, "const") == 0 || strcmp(head, "var") == 0 ||
-        strcmp(head, "const_for") == 0 || strcmp(head, "for") == 0 || strcmp(head, "if") == 0) {
+        strcmp(head, "for") == 0 || strcmp(head, "if") == 0) {
         return transpile_directive(sexp, filename);
     }
 

@@ -81,11 +81,9 @@ static const char *token_type_names[] = {
     [KRYON_TOKEN_CONST_DIRECTIVE] = "CONST_DIRECTIVE",
     [KRYON_TOKEN_ONLOAD_DIRECTIVE] = "ONLOAD_DIRECTIVE",
     [KRYON_TOKEN_FOR_DIRECTIVE] = "FOR_DIRECTIVE",
-    [KRYON_TOKEN_CONST_FOR_DIRECTIVE] = "CONST_FOR_DIRECTIVE",
     [KRYON_TOKEN_IF_DIRECTIVE] = "IF_DIRECTIVE",
     [KRYON_TOKEN_ELIF_DIRECTIVE] = "ELIF_DIRECTIVE",
     [KRYON_TOKEN_ELSE_DIRECTIVE] = "ELSE_DIRECTIVE",
-    [KRYON_TOKEN_CONST_IF_DIRECTIVE] = "CONST_IF_DIRECTIVE",
     [KRYON_TOKEN_IN_KEYWORD] = "IN_KEYWORD",
     [KRYON_TOKEN_TEMPLATE_START] = "TEMPLATE_START",
     [KRYON_TOKEN_TEMPLATE_END] = "TEMPLATE_END",
@@ -145,11 +143,9 @@ static const KeywordEntry keywords[] = {
     {"const", KRYON_TOKEN_CONST_DIRECTIVE},
     {"onload", KRYON_TOKEN_ONLOAD_DIRECTIVE},
     {"for", KRYON_TOKEN_FOR_DIRECTIVE},
-    {"const_for", KRYON_TOKEN_CONST_FOR_DIRECTIVE},
     {"if", KRYON_TOKEN_IF_DIRECTIVE},
     {"elif", KRYON_TOKEN_ELIF_DIRECTIVE},
     {"else", KRYON_TOKEN_ELSE_DIRECTIVE},
-    {"const_if", KRYON_TOKEN_CONST_IF_DIRECTIVE},
 
     // Units
     {"px", KRYON_TOKEN_UNIT_PX},
@@ -1044,7 +1040,7 @@ bool kryon_token_is_operator(KryonTokenType type) {
 }
 
 bool kryon_token_is_directive(KryonTokenType type) {
-    return type >= KRYON_TOKEN_STYLE_DIRECTIVE && type <= KRYON_TOKEN_CONST_IF_DIRECTIVE;
+    return type >= KRYON_TOKEN_STYLE_DIRECTIVE && type <= KRYON_TOKEN_ELSE_DIRECTIVE;
 }
 
 bool kryon_token_is_unit(KryonTokenType type) {

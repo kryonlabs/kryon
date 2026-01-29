@@ -349,13 +349,6 @@ bool kryon_write_elements(KryonCodeGenerator *codegen, const KryonASTNode *ast_r
                 if (!kryon_write_element_node(codegen, child, ast_root)) {
                     return false;
                 }
-            } else if (child && child->type == KRYON_AST_CONST_FOR_LOOP) {
-                // Expand const_for loops inline
-                if (kryon_expand_const_for_loop(codegen, child, ast_root)) {
-                    // Element count is handled within expand_const_for_loop
-                } else {
-                    return false;
-                }
             } else if (child && child->type == KRYON_AST_STYLE_BLOCK) {
                 if (!write_style_node(codegen, child)) {
                     return false;
@@ -803,11 +796,6 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
                     case KRYON_AST_CONST_DEFINITION:
                         // Constant definitions will be handled
                         break;
-                    case KRYON_AST_CONST_FOR_LOOP:
-                        // Const for loops will be expanded inline
-                        print("DEBUG: Found const_for loop in counting phase\n");
-                        element_count += kryon_count_const_for_elements(codegen, child);
-                        break;
                     case KRYON_AST_FOR_DIRECTIVE:
                         // For directives will be written to KRB for runtime expansion
                         print("DEBUG: Found @for directive in counting phase\n");
@@ -1036,12 +1024,6 @@ static bool write_complex_krb_format(KryonCodeGenerator *codegen, const KryonAST
                     return false;
                 }
                 codegen->stats.output_elements++;
-            } else if (child && child->type == KRYON_AST_CONST_FOR_LOOP) {
-                // Expand const_for loops inline
-                if (!kryon_expand_const_for_loop(codegen, child, ast_root)) {
-                    codegen_error(codegen, "Failed to expand const_for loop");
-                    return false;
-                }
             }
             // Skip directive nodes - they are handled in their respective sections:
             // KRYON_AST_VARIABLE_DEFINITION -> Variables section

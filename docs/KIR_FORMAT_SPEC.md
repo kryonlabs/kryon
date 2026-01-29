@@ -36,7 +36,7 @@ kry source → [Lex/Parse/Expand] → KIR → [Codegen] → krb binary
 
 **Key Properties**:
 - **Lossless**: Complete AST information for perfect reconstruction
-- **Post-expansion**: Components, const_for, const_if all expanded
+- **Post-expansion**: Components expanded
 - **Machine-readable**: JSON format for AI/LLM compatibility
 - **Self-contained**: All necessary information for compilation or decompilation
 
@@ -688,8 +688,7 @@ Optional metadata can be attached to any node for decompilation hints:
   "metadata": {
     "expandedFrom": "Counter",
     "instanceParameters": {"initialValue": "5"},
-    "originalLine": 42,
-    "expansion": "const_for"
+    "originalLine": 42
   },
   "children": [...]
 }
@@ -920,70 +919,6 @@ Counter { initialValue = 5 }
 }
 ```
 
-### Example 3: Const For Loop (Expanded)
-
-**Source**:
-```kry
-const colors = ["red", "green", "blue"]
-
-const_for color in colors {
-  Button {
-    text = color
-    backgroundColor = color
-  }
-}
-```
-
-**KIR** (loop **unrolled**):
-```json
-{
-  "root": {
-    "type": "ROOT",
-    "children": [
-      {
-        "type": "CONST_DEFINITION",
-        "name": "colors",
-        "value": {
-          "type": "ARRAY_LITERAL",
-          "elements": [
-            {"type": "LITERAL", "valueType": "STRING", "value": "red"},
-            {"type": "LITERAL", "valueType": "STRING", "value": "green"},
-            {"type": "LITERAL", "valueType": "STRING", "value": "blue"}
-          ]
-        }
-      },
-      {
-        "type": "ELEMENT",
-        "elementType": "Button",
-        "metadata": {"expansion": "const_for", "iteration": 0},
-        "properties": [
-          {"name": "text", "value": {"type": "LITERAL", "value": "red"}},
-          {"name": "backgroundColor", "value": {"type": "LITERAL", "value": "red"}}
-        ]
-      },
-      {
-        "type": "ELEMENT",
-        "elementType": "Button",
-        "metadata": {"expansion": "const_for", "iteration": 1},
-        "properties": [
-          {"name": "text", "value": {"type": "LITERAL", "value": "green"}},
-          {"name": "backgroundColor", "value": {"type": "LITERAL", "value": "green"}}
-        ]
-      },
-      {
-        "type": "ELEMENT",
-        "elementType": "Button",
-        "metadata": {"expansion": "const_for", "iteration": 2},
-        "properties": [
-          {"name": "text", "value": {"type": "LITERAL", "value": "blue"}},
-          {"name": "backgroundColor", "value": {"type": "LITERAL", "value": "blue"}}
-        ]
-      }
-    ]
-  }
-}
-```
-
 ---
 
 ## Round-Trip Guarantees
@@ -1014,8 +949,6 @@ AST(original.kry) ≈ AST(roundtrip.kry)  // Semantically identical
 ### Expansion Preservation
 
 **Components**: Definitions preserved, instances expanded inline
-**const_for**: Unrolled (loop body repeated with substitutions)
-**const_if**: Evaluated (only matching branch included)
 **include**: Processed (file contents inlined)
 
 ### Lossless Guarantees

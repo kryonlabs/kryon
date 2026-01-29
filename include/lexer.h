@@ -118,14 +118,12 @@ typedef enum {
     KRYON_TOKEN_CONST_DIRECTIVE,     // const
     KRYON_TOKEN_ONLOAD_DIRECTIVE,    // onload
     KRYON_TOKEN_FOR_DIRECTIVE,       // for
-    KRYON_TOKEN_CONST_FOR_DIRECTIVE, // const_for
     KRYON_TOKEN_IF_DIRECTIVE,        // if
     KRYON_TOKEN_ELIF_DIRECTIVE,      // elif
     KRYON_TOKEN_ELSE_DIRECTIVE,      // else
-    KRYON_TOKEN_CONST_IF_DIRECTIVE,  // const_if
 
     // Keywords
-    KRYON_TOKEN_IN_KEYWORD,          // in (for const_for loops)
+    KRYON_TOKEN_IN_KEYWORD,          // in (for loops)
     
     // Template interpolation
     KRYON_TOKEN_TEMPLATE_START,      // ${

@@ -60,10 +60,6 @@ kryon run hello.krb --renderer sdl2
 
 (App
   (Column
-    ; Compile-time loop
-    (const_for color in colors
-      (Box (backgroundColor $color) (width 100px)))
-
     ; Runtime loop
     (var items ["A" "B" "C"])
     (for (i item) in items
@@ -121,7 +117,6 @@ $varName
 ["item1" "item2"]
 
 ; Loops
-(const_for item in array ...)
 (for item in array ...)
 
 ; Conditionals

@@ -61,10 +61,8 @@ static KryonASTNodeType string_to_node_type(const char *type_str) {
     if (strcmp(type_str, "FUNCTION_DEFINITION") == 0) return KRYON_AST_FUNCTION_DEFINITION;
     if (strcmp(type_str, "STATE_DEFINITION") == 0) return KRYON_AST_STATE_DEFINITION;
     if (strcmp(type_str, "CONST_DEFINITION") == 0) return KRYON_AST_CONST_DEFINITION;
-    if (strcmp(type_str, "CONST_FOR_LOOP") == 0) return KRYON_AST_CONST_FOR_LOOP;
     if (strcmp(type_str, "FOR_DIRECTIVE") == 0) return KRYON_AST_FOR_DIRECTIVE;
     if (strcmp(type_str, "IF_DIRECTIVE") == 0) return KRYON_AST_IF_DIRECTIVE;
-    if (strcmp(type_str, "CONST_IF_DIRECTIVE") == 0) return KRYON_AST_CONST_IF_DIRECTIVE;
     if (strcmp(type_str, "COMPONENT") == 0) return KRYON_AST_COMPONENT;
     if (strcmp(type_str, "LITERAL") == 0) return KRYON_AST_LITERAL;
     if (strcmp(type_str, "VARIABLE") == 0) return KRYON_AST_VARIABLE;
@@ -586,46 +584,6 @@ static KryonASTNode *deserialize_node(KryonKIRReader *reader, cJSON *json) {
             break;
         }
 
-        case KRYON_AST_CONST_FOR_LOOP: {
-            cJSON *var_name = cJSON_GetObjectItem(json, "varName");
-            if (var_name && cJSON_IsString(var_name)) {
-                node->data.const_for_loop.var_name = strdup(var_name->valuestring);
-            }
-
-            cJSON *index_var = cJSON_GetObjectItem(json, "indexVarName");
-            if (index_var && cJSON_IsString(index_var)) {
-                node->data.const_for_loop.index_var_name = strdup(index_var->valuestring);
-            }
-
-            cJSON *is_range = cJSON_GetObjectItem(json, "isRange");
-            if (is_range && cJSON_IsBool(is_range)) {
-                node->data.const_for_loop.is_range = cJSON_IsTrue(is_range);
-            }
-
-            cJSON *array_name = cJSON_GetObjectItem(json, "arrayName");
-            if (array_name && cJSON_IsString(array_name)) {
-                node->data.const_for_loop.array_name = strdup(array_name->valuestring);
-            }
-
-            cJSON *range_start = cJSON_GetObjectItem(json, "rangeStart");
-            if (range_start && cJSON_IsNumber(range_start)) {
-                node->data.const_for_loop.range_start = (int)range_start->valuedouble;
-            }
-
-            cJSON *range_end = cJSON_GetObjectItem(json, "rangeEnd");
-            if (range_end && cJSON_IsNumber(range_end)) {
-                node->data.const_for_loop.range_end = (int)range_end->valuedouble;
-            }
-
-            cJSON *body = cJSON_GetObjectItem(json, "body");
-            if (body) {
-                node->data.const_for_loop.body = deserialize_array(reader, body,
-                                                                   &node->data.const_for_loop.body_count);
-                node->data.const_for_loop.body_capacity = node->data.const_for_loop.body_count;
-            }
-            break;
-        }
-
         case KRYON_AST_FOR_DIRECTIVE: {
             cJSON *var_name = cJSON_GetObjectItem(json, "varName");
             if (var_name && cJSON_IsString(var_name)) {
@@ -651,10 +609,7 @@ static KryonASTNode *deserialize_node(KryonKIRReader *reader, cJSON *json) {
             break;
         }
 
-        case KRYON_AST_IF_DIRECTIVE:
-        case KRYON_AST_CONST_IF_DIRECTIVE: {
-            node->data.conditional.is_const = (type == KRYON_AST_CONST_IF_DIRECTIVE);
-
+        case KRYON_AST_IF_DIRECTIVE: {
             cJSON *condition = cJSON_GetObjectItem(json, "condition");
             if (condition) {
                 node->data.conditional.condition = deserialize_node(reader, condition);
