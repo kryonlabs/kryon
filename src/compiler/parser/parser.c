@@ -464,7 +464,7 @@ static KryonASTNode *parse_element(KryonParser *parser) {
             }
         } else if (check_token(parser, KRYON_TOKEN_IF_DIRECTIVE)) {
             // @if directive - parse as conditional directive and add as child
-            KryonASTNode *if_directive = parse_if_directive(parser, false);
+            KryonASTNode *if_directive = parse_if_directive(parser);
             if (if_directive && !kryon_ast_add_child(element, if_directive)) {
                 parser_error(parser, "Failed to add if directive");
             }
@@ -2344,11 +2344,10 @@ static KryonASTNode *parse_const_definition(KryonParser *parser) {
         parser_error(parser, "Expected constant value");
     }
     
-    print("[DEBUG] parse_const_definition: Created constant '%s'\n", 
+    print("[DEBUG] parse_const_definition: Created constant '%s'\n",
            const_def->data.const_def.name);
-    
+
     return const_def;
-}
 }
 
 static KryonASTNode *parse_for_directive(KryonParser *parser) {
