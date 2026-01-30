@@ -898,6 +898,34 @@ KryonConfig* config_load(const char* config_path) {
     // Parse install configuration
     config_parse_install(config, toml);
 
+    // Parse limbo modules configuration
+    // Count modules first
+    int limbo_module_count = 0;
+    for (int i = 0; i < 100; i++) {
+        char key[256];
+        snprintf(key, sizeof(key), "targets.limbo.modules.%d", i);
+        if (kryon_toml_get_string(toml, key, NULL)) {
+            limbo_module_count++;
+        } else {
+            break;
+        }
+    }
+
+    if (limbo_module_count > 0) {
+        config->limbo_modules = (char**)calloc(limbo_module_count, sizeof(char*));
+        if (config->limbo_modules) {
+            config->limbo_modules_count = 0;
+            for (int i = 0; i < limbo_module_count; i++) {
+                char key[256];
+                snprintf(key, sizeof(key), "targets.limbo.modules.%d", i);
+                const char* module = kryon_toml_get_string(toml, key, NULL);
+                if (module) {
+                    config->limbo_modules[config->limbo_modules_count++] = str_copy(module);
+                }
+            }
+        }
+    }
+
     kryon_toml_free(toml);
     return config;
 }
@@ -1687,6 +1715,14 @@ void config_free(KryonConfig* config) {
         }
 
         free(config->install);
+    }
+
+    // Free limbo modules
+    if (config->limbo_modules) {
+        for (int i = 0; i < config->limbo_modules_count; i++) {
+            free(config->limbo_modules[i]);
+        }
+        free(config->limbo_modules);
     }
 
     free(config);

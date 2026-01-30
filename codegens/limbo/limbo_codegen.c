@@ -49,6 +49,8 @@ typedef struct {
     const char* module_name;
     int widget_counter;
     int event_handler_counter;
+    char** modules;             // Additional modules to include
+    int modules_count;          // Number of additional modules
 } LimboContext;
 
 // Initialize Limbo context
@@ -69,10 +71,14 @@ static LimboContext* create_limbo_context(LimboCodegenOptions* options) {
         ctx->include_comments = options->include_comments;
         ctx->generate_types = options->generate_types;
         ctx->module_name = options->module_name;
+        ctx->modules = options->modules;
+        ctx->modules_count = options->modules_count;
     } else {
         ctx->include_comments = true;
         ctx->generate_types = true;
         ctx->module_name = NULL;
+        ctx->modules = NULL;
+        ctx->modules_count = 0;
     }
 
     ctx->widget_counter = 0;
@@ -240,7 +246,7 @@ static void generate_tk_options(LimboContext* ctx, cJSON* component) {
             append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -borderwidth %d", border_width->valueint);
         }
         if (border_color && border_color->type == cJSON_String) {
-            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -relief solid");
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -relief raised");
         }
     }
 
@@ -322,24 +328,32 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
         }
     }
 
-    // Pack the widget
+    // Pack or place the widget
     for (int i = 0; i < depth; i++) {
         append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t");
     }
 
-    // Check widget type for packing strategy
+    // Check if widget has explicit dimensions
+    cJSON* width = cJSON_GetObjectItem(component, "width");
+    cJSON* height = cJSON_GetObjectItem(component, "height");
+    bool has_explicit_size = (width != NULL) || (height != NULL);
+
     cJSON* type = cJSON_GetObjectItem(component, "type");
     const char* widget_type = (type && type->type == cJSON_String) ? type->valuestring : "";
+    bool is_text = (strcmp(widget_type, "Text") == 0 || strcmp(widget_type, "Label") == 0);
 
     if (depth == 1) {
         // Root widget fills the window
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -fill both -expand 1\");\n", widget_path);
-    } else if (strcmp(widget_type, "Container") == 0 || strcmp(widget_type, "Frame") == 0) {
-        // Containers should be visible
-        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -side top\");\n", widget_path);
+    } else if (is_text && depth > 2) {
+        // Text inside a container - use place to center it
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"place %s -relx 0.5 -rely 0.5 -anchor center\");\n", widget_path);
+    } else if (has_explicit_size) {
+        // Widget with explicit dimensions - pack without expanding
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -padx 20 -pady 20\");\n", widget_path);
     } else {
-        // Text/labels and other widgets
-        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -side top\");\n", widget_path);
+        // Widget without explicit size - pack with expand
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -fill both -expand 1\");\n", widget_path);
     }
 
     return true;
@@ -354,6 +368,7 @@ static bool process_component(LimboContext* ctx, cJSON* component, const char* p
 static bool generate_module_header(LimboContext* ctx, const char* module_name) {
     append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "implement %s;\n\n", module_name);
 
+    // Always include core modules
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"sys.m\";\n");
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tsys: Sys;\n");
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"draw.m\";\n");
@@ -361,7 +376,31 @@ static bool generate_module_header(LimboContext* ctx, const char* module_name) {
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"tk.m\";\n");
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttk: Tk;\n");
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"tkclient.m\";\n");
-    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient: Tkclient;\n\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient: Tkclient;\n");
+
+    // Include additional modules from config
+    if (ctx->modules && ctx->modules_count > 0) {
+        for (int i = 0; i < ctx->modules_count; i++) {
+            const char* module_alias = ctx->modules[i];
+            if (!module_alias) continue;
+
+            // Generate include: include "string.m";
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"%s.m\";\n", module_alias);
+
+            // Generate capitalized module name for type declaration
+            // Convert "string" -> "String"
+            char module_type[256];
+            snprintf(module_type, sizeof(module_type), "%s", module_alias);
+            if (module_type[0]) {
+                module_type[0] = toupper(module_type[0]);
+            }
+
+            // Generate alias:     string: String;
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "\t%s: %s;\n", module_alias, module_type);
+        }
+    }
+
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\n");
 
     append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s: module {\n", module_name);
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tinit: fn(ctxt: ref Draw->Context, argv: list of string);\n");
@@ -382,6 +421,27 @@ static bool generate_init_start(LimboContext* ctx, const char* title) {
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tdraw = load Draw Draw->PATH;\n");
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttk = load Tk Tk->PATH;\n");
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient = load Tkclient Tkclient->PATH;\n");
+
+    // Load additional modules from config
+    if (ctx->modules && ctx->modules_count > 0) {
+        for (int i = 0; i < ctx->modules_count; i++) {
+            const char* module_alias = ctx->modules[i];
+            if (!module_alias) continue;
+
+            // Generate capitalized module name
+            // Convert "string" -> "String"
+            char module_type[256];
+            snprintf(module_type, sizeof(module_type), "%s", module_alias);
+            if (module_type[0]) {
+                module_type[0] = toupper(module_type[0]);
+            }
+
+            // Generate load statement: string = load String String->PATH;
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+                      "\t%s = load %s %s->PATH;\n", module_alias, module_type, module_type);
+        }
+    }
+
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient->init();\n\n");
 
     if (ctx->include_comments) {
@@ -552,9 +612,87 @@ bool limbo_codegen_generate(const char* kir_path, const char* output_path) {
 bool limbo_codegen_generate_with_options(const char* kir_path,
                                           const char* output_path,
                                           LimboCodegenOptions* options) {
-    // For now, just use the basic implementation
-    // TODO: Implement options support
-    return limbo_codegen_generate(kir_path, output_path);
+    if (!kir_path || !output_path) return false;
+
+    // Read KIR file
+    FILE* kir_file = fopen(kir_path, "r");
+    if (!kir_file) {
+        fprintf(stderr, "Failed to open KIR file: %s\n", kir_path);
+        return false;
+    }
+
+    fseek(kir_file, 0, SEEK_END);
+    long file_size = ftell(kir_file);
+    fseek(kir_file, 0, SEEK_SET);
+
+    char* kir_json = malloc(file_size + 1);
+    if (!kir_json) {
+        fclose(kir_file);
+        return false;
+    }
+
+    size_t bytes_read = fread(kir_json, 1, file_size, kir_file);
+    kir_json[bytes_read] = '\0';
+    fclose(kir_file);
+
+    // Generate Limbo code with options
+    cJSON* kir_root = cJSON_Parse(kir_json);
+    free(kir_json);
+
+    if (!kir_root) {
+        fprintf(stderr, "Failed to parse KIR JSON\n");
+        return false;
+    }
+
+    LimboContext* ctx = create_limbo_context(options);
+    if (!ctx) {
+        cJSON_Delete(kir_root);
+        return false;
+    }
+
+    // Extract module name (default to "KryonApp")
+    const char* module_name = ctx->module_name ? ctx->module_name : "KryonApp";
+
+    // Get window title from app section
+    cJSON* app = cJSON_GetObjectItem(kir_root, "app");
+    const char* window_title = NULL;
+    if (app) {
+        cJSON* title_obj = cJSON_GetObjectItem(app, "windowTitle");
+        if (title_obj && title_obj->type == cJSON_String) {
+            window_title = title_obj->valuestring;
+        }
+    }
+
+    // Generate module header
+    generate_module_header(ctx, module_name);
+
+    // Generate init function start
+    generate_init_start(ctx, window_title);
+
+    // Process root component
+    cJSON* root = cJSON_GetObjectItem(kir_root, "root");
+    if (root) {
+        process_component(ctx, root, "", 0);
+    }
+
+    // Generate event loop
+    generate_event_loop(ctx, ctx->event_handler_counter);
+
+    cJSON_Delete(kir_root);
+
+    // Write output file
+    FILE* output_file = fopen(output_path, "w");
+    if (!output_file) {
+        fprintf(stderr, "Failed to open output file: %s\n", output_path);
+        destroy_limbo_context(ctx);
+        return false;
+    }
+
+    fputs(ctx->buffer, output_file);
+    fclose(output_file);
+
+    destroy_limbo_context(ctx);
+    return true;
 }
 
 // Generate multiple files (currently just generates one file)

@@ -26,15 +26,17 @@ init(ctxt: ref Draw->Context, argv: list of string) {
 
 	# Create widgets
 
-	# Create Container widget
+	# Create root Container widget with dark background
 	tk->cmd(t, "frame .w1 -bg #1a1a2e");
-		# Create Container widget
-		tk->cmd(t, "frame .w1.w2 -width 200 -height 100 -bg #191970 -borderwidth 2 -relief solid");
-			# Create Text widget
-			tk->cmd(t, "label .w1.w2.w3 -text {Hello World} -fg yellow -font /fonts/lucidasans/latin1.7.font -padx 5 -pady 5");
-			tk->cmd(t, "pack .w1.w2.w3");
-		tk->cmd(t, "pack .w1.w2");
 	tk->cmd(t, "pack .w1 -fill both -expand 1");
+
+	# Create nested Container widget with midnight blue background
+	tk->cmd(t, "frame .w1.w2 -width 200 -height 100 -bg #191970 -borderwidth 2 -relief raised");
+	tk->cmd(t, "pack .w1.w2 -padx 20 -pady 20");
+
+	# Create Text widget centered inside container
+	tk->cmd(t, "label .w1.w2.w3 -text {Hello World} -fg yellow -bg #191970 -font /fonts/lucidasans/latin1.7.font");
+	tk->cmd(t, "place .w1.w2.w3 -relx 0.5 -rely 0.5 -anchor center");
 
 	# Update display
 	tk->cmd(t, "update");

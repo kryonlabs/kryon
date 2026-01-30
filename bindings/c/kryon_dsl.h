@@ -810,13 +810,16 @@ static inline IRComponent* _kryon_add_to_parent(IRComponent* comp) {
 
 /**
  * KRYON_RUN - Run the application
- * Automatically handles both KIR generation (kryon run) and standalone execution
+ * Automatically handles both KIR generation (kryon run) and desktop execution
  * Uses window settings from kryon_init()
  */
 #define KRYON_RUN() \
     ({ \
         _kryon_run_impl(); \
     })
+
+// Forward declaration for desktop runtime
+int kryon_run_desktop(void);
 
 // Implementation function (don't call directly, use KRYON_RUN macro)
 static inline int _kryon_run_impl(void) {
@@ -832,18 +835,16 @@ static inline int _kryon_run_impl(void) {
     kryon_finalize("output.kir");
     kryon_cleanup();
     return 0;
+#elif defined(KRYON_DESKTOP_TARGET)
+    // Desktop target - run with desktop renderer
+    return kryon_run_desktop();
 #else
-    // Desktop rendering has been removed
-    // Use the Web or DIS targets instead:
-    // - Web: kryon build web --input app.kry --output app.html
-    // - DIS: kryon build dis --input app.kry --output app.dis
-    fprintf(stderr, "Error: Desktop rendering is no longer supported.\n");
-    fprintf(stderr, "Please use one of these targets instead:\n");
-    fprintf(stderr, "  - Web: kryon build web --input app.kry --output app.html\n");
-    fprintf(stderr, "  - DIS: kryon build dis --input app.kry --output app.dis\n");
-    fprintf(stderr, "Then run: kryon run web|dis\n");
+    // Default: generate KIR file for other targets
+    fprintf(stderr, "Info: Generating KIR output file.\n");
+    fprintf(stderr, "To run a desktop app, compile with -DKRYON_DESKTOP_TARGET\n");
+    kryon_finalize("output.kir");
     kryon_cleanup();
-    return 1;
+    return 0;
 #endif
 }
 

@@ -131,7 +131,24 @@ static int limbo_target_build(const char* kir_file, const char* output_dir,
     snprintf(limbo_source, sizeof(limbo_source), "%s/%s.b", output_dir, project_name);
 
     printf("Generating Limbo source: %s\n", limbo_source);
-    if (!limbo_codegen_generate_multi(kir_file, output_dir)) {
+
+    // Prepare codegen options with module configuration
+    LimboCodegenOptions options = {0};
+    options.include_comments = true;
+    options.generate_types = true;
+    options.module_name = project_name;
+
+    // Pass module configuration from config
+    if (config && config->limbo_modules_count > 0) {
+        options.modules = config->limbo_modules;
+        options.modules_count = config->limbo_modules_count;
+        printf("[limbo] Including %d module(s)\n", config->limbo_modules_count);
+        for (int i = 0; i < config->limbo_modules_count; i++) {
+            printf("  - %s\n", config->limbo_modules[i]);
+        }
+    }
+
+    if (!limbo_codegen_generate_with_options(kir_file, limbo_source, &options)) {
         fprintf(stderr, "Error: Limbo code generation failed\n");
         return 1;
     }
@@ -291,6 +308,111 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config) {
         fprintf(stderr, "Warning: TaijiOS emu exited with code %d\n", result);
     } else {
         printf("✓ Execution complete\n");
+    }
+
+    return result;
+}
+
+/* ============================================================================
+ * Desktop Target Handler (SDL3)
+ * ============================================================================ */
+
+/**
+ * Desktop target build handler
+ * Generates C code from KIR and compiles to native binary with SDL3
+ */
+static int desktop_target_build(const char* kir_file, const char* output_dir,
+                                const char* project_name, const KryonConfig* config) {
+    // Step 1: Create generated directory
+    char gen_dir[1024];
+    snprintf(gen_dir, sizeof(gen_dir), "%s/generated", output_dir);
+
+    char mkdir_cmd[1024];
+    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", gen_dir);
+    system(mkdir_cmd);
+
+    // Step 2: Generate C code from KIR
+    printf("Generating C code from KIR...\n");
+    if (!ir_generate_c_code_multi(kir_file, gen_dir)) {
+        fprintf(stderr, "Error: C code generation failed\n");
+        return 1;
+    }
+
+    printf("✓ Generated C code in: %s\n", gen_dir);
+
+    // Step 3: Compile C code with desktop runtime
+    printf("Compiling desktop binary: %s\n", project_name);
+
+    char output_binary[1024];
+    snprintf(output_binary, sizeof(output_binary), "%s/%s", output_dir, project_name);
+
+    // Get SDL3 and other library flags using pkg-config
+    char sdl_libs[1024] = "";
+    FILE* pkg_pipe = popen("pkg-config --libs sdl3 SDL3_ttf harfbuzz freetype2 fribidi 2>/dev/null", "r");
+    if (pkg_pipe) {
+        if (fgets(sdl_libs, sizeof(sdl_libs), pkg_pipe)) {
+            // Remove trailing newline
+            sdl_libs[strcspn(sdl_libs, "\n")] = 0;
+        }
+        pclose(pkg_pipe);
+    }
+
+    // Get kryon root directory (where CLI is located)
+    // This assumes the CLI is being run from the kryon project root or installation
+    const char* kryon_root = getenv("KRYON_ROOT");
+    if (!kryon_root) {
+        kryon_root = "/mnt/storage/Projects/TaijiOS/kryon";  // Default development path
+    }
+
+    char compile_cmd[4096];
+    snprintf(compile_cmd, sizeof(compile_cmd),
+             "gcc -std=c99 -O2 -DKRYON_DESKTOP_TARGET "
+             "-I%s -I%s/ir/include -I%s/core/include -I%s/runtime/desktop "
+             "-I%s/renderers/sdl3 -I%s/renderers/common -I%s/bindings/c "
+             "%s/*.c "
+             "-L%s/build -L%s/bindings/c "
+             "-lkryon_dsl_runtime -lkryon_desktop_sdl3 -lkryon_command_buf -lkryon_ir -lkryon_c "
+             "%s -lm -lpthread -o %s",
+             gen_dir, kryon_root, kryon_root, kryon_root,
+             kryon_root, kryon_root, kryon_root,
+             gen_dir,
+             kryon_root, kryon_root,
+             sdl_libs, output_binary);
+
+    printf("Compiling with command:\n  %s\n", compile_cmd);
+    int result = system(compile_cmd);
+
+    if (result != 0) {
+        fprintf(stderr, "Error: Compilation failed with exit code %d\n", result);
+        return 1;
+    }
+
+    printf("✓ Built desktop binary: %s\n", output_binary);
+    return 0;
+}
+
+/**
+ * Desktop target run handler
+ * Builds if needed, then executes the binary
+ */
+static int desktop_target_run(const char* kir_file, const KryonConfig* config) {
+    const char* output_dir = ".";
+    const char* project_name = "app";
+
+    // Build first
+    if (desktop_target_build(kir_file, output_dir, project_name, config) != 0) {
+        return 1;
+    }
+
+    // Execute the binary
+    char binary_path[1024];
+    snprintf(binary_path, sizeof(binary_path), "%s/%s", output_dir, project_name);
+
+    printf("Running: %s\n", binary_path);
+    int result = system(binary_path);
+
+    if (result != 0) {
+        fprintf(stderr, "Warning: Binary exited with code %d\n", result);
     }
 
     return result;
@@ -624,6 +746,15 @@ void target_handler_initialize(void) {
         .run_handler = limbo_target_run,
     };
     target_handler_register(&g_limbo_handler);
+
+    // Register Desktop handler (SDL3 renderer)
+    static TargetHandler g_desktop_handler = {
+        .name = "desktop",
+        .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
+        .build_handler = desktop_target_build,
+        .run_handler = desktop_target_run,
+    };
+    target_handler_register(&g_desktop_handler);
 
     g_initialized = true;
 }

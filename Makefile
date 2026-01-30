@@ -30,7 +30,7 @@ STATIC_LIB_EXT = .a
 SHARED_LIB_EXT = .so
 
 # Default target
-all: cli ir dis codegens desktop
+all: cli ir dis codegens desktop dsl_runtime
 
 # Help
 help:
@@ -93,6 +93,13 @@ desktop: ir
 	@$(MAKE) -C runtime/desktop all
 	@echo "✓ Built desktop runtime"
 
+# DSL runtime for desktop target
+dsl_runtime: desktop
+	@echo "Building DSL runtime..."
+	@$(MAKE) -C bindings/c dsl_runtime
+	@$(MAKE) -C bindings/c install
+	@echo "✓ Built DSL runtime"
+
 # ============================================================================
 # Clean Target
 # ============================================================================
@@ -110,6 +117,7 @@ clean:
 	@$(MAKE) -C $(CLI_DIR) clean || true
 	@$(MAKE) -C runtime/desktop clean || true
 	@$(MAKE) -C renderers/common clean || true
+	@$(MAKE) -C bindings/c clean || true
 	@echo "✓ Clean complete"
 
 # ============================================================================

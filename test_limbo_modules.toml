@@ -1,0 +1,10 @@
+[project]
+name = "limbo_test"
+version = "0.1.0"
+description = "Test Limbo module inclusion"
+
+[build]
+targets = ["limbo"]
+
+[target.limbo]
+modules = ["string", "sh", "bufio", "crypt"]

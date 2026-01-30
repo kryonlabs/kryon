@@ -209,13 +209,14 @@ int cmd_build(int argc, char** argv) {
     if (!primary_target) {
         fprintf(stderr, "Error: No target specified\n");
         fprintf(stderr, "Use --target=<name> or specify targets in kryon.toml\n");
-        fprintf(stderr, "Valid targets: web, limbo\n");
+        fprintf(stderr, "Valid targets: web, limbo, desktop\n");
         config_free(config);
         return 1;
     }
 
     int is_web = strcmp(primary_target, "web") == 0;
     int is_limbo = strcmp(primary_target, "limbo") == 0;
+    int is_desktop = strcmp(primary_target, "desktop") == 0;
 
     // If specific file argument provided, build just that file
     if (file_arg_start > 0 && file_arg_start < argc) {
@@ -245,6 +246,22 @@ int cmd_build(int argc, char** argv) {
 
             // Then use limbo target handler
             result = target_handler_build("limbo", kir_file, ".", "app", config);
+        } else if (is_desktop) {
+            // For desktop, use target handler
+            // First compile to KIR
+            char kir_file[1024];
+            const char* basename = strrchr(source_file, '/');
+            basename = basename ? basename + 1 : source_file;
+            snprintf(kir_file, sizeof(kir_file), ".kryon_cache/%s.kir", basename);
+
+            if (compile_source_to_kir(source_file, kir_file) != 0) {
+                fprintf(stderr, "Error: Failed to compile to KIR\n");
+                config_free(config);
+                return 1;
+            }
+
+            // Then use desktop target handler
+            result = target_handler_build("desktop", kir_file, ".", "app", config);
         } else {
             fprintf(stderr, "Error: Unsupported target for single file build\n");
             config_free(config);
@@ -307,9 +324,42 @@ int cmd_build(int argc, char** argv) {
         return result;
     }
 
+    // DESKTOP TARGET: Build native binary using target handler
+    if (is_desktop) {
+        printf("Building Desktop target (C code → Native binary)...\n");
+
+        if (!config->build_entry) {
+            fprintf(stderr, "Error: No entry point specified in kryon.toml\n");
+            fprintf(stderr, "Add [build].entry to your configuration, e.g.:\n");
+            fprintf(stderr, "  [build]\n");
+            fprintf(stderr, "  entry = \"main.kry\"\n");
+            config_free(config);
+            return 1;
+        }
+
+        // Compile source to KIR
+        const char* kir_file = ".kryon_cache/output.kir";
+        printf("Compiling entry file: %s\n", config->build_entry);
+
+        if (compile_source_to_kir(config->build_entry, kir_file) != 0) {
+            fprintf(stderr, "Error: Failed to compile entry file\n");
+            config_free(config);
+            return 1;
+        }
+
+        // Get output directory and project name
+        const char* output_dir = config->build_output_dir ? config->build_output_dir : "dist";
+        const char* project_name = config->project_name ? config->project_name : "app";
+
+        printf("Building Desktop from %s...\n", kir_file);
+        result = target_handler_build("desktop", kir_file, output_dir, project_name, config);
+        config_free(config);
+        return result;
+    }
+
     // UNKNOWN TARGET
     fprintf(stderr, "Error: Unknown target '%s'\n", primary_target);
-    fprintf(stderr, "Supported targets: web, limbo\n");
+    fprintf(stderr, "Supported targets: web, limbo, desktop\n");
     config_free(config);
     return 1;
 }

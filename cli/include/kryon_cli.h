@@ -66,6 +66,13 @@ char* paths_find_library(const char* lib_name);
 char* paths_find_plugin(const char* plugin_name, const char* explicit_path, const char* config_dir);
 
 // ============================================================================
+// Limbo Module Discovery
+// ============================================================================
+
+char** limbo_modules_scan(int* count);  // Scan $TAIJI_PATH/module/*.m for modules
+char* limbo_module_get_path(const char* module_alias);  // Get module PATH constant
+
+// ============================================================================
 // Process Utilities
 // ============================================================================
 
@@ -218,6 +225,10 @@ typedef struct {
 
     // Install configuration
     InstallConfig* install;
+
+    // Limbo module configuration
+    char** limbo_modules;       // Array of module names to include (e.g., "string", "sh")
+    int limbo_modules_count;    // Number of modules
 } KryonConfig;
 
 KryonConfig* config_load(const char* config_path);

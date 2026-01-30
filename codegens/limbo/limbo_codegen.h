@@ -33,6 +33,8 @@ typedef struct {
     bool include_comments;      // Add comments to generated code
     bool generate_types;        // Generate type definitions
     const char* module_name;    // Override module name (default: from filename)
+    char** modules;             // Array of module names to include (e.g., "string", "sh")
+    int modules_count;          // Number of modules
 } LimboCodegenOptions;
 
 /**

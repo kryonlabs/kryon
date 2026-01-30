@@ -80,8 +80,7 @@ endif
 SDL3_RENDERER_SOURCES = $(RENDERERS_DIR)/sdl3/sdl3_backend.c \
                         $(RENDERERS_DIR)/sdl3/sdl3_input.c \
                         $(RENDERERS_DIR)/sdl3/sdl3_fonts.c \
-                        $(RENDERERS_DIR)/sdl3/sdl3_effects.c \
-                        $(RENDERERS_DIR)/sdl3/sdl3_audio.c
+                        $(RENDERERS_DIR)/sdl3/sdl3_effects.c
 
 # Raylib renderer modules (in ../../renderers/raylib/)
 RAYLIB_RENDERER_SOURCES = $(RENDERERS_DIR)/raylib/raylib_backend.c \
