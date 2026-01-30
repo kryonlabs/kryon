@@ -32,5 +32,6 @@ CFLAGS=$CFLAGS\
 	-I../../ir/src/utils\
 	-I../../third_party/cJSON\
 	-I..\
+	-DKRYON_EMBEDDED_CODEGEN\
 
 <$ROOT/mkfiles/mksyslib-$SHELLTYPE

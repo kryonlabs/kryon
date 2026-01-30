@@ -38,6 +38,7 @@ SRCS=\
 	src/commands/cmd_plugin.c\
 	src/commands/cmd_install.c\
 	src/commands/cmd_uninstall.c\
+	src/commands/cmd_targets.c\
 	src/build/embed_bytecode.c\
 	src/build/plugin_discovery.c\
 	src/build/c_desktop.c\
@@ -82,7 +83,7 @@ $O.out:V: $SRCS
 		$CC $CFLAGS $i || exit 1
 	done
 	echo "  Linking kryon binary..."
-	$LD $LDFLAGS -o $O.out *.o $ROOT/$OBJDIR/lib/libkryon_codegen_limbo.a $ROOT/$OBJDIR/lib/libkryon_codegen_web.a $ROOT/$OBJDIR/lib/libkryon_codegen_c.a $ROOT/$OBJDIR/lib/libkryon_codegen_android.a $ROOT/$OBJDIR/lib/libkryon_codegen_kry.a $ROOT/$OBJDIR/lib/libkryon_codegen_markdown.a $ROOT/$OBJDIR/lib/libkryon_codegen_common.a $ROOT/$OBJDIR/lib/libdiscodegen.a $ROOT/$OBJDIR/lib/libkryon_ir.a $ROOT/$OBJDIR/lib/libcJSON.a $ROOT/$OBJDIR/lib/libtomlc99.a $ROOT/$OBJDIR/lib/libbio.a $ROOT/$OBJDIR/lib/lib9.a -lm -lpthread -ldl
+	$LD $LDFLAGS -o $O.out *.o $ROOT/$OBJDIR/lib/libkryon_codegen_limbo.a $ROOT/$OBJDIR/lib/libkryon_codegen_web.a $ROOT/$OBJDIR/lib/libkryon_codegen_c.a $ROOT/$OBJDIR/lib/libkryon_codegen_android.a $ROOT/$OBJDIR/lib/libkryon_codegen_kry.a $ROOT/$OBJDIR/lib/libkryon_codegen_markdown.a $ROOT/$OBJDIR/lib/libkryon_codegen_common.a $ROOT/$OBJDIR/lib/libdiscodegen.a $ROOT/$OBJDIR/lib/libkryon_ir.a $ROOT/$OBJDIR/lib/libcJSON.a $ROOT/$OBJDIR/lib/libtomlc99.a $ROOT/$OBJDIR/lib/libbio.a $ROOT/$OBJDIR/lib/lib9.a -lm -lpthread -ldl -lharfbuzz -lfreetype -lfribidi
 	echo "  Built kryon"
 
 $BIN/$TARG: $O.out

@@ -76,6 +76,9 @@ generated/
 app
 ./app
 a.out
+app.b
+app.dis
+*.dis
 
 
 CLAUDE.md
