@@ -119,6 +119,7 @@ COMPILER_SRC = $(SRC_DIR)/compiler/lexer/unicode.c \
                $(SRC_DIR)/compiler/krl/krl_to_kir.c
 
 RUNTIME_SRC = $(SRC_DIR)/runtime/core/runtime.c \
+              $(SRC_DIR)/runtime/core/runtime_lifecycle.c \
               $(SRC_DIR)/runtime/core/validation.c \
               $(SRC_DIR)/runtime/core/component_state.c \
               $(SRC_DIR)/runtime/core/krb_loader.c \
