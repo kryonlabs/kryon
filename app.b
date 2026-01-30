@@ -31,12 +31,13 @@ init(ctxt: ref Draw->Context, argv: list of string) {
 	tk->cmd(t, "pack .w1 -fill both -expand 1");
 
 	# Create nested Container widget with midnight blue background
+	# Positioned using pack with padding to simulate x=200, y=100
 	tk->cmd(t, "frame .w1.w2 -width 200 -height 100 -bg #191970 -borderwidth 2 -relief raised");
-	tk->cmd(t, "pack .w1.w2 -padx 20 -pady 20");
+	tk->cmd(t, "pack .w1.w2 -anchor nw -padx 200 -pady 100");
 
-	# Create Text widget centered inside container
-	tk->cmd(t, "label .w1.w2.w3 -text {Hello World} -fg yellow -bg #191970 -font /fonts/lucidasans/latin1.7.font");
-	tk->cmd(t, "place .w1.w2.w3 -relx 0.5 -rely 0.5 -anchor center");
+	# Create Text widget inside container - background matches parent
+	tk->cmd(t, "label .w1.w2.w3 -text {Hello World} -fg yellow -bg #191970 -font /fonts/lucidasans/latin1.7.font -padx 5 -pady 5");
+	tk->cmd(t, "pack .w1.w2.w3 -expand 1");
 
 	# Update display
 	tk->cmd(t, "update");

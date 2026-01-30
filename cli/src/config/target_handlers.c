@@ -357,37 +357,54 @@ static int desktop_target_build(const char* kir_file, const char* output_dir,
         pclose(pkg_pipe);
     }
 
-    // Get kryon root directory (where CLI is located)
-    // This assumes the CLI is being run from the kryon project root or installation
-    const char* kryon_root = getenv("KRYON_ROOT");
+    // Get kryon root directory using path discovery
+    char* kryon_root = paths_get_kryon_root();
     if (!kryon_root) {
-        kryon_root = "/mnt/storage/Projects/TaijiOS/kryon";  // Default development path
+        fprintf(stderr, "Error: Could not detect KRYON_ROOT\n");
+        fprintf(stderr, "Set KRYON_ROOT environment variable or run from kryon project directory\n");
+        return 1;
     }
 
-    char compile_cmd[4096];
+    printf("Using KRYON_ROOT: %s\n", kryon_root);
+
+    // Get raylib library flags
+    char raylib_libs[512] = "-lraylib";
+    FILE* raylib_pipe = popen("pkg-config --libs raylib 2>/dev/null", "r");
+    if (raylib_pipe) {
+        if (fgets(raylib_libs, sizeof(raylib_libs), raylib_pipe)) {
+            raylib_libs[strcspn(raylib_libs, "\n")] = 0;
+        }
+        pclose(raylib_pipe);
+    }
+
+    char compile_cmd[8192];
     snprintf(compile_cmd, sizeof(compile_cmd),
              "gcc -std=c99 -O2 -DKRYON_DESKTOP_TARGET "
+             "-Wno-error=implicit-function-declaration "
              "-I%s -I%s/ir/include -I%s/core/include -I%s/runtime/desktop "
              "-I%s/renderers/sdl3 -I%s/renderers/common -I%s/bindings/c "
+             "-I%s/third_party/stb "
              "%s/*.c "
              "-L%s/build -L%s/bindings/c "
-             "-lkryon_dsl_runtime -lkryon_desktop_sdl3 -lkryon_command_buf -lkryon_ir -lkryon_c "
-             "%s -lm -lpthread -o %s",
+             "-lkryon_c -lkryon_dsl_runtime -lkryon_desktop_sdl3 -lkryon_command_buf -lkryon_ir "
+             "%s %s -lm -lpthread -ldl -o %s",
              gen_dir, kryon_root, kryon_root, kryon_root,
-             kryon_root, kryon_root, kryon_root,
+             kryon_root, kryon_root, kryon_root, kryon_root,
              gen_dir,
              kryon_root, kryon_root,
-             sdl_libs, output_binary);
+             sdl_libs, raylib_libs, output_binary);
 
     printf("Compiling with command:\n  %s\n", compile_cmd);
     int result = system(compile_cmd);
 
     if (result != 0) {
         fprintf(stderr, "Error: Compilation failed with exit code %d\n", result);
+        free(kryon_root);
         return 1;
     }
 
     printf("✓ Built desktop binary: %s\n", output_binary);
+    free(kryon_root);
     return 0;
 }
 

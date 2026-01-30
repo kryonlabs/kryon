@@ -113,7 +113,11 @@ pkgs.mkShell {
     echo ""
     echo "Available frontends: kry, typescript (ts), c, hare"
     echo "Available renderers: sdl3, raylib, terminal, framebuffer"
-    echo "Available codegen targets: web, android"
+    echo "Available targets: web, desktop, android, limbo"
+    echo ""
+    echo "Desktop dependencies:"
+    echo "  SDL3: $(pkg-config --modversion sdl3 2>/dev/null || echo 'not found')"
+    echo "  HarfBuzz: $(pkg-config --modversion harfbuzz 2>/dev/null || echo 'not found')"
     echo ""
   '';
 }

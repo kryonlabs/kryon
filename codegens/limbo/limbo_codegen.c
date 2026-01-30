@@ -183,7 +183,7 @@ static const char* convert_to_tk_color(const char* hex_color) {
 }
 
 // Generate Tk options from KIR properties
-static void generate_tk_options(LimboContext* ctx, cJSON* component) {
+static void generate_tk_options(LimboContext* ctx, cJSON* component, const char* parent_bg) {
     if (!component) return;
 
     // Text content
@@ -220,11 +220,21 @@ static void generate_tk_options(LimboContext* ctx, cJSON* component) {
 
     // Background color
     cJSON* background = cJSON_GetObjectItem(component, "background");
+    cJSON* type = cJSON_GetObjectItem(component, "type");
+    const char* widget_type = (type && type->type == cJSON_String) ? type->valuestring : "";
+    bool is_text = (strcmp(widget_type, "Text") == 0 || strcmp(widget_type, "Label") == 0);
+
     if (background && background->type == cJSON_String) {
         const char* tk_color = convert_to_tk_color(background->valuestring);
         if (tk_color) {
             append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -bg %s", tk_color);
+        } else if (is_text && parent_bg) {
+            // Transparent background on text - use parent's background
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -bg %s", parent_bg);
         }
+    } else if (is_text && parent_bg) {
+        // No background specified on text - use parent's background
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -bg %s", parent_bg);
     }
 
     // Foreground color (text color)
@@ -264,20 +274,17 @@ static void generate_tk_options(LimboContext* ctx, cJSON* component) {
         }
     }
 
-    // Add padding for text elements to make them visible
-    cJSON* type = cJSON_GetObjectItem(component, "type");
-    if (type && type->type == cJSON_String) {
-        if (strcmp(type->valuestring, "Text") == 0 || strcmp(type->valuestring, "Label") == 0) {
-            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -padx 5 -pady 5");
-        }
+    // Add padding for text elements to make them visible (reuse 'type' from above)
+    if (is_text) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -padx 5 -pady 5");
     }
 }
 
 // Forward declaration
-static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth);
+static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg);
 
 // Generate widget creation code
-static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth) {
+static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg) {
     // KIR uses "type" not "elementType"
     cJSON* element_type_obj = cJSON_GetObjectItem(component, "type");
     if (!element_type_obj || element_type_obj->type != cJSON_String) {
@@ -303,11 +310,18 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
         }
     }
 
+    // Get this widget's background color for passing to children
+    cJSON* my_background = cJSON_GetObjectItem(component, "background");
+    const char* my_bg = NULL;
+    if (my_background && my_background->type == cJSON_String) {
+        my_bg = convert_to_tk_color(my_background->valuestring);
+    }
+
     // Generate Tk command
     append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"%s %s", tk_widget, widget_path);
 
     // Add properties as Tk options (KIR has properties directly on component)
-    generate_tk_options(ctx, component);
+    generate_tk_options(ctx, component, parent_bg);
 
     // Check for event handlers
     cJSON* on_click = cJSON_GetObjectItem(component, "onClick");
@@ -324,7 +338,7 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
     if (children && cJSON_IsArray(children)) {
         cJSON* child = NULL;
         cJSON_ArrayForEach(child, children) {
-            process_component(ctx, child, widget_path, depth);
+            process_component(ctx, child, widget_path, depth, my_bg);
         }
     }
 
@@ -342,14 +356,23 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
     const char* widget_type = (type && type->type == cJSON_String) ? type->valuestring : "";
     bool is_text = (strcmp(widget_type, "Text") == 0 || strcmp(widget_type, "Label") == 0);
 
+    // Check for positioning properties
+    cJSON* left = cJSON_GetObjectItem(component, "left");
+    cJSON* top = cJSON_GetObjectItem(component, "top");
+    bool has_position = (left && left->type == cJSON_Number) && (top && top->type == cJSON_Number);
+
     if (depth == 1) {
         // Root widget fills the window
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -fill both -expand 1\");\n", widget_path);
     } else if (is_text && depth > 2) {
-        // Text inside a container - use place to center it
-        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"place %s -relx 0.5 -rely 0.5 -anchor center\");\n", widget_path);
+        // Text inside a container - use pack with expand (not place, which doesn't work)
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -expand 1\");\n", widget_path);
+    } else if (has_position && has_explicit_size) {
+        // Widget with explicit position - use pack with anchor and padding
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -anchor nw -padx %d -pady %d\");\n",
+                  widget_path, (int)left->valueint, (int)top->valueint);
     } else if (has_explicit_size) {
-        // Widget with explicit dimensions - pack without expanding
+        // Widget with explicit dimensions but no position - pack with default padding
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -padx 20 -pady 20\");\n", widget_path);
     } else {
         // Widget without explicit size - pack with expand
@@ -360,8 +383,8 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
 }
 
 // Process a component recursively
-static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth) {
-    return generate_widget(ctx, component, parent_path, depth + 1);
+static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg) {
+    return generate_widget(ctx, component, parent_path, depth + 1, parent_bg);
 }
 
 // Generate module header
@@ -543,7 +566,7 @@ char* limbo_codegen_from_json(const char* kir_json) {
     // Process root component
     cJSON* root = cJSON_GetObjectItem(kir_root, "root");
     if (root) {
-        process_component(ctx, root, "", 0);
+        process_component(ctx, root, "", 0, NULL);
     }
 
     // Generate event loop
@@ -672,7 +695,7 @@ bool limbo_codegen_generate_with_options(const char* kir_path,
     // Process root component
     cJSON* root = cJSON_GetObjectItem(kir_root, "root");
     if (root) {
-        process_component(ctx, root, "", 0);
+        process_component(ctx, root, "", 0, NULL);
     }
 
     // Generate event loop
