@@ -28,6 +28,8 @@ HFILES=\
 CFLAGS=$CFLAGS\
 	-I../../include\
 	-I../../ir/include\
+	-I../../ir/src/style\
+	-I../../ir/src/utils\
 	-I../../third_party/cJSON\
 	-I..\
 

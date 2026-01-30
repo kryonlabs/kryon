@@ -21,7 +21,6 @@ SRCS=\
 	src/utils/build.c\
 	src/utils/plugin_installer.c\
 	src/utils/limbo_modules.c\
-	src/utils/stubs.c\
 	src/config/toml_parser.c\
 	src/config/config.c\
 	src/config/target_handlers.c\
