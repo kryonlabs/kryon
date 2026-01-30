@@ -16,6 +16,7 @@
 #include "build.h"
 #include "../../../codegens/limbo/limbo_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
+#include "../../../codegens/android/ir_android_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -713,6 +714,124 @@ void target_handler_cleanup(void) {
     g_registry.capacity = 0;
 }
 
+/* ============================================================================
+ * Android Target Handler
+ * ============================================================================ */
+
+/**
+ * Android target build handler
+ * Generates Kotlin code and Android project structure from KIR
+ */
+static int android_target_build(const char* kir_file, const char* output_dir,
+                                const char* project_name, const KryonConfig* config) {
+    (void)config;  // Not used in Android build
+
+    printf("Building Android target...\n");
+    printf("  KIR: %s\n", kir_file);
+    printf("  Output: %s\n", output_dir);
+    printf("  Project: %s\n", project_name);
+
+    // Create output directory
+    char mkdir_cmd[1024];
+    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", output_dir);
+    system(mkdir_cmd);
+
+    // Generate Android project structure
+    // Use default package name and app name for now
+    const char* package_name = "com.kryon.app";
+    const char* app_name = project_name ? project_name : "KryonApp";
+
+    if (!ir_generate_android_project(kir_file, output_dir, package_name, app_name)) {
+        fprintf(stderr, "Error: Android project generation failed\n");
+        return 1;
+    }
+
+    printf("✓ Generated Android project in: %s/\n", output_dir);
+    printf("  To build APK: cd %s && ./gradlew assembleDebug\n", output_dir);
+    printf("  To install: adb install app/build/outputs/apk/debug/app-debug.apk\n");
+
+    return 0;
+}
+
+/**
+ * Android target run handler
+ * Builds APK and installs to device/emulator
+ */
+static int android_target_run(const char* kir_file, const KryonConfig* config) {
+    // Determine output directory and project name
+    const char* output_dir = ".";
+    const char* project_name = "app";
+
+    // Build first
+    if (android_target_build(kir_file, output_dir, project_name, config) != 0) {
+        return 1;
+    }
+
+    printf("\nInstalling and running on Android device...\n");
+
+    // Check if adb is available
+    if (system("which adb > /dev/null 2>&1") != 0) {
+        fprintf(stderr, "Error: adb not found. Please install Android SDK platform-tools.\n");
+        return 1;
+    }
+
+    // Check if device is connected
+    if (system("adb devices | grep -v 'List of devices' | grep -q 'device'") != 0) {
+        fprintf(stderr, "Error: No Android device/emulator found. Please connect a device or start an emulator.\n");
+        return 1;
+    }
+
+    // For now, just print instructions - full Gradle build requires more setup
+    printf("Note: Full APK building requires Gradle setup.\n");
+    printf("Manual steps:\n");
+    printf("  1. cd %s\n", output_dir);
+    printf("  2. ./gradlew assembleDebug\n");
+    printf("  3. adb install app/build/outputs/apk/debug/app-debug.apk\n");
+    printf("  4. adb shell am start -n com.kryon.app/.MainActivity\n");
+
+    return 0;
+}
+
+/**
+ * Resolve target aliases to canonical target names
+ * Returns canonical name or NULL if not a recognized alias
+ */
+static const char* resolve_target_alias(const char* alias) {
+    if (!alias) return NULL;
+
+    // Limbo/DIS/Emu aliases → limbo target
+    if (strcmp(alias, "limbo") == 0 ||
+        strcmp(alias, "dis") == 0 ||
+        strcmp(alias, "emu") == 0) {
+        return "limbo";
+    }
+
+    // Desktop/SDL3 aliases → desktop target
+    if (strcmp(alias, "desktop") == 0 ||
+        strcmp(alias, "sdl3") == 0) {
+        return "desktop";
+    }
+
+    // Raylib alias → desktop target (special case: needs renderer override)
+    if (strcmp(alias, "raylib") == 0) {
+        return "desktop";  // Renderer override handled by caller
+    }
+
+    // Web alias → web target
+    if (strcmp(alias, "web") == 0) {
+        return "web";
+    }
+
+    // Android/Kotlin aliases → android target
+    if (strcmp(alias, "android") == 0 ||
+        strcmp(alias, "kotlin") == 0) {
+        return "android";
+    }
+
+    // Not a recognized alias
+    return NULL;
+}
+
 /**
  * Find a target handler by name
  * Returns NULL if target not found
@@ -720,6 +839,12 @@ void target_handler_cleanup(void) {
 TargetHandler* target_handler_find(const char* target_name) {
     if (!target_name) {
         return NULL;
+    }
+
+    // First try alias resolution
+    const char* canonical = resolve_target_alias(target_name);
+    if (canonical) {
+        target_name = canonical;
     }
 
     for (size_t i = 0; i < g_registry.count; i++) {
@@ -741,6 +866,21 @@ bool target_has_capability(const char* target_name, TargetCapability capability)
         return false;
     }
     return (handler->capabilities & capability) != 0;
+}
+
+/**
+ * Check if a target name is an alias and get its resolved target
+ * Returns true if it's an alias, false otherwise
+ * If resolved is not NULL, sets *resolved to the canonical target name
+ */
+bool target_is_alias(const char* alias, const char** resolved) {
+    if (!alias) return false;
+
+    const char* canonical = resolve_target_alias(alias);
+    if (canonical && resolved) {
+        *resolved = canonical;
+    }
+    return canonical != NULL;
 }
 
 /**
@@ -772,6 +912,15 @@ void target_handler_initialize(void) {
         .run_handler = desktop_target_run,
     };
     target_handler_register(&g_desktop_handler);
+
+    // Register Android handler (generates Kotlin DSL code)
+    static TargetHandler g_android_handler = {
+        .name = "android",
+        .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
+        .build_handler = android_target_build,
+        .run_handler = android_target_run,
+    };
+    target_handler_register(&g_android_handler);
 
     g_initialized = true;
 }

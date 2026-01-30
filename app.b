@@ -1,4 +1,4 @@
-implement KryonApp;
+implement app;
 
 include "sys.m";
 	sys: Sys;
@@ -9,7 +9,7 @@ include "tk.m";
 include "tkclient.m";
 	tkclient: Tkclient;
 
-KryonApp: module {
+app: module {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
 };
 
@@ -22,22 +22,28 @@ init(ctxt: ref Draw->Context, argv: list of string) {
 	tkclient->init();
 
 	# Create toplevel window
-	(t, titlech) := tkclient->toplevel(ctxt, "", "Hello World Example", Tkclient->Appl);
+	(t, titlech) := tkclient->toplevel(ctxt, "", "Dropdown Demo", Tkclient->Appl);
 
 	# Create widgets
 
-	# Create root Container widget with dark background
-	tk->cmd(t, "frame .w1 -bg #1a1a2e");
+	# Create Container widget
+	tk->cmd(t, "frame .w1 -width 400 -height 300 -bg #f8f9fa");
+		# Create Column widget
+		tk->cmd(t, "frame .w1.w2 -width 100 -height 100");
+			# Create Text widget
+			tk->cmd(t, "label .w1.w2.w3 -text {Select your favorite color:} -fg #6b7280 -font /fonts/lucidasans/latin1.7.font -padx 5 -pady 5");
+			tk->cmd(t, "pack .w1.w2.w3 -expand 1");
+			# Create Dropdown widget
+			tk->cmd(t, "frame .w1.w2.w4 -width 200 -height 40 -bg white -fg #2d3748 -borderwidth 1 -relief raised");
+			tk->cmd(t, "pack .w1.w2.w4 -padx 20 -pady 20");
+			# Create Text widget
+			tk->cmd(t, "label .w1.w2.w5 -text {Select your country:} -fg #6b7280 -font /fonts/lucidasans/latin1.7.font -padx 5 -pady 5");
+			tk->cmd(t, "pack .w1.w2.w5 -expand 1");
+			# Create Dropdown widget
+			tk->cmd(t, "frame .w1.w2.w6 -width 200 -height 40 -bg white -fg #2d3748 -borderwidth 1 -relief raised");
+			tk->cmd(t, "pack .w1.w2.w6 -padx 20 -pady 20");
+		tk->cmd(t, "pack .w1.w2 -padx 20 -pady 20");
 	tk->cmd(t, "pack .w1 -fill both -expand 1");
-
-	# Create nested Container widget with midnight blue background
-	# Positioned using pack with padding to simulate x=200, y=100
-	tk->cmd(t, "frame .w1.w2 -width 200 -height 100 -bg #191970 -borderwidth 2 -relief raised");
-	tk->cmd(t, "pack .w1.w2 -anchor nw -padx 200 -pady 100");
-
-	# Create Text widget inside container - background matches parent
-	tk->cmd(t, "label .w1.w2.w3 -text {Hello World} -fg yellow -bg #191970 -font /fonts/lucidasans/latin1.7.font -padx 5 -pady 5");
-	tk->cmd(t, "pack .w1.w2.w3 -expand 1");
 
 	# Update display
 	tk->cmd(t, "update");

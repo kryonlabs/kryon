@@ -440,6 +440,8 @@ void kryon_c_event_bridge(const char* logic_id);
 #define KRYON_COLOR_DARK_GRAY   0x404040
 #define KRYON_COLOR_LIGHT_GRAY  0xC0C0C0
 #define KRYON_COLOR_TRANSPARENT 0x00000000
+#define KRYON_COLOR_ORANGE      0xFFA500
+#define KRYON_COLOR_PURPLE      0x800080
 
 // ============================================================================
 // ============================================================================

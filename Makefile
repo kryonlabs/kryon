@@ -70,7 +70,7 @@ ir:
 	@$(MAKE) -C $(IR_DIR) static
 	@echo "✓ Built IR library"
 
-# Code generators (C, Kry, Web, Limbo)
+# Code generators (C, Kry, Web, Limbo, Android)
 codegens: ir
 	@echo "Building code generators..."
 	@$(MAKE) -C $(CODEGENS_DIR)/c all
@@ -78,6 +78,7 @@ codegens: ir
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
 	@$(MAKE) -C $(CODEGENS_DIR)/web all
 	@$(MAKE) -C $(CODEGENS_DIR)/limbo all
+	@$(MAKE) -C $(CODEGENS_DIR)/android all
 	@echo "✓ Built code generators"
 
 # DIS bytecode compiler (top-level directory, NOT a codegen)
@@ -113,6 +114,7 @@ clean:
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/web clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/limbo clean || true
+	@$(MAKE) -C $(CODEGENS_DIR)/android clean || true
 	@$(MAKE) -C dis clean || true
 	@$(MAKE) -C $(CLI_DIR) clean || true
 	@$(MAKE) -C runtime/desktop clean || true

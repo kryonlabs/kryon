@@ -2,19 +2,25 @@
 # =============================================================================
 # Kryon Example Runner
 # =============================================================================
-# Runs .kry examples through the full native pipeline:
-#   .kry → .kir → .c → native executable
+# Runs .kry examples through the kryon CLI with target selection:
+#   .kry → .kir → [target-specific output]
 #
 # Basic usage:
-#   ./run_example.sh hello_world
+#   ./run_example.sh hello_world          # Default: limbo target
+#   ./run_example.sh hello_world limbo    # Explicit target
+#   ./run_example.sh hello_world desktop  # Desktop SDL3
+#   ./run_example.sh hello_world raylib   # Desktop Raylib
 #
 # Specify example by number:
 #   ./run_example.sh 8
+#   ./run_example.sh 8 web
 #
-# Output (all in build/ir/):
-#   build/ir/<name>.kir      - Intermediate representation
-#   build/ir/<name>/main.c   - Generated C code
-#   build/ir/<name>/app      - Native executable
+# Supported targets:
+#   limbo, dis, emu     - TaijiOS Limbo/DIS bytecode (default)
+#   desktop, sdl3       - Desktop SDL3 renderer
+#   raylib              - Desktop Raylib renderer
+#   web                 - Web browser
+#   android, kotlin     - Android APK
 #
 # =============================================================================
 
@@ -58,15 +64,23 @@ for f in examples/kry/*.kry; do
     EXAMPLES+=("$(basename "$f" .kry)")
 done
 
-# Get example name
+# Get example name and target
 if [ -z "$1" ]; then
-    echo -e "${YELLOW}Usage:${NC} ./run_example.sh <number|name>"
+    echo -e "${YELLOW}Usage:${NC} ./run_example.sh <number|name> [target]"
     echo ""
-    echo -e "${BLUE}Pipeline:${NC} .kry → .kir → .c → native"
+    echo -e "${BLUE}Targets:${NC}"
+    echo "  (none)              - Default: limbo (TaijiOS VM)"
+    echo "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode"
+    echo "  desktop, sdl3       - Desktop SDL3 renderer"
+    echo "  raylib              - Desktop Raylib renderer"
+    echo "  web                 - Web browser"
+    echo "  android, kotlin     - Android APK"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
-    echo "  ./run_example.sh 8            # Run example #8"
-    echo "  ./run_example.sh hello_world  # Run by name"
+    echo "  ./run_example.sh 8              # Run example #8 with limbo"
+    echo "  ./run_example.sh hello_world    # Run by name with limbo"
+    echo "  ./run_example.sh 8 desktop      # Run with desktop target"
+    echo "  ./run_example.sh hello_world raylib  # Run with raylib"
     echo ""
     echo -e "${BLUE}Available examples:${NC}"
     i=1
@@ -78,6 +92,7 @@ if [ -z "$1" ]; then
 fi
 
 EXAMPLE="$1"
+TARGET="${2:-limbo}"  # Default to limbo if not specified
 
 # If input is a number, convert to example name
 if [[ "$EXAMPLE" =~ ^[0-9]+$ ]]; then
@@ -90,6 +105,31 @@ if [[ "$EXAMPLE" =~ ^[0-9]+$ ]]; then
     fi
 fi
 
+# Validate and resolve target alias
+case "$TARGET" in
+    limbo|dis|emu)
+        TARGET="limbo"
+        ;;
+    desktop|sdl3)
+        TARGET="desktop"
+        ;;
+    raylib)
+        TARGET="desktop"
+        RENDERER="raylib"
+        ;;
+    web)
+        TARGET="web"
+        ;;
+    android|kotlin)
+        TARGET="android"
+        ;;
+    *)
+        echo -e "${RED}Error:${NC} Unknown target '$TARGET'"
+        echo "Valid targets: limbo, dis, emu, desktop, sdl3, raylib, web, android, kotlin"
+        exit 1
+        ;;
+esac
+
 # Determine basename
 if [[ "$EXAMPLE" == *.kry ]]; then
     BASENAME=$(basename "$EXAMPLE" .kry)
@@ -97,11 +137,8 @@ else
     BASENAME="$EXAMPLE"
 fi
 
-# Output paths (all in build/ir/)
-KIR_FILE="build/ir/${BASENAME}.kir"
-C_DIR="build/ir/${BASENAME}"
-C_FILE="${C_DIR}/main.c"
-NATIVE_BIN="${C_DIR}/app"
+# Output paths
+KIR_FILE=".kryon_cache/${BASENAME}.kir"
 
 # =============================================================================
 # MAIN: .kry → .kir → .c → native
@@ -120,13 +157,14 @@ if [ ! -f "$INPUT_FILE" ]; then
 fi
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}Kryon Example Runner${NC} - Native Pipeline"
+echo -e "${BLUE}Kryon Example Runner${NC} - Target: ${CYAN}${TARGET}${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 # Step 1: Compile .kry to .kir
-echo -e "${YELLOW}[1/4]${NC} Parsing ${GREEN}$INPUT_FILE${NC} → ${GREEN}$KIR_FILE${NC}"
-~/.local/bin/kryon compile "$INPUT_FILE" --output="$KIR_FILE" --no-cache
+echo -e "${YELLOW}[1/2]${NC} Compiling ${GREEN}$INPUT_FILE${NC} → ${GREEN}$KIR_FILE${NC}"
+mkdir -p .kryon_cache
+~/.local/bin/kryon compile "$INPUT_FILE" --output="$KIR_FILE"
 
 if [ -f "$KIR_FILE" ]; then
     echo -e "      ${GREEN}✓${NC} Generated $(wc -c < "$KIR_FILE") bytes"
@@ -137,47 +175,29 @@ fi
 
 echo ""
 
-# Step 2: Generate C code from .kir
-echo -e "${YELLOW}[2/4]${NC} Codegen ${GREEN}$KIR_FILE${NC} → ${GREEN}$C_FILE${NC}"
-rm -rf "$C_DIR"
-~/.local/bin/kryon codegen c "$KIR_FILE" "$C_DIR"
+# Step 2: Run with target
+echo -e "${YELLOW}[2/2]${NC} Running with target: ${CYAN}$TARGET${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-if [ -f "$C_FILE" ]; then
-    echo -e "      ${GREEN}✓${NC} Generated $(wc -l < "$C_FILE") lines of C code"
+if [ -n "$RENDERER" ]; then
+    # Desktop with specific renderer
+    ~/.local/bin/kryon run --target="$TARGET" --renderer="$RENDERER" "$KIR_FILE"
 else
-    echo -e "      ${RED}✗${NC} Failed to generate C code"
-    exit 1
+    # Standard target
+    ~/.local/bin/kryon run --target="$TARGET" "$KIR_FILE"
 fi
 
+RESULT=$?
+
 echo ""
-
-# Step 3: Compile C to native executable
-echo -e "${YELLOW}[3/4]${NC} Compiling ${GREEN}$C_FILE${NC} → ${GREEN}$NATIVE_BIN${NC}"
-
-# Compiler flags
-CC="${CC:-gcc}"
-CFLAGS="-std=gnu99 -O2"
-INCLUDES="-I./bindings/c -I./ir/include"
-LIBS="-L./build -L./bindings/c -lkryon_desktop -lkryon_c -lkryon_ir -lraylib -lm"
-
-if $CC $CFLAGS $INCLUDES "$C_FILE" -o "$NATIVE_BIN" $LIBS 2>&1; then
-    echo -e "      ${GREEN}✓${NC} Compiled native executable"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+if [ $RESULT -eq 0 ]; then
+    echo -e "${GREEN}✓ Execution complete${NC}"
 else
-    echo -e "      ${RED}✗${NC} Compilation failed"
-    exit 1
+    echo -e "${RED}✗ Execution failed with exit code $RESULT${NC}"
 fi
-
-echo ""
-
-# Step 4: Run native executable
-echo -e "${YELLOW}[4/4]${NC} Running ${GREEN}$NATIVE_BIN${NC}"
+echo -e "${GREEN}Output:${NC}"
+echo "  • KIR: $KIR_FILE"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-"$NATIVE_BIN"
 
-echo ""
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}Output files:${NC}"
-echo "  • KIR:    $KIR_FILE"
-echo "  • C:      $C_FILE"
-echo "  • Native: $NATIVE_BIN"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+exit $RESULT

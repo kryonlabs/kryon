@@ -291,28 +291,18 @@ int cmd_run(int argc, char** argv) {
     }
 
     // Validate target platform using handler registry
-    if (!target_handler_find(target_platform)) {
-        fprintf(stderr, "Error: Invalid target platform: %s\n", target_platform);
-        fprintf(stderr, "       Valid targets: ");
-        const char** targets = target_handler_list_names();
-        for (int i = 0; targets[i]; i++) {
-            fprintf(stderr, "%s%s", i > 0 ? ", " : "", targets[i]);
-        }
-        fprintf(stderr, "\n");
+    // First check if it's a valid alias or registered target
+    const char* resolved_target = NULL;
+    bool is_alias = target_is_alias(target_platform, &resolved_target);
 
-        // Show which targets support which operations
-        fprintf(stderr, "\nTarget capabilities:\n");
-        for (int i = 0; targets[i]; i++) {
-            TargetHandler* handler = target_handler_find(targets[i]);
-            if (handler) {
-                fprintf(stderr, "  %s: ", targets[i]);
-                if (handler->build_handler) fprintf(stderr, "build ");
-                if (handler->run_handler) fprintf(stderr, "run ");
-                fprintf(stderr, "\n");
-            }
-        }
-        fprintf(stderr, "\n");
-        fprintf(stderr, "Frontend languages: KRY, HTML, Markdown, C\n");
+    if (!is_alias && !target_handler_find(target_platform)) {
+        fprintf(stderr, "Error: Unknown target '%s'\n", target_platform);
+        fprintf(stderr, "\nValid targets (with aliases):\n");
+        fprintf(stderr, "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode VM\n");
+        fprintf(stderr, "  desktop, sdl3       - Desktop application (SDL3 renderer)\n");
+        fprintf(stderr, "  raylib              - Desktop application (Raylib renderer)\n");
+        fprintf(stderr, "  web                 - Web browser (HTML/CSS/JS)\n");
+        fprintf(stderr, "  android, kotlin     - Android APK\n");
 
         if (free_target_platform) free((char*)target_platform);
         return 1;

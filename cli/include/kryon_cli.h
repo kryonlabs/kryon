@@ -300,6 +300,7 @@ bool target_has_capability(const char* target_name, TargetCapability capability)
 void target_handler_initialize(void);
 const char* target_handler_get_current_name(void);
 void target_handler_register_command_targets(const KryonConfig* config);
+bool target_is_alias(const char* alias, const char** resolved);  // Check if target is an alias
 
 // Target handler helper functions for commands
 int target_handler_build(const char* target_name, const char* kir_file,

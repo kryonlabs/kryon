@@ -64,7 +64,8 @@ TARGET = kryon
 CODEGEN_OBJS = $(wildcard ../build/codegen_common.o) \
                $(wildcard ../codegens/kry/kry_codegen.o) \
                $(wildcard ../codegens/markdown/markdown_codegen.o) \
-               $(wildcard ../codegens/c/ir_c_codegen.o)
+               $(wildcard ../codegens/c/ir_c_codegen.o) \
+               $(wildcard ../codegens/android/ir_android_codegen.o)
 
 # Third-party libraries
 CJSON_OBJ = $(BUILD_DIR)/cJSON.o
