@@ -7,17 +7,19 @@
 #
 # Basic usage:
 #   ./run_example.sh hello_world          # Default: limbo target
-#   ./run_example.sh hello_world limbo    # Explicit target
+#   ./run_example.sh hello_world limbo    # Explicit limbo
 #   ./run_example.sh hello_world desktop  # Desktop SDL3
 #   ./run_example.sh hello_world raylib   # Desktop Raylib
+#   ./run_example.sh hello_world android  # Android APK
 #
 # Specify example by number:
 #   ./run_example.sh 8
 #   ./run_example.sh 8 web
+#   ./run_example.sh 1 android
 #
 # Supported targets:
 #   limbo, dis, emu     - TaijiOS Limbo/DIS bytecode (default)
-#   desktop, sdl3       - Desktop SDL3 renderer
+#   sdl3, desktop       - Desktop SDL3 renderer
 #   raylib              - Desktop Raylib renderer
 #   web                 - Web browser
 #   android, kotlin     - Android APK
@@ -71,7 +73,7 @@ if [ -z "$1" ]; then
     echo -e "${BLUE}Targets:${NC}"
     echo "  (none)              - Default: limbo (TaijiOS VM)"
     echo "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode"
-    echo "  desktop, sdl3       - Desktop SDL3 renderer"
+    echo "  sdl3, desktop       - Desktop SDL3 renderer"
     echo "  raylib              - Desktop Raylib renderer"
     echo "  web                 - Web browser"
     echo "  android, kotlin     - Android APK"
@@ -79,8 +81,9 @@ if [ -z "$1" ]; then
     echo -e "${BLUE}Examples:${NC}"
     echo "  ./run_example.sh 8              # Run example #8 with limbo"
     echo "  ./run_example.sh hello_world    # Run by name with limbo"
-    echo "  ./run_example.sh 8 desktop      # Run with desktop target"
+    echo "  ./run_example.sh 8 desktop      # Run with desktop (SDL3)"
     echo "  ./run_example.sh hello_world raylib  # Run with raylib"
+    echo "  ./run_example.sh 1 android      # Build and run Android APK"
     echo ""
     echo -e "${BLUE}Available examples:${NC}"
     i=1
@@ -110,22 +113,18 @@ case "$TARGET" in
     limbo|dis|emu)
         TARGET="limbo"
         ;;
-    desktop|sdl3)
-        TARGET="desktop"
+    desktop)
+        TARGET="sdl3"  # desktop defaults to sdl3
         ;;
-    raylib)
-        TARGET="desktop"
-        RENDERER="raylib"
+    kotlin)
+        TARGET="android"  # kotlin alias for android
         ;;
-    web)
-        TARGET="web"
-        ;;
-    android|kotlin)
-        TARGET="android"
+    sdl3|raylib|web|android)
+        # Real targets, use as-is
         ;;
     *)
         echo -e "${RED}Error:${NC} Unknown target '$TARGET'"
-        echo "Valid targets: limbo, dis, emu, desktop, sdl3, raylib, web, android, kotlin"
+        echo "Valid targets: limbo, dis, emu, sdl3, desktop, raylib, web, android, kotlin"
         exit 1
         ;;
 esac
@@ -179,13 +178,7 @@ echo ""
 echo -e "${YELLOW}[2/2]${NC} Running with target: ${CYAN}$TARGET${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-if [ -n "$RENDERER" ]; then
-    # Desktop with specific renderer
-    ~/.local/bin/kryon run --target="$TARGET" --renderer="$RENDERER" "$KIR_FILE"
-else
-    # Standard target
-    ~/.local/bin/kryon run --target="$TARGET" "$KIR_FILE"
-fi
+~/.local/bin/kryon run --target="$TARGET" "$KIR_FILE"
 
 RESULT=$?
 

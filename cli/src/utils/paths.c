@@ -257,6 +257,62 @@ char* paths_resolve(const char* path, const char* base_dir) {
 }
 
 /**
+ * Validate if a directory contains a complete Kryon installation
+ * For source: requires ir/, cli/, build/, bindings/, renderers/, runtime/
+ * For install: requires build/, bindings/, ir/, renderers/, runtime/, third_party/
+ */
+static bool is_complete_kryon_installation(const char* path, bool* is_source_install) {
+    if (!path || !file_is_directory(path)) return false;
+
+    // Check for source installation markers
+    char* cli_dir = path_join(path, "cli");
+    char* ir_core_h = path_join(path, "ir/ir_core.h");
+    bool has_source_markers = file_is_directory(cli_dir) && file_exists(ir_core_h);
+    free(cli_dir);
+    free(ir_core_h);
+
+    if (has_source_markers) {
+        *is_source_install = true;
+        // Source install: verify critical directories
+        char* build_dir = path_join(path, "build");
+        char* bindings_dir = path_join(path, "bindings");
+        char* renderers_dir = path_join(path, "renderers");
+        bool complete = file_is_directory(build_dir) &&
+                       file_is_directory(bindings_dir) &&
+                       file_is_directory(renderers_dir);
+        free(build_dir);
+        free(bindings_dir);
+        free(renderers_dir);
+        return complete;
+    }
+
+    // Check for binary installation
+    *is_source_install = false;
+    char* build_dir = path_join(path, "build");
+    char* bindings_dir = path_join(path, "bindings");
+    char* ir_dir = path_join(path, "ir");
+    char* renderers_dir = path_join(path, "renderers");
+    char* runtime_dir = path_join(path, "runtime");
+    char* third_party_dir = path_join(path, "third_party");
+
+    bool complete = file_is_directory(build_dir) &&
+                   file_is_directory(bindings_dir) &&
+                   file_is_directory(ir_dir) &&
+                   file_is_directory(renderers_dir) &&
+                   file_is_directory(runtime_dir) &&
+                   file_is_directory(third_party_dir);
+
+    free(build_dir);
+    free(bindings_dir);
+    free(ir_dir);
+    free(renderers_dir);
+    free(runtime_dir);
+    free(third_party_dir);
+
+    return complete;
+}
+
+/**
  * Walk up directory tree looking for Kryon root
  */
 static char* find_kryon_in_parents(const char* start_dir) {
@@ -321,7 +377,11 @@ char* paths_get_kryon_root(void) {
     if (getcwd(cwd, sizeof(cwd))) {
         char* parent_kryon = find_kryon_in_parents(cwd);
         if (parent_kryon) {
-            return parent_kryon;
+            bool is_source;
+            if (is_complete_kryon_installation(parent_kryon, &is_source)) {
+                return parent_kryon;
+            }
+            free(parent_kryon);
         }
     }
 
@@ -361,13 +421,14 @@ char* paths_get_kryon_root(void) {
         free(bin_path);
     }
 
-    // 4. XDG user data directory
+    // 4. XDG user data directory - ONLY if it's a complete installation
     char* home = paths_get_home_dir();
     if (home) {
         char* xdg_path = path_join(home, ".local/share/kryon");
         free(home);
 
-        if (file_exists(xdg_path)) {
+        bool is_source;
+        if (file_exists(xdg_path) && is_complete_kryon_installation(xdg_path, &is_source)) {
             return xdg_path;
         }
         free(xdg_path);

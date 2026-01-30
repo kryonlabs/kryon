@@ -315,15 +315,15 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config) {
 }
 
 /* ============================================================================
- * Desktop Target Handler (SDL3)
+ * SDL3 Desktop Target Handler
  * ============================================================================ */
 
 /**
- * Desktop target build handler
+ * SDL3 desktop target build handler
  * Generates C code from KIR and compiles to native binary with SDL3
  */
-static int desktop_target_build(const char* kir_file, const char* output_dir,
-                                const char* project_name, const KryonConfig* config) {
+static int sdl3_target_build(const char* kir_file, const char* output_dir,
+                             const char* project_name, const KryonConfig* config) {
     // Step 1: Create generated directory
     char gen_dir[1024];
     snprintf(gen_dir, sizeof(gen_dir), "%s/generated", output_dir);
@@ -368,6 +368,118 @@ static int desktop_target_build(const char* kir_file, const char* output_dir,
 
     printf("Using KRYON_ROOT: %s\n", kryon_root);
 
+    // If SDL libs aren't found via pkg-config, provide defaults
+    if (strlen(sdl_libs) == 0) {
+        strcpy(sdl_libs, "-lSDL3 -lSDL3_ttf");
+    }
+
+    char compile_cmd[8192];
+    snprintf(compile_cmd, sizeof(compile_cmd),
+             "gcc -std=c99 -O2 -DKRYON_DESKTOP_TARGET "
+             "-Wno-error=implicit-function-declaration "
+             "-I%s -I%s/bindings/c -I%s/ir/include -I%s/core/include -I%s/runtime/desktop "
+             "-I%s/renderers/sdl3 -I%s/renderers/common "
+             "-I%s/third_party/stb "
+             "%s/*.c "
+             "-L%s/build -L%s/bindings/c "
+             "-lkryon_c -lkryon_dsl_runtime -lkryon_desktop_sdl3 -lkryon_command_buf -lkryon_ir "
+             "%s -lm -lpthread -ldl -o %s",
+             gen_dir, kryon_root, kryon_root, kryon_root, kryon_root,
+             kryon_root, kryon_root, kryon_root,
+             gen_dir,
+             kryon_root, kryon_root,
+             sdl_libs, output_binary);
+
+    printf("Compiling with command:\n  %s\n", compile_cmd);
+
+    // Run compilation and filter collect2 messages, but preserve gcc exit code
+    char filtered_cmd[8192 + 200];
+    snprintf(filtered_cmd, sizeof(filtered_cmd),
+             "(%s) 2>&1 | grep -v '^collect2:' >&2; exit ${PIPESTATUS[0]}",
+             compile_cmd);
+    int result = system(filtered_cmd);
+
+    if (result != 0) {
+        fprintf(stderr, "Error: Compilation failed\n");
+        free(kryon_root);
+        return 1;
+    }
+
+    printf("✓ Built desktop binary: %s\n", output_binary);
+    free(kryon_root);
+    return 0;
+}
+
+/**
+ * SDL3 desktop target run handler
+ * Builds if needed, then executes the binary
+ */
+static int sdl3_target_run(const char* kir_file, const KryonConfig* config) {
+    const char* output_dir = ".";
+    const char* project_name = "app";
+
+    // Build first
+    if (sdl3_target_build(kir_file, output_dir, project_name, config) != 0) {
+        return 1;
+    }
+
+    // Execute the binary
+    char binary_path[1024];
+    snprintf(binary_path, sizeof(binary_path), "%s/%s", output_dir, project_name);
+
+    printf("Running: %s\n", binary_path);
+    int result = system(binary_path);
+
+    if (result != 0) {
+        fprintf(stderr, "Warning: Binary exited with code %d\n", result);
+    }
+
+    return result;
+}
+
+/* ============================================================================
+ * Raylib Desktop Target Handler
+ * ============================================================================ */
+
+/**
+ * Raylib desktop target build handler
+ * Generates C code from KIR and compiles to native binary with Raylib
+ */
+static int raylib_target_build(const char* kir_file, const char* output_dir,
+                                const char* project_name, const KryonConfig* config) {
+    // Step 1: Create generated directory
+    char gen_dir[1024];
+    snprintf(gen_dir, sizeof(gen_dir), "%s/generated", output_dir);
+
+    char mkdir_cmd[1024];
+    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", gen_dir);
+    system(mkdir_cmd);
+
+    // Step 2: Generate C code from KIR
+    printf("Generating C code from KIR...\n");
+    if (!ir_generate_c_code_multi(kir_file, gen_dir)) {
+        fprintf(stderr, "Error: C code generation failed\n");
+        return 1;
+    }
+
+    printf("✓ Generated C code in: %s\n", gen_dir);
+
+    // Step 3: Compile C code with raylib runtime
+    printf("Compiling raylib binary: %s\n", project_name);
+
+    char output_binary[1024];
+    snprintf(output_binary, sizeof(output_binary), "%s/%s", output_dir, project_name);
+
+    // Get kryon root directory using path discovery
+    char* kryon_root = paths_get_kryon_root();
+    if (!kryon_root) {
+        fprintf(stderr, "Error: Could not detect KRYON_ROOT\n");
+        fprintf(stderr, "Set KRYON_ROOT environment variable or run from kryon project directory\n");
+        return 1;
+    }
+
+    printf("Using KRYON_ROOT: %s\n", kryon_root);
+
     // Get raylib library flags
     char raylib_libs[512] = "-lraylib";
     FILE* raylib_pipe = popen("pkg-config --libs raylib 2>/dev/null", "r");
@@ -382,43 +494,47 @@ static int desktop_target_build(const char* kir_file, const char* output_dir,
     snprintf(compile_cmd, sizeof(compile_cmd),
              "gcc -std=c99 -O2 -DKRYON_DESKTOP_TARGET "
              "-Wno-error=implicit-function-declaration "
-             "-I%s -I%s/ir/include -I%s/core/include -I%s/runtime/desktop "
-             "-I%s/renderers/sdl3 -I%s/renderers/common -I%s/bindings/c "
+             "-I%s -I%s/bindings/c -I%s/ir/include -I%s/core/include -I%s/runtime/desktop "
+             "-I%s/renderers/raylib -I%s/renderers/common "
              "-I%s/third_party/stb "
              "%s/*.c "
              "-L%s/build -L%s/bindings/c "
-             "-lkryon_c -lkryon_dsl_runtime -lkryon_desktop_sdl3 -lkryon_command_buf -lkryon_ir "
-             "%s %s -lm -lpthread -ldl -o %s",
-             gen_dir, kryon_root, kryon_root, kryon_root,
-             kryon_root, kryon_root, kryon_root, kryon_root,
+             "-lkryon_c -lkryon_dsl_runtime -lkryon_desktop_raylib -lkryon_command_buf -lkryon_ir "
+             "%s -lm -lpthread -ldl -o %s",
+             gen_dir, kryon_root, kryon_root, kryon_root, kryon_root,
+             kryon_root, kryon_root, kryon_root,
              gen_dir,
              kryon_root, kryon_root,
-             sdl_libs, raylib_libs, output_binary);
+             raylib_libs, output_binary);
 
     printf("Compiling with command:\n  %s\n", compile_cmd);
-    int result = system(compile_cmd);
+
+    // Filter out "collect2:" messages from stderr
+    char filtered_cmd[8192 + 100];
+    snprintf(filtered_cmd, sizeof(filtered_cmd), "%s 2>&1 | grep -v '^collect2:' >&2", compile_cmd);
+    int result = system(filtered_cmd);
 
     if (result != 0) {
-        fprintf(stderr, "Error: Compilation failed with exit code %d\n", result);
+        fprintf(stderr, "Error: Compilation failed\n");
         free(kryon_root);
         return 1;
     }
 
-    printf("✓ Built desktop binary: %s\n", output_binary);
+    printf("✓ Built raylib binary: %s\n", output_binary);
     free(kryon_root);
     return 0;
 }
 
 /**
- * Desktop target run handler
+ * Raylib desktop target run handler
  * Builds if needed, then executes the binary
  */
-static int desktop_target_run(const char* kir_file, const KryonConfig* config) {
+static int raylib_target_run(const char* kir_file, const KryonConfig* config) {
     const char* output_dir = ".";
     const char* project_name = "app";
 
     // Build first
-    if (desktop_target_build(kir_file, output_dir, project_name, config) != 0) {
+    if (raylib_target_build(kir_file, output_dir, project_name, config) != 0) {
         return 1;
     }
 
@@ -806,20 +922,9 @@ static const char* resolve_target_alias(const char* alias) {
         return "limbo";
     }
 
-    // Desktop/SDL3 aliases → desktop target
-    if (strcmp(alias, "desktop") == 0 ||
-        strcmp(alias, "sdl3") == 0) {
-        return "desktop";
-    }
-
-    // Raylib alias → desktop target (special case: needs renderer override)
-    if (strcmp(alias, "raylib") == 0) {
-        return "desktop";  // Renderer override handled by caller
-    }
-
-    // Web alias → web target
-    if (strcmp(alias, "web") == 0) {
-        return "web";
+    // Desktop alias → sdl3 target (desktop defaults to SDL3)
+    if (strcmp(alias, "desktop") == 0) {
+        return "sdl3";
     }
 
     // Android/Kotlin aliases → android target
@@ -828,7 +933,8 @@ static const char* resolve_target_alias(const char* alias) {
         return "android";
     }
 
-    // Not a recognized alias
+    // Not a recognized alias - return NULL
+    // sdl3, raylib, web are real targets, not aliases
     return NULL;
 }
 
@@ -904,14 +1010,23 @@ void target_handler_initialize(void) {
     };
     target_handler_register(&g_limbo_handler);
 
-    // Register Desktop handler (SDL3 renderer)
-    static TargetHandler g_desktop_handler = {
-        .name = "desktop",
+    // Register SDL3 Desktop handler
+    static TargetHandler g_sdl3_handler = {
+        .name = "sdl3",
         .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
-        .build_handler = desktop_target_build,
-        .run_handler = desktop_target_run,
+        .build_handler = sdl3_target_build,
+        .run_handler = sdl3_target_run,
     };
-    target_handler_register(&g_desktop_handler);
+    target_handler_register(&g_sdl3_handler);
+
+    // Register Raylib Desktop handler
+    static TargetHandler g_raylib_handler = {
+        .name = "raylib",
+        .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
+        .build_handler = raylib_target_build,
+        .run_handler = raylib_target_run,
+    };
+    target_handler_register(&g_raylib_handler);
 
     // Register Android handler (generates Kotlin DSL code)
     static TargetHandler g_android_handler = {

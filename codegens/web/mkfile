@@ -1,0 +1,21 @@
+# Web Codegen (TaijiOS mkfile)
+# Generates HTML/CSS/JS from Kryon IR
+
+<../../../mkconfig
+
+LIB=libkryon_codegen_web.a
+
+OFILES=\
+	ir_web_codegen.$O\
+
+HFILES=\
+	ir_web_codegen.h\
+	../codegen_common.h\
+
+CFLAGS=$CFLAGS\
+	-I../../include\
+	-I../../ir/include\
+	-I../../third_party/cJSON\
+	-I..\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

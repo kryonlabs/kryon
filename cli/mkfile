@@ -1,0 +1,129 @@
+# Kryon CLI Tool (TaijiOS mkfile)
+# Main kryon command-line tool that orchestrates compilation and execution
+
+<../../mkconfig
+
+TARG=kryon
+
+# Main source file
+OFILES=\
+	src/main.$O\
+
+# Utility modules
+UTIL_OFILES=\
+	src/utils/string.$O\
+	src/utils/file.$O\
+	src/utils/file_discovery.$O\
+	src/utils/file_watcher.$O\
+	src/utils/ws_reload.$O\
+	src/utils/args.$O\
+	src/utils/process.$O\
+	src/utils/json.$O\
+	src/utils/dev_server.$O\
+	src/utils/paths.$O\
+	src/utils/build.$O\
+	src/utils/plugin_installer.$O\
+	src/utils/limbo_modules.$O\
+
+# Config modules
+CONFIG_OFILES=\
+	src/config/toml_parser.$O\
+	src/config/config.$O\
+	src/config/target_handlers.$O\
+	src/config/codegen_defaults.$O\
+
+# Command modules
+COMMAND_OFILES=\
+	src/commands/cmd_stubs.$O\
+	src/commands/cmd_test.$O\
+	src/commands/cmd_config.$O\
+	src/commands/cmd_build.$O\
+	src/commands/cmd_compile.$O\
+	src/commands/cmd_run.$O\
+	src/commands/cmd_codegen.$O\
+	src/commands/cmd_new.$O\
+	src/commands/cmd_inspect.$O\
+	src/commands/cmd_diff.$O\
+	src/commands/cmd_doctor.$O\
+	src/commands/cmd_plugin.$O\
+	src/commands/cmd_install.$O\
+	src/commands/cmd_uninstall.$O\
+
+# Build modules
+BUILD_OFILES=\
+	src/build/embed_bytecode.$O\
+	src/build/plugin_discovery.$O\
+	src/build/c_desktop.$O\
+
+# Template modules
+TEMPLATE_OFILES=\
+	src/template/docs_template.$O\
+
+# All CLI object files
+ALL_OFILES=\
+	$OFILES\
+	$UTIL_OFILES\
+	$CONFIG_OFILES\
+	$COMMAND_OFILES\
+	$BUILD_OFILES\
+	$TEMPLATE_OFILES\
+
+# Header files
+HFILES=\
+	include/kryon_cli.h\
+
+# Compiler flags
+CFLAGS=$CFLAGS\
+	-I./include\
+	-I./src\
+	-I../ir/include\
+	-I../include\
+	-I../third_party/cJSON\
+	-I../codegens/web\
+	-I../dis\
+
+# Libraries to link against (in correct dependency order)
+LIBS=\
+	kryon_codegen_limbo\
+	kryon_codegen_web\
+	kryon_codegen_c\
+	kryon_codegen_android\
+	kryon_codegen_kry\
+	kryon_codegen_markdown\
+	kryon_codegen_common\
+	discodegen\
+	kryon_ir\
+	cJSON\
+	tomlc99\
+	bio\
+	9\
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+# Custom compilation rules for subdirectories
+
+# Source files
+src/%.$O: src/%.c $HFILES
+	$CC $CFLAGS src/$stem.c
+
+# Utils
+src/utils/%.$O: src/utils/%.c $HFILES
+	$CC $CFLAGS src/utils/$stem.c
+
+# Config
+src/config/%.$O: src/config/%.c $HFILES
+	$CC $CFLAGS src/config/$stem.c
+
+# Commands
+src/commands/%.$O: src/commands/%.c $HFILES
+	$CC $CFLAGS src/commands/$stem.c
+
+# Build
+src/build/%.$O: src/build/%.c $HFILES
+	$CC $CFLAGS src/build/$stem.c
+
+# Template
+src/template/%.$O: src/template/%.c $HFILES
+	$CC $CFLAGS src/template/$stem.c

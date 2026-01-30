@@ -1,69 +1,98 @@
-# Kryon UI Framework Build System (Plan 9 mkfile)
+# Kryon UI Framework Build System (TaijiOS mkfile)
 #
-# This mkfile provides Plan 9/9front-compatible build configuration
-# Parallel to the GNU Makefile for cross-platform support
+# This mkfile provides TaijiOS-compatible build configuration
+# Preserves multi-target capability (web, Limbo, SDL3, Android)
 #
 # Usage:
 #   mk              - Build all components
 #   mk clean        - Clean all build artifacts
-#   mk install      - Install to /bin (Plan 9 standard location)
-#   mk test         - Run tests
+#   mk install      - Install to TaijiOS/Linux/amd64/bin
+#   mk nuke         - Remove all generated files
 
-</$objtype/mkfile
+<../mkconfig
 
-# Virtual targets (Plan 9 equivalent of .PHONY)
-all:V: ir cli plan9
+# Build order is critical:
+# 1. Third-party dependencies (cJSON, tomlc99)
+# 2. IR library (core functionality)
+# 3. Code generators (all targets)
+# 4. DIS bytecode compiler
+# 5. CLI tool (links everything together)
 
-clean:V: clean-ir clean-cli clean-plan9
+all:V: third_party ir codegens dis cli
 
-install:V: install-cli install-plan9
+# Third-party libraries (cJSON, tomlc99)
+third_party:V:
+	echo "Building third-party libraries..."
+	(cd third_party && mk install)
+	echo "✓ Third-party libraries built"
 
-test:V: test-ir
+# IR library (core intermediate representation)
+ir:V: third_party
+	echo "Building IR library..."
+	(cd ir && mk install)
+	echo "✓ IR library built"
 
-# IR library (core functionality)
-ir:V:
-	cd ir && mk
+# All code generators (preserving multi-target support)
+codegens:V: ir
+	echo "Building code generators (all targets)..."
+	(cd codegens && mk install)
+	echo "✓ Code generators built (limbo, web, c, android, kry, markdown)"
 
-clean-ir:V:
-	cd ir && mk clean
+# DIS bytecode compiler (for direct .dis generation)
+dis:V: ir
+	echo "Building DIS bytecode compiler..."
+	(cd dis && mk install)
+	echo "✓ DIS compiler built"
 
-test-ir:V:
-	cd ir && mk test
+# CLI tool (main kryon binary)
+cli:V: ir codegens dis
+	echo "Building CLI tool..."
+	(cd cli && mk install)
+	echo "✓ CLI tool built and installed to $ROOT/$OBJDIR/bin/kryon"
 
-# CLI tool (requires IR library)
-cli:V: ir
-	cd cli && mk
+# Clean all build artifacts
+clean:V:
+	echo "Cleaning build artifacts..."
+	(cd third_party && mk clean)
+	(cd ir && mk clean)
+	(cd codegens && mk clean)
+	(cd dis && mk clean)
+	(cd cli && mk clean)
+	echo "✓ Clean complete"
 
-clean-cli:V:
-	cd cli && mk clean
+# Install (already done by component installs, but provided for completeness)
+install:V: all
+	echo "✓ Kryon installed to $ROOT/$OBJDIR/bin/kryon"
 
-install-cli:V: cli
-	cd cli && mk install
-
-# Plan 9 backend (requires IR library)
-plan9:V: ir
-	cd backends/plan9 && mk
-
-clean-plan9:V:
-	cd backends/plan9 && mk clean
-
-install-plan9:V: plan9
-	cd backends/plan9 && mk install
+# Nuke everything (including installed files)
+nuke:V:
+	echo "Removing all generated files..."
+	cd third_party && mk nuke
+	cd ir && mk nuke
+	cd codegens && mk nuke
+	cd dis && mk nuke
+	cd cli && mk nuke
+	rm -f $ROOT/$OBJDIR/bin/kryon
+	echo "✓ Nuke complete"
 
 # Help target
 help:V:
-	echo 'Kryon Plan 9 Build System'
+	echo 'Kryon TaijiOS Build System'
 	echo ''
 	echo 'Targets:'
-	echo '  mk              - Build all components (IR, CLI, Plan 9 backend)'
+	echo '  mk              - Build all components (third-party → IR → codegens → DIS → CLI)'
 	echo '  mk clean        - Clean all build artifacts'
-	echo '  mk install      - Install to /bin'
-	echo '  mk test         - Run tests'
-	echo '  mk ir           - Build IR library only'
-	echo '  mk cli          - Build CLI tool only'
-	echo '  mk plan9        - Build Plan 9 backend only'
+	echo '  mk install      - Install kryon to $ROOT/$OBJDIR/bin'
+	echo '  mk nuke         - Remove all generated files including installed binary'
 	echo ''
 	echo 'Individual components:'
-	echo '  cd ir && mk     - Build IR library'
-	echo '  cd cli && mk    - Build CLI tool'
-	echo '  cd backends/plan9 && mk - Build Plan 9 backend'
+	echo '  mk third_party  - Build third-party dependencies (cJSON, tomlc99)'
+	echo '  mk ir           - Build IR library'
+	echo '  mk codegens     - Build all code generators (multi-target)'
+	echo '  mk dis          - Build DIS bytecode compiler'
+	echo '  mk cli          - Build CLI tool'
+	echo ''
+	echo 'Multi-target support:'
+	echo '  All targets preserved: limbo, web, c, android, kry, markdown'
+	echo '  Target selected at runtime via --target flag'
+	echo '  Default target: limbo (when TAIJI_PATH is set)'

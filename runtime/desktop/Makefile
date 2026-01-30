@@ -71,20 +71,22 @@ DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c desktop_platform.c \
                   desktop_input_helpers.c desktop_test_events.c debug_backend.c \
                   ir_to_commands.c ir_wireframe.c ir_desktop_state.c
 
-# Only add stb_image_impl for non-raylib builds (raylib has its own stb_image)
-ifeq ($(ENABLE_RAYLIB),)
-    DESKTOP_SOURCES += stb_image_impl.c
-endif
+# Always add stb_image_impl for stbi_write_png (needed for screenshots)
+DESKTOP_SOURCES += stb_image_impl.c
 
-# SDL3 renderer modules (in ../../renderers/sdl3/)
-SDL3_RENDERER_SOURCES = $(RENDERERS_DIR)/sdl3/sdl3_backend.c \
-                        $(RENDERERS_DIR)/sdl3/sdl3_input.c \
-                        $(RENDERERS_DIR)/sdl3/sdl3_fonts.c \
-                        $(RENDERERS_DIR)/sdl3/sdl3_effects.c
+# SDL3 renderer modules (desktop-specific implementation)
+SDL3_RENDERER_SOURCES = renderers/sdl3/sdl3_renderer.c \
+                        renderers/sdl3/sdl3_input.c \
+                        renderers/sdl3/sdl3_fonts.c \
+                        renderers/sdl3/sdl3_effects.c \
+                        renderers/sdl3/sdl3_layout.c
 
-# Raylib renderer modules (in ../../renderers/raylib/)
-RAYLIB_RENDERER_SOURCES = $(RENDERERS_DIR)/raylib/raylib_backend.c \
-                          $(RENDERERS_DIR)/raylib/raylib_effects.c
+# Raylib renderer modules (desktop-specific implementation)
+RAYLIB_RENDERER_SOURCES = renderers/raylib/raylib_renderer.c \
+                          renderers/raylib/raylib_input.c \
+                          renderers/raylib/raylib_fonts.c \
+                          renderers/raylib/raylib_effects.c \
+                          renderers/raylib/raylib_layout.c
 
 # Add renderer-specific sources
 ifeq ($(ENABLE_SDL3),1)
@@ -108,9 +110,12 @@ INCLUDES = -I$(INCLUDE_DIR) \
            -I$(INCLUDE_IR_DIR)/include \
            -I../../include \
            -I../../core/include \
+           -I./renderers/sdl3 \
+           -I./renderers/raylib \
            -I$(RENDERERS_DIR)/sdl3 \
            -I$(RENDERERS_DIR)/common \
-           -I../../bindings/c
+           -I../../bindings/c \
+           -I../../third_party/stb
 
 # Link libraries (excluding IR libs which are added separately)
 LINK_LIBS = -L$(BUILD_DIR) -lkryon_ir $(LIBS)
@@ -160,8 +165,8 @@ example: $(DESKTOP_STATIC_LIB)
 # Clean build artifacts (including dependency files)
 clean:
 	rm -f *.o *.d
-	rm -f $(RENDERERS_DIR)/sdl3/*.o $(RENDERERS_DIR)/sdl3/*.d
-	rm -f $(RENDERERS_DIR)/raylib/*.o $(RENDERERS_DIR)/raylib/*.d
+	rm -f renderers/sdl3/*.o renderers/sdl3/*.d
+	rm -f renderers/raylib/*.o renderers/raylib/*.d
 	rm -f $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB) $(DESKTOP_TEST) $(BUILD_DIR)/example_desktop_render
 
 # Install headers

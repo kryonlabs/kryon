@@ -1,0 +1,21 @@
+# Android Codegen (TaijiOS mkfile)
+# Generates Android Java/Kotlin code from Kryon IR
+
+<../../../mkconfig
+
+LIB=libkryon_codegen_android.a
+
+OFILES=\
+	ir_android_codegen.$O\
+
+HFILES=\
+	ir_android_codegen.h\
+	../codegen_common.h\
+
+CFLAGS=$CFLAGS\
+	-I../../include\
+	-I../../ir/include\
+	-I../../third_party/cJSON\
+	-I..\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

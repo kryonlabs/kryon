@@ -1,0 +1,30 @@
+# Third-party Libraries Build
+# Orchestrates building of third-party dependencies
+
+<../../mkconfig
+
+# Build order matters - these have no dependencies
+DIRS=\
+	cJSON\
+	tomlc99\
+
+all:V:
+	for i in $DIRS
+	do
+		echo "Building third_party/$i..."
+		(cd $i && mk install)
+	done
+
+clean:V:
+	for i in $DIRS
+	do
+		(cd $i && mk clean)
+	done
+
+install:V: all
+
+nuke:V:
+	for i in $DIRS
+	do
+		cd $i && mk nuke
+	done

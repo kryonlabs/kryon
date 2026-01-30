@@ -29,8 +29,26 @@
 #define KRYON_DSL_H
 
 #include "kryon.h"
-#include "../../ir/include/ir_native_canvas.h"
-#include "../../ir/include/ir_component_factory.h"
+#include <ir_native_canvas.h>
+#include <ir_component_factory.h>
+
+// Ensure color constants are defined (workaround for preprocessor issue)
+#ifndef KRYON_COLOR_BLACK
+#define KRYON_COLOR_BLACK       0x000000
+#define KRYON_COLOR_WHITE       0xFFFFFF
+#define KRYON_COLOR_RED         0xFF0000
+#define KRYON_COLOR_GREEN       0x00FF00
+#define KRYON_COLOR_BLUE        0x0000FF
+#define KRYON_COLOR_YELLOW      0xFFFF00
+#define KRYON_COLOR_CYAN        0x00FFFF
+#define KRYON_COLOR_MAGENTA     0xFF00FF
+#define KRYON_COLOR_GRAY        0x808080
+#define KRYON_COLOR_DARK_GRAY   0x404040
+#define KRYON_COLOR_LIGHT_GRAY  0xC0C0C0
+#define KRYON_COLOR_TRANSPARENT 0x00000000
+#define KRYON_COLOR_ORANGE      0xFFA500
+#define KRYON_COLOR_PURPLE      0x800080
+#endif
 
 #ifdef __cplusplus
 extern "C" {

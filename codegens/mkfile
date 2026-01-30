@@ -1,0 +1,51 @@
+# Codegens Build Orchestration (TaijiOS mkfile)
+# Builds all code generators in order
+
+<../../mkconfig
+
+# Build codegen_common first, then all codegens
+all:V: codegen_common limbo web c android kry markdown
+
+# Build codegen_common as a library
+codegen_common:V:
+	$CC $CFLAGS -I../include -I../ir/include -I../third_party/cJSON -c codegen_common.c
+	ar ruvs $ROOT/$OBJDIR/lib/libkryon_codegen_common.a codegen_common.o
+
+# Build individual codegens
+limbo:V: codegen_common
+	cd limbo && mk install
+
+web:V: codegen_common
+	cd web && mk install
+
+c:V: codegen_common
+	cd c && mk install
+
+android:V: codegen_common
+	cd android && mk install
+
+kry:V: codegen_common
+	cd kry && mk install
+
+markdown:V: codegen_common
+	cd markdown && mk install
+
+clean:V:
+	rm -f codegen_common.o codegen_common.$O
+	cd limbo && mk clean
+	cd web && mk clean
+	cd c && mk clean
+	cd android && mk clean
+	cd kry && mk clean
+	cd markdown && mk clean
+
+install:V: all
+
+nuke:V:
+	rm -f $ROOT/$OBJDIR/lib/libkryon_codegen_common.a
+	cd limbo && mk nuke
+	cd web && mk nuke
+	cd c && mk nuke
+	cd android && mk nuke
+	cd kry && mk nuke
+	cd markdown && mk nuke

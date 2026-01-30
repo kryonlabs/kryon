@@ -15,9 +15,9 @@
 #ifndef KRYON_H
 #define KRYON_H
 
-#include "../../ir/include/ir_core.h"
-#include "../../ir/include/ir_builder.h"
-#include "../../ir/include/ir_serialization.h"
+#include <ir_core.h>
+#include <ir_builder.h>
+#include <ir_serialization.h>
 #include <stdbool.h>
 #include <stdint.h>
 

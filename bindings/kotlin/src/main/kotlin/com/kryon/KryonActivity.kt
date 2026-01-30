@@ -201,6 +201,34 @@ abstract class KryonActivity : Activity() {
     protected open fun onKryonCreate() {}
 
     /**
+     * Build UI using Kryon DSL.
+     * Override this method to define your UI declaratively.
+     *
+     * Example:
+     * ```kotlin
+     * override fun buildUI() {
+     *     container {
+     *         background("#191970")
+     *         text("Hello World") {
+     *             color("yellow")
+     *         }
+     *     }
+     * }
+     * ```
+     */
+    protected open fun buildUI() {
+        // Default implementation - subclasses override this
+    }
+
+    // Internal: Call buildUI in onCreate after initialization
+    internal fun callBuildUI() {
+        setContent {
+            // Delegate to subclass's buildUI()
+            this@KryonActivity.buildUI()
+        }
+    }
+
+    /**
      * Called when activity starts.
      */
     protected open fun onKryonStart() {}

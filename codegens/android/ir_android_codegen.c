@@ -253,13 +253,16 @@ static void generate_container(KotlinCodegenContext* ctx, cJSON* component) {
 
     ctx->indent_level++;
 
-    // Generate properties
-    cJSON* props = cJSON_GetObjectItem(component, "properties");
-    if (props) {
-        cJSON* prop;
-        cJSON_ArrayForEach(prop, props) {
-            generate_property(ctx, prop->string, prop);
+    // Generate properties - KIR has properties directly on component, not in "properties" object
+    cJSON* prop;
+    cJSON_ArrayForEach(prop, component) {
+        // Skip special properties that aren't style properties
+        if (strcmp(prop->string, "id") == 0 ||
+            strcmp(prop->string, "type") == 0 ||
+            strcmp(prop->string, "children") == 0) {
+            continue;
         }
+        generate_property(ctx, prop->string, prop);
     }
 
     // Generate children
@@ -276,29 +279,29 @@ static void generate_container(KotlinCodegenContext* ctx, cJSON* component) {
 }
 
 static void generate_text(KotlinCodegenContext* ctx, cJSON* component) {
-    cJSON* props = cJSON_GetObjectItem(component, "properties");
-    cJSON* text_content = props ? cJSON_GetObjectItem(props, "text") : NULL;
+    cJSON* text_content = cJSON_GetObjectItem(component, "text");
 
     if (text_content && text_content->valuestring) {
         write_indent(ctx);
-        fprintf(ctx->output, "text(\"%s\")", text_content->valuestring);
+        fprintf(ctx->output, "text(\"%s\") {\n", text_content->valuestring);
     } else {
         write_indent(ctx);
-        fprintf(ctx->output, "text(\"\")");
+        fprintf(ctx->output, "text(\"\") {\n");
     }
-
-    writeln(ctx, " {");
 
     ctx->indent_level++;
 
-    // Generate properties
-    if (props) {
-        cJSON* prop;
-        cJSON_ArrayForEach(prop, props) {
-            if (strcmp(prop->string, "text") != 0) {  // Skip text itself
-                generate_property(ctx, prop->string, prop);
-            }
+    // Generate properties - KIR has properties directly on component
+    cJSON* prop;
+    cJSON_ArrayForEach(prop, component) {
+        // Skip special properties
+        if (strcmp(prop->string, "id") == 0 ||
+            strcmp(prop->string, "type") == 0 ||
+            strcmp(prop->string, "children") == 0 ||
+            strcmp(prop->string, "text") == 0) {
+            continue;
         }
+        generate_property(ctx, prop->string, prop);
     }
 
     ctx->indent_level--;
@@ -306,8 +309,7 @@ static void generate_text(KotlinCodegenContext* ctx, cJSON* component) {
 }
 
 static void generate_button(KotlinCodegenContext* ctx, cJSON* component) {
-    cJSON* props = cJSON_GetObjectItem(component, "properties");
-    cJSON* text_content = props ? cJSON_GetObjectItem(props, "text") : NULL;
+    cJSON* text_content = cJSON_GetObjectItem(component, "text");
 
     if (text_content && text_content->valuestring) {
         write_indent(ctx);
@@ -321,14 +323,17 @@ static void generate_button(KotlinCodegenContext* ctx, cJSON* component) {
 
     ctx->indent_level++;
 
-    // Generate properties
-    if (props) {
-        cJSON* prop;
-        cJSON_ArrayForEach(prop, props) {
-            if (strcmp(prop->string, "text") != 0) {  // Skip text itself
-                generate_property(ctx, prop->string, prop);
-            }
+    // Generate properties - KIR has properties directly on component
+    cJSON* prop;
+    cJSON_ArrayForEach(prop, component) {
+        // Skip special properties
+        if (strcmp(prop->string, "id") == 0 ||
+            strcmp(prop->string, "type") == 0 ||
+            strcmp(prop->string, "children") == 0 ||
+            strcmp(prop->string, "text") == 0) {
+            continue;
         }
+        generate_property(ctx, prop->string, prop);
     }
 
     ctx->indent_level--;
@@ -340,13 +345,16 @@ static void generate_row(KotlinCodegenContext* ctx, cJSON* component) {
 
     ctx->indent_level++;
 
-    // Generate properties
-    cJSON* props = cJSON_GetObjectItem(component, "properties");
-    if (props) {
-        cJSON* prop;
-        cJSON_ArrayForEach(prop, props) {
-            generate_property(ctx, prop->string, prop);
+    // Generate properties - KIR has properties directly on component
+    cJSON* prop;
+    cJSON_ArrayForEach(prop, component) {
+        // Skip special properties
+        if (strcmp(prop->string, "id") == 0 ||
+            strcmp(prop->string, "type") == 0 ||
+            strcmp(prop->string, "children") == 0) {
+            continue;
         }
+        generate_property(ctx, prop->string, prop);
     }
 
     // Generate children
@@ -367,13 +375,16 @@ static void generate_column(KotlinCodegenContext* ctx, cJSON* component) {
 
     ctx->indent_level++;
 
-    // Generate properties
-    cJSON* props = cJSON_GetObjectItem(component, "properties");
-    if (props) {
-        cJSON* prop;
-        cJSON_ArrayForEach(prop, props) {
-            generate_property(ctx, prop->string, prop);
+    // Generate properties - KIR has properties directly on component
+    cJSON* prop;
+    cJSON_ArrayForEach(prop, component) {
+        // Skip special properties
+        if (strcmp(prop->string, "id") == 0 ||
+            strcmp(prop->string, "type") == 0 ||
+            strcmp(prop->string, "children") == 0) {
+            continue;
         }
+        generate_property(ctx, prop->string, prop);
     }
 
     // Generate children
@@ -390,8 +401,7 @@ static void generate_column(KotlinCodegenContext* ctx, cJSON* component) {
 }
 
 static void generate_image(KotlinCodegenContext* ctx, cJSON* component) {
-    cJSON* props = cJSON_GetObjectItem(component, "properties");
-    cJSON* src = props ? cJSON_GetObjectItem(props, "src") : NULL;
+    cJSON* src = cJSON_GetObjectItem(component, "src");
 
     if (src && src->valuestring) {
         write_indent(ctx);
@@ -405,14 +415,17 @@ static void generate_image(KotlinCodegenContext* ctx, cJSON* component) {
 
     ctx->indent_level++;
 
-    // Generate properties
-    if (props) {
-        cJSON* prop;
-        cJSON_ArrayForEach(prop, props) {
-            if (strcmp(prop->string, "src") != 0) {  // Skip src itself
-                generate_property(ctx, prop->string, prop);
-            }
+    // Generate properties - KIR has properties directly on component
+    cJSON* prop;
+    cJSON_ArrayForEach(prop, component) {
+        // Skip special properties
+        if (strcmp(prop->string, "id") == 0 ||
+            strcmp(prop->string, "type") == 0 ||
+            strcmp(prop->string, "children") == 0 ||
+            strcmp(prop->string, "src") == 0) {
+            continue;
         }
+        generate_property(ctx, prop->string, prop);
     }
 
     ctx->indent_level--;
@@ -475,8 +488,8 @@ static bool generate_kotlin_from_json(cJSON* root_json, FILE* output,
         .output = output,
         .indent_level = 0,
         .root_json = root_json,
-        .component_tree = cJSON_GetObjectItem(root_json, "component"),
-        .logic_block = cJSON_GetObjectItem(root_json, "logic"),
+        .component_tree = cJSON_GetObjectItem(root_json, "root"),  // KIR uses "root" not "component"
+        .logic_block = cJSON_GetObjectItem(root_json, "logic_block"),
         .package_name = package_name,
         .class_name = class_name ? class_name : "MainActivity"
     };
@@ -502,6 +515,7 @@ static bool generate_kotlin_from_json(cJSON* root_json, FILE* output,
         generate_component(&ctx, ctx.component_tree);
     } else {
         writeln(&ctx, "// No component tree found in KIR");
+        writeln(&ctx, "// Expected 'root' key in JSON");
         writeln(&ctx, "container { }");
     }
 

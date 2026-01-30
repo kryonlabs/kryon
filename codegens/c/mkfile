@@ -1,0 +1,21 @@
+# C Codegen (TaijiOS mkfile)
+# Generates C source code from Kryon IR
+
+<../../../mkconfig
+
+LIB=libkryon_codegen_c.a
+
+OFILES=\
+	ir_c_codegen.$O\
+
+HFILES=\
+	ir_c_codegen.h\
+	../codegen_common.h\
+
+CFLAGS=$CFLAGS\
+	-I../../include\
+	-I../../ir/include\
+	-I../../third_party/cJSON\
+	-I..\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

@@ -87,9 +87,14 @@ int cmd_build(int argc, char** argv) {
     int file_arg_start = 0;
 
     // Parse command-line arguments
-    for (int i = 1; i < argc && argv[i]; i++) {
+    for (int i = 0; i < argc && argv[i]; i++) {
         if (strncmp(argv[i], "--target=", 9) == 0) {
+            // Handle --target=value
             cli_target = argv[i] + 9;
+        } else if (strcmp(argv[i], "--target") == 0 && i + 1 < argc) {
+            // Handle --target value
+            cli_target = argv[i + 1];
+            i++;  // Skip next argument
         } else if (strncmp(argv[i], "--output-dir=", 13) == 0) {
             cli_output_dir = argv[i] + 13;
         } else if (argv[i][0] != '-' && argv[i][0] != '\0') {
@@ -108,20 +113,47 @@ int cmd_build(int argc, char** argv) {
     char* config_path = path_join(cwd, "kryon.toml");
     free(cwd);
 
+    KryonConfig* config = NULL;
+
     if (!file_exists(config_path)) {
-        fprintf(stderr, "Error: Could not find kryon.toml\n");
-        fprintf(stderr, "Run 'kryon new <name>' to create a new project\n");
+        // If no kryon.toml but target is specified, create minimal config
+        fprintf(stderr, "[DEBUG] cli_target=%s, file_arg_start=%d\n", cli_target ? cli_target : "NULL", file_arg_start);
+        if (file_arg_start > 0) {
+            fprintf(stderr, "[DEBUG] argv[file_arg_start]=%s\n", argv[file_arg_start]);
+        }
+
+        if (cli_target && file_arg_start >= 0) {
+            config = (KryonConfig*)calloc(1, sizeof(KryonConfig));
+            if (config) {
+                config->project_name = str_copy("app");
+                config->project_version = str_copy("0.1.0");
+                config->build_entry = str_copy(argv[file_arg_start]);
+                config->build_output_dir = cli_output_dir ? str_copy(cli_output_dir) : str_copy("build");
+                config->build_targets = malloc(sizeof(char*));
+                config->build_targets[0] = str_copy(cli_target);
+                config->build_targets_count = 1;
+                fprintf(stderr, "[DEBUG] Created minimal config: target=%s, entry=%s\n", cli_target, argv[file_arg_start]);
+            }
+        }
+
+        if (!config) {
+            fprintf(stderr, "Error: Could not find kryon.toml\n");
+            fprintf(stderr, "Run 'kryon new <name>' to create a new project\n");
+            fprintf(stderr, "\nTo build without kryon.toml:\n");
+            fprintf(stderr, "  kryon build --target=<target> <file>\n");
+            free(config_path);
+            return 1;
+        }
         free(config_path);
-        return 1;
-    }
+    } else {
+        // Load config WITHOUT loading plugins (plugins may not be compiled yet)
+        config = config_load(config_path);
+        free(config_path);
 
-    // Load config WITHOUT loading plugins (plugins may not be compiled yet)
-    KryonConfig* config = config_load(config_path);
-    free(config_path);
-
-    if (!config) {
-        fprintf(stderr, "Error: Failed to load kryon.toml\n");
-        return 1;
+        if (!config) {
+            fprintf(stderr, "Error: Failed to load kryon.toml\n");
+            return 1;
+        }
     }
 
     // Auto-build plugins BEFORE loading them
@@ -181,9 +213,9 @@ int cmd_build(int argc, char** argv) {
             fprintf(stderr, "Error: Unknown target '%s'\n", cli_target);
             fprintf(stderr, "\nValid targets (with aliases):\n");
             fprintf(stderr, "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode\n");
-            fprintf(stderr, "  desktop, sdl3       - Desktop application (SDL3 renderer)\n");
-            fprintf(stderr, "  raylib              - Desktop application (Raylib renderer)\n");
-            fprintf(stderr, "  web                 - Web browser (HTML/CSS/JS)\n");
+            fprintf(stderr, "  sdl3, desktop       - Desktop SDL3 renderer\n");
+            fprintf(stderr, "  raylib              - Desktop Raylib renderer\n");
+            fprintf(stderr, "  web                 - Web browser\n");
             fprintf(stderr, "  android, kotlin     - Android APK\n");
 
             config_free(config);
@@ -200,14 +232,21 @@ int cmd_build(int argc, char** argv) {
     if (!primary_target) {
         fprintf(stderr, "Error: No target specified\n");
         fprintf(stderr, "Use --target=<name> or specify targets in kryon.toml\n");
-        fprintf(stderr, "Valid targets: web, limbo, desktop\n");
+        fprintf(stderr, "Valid targets: web, limbo, sdl3, raylib, android\n");
         config_free(config);
         return 1;
     }
 
+    // Resolve desktop alias to sdl3
+    if (strcmp(primary_target, "desktop") == 0) {
+        primary_target = "sdl3";
+    }
+
     int is_web = strcmp(primary_target, "web") == 0;
     int is_limbo = strcmp(primary_target, "limbo") == 0;
-    int is_desktop = strcmp(primary_target, "desktop") == 0;
+    int is_sdl3 = strcmp(primary_target, "sdl3") == 0;
+    int is_raylib = strcmp(primary_target, "raylib") == 0;
+    int is_android = strcmp(primary_target, "android") == 0;
 
     // If specific file argument provided, build just that file
     if (file_arg_start > 0 && file_arg_start < argc) {
@@ -221,8 +260,8 @@ int cmd_build(int argc, char** argv) {
 
         if (is_web) {
             result = build_single_file_web(source_file, config);
-        } else if (is_limbo) {
-            // For limbo, use target handler
+        } else if (is_limbo || is_sdl3 || is_raylib || is_android) {
+            // For all non-web targets, use target handler
             // First compile to KIR
             char kir_file[1024];
             const char* basename = strrchr(source_file, '/');
@@ -235,24 +274,8 @@ int cmd_build(int argc, char** argv) {
                 return 1;
             }
 
-            // Then use limbo target handler
-            result = target_handler_build("limbo", kir_file, ".", "app", config);
-        } else if (is_desktop) {
-            // For desktop, use target handler
-            // First compile to KIR
-            char kir_file[1024];
-            const char* basename = strrchr(source_file, '/');
-            basename = basename ? basename + 1 : source_file;
-            snprintf(kir_file, sizeof(kir_file), ".kryon_cache/%s.kir", basename);
-
-            if (compile_source_to_kir(source_file, kir_file) != 0) {
-                fprintf(stderr, "Error: Failed to compile to KIR\n");
-                config_free(config);
-                return 1;
-            }
-
-            // Then use desktop target handler
-            result = target_handler_build("desktop", kir_file, ".", "app", config);
+            // Then use target handler
+            result = target_handler_build(primary_target, kir_file, ".", "app", config);
         } else {
             fprintf(stderr, "Error: Unsupported target for single file build\n");
             config_free(config);
@@ -315,9 +338,10 @@ int cmd_build(int argc, char** argv) {
         return result;
     }
 
-    // DESKTOP TARGET: Build native binary using target handler
-    if (is_desktop) {
-        printf("Building Desktop target (C code → Native binary)...\n");
+    // SDL3/RAYLIB/ANDROID TARGETS: Build using target handler
+    if (is_sdl3 || is_raylib || is_android) {
+        const char* target_name = is_sdl3 ? "SDL3" : (is_raylib ? "Raylib" : "Android");
+        printf("Building %s target...\n", target_name);
 
         if (!config->build_entry) {
             fprintf(stderr, "Error: No entry point specified in kryon.toml\n");
@@ -342,15 +366,15 @@ int cmd_build(int argc, char** argv) {
         const char* output_dir = config->build_output_dir ? config->build_output_dir : "dist";
         const char* project_name = config->project_name ? config->project_name : "app";
 
-        printf("Building Desktop from %s...\n", kir_file);
-        result = target_handler_build("desktop", kir_file, output_dir, project_name, config);
+        printf("Building %s from %s...\n", target_name, kir_file);
+        result = target_handler_build(primary_target, kir_file, output_dir, project_name, config);
         config_free(config);
         return result;
     }
 
     // UNKNOWN TARGET
     fprintf(stderr, "Error: Unknown target '%s'\n", primary_target);
-    fprintf(stderr, "Supported targets: web, limbo, desktop\n");
+    fprintf(stderr, "Supported targets: web, limbo, sdl3, raylib, android\n");
     config_free(config);
     return 1;
 }

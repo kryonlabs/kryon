@@ -1,0 +1,32 @@
+# DIS Bytecode Compiler (TaijiOS mkfile)
+# Generates DIS bytecode directly from KIR (Kryon Intermediate Representation)
+
+<../../mkconfig
+
+LIB=libdiscodegen.a
+
+OFILES=\
+	src/dis_codegen.$O\
+	src/module_builder.$O\
+	src/instruction_emitter.$O\
+	src/type_descriptor.$O\
+	src/data_section.$O\
+	src/link_section.$O\
+	src/kir_translator.$O\
+
+HFILES=\
+	include/dis_codegen.h\
+	src/module_builder.h\
+	src/internal.h\
+
+CFLAGS=$CFLAGS\
+	-Iinclude\
+	-Isrc\
+	-I../ir/include\
+	-I../third_party/cJSON\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+
+# Custom rules for src/ subdirectory
+src/%.$O: src/%.c $HFILES
+	$CC $CFLAGS src/$stem.c

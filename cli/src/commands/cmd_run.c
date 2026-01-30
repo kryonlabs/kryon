@@ -83,9 +83,7 @@ static int run_web_target(const char* kir_file) {
  * KIR File Execution
  * ============================================================================ */
 
-static int run_kir_file(const char* kir_file, const char* target_platform, const char* renderer) {
-    (void)renderer;
-
+static int run_kir_file(const char* kir_file, const char* target_platform) {
     // Use target handler registry for all targets
     TargetHandler* handler = target_handler_find(target_platform);
     if (handler && handler->run_handler) {
@@ -234,18 +232,21 @@ int cmd_run(int argc, char** argv) {
     const char* target_platform = NULL;
     bool free_target_platform = false;
     bool explicit_target = false;
-    const char* renderer_override = NULL;
 
-    // Parse --target and --renderer flags, collecting non-flag args in new_argv
+    // Parse --target flag, collecting non-flag args in new_argv
     // IMPORTANT: Do NOT modify the original argv array to avoid double-free issues
     int pos_argc = 0;  // Count of positional (non-flag) arguments
     char* pos_argv[128];  // Positional arguments only
     for (int i = 0; i < argc; i++) {
         if (strncmp(argv[i], "--target=", 9) == 0) {
+            // Handle --target=value
             target_platform = argv[i] + 9;
             explicit_target = true;
-        } else if (strncmp(argv[i], "--renderer=", 11) == 0) {
-            renderer_override = argv[i] + 11;
+        } else if (strcmp(argv[i], "--target") == 0 && i + 1 < argc) {
+            // Handle --target value
+            target_platform = argv[i + 1];
+            explicit_target = true;
+            i++;  // Skip next argument
         } else if (strncmp(argv[i], "--", 2) == 0 && strchr(argv[i], '=')) {
             fprintf(stderr, "Error: Unknown flag '%s'\n", argv[i]);
             return 1;
@@ -258,36 +259,36 @@ int cmd_run(int argc, char** argv) {
     argc = pos_argc;
     // Note: We use pos_argv directly below instead of modifying argv
 
-    // Load config early to check for target names in positional args
+    // Load config early
     KryonConfig* early_config = config_find_and_load();
 
-    // Check if first positional argument is a target name
-    if (!explicit_target && argc >= 1 && early_config && early_config->build_targets_count > 0) {
-        for (int i = 0; i < early_config->build_targets_count; i++) {
-            if (early_config->build_targets[i] && strcmp(pos_argv[0], early_config->build_targets[i]) == 0) {
-                target_platform = pos_argv[0];
-                explicit_target = true;
-                // Shift args in pos_argv (safe - it's our local array)
-                for (int j = 0; j < argc - 1; j++) {
-                    pos_argv[j] = pos_argv[j + 1];
-                }
-                argc--;
-                break;
+    // Check if first positional argument is a valid target (alias or registered)
+    if (!explicit_target && argc >= 1) {
+        const char* potential_target = pos_argv[0];
+        const char* resolved = NULL;
+
+        // Check if it's a valid alias or registered target
+        if (target_is_alias(potential_target, &resolved) || target_handler_find(potential_target)) {
+            target_platform = potential_target;
+            explicit_target = true;
+            // Shift args in pos_argv (safe - it's our local array)
+            for (int j = 0; j < argc - 1; j++) {
+                pos_argv[j] = pos_argv[j + 1];
             }
+            argc--;
         }
     }
 
-    // If no explicit target specified, try to get it from config
+    // If no explicit target specified, error out
     if (!target_platform) {
-        if (early_config && early_config->build_targets_count > 0 && early_config->build_targets[0]) {
-            target_platform = strdup(early_config->build_targets[0]);
-            free_target_platform = true;
-            fprintf(stderr, "[kryon] Using target from kryon.toml: %s\n", target_platform);
-        } else {
-            fprintf(stderr, "Error: No target specified and no targets in kryon.toml\n");
-            fprintf(stderr, "Use --target=<name> or add targets to kryon.toml\n");
-            return 1;
-        }
+        fprintf(stderr, "Error: No target specified\n");
+        fprintf(stderr, "\nUsage:\n");
+        fprintf(stderr, "  kryon run <target> <file>           # Target before file\n");
+        fprintf(stderr, "  kryon run <file> --target=<target>  # Target after file\n");
+        fprintf(stderr, "  kryon run --target=<target> <file>  # Target as flag\n");
+        fprintf(stderr, "\nValid targets: limbo, dis, emu, sdl3, desktop, raylib, web, android, kotlin\n");
+        if (early_config) config_free(early_config);
+        return 1;
     }
 
     // Validate target platform using handler registry
@@ -299,9 +300,9 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "Error: Unknown target '%s'\n", target_platform);
         fprintf(stderr, "\nValid targets (with aliases):\n");
         fprintf(stderr, "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode VM\n");
-        fprintf(stderr, "  desktop, sdl3       - Desktop application (SDL3 renderer)\n");
-        fprintf(stderr, "  raylib              - Desktop application (Raylib renderer)\n");
-        fprintf(stderr, "  web                 - Web browser (HTML/CSS/JS)\n");
+        fprintf(stderr, "  sdl3, desktop       - Desktop SDL3 renderer\n");
+        fprintf(stderr, "  raylib              - Desktop Raylib renderer\n");
+        fprintf(stderr, "  web                 - Web browser\n");
         fprintf(stderr, "  android, kotlin     - Android APK\n");
 
         if (free_target_platform) free((char*)target_platform);
@@ -395,7 +396,7 @@ int cmd_run(int argc, char** argv) {
 
     // KIR files: execute directly
     if (strcmp(frontend, "kir") == 0) {
-        result = run_kir_file(target_file, target_platform, renderer_override);
+        result = run_kir_file(target_file, target_platform);
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
         return result;
@@ -419,7 +420,7 @@ int cmd_run(int argc, char** argv) {
     }
 
     printf("✓ Compiled to KIR: %s\n", kir_file);
-    result = run_kir_file(kir_file, target_platform, renderer_override);
+    result = run_kir_file(kir_file, target_platform);
 
     if (free_target) free((char*)target_file);
     if (free_target_platform) free((char*)target_platform);

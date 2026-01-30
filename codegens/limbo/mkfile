@@ -1,0 +1,21 @@
+# Limbo Codegen (TaijiOS mkfile)
+# Generates Limbo source code from Kryon IR
+
+<../../../mkconfig
+
+LIB=libkryon_codegen_limbo.a
+
+OFILES=\
+	limbo_codegen.$O\
+
+HFILES=\
+	limbo_codegen.h\
+	../codegen_common.h\
+
+CFLAGS=$CFLAGS\
+	-I../../include\
+	-I../../ir/include\
+	-I../../third_party/cJSON\
+	-I..\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

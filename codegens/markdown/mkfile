@@ -1,0 +1,20 @@
+# Markdown Codegen (TaijiOS mkfile)
+# Generates Markdown documentation from Kryon IR
+
+<../../../mkconfig
+
+LIB=libkryon_codegen_markdown.a
+
+OFILES=\
+	markdown_codegen.$O\
+
+HFILES=\
+	../codegen_common.h\
+
+CFLAGS=$CFLAGS\
+	-I../../include\
+	-I../../ir/include\
+	-I../../third_party/cJSON\
+	-I..\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

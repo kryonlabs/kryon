@@ -61,11 +61,21 @@ tmp*
 
 # Test artifacts
 tests/*.out
+test_*
+*_test.c
+*_test.o
 
 # Temporary files
 *.tmp
 *.bak
+*_backup*
 /tmp/
+
+# Generated compilation artifacts
+generated/
+app
+./app
+a.out
 
 
 CLAUDE.md
