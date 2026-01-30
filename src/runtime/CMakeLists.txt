@@ -114,6 +114,34 @@ set(MEMORY_HEADERS
 )
 
 # =============================================================================
+# LANGUAGE PLUGINS COMPONENT
+# =============================================================================
+
+set(LANGUAGES_SOURCES
+    languages/language_registry.c
+    languages/native_language.c
+    languages/sh_language.c
+    languages/limbo_language.c
+)
+
+set(LANGUAGES_HEADERS
+    # Headers in include/
+)
+
+# =============================================================================
+# LIMBO RUNTIME COMPONENT
+# =============================================================================
+
+set(LIMBO_SOURCES
+    limbo/limbo_runtime.c
+    limbo_builtin.c
+)
+
+set(LIMBO_HEADERS
+    ../include/limbo_builtin.h
+)
+
+# =============================================================================
 # PROFILER COMPONENT
 # =============================================================================
 
@@ -137,6 +165,8 @@ set(RUNTIME_SOURCES
     ${STATE_SOURCES}
     ${LIFECYCLE_SOURCES}
     ${MEMORY_SOURCES}
+    ${LANGUAGES_SOURCES}
+    ${LIMBO_SOURCES}
 )
 
 # Conditionally add profiler
@@ -165,8 +195,11 @@ target_include_directories(kryon_runtime PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/lifecycle
     ${CMAKE_CURRENT_SOURCE_DIR}/memory
     ${CMAKE_CURRENT_SOURCE_DIR}/profiler
+    ${CMAKE_CURRENT_SOURCE_DIR}/languages
+    ${CMAKE_CURRENT_SOURCE_DIR}/limbo
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
+    /home/wao/Projects/TaijiOS/include
 )
 
 # Runtime-specific definitions
@@ -212,6 +245,13 @@ target_link_libraries(kryon_runtime PRIVATE cjson)
 if(TARGET kryon_minimal_memory)
     target_link_libraries(kryon_runtime PRIVATE kryon_minimal_memory)
 endif()
+
+# Link with TaijiOS Limbo runtime (libinterp.a)
+target_link_libraries(kryon_runtime PRIVATE
+    /home/wao/Projects/TaijiOS/Linux/amd64/lib/libinterp.a
+    /home/wao/Projects/TaijiOS/Linux/amd64/lib/lib9.a
+    /home/wao/Projects/TaijiOS/Linux/amd64/lib/libbio.a
+)
 
 # Link with shared property mappings
 if(TARGET kryon_shared)

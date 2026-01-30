@@ -96,12 +96,15 @@ OFILES=\
 	src/plugins/inferno/extended_file_io.$O\
 	src/plugins/inferno/namespace.$O\
 	src/plugins/inferno/process_control.$O\
+	src/runtime/languages/limbo_language.$O\
+	src/runtime/limbo/limbo_runtime.$O\
+	src/runtime/limbo_builtin.$O\
 
 # Append Kryon's include paths (DON'T override CFLAGS completely)
-CFLAGS=$CFLAGS -Iinclude -Isrc -Ithird-party/cjson
+CFLAGS=$CFLAGS -Iinclude -Isrc -Ithird-party/cjson -DKRYON_PLUGIN_LIMBO
 
-# Link with lib9 (Plan 9 API) and math library
-LIBS=9
+# Link with lib9 (Plan 9 API), libinterp, libbio, and math library
+LIBS=9 interp bio
 SYSLIBS=-lm
 
 # Use TaijiOS build template

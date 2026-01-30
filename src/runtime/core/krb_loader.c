@@ -269,10 +269,7 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     if (!runtime || !data || size < 128) { // Minimum size for complex format header
         return false;
     }
-    
-    // Set loading flag to prevent @for processing during KRB loading
-    runtime->is_loading = true;
-    
+
     size_t offset = 0;
     char** string_table = NULL;
     uint32_t string_count = 0;
@@ -460,8 +457,7 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
         
     
     // ======================================================================
-    // PHASE 1: Load Variables section FIRST (before any functions) 
-    // Variables must be available before @onload functions execute
+    // PHASE 1: Load Variables section FIRST (before any functions)
     // ======================================================================
     if (script_offset > 0) {
         fprintf(stderr, "🔄 PHASE 1: Loading Variables section BEFORE functions at offset %u\n", script_offset);
@@ -599,40 +595,8 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
                 }
             }
         }
-        
-        // List all loaded functions for debugging
-        fprintf(stderr, "\n🔍 DEBUG: Available functions (%zu total):\n", runtime->function_count);
-        for (size_t i = 0; i < runtime->function_count; i++) {
-            KryonScriptFunction* fn = &runtime->script_functions[i];
-            fprintf(stderr, "  [%zu] %s\n", i, fn->name ? fn->name : "<unnamed>");
-        }
-        fprintf(stderr, "\n");
-        
-        // Clear loading flag BEFORE @for processing to allow template expansion
-        runtime->is_loading = false;
-        
-        // Process @for and @if directives AFTER @onload functions have executed
-        // This ensures variables populated by @onload are available for directive processing
-        if (runtime->root) {
-            fprintf(stderr, "🔄 Processing @for directives after @onload execution\n");
-            process_for_directives(runtime, runtime->root);
-            fprintf(stderr, "🔄 Completed @for directive processing\n");
-
-            fprintf(stderr, "🔄 Processing @if directives after @onload execution\n");
-            process_if_directives(runtime, runtime->root);
-            fprintf(stderr, "🔄 Completed @if directive processing\n");
-        }
-
-        // Process @if directives in all component ui_templates
-        for (size_t i = 0; i < runtime->component_count; i++) {
-            if (runtime->components[i] && runtime->components[i]->ui_template) {
-                fprintf(stderr, "🔄 Processing @if directives for component '%s' ui_template\n", runtime->components[i]->name);
-                process_if_directives(runtime, runtime->components[i]->ui_template);
-                fprintf(stderr, "✅ Completed @if processing for component '%s'\n", runtime->components[i]->name);
-            }
-        }
     }
-    
+
     // Load component definitions if present
     // Components come after the script section in KRB files
     if (offset < size) {
@@ -676,10 +640,9 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
             fprintf(stderr, "\n");
         }
     }
-    
+
     // Variables are now loaded in PHASE 1 above (before functions)
-    // Loading flag was cleared before @for processing above
-    
+
     // Cleanup string table
     //if (string_table) {
     //    for (uint32_t i = 0; i < string_count; i++) {
@@ -687,13 +650,10 @@ bool kryon_runtime_load_krb_data(KryonRuntime *runtime, const uint8_t *data, siz
     //    }
     //    kryon_free(string_table);
     //}
-    
+
     return true;
-    
+
 cleanup:
-    // Clear loading flag on error (if not already cleared)
-    runtime->is_loading = false;
-    
     // Cleanup string table on error
     if (string_table) {
         for (uint32_t i = 0; i < string_count; i++) {
@@ -879,20 +839,12 @@ static KryonElement *load_element_from_binary(KryonRuntime *runtime,
         }
         // fprintf(stderr, "DEBUG: Successfully loaded %zu properties for element %s\n", element->property_count, element->type_name);
     }
-    
-    // Special handling for syntax directives
 
+    // Special handling for event directives
     if (element->type_name && strcmp(element->type_name, "event") == 0) {
         register_event_directive_handlers(runtime, element);
-    } else if (element->type_name && strcmp(element->type_name, "for") == 0) {
-        // @for directives need special reactive processing
-        element->needs_render = false; // Don't render template directly
-    } else if (element->type_name && strcmp(element->type_name, "if") == 0) {
-        // @if directives need special reactive processing
-        element->needs_render = false; // Don't render template directly
-        fprintf(stderr, "🔍 DEBUG: Loaded @if directive element with condition\n");
     }
-    
+
     // Check if this element represents a component instance
     fprintf(stderr, "🔍 DEBUG: Element has element_type=0x%04X, checking if >= 0x2000 for component instance\n", 
            header.element_type);
@@ -2311,11 +2263,6 @@ static bool load_components_section(KryonRuntime* runtime, const uint8_t* data, 
             comp_def->ui_template = ui_element;
             fprintf(stderr, "✅ Component ui_template loaded successfully: %s\n",
                    ui_element->type_name ? ui_element->type_name : "unknown");
-
-            // Process @if directives in component ui_template
-            fprintf(stderr, "🔄 Processing @if directives in component ui_template (is_loading=%d)\n", runtime->is_loading);
-            process_if_directives(runtime, ui_element);
-            fprintf(stderr, "🔄 Completed @if directive processing for component\n");
         } else {
             fprintf(stderr, "❌ Failed to load component ui_template\n");
         }

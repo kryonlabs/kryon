@@ -224,8 +224,8 @@ int run_command(int argc, char *argv[]) {
                 fprintf(stderr, "Usage: kryon run <file.krb> [options]\n");
                 fprintf(stderr, "\n");
                 fprintf(stderr, "Options:\n");
-                fprintf(stderr, "  -t, --target <name>    Target platform (sdl2, raylib, web)\n");
-                fprintf(stderr, "  -r, --renderer <name>  Specific renderer (sdl2, raylib, web)\n");
+                fprintf(stderr, "  -t, --target <name>    Target platform (sdl2, raylib, web, emu)\n");
+                fprintf(stderr, "  -r, --renderer <name>  Specific renderer (sdl2, raylib, web, krbview)\n");
                 fprintf(stderr, "  -o, --output <dir>     Output directory for web renderer\n");
                 fprintf(stderr, "  -d, --debug            Enable debug output\n");
                 fprintf(stderr, "  -h, --help             Show this help\n");
@@ -234,6 +234,7 @@ int run_command(int argc, char *argv[]) {
                 fprintf(stderr, "  sdl2      - Desktop GUI via SDL2\n");
                 fprintf(stderr, "  raylib    - Desktop GUI via Raylib\n");
                 fprintf(stderr, "  web       - Static HTML/CSS/JS output\n");
+                fprintf(stderr, "  emu       - TaijiOS emu via KRBVIEW\n");
                 return 0;
             default:
                 return 1;
@@ -270,7 +271,7 @@ int run_command(int argc, char *argv[]) {
     // Parse target
     if (!kryon_target_parse(effective_target, &target)) {
         fprintf(stderr, "Error: Unknown target '%s'\n", effective_target);
-        fprintf(stderr, "Valid targets: sdl2, raylib, web\n");
+        fprintf(stderr, "Valid targets: sdl2, raylib, web, emu\n");
         return 1;
     }
 
@@ -447,7 +448,7 @@ int run_command(int argc, char *argv[]) {
         }
 
         // For web renderer, skip actual rendering and just generate output once
-#ifdef KRYON_RENDERER_TYPE_WEB
+#ifdef HAVE_RENDERER_WEB
         if (strcmp(renderer, "web") == 0) {
             fprintf(stderr, "🌐 Web renderer: Generating HTML/CSS/JS output\n");
 
@@ -530,7 +531,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
 
     // Create renderer based on name
     if (strcmp(renderer_name, "web") == 0) {
-#ifdef KRYON_RENDERER_TYPE_WEB
+#ifdef HAVE_RENDERER_WEB
         renderer = create_web_renderer(runtime, debug, output_dir);
 #else
         fprint(2, "❌ WEB RENDERER NOT AVAILABLE\n");
@@ -538,7 +539,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
         return false;
 #endif
     } else if (strcmp(renderer_name, "raylib") == 0) {
-#ifdef KRYON_RENDERER_TYPE_RAYLIB
+#ifdef HAVE_RENDERER_RAYLIB
         renderer = create_raylib_renderer(runtime, debug);
 #else
         fprint(2, "❌ RAYLIB NOT AVAILABLE\n");
@@ -563,9 +564,22 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
             fprintf(stderr, "🐛 Debug: Using text mode (no renderer needed)\n");
         }
         return true;
+    } else if (strcmp(renderer_name, "krbview") == 0) {
+#ifdef HAVE_RENDERER_KRBVIEW
+        fprint(2, "⚠️  KRBVIEW RENDERER (EXPERIMENTAL)\n");
+        fprint(2, "⚠️  This renderer is under development for TaijiOS integration\n");
+        // For now, return false until full implementation
+        return false;
+#else
+        fprint(2, "❌ KRBVIEW NOT AVAILABLE\n");
+        fprint(2, "❌ This build was compiled without krbview support\n");
+        fprint(2, "💡 To enable: Set INFERNO env var and rebuild\n");
+        fprint(2, "💡 Example: export INFERNO=/opt/inferno && make -f Makefile.inferno\n");
+        return false;
+#endif
     } else {
         fprint(2, "❌ Unknown renderer: %s\n", renderer_name);
-        fprint(2, "Available renderers: web, raylib, sdl2, text\n");
+        fprint(2, "Available renderers: web, raylib, sdl2, text, krbview\n");
         return false;
     }
     
@@ -586,7 +600,7 @@ static bool setup_renderer(KryonRuntime* runtime, const char* renderer_name, boo
 
 // Create raylib renderer using internal interface
 static KryonRenderer* create_raylib_renderer(KryonRuntime* runtime, bool debug) {
-#ifdef KRYON_RENDERER_TYPE_RAYLIB
+#ifdef HAVE_RENDERER_RAYLIB
     if (debug) {
         fprintf(stderr, "🐛 Debug: Creating raylib renderer\n");
     }
@@ -799,7 +813,7 @@ static KryonRenderer* create_sdl2_renderer(KryonRuntime* runtime, bool debug) {
 
 // Create web renderer using internal interface
 static KryonRenderer* create_web_renderer(KryonRuntime* runtime, bool debug, const char* output_dir) {
-#ifdef KRYON_RENDERER_TYPE_WEB
+#ifdef HAVE_RENDERER_WEB
     // Forward declare from web_renderer.h
     extern KryonRenderer* kryon_web_renderer_create(const KryonRendererConfig* config);
 

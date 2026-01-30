@@ -655,10 +655,6 @@ static void trigger_runtime_update(KryonRuntime* runtime) {
     }
 
     runtime->needs_update = true;
-    if (runtime->root) {
-        process_for_directives(runtime, runtime->root);
-        process_if_directives(runtime, runtime->root);
-    }
 }
 
 typedef struct {
@@ -2627,12 +2623,12 @@ static void calculate_element_position_recursive(struct KryonRuntime* runtime, s
         element->height = explicit_height;
     } else {
         // Determine if element is a container/layout element that should fill space
+        // Note: Grid is NOT included here - it auto-sizes based on children
         bool is_container = element->type_name && (
             strcmp(element->type_name, "Column") == 0 ||
             strcmp(element->type_name, "Row") == 0 ||
             strcmp(element->type_name, "Container") == 0 ||
             strcmp(element->type_name, "Center") == 0 ||
-            strcmp(element->type_name, "Grid") == 0 ||
             strcmp(element->type_name, "App") == 0 ||
             strcmp(element->type_name, "TabGroup") == 0 ||
             strcmp(element->type_name, "TabPanel") == 0 ||
@@ -3349,49 +3345,96 @@ static void position_app_children(struct KryonRuntime* runtime, struct KryonElem
  */
 static void position_grid_children(struct KryonRuntime* runtime, struct KryonElement* grid) {
     if (!grid || grid->child_count == 0) return;
-    
+
     // Get grid properties
     int columns = get_element_property_int(grid, "columns", 3);
     float gap = get_element_property_float(grid, "gap", 10.0f);
     float column_spacing = get_element_property_float(grid, "column_spacing", gap);
     float row_spacing = get_element_property_float(grid, "row_spacing", gap);
     float padding = get_element_property_float(grid, "padding", 0.0f);
-    
+
     // Calculate grid structure
     int child_count = (int)grid->child_count;
     int rows = (int)ceil((double)child_count / (double)columns);
-    
+
+    // Determine grid sizing mode - auto-size if width/height not explicitly set
+    float explicit_width = get_element_property_float(grid, "width", 0.0f);
+    float explicit_height = get_element_property_float(grid, "height", 0.0f);
+    bool auto_size_width = (explicit_width <= 0.0f);
+    bool auto_size_height = (explicit_height <= 0.0f);
+
+    if (auto_size_width || auto_size_height) {
+        // Calculate required grid size from children
+        float max_child_width = 0.0f;
+        float max_child_height = 0.0f;
+
+        for (size_t i = 0; i < grid->child_count; i++) {
+            struct KryonElement* child = grid->children[i];
+            if (!child || !child->visible) continue;
+
+            float child_w = child->width;
+            float child_h = child->height;
+
+            if (child_w > max_child_width) max_child_width = child_w;
+            if (child_h > max_child_height) max_child_height = child_h;
+        }
+
+        if (auto_size_width) {
+            // Grid width = columns * cell_width + gaps + padding
+            float total_width = (max_child_width * columns) +
+                               (column_spacing * (columns - 1)) +
+                               (padding * 2);
+            grid->width = total_width;
+        }
+
+        if (auto_size_height) {
+            // Grid height = rows * cell_height + gaps + padding
+            float total_height = (max_child_height * rows) +
+                                (row_spacing * (rows - 1)) +
+                                (padding * 2);
+            grid->height = total_height;
+        }
+    }
+
     // Calculate available space inside padding
     float content_x = grid->x + padding;
     float content_y = grid->y + padding;
     float content_width = grid->width - (padding * 2.0f);
     float content_height = grid->height - (padding * 2.0f);
-    
+
     // Calculate cell dimensions
     float cell_width = (content_width - (column_spacing * (columns - 1))) / columns;
     float cell_height = (content_height - (row_spacing * (rows - 1))) / rows;
-    
+
     // Position each child in the grid
     for (size_t i = 0; i < grid->child_count; i++) {
         struct KryonElement* child = grid->children[i];
         if (!child) continue;
-        
+
         // Calculate grid position
         int row = (int)(i / columns);
         int col = (int)(i % columns);
-        
-        // Calculate child position
+
+        // Calculate child position within cell
         float child_x = content_x + (col * (cell_width + column_spacing));
         float child_y = content_y + (row * (cell_height + row_spacing));
-        
-        // Calculate child dimensions - let child decide or use cell size
-        float child_width = get_element_property_float(child, "width", cell_width);
-        float child_height = get_element_property_float(child, "height", cell_height);
-        
-        // Don't exceed cell size
+
+        // Get child's desired size
+        float child_width = child->width;
+        float child_height = child->height;
+
+        // If child is SMALLER than cell, center it
+        if (child_width < cell_width) {
+            child_x += (cell_width - child_width) / 2.0f;  // Center horizontally
+        }
+        if (child_height < cell_height) {
+            child_y += (cell_height - child_height) / 2.0f;  // Center vertically
+        }
+
+        // Only clamp if child is LARGER than cell
         if (child_width > cell_width) child_width = cell_width;
         if (child_height > cell_height) child_height = cell_height;
-        
+
         // Recursively position this child
         calculate_element_position_recursive(runtime, child, child_x, child_y, child_width, child_height, grid);
     }

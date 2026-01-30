@@ -12,7 +12,7 @@
  * purpose with or without fee is hereby granted.
  */
 #include "lib9.h"
-
+#include <stdio.h>
 
 #include "kryon_mappings.h"
  

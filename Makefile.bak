@@ -207,6 +207,12 @@ else
     $(warning SDL2 not found - SDL2 renderer will be disabled)
 endif
 
+# KRBView renderer (only for Inferno/TaijiOS builds)
+ifneq ($(filter inferno,$(PLUGINS)),)
+    RENDERERS_SRC += $(SRC_DIR)/renderers/krbview/krbview_renderer.c
+    CFLAGS += -DHAVE_RENDERER_KRBVIEW=1
+    $(info Building with krbview renderer for TaijiOS emu)
+endif
 
 # Web renderer (always available - merged html + web)
 RENDERERS_SRC += $(SRC_DIR)/renderers/html/html_renderer.c \
@@ -214,17 +220,6 @@ RENDERERS_SRC += $(SRC_DIR)/renderers/html/html_renderer.c \
                 $(SRC_DIR)/renderers/web/dom_manager.c \
                 $(SRC_DIR)/renderers/web/css_generator.c
 CFLAGS += -DHAVE_RENDERER_WEB=1
-
-# KRBView renderer - Check for TaijiOS and renderer implementation
-TAIJIOS_DIR ?= /home/wao/Projects/TaijiOS
-ifneq ($(wildcard $(TAIJIOS_DIR)/include/krbview.h),)
-    ifneq ($(wildcard $(SRC_DIR)/renderers/krbview/krbview_renderer.c),)
-        RENDERERS_SRC += $(SRC_DIR)/renderers/krbview/krbview_renderer.c
-        CFLAGS += -DHAVE_RENDERER_KRBVIEW=1
-        INCLUDES += -I$(TAIJIOS_DIR)/include
-        $(info Building with krbview renderer for TaijiOS emu)
-    endif
-endif
 
 CLI_SRC = $(SRC_DIR)/cli/main.c \
           $(SRC_DIR)/cli/run_command.c \

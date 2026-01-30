@@ -246,8 +246,7 @@ KryonRuntime *kryon_runtime_create(const KryonRuntimeConfig *config) {
     runtime->next_element_id = 1;
     runtime->is_running = false;
     runtime->needs_update = true;
-    runtime->is_loading = false;
-    
+
     // Initialize input state
     runtime->mouse_position.x = 0.0f;
     runtime->mouse_position.y = 0.0f;
@@ -324,11 +323,10 @@ void kryon_runtime_clear_all_content(KryonRuntime *runtime) {
     
     // Clear errors
     kryon_runtime_clear_errors(runtime);
-    
+
     // Reset state flags
     runtime->needs_update = true;
-    runtime->is_loading = false;
-    
+
     fprintf(stderr, "✅ Runtime content cleared successfully\n");
 }
 
@@ -1862,10 +1860,6 @@ static void element_to_commands_recursive(KryonRuntime* runtime, KryonElement* e
             return;
         }
 
-        // Process @if directives inside the cloned component template before rendering
-        fprintf(stderr, "🔍 Processing @if directives in cloned component template: %s\n", element->component_instance->definition->name);
-        process_if_directives(runtime, ui_template);
-
         // Set the cloned template's position and properties from the component instance
         ui_template->x = element->x;
         ui_template->y = element->y;
@@ -2094,13 +2088,7 @@ void process_for_directives(KryonRuntime* runtime, KryonElement* element) {
     if (!runtime || !element) {
         return;
     }
-    
-    // Skip processing if KRB loading is in progress to avoid memory corruption
-    if (runtime->is_loading) {
-        return;
-    }
-    
-    
+
     // Check if this element is a @for template
     if (element->type_name && strcmp(element->type_name, "for") == 0) {
         fprintf(stderr, "🔄 Found @for template element, calling expand_for_template\n");
@@ -2554,12 +2542,6 @@ static size_t expand_for_iteration(KryonRuntime* runtime, KryonElement* for_elem
             if (for_element->parent) {
                 insert_child_element_at(runtime, for_element->parent, instance, insert_position + children_inserted);
                 children_inserted++;
-
-                // Process @if directives in the cloned instance (component instances may have @if directives)
-                fprintf(stderr, "🔍 Calling process_if_directives on cloned instance [%p] type=%s\n",
-                       (void*)instance, instance->type_name ? instance->type_name : "NULL");
-                process_if_directives(runtime, instance);
-                fprintf(stderr, "✅ Finished process_if_directives on cloned instance\n");
 
                 // Special handling for @if directives: evaluate condition immediately and clone appropriate children
                 if (instance->type_name && strcmp(instance->type_name, "if") == 0) {
@@ -3309,11 +3291,6 @@ bool kryon_evaluate_runtime_condition(KryonRuntime* runtime, const char* conditi
  */
 void process_if_directives(KryonRuntime* runtime, KryonElement* element) {
     if (!runtime || !element) {
-        return;
-    }
-
-    // Skip processing if KRB loading is in progress
-    if (runtime->is_loading) {
         return;
     }
 

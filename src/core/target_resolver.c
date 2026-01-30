@@ -34,6 +34,13 @@ static bool is_renderer_available(KryonRendererType renderer) {
             // Web renderer is always available
             return true;
 
+        case KRYON_RENDERER_TYPE_KRBVIEW:
+#ifdef HAVE_RENDERER_KRBVIEW
+            return true;
+#else
+            return false;
+#endif
+
         default:
             return false;
     }
@@ -50,6 +57,9 @@ bool kryon_target_is_available(KryonTargetType target) {
         case KRYON_TARGET_WEB:
             // Web target is always available
             return true;
+
+        case KRYON_TARGET_EMU:
+            return is_renderer_available(KRYON_RENDERER_TYPE_KRBVIEW);
 
         default:
             return false;
@@ -91,6 +101,11 @@ KryonTargetResolution kryon_target_resolve(KryonTargetType target) {
             result.available = true;
             break;
 
+        case KRYON_TARGET_EMU:
+            result.renderer = KRYON_RENDERER_TYPE_KRBVIEW;
+            result.available = true;
+            break;
+
         default:
             result.error_message = "Unknown target type";
             break;
@@ -120,6 +135,10 @@ bool kryon_target_parse(const char *name, KryonTargetType *out_target) {
         *out_target = KRYON_TARGET_WEB;
         return true;
     }
+    else if (strcmp(name, "emu") == 0) {
+        *out_target = KRYON_TARGET_EMU;
+        return true;
+    }
 
     return false;
 }
@@ -133,16 +152,18 @@ const char* kryon_target_name(KryonTargetType target) {
         case KRYON_TARGET_SDL2:   return "sdl2";
         case KRYON_TARGET_RAYLIB: return "raylib";
         case KRYON_TARGET_WEB:    return "web";
+        case KRYON_TARGET_EMU:    return "emu";
         default:                  return "unknown";
     }
 }
 
 const char* kryon_renderer_name(KryonRendererType renderer) {
     switch (renderer) {
-        case KRYON_RENDERER_TYPE_NONE:   return "none";
-        case KRYON_RENDERER_TYPE_SDL2:   return "sdl2";
-        case KRYON_RENDERER_TYPE_RAYLIB: return "raylib";
-        case KRYON_RENDERER_TYPE_WEB:    return "web";
-        default:                         return "unknown";
+        case KRYON_RENDERER_TYPE_NONE:     return "none";
+        case KRYON_RENDERER_TYPE_SDL2:     return "sdl2";
+        case KRYON_RENDERER_TYPE_RAYLIB:   return "raylib";
+        case KRYON_RENDERER_TYPE_WEB:      return "web";
+        case KRYON_RENDERER_TYPE_KRBVIEW:  return "krbview";
+        default:                           return "unknown";
     }
 }

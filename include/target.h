@@ -38,6 +38,7 @@ typedef enum {
     KRYON_TARGET_SDL2,      /**< Desktop GUI via SDL2 */
     KRYON_TARGET_RAYLIB,    /**< Desktop GUI via Raylib */
     KRYON_TARGET_WEB,       /**< Static HTML/CSS/JS */
+    KRYON_TARGET_EMU,       /**< TaijiOS emu via KRBVIEW */
     KRYON_TARGET_COUNT      /**< Number of target types */
 } KryonTargetType;
 
@@ -48,7 +49,8 @@ typedef enum {
     KRYON_RENDERER_TYPE_NONE = 0,
     KRYON_RENDERER_TYPE_SDL2,
     KRYON_RENDERER_TYPE_RAYLIB,
-    KRYON_RENDERER_TYPE_WEB
+    KRYON_RENDERER_TYPE_WEB,
+    KRYON_RENDERER_TYPE_KRBVIEW
 } KryonRendererType;
 
 /**

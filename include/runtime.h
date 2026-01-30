@@ -74,7 +74,6 @@ typedef struct KryonRuntime {
     double update_delta;
     bool is_running;
     bool needs_update;
-    bool is_loading; // Flag to prevent @for processing during KRB loading
     KryonRenderContext *render_context;
     void *renderer;
     KryonScriptFunction *script_functions;
@@ -163,12 +162,6 @@ KryonRuntimeConfig kryon_runtime_prod_config(void);
 bool kryon_runtime_set_variable(KryonRuntime *runtime, const char *name, const char *value);
 const char* kryon_runtime_get_variable(KryonRuntime *runtime, const char *name);
 KryonRuntime* kryon_runtime_get_current(void);
-
-// @for directive processing
-void process_for_directives(KryonRuntime* runtime, KryonElement* element);
-
-// @if directive processing
-void process_if_directives(KryonRuntime* runtime, KryonElement* element);
 
 // Update root variables when viewport/window size changes
 bool kryon_runtime_update_viewport_size(KryonRuntime* runtime, float width, float height);

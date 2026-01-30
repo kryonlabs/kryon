@@ -5,7 +5,7 @@
  * Centralized format validation and utilities to ensure writer/loader consistency.
  */
 #include "lib9.h"
-
+#include <stdio.h>
 
 #include "krb_schema.h"
 

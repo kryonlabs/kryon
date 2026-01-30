@@ -4,9 +4,9 @@
  * @brief Kryon CLI Main Entry Point
  */
 #include "lib9.h"
+#include <stdio.h>
 
 
- 
  #define KRYON_VERSION "alpha"
  
  extern int compile_command(int argc, char *argv[]);
@@ -33,6 +33,7 @@
      fprintf(stderr, "  dev <file.kry>         Development mode with hot reload\n");
      fprintf(stderr, "  debug <file.krb>       Debug KRB application\n");
      fprintf(stderr, "  package <project>      Package for distribution\n");
+     fprintf(stderr, "  targets                List available targets\n");
      fprintf(stderr, "\n");
      fprintf(stderr, "KIR Utilities:\n");
      fprintf(stderr, "  kir-dump <file.kir>    Pretty-print KIR structure\n");
@@ -106,6 +107,8 @@
         result = debug_command(argc - 1, argv + 1);
     } else if (strcmp(command, "package") == 0) {
         result = package_command(argc - 1, argv + 1);
+    } else if (strcmp(command, "targets") == 0) {
+        result = targets_command(argc - 1, argv + 1);
     } else {
         fprint(2, "Unknown command: %s\n", command);
         print_usage(argv[0]);

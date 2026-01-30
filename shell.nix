@@ -115,64 +115,84 @@ in pkgs.mkShell {
   ];
 
   shellHook = ''
-    echo "==================================="
+    echo "=========================================="
     echo "Kryon Development Environment"
-    echo "==================================="
+    echo "=========================================="
     echo ""
-    echo "Available build modes: ${buildModes}"
+    echo "Build modes: ${buildModes}"
     echo ""
 
     ${if hasTaijios then ''
       export TAIJIOS_ROOT="${toString taijiosPath}"
       export PATH="$TAIJIOS_ROOT/Linux/amd64/bin:$PATH"
       echo "✓ TaijiOS detected: $TAIJIOS_ROOT"
-      echo "  - mk tool available"
-      echo "  - Build: make -f Makefile.taijios"
+      echo "  - Enables: Limbo language plugin"
+      echo "  - Build: make PLUGINS=limbo"
       echo ""
     '' else ''
       echo "  TaijiOS not found at ${toString taijiosPath}"
-      echo "  Install for native Plan 9 builds"
+      echo "  Install for Limbo language support"
       echo ""
     ''}
 
     ${if hasInferno then ''
       export INFERNO="${toString infernoPath}"
       echo "✓ Inferno detected: $INFERNO"
-      echo "  - lib9 available"
-      echo "  - Build: make -f Makefile.inferno"
+      echo "  - Enables: sh (Inferno shell) language plugin"
+      echo "  - Provides: lib9 compatibility layer"
+      echo "  - Build: make (auto-detected)"
       echo ""
     '' else ''
       echo "  Inferno not found"
-      echo "  Install Inferno for rc shell support:"
+      echo "  Install for sh language plugin:"
       echo "    git clone https://github.com/inferno-os/inferno-os.git /opt/inferno"
       echo "    cd /opt/inferno && ./makemk.sh && mk install"
       echo ""
     ''}
 
-    echo "Standard Linux build: make"
+    echo "=========================================="
+    echo "Supported Targets:"
+    echo "  • sdl2    - Desktop GUI via SDL2"
+    echo "  • raylib  - Desktop GUI via Raylib"
+    echo "  • web     - Static HTML/CSS/JS output"
+    echo "  • emu     - TaijiOS emu via KRBVIEW"
     echo ""
-    echo "==================================="
-    echo "Available renderers:"
-    echo "  • SDL2: $(pkg-config --modversion sdl2 2>/dev/null || echo 'not found')"
-    echo "  • Raylib: $(pkg-config --modversion raylib 2>/dev/null || echo 'bundled')"
-    echo "  • OpenGL: $(pkg-config --modversion gl 2>/dev/null || echo 'system GL')"
-    echo ""
-    echo "Quick commands:"
-    echo "  make              # Standard Linux build"
+    echo "Supported Languages (Plugins):"
+    echo "  • native  - Kryon built-in (always available)"
     ${if hasInferno then ''
-    echo "  make -f Makefile.inferno    # With Inferno support"
-    '' else ""}
+    echo "  • sh      - Inferno shell scripts (available)"
+    '' else ''
+    echo "  • sh      - Inferno shell scripts (not available)"
+    ''}
     ${if hasTaijios then ''
-    echo "  make -f Makefile.taijios    # For TaijiOS"
-    '' else ""}
-    echo "  make clean        # Clean build artifacts"
-    echo "  make debug        # Debug build"
+    echo "  • limbo   - TaijiOS Limbo modules (available)"
+    '' else ''
+    echo "  • limbo   - TaijiOS Limbo modules (not available)"
+    ''}
     echo ""
-    echo "See docs/BUILD.md for detailed build instructions"
-    echo "==================================="
+    echo "Available Renderers:"
+    echo "  • SDL2:   $(pkg-config --modversion sdl2 2>/dev/null || echo 'not found')"
+    echo "  • Raylib: $(pkg-config --modversion raylib 2>/dev/null || echo 'not found')"
+    echo "  • Web:    always available (HTML/CSS/JS)"
+    echo ""
+    echo "Build Commands:"
+    echo "  make              # Standard build (auto-detects Inferno)"
+    echo "  make debug        # Debug build"
+    echo "  make clean        # Clean build artifacts"
+    ${if hasTaijios then ''
+    echo "  make PLUGINS=limbo    # Enable Limbo plugin"
+    '' else ""}
+    echo ""
+    echo "Run Commands:"
+    echo "  ./build/bin/kryon compile app.kry"
+    echo "  ./build/bin/kryon run app.krb --target=sdl2"
+    echo "  ./build/bin/kryon run app.krb --target=web"
+    echo ""
+    echo "See docs/BUILD.md for detailed instructions"
+    echo "=========================================="
 
     # Set some useful environment variables
-    export PKG_CONFIG_PATH="${pkgs.xorg.libX11.dev}/lib/pkgconfig:${pkgs.xorg.libXext.dev}/lib/pkgconfig:${pkgs.libGL.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
+    export PKG_CONFIG_PATH="${pkgs.SDL2.dev}/lib/pkgconfig:${pkgs.raylib}/lib/pkgconfig:${pkgs.xorg.libX11.dev}/lib/pkgconfig:${pkgs.xorg.libXext.dev}/lib/pkgconfig:${pkgs.libGL.dev}/lib/pkgconfig:${pkgs.fontconfig.dev}/lib/pkgconfig:$PKG_CONFIG_PATH"
 
     # Ensure proper library paths
     export LD_LIBRARY_PATH="${pkgs.libGL}/lib:${pkgs.xorg.libX11}/lib:${pkgs.SDL2}/lib:${pkgs.raylib}/lib:$LD_LIBRARY_PATH"

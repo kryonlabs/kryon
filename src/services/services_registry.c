@@ -10,7 +10,7 @@
  * @author Kryon Labs
  */
 #include "lib9.h"
-
+#include <stdio.h>
 
 #include "platform_services.h"
 
