@@ -281,10 +281,10 @@ static void generate_tk_options(LimboContext* ctx, cJSON* component, const char*
 }
 
 // Forward declaration
-static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg);
+static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type);
 
 // Generate widget creation code
-static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg) {
+static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type) {
     // KIR uses "type" not "elementType"
     cJSON* element_type_obj = cJSON_GetObjectItem(component, "type");
     if (!element_type_obj || element_type_obj->type != cJSON_String) {
@@ -338,7 +338,7 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
     if (children && cJSON_IsArray(children)) {
         cJSON* child = NULL;
         cJSON_ArrayForEach(child, children) {
-            process_component(ctx, child, widget_path, depth, my_bg);
+            process_component(ctx, child, widget_path, depth, my_bg, element_type);
         }
     }
 
@@ -361,9 +361,15 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
     cJSON* top = cJSON_GetObjectItem(component, "top");
     bool has_position = (left && left->type == cJSON_Number) && (top && top->type == cJSON_Number);
 
+    // Check if parent is a Center widget
+    bool parent_is_center = (parent_type && strcmp(parent_type, "Center") == 0);
+
     if (depth == 1) {
         // Root widget fills the window
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -fill both -expand 1\");\n", widget_path);
+    } else if (parent_is_center) {
+        // Widget inside Center - use expand to center both X and Y
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -expand 1\");\n", widget_path);
     } else if (is_text && depth > 2) {
         // Text inside a container - use pack with expand (not place, which doesn't work)
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -expand 1\");\n", widget_path);
@@ -383,8 +389,8 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
 }
 
 // Process a component recursively
-static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg) {
-    return generate_widget(ctx, component, parent_path, depth + 1, parent_bg);
+static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type) {
+    return generate_widget(ctx, component, parent_path, depth + 1, parent_bg, parent_type);
 }
 
 // Generate module header
@@ -566,7 +572,7 @@ char* limbo_codegen_from_json(const char* kir_json) {
     // Process root component
     cJSON* root = cJSON_GetObjectItem(kir_root, "root");
     if (root) {
-        process_component(ctx, root, "", 0, NULL);
+        process_component(ctx, root, "", 0, NULL, NULL);
     }
 
     // Generate event loop
@@ -695,7 +701,7 @@ bool limbo_codegen_generate_with_options(const char* kir_path,
     // Process root component
     cJSON* root = cJSON_GetObjectItem(kir_root, "root");
     if (root) {
-        process_component(ctx, root, "", 0, NULL);
+        process_component(ctx, root, "", 0, NULL, NULL);
     }
 
     // Generate event loop
