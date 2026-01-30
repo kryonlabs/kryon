@@ -138,6 +138,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
+		../build/libkryon_codegen_limbo.a \
 		../dis/libdiscodegen.a
 	# Build kir_to_html.o (embedded web codegen)
 	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
@@ -146,6 +147,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
+		../build/libkryon_codegen_limbo.a \
 		../dis/libdiscodegen.a \
 		$(LDFLAGS) $(HARFBUZZ_LIBS)
 
@@ -170,6 +172,9 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 
 ../build/libkryon_codegen_markdown.a:
 	$(MAKE) -C ../codegens/markdown
+
+../build/libkryon_codegen_limbo.a:
+	$(MAKE) -C ../codegens/limbo
 
 ../dis/libdiscodegen.a:
 	$(MAKE) -C ../dis all

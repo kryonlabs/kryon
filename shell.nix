@@ -72,6 +72,29 @@ pkgs.mkShell {
       export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/aapt2"
     fi
 
+    # Kryon environment
+    export KRYON_ROOT="$(pwd)"
+    export PATH="$KRYON_ROOT/build:$HOME/.local/bin:$PATH"
+    export LD_LIBRARY_PATH="$KRYON_ROOT/build:$HOME/.local/lib:''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export PKG_CONFIG_PATH="$KRYON_ROOT/build:$HOME/.local/lib/pkgconfig:''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+    # TaijiOS integration
+    export TAIJI_PATH="''${TAIJI_PATH:-/home/wao/Projects/TaijiOS}"
+
+    # Validate TaijiOS installation
+    if [ -d "$TAIJI_PATH" ]; then
+        # Add TaijiOS tools to PATH (limbo compiler, emu, etc.)
+        if [ -d "$TAIJI_PATH/Linux/amd64/bin" ]; then
+            export PATH="$TAIJI_PATH/Linux/amd64/bin:$PATH"
+        fi
+
+        # Set ROOT for Inferno tools (required by emu)
+        export ROOT="$TAIJI_PATH"
+    else
+        echo "Warning: TaijiOS not found at $TAIJI_PATH"
+        echo "  Set TAIJI_PATH environment variable or install TaijiOS"
+    fi
+
     echo "Kryon Development Environment"
     echo "============================="
     echo "Bun version: $(bun --version 2>/dev/null || echo 'not available')"

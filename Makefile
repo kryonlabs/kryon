@@ -30,7 +30,7 @@ STATIC_LIB_EXT = .a
 SHARED_LIB_EXT = .so
 
 # Default target
-all: cli ir dis codegens
+all: cli ir dis codegens desktop
 
 # Help
 help:
@@ -70,13 +70,14 @@ ir:
 	@$(MAKE) -C $(IR_DIR) static
 	@echo "✓ Built IR library"
 
-# Code generators (C, Kry, Web)
+# Code generators (C, Kry, Web, Limbo)
 codegens: ir
 	@echo "Building code generators..."
 	@$(MAKE) -C $(CODEGENS_DIR)/c all
 	@$(MAKE) -C $(CODEGENS_DIR)/kry all
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown all
 	@$(MAKE) -C $(CODEGENS_DIR)/web all
+	@$(MAKE) -C $(CODEGENS_DIR)/limbo all
 	@echo "✓ Built code generators"
 
 # DIS bytecode compiler (top-level directory, NOT a codegen)
@@ -84,6 +85,13 @@ dis: ir
 	@echo "Building DIS bytecode compiler..."
 	@$(MAKE) -C dis all
 	@echo "✓ Built DIS"
+
+# Desktop runtime (SDL3 renderer)
+desktop: ir
+	@echo "Building desktop runtime..."
+	@$(MAKE) -C renderers/common all
+	@$(MAKE) -C runtime/desktop all
+	@echo "✓ Built desktop runtime"
 
 # ============================================================================
 # Clean Target
@@ -97,8 +105,11 @@ clean:
 	@$(MAKE) -C $(CODEGENS_DIR)/kry clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/web clean || true
+	@$(MAKE) -C $(CODEGENS_DIR)/limbo clean || true
 	@$(MAKE) -C dis clean || true
 	@$(MAKE) -C $(CLI_DIR) clean || true
+	@$(MAKE) -C runtime/desktop clean || true
+	@$(MAKE) -C renderers/common clean || true
 	@echo "✓ Clean complete"
 
 # ============================================================================

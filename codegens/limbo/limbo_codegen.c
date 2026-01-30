@@ -1,0 +1,575 @@
+/**
+ * Limbo Code Generator
+ * Generates Limbo source (.b) files from KIR JSON for Inferno/TaijiOS
+ */
+
+#define _POSIX_C_SOURCE 200809L
+
+#include "limbo_codegen.h"
+#include "../codegen_common.h"
+#include "../../third_party/cJSON/cJSON.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <ctype.h>
+
+// Helper to append string to buffer with reallocation
+static bool append_string(char** buffer, size_t* size, size_t* capacity, const char* str) {
+    size_t len = strlen(str);
+    if (*size + len >= *capacity) {
+        *capacity *= 2;
+        char* new_buffer = realloc(*buffer, *capacity);
+        if (!new_buffer) return false;
+        *buffer = new_buffer;
+    }
+    strcpy(*buffer + *size, str);
+    *size += len;
+    return true;
+}
+
+// Helper to append formatted string
+static bool append_fmt(char** buffer, size_t* size, size_t* capacity, const char* fmt, ...) {
+    char temp[4096];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(temp, sizeof(temp), fmt, args);
+    va_end(args);
+    return append_string(buffer, size, capacity, temp);
+}
+
+// Context for Limbo generation
+typedef struct {
+    char* buffer;
+    size_t size;
+    size_t capacity;
+    bool include_comments;
+    bool generate_types;
+    const char* module_name;
+    int widget_counter;
+    int event_handler_counter;
+} LimboContext;
+
+// Initialize Limbo context
+static LimboContext* create_limbo_context(LimboCodegenOptions* options) {
+    LimboContext* ctx = malloc(sizeof(LimboContext));
+    if (!ctx) return NULL;
+
+    ctx->capacity = 8192;
+    ctx->size = 0;
+    ctx->buffer = malloc(ctx->capacity);
+    if (!ctx->buffer) {
+        free(ctx);
+        return NULL;
+    }
+    ctx->buffer[0] = '\0';
+
+    if (options) {
+        ctx->include_comments = options->include_comments;
+        ctx->generate_types = options->generate_types;
+        ctx->module_name = options->module_name;
+    } else {
+        ctx->include_comments = true;
+        ctx->generate_types = true;
+        ctx->module_name = NULL;
+    }
+
+    ctx->widget_counter = 0;
+    ctx->event_handler_counter = 0;
+
+    return ctx;
+}
+
+// Free Limbo context
+static void destroy_limbo_context(LimboContext* ctx) {
+    if (!ctx) return;
+    free(ctx->buffer);
+    free(ctx);
+}
+
+// Extract module name from filename
+static char* extract_module_name(const char* filename) {
+    if (!filename) return strdup("KryonApp");
+
+    // Find the last '/' or '\\'
+    const char* base = strrchr(filename, '/');
+    if (!base) base = strrchr(filename, '\\');
+    if (base) base++;
+    else base = filename;
+
+    // Remove extension
+    const char* dot = strrchr(base, '.');
+    size_t len = dot ? (size_t)(dot - base) : strlen(base);
+
+    char* name = malloc(len + 1);
+    if (!name) return NULL;
+
+    strncpy(name, base, len);
+    name[len] = '\0';
+
+    // Capitalize first letter
+    if (name[0]) {
+        name[0] = toupper(name[0]);
+    }
+
+    return name;
+}
+
+// Map KIR element type to Tk widget type
+static const char* map_element_to_tk_widget(const char* element_type) {
+    if (!element_type) return "frame";
+
+    if (strcmp(element_type, "Container") == 0) return "frame";
+    if (strcmp(element_type, "Button") == 0) return "button";
+    if (strcmp(element_type, "Text") == 0) return "label";
+    if (strcmp(element_type, "Label") == 0) return "label";
+    if (strcmp(element_type, "Input") == 0) return "entry";
+    if (strcmp(element_type, "TextInput") == 0) return "entry";
+    if (strcmp(element_type, "Image") == 0) return "label";  // Use label with image
+    if (strcmp(element_type, "Checkbox") == 0) return "checkbutton";
+    if (strcmp(element_type, "Radio") == 0) return "radiobutton";
+    if (strcmp(element_type, "Canvas") == 0) return "canvas";
+    if (strcmp(element_type, "ListBox") == 0) return "listbox";
+    if (strcmp(element_type, "Menu") == 0) return "menu";
+    if (strcmp(element_type, "Frame") == 0) return "frame";
+
+    return "frame";  // Default fallback
+}
+
+// Generate widget path name
+static void generate_widget_path(char* buffer, size_t buffer_size, int widget_id, const char* parent_path) {
+    if (parent_path && strlen(parent_path) > 0) {
+        snprintf(buffer, buffer_size, "%s.w%d", parent_path, widget_id);
+    } else {
+        snprintf(buffer, buffer_size, ".w%d", widget_id);
+    }
+}
+
+// Parse size value (e.g., "200.0px" → 200)
+static int parse_size_value(const char* value) {
+    if (!value) return 0;
+    return (int)atof(value);  // Extracts number, ignores "px"
+}
+
+// Convert hex color to TK color name or keep simple colors
+static const char* convert_to_tk_color(const char* hex_color) {
+    if (!hex_color) return "white";
+
+    // Skip transparent colors
+    if (strstr(hex_color, "#00000000") || strcmp(hex_color, "transparent") == 0) {
+        return NULL;  // Don't set this color
+    }
+
+    // Common color mappings
+    if (strcmp(hex_color, "#ffffff") == 0 || strcmp(hex_color, "#FFFFFF") == 0) return "white";
+    if (strcmp(hex_color, "#000000") == 0) return "black";
+    if (strcmp(hex_color, "#ff0000") == 0 || strcmp(hex_color, "#FF0000") == 0) return "red";
+    if (strcmp(hex_color, "#00ff00") == 0 || strcmp(hex_color, "#00FF00") == 0) return "green";
+    if (strcmp(hex_color, "#0000ff") == 0 || strcmp(hex_color, "#0000FF") == 0) return "blue";
+    if (strcmp(hex_color, "#ffff00") == 0 || strcmp(hex_color, "#FFFF00") == 0) return "yellow";
+    if (strcmp(hex_color, "#00ffff") == 0 || strcmp(hex_color, "#00FFFF") == 0) return "cyan";
+    if (strcmp(hex_color, "#ff00ff") == 0 || strcmp(hex_color, "#FF00FF") == 0) return "magenta";
+    if (strcmp(hex_color, "#808080") == 0) return "gray";
+
+    // For other colors, use the hex value as-is (TK supports some hex)
+    return hex_color;
+}
+
+// Generate Tk options from KIR properties
+static void generate_tk_options(LimboContext* ctx, cJSON* component) {
+    if (!component) return;
+
+    // Text content
+    cJSON* text = cJSON_GetObjectItem(component, "text");
+    if (text && text->type == cJSON_String) {
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -text {%s}", text->valuestring);
+    }
+
+    // Width (can be string like "200.0px" or number)
+    cJSON* width = cJSON_GetObjectItem(component, "width");
+    if (width) {
+        if (width->type == cJSON_String) {
+            int w = parse_size_value(width->valuestring);
+            if (w > 0) {
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -width %d", w);
+            }
+        } else if (width->type == cJSON_Number) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -width %d", width->valueint);
+        }
+    }
+
+    // Height
+    cJSON* height = cJSON_GetObjectItem(component, "height");
+    if (height) {
+        if (height->type == cJSON_String) {
+            int h = parse_size_value(height->valuestring);
+            if (h > 0) {
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -height %d", h);
+            }
+        } else if (height->type == cJSON_Number) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -height %d", height->valueint);
+        }
+    }
+
+    // Background color
+    cJSON* background = cJSON_GetObjectItem(component, "background");
+    if (background && background->type == cJSON_String) {
+        const char* tk_color = convert_to_tk_color(background->valuestring);
+        if (tk_color) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -bg %s", tk_color);
+        }
+    }
+
+    // Foreground color (text color)
+    cJSON* color = cJSON_GetObjectItem(component, "color");
+    if (color && color->type == cJSON_String) {
+        const char* tk_color = convert_to_tk_color(color->valuestring);
+        if (tk_color) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -fg %s", tk_color);
+        }
+    }
+
+    // Border
+    cJSON* border = cJSON_GetObjectItem(component, "border");
+    if (border && cJSON_IsObject(border)) {
+        cJSON* border_width = cJSON_GetObjectItem(border, "width");
+        cJSON* border_color = cJSON_GetObjectItem(border, "color");
+
+        if (border_width && border_width->type == cJSON_Number) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -borderwidth %d", border_width->valueint);
+        }
+        if (border_color && border_color->type == cJSON_String) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -relief solid");
+        }
+    }
+
+    // Font - use TaijiOS default font if not specified
+    cJSON* font = cJSON_GetObjectItem(component, "font");
+    if (font && font->type == cJSON_String) {
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -font {%s}", font->valuestring);
+    } else {
+        // Add default font for text elements
+        cJSON* type = cJSON_GetObjectItem(component, "type");
+        if (type && type->type == cJSON_String) {
+            if (strcmp(type->valuestring, "Text") == 0 || strcmp(type->valuestring, "Label") == 0) {
+                append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -font /fonts/lucidasans/latin1.7.font");
+            }
+        }
+    }
+
+    // Add padding for text elements to make them visible
+    cJSON* type = cJSON_GetObjectItem(component, "type");
+    if (type && type->type == cJSON_String) {
+        if (strcmp(type->valuestring, "Text") == 0 || strcmp(type->valuestring, "Label") == 0) {
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -padx 5 -pady 5");
+        }
+    }
+}
+
+// Forward declaration
+static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth);
+
+// Generate widget creation code
+static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth) {
+    // KIR uses "type" not "elementType"
+    cJSON* element_type_obj = cJSON_GetObjectItem(component, "type");
+    if (!element_type_obj || element_type_obj->type != cJSON_String) {
+        return false;
+    }
+
+    const char* element_type = element_type_obj->valuestring;
+    const char* tk_widget = map_element_to_tk_widget(element_type);
+
+    ctx->widget_counter++;
+    char widget_path[256];
+    generate_widget_path(widget_path, sizeof(widget_path), ctx->widget_counter, parent_path);
+
+    // Add indentation
+    for (int i = 0; i < depth; i++) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t");
+    }
+
+    if (ctx->include_comments) {
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "# Create %s widget\n", element_type);
+        for (int i = 0; i < depth; i++) {
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t");
+        }
+    }
+
+    // Generate Tk command
+    append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"%s %s", tk_widget, widget_path);
+
+    // Add properties as Tk options (KIR has properties directly on component)
+    generate_tk_options(ctx, component);
+
+    // Check for event handlers
+    cJSON* on_click = cJSON_GetObjectItem(component, "onClick");
+    if (on_click && on_click->type == cJSON_String) {
+        ctx->event_handler_counter++;
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+                  " -command {send eventch click%d}", ctx->event_handler_counter);
+    }
+
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\");\n");
+
+    // Process children
+    cJSON* children = cJSON_GetObjectItem(component, "children");
+    if (children && cJSON_IsArray(children)) {
+        cJSON* child = NULL;
+        cJSON_ArrayForEach(child, children) {
+            process_component(ctx, child, widget_path, depth);
+        }
+    }
+
+    // Pack the widget
+    for (int i = 0; i < depth; i++) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t");
+    }
+
+    // Check widget type for packing strategy
+    cJSON* type = cJSON_GetObjectItem(component, "type");
+    const char* widget_type = (type && type->type == cJSON_String) ? type->valuestring : "";
+
+    if (depth == 1) {
+        // Root widget fills the window
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -fill both -expand 1\");\n", widget_path);
+    } else if (strcmp(widget_type, "Container") == 0 || strcmp(widget_type, "Frame") == 0) {
+        // Containers should be visible
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -side top\");\n", widget_path);
+    } else {
+        // Text/labels and other widgets
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -side top\");\n", widget_path);
+    }
+
+    return true;
+}
+
+// Process a component recursively
+static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth) {
+    return generate_widget(ctx, component, parent_path, depth + 1);
+}
+
+// Generate module header
+static bool generate_module_header(LimboContext* ctx, const char* module_name) {
+    append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "implement %s;\n\n", module_name);
+
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"sys.m\";\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tsys: Sys;\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"draw.m\";\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tdraw: Draw;\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"tk.m\";\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttk: Tk;\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "include \"tkclient.m\";\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient: Tkclient;\n\n");
+
+    append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s: module {\n", module_name);
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tinit: fn(ctxt: ref Draw->Context, argv: list of string);\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "};\n\n");
+
+    return true;
+}
+
+// Generate init function start
+static bool generate_init_start(LimboContext* ctx, const char* title) {
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "init(ctxt: ref Draw->Context, argv: list of string) {\n");
+
+    if (ctx->include_comments) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t# Load required modules\n");
+    }
+
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tsys = load Sys Sys->PATH;\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tdraw = load Draw Draw->PATH;\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttk = load Tk Tk->PATH;\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient = load Tkclient Tkclient->PATH;\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient->init();\n\n");
+
+    if (ctx->include_comments) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t# Create toplevel window\n");
+    }
+
+    const char* window_title = title ? title : "Kryon App";
+    append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+              "\t(t, titlech) := tkclient->toplevel(ctxt, \"\", \"%s\", Tkclient->Appl);\n\n",
+              window_title);
+
+    if (ctx->include_comments) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t# Create widgets\n");
+    }
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\n");
+
+    return true;
+}
+
+// Generate event loop
+static bool generate_event_loop(LimboContext* ctx, int num_event_handlers) {
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\n");
+    if (ctx->include_comments) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t# Update display\n");
+    }
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttk->cmd(t, \"update\");\n\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient->onscreen(t, nil);\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttkclient->startinput(t, \"kbd\" :: \"ptr\" :: nil);\n\n");
+
+    if (num_event_handlers > 0) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\teventch := chan of string;\n");
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\ttk->namechan(t, eventch, \"eventch\");\n\n");
+    }
+
+    if (ctx->include_comments) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t# Event loop\n");
+    }
+
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\tfor(;;) alt {\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\ts := <-t.ctxt.kbd =>\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\t\ttk->keyboard(t, s);\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\ts := <-t.ctxt.ptr =>\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\t\ttk->pointer(t, *s);\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\ts := <-t.ctxt.ctl or s = <-t.wreq or s = <-titlech =>\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\t\ttkclient->wmctl(t, s);\n");
+
+    if (num_event_handlers > 0) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\ts := <-eventch =>\n");
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\t\tif (s != nil) {\n");
+
+        for (int i = 1; i <= num_event_handlers; i++) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+                      "\t\t\t\tif (s == \"click%d\")\n", i);
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+                      "\t\t\t\t\tsys->print(\"Button %d clicked\\n\");\n", i);
+        }
+
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\t\t}\n");
+    }
+
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t}\n");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "}\n");
+
+    return true;
+}
+
+// Generate Limbo code from KIR JSON
+char* limbo_codegen_from_json(const char* kir_json) {
+    if (!kir_json) return NULL;
+
+    cJSON* kir_root = cJSON_Parse(kir_json);
+    if (!kir_root) return NULL;
+
+    LimboContext* ctx = create_limbo_context(NULL);
+    if (!ctx) {
+        cJSON_Delete(kir_root);
+        return NULL;
+    }
+
+    // Extract module name (default to "KryonApp")
+    const char* module_name = ctx->module_name ? ctx->module_name : "KryonApp";
+
+    // Get window title from app section
+    cJSON* app = cJSON_GetObjectItem(kir_root, "app");
+    const char* window_title = NULL;
+    if (app) {
+        cJSON* title_obj = cJSON_GetObjectItem(app, "windowTitle");
+        if (title_obj && title_obj->type == cJSON_String) {
+            window_title = title_obj->valuestring;
+        }
+    }
+
+    // Generate module header
+    generate_module_header(ctx, module_name);
+
+    // Generate init function start
+    generate_init_start(ctx, window_title);
+
+    // Process root component
+    cJSON* root = cJSON_GetObjectItem(kir_root, "root");
+    if (root) {
+        process_component(ctx, root, "", 0);
+    }
+
+    // Generate event loop
+    generate_event_loop(ctx, ctx->event_handler_counter);
+
+    // Extract buffer
+    char* result = ctx->buffer;
+    ctx->buffer = NULL;  // Don't free the buffer when destroying context
+
+    destroy_limbo_context(ctx);
+    cJSON_Delete(kir_root);
+
+    return result;
+}
+
+// Generate Limbo file from KIR file
+bool limbo_codegen_generate(const char* kir_path, const char* output_path) {
+    if (!kir_path || !output_path) return false;
+
+    // Read KIR file
+    FILE* kir_file = fopen(kir_path, "r");
+    if (!kir_file) {
+        fprintf(stderr, "Failed to open KIR file: %s\n", kir_path);
+        return false;
+    }
+
+    fseek(kir_file, 0, SEEK_END);
+    long file_size = ftell(kir_file);
+    fseek(kir_file, 0, SEEK_SET);
+
+    char* kir_json = malloc(file_size + 1);
+    if (!kir_json) {
+        fclose(kir_file);
+        return false;
+    }
+
+    size_t bytes_read = fread(kir_json, 1, file_size, kir_file);
+    kir_json[bytes_read] = '\0';
+    fclose(kir_file);
+
+    // Generate Limbo code
+    char* limbo_code = limbo_codegen_from_json(kir_json);
+    free(kir_json);
+
+    if (!limbo_code) {
+        fprintf(stderr, "Failed to generate Limbo code\n");
+        return false;
+    }
+
+    // Write output file
+    FILE* output_file = fopen(output_path, "w");
+    if (!output_file) {
+        fprintf(stderr, "Failed to open output file: %s\n", output_path);
+        free(limbo_code);
+        return false;
+    }
+
+    fputs(limbo_code, output_file);
+    fclose(output_file);
+    free(limbo_code);
+
+    return true;
+}
+
+// Generate with options
+bool limbo_codegen_generate_with_options(const char* kir_path,
+                                          const char* output_path,
+                                          LimboCodegenOptions* options) {
+    // For now, just use the basic implementation
+    // TODO: Implement options support
+    return limbo_codegen_generate(kir_path, output_path);
+}
+
+// Generate multiple files (currently just generates one file)
+bool limbo_codegen_generate_multi(const char* kir_path, const char* output_dir) {
+    if (!kir_path || !output_dir) return false;
+
+    // Create output directory if it doesn't exist
+    if (!codegen_mkdir_p(output_dir)) {
+        fprintf(stderr, "Failed to create output directory: %s\n", output_dir);
+        return false;
+    }
+
+    // For now, just generate a single main.b file
+    char output_path[1024];
+    snprintf(output_path, sizeof(output_path), "%s/main.b", output_dir);
+
+    return limbo_codegen_generate(kir_path, output_path);
+}

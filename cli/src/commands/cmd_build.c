@@ -3,8 +3,8 @@
  * Orchestrates the build pipeline: Frontend → KIR → Target Codegen
  *
  * Supported targets:
- *   - web:  KRY → KIR → HTML/CSS/JS
- *   - dis:  KRY → KIR → DIS bytecode (TaijiOS)
+ *   - web:   KRY → KIR → HTML/CSS/JS
+ *   - limbo: KRY → KIR → .b → .dis (TaijiOS Limbo → DIS bytecode)
  */
 
 #include "kryon_cli.h"
@@ -12,7 +12,6 @@
 #include "build/plugin_discovery.h"
 #include "../template/docs_template.h"
 #include "../utils/file_discovery.h"
-#include "../../dis/include/dis_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,70 +72,6 @@ static int build_single_file_web(const char* source_file, KryonConfig* config) {
     }
 
     printf("✓ Build complete: %s → %s\n", source_file, output_dir);
-    return 0;
-}
-
-static int build_single_file_dis(const char* source_file, KryonConfig* config) {
-    const char* frontend = detect_frontend_type(source_file);
-    if (!frontend) {
-        fprintf(stderr, "Error: Could not detect frontend for %s\n", source_file);
-        fprintf(stderr, "Supported extensions: .kry, .kir\n");
-        return 1;
-    }
-
-    // Create cache directory
-    if (!file_is_directory(".kryon_cache")) {
-        dir_create(".kryon_cache");
-    }
-
-    // Generate KIR filename
-    char kir_file[1024];
-    const char* basename = strrchr(source_file, '/');
-    basename = basename ? basename + 1 : source_file;
-
-    char* name_copy = str_copy(basename);
-    char* dot = strrchr(name_copy, '.');
-    if (dot) *dot = '\0';
-
-    snprintf(kir_file, sizeof(kir_file), ".kryon_cache/%s.kir", name_copy);
-
-    // Generate DIS filename
-    char dis_file[1024];
-    snprintf(dis_file, sizeof(dis_file), ".kryon_cache/%s.dis", name_copy);
-    free(name_copy);
-
-    // Compile to KIR using shared function
-    int result = compile_source_to_kir(source_file, kir_file);
-    if (result != 0) {
-        fprintf(stderr, "Error: Compilation to KIR failed\n");
-        return result;
-    }
-
-    // Verify KIR was generated
-    if (!file_exists(kir_file)) {
-        fprintf(stderr, "Error: KIR file was not generated: %s\n", kir_file);
-        return 1;
-    }
-
-    // Generate DIS bytecode using libdiscodegen
-    extern bool dis_codegen_generate(const char* kir_path, const char* output_path);
-    result = dis_codegen_generate(kir_file, dis_file);
-    if (!result) {
-        fprintf(stderr, "Error: DIS code generation failed\n");
-        const char* error = dis_codegen_get_error();
-        if (error) {
-            fprintf(stderr, "Details: %s\n", error);
-        }
-        return 1;
-    }
-
-    // Verify DIS was generated
-    if (!file_exists(dis_file)) {
-        fprintf(stderr, "Error: DIS file was not generated: %s\n", dis_file);
-        return 1;
-    }
-
-    printf("✓ Build complete: %s → %s\n", source_file, dis_file);
     return 0;
 }
 
@@ -274,13 +209,13 @@ int cmd_build(int argc, char** argv) {
     if (!primary_target) {
         fprintf(stderr, "Error: No target specified\n");
         fprintf(stderr, "Use --target=<name> or specify targets in kryon.toml\n");
-        fprintf(stderr, "Valid targets: web, dis\n");
+        fprintf(stderr, "Valid targets: web, limbo\n");
         config_free(config);
         return 1;
     }
 
     int is_web = strcmp(primary_target, "web") == 0;
-    int is_dis = strcmp(primary_target, "dis") == 0;
+    int is_limbo = strcmp(primary_target, "limbo") == 0;
 
     // If specific file argument provided, build just that file
     if (file_arg_start > 0 && file_arg_start < argc) {
@@ -294,8 +229,22 @@ int cmd_build(int argc, char** argv) {
 
         if (is_web) {
             result = build_single_file_web(source_file, config);
-        } else if (is_dis) {
-            result = build_single_file_dis(source_file, config);
+        } else if (is_limbo) {
+            // For limbo, use target handler
+            // First compile to KIR
+            char kir_file[1024];
+            const char* basename = strrchr(source_file, '/');
+            basename = basename ? basename + 1 : source_file;
+            snprintf(kir_file, sizeof(kir_file), ".kryon_cache/%s.kir", basename);
+
+            if (compile_source_to_kir(source_file, kir_file) != 0) {
+                fprintf(stderr, "Error: Failed to compile to KIR\n");
+                config_free(config);
+                return 1;
+            }
+
+            // Then use limbo target handler
+            result = target_handler_build("limbo", kir_file, ".", "app", config);
         } else {
             fprintf(stderr, "Error: Unsupported target for single file build\n");
             config_free(config);
@@ -325,9 +274,9 @@ int cmd_build(int argc, char** argv) {
         return result;
     }
 
-    // DIS TARGET: Build DIS bytecode using target handler
-    if (is_dis) {
-        printf("Building DIS bytecode target...\n");
+    // LIMBO TARGET: Build Limbo source and DIS bytecode using target handler
+    if (is_limbo) {
+        printf("Building Limbo target (Limbo source → DIS bytecode)...\n");
 
         if (!config->build_entry) {
             fprintf(stderr, "Error: No entry point specified in kryon.toml\n");
@@ -352,15 +301,15 @@ int cmd_build(int argc, char** argv) {
         const char* output_dir = config->build_output_dir ? config->build_output_dir : "dist";
         const char* project_name = config->project_name ? config->project_name : "app";
 
-        printf("Building DIS from %s...\n", kir_file);
-        result = target_handler_build("dis", kir_file, output_dir, project_name, config);
+        printf("Building Limbo from %s...\n", kir_file);
+        result = target_handler_build("limbo", kir_file, output_dir, project_name, config);
         config_free(config);
         return result;
     }
 
     // UNKNOWN TARGET
     fprintf(stderr, "Error: Unknown target '%s'\n", primary_target);
-    fprintf(stderr, "Supported targets: web, dis\n");
+    fprintf(stderr, "Supported targets: web, limbo\n");
     config_free(config);
     return 1;
 }

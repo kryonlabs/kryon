@@ -14,7 +14,8 @@
 
 #include "kryon_cli.h"
 #include "build.h"
-#include "../../../dis/include/dis_codegen.h"
+#include "../../../codegens/limbo/limbo_codegen.h"
+#include "../../../codegens/c/ir_c_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,124 +110,190 @@ static int web_target_run(const char* kir_file, const KryonConfig* config) {
     return 1;
 }
 
-// Desktop and terminal targets removed - migrated to DIS VM target
+// Desktop and terminal targets removed - migrated to Limbo/DIS target
 
-// Android target removed - migrated to DIS VM target
+// Android target removed - migrated to Limbo/DIS target
+
+// DIS target removed - all DIS generation now goes through Limbo compilation
 
 /* ============================================================================
- * DIS Target Handler
+ * Limbo Target Handler
  * ============================================================================ */
 
 /**
- * DIS target build handler
- * Generates .dis bytecode from KIR
+ * Limbo target build handler
+ * Pipeline: KIR → .b (Limbo source) → .dis (bytecode)
  */
-static int dis_target_build(const char* kir_file, const char* output_dir,
-                            const char* project_name, const KryonConfig* config) {
-    (void)config;  // Not used in DIS build
+static int limbo_target_build(const char* kir_file, const char* output_dir,
+                              const char* project_name, const KryonConfig* config) {
+    // Step 1: Generate Limbo source (.b) from KIR
+    char limbo_source[1024];
+    snprintf(limbo_source, sizeof(limbo_source), "%s/%s.b", output_dir, project_name);
 
-    // Generate output path
-    char output_path[1024];
-    snprintf(output_path, sizeof(output_path), "%s/%s.dis", output_dir, project_name);
-
-    printf("Generating DIS bytecode: %s\n", output_path);
-
-    // Call DIS codegen
-    if (!dis_codegen_generate(kir_file, output_path)) {
-        fprintf(stderr, "Error: DIS code generation failed: %s\n",
-                dis_codegen_get_error());
+    printf("Generating Limbo source: %s\n", limbo_source);
+    if (!limbo_codegen_generate_multi(kir_file, output_dir)) {
+        fprintf(stderr, "Error: Limbo code generation failed\n");
         return 1;
     }
 
-    printf("✓ DIS bytecode generated: %s\n", output_path);
+    // Limbo codegen generates main.b, rename to project_name.b
+    char main_b[1024];
+    snprintf(main_b, sizeof(main_b), "%s/main.b", output_dir);
+
+    if (strcmp(main_b, limbo_source) != 0 && access(main_b, F_OK) == 0) {
+        rename(main_b, limbo_source);
+    }
+
+    printf("✓ Generated Limbo source: %s\n", limbo_source);
+
+    // Step 2: Compile Limbo source to DIS bytecode
+    char dis_output[1024];
+    snprintf(dis_output, sizeof(dis_output), "%s/%s.dis", output_dir, project_name);
+
+    // Get limbo compiler path
+    const char* taiji_path = config && config->taiji_path
+        ? config->taiji_path
+        : getenv("TAIJI_PATH");
+
+    if (!taiji_path) {
+        taiji_path = "/home/wao/Projects/TaijiOS";
+    }
+
+    // Verify TaijiOS installation
+    char limbo_compiler[1024];
+    snprintf(limbo_compiler, sizeof(limbo_compiler), "%s/Linux/amd64/bin/limbo", taiji_path);
+
+    if (access(limbo_compiler, X_OK) != 0) {
+        fprintf(stderr, "Error: Limbo compiler not found at %s\n", limbo_compiler);
+        fprintf(stderr, "  Set TAIJI_PATH environment variable or install TaijiOS\n");
+        return 1;
+    }
+
+    // Compile: limbo -o output.dis source.b
+    char compile_cmd[2048];
+    snprintf(compile_cmd, sizeof(compile_cmd),
+             "cd \"%s\" && \"%s\" -o \"%s\" \"%s\"",
+             output_dir, limbo_compiler, dis_output, limbo_source);
+
+    printf("Compiling Limbo to DIS: %s\n", compile_cmd);
+    int result = system(compile_cmd);
+
+    if (result != 0) {
+        fprintf(stderr, "Error: Limbo compilation failed with exit code %d\n", result);
+        return 1;
+    }
+
+    printf("✓ Compiled to DIS bytecode: %s\n", dis_output);
     return 0;
 }
 
 /**
- * DIS target run handler
- * Generates .dis bytecode and executes with TaijiOS DIS VM
+ * Limbo target run handler
+ * Builds if needed, then executes in TaijiOS emu
  */
-static int dis_target_run(const char* kir_file, const KryonConfig* config) {
-    // Build DIS file first
+static int limbo_target_run(const char* kir_file, const KryonConfig* config) {
+    // Determine output directory and project name
     const char* output_dir = ".";
     const char* project_name = "app";
 
-    if (dis_target_build(kir_file, output_dir, project_name, config) != 0) {
+    // Build first (generates .dis file)
+    if (limbo_target_build(kir_file, output_dir, project_name, config) != 0) {
         return 1;
     }
 
     // Get TaijiOS configuration
     const char* taiji_path = config && config->taiji_path
         ? config->taiji_path
-        : "/home/wao/Projects/TaijiOS";
+        : getenv("TAIJI_PATH");
+
+    if (!taiji_path) {
+        taiji_path = "/home/wao/Projects/TaijiOS";
+    }
 
     bool use_run_app = config && config->taiji_use_run_app
         ? config->taiji_use_run_app
-        : true;  // Default to run-app.sh
+        : false;  // Default to direct emu (run-app.sh expects TaijiOS-internal paths)
 
-    const char* arch = config && config->taiji_arch
-        ? config->taiji_arch
-        : "x86_64";
+    // Copy .dis file to TaijiOS directory for execution
+    // Emu can't access arbitrary host paths, only paths within its namespace
+    char source_dis[1024];
+    snprintf(source_dis, sizeof(source_dis), "%s/%s.dis", output_dir, project_name);
 
-    // Build DIS file path
-    char dis_path[1024];
-    snprintf(dis_path, sizeof(dis_path), "%s/%s.dis", output_dir, project_name);
+    char target_dis[1024];
+    snprintf(target_dis, sizeof(target_dis), "%s/dis/kryon/%s.dis", taiji_path, project_name);
 
-    printf("Running DIS bytecode with TaijiOS\n");
-    printf("DIS file: %s\n", dis_path);
-    printf("TaijiOS path: %s\n", taiji_path);
-    printf("Method: %s\n", use_run_app ? "run-app.sh" : "emu");
+    // Create kryon directory in TaijiOS/dis if it doesn't exist
+    char kryon_dis_dir[1024];
+    snprintf(kryon_dis_dir, sizeof(kryon_dis_dir), "%s/dis/kryon", taiji_path);
 
-    // Validate TaijiOS installation
-    char run_app_path[1024];
-    snprintf(run_app_path, sizeof(run_app_path), "%s/run-app.sh", taiji_path);
+    char mkdir_cmd[2048];
+    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", kryon_dis_dir);
+    system(mkdir_cmd);
 
-    if (access(run_app_path, X_OK) != 0) {
-        fprintf(stderr, "Error: TaijiOS run-app.sh not found at %s\n", run_app_path);
-        fprintf(stderr, "Expected: %s\n", run_app_path);
-        fprintf(stderr, "\n");
-        fprintf(stderr, "To fix:\n");
-        fprintf(stderr, "  1. Ensure TaijiOS is installed at: %s\n", taiji_path);
-        fprintf(stderr, "  2. Or configure path in kryon.toml:\n");
-        fprintf(stderr, "     [taiji]\n");
-        fprintf(stderr, "     path = /path/to/TaijiOS\n");
+    // Copy the .dis file
+    char cp_cmd[2048];
+    snprintf(cp_cmd, sizeof(cp_cmd), "cp \"%s\" \"%s\"", source_dis, target_dis);
+    printf("Copying DIS to TaijiOS: %s\n", target_dis);
+
+    if (system(cp_cmd) != 0) {
+        fprintf(stderr, "Error: Failed to copy .dis file to TaijiOS directory\n");
         return 1;
     }
+
+    // Validate TaijiOS installation
+    if (access(taiji_path, F_OK) != 0) {
+        fprintf(stderr, "Error: TaijiOS not found at %s\n", taiji_path);
+        return 1;
+    }
+
+    // Use relative path within TaijiOS namespace
+    char dis_file_rel[1024];
+    snprintf(dis_file_rel, sizeof(dis_file_rel), "kryon/%s.dis", project_name);
 
     char cmd[2048];
 
     if (use_run_app) {
         // Use run-app.sh wrapper (recommended)
-        // run-app.sh expects: ./run-app.sh app.dis [args...]
-        // It handles emu invocation, X11 setup, etc.
-        snprintf(cmd, sizeof(cmd), "cd \"%s\" && ./run-app.sh \"%s/%s.dis\"",
-                taiji_path, output_dir, project_name);
-    } else {
-        // Direct emu invocation (for debugging)
+        char run_app_path[1024];
+        snprintf(run_app_path, sizeof(run_app_path), "%s/run-app.sh", taiji_path);
+
+        if (access(run_app_path, X_OK) != 0) {
+            fprintf(stderr, "Error: run-app.sh not found at %s\n", run_app_path);
+            fprintf(stderr, "  Falling back to direct emu invocation\n");
+            use_run_app = false;
+        } else {
+            snprintf(cmd, sizeof(cmd), "cd \"%s\" && ./run-app.sh \"%s\"",
+                    taiji_path, dis_file_rel);
+        }
+    }
+
+    if (!use_run_app) {
+        // Direct emu invocation
         char emu_path[1024];
-        snprintf(emu_path, sizeof(emu_path), "%s/Linux/%s/bin/emu",
-                taiji_path, arch);
+        snprintf(emu_path, sizeof(emu_path), "%s/Linux/amd64/bin/emu", taiji_path);
 
         if (access(emu_path, X_OK) != 0) {
             fprintf(stderr, "Error: emu binary not found at %s\n", emu_path);
             return 1;
         }
 
-        snprintf(cmd, sizeof(cmd), "%s -r \"%s\" \"%s/%s.dis\"",
-                emu_path, taiji_path, output_dir, project_name);
+        // emu -r <ROOT> /dis/wminit.dis <app.dis>
+        // wminit.dis sets up the window manager and graphics context
+        snprintf(cmd, sizeof(cmd),
+                "cd \"%s\" && ROOT=\"%s\" \"%s\" -r \"%s\" /dis/wminit.dis %s",
+                taiji_path, taiji_path, emu_path, taiji_path, dis_file_rel);
     }
 
-    printf("Executing: %s\n", cmd);
-
-    // Execute TaijiOS
+    printf("Executing in TaijiOS: %s\n", cmd);
     int result = system(cmd);
+
     if (result != 0) {
-        fprintf(stderr, "Warning: TaijiOS exited with code %d\n", result);
-        return result;
+        fprintf(stderr, "Warning: TaijiOS emu exited with code %d\n", result);
+    } else {
+        printf("✓ Execution complete\n");
     }
 
-    printf("✓ DIS execution complete\n");
-    return 0;
+    return result;
 }
 
 /* ============================================================================
@@ -549,14 +616,14 @@ void target_handler_initialize(void) {
     // Register built-in handlers (static, not freed)
     target_handler_register(&g_web_handler);
 
-    // Register DIS handler
-    static TargetHandler g_dis_handler = {
-        .name = "dis",
+    // Register Limbo handler (generates .b from KIR, then compiles to .dis)
+    static TargetHandler g_limbo_handler = {
+        .name = "limbo",
         .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
-        .build_handler = dis_target_build,
-        .run_handler = dis_target_run,
+        .build_handler = limbo_target_build,
+        .run_handler = limbo_target_run,
     };
-    target_handler_register(&g_dis_handler);
+    target_handler_register(&g_limbo_handler);
 
     g_initialized = true;
 }

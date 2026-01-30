@@ -18,6 +18,7 @@
 #include "../../../codegens/kry/kry_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
+#include "../../../codegens/limbo/limbo_codegen.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -963,6 +964,8 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = ir_generate_c_code_multi(kir_file, output_path);
     } else if (strcmp(target, "markdown") == 0) {
         success = markdown_codegen_generate_multi(kir_file, output_path);
+    } else if (strcmp(target, "limbo") == 0) {
+        success = limbo_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "kir") == 0) {
         // KIR target: just copy the KIR file to output (for single-file case)
         // Multi-file case is handled in codegen_pipeline
@@ -999,7 +1002,7 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, c, markdown, kir\n");
+        fprintf(stderr, "Supported targets: kry, c, markdown, kir, limbo\n");
         return 1;
     }
 
