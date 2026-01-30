@@ -37,7 +37,8 @@ static void print_help(void) {
     printf("  config [show|validate]  Config management\n");
     printf("  install                 Install application\n");
     printf("  uninstall               Uninstall application\n");
-    printf("  doctor                  System diagnostics\n\n");
+    printf("  doctor                  System diagnostics\n");
+    printf("  targets                 List all build targets\n\n");
     printf("Supported languages/formats: KRY, HTML, Markdown, C\n\n");
     printf("Targets:\n");
     printf("  Targets are defined in kryon.toml [build] section\n");
@@ -128,6 +129,9 @@ int main(int argc, char** argv) {
     }
     else if (strcmp(args->command, "uninstall") == 0) {
         result = cmd_uninstall(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "targets") == 0) {
+        result = cmd_targets(args->argc, args->argv);
     }
     else {
         fprintf(stderr, "Error: Unknown command '%s'\n", args->command);

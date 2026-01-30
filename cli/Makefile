@@ -47,6 +47,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_plugin.c \
        $(SRC_DIR)/commands/cmd_install.c \
        $(SRC_DIR)/commands/cmd_uninstall.c \
+       $(SRC_DIR)/commands/cmd_targets.c \
        $(SRC_DIR)/build/embed_bytecode.c \
        $(SRC_DIR)/build/plugin_discovery.c \
        $(SRC_DIR)/build/c_desktop.c

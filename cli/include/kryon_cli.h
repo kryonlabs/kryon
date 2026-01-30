@@ -328,5 +328,6 @@ int cmd_dev(int argc, char** argv);
 int cmd_doctor(int argc, char** argv);
 int cmd_install(int argc, char** argv);
 int cmd_uninstall(int argc, char** argv);
+int cmd_targets(int argc, char** argv);
 
 #endif // KRYON_CLI_H
