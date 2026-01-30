@@ -2526,8 +2526,8 @@ static KryNode* parse_at_construct(KryParser* p) {
 
     skip_whitespace(p);
 
-    // Check for code blocks (@lua, @js, @c)
-    if (keyword_match(at_name, "lua") || keyword_match(at_name, "js") || keyword_match(at_name, "c")) {
+    // Check for code blocks (@lua, @js, @c, @limbo)
+    if (keyword_match(at_name, "lua") || keyword_match(at_name, "js") || keyword_match(at_name, "c") || keyword_match(at_name, "limbo")) {
         return parse_code_block(p, at_name);
     }
 

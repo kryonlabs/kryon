@@ -38,5 +38,7 @@ void handleButtonClick(void) {
 @end
 
 @limbo
-
+handleButtonClick: fn() {
+	sys->print("Button clicked! Hello from Kryon-Limbo!\n");
+};
 @end
