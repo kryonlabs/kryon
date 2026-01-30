@@ -7,9 +7,24 @@ LIB=libkryon_codegen_c.a
 
 OFILES=\
 	ir_c_codegen.$O\
+	ir_c_components.$O\
+	ir_c_expression.$O\
+	ir_c_main.$O\
+	ir_c_modules.$O\
+	ir_c_output.$O\
+	ir_c_reactive.$O\
+	ir_c_types.$O\
 
 HFILES=\
 	ir_c_codegen.h\
+	ir_c_components.h\
+	ir_c_expression.h\
+	ir_c_main.h\
+	ir_c_modules.h\
+	ir_c_output.h\
+	ir_c_reactive.h\
+	ir_c_types.h\
+	ir_c_internal.h\
 	../codegen_common.h\
 
 CFLAGS=$CFLAGS\

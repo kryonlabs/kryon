@@ -1,0 +1,203 @@
+#!/bin/bash
+# Kryon Development Convenience Script
+# Simplifies common kryon development tasks for TaijiOS
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Setup environment
+export ROOT=/mnt/storage/Projects/TaijiOS
+export PATH="$ROOT/Linux/amd64/bin:$PATH"
+
+print_usage() {
+    cat << EOF
+Kryon Development Tool for TaijiOS
+
+Usage: kryon-dev <command> [options]
+
+Commands:
+  compile <file>       Compile .kry to .kir only
+  build <file>         Build for TaijiOS (full pipeline to .dis)
+  test <file>          Build and show output files
+  clean                Remove generated files
+  rebuild              Full rebuild of kryon itself
+  examples             List available examples
+  run-example <name>   Build and show an example
+
+Examples:
+  kryon-dev compile app.kry
+  kryon-dev build app.kry
+  kryon-dev test examples/kry/hello_world.kry
+  kryon-dev run-example hello_world
+  kryon-dev rebuild
+
+EOF
+}
+
+cmd_compile() {
+    local file="$1"
+    if [ -z "$file" ]; then
+        echo -e "${RED}Error: No file specified${NC}"
+        echo "Usage: kryon-dev compile <file.kry>"
+        exit 1
+    fi
+
+    echo -e "${BLUE}Compiling: $file${NC}"
+    kryon compile "$file"
+    echo -e "${GREEN}✓ Compilation complete${NC}"
+
+    # Show output
+    kir_file=".kryon_cache/$(basename "$file").kir"
+    if [ -f "$kir_file" ]; then
+        echo ""
+        echo "Output: $kir_file"
+        ls -lh "$kir_file"
+    fi
+}
+
+cmd_build() {
+    local file="$1"
+    if [ -z "$file" ]; then
+        echo -e "${RED}Error: No file specified${NC}"
+        echo "Usage: kryon-dev build <file.kry>"
+        exit 1
+    fi
+
+    echo -e "${BLUE}Building for TaijiOS: $file${NC}"
+    kryon build --target=limbo "$file"
+    echo -e "${GREEN}✓ Build complete${NC}"
+
+    # Show output
+    if [ -f "app.dis" ]; then
+        echo ""
+        echo "Generated files:"
+        ls -lh app.b app.dis 2>/dev/null || true
+    fi
+}
+
+cmd_test() {
+    local file="$1"
+    if [ -z "$file" ]; then
+        echo -e "${RED}Error: No file specified${NC}"
+        echo "Usage: kryon-dev test <file.kry>"
+        exit 1
+    fi
+
+    echo -e "${BLUE}Testing: $file${NC}"
+    echo ""
+
+    # Compile
+    echo "Step 1: Compiling to KIR..."
+    kryon compile "$file"
+
+    # Build
+    echo ""
+    echo "Step 2: Building to DIS..."
+    kryon build --target=limbo "$file"
+
+    echo ""
+    echo -e "${GREEN}✓ Test complete!${NC}"
+    echo ""
+    echo "Pipeline output:"
+    echo "  .kir: $(ls -lh .kryon_cache/*.kir 2>/dev/null | tail -1 | awk '{print $5}')"
+    echo "  .b:   $(ls -lh app.b 2>/dev/null | awk '{print $5}')"
+    echo "  .dis: $(ls -lh app.dis 2>/dev/null | awk '{print $5}')"
+}
+
+cmd_clean() {
+    echo -e "${YELLOW}Cleaning generated files...${NC}"
+    rm -rf .kryon_cache
+    rm -f app.b app.dis
+    rm -rf build
+    echo -e "${GREEN}✓ Clean complete${NC}"
+}
+
+cmd_rebuild() {
+    echo -e "${BLUE}Rebuilding kryon from source...${NC}"
+    echo ""
+
+    cd "$ROOT"
+    mk nuke kryon
+    mk kryon
+
+    echo ""
+    echo -e "${GREEN}✓ Rebuild complete${NC}"
+    echo ""
+    echo "Kryon binary: $ROOT/Linux/amd64/bin/kryon"
+}
+
+cmd_examples() {
+    echo -e "${BLUE}Available examples:${NC}"
+    echo ""
+
+    if [ -d "examples/kry" ]; then
+        ls -1 examples/kry/*.kry | while read f; do
+            name=$(basename "$f" .kry)
+            echo "  - $name"
+        done
+    else
+        echo "No examples found in examples/kry/"
+    fi
+}
+
+cmd_run_example() {
+    local name="$1"
+    if [ -z "$name" ]; then
+        echo -e "${RED}Error: No example name specified${NC}"
+        echo "Usage: kryon-dev run-example <name>"
+        echo ""
+        cmd_examples
+        exit 1
+    fi
+
+    local file="examples/kry/${name}.kry"
+    if [ ! -f "$file" ]; then
+        echo -e "${RED}Error: Example not found: $file${NC}"
+        echo ""
+        cmd_examples
+        exit 1
+    fi
+
+    echo -e "${BLUE}Running example: $name${NC}"
+    cmd_test "$file"
+}
+
+# Main command dispatcher
+case "${1:-}" in
+    compile)
+        cmd_compile "$2"
+        ;;
+    build)
+        cmd_build "$2"
+        ;;
+    test)
+        cmd_test "$2"
+        ;;
+    clean)
+        cmd_clean
+        ;;
+    rebuild)
+        cmd_rebuild
+        ;;
+    examples)
+        cmd_examples
+        ;;
+    run-example)
+        cmd_run_example "$2"
+        ;;
+    -h|--help|help|"")
+        print_usage
+        ;;
+    *)
+        echo -e "${RED}Error: Unknown command: $1${NC}"
+        echo ""
+        print_usage
+        exit 1
+        ;;
+esac

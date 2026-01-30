@@ -6,10 +6,23 @@
 LIB=libkryon_codegen_web.a
 
 OFILES=\
-	ir_web_codegen.$O\
+	css_class_names.$O\
+	css_generator.$O\
+	css_generator_core.$O\
+	css_property_tables.$O\
+	html_generator.$O\
+	ir_web_renderer.$O\
+	style_analyzer.$O\
+	kir_to_html.$O\
 
 HFILES=\
-	ir_web_codegen.h\
+	css_class_names.h\
+	css_generator.h\
+	css_generator_core.h\
+	css_property_tables.h\
+	html_generator.h\
+	ir_web_renderer.h\
+	style_analyzer.h\
 	../codegen_common.h\
 
 CFLAGS=$CFLAGS\

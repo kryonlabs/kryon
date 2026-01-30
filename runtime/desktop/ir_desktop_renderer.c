@@ -514,6 +514,7 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
         return false;
     }
 
+#ifdef ENABLE_SDL3
     // Render dropdown menu overlays (second pass after main tree)
     // Collect all open dropdowns and render their menus on top
     extern void collect_open_dropdowns(IRComponent* component, IRComponent** dropdown_list, int* count, int max_count);
@@ -527,6 +528,9 @@ bool desktop_ir_renderer_render_frame(DesktopIRRenderer* renderer, IRComponent* 
     for (int i = 0; i < dropdown_count; i++) {
         render_dropdown_menu_sdl3(renderer, open_dropdowns[i]);
     }
+#endif
+    // TODO: Implement raylib dropdown menu rendering if needed
+    // For now, dropdowns may be handled through normal component rendering
 
     renderer->ops->end_frame(renderer);
 

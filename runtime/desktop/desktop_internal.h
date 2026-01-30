@@ -298,7 +298,9 @@ void collect_open_dropdowns(IRComponent* component, IRComponent** dropdown_list,
 IRComponent* find_dropdown_menu_at_point(IRComponent* root, float x, float y);
 
 // Dropdown menu rendering (rendered in second pass)
+#ifdef ENABLE_SDL3
 void render_dropdown_menu_sdl3(DesktopIRRenderer* renderer, IRComponent* component);
+#endif
 
 // Main event handling
 void handle_sdl3_events(DesktopIRRenderer* desktop_renderer);

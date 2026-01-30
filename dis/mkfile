@@ -5,19 +5,14 @@
 
 LIB=libdiscodegen.a
 
-OFILES=\
-	src/dis_codegen.$O\
-	src/module_builder.$O\
-	src/instruction_emitter.$O\
-	src/type_descriptor.$O\
-	src/data_section.$O\
-	src/link_section.$O\
-	src/kir_translator.$O\
-
-HFILES=\
-	include/dis_codegen.h\
-	src/module_builder.h\
-	src/internal.h\
+SRCS=\
+	src/dis_codegen.c\
+	src/module_builder.c\
+	src/instruction_emitter.c\
+	src/type_descriptor.c\
+	src/data_section.c\
+	src/link_section.c\
+	src/kir_translator.c\
 
 CFLAGS=$CFLAGS\
 	-Iinclude\
@@ -25,8 +20,24 @@ CFLAGS=$CFLAGS\
 	-I../ir/include\
 	-I../third_party/cJSON\
 
-<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+LIBRARY=$ROOT/$OBJDIR/lib/$LIB
 
-# Custom rules for src/ subdirectory
-src/%.$O: src/%.c $HFILES
-	$CC $CFLAGS src/$stem.c
+default:V: all
+
+all install:V: $LIBRARY
+
+$LIBRARY:V: $SRCS
+	for i in $SRCS
+	do
+		echo "  Compiling $i..."
+		$CC $CFLAGS $i || exit 1
+	done
+	echo "  Archiving into $LIBRARY..."
+	$AR $ARFLAGS $LIBRARY *.o
+	echo "  Installed $LIB"
+
+clean:V:
+	rm -f *.o src/*.o
+
+nuke:V: clean
+	rm -f $LIBRARY

@@ -382,7 +382,7 @@ static int sdl3_target_build(const char* kir_file, const char* output_dir,
              "-I%s/third_party/stb "
              "%s/*.c "
              "-L%s/build -L%s/bindings/c "
-             "-lkryon_c -lkryon_dsl_runtime -lkryon_desktop_sdl3 -lkryon_command_buf -lkryon_ir "
+             "-lkryon_desktop_sdl3 -lkryon_dsl_runtime -lkryon_command_buf -lkryon_ir -lkryon_c "
              "%s -lm -lpthread -ldl -o %s",
              gen_dir, kryon_root, kryon_root, kryon_root, kryon_root,
              kryon_root, kryon_root, kryon_root,

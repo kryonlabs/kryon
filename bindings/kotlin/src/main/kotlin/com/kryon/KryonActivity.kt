@@ -1,375 +1,386 @@
 package com.kryon
 
-import android.app.Activity
 import android.os.Bundle
-import android.opengl.GLSurfaceView
-import android.view.MotionEvent
-import android.view.KeyEvent
-import android.util.Log
-import com.kryon.dsl.ContainerBuilder
-import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.opengles.GL10
+import androidx.appcompat.app.AppCompatActivity
+import android.widget.TextView
+import android.widget.LinearLayout
+import android.widget.Button
+import android.view.Gravity
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.util.DisplayMetrics
 
-/**
- * Base Activity class for Kryon applications.
- *
- * Extend this class and override `onKryonCreate()` to load your Kryon UI.
- *
- * Example:
- * ```kotlin
- * class MainActivity : KryonActivity() {
- *     override fun onKryonCreate() {
- *         loadKryonFile("app.krb")  // Load bytecode
- *         // or
- *         loadKryonSource("app.kry") // Compile and run
- *     }
- * }
- * ```
- */
-abstract class KryonActivity : Activity() {
+abstract class KryonActivity : AppCompatActivity() {
 
-    companion object {
-        private const val TAG = "KryonActivity"
-
-        init {
-            try {
-                System.loadLibrary("kryon_android")
-            } catch (e: UnsatisfiedLinkError) {
-                Log.e(TAG, "Failed to load Kryon native library", e)
-            }
-        }
-
-        // Global callback registry for event handlers
-        private val eventCallbacks = mutableMapOf<Int, () -> Unit>()
-        private var nextCallbackId = 1
-
-        // Called from JNI when an event occurs
-        @JvmStatic
-        fun invokeEventCallback(callbackId: Int) {
-            eventCallbacks[callbackId]?.invoke()
-        }
-    }
-
-    private var glSurfaceView: GLSurfaceView? = null
-    protected var nativeHandle: Long = 0
-
-    // Register a callback and return its ID
-    internal fun registerCallback(callback: () -> Unit): Int {
-        val id = nextCallbackId++
-        eventCallbacks[id] = callback
-        return id
-    }
-
-    // ========================================================================
-    // GLSurfaceView.Renderer
-    // ========================================================================
-
-    inner class KryonGLRenderer : GLSurfaceView.Renderer {
-        override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-            Log.i(TAG, "GL onSurfaceCreated")
-            if (nativeHandle != 0L) {
-                nativeGLSurfaceCreated(nativeHandle)
-            }
-        }
-
-        override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-            Log.i(TAG, "GL onSurfaceChanged: ${width}x${height}")
-            if (nativeHandle != 0L) {
-                nativeGLSurfaceChanged(nativeHandle, width, height)
-            }
-        }
-
-        override fun onDrawFrame(gl: GL10?) {
-            if (nativeHandle != 0L) {
-                nativeGLRender(nativeHandle)
-            }
-        }
-    }
-
-    // ========================================================================
-    // Activity Lifecycle
-    // ========================================================================
+    private lateinit var rootLayout: LinearLayout
+    var density: Float = 1.0f
+        private set
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.i(TAG, "onCreate")
 
-        // Initialize native platform
-        nativeHandle = nativeInit(this)
-        if (nativeHandle == 0L) {
-            Log.e(TAG, "Failed to initialize Kryon platform")
-            finish()
-            return
+        // Get display density
+        val metrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(metrics)
+        density = metrics.density
+
+        rootLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#1a1a2e"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT
+            )
         }
 
-        // Create GLSurfaceView with renderer
-        glSurfaceView = GLSurfaceView(this).apply {
-            setEGLContextClientVersion(3)  // OpenGL ES 3.0
-            setRenderer(KryonGLRenderer())
-            renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        buildUI()
+
+        setContentView(rootLayout)
+    }
+
+    abstract fun buildUI()
+
+    // Convert dp to pixels
+    fun dpToPx(dp: Float): Int {
+        return (dp * density).toInt()
+    }
+    
+    fun container(block: ContainerBuilder.() -> Unit = {}) {
+        val view = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT
+            )
         }
-        setContentView(glSurfaceView)
-
-        nativeOnCreate(nativeHandle)
-
-        // Call user initialization
-        onKryonCreate()
+        
+        val builder = ContainerBuilder(view, this)
+        builder.block()
+        
+        rootLayout.addView(view)
     }
+}
 
-    override fun onStart() {
-        super.onStart()
-        Log.i(TAG, "onStart")
-        if (nativeHandle != 0L) {
-            nativeOnStart(nativeHandle)
-        }
-        onKryonStart()
+class ContainerBuilder(private val view: LinearLayout, private val activity: KryonActivity) {
+    private var bgColor: String? = null
+    private var cornerRadius: Float = 0f
+    private var position: String? = null
+    private var leftPos: Float = 0f
+    private var topPos: Float = 0f
+    private var borderWidth: Float = 0f
+    private var borderColor: String? = null
+    
+    fun background(color: String) {
+        bgColor = color
+        applyBackground()
     }
-
-    override fun onResume() {
-        super.onResume()
-        Log.i(TAG, "onResume")
-        glSurfaceView?.onResume()
-        if (nativeHandle != 0L) {
-            nativeOnResume(nativeHandle)
-        }
-        onKryonResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        Log.i(TAG, "onPause")
-        glSurfaceView?.onPause()
-        if (nativeHandle != 0L) {
-            nativeOnPause(nativeHandle)
-        }
-        onKryonPause()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        Log.i(TAG, "onStop")
-        if (nativeHandle != 0L) {
-            nativeOnStop(nativeHandle)
-        }
-        onKryonStop()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.i(TAG, "onDestroy")
-        if (nativeHandle != 0L) {
-            nativeOnDestroy(nativeHandle)
-            nativeShutdown(nativeHandle)
-            nativeHandle = 0
-        }
-        onKryonDestroy()
-    }
-
-    // ========================================================================
-    // Input Events
-    // ========================================================================
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (nativeHandle != 0L) {
-            return nativeTouchEvent(nativeHandle, event)
-        }
-        return super.onTouchEvent(event)
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (nativeHandle != 0L && nativeKeyEvent(nativeHandle, event)) {
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (nativeHandle != 0L && nativeKeyEvent(nativeHandle, event)) {
-            return true
-        }
-        return super.onKeyUp(keyCode, event)
-    }
-
-    // ========================================================================
-    // Public API (for subclasses)
-    // ========================================================================
-
-    /**
-     * Called after native platform is initialized.
-     * Override this to load your Kryon UI.
-     */
-    protected open fun onKryonCreate() {}
-
-    /**
-     * Build UI using Kryon DSL.
-     * Override this method to define your UI declaratively.
-     *
-     * Example:
-     * ```kotlin
-     * override fun buildUI() {
-     *     container {
-     *         background("#191970")
-     *         text("Hello World") {
-     *             color("yellow")
-     *         }
-     *     }
-     * }
-     * ```
-     */
-    protected open fun buildUI() {
-        // Default implementation - subclasses override this
-    }
-
-    // Internal: Call buildUI in onCreate after initialization
-    internal fun callBuildUI() {
-        setContent {
-            // Delegate to subclass's buildUI()
-            this@KryonActivity.buildUI()
+    
+    fun width(w: Float) {
+        updateLayoutParams {
+            width = (w * activity.density).toInt()
         }
     }
 
-    /**
-     * Called when activity starts.
-     */
-    protected open fun onKryonStart() {}
-
-    /**
-     * Called when activity resumes.
-     */
-    protected open fun onKryonResume() {}
-
-    /**
-     * Called when activity pauses.
-     */
-    protected open fun onKryonPause() {}
-
-    /**
-     * Called when activity stops.
-     */
-    protected open fun onKryonStop() {}
-
-    /**
-     * Called when activity is being destroyed.
-     */
-    protected open fun onKryonDestroy() {}
-
-    /**
-     * Set content using declarative DSL builder.
-     *
-     * Example:
-     * ```kotlin
-     * setContent {
-     *     Container {
-     *         background("#191970")
-     *         Text {
-     *             text("Hello World")
-     *         }
-     *     }
-     * }
-     * ```
-     */
-    protected fun setContent(block: ContainerBuilder.() -> Unit) {
-        if (nativeHandle == 0L) {
-            Log.e(TAG, "Cannot set content: native handle is null")
-            return
+    fun height(h: Float) {
+        updateLayoutParams {
+            height = (h * activity.density).toInt()
         }
-
-        // Initialize DSL build session
-        nativeBeginDSLBuild(nativeHandle)
-
-        // Build component tree via DSL
-        val rootBuilder = ContainerBuilder(nativeHandle)
-        rootBuilder.block()
-
-        // Finalize tree in native layer
-        nativeFinalizeContent(nativeHandle)
     }
 
-    /**
-     * Load Kryon bytecode file (.krb).
-     */
-    protected fun loadKryonFile(path: String): Boolean {
-        if (nativeHandle == 0L) {
-            Log.e(TAG, "Cannot load file: native handle is null")
-            return false
+    fun padding(top: Float, right: Float, bottom: Float, left: Float) {
+        view.setPadding(
+            (left * activity.density).toInt(),
+            (top * activity.density).toInt(),
+            (right * activity.density).toInt(),
+            (bottom * activity.density).toInt()
+        )
+    }
+
+    fun margin(top: Float, right: Float, bottom: Float, left: Float) {
+        updateLayoutParams {
+            setMargins(
+                (left * activity.density).toInt(),
+                (top * activity.density).toInt(),
+                (right * activity.density).toInt(),
+                (bottom * activity.density).toInt()
+            )
         }
-
-        return nativeLoadFile(nativeHandle, path)
     }
 
-    /**
-     * Load and compile Kryon source file (.kry).
-     */
-    protected fun loadKryonSource(path: String): Boolean {
-        if (nativeHandle == 0L) {
-            Log.e(TAG, "Cannot load source: native handle is null")
-            return false
+    fun position(pos: String) {
+        position = pos
+    }
+
+    fun left(left: Float) {
+        leftPos = left
+        if (position == "absolute") {
+            val pos = (leftPos * activity.density).toInt()
+            updateLayoutParams {
+                leftMargin = pos
+            }
         }
-
-        return nativeLoadSource(nativeHandle, path)
     }
 
-    /**
-     * Set a state value in the Kryon runtime.
-     */
-    protected fun setKryonState(key: String, value: String): Boolean {
-        if (nativeHandle == 0L) return false
-        return nativeSetState(nativeHandle, key, value)
+    fun top(top: Float) {
+        topPos = top
+        if (position == "absolute") {
+            val pos = (topPos * activity.density).toInt()
+            updateLayoutParams {
+                topMargin = pos
+            }
+        }
+    }
+    
+    fun gap(g: Float) {
+        updateLayoutParams {
+            bottomMargin = g.toInt()
+        }
     }
 
-    /**
-     * Get a state value from the Kryon runtime.
-     */
-    protected fun getKryonState(key: String): String? {
-        if (nativeHandle == 0L) return null
-        return nativeGetState(nativeHandle, key)
+    fun alignItems(align: String) {
+        view.gravity = when(align) {
+            "center" -> Gravity.CENTER_HORIZONTAL
+            else -> Gravity.START
+        }
     }
 
-    /**
-     * Get current FPS.
-     */
-    fun getFPS(): Float {
-        if (nativeHandle == 0L) return 0f
-        return nativeGetFPS(nativeHandle)
+    fun justifyContent(justify: String) {
+        when(justify) {
+            "center" -> view.gravity = view.gravity or Gravity.CENTER_VERTICAL
+            "flex-start" -> view.gravity = view.gravity or Gravity.TOP
+            "flex-end" -> view.gravity = view.gravity or Gravity.BOTTOM
+        }
     }
 
-    /**
-     * Check if Kryon is ready for rendering.
-     */
-    fun isKryonReady(): Boolean {
-        return nativeHandle != 0L
+    fun cornerRadius(radius: Float) {
+        cornerRadius = radius * activity.density
+        applyBackground()
     }
 
-    // ========================================================================
-    // Native Methods (JNI)
-    // ========================================================================
+    fun border(width: Float, color: String) {
+        borderWidth = width * activity.density
+        borderColor = color
+        applyBackground()
+    }
+    
+    fun text(content: String, block: TextBuilder.() -> Unit = {}) {
+        val textView = TextView(view.context).apply {
+            text = content
+            textSize = 24f * activity.density  // Scale text size
+            setTextColor(Color.parseColor("#ffff00"))
+            setPadding(
+                (16 * activity.density).toInt(),
+                (16 * activity.density).toInt(),
+                (16 * activity.density).toInt(),
+                (16 * activity.density).toInt()
+            )
+        }
+        view.addView(textView)
 
-    private external fun nativeInit(activity: Activity): Long
-    private external fun nativeShutdown(handle: Long)
+        val builder = TextBuilder(textView, activity)
+        builder.block()
+    }
 
-    private external fun nativeOnCreate(handle: Long)
-    private external fun nativeOnStart(handle: Long)
-    private external fun nativeOnResume(handle: Long)
-    private external fun nativeOnPause(handle: Long)
-    private external fun nativeOnStop(handle: Long)
-    private external fun nativeOnDestroy(handle: Long)
+    fun button(label: String, block: ButtonBuilder.() -> Unit = {}) {
+        val buttonView = Button(view.context).apply {
+            text = label
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#4CAF50"))
+            setPadding(
+                (32 * activity.density).toInt(),
+                (16 * activity.density).toInt(),
+                (32 * activity.density).toInt(),
+                (16 * activity.density).toInt()
+            )
+        }
+        view.addView(buttonView)
 
-    // GLSurfaceView.Renderer callbacks
-    private external fun nativeGLSurfaceCreated(handle: Long)
-    private external fun nativeGLSurfaceChanged(handle: Long, width: Int, height: Int)
-    private external fun nativeGLRender(handle: Long)
+        val builder = ButtonBuilder(buttonView, activity)
+        builder.block()
+    }
+    
+    fun column(block: ColumnBuilder.() -> Unit = {}) {
+        val columnView = LinearLayout(view.context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        view.addView(columnView)
+        
+        val builder = ColumnBuilder(columnView, activity)
+        builder.block()
+    }
+    
+    private inline fun updateLayoutParams(crossinline update: LinearLayout.LayoutParams.() -> Unit) {
+        val params = view.layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        params.update()
+        view.layoutParams = params
+    }
+    
+    private fun applyBackground() {
+        val drawable = GradientDrawable()
+        bgColor?.let { drawable.setColor(Color.parseColor(it)) }
+        
+        if (borderWidth > 0 && borderColor != null) {
+            drawable.setStroke(borderWidth.toInt(), Color.parseColor(borderColor!!))
+        }
+        
+        if (cornerRadius > 0) {
+            drawable.cornerRadius = cornerRadius
+        }
+        
+        view.background = drawable
+    }
+}
 
-    private external fun nativeTouchEvent(handle: Long, event: MotionEvent): Boolean
-    private external fun nativeKeyEvent(handle: Long, event: KeyEvent): Boolean
+class ColumnBuilder(private val view: LinearLayout, private val activity: KryonActivity) {
+    init {
+        view.orientation = LinearLayout.VERTICAL
+    }
+    
+    fun background(color: String) {
+        view.setBackgroundColor(Color.parseColor(color))
+    }
+    
+    fun width(w: Float) {
+        updateLayoutParams { width = (w * activity.density).toInt() }
+    }
 
-    private external fun nativeBeginDSLBuild(handle: Long)
-    private external fun nativeFinalizeContent(handle: Long)
+    fun height(h: Float) {
+        updateLayoutParams { height = (h * activity.density).toInt() }
+    }
 
-    private external fun nativeLoadFile(handle: Long, path: String): Boolean
-    private external fun nativeLoadSource(handle: Long, path: String): Boolean
+    fun padding(top: Float, right: Float, bottom: Float, left: Float) {
+        view.setPadding(
+            (left * activity.density).toInt(),
+            (top * activity.density).toInt(),
+            (right * activity.density).toInt(),
+            (bottom * activity.density).toInt()
+        )
+    }
 
-    private external fun nativeSetState(handle: Long, key: String, value: String): Boolean
-    private external fun nativeGetState(handle: Long, key: String): String?
+    fun margin(top: Float, right: Float, bottom: Float, left: Float) {
+        updateLayoutParams {
+            setMargins(
+                (left * activity.density).toInt(),
+                (top * activity.density).toInt(),
+                (right * activity.density).toInt(),
+                (bottom * activity.density).toInt()
+            )
+        }
+    }
 
-    private external fun nativeGetFPS(handle: Long): Float
+    fun gap(g: Float) {
+        updateLayoutParams {
+            bottomMargin = (g * activity.density).toInt()
+        }
+    }
+    
+    fun alignItems(align: String) {
+        view.gravity = when(align) {
+            "center" -> Gravity.CENTER_HORIZONTAL
+            else -> Gravity.START
+        }
+    }
+    
+    fun justifyContent(justify: String) {
+        when(justify) {
+            "center" -> view.gravity = view.gravity or Gravity.CENTER_VERTICAL
+            "flex-start" -> view.gravity = view.gravity or Gravity.TOP
+            "flex-end" -> view.gravity = view.gravity or Gravity.BOTTOM
+        }
+    }
+    
+    fun text(content: String, block: TextBuilder.() -> Unit = {}) {
+        val textView = TextView(view.context).apply {
+            text = content
+            textSize = 16f * activity.density
+            setTextColor(Color.WHITE)
+            setPadding(
+                (8 * activity.density).toInt(),
+                (8 * activity.density).toInt(),
+                (8 * activity.density).toInt(),
+                (8 * activity.density).toInt()
+            )
+        }
+        view.addView(textView)
+
+        val builder = TextBuilder(textView, activity)
+        builder.block()
+    }
+
+    fun container(block: ContainerBuilder.() -> Unit = {}) {
+        val containerView = LinearLayout(view.context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                (8 * activity.density).toInt(),
+                (8 * activity.density).toInt(),
+                (8 * activity.density).toInt(),
+                (8 * activity.density).toInt()
+            )
+        }
+        view.addView(containerView)
+
+        val builder = ContainerBuilder(containerView, activity)
+        builder.block()
+    }
+    
+    private inline fun updateLayoutParams(crossinline update: LinearLayout.LayoutParams.() -> Unit) {
+        val params = view.layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        params.update()
+        view.layoutParams = params
+    }
+}
+
+class TextBuilder(private val view: TextView, private val activity: KryonActivity) {
+    fun fontSize(size: Float) {
+        view.textSize = size * activity.density
+    }
+
+    fun color(c: String) {
+        view.setTextColor(Color.parseColor(c))
+    }
+}
+
+class ButtonBuilder(private val view: Button, private val activity: KryonActivity) {
+    fun width(w: Float) {
+        updateLayoutParams { width = (w * activity.density).toInt() }
+    }
+
+    fun height(h: Float) {
+        updateLayoutParams { height = (h * activity.density).toInt() }
+    }
+
+    fun background(color: String) {
+        view.setBackgroundColor(Color.parseColor(color))
+    }
+
+    fun fontSize(size: Float) {
+        view.textSize = size * activity.density
+    }
+
+    fun color(c: String) {
+        view.setTextColor(Color.parseColor(c))
+    }
+
+    fun cornerRadius(radius: Float) {
+        val drawable = GradientDrawable()
+        drawable.setColor(view.backgroundTintList?.defaultColor ?: Color.parseColor("#4CAF50"))
+        drawable.cornerRadius = radius * activity.density
+        view.background = drawable
+    }
+    
+    private inline fun updateLayoutParams(crossinline update: LinearLayout.LayoutParams.() -> Unit) {
+        val params = view.layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        params.update()
+        view.layoutParams = params
+    }
 }

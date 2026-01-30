@@ -13,39 +13,39 @@ codegen_common:V:
 
 # Build individual codegens
 limbo:V: codegen_common
-	cd limbo && mk install
+	(cd limbo && mk install)
 
 web:V: codegen_common
-	cd web && mk install
+	(cd web && mk install)
 
 c:V: codegen_common
-	cd c && mk install
+	(cd c && mk install)
 
 android:V: codegen_common
-	cd android && mk install
+	(cd android && mk install)
 
 kry:V: codegen_common
-	cd kry && mk install
+	(cd kry && mk install)
 
 markdown:V: codegen_common
-	cd markdown && mk install
+	(cd markdown && mk install)
 
 clean:V:
 	rm -f codegen_common.o codegen_common.$O
-	cd limbo && mk clean
-	cd web && mk clean
-	cd c && mk clean
-	cd android && mk clean
-	cd kry && mk clean
-	cd markdown && mk clean
+	(cd limbo && mk clean)
+	(cd web && mk clean)
+	(cd c && mk clean)
+	(cd android && mk clean)
+	(cd kry && mk clean)
+	(cd markdown && mk clean)
 
 install:V: all
 
 nuke:V:
 	rm -f $ROOT/$OBJDIR/lib/libkryon_codegen_common.a
-	cd limbo && mk nuke
-	cd web && mk nuke
-	cd c && mk nuke
-	cd android && mk nuke
-	cd kry && mk nuke
-	cd markdown && mk nuke
+	(cd limbo && mk nuke)
+	(cd web && mk nuke)
+	(cd c && mk nuke)
+	(cd android && mk nuke)
+	(cd kry && mk nuke)
+	(cd markdown && mk nuke)

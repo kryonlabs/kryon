@@ -48,7 +48,7 @@ backups/examples_backup_*/
 
 tmp*
 
-# Editor files
+# Editor files (except CLAUDE.md which is for AI assistant reference)
 *.swp
 *.swo
 *~

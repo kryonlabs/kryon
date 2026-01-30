@@ -26,11 +26,10 @@ HARFBUZZ_LIBS = $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null
 # ENABLE_SDL3 = 1
 # ENABLE_RAYLIB = 1
 
-# Default to BOTH SDL3 and Raylib if nothing specified
+# Default to SDL3 if nothing specified
 ifndef ENABLE_SDL3
 ifndef ENABLE_RAYLIB
 ENABLE_SDL3 = 1
-ENABLE_RAYLIB = 1
 endif
 endif
 
@@ -74,19 +73,24 @@ DESKTOP_SOURCES = ir_desktop_renderer.c desktop_globals.c desktop_platform.c \
 # Always add stb_image_impl for stbi_write_png (needed for screenshots)
 DESKTOP_SOURCES += stb_image_impl.c
 
-# SDL3 renderer modules (desktop-specific implementation)
-SDL3_RENDERER_SOURCES = renderers/sdl3/sdl3_renderer.c \
+# SDL3 renderer modules (backend + desktop-specific implementation)
+SDL3_RENDERER_SOURCES = $(RENDERERS_DIR)/sdl3/sdl3_backend.c \
+                        $(RENDERERS_DIR)/sdl3/sdl3_input.c \
+                        $(RENDERERS_DIR)/sdl3/sdl3_fonts.c \
+                        $(RENDERERS_DIR)/sdl3/sdl3_effects.c \
+                        renderers/sdl3/sdl3_renderer.c \
+                        renderers/sdl3/sdl3_layout.c \
                         renderers/sdl3/sdl3_input.c \
                         renderers/sdl3/sdl3_fonts.c \
-                        renderers/sdl3/sdl3_effects.c \
-                        renderers/sdl3/sdl3_layout.c
+                        renderers/sdl3/sdl3_effects.c
 
-# Raylib renderer modules (desktop-specific implementation)
-RAYLIB_RENDERER_SOURCES = renderers/raylib/raylib_renderer.c \
+# Raylib renderer modules (backend + desktop-specific implementation)
+RAYLIB_RENDERER_SOURCES = $(RENDERERS_DIR)/raylib/raylib_backend.c \
+                          $(RENDERERS_DIR)/raylib/raylib_effects.c \
+                          renderers/raylib/raylib_renderer.c \
+                          renderers/raylib/raylib_layout.c \
                           renderers/raylib/raylib_input.c \
-                          renderers/raylib/raylib_fonts.c \
-                          renderers/raylib/raylib_effects.c \
-                          renderers/raylib/raylib_layout.c
+                          renderers/raylib/raylib_fonts.c
 
 # Add renderer-specific sources
 ifeq ($(ENABLE_SDL3),1)
@@ -99,9 +103,14 @@ endif
 
 DESKTOP_HEADERS = ir_desktop_renderer.h desktop_internal.h debug_backend.h ir_wireframe.h
 
-# Output files
-DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop_sdl3.a
-DESKTOP_SHARED_LIB = $(BUILD_DIR)/libkryon_desktop_sdl3.so
+# Output files - conditional based on enabled backend
+ifeq ($(ENABLE_RAYLIB),1)
+    DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop_raylib.a
+    DESKTOP_SHARED_LIB = $(BUILD_DIR)/libkryon_desktop_raylib.so
+else
+    DESKTOP_STATIC_LIB = $(BUILD_DIR)/libkryon_desktop_sdl3.a
+    DESKTOP_SHARED_LIB = $(BUILD_DIR)/libkryon_desktop_sdl3.so
+endif
 DESKTOP_TEST = $(BUILD_DIR)/desktop_test
 
 # Include paths - add all necessary directories for proper modular includes
@@ -120,8 +129,20 @@ INCLUDES = -I$(INCLUDE_DIR) \
 # Link libraries (excluding IR libs which are added separately)
 LINK_LIBS = -L$(BUILD_DIR) -lkryon_ir $(LIBS)
 
-# Default target
-all: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
+# Default target - build both SDL3 and Raylib libraries
+all:
+	@echo "Building both SDL3 and Raylib desktop libraries..."
+	$(MAKE) clean
+	@echo "Building SDL3 desktop library..."
+	$(MAKE) build-lib ENABLE_SDL3=1 ENABLE_RAYLIB=0
+	@echo "Cleaning object files before raylib build..."
+	rm -f *.o *.d renderers/sdl3/*.o renderers/sdl3/*.d renderers/raylib/*.o renderers/raylib/*.d
+	@echo "Building Raylib desktop library..."
+	$(MAKE) build-lib ENABLE_SDL3=0 ENABLE_RAYLIB=1
+	@echo "Done! Built libkryon_desktop_sdl3.a and libkryon_desktop_raylib.a"
+
+# Internal target for building a single library
+build-lib: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
 
 # Create build directory
 $(BUILD_DIR):
@@ -167,7 +188,9 @@ clean:
 	rm -f *.o *.d
 	rm -f renderers/sdl3/*.o renderers/sdl3/*.d
 	rm -f renderers/raylib/*.o renderers/raylib/*.d
-	rm -f $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB) $(DESKTOP_TEST) $(BUILD_DIR)/example_desktop_render
+	rm -f $(BUILD_DIR)/libkryon_desktop_sdl3.a $(BUILD_DIR)/libkryon_desktop_sdl3.so
+	rm -f $(BUILD_DIR)/libkryon_desktop_raylib.a $(BUILD_DIR)/libkryon_desktop_raylib.so
+	rm -f $(DESKTOP_TEST) $(BUILD_DIR)/example_desktop_render
 
 # Install headers
 install-headers: $(BUILD_DIR)
@@ -206,22 +229,22 @@ no-sdl: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
 # Build with raylib renderer only
 raylib:
 	$(MAKE) clean
-	$(MAKE) all ENABLE_SDL3=0 ENABLE_RAYLIB=1
+	$(MAKE) build-lib ENABLE_SDL3=0 ENABLE_RAYLIB=1
 
 # Build with SDL3 renderer only
 sdl3:
 	$(MAKE) clean
-	$(MAKE) all ENABLE_SDL3=1 ENABLE_RAYLIB=0
+	$(MAKE) build-lib ENABLE_SDL3=1 ENABLE_RAYLIB=0
 
-# Build with BOTH renderers (default)
-both:
+# Build desktop (defaults to SDL3)
+desktop:
 	$(MAKE) clean
-	$(MAKE) all ENABLE_SDL3=1 ENABLE_RAYLIB=1
+	$(MAKE) build-lib ENABLE_SDL3=1 ENABLE_RAYLIB=0
 
 # Help
 help:
 	@echo "Kryon Desktop Backend Build Targets:"
-	@echo "  all            - Build static and shared libraries (default: both renderers)"
+	@echo "  all            - Build BOTH SDL3 and Raylib libraries"
 	@echo "  static         - Build static library only"
 	@echo "  shared         - Build shared library only"
 	@echo "  test           - Build and run test program"
@@ -233,13 +256,13 @@ help:
 	@echo "  ubsan          - Build with UndefinedBehaviorSanitizer"
 	@echo "  asan-ubsan     - Build with both ASan and UBSan (recommended)"
 	@echo "  tsan           - Build with ThreadSanitizer"
-	@echo "  sdl3           - Build with SDL3 renderer only"
-	@echo "  raylib         - Build with Raylib renderer only"
-	@echo "  both           - Build with BOTH SDL3 and Raylib renderers"
+	@echo "  desktop        - Build desktop library (defaults to SDL3)"
+	@echo "  sdl3           - Build SDL3 library only (libkryon_desktop_sdl3.a)"
+	@echo "  raylib         - Build Raylib library only (libkryon_desktop_raylib.a)"
 	@echo "  no-sdl         - Build without SDL3 support (header-only)"
 	@echo "  help           - Show this help"
 	@echo ""
 	@echo "SDL3 Status: $(if $(ENABLE_SDL3),ENABLED,DISABLED)"
 	@echo "Raylib Status: $(if $(ENABLE_RAYLIB),ENABLED,DISABLED)"
 
-.PHONY: all clean test example debug asan ubsan asan-ubsan tsan install-headers help no-sdl
+.PHONY: all build-lib clean test example debug asan ubsan asan-ubsan tsan install-headers help no-sdl desktop sdl3 raylib
