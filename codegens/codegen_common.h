@@ -256,6 +256,156 @@ char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx);
 char* react_generate_element(cJSON* component, ReactContext* ctx, int indent);
 
 // ============================================================================
+// Tk-Based Codegen Utilities
+// ============================================================================
+// Shared utilities for all Tk-based codegens (Limbo, Tcl/Tk, etc.)
+
+/**
+ * Map KIR element type to Tk widget type.
+ * Shared by all Tk-based targets.
+ *
+ * @param element_type KIR element type (e.g., "Button", "Text", "Container")
+ * @return Tk widget type string (e.g., "button", "label", "frame")
+ */
+const char* codegen_map_kir_to_tk_widget(const char* element_type);
+
+/**
+ * Extract common widget properties from KIR component.
+ * Returns pointers to borrowed strings (do not free).
+ *
+ * @param component KIR component JSON object
+ * @param out_text Optional output for text content
+ * @param out_width Optional output for width
+ * @param out_height Optional output for height
+ * @param out_background Optional output for background color
+ * @param out_foreground Optional output for foreground color
+ * @param out_font Optional output for font
+ */
+void codegen_extract_widget_props(cJSON* component,
+                                  const char** out_text,
+                                  const char** out_width,
+                                  const char** out_height,
+                                  const char** out_background,
+                                  const char** out_foreground,
+                                  const char** out_font);
+
+/**
+ * Parse size value from string (handles "200px", "100%", etc.).
+ *
+ * @param value Size value string
+ * @return Parsed integer value, or 0 if invalid
+ */
+int codegen_parse_size_value(const char* value);
+
+/**
+ * Check if size value is a percentage.
+ *
+ * @param value Size value string
+ * @return true if string contains "%", false otherwise
+ */
+bool codegen_is_percentage_value(const char* value);
+
+/**
+ * Check if component is a layout container.
+ *
+ * @param type Component type string
+ * @return true if container type, false otherwise
+ */
+bool codegen_is_layout_container(const char* type);
+
+/**
+ * Layout type enumeration
+ */
+typedef enum {
+    CODEGEN_LAYOUT_PACK,      // Pack layout (default)
+    CODEGEN_LAYOUT_GRID,      // Grid layout
+    CODEGEN_LAYOUT_PLACE,     // Place layout (absolute positioning)
+    CODEGEN_LAYOUT_AUTO       // Automatic (based on properties)
+} CodegenLayoutType;
+
+/**
+ * Determine layout type from component properties.
+ * Checks for "row"/"column" (grid) or "left"/"top" (place) properties.
+ *
+ * @param component KIR component JSON object
+ * @return Detected layout type
+ */
+CodegenLayoutType codegen_detect_layout_type(cJSON* component);
+
+/**
+ * Layout options structure
+ * Used to build layout command options
+ */
+typedef struct {
+    const char* parent_type;
+    bool has_explicit_size;
+    bool has_position;
+    int left;
+    int top;
+} CodegenLayoutOptions;
+
+/**
+ * Extract layout options from component.
+ *
+ * @param component KIR component JSON object
+ * @param parent_type Parent component type
+ * @param out_options Output for layout options
+ */
+void codegen_extract_layout_options(cJSON* component,
+                                    const char* parent_type,
+                                    CodegenLayoutOptions* out_options);
+
+/**
+ * Handler tracker for deduplication.
+ * Tracks which event handlers have already been generated.
+ */
+typedef struct {
+    char* handlers[256];
+    int count;
+} CodegenHandlerTracker;
+
+/**
+ * Create a new handler tracker.
+ *
+ * @return Newly allocated tracker, or NULL on error
+ */
+CodegenHandlerTracker* codegen_handler_tracker_create(void);
+
+/**
+ * Check if handler was already generated.
+ *
+ * @param tracker Handler tracker
+ * @param handler_name Handler name to check
+ * @return true if already generated, false otherwise
+ */
+bool codegen_handler_tracker_contains(CodegenHandlerTracker* tracker,
+                                      const char* handler_name);
+
+/**
+ * Mark handler as generated.
+ *
+ * @param tracker Handler tracker
+ * @param handler_name Handler name to mark
+ * @return true on success, false if tracker is full
+ */
+bool codegen_handler_tracker_mark(CodegenHandlerTracker* tracker,
+                                  const char* handler_name);
+
+/**
+ * Free handler tracker.
+ *
+ * @param tracker Handler tracker to free
+ */
+void codegen_handler_tracker_free(CodegenHandlerTracker* tracker);
+
+/**
+ * Free all tracked handlers in a tracker.
+ *
+ * @param tracker Handler tracker
+ */
+void codegen_handler_tracker_clear(CodegenHandlerTracker* tracker);
+
+// ============================================================================
 // Multi-File Codegen Utilities
 // ============================================================================
 

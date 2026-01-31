@@ -400,6 +400,236 @@ void sb_free(StringBuilder* sb) {
 }
 
 // ============================================================================
+// Tk-Based Codegen Utilities Implementation
+// ============================================================================
+
+/**
+ * Map KIR element type to Tk widget type.
+ * This mapping is shared across all Tk-based targets.
+ */
+const char* codegen_map_kir_to_tk_widget(const char* element_type) {
+    if (!element_type) return "frame";
+
+    // Container widgets
+    if (strcmp(element_type, "Container") == 0) return "frame";
+    if (strcmp(element_type, "Row") == 0) return "frame";
+    if (strcmp(element_type, "Column") == 0) return "frame";
+    if (strcmp(element_type, "Center") == 0) return "frame";
+    if (strcmp(element_type, "Frame") == 0) return "frame";
+
+    // Basic widgets
+    if (strcmp(element_type, "Button") == 0) return "button";
+    if (strcmp(element_type, "Text") == 0) return "label";
+    if (strcmp(element_type, "Label") == 0) return "label";
+    if (strcmp(element_type, "Input") == 0) return "entry";
+    if (strcmp(element_type, "TextInput") == 0) return "entry";
+
+    // Complex widgets
+    if (strcmp(element_type, "Checkbox") == 0) return "checkbutton";
+    if (strcmp(element_type, "Radio") == 0) return "radiobutton";
+    if (strcmp(element_type, "Dropdown") == 0) return "ttk::combobox";
+    if (strcmp(element_type, "Canvas") == 0) return "canvas";
+    if (strcmp(element_type, "Image") == 0) return "label";  // Use label with image
+    if (strcmp(element_type, "ListBox") == 0) return "listbox";
+    if (strcmp(element_type, "Menu") == 0) return "menu";
+    if (strcmp(element_type, "Progress") == 0) return "ttk::progressbar";
+    if (strcmp(element_type, "Slider") == 0) return "scale";
+    if (strcmp(element_type, "Table") == 0) return "ttk::treeview";
+    if (strcmp(element_type, "Tabs") == 0) return "ttk::notebook";
+
+    // Default fallback
+    return "frame";
+}
+
+void codegen_extract_widget_props(cJSON* component,
+                                  const char** out_text,
+                                  const char** out_width,
+                                  const char** out_height,
+                                  const char** out_background,
+                                  const char** out_foreground,
+                                  const char** out_font) {
+    if (!component) return;
+
+    // Extract text
+    if (out_text) {
+        cJSON* text = cJSON_GetObjectItem(component, "text");
+        *out_text = (text && cJSON_IsString(text)) ? text->valuestring : NULL;
+    }
+
+    // Extract width
+    if (out_width) {
+        cJSON* width = cJSON_GetObjectItem(component, "width");
+        if (width && cJSON_IsString(width)) {
+            *out_width = width->valuestring;
+        } else if (width && cJSON_IsNumber(width)) {
+            // Static buffer for number conversion
+            static char width_buf[32];
+            snprintf(width_buf, sizeof(width_buf), "%d", width->valueint);
+            *out_width = width_buf;
+        } else {
+            *out_width = NULL;
+        }
+    }
+
+    // Extract height
+    if (out_height) {
+        cJSON* height = cJSON_GetObjectItem(component, "height");
+        if (height && cJSON_IsString(height)) {
+            *out_height = height->valuestring;
+        } else if (height && cJSON_IsNumber(height)) {
+            static char height_buf[32];
+            snprintf(height_buf, sizeof(height_buf), "%d", height->valueint);
+            *out_height = height_buf;
+        } else {
+            *out_height = NULL;
+        }
+    }
+
+    // Extract background
+    if (out_background) {
+        cJSON* background = cJSON_GetObjectItem(component, "background");
+        *out_background = (background && cJSON_IsString(background)) ? background->valuestring : NULL;
+    }
+
+    // Extract foreground (color)
+    if (out_foreground) {
+        cJSON* color = cJSON_GetObjectItem(component, "color");
+        *out_foreground = (color && cJSON_IsString(color)) ? color->valuestring : NULL;
+    }
+
+    // Extract font
+    if (out_font) {
+        cJSON* font = cJSON_GetObjectItem(component, "font");
+        *out_font = (font && cJSON_IsString(font)) ? font->valuestring : NULL;
+    }
+}
+
+int codegen_parse_size_value(const char* value) {
+    if (!value) return 0;
+
+    // Parse as float first to handle "200.0px" format
+    float result = 0.0f;
+    if (sscanf(value, "%f", &result) == 1) {
+        return (int)result;
+    }
+
+    return 0;
+}
+
+bool codegen_is_percentage_value(const char* value) {
+    if (!value) return false;
+    return strchr(value, '%') != NULL;
+}
+
+bool codegen_is_layout_container(const char* type) {
+    if (!type) return false;
+
+    return strcmp(type, "Row") == 0 ||
+           strcmp(type, "Column") == 0 ||
+           strcmp(type, "Container") == 0 ||
+           strcmp(type, "Center") == 0 ||
+           strcmp(type, "Canvas") == 0 ||
+           strcmp(type, "Table") == 0 ||
+           strcmp(type, "Tabs") == 0 ||
+           strcmp(type, "Frame") == 0;
+}
+
+CodegenLayoutType codegen_detect_layout_type(cJSON* component) {
+    if (!component) return CODEGEN_LAYOUT_AUTO;
+
+    // Check for grid layout (row property)
+    cJSON* row = cJSON_GetObjectItem(component, "row");
+    if (row && cJSON_IsNumber(row)) {
+        return CODEGEN_LAYOUT_GRID;
+    }
+
+    // Check for absolute positioning (left AND top properties)
+    cJSON* left = cJSON_GetObjectItem(component, "left");
+    cJSON* top = cJSON_GetObjectItem(component, "top");
+    if (left && cJSON_IsNumber(left) && top && cJSON_IsNumber(top)) {
+        return CODEGEN_LAYOUT_PLACE;
+    }
+
+    // Default to pack layout
+    return CODEGEN_LAYOUT_PACK;
+}
+
+void codegen_extract_layout_options(cJSON* component,
+                                    const char* parent_type,
+                                    CodegenLayoutOptions* out_options) {
+    if (!component || !out_options) return;
+
+    memset(out_options, 0, sizeof(CodegenLayoutOptions));
+
+    // Store parent type
+    out_options->parent_type = parent_type;
+
+    // Check for explicit size
+    cJSON* width = cJSON_GetObjectItem(component, "width");
+    cJSON* height = cJSON_GetObjectItem(component, "height");
+    out_options->has_explicit_size = (width != NULL) || (height != NULL);
+
+    // Check for absolute position
+    cJSON* left = cJSON_GetObjectItem(component, "left");
+    cJSON* top = cJSON_GetObjectItem(component, "top");
+    if (left && cJSON_IsNumber(left) && top && cJSON_IsNumber(top)) {
+        out_options->has_position = true;
+        out_options->left = left->valueint;
+        out_options->top = top->valueint;
+    } else {
+        out_options->has_position = false;
+    }
+}
+
+CodegenHandlerTracker* codegen_handler_tracker_create(void) {
+    CodegenHandlerTracker* tracker = calloc(1, sizeof(CodegenHandlerTracker));
+    if (!tracker) return NULL;
+
+    tracker->count = 0;
+    return tracker;
+}
+
+bool codegen_handler_tracker_contains(CodegenHandlerTracker* tracker,
+                                      const char* handler_name) {
+    if (!tracker || !handler_name) return false;
+
+    for (int i = 0; i < tracker->count; i++) {
+        if (tracker->handlers[i] && strcmp(tracker->handlers[i], handler_name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool codegen_handler_tracker_mark(CodegenHandlerTracker* tracker,
+                                  const char* handler_name) {
+    if (!tracker || !handler_name) return false;
+    if (tracker->count >= 256) return false;  // Full
+
+    tracker->handlers[tracker->count++] = strdup(handler_name);
+    return true;
+}
+
+void codegen_handler_tracker_clear(CodegenHandlerTracker* tracker) {
+    if (!tracker) return;
+
+    for (int i = 0; i < tracker->count; i++) {
+        if (tracker->handlers[i]) {
+            free(tracker->handlers[i]);
+            tracker->handlers[i] = NULL;
+        }
+    }
+    tracker->count = 0;
+}
+
+void codegen_handler_tracker_free(CodegenHandlerTracker* tracker) {
+    if (!tracker) return;
+
+    codegen_handler_tracker_clear(tracker);
+    free(tracker);
+}
+
+// ============================================================================
 // TSX/React Helper Implementation
 // ============================================================================
 

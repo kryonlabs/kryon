@@ -388,6 +388,14 @@ static float resolve_dimension(IRDimension dim, float parent_size) {
     }
 }
 
+// Layout direction for consolidated flex layout
+typedef enum {
+    LAYOUT_AXIS_ROW,      // Horizontal (left to right)
+    LAYOUT_AXIS_COLUMN    // Vertical (top to bottom)
+} LayoutAxis;
+
+static void ir_layout_compute_flex(IRComponent* container, float available_width,
+                                   float available_height, LayoutAxis axis);
 static void ir_layout_compute_row(IRComponent* container, float available_width, float available_height);
 static void ir_layout_compute_column(IRComponent* container, float available_width, float available_height);
 static void ir_layout_compute_grid(IRComponent* container, float available_width, float available_height);
@@ -583,14 +591,32 @@ void ir_layout_compute(IRComponent* root, float available_width, float available
     root->layout_cache.dirty = false;
 }
 
-static void ir_layout_compute_row(IRComponent* container, float available_width, float available_height) {
+// ============================================================================
+// Consolidated Flex Layout Implementation
+// ============================================================================
+
+/**
+ * Consolidated flex layout computation
+ *
+ * This single implementation handles both row and column layouts by
+ * parameterizing the layout axis, eliminating ~150 lines of duplication.
+ */
+static void ir_layout_compute_flex(IRComponent* container,
+                                   float available_width,
+                                   float available_height,
+                                   LayoutAxis axis) {
     if (!container) return;
 
     IRLayout* layout = container->layout;
     IRStyle* style = container->style;
 
+    // Determine main and cross axis based on direction
+    bool is_row = (axis == LAYOUT_AXIS_ROW);
+    float available_main = is_row ? available_width : available_height;
+    float available_cross = is_row ? available_height : available_width;
+
     // First pass: calculate intrinsic sizes and total flex grow
-    float total_width = 0.0f;
+    float total_main = 0.0f;
     float total_flex_grow = 0.0f;
     uint32_t visible_count = 0;
 
@@ -600,52 +626,68 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
 
         visible_count++;
 
-        float child_width = resolve_dimension(child->style->width, available_width);
-        if (child_width == 0.0f) {
-            child_width = ir_get_component_intrinsic_width(child);
-        }
-
-        // Apply max_width constraint before calculating total
-        if (child->layout && child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
-            if (child_width > child->layout->max_width.value) {
-                child_width = child->layout->max_width.value;
+        // Measure child along main axis
+        float child_main;
+        if (is_row) {
+            child_main = resolve_dimension(child->style->width, available_width);
+            if (child_main == 0.0f) {
+                child_main = ir_get_component_intrinsic_width(child);
+            }
+        } else {
+            child_main = resolve_dimension(child->style->height, available_height);
+            if (child_main == 0.0f) {
+                child_main = ir_get_component_intrinsic_height(child);
             }
         }
 
-        child_width += child->style->margin.left + child->style->margin.right;
-        total_width += child_width;
+        // Apply max constraint before calculating total
+        IRDimension max_dim = is_row ? child->layout->max_width : child->layout->max_height;
+        if (child->layout && max_dim.type == IR_DIMENSION_PX && max_dim.value > 0) {
+            if (child_main > max_dim.value) {
+                child_main = max_dim.value;
+            }
+        }
+
+        // Add margins along main axis
+        if (is_row) {
+            child_main += child->style->margin.left + child->style->margin.right;
+        } else {
+            child_main += child->style->margin.top + child->style->margin.bottom;
+        }
+
+        total_main += child_main;
 
         if (child->layout && child->layout->flex.grow > 0) {
             total_flex_grow += child->layout->flex.grow;
         }
     }
 
-    // Add gaps
+    // Add gaps along main axis
     if (visible_count > 1) {
-        total_width += layout->flex.gap * (visible_count - 1);
+        total_main += layout->flex.gap * (visible_count - 1);
     }
 
     // Second pass: distribute remaining space and position children
-    float remaining_width = available_width - total_width;
-    float current_x = style->padding.left;
+    float remaining_main = available_main - total_main;
+    float current_main = is_row ? style->padding.left : style->padding.top;
 
-    // Apply main-axis alignment (justify_content) for row layout
-    if (remaining_width > 0 && total_flex_grow == 0 && visible_count > 0) {
+    // Apply main-axis alignment (justify_content)
+    if (remaining_main > 0 && total_flex_grow == 0 && visible_count > 0) {
         switch (layout->flex.justify_content) {
             case IR_ALIGNMENT_CENTER:
-                current_x += remaining_width / 2.0f;
+                current_main += remaining_main / 2.0f;
                 break;
             case IR_ALIGNMENT_END:
-                current_x += remaining_width;
+                current_main += remaining_main;
                 break;
             case IR_ALIGNMENT_SPACE_BETWEEN:
                 // Will be handled per-child below
                 break;
             case IR_ALIGNMENT_SPACE_AROUND:
-                current_x += remaining_width / (visible_count * 2);
+                current_main += remaining_main / (visible_count * 2);
                 break;
             case IR_ALIGNMENT_SPACE_EVENLY:
-                current_x += remaining_width / (visible_count + 1);
+                current_main += remaining_main / (visible_count + 1);
                 break;
             default:
                 break;
@@ -654,85 +696,129 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
 
     // Calculate gap for space-between/around/evenly
     float extra_gap = 0.0f;
-    if (remaining_width > 0 && total_flex_grow == 0 && visible_count > 1) {
+    if (remaining_main > 0 && total_flex_grow == 0 && visible_count > 1) {
         switch (layout->flex.justify_content) {
             case IR_ALIGNMENT_SPACE_BETWEEN:
-                extra_gap = remaining_width / (visible_count - 1);
+                extra_gap = remaining_main / (visible_count - 1);
                 break;
             case IR_ALIGNMENT_SPACE_AROUND:
-                extra_gap = remaining_width / visible_count;
+                extra_gap = remaining_main / visible_count;
                 break;
             case IR_ALIGNMENT_SPACE_EVENLY:
-                extra_gap = remaining_width / (visible_count + 1);
+                extra_gap = remaining_main / (visible_count + 1);
                 break;
             default:
                 break;
         }
     }
 
+    // Position and size children
     for (uint32_t i = 0; i < container->child_count; i++) {
         IRComponent* child = container->children[i];
         if (!child->style || !child->style->visible) continue;
 
-        float child_width = resolve_dimension(child->style->width, available_width);
-        if (child_width == 0.0f) {
-            child_width = ir_get_component_intrinsic_width(child);
-        }
-
-        // Apply flex grow
-        if (remaining_width > 0 && total_flex_grow > 0 && child->layout && child->layout->flex.grow > 0) {
-            float extra = remaining_width * (child->layout->flex.grow / total_flex_grow);
-            child_width += extra;
-        }
-
-        float child_height = resolve_dimension(child->style->height, available_height);
-        if (child_height == 0.0f) {
-            child_height = ir_get_component_intrinsic_height(child);
-        }
-
-        // Apply max_height constraint BEFORE alignment calculation
-        if (child->layout && child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
-            if (child_height > child->layout->max_height.value) {
-                child_height = child->layout->max_height.value;
+        // Measure child along main axis
+        float child_main;
+        if (is_row) {
+            child_main = resolve_dimension(child->style->width, available_width);
+            if (child_main == 0.0f) {
+                child_main = ir_get_component_intrinsic_width(child);
+            }
+        } else {
+            child_main = resolve_dimension(child->style->height, available_height);
+            if (child_main == 0.0f) {
+                child_main = ir_get_component_intrinsic_height(child);
             }
         }
 
-        // Apply cross-axis alignment (vertical) using clamped height
-        float child_y = style->padding.top + child->style->margin.top;
-        if (layout->flex.cross_axis == IR_ALIGNMENT_CENTER) {
-            child_y += (available_height - child_height) / 2.0f;
-        } else if (layout->flex.cross_axis == IR_ALIGNMENT_END) {
-            child_y += available_height - child_height;
-        } else if (layout->flex.cross_axis == IR_ALIGNMENT_STRETCH) {
-            child_height = available_height - child->style->margin.top - child->style->margin.bottom;
+        // Apply flex grow
+        if (remaining_main > 0 && total_flex_grow > 0 &&
+            child->layout && child->layout->flex.grow > 0) {
+            float extra = remaining_main * (child->layout->flex.grow / total_flex_grow);
+            child_main += extra;
         }
 
-        // Apply max_width constraint
-        if (child->layout && child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
-            if (child_width > child->layout->max_width.value) {
-                child_width = child->layout->max_width.value;
+        // Measure child along cross axis
+        float child_cross;
+        if (is_row) {
+            child_cross = resolve_dimension(child->style->height, available_height);
+            if (child_cross == 0.0f) {
+                child_cross = ir_get_component_intrinsic_height(child);
+            }
+        } else {
+            child_cross = resolve_dimension(child->style->width, available_width);
+            if (child_cross == 0.0f) {
+                child_cross = ir_get_component_intrinsic_width(child);
+            }
+        }
+
+        // Apply max constraint on cross axis BEFORE alignment
+        IRDimension max_dim_cross = is_row ? child->layout->max_height : child->layout->max_width;
+        if (child->layout && max_dim_cross.type == IR_DIMENSION_PX && max_dim_cross.value > 0) {
+            if (child_cross > max_dim_cross.value) {
+                child_cross = max_dim_cross.value;
+            }
+        }
+
+        // Apply cross-axis alignment
+        float current_cross;
+        if (is_row) {
+            // Row layout: vertical alignment
+            current_cross = style->padding.top + child->style->margin.top;
+            if (layout->flex.cross_axis == IR_ALIGNMENT_CENTER) {
+                current_cross += (available_cross - child_cross) / 2.0f;
+            } else if (layout->flex.cross_axis == IR_ALIGNMENT_END) {
+                current_cross += available_cross - child_cross;
+            } else if (layout->flex.cross_axis == IR_ALIGNMENT_STRETCH) {
+                child_cross = available_cross - child->style->margin.top - child->style->margin.bottom;
+            }
+        } else {
+            // Column layout: horizontal alignment
+            current_cross = style->padding.left + child->style->margin.left;
+            if (layout->flex.cross_axis == IR_ALIGNMENT_CENTER) {
+                current_cross += (available_cross - child_cross) / 2.0f;
+            } else if (layout->flex.cross_axis == IR_ALIGNMENT_END) {
+                current_cross += available_cross - child_cross;
+            } else if (layout->flex.cross_axis == IR_ALIGNMENT_STRETCH) {
+                child_cross = available_cross - child->style->margin.left - child->style->margin.right;
+            }
+        }
+
+        // Apply max constraint on main axis
+        IRDimension max_dim_main = is_row ? child->layout->max_width : child->layout->max_height;
+        if (child->layout && max_dim_main.type == IR_DIMENSION_PX && max_dim_main.value > 0) {
+            if (child_main > max_dim_main.value) {
+                child_main = max_dim_main.value;
             }
         }
 
         // Set child bounds - skip absolutely positioned children
         if (child->style->position_mode == IR_POSITION_ABSOLUTE) {
-            // Use absolute position from style
             child->rendered_bounds.x = child->style->absolute_x;
             child->rendered_bounds.y = child->style->absolute_y;
-            child->rendered_bounds.width = child_width;
-            child->rendered_bounds.height = child_height;
+            child->rendered_bounds.width = is_row ? child_main : child_cross;
+            child->rendered_bounds.height = is_row ? child_cross : child_main;
             child->rendered_bounds.valid = true;
-            // Don't add to current_x - absolute children are out of flow
+            // Don't add to current_main - absolute children are out of flow
             continue;
         }
-        child->rendered_bounds.x = current_x + child->style->margin.left;
-        child->rendered_bounds.y = child_y;
-        child->rendered_bounds.width = child_width;
-        child->rendered_bounds.height = child_height;
+
+        // Set bounds based on axis
+        if (is_row) {
+            child->rendered_bounds.x = current_main + child->style->margin.left;
+            child->rendered_bounds.y = current_cross;
+            child->rendered_bounds.width = child_main;
+            child->rendered_bounds.height = child_cross;
+        } else {
+            child->rendered_bounds.x = current_cross;
+            child->rendered_bounds.y = current_main + child->style->margin.top;
+            child->rendered_bounds.width = child_cross;
+            child->rendered_bounds.height = child_main;
+        }
         child->rendered_bounds.valid = true;
 
-        // Debug: Print Button positions to debug ForEach layout
-        if (child->type == IR_COMPONENT_BUTTON && getenv("DEBUG_BUTTON_POSITIONS")) {
+        // Debug output
+        if (getenv("DEBUG_BUTTON_POSITIONS") && child->type == IR_COMPONENT_BUTTON) {
             const char* text = child->text_content ? child->text_content : "(null)";
             printf("[LAYOUT] Button ID=%u type=%d text='%s' pos=[%.1f, %.1f] size=[%.1fx%.1f] parent_id=%d\n",
                    child->id, (int)child->type, text,
@@ -741,181 +827,41 @@ static void ir_layout_compute_row(IRComponent* container, float available_width,
                    container->id);
         }
 
-        current_x += child_width + child->style->margin.right + layout->flex.gap + extra_gap;
-    }
-}
-
-static void ir_layout_compute_column(IRComponent* container, float available_width, float available_height) {
-    if (!container) return;
-
-    IRLayout* layout = container->layout;
-    IRStyle* style = container->style;
-
-    // First pass: calculate intrinsic sizes and total flex grow
-    float total_height = 0.0f;
-    float total_flex_grow = 0.0f;
-    uint32_t visible_count = 0;
-
-    for (uint32_t i = 0; i < container->child_count; i++) {
-        IRComponent* child = container->children[i];
-        if (!child->style || !child->style->visible) continue;
-
-        visible_count++;
-
-        float child_height = resolve_dimension(child->style->height, available_height);
-        if (child_height == 0.0f) {
-            child_height = ir_get_component_intrinsic_height(child);
-        }
-
-        // Apply max_height constraint before calculating total
-        if (child->layout && child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
-            if (child_height > child->layout->max_height.value) {
-                child_height = child->layout->max_height.value;
-            }
-        }
-
-        child_height += child->style->margin.top + child->style->margin.bottom;
-        total_height += child_height;
-
-        if (child->layout && child->layout->flex.grow > 0) {
-            total_flex_grow += child->layout->flex.grow;
-        }
-    }
-
-    // Add gaps
-    if (visible_count > 1) {
-        total_height += layout->flex.gap * (visible_count - 1);
-    }
-
-    // Second pass: distribute remaining space and position children
-    float remaining_height = available_height - total_height;
-    float current_y = style->padding.top;
-
-    // Apply main-axis alignment (justify_content) for column layout
-    if (remaining_height > 0 && total_flex_grow == 0 && visible_count > 0) {
-        switch (layout->flex.justify_content) {
-            case IR_ALIGNMENT_CENTER:
-                current_y += remaining_height / 2.0f;
-                break;
-            case IR_ALIGNMENT_END:
-                current_y += remaining_height;
-                break;
-            case IR_ALIGNMENT_SPACE_BETWEEN:
-                // Will be handled per-child below
-                break;
-            case IR_ALIGNMENT_SPACE_AROUND:
-                current_y += remaining_height / (visible_count * 2);
-                break;
-            case IR_ALIGNMENT_SPACE_EVENLY:
-                current_y += remaining_height / (visible_count + 1);
-                break;
-            default:
-                break;
-        }
-    }
-
-    // Calculate gap for space-between/around/evenly
-    float extra_gap = 0.0f;
-    if (remaining_height > 0 && total_flex_grow == 0 && visible_count > 1) {
-        switch (layout->flex.justify_content) {
-            case IR_ALIGNMENT_SPACE_BETWEEN:
-                extra_gap = remaining_height / (visible_count - 1);
-                break;
-            case IR_ALIGNMENT_SPACE_AROUND:
-                extra_gap = remaining_height / visible_count;
-                break;
-            case IR_ALIGNMENT_SPACE_EVENLY:
-                extra_gap = remaining_height / (visible_count + 1);
-                break;
-            default:
-                break;
-        }
-    }
-
-    for (uint32_t i = 0; i < container->child_count; i++) {
-        IRComponent* child = container->children[i];
-        if (!child->style || !child->style->visible) continue;
-
-        float child_height = resolve_dimension(child->style->height, available_height);
-        if (child_height == 0.0f) {
-            child_height = ir_get_component_intrinsic_height(child);
-        }
-
-        // Apply flex grow
-        if (remaining_height > 0 && total_flex_grow > 0 && child->layout && child->layout->flex.grow > 0) {
-            float extra = remaining_height * (child->layout->flex.grow / total_flex_grow);
-            child_height += extra;
-        }
-
-        float child_width = resolve_dimension(child->style->width, available_width);
-        if (child_width == 0.0f) {
-            child_width = ir_get_component_intrinsic_width(child);
-        }
-
-        // Apply max_width constraint BEFORE alignment calculation
-        if (child->layout && child->layout->max_width.type == IR_DIMENSION_PX && child->layout->max_width.value > 0) {
-            if (child_width > child->layout->max_width.value) {
-                child_width = child->layout->max_width.value;
-            }
-        }
-
-        // Apply cross-axis alignment (horizontal) using clamped width
-        float child_x = style->padding.left + child->style->margin.left;
-        if (layout->flex.cross_axis == IR_ALIGNMENT_CENTER) {
-            child_x += (available_width - child_width) / 2.0f;
-        } else if (layout->flex.cross_axis == IR_ALIGNMENT_END) {
-            child_x += available_width - child_width;
-        } else if (layout->flex.cross_axis == IR_ALIGNMENT_STRETCH) {
-            child_width = available_width - child->style->margin.left - child->style->margin.right;
-        }
-
-        // Apply max_height constraint
-        if (child->layout && child->layout->max_height.type == IR_DIMENSION_PX && child->layout->max_height.value > 0) {
-            if (child_height > child->layout->max_height.value) {
-                child_height = child->layout->max_height.value;
-            }
-        }
-
-        // Set child bounds - skip absolutely positioned children
-        if (child->style->position_mode == IR_POSITION_ABSOLUTE) {
-            // Use absolute position from style
-            child->rendered_bounds.x = child->style->absolute_x;
-            child->rendered_bounds.y = child->style->absolute_y;
-            child->rendered_bounds.width = child_width;
-            child->rendered_bounds.height = child_height;
-            child->rendered_bounds.valid = true;
-            // Don't add to current_y - absolute children are out of flow
-            continue;
-        }
-        child->rendered_bounds.x = child_x;
-        child->rendered_bounds.y = current_y + child->style->margin.top;
-        child->rendered_bounds.width = child_width;
-        child->rendered_bounds.height = child_height;
-        child->rendered_bounds.valid = true;
-
-        if (child->type == IR_COMPONENT_CHECKBOX) {
-            printf("[LAYOUT_CHECKBOX] ID=%u type=%d bounds=[%.1f, %.1f, %.1f, %.1f] valid=%d\n",
-                   child->id, child->type, child->rendered_bounds.x, child->rendered_bounds.y,
-                   child->rendered_bounds.width, child->rendered_bounds.height,
-                   child->rendered_bounds.valid);
-        }
-
         #ifdef KRYON_TRACE_LAYOUT
-        fprintf(stderr, "║ Child %u: bounds=[%.1f, %.1f, %.1f, %.1f] intrinsic_h=%.1f\n",
-            i, child->rendered_bounds.x, child->rendered_bounds.y,
-            child->rendered_bounds.width, child->rendered_bounds.height,
-            ir_get_component_intrinsic_height(child));
+        fprintf(stderr, "║ Child %u: bounds=[%.1f, %.1f, %.1f, %.1f] %s=%.1f\n",
+                i, child->rendered_bounds.x, child->rendered_bounds.y,
+                child->rendered_bounds.width, child->rendered_bounds.height,
+                is_row ? "intrinsic_w" : "intrinsic_h",
+                is_row ? ir_get_component_intrinsic_width(child) : ir_get_component_intrinsic_height(child));
         #endif
 
-        current_y += child_height + child->style->margin.bottom + layout->flex.gap + extra_gap;
+        // Advance to next position along main axis
+        float margin_after = is_row ?
+            child->style->margin.right : child->style->margin.bottom;
+        current_main += child_main + margin_after + layout->flex.gap + extra_gap;
+    }
+
+    // Update container's intrinsic size (main axis only)
+    if (is_row) {
+        container->layout_cache.cached_intrinsic_width = total_main;
+    } else {
+        container->layout_cache.cached_intrinsic_height = total_main;
     }
 
     #ifdef KRYON_TRACE_LAYOUT
-    fprintf(stderr, "║ Final current_y: %.1f (container height should be: %.1f with padding)\n",
-        current_y, current_y + style->padding.bottom);
-    fprintf(stderr, "╚═══════════════════════════════════════════════════════\n\n");
+    fprintf(stderr, "║ Container intrinsic size updated: %s=%.1f\n",
+            is_row ? "width" : "height", total_main);
     #endif
 }
+
+static void ir_layout_compute_row(IRComponent* container, float available_width, float available_height) {
+    ir_layout_compute_flex(container, available_width, available_height, LAYOUT_AXIS_ROW);
+}
+
+static void ir_layout_compute_column(IRComponent* container, float available_width, float available_height) {
+    ir_layout_compute_flex(container, available_width, available_height, LAYOUT_AXIS_COLUMN);
+}
+
 
 // CSS Grid Layout Implementation
 static void ir_layout_compute_grid(IRComponent* container, float available_width, float available_height) {

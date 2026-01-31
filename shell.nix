@@ -24,6 +24,10 @@ pkgs.mkShell {
     # Terminal rendering backend
     libtickit
 
+    # Tcl/Tk for Tcl/Tk backend
+    tcl
+    tk
+
     # TypeScript/JavaScript frontend support
     nodejs  # For npm compatibility if needed
 
@@ -104,6 +108,7 @@ pkgs.mkShell {
     echo "  Run KRY examples: ./cli/kryon run examples/kry/hello_world.kry"
     echo "  Run TypeScript examples: ./run_example.sh hello_world ts"
     echo "  Run web examples: ./run_example.sh hello_world ts web"
+    echo "  Run Tcl/Tk examples: ./cli/kryon run --target=tcltk examples/kry/hello_world.kry"
     echo "  Android: ./cli/kryon run --target=android examples/kry/hello_world.kry"
     echo ""
     echo "Android SDK: $ANDROID_HOME"
@@ -111,11 +116,12 @@ pkgs.mkShell {
     echo ""
     echo "Available frontends: kry, typescript (ts), c, hare"
     echo "Available renderers: sdl3, raylib, terminal, framebuffer"
-    echo "Available targets: web, desktop, android, limbo"
+    echo "Available targets: web, desktop, android, limbo, tcltk"
     echo ""
     echo "Desktop dependencies:"
     echo "  SDL3: $(pkg-config --modversion sdl3 2>/dev/null || echo 'not found')"
     echo "  HarfBuzz: $(pkg-config --modversion harfbuzz 2>/dev/null || echo 'not found')"
+    echo "  Tcl/Tk: $(echo ${pkgs.tcl.version} 2>/dev/null || echo 'available')"
     echo ""
   '';
 }

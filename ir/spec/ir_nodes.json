@@ -1,0 +1,58 @@
+{
+  "component_types": {
+    "Button": {
+      "type": "IR_COMPONENT_BUTTON",
+      "properties": [
+        {
+          "name": "text",
+          "type": "string",
+          "default": "",
+          "json_key": "text",
+          "nullable": true,
+          "accessor": "comp->text"
+        },
+        {
+          "name": "bg_color",
+          "type": "color",
+          "default": "#ffffff",
+          "json_key": "backgroundColor",
+          "accessor": "comp->style->bg_color"
+        },
+        {
+          "name": "text_color",
+          "type": "color",
+          "default": "#000000",
+          "json_key": "textColor",
+          "accessor": "comp->style->text_color"
+        },
+        {
+          "name": "padding",
+          "type": "dimension",
+          "default": "10px",
+          "json_key": "padding",
+          "accessor": "comp->style->padding"
+        }
+      ]
+    },
+    "Label": {
+      "type": "IR_COMPONENT_LABEL",
+      "properties": [
+        {
+          "name": "text",
+          "type": "string",
+          "default": "",
+          "json_key": "text",
+          "nullable": true,
+          "accessor": "comp->text"
+        },
+        {
+          "name": "text_color",
+          "type": "color",
+          "default": "#000000",
+          "json_key": "textColor",
+          "accessor": "comp->style->text_color"
+        }
+      ]
+    }
+  }
+}

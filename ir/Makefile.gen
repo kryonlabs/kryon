@@ -1,0 +1,20 @@
+# Generated Code Rules
+#
+# Add this to the main ir/Makefile to enable automatic code generation
+
+.PHONY: generate-serialization
+generate-serialization: spec/ir_nodes.json spec/generate_serialization.py
+	@echo "Generating serialization code from spec..."
+	python3 spec/generate_serialization.py spec/ir_nodes.json src/serialization
+
+# Generated files depend on the spec
+src/serialization/ir_json_serialize.gen.o: src/serialization/ir_json_serialize.gen.c
+src/serialization/ir_json_deserialize.gen.o: src/serialization/ir_json_deserialize.gen.c
+
+# Clean generated files
+.PHONY: clean-generated
+clean-generated:
+	rm -f src/serialization/ir_json_serialize.gen.c
+	rm -f src/serialization/ir_json_deserialize.gen.c
+	rm -f src/serialization/ir_json_serialize.gen.h
+	rm -f src/serialization/ir_json_deserialize.gen.h

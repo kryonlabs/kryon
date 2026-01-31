@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <sys/types.h>  // for pid_t
 
 // Version information
 #define KRYON_CLI_VERSION "2.0.0-alpha"
@@ -78,6 +79,7 @@ char* limbo_module_get_path(const char* module_alias);  // Get module PATH const
 
 int process_run(const char* cmd, char** output);
 int process_run_async(const char* cmd, void (*callback)(int status));
+pid_t process_launch_background(const char* cmd);  // Launch process in background, return PID
 
 // ============================================================================
 // JSON Utilities (cJSON wrapper)

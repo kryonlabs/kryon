@@ -28,6 +28,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 /* ============================================================================
  * Forward Declarations
@@ -463,39 +465,49 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config,
     if (capture_screenshot) {
 #if !defined(__TAIJIOS__) && !defined(__INFERNO__)
         // Launch emu in background so we can capture its window
-        // Add '&' to run in background
-        char bg_cmd[2304];
-        snprintf(bg_cmd, sizeof(bg_cmd), "%s &", cmd);
-
+        // Use process_launch_background to get the PID
         printf("Launching emulator in background for screenshot capture...\n");
-        int launch_result = system(bg_cmd);
+        pid_t emu_pid = process_launch_background(cmd);
 
-        // Give emulator time to start up
-        sleep(1);
+        if (emu_pid < 0) {
+            fprintf(stderr, "Error: Failed to launch emulator\n");
+            return 1;
+        }
 
-        // Capture screenshot using X11 window capture
+        printf("Emulator launched with PID: %d\n", emu_pid);
+
+        // No sleep needed - capture_emulator_window() will wait for new window to appear
+
+        // Capture screenshot with PID
         printf("Capturing screenshot to: %s\n", screenshot_opts->screenshot_path);
 
         ScreenshotOptions ss_opts = SCREENSHOT_DEFAULTS;
         ss_opts.output_path = screenshot_opts->screenshot_path;
         ss_opts.after_frames = screenshot_opts->screenshot_after_frames;
-        // Let capture_emulator_window try multiple window titles automatically
-        ss_opts.window_title = NULL;  // NULL = try "Inferno", then "TaijiOS"
+        ss_opts.expected_pid = emu_pid;  // Pass PID for precise window selection
+        ss_opts.window_title = project_name;  // Pass program name for unique identification
 
         bool screenshot_ok = capture_emulator_window(&ss_opts);
 
-        if (!screenshot_ok) {
-            fprintf(stderr, "Warning: Screenshot capture failed\n");
-        }
-
-        // Wait a bit more then check if emulator is still running
+        // Cleanup: terminate emulator
+        printf("Cleaning up emulator process...\n");
+        kill(emu_pid, SIGTERM);
         sleep(1);
 
-        // We can't easily wait for the background process since we used system()
-        // User can close the emulator window manually
-        printf("\nScreenshot captured. Close the emulator window when done.\n");
+        // Check if process is still running
+        if (waitpid(emu_pid, NULL, WNOHANG) == 0) {
+            // Process still running, force kill
+            kill(emu_pid, SIGKILL);
+            waitpid(emu_pid, NULL, 0);
+        }
 
-        return launch_result;
+        if (!screenshot_ok) {
+            fprintf(stderr, "Error: Screenshot capture failed\n");
+            return 1;  // HARD ERROR
+        }
+
+        printf("✓ Screenshot captured successfully\n");
+        return 0;
 #else
         // Screenshot capture not supported on TaijiOS/Inferno
         fprintf(stderr, "Error: Screenshot capture is not supported on this platform\n");

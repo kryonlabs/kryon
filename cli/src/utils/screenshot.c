@@ -12,9 +12,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdint.h>  // For uint8_t
 #include <unistd.h>
 #include <time.h>
 #include <ctype.h>
+#include <signal.h>  // For kill()
 
 /* X11 headers */
 #include <X11/Xlib.h>
@@ -28,6 +31,11 @@
 /* ============================================================================
  * X11 Window Finding
  * ============================================================================ */
+
+/**
+ * Forward declarations
+ */
+static bool title_matches_pattern(const char* title, const char* pattern);
 
 /**
  * Get window title using _NET_WM_NAME or WM_NAME
@@ -85,10 +93,8 @@ static pid_t get_window_pid(Display* display, Window window) {
                           XA_CARDINAL, &actual_type, &actual_format,
                           &nitems, &bytes_after, &prop) == Success) {
         if (prop && nitems > 0) {
-            pid = prop[0] & 0xff;
-            pid |= (prop[1] & 0xff) << 8;
-            pid |= (prop[2] & 0xff) << 16;
-            pid |= (prop[3] & 0xff) << 24;
+            // CORRECT: Read as native 32-bit integer (CARDINAL is in native byte order)
+            pid = *(pid_t*)prop;
         }
         if (prop) XFree(prop);
     }
@@ -237,6 +243,163 @@ static void reset_candidates(void) {
     candidate_list.candidates = NULL;
     candidate_list.count = 0;
     candidate_list.capacity = 0;
+}
+
+/* ============================================================================
+ * Window List Management (for Delta Tracking)
+ * ============================================================================ */
+
+/**
+ * Simple list of Window IDs for delta tracking
+ */
+typedef struct {
+    Window* windows;
+    int count;
+    int capacity;
+} WindowList;
+
+/**
+ * Helper struct for recursion in get_windows_matching_pattern
+ */
+typedef struct {
+    Display* display;
+    const char* pattern;
+    WindowList* list;
+} CollectContext;
+
+/**
+ * Recursive collection function - forward declaration
+ */
+static void collect_windows_recursive(Window window, CollectContext* ctx);
+
+/**
+ * Recursive collection function
+ */
+static void collect_windows_recursive(Window window, CollectContext* ctx) {
+    Window parent;
+    Window* children;
+    unsigned int nchildren;
+
+    // Check if this window matches
+    char* title = get_window_title(ctx->display, window);
+    if (title && title_matches_pattern(title, ctx->pattern)) {
+        if (is_window_visible(ctx->display, window)) {
+            // Add to list
+            if (ctx->list->count >= ctx->list->capacity) {
+                int new_capacity = ctx->list->capacity * 2;
+                Window* new_windows = realloc(ctx->list->windows,
+                                               sizeof(Window) * new_capacity);
+                if (!new_windows) {
+                    free(title);
+                    return;
+                }
+                ctx->list->windows = new_windows;
+                ctx->list->capacity = new_capacity;
+            }
+            ctx->list->windows[ctx->list->count++] = window;
+        }
+    }
+    if (title) free(title);
+
+    // Recurse into children
+    if (XQueryTree(ctx->display, window, &window, &parent, &children, &nchildren) == 0) {
+        return;
+    }
+
+    for (unsigned int i = 0; i < nchildren; i++) {
+        collect_windows_recursive(children[i], ctx);
+    }
+
+    if (children) XFree(children);
+}
+
+/**
+ * Create a window list by collecting all windows matching a pattern
+ */
+static WindowList get_windows_matching_pattern(Display* display, Window root,
+                                               const char* pattern) {
+    WindowList list = {0};
+    list.capacity = 16;
+    list.windows = malloc(sizeof(Window) * list.capacity);
+    if (!list.windows) {
+        fprintf(stderr, "Error: Failed to allocate memory for window list\n");
+        return list;
+    }
+
+    // Collect all matching windows
+    CollectContext ctx = {display, pattern, &list};
+    collect_windows_recursive(root, &ctx);
+
+    return list;
+}
+
+/**
+ * Free a window list
+ */
+static void free_window_list(WindowList* list) {
+    if (list->windows) {
+        free(list->windows);
+        list->windows = NULL;
+    }
+    list->count = list->capacity = 0;
+}
+
+/**
+ * Wait for emulator window and select the appropriate one
+ *
+ * The TaijiOS/Inferno emulator reuses existing windows, so we can't rely on
+ * delta tracking. Instead, we wait for the emulator to start and then select
+ * the last matching window (most recently active in X11 window stack).
+ *
+ * @param display X11 display connection
+ * @param root Root window
+ * @param pattern Window title pattern to match (e.g., "Inferno")
+ * @param timeout_ms Maximum time to wait in milliseconds
+ * @return Window ID to capture, or None if no suitable window found
+ */
+static Window wait_for_new_window(Display* display, Window root,
+                                  const char* pattern,
+                                  int timeout_ms) {
+    // Wait for emulator to start/reuse window
+    const int poll_interval_ms = 500;
+    int elapsed = 0;
+
+    printf("  Waiting for emulator window to stabilize...\n");
+
+    while (elapsed < timeout_ms) {
+        usleep(poll_interval_ms * 1000);
+        elapsed += poll_interval_ms;
+
+        WindowList windows = get_windows_matching_pattern(display, root, pattern);
+
+        // Debug: show window count
+        if (elapsed % 1000 == 0 && elapsed > 0) {
+            printf("  [DEBUG] Poll: %d ms, found %d '%s' window(s)\n",
+                   elapsed, windows.count, pattern);
+        }
+
+        free_window_list(&windows);
+
+        // Progress indicator
+        if (elapsed % 1000 == 0 && elapsed > 0) {
+            printf("  Waiting... (%d/%d ms)\n", elapsed, timeout_ms);
+        }
+    }
+
+    // Get current window list and use the last one (most recently active)
+    WindowList current = get_windows_matching_pattern(display, root, pattern);
+    Window target_window = None;
+
+    if (current.count > 0) {
+        // Use the last window (most recently created/active in X11 window stack)
+        target_window = current.windows[current.count - 1];
+        printf("  ✓ Using window (last of %d '%s' windows)\n", current.count, pattern);
+    } else {
+        printf("  ✗ No '%s' windows found\n", pattern);
+    }
+
+    free_window_list(&current);
+    return target_window;
 }
 
 /**
@@ -585,6 +748,20 @@ bool capture_window_when_ready(const char* title_pattern, const char* output_pat
  * ============================================================================ */
 
 /**
+ * Validate that a PID represents an active process
+ *
+ * Uses kill(pid, 0) which doesn't actually send a signal but
+ * performs error checking to determine if the process exists.
+ *
+ * @param pid Process ID to validate
+ * @return true if process exists, false otherwise
+ */
+static bool validate_pid(pid_t pid) {
+    if (pid <= 0) return false;
+    return (kill(pid, 0) == 0);
+}
+
+/**
  * Parse environment variables for screenshot options
  */
 void screenshot_parse_env_vars(ScreenshotOptions* options) {
@@ -607,7 +784,8 @@ void screenshot_parse_env_vars(ScreenshotOptions* options) {
 
 /**
  * Capture TaijiOS/Inferno emulator window screenshot (high-level)
- * Tries multiple window titles to find the correct emulator window
+ * Uses PID-based window selection when PID is provided, otherwise
+ * falls back to title-based search with multiple window titles
  */
 bool capture_emulator_window(const ScreenshotOptions* options) {
     if (!options || !options->output_path) {
@@ -615,14 +793,104 @@ bool capture_emulator_window(const ScreenshotOptions* options) {
         return false;
     }
 
-    // Try multiple window titles in order of likelihood
-    // The TaijiOS/Inferno emulator can have different window titles
+    // Open X11 display once for all attempts
+    Display* display = XOpenDisplay(NULL);
+    if (!display) {
+        fprintf(stderr, "Error: Cannot open X11 display (is DISPLAY set?)\n");
+        return false;
+    }
+    Window root = DefaultRootWindow(display);
+
+    bool success = false;
+
+    // STRATEGY 1: PID-based window selection (most precise)
+    if (options->expected_pid > 0) {
+        printf("Looking for window with PID: %d\n", options->expected_pid);
+
+        // Validate that PID is still running
+        if (!validate_pid(options->expected_pid)) {
+            fprintf(stderr, "Error: Expected PID %d is not a valid process (may have exited)\n",
+                    options->expected_pid);
+            XCloseDisplay(display);
+            return false;
+        }
+
+        // Wait for window to appear with PID match (QUICK attempt)
+        const int poll_interval_ms = 100;
+        int elapsed = 0;
+        int timeout_ms = 2000;  // Only wait 2 seconds for PID match (quick attempt)
+        Window window = None;
+
+        printf("Quick PID search (timeout: %d ms)...\n", timeout_ms);
+
+        while (elapsed < timeout_ms) {
+            window = find_x11_window_by_pid(display, root, options->expected_pid);
+            if (window != None) {
+                printf("✓ Found window by PID after %d ms\n", elapsed);
+                break;
+            }
+
+            if (elapsed % 500 == 0 && elapsed > 0) {
+                printf("  PID search: %d/%d ms\n", elapsed, timeout_ms);
+            }
+
+            usleep(poll_interval_ms * 1000);
+            elapsed += poll_interval_ms;
+        }
+
+        // If PID match failed, use window delta tracking to find the newly launched emulator
+        // (Window might be created by child process with different PID)
+        if (window == None) {
+            printf("Note: PID search failed (window may lack _NET_WM_PID property)\n");
+            printf("  Using window delta tracking to find newly launched emulator...\n");
+
+            const char* pattern = "Inferno";  // Search for Inferno windows
+            const int timeout_ms = 5000;       // Wait up to 5 seconds
+
+            window = wait_for_new_window(display, root, pattern, timeout_ms);
+
+            if (window == None) {
+                fprintf(stderr, "Error: No new window appeared after %d ms\n", timeout_ms);
+                XCloseDisplay(display);
+                return false;
+            }
+
+            // Get window title for debug output
+            char* title = get_window_title(display, window);
+            if (title) {
+                printf("  ✓ Capturing new window: '%s'\n", title);
+                free(title);
+            }
+        }
+
+        printf("✓ Found window for screenshot\n");
+
+        // Wait a bit for window to fully render
+        if (options->after_frames > 0) {
+            int wait_ms = (options->after_frames * 1000) / 60;
+            printf("Waiting %d ms for frame rendering...\n", wait_ms);
+            usleep(wait_ms * 1000);
+        } else {
+            usleep(500 * 1000);  // Default 500ms
+        }
+
+        // Capture screenshot
+        success = capture_x11_window_to_png(display, window, options->output_path);
+        XCloseDisplay(display);
+        return success;
+    }
+
+    // STRATEGY 2: Title-based window selection (fallback when PID == 0)
+    printf("Notice: No PID provided, using title-based window selection\n");
+    printf("  (This may select the wrong window if multiple emulators are running)\n");
+
     const char* window_titles[] = {"Inferno", "TaijiOS", NULL};
     const char* custom_title = options->window_title;
 
     // If custom title is specified, only try that one
     if (custom_title) {
         printf("Looking for window: %s\n", custom_title);
+        XCloseDisplay(display);
         return capture_window_when_ready(custom_title, options->output_path, options->timeout_ms);
     }
 
@@ -639,6 +907,7 @@ bool capture_emulator_window(const ScreenshotOptions* options) {
         }
 
         if (capture_window_when_ready(window_titles[i], options->output_path, timeout_ms)) {
+            XCloseDisplay(display);
             return true; // Successfully captured
         }
 
@@ -648,5 +917,6 @@ bool capture_emulator_window(const ScreenshotOptions* options) {
 
     // All titles failed
     fprintf(stderr, "Error: No emulator window found (tried 'Inferno' and 'TaijiOS')\n");
+    XCloseDisplay(display);
     return false;
 }

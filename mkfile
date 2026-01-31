@@ -48,7 +48,7 @@ dis:V: ir
 cli:V: ir codegens dis
 	echo "Building CLI tool..."
 	(cd cli && mk install)
-	echo "✓ CLI tool built and installed to $ROOT/$OBJDIR/bin/kryon"
+	echo "✓ CLI tool built and installed to $ROOT/platforms/$OBJDIR/bin/kryon"
 
 # Clean all build artifacts
 clean:V:
@@ -62,7 +62,7 @@ clean:V:
 
 # Install (already done by component installs, but provided for completeness)
 install:V: all
-	echo "✓ Kryon installed to $ROOT/$OBJDIR/bin/kryon"
+	echo "✓ Kryon installed to $ROOT/platforms/$OBJDIR/bin/kryon"
 
 # Nuke everything (including installed files)
 nuke:V:
@@ -72,7 +72,7 @@ nuke:V:
 	cd codegens && mk nuke
 	cd dis && mk nuke
 	cd cli && mk nuke
-	rm -f $ROOT/$OBJDIR/bin/kryon
+	rm -f $ROOT/platforms/$OBJDIR/bin/kryon
 	echo "✓ Nuke complete"
 
 # Help target
@@ -82,7 +82,7 @@ help:V:
 	echo 'Targets:'
 	echo '  mk              - Build all components (third-party → IR → codegens → DIS → CLI)'
 	echo '  mk clean        - Clean all build artifacts'
-	echo '  mk install      - Install kryon to $ROOT/$OBJDIR/bin'
+	echo '  mk install      - Install kryon to $ROOT/platforms/$OBJDIR/bin'
 	echo '  mk nuke         - Remove all generated files including installed binary'
 	echo ''
 	echo 'Individual components:'

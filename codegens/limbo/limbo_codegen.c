@@ -55,9 +55,8 @@ typedef struct {
     cJSON* source_structures;   // Source structures for const resolution
     bool cmd_declared_in_loop;  // Track if cmd variable is declared in current for loop scope
 
-    // Handler deduplication tracking
-    char* generated_handlers[256];     // Names of already-generated handlers
-    int generated_handler_count;       // Number of handlers generated
+    // Handler deduplication tracking (using shared utility from codegen_common.h)
+    CodegenHandlerTracker* handler_tracker;
 } LimboContext;
 
 // Initialize Limbo context
@@ -91,7 +90,15 @@ static LimboContext* create_limbo_context(LimboCodegenOptions* options) {
     ctx->widget_counter = 0;
     ctx->event_handler_counter = 0;
     ctx->indent = 0;
-    ctx->generated_handler_count = 0;
+
+    // Create handler tracker
+    ctx->handler_tracker = codegen_handler_tracker_create();
+    if (!ctx->handler_tracker) {
+        free(ctx->buffer);
+        free(ctx);
+        return NULL;
+    }
+
     ctx->cmd_declared_in_loop = false;
 
     return ctx;
@@ -101,35 +108,23 @@ static LimboContext* create_limbo_context(LimboCodegenOptions* options) {
 static void destroy_limbo_context(LimboContext* ctx) {
     if (!ctx) return;
     free(ctx->buffer);
-    // Free handler tracking
-    for (int i = 0; i < ctx->generated_handler_count; i++) {
-        if (ctx->generated_handlers[i]) {
-            free(ctx->generated_handlers[i]);
-        }
+    // Free handler tracking (using shared utility)
+    if (ctx->handler_tracker) {
+        codegen_handler_tracker_free(ctx->handler_tracker);
     }
     free(ctx);
 }
 
-// Check if handler was already generated
+// Check if handler was already generated (using shared utility)
 static bool is_handler_already_generated(LimboContext* ctx, const char* handler_name) {
-    if (!ctx || !handler_name) return false;
-
-    for (int i = 0; i < ctx->generated_handler_count; i++) {
-        if (ctx->generated_handlers[i] &&
-            strcmp(ctx->generated_handlers[i], handler_name) == 0) {
-            return true;
-        }
-    }
-    return false;
+    if (!ctx || !ctx->handler_tracker || !handler_name) return false;
+    return codegen_handler_tracker_contains(ctx->handler_tracker, handler_name);
 }
 
-// Mark handler as generated
+// Mark handler as generated (using shared utility)
 static void mark_handler_generated(LimboContext* ctx, const char* handler_name) {
-    if (!ctx || !handler_name || ctx->generated_handler_count >= 256) {
-        return;
-    }
-
-    ctx->generated_handlers[ctx->generated_handler_count++] = strdup(handler_name);
+    if (!ctx || !ctx->handler_tracker || !handler_name) return;
+    codegen_handler_tracker_mark(ctx->handler_tracker, handler_name);
 }
 
 // Event handler storage with inline code
@@ -239,26 +234,160 @@ static char* extract_module_name(const char* filename) {
     return name;
 }
 
-// Map KIR element type to Tk widget type
-static const char* map_element_to_tk_widget(const char* element_type) {
-    if (!element_type) return "frame";
+// Layout properties for flexbox containers
+typedef struct {
+    const char* justify_content;  // "start", "center", "end", "space-between", "space-around", "space-evenly"
+    const char* align_items;      // "start", "center", "end", "stretch"
+    int gap;                      // gap in pixels
+    int padding;                  // padding in pixels
+} LayoutProperties;
 
-    if (strcmp(element_type, "Container") == 0) return "frame";
-    if (strcmp(element_type, "Button") == 0) return "button";
-    if (strcmp(element_type, "Text") == 0) return "label";
-    if (strcmp(element_type, "Label") == 0) return "label";
-    if (strcmp(element_type, "Input") == 0) return "entry";
-    if (strcmp(element_type, "TextInput") == 0) return "entry";
-    if (strcmp(element_type, "Image") == 0) return "label";  // Use label with image
-    if (strcmp(element_type, "Checkbox") == 0) return "checkbutton";
-    if (strcmp(element_type, "Radio") == 0) return "radiobutton";
-    if (strcmp(element_type, "Canvas") == 0) return "canvas";
-    if (strcmp(element_type, "ListBox") == 0) return "listbox";
-    if (strcmp(element_type, "Menu") == 0) return "menu";
-    if (strcmp(element_type, "Frame") == 0) return "frame";
+// Extract layout properties from component JSON
+static LayoutProperties extract_layout_properties(cJSON* component) {
+    LayoutProperties props = {0};
 
-    return "frame";  // Default fallback
+    if (!component) return props;
+
+    // Extract justifyContent
+    cJSON* justify = cJSON_GetObjectItem(component, "justifyContent");
+    if (justify && cJSON_IsString(justify)) {
+        props.justify_content = justify->valuestring;
+    }
+
+    // Extract alignItems
+    cJSON* align = cJSON_GetObjectItem(component, "alignItems");
+    if (align && cJSON_IsString(align)) {
+        props.align_items = align->valuestring;
+    }
+
+    // Extract gap
+    cJSON* gap = cJSON_GetObjectItem(component, "gap");
+    if (gap && cJSON_IsNumber(gap)) {
+        props.gap = gap->valueint;
+    }
+
+    // Extract padding
+    cJSON* padding = cJSON_GetObjectItem(component, "padding");
+    if (padding && cJSON_IsNumber(padding)) {
+        props.padding = padding->valueint;
+    }
+
+    return props;
 }
+
+// Extract layout properties from property_bindings (for For loop templates)
+static LayoutProperties extract_layout_from_bindings(cJSON* component) {
+    LayoutProperties props = {0};
+
+    if (!component) return props;
+
+    // Check for property_bindings first (for static for loops)
+    cJSON* bindings = cJSON_GetObjectItem(component, "property_bindings");
+    if (bindings) {
+        cJSON* justify_binding = cJSON_GetObjectItem(bindings, "justifyContent");
+        if (justify_binding) {
+            cJSON* source = cJSON_GetObjectItem(justify_binding, "source_expr");
+            if (source && cJSON_IsString(source)) {
+                props.justify_content = source->valuestring;
+            }
+        }
+
+        cJSON* align_binding = cJSON_GetObjectItem(bindings, "alignItems");
+        if (align_binding) {
+            cJSON* source = cJSON_GetObjectItem(align_binding, "source_expr");
+            if (source && cJSON_IsString(source)) {
+                props.align_items = source->valuestring;
+            }
+        }
+
+        cJSON* gap_binding = cJSON_GetObjectItem(bindings, "gap");
+        if (gap_binding) {
+            cJSON* source = cJSON_GetObjectItem(gap_binding, "source_expr");
+            if (source && cJSON_IsString(source)) {
+                // Try to parse as number
+                props.gap = atoi(source->valuestring);
+            }
+        }
+    }
+
+    // Fallback to direct properties if not found in bindings
+    if (!props.justify_content) {
+        cJSON* justify = cJSON_GetObjectItem(component, "justifyContent");
+        if (justify && cJSON_IsString(justify)) {
+            props.justify_content = justify->valuestring;
+        }
+    }
+
+    if (!props.align_items) {
+        cJSON* align = cJSON_GetObjectItem(component, "alignItems");
+        if (align && cJSON_IsString(align)) {
+            props.align_items = align->valuestring;
+        }
+    }
+
+    if (props.gap == 0) {
+        cJSON* gap = cJSON_GetObjectItem(component, "gap");
+        if (gap && cJSON_IsNumber(gap)) {
+            props.gap = gap->valueint;
+        }
+    }
+
+    if (props.padding == 0) {
+        cJSON* padding = cJSON_GetObjectItem(component, "padding");
+        if (padding && cJSON_IsNumber(padding)) {
+            props.padding = padding->valueint;
+        }
+    }
+
+    return props;
+}
+
+// Normalize alignment values (flex-start -> start, flex-end -> end)
+static const char* normalize_alignment_value(const char* align) {
+    if (!align) return NULL;
+
+    if (strcmp(align, "flex-start") == 0) return "start";
+    if (strcmp(align, "flex-end") == 0) return "end";
+    return align;
+}
+
+// Convert CSS alignment to Tk horizontal anchor
+static const char* alignment_to_anchor_x(const char* align) {
+    if (!align) return "";
+
+    align = normalize_alignment_value(align);
+
+    if (strcmp(align, "center") == 0) return "center";
+    if (strcmp(align, "end") == 0) return "e";
+    if (strcmp(align, "start") == 0) return "w";
+    return "";  // default
+}
+
+// Convert CSS alignment to Tk vertical anchor
+static const char* alignment_to_anchor_y(const char* align) {
+    if (!align) return "";
+
+    align = normalize_alignment_value(align);
+
+    if (strcmp(align, "center") == 0) return "center";
+    if (strcmp(align, "end") == 0) return "s";
+    if (strcmp(align, "start") == 0) return "n";
+    return "";  // default
+}
+
+// Check if alignment requires expand flag
+static bool needs_expand_for_alignment(const char* align) {
+    if (!align) return false;
+
+    align = normalize_alignment_value(align);
+
+    return (strcmp(align, "center") == 0 ||
+            strcmp(align, "end") == 0 ||
+            strcmp(align, "stretch") == 0);
+}
+
+// Note: codegen_map_kir_to_tk_widget() now uses codegen_map_kir_to_tk_widget() from codegen_common.h
+// This provides consistent widget mapping across all Tk-based codegens
 
 // Generate widget path name
 static void generate_widget_path(char* buffer, size_t buffer_size, int widget_id, const char* parent_path) {
@@ -269,11 +398,7 @@ static void generate_widget_path(char* buffer, size_t buffer_size, int widget_id
     }
 }
 
-// Parse size value (e.g., "200.0px" → 200)
-static int parse_size_value(const char* value) {
-    if (!value) return 0;
-    return (int)atof(value);  // Extracts number, ignores "px"
-}
+// Note: codegen_parse_size_value() now uses codegen_codegen_parse_size_value() from codegen_common.h
 
 // Convert hex color to TK color name or keep simple colors
 static const char* convert_to_tk_color(const char* hex_color) {
@@ -299,6 +424,89 @@ static const char* convert_to_tk_color(const char* hex_color) {
     return hex_color;
 }
 
+// Apply Row layout (horizontal) to pack command
+static void apply_row_layout(LimboContext* ctx, LayoutProperties* props,
+                             int child_index, int total_children) {
+    // Base: -side left for row
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -side left\"");
+
+    // Add gap as padx between items
+    if (props->gap > 0) {
+        // For rows, add horizontal padding (gap on left side, except first item)
+        // child_index < 0 means runtime loop where we can't track - add gap to all
+        if (child_index < 0 || child_index > 0) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -padx %d\"", props->gap);
+        }
+    }
+
+    // Handle alignItems (cross-axis alignment for rows = vertical)
+    if (props->align_items) {
+        const char* anchor = alignment_to_anchor_y(props->align_items);
+        if (strlen(anchor) > 0) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -anchor %s\"", anchor);
+        } else if (strcmp(props->align_items, "stretch") == 0) {
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -fill y\"");
+        }
+        // start is default
+    }
+}
+
+// Apply Column layout (vertical) to pack command
+static void apply_column_layout(LimboContext* ctx, LayoutProperties* props,
+                                int child_index, int total_children) {
+    // Base: default pack (vertical stacking)
+
+    // Handle justifyContent (main-axis alignment for columns = vertical)
+    if (props->justify_content) {
+        const char* justify = normalize_alignment_value(props->justify_content);
+
+        if (strcmp(justify, "center") == 0) {
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -expand 1 -anchor center\"");
+        } else if (strcmp(justify, "end") == 0) {
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -expand 1 -anchor s\"");
+        } else if (strcmp(justify, "space-between") == 0) {
+            // Add gap, only between items
+            if (child_index > 0 && props->gap > 0) {
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -pady %d\"", props->gap);
+            }
+        } else if (strcmp(justify, "space-around") == 0) {
+            // Half gap before first, full gap between, half after last
+            int pady = (child_index == 0 || child_index == total_children - 1) ?
+                       (props->gap > 0 ? props->gap / 2 : 0) : props->gap;
+            if (pady > 0) {
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -pady %d\"", pady);
+            }
+        } else if (strcmp(justify, "space-evenly") == 0) {
+            // Full gap everywhere
+            if (props->gap > 0) {
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -pady %d\"", props->gap);
+            }
+        }
+        // start is default (no special options)
+    }
+
+    // Add gap if not handled by space-* alignments
+    if (props->gap > 0 && (!props->justify_content ||
+        (strcmp(props->justify_content, "space-between") != 0 &&
+         strcmp(props->justify_content, "space-around") != 0 &&
+         strcmp(props->justify_content, "space-evenly") != 0))) {
+        if (child_index > 0) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -pady %d\"", props->gap);
+        }
+    }
+
+    // Handle alignItems (cross-axis alignment for columns = horizontal)
+    if (props->align_items) {
+        const char* anchor = alignment_to_anchor_x(props->align_items);
+        if (strlen(anchor) > 0) {
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -anchor %s\"", anchor);
+        } else if (strcmp(props->align_items, "stretch") == 0) {
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -fill x\"");
+        }
+        // start is default
+    }
+}
+
 // Generate Tk options from KIR properties
 static void generate_tk_options(LimboContext* ctx, cJSON* component, const char* parent_bg) {
     if (!component) return;
@@ -318,7 +526,7 @@ static void generate_tk_options(LimboContext* ctx, cJSON* component, const char*
                 // Skip setting width for percentage values - let widget expand
                 // In Tk, pack geometry manager will handle sizing
             } else {
-                int w = parse_size_value(width->valuestring);
+                int w = codegen_parse_size_value(width->valuestring);
                 if (w > 0) {
                     append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -width %d", w);
                 }
@@ -336,7 +544,7 @@ static void generate_tk_options(LimboContext* ctx, cJSON* component, const char*
             if (strstr(height->valuestring, "%")) {
                 // Skip setting height for percentage values - let widget expand
             } else {
-                int h = parse_size_value(height->valuestring);
+                int h = codegen_parse_size_value(height->valuestring);
                 if (h > 0) {
                     append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -height %d", h);
                 }
@@ -409,12 +617,12 @@ static void generate_tk_options(LimboContext* ctx, cJSON* component, const char*
 }
 
 // Forward declarations - ALL must be before first use
-static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type);
-static void generate_for_loop_runtime(LimboContext* ctx, cJSON* for_comp, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, cJSON* source_structures);
-static bool process_component_with_bindings(LimboContext* ctx, cJSON* comp, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, const char* item_name, cJSON* data_item);
-static bool generate_widget_with_bindings(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, const char* item_name, cJSON* data_item);
+static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, LayoutProperties* parent_layout);
+static void generate_for_loop_runtime(LimboContext* ctx, cJSON* for_comp, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, LayoutProperties* parent_layout, cJSON* source_structures);
+static bool process_component_with_bindings(LimboContext* ctx, cJSON* comp, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, const char* item_name, cJSON* data_item, LayoutProperties* parent_layout);
+static bool generate_widget_with_bindings(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, const char* item_name, cJSON* data_item, LayoutProperties* parent_layout, int child_index, int total_children);
 static void generate_tk_options_with_bindings(LimboContext* ctx, cJSON* component, const char* parent_bg, const char* item_name, cJSON* data_item);
-static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type);
+static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, LayoutProperties* parent_layout, int child_index, int total_children);
 static cJSON* resolve_for_source_data(cJSON* for_def, cJSON* source_structures);
 
 // Resolve For loop source data from source_structures
@@ -477,12 +685,14 @@ static void generate_data_arrays(LimboContext* ctx, cJSON* source_structures);
 static void generate_for_loop_runtime(LimboContext* ctx, cJSON* for_comp,
                                       const char* parent_path, int depth,
                                       const char* parent_bg, const char* parent_type,
+                                      LayoutProperties* parent_layout,
                                       cJSON* source_structures);
 static void generate_template_with_runtime_bindings(LimboContext* ctx, cJSON* template,
                                                     int depth, const char* parent_bg,
                                                     const char* parent_type,
                                                     const char* array_base_name,
-                                                    const char* parent_path_expr);
+                                                    const char* parent_path_expr,
+                                                    LayoutProperties* parent_layout);
 static const char* convert_binding_to_array_access(const char* expr, const char* array_base_name,
                                                     char* buffer, size_t buffer_size);
 
@@ -648,14 +858,15 @@ static void generate_template_with_runtime_bindings(LimboContext* ctx, cJSON* te
                                                     int depth, const char* parent_bg,
                                                     const char* parent_type,
                                                     const char* array_base_name,
-                                                    const char* parent_path_expr) {
+                                                    const char* parent_path_expr,
+                                                    LayoutProperties* parent_layout) {
     if (!template) return;
 
     cJSON* type = cJSON_GetObjectItem(template, "type");
     if (!type || !cJSON_IsString(type)) return;
 
     const char* widget_type = type->valuestring;
-    const char* tk_widget = map_element_to_tk_widget(widget_type);
+    const char* tk_widget = codegen_map_kir_to_tk_widget(widget_type);
 
     // Indentation
     for (int i = 0; i < depth; i++) {
@@ -724,7 +935,7 @@ static void generate_template_with_runtime_bindings(LimboContext* ctx, cJSON* te
         if (cJSON_IsString(width)) {
             // Skip percentage values - let widget expand
             if (!strstr(width->valuestring, "%")) {
-                int w = parse_size_value(width->valuestring);
+                int w = codegen_parse_size_value(width->valuestring);
                 if (w > 0) {
                     options_len += snprintf(options + options_len, sizeof(options) - options_len,
                                           " -width %d", w);
@@ -740,7 +951,7 @@ static void generate_template_with_runtime_bindings(LimboContext* ctx, cJSON* te
         if (cJSON_IsString(height)) {
             // Skip percentage values - let widget expand
             if (!strstr(height->valuestring, "%")) {
-                int h = parse_size_value(height->valuestring);
+                int h = codegen_parse_size_value(height->valuestring);
                 if (h > 0) {
                     options_len += snprintf(options + options_len, sizeof(options) - options_len,
                                           " -height %d", h);
@@ -841,8 +1052,10 @@ static void generate_template_with_runtime_bindings(LimboContext* ctx, cJSON* te
         cJSON* child = NULL;
         cJSON_ArrayForEach(child, children) {
             // Pass current widget's path so children become descendants, not siblings
+            // Extract layout from this template for children
+            LayoutProperties child_layout = extract_layout_from_bindings(template);
             generate_template_with_runtime_bindings(ctx, child, depth, parent_bg,
-                                                   widget_type, array_base_name, widget_var_name);
+                                                   widget_type, array_base_name, widget_var_name, &child_layout);
         }
     }
 
@@ -854,13 +1067,25 @@ static void generate_template_with_runtime_bindings(LimboContext* ctx, cJSON* te
     bool has_explicit_size = (width != NULL) || (height != NULL);
     bool parent_is_center = (parent_type && strcmp(parent_type, "Center") == 0);
     bool parent_is_row = (parent_type && strcmp(parent_type, "Row") == 0);
+    bool parent_is_column = (parent_type && strcmp(parent_type, "Column") == 0);
 
     // Generate pack command using cmd variable (Limbo doesn't support concatenation in function args)
     // Use = if cmd already declared, := otherwise
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity,
                  ctx->cmd_declared_in_loop ? "cmd = \"pack \" + " : "cmd := \"pack \" + ");
 
-    if (depth == 2) {
+    // Use layout-aware packing FIRST (before other checks) if parent has layout properties
+    if (parent_layout && parent_is_row) {
+        // Row layout - for runtime loops use child_index=-1 to add gap
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s", widget_var_name);
+        apply_row_layout(ctx, parent_layout, -1, 0);
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\";\n");
+    } else if (parent_layout && parent_is_column) {
+        // Column layout
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s", widget_var_name);
+        apply_column_layout(ctx, parent_layout, -1, 0);
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\";\n");
+    } else if (depth == 2) {
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s + \" -fill both -expand 1\";\n", widget_var_name);
     } else if (parent_is_row) {
         // Widget inside Row - pack left-to-right with -side left
@@ -893,6 +1118,7 @@ static void generate_template_with_runtime_bindings(LimboContext* ctx, cJSON* te
 static void generate_for_loop_runtime(LimboContext* ctx, cJSON* for_comp,
                                       const char* parent_path, int depth,
                                       const char* parent_bg, const char* parent_type,
+                                      LayoutProperties* parent_layout,
                                       cJSON* source_structures) {
     // Extract For definition
     cJSON* for_def = cJSON_GetObjectItem(for_comp, "for");
@@ -950,7 +1176,7 @@ static void generate_for_loop_runtime(LimboContext* ctx, cJSON* for_comp,
     // Generate template widgets with runtime bindings
     // Pass parent_path as the parent_expr so root widgets are direct children
     generate_template_with_runtime_bindings(ctx, template, depth + 1,
-                                            parent_bg, parent_type, array_name, parent_path);
+                                            parent_bg, parent_type, array_name, parent_path, parent_layout);
 
     // Close the loop
     for (int i = 0; i < depth; i++) {
@@ -960,7 +1186,7 @@ static void generate_for_loop_runtime(LimboContext* ctx, cJSON* for_comp,
 }
 
 // Generate widget creation code
-static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type) {
+static bool generate_widget(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, LayoutProperties* parent_layout, int child_index, int total_children) {
     // KIR uses "type" not "elementType"
     cJSON* element_type_obj = cJSON_GetObjectItem(component, "type");
     if (!element_type_obj || element_type_obj->type != cJSON_String) {
@@ -968,7 +1194,20 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
     }
 
     const char* element_type = element_type_obj->valuestring;
-    const char* tk_widget = map_element_to_tk_widget(element_type);
+
+    // Debug
+    fprintf(stderr, "[GEN_WIDGET] type=%s, parent_type=%s\n", element_type, parent_type ? parent_type : "NULL");
+    const char* tk_widget = codegen_map_kir_to_tk_widget(element_type);
+
+    // Extract this widget's layout properties for its children
+    LayoutProperties my_layout = extract_layout_properties(component);
+
+    // Debug: show layout properties
+    if (my_layout.gap > 0 || my_layout.align_items) {
+        fprintf(stderr, "[WIDGET DEBUG] type=%s, gap=%d, align_items=%s\n",
+                element_type, my_layout.gap,
+                my_layout.align_items ? my_layout.align_items : "NULL");
+    }
 
     ctx->widget_counter++;
     char widget_path[256];
@@ -1026,9 +1265,12 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
     // Process children
     cJSON* children = cJSON_GetObjectItem(component, "children");
     if (children && cJSON_IsArray(children)) {
+        int child_count = cJSON_GetArraySize(children);
         cJSON* child = NULL;
+        int idx = 0;
         cJSON_ArrayForEach(child, children) {
-            process_component(ctx, child, widget_path, depth, my_bg, element_type);
+            process_component(ctx, child, widget_path, depth, my_bg, element_type, &my_layout);
+            idx++;
         }
     }
 
@@ -1057,7 +1299,20 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
     // Check if parent is a Row widget (needs -side left for children)
     bool parent_is_row = (parent_type && strcmp(parent_type, "Row") == 0);
 
-    if (depth == 1) {
+    bool parent_is_column = (parent_type && strcmp(parent_type, "Column") == 0);
+
+    // Use layout-aware packing if parent has layout properties
+    if (parent_layout && parent_is_row) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack ");
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s", widget_path);
+        apply_row_layout(ctx, parent_layout, child_index, total_children);
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\");\n");
+    } else if (parent_layout && parent_is_column) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack ");
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s", widget_path);
+        apply_column_layout(ctx, parent_layout, child_index, total_children);
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\");\n");
+    } else if (depth == 1) {
         // Root widget fills the window
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -fill both -expand 1\");\n", widget_path);
     } else if (parent_is_row) {
@@ -1092,7 +1347,8 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
 static bool process_component_with_bindings(LimboContext* ctx, cJSON* comp,
                                            const char* parent_path, int depth,
                                            const char* parent_bg, const char* parent_type,
-                                           const char* item_name, cJSON* data_item) {
+                                           const char* item_name, cJSON* data_item,
+                                           LayoutProperties* parent_layout) {
     if (!comp) return false;
 
     // Check for static_block - skip and process children directly
@@ -1103,7 +1359,7 @@ static bool process_component_with_bindings(LimboContext* ctx, cJSON* comp,
             for (int i = 0; i < cJSON_GetArraySize(children); i++) {
                 cJSON* child = cJSON_GetArrayItem(children, i);
                 process_component_with_bindings(ctx, child, parent_path, depth,
-                                              parent_bg, parent_type, item_name, data_item);
+                                              parent_bg, parent_type, item_name, data_item, parent_layout);
             }
         }
         return true;
@@ -1111,26 +1367,31 @@ static bool process_component_with_bindings(LimboContext* ctx, cJSON* comp,
 
     // Check for nested For loop
     if (type && cJSON_IsString(type) && strcmp(type->valuestring, "For") == 0) {
-        generate_for_loop_runtime(ctx, comp, parent_path, depth, parent_bg, parent_type, NULL);
+        generate_for_loop_runtime(ctx, comp, parent_path, depth, parent_bg, parent_type, parent_layout, NULL);
         return true;
     }
 
     // Regular widget - generate with binding resolution
-    return generate_widget_with_bindings(ctx, comp, parent_path, depth, parent_bg, parent_type, item_name, data_item);
+    return generate_widget_with_bindings(ctx, comp, parent_path, depth, parent_bg, parent_type, item_name, data_item, parent_layout, -1, 0);
 }
 
 // Generate widget with property binding resolution
 static bool generate_widget_with_bindings(LimboContext* ctx, cJSON* component,
                                          const char* parent_path, int depth,
                                          const char* parent_bg, const char* parent_type,
-                                         const char* item_name, cJSON* data_item) {
+                                         const char* item_name, cJSON* data_item,
+                                         LayoutProperties* parent_layout,
+                                         int child_index, int total_children) {
     cJSON* element_type_obj = cJSON_GetObjectItem(component, "type");
     if (!element_type_obj || !cJSON_IsString(element_type_obj)) {
         return false;
     }
 
     const char* element_type = element_type_obj->valuestring;
-    const char* tk_widget = map_element_to_tk_widget(element_type);
+    const char* tk_widget = codegen_map_kir_to_tk_widget(element_type);
+
+    // Extract this widget's layout for its children
+    LayoutProperties my_layout = extract_layout_from_bindings(component);
 
     ctx->widget_counter++;
     char widget_path[256];
@@ -1187,7 +1448,7 @@ static bool generate_widget_with_bindings(LimboContext* ctx, cJSON* component,
     if (children && cJSON_IsArray(children)) {
         cJSON* child = NULL;
         cJSON_ArrayForEach(child, children) {
-            process_component_with_bindings(ctx, child, widget_path, depth, my_bg, element_type, item_name, data_item);
+            process_component_with_bindings(ctx, child, widget_path, depth, my_bg, element_type, item_name, data_item, &my_layout);
         }
     }
 
@@ -1207,8 +1468,21 @@ static bool generate_widget_with_bindings(LimboContext* ctx, cJSON* component,
     bool has_position = (left && cJSON_IsNumber(left)) && (top && cJSON_IsNumber(top));
 
     bool parent_is_center = (parent_type && strcmp(parent_type, "Center") == 0);
+    bool parent_is_row = (parent_type && strcmp(parent_type, "Row") == 0);
+    bool parent_is_column = (parent_type && strcmp(parent_type, "Column") == 0);
 
-    if (depth == 1) {
+    // Use layout-aware packing if parent has layout properties
+    if (parent_layout && parent_is_row) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack ");
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s", widget_path);
+        apply_row_layout(ctx, parent_layout, child_index, total_children);
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\");\n");
+    } else if (parent_layout && parent_is_column) {
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack ");
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s", widget_path);
+        apply_column_layout(ctx, parent_layout, child_index, total_children);
+        append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\");\n");
+    } else if (depth == 1) {
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -fill both -expand 1\");\n", widget_path);
     } else if (parent_is_center) {
         append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "tk->cmd(t, \"pack %s -expand 1\");\n", widget_path);
@@ -1316,7 +1590,7 @@ static void generate_tk_options_with_bindings(LimboContext* ctx, cJSON* componen
     cJSON* width = cJSON_GetObjectItem(component, "width");
     if (width) {
         if (cJSON_IsString(width)) {
-            int w = parse_size_value(width->valuestring);
+            int w = codegen_parse_size_value(width->valuestring);
             if (w > 0) {
                 append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -width %d", w);
             }
@@ -1329,7 +1603,7 @@ static void generate_tk_options_with_bindings(LimboContext* ctx, cJSON* componen
     cJSON* height = cJSON_GetObjectItem(component, "height");
     if (height) {
         if (cJSON_IsString(height)) {
-            int h = parse_size_value(height->valuestring);
+            int h = codegen_parse_size_value(height->valuestring);
             if (h > 0) {
                 append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -height %d", h);
             }
@@ -1409,28 +1683,34 @@ static void generate_tk_options_with_bindings(LimboContext* ctx, cJSON* componen
 }
 
 // Process a component recursively
-static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type) {
-    // Check for static_block - skip and process children directly
+static bool process_component(LimboContext* ctx, cJSON* component, const char* parent_path, int depth, const char* parent_bg, const char* parent_type, LayoutProperties* parent_layout) {
+    // Extract this component's layout for its children
+    LayoutProperties my_layout = extract_layout_properties(component);
     cJSON* type = cJSON_GetObjectItem(component, "type");
-    if (type && cJSON_IsString(type) && strcmp(type->valuestring, "static_block") == 0) {
+    const char* my_type = (type && cJSON_IsString(type)) ? type->valuestring : NULL;
+
+    // Check for static_block - skip and process children directly
+    if (my_type && strcmp(my_type, "static_block") == 0) {
         cJSON* children = cJSON_GetObjectItem(component, "children");
         if (children && cJSON_IsArray(children)) {
             for (int i = 0; i < cJSON_GetArraySize(children); i++) {
                 cJSON* child = cJSON_GetArrayItem(children, i);
-                process_component(ctx, child, parent_path, depth, parent_bg, parent_type);
+                process_component(ctx, child, parent_path, depth, parent_bg, parent_type, parent_layout);
             }
         }
         return true;
     }
 
     // Check for For loop - generate runtime iteration
-    if (type && cJSON_IsString(type) && strcmp(type->valuestring, "For") == 0) {
-        generate_for_loop_runtime(ctx, component, parent_path, depth, parent_bg, parent_type, ctx->source_structures);
+    if (my_type && strcmp(my_type, "For") == 0) {
+        // For loops should use the PARENT's layout and type (since For itself has no layout)
+        // The parent could be a Row, Column, etc.
+        generate_for_loop_runtime(ctx, component, parent_path, depth, parent_bg, parent_type, parent_layout, ctx->source_structures);
         return true;
     }
 
     // Regular widget
-    return generate_widget(ctx, component, parent_path, depth + 1, parent_bg, parent_type);
+    return generate_widget(ctx, component, parent_path, depth + 1, parent_bg, parent_type, parent_layout, -1, 0);
 }
 
 // Generate custom Limbo functions from logic_block
@@ -1785,7 +2065,7 @@ char* limbo_codegen_from_json(const char* kir_json) {
     // Process root component (this registers event handlers)
     cJSON* root = cJSON_GetObjectItem(kir_root, "root");
     if (root) {
-        process_component(ctx, root, "", 0, NULL, NULL);
+        process_component(ctx, root, "", 0, NULL, NULL, NULL);
     }
 
     // NOW generate custom Limbo functions (AFTER event handlers are registered)
@@ -1940,7 +2220,7 @@ bool limbo_codegen_generate_with_options(const char* kir_path,
     // Process root component (this registers event handlers)
     cJSON* root = cJSON_GetObjectItem(kir_root, "root");
     if (root) {
-        process_component(ctx, root, "", 0, NULL, NULL);
+        process_component(ctx, root, "", 0, NULL, NULL, NULL);
     }
 
     // NOW generate custom Limbo functions (AFTER event handlers are registered)

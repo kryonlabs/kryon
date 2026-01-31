@@ -31,9 +31,8 @@ typedef struct {
     int window_height;              // Window height
     int widget_counter;             // For generating unique widget names
 
-    // Handler deduplication tracking
-    char* generated_handlers[256];     // Names of already-generated handlers
-    int generated_handler_count;       // Number of handlers generated
+    // Handler deduplication tracking (using shared utility from codegen_common.h)
+    CodegenHandlerTracker* handler_tracker;
 } TclTkContext;
 
 /* ============================================================================
@@ -70,7 +69,14 @@ static TclTkContext* create_tcltk_context(TclTkCodegenOptions* options) {
     }
 
     ctx->widget_counter = 0;
-    ctx->generated_handler_count = 0;
+
+    // Create handler tracker (using shared utility)
+    ctx->handler_tracker = codegen_handler_tracker_create();
+    if (!ctx->handler_tracker) {
+        sb_free(ctx->sb);
+        free(ctx);
+        return NULL;
+    }
 
     return ctx;
 }
@@ -81,11 +87,9 @@ static TclTkContext* create_tcltk_context(TclTkCodegenOptions* options) {
 static void destroy_tcltk_context(TclTkContext* ctx) {
     if (!ctx) return;
 
-    // Free handler tracking
-    for (int i = 0; i < ctx->generated_handler_count; i++) {
-        if (ctx->generated_handlers[i]) {
-            free(ctx->generated_handlers[i]);
-        }
+    // Free handler tracking (using shared utility)
+    if (ctx->handler_tracker) {
+        codegen_handler_tracker_free(ctx->handler_tracker);
     }
 
     if (ctx->sb) {
@@ -96,60 +100,48 @@ static void destroy_tcltk_context(TclTkContext* ctx) {
 }
 
 /**
- * Check if handler was already generated
+ * Check if handler was already generated (using shared utility)
  */
 static bool is_handler_already_generated(TclTkContext* ctx, const char* handler_name) {
-    if (!ctx || !handler_name) return false;
-
-    for (int i = 0; i < ctx->generated_handler_count; i++) {
-        if (ctx->generated_handlers[i] &&
-            strcmp(ctx->generated_handlers[i], handler_name) == 0) {
-            return true;
-        }
-    }
-    return false;
+    if (!ctx || !ctx->handler_tracker || !handler_name) return false;
+    return codegen_handler_tracker_contains(ctx->handler_tracker, handler_name);
 }
 
 /**
- * Mark handler as generated
+ * Mark handler as generated (using shared utility)
  */
 static void mark_handler_generated(TclTkContext* ctx, const char* handler_name) {
-    if (!ctx || !handler_name || ctx->generated_handler_count >= 256) {
-        return;
+    if (!ctx || !ctx->handler_tracker || !handler_name) return;
+    codegen_handler_tracker_mark(ctx->handler_tracker, handler_name);
+}
+
+/**
+ * Get property value from component with alias support
+ * Tries multiple property name aliases and returns the first match
+ *
+ * @param component cJSON component object
+ * @param aliases NULL-terminated array of property name aliases (e.g., {"color", "textColor", "foregroundColor"})
+ * @return cJSON* property value, or NULL if none found
+ */
+static cJSON* get_property_with_aliases(cJSON* component, const char** aliases) {
+    if (!component || !aliases) return NULL;
+
+    for (int i = 0; aliases[i] != NULL; i++) {
+        cJSON* value = cJSON_GetObjectItem(component, aliases[i]);
+        if (value) {
+            return value;
+        }
     }
 
-    ctx->generated_handlers[ctx->generated_handler_count++] = strdup(handler_name);
+    return NULL;
 }
 
 /* ============================================================================
  * Widget Type Mapping (Phase 2)
  * ============================================================================ */
 
-/**
- * Map IR widget type to Tcl/Tk widget type
- */
-static const char* map_widget_type(const char* ir_type) {
-    if (!ir_type) return "frame";
-
-    if (strcmp(ir_type, "Text") == 0) return "label";
-    if (strcmp(ir_type, "Button") == 0) return "button";
-    if (strcmp(ir_type, "Input") == 0) return "entry";
-    if (strcmp(ir_type, "Checkbox") == 0) return "checkbutton";
-    if (strcmp(ir_type, "Dropdown") == 0) return "ttk::combobox";
-    if (strcmp(ir_type, "Row") == 0) return "frame";
-    if (strcmp(ir_type, "Column") == 0) return "frame";
-    if (strcmp(ir_type, "Container") == 0) return "frame";
-    if (strcmp(ir_type, "Center") == 0) return "frame";
-    if (strcmp(ir_type, "Canvas") == 0) return "canvas";
-    if (strcmp(ir_type, "Image") == 0) return "label";
-    if (strcmp(ir_type, "Progress") == 0) return "ttk::progressbar";
-    if (strcmp(ir_type, "Slider") == 0) return "scale";
-    if (strcmp(ir_type, "Table") == 0) return "ttk::treeview";
-    if (strcmp(ir_type, "Tabs") == 0) return "ttk::notebook";
-
-    // Default to frame for unknown types
-    return "frame";
-}
+// Note: codegen_map_kir_to_tk_widget() now uses codegen_map_kir_to_tk_widget() from codegen_common.h
+// This provides consistent widget mapping across all Tk-based codegens
 
 /* ============================================================================
  * Widget Path Generation (Phase 2)
@@ -188,9 +180,19 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
         sb_append_fmt(ctx->sb, " -text {%s}", text->valuestring);
     }
 
-    // Width
+    // Width & Height
+    // Note: For buttons and labels, -width/-height are in CHARACTERS, not pixels
+    // For containers (frame), we can use pixel sizes
+    cJSON* type = cJSON_GetObjectItem(component, "type");
+    const char* widget_type = type && cJSON_IsString(type) ? type->valuestring : "";
+    const char* tk_widget = codegen_map_kir_to_tk_widget(widget_type);
+
+    bool is_text_widget = (strcmp(tk_widget, "button") == 0 ||
+                           strcmp(tk_widget, "label") == 0);
+
     cJSON* width = cJSON_GetObjectItem(component, "width");
-    if (width) {
+    if (width && !is_text_widget) {
+        // Only set width for non-text widgets (containers use pixels)
         if (cJSON_IsString(width)) {
             float w = codegen_parse_px_value(width->valuestring);
             if (w > 0 && !strstr(width->valuestring, "%")) {
@@ -203,7 +205,8 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
 
     // Height
     cJSON* height = cJSON_GetObjectItem(component, "height");
-    if (height) {
+    if (height && !is_text_widget) {
+        // Only set height for non-text widgets (containers use pixels)
         if (cJSON_IsString(height)) {
             float h = codegen_parse_px_value(height->valuestring);
             if (h > 0 && !strstr(height->valuestring, "%")) {
@@ -214,8 +217,9 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
         }
     }
 
-    // Background color
-    cJSON* background = cJSON_GetObjectItem(component, "background");
+    // Background color (with unified alias support)
+    const char* bg_aliases[] = {"background", "backgroundColor", NULL};
+    cJSON* background = get_property_with_aliases(component, bg_aliases);
     if (background && cJSON_IsString(background)) {
         if (!codegen_is_transparent_color(background->valuestring)) {
             uint8_t r, g, b, a;
@@ -226,13 +230,26 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
         }
     }
 
-    // Foreground color (text color)
-    cJSON* color = cJSON_GetObjectItem(component, "color");
+    // Foreground color (text color) - with unified alias support
+    const char* fg_aliases[] = {"color", "textColor", "foregroundColor", NULL};
+    cJSON* color = get_property_with_aliases(component, fg_aliases);
     if (color && cJSON_IsString(color)) {
-        uint8_t r, g, b, a;
-        if (codegen_parse_color_rgba(color->valuestring, &r, &g, &b, &a)) {
-            const char* hex = codegen_format_rgba_hex(r, g, b, a, false);
-            sb_append_fmt(ctx->sb, " -foreground {%s}", hex);
+        // Get widget type to check if -foreground is supported
+        cJSON* type = cJSON_GetObjectItem(component, "type");
+        const char* widget_type = type && cJSON_IsString(type) ? type->valuestring : "";
+        const char* tk_widget = codegen_map_kir_to_tk_widget(widget_type);
+
+        // -foreground is supported by: label, button, entry, checkbutton, radiobutton,
+        // scale, listbox, menu, but NOT by: frame, canvas, toplevel
+        bool supports_foreground = (strcmp(tk_widget, "frame") != 0 &&
+                                   strcmp(tk_widget, "canvas") != 0);
+
+        if (supports_foreground) {
+            uint8_t r, g, b, a;
+            if (codegen_parse_color_rgba(color->valuestring, &r, &g, &b, &a)) {
+                const char* hex = codegen_format_rgba_hex(r, g, b, a, false);
+                sb_append_fmt(ctx->sb, " -foreground {%s}", hex);
+            }
         }
     }
 
@@ -256,7 +273,7 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
     }
 
     // For Text/Label widgets, add padding
-    cJSON* type = cJSON_GetObjectItem(component, "type");
+    // Use the 'type' variable already declared above
     if (type && cJSON_IsString(type)) {
         if (strcmp(type->valuestring, "Text") == 0) {
             sb_append(ctx->sb, " -padx 5 -pady 5");
@@ -358,7 +375,7 @@ static bool generate_widget(TclTkContext* ctx, cJSON* component,
     if (!ctx || !component) return false;
 
     const char* ir_type = codegen_get_component_type(component);
-    const char* tk_widget = map_widget_type(ir_type);
+    const char* tk_widget = codegen_map_kir_to_tk_widget(ir_type);
 
     char widget_path[256];
     generate_widget_path(ctx, widget_path, sizeof(widget_path), parent_path);
@@ -520,9 +537,10 @@ static bool generate_complete_script(TclTkContext* ctx, cJSON* root) {
 
     // 3. Package requires
     sb_append(ctx->sb, "\npackage require Tk\n");
-    if (ctx->use_ttk_widgets) {
-        sb_append(ctx->sb, "package require ttk\n");
-    }
+    // Note: ttk (themed widgets) is included with Tk, no separate package require needed
+    // if (ctx->use_ttk_widgets) {
+    //     sb_append(ctx->sb, "package require ttk\n");
+    // }
 
     // 4. Window configuration
     sb_append(ctx->sb, "\n# Window configuration\n");

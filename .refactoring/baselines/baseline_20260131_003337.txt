@@ -1,0 +1,45 @@
+# Kryon Refactoring Baseline
+# Generated: 20260131_003337
+
+## Git Information
+commit: e343104d676cc21ff4af8caf49e1d53788ded638
+branch: master
+uncommitted_changes: 30
+
+## Lines of Code
+total_loc: 210419
+project_loc: 137760
+
+## Binary Sizes
+build_size: 5.3M
+libkryon_desktop_raylib.so: 259K
+libkryon_desktop_sdl3.so: 323K
+libkryon_ir.so: 966K
+libkryon_web.so: 183K
+
+## Test Coverage
+test_files: 118
+test_directories: 23
+test_scripts: 5
+
+## Largest Files (Top 20)
+3122 ./ir/parsers/kry/kry_parser.c
+3063 ./ir/parsers/kry/kry_to_ir.c
+3027 ./ir/src/serialization/ir_json_serialize.c
+2955 ./ir/src/serialization/ir_json_deserialize.c
+2775 ./ir/src/logic/ir_expression_compiler.c
+2581 ./codegens/web/css_generator.c
+2532 ./ir/src/layout/ir_layout.c
+2298 ./ir/parsers/html/css_parser.c
+2287 ./ir/src/serialization/ir_serialization.c
+2187 ./ir/parsers/kry/kry_expression.c
+2055 ./ir/src/logic/ir_executor.c
+1960 ./codegens/limbo/limbo_codegen.c
+1813 ./codegens/c/ir_c_codegen.c
+1786 ./codegens/kry/kry_codegen.c
+1770 ./codegens/web/html_generator.c
+1749 ./ir/parsers/kry/kry_to_ir_properties.c
+1729 ./cli/src/config/config.c
+1690 ./renderers/sdl3/sdl3_backend.c
+1632 ./codegens/c/ir_c_components.c
+

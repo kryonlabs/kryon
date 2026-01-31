@@ -85,6 +85,7 @@ if [ -z "$1" ]; then
     echo "  ./run_example.sh hello_world    # Run by name with limbo"
     echo "  ./run_example.sh 8 desktop      # Run with desktop (SDL3)"
     echo "  ./run_example.sh hello_world raylib  # Run with raylib"
+    echo "  ./run_example.sh hello_world tcltk   # Generate Tcl/Tk script"
     echo "  ./run_example.sh 1 android      # Build and run Android APK"
     echo ""
     echo -e "${BLUE}Available examples:${NC}"

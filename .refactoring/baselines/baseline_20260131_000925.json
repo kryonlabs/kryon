@@ -1,0 +1,36 @@
+{
+  "timestamp": "20260131_000925",
+  "git_commit": "e343104d676cc21ff4af8caf49e1d53788ded638",
+  "git_branch": "master",
+  "metrics": {
+    "total_loc": 209924,
+    "project_loc": 137325,
+    "build_size": "6.3M",
+    "test_files": 118,
+    "cli_build_time": "",
+    "largest_files": [
+      {"lines": 3122, "file": "ir/parsers/kry/kry_parser.c"},
+      {"lines": 3063, "file": "ir/parsers/kry/kry_to_ir.c"},
+      {"lines": 3027, "file": "ir/src/serialization/ir_json_serialize.c"},
+      {"lines": 2955, "file": "ir/src/serialization/ir_json_deserialize.c"},
+      {"lines": 2775, "file": "ir/src/logic/ir_expression_compiler.c"},
+      {"lines": 2586, "file": "ir/src/layout/ir_layout.c"},
+      {"lines": 2581, "file": "codegens/web/css_generator.c"},
+      {"lines": 2298, "file": "ir/parsers/html/css_parser.c"},
+      {"lines": 2287, "file": "ir/src/serialization/ir_serialization.c"},
+      {"lines": 2187, "file": "ir/parsers/kry/kry_expression.c"},
+      {"lines": 2055, "file": "ir/src/logic/ir_executor.c"},
+      {"lines": 1987, "file": "codegens/limbo/limbo_codegen.c"},
+      {"lines": 1813, "file": "codegens/c/ir_c_codegen.c"},
+      {"lines": 1786, "file": "codegens/kry/kry_codegen.c"},
+      {"lines": 1770, "file": "codegens/web/html_generator.c"},
+      {"lines": 1749, "file": "ir/parsers/kry/kry_to_ir_properties.c"},
+      {"lines": 1729, "file": "cli/src/config/config.c"},
+      {"lines": 1690, "file": "renderers/sdl3/sdl3_backend.c"},
+      {"lines": 1632, "file": "codegens/c/ir_c_components.c"}
+    ]
+  },
+  "git_uncommitted": 19,
+  "test_dirs": 23,
+  "test_scripts": 5
+}

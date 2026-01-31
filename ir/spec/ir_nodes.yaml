@@ -1,0 +1,485 @@
+# IR Node Specification for Code Generation
+#
+# This YAML file defines all IR component types and their properties.
+# The generate_serialization.py script uses this to generate C code for
+# JSON serialization and deserialization.
+#
+# Benefits:
+# - Single source of truth for IR node structure
+# - Automatic serialization/deserialization code generation
+# - Eliminates ~2,000-2,500 lines of duplicated code
+#
+
+component_types:
+  # ============================================================================
+  # Basic Components
+  # ============================================================================
+
+  Button:
+    properties:
+      - name: text
+        type: string
+        default: ""
+        json_key: "text"
+        nullable: true
+
+      - name: bg_color
+        type: color
+        default: "#ffffff"
+        json_key: "backgroundColor"
+
+      - name: text_color
+        type: color
+        default: "#000000"
+        json_key: "textColor"
+
+      - name: padding
+        type: dimension
+        default: "10px"
+        json_key: "padding"
+
+      - name: border_radius
+        type: dimension
+        default: "0px"
+        json_key: "borderRadius"
+
+      - name: width
+        type: dimension
+        default: "auto"
+        json_key: "width"
+
+      - name: height
+        type: dimension
+        default: "auto"
+        json_key: "height"
+
+  Label:
+    properties:
+      - name: text
+        type: string
+        default: ""
+        json_key: "text"
+        nullable: true
+
+      - name: text_color
+        type: color
+        default: "#000000"
+        json_key: "textColor"
+
+      - name: font_size
+        type: dimension
+        default: "16px"
+        json_key: "fontSize"
+
+      - name: padding
+        type: dimension
+        default: "0px"
+        json_key: "padding"
+
+  TextInput:
+    properties:
+      - name: placeholder
+        type: string
+        default: ""
+        json_key: "placeholder"
+        nullable: true
+
+      - name: text
+        type: string
+        default: ""
+        json_key: "text"
+        nullable: true
+
+      - name: text_color
+        type: color
+        default: "#000000"
+        json_key: "textColor"
+
+      - name: bg_color
+        type: color
+        default: "#ffffff"
+        json_key: "backgroundColor"
+
+      - name: border_color
+        type: color
+        default: "#cccccc"
+        json_key: "borderColor"
+
+      - name: padding
+        type: dimension
+        default: "8px"
+        json_key: "padding"
+
+      - name: width
+        type: dimension
+        default: "200px"
+        json_key: "width"
+
+  Image:
+    properties:
+      - name: src
+        type: string
+        default: ""
+        json_key: "src"
+        nullable: true
+
+      - name: width
+        type: dimension
+        default: "auto"
+        json_key: "width"
+
+      - name: height
+        type: dimension
+        default: "auto"
+        json_key: "height"
+
+      - name: object_fit
+        type: enum
+        enum_values: ["cover", "contain", "fill", "none"]
+        default: "cover"
+        json_key: "objectFit"
+
+  Container:
+    properties:
+      - name: bg_color
+        type: color
+        default: "transparent"
+        json_key: "backgroundColor"
+
+      - name: padding
+        type: dimension
+        default: "0px"
+        json_key: "padding"
+
+      - name: width
+        type: dimension
+        default: "auto"
+        json_key: "width"
+
+      - name: height
+        type: dimension
+        default: "auto"
+        json_key: "height"
+
+  FlexBox:
+    extends: Container
+    properties:
+      - name: direction
+        type: enum
+        enum_values: ["row", "column"]
+        default: "row"
+        json_key: "flexDirection"
+
+      - name: justify_content
+        type: enum
+        enum_values: ["start", "center", "end", "space-between", "space-around", "space-evenly"]
+        default: "start"
+        json_key: "justifyContent"
+
+      - name: align_items
+        type: enum
+        enum_values: ["start", "center", "end", "stretch"]
+        default: "start"
+        json_key: "alignItems"
+
+      - name: gap
+        type: dimension
+        default: "0px"
+        json_key: "gap"
+
+  # ============================================================================
+  # Layout Components
+  # ============================================================================
+
+  Row:
+    extends: FlexBox
+    properties:
+      - name: direction
+        type: enum
+        enum_values: ["row"]
+        default: "row"
+        json_key: "flexDirection"
+
+  Column:
+    extends: FlexBox
+    properties:
+      - name: direction
+        type: enum
+        enum_values: ["column"]
+        default: "column"
+        json_key: "flexDirection"
+
+  Grid:
+    extends: Container
+    properties:
+      - name: columns
+        type: string
+        default: "auto"
+        json_key: "gridTemplateColumns"
+
+      - name: rows
+        type: string
+        default: "auto"
+        json_key: "gridTemplateRows"
+
+      - name: gap
+        type: dimension
+        default: "0px"
+        json_key: "gap"
+
+  Scroll:
+    extends: Container
+    properties:
+      - name: scroll_x
+        type: boolean
+        default: false
+        json_key: "scrollX"
+
+      - name: scroll_y
+        type: boolean
+        default: true
+        json_key: "scrollY"
+
+  # ============================================================================
+  # Form Components
+  # ============================================================================
+
+  Checkbox:
+    properties:
+      - name: checked
+        type: boolean
+        default: false
+        json_key: "checked"
+
+      - name: label
+        type: string
+        default: ""
+        json_key: "label"
+        nullable: true
+
+      - name: text_color
+        type: color
+        default: "#000000"
+        json_key: "textColor"
+
+  Dropdown:
+    properties:
+      - name: options
+        type: string_array
+        default: []
+        json_key: "options"
+
+      - name: selected_index
+        type: integer
+        default: 0
+        json_key: "selectedIndex"
+
+      - name: placeholder
+        type: string
+        default: "Select..."
+        json_key: "placeholder"
+
+  Slider:
+    properties:
+      - name: min
+        type: float
+        default: 0.0
+        json_key: "min"
+
+      - name: max
+        type: float
+        default: 100.0
+        json_key: "max"
+
+      - name: value
+        type: float
+        default: 50.0
+        json_key: "value"
+
+      - name: step
+        type: float
+        default: 1.0
+        json_key: "step"
+
+  # ============================================================================
+  # Advanced Components
+  # ============================================================================
+
+  Canvas:
+    properties:
+      - name: width
+        type: dimension
+        default: "300px"
+        json_key: "width"
+
+      - name: height
+        type: dimension
+        default: "150px"
+        json_key: "height"
+
+      - name: bg_color
+        type: color
+        default: "#ffffff"
+        json_key: "backgroundColor"
+
+  TabGroup:
+    properties:
+      - name: active_tab
+        type: integer
+        default: 0
+        json_key: "activeTab"
+
+      - name: tab_position
+        type: enum
+        enum_values: ["top", "bottom", "left", "right"]
+        default: "top"
+        json_key: "tabPosition"
+
+  TabPanel:
+    properties:
+      - name: title
+        type: string
+        default: ""
+        json_key: "title"
+
+      - name: icon
+        type: string
+        default: ""
+        json_key: "icon"
+        nullable: true
+
+  Modal:
+    properties:
+      - name: title
+        type: string
+        default: ""
+        json_key: "title"
+
+      - name: show
+        type: boolean
+        default: false
+        json_key: "show"
+
+      - name: close_on_click_outside
+        type: boolean
+        default: true
+        json_key: "closeOnClickOutside"
+
+  Table:
+    properties:
+      - name: data
+        type: json_object
+        default: "{}"
+        json_key: "data"
+
+      - name: columns
+        type: string_array
+        default: []
+        json_key: "columns"
+
+  # ============================================================================
+  # Text Components
+  # ============================================================================
+
+  Text:
+    properties:
+      - name: content
+        type: string
+        default: ""
+        json_key: "text"
+        nullable: true
+
+      - name: font_size
+        type: dimension
+        default: "16px"
+        json_key: "fontSize"
+
+      - name: font_weight
+        type: enum
+        enum_values: ["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"]
+        default: "normal"
+        json_key: "fontWeight"
+
+      - name: text_color
+        type: color
+        default: "#000000"
+        json_key: "color"
+
+      - name: text_align
+        type: enum
+        enum_values: ["left", "center", "right", "justify"]
+        default: "left"
+        json_key: "textAlign"
+
+      - name: line_height
+        type: dimension
+        default: "1.5em"
+        json_key: "lineHeight"
+
+# ============================================================================
+# Property Type Definitions
+# ============================================================================
+
+property_types:
+  string:
+    c_type: "char*"
+    c_null: "NULL"
+    json_parser: "cJSON_GetStringValue"
+    json_creator: "cJSON_CreateString"
+    is_pointer: true
+
+  dimension:
+    c_type: "IRDimension"
+    c_null: "{.type = IR_DIMENSION_AUTO, .value = 0}"
+    json_parser: "parse_json_dimension"
+    json_creator: "json_serialize_dimension"
+    is_pointer: false
+
+  color:
+    c_type: "IRColor"
+    c_null: "{.type = IR_COLOR_SOLID, .data = {.r = 0, .g = 0, .b = 0, .a = 255}}"
+    json_parser: "parse_json_color"
+    json_creator: "json_serialize_color"
+    is_pointer: false
+
+  enum:
+    c_type: "const char*"
+    c_null: "NULL"
+    json_parser: "cJSON_GetStringValue"
+    json_creator: "cJSON_CreateString"
+    is_pointer: true
+
+  boolean:
+    c_type: "bool"
+    c_null: "false"
+    json_parser: "cJSON_IsTrue"
+    json_creator: "cJSON_CreateBool"
+    is_pointer: false
+
+  integer:
+    c_type: "int"
+    c_null: "0"
+    json_parser: "cJSON_GetNumberValue"
+    json_creator: "cJSON_CreateNumber"
+    is_pointer: false
+
+  float:
+    c_type: "float"
+    c_null: "0.0f"
+    json_parser: "cJSON_GetNumberValue"
+    json_creator: "cJSON_CreateNumber"
+    is_pointer: false
+
+  string_array:
+    c_type: "char**"
+    c_null: "NULL"
+    json_parser: "parse_json_string_array"
+    json_creator: "json_serialize_string_array"
+    is_pointer: true
+
+  json_object:
+    c_type: "cJSON*"
+    c_null: "NULL"
+    json_parser: "cJSON_Duplicate"
+    json_creator: "cJSON_Duplicate"
+    is_pointer: true

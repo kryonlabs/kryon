@@ -32,6 +32,7 @@ typedef struct {
     int after_frames;             // Number of frames to wait before capturing
     int timeout_ms;               // Maximum time to wait for window (default: 5000ms)
     const char* window_title;     // Window title pattern to search for (default: "TaijiOS")
+    pid_t expected_pid;           // Expected emulator process PID (0 = any, >0 = specific PID)
 } ScreenshotOptions;
 
 /**
@@ -41,7 +42,8 @@ typedef struct {
     .output_path = NULL, \
     .after_frames = 0, \
     .timeout_ms = 5000, \
-    .window_title = "TaijiOS" \
+    .window_title = "TaijiOS", \
+    .expected_pid = 0 \
 }
 
 /* ============================================================================

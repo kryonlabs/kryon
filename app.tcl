@@ -4,13 +4,51 @@
 # Window: app (800x600)
 
 package require Tk
-package require ttk
 
 # Window configuration
 wm title . {app}
 wm geometry . 800x600
+wm title . {Interactive Button Demo}
+wm geometry . 600x400
 
 # UI Components
+
+# Container widget: .w1
+frame .w1 -background {#191919}
+pack .w1 -fill both -expand yes
+
+# Center widget: .w1.w2
+frame .w1.w2
+pack .w1.w2 -fill both -expand yes
+
+# Button widget: .w1.w2.w3
+button .w1.w2.w3 -text {Click Me!} -width 150 -height 50 -background {#404080} -foreground {#ffc0cb}
+pack .w1.w2.w3 -expand yes -anchor center
+
+# ============================================================================
+# Event Handlers
+# ============================================================================
+
+# Handler: _top_level_code_block_0
+proc _top_level_code_block_0 {} {
+    # TODO: Implement handler
+}
+
+# Handler: _top_level_code_block_1
+proc _top_level_code_block_1 {} {
+    # TODO: Implement handler
+}
+
+# Handler: _top_level_code_block_2
+proc _top_level_code_block_2 {} {
+    # TODO: Implement handler
+}
+
+# Handler: _top_level_code_block_3
+proc _top_level_code_block_3 {} {
+    # TODO: Implement handler
+}
+
 
 # Main event loop
 update
