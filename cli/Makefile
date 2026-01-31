@@ -32,6 +32,8 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/utils/plugin_installer.c \
        $(SRC_DIR)/utils/limbo_modules.c \
        $(SRC_DIR)/utils/screenshot.c \
+       $(SRC_DIR)/utils/memory.c \
+       $(SRC_DIR)/utils/error.c \
        $(SRC_DIR)/config/toml_parser.c \
        $(SRC_DIR)/config/config.c \
        $(SRC_DIR)/config/target_handlers.c \

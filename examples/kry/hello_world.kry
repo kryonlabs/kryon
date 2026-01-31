@@ -19,6 +19,7 @@ App {
         Text {
             text = "Hello World"
             color = "yellow"
+            backgroundColor = "#191970"
         }
     }
 }

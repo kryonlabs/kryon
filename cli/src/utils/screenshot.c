@@ -320,11 +320,7 @@ static WindowList get_windows_matching_pattern(Display* display, Window root,
                                                const char* pattern) {
     WindowList list = {0};
     list.capacity = 16;
-    list.windows = malloc(sizeof(Window) * list.capacity);
-    if (!list.windows) {
-        fprintf(stderr, "Error: Failed to allocate memory for window list\n");
-        return list;
-    }
+    list.windows = safe_malloc(sizeof(Window) * list.capacity);
 
     // Collect all matching windows
     CollectContext ctx = {display, pattern, &list};
@@ -586,10 +582,7 @@ static uint8_t* convert_ximage_to_rgba(XImage* image, int width, int height) {
         return NULL;
     }
 
-    uint8_t* rgba = malloc(width * height * 4);
-    if (!rgba) {
-        return NULL;
-    }
+    uint8_t* rgba = safe_malloc(width * height * 4);
 
     // Get visual info for color channels
     Display* display = NULL; // We don't have the display here, assume default visual

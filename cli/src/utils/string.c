@@ -80,6 +80,14 @@ char* str_copy(const char* src) {
 }
 
 /**
+ * Duplicate a string (alias for str_copy)
+ * This provides a more semantic name for string duplication operations
+ */
+char* str_duplicate(const char* s) {
+    return str_copy(s);
+}
+
+/**
  * Check if string ends with suffix
  */
 bool str_ends_with(const char* str, const char* suffix) {

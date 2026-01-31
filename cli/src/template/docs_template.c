@@ -132,8 +132,7 @@ static char* extract_placeholder_name(const char* text) {
     size_t name_len = end - (start + 2);
     if (name_len == 0 || name_len > 64) return NULL;
 
-    char* name = malloc(name_len + 1);
-    if (!name) return NULL;
+    char* name = safe_malloc(name_len + 1);
 
     // Copy and trim whitespace
     const char* src = start + 2;
@@ -236,7 +235,7 @@ char* docs_extract_title(const char* md_path) {
 
                 size_t len = title_end - title_start;
                 if (len > 0) {
-                    title = malloc(len + 1);
+                    title = safe_malloc(len + 1);
                     memcpy(title, title_start, len);
                     title[len] = '\0';
                 }

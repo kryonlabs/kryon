@@ -31,11 +31,28 @@ void cli_args_free(CLIArgs* args);
 char* str_format(const char* fmt, ...);  // NEW: Dynamic string formatting
 char* str_concat(const char* s1, const char* s2);
 char* str_copy(const char* src);
+char* str_duplicate(const char* s);  // Alias for str_copy for consistency
 bool str_ends_with(const char* str, const char* suffix);
 bool str_starts_with(const char* str, const char* prefix);
 char** str_split(const char* str, char delim, int* count);
 void str_free_array(char** arr, int count);
 char* string_replace(const char* str, const char* old, const char* new_str);
+
+// ============================================================================
+// Memory Safety Wrappers
+// ============================================================================
+
+void* safe_malloc(size_t size);
+void* safe_calloc(size_t count, size_t size);
+void* safe_realloc(void* ptr, size_t size);
+
+// ============================================================================
+// Error Reporting Utilities
+// ============================================================================
+
+void error_print(const char* message);
+void error_print_with_hint(const char* message, const char* hint);
+void error_print_context(const char* context, const char* message);
 
 // ============================================================================
 // File Utilities

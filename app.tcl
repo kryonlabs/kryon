@@ -22,7 +22,7 @@ frame .w1.w2 -width 200 -height 100 -background {#191970} -borderwidth 2
 place .w1.w2 -x 200 -y 100
 
 # Text widget: .w1.w2.w3
-label .w1.w2.w3 -text {Hello World} -foreground {#ffff00} -padx 5 -pady 5
+label .w1.w2.w3 -text {Hello World} -background {#191970} -foreground {#ffff00} -padx 5 -pady 5
 pack .w1.w2.w3 -fill both -expand yes
 
 # Main event loop

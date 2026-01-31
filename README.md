@@ -89,7 +89,7 @@ kryon/
 
 - **Web target**: Modern web browser (no dependencies)
 - **Tcl/Tk target**: `sudo apt install tcl tk` (Ubuntu/Debian)
-- **Limbo target**: TaijiOS with Limbo compiler
+- **Limbo target**: [TaijiOS](https://github.com/kryonlabs/TaijiOS) with Limbo compiler
 
 ## Building
 
@@ -132,4 +132,4 @@ port = 3000
 
 ## License
 
-0BSD
+MIT - See [LICENSE](LICENSE) file for details.

@@ -49,11 +49,7 @@ static cJSON* load_kir_json(const char* file_path) {
     long file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    char* content = malloc(file_size + 1);
-    if (!content) {
-        fclose(file);
-        return NULL;
-    }
+    char* content = safe_malloc(file_size + 1);
 
     size_t bytes_read = fread(content, 1, file_size, file);
     content[bytes_read] = '\0';

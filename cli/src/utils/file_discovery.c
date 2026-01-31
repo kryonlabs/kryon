@@ -49,8 +49,7 @@ bool is_special_file(const char* filename) {
 }
 
 char* path_to_route(const char* source_path) {
-    char* route = malloc(PATH_MAX);
-    if (!route) return NULL;
+    char* route = safe_malloc(PATH_MAX);
 
     // Check if the filename is "index" (with any extension)
     const char* slash = strrchr(source_path, '/');
@@ -90,8 +89,7 @@ char* path_to_route(const char* source_path) {
 }
 
 char* route_to_output_path(const char* route, const char* build_dir) {
-    char* output = malloc(PATH_MAX);
-    if (!output) return NULL;
+    char* output = safe_malloc(PATH_MAX);
 
     // "/" → "build/index.html"
     if (strcmp(route, "/") == 0) {
