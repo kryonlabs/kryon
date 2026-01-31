@@ -66,6 +66,8 @@ kryon/
 ├── codegens/               # Code generators
 │   ├── dis/                # DIS bytecode (TaijiOS)
 │   ├── web/                # HTML/CSS/JS
+│   ├── limbo/              # Limbo source (Inferno)
+│   ├── tcltk/              # Tcl/Tk scripts
 │   ├── c/                  # C source
 │   ├── kry/                # KRY round-trip
 │   └── markdown/           # Markdown documentation
@@ -139,6 +141,28 @@ kryon run dis
 
 # Using run-app.sh wrapper
 /home/wao/Projects/TaijiOS/run-app.sh app.dis
+```
+
+### Tcl/Tk Target
+
+```bash
+# Build Tcl/Tk script (uses "tcl" alias for convenience)
+kryon build --target=tcl examples/kry/hello_world.kry
+
+# Run with wish
+wish app.tcl
+
+# Or use the run command
+kryon run --target=tcl examples/kry/hello_world.kry
+```
+
+**Note:** Tcl/Tk must be installed on your system:
+```bash
+# Ubuntu/Debian
+sudo apt-get install tcl tk
+
+# macOS
+brew install tcl-tk
 ```
 
 ## Configuration

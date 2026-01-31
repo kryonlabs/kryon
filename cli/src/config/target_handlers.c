@@ -127,6 +127,130 @@ static int web_target_run(const char* kir_file, const KryonConfig* config,
 // DIS target removed - all DIS generation now goes through Limbo compilation
 
 /* ============================================================================
+ * Desktop Target Infrastructure
+ * ============================================================================ */
+
+/**
+ * Configuration for desktop build targets
+ * Encapsulates the differences between SDL3, Raylib, and other desktop backends
+ */
+typedef struct DesktopTargetInfo {
+    const char* name;              // Display name ("SDL3", "Raylib")
+    const char* renderer_dir;      // Renderer subdirectory ("renderers/sdl3", "renderers/raylib")
+    const char* library_name;      // Desktop library name ("kryon_desktop_sdl3", "kryon_desktop_raylib")
+    const char* pkg_config_packages; // pkg-config package names
+    const char* default_libs;      // Default link flags if pkg-config fails
+    const char* link_order;        // Custom library link order
+} DesktopTargetInfo;
+
+/**
+ * Shared desktop target build handler
+ * Generates C code from KIR and compiles to native binary
+ *
+ * This function consolidates the common build logic for all desktop targets,
+ * with only library-specific details provided via DesktopTargetInfo.
+ */
+static int desktop_target_build(const char* kir_file,
+                                const char* output_dir,
+                                const char* project_name,
+                                const KryonConfig* config,
+                                const DesktopTargetInfo* info) {
+    (void)config;  // Not used in desktop build
+
+    // Step 1: Create generated directory
+    char gen_dir[1024];
+    snprintf(gen_dir, sizeof(gen_dir), "%s/generated", output_dir);
+
+    char mkdir_cmd[1024];
+    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", gen_dir);
+    system(mkdir_cmd);
+
+    // Step 2: Generate C code from KIR
+    printf("Generating C code from KIR...\n");
+    if (!ir_generate_c_code_multi(kir_file, gen_dir)) {
+        fprintf(stderr, "Error: C code generation failed\n");
+        return 1;
+    }
+
+    printf("✓ Generated C code in: %s\n", gen_dir);
+
+    // Step 3: Compile C code with desktop runtime
+    printf("Compiling %s binary: %s\n", info->name, project_name);
+
+    char output_binary[1024];
+    snprintf(output_binary, sizeof(output_binary), "%s/%s", output_dir, project_name);
+
+    // Get library flags using pkg-config
+    char libs[1024] = "";
+    if (info->pkg_config_packages && strlen(info->pkg_config_packages) > 0) {
+        char pkg_cmd[512];
+        snprintf(pkg_cmd, sizeof(pkg_cmd), "pkg-config --libs %s 2>/dev/null", info->pkg_config_packages);
+
+        FILE* pkg_pipe = popen(pkg_cmd, "r");
+        if (pkg_pipe) {
+            if (fgets(libs, sizeof(libs), pkg_pipe)) {
+                // Remove trailing newline
+                libs[strcspn(libs, "\n")] = 0;
+            }
+            pclose(pkg_pipe);
+        }
+    }
+
+    // If libs aren't found via pkg-config, use defaults
+    if (strlen(libs) == 0 && info->default_libs) {
+        strncpy(libs, info->default_libs, sizeof(libs) - 1);
+    }
+
+    // Get kryon root directory using path discovery
+    char* kryon_root = paths_get_kryon_root();
+    if (!kryon_root) {
+        fprintf(stderr, "Error: Could not detect KRYON_ROOT\n");
+        fprintf(stderr, "Set KRYON_ROOT environment variable or run from kryon project directory\n");
+        return 1;
+    }
+
+    printf("Using KRYON_ROOT: %s\n", kryon_root);
+
+    // Build compilation command
+    char compile_cmd[8192];
+    snprintf(compile_cmd, sizeof(compile_cmd),
+             "gcc -std=c99 -O2 -DKRYON_DESKTOP_TARGET "
+             "-Wno-error=implicit-function-declaration "
+             "-I%s -I%s/bindings/c -I%s/ir/include -I%s/core/include -I%s/runtime/desktop "
+             "-I%s/%s -I%s/renderers/common "
+             "-I%s/third_party/stb "
+             "%s/*.c "
+             "-L%s/build -L%s/bindings/c "
+             "%s "
+             "%s -lm -lpthread -ldl -o %s",
+             gen_dir, kryon_root, kryon_root, kryon_root, kryon_root,
+             kryon_root, info->renderer_dir, kryon_root, kryon_root,
+             gen_dir,
+             kryon_root, kryon_root,
+             info->link_order,
+             libs, output_binary);
+
+    printf("Compiling with command:\n  %s\n", compile_cmd);
+
+    // Run compilation and filter collect2 messages, but preserve gcc exit code
+    char filtered_cmd[8192 + 200];
+    snprintf(filtered_cmd, sizeof(filtered_cmd),
+             "(%s) 2>&1 | grep -v '^collect2:' >&2; exit ${PIPESTATUS[0]}",
+             compile_cmd);
+    int result = system(filtered_cmd);
+
+    free(kryon_root);
+
+    if (result != 0) {
+        fprintf(stderr, "Error: Compilation failed\n");
+        return 1;
+    }
+
+    printf("✓ Built %s binary: %s\n", info->name, output_binary);
+    return 0;
+}
+
+/* ============================================================================
  * Limbo Target Handler
  * ============================================================================ */
 
@@ -397,94 +521,19 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config,
 
 /**
  * SDL3 desktop target build handler
- * Generates C code from KIR and compiles to native binary with SDL3
+ * Delegates to shared desktop_target_build with SDL3-specific configuration
  */
 static int sdl3_target_build(const char* kir_file, const char* output_dir,
                              const char* project_name, const KryonConfig* config) {
-    // Step 1: Create generated directory
-    char gen_dir[1024];
-    snprintf(gen_dir, sizeof(gen_dir), "%s/generated", output_dir);
-
-    char mkdir_cmd[1024];
-    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", gen_dir);
-    system(mkdir_cmd);
-
-    // Step 2: Generate C code from KIR
-    printf("Generating C code from KIR...\n");
-    if (!ir_generate_c_code_multi(kir_file, gen_dir)) {
-        fprintf(stderr, "Error: C code generation failed\n");
-        return 1;
-    }
-
-    printf("✓ Generated C code in: %s\n", gen_dir);
-
-    // Step 3: Compile C code with desktop runtime
-    printf("Compiling desktop binary: %s\n", project_name);
-
-    char output_binary[1024];
-    snprintf(output_binary, sizeof(output_binary), "%s/%s", output_dir, project_name);
-
-    // Get SDL3 and other library flags using pkg-config
-    char sdl_libs[1024] = "";
-    FILE* pkg_pipe = popen("pkg-config --libs sdl3 SDL3_ttf harfbuzz freetype2 fribidi 2>/dev/null", "r");
-    if (pkg_pipe) {
-        if (fgets(sdl_libs, sizeof(sdl_libs), pkg_pipe)) {
-            // Remove trailing newline
-            sdl_libs[strcspn(sdl_libs, "\n")] = 0;
-        }
-        pclose(pkg_pipe);
-    }
-
-    // Get kryon root directory using path discovery
-    char* kryon_root = paths_get_kryon_root();
-    if (!kryon_root) {
-        fprintf(stderr, "Error: Could not detect KRYON_ROOT\n");
-        fprintf(stderr, "Set KRYON_ROOT environment variable or run from kryon project directory\n");
-        return 1;
-    }
-
-    printf("Using KRYON_ROOT: %s\n", kryon_root);
-
-    // If SDL libs aren't found via pkg-config, provide defaults
-    if (strlen(sdl_libs) == 0) {
-        strcpy(sdl_libs, "-lSDL3 -lSDL3_ttf");
-    }
-
-    char compile_cmd[8192];
-    snprintf(compile_cmd, sizeof(compile_cmd),
-             "gcc -std=c99 -O2 -DKRYON_DESKTOP_TARGET "
-             "-Wno-error=implicit-function-declaration "
-             "-I%s -I%s/bindings/c -I%s/ir/include -I%s/core/include -I%s/runtime/desktop "
-             "-I%s/renderers/sdl3 -I%s/renderers/common "
-             "-I%s/third_party/stb "
-             "%s/*.c "
-             "-L%s/build -L%s/bindings/c "
-             "-lkryon_desktop_sdl3 -lkryon_dsl_runtime -lkryon_command_buf -lkryon_ir -lkryon_c "
-             "%s -lm -lpthread -ldl -o %s",
-             gen_dir, kryon_root, kryon_root, kryon_root, kryon_root,
-             kryon_root, kryon_root, kryon_root,
-             gen_dir,
-             kryon_root, kryon_root,
-             sdl_libs, output_binary);
-
-    printf("Compiling with command:\n  %s\n", compile_cmd);
-
-    // Run compilation and filter collect2 messages, but preserve gcc exit code
-    char filtered_cmd[8192 + 200];
-    snprintf(filtered_cmd, sizeof(filtered_cmd),
-             "(%s) 2>&1 | grep -v '^collect2:' >&2; exit ${PIPESTATUS[0]}",
-             compile_cmd);
-    int result = system(filtered_cmd);
-
-    if (result != 0) {
-        fprintf(stderr, "Error: Compilation failed\n");
-        free(kryon_root);
-        return 1;
-    }
-
-    printf("✓ Built desktop binary: %s\n", output_binary);
-    free(kryon_root);
-    return 0;
+    static const DesktopTargetInfo sdl3_info = {
+        .name = "SDL3",
+        .renderer_dir = "renderers/sdl3",
+        .library_name = "kryon_desktop_sdl3",
+        .pkg_config_packages = "sdl3 SDL3_ttf harfbuzz freetype2 fribidi",
+        .default_libs = "-lSDL3 -lSDL3_ttf",
+        .link_order = "-lkryon_desktop_sdl3 -lkryon_dsl_runtime -lkryon_command_buf -lkryon_ir -lkryon_c"
+    };
+    return desktop_target_build(kir_file, output_dir, project_name, config, &sdl3_info);
 }
 
 /**
@@ -522,86 +571,19 @@ static int sdl3_target_run(const char* kir_file, const KryonConfig* config,
 
 /**
  * Raylib desktop target build handler
- * Generates C code from KIR and compiles to native binary with Raylib
+ * Delegates to shared desktop_target_build with Raylib-specific configuration
  */
 static int raylib_target_build(const char* kir_file, const char* output_dir,
                                 const char* project_name, const KryonConfig* config) {
-    // Step 1: Create generated directory
-    char gen_dir[1024];
-    snprintf(gen_dir, sizeof(gen_dir), "%s/generated", output_dir);
-
-    char mkdir_cmd[1024];
-    snprintf(mkdir_cmd, sizeof(mkdir_cmd), "mkdir -p \"%s\"", gen_dir);
-    system(mkdir_cmd);
-
-    // Step 2: Generate C code from KIR
-    printf("Generating C code from KIR...\n");
-    if (!ir_generate_c_code_multi(kir_file, gen_dir)) {
-        fprintf(stderr, "Error: C code generation failed\n");
-        return 1;
-    }
-
-    printf("✓ Generated C code in: %s\n", gen_dir);
-
-    // Step 3: Compile C code with raylib runtime
-    printf("Compiling raylib binary: %s\n", project_name);
-
-    char output_binary[1024];
-    snprintf(output_binary, sizeof(output_binary), "%s/%s", output_dir, project_name);
-
-    // Get kryon root directory using path discovery
-    char* kryon_root = paths_get_kryon_root();
-    if (!kryon_root) {
-        fprintf(stderr, "Error: Could not detect KRYON_ROOT\n");
-        fprintf(stderr, "Set KRYON_ROOT environment variable or run from kryon project directory\n");
-        return 1;
-    }
-
-    printf("Using KRYON_ROOT: %s\n", kryon_root);
-
-    // Get raylib library flags
-    char raylib_libs[512] = "-lraylib";
-    FILE* raylib_pipe = popen("pkg-config --libs raylib 2>/dev/null", "r");
-    if (raylib_pipe) {
-        if (fgets(raylib_libs, sizeof(raylib_libs), raylib_pipe)) {
-            raylib_libs[strcspn(raylib_libs, "\n")] = 0;
-        }
-        pclose(raylib_pipe);
-    }
-
-    char compile_cmd[8192];
-    snprintf(compile_cmd, sizeof(compile_cmd),
-             "gcc -std=c99 -O2 -DKRYON_DESKTOP_TARGET "
-             "-Wno-error=implicit-function-declaration "
-             "-I%s -I%s/bindings/c -I%s/ir/include -I%s/core/include -I%s/runtime/desktop "
-             "-I%s/renderers/raylib -I%s/renderers/common "
-             "-I%s/third_party/stb "
-             "%s/*.c "
-             "-L%s/build -L%s/bindings/c "
-             "-lkryon_c -lkryon_dsl_runtime -lkryon_desktop_raylib -lkryon_command_buf -lkryon_ir "
-             "%s -lm -lpthread -ldl -o %s",
-             gen_dir, kryon_root, kryon_root, kryon_root, kryon_root,
-             kryon_root, kryon_root, kryon_root,
-             gen_dir,
-             kryon_root, kryon_root,
-             raylib_libs, output_binary);
-
-    printf("Compiling with command:\n  %s\n", compile_cmd);
-
-    // Filter out "collect2:" messages from stderr
-    char filtered_cmd[8192 + 100];
-    snprintf(filtered_cmd, sizeof(filtered_cmd), "%s 2>&1 | grep -v '^collect2:' >&2", compile_cmd);
-    int result = system(filtered_cmd);
-
-    if (result != 0) {
-        fprintf(stderr, "Error: Compilation failed\n");
-        free(kryon_root);
-        return 1;
-    }
-
-    printf("✓ Built raylib binary: %s\n", output_binary);
-    free(kryon_root);
-    return 0;
+    static const DesktopTargetInfo raylib_info = {
+        .name = "Raylib",
+        .renderer_dir = "renderers/raylib",
+        .library_name = "kryon_desktop_raylib",
+        .pkg_config_packages = "raylib",
+        .default_libs = "-lraylib",
+        .link_order = "-lkryon_c -lkryon_dsl_runtime -lkryon_desktop_raylib -lkryon_command_buf -lkryon_ir"
+    };
+    return desktop_target_build(kir_file, output_dir, project_name, config, &raylib_info);
 }
 
 /**

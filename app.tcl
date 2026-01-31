@@ -9,22 +9,8 @@ package require ttk
 # Window configuration
 wm title . {app}
 wm geometry . 800x600
-wm title . {Hello World Example}
-wm geometry . 800x600
 
 # UI Components
-
-# Container widget: .w1
-frame .w1 -background {#1a1a2e} -foreground {#000000}
-pack .w1 -fill both -expand yes
-
-# Container widget: .w1.w2
-frame .w1.w2 -width 200 -height 100 -background {#191970} -foreground {#000000} -borderwidth 2
-place .w1.w2 -x 200 -y 100
-
-# Text widget: .w1.w2.w3
-label .w1.w2.w3 -text {Hello World} -foreground {#ffff00} -padx 5 -pady 5
-pack .w1.w2.w3 -fill both -expand yes
 
 # Main event loop
 update

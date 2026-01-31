@@ -21,6 +21,7 @@
 #   limbo, dis, emu     - TaijiOS Limbo/DIS bytecode (default)
 #   sdl3, desktop       - Desktop SDL3 renderer
 #   raylib              - Desktop Raylib renderer
+#   tcltk, tcl          - Tcl/Tk scripts
 #   web                 - Web browser
 #   android, kotlin     - Android APK
 #
@@ -75,6 +76,7 @@ if [ -z "$1" ]; then
     echo "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode"
     echo "  sdl3, desktop       - Desktop SDL3 renderer"
     echo "  raylib              - Desktop Raylib renderer"
+    echo "  tcltk, tcl          - Tcl/Tk scripts"
     echo "  web                 - Web browser"
     echo "  android, kotlin     - Android APK"
     echo ""
@@ -116,15 +118,18 @@ case "$TARGET" in
     desktop)
         TARGET="sdl3"  # desktop defaults to sdl3
         ;;
+    tcl)
+        TARGET="tcltk"  # tcl alias for tcltk
+        ;;
     kotlin)
         TARGET="android"  # kotlin alias for android
         ;;
-    sdl3|raylib|web|android)
+    sdl3|raylib|tcltk|web|android)
         # Real targets, use as-is
         ;;
     *)
         echo -e "${RED}Error:${NC} Unknown target '$TARGET'"
-        echo "Valid targets: limbo, dis, emu, sdl3, desktop, raylib, web, android, kotlin"
+        echo "Valid targets: limbo, dis, emu, sdl3, desktop, raylib, tcltk, tcl, web, android, kotlin"
         exit 1
         ;;
 esac
