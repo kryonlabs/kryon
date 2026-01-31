@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
     // Parse arguments
     CLIArgs* args = cli_args_parse(argc, argv);
     if (!args) {
-        fprintf(stderr, "Error: Failed to parse arguments\n");
+        error_print("Failed to parse arguments");
         return 1;
     }
 
@@ -134,8 +134,7 @@ int main(int argc, char** argv) {
         result = cmd_targets(args->argc, args->argv);
     }
     else {
-        fprintf(stderr, "Error: Unknown command '%s'\n", args->command);
-        fprintf(stderr, "Run 'kryon --help' for usage information\n");
+        error_print_with_hint("Unknown command", "Run 'kryon --help' for usage information");
         result = 1;
     }
 

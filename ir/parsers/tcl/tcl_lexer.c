@@ -207,9 +207,9 @@ static TclToken* lex_word(TclLexer* lexer) {
     StringBuilder* sb = sb_create(128);
     if (!sb) return NULL;
 
-    // First character must be alpha or special Tcl chars
+    // First character can be alpha, digit, or special Tcl chars
     char c = peek_char(lexer);
-    if (is_alpha(c) || c == '.' || c == ':' || c == '_' || c == '-' || c == '*') {
+    if (is_alpha(c) || is_digit(c) || c == '.' || c == ':' || c == '_' || c == '-' || c == '*') {
         sb_append_char(sb, c);
         get_char(lexer);
     } else {

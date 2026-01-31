@@ -9,6 +9,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "screenshot.h"
+#include "kryon_cli.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

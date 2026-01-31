@@ -8,22 +8,130 @@ package require Tk
 # Window configuration
 wm title . {app}
 wm geometry . 800x600
-wm title . {Hello World Example}
-wm geometry . 800x600
+wm title . {Animations Demo}
+wm geometry . 1000x600
 
 # UI Components
 
 # Container widget: .w1
-frame .w1 -background {#1a1a2e}
+frame .w1 -width 1000 -height 600 -background {#0a0e27}
 pack .w1 -fill both -expand yes
 
-# Container widget: .w1.w2
-frame .w1.w2 -width 200 -height 100 -background {#191970} -borderwidth 2
-place .w1.w2 -x 200 -y 100
+# Column widget: .w1.w2
+frame .w1.w2
+pack .w1.w2 -fill both -expand yes
 
 # Text widget: .w1.w2.w3
-label .w1.w2.w3 -text {Hello World} -background {#191970} -foreground {#ffff00} -padx 5 -pady 5
-pack .w1.w2.w3 -fill both -expand yes
+label .w1.w2.w3 -text {Preset Animations} -foreground {#ffffff} -padx 5 -pady 5
+pack .w1.w2.w3 -side top
+
+# Text widget: .w1.w2.w4
+label .w1.w2.w4 -text {CSS-like animation configs} -foreground {#a5b4fc} -padx 5 -pady 5
+pack .w1.w2.w4 -side top
+
+# Row widget: .w1.w2.w5
+frame .w1.w2.w5
+pack .w1.w2.w5 -side top
+
+# Container widget: .w1.w2.w5.w6
+frame .w1.w2.w5.w6 -width 200 -background {#1e1b4b}
+pack .w1.w2.w5.w6 -side left
+
+# Container widget: .w1.w2.w5.w6.w7
+frame .w1.w2.w5.w6.w7 -width 80 -height 80 -background {#6366f1}
+pack .w1.w2.w5.w6.w7 -fill both -expand yes
+
+# Center widget: .w1.w2.w5.w6.w7.w8
+frame .w1.w2.w5.w6.w7.w8
+pack .w1.w2.w5.w6.w7.w8 -fill both -expand yes
+
+# Text widget: .w1.w2.w5.w6.w7.w8.w9
+label .w1.w2.w5.w6.w7.w8.w9 -text {*} -foreground {#ffffff} -padx 5 -pady 5
+pack .w1.w2.w5.w6.w7.w8.w9 -expand yes -anchor center
+
+# Text widget: .w1.w2.w5.w6.w10
+label .w1.w2.w5.w6.w10 -text {Pulse} -foreground {#e0e7ff} -padx 5 -pady 5
+pack .w1.w2.w5.w6.w10 -fill both -expand yes
+
+# Text widget: .w1.w2.w5.w6.w11
+label .w1.w2.w5.w6.w11 -text {Scale animation} -foreground {#a5b4fc} -padx 5 -pady 5
+pack .w1.w2.w5.w6.w11 -fill both -expand yes
+
+# Container widget: .w1.w2.w5.w12
+frame .w1.w2.w5.w12 -width 200 -background {#1e1b4b}
+pack .w1.w2.w5.w12 -side left
+
+# Container widget: .w1.w2.w5.w12.w13
+frame .w1.w2.w5.w12.w13 -width 80 -height 80 -background {#a78bfa}
+pack .w1.w2.w5.w12.w13 -fill both -expand yes
+
+# Center widget: .w1.w2.w5.w12.w13.w14
+frame .w1.w2.w5.w12.w13.w14
+pack .w1.w2.w5.w12.w13.w14 -fill both -expand yes
+
+# Text widget: .w1.w2.w5.w12.w13.w14.w15
+label .w1.w2.w5.w12.w13.w14.w15 -text {~} -foreground {#ffffff} -padx 5 -pady 5
+pack .w1.w2.w5.w12.w13.w14.w15 -expand yes -anchor center
+
+# Text widget: .w1.w2.w5.w12.w16
+label .w1.w2.w5.w12.w16 -text {Fade In/Out} -foreground {#e0e7ff} -padx 5 -pady 5
+pack .w1.w2.w5.w12.w16 -fill both -expand yes
+
+# Text widget: .w1.w2.w5.w12.w17
+label .w1.w2.w5.w12.w17 -text {Opacity animation} -foreground {#a5b4fc} -padx 5 -pady 5
+pack .w1.w2.w5.w12.w17 -fill both -expand yes
+
+# Container widget: .w1.w2.w5.w18
+frame .w1.w2.w5.w18 -width 200 -background {#1e1b4b}
+pack .w1.w2.w5.w18 -side left
+
+# Container widget: .w1.w2.w5.w18.w19
+frame .w1.w2.w5.w18.w19 -width 80 -height 80 -background {#f472b6}
+pack .w1.w2.w5.w18.w19 -fill both -expand yes
+
+# Center widget: .w1.w2.w5.w18.w19.w20
+frame .w1.w2.w5.w18.w19.w20
+pack .w1.w2.w5.w18.w19.w20 -fill both -expand yes
+
+# Text widget: .w1.w2.w5.w18.w19.w20.w21
+label .w1.w2.w5.w18.w19.w20.w21 -text {>} -foreground {#ffffff} -padx 5 -pady 5
+pack .w1.w2.w5.w18.w19.w20.w21 -expand yes -anchor center
+
+# Text widget: .w1.w2.w5.w18.w22
+label .w1.w2.w5.w18.w22 -text {Slide In} -foreground {#e0e7ff} -padx 5 -pady 5
+pack .w1.w2.w5.w18.w22 -fill both -expand yes
+
+# Text widget: .w1.w2.w5.w18.w23
+label .w1.w2.w5.w18.w23 -text {Translate animation} -foreground {#a5b4fc} -padx 5 -pady 5
+pack .w1.w2.w5.w18.w23 -fill both -expand yes
+
+# Container widget: .w1.w2.w24
+frame .w1.w2.w24 -background {#1e1b4b}
+pack .w1.w2.w24 -side top
+
+# Column widget: .w1.w2.w24.w25
+frame .w1.w2.w24.w25
+pack .w1.w2.w24.w25 -fill both -expand yes
+
+# Text widget: .w1.w2.w24.w25.w26
+label .w1.w2.w24.w25.w26 -text {Available Preset Animations} -foreground {#e0e7ff} -padx 5 -pady 5
+pack .w1.w2.w24.w25.w26 -side top
+
+# Text widget: .w1.w2.w24.w25.w27
+label .w1.w2.w24.w25.w27 -text {pulse(duration, iterations) - Scale in/out effect} -foreground {#c7d2fe} -padx 5 -pady 5
+pack .w1.w2.w24.w25.w27 -side top
+
+# Text widget: .w1.w2.w24.w25.w28
+label .w1.w2.w24.w25.w28 -text {fadeInOut(duration, iterations) - Opacity 0 to 1 to 0} -foreground {#c7d2fe} -padx 5 -pady 5
+pack .w1.w2.w24.w25.w28 -side top
+
+# Text widget: .w1.w2.w24.w25.w29
+label .w1.w2.w24.w25.w29 -text {slideInLeft(duration) - Slide in from left edge} -foreground {#c7d2fe} -padx 5 -pady 5
+pack .w1.w2.w24.w25.w29 -side top
+
+# Text widget: .w1.w2.w24.w25.w30
+label .w1.w2.w24.w25.w30 -text {Use -1 for infinite loop, 1 for once, N for N times} -foreground {#a5b4fc} -padx 5 -pady 5
+pack .w1.w2.w24.w25.w30 -side top
 
 # Main event loop
 update

@@ -145,16 +145,14 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
             fseek(f, 0, SEEK_END);
             source_size = ftell(f);
             fseek(f, 0, SEEK_SET);
-            source = malloc(source_size + 1);
-            if (source) {
-                size_t bytes_read = fread(source, 1, source_size, f);
-                if (bytes_read != source_size) {
-                    fprintf(stderr, "Warning: Only read %zu of %zu bytes from %s\n",
-                            bytes_read, source_size, source_file);
-                    source_size = bytes_read;
-                }
-                source[source_size] = '\0';
+            source = safe_malloc(source_size + 1);
+            size_t bytes_read = fread(source, 1, source_size, f);
+            if (bytes_read != source_size) {
+                fprintf(stderr, "Warning: Only read %zu of %zu bytes from %s\n",
+                        bytes_read, source_size, source_file);
+                source_size = bytes_read;
             }
+            source[source_size] = '\0';
             fclose(f);
         }
 

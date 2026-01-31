@@ -1,4 +1,5 @@
 #include "file_discovery.h"
+#include "kryon_cli.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -296,7 +296,8 @@ static TclWidget* parse_widget_command(TclCommand* cmd) {
  * Main parse function
  */
 TclAST* tcl_parse(const char* source) {
-    bool debug = getenv("DEBUG_TCL_PARSER") != NULL;
+    bool debug = false;  // Disable debug for now
+    if (getenv("DEBUG_TCL_PARSER")) debug = true;
     if (!source) {
         set_error(TCL_PARSE_ERROR_SYNTAX, "NULL source");
         return NULL;

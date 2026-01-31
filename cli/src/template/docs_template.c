@@ -258,7 +258,7 @@ char* docs_extract_title(const char* md_path) {
             if (!h1_end) h1_end = h1 + strlen(h1);
             size_t len = h1_end - h1;
             if (len > 0) {
-                title = malloc(len + 1);
+                title = safe_malloc(len + 1);
                 memcpy(title, h1, len);
                 title[len] = '\0';
             }
@@ -272,7 +272,7 @@ char* docs_extract_title(const char* md_path) {
         char* dot = strrchr(basename, '.');
         size_t len = dot ? (size_t)(dot - basename) : strlen(basename);
 
-        title = malloc(len + 1);
+        title = safe_malloc(len + 1);
         memcpy(title, basename, len);
         title[len] = '\0';
 
