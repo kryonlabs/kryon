@@ -44,7 +44,7 @@ SRCS=\
 	src/layout/strategies/strategy_text.c\
 	src/layout/strategies/strategy_image.c\
 	src/layout/strategies/strategy_canvas.c\
-	src/layout/strategies/strategy_foreach.c\
+	src/layout/strategies/strategy_for.c\
 	src/logic/ir_logic.c\
 	src/logic/ir_executor.c\
 	src/logic/ir_expression.c\

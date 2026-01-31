@@ -132,10 +132,11 @@ static void mark_handler_generated(LimboContext* ctx, const char* handler_name) 
     ctx->generated_handlers[ctx->generated_handler_count++] = strdup(handler_name);
 }
 
-// Track event handler names (for onClick mapping)
+// Event handler storage with inline code
 typedef struct {
-    int handler_number;      // 1, 2, 3, ... (for click1, click2, etc.)
-    char* handler_name;      // "handleButtonClick", etc.
+    int handler_number;
+    char* handler_name;
+    char* handler_code;  // Store the actual Limbo code to inline
 } EventHandlerMapping;
 
 static EventHandlerMapping event_handlers[256];
@@ -147,7 +148,21 @@ static void register_event_handler(int number, const char* name) {
 
     event_handlers[event_handler_mapping_count].handler_number = number;
     event_handlers[event_handler_mapping_count].handler_name = strdup(name);
+    event_handlers[event_handler_mapping_count].handler_code = NULL;  // Will be set later
     event_handler_mapping_count++;
+}
+
+// Set the handler code for a given handler number
+static void set_event_handler_code(int number, const char* code) {
+    for (int i = 0; i < event_handler_mapping_count; i++) {
+        if (event_handlers[i].handler_number == number) {
+            if (event_handlers[i].handler_code) {
+                free(event_handlers[i].handler_code);
+            }
+            event_handlers[i].handler_code = strdup(code);
+            break;
+        }
+    }
 }
 
 // Get handler name by number
@@ -160,11 +175,24 @@ static const char* get_handler_name_by_number(int number) {
     return NULL;
 }
 
+// Get handler code by number
+static const char* get_handler_code_by_number(int number) {
+    for (int i = 0; i < event_handler_mapping_count; i++) {
+        if (event_handlers[i].handler_number == number) {
+            return event_handlers[i].handler_code;
+        }
+    }
+    return NULL;
+}
+
 // Cleanup handler mappings
 static void cleanup_event_handler_mappings() {
     for (int i = 0; i < event_handler_mapping_count; i++) {
         if (event_handlers[i].handler_name) {
             free(event_handlers[i].handler_name);
+        }
+        if (event_handlers[i].handler_code) {
+            free(event_handlers[i].handler_code);
         }
     }
     event_handler_mapping_count = 0;
@@ -958,16 +986,26 @@ static bool generate_widget(LimboContext* ctx, cJSON* component, const char* par
     // Add properties as Tk options (KIR has properties directly on component)
     generate_tk_options(ctx, component, parent_bg);
 
-    // Check for event handlers
-    cJSON* on_click = cJSON_GetObjectItem(component, "onClick");
-    if (on_click && on_click->type == cJSON_String) {
-        ctx->event_handler_counter++;
+    // Check for event handlers in events array (KIR structure)
+    cJSON* events = cJSON_GetObjectItem(component, "events");
+    if (events && cJSON_IsArray(events)) {
+        cJSON* event;
+        cJSON_ArrayForEach(event, events) {
+            cJSON* event_type = cJSON_GetObjectItem(event, "type");
+            cJSON* logic_id = cJSON_GetObjectItem(event, "logic_id");
+            if (event_type && cJSON_IsString(event_type) &&
+                logic_id && cJSON_IsString(logic_id) &&
+                strcmp(event_type->valuestring, "click") == 0) {
 
-        // Register the handler name with its number
-        register_event_handler(ctx->event_handler_counter, on_click->valuestring);
+                ctx->event_handler_counter++;
 
-        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
-                  " -command {send eventch click%d}", ctx->event_handler_counter);
+                // Register the handler name with its number
+                register_event_handler(ctx->event_handler_counter, logic_id->valuestring);
+
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+                          " -command {send eventch click%d}", ctx->event_handler_counter);
+            }
+        }
     }
 
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\");\n");
@@ -1110,13 +1148,23 @@ static bool generate_widget_with_bindings(LimboContext* ctx, cJSON* component,
     // Add properties with binding resolution
     generate_tk_options_with_bindings(ctx, component, parent_bg, item_name, data_item);
 
-    // Check for event handlers
-    cJSON* on_click = cJSON_GetObjectItem(component, "onClick");
-    if (on_click && cJSON_IsString(on_click)) {
-        ctx->event_handler_counter++;
-        register_event_handler(ctx->event_handler_counter, on_click->valuestring);
-        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
-                  " -command {send eventch click%d}", ctx->event_handler_counter);
+    // Check for event handlers in events array (KIR structure)
+    cJSON* events = cJSON_GetObjectItem(component, "events");
+    if (events && cJSON_IsArray(events)) {
+        cJSON* event;
+        cJSON_ArrayForEach(event, events) {
+            cJSON* event_type = cJSON_GetObjectItem(event, "type");
+            cJSON* logic_id = cJSON_GetObjectItem(event, "logic_id");
+            if (event_type && cJSON_IsString(event_type) &&
+                logic_id && cJSON_IsString(logic_id) &&
+                strcmp(event_type->valuestring, "click") == 0) {
+
+                ctx->event_handler_counter++;
+                register_event_handler(ctx->event_handler_counter, logic_id->valuestring);
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+                          " -command {send eventch click%d}", ctx->event_handler_counter);
+            }
+        }
     }
 
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\");\n");
@@ -1373,6 +1421,8 @@ static bool process_component(LimboContext* ctx, cJSON* component, const char* p
 }
 
 // Generate custom Limbo functions from logic_block
+// NOTE: This function now only stores the handler code for later inlining
+// It does NOT output the functions directly (which caused Limbo syntax errors)
 static void generate_limbo_custom_functions(LimboContext* ctx, cJSON* logic_block) {
     if (!ctx || !logic_block) return;
 
@@ -1380,12 +1430,6 @@ static void generate_limbo_custom_functions(LimboContext* ctx, cJSON* logic_bloc
     cJSON* functions = cJSON_GetObjectItem(logic_block, "functions");
     if (!functions || !cJSON_IsArray(functions)) {
         return;  // No functions defined
-    }
-
-    // Add comment separator
-    if (ctx->include_comments) {
-        append_string(&ctx->buffer, &ctx->size, &ctx->capacity,
-                     "\n# Custom Event Handlers\n");
     }
 
     // Iterate through each function
@@ -1399,7 +1443,7 @@ static void generate_limbo_custom_functions(LimboContext* ctx, cJSON* logic_bloc
         if (!name_obj || !name_obj->valuestring) continue;
         const char* func_name = name_obj->valuestring;
 
-        // Skip if already generated
+        // Skip if already processed
         if (is_handler_already_generated(ctx, func_name)) {
             continue;
         }
@@ -1428,11 +1472,77 @@ static void generate_limbo_custom_functions(LimboContext* ctx, cJSON* logic_bloc
             }
         }
 
-        // Output Limbo source if found
+        // Extract and store the function body for inlining
         if (limbo_source) {
             mark_handler_generated(ctx, func_name);
-            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, limbo_source);
-            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\n\n");
+
+            // Parse the function to extract the handler name and body
+            // Expected format: "funcName: fn() {\n\tbody\n};"
+
+            // Extract handler name first
+            char handler_name_from_source[256] = {0};
+            const char* colon_pos = strchr(limbo_source, ':');
+            if (colon_pos && colon_pos > limbo_source) {
+                size_t name_len = colon_pos - limbo_source;
+                if (name_len < sizeof(handler_name_from_source) - 1) {
+                    strncpy(handler_name_from_source, limbo_source, name_len);
+                    handler_name_from_source[name_len] = '\0';
+
+                    // Trim whitespace from name
+                    char* end = handler_name_from_source + name_len - 1;
+                    while (end >= handler_name_from_source && (*end == ' ' || *end == '\t')) {
+                        *end = '\0';
+                        end--;
+                    }
+                }
+            }
+
+            // Extract the body by finding the content between { and }
+            const char* body_start = strchr(limbo_source, '{');
+            const char* body_end = strrchr(limbo_source, '}');
+
+            if (body_start && body_end && body_end > body_start) {
+                body_start++;  // Skip the '{'
+
+                // Calculate body length
+                size_t body_len = body_end - body_start;
+
+                // Skip leading newlines/tabs
+                while (body_len > 0 && (*body_start == '\n' || *body_start == '\r' || *body_start == '\t')) {
+                    body_start++;
+                    body_len--;
+                }
+
+                // Skip trailing whitespace, semicolon, etc.
+                while (body_len > 0 && (body_start[body_len - 1] == '\n' || body_start[body_len - 1] == '\r' ||
+                                       body_start[body_len - 1] == ' ' || body_start[body_len - 1] == '\t' ||
+                                       body_start[body_len - 1] == ';' || body_start[body_len - 1] == '}')) {
+                    body_len--;
+                }
+
+                // Find which handler number this function corresponds to
+                if (handler_name_from_source[0] != '\0' && body_len > 0) {
+                    for (int h = 0; h < event_handler_mapping_count; h++) {
+                        if (event_handlers[h].handler_name && strcmp(event_handlers[h].handler_name, handler_name_from_source) == 0) {
+                            // Allocate and store the body
+                            char* body = malloc(body_len + 1);
+                            if (body) {
+                                strncpy(body, body_start, body_len);
+                                body[body_len] = '\0';
+                                set_event_handler_code(event_handlers[h].handler_number, body);
+                                // DEBUG: Don't free yet, keep it for verification
+                                // free(body);  // set_event_handler_code makes a copy
+                                fprintf(stderr, "[DEBUG] Stored handler code for %s (number %d): '%s'\n",
+                                        handler_name_from_source, event_handlers[h].handler_number, body);
+                            }
+                            break;
+                        }
+                    }
+                } else {
+                    fprintf(stderr, "[DEBUG] Failed to extract handler body: name='%s', body_len=%d\n",
+                            handler_name_from_source, (int)body_len);
+                }
+            }
         }
     }
 }
@@ -1569,17 +1679,37 @@ static bool generate_event_loop(LimboContext* ctx, int num_event_handlers) {
             append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
                       "\t\t\t\tif (s == \"click%d\") {\n", i);
 
-            // Get handler name for this number
-            const char* handler_name = get_handler_name_by_number(i);
+            // Get handler code for this number
+            const char* handler_code = get_handler_code_by_number(i);
 
-            if (handler_name) {
-                // Call custom handler function
-                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
-                          "\t\t\t\t\t%s();\n", handler_name);
+            if (handler_code) {
+                // Inline the handler code
+                // Split by newlines and add proper indentation
+                char* code_copy = strdup(handler_code);
+                char* line = strtok(code_copy, "\n");
+                while (line) {
+                    // Skip leading whitespace from the original line
+                    const char* trimmed = line;
+                    while (*trimmed == ' ' || *trimmed == '\t') trimmed++;
+
+                    // Add indented line
+                    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\t\t\t\t\t");
+                    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, trimmed);
+                    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\n");
+
+                    line = strtok(NULL, "\n");
+                }
+                free(code_copy);
             } else {
                 // Fallback to debug print
-                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
-                          "\t\t\t\t\tsys->print(\"Button %d clicked\\n\");\n", i);
+                const char* handler_name = get_handler_name_by_number(i);
+                if (handler_name) {
+                    append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+                              "\t\t\t\t\tsys->print(\"Event handler: %s\\n\");\n", handler_name);
+                } else {
+                    append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity,
+                              "\t\t\t\t\tsys->print(\"Button %d clicked\\n\");\n", i);
+                }
             }
 
             append_string(&ctx->buffer, &ctx->size, &ctx->capacity,
@@ -1627,19 +1757,20 @@ char* limbo_codegen_from_json(const char* kir_json) {
     // Generate module header
     generate_module_header(ctx, module_name);
 
-    // Generate custom Limbo functions (BEFORE init function)
-    generate_limbo_custom_functions(ctx, logic_block);
-
     // Generate init function start
     generate_init_start(ctx, window_title);
 
-    // Process root component
+    // Process root component (this registers event handlers)
     cJSON* root = cJSON_GetObjectItem(kir_root, "root");
     if (root) {
         process_component(ctx, root, "", 0, NULL, NULL);
     }
 
-    // Generate event loop
+    // NOW generate custom Limbo functions (AFTER event handlers are registered)
+    // This extracts and stores the handler code for inlining
+    generate_limbo_custom_functions(ctx, logic_block);
+
+    // Generate event loop (this inlines the handler code)
     generate_event_loop(ctx, ctx->event_handler_counter);
 
     // Cleanup handler mappings
