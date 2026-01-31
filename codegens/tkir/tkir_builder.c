@@ -28,6 +28,16 @@ static TKIRPackOptions* tkir_compute_pack_options_with_alignment(
     cJSON* component, const char* parent_type, const char* main_align,
     const char* cross_align, int child_index, int total_children);
 
+// For Loop Expansion
+static void expand_for_loops_in_json(cJSON* component, cJSON* source_structures, bool verbose);
+static void expand_single_for_loop_json(cJSON* for_component, cJSON* source_structures, bool verbose);
+static void apply_bindings_to_component(cJSON* component, const char* item_name,
+                                       cJSON* data_item, int index);
+static char* resolve_binding_expression(const char* expr, cJSON* data_item,
+                                       const char* item_name, int index);
+static cJSON* resolve_variable_source(const char* var_name, cJSON* source_structures);
+static char* get_nested_field_value(cJSON* obj, const char* field_path);
+
 // ============================================================================
 // Builder Context
 // ============================================================================
@@ -95,12 +105,10 @@ TKIRRoot* tkir_build_from_kir(const char* kir_json, bool verbose) {
         return NULL;
     }
 
-    // tkir_root_from_cJSON stores a reference in root->json
-    // Since we own kir_root, we need to free it after use
-    // But tkir_root_free won't free it, so we need to free it here
-    // Actually, let's NOT store the reference to avoid confusion
-    root->json = NULL;  // Don't keep a reference to avoid double-free
-    cJSON_Delete(kir_root);  // We own it, so we free it
+    // DON'T set root->json = NULL
+    // DON'T delete kir_root here
+    // The caller is responsible for managing the cJSON lifetime
+    // See tkir_root_free() - it doesn't delete root->json
 
     return root;
 }
@@ -126,6 +134,27 @@ TKIRRoot* tkir_build_from_cJSON(cJSON* kir_root, bool verbose) {
     }
 
     ctx->verbose = verbose;
+
+    // Extract source_structures for variable resolution
+    cJSON* source_structures = cJSON_GetObjectItem(kir_root, "source_structures");
+
+    // Get root component - try "root" first, then "app", then "component"
+    cJSON* root_component_json = cJSON_GetObjectItem(kir_root, "root");
+    if (!root_component_json) {
+        root_component_json = cJSON_GetObjectItem(kir_root, "app");
+    }
+    if (!root_component_json) {
+        root_component_json = cJSON_GetObjectItem(kir_root, "component");
+    }
+    if (!root_component_json) {
+        tkir_error("No root component found in KIR");
+        tkir_builder_free(ctx);
+        tkir_root_free(root);
+        return NULL;
+    }
+
+    // EXPAND FOR LOOPS (compile-time expansion)
+    expand_for_loops_in_json(root_component_json, source_structures, verbose);
 
     // Transform the KIR component tree
     if (!tkir_builder_transform_root(ctx, kir_root)) {
@@ -1064,4 +1093,352 @@ cJSON* tkir_layout_to_json(TKIRLayoutOptions* layout) {
     cJSON_AddItemToObject(json, "options", options);
 
     return json;
+}
+
+// ============================================================================
+// For Loop Expansion
+// ============================================================================
+
+static void expand_for_loops_in_json(cJSON* component, cJSON* source_structures, bool verbose) {
+    if (!component) return;
+
+    // Get component type
+    cJSON* type_json = cJSON_GetObjectItem(component, "type");
+    if (!type_json || !cJSON_IsString(type_json)) return;
+
+    const char* type = type_json->valuestring;
+
+    // Check if this is a For loop
+    if (strcmp(type, "For") == 0 || strcmp(type, "ForEach") == 0) {
+        // Expand this For loop
+        expand_single_for_loop_json(component, source_structures, verbose);
+        return;  // Don't recurse - expansion replaces the For node
+    }
+
+    // Not a For loop - recurse into children
+    cJSON* children = cJSON_GetObjectItem(component, "children");
+    if (children && cJSON_IsArray(children)) {
+        cJSON* child = NULL;
+        cJSON_ArrayForEach(child, children) {
+            expand_for_loops_in_json(child, source_structures, verbose);
+        }
+    }
+}
+
+static void expand_single_for_loop_json(cJSON* for_component, cJSON* source_structures, bool verbose) {
+    // Get for_def structure (KIR uses "for" key)
+    cJSON* for_def = cJSON_GetObjectItem(for_component, "for");
+    if (!for_def) {
+        if (verbose) {
+            fprintf(stderr, "[TKIR] WARNING: For loop missing for_def structure\n");
+        }
+        return;
+    }
+
+    // Get item name and source
+    cJSON* item_name_json = cJSON_GetObjectItem(for_def, "item_name");
+    cJSON* source_json = cJSON_GetObjectItem(for_def, "source");
+    cJSON* is_compile_time_json = cJSON_GetObjectItem(for_def, "is_compile_time");
+
+    if (!item_name_json || !cJSON_IsString(item_name_json)) {
+        if (verbose) {
+            fprintf(stderr, "[TKIR] WARNING: For loop missing item_name\n");
+        }
+        return;
+    }
+
+    const char* item_name = item_name_json->valuestring;
+
+    // Check if this is a compile-time loop (should expand)
+    bool is_compile_time = is_compile_time_json ? cJSON_IsTrue(is_compile_time_json) : true;
+
+    if (!is_compile_time) {
+        if (verbose) {
+            fprintf(stderr, "[TKIR] WARNING: Skipping runtime For loop (item=%s)\n", item_name);
+        }
+        return;
+    }
+
+    // Get source data
+    cJSON* source_data = NULL;
+    if (source_json) {
+        cJSON* literal_json = cJSON_GetObjectItem(source_json, "literal_json");
+        cJSON* expression = cJSON_GetObjectItem(source_json, "expression");
+
+        if (literal_json && cJSON_IsString(literal_json)) {
+            // Parse literal JSON array
+            source_data = cJSON_Parse(literal_json->valuestring);
+        } else if (expression && cJSON_IsString(expression)) {
+            // Resolve from source_structures (const_declarations)
+            source_data = resolve_variable_source(expression->valuestring, source_structures);
+        }
+    }
+
+    if (!source_data || !cJSON_IsArray(source_data)) {
+        if (verbose) {
+            fprintf(stderr, "[TKIR] WARNING: No source data for For loop (item=%s)\n", item_name);
+        }
+        if (source_data) cJSON_Delete(source_data);
+        return;
+    }
+
+    // Get template (first child)
+    cJSON* children = cJSON_GetObjectItem(for_component, "children");
+    if (!children || !cJSON_IsArray(children) || cJSON_GetArraySize(children) == 0) {
+        if (verbose) {
+            fprintf(stderr, "[TKIR] WARNING: For loop has no template children (item=%s)\n", item_name);
+        }
+        cJSON_Delete(source_data);
+        return;
+    }
+
+    cJSON* template = cJSON_GetArrayItem(children, 0);
+    if (!template) {
+        if (verbose) {
+            fprintf(stderr, "[TKIR] WARNING: For loop template is NULL\n");
+        }
+        cJSON_Delete(source_data);
+        return;
+    }
+
+    // Expand: create a copy of template for each item
+    int num_items = cJSON_GetArraySize(source_data);
+    cJSON* expanded_children = cJSON_CreateArray();
+
+    for (int i = 0; i < num_items; i++) {
+        cJSON* data_item = cJSON_GetArrayItem(source_data, i);
+        if (!data_item) {
+            if (verbose) {
+                fprintf(stderr, "[TKIR] WARNING: data_item at index %d is NULL\n", i);
+            }
+            continue;
+        }
+
+        cJSON* copy = cJSON_Duplicate(template, 1);
+        if (!copy) {
+            if (verbose) {
+                fprintf(stderr, "[TKIR] WARNING: Failed to duplicate template at index %d\n", i);
+            }
+            continue;
+        }
+
+        // Apply bindings to the copy
+        apply_bindings_to_component(copy, item_name, data_item, i);
+
+        cJSON_AddItemToArray(expanded_children, copy);
+    }
+
+    // Replace For component's type with Container (make it a regular container)
+    cJSON* type_str = cJSON_CreateString("Container");
+    if (type_str) {
+        cJSON_ReplaceItemInObject(for_component, "type", type_str);
+    }
+
+    // Replace children with expanded children
+    cJSON_ReplaceItemInObject(for_component, "children", expanded_children);
+
+    // Remove for_def (no longer needed) - KIR uses "for" key
+    cJSON_DeleteItemFromObject(for_component, "for");
+
+    cJSON_Delete(source_data);
+}
+
+static void apply_bindings_to_component(cJSON* component, const char* item_name,
+                                       cJSON* data_item, int index) {
+    if (!component || !data_item) return;
+
+    // First, check for property_bindings and apply them
+    cJSON* property_bindings = cJSON_GetObjectItem(component, "property_bindings");
+    if (property_bindings) {
+        // Iterate through the property_bindings object to find each property name
+        // Store properties to update in a list to avoid modifying while iterating
+        struct {
+            char* prop_name;
+            char* resolved_value;
+        } updates[32];
+        int update_count = 0;
+
+        cJSON* prop_name_item = NULL;
+        cJSON_ArrayForEach(prop_name_item, property_bindings) {
+            // prop_name_item->string contains the property name (key)
+            // prop_name_item itself is the binding info object (value)
+            if (!prop_name_item || !prop_name_item->string) continue;
+            if (update_count >= 32) break;
+
+            const char* prop_name = prop_name_item->string;  // This is the property name
+            cJSON* binding_info = prop_name_item;  // This is the binding object
+
+            cJSON* source_expr = cJSON_GetObjectItem(binding_info, "source_expr");
+            if (source_expr && cJSON_IsString(source_expr)) {
+                const char* expr = source_expr->valuestring;
+
+                // Check if this is a binding expression we need to resolve
+                if (strncmp(expr, item_name, strlen(item_name)) == 0) {
+                    char* resolved = resolve_binding_expression(expr, data_item, item_name, index);
+                    if (resolved && strcmp(resolved, expr) != 0) {
+                        // Store for later update
+                        updates[update_count].prop_name = strdup(prop_name);
+                        updates[update_count].resolved_value = resolved;
+                        update_count++;
+                    } else {
+                        if (resolved) free(resolved);
+                    }
+                }
+            }
+        }
+
+        // Now apply the updates
+        for (int i = 0; i < update_count; i++) {
+            cJSON* replacement = cJSON_CreateString(updates[i].resolved_value);
+            if (replacement) {
+                cJSON_ReplaceItemInObject(component, updates[i].prop_name, replacement);
+            }
+            free(updates[i].prop_name);
+            free(updates[i].resolved_value);
+        }
+    }
+
+    // Remove property_bindings after applying (no longer needed)
+    cJSON_DeleteItemFromObject(component, "property_bindings");
+
+    // Recursively apply to children
+    cJSON* children = cJSON_GetObjectItem(component, "children");
+    if (children && cJSON_IsArray(children)) {
+        cJSON* child = NULL;
+        cJSON_ArrayForEach(child, children) {
+            apply_bindings_to_component(child, item_name, data_item, index);
+        }
+    }
+}
+
+static char* resolve_binding_expression(const char* expr, cJSON* data_item,
+                                       const char* item_name, int index) {
+    if (!expr) return NULL;
+
+    // Check for index reference
+    if (strcmp(expr, "index") == 0) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", index);
+        return strdup(buf);
+    }
+
+    // Check for item field reference (e.g., "item.name")
+    if (strncmp(expr, item_name, strlen(item_name)) == 0) {
+        if (expr[strlen(item_name)] == '.') {
+            // Field access: item.name
+            const char* field = expr + strlen(item_name) + 1;
+            return get_nested_field_value(data_item, field);
+        } else if (expr[strlen(item_name)] == '[') {
+            // Array access: item.colors[0]
+            const char* bracket = expr + strlen(item_name);
+            return get_nested_field_value(data_item, bracket);
+        } else if (expr[strlen(item_name)] == '\0') {
+            // Direct item reference (primitive array)
+            if (cJSON_IsString(data_item)) {
+                return strdup(data_item->valuestring);
+            } else if (cJSON_IsNumber(data_item)) {
+                char buf[64];
+                double val = cJSON_GetNumberValue(data_item);
+                snprintf(buf, sizeof(buf), "%g", val);
+                return strdup(buf);
+            }
+        }
+    }
+
+    // Can't resolve - return expression as-is
+    return strdup(expr);
+}
+
+static char* get_nested_field_value(cJSON* obj, const char* field_path) {
+    if (!obj || !field_path) return NULL;
+
+    // Parse field path (supports "name", "colors[0]", "colors.0")
+    char path[256];
+    strncpy(path, field_path, sizeof(path) - 1);
+    path[sizeof(path) - 1] = '\0';
+
+    cJSON* current = obj;
+    char* token = path;
+    char* rest = NULL;
+
+    while (token && current) {
+        // Check for array access [N]
+        char* bracket = strchr(token, '[');
+        if (bracket) {
+            *bracket = '\0';  // Null-terminate field name
+            int index = atoi(bracket + 1);
+
+            // Get array field
+            if (strlen(token) > 0) {
+                current = cJSON_GetObjectItem(current, token);
+            }
+
+            // Get array element
+            if (current && cJSON_IsArray(current)) {
+                current = cJSON_GetArrayItem(current, index);
+            } else {
+                return NULL;
+            }
+            break;
+        }
+
+        // Regular field access
+        rest = strchr(token, '.');
+        if (rest) {
+            *rest = '\0';
+            rest++;
+        }
+
+        current = cJSON_GetObjectItem(current, token);
+        token = rest;
+    }
+
+    if (!current) return NULL;
+
+    // Convert to string
+    if (cJSON_IsString(current)) {
+        return strdup(current->valuestring);
+    } else if (cJSON_IsNumber(current)) {
+        char buf[64];
+        double val = cJSON_GetNumberValue(current);
+        snprintf(buf, sizeof(buf), "%g", val);
+        return strdup(buf);
+    } else if (cJSON_IsTrue(current)) {
+        return strdup("true");
+    } else if (cJSON_IsFalse(current)) {
+        return strdup("false");
+    }
+
+    return NULL;
+}
+
+static cJSON* resolve_variable_source(const char* var_name, cJSON* source_structures) {
+    if (!var_name || !source_structures) return NULL;
+
+    // Get const_declarations array
+    cJSON* const_decls = cJSON_GetObjectItem(source_structures, "const_declarations");
+    if (!const_decls || !cJSON_IsArray(const_decls)) {
+        return NULL;
+    }
+
+    // Find the variable
+    cJSON* decl = NULL;
+    cJSON_ArrayForEach(decl, const_decls) {
+        cJSON* name = cJSON_GetObjectItem(decl, "name");
+        if (name && cJSON_IsString(name) && strcmp(name->valuestring, var_name) == 0) {
+            // Found it - parse the value
+            // KIR uses "value_json" key
+            cJSON* value = cJSON_GetObjectItem(decl, "value_json");
+            if (value && cJSON_IsString(value)) {
+                return cJSON_Parse(value->valuestring);
+            }
+            // Fallback to "value" key for compatibility
+            value = cJSON_GetObjectItem(decl, "value");
+            if (value && cJSON_IsString(value)) {
+                return cJSON_Parse(value->valuestring);
+            }
+        }
+    }
+
+    return NULL;
 }

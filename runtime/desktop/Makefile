@@ -137,21 +137,24 @@ LINK_LIBS = -L$(BUILD_DIR) -lkryon_ir $(LIBS)
 # Default target - build both SDL3 and Raylib libraries
 all:
 	@echo "Building both SDL3 and Raylib desktop libraries..."
+	@echo "Cleaning any previous build artifacts..."
 	$(MAKE) clean
 	@echo "Building SDL3 desktop library..."
 	$(MAKE) build-lib ENABLE_SDL3=1 ENABLE_RAYLIB=0
-	@echo "Cleaning object files before raylib build..."
-	rm -f *.o *.d renderers/sdl3/*.o renderers/sdl3/*.d renderers/raylib/*.o renderers/raylib/*.d
+	@echo "Cleaning renderer-specific objects before raylib build..."
+	rm -f renderers/sdl3/*.o renderers/sdl3/*.d
 	@echo "Building Raylib desktop library..."
 	$(MAKE) build-lib ENABLE_SDL3=0 ENABLE_RAYLIB=1
+	@echo "Cleaning up shared desktop objects..."
+	rm -f *.o *.d renderers/raylib/*.o renderers/raylib/*.d
 	@echo "Done! Built libkryon_desktop_sdl3.a and libkryon_desktop_raylib.a"
 
 # Internal target for building a single library
 build-lib: $(DESKTOP_STATIC_LIB) $(DESKTOP_SHARED_LIB)
 
-# Create build directory
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+# Create build directory and renderer subdirectories
+$(BUILD_DIR) renderers/sdl3 renderers/raylib:
+	mkdir -p $@
 
 # Object files list - auto-generated from sources
 DESKTOP_OBJS = $(DESKTOP_SOURCES:.c=.o)
@@ -164,7 +167,10 @@ LOCAL_RENDERER_OBJS = $(filter-out ../../renderers/%,$(DESKTOP_OBJS))
 DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
 
 # Compile object files with dependency tracking
-%.o: %.c
+# Pattern rule with automatic directory creation
+%.o: %.c | renderers/sdl3 renderers/raylib
+	@mkdir -p $(dir $@)
+	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
 # Include auto-generated dependencies (if they exist)
@@ -172,15 +178,26 @@ DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
 
 # Create static library
 # Use the parent objects directly and find local objects
-$(DESKTOP_STATIC_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
+$(DESKTOP_STATIC_LIB): $(BUILD_DIR) | $(DESKTOP_OBJS)
 	@echo "Creating static library: $@"
 	@echo "Parent objects: $(PARENT_RENDERER_OBJS)"
 	@echo "Local objects: $(LOCAL_RENDERER_OBJS)"
-	@$(AR) $(ARFLAGS) $@ $(PARENT_RENDERER_OBJS) $(shell find renderers -name "*.o" 2>/dev/null || true)
+	@$(AR) $(ARFLAGS) $@ $(wildcard $(PARENT_RENDERER_OBJS)) $(wildcard $(LOCAL_RENDERER_OBJS))
 
 # Create shared library
-$(DESKTOP_SHARED_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
-	$(CC) $(CFLAGS) -shared -o $@ $(DESKTOP_OBJS) \
+# Use wildcard to only link existing object files (handles missing files gracefully)
+$(DESKTOP_SHARED_LIB): $(BUILD_DIR) | $(DESKTOP_OBJS)
+	@echo "Creating shared library: $@"
+	@echo "Checking for required object files..."
+	@for obj in $(DESKTOP_OBJS); do \
+		if [ -f "$$obj" ]; then \
+			echo "  ✓ $$obj"; \
+		else \
+			echo "  ✗ Missing: $$obj"; \
+			exit 1; \
+		fi; \
+	done
+	$(CC) $(CFLAGS) -shared -o $@ $(wildcard $(DESKTOP_OBJS)) \
 		-L$(BUILD_DIR) -lkryon_ir -lkryon_command_buf $(LIBS)
 
 # Build test program

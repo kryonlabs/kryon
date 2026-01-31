@@ -115,6 +115,7 @@ static void tcltk_free_context(TKIREmitterContext* base_ctx) {
 
     TclTKEmitterContext* ctx = (TclTKEmitterContext*)base_ctx;
 
+    // Free Tcl/Tk-specific resources
     if (ctx->sb) {
         sb_free(ctx->sb);
     }
@@ -123,7 +124,9 @@ static void tcltk_free_context(TKIREmitterContext* base_ctx) {
         free(ctx->root_background);
     }
 
-    free(ctx);
+    // NOTE: Don't free ctx here!
+    // The tkir_emitter_context_free() function will free the base context.
+    // We only need to free the Tcl/Tk-specific resources.
 }
 
 /* ============================================================================
@@ -243,28 +246,28 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
         sb_append_fmt(ctx->sb, "# Widget: %s (%s)\n", widget->id, widget->tk_type);
     }
 
-    sb_append_fmt(ctx->sb, "%s widget-%s\n", widget->tk_type, widget->id);
+    sb_append_fmt(ctx->sb, "%s %s\n", widget->tk_type, widget->id);
 
     // Generate properties
     if (props) {
         // Text
         cJSON* text = cJSON_GetObjectItem(props, "text");
         if (text && cJSON_IsString(text)) {
-            sb_append_fmt(ctx->sb, "%s widget-%s configure -text {%s}\n",
+            sb_append_fmt(ctx->sb, "%s %s configure -text {%s}\n",
                          widget->tk_type, widget->id, text->valuestring);
         }
 
         // Background
         cJSON* background = cJSON_GetObjectItem(props, "background");
         if (background && cJSON_IsString(background)) {
-            sb_append_fmt(ctx->sb, "%s widget-%s configure -background %s\n",
+            sb_append_fmt(ctx->sb, "%s %s configure -background %s\n",
                          widget->tk_type, widget->id, background->valuestring);
         }
 
         // Foreground
         cJSON* foreground = cJSON_GetObjectItem(props, "foreground");
         if (foreground && cJSON_IsString(foreground)) {
-            sb_append_fmt(ctx->sb, "%s widget-%s configure -foreground %s\n",
+            sb_append_fmt(ctx->sb, "%s %s configure -foreground %s\n",
                          widget->tk_type, widget->id, foreground->valuestring);
         }
 
@@ -274,7 +277,7 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
             cJSON* family = cJSON_GetObjectItem(font, "family");
             cJSON* size = cJSON_GetObjectItem(font, "size");
             if (family && cJSON_IsString(family) && size && cJSON_IsNumber(size)) {
-                sb_append_fmt(ctx->sb, "%s widget-%s configure -font {%s %d}\n",
+                sb_append_fmt(ctx->sb, "%s %s configure -font {%s %d}\n",
                              widget->tk_type, widget->id, family->valuestring, (int)size->valuedouble);
             }
         }
@@ -284,7 +287,7 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
         if (width && cJSON_IsObject(width)) {
             cJSON* value = cJSON_GetObjectItem(width, "value");
             if (value && cJSON_IsNumber(value)) {
-                sb_append_fmt(ctx->sb, "%s widget-%s configure -width %d\n",
+                sb_append_fmt(ctx->sb, "%s %s configure -width %d\n",
                              widget->tk_type, widget->id, (int)value->valuedouble);
             }
         }
@@ -294,7 +297,7 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
         if (height && cJSON_IsObject(height)) {
             cJSON* value = cJSON_GetObjectItem(height, "value");
             if (value && cJSON_IsNumber(value)) {
-                sb_append_fmt(ctx->sb, "%s widget-%s configure -height %d\n",
+                sb_append_fmt(ctx->sb, "%s %s configure -height %d\n",
                              widget->tk_type, widget->id, (int)value->valuedouble);
             }
         }
@@ -305,11 +308,11 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
             cJSON* width_val = cJSON_GetObjectItem(border, "width");
             cJSON* color = cJSON_GetObjectItem(border, "color");
             if (width_val && cJSON_IsNumber(width_val)) {
-                sb_append_fmt(ctx->sb, "%s widget-%s configure -borderwidth %d\n",
+                sb_append_fmt(ctx->sb, "%s %s configure -borderwidth %d\n",
                              widget->tk_type, widget->id, (int)width_val->valuedouble);
             }
             if (color && cJSON_IsString(color)) {
-                sb_append_fmt(ctx->sb, "%s widget-%s configure -highlightbackground %s\n",
+                sb_append_fmt(ctx->sb, "%s %s configure -highlightbackground %s\n",
                              widget->tk_type, widget->id, color->valuestring);
             }
         }
@@ -349,7 +352,7 @@ static bool tcltk_emit_layout(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
 
     if (strcmp(layout_type, "pack") == 0) {
         // Pack layout
-        sb_append_fmt(ctx->sb, "pack widget-%s", widget->id);
+        sb_append_fmt(ctx->sb, "pack %s", widget->id);
 
         cJSON* side = cJSON_GetObjectItem(options, "side");
         if (side && cJSON_IsString(side)) {
@@ -385,7 +388,7 @@ static bool tcltk_emit_layout(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
 
     } else if (strcmp(layout_type, "grid") == 0) {
         // Grid layout
-        sb_append_fmt(ctx->sb, "grid widget-%s", widget->id);
+        sb_append_fmt(ctx->sb, "grid %s", widget->id);
 
         cJSON* row = cJSON_GetObjectItem(options, "row");
         if (row && cJSON_IsNumber(row)) {
@@ -416,7 +419,7 @@ static bool tcltk_emit_layout(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
 
     } else if (strcmp(layout_type, "place") == 0) {
         // Place layout (absolute positioning)
-        sb_append_fmt(ctx->sb, "place widget-%s", widget->id);
+        sb_append_fmt(ctx->sb, "place %s", widget->id);
 
         cJSON* x = cJSON_GetObjectItem(options, "x");
         if (x && cJSON_IsNumber(x)) {
@@ -494,10 +497,10 @@ static bool tcltk_emit_property(TKIREmitterContext* base_ctx, const char* widget
     // We need to look up the widget to get its type
     // For now, just generate a generic configure command
     if (cJSON_IsString(value)) {
-        sb_append_fmt(ctx->sb, ".widget-%s configure -%s {%s}\n",
+        sb_append_fmt(ctx->sb, ".%s configure -%s {%s}\n",
                      widget_id, property_name, value->valuestring);
     } else if (cJSON_IsNumber(value)) {
-        sb_append_fmt(ctx->sb, ".widget-%s configure -%s %d\n",
+        sb_append_fmt(ctx->sb, ".%s configure -%s %d\n",
                      widget_id, property_name, value->valueint);
     }
 
@@ -528,17 +531,13 @@ char* tcltk_codegen_from_tkir(const char* tkir_json, TclTkCodegenOptions* option
     }
 
     // Create TKIRRoot from parsed JSON
+    // NOTE: tkir_root_from_cJSON() stores a borrowed reference to tkir_root
+    // We remain the owner and will delete it after tkir_root_free()
     TKIRRoot* root = tkir_root_from_cJSON(tkir_root);
     if (!root) {
         cJSON_Delete(tkir_root);
         return NULL;
     }
-
-    // tkir_root_from_cJSON sets root->json = tkir_root
-    // We own tkir_root, so we need to manage its lifetime
-    // Clear the reference so tkir_root_free doesn't try to delete it
-    root->json = NULL;
-    cJSON_Delete(tkir_root);  // We own it, so we delete it after use
 
     // Create emitter options
     TKIREmitterOptions emitter_opts = {0};
@@ -550,16 +549,18 @@ char* tcltk_codegen_from_tkir(const char* tkir_json, TclTkCodegenOptions* option
     // Create emitter context
     TKIREmitterContext* ctx = tcltk_emitter_create(&emitter_opts);
     if (!ctx) {
-        // TODO: tkir_root_free(root);  // Need to fix this
+        tkir_root_free(root);      // Free TKIRRoot first
+        cJSON_Delete(tkir_root);  // Then delete cJSON (we own it)
         return NULL;
     }
 
     // Generate output
     char* output = tkir_emit(ctx, root);
 
-    // Cleanup
+    // Cleanup - ORDER MATTERS!
     tkir_emitter_context_free(ctx);
-    // TODO: tkir_root_free(root);  // Still causing double-free, need to investigate
+    tkir_root_free(root);      // Free TKIRRoot (doesn't delete root->json)
+    cJSON_Delete(tkir_root);  // Delete cJSON (we own it)
 
     return output;
 }

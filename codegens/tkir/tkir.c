@@ -308,10 +308,28 @@ TKIRRoot* tkir_root_from_cJSON(cJSON* kir_root) {
         root->background = NULL;
     }
 
-    // Widgets, handlers, and data bindings will be populated by the builder
-    root->widgets = cJSON_CreateArray();
-    root->handlers = cJSON_CreateArray();
-    root->data_bindings = cJSON_CreateArray();
+    // Read widgets, handlers, and data bindings from JSON if they exist
+    // Otherwise create empty arrays for the builder to populate
+    cJSON* widgets = cJSON_GetObjectItem(kir_root, "widgets");
+    if (widgets && cJSON_IsArray(widgets)) {
+        root->widgets = widgets;
+    } else {
+        root->widgets = cJSON_CreateArray();
+    }
+
+    cJSON* handlers = cJSON_GetObjectItem(kir_root, "handlers");
+    if (handlers && cJSON_IsArray(handlers)) {
+        root->handlers = handlers;
+    } else {
+        root->handlers = cJSON_CreateArray();
+    }
+
+    cJSON* data_bindings = cJSON_GetObjectItem(kir_root, "data_bindings");
+    if (data_bindings && cJSON_IsArray(data_bindings)) {
+        root->data_bindings = data_bindings;
+    } else {
+        root->data_bindings = cJSON_CreateArray();
+    }
 
     return root;
 }
@@ -319,23 +337,42 @@ TKIRRoot* tkir_root_from_cJSON(cJSON* kir_root) {
 void tkir_root_free(TKIRRoot* root) {
     if (!root) return;
 
-    // Free widgets array
-    if (root->widgets) {
+    // Free widgets array only if it's not a borrowed reference from the JSON
+    if (root->widgets && root->json) {
+        cJSON* json_widgets = cJSON_GetObjectItem(root->json, "widgets");
+        if (root->widgets != json_widgets) {
+            cJSON_Delete(root->widgets);
+        }
+        // If they're the same, it's a borrowed reference - don't free
+    } else if (root->widgets) {
         cJSON_Delete(root->widgets);
     }
 
-    // Free handlers array
-    if (root->handlers) {
+    // Free handlers array only if it's not a borrowed reference from the JSON
+    if (root->handlers && root->json) {
+        cJSON* json_handlers = cJSON_GetObjectItem(root->json, "handlers");
+        if (root->handlers != json_handlers) {
+            cJSON_Delete(root->handlers);
+        }
+        // If they're the same, it's a borrowed reference - don't free
+    } else if (root->handlers) {
         cJSON_Delete(root->handlers);
     }
 
-    // Free data bindings array
-    if (root->data_bindings) {
+    // Free data bindings array only if it's not a borrowed reference from the JSON
+    if (root->data_bindings && root->json) {
+        cJSON* json_bindings = cJSON_GetObjectItem(root->json, "data_bindings");
+        if (root->data_bindings != json_bindings) {
+            cJSON_Delete(root->data_bindings);
+        }
+        // If they're the same, it's a borrowed reference - don't free
+    } else if (root->data_bindings) {
         cJSON_Delete(root->data_bindings);
     }
 
-    // Note: We don't free root->json here because it might be owned by the caller
-    // or shared with other structures. The caller is responsible for managing it.
+    // IMPORTANT: We don't free root->json here because it's a borrowed reference.
+    // The caller who created the cJSON object is responsible for freeing it.
+    // This function only frees the TKIRRoot structure itself, not the JSON it references.
 
     free(root);
 }

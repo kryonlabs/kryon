@@ -151,6 +151,15 @@ char* ir_kry_to_kir_with_base_dir(const char* source, size_t length, const char*
 char* ir_kry_to_kir_single_module(const char* source, size_t length, const char* base_directory);
 
 /**
+ * Convert a KRY file to KIR JSON.
+ * Convenience function that reads file and converts it.
+ *
+ * @param filepath Path to .kry file
+ * @return KIR JSON string (caller must free), or NULL on error
+ */
+char* ir_kry_to_kir_file(const char* filepath);
+
+/**
  * Parse .kry and report errors
  *
  * Same as ir_kry_parse(), but also provides detailed error messages.

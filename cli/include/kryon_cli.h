@@ -342,12 +342,28 @@ int target_handler_run(const char* target_name, const char* kir_file,
 const char** target_handler_list_names(void);
 
 // ============================================================================
+// File Format Detection (for parse/convert commands)
+// ============================================================================
+
+typedef enum {
+    FORMAT_UNKNOWN,
+    FORMAT_KRY,
+    FORMAT_TCL,
+    FORMAT_LIMBO,
+    FORMAT_HTML,
+    FORMAT_C,
+    FORMAT_KIR
+} FileFormat;
+
+// ============================================================================
 // Command Handlers
 // ============================================================================
 
 int cmd_build(int argc, char** argv);
 int cmd_new(int argc, char** argv);
 int cmd_compile(int argc, char** argv);
+int cmd_parse(int argc, char** argv);
+int cmd_convert(int argc, char** argv);
 int cmd_run(int argc, char** argv);
 int cmd_plugin(int argc, char** argv);
 int cmd_codegen(int argc, char** argv);

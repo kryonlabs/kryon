@@ -16,7 +16,32 @@ kryon build --target tcl examples/kry/hello_world.kry
 
 # Run with hot reload
 kryon dev examples/kry/hello_world.kry
+
+# NEW: Bidirectional conversion
+kryon parse app.tcl -o app.kir              # Parse to KIR
+kryon convert app.tcl -o app.kry            # Convert Tcl → KRY
+kryon convert app.kry -o app.tcl            # Convert KRY → Tcl
 ```
+
+### 🆕 Universal Format Conversion
+
+Kryon now supports **bidirectional code generation** - convert between ANY formats via KIR:
+
+```bash
+# Parse any format to KIR
+kryon parse <input_file> -o <output.kir>
+
+# Convert between any two formats
+kryon convert <input> -o <output>           # Auto-detect formats
+kryon convert <input> -o <output> -t <format>  # Specify target
+
+# Examples
+kryon convert app.tcl -o app.kry            # Tcl → KRY
+kryon convert app.kry -o app.b -t limbo     # KRY → Limbo
+kryon convert app.tcl -o app.html -t html   # Tcl → Web
+```
+
+**See**: [QUICKSTART_BIDIRECTIONAL.md](QUICKSTART_BIDIRECTIONAL.md) for detailed guide
 
 ## Supported Languages
 

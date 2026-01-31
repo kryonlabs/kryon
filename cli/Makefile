@@ -43,6 +43,8 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_config.c \
        $(SRC_DIR)/commands/cmd_build.c \
        $(SRC_DIR)/commands/cmd_compile.c \
+       $(SRC_DIR)/commands/cmd_parse.c \
+       $(SRC_DIR)/commands/cmd_convert.c \
        $(SRC_DIR)/commands/cmd_run.c \
        $(SRC_DIR)/commands/cmd_codegen.c \
        $(SRC_DIR)/commands/cmd_new.c \

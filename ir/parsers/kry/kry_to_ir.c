@@ -3048,3 +3048,76 @@ IRKryParseResultEx ir_kry_parse_ex2(const char* source, size_t length) {
     return result;
 }
 
+// ============================================================================
+// File-based Conversion API
+// ============================================================================
+
+/**
+ * Convert a KRY file to KIR JSON.
+ * Convenience function that reads a file and converts it.
+ *
+ * @param filepath Path to .kry file
+ * @return KIR JSON string (caller must free), or NULL on error
+ */
+char* ir_kry_to_kir_file(const char* filepath) {
+    if (!filepath) {
+        return NULL;
+    }
+
+    // Read file content
+    FILE* f = fopen(filepath, "r");
+    if (!f) {
+        return NULL;
+    }
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (size <= 0) {
+        fclose(f);
+        return NULL;
+    }
+
+    // Read content
+    char* source = malloc(size + 1);
+    if (!source) {
+        fclose(f);
+        return NULL;
+    }
+
+    size_t bytes_read = fread(source, 1, (size_t)size, f);
+    source[bytes_read] = '\0';
+    fclose(f);
+
+    // Extract base directory from filepath for import resolution
+    // (Following the pattern from cli/src/commands/cmd_compile.c lines 54-66)
+    char* base_dir = NULL;
+    const char* last_slash = strrchr(filepath, '/');
+    if (last_slash) {
+        size_t dir_len = last_slash - filepath;
+        base_dir = malloc(dir_len + 1);
+        if (base_dir) {
+            memcpy(base_dir, filepath, dir_len);
+            base_dir[dir_len] = '\0';
+        }
+    } else {
+        // No slash - use current directory
+        base_dir = strdup(".");
+    }
+
+    if (!base_dir) {
+        free(source);
+        return NULL;
+    }
+
+    // Convert to KIR with base directory for import support
+    char* kir_json = ir_kry_to_kir_with_base_dir(source, bytes_read, base_dir);
+
+    // Cleanup
+    free(base_dir);
+    free(source);
+
+    return kir_json;
+}

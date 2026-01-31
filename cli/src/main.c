@@ -27,6 +27,8 @@ static void print_help(void) {
     printf("  new <name>              Create new project\n");
     printf("  build [targets]         Build project (targets from kryon.toml)\n");
     printf("  compile <file>          Compile to KIR\n");
+    printf("  parse <file>            Parse source file to KIR (supports KRY, Tcl, etc.)\n");
+    printf("  convert <file>          Convert between formats (via KIR)\n");
     printf("  run <target>            Run compiled app (web|desktop|android|custom)\n");
     printf("  dev <file>              Development server\n");
     printf("  test <file.kyt>         Run tests\n");
@@ -39,7 +41,7 @@ static void print_help(void) {
     printf("  uninstall               Uninstall application\n");
     printf("  doctor                  System diagnostics\n");
     printf("  targets                 List all build targets\n\n");
-    printf("Supported languages/formats: KRY, HTML, Markdown, C\n\n");
+    printf("Supported languages/formats: KRY, HTML, Markdown, C, Tcl/Tk, Limbo\n\n");
     printf("Targets:\n");
     printf("  Targets are defined in kryon.toml [build] section\n");
     printf("  Built-in: web, desktop, terminal, android\n");
@@ -96,6 +98,12 @@ int main(int argc, char** argv) {
     }
     else if (strcmp(args->command, "compile") == 0) {
         result = cmd_compile(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "parse") == 0) {
+        result = cmd_parse(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "convert") == 0) {
+        result = cmd_convert(args->argc, args->argv);
     }
     else if (strcmp(args->command, "run") == 0) {
         result = cmd_run(args->argc, args->argv);
