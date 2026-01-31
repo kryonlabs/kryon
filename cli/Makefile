@@ -151,8 +151,10 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_android.a \
 		../dis/libdiscodegen.a
 	# Build kir_to_html.o (embedded web codegen)
-	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
-	$(CC) $(OBJS_LINK) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) \
+	@echo "Building kir_to_html.o..."
+	@$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o || { echo "Error: Failed to build kir_to_html.o"; exit 1; }
+	@echo "Linking $(TARGET)..."
+	@$(CC) $(OBJS_LINK) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) \
 		../build/libkryon_web.a \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
@@ -161,7 +163,8 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_tcltk.a \
 		../build/libkryon_codegen_android.a \
 		../dis/libdiscodegen.a \
-		$(LDFLAGS) $(HARFBUZZ_LIBS)
+		$(LDFLAGS) $(HARFBUZZ_LIBS) || { echo "Error: Failed to link $(TARGET)"; exit 1; }
+	@echo "✓ Built $(TARGET)"
 
 # Build IR library
 ../build/libkryon_ir.a:
@@ -204,71 +207,83 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 
 # Install
 install: $(TARGET)
-	mkdir -p $(INSTALL_DIR)
-	cp $(TARGET) $(INSTALL_DIR)/$(TARGET)
-	chmod +x $(INSTALL_DIR)/$(TARGET)
+	@echo "Installing $(TARGET) to $(INSTALL_DIR)..."
+	@mkdir -p $(INSTALL_DIR)
+	@cp $(TARGET) $(INSTALL_DIR)/$(TARGET) || { echo "Error: Failed to copy binary"; exit 1; }
+	@chmod +x $(INSTALL_DIR)/$(TARGET)
+	@echo "✓ Installed $(TARGET) to $(INSTALL_DIR)/$(TARGET)"
 
 	# Build and install IR library (skip if already built)
-	@if [ ! -f ../build/libkryon_ir.a ]; then $(MAKE) -C ../ir all; fi
-	mkdir -p $(HOME)/.local/share/kryon/build
+	@if [ ! -f ../build/libkryon_ir.a ]; then \
+		echo "Building IR library..."; \
+		$(MAKE) -C ../ir all || { echo "Error: Failed to build IR library"; exit 1; }; \
+	fi
+	@mkdir -p $(HOME)/.local/share/kryon/build
 
 	# Install ALL libraries
-	cp ../build/*.so $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
-	cp ../build/*.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
-	cp ../bindings/c/*.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+	@cp ../build/*.so $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+	@cp ../build/*.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+	@cp ../bindings/c/*.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
 
 	# Also to .local/lib for dynamic linker
-	mkdir -p $(HOME)/.local/lib
-	cp ../build/*.so $(HOME)/.local/lib/ 2>/dev/null || true
+	@mkdir -p $(HOME)/.local/lib
+	@cp ../build/*.so $(HOME)/.local/lib/ 2>/dev/null || true
 
 	# Install C bindings
-	mkdir -p $(HOME)/.local/share/kryon/bindings/c
-	cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
+	@mkdir -p $(HOME)/.local/share/kryon/bindings/c
+	@cp -r ../bindings/c/* $(HOME)/.local/share/kryon/bindings/c/
 
 	# Install headers
-	mkdir -p $(HOME)/.local/share/kryon/ir/include
-	cp ../ir/include/*.h $(HOME)/.local/share/kryon/ir/include/
-	mkdir -p $(HOME)/.local/share/kryon/core/include
-	cp ../core/include/*.h $(HOME)/.local/share/kryon/core/include/
-	mkdir -p $(HOME)/.local/share/kryon/include/kryon
-	cp ../include/kryon/*.h $(HOME)/.local/share/kryon/include/kryon/
+	@mkdir -p $(HOME)/.local/share/kryon/ir/include
+	@cp ../ir/include/*.h $(HOME)/.local/share/kryon/ir/include/
+	@mkdir -p $(HOME)/.local/share/kryon/core/include
+	@cp ../core/include/*.h $(HOME)/.local/share/kryon/core/include/
+	@mkdir -p $(HOME)/.local/share/kryon/include/kryon
+	@cp ../include/kryon/*.h $(HOME)/.local/share/kryon/include/kryon/
 
 	# Install renderers (CRITICAL - was missing)
-	mkdir -p $(HOME)/.local/share/kryon/renderers/sdl3
-	mkdir -p $(HOME)/.local/share/kryon/renderers/raylib
-	mkdir -p $(HOME)/.local/share/kryon/renderers/common
-	cp -r ../renderers/sdl3/*.h $(HOME)/.local/share/kryon/renderers/sdl3/ 2>/dev/null || true
-	cp -r ../renderers/raylib/*.h $(HOME)/.local/share/kryon/renderers/raylib/ 2>/dev/null || true
-	cp -r ../renderers/common/*.h $(HOME)/.local/share/kryon/renderers/common/ 2>/dev/null || true
+	@mkdir -p $(HOME)/.local/share/kryon/renderers/sdl3
+	@mkdir -p $(HOME)/.local/share/kryon/renderers/raylib
+	@mkdir -p $(HOME)/.local/share/kryon/renderers/common
+	@cp -r ../renderers/sdl3/*.h $(HOME)/.local/share/kryon/renderers/sdl3/ 2>/dev/null || true
+	@cp -r ../renderers/raylib/*.h $(HOME)/.local/share/kryon/renderers/raylib/ 2>/dev/null || true
+	@cp -r ../renderers/common/*.h $(HOME)/.local/share/kryon/renderers/common/ 2>/dev/null || true
 
 	# Install runtime (CRITICAL - was missing)
-	mkdir -p $(HOME)/.local/share/kryon/runtime/desktop
-	cp -r ../runtime/desktop/*.h $(HOME)/.local/share/kryon/runtime/desktop/ 2>/dev/null || true
+	@mkdir -p $(HOME)/.local/share/kryon/runtime/desktop
+	@cp -r ../runtime/desktop/*.h $(HOME)/.local/share/kryon/runtime/desktop/ 2>/dev/null || true
 
 	# Install third-party headers (CRITICAL - was missing)
-	mkdir -p $(HOME)/.local/share/kryon/third_party/stb
-	mkdir -p $(HOME)/.local/share/kryon/third_party/cJSON
-	mkdir -p $(HOME)/.local/share/kryon/third_party/tomlc99
-	cp ../third_party/stb/*.h $(HOME)/.local/share/kryon/third_party/stb/
-	cp ../third_party/cJSON/*.h $(HOME)/.local/share/kryon/third_party/cJSON/
-	cp ../third_party/tomlc99/toml.h $(HOME)/.local/share/kryon/third_party/tomlc99/
+	@mkdir -p $(HOME)/.local/share/kryon/third_party/stb
+	@mkdir -p $(HOME)/.local/share/kryon/third_party/cJSON
+	@mkdir -p $(HOME)/.local/share/kryon/third_party/tomlc99
+	@cp ../third_party/stb/*.h $(HOME)/.local/share/kryon/third_party/stb/
+	@cp ../third_party/cJSON/*.h $(HOME)/.local/share/kryon/third_party/cJSON/
+	@cp ../third_party/tomlc99/toml.h $(HOME)/.local/share/kryon/third_party/tomlc99/
 
 	# Install vendor files for web codegen
-	$(MAKE) -C ../codegens/web install-vendor
+	@$(MAKE) -C ../codegens/web install-vendor
 
 	# Dev server script
-	mkdir -p $(HOME)/.local/share/kryon/scripts
-	cp scripts/dev_server.py $(HOME)/.local/share/kryon/scripts/
+	@mkdir -p $(HOME)/.local/share/kryon/scripts
+	@cp scripts/dev_server.py $(HOME)/.local/share/kryon/scripts/
 
+	@echo ""
 	@echo "✓ Installation complete"
 	@echo "  Binary: $(INSTALL_DIR)/$(TARGET)"
 	@echo "  Data: $(HOME)/.local/share/kryon/"
 
-# Clean
-clean:
+# Clean (also uninstall)
+clean: uninstall
 	rm -rf $(BUILD_DIR) $(TARGET) ../codegens/web/*.o
+
+# Uninstall
+uninstall:
+	rm -f $(INSTALL_DIR)/$(TARGET)
+	rm -rf $(HOME)/.local/share/kryon
+	rm -rf $(HOME)/.local/lib/libkryon*
 
 # Rebuild
 rebuild: clean all
 
-.PHONY: all clean install rebuild
+.PHONY: all clean install uninstall rebuild

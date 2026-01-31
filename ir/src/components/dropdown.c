@@ -1,5 +1,6 @@
 #include "dropdown.h"
 #include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,18 +13,11 @@ void layout_dropdown_single_pass(IRComponent* c, IRLayoutConstraints constraints
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
-    // Get style or use defaults
-    float font_size = 14.0f;
-    IRSpacing padding = {8, 8, 8, 8, 0};  // Default padding for dropdown
-
-    if (c->style) {
-        font_size = (c->style->font.size > 0) ? c->style->font.size : 14.0f;
-        padding = c->style->padding;
-    }
+    // Get style values using helpers
+    float font_size = layout_get_font_size(c, LAYOUT_DEFAULT_FONT_SIZE);
+    IRSpacing padding = layout_get_padding(c);
 
     // Get dropdown state to check for text
     IRDropdownState* dropdown_state = (IRDropdownState*)c->custom_data;
@@ -55,12 +49,12 @@ void layout_dropdown_single_pass(IRComponent* c, IRLayoutConstraints constraints
     float intrinsic_width = padding.left + text_width + arrow_space + padding.right;
     float intrinsic_height = padding.top + font_size + padding.bottom;
 
-    // Determine final dimensions
+    // Start with intrinsic dimensions
     float final_width = intrinsic_width;
     float final_height = intrinsic_height;
 
+    // Apply explicit dimensions (including percentage support)
     if (c->style) {
-        // Apply explicit dimensions if specified
         if (c->style->width.type == IR_DIMENSION_PX) {
             final_width = c->style->width.value;
         } else if (c->style->width.type == IR_DIMENSION_PERCENT) {
@@ -74,41 +68,20 @@ void layout_dropdown_single_pass(IRComponent* c, IRLayoutConstraints constraints
         }
     }
 
-    // Respect constraints
-    if (constraints.max_width > 0 && final_width > constraints.max_width) {
-        final_width = constraints.max_width;
-    }
-    if (constraints.max_height > 0 && final_height > constraints.max_height) {
-        final_height = constraints.max_height;
-    }
-    if (constraints.min_width > 0 && final_width < constraints.min_width) {
-        final_width = constraints.min_width;
-    }
-    if (constraints.min_height > 0 && final_height < constraints.min_height) {
-        final_height = constraints.min_height;
-    }
+    // Apply constraints
+    layout_apply_constraints(&final_width, &final_height, constraints);
 
-    // Set computed dimensions
-    c->layout_state->computed.width = final_width;
-    c->layout_state->computed.height = final_height;
+    // Determine position (check for absolute positioning)
+    float pos_x = parent_x;
+    float pos_y = parent_y;
 
-    // Determine position
-    float container_x = parent_x;
-    float container_y = parent_y;
-
-    // Check for absolute positioning
     if (c->style && c->style->position_mode == IR_POSITION_ABSOLUTE) {
-        container_x = c->style->absolute_x;
-        container_y = c->style->absolute_y;
+        pos_x = c->style->absolute_x;
+        pos_y = c->style->absolute_y;
     }
 
-    // Set computed position
-    c->layout_state->computed.x = container_x;
-    c->layout_state->computed.y = container_y;
-
-    // Mark layout as valid
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
+    // Set final layout
+    layout_set_final(c, pos_x, pos_y, final_width, final_height);
 }
 
 // Define the layout trait

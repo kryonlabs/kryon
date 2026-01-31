@@ -8,20 +8,30 @@ package require Tk
 # Window configuration
 wm title . {app}
 wm geometry . 800x600
-wm title . {Column Alignments Demo}
-wm geometry . 1000x800
+wm title . {Alignment Test}
+wm geometry . 800x600
 
 # UI Components
 
 # Container widget: .w1
-frame .w1 -width 1000 -height 800 -background {#f8fafc}
-pack .w1 -fill both -expand yes
+frame .w1 -width 800 -height 600 -background {#ffffff}
+pack .w1
 
-# Row widget: .w1.w2
-frame .w1.w2 -background {#f8fafc}
-pack .w1.w2 -fill both -expand yes
+# Column widget: .w1.w2
+frame .w1.w2 -background {#ffffff}
+pack .w1.w2
 
-# For loop - not yet implemented
+# Container widget: .w1.w2.w3
+frame .w1.w2.w3 -width 100 -height 50 -background {#ff0000}
+pack .w1.w2.w3 -side top
+
+# Container widget: .w1.w2.w4
+frame .w1.w2.w4 -width 100 -height 50 -background {#00ff00}
+pack .w1.w2.w4 -side top
+
+# Container widget: .w1.w2.w5
+frame .w1.w2.w5 -width 100 -height 50 -background {#0000ff}
+pack .w1.w2.w5 -side top
 
 # Main event loop
 update

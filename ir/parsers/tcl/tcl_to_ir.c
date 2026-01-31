@@ -77,6 +77,26 @@ static char* get_parent_path(const char* path) {
 }
 
 /**
+ * Parse widget path to get depth and parent path
+ * Example: ".w1.w2.w3" -> depth=4, parent=".w1.w2"
+ */
+static void parse_widget_path(const char* path, int* out_depth, char** out_parent) {
+    if (!path) {
+        if (out_depth) *out_depth = 0;
+        if (out_parent) *out_parent = strdup(".");
+        return;
+    }
+
+    if (out_depth) {
+        *out_depth = parse_widget_depth(path);
+    }
+
+    if (out_parent) {
+        *out_parent = get_parent_path(path);
+    }
+}
+
+/**
  * Convert Tcl color to KIR color format
  * Tcl colors can be: names (red, blue), hex (#ff0000), or RGB
  */
@@ -94,13 +114,77 @@ static const char* convert_color(const char* tcl_color) {
 }
 
 /* ============================================================================
+ * Widget Hierarchy Building
+ * ============================================================================ */
+
+/**
+ * Parse widget path to get depth and parent path
+ */
+static void parse_widget_path(const char* path, int* out_depth, char** out_parent);
+
+/* ============================================================================
  * Widget Conversion
  * ============================================================================ */
 
 /**
+ * Convert a Tcl widget to KIR component JSON (with children)
+ */
+static cJSON* convert_widget_with_children(TclWidget* widget, TclWidget** all_widgets, int widget_count, bool* processed);
+
+/**
+ * Find and convert children of a widget
+ */
+static cJSON* find_and_convert_children(TclWidget* parent, TclWidget** all_widgets, int widget_count, bool* processed) {
+    cJSON* children = cJSON_CreateArray();
+    if (!children) return NULL;
+
+    const char* parent_path = parent->widget_path;
+    size_t parent_path_len = strlen(parent_path);
+
+    for (int i = 0; i < widget_count; i++) {
+        if (processed[i]) continue;  // Already added to a parent
+
+        TclWidget* child = all_widgets[i];
+        const char* child_path = child->widget_path;
+
+        // Check if this widget is a direct child
+        // Direct child means: path starts with parent_path + "."
+        // and doesn't contain any more dots after that
+        if (strncmp(child_path, parent_path, parent_path_len) == 0 &&
+            child_path[parent_path_len] == '.') {
+
+            // Check if there are no more dots (direct child, not grandchild)
+            bool has_more_dots = false;
+            for (const char* p = child_path + parent_path_len + 1; *p; p++) {
+                if (*p == '.') {
+                    has_more_dots = true;
+                    break;
+                }
+            }
+
+            if (!has_more_dots) {
+                // This is a direct child
+                cJSON* child_json = convert_widget_with_children(child, all_widgets, widget_count, processed);
+                if (child_json) {
+                    cJSON_AddItemToArray(children, child_json);
+                    processed[i] = true;  // Mark as processed
+                }
+            }
+        }
+    }
+
+    if (cJSON_GetArraySize(children) > 0) {
+        return children;
+    } else {
+        cJSON_Delete(children);
+        return NULL;
+    }
+}
+
+/**
  * Convert a Tcl widget to KIR component JSON
  */
-static cJSON* convert_widget(TclWidget* widget) {
+static cJSON* convert_widget_with_children(TclWidget* widget, TclWidget** all_widgets, int widget_count, bool* processed) {
     if (!widget) return NULL;
 
     // Get KIR widget type
@@ -110,7 +194,7 @@ static cJSON* convert_widget(TclWidget* widget) {
     cJSON_AddNumberToObject(component, "id", generate_id());
     cJSON_AddStringToObject(component, "type", kir_type);
 
-    // Add widget path as metadata for debugging
+    // Add widget path as metadata
     cJSON_AddStringToObject(component, "_widgetPath", widget->widget_path);
 
     // Convert options to properties
@@ -152,47 +236,73 @@ static cJSON* convert_widget(TclWidget* widget) {
         cJSON_AddNumberToObject(component, "lineHeight", 1.5);
     }
 
+    // Find and add children
+    cJSON* children = find_and_convert_children(widget, all_widgets, widget_count, processed);
+    if (children) {
+        cJSON_AddItemToObject(component, "children", children);
+    }
+
     return component;
 }
 
-/* ============================================================================
- * Widget Hierarchy Building
- * ============================================================================ */
-
 /**
  * Build widget hierarchy from flat list of widgets
- * Returns the root widget (usually "." or deepest common parent)
+ * Creates proper parent-child relationships based on widget paths
  */
 static cJSON* build_widget_hierarchy(TclWidget** widgets, int widget_count) {
     if (!widgets || widget_count == 0) {
-        return cJSON_CreateObject();
+        // Return empty root container
+        cJSON* root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "type", "Container");
+        cJSON_AddNumberToObject(root, "id", generate_id());
+        cJSON_AddStringToObject(root, "background", "#00000000");
+        cJSON_AddNumberToObject(root, "lineHeight", 1.5);
+        return root;
     }
 
-    // For now, create a simple hierarchy
-    // TODO: Implement proper parent-child relationship building
+    // Track which widgets have been processed
+    bool* processed = calloc(widget_count, sizeof(bool));
+    if (!processed) return cJSON_CreateObject();
 
+    // Find root-level widgets (direct children of ".")
+    cJSON* root_children = cJSON_CreateArray();
+    int root_id = generate_id();
+
+    for (int i = 0; i < widget_count; i++) {
+        if (processed[i]) continue;
+
+        TclWidget* w = widgets[i];
+        int depth;
+        char* parent_path;
+
+        parse_widget_path(w->widget_path, &depth, &parent_path);
+
+        // Root-level widgets have depth 2 (".w1")
+        if (depth == 2 || (depth == 1 && strcmp(w->widget_path, ".") == 0)) {
+            cJSON* widget_json = convert_widget_with_children(w, widgets, widget_count, processed);
+            if (widget_json) {
+                cJSON_AddItemToArray(root_children, widget_json);
+                processed[i] = true;
+            }
+        }
+
+        if (parent_path) free(parent_path);
+    }
+
+    // Create root container
     cJSON* root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "id", root_id);
     cJSON_AddStringToObject(root, "type", "Container");
-    cJSON_AddNumberToObject(root, "id", generate_id());
     cJSON_AddStringToObject(root, "background", "#00000000");
     cJSON_AddNumberToObject(root, "lineHeight", 1.5);
 
-    cJSON* children_array = cJSON_CreateArray();
-
-    // Convert all widgets and add to root
-    for (int i = 0; i < widget_count; i++) {
-        cJSON* widget = convert_widget(widgets[i]);
-        if (widget) {
-            cJSON_AddItemToArray(children_array, widget);
-        }
-    }
-
-    if (cJSON_GetArraySize(children_array) > 0) {
-        cJSON_AddItemToObject(root, "children", children_array);
+    if (cJSON_GetArraySize(root_children) > 0) {
+        cJSON_AddItemToObject(root, "children", root_children);
     } else {
-        cJSON_Delete(children_array);
+        cJSON_Delete(root_children);
     }
 
+    free(processed);
     return root;
 }
 

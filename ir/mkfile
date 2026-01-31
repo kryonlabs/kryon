@@ -38,6 +38,7 @@ SRCS=\
 	src/layout/ir_layout_builder.c\
 	src/layout/ir_layout_debug.c\
 	src/layout/ir_layout_strategy.c\
+	src/layout/layout_helpers.c\
 	src/layout/strategies/strategy_container.c\
 	src/layout/strategies/strategy_row.c\
 	src/layout/strategies/strategy_column.c\
@@ -138,7 +139,7 @@ $LIBRARY:V: $SRCS
 		$CC $CFLAGS $i || exit 1
 	done
 	echo "  Archiving into $LIBRARY..."
-	$AR $ARFLAGS $LIBRARY *.o ../bindings/c/*.o
+	$AR $ARFLAGS $LIBRARY *.o
 	echo "  Installed $LIB"
 
 clean:V:

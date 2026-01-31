@@ -428,14 +428,14 @@ static const char* convert_to_tk_color(const char* hex_color) {
 static void apply_row_layout(LimboContext* ctx, LayoutProperties* props,
                              int child_index, int total_children) {
     // Base: -side left for row
-    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -side left");
+    append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -side left");
 
     // Add gap as padx between items
     if (props->gap > 0) {
         // For rows, add horizontal padding (gap on left side, except first item)
         // child_index < 0 means runtime loop where we can't track - add gap to all
         if (child_index < 0 || child_index > 0) {
-            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -padx %d", props->gap);
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -padx %d", props->gap);
         }
     }
 
@@ -443,9 +443,9 @@ static void apply_row_layout(LimboContext* ctx, LayoutProperties* props,
     if (props->align_items) {
         const char* anchor = alignment_to_anchor_y(props->align_items);
         if (strlen(anchor) > 0) {
-            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -anchor %s", anchor);
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -anchor %s", anchor);
         } else if (strcmp(props->align_items, "stretch") == 0) {
-            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -fill y");
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -fill y");
         }
         // start is default
     }
@@ -461,25 +461,25 @@ static void apply_column_layout(LimboContext* ctx, LayoutProperties* props,
         const char* justify = normalize_alignment_value(props->justify_content);
 
         if (strcmp(justify, "center") == 0) {
-            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -expand 1 -anchor center");
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -expand 1 -anchor center");
         } else if (strcmp(justify, "end") == 0) {
-            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -expand 1 -anchor s");
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -expand 1 -anchor s");
         } else if (strcmp(justify, "space-between") == 0) {
             // Add gap, only between items
             if (child_index > 0 && props->gap > 0) {
-                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -pady %d", props->gap);
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -pady %d", props->gap);
             }
         } else if (strcmp(justify, "space-around") == 0) {
             // Half gap before first, full gap between, half after last
             int pady = (child_index == 0 || child_index == total_children - 1) ?
                        (props->gap > 0 ? props->gap / 2 : 0) : props->gap;
             if (pady > 0) {
-                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -pady %d", pady);
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -pady %d", pady);
             }
         } else if (strcmp(justify, "space-evenly") == 0) {
             // Full gap everywhere
             if (props->gap > 0) {
-                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -pady %d", props->gap);
+                append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -pady %d", props->gap);
             }
         }
         // start is default (no special options)
@@ -491,7 +491,7 @@ static void apply_column_layout(LimboContext* ctx, LayoutProperties* props,
          strcmp(props->justify_content, "space-around") != 0 &&
          strcmp(props->justify_content, "space-evenly") != 0))) {
         if (child_index > 0) {
-            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -pady %d", props->gap);
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -pady %d", props->gap);
         }
     }
 
@@ -499,9 +499,9 @@ static void apply_column_layout(LimboContext* ctx, LayoutProperties* props,
     if (props->align_items) {
         const char* anchor = alignment_to_anchor_x(props->align_items);
         if (strlen(anchor) > 0) {
-            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -anchor %s", anchor);
+            append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, " -anchor %s", anchor);
         } else if (strcmp(props->align_items, "stretch") == 0) {
-            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " + \" -fill x");
+            append_string(&ctx->buffer, &ctx->size, &ctx->capacity, " -fill x");
         }
         // start is default
     }
@@ -1077,12 +1077,12 @@ static void generate_template_with_runtime_bindings(LimboContext* ctx, cJSON* te
     // Use layout-aware packing FIRST (before other checks) if parent has layout properties
     if (parent_layout && parent_is_row) {
         // Row layout - for runtime loops use child_index=-1 to add gap
-        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s", widget_var_name);
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s + \"", widget_var_name);
         apply_row_layout(ctx, parent_layout, -1, 0);
         append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\";\n");
     } else if (parent_layout && parent_is_column) {
         // Column layout
-        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s", widget_var_name);
+        append_fmt(&ctx->buffer, &ctx->size, &ctx->capacity, "%s + \"", widget_var_name);
         apply_column_layout(ctx, parent_layout, -1, 0);
         append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\";\n");
     } else if (depth == 2) {

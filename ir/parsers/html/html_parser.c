@@ -2,6 +2,7 @@
 #include "html_parser.h"
 #include "html_to_ir.h"
 #include "css_stylesheet.h"
+#include "../common/parser_utils.h"
 #include "../include/ir_serialization.h"
 #include "../include/ir_logic.h"
 #include "../include/ir_builder.h"
@@ -576,27 +577,18 @@ HtmlNode* ir_html_parse(const char* html, size_t length) {
 }
 
 HtmlNode* ir_html_parse_file(const char* filepath) {
-    FILE* file = fopen(filepath, "rb");
-    if (!file) {
+    if (!filepath) return NULL;
+
+    // Use parser_read_file from common utilities
+    ParserError error = {0};
+    size_t size = 0;
+    char* buffer = parser_read_file(filepath, &size, &error);
+    if (!buffer) {
         fprintf(stderr, "Error: Cannot open file: %s\n", filepath);
         return NULL;
     }
 
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char* buffer = (char*)malloc(file_size + 1);
-    if (!buffer) {
-        fclose(file);
-        return NULL;
-    }
-
-    size_t bytes_read = fread(buffer, 1, file_size, file);
-    buffer[bytes_read] = '\0';
-    fclose(file);
-
-    HtmlNode* ast = ir_html_parse(buffer, bytes_read);
+    HtmlNode* ast = ir_html_parse(buffer, size);
     free(buffer);
 
     return ast;
@@ -1194,46 +1186,28 @@ char* ir_html_to_kir(const char* html, size_t length) {
 char* ir_html_file_to_kir(const char* filepath) {
     if (!filepath) return NULL;
 
-    // Read HTML file
-    FILE* f = fopen(filepath, "r");
-    if (!f) {
-        fprintf(stderr, "Error: Cannot open file: %s\n", filepath);
-        return NULL;
-    }
-
-    // Get file size
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (size <= 0) {
-        fclose(f);
-        fprintf(stderr, "Error: Empty or invalid file: %s\n", filepath);
-        return NULL;
-    }
-
-    // Read content
-    char* html = (char*)malloc((size_t)size + 1);
+    // Use parser_read_file from common utilities
+    ParserError error = {0};
+    size_t size = 0;
+    char* html = parser_read_file(filepath, &size, &error);
     if (!html) {
-        fclose(f);
-        fprintf(stderr, "Error: Memory allocation failed\n");
+        if (error.code != PARSER_OK) {
+            fprintf(stderr, "Error: Cannot open file: %s (%s)\n", filepath, error.message);
+        } else {
+            fprintf(stderr, "Error: Cannot open file: %s\n", filepath);
+        }
         return NULL;
     }
 
-    size_t bytes_read = fread(html, 1, (size_t)size, f);
-    fclose(f);
-
-    if ((long)bytes_read != size) {
+    if (size == 0) {
+        fprintf(stderr, "Error: Empty or invalid file: %s\n", filepath);
         free(html);
-        fprintf(stderr, "Error: Failed to read file: %s\n", filepath);
         return NULL;
     }
-
-    html[bytes_read] = '\0';
 
     // Extract CSS file paths from <link> tags
     int css_count = 0;
-    char** css_hrefs = extract_css_hrefs(html, bytes_read, &css_count);
+    char** css_hrefs = extract_css_hrefs(html, size, &css_count);
 
     // Load and parse CSS files (merge multiple stylesheets)
     CSSStylesheet* stylesheet = NULL;
@@ -1275,7 +1249,7 @@ char* ir_html_file_to_kir(const char* filepath) {
     }
 
     // Extract and parse embedded <style> content
-    char* embedded_css = extract_embedded_css(html, bytes_read);
+    char* embedded_css = extract_embedded_css(html, size);
     if (embedded_css) {
         CSSStylesheet* embedded = ir_css_parse_stylesheet(embedded_css);
         if (embedded) {
@@ -1295,7 +1269,7 @@ char* ir_html_file_to_kir(const char* filepath) {
     parser_ctx_init(&ctx);
 
     // Parse HTML to AST with logic extraction
-    HtmlNode* ast = ir_html_parse_with_logic(html, bytes_read, &ctx);
+    HtmlNode* ast = ir_html_parse_with_logic(html, size, &ctx);
     free(html);
 
     if (!ast) {

@@ -1,11 +1,12 @@
 /*
-#include "../include/ir_core.h"
  * IR Component - Image Layout Trait
  *
  * Provides layout computation for Image components using intrinsic size.
  */
 
 #include "image.h"
+#include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -25,9 +26,7 @@ void layout_image_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // Get intrinsic size (may return 0 if not set)
     float intrinsic_width = ir_get_component_intrinsic_width(c);
@@ -37,7 +36,7 @@ void layout_image_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     float final_width, final_height;
 
     if (intrinsic_width > 0 && intrinsic_height > 0) {
-        // Use intrinsic size, but respect constraints
+        // Use intrinsic size, but respect constraints (maintain aspect ratio)
         final_width = intrinsic_width;
         final_height = intrinsic_height;
 
@@ -54,45 +53,29 @@ void layout_image_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         }
 
         // Apply min constraints
-        if (constraints.min_width > 0 && final_width < constraints.min_width) {
-            final_width = constraints.min_width;
-        }
-        if (constraints.min_height > 0 && final_height < constraints.min_height) {
-            final_height = constraints.min_height;
-        }
+        final_width = fmaxf(final_width, constraints.min_width);
+        final_height = fmaxf(final_height, constraints.min_height);
     } else {
         // No intrinsic size - use constraint defaults or reasonable image placeholder size
         final_width = (constraints.max_width > 0) ? fminf(constraints.max_width, 200.0f) : 200.0f;
         final_height = (constraints.max_height > 0) ? fminf(constraints.max_height, 150.0f) : 150.0f;
 
         // Apply min constraints
-        if (constraints.min_width > 0 && final_width < constraints.min_width) {
-            final_width = constraints.min_width;
-        }
-        if (constraints.min_height > 0 && final_height < constraints.min_height) {
-            final_height = constraints.min_height;
-        }
+        final_width = fmaxf(final_width, constraints.min_width);
+        final_height = fmaxf(final_height, constraints.min_height);
     }
 
     // Apply explicit dimensions from style (overrides intrinsic size)
-    if (c->style) {
-        if (c->style->width.type == IR_DIMENSION_PX) {
-            final_width = c->style->width.value;
-        }
-        if (c->style->height.type == IR_DIMENSION_PX) {
-            final_height = c->style->height.value;
-        }
+    float explicit_width, explicit_height;
+    if (layout_get_explicit_width(c, &explicit_width)) {
+        final_width = explicit_width;
+    }
+    if (layout_get_explicit_height(c, &explicit_height)) {
+        final_height = explicit_height;
     }
 
-    // Set final dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = final_width;
-    c->layout_state->computed.height = final_height;
-
-    // Mark layout as valid
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
+    // Set final layout
+    layout_set_final_with_parent(c, parent_x, parent_y, final_width, final_height);
 }
 
 const IRLayoutTrait IR_IMAGE_LAYOUT_TRAIT = {

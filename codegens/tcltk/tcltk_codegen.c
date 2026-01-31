@@ -279,24 +279,136 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component,
 }
 
 /* ============================================================================
+ * Alignment Helper Functions
+ * ============================================================================ */
+
+/**
+ * Map KRY alignment value to Tk anchor option
+ */
+static const char* map_anchor_alignment(const char* alignment) {
+    if (!alignment) return NULL;
+
+    if (strcmp(alignment, "start") == 0) return NULL;  // Use default
+    if (strcmp(alignment, "center") == 0) return "center";
+    if (strcmp(alignment, "end") == 0) {
+        // Direction depends on container type, handled elsewhere
+        return NULL;
+    }
+
+    return NULL;
+}
+
+/**
+ * Get opposite side for end alignment
+ */
+static const char* get_opposite_side(const char* container_type) {
+    if (!container_type) return NULL;
+    if (strcmp(container_type, "Row") == 0) {
+        return "right";
+    } else if (strcmp(container_type, "Column") == 0) {
+        return "bottom";
+    }
+    return NULL;
+}
+
+/**
+ * Check if alignment requires space distribution
+ */
+static bool needs_space_distribution(const char* alignment) {
+    if (!alignment) return false;
+    return strcmp(alignment, "spaceBetween") == 0 ||
+           strcmp(alignment, "spaceAround") == 0 ||
+           strcmp(alignment, "spaceEvenly") == 0;
+}
+
+/**
+ * Check if alignment is center
+ */
+static bool is_center_alignment(const char* alignment) {
+    if (!alignment) return false;
+    return strcmp(alignment, "center") == 0;
+}
+
+/**
+ * Check if alignment is end
+ */
+static bool is_end_alignment(const char* alignment) {
+    if (!alignment) return false;
+    return strcmp(alignment, "end") == 0;
+}
+
+/* ============================================================================
  * Layout Managers (Phase 3)
  * ============================================================================ */
 
 /**
- * Generate pack layout command
+ * Generate pack layout command with alignment support
  */
 static void generate_pack_command(TclTkContext* ctx, const char* widget_path,
-                                  const char* parent_type) {
+                                  const char* widget_type,
+                                  const char* parent_type,
+                                  const char* parent_justify,
+                                  const char* parent_align) {
     sb_append_fmt(ctx->sb, "pack %s", widget_path);
 
+    // Determine basic side based on parent type
     if (strcmp(parent_type, "Row") == 0) {
         sb_append(ctx->sb, " -side left");
     } else if (strcmp(parent_type, "Column") == 0) {
         sb_append(ctx->sb, " -side top");
     } else if (strcmp(parent_type, "Center") == 0) {
         sb_append(ctx->sb, " -expand yes -anchor center");
+        sb_append(ctx->sb, "\n");
+        return;
+    }
+
+    // Handle mainAxisAlignment (justifyContent) for parent
+    if (needs_space_distribution(parent_justify)) {
+        // Space distribution handled by grid, not pack
+        // This shouldn't happen if we're using pack
+        sb_append(ctx->sb, " -fill both");
+    } else if (is_center_alignment(parent_justify)) {
+        // Center alignment: expand and anchor center
+        sb_append(ctx->sb, " -expand yes");
+        // For cross-axis centering
+        if (!parent_align || strcmp(parent_align, "center") == 0) {
+            sb_append(ctx->sb, " -anchor center");
+        }
+    } else if (is_end_alignment(parent_justify)) {
+        // End alignment: use opposite side
+        const char* opposite = get_opposite_side(parent_type);
+        if (opposite) {
+            sb_append_fmt(ctx->sb, " -side %s", opposite);
+        }
     } else {
-        sb_append(ctx->sb, " -fill both -expand yes");
+        // Start alignment (default)
+        if (strcmp(parent_type, "Row") == 0) {
+            // Handle crossAxisAlignment for Row
+            if (parent_align) {
+                if (strcmp(parent_align, "start") == 0) {
+                    sb_append(ctx->sb, " -anchor n");
+                } else if (strcmp(parent_align, "end") == 0) {
+                    sb_append(ctx->sb, " -anchor s");
+                } else if (strcmp(parent_align, "center") == 0) {
+                    sb_append(ctx->sb, " -anchor center");
+                } else if (strcmp(parent_align, "stretch") == 0) {
+                    sb_append(ctx->sb, " -fill y");
+                }
+            }
+        } else if (strcmp(parent_type, "Column") == 0) {
+            // Handle crossAxisAlignment for Column
+            if (parent_align) {
+                if (strcmp(parent_align, "start") == 0) {
+                    sb_append(ctx->sb, " -anchor w");
+                } else if (strcmp(parent_align, "end") == 0) {
+                    sb_append(ctx->sb, " -anchor e");
+                } else if (strcmp(parent_align, "center") == 0) {
+                    sb_append(ctx->sb, " -anchor center");
+                } else if (strcmp(parent_align, "stretch") == 0) {
+                    sb_append(ctx->sb, " -fill x");
+                }
+            }
+        }
     }
 
     sb_append(ctx->sb, "\n");
@@ -342,6 +454,78 @@ static void generate_place_command(TclTkContext* ctx, const char* widget_path,
     }
 }
 
+/**
+ * Generate grid layout command with space distribution support
+ */
+static void generate_grid_with_weights(TclTkContext* ctx,
+                                       const char* widget_path,
+                                       const char* parent_path,
+                                       const char* parent_type,
+                                       const char* justify,
+                                       int child_index,
+                                       int total_children) {
+    // For space distribution, we need to set column/row weights
+    if (strcmp(parent_type, "Row") == 0) {
+        // For Row: distribute horizontally using columns
+        int col = child_index * 2;  // Use every other column for spacers
+
+        sb_append_fmt(ctx->sb, "grid %s -column %d -row 0 -sticky ns",
+                     widget_path, col);
+
+        // Set column weight for space distribution
+        if (strcmp(justify, "spaceBetween") == 0) {
+            // Weight only on content columns
+            sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s %d -weight 1",
+                         parent_path, col);
+        } else if (strcmp(justify, "spaceAround") == 0) {
+            // Weight on both content and spacer columns
+            sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s %d -weight 1",
+                         parent_path, col);
+            if (child_index == 0) {
+                // First spacer column
+                sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s %d -weight 1",
+                             parent_path, col - 1);
+            }
+        } else if (strcmp(justify, "spaceEvenly") == 0) {
+            // Equal weight on all columns including spacers
+            sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s %d -weight 1",
+                         parent_path, col);
+            if (child_index == 0) {
+                sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s 0 -weight 1",
+                             parent_path);
+            }
+        }
+        sb_append(ctx->sb, "\n");
+    } else if (strcmp(parent_type, "Column") == 0) {
+        // For Column: distribute vertically using rows
+        int row = child_index * 2;  // Use every other row for spacers
+
+        sb_append_fmt(ctx->sb, "grid %s -column 0 -row %d -sticky ew",
+                     widget_path, row);
+
+        // Set row weight for space distribution
+        if (strcmp(justify, "spaceBetween") == 0) {
+            sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s %d -weight 1",
+                         parent_path, row);
+        } else if (strcmp(justify, "spaceAround") == 0) {
+            sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s %d -weight 1",
+                         parent_path, row);
+            if (child_index == 0) {
+                sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s %d -weight 1",
+                             parent_path, row - 1);
+            }
+        } else if (strcmp(justify, "spaceEvenly") == 0) {
+            sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s %d -weight 1",
+                         parent_path, row);
+            if (child_index == 0) {
+                sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s 0 -weight 1",
+                             parent_path);
+            }
+        }
+        sb_append(ctx->sb, "\n");
+    }
+}
+
 /* ============================================================================
  * Widget Command Generation (Phase 2)
  * ============================================================================ */
@@ -363,18 +547,40 @@ static bool is_layout_container(const char* type) {
 // Forward declarations
 static bool process_component(TclTkContext* ctx, cJSON* component,
                               const char* parent_path, const char* parent_type,
-                              const char* parent_bg);
+                              const char* parent_bg,
+                              const char* parent_justify,
+                              const char* parent_align);
 
 /**
  * Generate widget creation command
  */
 static bool generate_widget(TclTkContext* ctx, cJSON* component,
                            const char* parent_path, const char* parent_type,
-                           const char* parent_bg) {
+                           const char* parent_bg,
+                           const char* parent_justify,
+                           const char* parent_align) {
     if (!ctx || !component) return false;
 
     const char* ir_type = codegen_get_component_type(component);
     const char* tk_widget = codegen_map_kir_to_tk_widget(ir_type);
+
+    // Extract parent's alignment properties for inheritance
+    const char* justify = parent_justify;
+    const char* align = parent_align;
+
+    // For layout containers, extract their own alignment
+    bool is_layout_container_type = is_layout_container(ir_type);
+    if (is_layout_container_type) {
+        cJSON* jc = cJSON_GetObjectItem(component, "justifyContent");
+        if (jc && cJSON_IsString(jc)) {
+            justify = jc->valuestring;
+        }
+
+        cJSON* ai = cJSON_GetObjectItem(component, "alignItems");
+        if (ai && cJSON_IsString(ai)) {
+            align = ai->valuestring;
+        }
+    }
 
     // Extract this widget's background
     const char* bg_aliases[] = {"background", "backgroundColor", NULL};
@@ -394,7 +600,6 @@ static bool generate_widget(TclTkContext* ctx, cJSON* component,
     }
 
     // For layout containers without explicit background, inherit from parent
-    bool is_layout_container_type = is_layout_container(ir_type);
     if (is_layout_container_type && !has_explicit_bg && parent_bg) {
         my_bg = strdup(parent_bg);
     }
@@ -421,25 +626,40 @@ static bool generate_widget(TclTkContext* ctx, cJSON* component,
     cJSON* top = cJSON_GetObjectItem(component, "top");
     cJSON* row = cJSON_GetObjectItem(component, "row");
 
+    // Determine if parent uses space distribution (requires grid)
+    bool parent_needs_grid = needs_space_distribution(justify);
+
     // Apply layout
     if (left && top && cJSON_IsNumber(left) && cJSON_IsNumber(top)) {
         // Absolute positioning
         generate_place_command(ctx, widget_path, component);
     } else if (row) {
-        // Grid layout
+        // Grid layout (explicit row specified)
         generate_grid_command(ctx, widget_path, component);
+    } else if (parent_needs_grid) {
+        // Space distribution: use grid with weights
+        int child_index = 0;  // TODO: Track actual child index
+        int total_children = 1;  // TODO: Count children
+        generate_grid_with_weights(ctx, widget_path, parent_path, parent_type, justify,
+                                   child_index, total_children);
     } else {
-        // Pack layout (default)
-        generate_pack_command(ctx, widget_path, parent_type);
+        // Pack layout (default with alignment support)
+        generate_pack_command(ctx, widget_path, ir_type, parent_type,
+                             justify, align);
     }
 
     // Process children if this is a container
     if (is_layout_container_type) {
         cJSON* children = cJSON_GetObjectItem(component, "children");
         if (children && cJSON_IsArray(children)) {
+            int child_count = cJSON_GetArraySize(children);
+            int index = 0;
             cJSON* child = NULL;
             cJSON_ArrayForEach(child, children) {
-                process_component(ctx, child, widget_path, ir_type, bg_to_pass);
+                // Pass alignment properties to children
+                process_component(ctx, child, widget_path, ir_type,
+                                bg_to_pass, justify, align);
+                index++;
             }
         }
     }
@@ -457,7 +677,9 @@ static bool generate_widget(TclTkContext* ctx, cJSON* component,
  */
 static bool process_component(TclTkContext* ctx, cJSON* component,
                               const char* parent_path, const char* parent_type,
-                              const char* parent_bg) {
+                              const char* parent_bg,
+                              const char* parent_justify,
+                              const char* parent_align) {
     if (!ctx || !component) return false;
 
     const char* type = codegen_get_component_type(component);
@@ -472,7 +694,8 @@ static bool process_component(TclTkContext* ctx, cJSON* component,
     }
 
     // Generate widget
-    return generate_widget(ctx, component, parent_path, parent_type, parent_bg);
+    return generate_widget(ctx, component, parent_path, parent_type,
+                         parent_bg, parent_justify, parent_align);
 }
 
 /* ============================================================================
@@ -618,7 +841,8 @@ static bool generate_complete_script(TclTkContext* ctx, cJSON* root) {
     sb_append(ctx->sb, "\n# UI Components\n");
     cJSON* root_component = cJSON_GetObjectItem(root, "root");
     if (root_component) {
-        process_component(ctx, root_component, "", "Container", ctx->root_background);
+        process_component(ctx, root_component, "", "Container",
+                         ctx->root_background, NULL, NULL);
     }
 
     // 7. Generate event handlers

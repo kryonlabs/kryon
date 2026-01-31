@@ -1,5 +1,4 @@
 /*
-#include "../include/ir_core.h"
  * IR Component - Modal Layout Trait
  *
  * Provides layout computation for Modal components.
@@ -7,6 +6,8 @@
  */
 
 #include "modal.h"
+#include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -26,28 +27,25 @@ void layout_modal_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
-    // Get style or use defaults
-    float modal_width = 400.0f;  // Default modal width
-    float modal_height = 300.0f; // Default modal height
+    // Default modal dimensions
+    float modal_width = 400.0f;
+    float modal_height = 300.0f;
 
     // Apply explicit dimensions from style
-    if (c->style) {
-        if (c->style->width.type == IR_DIMENSION_PX) {
-            modal_width = c->style->width.value;
-        }
-        if (c->style->height.type == IR_DIMENSION_PX) {
-            modal_height = c->style->height.value;
-        }
+    float explicit_width, explicit_height;
+    if (layout_get_explicit_width(c, &explicit_width)) {
+        modal_width = explicit_width;
+    }
+    if (layout_get_explicit_height(c, &explicit_height)) {
+        modal_height = explicit_height;
     }
 
-    // Apply constraints (but maintain reasonable minimums for modals)
-    modal_width = fmaxf(modal_width, constraints.min_width);
-    modal_height = fmaxf(modal_height, constraints.min_height);
+    // Apply min constraints
+    layout_apply_min_constraints(&modal_width, &modal_height, constraints);
 
+    // Apply max constraints (with 90% cap for modals)
     if (constraints.max_width > 0 && modal_width > constraints.max_width) {
         modal_width = fmaxf(constraints.max_width * 0.9f, constraints.min_width);
     }
@@ -60,14 +58,10 @@ void layout_modal_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     float centered_y = parent_y + (constraints.max_height - modal_height) / 2.0f;
 
     // Set modal's dimensions and position
-    c->layout_state->computed.x = centered_x;
-    c->layout_state->computed.y = centered_y;
-    c->layout_state->computed.width = modal_width;
-    c->layout_state->computed.height = modal_height;
+    layout_set_final(c, centered_x, centered_y, modal_width, modal_height);
 
     // Layout children with modal's content area
     if (c->child_count > 0) {
-        // Create constraints for modal content
         IRLayoutConstraints content_constraints = {
             .max_width = modal_width,
             .max_height = modal_height,
@@ -82,15 +76,11 @@ void layout_modal_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         }
     }
 
-    // Mark layout as valid
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
-
-    if (getenv("KRYON_DEBUG_MODAL")) {
-        fprintf(stderr, "[Modal] Final: x=%.1f, y=%.1f, w=%.1f, h=%.1f (children=%u)\n",
-                c->layout_state->computed.x, c->layout_state->computed.y,
-                c->layout_state->computed.width, c->layout_state->computed.height,
-                c->child_count);
+    // Debug logging
+    if (layout_is_debug_enabled("Modal")) {
+        char extra[64];
+        snprintf(extra, sizeof(extra), "(children=%u)", c->child_count);
+        layout_debug_log("Modal", c, extra);
     }
 }
 

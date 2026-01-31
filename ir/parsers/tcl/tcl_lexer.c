@@ -283,29 +283,25 @@ static TclToken* lex_comment(TclLexer* lexer) {
 
 /**
  * Check if we're at the start of a command (where # would start a comment)
- * Returns true if we're at the beginning of a line or after whitespace/semicolon
+ * In Tcl, # starts a comment ONLY when it's at the very beginning of a line
+ * (possibly with leading whitespace), NOT in the middle of command arguments.
  */
 static bool at_command_start(TclLexer* lexer) {
     if (!lexer->source || lexer->position == 0) return true;
 
-    // Look backwards from current position to see if we're after whitespace or semicolon
+    // Look backwards from current position
     size_t pos = lexer->position;  // Position of the # character
 
-    // Skip backwards whitespace (with safety limit)
-    size_t max_lookback = 100;  // Prevent infinite loops
-    size_t count = 0;
-    while (pos > 0 && count < max_lookback &&
-           (lexer->source[pos - 1] == ' ' ||
-            lexer->source[pos - 1] == '\t' ||
-            lexer->source[pos - 1] == '\r')) {
+    // Skip backwards whitespace/tabs ONLY
+    while (pos > 0 && (lexer->source[pos - 1] == ' ' || lexer->source[pos - 1] == '\t')) {
         pos--;
-        count++;
     }
 
-    // If at start of file, or previous char was newline or semicolon, we're at command start
+    // # is a comment ONLY if it's at start of file or right after a newline
+    // (NOT after semicolons, NOT in the middle of arguments)
     if (pos == 0) return true;
     if (lexer->source[pos - 1] == '\n') return true;
-    if (lexer->source[pos - 1] == ';') return true;
+    if (lexer->source[pos - 1] == '\r') return true;
 
     return false;
 }
