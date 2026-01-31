@@ -6,360 +6,328 @@ wm title . "Kryon App"
 wm geometry . 800x600
 
 # Widget: widget-5 (label)
-label widget-5
-label widget-5 configure -background #ffffff
-label widget-5 configure -foreground #00000000
-pack widget-5 -side top -fill none -anchor center
+label .widget-5
+.widget-5 configure -background #ffffff
+.widget-5 configure -foreground #000000
+pack .widget-5 -side top -fill none -anchor center
 
 # Widget: widget-8 (frame)
-frame widget-8
-frame widget-8 configure -background #ef4444
-frame widget-8 configure -foreground #00000000
-frame widget-8 configure -width 80
-frame widget-8 configure -height 60
-pack widget-8 -side top -fill none -anchor center
+frame .widget-8
+.widget-8 configure -background #ef4444
+.widget-8 configure -width 80
+.widget-8 configure -height 60
+pack .widget-8 -side top -fill none -anchor center
 
 # Widget: widget-9 (frame)
-frame widget-9
-frame widget-9 configure -background #dc2626
-frame widget-9 configure -foreground #00000000
-frame widget-9 configure -width 80
-frame widget-9 configure -height 80
-pack widget-9 -side top -fill none -anchor center
+frame .widget-9
+.widget-9 configure -background #dc2626
+.widget-9 configure -width 80
+.widget-9 configure -height 80
+pack .widget-9 -side top -fill none -anchor center
 
 # Widget: widget-10 (frame)
-frame widget-10
-frame widget-10 configure -background #b91c1c
-frame widget-10 configure -foreground #00000000
-frame widget-10 configure -width 80
-frame widget-10 configure -height 70
-pack widget-10 -side top -fill none -anchor center
+frame .widget-10
+.widget-10 configure -background #b91c1c
+.widget-10 configure -width 80
+.widget-10 configure -height 70
+pack .widget-10 -side top -fill none -anchor center
 
 # Widget: widget-7 (frame)
-frame widget-7
-frame widget-7 configure -background #f1f5f9
-pack widget-7 -side top -fill none
+frame .widget-7
+.widget-7 configure -background #f1f5f9
+pack .widget-7 -side top -fill none
 
 # Widget: widget-6 (frame)
-frame widget-6
-frame widget-6 configure -background #f1f5f9
-frame widget-6 configure -foreground #00000000
-frame widget-6 configure -width 120
-frame widget-6 configure -height 600
-pack widget-6 -side top -fill none -anchor center -padx 8 -pady 8
+frame .widget-6
+.widget-6 configure -background #f1f5f9
+.widget-6 configure -width 120
+.widget-6 configure -height 600
+pack .widget-6 -side top -fill none -anchor center -padx 8 -pady 8
 
 # Widget: widget-4 (frame)
-frame widget-4
-frame widget-4 configure -background #ffffff
-pack widget-4 -side top -fill none
+frame .widget-4
+.widget-4 configure -background #ffffff
+pack .widget-4 -side top -fill none
 
 # Widget: widget-3 (frame)
-frame widget-3
-frame widget-3 configure -background #ffffff
-frame widget-3 configure -foreground #00000000
-frame widget-3 configure -width 150
-frame widget-3 configure -height 740
-pack widget-3 -side top -fill none -padx 15 -pady 15
+frame .widget-3
+.widget-3 configure -background #ffffff
+.widget-3 configure -width 150
+.widget-3 configure -height 740
+pack .widget-3 -side top -fill none -padx 15 -pady 15
 
 # Widget: widget-13 (label)
-label widget-13
-label widget-13 configure -background #ffffff
-label widget-13 configure -foreground #00000000
-pack widget-13 -side top -fill none -anchor center
+label .widget-13
+.widget-13 configure -background #ffffff
+.widget-13 configure -foreground #000000
+pack .widget-13 -side top -fill none -anchor center
 
 # Widget: widget-16 (frame)
-frame widget-16
-frame widget-16 configure -background #06b6d4
-frame widget-16 configure -foreground #00000000
-frame widget-16 configure -width 80
-frame widget-16 configure -height 60
-pack widget-16 -side top -fill none -expand yes -anchor center
+frame .widget-16
+.widget-16 configure -background #06b6d4
+.widget-16 configure -width 80
+.widget-16 configure -height 60
+pack .widget-16 -side top -fill none -expand yes -anchor center
 
 # Widget: widget-17 (frame)
-frame widget-17
-frame widget-17 configure -background #0891b2
-frame widget-17 configure -foreground #00000000
-frame widget-17 configure -width 80
-frame widget-17 configure -height 80
-pack widget-17 -side top -fill none -expand yes -anchor center
+frame .widget-17
+.widget-17 configure -background #0891b2
+.widget-17 configure -width 80
+.widget-17 configure -height 80
+pack .widget-17 -side top -fill none -expand yes -anchor center
 
 # Widget: widget-18 (frame)
-frame widget-18
-frame widget-18 configure -background #0e7490
-frame widget-18 configure -foreground #00000000
-frame widget-18 configure -width 80
-frame widget-18 configure -height 70
-pack widget-18 -side top -fill none -expand yes -anchor center
+frame .widget-18
+.widget-18 configure -background #0e7490
+.widget-18 configure -width 80
+.widget-18 configure -height 70
+pack .widget-18 -side top -fill none -expand yes -anchor center
 
 # Widget: widget-15 (frame)
-frame widget-15
-frame widget-15 configure -background #f1f5f9
-pack widget-15 -side top -fill none
+frame .widget-15
+.widget-15 configure -background #f1f5f9
+pack .widget-15 -side top -fill none
 
 # Widget: widget-14 (frame)
-frame widget-14
-frame widget-14 configure -background #f1f5f9
-frame widget-14 configure -foreground #00000000
-frame widget-14 configure -width 120
-frame widget-14 configure -height 600
-pack widget-14 -side top -fill none -anchor center -padx 8 -pady 8
+frame .widget-14
+.widget-14 configure -background #f1f5f9
+.widget-14 configure -width 120
+.widget-14 configure -height 600
+pack .widget-14 -side top -fill none -anchor center -padx 8 -pady 8
 
 # Widget: widget-12 (frame)
-frame widget-12
-frame widget-12 configure -background #ffffff
-pack widget-12 -side top -fill none
+frame .widget-12
+.widget-12 configure -background #ffffff
+pack .widget-12 -side top -fill none
 
 # Widget: widget-11 (frame)
-frame widget-11
-frame widget-11 configure -background #ffffff
-frame widget-11 configure -foreground #00000000
-frame widget-11 configure -width 150
-frame widget-11 configure -height 740
-pack widget-11 -side top -fill none -padx 15 -pady 15
+frame .widget-11
+.widget-11 configure -background #ffffff
+.widget-11 configure -width 150
+.widget-11 configure -height 740
+pack .widget-11 -side top -fill none -padx 15 -pady 15
 
 # Widget: widget-21 (label)
-label widget-21
-label widget-21 configure -background #ffffff
-label widget-21 configure -foreground #00000000
-pack widget-21 -side top -fill none -anchor center
+label .widget-21
+.widget-21 configure -background #ffffff
+.widget-21 configure -foreground #000000
+pack .widget-21 -side top -fill none -anchor center
 
 # Widget: widget-24 (frame)
-frame widget-24
-frame widget-24 configure -background #8b5cf6
-frame widget-24 configure -foreground #00000000
-frame widget-24 configure -width 80
-frame widget-24 configure -height 60
-pack widget-24 -side bottom -fill none -anchor center
+frame .widget-24
+.widget-24 configure -background #8b5cf6
+.widget-24 configure -width 80
+.widget-24 configure -height 60
+pack .widget-24 -side bottom -fill none -anchor center
 
 # Widget: widget-25 (frame)
-frame widget-25
-frame widget-25 configure -background #7c3aed
-frame widget-25 configure -foreground #00000000
-frame widget-25 configure -width 80
-frame widget-25 configure -height 80
-pack widget-25 -side bottom -fill none -anchor center
+frame .widget-25
+.widget-25 configure -background #7c3aed
+.widget-25 configure -width 80
+.widget-25 configure -height 80
+pack .widget-25 -side bottom -fill none -anchor center
 
 # Widget: widget-26 (frame)
-frame widget-26
-frame widget-26 configure -background #6d28d9
-frame widget-26 configure -foreground #00000000
-frame widget-26 configure -width 80
-frame widget-26 configure -height 70
-pack widget-26 -side bottom -fill none -anchor center
+frame .widget-26
+.widget-26 configure -background #6d28d9
+.widget-26 configure -width 80
+.widget-26 configure -height 70
+pack .widget-26 -side bottom -fill none -anchor center
 
 # Widget: widget-23 (frame)
-frame widget-23
-frame widget-23 configure -background #f1f5f9
-pack widget-23 -side top -fill none
+frame .widget-23
+.widget-23 configure -background #f1f5f9
+pack .widget-23 -side top -fill none
 
 # Widget: widget-22 (frame)
-frame widget-22
-frame widget-22 configure -background #f1f5f9
-frame widget-22 configure -foreground #00000000
-frame widget-22 configure -width 120
-frame widget-22 configure -height 600
-pack widget-22 -side top -fill none -anchor center -padx 8 -pady 8
+frame .widget-22
+.widget-22 configure -background #f1f5f9
+.widget-22 configure -width 120
+.widget-22 configure -height 600
+pack .widget-22 -side top -fill none -anchor center -padx 8 -pady 8
 
 # Widget: widget-20 (frame)
-frame widget-20
-frame widget-20 configure -background #ffffff
-pack widget-20 -side top -fill none
+frame .widget-20
+.widget-20 configure -background #ffffff
+pack .widget-20 -side top -fill none
 
 # Widget: widget-19 (frame)
-frame widget-19
-frame widget-19 configure -background #ffffff
-frame widget-19 configure -foreground #00000000
-frame widget-19 configure -width 150
-frame widget-19 configure -height 740
-pack widget-19 -side top -fill none -padx 15 -pady 15
+frame .widget-19
+.widget-19 configure -background #ffffff
+.widget-19 configure -width 150
+.widget-19 configure -height 740
+pack .widget-19 -side top -fill none -padx 15 -pady 15
 
 # Widget: widget-29 (label)
-label widget-29
-label widget-29 configure -background #ffffff
-label widget-29 configure -foreground #00000000
-pack widget-29 -side top -fill none -anchor center
+label .widget-29
+.widget-29 configure -background #ffffff
+.widget-29 configure -foreground #000000
+pack .widget-29 -side top -fill none -anchor center
 
 # Widget: widget-32 (frame)
-frame widget-32
-frame widget-32 configure -background #64748b
-frame widget-32 configure -foreground #00000000
-frame widget-32 configure -width 80
-frame widget-32 configure -height 60
-pack widget-32 -side top -fill both -expand yes -anchor center
+frame .widget-32
+.widget-32 configure -background #64748b
+.widget-32 configure -width 80
+.widget-32 configure -height 60
+pack .widget-32 -side top -fill both -expand yes -anchor center
 
 # Widget: widget-33 (frame)
-frame widget-33
-frame widget-33 configure -background #475569
-frame widget-33 configure -foreground #00000000
-frame widget-33 configure -width 80
-frame widget-33 configure -height 80
-pack widget-33 -side top -fill both -expand yes -anchor center
+frame .widget-33
+.widget-33 configure -background #475569
+.widget-33 configure -width 80
+.widget-33 configure -height 80
+pack .widget-33 -side top -fill both -expand yes -anchor center
 
 # Widget: widget-34 (frame)
-frame widget-34
-frame widget-34 configure -background #334155
-frame widget-34 configure -foreground #00000000
-frame widget-34 configure -width 80
-frame widget-34 configure -height 70
-pack widget-34 -side top -fill both -expand yes -anchor center
+frame .widget-34
+.widget-34 configure -background #334155
+.widget-34 configure -width 80
+.widget-34 configure -height 70
+pack .widget-34 -side top -fill both -expand yes -anchor center
 
 # Widget: widget-31 (frame)
-frame widget-31
-frame widget-31 configure -background #f1f5f9
-pack widget-31 -side top -fill none
+frame .widget-31
+.widget-31 configure -background #f1f5f9
+pack .widget-31 -side top -fill none
 
 # Widget: widget-30 (frame)
-frame widget-30
-frame widget-30 configure -background #f1f5f9
-frame widget-30 configure -foreground #00000000
-frame widget-30 configure -width 120
-frame widget-30 configure -height 600
-pack widget-30 -side top -fill none -anchor center -padx 8 -pady 8
+frame .widget-30
+.widget-30 configure -background #f1f5f9
+.widget-30 configure -width 120
+.widget-30 configure -height 600
+pack .widget-30 -side top -fill none -anchor center -padx 8 -pady 8
 
 # Widget: widget-28 (frame)
-frame widget-28
-frame widget-28 configure -background #ffffff
-pack widget-28 -side top -fill none
+frame .widget-28
+.widget-28 configure -background #ffffff
+pack .widget-28 -side top -fill none
 
 # Widget: widget-27 (frame)
-frame widget-27
-frame widget-27 configure -background #ffffff
-frame widget-27 configure -foreground #00000000
-frame widget-27 configure -width 150
-frame widget-27 configure -height 740
-pack widget-27 -side top -fill none -padx 15 -pady 15
+frame .widget-27
+.widget-27 configure -background #ffffff
+.widget-27 configure -width 150
+.widget-27 configure -height 740
+pack .widget-27 -side top -fill none -padx 15 -pady 15
 
 # Widget: widget-37 (label)
-label widget-37
-label widget-37 configure -background #ffffff
-label widget-37 configure -foreground #00000000
-pack widget-37 -side top -fill none -anchor center
+label .widget-37
+.widget-37 configure -background #ffffff
+.widget-37 configure -foreground #000000
+pack .widget-37 -side top -fill none -anchor center
 
 # Widget: widget-40 (frame)
-frame widget-40
-frame widget-40 configure -background #f59e0b
-frame widget-40 configure -foreground #00000000
-frame widget-40 configure -width 80
-frame widget-40 configure -height 60
-pack widget-40 -side top -fill both -expand yes -anchor center
+frame .widget-40
+.widget-40 configure -background #f59e0b
+.widget-40 configure -width 80
+.widget-40 configure -height 60
+pack .widget-40 -side top -fill both -expand yes -anchor center
 
 # Widget: widget-41 (frame)
-frame widget-41
-frame widget-41 configure -background #d97706
-frame widget-41 configure -foreground #00000000
-frame widget-41 configure -width 80
-frame widget-41 configure -height 80
-pack widget-41 -side top -fill both -expand yes -anchor center
+frame .widget-41
+.widget-41 configure -background #d97706
+.widget-41 configure -width 80
+.widget-41 configure -height 80
+pack .widget-41 -side top -fill both -expand yes -anchor center
 
 # Widget: widget-42 (frame)
-frame widget-42
-frame widget-42 configure -background #b45309
-frame widget-42 configure -foreground #00000000
-frame widget-42 configure -width 80
-frame widget-42 configure -height 70
-pack widget-42 -side top -fill both -expand yes -anchor center
+frame .widget-42
+.widget-42 configure -background #b45309
+.widget-42 configure -width 80
+.widget-42 configure -height 70
+pack .widget-42 -side top -fill both -expand yes -anchor center
 
 # Widget: widget-39 (frame)
-frame widget-39
-frame widget-39 configure -background #f1f5f9
-pack widget-39 -side top -fill none
+frame .widget-39
+.widget-39 configure -background #f1f5f9
+pack .widget-39 -side top -fill none
 
 # Widget: widget-38 (frame)
-frame widget-38
-frame widget-38 configure -background #f1f5f9
-frame widget-38 configure -foreground #00000000
-frame widget-38 configure -width 120
-frame widget-38 configure -height 600
-pack widget-38 -side top -fill none -anchor center -padx 8 -pady 8
+frame .widget-38
+.widget-38 configure -background #f1f5f9
+.widget-38 configure -width 120
+.widget-38 configure -height 600
+pack .widget-38 -side top -fill none -anchor center -padx 8 -pady 8
 
 # Widget: widget-36 (frame)
-frame widget-36
-frame widget-36 configure -background #ffffff
-pack widget-36 -side top -fill none
+frame .widget-36
+.widget-36 configure -background #ffffff
+pack .widget-36 -side top -fill none
 
 # Widget: widget-35 (frame)
-frame widget-35
-frame widget-35 configure -background #ffffff
-frame widget-35 configure -foreground #00000000
-frame widget-35 configure -width 150
-frame widget-35 configure -height 740
-pack widget-35 -side top -fill none -padx 15 -pady 15
+frame .widget-35
+.widget-35 configure -background #ffffff
+.widget-35 configure -width 150
+.widget-35 configure -height 740
+pack .widget-35 -side top -fill none -padx 15 -pady 15
 
 # Widget: widget-45 (label)
-label widget-45
-label widget-45 configure -background #ffffff
-label widget-45 configure -foreground #00000000
-pack widget-45 -side top -fill none -anchor center
+label .widget-45
+.widget-45 configure -background #ffffff
+.widget-45 configure -foreground #000000
+pack .widget-45 -side top -fill none -anchor center
 
 # Widget: widget-48 (frame)
-frame widget-48
-frame widget-48 configure -background #10b981
-frame widget-48 configure -foreground #00000000
-frame widget-48 configure -width 80
-frame widget-48 configure -height 60
-pack widget-48 -side top -fill none -anchor center
+frame .widget-48
+.widget-48 configure -background #10b981
+.widget-48 configure -width 80
+.widget-48 configure -height 60
+pack .widget-48 -side top -fill none -anchor center
 
 # Widget: widget-49 (frame)
-frame widget-49
-frame widget-49 configure -background #059669
-frame widget-49 configure -foreground #00000000
-frame widget-49 configure -width 80
-frame widget-49 configure -height 80
-pack widget-49 -side top -fill none -anchor center
+frame .widget-49
+.widget-49 configure -background #059669
+.widget-49 configure -width 80
+.widget-49 configure -height 80
+pack .widget-49 -side top -fill none -anchor center
 
 # Widget: widget-50 (frame)
-frame widget-50
-frame widget-50 configure -background #047857
-frame widget-50 configure -foreground #00000000
-frame widget-50 configure -width 80
-frame widget-50 configure -height 70
-pack widget-50 -side top -fill none -anchor center
+frame .widget-50
+.widget-50 configure -background #047857
+.widget-50 configure -width 80
+.widget-50 configure -height 70
+pack .widget-50 -side top -fill none -anchor center
 
 # Widget: widget-47 (frame)
-frame widget-47
-frame widget-47 configure -background #f1f5f9
-pack widget-47 -side top -fill none
+frame .widget-47
+.widget-47 configure -background #f1f5f9
+pack .widget-47 -side top -fill none
 
 # Widget: widget-46 (frame)
-frame widget-46
-frame widget-46 configure -background #f1f5f9
-frame widget-46 configure -foreground #00000000
-frame widget-46 configure -width 120
-frame widget-46 configure -height 600
-pack widget-46 -side top -fill none -anchor center -padx 8 -pady 8
+frame .widget-46
+.widget-46 configure -background #f1f5f9
+.widget-46 configure -width 120
+.widget-46 configure -height 600
+pack .widget-46 -side top -fill none -anchor center -padx 8 -pady 8
 
 # Widget: widget-44 (frame)
-frame widget-44
-frame widget-44 configure -background #ffffff
-pack widget-44 -side top -fill none
+frame .widget-44
+.widget-44 configure -background #ffffff
+pack .widget-44 -side top -fill none
 
 # Widget: widget-43 (frame)
-frame widget-43
-frame widget-43 configure -background #ffffff
-frame widget-43 configure -foreground #00000000
-frame widget-43 configure -width 150
-frame widget-43 configure -height 740
-pack widget-43 -side top -fill none -padx 15 -pady 15
+frame .widget-43
+.widget-43 configure -background #ffffff
+.widget-43 configure -width 150
+.widget-43 configure -height 740
+pack .widget-43 -side top -fill none -padx 15 -pady 15
 
 # Widget: widget-2 (frame)
-frame widget-2
-frame widget-2 configure -background #f8fafc
-pack widget-2 -side left -fill y
+frame .widget-2
+.widget-2 configure -background #f8fafc
+pack .widget-2 -side left -fill y
 
 # Widget: widget-1 (frame)
-frame widget-1
-frame widget-1 configure -background #f8fafc
-frame widget-1 configure -foreground #00000000
-frame widget-1 configure -width 100
-frame widget-1 configure -height 100
-pack widget-1 -side top -fill none
+frame .widget-1
+.widget-1 configure -background #f8fafc
+.widget-1 configure -width 100
+.widget-1 configure -height 100
+pack .widget-1 -side top -fill none
 
 # Widget: widget-0 (frame)
-frame widget-0
-frame widget-0 configure -background #f8fafc
-frame widget-0 configure -foreground #00000000
-frame widget-0 configure -width 1000
-frame widget-0 configure -height 800
+frame .widget-0
+.widget-0 configure -background #f8fafc
+.widget-0 configure -width 1000
+.widget-0 configure -height 800
 
 
 # Event Handlers

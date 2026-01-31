@@ -51,6 +51,7 @@ static bool tcltk_emit_property(TKIREmitterContext* ctx, const char* widget_id,
                                  const char* property_name, cJSON* value);
 static char* tcltk_emit_full(TKIREmitterContext* ctx, TKIRRoot* root);
 static void tcltk_free_context(TKIREmitterContext* ctx);
+static char* tcltk_normalize_color(const char* color);
 
 /* ============================================================================
  * Virtual Function Table
@@ -64,6 +65,48 @@ static const TKIREmitterVTable tcltk_emitter_vtable = {
     .emit_full = tcltk_emit_full,
     .free_context = tcltk_free_context,
 };
+
+/* ============================================================================
+ * Color Normalization
+ * ============================================================================ */
+
+/**
+ * Normalize color for Tcl/Tk.
+ * Converts RGBA (8-digit hex) colors to RGB (6-digit hex) by stripping alpha channel.
+ * Tcl/Tk doesn't support alpha channels in color specifications.
+ *
+ * @param color Input color string (e.g., "#ff0000" or "#ff000080")
+ * @return Normalized color string (caller must free), or NULL on error
+ */
+static char* tcltk_normalize_color(const char* color) {
+    if (!color || !*color) {
+        return NULL;
+    }
+
+    // Check if it's a hex color starting with #
+    if (color[0] != '#') {
+        // Not a hex color, return as-is (named color like "red", "blue", etc.)
+        return strdup(color);
+    }
+
+    size_t len = strlen(color);
+
+    // RGBA format: #RRGGBBAA (9 characters with #)
+    // RGB format: #RRGGBB (7 characters with #)
+    if (len == 9) {
+        // Strip alpha channel (last 2 characters)
+        char* normalized = malloc(8); // # + 6 hex digits + null terminator
+        if (normalized) {
+            strncpy(normalized, color, 7); // Copy #RRGGBB
+            normalized[7] = '\0';
+            return normalized;
+        }
+        return NULL;
+    }
+
+    // Already in correct format or unknown format, return as-is
+    return strdup(color);
+}
 
 /* ============================================================================
  * Context Creation
@@ -157,8 +200,11 @@ static char* tcltk_emit_full(TKIREmitterContext* base_ctx, TKIRRoot* root) {
     }
 
     if (root->background) {
-        sb_append_fmt(ctx->sb, ". configure -background %s\n", root->background);
-        ctx->root_background = strdup(root->background);
+        char* norm_color = tcltk_normalize_color(root->background);
+        if (norm_color) {
+            sb_append_fmt(ctx->sb, ". configure -background %s\n", norm_color);
+            ctx->root_background = norm_color;
+        }
     }
 
     sb_append_fmt(ctx->sb, "\n");
@@ -246,29 +292,50 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
         sb_append_fmt(ctx->sb, "# Widget: %s (%s)\n", widget->id, widget->tk_type);
     }
 
-    sb_append_fmt(ctx->sb, "%s %s\n", widget->tk_type, widget->id);
+    sb_append_fmt(ctx->sb, "%s .%s\n", widget->tk_type, widget->id);
 
     // Generate properties
     if (props) {
         // Text
         cJSON* text = cJSON_GetObjectItem(props, "text");
         if (text && cJSON_IsString(text)) {
-            sb_append_fmt(ctx->sb, "%s %s configure -text {%s}\n",
-                         widget->tk_type, widget->id, text->valuestring);
+            sb_append_fmt(ctx->sb, ".%s configure -text {%s}\n",
+                         widget->id, text->valuestring);
         }
 
         // Background
         cJSON* background = cJSON_GetObjectItem(props, "background");
         if (background && cJSON_IsString(background)) {
-            sb_append_fmt(ctx->sb, "%s %s configure -background %s\n",
-                         widget->tk_type, widget->id, background->valuestring);
+            char* norm_color = tcltk_normalize_color(background->valuestring);
+            if (norm_color) {
+                sb_append_fmt(ctx->sb, ".%s configure -background %s\n",
+                             widget->id, norm_color);
+                free(norm_color);
+            }
         }
 
-        // Foreground
+        // Foreground (only for text-displaying widgets)
         cJSON* foreground = cJSON_GetObjectItem(props, "foreground");
         if (foreground && cJSON_IsString(foreground)) {
-            sb_append_fmt(ctx->sb, "%s %s configure -foreground %s\n",
-                         widget->tk_type, widget->id, foreground->valuestring);
+            // Only set foreground for widgets that support text color
+            bool supports_foreground = (
+                strcmp(widget->tk_type, "label") == 0 ||
+                strcmp(widget->tk_type, "button") == 0 ||
+                strcmp(widget->tk_type, "entry") == 0 ||
+                strcmp(widget->tk_type, "text") == 0 ||
+                strcmp(widget->tk_type, "checkbutton") == 0 ||
+                strcmp(widget->tk_type, "radiobutton") == 0 ||
+                strcmp(widget->tk_type, "menubutton") == 0 ||
+                strcmp(widget->tk_type, "message") == 0
+            );
+            if (supports_foreground) {
+                char* norm_color = tcltk_normalize_color(foreground->valuestring);
+                if (norm_color) {
+                    sb_append_fmt(ctx->sb, ".%s configure -foreground %s\n",
+                                 widget->id, norm_color);
+                    free(norm_color);
+                }
+            }
         }
 
         // Font
@@ -277,8 +344,8 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
             cJSON* family = cJSON_GetObjectItem(font, "family");
             cJSON* size = cJSON_GetObjectItem(font, "size");
             if (family && cJSON_IsString(family) && size && cJSON_IsNumber(size)) {
-                sb_append_fmt(ctx->sb, "%s %s configure -font {%s %d}\n",
-                             widget->tk_type, widget->id, family->valuestring, (int)size->valuedouble);
+                sb_append_fmt(ctx->sb, ".%s configure -font {%s %d}\n",
+                             widget->id, family->valuestring, (int)size->valuedouble);
             }
         }
 
@@ -287,8 +354,8 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
         if (width && cJSON_IsObject(width)) {
             cJSON* value = cJSON_GetObjectItem(width, "value");
             if (value && cJSON_IsNumber(value)) {
-                sb_append_fmt(ctx->sb, "%s %s configure -width %d\n",
-                             widget->tk_type, widget->id, (int)value->valuedouble);
+                sb_append_fmt(ctx->sb, ".%s configure -width %d\n",
+                             widget->id, (int)value->valuedouble);
             }
         }
 
@@ -297,8 +364,8 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
         if (height && cJSON_IsObject(height)) {
             cJSON* value = cJSON_GetObjectItem(height, "value");
             if (value && cJSON_IsNumber(value)) {
-                sb_append_fmt(ctx->sb, "%s %s configure -height %d\n",
-                             widget->tk_type, widget->id, (int)value->valuedouble);
+                sb_append_fmt(ctx->sb, ".%s configure -height %d\n",
+                             widget->id, (int)value->valuedouble);
             }
         }
 
@@ -308,12 +375,16 @@ static bool tcltk_emit_widget(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
             cJSON* width_val = cJSON_GetObjectItem(border, "width");
             cJSON* color = cJSON_GetObjectItem(border, "color");
             if (width_val && cJSON_IsNumber(width_val)) {
-                sb_append_fmt(ctx->sb, "%s %s configure -borderwidth %d\n",
-                             widget->tk_type, widget->id, (int)width_val->valuedouble);
+                sb_append_fmt(ctx->sb, ".%s configure -borderwidth %d\n",
+                             widget->id, (int)width_val->valuedouble);
             }
             if (color && cJSON_IsString(color)) {
-                sb_append_fmt(ctx->sb, "%s %s configure -highlightbackground %s\n",
-                             widget->tk_type, widget->id, color->valuestring);
+                char* norm_color = tcltk_normalize_color(color->valuestring);
+                if (norm_color) {
+                    sb_append_fmt(ctx->sb, ".%s configure -highlightbackground %s\n",
+                                 widget->id, norm_color);
+                    free(norm_color);
+                }
             }
         }
     }
@@ -352,7 +423,7 @@ static bool tcltk_emit_layout(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
 
     if (strcmp(layout_type, "pack") == 0) {
         // Pack layout
-        sb_append_fmt(ctx->sb, "pack %s", widget->id);
+        sb_append_fmt(ctx->sb, "pack .%s", widget->id);
 
         cJSON* side = cJSON_GetObjectItem(options, "side");
         if (side && cJSON_IsString(side)) {
@@ -388,7 +459,7 @@ static bool tcltk_emit_layout(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
 
     } else if (strcmp(layout_type, "grid") == 0) {
         // Grid layout
-        sb_append_fmt(ctx->sb, "grid %s", widget->id);
+        sb_append_fmt(ctx->sb, "grid .%s", widget->id);
 
         cJSON* row = cJSON_GetObjectItem(options, "row");
         if (row && cJSON_IsNumber(row)) {
@@ -419,7 +490,7 @@ static bool tcltk_emit_layout(TKIREmitterContext* base_ctx, TKIRWidget* widget) 
 
     } else if (strcmp(layout_type, "place") == 0) {
         // Place layout (absolute positioning)
-        sb_append_fmt(ctx->sb, "place %s", widget->id);
+        sb_append_fmt(ctx->sb, "place .%s", widget->id);
 
         cJSON* x = cJSON_GetObjectItem(options, "x");
         if (x && cJSON_IsNumber(x)) {

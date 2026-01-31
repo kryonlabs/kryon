@@ -9,22 +9,21 @@ ARFLAGS = rcs
 # Single-pass layout system (ONLY system - no legacy code)
 CFLAGS += -DIR_USE_SINGLE_PASS_LAYOUT
 
-# HarfBuzz, FreeType, and FriBidi for text shaping
-# These must be passed in from the environment or overridden on command line
-HARFBUZZ_CFLAGS ?= $(shell pkg-config --cflags harfbuzz freetype2 fribidi 2>/dev/null || echo "")
-HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
+# Vendored HarfBuzz, FreeType, and FriBidi for text shaping
+# Build them from source instead of using system libraries
+THIRD_PARTY_DIR = ../third_party
+HARFBUZZ_DIR = $(THIRD_PARTY_DIR)/harfbuzz
+FREETYPE_DIR = $(THIRD_PARTY_DIR)/freetype
+FRIBIDI_DIR = $(THIRD_PARTY_DIR)/fribidi
 
-# Check if harfbuzz is available - REQUIRED, no fallbacks
-HAS_HARFBUZZ = $(shell pkg-config --exists harfbuzz && echo 1 || echo 0)
-HAS_FRIBIDI = $(shell pkg-config --exists fribidi && echo 1 || echo 0)
+# Build directories for vendored libraries
+HARFBUZZ_BUILD = $(BUILD_DIR)/harfbuzz
+FREETYPE_BUILD = $(BUILD_DIR)/freetype
+FRIBIDI_BUILD = $(BUILD_DIR)/fribidi
 
-ifeq ($(HAS_HARFBUZZ),0)
-$(error HarfBuzz is REQUIRED. Install with: apt install libharfbuzz-dev OR nix-shell)
-endif
-
-ifeq ($(HAS_FRIBIDI),0)
-$(error FriBidi is REQUIRED. Install with: apt install libfribidi-dev OR nix-shell)
-endif
+# Vendored library flags
+HARFBUZZ_CFLAGS = -I$(HARFBUZZ_DIR)/src -I$(HARFBUZZ_BUILD) -I$(FREETYPE_DIR)/include
+HARFBUZZ_LIBS = $(HARFBUZZ_BUILD)/libharfbuzz.a $(FREETYPE_BUILD)/libfreetype.a $(FRIBIDI_BUILD)/libfribidi.a
 
 # Text shaping object file - no fallback, dependencies are required
 IR_TEXT_SHAPING_OBJ = src/features/text_shaping.o
@@ -44,7 +43,10 @@ TOML_DIR = $(THIRD_PARTY_DIR)/tomlc99
 
 # Third-party include paths
 CFLAGS += -I$(CJSON_DIR) -I$(STB_DIR) -I$(TOML_DIR)
-CFLAGS += $(HARFBUZZ_CFLAGS)
+# Vendored text shaping libraries
+CFLAGS += -I$(HARFBUZZ_DIR)/src
+CFLAGS += -I$(FREETYPE_DIR)/include
+CFLAGS += -I$(FRIBIDI_DIR)/lib
 # Internal utils and bindings paths (for ir_constants.h, ir_c_metadata.h, etc.)
 CFLAGS += -Isrc/utils -I../bindings/c
 
