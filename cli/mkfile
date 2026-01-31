@@ -58,6 +58,7 @@ CFLAGS=$CFLAGS\
 	-I../codegens/c\
 	-I../codegens/limbo\
 	-I../codegens/tcltk\
+	-I../codegens/tkir\
 	-I../dis/include\
 	-D__TAIJIOS__\
 
@@ -71,6 +72,7 @@ LIBS=\
 	kryon_codegen_markdown\
 	kryon_codegen_common\
 	discodegen\
+	kryon_tkir\
 	kryon_ir\
 	cJSON\
 	tomlc99\
@@ -96,6 +98,7 @@ $O.out:V: $SRCS
 		$ROOT/$OBJDIR/lib/libkryon_codegen_markdown.a \
 		$ROOT/$OBJDIR/lib/libkryon_codegen_common.a \
 		$ROOT/$OBJDIR/lib/libdiscodegen.a \
+		$ROOT/$OBJDIR/lib/libkryon_tkir.a \
 		$ROOT/$OBJDIR/lib/libkryon_ir.a \
 		$ROOT/$OBJDIR/lib/libcJSON.a \
 		$ROOT/$OBJDIR/lib/libtomlc99.a \

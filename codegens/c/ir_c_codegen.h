@@ -48,6 +48,67 @@ bool ir_generate_c_code_from_string(const char* kir_json, const char* output_pat
  */
 bool ir_generate_c_code_multi(const char* kir_path, const char* output_dir);
 
+/* ============================================================================
+ * TKIR-based Codegen API (New Pipeline)
+ * ============================================================================ */
+
+/**
+ * C codegen options
+ */
+typedef struct {
+    bool include_comments;      /**< Add comments to generated code */
+    bool generate_types;        /**< Generate type definitions */
+    bool include_headers;       /**< Include standard headers */
+} CCodegenOptions;
+
+/**
+ * Generate C source from TKIR JSON string
+ * @param tkir_json TKIR JSON string
+ * @param options Codegen options (NULL for defaults)
+ * @return Generated C code string (caller must free), or NULL on error
+ */
+char* c_codegen_from_tkir(const char* tkir_json, CCodegenOptions* options);
+
+/**
+ * Generate C source from TKIR JSON file
+ * @param tkir_path Path to input .tkir file
+ * @param output_path Path to output .c file
+ * @param options Codegen options (NULL for defaults)
+ * @return true on success, false on error
+ */
+bool c_codegen_from_tkir_file(const char* tkir_path, const char* output_path,
+                                CCodegenOptions* options);
+
+/**
+ * Generate C source from KIR via TKIR (recommended)
+ * @param kir_json KIR JSON string
+ * @param options Codegen options (NULL for defaults)
+ * @return Generated C code string (caller must free), or NULL on error
+ */
+char* ir_generate_c_code_from_json_via_tkir(const char* kir_json, CCodegenOptions* options);
+
+/**
+ * Generate C source from KIR file via TKIR (recommended)
+ * @param kir_path Path to input .kir file
+ * @param output_path Path to output .c file
+ * @param options Codegen options (NULL for defaults)
+ * @return true on success, false on error
+ */
+bool ir_generate_c_code_via_tkir(const char* kir_path, const char* output_path,
+                                   CCodegenOptions* options);
+
+/**
+ * Initialize C TKIR emitter
+ * Registers the emitter with the TKIR emitter registry.
+ */
+void c_tkir_emitter_init(void);
+
+/**
+ * Cleanup C TKIR emitter
+ * Unregisters the emitter from the TKIR emitter registry.
+ */
+void c_tkir_emitter_cleanup(void);
+
 #ifdef __cplusplus
 }
 #endif

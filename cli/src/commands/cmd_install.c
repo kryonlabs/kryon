@@ -3,8 +3,12 @@
  * Installs a Kryon application to the system
  */
 
+#ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
+#endif
 
 #include "kryon_cli.h"
 #include <stdio.h>

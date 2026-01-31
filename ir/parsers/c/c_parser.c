@@ -9,6 +9,7 @@
 #include "../include/ir_serialization.h"
 #include "../../../bindings/c/kryon.h"
 #include "../../src/utils/ir_c_metadata.h"
+#include "../common/parser_io_utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -784,8 +785,10 @@ char* ir_c_to_kir(const char* source, size_t length) {
     }
 
     // Read the generated KIR file
-    FILE* kir_f = fopen(kir_file, "r");
-    if (!kir_f) {
+    ParserError error = {0};
+    size_t size = 0;
+    char* result = parser_read_file(kir_file, &size, &error);
+    if (!result) {
         fprintf(stderr, "Error: KIR output file not found\n");
         fprintf(stderr, "The C program must call kryon_finalize(\"%s\") to generate output\n", kir_file);
         unlink(src_file);
@@ -793,26 +796,6 @@ char* ir_c_to_kir(const char* source, size_t length) {
         rmdir(temp_dir);
         return NULL;
     }
-
-    // Get file size
-    fseek(kir_f, 0, SEEK_END);
-    long size = ftell(kir_f);
-    fseek(kir_f, 0, SEEK_SET);
-
-    // Read content
-    char* result = malloc(size + 1);
-    if (!result) {
-        fclose(kir_f);
-        unlink(src_file);
-        unlink(exe_file);
-        unlink(kir_file);
-        rmdir(temp_dir);
-        return NULL;
-    }
-
-    size_t read_bytes = fread(result, 1, size, kir_f);
-    result[read_bytes] = '\0';
-    fclose(kir_f);
 
     // Cleanup
     unlink(src_file);
@@ -827,27 +810,13 @@ char* ir_c_to_kir(const char* source, size_t length) {
  * Parse C file to KIR JSON
  */
 char* ir_c_file_to_kir(const char* filepath) {
-    FILE* f = fopen(filepath, "r");
-    if (!f) {
-        perror(filepath);
-        return NULL;
-    }
-
-    // Get file size
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    // Read file
-    char* source = malloc(size + 1);
+    ParserError error = {0};
+    size_t size = 0;
+    char* source = parser_read_file(filepath, &size, &error);
     if (!source) {
-        fclose(f);
+        fprintf(stderr, "Error: Cannot open file: %s\n", filepath);
         return NULL;
     }
-
-    size_t read_size = fread(source, 1, size, f);
-    source[read_size] = '\0';
-    fclose(f);
 
     // AUTOMATIC METADATA EXTRACTION - parse source to capture all metadata
     // This happens BEFORE compilation, automatically capturing:
@@ -859,7 +828,7 @@ char* ir_c_file_to_kir(const char* filepath) {
     parse_c_source_metadata(source, filepath);
 
     // Parse and compile
-    char* result = ir_c_to_kir(source, read_size);
+    char* result = ir_c_to_kir(source, size);
     free(source);
 
     return result;

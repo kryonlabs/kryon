@@ -1,10 +1,10 @@
 /**
- * Kryon Parser - Common Utilities Implementation
+ * Kryon Parser - Common I/O Utilities Implementation
  */
 
 #define _POSIX_C_SOURCE 200809L
 
-#include "parser_utils.h"
+#include "parser_io_utils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

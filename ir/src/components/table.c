@@ -1,5 +1,6 @@
 #include "table.h"
 #include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,24 +11,17 @@ void layout_table_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c || c->type != IR_COMPONENT_TABLE) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // Get table state
     IRTableState* state = (IRTableState*)c->custom_data;
     if (!state) {
         // No table state - shouldn't happen if finalize was called
-        c->layout_state->computed.x = parent_x;
-        c->layout_state->computed.y = parent_y;
-        c->layout_state->computed.width = constraints.max_width;
-        c->layout_state->computed.height = 100.0f;  // Default height
-        c->layout_state->layout_valid = true;
-        c->layout_state->computed.valid = true;
+        layout_set_final_with_parent(c, parent_x, parent_y, constraints.max_width, 100.0f);
         return;
     }
 
-    if (getenv("KRYON_DEBUG_TABLE")) {
+    if (layout_is_debug_enabled("Table")) {
         fprintf(stderr, "[TABLE_LAYOUT] Starting layout for table id=%u constraints=%.1fx%.1f\n",
                 c->id, constraints.max_width, constraints.max_height);
     }
@@ -52,18 +46,13 @@ void layout_table_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         }
     }
 
-    if (getenv("KRYON_DEBUG_TABLE")) {
+    if (layout_is_debug_enabled("Table")) {
         fprintf(stderr, "[TABLE_LAYOUT] Detected %u rows x %u cols\n", num_rows, num_cols);
     }
 
     // If no rows, return default dimensions
     if (num_rows == 0 || num_cols == 0) {
-        c->layout_state->computed.x = parent_x;
-        c->layout_state->computed.y = parent_y;
-        c->layout_state->computed.width = constraints.max_width;
-        c->layout_state->computed.height = 50.0f;
-        c->layout_state->layout_valid = true;
-        c->layout_state->computed.valid = true;
+        layout_set_final_with_parent(c, parent_x, parent_y, constraints.max_width, 50.0f);
         return;
     }
 
@@ -134,25 +123,13 @@ void layout_table_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         total_height += (num_rows + 1) * state->style.border_width;
     }
 
-    if (getenv("KRYON_DEBUG_TABLE")) {
+    if (layout_is_debug_enabled("Table")) {
         fprintf(stderr, "[TABLE_LAYOUT] Total dimensions: %.1fx%.1f\n", total_width, total_height);
     }
 
-    // Apply constraints
-    if (constraints.max_width > 0 && total_width > constraints.max_width) {
-        total_width = constraints.max_width;
-    }
-    if (constraints.max_height > 0 && total_height > constraints.max_height) {
-        total_height = constraints.max_height;
-    }
-
-    // Set table computed layout
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = total_width;
-    c->layout_state->computed.height = total_height;
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
+    // Apply constraints and set table computed layout
+    layout_apply_constraints(&total_width, &total_height, constraints);
+    layout_set_final_with_parent(c, parent_x, parent_y, total_width, total_height);
 
     // Store calculated dimensions in table state
     state->calculated_widths = col_widths;
@@ -181,31 +158,16 @@ void layout_table_single_pass(IRComponent* c, IRLayoutConstraints constraints,
             }
 
             // Layout row
-            if (!row->layout_state) {
-                row->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-            }
-            row->layout_state->computed.x = parent_x;
-            row->layout_state->computed.y = current_y;
-            row->layout_state->computed.width = total_width;
-            row->layout_state->computed.height = row_heights[current_row];
-            row->layout_state->layout_valid = true;
-            row->layout_state->computed.valid = true;
+            if (!layout_ensure_state(row)) continue;
+            layout_set_final_with_parent(row, parent_x, current_y, total_width, row_heights[current_row]);
 
             // Layout cells in this row
             for (uint32_t col_idx = 0; col_idx < row->child_count && col_idx < num_cols; col_idx++) {
                 IRComponent* cell = row->children[col_idx];
                 if (!cell) continue;
 
-                if (!cell->layout_state) {
-                    cell->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-                }
-
-                cell->layout_state->computed.x = current_x;
-                cell->layout_state->computed.y = current_y;
-                cell->layout_state->computed.width = col_widths[col_idx];
-                cell->layout_state->computed.height = row_heights[current_row];
-                cell->layout_state->layout_valid = true;
-                cell->layout_state->computed.valid = true;
+                if (!layout_ensure_state(cell)) continue;
+                layout_set_final_with_parent(cell, current_x, current_y, col_widths[col_idx], row_heights[current_row]);
 
                 current_x += col_widths[col_idx];
                 if (state->style.show_borders) {
@@ -226,18 +188,11 @@ void layout_table_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         IRComponent* section = c->children[section_idx];
         if (!section) continue;
 
-        if (!section->layout_state) {
-            section->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-        }
-        section->layout_state->computed.x = parent_x;
-        section->layout_state->computed.y = parent_y;
-        section->layout_state->computed.width = total_width;
-        section->layout_state->computed.height = total_height;
-        section->layout_state->layout_valid = true;
-        section->layout_state->computed.valid = true;
+        if (!layout_ensure_state(section)) continue;
+        layout_set_final_with_parent(section, parent_x, parent_y, total_width, total_height);
     }
 
-    if (getenv("KRYON_DEBUG_TABLE")) {
+    if (layout_is_debug_enabled("Table")) {
         fprintf(stderr, "[TABLE_LAYOUT] Completed layout for table id=%u: %.1fx%.1f at (%.1f,%.1f)\n",
                 c->id, total_width, total_height, parent_x, parent_y);
     }

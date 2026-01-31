@@ -6,14 +6,13 @@
 #define _GNU_SOURCE
 #include "../ir_layout_strategy.h"
 #include "../include/ir_core.h"
+#include "../layout_helpers.h"
 #include <stdlib.h>
 
 static void measure_image(IRComponent* comp, IRLayoutConstraints* constraints) {
     if (!comp || !constraints) return;
 
-    if (!comp->layout_state) {
-        comp->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(comp)) return;
 
     // Default image size
     float width = 100;
@@ -39,9 +38,11 @@ static void measure_image(IRComponent* comp, IRLayoutConstraints* constraints) {
     // Maintain aspect ratio if only one dimension specified
     // ...
 
-    comp->layout_state->computed.width = width;
-    comp->layout_state->computed.height = height;
-    comp->layout_state->layout_valid = true;
+    // Apply constraints
+    layout_apply_constraints(&width, &height, *constraints);
+
+    // Set final layout dimensions
+    layout_set_final_dimensions(comp, width, height);
 }
 
 static void layout_image_children(IRComponent* comp) {

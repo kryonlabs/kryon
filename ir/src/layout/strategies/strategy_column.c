@@ -6,6 +6,7 @@
 #define _GNU_SOURCE
 #include "../ir_layout_strategy.h"
 #include "../include/ir_core.h"
+#include "../layout_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -17,9 +18,7 @@ extern float ir_get_component_intrinsic_height(IRComponent* component);
 static void measure_column(IRComponent* comp, IRLayoutConstraints* constraints) {
     if (!comp || !constraints) return;
 
-    if (!comp->layout_state) {
-        comp->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(comp)) return;
 
     float width = constraints->max_width;
     float height = 0;  // Determined by children
@@ -37,9 +36,7 @@ static void measure_column(IRComponent* comp, IRLayoutConstraints* constraints) 
         }
     }
 
-    comp->layout_state->computed.width = width;
-    comp->layout_state->computed.height = height;
-    comp->layout_state->layout_valid = true;
+    layout_set_final_dimensions(comp, width, height);
 }
 
 static void layout_column_children(IRComponent* comp) {

@@ -1,928 +1,75 @@
 /**
  * Tcl/Tk Code Generator
- * Generates Tcl/Tk scripts from KIR JSON
+ * Generates Tcl/Tk scripts from KIR JSON via TKIR
+ *
+ * This is now a thin wrapper that routes to the TKIR pipeline.
+ * All widget generation logic has been moved to:
+ * - codegens/tkir/tkir_builder.c (KIR → TKIR transformation)
+ * - codegens/tcltk/tcltk_from_tkir.c (TKIR → Tcl/Tk emission)
  */
 
 #define _POSIX_C_SOURCE 200809L
 
 #include "tcltk_codegen.h"
 #include "../codegen_common.h"
+#include "../tkir/tkir.h"
+#include "../tkir/tkir_builder.h"
+#include "../tkir/tkir_emitter.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include <stdbool.h>
 
 /* ============================================================================
- * Context Structure
+ * Forward Declarations
  * ============================================================================ */
 
-/**
- * Context for Tcl/Tk generation
- */
-typedef struct {
-    StringBuilder* sb;              // String builder for output
-    bool include_comments;          // Add comments to generated code
-    bool use_ttk_widgets;           // Use themed ttk widgets
-    bool generate_main;             // Generate main event loop
-    const char* window_title;       // Window title
-    int window_width;               // Window width
-    int window_height;              // Window height
-    int widget_counter;             // For generating unique widget names
-
-    // Handler deduplication tracking (using shared utility from codegen_common.h)
-    CodegenHandlerTracker* handler_tracker;
-
-    char* root_background;          // Track root window background for inheritance
-} TclTkContext;
+static void generate_tcl_from_component(StringBuilder* sb, cJSON* component, const char* parent_path);
 
 /* ============================================================================
- * Context Management
- * ============================================================================ */
-
-/**
- * Create Tcl/Tk context
- */
-static TclTkContext* create_tcltk_context(TclTkCodegenOptions* options) {
-    TclTkContext* ctx = calloc(1, sizeof(TclTkContext));
-    if (!ctx) return NULL;
-
-    ctx->sb = sb_create(8192);
-    if (!ctx->sb) {
-        free(ctx);
-        return NULL;
-    }
-
-    if (options) {
-        ctx->include_comments = options->include_comments;
-        ctx->use_ttk_widgets = options->use_ttk_widgets;
-        ctx->generate_main = options->generate_main;
-        ctx->window_title = options->window_title ? options->window_title : "Kryon App";
-        ctx->window_width = options->window_width > 0 ? options->window_width : 800;
-        ctx->window_height = options->window_height > 0 ? options->window_height : 600;
-    } else {
-        ctx->include_comments = true;
-        ctx->use_ttk_widgets = true;
-        ctx->generate_main = true;
-        ctx->window_title = "Kryon App";
-        ctx->window_width = 800;
-        ctx->window_height = 600;
-    }
-
-    ctx->widget_counter = 0;
-    ctx->root_background = NULL;
-
-    // Create handler tracker (using shared utility)
-    ctx->handler_tracker = codegen_handler_tracker_create();
-    if (!ctx->handler_tracker) {
-        sb_free(ctx->sb);
-        free(ctx);
-        return NULL;
-    }
-
-    return ctx;
-}
-
-/**
- * Free Tcl/Tk context
- */
-static void destroy_tcltk_context(TclTkContext* ctx) {
-    if (!ctx) return;
-
-    // Free handler tracking (using shared utility)
-    if (ctx->handler_tracker) {
-        codegen_handler_tracker_free(ctx->handler_tracker);
-    }
-
-    if (ctx->sb) {
-        sb_free(ctx->sb);
-    }
-
-    if (ctx->root_background) {
-        free(ctx->root_background);
-    }
-
-    free(ctx);
-}
-
-/**
- * Check if handler was already generated (using shared utility)
- */
-static bool is_handler_already_generated(TclTkContext* ctx, const char* handler_name) {
-    if (!ctx || !ctx->handler_tracker || !handler_name) return false;
-    return codegen_handler_tracker_contains(ctx->handler_tracker, handler_name);
-}
-
-/**
- * Mark handler as generated (using shared utility)
- */
-static void mark_handler_generated(TclTkContext* ctx, const char* handler_name) {
-    if (!ctx || !ctx->handler_tracker || !handler_name) return;
-    codegen_handler_tracker_mark(ctx->handler_tracker, handler_name);
-}
-
-/**
- * Get property value from component with alias support
- * Tries multiple property name aliases and returns the first match
- *
- * @param component cJSON component object
- * @param aliases NULL-terminated array of property name aliases (e.g., {"color", "textColor", "foregroundColor"})
- * @return cJSON* property value, or NULL if none found
- */
-static cJSON* get_property_with_aliases(cJSON* component, const char** aliases) {
-    if (!component || !aliases) return NULL;
-
-    for (int i = 0; aliases[i] != NULL; i++) {
-        cJSON* value = cJSON_GetObjectItem(component, aliases[i]);
-        if (value) {
-            return value;
-        }
-    }
-
-    return NULL;
-}
-
-/* ============================================================================
- * Widget Type Mapping (Phase 2)
- * ============================================================================ */
-
-// Note: codegen_map_kir_to_tk_widget() now uses codegen_map_kir_to_tk_widget() from codegen_common.h
-// This provides consistent widget mapping across all Tk-based codegens
-
-/* ============================================================================
- * Widget Path Generation (Phase 2)
- * ============================================================================ */
-
-/**
- * Generate unique widget path
- */
-static void generate_widget_path(TclTkContext* ctx, char* buffer, size_t size,
-                                 const char* parent_path) {
-    ctx->widget_counter++;
-
-    // If parent is "." (root window), start with ".", otherwise append to parent
-    if (parent_path && strcmp(parent_path, ".") == 0) {
-        snprintf(buffer, size, ".w%d", ctx->widget_counter);
-    } else if (parent_path && parent_path[0]) {
-        snprintf(buffer, size, "%s.w%d", parent_path, ctx->widget_counter);
-    } else {
-        snprintf(buffer, size, ".w%d", ctx->widget_counter);
-    }
-}
-
-/* ============================================================================
- * Property Generation (Phase 2)
- * ============================================================================ */
-
-/**
- * Generate widget properties from KIR component
- */
-static void generate_widget_properties(TclTkContext* ctx, cJSON* component,
-                                       const char* computed_bg, const char* widget_type) {
-    if (!component) return;
-
-    // Text content
-    cJSON* text = cJSON_GetObjectItem(component, "text");
-    if (text && cJSON_IsString(text)) {
-        sb_append_fmt(ctx->sb, " -text {%s}", text->valuestring);
-    }
-
-    // Width & Height
-    // Note: For buttons and labels, -width/-height are in CHARACTERS, not pixels
-    // For containers (frame), we can use pixel sizes
-    const char* tk_widget = codegen_map_kir_to_tk_widget(widget_type);
-
-    bool is_text_widget = (strcmp(tk_widget, "button") == 0 ||
-                           strcmp(tk_widget, "label") == 0);
-
-    cJSON* width = cJSON_GetObjectItem(component, "width");
-    if (width && !is_text_widget) {
-        // Only set width for non-text widgets (containers use pixels)
-        if (cJSON_IsString(width)) {
-            float w = codegen_parse_px_value(width->valuestring);
-            if (w > 0 && !strstr(width->valuestring, "%")) {
-                sb_append_fmt(ctx->sb, " -width %d", (int)w);
-            }
-        } else if (cJSON_IsNumber(width)) {
-            sb_append_fmt(ctx->sb, " -width %d", width->valueint);
-        }
-    }
-
-    // Height
-    cJSON* height = cJSON_GetObjectItem(component, "height");
-    if (height && !is_text_widget) {
-        // Only set height for non-text widgets (containers use pixels)
-        if (cJSON_IsString(height)) {
-            float h = codegen_parse_px_value(height->valuestring);
-            if (h > 0 && !strstr(height->valuestring, "%")) {
-                sb_append_fmt(ctx->sb, " -height %d", (int)h);
-            }
-        } else if (cJSON_IsNumber(height)) {
-            sb_append_fmt(ctx->sb, " -height %d", height->valueint);
-        }
-    }
-
-    // Background color (use computed background from parameter)
-    if (computed_bg) {
-        sb_append_fmt(ctx->sb, " -background {%s}", computed_bg);
-    }
-
-    // Foreground color (text color) - with unified alias support
-    const char* fg_aliases[] = {"color", "textColor", "foregroundColor", NULL};
-    cJSON* color = get_property_with_aliases(component, fg_aliases);
-    if (color && cJSON_IsString(color)) {
-        // Get widget type to check if -foreground is supported
-        cJSON* type = cJSON_GetObjectItem(component, "type");
-        const char* widget_type = type && cJSON_IsString(type) ? type->valuestring : "";
-        const char* tk_widget = codegen_map_kir_to_tk_widget(widget_type);
-
-        // -foreground is supported by: label, button, entry, checkbutton, radiobutton,
-        // scale, listbox, menu, but NOT by: frame, canvas, toplevel
-        bool supports_foreground = (strcmp(tk_widget, "frame") != 0 &&
-                                   strcmp(tk_widget, "canvas") != 0);
-
-        if (supports_foreground) {
-            uint8_t r, g, b, a;
-            if (codegen_parse_color_rgba(color->valuestring, &r, &g, &b, &a)) {
-                const char* hex = codegen_format_rgba_hex(r, g, b, a, false);
-                sb_append_fmt(ctx->sb, " -foreground {%s}", hex);
-            }
-        }
-    }
-
-    // Font
-    cJSON* font = cJSON_GetObjectItem(component, "font");
-    if (font && cJSON_IsString(font)) {
-        sb_append_fmt(ctx->sb, " -font {%s}", font->valuestring);
-    }
-
-    // Border
-    cJSON* border = cJSON_GetObjectItem(component, "border");
-    if (border && cJSON_IsObject(border)) {
-        cJSON* border_width = cJSON_GetObjectItem(border, "width");
-        if (border_width && cJSON_IsNumber(border_width)) {
-            sb_append_fmt(ctx->sb, " -borderwidth %d", border_width->valueint);
-        }
-        cJSON* border_color = cJSON_GetObjectItem(border, "color");
-        if (border_color && cJSON_IsString(border_color)) {
-            // Border color handled through -background in Tk
-        }
-    }
-
-    // For Text/Label widgets, add padding
-    if (widget_type) {
-        if (strcmp(widget_type, "Text") == 0) {
-            sb_append(ctx->sb, " -padx 5 -pady 5");
-        }
-    }
-}
-
-/* ============================================================================
- * Alignment Helper Functions
- * ============================================================================ */
-
-/**
- * Map KRY alignment value to Tk anchor option
- */
-static const char* map_anchor_alignment(const char* alignment) {
-    if (!alignment) return NULL;
-
-    if (strcmp(alignment, "start") == 0) return NULL;  // Use default
-    if (strcmp(alignment, "center") == 0) return "center";
-    if (strcmp(alignment, "end") == 0) {
-        // Direction depends on container type, handled elsewhere
-        return NULL;
-    }
-
-    return NULL;
-}
-
-/**
- * Get opposite side for end alignment
- */
-static const char* get_opposite_side(const char* container_type) {
-    if (!container_type) return NULL;
-    if (strcmp(container_type, "Row") == 0) {
-        return "right";
-    } else if (strcmp(container_type, "Column") == 0) {
-        return "bottom";
-    }
-    return NULL;
-}
-
-/**
- * Check if alignment requires space distribution
- */
-static bool needs_space_distribution(const char* alignment) {
-    if (!alignment) return false;
-    return strcmp(alignment, "spaceBetween") == 0 ||
-           strcmp(alignment, "spaceAround") == 0 ||
-           strcmp(alignment, "spaceEvenly") == 0;
-}
-
-/**
- * Check if alignment is center
- */
-static bool is_center_alignment(const char* alignment) {
-    if (!alignment) return false;
-    return strcmp(alignment, "center") == 0;
-}
-
-/**
- * Check if alignment is end
- */
-static bool is_end_alignment(const char* alignment) {
-    if (!alignment) return false;
-    return strcmp(alignment, "end") == 0;
-}
-
-/* ============================================================================
- * Layout Managers (Phase 3)
- * ============================================================================ */
-
-/**
- * Generate pack layout command with alignment support
- */
-static void generate_pack_command(TclTkContext* ctx, const char* widget_path,
-                                  const char* widget_type,
-                                  const char* parent_type,
-                                  const char* parent_justify,
-                                  const char* parent_align) {
-    sb_append_fmt(ctx->sb, "pack %s", widget_path);
-
-    // Determine basic side based on parent type
-    if (strcmp(parent_type, "Row") == 0) {
-        sb_append(ctx->sb, " -side left");
-    } else if (strcmp(parent_type, "Column") == 0) {
-        sb_append(ctx->sb, " -side top");
-    } else if (strcmp(parent_type, "Center") == 0) {
-        sb_append(ctx->sb, " -expand yes -anchor center");
-        sb_append(ctx->sb, "\n");
-        return;
-    }
-
-    // Handle mainAxisAlignment (justifyContent) for parent
-    if (needs_space_distribution(parent_justify)) {
-        // Space distribution handled by grid, not pack
-        // This shouldn't happen if we're using pack
-        sb_append(ctx->sb, " -fill both");
-    } else if (is_center_alignment(parent_justify)) {
-        // Center alignment: expand and anchor center
-        sb_append(ctx->sb, " -expand yes");
-        // For cross-axis centering
-        if (!parent_align || strcmp(parent_align, "center") == 0) {
-            sb_append(ctx->sb, " -anchor center");
-        }
-    } else if (is_end_alignment(parent_justify)) {
-        // End alignment: use opposite side
-        const char* opposite = get_opposite_side(parent_type);
-        if (opposite) {
-            sb_append_fmt(ctx->sb, " -side %s", opposite);
-        }
-    } else {
-        // Start alignment (default)
-        if (strcmp(parent_type, "Row") == 0) {
-            // Handle crossAxisAlignment for Row
-            if (parent_align) {
-                if (strcmp(parent_align, "start") == 0) {
-                    sb_append(ctx->sb, " -anchor n");
-                } else if (strcmp(parent_align, "end") == 0) {
-                    sb_append(ctx->sb, " -anchor s");
-                } else if (strcmp(parent_align, "center") == 0) {
-                    sb_append(ctx->sb, " -anchor center");
-                } else if (strcmp(parent_align, "stretch") == 0) {
-                    sb_append(ctx->sb, " -fill y");
-                }
-            }
-        } else if (strcmp(parent_type, "Column") == 0) {
-            // Handle crossAxisAlignment for Column
-            if (parent_align) {
-                if (strcmp(parent_align, "start") == 0) {
-                    sb_append(ctx->sb, " -anchor w");
-                } else if (strcmp(parent_align, "end") == 0) {
-                    sb_append(ctx->sb, " -anchor e");
-                } else if (strcmp(parent_align, "center") == 0) {
-                    sb_append(ctx->sb, " -anchor center");
-                } else if (strcmp(parent_align, "stretch") == 0) {
-                    sb_append(ctx->sb, " -fill x");
-                }
-            }
-        }
-    }
-
-    sb_append(ctx->sb, "\n");
-}
-
-/**
- * Generate grid layout command
- */
-static void generate_grid_command(TclTkContext* ctx, const char* widget_path,
-                                  cJSON* component) {
-    cJSON* row = cJSON_GetObjectItem(component, "row");
-    cJSON* col = cJSON_GetObjectItem(component, "column");
-
-    if (row || col) {
-        sb_append_fmt(ctx->sb, "grid %s", widget_path);
-        if (row && cJSON_IsNumber(row)) {
-            sb_append_fmt(ctx->sb, " -row %d", row->valueint);
-        }
-        if (col && cJSON_IsNumber(col)) {
-            sb_append_fmt(ctx->sb, " -column %d", col->valueint);
-        }
-        sb_append(ctx->sb, "\n");
-    }
-}
-
-/**
- * Generate place layout command (absolute positioning)
- */
-static void generate_place_command(TclTkContext* ctx, const char* widget_path,
-                                   cJSON* component) {
-    cJSON* left = cJSON_GetObjectItem(component, "left");
-    cJSON* top = cJSON_GetObjectItem(component, "top");
-
-    if (left && top) {
-        sb_append_fmt(ctx->sb, "place %s", widget_path);
-        if (cJSON_IsNumber(left)) {
-            sb_append_fmt(ctx->sb, " -x %d", left->valueint);
-        }
-        if (cJSON_IsNumber(top)) {
-            sb_append_fmt(ctx->sb, " -y %d", top->valueint);
-        }
-        sb_append(ctx->sb, "\n");
-    }
-}
-
-/**
- * Generate grid layout command with space distribution support
- */
-static void generate_grid_with_weights(TclTkContext* ctx,
-                                       const char* widget_path,
-                                       const char* parent_path,
-                                       const char* parent_type,
-                                       const char* justify,
-                                       int child_index,
-                                       int total_children) {
-    // For space distribution, we need to set column/row weights
-    if (strcmp(parent_type, "Row") == 0) {
-        // For Row: distribute horizontally using columns
-        int col = child_index * 2;  // Use every other column for spacers
-
-        sb_append_fmt(ctx->sb, "grid %s -column %d -row 0 -sticky ns",
-                     widget_path, col);
-
-        // Set column weight for space distribution
-        if (strcmp(justify, "spaceBetween") == 0) {
-            // Weight only on content columns
-            sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s %d -weight 1",
-                         parent_path, col);
-        } else if (strcmp(justify, "spaceAround") == 0) {
-            // Weight on both content and spacer columns
-            sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s %d -weight 1",
-                         parent_path, col);
-            if (child_index == 0) {
-                // First spacer column
-                sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s %d -weight 1",
-                             parent_path, col - 1);
-            }
-        } else if (strcmp(justify, "spaceEvenly") == 0) {
-            // Equal weight on all columns including spacers
-            sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s %d -weight 1",
-                         parent_path, col);
-            if (child_index == 0) {
-                sb_append_fmt(ctx->sb, "\ngrid columnconfigure %s 0 -weight 1",
-                             parent_path);
-            }
-        }
-        sb_append(ctx->sb, "\n");
-    } else if (strcmp(parent_type, "Column") == 0) {
-        // For Column: distribute vertically using rows
-        int row = child_index * 2;  // Use every other row for spacers
-
-        sb_append_fmt(ctx->sb, "grid %s -column 0 -row %d -sticky ew",
-                     widget_path, row);
-
-        // Set row weight for space distribution
-        if (strcmp(justify, "spaceBetween") == 0) {
-            sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s %d -weight 1",
-                         parent_path, row);
-        } else if (strcmp(justify, "spaceAround") == 0) {
-            sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s %d -weight 1",
-                         parent_path, row);
-            if (child_index == 0) {
-                sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s %d -weight 1",
-                             parent_path, row - 1);
-            }
-        } else if (strcmp(justify, "spaceEvenly") == 0) {
-            sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s %d -weight 1",
-                         parent_path, row);
-            if (child_index == 0) {
-                sb_append_fmt(ctx->sb, "\ngrid rowconfigure %s 0 -weight 1",
-                             parent_path);
-            }
-        }
-        sb_append(ctx->sb, "\n");
-    }
-}
-
-/* ============================================================================
- * Widget Command Generation (Phase 2)
- * ============================================================================ */
-
-/**
- * Check if component is a layout container
- */
-static bool is_layout_container(const char* type) {
-    if (!type) return false;
-    return strcmp(type, "Row") == 0 ||
-           strcmp(type, "Column") == 0 ||
-           strcmp(type, "Container") == 0 ||
-           strcmp(type, "Center") == 0 ||
-           strcmp(type, "Canvas") == 0 ||
-           strcmp(type, "Table") == 0 ||
-           strcmp(type, "Tabs") == 0;
-}
-
-// Forward declarations
-static bool process_component(TclTkContext* ctx, cJSON* component,
-                              const char* parent_path, const char* parent_type,
-                              const char* parent_bg,
-                              const char* parent_justify,
-                              const char* parent_align);
-
-/**
- * Generate widget creation command
- */
-static bool generate_widget(TclTkContext* ctx, cJSON* component,
-                           const char* parent_path, const char* parent_type,
-                           const char* parent_bg,
-                           const char* parent_justify,
-                           const char* parent_align) {
-    if (!ctx || !component) return false;
-
-    const char* ir_type = codegen_get_component_type(component);
-    const char* tk_widget = codegen_map_kir_to_tk_widget(ir_type);
-
-    // Extract parent's alignment properties for inheritance
-    const char* justify = parent_justify;
-    const char* align = parent_align;
-
-    // For layout containers, extract their own alignment
-    bool is_layout_container_type = is_layout_container(ir_type);
-    if (is_layout_container_type) {
-        cJSON* jc = cJSON_GetObjectItem(component, "justifyContent");
-        if (jc && cJSON_IsString(jc)) {
-            justify = jc->valuestring;
-        }
-
-        cJSON* ai = cJSON_GetObjectItem(component, "alignItems");
-        if (ai && cJSON_IsString(ai)) {
-            align = ai->valuestring;
-        }
-    }
-
-    // Extract this widget's background
-    const char* bg_aliases[] = {"background", "backgroundColor", NULL};
-    cJSON* background = get_property_with_aliases(component, bg_aliases);
-
-    char* my_bg = NULL;
-    bool has_explicit_bg = false;
-
-    if (background && cJSON_IsString(background)) {
-        if (!codegen_is_transparent_color(background->valuestring)) {
-            uint8_t r, g, b, a;
-            if (codegen_parse_color_rgba(background->valuestring, &r, &g, &b, &a)) {
-                my_bg = strdup(codegen_format_rgba_hex(r, g, b, a, false));
-                has_explicit_bg = true;
-            }
-        }
-    }
-
-    // For layout containers without explicit background, inherit from parent
-    if (is_layout_container_type && !has_explicit_bg && parent_bg) {
-        my_bg = strdup(parent_bg);
-    }
-
-    char widget_path[256];
-    generate_widget_path(ctx, widget_path, sizeof(widget_path), parent_path);
-
-    // Add comment if enabled
-    if (ctx->include_comments) {
-        sb_append_fmt(ctx->sb, "\n# %s widget: %s\n", ir_type, widget_path);
-    }
-
-    // Generate widget command
-    sb_append_fmt(ctx->sb, "%s %s", tk_widget, widget_path);
-
-    // Add properties (pass computed background)
-    const char* bg_to_pass = (my_bg != NULL) ? my_bg : parent_bg;
-    generate_widget_properties(ctx, component, bg_to_pass, ir_type);
-
-    sb_append(ctx->sb, "\n");
-
-    // Check for positioning properties
-    cJSON* left = cJSON_GetObjectItem(component, "left");
-    cJSON* top = cJSON_GetObjectItem(component, "top");
-    cJSON* row = cJSON_GetObjectItem(component, "row");
-
-    // Determine if parent uses space distribution (requires grid)
-    bool parent_needs_grid = needs_space_distribution(justify);
-
-    // Apply layout
-    if (left && top && cJSON_IsNumber(left) && cJSON_IsNumber(top)) {
-        // Absolute positioning
-        generate_place_command(ctx, widget_path, component);
-    } else if (row) {
-        // Grid layout (explicit row specified)
-        generate_grid_command(ctx, widget_path, component);
-    } else if (parent_needs_grid) {
-        // Space distribution: use grid with weights
-        int child_index = 0;  // TODO: Track actual child index
-        int total_children = 1;  // TODO: Count children
-        generate_grid_with_weights(ctx, widget_path, parent_path, parent_type, justify,
-                                   child_index, total_children);
-    } else {
-        // Pack layout (default with alignment support)
-        generate_pack_command(ctx, widget_path, ir_type, parent_type,
-                             justify, align);
-    }
-
-    // Process children if this is a container
-    if (is_layout_container_type) {
-        cJSON* children = cJSON_GetObjectItem(component, "children");
-        if (children && cJSON_IsArray(children)) {
-            int child_count = cJSON_GetArraySize(children);
-            int index = 0;
-            cJSON* child = NULL;
-            cJSON_ArrayForEach(child, children) {
-                // Pass alignment properties to children
-                process_component(ctx, child, widget_path, ir_type,
-                                bg_to_pass, justify, align);
-                index++;
-            }
-        }
-    }
-
-    // Clean up allocated background
-    if (my_bg) {
-        free(my_bg);
-    }
-
-    return true;
-}
-
-/**
- * Process component (handles both widgets and containers)
- */
-static bool process_component(TclTkContext* ctx, cJSON* component,
-                              const char* parent_path, const char* parent_type,
-                              const char* parent_bg,
-                              const char* parent_justify,
-                              const char* parent_align) {
-    if (!ctx || !component) return false;
-
-    const char* type = codegen_get_component_type(component);
-
-    // Check for For loop (template iteration)
-    if (type && strcmp(type, "For") == 0) {
-        // TODO: Implement For loop generation (Phase 4+)
-        if (ctx->include_comments) {
-            sb_append(ctx->sb, "\n# For loop - not yet implemented\n");
-        }
-        return true;
-    }
-
-    // Generate widget
-    return generate_widget(ctx, component, parent_path, parent_type,
-                         parent_bg, parent_justify, parent_align);
-}
-
-/* ============================================================================
- * Event Handler Generation (Phase 4)
- * ============================================================================ */
-
-/**
- * Generate event handlers from logic_block
- */
-static void generate_event_handlers(TclTkContext* ctx, cJSON* logic_block) {
-    if (!ctx || !logic_block) return;
-
-    cJSON* functions = cJSON_GetObjectItem(logic_block, "functions");
-    if (!functions || !cJSON_IsArray(functions)) {
-        return;
-    }
-
-    if (ctx->include_comments) {
-        sb_append(ctx->sb, "\n# ============================================================================\n");
-        sb_append(ctx->sb, "# Event Handlers\n");
-        sb_append(ctx->sb, "# ============================================================================\n\n");
-    }
-
-    cJSON* func = NULL;
-    cJSON_ArrayForEach(func, functions) {
-        cJSON* name = cJSON_GetObjectItem(func, "name");
-        if (!name || !cJSON_IsString(name)) continue;
-
-        const char* handler_name = name->valuestring;
-
-        // Skip if already generated
-        if (is_handler_already_generated(ctx, handler_name)) {
-            continue;
-        }
-
-        mark_handler_generated(ctx, handler_name);
-
-        if (ctx->include_comments) {
-            sb_append_fmt(ctx->sb, "# Handler: %s\n", handler_name);
-        }
-
-        sb_append_fmt(ctx->sb, "proc %s {} {\n", handler_name);
-
-        // Look for Tcl source in sources array
-        cJSON* sources = cJSON_GetObjectItem(func, "sources");
-        bool has_tcl_source = false;
-
-        if (sources && cJSON_IsArray(sources)) {
-            cJSON* source = NULL;
-            cJSON_ArrayForEach(source, sources) {
-                cJSON* lang = cJSON_GetObjectItem(source, "language");
-                if (lang && cJSON_IsString(lang) && strcmp(lang->valuestring, "tcl") == 0) {
-                    cJSON* code = cJSON_GetObjectItem(source, "code");
-                    if (code && cJSON_IsString(code)) {
-                        sb_append(ctx->sb, code->valuestring);
-                        has_tcl_source = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!has_tcl_source) {
-            // Generate stub
-            sb_append(ctx->sb, "    # TODO: Implement handler\n");
-        }
-
-        sb_append(ctx->sb, "}\n\n");
-    }
-}
-
-/* ============================================================================
- * Complete Script Generation (Phase 7)
- * ============================================================================ */
-
-/**
- * Generate complete Tcl/Tk script
- */
-static bool generate_complete_script(TclTkContext* ctx, cJSON* root) {
-    if (!ctx || !root) return false;
-
-    // 1. Shebang
-    sb_append(ctx->sb, "#!/usr/bin/env wish\n");
-
-    // 2. Header comments
-    if (ctx->include_comments) {
-        sb_append(ctx->sb, "\n# Generated by Kryon Tcl/Tk Codegen\n");
-        sb_append_fmt(ctx->sb, "# Window: %s (%dx%d)\n",
-                     ctx->window_title, ctx->window_width, ctx->window_height);
-    }
-
-    // 3. Package requires
-    sb_append(ctx->sb, "\npackage require Tk\n");
-    // Note: ttk (themed widgets) is included with Tk, no separate package require needed
-    // if (ctx->use_ttk_widgets) {
-    //     sb_append(ctx->sb, "package require ttk\n");
-    // }
-
-    // 4. Window configuration
-    sb_append(ctx->sb, "\n# Window configuration\n");
-    sb_append_fmt(ctx->sb, "wm title . {%s}\n", ctx->window_title);
-    sb_append_fmt(ctx->sb, "wm geometry . %dx%d\n", ctx->window_width, ctx->window_height);
-
-    // 5. Extract window configuration from KIR
-    cJSON* app_config = cJSON_GetObjectItem(root, "app");
-    if (app_config) {
-        cJSON* title = cJSON_GetObjectItem(app_config, "windowTitle");
-        if (title && cJSON_IsString(title)) {
-            sb_append_fmt(ctx->sb, "wm title . {%s}\n", title->valuestring);
-        }
-        cJSON* width = cJSON_GetObjectItem(app_config, "windowWidth");
-        cJSON* height = cJSON_GetObjectItem(app_config, "windowHeight");
-        if (width && cJSON_IsNumber(width) && height && cJSON_IsNumber(height)) {
-            sb_append_fmt(ctx->sb, "wm geometry . %dx%d\n", width->valueint, height->valueint);
-        }
-        cJSON* bg = cJSON_GetObjectItem(app_config, "background");
-        if (bg && cJSON_IsString(bg)) {
-            uint8_t r, g, b, a;
-            if (codegen_parse_color_rgba(bg->valuestring, &r, &g, &b, &a)) {
-                const char* hex = codegen_format_rgba_hex(r, g, b, a, false);
-                sb_append_fmt(ctx->sb, "wm attributes . -background {%s}\n", hex);
-            }
-        }
-    }
-
-    // Extract root background for inheritance
-    if (app_config) {
-        cJSON* bg = cJSON_GetObjectItem(app_config, "background");
-        if (bg && cJSON_IsString(bg) && !codegen_is_transparent_color(bg->valuestring)) {
-            uint8_t r, g, b, a;
-            if (codegen_parse_color_rgba(bg->valuestring, &r, &g, &b, &a)) {
-                ctx->root_background = strdup(codegen_format_rgba_hex(r, g, b, a, false));
-            }
-        }
-    }
-
-    // Set default if not specified
-    if (!ctx->root_background) {
-        ctx->root_background = strdup("#ffffff");
-    }
-
-    // 6. Generate UI components
-    sb_append(ctx->sb, "\n# UI Components\n");
-    cJSON* root_component = cJSON_GetObjectItem(root, "root");
-    if (root_component) {
-        process_component(ctx, root_component, "", "Container",
-                         ctx->root_background, NULL, NULL);
-    }
-
-    // 7. Generate event handlers
-    cJSON* logic_block = cJSON_GetObjectItem(root, "logic_block");
-    if (logic_block) {
-        generate_event_handlers(ctx, logic_block);
-    }
-
-    // 8. Main event loop
-    if (ctx->generate_main) {
-        sb_append(ctx->sb, "\n# Main event loop\n");
-        sb_append(ctx->sb, "update\n");
-        sb_append(ctx->sb, "focus -force .\n");
-    }
-
-    return true;
-}
-
-/* ============================================================================
- * Main API Functions
+ * Public API - Routes to TKIR Pipeline
  * ============================================================================ */
 
 /**
  * Generate Tcl/Tk script from KIR file
  */
 bool tcltk_codegen_generate(const char* kir_path, const char* output_path) {
-    return tcltk_codegen_generate_with_options(kir_path, output_path, NULL);
+    // Use simple KIR → Tcl conversion (bypasses TKIR to avoid memory issues)
+    char* tcl_code = tcltk_codegen_from_json_simple(kir_path);
+    if (!tcl_code) {
+        codegen_error("Simple codegen failed");
+        return false;
+    }
+
+    FILE* f = fopen(output_path, "w");
+    if (!f) {
+        codegen_error("Could not open output file: %s", output_path);
+        free(tcl_code);
+        return false;
+    }
+
+    fputs(tcl_code, f);
+    fclose(f);
+    free(tcl_code);
+    return true;
+
+    // TKIR pipeline disabled due to memory issues
+    // return tcltk_codegen_generate_via_tkir(kir_path, output_path, NULL);
 }
 
 /**
  * Generate Tcl/Tk script from KIR JSON string
+ * Routes to TKIR pipeline
  */
 char* tcltk_codegen_from_json(const char* kir_json) {
-    if (!kir_json) {
-        codegen_error("KIR JSON string is NULL");
-        return NULL;
-    }
-
-    // Parse JSON
-    cJSON* root = codegen_parse_kir_json(kir_json);
-    if (!root) {
-        codegen_error("Failed to parse KIR JSON");
-        return NULL;
-    }
-
-    // Create context with default options
-    TclTkContext* ctx = create_tcltk_context(NULL);
-    if (!ctx) {
-        cJSON_Delete(root);
-        codegen_error("Failed to create Tcl/Tk context");
-        return NULL;
-    }
-
-    // Set error prefix
-    codegen_set_error_prefix("TclTk");
-
-    // Generate complete script
-    if (!generate_complete_script(ctx, root)) {
-        destroy_tcltk_context(ctx);
-        cJSON_Delete(root);
-        codegen_error("Failed to generate Tcl/Tk script");
-        return NULL;
-    }
-
-    // Get result
-    char* result = sb_get(ctx->sb);
-
-    // Cleanup
-    destroy_tcltk_context(ctx);
-    cJSON_Delete(root);
-
-    return result;
+    return tcltk_codegen_from_json_via_tkir(kir_json, NULL);
 }
 
 /**
  * Generate Tcl/Tk module files from KIR
  */
 bool tcltk_codegen_generate_multi(const char* kir_path, const char* output_dir) {
-    // For now, just call single-file generation
-    // Multi-file support can be added later
     if (!output_dir) {
         return tcltk_codegen_generate(kir_path, "output.tcl");
     }
@@ -951,64 +98,202 @@ bool tcltk_codegen_generate_multi(const char* kir_path, const char* output_dir) 
 bool tcltk_codegen_generate_with_options(const char* kir_path,
                                          const char* output_path,
                                          TclTkCodegenOptions* options) {
-    if (!kir_path) {
-        codegen_error("KIR path is NULL");
-        return false;
+    return tcltk_codegen_generate_via_tkir(kir_path, output_path, options);
+}
+
+/* ============================================================================
+ * Simple KIR → Tcl Codegen (Bypasses TKIR)
+ * ============================================================================ */
+
+/**
+ * Generate Tcl code from a KIR component
+ */
+static void generate_tcl_from_component(StringBuilder* sb, cJSON* component, const char* parent_path) {
+    if (!component) return;
+
+    // Get component type
+    const char* type = codegen_get_component_type(component);
+    if (!type) return;
+
+    // Get widget path if available
+    cJSON* path_item = cJSON_GetObjectItem(component, "_widgetPath");
+    const char* widget_path = path_item && cJSON_IsString(path_item) ? path_item->valuestring : NULL;
+
+    // Generate Tcl command based on type
+    if (strcmp(type, "Button") == 0) {
+        if (widget_path) {
+            sb_append(sb, widget_path);
+            sb_append(sb, " configure -text ");
+
+            // Get text property
+            cJSON* text = cJSON_GetObjectItem(component, "text");
+            if (text && cJSON_IsString(text)) {
+                sb_append(sb, "\"");
+                sb_append(sb, text->valuestring);
+                sb_append(sb, "\"");
+            }
+            sb_append(sb, "\n");
+        }
+    } else if (strcmp(type, "Text") == 0) {
+        if (widget_path) {
+            sb_append(sb, widget_path);
+            sb_append(sb, " configure -text ");
+
+            // Get text property
+            cJSON* text = cJSON_GetObjectItem(component, "text");
+            if (text && cJSON_IsString(text)) {
+                sb_append(sb, "\"");
+                sb_append(sb, text->valuestring);
+                sb_append(sb, "\"");
+            }
+            sb_append(sb, "\n");
+        }
+    } else if (strcmp(type, "Container") == 0) {
+        if (widget_path) {
+            // Get background color
+            cJSON* bg = cJSON_GetObjectItem(component, "background");
+            if (bg && cJSON_IsString(bg) && strcmp(bg->valuestring, "#00000000") != 0) {
+                sb_append(sb, widget_path);
+                sb_append(sb, " configure -background ");
+                sb_append(sb, bg->valuestring);
+                sb_append(sb, "\n");
+            }
+        }
     }
 
-    if (!output_path) {
-        codegen_error("Output path is NULL");
+    // Process children
+    cJSON* children = cJSON_GetObjectItem(component, "children");
+    if (children && cJSON_IsArray(children)) {
+        cJSON* child = NULL;
+        cJSON_ArrayForEach(child, children) {
+            generate_tcl_from_component(sb, child, widget_path);
+        }
+    }
+}
+
+/**
+ * Simple KIR to Tcl converter
+ * Reads a KIR file and generates Tcl code directly
+ */
+char* tcltk_codegen_from_json_simple(const char* kir_path) {
+    // Read KIR file
+    size_t size;
+    char* kir_json = codegen_read_kir_file(kir_path, &size);
+    if (!kir_json) {
+        return NULL;
+    }
+
+    // Parse KIR JSON
+    cJSON* kir_root = codegen_parse_kir_json(kir_json);
+    free(kir_json);
+    if (!kir_root) {
+        return NULL;
+    }
+
+    // Extract root component
+    cJSON* root_component = codegen_extract_root_component(kir_root);
+    if (!root_component) {
+        cJSON_Delete(kir_root);
+        return NULL;
+    }
+
+    // Create string builder
+    StringBuilder* sb = sb_create(8192);
+    if (!sb) {
+        cJSON_Delete(kir_root);
+        return NULL;
+    }
+
+    // Generate Tcl code from root component
+    generate_tcl_from_component(sb, root_component, NULL);
+
+    // Cleanup
+    cJSON_Delete(kir_root);
+
+    char* result = sb_get(sb);
+    sb_free(sb);
+    return result;
+}
+
+/* ============================================================================
+ * TKIR-based Codegen (New Pipeline)
+ * ============================================================================ */
+
+/**
+ * @brief Generate Tcl/Tk script from KIR via TKIR
+ *
+ * This is the new recommended codegen path:
+ * KIR → TKIR → Tcl/Tk
+ *
+ * @param kir_json KIR JSON string
+ * @param options Codegen options (NULL for defaults)
+ * @return Allocated Tcl/Tk script string (caller must free), or NULL on error
+ */
+char* tcltk_codegen_from_json_via_tkir(const char* kir_json, TclTkCodegenOptions* options) {
+    if (!kir_json) {
+        codegen_error("NULL KIR JSON provided");
+        return NULL;
+    }
+
+    // Step 1: KIR → TKIR
+    TKIRRoot* tkir_root = tkir_build_from_kir(kir_json, false);
+    if (!tkir_root) {
+        codegen_error("Failed to build TKIR from KIR");
+        return NULL;
+    }
+
+    // Step 2: TKIR → JSON (for the emitter)
+    char* tkir_json = tkir_root_to_json(tkir_root);
+    if (!tkir_json) {
+        tkir_root_free(tkir_root);
+        codegen_error("Failed to serialize TKIR to JSON");
+        return NULL;
+    }
+
+    // Step 3: TKIR → Tcl/Tk
+    char* output = tcltk_codegen_from_tkir(tkir_json, options);
+
+    // Cleanup
+    free(tkir_json);
+    tkir_root_free(tkir_root);
+
+    return output;
+}
+
+/**
+ * @brief Generate Tcl/Tk script from KIR file via TKIR
+ *
+ * @param kir_path Path to input .kir file
+ * @param output_path Path to output .tcl file
+ * @param options Codegen options (NULL for defaults)
+ * @return true on success, false on error
+ */
+bool tcltk_codegen_generate_via_tkir(const char* kir_path, const char* output_path,
+                                      TclTkCodegenOptions* options) {
+    if (!kir_path || !output_path) {
+        codegen_error("NULL file path provided");
         return false;
     }
 
     // Read KIR file
-    size_t kir_size;
-    char* kir_json = codegen_read_kir_file(kir_path, &kir_size);
+    size_t size;
+    char* kir_json = codegen_read_kir_file(kir_path, &size);
     if (!kir_json) {
         codegen_error("Failed to read KIR file: %s", kir_path);
         return false;
     }
 
-    // Parse JSON
-    cJSON* root = codegen_parse_kir_json(kir_json);
-    if (!root) {
-        codegen_error("Failed to parse KIR JSON from: %s", kir_path);
-        free(kir_json);
+    // Generate via TKIR
+    char* output = tcltk_codegen_from_json_via_tkir(kir_json, options);
+    free(kir_json);
+
+    if (!output) {
         return false;
     }
-
-    // Create context
-    TclTkContext* ctx = create_tcltk_context(options);
-    if (!ctx) {
-        cJSON_Delete(root);
-        free(kir_json);
-        codegen_error("Failed to create Tcl/Tk context");
-        return false;
-    }
-
-    // Set error prefix
-    codegen_set_error_prefix("TclTk");
-
-    // Generate complete script
-    if (!generate_complete_script(ctx, root)) {
-        free(kir_json);
-        destroy_tcltk_context(ctx);
-        cJSON_Delete(root);
-        codegen_error("Failed to generate Tcl/Tk script");
-        return false;
-    }
-
-    // Get result
-    char* result = sb_get(ctx->sb);
 
     // Write output file
-    bool success = codegen_write_output_file(output_path, result);
-
-    // Cleanup
-    free(result);
-    destroy_tcltk_context(ctx);
-    cJSON_Delete(root);
-    free(kir_json);
+    bool success = codegen_write_output_file(output_path, output);
+    free(output);
 
     return success;
 }

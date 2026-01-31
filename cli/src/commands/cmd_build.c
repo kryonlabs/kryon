@@ -213,8 +213,8 @@ int cmd_build(int argc, char** argv) {
             fprintf(stderr, "Error: Unknown target '%s'\n", cli_target);
             fprintf(stderr, "\nValid targets (with aliases):\n");
             fprintf(stderr, "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode\n");
-            fprintf(stderr, "  sdl3, desktop       - Desktop SDL3 renderer\n");
-            fprintf(stderr, "  raylib              - Desktop Raylib renderer\n");
+            fprintf(stderr, "  sdl3                - SDL3 renderer\n");
+            fprintf(stderr, "  raylib              - Raylib renderer\n");
             fprintf(stderr, "  web                 - Web browser\n");
             fprintf(stderr, "  android, kotlin     - Android APK\n");
 

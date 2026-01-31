@@ -7,6 +7,7 @@
 #include "../ir_layout_strategy.h"
 #include "../include/ir_core.h"
 #include "ir_text_shaping.h"
+#include "../layout_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -16,15 +17,10 @@ extern float ir_get_text_width_estimate(const char* text, float font_size);
 static void measure_text(IRComponent* comp, IRLayoutConstraints* constraints) {
     if (!comp || !constraints) return;
 
-    if (!comp->layout_state) {
-        comp->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(comp)) return;
 
     // Get font size
-    float font_size = 16.0f;
-    if (comp->style && comp->style->font.size > 0) {
-        font_size = comp->style->font.size;
-    }
+    float font_size = layout_get_font_size(comp, 16.0f);
 
     // Estimate text size
     float width = 0;
@@ -56,9 +52,7 @@ static void measure_text(IRComponent* comp, IRLayoutConstraints* constraints) {
     }
 
     // Apply constraints
-    if (width > constraints->max_width && constraints->max_width > 0) {
-        width = constraints->max_width;
-    }
+    layout_apply_constraints(&width, &height, *constraints);
 
     comp->layout_state->computed.width = width;
     comp->layout_state->computed.height = height;
@@ -73,10 +67,7 @@ static void layout_text_children(IRComponent* comp) {
 static void intrinsic_text_size(IRComponent* comp, float* width, float* height) {
     if (!comp || !width || !height) return;
 
-    float font_size = 16.0f;
-    if (comp->style && comp->style->font.size > 0) {
-        font_size = comp->style->font.size;
-    }
+    float font_size = layout_get_font_size(comp, 16.0f);
 
     *width = 0;
     *height = font_size * 1.2f;

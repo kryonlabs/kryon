@@ -92,6 +92,11 @@ RAYLIB_RENDERER_SOURCES = $(RENDERERS_DIR)/raylib/raylib_backend.c \
                           renderers/raylib/raylib_input.c \
                           renderers/raylib/raylib_fonts.c
 
+# Fix object file paths for the archive command
+# Convert renderers/* paths to ../../renderers/* for ar command
+# Only apply to files in renderers/ subdirectory, not ../../renderers/
+DESKTOP_OBJS_FIX = $(patsubst renderers/%,../../renderers/%,$(DESKTOP_OBJS))
+
 # Add renderer-specific sources
 ifeq ($(ENABLE_SDL3),1)
     DESKTOP_SOURCES += $(SDL3_RENDERER_SOURCES)
@@ -151,6 +156,10 @@ $(BUILD_DIR):
 # Object files list - auto-generated from sources
 DESKTOP_OBJS = $(DESKTOP_SOURCES:.c=.o)
 
+# Separate parent directory objects from local objects
+PARENT_RENDERER_OBJS = $(filter ../../renderers/%,$(DESKTOP_OBJS))
+LOCAL_RENDERER_OBJS = $(filter-out ../../renderers/%,$(DESKTOP_OBJS))
+
 # Dependency files (auto-generated)
 DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
 
@@ -162,8 +171,12 @@ DESKTOP_DEPS = $(DESKTOP_OBJS:.o=.d)
 -include $(DESKTOP_DEPS)
 
 # Create static library
+# Use the parent objects directly and find local objects
 $(DESKTOP_STATIC_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)
-	$(AR) $(ARFLAGS) $@ $(DESKTOP_OBJS)
+	@echo "Creating static library: $@"
+	@echo "Parent objects: $(PARENT_RENDERER_OBJS)"
+	@echo "Local objects: $(LOCAL_RENDERER_OBJS)"
+	@$(AR) $(ARFLAGS) $@ $(PARENT_RENDERER_OBJS) $(shell find renderers -name "*.o" 2>/dev/null || true)
 
 # Create shared library
 $(DESKTOP_SHARED_LIB): $(BUILD_DIR) $(DESKTOP_OBJS)

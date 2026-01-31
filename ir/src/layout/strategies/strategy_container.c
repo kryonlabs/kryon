@@ -6,6 +6,7 @@
 #define _GNU_SOURCE
 #include "../ir_layout_strategy.h"
 #include "../include/ir_core.h"
+#include "../layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,9 +19,7 @@ extern float ir_get_component_intrinsic_height(IRComponent* component);
 static void measure_container(IRComponent* comp, IRLayoutConstraints* constraints) {
     if (!comp || !constraints) return;
 
-    if (!comp->layout_state) {
-        comp->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(comp)) return;
 
     // Container uses its size constraints or defaults
     float width = constraints->max_width;
@@ -41,9 +40,6 @@ static void measure_container(IRComponent* comp, IRLayoutConstraints* constraint
         }
     }
 
-    comp->layout_state->computed.width = width;
-    comp->layout_state->computed.height = height;
-
     // Debug: Check absolute positioning for Container
     if (comp->id == 2) {
         fprintf(stderr, "[CONTAINER TRAIT ID=2] style=%p position_mode=%u ABSOLUTE=%d abs_x=%.1f abs_y=%.1f\n",
@@ -56,21 +52,17 @@ static void measure_container(IRComponent* comp, IRLayoutConstraints* constraint
 
     // Handle absolute positioning for containers
     if (comp->style && comp->style->position_mode == IR_POSITION_ABSOLUTE) {
-        comp->layout_state->computed.x = comp->style->absolute_x;
-        comp->layout_state->computed.y = comp->style->absolute_y;
+        layout_set_final(comp, comp->style->absolute_x, comp->style->absolute_y, width, height);
         if (comp->id == 2) {
             fprintf(stderr, "[CONTAINER TRAIT SET ABSOLUTE] ID=2: computed.x=%.1f computed.y=%.1f\n",
                     comp->layout_state->computed.x, comp->layout_state->computed.y);
         }
     } else {
+        layout_set_final(comp, 0, 0, width, height);
         if (comp->id == 2) {
             fprintf(stderr, "[CONTAINER TRAIT NOT ABSOLUTE] ID=2: computed.x=0 computed.y=0\n");
         }
-        comp->layout_state->computed.x = 0;
-        comp->layout_state->computed.y = 0;
     }
-
-    comp->layout_state->layout_valid = true;
 }
 
 static void layout_container_children(IRComponent* comp) {

@@ -3,6 +3,7 @@
 #include "../src/style/ir_stylesheet.h"
 #include "../../include/ir_style.h"
 #include "../../include/ir_layout.h"
+#include "../common/parser_io_utils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -438,33 +439,13 @@ CSSStylesheet* ir_css_parse_stylesheet(const char* css_content) {
 CSSStylesheet* ir_css_parse_stylesheet_file(const char* filepath) {
     if (!filepath) return NULL;
 
-    FILE* f = fopen(filepath, "r");
-    if (!f) {
+    ParserError error = {0};
+    size_t size = 0;
+    char* content = parser_read_file(filepath, &size, &error);
+    if (!content) {
         fprintf(stderr, "Warning: Could not open CSS file: %s\n", filepath);
         return NULL;
     }
-
-    // Get file size
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (size <= 0) {
-        fclose(f);
-        return NULL;
-    }
-
-    // Read content
-    char* content = malloc(size + 1);
-    if (!content) {
-        fclose(f);
-        return NULL;
-    }
-
-    size_t bytes_read = fread(content, 1, size, f);
-    fclose(f);
-
-    content[bytes_read] = '\0';
 
     // Parse
     CSSStylesheet* stylesheet = ir_css_parse_stylesheet(content);

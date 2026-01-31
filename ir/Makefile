@@ -81,6 +81,7 @@ LAYOUT_SOURCES = src/layout/ir_layout.c \
                  src/layout/ir_layout_builder.c \
                  src/layout/ir_layout_debug.c \
                  src/layout/ir_layout_strategy.c \
+                 src/layout/layout_helpers.c \
                  src/layout/strategies/strategy_container.c \
                  src/layout/strategies/strategy_row.c \
                  src/layout/strategies/strategy_column.c \
@@ -161,7 +162,12 @@ PARSER_SOURCES = parsers/kry/kry_allocator.c \
                  parsers/html/css_parser.c \
                  parsers/html/css_stylesheet.c \
                  parsers/c/c_parser.c \
-                 parsers/parser_utils.c
+                 parsers/tcl/tcl_lexer.c \
+                 parsers/tcl/tcl_parser.c \
+                 parsers/tcl/tcl_to_ir.c \
+                 parsers/tcl/tcl_widget_registry.c \
+                 parsers/parser_utils.c \
+                 parsers/common/parser_io_utils.c
 
 # All IR sources
 IR_SOURCES = $(CORE_SOURCES) \

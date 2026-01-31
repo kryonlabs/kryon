@@ -26,7 +26,8 @@ static bool is_valid_target(const char* target) {
            strcmp(target, "html") == 0 ||
            strcmp(target, "markdown") == 0 ||
            strcmp(target, "kir") == 0 ||
-           strcmp(target, "limbo") == 0;
+           strcmp(target, "limbo") == 0 ||
+           strcmp(target, "tcltk") == 0;
 }
 
 /**
@@ -52,6 +53,7 @@ static void print_codegen_usage(const char* error) {
     fprintf(stderr, "  markdown  - Generate Markdown documentation\n");
     fprintf(stderr, "  kir       - Generate KIR files (multi-file, preserves module structure)\n");
     fprintf(stderr, "  limbo     - Generate Limbo source code for Inferno/TaijiOS\n");
+    fprintf(stderr, "  tcltk     - Generate Tcl/Tk scripts\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Examples:\n");
     fprintf(stderr, "  kryon codegen kry\n");

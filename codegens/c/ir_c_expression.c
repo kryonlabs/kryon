@@ -170,6 +170,39 @@ bool c_is_range_call(cJSON* expr, cJSON** out_start, cJSON** out_end) {
 }
 
 /**
+ * Helper function for binary operations
+ * Formats left and right expressions with an operator
+ * Returns malloc'd string (via asprintf), caller must free
+ */
+static char* c_format_binary_op(cJSON* expr, const char* op) {
+    cJSON* left_node = cJSON_GetObjectItem(expr, "left");
+    cJSON* right_node = cJSON_GetObjectItem(expr, "right");
+
+    char* left = c_expr_to_c(left_node);
+    char* right = c_expr_to_c(right_node);
+
+    char* result = NULL;
+    asprintf(&result, "(%s %s %s)", left, op, right);
+
+    free(left);
+    free(right);
+    return result;
+}
+
+/**
+ * Helper function for unary operations
+ * Formats an expression with a prefix operator
+ * Returns malloc'd string (via asprintf), caller must free
+ */
+static char* c_format_unary_op(cJSON* expr, const char* prefix) {
+    char* operand = c_expr_to_c(cJSON_GetObjectItem(expr, "operand"));
+    char* result = NULL;
+    asprintf(&result, "%s%s", prefix, operand);
+    free(operand);
+    return result;
+}
+
+/**
  * Convert KIR expression to C code string
  * Returns malloc'd string, caller must free
  */
@@ -237,8 +270,8 @@ char* c_expr_to_c(cJSON* expr) {
     if (index_arr && at_expr) {
         char* arr_c = c_expr_to_c(index_arr);
         char* at_c = c_expr_to_c(at_expr);
-        char* result = malloc(strlen(arr_c) + strlen(at_c) + 4);
-        sprintf(result, "%s[%s]", arr_c, at_c);
+        char* result = NULL;
+        asprintf(&result, "%s[%s]", arr_c, at_c);
         free(arr_c); free(at_c);
         return result;
     }
@@ -253,128 +286,57 @@ char* c_expr_to_c(cJSON* expr) {
 
     // Binary arithmetic operations
     if (strcmp(op_str, "add") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s + %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "+");
     }
     if (strcmp(op_str, "sub") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s - %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "-");
     }
     if (strcmp(op_str, "mul") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s * %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "*");
     }
     if (strcmp(op_str, "div") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s / %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "/");
     }
     if (strcmp(op_str, "mod") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s %% %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "%");
     }
 
     // Comparison operations
     if (strcmp(op_str, "eq") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s == %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "==");
     }
     if (strcmp(op_str, "ne") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s != %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "!=");
     }
     if (strcmp(op_str, "lt") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s < %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "<");
     }
     if (strcmp(op_str, "gt") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s > %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, ">");
     }
     if (strcmp(op_str, "le") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s <= %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "<=");
     }
     if (strcmp(op_str, "ge") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s >= %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, ">=");
     }
 
     // Logical operations
     if (strcmp(op_str, "and") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s && %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "&&");
     }
     if (strcmp(op_str, "or") == 0) {
-        char* left = c_expr_to_c(cJSON_GetObjectItem(expr, "left"));
-        char* right = c_expr_to_c(cJSON_GetObjectItem(expr, "right"));
-        char* result = malloc(strlen(left) + strlen(right) + 10);
-        sprintf(result, "(%s || %s)", left, right);
-        free(left); free(right);
-        return result;
+        return c_format_binary_op(expr, "||");
     }
+
+    // Unary operations
     if (strcmp(op_str, "not") == 0) {
-        char* operand = c_expr_to_c(cJSON_GetObjectItem(expr, "operand"));
-        char* result = malloc(strlen(operand) + 5);
-        sprintf(result, "(!%s)", operand);
-        free(operand);
-        return result;
+        return c_format_unary_op(expr, "(!");
     }
 
     // Unary minus
     if (strcmp(op_str, "neg") == 0) {
-        char* operand = c_expr_to_c(cJSON_GetObjectItem(expr, "operand"));
-        char* result = malloc(strlen(operand) + 5);
-        sprintf(result, "(-%s)", operand);
-        free(operand);
-        return result;
+        return c_format_unary_op(expr, "(-");
     }
 
     // Member access: obj.property or obj->property for pointers
@@ -397,8 +359,8 @@ char* c_expr_to_c(cJSON* expr) {
         cJSON* obj_var = cJSON_GetObjectItem(object, "var");
         if (obj_var && cJSON_IsString(obj_var) && strcmp(prop_clean, "length") == 0) {
             // Convert array.length to array_count
-            char* result = malloc(strlen(obj) + 8);
-            sprintf(result, "%s_count", obj);
+            char* result = NULL;
+            asprintf(&result, "%s_count", obj);
             free(obj);
             return result;
         }
@@ -417,8 +379,8 @@ char* c_expr_to_c(cJSON* expr) {
             }
         }
 
-        char* result = malloc(strlen(obj) + strlen(prop_clean) + 4);
-        sprintf(result, "%s%s%s", obj, use_arrow ? "->" : ".", prop_clean);
+        char* result = NULL;
+        asprintf(&result, "%s%s%s", obj, use_arrow ? "->" : ".", prop_clean);
         free(obj);
         return result;
     }
@@ -427,8 +389,8 @@ char* c_expr_to_c(cJSON* expr) {
     if (strcmp(op_str, "index_access") == 0) {
         char* obj = c_expr_to_c(cJSON_GetObjectItem(expr, "object"));
         char* index = c_expr_to_c(cJSON_GetObjectItem(expr, "index"));
-        char* result = malloc(strlen(obj) + strlen(index) + 4);
-        sprintf(result, "%s[%s]", obj, index);
+        char* result = NULL;
+        asprintf(&result, "%s[%s]", obj, index);
         free(obj); free(index);
         return result;
     }

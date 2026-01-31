@@ -18,6 +18,7 @@
 #include "../include/ir_builder.h"
 #include "../include/ir_core.h"
 #include "../include/ir_markdown.h"
+#include "../common/parser_io_utils.h"
 
 /* Syntax highlighting is now handled via the capability API */
 
@@ -35,10 +36,8 @@ static IRComponent* create_text_component(const char* text, size_t length) {
     }
 
     if (comp && text && length > 0) {
-        char* content = (char*)malloc(length + 1);
+        char* content = parser_strndup(text, length);
         if (content) {
-            memcpy(content, text, length);
-            content[length] = '\0';
             ir_set_text_content(comp, content);
             // Don't free! ir_set_text_content() takes ownership of the pointer
         }
@@ -116,20 +115,12 @@ static void render_inlines_to_ir(MdInline* inl, IRComponent* parent) {
 
                     // Extract URL string
                     if (inl->data.link.url && inl->data.link.url_length > 0) {
-                        url_str = (char*)malloc(inl->data.link.url_length + 1);
-                        if (url_str) {
-                            memcpy(url_str, inl->data.link.url, inl->data.link.url_length);
-                            url_str[inl->data.link.url_length] = '\0';
-                        }
+                        url_str = parser_strndup(inl->data.link.url, inl->data.link.url_length);
                     }
 
                     // Extract link text string (stored in title field by parser)
                     if (inl->data.link.title && inl->data.link.title_length > 0) {
-                        text_str = (char*)malloc(inl->data.link.title_length + 1);
-                        if (text_str) {
-                            memcpy(text_str, inl->data.link.title, inl->data.link.title_length);
-                            text_str[inl->data.link.title_length] = '\0';
-                        }
+                        text_str = parser_strndup(inl->data.link.title, inl->data.link.title_length);
                     }
 
                     // Create LINK component using the helper function
@@ -145,19 +136,15 @@ static void render_inlines_to_ir(MdInline* inl, IRComponent* parent) {
                 comp = ir_create_component(IR_COMPONENT_IMAGE);
                 if (comp) {
                     if (inl->data.image.url && inl->data.image.url_length > 0) {
-                        char* url = (char*)malloc(inl->data.image.url_length + 1);
+                        char* url = parser_strndup(inl->data.image.url, inl->data.image.url_length);
                         if (url) {
-                            memcpy(url, inl->data.image.url, inl->data.image.url_length);
-                            url[inl->data.image.url_length] = '\0';
                             ir_set_custom_data(comp, url);
                             free(url);
                         }
                     }
                     if (inl->data.image.alt && inl->data.image.alt_length > 0) {
-                        char* alt = (char*)malloc(inl->data.image.alt_length + 1);
+                        char* alt = parser_strndup(inl->data.image.alt, inl->data.image.alt_length);
                         if (alt) {
-                            memcpy(alt, inl->data.image.alt, inl->data.image.alt_length);
-                            alt[inl->data.image.alt_length] = '\0';
                             ir_set_text_content(comp, alt);
                             free(alt);
                         }
@@ -263,11 +250,7 @@ static IRComponent* md_node_to_ir(MdNode* node) {
             // Extract heading text
             char* text = NULL;
             if (node->data.heading.text && node->data.heading.length > 0) {
-                text = (char*)malloc(node->data.heading.length + 1);
-                if (text) {
-                    memcpy(text, node->data.heading.text, node->data.heading.length);
-                    text[node->data.heading.length] = '\0';
-                }
+                text = parser_strndup(node->data.heading.text, node->data.heading.length);
             }
 
             // Calculate heading level (1-6)

@@ -1,5 +1,6 @@
 #include "registry.h"
 #include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include "text.h"
 #include "flexbox.h"
 #include "button.h"
@@ -42,9 +43,7 @@ static void layout_foreach_single_pass(IRComponent* c, IRLayoutConstraints const
     if (!c) return;
 
     // Ensure layout state exists for position tracking
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // ForEach acts as a vertical container - stack children vertically
     float current_y = parent_y;
@@ -75,12 +74,9 @@ static void layout_foreach_single_pass(IRComponent* c, IRLayoutConstraints const
     }
 
     // Set ForEach's own dimensions (sum of children heights, max child width)
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = max_width > 0 ? max_width : constraints.max_width;
-    c->layout_state->computed.height = current_y - parent_y;
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
+    float width = max_width > 0 ? max_width : constraints.max_width;
+    float height = current_y - parent_y;
+    layout_set_final_with_parent(c, parent_x, parent_y, width, height);
 }
 
 static const IRLayoutTrait IR_FOR_EACH_LAYOUT_TRAIT = {

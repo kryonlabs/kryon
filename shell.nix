@@ -81,33 +81,13 @@ pkgs.mkShell {
     export LD_LIBRARY_PATH="$KRYON_ROOT/build:$HOME/.local/lib:''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     export PKG_CONFIG_PATH="$KRYON_ROOT/build:$HOME/.local/lib/pkgconfig:''${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 
-    # TaijiOS integration - dynamically find TaijiOS root
-    if [ -z "''${TAIJI_PATH:-}" ]; then
-        # Try to find TaijiOS relative to current directory
-        if [ -f ../mkfile ] && [ -d ../emu ] && [ -d ../Linux ]; then
-            export TAIJI_PATH="$(cd .. && pwd)"
-        elif [ -f /mnt/storage/Projects/TaijiOS/mkfile ]; then
-            export TAIJI_PATH="/mnt/storage/Projects/TaijiOS"
-        elif [ -f /home/wao/Projects/TaijiOS/mkfile ]; then
-            export TAIJI_PATH="/home/wao/Projects/TaijiOS"
-        else
-            echo "Warning: Cannot find TaijiOS root directory"
-            export TAIJI_PATH="$(pwd)/.."
-        fi
-    fi
+    # TaijiOS integration - assume TaijiOS is in parent directory
+    export TAIJI_PATH="''${TAIJI_PATH:-$(cd .. && pwd)}"
+    export ROOT="$TAIJI_PATH"
 
-    # Validate TaijiOS installation
-    if [ -d "$TAIJI_PATH" ]; then
-        # Add TaijiOS tools to PATH (limbo compiler, emu, etc.)
-        if [ -d "$TAIJI_PATH/Linux/amd64/bin" ]; then
-            export PATH="$TAIJI_PATH/Linux/amd64/bin:$PATH"
-        fi
-
-        # Set ROOT for Inferno tools (required by emu)
-        export ROOT="$TAIJI_PATH"
-    else
-        echo "Warning: TaijiOS not found at $TAIJI_PATH"
-        echo "  Set TAIJI_PATH environment variable or install TaijiOS"
+    # Add TaijiOS tools to PATH if they exist
+    if [ -d "$TAIJI_PATH/Linux/amd64/bin" ]; then
+        export PATH="$TAIJI_PATH/Linux/amd64/bin:$PATH"
     fi
 
     echo "Kryon Development Environment"

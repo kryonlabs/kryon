@@ -353,8 +353,8 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "Error: Unknown target '%s'\n", target_platform);
         fprintf(stderr, "\nValid targets (with aliases):\n");
         fprintf(stderr, "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode VM\n");
-        fprintf(stderr, "  sdl3, desktop       - Desktop SDL3 renderer\n");
-        fprintf(stderr, "  raylib              - Desktop Raylib renderer\n");
+        fprintf(stderr, "  sdl3                - SDL3 renderer\n");
+        fprintf(stderr, "  raylib              - Raylib renderer\n");
         fprintf(stderr, "  web                 - Web browser\n");
         fprintf(stderr, "  android, kotlin     - Android APK\n");
 
@@ -455,18 +455,31 @@ int cmd_run(int argc, char** argv) {
 
     printf("Running: %s\n", target_file);
 
-    // Get desktop lib path
-    const char* desktop_lib = getenv("KRYON_DESKTOP_LIB");
-    if (!desktop_lib) {
-        char* found_lib = paths_find_library("libkryon_desktop.so");
-        if (!found_lib) {
-            fprintf(stderr, "Error: Desktop renderer library not found\n");
-            if (free_target) free((char*)target_file);
-            if (free_target_platform) free((char*)target_platform);
-            if (free_screenshot_path) free((char*)screenshot_path);
-            return 1;
+    // SDL3 and Raylib targets require the desktop renderer library
+    bool needs_renderer_lib = false;
+    if (strcmp(frontend, "c") == 0) {
+        needs_renderer_lib = true;
+    } else if (strcmp(frontend, "kir") == 0) {
+        // Only SDL3 and Raylib targets need the renderer library
+        if (strcmp(target_platform, "sdl3") == 0 ||
+            strcmp(target_platform, "raylib") == 0) {
+            needs_renderer_lib = true;
         }
-        desktop_lib = found_lib;  // Note: leaked but used immediately
+    }
+
+    if (needs_renderer_lib) {
+        const char* renderer_lib = getenv("KRYON_DESKTOP_LIB");
+        if (!renderer_lib) {
+            char* found_lib = paths_find_library("libkryon_desktop.so");
+            if (!found_lib) {
+                fprintf(stderr, "Error: Renderer library not found (required for SDL3/Raylib targets)\n");
+                if (free_target) free((char*)target_file);
+                if (free_target_platform) free((char*)target_platform);
+                if (free_screenshot_path) free((char*)screenshot_path);
+                return 1;
+            }
+            renderer_lib = found_lib;  // Note: leaked but used immediately
+        }
     }
 
     int result = 0;

@@ -2,7 +2,7 @@
 #include "html_parser.h"
 #include "html_to_ir.h"
 #include "css_stylesheet.h"
-#include "../common/parser_utils.h"
+#include "../common/parser_io_utils.h"
 #include "../include/ir_serialization.h"
 #include "../include/ir_logic.h"
 #include "../include/ir_builder.h"

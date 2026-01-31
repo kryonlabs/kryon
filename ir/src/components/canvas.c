@@ -1,5 +1,4 @@
 /*
-#include "../include/ir_core.h"
  * IR Component - Canvas Layout Trait
  *
  * Provides layout computation for Canvas components.
@@ -7,6 +6,8 @@
  */
 
 #include "canvas.h"
+#include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -22,17 +23,14 @@ void layout_canvas_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // Default canvas dimensions (same as HTML canvas default)
     float canvas_width = 300.0f;
     float canvas_height = 150.0f;
 
-    // Apply explicit dimensions from style
+    // Apply explicit dimensions from style (with percentage support)
     if (c->style) {
-        // Handle percentage dimensions (use max constraint as parent size)
         if (c->style->width.type == IR_DIMENSION_PERCENT) {
             canvas_width = constraints.max_width * (c->style->width.value / 100.0f);
         } else if (c->style->width.type == IR_DIMENSION_PX) {
@@ -46,32 +44,15 @@ void layout_canvas_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         }
     }
 
-    // Apply min constraints
-    canvas_width = fmaxf(canvas_width, constraints.min_width);
-    canvas_height = fmaxf(canvas_height, constraints.min_height);
+    // Apply constraints
+    layout_apply_constraints(&canvas_width, &canvas_height, constraints);
 
-    // Apply max constraints
-    if (constraints.max_width > 0) {
-        canvas_width = fminf(canvas_width, constraints.max_width);
-    }
-    if (constraints.max_height > 0) {
-        canvas_height = fminf(canvas_height, constraints.max_height);
-    }
+    // Set final layout
+    layout_set_final_with_parent(c, parent_x, parent_y, canvas_width, canvas_height);
 
-    // Set final dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = canvas_width;
-    c->layout_state->computed.height = canvas_height;
-
-    // Mark layout as valid
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
-
-    if (getenv("KRYON_DEBUG_CANVAS")) {
-        fprintf(stderr, "[Canvas] Final: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
-                c->layout_state->computed.x, c->layout_state->computed.y,
-                c->layout_state->computed.width, c->layout_state->computed.height);
+    // Debug logging
+    if (layout_is_debug_enabled("Canvas")) {
+        layout_debug_log("Canvas", c, NULL);
     }
 }
 
@@ -89,17 +70,14 @@ void layout_native_canvas_single_pass(IRComponent* c, IRLayoutConstraints constr
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
-    // Default canvas dimensions (same as HTML canvas default)
+    // Default canvas dimensions
     float canvas_width = 300.0f;
     float canvas_height = 150.0f;
 
-    // Apply explicit dimensions from style
+    // Apply explicit dimensions from style (with percentage support)
     if (c->style) {
-        // Handle percentage dimensions (use max constraint as parent size)
         if (c->style->width.type == IR_DIMENSION_PERCENT) {
             canvas_width = constraints.max_width * (c->style->width.value / 100.0f);
         } else if (c->style->width.type == IR_DIMENSION_PX) {
@@ -113,32 +91,15 @@ void layout_native_canvas_single_pass(IRComponent* c, IRLayoutConstraints constr
         }
     }
 
-    // Apply min constraints
-    canvas_width = fmaxf(canvas_width, constraints.min_width);
-    canvas_height = fmaxf(canvas_height, constraints.min_height);
+    // Apply constraints
+    layout_apply_constraints(&canvas_width, &canvas_height, constraints);
 
-    // Apply max constraints
-    if (constraints.max_width > 0) {
-        canvas_width = fminf(canvas_width, constraints.max_width);
-    }
-    if (constraints.max_height > 0) {
-        canvas_height = fminf(canvas_height, constraints.max_height);
-    }
+    // Set final layout
+    layout_set_final_with_parent(c, parent_x, parent_y, canvas_width, canvas_height);
 
-    // Set final dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = canvas_width;
-    c->layout_state->computed.height = canvas_height;
-
-    // Mark layout as valid
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
-
-    if (getenv("KRYON_DEBUG_NATIVE_CANVAS")) {
-        fprintf(stderr, "[NativeCanvas] Final: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
-                c->layout_state->computed.x, c->layout_state->computed.y,
-                c->layout_state->computed.width, c->layout_state->computed.height);
+    // Debug logging
+    if (layout_is_debug_enabled("NativeCanvas")) {
+        layout_debug_log("NativeCanvas", c, NULL);
     }
 }
 

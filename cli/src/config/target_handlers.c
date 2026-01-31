@@ -1081,11 +1081,6 @@ static const char* resolve_target_alias(const char* alias) {
         return "limbo";
     }
 
-    // Desktop alias → sdl3 target (desktop defaults to SDL3)
-    if (strcmp(alias, "desktop") == 0) {
-        return "sdl3";
-    }
-
     // Tcl/Tk alias
     if (strcmp(alias, "tcl") == 0) {
         return "tcltk";

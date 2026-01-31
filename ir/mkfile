@@ -111,7 +111,12 @@ SRCS=\
 	parsers/html/css_parser.c\
 	parsers/html/css_stylesheet.c\
 	parsers/c/c_parser.c\
+	parsers/tcl/tcl_lexer.c\
+	parsers/tcl/tcl_parser.c\
+	parsers/tcl/tcl_to_ir.c\
+	parsers/tcl/tcl_widget_registry.c\
 	parsers/parser_utils.c\
+	parsers/common/parser_io_utils.c\
 	../bindings/c/kryon.c\
 
 # Compiler flags

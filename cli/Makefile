@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/limbo -I../codegens/tcltk -I../dis -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/limbo -I../codegens/tcltk -I../codegens/tkir -I../dis -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
@@ -143,6 +143,8 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_ir.a \
 		../build/libkryon_web.a \
 		../build/codegen_common.o \
+		../build/libkryon_tkir.a \
+		../build/libtclparser.a \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
@@ -162,6 +164,8 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_limbo.a \
 		../build/libkryon_codegen_tcltk.a \
 		../build/libkryon_codegen_android.a \
+		../build/libtclparser.a \
+		../build/libkryon_tkir.a \
 		../dis/libdiscodegen.a \
 		$(LDFLAGS) $(HARFBUZZ_LIBS) || { echo "Error: Failed to link $(TARGET)"; exit 1; }
 	@echo "✓ Built $(TARGET)"
@@ -177,6 +181,14 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 # Build codegen common utilities
 ../build/codegen_common.o:
 	$(MAKE) -C ../codegens all
+
+# Build TKIR library
+../build/libkryon_tkir.a:
+	$(MAKE) -C ../codegens/tkir install
+
+# Build Tcl parser library
+../build/libtclparser.a:
+	$(MAKE) -C ../ir/parsers/tcl install
 
 # Build codegen libraries
 ../build/libkryon_codegen_c.a:

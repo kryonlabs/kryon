@@ -6,6 +6,7 @@
 #define _GNU_SOURCE
 #include "../ir_layout_strategy.h"
 #include "../../include/ir_core.h"
+#include "../layout_helpers.h"
 #include <stdlib.h>
 
 // Forward declarations from ir_layout.c
@@ -15,9 +16,7 @@ extern float ir_get_component_intrinsic_height(IRComponent* component);
 static void measure_for(IRComponent* comp, IRLayoutConstraints* constraints) {
     if (!comp || !constraints) return;
 
-    if (!comp->layout_state) {
-        comp->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(comp)) return;
 
     // For behaves like a container - width from constraints, height from children
     float width = constraints->max_width;
@@ -36,9 +35,7 @@ static void measure_for(IRComponent* comp, IRLayoutConstraints* constraints) {
         }
     }
 
-    comp->layout_state->computed.width = width;
-    comp->layout_state->computed.height = height;
-    comp->layout_state->layout_valid = true;
+    layout_set_final_dimensions(comp, width, height);
 }
 
 static void layout_for_children(IRComponent* comp) {

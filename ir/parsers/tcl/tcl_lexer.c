@@ -207,9 +207,9 @@ static TclToken* lex_word(TclLexer* lexer) {
     StringBuilder* sb = sb_create(128);
     if (!sb) return NULL;
 
-    // First character can be alpha, digit, or special Tcl chars
+    // First character can be alpha, digit, or special Tcl chars (including # for colors like #ff0000)
     char c = peek_char(lexer);
-    if (is_alpha(c) || is_digit(c) || c == '.' || c == ':' || c == '_' || c == '-' || c == '*') {
+    if (is_alpha(c) || is_digit(c) || c == '.' || c == ':' || c == '_' || c == '-' || c == '*' || c == '#') {
         sb_append_char(sb, c);
         get_char(lexer);
     } else {
@@ -220,7 +220,7 @@ static TclToken* lex_word(TclLexer* lexer) {
     // Continue with alnum or special chars
     while (true) {
         c = peek_char(lexer);
-        if (is_alnum(c) || c == '.' || c == ':' || c == '_' || c == '-' || c == '*') {
+        if (is_alnum(c) || c == '.' || c == ':' || c == '_' || c == '-' || c == '*' || c == '#') {
             sb_append_char(sb, c);
             get_char(lexer);
         } else {

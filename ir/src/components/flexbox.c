@@ -1,5 +1,6 @@
 #include "flexbox.h"
 #include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,9 +41,7 @@ void layout_flexbox_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     if (getenv("KRYON_DEBUG_FLEXBOX")) {
         fprintf(stderr, "[Flexbox] Layout %s (type=%d, children=%d, ptr=%p, parent_pos=(%.1f,%.1f))\n",
@@ -389,9 +388,7 @@ void layout_container_single_pass(IRComponent* c, IRLayoutConstraints constraint
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // Get padding
     float pad_left = c->style ? c->style->padding.left : 0;
@@ -542,9 +539,7 @@ void layout_center_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // Get padding
     IRSpacing padding = {0};

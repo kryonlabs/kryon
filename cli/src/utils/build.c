@@ -5,8 +5,12 @@
  * Eliminates duplication between cmd_run, cmd_build, and cmd_compile.
  */
 
+#ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
+#endif
 
 #include "kryon_cli.h"
 #include "build.h"
@@ -14,11 +18,13 @@
 #include "../../../ir/include/ir_serialization.h"
 #include "../../../ir/include/ir_builder.h"
 #include "../../ir/parsers/kry/kry_parser.h"
+#include "../../ir/parsers/tcl/tcl_parser.h"
 #include "../template/docs_template.h"
 #include "../../../codegens/kry/kry_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
 #include "../../../codegens/limbo/limbo_codegen.h"
+#include "../../../codegens/tcltk/tcltk_codegen.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,6 +50,12 @@ const char* detect_frontend_type(const char* source_file) {
     }
     else if (strcmp(ext, ".kry") == 0) {
         return "kry";
+    }
+    else if (strcmp(ext, ".tcl") == 0) {
+        return "tcl";
+    }
+    else if (strcmp(ext, ".b") == 0) {
+        return "limbo";
     }
     else if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0) {
         return "c";
@@ -964,6 +976,8 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = markdown_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "limbo") == 0) {
         success = limbo_codegen_generate_multi(kir_file, output_path);
+    } else if (strcmp(target, "tcltk") == 0) {
+        success = tcltk_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "kir") == 0) {
         // KIR target: just copy the KIR file to output (for single-file case)
         // Multi-file case is handled in codegen_pipeline
@@ -1000,7 +1014,7 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, c, markdown, kir, limbo\n");
+        fprintf(stderr, "Supported targets: kry, c, markdown, kir, limbo, tcltk\n");
         return 1;
     }
 

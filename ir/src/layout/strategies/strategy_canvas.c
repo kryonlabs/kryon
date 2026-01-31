@@ -6,14 +6,13 @@
 #define _GNU_SOURCE
 #include "../ir_layout_strategy.h"
 #include "../include/ir_core.h"
+#include "../layout_helpers.h"
 #include <stdlib.h>
 
 static void measure_canvas(IRComponent* comp, IRLayoutConstraints* constraints) {
     if (!comp || !constraints) return;
 
-    if (!comp->layout_state) {
-        comp->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(comp)) return;
 
     // Native canvas always has explicit dimensions set during creation
     float width = 800.0f;  // Fallback default
@@ -32,9 +31,7 @@ static void measure_canvas(IRComponent* comp, IRLayoutConstraints* constraints) 
         }
     }
 
-    comp->layout_state->computed.width = width;
-    comp->layout_state->computed.height = height;
-    comp->layout_state->layout_valid = true;
+    layout_set_final_dimensions(comp, width, height);
 }
 
 static void layout_canvas_children(IRComponent* comp) {

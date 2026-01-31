@@ -1,5 +1,5 @@
 # Tcl/Tk Codegen (TaijiOS mkfile)
-# Generates Tcl/Tk scripts from Kryon IR
+# Generates Tcl/Tk scripts from Kryon IR via TKIR
 
 <../../../mkconfig
 
@@ -7,15 +7,20 @@ LIB=libkryon_codegen_tcltk.a
 
 OFILES=\
 	tcltk_codegen.$O\
+	tcltk_from_tkir.$O\
 
 HFILES=\
 	tcltk_codegen.h\
 	../codegen_common.h\
+	../tkir/tkir.h\
+	../tkir/tkir_builder.h\
+	../tkir/tkir_emitter.h\
 
 CFLAGS=$CFLAGS\
 	-I../../include\
 	-I../../ir/include\
 	-I../../third_party/cJSON\
 	-I..\
+	-I../tkir\
 
 <$ROOT/mkfiles/mksyslib-$SHELLTYPE

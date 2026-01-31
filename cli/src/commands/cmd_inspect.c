@@ -42,18 +42,8 @@ extern void ir_pool_free_component(IRComponent* component);
  * Caller must free with cJSON_Delete()
  */
 static cJSON* load_kir_json(const char* file_path) {
-    FILE* file = fopen(file_path, "r");
-    if (!file) return NULL;
-
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char* content = safe_malloc(file_size + 1);
-
-    size_t bytes_read = fread(content, 1, file_size, file);
-    content[bytes_read] = '\0';
-    fclose(file);
+    char* content = file_read(file_path);
+    if (!content) return NULL;
 
     cJSON* root = cJSON_Parse(content);
     free(content);

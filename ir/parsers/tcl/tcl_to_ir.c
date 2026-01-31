@@ -199,28 +199,34 @@ static cJSON* convert_widget_with_children(TclWidget* widget, TclWidget** all_wi
 
     // Convert options to properties
     if (widget->options) {
-        cJSON* opt = widget->options;
+        cJSON* opt = widget->options->child;  // Start from first child item
         while (opt) {
             if (opt->string && opt->valuestring) {
+                // Skip leading dash from option name (Tcl uses -background, KIR uses background)
+                const char* opt_name = opt->string;
+                if (opt_name[0] == '-') {
+                    opt_name++;  // Skip the leading dash
+                }
+
                 // Special handling for colors
-                if (strcmp(opt->string, "background") == 0 ||
-                    strcmp(opt->string, "color") == 0) {
-                    cJSON_AddStringToObject(component, opt->string,
+                if (strcmp(opt_name, "background") == 0 ||
+                    strcmp(opt_name, "color") == 0) {
+                    cJSON_AddStringToObject(component, opt_name,
                                           convert_color(opt->valuestring));
                 }
                 // Text content
-                else if (strcmp(opt->string, "text") == 0) {
+                else if (strcmp(opt_name, "text") == 0) {
                     cJSON_AddStringToObject(component, "text", opt->valuestring);
                 }
                 // Numbers
-                else if (strcmp(opt->string, "width") == 0 ||
-                         strcmp(opt->string, "height") == 0) {
-                    cJSON_AddNumberToObject(component, opt->string,
+                else if (strcmp(opt_name, "width") == 0 ||
+                         strcmp(opt_name, "height") == 0) {
+                    cJSON_AddNumberToObject(component, opt_name,
                                           atof(opt->valuestring));
                 }
                 // Everything else
                 else {
-                    cJSON_AddStringToObject(component, opt->string, opt->valuestring);
+                    cJSON_AddStringToObject(component, opt_name, opt->valuestring);
                 }
             }
             opt = opt->next;
@@ -277,8 +283,9 @@ static cJSON* build_widget_hierarchy(TclWidget** widgets, int widget_count) {
 
         parse_widget_path(w->widget_path, &depth, &parent_path);
 
-        // Root-level widgets have depth 2 (".w1")
-        if (depth == 2 || (depth == 1 && strcmp(w->widget_path, ".") == 0)) {
+        // Root-level widgets have depth 1 (".w1" has 1 dot)
+        // depth 0 would be just "."
+        if (depth == 1 || (depth == 0 && strcmp(w->widget_path, ".") == 0)) {
             cJSON* widget_json = convert_widget_with_children(w, widgets, widget_count, processed);
             if (widget_json) {
                 cJSON_AddItemToArray(root_children, widget_json);
@@ -377,7 +384,7 @@ cJSON* tcl_parse_file_to_kir(const char* filepath) {
         return NULL;
     }
 
-    // Read file
+    // Read file directly
     FILE* f = fopen(filepath, "r");
     if (!f) {
         char error[256];
@@ -399,8 +406,8 @@ cJSON* tcl_parse_file_to_kir(const char* filepath) {
         return NULL;
     }
 
-    fread(content, 1, size, f);
-    content[size] = '\0';
+    size_t bytes_read = fread(content, 1, size, f);
+    content[bytes_read] = '\0';
     fclose(f);
 
     // Parse

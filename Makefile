@@ -129,13 +129,58 @@ clean:
 install: all
 	@echo "Installing Kryon to $(PREFIX)..."
 	@mkdir -p $(BINDIR) $(LIBDIR) $(INCLUDEDIR) $(PKGCONFIGDIR)
+
+	# Install CLI binary
 	@if [ -f $(CLI_DIR)/kryon ]; then \
 		cp $(CLI_DIR)/kryon $(BINDIR)/; \
 		echo "  Installed $(BINDIR)/kryon"; \
 	fi
-	@cp $(BUILD_DIR)/libkryon_ir.* $(LIBDIR)/ 2>/dev/null || true
-	@cp -r ir/include/*.h $(INCLUDEDIR)/
-	@echo "✓ Installed to $(PREFIX)"
+
+	# Install ALL libraries to share directory
+	@mkdir -p $(HOME)/.local/share/kryon/build
+	@cp $(BUILD_DIR)/*.so $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+	@cp $(BUILD_DIR)/*.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+	@cp bindings/c/*.a $(HOME)/.local/share/kryon/build/ 2>/dev/null || true
+
+	# Install shared libraries to lib directory (for dynamic linker)
+	@cp $(BUILD_DIR)/*.so $(LIBDIR)/ 2>/dev/null || true
+
+	# Install headers
+	@mkdir -p $(HOME)/.local/share/kryon/ir/include
+	@cp -r ir/include/*.h $(HOME)/.local/share/kryon/ir/include/
+	@mkdir -p $(HOME)/.local/share/kryon/core/include
+	@cp -r core/include/*.h $(HOME)/.local/share/kryon/core/include/ 2>/dev/null || true
+	@mkdir -p $(HOME)/.local/share/kryon/include/kryon
+	@cp -r include/kryon/*.h $(HOME)/.local/share/kryon/include/kryon/
+
+	# Install renderers (CRITICAL - for desktop targets)
+	@mkdir -p $(HOME)/.local/share/kryon/renderers/sdl3
+	@mkdir -p $(HOME)/.local/share/kryon/renderers/raylib
+	@mkdir -p $(HOME)/.local/share/kryon/renderers/common
+	@cp -r renderers/sdl3/*.h $(HOME)/.local/share/kryon/renderers/sdl3/ 2>/dev/null || true
+	@cp -r renderers/raylib/*.h $(HOME)/.local/share/kryon/renderers/raylib/ 2>/dev/null || true
+	@cp -r renderers/common/*.h $(HOME)/.local/share/kryon/renderers/common/ 2>/dev/null || true
+
+	# Install runtime headers (CRITICAL - for desktop targets)
+	@mkdir -p $(HOME)/.local/share/kryon/runtime/desktop
+	@cp -r runtime/desktop/*.h $(HOME)/.local/share/kryon/runtime/desktop/ 2>/dev/null || true
+
+	# Install third-party headers
+	@mkdir -p $(HOME)/.local/share/kryon/third_party/stb
+	@mkdir -p $(HOME)/.local/share/kryon/third_party/cJSON
+	@mkdir -p $(HOME)/.local/share/kryon/third_party/tomlc99
+	@cp third_party/stb/*.h $(HOME)/.local/share/kryon/third_party/stb/
+	@cp third_party/cJSON/*.h $(HOME)/.local/share/kryon/third_party/cJSON/
+	@cp third_party/tomlc99/toml.h $(HOME)/.local/share/kryon/third_party/tomlc99/
+
+	# Install vendor files for web codegen
+	@$(MAKE) -C $(CODEGENS_DIR)/web install-vendor 2>/dev/null || true
+
+	@echo ""
+	@echo "✓ Installation complete"
+	@echo "  Binary: $(BINDIR)/kryon"
+	@echo "  Libraries: $(LIBDIR)/"
+	@echo "  Data: $(HOME)/.local/share/kryon/"
 
 # ============================================================================
 # Uninstall Target
@@ -146,6 +191,7 @@ uninstall:
 	@rm -f $(BINDIR)/kryon
 	@rm -f $(LIBDIR)/libkryon_*
 	@rm -rf $(INCLUDEDIR)
+	@rm -rf $(HOME)/.local/share/kryon
 	@echo "✓ Uninstalled from $(PREFIX)"
 
 # ============================================================================

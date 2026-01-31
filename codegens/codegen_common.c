@@ -135,8 +135,13 @@ cJSON* codegen_parse_kir_json(const char* kir_json) {
 cJSON* codegen_extract_root_component(cJSON* root) {
     if (!root) return NULL;
 
-    // KIR JSON structure: { "component": { ... } }
+    // KIR JSON structure can be:
+    // - Old format: { "component": { ... } }
+    // - New format: { "root": { ... } }
     cJSON* component = cJSON_GetObjectItem(root, "component");
+    if (!component) {
+        component = cJSON_GetObjectItem(root, "root");
+    }
     return component;
 }
 

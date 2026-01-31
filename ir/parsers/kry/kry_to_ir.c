@@ -25,6 +25,7 @@
 #include "../include/ir_capability.h"  // For ir_capability_on_context_change
 #include "../html/css_parser.h"  // For ir_css_parse_color
 #include "../parser_utils.h"     // For parser_parse_color_packed
+#include "../common/parser_io_utils.h"  // For parser_read_file
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -2078,40 +2079,26 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
         return false;
     }
 
-    // Read the file
-    FILE* f = fopen(file_path, "r");
-    if (!f) {
-        free(file_path);
-        pop_import_stack();
-        return false;
-    }
+    // Read the file using parser_read_file
+    ParserError error = {0};
+    size_t size = 0;
+    char* source = parser_read_file(file_path, &size, &error);
+    free(file_path);
 
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (size <= 0) {
-        free(file_path);
-        fclose(f);
-        pop_import_stack();
-        return false;
-    }
-
-    char* source = malloc(size + 1);
     if (!source) {
-        free(file_path);
-        fclose(f);
         pop_import_stack();
         return false;
     }
 
-    size_t bytes_read = fread(source, 1, (size_t)size, f);
-    source[bytes_read] = '\0';
-    fclose(f);
+    if (size == 0) {
+        free(source);
+        pop_import_stack();
+        return false;
+    }
 
 
     // Parse the imported file
-    KryParser* parser = kry_parser_create(source, bytes_read);
+    KryParser* parser = kry_parser_create(source, size);
     if (!parser) {
         free(source);
         free(file_path);

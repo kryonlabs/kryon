@@ -208,6 +208,12 @@ static TclCommand* parse_command(TclTokenStream* stream) {
             break;
         }
 
+        // Stop at newline (command boundary in Tcl)
+        // If the next token is on a different line, it's a new command
+        if (tok->line > cmd->base.line) {
+            break;
+        }
+
         if (tok->type == TCL_TOKEN_WORD || tok->type == TCL_TOKEN_STRING ||
             tok->type == TCL_TOKEN_NUMBER || tok->type == TCL_TOKEN_DOLLAR ||
             tok->type == TCL_TOKEN_BRACKET) {
@@ -241,8 +247,11 @@ static cJSON* parse_widget_options(char** arguments, int arg_count, int start_id
     cJSON* options = cJSON_CreateObject();
     if (!options) return NULL;
 
+    bool debug = getenv("DEBUG_TCL_PARSER") != NULL;
+
     for (int i = start_idx; i < arg_count; i++) {
         const char* arg = arguments[i];
+        if (debug) printf("    Parsing arg[%d] = '%s'\n", i, arg ? arg : "(null)");
 
         // Check if this is an option (starts with -)
         if (arg && arg[0] == '-') {
@@ -254,6 +263,8 @@ static cJSON* parse_widget_options(char** arguments, int arg_count, int start_id
                 opt_value = arguments[i + 1];
                 i++;  // Skip value
             }
+
+            if (debug) printf("      Option: '%s' = '%s'\n", opt_name, opt_value ? opt_value : "(null)");
 
             // Map to KIR property name
             const char* kir_prop = tcl_option_to_kir_property(opt_name);
@@ -378,3 +389,157 @@ extern TclTokenStream* tcl_lex(const char* source);
 extern TclToken* tcl_token_stream_peek(TclTokenStream* stream, int offset);
 extern TclToken* tcl_token_stream_consume(TclTokenStream* stream);
 extern void tcl_token_stream_free(TclTokenStream* stream);
+
+/* ============================================================================
+ * Native IR API Wrapper Functions
+ * ============================================================================ */
+
+// Forward declarations
+extern cJSON* tcl_parse_to_kir(const char* tcl_source);
+extern IRComponent* ir_deserialize_json(const char* json_string);
+
+/**
+ * Parse Tcl/Tk source to IR component tree
+ */
+IRComponent* ir_tcl_parse(const char* source, size_t length) {
+    (void)length;  // Length parameter for consistency with KRY API, but we use null-terminated strings
+
+    // Parse to KIR JSON
+    cJSON* kir_json = tcl_parse_to_kir(source);
+    if (!kir_json) {
+        return NULL;
+    }
+
+    // Convert to JSON string
+    char* json_string = cJSON_Print(kir_json);
+    cJSON_Delete(kir_json);
+
+    if (!json_string) {
+        return NULL;
+    }
+
+    // Deserialize to native IR
+    IRComponent* root = ir_deserialize_json(json_string);
+    free(json_string);
+
+    return root;
+}
+
+/**
+ * Convert Tcl/Tk source to KIR JSON string
+ */
+char* ir_tcl_to_kir(const char* source, size_t length) {
+    (void)length;
+
+    // Parse to KIR JSON
+    cJSON* kir_json = tcl_parse_to_kir(source);
+    if (!kir_json) {
+        return NULL;
+    }
+
+    // Convert to JSON string
+    char* json_string = cJSON_Print(kir_json);
+    cJSON_Delete(kir_json);
+
+    return json_string;
+}
+
+/**
+ * Parse Tcl/Tk and report errors
+ */
+IRComponent* ir_tcl_parse_with_errors(const char* source, size_t length,
+                                     char** error_message,
+                                     uint32_t* error_line,
+                                     uint32_t* error_column) {
+    (void)length;
+
+    // Set error output parameters to defaults
+    if (error_message) *error_message = NULL;
+    if (error_line) *error_line = 0;
+    if (error_column) *error_column = 0;
+
+    // Parse to KIR JSON
+    cJSON* kir_json = tcl_parse_to_kir(source);
+    if (!kir_json) {
+        // Get error from parser
+        if (error_message) {
+            const char* err = tcl_parse_get_last_error();
+            if (err) {
+                *error_message = strdup(err);
+            }
+        }
+        return NULL;
+    }
+
+    // Convert to JSON string
+    char* json_string = cJSON_Print(kir_json);
+    cJSON_Delete(kir_json);
+
+    if (!json_string) {
+        if (error_message) {
+            *error_message = strdup("Failed to serialize KIR JSON");
+        }
+        return NULL;
+    }
+
+    // Deserialize to native IR
+    IRComponent* root = ir_deserialize_json(json_string);
+    if (!root) {
+        if (error_message) {
+            *error_message = strdup("Failed to deserialize KIR to native IR");
+        }
+    }
+
+    free(json_string);
+    return root;
+}
+
+/**
+ * Get parser version string
+ */
+const char* ir_tcl_parser_version(void) {
+    return "1.0.0";
+}
+
+/**
+ * Convert Tcl/Tk file to KIR JSON string
+ *
+ * Convenience function that reads a file and converts to KIR JSON.
+ * Useful for CLI tools.
+ *
+ * @param filepath Path to Tcl/Tk file
+ * @return char* JSON string in KIR format (caller must free), or NULL on error
+ */
+char* ir_tcl_to_kir_file(const char* filepath) {
+    if (!filepath) {
+        return NULL;
+    }
+
+    // Read file
+    FILE* f = fopen(filepath, "r");
+    if (!f) {
+        return NULL;
+    }
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    // Read content
+    char* source = (char*)malloc(size + 1);
+    if (!source) {
+        fclose(f);
+        return NULL;
+    }
+
+    size_t bytes_read = fread(source, 1, (size_t)size, f);
+    source[bytes_read] = '\0';
+    fclose(f);
+
+    // Convert to KIR
+    char* kir_json = ir_tcl_to_kir(source, bytes_read);
+    free(source);
+
+    return kir_json;
+}

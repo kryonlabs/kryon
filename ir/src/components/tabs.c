@@ -6,6 +6,7 @@
  */
 
 #include "tabs.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,9 +33,7 @@ void layout_tab_group_single_pass(IRComponent* c, IRLayoutConstraints constraint
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // TabGroup fills available width, height is determined by children
     float group_width = constraints.max_width > 0 ? constraints.max_width : 400.0f;
@@ -55,10 +54,7 @@ void layout_tab_group_single_pass(IRComponent* c, IRLayoutConstraints constraint
     group_height = fmaxf(group_height, constraints.min_height);
 
     // Set group's dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = group_width;
-    c->layout_state->computed.height = group_height;
+    layout_set_final_with_parent(c, parent_x, parent_y, group_width, group_height);
 
     // Layout children vertically (TabBar first, then TabContent)
     float current_y = parent_y;
@@ -102,9 +98,7 @@ void layout_tab_bar_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // TabBar has default height
     float bar_width = constraints.max_width > 0 ? constraints.max_width : 400.0f;
@@ -125,10 +119,7 @@ void layout_tab_bar_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     bar_height = fmaxf(bar_height, constraints.min_height);
 
     // Set bar's dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = bar_width;
-    c->layout_state->computed.height = bar_height;
+    layout_set_final_with_parent(c, parent_x, parent_y, bar_width, bar_height);
 
     // Layout tabs horizontally
     float current_x = parent_x;
@@ -172,9 +163,7 @@ void layout_tab_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // Get style or use defaults
     float font_size = 14.0f;
@@ -215,21 +204,9 @@ void layout_tab_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         }
     }
 
-    // Apply constraints
-    tab_width = fmaxf(tab_width, constraints.min_width);
-    tab_height = fmaxf(tab_height, constraints.min_height);
-    if (constraints.max_width > 0) {
-        tab_width = fminf(tab_width, constraints.max_width);
-    }
-    if (constraints.max_height > 0) {
-        tab_height = fminf(tab_height, constraints.max_height);
-    }
-
-    // Set final dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = tab_width;
-    c->layout_state->computed.height = tab_height;
+    // Apply constraints and set final dimensions and position
+    layout_apply_constraints(&tab_width, &tab_height, constraints);
+    layout_set_final_with_parent(c, parent_x, parent_y, tab_width, tab_height);
 
     // Mark layout as valid
     c->layout_state->layout_valid = true;
@@ -254,9 +231,7 @@ void layout_tab_content_single_pass(IRComponent* c, IRLayoutConstraints constrai
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // TabContent fills available space
     float content_width = constraints.max_width > 0 ? constraints.max_width : 400.0f;
@@ -272,15 +247,10 @@ void layout_tab_content_single_pass(IRComponent* c, IRLayoutConstraints constrai
         }
     }
 
-    // Apply constraints
+    // Apply constraints and set content's dimensions and position
     content_width = fmaxf(content_width, constraints.min_width);
     content_height = fmaxf(content_height, constraints.min_height);
-
-    // Set content's dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = content_width;
-    c->layout_state->computed.height = content_height;
+    layout_set_final_with_parent(c, parent_x, parent_y, content_width, content_height);
 
     // Layout children (typically TabPanel)
     IRLayoutConstraints child_constraints = {
@@ -320,9 +290,7 @@ void layout_tab_panel_single_pass(IRComponent* c, IRLayoutConstraints constraint
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     // Get padding from style
     float pad_left = c->style ? c->style->padding.left : 0;
@@ -344,15 +312,10 @@ void layout_tab_panel_single_pass(IRComponent* c, IRLayoutConstraints constraint
         }
     }
 
-    // Apply constraints
+    // Apply constraints and set panel's dimensions and position
     panel_width = fmaxf(panel_width, constraints.min_width);
     panel_height = fmaxf(panel_height, constraints.min_height);
-
-    // Set panel's dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = panel_width;
-    c->layout_state->computed.height = panel_height;
+    layout_set_final_with_parent(c, parent_x, parent_y, panel_width, panel_height);
 
     // Content area (inside padding)
     float content_width = panel_width - pad_left - pad_right;

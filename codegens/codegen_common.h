@@ -359,7 +359,7 @@ void codegen_extract_layout_options(cJSON* component,
  * Handler tracker for deduplication.
  * Tracks which event handlers have already been generated.
  */
-typedef struct {
+typedef struct CodegenHandlerTracker {
     char* handlers[256];
     int count;
 } CodegenHandlerTracker;

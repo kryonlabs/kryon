@@ -6,6 +6,7 @@
 #define _GNU_SOURCE
 #include "../ir_layout_strategy.h"
 #include "../include/ir_core.h"
+#include "../layout_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -31,9 +32,7 @@ __attribute__((unused)) static void resolve_dimension(IRDimension dim, float par
 static void measure_row(IRComponent* comp, IRLayoutConstraints* constraints) {
     if (!comp || !constraints) return;
 
-    if (!comp->layout_state) {
-        comp->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(comp)) return;
 
     // Row width comes from constraints or style
     float width = constraints->max_width;
@@ -48,9 +47,7 @@ static void measure_row(IRComponent* comp, IRLayoutConstraints* constraints) {
     // Height depends on children (max child height)
     float height = 0;
 
-    comp->layout_state->computed.width = width;
-    comp->layout_state->computed.height = height;
-    comp->layout_state->layout_valid = true;
+    layout_set_final_dimensions(comp, width, height);
 }
 
 static void layout_row_children(IRComponent* comp) {

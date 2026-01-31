@@ -13,6 +13,7 @@
 #include "kry_tokens.h"
 #include "kry_struct_parser.h"
 #include "../include/ir_serialization.h"
+#include "../common/parser_io_utils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -57,7 +58,7 @@
 KryParser* kry_parser_create(const char* source, size_t length) {
     if (!source) return NULL;
 
-    KryParser* parser = (KryParser*)malloc(sizeof(KryParser));
+    KryParser* parser = (KryParser*)parser_calloc(sizeof(KryParser));
     if (!parser) return NULL;
 
     parser->source = source;
@@ -65,22 +66,6 @@ KryParser* kry_parser_create(const char* source, size_t length) {
     parser->pos = 0;
     parser->line = 1;
     parser->column = 1;
-    parser->first_chunk = NULL;
-    parser->current_chunk = NULL;
-    parser->root = NULL;
-
-    // Initialize error collection
-    parser->errors.first = NULL;
-    parser->errors.last = NULL;
-    parser->errors.error_count = 0;
-    parser->errors.warning_count = 0;
-    parser->errors.has_fatal = false;
-
-    // Legacy error fields
-    parser->has_error = false;
-    parser->error_message = NULL;
-    parser->error_line = 0;
-    parser->error_column = 0;
 
     return parser;
 }

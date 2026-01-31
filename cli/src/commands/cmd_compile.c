@@ -12,6 +12,7 @@
 #include "../../ir/parsers/kry/kry_parser.h"
 #include "../../ir/parsers/markdown/markdown_parser.h"
 #include "../../ir/parsers/html/html_parser.h"
+#include "../../ir/parsers/tcl/tcl_parser.h"
 #include "ir_serialization.h"
 #include "../../ir/parsers/c/c_parser.h"
 
@@ -27,47 +28,24 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         }
 
         // Write to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+        if (!file_write(output_kir, json)) {
+            fprintf(stderr, "Error: Failed to write output file: %s\n", output_kir);
             free(json);
             return 1;
         }
-
-        fprintf(out, "%s\n", json);
-        fclose(out);
         free(json);
         return 0;
     }
 
     if (strcmp(frontend, "markdown") == 0 || strcmp(frontend, "kry") == 0) {
         // Read the source file
-        FILE* f = fopen(source_file, "r");
-        if (!f) {
-            fprintf(stderr, "Error: Failed to open %s\n", source_file);
-            return 1;
-        }
-
-        fseek(f, 0, SEEK_END);
-        long size = ftell(f);
-        fseek(f, 0, SEEK_SET);
-
-        char* source = (char*)malloc(size + 1);
+        char* source = file_read(source_file);
         if (!source) {
-            fprintf(stderr, "Error: Out of memory\n");
-            fclose(f);
+            fprintf(stderr, "Error: Failed to read %s\n", source_file);
             return 1;
         }
 
-        size_t bytes_read = fread(source, 1, (size_t)size, f);
-        if (bytes_read != (size_t)size) {
-            fprintf(stderr, "Error: Failed to read complete file (got %zu of %ld bytes)\n", bytes_read, size);
-            free(source);
-            fclose(f);
-            return 1;
-        }
-        source[size] = '\0';
-        fclose(f);
+        size_t size = strlen(source);
 
         // Convert to KIR JSON based on frontend type
         char* json = NULL;
@@ -102,15 +80,11 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         }
 
         // Write to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+        if (!file_write(output_kir, json)) {
+            fprintf(stderr, "Error: Failed to write output file: %s\n", output_kir);
             free(json);
             return 1;
         }
-
-        fprintf(out, "%s\n", json);
-        fclose(out);
 
         free(json);
         return 0;
@@ -125,15 +99,30 @@ static int compile_to_kir(const char* source_file, const char* output_kir, const
         }
 
         // Write to output file
-        FILE* out = fopen(output_kir, "w");
-        if (!out) {
-            fprintf(stderr, "Error: Failed to open output file: %s\n", output_kir);
+        if (!file_write(output_kir, json)) {
+            fprintf(stderr, "Error: Failed to write output file: %s\n", output_kir);
             free(json);
             return 1;
         }
 
-        fprintf(out, "%s\n", json);
-        fclose(out);
+        free(json);
+        return 0;
+    }
+    else if (strcmp(frontend, "tcl") == 0) {
+        // Use Tcl parser
+        char* json = ir_tcl_to_kir_file(source_file);
+
+        if (!json) {
+            fprintf(stderr, "Error: Failed to convert %s to KIR\n", source_file);
+            return 1;
+        }
+
+        // Write to output file
+        if (!file_write(output_kir, json)) {
+            fprintf(stderr, "Error: Failed to write output file: %s\n", output_kir);
+            free(json);
+            return 1;
+        }
 
         free(json);
         return 0;

@@ -78,12 +78,10 @@ static int run_tests_makefile(const char* target) {
  */
 static int run_kyt_file(const char* filepath) {
     // Check if file exists
-    FILE* f = fopen(filepath, "r");
-    if (!f) {
+    if (!file_exists(filepath)) {
         fprintf(stderr, "Error: Test file not found: %s\n", filepath);
         return 1;
     }
-    fclose(f);
 
     // For now, show info since .kyt runner isn't fully implemented
     printf("Note: .kyt functional test runner not yet fully implemented\n");

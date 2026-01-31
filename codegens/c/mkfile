@@ -1,5 +1,5 @@
 # C Codegen (TaijiOS mkfile)
-# Generates C source code from Kryon IR
+# Generates C source code from Kryon IR via TKIR
 
 <../../../mkconfig
 
@@ -14,6 +14,7 @@ OFILES=\
 	ir_c_output.$O\
 	ir_c_reactive.$O\
 	ir_c_types.$O\
+	c_from_tkir.$O\
 
 HFILES=\
 	ir_c_codegen.h\
@@ -26,11 +27,15 @@ HFILES=\
 	ir_c_types.h\
 	ir_c_internal.h\
 	../codegen_common.h\
+	../tkir/tkir.h\
+	../tkir/tkir_builder.h\
+	../tkir/tkir_emitter.h\
 
 CFLAGS=$CFLAGS\
 	-I../../include\
 	-I../../ir/include\
 	-I../../third_party/cJSON\
 	-I..\
+	-I../tkir\
 
 <$ROOT/mkfiles/mksyslib-$SHELLTYPE

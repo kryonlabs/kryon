@@ -5,8 +5,8 @@
  * Provides common error handling, memory management, and AST node patterns.
  */
 
-#ifndef PARSER_UTILS_H
-#define PARSER_UTILS_H
+#ifndef PARSER_IO_UTILS_H
+#define PARSER_IO_UTILS_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -355,4 +355,4 @@ void parser_buffer_reset(ParserBuffer* buf);
 }
 #endif
 
-#endif // PARSER_UTILS_H
+#endif // PARSER_IO_UTILS_H

@@ -5,11 +5,15 @@
 
 /**
  * @brief Generate Tcl/Tk script from KIR file
- * @param kir_path Path to input .kir file (JSON)
- * @param output_path Path to output .tcl file (Tcl/Tk script)
- * @return true on success, false on error
  */
 bool tcltk_codegen_generate(const char* kir_path, const char* output_path);
+
+/**
+ * @brief Simple KIR to Tcl converter (bypasses TKIR)
+ * @param kir_path Path to input .kir file
+ * @return Allocated Tcl/Tk script string (caller must free), or NULL on error
+ */
+char* tcltk_codegen_from_json_simple(const char* kir_path);
 
 /**
  * @brief Generate Tcl/Tk script from KIR JSON string
@@ -48,5 +52,57 @@ typedef struct {
 bool tcltk_codegen_generate_with_options(const char* kir_path,
                                          const char* output_path,
                                          TclTkCodegenOptions* options);
+
+/* ============================================================================
+ * TKIR-based Codegen API
+ * ============================================================================ */
+
+/**
+ * @brief Generate Tcl/Tk script from TKIR JSON string
+ * @param tkir_json TKIR JSON string
+ * @param options Codegen options (NULL for defaults)
+ * @return Allocated Tcl/Tk script string (caller must free), or NULL on error
+ */
+char* tcltk_codegen_from_tkir(const char* tkir_json, TclTkCodegenOptions* options);
+
+/**
+ * @brief Generate Tcl/Tk script from TKIR JSON file
+ * @param tkir_path Path to input .tkir file
+ * @param output_path Path to output .tcl file
+ * @param options Codegen options (NULL for defaults)
+ * @return true on success, false on error
+ */
+bool tcltk_codegen_from_tkir_file(const char* tkir_path, const char* output_path,
+                                   TclTkCodegenOptions* options);
+
+/**
+ * @brief Generate Tcl/Tk script from KIR via TKIR (recommended)
+ * @param kir_json KIR JSON string
+ * @param options Codegen options (NULL for defaults)
+ * @return Allocated Tcl/Tk script string (caller must free), or NULL on error
+ */
+char* tcltk_codegen_from_json_via_tkir(const char* kir_json, TclTkCodegenOptions* options);
+
+/**
+ * @brief Generate Tcl/Tk script from KIR file via TKIR (recommended)
+ * @param kir_path Path to input .kir file
+ * @param output_path Path to output .tcl file
+ * @param options Codegen options (NULL for defaults)
+ * @return true on success, false on error
+ */
+bool tcltk_codegen_generate_via_tkir(const char* kir_path, const char* output_path,
+                                      TclTkCodegenOptions* options);
+
+/**
+ * @brief Initialize Tcl/Tk TKIR emitter
+ * Registers the emitter with the TKIR emitter registry.
+ */
+void tcltk_tkir_emitter_init(void);
+
+/**
+ * @brief Cleanup Tcl/Tk TKIR emitter
+ * Unregisters the emitter from the TKIR emitter registry.
+ */
+void tcltk_tkir_emitter_cleanup(void);
 
 #endif // TCLTK_CODEGEN_H

@@ -18,6 +18,10 @@ INCLUDES = \
 	-I$(THIRD_PARTY_DIR)/cJSON \
 	-I$(IR_DIR)/parsers/tcl
 
+# IR library paths for linking
+IR_LIB_DIR = $(IR_DIR)/build
+IR_BUILD_DIRS = $(IR_DIR)/src/serialization $(IR_DIR)/src/utils $(IR_DIR)/src
+
 # Source files
 SOURCES = \
 	tcl_lexer.c \
@@ -56,6 +60,10 @@ $(LIB): $(OBJECTS)
 $(STATIC_LIB): $(OBJECTS)
 	ar rcs $@ $^
 
+# Note: To use ir_tcl_parse(), also link with:
+#   -lir (from $(IR_DIR)/build/libir.so)
+#   Or include IR object files when linking
+
 # Compile source files
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
@@ -80,7 +88,7 @@ $(DEBUG_TEST): debug_test.c $(OBJECTS)
 # Install
 install: $(LIB) $(STATIC_LIB)
 	@mkdir -p $(TOP_DIR)/build
-	@mkdir -p $(TOP_DIR)/build/lib
-	@cp $(LIB) $(STATIC_LIB) $(TOP_DIR)/build/lib/
+	@cp $(STATIC_LIB) $(TOP_DIR)/build/libtclparser.a
+	@echo "Tcl parser library installed: $(TOP_DIR)/build/libtclparser.a"
 
 .PHONY: all test clean install

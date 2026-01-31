@@ -34,7 +34,6 @@ typedef struct {
 } TargetAlias;
 
 static const TargetAlias TARGET_ALIASES[] = {
-    {"desktop", "sdl3", "Desktop defaults to SDL3"},
     {"dis", "limbo", "DIS bytecode generation"},
     {"emu", "limbo", "TaijiOS emulator target"},
     {"kotlin", "android", "Android with Kotlin"},
