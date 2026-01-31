@@ -1,11 +1,12 @@
 /*
-#include "../include/ir_core.h"
  * IR Component - Input Layout Trait
  *
  * Provides layout computation for Input components (text fields, textareas).
  */
 
 #include "input.h"
+#include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -24,22 +25,15 @@ void layout_input_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
-    // Get style or use defaults
-    float font_size = 14.0f;
-    IRSpacing padding = {0};
-
-    if (c->style) {
-        font_size = (c->style->font.size > 0) ? c->style->font.size : 14.0f;
-        padding = c->style->padding;
-    }
+    // Get style values using helpers
+    float font_size = layout_get_font_size(c, LAYOUT_DEFAULT_FONT_SIZE);
+    IRSpacing padding = layout_get_padding(c);
 
     // Compute intrinsic input dimensions
-    float intrinsic_width = 150.0f;  // Default width for text input
-    float intrinsic_height = font_size + padding.top + padding.bottom + 10.0f; // Input chrome
+    float intrinsic_width = LAYOUT_MIN_INPUT_WIDTH;
+    float intrinsic_height = font_size + padding.top + padding.bottom + 10.0f;
 
     // If there's text content or placeholder, measure it
     const char* text_to_measure = c->text_content;
@@ -53,49 +47,18 @@ void layout_input_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (text_to_measure) {
         // Estimate text width and add minimum for editability
         float text_width = ir_get_text_width_estimate(text_to_measure, font_size);
-        intrinsic_width = fmaxf(150.0f, text_width + padding.left + padding.right + 16.0f);
+        intrinsic_width = fmaxf(LAYOUT_MIN_INPUT_WIDTH, text_width + padding.left + padding.right + 16.0f);
     }
 
-    // Start with intrinsic dimensions
-    float final_width = intrinsic_width;
-    float final_height = intrinsic_height;
+    // Use full pipeline: compute with explicit dimensions, apply constraints, set final layout
+    layout_compute_full_pipeline(c, constraints, parent_x, parent_y,
+                                intrinsic_width, intrinsic_height);
 
-    // Apply explicit dimensions from style
-    if (c->style) {
-        if (c->style->width.type == IR_DIMENSION_PX) {
-            final_width = c->style->width.value;
-        }
-        if (c->style->height.type == IR_DIMENSION_PX) {
-            final_height = c->style->height.value;
-        }
-    }
-
-    // Apply constraints
-    final_width = fmaxf(final_width, constraints.min_width);
-    final_height = fmaxf(final_height, constraints.min_height);
-
-    if (constraints.max_width > 0) {
-        final_width = fminf(final_width, constraints.max_width);
-    }
-    if (constraints.max_height > 0) {
-        final_height = fminf(final_height, constraints.max_height);
-    }
-
-    // Set final dimensions and position
-    c->layout_state->computed.x = parent_x;
-    c->layout_state->computed.y = parent_y;
-    c->layout_state->computed.width = final_width;
-    c->layout_state->computed.height = final_height;
-
-    // Mark layout as valid
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
-
-    if (getenv("KRYON_DEBUG_INPUT")) {
-        fprintf(stderr, "[Input] Final: x=%.1f, y=%.1f, w=%.1f, h=%.1f (text='%s')\n",
-                c->layout_state->computed.x, c->layout_state->computed.y,
-                c->layout_state->computed.width, c->layout_state->computed.height,
-                c->text_content ? c->text_content : "");
+    // Debug logging
+    if (layout_is_debug_enabled("Input")) {
+        char extra[128];
+        snprintf(extra, sizeof(extra), "(text='%s')", c->text_content ? c->text_content : "");
+        layout_debug_log("Input", c, extra);
     }
 }
 

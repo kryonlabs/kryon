@@ -314,7 +314,7 @@ static int limbo_target_build(const char* kir_file, const char* output_dir,
 
     // Verify TaijiOS installation
     char limbo_compiler[1024];
-    snprintf(limbo_compiler, sizeof(limbo_compiler), "%s/platforms/Linux/amd64/bin/limbo", taiji_path);
+    snprintf(limbo_compiler, sizeof(limbo_compiler), "%s/Linux/amd64/bin/limbo", taiji_path);
 
     if (access(limbo_compiler, X_OK) != 0) {
         fprintf(stderr, "Error: Limbo compiler not found at %s\n", limbo_compiler);

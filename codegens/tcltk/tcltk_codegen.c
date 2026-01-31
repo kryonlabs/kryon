@@ -33,6 +33,8 @@ typedef struct {
 
     // Handler deduplication tracking (using shared utility from codegen_common.h)
     CodegenHandlerTracker* handler_tracker;
+
+    char* root_background;          // Track root window background for inheritance
 } TclTkContext;
 
 /* ============================================================================
@@ -69,6 +71,7 @@ static TclTkContext* create_tcltk_context(TclTkCodegenOptions* options) {
     }
 
     ctx->widget_counter = 0;
+    ctx->root_background = NULL;
 
     // Create handler tracker (using shared utility)
     ctx->handler_tracker = codegen_handler_tracker_create();
@@ -94,6 +97,10 @@ static void destroy_tcltk_context(TclTkContext* ctx) {
 
     if (ctx->sb) {
         sb_free(ctx->sb);
+    }
+
+    if (ctx->root_background) {
+        free(ctx->root_background);
     }
 
     free(ctx);
@@ -171,7 +178,8 @@ static void generate_widget_path(TclTkContext* ctx, char* buffer, size_t size,
 /**
  * Generate widget properties from KIR component
  */
-static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
+static void generate_widget_properties(TclTkContext* ctx, cJSON* component,
+                                       const char* computed_bg, const char* widget_type) {
     if (!component) return;
 
     // Text content
@@ -183,8 +191,6 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
     // Width & Height
     // Note: For buttons and labels, -width/-height are in CHARACTERS, not pixels
     // For containers (frame), we can use pixel sizes
-    cJSON* type = cJSON_GetObjectItem(component, "type");
-    const char* widget_type = type && cJSON_IsString(type) ? type->valuestring : "";
     const char* tk_widget = codegen_map_kir_to_tk_widget(widget_type);
 
     bool is_text_widget = (strcmp(tk_widget, "button") == 0 ||
@@ -217,17 +223,9 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
         }
     }
 
-    // Background color (with unified alias support)
-    const char* bg_aliases[] = {"background", "backgroundColor", NULL};
-    cJSON* background = get_property_with_aliases(component, bg_aliases);
-    if (background && cJSON_IsString(background)) {
-        if (!codegen_is_transparent_color(background->valuestring)) {
-            uint8_t r, g, b, a;
-            if (codegen_parse_color_rgba(background->valuestring, &r, &g, &b, &a)) {
-                const char* hex = codegen_format_rgba_hex(r, g, b, a, false);
-                sb_append_fmt(ctx->sb, " -background {%s}", hex);
-            }
-        }
+    // Background color (use computed background from parameter)
+    if (computed_bg) {
+        sb_append_fmt(ctx->sb, " -background {%s}", computed_bg);
     }
 
     // Foreground color (text color) - with unified alias support
@@ -273,9 +271,8 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
     }
 
     // For Text/Label widgets, add padding
-    // Use the 'type' variable already declared above
-    if (type && cJSON_IsString(type)) {
-        if (strcmp(type->valuestring, "Text") == 0) {
+    if (widget_type) {
+        if (strcmp(widget_type, "Text") == 0) {
             sb_append(ctx->sb, " -padx 5 -pady 5");
         }
     }
@@ -365,17 +362,42 @@ static bool is_layout_container(const char* type) {
 
 // Forward declarations
 static bool process_component(TclTkContext* ctx, cJSON* component,
-                              const char* parent_path, const char* parent_type);
+                              const char* parent_path, const char* parent_type,
+                              const char* parent_bg);
 
 /**
  * Generate widget creation command
  */
 static bool generate_widget(TclTkContext* ctx, cJSON* component,
-                           const char* parent_path, const char* parent_type) {
+                           const char* parent_path, const char* parent_type,
+                           const char* parent_bg) {
     if (!ctx || !component) return false;
 
     const char* ir_type = codegen_get_component_type(component);
     const char* tk_widget = codegen_map_kir_to_tk_widget(ir_type);
+
+    // Extract this widget's background
+    const char* bg_aliases[] = {"background", "backgroundColor", NULL};
+    cJSON* background = get_property_with_aliases(component, bg_aliases);
+
+    char* my_bg = NULL;
+    bool has_explicit_bg = false;
+
+    if (background && cJSON_IsString(background)) {
+        if (!codegen_is_transparent_color(background->valuestring)) {
+            uint8_t r, g, b, a;
+            if (codegen_parse_color_rgba(background->valuestring, &r, &g, &b, &a)) {
+                my_bg = strdup(codegen_format_rgba_hex(r, g, b, a, false));
+                has_explicit_bg = true;
+            }
+        }
+    }
+
+    // For layout containers without explicit background, inherit from parent
+    bool is_layout_container_type = is_layout_container(ir_type);
+    if (is_layout_container_type && !has_explicit_bg && parent_bg) {
+        my_bg = strdup(parent_bg);
+    }
 
     char widget_path[256];
     generate_widget_path(ctx, widget_path, sizeof(widget_path), parent_path);
@@ -388,8 +410,9 @@ static bool generate_widget(TclTkContext* ctx, cJSON* component,
     // Generate widget command
     sb_append_fmt(ctx->sb, "%s %s", tk_widget, widget_path);
 
-    // Add properties
-    generate_widget_properties(ctx, component);
+    // Add properties (pass computed background)
+    const char* bg_to_pass = (my_bg != NULL) ? my_bg : parent_bg;
+    generate_widget_properties(ctx, component, bg_to_pass, ir_type);
 
     sb_append(ctx->sb, "\n");
 
@@ -411,14 +434,19 @@ static bool generate_widget(TclTkContext* ctx, cJSON* component,
     }
 
     // Process children if this is a container
-    if (is_layout_container(ir_type)) {
+    if (is_layout_container_type) {
         cJSON* children = cJSON_GetObjectItem(component, "children");
         if (children && cJSON_IsArray(children)) {
             cJSON* child = NULL;
             cJSON_ArrayForEach(child, children) {
-                process_component(ctx, child, widget_path, ir_type);
+                process_component(ctx, child, widget_path, ir_type, bg_to_pass);
             }
         }
+    }
+
+    // Clean up allocated background
+    if (my_bg) {
+        free(my_bg);
     }
 
     return true;
@@ -428,7 +456,8 @@ static bool generate_widget(TclTkContext* ctx, cJSON* component,
  * Process component (handles both widgets and containers)
  */
 static bool process_component(TclTkContext* ctx, cJSON* component,
-                              const char* parent_path, const char* parent_type) {
+                              const char* parent_path, const char* parent_type,
+                              const char* parent_bg) {
     if (!ctx || !component) return false;
 
     const char* type = codegen_get_component_type(component);
@@ -443,7 +472,7 @@ static bool process_component(TclTkContext* ctx, cJSON* component,
     }
 
     // Generate widget
-    return generate_widget(ctx, component, parent_path, parent_type);
+    return generate_widget(ctx, component, parent_path, parent_type, parent_bg);
 }
 
 /* ============================================================================
@@ -569,11 +598,27 @@ static bool generate_complete_script(TclTkContext* ctx, cJSON* root) {
         }
     }
 
+    // Extract root background for inheritance
+    if (app_config) {
+        cJSON* bg = cJSON_GetObjectItem(app_config, "background");
+        if (bg && cJSON_IsString(bg) && !codegen_is_transparent_color(bg->valuestring)) {
+            uint8_t r, g, b, a;
+            if (codegen_parse_color_rgba(bg->valuestring, &r, &g, &b, &a)) {
+                ctx->root_background = strdup(codegen_format_rgba_hex(r, g, b, a, false));
+            }
+        }
+    }
+
+    // Set default if not specified
+    if (!ctx->root_background) {
+        ctx->root_background = strdup("#ffffff");
+    }
+
     // 6. Generate UI components
     sb_append(ctx->sb, "\n# UI Components\n");
     cJSON* root_component = cJSON_GetObjectItem(root, "root");
     if (root_component) {
-        process_component(ctx, root_component, "", "Container");
+        process_component(ctx, root_component, "", "Container", ctx->root_background);
     }
 
     // 7. Generate event handlers

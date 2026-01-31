@@ -1,5 +1,6 @@
 #include "text.h"
 #include "../include/ir_core.h"
+#include "../layout/layout_helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,17 +24,15 @@ void layout_text_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     if (!c) return;
 
     // Ensure layout state exists
-    if (!c->layout_state) {
-        c->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
-    }
+    if (!layout_ensure_state(c)) return;
 
     if (getenv("KRYON_DEBUG_TEXT_LAYOUT")) {
         fprintf(stderr, "[Text] Single-pass layout for text: '%s'\n",
                 c->text_content ? c->text_content : "(null)");
     }
 
-    // Get font size from style
-    float font_size = (c->style && c->style->font.size > 0) ? c->style->font.size : 16.0f;
+    // Get font size from style using helper
+    float font_size = layout_get_font_size(c, 16.0f);
 
     // Evaluate text expression if present (for reactive text)
     char* evaluated_text = NULL;
@@ -53,8 +52,9 @@ void layout_text_single_pass(IRComponent* c, IRLayoutConstraints constraints,
     float available_width = constraints.max_width;
 
     // Apply explicit width if set
-    if (c->style && c->style->width.type == IR_DIMENSION_PX) {
-        available_width = c->style->width.value;
+    float explicit_width;
+    if (layout_get_explicit_width(c, &explicit_width)) {
+        available_width = explicit_width;
     }
 
     // Apply max_width constraint if set
@@ -89,49 +89,20 @@ void layout_text_single_pass(IRComponent* c, IRLayoutConstraints constraints,
         }
     }
 
-    // Add padding if present
-    IRSpacing padding = {0};
-    if (c->style) {
-        padding = c->style->padding;
-    }
+    // Get padding using helper
+    IRSpacing padding = layout_get_padding(c);
 
-    float final_width = text_width + padding.left + padding.right;
-    float final_height = text_height + padding.top + padding.bottom;
+    float intrinsic_width = text_width + padding.left + padding.right;
+    float intrinsic_height = text_height + padding.top + padding.bottom;
 
-    // Apply explicit dimensions if set (override measured dimensions)
-    if (c->style) {
-        if (c->style->width.type == IR_DIMENSION_PX) {
-            final_width = c->style->width.value;
-        }
-        if (c->style->height.type == IR_DIMENSION_PX) {
-            final_height = c->style->height.value;
-        }
-    }
+    // Use full pipeline: compute with explicit dimensions, apply constraints, set final layout
+    // Note: text component uses 0,0 for relative position then adds parent offset
+    layout_compute_full_pipeline(c, constraints, 0, 0,
+                                intrinsic_width, intrinsic_height);
 
-    // Apply min/max constraints
-    final_width = fmaxf(final_width, constraints.min_width);
-    final_height = fmaxf(final_height, constraints.min_height);
-
-    if (constraints.max_width > 0) {
-        final_width = fminf(final_width, constraints.max_width);
-    }
-    if (constraints.max_height > 0) {
-        final_height = fminf(final_height, constraints.max_height);
-    }
-
-    // Set final computed dimensions (relative position first)
-    c->layout_state->computed.x = 0;
-    c->layout_state->computed.y = 0;
-    c->layout_state->computed.width = final_width;
-    c->layout_state->computed.height = final_height;
-
-    // Convert to absolute coordinates
+    // Convert to absolute coordinates (text special case)
     c->layout_state->computed.x += parent_x;
     c->layout_state->computed.y += parent_y;
-
-    // Mark layout as valid
-    c->layout_state->layout_valid = true;
-    c->layout_state->computed.valid = true;
 
     if (getenv("KRYON_DEBUG_TEXT_LAYOUT")) {
         fprintf(stderr, "[Text] Final layout: x=%.1f, y=%.1f, width=%.1f, height=%.1f\n",

@@ -20,6 +20,8 @@ SRCS=\
 	src/utils/paths.c\
 	src/utils/build.c\
 	src/utils/plugin_installer.c\
+	src/utils/memory.c\
+	src/utils/error.c\
 	src/utils/limbo_modules.c\
 	src/config/toml_parser.c\
 	src/config/config.c\
@@ -75,7 +77,7 @@ LIBS=\
 	bio\
 	9\
 
-BIN=$ROOT/platforms/$OBJDIR/bin
+BIN=$ROOT/$OBJDIR/bin
 
 # Build the kryon binary
 $O.out:V: $SRCS
@@ -85,7 +87,21 @@ $O.out:V: $SRCS
 		$CC $CFLAGS $i || exit 1
 	done
 	echo "  Linking kryon binary..."
-	$LD $LDFLAGS -o $O.out *.o $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_limbo.a $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_tcltk.a $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_web.a $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_c.a $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_kry.a $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_markdown.a $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_common.a $ROOT/platforms/$OBJDIR/lib/libdiscodegen.a $ROOT/platforms/$OBJDIR/lib/libkryon_ir.a $ROOT/platforms/$OBJDIR/lib/libcJSON.a $ROOT/platforms/$OBJDIR/lib/libtomlc99.a $ROOT/platforms/$OBJDIR/lib/libbio.a $ROOT/platforms/$OBJDIR/lib/lib9.a -lm -lpthread -ldl
+	$LD $LDFLAGS -o $O.out *.o \
+		$ROOT/$OBJDIR/lib/libkryon_codegen_limbo.a \
+		$ROOT/$OBJDIR/lib/libkryon_codegen_tcltk.a \
+		$ROOT/$OBJDIR/lib/libkryon_codegen_web.a \
+		$ROOT/$OBJDIR/lib/libkryon_codegen_c.a \
+		$ROOT/$OBJDIR/lib/libkryon_codegen_kry.a \
+		$ROOT/$OBJDIR/lib/libkryon_codegen_markdown.a \
+		$ROOT/$OBJDIR/lib/libkryon_codegen_common.a \
+		$ROOT/$OBJDIR/lib/libdiscodegen.a \
+		$ROOT/$OBJDIR/lib/libkryon_ir.a \
+		$ROOT/$OBJDIR/lib/libcJSON.a \
+		$ROOT/$OBJDIR/lib/libtomlc99.a \
+		$ROOT/$OBJDIR/lib/libbio.a \
+		$ROOT/$OBJDIR/lib/lib9.a \
+		-lm -lpthread -ldl
 	echo "  Built kryon"
 
 $BIN/$TARG: $O.out

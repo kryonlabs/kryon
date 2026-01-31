@@ -48,12 +48,12 @@ Or create a wrapper project with the necessary plugin declarations.
 ## Native Dependencies
 
 This module depends on pre-built native libraries:
-- `platforms/android/build/{ABI}/libkryon_android_platform.a`
+- `android/build/{ABI}/libkryon_android_platform.a`
 - `renderers/android/build/{ABI}/libkryon_android_renderer.a`
 
 Build these first:
 ```bash
-cd ../../platforms/android && make ndk-build
+cd ../../android && make ndk-build
 cd ../../renderers/android && make ndk-build
 ```
 

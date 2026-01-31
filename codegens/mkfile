@@ -9,7 +9,7 @@ all:V: codegen_common limbo web c android kry markdown
 # Build codegen_common as a library
 codegen_common:V:
 	$CC $CFLAGS -I../include -I../ir/include -I../third_party/cJSON -c codegen_common.c
-	ar ruvs $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_common.a codegen_common.o
+	ar ruvs $ROOT/$OBJDIR/lib/libkryon_codegen_common.a codegen_common.o
 
 # Build individual codegens
 limbo:V: codegen_common
@@ -42,7 +42,7 @@ clean:V:
 install:V: all
 
 nuke:V:
-	rm -f $ROOT/platforms/$OBJDIR/lib/libkryon_codegen_common.a
+	rm -f $ROOT/$OBJDIR/lib/libkryon_codegen_common.a
 	(cd limbo && mk nuke)
 	(cd web && mk nuke)
 	(cd c && mk nuke)

@@ -20,7 +20,7 @@ CFLAGS=$CFLAGS\
 	-I../ir/include\
 	-I../third_party/cJSON\
 
-LIBRARY=$ROOT/platforms/$OBJDIR/lib/$LIB
+LIBRARY=$ROOT/$OBJDIR/lib/$LIB
 
 default:V: all
 

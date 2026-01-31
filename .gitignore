@@ -64,10 +64,19 @@ tests/*.out
 test_*
 *_test.c
 *_test.o
+debug_test
+minimal_test
+parser_test
+
+# CLI binary
+cli/kryon
+kryon
 
 # Temporary files
 *.tmp
 *.bak
+*.bak2
+*.bak3
 *_backup*
 /tmp/
 
