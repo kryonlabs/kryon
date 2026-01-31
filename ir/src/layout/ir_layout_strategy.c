@@ -51,7 +51,7 @@ extern void ir_register_row_layout_strategy(void);
 extern void ir_register_column_layout_strategy(void);
 extern void ir_register_image_layout_strategy(void);
 extern void ir_register_canvas_layout_strategy(void);
-extern void ir_register_foreach_layout_strategy(void);
+extern void ir_register_for_layout_strategy(void);  // Renamed from foreach
 
 // Initialize all built-in strategies
 void ir_layout_strategies_init(void) {
@@ -63,7 +63,7 @@ void ir_layout_strategies_init(void) {
     ir_register_column_layout_strategy();
     ir_register_image_layout_strategy();
     ir_register_canvas_layout_strategy();
-    ir_register_foreach_layout_strategy();
+    ir_register_for_layout_strategy();  // Renamed from foreach
 
     g_registry_initialized = true;
 

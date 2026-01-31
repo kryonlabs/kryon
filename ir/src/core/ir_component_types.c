@@ -55,8 +55,7 @@ const char* ir_component_type_to_string(IRComponentType type) {
         case IR_COMPONENT_MARK: return "Mark";
         case IR_COMPONENT_CUSTOM: return "Custom";
         case IR_COMPONENT_STATIC_BLOCK: return "StaticBlock";
-        case IR_COMPONENT_FOR_LOOP: return "ForLoop";
-        case IR_COMPONENT_FOR_EACH: return "For";
+        case IR_COMPONENT_FOR_LOOP: return "For";  // Unified "For" for both compile-time and runtime
         case IR_COMPONENT_VAR_DECL: return "VarDecl";
         case IR_COMPONENT_PLACEHOLDER: return "Placeholder";
         case IR_COMPONENT_FLOWCHART: return "Flowchart";
@@ -157,8 +156,9 @@ IRComponentType ir_component_type_from_snake_case(const char* name) {
     if (strcmp(name, "mark") == 0) return IR_COMPONENT_MARK;
     if (strcmp(name, "custom") == 0) return IR_COMPONENT_CUSTOM;
     if (strcmp(name, "static_block") == 0) return IR_COMPONENT_STATIC_BLOCK;
-    if (strcmp(name, "for_loop") == 0) return IR_COMPONENT_FOR_LOOP;
-    if (strcmp(name, "for") == 0) return IR_COMPONENT_FOR_EACH;
+    if (strcmp(name, "for_loop") == 0) return IR_COMPONENT_FOR_LOOP;  // Legacy name
+    if (strcmp(name, "for") == 0) return IR_COMPONENT_FOR_LOOP;       // Unified "For" type
+    if (strcmp(name, "foreach") == 0) return IR_COMPONENT_FOR_LOOP;  // Legacy "foreach" → For
     if (strcmp(name, "var_decl") == 0) return IR_COMPONENT_VAR_DECL;
     if (strcmp(name, "placeholder") == 0) return IR_COMPONENT_PLACEHOLDER;
     if (strcmp(name, "flowchart") == 0) return IR_COMPONENT_FLOWCHART;

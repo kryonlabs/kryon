@@ -563,22 +563,22 @@ static bool generate_for_loop(cJSON* loop_template, cJSON* kir_root, char** buff
     return true;
 }
 
-// Generate for each loop from foreach_def
+// Generate for each loop from for_def
 // Generates: for each <item> in <collection> { ... }
 static bool generate_for_each_loop(cJSON* foreach_node, cJSON* kir_root, char** buffer,
                                   size_t* size, size_t* capacity, int indent,
                                   EventHandlerContext* event_ctx, SourceStructuresContext* src_ctx) {
     if (!foreach_node) return false;
 
-    // Get foreach_def metadata
-    cJSON* foreach_def = cJSON_GetObjectItem(foreach_node, "foreach_def");
-    if (!foreach_def) {
-        fprintf(stderr, "[CODEGEN] ForEach node missing foreach_def\n");
+    // Get for_def metadata
+    cJSON* for_def = cJSON_GetObjectItem(foreach_node, "for");
+    if (!for_def) {
+        fprintf(stderr, "[CODEGEN] For node missing for_def\n");
         return false;
     }
 
-    cJSON* item_name = cJSON_GetObjectItem(foreach_def, "item_name");
-    cJSON* source = cJSON_GetObjectItem(foreach_def, "source");
+    cJSON* item_name = cJSON_GetObjectItem(for_def, "item_name");
+    cJSON* source = cJSON_GetObjectItem(for_def, "source");
 
     if (!item_name || !source) {
         fprintf(stderr, "[CODEGEN] ForEach missing item_name or source\n");
@@ -603,8 +603,8 @@ static bool generate_for_each_loop(cJSON* foreach_node, cJSON* kir_root, char** 
     append_fmt(buffer, size, capacity, "for each %s in %s {\n",
                item_name->valuestring, collection);
 
-    // Generate template body from foreach_def
-    cJSON* tmpl = cJSON_GetObjectItem(foreach_def, "template");
+    // Generate template body from for_def
+    cJSON* tmpl = cJSON_GetObjectItem(for_def, "template");
     if (tmpl) {
         cJSON* template_comp = cJSON_GetObjectItem(tmpl, "component");
         if (template_comp && cJSON_IsObject(template_comp)) {
@@ -1244,7 +1244,8 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
             strcmp(key, "children") == 0 ||
             strcmp(key, "events") == 0 ||
             strcmp(key, "property_bindings") == 0 ||
-            strcmp(key, "foreach_def") == 0 ||
+            strcmp(key, "for_def") == 0 ||
+            strcmp(key, "foreach_def") == 0 ||  // Legacy check
             strcmp(key, "actual_type") == 0 ||
             strcmp(key, "custom_data") == 0) {  // Skip metadata
             continue;

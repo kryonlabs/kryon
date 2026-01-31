@@ -168,8 +168,7 @@ static const char* component_type_to_snake_case(uint32_t type) {
         case IR_COMPONENT_MARK:              return "mark";
         case IR_COMPONENT_CUSTOM:            return "custom";
         case IR_COMPONENT_STATIC_BLOCK:      return "static_block";
-        case IR_COMPONENT_FOR_LOOP:          return "for_loop";
-        case IR_COMPONENT_FOR_EACH:          return "for_each";
+        case IR_COMPONENT_FOR_LOOP:          return "for";  // Unified "For" type
         case IR_COMPONENT_VAR_DECL:          return "var_decl";
         case IR_COMPONENT_PLACEHOLDER:       return "placeholder";
         case IR_COMPONENT_FLOWCHART:         return "flowchart";

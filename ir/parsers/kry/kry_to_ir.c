@@ -20,7 +20,7 @@
 #include "../include/ir_style.h"
 #include "../src/style/ir_stylesheet.h"
 // Animation system moved to plugin - no longer included here
-#include "../src/logic/ir_foreach.h"
+#include "../src/logic/ir_for.h"
 #include "../../include/kryon/capability.h"  // For kryon_property_parser_fn
 #include "../include/ir_capability.h"  // For ir_capability_on_context_change
 #include "../html/css_parser.h"  // For ir_css_parse_color
@@ -261,14 +261,17 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
             }
         }
 
-        // Create ForEach component for runtime iteration
-        IRComponent* for_each_comp = ir_create_component(IR_COMPONENT_FOR_EACH);
-        if (for_each_comp) {
-            // Create ForEach definition
-            struct IRForEachDef* def = ir_foreach_def_create(iter_name, "index");
+        // Create For component for runtime iteration
+        IRComponent* for_comp = ir_create_component(IR_COMPONENT_FOR_LOOP);
+        if (for_comp) {
+            // Create For definition
+            struct IRForDef* def = ir_for_def_create(iter_name, "index");
             if (def) {
+                // Mark as compile-time loop if inside static block
+                def->is_compile_time = (ctx->current_static_block_id != NULL);
+
                 // Set data source
-                ir_foreach_set_source_variable(def, collection_name);
+                ir_for_set_source_variable(def, collection_name);
 
                 // Convert the loop body template
                 if (for_node->first_child && for_node->first_child->type == KRY_NODE_COMPONENT) {
@@ -282,17 +285,17 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
 
                     IRComponent* template_comp = convert_node(&template_ctx, template_node);
                     if (template_comp) {
-                        ir_foreach_set_template(def, template_comp);
+                        ir_for_set_template(def, template_comp);
                         // Add template as child[0] for serialization
-                        ir_add_child(for_each_comp, template_comp);
+                        ir_add_child(for_comp, template_comp);
                     }
                 }
 
-                // Attach foreach_def to the component
-                for_each_comp->foreach_def = def;
+                // Attach for_def to the component
+                for_comp->for_def = def;
             }
 
-            ir_add_child(parent, for_each_comp);
+            ir_add_child(parent, for_comp);
         }
         return;
     } else if (collection->type == KRY_VALUE_RANGE) {
@@ -342,9 +345,9 @@ static void expand_for_loop(ConversionContext* ctx, IRComponent* parent, KryNode
 }
 
 
-// Convert "for each" loop to ForEach IR component
-// This creates an IR_COMPONENT_FOR_EACH with foreach_def metadata
-// Unlike "for" loops, "for each" does NOT expand at compile time
+// Convert "for each" loop to For IR component
+// This creates an IR_COMPONENT_FOR_LOOP with for_def metadata
+// Unlike compile-time "for" loops, "for each" does NOT expand at compile time
 static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_each_node) {
     if (!for_each_node || for_each_node->type != KRY_NODE_FOR_EACH) {
         return NULL;
@@ -385,14 +388,14 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
         }
     }
 
-    // Create ForEach component
-    IRComponent* for_each_comp = ir_create_component(IR_COMPONENT_FOR_EACH);
-    if (!for_each_comp) {
+    // Create For component
+    IRComponent* for_comp = ir_create_component(IR_COMPONENT_FOR_LOOP);
+    if (!for_comp) {
         return NULL;
     }
 
-    // Create ForEach definition
-    struct IRForEachDef* def = ir_foreach_def_create(item_name, "index");
+    // Create For definition
+    struct IRForDef* def = ir_for_def_create(item_name, "index");
     if (!def) {
         // Note: ir_component_destroy may not be available, leak is acceptable for error case
         return NULL;
@@ -401,8 +404,11 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
     // Set loop type to explicit for_each
     def->loop_type = IR_LOOP_TYPE_FOR_EACH;
 
+    // Mark as compile-time loop if inside static block
+    def->is_compile_time = (ctx->current_static_block_id != NULL);
+
     // Set data source
-    ir_foreach_set_source_variable(def, collection_ref);
+    ir_for_set_source_variable(def, collection_ref);
 
     // Convert the loop body (first child should be a component)
     // This becomes the template for each iteration
@@ -416,26 +422,26 @@ static IRComponent* convert_for_each_node(ConversionContext* ctx, KryNode* for_e
 
         IRComponent* template_comp = convert_node(&template_ctx, template_node);
         if (template_comp) {
-            ir_foreach_set_template(def, template_comp);
+            ir_for_set_template(def, template_comp);
 
             // Add template as child[0] for serialization
             // The serializer expects the template to be in children array
-            ir_add_child(for_each_comp, template_comp);
+            ir_add_child(for_comp, template_comp);
 
             // Extract property bindings from the template
             // Scan for expressions that reference the item variable
             if (template_comp->text_expression &&
                 strstr(template_comp->text_expression, item_name) != NULL) {
                 // Text content references item
-                ir_foreach_add_binding(def, "text", template_comp->text_expression, true);
+                ir_for_add_binding(def, "text", template_comp->text_expression, true);
             }
         }
     }
 
-    // Attach foreach_def to the component
-    for_each_comp->foreach_def = def;
+    // Attach for_def to the component
+    for_comp->for_def = def;
 
-    return for_each_comp;
+    return for_comp;
 }
 
 // Helper: Check if an argument string looks like a variable reference (not a literal)

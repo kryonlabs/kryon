@@ -14,6 +14,7 @@
 
 #include "kryon_cli.h"
 #include "build.h"
+#include "screenshot.h"
 #include "../../../codegens/limbo/limbo_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
 #include "../../../codegens/android/ir_android_codegen.h"
@@ -103,9 +104,11 @@ static int web_target_build(const char* kir_file, const char* output_dir,
 /**
  * Web target run handler
  */
-static int web_target_run(const char* kir_file, const KryonConfig* config) {
+static int web_target_run(const char* kir_file, const KryonConfig* config,
+                         const ScreenshotRunOptions* screenshot_opts) {
     (void)kir_file;
     (void)config;
+    (void)screenshot_opts;  // Unused
     fprintf(stderr, "Error: Web target should be run via dev server\n");
     fprintf(stderr, "Use 'kryon dev' or 'kryon run' without explicit target\n");
     return 1;
@@ -208,8 +211,10 @@ static int limbo_target_build(const char* kir_file, const char* output_dir,
 /**
  * Limbo target run handler
  * Builds if needed, then executes in TaijiOS emu
+ * Supports screenshot capture via X11 window capture
  */
-static int limbo_target_run(const char* kir_file, const KryonConfig* config) {
+static int limbo_target_run(const char* kir_file, const KryonConfig* config,
+                            const ScreenshotRunOptions* screenshot_opts) {
     // Determine output directory and project name
     const char* output_dir = ".";
     const char* project_name = "app";
@@ -303,15 +308,57 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config) {
     }
 
     printf("Executing in TaijiOS: %s\n", cmd);
-    int result = system(cmd);
 
-    if (result != 0) {
-        fprintf(stderr, "Warning: TaijiOS emu exited with code %d\n", result);
+    // Check if screenshot is requested
+    bool capture_screenshot = (screenshot_opts != NULL &&
+                              screenshot_opts->screenshot_path != NULL);
+
+    if (capture_screenshot) {
+        // Launch emu in background so we can capture its window
+        // Add '&' to run in background
+        char bg_cmd[2304];
+        snprintf(bg_cmd, sizeof(bg_cmd), "%s &", cmd);
+
+        printf("Launching emulator in background for screenshot capture...\n");
+        int launch_result = system(bg_cmd);
+
+        // Give emulator time to start up
+        sleep(1);
+
+        // Capture screenshot using X11 window capture
+        printf("Capturing screenshot to: %s\n", screenshot_opts->screenshot_path);
+
+        ScreenshotOptions ss_opts = SCREENSHOT_DEFAULTS;
+        ss_opts.output_path = screenshot_opts->screenshot_path;
+        ss_opts.after_frames = screenshot_opts->screenshot_after_frames;
+        ss_opts.window_title = "TaijiOS";
+
+        bool screenshot_ok = capture_emulator_window(&ss_opts);
+
+        if (!screenshot_ok) {
+            fprintf(stderr, "Warning: Screenshot capture failed\n");
+        }
+
+        // Wait a bit more then check if emulator is still running
+        sleep(1);
+
+        // We can't easily wait for the background process since we used system()
+        // User can close the emulator window manually
+        printf("\nScreenshot captured. Close the emulator window when done.\n");
+
+        return launch_result;
     } else {
-        printf("✓ Execution complete\n");
-    }
+        // Normal execution - wait for emu to complete
+        int result = system(cmd);
 
-    return result;
+        if (result != 0) {
+            fprintf(stderr, "Warning: TaijiOS emu exited with code %d\n", result);
+        } else {
+            printf("✓ Execution complete\n");
+        }
+
+        return result;
+    }
 }
 
 /* ============================================================================
@@ -414,7 +461,9 @@ static int sdl3_target_build(const char* kir_file, const char* output_dir,
  * SDL3 desktop target run handler
  * Builds if needed, then executes the binary
  */
-static int sdl3_target_run(const char* kir_file, const KryonConfig* config) {
+static int sdl3_target_run(const char* kir_file, const KryonConfig* config,
+                          const ScreenshotRunOptions* screenshot_opts) {
+    (void)screenshot_opts;  // Screenshot handled by SDL3 backend
     const char* output_dir = ".";
     const char* project_name = "app";
 
@@ -529,7 +578,9 @@ static int raylib_target_build(const char* kir_file, const char* output_dir,
  * Raylib desktop target run handler
  * Builds if needed, then executes the binary
  */
-static int raylib_target_run(const char* kir_file, const KryonConfig* config) {
+static int raylib_target_run(const char* kir_file, const KryonConfig* config,
+                            const ScreenshotRunOptions* screenshot_opts) {
+    (void)screenshot_opts;  // Screenshot handled by Raylib backend
     const char* output_dir = ".";
     const char* project_name = "app";
 
@@ -654,7 +705,9 @@ static int command_target_build(const char* kir_file, const char* output_dir,
  * Generic command target run handler
  * Uses thread-local context to identify which specific target config to use
  */
-static int command_target_run(const char* kir_file, const KryonConfig* config) {
+static int command_target_run(const char* kir_file, const KryonConfig* config,
+                             const ScreenshotRunOptions* screenshot_opts) {
+    (void)screenshot_opts;  // Command targets don't use screenshots
     if (!config) {
         fprintf(stderr, "Error: Config required for command targets\n");
         return 1;
@@ -722,7 +775,8 @@ static int alias_target_build(const char* kir_file, const char* output_dir,
  * Alias target run handler
  * Delegates to the base target's run handler
  */
-static int alias_target_run(const char* kir_file, const KryonConfig* config) {
+static int alias_target_run(const char* kir_file, const KryonConfig* config,
+                           const ScreenshotRunOptions* screenshot_opts) {
     if (!config) {
         fprintf(stderr, "Error: Config required for alias targets\n");
         return 1;
@@ -744,7 +798,7 @@ static int alias_target_run(const char* kir_file, const KryonConfig* config) {
     printf("[alias:%s] Delegating to base target: %s\n", target_name, alias->alias_target);
 
     // Call the base target's run handler
-    return target_handler_run(alias->alias_target, kir_file, config);
+    return target_handler_run(alias->alias_target, kir_file, config, screenshot_opts);
 }
 
 /* ============================================================================
@@ -873,7 +927,9 @@ static int android_target_build(const char* kir_file, const char* output_dir,
  * Android target run handler
  * Builds APK and installs to device/emulator
  */
-static int android_target_run(const char* kir_file, const KryonConfig* config) {
+static int android_target_run(const char* kir_file, const KryonConfig* config,
+                             const ScreenshotRunOptions* screenshot_opts) {
+    (void)screenshot_opts;  // Screenshot not supported for Android
     // Determine output directory and project name
     const char* output_dir = ".";
     const char* project_name = "app";
@@ -1089,7 +1145,8 @@ int target_handler_build(const char* target_name, const char* kir_file,
  * Returns 0 on success, non-zero on failure
  */
 int target_handler_run(const char* target_name, const char* kir_file,
-                       const KryonConfig* config) {
+                       const KryonConfig* config,
+                       const ScreenshotRunOptions* screenshot_opts) {
     TargetHandler* handler = target_handler_find(target_name);
     if (!handler) {
         fprintf(stderr, "Error: Unknown target '%s'\n", target_name);
@@ -1105,8 +1162,11 @@ int target_handler_run(const char* target_name, const char* kir_file,
     t_current_context.target_name = target_name;
     t_current_context.config = config;
     t_current_context.kir_file = kir_file;
+    t_current_context.screenshot = (ScreenshotRunOptions*)screenshot_opts;
 
-    int result = handler->run_handler(kir_file, config);
+    // Call run handler with screenshot options
+    // Note: Old handlers without screenshot_opts parameter will receive NULL for extra param
+    int result = handler->run_handler(kir_file, config, screenshot_opts);
 
     // Clear context
     memset(&t_current_context, 0, sizeof(t_current_context));

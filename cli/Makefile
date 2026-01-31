@@ -5,9 +5,11 @@ CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../inc
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
+# X11 libraries (for screenshot support)
+X11_LIBS ?= $(shell pkg-config --libs x11 2>/dev/null || echo "-lX11")
 # Link against IR library and codegens
 LDFLAGS = ../build/libkryon_ir.a \
-	-lm -lpthread -ldl
+	-lm -lpthread -ldl $(X11_LIBS)
 
 # Directories
 SRC_DIR = src
@@ -29,6 +31,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/utils/build.c \
        $(SRC_DIR)/utils/plugin_installer.c \
        $(SRC_DIR)/utils/limbo_modules.c \
+       $(SRC_DIR)/utils/screenshot.c \
        $(SRC_DIR)/config/toml_parser.c \
        $(SRC_DIR)/config/config.c \
        $(SRC_DIR)/config/target_handlers.c \
@@ -243,7 +246,7 @@ install: $(TARGET)
 
 	# Dev server script
 	mkdir -p $(HOME)/.local/share/kryon/scripts
-	cp scripts/dev_server.ts $(HOME)/.local/share/kryon/scripts/
+	cp scripts/dev_server.py $(HOME)/.local/share/kryon/scripts/
 
 	@echo "✓ Installation complete"
 	@echo "  Binary: $(INSTALL_DIR)/$(TARGET)"

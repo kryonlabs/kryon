@@ -3,7 +3,7 @@
 #include "../../include/ir_buffer.h"
 #include "ir_serialize_types.h"
 #include "../include/ir_builder.h"
-#include "../logic/ir_foreach_expand.h"  // New modular ForEach expansion
+#include "../logic/ir_for_expand.h"  // Unified For expansion
 #include "cJSON.h"
 #include <stdlib.h>
 #include <string.h>
@@ -1362,8 +1362,11 @@ IRComponent* ir_read_json_file(const char* filename) {
     return root;
 }
 
-IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveManifest** out_manifest) {
+IRComponent* ir_read_json_file_with_manifest(const char* filename,
+                                              IRReactiveManifest** out_manifest,
+                                              IRSourceStructures** out_source_structures) {
     if (out_manifest) *out_manifest = NULL;
+    if (out_source_structures) *out_source_structures = NULL;
 
     FILE* file = fopen(filename, "r");
     if (!file) {
@@ -1523,6 +1526,43 @@ IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveMan
                     }
 
                     *out_manifest = manifest;
+                }
+            }
+        }
+
+        // Parse source_structures
+        if (out_source_structures) {
+            cJSON* ssObj = cJSON_GetObjectItem(root_json, "source_structures");
+            if (ssObj && cJSON_IsObject(ssObj)) {
+                IRSourceStructures* ss = ir_source_structures_create();
+                if (ss) {
+                    // Parse const_declarations (var_decls)
+                    cJSON* constsArray = cJSON_GetObjectItem(ssObj, "const_declarations");
+                    if (constsArray && cJSON_IsArray(constsArray)) {
+                        int count = cJSON_GetArraySize(constsArray);
+                        for (int i = 0; i < count; i++) {
+                            cJSON* constObj = cJSON_GetArrayItem(constsArray, i);
+                            if (!constObj || !cJSON_IsObject(constObj)) continue;
+
+                            cJSON* idItem = cJSON_GetObjectItem(constObj, "id");
+                            cJSON* nameItem = cJSON_GetObjectItem(constObj, "name");
+                            cJSON* typeItem = cJSON_GetObjectItem(constObj, "var_type");
+                            cJSON* valueTypeItem = cJSON_GetObjectItem(constObj, "value_type");
+                            cJSON* valueItem = cJSON_GetObjectItem(constObj, "value_json");
+
+                            if (nameItem && cJSON_IsString(nameItem)) {
+                                // Note: id is auto-generated, so we use name as the id
+                                ir_source_structures_add_var_decl(ss,
+                                    nameItem->valuestring,
+                                    typeItem && cJSON_IsString(typeItem) ? typeItem->valuestring : "const",
+                                    valueItem ? cJSON_PrintUnformatted(valueItem) : "[]",
+                                    "global"
+                                );
+                                // var_decls are stored in the source_structures, no need to do anything else
+                            }
+                        }
+                    }
+                    *out_source_structures = ss;
                 }
             }
         }
@@ -1769,8 +1809,8 @@ static void update_nested_foreach_source(IRComponent* component, cJSON* source_a
 
     extern char* cJSON_PrintUnformatted(const cJSON* item);
 
-    // If this is a ForEach, update its each_source
-    if (component->type == IR_COMPONENT_FOR_EACH) {
+    // If this is a For, update its each_source (legacy field)
+    if (component->type == IR_COMPONENT_FOR_LOOP) {
         // Free old each_source if present
         if (component->each_source) {
             free(component->each_source);
@@ -1791,7 +1831,7 @@ static void update_nested_foreach_source(IRComponent* component, cJSON* source_a
                 // day number found
             }
         }
-        return;  // Don't recurse into ForEach children (template)
+        return;  // Don't recurse into For children (template)
     }
 
     // Recurse into children
@@ -1863,9 +1903,9 @@ __attribute__((unused))
 static void expand_foreach_component(IRComponent* component) {
     if (!component) return;
 
-    // Check if this is a ForEach component with serialized data
-    if (component->type != IR_COMPONENT_FOR_EACH) {
-        // Not a ForEach - process children
+    // Check if this is a For component with serialized data
+    if (component->type != IR_COMPONENT_FOR_LOOP) {
+        // Not a For - process children
         for (uint32_t i = 0; i < component->child_count; i++) {
             if (component->children[i]) {
                 expand_foreach_component(component->children[i]);
@@ -1874,7 +1914,7 @@ static void expand_foreach_component(IRComponent* component) {
         return;
     }
 
-    // ForEach data can be in two places:
+    // For data can be in two places:
     // 1. custom_data (from initial Lua compilation)
     // 2. each_source (from KIR file deserialization)
 
@@ -2044,9 +2084,9 @@ __attribute__((unused))
 static void expand_foreach_with_parent(IRComponent* component, IRComponent* parent, int child_index) {
     if (!component) return;
 
-    // Check if this is a ForEach component with serialized data
-    if (component->type != IR_COMPONENT_FOR_EACH) {
-        // Not a ForEach - process children
+    // Check if this is a For component with serialized data
+    if (component->type != IR_COMPONENT_FOR_LOOP) {
+        // Not a For - process children
         for (uint32_t i = 0; i < component->child_count; i++) {
             if (component->children[i]) {
                 expand_foreach_with_parent(component->children[i], component, (int)i);
@@ -2055,7 +2095,7 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
         return;
     }
 
-    // ForEach data can be in two places:
+    // For data can be in two places:
     // 1. custom_data (from initial Lua compilation)
     // 2. each_source (from KIR file deserialization)
 
@@ -2234,9 +2274,14 @@ static void expand_foreach_with_parent(IRComponent* component, IRComponent* pare
  * in ir_foreach_expand.c which provides:
  * - Generic property binding system (replaces hardcoded field updates)
  * - Clean separation between definition, serialization, and expansion
- * - Better nested ForEach support
+ * - Better nested For support
  */
-void ir_expand_foreach(IRComponent* root) {
-    // Delegate to the new modular ForEach expansion
-    ir_foreach_expand_tree(root);
+void ir_expand_for(IRComponent* root, IRSourceStructures* source_structures) {
+    // Delegate to the new unified For expansion
+    ir_for_expand_tree(root, source_structures);
+}
+
+// Legacy function name (deprecated, redirects to ir_expand_for)
+void ir_expand_foreach(IRComponent* root, IRSourceStructures* source_structures) {
+    ir_expand_for(root, source_structures);
 }

@@ -83,11 +83,12 @@ static int run_web_target(const char* kir_file) {
  * KIR File Execution
  * ============================================================================ */
 
-static int run_kir_file(const char* kir_file, const char* target_platform) {
+static int run_kir_file(const char* kir_file, const char* target_platform,
+                       const ScreenshotRunOptions* screenshot_opts) {
     // Use target handler registry for all targets
     TargetHandler* handler = target_handler_find(target_platform);
     if (handler && handler->run_handler) {
-        return target_handler_run(target_platform, kir_file, NULL);
+        return target_handler_run(target_platform, kir_file, NULL, screenshot_opts);
     }
 
     fprintf(stderr, "Error: Target '%s' has no run handler\n", target_platform);
@@ -233,7 +234,11 @@ int cmd_run(int argc, char** argv) {
     bool free_target_platform = false;
     bool explicit_target = false;
 
-    // Parse --target flag, collecting non-flag args in new_argv
+    // Screenshot options
+    const char* screenshot_path = NULL;
+    int screenshot_after_frames = 0;
+
+    // Parse --target and --screenshot flags, collecting non-flag args in new_argv
     // IMPORTANT: Do NOT modify the original argv array to avoid double-free issues
     int pos_argc = 0;  // Count of positional (non-flag) arguments
     char* pos_argv[128];  // Positional arguments only
@@ -247,6 +252,20 @@ int cmd_run(int argc, char** argv) {
             target_platform = argv[i + 1];
             explicit_target = true;
             i++;  // Skip next argument
+        } else if (strncmp(argv[i], "--screenshot=", 13) == 0) {
+            // Handle --screenshot=value
+            screenshot_path = argv[i] + 13;
+        } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
+            // Handle --screenshot value
+            screenshot_path = argv[i + 1];
+            i++;  // Skip next argument
+        } else if (strncmp(argv[i], "--screenshot-after-frames=", 25) == 0) {
+            // Handle --screenshot-after-frames=value
+            screenshot_after_frames = atoi(argv[i] + 25);
+        } else if (strcmp(argv[i], "--screenshot-after-frames") == 0 && i + 1 < argc) {
+            // Handle --screenshot-after-frames value
+            screenshot_after_frames = atoi(argv[i + 1]);
+            i++;  // Skip next argument
         } else if (strncmp(argv[i], "--", 2) == 0 && strchr(argv[i], '=')) {
             fprintf(stderr, "Error: Unknown flag '%s'\n", argv[i]);
             return 1;
@@ -254,6 +273,26 @@ int cmd_run(int argc, char** argv) {
             pos_argv[pos_argc++] = argv[i];
         }
     }
+
+    // If screenshot not specified via CLI, check environment variables
+    if (!screenshot_path) {
+        screenshot_path = getenv("KRYON_SCREENSHOT");
+        if (screenshot_path && strlen(screenshot_path) == 0) {
+            screenshot_path = NULL;
+        }
+    }
+    if (screenshot_after_frames == 0) {
+        const char* env_frames = getenv("KRYON_SCREENSHOT_AFTER_FRAMES");
+        if (env_frames) {
+            screenshot_after_frames = atoi(env_frames);
+        }
+    }
+
+    // Prepare screenshot options structure
+    ScreenshotRunOptions screenshot_opts = {0};
+    screenshot_opts.screenshot_path = screenshot_path;
+    screenshot_opts.screenshot_after_frames = screenshot_after_frames;
+    const ScreenshotRunOptions* screenshot_ptr = screenshot_path ? &screenshot_opts : NULL;
 
     // Use positional args from now on (don't modify original argv)
     argc = pos_argc;
@@ -396,7 +435,7 @@ int cmd_run(int argc, char** argv) {
 
     // KIR files: execute directly
     if (strcmp(frontend, "kir") == 0) {
-        result = run_kir_file(target_file, target_platform);
+        result = run_kir_file(target_file, target_platform, screenshot_ptr);
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
         return result;
@@ -420,7 +459,7 @@ int cmd_run(int argc, char** argv) {
     }
 
     printf("✓ Compiled to KIR: %s\n", kir_file);
-    result = run_kir_file(kir_file, target_platform);
+    result = run_kir_file(kir_file, target_platform, screenshot_ptr);
 
     if (free_target) free((char*)target_file);
     if (free_target_platform) free((char*)target_platform);

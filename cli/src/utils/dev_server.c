@@ -1,6 +1,6 @@
 /**
  * Dev Server for Web Target
- * Uses Bun's built-in HTTP server for static file serving
+ * Uses Python's built-in HTTP server for static file serving
  */
 
 #include "kryon_cli.h"
@@ -9,7 +9,7 @@
 #include <stdbool.h>
 
 /**
- * Start development server using Bun
+ * Start development server using Python
  *
  * @param document_root Path to serve files from (e.g., "./build")
  * @param port Port to listen on
@@ -35,17 +35,17 @@ int start_dev_server(const char* document_root, int port, bool auto_open) {
         }
     }
 
-    // Run Bun dev server (blocks until Ctrl+C)
+    // Run Python dev server (blocks until Ctrl+C)
     // Use installed dev server script
     char* home = getenv("HOME");
     if (home) {
         snprintf(cmd, sizeof(cmd),
-                 "bun run %s/.local/share/kryon/scripts/dev_server.ts %d \"%s\"",
+                 "python3 %s/.local/share/kryon/scripts/dev_server.py %d \"%s\"",
                  home, port, document_root);
     } else {
         // Fallback to system location
         snprintf(cmd, sizeof(cmd),
-                 "bun run /usr/local/share/kryon/scripts/dev_server.ts %d \"%s\"",
+                 "python3 /usr/local/share/kryon/scripts/dev_server.py %d \"%s\"",
                  port, document_root);
     }
 

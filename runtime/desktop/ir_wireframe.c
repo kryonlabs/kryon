@@ -98,14 +98,13 @@ bool ir_wireframe_should_render(void* component_ptr, ir_wireframe_config_t* conf
 
     IRComponent* component = (IRComponent*)component_ptr;
 
-    /* Check for ForEach components */
+    /* Check for For components */
     if (config->show_for_each) {
-        if (component->type == IR_COMPONENT_FOR_EACH ||
-            component->type == IR_COMPONENT_FOR_LOOP) {
+        if (component->type == IR_COMPONENT_FOR_LOOP) {
             return true;
         }
-        /* Also check for foreach_def field (new system) */
-        if (component->foreach_def) {
+        /* Also check for for_def field (unified system) */
+        if (component->for_def) {
             return true;
         }
     }

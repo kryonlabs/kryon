@@ -86,8 +86,8 @@ static const char* get_html_tag(IRComponentType type) {
         case IR_COMPONENT_TAB_CONTENT: return "div";
         case IR_COMPONENT_TAB_PANEL: return "div";
 
-        // ForEach (dynamic list rendering) - renders as div with special class
-        case IR_COMPONENT_FOR_EACH: return "div";
+        // For loop (dynamic list rendering) - renders as div with special class
+        case IR_COMPONENT_FOR_LOOP: return "div";
 
         // Layout containers (all map to div)
         case IR_COMPONENT_CONTAINER:
@@ -1216,12 +1216,12 @@ static bool generate_component_html(HTMLGenerator* generator, IRComponent* compo
             break;
         }
 
-        case IR_COMPONENT_FOR_EACH: {
-            // ForEach: dynamic list rendering with runtime reactivity
-            html_generator_write_format(generator, " id=\"foreach-%u\"", component->id);
-            html_generator_write_string(generator, " class=\"kryon-forEach\"");
+        case IR_COMPONENT_FOR_LOOP: {
+            // For loop: dynamic list rendering with runtime reactivity
+            html_generator_write_format(generator, " id=\"for-%u\"", component->id);
+            html_generator_write_string(generator, " class=\"kryon-for\"");
 
-            // Add ForEach-specific data attributes for runtime re-rendering
+            // Add For-specific data attributes for runtime re-rendering
             if (component->each_source && component->each_source[0] != '\0') {
                 char escaped_source[512];
                 escape_html_text(component->each_source, escaped_source, sizeof(escaped_source));

@@ -82,16 +82,16 @@ int kir_to_html_main(const char* source_dir, const char* kir_file,
 
     // Load KIR file with manifest (for CSS variable support)
     IRReactiveManifest* manifest = NULL;
-    IRComponent* root = ir_read_json_file_with_manifest(kir_file, &manifest);
+    IRComponent* root = ir_read_json_file_with_manifest(kir_file, &manifest, NULL);
     if (!root) {
         fprintf(stderr, "Error: Failed to load KIR file: %s\n", kir_file);
         return 1;
     }
 
-    // Expand ForEach components before rendering
-    // This is critical for web codegen - without expansion, ForEach renders as empty containers
-    extern void ir_expand_foreach(IRComponent* root);
-    ir_expand_foreach(root);
+    // Expand For components before rendering
+    // This is critical for web codegen - without expansion, For renders as empty containers
+    extern void ir_expand_for(IRComponent* root, IRSourceStructures* source_structures);
+    ir_expand_for(root, NULL);
 
     if (manifest) {
         printf("  CSS Variables: %u found\n", manifest->variable_count);

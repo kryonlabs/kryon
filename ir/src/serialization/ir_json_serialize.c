@@ -13,7 +13,7 @@
 #include "../include/ir_builder.h"
 #include "../include/ir_logic.h"
 #include "../style/ir_stylesheet.h"
-#include "../logic/ir_foreach.h"
+#include "../logic/ir_for.h"
 #include "../utils/ir_c_metadata.h"
 #include "cJSON.h"
 #include <stdio.h>
@@ -1392,8 +1392,8 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         cJSON_AddStringToObject(obj, "each_index_name", component->each_index_name);
     }
 
-    // For ForEach components created by the DSL, parse metadata from custom_data
-    if (component->type == IR_COMPONENT_FOR_EACH && !component->each_source && component->custom_data && component->custom_data[0] == '{') {
+    // For For components created by the DSL, parse metadata from custom_data (legacy)
+    if (component->type == IR_COMPONENT_FOR_LOOP && !component->each_source && component->custom_data && component->custom_data[0] == '{') {
         cJSON* metadata = cJSON_Parse(component->custom_data);
         if (metadata) {
             cJSON* forEach = cJSON_GetObjectItem(metadata, "forEach");
@@ -1416,11 +1416,11 @@ static cJSON* json_serialize_component_impl(IRComponent* component, bool as_temp
         }
     }
 
-    // Serialize for_def (structured For loop definition with loop_type)
-    if (component->type == IR_COMPONENT_FOR_EACH && component->foreach_def) {
-        cJSON* for_def_json = ir_foreach_def_to_json(component->foreach_def);
+    // Serialize for_def (unified For loop definition)
+    if (component->type == IR_COMPONENT_FOR_LOOP && component->for_def) {
+        cJSON* for_def_json = ir_for_def_to_json(component->for_def);
         if (for_def_json) {
-            cJSON_AddItemToObject(obj, "for_def", for_def_json);
+            cJSON_AddItemToObject(obj, "for", for_def_json);
         }
     }
 

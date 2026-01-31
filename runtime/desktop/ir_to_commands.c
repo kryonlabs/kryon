@@ -1302,9 +1302,8 @@ bool ir_generate_component_commands(
         char label_buf[64];
 
         /* Generate appropriate label */
-        if (component->type == IR_COMPONENT_FOR_EACH) {
-            label = "[FOREACH]";
-        } else if (component->type == IR_COMPONENT_FOR_LOOP) {
+        if (component->type == IR_COMPONENT_FOR_LOOP) {
+            label = "[FOR]";
             label = "[FORLOOP]";
         } else if (component->text_expression) {
             snprintf(label_buf, sizeof(label_buf), "{{%s}}", component->text_expression);
@@ -1412,11 +1411,11 @@ bool ir_generate_component_commands(
             success = ir_gen_modal_commands(component, ctx, render_bounds);
             break;
 
-        case IR_COMPONENT_FOR_EACH:
-            /* ForEach is layout-transparent - like CSS display: contents */
-            /* Skip rendering the ForEach wrapper itself, just render children */
+        case IR_COMPONENT_FOR_LOOP:
+            /* For loop is layout-transparent - like CSS display: contents */
+            /* Skip rendering the For wrapper itself, just render children */
             if (getenv("KRYON_DEBUG_LAYOUT")) {
-                fprintf(stderr, "[FOREACH] ID=%u children=%d\n",
+                fprintf(stderr, "[FOR] ID=%u children=%d\n",
                         component->id, component->child_count);
             }
             success = true;

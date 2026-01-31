@@ -87,7 +87,7 @@ LAYOUT_SOURCES = src/layout/ir_layout.c \
                  src/layout/strategies/strategy_text.c \
                  src/layout/strategies/strategy_image.c \
                  src/layout/strategies/strategy_canvas.c \
-                 src/layout/strategies/strategy_foreach.c
+                 src/layout/strategies/strategy_for.c
 
 LOGIC_SOURCES = src/logic/ir_logic.c \
                 src/logic/ir_executor.c \
@@ -96,8 +96,8 @@ LOGIC_SOURCES = src/logic/ir_logic.c \
                 src/logic/ir_expression_compiler.c \
                 src/logic/ir_expression_cache.c \
                 src/logic/ir_builtin_registry.c \
-                src/logic/ir_foreach.c \
-                src/logic/ir_foreach_expand.c
+                src/logic/ir_for.c \
+                src/logic/ir_for_expand.c
 
 EVENT_SOURCES = src/events/ir_event_builder.c \
                 src/events/ir_event_types.c \

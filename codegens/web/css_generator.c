@@ -2508,9 +2508,9 @@ const char* css_generator_generate(CSSGenerator* generator, IRComponent* root) {
     css_generator_write_string(generator, "  display: none;\n");
     css_generator_write_string(generator, "}\n\n");
 
-    // ForEach component styles (dynamic list rendering)
-    css_generator_write_string(generator, "/* ForEach Component Styles */\n");
-    css_generator_write_string(generator, ".kryon-forEach {\n");
+    // For loop component styles (dynamic list rendering)
+    css_generator_write_string(generator, "/* For Loop Component Styles */\n");
+    css_generator_write_string(generator, ".kryon-for {\n");
     css_generator_write_string(generator, "  display: contents;\n");
     css_generator_write_string(generator, "}\n\n");
 

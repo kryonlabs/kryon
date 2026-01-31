@@ -372,7 +372,7 @@ IRComponent* ir_instance_load_kir(IRInstanceContext* inst, const char* filename)
 
     // Load KIR file - components will be created with instance's context
     IRReactiveManifest* manifest = NULL;
-    IRComponent* root = ir_read_json_file_with_manifest(filename, &manifest);
+    IRComponent* root = ir_read_json_file_with_manifest(filename, &manifest, NULL);
 
     // Restore previous context
     ir_context_set_current(prev_ctx);

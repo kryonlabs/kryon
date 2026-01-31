@@ -1,25 +1,25 @@
 /**
- * @file strategy_foreach.c
- * @brief Layout strategy for ForEach components
+ * @file strategy_for.c
+ * @brief Layout strategy for For components (unified - handles both compile-time and runtime)
  */
 
 #define _GNU_SOURCE
 #include "../ir_layout_strategy.h"
-#include "../include/ir_core.h"
+#include "../../include/ir_core.h"
 #include <stdlib.h>
 
 // Forward declarations from ir_layout.c
 extern float ir_get_component_intrinsic_width(IRComponent* component);
 extern float ir_get_component_intrinsic_height(IRComponent* component);
 
-static void measure_foreach(IRComponent* comp, IRLayoutConstraints* constraints) {
+static void measure_for(IRComponent* comp, IRLayoutConstraints* constraints) {
     if (!comp || !constraints) return;
 
     if (!comp->layout_state) {
         comp->layout_state = (IRLayoutState*)calloc(1, sizeof(IRLayoutState));
     }
 
-    // ForEach behaves like a container - width from constraints, height from children
+    // For behaves like a container - width from constraints, height from children
     float width = constraints->max_width;
     float height = 0;  // Will be determined by children
 
@@ -41,17 +41,19 @@ static void measure_foreach(IRComponent* comp, IRLayoutConstraints* constraints)
     comp->layout_state->layout_valid = true;
 }
 
-static void layout_foreach_children(IRComponent* comp) {
-    // ForEach child layout is handled by the main layout system
-    // The ForEach component just acts as a container
+static void layout_for_children(IRComponent* comp) {
+    // For child layout is handled by the main layout system
+    // The For component just acts as a container
     (void)comp;
 }
 
-void ir_register_foreach_layout_strategy(void) {
+void ir_register_for_layout_strategy(void) {
+    // Register for both IR_COMPONENT_FOR_LOOP (legacy) and the unified type
+    // This ensures backward compatibility during the transition
     static IRLayoutStrategy strategy = {
-        .type = IR_COMPONENT_FOR_EACH,
-        .measure = measure_foreach,
-        .layout_children = layout_foreach_children,
+        .type = IR_COMPONENT_FOR_LOOP,
+        .measure = measure_for,
+        .layout_children = layout_for_children,
         .intrinsic_size = NULL
     };
 

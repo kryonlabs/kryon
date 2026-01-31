@@ -38,7 +38,6 @@ static const ComponentTypeMapping component_type_mapping[] = {
     { IR_COMPONENT_TAB_BAR, "tab-bar", "div", "flex", true, false, false, false, false },
     { IR_COMPONENT_TAB_CONTENT, "tab-content", "div", "block", true, false, false, false, false },
     { IR_COMPONENT_TAB_PANEL, "tab-panel", "div", "block", true, false, false, false, false },
-    { IR_COMPONENT_FOR_EACH, "for-each", "div", "contents", true, false, false, false, false },
 
     // Table components
     { IR_COMPONENT_TABLE, "table", "table", "table", true, false, false, false, false },

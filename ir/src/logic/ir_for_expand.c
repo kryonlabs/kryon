@@ -1,16 +1,23 @@
 // Enable strdup in C99 mode
 #define _POSIX_C_SOURCE 200809L
 
-#include "ir_foreach_expand.h"
-#include "ir_foreach.h"
+#include "ir_for_expand.h"
+#include "ir_for.h"
 #include "../include/ir_core.h"
 #include "../include/ir_builder.h"
+#include "../include/ir_layout.h"
 #include "cJSON.h"
 #include "../utils/ir_json_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+
+// Forward declaration
+static void expand_for_with_parent_internal(IRComponent* component, IRSourceStructures* source_structures, IRComponent* parent, int child_index);
+
+// Forward declare layout invalidation
+extern void ir_layout_invalidate_subtree(IRComponent* root);
 
 // ============================================================================
 // Component Deep Copy (moved from ir_serialization.c)
@@ -44,9 +51,11 @@ IRComponent* ir_component_deep_copy(IRComponent* src) {
     if (src->export_name) dest->export_name = strdup(src->export_name);
     if (src->scope) dest->scope = strdup(src->scope);
     if (src->visible_condition) dest->visible_condition = strdup(src->visible_condition);
-    if (src->each_source) dest->each_source = strdup(src->each_source);
-    if (src->each_item_name) dest->each_item_name = strdup(src->each_item_name);
-    if (src->each_index_name) dest->each_index_name = strdup(src->each_index_name);
+
+    // Copy for_def if present (NEW unified field)
+    if (src->for_def) {
+        dest->for_def = ir_for_def_copy(src->for_def);
+    }
 
     // Copy source_metadata
     if (src->source_metadata.generated_by) {
@@ -55,11 +64,6 @@ IRComponent* ir_component_deep_copy(IRComponent* src) {
     dest->source_metadata.iteration_index = src->source_metadata.iteration_index;
     dest->source_metadata.is_template = src->source_metadata.is_template;
     dest->visible_when_true = src->visible_when_true;
-
-    // Copy foreach_def if present
-    if (src->foreach_def) {
-        dest->foreach_def = ir_foreach_def_copy(src->foreach_def);
-    }
 
     // Copy style if present
     if (src->style) {
@@ -92,7 +96,7 @@ IRComponent* ir_component_deep_copy(IRComponent* src) {
         }
     }
 
-    // NOTE: Do NOT copy layout_state! ForEach expanded copies need fresh layout calculation.
+    // NOTE: Do NOT copy layout_state! For expanded copies need fresh layout calculation.
     dest->layout_state = NULL;
 
     // Copy events if present
@@ -168,7 +172,7 @@ static cJSON* get_nested_field(cJSON* obj, const char* path) {
     return current;
 }
 
-char* ir_foreach_resolve_binding(const char* expression, IRForEachContext* ctx) {
+char* ir_for_resolve_binding(const char* expression, IRForContext* ctx) {
     if (!expression || !ctx) return NULL;
 
     // Handle index binding
@@ -233,7 +237,7 @@ char* ir_foreach_resolve_binding(const char* expression, IRForEachContext* ctx) 
 // Property Setters
 // ============================================================================
 
-bool ir_foreach_set_property(IRComponent* component, const char* property_path, const char* value) {
+bool ir_for_set_property(IRComponent* component, const char* property_path, const char* value) {
     if (!component || !property_path || !value) return false;
 
     // text_content property
@@ -288,12 +292,12 @@ bool ir_foreach_set_property(IRComponent* component, const char* property_path, 
 // Binding Application
 // ============================================================================
 
-void ir_foreach_apply_bindings(IRComponent* component, IRForEachDef* def, IRForEachContext* ctx) {
+void ir_for_apply_bindings(IRComponent* component, IRForDef* def, IRForContext* ctx) {
     if (!component || !def || !ctx) return;
 
     // Apply each binding
     for (uint32_t i = 0; i < def->tmpl.binding_count; i++) {
-        IRForEachBinding* binding = &def->tmpl.bindings[i];
+        IRForBinding* binding = &def->tmpl.bindings[i];
 
         if (binding->is_computed) {
             // Computed bindings need expression evaluation (not implemented yet)
@@ -302,9 +306,9 @@ void ir_foreach_apply_bindings(IRComponent* component, IRForEachDef* def, IRForE
         }
 
         // Resolve binding value
-        char* value = ir_foreach_resolve_binding(binding->source_expression, ctx);
+        char* value = ir_for_resolve_binding(binding->source_expression, ctx);
         if (value) {
-            ir_foreach_set_property(component, binding->target_property, value);
+            ir_for_set_property(component, binding->target_property, value);
             free(value);
         }
     }
@@ -314,12 +318,12 @@ void ir_foreach_apply_bindings(IRComponent* component, IRForEachDef* def, IRForE
 // Legacy Text Update (for backward compatibility)
 // ============================================================================
 
-static void update_foreach_component_text_recursive(IRComponent* component, cJSON* data_item, const char* item_name);
+static void update_for_component_text_recursive(IRComponent* component, cJSON* data_item, const char* item_name);
 
-static void update_foreach_component_text_legacy(IRComponent* component, cJSON* data_item, const char* item_name) {
+static void update_for_component_text_legacy(IRComponent* component, cJSON* data_item, const char* item_name) {
     if (!component || !data_item) return;
 
-    // Skip arrays (nested ForEach data)
+    // Skip arrays (nested For data)
     if (cJSON_IsArray(data_item)) {
         return;
     }
@@ -445,39 +449,39 @@ static void update_foreach_component_text_legacy(IRComponent* component, cJSON* 
                 } else {
                     component->style->opacity = 1.0f;
                 }
-            }
 
-            // Update custom_data with the actual date from this iteration
-            // This is critical for ForEach click handlers to know which day was clicked
-            if (date_str && cJSON_IsString(date_str)) {
-                // Parse existing custom_data if present
-                cJSON* custom_json = component->custom_data ? cJSON_Parse(component->custom_data) : NULL;
-                if (!custom_json) {
-                    custom_json = cJSON_CreateObject();
+                // Update custom_data with the actual date from this iteration
+                // This is critical for For click handlers to know which day was clicked
+                if (date_str && cJSON_IsString(date_str)) {
+                    // Parse existing custom_data if present
+                    cJSON* custom_json = component->custom_data ? cJSON_Parse(component->custom_data) : NULL;
+                    if (!custom_json) {
+                        custom_json = cJSON_CreateObject();
+                    }
+
+                    // Get or create the "data" object
+                    cJSON* data_obj = cJSON_GetObjectItem(custom_json, "data");
+                    if (!data_obj) {
+                        data_obj = cJSON_CreateObject();
+                        cJSON_AddItemToObject(custom_json, "data", data_obj);
+                    }
+
+                    // Update the date field
+                    cJSON_DeleteItemFromObject(data_obj, "date");
+                    cJSON_AddStringOrNull(data_obj, "date", date_str ? date_str->valuestring : NULL);
+
+                    // Also add isCompleted for the handler to know current state
+                    cJSON_DeleteItemFromObject(data_obj, "isCompleted");
+                    cJSON_AddBoolToObject(data_obj, "isCompleted", completed);
+
+                    // Serialize back and update component
+                    char* new_custom_data = cJSON_PrintUnformatted(custom_json);
+                    if (new_custom_data) {
+                        free(component->custom_data);
+                        component->custom_data = new_custom_data;
+                    }
+                    cJSON_Delete(custom_json);
                 }
-
-                // Get or create the "data" object
-                cJSON* data_obj = cJSON_GetObjectItem(custom_json, "data");
-                if (!data_obj) {
-                    data_obj = cJSON_CreateObject();
-                    cJSON_AddItemToObject(custom_json, "data", data_obj);
-                }
-
-                // Update the date field
-                cJSON_DeleteItemFromObject(data_obj, "date");
-                cJSON_AddStringOrNull(data_obj, "date", date_str ? date_str->valuestring : NULL);
-
-                // Also add isCompleted for the handler to know current state
-                cJSON_DeleteItemFromObject(data_obj, "isCompleted");
-                cJSON_AddBoolToObject(data_obj, "isCompleted", completed);
-
-                // Serialize back and update component
-                char* new_custom_data = cJSON_PrintUnformatted(custom_json);
-                if (new_custom_data) {
-                    free(component->custom_data);
-                    component->custom_data = new_custom_data;
-                }
-                cJSON_Delete(custom_json);
             }
         }
     }
@@ -485,40 +489,36 @@ static void update_foreach_component_text_legacy(IRComponent* component, cJSON* 
     // Recursively update children
     for (uint32_t i = 0; i < component->child_count; i++) {
         if (component->children[i]) {
-            update_foreach_component_text_recursive(component->children[i], data_item, item_name);
+            update_for_component_text_recursive(component->children[i], data_item, item_name);
         }
     }
 }
 
-static void update_foreach_component_text_recursive(IRComponent* component, cJSON* data_item, const char* item_name) {
-    update_foreach_component_text_legacy(component, data_item, item_name);
+static void update_for_component_text_recursive(IRComponent* component, cJSON* data_item, const char* item_name) {
+    update_for_component_text_legacy(component, data_item, item_name);
 }
 
 // ============================================================================
-// Nested ForEach Source Update
+// Nested For Source Update
 // ============================================================================
 
-static void update_nested_foreach_source(IRComponent* component, cJSON* source_array) {
+static void update_nested_for_source(IRComponent* component, cJSON* source_array) {
     if (!component || !source_array) return;
 
-    if (component->type == IR_COMPONENT_FOR_EACH) {
-        // Update each_source with new data
-        free(component->each_source);
-        component->each_source = cJSON_PrintUnformatted(source_array);
-
-        // Also update foreach_def if present
-        if (component->foreach_def) {
-            free(component->foreach_def->source.literal_json);
-            component->foreach_def->source.literal_json = cJSON_PrintUnformatted(source_array);
-            component->foreach_def->source.type = FOREACH_SOURCE_LITERAL;
+    // Handle For components
+    if (component->type == IR_COMPONENT_FOR_LOOP) {
+        // Update for_def if present
+        if (component->for_def) {
+            free(component->for_def->source.literal_json);
+            component->for_def->source.literal_json = cJSON_PrintUnformatted(source_array);
+            component->for_def->source.type = FOR_SOURCE_LITERAL;
         }
-
         return;
     }
 
     // Recurse into children
     for (uint32_t i = 0; i < component->child_count; i++) {
-        update_nested_foreach_source(component->children[i], source_array);
+        update_nested_for_source(component->children[i], source_array);
     }
 }
 
@@ -526,27 +526,25 @@ static void update_nested_foreach_source(IRComponent* component, cJSON* source_a
 // Tree Manipulation
 // ============================================================================
 
-void ir_foreach_replace_in_parent(IRComponent* parent, int foreach_index,
-                                   IRComponent** expanded_children, uint32_t expanded_count) {
+void ir_for_replace_in_parent(IRComponent* parent, int for_index,
+                               IRComponent** expanded_children, uint32_t expanded_count) {
     if (!expanded_children || expanded_count == 0) return;
 
     if (!parent) {
         return;
     }
 
-    // Save reference to the ForEach component being replaced
-    // Note: Its children have been moved to expanded_children, so we need to clear them
-    // before destroying to avoid double-free
-    IRComponent* old_foreach = parent->children[foreach_index];
+    // Save reference to the For component being replaced
+    IRComponent* old_for = parent->children[for_index];
 
     // Allocate new children array
     int new_count = parent->child_count - 1 + expanded_count;
     IRComponent** new_children = calloc(new_count, sizeof(IRComponent*));
     if (!new_children) return;
 
-    // Copy children before ForEach
+    // Copy children before For
     int dest_idx = 0;
-    for (int i = 0; i < foreach_index; i++) {
+    for (int i = 0; i < for_index; i++) {
         new_children[dest_idx++] = parent->children[i];
     }
 
@@ -554,13 +552,13 @@ void ir_foreach_replace_in_parent(IRComponent* parent, int foreach_index,
     for (uint32_t i = 0; i < expanded_count; i++) {
         new_children[dest_idx++] = expanded_children[i];
         if (expanded_children[i]) {
-            // Always update parent to actual parent (was temporarily set to ForEach)
+            // Always update parent to actual parent (was temporarily set to For)
             expanded_children[i]->parent = parent;
         }
     }
 
-    // Copy children after ForEach
-    for (int i = foreach_index + 1; i < (int)parent->child_count; i++) {
+    // Copy children after For
+    for (int i = for_index + 1; i < (int)parent->child_count; i++) {
         new_children[dest_idx++] = parent->children[i];
     }
 
@@ -568,12 +566,11 @@ void ir_foreach_replace_in_parent(IRComponent* parent, int foreach_index,
     parent->children = new_children;
     parent->child_count = new_count;
 
-    // Free the old ForEach component (its expanded children are now in parent)
-    // The caller will NULL out its children pointer, so we do it here to be safe
-    if (old_foreach) {
-        old_foreach->children = NULL;
-        old_foreach->child_count = 0;
-        ir_destroy_component(old_foreach);
+    // Free the old For component
+    if (old_for) {
+        old_for->children = NULL;
+        old_for->child_count = 0;
+        ir_destroy_component(old_for);
     }
 }
 
@@ -581,36 +578,43 @@ void ir_foreach_replace_in_parent(IRComponent* parent, int foreach_index,
 // Main Expansion Implementation
 // ============================================================================
 
-static void expand_foreach_with_parent_internal(IRComponent* component, IRComponent* parent, int child_index);
-
-uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_children) {
-    if (!foreach_comp || !out_children) return 0;
+uint32_t ir_for_expand_single(IRComponent* for_comp, IRSourceStructures* source_structures, IRComponent*** out_children) {
+    if (!for_comp || !out_children) return 0;
     *out_children = NULL;
+
+    // Handle For components
+    if (for_comp->type != IR_COMPONENT_FOR_LOOP) return 0;
 
     // Get source data
     cJSON* source_array = NULL;
     bool should_free_source = false;
 
-    // Try new foreach_def first
-    if (foreach_comp->foreach_def) {
-        source_array = ir_foreach_get_source_data(foreach_comp->foreach_def);
+    // Try new for_def first
+    if (for_comp->for_def) {
+        source_array = ir_for_get_source_data(for_comp->for_def);
         should_free_source = true;
+
+        // If still NULL, try resolving as variable reference
+        if (!source_array && source_structures) {
+            source_array = ir_for_resolve_variable_source(for_comp->for_def, source_structures);
+            should_free_source = true;
+        }
     }
 
-    // Fall back to each_source field
-    if (!source_array && foreach_comp->each_source) {
+    // Fall back to legacy each_source field
+    if (!source_array && for_comp->each_source) {
         // Skip runtime markers
-        if (strcmp(foreach_comp->each_source, "__runtime__") == 0 ||
-            strcmp(foreach_comp->each_source, "\"__runtime__\"") == 0) {
+        if (strcmp(for_comp->each_source, "__runtime__") == 0 ||
+            strcmp(for_comp->each_source, "\"__runtime__\"") == 0) {
             return 0;
         }
-        source_array = cJSON_Parse(foreach_comp->each_source);
+        source_array = cJSON_Parse(for_comp->each_source);
         should_free_source = true;
     }
 
     // Fall back to custom_data (legacy)
-    if (!source_array && foreach_comp->custom_data) {
-        cJSON* custom_json = cJSON_Parse(foreach_comp->custom_data);
+    if (!source_array && for_comp->custom_data) {
+        cJSON* custom_json = cJSON_Parse(for_comp->custom_data);
         if (custom_json) {
             cJSON* each_source_item = cJSON_GetObjectItem(custom_json, "each_source");
             if (each_source_item && cJSON_IsArray(each_source_item)) {
@@ -639,19 +643,27 @@ uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_
     }
 
     // Get template
-    if (foreach_comp->child_count == 0 || !foreach_comp->children[0]) {
+    if (for_comp->child_count == 0 || !for_comp->children[0]) {
         if (should_free_source) cJSON_Delete(source_array);
         return 0;
     }
 
-    IRComponent* tmpl = foreach_comp->children[0];
+    IRComponent* tmpl = for_comp->children[0];
 
-    // Prepare context
-    IRForEachContext ctx = {
+    // Prepare context - use for_def if available, fall back to legacy fields
+    IRForContext ctx = {
         .data_array = source_array,
-        .item_name = foreach_comp->each_item_name ? foreach_comp->each_item_name : "item",
-        .index_name = foreach_comp->each_index_name ? foreach_comp->each_index_name : "index"
+        .item_name = "item",
+        .index_name = "index"
     };
+
+    if (for_comp->for_def) {
+        ctx.item_name = for_comp->for_def->item_name ? for_comp->for_def->item_name : "item";
+        ctx.index_name = for_comp->for_def->index_name ? for_comp->for_def->index_name : "index";
+    } else if (for_comp->each_item_name) {
+        ctx.item_name = for_comp->each_item_name;
+        ctx.index_name = for_comp->each_index_name ? for_comp->each_index_name : "index";
+    }
 
     // Allocate children array
     IRComponent** new_children = calloc(num_items, sizeof(IRComponent*));
@@ -668,7 +680,7 @@ uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_
             continue;
         }
 
-        copy->parent = foreach_comp;
+        copy->parent = for_comp;
         copy->source_metadata.iteration_index = i;
 
         cJSON* data_item = cJSON_GetArrayItem(source_array, i);
@@ -676,17 +688,17 @@ uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_
         ctx.current_item = data_item;
 
         if (data_item) {
-            // Apply bindings if we have a foreach_def
-            if (foreach_comp->foreach_def && foreach_comp->foreach_def->tmpl.binding_count > 0) {
-                ir_foreach_apply_bindings(copy, foreach_comp->foreach_def, &ctx);
+            // Apply bindings if we have a for_def
+            if (for_comp->for_def && for_comp->for_def->tmpl.binding_count > 0) {
+                ir_for_apply_bindings(copy, for_comp->for_def, &ctx);
             }
 
             // Also apply legacy text updates for backward compatibility
             if (cJSON_IsObject(data_item)) {
-                update_foreach_component_text_legacy(copy, data_item, ctx.item_name);
+                update_for_component_text_legacy(copy, data_item, ctx.item_name);
             } else if (cJSON_IsArray(data_item)) {
-                // Nested array - propagate to nested ForEach
-                update_nested_foreach_source(copy, data_item);
+                // Nested array - propagate to nested For
+                update_nested_for_source(copy, data_item);
             }
         }
 
@@ -699,95 +711,68 @@ uint32_t ir_foreach_expand_single(IRComponent* foreach_comp, IRComponent*** out_
     return expanded_count;
 }
 
-static void expand_foreach_with_parent_internal(IRComponent* component, IRComponent* parent, int child_index) {
+static void expand_for_with_parent_internal(IRComponent* component, IRSourceStructures* source_structures, IRComponent* parent, int child_index) {
     if (!component) return;
 
-    if (component->type != IR_COMPONENT_FOR_EACH) {
-        // Not a ForEach - process children
+    // Handle For components
+    if (component->type != IR_COMPONENT_FOR_LOOP) {
+        // Not a For - process children
         for (uint32_t i = 0; i < component->child_count; i++) {
             if (component->children[i]) {
-                expand_foreach_with_parent_internal(component->children[i], component, (int)i);
+                expand_for_with_parent_internal(component->children[i], source_structures, component, (int)i);
             }
         }
         return;
     }
 
-    // Expand this ForEach
+    // Check if this is a runtime For loop (should not be expanded)
+    if (component->for_def && !component->for_def->is_compile_time) {
+        // Skip expansion for runtime loops - just process children
+        for (uint32_t i = 0; i < component->child_count; i++) {
+            if (component->children[i]) {
+                expand_for_with_parent_internal(component->children[i], source_structures, component, (int)i);
+            }
+        }
+        return;
+    }
+
+    // Expand this For
     IRComponent** expanded_children = NULL;
-    uint32_t expanded_count = ir_foreach_expand_single(component, &expanded_children);
+    uint32_t expanded_count = ir_for_expand_single(component, source_structures, &expanded_children);
 
     if (expanded_count > 0 && expanded_children) {
         // Update component with expanded children
         component->children = expanded_children;
         component->child_count = expanded_count;
 
-        // Expand nested ForEach in each copy
+        // Expand nested For in each copy
         for (uint32_t i = 0; i < expanded_count; i++) {
             if (expanded_children[i]) {
-                expand_foreach_with_parent_internal(expanded_children[i], component, (int)i);
+                expand_for_with_parent_internal(expanded_children[i], source_structures, component, (int)i);
             }
         }
 
         if (parent) {
-            // Normal case: replace ForEach with children in parent
-            // Note: ir_foreach_replace_in_parent() destroys the ForEach component,
-            // so we must not access 'component' after this call
-            ir_foreach_replace_in_parent(parent, child_index, expanded_children, expanded_count);
+            // Normal case: replace For with children in parent
+            ir_for_replace_in_parent(parent, child_index, expanded_children, expanded_count);
         }
-        // else: Root-level ForEach - keep children in the ForEach as a wrapper
-        // The ForEach acts as a transparent container that holds its expanded children
+        // else: Root-level For - keep children in the For as a wrapper
     } else if (component->child_count > 0 && parent) {
-        // No data to expand - first recursively expand any nested ForEach in template children
-        // This is critical for runtime ForEach that contain static nested ForEach
+        // No data to expand - first recursively expand any nested For in template children
         for (uint32_t i = 0; i < component->child_count; i++) {
             if (component->children[i]) {
-                expand_foreach_with_parent_internal(component->children[i], component, (int)i);
+                expand_for_with_parent_internal(component->children[i], source_structures, component, (int)i);
             }
         }
-        // For runtime ForEach, keep the container - don't replace with template children
-        // This allows web codegen to render ForEach containers for JavaScript to handle
-        // Only replace for desktop where runtime ForEach gets expanded later
-        // NOTE: This is commented out to preserve ForEach containers for web
-        // ir_foreach_replace_in_parent(parent, child_index, component->children, component->child_count);
     }
 }
 
-__attribute__((unused)) static void debug_print_tree(IRComponent* comp, int depth) {
-    if (!comp) return;
-    for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
-    fprintf(stderr, "type=%d children=%u text=%s\n",
-            (int)comp->type, comp->child_count,
-            comp->text_content ? comp->text_content : "(null)");
-    if (depth < 3) {  // Limit depth
-        for (uint32_t i = 0; i < comp->child_count && i < 3; i++) {
-            debug_print_tree(comp->children[i], depth + 1);
-        }
-        if (comp->child_count > 3) {
-            for (int i = 0; i < depth + 1; i++) fprintf(stderr, "  ");
-            fprintf(stderr, "... (%u more)\n", comp->child_count - 3);
-        }
-    }
-}
-
-__attribute__((unused)) static void debug_print_tree_full(IRComponent* comp, int depth, int max_depth) {
-    if (!comp) return;
-    for (int i = 0; i < depth; i++) fprintf(stderr, "  ");
-    fprintf(stderr, "type=%d children=%u ptr=%p text=%s\n",
-            (int)comp->type, comp->child_count, (void*)comp,
-            comp->text_content ? comp->text_content : "(null)");
-    if (depth < max_depth) {
-        for (uint32_t i = 0; i < comp->child_count; i++) {
-            debug_print_tree_full(comp->children[i], depth + 1, max_depth);
-        }
-    }
-}
-
-void ir_foreach_expand_tree(IRComponent* root) {
+void ir_for_expand_tree(IRComponent* root, IRSourceStructures* source_structures) {
     if (!root) {
         return;
     }
 
-    expand_foreach_with_parent_internal(root, NULL, 0);
+    expand_for_with_parent_internal(root, source_structures, NULL, 0);
 
     // Invalidate layout for entire tree after expansion
     // This ensures expanded children get proper layout computation

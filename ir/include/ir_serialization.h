@@ -58,11 +58,19 @@ bool ir_write_json_file(IRComponent* root, IRReactiveManifest* manifest, const c
 IRComponent* ir_deserialize_json(const char* json_string);
 IRComponent* ir_read_json_file(const char* filename);
 
-// Deserialize with manifest (returns manifest via out parameter)
-IRComponent* ir_read_json_file_with_manifest(const char* filename, IRReactiveManifest** out_manifest);
+// Deserialize with manifest and source_structures (returned via out parameters)
+IRComponent* ir_read_json_file_with_manifest(const char* filename,
+                                              IRReactiveManifest** out_manifest,
+                                              IRSourceStructures** out_source_structures);
 
-// ForEach runtime expansion (call after loading KIR file)
-void ir_expand_foreach(IRComponent* root);
+// For loop runtime expansion (call after loading KIR file)
+// Pass source_structures from manifest to resolve const variable references
+// For backward compatibility, source_structures can be NULL
+// This function expands compile-time For loops; runtime For loops are handled differently
+void ir_expand_for(IRComponent* root, IRSourceStructures* source_structures);
+
+// Legacy function name (deprecated, use ir_expand_for instead)
+void ir_expand_foreach(IRComponent* root, IRSourceStructures* source_structures);
 
 // Component type conversion (for parsers)
 IRComponentType ir_string_to_component_type(const char* str);

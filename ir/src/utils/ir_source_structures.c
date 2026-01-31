@@ -351,7 +351,9 @@ IRVarDecl* ir_source_structures_find_var_decl(IRSourceStructures* ss, const char
     if (!ss || !id) return NULL;
 
     for (uint32_t i = 0; i < ss->var_decl_count; i++) {
-        if (strcmp(ss->var_decls[i]->id, id) == 0) {
+        // Try matching by id first, then by name
+        if (strcmp(ss->var_decls[i]->id, id) == 0 ||
+            strcmp(ss->var_decls[i]->name, id) == 0) {
             return ss->var_decls[i];
         }
     }

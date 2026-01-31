@@ -256,6 +256,14 @@ typedef enum {
 } TargetCapability;
 
 /**
+ * Screenshot options for targets that support window capture
+ */
+typedef struct {
+    const char* screenshot_path;      // Path where screenshot will be saved
+    int screenshot_after_frames;      // Frames to wait before capturing
+} ScreenshotRunOptions;
+
+/**
  * Handler context structure
  * Provides explicit context to handlers instead of fragile globals
  */
@@ -265,6 +273,7 @@ typedef struct TargetHandlerContext {
     const char* kir_file;
     const char* output_dir;
     const char* project_name;
+    ScreenshotRunOptions* screenshot; // Screenshot options (optional)
 } TargetHandlerContext;
 
 /**
@@ -280,7 +289,9 @@ typedef struct TargetHandler {
     // Handler functions (function pointers)
     int (*build_handler)(const char* kir_file, const char* output_dir,
                         const char* project_name, const KryonConfig* config);
-    int (*run_handler)(const char* kir_file, const KryonConfig* config);
+    // Run handler can optionally use screenshot_opts if target supports it
+    int (*run_handler)(const char* kir_file, const KryonConfig* config,
+                       const ScreenshotRunOptions* screenshot_opts);
 
     // Context pointer for dynamic targets (e.g., command targets)
     // For command targets, this points to the target name string
@@ -307,7 +318,8 @@ int target_handler_build(const char* target_name, const char* kir_file,
                          const char* output_dir, const char* project_name,
                          const KryonConfig* config);
 int target_handler_run(const char* target_name, const char* kir_file,
-                       const KryonConfig* config);
+                       const KryonConfig* config,
+                       const ScreenshotRunOptions* screenshot_opts);
 const char** target_handler_list_names(void);
 
 // ============================================================================

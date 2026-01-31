@@ -24,6 +24,7 @@ typedef struct IRSourceStructures IRSourceStructures;
 typedef struct IRImport IRImport;
 typedef struct IRReactiveManifest IRReactiveManifest;
 typedef struct IRDynamicBinding IRDynamicBinding;
+typedef struct IRForDef IRForDef;  // Unified For loop definition
 
 // ============================================================================
 // Dynamic Binding (for runtime-evaluated Lua expressions)
@@ -348,13 +349,14 @@ typedef struct IRComponent {
     char* visible_condition;           // Variable name that controls visibility (e.g., "showMessage")
     bool visible_when_true;            // True if visible when condition is true, false if visible when condition is false
 
-    // ForEach (dynamic list rendering) support - legacy fields
-    char* each_source;                 // Reactive variable name to iterate (e.g., "state.calendarDays")
-    char* each_item_name;              // Variable name for each item (e.g., "day")
-    char* each_index_name;             // Variable name for index (e.g., "index")
+    // For loop support (unified for compile-time and runtime)
+    // Legacy fields - kept for backward compatibility during migration
+    char* each_source;                 // DEPRECATED: Use for_def instead
+    char* each_item_name;              // DEPRECATED: Use for_def instead
+    char* each_index_name;             // DEPRECATED: Use for_def instead
 
-    // ForEach (new modular system) - structured definition with bindings
-    struct IRForEachDef* foreach_def;  // New structured ForEach definition (see ir_foreach.h)
+    // For loop definition (unified system - handles ALL loop types)
+    struct IRForDef* for_def;          // Unified For loop definition (see ir_for.h)
 
     // Interaction state
     bool is_disabled;                  // True if component is disabled (for buttons, inputs, etc.)

@@ -667,7 +667,7 @@ void ir_flexbox_components_init(void) {
     ir_layout_register_trait(IR_COMPONENT_COLUMN, &IR_COLUMN_LAYOUT_TRAIT);
     ir_layout_register_trait(IR_COMPONENT_CONTAINER, &IR_CONTAINER_LAYOUT_TRAIT);
     ir_layout_register_trait(IR_COMPONENT_CENTER, &IR_CENTER_LAYOUT_TRAIT);
-    // Note: IR_COMPONENT_FOR_EACH has no layout trait - it should be transparent to layout
+    // Note: IR_COMPONENT_FOR_LOOP has no layout trait - it should be transparent to layout
 
     if (getenv("KRYON_DEBUG_REGISTRY")) {
         fprintf(stderr, "[Registry] Flexbox components (Row/Column/Container/Center) initialized\n");

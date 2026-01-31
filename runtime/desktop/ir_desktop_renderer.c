@@ -669,9 +669,9 @@ void desktop_ir_renderer_set_lua_canvas_update_callback(DesktopIRRenderer* rende
 
 void desktop_ir_renderer_update_root(DesktopIRRenderer* renderer, IRComponent* new_root) {
     if (renderer && new_root) {
-        // Expand any ForEach components in the new tree before rendering
+        // Expand any For components in the new tree before rendering
         // This is critical for reactive updates where the UI is rebuilt
-        ir_expand_foreach(new_root);
+        ir_expand_for(new_root, NULL);
 
         renderer->last_root = new_root;
         renderer->needs_relayout = true;

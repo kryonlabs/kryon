@@ -25,7 +25,6 @@ pkgs.mkShell {
     libtickit
 
     # TypeScript/JavaScript frontend support
-    bun
     nodejs  # For npm compatibility if needed
 
     # Python bindings support
@@ -97,7 +96,6 @@ pkgs.mkShell {
 
     echo "Kryon Development Environment"
     echo "============================="
-    echo "Bun version: $(bun --version 2>/dev/null || echo 'not available')"
     echo ""
     echo "Quick start:"
     echo "  Build C Core: cd core && make"

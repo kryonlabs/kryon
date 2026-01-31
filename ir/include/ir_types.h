@@ -54,8 +54,7 @@ typedef enum {
     IR_COMPONENT_CUSTOM,
     // Source structure types (for round-trip codegen)
     IR_COMPONENT_STATIC_BLOCK,        // Static block (compile-time code execution)
-    IR_COMPONENT_FOR_LOOP,            // For loop template (compile-time iteration)
-    IR_COMPONENT_FOR_EACH,            // ForEach (runtime dynamic list rendering)
+    IR_COMPONENT_FOR_LOOP,            // For loop (unified - handles both compile-time and runtime)
     IR_COMPONENT_VAR_DECL,            // Variable declaration (const/let/var)
     // Template placeholder (for docs layout templates)
     IR_COMPONENT_PLACEHOLDER,         // Template placeholder ({{name}})

@@ -141,8 +141,8 @@ void ir_layout_init_traits(void) {
     // Register Tab components (TabGroup, TabBar, Tab, TabContent, TabPanel)
     ir_tab_components_init();
 
-    // Register ForEach component (layout-transparent - just passes through to children)
-    ir_layout_register_trait(IR_COMPONENT_FOR_EACH, &IR_FOR_EACH_LAYOUT_TRAIT);
+    // Register For component (layout-transparent - just passes through to children)
+    ir_layout_register_trait(IR_COMPONENT_FOR_LOOP, &IR_FOR_EACH_LAYOUT_TRAIT);  // Keep trait name for now
 
     if (getenv("KRYON_DEBUG_REGISTRY")) {
         fprintf(stderr, "[Registry] Layout traits initialized\n");
