@@ -32,16 +32,21 @@ OBJECTS = $(SOURCES:.c=.o)
 LIB = libtclparser.so
 STATIC_LIB = libtclparser.a
 
-# Test executable
+# Test executables
 TEST = simple_test
+DEBUG_TEST = debug_test
 
 # Default target
 all: $(LIB) $(STATIC_LIB)
 
-# Test target
+# Test targets
 test: $(TEST)
 	@echo "Running simple test..."
 	@./$(TEST)
+
+debug: $(DEBUG_TEST)
+	@echo "Running debug test..."
+	@./$(DEBUG_TEST)
 
 # Build shared library
 $(LIB): $(OBJECTS)
@@ -57,10 +62,16 @@ $(STATIC_LIB): $(OBJECTS)
 
 # Clean
 clean:
-	rm -f $(OBJECTS) $(LIB) $(STATIC_LIB) $(TEST) test_parser.o
+	rm -f $(OBJECTS) $(LIB) $(STATIC_LIB) $(TEST) $(DEBUG_TEST) test_parser.o
 
-# Build test executable
+# Build test executables
 $(TEST): simple_test.c $(OBJECTS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< \
+		tcl_parser.o tcl_lexer.o tcl_widget_registry.o tcl_to_ir.o \
+		$(THIRD_PARTY_DIR)/cJSON/cJSON.o \
+		$(CODEGEN_DIR)/codegen_common.o -lm
+
+$(DEBUG_TEST): debug_test.c $(OBJECTS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< \
 		tcl_parser.o tcl_lexer.o tcl_widget_registry.o tcl_to_ir.o \
 		$(THIRD_PARTY_DIR)/cJSON/cJSON.o \

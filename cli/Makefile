@@ -146,6 +146,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_markdown.a \
 		../build/libkryon_codegen_limbo.a \
 		../build/libkryon_codegen_tcltk.a \
+		../build/libkryon_codegen_android.a \
 		../dis/libdiscodegen.a
 	# Build kir_to_html.o (embedded web codegen)
 	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
@@ -156,6 +157,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_markdown.a \
 		../build/libkryon_codegen_limbo.a \
 		../build/libkryon_codegen_tcltk.a \
+		../build/libkryon_codegen_android.a \
 		../dis/libdiscodegen.a \
 		$(LDFLAGS) $(HARFBUZZ_LIBS)
 
@@ -186,6 +188,9 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 
 ../build/libkryon_codegen_tcltk.a:
 	$(MAKE) -C ../codegens/tcltk
+
+../build/libkryon_codegen_android.a:
+	$(MAKE) -C ../codegens/android
 
 ../dis/libdiscodegen.a:
 	$(MAKE) -C ../dis all

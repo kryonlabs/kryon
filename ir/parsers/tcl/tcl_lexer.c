@@ -257,6 +257,8 @@ static TclToken* lex_word(TclLexer* lexer) {
 
 /**
  * Lex a comment: # ...
+ * In Tcl, # starts a comment only at the beginning of a command
+ * (after whitespace or at start of line), not in the middle of arguments.
  */
 static TclToken* lex_comment(TclLexer* lexer) {
     int start_line = lexer->line;
@@ -276,6 +278,29 @@ static TclToken* lex_comment(TclLexer* lexer) {
     sb_free(sb);
 
     return create_token(TCL_TOKEN_POUND, value, start_line, start_column, start_pos);
+}
+
+/**
+ * Check if we're at the start of a command (where # would start a comment)
+ * Returns true if we're at the beginning of a line or after whitespace/semicolon
+ */
+static bool at_command_start(TclLexer* lexer) {
+    // Look backwards from current position to see if we're after whitespace or semicolon
+    size_t pos = lexer->position - 1;  // Current position is already at #
+
+    // Skip backwards whitespace
+    while (pos > 0 && (lexer->source[pos - 1] == ' ' ||
+                       lexer->source[pos - 1] == '\t' ||
+                       lexer->source[pos - 1] == '\r')) {
+        pos--;
+    }
+
+    // If at start of file, or previous char was newline or semicolon, we're at command start
+    if (pos == 0) return true;
+    if (lexer->source[pos - 1] == '\n') return true;
+    if (lexer->source[pos - 1] == ';') return true;
+
+    return false;
 }
 
 /**
@@ -383,7 +408,7 @@ TclTokenStream* tcl_lex(const char* source) {
 
         TclToken* token = NULL;
 
-        if (c == '#') {
+        if (c == '#' && at_command_start(&lexer)) {
             token = lex_comment(&lexer);
         } else if (c == '"') {
             token = lex_quoted_string(&lexer);

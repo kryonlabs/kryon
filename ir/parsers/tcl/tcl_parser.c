@@ -296,6 +296,7 @@ static TclWidget* parse_widget_command(TclCommand* cmd) {
  * Main parse function
  */
 TclAST* tcl_parse(const char* source) {
+    bool debug = getenv("DEBUG_TCL_PARSER") != NULL;
     if (!source) {
         set_error(TCL_PARSE_ERROR_SYNTAX, "NULL source");
         return NULL;
@@ -331,8 +332,13 @@ TclAST* tcl_parse(const char* source) {
             continue;  // Skip comments, empty lines
         }
 
+        if (debug) {
+            printf("Command: '%s' (args: %d)\n", cmd->command_name, cmd->argument_count);
+        }
+
         // Check command type
         if (is_widget_creation(cmd->command_name)) {
+            if (debug) printf("  -> Recognized as widget!\n");
             // Widget creation
             TclWidget* widget = parse_widget_command(cmd);
             if (widget) {

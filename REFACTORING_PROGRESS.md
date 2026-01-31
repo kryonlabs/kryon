@@ -2,9 +2,9 @@
 
 ## 📊 Current Status
 
-**Last Updated:** January 31, 2026  
-**Realistic Goal:** 2,500-4,000 lines (revised from 6,700-9,400)  
-**Actual Progress:** 54 lines eliminated (Phase 1.1)
+**Last Updated:** January 31, 2026
+**Realistic Goal:** 2,500-4,000 lines (revised from 6,700-9,400)
+**Actual Progress:** 111 lines eliminated (Phases 1.1, 1.3)
 
 ---
 
@@ -26,7 +26,7 @@
 
 ---
 
-## ✅ Phase 1: Quick Wins - 50% COMPLETE
+## ✅ Phase 1: Quick Wins - 75% COMPLETE
 
 ### ✅ Phase 1.1: Layout Engine Consolidation - COMPLETE
 
@@ -43,6 +43,32 @@
 - ir_layout.c: 2,586 → 2,532 lines (-54 lines, -2.1%)
 - Build: ✅ PASSING
 - Tests: ✅ PASSING
+
+---
+
+### ✅ Phase 1.3: Desktop Target Handlers - COMPLETE
+
+**Completed:** January 31, 2026
+**Impact:** ~57 lines eliminated
+**File:** `cli/src/config/target_handlers.c`
+
+**Changes:**
+- Created `DesktopTargetInfo` struct for target configuration
+- Created `desktop_target_build()` - shared implementation (99 lines)
+- Replaced SDL3 handler: ~100 lines → 12 lines (88% reduction)
+- Replaced Raylib handler: ~80 lines → 12 lines (85% reduction)
+
+**Results:**
+- Total: ~180 lines → 123 lines (-57 lines, -32% reduction)
+- Build: ✅ PASSING (CLI compiles successfully)
+- Tests: ✅ PASSING (SDL3 and Raylib builds verified)
+- Fixed: Added Android codegen library to CLI Makefile
+
+**Code Quality:**
+- Single source of truth for desktop build logic
+- Consistent error handling (${PIPESTATUS[0]})
+- Proper memory management (kryon_root freed)
+- Adding new desktop targets now trivial (~10 lines)
 
 ---
 
@@ -97,10 +123,11 @@
 | **Phase 0: Preparation** | ✅ COMPLETE | Foundation | 100% |
 | **Phase 1.1: Layout** | ✅ COMPLETE | 54 lines | 100% |
 | **Phase 1.2: Renderers** | ⚠️ SKIPPED | ~50 lines | N/A |
+| **Phase 1.3: Desktop Targets** | ✅ COMPLETE | 57 lines | 100% |
 | **Phase 2.2: Codegens** | 🔜 NEXT | 1,500-2,000 lines | 0% |
 | **Phase 3.1: JSON** | ⬜ PENDING | 2,000-2,500 lines | 0% |
 
-**Overall Progress:** 54 lines / 2,500-4,000 goal = **1-2%**
+**Overall Progress:** 111 lines / 2,500-4,000 goal = **3-4%**
 
 ---
 
@@ -128,15 +155,18 @@
 ## 📈 Success Metrics
 
 ### Quantitative
-- ✅ 54 lines eliminated (Phase 1.1)
+- ✅ 111 lines eliminated (Phases 1.1, 1.3)
 - ✅ All tests passing
 - ✅ Binary sizes unchanged
 - ✅ Build time unchanged
+- ✅ CLI compiles with all codegens (including Android)
 
 ### Qualitative
 - ✅ Layout logic consolidated
-- ✅ Single source of truth for flex layout
+- ✅ Desktop target handlers consolidated
+- ✅ Single source of truth for flex layout and desktop builds
 - ✅ Easier maintenance (bug fixes in one place)
+- ✅ Adding new desktop targets now trivial (~10 lines)
 
 ---
 
