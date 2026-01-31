@@ -37,6 +37,7 @@ help:
 	@echo "Kryon Build System"
 	@echo ""
 	@echo "Targets:"
+	@echo "  vendored     - Build vendored third-party libraries (harfbuzz, freetype, etc.)"
 	@echo "  all          - Build everything (default)"
 	@echo "  cli          - Build CLI tool"
 	@echo "  ir           - Build IR library"
@@ -57,6 +58,15 @@ help:
 # ============================================================================
 # Module Targets
 # ============================================================================
+
+# Build vendored third-party libraries
+# Most libraries now use system packages via shell.nix
+# Only cJSON and tomlc99 are still vendored (too small to bother with packages)
+vendored:
+	@echo "Vendored libraries now use system packages (see shell.nix)"
+	@echo "System libraries: harfbuzz, freetype, fribidi, SDL3, raylib"
+	@echo "Vendored libraries: cJSON, tomlc99, stb"
+	@echo "All dependencies available via nix-shell"
 
 # CLI tool (builds the main kryon binary)
 cli: ir codegens
@@ -108,6 +118,7 @@ dsl_runtime: desktop
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
+	@rm -rf $(BUILD_DIR)/harfbuzz $(BUILD_DIR)/freetype
 	@$(MAKE) -C $(IR_DIR) clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/c clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/kry clean || true

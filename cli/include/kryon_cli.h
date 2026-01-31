@@ -351,6 +351,7 @@ typedef enum {
     FORMAT_TCL,
     FORMAT_LIMBO,
     FORMAT_HTML,
+    FORMAT_MARKDOWN,
     FORMAT_C,
     FORMAT_KIR
 } FileFormat;

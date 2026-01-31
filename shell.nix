@@ -13,16 +13,16 @@ pkgs.mkShell {
     sdl3-ttf
     sdl3-image
 
-    # Raylib for 3D rendering backend
+    # Raylib for 3D rendering backend (dynamically linked - too large to vendor)
     raylib
 
-    # Text layout and shaping
+    # Text layout and shaping - use system libraries
     harfbuzz
     freetype
     fribidi
 
-    # Terminal rendering backend
-    libtickit
+    # Terminal rendering backend - NOW VENDORED in third_party/
+    # libtickit
 
     # Tcl/Tk for Tcl/Tk backend
     tcl
@@ -112,8 +112,9 @@ pkgs.mkShell {
     echo ""
     echo "Desktop dependencies:"
     echo "  SDL3: $(pkg-config --modversion sdl3 2>/dev/null || echo 'not found')"
-    echo "  HarfBuzz: $(pkg-config --modversion harfbuzz 2>/dev/null || echo 'not found')"
+    echo "  Raylib: $(echo ${pkgs.raylib.version} 2>/dev/null || echo 'available')"
     echo "  Tcl/Tk: $(echo ${pkgs.tcl.version} 2>/dev/null || echo 'available')"
+    echo "  Vendored libs: harfbuzz, freetype, fribidi, libtickit, cJSON, tomlc99, stb"
     echo ""
   '';
 }

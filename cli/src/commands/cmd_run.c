@@ -7,6 +7,7 @@
 
 #include "kryon_cli.h"
 #include "build.h"
+#include "target_validation.h"
 // file_discovery.h removed - we only build explicit entry points from kryon.toml
 #include "../../ir/include/ir_core.h"
 #include "../../ir/include/ir_serialization.h"
@@ -339,27 +340,62 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "  kryon run <target> <file>           # Target before file\n");
         fprintf(stderr, "  kryon run <file> --target=<target>  # Target after file\n");
         fprintf(stderr, "  kryon run --target=<target> <file>  # Target as flag\n");
-        fprintf(stderr, "\nValid targets: limbo, dis, emu, sdl3, desktop, raylib, web, android, kotlin\n");
+        fprintf(stderr, "\nValid targets: limbo, tcl+tk, c+sdl3, etc.\n");
+        fprintf(stderr, "Run 'kryon targets' to list all valid targets.\n");
         if (early_config) config_free(early_config);
         return 1;
     }
 
-    // Validate target platform using handler registry
-    // First check if it's a valid alias or registered target
+    // Initialize validation system
+    target_validation_initialize();
+
+    // Validate target using new combo registry
+    char normalized_target[256];
+    if (!target_validate_and_normalize(target_platform, normalized_target, sizeof(normalized_target))) {
+        // Validation failed - error message already printed
+        if (free_target_platform) free((char*)target_platform);
+        if (early_config) config_free(early_config);
+        return 1;
+    }
+
+    // For backward compatibility, also check if it's a valid registered target handler
     const char* resolved_target = NULL;
     bool is_alias = target_is_alias(target_platform, &resolved_target);
 
-    if (!is_alias && !target_handler_find(target_platform)) {
-        fprintf(stderr, "Error: Unknown target '%s'\n", target_platform);
+    // Map combo to runtime handler (e.g., "limbo+draw" → "limbo")
+    char runtime_handler[64];
+    if (!target_map_to_runtime_handler(normalized_target, runtime_handler, sizeof(runtime_handler))) {
+        fprintf(stderr, "Error: Cannot map target '%s' to a runtime handler\n", normalized_target);
         fprintf(stderr, "\nValid targets (with aliases):\n");
-        fprintf(stderr, "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode VM\n");
-        fprintf(stderr, "  sdl3                - SDL3 renderer\n");
-        fprintf(stderr, "  raylib              - Raylib renderer\n");
-        fprintf(stderr, "  web                 - Web browser\n");
-        fprintf(stderr, "  android, kotlin     - Android APK\n");
+        fprintf(stderr, "  limbo, limbo+draw   - Limbo/DIS bytecode VM\n");
+        fprintf(stderr, "  tcltk, tcl+tk      - Tcl/Tk interpreter\n");
+        fprintf(stderr, "  sdl3, c+sdl3       - SDL3 renderer\n");
+        fprintf(stderr, "  raylib, c+raylib   - Raylib renderer\n");
+        fprintf(stderr, "  web                - Web browser\n");
+        fprintf(stderr, "  android            - Android APK\n");
+        fprintf(stderr, "\nRun 'kryon targets' to list all valid language+toolkit combinations.\n");
 
         if (free_target_platform) free((char*)target_platform);
+        if (early_config) config_free(early_config);
         return 1;
+    }
+
+    // Use runtime handler for target handler lookup
+    const char* final_target = runtime_handler;
+
+    // Validate target platform using handler registry
+    if (!target_handler_find(final_target)) {
+        fprintf(stderr, "Error: Unknown runtime handler '%s' for target '%s'\n", final_target, normalized_target);
+        fprintf(stderr, "\nThis is an internal error. Please report this bug.\n");
+
+        if (free_target_platform) free((char*)target_platform);
+        if (early_config) config_free(early_config);
+        return 1;
+    }
+
+    // Print combo info if using explicit syntax
+    if (target_is_combo(target_platform)) {
+        printf("Target: %s (runtime: %s)\n", normalized_target, final_target);
     }
 
     // If no file specified, use entry from config
@@ -495,7 +531,7 @@ int cmd_run(int argc, char** argv) {
 
     // KIR files: execute directly
     if (strcmp(frontend, "kir") == 0) {
-        result = run_kir_file(target_file, target_platform, screenshot_ptr);
+        result = run_kir_file(target_file, final_target, screenshot_ptr);
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
         if (free_screenshot_path) free((char*)screenshot_path);
@@ -521,7 +557,7 @@ int cmd_run(int argc, char** argv) {
     }
 
     printf("✓ Compiled to KIR: %s\n", kir_file);
-    result = run_kir_file(kir_file, target_platform, screenshot_ptr);
+    result = run_kir_file(kir_file, final_target, screenshot_ptr);
 
     if (free_target) free((char*)target_file);
     if (free_target_platform) free((char*)target_platform);

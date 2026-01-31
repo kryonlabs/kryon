@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/limbo -I../codegens/tcltk -I../codegens/tkir -I../dis -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/limbo -I../codegens/tcltk -I../codegens/tkir -I../codegens -I../codegens/languages/common -I../codegens/toolkits/common -I../dis -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
@@ -9,6 +9,10 @@ HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/nul
 X11_LIBS ?= $(shell pkg-config --libs x11 2>/dev/null || echo "-lX11")
 # Link against IR library and codegens
 LDFLAGS = ../build/libkryon_ir.a \
+	../build/libkryon_codegen_common.a \
+	../build/libkryon_codegen_registry.a \
+	../build/libkryon_codegen_emitter.a \
+	../build/libkryon_codegen_toolkit.a \
 	-lm -lpthread -ldl $(X11_LIBS)
 
 # Directories
@@ -37,6 +41,7 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/config/toml_parser.c \
        $(SRC_DIR)/config/config.c \
        $(SRC_DIR)/config/target_handlers.c \
+       $(SRC_DIR)/config/target_validation.c \
        $(SRC_DIR)/template/docs_template.c \
        $(SRC_DIR)/commands/cmd_stubs.c \
        $(SRC_DIR)/commands/cmd_test.c \

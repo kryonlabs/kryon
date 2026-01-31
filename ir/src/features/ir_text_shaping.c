@@ -323,13 +323,27 @@ float ir_shaped_text_get_height(const IRShapedText* shaped_text) {
 // Bidirectional Text (BiDi) Support with FriBidi
 // ============================================================================
 
+#if HAVE_FRIBIDI
 #include <fribidi.h>
+#else
+// Stub types when FriBidi is not available
+typedef int FriBidiChar;
+typedef int FriBidiLevel;
+typedef int FriBidiParType;
+typedef int FriBidiStrIndex;
+#define FRIBIDI_CHAR_SET_UTF8 0
+#endif
 
 bool ir_bidi_available(void) {
+#if HAVE_FRIBIDI
     return true;
+#else
+    return false;  // BiDi support not available
+#endif
 }
 
 IRBidiDirection ir_bidi_detect_direction(const char* text, uint32_t length) {
+#if HAVE_FRIBIDI
     if (!text || length == 0) {
         return IR_BIDI_DIR_LTR;
     }
@@ -367,6 +381,12 @@ IRBidiDirection ir_bidi_detect_direction(const char* text, uint32_t length) {
         default:
             return IR_BIDI_DIR_NEUTRAL;
     }
+#else
+    // No FriBidi support - assume LTR
+    (void)text;
+    (void)length;
+    return IR_BIDI_DIR_LTR;
+#endif
 }
 
 IRBidiResult* ir_bidi_reorder(
@@ -374,6 +394,7 @@ IRBidiResult* ir_bidi_reorder(
     uint32_t length,
     IRBidiDirection base_dir
 ) {
+#if HAVE_FRIBIDI
     if (!text || length == 0) {
         return NULL;
     }
@@ -499,6 +520,37 @@ IRBidiResult* ir_bidi_reorder(
     free(position_map);
 
     return result;
+#else
+    // No FriBidi support - return identity mapping
+    if (!text || length == 0) {
+        return NULL;
+    }
+
+    IRBidiResult* result = (IRBidiResult*)calloc(1, sizeof(IRBidiResult));
+    if (!result) {
+        return NULL;
+    }
+
+    result->length = length;
+    result->base_direction = base_dir;
+
+    result->visual_to_logical = (uint32_t*)malloc(sizeof(uint32_t) * length);
+    result->logical_to_visual = (uint32_t*)malloc(sizeof(uint32_t) * length);
+    result->embedding_levels = (uint8_t*)calloc(sizeof(uint8_t), length);
+
+    if (!result->visual_to_logical || !result->logical_to_visual || !result->embedding_levels) {
+        ir_bidi_result_destroy(result);
+        return NULL;
+    }
+
+    // Identity mapping for LTR text
+    for (uint32_t i = 0; i < length; i++) {
+        result->visual_to_logical[i] = i;
+        result->logical_to_visual[i] = i;
+    }
+
+    return result;
+#endif
 }
 
 uint32_t* ir_bidi_utf8_to_utf32(
@@ -506,6 +558,7 @@ uint32_t* ir_bidi_utf8_to_utf32(
     uint32_t utf8_length,
     uint32_t* out_length
 ) {
+#if HAVE_FRIBIDI
     if (!utf8_text || utf8_length == 0 || !out_length) {
         return NULL;
     }
@@ -531,6 +584,63 @@ uint32_t* ir_bidi_utf8_to_utf32(
 
     *out_length = (uint32_t)utf32_len;
     return utf32_text;
+#else
+    // Simple UTF-8 to UTF-32 conversion without FriBidi
+    if (!utf8_text || utf8_length == 0 || !out_length) {
+        return NULL;
+    }
+
+    // Allocate buffer (worst case: same number of UTF-32 chars as UTF-8 bytes)
+    uint32_t* utf32_text = (uint32_t*)malloc(sizeof(uint32_t) * utf8_length);
+    if (!utf32_text) {
+        return NULL;
+    }
+
+    uint32_t utf32_len = 0;
+    const unsigned char* p = (const unsigned char*)utf8_text;
+    const unsigned char* end = p + utf8_length;
+
+    while (p < end && utf32_len < utf8_length) {
+        uint32_t ch = 0;
+        uint32_t num_bytes = 0;
+
+        if ((*p & 0x80) == 0) {
+            // 1-byte sequence
+            ch = *p++;
+            num_bytes = 1;
+        } else if ((*p & 0xE0) == 0xC0) {
+            // 2-byte sequence
+            if (p + 1 >= end) break;
+            ch = (*p++ & 0x1F) << 6;
+            ch |= (*p++ & 0x3F);
+            num_bytes = 2;
+        } else if ((*p & 0xF0) == 0xE0) {
+            // 3-byte sequence
+            if (p + 2 >= end) break;
+            ch = (*p++ & 0x0F) << 12;
+            ch |= (*p++ & 0x3F) << 6;
+            ch |= (*p++ & 0x3F);
+            num_bytes = 3;
+        } else if ((*p & 0xF8) == 0xF0) {
+            // 4-byte sequence
+            if (p + 3 >= end) break;
+            ch = (*p++ & 0x07) << 18;
+            ch |= (*p++ & 0x3F) << 12;
+            ch |= (*p++ & 0x3F) << 6;
+            ch |= (*p++ & 0x3F);
+            num_bytes = 4;
+        } else {
+            // Invalid UTF-8, skip
+            p++;
+            continue;
+        }
+
+        utf32_text[utf32_len++] = ch;
+    }
+
+    *out_length = utf32_len;
+    return utf32_text;
+#endif
 }
 
 void ir_bidi_result_destroy(IRBidiResult* result) {

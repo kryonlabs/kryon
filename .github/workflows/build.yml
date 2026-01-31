@@ -26,29 +26,23 @@ jobs:
             git \
             build-base \
             pkgconf \
-            harfbuzz-dev \
-            harfbuzz-static \
-            freetype-dev \
-            freetype-static \
-            fribidi-dev \
-            fribidi-static \
-            graphite2-dev \
-            graphite2-static \
+            meson \
+            ninja \
+            python3 \
+            bzip2-dev \
             bzip2-static \
-            libpng-static \
+            libpng-dev \
             zlib-static \
-            brotli-static \
+            brotli-dev \
             raylib-dev \
             bash \
             curl \
             unzip
 
       - uses: actions/checkout@v4
-
-      - name: Fetch submodules
-        run: |
-          git config --global --add safe.directory /__w/kryon/kryon
-          git submodule update --init --recursive
+        with:
+          # No submodules needed - all third-party is vendored
+          submodules: false
 
       - name: Install Bun for TSX codegen
         run: |
@@ -78,7 +72,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          # No submodules needed - all third-party is vendored
+          submodules: false
 
       - name: Install base dependencies
         run: |
@@ -89,10 +84,9 @@ jobs:
             pkg-config \
             cmake \
             ninja-build \
+            meson \
+            python3 \
             libxcursor-dev \
-            libharfbuzz-dev \
-            libfreetype6-dev \
-            libfribidi-dev \
             libx11-dev \
             libxext-dev \
             libxrandr-dev \
@@ -209,9 +203,9 @@ jobs:
             git \
             build-essential \
             pkg-config \
-            libharfbuzz-dev \
-            libfreetype6-dev \
-            libfribidi-dev \
+            meson \
+            ninja \
+            python3 \
             zlib1g-dev \
             libbz2-dev \
             libpng-dev \
@@ -220,11 +214,9 @@ jobs:
             unzip
 
       - uses: actions/checkout@v4
-
-      - name: Fetch submodules
-        run: |
-          git config --global --add safe.directory /__w/kryon/kryon
-          git submodule update --init --recursive
+        with:
+          # No submodules needed - all third-party is vendored
+          submodules: false
 
       - name: Install Bun for TSX codegen
         run: |
@@ -264,11 +256,9 @@ jobs:
             curl
 
       - uses: actions/checkout@v4
-
-      - name: Fetch submodules
-        run: |
-          git config --global --add safe.directory /__w/kryon/kryon
-          git submodule update --init --recursive
+        with:
+          # No submodules needed - all third-party is vendored
+          submodules: false
 
       - name: Install Bun for TSX codegen
         run: |
@@ -296,7 +286,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          # No submodules needed - all third-party is vendored
+          submodules: false
 
       - name: Install base dependencies
         run: |
@@ -307,10 +298,9 @@ jobs:
             pkg-config \
             cmake \
             ninja-build \
+            meson \
+            python3 \
             libxcursor-dev \
-            libharfbuzz-dev \
-            libfreetype6-dev \
-            libfribidi-dev \
             libx11-dev \
             libxext-dev \
             libxrandr-dev \

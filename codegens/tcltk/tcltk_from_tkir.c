@@ -595,18 +595,16 @@ char* tcltk_codegen_from_tkir(const char* tkir_json, TclTkCodegenOptions* option
         return NULL;
     }
 
-    // Parse TKIR JSON
-    cJSON* tkir_root = codegen_parse_kir_json(tkir_json);
-    if (!tkir_root) {
+    // Parse KIR JSON
+    cJSON* kir_root = codegen_parse_kir_json(tkir_json);
+    if (!kir_root) {
         return NULL;
     }
 
-    // Create TKIRRoot from parsed JSON
-    // NOTE: tkir_root_from_cJSON() stores a borrowed reference to tkir_root
-    // We remain the owner and will delete it after tkir_root_free()
-    TKIRRoot* root = tkir_root_from_cJSON(tkir_root);
+    // Build TKIR from KIR (this transforms the hierarchical KIR into flat TKIR widgets array)
+    TKIRRoot* root = tkir_build_from_cJSON(kir_root, false);
     if (!root) {
-        cJSON_Delete(tkir_root);
+        cJSON_Delete(kir_root);
         return NULL;
     }
 
@@ -621,7 +619,7 @@ char* tcltk_codegen_from_tkir(const char* tkir_json, TclTkCodegenOptions* option
     TKIREmitterContext* ctx = tcltk_emitter_create(&emitter_opts);
     if (!ctx) {
         tkir_root_free(root);      // Free TKIRRoot first
-        cJSON_Delete(tkir_root);  // Then delete cJSON (we own it)
+        cJSON_Delete(kir_root);  // Then delete cJSON (we own it)
         return NULL;
     }
 
@@ -631,7 +629,7 @@ char* tcltk_codegen_from_tkir(const char* tkir_json, TclTkCodegenOptions* option
     // Cleanup - ORDER MATTERS!
     tkir_emitter_context_free(ctx);
     tkir_root_free(root);      // Free TKIRRoot (doesn't delete root->json)
-    cJSON_Delete(tkir_root);  // Delete cJSON (we own it)
+    cJSON_Delete(kir_root);  // Delete cJSON (we own it)
 
     return output;
 }

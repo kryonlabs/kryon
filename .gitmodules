@@ -1,18 +1,2 @@
-[submodule "third_party/cJSON"]
-	path = third_party/cJSON
-	url = https://github.com/DaveGamble/cJSON.git
-[submodule "third_party/libtickit"]
-	path = third_party/libtickit
-	url = https://github.com/leonerd/libtickit.git
-[submodule "third_party/tomlc99"]
-	path = third_party/tomlc99
-	url = https://github.com/cktan/tomlc99
-[submodule "third_party/harfbuzz"]
-	path = third_party/harfbuzz
-	url = https://github.com/harfbuzz/harfbuzz.git
-[submodule "third_party/freetype"]
-	path = third_party/freetype
-	url = https://gitlab.freedesktop.org/freetype/freetype.git
-[submodule "third_party/fribidi"]
-	path = third_party/fribidi
-	url = https://github.com/fribidi/fribidi.git
+# All third-party libraries are now part of kryon's source tree
+# No git submodules - we vendor everything for static linking

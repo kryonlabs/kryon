@@ -256,18 +256,35 @@ char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx);
 char* react_generate_element(cJSON* component, ReactContext* ctx, int indent);
 
 // ============================================================================
-// Tk-Based Codegen Utilities
+// Tk-Based Codegen Utilities (DEPRECATED)
 // ============================================================================
 // Shared utilities for all Tk-based codegens (Limbo, Tcl/Tk, etc.)
+//
+// *** IMPORTANT ***
+// These functions are DEPRECATED for non-Tk targets!
+// Please use toolkit-specific profiles instead:
+//   - Use toolkit_map_widget_type() from toolkit_registry.h
+//   - Use drawir_type_from_kir() from draw_ir.h for Draw targets
+//
+// The function codegen_map_kir_to_tk_widget() below is Tk-biased and will
+// emit a deprecation warning when called.
 
 /**
  * Map KIR element type to Tk widget type.
- * Shared by all Tk-based targets.
+ *
+ * *** DEPRECATED ***
+ *
+ * This function is Tk-biased and should NOT be used for non-Tk targets.
+ * Please use toolkit-specific profiles instead:
+ *   - Tk targets: Use toolkit_map_widget_type(tk_profile, ...)
+ *   - Draw targets: Use drawir_type_from_kir() in draw_ir.h
+ *   - Other targets: Use the appropriate toolkit profile
  *
  * @param element_type KIR element type (e.g., "Button", "Text", "Container")
  * @return Tk widget type string (e.g., "button", "label", "frame")
  */
-const char* codegen_map_kir_to_tk_widget(const char* element_type);
+const char* codegen_map_kir_to_tk_widget(const char* element_type)
+    __attribute__((deprecated("Use toolkit_map_widget_type() from toolkit_registry.h instead")));
 
 /**
  * Extract common widget properties from KIR component.

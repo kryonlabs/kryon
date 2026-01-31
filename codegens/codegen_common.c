@@ -410,9 +410,41 @@ void sb_free(StringBuilder* sb) {
 
 /**
  * Map KIR element type to Tk widget type.
- * This mapping is shared across all Tk-based targets.
+ *
+ * *** DEPRECATED ***
+ *
+ * This function is Tk-biased and should NOT be used for non-Tk targets.
+ * Please use toolkit-specific profiles instead:
+ *   - Tk targets: Use toolkit_map_widget_type(tk_profile, ...)
+ *   - Draw targets: Use drawir_type_from_kir() in draw_ir_builder.c
+ *   - Other targets: Use the appropriate toolkit profile
+ *
+ * This function only works for Tk toolkit and will emit a deprecation warning.
+ * It will be removed in a future version.
+ *
+ * @param element_type KIR element type (e.g., "Button", "Text")
+ * @return Tk widget type string (e.g., "button", "label")
  */
 const char* codegen_map_kir_to_tk_widget(const char* element_type) {
+    static bool warned = false;
+
+    // Emit deprecation warning only once
+    if (!warned) {
+        fprintf(stderr,
+                "\n"
+                "╌──────────────────────────────────────────────────────────────────────────────╌\n"
+                "  DEPRECATION WARNING: codegen_map_kir_to_tk_widget() is deprecated!\n"
+                "╌──────────────────────────────────────────────────────────────────────────────╌\n"
+                "  This function is Tk-biased and should NOT be used for non-Tk targets.\n\n"
+                "  For NEW code, please use toolkit-specific profiles:\n"
+                "    • Tk targets:     toolkit_map_widget_type(tk_profile, ...)\n"
+                "    • Draw targets:   drawir_type_from_kir(...)\n"
+                "    • DOM targets:    toolkit_map_widget_type(dom_profile, ...)\n\n"
+                "  This function will be removed in Kryon v2.0.\n"
+                "╌──────────────────────────────────────────────────────────────────────────────╌\n\n");
+        warned = true;
+    }
+
     if (!element_type) return "frame";
 
     // Container widgets

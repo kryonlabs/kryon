@@ -27,9 +27,12 @@ KIR_TO_HTML = kir_to_html
 # Include paths
 INCLUDES = -I$(INCLUDE_DIR) -I$(INCLUDE_IR_DIR) -I$(INCLUDE_PUBLIC_DIR) -I../../ir/src/style -I../../ir/src/utils
 
-# Link libraries
-HARFBUZZ_LIBS = $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
+# Link libraries - use system HarfBuzz and FreeType via pkg-config
+HARFBUZZ_LIBS = $(shell pkg-config --libs harfbuzz freetype2 2>/dev/null || echo "-lharfbuzz -lfreetype -lm")
 LINK_LIBS = -L$(BUILD_DIR) -lkryon_web -lkryon_ir $(HARFBUZZ_LIBS)
+
+# Use g++ for linking when HarfBuzz is involved (HarfBuzz is C++)
+LINK_CC = g++
 
 # Default target
 all: $(WEB_STATIC_LIB) $(WEB_SHARED_LIB) $(KIR_TO_HTML)
@@ -69,11 +72,13 @@ $(WEB_STATIC_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator
 
 # Create shared library (dynamically link libkryon_ir to avoid symbol conflicts)
 $(WEB_SHARED_LIB): $(BUILD_DIR) ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o css_property_tables.o css_generator_core.o css_class_names.o
-	$(CC) $(CFLAGS) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o css_property_tables.o css_generator_core.o css_class_names.o -L$(BUILD_DIR) -lkryon_ir $(HARFBUZZ_LIBS)
+	$(LINK_CC) -shared -o $@ ir_web_renderer.o html_generator.o css_generator.o style_analyzer.o css_property_tables.o css_generator_core.o css_class_names.o -L$(BUILD_DIR) -lkryon_ir $(HARFBUZZ_LIBS) -lstdc++
 
 # Build kir_to_html CLI tool
 $(KIR_TO_HTML): $(WEB_STATIC_LIB) kir_to_html.c
-	$(CC) $(CFLAGS) $(INCLUDES) kir_to_html.c -o $@ $(LINK_LIBS)
+	$(CC) $(CFLAGS) $(INCLUDES) -c kir_to_html.c -o kir_to_html.o
+	$(LINK_CC) kir_to_html.o -o $@ -Wl,--start-group $(WEB_STATIC_LIB) ../../build/libkryon_ir.a $(HARFBUZZ_LIBS) -Wl,--end-group -lstdc++
+	rm -f kir_to_html.o
 
 # Test and example targets (when test files are created)
 # test: $(WEB_TEST)

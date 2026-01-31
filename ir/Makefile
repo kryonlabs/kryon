@@ -9,25 +9,19 @@ ARFLAGS = rcs
 # Single-pass layout system (ONLY system - no legacy code)
 CFLAGS += -DIR_USE_SINGLE_PASS_LAYOUT
 
-# Vendored HarfBuzz, FreeType, and FriBidi for text shaping
-# Build them from source instead of using system libraries
-THIRD_PARTY_DIR = ../third_party
-HARFBUZZ_DIR = $(THIRD_PARTY_DIR)/harfbuzz
-FREETYPE_DIR = $(THIRD_PARTY_DIR)/freetype
-FRIBIDI_DIR = $(THIRD_PARTY_DIR)/fribidi
+# System libraries via pkg-config (HarfBuzz, FreeType, FriBidi)
+# These must be available via shell.nix or system package manager
+HARFBUZZ_CFLAGS := $(shell pkg-config --cflags harfbuzz freetype2)
+HARFBUZZ_LIBS := $(shell pkg-config --libs harfbuzz freetype2)
+FRIBIDI_CFLAGS := $(shell pkg-config --cflags fribidi)
+FRIBIDI_LIBS := $(shell pkg-config --libs fribidi)
 
-# Build directories for vendored libraries
-HARFBUZZ_BUILD = $(BUILD_DIR)/harfbuzz
-FREETYPE_BUILD = $(BUILD_DIR)/freetype
-FRIBIDI_BUILD = $(BUILD_DIR)/fribidi
+# Add system library CFLAGS
+CFLAGS += $(HARFBUZZ_CFLAGS) $(FRIBIDI_CFLAGS)
 
-# Vendored library flags
-HARFBUZZ_CFLAGS = -I$(HARFBUZZ_DIR)/src -I$(HARFBUZZ_BUILD) -I$(FREETYPE_DIR)/include
-HARFBUZZ_LIBS = $(HARFBUZZ_BUILD)/libharfbuzz.a $(FREETYPE_BUILD)/libfreetype.a $(FRIBIDI_BUILD)/libfribidi.a
-
-# Text shaping object file - no fallback, dependencies are required
+# Text shaping object file - requires system libraries
 IR_TEXT_SHAPING_OBJ = src/features/text_shaping.o
-IR_TEXT_SHAPING_LIBS = $(HARFBUZZ_LIBS)
+IR_TEXT_SHAPING_LIBS = $(HARFBUZZ_LIBS) $(FRIBIDI_LIBS)
 
 # Directories
 IR_DIR = .
@@ -43,10 +37,7 @@ TOML_DIR = $(THIRD_PARTY_DIR)/tomlc99
 
 # Third-party include paths
 CFLAGS += -I$(CJSON_DIR) -I$(STB_DIR) -I$(TOML_DIR)
-# Vendored text shaping libraries
-CFLAGS += -I$(HARFBUZZ_DIR)/src
-CFLAGS += -I$(FREETYPE_DIR)/include
-CFLAGS += -I$(FRIBIDI_DIR)/lib
+# FriBidi is now included via pkg-config
 # Internal utils and bindings paths (for ir_constants.h, ir_c_metadata.h, etc.)
 CFLAGS += -Isrc/utils -I../bindings/c
 
@@ -201,6 +192,11 @@ static: $(IR_STATIC_LIB)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+# System libraries (HarfBuzz, FreeType, FriBidi) are installed via package manager
+# No need to build them from source
+# On NixOS/nix-shell: already available via shell.nix
+# On Ubuntu/Debian: sudo apt-get install libharfbuzz-dev libfreetype-dev libfribidi-dev
+
 # Compile object files with automatic dependency generation
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -258,13 +254,16 @@ help:
 	@echo "  test        - Run IR tests"
 	@echo "  help        - Show this help message"
 	@echo ""
-	@echo "Dependencies:"
-	@echo "  HarfBuzz    - REQUIRED for text shaping"
-	@echo "  FriBidi     - REQUIRED for bidirectional text"
-	@echo "  FreeType    - REQUIRED for font rendering"
+	@echo "Dependencies (all vendored in third_party/):"
+	@echo "  HarfBuzz    - Text shaping (static)"
+	@echo "  FreeType    - Font rendering (static)"
+	@echo "  FriBidi     - Bidirectional text (static)"
+	@echo "  cJSON       - JSON parsing (static)"
+	@echo "  tomlc99     - TOML parsing (static)"
+	@echo "  libtickit   - Terminal UI (static)"
 	@echo ""
-	@echo "Install dependencies:"
-	@echo "  Ubuntu/Debian: apt install libharfbuzz-dev libfribidi-dev libfreetype-dev"
-	@echo "  Nix:         nix-shell"
+	@echo "Dynamic dependencies:"
+	@echo "  SDL3/Raylib - Rendering backends (system)"
+	@echo ""
 
 .PHONY: all static shared install clean cleanall asan-ubsan test help

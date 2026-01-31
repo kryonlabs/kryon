@@ -128,9 +128,10 @@ examples/android/.gradle/
 examples/android/app/build/
 examples/android/local.properties
 
-# Third-party modules
-# third_party/freetype/  # Commented out - now a git submodule
-# third_party/harfbuzz/  # Commented out - now a git submodule
+# Third-party build artifacts
+build/harfbuzz/
+build/freetype/
+build/fribidi/
 third_party/stb/
 
 # Nix

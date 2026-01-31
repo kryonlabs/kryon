@@ -4,6 +4,7 @@
  */
 
 #include "kryon_cli.h"
+#include "target_validation.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,10 +107,11 @@ static void print_usage(void) {
     printf("  --built-in        Show only built-in targets\n");
     printf("  --custom          Show only custom targets\n");
     printf("  --aliases         Show only aliases\n");
+    printf("  --combos          Show only language+toolkit combinations\n");
     printf("  --help            Show this help\n\n");
     printf("Description:\n");
     printf("  Lists all available build targets including built-in targets,\n");
-    printf("  aliases, and custom targets defined in kryon.toml.\n");
+    printf("  aliases, custom targets from kryon.toml, and language+toolkit combos.\n");
 }
 
 /* List built-in targets */
@@ -141,6 +143,16 @@ static void list_aliases(bool verbose) {
                TARGET_ALIASES[i].target,
                COLOR_DIM, TARGET_ALIASES[i].description, COLOR_RESET);
     }
+}
+
+/* List language+toolkit combinations */
+static void list_lang_toolkit_combos(bool verbose) {
+    (void)verbose;  // Reserved for future use
+    printf("\n%s%sLanguage+Toolkit Combinations:%s\n", COLOR_BOLD, COLOR_CYAN, COLOR_RESET);
+    printf("  (Use --help for more info on combo syntax)\n\n");
+
+    // Use the new validation system to print all valid combos
+    target_print_all_valid();
 }
 
 /* List custom targets from config */
@@ -209,11 +221,20 @@ int cmd_targets(int argc, char** argv) {
             filter_custom = true;
         } else if (strcmp(argv[i], "--aliases") == 0) {
             filter_aliases = true;
+        } else if (strcmp(argv[i], "--combos") == 0) {
+            // Show only language+toolkit combinations
+            target_validation_initialize();
+            list_lang_toolkit_combos(show_verbose);
+            target_validation_cleanup();
+            return 0;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             print_usage();
             return 0;
         }
     }
+
+    // Initialize validation system
+    target_validation_initialize();
 
     // If no filters specified, show all
     bool show_all = !filter_builtin && !filter_custom && !filter_aliases;
@@ -242,6 +263,11 @@ int cmd_targets(int argc, char** argv) {
 
     if (show_all || filter_custom) {
         list_custom_targets(config, show_verbose);
+    }
+
+    // Show language+toolkit combinations when showing all
+    if (show_all) {
+        list_lang_toolkit_combos(show_verbose);
     }
 
     // Count total targets
@@ -273,6 +299,8 @@ int cmd_targets(int argc, char** argv) {
     if (config) {
         config_free(config);
     }
+
+    target_validation_cleanup();
 
     return 0;
 }

@@ -13,6 +13,7 @@
  */
 
 #include "kryon_cli.h"
+#include "target_validation.h"
 #include "build.h"
 #if !defined(__TAIJIOS__) && !defined(__INFERNO__)
 #include "screenshot.h"
@@ -1108,12 +1109,6 @@ TargetHandler* target_handler_find(const char* target_name) {
         return NULL;
     }
 
-    // First try alias resolution
-    const char* canonical = resolve_target_alias(target_name);
-    if (canonical) {
-        target_name = canonical;
-    }
-
     for (size_t i = 0; i < g_registry.count; i++) {
         if (g_registry.handlers[i] &&
             strcmp(g_registry.handlers[i]->name, target_name) == 0) {
@@ -1137,17 +1132,19 @@ bool target_has_capability(const char* target_name, TargetCapability capability)
 
 /**
  * Check if a target name is an alias and get its resolved target
+ * Uses the combo registry for alias resolution
  * Returns true if it's an alias, false otherwise
  * If resolved is not NULL, sets *resolved to the canonical target name
  */
 bool target_is_alias(const char* alias, const char** resolved) {
     if (!alias) return false;
 
-    const char* canonical = resolve_target_alias(alias);
-    if (canonical && resolved) {
-        *resolved = canonical;
+    // Use combo registry for alias resolution
+    const char* combo_alias = combo_get_alias(alias);
+    if (combo_alias && resolved) {
+        *resolved = combo_alias;
     }
-    return canonical != NULL;
+    return combo_alias != NULL;
 }
 
 /**
