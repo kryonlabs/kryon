@@ -8,47 +8,22 @@ package require Tk
 # Window configuration
 wm title . {app}
 wm geometry . 800x600
-wm title . {Interactive Button Demo}
-wm geometry . 600x400
+wm title . {Hello World Example}
+wm geometry . 800x600
 
 # UI Components
 
 # Container widget: .w1
-frame .w1 -background {#191919}
+frame .w1 -background {#1a1a2e}
 pack .w1 -fill both -expand yes
 
-# Center widget: .w1.w2
-frame .w1.w2
-pack .w1.w2 -fill both -expand yes
+# Container widget: .w1.w2
+frame .w1.w2 -width 200 -height 100 -background {#191970} -borderwidth 2
+place .w1.w2 -x 200 -y 100
 
-# Button widget: .w1.w2.w3
-button .w1.w2.w3 -text {Click Me!} -width 150 -height 50 -background {#404080} -foreground {#ffc0cb}
-pack .w1.w2.w3 -expand yes -anchor center
-
-# ============================================================================
-# Event Handlers
-# ============================================================================
-
-# Handler: _top_level_code_block_0
-proc _top_level_code_block_0 {} {
-    # TODO: Implement handler
-}
-
-# Handler: _top_level_code_block_1
-proc _top_level_code_block_1 {} {
-    # TODO: Implement handler
-}
-
-# Handler: _top_level_code_block_2
-proc _top_level_code_block_2 {} {
-    # TODO: Implement handler
-}
-
-# Handler: _top_level_code_block_3
-proc _top_level_code_block_3 {} {
-    # TODO: Implement handler
-}
-
+# Text widget: .w1.w2.w3
+label .w1.w2.w3 -text {Hello World} -foreground {#ffff00} -padx 5 -pady 5
+pack .w1.w2.w3 -fill both -expand yes
 
 # Main event loop
 update

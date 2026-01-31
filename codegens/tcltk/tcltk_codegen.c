@@ -225,7 +225,18 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
             uint8_t r, g, b, a;
             if (codegen_parse_color_rgba(background->valuestring, &r, &g, &b, &a)) {
                 const char* hex = codegen_format_rgba_hex(r, g, b, a, false);
-                sb_append_fmt(ctx->sb, " -background {%s}", hex);
+                // For labels, set background to allow proper rendering
+                if (strcmp(tk_widget, "label") == 0) {
+                    sb_append_fmt(ctx->sb, " -background {%s}", hex);
+                } else {
+                    sb_append_fmt(ctx->sb, " -background {%s}", hex);
+                }
+            }
+        } else {
+            // For labels with transparent background, explicitly set to empty string
+            // This allows the parent's background to show through
+            if (strcmp(tk_widget, "label") == 0) {
+                sb_append(ctx->sb, " -background {}");
             }
         }
     }
