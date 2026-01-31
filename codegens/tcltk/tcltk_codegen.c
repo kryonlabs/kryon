@@ -221,7 +221,10 @@ static void generate_widget_properties(TclTkContext* ctx, cJSON* component) {
     const char* bg_aliases[] = {"background", "backgroundColor", NULL};
     cJSON* background = get_property_with_aliases(component, bg_aliases);
     if (background && cJSON_IsString(background)) {
-        if (!codegen_is_transparent_color(background->valuestring)) {
+        bool is_transparent = codegen_is_transparent_color(background->valuestring);
+        fprintf(stderr, "[DEBUG] background=%s, is_transparent=%d, tk_widget=%s\n",
+                background->valuestring, is_transparent, tk_widget);
+        if (!is_transparent) {
             uint8_t r, g, b, a;
             if (codegen_parse_color_rgba(background->valuestring, &r, &g, &b, &a)) {
                 const char* hex = codegen_format_rgba_hex(r, g, b, a, false);

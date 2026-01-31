@@ -1,56 +1,60 @@
 # Kryon
 
-UI framework with two-target architecture: Web (HTML/CSS/JS) and DIS VM (TaijiOS bytecode).
+**Cross-platform UI framework** - Write once, deploy to Web, Desktop, Mobile, and more.
 
-## Architecture
+## Quick Start
 
-Kryon is a simplified cross-platform framework that compiles KRY source code to either:
-- **Web**: HTML/CSS/JavaScript for browser deployment
-- **DIS VM**: TaijiOS DIS bytecode for native execution
+```bash
+# Install
+make && make install
 
-```
-Source (.kry)
-    ↓
-Parser (ir/parsers/kry/)
-    ↓
-KIR (JSON Intermediate Representation)
-    ↓
-Code Generator (codegens/dis/ or codegens/web/)
-    ↓
-Target (DIS bytecode or HTML/CSS/JS)
+# Build for web
+kryon build --target web examples/kry/hello_world.kry
+
+# Build for desktop (Tcl/Tk)
+kryon build --target tcl examples/kry/hello_world.kry
+
+# Run with hot reload
+kryon dev examples/kry/hello_world.kry
 ```
 
-## Features
+## Supported Languages
+
+### Source Parsers
+
+| Language | Status | Input | Output |
+|----------|--------|-------|--------|
+| KRY | ✅ | `.kry` | KIR |
+| HTML | ✅ | `.html` | KIR |
+| C | ✅ | `.c` | KIR |
+| Tcl | ✅ | `.tcl` | KIR |
+| Markdown | ✅ | `.md` | KIR |
 
 ### Code Generators
 
-| Target | Status | Location | Notes |
-|--------|--------|----------|-------|
-| DIS (TaijiOS) | ✅ | `codegens/dis/` | Primary target |
-| HTML/CSS/JS | ✅ | `codegens/web/` | Full support |
-| C | ✅ | `codegens/c/` | For reference |
-| Limbo | ✅ | `codegens/limbo/` | TaijiOS Inferno |
-| Tcl/Tk | ✅ | `codegens/tcltk/` | Desktop GUI |
-| KRY | ✅ | `codegens/kry/` | Round-trip |
-| Markdown | ✅ | `codegens/markdown/` | Documentation |
+| Target | Status | Output | Use Case |
+|--------|--------|--------|----------|
+| Web | ✅ | HTML/CSS/JS | Browser apps |
+| Tcl/Tk | ✅ | `.tcl` | Desktop GUI |
+| C | ✅ | `.c` | Native apps |
+| Limbo | ✅ | `.b` | TaijiOS Inferno |
+| KRY | ✅ | `.kry` | Round-trip |
+| Markdown | ✅ | `.md` | Documentation |
+| DIS | ✅ | `.dis` | TaijiOS VM |
 
-### Expression Transpiler
+## Architecture
 
-Converts KRY expressions to target language syntax.
-
-| Target | Status | Notes |
-|--------|--------|-------|
-| JavaScript | ✅ | ES6 syntax |
-| C | ✅ | Arrow functions via registry |
-
-### Runtime Bindings
-
-FFI bindings for using Kryon from other languages.
-
-| Language | Status | Location |
-|----------|--------|----------|
-| C | ✅ | `bindings/c/` |
-| JavaScript | ✅ | `bindings/javascript/` |
+```
+Source (.kry, .html, .c, .tcl)
+    ↓
+Parser (ir/parsers/)
+    ↓
+KIR (JSON Intermediate Representation)
+    ↓
+Code Generator (codegens/)
+    ↓
+Target (Web, Tcl, C, Limbo, etc.)
+```
 
 ## Directory Structure
 
@@ -62,7 +66,9 @@ kryon/
 │   └── parsers/            # Source language parsers
 │       ├── kry/            # KRY DSL parser + expression transpiler
 │       ├── html/           # HTML parser
-│       └── c/              # C parser
+│       ├── c/              # C parser
+│       ├── tcl/            # Tcl parser
+│       └── markdown/       # Markdown parser
 ├── codegens/               # Code generators
 │   ├── dis/                # DIS bytecode (TaijiOS)
 │   ├── web/                # HTML/CSS/JS
@@ -81,88 +87,29 @@ kryon/
 
 ## Requirements
 
-### For Web Target
-- No additional requirements
-- Modern web browser
-
-### For DIS Target
-- **TaijiOS** installation at `/home/wao/Projects/TaijiOS` (or custom path)
-- TaijiOS must be built with emu (DIS VM) available
-
-#### Installing TaijiOS
-
-```bash
-# Clone TaijiOS repository
-git clone https://github.com/taiji-os/TaijiOS.git /home/wao/Projects/TaijiOS
-cd /home/wao/Projects/TaijiOS
-
-# Build TaijiOS (follow TaijiOS build instructions)
-# Ensure emu binary is available at: Linux/amd64/bin/emu
-```
+- **Web target**: Modern web browser (no dependencies)
+- **Tcl/Tk target**: `sudo apt install tcl tk` (Ubuntu/Debian)
+- **Limbo target**: TaijiOS with Limbo compiler
 
 ## Building
 
 ```bash
-# Build everything
-make
-
-# Build specific components
-make cli       # Build CLI tool only
-make ir        # Build IR library only
-make codegens  # Build all code generators
-
-# Clean build artifacts
-make clean
+make && make install
 ```
 
 ## Usage
 
-### Web Target
-
 ```bash
-# Build for web
-kryon build web
+# Build for different targets
+kryon build --target web examples/kry/hello_world.kry
+kryon build --target tcl examples/kry/hello_world.kry
+kryon build --target limbo examples/kry/hello_world.kry
 
-# Run with dev server
-kryon dev
-```
+# Run with dev server (hot reload)
+kryon dev examples/kry/hello_world.kry
 
-### DIS Target
-
-```bash
-# Build DIS bytecode
-kryon build dis
-
-# Run with TaijiOS emu
-kryon run dis
-
-# Or run manually with TaijiOS
-/home/wao/Projects/TaijiOS/Linux/amd64/bin/emu -r /home/wao/Projects/TaijiOS app.dis
-
-# Using run-app.sh wrapper
-/home/wao/Projects/TaijiOS/run-app.sh app.dis
-```
-
-### Tcl/Tk Target
-
-```bash
-# Build Tcl/Tk script (uses "tcl" alias for convenience)
-kryon build --target=tcl examples/kry/hello_world.kry
-
-# Run with wish
-wish app.tcl
-
-# Or use the run command
-kryon run --target=tcl examples/kry/hello_world.kry
-```
-
-**Note:** Tcl/Tk must be installed on your system:
-```bash
-# Ubuntu/Debian
-sudo apt-get install tcl tk
-
-# macOS
-brew install tcl-tk
+# Run directly (for tcl target)
+kryon run --target tcl examples/kry/hello_world.kry
 ```
 
 ## Configuration
@@ -173,58 +120,15 @@ Create `kryon.toml` in your project:
 [project]
 name = "myapp"
 version = "0.1.0"
-author = "Your Name"
-description = "A Kryon application"
 
 [build]
-targets = ["dis", "web"]  # Build both targets
-output_dir = "dist"
+targets = ["web", "tcl"]
 entry = "main.kry"
-frontend = "kry"
-
-[taiji]
-path = "/home/wao/Projects/TaijiOS"  # TaijiOS installation path
 
 [dev]
 hot_reload = true
 port = 3000
-auto_open = true
 ```
-
-## TaijiOS Integration
-
-### DIS Execution
-
-Kryon generates `.dis` files compatible with TaijiOS DIS VM:
-
-- **File Format**: Standard TaijiOS .dis format (header, code, types, data, links)
-- **Execution**: Via TaijiOS `emu` or `run-app.sh` wrapper
-- **Windowing**: Automatic X11 window creation for UI apps
-- **Graphics**: Uses TaijiOS libdraw for rendering
-
-### TaijiOS Path Configuration
-
-Set TaijiOS path in `kryon.toml`:
-
-```toml
-[taiji]
-path = "/home/wao/Projects/TaijiOS"
-```
-
-Or use environment variable:
-
-```bash
-export TAIJI_PATH=/home/wao/Projects/TaijiOS
-```
-
-## Migration from Old Targets
-
-If you were using desktop, android, or terminal targets:
-
-1. Update `kryon.toml` to use `targets = ["dis"]`
-2. Install TaijiOS (see requirements above)
-3. Run `kryon build dis` to generate DIS bytecode
-4. Run `kryon run dis` to execute with TaijiOS
 
 ## License
 

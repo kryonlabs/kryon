@@ -285,14 +285,20 @@ static TclToken* lex_comment(TclLexer* lexer) {
  * Returns true if we're at the beginning of a line or after whitespace/semicolon
  */
 static bool at_command_start(TclLexer* lexer) {
-    // Look backwards from current position to see if we're after whitespace or semicolon
-    size_t pos = lexer->position - 1;  // Current position is already at #
+    if (!lexer->source || lexer->position == 0) return true;
 
-    // Skip backwards whitespace
-    while (pos > 0 && (lexer->source[pos - 1] == ' ' ||
-                       lexer->source[pos - 1] == '\t' ||
-                       lexer->source[pos - 1] == '\r')) {
+    // Look backwards from current position to see if we're after whitespace or semicolon
+    size_t pos = lexer->position;  // Position of the # character
+
+    // Skip backwards whitespace (with safety limit)
+    size_t max_lookback = 100;  // Prevent infinite loops
+    size_t count = 0;
+    while (pos > 0 && count < max_lookback &&
+           (lexer->source[pos - 1] == ' ' ||
+            lexer->source[pos - 1] == '\t' ||
+            lexer->source[pos - 1] == '\r')) {
         pos--;
+        count++;
     }
 
     // If at start of file, or previous char was newline or semicolon, we're at command start
@@ -408,12 +414,14 @@ TclTokenStream* tcl_lex(const char* source) {
 
         TclToken* token = NULL;
 
-        if (c == '#' && at_command_start(&lexer)) {
-            token = lex_comment(&lexer);
+        // Check for braced strings FIRST (before comments, because # inside braces is literal)
+        if (c == '{') {
+            token = lex_quoted_string(&lexer);
         } else if (c == '"') {
             token = lex_quoted_string(&lexer);
-        } else if (c == '{') {
-            token = lex_quoted_string(&lexer);
+        // Only check for comments at command start (not inside strings)
+        } else if (c == '#' && at_command_start(&lexer)) {
+            token = lex_comment(&lexer);
         } else if (c == '$') {
             token = lex_variable(&lexer);
         } else if (c == '[') {
