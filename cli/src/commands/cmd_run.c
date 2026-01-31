@@ -237,6 +237,8 @@ int cmd_run(int argc, char** argv) {
     // Screenshot options
     const char* screenshot_path = NULL;
     int screenshot_after_frames = 0;
+    bool screenshot_requested = false;  // Track if --screenshot flag was used
+    bool free_screenshot_path = false;  // Track if we allocated screenshot_path
 
     // Parse --target and --screenshot flags, collecting non-flag args in new_argv
     // IMPORTANT: Do NOT modify the original argv array to avoid double-free issues
@@ -255,10 +257,17 @@ int cmd_run(int argc, char** argv) {
         } else if (strncmp(argv[i], "--screenshot=", 13) == 0) {
             // Handle --screenshot=value
             screenshot_path = argv[i] + 13;
-        } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
-            // Handle --screenshot value
-            screenshot_path = argv[i + 1];
-            i++;  // Skip next argument
+            screenshot_requested = true;
+        } else if (strcmp(argv[i], "--screenshot") == 0) {
+            // Handle --screenshot (with or without value)
+            screenshot_requested = true;
+            // Check if next arg is a value (not a flag)
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                screenshot_path = argv[i + 1];
+                i++;  // Skip next argument
+            }
+            // If no value provided, screenshot_path remains NULL
+            // and we'll generate a default filename later
         } else if (strncmp(argv[i], "--screenshot-after-frames=", 25) == 0) {
             // Handle --screenshot-after-frames=value
             screenshot_after_frames = atoi(argv[i] + 25);
@@ -266,8 +275,13 @@ int cmd_run(int argc, char** argv) {
             // Handle --screenshot-after-frames value
             screenshot_after_frames = atoi(argv[i + 1]);
             i++;  // Skip next argument
-        } else if (strncmp(argv[i], "--", 2) == 0 && strchr(argv[i], '=')) {
+        } else if (strncmp(argv[i], "--", 2) == 0) {
+            // Unknown flag (with or without =)
             fprintf(stderr, "Error: Unknown flag '%s'\n", argv[i]);
+            fprintf(stderr, "\nValid flags:\n");
+            fprintf(stderr, "  --target=<platform>       Specify target platform\n");
+            fprintf(stderr, "  --screenshot[=<path>]     Capture screenshot to file\n");
+            fprintf(stderr, "  --screenshot-after-frames=N Wait N frames before capturing\n");
             return 1;
         } else if (pos_argc < 128) {
             pos_argv[pos_argc++] = argv[i];
@@ -292,7 +306,7 @@ int cmd_run(int argc, char** argv) {
     ScreenshotRunOptions screenshot_opts = {0};
     screenshot_opts.screenshot_path = screenshot_path;
     screenshot_opts.screenshot_after_frames = screenshot_after_frames;
-    const ScreenshotRunOptions* screenshot_ptr = screenshot_path ? &screenshot_opts : NULL;
+    // Note: screenshot_ptr is set AFTER default filename generation (below)
 
     // Use positional args from now on (don't modify original argv)
     argc = pos_argc;
@@ -382,6 +396,7 @@ int cmd_run(int argc, char** argv) {
                 config_free(early_config);
                 if (free_target) free((char*)target_file);
                 if (free_target_platform) free((char*)target_platform);
+                if (free_screenshot_path) free((char*)screenshot_path);
                 return 1;
             }
             config_free(early_config);
@@ -394,8 +409,37 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "Error: File not found: %s\n", target_file);
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
+        if (free_screenshot_path) free((char*)screenshot_path);
         return 1;
     }
+
+    // Generate default screenshot filename if --screenshot was specified without a path
+    if (screenshot_requested && !screenshot_path) {
+        // Extract filename from target_file and replace extension with .png
+        const char* basename = strrchr(target_file, '/');
+        basename = basename ? basename + 1 : target_file;
+
+        // Copy basename and remove extension
+        char default_path[512];
+        const char* dot = strrchr(basename, '.');
+        if (dot) {
+            size_t len = dot - basename;
+            snprintf(default_path, sizeof(default_path), "%.*s.png", (int)len, basename);
+        } else {
+            snprintf(default_path, sizeof(default_path), "%s.png", basename);
+        }
+
+        // Allocate and store the path (needs to be freed later)
+        screenshot_path = str_copy(default_path);
+        free_screenshot_path = true;  // Mark for cleanup
+        printf("Screenshot will be saved to: %s\n", screenshot_path);
+    }
+
+    // Now set screenshot_ptr (after default filename may have been generated)
+    // Update screenshot_opts with the final screenshot_path
+    screenshot_opts.screenshot_path = screenshot_path;
+    screenshot_opts.screenshot_after_frames = screenshot_after_frames;
+    const ScreenshotRunOptions* screenshot_ptr = screenshot_path ? &screenshot_opts : NULL;
 
     // Detect frontend
     const char* frontend = detect_frontend_type(target_file);
@@ -405,6 +449,7 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "Supported file types: .kry, .kir, .md, .html, .c\n");
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
+        if (free_screenshot_path) free((char*)screenshot_path);
         return 1;
     }
 
@@ -418,6 +463,7 @@ int cmd_run(int argc, char** argv) {
             fprintf(stderr, "Error: Desktop renderer library not found\n");
             if (free_target) free((char*)target_file);
             if (free_target_platform) free((char*)target_platform);
+            if (free_screenshot_path) free((char*)screenshot_path);
             return 1;
         }
         desktop_lib = found_lib;  // Note: leaked but used immediately
@@ -430,6 +476,7 @@ int cmd_run(int argc, char** argv) {
         result = run_c_file(target_file);
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
+        if (free_screenshot_path) free((char*)screenshot_path);
         return result;
     }
 
@@ -438,6 +485,7 @@ int cmd_run(int argc, char** argv) {
         result = run_kir_file(target_file, target_platform, screenshot_ptr);
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
+        if (free_screenshot_path) free((char*)screenshot_path);
         return result;
     }
 
@@ -455,6 +503,7 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "Error: Failed to compile %s\n", target_file);
         if (free_target) free((char*)target_file);
         if (free_target_platform) free((char*)target_platform);
+        if (free_screenshot_path) free((char*)screenshot_path);
         return 1;
     }
 
@@ -463,6 +512,7 @@ int cmd_run(int argc, char** argv) {
 
     if (free_target) free((char*)target_file);
     if (free_target_platform) free((char*)target_platform);
+    if (free_screenshot_path) free((char*)screenshot_path);
     return result;
 }
 

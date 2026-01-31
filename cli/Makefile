@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../dis -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/limbo -I../codegens/tcltk -I../dis -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
@@ -145,6 +145,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
 		../build/libkryon_codegen_limbo.a \
+		../build/libkryon_codegen_tcltk.a \
 		../dis/libdiscodegen.a
 	# Build kir_to_html.o (embedded web codegen)
 	$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o
@@ -154,6 +155,7 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
 		../build/libkryon_codegen_limbo.a \
+		../build/libkryon_codegen_tcltk.a \
 		../dis/libdiscodegen.a \
 		$(LDFLAGS) $(HARFBUZZ_LIBS)
 
@@ -181,6 +183,9 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 
 ../build/libkryon_codegen_limbo.a:
 	$(MAKE) -C ../codegens/limbo
+
+../build/libkryon_codegen_tcltk.a:
+	$(MAKE) -C ../codegens/tcltk
 
 ../dis/libdiscodegen.a:
 	$(MAKE) -C ../dis all

@@ -108,158 +108,46 @@ static bool is_window_visible(Display* display, Window window) {
 }
 
 /**
- * Check if window is a terminal by examining _NET_WM_WINDOW_TYPE
+ * Case-insensitive string search
  */
-static bool is_terminal_window(Display* display, Window window) {
-    Atom net_wm_window_type = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
-    Atom actual_type;
-    int actual_format;
-    unsigned long nitems;
-    unsigned long bytes_after;
-    unsigned char* prop = NULL;
+static bool str_contains_case_insensitive(const char* haystack, const char* needle) {
+    if (!haystack || !needle) return false;
 
-    if (XGetWindowProperty(display, window, net_wm_window_type, 0, 10, False,
-                          XA_ATOM, &actual_type, &actual_format,
-                          &nitems, &bytes_after, &prop) == Success) {
-        if (prop && nitems > 0) {
-            Atom* atom_vals = (Atom*)prop;
-            // Check for terminal type
-            for (unsigned long i = 0; i < nitems; i++) {
-                char* atom_name = XGetAtomName(display, atom_vals[i]);
-                if (atom_name) {
-                    bool is_terminal = (strcmp(atom_name, "_NET_WM_WINDOW_TYPE_TERMINAL") == 0 ||
-                                       strcmp(atom_name, "_NET_WM_WINDOW_TYPE_DIALOG") == 0);
-                    XFree(atom_name);
-                    if (is_terminal) {
-                        XFree(prop);
-                        return true;
-                    }
-                }
-            }
+    while (*haystack && *needle) {
+        if (tolower((unsigned char)*haystack) != tolower((unsigned char)*needle)) {
+            haystack++;
+            // Reset needle pointer
+            needle = needle - (needle - needle); // This won't work, use proper approach
+            return false;
         }
-        if (prop) XFree(prop);
-    }
-    return false;
-}
-
-/**
- * Check if window is a terminal by examining WM_CLASS
- */
-static bool is_terminal_by_class(Display* display, Window window) {
-    Atom wm_class = XInternAtom(display, "WM_CLASS", False);
-    Atom actual_type;
-    int actual_format;
-    unsigned long nitems;
-    unsigned long bytes_after;
-    unsigned char* prop = NULL;
-
-    if (XGetWindowProperty(display, window, wm_class, 0, 1024, False,
-                          AnyPropertyType, &actual_type, &actual_format,
-                          &nitems, &bytes_after, &prop) == Success) {
-        if (prop && nitems > 0) {
-            char* class_str = strndup((char*)prop, nitems);
-            XFree(prop);
-
-            // Check for terminal class names (case-insensitive)
-            if (class_str) {
-                bool is_term = (strcasestr(class_str, "terminal") != NULL ||
-                               strcasestr(class_str, "gnome-terminal") != NULL ||
-                               strcasestr(class_str, "konsole") != NULL ||
-                               strcasestr(class_str, "xterm") != NULL ||
-                               strcasestr(class_str, "urxvt") != NULL ||
-                               strcasestr(class_str, "alacritty") != NULL ||
-                               strcasestr(class_str, "kitty") != NULL);
-                free(class_str);
-                return is_term;
-            }
-        }
-        if (prop) XFree(prop);
-    }
-    return false;
-}
-
-/**
- * Check if window size suggests it's an emulator window
- */
-static bool is_emulator_window_size(int width, int height) {
-    // Emulator windows typically > 640x480
-    return width >= 640 && height >= 480;
-}
-
-/**
- * Structure to hold window candidates
- */
-typedef struct {
-    Window window;
-    char* title;
-    int width;
-    int height;
-    int score;  // Higher is better
-} WindowCandidate;
-
-/**
- * Global state for collecting window candidates
- */
-static struct {
-    WindowCandidate* candidates;
-    int count;
-    int capacity;
-} candidate_list = {NULL, 0, 0};
-
-/**
- * Add a window to the candidate list
- */
-static void add_candidate(Window window, const char* title, int width, int height) {
-    if (candidate_list.count >= candidate_list.capacity) {
-        int new_capacity = candidate_list.capacity == 0 ? 10 : candidate_list.capacity * 2;
-        candidate_list.candidates = realloc(candidate_list.candidates,
-                                           new_capacity * sizeof(WindowCandidate));
-        candidate_list.capacity = new_capacity;
+        haystack++;
+        needle++;
     }
 
-    candidate_list.candidates[candidate_list.count].window = window;
-    candidate_list.candidates[candidate_list.count].title = strdup(title);
-    candidate_list.candidates[candidate_list.count].width = width;
-    candidate_list.candidates[candidate_list.count].height = height;
-    // Score based on size (larger is more likely to be emulator)
-    candidate_list.candidates[candidate_list.count].score = width * height;
-    candidate_list.count++;
+    return *needle == '\0';
 }
 
 /**
- * Reset candidate list
+ * Case-insensitive substring search
  */
-static void reset_candidates(void) {
-    for (int i = 0; i < candidate_list.count; i++) {
-        free(candidate_list.candidates[i].title);
-    }
-    free(candidate_list.candidates);
-    candidate_list.candidates = NULL;
-    candidate_list.count = 0;
-    candidate_list.capacity = 0;
-}
+static bool strstr_case_insensitive(const char* haystack, const char* needle) {
+    if (!haystack || !needle) return false;
 
-/**
- * Case-insensitive substring match
- */
-static bool title_matches_pattern(const char* title, const char* pattern) {
-    if (!title || !pattern) return false;
+    size_t needle_len = strlen(needle);
+    if (needle_len == 0) return true;
 
-    size_t pattern_len = strlen(pattern);
-    size_t title_len = strlen(title);
-
-    if (title_len < pattern_len) return false;
-
-    for (size_t i = 0; i <= title_len - pattern_len; i++) {
+    for (size_t i = 0; haystack[i]; i++) {
         bool match = true;
-        for (size_t j = 0; j < pattern_len; j++) {
-            if (tolower((unsigned char)title[i + j]) !=
-                tolower((unsigned char)pattern[j])) {
+        for (size_t j = 0; j < needle_len; j++) {
+            if (tolower((unsigned char)haystack[i + j]) !=
+                tolower((unsigned char)needle[j])) {
                 match = false;
                 break;
             }
         }
-        if (match) {
+        if (match && haystack[i + needle_len] == '\0') {
+            // Only match if the needle appears at the end of haystack
+            // For substring matching anywhere, remove the haystack[i + needle_len] check
             return true;
         }
     }
@@ -268,90 +156,61 @@ static bool title_matches_pattern(const char* title, const char* pattern) {
 }
 
 /**
- * Recursive search for all windows matching title pattern
+ * Recursive search for window by title (case-insensitive)
  */
-static void search_matching_windows(Display* display, Window window,
-                                    const char* title_pattern) {
+static Window search_window_by_title(Display* display, Window root,
+                                     const char* title_pattern) {
     Window parent;
     Window* children;
     unsigned int nchildren;
 
-    // Check if this window matches
-    char* title = get_window_title(display, window);
-    if (title && title_matches_pattern(title, title_pattern)) {
-        // Check if window is visible
-        if (is_window_visible(display, window)) {
-            // Get window size
-            XWindowAttributes attrs;
-            if (XGetWindowAttributes(display, window, &attrs) != 0) {
-                // Filter out terminal windows
-                bool is_term = is_terminal_window(display, window) ||
-                              is_terminal_by_class(display, window);
+    // Check if this window matches (case-insensitive)
+    char* title = get_window_title(display, root);
+    if (title) {
+        // Case-insensitive substring match
+        size_t pattern_len = strlen(title_pattern);
+        size_t title_len = strlen(title);
 
-                if (is_term) {
-                    printf("Filtered terminal window: '%s' (%dx%d)\n",
-                           title, attrs.width, attrs.height);
-                } else if (!is_emulator_window_size(attrs.width, attrs.height)) {
-                    printf("Filtered small window: '%s' (%dx%d)\n",
-                           title, attrs.width, attrs.height);
-                } else {
-                    // Add to candidates
-                    printf("Found candidate: '%s' (%dx%d) score=%d\n",
-                           title, attrs.width, attrs.height,
-                           attrs.width * attrs.height);
-                    add_candidate(window, title, attrs.width, attrs.height);
+        bool matches = false;
+        if (title_len >= pattern_len) {
+            for (size_t i = 0; i <= title_len - pattern_len; i++) {
+                bool substring_match = true;
+                for (size_t j = 0; j < pattern_len; j++) {
+                    if (tolower((unsigned char)title[i + j]) !=
+                        tolower((unsigned char)title_pattern[j])) {
+                        substring_match = false;
+                        break;
+                    }
+                }
+                if (substring_match) {
+                    matches = true;
+                    break;
                 }
             }
+        }
+
+        if (matches && is_window_visible(display, root)) {
+            free(title);
+            return root;
         }
     }
     if (title) free(title);
 
     // Search children
-    if (XQueryTree(display, window, &window, &parent, &children, &nchildren) == 0) {
-        return;
-    }
-
-    for (unsigned int i = 0; i < nchildren; i++) {
-        search_matching_windows(display, children[i], title_pattern);
-    }
-
-    if (children) XFree(children);
-}
-
-/**
- * Find best matching graphical window
- */
-static Window find_best_graphical_window(Display* display, Window root,
-                                        const char* title_pattern) {
-    // Reset candidate list
-    reset_candidates();
-
-    // Search for all matching windows
-    search_matching_windows(display, root, title_pattern);
-
-    if (candidate_list.count == 0) {
-        reset_candidates();
+    if (XQueryTree(display, root, &root, &parent, &children, &nchildren) == 0) {
         return None;
     }
 
-    // Find window with highest score
-    int best_idx = 0;
-    for (int i = 1; i < candidate_list.count; i++) {
-        if (candidate_list.candidates[i].score > candidate_list.candidates[best_idx].score) {
-            best_idx = i;
+    Window result = None;
+    for (unsigned int i = 0; i < nchildren; i++) {
+        result = search_window_by_title(display, children[i], title_pattern);
+        if (result != None) {
+            break;
         }
     }
 
-    Window best = candidate_list.candidates[best_idx].window;
-    printf("Selected window: '%s' (%dx%d)\n",
-           candidate_list.candidates[best_idx].title,
-           candidate_list.candidates[best_idx].width,
-           candidate_list.candidates[best_idx].height);
-
-    // Cleanup
-    reset_candidates();
-
-    return best;
+    if (children) XFree(children);
+    return result;
 }
 
 /**
@@ -364,8 +223,8 @@ Window find_x11_window_by_title(void* display_ptr, Window root,
         return None;
     }
 
-    // Use new algorithm to find best graphical window
-    return find_best_graphical_window(display, root, title_pattern);
+    // Start search from root window
+    return search_window_by_title(display, root, title_pattern);
 }
 
 /**

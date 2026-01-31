@@ -247,6 +247,7 @@ int cmd_build(int argc, char** argv) {
     int is_sdl3 = strcmp(primary_target, "sdl3") == 0;
     int is_raylib = strcmp(primary_target, "raylib") == 0;
     int is_android = strcmp(primary_target, "android") == 0;
+    int is_tcltk = strcmp(primary_target, "tcltk") == 0 || strcmp(primary_target, "tcl") == 0;
 
     // If specific file argument provided, build just that file
     if (file_arg_start > 0 && file_arg_start < argc) {
@@ -260,7 +261,7 @@ int cmd_build(int argc, char** argv) {
 
         if (is_web) {
             result = build_single_file_web(source_file, config);
-        } else if (is_limbo || is_sdl3 || is_raylib || is_android) {
+        } else if (is_limbo || is_sdl3 || is_raylib || is_android || is_tcltk) {
             // For all non-web targets, use target handler
             // First compile to KIR
             char kir_file[1024];

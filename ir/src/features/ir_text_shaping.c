@@ -11,9 +11,11 @@
 #include <string.h>
 #include <stdio.h>
 
+// Skip HarfBuzz/FreeType for TaijiOS/Inferno builds
+#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
+
 // HarfBuzz headers
 #include <hb.h>
-#include <hb-ft.h>
 #include <hb-ft.h>
 
 // FreeType headers (used by HarfBuzz)
@@ -111,7 +113,6 @@ IRFont* ir_font_load(const char* font_path, float size) {
     font->size = size;
 
     // Calculate scale factor (font units to pixels)
-    // HarfBuzz uses font units, we need to scale to pixels
     font->scale = size / (float)ft_face->units_per_EM;
 
     IR_LOG_INFO("TEXT_SHAPING", "Loaded font: %s (%.1fpt)", font_path, size);
@@ -325,7 +326,6 @@ float ir_shaped_text_get_height(const IRShapedText* shaped_text) {
 #include <fribidi.h>
 
 bool ir_bidi_available(void) {
-    // FriBidi is always available if compiled in
     return true;
 }
 
@@ -430,7 +430,6 @@ IRBidiResult* ir_bidi_reorder(
     );
 
     if (max_level == 0) {
-        // Failed to get embedding levels
         free(bidi_types);
         free(levels);
         ir_bidi_result_destroy(result);
@@ -470,7 +469,6 @@ IRBidiResult* ir_bidi_reorder(
     );
 
     if (max_level_reorder == 0) {
-        // Reordering failed
         free(bidi_types);
         free(levels);
         free(position_map);
@@ -554,3 +552,97 @@ void ir_bidi_result_destroy(IRBidiResult* result) {
 
     free(result);
 }
+
+#else
+// ============================================================================
+// TaijiOS/Inferno Stub Implementations (no external dependencies)
+// ============================================================================
+
+// Global state
+static bool g_shaping_initialized = false;
+
+// Initialization and Cleanup
+bool ir_text_shaping_init(void) {
+    g_shaping_initialized = true;
+    return true;
+}
+
+void ir_text_shaping_shutdown(void) {
+    g_shaping_initialized = false;
+}
+
+bool ir_text_shaping_available(void) {
+    return false;  // Text shaping not available
+}
+
+// Font Management - Stubs
+IRFont* ir_font_load(const char* font_path, float size) {
+    (void)font_path; (void)size;
+    return NULL;  // Not supported
+}
+
+void ir_font_destroy(IRFont* font) {
+    (void)font;  // No-op
+}
+
+void ir_font_set_size(IRFont* font, float size) {
+    (void)font; (void)size;  // No-op
+}
+
+// Text Shaping - Stubs
+IRShapedText* ir_shape_text(
+    IRFont* font,
+    const char* text,
+    uint32_t text_length,
+    const IRShapeOptions* options
+) {
+    (void)font; (void)text; (void)text_length; (void)options;
+    return NULL;  // Not supported
+}
+
+void ir_shaped_text_destroy(IRShapedText* shaped_text) {
+    (void)shaped_text;  // No-op
+}
+
+float ir_shaped_text_get_width(const IRShapedText* shaped_text) {
+    return shaped_text ? 0.0f : 0.0f;
+}
+
+float ir_shaped_text_get_height(const IRShapedText* shaped_text) {
+    return shaped_text ? 0.0f : 0.0f;
+}
+
+// Bidirectional Text - Stubs (no FriBidi)
+bool ir_bidi_available(void) {
+    return false;  // BiDi not available
+}
+
+IRBidiDirection ir_bidi_detect_direction(const char* text, uint32_t length) {
+    // Default to LTR for TaijiOS
+    (void)text; (void)length;
+    return IR_BIDI_DIR_LTR;
+}
+
+IRBidiResult* ir_bidi_reorder(
+    const uint32_t* text,
+    uint32_t length,
+    IRBidiDirection base_dir
+) {
+    (void)text; (void)length; (void)base_dir;
+    return NULL;  // Not supported
+}
+
+uint32_t* ir_bidi_utf8_to_utf32(
+    const char* utf8_text,
+    uint32_t utf8_length,
+    uint32_t* out_length
+) {
+    (void)utf8_text; (void)utf8_length; (void)out_length;
+    return NULL;  // Not supported
+}
+
+void ir_bidi_result_destroy(IRBidiResult* result) {
+    (void)result;  // No-op
+}
+
+#endif // !__TAIJIOS__ && !__INFERNO__

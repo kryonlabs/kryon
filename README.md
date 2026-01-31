@@ -29,6 +29,8 @@ Target (DIS bytecode or HTML/CSS/JS)
 | DIS (TaijiOS) | ✅ | `codegens/dis/` | Primary target |
 | HTML/CSS/JS | ✅ | `codegens/web/` | Full support |
 | C | ✅ | `codegens/c/` | For reference |
+| Limbo | ✅ | `codegens/limbo/` | TaijiOS Inferno |
+| Tcl/Tk | ✅ | `codegens/tcltk/` | Desktop GUI |
 | KRY | ✅ | `codegens/kry/` | Round-trip |
 | Markdown | ✅ | `codegens/markdown/` | Documentation |
 

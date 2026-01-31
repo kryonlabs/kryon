@@ -52,8 +52,8 @@ SRCS=\
 	src/logic/ir_expression_compiler.c\
 	src/logic/ir_expression_cache.c\
 	src/logic/ir_builtin_registry.c\
-	src/logic/ir_foreach.c\
-	src/logic/ir_foreach_expand.c\
+	src/logic/ir_for.c\
+	src/logic/ir_for_expand.c\
 	src/events/ir_event_builder.c\
 	src/events/ir_event_types.c\
 	src/events/ir_input.c\
@@ -72,6 +72,7 @@ SRCS=\
 	src/features/ir_table.c\
 	src/features/ir_markdown.c\
 	src/features/ir_native_canvas.c\
+	src/features/ir_text_shaping.c\
 	src/utils/ir_string_builder.c\
 	src/utils/ir_buffer.c\
 	src/utils/ir_log.c\
@@ -121,6 +122,7 @@ CFLAGS=$CFLAGS\
 	-I../bindings/c\
 	-Isrc/utils\
 	-DIR_USE_SINGLE_PASS_LAYOUT\
+	-D__TAIJIOS__\
 
 LIBRARY=$ROOT/$OBJDIR/lib/$LIB
 

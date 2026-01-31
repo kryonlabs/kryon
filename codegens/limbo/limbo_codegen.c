@@ -160,6 +160,15 @@ static void set_event_handler_code(int number, const char* code) {
                 free(event_handlers[i].handler_code);
             }
             event_handlers[i].handler_code = strdup(code);
+            int len = strlen(code);
+            fprintf(stderr, "[LIMBO] Stored handler code for number %d (len=%d): ", number, len);
+            for (int j = 0; j < len; j++) {
+                if (code[j] == '\n') fprintf(stderr, "\\n");
+                else if (code[j] == '\r') fprintf(stderr, "\\r");
+                else if (code[j] == '\t') fprintf(stderr, "\\t");
+                else fprintf(stderr, "%c", code[j]);
+            }
+            fprintf(stderr, "\n");
             break;
         }
     }
@@ -177,11 +186,15 @@ static const char* get_handler_name_by_number(int number) {
 
 // Get handler code by number
 static const char* get_handler_code_by_number(int number) {
+    fprintf(stderr, "[LIMBO] Looking up handler code for number %d (total handlers: %d)\n", number, event_handler_mapping_count);
     for (int i = 0; i < event_handler_mapping_count; i++) {
+        fprintf(stderr, "[LIMBO] Checking handler %d: number=%d, code=%p\n", i, event_handlers[i].handler_number, (void*)event_handlers[i].handler_code);
         if (event_handlers[i].handler_number == number) {
+            fprintf(stderr, "[LIMBO] Found handler code: %s\n", event_handlers[i].handler_code ? event_handlers[i].handler_code : "NULL");
             return event_handlers[i].handler_code;
         }
     }
+    fprintf(stderr, "[LIMBO] Handler code not found for number %d\n", number);
     return NULL;
 }
 
@@ -1475,11 +1488,12 @@ static void generate_limbo_custom_functions(LimboContext* ctx, cJSON* logic_bloc
         // Extract and store the function body for inlining
         if (limbo_source) {
             mark_handler_generated(ctx, func_name);
+            fprintf(stderr, "[LIMBO] Processing Limbo source for func %s\n", func_name);
 
             // Parse the function to extract the handler name and body
             // Expected format: "funcName: fn() {\n\tbody\n};"
 
-            // Extract handler name first
+            // Extract handler name first (before the colon)
             char handler_name_from_source[256] = {0};
             const char* colon_pos = strchr(limbo_source, ':');
             if (colon_pos && colon_pos > limbo_source) {
@@ -1488,12 +1502,13 @@ static void generate_limbo_custom_functions(LimboContext* ctx, cJSON* logic_bloc
                     strncpy(handler_name_from_source, limbo_source, name_len);
                     handler_name_from_source[name_len] = '\0';
 
-                    // Trim whitespace from name
+                    // Trim trailing whitespace from name
                     char* end = handler_name_from_source + name_len - 1;
                     while (end >= handler_name_from_source && (*end == ' ' || *end == '\t')) {
                         *end = '\0';
                         end--;
                     }
+                    fprintf(stderr, "[LIMBO] Extracted handler name: '%s'\n", handler_name_from_source);
                 }
             }
 
@@ -1501,7 +1516,7 @@ static void generate_limbo_custom_functions(LimboContext* ctx, cJSON* logic_bloc
             const char* body_start = strchr(limbo_source, '{');
             const char* body_end = strrchr(limbo_source, '}');
 
-            if (body_start && body_end && body_end > body_start) {
+            if (body_start && body_end && body_end > body_start && handler_name_from_source[0] != '\0') {
                 body_start++;  // Skip the '{'
 
                 // Calculate body length
@@ -1513,35 +1528,42 @@ static void generate_limbo_custom_functions(LimboContext* ctx, cJSON* logic_bloc
                     body_len--;
                 }
 
-                // Skip trailing whitespace, semicolon, etc.
+                // Skip trailing whitespace (but keep semicolons - they're statement terminators in Limbo)
                 while (body_len > 0 && (body_start[body_len - 1] == '\n' || body_start[body_len - 1] == '\r' ||
                                        body_start[body_len - 1] == ' ' || body_start[body_len - 1] == '\t' ||
-                                       body_start[body_len - 1] == ';' || body_start[body_len - 1] == '}')) {
+                                       body_start[body_len - 1] == '}')) {
                     body_len--;
                 }
 
+                fprintf(stderr, "[LIMBO] Extracted body (len=%d): '%s'\n", (int)body_len, body_len > 0 ? body_start : "");
+
                 // Find which handler number this function corresponds to
-                if (handler_name_from_source[0] != '\0' && body_len > 0) {
+                if (body_len > 0) {
+                    fprintf(stderr, "[LIMBO] Looking for handler with name '%s' (total handlers: %d)\n",
+                            handler_name_from_source, event_handler_mapping_count);
                     for (int h = 0; h < event_handler_mapping_count; h++) {
-                        if (event_handlers[h].handler_name && strcmp(event_handlers[h].handler_name, handler_name_from_source) == 0) {
+                        fprintf(stderr, "[LIMBO] Checking handler %d: name='%s', number=%d\n",
+                                h, event_handlers[h].handler_name, event_handlers[h].handler_number);
+                        if (event_handlers[h].handler_name &&
+                            strcmp(event_handlers[h].handler_name, handler_name_from_source) == 0) {
+
+                            fprintf(stderr, "[LIMBO] MATCH! Storing handler code for number %d\n", event_handlers[h].handler_number);
+
                             // Allocate and store the body
                             char* body = malloc(body_len + 1);
                             if (body) {
                                 strncpy(body, body_start, body_len);
                                 body[body_len] = '\0';
                                 set_event_handler_code(event_handlers[h].handler_number, body);
-                                // DEBUG: Don't free yet, keep it for verification
-                                // free(body);  // set_event_handler_code makes a copy
-                                fprintf(stderr, "[DEBUG] Stored handler code for %s (number %d): '%s'\n",
-                                        handler_name_from_source, event_handlers[h].handler_number, body);
+                                free(body);  // set_event_handler_code makes a copy
                             }
                             break;
                         }
                     }
-                } else {
-                    fprintf(stderr, "[DEBUG] Failed to extract handler body: name='%s', body_len=%d\n",
-                            handler_name_from_source, (int)body_len);
                 }
+            } else {
+                fprintf(stderr, "[LIMBO] Failed to extract body: colon=%p, body_start=%p, body_end=%p, name='%s'\n",
+                        (void*)colon_pos, (void*)body_start, (void*)body_end, handler_name_from_source);
             }
         }
     }
@@ -1912,19 +1934,19 @@ bool limbo_codegen_generate_with_options(const char* kir_path,
     generate_data_arrays(ctx, source_structures_json);
     append_string(&ctx->buffer, &ctx->size, &ctx->capacity, "\n");
 
-    // Generate custom Limbo functions (BEFORE init function)
-    generate_limbo_custom_functions(ctx, logic_block);
-
     // Generate init function start
     generate_init_start(ctx, window_title);
 
-    // Process root component
+    // Process root component (this registers event handlers)
     cJSON* root = cJSON_GetObjectItem(kir_root, "root");
     if (root) {
         process_component(ctx, root, "", 0, NULL, NULL);
     }
 
-    // Generate event loop
+    // NOW generate custom Limbo functions (AFTER event handlers are registered)
+    generate_limbo_custom_functions(ctx, logic_block);
+
+    // Generate event loop (this inlines the handler code)
     generate_event_loop(ctx, ctx->event_handler_counter);
 
     // Cleanup handler mappings

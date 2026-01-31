@@ -55,14 +55,16 @@ CFLAGS=$CFLAGS\
 	-I../codegens/web\
 	-I../codegens/c\
 	-I../codegens/limbo\
+	-I../codegens/tcltk\
 	-I../dis/include\
+	-D__TAIJIOS__\
 
 # Libraries to link against (in correct dependency order)
 LIBS=\
 	kryon_codegen_limbo\
+	kryon_codegen_tcltk\
 	kryon_codegen_web\
 	kryon_codegen_c\
-	kryon_codegen_android\
 	kryon_codegen_kry\
 	kryon_codegen_markdown\
 	kryon_codegen_common\
@@ -83,7 +85,7 @@ $O.out:V: $SRCS
 		$CC $CFLAGS $i || exit 1
 	done
 	echo "  Linking kryon binary..."
-	$LD $LDFLAGS -o $O.out *.o $ROOT/$OBJDIR/lib/libkryon_codegen_limbo.a $ROOT/$OBJDIR/lib/libkryon_codegen_web.a $ROOT/$OBJDIR/lib/libkryon_codegen_c.a $ROOT/$OBJDIR/lib/libkryon_codegen_android.a $ROOT/$OBJDIR/lib/libkryon_codegen_kry.a $ROOT/$OBJDIR/lib/libkryon_codegen_markdown.a $ROOT/$OBJDIR/lib/libkryon_codegen_common.a $ROOT/$OBJDIR/lib/libdiscodegen.a $ROOT/$OBJDIR/lib/libkryon_ir.a $ROOT/$OBJDIR/lib/libcJSON.a $ROOT/$OBJDIR/lib/libtomlc99.a $ROOT/$OBJDIR/lib/libbio.a $ROOT/$OBJDIR/lib/lib9.a -lm -lpthread -ldl -lharfbuzz -lfreetype -lfribidi
+	$LD $LDFLAGS -o $O.out *.o $ROOT/$OBJDIR/lib/libkryon_codegen_limbo.a $ROOT/$OBJDIR/lib/libkryon_codegen_tcltk.a $ROOT/$OBJDIR/lib/libkryon_codegen_web.a $ROOT/$OBJDIR/lib/libkryon_codegen_c.a $ROOT/$OBJDIR/lib/libkryon_codegen_kry.a $ROOT/$OBJDIR/lib/libkryon_codegen_markdown.a $ROOT/$OBJDIR/lib/libkryon_codegen_common.a $ROOT/$OBJDIR/lib/libdiscodegen.a $ROOT/$OBJDIR/lib/libkryon_ir.a $ROOT/$OBJDIR/lib/libcJSON.a $ROOT/$OBJDIR/lib/libtomlc99.a $ROOT/$OBJDIR/lib/libbio.a $ROOT/$OBJDIR/lib/lib9.a -lm -lpthread -ldl
 	echo "  Built kryon"
 
 $BIN/$TARG: $O.out

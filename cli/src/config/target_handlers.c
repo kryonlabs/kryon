@@ -14,14 +14,20 @@
 
 #include "kryon_cli.h"
 #include "build.h"
+#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
 #include "screenshot.h"
+#endif
 #include "../../../codegens/limbo/limbo_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
+#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
 #include "../../../codegens/android/ir_android_codegen.h"
+#endif
+#include "../../../codegens/tcltk/tcltk_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 /* ============================================================================
  * Forward Declarations
@@ -191,10 +197,17 @@ static int limbo_target_build(const char* kir_file, const char* output_dir,
     }
 
     // Compile: limbo -o output.dis source.b
+    // Extract just the filenames for the command (since we cd into output_dir)
+    const char *source_basename = strrchr(limbo_source, '/');
+    source_basename = source_basename ? source_basename + 1 : limbo_source;
+
+    const char *dis_basename = strrchr(dis_output, '/');
+    dis_basename = dis_basename ? dis_basename + 1 : dis_output;
+
     char compile_cmd[2048];
     snprintf(compile_cmd, sizeof(compile_cmd),
              "cd \"%s\" && \"%s\" -o \"%s\" \"%s\"",
-             output_dir, limbo_compiler, dis_output, limbo_source);
+             output_dir, limbo_compiler, dis_basename, source_basename);
 
     printf("Compiling Limbo to DIS: %s\n", compile_cmd);
     int result = system(compile_cmd);
@@ -215,9 +228,19 @@ static int limbo_target_build(const char* kir_file, const char* output_dir,
  */
 static int limbo_target_run(const char* kir_file, const KryonConfig* config,
                             const ScreenshotRunOptions* screenshot_opts) {
-    // Determine output directory and project name
-    const char* output_dir = ".";
-    const char* project_name = "app";
+    // Extract output directory and project name from KIR file path
+    // KIR files are in .kryon_cache/<basename>.kir format
+    const char* kir_basename = strrchr(kir_file, '/');
+    kir_basename = kir_basename ? kir_basename + 1 : kir_file;
+
+    // Copy and remove .kir extension
+    char project_name[PATH_MAX];
+    snprintf(project_name, sizeof(project_name), "%s", kir_basename);
+    char* dot = strrchr(project_name, '.');
+    if (dot) *dot = '\0';  // Remove .kir extension
+
+    // Use .kryon_cache directory (same as KIR files)
+    const char* output_dir = ".kryon_cache";
 
     // Build first (generates .dis file)
     if (limbo_target_build(kir_file, output_dir, project_name, config) != 0) {
@@ -314,6 +337,7 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config,
                               screenshot_opts->screenshot_path != NULL);
 
     if (capture_screenshot) {
+#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
         // Launch emu in background so we can capture its window
         // Add '&' to run in background
         char bg_cmd[2304];
@@ -331,7 +355,8 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config,
         ScreenshotOptions ss_opts = SCREENSHOT_DEFAULTS;
         ss_opts.output_path = screenshot_opts->screenshot_path;
         ss_opts.after_frames = screenshot_opts->screenshot_after_frames;
-        ss_opts.window_title = "TaijiOS";
+        // Let capture_emulator_window try multiple window titles automatically
+        ss_opts.window_title = NULL;  // NULL = try "Inferno", then "TaijiOS"
 
         bool screenshot_ok = capture_emulator_window(&ss_opts);
 
@@ -347,6 +372,11 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config,
         printf("\nScreenshot captured. Close the emulator window when done.\n");
 
         return launch_result;
+#else
+        // Screenshot capture not supported on TaijiOS/Inferno
+        fprintf(stderr, "Error: Screenshot capture is not supported on this platform\n");
+        return 1;
+#endif
     } else {
         // Normal execution - wait for emu to complete
         int result = system(cmd);
@@ -885,6 +915,83 @@ void target_handler_cleanup(void) {
 }
 
 /* ============================================================================
+ * Tcl/Tk Target Handler
+ * ============================================================================ */
+
+/**
+ * Tcl/Tk target build handler
+ * Generates Tcl/Tk scripts from KIR
+ */
+static int tcltk_target_build(const char* kir_file, const char* output_dir,
+                              const char* project_name, const KryonConfig* config) {
+    (void)config;  // Not used in Tcl/Tk build
+
+    printf("Building Tcl/Tk target...\n");
+    printf("  KIR: %s\n", kir_file);
+
+    char tcl_script[1024];
+    snprintf(tcl_script, sizeof(tcl_script), "%s/%s.tcl", output_dir, project_name);
+
+    printf("  Output: %s\n", tcl_script);
+
+    // Prepare codegen options
+    TclTkCodegenOptions options = {0};
+    options.include_comments = true;
+    options.use_ttk_widgets = true;
+    options.generate_main = true;
+    options.window_title = project_name;
+    options.window_width = 800;
+    options.window_height = 600;
+
+    if (!tcltk_codegen_generate_with_options(kir_file, tcl_script, &options)) {
+        fprintf(stderr, "Error: Tcl/Tk code generation failed\n");
+        return 1;
+    }
+
+    printf("✓ Generated Tcl/Tk script: %s\n", tcl_script);
+    return 0;
+}
+
+/**
+ * Tcl/Tk target run handler
+ * Builds if needed, then executes with wish
+ */
+static int tcltk_target_run(const char* kir_file, const KryonConfig* config,
+                            const ScreenshotRunOptions* screenshot_opts) {
+    (void)screenshot_opts;  // Screenshot not supported for Tcl/Tk
+
+    // Determine output directory and project name
+    const char* output_dir = ".";
+    const char* project_name = "app";
+
+    // Build first
+    if (tcltk_target_build(kir_file, output_dir, project_name, config) != 0) {
+        return 1;
+    }
+
+    printf("\nRunning Tcl/Tk script with wish...\n");
+
+    char tcl_script[1024];
+    snprintf(tcl_script, sizeof(tcl_script), "%s/%s.tcl", output_dir, project_name);
+
+    // Execute with wish
+    char command[2048];
+    snprintf(command, sizeof(command), "wish \"%s\"", tcl_script);
+
+    printf("Executing: %s\n", command);
+    int result = system(command);
+
+    if (result != 0) {
+        fprintf(stderr, "Error: wish execution failed with exit code %d\n", result);
+        fprintf(stderr, "Make sure Tcl/Tk is installed: sudo apt-get install tcl tk\n");
+        return 1;
+    }
+
+    return 0;
+}
+
+#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
+/* ============================================================================
  * Android Target Handler
  * ============================================================================ */
 
@@ -964,6 +1071,8 @@ static int android_target_run(const char* kir_file, const KryonConfig* config,
     return 0;
 }
 
+#endif // !__TAIJIOS__ && !__INFERNO__
+
 /**
  * Resolve target aliases to canonical target names
  * Returns canonical name or NULL if not a recognized alias
@@ -983,11 +1092,18 @@ static const char* resolve_target_alias(const char* alias) {
         return "sdl3";
     }
 
+    // Tcl/Tk alias
+    if (strcmp(alias, "tcl") == 0) {
+        return "tcltk";
+    }
+
+#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
     // Android/Kotlin aliases → android target
     if (strcmp(alias, "android") == 0 ||
         strcmp(alias, "kotlin") == 0) {
         return "android";
     }
+#endif // !__TAIJIOS__ && !__INFERNO__
 
     // Not a recognized alias - return NULL
     // sdl3, raylib, web are real targets, not aliases
@@ -1084,7 +1200,17 @@ void target_handler_initialize(void) {
     };
     target_handler_register(&g_raylib_handler);
 
+    // Register Tcl/Tk handler (generates Tcl/Tk scripts)
+    static TargetHandler g_tcltk_handler = {
+        .name = "tcltk",
+        .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
+        .build_handler = tcltk_target_build,
+        .run_handler = tcltk_target_run,
+    };
+    target_handler_register(&g_tcltk_handler);
+
     // Register Android handler (generates Kotlin DSL code)
+#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
     static TargetHandler g_android_handler = {
         .name = "android",
         .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
@@ -1092,6 +1218,7 @@ void target_handler_initialize(void) {
         .run_handler = android_target_run,
     };
     target_handler_register(&g_android_handler);
+#endif // !__TAIJIOS__ && !__INFERNO__
 
     g_initialized = true;
 }
