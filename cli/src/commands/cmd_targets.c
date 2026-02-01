@@ -93,7 +93,7 @@ static const char* get_capabilities_string(const char* target_name) {
     } else if (has_run) {
         snprintf(caps_buf, sizeof(caps_buf), "[RUN]");
     } else {
-        snprintf(caps_buf, sizeof(caps_buf), "");
+        snprintf(caps_buf, sizeof(caps_buf), "%s", "");
     }
 
     return caps_buf;

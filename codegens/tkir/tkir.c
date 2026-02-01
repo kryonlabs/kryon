@@ -370,9 +370,26 @@ void tkir_root_free(TKIRRoot* root) {
         cJSON_Delete(root->data_bindings);
     }
 
-    // IMPORTANT: We don't free root->json here because it's a borrowed reference.
-    // The caller who created the cJSON object is responsible for freeing it.
-    // This function only frees the TKIRRoot structure itself, not the JSON it references.
+    // Free the JSON root if we own it
+    // When created via tkir_build_from_kir(), root->json is the parsed KIR cJSON
+    // that we need to free. When created via tkir_root_from_cJSON(), it's a
+    // borrowed reference that the caller owns - in that case, we should NOT free it.
+    //
+    // To distinguish: if widgets/handlers are the same as what's in root->json,
+    // then root->json is a borrowed reference (from tkir_root_from_cJSON).
+    // Otherwise, we own it (from tkir_build_from_kir).
+
+    bool json_is_borrowed = false;
+    if (root->json && root->widgets) {
+        cJSON* json_widgets = cJSON_GetObjectItem(root->json, "widgets");
+        if (root->widgets == json_widgets) {
+            json_is_borrowed = true;  // Same reference - borrowed
+        }
+    }
+
+    if (!json_is_borrowed && root->json) {
+        cJSON_Delete(root->json);
+    }
 
     free(root);
 }

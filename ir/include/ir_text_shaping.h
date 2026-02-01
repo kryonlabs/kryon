@@ -2,18 +2,26 @@
  * @file ir_text_shaping.h
  * @brief Text shaping and complex script support using HarfBuzz
  *
- * Provides text shaping capabilities for:
- * - Complex scripts (Arabic, Devanagari, Thai, etc.)
- * - Ligatures and glyph substitution
- * - Proper glyph positioning
- * - Font features (kerning, contextual alternates, etc.)
+ * WARNING: Text shaping is not available in this build.
+ * HarfBuzz and FriBidi libraries are required for complex text support.
+ *
+ * This header is provided for API compatibility only.
+ * All functions return NULL/false indicating unavailability.
+ *
+ * To enable text shaping:
+ * 1. Install HarfBuzz: sudo apt-get install libharfbuzz-dev
+ * 2. Install FriBidi: sudo apt-get install libfribidi-dev
+ * 3. Rebuild with: make clean && make
  */
 
 #ifndef IR_TEXT_SHAPING_H
 #define IR_TEXT_SHAPING_H
 
+#warning "Text shaping not available - HarfBuzz/FriBidi required. Install with: sudo apt-get install libharfbuzz-dev libfribidi-dev"
+
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +31,28 @@ extern "C" {
 typedef struct IRFont IRFont;
 typedef struct IRShapedText IRShapedText;
 typedef struct IRGlyphInfo IRGlyphInfo;
+
+/**
+ * @brief Base direction for bidirectional text
+ */
+typedef enum {
+    IR_BIDI_DIR_LTR = 0,     // Left-to-right
+    IR_BIDI_DIR_RTL,         // Right-to-left
+    IR_BIDI_DIR_WEAK_LTR,    // Weak LTR (auto-detect, prefer LTR)
+    IR_BIDI_DIR_WEAK_RTL,    // Weak RTL (auto-detect, prefer RTL)
+    IR_BIDI_DIR_NEUTRAL      // Neutral (auto-detect from content)
+} IRBidiDirection;
+
+/**
+ * @brief Bidirectional text reordering result
+ */
+typedef struct IRBidiResult {
+    uint32_t* visual_to_logical;  // Visual position -> logical position mapping
+    uint32_t* logical_to_visual;  // Logical position -> visual position mapping
+    uint8_t* embedding_levels;    // Embedding levels for each character
+    IRBidiDirection base_direction; // Resolved base direction
+    uint32_t length;              // Number of characters
+} IRBidiResult;
 
 /**
  * @brief Information about a single shaped glyph
@@ -85,172 +115,78 @@ typedef struct IRShapeOptions {
 } IRShapeOptions;
 
 // ============================================================================
-// Font Management
+// Stub Implementations (when HarfBuzz/FriBidi not available)
 // ============================================================================
 
-/**
- * @brief Load a font from a file path
- * @param font_path Path to the font file (TTF/OTF)
- * @param size Font size in points
- * @return Font handle, or NULL on failure
- */
-IRFont* ir_font_load(const char* font_path, float size);
+// Stub implementations for BiDi functions (needed for linking)
+static inline IRBidiDirection ir_bidi_detect_direction(const char* text, uint32_t length) {
+    (void)text; (void)length;
+    return IR_BIDI_DIR_LTR;  // Default to LTR
+}
 
-/**
- * @brief Destroy a font and free resources
- * @param font Font handle
- */
-void ir_font_destroy(IRFont* font);
+static inline IRBidiResult* ir_bidi_reorder(const uint32_t* text, uint32_t length, IRBidiDirection base_dir) {
+    (void)text; (void)length; (void)base_dir;
+    return NULL;
+}
 
-/**
- * @brief Set font size
- * @param font Font handle
- * @param size New font size in points
- */
-void ir_font_set_size(IRFont* font, float size);
+static inline uint32_t* ir_bidi_utf8_to_utf32(const char* utf8_text, uint32_t utf8_length, uint32_t* out_length) {
+    (void)utf8_text; (void)utf8_length;
+    if (out_length) *out_length = 0;
+    return NULL;
+}
 
-// ============================================================================
-// Text Shaping
-// ============================================================================
+static inline void ir_bidi_result_destroy(IRBidiResult* result) {
+    (void)result;
+}
 
-/**
- * @brief Shape text using HarfBuzz
- *
- * Converts text to positioned glyphs with proper shaping for complex scripts.
- *
- * @param font Font to use for shaping
- * @param text UTF-8 encoded text
- * @param text_length Length of text in bytes
- * @param options Shaping options (direction, language, script, features)
- * @return Shaped text with glyph information, or NULL on failure
- */
-IRShapedText* ir_shape_text(
-    IRFont* font,
-    const char* text,
-    uint32_t text_length,
-    const IRShapeOptions* options
-);
+static inline bool ir_bidi_available(void) {
+    return false;
+}
 
-/**
- * @brief Destroy shaped text and free resources
- * @param shaped_text Shaped text handle
- */
-void ir_shaped_text_destroy(IRShapedText* shaped_text);
+// Stub implementations for text shaping functions
+static inline bool ir_text_shaping_init(void) {
+    return false;
+}
 
-/**
- * @brief Get the width of shaped text
- * @param shaped_text Shaped text handle
- * @return Width in pixels
- */
-float ir_shaped_text_get_width(const IRShapedText* shaped_text);
+static inline void ir_text_shaping_shutdown(void) {
+    // No-op
+}
 
-/**
- * @brief Get the height of shaped text
- * @param shaped_text Shaped text handle
- * @return Height in pixels
- */
-float ir_shaped_text_get_height(const IRShapedText* shaped_text);
+static inline bool ir_text_shaping_available(void) {
+    return false;
+}
 
-// ============================================================================
-// Utility Functions
-// ============================================================================
+static inline IRFont* ir_font_load(const char* font_path, float size) {
+    (void)font_path; (void)size;
+    return NULL;
+}
 
-/**
- * @brief Initialize the text shaping system
- * @return true on success, false on failure
- */
-bool ir_text_shaping_init(void);
+static inline void ir_font_destroy(IRFont* font) {
+    (void)font;
+}
 
-/**
- * @brief Shutdown the text shaping system
- */
-void ir_text_shaping_shutdown(void);
+static inline void ir_font_set_size(IRFont* font, float size) {
+    (void)font; (void)size;
+}
 
-/**
- * @brief Check if text shaping is available
- * @return true if HarfBuzz is available, false otherwise
- */
-bool ir_text_shaping_available(void);
+static inline IRShapedText* ir_shape_text(IRFont* font, const char* text, uint32_t text_length, const IRShapeOptions* options) {
+    (void)font; (void)text; (void)text_length; (void)options;
+    return NULL;
+}
 
-// ============================================================================
-// Bidirectional Text (BiDi) Support
-// ============================================================================
+static inline void ir_shaped_text_destroy(IRShapedText* shaped_text) {
+    (void)shaped_text;
+}
 
-/**
- * @brief Base direction for bidirectional text
- */
-typedef enum {
-    IR_BIDI_DIR_LTR = 0,     // Left-to-right
-    IR_BIDI_DIR_RTL,         // Right-to-left
-    IR_BIDI_DIR_WEAK_LTR,    // Weak LTR (auto-detect, prefer LTR)
-    IR_BIDI_DIR_WEAK_RTL,    // Weak RTL (auto-detect, prefer RTL)
-    IR_BIDI_DIR_NEUTRAL      // Neutral (auto-detect from content)
-} IRBidiDirection;
+static inline float ir_shaped_text_get_width(const IRShapedText* shaped_text) {
+    (void)shaped_text;
+    return 0.0f;
+}
 
-/**
- * @brief Bidirectional text reordering result
- */
-typedef struct IRBidiResult {
-    uint32_t* visual_to_logical;  // Visual position -> logical position mapping
-    uint32_t* logical_to_visual;  // Logical position -> visual position mapping
-    uint8_t* embedding_levels;    // Embedding levels for each character
-    IRBidiDirection base_direction; // Resolved base direction
-    uint32_t length;              // Number of characters
-} IRBidiResult;
-
-/**
- * @brief Detect the base direction of text
- *
- * Uses the Unicode Bidirectional Algorithm to determine the base direction.
- *
- * @param text UTF-8 encoded text
- * @param length Length in bytes
- * @return Detected base direction
- */
-IRBidiDirection ir_bidi_detect_direction(const char* text, uint32_t length);
-
-/**
- * @brief Reorder text for visual display using BiDi algorithm
- *
- * Applies the Unicode Bidirectional Algorithm to reorder text containing
- * mixed LTR and RTL characters for correct visual display.
- *
- * @param text UTF-32 text (use ir_bidi_utf8_to_utf32 to convert)
- * @param length Number of UTF-32 characters
- * @param base_dir Base paragraph direction
- * @return BiDi result with reordering info, or NULL on failure
- */
-IRBidiResult* ir_bidi_reorder(
-    const uint32_t* text,
-    uint32_t length,
-    IRBidiDirection base_dir
-);
-
-/**
- * @brief Convert UTF-8 to UTF-32 for BiDi processing
- *
- * @param utf8_text UTF-8 encoded text
- * @param utf8_length Length in bytes
- * @param out_length Output: number of UTF-32 characters
- * @return UTF-32 text, or NULL on failure (caller must free)
- */
-uint32_t* ir_bidi_utf8_to_utf32(
-    const char* utf8_text,
-    uint32_t utf8_length,
-    uint32_t* out_length
-);
-
-/**
- * @brief Destroy BiDi result and free resources
- * @param result BiDi result handle
- */
-void ir_bidi_result_destroy(IRBidiResult* result);
-
-/**
- * @brief Check if BiDi support is available
- * @return true if FriBidi is available, false otherwise
- */
-bool ir_bidi_available(void);
+static inline float ir_shaped_text_get_height(const IRShapedText* shaped_text) {
+    (void)shaped_text;
+    return 0.0f;
+}
 
 #ifdef __cplusplus
 }

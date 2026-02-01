@@ -45,27 +45,15 @@ char* limbo_codegen_from_json(const char* kir_json) {
  * Generate Limbo module files from KIR
  */
 bool limbo_codegen_generate_multi(const char* kir_path, const char* output_dir) {
-    // For now, just call single-file generation
-    if (!output_dir) {
-        return limbo_codegen_generate_via_tkir(kir_path, "output.b", NULL);
+    // Build output path using shared helper
+    char* output_path = codegen_build_output_path(kir_path, output_dir, ".b");
+    if (!output_path) {
+        return false;
     }
 
-    // Extract project name from kir_path
-    const char* filename = strrchr(kir_path, '/');
-    if (!filename) filename = kir_path;
-    else filename++;
-
-    char project_name[256];
-    snprintf(project_name, sizeof(project_name), "%.255s", filename);
-
-    // Remove .kir extension if present
-    char* ext = strstr(project_name, ".kir");
-    if (ext) *ext = '\0';
-
-    char output_path[1024];
-    snprintf(output_path, sizeof(output_path), "%s/%s.b", output_dir, project_name);
-
-    return limbo_codegen_generate_via_tkir(kir_path, output_path, NULL);
+    bool result = limbo_codegen_generate_via_tkir(kir_path, output_path, NULL);
+    free(output_path);
+    return result;
 }
 
 /**

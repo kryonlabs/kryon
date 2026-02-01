@@ -15,15 +15,13 @@
 #include "kryon_cli.h"
 #include "target_validation.h"
 #include "build.h"
-#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
-#include "screenshot.h"
-#endif
 #include "../../../codegens/limbo/limbo_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
 #if !defined(__TAIJIOS__) && !defined(__INFERNO__)
 #include "../../../codegens/android/ir_android_codegen.h"
 #endif
 #include "../../../codegens/tcltk/tcltk_codegen.h"
+#include "../../../codegens/combo_registry.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -351,10 +349,10 @@ static int limbo_target_build(const char* kir_file, const char* output_dir,
 /**
  * Limbo target run handler
  * Builds if needed, then executes in TaijiOS emu
- * Supports screenshot capture via X11 window capture
  */
 static int limbo_target_run(const char* kir_file, const KryonConfig* config,
                             const ScreenshotRunOptions* screenshot_opts) {
+    (void)screenshot_opts;  // Not used
     // Extract output directory and project name from KIR file path
     // KIR files are in .kryon_cache/<basename>.kir format
     const char* kir_basename = strrchr(kir_file, '/');
@@ -459,73 +457,16 @@ static int limbo_target_run(const char* kir_file, const KryonConfig* config,
 
     printf("Executing in TaijiOS: %s\n", cmd);
 
-    // Check if screenshot is requested
-    bool capture_screenshot = (screenshot_opts != NULL &&
-                              screenshot_opts->screenshot_path != NULL);
+    // Normal execution - wait for emu to complete
+    int result = system(cmd);
 
-    if (capture_screenshot) {
-#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
-        // Launch emu in background so we can capture its window
-        // Use process_launch_background to get the PID
-        printf("Launching emulator in background for screenshot capture...\n");
-        pid_t emu_pid = process_launch_background(cmd);
-
-        if (emu_pid < 0) {
-            fprintf(stderr, "Error: Failed to launch emulator\n");
-            return 1;
-        }
-
-        printf("Emulator launched with PID: %d\n", emu_pid);
-
-        // No sleep needed - capture_emulator_window() will wait for new window to appear
-
-        // Capture screenshot with PID
-        printf("Capturing screenshot to: %s\n", screenshot_opts->screenshot_path);
-
-        ScreenshotOptions ss_opts = SCREENSHOT_DEFAULTS;
-        ss_opts.output_path = screenshot_opts->screenshot_path;
-        ss_opts.after_frames = screenshot_opts->screenshot_after_frames;
-        ss_opts.expected_pid = emu_pid;  // Pass PID for precise window selection
-        ss_opts.window_title = project_name;  // Pass program name for unique identification
-
-        bool screenshot_ok = capture_emulator_window(&ss_opts);
-
-        // Cleanup: terminate emulator
-        printf("Cleaning up emulator process...\n");
-        kill(emu_pid, SIGTERM);
-        sleep(1);
-
-        // Check if process is still running
-        if (waitpid(emu_pid, NULL, WNOHANG) == 0) {
-            // Process still running, force kill
-            kill(emu_pid, SIGKILL);
-            waitpid(emu_pid, NULL, 0);
-        }
-
-        if (!screenshot_ok) {
-            fprintf(stderr, "Error: Screenshot capture failed\n");
-            return 1;  // HARD ERROR
-        }
-
-        printf("✓ Screenshot captured successfully\n");
-        return 0;
-#else
-        // Screenshot capture not supported on TaijiOS/Inferno
-        fprintf(stderr, "Error: Screenshot capture is not supported on this platform\n");
-        return 1;
-#endif
+    if (result != 0) {
+        fprintf(stderr, "Warning: TaijiOS emu exited with code %d\n", result);
     } else {
-        // Normal execution - wait for emu to complete
-        int result = system(cmd);
-
-        if (result != 0) {
-            fprintf(stderr, "Warning: TaijiOS emu exited with code %d\n", result);
-        } else {
-            printf("✓ Execution complete\n");
-        }
-
-        return result;
+        printf("✓ Execution complete\n");
     }
+
+    return result;
 }
 
 /* ============================================================================
@@ -1072,34 +1013,6 @@ static int android_target_run(const char* kir_file, const KryonConfig* config,
  * Resolve target aliases to canonical target names
  * Returns canonical name or NULL if not a recognized alias
  */
-static const char* resolve_target_alias(const char* alias) {
-    if (!alias) return NULL;
-
-    // Limbo/DIS/Emu aliases → limbo target
-    if (strcmp(alias, "limbo") == 0 ||
-        strcmp(alias, "dis") == 0 ||
-        strcmp(alias, "emu") == 0) {
-        return "limbo";
-    }
-
-    // Tcl/Tk alias
-    if (strcmp(alias, "tcl") == 0) {
-        return "tcltk";
-    }
-
-#if !defined(__TAIJIOS__) && !defined(__INFERNO__)
-    // Android/Kotlin aliases → android target
-    if (strcmp(alias, "android") == 0 ||
-        strcmp(alias, "kotlin") == 0) {
-        return "android";
-    }
-#endif // !__TAIJIOS__ && !__INFERNO__
-
-    // Not a recognized alias - return NULL
-    // sdl3, raylib, web are real targets, not aliases
-    return NULL;
-}
-
 /**
  * Find a target handler by name
  * Returns NULL if target not found

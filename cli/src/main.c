@@ -83,6 +83,16 @@ int main(int argc, char** argv) {
     // This must be done before any plugin operations
     ir_capability_registry_init();
 
+    // Initialize the parser registry
+    // This registers all built-in parsers (KRY, Tcl, Limbo, HTML, Markdown, C)
+    extern int parser_registry_register_all(void);
+    parser_registry_register_all();
+
+    // Initialize the codegen registry
+    // This registers all built-in codegens (KRY, C, Limbo, Tcl/Tk, Markdown)
+    extern int codegen_registry_register_all(void);
+    codegen_registry_register_all();
+
     // Initialize the target handler registry
     // This registers built-in target handlers (web, desktop, terminal)
     target_handler_initialize();

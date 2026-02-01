@@ -37,6 +37,12 @@ void handleButtonClick(void) {
 }
 @end
 
+@tcl
+proc handleButtonClick {} {
+    puts "Button clicked! Hello from Kryon-Tcl!"
+}
+@end
+
 @limbo
 handleButtonClick: fn() {
 	sys->print("Button clicked! Hello from Kryon-Limbo!\n");

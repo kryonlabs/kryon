@@ -112,10 +112,10 @@ STATE_SOURCES = src/state/ir_state_manager.c \
 
 FEATURE_SOURCES = src/features/ir_tabgroup.c \
                   src/features/ir_table.c \
-                  src/features/ir_text_shaping.c \
                   src/features/ir_markdown.c \
                   src/features/ir_native_canvas.c
 # Note: Animation system moved to kryon-plugins/animations
+# Note: Text shaping requires harfbuzz - not currently available
 
 UTIL_SOURCES = src/utils/ir_string_builder.c \
                src/utils/ir_buffer.c \
@@ -129,7 +129,8 @@ UTIL_SOURCES = src/utils/ir_string_builder.c \
                src/utils/ir_asset.c \
                src/utils/ir_krb.c \
                src/utils/ir_source_structures.c \
-               src/utils/ir_json.c
+               src/utils/ir_json.c \
+               src/parser_interface.c
 
 PARSER_SOURCES = parsers/kry/kry_allocator.c \
                  parsers/kry/kry_lexer.c \
@@ -146,21 +147,32 @@ PARSER_SOURCES = parsers/kry/kry_allocator.c \
                  parsers/kry/kry_struct_parser.c \
                  parsers/kry/kry_struct_to_ir.c \
                  parsers/kry/kry_ir_validator.c \
+                 parsers/kry/kry_parser_adapter.c \
                  parsers/markdown/markdown_ast.c \
                  parsers/markdown/markdown_parser.c \
                  parsers/markdown/markdown_to_ir.c \
+                 parsers/markdown/markdown_parser_adapter.c \
                  parsers/html/html_ast.c \
                  parsers/html/html_to_ir.c \
                  parsers/html/html_parser.c \
                  parsers/html/css_parser.c \
                  parsers/html/css_stylesheet.c \
+                 parsers/html/html_parser_adapter.c \
                  parsers/c/c_parser.c \
+                 parsers/c/c_parser_adapter.c \
                  parsers/tcl/tcl_lexer.c \
                  parsers/tcl/tcl_parser.c \
                  parsers/tcl/tcl_to_ir.c \
                  parsers/tcl/tcl_widget_registry.c \
+                 parsers/tcl/tcl_parser_adapter.c \
+                 parsers/limbo/limbo_lexer.c \
+                 parsers/limbo/limbo_parser.c \
+                 parsers/limbo/limbo_ast.c \
+                 parsers/limbo/limbo_to_ir.c \
+                 parsers/limbo/limbo_parser_adapter.c \
                  parsers/parser_utils.c \
-                 parsers/common/parser_io_utils.c
+                 parsers/common/parser_io_utils.c \
+                 src/core/parser_registry.c
 
 # All IR sources
 IR_SOURCES = $(CORE_SOURCES) \

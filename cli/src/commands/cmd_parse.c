@@ -1,16 +1,15 @@
 /**
  * Parse Command
- * Parse source files and convert to KIR or TKIR format
+ * Parse source files and convert to KIR format
  * Supports: KRY, Tcl/Tk, Limbo, HTML, Markdown, C
  *
- * For Tk-based languages (Tcl, Limbo), use --tkir flag to output TKIR instead of KIR.
- * Pipeline: Source → Parser → KIR → TKIR (for --tkir)
+ * Uses the unified parser interface registry for all parsers.
+ * Pipeline: Source → Parser Registry → KIR
  */
 
 #include "kryon_cli.h"
 #include "build.h"
-#include "../../../codegens/tkir/tkir_builder.h"
-#include "../../../codegens/codegen_common.h"
+#include "../../../ir/include/parser_interface.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,42 +17,18 @@
 #include <cJSON.h>
 
 /* ============================================================================
- * File Format Enumeration
+ * Parser Interface
  * ============================================================================ */
 
-/**
- * File format types supported by the parser
- */
-typedef enum {
-    FORMAT_UNKNOWN,
-    FORMAT_KRY,
-    FORMAT_TCL,
-    FORMAT_LIMBO,
-    FORMAT_HTML,
-    FORMAT_MARKDOWN,
-    FORMAT_C,
-    FORMAT_KIR
-} FileFormat;
+// External function to register all parsers
+extern int parser_registry_register_all(void);
 
 /* ============================================================================
  * Forward Declarations
  * ============================================================================ */
 
 // Wrapper parser functions (defined later in this file)
-static cJSON* parse_kry_to_kir(const char* filepath);
 static cJSON* parse_kir_file(const char* filepath);
-static cJSON* parse_html_file_to_kir(const char* filepath);
-static cJSON* parse_markdown_file_to_kir(const char* filepath);
-static cJSON* parse_c_file_to_kir(const char* filepath);
-static cJSON* parse_limbo_file_to_kir(const char* filepath);
-
-// Parser functions (from different frontends)
-extern char* ir_kry_to_kir(const char* source, size_t length);  // KRY parser
-extern cJSON* tcl_parse_file_to_kir(const char* filepath);  // Tcl parser (cJSON version)
-extern char* ir_html_file_to_kir(const char* filepath);  // HTML parser
-extern char* ir_c_file_to_kir(const char* filepath);  // C parser
-extern char* ir_markdown_to_kir(const char* source, size_t length);  // Markdown parser
-extern char* limbo_file_to_kir_string(const char* filepath);  // Limbo parser
 
 /* ============================================================================
  * Format Detection
@@ -98,102 +73,33 @@ static const char* format_name(FileFormat format) {
 }
 
 /* ============================================================================
- * Parser Registry
+ * Parser Registry (Legacy - for reference only)
  * ============================================================================ */
 
 /**
- * Parse function signature
+ * Check if a parser is implemented for a given format
+ * Now delegates to the unified parser interface
  */
-typedef cJSON* (*ParseFunc)(const char* filepath);
-
-/**
- * Parser registry entry
- */
-typedef struct {
-    FileFormat format;
-    const char* name;
-    ParseFunc parse_func;
-    bool implemented;
-} ParserEntry;
-
-/**
- * Parser registry
- * Maps file formats to their parser functions
- */
-static ParserEntry parser_registry[] = {
-    {FORMAT_KRY, "kry", NULL, true},       // Uses ir_kry_to_kir_file (returns string)
-    {FORMAT_TCL, "tcl", (ParseFunc)tcl_parse_file_to_kir, true},
-    {FORMAT_LIMBO, "limbo", (ParseFunc)parse_limbo_file_to_kir, true},
-    {FORMAT_HTML, "html", (ParseFunc)parse_html_file_to_kir, true},
-    {FORMAT_MARKDOWN, "markdown", (ParseFunc)parse_markdown_file_to_kir, true},
-    {FORMAT_C, "c", (ParseFunc)parse_c_file_to_kir, true},
-    {FORMAT_KIR, "kir", NULL, true},       // Already KIR, just copy
-};
-
-static int parser_registry_count = sizeof(parser_registry) / sizeof(ParserEntry);
-
-/**
- * Find parser entry for format
- */
-static ParserEntry* find_parser(FileFormat format) {
-    for (int i = 0; i < parser_registry_count; i++) {
-        if (parser_registry[i].format == format) {
-            return &parser_registry[i];
-        }
+static bool is_parser_implemented(FileFormat format) {
+    // Map FileFormat to format name
+    const char* format_name = NULL;
+    switch (format) {
+        case FORMAT_KRY: format_name = "kry"; break;
+        case FORMAT_TCL: format_name = "tcl"; break;
+        case FORMAT_LIMBO: format_name = "limbo"; break;
+        case FORMAT_HTML: format_name = "html"; break;
+        case FORMAT_MARKDOWN: format_name = "markdown"; break;
+        case FORMAT_C: format_name = "c"; break;
+        case FORMAT_KIR: format_name = "kir"; break;
+        default: return false;
     }
-    return NULL;
+
+    return parser_get_interface(format_name) != NULL;
 }
 
 /* ============================================================================
  * Parsing Functions
  * ============================================================================ */
-
-/**
- * Parse KRY file to KIR
- */
-static cJSON* parse_kry_to_kir(const char* filepath) {
-    // Read file content
-    FILE* f = fopen(filepath, "r");
-    if (!f) {
-        fprintf(stderr, "Error: Cannot open file: %s\n", filepath);
-        return NULL;
-    }
-
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* content = malloc(size + 1);
-    if (!content) {
-        fclose(f);
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        return NULL;
-    }
-
-    fread(content, 1, size, f);
-    content[size] = '\0';
-    fclose(f);
-
-    // Parse KRY to KIR (returns JSON string)
-    char* kir_json = ir_kry_to_kir(content, size);
-    free(content);
-
-    if (!kir_json) {
-        fprintf(stderr, "Error: Failed to parse KRY file: %s\n", filepath);
-        return NULL;
-    }
-
-    // Parse the JSON string into cJSON
-    cJSON* kir = cJSON_Parse(kir_json);
-    free(kir_json);
-
-    if (!kir) {
-        fprintf(stderr, "Error: Failed to parse KRY-generated KIR JSON\n");
-        return NULL;
-    }
-
-    return kir;
-}
 
 /**
  * Parse KIR file (just read and validate)
@@ -234,148 +140,36 @@ static cJSON* parse_kir_file(const char* filepath) {
 }
 
 /**
- * Parse HTML file to KIR
- * Wrapper for ir_html_file_to_kir (returns JSON string, needs cJSON conversion)
- */
-static cJSON* parse_html_file_to_kir(const char* filepath) {
-    char* kir_json = ir_html_file_to_kir(filepath);
-    if (!kir_json) {
-        fprintf(stderr, "Error: Failed to parse HTML file: %s\n", filepath);
-        return NULL;
-    }
-
-    cJSON* kir = cJSON_Parse(kir_json);
-    free(kir_json);
-
-    if (!kir) {
-        fprintf(stderr, "Error: Failed to parse HTML-generated KIR JSON\n");
-        return NULL;
-    }
-
-    return kir;
-}
-
-/**
- * Parse Markdown file to KIR
- * Wrapper for ir_markdown_to_kir (needs file reading)
- */
-static cJSON* parse_markdown_file_to_kir(const char* filepath) {
-    // Read file
-    FILE* f = fopen(filepath, "r");
-    if (!f) {
-        fprintf(stderr, "Error: Cannot open file: %s\n", filepath);
-        return NULL;
-    }
-
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* content = malloc(size + 1);
-    if (!content) {
-        fclose(f);
-        fprintf(stderr, "Error: Memory allocation failed\n");
-        return NULL;
-    }
-
-    fread(content, 1, size, f);
-    content[size] = '\0';
-    fclose(f);
-
-    // Parse markdown to KIR JSON
-    char* kir_json = ir_markdown_to_kir(content, size);
-    free(content);
-
-    if (!kir_json) {
-        fprintf(stderr, "Error: Failed to parse Markdown file: %s\n", filepath);
-        return NULL;
-    }
-
-    cJSON* kir = cJSON_Parse(kir_json);
-    free(kir_json);
-
-    if (!kir) {
-        fprintf(stderr, "Error: Failed to parse Markdown-generated KIR JSON\n");
-        return NULL;
-    }
-
-    return kir;
-}
-
-/**
- * Parse C file to KIR
- * Wrapper for ir_c_file_to_kir (returns JSON string, needs cJSON conversion)
- */
-static cJSON* parse_c_file_to_kir(const char* filepath) {
-    char* kir_json = ir_c_file_to_kir(filepath);
-    if (!kir_json) {
-        // Error message already printed by ir_c_file_to_kir
-        return NULL;
-    }
-
-    cJSON* kir = cJSON_Parse(kir_json);
-    free(kir_json);
-
-    if (!kir) {
-        fprintf(stderr, "Error: Failed to parse C-generated KIR JSON\n");
-        return NULL;
-    }
-
-    return kir;
-}
-
-/**
- * Parse Limbo file to KIR
- * Wrapper for limbo_file_to_kir_string (returns JSON string, needs cJSON conversion)
- */
-static cJSON* parse_limbo_file_to_kir(const char* filepath) {
-    char* kir_json = limbo_file_to_kir_string(filepath);
-    if (!kir_json) {
-        fprintf(stderr, "Error: Failed to parse Limbo file: %s\n", filepath);
-        return NULL;
-    }
-
-    cJSON* kir = cJSON_Parse(kir_json);
-    free(kir_json);
-
-    if (!kir) {
-        fprintf(stderr, "Error: Failed to parse Limbo-generated KIR JSON\n");
-        return NULL;
-    }
-
-    return kir;
-}
-
-/**
- * Main parse dispatcher
+ * Main parse dispatcher - now uses unified parser interface
  */
 static cJSON* parse_file(FileFormat format, const char* filepath) {
+    // Special case: KIR files just need validation
+    if (format == FORMAT_KIR) {
+        return parse_kir_file(filepath);
+    }
+
+    // Map FileFormat to parser format name
+    const char* format_name = NULL;
     switch (format) {
-        case FORMAT_KRY:
-            return parse_kry_to_kir(filepath);
-
-        case FORMAT_TCL:
-            return tcl_parse_file_to_kir(filepath);
-
-        case FORMAT_HTML:
-            return parse_html_file_to_kir(filepath);
-
-        case FORMAT_MARKDOWN:
-            return parse_markdown_file_to_kir(filepath);
-
-        case FORMAT_C:
-            return parse_c_file_to_kir(filepath);
-
-        case FORMAT_LIMBO:
-            return parse_limbo_file_to_kir(filepath);
-
-        case FORMAT_KIR:
-            return parse_kir_file(filepath);
-
+        case FORMAT_KRY: format_name = "kry"; break;
+        case FORMAT_TCL: format_name = "tcl"; break;
+        case FORMAT_LIMBO: format_name = "limbo"; break;
+        case FORMAT_HTML: format_name = "html"; break;
+        case FORMAT_MARKDOWN: format_name = "markdown"; break;
+        case FORMAT_C: format_name = "c"; break;
         default:
             fprintf(stderr, "Error: Unknown or unsupported file format\n");
             return NULL;
     }
+
+    // Use unified parser interface
+    cJSON* kir = parser_parse_file_as(filepath, format_name);
+    if (!kir) {
+        // Error message already printed by parser
+        return NULL;
+    }
+
+    return kir;
 }
 
 /* ============================================================================
@@ -427,14 +221,10 @@ static void print_parse_usage(const char* error) {
 
     fprintf(stderr, "Usage:\n");
     fprintf(stderr, "  Auto-detect format:\n");
-    fprintf(stderr, "    kryon parse <input_file> -o <output.kir> [--tkir]\n");
+    fprintf(stderr, "    kryon parse <input_file> -o <output.kir>\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  Explicit format:\n");
     fprintf(stderr, "    kryon parse <format> <input_file> -o <output.kir>\n");
-    fprintf(stderr, "\n");
-    fprintf(stderr, "Options:\n");
-    fprintf(stderr, "  --tkir    Output TKIR instead of KIR (for Tcl/Tk and Limbo only)\n");
-    fprintf(stderr, "            Pipeline: Source → KIR → TKIR → Target\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Supported formats:\n");
     fprintf(stderr, "  kry       - KRY source files (.kry)\n");
@@ -447,17 +237,12 @@ static void print_parse_usage(const char* error) {
     fprintf(stderr, "\n");
     fprintf(stderr, "Examples:\n");
     fprintf(stderr, "  kryon parse app.tcl -o app.kir\n");
-    fprintf(stderr, "  kryon parse app.tcl -o app.tkir --tkir\n");
     fprintf(stderr, "  kryon parse tcl app.tcl -o app.kir\n");
     fprintf(stderr, "  kryon parse app.kry -o app.kir\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Round-trip conversion:\n");
     fprintf(stderr, "  kryon parse app.tcl -o temp.kir\n");
     fprintf(stderr, "  kryon codegen kry temp.kir -o app_roundtrip.kry\n");
-    fprintf(stderr, "\n");
-    fprintf(stderr, "TKIR Pipeline (for Tk-based languages):\n");
-    fprintf(stderr, "  kryon parse app.tcl -o app.tkir --tkir\n");
-    fprintf(stderr, "  kryon codegen tcltk app.tkir -o app.tcl\n");
 }
 
 int cmd_parse(int argc, char** argv) {
@@ -465,7 +250,6 @@ int cmd_parse(int argc, char** argv) {
     const char* output_file = NULL;
     FileFormat format = FORMAT_UNKNOWN;
     bool explicit_format = false;
-    bool output_tkir = false;  // Output TKIR instead of KIR (for Tk-based languages)
 
     // Parse arguments
     if (argc == 0) {
@@ -505,13 +289,14 @@ int cmd_parse(int argc, char** argv) {
     }
 
     // Parse remaining arguments
-    for (int i = (explicit_format ? 1 : 0); i < argc; i++) {
+    // Start loop at 1 if first arg was a file (already consumed above)
+    // Start loop at 1 if first arg was a format (explicit format case)
+    int start_idx = (input_file || explicit_format) ? 1 : 0;
+    for (int i = start_idx; i < argc; i++) {
         if (strncmp(argv[i], "-o=", 3) == 0) {
             output_file = argv[i] + 3;
         } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             output_file = argv[++i];
-        } else if (strcmp(argv[i], "--tkir") == 0) {
-            output_tkir = true;  // Output TKIR instead of KIR (for Tk-based languages)
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_parse_usage(NULL);
             return 0;
@@ -556,28 +341,18 @@ int cmd_parse(int argc, char** argv) {
         char* dot = strrchr(name_copy, '.');
         if (dot) *dot = '\0';
 
-        // Use .tkir extension for Tk-based languages when --tkir is specified
-        const char* ext = (output_tkir && (format == FORMAT_TCL || format == FORMAT_LIMBO))
-                          ? ".tkir" : ".kir";
-        snprintf(output_buffer, sizeof(output_buffer), "%s%s", name_copy, ext);
+        // Always use .kir extension (TKIR is internal-only)
+        snprintf(output_buffer, sizeof(output_buffer), "%s.kir", name_copy);
         free(name_copy);
 
         output_file = output_buffer;
     }
 
     // Check if parser is implemented
-    ParserEntry* parser = find_parser(format);
-    if (!parser || !parser->implemented) {
+    if (!is_parser_implemented(format)) {
         fprintf(stderr, "Error: Parser for %s is not yet implemented\n", format_name(format));
         fprintf(stderr, "Supported formats: KRY, Tcl/Tk, Limbo, HTML, Markdown, C, KIR\n");
         return 1;
-    }
-
-    // Validate --tkir flag (only valid for Tk-based languages)
-    if (output_tkir && format != FORMAT_TCL && format != FORMAT_LIMBO) {
-        fprintf(stderr, "Warning: --tkir flag is only valid for Tcl/Tk and Limbo sources\n");
-        fprintf(stderr, "         Ignoring --tkir and outputting KIR instead\n");
-        output_tkir = false;
     }
 
     // Parse the file
@@ -589,64 +364,15 @@ int cmd_parse(int argc, char** argv) {
         return 1;
     }
 
-    // For Tk-based languages with --tkir flag, convert KIR to TKIR
-    cJSON* output_json = kir;
-    bool is_tkir = false;
+    // Write KIR output (TKIR conversion is internal-only in build pipeline)
+    printf("Writing KIR to: %s\n", output_file);
 
-    if (output_tkir && (format == FORMAT_TCL || format == FORMAT_LIMBO)) {
-        printf("Converting KIR to TKIR...\n");
-
-        // Convert KIR to JSON string for tkir_build_from_kir
-        char* kir_json = cJSON_Print(kir);
-        if (!kir_json) {
-            fprintf(stderr, "Error: Failed to serialize KIR\n");
-            cJSON_Delete(kir);
-            return 1;
-        }
-
-        // Build TKIR from KIR
-        TKIRRoot* tkir_root = tkir_build_from_kir(kir_json, true);
-        free(kir_json);
-
-        if (!tkir_root) {
-            fprintf(stderr, "Error: Failed to convert KIR to TKIR\n");
-            cJSON_Delete(kir);
-            return 1;
-        }
-
-        // Serialize TKIR to JSON
-        char* tkir_json = tkir_root_to_json(tkir_root);
-        tkir_root_free(tkir_root);
-
-        if (!tkir_json) {
-            fprintf(stderr, "Error: Failed to serialize TKIR\n");
-            cJSON_Delete(kir);
-            return 1;
-        }
-
-        // Parse TKIR JSON back to cJSON
-        output_json = cJSON_Parse(tkir_json);
-        free(tkir_json);
-
-        if (!output_json) {
-            fprintf(stderr, "Error: Failed to parse TKIR JSON\n");
-            cJSON_Delete(kir);
-            return 1;
-        }
-
-        is_tkir = true;
-    }
-
-    // Write output
-    printf("Writing %s to: %s\n", is_tkir ? "TKIR" : "KIR", output_file);
-
-    if (!write_kir_file(output_json, output_file)) {
-        if (output_json != kir) cJSON_Delete(output_json);
+    if (!write_kir_file(kir, output_file)) {
         cJSON_Delete(kir);
         return 1;
     }
 
-    printf("✓ Successfully parsed and wrote %s file\n", is_tkir ? "TKIR" : "KIR");
+    printf("✓ Successfully parsed KIR file\n");
 
     // Print statistics
     cJSON* components = cJSON_GetObjectItem(kir, "components");
@@ -665,7 +391,6 @@ int cmd_parse(int argc, char** argv) {
     }
 
     // Cleanup
-    if (output_json != kir) cJSON_Delete(output_json);
     cJSON_Delete(kir);
 
     return 0;

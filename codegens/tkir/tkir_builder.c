@@ -105,10 +105,16 @@ TKIRRoot* tkir_build_from_kir(const char* kir_json, bool verbose) {
         return NULL;
     }
 
-    // DON'T set root->json = NULL
-    // DON'T delete kir_root here
-    // The caller is responsible for managing the cJSON lifetime
-    // See tkir_root_free() - it doesn't delete root->json
+    // Store the KIR cJSON root in the TKIRRoot so it can be freed later
+    // Note: If root->json was already set by tkir_root_from_cJSON, we use that
+    // Otherwise, we store kir_root for cleanup
+    if (!root->json) {
+        root->json = kir_root;
+    } else {
+        // root->json was already set (likely a borrowed reference)
+        // We need to delete kir_root since it won't be cleaned up otherwise
+        cJSON_Delete(kir_root);
+    }
 
     return root;
 }

@@ -33,29 +33,16 @@ static void generate_tcl_from_component(StringBuilder* sb, cJSON* component, con
 
 /**
  * Generate Tcl/Tk script from KIR file
+ *
+ * Now uses the TKIR pipeline (KIR → TKIR → Tcl/Tk) for consistency with other
+ * toolkit codegens. The memory leak in tkir_build_from_kir() has been fixed.
  */
 bool tcltk_codegen_generate(const char* kir_path, const char* output_path) {
-    // Use simple KIR → Tcl conversion (bypasses TKIR to avoid memory issues)
-    char* tcl_code = tcltk_codegen_from_json_simple(kir_path);
-    if (!tcl_code) {
-        codegen_error("Simple codegen failed");
-        return false;
-    }
+    // Use TKIR pipeline (recommended path)
+    return tcltk_codegen_generate_via_tkir(kir_path, output_path, NULL);
 
-    FILE* f = fopen(output_path, "w");
-    if (!f) {
-        codegen_error("Could not open output file: %s", output_path);
-        free(tcl_code);
-        return false;
-    }
-
-    fputs(tcl_code, f);
-    fclose(f);
-    free(tcl_code);
-    return true;
-
-    // TKIR pipeline disabled due to memory issues
-    // return tcltk_codegen_generate_via_tkir(kir_path, output_path, NULL);
+    // Simple path kept as fallback/alternative
+    // return tcltk_codegen_generate_simple(kir_path, output_path);
 }
 
 /**
@@ -70,26 +57,15 @@ char* tcltk_codegen_from_json(const char* kir_json) {
  * Generate Tcl/Tk module files from KIR
  */
 bool tcltk_codegen_generate_multi(const char* kir_path, const char* output_dir) {
-    if (!output_dir) {
-        return tcltk_codegen_generate(kir_path, "output.tcl");
+    // Build output path using shared helper
+    char* output_path = codegen_build_output_path(kir_path, output_dir, ".tcl");
+    if (!output_path) {
+        return false;
     }
 
-    // Extract project name from kir_path
-    const char* filename = strrchr(kir_path, '/');
-    if (!filename) filename = kir_path;
-    else filename++;
-
-    char project_name[256];
-    snprintf(project_name, sizeof(project_name), "%.255s", filename);
-
-    // Remove .kir extension if present
-    char* ext = strstr(project_name, ".kir");
-    if (ext) *ext = '\0';
-
-    char output_path[1024];
-    snprintf(output_path, sizeof(output_path), "%s/%s.tcl", output_dir, project_name);
-
-    return tcltk_codegen_generate(kir_path, output_path);
+    bool result = tcltk_codegen_generate(kir_path, output_path);
+    free(output_path);
+    return result;
 }
 
 /**

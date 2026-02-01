@@ -4,6 +4,10 @@
  * Minimal AST node constructors for Limbo parser
  */
 
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+
 #include "limbo_ast.h"
 #include <stdlib.h>
 #include <string.h>

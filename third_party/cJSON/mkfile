@@ -1,0 +1,16 @@
+# cJSON Library (Third-party)
+# Ultralightweight JSON parser used by Kryon
+
+<../../../mkconfig
+
+LIB=libcjson.a
+
+OFILES=\
+	cJSON.$O\
+
+HFILES=\
+	cJSON.h\
+
+CFLAGS=$CFLAGS -I.
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

@@ -5,15 +5,13 @@ CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../inc
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
-# X11 libraries (for screenshot support)
-X11_LIBS ?= $(shell pkg-config --libs x11 2>/dev/null || echo "-lX11")
 # Link against IR library and codegens
 LDFLAGS = ../build/libkryon_ir.a \
 	../build/libkryon_codegen_common.a \
 	../build/libkryon_codegen_registry.a \
 	../build/libkryon_codegen_emitter.a \
 	../build/libkryon_codegen_toolkit.a \
-	-lm -lpthread -ldl $(X11_LIBS)
+	-lm -lpthread -ldl
 
 # Directories
 SRC_DIR = src
@@ -33,9 +31,11 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/utils/dev_server.c \
        $(SRC_DIR)/utils/paths.c \
        $(SRC_DIR)/utils/build.c \
+       $(SRC_DIR)/utils/cache.c \
+       $(SRC_DIR)/utils/parser_dispatcher.c \
+       $(SRC_DIR)/utils/codegen_pipeline.c \
        $(SRC_DIR)/utils/plugin_installer.c \
        $(SRC_DIR)/utils/limbo_modules.c \
-       $(SRC_DIR)/utils/screenshot.c \
        $(SRC_DIR)/utils/memory.c \
        $(SRC_DIR)/utils/error.c \
        $(SRC_DIR)/config/toml_parser.c \

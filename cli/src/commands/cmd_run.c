@@ -361,6 +361,7 @@ int cmd_run(int argc, char** argv) {
     // For backward compatibility, also check if it's a valid registered target handler
     const char* resolved_target = NULL;
     bool is_alias = target_is_alias(target_platform, &resolved_target);
+    (void)is_alias;  // Currently unused, reserved for future compatibility
 
     // Map combo to runtime handler (e.g., "limbo+draw" → "limbo")
     char runtime_handler[64];

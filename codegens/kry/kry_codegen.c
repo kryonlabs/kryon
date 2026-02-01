@@ -40,6 +40,37 @@ static bool append_fmt(char** buffer, size_t* size, size_t* capacity, const char
     return append_string(buffer, size, capacity, temp);
 }
 
+// Escape quotes in a string for KRY output
+// Returns a newly allocated string that must be freed
+static char* escape_kry_string(const char* str) {
+    if (!str) return NULL;
+
+    // Count how many escapes we need
+    int escapes = 0;
+    for (const char* p = str; *p; p++) {
+        if (*p == '"' || *p == '\\') escapes++;
+    }
+
+    // If no escapes needed, return a duplicate
+    if (escapes == 0) return strdup(str);
+
+    // Allocate buffer (original + escapes + null)
+    char* escaped = malloc(strlen(str) + escapes + 1);
+    if (!escaped) return NULL;
+
+    // Copy with escaping
+    char* dest = escaped;
+    for (const char* src = str; *src; src++) {
+        if (*src == '"' || *src == '\\') {
+            *dest++ = '\\';
+        }
+        *dest++ = *src;
+    }
+    *dest = '\0';
+
+    return escaped;
+}
+
 // Lookup table for event handlers
 typedef struct {
     int component_id;
@@ -1287,8 +1318,50 @@ static bool generate_kry_component(cJSON* node, EventHandlerContext* handler_ctx
                 // Looks like an identifier (e.g., "item" or "item.value"), output without quotes
                 append_fmt(buffer, size, capacity, "%s = %s\n", kry_key, prop->valuestring);
             } else {
-                // Regular string literal
-                append_fmt(buffer, size, capacity, "%s = \"%s\"\n", kry_key, prop->valuestring);
+                // Regular string literal - escape quotes
+                char* escaped = escape_kry_string(prop->valuestring);
+                if (escaped) {
+                    append_fmt(buffer, size, capacity, "%s = \"%s\"\n", kry_key, escaped);
+                    free(escaped);
+                } else {
+                    append_fmt(buffer, size, capacity, "%s = \"%s\"\n", kry_key, prop->valuestring);
+                }
+            }
+        } else if (cJSON_IsObject(prop) && strcmp(key, "border") == 0) {
+            // Special handling for border object - expand into individual properties
+            cJSON* radius = cJSON_GetObjectItem(prop, "radius");
+            cJSON* width = cJSON_GetObjectItem(prop, "width");
+            cJSON* color = cJSON_GetObjectItem(prop, "color");
+
+            if (radius) {
+                for (int i = 0; i < indent + 1; i++) {
+                    append_string(buffer, size, capacity, "  ");
+                }
+                if (cJSON_IsNumber(radius)) {
+                    append_fmt(buffer, size, capacity, "borderRadius = %d\n", radius->valueint);
+                }
+            }
+            if (width) {
+                for (int i = 0; i < indent + 1; i++) {
+                    append_string(buffer, size, capacity, "  ");
+                }
+                if (cJSON_IsNumber(width)) {
+                    append_fmt(buffer, size, capacity, "borderWidth = %d\n", width->valueint);
+                }
+            }
+            if (color) {
+                for (int i = 0; i < indent + 1; i++) {
+                    append_string(buffer, size, capacity, "  ");
+                }
+                if (cJSON_IsString(color)) {
+                    char* escaped = escape_kry_string(color->valuestring);
+                    if (escaped) {
+                        append_fmt(buffer, size, capacity, "borderColor = \"%s\"\n", escaped);
+                        free(escaped);
+                    } else {
+                        append_fmt(buffer, size, capacity, "borderColor = \"%s\"\n", color->valuestring);
+                    }
+                }
             }
         } else {
             char value_str[512];

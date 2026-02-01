@@ -17,14 +17,15 @@
 
 #include "../../../ir/include/ir_serialization.h"
 #include "../../../ir/include/ir_builder.h"
-#include "../../ir/parsers/kry/kry_parser.h"
-#include "../../ir/parsers/tcl/tcl_parser.h"
+#include "../../../ir/include/parser_interface.h"
+#include "../../../ir/parsers/kry/kry_parser.h"
 #include "../template/docs_template.h"
 #include "../../../codegens/kry/kry_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
 #include "../../../codegens/limbo/limbo_codegen.h"
 #include "../../../codegens/tcltk/tcltk_codegen.h"
+#include "../../../third_party/cJSON/cJSON.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,59 +93,63 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
         dir_create(".kryon_cache");
     }
 
-    // Markdown: use kryon compile (simpler than reimplementing)
+    // Markdown: use direct parser
     if (strcmp(frontend, "markdown") == 0) {
-        char cmd[4096];
-        snprintf(cmd, sizeof(cmd), "kryon compile \"%s\" > /dev/null 2>&1", source_file);
-        int compile_result = system(cmd);
-        if (compile_result != 0) {
-            fprintf(stderr, "Warning: Markdown compilation may have issues (code %d)\n", compile_result);
+        // Read markdown source
+        char* source = NULL;
+        size_t source_size = 0;
+        FILE* f = fopen(source_file, "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            source_size = ftell(f);
+            fseek(f, 0, SEEK_SET);
+            source = safe_malloc(source_size + 1);
+            size_t bytes_read = fread(source, 1, source_size, f);
+            if (bytes_read != source_size) {
+                fprintf(stderr, "Warning: Only read %zu of %zu bytes from %s\n",
+                        bytes_read, source_size, source_file);
+                source_size = bytes_read;
+            }
+            source[source_size] = '\0';
+            fclose(f);
         }
 
-        // Calculate generated KIR filename
-        const char* slash = strrchr(source_file, '/');
-        const char* basename = slash ? slash + 1 : source_file;
-        char kir_name[512];
-        strncpy(kir_name, basename, sizeof(kir_name) - 1);
-        kir_name[sizeof(kir_name) - 1] = '\0';
-        char* dot = strrchr(kir_name, '.');
-        if (dot) *dot = '\0';
-
-        char generated_kir[1024];
-        snprintf(generated_kir, sizeof(generated_kir), ".kryon_cache/%s.kir", kir_name);
-
-        // Move to desired output path
-        if (file_exists(generated_kir)) {
-            if (strcmp(generated_kir, output_kir) != 0) {
-                char mv_cmd[2048];
-                snprintf(mv_cmd, sizeof(mv_cmd), "mv \"%s\" \"%s\"", generated_kir, output_kir);
-                int mv_result = system(mv_cmd);
-                if (mv_result != 0) {
-                    fprintf(stderr, "Warning: Failed to move file (code %d)\n", mv_result);
-                }
-            }
-            if (file_exists(output_kir)) {
-                return 0;
-            }
+        if (!source) {
+            fprintf(stderr, "Error: Failed to read markdown file: %s\n", source_file);
+            return 1;
         }
 
-        fprintf(stderr, "Error: Failed to compile markdown\n");
-        return 1;
+        free(source);
+        // Fall through to unified parser below
     }
 
-    // HTML: use kryon compile
-    if (strcmp(frontend, "html") == 0) {
-        char cmd[4096];
-        snprintf(cmd, sizeof(cmd), "kryon compile \"%s\" --output=\"%s\" 2>&1",
-                 source_file, output_kir);
-
-        int result = system(cmd);
-        if (file_exists(output_kir)) {
-            return 0;
+    // HTML and Markdown: use unified parser interface
+    if (strcmp(frontend, "html") == 0 || strcmp(frontend, "markdown") == 0) {
+        cJSON* kir = parser_parse_file_as(source_file, frontend);
+        if (!kir) {
+            fprintf(stderr, "Error: Failed to parse %s to KIR\n", frontend);
+            return 1;
         }
 
-        fprintf(stderr, "Error: Failed to compile HTML (exit code: %d)\n", result);
-        return 1;
+        // Write KIR to output
+        char* kir_json = cJSON_Print(kir);
+        cJSON_Delete(kir);
+
+        if (!kir_json) {
+            fprintf(stderr, "Error: Failed to serialize KIR\n");
+            return 1;
+        }
+
+        FILE* out = fopen(output_kir, "w");
+        if (!out) {
+            fprintf(stderr, "Error: Could not write output file: %s\n", output_kir);
+            free(kir_json);
+            return 1;
+        }
+        fprintf(out, "%s\n", kir_json);
+        fclose(out);
+        free(kir_json);
+        return 0;
     }
 
     // .kry DSL: use native C parser
@@ -403,6 +408,24 @@ int compile_source_to_kir(const char* source_file, const char* output_kir) {
             free(main_kir);
             return 0;
         }
+    }
+
+    // Limbo source: use kryon parse command
+    // TKIR is now generated internally by codegens if needed
+    if (strcmp(frontend, "limbo") == 0) {
+        char cmd[4096];
+        snprintf(cmd, sizeof(cmd),
+                 "kryon parse \"%s\" -o \"%s\" 2>&1",
+                 source_file, output_kir);
+
+        int result = system(cmd);
+        if (file_exists(output_kir)) {
+            printf("✓ Compiled Limbo to KIR: %s\n", output_kir);
+            return 0;
+        }
+
+        fprintf(stderr, "Error: Failed to compile Limbo (exit code: %d)\n", result);
+        return 1;
     }
 
     fprintf(stderr, "Error: Unknown frontend type: %s\n", frontend);

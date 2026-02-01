@@ -256,47 +256,21 @@ char* react_generate_state_hooks(cJSON* manifest, ReactContext* ctx);
 char* react_generate_element(cJSON* component, ReactContext* ctx, int indent);
 
 // ============================================================================
-// Tk-Based Codegen Utilities (DEPRECATED)
+// Codegen Utility Functions
 // ============================================================================
-// Shared utilities for all Tk-based codegens (Limbo, Tcl/Tk, etc.)
-//
-// *** IMPORTANT ***
-// These functions are DEPRECATED for non-Tk targets!
-// Please use toolkit-specific profiles instead:
-//   - Use toolkit_map_widget_type() from toolkit_registry.h
-//   - Use drawir_type_from_kir() from draw_ir.h for Draw targets
-//
-// The function codegen_map_kir_to_tk_widget() below is Tk-biased and will
-// emit a deprecation warning when called.
 
 /**
  * Map KIR element type to Tk widget type.
- *
- * *** DEPRECATED ***
- *
- * This function is Tk-biased and should NOT be used for non-Tk targets.
- * Please use toolkit-specific profiles instead:
- *   - Tk targets: Use toolkit_map_widget_type(tk_profile, ...)
- *   - Draw targets: Use drawir_type_from_kir() in draw_ir.h
- *   - Other targets: Use the appropriate toolkit profile
+ * Used by TKIR and toolkit codegens for widget type mapping.
  *
  * @param element_type KIR element type (e.g., "Button", "Text", "Container")
  * @return Tk widget type string (e.g., "button", "label", "frame")
  */
-const char* codegen_map_kir_to_tk_widget(const char* element_type)
-    __attribute__((deprecated("Use toolkit_map_widget_type() from toolkit_registry.h instead")));
+const char* codegen_map_kir_to_tk_widget(const char* element_type);
 
 /**
  * Extract common widget properties from KIR component.
  * Returns pointers to borrowed strings (do not free).
- *
- * @param component KIR component JSON object
- * @param out_text Optional output for text content
- * @param out_width Optional output for width
- * @param out_height Optional output for height
- * @param out_background Optional output for background color
- * @param out_foreground Optional output for foreground color
- * @param out_font Optional output for font
  */
 void codegen_extract_widget_props(cJSON* component,
                                   const char** out_text,
@@ -308,25 +282,16 @@ void codegen_extract_widget_props(cJSON* component,
 
 /**
  * Parse size value from string (handles "200px", "100%", etc.).
- *
- * @param value Size value string
- * @return Parsed integer value, or 0 if invalid
  */
 int codegen_parse_size_value(const char* value);
 
 /**
  * Check if size value is a percentage.
- *
- * @param value Size value string
- * @return true if string contains "%", false otherwise
  */
 bool codegen_is_percentage_value(const char* value);
 
 /**
  * Check if component is a layout container.
- *
- * @param type Component type string
- * @return true if container type, false otherwise
  */
 bool codegen_is_layout_container(const char* type);
 
@@ -334,24 +299,19 @@ bool codegen_is_layout_container(const char* type);
  * Layout type enumeration
  */
 typedef enum {
-    CODEGEN_LAYOUT_PACK,      // Pack layout (default)
-    CODEGEN_LAYOUT_GRID,      // Grid layout
-    CODEGEN_LAYOUT_PLACE,     // Place layout (absolute positioning)
-    CODEGEN_LAYOUT_AUTO       // Automatic (based on properties)
+    CODEGEN_LAYOUT_PACK,
+    CODEGEN_LAYOUT_GRID,
+    CODEGEN_LAYOUT_PLACE,
+    CODEGEN_LAYOUT_AUTO
 } CodegenLayoutType;
 
 /**
  * Determine layout type from component properties.
- * Checks for "row"/"column" (grid) or "left"/"top" (place) properties.
- *
- * @param component KIR component JSON object
- * @return Detected layout type
  */
 CodegenLayoutType codegen_detect_layout_type(cJSON* component);
 
 /**
  * Layout options structure
- * Used to build layout command options
  */
 typedef struct {
     const char* parent_type;
@@ -363,10 +323,6 @@ typedef struct {
 
 /**
  * Extract layout options from component.
- *
- * @param component KIR component JSON object
- * @param parent_type Parent component type
- * @param out_options Output for layout options
  */
 void codegen_extract_layout_options(cJSON* component,
                                     const char* parent_type,
@@ -374,52 +330,16 @@ void codegen_extract_layout_options(cJSON* component,
 
 /**
  * Handler tracker for deduplication.
- * Tracks which event handlers have already been generated.
  */
 typedef struct CodegenHandlerTracker {
     char* handlers[256];
     int count;
 } CodegenHandlerTracker;
 
-/**
- * Create a new handler tracker.
- *
- * @return Newly allocated tracker, or NULL on error
- */
 CodegenHandlerTracker* codegen_handler_tracker_create(void);
-
-/**
- * Check if handler was already generated.
- *
- * @param tracker Handler tracker
- * @param handler_name Handler name to check
- * @return true if already generated, false otherwise
- */
-bool codegen_handler_tracker_contains(CodegenHandlerTracker* tracker,
-                                      const char* handler_name);
-
-/**
- * Mark handler as generated.
- *
- * @param tracker Handler tracker
- * @param handler_name Handler name to mark
- * @return true on success, false if tracker is full
- */
-bool codegen_handler_tracker_mark(CodegenHandlerTracker* tracker,
-                                  const char* handler_name);
-
-/**
- * Free handler tracker.
- *
- * @param tracker Handler tracker to free
- */
+bool codegen_handler_tracker_contains(CodegenHandlerTracker* tracker, const char* handler_name);
+bool codegen_handler_tracker_mark(CodegenHandlerTracker* tracker, const char* handler_name);
 void codegen_handler_tracker_free(CodegenHandlerTracker* tracker);
-
-/**
- * Free all tracked handlers in a tracker.
- *
- * @param tracker Handler tracker
- */
 void codegen_handler_tracker_clear(CodegenHandlerTracker* tracker);
 
 // ============================================================================
@@ -531,6 +451,22 @@ bool codegen_file_exists(const char* path);
  * @return 0 on success, -1 on failure
  */
 int codegen_copy_file(const char* src, const char* dst);
+
+/**
+ * Build output file path from KIR path and output directory.
+ * Extracts project name from kir_path and creates output path with extension.
+ * Handles NULL output_dir by returning default filename.
+ *
+ * Example:
+ *   codegen_build_output_path("path/to/app.kir", "build", ".b") → "build/app.b"
+ *   codegen_build_output_path("app.kir", NULL, ".tcl") → "output.tcl"
+ *
+ * @param kir_path Path to KIR file
+ * @param output_dir Output directory (NULL for default "output.ext")
+ * @param extension Output file extension (e.g., ".b", ".tcl", must include dot)
+ * @return Newly allocated string (caller must free), or NULL on error
+ */
+char* codegen_build_output_path(const char* kir_path, const char* output_dir, const char* extension);
 
 #ifdef __cplusplus
 }

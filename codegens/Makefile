@@ -40,6 +40,15 @@ CODEGEN_COMMON_OBJ = $(BUILD_DIR)/codegen_common.o
 CODEGEN_COMMON_SRC = codegen_common.c
 CODEGEN_COMMON_HDR = codegen_common.h
 
+# Unified Codegen Interface
+CODEGEN_INTERFACE_OBJ = $(BUILD_DIR)/codegen_registry.o
+CODEGEN_INTERFACE_SRC = codegen_registry.c
+CODEGEN_INTERFACE_HDR = codegen_interface.h
+
+# Codegen Registration (centralized registration)
+CODEGEN_REGISTRATION_OBJ = $(BUILD_DIR)/codegen_registration.o
+CODEGEN_REGISTRATION_SRC = codegen_registration.c
+
 # ============================================================================
 # Language Emitters
 # ============================================================================
@@ -86,6 +95,37 @@ EMITTER_OBJS = $(TCL_EMITTER_OBJ) \
 TOOLKIT_OBJS = $(DRAW_IR_BUILDER_OBJ)
 
 # ============================================================================
+# Codegen Adapters (unified interface)
+# ============================================================================
+
+# KRY Codegen Adapter
+KRY_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/kry_codegen_adapter.o
+KRY_CODEGEN_ADAPTER_SRC = kry/kry_codegen_adapter.c
+
+# C Codegen Adapter
+C_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/c_codegen_adapter.o
+C_CODEGEN_ADAPTER_SRC = c/c_codegen_adapter.c
+
+# Limbo Codegen Adapter
+LIMBO_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/limbo_codegen_adapter.o
+LIMBO_CODEGEN_ADAPTER_SRC = limbo/limbo_codegen_adapter.c
+
+# Tcl/Tk Codegen Adapter
+TCLTK_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/tcltk_codegen_adapter.o
+TCLTK_CODEGEN_ADAPTER_SRC = tcltk/tcltk_codegen_adapter.c
+
+# Markdown Codegen Adapter
+MARKDOWN_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/markdown_codegen_adapter.o
+MARKDOWN_CODEGEN_ADAPTER_SRC = markdown/markdown_codegen_adapter.c
+
+# All codegen adapter objects
+CODEGEN_ADAPTER_OBJS = $(KRY_CODEGEN_ADAPTER_OBJ) \
+                      $(C_CODEGEN_ADAPTER_OBJ) \
+                      $(LIMBO_CODEGEN_ADAPTER_OBJ) \
+                      $(TCLTK_CODEGEN_ADAPTER_OBJ) \
+                      $(MARKDOWN_CODEGEN_ADAPTER_OBJ)
+
+# ============================================================================
 # Targets
 # ============================================================================
 
@@ -99,9 +139,9 @@ $(BUILD_DIR):
 # Core Libraries
 # ============================================================================
 
-# Common utilities library
-$(COMMON_LIB): $(CODEGEN_COMMON_OBJ)
-	$(AR) $(ARFLAGS) $@ $(CODEGEN_COMMON_OBJ)
+# Common utilities library (now includes unified codegen interface and adapters)
+$(COMMON_LIB): $(CODEGEN_COMMON_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS)
+	$(AR) $(ARFLAGS) $@ $(CODEGEN_COMMON_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS)
 
 # Registry library
 $(REGISTRY_LIB): $(REGISTRY_OBJS)
@@ -157,11 +197,45 @@ $(DRAW_IR_BUILDER_OBJ): $(DRAW_IR_BUILDER_SRC) $(DRAW_IR_HDR) \
 	$(CC) $(CFLAGS) -I. -I$(CJSON_DIR) -Itoolkits/draw -c $(DRAW_IR_BUILDER_SRC) -o $@
 
 # ============================================================================
+# Codegen Interface and Adapters
+# ============================================================================
+
+# Codegen registry
+$(CODEGEN_INTERFACE_OBJ): $(CODEGEN_INTERFACE_SRC) $(CODEGEN_INTERFACE_HDR)
+	$(CC) $(CFLAGS) -I. -I$(CJSON_DIR) -c $(CODEGEN_INTERFACE_SRC) -o $@
+
+# Codegen registration
+$(CODEGEN_REGISTRATION_OBJ): $(CODEGEN_REGISTRATION_SRC) $(CODEGEN_INTERFACE_HDR)
+	$(CC) $(CFLAGS) -I. -I$(CJSON_DIR) -c $(CODEGEN_REGISTRATION_SRC) -o $@
+
+# KRY codegen adapter
+$(KRY_CODEGEN_ADAPTER_OBJ): $(KRY_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
+	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Ikry -c $(KRY_CODEGEN_ADAPTER_SRC) -o $@
+
+# C codegen adapter
+$(C_CODEGEN_ADAPTER_OBJ): $(C_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
+	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Ic -c $(C_CODEGEN_ADAPTER_SRC) -o $@
+
+# Limbo codegen adapter
+$(LIMBO_CODEGEN_ADAPTER_OBJ): $(LIMBO_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
+	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Ilimbo -c $(LIMBO_CODEGEN_ADAPTER_SRC) -o $@
+
+# Tcl/Tk codegen adapter
+$(TCLTK_CODEGEN_ADAPTER_OBJ): $(TCLTK_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
+	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Itcltk -c $(TCLTK_CODEGEN_ADAPTER_SRC) -o $@
+
+# Markdown codegen adapter
+$(MARKDOWN_CODEGEN_ADAPTER_OBJ): $(MARKDOWN_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
+	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Imarkdown -c $(MARKDOWN_CODEGEN_ADAPTER_SRC) -o $@
+
+# ============================================================================
 # Clean
 # ============================================================================
 
 clean:
 	rm -f $(CODEGEN_COMMON_OBJ)
+	rm -f $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ)
+	rm -f $(CODEGEN_ADAPTER_OBJS)
 	rm -f $(REGISTRY_OBJS) $(REGISTRY_LIB)
 	rm -f $(EMITTER_OBJS) $(EMITTER_LIB)
 	rm -f $(TOOLKIT_OBJS) $(TOOLKIT_LIB)

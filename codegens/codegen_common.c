@@ -5,6 +5,9 @@
  */
 
 #define _POSIX_C_SOURCE 200809L
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include "codegen_common.h"
 #include "../third_party/cJSON/cJSON.h"
@@ -1007,5 +1010,37 @@ int codegen_copy_file(const char* src, const char* dst) {
     fclose(in);
     fclose(out);
     return 0;
+}
+
+char* codegen_build_output_path(const char* kir_path, const char* output_dir, const char* extension) {
+    if (!kir_path || !extension) {
+        return NULL;
+    }
+
+    // Handle NULL output_dir - return default filename
+    if (!output_dir) {
+        char default_name[128];
+        snprintf(default_name, sizeof(default_name), "output%s", extension);
+        return strdup(default_name);
+    }
+
+    // Extract project name from kir_path
+    const char* filename = strrchr(kir_path, '/');
+    if (!filename) filename = kir_path;
+    else filename++;
+
+    // Copy filename and remove extension
+    char project_name[256];
+    snprintf(project_name, sizeof(project_name), "%.255s", filename);
+
+    // Remove .kir extension if present
+    char* ext = strstr(project_name, ".kir");
+    if (ext) *ext = '\0';
+
+    // Build output path
+    char* output_path = NULL;
+    asprintf(&output_path, "%s/%s%s", output_dir, project_name, extension);
+
+    return output_path;
 }
 
