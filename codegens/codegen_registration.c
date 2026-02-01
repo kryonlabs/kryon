@@ -17,6 +17,7 @@ extern const CodegenInterface c_codegen_interface;
 extern const CodegenInterface limbo_codegen_interface;
 extern const CodegenInterface tcltk_codegen_interface;
 extern const CodegenInterface markdown_codegen_interface;
+extern const CodegenInterface lua_codegen_interface;
 
 /* ============================================================================
  * Codegen Registration
@@ -39,6 +40,7 @@ int codegen_registry_register_all(void) {
     if (codegen_register(&limbo_codegen_interface) != 0) error++;
     if (codegen_register(&tcltk_codegen_interface) != 0) error++;
     if (codegen_register(&markdown_codegen_interface) != 0) error++;
+    if (codegen_register(&lua_codegen_interface) != 0) error++;
 
     if (error > 0) {
         fprintf(stderr, "Warning: %d codegen(s) failed to register\n", error);

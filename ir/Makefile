@@ -40,6 +40,8 @@ CFLAGS += -I$(CJSON_DIR) -I$(STB_DIR) -I$(TOML_DIR)
 # FriBidi is now included via pkg-config
 # Internal utils and bindings paths (for ir_constants.h, ir_c_metadata.h, etc.)
 CFLAGS += -Isrc/utils -I../bindings/c
+# Parser-specific include paths
+CFLAGS += -Iparsers/kry -Iparsers/markdown -Iparsers/html -Iparsers/c -Iparsers/tcl -Iparsers/limbo -Iparsers/lua -Iparsers/common
 
 # Source files - organized by module
 CORE_SOURCES = src/ir_builder.c \
@@ -170,9 +172,14 @@ PARSER_SOURCES = parsers/kry/kry_allocator.c \
                  parsers/limbo/limbo_ast.c \
                  parsers/limbo/limbo_to_ir.c \
                  parsers/limbo/limbo_parser_adapter.c \
+                 parsers/lua/lua_parser.c \
+                 parsers/lua/lua_parser_adapter.c \
+                 parsers/lua/module_collector.c \
+                 parsers/lua/require_tracker.c \
                  parsers/parser_utils.c \
                  parsers/common/parser_io_utils.c \
-                 src/core/parser_registry.c
+                 src/core/parser_registry.c \
+                 src/utils/ir_lua_modules.c
 
 # All IR sources
 IR_SOURCES = $(CORE_SOURCES) \
@@ -212,6 +219,19 @@ $(BUILD_DIR):
 # Compile object files with automatic dependency generation
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# Lua parser files need explicit include path for their headers
+parsers/lua/lua_parser.o: parsers/lua/lua_parser.c parsers/lua/lua_parser.h parsers/lua/module_collector.h parsers/lua/require_tracker.h
+	$(CC) $(CFLAGS) -Iparsers/lua -c $< -o $@
+
+parsers/lua/lua_parser_adapter.o: parsers/lua/lua_parser_adapter.c parsers/lua/lua_parser.h
+	$(CC) $(CFLAGS) -Iparsers/lua -c $< -o $@
+
+parsers/lua/module_collector.o: parsers/lua/module_collector.c parsers/lua/module_collector.h parsers/lua/require_tracker.h
+	$(CC) $(CFLAGS) -Iparsers/lua -c $< -o $@
+
+parsers/lua/require_tracker.o: parsers/lua/require_tracker.c parsers/lua/require_tracker.h
+	$(CC) $(CFLAGS) -Iparsers/lua -c $< -o $@
 
 # Build static library
 $(IR_STATIC_LIB): $(IR_SOURCES:.c=.o) | $(BUILD_DIR)

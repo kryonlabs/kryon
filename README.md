@@ -17,30 +17,27 @@ kryon run --target=tcl+tk examples/kry/hello_world.kry
 
 Kryon codegen targets are **explicit language+toolkit combinations**:
 
-| Target Combination | Language | Toolkit | Alias | Status |
-|-------------------|----------|---------|-------|--------|
-| `kry` | KRY | KRY (self) | - | 🟢 Production |
-| `limbo+draw` | Limbo | Draw | `limbo` | 🟡 One-Way? |
-| `tcl+tk` | Tcl | Tk | `tcltk` | 🟡 Limited |
-| `c+sdl3` | C | SDL3 | `c` | 🔴 Broken |
-| `c+raylib` | C | Raylib | - | 🔴 Broken |
-| `web` | JavaScript | DOM | `html` | 🟡 Limited |
-| `markdown` | Markdown | - | - | 🔴 Docs Only |
-| `android` | Java/Kotlin | Android | - | 🔴 Not Implemented |
+| Target Combination | Language | Toolkit | Status |
+|-------------------|----------|---------|--------|
+| `kry` | KRY | KRY (self) | 🟢 Production |
+| `lua` | Lua | Kryon binding | 🔴 Not Implemented |
+| `limbo+tk` | Limbo | Tk | 🟡 One-Way? |
+| `tcl+tk` | Tcl | Tk | 🟡 Limited |
+| `c+sdl3` | C | SDL3 | 🟡 Fix in Progress |
+| `c+raylib` | C | Raylib | 🟡 Fix in Progress |
+| `web` | JavaScript | DOM | 🟡 Limited |
+| `markdown` | Markdown | - | 🔴 Docs Only |
+| `android` | Java/Kotlin | Android | 🔴 Not Implemented |
 
 **Legend**: 🟢 = Production Ready, 🟡 = Limited/Poor, 🔴 = Not Working
 
 ```bash
-# Explicit syntax (recommended)
+# Explicit syntax
 kryon run --target=limbo+draw main.kry
 kryon run --target=tcl+tk main.kry
 kryon run --target=c+sdl3 main.kry
 kryon run --target=web main.kry
-
-# Short aliases
-kryon run --target=limbo main.kry    # → limbo+draw
-kryon run --target=tcltk main.kry    # → tcl+tk
-kryon run --target=c main.kry         # → c+sdl3
+kryon run --target=lua main.kry
 ```
 
 ## Round-Trip Codegen Status
@@ -59,7 +56,9 @@ kryon run --target=c main.kry         # → c+sdl3
 
 | Target | Issue | Priority |
 |--------|-------|----------|
-| **c+sdl3**, **c+raylib** | C parser needs compilation setup | 🔴 HIGH |
+| **lua** | No reverse parser | 🔴 HIGH |
+| **limbo+tk** | Not implemented | 🔴 HIGH |
+| **c+sdl3**, **c+raylib** | C parser in testing phase | 🟡 MEDIUM |
 | **limbo+draw** | Only 20-30% preservation | 🟡 MEDIUM |
 | **android** | No reverse parser | 🟢 LOW |
 
@@ -125,7 +124,7 @@ diff hello_world.kry step4_kry/main.kry
 - ✅ KRY self-round-trip: 95%+ preservation (production ready)
 - ✅ Tcl+Tk round-trip: ~30% preservation (scripts lost, expected)
 - ✅ Web round-trip: ~40-60% preservation (presentation layer)
-- 🔴 C round-trip: **BROKEN** - needs compilation setup
+- 🟡 C round-trip: **IN PROGRESS** - include paths fixed, testing pending
 - ⚠️ Limbo+Draw round-trip: ~20-30% preservation (documenting as one-way?)
 
 **See [CODEGEN_STATUS.md](CODEGEN_STATUS.md) for:**

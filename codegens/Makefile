@@ -118,12 +118,25 @@ TCLTK_CODEGEN_ADAPTER_SRC = tcltk/tcltk_codegen_adapter.c
 MARKDOWN_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/markdown_codegen_adapter.o
 MARKDOWN_CODEGEN_ADAPTER_SRC = markdown/markdown_codegen_adapter.c
 
+# Lua Codegen Adapter
+LUA_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/lua_codegen_adapter.o
+LUA_CODEGEN_ADAPTER_SRC = lua/lua_codegen_adapter.c
+
+# Lua Codegen
+LUA_CODEGEN_OBJ = $(BUILD_DIR)/lua_codegen.o
+LUA_CODEGEN_SRC = lua/lua_codegen.c
+LUA_CODEGEN_HDR = lua/lua_codegen.h
+
 # All codegen adapter objects
 CODEGEN_ADAPTER_OBJS = $(KRY_CODEGEN_ADAPTER_OBJ) \
                       $(C_CODEGEN_ADAPTER_OBJ) \
                       $(LIMBO_CODEGEN_ADAPTER_OBJ) \
                       $(TCLTK_CODEGEN_ADAPTER_OBJ) \
-                      $(MARKDOWN_CODEGEN_ADAPTER_OBJ)
+                      $(MARKDOWN_CODEGEN_ADAPTER_OBJ) \
+                      $(LUA_CODEGEN_ADAPTER_OBJ)
+
+# All codegen implementation objects (for linking into common lib)
+CODEGEN_IMPL_OBJS = $(LUA_CODEGEN_OBJ)
 
 # ============================================================================
 # Targets
@@ -140,8 +153,8 @@ $(BUILD_DIR):
 # ============================================================================
 
 # Common utilities library (now includes unified codegen interface and adapters)
-$(COMMON_LIB): $(CODEGEN_COMMON_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS)
-	$(AR) $(ARFLAGS) $@ $(CODEGEN_COMMON_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS)
+$(COMMON_LIB): $(CODEGEN_COMMON_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS) $(CODEGEN_IMPL_OBJS)
+	$(AR) $(ARFLAGS) $@ $(CODEGEN_COMMON_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS) $(CODEGEN_IMPL_OBJS)
 
 # Registry library
 $(REGISTRY_LIB): $(REGISTRY_OBJS)
@@ -228,6 +241,14 @@ $(TCLTK_CODEGEN_ADAPTER_OBJ): $(TCLTK_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_H
 $(MARKDOWN_CODEGEN_ADAPTER_OBJ): $(MARKDOWN_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
 	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Imarkdown -c $(MARKDOWN_CODEGEN_ADAPTER_SRC) -o $@
 
+# Lua codegen adapter
+$(LUA_CODEGEN_ADAPTER_OBJ): $(LUA_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
+	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Ilua -c $(LUA_CODEGEN_ADAPTER_SRC) -o $@
+
+# Lua codegen implementation
+$(LUA_CODEGEN_OBJ): $(LUA_CODEGEN_SRC) $(LUA_CODEGEN_HDR) $(CODEGEN_COMMON_HDR)
+	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(IR_DIR)/src/utils -I$(CJSON_DIR) -Ilua -c $(LUA_CODEGEN_SRC) -o $@
+
 # ============================================================================
 # Clean
 # ============================================================================
@@ -236,6 +257,7 @@ clean:
 	rm -f $(CODEGEN_COMMON_OBJ)
 	rm -f $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ)
 	rm -f $(CODEGEN_ADAPTER_OBJS)
+	rm -f $(CODEGEN_IMPL_OBJS)
 	rm -f $(REGISTRY_OBJS) $(REGISTRY_LIB)
 	rm -f $(EMITTER_OBJS) $(EMITTER_LIB)
 	rm -f $(TOOLKIT_OBJS) $(TOOLKIT_LIB)

@@ -72,9 +72,9 @@ static char* find_kryon_root(void) {
 
         // Walk up to 5 levels
         for (int depth = 0; depth < 5; depth++) {
-            // Check for ir/ directory (characteristic of Kryon root)
+            // Check for ir/include/ir_core.h (characteristic of Kryon root)
             char test_path[1024];
-            snprintf(test_path, sizeof(test_path), "%s/ir/ir_core.h", check_path);
+            snprintf(test_path, sizeof(test_path), "%s/ir/include/ir_core.h", check_path);
             if (access(test_path, F_OK) == 0) {
                 strncpy(cached_path, check_path, sizeof(cached_path) - 1);
                 cached_path[sizeof(cached_path) - 1] = '\0';
@@ -717,11 +717,12 @@ char* ir_c_to_kir(const char* source, size_t length) {
 
     char compile_cmd[4096];
     snprintf(compile_cmd, sizeof(compile_cmd),
-             "%s \"%s\" -DKRYON_KIR_ONLY -I\"%s/bindings/c\" -I\"%s/ir\" "
-             "-I\"%s/third_party/cJSON\" -L\"%s/build\" -L\"%s/bindings/c\" "
+             "%s \"%s\" -DKRYON_KIR_ONLY -I\"%s/bindings/c\" -I\"%s/ir/include\" "
+             "-I\"%s/runtime/desktop\" -I\"%s/third_party/cJSON\" -I\"%s/third_party/tomlc99\" "
+             "-L\"%s/build\" -L\"%s/bindings/c\" "
              "-Wl,-rpath,%s/build -lkryon_c -lkryon_ir -lm -o \"%s\" 2>&1",
-             compiler, src_file, kryon_root, kryon_root,
-             kryon_root,
+             compiler, src_file, kryon_root, kryon_root, kryon_root,
+             kryon_root, kryon_root,
              kryon_root, kryon_root, kryon_root, exe_file);
 
     FILE* pipe = popen(compile_cmd, "r");

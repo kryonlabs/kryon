@@ -18,6 +18,7 @@ extern const ParserInterface limbo_parser_interface;
 extern const ParserInterface html_parser_interface;
 extern const ParserInterface markdown_parser_interface;
 extern const ParserInterface c_parser_interface;
+extern const ParserInterface lua_parser_interface;
 
 /* ============================================================================
  * Parser Registration
@@ -41,6 +42,7 @@ int parser_registry_register_all(void) {
     if (parser_register(&html_parser_interface) != 0) error++;
     if (parser_register(&markdown_parser_interface) != 0) error++;
     if (parser_register(&c_parser_interface) != 0) error++;
+    if (parser_register(&lua_parser_interface) != 0) error++;
 
     if (error > 0) {
         fprintf(stderr, "Warning: %d parser(s) failed to register\n", error);

@@ -1,147 +1,98 @@
 # Kryon Codegen Round-Trip Status
 
-**Last Updated**: 2026-02-01
+**Last Updated**: 2026-02-01 (C Parser include paths fixed)
 **Test Suite Version**: 1.0
 **Kryon Version**: Dev (pre-alpha)
 
-## Target Combinations
+## Target Status
 
 Kryon codegen targets are **explicit language+toolkit combinations**:
 
-| Target Combination | Language | Toolkit | Alias | Forward Gen | Round-Trip? | Status |
-|-------------------|----------|---------|-------|-------------|-------------|--------|
-| **kry** | KRY | KRY (self) | - | ✅ Excellent | ✅ **YES** | 🟢 Production |
-| **tcl+tk** | Tcl | Tk | `tcltk` | ✅ Good | ✅ **YES** | 🟡 Limited (30%) |
-| **limbo+draw** | Limbo | Draw | `limbo` | ✅ Good | ⚠️ Poor (20-30%) | 🟡 One-Way? |
-| **c+sdl3** | C | SDL3 | `c` | ✅ Good | ❌ **NO** | 🔴 Broken |
-| **c+raylib** | C | Raylib | - | ✅ Good | ❌ **NO** | 🔴 Broken |
-| **web** | JS/HTML | DOM | `html` | ✅ Good | ✅ **YES** | 🟡 Limited (40-60%) |
-| **markdown** | Markdown | - | - | ✅ Good | N/A | 🔴 Docs only |
-| **android** | Java/Kotlin | Android | - | ✅ Good | ❌ **NO** | 🔴 Not Implemented |
+| Target | Language | Toolkit | Forward | Round-Trip | Preservation | Status |
+|--------|----------|---------|---------|-----------|---------------|--------|
+| **kry** | KRY | KRY (self) | ✅ Excellent | ✅ **YES** | 95%+ | 🟢 Production Ready |
+| **lua** | Lua | Kryon binding | ✅ Good | ❌ **NO** | - | 🔴 Not Implemented |
+| **tcl+tk** | Tcl | Tk | ✅ Good | ✅ **YES** | ~30% | 🟡 Limited (scripts lost) |
+| **limbo+tk** | Limbo | Tk | ✅ Good | ⚠️ **POOR** | 20-30% | 🟡 FIX THIS|
+| **c+sdl3** | C | SDL3 | ✅ Good | ⚠️ **TESTING** | - | 🟡 Fix in Progress |
+| **c+raylib** | C | Raylib | ✅ Good | ⚠️ **TESTING** | - | 🟡 Fix in Progress |
+| **web** | JavaScript | DOM | ✅ Good | ✅ **YES** | ~40-60% | 🟡 Limited (presentation) |
+| **markdown** | Markdown | - | ✅ Good | N/A | 95% | 🔴 Docs Only |
+| **android** | Java/Kotlin | Android | ✅ Good | ❌ **NO** | - | 🔴 Not Implemented |
 
-**Legend**: 🟢 = Production Ready, 🟡 = Limited, 🔴 = Not Working
+**Legend**:
+- 🟢 **Production Ready**: 80%+ preservation, fully functional
+- 🟡 **Limited**: 40-79% preservation, works but loses significant info
+- 🔴 **Not Working**: <40% preservation or completely broken
 
 ---
 
-## Round-Trip Test Results
-
-### What Works ✅
-
-| Target | Preservation | Test Results | Notes |
-|--------|---------------|--------------|-------|
-| **kry** | 95%+ | 8/8 files passed | Only formatting differences |
-| **tcl+tk** | ~30% | 8/8 files passed | Scripts lost (expected) |
-| **web** | ~40-60% | 8/8 files passed | Presentation layer limitation |
+## Test Results
 
 **Total Tests**: 24/24 passing ✅
 
-### What Needs Work ⚠️
+| Test File | KRY | Tcl+Tk | Web |
+|----------|-----|--------|------|
+| hello_world.kry | ✅ | ✅ | ✅ |
+| button_demo.kry | ✅ | ✅ | ✅ |
+| text_input_simple.kry | ✅ | ✅ | ✅ |
+| checkbox.kry | ✅ | ✅ | ✅ |
+| counters_demo.kry | ✅ | ✅ | ✅ |
+| if_else_test.kry | ✅ | ✅ | ✅ |
+| row_alignments.kry | ✅ | ✅ | ✅ |
+| column_alignments.kry | ✅ | ✅ | ✅ |
 
-| Target | Issue | Fix Time | Priority |
-|--------|-------|----------|----------|
-| **c+sdl3**, **c+raylib** | C parser compilation broken | 4-8 hours | 🔴 HIGH |
-| **limbo+draw** | Only 20-30% preservation | 2 hours (docs) | 🟡 MEDIUM |
-| **android** | No reverse parser | 20+ hours | 🟢 LOW |
+**Test Coverage**: 8 Priority Tier 1 files × 3 targets = 24 tests
 
----
-
-## Detailed Status
-
-### 🟢 PRODUCTION READY
-
-#### KRY (Self Round-Trip)
-- **Target**: `kry` (language + toolkit are the same)
-- **Preservation**: 95%+ (only formatting differences)
-- **Test Results**: 8/8 files passed ✅
-- **Known Limitations**:
-  - Comments not preserved (expected)
-  - Property name normalization (e.g., `posX` → `position = absolute; left =`)
-  - Formatting differences (indentation, spacing)
-- **Command**: `kryon codegen kry input.kir -o output/`
-- **Status**: Ready for production use
+**Remaining**: 7 files not yet tested (Priority Tier 2 & 3)
 
 ---
 
-### 🟡 LIMITED BUT WORKING
+## Known Issues & Action Items
 
-#### Tcl+Tk
-- **Target**: `tcl+tk` (alias: `tcltk`)
-- **Preservation**: ~30%
-- **Test Results**: 8/8 files passed ✅
-- **What's Lost**: Event handler implementations, variables, complex properties
-- **What's Preserved**: Widget hierarchy, core property values, layout structure
-- **Reason**: Tcl is a scripting language - code is imperative, not declarative
-- **Improvement**: Add `@tcl` ... `@end` blocks to preserve handler implementations
-- **Status**: Works as designed (presentation layer limitation)
-- **Command**: `kryon parse file.tcl -o output.kir`
+### 🟡 HIGH - In Progress
 
-#### Web (HTML/JS/CSS)
-- **Target**: `web` (alias: `html`)
-- **Preservation**: ~40-60%
-- **Test Results**: 8/8 files passed ✅
-- **What's Lost**: Event handlers (JavaScript), component semantics
-- **What's Preserved**: Tag structure, basic styling (CSS), text content
-- **Reason**: HTML is presentation-only - no declarative UI semantics
-- **Status**: Works as expected for web apps
-- **Commands**:
-  - Generate: `kryon build file.kry --target web`
-  - Parse: `kryon parse file.html -o output.kir`
+**1. Fix C Parser Build Environment** (COMPLETED: include paths)
+- **Issue**: C parser requires compilation but had incorrect include paths
+- **Error**: `ir_core.h: No such file or directory`
+- **Fix Applied**:
+  - ✅ Updated include paths from `-I"%s/ir"` to `-I"%s/ir/include"`
+  - ✅ Added `-I"%s/runtime/desktop"` for desktop runtime headers
+  - ✅ Added `-I"%s/third_party/tomlc99"` for tomlc99 headers
+  - ✅ Fixed `find_kryon_root()` to check for `ir/include/ir_core.h` instead of `ir/ir_core.h`
+- **Remaining**: Test C round-trip with actual generated C code
 
----
+### 🟡 HIGH - Week 2
 
-### 🟡 NEEDS WORK / DECISION
+**2. Document Limbo Decision** (2 hours)
+- **Current**: Only 20-30% preservation in round-trip
+- **IMPORTANT**: Add `@limbo @end` markers to example files and test
 
-#### Limbo+Draw
-- **Target**: `limbo+draw` (alias: `limbo`)
-- **Preservation**: ~20-30% (very poor)
-- **Issue**: Systems language - hard to map back to declarative KRY
-- **Current State**: Round-trip loses most information
-- **Recommendation**: **Document as one-way target** OR improve with `@limbo` blocks
-- **Decision Points**:
-  1. Add `@limbo` ... `@end` markers to example files
-  2. Test round-trip with markers
-  3. If still <50% preservation, document as one-way codegen
-- **Action Items**:
-  - [ ] Add `@limbo @end` markers (1 hour)
-  - [ ] Test round-trip (30 min)
-  - [ ] Create ADR documenting decision (1 hour)
-- **Estimated Time**: 2.5 hours total
+**3. Add @tcl Markers** (1 hour)
+- **Current**: Tcl/Tk loses event handler implementations
+- **Fix**: Add `@tcl @end` blocks to preserve handler code
+- **Example**: button_demo.kry already has the structure
+- **Improvement**: 30% → ~50% preservation
 
----
+**4. Expand Test Coverage** (4-6 hours)
+- Test remaining 7 KRY files (Priority Tier 2 & 3)
+- All targets: KRY, Tcl+Tk, Web
+- Document any new discrepancies found
 
-### 🔴 NOT WORKING
+### 🟢 MEDIUM - Week 3+
 
-#### C + SDL3 / Raylib
-- **Targets**: `c+sdl3`, `c+raylib` (alias: `c`)
-- **Preservation**: Unknown (cannot test)
-- **Issue**: **C parser requires compilation to extract AST**
-  - Error: `ir_core.h: No such file or directory`
-  - Parser tries to compile generated C code with clang
-  - Missing include paths and IR headers
-- **Root Cause**: Build environment not properly configured
-- **Required Fixes**:
-  1. Set up proper include paths for C compilation
-  2. Make IR headers available to C parser
-  3. Fix clang integration in build pipeline
-- **Impact**: C is a primary target - this blocks C round-trip completely
-- **Estimated Effort**: 4-8 hours
-- **Priority**: 🔴 HIGH
+5. **CI/CD Integration** (2-3 hours)
+   - Add round-trip tests to build pipeline
+   - Fail build on critical round-trip errors
 
----
+6. **Performance Benchmarking** (3-4 hours)
+   - Measure parse/codegen time per target
+   - Memory usage profiling
 
-### 🔴 NOT APPLICABLE
-
-#### Markdown
-- **Status**: Documentation-only format
-- **Reason**: No reverse parser needed
-- **Use Case**: Generate documentation from KRY
-- **Command**: `kryon codegen markdown input.kir -o output/`
-
-#### Android
-- **Status**: Not implemented
-- **Reason**: Would require Java/Kotlin parser
-- **Complexity**: High (Android has complex build system)
-- **Priority**: Low
+7. **Improve Test Infrastructure** (6-8 hours)
+   - Automated discrepancy categorization
+   - HTML report generation
+   - Side-by-side diff viewer
 
 ---
 
@@ -161,110 +112,71 @@ Kryon codegen targets are **explicit language+toolkit combinations**:
 
 ---
 
-## Test Coverage
+## Per-Target Details
 
-### Completed ✅
-- **8 test files** × **3 targets** (KRY, Tcl+Tk, Web) = **24 tests**
-- **All 24 tests passing** ✅
+### 🟢 KRY (Self Round-Trip)
+- **Preservation**: 95%+ (only formatting differences)
+- **Known Limitations**:
+  - Comments not preserved (expected)
+  - Property name normalization (e.g., `posX` → `position = absolute; left =`)
+  - Formatting differences (indentation, spacing)
+- **Command**: `kryon codegen kry input.kir -o output/`
+- **Status**: Production ready
 
-**Test Files** (Priority Tier 1):
-1. ✅ hello_world.kry
-2. ✅ button_demo.kry
-3. ✅ text_input_simple.kry
-4. ✅ checkbox.kry
-5. ✅ counters_demo.kry
-6. ✅ if_else_test.kry
-7. ✅ row_alignments.kry
-8. ✅ column_alignments.kry
+### 🟡 Tcl+Tk
+- **Preservation**: ~30%
+- **What's Lost**: Event handler implementations, variables, complex properties
+- **What's Preserved**: Widget hierarchy, core property values, layout structure
+- **Reason**: Tcl is imperative - scripts are not declarative
+- **Improvement**: Add `@tcl @end` blocks to preserve implementations
+- **Status**: Works as designed (presentation layer limitation)
 
-### Remaining (7 files)
-- **Priority Tier 2** (3 files): dropdown.kry, table_demo.kry, tabs_reorderable.kry
-- **Priority Tier 3** (4 files): animations_demo.kry, typography_showcase.kry, zindex_test.kry, todo.kry
+### 🟡 Web (HTML/JS/CSS)
+- **Preservation**: ~40-60%
+- **What's Lost**: Event handlers (JavaScript), component semantics
+- **What's Preserved**: Tag structure, basic styling (CSS), text content
+- **Reason**: HTML is presentation-only
+- **Commands**:
+  - Generate: `kryon build file.kry --target web`
+  - Parse: `kryon parse file.html -o output.kir`
+- **Status**: Works as expected for web apps
 
----
+### 🟡 Limbo+Draw
+- **Preservation**: ~20-30% (very poor)
+- **Issue**: Systems language - hard to map back to declarative KRY
+- **Recommendation**: Document as one-way target OR add `@limbo @end` markers
+- **Decision Points**:
+  1. Test round-trip with `@limbo @end` markers
+  2. If still <50% preservation, document as one-way
+- **Estimated Time**: 2 hours to test and document
 
-## Action Items (Priority Order)
+### 🟡 C + SDL3 / Raylib
+- **Preservation**: Testing in progress
+- **Issue**: C parser requires compilation to extract AST
+  - **Fixed**: Include path issues (2026-02-01)
+    - ✅ Updated: `-I"%s/ir"` → `-I"%s/ir/include"`
+    - ✅ Added: `-I"%s/runtime/desktop"` and `-I"%s/third_party/tomlc99"`
+    - ✅ Fixed: `find_kryon_root()` path check
+  - **Remaining**: Test full round-trip with generated C code
+- **Impact**: C is a primary target - round-trip almost working
 
-### 🔴 CRITICAL - Week 1
+### 🔴 Markdown
+- **Status**: Documentation-only format
+- **Reason**: No reverse parser needed
+- **Use Case**: Generate documentation from KRY
+- **Command**: `kryon codegen markdown input.kir -o output/`
 
-1. **Fix C Parser Build Environment** (4-8 hours)
-   - Set up include paths for IR headers
-   - Configure clang integration
-   - Test `c+sdl3` and `c+raylib` round-trips
-   - Files: `ir/parsers/c/`, `bindings/c/`, build system
-   - **Blocker**: C round-trip completely broken
-
-2. **Test HTML/Web Round-Trip** (1 hour) ✅ DONE
-   - Added to test suite
-   - All 8 files passing
-
-### 🟡 HIGH - Week 2
-
-3. **Document Limbo Decision** (2 hours)
-   - Add `@limbo @end` markers to example files
-   - Test `limbo+draw` round-trip with markers
-   - If <50% preservation, document as one-way target
-   - Create ADR: `docs/ADR-003-limbo-roundtrip.md`
-
-4. **Add @tcl Markers** (1 hour)
-   - Add `@tcl @end` blocks to files with named handlers
-   - Example: button_demo.kry already has them
-   - Improves Tcl+Tk preservation from 30% → ~50%
-
-5. **Expand Test Coverage** (4-6 hours)
-   - Test remaining 7 KRY files
-   - All targets: KRY, Tcl+Tk, Web
-   - Document any new discrepancies
-
-### 🟢 MEDIUM - Week 3+
-
-6. **CI/CD Integration** (2-3 hours)
-   - Add round-trip tests to build pipeline
-   - Fail build on critical round-trip errors
-   - Automated test result reporting
-
-7. **Performance Benchmarking** (3-4 hours)
-   - Measure parse/codegen time per target
-   - Memory usage profiling
-   - Create baseline metrics
-
-8. **Improve Test Infrastructure** (6-8 hours)
-   - Automated discrepancy categorization
-   - HTML report generation
-   - Side-by-side diff viewer
+### 🔴 Android
+- **Status**: Not implemented
+- **Reason**: Would require Java/Kotlin parser
+- **Complexity**: High (Android has complex build system)
+- **Priority**: Low
 
 ---
 
-## Recent Changes
+## Commands Reference
 
-### 2026-02-01
-- ✅ Fixed KRY codegen bugs (border syntax, string escaping)
-- ✅ All 24 round-trip tests passing (KRY, Tcl+Tk, Web)
-- ✅ Created test infrastructure
-- ✅ HTML/Web round-trip tested and working
-- ✅ Merged HTML and Web targets (same codegen/parser)
-- ✅ Updated target structure to be explicit (language+toolkit)
-- ✅ Added @tcl @end to button_demo.kry
-- 📝 Next: Fix C parser build environment
-
----
-
-## How to Use This Status
-
-### Running Tests:
-```bash
-# Run full test suite
-bash tests/round_trip/test_roundtrip.sh
-
-# Manual round-trip test
-kryon parse hello_world.kry -o step1.kir
-kryon codegen kry step1.kir step2_kry/
-kryon parse step2_kry/main.kry -o step3.kir
-kryon codegen kry step3.kir step4_kry/
-diff hello_world.kry step4_kry/main.kry
-```
-
-### Target Commands:
+### Target Commands
 ```bash
 # Explicit syntax (recommended)
 kryon build file.kry --target=limbo+draw
@@ -278,13 +190,52 @@ kryon build file.kry --target=tcltk    # → tcl+tk
 kryon build file.kry --target=c         # → c+sdl3
 ```
 
-### Updating This File:
+### Test Commands
+```bash
+# Run full test suite
+bash tests/round_trip/test_roundtrip.sh
+
+# Manual round-trip test
+kryon parse hello_world.kry -o step1.kir
+kryon codegen kry step1.kir step2_kry/
+kryon parse step2_kry/main.kry -o step3.kir
+kryon codegen kry step3.kir step4_kry/
+diff hello_world.kry step4_kry/main.kry
+```
+
+---
+
+## How to Update This File
+
 When fixing codegen issues:
-1. Update relevant target status
-2. Add entry to "Recent Changes"
-3. Update preservation matrix
+1. Update the main table above with new status
+2. Add entry to "Recent Changes" below
+3. Update preservation matrix if applicable
 4. Check off completed action items
 5. Update test coverage numbers
+
+---
+
+## Recent Changes
+
+### 2026-02-01 (Afternoon)
+- ✅ **FIXED**: C parser include paths (c_parser.c)
+  - Updated compile command: `-I"%s/ir"` → `-I"%s/ir/include"`
+  - Added missing include paths: runtime/desktop, third_party/tomlc99
+  - Fixed find_kryon_root() path check
+- 📝 **NEXT**: Test C round-trip with generated C code
+- 📝 **REMOVED**: Extra documentation files (DISCREPANCIES.md, IMPLEMENTATION_SUMMARY.md, tests/round_trip/README.md)
+
+### 2026-02-01 (Morning)
+- ✅ Fixed KRY codegen bugs (border syntax, string escaping)
+- ✅ All 24 round-trip tests passing (KRY, Tcl+Tk, Web)
+- ✅ Created test infrastructure
+- ✅ HTML/Web round-trip tested and working
+- ✅ Merged HTML and Web targets (same codegen/parser)
+- ✅ Updated target structure to be explicit (language+toolkit)
+- ✅ Simplified document by consolidating redundant sections
+- ✅ Added @tcl @end to button_demo.kry
+- 📝 Next: Fix C parser build environment
 
 ---
 
@@ -292,15 +243,11 @@ When fixing codegen issues:
 
 - 🟢 **PRODUCTION READY**: Fully functional, high preservation (80%+)
 - 🟡 **LIMITED**: Works but with significant information loss (40-79%)
-- 🟡 **NEEDS WORK**: Has issues but fixable
-- 🔴 **NOT WORKING**: Broken or not implemented
-- 🔴 **NOT APPLICABLE**: By design
+- 🔴 **NOT WORKING**: Broken or not implemented (<40% preservation)
 
 ---
 
-**Commands Reference**:
-- Run tests: `bash tests/round_trip/test_roundtrip.sh`
-- Parse: `kryon parse <input> -o <output.kir>`
-- Codegen: `kryon codegen <target> <input.kir> <output>`
-- Build: `kryon build <file.kry> --target=<target>`
-- List targets: `kryon targets` (if implemented)
+**Key Files**:
+- Status: `/mnt/storage/Projects/TaijiOS/kryon/CODEGEN_STATUS.md` (this file)
+- Tests: `/mnt/storage/Projects/TaijiOS/kryon/tests/round_trip/test_roundtrip.sh`
+- README: `/mnt/storage/Projects/TaijiOS/kryon/README.md`
