@@ -6,7 +6,7 @@
 #include <sys/types.h>  // for pid_t
 
 // Version information
-#define KRYON_CLI_VERSION "2.0.0-alpha"
+#define KRYON_CLI_VERSION "alpha"
 #define KRYON_CLI_LICENSE "0BSD"
 
 // ============================================================================
@@ -377,5 +377,9 @@ int cmd_doctor(int argc, char** argv);
 int cmd_install(int argc, char** argv);
 int cmd_uninstall(int argc, char** argv);
 int cmd_targets(int argc, char** argv);
+int cmd_capabilities(int argc, char** argv);
+int cmd_lang(int argc, char** argv);
+int cmd_platform(int argc, char** argv);
+int cmd_toolkit(int argc, char** argv);
 
 #endif // KRYON_CLI_H

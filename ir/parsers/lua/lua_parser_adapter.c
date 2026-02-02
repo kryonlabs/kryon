@@ -20,7 +20,7 @@ static const char* lua_extensions[] = {".lua", NULL};
 
 static const ParserInfo lua_parser_info = {
     .name = "lua",
-    .version = "1.0.0",
+    .version = "alpha",
     .caps = PARSER_CAP_MULTI_FILE | PARSER_CAP_LAYOUT | PARSER_CAP_SCRIPTS,
     .extensions = lua_extensions
 };

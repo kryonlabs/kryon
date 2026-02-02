@@ -133,9 +133,17 @@ static char* escape_javascript_string(const void* profile, const char* input) {
 
 // === Tcl Language Profile ===
 
+static const char* tcl_platforms[] = {"terminal", NULL};
+static const LanguagePlatformDefault tcl_defaults[] = {
+    {"terminal", "terminal"},
+    {NULL, NULL}
+};
+
 static const LanguageProfile tcl_profile = {
     .name = "tcl",
     .type = LANGUAGE_TCL,
+    .is_source_language = true,
+    .is_binding_language = true,
     .source_extension = ".tcl",
     .header_extension = NULL,
     .line_comment = "#",
@@ -159,14 +167,27 @@ static const LanguageProfile tcl_profile = {
         .braces_on_newline = false
     },
     .boilerplate_header = NULL,
-    .boilerplate_footer = NULL
+    .boilerplate_footer = NULL,
+    .compatible_platforms = tcl_platforms,
+    .platform_count = 1,
+    .defaults = (LanguagePlatformDefault*)tcl_defaults,
+    .default_count = 1
 };
 
 // === Limbo Language Profile ===
 
+static const char* limbo_platforms[] = {"taijios", "terminal", NULL};
+static const LanguagePlatformDefault limbo_defaults[] = {
+    {"taijios", "draw"},
+    {"terminal", "terminal"},
+    {NULL, NULL}
+};
+
 static const LanguageProfile limbo_profile = {
     .name = "limbo",
     .type = LANGUAGE_LIMBO,
+    .is_source_language = true,
+    .is_binding_language = true,
     .source_extension = ".b",
     .header_extension = NULL,
     .line_comment = "#",
@@ -190,14 +211,27 @@ static const LanguageProfile limbo_profile = {
         .braces_on_newline = false
     },
     .boilerplate_header = "implement Kryon;\n\n",
-    .boilerplate_footer = NULL
+    .boilerplate_footer = NULL,
+    .compatible_platforms = limbo_platforms,
+    .platform_count = 2,
+    .defaults = (LanguagePlatformDefault*)limbo_defaults,
+    .default_count = 2
 };
 
 // === C Language Profile ===
 
+static const char* c_platforms[] = {"desktop", "terminal", NULL};
+static const LanguagePlatformDefault c_defaults[] = {
+    {"desktop", "sdl3"},
+    {"terminal", "terminal"},
+    {NULL, NULL}
+};
+
 static const LanguageProfile c_profile = {
     .name = "c",
     .type = LANGUAGE_C,
+    .is_source_language = false,
+    .is_binding_language = true,
     .source_extension = ".c",
     .header_extension = ".h",
     .line_comment = "//",
@@ -221,14 +255,26 @@ static const LanguageProfile c_profile = {
         .braces_on_newline = true  // K&R style
     },
     .boilerplate_header = "#include <stdio.h>\n#include <stdlib.h>\n\n",
-    .boilerplate_footer = NULL
+    .boilerplate_footer = NULL,
+    .compatible_platforms = c_platforms,
+    .platform_count = 2,
+    .defaults = (LanguagePlatformDefault*)c_defaults,
+    .default_count = 2
 };
 
 // === Kotlin Language Profile ===
 
+static const char* kotlin_platforms[] = {"mobile", NULL};
+static const LanguagePlatformDefault kotlin_defaults[] = {
+    {"mobile", "android"},
+    {NULL, NULL}
+};
+
 static const LanguageProfile kotlin_profile = {
     .name = "kotlin",
     .type = LANGUAGE_KOTLIN,
+    .is_source_language = false,
+    .is_binding_language = true,
     .source_extension = ".kt",
     .header_extension = NULL,
     .line_comment = "//",
@@ -252,14 +298,26 @@ static const LanguageProfile kotlin_profile = {
         .braces_on_newline = false
     },
     .boilerplate_header = NULL,
-    .boilerplate_footer = NULL
+    .boilerplate_footer = NULL,
+    .compatible_platforms = kotlin_platforms,
+    .platform_count = 1,
+    .defaults = (LanguagePlatformDefault*)kotlin_defaults,
+    .default_count = 1
 };
 
 // === JavaScript Language Profile ===
 
+static const char* javascript_platforms[] = {"web", NULL};
+static const LanguagePlatformDefault javascript_defaults[] = {
+    {"web", "dom"},
+    {NULL, NULL}
+};
+
 static const LanguageProfile javascript_profile = {
     .name = "javascript",
     .type = LANGUAGE_JAVASCRIPT,
+    .is_source_language = true,
+    .is_binding_language = true,
     .source_extension = ".js",
     .header_extension = NULL,
     .line_comment = "//",
@@ -283,29 +341,41 @@ static const LanguageProfile javascript_profile = {
         .braces_on_newline = false
     },
     .boilerplate_header = NULL,
-    .boilerplate_footer = NULL
+    .boilerplate_footer = NULL,
+    .compatible_platforms = javascript_platforms,
+    .platform_count = 1,
+    .defaults = (LanguagePlatformDefault*)javascript_defaults,
+    .default_count = 1
 };
 
-// === TypeScript Language Profile ===
+// === Lua Language Profile ===
 
-static const LanguageProfile typescript_profile = {
-    .name = "typescript",
-    .type = LANGUAGE_TYPESCRIPT,
-    .source_extension = ".ts",
+static const char* lua_platforms[] = {"terminal", NULL};
+static const LanguagePlatformDefault lua_defaults[] = {
+    {"terminal", "terminal"},
+    {NULL, NULL}
+};
+
+static const LanguageProfile lua_profile = {
+    .name = "lua",
+    .type = LANGUAGE_LUA,
+    .is_source_language = true,
+    .is_binding_language = true,
+    .source_extension = ".lua",
     .header_extension = NULL,
-    .line_comment = "//",
-    .block_comment_start = "/*",
-    .block_comment_end = "*/",
+    .line_comment = "--",
+    .block_comment_start = NULL,
+    .block_comment_end = NULL,
     .string_quote = "\"",
-    .escape_string = escape_javascript_string,
-    .statement_terminator = true,
-    .statement_terminator_char = ";",
-    .block_delimiters = true,
+    .escape_string = escape_c_string,  // Similar to C
+    .statement_terminator = false,  // Newline is terminator
+    .statement_terminator_char = NULL,
+    .block_delimiters = true,  // Uses do/end
     .requires_main = false,
-    .var_declaration = "const %s: %s = %s",
-    .requires_type_declaration = true,
-    .func_declaration = "function %s(%s): %s",
-    .requires_return_type = true,
+    .var_declaration = "local %s = %s",
+    .requires_type_declaration = false,
+    .func_declaration = "function %s(%s)",
+    .requires_return_type = false,
     .format = {
         .indent_size = 2,
         .use_tabs = false,
@@ -314,7 +384,11 @@ static const LanguageProfile typescript_profile = {
         .braces_on_newline = false
     },
     .boilerplate_header = NULL,
-    .boilerplate_footer = NULL
+    .boilerplate_footer = NULL,
+    .compatible_platforms = lua_platforms,
+    .platform_count = 1,
+    .defaults = (LanguagePlatformDefault*)lua_defaults,
+    .default_count = 1
 };
 
 // ============================================================================
@@ -329,9 +403,7 @@ LanguageType language_type_from_string(const char* type_str) {
     if (strcmp(type_str, "c") == 0) return LANGUAGE_C;
     if (strcmp(type_str, "kotlin") == 0 || strcmp(type_str, "kt") == 0) return LANGUAGE_KOTLIN;
     if (strcmp(type_str, "javascript") == 0 || strcmp(type_str, "js") == 0) return LANGUAGE_JAVASCRIPT;
-    if (strcmp(type_str, "typescript") == 0 || strcmp(type_str, "ts") == 0) return LANGUAGE_TYPESCRIPT;
-    if (strcmp(type_str, "python") == 0 || strcmp(type_str, "py") == 0) return LANGUAGE_PYTHON;
-    if (strcmp(type_str, "rust") == 0 || strcmp(type_str, "rs") == 0) return LANGUAGE_RUST;
+    if (strcmp(type_str, "lua") == 0) return LANGUAGE_LUA;
 
     return LANGUAGE_NONE;
 }
@@ -343,16 +415,14 @@ const char* language_type_to_string(LanguageType type) {
         case LANGUAGE_C: return "c";
         case LANGUAGE_KOTLIN: return "kotlin";
         case LANGUAGE_JAVASCRIPT: return "javascript";
-        case LANGUAGE_TYPESCRIPT: return "typescript";
-        case LANGUAGE_PYTHON: return "python";
-        case LANGUAGE_RUST: return "rust";
+        case LANGUAGE_LUA: return "lua";
         case LANGUAGE_NONE: return "none";
         default: return "unknown";
     }
 }
 
 bool language_type_is_valid(LanguageType type) {
-    return type >= LANGUAGE_TCL && type <= LANGUAGE_RUST;
+    return type >= LANGUAGE_TCL && type <= LANGUAGE_LUA;
 }
 
 // ============================================================================
@@ -483,11 +553,49 @@ void language_registry_init(void) {
     language_register(&c_profile);
     language_register(&kotlin_profile);
     language_register(&javascript_profile);
-    language_register(&typescript_profile);
+    language_register(&lua_profile);
 
     g_registry.initialized = true;
 }
 
 void language_registry_cleanup(void) {
     memset(&g_registry, 0, sizeof(g_registry));
+}
+
+// ============================================================================
+// Platform Support API Implementation
+// ============================================================================
+
+bool language_supports_platform(const LanguageProfile* profile, const char* platform_name) {
+    if (!profile || !platform_name) return false;
+
+    for (size_t i = 0; i < profile->platform_count; i++) {
+        if (strcmp(profile->compatible_platforms[i], platform_name) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+const char* language_get_default_toolkit_for_platform(const LanguageProfile* profile, const char* platform_name) {
+    if (!profile || !platform_name) return NULL;
+
+    for (size_t i = 0; i < profile->default_count; i++) {
+        if (strcmp(profile->defaults[i].platform, platform_name) == 0) {
+            return profile->defaults[i].default_toolkit;
+        }
+    }
+
+    return NULL;
+}
+
+bool language_is_source_language(const LanguageProfile* profile) {
+    if (!profile) return false;
+    return profile->is_source_language;
+}
+
+bool language_is_binding_language(const LanguageProfile* profile) {
+    if (!profile) return false;
+    return profile->is_binding_language;
 }

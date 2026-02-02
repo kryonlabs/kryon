@@ -1,0 +1,25 @@
+# WIR Codegen (TaijiOS mkfile)
+# Toolkit Intermediate Representation
+
+<../../../mkconfig
+
+LIB=libkryon_wir.a
+
+OFILES=\
+	wir.$O\
+	wir_builder.$O\
+	wir_emitter.$O\
+
+HFILES=\
+	wir.h\
+	wir_builder.h\
+	wir_emitter.h\
+	../codegen_common.h\
+
+CFLAGS=$CFLAGS\
+	-I../../include\
+	-I../../ir/include\
+	-I../../third_party/cJSON\
+	-I..\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

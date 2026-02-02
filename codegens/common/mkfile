@@ -1,0 +1,25 @@
+# Common Codegen Infrastructure (TaijiOS mkfile)
+# WIR composer, color utilities, etc.
+
+<../../../mkconfig>
+
+LIB=libkryon_codegen_common.a
+
+OFILES=\
+	wir_composer.$O\
+	color_utils.$O\
+
+HFILES=\
+	wir_composer.h\
+	color_utils.h\
+	../codegen_common.h\
+	../wir/wir.h\
+
+CFLAGS=$CFLAGS\
+	-I../../include\
+	-I../../ir/include\
+	-I../../third_party/cJSON\
+	-I..\
+	-I../wir\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

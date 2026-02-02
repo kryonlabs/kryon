@@ -20,7 +20,7 @@ static const char* limbo_extensions[] = {".b", NULL};
 
 static const ParserInfo limbo_parser_info = {
     .name = "Limbo",
-    .version = "1.0.0",
+    .version = "alpha",
     .caps = PARSER_CAP_LAYOUT | PARSER_CAP_STYLING | PARSER_CAP_SCRIPTS,
     .extensions = limbo_extensions
 };

@@ -1,10 +1,10 @@
 /**
  * C Code Generator - Main Function and Struct Generation
  *
- * This is now a thin wrapper that routes to the TKIR pipeline for widget generation.
+ * This is now a thin wrapper that routes to the WIR pipeline for widget generation.
  * All widget generation logic has been moved to:
- * - codegens/tkir/tkir_builder.c (KIR → TKIR transformation)
- * - codegens/c/c_from_tkir.c (TKIR → C emission)
+ * - codegens/wir/wir_builder.c (KIR → WIR transformation)
+ * - codegens/c/c_from_wir.c (WIR → C emission)
  *
  * C-specific semantics (reactive state, structs, headers, etc.) remain here.
  */
@@ -15,9 +15,9 @@
 #include "ir_c_reactive.h"
 #include "ir_c_components.h"
 #include "../codegen_common.h"
-#include "../tkir/tkir.h"
-#include "../tkir/tkir_builder.h"
-#include "../tkir/tkir_emitter.h"
+#include "../wir/wir.h"
+#include "../wir/wir_builder.h"
+#include "../wir/wir_emitter.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

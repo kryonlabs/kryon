@@ -20,8 +20,9 @@
 #if !defined(__TAIJIOS__) && !defined(__INFERNO__)
 #include "../../../codegens/android/ir_android_codegen.h"
 #endif
-#include "../../../codegens/tcltk/tcltk_codegen.h"
+// tcltk codegen removed - replaced by separate tcl and tk codegens
 #include "../../../codegens/combo_registry.h"
+#include "../../../codegens/codegen_target.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -850,81 +851,7 @@ void target_handler_cleanup(void) {
     g_registry.capacity = 0;
 }
 
-/* ============================================================================
- * Tcl/Tk Target Handler
- * ============================================================================ */
-
-/**
- * Tcl/Tk target build handler
- * Generates Tcl/Tk scripts from KIR
- */
-static int tcltk_target_build(const char* kir_file, const char* output_dir,
-                              const char* project_name, const KryonConfig* config) {
-    (void)config;  // Not used in Tcl/Tk build
-
-    printf("Building Tcl/Tk target...\n");
-    printf("  KIR: %s\n", kir_file);
-
-    char tcl_script[1024];
-    snprintf(tcl_script, sizeof(tcl_script), "%s/%s.tcl", output_dir, project_name);
-
-    printf("  Output: %s\n", tcl_script);
-
-    // Prepare codegen options
-    TclTkCodegenOptions options = {0};
-    options.include_comments = true;
-    options.use_ttk_widgets = true;
-    options.generate_main = true;
-    options.window_title = project_name;
-    options.window_width = 800;
-    options.window_height = 600;
-
-    if (!tcltk_codegen_generate_with_options(kir_file, tcl_script, &options)) {
-        fprintf(stderr, "Error: Tcl/Tk code generation failed\n");
-        return 1;
-    }
-
-    printf("✓ Generated Tcl/Tk script: %s\n", tcl_script);
-    return 0;
-}
-
-/**
- * Tcl/Tk target run handler
- * Builds if needed, then executes with wish
- */
-static int tcltk_target_run(const char* kir_file, const KryonConfig* config,
-                            const ScreenshotRunOptions* screenshot_opts) {
-    (void)screenshot_opts;  // Screenshot not supported for Tcl/Tk
-
-    // Determine output directory and project name
-    const char* output_dir = ".";
-    const char* project_name = "app";
-
-    // Build first
-    if (tcltk_target_build(kir_file, output_dir, project_name, config) != 0) {
-        return 1;
-    }
-
-    printf("\nRunning Tcl/Tk script with wish...\n");
-
-    char tcl_script[1024];
-    snprintf(tcl_script, sizeof(tcl_script), "%s/%s.tcl", output_dir, project_name);
-
-    // Execute with wish
-    char command[2048];
-    snprintf(command, sizeof(command), "wish \"%s\"", tcl_script);
-
-    printf("Executing: %s\n", command);
-    int result = system(command);
-
-    if (result != 0) {
-        fprintf(stderr, "Error: wish execution failed with exit code %d\n", result);
-        fprintf(stderr, "Make sure Tcl/Tk is installed: sudo apt-get install tcl tk\n");
-        return 1;
-    }
-
-    return 0;
-}
+// Tcl/Tk target handler removed - replaced by separate tcl and tk codegens
 
 #if !defined(__TAIJIOS__) && !defined(__INFERNO__)
 /* ============================================================================
@@ -1009,10 +936,75 @@ static int android_target_run(const char* kir_file, const KryonConfig* config,
 
 #endif // !__TAIJIOS__ && !__INFERNO__
 
+/* ============================================================================
+ * Combo to Handler Mapping
+ * ============================================================================ */
+
 /**
- * Resolve target aliases to canonical target names
- * Returns canonical name or NULL if not a recognized alias
+ * Maps language+toolkit combinations to internal handler names
  */
+typedef struct {
+    const char* language;
+    const char* toolkit;
+    const char* handler;
+} ComboHandlerMapping;
+
+static const ComboHandlerMapping g_combo_handlers[] = {
+    {"limbo", "tk", "limbo"},
+    {"c", "sdl3", "sdl3"},
+    {"c", "raylib", "raylib"},
+    {"kotlin", "androidviews", "android"},
+    {"javascript", "dom", "web"},
+    {"typescript", "dom", "web"},
+    {NULL, NULL, NULL}
+};
+
+/**
+ * Map a language+toolkit combination to its runtime handler name
+ * Returns handler name or NULL if not found
+ */
+const char* map_combo_to_handler(const char* language, const char* toolkit) {
+    if (!language || !toolkit) {
+        return NULL;
+    }
+
+    for (int i = 0; g_combo_handlers[i].language != NULL; i++) {
+        if (strcmp(g_combo_handlers[i].language, language) == 0 &&
+            strcmp(g_combo_handlers[i].toolkit, toolkit) == 0) {
+            return g_combo_handlers[i].handler;
+        }
+    }
+    return NULL;
+}
+
+/**
+ * Map a validated target string (e.g., "tcl+tk@desktop") to its runtime handler name
+ * Returns true on success, false on failure
+ */
+bool target_map_to_runtime_handler(const char* validated_target,
+                                   char* runtime_handler,
+                                   size_t output_size) {
+    if (!validated_target || !runtime_handler || output_size == 0) {
+        return false;
+    }
+
+    // Parse the target
+    CodegenTarget parsed;
+    if (!codegen_parse_target(validated_target, &parsed)) {
+        return false;
+    }
+
+    // Map to handler
+    const char* handler = map_combo_to_handler(parsed.language, parsed.toolkit);
+    if (!handler) {
+        return false;
+    }
+
+    strncpy(runtime_handler, handler, output_size - 1);
+    runtime_handler[output_size - 1] = '\0';
+    return true;
+}
+
 /**
  * Find a target handler by name
  * Returns NULL if target not found
@@ -1041,23 +1033,6 @@ bool target_has_capability(const char* target_name, TargetCapability capability)
         return false;
     }
     return (handler->capabilities & capability) != 0;
-}
-
-/**
- * Check if a target name is an alias and get its resolved target
- * Uses the combo registry for alias resolution
- * Returns true if it's an alias, false otherwise
- * If resolved is not NULL, sets *resolved to the canonical target name
- */
-bool target_is_alias(const char* alias, const char** resolved) {
-    if (!alias) return false;
-
-    // Use combo registry for alias resolution
-    const char* combo_alias = combo_get_alias(alias);
-    if (combo_alias && resolved) {
-        *resolved = combo_alias;
-    }
-    return combo_alias != NULL;
 }
 
 /**
@@ -1099,14 +1074,7 @@ void target_handler_initialize(void) {
     };
     target_handler_register(&g_raylib_handler);
 
-    // Register Tcl/Tk handler (generates Tcl/Tk scripts)
-    static TargetHandler g_tcltk_handler = {
-        .name = "tcltk",
-        .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
-        .build_handler = tcltk_target_build,
-        .run_handler = tcltk_target_run,
-    };
-    target_handler_register(&g_tcltk_handler);
+    // tcltk handler removed - replaced by separate tcl and tk codegens
 
     // Register Android handler (generates Kotlin DSL code)
 #if !defined(__TAIJIOS__) && !defined(__INFERNO__)

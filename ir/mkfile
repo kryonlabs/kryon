@@ -10,12 +10,14 @@ LIB=libkryon_ir.a
 # List all source files (used for dependency tracking)
 SRCS=\
 	src/ir_builder.c\
+	src/parser_interface.c\
 	src/core/ir_component_types.c\
 	src/core/ir_component_factory.c\
 	src/core/ir_component_handler.c\
 	src/core/ir_capability.c\
 	src/core/ir_property_registry.c\
 	src/core/ir_lifecycle_hooks.c\
+	src/core/parser_registry.c\
 	src/components/button.c\
 	src/components/text.c\
 	src/components/flexbox.c\
@@ -102,19 +104,33 @@ SRCS=\
 	parsers/kry/kry_struct_parser.c\
 	parsers/kry/kry_struct_to_ir.c\
 	parsers/kry/kry_ir_validator.c\
+	parsers/kry/kry_parser_adapter.c\
 	parsers/markdown/markdown_ast.c\
 	parsers/markdown/markdown_parser.c\
 	parsers/markdown/markdown_to_ir.c\
+	parsers/markdown/markdown_parser_adapter.c\
 	parsers/html/html_ast.c\
 	parsers/html/html_to_ir.c\
 	parsers/html/html_parser.c\
 	parsers/html/css_parser.c\
 	parsers/html/css_stylesheet.c\
+	parsers/html/html_parser_adapter.c\
 	parsers/c/c_parser.c\
+	parsers/c/c_parser_adapter.c\
+	parsers/limbo/limbo_lexer.c\
+	parsers/limbo/limbo_parser.c\
+	parsers/limbo/limbo_ast.c\
+	parsers/limbo/limbo_to_ir.c\
+	parsers/limbo/limbo_parser_adapter.c\
+	parsers/lua/lua_parser.c\
+	parsers/lua/module_collector.c\
+	parsers/lua/require_tracker.c\
+	parsers/lua/lua_parser_adapter.c\
 	parsers/tcl/tcl_lexer.c\
 	parsers/tcl/tcl_parser.c\
 	parsers/tcl/tcl_to_ir.c\
 	parsers/tcl/tcl_widget_registry.c\
+	parsers/tcl/tcl_parser_adapter.c\
 	parsers/parser_utils.c\
 	parsers/common/parser_io_utils.c\
 	../bindings/c/kryon.c\

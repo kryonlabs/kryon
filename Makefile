@@ -72,6 +72,7 @@ vendored:
 cli: ir codegens
 	@echo "Building CLI tool..."
 	@$(MAKE) -C $(CLI_DIR) all
+	@$(MAKE) -C $(CLI_DIR) install
 	@echo "✓ Built CLI"
 
 # IR library (core intermediate representation)
@@ -89,6 +90,8 @@ codegens: ir
 	@$(MAKE) -C $(CODEGENS_DIR)/web all
 	@$(MAKE) -C $(CODEGENS_DIR)/limbo all
 	@$(MAKE) -C $(CODEGENS_DIR)/android all
+	@$(MAKE) -C $(CODEGENS_DIR) all
+	@$(MAKE) -C $(CODEGENS_DIR) install
 	@echo "✓ Built code generators"
 
 # DIS bytecode compiler (top-level directory, NOT a codegen)
@@ -125,7 +128,10 @@ clean:
 	@$(MAKE) -C $(CODEGENS_DIR)/markdown clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/web clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/limbo clean || true
+	@$(MAKE) -C $(CODEGENS_DIR)/tcl clean || true
 	@$(MAKE) -C $(CODEGENS_DIR)/android clean || true
+	@$(MAKE) -C $(CODEGENS_DIR)/toolkits/tk clean || true
+	@$(MAKE) -C $(CODEGENS_DIR)/wir clean || true
 	@$(MAKE) -C dis clean || true
 	@$(MAKE) -C $(CLI_DIR) clean || true
 	@$(MAKE) -C runtime/desktop clean || true

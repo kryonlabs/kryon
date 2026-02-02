@@ -20,7 +20,7 @@ static const char* c_extensions[] = {".c", ".h", NULL};
 
 static const ParserInfo c_parser_info = {
     .name = "C",
-    .version = "1.0.0",
+    .version = "alpha",
     .caps = PARSER_CAP_LAYOUT | PARSER_CAP_SCRIPTS,
     .extensions = c_extensions
 };

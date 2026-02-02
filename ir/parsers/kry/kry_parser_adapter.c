@@ -20,7 +20,7 @@ static const char* kry_extensions[] = {".kry", NULL};
 
 static const ParserInfo kry_parser_info = {
     .name = "KRY",
-    .version = "1.0.0",
+    .version = "alpha",
     .caps = PARSER_CAP_MULTI_FILE | PARSER_CAP_LAYOUT | PARSER_CAP_STYLING | PARSER_CAP_SCRIPTS,
     .extensions = kry_extensions
 };

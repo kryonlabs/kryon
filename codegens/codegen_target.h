@@ -21,8 +21,9 @@ extern "C" {
 typedef struct {
     const char* language;              // Language name (e.g., "limbo", "tcl")
     const char* toolkit;               // Toolkit name (e.g., "draw", "tk")
+    const char* platform;              // Platform name (e.g., "desktop", "web", "taijios")
     const char* original_target;       // Original target string (for error messages)
-    const char* resolved_target;       // Resolved target (e.g., "limbo+draw")
+    const char* resolved_target;       // Resolved target (e.g., "limbo+draw@desktop")
     bool is_alias;                     // Whether original was an alias
     bool valid;                        // Whether combination is valid
     char error[256];                   // Error message if invalid
@@ -57,6 +58,16 @@ bool codegen_is_valid_target(const char* target_string);
  * @return Formatted string listing all valid targets, or NULL on error
  */
 char* codegen_list_valid_targets(void);
+
+/**
+ * Get a list of valid targets for a specific language
+ * Returns a comma-separated list of language+toolkit@platform combinations
+ * Caller must free the returned string
+ *
+ * @param language Language name (e.g., "limbo", "c", "javascript")
+ * @return Formatted string listing valid targets for this language, or NULL on error
+ */
+char* codegen_list_valid_targets_for_language(const char* language);
 
 /**
  * Initialize the codegen target system

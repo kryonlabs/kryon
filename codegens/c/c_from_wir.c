@@ -1,0 +1,562 @@
+/**
+ * @file c_from_wir.c
+ * @brief C WIR Emitter
+ *
+ * Generates C source code from WIR (Toolkit Intermediate Representation).
+ * This is a new implementation using the WIR pipeline for static widget generation.
+ *
+ * @copyright Kryon UI Framework
+ * @version alpha
+ */
+
+#define _DEFAULT_SOURCE
+
+#include "ir_c_codegen.h"
+#include "../codegen_common.h"
+#include "../wir/wir.h"
+#include "../wir/wir_builder.h"
+#include "../wir/wir_emitter.h"
+#include "../../third_party/cJSON/cJSON.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdbool.h>
+
+/* ============================================================================
+ * Emitter Context
+ * ============================================================================ */
+
+/**
+ * C Emitter Context.
+ * Extends the generic WIREmitterContext with C-specific data.
+ */
+typedef struct {
+    WIREmitterContext base;          /**< Base context */
+    StringBuilder* sb;                /**< String builder for output */
+    bool include_comments;            /**< Add comments to generated code */
+    bool generate_types;              /**< Generate type definitions */
+    bool include_headers;             /**< Include standard headers */
+    int indent;                       /**< Current indentation level */
+    char* module_name;                /**< Module/namespace name */
+} CEmitterContext;
+
+/* ============================================================================
+ * Forward Declarations
+ * ============================================================================ */
+
+static bool c_emit_widget(WIREmitterContext* ctx, WIRWidget* widget);
+static bool c_emit_handler(WIREmitterContext* ctx, WIRHandler* handler);
+static bool c_emit_layout(WIREmitterContext* ctx, WIRWidget* widget);
+static bool c_emit_property(WIREmitterContext* ctx, const char* widget_id,
+                            const char* property_name, cJSON* value);
+static char* c_emit_full(WIREmitterContext* ctx, WIRRoot* root);
+static void c_free_context(WIREmitterContext* ctx);
+
+/* ============================================================================
+ * Virtual Function Table
+ * ============================================================================ */
+
+static const WIREmitterVTable c_emitter_vtable = {
+    .emit_widget = c_emit_widget,
+    .emit_handler = c_emit_handler,
+    .emit_layout = c_emit_layout,
+    .emit_property = c_emit_property,
+    .emit_full = c_emit_full,
+    .free_context = c_free_context,
+};
+
+/* ============================================================================
+ * Indentation Helper
+ * ============================================================================ */
+
+static void append_indent(CEmitterContext* ctx) {
+    for (int i = 0; i < ctx->indent; i++) {
+        sb_append(ctx->sb, "    ");
+    }
+}
+
+/* ============================================================================
+ * Context Creation
+ * ============================================================================ */
+
+/**
+ * Create a C emitter context.
+ */
+WIREmitterContext* c_emitter_create(const WIREmitterOptions* options) {
+    CEmitterContext* ctx = calloc(1, sizeof(CEmitterContext));
+    if (!ctx) {
+        return NULL;
+    }
+
+    // Initialize base context
+    ctx->base.vtable = &c_emitter_vtable;
+
+    // Create string builder
+    ctx->sb = sb_create(8192);
+    if (!ctx->sb) {
+        free(ctx);
+        return NULL;
+    }
+
+    if (options) {
+        ctx->base.options = *options;
+        ctx->include_comments = options->include_comments;
+    } else {
+        ctx->base.options.include_comments = true;
+        ctx->base.options.verbose = false;
+        ctx->base.options.indent_string = "    ";
+        ctx->base.options.indent_level = 0;
+        ctx->include_comments = true;
+    }
+
+    ctx->generate_types = true;
+    ctx->include_headers = true;
+    ctx->indent = 0;
+    ctx->module_name = NULL;
+
+    return (WIREmitterContext*)ctx;
+}
+
+/* ============================================================================
+ * Context Free
+ * ============================================================================ */
+
+static void c_free_context(WIREmitterContext* base_ctx) {
+    if (!base_ctx) return;
+
+    CEmitterContext* ctx = (CEmitterContext*)base_ctx;
+
+    if (ctx->sb) {
+        sb_free(ctx->sb);
+    }
+
+    if (ctx->module_name) {
+        free(ctx->module_name);
+    }
+
+    free(ctx);
+}
+
+/* ============================================================================
+ * Full Output Generation
+ * ============================================================================ */
+
+static char* c_emit_full(WIREmitterContext* base_ctx, WIRRoot* root) {
+    if (!base_ctx || !root) {
+        return NULL;
+    }
+
+    CEmitterContext* ctx = (CEmitterContext*)base_ctx;
+
+    // Add header comment
+    if (ctx->include_comments) {
+        sb_append_fmt(ctx->sb, "/* Generated by Kryon WIR -> C Emitter */\n");
+        sb_append_fmt(ctx->sb, "/* Window: %s (%dx%d) */\n\n",
+                     root->title, root->width, root->height);
+    }
+
+    // Add includes
+    if (ctx->include_headers) {
+        sb_append(ctx->sb, "#include <stdio.h>\n");
+        sb_append(ctx->sb, "#include <stdlib.h>\n");
+        sb_append(ctx->sb, "#include <stdbool.h>\n");
+        sb_append(ctx->sb, "#include <string.h>\n\n");
+    }
+
+    // Generate type definitions
+    if (ctx->generate_types) {
+        sb_append(ctx->sb, "/* Widget Types */\n");
+        sb_append(ctx->sb, "typedef struct Widget Widget;\n\n");
+
+        sb_append(ctx->sb, "struct Widget {\n");
+        ctx->indent++;
+        append_indent(ctx);
+        sb_append(ctx->sb, "const char* type;\n");
+        append_indent(ctx);
+        sb_append(ctx->sb, "const char* id;\n");
+        append_indent(ctx);
+        sb_append(ctx->sb, "void* handle;\n");
+        append_indent(ctx);
+        sb_append(ctx->sb, "Widget** children;\n");
+        append_indent(ctx);
+        sb_append(ctx->sb, "int child_count;\n");
+        ctx->indent--;
+        sb_append(ctx->sb, "};\n\n");
+    }
+
+    // Generate widgets
+    cJSON* widgets_array = root->widgets;
+    if (widgets_array && cJSON_IsArray(widgets_array)) {
+        if (ctx->include_comments) {
+            sb_append(ctx->sb, "/* Widget Creation Functions */\n\n");
+        }
+
+        cJSON* widget_json = NULL;
+        cJSON_ArrayForEach(widget_json, widgets_array) {
+            WIRWidget widget = {0};
+            widget.json = widget_json;
+
+            cJSON* id = cJSON_GetObjectItem(widget_json, "id");
+            widget.id = id ? id->valuestring : NULL;
+
+            cJSON* tk_type = cJSON_GetObjectItem(widget_json, "tk_type");
+            widget.widget_type = tk_type ? tk_type->valuestring : NULL;
+
+            cJSON* kir_type = cJSON_GetObjectItem(widget_json, "kir_type");
+            widget.kir_type = kir_type ? kir_type->valuestring : NULL;
+
+            c_emit_widget(base_ctx, &widget);
+        }
+    }
+
+    // Generate handlers
+    cJSON* handlers_array = root->handlers;
+    if (handlers_array && cJSON_IsArray(handlers_array)) {
+        sb_append(ctx->sb, "\n");
+        if (ctx->include_comments) {
+            sb_append(ctx->sb, "/* Event Handlers */\n");
+        }
+
+        cJSON* handler_json = NULL;
+        cJSON_ArrayForEach(handler_json, handlers_array) {
+            WIRHandler handler = {0};
+            handler.json = handler_json;
+
+            cJSON* id = cJSON_GetObjectItem(handler_json, "id");
+            handler.id = id ? id->valuestring : NULL;
+
+            cJSON* event_type = cJSON_GetObjectItem(handler_json, "event_type");
+            handler.event_type = event_type ? event_type->valuestring : NULL;
+
+            cJSON* widget_id = cJSON_GetObjectItem(handler_json, "widget_id");
+            handler.widget_id = widget_id ? widget_id->valuestring : NULL;
+
+            c_emit_handler(base_ctx, &handler);
+        }
+    }
+
+    // Generate main function
+    sb_append(ctx->sb, "\n");
+    if (ctx->include_comments) {
+        sb_append(ctx->sb, "/* Main Entry Point */\n");
+    }
+    sb_append(ctx->sb, "int main(int argc, char** argv) {\n");
+    ctx->indent++;
+    append_indent(ctx);
+    sb_append(ctx->sb, "// Initialize window\n");
+    append_indent(ctx);
+    sb_append_fmt(ctx->sb, "create_window(\"%s\", %d, %d);\n\n",
+                 root->title, root->width, root->height);
+    append_indent(ctx);
+    sb_append(ctx->sb, "// Create widgets\n");
+    append_indent(ctx);
+    sb_append(ctx->sb, "create_widgets();\n\n");
+    append_indent(ctx);
+    sb_append(ctx->sb, "// Run event loop\n");
+    append_indent(ctx);
+    sb_append(ctx->sb, "run_event_loop();\n\n");
+    append_indent(ctx);
+    sb_append(ctx->sb, "return 0;\n");
+    ctx->indent--;
+    sb_append(ctx->sb, "}\n");
+
+    // Get final output
+    return sb_get(ctx->sb);
+}
+
+/* ============================================================================
+ * Widget Emission
+ * ============================================================================ */
+
+static bool c_emit_widget(WIREmitterContext* base_ctx, WIRWidget* widget) {
+    if (!base_ctx || !widget || !widget->id) {
+        return false;
+    }
+
+    CEmitterContext* ctx = (CEmitterContext*)base_ctx;
+
+    // Get properties
+    cJSON* props = cJSON_GetObjectItem(widget->json, "properties");
+
+    if (ctx->include_comments) {
+        sb_append_fmt(ctx->sb, "/* Widget: %s (%s) */\n", widget->id, widget->widget_type);
+    }
+
+    // Generate widget creation function
+    sb_append_fmt(ctx->sb, "Widget* create_%s(void) {\n", widget->id);
+    ctx->indent++;
+    append_indent(ctx);
+    sb_append_fmt(ctx->sb, "Widget* widget = calloc(1, sizeof(Widget));\n");
+    append_indent(ctx);
+    sb_append_fmt(ctx->sb, "widget->type = \"%s\";\n", widget->widget_type);
+    append_indent(ctx);
+    sb_append_fmt(ctx->sb, "widget->id = \"%s\";\n", widget->id);
+
+    // Generate property assignments
+    if (props) {
+        cJSON* text = cJSON_GetObjectItem(props, "text");
+        if (text && cJSON_IsString(text)) {
+            append_indent(ctx);
+            sb_append_fmt(ctx->sb, "widget_set_text(widget, \"%s\");\n", text->valuestring);
+        }
+
+        cJSON* background = cJSON_GetObjectItem(props, "background");
+        if (background && cJSON_IsString(background)) {
+            append_indent(ctx);
+            sb_append_fmt(ctx->sb, "widget_set_background(widget, \"%s\");\n", background->valuestring);
+        }
+
+        cJSON* width = cJSON_GetObjectItem(props, "width");
+        if (width && cJSON_IsObject(width)) {
+            cJSON* value = cJSON_GetObjectItem(width, "value");
+            if (value && cJSON_IsNumber(value)) {
+                append_indent(ctx);
+                sb_append_fmt(ctx->sb, "widget_set_width(widget, %d);\n", (int)value->valuedouble);
+            }
+        }
+
+        cJSON* height = cJSON_GetObjectItem(props, "height");
+        if (height && cJSON_IsObject(height)) {
+            cJSON* value = cJSON_GetObjectItem(height, "value");
+            if (value && cJSON_IsNumber(value)) {
+                append_indent(ctx);
+                sb_append_fmt(ctx->sb, "widget_set_height(widget, %d);\n", (int)value->valuedouble);
+            }
+        }
+    }
+
+    // Generate layout
+    c_emit_layout(base_ctx, widget);
+
+    append_indent(ctx);
+    sb_append(ctx->sb, "return widget;\n");
+    ctx->indent--;
+    sb_append(ctx->sb, "}\n\n");
+
+    return true;
+}
+
+/* ============================================================================
+ * Layout Emission
+ * ============================================================================ */
+
+static bool c_emit_layout(WIREmitterContext* base_ctx, WIRWidget* widget) {
+    if (!base_ctx || !widget || !widget->json) {
+        return false;
+    }
+
+    CEmitterContext* ctx = (CEmitterContext*)base_ctx;
+
+    cJSON* layout = cJSON_GetObjectItem(widget->json, "layout");
+    if (!layout) {
+        return false;  // Root widget has no layout
+    }
+
+    cJSON* type = cJSON_GetObjectItem(layout, "type");
+    cJSON* options = cJSON_GetObjectItem(layout, "options");
+    if (!type || !options) {
+        return false;
+    }
+
+    const char* layout_type = type->valuestring;
+
+    append_indent(ctx);
+    sb_append(ctx->sb, "// Layout: ");
+
+    if (strcmp(layout_type, "pack") == 0) {
+        sb_append(ctx->sb, "pack\n");
+        // Pack layout options
+        cJSON* side = cJSON_GetObjectItem(options, "side");
+        if (side && cJSON_IsString(side)) {
+            append_indent(ctx);
+            sb_append_fmt(ctx->sb, "widget_pack(widget, \"%s\");\n", side->valuestring);
+        }
+    } else if (strcmp(layout_type, "grid") == 0) {
+        sb_append(ctx->sb, "grid\n");
+        // Grid layout options
+        cJSON* row = cJSON_GetObjectItem(options, "row");
+        cJSON* column = cJSON_GetObjectItem(options, "column");
+        if (row && cJSON_IsNumber(row) && column && cJSON_IsNumber(column)) {
+            append_indent(ctx);
+            sb_append_fmt(ctx->sb, "widget_grid(widget, %d, %d);\n", row->valueint, column->valueint);
+        }
+    } else if (strcmp(layout_type, "place") == 0) {
+        sb_append(ctx->sb, "place\n");
+        // Place layout options
+        cJSON* x = cJSON_GetObjectItem(options, "x");
+        cJSON* y = cJSON_GetObjectItem(options, "y");
+        if (x && cJSON_IsNumber(x) && y && cJSON_IsNumber(y)) {
+            append_indent(ctx);
+            sb_append_fmt(ctx->sb, "widget_place(widget, %d, %d);\n", x->valueint, y->valueint);
+        }
+    }
+
+    return true;
+}
+
+/* ============================================================================
+ * Handler Emission
+ * ============================================================================ */
+
+static bool c_emit_handler(WIREmitterContext* base_ctx, WIRHandler* handler) {
+    if (!base_ctx || !handler || !handler->id) {
+        return false;
+    }
+
+    CEmitterContext* ctx = (CEmitterContext*)base_ctx;
+
+    // Get implementations
+    cJSON* impls = cJSON_GetObjectItem(handler->json, "implementations");
+    if (!impls) {
+        return false;
+    }
+
+    cJSON* c_impl = cJSON_GetObjectItem(impls, "c");
+    if (!c_impl || !cJSON_IsString(c_impl)) {
+        // No C implementation - skip
+        return true;
+    }
+
+    // Output handler code
+    sb_append(ctx->sb, c_impl->valuestring);
+    sb_append(ctx->sb, "\n");
+
+    return true;
+}
+
+/* ============================================================================
+ * Property Emission
+ * ============================================================================ */
+
+static bool c_emit_property(WIREmitterContext* base_ctx, const char* widget_id,
+                            const char* property_name, cJSON* value) {
+    if (!base_ctx || !widget_id || !property_name || !value) {
+        return false;
+    }
+
+    CEmitterContext* ctx = (CEmitterContext*)base_ctx;
+
+    append_indent(ctx);
+
+    if (cJSON_IsString(value)) {
+        sb_append_fmt(ctx->sb, "widget_set_string(%s, \"%s\", \"%s\");\n",
+                     widget_id, property_name, value->valuestring);
+    } else if (cJSON_IsNumber(value)) {
+        sb_append_fmt(ctx->sb, "widget_set_int(%s, \"%s\", %d);\n",
+                     widget_id, property_name, value->valueint);
+    }
+
+    return true;
+}
+
+/* ============================================================================
+ * Public API
+ * ============================================================================ */
+
+/**
+ * Generate C code from WIR.
+ *
+ * @param wir_json WIR JSON string
+ * @param options Emitter options (can be NULL for defaults)
+ * @return Generated C code (caller must free), or NULL on error
+ */
+char* c_codegen_from_wir(const char* wir_json, CCodegenOptions* options) {
+    if (!wir_json) {
+        return NULL;
+    }
+
+    // Parse WIR JSON
+    cJSON* wir_root = codegen_parse_kir_json(wir_json);
+    if (!wir_root) {
+        return NULL;
+    }
+
+    // Create WIRRoot from parsed JSON
+    WIRRoot* root = wir_root_from_cJSON(wir_root);
+    if (!root) {
+        cJSON_Delete(wir_root);
+        return NULL;
+    }
+
+    // Create emitter options
+    WIREmitterOptions emitter_opts = {0};
+    if (options) {
+        emitter_opts.include_comments = options->include_comments;
+        emitter_opts.verbose = false;
+    }
+
+    // Create emitter context
+    WIREmitterContext* ctx = c_emitter_create(&emitter_opts);
+    if (!ctx) {
+        wir_root_free(root);
+        cJSON_Delete(wir_root);
+        return NULL;
+    }
+
+    // Generate output
+    char* output = wir_emit(ctx, root);
+
+    // Cleanup
+    wir_emitter_context_free(ctx);
+    wir_root_free(root);
+    cJSON_Delete(wir_root);
+
+    return output;
+}
+
+/**
+ * Generate C code from WIR file.
+ *
+ * @param wir_path Path to WIR JSON file
+ * @param output_path Path to output .c file
+ * @param options Emitter options (can be NULL for defaults)
+ * @return true on success, false on error
+ */
+bool c_codegen_from_wir_file(const char* wir_path, const char* output_path,
+                                CCodegenOptions* options) {
+    if (!wir_path || !output_path) {
+        return false;
+    }
+
+    // Read WIR file
+    size_t size;
+    char* wir_json = codegen_read_kir_file(wir_path, &size);
+    if (!wir_json) {
+        return false;
+    }
+
+    // Generate C code
+    char* output = c_codegen_from_wir(wir_json, options);
+    free(wir_json);
+
+    if (!output) {
+        return false;
+    }
+
+    // Write output file
+    bool success = codegen_write_output_file(output_path, output);
+    free(output);
+
+    return success;
+}
+
+/* ============================================================================
+ * Emitter Registration
+ * ============================================================================ */
+
+/**
+ * Initialize the C emitter.
+ * Registers the emitter with the WIR emitter registry.
+ */
+void c_wir_emitter_init(void) {
+    wir_emitter_register(WIR_EMITTER_C, &c_emitter_vtable);
+}
+
+/**
+ * Cleanup the C emitter.
+ * Unregisters the emitter from the WIR emitter registry.
+ */
+void c_wir_emitter_cleanup(void) {
+    wir_emitter_unregister(WIR_EMITTER_C);
+}

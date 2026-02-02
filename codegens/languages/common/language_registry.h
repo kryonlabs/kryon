@@ -29,9 +29,7 @@ typedef enum {
     LANGUAGE_C,            // C
     LANGUAGE_KOTLIN,       // Kotlin
     LANGUAGE_JAVASCRIPT,   // JavaScript
-    LANGUAGE_TYPESCRIPT,   // TypeScript
-    LANGUAGE_PYTHON,       // Python
-    LANGUAGE_RUST,         // Rust
+    LANGUAGE_LUA,          // Lua
     LANGUAGE_NONE          // No language
 } LanguageType;
 
@@ -59,6 +57,14 @@ bool language_type_is_valid(LanguageType type);
 // ============================================================================
 // Language Profile
 // ============================================================================
+
+/**
+ * Platform default mapping for languages
+ */
+typedef struct {
+    const char* platform;        // Platform name
+    const char* default_toolkit; // Default toolkit for this platform
+} LanguagePlatformDefault;
 
 /**
  * String escaping function type
@@ -120,6 +126,16 @@ typedef struct {
     // Code generation
     const char* boilerplate_header;   // Header boilerplate code
     const char* boilerplate_footer;   // Footer boilerplate code
+
+    // Platform support
+    bool is_source_language;           // Has parser (kry, tcl, html, markdown, lua)
+    bool is_binding_language;          // Emits code only (c, limbo, python, kotlin, rust, js/ts)
+    const char** compatible_platforms; // Array of platform names
+    size_t platform_count;             // Number of compatible platforms
+
+    // Platform defaults
+    LanguagePlatformDefault* defaults; // Array of platform → toolkit mappings
+    size_t default_count;              // Number of platform defaults
 
 } LanguageProfile;
 
@@ -190,6 +206,40 @@ void language_registry_init(void);
  * Cleanup language registry
  */
 void language_registry_cleanup(void);
+
+// ============================================================================
+// Platform Support API
+// ============================================================================
+
+/**
+ * Check if language supports a specific platform
+ * @param profile Language profile
+ * @param platform_name Platform name
+ * @return true if supported, false otherwise
+ */
+bool language_supports_platform(const LanguageProfile* profile, const char* platform_name);
+
+/**
+ * Get default toolkit for a language on a specific platform
+ * @param profile Language profile
+ * @param platform_name Platform name
+ * @return Default toolkit name, or NULL if not found
+ */
+const char* language_get_default_toolkit_for_platform(const LanguageProfile* profile, const char* platform_name);
+
+/**
+ * Check if language is a source language (has parser)
+ * @param profile Language profile
+ * @return true if source language, false otherwise
+ */
+bool language_is_source_language(const LanguageProfile* profile);
+
+/**
+ * Check if language is a binding language (emits code only)
+ * @param profile Language profile
+ * @return true if binding language, false otherwise
+ */
+bool language_is_binding_language(const LanguageProfile* profile);
 
 #ifdef __cplusplus
 }

@@ -4,6 +4,8 @@
  * Functions for generating C code from KIR component trees.
  */
 
+#define _DEFAULT_SOURCE
+
 #include "ir_c_components.h"
 #include "ir_c_output.h"
 #include "ir_c_types.h"

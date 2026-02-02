@@ -13,7 +13,7 @@ OFILES=\
 	html_generator.$O\
 	ir_web_renderer.$O\
 	style_analyzer.$O\
-	kir_to_html.$O\
+	kir_to_html.$O
 
 HFILES=\
 	css_class_names.h\

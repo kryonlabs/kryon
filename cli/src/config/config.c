@@ -4,6 +4,8 @@
  */
 
 #include "kryon_cli.h"
+#include "target_validation.h"
+#include "../../../codegens/codegen_target.h"
 #include "../utils/plugin_installer.h"
 #include <stdlib.h>
 #include <string.h>
@@ -1595,30 +1597,41 @@ bool config_validate(KryonConfig* config) {
     // Validate each target is supported using handler registry
     if (config->build_targets && config->build_targets_count > 0) {
         for (int i = 0; i < config->build_targets_count; i++) {
-            TargetHandler* handler = target_handler_find(config->build_targets[i]);
+            const char* target = config->build_targets[i];
 
+            // Require '+' separator (language+toolkit format)
+            if (!strchr(target, '+')) {
+                fprintf(stderr, "Error: Invalid target '%s'\n", target);
+                fprintf(stderr, "       Targets must use format: language+toolkit[@platform]\n");
+                fprintf(stderr, "       Examples: tcl+tk, limbo+tk@taijios, c+sdl3@desktop\n");
+                has_errors = true;
+                continue;
+            }
+
+            // Parse the target
+            CodegenTarget parsed;
+            if (!codegen_parse_target(target, &parsed)) {
+                fprintf(stderr, "Error: Invalid target '%s'\n", target);
+                fprintf(stderr, "       %s\n", parsed.error);
+                has_errors = true;
+                continue;
+            }
+
+            // Map to handler
+            char runtime_handler[64];
+            if (!target_map_to_runtime_handler(target, runtime_handler, sizeof(runtime_handler))) {
+                fprintf(stderr, "Error: Unsupported target '%s'\n", target);
+                fprintf(stderr, "       Language '%s' + Toolkit '%s' is not a supported combination\n",
+                        parsed.language, parsed.toolkit);
+                has_errors = true;
+                continue;
+            }
+
+            // Verify handler exists
+            TargetHandler* handler = target_handler_find(runtime_handler);
             if (!handler) {
-                fprintf(stderr, "Error: Invalid build target '%s'\n", config->build_targets[i]);
-                fprintf(stderr, "       Valid targets: ");
-                const char** targets = target_handler_list_names();
-                for (int j = 0; targets[j]; j++) {
-                    fprintf(stderr, "%s%s", j > 0 ? ", " : "", targets[j]);
-                }
-                fprintf(stderr, "\n");
-
-                // Show which targets support which operations
-                fprintf(stderr, "\nTarget capabilities:\n");
-                for (int j = 0; targets[j]; j++) {
-                    TargetHandler* h = target_handler_find(targets[j]);
-                    if (h) {
-                        fprintf(stderr, "  %s: ", targets[j]);
-                        if (h->build_handler) fprintf(stderr, "build ");
-                        if (h->run_handler) fprintf(stderr, "run ");
-                        fprintf(stderr, "\n");
-                    }
-                }
-                fprintf(stderr, "\n");
-
+                fprintf(stderr, "Error: Internal error - handler '%s' not found for target '%s'\n",
+                        runtime_handler, target);
                 has_errors = true;
             }
         }

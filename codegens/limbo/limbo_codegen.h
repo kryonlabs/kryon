@@ -54,20 +54,20 @@ bool limbo_codegen_generate_with_options(const char* kir_path,
 
 /**
  * @brief Generate Limbo source from TKIR JSON string
- * @param tkir_json TKIR JSON string
+ * @param wir_json TKIR JSON string
  * @param options Codegen options (NULL for defaults)
  * @return Allocated Limbo source string (caller must free), or NULL on error
  */
-char* limbo_codegen_from_tkir(const char* tkir_json, LimboCodegenOptions* options);
+char* limbo_codegen_from_wir(const char* wir_json, LimboCodegenOptions* options);
 
 /**
  * @brief Generate Limbo source from TKIR JSON file
- * @param tkir_path Path to input .tkir file
+ * @param wir_path Path to input .wir file
  * @param output_path Path to output .b file
  * @param options Codegen options (NULL for defaults)
  * @return true on success, false on error
  */
-bool limbo_codegen_from_tkir_file(const char* tkir_path, const char* output_path,
+bool limbo_codegen_from_wir_file(const char* wir_path, const char* output_path,
                                    LimboCodegenOptions* options);
 
 /**
@@ -76,7 +76,7 @@ bool limbo_codegen_from_tkir_file(const char* tkir_path, const char* output_path
  * @param options Codegen options (NULL for defaults)
  * @return Allocated Limbo source string (caller must free), or NULL on error
  */
-char* limbo_codegen_from_json_via_tkir(const char* kir_json, LimboCodegenOptions* options);
+char* limbo_codegen_from_json_via_wir(const char* kir_json, LimboCodegenOptions* options);
 
 /**
  * @brief Generate Limbo source from KIR file via TKIR (recommended)
@@ -85,19 +85,19 @@ char* limbo_codegen_from_json_via_tkir(const char* kir_json, LimboCodegenOptions
  * @param options Codegen options (NULL for defaults)
  * @return true on success, false on error
  */
-bool limbo_codegen_generate_via_tkir(const char* kir_path, const char* output_path,
+bool limbo_codegen_generate_via_wir(const char* kir_path, const char* output_path,
                                       LimboCodegenOptions* options);
 
 /**
  * @brief Initialize Limbo TKIR emitter
  * Registers the emitter with the TKIR emitter registry.
  */
-void limbo_tkir_emitter_init(void);
+void limbo_wir_emitter_init(void);
 
 /**
  * @brief Cleanup Limbo TKIR emitter
  * Unregisters the emitter from the TKIR emitter registry.
  */
-void limbo_tkir_emitter_cleanup(void);
+void limbo_wir_emitter_cleanup(void);
 
 #endif // LIMBO_CODEGEN_H

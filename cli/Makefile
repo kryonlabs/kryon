@@ -1,7 +1,7 @@
 # Kryon CLI Makefile
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/limbo -I../codegens/tcltk -I../codegens/tkir -I../codegens -I../codegens/languages/common -I../codegens/toolkits/common -I../dis -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c99 -Wall -Wextra -O2 -I./include -I./src -I../ir/include -I../include -I../third_party/cJSON -I../codegens/web -I../codegens/limbo -I../codegens/tcl -I../codegens/toolkits/tk -I../codegens/wir -I../codegens -I../codegens/languages/common -I../codegens/toolkits/common -I../dis -D_POSIX_C_SOURCE=200809L
 
 # HarfBuzz libraries (for text shaping support in IR)
 HARFBUZZ_LIBS ?= $(shell pkg-config --libs harfbuzz freetype2 fribidi 2>/dev/null || echo "")
@@ -11,6 +11,8 @@ LDFLAGS = ../build/libkryon_ir.a \
 	../build/libkryon_codegen_registry.a \
 	../build/libkryon_codegen_emitter.a \
 	../build/libkryon_codegen_toolkit.a \
+	../build/libkryon_codegen_tcl.a \
+	../build/libkryon_toolkit_tk.a \
 	-lm -lpthread -ldl
 
 # Directories
@@ -60,6 +62,10 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/commands/cmd_install.c \
        $(SRC_DIR)/commands/cmd_uninstall.c \
        $(SRC_DIR)/commands/cmd_targets.c \
+       $(SRC_DIR)/commands/cmd_capabilities.c \
+       $(SRC_DIR)/commands/cmd_lang.c \
+       $(SRC_DIR)/commands/cmd_platform.c \
+       $(SRC_DIR)/commands/cmd_toolkit.c \
        $(SRC_DIR)/build/embed_bytecode.c \
        $(SRC_DIR)/build/plugin_discovery.c \
        $(SRC_DIR)/build/c_desktop.c
@@ -150,13 +156,14 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 		../build/libkryon_ir.a \
 		../build/libkryon_web.a \
 		../build/codegen_common.o \
-		../build/libkryon_tkir.a \
+		../build/libkryon_wir.a \
 		../build/libtclparser.a \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
 		../build/libkryon_codegen_limbo.a \
-		../build/libkryon_codegen_tcltk.a \
+		../build/libkryon_codegen_tcl.a \
+		../build/libkryon_toolkit_tk.a \
 		../build/libkryon_codegen_android.a \
 		../dis/libdiscodegen.a
 	# Build kir_to_html.o (embedded web codegen)
@@ -164,17 +171,21 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 	@$(CC) $(CFLAGS) -DKRYON_EMBEDDED_CODEGEN -c ../codegens/web/kir_to_html.c -o $(BUILD_DIR)/kir_to_html.o || { echo "Error: Failed to build kir_to_html.o"; exit 1; }
 	@echo "Linking $(TARGET)..."
 	@$(CC) $(OBJS_LINK) $(CODEGEN_OBJS) $(BUILD_DIR)/kir_to_html.o $(CJSON_OBJ) -o $(TARGET) \
+		-Wl,--start-group \
 		../build/libkryon_web.a \
 		../build/libkryon_codegen_c.a \
 		../build/libkryon_codegen_kry.a \
 		../build/libkryon_codegen_markdown.a \
 		../build/libkryon_codegen_limbo.a \
-		../build/libkryon_codegen_tcltk.a \
+		../build/libkryon_codegen_tcl.a \
+		../build/libkryon_toolkit_tk.a \
 		../build/libkryon_codegen_android.a \
 		../build/libtclparser.a \
-		../build/libkryon_tkir.a \
+		../build/libkryon_wir.a \
 		../dis/libdiscodegen.a \
-		$(LDFLAGS) $(HARFBUZZ_LIBS) || { echo "Error: Failed to link $(TARGET)"; exit 1; }
+		$(LDFLAGS) \
+		-Wl,--end-group \
+		$(HARFBUZZ_LIBS) || { echo "Error: Failed to link $(TARGET)"; exit 1; }
 	@echo "✓ Built $(TARGET)"
 
 # Build IR library
@@ -190,8 +201,8 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 	$(MAKE) -C ../codegens all
 
 # Build TKIR library
-../build/libkryon_tkir.a:
-	$(MAKE) -C ../codegens/tkir install
+../build/libkryon_wir.a:
+	$(MAKE) -C ../codegens/wir install
 
 # Build Tcl parser library
 ../build/libtclparser.a:
@@ -210,8 +221,11 @@ $(TARGET): $(BUILD_DIR) $(OBJS) $(CJSON_OBJ) \
 ../build/libkryon_codegen_limbo.a:
 	$(MAKE) -C ../codegens/limbo
 
-../build/libkryon_codegen_tcltk.a:
-	$(MAKE) -C ../codegens/tcltk
+../build/libkryon_codegen_tcl.a:
+	$(MAKE) -C ../codegens/tcl
+
+../build/libkryon_toolkit_tk.a:
+	$(MAKE) -C ../codegens/toolkits/tk
 
 ../build/libkryon_codegen_android.a:
 	$(MAKE) -C ../codegens/android
@@ -294,7 +308,7 @@ install: $(TARGET)
 
 # Clean (also uninstall)
 clean: uninstall
-	rm -rf $(BUILD_DIR) $(TARGET) ../codegens/web/*.o
+	rm -rf $(BUILD_DIR) $(TARGET) ../codegens/web/*.o *.o
 
 # Uninstall
 uninstall:

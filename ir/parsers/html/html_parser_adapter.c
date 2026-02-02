@@ -20,7 +20,7 @@ static const char* html_extensions[] = {".html", ".htm", NULL};
 
 static const ParserInfo html_parser_info = {
     .name = "HTML",
-    .version = "1.0.0",
+    .version = "alpha",
     .caps = PARSER_CAP_LAYOUT | PARSER_CAP_STYLING,
     .extensions = html_extensions
 };

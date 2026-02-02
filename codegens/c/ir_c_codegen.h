@@ -63,20 +63,20 @@ typedef struct {
 
 /**
  * Generate C source from TKIR JSON string
- * @param tkir_json TKIR JSON string
+ * @param wir_json TKIR JSON string
  * @param options Codegen options (NULL for defaults)
  * @return Generated C code string (caller must free), or NULL on error
  */
-char* c_codegen_from_tkir(const char* tkir_json, CCodegenOptions* options);
+char* c_codegen_from_wir(const char* wir_json, CCodegenOptions* options);
 
 /**
  * Generate C source from TKIR JSON file
- * @param tkir_path Path to input .tkir file
+ * @param wir_path Path to input .wir file
  * @param output_path Path to output .c file
  * @param options Codegen options (NULL for defaults)
  * @return true on success, false on error
  */
-bool c_codegen_from_tkir_file(const char* tkir_path, const char* output_path,
+bool c_codegen_from_wir_file(const char* wir_path, const char* output_path,
                                 CCodegenOptions* options);
 
 /**
@@ -85,7 +85,7 @@ bool c_codegen_from_tkir_file(const char* tkir_path, const char* output_path,
  * @param options Codegen options (NULL for defaults)
  * @return Generated C code string (caller must free), or NULL on error
  */
-char* ir_generate_c_code_from_json_via_tkir(const char* kir_json, CCodegenOptions* options);
+char* ir_generate_c_code_from_json_via_wir(const char* kir_json, CCodegenOptions* options);
 
 /**
  * Generate C source from KIR file via TKIR (recommended)
@@ -94,20 +94,20 @@ char* ir_generate_c_code_from_json_via_tkir(const char* kir_json, CCodegenOption
  * @param options Codegen options (NULL for defaults)
  * @return true on success, false on error
  */
-bool ir_generate_c_code_via_tkir(const char* kir_path, const char* output_path,
+bool ir_generate_c_code_via_wir(const char* kir_path, const char* output_path,
                                    CCodegenOptions* options);
 
 /**
  * Initialize C TKIR emitter
  * Registers the emitter with the TKIR emitter registry.
  */
-void c_tkir_emitter_init(void);
+void c_wir_emitter_init(void);
 
 /**
  * Cleanup C TKIR emitter
  * Unregisters the emitter from the TKIR emitter registry.
  */
-void c_tkir_emitter_cleanup(void);
+void c_wir_emitter_cleanup(void);
 
 #ifdef __cplusplus
 }

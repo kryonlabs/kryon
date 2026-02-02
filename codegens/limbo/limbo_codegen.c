@@ -1,20 +1,20 @@
 /**
  * Limbo Code Generator
- * Generates Limbo source (.b) files from KIR JSON via TKIR
+ * Generates Limbo source (.b) files from KIR JSON via WIR
  *
- * This is now a thin wrapper that routes to the TKIR pipeline.
+ * This is now a thin wrapper that routes to the WIR pipeline.
  * All widget generation logic has been moved to:
- * - codegens/tkir/tkir_builder.c (KIR → TKIR transformation)
- * - codegens/limbo/limbo_from_tkir.c (TKIR → Limbo emission)
+ * - codegens/wir/wir_builder.c (KIR → WIR transformation)
+ * - codegens/limbo/limbo_from_wir.c (WIR → Limbo emission)
  */
 
 #define _POSIX_C_SOURCE 200809L
 
 #include "limbo_codegen.h"
 #include "../codegen_common.h"
-#include "../tkir/tkir.h"
-#include "../tkir/tkir_builder.h"
-#include "../tkir/tkir_emitter.h"
+#include "../wir/wir.h"
+#include "../wir/wir_builder.h"
+#include "../wir/wir_emitter.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,22 +23,22 @@
 #include <ctype.h>
 
 /* ============================================================================
- * Public API - Routes to TKIR Pipeline
+ * Public API - Routes to WIR Pipeline
  * ============================================================================ */
 
 /**
  * Generate Limbo source (.b) from KIR file
  */
 bool limbo_codegen_generate(const char* kir_path, const char* output_path) {
-    return limbo_codegen_generate_via_tkir(kir_path, output_path, NULL);
+    return limbo_codegen_generate_via_wir(kir_path, output_path, NULL);
 }
 
 /**
  * Generate Limbo source from KIR JSON string
- * Routes to TKIR pipeline
+ * Routes to WIR pipeline
  */
 char* limbo_codegen_from_json(const char* kir_json) {
-    return limbo_codegen_from_json_via_tkir(kir_json, NULL);
+    return limbo_codegen_from_json_via_wir(kir_json, NULL);
 }
 
 /**
@@ -51,7 +51,7 @@ bool limbo_codegen_generate_multi(const char* kir_path, const char* output_dir) 
         return false;
     }
 
-    bool result = limbo_codegen_generate_via_tkir(kir_path, output_path, NULL);
+    bool result = limbo_codegen_generate_via_wir(kir_path, output_path, NULL);
     free(output_path);
     return result;
 }
@@ -62,63 +62,63 @@ bool limbo_codegen_generate_multi(const char* kir_path, const char* output_dir) 
 bool limbo_codegen_generate_with_options(const char* kir_path,
                                           const char* output_path,
                                           LimboCodegenOptions* options) {
-    return limbo_codegen_generate_via_tkir(kir_path, output_path, options);
+    return limbo_codegen_generate_via_wir(kir_path, output_path, options);
 }
 
 /* ============================================================================
- * TKIR-based Codegen (New Pipeline)
+ * WIR-based Codegen (New Pipeline)
  * ============================================================================ */
 
 /**
- * @brief Generate Limbo source from KIR via TKIR
+ * @brief Generate Limbo source from KIR via WIR
  *
  * This is the new recommended codegen path:
- * KIR → TKIR → Limbo
+ * KIR → WIR → Limbo
  *
  * @param kir_json KIR JSON string
  * @param options Codegen options (NULL for defaults)
  * @return Allocated Limbo source string (caller must free), or NULL on error
  */
-char* limbo_codegen_from_json_via_tkir(const char* kir_json, LimboCodegenOptions* options) {
+char* limbo_codegen_from_json_via_wir(const char* kir_json, LimboCodegenOptions* options) {
     if (!kir_json) {
         codegen_error("NULL KIR JSON provided");
         return NULL;
     }
 
-    // Step 1: KIR → TKIR
-    TKIRRoot* tkir_root = tkir_build_from_kir(kir_json, false);
-    if (!tkir_root) {
-        codegen_error("Failed to build TKIR from KIR");
+    // Step 1: KIR → WIR
+    WIRRoot* wir_root = wir_build_from_kir(kir_json, false);
+    if (!wir_root) {
+        codegen_error("Failed to build WIR from KIR");
         return NULL;
     }
 
-    // Step 2: TKIR → JSON (for the emitter)
-    char* tkir_json = tkir_root_to_json(tkir_root);
-    if (!tkir_json) {
-        tkir_root_free(tkir_root);
-        codegen_error("Failed to serialize TKIR to JSON");
+    // Step 2: WIR → JSON (for the emitter)
+    char* wir_json = wir_root_to_json(wir_root);
+    if (!wir_json) {
+        wir_root_free(wir_root);
+        codegen_error("Failed to serialize WIR to JSON");
         return NULL;
     }
 
-    // Step 3: TKIR → Limbo
-    char* output = limbo_codegen_from_tkir(tkir_json, options);
+    // Step 3: WIR → Limbo
+    char* output = limbo_codegen_from_wir(wir_json, options);
 
     // Cleanup
-    free(tkir_json);
-    tkir_root_free(tkir_root);
+    free(wir_json);
+    wir_root_free(wir_root);
 
     return output;
 }
 
 /**
- * @brief Generate Limbo source from KIR file via TKIR
+ * @brief Generate Limbo source from KIR file via WIR
  *
  * @param kir_path Path to input .kir file
  * @param output_path Path to output .b file
  * @param options Codegen options (NULL for defaults)
  * @return true on success, false on error
  */
-bool limbo_codegen_generate_via_tkir(const char* kir_path, const char* output_path,
+bool limbo_codegen_generate_via_wir(const char* kir_path, const char* output_path,
                                       LimboCodegenOptions* options) {
     if (!kir_path || !output_path) {
         codegen_error("NULL file path provided");
@@ -133,8 +133,8 @@ bool limbo_codegen_generate_via_tkir(const char* kir_path, const char* output_pa
         return false;
     }
 
-    // Generate via TKIR
-    char* output = limbo_codegen_from_json_via_tkir(kir_json, options);
+    // Generate via WIR
+    char* output = limbo_codegen_from_json_via_wir(kir_json, options);
     free(kir_json);
 
     if (!output) {

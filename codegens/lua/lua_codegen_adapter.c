@@ -3,38 +3,29 @@
  * @brief Lua Codegen Adapter for Codegen Interface
  *
  * Adapts the existing Lua codegen to implement the unified CodegenInterface.
+ * Uses a custom implementation to handle file vs directory output detection.
  */
 
-#include "../codegen_interface.h"
+#include "../codegen_adapter_macros.h"
+#include "../codegen_common.h"
 #include "lua_codegen.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 /* ============================================================================
- * Codegen Metadata
+ * Codegen Adapter - Custom Implementation
  * ============================================================================ */
 
-static const char* lua_extensions[] = {".lua", NULL};
+/**
+ * Custom generate implementation that detects file vs directory output.
+ * Lua codegen supports both:
+ * - Single file output: "output.lua"
+ * - Directory output: "output_dir/"
+ */
+static bool lua_codegen_generate_with_detection(const char* kir_path, const char* output_path) {
+    codegen_set_error_prefix("Lua");
 
-static const CodegenInfo lua_codegen_info_impl = {
-    .name = "Lua",
-    .version = "1.0.0",
-    .description = "Lua DSL code generator",
-    .file_extensions = lua_extensions
-};
-
-/* ============================================================================
- * Codegen Interface Implementation
- * ============================================================================ */
-
-static const CodegenInfo* lua_codegen_get_info(void) {
-    return &lua_codegen_info_impl;
-}
-
-static bool lua_codegen_generate_impl(const char* kir_path, const char* output_path) {
     if (!kir_path || !output_path) {
-        fprintf(stderr, "Error: Invalid arguments to Lua codegen\n");
+        codegen_error("Invalid arguments to Lua codegen");
         return false;
     }
 
@@ -52,13 +43,5 @@ static bool lua_codegen_generate_impl(const char* kir_path, const char* output_p
     }
 }
 
-/* ============================================================================
- * Codegen Interface Export
- * ============================================================================ */
-
-const CodegenInterface lua_codegen_interface = {
-    .get_info = lua_codegen_get_info,
-    .generate = lua_codegen_generate_impl,
-    .validate = NULL,
-    .cleanup = NULL
-};
+/* Use macro with custom generate function */
+IMPLEMENT_CODEGEN_ADAPTER(Lua, "Lua DSL code generator", lua_codegen_generate_with_detection, ".lua", NULL)

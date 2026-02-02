@@ -195,14 +195,35 @@ StringBuilder* sb_create(size_t initial_capacity);
 void sb_append(StringBuilder* sb, const char* str);
 
 /**
+ * Append a single character to the builder.
+ */
+void sb_append_char(StringBuilder* sb, char c);
+
+/**
  * Append a formatted string to the builder.
  */
 void sb_append_fmt(StringBuilder* sb, const char* fmt, ...);
 
 /**
+ * Get the current length of the string in the builder.
+ */
+size_t sb_length(StringBuilder* sb);
+
+/**
+ * Clear the string buffer (keeps capacity, resets length to 0).
+ */
+void sb_clear(StringBuilder* sb);
+
+/**
  * Get the built string (caller must free).
  */
 char* sb_get(StringBuilder* sb);
+
+/**
+ * Detach the buffer from the builder (returns buffer, caller must free).
+ * The builder is left empty and should be freed with sb_free().
+ */
+char* sb_detach(StringBuilder* sb);
 
 /**
  * Free the string builder.
@@ -261,7 +282,7 @@ char* react_generate_element(cJSON* component, ReactContext* ctx, int indent);
 
 /**
  * Map KIR element type to Tk widget type.
- * Used by TKIR and toolkit codegens for widget type mapping.
+ * Used by WIR and toolkit codegens for widget type mapping.
  *
  * @param element_type KIR element type (e.g., "Button", "Text", "Container")
  * @return Tk widget type string (e.g., "button", "label", "frame")

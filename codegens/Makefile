@@ -25,6 +25,16 @@ TOOLKIT_REGISTRY_OBJ = $(BUILD_DIR)/toolkit_registry.o
 TOOLKIT_REGISTRY_SRC = toolkits/common/toolkit_registry.c
 TOOLKIT_REGISTRY_HDR = toolkits/common/toolkit_registry.h
 
+# Platform Registry
+PLATFORM_REGISTRY_OBJ = $(BUILD_DIR)/platform_registry.o
+PLATFORM_REGISTRY_SRC = platforms/common/platform_registry.c
+PLATFORM_REGISTRY_HDR = platforms/common/platform_registry.h
+
+# Platform Profiles
+PLATFORM_PROFILES_OBJ = $(BUILD_DIR)/platform_profiles.o
+PLATFORM_PROFILES_SRC = platforms/common/platform_profiles.c
+PLATFORM_PROFILES_HDR = platforms/common/platform_profiles.h
+
 # Combo Registry
 COMBO_REGISTRY_OBJ = $(BUILD_DIR)/combo_registry.o
 COMBO_REGISTRY_SRC = combo_registry.c
@@ -39,6 +49,21 @@ CODEGEN_TARGET_HDR = codegen_target.h
 CODEGEN_COMMON_OBJ = $(BUILD_DIR)/codegen_common.o
 CODEGEN_COMMON_SRC = codegen_common.c
 CODEGEN_COMMON_HDR = codegen_common.h
+
+# Codegen I/O Wrapper
+CODEGEN_IO_OBJ = $(BUILD_DIR)/codegen_io.o
+CODEGEN_IO_SRC = codegen_io.c
+CODEGEN_IO_HDR = codegen_io.h
+
+# WIR Composer
+WIR_COMPOSER_OBJ = $(BUILD_DIR)/wir_composer.o
+WIR_COMPOSER_SRC = common/wir_composer.c
+WIR_COMPOSER_HDR = common/wir_composer.h
+
+# Color Utils
+COLOR_UTILS_OBJ = $(BUILD_DIR)/color_utils.o
+COLOR_UTILS_SRC = common/color_utils.c
+COLOR_UTILS_HDR = common/color_utils.h
 
 # Unified Codegen Interface
 CODEGEN_INTERFACE_OBJ = $(BUILD_DIR)/codegen_registry.o
@@ -84,6 +109,8 @@ TOOLKIT_LIB = $(BUILD_DIR)/libkryon_codegen_toolkit.a
 # All registry objects
 REGISTRY_OBJS = $(LANGUAGE_REGISTRY_OBJ) \
                $(TOOLKIT_REGISTRY_OBJ) \
+               $(PLATFORM_REGISTRY_OBJ) \
+               $(PLATFORM_PROFILES_OBJ) \
                $(COMBO_REGISTRY_OBJ) \
                $(CODEGEN_TARGET_OBJ)
 
@@ -110,10 +137,6 @@ C_CODEGEN_ADAPTER_SRC = c/c_codegen_adapter.c
 LIMBO_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/limbo_codegen_adapter.o
 LIMBO_CODEGEN_ADAPTER_SRC = limbo/limbo_codegen_adapter.c
 
-# Tcl/Tk Codegen Adapter
-TCLTK_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/tcltk_codegen_adapter.o
-TCLTK_CODEGEN_ADAPTER_SRC = tcltk/tcltk_codegen_adapter.c
-
 # Markdown Codegen Adapter
 MARKDOWN_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/markdown_codegen_adapter.o
 MARKDOWN_CODEGEN_ADAPTER_SRC = markdown/markdown_codegen_adapter.c
@@ -121,6 +144,10 @@ MARKDOWN_CODEGEN_ADAPTER_SRC = markdown/markdown_codegen_adapter.c
 # Lua Codegen Adapter
 LUA_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/lua_codegen_adapter.o
 LUA_CODEGEN_ADAPTER_SRC = lua/lua_codegen_adapter.c
+
+# Tcl Codegen Adapter (NEW - separates Tcl language from Tk toolkit)
+TCL_CODEGEN_ADAPTER_OBJ = $(BUILD_DIR)/tcl_codegen_adapter.o
+TCL_CODEGEN_ADAPTER_SRC = tcl/tcl_codegen_adapter.c
 
 # Lua Codegen
 LUA_CODEGEN_OBJ = $(BUILD_DIR)/lua_codegen.o
@@ -131,7 +158,7 @@ LUA_CODEGEN_HDR = lua/lua_codegen.h
 CODEGEN_ADAPTER_OBJS = $(KRY_CODEGEN_ADAPTER_OBJ) \
                       $(C_CODEGEN_ADAPTER_OBJ) \
                       $(LIMBO_CODEGEN_ADAPTER_OBJ) \
-                      $(TCLTK_CODEGEN_ADAPTER_OBJ) \
+                      $(TCL_CODEGEN_ADAPTER_OBJ) \
                       $(MARKDOWN_CODEGEN_ADAPTER_OBJ) \
                       $(LUA_CODEGEN_ADAPTER_OBJ)
 
@@ -152,9 +179,9 @@ $(BUILD_DIR):
 # Core Libraries
 # ============================================================================
 
-# Common utilities library (now includes unified codegen interface and adapters)
-$(COMMON_LIB): $(CODEGEN_COMMON_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS) $(CODEGEN_IMPL_OBJS)
-	$(AR) $(ARFLAGS) $@ $(CODEGEN_COMMON_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS) $(CODEGEN_IMPL_OBJS)
+# Common utilities library (now includes unified codegen interface, I/O wrapper, and adapters)
+$(COMMON_LIB): $(CODEGEN_COMMON_OBJ) $(CODEGEN_IO_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS) $(CODEGEN_IMPL_OBJS) $(WIR_COMPOSER_OBJ) $(COLOR_UTILS_OBJ)
+	$(AR) $(ARFLAGS) $@ $(CODEGEN_COMMON_OBJ) $(CODEGEN_IO_OBJ) $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ) $(CODEGEN_ADAPTER_OBJS) $(CODEGEN_IMPL_OBJS) $(WIR_COMPOSER_OBJ) $(COLOR_UTILS_OBJ)
 
 # Registry library
 $(REGISTRY_LIB): $(REGISTRY_OBJS)
@@ -176,6 +203,18 @@ $(TOOLKIT_LIB): $(TOOLKIT_OBJS)
 $(CODEGEN_COMMON_OBJ): $(CODEGEN_COMMON_SRC) $(CODEGEN_COMMON_HDR)
 	$(CC) $(CFLAGS) -I$(IR_DIR) -I$(CJSON_DIR) -I. -c $(CODEGEN_COMMON_SRC) -o $@
 
+# Codegen I/O wrapper
+$(CODEGEN_IO_OBJ): $(CODEGEN_IO_SRC) $(CODEGEN_IO_HDR) $(CODEGEN_COMMON_HDR)
+	$(CC) $(CFLAGS) -I$(IR_DIR) -I$(CJSON_DIR) -I. -c $(CODEGEN_IO_SRC) -o $@
+
+# WIR Composer
+$(WIR_COMPOSER_OBJ): $(WIR_COMPOSER_SRC) $(WIR_COMPOSER_HDR)
+	$(CC) $(CFLAGS) -I$(IR_DIR)/include -I$(CJSON_DIR) -I. -Iwir -c $(WIR_COMPOSER_SRC) -o $@
+
+# Color Utils
+$(COLOR_UTILS_OBJ): $(COLOR_UTILS_SRC) $(COLOR_UTILS_HDR)
+	$(CC) $(CFLAGS) -I$(IR_DIR)/include -I$(CJSON_DIR) -I. -c $(COLOR_UTILS_SRC) -o $@
+
 # Language registry
 $(LANGUAGE_REGISTRY_OBJ): $(LANGUAGE_REGISTRY_SRC) $(LANGUAGE_REGISTRY_HDR)
 	$(CC) $(CFLAGS) -I. -I$(CJSON_DIR) -c $(LANGUAGE_REGISTRY_SRC) -o $@
@@ -183,6 +222,16 @@ $(LANGUAGE_REGISTRY_OBJ): $(LANGUAGE_REGISTRY_SRC) $(LANGUAGE_REGISTRY_HDR)
 # Toolkit registry
 $(TOOLKIT_REGISTRY_OBJ): $(TOOLKIT_REGISTRY_SRC) $(TOOLKIT_REGISTRY_HDR)
 	$(CC) $(CFLAGS) -I. -I$(CJSON_DIR) -c $(TOOLKIT_REGISTRY_SRC) -o $@
+
+# Platform registry
+$(PLATFORM_REGISTRY_OBJ): $(PLATFORM_REGISTRY_SRC) $(PLATFORM_REGISTRY_HDR) \
+                         $(LANGUAGE_REGISTRY_HDR) $(TOOLKIT_REGISTRY_HDR)
+	$(CC) $(CFLAGS) -I. -I$(CJSON_DIR) -Ilanguages/common -Itoolkits/common -c $(PLATFORM_REGISTRY_SRC) -o $@
+
+# Platform profiles
+$(PLATFORM_PROFILES_OBJ): $(PLATFORM_PROFILES_SRC) $(PLATFORM_REGISTRY_HDR) \
+                         $(LANGUAGE_REGISTRY_HDR) $(TOOLKIT_REGISTRY_HDR)
+	$(CC) $(CFLAGS) -I. -I$(CJSON_DIR) -Ilanguages/common -Itoolkits/common -c $(PLATFORM_PROFILES_SRC) -o $@
 
 # Combo registry
 $(COMBO_REGISTRY_OBJ): $(COMBO_REGISTRY_SRC) $(COMBO_REGISTRY_HDR) \
@@ -233,10 +282,6 @@ $(C_CODEGEN_ADAPTER_OBJ): $(C_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
 $(LIMBO_CODEGEN_ADAPTER_OBJ): $(LIMBO_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
 	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Ilimbo -c $(LIMBO_CODEGEN_ADAPTER_SRC) -o $@
 
-# Tcl/Tk codegen adapter
-$(TCLTK_CODEGEN_ADAPTER_OBJ): $(TCLTK_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
-	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Itcltk -c $(TCLTK_CODEGEN_ADAPTER_SRC) -o $@
-
 # Markdown codegen adapter
 $(MARKDOWN_CODEGEN_ADAPTER_OBJ): $(MARKDOWN_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
 	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Imarkdown -c $(MARKDOWN_CODEGEN_ADAPTER_SRC) -o $@
@@ -244,6 +289,10 @@ $(MARKDOWN_CODEGEN_ADAPTER_OBJ): $(MARKDOWN_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTER
 # Lua codegen adapter
 $(LUA_CODEGEN_ADAPTER_OBJ): $(LUA_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR)
 	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Ilua -c $(LUA_CODEGEN_ADAPTER_SRC) -o $@
+
+# Tcl codegen adapter (NEW)
+$(TCL_CODEGEN_ADAPTER_OBJ): $(TCL_CODEGEN_ADAPTER_SRC) $(CODEGEN_INTERFACE_HDR) $(CODEGEN_IO_HDR)
+	$(CC) $(CFLAGS) -I. -I$(IR_DIR)/include -I$(CJSON_DIR) -Itcl -Icommon -Itoolkits/tk -c $(TCL_CODEGEN_ADAPTER_SRC) -o $@
 
 # Lua codegen implementation
 $(LUA_CODEGEN_OBJ): $(LUA_CODEGEN_SRC) $(LUA_CODEGEN_HDR) $(CODEGEN_COMMON_HDR)
@@ -254,27 +303,39 @@ $(LUA_CODEGEN_OBJ): $(LUA_CODEGEN_SRC) $(LUA_CODEGEN_HDR) $(CODEGEN_COMMON_HDR)
 # ============================================================================
 
 clean:
-	rm -f $(CODEGEN_COMMON_OBJ)
+	rm -f $(CODEGEN_COMMON_OBJ) $(CODEGEN_IO_OBJ)
 	rm -f $(CODEGEN_INTERFACE_OBJ) $(CODEGEN_REGISTRATION_OBJ)
 	rm -f $(CODEGEN_ADAPTER_OBJS)
 	rm -f $(CODEGEN_IMPL_OBJS)
 	rm -f $(REGISTRY_OBJS) $(REGISTRY_LIB)
 	rm -f $(EMITTER_OBJS) $(EMITTER_LIB)
 	rm -f $(TOOLKIT_OBJS) $(TOOLKIT_LIB)
+	rm -f $(WIR_COMPOSER_OBJ) $(COLOR_UTILS_OBJ)
 	rm -f $(COMMON_LIB)
 
 # ============================================================================
-# Install Headers
+# Install Headers and Libraries
 # ============================================================================
 
 install: all
-	mkdir -p $(BUILD_DIR)/include/kryon/codegen
-	cp $(CODEGEN_COMMON_HDR) $(BUILD_DIR)/include/kryon/codegen/
-	cp $(CODEGEN_TARGET_HDR) $(BUILD_DIR)/include/kryon/codegen/
-	cp $(COMBO_REGISTRY_HDR) $(BUILD_DIR)/include/kryon/codegen/
-	mkdir -p $(BUILD_DIR)/include/kryon/codegen/languages
-	cp $(LANGUAGE_REGISTRY_HDR) $(BUILD_DIR)/include/kryon/codegen/languages/
-	mkdir -p $(BUILD_DIR)/include/kryon/codegen/toolkits
-	cp $(TOOLKIT_REGISTRY_HDR) $(BUILD_DIR)/include/kryon/codegen/toolkits/
+	@echo "Installing codegen libraries..."
+	@mkdir -p $(ROOT)/Linux/amd64/lib/
+	@for lib in $(COMMON_LIB) $(REGISTRY_LIB); do \
+		if [ -f "$$lib" ]; then \
+			cp $$lib $(ROOT)/Linux/amd64/lib/; \
+			echo "  Installed $$(basename $$lib)"; \
+		fi; \
+	done
+	@echo "Installing codegen headers..."
+	@mkdir -p $(BUILD_DIR)/include/kryon/codegen
+	@cp $(CODEGEN_COMMON_HDR) $(BUILD_DIR)/include/kryon/codegen/
+	@cp $(CODEGEN_IO_HDR) $(BUILD_DIR)/include/kryon/codegen/
+	@cp $(CODEGEN_TARGET_HDR) $(BUILD_DIR)/include/kryon/codegen/
+	@cp $(COMBO_REGISTRY_HDR) $(BUILD_DIR)/include/kryon/codegen/
+	@mkdir -p $(BUILD_DIR)/include/kryon/codegen/languages
+	@cp $(LANGUAGE_REGISTRY_HDR) $(BUILD_DIR)/include/kryon/codegen/languages/
+	@mkdir -p $(BUILD_DIR)/include/kryon/codegen/toolkits
+	@cp $(TOOLKIT_REGISTRY_HDR) $(BUILD_DIR)/include/kryon/codegen/toolkits/
+	@echo "✓ Installed codegen libraries to $(ROOT)/Linux/amd64/lib/"
 
 .PHONY: all clean install

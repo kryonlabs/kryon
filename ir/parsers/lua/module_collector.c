@@ -16,6 +16,16 @@
 // Include IR core for IRModuleSource and IRSourceCollection
 #include "ir_core.h"
 
+// Forward declarations
+static ModuleSource* lua_module_collection_add(ModuleCollection* collection,
+                                                 const char* module_id,
+                                                 const char* file_path,
+                                                 const char* source,
+                                                 size_t source_len,
+                                                 bool is_main);
+static int lua_module_collection_find_by_path(ModuleCollection* collection,
+                                                const char* file_path);
+
 /**
  * Read entire file into memory
  */
@@ -331,3 +341,16 @@ void ir_source_collection_free(IRSourceCollection* sources) {
     free(sources->entries);
     free(sources);
 }
+
+/**
+ * Free a single ModuleSource
+ */
+void module_source_free(ModuleSource* module) {
+    if (!module) return;
+
+    free(module->module_id);
+    free(module->file_path);
+    free(module->source);
+    free(module->hash);
+}
+

@@ -90,6 +90,30 @@ bool combo_is_valid(const char* language, const char* toolkit);
 bool combo_is_valid_typed(LanguageType language, ToolkitType toolkit);
 
 /**
+ * Check if a language+toolkit@platform combination is valid
+ * Validates all three components: language exists, toolkit exists, platform exists,
+ * platform supports the toolkit, platform supports the language, and the
+ * language+toolkit combination is technically valid.
+ *
+ * @param language Language name
+ * @param toolkit Toolkit name
+ * @param platform Platform name
+ * @return true if valid combination, false otherwise
+ */
+bool combo_is_valid_with_platform(const char* language, const char* toolkit, const char* platform);
+
+/**
+ * Get reason why a language+toolkit@platform combination is invalid
+ * Returns detailed error message explaining what's wrong with the combination.
+ *
+ * @param language Language name
+ * @param toolkit Toolkit name
+ * @param platform Platform name
+ * @return Error message, or NULL if combination is valid
+ */
+const char* combo_get_invalid_reason_with_platform(const char* language, const char* toolkit, const char* platform);
+
+/**
  * Get all valid combinations for a specific language
  *
  * @param language Language name
@@ -197,6 +221,18 @@ void combo_print_valid_targets(bool include_aliases);
  * Shows all valid/invalid language+toolkit combinations
  */
 void combo_print_matrix(void);
+
+/**
+ * Auto-resolve a language to its only valid platform+toolkit combination
+ * If the language has exactly one valid platform+toolkit combo, returns it.
+ * If multiple or none, returns NULL for outputs.
+ *
+ * @param language Language name to auto-resolve
+ * @param out_toolkit Output pointer for toolkit name (static storage)
+ * @param out_platform Output pointer for platform name (static storage)
+ * @return true if exactly one valid combination found, false otherwise
+ */
+bool combo_auto_resolve_language(const char* language, const char** out_toolkit, const char** out_platform);
 
 /**
  * Get reason why a combination is invalid

@@ -1,0 +1,28 @@
+# Tk Toolkit Emitter (TaijiOS mkfile)
+# Tk WIR toolkit emitter implementation
+
+<../../../../mkconfig>
+
+LIB=libkryon_codegen_toolkit_tk.a
+
+OFILES=\
+	tk_codegen.$O\
+	tk_wir_emitter.$O\
+
+HFILES=\
+	tk_codegen.h\
+	tk_wir_emitter.h\
+	../../codegen_common.h\
+	../../common/wir_composer.h\
+	../../common/color_utils.h\
+	../../wir/wir.h\
+
+CFLAGS=$CFLAGS\
+	-I../../../include\
+	-I../../../ir/include\
+	-I../../../third_party/cJSON\
+	-I../..\
+	-I../../wir\
+	-I../../common\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

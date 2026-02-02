@@ -2083,15 +2083,17 @@ static bool load_imported_module(ConversionContext* ctx, const char* import_name
     ParserError error = {0};
     size_t size = 0;
     char* source = parser_read_file(file_path, &size, &error);
-    free(file_path);
+    // NOTE: Don't free file_path here - it's used later and ownership is transferred
 
     if (!source) {
+        free(file_path);
         pop_import_stack();
         return false;
     }
 
     if (size == 0) {
         free(source);
+        free(file_path);
         pop_import_stack();
         return false;
     }

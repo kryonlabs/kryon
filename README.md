@@ -8,63 +8,98 @@
 # Build
 make && make install
 
-# Run example
-kryon run --target=limbo examples/kry/hello_world.kry
-kryon run --target=tcl+tk examples/kry/hello_world.kry
+# Run examples (transpile KRY to another language)
+kryon run --target=limbo+tk@taiji examples/kry/hello_world.kry
+kryon run --target=tcl+tk@desktop examples/kry/hello_world.kry
 ```
 
 ## Targets
 
-Kryon codegen targets are **explicit language+toolkit combinations**:
+Kryon transpiles **KRY source code** to other languages using **`language+toolkit@platform`** format:
 
-| Target Combination | Language | Toolkit | Status |
-|-------------------|----------|---------|--------|
-| `kry` | KRY | KRY (self) | 🟢 Production |
-| `lua` | Lua | Kryon binding | 🔴 Not Implemented |
-| `limbo+tk` | Limbo | Tk | 🟡 One-Way? |
-| `tcl+tk` | Tcl | Tk | 🟡 Limited |
-| `c+sdl3` | C | SDL3 | 🟡 Fix in Progress |
-| `c+raylib` | C | Raylib | 🟡 Fix in Progress |
-| `web` | JavaScript | DOM | 🟡 Limited |
-| `markdown` | Markdown | - | 🔴 Docs Only |
-| `android` | Java/Kotlin | Android | 🔴 Not Implemented |
+| Target | Language | Toolkit | Platform | Status |
+|--------|----------|---------|----------|--------|
+| `tcl+tk@desktop` | Tcl | Tk | Desktop | 🟡 Limited (30%) |
+| `javascript+dom@web` | JavaScript | DOM | Web | 🟡 Limited (60%) |
+| `limbo+tk@taiji` | Limbo | Tk | TaijiOS | 🔴 Not Implemented |
+| `c+sdl3@desktop` | C | SDL3 | Desktop | 🔴 In Progress |
+| `c+raylib@desktop` | C | Raylib | Desktop | 🔴 In Progress |
+| `kotlin+android@mobile` | Kotlin | Android | Mobile | 🔴 Not Implemented |
 
-**Legend**: 🟢 = Production Ready, 🟡 = Limited/Poor, 🔴 = Not Working
+**KRY** is the source language - all `.kry` files are transpiled to target languages.
+
+**Actually Working**:
+- ✅ Terminal apps (all languages with terminal toolkit)
+- 🟡 Tcl/Tk (loses script code on round-trip)
+- 🟡 Web/DOM (loses some presentation details)
+
+**Legend**:
+- 🟢 **Production Ready** - Fully working for production use
+- 🟡 **Limited** - Works but has limitations or bugs
+- 🔴 **Not Implemented** - Planned but not yet built
+
+### Platform Aliases
+
+Shorter aliases are available for convenience:
+- `taiji` → `taijios`
+- `inferno` → `taijios`
+
+### Auto-Resolution
+
+If a language has only **one valid** platform+toolkit combination, you can omit them:
 
 ```bash
-# Explicit syntax
-kryon run --target=limbo+draw main.kry
-kryon run --target=tcl+tk main.kry
-kryon run --target=c+sdl3 main.kry
-kryon run --target=web main.kry
-kryon run --target=lua main.kry
+# JavaScript only works with DOM on web
+kryon run --target=javascript main.kry  # Auto-resolves to javascript+dom@web
 ```
 
-## Round-Trip Codegen Status
+If a language has **multiple** valid combinations, you must specify explicitly:
+```bash
+# C works with multiple toolkits/platforms
+kryon run --target=c+sdl3@desktop main.kry  # Must specify
+```
 
-### What Works ✅
+### Examples
 
-| Target | Round-Trip? | Preservation | Tests |
-|--------|-----------|---------------|-------|
-| **kry** | ✅ YES | 95%+ | 8/8 passing |
-| **tcl+tk** | ✅ YES | ~30% | 8/8 passing |
-| **web** | ✅ YES | ~40-60% | 8/8 passing |
+KRY source files (`.kry`) are transpiled to target languages:
 
-**Total**: 24/24 tests passing ✅
+```bash
+# TaijiOS (using alias)
+kryon run --target=limbo+tk@taiji main.kry
 
-### What Needs Work ⚠️
+# Desktop
+kryon run --target=c+sdl3@desktop main.kry
 
-| Target | Issue | Priority |
-|--------|-------|----------|
-| **lua** | No reverse parser | 🔴 HIGH |
-| **limbo+tk** | Not implemented | 🔴 HIGH |
-| **c+sdl3**, **c+raylib** | C parser in testing phase | 🟡 MEDIUM |
-| **limbo+draw** | Only 20-30% preservation | 🟡 MEDIUM |
-| **android** | No reverse parser | 🟢 LOW |
+# Web (auto-resolves)
+kryon run --target=javascript main.kry
 
-**See [CODEGEN_STATUS.md](CODEGEN_STATUS.md) for detailed status, action items, and test results.**
+# Mobile
+kryon run --target=kotlin+android@mobile main.kry
+```
 
----
+## Commands
+
+```bash
+# List all valid language+toolkit@platform combinations
+kryon targets
+
+# Show languages, toolkits, or platforms
+kryon lang                              # List all languages
+kryon toolkit                           # List all toolkits
+kryon platform                          # List all platforms
+
+# Show capabilities
+kryon capabilities                      # Show all combinations
+kryon capabilities --lang=c            # Show toolkits for C
+kryon capabilities --toolkit=sdl3      # Show languages for SDL3
+
+# Build and run
+kryon build --target=limbo+tk@taiji main.kry
+kryon run --target=limbo+tk@taiji main.kry
+
+# Dev server with hot reload (web only)
+kryon dev main.kry
+```
 
 ## Directory Structure
 
@@ -73,46 +108,25 @@ kryon/
 ├── ir/              # Intermediate Representation
 ├── codegens/        # Code generators
 │   ├── languages/   # Language emitters
-│   └── toolkits/    # Toolkit profiles
+│   ├── toolkits/    # Toolkit profiles
+│   └── platforms/   # Platform profiles
 ├── cli/             # Command-line interface
 ├── runtime/         # Runtime libraries
 ├── tests/           # Test suites
-│   └── round_trip/  # Round-trip validation
-└── examples/        # Examples
-    └── kry/         # KRY source files
+└── examples/        # Example code
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture.
 
-## Building
+## Round-Trip Testing
 
-```bash
-make && make install
-```
-
-## Usage
-
-```bash
-# Build and run
-kryon build --target=limbo+draw main.kry
-kryon run --target=limbo+draw main.kry
-
-# List all targets
-kryon targets
-
-# Dev server with hot reload
-kryon dev main.kry
-```
-
-## Round-Tip Testing
-
-Test that codegens preserve information correctly through KRY → KIR → Target → KIR → KRY conversions:
+Test that codegens preserve information through KRY → KIR → Target → KIR → KRY:
 
 ```bash
 # Run test suite
 bash tests/round_trip/test_roundtrip.sh
 
-# Manual round-trip test
+# Manual test
 kryon parse hello_world.kry -o step1.kir
 kryon codegen kry step1.kir step2_kry/
 kryon parse step2_kry/main.kry -o step3.kir
@@ -121,17 +135,12 @@ diff hello_world.kry step4_kry/main.kry
 ```
 
 **Results**:
-- ✅ KRY self-round-trip: 95%+ preservation (production ready)
-- ✅ Tcl+Tk round-trip: ~30% preservation (scripts lost, expected)
-- ✅ Web round-trip: ~40-60% preservation (presentation layer)
-- 🟡 C round-trip: **IN PROGRESS** - include paths fixed, testing pending
-- ⚠️ Limbo+Draw round-trip: ~20-30% preservation (documenting as one-way?)
+- ✅ **KRY → KRY**: 95%+ preservation (production ready)
+- 🟡 **Tcl+Tk**: ~30% preservation (scripts lost, expected)
+- 🟡 **JavaScript+DOM**: ~60% preservation (presentation layer)
+- 🔴 **C targets**: Parser in testing phase
 
-**See [CODEGEN_STATUS.md](CODEGEN_STATUS.md) for:**
-- Detailed target status
-- Information preservation matrix
-- Action items and roadmap
-- Test results and discrepancies
+**See [CODEGEN_STATUS.md](CODEGEN_STATUS.md) for detailed status and roadmap.**
 
 ## License
 

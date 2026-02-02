@@ -24,12 +24,6 @@ static char* sbToString(StringBuilder* sb) {
     return sb_get(sb);
 }
 
-/* Helper to append a single character */
-static void sb_append_char(StringBuilder* sb, char c) {
-    char str[2] = {c, '\0'};
-    sb_append(sb, str);
-}
-
 /* ============================================================================
  * Lexer State
  * ============================================================================ */

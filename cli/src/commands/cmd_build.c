@@ -10,6 +10,8 @@
 #include "kryon_cli.h"
 #include "build.h"
 #include "build/plugin_discovery.h"
+#include "target_validation.h"
+#include "../../codegens/codegen_target.h"
 #include "../template/docs_template.h"
 #include "../utils/file_discovery.h"
 #include <stdio.h>
@@ -183,6 +185,9 @@ int cmd_build(int argc, char** argv) {
         return 1;
     }
 
+    // Initialize validation system before validating config
+    target_validation_initialize();
+
     // Validate config
     if (!config_validate(config)) {
         config_free(config);
@@ -203,43 +208,70 @@ int cmd_build(int argc, char** argv) {
     // Determine what to build based on targets
     // CLI --target= overrides config file
     const char* primary_target;
+    char primary_target_storage[64];  // Storage for mapped handler name
     if (cli_target) {
-        // Validate CLI target using handler registry
-        // First check if it's a valid alias or registered target
-        const char* resolved_target = NULL;
-        bool is_alias = target_is_alias(cli_target, &resolved_target);
+        // Validate CLI target - must be language+toolkit format or a registered handler
+        bool is_valid = false;
+        const char* handler_to_use = NULL;
 
-        if (!is_alias && !target_handler_find(cli_target)) {
-            fprintf(stderr, "Error: Unknown target '%s'\n", cli_target);
-            fprintf(stderr, "\nValid targets (with aliases):\n");
-            fprintf(stderr, "  limbo, dis, emu     - TaijiOS Limbo/DIS bytecode\n");
-            fprintf(stderr, "  sdl3                - SDL3 renderer\n");
-            fprintf(stderr, "  raylib              - Raylib renderer\n");
-            fprintf(stderr, "  web                 - Web browser\n");
-            fprintf(stderr, "  android, kotlin     - Android APK\n");
+        // Check if it contains '+' (language+toolkit format)
+        if (strchr(cli_target, '+')) {
+            // Parse and validate the combo
+            CodegenTarget parsed;
+            if (codegen_parse_target(cli_target, &parsed)) {
+                // Map to handler
+                if (target_map_to_runtime_handler(cli_target, primary_target_storage, sizeof(primary_target_storage))) {
+                    handler_to_use = primary_target_storage;
+                    is_valid = target_handler_find(handler_to_use) != NULL;
+                }
+            }
+        } else {
+            // Check if it's a direct handler name (for backward compatibility)
+            handler_to_use = cli_target;
+            is_valid = target_handler_find(cli_target) != NULL;
+        }
+
+        if (!is_valid) {
+            fprintf(stderr, "Error: Invalid target '%s'\n", cli_target);
+            fprintf(stderr, "\nTargets must use format: language+toolkit[@platform]\n");
+            fprintf(stderr, "Examples:\n");
+            fprintf(stderr, "  tcl+tk@desktop      - Tcl/Tk desktop apps\n");
+            fprintf(stderr, "  limbo+tk@taijios    - Limbo/Tk on TaijiOS\n");
+            fprintf(stderr, "  c+sdl3@desktop      - C with SDL3\n");
+            fprintf(stderr, "  javascript+dom@web  - JavaScript web apps\n");
+            fprintf(stderr, "\nRun 'kryon targets' to list all valid combinations.\n");
 
             config_free(config);
             return 1;
         }
-        primary_target = cli_target;
-        printf("Using target from command line: %s\n", primary_target);
+        primary_target = handler_to_use;
+        printf("Using target from command line: %s (mapped from %s)\n", primary_target, cli_target);
     } else {
         // Use first target from config
-        primary_target = config->build_targets_count > 0 ?
-                          config->build_targets[0] : NULL;
+        // Need to map config target to handler
+        if (config->build_targets_count > 0) {
+            const char* config_target = config->build_targets[0];
+            if (strchr(config_target, '+')) {
+                if (target_map_to_runtime_handler(config_target, primary_target_storage, sizeof(primary_target_storage))) {
+                    primary_target = primary_target_storage;
+                } else {
+                    primary_target = config_target;  // Fallback
+                }
+            } else {
+                primary_target = config_target;
+            }
+        } else {
+            primary_target = NULL;
+        }
     }
 
     if (!primary_target) {
         fprintf(stderr, "Error: No target specified\n");
         fprintf(stderr, "Use --target=<name> or specify targets in kryon.toml\n");
-        fprintf(stderr, "Valid targets: web, limbo, sdl3, raylib, android\n");
+        fprintf(stderr, "Valid targets: c+sdl3@desktop, limbo+draw@taijios, javascript+dom@web, etc.\n");
+        fprintf(stderr, "Run 'kryon targets' to list all valid combinations.\n");
         config_free(config);
         return 1;
-    }
-
-    // Resolve desktop alias to sdl3
-    if (strcmp(primary_target, "desktop") == 0) {
-        primary_target = "sdl3";
     }
 
     int is_web = strcmp(primary_target, "web") == 0;
@@ -247,7 +279,6 @@ int cmd_build(int argc, char** argv) {
     int is_sdl3 = strcmp(primary_target, "sdl3") == 0;
     int is_raylib = strcmp(primary_target, "raylib") == 0;
     int is_android = strcmp(primary_target, "android") == 0;
-    int is_tcltk = strcmp(primary_target, "tcltk") == 0 || strcmp(primary_target, "tcl") == 0;
 
     // If specific file argument provided, build just that file
     if (file_arg_start > 0 && file_arg_start < argc) {
@@ -261,7 +292,7 @@ int cmd_build(int argc, char** argv) {
 
         if (is_web) {
             result = build_single_file_web(source_file, config);
-        } else if (is_limbo || is_sdl3 || is_raylib || is_android || is_tcltk) {
+        } else if (is_limbo || is_sdl3 || is_raylib || is_android) {
             // For all non-web targets, use target handler
             // First compile to KIR
             char kir_file[1024];
@@ -368,6 +399,39 @@ int cmd_build(int argc, char** argv) {
         const char* project_name = config->project_name ? config->project_name : "app";
 
         printf("Building %s from %s...\n", target_name, kir_file);
+        result = target_handler_build(primary_target, kir_file, output_dir, project_name, config);
+        config_free(config);
+        return result;
+    }
+
+    // GENERIC TARGET HANDLER: For any target with a registered handler
+    if (target_handler_find(primary_target)) {
+        printf("Building %s target...\n", primary_target);
+
+        if (!config->build_entry) {
+            fprintf(stderr, "Error: No entry point specified in kryon.toml\n");
+            fprintf(stderr, "Add [build].entry to your configuration, e.g.:\n");
+            fprintf(stderr, "  [build]\n");
+            fprintf(stderr, "  entry = \"main.kry\"\n");
+            config_free(config);
+            return 1;
+        }
+
+        // Compile source to KIR
+        const char* kir_file = ".kryon_cache/output.kir";
+        printf("Compiling entry file: %s\n", config->build_entry);
+
+        if (compile_source_to_kir(config->build_entry, kir_file) != 0) {
+            fprintf(stderr, "Error: Failed to compile entry file\n");
+            config_free(config);
+            return 1;
+        }
+
+        // Get output directory and project name
+        const char* output_dir = config->build_output_dir ? config->build_output_dir : ".";
+        const char* project_name = config->project_name ? config->project_name : "app";
+
+        printf("Building %s from %s...\n", primary_target, kir_file);
         result = target_handler_build(primary_target, kir_file, output_dir, project_name, config);
         config_free(config);
         return result;

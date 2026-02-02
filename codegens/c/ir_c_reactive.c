@@ -2,7 +2,7 @@
  * C Code Generator - Reactive Signal Implementation
  */
 
-#define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE
 #include "ir_c_reactive.h"
 #include "ir_c_types.h"
 #include <stdlib.h>

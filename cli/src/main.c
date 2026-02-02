@@ -40,7 +40,11 @@ static void print_help(void) {
     printf("  install                 Install application\n");
     printf("  uninstall               Uninstall application\n");
     printf("  doctor                  System diagnostics\n");
-    printf("  targets                 List all build targets\n\n");
+    printf("  targets                 List all build targets\n");
+    printf("  capabilities            Show language+toolkit combinations\n");
+    printf("  lang                    List all languages\n");
+    printf("  platform                List all platforms\n");
+    printf("  toolkit                 List all toolkits\n\n");
     printf("Supported languages/formats: KRY, HTML, Markdown, C, Tcl/Tk, Limbo\n\n");
     printf("Targets:\n");
     printf("  Targets are defined in kryon.toml [build] section\n");
@@ -150,6 +154,18 @@ int main(int argc, char** argv) {
     }
     else if (strcmp(args->command, "targets") == 0) {
         result = cmd_targets(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "capabilities") == 0) {
+        result = cmd_capabilities(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "lang") == 0) {
+        result = cmd_lang(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "platform") == 0) {
+        result = cmd_platform(args->argc, args->argv);
+    }
+    else if (strcmp(args->command, "toolkit") == 0) {
+        result = cmd_toolkit(args->argc, args->argv);
     }
     else {
         error_print_with_hint("Unknown command", "Run 'kryon --help' for usage information");

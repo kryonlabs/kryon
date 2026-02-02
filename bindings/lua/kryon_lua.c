@@ -383,17 +383,8 @@ int luaopen_kryon(lua_State *L) {
     luaL_newlib(L, kryon_lib);
 
     // Add constants
-    lua_pushinteger(L, KRYON_VERSION_MAJOR);
-    lua_setfield(L, -2, "VERSION_MAJOR");
-
-    lua_pushinteger(L, KRYON_VERSION_MINOR);
-    lua_setfield(L, -2, "VERSION_MINOR");
-
-    lua_pushinteger(L, KRYON_VERSION_PATCH);
-    lua_setfield(L, -2, "VERSION_PATCH");
-
     lua_pushstring(L, KRYON_VERSION_STRING);
-    lua_setfield(L, -2, "VERSION_STRING");
+    lua_setfield(L, -2, "VERSION");
 
     return 1;
 }

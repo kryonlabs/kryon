@@ -20,7 +20,7 @@ static const char* markdown_extensions[] = {".md", ".markdown", NULL};
 
 static const ParserInfo markdown_parser_info = {
     .name = "Markdown",
-    .version = "1.0.0",
+    .version = "alpha",
     .caps = PARSER_CAP_LAYOUT,
     .extensions = markdown_extensions
 };

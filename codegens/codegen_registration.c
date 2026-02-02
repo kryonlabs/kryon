@@ -12,12 +12,11 @@
 #include <stdlib.h>
 
 /* External codegen interfaces */
-extern const CodegenInterface kry_codegen_interface;
-extern const CodegenInterface c_codegen_interface;
-extern const CodegenInterface limbo_codegen_interface;
-extern const CodegenInterface tcltk_codegen_interface;
-extern const CodegenInterface markdown_codegen_interface;
-extern const CodegenInterface lua_codegen_interface;
+extern const CodegenInterface KRY_codegen_interface;
+extern const CodegenInterface C_codegen_interface;
+extern const CodegenInterface Limbo_codegen_interface;
+extern const CodegenInterface Tcl_codegen_interface;
+extern const CodegenInterface Markdown_codegen_interface;
 
 /* ============================================================================
  * Codegen Registration
@@ -35,12 +34,11 @@ int codegen_registry_register_all(void) {
     int error = 0;
 
     // Register all codegens
-    if (codegen_register(&kry_codegen_interface) != 0) error++;
-    if (codegen_register(&c_codegen_interface) != 0) error++;
-    if (codegen_register(&limbo_codegen_interface) != 0) error++;
-    if (codegen_register(&tcltk_codegen_interface) != 0) error++;
-    if (codegen_register(&markdown_codegen_interface) != 0) error++;
-    if (codegen_register(&lua_codegen_interface) != 0) error++;
+    if (codegen_register(&KRY_codegen_interface) != 0) error++;
+    if (codegen_register(&C_codegen_interface) != 0) error++;
+    if (codegen_register(&Limbo_codegen_interface) != 0) error++;
+    if (codegen_register(&Tcl_codegen_interface) != 0) error++;
+    if (codegen_register(&Markdown_codegen_interface) != 0) error++;
 
     if (error > 0) {
         fprintf(stderr, "Warning: %d codegen(s) failed to register\n", error);

@@ -65,7 +65,7 @@ Output location: `/tmp/android_codegen_test_output/<test_name>/`
   "format": "kir",
   "metadata": {
     "source_language": "kry",
-    "compiler_version": "kryon-1.0.0"
+    "compiler_version": "kryon-alpha"
   },
   "app": {
     "windowTitle": "Test Name",

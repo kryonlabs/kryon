@@ -2985,9 +2985,9 @@ char* ir_lua_file_to_kir(const char* filepath) {
     int files_written = 0;
     char* main_result = NULL;
 
-    fprintf(stderr, "📦 Collected %d modules\n", modules->count);
+    fprintf(stderr, "📦 Collected %zu modules\n", modules->count);
 
-    for (int i = 0; i < modules->count; i++) {
+    for (size_t i = 0; i < modules->count; i++) {
         ModuleSource* module = &modules->modules[i];
 
         // Skip Kryon internal modules (dsl, ffi, runtime, etc.)

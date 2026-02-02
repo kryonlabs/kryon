@@ -1,0 +1,29 @@
+# Tcl Language Emitter (TaijiOS mkfile)
+# Tcl WIR language emitter implementation
+
+<../../../mkconfig>
+
+LIB=libkryon_codegen_tcl.a
+
+OFILES=\
+	tcl_codegen.$O\
+	tcl_wir_emitter.$O\
+	tcl_codegen_adapter.$O\
+
+HFILES=\
+	tcl_codegen.h\
+	tcl_wir_emitter.h\
+	../codegen_common.h\
+	../common/wir_composer.h\
+	../wir/wir.h\
+	../wir/wir_builder.h\
+
+CFLAGS=$CFLAGS\
+	-I../../include\
+	-I../../ir/include\
+	-I../../third_party/cJSON\
+	-I..\
+	-I../wir\
+	-I../common\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

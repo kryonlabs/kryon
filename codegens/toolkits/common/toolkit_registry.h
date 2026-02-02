@@ -28,7 +28,7 @@ typedef enum {
     TOOLKIT_DRAW,            // Inferno/Limbo Draw
     TOOLKIT_DOM,             // HTML/DOM
     TOOLKIT_ANDROID_VIEWS,   // Android Views
-    TOOLKIT_STDIO,           // Terminal/console stdio
+    TOOLKIT_TERMINAL,        // Terminal/console
     TOOLKIT_SDL3,            // SDL3
     TOOLKIT_RAYLIB,          // Raylib
     TOOLKIT_NONE             // No toolkit (logic only)

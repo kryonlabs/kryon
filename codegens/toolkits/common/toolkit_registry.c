@@ -272,9 +272,9 @@ static const ToolkitProfile dom_profile = {
     .string_quote = "\""
 };
 
-// === stdio Toolkit Profile ===
+// === Terminal Toolkit Profile ===
 
-static const ToolkitWidgetMapping stdio_widgets[] = {
+static const ToolkitWidgetMapping terminal_widgets[] = {
     {"Text", "text", NULL},
     {"Input", "prompt", NULL},
     {"Button", "menu", NULL},
@@ -282,11 +282,11 @@ static const ToolkitWidgetMapping stdio_widgets[] = {
     {NULL, NULL, NULL}
 };
 
-static const ToolkitProfile stdio_profile = {
-    .name = "stdio",
-    .type = TOOLKIT_STDIO,
-    .widgets = stdio_widgets,
-    .widget_count = sizeof(stdio_widgets) / sizeof(stdio_widgets[0]) - 1,
+static const ToolkitProfile terminal_profile = {
+    .name = "terminal",
+    .type = TOOLKIT_TERMINAL,
+    .widgets = terminal_widgets,
+    .widget_count = sizeof(terminal_widgets) / sizeof(terminal_widgets[0]) - 1,
     .properties = NULL,
     .property_count = 0,
     .layout_system = LAYOUT_NONE,
@@ -312,7 +312,7 @@ ToolkitType toolkit_type_from_string(const char* type_str) {
     if (strcmp(type_str, "dom") == 0) return TOOLKIT_DOM;
     if (strcmp(type_str, "android_views") == 0 ||
         strcmp(type_str, "android") == 0) return TOOLKIT_ANDROID_VIEWS;
-    if (strcmp(type_str, "stdio") == 0) return TOOLKIT_STDIO;
+    if (strcmp(type_str, "terminal") == 0) return TOOLKIT_TERMINAL;
     if (strcmp(type_str, "sdl3") == 0) return TOOLKIT_SDL3;
     if (strcmp(type_str, "raylib") == 0) return TOOLKIT_RAYLIB;
 
@@ -325,7 +325,7 @@ const char* toolkit_type_to_string(ToolkitType type) {
         case TOOLKIT_DRAW: return "draw";
         case TOOLKIT_DOM: return "dom";
         case TOOLKIT_ANDROID_VIEWS: return "android_views";
-        case TOOLKIT_STDIO: return "stdio";
+        case TOOLKIT_TERMINAL: return "terminal";
         case TOOLKIT_SDL3: return "sdl3";
         case TOOLKIT_RAYLIB: return "raylib";
         case TOOLKIT_NONE: return "none";
@@ -437,7 +437,7 @@ void toolkit_registry_init(void) {
     toolkit_register(&tk_profile);
     toolkit_register(&draw_profile);
     toolkit_register(&dom_profile);
-    toolkit_register(&stdio_profile);
+    toolkit_register(&terminal_profile);
 
     g_registry.initialized = true;
 }

@@ -28,6 +28,9 @@ pkgs.mkShell {
     tcl
     tk
 
+    # Lua support
+    luajit
+
     # TypeScript/JavaScript frontend support
     nodejs  # For npm compatibility if needed
 

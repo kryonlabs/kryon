@@ -12,7 +12,9 @@ kryon/
 │   ├── parsers/     # KRY, TCL, HTML, C parsers
 │   └── include/     # IR public API
 │
-├── codegens/        # Code generators (language + toolkit)
+├── codegens/        # Code generators (language + toolkit + platform)
+│   ├── platforms/   # Platform profiles
+│   │   └── common/  # Platform registry
 │   ├── languages/   # Language emitters (syntax generation)
 │   │   ├── common/  # Language registry
 │   │   ├── tcl/
@@ -26,7 +28,11 @@ kryon/
 │
 ├── cli/             # Command-line interface
 │   └── src/
-│       ├── commands/
+│       ├── commands/    # CLI commands
+│       │   ├── cmd_capabilities.c  # Show capabilities
+│       │   ├── cmd_lang.c          # List languages
+│       │   ├── cmd_platform.c      # List platforms
+│       │   └── cmd_toolkit.c       # List toolkits
 │       └── config/
 │
 ├── runtime/         # Runtime libraries
@@ -36,47 +42,65 @@ kryon/
 └── third_party/     # Dependencies
 ```
 
-## Language + Toolkit Model
+## Language + Toolkit + Platform Model
 
-Kryon separates **language** from **UI toolkit**:
+Kryon separates **language**, **UI toolkit**, and **deployment platform**:
 
 ```
-Source (.kry) → IR → Language Emitter + Toolkit Profile → Output
+Source (.kry) → IR → Language Emitter + Toolkit Profile → Platform Output
 ```
 
 ### Supported Languages
 
 | Language | Extension | Description |
 |----------|-----------|-------------|
+| **KRY** | `.kry` | **Source language** (input) |
 | Limbo    | `.b`      | Inferno Limbo |
 | Tcl      | `.tcl`    | Tcl/Tk |
 | C        | `.c`      | C (SDL3, Raylib) |
 | Kotlin   | `.kt`     | Android/Kotlin |
 | JS/TS    | `.js/ts`  | Web (HTML/CSS) |
+| Lua      | `.lua`    | Lua (binding) |
+
+> **Note**: KRY is the input/source language. All `.kry` files are transpiled to target languages.
 
 ### Supported Toolkits
 
 | Toolkit | Language(s) | Description |
 |---------|-------------|-------------|
-| Tk      | tcl         | Tcl/Tk widgets |
-| Draw    | limbo       | Inferno Draw API |
+| Tk      | tcl, limbo, c  | Tcl/Tk widgets |
 | DOM     | js/ts       | HTML/CSS |
-| SDL3    | c           | SDL3 graphics |
+| SDL3    | c, lua      | SDL3 graphics |
 | Raylib  | c           | Raylib graphics |
-| stdio   | c, tcl      | Terminal/console |
+| Terminal | c, tcl, limbo, lua | Console I/O |
+| Android | kotlin, java | Android Views |
+
+### Supported Platforms
+
+| Platform | Aliases | Description |
+|----------|---------|-------------|
+| desktop  | -       | Desktop applications |
+| web      | -       | Web browsers |
+| mobile   | -       | Mobile devices |
+| taijios  | taiji, inferno | TaijiOS |
+| terminal | -       | Terminal/console |
 
 ### Target Syntax
 
-```bash
-# Explicit language+toolkit
---target=limbo+draw
---target=tcl+tk
---target=c+sdl3
+All targets use **`language+toolkit@platform`** format (all three required):
 
-# Short aliases (backward compatible)
---target=limbo     # → limbo+draw
---target=tcltk     # → tcl+tk
---target=sdl3      # → c+sdl3
+```bash
+--target=limbo+tk@taiji           # Transpile KRY → Limbo+Tk on TaijiOS
+--target=tcl+tk@desktop           # Transpile KRY → Tcl/Tk on desktop
+--target=c+sdl3@desktop           # Transpile KRY → C+SDL3 on desktop
+--target=javascript+dom@web       # Transpile KRY → JS+DOM on web
+--target=kotlin+android@mobile    # Transpile KRY → Kotlin+Android on mobile
+```
+
+Platform aliases make it shorter:
+```bash
+--target=limbo+tk@taiji           # Same as @taijios
+--target=limbo+tk@inferno         # Same as @taijios
 ```
 
 ## Codegen Pipeline
@@ -103,17 +127,38 @@ This prevents "Tk bias" where non-Tk toolkits incorrectly use Tk conventions.
 
 ### 2. Explicit Combinations
 
-Language and toolkit are **explicitly combined**:
+Language, toolkit, and platform are **explicitly combined**:
 
 ```
-limbo+draw  ✅ Valid (Limbo + Draw)
-tcl+tk      ✅ Valid (Tcl + Tk)
-tcl+draw    ❌ Invalid (Tcl doesn't support Draw)
+limbo+tk@taiji      ✅ Valid (Limbo + Tk on TaijiOS)
+tcl+tk@desktop      ✅ Valid (Tcl + Tk on desktop)
+c+sdl3@desktop      ✅ Valid (C + SDL3 on desktop)
+tcl+draw@desktop    ❌ Invalid (Tcl doesn't support Draw)
 ```
 
 ### 3. Validation Matrix
 
 The combo registry validates all combinations at compile-time, catching errors early.
+
+### 4. Platform Support
+
+The **platform registry** adds platform awareness:
+
+- **Platform profiles** define deployment targets (web, desktop, mobile, taijios, terminal)
+- **Platform aliases** for convenience: `taiji` → `taijios`, `inferno` → `taijios`
+- **3D validation**: language × toolkit × platform
+
+```bash
+# Query capabilities
+kryon targets                    # Show all valid combinations
+kryon capabilities              # Show technical compatibility
+kryon lang                     # List languages
+kryon platform                 # List platforms
+kryon platform                 # List platforms (informational)
+kryon toolkit                  # List toolkits
+```
+
+**Note**: Full platform-driven CLI syntax (`--platform=desktop`) is planned for future releases.
 
 ## Directory Details
 

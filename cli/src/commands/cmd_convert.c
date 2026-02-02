@@ -217,7 +217,7 @@ static int generate_kir_to_target(cJSON* kir, FileFormat target_format, const ch
             codegen_target = "kry";
             break;
         case FORMAT_TCL:
-            codegen_target = "tcltk";
+            codegen_target = "tcl";
             break;
         case FORMAT_LIMBO:
             codegen_target = "limbo";
@@ -316,7 +316,7 @@ int cmd_convert(int argc, char** argv) {
             explicit_target = true;
 
             if (strcmp(target_str, "kry") == 0) target_format = FORMAT_KRY;
-            else if (strcmp(target_str, "tcl") == 0 || strcmp(target_str, "tcltk") == 0) target_format = FORMAT_TCL;
+            else if (strcmp(target_str, "tcl") == 0) target_format = FORMAT_TCL;
             else if (strcmp(target_str, "limbo") == 0) target_format = FORMAT_LIMBO;
             else if (strcmp(target_str, "html") == 0) target_format = FORMAT_HTML;
             else if (strcmp(target_str, "c") == 0) target_format = FORMAT_C;
@@ -330,7 +330,7 @@ int cmd_convert(int argc, char** argv) {
             explicit_target = true;
 
             if (strcmp(target_str, "kry") == 0) target_format = FORMAT_KRY;
-            else if (strcmp(target_str, "tcl") == 0 || strcmp(target_str, "tcltk") == 0) target_format = FORMAT_TCL;
+            else if (strcmp(target_str, "tcl") == 0) target_format = FORMAT_TCL;
             else if (strcmp(target_str, "limbo") == 0) target_format = FORMAT_LIMBO;
             else if (strcmp(target_str, "html") == 0) target_format = FORMAT_HTML;
             else if (strcmp(target_str, "c") == 0) target_format = FORMAT_C;

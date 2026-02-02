@@ -3,29 +3,38 @@
 
 <../../mkconfig
 
-# Build codegen_common first, then TKIR, then all codegens
-all:V: codegen_common tkir tcltk limbo web c android kry markdown
+# Build codegen_common first, then WIR, then common infrastructure, then all codegens
+all:V: codegen_common wir common tcl tk limbo web c android kry markdown
 
 # Build codegen_common as a library
 codegen_common:V:
 	$CC $CFLAGS -I../include -I../ir/include -I../third_party/cJSON -c codegen_common.c
 	ar ruvs $ROOT/$OBJDIR/lib/libkryon_codegen_common.a codegen_common.o
 
-# Build TKIR (Toolkit Intermediate Representation)
-tkir:V: codegen_common
-	(cd tkir && mk install)
+# Build WIR (Widget Intermediate Representation)
+wir:V: codegen_common
+	(cd wir && mk install)
+
+# Build common infrastructure (WIR composer, color utils)
+common:V: wir
+	(cd common && mk install)
+
+# Build Tcl language emitter
+tcl:V: common
+	(cd tcl && mk install)
+
+# Build Tk toolkit emitter
+tk:V: common
+	(cd toolkits/tk && mk install)
 
 # Build individual codegens
-limbo:V: tkir
+limbo:V: wir
 	(cd limbo && mk install)
 
 web:V: codegen_common
 	(cd web && mk install)
 
-tcltk:V: tkir
-	(cd tcltk && mk install)
-
-c:V: tkir
+c:V: wir
 	(cd c && mk install)
 
 android:V: codegen_common
@@ -39,8 +48,10 @@ markdown:V: codegen_common
 
 clean:V:
 	rm -f codegen_common.o codegen_common.$O
-	(cd tkir && mk clean)
-	(cd tcltk && mk clean)
+	(cd wir && mk clean)
+	(cd common && mk clean)
+	(cd tcl && mk clean)
+	(cd toolkits/tk && mk clean)
 	(cd limbo && mk clean)
 	(cd web && mk clean)
 	(cd c && mk clean)
@@ -52,9 +63,11 @@ install:V: all
 
 nuke:V:
 	rm -f $ROOT/$OBJDIR/lib/libkryon_codegen_common.a
-	rm -f $ROOT/$OBJDIR/lib/libkryon_tkir.a
-	(cd tkir && mk nuke)
-	(cd tcltk && mk nuke)
+	rm -f $ROOT/$OBJDIR/lib/libkryon_wir.a
+	(cd wir && mk nuke)
+	(cd common && mk clean)
+	(cd tcl && mk clean)
+	(cd toolkits/tk && mk clean)
 	(cd limbo && mk nuke)
 	(cd web && mk nuke)
 	(cd c && mk nuke)

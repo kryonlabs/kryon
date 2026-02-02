@@ -1133,10 +1133,7 @@ void kryon_get_font_metrics(uint16_t font_id, uint16_t* width, uint16_t* height)
 kryon_renderer_t* kryon_create_renderer(uint16_t width, uint16_t height, const char* title);
 
 // Version information
-#define KRYON_VERSION_MAJOR  1
-#define KRYON_VERSION_MINOR  0
-#define KRYON_VERSION_PATCH  0
-#define KRYON_VERSION_STRING "1.0.0"
+#define KRYON_VERSION_STRING "alpha"
 
 #ifdef __cplusplus
 }

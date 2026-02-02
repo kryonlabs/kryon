@@ -2,6 +2,8 @@
  * C Code Generator - Multi-Module Support
  */
 
+#define _DEFAULT_SOURCE
+
 #include "ir_c_modules.h"
 #include "ir_c_codegen.h"
 #include "../../third_party/cJSON/cJSON.h"

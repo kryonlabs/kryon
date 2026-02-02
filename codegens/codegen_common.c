@@ -346,23 +346,44 @@ StringBuilder* sb_create(size_t initial_capacity) {
 
 void sb_append(StringBuilder* sb, const char* str) {
     if (!sb || !str) return;
-    
+
     size_t str_len = strlen(str);
     size_t needed = sb->length + str_len + 1;
-    
+
     if (needed > sb->capacity) {
         size_t new_capacity = sb->capacity * 2;
         while (new_capacity < needed) new_capacity *= 2;
-        
+
         char* new_buffer = (char*)realloc(sb->buffer, new_capacity);
         if (!new_buffer) return;
-        
+
         sb->buffer = new_buffer;
         sb->capacity = new_capacity;
     }
-    
+
     strcpy(sb->buffer + sb->length, str);
     sb->length += str_len;
+}
+
+void sb_append_char(StringBuilder* sb, char c) {
+    if (!sb) return;
+
+    size_t needed = sb->length + 2;  // char + null terminator
+
+    if (needed > sb->capacity) {
+        size_t new_capacity = sb->capacity * 2;
+        while (new_capacity < needed) new_capacity *= 2;
+
+        char* new_buffer = (char*)realloc(sb->buffer, new_capacity);
+        if (!new_buffer) return;
+
+        sb->buffer = new_buffer;
+        sb->capacity = new_capacity;
+    }
+
+    sb->buffer[sb->length] = c;
+    sb->buffer[sb->length + 1] = '\0';
+    sb->length++;
 }
 
 void sb_append_fmt(StringBuilder* sb, const char* fmt, ...) {
@@ -401,6 +422,28 @@ char* sb_get(StringBuilder* sb) {
     return strdup(sb->buffer ? sb->buffer : "");
 }
 
+size_t sb_length(StringBuilder* sb) {
+    if (!sb) return 0;
+    return sb->length;
+}
+
+void sb_clear(StringBuilder* sb) {
+    if (!sb) return;
+    if (sb->buffer) {
+        sb->buffer[0] = '\0';
+    }
+    sb->length = 0;
+}
+
+char* sb_detach(StringBuilder* sb) {
+    if (!sb) return NULL;
+    char* result = sb->buffer;
+    sb->buffer = NULL;
+    sb->capacity = 0;
+    sb->length = 0;
+    return result;
+}
+
 void sb_free(StringBuilder* sb) {
     if (!sb) return;
     free(sb->buffer);
@@ -429,25 +472,6 @@ void sb_free(StringBuilder* sb) {
  * @return Tk widget type string (e.g., "button", "label")
  */
 const char* codegen_map_kir_to_tk_widget(const char* element_type) {
-    static bool warned = false;
-
-    // Emit deprecation warning only once
-    if (!warned) {
-        fprintf(stderr,
-                "\n"
-                "╌──────────────────────────────────────────────────────────────────────────────╌\n"
-                "  DEPRECATION WARNING: codegen_map_kir_to_tk_widget() is deprecated!\n"
-                "╌──────────────────────────────────────────────────────────────────────────────╌\n"
-                "  This function is Tk-biased and should NOT be used for non-Tk targets.\n\n"
-                "  For NEW code, please use toolkit-specific profiles:\n"
-                "    • Tk targets:     toolkit_map_widget_type(tk_profile, ...)\n"
-                "    • Draw targets:   drawir_type_from_kir(...)\n"
-                "    • DOM targets:    toolkit_map_widget_type(dom_profile, ...)\n\n"
-                "  This function will be removed in Kryon v2.0.\n"
-                "╌──────────────────────────────────────────────────────────────────────────────╌\n\n");
-        warned = true;
-    }
-
     if (!element_type) return "frame";
 
     // Container widgets

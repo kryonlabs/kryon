@@ -8,6 +8,7 @@
 #include "kryon_cli.h"
 #include "build.h"
 #include "target_validation.h"
+#include "../../../codegens/codegen_target.h"
 // file_discovery.h removed - we only build explicit entry points from kryon.toml
 #include "../../ir/include/ir_core.h"
 #include "../../ir/include/ir_serialization.h"
@@ -316,13 +317,28 @@ int cmd_run(int argc, char** argv) {
     // Load config early
     KryonConfig* early_config = config_find_and_load();
 
-    // Check if first positional argument is a valid target (alias or registered)
+    // Check if first positional argument is a valid target
     if (!explicit_target && argc >= 1) {
         const char* potential_target = pos_argv[0];
-        const char* resolved = NULL;
 
-        // Check if it's a valid alias or registered target
-        if (target_is_alias(potential_target, &resolved) || target_handler_find(potential_target)) {
+        // Check if it's a valid target (contains '+') or registered handler
+        bool is_valid = false;
+
+        // Check if it contains '+' (language+toolkit format)
+        if (strchr(potential_target, '+')) {
+            CodegenTarget parsed;
+            if (codegen_parse_target(potential_target, &parsed)) {
+                char runtime_handler[64];
+                if (target_map_to_runtime_handler(potential_target, runtime_handler, sizeof(runtime_handler))) {
+                    is_valid = target_handler_find(runtime_handler) != NULL;
+                }
+            }
+        } else {
+            // Check if it's a direct handler name
+            is_valid = target_handler_find(potential_target) != NULL;
+        }
+
+        if (is_valid) {
             target_platform = potential_target;
             explicit_target = true;
             // Shift args in pos_argv (safe - it's our local array)
@@ -340,7 +356,8 @@ int cmd_run(int argc, char** argv) {
         fprintf(stderr, "  kryon run <target> <file>           # Target before file\n");
         fprintf(stderr, "  kryon run <file> --target=<target>  # Target after file\n");
         fprintf(stderr, "  kryon run --target=<target> <file>  # Target as flag\n");
-        fprintf(stderr, "\nValid targets: limbo, tcl+tk, c+sdl3, etc.\n");
+        fprintf(stderr, "\nValid targets use format: language+toolkit@platform\n");
+        fprintf(stderr, "Examples: limbo+tk@taiji, c+sdl3@desktop, javascript+dom@web\n");
         fprintf(stderr, "Run 'kryon targets' to list all valid targets.\n");
         if (early_config) config_free(early_config);
         return 1;
@@ -358,23 +375,17 @@ int cmd_run(int argc, char** argv) {
         return 1;
     }
 
-    // For backward compatibility, also check if it's a valid registered target handler
-    const char* resolved_target = NULL;
-    bool is_alias = target_is_alias(target_platform, &resolved_target);
-    (void)is_alias;  // Currently unused, reserved for future compatibility
-
-    // Map combo to runtime handler (e.g., "limbo+draw" → "limbo")
+    // Map combo to runtime handler (e.g., "limbo+tk@taiji" → "limbo")
     char runtime_handler[64];
     if (!target_map_to_runtime_handler(normalized_target, runtime_handler, sizeof(runtime_handler))) {
         fprintf(stderr, "Error: Cannot map target '%s' to a runtime handler\n", normalized_target);
-        fprintf(stderr, "\nValid targets (with aliases):\n");
-        fprintf(stderr, "  limbo, limbo+draw   - Limbo/DIS bytecode VM\n");
-        fprintf(stderr, "  tcltk, tcl+tk      - Tcl/Tk interpreter\n");
-        fprintf(stderr, "  sdl3, c+sdl3       - SDL3 renderer\n");
-        fprintf(stderr, "  raylib, c+raylib   - Raylib renderer\n");
-        fprintf(stderr, "  web                - Web browser\n");
-        fprintf(stderr, "  android            - Android APK\n");
-        fprintf(stderr, "\nRun 'kryon targets' to list all valid language+toolkit combinations.\n");
+        fprintf(stderr, "\nValid targets use format: language+toolkit@platform\n");
+        fprintf(stderr, "Examples:\n");
+        fprintf(stderr, "  limbo+tk@taiji      - Limbo with Tk on TaijiOS\n");
+        fprintf(stderr, "  c+sdl3@desktop      - C with SDL3 on desktop\n");
+        fprintf(stderr, "  javascript+dom@web  - JavaScript with DOM on web\n");
+        fprintf(stderr, "\nPlatform aliases: taiji, inferno → taijios\n");
+        fprintf(stderr, "Run 'kryon targets' to list all valid combinations.\n");
 
         if (free_target_platform) free((char*)target_platform);
         if (early_config) config_free(early_config);

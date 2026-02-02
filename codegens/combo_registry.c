@@ -7,6 +7,7 @@
 #include "combo_registry.h"
 #include "languages/common/language_registry.h"
 #include "toolkits/common/toolkit_registry.h"
+#include "platforms/common/platform_registry.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,22 +16,14 @@
 // Constants
 // ============================================================================
 
-#define MAX_ALIASES 32
 #define MAX_CUSTOM_COMBOS 64
 
 // ============================================================================
 // Registry State
 // ============================================================================
 
-typedef struct {
-    const char* alias;
-    const char* target;
-} AliasMapping;
-
 static struct {
-    AliasMapping aliases[MAX_ALIASES];
     Combo custom_combos[MAX_CUSTOM_COMBOS];
-    int alias_count;
     int custom_combo_count;
     bool initialized;
 } g_registry = {0};
@@ -42,18 +35,6 @@ static struct {
 static char g_format_buffer[128];
 
 // ============================================================================
-// Built-in Aliases (Backward Compatibility)
-// ============================================================================
-
-static void init_builtin_aliases(void) {
-    // Backward compatibility aliases
-    combo_register_alias("tcltk", "tcl+tk");
-    combo_register_alias("limbo", "limbo+draw");
-    combo_register_alias("sdl3", "c+sdl3");
-    combo_register_alias("raylib", "c+raylib");
-}
-
-// ============================================================================
 // Validation Matrix
 // ============================================================================
 
@@ -62,28 +43,24 @@ static void init_builtin_aliases(void) {
  * true = valid combination, false = invalid
  */
 static const bool validation_matrix[LANGUAGE_NONE + 1][TOOLKIT_NONE + 1] = {
-    //                    Tk    Draw  DOM   Android  stdio SDL3  Raylib None
-    /* TCL */        {  true, false, false, false,  true, false, false, false },
-    /* LIMBO */      { false,  true, false, false, false, false, false, false },
-    /* C */          { false, false, false, false,  true,  true,  true, false },
-    /* KOTLIN */     { false, false, false,  true, false, false, false, false },
-    /* JAVASCRIPT */ { false, false,  true, false, false, false, false, false },
-    /* TYPESCRIPT */ { false, false,  true, false, false, false, false, false },
-    /* PYTHON */     { false, false, false, false,  true,  true, false, false },
-    /* RUST */       { false, false, false, false, false,  true,  true, false },
-    /* NONE */       { false, false, false, false, false, false, false,  true },
+    //                    Tk    Draw  DOM   AndroidViews  terminal SDL3  Raylib None
+    /* TCL */        {  true, false, false, false,      true, false, false, false },
+    /* LIMBO */      {  true, false, false, false,      false, false, false, false },
+    /* C */          {  true, false, false, false,      true,  true,  true, false },
+    /* KOTLIN */     { false, false, false, true,       false, false, false, false },
+    /* JAVASCRIPT */ { false, false,  true, false,      false, false, false, false },
+    /* LUA */        { false, false, false, false,      true,  true, false, false },
+    /* NONE */       { false, false, false, false,      false, false, false,  true },
 };
 
 static const char* invalid_reasons[LANGUAGE_NONE + 1][TOOLKIT_NONE + 1] = {
-    //                    Tk                      Draw                      DOM                        Android              stdio      SDL3         Raylib
+    //                    Tk                      Draw                  DOM                        Android              terminal      SDL3         Raylib
     /* TCL */        {  NULL, "Tcl doesn't support Draw toolkit", "Tcl doesn't support DOM", "Tcl doesn't support Android Views", NULL, "Tcl doesn't support SDL3", "Tcl doesn't support Raylib", NULL },
-    /* LIMBO */      { "Limbo doesn't support Tk", NULL, "Limbo doesn't support DOM", "Limbo doesn't support Android Views", "Limbo doesn't support stdio", "Limbo doesn't support SDL3", "Limbo doesn't support Raylib", NULL },
-    /* C */          { "C doesn't support Tk", "C doesn't support Draw", "C doesn't support DOM", "C doesn't support Android Views", NULL, NULL, NULL, NULL },
-    /* KOTLIN */     { "Kotlin doesn't support Tk", "Kotlin doesn't support Draw", "Kotlin doesn't support DOM", NULL, "Kotlin doesn't support stdio", "Kotlin doesn't support SDL3", "Kotlin doesn't support Raylib", NULL },
-    /* JAVASCRIPT */ { "JavaScript doesn't support Tk", "JavaScript doesn't support Draw", NULL, "JavaScript doesn't support Android Views", "JavaScript doesn't support stdio", "JavaScript doesn't support SDL3", "JavaScript doesn't support Raylib", NULL },
-    /* TYPESCRIPT */ { "TypeScript doesn't support Tk", "TypeScript doesn't support Draw", NULL, "TypeScript doesn't support Android Views", "TypeScript doesn't support stdio", "TypeScript doesn't support SDL3", "TypeScript doesn't support Raylib", NULL },
-    /* PYTHON */     { "Python doesn't support Tk", "Python doesn't support Draw", "Python doesn't support DOM", "Python doesn't support Android Views", NULL, NULL, "Python doesn't support Raylib", NULL },
-    /* RUST */       { "Rust doesn't support Tk", "Rust doesn't support Draw", "Rust doesn't support DOM", "Rust doesn't support Android Views", "Rust doesn't support stdio", NULL, NULL, NULL },
+    /* LIMBO */      { NULL, "Limbo doesn't support Draw", "Limbo doesn't support DOM", "Limbo doesn't support Android Views", NULL, "Limbo doesn't support SDL3", "Limbo doesn't support Raylib", NULL },
+    /* C */          { NULL, "C doesn't support Draw", "C doesn't support DOM", "C doesn't support Android Views", NULL, NULL, NULL, NULL },
+    /* KOTLIN */     { "Kotlin doesn't support Tk", "Kotlin doesn't support Draw", "Kotlin doesn't support DOM", NULL, "Kotlin doesn't support terminal", "Kotlin doesn't support SDL3", "Kotlin doesn't support Raylib", NULL },
+    /* JAVASCRIPT */ { "JavaScript doesn't support Tk", "JavaScript doesn't support Draw", NULL, "JavaScript doesn't support Android Views", "JavaScript doesn't support terminal", "JavaScript doesn't support SDL3", "JavaScript doesn't support Raylib", NULL },
+    /* LUA */        { "Lua doesn't support Tk", "Lua doesn't support Draw", "Lua doesn't support DOM", "Lua doesn't support Android Views", NULL, NULL, "Lua doesn't support Raylib", NULL },
     /* NONE */       { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 };
 
@@ -96,7 +73,6 @@ void combo_registry_init(void) {
         return;  // Already initialized
     }
 
-    init_builtin_aliases();
     g_registry.initialized = true;
 }
 
@@ -150,6 +126,89 @@ const char* combo_get_invalid_reason(const char* language, const char* toolkit) 
     return invalid_reasons[lang_type][tk_type];
 }
 
+// Alias table removed - users must specify full language+toolkit[@platform] format
+// No shorthand aliases allowed anymore
+
+bool combo_is_valid_with_platform(const char* language, const char* toolkit, const char* platform) {
+    if (!language || !toolkit || !platform) {
+        return false;
+    }
+
+    // Validate platform exists
+    if (!platform_is_registered(platform)) {
+        return false;
+    }
+
+    // Validate platform supports the toolkit
+    if (!platform_supports_toolkit(platform, toolkit)) {
+        return false;
+    }
+
+    // Validate platform supports the language
+    if (!platform_supports_language(platform, language)) {
+        return false;
+    }
+
+    // Validate language+toolkit combination is technically valid
+    return combo_is_valid(language, toolkit);
+}
+
+const char* combo_get_invalid_reason_with_platform(const char* language, const char* toolkit, const char* platform) {
+    if (!language || !toolkit || !platform) {
+        return "Invalid language, toolkit, or platform";
+    }
+
+    // Validate platform exists
+    if (!platform_is_registered(platform)) {
+        static char unknown_platform_error[256];
+        snprintf(unknown_platform_error, sizeof(unknown_platform_error),
+                "Unknown platform '%s'", platform);
+        return unknown_platform_error;
+    }
+
+    // Validate toolkit exists
+    ToolkitType tk_type = toolkit_type_from_string(toolkit);
+    if (!toolkit_type_is_valid(tk_type)) {
+        static char unknown_toolkit_error[256];
+        snprintf(unknown_toolkit_error, sizeof(unknown_toolkit_error),
+                "Unknown toolkit '%s'", toolkit);
+        return unknown_toolkit_error;
+    }
+
+    // Validate language exists
+    LanguageType lang_type = language_type_from_string(language);
+    if (!language_type_is_valid(lang_type)) {
+        static char unknown_language_error[256];
+        snprintf(unknown_language_error, sizeof(unknown_language_error),
+                "Unknown language '%s'", language);
+        return unknown_language_error;
+    }
+
+    // Validate platform supports the toolkit
+    if (!platform_supports_toolkit(platform, toolkit)) {
+        static char unsupported_toolkit_error[512];
+        snprintf(unsupported_toolkit_error, sizeof(unsupported_toolkit_error),
+                "Platform '%s' does not support toolkit '%s'", platform, toolkit);
+        return unsupported_toolkit_error;
+    }
+
+    // Validate platform supports the language
+    if (!platform_supports_language(platform, language)) {
+        static char unsupported_language_error[512];
+        snprintf(unsupported_language_error, sizeof(unsupported_language_error),
+                "Platform '%s' does not support language '%s'", platform, language);
+        return unsupported_language_error;
+    }
+
+    // Validate language+toolkit combination
+    const char* reason = combo_get_invalid_reason(language, toolkit);
+    if (reason) {
+        return reason;
+    }
+
+    return NULL;  // Valid combination
+}
+
 bool combo_resolve(const char* target, ComboResolution* out_resolution) {
     if (!target || !out_resolution) {
         return false;
@@ -158,23 +217,31 @@ bool combo_resolve(const char* target, ComboResolution* out_resolution) {
     memset(out_resolution, 0, sizeof(ComboResolution));
     out_resolution->resolved = false;
 
-    // Check if it's an alias
-    const char* expanded = combo_get_alias(target);
-    if (expanded) {
-        target = expanded;
-    }
-
-    // Parse "language+toolkit" format
+    // Parse "language+toolkit@platform" format
+    // No alias expansion - user must specify full format
     char* copy = strdup(target);
     if (!copy) {
         strcpy(out_resolution->error, "Memory allocation failed");
         return false;
     }
 
+    // Check for @platform suffix (optional)
+    char* at = strchr(copy, '@');
+    const char* platform;
+    if (at) {
+        *at = '\0';
+        platform = at + 1;
+    } else {
+        // No platform specified - use default platform
+        // For now, we'll determine it later based on language+toolkit
+        platform = NULL;
+    }
+
+    // Parse "language+toolkit" part
     char* plus = strchr(copy, '+');
     if (!plus) {
         snprintf(out_resolution->error, sizeof(out_resolution->error),
-                 "Invalid target format '%s' (expected 'language+toolkit')", target);
+                 "Invalid target format '%s' (expected 'language+toolkit@platform')", target);
         free(copy);
         return false;
     }
@@ -186,6 +253,7 @@ bool combo_resolve(const char* target, ComboResolution* out_resolution) {
     // Trim whitespace
     while (*language == ' ') language++;
     while (*toolkit == ' ') toolkit++;
+    while (*platform == ' ') platform++;
 
     // Resolve profiles
     out_resolution->language_profile = language_get_profile(language);
@@ -206,12 +274,26 @@ bool combo_resolve(const char* target, ComboResolution* out_resolution) {
     }
 
     // Validate combination
-    if (!combo_is_valid(language, toolkit)) {
-        const char* reason = combo_get_invalid_reason(language, toolkit);
-        snprintf(out_resolution->error, sizeof(out_resolution->error),
-                 "Invalid combination '%s+%s': %s", language, toolkit, reason);
-        free(copy);
-        return false;
+    const char* reason = NULL;
+
+    if (platform) {
+        // Platform specified - validate with platform constraints
+        reason = combo_get_invalid_reason_with_platform(language, toolkit, platform);
+        if (reason) {
+            snprintf(out_resolution->error, sizeof(out_resolution->error),
+                     "Invalid combination '%s+%s@%s': %s", language, toolkit, platform, reason);
+            free(copy);
+            return false;
+        }
+    } else {
+        // No platform specified - just validate language+toolkit combination
+        reason = combo_get_invalid_reason(language, toolkit);
+        if (reason) {
+            snprintf(out_resolution->error, sizeof(out_resolution->error),
+                     "Invalid combination '%s+%s': %s", language, toolkit, reason);
+            free(copy);
+            return false;
+        }
     }
 
     // Success!
@@ -240,7 +322,7 @@ size_t combo_get_for_language(const char* language, Combo* out_combos, size_t ma
             out_combos[count].language = language;
             out_combos[count].toolkit = toolkit_type_to_string(tk);
             out_combos[count].valid = true;
-            out_combos[count].alias = combo_get_alias(out_combos[count].toolkit);
+            out_combos[count].alias = NULL;  // No aliases
             count++;
         }
     }
@@ -293,18 +375,6 @@ size_t combo_get_all(Combo* out_combos, size_t max_count) {
     return count;
 }
 
-const char* combo_get_alias(const char* alias) {
-    if (!alias) return NULL;
-
-    for (int i = 0; i < g_registry.alias_count; i++) {
-        if (strcmp(g_registry.aliases[i].alias, alias) == 0) {
-            return g_registry.aliases[i].target;
-        }
-    }
-
-    return NULL;
-}
-
 bool combo_register(const Combo* combo) {
     if (!combo || !combo->language || !combo->toolkit) {
         return false;
@@ -316,31 +386,6 @@ bool combo_register(const Combo* combo) {
     }
 
     g_registry.custom_combos[g_registry.custom_combo_count++] = *combo;
-    return true;
-}
-
-bool combo_register_alias(const char* alias, const char* target) {
-    if (!alias || !target) {
-        return false;
-    }
-
-    if (g_registry.alias_count >= MAX_ALIASES) {
-        fprintf(stderr, "Error: Alias registry full\n");
-        return false;
-    }
-
-    // Check for duplicate
-    for (int i = 0; i < g_registry.alias_count; i++) {
-        if (strcmp(g_registry.aliases[i].alias, alias) == 0) {
-            fprintf(stderr, "Warning: Alias '%s' already registered\n", alias);
-            return false;
-        }
-    }
-
-    g_registry.aliases[g_registry.alias_count].alias = strdup(alias);
-    g_registry.aliases[g_registry.alias_count].target = strdup(target);
-    g_registry.alias_count++;
-
     return true;
 }
 
@@ -359,6 +404,70 @@ const char* combo_format_parts(const char* language, const char* toolkit) {
 
     snprintf(g_format_buffer, sizeof(g_format_buffer), "%s+%s", language, toolkit);
     return g_format_buffer;
+}
+
+bool combo_auto_resolve_language(const char* language, const char** out_toolkit, const char** out_platform) {
+    if (!language || !out_toolkit || !out_platform) {
+        return false;
+    }
+
+    // Validate language exists
+    LanguageType lang_type = language_type_from_string(language);
+    if (!language_type_is_valid(lang_type)) {
+        return false;
+    }
+
+    // Static storage for results
+    static const char* s_toolkit = NULL;
+    static const char* s_platform = NULL;
+    s_toolkit = NULL;
+    s_platform = NULL;
+
+    // Get all platforms
+    const PlatformProfile* platforms[16];
+    size_t platform_count = platform_get_all_registered(platforms, 16);
+
+    int valid_count = 0;
+    const char* found_toolkit = NULL;
+    const char* found_platform = NULL;
+
+    // For each platform, check if it supports this language
+    for (size_t p = 0; p < platform_count; p++) {
+        const PlatformProfile* plat = platforms[p];
+
+        // Check if platform supports this language
+        if (!platform_supports_language(plat->name, language)) {
+            continue;
+        }
+
+        // Check each toolkit supported by this platform
+        for (size_t t = 0; t < plat->toolkit_count; t++) {
+            const char* toolkit = plat->supported_toolkits[t];
+
+            // Check if language+toolkit combo is technically valid
+            if (combo_is_valid(language, toolkit)) {
+                found_toolkit = toolkit;
+                found_platform = plat->name;
+                valid_count++;
+
+                // Early exit if more than one found
+                if (valid_count > 1) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    // Return results only if exactly one valid combination
+    if (valid_count == 1) {
+        s_toolkit = found_toolkit;
+        s_platform = found_platform;
+        *out_toolkit = s_toolkit;
+        *out_platform = s_platform;
+        return true;
+    }
+
+    return false;
 }
 
 void combo_print_matrix(void) {
@@ -381,7 +490,7 @@ void combo_print_matrix(void) {
     printf("\n");
 
     // Print each language row
-    for (LanguageType lang = LANGUAGE_TCL; lang <= LANGUAGE_RUST; lang++) {
+    for (LanguageType lang = LANGUAGE_TCL; lang <= LANGUAGE_LUA; lang++) {
         printf("%-15s", language_type_to_string(lang));
         for (ToolkitType tk = TOOLKIT_TK; tk <= TOOLKIT_RAYLIB; tk++) {
             if (combo_is_valid_typed(lang, tk)) {
@@ -408,15 +517,7 @@ bool combo_resolve_for_cli(const char* target, ComboResolution* out_resolution, 
         return false;
     }
 
-    // Check for alias first
-    const char* expanded = combo_get_alias(target);
-    if (expanded) {
-        if (print_errors) {
-            fprintf(stderr, "Note: '%s' is an alias for '%s'\n", target, expanded);
-        }
-    }
-
-    // Resolve the combo
+    // Resolve the combo (no alias expansion)
     bool success = combo_resolve(target, out_resolution);
 
     if (!success && print_errors) {
@@ -438,7 +539,7 @@ void combo_print_valid_targets(bool include_aliases) {
     size_t count = combo_get_all(combos, 64);
 
     // Group by language
-    for (LanguageType lang = LANGUAGE_TCL; lang <= LANGUAGE_RUST; lang++) {
+    for (LanguageType lang = LANGUAGE_TCL; lang <= LANGUAGE_LUA; lang++) {
         const char* lang_name = language_type_to_string(lang);
         bool has_combos = false;
 
@@ -460,25 +561,11 @@ void combo_print_valid_targets(bool include_aliases) {
 
     printf("\n");
 
-    // Print aliases if requested
-    if (include_aliases && g_registry.alias_count > 0) {
-        printf("Aliases (backward compatibility):\n");
-        for (int i = 0; i < g_registry.alias_count; i++) {
-            printf("  %-20s → %s\n",
-                   g_registry.aliases[i].alias,
-                   g_registry.aliases[i].target);
-        }
-        printf("\n");
-    }
-
     printf("Usage:\n");
-    printf("  kryon run --target=<language>+<toolkit> file.kry\n");
-    printf("  kryon run --target=<alias> file.kry\n");
+    printf("  kryon run --target=<language>+<toolkit>@<platform> file.kry\n");
     printf("\n");
     printf("Examples:\n");
-    printf("  kryon run --target=limbo+draw main.kry\n");
-    printf("  kryon run --target=tcl+tk main.kry\n");
-    printf("  kryon run --target=limbo main.kry         # Alias for limbo+draw\n");
-    printf("  kryon run --target=tcltk main.kry         # Alias for tcl+tk\n");
+    printf("  kryon run --target=limbo+tk@taiji main.kry\n");
+    printf("  kryon run --target=tcl+tk@desktop main.kry\n");
     printf("\n");
 }

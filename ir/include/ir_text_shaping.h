@@ -2,13 +2,12 @@
  * @file ir_text_shaping.h
  * @brief Text shaping and complex script support using HarfBuzz
  *
- * WARNING: Text shaping is not available in this build.
- * HarfBuzz and FriBidi libraries are required for complex text support.
+ * This header provides function declarations for text shaping.
+ * Implementations are in ir_text_shaping.c:
+ * - For TaijiOS/Inferno: stub implementations that return NULL/false
+ * - For other platforms: full implementations using HarfBuzz/FreeType
  *
- * This header is provided for API compatibility only.
- * All functions return NULL/false indicating unavailability.
- *
- * To enable text shaping:
+ * To enable full text shaping on non-TaijiOS platforms:
  * 1. Install HarfBuzz: sudo apt-get install libharfbuzz-dev
  * 2. Install FriBidi: sudo apt-get install libfribidi-dev
  * 3. Rebuild with: make clean && make
@@ -16,8 +15,6 @@
 
 #ifndef IR_TEXT_SHAPING_H
 #define IR_TEXT_SHAPING_H
-
-#warning "Text shaping not available - HarfBuzz/FriBidi required. Install with: sudo apt-get install libharfbuzz-dev libfribidi-dev"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -115,78 +112,34 @@ typedef struct IRShapeOptions {
 } IRShapeOptions;
 
 // ============================================================================
-// Stub Implementations (when HarfBuzz/FriBidi not available)
+// Function Declarations
 // ============================================================================
+// All functions are implemented in ir_text_shaping.c
+// For TaijiOS/Inferno: stub implementations that return NULL/false
+// For other platforms: full implementations using HarfBuzz/FreeType
 
-// Stub implementations for BiDi functions (needed for linking)
-static inline IRBidiDirection ir_bidi_detect_direction(const char* text, uint32_t length) {
-    (void)text; (void)length;
-    return IR_BIDI_DIR_LTR;  // Default to LTR
-}
+// Bidirectional text functions
+bool ir_bidi_available(void);
+IRBidiDirection ir_bidi_detect_direction(const char* text, uint32_t length);
+IRBidiResult* ir_bidi_reorder(const uint32_t* text, uint32_t length, IRBidiDirection base_dir);
+uint32_t* ir_bidi_utf8_to_utf32(const char* utf8_text, uint32_t utf8_length, uint32_t* out_length);
+void ir_bidi_result_destroy(IRBidiResult* result);
 
-static inline IRBidiResult* ir_bidi_reorder(const uint32_t* text, uint32_t length, IRBidiDirection base_dir) {
-    (void)text; (void)length; (void)base_dir;
-    return NULL;
-}
+// Text shaping functions
+bool ir_text_shaping_init(void);
+void ir_text_shaping_shutdown(void);
+bool ir_text_shaping_available(void);
 
-static inline uint32_t* ir_bidi_utf8_to_utf32(const char* utf8_text, uint32_t utf8_length, uint32_t* out_length) {
-    (void)utf8_text; (void)utf8_length;
-    if (out_length) *out_length = 0;
-    return NULL;
-}
+// Font management
+IRFont* ir_font_load(const char* font_path, float size);
+void ir_font_destroy(IRFont* font);
+void ir_font_set_size(IRFont* font, float size);
 
-static inline void ir_bidi_result_destroy(IRBidiResult* result) {
-    (void)result;
-}
-
-static inline bool ir_bidi_available(void) {
-    return false;
-}
-
-// Stub implementations for text shaping functions
-static inline bool ir_text_shaping_init(void) {
-    return false;
-}
-
-static inline void ir_text_shaping_shutdown(void) {
-    // No-op
-}
-
-static inline bool ir_text_shaping_available(void) {
-    return false;
-}
-
-static inline IRFont* ir_font_load(const char* font_path, float size) {
-    (void)font_path; (void)size;
-    return NULL;
-}
-
-static inline void ir_font_destroy(IRFont* font) {
-    (void)font;
-}
-
-static inline void ir_font_set_size(IRFont* font, float size) {
-    (void)font; (void)size;
-}
-
-static inline IRShapedText* ir_shape_text(IRFont* font, const char* text, uint32_t text_length, const IRShapeOptions* options) {
-    (void)font; (void)text; (void)text_length; (void)options;
-    return NULL;
-}
-
-static inline void ir_shaped_text_destroy(IRShapedText* shaped_text) {
-    (void)shaped_text;
-}
-
-static inline float ir_shaped_text_get_width(const IRShapedText* shaped_text) {
-    (void)shaped_text;
-    return 0.0f;
-}
-
-static inline float ir_shaped_text_get_height(const IRShapedText* shaped_text) {
-    (void)shaped_text;
-    return 0.0f;
-}
+// Text shaping
+IRShapedText* ir_shape_text(IRFont* font, const char* text, uint32_t text_length, const IRShapeOptions* options);
+void ir_shaped_text_destroy(IRShapedText* shaped_text);
+float ir_shaped_text_get_width(const IRShapedText* shaped_text);
+float ir_shaped_text_get_height(const IRShapedText* shaped_text);
 
 #ifdef __cplusplus
 }

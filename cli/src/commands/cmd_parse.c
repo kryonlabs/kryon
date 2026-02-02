@@ -264,7 +264,7 @@ int cmd_parse(int argc, char** argv) {
     if (strcmp(first, "kry") == 0) {
         format = FORMAT_KRY;
         explicit_format = true;
-    } else if (strcmp(first, "tcl") == 0 || strcmp(first, "tcltk") == 0) {
+    } else if (strcmp(first, "tcl") == 0) {
         format = FORMAT_TCL;
         explicit_format = true;
     } else if (strcmp(first, "limbo") == 0) {

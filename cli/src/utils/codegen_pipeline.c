@@ -134,7 +134,6 @@ const char** codegen_list_targets(void) {
         "markdown", // Markdown documentation
         "kir",      // KIR (KIR intermediate format)
         "limbo",    // Limbo (Inferno/TaijiOS)
-        "tcltk",    // Tcl/Tk
         "web",      // Web/HTML
         NULL
     };

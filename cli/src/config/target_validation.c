@@ -5,8 +5,8 @@
  * Provides validation and alias expansion while maintaining backward compatibility.
  *
  * Architecture:
- * - Old targets (limbo, tcltk, etc.) continue to work via aliases
- * - New explicit combos (limbo+draw, tcl+tk) are validated
+ * - Targets use language+toolkit@platform format (all three required)
+ * - Platform validation ensures toolkit/language compatibility
  * - Mapping between combos and runtime handlers
  */
 
@@ -22,6 +22,7 @@
 #include "../../../codegens/combo_registry.h"
 #include "../../../codegens/languages/common/language_registry.h"
 #include "../../../codegens/toolkits/common/toolkit_registry.h"
+#include "../../../codegens/platforms/common/platform_registry.h"
 
 // Static initialization flag
 static bool g_validation_initialized = false;
@@ -42,9 +43,9 @@ void target_validation_initialize(void) {
 
 /**
  * Validate and normalize a target string
- * Handles aliases (limbo → limbo+draw) and validates explicit combos (limbo+draw)
+ * Requires language+toolkit@platform format (all three components required)
  *
- * @param target Input target string (e.g., "limbo", "limbo+draw")
+ * @param target Input target string (e.g., "limbo+draw@taijios")
  * @param normalized_output Output buffer for normalized target
  * @param output_size Size of output buffer
  * @return true if valid, false otherwise
@@ -61,11 +62,18 @@ bool target_validate_and_normalize(const char* target,
         target_validation_initialize();
     }
 
-    // Parse the target
+    // Parse the target (now requires language+toolkit@platform)
     CodegenTarget parsed;
     if (!codegen_parse_target(target, &parsed)) {
         // Invalid target
         fprintf(stderr, "Error: %s\n", parsed.error);
+
+        // If the error is about multiple combinations, we already showed them
+        // Otherwise show general help
+        if (!strstr(parsed.error, "has multiple valid combinations:")) {
+            fprintf(stderr, "\nValid targets use the format: language+toolkit@platform\n");
+            fprintf(stderr, "\nRun 'kryon targets' to list all valid combinations.\n");
+        }
         return false;
     }
 
@@ -79,57 +87,6 @@ bool target_validate_and_normalize(const char* target,
         fprintf(stderr, "      Consider using the explicit form in the future.\n\n");
     }
 
-    return true;
-}
-
-/**
- * Map a validated combo to a runtime handler
- * For example: "limbo+draw" → "limbo" (runtime handler)
- *
- * @param validated_target Validated combo (e.g., "limbo+draw")
- * @param runtime_handler Output buffer for runtime handler name
- * @param output_size Size of output buffer
- * @return true if mapping found, false otherwise
- */
-bool target_map_to_runtime_handler(const char* validated_target,
-                                   char* runtime_handler,
-                                   size_t output_size) {
-    if (!validated_target || !runtime_handler || output_size == 0) {
-        return false;
-    }
-
-    // Parse the validated target
-    CodegenTarget parsed;
-    if (!codegen_parse_target(validated_target, &parsed)) {
-        return false;
-    }
-
-    // Map language+toolkit to runtime handler
-    const char* handler = NULL;
-
-    if (strcmp(parsed.language, "limbo") == 0) {
-        handler = "limbo";  // Limbo VM handler
-    } else if (strcmp(parsed.language, "tcl") == 0) {
-        handler = "tcltk";  // Tcl/Tk wish handler
-    } else if (strcmp(parsed.language, "c") == 0) {
-        if (strcmp(parsed.toolkit, "sdl3") == 0) {
-            handler = "sdl3";
-        } else if (strcmp(parsed.toolkit, "raylib") == 0) {
-            handler = "raylib";
-        } else {
-            handler = "desktop";  // Default C desktop
-        }
-    } else if (strcmp(parsed.language, "kotlin") == 0) {
-        handler = "android";  // Android handler
-    } else if (strcmp(parsed.language, "javascript") == 0 ||
-               strcmp(parsed.language, "typescript") == 0) {
-        handler = "web";  // Web handler
-    } else {
-        return false;  // Unknown mapping
-    }
-
-    strncpy(runtime_handler, handler, output_size - 1);
-    runtime_handler[output_size - 1] = '\0';
     return true;
 }
 
@@ -154,44 +111,47 @@ void target_print_all_valid(void) {
     printf("                          Valid Kryon Targets\n");
     printf("╌──────────────────────────────────────────────────────────────────────────────╌\n\n");
 
-    printf("Language+Toolkit combinations (explicit syntax):\n\n");
+    printf("Language+Toolkit@Platform combinations:\n\n");
 
-    // Get all valid combos
-    Combo combos[64];
-    size_t count = combo_get_all(combos, 64);
+    // Get all platforms
+    const PlatformProfile* platforms[16];
+    size_t platform_count = platform_get_all_registered(platforms, 16);
 
-    // Group by language
-    for (LanguageType lang = LANGUAGE_TCL; lang <= LANGUAGE_RUST; lang++) {
-        const char* lang_name = language_type_to_string(lang);
-        bool has_combos = false;
+    // Group by platform, then language
+    for (size_t p = 0; p < platform_count; p++) {
+        const PlatformProfile* platform = platforms[p];
+        printf("%s:\n", platform->name);
 
-        // Check if language has any valid combos
-        for (size_t i = 0; i < count; i++) {
-            if (strcmp(combos[i].language, lang_name) == 0) {
-                if (!has_combos) {
-                    printf("  %-12s:", lang_name);
-                    has_combos = true;
+        // For each language supported by this platform
+        for (size_t l = 0; l < platform->language_count; l++) {
+            const char* lang = platform->supported_languages[l];
+            printf("  %-12s:", lang);
+
+            // List all toolkits for this language on this platform
+            for (size_t t = 0; t < platform->toolkit_count; t++) {
+                const char* toolkit = platform->supported_toolkits[t];
+                // Check if this language+toolkit combo is technically valid
+                if (combo_is_valid(lang, toolkit)) {
+                    printf(" %s", toolkit);
                 }
-                printf(" %s", combos[i].toolkit);
             }
-        }
-
-        if (has_combos) {
             printf("\n");
         }
+        printf("\n");
     }
 
-    printf("\n");
-    printf("Aliases (backward compatibility):\n");
-    printf("  tcltk        → tcl+tk\n");
-    printf("  limbo        → limbo+draw\n");
-    printf("  sdl3         → c+sdl3\n");
-    printf("  raylib       → c+raylib\n");
+    printf("Usage:\n");
+    printf("  kryon run --target=<language>+<toolkit>@<platform> file.kry\n");
     printf("\n");
 
-    printf("Usage:\n");
-    printf("  kryon run --target=<language>+<toolkit> file.kry\n");
-    printf("  kryon run --target=<alias> file.kry\n");
+    printf("Examples:\n");
+    printf("  kryon run --target=limbo+tk@taiji main.kry\n");
+    printf("  kryon run --target=c+sdl3@desktop main.kry\n");
+    printf("  kryon run --target=javascript+dom@web main.kry\n");
+    printf("\n");
+
+    printf("Platform aliases:\n");
+    printf("  taiji, inferno → taijios\n");
     printf("\n");
 }
 

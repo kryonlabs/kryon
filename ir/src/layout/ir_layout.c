@@ -15,6 +15,20 @@
 #endif
 
 // ============================================================================
+// BiDi Detection Stub (when HarfBuzz is not available)
+// ============================================================================
+
+#ifndef HAVE_HARFBUZZ
+// Stub implementation when HarfBuzz is not available
+// Always returns LTR (left-to-right) as a safe default
+IRBidiDirection ir_bidi_detect_direction(const char* text, uint32_t length) {
+    (void)text;  // Unused
+    (void)length;  // Unused
+    return IR_BIDI_DIR_LTR;  // Default to LTR
+}
+#endif
+
+// ============================================================================
 // Text Measurement Callback (Backend-Specific)
 // ============================================================================
 

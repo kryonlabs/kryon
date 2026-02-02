@@ -4,6 +4,8 @@
  * Generates idiomatic C code with Kryon DSL from KIR JSON files
  */
 
+#define _DEFAULT_SOURCE
+
 #include "ir_c_codegen.h"
 #include "ir_c_internal.h"
 #include "ir_c_output.h"
@@ -14,9 +16,9 @@
 #include "ir_c_main.h"
 #include "ir_c_modules.h"
 #include "../codegen_common.h"
-#include "../tkir/tkir.h"
-#include "../tkir/tkir_builder.h"
-#include "../tkir/tkir_emitter.h"
+#include "../wir/wir.h"
+#include "../wir/wir_builder.h"
+#include "../wir/wir_emitter.h"
 #include "../../ir/src/utils/ir_c_metadata.h"
 #include "../../third_party/cJSON/cJSON.h"
 #include <stdio.h>
@@ -1816,59 +1818,59 @@ bool ir_generate_c_code_multi(const char* kir_path, const char* output_dir) {
 }
 
 /* ============================================================================
- * TKIR-based Codegen (New Pipeline)
+ * WIR-based Codegen (New Pipeline)
  * ============================================================================ */
 
 /**
- * @brief Generate C source from KIR via TKIR
+ * @brief Generate C source from KIR via WIR
  *
  * This is the new recommended codegen path:
- * KIR → TKIR → C
+ * KIR → WIR → C
  *
  * @param kir_json KIR JSON string
  * @param options Codegen options (NULL for defaults)
  * @return Allocated C source string (caller must free), or NULL on error
  */
-char* ir_generate_c_code_from_json_via_tkir(const char* kir_json, CCodegenOptions* options) {
+char* ir_generate_c_code_from_json_via_wir(const char* kir_json, CCodegenOptions* options) {
     if (!kir_json) {
         fprintf(stderr, "NULL KIR JSON provided\n");
         return NULL;
     }
 
-    // Step 1: KIR → TKIR
-    TKIRRoot* tkir_root = tkir_build_from_kir(kir_json, false);
-    if (!tkir_root) {
-        fprintf(stderr, "Failed to build TKIR from KIR\n");
+    // Step 1: KIR → WIR
+    WIRRoot* wir_root = wir_build_from_kir(kir_json, false);
+    if (!wir_root) {
+        fprintf(stderr, "Failed to build WIR from KIR\n");
         return NULL;
     }
 
-    // Step 2: TKIR → JSON (for the emitter)
-    char* tkir_json = tkir_root_to_json(tkir_root);
-    if (!tkir_json) {
-        tkir_root_free(tkir_root);
-        fprintf(stderr, "Failed to serialize TKIR to JSON\n");
+    // Step 2: WIR → JSON (for the emitter)
+    char* wir_json = wir_root_to_json(wir_root);
+    if (!wir_json) {
+        wir_root_free(wir_root);
+        fprintf(stderr, "Failed to serialize WIR to JSON\n");
         return NULL;
     }
 
-    // Step 3: TKIR → C
-    char* output = c_codegen_from_tkir(tkir_json, options);
+    // Step 3: WIR → C
+    char* output = c_codegen_from_wir(wir_json, options);
 
     // Cleanup
-    free(tkir_json);
-    tkir_root_free(tkir_root);
+    free(wir_json);
+    wir_root_free(wir_root);
 
     return output;
 }
 
 /**
- * @brief Generate C source from KIR file via TKIR
+ * @brief Generate C source from KIR file via WIR
  *
  * @param kir_path Path to input .kir file
  * @param output_path Path to output .c file
  * @param options Codegen options (NULL for defaults)
  * @return true on success, false on error
  */
-bool ir_generate_c_code_via_tkir(const char* kir_path, const char* output_path,
+bool ir_generate_c_code_via_wir(const char* kir_path, const char* output_path,
                                    CCodegenOptions* options) {
     if (!kir_path || !output_path) {
         fprintf(stderr, "NULL file path provided\n");
@@ -1883,8 +1885,8 @@ bool ir_generate_c_code_via_tkir(const char* kir_path, const char* output_path,
         return false;
     }
 
-    // Generate via TKIR
-    char* output = ir_generate_c_code_from_json_via_tkir(kir_json, options);
+    // Generate via WIR
+    char* output = ir_generate_c_code_from_json_via_wir(kir_json, options);
     free(kir_json);
 
     if (!output) {

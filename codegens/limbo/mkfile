@@ -7,20 +7,20 @@ LIB=libkryon_codegen_limbo.a
 
 OFILES=\
 	limbo_codegen.$O\
-	limbo_from_tkir.$O\
+	limbo_from_wir.$O\
 
 HFILES=\
 	limbo_codegen.h\
 	../codegen_common.h\
-	../tkir/tkir.h\
-	../tkir/tkir_builder.h\
-	../tkir/tkir_emitter.h\
+	../wir/wir.h\
+	../wir/wir_builder.h\
+	../wir/wir_emitter.h\
 
 CFLAGS=$CFLAGS\
 	-I../../include\
 	-I../../ir/include\
 	-I../../third_party/cJSON\
 	-I..\
-	-I../tkir\
+	-I../wir\
 
 <$ROOT/mkfiles/mksyslib-$SHELLTYPE

@@ -24,7 +24,8 @@
 #include "../../../codegens/c/ir_c_codegen.h"
 #include "../../../codegens/markdown/markdown_codegen.h"
 #include "../../../codegens/limbo/limbo_codegen.h"
-#include "../../../codegens/tcltk/tcltk_codegen.h"
+#include "../../../codegens/tcl/tcl_codegen.h"
+#include "../../../codegens/codegen_interface.h"
 #include "../../../third_party/cJSON/cJSON.h"
 
 #include <stdio.h>
@@ -999,8 +1000,10 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = markdown_codegen_generate_multi(kir_file, output_path);
     } else if (strcmp(target, "limbo") == 0) {
         success = limbo_codegen_generate_multi(kir_file, output_path);
-    } else if (strcmp(target, "tcltk") == 0) {
-        success = tcltk_codegen_generate_multi(kir_file, output_path);
+    } else if (strcmp(target, "tcl") == 0) {
+        // Tcl codegen now uses the adapter system
+        extern const CodegenInterface Tcl_codegen_interface;
+        success = Tcl_codegen_interface.generate(kir_file, output_path);
     } else if (strcmp(target, "kir") == 0) {
         // KIR target: just copy the KIR file to output (for single-file case)
         // Multi-file case is handled in codegen_pipeline
@@ -1037,7 +1040,7 @@ int generate_from_kir(const char* kir_file, const char* target,
         success = true;
     } else {
         fprintf(stderr, "Error: Unsupported codegen target: %s\n", target);
-        fprintf(stderr, "Supported targets: kry, c, markdown, kir, limbo, tcltk\n");
+        fprintf(stderr, "Supported targets: kry, c, markdown, kir, limbo, tcl\n");
         return 1;
     }
 

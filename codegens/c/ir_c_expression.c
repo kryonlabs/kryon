@@ -4,6 +4,8 @@
  * Converts KIR expressions and statements to C code.
  */
 
+#define _DEFAULT_SOURCE
+
 #include "ir_c_expression.h"
 #include "ir_c_internal.h"
 #include <stdlib.h>
