@@ -446,8 +446,14 @@ char* sb_detach(StringBuilder* sb) {
 
 void sb_free(StringBuilder* sb) {
     if (!sb) return;
+    fprintf(stderr, "[DEBUG] sb_free: sb=%p, sb->buffer=%p\n", (void*)sb, (void*)sb->buffer);
+    fflush(stderr);
     free(sb->buffer);
+    fprintf(stderr, "[DEBUG] sb_free: buffer freed\n");
+    fflush(stderr);
     free(sb);
+    fprintf(stderr, "[DEBUG] sb_free: sb freed\n");
+    fflush(stderr);
 }
 
 // ============================================================================

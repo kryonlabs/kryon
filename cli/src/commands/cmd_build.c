@@ -146,6 +146,7 @@ int cmd_build(int argc, char** argv) {
             free(config_path);
             return 1;
         }
+        fprintf(stderr, "[DEBUG] Config creation complete, continuing...\n");
         free(config_path);
     } else {
         // Load config WITHOUT loading plugins (plugins may not be compiled yet)
@@ -158,8 +159,10 @@ int cmd_build(int argc, char** argv) {
         }
     }
 
+    fprintf(stderr, "[DEBUG] About to check plugins\n");
     // Auto-build plugins BEFORE loading them
     if (config->plugins_count > 0) {
+        fprintf(stderr, "[DEBUG] Found %d plugins\n", config->plugins_count);
         char* project_dir = dir_get_current();
         if (project_dir) {
             int plugin_count = 0;
@@ -177,22 +180,29 @@ int cmd_build(int argc, char** argv) {
             free(project_dir);
         }
     }
+    fprintf(stderr, "[DEBUG] Plugins check complete\n");
 
+    fprintf(stderr, "[DEBUG] About to load plugins\n");
     // Now load the compiled plugins
     if (!config_load_plugins(config)) {
         fprintf(stderr, "[kryon] Failed to load plugins - aborting\n");
         config_free(config);
         return 1;
     }
+    fprintf(stderr, "[DEBUG] Plugins loaded\n");
 
+    fprintf(stderr, "[DEBUG] About to initialize validation system\n");
     // Initialize validation system before validating config
     target_validation_initialize();
+    fprintf(stderr, "[DEBUG] Validation system initialized\n");
 
+    fprintf(stderr, "[DEBUG] About to validate config\n");
     // Validate config
     if (!config_validate(config)) {
         config_free(config);
         return 1;
     }
+    fprintf(stderr, "[DEBUG] Config validated\n");
 
     // Override output_dir from CLI if specified
     if (cli_output_dir) {
@@ -207,23 +217,34 @@ int cmd_build(int argc, char** argv) {
 
     // Determine what to build based on targets
     // CLI --target= overrides config file
+    fprintf(stderr, "[DEBUG] About to process CLI target\n");
     const char* primary_target;
     char primary_target_storage[64];  // Storage for mapped handler name
     if (cli_target) {
+        fprintf(stderr, "[DEBUG] Processing CLI target: %s\n", cli_target);
         // Validate CLI target - must be language+toolkit format or a registered handler
         bool is_valid = false;
         const char* handler_to_use = NULL;
 
         // Check if it contains '+' (language+toolkit format)
+        fprintf(stderr, "[DEBUG] Checking for '+' in target\n");
         if (strchr(cli_target, '+')) {
+            fprintf(stderr, "[DEBUG] Target contains '+', parsing combo\n");
             // Parse and validate the combo
             CodegenTarget parsed;
+            fprintf(stderr, "[DEBUG] Calling codegen_parse_target\n");
             if (codegen_parse_target(cli_target, &parsed)) {
+                fprintf(stderr, "[DEBUG] codegen_parse_target succeeded, mapping to handler\n");
                 // Map to handler
                 if (target_map_to_runtime_handler(cli_target, primary_target_storage, sizeof(primary_target_storage))) {
                     handler_to_use = primary_target_storage;
                     is_valid = target_handler_find(handler_to_use) != NULL;
+                    fprintf(stderr, "[DEBUG] Mapped to handler: %s, valid: %d\n", handler_to_use, is_valid);
+                } else {
+                    fprintf(stderr, "[DEBUG] target_map_to_runtime_handler failed\n");
                 }
+            } else {
+                fprintf(stderr, "[DEBUG] codegen_parse_target failed\n");
             }
         } else {
             // Check if it's a direct handler name (for backward compatibility)

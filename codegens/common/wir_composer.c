@@ -220,6 +220,129 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
         return NULL;
     }
 
+    // Build widget lookup map and hierarchical paths
+    typedef struct {
+        const char* id;
+        cJSON* widget;
+    } WidgetMapEntry;
+
+    typedef struct {
+        const char* widget_id;
+        char* full_path;
+    } WidgetPath;
+
+    WidgetMapEntry* widget_map = NULL;
+    WidgetPath* paths = NULL;
+    int widget_map_count = 0;
+    int path_count = 0;
+
+    cJSON* widgets_array = root->widgets;
+    if (widgets_array && cJSON_IsArray(widgets_array)) {
+        // Using simple widget IDs instead of hierarchical paths for simplicity
+        widget_map = NULL;
+        paths = NULL;
+        widget_map_count = 0;
+        path_count = 0;
+
+        /*
+        int widget_map_size = cJSON_GetArraySize(widgets_array);
+        fprintf(stderr, "[DEBUG] wir_composer_emit: Building paths for %d widgets\n", widget_map_size);
+        widget_map = calloc(widget_map_size, sizeof(WidgetMapEntry));
+        paths = calloc(widget_map_size, sizeof(WidgetPath));
+
+        if (!widget_map || !paths) {
+            fprintf(stderr, "Error: Failed to allocate memory for widget map\n");
+            free(widget_map);
+            free(paths);
+            widget_map = NULL;
+            paths = NULL;
+            // Continue without hierarchical path support
+        }
+
+        // Step 1: Build widget lookup map (simple array, not cJSON object to avoid ownership issues)
+        if (widget_map && paths) {
+        cJSON* w = NULL;
+        cJSON_ArrayForEach(w, widgets_array) {
+            cJSON* id = cJSON_GetObjectItem(w, "id");
+            if (id && id->valuestring) {
+                widget_map[widget_map_count].id = id->valuestring;
+                widget_map[widget_map_count].widget = w;
+                widget_map_count++;
+            }
+        }
+
+        // Step 2: Build full hierarchical paths for all widgets
+        int idx = 0;
+        cJSON_ArrayForEach(w, widgets_array) {
+            cJSON* id = cJSON_GetObjectItem(w, "id");
+            if (!id || !id->valuestring) continue;
+
+            // Build path by walking up parent chain (WITHOUT leading dot - Tk emitter adds it)
+            char path[512];
+            snprintf(path, sizeof(path), "%s", id->valuestring);
+
+            // Walk up the parent hierarchy with cycle detection
+            cJSON* current = w;
+            int max_depth = 100;  // Prevent infinite loops
+            int depth = 0;
+            while (current && depth < max_depth) {
+                cJSON* parent_id_json = cJSON_GetObjectItem(current, "parent_id");
+                if (!parent_id_json || !parent_id_json->valuestring) break;
+
+                const char* parent_id = parent_id_json->valuestring;
+
+                // Check for circular reference
+                if (strcmp(parent_id, id->valuestring) == 0) {
+                    fprintf(stderr, "[ERROR] Circular reference detected in widget %s\n", id->valuestring);
+                    break;
+                }
+
+                // Prepend parent to path: "parent" + "child" = "parent.child"
+                char new_path[512];
+                int current_len = strlen(path);
+                int parent_len = strlen(parent_id);
+
+                // Check if we have space for "parent.child"
+                if (parent_len + 1 + current_len + 1 >= (int)sizeof(new_path)) {
+                    fprintf(stderr, "[ERROR] Widget path too long for widget %s (parent=%s, current=%s)\n",
+                            id->valuestring, parent_id, path);
+                    break;
+                }
+                snprintf(new_path, sizeof(new_path), "%s.%s", parent_id, path);
+
+                // Copy back to path buffer
+                snprintf(path, sizeof(path), "%s", new_path);
+
+                // Find parent widget in map (linear search)
+                current = NULL;
+                for (int j = 0; j < widget_map_count; j++) {
+                    if (strcmp(widget_map[j].id, parent_id) == 0) {
+                        current = widget_map[j].widget;
+                        break;
+                    }
+                }
+                depth++;
+            }
+            if (depth >= max_depth) {
+                fprintf(stderr, "[ERROR] Parent hierarchy too deep for widget %s (depth >= %d)\n",
+                        id->valuestring, max_depth);
+            }
+
+            paths[idx].widget_id = id->valuestring;
+            paths[idx].full_path = strdup(path);
+            if (!paths[idx].full_path) {
+                fprintf(stderr, "[ERROR] Failed to allocate memory for path: %s\n", path);
+                continue;  // Skip this widget
+            }
+            fprintf(stderr, "[DEBUG] Built path: %s -> %s\n", id->valuestring, path);
+            idx++;
+        }
+            path_count = idx;
+        fprintf(stderr, "[DEBUG] Built %d hierarchical paths\n", path_count);
+        }  // End of if (widget_map && paths)
+        */
+    }
+
     // Emit header comment if language emitter supports it
     if (emitter->language->emit_comment) {
         sb_append_fmt(sb, "# Generated by Kryon WIR Composer\n");
@@ -229,8 +352,27 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
                      root->title, root->width, root->height);
     }
 
+    // Emit window setup for Tcl/Tk
+    if (strcmp(emitter->toolkit->name, "tk") == 0) {
+        // Set window title
+        if (root->title) {
+            sb_append_fmt(sb, "wm title . {%s}\n", root->title);
+        }
+
+        // Set window geometry
+        if (root->width > 0 && root->height > 0) {
+            sb_append_fmt(sb, "wm geometry . %dx%d\n", root->width, root->height);
+        }
+
+        // Set window background color
+        if (root->background) {
+            sb_append_fmt(sb, ". configure -background %s\n", root->background);
+        }
+
+        sb_append_fmt(sb, "\n");
+    }
+
     // Emit all widgets
-    cJSON* widgets_array = root->widgets;
     if (widgets_array && cJSON_IsArray(widgets_array)) {
         cJSON* widget_json = NULL;
         cJSON_ArrayForEach(widget_json, widgets_array) {
@@ -239,7 +381,10 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
             widget.json = widget_json;
 
             cJSON* id = cJSON_GetObjectItem(widget_json, "id");
-            widget.id = id ? id->valuestring : NULL;
+            const char* simple_id = id ? id->valuestring : NULL;
+
+            // Find and use the full hierarchical path
+            widget.id = simple_id;  // Default to simple ID
 
             cJSON* tk_type = cJSON_GetObjectItem(widget_json, "tk_type");
             widget.widget_type = tk_type ? tk_type->valuestring : NULL;
@@ -248,20 +393,26 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
             widget.kir_type = kir_type ? kir_type->valuestring : NULL;
 
             // Emit widget creation
-            if (emitter->toolkit->emit_widget_creation) {
-                if (!emitter->toolkit->emit_widget_creation(sb, &widget)) {
-                    fprintf(stderr, "Warning: Failed to emit widget '%s'\n", widget.id);
-                }
+            if (!emitter->toolkit->emit_widget_creation) {
+                fprintf(stderr, "Warning: emit_widget_creation is NULL\n");
+                continue;
+            }
+
+            if (!emitter->toolkit->emit_widget_creation(sb, &widget)) {
+                fprintf(stderr, "Warning: Failed to emit widget '%s'\n", widget.id ? widget.id : "NULL");
             }
 
             // Emit properties
             cJSON* props = cJSON_GetObjectItem(widget_json, "properties");
             if (props && emitter->toolkit->emit_property_assignment) {
+                // Iterate over object items (properties is an object, not array)
                 cJSON* prop = NULL;
-                cJSON_ArrayForEach(prop, props) {
-                    if (prop->string && prop->child) {
+                for (prop = props->child; prop != NULL; prop = prop->next) {
+                    if (prop->string) {
+                        // Pass the property value (prop itself) to the emitter
+                        // The emitter will check prop->type and extract the appropriate value
                         emitter->toolkit->emit_property_assignment(sb, widget.id,
-                                                                    prop->string, prop->child);
+                                                                    prop->string, prop);
                     }
                 }
             }
@@ -273,6 +424,45 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
 
             sb_append_fmt(sb, "\n");
         }
+    }
+
+    // Pack root widget for Tcl/Tk
+    if (strcmp(emitter->toolkit->name, "tk") == 0) {
+        // Find root widget (widget with no parent_id)
+        const char* root_widget_id = NULL;
+        if (widgets_array && cJSON_IsArray(widgets_array)) {
+            cJSON* widget_json = NULL;
+            cJSON_ArrayForEach(widget_json, widgets_array) {
+                cJSON* parent_id = cJSON_GetObjectItem(widget_json, "parent_id");
+                if (!parent_id || !parent_id->valuestring) {
+                    // This is the root widget
+                    cJSON* id = cJSON_GetObjectItem(widget_json, "id");
+                    if (id && id->valuestring) {
+                        root_widget_id = id->valuestring;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (root_widget_id) {
+            sb_append_fmt(sb, "pack .%s -fill both -expand true\n", root_widget_id);
+            sb_append_fmt(sb, "\n");
+        }
+    }
+
+    // Free paths and widget map
+    if (paths) {
+        for (int i = 0; i < path_count; i++) {
+            if (paths[i].full_path) {
+                free(paths[i].full_path);
+            }
+        }
+        free(paths);
+    }
+
+    if (widget_map) {
+        free(widget_map);
     }
 
     // Emit handlers

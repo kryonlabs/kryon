@@ -17,6 +17,7 @@
 #include "build.h"
 #include "../../../codegens/limbo/limbo_codegen.h"
 #include "../../../codegens/c/ir_c_codegen.h"
+#include "../../../codegens/codegen_interface.h"
 #if !defined(__TAIJIOS__) && !defined(__INFERNO__)
 #include "../../../codegens/android/ir_android_codegen.h"
 #endif
@@ -571,6 +572,86 @@ static int raylib_target_run(const char* kir_file, const KryonConfig* config,
 }
 
 /* ============================================================================
+ * Tcl/Tk Target Handler
+ * ============================================================================ */
+
+/**
+ * Tcl/Tk target build handler
+ * Generates Tcl/Tk code from KIR using the WIR composer
+ */
+static int tk_target_build(const char* kir_file, const char* output_dir,
+                           const char* project_name, const KryonConfig* config) {
+    (void)config;  // Not used in tk build
+
+    char output_path[1024];
+    snprintf(output_path, sizeof(output_path), "%s/%s.tcl", output_dir, project_name);
+
+    fprintf(stderr, "Generating Tcl/Tk code: %s (from %s)\n", output_path, kir_file);
+
+    // Use the generate_from_kir function which handles all codegens
+    fprintf(stderr, "Calling generate_from_kir('%s', 'tcl', '%s')\n", kir_file, output_path);
+    int result = generate_from_kir(kir_file, "tcl", output_path);
+    fprintf(stderr, "generate_from_kir returned: %d\n", result);
+
+    if (result != 0) {
+        fprintf(stderr, "Error: Tcl/Tk code generation failed\n");
+        return 1;
+    }
+
+    printf("✓ Generated Tcl/Tk code: %s\n", output_path);
+    return 0;
+}
+
+/**
+ * Tcl/Tk target run handler
+ * Builds if needed, then executes with wish
+ */
+static int tk_target_run(const char* kir_file, const KryonConfig* config,
+                         const ScreenshotRunOptions* screenshot_opts) {
+    (void)screenshot_opts;  // Screenshot not supported for Tcl/Tk
+    const char* output_dir = ".kryon_cache";
+    const char* project_name = "app";
+
+    // Extract project name from kir_file path
+    const char* slash = strrchr(kir_file, '/');
+    const char* basename = slash ? slash + 1 : kir_file;
+    char project_name_buf[256];
+    const char* dot = strrchr(basename, '.');
+    if (dot && (strcmp(dot, ".kir") == 0 || strcmp(dot, ".kry") == 0)) {
+        size_t len = dot - basename;
+        if (len < sizeof(project_name_buf) - 1) {
+            memcpy(project_name_buf, basename, len);
+            project_name_buf[len] = '\0';
+            project_name = project_name_buf;
+        }
+    }
+
+    // Build first
+    if (tk_target_build(kir_file, output_dir, project_name, config) != 0) {
+        return 1;
+    }
+
+    // Execute with wish
+    char tcl_file[1024];
+    snprintf(tcl_file, sizeof(tcl_file), "%s/%s.tcl", output_dir, project_name);
+
+    printf("Running with wish: %s\n", tcl_file);
+
+    // Try to run with wish (may need nix-shell wrapper)
+    char cmd[2048];
+    snprintf(cmd, sizeof(cmd), "wish \"%s\"", tcl_file);
+
+    int result = system(cmd);
+
+    if (result != 0) {
+        fprintf(stderr, "Warning: wish exited with code %d\n", result);
+        fprintf(stderr, "Note: You may need to run this inside nix-shell for wish to be available\n");
+    }
+
+    return result;
+}
+
+/* ============================================================================
  * Built-in Handler Definitions
  * ============================================================================ */
 
@@ -956,6 +1037,7 @@ static const ComboHandlerMapping g_combo_handlers[] = {
     {"kotlin", "androidviews", "android"},
     {"javascript", "dom", "web"},
     {"typescript", "dom", "web"},
+    {"tcl", "tk", "tk"},
     {NULL, NULL, NULL}
 };
 
@@ -1073,6 +1155,15 @@ void target_handler_initialize(void) {
         .run_handler = raylib_target_run,
     };
     target_handler_register(&g_raylib_handler);
+
+    // Register Tcl/Tk handler (generates .tcl from KIR, then runs with wish)
+    static TargetHandler g_tk_handler = {
+        .name = "tk",
+        .capabilities = TARGET_CAN_BUILD | TARGET_CAN_RUN,
+        .build_handler = tk_target_build,
+        .run_handler = tk_target_run,
+    };
+    target_handler_register(&g_tk_handler);
 
     // tcltk handler removed - replaced by separate tcl and tk codegens
 

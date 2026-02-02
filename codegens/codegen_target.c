@@ -120,19 +120,7 @@ bool codegen_parse_target(const char* target_string, CodegenTarget* out_target) 
     // Fill in the target info (no alias checking - aliases removed)
     out_target->language = resolution.language_profile->name;
     out_target->toolkit = resolution.toolkit_profile->name;
-
-    // Extract platform from target string
-    char* copy = strdup(target_string);
-    if (!copy) {
-        strcpy(out_target->error, "Memory allocation failed");
-        return false;
-    }
-
-    // Find platform part after @
-    char* at = strchr(copy, '@');
-    if (at) {
-        out_target->platform = at + 1;
-    }
+    out_target->platform = resolution.platform;
 
     // Format resolved target as language+toolkit@platform
     static char resolved_buffer[256];
@@ -143,7 +131,6 @@ bool codegen_parse_target(const char* target_string, CodegenTarget* out_target) 
 
     out_target->valid = true;
 
-    free(copy);
     return true;
 }
 

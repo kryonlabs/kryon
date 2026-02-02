@@ -248,6 +248,11 @@ void wir_composer_free(WIRComposedEmitter* emitter);
 
 /**
  * Generate code from WIR using a composed emitter.
+ *
+ * NOTE: Widget IDs use simple names (e.g., "widget-0", "widget-1") rather
+ * than hierarchical paths (e.g., "parent.child.grandchild"). This is
+ * intentional for simplicity and performance.
+ *
  * @param emitter Composed emitter
  * @param root WIR root
  * @return Generated code string (caller must free), or NULL on error

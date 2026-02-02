@@ -80,9 +80,16 @@ WIRRoot* wir_build_from_kir(const char* kir_json, bool verbose);
 /**
  * Build WIR from parsed KIR cJSON.
  *
- * @param kir_root Parsed KIR JSON root
+ * OWNERSHIP TRANSFER: This function takes ownership of the kir_root parameter.
+ * The caller MUST NOT free kir_root after calling this function.
+ * The WIRRoot will take responsibility for freeing it when wir_root_free is called.
+ *
+ * If you need to retain ownership of kir_root, use wir_root_from_cJSON instead
+ * and manage the JSON lifetime yourself.
+ *
+ * @param kir_root KIR JSON root object (ownership is transferred)
  * @param verbose Enable verbose output for debugging
- * @return Newly allocated WIRRoot, or NULL on error
+ * @return WIRRoot (caller must free with wir_root_free), or NULL on error
  */
 WIRRoot* wir_build_from_cJSON(cJSON* kir_root, bool verbose);
 

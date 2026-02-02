@@ -232,8 +232,6 @@ bool combo_resolve(const char* target, ComboResolution* out_resolution) {
         *at = '\0';
         platform = at + 1;
     } else {
-        // No platform specified - use default platform
-        // For now, we'll determine it later based on language+toolkit
         platform = NULL;
     }
 
@@ -253,7 +251,58 @@ bool combo_resolve(const char* target, ComboResolution* out_resolution) {
     // Trim whitespace
     while (*language == ' ') language++;
     while (*toolkit == ' ') toolkit++;
-    while (*platform == ' ') platform++;
+    if (platform) {
+        while (*platform == ' ') platform++;
+    }
+
+    // If no platform specified, try to auto-resolve
+    if (!platform) {
+        platform = combo_resolve_platform_for_combo(language, toolkit);
+
+        if (!platform) {
+            // Could not auto-resolve - provide helpful error
+            size_t valid_platform_count = 0;
+            const char* valid_platforms[16];
+
+            // Collect all valid platforms for this combo
+            const PlatformProfile* platforms[16];
+            size_t platform_count = platform_get_all_registered(platforms, 16);
+
+            for (size_t i = 0; i < platform_count; i++) {
+                if (platform_supports_language(platforms[i]->name, language) &&
+                    platform_supports_toolkit(platforms[i]->name, toolkit)) {
+                    valid_platforms[valid_platform_count++] = platforms[i]->name;
+                }
+            }
+
+            if (valid_platform_count == 0) {
+                snprintf(out_resolution->error, sizeof(out_resolution->error),
+                         "No platform supports '%s+%s'. "
+                         "This combination is not available on any platform.",
+                         language, toolkit);
+                free(copy);
+                return false;
+            } else {
+                // Build error message listing valid platforms
+                char platform_list[256] = "";
+                for (size_t i = 0; i < valid_platform_count && i < 3; i++) {
+                    if (i > 0) strcat(platform_list, ", ");
+                    strcat(platform_list, valid_platforms[i]);
+                }
+                if (valid_platform_count > 3) {
+                    strcat(platform_list, ", ...");
+                }
+
+                snprintf(out_resolution->error, sizeof(out_resolution->error),
+                         "Multiple platforms support '%s+%s' (%s). "
+                         "Please specify explicitly using: %s+%s@<platform>\n"
+                         "Valid platforms: %s",
+                         language, toolkit, platform_list, language, toolkit, platform_list);
+                free(copy);
+                return false;
+            }
+        }
+    }
 
     // Resolve profiles
     out_resolution->language_profile = language_get_profile(language);
@@ -300,6 +349,7 @@ bool combo_resolve(const char* target, ComboResolution* out_resolution) {
     out_resolution->combo.language = out_resolution->language_profile->name;
     out_resolution->combo.toolkit = out_resolution->toolkit_profile->name;
     out_resolution->combo.valid = true;
+    out_resolution->platform = platform;  // Store the resolved platform
     out_resolution->resolved = true;
 
     free(copy);
@@ -468,6 +518,34 @@ bool combo_auto_resolve_language(const char* language, const char** out_toolkit,
     }
 
     return false;
+}
+
+const char* combo_resolve_platform_for_combo(const char* language, const char* toolkit) {
+    if (!language || !toolkit) {
+        return NULL;
+    }
+
+    // Get all platforms
+    const PlatformProfile* platforms[16];
+    size_t platform_count = platform_get_all_registered(platforms, 16);
+
+    const char* matching_platform = NULL;
+    int match_count = 0;
+
+    // For each platform, check if it supports both language and toolkit
+    for (size_t i = 0; i < platform_count; i++) {
+        const PlatformProfile* platform = platforms[i];
+
+        // Check if platform supports both language and toolkit
+        if (platform_supports_language(platform->name, language) &&
+            platform_supports_toolkit(platform->name, toolkit)) {
+            matching_platform = platform->name;
+            match_count++;
+        }
+    }
+
+    // Return platform only if exactly one match
+    return (match_count == 1) ? matching_platform : NULL;
 }
 
 void combo_print_matrix(void) {

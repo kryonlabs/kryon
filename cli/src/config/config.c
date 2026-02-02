@@ -1598,6 +1598,7 @@ bool config_validate(KryonConfig* config) {
     if (config->build_targets && config->build_targets_count > 0) {
         for (int i = 0; i < config->build_targets_count; i++) {
             const char* target = config->build_targets[i];
+            fprintf(stderr, "[DEBUG] Validating target %d: %s\n", i, target);
 
             // Require '+' separator (language+toolkit format)
             if (!strchr(target, '+')) {
@@ -1608,14 +1609,23 @@ bool config_validate(KryonConfig* config) {
                 continue;
             }
 
+            fprintf(stderr, "[DEBUG] About to parse target: %s\n", target);
             // Parse the target
+            fprintf(stderr, "[DEBUG] CodegenTarget size: %lu bytes\n", sizeof(CodegenTarget));
             CodegenTarget parsed;
+            memset(&parsed, 0xAA, sizeof(CodegenTarget));  // Fill with garbage to detect issues
+
+            fprintf(stderr, "[DEBUG] Calling codegen_parse_target at %p\n", (void*)codegen_parse_target);
+            fprintf(stderr, "[DEBUG] Target string address: %p\n", (void*)target);
+            fprintf(stderr, "[DEBUG] Parsed struct address: %p\n", (void*)&parsed);
+
             if (!codegen_parse_target(target, &parsed)) {
                 fprintf(stderr, "Error: Invalid target '%s'\n", target);
                 fprintf(stderr, "       %s\n", parsed.error);
                 has_errors = true;
                 continue;
             }
+            fprintf(stderr, "[DEBUG] Target parsed: language=%s, toolkit=%s\n", parsed.language, parsed.toolkit);
 
             // Map to handler
             char runtime_handler[64];

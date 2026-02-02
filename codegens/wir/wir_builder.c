@@ -915,6 +915,11 @@ cJSON* wir_widget_to_json(WIRWidget* widget) {
         cJSON_AddStringToObject(json, "kir_type", widget->kir_type);
     }
 
+    // Include parent_id if present
+    if (widget->parent_id) {
+        cJSON_AddStringToObject(json, "parent_id", widget->parent_id);
+    }
+
     // Properties
     cJSON* props = cJSON_CreateObject();
 

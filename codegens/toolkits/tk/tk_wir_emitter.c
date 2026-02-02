@@ -98,15 +98,31 @@ const char* tk_map_event_name(const char* event) {
  */
 static bool tk_emit_widget_creation(StringBuilder* sb, WIRWidget* widget) {
     if (!sb || !widget || !widget->id) {
+        fprintf(stderr, "[ERROR] tk_emit_widget_creation: Invalid parameters (sb=%p, widget=%p, widget->id=%p)\n",
+                sb, widget, widget ? widget->id : NULL);
         return false;
     }
 
     // Map widget type to Tk type
     const char* tk_type = tk_map_widget_type(widget->kir_type);
+    if (!tk_type) {
+        fprintf(stderr, "[ERROR] tk_map_widget_type returned NULL for kir_type=%s\n",
+                widget->kir_type ? widget->kir_type : "NULL");
+        return false;
+    }
+
+    fprintf(stderr, "[DEBUG] tk_emit_widget_creation: tk_type=%s, widget_id=%s\n", tk_type, widget->id);
+    fflush(stderr);
 
     // Generate widget creation command
+    fprintf(stderr, "[DEBUG] About to call sb_append_fmt for widget creation\n");
+    fflush(stderr);
     sb_append_fmt(sb, "%s .%s\n", tk_type, widget->id);
+    fprintf(stderr, "[DEBUG] sb_append_fmt completed for widget creation\n");
+    fflush(stderr);
 
+    fprintf(stderr, "[DEBUG] tk_emit_widget_creation: completed, returning true\n");
+    fflush(stderr);
     return true;
 }
 
@@ -121,31 +137,36 @@ static bool tk_emit_property_assignment(StringBuilder* sb, const char* widget_id
 
     // Handle different value types
     if (cJSON_IsString(value)) {
+        const char* val_str = value->valuestring;
+        if (!val_str) {
+            fprintf(stderr, "[ERROR] Property '%s' has NULL valuestring\n", property_name);
+            return false;
+        }
         if (strcmp(property_name, "text") == 0) {
-            char* quoted = tcl_quote_string(value->valuestring);
-            sb_append_fmt(sb, ".%s configure -text {%s}\n", widget_id, value->valuestring);
+            char* quoted = tcl_quote_string(val_str);
+            sb_append_fmt(sb, ".%s configure -text {%s}\n", widget_id, val_str);
             if (quoted) free(quoted);
         } else if (strcmp(property_name, "background") == 0) {
-            char* norm_color = color_normalize_for_tcl(value->valuestring);
+            char* norm_color = color_normalize_for_tcl(val_str);
             if (norm_color) {
                 sb_append_fmt(sb, ".%s configure -background %s\n", widget_id, norm_color);
                 free(norm_color);
             }
         } else if (strcmp(property_name, "foreground") == 0) {
-            char* norm_color = color_normalize_for_tcl(value->valuestring);
+            char* norm_color = color_normalize_for_tcl(val_str);
             if (norm_color) {
                 sb_append_fmt(sb, ".%s configure -foreground %s\n", widget_id, norm_color);
                 free(norm_color);
             }
         } else if (strcmp(property_name, "placeholder") == 0) {
             // Entry widget placeholder
-            char* quoted = tcl_quote_string(value->valuestring);
-            sb_append_fmt(sb, ".%s configure -placeholder {%s}\n", widget_id, value->valuestring);
+            char* quoted = tcl_quote_string(val_str);
+            sb_append_fmt(sb, ".%s configure -placeholder {%s}\n", widget_id, val_str);
             if (quoted) free(quoted);
         } else {
             // Generic string property
-            char* quoted = tcl_quote_string(value->valuestring);
-            sb_append_fmt(sb, ".%s configure -%s {%s}\n", widget_id, property_name, value->valuestring);
+            char* quoted = tcl_quote_string(val_str);
+            sb_append_fmt(sb, ".%s configure -%s {%s}\n", widget_id, property_name, val_str);
             if (quoted) free(quoted);
         }
     } else if (cJSON_IsNumber(value)) {

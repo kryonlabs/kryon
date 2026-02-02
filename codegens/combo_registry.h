@@ -40,6 +40,7 @@ typedef struct {
     Combo combo;
     const LanguageProfile* language_profile;
     const ToolkitProfile* toolkit_profile;
+    const char* platform;        // Resolved platform (NULL if not specified)
     bool resolved;               // Successfully resolved
     char error[256];             // Error message if not resolved
 } ComboResolution;
@@ -233,6 +234,24 @@ void combo_print_matrix(void);
  * @return true if exactly one valid combination found, false otherwise
  */
 bool combo_auto_resolve_language(const char* language, const char** out_toolkit, const char** out_platform);
+
+/**
+ * Auto-resolve platform for a language+toolkit combination.
+ *
+ * When user specifies language+toolkit without a platform (e.g., "tcl+tk"),
+ * this function attempts to automatically select the appropriate platform.
+ *
+ * Resolution rules:
+ * - If exactly ONE platform supports this language+toolkit combo, return it
+ * - If ZERO platforms support it, return NULL (invalid combination)
+ * - If MULTIPLE platforms support it, return NULL (ambiguous, user must specify)
+ *
+ * @param language Language name (e.g., "tcl", "limbo")
+ * @param toolkit Toolkit name (e.g., "tk", "draw")
+ * @return Platform name if exactly one platform supports this combo, NULL otherwise
+ *         Caller must NOT free the returned string (it's owned by platform profile)
+ */
+const char* combo_resolve_platform_for_combo(const char* language, const char* toolkit);
 
 /**
  * Get reason why a combination is invalid

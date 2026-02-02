@@ -67,9 +67,14 @@ static bool tcl_codegen_generate_with_composer(const char* kir_path, const char*
     bool success = codegen_write_output_file(output_path, output);
     free(output);
 
-    // Cleanup
-    wir_root_free(root);
-    codegen_free_input(input);
+    // Cleanup - free json_string from input, then WIR root, then input structure
+    // Note: wir_build_from_cJSON takes ownership of input->root,
+    // so we must NOT call codegen_free_input after wir_root_free.
+    if (input->json_string) {
+        free(input->json_string);  // Free the JSON string that was allocated
+    }
+    wir_root_free(root);  // This will free input->root
+    free(input);  // Only free the structure itself
 
     if (!success) {
         codegen_error("Failed to write output file: %s", output_path);
