@@ -238,15 +238,8 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
 
     cJSON* widgets_array = root->widgets;
     if (widgets_array && cJSON_IsArray(widgets_array)) {
-        // Using simple widget IDs instead of hierarchical paths for simplicity
-        widget_map = NULL;
-        paths = NULL;
-        widget_map_count = 0;
-        path_count = 0;
-
-        /*
+        // Build hierarchical widget paths for proper Tk nesting
         int widget_map_size = cJSON_GetArraySize(widgets_array);
-        fprintf(stderr, "[DEBUG] wir_composer_emit: Building paths for %d widgets\n", widget_map_size);
         widget_map = calloc(widget_map_size, sizeof(WidgetMapEntry));
         paths = calloc(widget_map_size, sizeof(WidgetPath));
 
@@ -256,11 +249,11 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
             free(paths);
             widget_map = NULL;
             paths = NULL;
-            // Continue without hierarchical path support
         }
 
         // Step 1: Build widget lookup map (simple array, not cJSON object to avoid ownership issues)
         if (widget_map && paths) {
+        fprintf(stderr, "[DEBUG] wir_composer_emit: Building paths for %d widgets\n", widget_map_size);
         cJSON* w = NULL;
         cJSON_ArrayForEach(w, widgets_array) {
             cJSON* id = cJSON_GetObjectItem(w, "id");
@@ -339,8 +332,37 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
         }
             path_count = idx;
         fprintf(stderr, "[DEBUG] Built %d hierarchical paths\n", path_count);
+
+        // Step 3: Sort widgets by path depth for proper Tk parent-before-child ordering
+        // Tk requires parents to be created before children, so sort by depth (fewer dots = shallower)
+        if (strcmp(emitter->toolkit->name, "tk") == 0) {
+            fprintf(stderr, "[DEBUG] Sorting %d widgets by depth for Tk\n", path_count);
+
+            // Simple bubble sort by path depth (number of dots in path)
+            for (int i = 0; i < path_count - 1; i++) {
+                for (int j = 0; j < path_count - i - 1; j++) {
+                    // Count dots in each path
+                    int dots_j = 0, dots_j1 = 0;
+                    for (const char* p = paths[j].full_path; *p; p++) if (*p == '.') dots_j++;
+                    for (const char* p = paths[j+1].full_path; *p; p++) if (*p == '.') dots_j1++;
+
+                    // Swap if paths[j] has more dots (deeper) than paths[j+1]
+                    if (dots_j > dots_j1) {
+                        WidgetPath temp = paths[j];
+                        paths[j] = paths[j+1];
+                        paths[j+1] = temp;
+                    }
+                }
+            }
+
+            fprintf(stderr, "[DEBUG] Widget order after sorting:\n");
+            for (int i = 0; i < path_count; i++) {
+                int dots = 0;
+                for (const char* p = paths[i].full_path; *p; p++) if (*p == '.') dots++;
+                fprintf(stderr, "[DEBUG]   %d: %s (depth=%d)\n", i, paths[i].full_path, dots);
+            }
+        }
         }  // End of if (widget_map && paths)
-        */
     }
 
     // Emit header comment if language emitter supports it
@@ -374,55 +396,135 @@ char* wir_composer_emit(WIRComposedEmitter* emitter, WIRRoot* root) {
 
     // Emit all widgets
     if (widgets_array && cJSON_IsArray(widgets_array)) {
-        cJSON* widget_json = NULL;
-        cJSON_ArrayForEach(widget_json, widgets_array) {
-            // Create temporary WIRWidget wrapper
-            WIRWidget widget = {0};
-            widget.json = widget_json;
+        // For Tk, use sorted order to ensure parents are created before children
+        // For other toolkits, use original order
+        bool use_sorted_order = (strcmp(emitter->toolkit->name, "tk") == 0) &&
+                                (paths && path_count > 0);
 
-            cJSON* id = cJSON_GetObjectItem(widget_json, "id");
-            const char* simple_id = id ? id->valuestring : NULL;
-
-            // Find and use the full hierarchical path
-            widget.id = simple_id;  // Default to simple ID
-
-            cJSON* tk_type = cJSON_GetObjectItem(widget_json, "tk_type");
-            widget.widget_type = tk_type ? tk_type->valuestring : NULL;
-
-            cJSON* kir_type = cJSON_GetObjectItem(widget_json, "kir_type");
-            widget.kir_type = kir_type ? kir_type->valuestring : NULL;
-
-            // Emit widget creation
-            if (!emitter->toolkit->emit_widget_creation) {
-                fprintf(stderr, "Warning: emit_widget_creation is NULL\n");
-                continue;
-            }
-
-            if (!emitter->toolkit->emit_widget_creation(sb, &widget)) {
-                fprintf(stderr, "Warning: Failed to emit widget '%s'\n", widget.id ? widget.id : "NULL");
-            }
-
-            // Emit properties
-            cJSON* props = cJSON_GetObjectItem(widget_json, "properties");
-            if (props && emitter->toolkit->emit_property_assignment) {
-                // Iterate over object items (properties is an object, not array)
-                cJSON* prop = NULL;
-                for (prop = props->child; prop != NULL; prop = prop->next) {
-                    if (prop->string) {
-                        // Pass the property value (prop itself) to the emitter
-                        // The emitter will check prop->type and extract the appropriate value
-                        emitter->toolkit->emit_property_assignment(sb, widget.id,
-                                                                    prop->string, prop);
+        if (use_sorted_order) {
+            // Emit in sorted order (by depth)
+            for (int i = 0; i < path_count; i++) {
+                // Find widget in widget_map by widget_id
+                cJSON* widget_json = NULL;
+                for (int j = 0; j < widget_map_count; j++) {
+                    if (strcmp(widget_map[j].id, paths[i].widget_id) == 0) {
+                        widget_json = widget_map[j].widget;
+                        break;
                     }
                 }
-            }
 
-            // Emit layout
-            if (emitter->toolkit->emit_layout_command) {
-                emitter->toolkit->emit_layout_command(sb, &widget);
-            }
+                if (!widget_json) {
+                    fprintf(stderr, "Warning: Could not find widget '%s' in map\n", paths[i].widget_id);
+                    continue;
+                }
 
-            sb_append_fmt(sb, "\n");
+                // Create temporary WIRWidget wrapper
+                WIRWidget widget = {0};
+                widget.json = widget_json;
+                widget.id = paths[i].full_path;  // Use pre-computed hierarchical path
+
+                cJSON* tk_type = cJSON_GetObjectItem(widget_json, "tk_type");
+                widget.widget_type = tk_type ? tk_type->valuestring : NULL;
+
+                cJSON* kir_type = cJSON_GetObjectItem(widget_json, "kir_type");
+                widget.kir_type = kir_type ? kir_type->valuestring : NULL;
+
+                // Emit widget creation
+                if (!emitter->toolkit->emit_widget_creation) {
+                    fprintf(stderr, "Warning: emit_widget_creation is NULL\n");
+                    continue;
+                }
+
+                if (!emitter->toolkit->emit_widget_creation(sb, &widget)) {
+                    fprintf(stderr, "Warning: Failed to emit widget '%s'\n", widget.id ? widget.id : "NULL");
+                }
+
+                // Emit properties
+                cJSON* props = cJSON_GetObjectItem(widget_json, "properties");
+                if (props && emitter->toolkit->emit_property_assignment) {
+                    // Iterate over object items (properties is an object, not array)
+                    cJSON* prop = NULL;
+                    for (prop = props->child; prop != NULL; prop = prop->next) {
+                        if (prop->string) {
+                            // Pass the property value (prop itself) to the emitter
+                            // Also pass the widget type so the emitter can filter valid properties
+                            emitter->toolkit->emit_property_assignment(sb, widget.id,
+                                                                        prop->string, prop,
+                                                                        widget.widget_type);
+                        }
+                    }
+                }
+
+                // Emit layout
+                if (emitter->toolkit->emit_layout_command) {
+                    emitter->toolkit->emit_layout_command(sb, &widget);
+                }
+
+                sb_append_fmt(sb, "\n");
+            }
+        } else {
+            // Original order for non-Tk toolkits
+            cJSON* widget_json = NULL;
+            cJSON_ArrayForEach(widget_json, widgets_array) {
+                // Create temporary WIRWidget wrapper
+                WIRWidget widget = {0};
+                widget.json = widget_json;
+
+                cJSON* id = cJSON_GetObjectItem(widget_json, "id");
+                const char* simple_id = id ? id->valuestring : NULL;
+
+                // Find and use the full hierarchical path
+                widget.id = simple_id;  // Default to simple ID
+
+                // Look up hierarchical path if available
+                if (paths && path_count > 0) {
+                    for (int i = 0; i < path_count; i++) {
+                        if (strcmp(paths[i].widget_id, simple_id) == 0) {
+                            widget.id = paths[i].full_path;
+                            break;
+                        }
+                    }
+                }
+
+                cJSON* tk_type = cJSON_GetObjectItem(widget_json, "tk_type");
+                widget.widget_type = tk_type ? tk_type->valuestring : NULL;
+
+                cJSON* kir_type = cJSON_GetObjectItem(widget_json, "kir_type");
+                widget.kir_type = kir_type ? kir_type->valuestring : NULL;
+
+                // Emit widget creation
+                if (!emitter->toolkit->emit_widget_creation) {
+                    fprintf(stderr, "Warning: emit_widget_creation is NULL\n");
+                    continue;
+                }
+
+                if (!emitter->toolkit->emit_widget_creation(sb, &widget)) {
+                    fprintf(stderr, "Warning: Failed to emit widget '%s'\n", widget.id ? widget.id : "NULL");
+                }
+
+                // Emit properties
+                cJSON* props = cJSON_GetObjectItem(widget_json, "properties");
+                if (props && emitter->toolkit->emit_property_assignment) {
+                    // Iterate over object items (properties is an object, not array)
+                    cJSON* prop = NULL;
+                    for (prop = props->child; prop != NULL; prop = prop->next) {
+                        if (prop->string) {
+                            // Pass the property value (prop itself) to the emitter
+                            // Also pass the widget type so the emitter can filter valid properties
+                            emitter->toolkit->emit_property_assignment(sb, widget.id,
+                                                                        prop->string, prop,
+                                                                        widget.widget_type);
+                        }
+                    }
+                }
+
+                // Emit layout
+                if (emitter->toolkit->emit_layout_command) {
+                    emitter->toolkit->emit_layout_command(sb, &widget);
+                }
+
+                sb_append_fmt(sb, "\n");
+            }
         }
     }
 

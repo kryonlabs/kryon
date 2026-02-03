@@ -111,18 +111,8 @@ static bool tk_emit_widget_creation(StringBuilder* sb, WIRWidget* widget) {
         return false;
     }
 
-    fprintf(stderr, "[DEBUG] tk_emit_widget_creation: tk_type=%s, widget_id=%s\n", tk_type, widget->id);
-    fflush(stderr);
-
     // Generate widget creation command
-    fprintf(stderr, "[DEBUG] About to call sb_append_fmt for widget creation\n");
-    fflush(stderr);
     sb_append_fmt(sb, "%s .%s\n", tk_type, widget->id);
-    fprintf(stderr, "[DEBUG] sb_append_fmt completed for widget creation\n");
-    fflush(stderr);
-
-    fprintf(stderr, "[DEBUG] tk_emit_widget_creation: completed, returning true\n");
-    fflush(stderr);
     return true;
 }
 
@@ -130,9 +120,20 @@ static bool tk_emit_widget_creation(StringBuilder* sb, WIRWidget* widget) {
  * Emit property assignment.
  */
 static bool tk_emit_property_assignment(StringBuilder* sb, const char* widget_id,
-                                         const char* property_name, cJSON* value) {
+                                         const char* property_name, cJSON* value,
+                                         const char* widget_type) {
     if (!sb || !widget_id || !property_name || !value) {
         return false;
+    }
+
+    // Filter properties that are not valid for certain widget types
+    // Frames don't support text, foreground, or placeholder by default
+    if (widget_type && strcmp(widget_type, "frame") == 0) {
+        if (strcmp(property_name, "text") == 0 ||
+            strcmp(property_name, "foreground") == 0 ||
+            strcmp(property_name, "placeholder") == 0) {
+            return true;  // Skip these properties for frames
+        }
     }
 
     // Handle different value types

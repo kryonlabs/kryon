@@ -132,10 +132,12 @@ struct WIRToolkitEmitter {
      * @param widget_id Widget ID
      * @param property_name Property name
      * @param value Property value (cJSON)
+     * @param widget_type Widget type (e.g., "label", "frame") for filtering
      * @return true on success, false on error
      */
     bool (*emit_property_assignment)(StringBuilder* sb, const char* widget_id,
-                                      const char* property_name, cJSON* value);
+                                      const char* property_name, cJSON* value,
+                                      const char* widget_type);
 
     /**
      * Emit layout command.
