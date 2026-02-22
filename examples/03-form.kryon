@@ -1,0 +1,23 @@
+# Login Form Example
+# Demonstrates form widgets and validation
+
+window "Login" 400 300 {
+    column gap=15 padding=20 {
+        label lbl_title "Welcome Back!" font="Arial 20 bold"
+
+        formgroup "Username" {
+            textinput txt_username placeholder="Enter username"
+        }
+
+        formgroup "Password" {
+            passwordinput txt_password placeholder="Enter password"
+        }
+
+        checkbox chk_remember "Remember me"
+
+        row gap=10 {
+            button btn_login "Login" style="primary"
+            button btn_cancel "Cancel" style="secondary"
+        }
+    }
+}

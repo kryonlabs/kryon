@@ -1,0 +1,5 @@
+# Hello World in Kryon
+# Simple window with a label
+
+window "Hello World" 400 300
+label lbl_greeting "Hello, World!" at (150, 140)
