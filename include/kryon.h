@@ -248,6 +248,92 @@ size_t handle_tclunk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_tstat(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 
 /*
+ * Forward declaration for Memimage (from graphics.h)
+ */
+struct Memimage;
+
+/*
+ * Draw connection state (for /dev/draw/[n])
+ */
+#define MAX_DRAW_CONNECTIONS 32
+#define MAX_IMAGES_PER_CONNECTION 256
+
+typedef struct DrawImage {
+    uint32_t id;
+    struct Memimage *img;
+    int in_use;
+} DrawImage;
+
+typedef struct DrawConnection {
+    int id;                       /* Connection number */
+    int screen_id;                /* Screen image ID */
+    int fillimage_id;             /* Fill image ID */
+    int next_image_id;            /* Next allocated image ID */
+    struct Memimage *screen;      /* Screen image */
+    int refresh_enabled;          /* Refresh flag */
+    uint32_t qid_path_base;       /* Base QID path for this connection's files */
+    DrawImage images[MAX_IMAGES_PER_CONNECTION];
+    int nimages;
+} DrawConnection;
+
+/*
+ * Draw connection management
+ */
+int drawconn_init(struct Memimage *screen);
+void drawconn_cleanup(void);
+DrawConnection *drawconn_new(void);
+DrawConnection *drawconn_get(int id);
+void drawconn_delete(int id);
+int drawconn_next_id(void);
+
+/*
+ * /dev/draw/new implementation
+ */
+int devdraw_new_init(P9Node *draw_dir);
+ssize_t devdraw_new_read(char *buf, size_t count, uint64_t offset, void *data);
+
+/*
+ * /dev/draw/[n] directory implementation
+ */
+P9Node *drawconn_create_dir(int conn_id);
+
+/*
+ * /dev/draw/[n]/data implementation
+ */
+ssize_t devdraw_data_read(char *buf, size_t count, uint64_t offset, void *data);
+ssize_t devdraw_data_write(const char *buf, size_t count, uint64_t offset, void *data);
+
+/*
+ * /dev/draw/[n]/ctl implementation
+ */
+ssize_t devdraw_ctl_read(char *buf, size_t count, uint64_t offset, void *data);
+ssize_t devdraw_ctl_write(const char *buf, size_t count, uint64_t offset, void *data);
+
+/*
+ * /dev/draw/[n]/refresh implementation
+ */
+ssize_t devdraw_refresh_read(char *buf, size_t count, uint64_t offset, void *data);
+
+/*
+ * /dev/kbd initialization
+ */
+int devkbd_init(P9Node *dev_dir);
+
+/*
+ * Plan 9 graphics protocol processing
+ */
+int process_draw_messages(DrawConnection *conn, const char *buf, size_t count,
+                          char *response, int *resp_len);
+
+/*
+ * Compatibility functions for legacy code
+ */
+void devdraw_mark_dirty(void);
+void devdraw_clear_dirty(void);
+int devdraw_is_dirty(void);
+void devdraw_cleanup(void);
+
+/*
  * Main dispatcher
  */
 size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);

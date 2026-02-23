@@ -9,6 +9,11 @@
 #include <time.h>
 
 /*
+ * Forward declaration for dynamic node creation
+ */
+extern P9Node *drawconn_create_dir(int conn_id);
+
+/*
  * Forward declarations
  */
 typedef struct FileOps FileOps;
@@ -103,6 +108,34 @@ P9Node *tree_root(void)
 }
 
 /*
+ * Check if string is a numeric connection ID (for /dev/draw/[n])
+ */
+static int is_numeric_id(const char *name)
+{
+    const char *p;
+
+    if (name == NULL || *name == '\0') {
+        return 0;
+    }
+
+    p = name;
+    while (*p != '\0') {
+        if (*p < '0' || *p > '9') {
+            return 0;
+        }
+        p++;
+    }
+
+    return 1;
+}
+
+/*
+ * Dynamic node creation callback
+ * Called when a directory node needs to create a child dynamically
+ */
+extern P9Node *drawconn_create_dir(int conn_id);
+
+/*
  * Walk to a child node by name
  */
 P9Node *tree_walk(P9Node *node, const char *name)
@@ -121,6 +154,29 @@ P9Node *tree_walk(P9Node *node, const char *name)
     /* ".." means parent directory */
     if (strcmp(name, "..") == 0) {
         return node->parent;
+    }
+
+    /* Check for dynamic /dev/draw/[n] directories */
+    if (node->name != NULL && strcmp(node->name, "draw") == 0) {
+        if (is_numeric_id(name)) {
+            int conn_id = atoi(name);
+            P9Node *dynamic_node = drawconn_create_dir(conn_id);
+            if (dynamic_node != NULL) {
+                /* Add to children if not already present */
+                int found = 0;
+                for (i = 0; i < node->nchildren; i++) {
+                    if (node->children[i] != NULL &&
+                        strcmp(node->children[i]->name, name) == 0) {
+                        found = 1;
+                        break;
+                    }
+                }
+                if (!found) {
+                    tree_add_child(node, dynamic_node);
+                }
+                return dynamic_node;
+            }
+        }
     }
 
     /* Search children */

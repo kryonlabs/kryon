@@ -1,8 +1,9 @@
 /*
- * Kryon Graphics Engine - /dev/draw Device
+ * Kryon /dev/draw Device - Plan 9 Compliant Implementation
  * C89/C90 compliant
  *
- * Processes binary drawing commands
+ * Implements the full Plan 9 /dev/draw protocol for drawterm compatibility
+ * File structure: /dev/draw/new, /dev/draw/[n]/{ctl,data,refresh}
  */
 
 #include "kryon.h"
@@ -10,859 +11,1208 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 
-/*
- * Draw opcodes
- */
-enum {
-    D_alloc = 0,    /* Allocate image */
-    D_free,         /* Free image */
-    D_rect,         /* Fill rectangle */
-    D_draw,         /* Bit blit */
-    D_line,         /* Draw line */
-    D_poly,         /* Draw polygon */
-    D_text,         /* Draw text */
-    D_set,          /* Set parameters */
-    D_ellipse = 8,  /* Draw ellipse/arc */
-    D_bezier,       /* Draw bezier curve */
-    D_image,        /* Load image */
-    D_flush,        /* Flush operations */
-    D_query,        /* Query capabilities */
-    D_batch,        /* Batch operations */
-};
+/* ========== Connection Management ========== */
 
-/*
- * Draw device state
- */
-typedef struct {
-    Memimage *screen;       /* Main screen image */
-    Memimage **images;      /* Image cache */
-    int nimages;
-    int image_capacity;
-    int client_id;
-    int refresh_needed;
-    Rectangle clip_rect;    /* Current clipping rectangle */
-    int draw_op;            /* Current draw operation */
-    unsigned long color;    /* Current drawing color */
-    int font_id;            /* Current font ID */
-} DrawState;
+static DrawConnection *g_connections[MAX_DRAW_CONNECTIONS];
+static struct Memimage *g_screen = NULL;
 
-/*
- * Global draw state
- */
-static DrawState *g_draw_state = NULL;
-
-/*
- * Initialize draw state
- */
-static DrawState *drawstate_create(Memimage *screen)
-{
-    DrawState *state;
-
-    state = (DrawState *)malloc(sizeof(DrawState));
-    if (state == NULL) {
-        return NULL;
-    }
-
-    memset(state, 0, sizeof(DrawState));
-
-    state->screen = screen;
-    state->nimages = 0;
-    state->image_capacity = 16;
-    state->client_id = 0;
-    state->refresh_needed = 0;
-    state->draw_op = SoverD;  /* Default alpha blending */
-    state->color = 0xFFFFFFFF;  /* Default white */
-    state->font_id = 0;  /* Default font */
-
-    /* Initialize clipping rectangle to screen bounds */
-    if (screen != NULL) {
-        state->clip_rect = screen->r;
-    }
-
-    state->images = (Memimage **)malloc(sizeof(Memimage *) * state->image_capacity);
-    if (state->images == NULL) {
-        free(state);
-        return NULL;
-    }
-
-    /* Image 0 is always the screen */
-    state->images[0] = screen;
-    state->nimages = 1;
-
-    return state;
-}
-
-/*
- * Clean up draw state
- */
-static void drawstate_destroy(DrawState *state)
+int drawconn_init(struct Memimage *screen)
 {
     int i;
 
-    if (state == NULL) {
+    if (screen == NULL) {
+        fprintf(stderr, "drawconn_init: screen is NULL\n");
+        return -1;
+    }
+
+    g_screen = screen;
+
+    for (i = 0; i < MAX_DRAW_CONNECTIONS; i++) {
+        g_connections[i] = NULL;
+    }
+
+    fprintf(stderr, "drawconn_init: initialized with screen\n");
+    return 0;
+}
+
+void drawconn_cleanup(void)
+{
+    int i;
+
+    for (i = 0; i < MAX_DRAW_CONNECTIONS; i++) {
+        if (g_connections[i] != NULL) {
+            drawconn_delete(g_connections[i]->id);
+        }
+    }
+
+    g_screen = NULL;
+}
+
+int drawconn_next_id(void)
+{
+    int id;
+
+    for (id = 0; id < MAX_DRAW_CONNECTIONS; id++) {
+        if (g_connections[id] == NULL) {
+            return id;
+        }
+    }
+
+    return -1;
+}
+
+DrawConnection *drawconn_new(void)
+{
+    DrawConnection *conn;
+    int id;
+
+    id = drawconn_next_id();
+    if (id < 0) {
+        fprintf(stderr, "drawconn_new: no free connection slots\n");
+        return NULL;
+    }
+
+    conn = (DrawConnection *)malloc(sizeof(DrawConnection));
+    if (conn == NULL) {
+        fprintf(stderr, "drawconn_new: malloc failed\n");
+        return NULL;
+    }
+
+    memset(conn, 0, sizeof(DrawConnection));
+
+    conn->id = id;
+    conn->screen = g_screen;
+    conn->screen_id = 0;
+    conn->fillimage_id = 1;
+    conn->next_image_id = 2;
+    conn->refresh_enabled = 0;
+    conn->nimages = 0;
+
+    /* QID path base: use high bits to avoid collision */
+    conn->qid_path_base = 0x10000000ULL + ((uint64_t)id << 16);
+
+    /* Initialize image table */
+    /* Image 0 is the screen */
+    conn->images[0].id = 0;
+    conn->images[0].img = g_screen;
+    conn->images[0].in_use = 1;
+    conn->nimages = 1;
+
+    g_connections[id] = conn;
+
+    fprintf(stderr, "drawconn_new: created connection %d\n", id);
+    return conn;
+}
+
+DrawConnection *drawconn_get(int id)
+{
+    if (id < 0 || id >= MAX_DRAW_CONNECTIONS) {
+        return NULL;
+    }
+
+    return g_connections[id];
+}
+
+void drawconn_delete(int id)
+{
+    DrawConnection *conn;
+    int i;
+
+    if (id < 0 || id >= MAX_DRAW_CONNECTIONS) {
         return;
     }
 
-    /* Free cached images (except screen which is owned by main) */
-    for (i = 1; i < state->nimages; i++) {
-        if (state->images[i] != NULL) {
-            memimage_free(state->images[i]);
+    conn = g_connections[id];
+    if (conn == NULL) {
+        return;
+    }
+
+    /* Free images (except screen which is owned by main) */
+    for (i = 1; i < conn->nimages; i++) {
+        if (conn->images[i].in_use && conn->images[i].img != NULL) {
+            memimage_free(conn->images[i].img);
         }
     }
 
-    if (state->images != NULL) {
-        free(state->images);
-    }
+    free(conn);
+    g_connections[id] = NULL;
 
-    /* Don't free screen - it's owned by main.c */
-
-    free(state);
+    fprintf(stderr, "drawconn_delete: deleted connection %d\n", id);
 }
 
-/*
- * Validate image ID
- */
-static int validate_image_id(DrawState *state, int image_id)
+/* ========== /dev/draw/new Implementation ========== */
+
+static int build_connection_info(DrawConnection *conn, char *buf, int size)
 {
-    if (state == NULL || image_id < 0 || image_id >= state->nimages) {
-        return 0;
+    int pos = 0;
+
+    if (conn == NULL || conn->screen == NULL) {
+        return -1;
     }
-    if (state->images[image_id] == NULL) {
-        return 0;
+
+    if (size < 144) {
+        return -1;
     }
-    return 1;
+
+    memset(buf, 0, 144);
+
+    /* String 0: image name */
+    sprintf(buf + pos, "screen"); pos += 12;
+    /* String 1: channel format */
+    sprintf(buf + pos, "RGBA32"); pos += 12;
+    /* String 2: repl flag */
+    sprintf(buf + pos, "0"); pos += 12;
+    /* String 3: min.x */
+    sprintf(buf + pos, "%d", conn->screen->r.min.x); pos += 12;
+    /* String 4: min.y */
+    sprintf(buf + pos, "%d", conn->screen->r.min.y); pos += 12;
+    /* String 5: max.x */
+    sprintf(buf + pos, "%d", conn->screen->r.max.x); pos += 12;
+    /* String 6: max.y */
+    sprintf(buf + pos, "%d", conn->screen->r.max.y); pos += 12;
+    /* String 7: clip.min.x */
+    sprintf(buf + pos, "%d", conn->screen->clipr.min.x); pos += 12;
+    /* String 8: clip.min.y */
+    sprintf(buf + pos, "%d", conn->screen->clipr.min.y); pos += 12;
+    /* String 9: clip.max.x */
+    sprintf(buf + pos, "%d", conn->screen->clipr.max.x); pos += 12;
+    /* String 10: clip.max.y */
+    sprintf(buf + pos, "%d", conn->screen->clipr.max.y); pos += 12;
+    /* String 11: reserved */
+    pos += 12;
+
+    return 144;
 }
 
-/*
- * Add image to cache
- */
-static int drawstate_add_image(DrawState *state, Memimage *img)
+ssize_t devdraw_new_read(char *buf, size_t count, uint64_t offset, void *data)
 {
-    if (state->nimages >= state->image_capacity) {
-        int new_capacity;
-        Memimage **new_images;
+    DrawConnection *conn;
+    char info[144];
+    int info_len;
+    size_t to_copy;
 
-        new_capacity = state->image_capacity * 2;
-        new_images = (Memimage **)realloc(state->images,
-                                          sizeof(Memimage *) * new_capacity);
-        if (new_images == NULL) {
-            return -1;
-        }
+    (void)data;
+    (void)offset;
 
-        state->images = new_images;
-        state->image_capacity = new_capacity;
+    /* Create new connection */
+    conn = drawconn_new();
+    if (conn == NULL) {
+        fprintf(stderr, "devdraw_new_read: failed to create connection\n");
+        return -1;
     }
 
-    state->images[state->nimages] = img;
-    return state->nimages++;
+    /* Build connection info */
+    info_len = build_connection_info(conn, info, sizeof(info));
+    if (info_len < 0) {
+        fprintf(stderr, "devdraw_new_read: failed to build info\n");
+        return -1;
+    }
+
+    /* Copy to user buffer */
+    to_copy = (size_t)info_len;
+    if (to_copy > count) {
+        to_copy = count;
+    }
+
+    memcpy(buf, info, to_copy);
+
+    fprintf(stderr, "devdraw_new_read: returning %d bytes for connection %d\n",
+            (int)to_copy, conn->id);
+
+    return (ssize_t)to_copy;
 }
 
-/*
- * Process D_alloc command
- * Format: [opcode:1][image_id:4][x:4][y:4][width:4][height:4][chan:4]
- * Returns: Slot number in image cache
- */
-static int process_dalloc(const uint8_t *buf, size_t len)
+int devdraw_new_init(P9Node *draw_dir)
 {
-    Rectangle r;
-    uint32_t image_id, x, y, width, height, chan;
-    Memimage *img;
-    int slot;
+    P9Node *new_node;
 
-    if (len < 25) {
-        fprintf(stderr, "process_dalloc: insufficient data (need 25 bytes, got %lu)\n",
-                (unsigned long)len);
+    if (draw_dir == NULL) {
         return -1;
     }
 
-    if (g_draw_state == NULL) {
-        fprintf(stderr, "process_dalloc: no draw state\n");
+    /* Create /dev/draw/new file */
+    new_node = tree_create_file(draw_dir, "new", NULL,
+                                (P9ReadFunc)devdraw_new_read, NULL);
+    if (new_node == NULL) {
+        fprintf(stderr, "devdraw_new_init: cannot create new node\n");
         return -1;
     }
 
-    /* Parse parameters */
-    image_id = le_get32(buf + 1);
-    x = le_get32(buf + 5);
-    y = le_get32(buf + 9);
-    width = le_get32(buf + 13);
-    height = le_get32(buf + 17);
-    chan = le_get32(buf + 21);
-
-    /* Validate dimensions */
-    if (width == 0 || height == 0) {
-        fprintf(stderr, "process_dalloc: invalid dimensions %dx%d\n", width, height);
-        return -1;
-    }
-
-    /* Create rectangle */
-    r.min.x = (int)x;
-    r.min.y = (int)y;
-    r.max.x = (int)x + (int)width;
-    r.max.y = (int)y + (int)height;
-
-    /* Allocate image */
-    img = memimage_alloc(r, chan);
-    if (img == NULL) {
-        fprintf(stderr, "process_dalloc: failed to allocate image\n");
-        return -1;
-    }
-
-    /* Add to cache */
-    slot = drawstate_add_image(g_draw_state, img);
-    if (slot < 0) {
-        fprintf(stderr, "process_dalloc: failed to add image to cache\n");
-        memimage_free(img);
-        return -1;
-    }
-
-    fprintf(stderr, "process_dalloc: allocated image %d (%dx%d)\n", slot, width, height);
-    return slot;
-}
-
-/*
- * Process D_free command
- * Format: [opcode:1][image_id:4]
- */
-static int process_dfree(const uint8_t *buf, size_t len)
-{
-    uint32_t image_id;
-
-    if (len < 5) {
-        fprintf(stderr, "process_dfree: insufficient data (need 5 bytes, got %lu)\n",
-                (unsigned long)len);
-        return -1;
-    }
-
-    if (g_draw_state == NULL) {
-        fprintf(stderr, "process_dfree: no draw state\n");
-        return -1;
-    }
-
-    image_id = le_get32(buf + 1);
-
-    /* Cannot free screen (image 0) */
-    if (image_id == 0) {
-        fprintf(stderr, "process_dfree: cannot free screen image (id 0)\n");
-        return -1;
-    }
-
-    /* Validate image ID */
-    if (!validate_image_id(g_draw_state, (int)image_id)) {
-        fprintf(stderr, "process_dfree: invalid image id %lu\n", (unsigned long)image_id);
-        return -1;
-    }
-
-    /* Free image */
-    if (g_draw_state->images[image_id] != NULL) {
-        memimage_free(g_draw_state->images[image_id]);
-        g_draw_state->images[image_id] = NULL;
-        fprintf(stderr, "process_dfree: freed image %lu\n", (unsigned long)image_id);
-    }
+    fprintf(stderr, "devdraw_new_init: initialized /dev/draw/new\n");
 
     return 0;
 }
 
-/*
- * Process D_draw command (bit blit)
- * Format: [opcode:1][dst_id:4][dst_x:4][dst_y:4][dst_w:4][dst_h:4]
- *         [src_id:4][src_x:4][src_y:4][mask_id:4][mask_x:4][mask_y:4][op:4]
- */
-static int process_ddraw(const uint8_t *buf, size_t len)
+/* ========== /dev/draw/[n] Directory Creation ========== */
+
+P9Node *drawconn_create_dir(int conn_id)
 {
-    Rectangle dst_rect;
-    Point src_pt, mask_pt;
-    uint32_t dst_id, dst_x, dst_y, dst_w, dst_h;
-    uint32_t src_id, src_x, src_y;
-    uint32_t mask_id, mask_x, mask_y;
-    uint32_t op;
-    Memimage *dst, *src, *mask;
+    DrawConnection *conn;
+    P9Node *dir_node;
+    P9Node *ctl_node;
+    P9Node *data_node;
+    P9Node *refresh_node;
+    char dirname[16];
 
-    if (len < 41) {
-        fprintf(stderr, "process_ddraw: insufficient data (need 41 bytes, got %lu)\n",
-                (unsigned long)len);
-        return -1;
+    /* Check if connection exists */
+    conn = drawconn_get(conn_id);
+    if (conn == NULL) {
+        fprintf(stderr, "drawconn_create_dir: connection %d not found\n", conn_id);
+        return NULL;
     }
 
-    if (g_draw_state == NULL) {
-        fprintf(stderr, "process_ddraw: no draw state\n");
-        return -1;
+    /* Create directory name */
+    sprintf(dirname, "%d", conn_id);
+
+    /* Create directory node */
+    dir_node = (P9Node *)malloc(sizeof(P9Node));
+    if (dir_node == NULL) {
+        return NULL;
     }
 
-    /* Parse destination parameters */
-    dst_id = le_get32(buf + 1);
-    dst_x = le_get32(buf + 5);
-    dst_y = le_get32(buf + 9);
-    dst_w = le_get32(buf + 13);
-    dst_h = le_get32(buf + 17);
+    memset(dir_node, 0, sizeof(P9Node));
 
-    /* Parse source parameters */
-    src_id = le_get32(buf + 21);
-    src_x = le_get32(buf + 25);
-    src_y = le_get32(buf + 29);
-
-    /* Parse mask parameters */
-    mask_id = le_get32(buf + 33);
-    mask_x = le_get32(buf + 37);
-    /* mask_y and op are at buf + 41 and buf + 45, but we need to check buffer */
-    if (len < 45) {
-        fprintf(stderr, "process_ddraw: insufficient data for mask and op\n");
-        return -1;
+    dir_node->name = (char *)malloc(strlen(dirname) + 1);
+    if (dir_node->name == NULL) {
+        free(dir_node);
+        return NULL;
     }
-    mask_y = le_get32(buf + 41);
-    op = le_get32(buf + 45);
+    strcpy(dir_node->name, dirname);
 
-    /* Validate image IDs */
-    if (!validate_image_id(g_draw_state, (int)dst_id)) {
-        fprintf(stderr, "process_ddraw: invalid dst_id %lu\n", (unsigned long)dst_id);
-        return -1;
+    dir_node->qid.type = QTDIR;
+    dir_node->qid.version = 0;
+    dir_node->qid.path = conn->qid_path_base;
+    dir_node->mode = P9_DMDIR | 0555;
+    dir_node->atime = (uint32_t)time(NULL);
+    dir_node->mtime = dir_node->atime;
+    dir_node->length = 0;
+    dir_node->data = conn;
+    dir_node->parent = NULL;
+    dir_node->children = NULL;
+    dir_node->nchildren = 0;
+    dir_node->capacity = 0;
+
+    /* Create ctl file */
+    ctl_node = tree_create_file(dir_node, "ctl", conn,
+                                (P9ReadFunc)devdraw_ctl_read,
+                                (P9WriteFunc)devdraw_ctl_write);
+    if (ctl_node == NULL) {
+        fprintf(stderr, "drawconn_create_dir: failed to create ctl\n");
+        free(dir_node->name);
+        free(dir_node);
+        return NULL;
     }
-    if (!validate_image_id(g_draw_state, (int)src_id)) {
-        fprintf(stderr, "process_ddraw: invalid src_id %lu\n", (unsigned long)src_id);
-        return -1;
+    ctl_node->qid.path = conn->qid_path_base + 1;
+
+    /* Create data file */
+    data_node = tree_create_file(dir_node, "data", conn,
+                                 (P9ReadFunc)devdraw_data_read,
+                                 (P9WriteFunc)devdraw_data_write);
+    if (data_node == NULL) {
+        fprintf(stderr, "drawconn_create_dir: failed to create data\n");
+        free(ctl_node);
+        free(dir_node->name);
+        free(dir_node);
+        return NULL;
     }
+    data_node->qid.path = conn->qid_path_base + 2;
 
-    dst = g_draw_state->images[dst_id];
-    src = g_draw_state->images[src_id];
-
-    /* Get mask image (if mask_id is 0xFFFFFFFF, no mask) */
-    mask = NULL;
-    if (mask_id != 0xFFFFFFFF) {
-        if (!validate_image_id(g_draw_state, (int)mask_id)) {
-            fprintf(stderr, "process_ddraw: invalid mask_id %lu\n", (unsigned long)mask_id);
-            return -1;
-        }
-        mask = g_draw_state->images[mask_id];
+    /* Create refresh file */
+    refresh_node = tree_create_file(dir_node, "refresh", conn,
+                                    (P9ReadFunc)devdraw_refresh_read,
+                                    NULL);
+    if (refresh_node == NULL) {
+        fprintf(stderr, "drawconn_create_dir: failed to create refresh\n");
+        free(data_node);
+        free(ctl_node);
+        free(dir_node->name);
+        free(dir_node);
+        return NULL;
     }
+    refresh_node->qid.path = conn->qid_path_base + 3;
 
-    /* Build destination rectangle */
-    dst_rect.min.x = (int)dst_x;
-    dst_rect.min.y = (int)dst_y;
-    dst_rect.max.x = (int)dst_x + (int)dst_w;
-    dst_rect.max.y = (int)dst_y + (int)dst_h;
+    fprintf(stderr, "drawconn_create_dir: created /dev/draw/%d/\n", conn_id);
 
-    /* Build source point */
-    src_pt.x = (int)src_x;
-    src_pt.y = (int)src_y;
-
-    /* Build mask point */
-    mask_pt.x = (int)mask_x;
-    mask_pt.y = (int)mask_y;
-
-    /* Perform bit blit */
-    memdraw(dst, dst_rect, src, src_pt, mask, mask_pt, (int)op);
-
-    /* Mark screen as dirty if destination is screen */
-    if (dst_id == 0) {
-        g_draw_state->refresh_needed = 1;
-    }
-
-    return 0;
+    return dir_node;
 }
 
-/*
- * Process D_line command
- * Format: [opcode:1][x0:4][y0:4][x1:4][y1:4][color:4][thickness:4]
- */
-static int process_dline(const uint8_t *buf, size_t len)
+/* ========== /dev/draw/[n]/ctl Implementation ========== */
+
+ssize_t devdraw_ctl_read(char *buf, size_t count, uint64_t offset, void *data)
 {
-    Point p0, p1;
-    uint32_t x0, y0, x1, y1, color, thickness;
-
-    if (len < 21) {
-        fprintf(stderr, "process_dline: insufficient data (need 21 bytes, got %lu)\n",
-                (unsigned long)len);
-        return -1;
-    }
-
-    if (g_draw_state == NULL || g_draw_state->screen == NULL) {
-        fprintf(stderr, "process_dline: no draw state or screen\n");
-        return -1;
-    }
-
-    /* Parse parameters */
-    x0 = le_get32(buf + 1);
-    y0 = le_get32(buf + 5);
-    x1 = le_get32(buf + 9);
-    y1 = le_get32(buf + 13);
-    color = le_get32(buf + 17);
-    thickness = le_get32(buf + 21);
-
-    /* Build points */
-    p0.x = (int)x0;
-    p0.y = (int)y0;
-    p1.x = (int)x1;
-    p1.y = (int)y1;
-
-    /* Draw line to screen */
-    memdraw_line(g_draw_state->screen, p0, p1, color, (int)thickness);
-    g_draw_state->refresh_needed = 1;
-
-    return 0;
-}
-
-/*
- * Process D_poly command
- * Format: [opcode:1][npoints:4][color:4][fill:4][x0:4][y0:4][x1:4][y1:4]...
- */
-static int process_dpoly(const uint8_t *buf, size_t len)
-{
-    Point *points;
-    uint32_t npoints, color, fill;
-    uint32_t x, y;
-    int i;
-    int expected_len;
-
-    if (len < 13) {
-        fprintf(stderr, "process_dpoly: insufficient data (need at least 13 bytes, got %lu)\n",
-                (unsigned long)len);
-        return -1;
-    }
-
-    if (g_draw_state == NULL || g_draw_state->screen == NULL) {
-        fprintf(stderr, "process_dpoly: no draw state or screen\n");
-        return -1;
-    }
-
-    /* Parse parameters */
-    npoints = le_get32(buf + 1);
-    color = le_get32(buf + 5);
-    fill = le_get32(buf + 9);
-
-    /* Validate number of points */
-    if (npoints < 3) {
-        fprintf(stderr, "process_dpoly: need at least 3 points, got %lu\n",
-                (unsigned long)npoints);
-        return -1;
-    }
-
-    /* Check buffer length */
-    expected_len = 13 + npoints * 8;  /* header + x,y pairs */
-    if (len < expected_len) {
-        fprintf(stderr, "process_dpoly: insufficient data for %lu points (need %d bytes, got %lu)\n",
-                (unsigned long)npoints, expected_len, (unsigned long)len);
-        return -1;
-    }
-
-    /* Allocate points array */
-    points = (Point *)malloc(sizeof(Point) * npoints);
-    if (points == NULL) {
-        fprintf(stderr, "process_dpoly: cannot allocate points array\n");
-        return -1;
-    }
-
-    /* Parse points */
-    for (i = 0; i < npoints; i++) {
-        x = le_get32(buf + 13 + i * 8);
-        y = le_get32(buf + 13 + i * 8 + 4);
-        points[i].x = (int)x;
-        points[i].y = (int)y;
-    }
-
-    /* Draw polygon */
-    memdraw_poly(g_draw_state->screen, points, (int)npoints, color, (int)fill);
-    g_draw_state->refresh_needed = 1;
-
-    free(points);
-    return 0;
-}
-
-/*
- * Process D_text command
- * Format: [opcode:1][x:4][y:4][color:4][length:4][font_id:4][string...]
- */
-static int process_dtext(const uint8_t *buf, size_t len)
-{
-    Point p;
-    uint32_t x, y, color, length, font_id;
-    char *str;
-    int i;
-
-    if (len < 21) {
-        fprintf(stderr, "process_dtext: insufficient data (need at least 21 bytes, got %lu)\n",
-                (unsigned long)len);
-        return -1;
-    }
-
-    if (g_draw_state == NULL || g_draw_state->screen == NULL) {
-        fprintf(stderr, "process_dtext: no draw state or screen\n");
-        return -1;
-    }
-
-    /* Parse parameters */
-    x = le_get32(buf + 1);
-    y = le_get32(buf + 5);
-    color = le_get32(buf + 9);
-    length = le_get32(buf + 13);
-    font_id = le_get32(buf + 17);
-
-    /* Validate font ID (only 0 is supported for now) */
-    if (font_id != 0) {
-        fprintf(stderr, "process_dtext: unsupported font id %lu\n", (unsigned long)font_id);
-        return -1;
-    }
-
-    /* Check buffer length for string */
-    if (len < 21 + length) {
-        fprintf(stderr, "process_dtext: insufficient data for string (need %lu bytes, got %lu)\n",
-                (unsigned long)(21 + length), (unsigned long)len);
-        return -1;
-    }
-
-    /* Allocate string buffer */
-    str = (char *)malloc(length + 1);
-    if (str == NULL) {
-        fprintf(stderr, "process_dtext: cannot allocate string buffer\n");
-        return -1;
-    }
-
-    /* Copy string */
-    for (i = 0; i < length; i++) {
-        str[i] = (char)buf[21 + i];
-    }
-    str[length] = '\0';
-
-    /* Build point */
-    p.x = (int)x;
-    p.y = (int)y;
-
-    /* Draw text */
-    memdraw_text(g_draw_state->screen, p, str, color);
-    g_draw_state->refresh_needed = 1;
-
-    free(str);
-    return 0;
-}
-
-/*
- * Process D_set command
- * Format: [opcode:1][param_type:4][param_length:4][data...]
- *
- * Parameter types:
- *  0: Clipping rectangle [x:4][y:4][w:4][h:4]
- *  1: Draw operation [op:4]
- *  2: Current color [color:4]
- *  3: Load font (future)
- */
-static int process_dset(const uint8_t *buf, size_t len)
-{
-    uint32_t param_type, param_length;
-
-    if (len < 9) {
-        fprintf(stderr, "process_dset: insufficient data (need at least 9 bytes, got %lu)\n",
-                (unsigned long)len);
-        return -1;
-    }
-
-    if (g_draw_state == NULL) {
-        fprintf(stderr, "process_dset: no draw state\n");
-        return -1;
-    }
-
-    /* Parse parameters */
-    param_type = le_get32(buf + 1);
-    param_length = le_get32(buf + 5);
-
-    /* Check buffer length */
-    if (len < 9 + param_length) {
-        fprintf(stderr, "process_dset: insufficient data for parameter (need %lu bytes, got %lu)\n",
-                (unsigned long)(9 + param_length), (unsigned long)len);
-        return -1;
-    }
-
-    switch (param_type) {
-    case 0:  /* Clipping rectangle */
-        {
-            uint32_t x, y, w, h;
-            if (param_length < 16) {
-                fprintf(stderr, "process_dset: insufficient data for clip rect\n");
-                return -1;
-            }
-            x = le_get32(buf + 9);
-            y = le_get32(buf + 13);
-            w = le_get32(buf + 17);
-            h = le_get32(buf + 21);
-
-            g_draw_state->clip_rect.min.x = (int)x;
-            g_draw_state->clip_rect.min.y = (int)y;
-            g_draw_state->clip_rect.max.x = (int)x + (int)w;
-            g_draw_state->clip_rect.max.y = (int)y + (int)h;
-
-            fprintf(stderr, "process_dset: clip rect set to (%d,%d)-(%d,%d)\n",
-                    g_draw_state->clip_rect.min.x, g_draw_state->clip_rect.min.y,
-                    g_draw_state->clip_rect.max.x, g_draw_state->clip_rect.max.y);
-        }
-        break;
-
-    case 1:  /* Draw operation */
-        {
-            uint32_t op;
-            if (param_length < 4) {
-                fprintf(stderr, "process_dset: insufficient data for draw op\n");
-                return -1;
-            }
-            op = le_get32(buf + 9);
-            g_draw_state->draw_op = (int)op;
-            fprintf(stderr, "process_dset: draw op set to %d\n", g_draw_state->draw_op);
-        }
-        break;
-
-    case 2:  /* Current color */
-        {
-            uint32_t color;
-            if (param_length < 4) {
-                fprintf(stderr, "process_dset: insufficient data for color\n");
-                return -1;
-            }
-            color = le_get32(buf + 9);
-            g_draw_state->color = color;
-            fprintf(stderr, "process_dset: color set to 0x%08lX\n", (unsigned long)color);
-        }
-        break;
-
-    case 3:  /* Load font (not yet implemented) */
-        fprintf(stderr, "process_dset: font loading not yet implemented\n");
-        break;
-
-    default:
-        fprintf(stderr, "process_dset: unknown parameter type %lu\n", (unsigned long)param_type);
-        return -1;
-    }
-
-    return 0;
-}
-
-/*
- * Process D_rect command
- * Format: [opcode][x0][y0][x1][y1][color]
- * All values are 32-bit integers
- */
-static int process_drect(const uint8_t *buf, size_t len)
-{
-    Rectangle r;
-    unsigned long color;
-    uint32_t x0, y0, x1, y1, color_val;
-
-    if (len < 20) {
-        return -1;  /* Not enough data */
-    }
-
-    x0 = le_get32(buf + 4);
-    y0 = le_get32(buf + 8);
-    x1 = le_get32(buf + 12);
-    y1 = le_get32(buf + 16);
-    color_val = le_get32(buf + 20);
-
-    r.min.x = (int)x0;
-    r.min.y = (int)y0;
-    r.max.x = (int)x1;
-    r.max.y = (int)y1;
-    color = color_val;
-
-    if (g_draw_state == NULL || g_draw_state->screen == NULL) {
-        return -1;
-    }
-
-    memfillcolor_rect(g_draw_state->screen, r, color);
-    g_draw_state->refresh_needed = 1;
-
-    return 0;
-}
-
-/*
- * Read from /dev/draw
- * Returns status information
- */
-static ssize_t devdraw_read(char *buf, size_t count, uint64_t offset,
-                            DrawState *state)
-{
+    DrawConnection *conn = (DrawConnection *)data;
     char status[256];
     int len;
 
-    (void)offset;
-
-    if (state == NULL) {
-        return 0;
+    if (conn == NULL) {
+        return -1;
     }
 
-    /* Use sprintf instead of snprintf for C89 compatibility */
+    /* Build status string */
     len = sprintf(status,
-                  "refresh=%d\nimages=%d\nclient=%d\n",
-                  state->refresh_needed,
-                  state->nimages,
-                  state->client_id);
+                  "id=%d\n"
+                  "screen_id=%d\n"
+                  "refresh=%d\n"
+                  "nimages=%d\n"
+                  "screen_rect=%d,%d-%d,%d\n",
+                  conn->id,
+                  conn->screen_id,
+                  conn->refresh_enabled,
+                  conn->nimages,
+                  conn->screen->r.min.x, conn->screen->r.min.y,
+                  conn->screen->r.max.x, conn->screen->r.max.y);
 
-    if (len < 0 || (size_t)len > sizeof(status)) {
+    if (len < 0 || len > sizeof(status)) {
+        return -1;
+    }
+
+    /* Handle offset */
+    if (offset >= (uint64_t)len) {
         return 0;
     }
 
+    len -= (int)offset;
     if (len > count) {
         len = count;
     }
 
-    memcpy(buf, status, len);
+    memcpy(buf, status + offset, len);
 
     return len;
 }
 
-/*
- * Write to /dev/draw
- * Processes binary drawing commands
- */
-static ssize_t devdraw_write(const char *buf, size_t count, uint64_t offset,
-                             DrawState *state)
+ssize_t devdraw_ctl_write(const char *buf, size_t count, uint64_t offset, void *data)
 {
-    const uint8_t *ubuf = (const uint8_t *)buf;
-    uint8_t opcode;
+    DrawConnection *conn = (DrawConnection *)data;
+    char cmd[32];
+    size_t cmd_len;
 
     (void)offset;
 
-    if (state == NULL || buf == NULL || count < 1) {
+    if (conn == NULL) {
         return -1;
     }
 
-    opcode = ubuf[0];
+    if (count == 0 || buf == NULL) {
+        return 0;
+    }
 
-    switch (opcode) {
-    case D_alloc:
-        if (process_dalloc(ubuf, count) < 0) {
-            fprintf(stderr, "devdraw_write: D_alloc failed\n");
+    /* Extract command (first word) */
+    cmd_len = count < sizeof(cmd) - 1 ? count : sizeof(cmd) - 1;
+    memcpy(cmd, buf, cmd_len);
+    cmd[cmd_len] = '\0';
+
+    /* Parse commands */
+    if (strcmp(cmd, "refresh") == 0) {
+        conn->refresh_enabled = 1;
+        fprintf(stderr, "devdraw_ctl_write: conn %d refresh enabled\n", conn->id);
+    } else if (strcmp(cmd, "norefresh") == 0) {
+        conn->refresh_enabled = 0;
+        fprintf(stderr, "devdraw_ctl_write: conn %d refresh disabled\n", conn->id);
+    } else {
+        fprintf(stderr, "devdraw_ctl_write: conn %d unknown command '%s'\n", conn->id, cmd);
+    }
+
+    return count;
+}
+
+/* ========== /dev/draw/[n]/data Implementation ========== */
+
+ssize_t devdraw_data_read(char *buf, size_t count, uint64_t offset, void *data)
+{
+    (void)buf;
+    (void)count;
+    (void)offset;
+    (void)data;
+
+    /* Data file is write-only */
+    return -1;
+}
+
+/* ========== Graphics Protocol Implementation ========== */
+
+static int drawconn_add_image(DrawConnection *conn, Memimage *img, uint32_t id)
+{
+    int slot;
+
+    if (conn == NULL || img == NULL) {
+        return -1;
+    }
+
+    /* Use specified ID or allocate next */
+    if (id != (uint32_t)-1) {
+        slot = (int)id;
+    } else {
+        slot = conn->next_image_id;
+    }
+
+    if (slot < 0 || slot >= MAX_IMAGES_PER_CONNECTION) {
+        fprintf(stderr, "drawconn_add_image: invalid image id %d\n", slot);
+        return -1;
+    }
+
+    if (conn->images[slot].in_use) {
+        fprintf(stderr, "drawconn_add_image: image slot %d already in use\n", slot);
+        return -1;
+    }
+
+    conn->images[slot].id = slot;
+    conn->images[slot].img = img;
+    conn->images[slot].in_use = 1;
+
+    if (slot >= conn->nimages) {
+        conn->nimages = slot + 1;
+    }
+
+    if (slot == conn->next_image_id) {
+        conn->next_image_id = slot + 1;
+    }
+
+    fprintf(stderr, "drawconn_add_image: conn %d allocated image %d\n", conn->id, slot);
+    return slot;
+}
+
+static Memimage *drawconn_get_image(DrawConnection *conn, int id)
+{
+    if (conn == NULL || id < 0 || id >= conn->nimages) {
+        return NULL;
+    }
+
+    if (!conn->images[id].in_use) {
+        return NULL;
+    }
+
+    return conn->images[id].img;
+}
+
+static void parse_rectangle(const uint8_t *buf, Rectangle *r)
+{
+    int minx, miny, maxx, maxy;
+    minx = (int)le_get32(buf + 0);
+    miny = (int)le_get32(buf + 4);
+    maxx = (int)le_get32(buf + 8);
+    maxy = (int)le_get32(buf + 12);
+    r->min.x = minx;
+    r->min.y = miny;
+    r->max.x = maxx;
+    r->max.y = maxy;
+}
+
+static void parse_point(const uint8_t *buf, Point *p)
+{
+    p->x = (int)le_get32(buf + 0);
+    p->y = (int)le_get32(buf + 4);
+}
+
+/* Process 'b' message - Allocate image */
+static int process_b_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t id, screenid, chan;
+    uint8_t refresh, repl;
+    Rectangle r, clipr;
+    uint32_t rrggbbaa;
+    Memimage *img;
+    int minx, miny, maxx, maxy;
+
+    if (len < 52) {
+        fprintf(stderr, "process_b_msg: insufficient data\n");
+        return -1;
+    }
+
+    id = le_get32(buf + 1);
+    screenid = le_get32(buf + 5);
+    refresh = buf[9];
+    chan = le_get32(buf + 10);
+    repl = buf[14];
+
+    /* Parse rectangle R (16 bytes) */
+    minx = (int)le_get32(buf + 15);
+    miny = (int)le_get32(buf + 19);
+    maxx = (int)le_get32(buf + 23);
+    maxy = (int)le_get32(buf + 27);
+    r.min.x = minx;
+    r.min.y = miny;
+    r.max.x = maxx;
+    r.max.y = maxy;
+
+    /* Parse clip rectangle (16 bytes) */
+    minx = (int)le_get32(buf + 31);
+    miny = (int)le_get32(buf + 35);
+    maxx = (int)le_get32(buf + 39);
+    maxy = (int)le_get32(buf + 43);
+    clipr.min.x = minx;
+    clipr.min.y = miny;
+    clipr.max.x = maxx;
+    clipr.max.y = maxy;
+
+    rrggbbaa = le_get32(buf + 47);
+
+    /* Create image */
+    img = memimage_alloc(r, chan);
+    if (img == NULL) {
+        fprintf(stderr, "process_b_msg: failed to allocate image\n");
+        return -1;
+    }
+
+    /* Set clipping rectangle */
+    memimage_setclipr(img, clipr);
+
+    /* Fill with color if specified */
+    if (rrggbbaa != 0) {
+        memfillcolor(img, rrggbbaa);
+    }
+
+    /* Add to connection's image table */
+    if (drawconn_add_image(conn, img, id) < 0) {
+        memimage_free(img);
+        return -1;
+    }
+
+    return 0;
+}
+
+/* Process 'n' message - Named image (screen) */
+static int process_n_msg(DrawConnection *conn, const uint8_t *buf, size_t len, char *response, int *resp_len)
+{
+    uint32_t id;
+    uint8_t n;
+    char name[32];
+
+    if (len < 6) {
+        fprintf(stderr, "process_n_msg: insufficient data\n");
+        return -1;
+    }
+
+    id = le_get32(buf + 1);
+    n = buf[5];
+
+    if (len < 6 + n) {
+        fprintf(stderr, "process_n_msg: insufficient data for name\n");
+        return -1;
+    }
+
+    memcpy(name, buf + 6, n);
+    name[n] = '\0';
+
+    fprintf(stderr, "process_n_msg: conn %d id=%lu name='%s'\n",
+            conn->id, (unsigned long)id, name);
+
+    /* Check if requesting screen */
+    if (strcmp(name, "screen") == 0) {
+        /* Build 144-byte response with screen info */
+        int info_len = build_connection_info(conn, response, 144);
+        if (info_len < 0) {
             return -1;
         }
-        break;
+        *resp_len = 144;
+        return 0;
+    }
 
-    case D_free:
-        if (process_dfree(ubuf, count) < 0) {
-            fprintf(stderr, "devdraw_write: D_free failed\n");
+    fprintf(stderr, "process_n_msg: unknown name '%s'\n", name);
+    return -1;
+}
+
+/* Process 'f' message - Free image */
+static int process_f_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t id;
+    Memimage *img;
+
+    if (len < 5) {
+        fprintf(stderr, "process_f_msg: insufficient data\n");
+        return -1;
+    }
+
+    id = le_get32(buf + 1);
+
+    /* Cannot free screen (id 0) */
+    if (id == 0) {
+        fprintf(stderr, "process_f_msg: cannot free screen\n");
+        return -1;
+    }
+
+    if (id >= MAX_IMAGES_PER_CONNECTION) {
+        fprintf(stderr, "process_f_msg: invalid image id\n");
+        return -1;
+    }
+
+    if (!conn->images[id].in_use) {
+        fprintf(stderr, "process_f_msg: image not in use\n");
+        return -1;
+    }
+
+    img = conn->images[id].img;
+    if (img != NULL) {
+        memimage_free(img);
+    }
+
+    conn->images[id].in_use = 0;
+    conn->images[id].img = NULL;
+
+    return 0;
+}
+
+/* Process 'A' message - Allocate screen */
+static int process_A_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t id, imageid, fillid;
+    uint8_t public;
+    Memimage *image;
+
+    if (len < 13) {
+        fprintf(stderr, "process_A_msg: insufficient data\n");
+        return -1;
+    }
+
+    id = le_get32(buf + 1);
+    imageid = le_get32(buf + 5);
+    fillid = le_get32(buf + 9);
+    public = buf[12];
+
+    fprintf(stderr, "process_A_msg: conn %d id=%lu imageid=%lu fillid=%lu public=%d\n",
+            conn->id, (unsigned long)id, (unsigned long)imageid, (unsigned long)fillid, public);
+
+    /* Get images */
+    image = drawconn_get_image(conn, (int)imageid);
+
+    if (image == NULL) {
+        fprintf(stderr, "process_A_msg: image %lu not found\n", (unsigned long)imageid);
+        return -1;
+    }
+
+    /* For now, just validate - screen allocation is handled by connection setup */
+    conn->screen_id = (int)imageid;
+    conn->fillimage_id = (int)fillid;
+
+    return 0;
+}
+
+/* Process 'c' message - Set repl and clip */
+static int process_c_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t dstid;
+    uint8_t repl;
+    Rectangle clipr;
+    Memimage *dst;
+
+    if (len < 21) {
+        fprintf(stderr, "process_c_msg: insufficient data\n");
+        return -1;
+    }
+
+    dstid = le_get32(buf + 1);
+    repl = buf[5];
+    parse_rectangle(buf + 6, &clipr);
+
+    dst = drawconn_get_image(conn, (int)dstid);
+    if (dst == NULL) {
+        fprintf(stderr, "process_c_msg: dst image %lu not found\n", (unsigned long)dstid);
+        return -1;
+    }
+
+    memimage_setclipr(dst, clipr);
+    fprintf(stderr, "process_c_msg: set clipr for image %lu\n", (unsigned long)dstid);
+
+    return 0;
+}
+
+/* Process 'd' message - Draw (bit blit) */
+static int process_d_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t dstid, srcid, maskid;
+    Rectangle r;
+    Point sp, mp;
+    Memimage *dst, *src, *mask;
+    int op;
+
+    if (len < 45) {
+        fprintf(stderr, "process_d_msg: insufficient data\n");
+        return -1;
+    }
+
+    dstid = le_get32(buf + 1);
+    srcid = le_get32(buf + 5);
+    maskid = le_get32(buf + 9);
+    parse_rectangle(buf + 13, &r);
+    parse_point(buf + 29, &sp);
+    parse_point(buf + 37, &mp);
+
+    dst = drawconn_get_image(conn, (int)dstid);
+    src = drawconn_get_image(conn, (int)srcid);
+    mask = drawconn_get_image(conn, (int)maskid);
+
+    if (dst == NULL || src == NULL) {
+        fprintf(stderr, "process_d_msg: dst or src image not found\n");
+        return -1;
+    }
+
+    op = SoverD;  /* Default op */
+
+    memdraw(dst, r, src, sp, mask, mp, op);
+    fprintf(stderr, "process_d_msg: drew %lu->%lu\n", (unsigned long)srcid, (unsigned long)dstid);
+
+    return 0;
+}
+
+/* Process 'e' message - Ellipse */
+static int process_e_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t dstid, srcid;
+    Point center, sp;
+    uint32_t a, b, thick;
+    Memimage *dst, *src;
+
+    if (len < 37) {
+        fprintf(stderr, "process_e_msg: insufficient data\n");
+        return -1;
+    }
+
+    dstid = le_get32(buf + 1);
+    srcid = le_get32(buf + 5);
+    parse_point(buf + 9, &center);
+    a = le_get32(buf + 17);
+    b = le_get32(buf + 21);
+    thick = le_get32(buf + 25);
+    parse_point(buf + 29, &sp);
+
+    dst = drawconn_get_image(conn, (int)dstid);
+    src = drawconn_get_image(conn, (int)srcid);
+
+    if (dst == NULL || src == NULL) {
+        fprintf(stderr, "process_e_msg: dst or src image not found\n");
+        return -1;
+    }
+
+    memdraw_ellipse(dst, center, (int)a, (int)b, 0xFF0000FF, (int)thick > 0);
+
+    return 0;
+}
+
+/* Process 'L' message - Line */
+static int process_L_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t dstid, srcid;
+    Point p0, p1, sp;
+    uint32_t end0, end1, radius;
+    Memimage *dst, *src;
+    unsigned long color;
+
+    if (len < 41) {
+        fprintf(stderr, "process_L_msg: insufficient data\n");
+        return -1;
+    }
+
+    dstid = le_get32(buf + 1);
+    parse_point(buf + 5, &p0);
+    parse_point(buf + 13, &p1);
+    end0 = le_get32(buf + 21);
+    end1 = le_get32(buf + 25);
+    radius = le_get32(buf + 29);
+    srcid = le_get32(buf + 33);
+    parse_point(buf + 37, &sp);
+
+    dst = drawconn_get_image(conn, (int)dstid);
+    src = drawconn_get_image(conn, (int)srcid);
+
+    if (dst == NULL) {
+        fprintf(stderr, "process_L_msg: dst image not found\n");
+        return -1;
+    }
+
+    color = 0xFFFFFFFF;
+
+    memdraw_line(dst, p0, p1, color, (int)radius);
+
+    return 0;
+}
+
+/* Process 'p' message - Polygon */
+static int process_p_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t dstid, srcid;
+    uint16_t n;
+    uint32_t end0, end1, radius;
+    Point *points, sp;
+    Memimage *dst, *src;
+    unsigned long color;
+    int i, expected_len;
+
+    if (len < 27) {
+        fprintf(stderr, "process_p_msg: insufficient data\n");
+        return -1;
+    }
+
+    dstid = le_get32(buf + 1);
+    n = le_get32(buf + 5);
+    end0 = le_get32(buf + 7);
+    end1 = le_get32(buf + 11);
+    radius = le_get32(buf + 15);
+    srcid = le_get32(buf + 19);
+    parse_point(buf + 23, &sp);
+
+    expected_len = 27 + n * 8;
+    if (len < expected_len) {
+        fprintf(stderr, "process_p_msg: insufficient data for %d points\n", n);
+        return -1;
+    }
+
+    dst = drawconn_get_image(conn, (int)dstid);
+    src = drawconn_get_image(conn, (int)srcid);
+
+    if (dst == NULL) {
+        fprintf(stderr, "process_p_msg: dst image not found\n");
+        return -1;
+    }
+
+    points = (Point *)malloc(sizeof(Point) * (n + 1));
+    if (points == NULL) {
+        fprintf(stderr, "process_p_msg: malloc failed\n");
+        return -1;
+    }
+
+    /* Parse first point */
+    parse_point(buf + 31, &points[0]);
+
+    /* Parse delta points */
+    for (i = 1; i <= n; i++) {
+        int dx = (int)le_get32(buf + 31 + i * 8);
+        int dy = (int)le_get32(buf + 31 + i * 8 + 4);
+        points[i].x = points[i-1].x + dx;
+        points[i].y = points[i-1].y + dy;
+    }
+
+    color = 0xFFFFFFFF;
+    memdraw_poly(dst, points, n + 1, color, 0);
+
+    free(points);
+
+    return 0;
+}
+
+/* Process 'r' message - Read image (stub) */
+static int process_r_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t id;
+    Rectangle r;
+    Memimage *img;
+
+    if (len < 20) {
+        fprintf(stderr, "process_r_msg: insufficient data\n");
+        return -1;
+    }
+
+    id = le_get32(buf + 1);
+    parse_rectangle(buf + 5, &r);
+
+    img = drawconn_get_image(conn, (int)id);
+    if (img == NULL) {
+        fprintf(stderr, "process_r_msg: image %lu not found\n", (unsigned long)id);
+        return -1;
+    }
+
+    /* TODO: Queue read data for client to read */
+    fprintf(stderr, "process_r_msg: read request for image %lu (not fully implemented)\n",
+            (unsigned long)id);
+
+    return 0;
+}
+
+/* Process 'y' message - Write image data (stub) */
+static int process_y_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint32_t id;
+    Rectangle r;
+    Memimage *img;
+    int data_len;
+    const uint8_t *data;
+
+    if (len < 20) {
+        fprintf(stderr, "process_y_msg: insufficient data\n");
+        return -1;
+    }
+
+    id = le_get32(buf + 1);
+    parse_rectangle(buf + 5, &r);
+
+    img = drawconn_get_image(conn, (int)id);
+    if (img == NULL) {
+        fprintf(stderr, "process_y_msg: image %lu not found\n", (unsigned long)id);
+        return -1;
+    }
+
+    /* Copy pixel data */
+    data = buf + 20;
+    data_len = len - 20;
+
+    /* TODO: Implement actual pixel loading */
+    fprintf(stderr, "process_y_msg: write %d bytes to image %lu (not fully implemented)\n",
+            data_len, (unsigned long)id);
+
+    return 0;
+}
+
+/* Process 'O' message - Set drawing operation */
+static int process_O_msg(DrawConnection *conn, const uint8_t *buf, size_t len)
+{
+    uint8_t op;
+
+    if (len < 2) {
+        fprintf(stderr, "process_O_msg: insufficient data\n");
+        return -1;
+    }
+
+    op = buf[1];
+
+    fprintf(stderr, "process_O_msg: set op to %d\n", op);
+
+    /* Store op in connection for next draw operation */
+    /* TODO: Implement op storage */
+
+    return 0;
+}
+
+/* Main Plan 9 graphics message processor */
+int process_draw_messages(DrawConnection *conn, const char *buf, size_t count,
+                          char *response, int *resp_len)
+{
+    const uint8_t *ubuf = (const uint8_t *)buf;
+    uint8_t opcode;
+    size_t pos;
+
+    if (conn == NULL || buf == NULL || count < 1) {
+        return -1;
+    }
+
+    *resp_len = 0;
+    pos = 0;
+
+    while (pos < count) {
+        opcode = ubuf[pos];
+
+        switch (opcode) {
+        case 'b':
+            if (pos + 52 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'b' message\n");
+                return -1;
+            }
+            if (process_b_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 52;
+            break;
+
+        case 'n': {
+            int n;
+            if (pos + 6 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'n' message\n");
+                return -1;
+            }
+            n = ubuf[pos + 5];
+            if (pos + 6 + n > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'n' message name\n");
+                return -1;
+            }
+            if (process_n_msg(conn, ubuf + pos, count - pos, response + *resp_len, &n) < 0) {
+                return -1;
+            }
+            *resp_len += n;
+            pos += 6 + ubuf[pos + 5];
+            break;
+        }
+
+        case 'f':
+            if (pos + 5 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'f' message\n");
+                return -1;
+            }
+            if (process_f_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 5;
+            break;
+
+        case 'A':
+            if (pos + 13 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'A' message\n");
+                return -1;
+            }
+            if (process_A_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 13;
+            break;
+
+        case 'c':
+            if (pos + 21 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'c' message\n");
+                return -1;
+            }
+            if (process_c_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 21;
+            break;
+
+        case 'd':
+            if (pos + 45 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'd' message\n");
+                return -1;
+            }
+            if (process_d_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 45;
+            break;
+
+        case 'e':
+        case 'E':
+            if (pos + 45 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'e' message\n");
+                return -1;
+            }
+            if (process_e_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 45;
+            break;
+
+        case 'L':
+            if (pos + 41 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'L' message\n");
+                return -1;
+            }
+            if (process_L_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 41;
+            break;
+
+        case 'p':
+        case 'P': {
+            if (pos + 27 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'p' message header\n");
+                return -1;
+            }
+            if (process_p_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            uint16_t n = le_get32(ubuf + pos + 5);
+            pos += 27 + n * 8;
+            break;
+        }
+
+        case 'r':
+            if (pos + 20 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'r' message\n");
+                return -1;
+            }
+            if (process_r_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 20;
+            break;
+
+        case 'y':
+        case 'Y': {
+            if (pos + 20 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'y' message header\n");
+                return -1;
+            }
+            int msg_len = 20 + (count - pos - 20);
+            if (process_y_msg(conn, ubuf + pos, msg_len) < 0) {
+                return -1;
+            }
+            pos += count - pos;
+            break;
+        }
+
+        case 'O':
+            if (pos + 2 > count) {
+                fprintf(stderr, "process_draw_messages: incomplete 'O' message\n");
+                return -1;
+            }
+            if (process_O_msg(conn, ubuf + pos, count - pos) < 0) {
+                return -1;
+            }
+            pos += 2;
+            break;
+
+        default:
+            fprintf(stderr, "process_draw_messages: unknown opcode '%c' (0x%02X) at pos %lu\n",
+                    opcode > 32 ? opcode : '?', opcode, (unsigned long)pos);
             return -1;
         }
-        break;
+    }
 
-    case D_rect:
-        if (process_drect(ubuf, count) < 0) {
-            fprintf(stderr, "devdraw_write: D_rect failed\n");
-            return -1;
-        }
-        break;
+    return 0;
+}
 
-    case D_draw:
-        if (process_ddraw(ubuf, count) < 0) {
-            fprintf(stderr, "devdraw_write: D_draw failed\n");
-            return -1;
-        }
-        break;
+ssize_t devdraw_data_write(const char *buf, size_t count, uint64_t offset, void *data)
+{
+    DrawConnection *conn = (DrawConnection *)data;
+    char response[256];
+    int resp_len;
 
-    case D_line:
-        if (process_dline(ubuf, count) < 0) {
-            fprintf(stderr, "devdraw_write: D_line failed\n");
-            return -1;
-        }
-        break;
+    (void)offset;
 
-    case D_poly:
-        if (process_dpoly(ubuf, count) < 0) {
-            fprintf(stderr, "devdraw_write: D_poly failed\n");
-            return -1;
-        }
-        break;
+    if (conn == NULL || buf == NULL || count < 1) {
+        return -1;
+    }
 
-    case D_text:
-        if (process_dtext(ubuf, count) < 0) {
-            fprintf(stderr, "devdraw_write: D_text failed\n");
-            return -1;
-        }
-        break;
+    fprintf(stderr, "devdraw_data_write: conn %d len %lu\n",
+            conn->id, (unsigned long)count);
 
-    case D_set:
-        if (process_dset(ubuf, count) < 0) {
-            fprintf(stderr, "devdraw_write: D_set failed\n");
-            return -1;
-        }
-        break;
-
-    default:
-        fprintf(stderr, "devdraw_write: unknown opcode %d\n", opcode);
+    /* Process messages */
+    if (process_draw_messages(conn, buf, count, response, &resp_len) < 0) {
+        fprintf(stderr, "devdraw_data_write: processing failed\n");
         return -1;
     }
 
     return count;
 }
 
-/*
- * Initialize /dev/draw device
- */
-int devdraw_init(P9Node *dev_dir, Memimage *screen)
+/* ========== /dev/draw/[n]/refresh Implementation ========== */
+
+ssize_t devdraw_refresh_read(char *buf, size_t count, uint64_t offset, void *data)
 {
-    P9Node *draw_node;
+    DrawConnection *conn = (DrawConnection *)data;
 
-    if (dev_dir == NULL || screen == NULL) {
+    if (conn == NULL) {
         return -1;
     }
 
-    /* Create global state */
-    if (g_draw_state == NULL) {
-        g_draw_state = drawstate_create(screen);
-        if (g_draw_state == NULL) {
-            fprintf(stderr, "devdraw_init: cannot create state\n");
-            return -1;
-        }
+    /* For now, return empty (non-blocking) */
+    /* In real implementation, this would block until refresh needed */
+
+    if (offset > 0) {
+        return 0;
     }
 
-    /* Create /dev/draw file */
-    draw_node = tree_create_file(dev_dir, "draw",
-                                 g_draw_state,
-                                 (P9ReadFunc)devdraw_read,
-                                 (P9WriteFunc)devdraw_write);
-    if (draw_node == NULL) {
-        fprintf(stderr, "devdraw_init: cannot create draw node\n");
-        drawstate_destroy(g_draw_state);
-        g_draw_state = NULL;
-        return -1;
-    }
-
-    fprintf(stderr, "devdraw_init: initialized draw device\n");
-
+    /* Return empty refresh notification */
     return 0;
 }
 
 /*
- * Mark screen as needing refresh
+ * Compatibility functions for existing code
  */
+
+/* Mark screen as needing refresh (for render.c) */
 void devdraw_mark_dirty(void)
 {
-    if (g_draw_state != NULL) {
-        g_draw_state->refresh_needed = 1;
-    }
+    /* No-op in Plan 9 mode - refresh handled via connection */
 }
 
-/*
- * Clear refresh flag
- */
+/* Clear refresh flag (for render.c) */
 void devdraw_clear_dirty(void)
 {
-    if (g_draw_state != NULL) {
-        g_draw_state->refresh_needed = 0;
-    }
+    /* No-op in Plan 9 mode */
 }
 
-/*
- * Check if refresh is needed
- */
+/* Check if refresh is needed (for render.c) */
 int devdraw_is_dirty(void)
 {
-    if (g_draw_state != NULL) {
-        return g_draw_state->refresh_needed;
-    }
-    return 0;
-}
-
-/*
- * Cleanup draw device
- */
-void devdraw_cleanup(void)
-{
-    if (g_draw_state != NULL) {
-        drawstate_destroy(g_draw_state);
-        g_draw_state = NULL;
-    }
+    /* Always return 1 to trigger rendering */
+    return 1;
 }

@@ -63,7 +63,8 @@ GRAPHICS_SRCS = $(SRC_DIR)/core/memimage.c $(SRC_DIR)/core/memdraw.c \
                 $(SRC_DIR)/core/pixconv.c \
                 $(SRC_DIR)/core/devscreen.c $(SRC_DIR)/core/devmouse.c \
                 $(SRC_DIR)/core/devdraw.c $(SRC_DIR)/core/devcons.c \
-                $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c
+                $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c \
+                $(SRC_DIR)/core/devkbd.c
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 CLIENT_SRCS = $(SRC_DIR)/client/9pclient.c $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c

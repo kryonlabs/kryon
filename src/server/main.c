@@ -27,12 +27,11 @@
 extern int devscreen_init(P9Node *dev_dir, Memimage *screen);
 extern void devscreen_cleanup(void);
 extern int devmouse_init(P9Node *dev_dir);
-extern int devdraw_init(P9Node *dev_dir, Memimage *screen);
-extern void devdraw_cleanup(void);
-extern void devdraw_mark_dirty(void);
-extern void devdraw_clear_dirty(void);
-extern int devdraw_is_dirty(void);
+extern int devdraw_new_init(P9Node *draw_dir);
+extern int drawconn_init(struct Memimage *screen);
+extern void drawconn_cleanup(void);
 extern int devcons_init(P9Node *dev_dir);
+extern int devkbd_init(P9Node *dev_dir);
 extern void render_set_screen(Memimage *screen);
 extern void render_all(void);
 
@@ -322,6 +321,27 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /* Initialize draw connection system */
+    if (drawconn_init(screen) < 0) {
+        fprintf(stderr, "Error: failed to initialize draw connection system\n");
+        return 1;
+    }
+
+    /* Create /dev/draw directory */
+    {
+        P9Node *draw_dir;
+        draw_dir = tree_create_dir(dev_dir, "draw");
+        if (draw_dir == NULL) {
+            fprintf(stderr, "Error: failed to create draw directory\n");
+            return 1;
+        }
+
+        /* Initialize /dev/draw/new */
+        if (devdraw_new_init(draw_dir) < 0) {
+            fprintf(stderr, "Warning: failed to initialize /dev/draw/new\n");
+        }
+    }
+
     /* Initialize devices */
     if (devscreen_init(dev_dir, screen) < 0) {
         fprintf(stderr, "Warning: failed to initialize /dev/screen\n");
@@ -331,8 +351,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "Warning: failed to initialize /dev/mouse\n");
     }
 
-    if (devdraw_init(dev_dir, screen) < 0) {
-        fprintf(stderr, "Warning: failed to initialize /dev/draw\n");
+    if (devkbd_init(dev_dir) < 0) {
+        fprintf(stderr, "Warning: failed to initialize /dev/kbd\n");
     }
 
     if (devcons_init(dev_dir) < 0) {
@@ -568,7 +588,7 @@ int main(int argc, char **argv)
     event_system_cleanup();
 
     /* Cleanup device states before tree cleanup */
-    devdraw_cleanup();
+    drawconn_cleanup();
     devscreen_cleanup();
 
     /* Tree cleanup must happen after device cleanup */
