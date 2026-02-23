@@ -1,0 +1,40 @@
+# --- Kryon Labs Build Artifacts ---
+# Compiled binaries
+kryon_server
+bin
+*.exe
+*.out
+*.app
+
+# Objects and Libraries
+*.o
+*.a
+*.so
+
+# --- Development Environment ---
+# Nix environment files
+.direnv/
+.nix-shell
+result
+result-*
+
+# --- Plan 9 / 9front specifics ---
+# Plan 9 compiler output (8.out, 5.out, etc)
+[0-9].out
+*.8
+*.6
+*.5
+*.v
+
+# --- Editor & System ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
+
+# --- Logs & Debugging ---
+*.log
+gmon.out
+.gdb_history
