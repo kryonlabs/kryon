@@ -1,0 +1,85 @@
+WIDGETS
+
+Kryon provides 89 widgets.  All widgets have:
+
+    Mandatory properties:
+        type        (string, read-only)  Widget type
+        rect        (string)             "x y w h"
+        visible     (integer)            0 or 1
+        enabled     (integer)            0 or 1
+
+    Widget-specific properties:
+        text        (string)             Label/caption
+        value       (string)             State/value
+        placeholder (string)             Hint text
+
+    Events:
+        clicked                  Mouse click
+        changed                  Value changed
+        mouse_enter/leave        Mouse crossing
+        focus_gained/lost        Keyboard focus
+        key_press/release        Keyboard input
+
+Widget catalog:
+
+Input (24):
+    TextInput, PasswordInput, TextArea, SearchInput,
+    NumberInput, EmailInput, UrlInput, TelInput,
+    Checkbox, RadioButton, Dropdown, MultiSelect,
+    ListBox, Switch, Slider, RangeSlider, Rating, Spinbox,
+    DateInput, TimeInput, DateTimeInput, MonthInput, WeekInput,
+    FileInput
+
+Buttons (8):
+    Button, SubmitButton, ResetButton, IconButton,
+    FloatingActionButton, DropdownButton, SegmentedControl
+
+Display (11):
+    Label, Heading, Paragraph, RichText, Code,
+    Image, ProgressBar, ActivityIndicator, Badge,
+    Divider, Tooltip
+
+Containers (11):
+    Container, Box, Frame, Card, ScrollArea,
+    SplitPane, TabContainer, Dialog, Modal,
+    ActionSheet, Drawer
+
+Lists (8):
+    ListItem, ListTile, ListView, GridView,
+    DataTable, TreeView, Chip, Tag
+
+Navigation (8):
+    MenuBar, ToolBar, NavBar, NavRail,
+    Breadcrumb, Pagination, Stepper, PageView
+
+Menus (4):
+    DropdownMenu, ContextMenu, CascadingMenu, PopupMenu
+
+Forms (4):
+    Form, FormGroup, ValidationMessage, InputGroup
+
+Windows (4):
+    Window, DialogWindow, PageScaffold, Fullscreen
+
+Specialized (8):
+    Canvas, Svg, Chart, ColorPicker, SignaturePad,
+    Resizable, Calendar, TableView
+
+Layout system:
+
+    Container widgets support:
+        layout          "row", "column", "grid", "absolute"
+        gap             integer       pixels between children
+        padding         integer       pixels around edges
+        align           "start", "center", "end", "stretch"
+        justify         "start", "center", "end", "space-between"
+
+    Row layout:
+        Children arranged horizontally
+        Height determined by tallest child
+        Widths expand to fill
+
+    Column layout:
+        Children arranged vertically
+        Width determined by widest child
+        Heights expand to fill

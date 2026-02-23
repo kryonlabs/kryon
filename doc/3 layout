@@ -1,0 +1,75 @@
+LAYOUT FORMAT
+
+.kryon files declare widget hierarchies with IDs for controllers.
+
+Syntax:
+
+    window "title" width height {
+        layout_type param=value param=value {
+            widget_type id "property value"
+            widget_type id param=value
+        }
+    }
+
+Example:
+
+    window "Counter" 300 200 {
+        column gap=10 padding=20 {
+            label lbl_count "Count: 0" align="center"
+            button btn_inc "+"
+            button btn_dec "-"
+        }
+    }
+
+Supported layouts:
+
+    column          gap=10 padding=20 align="center"
+    row             gap=10 padding=20 justify="space-between"
+    grid            columns=2 rows=2 gap=10
+    absolute        (manual positioning)
+
+Widget syntax:
+
+    # Simple text widget
+    label id1 "Hello, World"
+
+    # Button with ID
+    button btn_submit "Submit"
+
+    # With parameters
+    textinput name placeholder="Enter name" width=200
+
+    # Container with children
+    column gap=10 {
+        label "First:"
+        textinput first
+        label "Last:"
+        textinput last
+    }
+
+Controller usage (Lua):
+
+    local count = 0
+    local lbl = kryon.widget("lbl_count")
+
+    kryon.widget("btn_inc").on_click(function()
+        count = count + 1
+        lbl.text = "Count: " .. count
+    end)
+
+    kryon.run()
+
+Property types:
+
+    string          "text value"
+    integer         42
+    boolean         0 or 1
+    rect            "x y w h"
+    enum            "start" | "center" | "end" | "stretch"
+
+Direct 9P usage (no layout file):
+
+    echo "create_window" > /mnt/kryon/ctl
+    echo "My App" > /mnt/kryon/windows/1/title
+    echo "create_widget 1 label 0" > /mnt/kryon/ctl
+    echo "Hello" > /mnt/kryon/windows/1/widgets/1/text

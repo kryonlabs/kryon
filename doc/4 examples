@@ -1,0 +1,92 @@
+EXAMPLES
+
+Hello World (direct 9P):
+
+    # Create window
+    echo "create_window" > /mnt/kryon/ctl
+
+    # Set properties
+    echo "Hello World" > /mnt/kryon/windows/1/title
+    echo "100 100 400 300" > /mnt/kryon/windows/1/rect
+    echo "1" > /mnt/kryon/windows/1/visible
+
+    # Create label
+    echo "create_widget 1 label 0" > /mnt/kryon/ctl
+    echo "Welcome to Kryon!" > /mnt/kryon/windows/1/widgets/1/text
+
+Counter (.kryon layout):
+
+    # counter.kryon
+    window "Counter" 300 200 {
+        column gap=10 padding=20 {
+            label lbl_count "Count: 0" align="center"
+            button btn_inc "+"
+            button btn_dec "-"
+        }
+    }
+
+    # counter.lua
+    local kryon = require("kryon")
+    kryon.load("counter.kryon")
+
+    local count = 0
+    local lbl = kryon.widget("lbl_count")
+
+    kryon.widget("btn_inc").on_click(function()
+        count = count + 1
+        lbl.text = "Count: " .. count
+    end)
+
+    kryon.widget("btn_dec").on_click(function()
+        count = count - 1
+        lbl.text = "Count: " .. count
+    end)
+
+    kryon.run()
+
+Form with validation:
+
+    # login.kryon
+    window "Login" 400 300 {
+        column gap=15 padding=20 {
+            label "Sign In" align="center"
+            textinput txt_user placeholder="Username"
+            passwordinput txt_pass placeholder="Password"
+            button btn_login "Login"
+            label lbl_status "" align="center"
+        }
+    }
+
+    # login.lua
+    local kryon = require("kryon")
+    kryon.load("login.kryon")
+
+    kryon.widget("btn_login").on_click(function()
+        local user = kryon.widget("txt_user").value
+        local pass = kryon.widget("txt_pass").value
+
+        if user == "" or pass == "" then
+            kryon.widget("lbl_status").text = "Please fill all fields"
+        else
+            kryon.widget("lbl_status").text = "Login: " .. user
+        end
+    end)
+
+    kryon.run()
+
+Event loop (C):
+
+    int fd = open("/mnt/kryon/windows/1/widgets/1/event", O_RDONLY);
+    char event[256];
+
+    while (1) {
+        int n = read(fd, event, sizeof(event));
+        if (n <= 0) break;
+
+        event[n] = '\0';
+        printf("Event: %s\n", event);
+
+        if (strcmp(event, "clicked") == 0) {
+            write(prop_fd, "Clicked!", 8);
+        }
+    }

@@ -1,0 +1,62 @@
+PROTOCOL
+
+Kryon speaks 9P2000.  All UI state is a filesystem.
+
+Filesystem layout:
+
+    /                               Root
+    ├── version                     "Kryon 1.0"
+    ├── ctl                         Command pipe
+    ├── events                      Global events
+    ├── windows/                    All windows
+    │   ├── 1/                      Window 1
+    │   │   ├── title               Window title
+    │   │   ├── rect                Position and size (x y w h)
+    │   │   ├── visible             0 or 1
+    │   │   ├── widgets/            Widget tree
+    │   │   │   └── [id]/
+    │   │   │       ├── type        Widget type
+    │   │   │       ├── rect        Geometry
+    │   │   │       ├── text        Content
+    │   │   │       ├── value       State
+    │   │   │       ├── enabled     0 or 1
+    │   │   │       └── event       Event pipe (read-only)
+    │   │   └── event               Window events
+    │   └── 2/                      Window 2
+    └── themes/                     Optional themes
+
+Control pipe (write-only):
+
+    echo "create_window" > /mnt/kryon/ctl
+    echo "create_widget <window_id> <type> <parent_id>" > /mnt/kryon/ctl
+    echo "destroy_window <window_id>" > /mnt/kryon/ctl
+    echo "destroy_widget <window_id> <widget_id>" > /mnt/kryon/ctl
+
+Event format (one line per read):
+
+    clicked x=50 y=20 button=1
+    changed value="new text"
+    mouse_enter x=10 y=10
+    mouse_leave
+    focus_gained
+    focus_lost
+    key_press key=Enter
+
+Permissions:
+
+    /version        0444    read-only
+    /ctl            0222    write-only
+    /events         0444    read-only
+    /windows/       0755    listable
+    /windows/*/rect 0644    read/write
+    /windows/*/event 0444   read-only
+
+Error codes:
+
+    EPERM           Operation not permitted
+    ENOENT          File not found
+    EEXIST          File exists
+    EINVAL          Invalid argument
+    EOUTOFRANGE     Value out of range
+    ENOSPACE        No space (max widgets reached)
+    ENOTSUPPORTED   Operation not supported
