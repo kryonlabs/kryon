@@ -4,7 +4,8 @@
  */
 
 #include "kryon.h"
-#include "tcp.h"
+#include "window.h"
+#include "widget.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,60 +14,6 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
-/* Forward declarations for tree functions that need node access */
-extern P9Node *tree_create_file(P9Node *parent, const char *name, void *data,
-                                ssize_t (*read)(char *, size_t, uint64_t),
-                                ssize_t (*write)(const char *, size_t, uint64_t));
-
-/*
- * Toggle state - the single bit we're flipping
- */
-static int toggle_state = 0;
-
-/*
- * Toggle read function
- * Returns "0" or "1" based on current state
- */
-ssize_t toggle_read(char *buf, size_t count, uint64_t offset)
-{
-    const char *val;
-
-    if (buf == NULL || count == 0) {
-        return 0;
-    }
-
-    val = toggle_state ? "1" : "0";
-
-    /* Handle offset */
-    if (offset >= 1) {
-        return 0;  /* EOF */
-    }
-
-    return (ssize_t)snprintf(buf, count, "%s", val);
-}
-
-/*
- * Toggle write function
- * Sets state based on written value ("0" or "1")
- */
-ssize_t toggle_write(const char *buf, size_t count, uint64_t offset)
-{
-    if (buf == NULL || count == 0) {
-        return 0;
-    }
-
-    /* Only care about the first character */
-    if (buf[0] == '1') {
-        toggle_state = 1;
-        fprintf(stderr, "Toggle: 0 -> 1\n");
-    } else if (buf[0] == '0') {
-        toggle_state = 0;
-        fprintf(stderr, "Toggle: 1 -> 0\n");
-    }
-
-    return (ssize_t)count;
-}
 
 /*
  * Signal handler for graceful shutdown
@@ -168,6 +115,36 @@ static void handle_client(int client_fd)
 }
 
 /*
+ * Create static file (read-only)
+ */
+typedef struct {
+    const char *content;
+} StaticFileData;
+
+static ssize_t static_file_read(char *buf, size_t count, uint64_t offset, StaticFileData *data)
+{
+    const char *content;
+    size_t len;
+
+    if (data == NULL || data->content == NULL) {
+        return 0;
+    }
+
+    content = data->content;
+    len = strlen(content);
+
+    if (offset >= len) {
+        return 0;
+    }
+    if (offset + count > len) {
+        count = len - offset;
+    }
+
+    memcpy(buf, content + offset, count);
+    return count;
+}
+
+/*
  * Main entry point
  */
 int main(int argc, char **argv)
@@ -176,7 +153,13 @@ int main(int argc, char **argv)
     int listen_fd;
     int client_fd;
     int result;
-    P9Node *toggle_node;
+    P9Node *root;
+    P9Node *windows_dir;
+    P9Node *file;
+    KryonWindow *win1;
+    KryonWidget *btn;
+    KryonWidget *lbl;
+    StaticFileData *static_data;
 
     /* Parse arguments */
     result = parse_args(argc, argv, &port);
@@ -188,8 +171,18 @@ int main(int argc, char **argv)
     }
 
     /* Initialize subsystems */
-    fprintf(stderr, "Kryon Core Server v0.1\n");
+    fprintf(stderr, "Kryon Core Server v0.2\n");
     fprintf(stderr, "Initializing...\n");
+
+    if (window_registry_init() < 0) {
+        fprintf(stderr, "Error: failed to initialize window registry\n");
+        return 1;
+    }
+
+    if (widget_registry_init() < 0) {
+        fprintf(stderr, "Error: failed to initialize widget registry\n");
+        return 1;
+    }
 
     if (tree_init() < 0) {
         fprintf(stderr, "Error: failed to initialize file tree\n");
@@ -201,13 +194,102 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    /* Create toggle node */
-    toggle_node = tree_create_file(NULL, "toggle", NULL, toggle_read, toggle_write);
-    if (toggle_node == NULL) {
-        fprintf(stderr, "Error: failed to create toggle node\n");
+    /* Get root node */
+    root = tree_root();
+    if (root == NULL) {
+        fprintf(stderr, "Error: failed to get root node\n");
         return 1;
     }
-    fprintf(stderr, "Created /toggle node (initial state: %d)\n", toggle_state);
+
+    /* Create /version file */
+    static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
+    if (static_data != NULL) {
+        static_data->content = "Kryon 1.0";
+        file = tree_create_file(root, "version", static_data,
+                                (P9ReadFunc)static_file_read,
+                                NULL);
+        if (file == NULL) {
+            free(static_data);
+        }
+    }
+
+    /* Create /events file (empty for now) */
+    static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
+    if (static_data != NULL) {
+        static_data->content = "";
+        file = tree_create_file(root, "events", static_data,
+                                (P9ReadFunc)static_file_read,
+                                NULL);
+        if (file == NULL) {
+            free(static_data);
+        }
+    }
+
+    /* Create /windows directory */
+    windows_dir = tree_create_dir(root, "windows");
+    if (windows_dir == NULL) {
+        fprintf(stderr, "Error: failed to create windows directory\n");
+        return 1;
+    }
+
+    /* Create Window 1 */
+    win1 = window_create("Demo Window", 800, 600);
+    if (win1 == NULL) {
+        fprintf(stderr, "Error: failed to create window\n");
+        return 1;
+    }
+
+    result = window_create_fs_entries(win1, windows_dir);
+    if (result < 0) {
+        fprintf(stderr, "Error: failed to create window FS entries\n");
+        return 1;
+    }
+
+    fprintf(stderr, "Created window %u: %s\n", win1->id, win1->title);
+
+    /* Add a button widget */
+    btn = widget_create(WIDGET_BUTTON, "btn_click", win1);
+    if (btn == NULL) {
+        fprintf(stderr, "Error: failed to create button widget\n");
+        return 1;
+    }
+
+    free(btn->prop_text);
+    btn->prop_text = (char *)malloc(10);
+    if (btn->prop_text != NULL) {
+        strcpy(btn->prop_text, "Click Me");
+    }
+
+    result = widget_create_fs_entries(btn, win1->widgets_node);
+    if (result < 0) {
+        fprintf(stderr, "Error: failed to create button FS entries\n");
+        return 1;
+    }
+
+    window_add_widget(win1, btn);
+    fprintf(stderr, "  Created widget %u: button (text='%s')\n", btn->id, btn->prop_text);
+
+    /* Add a label widget */
+    lbl = widget_create(WIDGET_LABEL, "lbl_hello", win1);
+    if (lbl == NULL) {
+        fprintf(stderr, "Error: failed to create label widget\n");
+        return 1;
+    }
+
+    free(lbl->prop_text);
+    lbl->prop_text = (char *)malloc(14);
+    if (lbl->prop_text != NULL) {
+        strcpy(lbl->prop_text, "Hello, World!");
+    }
+
+    result = widget_create_fs_entries(lbl, win1->widgets_node);
+    if (result < 0) {
+        fprintf(stderr, "Error: failed to create label FS entries\n");
+        return 1;
+    }
+
+    window_add_widget(win1, lbl);
+    fprintf(stderr, "  Created widget %u: label (text='%s')\n", lbl->id, lbl->prop_text);
 
     /* Start listening */
     fprintf(stderr, "Listening on port %d...\n", port);
@@ -231,7 +313,7 @@ int main(int argc, char **argv)
             break;
         }
 
-        /* Handle client (single-threaded for Phase 1) */
+        /* Handle client (single-threaded for Phase 2) */
         handle_client(client_fd);
 
         /* Clean up */
@@ -243,6 +325,8 @@ int main(int argc, char **argv)
     tcp_close(listen_fd);
     fid_cleanup();
     tree_cleanup();
+    widget_registry_cleanup();
+    window_registry_cleanup();
 
     return 0;
 }

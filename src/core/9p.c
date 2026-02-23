@@ -423,6 +423,50 @@ size_t p9_build_rclunk(uint8_t *buf, uint16_t tag)
 }
 
 /*
+ * Pack stat structure into buffer (helper function)
+ */
+size_t p9_pack_stat(uint8_t *buf, const P9Stat *stat)
+{
+    uint8_t *p = buf;
+    uint16_t stat_size;
+    uint8_t *size_ptr;
+
+    /* Skip size field for now */
+    size_ptr = p;
+    p += 2;
+
+    /* Pack stat fields */
+    le_put16(p, stat->type);
+    p += 2;
+    le_put32(p, stat->dev);
+    p += 4;
+    p[0] = stat->qid.type;
+    le_put32(p + 1, stat->qid.version);
+    le_put64(p + 5, stat->qid.path);
+    p += 13;
+    le_put32(p, stat->mode);
+    p += 4;
+    le_put32(p, stat->atime);
+    p += 4;
+    le_put32(p, stat->mtime);
+    p += 4;
+    le_put64(p, stat->length);
+    p += 8;
+
+    /* Pack strings */
+    p += p9_put_string(p, stat->name);
+    p += p9_put_string(p, stat->uid);
+    p += p9_put_string(p, stat->gid);
+    p += p9_put_string(p, stat->muid);
+
+    /* Write size */
+    stat_size = p - (size_ptr + 2);
+    le_put16(size_ptr, stat_size);
+
+    return p - buf;
+}
+
+/*
  * Build Rstat: size[4] Rstat tag[2] stat[n]
  */
 size_t p9_build_rstat(uint8_t *buf, uint16_t tag, const P9Stat *stat)

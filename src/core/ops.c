@@ -292,16 +292,83 @@ size_t handle_topen(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 }
 
 /*
- * External read/write functions for toggle node
- */
-extern ssize_t toggle_read(char *buf, size_t count, uint64_t offset);
-extern ssize_t toggle_write(const char *buf, size_t count, uint64_t offset);
-
-/*
  * Forward declarations for tree functions
  */
 extern ssize_t node_read(P9Node *node, char *buf, size_t count, uint64_t offset);
 extern ssize_t node_write(P9Node *node, const char *buf, size_t count, uint64_t offset);
+
+/*
+ * Handle Tread for directories
+ * Returns packed stat entries for directory contents
+ */
+static size_t handle_directory_read(P9Fid *fid_obj, uint64_t offset, uint32_t count,
+                                     uint8_t *out_buf, uint16_t tag)
+{
+    P9Node *dir_node = fid_obj->node;
+    uint8_t *data_start = out_buf + 4;  /* Skip count field */
+    uint8_t *p = data_start;
+    int i;
+    P9Stat stat;
+    size_t stat_size;
+
+    /* Check if node has children */
+    if (dir_node->children == NULL || dir_node->nchildren == 0) {
+        /* Empty directory */
+        le_put32(out_buf, 0);
+        return p9_build_rread(out_buf, tag, (char *)data_start, 0);
+    }
+
+    /* Build stat for each child */
+    for (i = 0; i < dir_node->nchildren; i++) {
+        P9Node *child;
+
+        /* Safety check */
+        if (dir_node->children == NULL || i >= dir_node->nchildren) {
+            break;
+        }
+
+        child = dir_node->children[i];
+        if (child == NULL) {
+            continue;
+        }
+
+        /* Build stat structure */
+        memset(&stat, 0, sizeof(stat));
+        stat.type = 0;
+        stat.dev = 0;
+        stat.qid = child->qid;
+        stat.mode = child->mode;
+        stat.atime = child->atime;
+        stat.mtime = child->mtime;
+        stat.length = child->length;
+
+        /* Copy name safely */
+        if (child->name != NULL) {
+            strncpy(stat.name, child->name, P9_MAX_STR - 1);
+            stat.name[P9_MAX_STR - 1] = '\0';
+        }
+
+        strcpy(stat.uid, "none");
+        strcpy(stat.gid, "none");
+        strcpy(stat.muid, "none");
+
+        /* Pack stat and check if we have space */
+        stat_size = p9_pack_stat(p, &stat);
+
+        /* Check if this entry would exceed count */
+        if ((p - data_start) + stat_size > count) {
+            break;  /* Don't add partial entries */
+        }
+
+        p += stat_size;
+    }
+
+    /* Write total count */
+    le_put32(out_buf, p - data_start);
+
+    /* Build message */
+    return p9_build_rread(out_buf, tag, (char *)data_start, p - data_start);
+}
 
 /*
  * Handle Tread
@@ -335,7 +402,7 @@ size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     /* Check if directory */
     if (node->qid.type & QTDIR) {
-        return p9_build_rerror(out_buf, hdr.tag, "is directory");
+        return handle_directory_read(fid_obj, offset, count, out_buf, hdr.tag);
     }
 
     /* Limit count */

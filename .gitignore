@@ -2,6 +2,9 @@
 # Compiled binaries
 kryon_server
 bin
+.claude
+
+*.py
 *.exe
 *.out
 *.app

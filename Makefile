@@ -21,6 +21,10 @@ CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c)
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 SRCS = $(CORE_SRCS) $(TRANSPORT_SRCS)
 
+# Additional object files for linking
+WINDOW_OBJS = $(BUILD_DIR)/core/window.o
+WIDGET_OBJS = $(BUILD_DIR)/core/widget.o
+
 # Object files
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 

@@ -200,6 +200,11 @@ size_t p9_build_rclunk(uint8_t *buf, uint16_t tag);
 size_t p9_build_rstat(uint8_t *buf, uint16_t tag, const P9Stat *stat);
 
 /*
+ * Stat packing helper
+ */
+size_t p9_pack_stat(uint8_t *buf, const P9Stat *stat);
+
+/*
  * Tree management
  */
 int tree_init(void);
