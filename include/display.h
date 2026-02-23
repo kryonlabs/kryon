@@ -56,7 +56,8 @@ struct DisplayClient {
     int refresh_needed;
 
     /* Screen buffer */
-    uint8_t *screen_buf;
+    uint8_t *screen_buf;      /* Converted RGBA data for SDL */
+    uint8_t *temp_buf;        /* Temporary buffer for raw BGRA data from server */
     int screen_width;
     int screen_height;
 

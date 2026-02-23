@@ -923,6 +923,23 @@ int p9_client_clunk(P9Client *client, int fid)
 }
 
 /*
+ * Reset FID offset to 0 (for re-reading files from beginning)
+ */
+void p9_client_reset_fid(P9Client *client, int fid)
+{
+    FidState *fid_state;
+
+    if (client == NULL) {
+        return;
+    }
+
+    fid_state = get_fid_state(fid);
+    if (fid_state != NULL) {
+        fid_state->offset = 0;
+    }
+}
+
+/*
  * Utility: walk and open combined
  */
 int p9_client_open_path(P9Client *client, const char *path, int mode)

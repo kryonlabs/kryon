@@ -106,6 +106,11 @@ ssize_t p9_client_write(P9Client *client, int fid, const char *buf, size_t count
 int p9_client_clunk(P9Client *client, int fid);
 
 /*
+ * Reset FID offset to 0 (for re-reading files)
+ */
+void p9_client_reset_fid(P9Client *client, int fid);
+
+/*
  * Utility: walk and open combined
  * path: full path to open
  * mode: P9_OREAD, P9_OWRITE, P9_ORDWR

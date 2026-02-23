@@ -149,24 +149,24 @@ void memfillcolor_rect(Memimage *dst, Rectangle r, unsigned long color)
         return;  /* Empty after clipping */
     }
 
-    /* Extract color components (32-bit RGBA: R G B A byte order) */
-    r_val = (color >> 0) & 0xFF;
-    g_val = (color >> 8) & 0xFF;
-    b_val = (color >> 16) & 0xFF;
-    a_val = (color >> 24) & 0xFF;
+    /* Extract color components (32-bit 0xRRGGBBAA format) */
+    r_val = (color >> 24) & 0xFF;  /* Red from bits 24-31 */
+    g_val = (color >> 16) & 0xFF;  /* Green from bits 16-23 */
+    b_val = (color >> 8) & 0xFF;   /* Blue from bits 8-15 */
+    a_val = color & 0xFF;          /* Alpha from bits 0-7 */
 
     /* Dispatch based on pixel format */
     switch (dst->chan) {
     case RGBA32:
-        /* Fill pixels in RGBA32 format */
+        /* Fill pixels in BGRA format (little-endian byte order: B G R A) */
         for (y = draw_rect.min.y; y < draw_rect.max.y; y++) {
             for (x = draw_rect.min.x; x < draw_rect.max.x; x++) {
                 pixel = addr_rgba32(dst, Pt(x, y));
                 if (pixel != NULL) {
-                    /* Store in byte order: R G B A */
-                    pixel[0] = r_val;
+                    /* Store in little-endian byte order: B G R A */
+                    pixel[0] = b_val;
                     pixel[1] = g_val;
-                    pixel[2] = b_val;
+                    pixel[2] = r_val;
                     pixel[3] = a_val;
                 }
             }
@@ -443,11 +443,11 @@ void memdraw_poly(Memimage *dst, Point *points, int npoints, unsigned long color
         return;
     }
 
-    /* Extract color components (32-bit RGBA: R G B A byte order) */
-    r_val = (color >> 0) & 0xFF;
-    g_val = (color >> 8) & 0xFF;
-    b_val = (color >> 16) & 0xFF;
-    a_val = (color >> 24) & 0xFF;
+    /* Extract color components (32-bit 0xRRGGBBAA format) */
+    r_val = (color >> 24) & 0xFF;  /* Red from bits 24-31 */
+    g_val = (color >> 16) & 0xFF;  /* Green from bits 16-23 */
+    b_val = (color >> 8) & 0xFF;   /* Blue from bits 8-15 */
+    a_val = color & 0xFF;          /* Alpha from bits 0-7 */
 
     /* For outline, just draw lines between points */
     if (!fill) {
@@ -532,16 +532,16 @@ void memdraw_poly(Memimage *dst, Point *points, int npoints, unsigned long color
                     pixel = addr_rgba32(dst, Pt(x, y));
                     if (pixel != NULL) {
                         if (a_val == 255) {
-                            /* Store in byte order: R G B A */
-                            pixel[0] = r_val;
+                            /* Store in little-endian byte order: B G R A */
+                            pixel[0] = b_val;
                             pixel[1] = g_val;
-                            pixel[2] = b_val;
+                            pixel[2] = r_val;
                             pixel[3] = a_val;
                         } else if (a_val > 0) {
-                            /* Alpha blend in byte order */
-                            pixel[0] = (r_val * a_val + pixel[0] * (255 - a_val)) / 255;
+                            /* Alpha blend in little-endian byte order */
+                            pixel[0] = (b_val * a_val + pixel[0] * (255 - a_val)) / 255;
                             pixel[1] = (g_val * a_val + pixel[1] * (255 - a_val)) / 255;
-                            pixel[2] = (b_val * a_val + pixel[2] * (255 - a_val)) / 255;
+                            pixel[2] = (r_val * a_val + pixel[2] * (255 - a_val)) / 255;
                             pixel[3] = a_val + pixel[3] * (255 - a_val) / 255;
                         }
                     }
@@ -871,11 +871,11 @@ static void memdraw_char(Memimage *dst, Point p, unsigned char ch, unsigned long
 
     font_idx = ch - 32;
 
-    /* Extract color components (32-bit RGBA: R G B A byte order) */
-    r_val = (color >> 0) & 0xFF;
-    g_val = (color >> 8) & 0xFF;
-    b_val = (color >> 16) & 0xFF;
-    a_val = (color >> 24) & 0xFF;
+    /* Extract color components (32-bit 0xRRGGBBAA format) */
+    r_val = (color >> 24) & 0xFF;  /* Red from bits 24-31 */
+    g_val = (color >> 16) & 0xFF;  /* Green from bits 16-23 */
+    b_val = (color >> 8) & 0xFF;   /* Blue from bits 8-15 */
+    a_val = color & 0xFF;          /* Alpha from bits 0-7 */
 
     /* Draw character */
     for (row = 0; row < 16; row++) {
@@ -901,7 +901,7 @@ static void memdraw_char(Memimage *dst, Point p, unsigned char ch, unsigned long
                 pixel = addr_rgba32(dst, Pt(x, y));
                 if (pixel != NULL) {
                     if (a_val == 255) {
-                        /* Store in little-endian byte order: B G R A */
+                        /* For RGBA32 format, store in memory as BGRA (little-endian) */
                         pixel[0] = b_val;
                         pixel[1] = g_val;
                         pixel[2] = r_val;
@@ -1027,11 +1027,11 @@ void memdraw_line(Memimage *dst, Point p0, Point p1, unsigned long color, int th
         return;
     }
 
-    /* Extract color components (32-bit RGBA: R G B A byte order) */
-    r_val = (color >> 0) & 0xFF;
-    g_val = (color >> 8) & 0xFF;
-    b_val = (color >> 16) & 0xFF;
-    a_val = (color >> 24) & 0xFF;
+    /* Extract color components (32-bit 0xRRGGBBAA format) */
+    r_val = (color >> 24) & 0xFF;  /* Red from bits 24-31 */
+    g_val = (color >> 16) & 0xFF;  /* Green from bits 16-23 */
+    b_val = (color >> 8) & 0xFF;   /* Blue from bits 8-15 */
+    a_val = color & 0xFF;          /* Alpha from bits 0-7 */
 
     /* Draw line (thickness not yet implemented, keeping it simple) */
     x0 = p0.x;
@@ -1119,11 +1119,11 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
         return;
     }
 
-    /* Extract color components */
-    r_val = (color >> 0) & 0xFF;
-    g_val = (color >> 8) & 0xFF;
-    b_val = (color >> 16) & 0xFF;
-    a_val = (color >> 24) & 0xFF;
+    /* Extract color components (32-bit 0xRRGGBBAA format) */
+    r_val = (color >> 24) & 0xFF;  /* Red from bits 24-31 */
+    g_val = (color >> 16) & 0xFF;  /* Green from bits 16-23 */
+    b_val = (color >> 8) & 0xFF;   /* Blue from bits 8-15 */
+    a_val = color & 0xFF;          /* Alpha from bits 0-7 */
 
     two_a_sq = 2 * rx * rx;
     two_b_sq = 2 * ry * ry;
@@ -1147,9 +1147,10 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
             y0 + y >= dst->r.min.y && y0 + y < dst->r.max.y) {
             pixel = addr_rgba32(dst, Pt(x0 + x, y0 + y));
             if (pixel != NULL && a_val == 255) {
-                pixel[0] = r_val;
+                /* Store in little-endian byte order: B G R A */
+                pixel[0] = b_val;
                 pixel[1] = g_val;
-                pixel[2] = b_val;
+                pixel[2] = r_val;
                 pixel[3] = a_val;
             }
         }
@@ -1158,9 +1159,10 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
             y0 + y >= dst->r.min.y && y0 + y < dst->r.max.y) {
             pixel = addr_rgba32(dst, Pt(x0 - x, y0 + y));
             if (pixel != NULL && a_val == 255) {
-                pixel[0] = r_val;
+                /* Store in little-endian byte order: B G R A */
+                pixel[0] = b_val;
                 pixel[1] = g_val;
-                pixel[2] = b_val;
+                pixel[2] = r_val;
                 pixel[3] = a_val;
             }
         }
@@ -1169,9 +1171,10 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
             y0 - y >= dst->r.min.y && y0 - y < dst->r.max.y) {
             pixel = addr_rgba32(dst, Pt(x0 + x, y0 - y));
             if (pixel != NULL && a_val == 255) {
-                pixel[0] = r_val;
+                /* Store in little-endian byte order: B G R A */
+                pixel[0] = b_val;
                 pixel[1] = g_val;
-                pixel[2] = b_val;
+                pixel[2] = r_val;
                 pixel[3] = a_val;
             }
         }
@@ -1180,9 +1183,10 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
             y0 - y >= dst->r.min.y && y0 - y < dst->r.max.y) {
             pixel = addr_rgba32(dst, Pt(x0 - x, y0 - y));
             if (pixel != NULL && a_val == 255) {
-                pixel[0] = r_val;
+                /* Store in little-endian byte order: B G R A */
+                pixel[0] = b_val;
                 pixel[1] = g_val;
-                pixel[2] = b_val;
+                pixel[2] = r_val;
                 pixel[3] = a_val;
             }
         }
@@ -1215,9 +1219,10 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
             y0 + y >= dst->r.min.y && y0 + y < dst->r.max.y) {
             pixel = addr_rgba32(dst, Pt(x0 + x, y0 + y));
             if (pixel != NULL && a_val == 255) {
-                pixel[0] = r_val;
+                /* Store in little-endian byte order: B G R A */
+                pixel[0] = b_val;
                 pixel[1] = g_val;
-                pixel[2] = b_val;
+                pixel[2] = r_val;
                 pixel[3] = a_val;
             }
         }
@@ -1226,9 +1231,10 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
             y0 + y >= dst->r.min.y && y0 + y < dst->r.max.y) {
             pixel = addr_rgba32(dst, Pt(x0 - x, y0 + y));
             if (pixel != NULL && a_val == 255) {
-                pixel[0] = r_val;
+                /* Store in little-endian byte order: B G R A */
+                pixel[0] = b_val;
                 pixel[1] = g_val;
-                pixel[2] = b_val;
+                pixel[2] = r_val;
                 pixel[3] = a_val;
             }
         }
@@ -1237,9 +1243,10 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
             y0 - y >= dst->r.min.y && y0 - y < dst->r.max.y) {
             pixel = addr_rgba32(dst, Pt(x0 + x, y0 - y));
             if (pixel != NULL && a_val == 255) {
-                pixel[0] = r_val;
+                /* Store in little-endian byte order: B G R A */
+                pixel[0] = b_val;
                 pixel[1] = g_val;
-                pixel[2] = b_val;
+                pixel[2] = r_val;
                 pixel[3] = a_val;
             }
         }
@@ -1248,9 +1255,10 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
             y0 - y >= dst->r.min.y && y0 - y < dst->r.max.y) {
             pixel = addr_rgba32(dst, Pt(x0 - x, y0 - y));
             if (pixel != NULL && a_val == 255) {
-                pixel[0] = r_val;
+                /* Store in little-endian byte order: B G R A */
+                pixel[0] = b_val;
                 pixel[1] = g_val;
-                pixel[2] = b_val;
+                pixel[2] = r_val;
                 pixel[3] = a_val;
             }
         }
@@ -1269,4 +1277,274 @@ void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
 
     /* Note: fill parameter not yet implemented - would require scanline fill algorithm */
     (void)fill;
+}
+
+/*
+ * 9front/Plan 9 Font System Implementation
+ */
+
+/*
+ * Global default font pointer (NULL = use embedded font)
+ */
+static Subfont *g_default_font = NULL;
+
+/*
+ * Set the default font for text rendering
+ * Pass NULL to use the embedded 8x16 font
+ */
+void memdraw_set_default_font(Subfont *sf)
+{
+    g_default_font = sf;
+}
+
+/*
+ * Get the current default font
+ */
+Subfont *memdraw_get_default_font(void)
+{
+    return g_default_font;
+}
+
+/*
+ * Load a 9front subfont from file
+ * File format:
+ *   char name[30];
+ *   short n;
+ *   unsigned char height;
+ *   char ascent;
+ *   Fontchar info[n+1];
+ *   unsigned char bits[...];
+ */
+Subfont *subfont_load(const char *filename)
+{
+    FILE *f;
+    Subfont *sf;
+    int i;
+    long bits_size;
+
+    if (filename == NULL) {
+        return NULL;
+    }
+
+    f = fopen(filename, "rb");
+    if (f == NULL) {
+        fprintf(stderr, "subfont_load: cannot open '%s'\n", filename);
+        return NULL;
+    }
+
+    /* Allocate subfont structure */
+    sf = (Subfont *)malloc(sizeof(Subfont));
+    if (sf == NULL) {
+        fclose(f);
+        fprintf(stderr, "subfont_load: cannot allocate Subfont\n");
+        return NULL;
+    }
+
+    /* Read header */
+    if (fread(sf->name, sizeof(char), 30, f) != 30) {
+        fprintf(stderr, "subfont_load: cannot read name\n");
+        goto error;
+    }
+
+    if (fread(&sf->n, sizeof(short), 1, f) != 1) {
+        fprintf(stderr, "subfont_load: cannot read n\n");
+        goto error;
+    }
+
+    if (fread(&sf->height, sizeof(unsigned char), 1, f) != 1) {
+        fprintf(stderr, "subfont_load: cannot read height\n");
+        goto error;
+    }
+
+    if (fread(&sf->ascent, sizeof(char), 1, f) != 1) {
+        fprintf(stderr, "subfont_load: cannot read ascent\n");
+        goto error;
+    }
+
+    /* Allocate Fontchar array (n+1 entries) */
+    sf->info = (Fontchar *)malloc(sizeof(Fontchar) * (sf->n + 1));
+    if (sf->info == NULL) {
+        fprintf(stderr, "subfont_load: cannot allocate Fontchar array\n");
+        goto error;
+    }
+
+    /* Read Fontchar array */
+    for (i = 0; i <= sf->n; i++) {
+        if (fread(&sf->info[i], sizeof(Fontchar), 1, f) != 1) {
+            fprintf(stderr, "subfont_load: cannot read Fontchar[%d]\n", i);
+            goto error;
+        }
+    }
+
+    /* Calculate bitmap size */
+    bits_size = sf->info[sf->n].x * sf->height;
+    if (bits_size <= 0) {
+        fprintf(stderr, "subfont_load: invalid bitmap size\n");
+        goto error;
+    }
+
+    /* Allocate bitmap data */
+    sf->bits = (unsigned char *)malloc(bits_size);
+    if (sf->bits == NULL) {
+        fprintf(stderr, "subfont_load: cannot allocate bitmap\n");
+        goto error;
+    }
+
+    /* Read bitmap data */
+    if (fread(sf->bits, sizeof(unsigned char), bits_size, f) != (size_t)bits_size) {
+        fprintf(stderr, "subfont_load: cannot read bitmap data\n");
+        goto error;
+    }
+
+    fclose(f);
+    return sf;
+
+error:
+    fclose(f);
+    if (sf->info != NULL) {
+        free(sf->info);
+    }
+    if (sf->bits != NULL) {
+        free(sf->bits);
+    }
+    free(sf);
+    return NULL;
+}
+
+/*
+ * Free a subfont
+ */
+void subfont_free(Subfont *sf)
+{
+    if (sf == NULL) {
+        return;
+    }
+
+    if (sf->info != NULL) {
+        free(sf->info);
+    }
+
+    if (sf->bits != NULL) {
+        free(sf->bits);
+    }
+
+    free(sf);
+}
+
+/*
+ * Draw a single character using a 9front subfont
+ */
+void memdraw_char_font(Memimage *dst, Point p, int ch, Subfont *sf, unsigned long color)
+{
+    unsigned char *pixel;
+    unsigned char r_val, g_val, b_val, a_val;
+    int row, col;
+    Fontchar *fc;
+    int x, y;
+    unsigned char *font_bits;
+    int font_row;
+    int byte_offset;
+
+    if (dst == NULL || sf == NULL) {
+        return;
+    }
+
+    if (dst->chan != RGBA32) {
+        fprintf(stderr, "memdraw_char_font: only RGBA32 supported\n");
+        return;
+    }
+
+    /* Check character range */
+    if (ch < 0 || ch > sf->n) {
+        return;  /* Character not in font */
+    }
+
+    fc = &sf->info[ch];
+
+    /* Extract color components (32-bit 0xRRGGBBAA format) */
+    r_val = (color >> 24) & 0xFF;  /* Red from bits 24-31 */
+    g_val = (color >> 16) & 0xFF;  /* Green from bits 16-23 */
+    b_val = (color >> 8) & 0xFF;   /* Blue from bits 8-15 */
+    a_val = color & 0xFF;          /* Alpha from bits 0-7 */
+
+    /* Draw character */
+    for (row = fc->top; row < fc->bottom; row++) {
+        for (col = 0; col < fc->width; col++) {
+            /* Calculate pixel position */
+            x = p.x + fc->left + col;
+            y = p.y + row;
+
+            /* Check bounds */
+            if (x < dst->r.min.x || x >= dst->r.max.x ||
+                y < dst->r.min.y || y >= dst->r.max.y) {
+                continue;
+            }
+
+            /* Calculate position in font bitmap */
+            font_row = row;
+            byte_offset = fc->x + col;
+
+            /* Check if pixel is set */
+            font_bits = &sf->bits[font_row * sf->info[sf->n].x + byte_offset];
+
+            if (*font_bits) {
+                /* Pixel is set - draw it */
+                pixel = addr_rgba32(dst, Pt(x, y));
+                if (pixel != NULL) {
+                    if (a_val == 255) {
+                        /* For RGBA32 format, store in memory as BGRA (little-endian) */
+                        pixel[0] = b_val;
+                        pixel[1] = g_val;
+                        pixel[2] = r_val;
+                        pixel[3] = a_val;
+                    } else if (a_val > 0) {
+                        /* Alpha blend in little-endian byte order */
+                        pixel[0] = (b_val * a_val + pixel[0] * (255 - a_val)) / 255;
+                        pixel[1] = (g_val * a_val + pixel[1] * (255 - a_val)) / 255;
+                        pixel[2] = (r_val * a_val + pixel[2] * (255 - a_val)) / 255;
+                        pixel[3] = a_val + pixel[3] * (255 - a_val) / 255;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
+ * Draw text string using a 9front subfont
+ */
+void memdraw_text_font(Memimage *dst, Point p, const char *str, Subfont *sf, unsigned long color)
+{
+    int x, y;
+    int i;
+    int ch;
+
+    if (dst == NULL || str == NULL || sf == NULL) {
+        return;
+    }
+
+    x = p.x;
+    y = p.y;
+
+    for (i = 0; str[i] != '\0'; i++) {
+        ch = (unsigned char)str[i];
+
+        /* Handle newline */
+        if (str[i] == '\n') {
+            x = p.x;
+            y += sf->height;
+            continue;
+        }
+
+        /* Check character range */
+        if (ch >= 0 && ch <= sf->n) {
+            memdraw_char_font(dst, Pt(x, y), ch, sf, color);
+
+            /* Advance by character width */
+            x += sf->info[ch].width;
+        } else {
+            /* Character not in font - advance by default width */
+            x += sf->height / 2;  /* Approximate width */
+        }
+    }
 }

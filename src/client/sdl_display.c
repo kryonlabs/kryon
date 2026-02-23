@@ -27,6 +27,24 @@ extern int usleep(unsigned int usec);
 #define DEFAULT_PORT   17019
 
 /*
+ * Convert from BGRA (server) to RGBA (SDL)
+ * Server sends: [B][G][R][A]
+ * SDL RGBA8888 expects: [R][G][B][A]
+ */
+static void convert_pixels_argb_to_rgba(uint8_t *dst, const uint8_t *src, int width, int height)
+{
+    int i;
+    int pixel_count = width * height;
+
+    for (i = 0; i < pixel_count; i++) {
+        dst[i * 4 + 0] = src[i * 4 + 2];  /* R <- B's position which has R */
+        dst[i * 4 + 1] = src[i * 4 + 1];  /* G <- G */
+        dst[i * 4 + 2] = src[i * 4 + 0];  /* B <- B's position which has B */
+        dst[i * 4 + 3] = src[i * 4 + 3];  /* A <- A */
+    }
+}
+
+/*
  * Create display client
  */
 DisplayClient *display_client_create(const DisplayConfig *config)
@@ -85,12 +103,15 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         fprintf(stderr, "Warning: Failed to open /dev/mouse\n");
     }
 
-    /* Allocate screen buffer (RGBA32) */
+    /* Allocate screen buffer (RGBA32) - with extra space for conversion */
     dc->screen_width = width;
     dc->screen_height = height;
     dc->screen_buf = (uint8_t *)malloc(width * height * 4);
-    if (dc->screen_buf == NULL) {
+    dc->temp_buf = (uint8_t *)malloc(width * height * 4);  /* For raw data from server */
+    if (dc->screen_buf == NULL || dc->temp_buf == NULL) {
         fprintf(stderr, "Failed to allocate screen buffer\n");
+        free(dc->screen_buf);
+        free(dc->temp_buf);
         p9_client_clunk(dc->p9, dc->screen_fd);
         p9_client_disconnect(dc->p9);
         free(dc);
@@ -152,7 +173,7 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         /* Create texture */
         texture = SDL_CreateTexture(
             renderer,
-            SDL_PIXELFORMAT_RGBA8888,
+            SDL_PIXELFORMAT_RGBA8888,  /* Use RGBA format */
             SDL_TEXTUREACCESS_STREAMING,
             width, height
         );
@@ -208,6 +229,9 @@ void display_client_destroy(DisplayClient *dc)
     if (dc->screen_buf != NULL) {
         free(dc->screen_buf);
     }
+    if (dc->temp_buf != NULL) {
+        free(dc->temp_buf);
+    }
 
     if (dc->screen_fd >= 0) {
         p9_client_clunk(dc->p9, dc->screen_fd);
@@ -236,9 +260,13 @@ static int read_screen(DisplayClient *dc)
     total = 0;
     to_read = dc->screen_width * dc->screen_height * 4;
 
+    /* Reset FID offset to 0 before reading full frame */
+    p9_client_reset_fid(dc->p9, dc->screen_fd);
+
+    /* Read raw data into temporary buffer */
     while (total < to_read) {
         nread = p9_client_read(dc->p9, dc->screen_fd,
-                               (char *)(dc->screen_buf + total),
+                               (char *)(dc->temp_buf + total),
                                to_read - total);
         if (nread < 0) {
             return -1;
@@ -251,14 +279,18 @@ static int read_screen(DisplayClient *dc)
 
     /* Debug: Print first few pixels on first read */
     if (read_count == 0 && total >= 16) {
-        unsigned char *p = dc->screen_buf;
-        fprintf(stderr, "First 4 pixels: R=%02X G=%02X B=%02X A=%02X | R=%02X G=%02X B=%02X A=%02X | R=%02X G=%02X B=%02X A=%02X | R=%02X G=%02X B=%02X A=%02X\n",
+        unsigned char *p = dc->temp_buf;
+        fprintf(stderr, "First 4 pixels (raw from server): %02X %02X %02X %02X | %02X %02X %02X %02X | %02X %02X %02X %02X | %02X %02X %02X %02X\n",
                 p[0], p[1], p[2], p[3],
                 p[4], p[5], p[6], p[7],
                 p[8], p[9], p[10], p[11],
                 p[12], p[13], p[14], p[15]);
     }
     read_count++;
+
+    /* Convert from BGRA (server) to RGBA (SDL) by swapping R and B */
+    convert_pixels_argb_to_rgba(dc->screen_buf, dc->temp_buf,
+                                  dc->screen_width, dc->screen_height);
 
     return 0;
 }
@@ -271,9 +303,40 @@ static int update_display(DisplayClient *dc)
 #ifdef HAVE_SDL2
     SDL_Texture *texture = (SDL_Texture *)dc->sdl_texture;
     SDL_Renderer *renderer = (SDL_Renderer *)dc->sdl_renderer;
+    static int first_call = 1;
+    uint32_t format;
 
     if (texture == NULL || renderer == NULL) {
         return -1;
+    }
+
+    /* Debug: Print texture format on first call */
+    if (first_call) {
+        SDL_QueryTexture(texture, &format, NULL, NULL, NULL);
+        fprintf(stderr, "SDL texture format: 0x%08X (%s)\n", format,
+                format == SDL_PIXELFORMAT_BGRA8888 ? "BGRA8888" :
+                format == SDL_PIXELFORMAT_RGBA8888 ? "RGBA8888" :
+                format == SDL_PIXELFORMAT_ARGB8888 ? "ARGB8888" : "Unknown");
+
+        /* Print first pixel from server data */
+        fprintf(stderr, "First pixel from server: %02X%02X%02X%02X (BGR A)\n",
+                dc->screen_buf[0], dc->screen_buf[1], dc->screen_buf[2], dc->screen_buf[3]);
+
+        /* Check button and label pixels */
+        int button_offset = (50 * 800 + 50) * 4;
+        int label_offset = (120 * 800 + 50) * 4;
+        fprintf(stderr, "Button pixel[50,50]: %02X%02X%02X%02X (B=%02X G=%02X R=%02X A=%02X) = RED\n",
+                dc->screen_buf[button_offset], dc->screen_buf[button_offset+1],
+                dc->screen_buf[button_offset+2], dc->screen_buf[button_offset+3],
+                dc->screen_buf[button_offset], dc->screen_buf[button_offset+1],
+                dc->screen_buf[button_offset+2], dc->screen_buf[button_offset+3]);
+        fprintf(stderr, "Label pixel[50,120]: %02X%02X%02X%02X (B=%02X G=%02X R=%02X A=%02X) = YELLOW\n",
+                dc->screen_buf[label_offset], dc->screen_buf[label_offset+1],
+                dc->screen_buf[label_offset+2], dc->screen_buf[label_offset+3],
+                dc->screen_buf[label_offset], dc->screen_buf[label_offset+1],
+                dc->screen_buf[label_offset+2], dc->screen_buf[label_offset+3]);
+        fprintf(stderr, "BGRA format: [Blue][Green][Red][Alpha] in memory\n");
+        first_call = 0;
     }
 
     /* Update texture from screen buffer */

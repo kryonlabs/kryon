@@ -63,11 +63,11 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_FAB_BUTTON:
         /* Button rendering */
         if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
-            /* Green when active: 0xFF00FF00 = R=00, G=FF, B=00, A=FF */
-            color = 0xFF00FF00;
+            /* Green when active: 0x00FF00FF in 9front format */
+            color = DGreen;
         } else {
-            /* Red when inactive: 0xFF0000FF = R=FF, G=00, B=00, A=FF */
-            color = 0xFF0000FF;
+            /* Red when inactive: 0xFF0000FF in 9front format */
+            color = DRed;
         }
         memfillcolor_rect(screen, widget_rect, color);
 
@@ -77,11 +77,31 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_LABEL:
     case WIDGET_HEADING:
     case WIDGET_PARAGRAPH:
-        /* Label rendering - yellow background (visible) */
-        /* 0xFF00FFFF = R=FF, G=FF, B=00, A=FF (Yellow in little-endian) */
-        color = 0xFF00FFFF;
+        /* Label rendering - yellow background */
+        color = DYellow;
         memfillcolor_rect(screen, widget_rect, color);
-        /* TODO: Render text */
+
+        /* Render text label */
+        if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+            Point text_pos;
+            unsigned long text_color;
+            Subfont *font;
+
+            /* Position text with padding */
+            text_pos.x = widget_rect.min.x + 8;
+            text_pos.y = widget_rect.min.y + 12;
+
+            /* White text in 9front format */
+            text_color = DWhite;
+
+            /* Check if a 9front font is available */
+            font = memdraw_get_default_font();
+            if (font != NULL) {
+                memdraw_text_font(screen, text_pos, w->prop_text, font, text_color);
+            } else {
+                memdraw_text(screen, text_pos, w->prop_text, text_color);
+            }
+        }
         break;
 
     case WIDGET_CHECKBOX:
@@ -200,12 +220,15 @@ void render_all(void)
     render_count++;
 
     /* Clear screen to dark blue */
-    memfillcolor(g_screen, 0xFFFF0000);
+    fprintf(stderr, "render_all: Clearing screen to DBlue (0x%08lX)\n", DBlue);
+    memfillcolor(g_screen, DBlue);
 
     /* Verify write operation */
     if (!first_done) {
         unsigned char *p = g_screen->data->bdata;
-        fprintf(stderr, "After clear: pixel[0]=%02X%02X%02X%02X (expected: 0000FFFF)\n",
+        /* DBlue = 0x0000FFFF in 0xRRGGBBAA format (R=00, G=00, B=FF, A=FF)
+         * Memory layout (BGRA on little-endian): FF 00 00 FF */
+        fprintf(stderr, "After clear: pixel[0]=%02X%02X%02X%02X (expected: FF0000FF for DBlue)\n",
                 p[0], p[1], p[2], p[3]);
         first_done = 1;
     }
@@ -217,8 +240,27 @@ void render_all(void)
             break;
         }
         if (win->visible) {
+            fprintf(stderr, "render_all: Rendering window %u\n", i);
             render_window(win, g_screen);
         }
+    }
+
+    /* Verify final pixel at button position (should be red) */
+    {
+        unsigned char *p = g_screen->data->bdata;
+        /* Button is at rect '50 50 200 50', so pixel at (50,50) should be red */
+        int offset = (50 * 800 + 50) * 4;
+        /* DRed = 0xFF0000FF in 0xRRGGBBAA format
+         * In BGRA memory: B=00, G=00, R=FF, A=FF = 00 00 FF FF */
+        fprintf(stderr, "After render: pixel[50,50]=%02X%02X%02X%02X (expected: 0000FFFF for DRed button)\n",
+                p[offset], p[offset+1], p[offset+2], p[offset+3]);
+
+        /* Label is at rect '50 120 300 40', so pixel at (50,120) should be yellow */
+        offset = (120 * 800 + 50) * 4;
+        /* DYellow = 0xFFFF00FF in 0xRRGGBBAA format (R=FF, G=FF, B=00, A=FF)
+         * In BGRA memory: B=00, G=FF, R=FF, A=FF = 00 FF FF FF */
+        fprintf(stderr, "After render: pixel[50,120]=%02X%02X%02X%02X (expected: 00FFFFFF for DYellow label)\n",
+                p[offset], p[offset+1], p[offset+2], p[offset+3]);
     }
 }
 

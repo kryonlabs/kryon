@@ -63,16 +63,29 @@ static Rectangle Rect_func(int x0, int y0, int x1, int y1)
 #define Dy(r)   ((r).max.y - (r).min.y)
 
 /*
+ * 9front-compatible color format (0xRRGGBBAA)
+ * Internal representation: red in bits 24-31, alpha in bits 0-7
+ * Memory layout (RGBA32 on little-endian): BGRA byte order
+ */
+#define DBlack        0x000000FF
+#define DWhite        0xFFFFFFFF
+#define DRed          0xFF0000FF
+#define DGreen        0x00FF00FF
+#define DBlue         0x0000FFFF
+#define DCyan         0x00FFFFFF
+#define DMagenta      0xFF00FFFF
+#define DYellow       0xFFFF00FF
+
+/*
  * Channel descriptors (little-endian)
- * Format: [<< 24 | << 16 | << 8 | ]
- * Each field: [nbits << 1 | lsb_first]
- *
- * Common formats:
+ * Format: [type<<4 | nbits] for each channel
+ * Internal color: 0xRRGGBBAA (red in bits 24-31, alpha in bits 0-7)
+ * Memory layout (RGBA32): BGRA byte order on little-endian
  */
 #define RGB24   0x000001FF    /* R,G,B in 3 bytes */
-#define RGBA32  0xFF0000FF    /* R,G,B,A in 4 bytes (our primary format) */
-#define ARGB32  0x0000FFFF    /* A,R,G,B in 4 bytes */
-#define XRGB32  0x0000FEFF    /* X,R,G,B in 4 bytes */
+#define RGBA32  0xFF0000FF    /* B,G,R,A in 4 bytes (memory layout for 0xRRGGBBAA) */
+#define ARGB32  0x0000FFFF    /* A,B,G,R in 4 bytes */
+#define XRGB32  0x0000FEFF    /* X,B,G,R in 4 bytes (common display format) */
 #define GREY8   0x010101FF    /* 8-bit grayscale */
 
 /*
@@ -122,6 +135,36 @@ void memdraw_poly(Memimage *dst, Point *points, int npoints, unsigned long color
 void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
                      unsigned long color, int fill);
 void memdraw_text(Memimage *dst, Point p, const char *str, unsigned long color);
+
+/*
+ * Font structures (9front/Plan 9 compatible)
+ */
+typedef struct Fontchar {
+    int x;          /* left edge of bits in font image */
+    unsigned char top;      /* first non-zero scan-line */
+    unsigned char bottom;   /* last non-zero scan-line */
+    char left;      /* offset of baseline */
+    unsigned char width;    /* width of character */
+} Fontchar;
+
+typedef struct Subfont {
+    char name[30];  /* name of subfont */
+    short n;        /* number of chars in subfont */
+    unsigned char height;   /* height of image */
+    char ascent;    /* top of image to baseline */
+    Fontchar *info; /* n+1 Fontchars */
+    unsigned char *bits;    /* font bitmap data */
+} Subfont;
+
+/*
+ * Font functions
+ */
+Subfont *subfont_load(const char *filename);
+void subfont_free(Subfont *sf);
+void memdraw_char_font(Memimage *dst, Point p, int ch, Subfont *sf, unsigned long color);
+void memdraw_text_font(Memimage *dst, Point p, const char *str, Subfont *sf, unsigned long color);
+void memdraw_set_default_font(Subfont *sf);
+Subfont *memdraw_get_default_font(void);
 
 /*
  * Draw operations (Porter-Duff compositing operators)

@@ -445,6 +445,41 @@ size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
         return p9_build_rerror(out_buf, hdr.tag, "read error");
     }
 
+    /* Debug: print first 8 pixels with color interpretation */
+    if (nread > 0 && offset == 0) {
+        int i;
+        fprintf(stderr, "handle_tread: first 8 pixels (BGRA format):\n");
+        for (i = 0; i < 32 && i < nread; i += 4) {
+            unsigned char b = data[i + 0];
+            unsigned char g = data[i + 1];
+            unsigned char r = data[i + 2];
+            unsigned char a = data[i + 3];
+            const char *color_name = "Unknown";
+
+            /* Identify common colors */
+            if (b == 0x00 && g == 0x00 && r == 0x00 && a == 0xFF)
+                color_name = "Black";
+            else if (b == 0xFF && g == 0xFF && r == 0xFF && a == 0xFF)
+                color_name = "White";
+            else if (b == 0xFF && g == 0x00 && r == 0x00 && a == 0xFF)
+                color_name = "Blue";
+            else if (b == 0x00 && g == 0xFF && r == 0x00 && a == 0xFF)
+                color_name = "Green";
+            else if (b == 0x00 && g == 0x00 && r == 0xFF && a == 0xFF)
+                color_name = "Red";
+            else if (b == 0xFF && g == 0xFF && r == 0x00 && a == 0xFF)
+                color_name = "Yellow";
+            else if (b == 0xFF && g == 0x00 && r == 0xFF && a == 0xFF)
+                color_name = "Magenta";
+            else if (b == 0x00 && g == 0xFF && r == 0xFF && a == 0xFF)
+                color_name = "Cyan";
+
+            fprintf(stderr, "  Pixel[%d]: %02X%02X%02X%02X (B=%02X G=%02X R=%02X A=%02X) -> %s\n",
+                    i / 4, data[i], data[i+1], data[i+2], data[i+3],
+                    b, g, r, a, color_name);
+        }
+    }
+
     fprintf(stderr, "handle_tread: returning %zd bytes\n", nread);
     return p9_build_rread(out_buf, hdr.tag, data, (uint32_t)nread);
 }
