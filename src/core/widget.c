@@ -4,10 +4,16 @@
 
 #include "widget.h"
 #include "window.h"
+#include "events.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+
+/*
+ * snprintf prototype for C89 compatibility
+ */
+extern int snprintf(char *str, size_t size, const char *format, ...);
 
 /*
  * External rendering functions
@@ -312,24 +318,26 @@ WidgetType widget_type_from_string(const char *str)
  * Property file read wrapper
  */
 static ssize_t widget_property_read(char *buf, size_t count, uint64_t offset,
-                                     WidgetPropertyData *data)
+                                     void *data)
 {
-    if (data->read_func == NULL) {
+    WidgetPropertyData *prop_data = (WidgetPropertyData *)data;
+    if (prop_data->read_func == NULL) {
         return -1;
     }
-    return data->read_func(data->widget, buf, count, offset);
+    return prop_data->read_func(prop_data->widget, buf, count, offset);
 }
 
 /*
  * Property file write wrapper
  */
 static ssize_t widget_property_write(const char *buf, size_t count, uint64_t offset,
-                                      WidgetPropertyData *data)
+                                      void *data)
 {
-    if (data->write_func == NULL) {
+    WidgetPropertyData *prop_data = (WidgetPropertyData *)data;
+    if (prop_data->write_func == NULL) {
         return -1;
     }
-    return data->write_func(data->widget, buf, count, offset);
+    return prop_data->write_func(prop_data->widget, buf, count, offset);
 }
 
 /*
@@ -555,12 +563,26 @@ static ssize_t prop_write_enabled(struct KryonWidget *w, const char *buf, size_t
 }
 
 /*
- * Read property: event (placeholder for Phase 3)
+ * Read property: event
  */
 static ssize_t prop_read_event(struct KryonWidget *w, char *buf, size_t count, uint64_t offset)
 {
-    /* Phase 2: No events yet */
-    return 0;
+    EventQueue *eq;
+
+    if (w == NULL) {
+        return 0;
+    }
+
+    /* Get or create event queue for this widget */
+    eq = widget_event_queue(w);
+    if (eq == NULL) {
+        eq = event_queue_create(w);
+        if (eq == NULL) {
+            return 0;
+        }
+    }
+
+    return event_file_read(buf, count, offset, eq);
 }
 
 /*
@@ -661,7 +683,7 @@ int widget_create_fs_entries(struct KryonWidget *widget, P9Node *widgets_dir)
         }
     }
 
-    /* Create event file (read-only, placeholder for Phase 3) */
+    /* Create event file (read-only) */
     prop_data = (WidgetPropertyData *)malloc(sizeof(WidgetPropertyData));
     if (prop_data != NULL) {
         prop_data->widget = widget;
@@ -669,7 +691,7 @@ int widget_create_fs_entries(struct KryonWidget *widget, P9Node *widgets_dir)
         prop_data->write_func = NULL;
         file = tree_create_file(widget_dir, "event", prop_data,
                                 (P9ReadFunc)widget_property_read,
-                                (P9WriteFunc)widget_property_write);
+                                NULL);
         if (file == NULL) {
             free(prop_data);
             return -1;

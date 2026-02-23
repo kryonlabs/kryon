@@ -28,8 +28,9 @@ static ScreenState *g_screen_state = NULL;
  * Returns raw pixel data in RGBA32 format
  */
 static ssize_t devscreen_read(char *buf, size_t count, uint64_t offset,
-                              ScreenState *state)
+                              void *data)
 {
+    ScreenState *state = (ScreenState *)data;
     unsigned char *pixel_data;
     size_t total_size;
     size_t bytes_to_copy;
@@ -60,11 +61,11 @@ static ssize_t devscreen_read(char *buf, size_t count, uint64_t offset,
  * Write to /dev/screen (not supported)
  */
 static ssize_t devscreen_write(const char *buf, size_t count, uint64_t offset,
-                               ScreenState *state)
+                               void *data)
 {
+    (void)data;
     (void)buf;
     (void)offset;
-    (void)state;
 
     /* Screen is read-only from userspace */
     return -1;  /* Error */

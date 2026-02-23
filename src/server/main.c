@@ -7,6 +7,8 @@
 #include "graphics.h"
 #include "window.h"
 #include "widget.h"
+#include "events.h"
+#include "tcp.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +17,9 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/select.h>
+#include <time.h>
 
 /*
  * Device initialization functions (external)
@@ -24,9 +29,28 @@ extern void devscreen_cleanup(void);
 extern int devmouse_init(P9Node *dev_dir);
 extern int devdraw_init(P9Node *dev_dir, Memimage *screen);
 extern void devdraw_cleanup(void);
+extern void devdraw_mark_dirty(void);
+extern void devdraw_clear_dirty(void);
+extern int devdraw_is_dirty(void);
 extern int devcons_init(P9Node *dev_dir);
 extern void render_set_screen(Memimage *screen);
 extern void render_all(void);
+
+/*
+ * Client tracking for multi-client support
+ */
+#define MAX_CLIENTS 16
+
+typedef struct {
+    int fd;
+    uint32_t client_id;
+    time_t connect_time;
+    int is_display_client;
+} ClientInfo;
+
+static ClientInfo g_clients[MAX_CLIENTS];
+static int g_nclients = 0;
+static uint32_t g_next_client_id = 1;
 
 /*
  * Signal handler for graceful shutdown
@@ -83,9 +107,53 @@ static int parse_args(int argc, char **argv, int *port)
 }
 
 /*
- * Handle a single client connection
+ * Add client to tracking
  */
-static void handle_client(int client_fd)
+static int add_client(int fd)
+{
+    if (g_nclients >= MAX_CLIENTS) {
+        return -1;
+    }
+
+    g_clients[g_nclients].fd = fd;
+    g_clients[g_nclients].client_id = g_next_client_id++;
+    g_clients[g_nclients].connect_time = time(NULL);
+    g_clients[g_nclients].is_display_client = 0;
+    g_nclients++;
+
+    fprintf(stderr, "Client %u connected (fd=%d, total=%d)\n",
+            g_clients[g_nclients - 1].client_id, fd, g_nclients);
+
+    return 0;
+}
+
+/*
+ * Remove client from tracking
+ */
+static void remove_client(int fd)
+{
+    int i;
+
+    for (i = 0; i < g_nclients; i++) {
+        if (g_clients[i].fd == fd) {
+            fprintf(stderr, "Client %u disconnected (fd=%d)\n",
+                    g_clients[i].client_id, fd);
+            tcp_close(fd);
+
+            /* Move last entry into this slot */
+            if (i < g_nclients - 1) {
+                g_clients[i] = g_clients[g_nclients - 1];
+            }
+            g_nclients--;
+            return;
+        }
+    }
+}
+
+/*
+ * Handle a single client request (non-blocking)
+ */
+static int handle_client_request(ClientInfo *client)
 {
     uint8_t msg_buf[P9_MAX_MSG];
     uint8_t resp_buf[P9_MAX_MSG];
@@ -93,38 +161,31 @@ static void handle_client(int client_fd)
     size_t resp_len;
     int result;
 
-    fprintf(stderr, "Client connected\n");
-
-    /* Message loop */
-    while (running) {
-        /* Receive message */
-        msg_len = tcp_recv_msg(client_fd, msg_buf, sizeof(msg_buf));
-        if (msg_len < 0) {
-            fprintf(stderr, "Error receiving message\n");
-            break;
-        }
-        if (msg_len == 0) {
-            /* No data available */
-            usleep(10000);  /* 10ms */
-            continue;
-        }
-
-        /* Dispatch message */
-        resp_len = dispatch_9p(msg_buf, (size_t)msg_len, resp_buf);
-        if (resp_len == 0) {
-            fprintf(stderr, "Error dispatching message\n");
-            break;
-        }
-
-        /* Send response */
-        result = tcp_send_msg(client_fd, resp_buf, resp_len);
-        if (result < 0) {
-            fprintf(stderr, "Error sending response\n");
-            break;
-        }
+    /* Receive message (non-blocking) */
+    msg_len = tcp_recv_msg(client->fd, msg_buf, sizeof(msg_buf));
+    if (msg_len < 0) {
+        /* Error or disconnect */
+        return -1;
+    }
+    if (msg_len == 0) {
+        /* No data available */
+        return 0;
     }
 
-    fprintf(stderr, "Client disconnected\n");
+    /* Dispatch message */
+    resp_len = dispatch_9p(msg_buf, (size_t)msg_len, resp_buf);
+    if (resp_len == 0) {
+        /* Error */
+        return -1;
+    }
+
+    /* Send response */
+    result = tcp_send_msg(client->fd, resp_buf, resp_len);
+    if (result < 0) {
+        return -1;
+    }
+
+    return 1;  /* Handled a message */
 }
 
 /*
@@ -134,8 +195,9 @@ typedef struct {
     const char *content;
 } StaticFileData;
 
-static ssize_t static_file_read(char *buf, size_t count, uint64_t offset, StaticFileData *data)
+static ssize_t static_file_read(char *buf, size_t count, uint64_t offset, void *vdata)
 {
+    StaticFileData *data = (StaticFileData *)vdata;
     const char *content;
     size_t len;
 
@@ -209,6 +271,11 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (event_system_init() < 0) {
+        fprintf(stderr, "Error: failed to initialize event system\n");
+        return 1;
+    }
+
     /* Get root node */
     root = tree_root();
     if (root == NULL) {
@@ -230,6 +297,16 @@ int main(int argc, char **argv)
 
         /* Clear screen to white */
         memfillcolor(screen, 0xFFFFFFFF);
+
+        /* Verify screen buffer allocation */
+        {
+            Rectangle screen_rect = Rect(0, 0, 800, 600);
+            fprintf(stderr, "Screen alloc: ptr=%p, size=%lu, first_pixel=%02X%02X%02X%02X\n",
+                    (void *)screen->data->bdata,
+                    (unsigned long)(Dx(screen_rect) * Dy(screen_rect) * 4),
+                    screen->data->bdata[0], screen->data->bdata[1],
+                    screen->data->bdata[2], screen->data->bdata[3]);
+        }
 
         /* Set screen for rendering */
         render_set_screen(screen);
@@ -302,6 +379,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /* Set window rectangle to start at 0,0 to be fully visible */
+    window_set_rect(win1, "0 0 800 600");
+
     result = window_create_fs_entries(win1, windows_dir);
     if (result < 0) {
         fprintf(stderr, "Error: failed to create window FS entries\n");
@@ -323,6 +403,13 @@ int main(int argc, char **argv)
         strcpy(btn->prop_text, "Click Me");
     }
 
+    /* Set button rectangle: x y width height */
+    free(btn->prop_rect);
+    btn->prop_rect = (char *)malloc(16);
+    if (btn->prop_rect != NULL) {
+        strcpy(btn->prop_rect, "50 50 200 50");  /* x=50, y=50, w=200, h=50 */
+    }
+
     result = widget_create_fs_entries(btn, win1->widgets_node);
     if (result < 0) {
         fprintf(stderr, "Error: failed to create button FS entries\n");
@@ -330,7 +417,8 @@ int main(int argc, char **argv)
     }
 
     window_add_widget(win1, btn);
-    fprintf(stderr, "  Created widget %u: button (text='%s')\n", btn->id, btn->prop_text);
+    fprintf(stderr, "  Created widget %u: button (text='%s', rect='%s')\n",
+            btn->id, btn->prop_text, btn->prop_rect);
 
     /* Add a label widget */
     lbl = widget_create(WIDGET_LABEL, "lbl_hello", win1);
@@ -345,6 +433,13 @@ int main(int argc, char **argv)
         strcpy(lbl->prop_text, "Hello, World!");
     }
 
+    /* Set label rectangle: x y width height */
+    free(lbl->prop_rect);
+    lbl->prop_rect = (char *)malloc(16);
+    if (lbl->prop_rect != NULL) {
+        strcpy(lbl->prop_rect, "50 120 300 40");  /* x=50, y=120, w=300, h=40 */
+    }
+
     result = widget_create_fs_entries(lbl, win1->widgets_node);
     if (result < 0) {
         fprintf(stderr, "Error: failed to create label FS entries\n");
@@ -352,7 +447,8 @@ int main(int argc, char **argv)
     }
 
     window_add_widget(win1, lbl);
-    fprintf(stderr, "  Created widget %u: label (text='%s')\n", lbl->id, lbl->prop_text);
+    fprintf(stderr, "  Created widget %u: label (text='%s', rect='%s')\n",
+            lbl->id, lbl->prop_text, lbl->prop_rect);
 
     /* Initial render */
     fprintf(stderr, "Rendering initial state...\n");
@@ -371,27 +467,105 @@ int main(int argc, char **argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    /* Main loop */
-    while (running) {
-        client_fd = tcp_accept(listen_fd);
-        if (client_fd < 0) {
-            if (running) {
-                fprintf(stderr, "Error accepting connection\n");
+    /* Main loop - select-based I/O multiplexing */
+    fprintf(stderr, "Main loop started (multi-client mode)\n");
+
+    /* Initialize render timing */
+    {
+        struct timeval last_render;
+        int render_interval_ms = 33;  /* ~30 FPS */
+
+        gettimeofday(&last_render, NULL);
+
+        while (running) {
+            fd_set readfds;
+            struct timeval tv;
+            int max_fd;
+            int i;
+            int select_result;
+            struct timeval current_time;
+            double elapsed;
+
+            FD_ZERO(&readfds);
+            FD_SET(listen_fd, &readfds);
+            max_fd = listen_fd;
+
+            /* Add all clients to fd_set */
+            for (i = 0; i < g_nclients; i++) {
+                FD_SET(g_clients[i].fd, &readfds);
+                if (g_clients[i].fd > max_fd) {
+                    max_fd = g_clients[i].fd;
+                }
             }
-            break;
+
+            /* Select with 100ms timeout */
+            tv.tv_sec = 0;
+            tv.tv_usec = 100000;
+
+            select_result = select(max_fd + 1, &readfds, NULL, NULL, &tv);
+            if (select_result < 0) {
+                if (running) {
+                    fprintf(stderr, "select error\n");
+                }
+                break;
+            }
+
+            /* Check for new connections */
+            if (FD_ISSET(listen_fd, &readfds)) {
+                client_fd = tcp_accept(listen_fd);
+                if (client_fd >= 0) {
+                    if (add_client(client_fd) < 0) {
+                        fprintf(stderr, "Too many clients, rejecting connection\n");
+                        tcp_close(client_fd);
+                    }
+                }
+            }
+
+            /* Handle client requests */
+            for (i = g_nclients - 1; i >= 0; i--) {
+                if (FD_ISSET(g_clients[i].fd, &readfds)) {
+                    int result = handle_client_request(&g_clients[i]);
+                    if (result < 0) {
+                        /* Client disconnected */
+                        remove_client(g_clients[i].fd);
+                    }
+                }
+            }
+
+            /* Check if render needed */
+            gettimeofday(&current_time, NULL);
+            elapsed = (current_time.tv_sec - last_render.tv_sec) * 1000.0 +
+                     (current_time.tv_usec - last_render.tv_usec) / 1000.0;
+
+            /* ALWAYS render every 33ms (30 FPS) */
+            if (elapsed >= render_interval_ms) {
+                /* Verify render timing */
+                static int render_count = 0;
+                if (++render_count <= 3) {
+                    fprintf(stderr, "Render %d completed at %ld ms\n", render_count,
+                            (long)(current_time.tv_sec * 1000 + current_time.tv_usec / 1000));
+                }
+                render_all();
+                gettimeofday(&last_render, NULL);
+            }
         }
-
-        /* Handle client (single-threaded for Phase 2) */
-        handle_client(client_fd);
-
-        /* Clean up */
-        tcp_close(client_fd);
     }
 
     /* Cleanup */
     fprintf(stderr, "\nShutting down...\n");
+
+    /* Close all client connections */
+    {
+        int i;
+        for (i = 0; i < g_nclients; i++) {
+            tcp_close(g_clients[i].fd);
+        }
+    }
+    g_nclients = 0;
+
     tcp_close(listen_fd);
     fid_cleanup();
+    event_system_cleanup();
 
     /* Cleanup device states before tree cleanup */
     devdraw_cleanup();

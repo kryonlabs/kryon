@@ -5,6 +5,7 @@
 #include "kryon.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <time.h>
 
 /*
@@ -13,11 +14,12 @@
 typedef struct FileOps FileOps;
 
 /*
- * File operation context - stores read/write functions
+ * File operation context - stores read/write functions and state data
  */
 struct FileOps {
-    ssize_t (*read)(char *buf, size_t count, uint64_t offset);
-    ssize_t (*write)(const char *buf, size_t count, uint64_t offset);
+    void *data;  /* State data passed to read/write functions */
+    ssize_t (*read)(char *buf, size_t count, uint64_t offset, void *data);
+    ssize_t (*write)(const char *buf, size_t count, uint64_t offset, void *data);
 };
 
 /*
@@ -267,8 +269,9 @@ P9Node *tree_create_file(P9Node *parent, const char *name, void *data,
         return NULL;
     }
 
-    ops->read = read;
-    ops->write = write;
+    ops->data = data;
+    ops->read = (void *)read;  /* Cast to match new signature */
+    ops->write = (void *)write;
     node->data = ops;
 
     if (tree_add_child(parent, node) < 0) {
@@ -298,6 +301,7 @@ struct FileOps *node_get_ops(P9Node *node)
 ssize_t node_read(P9Node *node, char *buf, size_t count, uint64_t offset)
 {
     struct FileOps *ops;
+    ssize_t (*read_func)(char *, size_t, uint64_t, void *);
 
     if (node == NULL || buf == NULL) {
         return -1;
@@ -308,7 +312,9 @@ ssize_t node_read(P9Node *node, char *buf, size_t count, uint64_t offset)
         return -1;
     }
 
-    return ops->read(buf, count, offset);
+    /* Call read function with state data */
+    read_func = (ssize_t (*)(char *, size_t, uint64_t, void *))ops->read;
+    return read_func(buf, count, offset, ops->data);
 }
 
 /*
@@ -317,6 +323,7 @@ ssize_t node_read(P9Node *node, char *buf, size_t count, uint64_t offset)
 ssize_t node_write(P9Node *node, const char *buf, size_t count, uint64_t offset)
 {
     struct FileOps *ops;
+    ssize_t (*write_func)(const char *, size_t, uint64_t, void *);
 
     if (node == NULL || buf == NULL) {
         return -1;
@@ -327,5 +334,7 @@ ssize_t node_write(P9Node *node, const char *buf, size_t count, uint64_t offset)
         return -1;
     }
 
-    return ops->write(buf, count, offset);
+    /* Call write function with state data */
+    write_func = (ssize_t (*)(const char *, size_t, uint64_t, void *))ops->write;
+    return write_func(buf, count, offset, ops->data);
 }

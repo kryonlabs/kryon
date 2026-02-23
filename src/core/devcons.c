@@ -34,8 +34,9 @@ static ConsState g_cons_state = { "", 0 };
  * Returns console buffer contents
  */
 static ssize_t devcons_read(char *buf, size_t count, uint64_t offset,
-                            ConsState *state)
+                            void *data)
 {
+    ConsState *state = (ConsState *)data;
     size_t bytes_to_copy;
 
     if (state == NULL) {
@@ -62,8 +63,9 @@ static ssize_t devcons_read(char *buf, size_t count, uint64_t offset,
  * Appends to console buffer (logs to stderr)
  */
 static ssize_t devcons_write(const char *buf, size_t count, uint64_t offset,
-                             ConsState *state)
+                             void *data)
 {
+    ConsState *state = (ConsState *)data;
     size_t space_left;
     size_t to_copy;
 

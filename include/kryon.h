@@ -178,7 +178,8 @@ void le_put16(uint8_t *buf, uint16_t val);
 int p9_parse_header(const uint8_t *buf, size_t len, P9Hdr *hdr);
 int p9_parse_tversion(const uint8_t *buf, size_t len, uint32_t *msize, char *version);
 int p9_parse_tattach(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *afid, char *uname, char *aname);
-int p9_parse_twalk(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *newfid, char *wname);
+int p9_parse_twalk(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *newfid,
+                   char *wnames[], int *nwname);
 int p9_parse_topen(const uint8_t *buf, size_t len, uint32_t *fid, uint8_t *mode);
 int p9_parse_tread(const uint8_t *buf, size_t len, uint32_t *fid, uint64_t *offset, uint32_t *count);
 int p9_parse_twrite(const uint8_t *buf, size_t len, uint32_t *fid, uint64_t *offset, const char **data, uint32_t *count);

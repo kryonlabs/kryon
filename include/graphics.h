@@ -117,14 +117,21 @@ void memfillcolor(Memimage *dst, unsigned long color);
 void memfillcolor_rect(Memimage *dst, Rectangle r, unsigned long color);
 void memdraw(Memimage *dst, Rectangle r, Memimage *src, Point sp,
              Memimage *mask, Point mp, int op);
+void memdraw_line(Memimage *dst, Point p0, Point p1, unsigned long color, int thickness);
+void memdraw_poly(Memimage *dst, Point *points, int npoints, unsigned long color, int fill);
+void memdraw_ellipse(Memimage *dst, Point center, int rx, int ry,
+                     unsigned long color, int fill);
+void memdraw_text(Memimage *dst, Point p, const char *str, unsigned long color);
 
 /*
- * Draw operations
+ * Draw operations (Porter-Duff compositing operators)
  */
-#define SoverD  12   /* Source over Destination (alpha blend) */
-#define SoutD   10   /* Source out Destination */
+#define Clear   0    /* Clear - destination cleared */
+#define S       0    /* Source - replace destination with source */
 #define SinD    4    /* Source in Destination */
-#define S       0    /* Source */
+#define SoutD   10   /* Source out Destination */
+#define DoverS  11   /* Destination over Source */
+#define SoverD  12   /* Source over Destination (alpha blend, default) */
 
 /*
  * Color parsing
@@ -138,5 +145,6 @@ int parse_rect(const char *str, Rectangle *r);
 int rect_clip(Rectangle *rp, Rectangle clipr);
 int rect_intersect(Rectangle *rp, Rectangle s);
 int rectXrect(Rectangle r, Rectangle s);
+int ptinrect(Point p, Rectangle r);
 
 #endif /* KRYON_GRAPHICS_H */

@@ -5,6 +5,7 @@
 
 #include "kryon.h"
 #include <string.h>
+#include <stdlib.h>
 
 /*
  * Endianness conversion functions
@@ -148,10 +149,12 @@ int p9_parse_tattach(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *af
 /*
  * Twalk: size[4] Twalk tag[2] fid[4] newfid[4] nwname[2] wname[nwname][s]
  */
-int p9_parse_twalk(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *newfid, char *wname)
+int p9_parse_twalk(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *newfid,
+                   char *wnames[], int *nwname)
 {
     const uint8_t *p = buf + 7;  /* Skip header */
-    uint16_t nwname;
+    uint16_t nwname_val;
+    int i;
 
     if (len < 7 + 4 + 4 + 2) {
         return -1;
@@ -163,16 +166,30 @@ int p9_parse_twalk(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *newf
     *newfid = le_get32(p);
     p += 4;
 
-    nwname = le_get16(p);
+    nwname_val = le_get16(p);
     p += 2;
 
-    /* For simplicity, we only support single-element walks in Phase 1 */
-    if (nwname > 0) {
-        p += p9_get_string(p, wname, P9_MAX_STR);
-    } else {
-        wname[0] = '\0';
+    /* Limit number of walk components */
+    if (nwname_val > P9_MAX_WELEM) {
+        nwname_val = P9_MAX_WELEM;
     }
 
+    /* Parse all walk components */
+    for (i = 0; i < nwname_val; i++) {
+        /* Allocate buffer for this component */
+        wnames[i] = (char *)malloc(P9_MAX_STR);
+        if (wnames[i] == NULL) {
+            /* Cleanup previously allocated strings */
+            int j;
+            for (j = 0; j < i; j++) {
+                free(wnames[j]);
+            }
+            return -1;
+        }
+        p += p9_get_string(p, wnames[i], P9_MAX_STR);
+    }
+
+    *nwname = (int)nwname_val;
     return 0;
 }
 

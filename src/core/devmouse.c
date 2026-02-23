@@ -8,10 +8,16 @@
 #include "kryon.h"
 #include "graphics.h"
 #include "widget.h"
+#include "events.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+
+/*
+ * External event generation function
+ */
+extern int generate_mouse_event(Point xy, int buttons);
 
 /*
  * Mouse device state
@@ -40,8 +46,9 @@ static MouseState g_mouse_state = {
  * (resized, x, y, buttons, msec)
  */
 static ssize_t devmouse_read(char *buf, size_t count, uint64_t offset,
-                             MouseState *state)
+                             void *data)
 {
+    MouseState *state = (MouseState *)data;
     char msg[64];
     int len;
 
@@ -79,8 +86,9 @@ static ssize_t devmouse_read(char *buf, size_t count, uint64_t offset,
  * (resized, x, y, buttons, msec)
  */
 static ssize_t devmouse_write(const char *buf, size_t count, uint64_t offset,
-                              MouseState *state)
+                              void *data)
 {
+    MouseState *state = (MouseState *)data;
     char resized_str[16];
     char x_str[16];
     char y_str[16];
@@ -112,8 +120,8 @@ static ssize_t devmouse_write(const char *buf, size_t count, uint64_t offset,
     state->msec = (unsigned long)time(NULL) * 1000;
     state->counter++;
 
-    /* TODO: Trigger hit-test for widgets */
-    /* This will be implemented in Phase 4 when we have event handling */
+    /* Trigger hit-test for widgets */
+    generate_mouse_event(state->xy, state->buttons);
 
     return count;
 }

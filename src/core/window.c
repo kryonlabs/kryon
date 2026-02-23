@@ -10,6 +10,12 @@
 #include <time.h>
 
 /*
+ * snprintf prototype for C89 compatibility
+ * (gcc provides this as an extension)
+ */
+extern int snprintf(char *str, size_t size, const char *format, ...);
+
+/*
  * Forward declarations for property handlers
  */
 static ssize_t prop_read_title(struct KryonWindow *w, char *buf, size_t count, uint64_t offset);
@@ -252,24 +258,26 @@ int window_add_widget(struct KryonWindow *window, struct KryonWidget *widget)
  * Property file read wrapper
  */
 static ssize_t window_property_read(char *buf, size_t count, uint64_t offset,
-                                     WindowPropertyData *data)
+                                     void *data)
 {
-    if (data->read_func == NULL) {
+    WindowPropertyData *prop_data = (WindowPropertyData *)data;
+    if (prop_data->read_func == NULL) {
         return -1;
     }
-    return data->read_func(data->window, buf, count, offset);
+    return prop_data->read_func(prop_data->window, buf, count, offset);
 }
 
 /*
  * Property file write wrapper
  */
 static ssize_t window_property_write(const char *buf, size_t count, uint64_t offset,
-                                      WindowPropertyData *data)
+                                      void *data)
 {
-    if (data->write_func == NULL) {
+    WindowPropertyData *prop_data = (WindowPropertyData *)data;
+    if (prop_data->write_func == NULL) {
         return -1;
     }
-    return data->write_func(data->window, buf, count, offset);
+    return prop_data->write_func(prop_data->window, buf, count, offset);
 }
 
 /*

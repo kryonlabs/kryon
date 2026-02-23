@@ -37,6 +37,7 @@ void render_widget(KryonWidget *w, Memimage *screen)
 {
     Rectangle widget_rect;
     unsigned long color;
+    static int render_count = 0;
 
     if (w == NULL || screen == NULL) {
         return;
@@ -46,6 +47,8 @@ void render_widget(KryonWidget *w, Memimage *screen)
     if (!w->prop_visible) {
         return;
     }
+
+    render_count++;
 
     /* Parse widget rectangle */
     if (parse_rect(w->prop_rect, &widget_rect) < 0) {
@@ -60,9 +63,11 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_FAB_BUTTON:
         /* Button rendering */
         if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
-            color = 0xFF00FF00;  /* Green when active (RGBA: R=0, G=255, B=0, A=255) */
+            /* Green when active: 0xFF00FF00 = R=00, G=FF, B=00, A=FF */
+            color = 0xFF00FF00;
         } else {
-            color = 0xFFCCCCCC;  /* Gray when inactive */
+            /* Red when inactive: 0xFF0000FF = R=FF, G=00, B=00, A=FF */
+            color = 0xFF0000FF;
         }
         memfillcolor_rect(screen, widget_rect, color);
 
@@ -72,8 +77,9 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_LABEL:
     case WIDGET_HEADING:
     case WIDGET_PARAGRAPH:
-        /* Label rendering - white background */
-        color = 0xFFFFFFFF;  /* White */
+        /* Label rendering - yellow background (visible) */
+        /* 0xFF00FFFF = R=FF, G=FF, B=00, A=FF (Yellow in little-endian) */
+        color = 0xFF00FFFF;
         memfillcolor_rect(screen, widget_rect, color);
         /* TODO: Render text */
         break;
@@ -167,8 +173,9 @@ void render_window(KryonWindow *win, Memimage *screen)
         return;
     }
 
-    /* Clear window background */
-    memfillcolor_rect(screen, win_rect, 0xFFFFFFFF);
+    /* Clear window background - use transparent instead of white */
+    /* Don't clear - let the screen background show through */
+    /* memfillcolor_rect(screen, win_rect, 0xFFFFFFFF); */
 
     /* Render all widgets */
     for (i = 0; i < win->nwidgets; i++) {
@@ -183,13 +190,25 @@ void render_all(void)
 {
     KryonWindow *win;
     uint32_t i;
+    static int render_count = 0;
+    static int first_done = 0;
 
     if (g_screen == NULL) {
         return;
     }
 
-    /* Clear screen to white */
-    memfillcolor(g_screen, 0xFFFFFFFF);
+    render_count++;
+
+    /* Clear screen to dark blue */
+    memfillcolor(g_screen, 0xFFFF0000);
+
+    /* Verify write operation */
+    if (!first_done) {
+        unsigned char *p = g_screen->data->bdata;
+        fprintf(stderr, "After clear: pixel[0]=%02X%02X%02X%02X (expected: 0000FFFF)\n",
+                p[0], p[1], p[2], p[3]);
+        first_done = 1;
+    }
 
     /* Render all windows */
     for (i = 1; ; i++) {

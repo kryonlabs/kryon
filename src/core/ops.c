@@ -5,6 +5,7 @@
 #include "kryon.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /*
  * FID table
@@ -203,49 +204,73 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 {
     uint32_t fid, newfid;
-    char wname[P9_MAX_STR];
+    char *wnames[P9_MAX_WELEM];
+    int nwname;
     P9Hdr hdr;
     P9Fid *fid_obj, *newfid_obj;
     P9Node *node, *newnode;
-    P9Qid wqid[1];
+    P9Qid wqid[P9_MAX_WELEM];
+    int i;
 
     /* Parse request */
     if (p9_parse_header(in_buf, in_len, &hdr) < 0) {
         return 0;
     }
 
-    if (p9_parse_twalk(in_buf, in_len, &fid, &newfid, wname) < 0) {
+    if (p9_parse_twalk(in_buf, in_len, &fid, &newfid, wnames, &nwname) < 0) {
         return p9_build_rerror(out_buf, hdr.tag, "invalid Twalk");
     }
 
     /* Get source FID */
     fid_obj = fid_get(fid);
     if (fid_obj == NULL) {
+        /* Free allocated wnames */
+        for (i = 0; i < nwname; i++) {
+            free(wnames[i]);
+        }
         return p9_build_rerror(out_buf, hdr.tag, "fid not found");
     }
 
     node = fid_obj->node;
 
-    /* Walk to target */
-    if (wname[0] == '\0') {
-        /* Empty walk - clone current fid */
-        newnode = node;
-    } else {
-        newnode = tree_walk(node, wname);
+    /* Walk through all path components */
+    newnode = node;
+    fprintf(stderr, "handle_twalk: walking from '%s' through %d components\n",
+            node->name ? node->name : "(null)", nwname);
+    for (i = 0; i < nwname; i++) {
+        fprintf(stderr, "  component[%d] = '%s'\n", i, wnames[i]);
+        newnode = tree_walk(newnode, wnames[i]);
         if (newnode == NULL) {
+            /* Free allocated wnames */
+            int j;
+            fprintf(stderr, "  -> not found!\n");
+            for (j = i; j < nwname; j++) {
+                free(wnames[j]);
+            }
             return p9_build_rerror(out_buf, hdr.tag, "file not found");
         }
+        fprintf(stderr, "  -> '%s' (qid.type=%02X)\n", newnode->name, newnode->qid.type);
+        /* Store QID for this component */
+        wqid[i] = newnode->qid;
     }
 
-    /* Create new FID */
+    /* Create new FID pointing to final node */
     newfid_obj = fid_new(newfid, newnode);
     if (newfid_obj == NULL) {
+        /* Free allocated wnames */
+        for (i = 0; i < nwname; i++) {
+            free(wnames[i]);
+        }
         return p9_build_rerror(out_buf, hdr.tag, "newfid in use");
     }
 
-    /* Return QID of walked node */
-    wqid[0] = newnode->qid;
-    return p9_build_rwalk(out_buf, hdr.tag, wqid, 1);
+    /* Free allocated wnames */
+    for (i = 0; i < nwname; i++) {
+        free(wnames[i]);
+    }
+
+    /* Return all QIDs from the walk */
+    return p9_build_rwalk(out_buf, hdr.tag, wqid, nwname);
 }
 
 /*
@@ -400,6 +425,10 @@ size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     node = fid_obj->node;
 
+    /* Debug logging */
+    fprintf(stderr, "handle_tread: fid=%u node='%s' qid.type=%02X offset=%lu count=%u\n",
+            fid, node->name ? node->name : "(null)", node->qid.type, offset, count);
+
     /* Check if directory */
     if (node->qid.type & QTDIR) {
         return handle_directory_read(fid_obj, offset, count, out_buf, hdr.tag);
@@ -416,6 +445,7 @@ size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
         return p9_build_rerror(out_buf, hdr.tag, "read error");
     }
 
+    fprintf(stderr, "handle_tread: returning %zd bytes\n", nread);
     return p9_build_rread(out_buf, hdr.tag, data, (uint32_t)nread);
 }
 
