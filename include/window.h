@@ -12,6 +12,7 @@
  * Forward declarations
  */
 struct KryonWidget;
+struct Memimage;
 
 /*
  * Window state structure
@@ -30,6 +31,9 @@ typedef struct KryonWindow {
     /* 9P tree nodes */
     P9Node *node;                   /* /windows/{id} */
     P9Node *widgets_node;           /* /windows/{id}/widgets */
+
+    /* Graphics */
+    struct Memimage *backing_store; /* Window backing store (optional) */
 
     /* Internal state */
     void *internal_data;            /* Platform-specific data */

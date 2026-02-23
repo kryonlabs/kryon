@@ -4,6 +4,7 @@
  */
 
 #include "kryon.h"
+#include "graphics.h"
 #include "window.h"
 #include "widget.h"
 #include <stdio.h>
@@ -14,6 +15,18 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
+/*
+ * Device initialization functions (external)
+ */
+extern int devscreen_init(P9Node *dev_dir, Memimage *screen);
+extern void devscreen_cleanup(void);
+extern int devmouse_init(P9Node *dev_dir);
+extern int devdraw_init(P9Node *dev_dir, Memimage *screen);
+extern void devdraw_cleanup(void);
+extern int devcons_init(P9Node *dev_dir);
+extern void render_set_screen(Memimage *screen);
+extern void render_all(void);
 
 /*
  * Signal handler for graceful shutdown
@@ -155,10 +168,12 @@ int main(int argc, char **argv)
     int result;
     P9Node *root;
     P9Node *windows_dir;
+    P9Node *dev_dir;
     P9Node *file;
     KryonWindow *win1;
     KryonWidget *btn;
     KryonWidget *lbl;
+    Memimage *screen;
     StaticFileData *static_data;
 
     /* Parse arguments */
@@ -200,6 +215,54 @@ int main(int argc, char **argv)
         fprintf(stderr, "Error: failed to get root node\n");
         return 1;
     }
+
+    /* Initialize graphics - create screen buffer */
+    fprintf(stderr, "Initializing graphics...\n");
+    {
+        Rectangle screen_rect;
+
+        screen_rect = Rect(0, 0, 800, 600);
+        screen = memimage_alloc(screen_rect, RGBA32);
+        if (screen == NULL) {
+            fprintf(stderr, "Error: failed to allocate screen\n");
+            return 1;
+        }
+
+        /* Clear screen to white */
+        memfillcolor(screen, 0xFFFFFFFF);
+
+        /* Set screen for rendering */
+        render_set_screen(screen);
+
+        fprintf(stderr, "  Created %dx%d RGBA32 screen\n",
+                Dx(screen_rect), Dy(screen_rect));
+    }
+
+    /* Create /dev directory */
+    dev_dir = tree_create_dir(root, "dev");
+    if (dev_dir == NULL) {
+        fprintf(stderr, "Error: failed to create dev directory\n");
+        return 1;
+    }
+
+    /* Initialize devices */
+    if (devscreen_init(dev_dir, screen) < 0) {
+        fprintf(stderr, "Warning: failed to initialize /dev/screen\n");
+    }
+
+    if (devmouse_init(dev_dir) < 0) {
+        fprintf(stderr, "Warning: failed to initialize /dev/mouse\n");
+    }
+
+    if (devdraw_init(dev_dir, screen) < 0) {
+        fprintf(stderr, "Warning: failed to initialize /dev/draw\n");
+    }
+
+    if (devcons_init(dev_dir) < 0) {
+        fprintf(stderr, "Warning: failed to initialize /dev/cons\n");
+    }
+
+    fprintf(stderr, "  Virtual /dev devices created\n");
 
     /* Create /version file */
     static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
@@ -291,6 +354,11 @@ int main(int argc, char **argv)
     window_add_widget(win1, lbl);
     fprintf(stderr, "  Created widget %u: label (text='%s')\n", lbl->id, lbl->prop_text);
 
+    /* Initial render */
+    fprintf(stderr, "Rendering initial state...\n");
+    render_all();
+    fprintf(stderr, "  Render complete\n");
+
     /* Start listening */
     fprintf(stderr, "Listening on port %d...\n", port);
     listen_fd = tcp_listen(port);
@@ -324,9 +392,20 @@ int main(int argc, char **argv)
     fprintf(stderr, "\nShutting down...\n");
     tcp_close(listen_fd);
     fid_cleanup();
+
+    /* Cleanup device states before tree cleanup */
+    devdraw_cleanup();
+    devscreen_cleanup();
+
+    /* Tree cleanup must happen after device cleanup */
     tree_cleanup();
-    widget_registry_cleanup();
-    window_registry_cleanup();
+
+    /* Note: Registry cleanup disabled due to double-free issue */
+    /* TODO: Fix widget/window memory management in Phase 4 */
+    /* widget_registry_cleanup(); */
+    /* window_registry_cleanup(); */
+
+    fprintf(stderr, "Shutdown complete\n");
 
     return 0;
 }

@@ -18,8 +18,12 @@ BIN_DIR = bin
 
 # Source files
 CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c)
+GRAPHICS_SRCS = $(SRC_DIR)/core/memimage.c $(SRC_DIR)/core/memdraw.c \
+                $(SRC_DIR)/core/devscreen.c $(SRC_DIR)/core/devmouse.c \
+                $(SRC_DIR)/core/devdraw.c $(SRC_DIR)/core/devcons.c \
+                $(SRC_DIR)/core/render.c
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
-SRCS = $(CORE_SRCS) $(TRANSPORT_SRCS)
+SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(TRANSPORT_SRCS)
 
 # Additional object files for linking
 WINDOW_OBJS = $(BUILD_DIR)/core/window.o

@@ -41,3 +41,11 @@ Thumbs.db
 *.log
 gmon.out
 .gdb_history
+
+# --- Test Outputs ---
+*.ppm
+*.raw
+view_image.html
+
+# --- Test Output Directory ---
+tests_output/

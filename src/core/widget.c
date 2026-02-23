@@ -10,6 +10,12 @@
 #include <time.h>
 
 /*
+ * External rendering functions
+ */
+extern void render_all(void);
+extern void mark_dirty(struct KryonWindow *win);
+
+/*
  * Forward declarations for property handlers
  */
 static ssize_t prop_read_type(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
@@ -401,6 +407,11 @@ static ssize_t prop_write_value(struct KryonWidget *w, const char *buf, size_t c
     w->prop_value[count] = '\0';
 
     fprintf(stderr, "Widget %u value: %s\n", w->id, w->prop_value);
+
+    /* Trigger re-render */
+    mark_dirty(w->parent_window);
+    render_all();
+
     return count;
 }
 
@@ -453,6 +464,11 @@ static ssize_t prop_write_text(struct KryonWidget *w, const char *buf, size_t co
     w->prop_text[count] = '\0';
 
     fprintf(stderr, "Widget %u text: %s\n", w->id, w->prop_text);
+
+    /* Trigger re-render */
+    mark_dirty(w->parent_window);
+    render_all();
+
     return count;
 }
 
@@ -491,6 +507,10 @@ static ssize_t prop_write_visible(struct KryonWidget *w, const char *buf, size_t
     } else if (count > 0 && buf[0] == '0') {
         w->prop_visible = 0;
     }
+
+    /* Trigger re-render */
+    mark_dirty(w->parent_window);
+    render_all();
 
     return count;
 }
