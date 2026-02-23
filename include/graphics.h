@@ -140,31 +140,21 @@ void memdraw_text(Memimage *dst, Point p, const char *str, unsigned long color);
  * Font structures (9front/Plan 9 compatible)
  */
 typedef struct Fontchar {
-    int x;          /* left edge of bits in font image */
+    int x;          /* left edge of bits */
     unsigned char top;      /* first non-zero scan-line */
-    unsigned char bottom;   /* last non-zero scan-line */
+    unsigned char bottom;   /* last non-zero scan-line + 1 */
     char left;      /* offset of baseline */
-    unsigned char width;    /* width of character */
+    unsigned char width;    /* width of baseline */
 } Fontchar;
 
 typedef struct Subfont {
-    char name[30];  /* name of subfont */
-    short n;        /* number of chars in subfont */
+    char *name;     /* name of subfont */
+    short n;        /* number of chars in font */
     unsigned char height;   /* height of image */
     char ascent;    /* top of image to baseline */
     Fontchar *info; /* n+1 Fontchars */
-    unsigned char *bits;    /* font bitmap data */
+    Memimage *bits; /* font image (GREY1 or GREY8) */
 } Subfont;
-
-/*
- * Font functions
- */
-Subfont *subfont_load(const char *filename);
-void subfont_free(Subfont *sf);
-void memdraw_char_font(Memimage *dst, Point p, int ch, Subfont *sf, unsigned long color);
-void memdraw_text_font(Memimage *dst, Point p, const char *str, Subfont *sf, unsigned long color);
-void memdraw_set_default_font(Subfont *sf);
-Subfont *memdraw_get_default_font(void);
 
 /*
  * Draw operations (Porter-Duff compositing operators)
