@@ -13,12 +13,15 @@ LDFLAGS =
 # Detect Nix environment - use NIX_LDFLAGS for proper RPATH
 ifneq ($(NIX_LDFLAGS),)
     # Building in nix-shell - use Nix's automatic RPATH
-    # Convert -rpath to -Wl,-rpath for GCC
+    # Convert -rpath to -Wl,-rpath, for GCC
     # Also use GCC for building library to avoid TCC/GCC mixing issues
     CC = gcc
-    LDFLAGS += $(shell echo '$(NIX_LDFLAGS)' | sed 's/-rpath \([^ ]*\)/-Wl,-rpath \1/g')
+    # Convert -rpath to -Wl,-rpath, using perl
+    LDFLAGS += $(shell echo '$(NIX_LDFLAGS)' | perl -pe 's/-rpath (\S+)/-Wl,-rpath,$1/g')
     CFLAGS += $(NIX_CFLAGS_COMPILE)
     $(info Building in Nix environment - using GCC for proper RPATH)
+    $(info NIX_LDFLAGS=$(NIX_LDFLAGS))
+    $(info Converted LDFLAGS=$(LDFLAGS))
 endif
 
 # SDL2 detection (required for display client)

@@ -20,35 +20,37 @@ typedef long ssize_t;
 
 /*
  * 9P2000 Message Types
+ * These must match plan9port's enum values from fcall.h
  */
 typedef enum {
     Tversion = 100,
     Rversion = 101,
     Tauth = 102,
     Rauth = 103,
-    Rerror = 105,  /* Explicit Rerror value */
     Tattach = 104,
     Rattach = 105,
-    Tflush = 106,
-    Rflush = 107,
-    Twalk = 108,
-    Rwalk = 109,
-    Topen = 110,
-    Ropen = 111,
-    Tcreate = 112,
-    Rcreate = 113,
-    Tread = 114,
-    Rread = 115,
-    Twrite = 116,
-    Rwrite = 117,
-    Tclunk = 118,
-    Rclunk = 119,
-    Tremove = 120,
-    Rremove = 121,
-    Tstat = 122,
-    Rstat = 123,
-    Twstat = 124,
-    Rwstat = 125
+    Terror = 106,    /* illegal */
+    Rerror = 107,
+    Tflush = 108,
+    Rflush = 109,
+    Twalk = 110,
+    Rwalk = 111,
+    Topen = 112,
+    Ropen = 113,
+    Tcreate = 114,
+    Rcreate = 115,
+    Tread = 116,
+    Rread = 117,
+    Twrite = 118,
+    Rwrite = 119,
+    Tclunk = 120,
+    Rclunk = 121,
+    Tremove = 122,
+    Rremove = 123,
+    Tstat = 124,
+    Rstat = 125,
+    Twstat = 126,
+    Rwstat = 127
 } P9MsgType;
 
 /*
@@ -178,6 +180,7 @@ void le_put16(uint8_t *buf, uint16_t val);
 int p9_parse_header(const uint8_t *buf, size_t len, P9Hdr *hdr);
 int p9_parse_tversion(const uint8_t *buf, size_t len, uint32_t *msize, char *version);
 int p9_parse_tattach(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *afid, char *uname, char *aname);
+int p9_parse_tauth(const uint8_t *buf, size_t len, char *uname, char *aname);
 int p9_parse_twalk(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *newfid,
                    char *wnames[], int *nwname);
 int p9_parse_topen(const uint8_t *buf, size_t len, uint32_t *fid, uint8_t *mode);
@@ -192,12 +195,14 @@ int p9_parse_tstat(const uint8_t *buf, size_t len, uint32_t *fid);
 size_t p9_build_header(uint8_t *buf, P9MsgType type, uint16_t tag, size_t payload_len);
 size_t p9_build_rversion(uint8_t *buf, uint16_t tag, uint32_t msize, const char *version);
 size_t p9_build_rerror(uint8_t *buf, uint16_t tag, const char *ename);
+size_t p9_build_rauth(uint8_t *buf, uint16_t tag, P9Qid *qid);
 size_t p9_build_rattach(uint8_t *buf, uint16_t tag, P9Qid *qid);
 size_t p9_build_rwalk(uint8_t *buf, uint16_t tag, P9Qid *wqid, int nwqid);
 size_t p9_build_ropen(uint8_t *buf, uint16_t tag, P9Qid *qid, uint32_t iounit);
 size_t p9_build_rread(uint8_t *buf, uint16_t tag, const char *data, uint32_t count);
 size_t p9_build_rwrite(uint8_t *buf, uint16_t tag, uint32_t count);
 size_t p9_build_rclunk(uint8_t *buf, uint16_t tag);
+size_t p9_build_rremove(uint8_t *buf, uint16_t tag);
 size_t p9_build_rstat(uint8_t *buf, uint16_t tag, const P9Stat *stat);
 
 /*
@@ -218,6 +223,7 @@ P9Node *tree_create_file(P9Node *parent, const char *name, void *data,
                          ssize_t (*read)(char *, size_t, uint64_t),
                          ssize_t (*write)(const char *, size_t, uint64_t));
 int tree_add_child(P9Node *parent, P9Node *child);
+int tree_remove_node(P9Node *node);
 
 /*
  * Node operations
@@ -239,12 +245,14 @@ int fid_clunk(uint32_t fid_num);
  * 9P Operation handlers
  */
 size_t handle_tversion(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
+size_t handle_tauth(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_topen(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_twrite(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_tclunk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
+size_t handle_tremove(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_tstat(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 
 /*

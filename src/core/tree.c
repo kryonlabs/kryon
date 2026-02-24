@@ -137,6 +137,8 @@ extern P9Node *drawconn_create_dir(int conn_id);
 
 /*
  * Walk to a child node by name
+ * NOTE: name may not be null-terminated (from Twath parsing).
+ * We handle special cases "." and ".." which are single chars.
  */
 P9Node *tree_walk(P9Node *node, const char *name)
 {
@@ -146,13 +148,13 @@ P9Node *tree_walk(P9Node *node, const char *name)
         return NULL;
     }
 
-    /* "." means current directory */
-    if (strcmp(name, ".") == 0) {
+    /* "." means current directory (single char, safe to check) */
+    if (name[0] == '.' && (name[1] == '\0' || name[1] == '/')) {
         return node;
     }
 
-    /* ".." means parent directory */
-    if (strcmp(name, "..") == 0) {
+    /* ".." means parent directory (check first two chars) */
+    if (name[0] == '.' && name[1] == '.' && (name[2] == '\0' || name[2] == '/')) {
         return node->parent;
     }
 
@@ -393,4 +395,59 @@ ssize_t node_write(P9Node *node, const char *buf, size_t count, uint64_t offset)
     /* Call write function with state data */
     write_func = (ssize_t (*)(const char *, size_t, uint64_t, void *))ops->write;
     return write_func(buf, count, offset, ops->data);
+}
+
+/*
+ * Remove a node from its parent's children array
+ * Returns 0 on success, -1 on failure
+ */
+int tree_remove_node(P9Node *node)
+{
+    P9Node *parent;
+    int i, found;
+
+    if (node == NULL) {
+        return -1;
+    }
+
+    /* Cannot remove root node */
+    if (node->parent == node) {
+        return -1;
+    }
+
+    parent = node->parent;
+    if (parent == NULL || parent->children == NULL) {
+        return -1;
+    }
+
+    /* Find the node in parent's children array */
+    found = -1;
+    for (i = 0; i < parent->nchildren; i++) {
+        if (parent->children[i] == node) {
+            found = i;
+            break;
+        }
+    }
+
+    if (found < 0) {
+        return -1;  /* Node not found in parent's children */
+    }
+
+    /* Remove node from children array by shifting */
+    for (i = found; i < parent->nchildren - 1; i++) {
+        parent->children[i] = parent->children[i + 1];
+    }
+    parent->nchildren--;
+
+    /* Free node resources */
+    if (node->name != NULL) {
+        free(node->name);
+    }
+    if (node->data != NULL) {
+        free(node->data);
+    }
+    /* Note: We don't recursively free children - in production this would be needed */
+
+    free(node);
+    return 0;
 }

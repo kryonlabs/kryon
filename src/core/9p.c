@@ -6,6 +6,7 @@
 #include "kryon.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /*
  * Endianness conversion functions
@@ -147,7 +148,50 @@ int p9_parse_tattach(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *af
 }
 
 /*
+ * Tauth: size[4] Tauth tag[2] afid[4] uname[s] aname[s]
+ */
+int p9_parse_tauth(const uint8_t *buf, size_t len, char *uname, char *aname)
+{
+    const uint8_t *p = buf + 7;  /* Skip header */
+    uint32_t afid;
+    size_t str_len;
+
+    /* Check minimum size */
+    if (len < 7 + 4 + 2 + 2) {
+        return -1;
+    }
+
+    /* Get afid (we don't use it) */
+    afid = le_get32(p);
+    p += 4;
+
+    /* Get uname */
+    str_len = le_get16(p);
+    p += 2;
+    if (len < (size_t)(p - buf) + str_len + 2) {
+        return -1;
+    }
+    memcpy(uname, p, str_len);
+    uname[str_len] = '\0';
+    p += str_len;
+
+    /* Get aname */
+    str_len = le_get16(p);
+    p += 2;
+    if (len < (size_t)(p - buf) + str_len) {
+        return -1;
+    }
+    memcpy(aname, p, str_len);
+    aname[str_len] = '\0';
+
+    return 0;
+}
+
+/*
  * Twalk: size[4] Twalk tag[2] fid[4] newfid[4] nwname[2] wname[nwname][s]
+ *
+ * IMPORTANT: This function returns pointers directly into the input buffer.
+ * The strings are NOT null-terminated. Use length-based comparisons.
  */
 int p9_parse_twalk(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *newfid,
                    char *wnames[], int *nwname)
@@ -174,19 +218,28 @@ int p9_parse_twalk(const uint8_t *buf, size_t len, uint32_t *fid, uint32_t *newf
         nwname_val = P9_MAX_WELEM;
     }
 
-    /* Parse all walk components */
+    /* Parse all walk components - point directly into buffer (no malloc) */
     for (i = 0; i < nwname_val; i++) {
-        /* Allocate buffer for this component */
-        wnames[i] = (char *)malloc(P9_MAX_STR);
-        if (wnames[i] == NULL) {
-            /* Cleanup previously allocated strings */
-            int j;
-            for (j = 0; j < i; j++) {
-                free(wnames[j]);
-            }
+        uint16_t s_len;
+
+        /* Check we have enough data for the string length field */
+        if ((size_t)(p - buf) + 2 > len) {
             return -1;
         }
-        p += p9_get_string(p, wnames[i], P9_MAX_STR);
+
+        /* Get string length */
+        s_len = le_get16(p);
+        p += 2;
+
+        /* Check we have enough data for the string itself */
+        if ((size_t)(p - buf) + s_len > len) {
+            return -1;
+        }
+
+        /* Point directly to string data in input buffer */
+        /* Note: NOT null-terminated! Use length-based comparisons. */
+        wnames[i] = (char *)p;
+        p += s_len;
     }
 
     *nwname = (int)nwname_val;
@@ -353,6 +406,23 @@ size_t p9_build_rattach(uint8_t *buf, uint16_t tag, P9Qid *qid)
 }
 
 /*
+ * Build Rauth: size[4] Rauth tag[2] qid[13]
+ */
+size_t p9_build_rauth(uint8_t *buf, uint16_t tag, P9Qid *qid)
+{
+    uint8_t *p = buf + 7;  /* Skip header space */
+
+    p[0] = qid->type;
+    le_put32(p + 1, qid->version);
+    le_put64(p + 5, qid->path);
+    p += 13;
+
+    p9_build_header(buf, Rauth, tag, 13);
+
+    return 7 + 13;
+}
+
+/*
  * Build Rwalk: size[4] Rwalk tag[2] nwqid[2] wqid[nwqid][13]
  */
 size_t p9_build_rwalk(uint8_t *buf, uint16_t tag, P9Qid *wqid, int nwqid)
@@ -440,47 +510,45 @@ size_t p9_build_rclunk(uint8_t *buf, uint16_t tag)
 }
 
 /*
+ * Build Rremove: size[4] Rremove tag[2]
+ */
+size_t p9_build_rremove(uint8_t *buf, uint16_t tag)
+{
+    p9_build_header(buf, Rremove, tag, 0);
+    return 7;
+}
+
+/*
  * Pack stat structure into buffer (helper function)
+ * Returns total bytes written (including the 2-byte size prefix)
  */
 size_t p9_pack_stat(uint8_t *buf, const P9Stat *stat)
 {
-    uint8_t *p = buf;
-    uint16_t stat_size;
-    uint8_t *size_ptr;
+    uint8_t *p = buf + 2; /* Skip size field for now */
 
-    /* Skip size field for now */
-    size_ptr = p;
-    p += 2;
-
-    /* Pack stat fields */
-    le_put16(p, stat->type);
-    p += 2;
-    le_put32(p, stat->dev);
-    p += 4;
+    /* Fixed-width fields */
+    le_put16(p, stat->type);     p += 2;
+    le_put32(p, stat->dev);      p += 4;
     p[0] = stat->qid.type;
     le_put32(p + 1, stat->qid.version);
     le_put64(p + 5, stat->qid.path);
     p += 13;
-    le_put32(p, stat->mode);
-    p += 4;
-    le_put32(p, stat->atime);
-    p += 4;
-    le_put32(p, stat->mtime);
-    p += 4;
-    le_put64(p, stat->length);
-    p += 8;
+    le_put32(p, stat->mode);     p += 4;
+    le_put32(p, stat->atime);    p += 4;
+    le_put32(p, stat->mtime);    p += 4;
+    le_put64(p, stat->length);   p += 8;
 
-    /* Pack strings */
+    /* Variable-width strings */
     p += p9_put_string(p, stat->name);
     p += p9_put_string(p, stat->uid);
     p += p9_put_string(p, stat->gid);
     p += p9_put_string(p, stat->muid);
 
-    /* Write size */
-    stat_size = p - (size_ptr + 2);
-    le_put16(size_ptr, stat_size);
+    /* Write the size of the stat data (excluding the size field itself) */
+    uint16_t stat_data_size = (uint16_t)(p - (buf + 2));
+    le_put16(buf, stat_data_size);
 
-    return p - buf;
+    return (size_t)(p - buf);
 }
 
 /*
@@ -488,44 +556,24 @@ size_t p9_pack_stat(uint8_t *buf, const P9Stat *stat)
  */
 size_t p9_build_rstat(uint8_t *buf, uint16_t tag, const P9Stat *stat)
 {
-    uint8_t *p = buf + 7;  /* Skip header space */
-    uint8_t *stat_start;
-    size_t name_len, uid_len, gid_len, muid_len;
-    uint16_t stat_size;
+    /* Skip 7-byte 9P header */
+    uint8_t *p = buf + 7;
 
-    /* Reserve space for stat size */
-    stat_start = p;
+    /* * THE FIX: Rstat requires a 2-byte length prefix for the stat data 
+     * in addition to the stat's own internal length prefix.
+     */
+    uint8_t *wrapper_len_ptr = p;
     p += 2;
 
-    /* Encode stat fields */
-    le_put16(p, stat->type);
-    p += 2;
-    le_put32(p, stat->dev);
-    p += 4;
-    p[0] = stat->qid.type;
-    le_put32(p + 1, stat->qid.version);
-    le_put64(p + 5, stat->qid.path);
-    p += 13;
-    le_put32(p, stat->mode);
-    p += 4;
-    le_put32(p, stat->atime);
-    p += 4;
-    le_put32(p, stat->mtime);
-    p += 4;
-    le_put64(p, stat->length);
-    p += 8;
+    /* Pack the actual stat data (this adds the internal 2-byte length) */
+    size_t stat_size = p9_pack_stat(p, stat);
+    p += stat_size;
 
-    /* Strings */
-    p += p9_put_string(p, stat->name);
-    p += p9_put_string(p, stat->uid);
-    p += p9_put_string(p, stat->gid);
-    p += p9_put_string(p, stat->muid);
+    /* Set the wrapper length (the size of the stat structure we just packed) */
+    le_put16(wrapper_len_ptr, (uint16_t)stat_size);
 
-    /* Write stat size */
-    stat_size = p - (stat_start + 2);
-    le_put16(stat_start, stat_size);
-
+    /* Build header: total payload is the stat + the 2-byte wrapper */
     p9_build_header(buf, Rstat, tag, p - (buf + 7));
 
-    return 7 + (p - (buf + 7));
+    return (size_t)(p - buf);
 }

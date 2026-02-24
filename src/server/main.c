@@ -199,12 +199,25 @@ static int handle_client_request(ClientInfo *client)
     resp_len = dispatch_9p(msg_buf, (size_t)msg_len, resp_buf);
     if (resp_len == 0) {
         /* Error */
+        fprintf(stderr, "handle_client_request: dispatch_9p returned 0 (error)\n");
         return -1;
     }
 
     /* Send response */
+    fprintf(stderr, "=== SENDING %lu bytes ===\n", (unsigned long)resp_len);
+    {
+        size_t i;
+        for (i = 0; i < resp_len; i++) {
+            fprintf(stderr, "%02X ", resp_buf[i]);
+            if ((i + 1) % 16 == 0) fprintf(stderr, "\n");
+        }
+        fprintf(stderr, "\n");
+    }
+    fprintf(stderr, "=====================\n");
+
     result = tcp_send_msg(client->fd, resp_buf, resp_len);
     if (result < 0) {
+        fprintf(stderr, "handle_client_request: tcp_send_msg failed\n");
         return -1;
     }
 

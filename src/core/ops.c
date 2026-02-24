@@ -76,37 +76,81 @@ const char *p9_msg_type_to_str(uint8_t type)
 }
 
 /*
+ * Hexdump helper for debugging
+ */
+static void hexdump(const uint8_t *data, size_t len)
+{
+    size_t i;
+    for (i = 0; i < len; i++) {
+        fprintf(stderr, "%02X ", data[i]);
+        if ((i + 1) % 16 == 0) {
+            fprintf(stderr, "\n");
+        }
+    }
+    if (len % 16 != 0) {
+        fprintf(stderr, "\n");
+    }
+}
+
+/*
  * Build full path for a node (for logging)
+ * Fixed to avoid buffer overflow by collecting component pointers first
+ * Also handles the root node being its own parent
  */
 static void build_node_path(P9Node *node, char *buf, size_t bufsize)
 {
-    char path_stack[256][32];
+    const char *components[256]; /* Pointers to node names */
     int depth = 0;
     P9Node *current;
+    size_t total_len = 0;
+    int i;
 
     if (node == NULL || buf == NULL || bufsize == 0) {
         return;
     }
 
-    /* Build path from root to node */
+    /* Collect path components by walking from node to root */
+    /* This collects them in reverse order (deepest first) */
     current = node;
     while (current != NULL && depth < 256) {
         if (current->name != NULL) {
-            strncpy(path_stack[depth], current->name, 31);
-            path_stack[depth][31] = '\0';
-            depth++;
+            size_t len = strlen(current->name);
+            /* Check if adding this component would overflow */
+            if (total_len + len + 1 < bufsize) {
+                components[depth] = current->name;
+                total_len += len + 1; /* +1 for '/' separator */
+                depth++;
+            } else {
+                break; /* Would overflow */
+            }
+        }
+        /* Check if we've reached the root (root is its own parent) */
+        if (current->parent == current) {
+            break;
         }
         current = current->parent;
     }
 
-    /* Build path string */
+    /* Build path from root to node by iterating backwards */
+    /* components[depth-1] is the node itself, components[0] is the root */
     buf[0] = '\0';
-    while (depth > 0) {
-        depth--;
+    for (i = depth - 1; i >= 0; i--) {
+        size_t buf_len = strlen(buf);
+        size_t space_left = bufsize - buf_len - 1;
+
         if (buf[0] != '\0') {
-            strncat(buf, "/", bufsize - strlen(buf) - 1);
+            /* Add separator */
+            if (space_left > 0) {
+                strncat(buf, "/", space_left);
+                buf_len = strlen(buf);
+                space_left = bufsize - buf_len - 1;
+            }
         }
-        strncat(buf, path_stack[depth], bufsize - strlen(buf) - 1);
+
+        /* Add component name */
+        if (space_left > 0) {
+            strncat(buf, components[i], space_left);
+        }
     }
 }
 
@@ -287,8 +331,8 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
         return p9_build_rerror(out_buf, hdr.tag, "invalid Tattach");
     }
 
-    fprintf(stderr, "handle_tattach: user='%s' aname='%s' client_fd=%d\n",
-            uname, aname, current_client_fd);
+    fprintf(stderr, "handle_tattach: fid=%u afid=%u user='%s' aname='%s' client_fd=%d\n",
+            fid, afid, uname, aname, current_client_fd);
 
     /* Check if this is a CPU server attach */
     is_cpu_attach = (strcmp(aname, "cpu") == 0);
@@ -321,6 +365,38 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 }
 
 /*
+ * Handle Tauth
+ * Return Rauth with QID to indicate no authentication required
+ * This is what many 9P servers do
+ */
+size_t handle_tauth(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
+{
+    P9Hdr hdr;
+    char uname[P9_MAX_STR];
+    char aname[P9_MAX_STR];
+    P9Qid qid;
+
+    /* Parse request */
+    if (p9_parse_header(in_buf, in_len, &hdr) < 0) {
+        return 0;
+    }
+
+    if (p9_parse_tauth(in_buf, in_len, uname, aname) < 0) {
+        return p9_build_rerror(out_buf, hdr.tag, "invalid Tauth");
+    }
+
+    fprintf(stderr, "handle_tauth: user='%s' aname='%s' tag=%u\n", uname, aname, hdr.tag);
+
+    /* Return Rauth with QID indicating authentication file */
+    /* Use QID path 1 for the auth fid */
+    qid.type = QTAUTH;
+    qid.version = 0;
+    qid.path = 1;
+
+    return p9_build_rauth(out_buf, hdr.tag, &qid);
+}
+
+/*
  * Handle Twalk
  */
 size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
@@ -346,10 +422,7 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     /* Get source FID */
     fid_obj = fid_get(fid);
     if (fid_obj == NULL) {
-        /* Free allocated wnames */
-        for (i = 0; i < nwname; i++) {
-            free(wnames[i]);
-        }
+        /* No need to free wnames - they point into input buffer */
         return p9_build_rerror(out_buf, hdr.tag, "fid not found");
     }
 
@@ -360,15 +433,16 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     fprintf(stderr, "handle_twalk: walking from '%s' through %d components\n",
             node->name ? node->name : "(null)", nwname);
     for (i = 0; i < nwname; i++) {
-        fprintf(stderr, "  component[%d] = '%s'\n", i, wnames[i]);
+        /* Get string length from buffer (stored 2 bytes before string) */
+        uint16_t name_len = le_get16((uint8_t*)(wnames[i] - 2));
+
+        fprintf(stderr, "  component[%d] = '%.*s' (len=%u)\n", i, name_len, wnames[i], name_len);
+
+        /* Use length-based comparison for tree_walk */
         newnode = tree_walk(newnode, wnames[i]);
         if (newnode == NULL) {
-            /* Free allocated wnames */
-            int j;
             fprintf(stderr, "  -> not found!\n");
-            for (j = i; j < nwname; j++) {
-                free(wnames[j]);
-            }
+            /* No need to free wnames - they point into input buffer */
             return p9_build_rerror(out_buf, hdr.tag, "file not found");
         }
         fprintf(stderr, "  -> '%s' (qid.type=%02X)\n", newnode->name, newnode->qid.type);
@@ -379,17 +453,11 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     /* Create new FID pointing to final node */
     newfid_obj = fid_new(newfid, newnode);
     if (newfid_obj == NULL) {
-        /* Free allocated wnames */
-        for (i = 0; i < nwname; i++) {
-            free(wnames[i]);
-        }
+        /* No need to free wnames - they point into input buffer */
         return p9_build_rerror(out_buf, hdr.tag, "newfid in use");
     }
 
-    /* Free allocated wnames */
-    for (i = 0; i < nwname; i++) {
-        free(wnames[i]);
-    }
+    /* No need to free wnames - they point into input buffer */
 
     /* Return all QIDs from the walk */
     return p9_build_rwalk(out_buf, hdr.tag, wqid, nwname);
@@ -445,6 +513,8 @@ size_t handle_topen(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     fprintf(stderr, "handle_topen: opened '%s' successfully\n", node->name);
 
+    /* Use iounit=0 to indicate no preferred I/O size */
+    /* Let the client decide the optimal chunk size */
     return p9_build_ropen(out_buf, hdr.tag, &node->qid, 0);
 }
 
@@ -462,8 +532,8 @@ static size_t handle_directory_read(P9Fid *fid_obj, uint64_t offset, uint32_t co
                                      uint8_t *out_buf, uint16_t tag)
 {
     P9Node *dir_node = fid_obj->node;
-    uint8_t *data_start = out_buf + 4;  /* Skip count field */
-    uint8_t *p = data_start;
+    uint8_t stat_buf[P9_MAX_MSG];  /* Temporary buffer for stat data */
+    uint8_t *p = stat_buf;
     int i;
     P9Stat stat;
     size_t stat_size;
@@ -471,11 +541,12 @@ static size_t handle_directory_read(P9Fid *fid_obj, uint64_t offset, uint32_t co
     /* Check if node has children */
     if (dir_node->children == NULL || dir_node->nchildren == 0) {
         /* Empty directory */
-        le_put32(out_buf, 0);
-        return p9_build_rread(out_buf, tag, (char *)data_start, 0);
+        return p9_build_rread(out_buf, tag, NULL, 0);
     }
 
-    /* Build stat for each child */
+    /* Build stat for each child, tracking byte offset for pagination */
+    uint64_t bytes_serialized = 0;
+
     for (i = 0; i < dir_node->nchildren; i++) {
         P9Node *child;
 
@@ -509,22 +580,26 @@ static size_t handle_directory_read(P9Fid *fid_obj, uint64_t offset, uint32_t co
         strcpy(stat.gid, "none");
         strcpy(stat.muid, "none");
 
-        /* Pack stat and check if we have space */
+        /* Pack stat to get its size */
         stat_size = p9_pack_stat(p, &stat);
 
-        /* Check if this entry would exceed count */
-        if ((p - data_start) + stat_size > count) {
+        /* Skip entries until we reach the client's offset */
+        if (bytes_serialized < offset) {
+            bytes_serialized += stat_size;
+            continue;
+        }
+
+        /* Check if adding this entry would overflow client's buffer */
+        if ((p - stat_buf) + stat_size > count) {
             break;  /* Don't add partial entries */
         }
 
         p += stat_size;
+        bytes_serialized += stat_size;
     }
 
-    /* Write total count */
-    le_put32(out_buf, p - data_start);
-
-    /* Build message */
-    return p9_build_rread(out_buf, tag, (char *)data_start, p - data_start);
+    /* Build Rread message - p9_build_rread handles header, count, and data */
+    return p9_build_rread(out_buf, tag, (char *)stat_buf, p - stat_buf);
 }
 
 /*
@@ -697,6 +772,56 @@ size_t handle_tstat(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 }
 
 /*
+ * Handle Tremove
+ * Removes a node from the tree and clunks the FID
+ */
+size_t handle_tremove(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
+{
+    uint32_t fid;
+    P9Hdr hdr;
+    P9Fid *fid_obj;
+    P9Node *node;
+    int remove_result;
+
+    /* Parse request */
+    if (p9_parse_header(in_buf, in_len, &hdr) < 0) {
+        return 0;
+    }
+
+    /* Parse fid (Tremove: size[4] Tremove tag[2] fid[4]) */
+    if (in_len < 7 + 4) {
+        return p9_build_rerror(out_buf, hdr.tag, "invalid Tremove");
+    }
+    fid = le_get32(in_buf + 7);
+
+    fprintf(stderr, "handle_tremove: fid=%u tag=%u\n", fid, hdr.tag);
+
+    /* Get FID - return error if fid doesn't exist */
+    fid_obj = fid_get(fid);
+    if (fid_obj == NULL) {
+        fprintf(stderr, "handle_tremove: fid %u not found\n", fid);
+        return p9_build_rerror(out_buf, hdr.tag, "fid not found");
+    }
+
+    node = fid_obj->node;
+    fprintf(stderr, "handle_tremove: removing '%s'\n", node->name ? node->name : "(null)");
+
+    /* Attempt removal from tree */
+    remove_result = tree_remove_node(node);
+
+    /* ALWAYS clunk the fid per 9P spec, even if removal fails */
+    fid_clunk(fid);
+
+    if (remove_result < 0) {
+        fprintf(stderr, "handle_tremove: removal failed (e.g., root node)\n");
+        return p9_build_rerror(out_buf, hdr.tag, "permission denied");
+    }
+
+    fprintf(stderr, "handle_tremove: removal succeeded\n");
+    return p9_build_rremove(out_buf, hdr.tag);
+}
+
+/*
  * Main 9P message dispatcher
  */
 size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
@@ -710,13 +835,17 @@ size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
         return 0;
     }
 
-    fprintf(stderr, "dispatch_9p: received message type=%d (%s)\n",
-            hdr.type, p9_msg_type_to_str(hdr.type));
+    fprintf(stderr, "dispatch_9p: received message type=%d (%s) tag=%u len=%zu\n",
+            hdr.type, p9_msg_type_to_str(hdr.type), hdr.tag, in_len);
 
     /* Dispatch based on message type */
     switch (hdr.type) {
         case Tversion:
             result = handle_tversion(in_buf, in_len, out_buf);
+            break;
+
+        case Tauth:
+            result = handle_tauth(in_buf, in_len, out_buf);
             break;
 
         case Tattach:
@@ -743,14 +872,32 @@ size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
             result = handle_tclunk(in_buf, in_len, out_buf);
             break;
 
+        case Tremove:
+            result = handle_tremove(in_buf, in_len, out_buf);
+            break;
+
         case Tstat:
             result = handle_tstat(in_buf, in_len, out_buf);
             break;
 
         default:
             /* Unknown message type */
+            fprintf(stderr, "dispatch_9p: unknown message type %d\n", hdr.type);
             result = p9_build_rerror(out_buf, hdr.tag, "not supported");
             break;
+    }
+
+    /* Log response */
+    if (result > 0) {
+        uint32_t resp_size = le_get32(out_buf);
+        uint8_t resp_type = out_buf[4];
+
+        fprintf(stderr, "dispatch_9p: sending response type=%d (%s) size=%u len=%zu\n",
+                resp_type, p9_msg_type_to_str(resp_type), resp_size, result);
+        fprintf(stderr, "Response hexdump:\n");
+        hexdump(out_buf, result);
+    } else {
+        fprintf(stderr, "dispatch_9p: ERROR - failed to build response (result=%zu)\n", result);
     }
 
     return result;

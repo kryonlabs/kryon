@@ -168,6 +168,8 @@ static int tcp_send_msg(int fd, const unsigned char *buf, size_t msg_len)
     ssize_t nsent;
     size_t total;
 
+    fprintf(stderr, "tcp_send_msg: fd=%d msg_len=%lu\n", fd, (unsigned long)msg_len);
+
     total = 0;
     while (total < msg_len) {
         nsent = send(fd, buf + total, msg_len - total, 0);
@@ -175,8 +177,12 @@ static int tcp_send_msg(int fd, const unsigned char *buf, size_t msg_len)
             perror("send");
             return -1;
         }
+        fprintf(stderr, "tcp_send_msg: sent %ld bytes (total %lu/%lu)\n",
+                (long)nsent, (unsigned long)(total + nsent), (unsigned long)msg_len);
         total += nsent;
     }
+
+    fprintf(stderr, "tcp_send_msg: successfully sent %lu bytes total\n", (unsigned long)total);
 
     return 0;
 }
