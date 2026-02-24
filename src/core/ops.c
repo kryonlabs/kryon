@@ -6,6 +6,109 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+/*
+ * CPU server integration
+ */
+#ifdef INCLUDE_CPU_SERVER
+extern int cpu_server_init(P9Node *root);
+extern int cpu_handle_new_client(int client_fd, const char *user, const char *aname);
+extern const char *cpu_find_plan9_path(void);
+#endif
+
+/*
+ * Current client fd (for CPU server tracking)
+ * This is set before handling each message
+ */
+static int current_client_fd = -1;
+
+/*
+ * Set current client fd (called from server loop)
+ */
+void p9_set_client_fd(int fd)
+{
+    current_client_fd = fd;
+}
+
+/*
+ * Get current client fd
+ */
+int p9_get_client_fd(void)
+{
+    return current_client_fd;
+}
+
+/*
+ * Convert 9P message type to string for logging
+ */
+const char *p9_msg_type_to_str(uint8_t type)
+{
+    switch(type) {
+        case Tversion: return "Tversion";
+        case Rversion: return "Rversion";
+        case Tauth: return "Tauth";
+        case Rauth: return "Rauth";
+        case Tattach: return "Tattach";
+        case Rattach: return "Rattach";  /* Note: Rerror has same value (105) */
+        case Tflush: return "Tflush";
+        case Rflush: return "Rflush";
+        case Twalk: return "Twalk";
+        case Rwalk: return "Rwalk";
+        case Topen: return "Topen";
+        case Ropen: return "Ropen";
+        case Tcreate: return "Tcreate";
+        case Rcreate: return "Rcreate";
+        case Tread: return "Tread";
+        case Rread: return "Rread";
+        case Twrite: return "Twrite";
+        case Rwrite: return "Rwrite";
+        case Tclunk: return "Tclunk";
+        case Rclunk: return "Rclunk";
+        case Tremove: return "Tremove";
+        case Rremove: return "Rremove";
+        case Tstat: return "Tstat";
+        case Rstat: return "Rstat";
+        case Twstat: return "Twstat";
+        case Rwstat: return "Rwstat";
+        default: return "Unknown";
+    }
+}
+
+/*
+ * Build full path for a node (for logging)
+ */
+static void build_node_path(P9Node *node, char *buf, size_t bufsize)
+{
+    char path_stack[256][32];
+    int depth = 0;
+    P9Node *current;
+
+    if (node == NULL || buf == NULL || bufsize == 0) {
+        return;
+    }
+
+    /* Build path from root to node */
+    current = node;
+    while (current != NULL && depth < 256) {
+        if (current->name != NULL) {
+            strncpy(path_stack[depth], current->name, 31);
+            path_stack[depth][31] = '\0';
+            depth++;
+        }
+        current = current->parent;
+    }
+
+    /* Build path string */
+    buf[0] = '\0';
+    while (depth > 0) {
+        depth--;
+        if (buf[0] != '\0') {
+            strncat(buf, "/", bufsize - strlen(buf) - 1);
+        }
+        strncat(buf, path_stack[depth], bufsize - strlen(buf) - 1);
+    }
+}
 
 /*
  * FID table
@@ -173,6 +276,7 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     P9Hdr hdr;
     P9Fid *fid_obj;
     P9Node *root;
+    int is_cpu_attach;
 
     /* Parse request */
     if (p9_parse_header(in_buf, in_len, &hdr) < 0) {
@@ -182,6 +286,24 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     if (p9_parse_tattach(in_buf, in_len, &fid, &afid, uname, aname) < 0) {
         return p9_build_rerror(out_buf, hdr.tag, "invalid Tattach");
     }
+
+    fprintf(stderr, "handle_tattach: user='%s' aname='%s' client_fd=%d\n",
+            uname, aname, current_client_fd);
+
+    /* Check if this is a CPU server attach */
+    is_cpu_attach = (strcmp(aname, "cpu") == 0);
+
+#ifdef INCLUDE_CPU_SERVER
+    if (is_cpu_attach && current_client_fd >= 0) {
+        /* Initialize CPU server session */
+        int session_id = cpu_handle_new_client(current_client_fd, uname, aname);
+        if (session_id < 0) {
+            fprintf(stderr, "handle_tattach: failed to create CPU session\n");
+            return p9_build_rerror(out_buf, hdr.tag, "CPU session failed");
+        }
+        fprintf(stderr, "handle_tattach: created CPU session %d\n", session_id);
+    }
+#endif
 
     /* Get root node */
     root = tree_root();
@@ -301,6 +423,14 @@ size_t handle_topen(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     node = fid_obj->node;
 
+    /* Log full path */
+    {
+        char path_buf[256];
+        build_node_path(node, path_buf, sizeof(path_buf));
+        fprintf(stderr, "handle_topen: opening '%s' (fid=%u mode=%d)\n",
+                path_buf, fid, mode);
+    }
+
     /* Check permissions */
     if (mode == P9_OREAD || mode == P9_ORDWR) {
         /* Read OK */
@@ -312,6 +442,8 @@ size_t handle_topen(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     /* Mark as open */
     fid_obj->is_open = 1;
     fid_obj->mode = mode;
+
+    fprintf(stderr, "handle_topen: opened '%s' successfully\n", node->name);
 
     return p9_build_ropen(out_buf, hdr.tag, &node->qid, 0);
 }
@@ -425,9 +557,8 @@ size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     node = fid_obj->node;
 
-    /* Debug logging */
-    fprintf(stderr, "handle_tread: fid=%u node='%s' qid.type=%02X offset=%lu count=%u\n",
-            fid, node->name ? node->name : "(null)", node->qid.type, offset, count);
+    fprintf(stderr, "handle_tread: fid=%u node='%s' offset=%lu count=%u\n",
+            fid, node->name, (unsigned long)offset, count);
 
     /* Check if directory */
     if (node->qid.type & QTDIR) {
@@ -442,45 +573,12 @@ size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     /* Read from file */
     nread = node_read(node, data, count, offset);
     if (nread < 0) {
+        fprintf(stderr, "handle_tread: read error for node '%s'\n", node->name);
         return p9_build_rerror(out_buf, hdr.tag, "read error");
     }
 
-    /* Debug: print first 8 pixels with color interpretation */
-    if (nread > 0 && offset == 0) {
-        int i;
-        fprintf(stderr, "handle_tread: first 8 pixels (BGRA format):\n");
-        for (i = 0; i < 32 && i < nread; i += 4) {
-            unsigned char b = data[i + 0];
-            unsigned char g = data[i + 1];
-            unsigned char r = data[i + 2];
-            unsigned char a = data[i + 3];
-            const char *color_name = "Unknown";
-
-            /* Identify common colors */
-            if (b == 0x00 && g == 0x00 && r == 0x00 && a == 0xFF)
-                color_name = "Black";
-            else if (b == 0xFF && g == 0xFF && r == 0xFF && a == 0xFF)
-                color_name = "White";
-            else if (b == 0xFF && g == 0x00 && r == 0x00 && a == 0xFF)
-                color_name = "Blue";
-            else if (b == 0x00 && g == 0xFF && r == 0x00 && a == 0xFF)
-                color_name = "Green";
-            else if (b == 0x00 && g == 0x00 && r == 0xFF && a == 0xFF)
-                color_name = "Red";
-            else if (b == 0xFF && g == 0xFF && r == 0x00 && a == 0xFF)
-                color_name = "Yellow";
-            else if (b == 0xFF && g == 0x00 && r == 0xFF && a == 0xFF)
-                color_name = "Magenta";
-            else if (b == 0x00 && g == 0xFF && r == 0xFF && a == 0xFF)
-                color_name = "Cyan";
-
-            fprintf(stderr, "  Pixel[%d]: %02X%02X%02X%02X (B=%02X G=%02X R=%02X A=%02X) -> %s\n",
-                    i / 4, data[i], data[i+1], data[i+2], data[i+3],
-                    b, g, r, a, color_name);
-        }
-    }
-
-    fprintf(stderr, "handle_tread: returning %zd bytes\n", nread);
+    fprintf(stderr, "handle_tread: returning %ld bytes for node '%s'\n", (long)nread, node->name);
+    
     return p9_build_rread(out_buf, hdr.tag, data, (uint32_t)nread);
 }
 
@@ -608,8 +706,12 @@ size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     /* Parse header */
     if (p9_parse_header(in_buf, in_len, &hdr) < 0) {
+        fprintf(stderr, "dispatch_9p: failed to parse header\n");
         return 0;
     }
+
+    fprintf(stderr, "dispatch_9p: received message type=%d (%s)\n",
+            hdr.type, p9_msg_type_to_str(hdr.type));
 
     /* Dispatch based on message type */
     switch (hdr.type) {

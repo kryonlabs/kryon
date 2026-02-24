@@ -52,7 +52,6 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
     /* Parse widget rectangle */
     if (parse_rect(w->prop_rect, &widget_rect) < 0) {
-        fprintf(stderr, "render_widget: invalid rect '%s'\n", w->prop_rect);
         return;
     }
 
@@ -189,7 +188,6 @@ void render_window(KryonWindow *win, Memimage *screen)
 
     /* Parse window rectangle */
     if (parse_rect(win->rect, &win_rect) < 0) {
-        fprintf(stderr, "render_window: invalid rect '%s'\n", win->rect);
         return;
     }
 
@@ -220,18 +218,7 @@ void render_all(void)
     render_count++;
 
     /* Clear screen to dark blue */
-    fprintf(stderr, "render_all: Clearing screen to DBlue (0x%08lX)\n", DBlue);
     memfillcolor(g_screen, DBlue);
-
-    /* Verify write operation */
-    if (!first_done) {
-        unsigned char *p = g_screen->data->bdata;
-        /* DBlue = 0x0000FFFF in 0xRRGGBBAA format (R=00, G=00, B=FF, A=FF)
-         * Memory layout (BGRA on little-endian): FF 00 00 FF */
-        fprintf(stderr, "After clear: pixel[0]=%02X%02X%02X%02X (expected: FF0000FF for DBlue)\n",
-                p[0], p[1], p[2], p[3]);
-        first_done = 1;
-    }
 
     /* Render all windows */
     for (i = 1; ; i++) {
@@ -240,28 +227,12 @@ void render_all(void)
             break;
         }
         if (win->visible) {
-            fprintf(stderr, "render_all: Rendering window %u\n", i);
             render_window(win, g_screen);
         }
     }
 
-    /* Verify final pixel at button position (should be red) */
-    {
-        unsigned char *p = g_screen->data->bdata;
-        /* Button is at rect '50 50 200 50', so pixel at (50,50) should be red */
-        int offset = (50 * 800 + 50) * 4;
-        /* DRed = 0xFF0000FF in 0xRRGGBBAA format
-         * In BGRA memory: B=00, G=00, R=FF, A=FF = 00 00 FF FF */
-        fprintf(stderr, "After render: pixel[50,50]=%02X%02X%02X%02X (expected: 0000FFFF for DRed button)\n",
-                p[offset], p[offset+1], p[offset+2], p[offset+3]);
-
-        /* Label is at rect '50 120 300 40', so pixel at (50,120) should be yellow */
-        offset = (120 * 800 + 50) * 4;
-        /* DYellow = 0xFFFF00FF in 0xRRGGBBAA format (R=FF, G=FF, B=00, A=FF)
-         * In BGRA memory: B=00, G=FF, R=FF, A=FF = 00 FF FF FF */
-        fprintf(stderr, "After render: pixel[50,120]=%02X%02X%02X%02X (expected: 00FFFFFF for DYellow label)\n",
-                p[offset], p[offset+1], p[offset+2], p[offset+3]);
-    }
+    /* Notify all drawterm clients that screen updated */
+    devdraw_mark_dirty();
 }
 
 /*

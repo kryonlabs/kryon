@@ -59,7 +59,6 @@ int event_system_init(void)
     g_nqueues = 0;
     g_initialized = 1;
 
-    fprintf(stderr, "Event system initialized\n");
     return 0;
 }
 

@@ -44,7 +44,7 @@ endif
 
 ifeq ($(SDL2_CFLAGS),)
     HAVE_SDL2 = 0
-    $(error SDL2 is required. Please install SDL2 development libraries)
+    $(warning SDL2 not detected - display client will not build)
 else
     HAVE_SDL2 = 1
     CFLAGS += -DHAVE_SDL2 $(SDL2_CFLAGS)
@@ -64,11 +64,15 @@ GRAPHICS_SRCS = $(SRC_DIR)/core/memimage.c $(SRC_DIR)/core/memdraw.c \
                 $(SRC_DIR)/core/devscreen.c $(SRC_DIR)/core/devmouse.c \
                 $(SRC_DIR)/core/devdraw.c $(SRC_DIR)/core/devcons.c \
                 $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c \
-                $(SRC_DIR)/core/devkbd.c
+                $(SRC_DIR)/core/devkbd.c $(SRC_DIR)/core/devfd.c \
+                $(SRC_DIR)/core/devproc.c $(SRC_DIR)/core/devenv.c
+# CPU server and namespace support
+CPU_SRCS = $(SRC_DIR)/core/cpu_server.c $(SRC_DIR)/core/namespace.c \
+            $(SRC_DIR)/shell/rc_wrapper.c
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 CLIENT_SRCS = $(SRC_DIR)/client/9pclient.c $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c
-SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(TRANSPORT_SRCS)
+SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(TRANSPORT_SRCS) $(CPU_SRCS)
 
 # Additional object files for linking
 WINDOW_OBJS = $(BUILD_DIR)/core/window.o
@@ -87,11 +91,15 @@ DISPLAY_TARGET = $(BIN_DIR)/kryon-display
 
 # Default target
 .PHONY: all
-all: $(LIB_TARGET) $(SERVER_TARGET) $(DISPLAY_TARGET)
+all: $(LIB_TARGET) $(SERVER_TARGET)
+ifneq ($(HAVE_SDL2),0)
+all: $(DISPLAY_TARGET)
+endif
 
 # Create directories
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/core
+	mkdir -p $(BUILD_DIR)/shell
 	mkdir -p $(BUILD_DIR)/transport
 	mkdir -p $(BUILD_DIR)/client
 
@@ -105,7 +113,7 @@ $(LIB_TARGET): $(OBJS) | $(BUILD_DIR)
 # Server binary
 # Use GCC for binaries to get proper RPATH support in Nix
 $(SERVER_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) | $(BIN_DIR)
-	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport $< -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS)
+	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -DINCLUDE_CPU_SERVER -DINCLUDE_NAMESPACE -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport $< -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS)
 
 # Display client binary
 $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN_DIR)

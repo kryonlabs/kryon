@@ -147,7 +147,6 @@ int devmouse_init(P9Node *dev_dir)
         return -1;
     }
 
-    fprintf(stderr, "devmouse_init: initialized mouse device\n");
 
     return 0;
 }

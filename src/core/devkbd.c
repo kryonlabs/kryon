@@ -85,7 +85,6 @@ int devkbd_init(P9Node *dev_dir)
         return -1;
     }
 
-    fprintf(stderr, "devkbd_init: initialized /dev/kbd\n");
 
     return 0;
 }

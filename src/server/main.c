@@ -32,8 +32,26 @@ extern int drawconn_init(struct Memimage *screen);
 extern void drawconn_cleanup(void);
 extern int devcons_init(P9Node *dev_dir);
 extern int devkbd_init(P9Node *dev_dir);
+extern int devfd_init(P9Node *dev_dir);
+extern int devproc_init(P9Node *root);
+extern int devenv_init(P9Node *root);
 extern void render_set_screen(Memimage *screen);
 extern void render_all(void);
+
+/*
+ * CPU server initialization (external)
+ */
+#ifdef INCLUDE_CPU_SERVER
+extern int cpu_server_init(P9Node *root);
+extern void p9_set_client_fd(int fd);
+#endif
+
+/*
+ * Namespace manager initialization (external)
+ */
+#ifdef INCLUDE_NAMESPACE
+extern int namespace_init(void);
+#endif
 
 /*
  * Client tracking for multi-client support
@@ -160,6 +178,12 @@ static int handle_client_request(ClientInfo *client)
     size_t resp_len;
     int result;
 
+    /* Set current client fd for CPU server tracking */
+#ifdef INCLUDE_CPU_SERVER
+    extern void p9_set_client_fd(int fd);
+    p9_set_client_fd(client->fd);
+#endif
+
     /* Receive message (non-blocking) */
     msg_len = tcp_recv_msg(client->fd, msg_buf, sizeof(msg_buf));
     if (msg_len < 0) {
@@ -275,12 +299,27 @@ int main(int argc, char **argv)
         return 1;
     }
 
+#ifdef INCLUDE_NAMESPACE
+    /* Initialize namespace manager */
+    if (namespace_init() < 0) {
+        fprintf(stderr, "Error: failed to initialize namespace manager\n");
+        return 1;
+    }
+#endif
+
     /* Get root node */
     root = tree_root();
     if (root == NULL) {
         fprintf(stderr, "Error: failed to get root node\n");
         return 1;
     }
+
+#ifdef INCLUDE_CPU_SERVER
+    /* Initialize CPU server */
+    if (cpu_server_init(root) < 0) {
+        fprintf(stderr, "Warning: failed to initialize CPU server\n");
+    }
+#endif
 
     /* Initialize graphics - create screen buffer */
     fprintf(stderr, "Initializing graphics...\n");
@@ -359,7 +398,18 @@ int main(int argc, char **argv)
         fprintf(stderr, "Warning: failed to initialize /dev/cons\n");
     }
 
-    fprintf(stderr, "  Virtual /dev devices created\n");
+    if (devfd_init(dev_dir) < 0) {
+        fprintf(stderr, "Warning: failed to initialize /dev/fd\n");
+    }
+
+    if (devproc_init(root) < 0) {
+        fprintf(stderr, "Warning: failed to initialize /proc\n");
+    }
+
+    if (devenv_init(root) < 0) {
+        fprintf(stderr, "Warning: failed to initialize /env\n");
+    }
+
 
     /* Create /version file */
     static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
@@ -471,12 +521,11 @@ int main(int argc, char **argv)
             lbl->id, lbl->prop_text, lbl->prop_rect);
 
     /* Initial render */
-    fprintf(stderr, "Rendering initial state...\n");
     render_all();
     fprintf(stderr, "  Render complete\n");
 
     /* Start listening */
-    fprintf(stderr, "Listening on port %d...\n", port);
+    fprintf(stderr, "Listening on 0.0.0.0:%d...\n", port);
     listen_fd = tcp_listen(port);
     if (listen_fd < 0) {
         fprintf(stderr, "Error: failed to listen on port %d\n", port);

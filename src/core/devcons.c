@@ -118,7 +118,6 @@ int devcons_init(P9Node *dev_dir)
 
     cons_node->length = CONSOLE_BUF_SIZE;
 
-    fprintf(stderr, "devcons_init: initialized console device\n");
 
     return 0;
 }

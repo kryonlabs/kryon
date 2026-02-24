@@ -87,7 +87,8 @@ DrawConnection *drawconn_new(void)
     conn->screen_id = 0;
     conn->fillimage_id = 1;
     conn->next_image_id = 2;
-    conn->refresh_enabled = 0;
+    conn->refresh_enabled = 1;  /* Enable refresh by default */
+    conn->screen_dirty = 1;    /* Mark as dirty initially */
     conn->nimages = 0;
 
     /* QID path base: use high bits to avoid collision */
@@ -196,6 +197,8 @@ ssize_t devdraw_new_read(char *buf, size_t count, uint64_t offset, void *data)
     (void)data;
     (void)offset;
 
+    fprintf(stderr, "devdraw_new_read: drawterm requesting new connection\n");
+
     /* Create new connection */
     conn = drawconn_new();
     if (conn == NULL) {
@@ -255,6 +258,8 @@ P9Node *drawconn_create_dir(int conn_id)
     P9Node *data_node;
     P9Node *refresh_node;
     char dirname[16];
+
+    fprintf(stderr, "drawconn_create_dir: conn_id=%d creating directory\n", conn_id);
 
     /* Check if connection exists */
     conn = drawconn_get(conn_id);
@@ -422,13 +427,43 @@ ssize_t devdraw_ctl_write(const char *buf, size_t count, uint64_t offset, void *
 
 ssize_t devdraw_data_read(char *buf, size_t count, uint64_t offset, void *data)
 {
-    (void)buf;
-    (void)count;
-    (void)offset;
-    (void)data;
+    DrawConnection *conn = (DrawConnection *)data;
+    Memimage *screen;
+    unsigned char *pixel_data;
+    size_t total_size;
+    size_t bytes_to_copy;
 
-    /* Data file is write-only */
-    return -1;
+    if (conn == NULL || conn->screen == NULL) {
+        return -1;
+    }
+
+    screen = conn->screen;
+
+    /* Get screen pixel data */
+    pixel_data = screen->data->bdata;
+    total_size = Dx(screen->r) * Dy(screen->r) * 4;
+
+    fprintf(stderr, "devdraw_data_read: conn=%d offset=%lu count=%lu total_size=%lu\n",
+            conn->id, (unsigned long)offset, (unsigned long)count, (unsigned long)total_size);
+
+    /* Check offset bounds */
+    if (offset >= total_size) {
+        return 0;  /* EOF */
+    }
+
+    /* Calculate bytes to copy */
+    if (offset + count > total_size) {
+        bytes_to_copy = total_size - offset;
+    } else {
+        bytes_to_copy = count;
+    }
+
+    /* Copy pixel data to buffer */
+    memcpy(buf, pixel_data + offset, bytes_to_copy);
+
+    fprintf(stderr, "devdraw_data_read: returning %lu bytes\n", (unsigned long)bytes_to_copy);
+
+    return bytes_to_copy;
 }
 
 /* ========== Graphics Protocol Implementation ========== */
@@ -1178,20 +1213,64 @@ ssize_t devdraw_data_write(const char *buf, size_t count, uint64_t offset, void 
 ssize_t devdraw_refresh_read(char *buf, size_t count, uint64_t offset, void *data)
 {
     DrawConnection *conn = (DrawConnection *)data;
+    uint32_t *msg;
+    int width, height;
 
     if (conn == NULL) {
         return -1;
     }
 
-    /* For now, return empty (non-blocking) */
-    /* In real implementation, this would block until refresh needed */
-
-    if (offset > 0) {
+    /* If screen is clean, return 0 (blocks until dirty) */
+    if (!conn->screen_dirty) {
         return 0;
     }
 
-    /* Return empty refresh notification */
-    return 0;
+    /* Plan 9 refresh rectangle format: 5 * 4 = 20 bytes */
+    /* Format: [image_id(4), min_x(4), min_y(4), max_x(4), max_y(4)] */
+    if (count < 20) {
+        return 0;
+    }
+
+    msg = (uint32_t *)buf;
+
+    /* Get screen dimensions */
+    width = conn->screen->r.max.x - conn->screen->r.min.x;
+    height = conn->screen->r.max.y - conn->screen->r.min.y;
+
+    /* Build Plan 9 refresh rectangle */
+    msg[0] = 0;       /* image_id (0 = screen) */
+    msg[1] = 0;       /* min.x */
+    msg[2] = 0;       /* min.y */
+    msg[3] = width;   /* max.x */
+    msg[4] = height;  /* max.y */
+
+    fprintf(stderr, "devdraw_refresh_read: conn=%d dirty=%d sending refresh %dx%d\n",
+            conn->id, conn->screen_dirty, width, height);
+
+    /* Clear dirty flag after sending notification */
+    conn->screen_dirty = 0;
+
+    return 20;  /* Size of one refresh rectangle */
+}
+
+/*
+ * Mark all connections as needing refresh
+ */
+void drawconn_mark_dirty_all(void)
+{
+    int i;
+    int count = 0;
+
+    for (i = 0; i < MAX_DRAW_CONNECTIONS; i++) {
+        if (g_connections[i] != NULL && g_connections[i]->refresh_enabled) {
+            g_connections[i]->screen_dirty = 1;
+            count++;
+        }
+    }
+
+    if (count > 0) {
+        fprintf(stderr, "drawconn_mark_dirty_all: marking %d connections dirty\n", count);
+    }
 }
 
 /*
@@ -1201,7 +1280,7 @@ ssize_t devdraw_refresh_read(char *buf, size_t count, uint64_t offset, void *dat
 /* Mark screen as needing refresh (for render.c) */
 void devdraw_mark_dirty(void)
 {
-    /* No-op in Plan 9 mode - refresh handled via connection */
+    drawconn_mark_dirty_all();
 }
 
 /* Clear refresh flag (for render.c) */

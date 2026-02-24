@@ -271,6 +271,7 @@ typedef struct DrawConnection {
     int next_image_id;            /* Next allocated image ID */
     struct Memimage *screen;      /* Screen image */
     int refresh_enabled;          /* Refresh flag */
+    int screen_dirty;             /* Flag: screen needs refresh */
     uint32_t qid_path_base;       /* Base QID path for this connection's files */
     DrawImage images[MAX_IMAGES_PER_CONNECTION];
     int nimages;
@@ -315,6 +316,11 @@ ssize_t devdraw_ctl_write(const char *buf, size_t count, uint64_t offset, void *
 ssize_t devdraw_refresh_read(char *buf, size_t count, uint64_t offset, void *data);
 
 /*
+ * Screen refresh notification functions
+ */
+void drawconn_mark_dirty_all(void);
+
+/*
  * /dev/kbd initialization
  */
 int devkbd_init(P9Node *dev_dir);
@@ -337,5 +343,69 @@ void devdraw_cleanup(void);
  * Main dispatcher
  */
 size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
+
+/*
+ * CPU Server Functions
+ */
+#ifdef INCLUDE_CPU_SERVER
+/*
+ * Initialize CPU server subsystem
+ * Returns 0 on success, -1 on error
+ */
+int cpu_server_init(struct P9Node *root);
+
+/*
+ * Handle new CPU client connection
+ * Called from Tattach handler when aname="cpu"
+ * Returns session ID on success, -1 on error
+ */
+int cpu_handle_new_client(int client_fd, const char *user, const char *aname);
+
+/*
+ * Get CPU session by client ID
+ * Returns pointer to session, or NULL if not found
+ */
+void *cpu_get_session(int client_id);
+
+/*
+ * Close and cleanup a CPU session
+ */
+void cpu_close_session(int client_id);
+
+/*
+ * Find plan9port installation path
+ * Returns path string, or NULL if not found
+ */
+const char *cpu_find_plan9_path(void);
+#endif
+
+/*
+ * Namespace Manager Functions
+ */
+#ifdef INCLUDE_NAMESPACE
+/*
+ * Initialize namespace manager
+ * Returns 0 on success, -1 on error
+ */
+int namespace_init(void);
+
+/*
+ * Create /mnt/term structure for a client
+ * Returns the mnt_term root node, or NULL on error
+ */
+struct P9Node *namespace_create_mnt_term(struct P9Node *root, int client_id);
+
+/*
+ * Bind device to path (like Plan 9 bind command)
+ * Returns 0 on success, -1 on error
+ */
+int namespace_bind(struct P9Node *root, const char *device, const char *path, int type);
+
+/*
+ * Get /mnt/term for a client
+ * Returns the mnt_term node, or NULL if not found
+ */
+struct P9Node *namespace_get_mnt_term(int client_id);
+#endif
 
 #endif /* KRYON_H */
