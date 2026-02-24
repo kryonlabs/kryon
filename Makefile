@@ -117,7 +117,7 @@ $(LIB_TARGET): $(OBJS) | $(BUILD_DIR)
 # Server binary
 # Use GCC for binaries to get proper RPATH support in Nix
 $(SERVER_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) | $(BIN_DIR)
-	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -DINCLUDE_CPU_SERVER -DINCLUDE_NAMESPACE -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport $< -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS)
+	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -DINCLUDE_CPU_SERVER -DINCLUDE_NAMESPACE -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport -I$(SRC_DIR) $< -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS)
 
 # Display client binary
 $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN_DIR)

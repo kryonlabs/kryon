@@ -1,14 +1,21 @@
-Kryon Specification
+Kryon: The Structural Window Manager
 
 A portable C library that implements a synthetic UI filesystem using the
-9P2000 protocol.
+9P2000 protocol. Kryon is a next-generation window manager for 9front that
+evolves rio's "dumb rectangle" model into an "intelligent container" approach.
 
 OVERVIEW
 
-Kryon operates in two modes:
+Kryon operates as a system-level window manager (rio replacement) in two modes:
 
     CPU Server Mode    - Linux/Android/BSD with TCP listener
     Native Mode         - 9front with kernel pipes
+
+Kryon provides a superset of rio's functionality:
+- Structured UI widgets (buttons, menus, layouts)
+- Legacy draw(3) compatibility (transparent proxy)
+- Filesystem-based control (/mnt/wm/...)
+- Hybrid rendering (widgets + raw pixel access)
 
 The same portable C library core works in both modes.  Any language that
 speaks 9P can build UIs.
@@ -48,17 +55,17 @@ CPU Server Mode:
 
 Native Mode (9front):
 
-    9kry -m /mnt/kryon &
+    9kry -m /mnt/wm &
     lua controller.lua
 
 Direct 9P usage:
 
-    echo create_window > /mnt/kryon/ctl
-    echo "My App" > /mnt/kryon/windows/1/title
-    echo "100 100 800 600" > /mnt/kryon/windows/1/rect
-    echo "1" > /mnt/kryon/windows/1/visible
-    echo create_widget 1 button 0 > /mnt/kryon/ctl
-    echo "Click Me" > /mnt/kryon/windows/1/widgets/1/text
+    echo create_window > /mnt/wm/ctl
+    echo "My App" > /mnt/wm/windows/1/title
+    echo "100 100 800 600" > /mnt/wm/windows/1/rect
+    echo "1" > /mnt/wm/windows/1/visible
+    echo create_widget 1 button 0 > /mnt/wm/ctl
+    echo "Click Me" > /mnt/wm/windows/1/widgets/1/text
 
 DOCUMENTATION
 

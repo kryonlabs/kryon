@@ -424,12 +424,78 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     for (i = 0; i < nwname; i++) {
         /* Get string length from buffer (stored 2 bytes before string) */
         uint16_t name_len = le_get16((uint8_t*)(wnames[i] - 2));
+        int found = 0;
 
         fprintf(stderr, "  component[%d] = '%.*s' (len=%u)\n", i, name_len, wnames[i], name_len);
 
-        /* Use length-based comparison for tree_walk */
-        newnode = tree_walk(newnode, wnames[i]);
-        if (newnode == NULL) {
+        /* "." means current directory */
+        if (name_len == 1 && wnames[i][0] == '.') {
+            /* newnode stays the same */
+            found = 1;
+        }
+        /* ".." means parent directory */
+        else if (name_len == 2 && wnames[i][0] == '.' && wnames[i][1] == '.') {
+            if (newnode->parent != NULL) {
+                newnode = newnode->parent;
+                found = 1;
+            }
+        }
+        /* Check for dynamic /dev/draw/[n] directories */
+        else if (newnode->name != NULL && strcmp(newnode->name, "draw") == 0) {
+            /* Check if name is all digits */
+            int is_numeric = 1;
+            int j;
+            for (j = 0; j < name_len && j < 16; j++) {
+                if (wnames[i][j] < '0' || wnames[i][j] > '9') {
+                    is_numeric = 0;
+                    break;
+                }
+            }
+            if (is_numeric && name_len > 0 && name_len < 16) {
+                char temp_name[16];
+                memcpy(temp_name, wnames[i], name_len);
+                temp_name[name_len] = '\0';
+                int conn_id = atoi(temp_name);
+                P9Node *dynamic_node = drawconn_create_dir(conn_id);
+                if (dynamic_node != NULL) {
+                    /* Add to children if not already present */
+                    int already_exists = 0;
+                    int k;
+                    for (k = 0; k < newnode->nchildren; k++) {
+                        if (newnode->children[k] != NULL &&
+                            strlen(newnode->children[k]->name) == name_len &&
+                            memcmp(newnode->children[k]->name, wnames[i], name_len) == 0) {
+                            already_exists = 1;
+                            newnode = newnode->children[k];
+                            break;
+                        }
+                    }
+                    if (!already_exists) {
+                        tree_add_child(newnode, dynamic_node);
+                        newnode = dynamic_node;
+                    }
+                    found = 1;
+                }
+            }
+        }
+
+        /* Search children using length-based comparison */
+        if (!found && newnode->children != NULL) {
+            int j;
+            for (j = 0; j < newnode->nchildren; j++) {
+                if (newnode->children[j] != NULL) {
+                    size_t child_len = strlen(newnode->children[j]->name);
+                    if (child_len == name_len &&
+                        memcmp(newnode->children[j]->name, wnames[i], name_len) == 0) {
+                        newnode = newnode->children[j];
+                        found = 1;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!found) {
             fprintf(stderr, "  -> not found!\n");
             /* No need to free wnames - they point into input buffer */
             return p9_build_rerror(out_buf, hdr.tag, "file not found");

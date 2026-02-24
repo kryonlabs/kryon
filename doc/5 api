@@ -5,7 +5,7 @@ Lua runtime API:
     local kryon = require("kryon")
 
     -- Filesystem
-    kryon.mount("/mnt/kryon")
+    kryon.mount("/mnt/wm")
     kryon.unmount()
 
     -- Window management
@@ -57,27 +57,27 @@ C API (direct 9P):
     char buf[256];
 
     // Create window
-    fd = open("/mnt/kryon/ctl", O_WRONLY);
+    fd = open("/mnt/wm/ctl", O_WRONLY);
     write(fd, "create_window", 13);
     close(fd);
 
     // Set title
-    fd = open("/mnt/kryon/windows/1/title", O_WRONLY);
+    fd = open("/mnt/wm/windows/1/title", O_WRONLY);
     write(fd, "My App", 6);
     close(fd);
 
     // Create widget
-    fd = open("/mnt/kryon/ctl", O_WRONLY);
+    fd = open("/mnt/wm/ctl", O_WRONLY);
     write(fd, "create_widget 1 button 0", 24);
     close(fd);
 
     // Set text
-    fd = open("/mnt/kryon/windows/1/widgets/1/text", O_WRONLY);
+    fd = open("/mnt/wm/windows/1/widgets/1/text", O_WRONLY);
     write(fd, "Click Me", 8);
     close(fd);
 
     // Read events
-    fd = open("/mnt/kryon/windows/1/widgets/1/event", O_RDONLY);
+    fd = open("/mnt/wm/windows/1/widgets/1/event", O_RDONLY);
     while (read(fd, buf, sizeof(buf)) > 0) {
         printf("Event: %s\n", buf);
     }
@@ -85,17 +85,17 @@ C API (direct 9P):
 Shell (rc) scripting:
 
     # Create window
-    echo create_window > /mnt/kryon/ctl
+    echo create_window > /mnt/wm/ctl
 
     # Set title
-    echo My App > /mnt/kryon/windows/1/title
+    echo My App > /mnt/wm/windows/1/title
 
     # Create button
-    echo 'create_widget 1 button 0' > /mnt/kryon/ctl
+    echo 'create_widget 1 button 0' > /mnt/wm/ctl
 
     # Event loop
     while () {
-        event=`{cat /mnt/kryon/windows/1/widgets/1/event}
+        event=`{cat /mnt/wm/windows/1/widgets/1/event}
         if (~ $event()) {
             echo Button clicked!
         }
@@ -105,7 +105,7 @@ Python (via 9pclient):
 
     import p9
 
-    kryon = p9.mount("tcp!localhost!17019", "/mnt/kryon")
+    kryon = p9.mount("tcp!localhost!17019", "/mnt/wm")
 
     # Create window
     kryon.ctl.write("create_window")

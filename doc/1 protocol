@@ -1,36 +1,46 @@
 PROTOCOL
 
-Kryon speaks 9P2000.  All UI state is a filesystem.
+Kryon speaks 9P2000.  All UI state is a filesystem mounted at /mnt/wm.
 
-Filesystem layout:
+WINDOW MANAGER HIERARCHY
 
-    /                               Root
-    ├── version                     "Kryon 1.0"
-    ├── ctl                         Command pipe
-    ├── events                      Global events
-    ├── windows/                    All windows
-    │   ├── 1/                      Window 1
-    │   │   ├── title               Window title
-    │   │   ├── rect                Position and size (x y w h)
-    │   │   ├── visible             0 or 1
-    │   │   ├── widgets/            Widget tree
-    │   │   │   └── [id]/
-    │   │   │       ├── type        Widget type
-    │   │   │       ├── rect        Geometry
-    │   │   │       ├── text        Content
-    │   │   │       ├── value       State
-    │   │   │       ├── enabled     0 or 1
-    │   │   │       └── event       Event pipe (read-only)
-    │   │   └── event               Window events
-    │   └── 2/                      Window 2
-    └── themes/                     Optional themes
+Kryon provides a generic window manager interface at /mnt/wm:
+
+    /                               Root (system-level, clean)
+    ├── dev/                        Graphics devices (screen, mouse, kbd)
+    ├── env/                        Environment
+    ├── mnt/                        Mount points
+    │   └── wm/                     Window manager service (Kryon)
+    │       ├── ctl                 Command pipe
+    │       ├── events              Global events
+    │       ├── version             "Kryon 1.0"
+    │       └── windows/            All windows
+    │           ├── 1/              Window 1
+    │           │   ├── title       Window title
+    │           │   ├── rect        Position and size (x y w h)
+    │           │   ├── visible     0 or 1
+    │           │   ├── draw        Draw proxy (legacy compatibility)
+    │           │   ├── mouse       Window-specific mouse
+    │           │   ├── widgets/    Widget tree
+    │           │   │   └── [id]/
+    │           │   │       ├── type        Widget type
+    │           │   │       ├── rect        Geometry
+    │           │   │       ├── text        Content
+    │           │   │       ├── value       State
+    │           │   │       ├── enabled     0 or 1
+    │           │   │       └── event       Event pipe (read-only)
+    │           │   └── event       Window events
+    │           └── 2/              Window 2
+    └── proc/                       Processes
+
+CONTROL INTERFACE
 
 Control pipe (write-only):
 
-    echo "create_window" > /mnt/kryon/ctl
-    echo "create_widget <window_id> <type> <parent_id>" > /mnt/kryon/ctl
-    echo "destroy_window <window_id>" > /mnt/kryon/ctl
-    echo "destroy_widget <window_id> <widget_id>" > /mnt/kryon/ctl
+    echo "create_window" > /mnt/wm/ctl
+    echo "create_widget <window_id> <type> <parent_id>" > /mnt/wm/ctl
+    echo "destroy_window <window_id>" > /mnt/wm/ctl
+    echo "destroy_widget <window_id> <widget_id>" > /mnt/wm/ctl
 
 Event format (one line per read):
 

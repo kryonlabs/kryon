@@ -552,9 +552,49 @@ int p9_client_walk(P9Client *client, const char *path)
         memmove(path_copy, p, strlen(p) + 1);
     }
 
-    /* Empty path after removing slashes */
+    /* Empty path after removing slashes - clone root_fid */
     if (path_copy[0] == '\0') {
-        return client->root_fid;
+        /*
+         * Send a Twalk with nwname=0 to clone root_fid to a new fid.
+         * In 9P2000, a walk with nwname=0 clones the fid without walking
+         * any path components, creating a new fid pointing to the same node.
+         */
+        newfid = alloc_fid(client);
+        tag = alloc_tag(client);
+
+        out_len = 7;  /* header */
+        le_put32(out_buf + out_len, client->root_fid);  /* fid */
+        out_len += 4;
+        le_put32(out_buf + out_len, newfid);  /* newfid */
+        out_len += 4;
+        le_put16(out_buf + out_len, 0);  /* nwname = 0 for clone */
+        out_len += 2;
+
+        p9_build_header(out_buf, Twalk, tag, out_len - 7);
+
+        if (send_msg(client->fd, out_buf, out_len) < 0) {
+            sprintf(client->error_msg, "send failed");
+            return -1;
+        }
+
+        /* Receive Rwalk */
+        in_len = recv_msg(client->fd, in_buf, sizeof(in_buf));
+        if (in_len < 7) {
+            sprintf(client->error_msg, "recv failed");
+            return -1;
+        }
+
+        if (p9_parse_header(in_buf, in_len, &hdr) < 0 || hdr.type != Rwalk) {
+            p9_parse_rerror(in_buf, in_len, client->error_msg, sizeof(client->error_msg));
+            return -1;
+        }
+
+        if (alloc_fid_state(newfid) == NULL) {
+            sprintf(client->error_msg, "failed to track fid state");
+            return -1;
+        }
+
+        return newfid;
     }
 
     /* Count path components */

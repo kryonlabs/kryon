@@ -172,7 +172,7 @@ static int test_root_listing(P9Client *client) {
 
     printf("Read %ld bytes from root directory\n", (long)n);
 
-    /* Don't clunk - we need the fid for other tests */
+    p9_client_clunk(client, fid);
     TEST_PASS();
     return 1;
 }
@@ -181,9 +181,9 @@ static int test_version_file(P9Client *client) {
     char *version;
     size_t size;
 
-    TEST_START("Read /version file");
+    TEST_START("Read /mnt/wm/version file");
 
-    version = p9_client_read_file(client, "/version", &size);
+    version = p9_client_read_file(client, "/mnt/wm/version", &size);
     ASSERT(version != NULL, "Failed to read version file");
     ASSERT(size > 0, "Version file is empty");
 

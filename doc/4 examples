@@ -3,16 +3,16 @@ EXAMPLES
 Hello World (direct 9P):
 
     # Create window
-    echo "create_window" > /mnt/kryon/ctl
+    echo "create_window" > /mnt/wm/ctl
 
     # Set properties
-    echo "Hello World" > /mnt/kryon/windows/1/title
-    echo "100 100 400 300" > /mnt/kryon/windows/1/rect
-    echo "1" > /mnt/kryon/windows/1/visible
+    echo "Hello World" > /mnt/wm/windows/1/title
+    echo "100 100 400 300" > /mnt/wm/windows/1/rect
+    echo "1" > /mnt/wm/windows/1/visible
 
     # Create label
-    echo "create_widget 1 label 0" > /mnt/kryon/ctl
-    echo "Welcome to Kryon!" > /mnt/kryon/windows/1/widgets/1/text
+    echo "create_widget 1 label 0" > /mnt/wm/ctl
+    echo "Welcome to Kryon!" > /mnt/wm/windows/1/widgets/1/text
 
 Counter (.kryon layout):
 
@@ -76,7 +76,7 @@ Form with validation:
 
 Event loop (C):
 
-    int fd = open("/mnt/kryon/windows/1/widgets/1/event", O_RDONLY);
+    int fd = open("/mnt/wm/windows/1/widgets/1/event", O_RDONLY);
     char event[256];
 
     while (1) {

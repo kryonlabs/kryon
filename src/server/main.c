@@ -9,6 +9,7 @@
 #include "widget.h"
 #include "events.h"
 #include "tcp.h"
+#include "core/ctl.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -68,6 +69,11 @@ typedef struct {
 static ClientInfo g_clients[MAX_CLIENTS];
 static int g_nclients = 0;
 static uint32_t g_next_client_id = 1;
+
+/*
+ * Global reference to windows directory for ctl.c
+ */
+P9Node *g_windows_dir = NULL;
 
 /*
  * Signal handler for graceful shutdown
@@ -428,36 +434,87 @@ int main(int argc, char **argv)
         fprintf(stderr, "Warning: failed to initialize /env\n");
     }
 
+    /*
+     * Create /mnt directory structure for window manager service
+     * This follows Plan 9 conventions where services are mounted under /mnt/
+     */
+    {
+        P9Node *mnt_node;
+        P9Node *wm_node;
 
-    /* Create /version file */
-    static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
-    if (static_data != NULL) {
-        static_data->content = "Kryon 1.0";
-        file = tree_create_file(root, "version", static_data,
-                                (P9ReadFunc)static_file_read,
-                                NULL);
-        if (file == NULL) {
-            free(static_data);
+        /* Check if /mnt exists, create if it doesn't */
+        mnt_node = tree_walk(root, "mnt");
+        if (mnt_node == NULL) {
+            mnt_node = tree_create_dir(root, "mnt");
+            if (mnt_node == NULL) {
+                fprintf(stderr, "Error: failed to create /mnt\n");
+                return 1;
+            }
         }
-    }
 
-    /* Create /events file (empty for now) */
-    static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
-    if (static_data != NULL) {
-        static_data->content = "";
-        file = tree_create_file(root, "events", static_data,
-                                (P9ReadFunc)static_file_read,
-                                NULL);
-        if (file == NULL) {
-            free(static_data);
+        /* Check if /mnt/wm exists, create if it doesn't */
+        wm_node = tree_walk(mnt_node, "wm");
+        if (wm_node == NULL) {
+            /* Create /mnt/wm directory (generic window manager interface) */
+            wm_node = tree_create_dir(mnt_node, "wm");
+            if (wm_node == NULL) {
+                fprintf(stderr, "Error: failed to create /mnt/wm\n");
+                return 1;
+            }
+
+            /* Create /mnt/wm/version file */
+            static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
+            if (static_data != NULL) {
+                static_data->content = "Kryon 1.0";
+                file = tree_create_file(wm_node, "version", static_data,
+                                        (P9ReadFunc)static_file_read,
+                                        NULL);
+                if (file == NULL) {
+                    free(static_data);
+                }
+            }
+
+            /* Create /mnt/wm/ctl file (command pipe) */
+            static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
+            if (static_data != NULL) {
+                static_data->content = "";
+                file = tree_create_file(wm_node, "ctl", static_data,
+                                        NULL,  /* No read function - write only */
+                                        ctl_write);  /* Handle commands */
+                if (file == NULL) {
+                    free(static_data);
+                }
+            }
+
+            /* Create /mnt/wm/events file */
+            static_data = (StaticFileData *)malloc(sizeof(StaticFileData));
+            if (static_data != NULL) {
+                static_data->content = "";
+                file = tree_create_file(wm_node, "events", static_data,
+                                        (P9ReadFunc)static_file_read,
+                                        NULL);
+                if (file == NULL) {
+                    free(static_data);
+                }
+            }
+
+            fprintf(stderr, "Created /mnt/wm hierarchy (window manager interface)\n");
+        } else {
+            fprintf(stderr, "Using existing /mnt/wm hierarchy\n");
         }
-    }
 
-    /* Create /windows directory */
-    windows_dir = tree_create_dir(root, "windows");
-    if (windows_dir == NULL) {
-        fprintf(stderr, "Error: failed to create windows directory\n");
-        return 1;
+        /* Create /mnt/wm/windows directory */
+        windows_dir = tree_walk(wm_node, "windows");
+        if (windows_dir == NULL) {
+            windows_dir = tree_create_dir(wm_node, "windows");
+            if (windows_dir == NULL) {
+                fprintf(stderr, "Error: failed to create /mnt/wm/windows\n");
+                return 1;
+            }
+        }
+
+        /* Set global reference for ctl.c */
+        g_windows_dir = windows_dir;
     }
 
     /* Create Window 1 */
