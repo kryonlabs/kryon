@@ -215,17 +215,6 @@ static int handle_client_request(ClientInfo *client)
     }
 
     /* Send response */
-    fprintf(stderr, "=== SENDING %lu bytes ===\n", (unsigned long)resp_len);
-    {
-        size_t i;
-        for (i = 0; i < resp_len; i++) {
-            fprintf(stderr, "%02X ", resp_buf[i]);
-            if ((i + 1) % 16 == 0) fprintf(stderr, "\n");
-        }
-        fprintf(stderr, "\n");
-    }
-    fprintf(stderr, "=====================\n");
-
     result = tcp_send_msg(client->fd, resp_buf, resp_len);
     if (result < 0) {
         fprintf(stderr, "handle_client_request: tcp_send_msg failed\n");
@@ -683,12 +672,6 @@ int main(int argc, char **argv)
 
             /* ALWAYS render every 33ms (30 FPS) */
             if (elapsed >= render_interval_ms) {
-                /* Verify render timing */
-                static int render_count = 0;
-                if (++render_count <= 3) {
-                    fprintf(stderr, "Render %d completed at %ld ms\n", render_count,
-                            (long)(current_time.tv_sec * 1000 + current_time.tv_usec / 1000));
-                }
                 render_all();
                 gettimeofday(&last_render, NULL);
             }

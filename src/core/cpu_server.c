@@ -36,13 +36,10 @@ static void child_sig_handler(int sig)
     /* Reap zombie children */
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         int i;
-        fprintf(stderr, "cpu_server: child %d exited (status=%d)\n", pid, status);
 
         /* Find and close corresponding session */
         for (i = 0; i < MAX_CPU_CLIENTS; i++) {
             if (g_sessions[i].active && g_sessions[i].rc_pid == pid) {
-                fprintf(stderr, "cpu_server: closing session %d for pid %d\n",
-                        i, pid);
                 cpu_close_session(i);
                 break;
             }
@@ -83,9 +80,6 @@ int cpu_server_init(P9Node *root)
 
     /* Setup signal handler for child processes */
     signal(SIGCHLD, child_sig_handler);
-
-    fprintf(stderr, "cpu_server_init: initialized (max clients=%d)\n",
-            MAX_CPU_CLIENTS);
 
     return 0;
 }
@@ -144,7 +138,6 @@ const char *cpu_find_plan9_path(void)
         if (env_path != NULL && access(env_path, F_OK) == 0) {
             strncpy(path, env_path, sizeof(path) - 1);
             path[sizeof(path) - 1] = '\0';
-            fprintf(stderr, "cpu_find_plan9_path: found via PLAN9=%s\n", path);
             return path;
         }
     }
@@ -169,7 +162,6 @@ const char *cpu_find_plan9_path(void)
                 /* Found it - extract base path */
                 snprintf(path, sizeof(path), "%s", full_path);
                 closedir(dir);
-                fprintf(stderr, "cpu_find_plan9_path: found in Nix store: %s\n", path);
                 return path;
             }
         }
@@ -189,7 +181,6 @@ const char *cpu_find_plan9_path(void)
             if (access(candidates[i], F_OK) == 0) {
                 strncpy(path, candidates[i], sizeof(path) - 1);
                 path[sizeof(path) - 1] = '\0';
-                fprintf(stderr, "cpu_find_plan9_path: found at %s\n", path);
                 return path;
             }
         }
@@ -259,8 +250,6 @@ P9Node *cpu_create_mnt_term(P9Node *root, int client_id)
                 dirname);
         return NULL;
     }
-
-    fprintf(stderr, "cpu_create_mnt_term: created /mnt/term/%s\n", dirname);
 
     return term_node;
 }
@@ -375,9 +364,6 @@ static pid_t start_rc_shell(CPUSession *session)
     session->rc_stdout = stdout_pipe[0];  /* Read from stdout */
     session->rc_stderr = stderr_pipe[0];  /* Read from stderr */
 
-    fprintf(stderr, "start_rc_shell: started rc (pid=%d, path=%s)\n",
-            pid, rc_path);
-
     return pid;
 }
 
@@ -448,9 +434,6 @@ int cpu_handle_new_client(int client_fd, const char *user, const char *aname)
 
     g_nsessions++;
 
-    fprintf(stderr, "cpu_handle_new_client: created session %d for user '%s' (rc pid=%d)\n",
-            session_id, session->user, rc_pid);
-
     return session_id;
 }
 
@@ -508,8 +491,6 @@ void cpu_close_session(int client_id)
         return;
     }
 
-    fprintf(stderr, "cpu_close_session: closing session %d\n", client_id);
-
     /* Close pipes */
     if (session->rc_stdin >= 0) {
         close(session->rc_stdin);
@@ -536,9 +517,6 @@ void cpu_close_session(int client_id)
 
     session->active = 0;
     g_nsessions--;
-
-    fprintf(stderr, "cpu_close_session: session %d closed (remaining=%d)\n",
-            client_id, g_nsessions);
 }
 
 /*

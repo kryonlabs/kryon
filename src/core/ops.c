@@ -39,120 +39,6 @@ int p9_get_client_fd(void)
     return current_client_fd;
 }
 
-/*
- * Convert 9P message type to string for logging
- */
-const char *p9_msg_type_to_str(uint8_t type)
-{
-    switch(type) {
-        case Tversion: return "Tversion";
-        case Rversion: return "Rversion";
-        case Tauth: return "Tauth";
-        case Rauth: return "Rauth";
-        case Tattach: return "Tattach";
-        case Rattach: return "Rattach";  /* Note: Rerror has same value (105) */
-        case Tflush: return "Tflush";
-        case Rflush: return "Rflush";
-        case Twalk: return "Twalk";
-        case Rwalk: return "Rwalk";
-        case Topen: return "Topen";
-        case Ropen: return "Ropen";
-        case Tcreate: return "Tcreate";
-        case Rcreate: return "Rcreate";
-        case Tread: return "Tread";
-        case Rread: return "Rread";
-        case Twrite: return "Twrite";
-        case Rwrite: return "Rwrite";
-        case Tclunk: return "Tclunk";
-        case Rclunk: return "Rclunk";
-        case Tremove: return "Tremove";
-        case Rremove: return "Rremove";
-        case Tstat: return "Tstat";
-        case Rstat: return "Rstat";
-        case Twstat: return "Twstat";
-        case Rwstat: return "Rwstat";
-        default: return "Unknown";
-    }
-}
-
-/*
- * Hexdump helper for debugging
- */
-static void hexdump(const uint8_t *data, size_t len)
-{
-    size_t i;
-    for (i = 0; i < len; i++) {
-        fprintf(stderr, "%02X ", data[i]);
-        if ((i + 1) % 16 == 0) {
-            fprintf(stderr, "\n");
-        }
-    }
-    if (len % 16 != 0) {
-        fprintf(stderr, "\n");
-    }
-}
-
-/*
- * Build full path for a node (for logging)
- * Fixed to avoid buffer overflow by collecting component pointers first
- * Also handles the root node being its own parent
- */
-static void build_node_path(P9Node *node, char *buf, size_t bufsize)
-{
-    const char *components[256]; /* Pointers to node names */
-    int depth = 0;
-    P9Node *current;
-    size_t total_len = 0;
-    int i;
-
-    if (node == NULL || buf == NULL || bufsize == 0) {
-        return;
-    }
-
-    /* Collect path components by walking from node to root */
-    /* This collects them in reverse order (deepest first) */
-    current = node;
-    while (current != NULL && depth < 256) {
-        if (current->name != NULL) {
-            size_t len = strlen(current->name);
-            /* Check if adding this component would overflow */
-            if (total_len + len + 1 < bufsize) {
-                components[depth] = current->name;
-                total_len += len + 1; /* +1 for '/' separator */
-                depth++;
-            } else {
-                break; /* Would overflow */
-            }
-        }
-        /* Check if we've reached the root (root is its own parent) */
-        if (current->parent == current) {
-            break;
-        }
-        current = current->parent;
-    }
-
-    /* Build path from root to node by iterating backwards */
-    /* components[depth-1] is the node itself, components[0] is the root */
-    buf[0] = '\0';
-    for (i = depth - 1; i >= 0; i--) {
-        size_t buf_len = strlen(buf);
-        size_t space_left = bufsize - buf_len - 1;
-
-        if (buf[0] != '\0') {
-            /* Add separator */
-            if (space_left > 0) {
-                strncat(buf, "/", space_left);
-                buf_len = strlen(buf);
-                space_left = bufsize - buf_len - 1;
-            }
-        }
-
-        /* Add component name */
-        if (space_left > 0) {
-            strncat(buf, components[i], space_left);
-        }
-    }
-}
 
 /*
  * FID table
@@ -320,9 +206,6 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
         return p9_build_rerror(out_buf, hdr.tag, "invalid Tattach");
     }
 
-    fprintf(stderr, "handle_tattach: fid=%u afid=%u user='%s' aname='%s' client_fd=%d\n",
-            fid, afid, uname, aname, current_client_fd);
-
     /* Check if this is a CPU server attach */
     is_cpu_attach = (strcmp(aname, "cpu") == 0);
 
@@ -334,7 +217,6 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
             fprintf(stderr, "handle_tattach: failed to create CPU session\n");
             return p9_build_rerror(out_buf, hdr.tag, "CPU session failed");
         }
-        fprintf(stderr, "handle_tattach: created CPU session %d\n", session_id);
     }
 #endif
 
@@ -373,8 +255,6 @@ size_t handle_tauth(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     if (p9_parse_tauth(in_buf, in_len, uname, aname) < 0) {
         return p9_build_rerror(out_buf, hdr.tag, "invalid Tauth");
     }
-
-    fprintf(stderr, "handle_tauth: user='%s' aname='%s' tag=%u\n", uname, aname, hdr.tag);
 
     /* Return Rauth with QID indicating authentication file */
     /* Use QID path 1 for the auth fid */
@@ -419,14 +299,10 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     /* Walk through all path components */
     newnode = node;
-    fprintf(stderr, "handle_twalk: walking from '%s' through %d components\n",
-            node->name ? node->name : "(null)", nwname);
     for (i = 0; i < nwname; i++) {
         /* Get string length from buffer (stored 2 bytes before string) */
         uint16_t name_len = le_get16((uint8_t*)(wnames[i] - 2));
         int found = 0;
-
-        fprintf(stderr, "  component[%d] = '%.*s' (len=%u)\n", i, name_len, wnames[i], name_len);
 
         /* "." means current directory */
         if (name_len == 1 && wnames[i][0] == '.') {
@@ -496,11 +372,9 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
         }
 
         if (!found) {
-            fprintf(stderr, "  -> not found!\n");
             /* No need to free wnames - they point into input buffer */
             return p9_build_rerror(out_buf, hdr.tag, "file not found");
         }
-        fprintf(stderr, "  -> '%s' (qid.type=%02X)\n", newnode->name, newnode->qid.type);
         /* Store QID for this component */
         wqid[i] = newnode->qid;
     }
@@ -546,14 +420,6 @@ size_t handle_topen(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     node = fid_obj->node;
 
-    /* Log full path */
-    {
-        char path_buf[256];
-        build_node_path(node, path_buf, sizeof(path_buf));
-        fprintf(stderr, "handle_topen: opening '%s' (fid=%u mode=%d)\n",
-                path_buf, fid, mode);
-    }
-
     /* Check permissions */
     if (mode == P9_OREAD || mode == P9_ORDWR) {
         /* Read OK */
@@ -565,8 +431,6 @@ size_t handle_topen(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     /* Mark as open */
     fid_obj->is_open = 1;
     fid_obj->mode = mode;
-
-    fprintf(stderr, "handle_topen: opened '%s' successfully\n", node->name);
 
     /* Use iounit=0 to indicate no preferred I/O size */
     /* Let the client decide the optimal chunk size */
@@ -687,9 +551,6 @@ size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
     node = fid_obj->node;
 
-    fprintf(stderr, "handle_tread: fid=%u node='%s' offset=%lu count=%u\n",
-            fid, node->name, (unsigned long)offset, count);
-
     /* Check if directory */
     if (node->qid.type & QTDIR) {
         return handle_directory_read(fid_obj, offset, count, out_buf, hdr.tag);
@@ -707,8 +568,6 @@ size_t handle_tread(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
         return p9_build_rerror(out_buf, hdr.tag, "read error");
     }
 
-    fprintf(stderr, "handle_tread: returning %ld bytes for node '%s'\n", (long)nread, node->name);
-    
     return p9_build_rread(out_buf, hdr.tag, data, (uint32_t)nread);
 }
 
@@ -849,17 +708,13 @@ size_t handle_tremove(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     }
     fid = le_get32(in_buf + 7);
 
-    fprintf(stderr, "handle_tremove: fid=%u tag=%u\n", fid, hdr.tag);
-
     /* Get FID - return error if fid doesn't exist */
     fid_obj = fid_get(fid);
     if (fid_obj == NULL) {
-        fprintf(stderr, "handle_tremove: fid %u not found\n", fid);
         return p9_build_rerror(out_buf, hdr.tag, "fid not found");
     }
 
     node = fid_obj->node;
-    fprintf(stderr, "handle_tremove: removing '%s'\n", node->name ? node->name : "(null)");
 
     /* Attempt removal from tree */
     remove_result = tree_remove_node(node);
@@ -868,11 +723,9 @@ size_t handle_tremove(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     fid_clunk(fid);
 
     if (remove_result < 0) {
-        fprintf(stderr, "handle_tremove: removal failed (e.g., root node)\n");
         return p9_build_rerror(out_buf, hdr.tag, "permission denied");
     }
 
-    fprintf(stderr, "handle_tremove: removal succeeded\n");
     return p9_build_rremove(out_buf, hdr.tag);
 }
 
@@ -889,9 +742,6 @@ size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
         fprintf(stderr, "dispatch_9p: failed to parse header\n");
         return 0;
     }
-
-    fprintf(stderr, "dispatch_9p: received message type=%d (%s) tag=%u len=%zu\n",
-            hdr.type, p9_msg_type_to_str(hdr.type), hdr.tag, in_len);
 
     /* Dispatch based on message type */
     switch (hdr.type) {
@@ -937,22 +787,8 @@ size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
 
         default:
             /* Unknown message type */
-            fprintf(stderr, "dispatch_9p: unknown message type %d\n", hdr.type);
             result = p9_build_rerror(out_buf, hdr.tag, "not supported");
             break;
-    }
-
-    /* Log response */
-    if (result > 0) {
-        uint32_t resp_size = le_get32(out_buf);
-        uint8_t resp_type = out_buf[4];
-
-        fprintf(stderr, "dispatch_9p: sending response type=%d (%s) size=%u len=%zu\n",
-                resp_type, p9_msg_type_to_str(resp_type), resp_size, result);
-        fprintf(stderr, "Response hexdump:\n");
-        hexdump(out_buf, result);
-    } else {
-        fprintf(stderr, "dispatch_9p: ERROR - failed to build response (result=%zu)\n", result);
     }
 
     return result;
