@@ -75,7 +75,8 @@ CPU_SRCS = $(SRC_DIR)/core/cpu_server.c $(SRC_DIR)/core/namespace.c \
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 CLIENT_SRCS = $(SRC_DIR)/client/9pclient.c $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c
-SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(TRANSPORT_SRCS) $(CPU_SRCS)
+SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(TRANSPORT_SRCS) $(CPU_SRCS) \
+       $(SRC_DIR)/client/9pclient.c
 
 # Additional object files for linking
 WINDOW_OBJS = $(BUILD_DIR)/core/window.o
@@ -163,23 +164,22 @@ run: $(SERVER_TARGET)
 run-display: $(DISPLAY_TARGET)
 	./$(DISPLAY_TARGET) --host 127.0.0.1 --port 17019
 
-# Test with plan9port tools
+# Test 9P server
 .PHONY: test
-test: $(SERVER_TARGET)
-	@echo "Starting server on port 17019..."
-	@./$(SERVER_TARGET) --port 17019 &
-	@SERVER_PID=$$!; \
-	sleep 1; \
-	echo "Testing 9P mount..."; \
-	9mount 127.0.0.1!/tmp/kryon /mnt/kryon 2>/dev/null || echo "Mount failed (server not ready?)"; \
-	sleep 2; \
-	kill $$SERVER_PID 2>/dev/null || true
+test: $(BIN_DIR)/test_9p_server
+	@echo "Cleaning up any existing servers..."
+	@pkill -9 'kryon-server --port 17020' 2>/dev/null || true
+	@pkill -9 test_9p_server 2>/dev/null || true
+	@sleep 1
+	@echo "Running 9P server tests..."
+	@$(BIN_DIR)/test_9p_server
 
 # Build test programs
 TEST_DIR = tests
 TEST_SRCS = $(TEST_DIR)/test_draw_alloc.c $(TEST_DIR)/test_draw_blt.c \
             $(TEST_DIR)/test_draw_line.c $(TEST_DIR)/test_draw_poly.c \
-            $(TEST_DIR)/test_draw_text.c
+            $(TEST_DIR)/test_draw_text.c \
+            $(TEST_DIR)/test_9p_server.c
 TEST_BINS = $(TEST_SRCS:$(TEST_DIR)/%.c=$(BIN_DIR)/%)
 
 # SDL2 test program (for direct visualization)
