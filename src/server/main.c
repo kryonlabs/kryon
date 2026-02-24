@@ -150,11 +150,16 @@ static int add_client(int fd)
 static void remove_client(int fd)
 {
     int i;
+    extern void fid_cleanup_conn(int client_fd); /* Declare external function */
 
     for (i = 0; i < g_nclients; i++) {
         if (g_clients[i].fd == fd) {
             fprintf(stderr, "Client %u disconnected (fd=%d)\n",
                     g_clients[i].client_id, fd);
+            
+            /* KEY FIX: Wipe FIDs owned by this specific FD */
+            fid_cleanup_conn(fd);
+
             tcp_close(fd);
 
             /* Move last entry into this slot */
@@ -640,13 +645,13 @@ int main(int argc, char **argv)
     {
         int i;
         for (i = 0; i < g_nclients; i++) {
+            fid_cleanup_conn(g_clients[i].fd);
             tcp_close(g_clients[i].fd);
         }
     }
     g_nclients = 0;
 
     tcp_close(listen_fd);
-    fid_cleanup();
     event_system_cleanup();
 
     /* Cleanup device states before tree cleanup */

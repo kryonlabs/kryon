@@ -159,10 +159,6 @@ static void build_node_path(P9Node *node, char *buf, size_t bufsize)
  */
 static P9Fid fid_table[P9_MAX_FID];
 static int fid_table_initialized = 0;
-
-/*
- * Negotiated message size
- */
 static uint32_t negotiated_msize = P9_MAX_MSG;
 
 /*
@@ -171,14 +167,12 @@ static uint32_t negotiated_msize = P9_MAX_MSG;
 int fid_init(void)
 {
     int i;
-
-    if (fid_table_initialized) {
-        return 0;
-    }
+    if (fid_table_initialized) return 0;
 
     for (i = 0; i < P9_MAX_FID; i++) {
         fid_table[i].fid = 0;
         fid_table[i].node = NULL;
+        fid_table[i].client_fd = -1; /* -1 indicates slot is empty */
         fid_table[i].is_open = 0;
         fid_table[i].mode = 0;
     }
@@ -187,22 +181,40 @@ int fid_init(void)
     return 0;
 }
 
+/**
+ * Cleanup FIDs for a specific client
+ */
+void fid_cleanup_conn(int client_fd)
+{
+    int i;
+    int cleared = 0;
+    for (i = 0; i < P9_MAX_FID; i++) {
+        if (fid_table[i].node != NULL && fid_table[i].client_fd == client_fd) {
+            fid_table[i].node = NULL;
+            fid_table[i].client_fd = -1;
+            fid_table[i].is_open = 0;
+            cleared++;
+        }
+    }
+    if (cleared > 0) {
+        fprintf(stderr, "fid_cleanup: released %d FIDs for fd %d\n", cleared, client_fd);
+    }
+}
+
 /*
  * Allocate a new FID
  */
 P9Fid *fid_new(uint32_t fid_num, P9Node *node)
 {
-    if (fid_num >= P9_MAX_FID) {
-        return NULL;
-    }
+    if (fid_num >= P9_MAX_FID) return NULL;
 
-    if (fid_table[fid_num].node != NULL) {
-        /* FID already in use */
+    if (fid_table[fid_num].node != NULL && fid_table[fid_num].client_fd == current_client_fd) {
         return NULL;
     }
 
     fid_table[fid_num].fid = fid_num;
     fid_table[fid_num].node = node;
+    fid_table[fid_num].client_fd = current_client_fd;
     fid_table[fid_num].is_open = 0;
     fid_table[fid_num].mode = 0;
 
@@ -214,11 +226,9 @@ P9Fid *fid_new(uint32_t fid_num, P9Node *node)
  */
 P9Fid *fid_get(uint32_t fid_num)
 {
-    if (fid_num >= P9_MAX_FID) {
-        return NULL;
-    }
+    if (fid_num >= P9_MAX_FID) return NULL;
 
-    if (fid_table[fid_num].node == NULL) {
+    if (fid_table[fid_num].node == NULL || fid_table[fid_num].client_fd != current_client_fd) {
         return NULL;
     }
 
@@ -230,45 +240,24 @@ P9Fid *fid_get(uint32_t fid_num)
  */
 int fid_put(uint32_t fid_num)
 {
-    P9Fid *fid;
-
-    fid = fid_get(fid_num);
-    if (fid == NULL) {
-        return -1;
-    }
-
-    fid->node = NULL;
-    fid->is_open = 0;
-    fid->mode = 0;
-
-    return 0;
+    return fid_clunk(fid_num);
 }
 
 /*
  * Clunk a FID (close if open, then release)
  */
+
 int fid_clunk(uint32_t fid_num)
 {
-    P9Fid *fid;
+    P9Fid *fid = fid_get(fid_num);
+    if (fid == NULL) return -1;
 
-    fid = fid_get(fid_num);
-    if (fid == NULL) {
-        return -1;
-    }
-
+    fid->node = NULL;
+    fid->client_fd = -1;
     fid->is_open = 0;
     fid->mode = 0;
-    fid->node = NULL;
 
     return 0;
-}
-
-/*
- * Cleanup FID table
- */
-void fid_cleanup(void)
-{
-    fid_table_initialized = 0;
 }
 
 /*

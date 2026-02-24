@@ -137,6 +137,7 @@ typedef struct P9Node {
 typedef struct {
     uint32_t    fid;
     P9Node      *node;
+    int client_fd;
     int         is_open;
     uint8_t     mode;   /* Open mode if open */
 } P9Fid;
@@ -235,7 +236,7 @@ ssize_t node_write(P9Node *node, const char *buf, size_t count, uint64_t offset)
  * FID management
  */
 int fid_init(void);
-void fid_cleanup(void);
+void fid_cleanup_conn(int client_fd);
 P9Fid *fid_new(uint32_t fid_num, P9Node *node);
 P9Fid *fid_get(uint32_t fid_num);
 int fid_put(uint32_t fid_num);
