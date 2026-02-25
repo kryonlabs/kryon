@@ -10,6 +10,7 @@
 #include "events.h"
 #include "tcp.h"
 #include "core/ctl.h"
+#include "core/rcpu.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,6 +88,72 @@ static void signal_handler(int sig)
 }
 
 /*
+ * Protocol detection for rcpu vs 9P
+ */
+#define PROTOCOL_9P 0
+#define PROTOCOL_RCPU 1
+#define PROTOCOL_AUTH 2  /* secstore or p9 auth - not supported yet */
+
+static int detect_client_protocol(int fd)
+{
+    char peek[16];
+    ssize_t n;
+    int i;
+
+    /* Peek at first bytes to determine protocol */
+    n = recv(fd, peek, sizeof(peek), MSG_PEEK);
+    fprintf(stderr, "Protocol detection: peeked %zd bytes: ", n);
+    for (i = 0; i < n && i < 12; i++) {
+        if (peek[i] >= 32 && peek[i] <= 126) {
+            fprintf(stderr, "%c", peek[i]);
+        } else {
+            fprintf(stderr, "\\x%02x", (unsigned char)peek[i]);
+        }
+    }
+    fprintf(stderr, "\n");
+
+    if (n < 8) {
+        fprintf(stderr, "Protocol detection: too few bytes, assuming 9P\n");
+        return PROTOCOL_9P;
+    }
+
+    /* Check for rcpu protocol: "NNNNNN\n" (7-digit length + newline) */
+    if (n >= 8) {
+        int is_digits = 1;
+        for (i = 0; i < 7; i++) {
+            if (peek[i] < '0' || peek[i] > '9') {
+                is_digits = 0;
+                break;
+            }
+        }
+
+        if (is_digits && peek[7] == '\n') {
+            fprintf(stderr, "Protocol detection: rcpu (script-based)\n");
+            return PROTOCOL_RCPU;
+        }
+    }
+
+    /* Check for authentication protocols (not yet supported) */
+    if (n >= 9) {
+        /* secstore auth: starts with 0x80 0x17 followed by "secstore" */
+        if (peek[0] == (char)0x80 && peek[1] == (char)0x17 &&
+            memcmp(peek + 2, "secstore", 8) == 0) {
+            fprintf(stderr, "Protocol detection: secstore auth (not supported)\n");
+            return PROTOCOL_AUTH;
+        }
+
+        /* p9 auth negotiation: starts with "p9 " */
+        if (memcmp(peek, "p9 ", 3) == 0) {
+            fprintf(stderr, "Protocol detection: p9 auth (not supported)\n");
+            return PROTOCOL_AUTH;
+        }
+    }
+
+    fprintf(stderr, "Protocol detection: 9P\n");
+    return PROTOCOL_9P;
+}
+
+/*
  * Print usage
  */
 static void print_usage(const char *progname)
@@ -146,6 +213,7 @@ static int add_client(int fd)
 
     fprintf(stderr, "Client %u connected (fd=%d, total=%d)\n",
             g_clients[g_nclients - 1].client_id, fd, g_nclients);
+    fflush(stderr);
 
     return 0;
 }
@@ -162,7 +230,8 @@ static void remove_client(int fd)
         if (g_clients[i].fd == fd) {
             fprintf(stderr, "Client %u disconnected (fd=%d)\n",
                     g_clients[i].client_id, fd);
-            
+            fflush(stderr);
+
             /* KEY FIX: Wipe FIDs owned by this specific FD */
             fid_cleanup_conn(fd);
 
@@ -647,9 +716,32 @@ int main(int argc, char **argv)
             if (FD_ISSET(listen_fd, &readfds)) {
                 client_fd = tcp_accept(listen_fd);
                 if (client_fd >= 0) {
-                    if (add_client(client_fd) < 0) {
-                        fprintf(stderr, "Too many clients, rejecting connection\n");
+                    /* Detect protocol type before adding to client list */
+                    int protocol_type = detect_client_protocol(client_fd);
+
+                    if (protocol_type == PROTOCOL_RCPU) {
+                        fprintf(stderr, "Detected rcpu protocol, spawning shell handler\n");
+                        fflush(stderr);
+                        /* Handle rcpu connection in separate handler */
+                        if (handle_rcpu_connection(client_fd) < 0) {
+                            fprintf(stderr, "rcpu handler failed, closing connection\n");
+                            fflush(stderr);
+                            tcp_close(client_fd);
+                        }
+                        /* Don't add to select() loop - rcpu manages its own fd */
+                    } else if (protocol_type == PROTOCOL_AUTH) {
+                        /* Authentication protocols not yet supported */
+                        fprintf(stderr, "Authentication protocol detected but not supported\n");
+                        fprintf(stderr, "Closing connection - drawterm may retry with different protocol\n");
+                        fflush(stderr);
                         tcp_close(client_fd);
+                    } else {
+                        /* Standard 9P client */
+                        if (add_client(client_fd) < 0) {
+                            fprintf(stderr, "Too many clients, rejecting connection\n");
+                            fflush(stderr);
+                            tcp_close(client_fd);
+                        }
                     }
                 }
             }

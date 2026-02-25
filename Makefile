@@ -71,6 +71,7 @@ GRAPHICS_SRCS = $(SRC_DIR)/core/memimage.c $(SRC_DIR)/core/memdraw.c \
                 $(SRC_DIR)/core/devproc.c $(SRC_DIR)/core/devenv.c
 # CPU server and namespace support
 CPU_SRCS = $(SRC_DIR)/core/cpu_server.c $(SRC_DIR)/core/namespace.c \
+            $(SRC_DIR)/core/rcpu.c \
             $(SRC_DIR)/shell/rc_wrapper.c
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 CLIENT_SRCS = $(SRC_DIR)/client/9pclient.c $(SRC_DIR)/client/sdl_display.c \
