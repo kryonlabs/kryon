@@ -105,7 +105,7 @@ Python (via 9pclient):
 
     import p9
 
-    kryon = p9.mount("tcp!localhost!17019", "/mnt/wm")
+    kryon = p9.mount("kryon", "/mnt/wm")
 
     # Create window
     kryon.ctl.write("create_window")

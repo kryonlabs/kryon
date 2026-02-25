@@ -5,6 +5,7 @@
 
 #include "rcpu.h"
 #include "cpu_server.h"
+#include "devfactotum.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,11 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <fcntl.h>
+
+/*
+ * External function to get authentication session
+ */
+extern AuthSession *auth_session_get(int client_fd);
 
 /*
  * Read the rcpu script from the connection
@@ -30,11 +36,20 @@ static int read_rcpu_script(int fd, char **script_out)
     ssize_t n;
     size_t total;
 
-    /* Read 7-digit length + newline */
-    n = recv(fd, len_str, 8, MSG_WAITALL);
-    if (n != 8) {
-        fprintf(stderr, "rcpu: failed to read script length (got %zd bytes)\n", n);
-        return -1;
+    /* Read 7-digit length + newline with proper error handling */
+    total = 0;
+    while (total < 8) {
+        n = recv(fd, len_str + total, 8 - total, 0);
+        if (n <= 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* Timeout */
+                fprintf(stderr, "rcpu: timeout reading script length\n");
+                return -1;
+            }
+            fprintf(stderr, "rcpu: failed to read script length (got %zd bytes, errno=%d)\n", n, errno);
+            return -1;
+        }
+        total += n;
     }
 
     /* Null-terminate the length string */
@@ -60,9 +75,15 @@ static int read_rcpu_script(int fd, char **script_out)
     /* Read script content */
     total = 0;
     while (total < (size_t)script_len) {
-        n = recv(fd, script + total, script_len - total, MSG_WAITALL);
+        n = recv(fd, script + total, script_len - total, 0);
         if (n <= 0) {
-            fprintf(stderr, "rcpu: failed to read script content (got %zd bytes)\n", n);
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* Timeout */
+                fprintf(stderr, "rcpu: timeout reading script content (got %zu of %ld bytes)\n", total, script_len);
+                free(script);
+                return -1;
+            }
+            fprintf(stderr, "rcpu: failed to read script content (got %zd bytes, errno=%d)\n", n, errno);
             free(script);
             return -1;
         }
@@ -307,8 +328,24 @@ int handle_rcpu_connection(int fd)
 {
     char *script = NULL;
     pid_t shell_pid;
+    AuthSession *auth;
+    char user_str[AUTH_ANAMELEN + 32];
 
     fprintf(stderr, "rcpu: handling new connection\n");
+
+    /* Check authentication */
+    auth = auth_session_get(fd);
+    if (auth == NULL || auth->ai == NULL) {
+        fprintf(stderr, "rcpu: not authenticated\n");
+        goto error;
+    }
+
+    fprintf(stderr, "rcpu: authenticated as %s\n", auth->ai->cuid);
+
+    /* Set up environment for authenticated user */
+    snprintf(user_str, sizeof(user_str), "USER=%s",
+             auth->ai->cuid ? auth->ai->cuid : "unknown");
+    putenv(user_str);
 
     /* Read the script */
     if (read_rcpu_script(fd, &script) < 0) {

@@ -132,6 +132,11 @@ typedef struct P9Node {
 } P9Node;
 
 /*
+ * Forward declarations for authentication
+ */
+struct AuthInfo;
+
+/*
  * FID (File ID) tracking
  */
 typedef struct {
@@ -140,6 +145,7 @@ typedef struct {
     int client_fd;
     int         is_open;
     uint8_t     mode;   /* Open mode if open */
+    struct AuthInfo *auth_info;  /* Authentication info */
 } P9Fid;
 
 /*

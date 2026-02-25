@@ -11,6 +11,7 @@
 #include "tcp.h"
 #include "core/ctl.h"
 #include "core/rcpu.h"
+#include "devfactotum.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/select.h>
+#include <fcntl.h>
 #include <time.h>
 
 /*
@@ -39,6 +41,17 @@ extern int devproc_init(P9Node *root);
 extern int devenv_init(P9Node *root);
 extern void render_set_screen(Memimage *screen);
 extern void render_all(void);
+
+/*
+ * Authentication initialization functions (external)
+ */
+extern int factotum_init(void *root_dir);
+extern int secstore_init(void *root_dir);
+extern int auth_session_init(void);
+extern void auth_session_cleanup(void);
+extern int factotum_load_keys(const char *path);
+extern int p9any_handler(int client_fd, const char *domain);
+extern int secstore_handler(int client_fd);
 
 /*
  * CPU server initialization (external)
@@ -92,7 +105,8 @@ static void signal_handler(int sig)
  */
 #define PROTOCOL_9P 0
 #define PROTOCOL_RCPU 1
-#define PROTOCOL_AUTH 2  /* secstore or p9 auth - not supported yet */
+#define PROTOCOL_AUTH_P9 2   /* p9 auth */
+#define PROTOCOL_AUTH_SEC 3  /* secstore auth */
 
 static int detect_client_protocol(int fd)
 {
@@ -102,6 +116,10 @@ static int detect_client_protocol(int fd)
 
     /* Peek at first bytes to determine protocol */
     n = recv(fd, peek, sizeof(peek), MSG_PEEK);
+    if (n < 0) {
+        fprintf(stderr, "Protocol detection: recv failed: %s\n", strerror(errno));
+        return PROTOCOL_9P;
+    }
     fprintf(stderr, "Protocol detection: peeked %zd bytes: ", n);
     for (i = 0; i < n && i < 12; i++) {
         if (peek[i] >= 32 && peek[i] <= 126) {
@@ -112,9 +130,13 @@ static int detect_client_protocol(int fd)
     }
     fprintf(stderr, "\n");
 
-    if (n < 8) {
-        fprintf(stderr, "Protocol detection: too few bytes, assuming 9P\n");
-        return PROTOCOL_9P;
+    /* Check for authentication protocols first - they can start with just 3 bytes */
+    if (n >= 3) {
+        /* p9 auth negotiation: starts with "p9 " */
+        if (memcmp(peek, "p9 ", 3) == 0) {
+            fprintf(stderr, "Protocol detection: p9 auth\n");
+            return PROTOCOL_AUTH_P9;
+        }
     }
 
     /* Check for rcpu protocol: "NNNNNN\n" (7-digit length + newline) */
@@ -133,20 +155,19 @@ static int detect_client_protocol(int fd)
         }
     }
 
-    /* Check for authentication protocols (not yet supported) */
-    if (n >= 9) {
+    /* Check for secstore auth (requires at least 10 bytes) */
+    if (n >= 10) {
         /* secstore auth: starts with 0x80 0x17 followed by "secstore" */
         if (peek[0] == (char)0x80 && peek[1] == (char)0x17 &&
             memcmp(peek + 2, "secstore", 8) == 0) {
-            fprintf(stderr, "Protocol detection: secstore auth (not supported)\n");
-            return PROTOCOL_AUTH;
+            fprintf(stderr, "Protocol detection: secstore auth\n");
+            return PROTOCOL_AUTH_SEC;
         }
+    }
 
-        /* p9 auth negotiation: starts with "p9 " */
-        if (memcmp(peek, "p9 ", 3) == 0) {
-            fprintf(stderr, "Protocol detection: p9 auth (not supported)\n");
-            return PROTOCOL_AUTH;
-        }
+    if (n < 8) {
+        fprintf(stderr, "Protocol detection: too few bytes, assuming 9P\n");
+        return PROTOCOL_9P;
     }
 
     fprintf(stderr, "Protocol detection: 9P\n");
@@ -161,7 +182,7 @@ static void print_usage(const char *progname)
     fprintf(stderr, "Usage: %s [OPTIONS]\n", progname);
     fprintf(stderr, "\n");
     fprintf(stderr, "Options:\n");
-    fprintf(stderr, "  --port PORT    TCP port to listen on (default: 17019)\n");
+    fprintf(stderr, "  --port PORT    TCP port to listen on (default: 17010)\n");
     fprintf(stderr, "  --help         Show this help message\n");
     fprintf(stderr, "\n");
 }
@@ -173,7 +194,7 @@ static int parse_args(int argc, char **argv, int *port)
 {
     int i;
 
-    *port = 17019;  /* Default port */
+    *port = 17010;  /* Default port - standard Plan 9 CPU server port */
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--port") == 0) {
@@ -194,6 +215,30 @@ static int parse_args(int argc, char **argv, int *port)
     }
 
     return 0;
+}
+
+/*
+ * Drain socket before closing to prevent garbage data issues
+ */
+static void drain_socket(int fd)
+{
+    char drain_buf[1024];
+    ssize_t n;
+    int total_drained = 0;
+
+    fprintf(stderr, "drain_socket: draining fd=%d\n", fd);
+
+    do {
+        n = recv(fd, drain_buf, sizeof(drain_buf), MSG_DONTWAIT);
+        if (n > 0) {
+            total_drained += n;
+            fprintf(stderr, "drain_socket: drained %zd bytes (total=%d)\n", n, total_drained);
+        }
+    } while (n > 0);
+
+    if (total_drained > 0) {
+        fprintf(stderr, "drain_socket: total drained: %d bytes\n", total_drained);
+    }
 }
 
 /*
@@ -275,12 +320,51 @@ static int handle_client_request(ClientInfo *client)
         return 0;
     }
 
+    /* Log received message */
+    if (msg_len >= 5) {
+        fprintf(stderr, "Client %u: received message len=%d type=0x%02x ",
+                client->client_id, msg_len, msg_buf[4]);
+        /* Show message type name */
+        switch (msg_buf[4]) {
+            case 0x64: fprintf(stderr, "(Tversion)\n"); break;
+            case 0x65: fprintf(stderr, "(Tauth)\n"); break;
+            case 0x66: fprintf(stderr, "(Tattach)\n"); break;
+            case 0x6A: fprintf(stderr, "(Twalk)\n"); break;
+            case 0x6E: fprintf(stderr, "(Topen)\n"); break;
+            case 0x70: fprintf(stderr, "(Tread)\n"); break;
+            case 0x72: fprintf(stderr, "(Twrite)\n"); break;
+            case 0x73: fprintf(stderr, "(Tclunk)\n"); break;
+            default: fprintf(stderr, "(unknown)\n"); break;
+        }
+    } else {
+        fprintf(stderr, "Client %u: received short message len=%d\n",
+                client->client_id, msg_len);
+    }
+
     /* Dispatch message */
     resp_len = dispatch_9p(msg_buf, (size_t)msg_len, resp_buf);
     if (resp_len == 0) {
         /* Error */
         fprintf(stderr, "handle_client_request: dispatch_9p returned 0 (error)\n");
         return -1;
+    }
+
+    /* Log response message */
+    if (resp_len >= 5) {
+        fprintf(stderr, "Client %u: sending response len=%zu type=0x%02x ",
+                client->client_id, resp_len, resp_buf[4]);
+        /* Show response type name */
+        switch (resp_buf[4]) {
+            case 0x64: fprintf(stderr, "(Rversion)\n"); break;
+            case 0x65: fprintf(stderr, "(Rauth)\n"); break;
+            case 0x66: fprintf(stderr, "(Rattach)\n"); break;
+            case 0x6A: fprintf(stderr, "(Rwalk)\n"); break;
+            case 0x6E: fprintf(stderr, "(Ropen)\n"); break;
+            case 0x70: fprintf(stderr, "(Rread)\n"); break;
+            case 0x72: fprintf(stderr, "(Rwrite)\n"); break;
+            case 0x73: fprintf(stderr, "(Rclunk)\n"); break;
+            default: fprintf(stderr, "(unknown)\n"); break;
+        }
     }
 
     /* Send response */
@@ -333,7 +417,7 @@ int main(int argc, char **argv)
     int listen_fd;
     int client_fd;
     int result;
-    P9Node *root;
+    P9Node *root = NULL;
     P9Node *windows_dir;
     P9Node *dev_dir;
     P9Node *file;
@@ -379,6 +463,26 @@ int main(int argc, char **argv)
     if (event_system_init() < 0) {
         fprintf(stderr, "Error: failed to initialize event system\n");
         return 1;
+    }
+
+    /* Initialize authentication subsystem */
+    if (auth_session_init() < 0) {
+        fprintf(stderr, "Warning: failed to initialize auth sessions\n");
+    }
+
+    if (factotum_init(root) < 0) {
+        fprintf(stderr, "Warning: failed to initialize factotum\n");
+    }
+
+    if (secstore_init(root) < 0) {
+        fprintf(stderr, "Warning: failed to initialize secstore\n");
+    }
+
+    /* Load default keys */
+    if (factotum_load_keys(FACTOTUM_KEY_FILE) < 0) {
+        fprintf(stderr, "No keys loaded, creating default test user\n");
+        /* Create default test user */
+        factotum_add_key("key proto=dp9ik dom=localhost user=glenda !password=glenda");
     }
 
 #ifdef INCLUDE_NAMESPACE
@@ -714,10 +818,29 @@ int main(int argc, char **argv)
 
             /* Check for new connections */
             if (FD_ISSET(listen_fd, &readfds)) {
+                fprintf(stderr, "DEBUG: Connection detected on listen_fd\n");
+                fflush(stderr);
                 client_fd = tcp_accept(listen_fd);
+                fprintf(stderr, "DEBUG: tcp_accept returned fd=%d (errno=%d if error)\n", client_fd, client_fd < 0 ? errno : 0);
+                fflush(stderr);
                 if (client_fd >= 0) {
-                    /* Detect protocol type before adding to client list */
-                    int protocol_type = detect_client_protocol(client_fd);
+                    fprintf(stderr, "Accepted connection from client\n");
+                    fflush(stderr);
+
+                    /* Ensure socket is in blocking mode for authentication */
+                    {
+                        int flags = fcntl(client_fd, F_GETFL, 0);
+                        if (flags >= 0 && (flags & O_NONBLOCK)) {
+                            fprintf(stderr, "Warning: clearing O_NONBLOCK on client socket\n");
+                            fcntl(client_fd, F_SETFL, flags & ~O_NONBLOCK);
+                        }
+                    }
+
+                    /* CORRECT (C89) */
+                    int protocol_type;
+                    fflush(stderr);
+                    protocol_type = detect_client_protocol(client_fd);
+
 
                     if (protocol_type == PROTOCOL_RCPU) {
                         fprintf(stderr, "Detected rcpu protocol, spawning shell handler\n");
@@ -729,12 +852,38 @@ int main(int argc, char **argv)
                             tcp_close(client_fd);
                         }
                         /* Don't add to select() loop - rcpu manages its own fd */
-                    } else if (protocol_type == PROTOCOL_AUTH) {
-                        /* Authentication protocols not yet supported */
-                        fprintf(stderr, "Authentication protocol detected but not supported\n");
-                        fprintf(stderr, "Closing connection - drawterm may retry with different protocol\n");
+                    } else if (protocol_type == PROTOCOL_AUTH_P9) {
+                        fprintf(stderr, "Detected p9 auth, starting authentication\n");
                         fflush(stderr);
-                        tcp_close(client_fd);
+                        /* Handle p9any authentication with localhost domain */
+                        if (p9any_handler(client_fd, "localhost") < 0) {
+                            fprintf(stderr, "p9any authentication failed\n");
+                            fflush(stderr);
+                            drain_socket(client_fd);
+                            tcp_close(client_fd);
+                        } else {
+                            /* Auth succeeded, add to normal client list */
+                            fprintf(stderr, "Authentication successful, adding client\n");
+                            if (add_client(client_fd) < 0) {
+                                fprintf(stderr, "Too many clients, rejecting connection\n");
+                                fflush(stderr);
+                                drain_socket(client_fd);
+                                tcp_close(client_fd);
+                            }
+                        }
+                    } else if (protocol_type == PROTOCOL_AUTH_SEC) {
+                        fprintf(stderr, "Detected secstore auth\n");
+                        fflush(stderr);
+                        /* Handle secstore authentication */
+                        if (secstore_handler(client_fd) < 0) {
+                            fprintf(stderr, "secstore authentication failed\n");
+                            fflush(stderr);
+                            drain_socket(client_fd);
+                            tcp_close(client_fd);
+                        } else {
+                            /* Secstore should handle the connection itself */
+                            fprintf(stderr, "secstore authentication complete\n");
+                        }
                     } else {
                         /* Standard 9P client */
                         if (add_client(client_fd) < 0) {
@@ -782,6 +931,9 @@ int main(int argc, char **argv)
         }
     }
     g_nclients = 0;
+
+    /* Cleanup authentication sessions */
+    auth_session_cleanup();
 
     tcp_close(listen_fd);
     event_system_cleanup();
