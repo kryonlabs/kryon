@@ -193,4 +193,55 @@ int dp9ik_crypto_init(void);
  */
 void dp9ik_crypto_cleanup(void);
 
+/*
+ * Parse ticket from buffer
+ * Ticket format: num(1) + chal(8) + cuid(28) + suid(28) + key(64+) + MAC(32)
+ * Returns 0 on success, -1 on error
+ */
+int dp9ik_parse_ticket(Ticket *t, const unsigned char *buf, int len);
+
+/*
+ * Parse authenticator from buffer
+ * Authenticator format: num(1) + chal(8) + rand(8) + MAC(32)
+ * Returns 0 on success, -1 on error
+ */
+int dp9ik_parse_authenticator(Authenticator *a, const unsigned char *buf, int len);
+
+/*
+ * Validate ticket (MVP: format check, production: MAC verification)
+ * Returns 0 on success, -1 on error
+ */
+int dp9ik_validate_ticket_mvp(const Ticket *t, const char *expected_user, const char *domain);
+
+/*
+ * Verify authenticator (MVP: format check, production: MAC verification)
+ * Returns 0 on success, -1 on error
+ */
+int dp9ik_verify_authenticator_mvp(const Authenticator *a, const Ticket *t);
+
+/*
+ * Create server authenticator response
+ * Returns 0 on success, -1 on error
+ */
+int dp9ik_create_server_authenticator(Authenticator *a,
+                                     const unsigned char *client_chal,
+                                     const unsigned char *server_rand);
+
+/*
+ * Decrypt ticket using password-derived key (MVP version)
+ * For MVP: Skip decryption, just parse the ticket structure
+ * Returns 0 on success, -1 on error
+ */
+int dp9ik_decrypt_ticket_mvp(const unsigned char *encrypted, int enc_len,
+                              const char *password, const char *user,
+                              Ticket *t);
+
+/*
+ * Parse form1-encrypted authenticator (MVP version)
+ * For MVP: Just extract fields without decryption
+ * Returns 0 on success, -1 on error
+ */
+int dp9ik_parse_authenticator_mvp(const unsigned char *buf, int len,
+                                   Authenticator *a);
+
 #endif /* AUTH_DPIK_H */

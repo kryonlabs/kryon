@@ -73,10 +73,15 @@ GRAPHICS_SRCS = $(SRC_DIR)/core/memimage.c $(SRC_DIR)/core/memdraw.c \
 CPU_SRCS = $(SRC_DIR)/core/cpu_server.c $(SRC_DIR)/core/namespace.c \
             $(SRC_DIR)/core/rcpu.c \
             $(SRC_DIR)/shell/rc_wrapper.c
+# Authentication support
+AUTH_SRCS = $(SRC_DIR)/core/auth_session.c $(SRC_DIR)/core/factotum_keys.c \
+            $(SRC_DIR)/core/devfactotum.c $(SRC_DIR)/core/auth_p9any.c \
+            $(SRC_DIR)/core/auth_dp9ik.c $(SRC_DIR)/core/secstore.c
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 CLIENT_SRCS = $(SRC_DIR)/client/9pclient.c $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c
 SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(TRANSPORT_SRCS) $(CPU_SRCS) \
+       $(AUTH_SRCS) \
        $(SRC_DIR)/client/9pclient.c
 
 # Additional object files for linking

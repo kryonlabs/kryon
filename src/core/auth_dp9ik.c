@@ -839,3 +839,307 @@ int dp9ik_build_authenticator_real(const Ticket *t,
 
     return (int)needed;
 }
+
+/*
+ * Parse ticket from buffer
+ * Ticket format: num(1) + chal(8) + cuid(28) + suid(28) + key(8+) + MAC(32)
+ * For dp9ik, the key is larger (56 bytes for Ed448)
+ */
+int dp9ik_parse_ticket(Ticket *t, const unsigned char *buf, int len)
+{
+    int ticket_min_len;
+    int key_len;
+
+    if (t == NULL || buf == NULL) {
+        return -1;
+    }
+
+    /* Minimum ticket size without MAC:
+     * num(1) + chal(8) + cuid(28) + suid(28) + key(8) = 73 bytes
+     * With MAC(32): 105 bytes minimum
+     * For dp9ik with larger key: 1 + 8 + 28 + 28 + 56 + 32 = 153 bytes
+     */
+    ticket_min_len = 1 + AUTH_CHALLEN + 2 * AUTH_ANAMELEN + AUTH_NONCELEN + 32;
+
+    if (len < ticket_min_len) {
+        fprintf(stderr, "dp9ik_parse_ticket: buffer too short (%d < %d)\n",
+                len, ticket_min_len);
+        return -1;
+    }
+
+    /* Clear ticket structure */
+    memset(t, 0, sizeof(Ticket));
+
+    /* Parse ticket fields (excluding MAC for now) */
+    key_len = len - 32;  /* Exclude MAC from ticket data */
+
+    t->num = buf[0];
+    memcpy(t->chal, buf + 1, AUTH_CHALLEN);
+    memcpy(t->cuid, buf + 1 + AUTH_CHALLEN, AUTH_ANAMELEN);
+    memcpy(t->suid, buf + 1 + AUTH_CHALLEN + AUTH_ANAMELEN, AUTH_ANAMELEN);
+
+    /* Copy key (variable length, store as much as fits in Ticket.key) */
+    key_len = key_len - (1 + AUTH_CHALLEN + 2 * AUTH_ANAMELEN);
+    if (key_len > (int)sizeof(t->key)) {
+        key_len = sizeof(t->key);
+    }
+    memcpy(t->key, buf + 1 + AUTH_CHALLEN + 2 * AUTH_ANAMELEN, key_len);
+
+    fprintf(stderr, "dp9ik_parse_ticket: parsed ticket for user=%s, server=%s\n",
+            t->cuid, t->suid);
+
+    return 0;
+}
+
+/*
+ * Parse authenticator from buffer
+ * Authenticator format: num(1) + chal(8) + rand(8) + MAC(32)
+ * Total: 49 bytes
+ */
+int dp9ik_parse_authenticator(Authenticator *a, const unsigned char *buf, int len)
+{
+    int auth_min_len;
+
+    if (a == NULL || buf == NULL) {
+        return -1;
+    }
+
+    /* Minimum authenticator size: num(1) + chal(8) + rand(8) = 17 bytes
+     * With MAC(32): 49 bytes
+     */
+    auth_min_len = 1 + AUTH_CHALLEN + AUTH_NONCELEN + 32;
+
+    if (len < auth_min_len) {
+        fprintf(stderr, "dp9ik_parse_authenticator: buffer too short (%d < %d)\n",
+                len, auth_min_len);
+        return -1;
+    }
+
+    /* Clear authenticator structure */
+    memset(a, 0, sizeof(Authenticator));
+
+    /* Parse authenticator fields */
+    a->num = buf[0];
+    memcpy(a->chal, buf + 1, AUTH_CHALLEN);
+    memcpy(a->rand, buf + 1 + AUTH_CHALLEN, AUTH_NONCELEN);
+
+    /* MAC is at the end but not stored in Authenticator struct */
+    /* TODO: Verify MAC if needed */
+
+    fprintf(stderr, "dp9ik_parse_authenticator: parsed authenticator\n");
+
+    return 0;
+}
+
+/*
+ * Validate ticket (MVP version: format check only)
+ * Production version should verify MAC using password-derived key
+ */
+int dp9ik_validate_ticket_mvp(const Ticket *t, const char *expected_user, const char *domain)
+{
+    int i;
+
+    if (t == NULL) {
+        fprintf(stderr, "dp9ik_validate_ticket_mvp: NULL ticket\n");
+        return -1;
+    }
+
+    /* Check that cuid is not all zeros */
+    for (i = 0; i < AUTH_ANAMELEN && t->cuid[i] == '\0'; i++) {
+        /* Continue checking */
+    }
+    if (i == AUTH_ANAMELEN) {
+        fprintf(stderr, "dp9ik_validate_ticket_mvp: empty cuid\n");
+        return -1;
+    }
+
+    /* Check that suid is not all zeros */
+    for (i = 0; i < AUTH_ANAMELEN && t->suid[i] == '\0'; i++) {
+        /* Continue checking */
+    }
+    if (i == AUTH_ANAMELEN) {
+        fprintf(stderr, "dp9ik_validate_ticket_mvp: empty suid\n");
+        return -1;
+    }
+
+    /* Verify cuid matches expected user */
+    if (expected_user != NULL) {
+        if (strncmp(t->cuid, expected_user, AUTH_ANAMELEN) != 0) {
+            fprintf(stderr, "dp9ik_validate_ticket_mvp: cuid mismatch (got %s, expected %s)\n",
+                    t->cuid, expected_user);
+            return -1;
+        }
+    }
+
+    /* Verify suid matches domain (for MVP, domain is often the server ID) */
+    if (domain != NULL && t->suid[0] != '\0') {
+        /* For MVP, just check that suid starts with domain or is reasonable */
+        if (strncmp(t->suid, domain, strlen(domain)) != 0) {
+            /* Not fatal - suid might be a specific server ID */
+            fprintf(stderr, "dp9ik_validate_ticket_mvp: suid=%s (domain=%s)\n",
+                    t->suid, domain);
+        }
+    }
+
+    /* Check that challenge is not all zeros */
+    for (i = 0; i < AUTH_CHALLEN && t->chal[i] == '\0'; i++) {
+        /* Continue checking */
+    }
+    if (i == AUTH_CHALLEN) {
+        fprintf(stderr, "dp9ik_validate_ticket_mvp: empty challenge\n");
+        return -1;
+    }
+
+    /* TODO: Verify MAC using password-derived key (production) */
+    fprintf(stderr, "dp9ik_validate_ticket_mvp: ticket format validated for user=%s\n",
+            t->cuid);
+
+    return 0;
+}
+
+/*
+ * Verify authenticator (MVP version: format check only)
+ * Production version should verify MAC using ticket-derived session key
+ */
+int dp9ik_verify_authenticator_mvp(const Authenticator *a, const Ticket *t)
+{
+    int i;
+
+    if (a == NULL || t == NULL) {
+        fprintf(stderr, "dp9ik_verify_authenticator_mvp: NULL parameter\n");
+        return -1;
+    }
+
+    /* Check that challenge matches ticket's challenge */
+    if (memcmp(a->chal, t->chal, AUTH_CHALLEN) != 0) {
+        fprintf(stderr, "dp9ik_verify_authenticator_mvp: challenge mismatch\n");
+        return -1;
+    }
+
+    /* Check that rand is not all zeros */
+    for (i = 0; i < AUTH_NONCELEN && a->rand[i] == '\0'; i++) {
+        /* Continue checking */
+    }
+    if (i == AUTH_NONCELEN) {
+        fprintf(stderr, "dp9ik_verify_authenticator_mvp: empty random nonce\n");
+        return -1;
+    }
+
+    /* TODO: Verify MAC using ticket-derived session key (production) */
+    fprintf(stderr, "dp9ik_verify_authenticator_mvp: authenticator format validated\n");
+
+    return 0;
+}
+
+/*
+ * Create server authenticator response
+ * This is what the server sends back after verifying the client's authenticator
+ */
+int dp9ik_create_server_authenticator(Authenticator *a,
+                                     const unsigned char *client_chal,
+                                     const unsigned char *server_rand)
+{
+    if (a == NULL || client_chal == NULL || server_rand == NULL) {
+        return -1;
+    }
+
+    /* Clear authenticator */
+    memset(a, 0, sizeof(Authenticator));
+
+    /* Set fields */
+    a->num = 0;  /* TODO: proper counter/replay protection */
+    memcpy(a->chal, client_chal, AUTH_CHALLEN);  /* Echo client's challenge */
+    memcpy(a->rand, server_rand, AUTH_NONCELEN); /* Our random nonce */
+
+    fprintf(stderr, "dp9ik_create_server_authenticator: created server authenticator\n");
+
+    /* Note: MAC computation happens during serialization in p9any_send_authenticator */
+
+    return 0;
+}
+
+/*
+ * Decrypt ticket using password-derived key (MVP version)
+ * For MVP: Skip decryption, just parse the ticket structure
+ * Production: Implement proper decryption with Ks
+ */
+int dp9ik_decrypt_ticket_mvp(const unsigned char *encrypted, int enc_len,
+                              const char *password, const char *user,
+                              Ticket *t)
+{
+    int base_ticket_len;
+
+    if (encrypted == NULL || t == NULL) {
+        fprintf(stderr, "dp9ik_decrypt_ticket_mvp: NULL parameter\n");
+        return -1;
+    }
+
+    /* Base ticket size: num(1) + chal(8) + cuid(28) + suid(28) + key(32) = 73 bytes */
+    base_ticket_len = 1 + AUTH_CHALLEN + 2 * AUTH_ANAMELEN + AUTH_PAKKEYLEN;
+
+    if (enc_len < base_ticket_len) {
+        fprintf(stderr, "dp9ik_decrypt_ticket_mvp: buffer too short (%d < %d)\n",
+                enc_len, base_ticket_len);
+        return -1;
+    }
+
+    /* For MVP: Just parse the unencrypted ticket structure */
+    memset(t, 0, sizeof(Ticket));
+
+    t->num = encrypted[0];
+    memcpy(t->chal, encrypted + 1, AUTH_CHALLEN);
+    memcpy(t->cuid, encrypted + 1 + AUTH_CHALLEN, AUTH_ANAMELEN);
+    memcpy(t->suid, encrypted + 1 + AUTH_CHALLEN + AUTH_ANAMELEN, AUTH_ANAMELEN);
+    memcpy(t->key, encrypted + 1 + AUTH_CHALLEN + 2 * AUTH_ANAMELEN, AUTH_PAKKEYLEN);
+
+    fprintf(stderr, "dp9ik_decrypt_ticket_mvp: parsed ticket for cuid=%s suid=%s\n",
+            t->cuid, t->suid);
+
+    /* TODO: Implement proper decryption with Ks (password-derived key) */
+    (void)password;
+    (void)user;
+
+    return 0;
+}
+
+/*
+ * Parse form1-encrypted authenticator (MVP: just extract fields)
+ * form1 format: num(1) + sig(8) + encrypted_data + nonce(12) + mac(16)
+ * For MVP: Assume simple format without encryption
+ */
+int dp9ik_parse_authenticator_mvp(const unsigned char *buf, int len,
+                                   Authenticator *a)
+{
+    /* form1 format: num(1) + sig(8) + encrypted_data + nonce(12) + mac(16) */
+    /* For MVP: assume simple format without encryption */
+
+    if (buf == NULL || a == NULL) {
+        fprintf(stderr, "dp9ik_parse_authenticator_mvp: NULL parameter\n");
+        return -1;
+    }
+
+    /* Minimum size: num(1) + chal(8) + rand(8) = 17 bytes */
+    if (len < 17) {
+        fprintf(stderr, "dp9ik_parse_authenticator_mvp: buffer too short (%d < 17)\n", len);
+        return -1;
+    }
+
+    memset(a, 0, sizeof(Authenticator));
+
+    /* For MVP: Assume simple format - num + chal + rand */
+    a->num = buf[0];
+    memcpy(a->chal, buf + 1, AUTH_CHALLEN);
+    if (len > 1 + AUTH_CHALLEN) {
+        int rand_len = len - 1 - AUTH_CHALLEN;
+        if (rand_len > (int)AUTH_NONCELEN) {
+            rand_len = AUTH_NONCELEN;
+        }
+        memcpy(a->rand, buf + 1 + AUTH_CHALLEN, rand_len);
+    }
+
+    /* TODO: Implement proper form1 decryption with ChaCha20-Poly1305 */
+
+    fprintf(stderr, "dp9ik_parse_authenticator_mvp: parsed authenticator (MVP mode)\n");
+
+    return 0;
+}

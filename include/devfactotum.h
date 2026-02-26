@@ -30,7 +30,11 @@ typedef long ssize_t;
 #define AUTH_DOMLEN      48      /* Domain name length */
 #define AUTH_CHALLEN     8       /* Challenge length */
 #define AUTH_NONCELEN    8       /* Nonce length for p9sk1 */
-#define AUTH_PAKYLEN     56      /* dp9ik Ed448 key length (448 bits) */
+#define AUTH_PAKYLEN     57      /* dp9ik Ed448 key length (decaf encoded) */
+#define AUTH_PAKKEYLEN   32      /* PAK shared secret length (Kn) */
+#define AUTH_TICKETLEN   73      /* Base ticket size (num + chal + cuid + suid + key) */
+#define AUTH_FORM1HDRLEN 12      /* form1 header length */
+#define AUTH_FORM1MACLEN 16      /* ChaCha20-Poly1305 MAC length */
 #define AUTH_MAXKEYLEN   256     /* Maximum key password length */
 
 /*
@@ -128,13 +132,14 @@ typedef struct Ticketreq {
 
 /*
  * Ticket structure (from 9front authsrv.h)
+ * For dp9ik: key stores PAK shared secret Kn (32 bytes)
  */
 typedef struct Ticket {
     char num;                   /* Replay protection */
     char chal[AUTH_CHALLEN];    /* Server challenge */
     char cuid[AUTH_ANAMELEN];   /* Client uid */
     char suid[AUTH_ANAMELEN];   /* Server uid */
-    unsigned char key[AUTH_NONCELEN]; /* Nonce key (or larger for dp9ik) */
+    unsigned char key[AUTH_PAKKEYLEN]; /* PAK shared secret Kn (32 bytes for dp9ik) */
 } Ticket;
 
 /*
@@ -145,6 +150,17 @@ typedef struct Authenticator {
     char chal[AUTH_CHALLEN];        /* Server/client challenge */
     unsigned char rand[AUTH_NONCELEN]; /* Server/client nonce */
 } Authenticator;
+
+/*
+ * Form1 encrypted message format (for dp9ik)
+ * Used for encrypted authenticators with ChaCha20-Poly1305
+ */
+typedef struct Form1Msg {
+    char num;                       /* Message type (AuthAc, AuthAs, etc.) */
+    char sig[8];                    /* Signature "form1 xxx" */
+    unsigned char nonce[12];        /* ChaCha20 nonce */
+    unsigned char mac[16];          /* Poly1305 MAC */
+} Form1Msg;
 
 /*
  * Maximum number of keys
