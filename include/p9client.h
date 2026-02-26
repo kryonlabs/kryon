@@ -1,18 +1,19 @@
 /*
- * Kryon 9P Client Library
+ * 9P Client Library
  * C89/C90 compliant
  *
- * Enables client programs to connect to Kryon server and perform 9P operations
+ * Generic 9P client for connecting to any 9P server
+ * (Marrow, Plan 9, drawterm, etc.)
  */
 
-#ifndef P9CLIENT_H
-#define P9CLIENT_H
+#ifndef KRYON_P9CLIENT_H
+#define KRYON_P9CLIENT_H
 
 #include <stddef.h>
 #include <stdint.h>
 
 /*
- * C89 compatibility
+ * C89 compatibility: ssize_t is not defined in C89
  */
 #ifdef _WIN32
 typedef long ssize_t;
@@ -21,112 +22,88 @@ typedef long ssize_t;
 #endif
 
 /*
- * Forward declarations
+ * 9P client connection handle
  */
 typedef struct P9Client P9Client;
 
 /*
- * 9P Open modes (matching server)
+ * Authentication methods (Plan 9 compatible)
  */
-#define P9_OREAD    0
-#define P9_OWRITE   1
-#define P9_ORDWR    2
-#define P9_OEXEC    3
+#define P9_AUTH_NONE    0
+#define P9_AUTH_P9ANY   1
 
 /*
- * Client state
+ * Open flags (Plan 9 compatible)
  */
-struct P9Client {
-    int fd;                     /* TCP socket fd */
-    uint16_t next_tag;          /* Next tag to use */
-    uint32_t next_fid;          /* Next FID to use */
-    uint32_t root_fid;          /* Root FID after attach */
-    char *aname;                /* Attach name */
-    int connected;              /* Connection state */
-    int error;                  /* Last error code */
-    char error_msg[256];        /* Last error message */
-};
+#define P9_OREAD   0   /* Open for reading */
+#define P9_OWRITE  1   /* Open for writing */
+#define P9_ORDWR   2   /* Open for reading and writing */
+#define P9_OEXEC   3   /* Open for execution */
 
 /*
- * Connect to Kryon server
- * Returns NULL on failure
+ * Connect to 9P server
+ * Supports: tcp!host!port, tcp!host, /path/to/socket
+ * Returns client handle on success, NULL on failure
  */
-P9Client *p9_client_connect(const char *host, int port);
+P9Client *p9_connect(const char *address);
 
 /*
- * Disconnect and cleanup
+ * Disconnect from 9P server
  */
-void p9_client_disconnect(P9Client *client);
+void p9_disconnect(P9Client *client);
 
 /*
- * 9P operations
- */
-
-/*
- * Attach to server root
- * path: attach path (usually "" or "/tmp/kryon")
- */
-int p9_client_attach(P9Client *client, const char *path);
-
-/*
- * Walk to a path
- * Returns new fid on success, -1 on failure
- */
-int p9_client_walk(P9Client *client, const char *path);
-
-/*
- * Open a file
- * fid: FID from walk
- * mode: P9_OREAD, P9_OWRITE, P9_ORDWR
+ * Authenticate with 9P server
  * Returns 0 on success, -1 on failure
  */
-int p9_client_open(P9Client *client, int fid, int mode);
+int p9_authenticate(P9Client *client, int auth_method,
+                    const char *user, const char *password);
 
 /*
- * Read from an open file
- * fid: FID from open
- * buf: buffer to read into
- * count: maximum bytes to read
- * Returns bytes read on success, -1 on failure
+ * Open a file on 9P server
+ * Returns file descriptor (fid) on success, -1 on failure
  */
-ssize_t p9_client_read(P9Client *client, int fid, char *buf, size_t count);
+int p9_open(P9Client *client, const char *path, int mode);
 
 /*
- * Write to an open file
- * fid: FID from open
- * buf: data to write
- * count: bytes to write
- * Returns bytes written on success, -1 on failure
+ * Close a file on 9P server
+ * Returns 0 on success, -1 on failure
  */
-ssize_t p9_client_write(P9Client *client, int fid, const char *buf, size_t count);
+int p9_close(P9Client *client, int fd);
 
 /*
- * Close/clunk a FID
+ * Read from a file on 9P server
+ * Returns number of bytes read on success, -1 on failure
  */
-int p9_client_clunk(P9Client *client, int fid);
+ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count);
 
 /*
- * Reset FID offset to 0 (for re-reading files)
+ * Write to a file on 9P server
+ * Returns number of bytes written on success, -1 on failure
  */
-void p9_client_reset_fid(P9Client *client, int fid);
+ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count);
 
 /*
- * Utility: walk and open combined
- * path: full path to open
- * mode: P9_OREAD, P9_OWRITE, P9_ORDWR
- * Returns FID on success, -1 on failure
+ * Create a directory on 9P server
+ * Returns 0 on success, -1 on failure
  */
-int p9_client_open_path(P9Client *client, const char *path, int mode);
+int p9_mkdir(P9Client *client, const char *path);
 
 /*
  * Get last error message
  */
-const char *p9_client_error(P9Client *client);
+const char *p9_error(P9Client *client);
 
 /*
- * Utility: read entire file
- * Returns allocated buffer (caller frees), or NULL on failure
+ * Clunk (close) a file descriptor
+ * Returns 0 on success, -1 on failure
  */
-char *p9_client_read_file(P9Client *client, const char *path, size_t *size);
+int p9_clunk(P9Client *client, int fd);
 
-#endif /* P9CLIENT_H */
+/*
+ * Reset file offset to beginning
+ * Returns 0 on success, -1 on failure
+ */
+int p9_reset_fid(P9Client *client, int fd);
+
+#endif /* KRYON_P9CLIENT_H */

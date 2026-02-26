@@ -360,41 +360,6 @@ void devdraw_cleanup(void);
 size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 
 /*
- * CPU Server Functions
- */
-#ifdef INCLUDE_CPU_SERVER
-/*
- * Initialize CPU server subsystem
- * Returns 0 on success, -1 on error
- */
-int cpu_server_init(struct P9Node *root);
-
-/*
- * Handle new CPU client connection
- * Called from Tattach handler when aname="cpu"
- * Returns session ID on success, -1 on error
- */
-int cpu_handle_new_client(int client_fd, const char *user, const char *aname);
-
-/*
- * Get CPU session by client ID
- * Returns pointer to session, or NULL if not found
- */
-void *cpu_get_session(int client_id);
-
-/*
- * Close and cleanup a CPU session
- */
-void cpu_close_session(int client_id);
-
-/*
- * Find plan9port installation path
- * Returns path string, or NULL if not found
- */
-const char *cpu_find_plan9_path(void);
-#endif
-
-/*
  * Namespace Manager Functions
  */
 #ifdef INCLUDE_NAMESPACE

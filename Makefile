@@ -62,13 +62,11 @@ BIN_DIR = bin
 
 # Source files
 CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c)
-GRAPHICS_SRCS = $(SRC_DIR)/core/memimage.c $(SRC_DIR)/core/memdraw.c \
-                $(SRC_DIR)/core/pixconv.c \
-                $(SRC_DIR)/core/devscreen.c $(SRC_DIR)/core/devmouse.c \
-                $(SRC_DIR)/core/devdraw.c $(SRC_DIR)/core/devcons.c \
-                $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c \
-                $(SRC_DIR)/core/devkbd.c $(SRC_DIR)/core/devfd.c \
-                $(SRC_DIR)/core/devproc.c $(SRC_DIR)/core/devenv.c
+# Graphics moved to Marrow - Kryon now uses Marrow client
+GRAPHICS_SRCS =
+# UI files (window manager, widgets)
+UI_SRCS = $(SRC_DIR)/core/window.c $(SRC_DIR)/core/widget.c \
+           $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c
 # CPU server and namespace support
 CPU_SRCS = $(SRC_DIR)/core/cpu_server.c $(SRC_DIR)/core/namespace.c \
             $(SRC_DIR)/core/rcpu.c \
@@ -78,11 +76,12 @@ AUTH_SRCS = $(SRC_DIR)/core/auth_session.c $(SRC_DIR)/core/factotum_keys.c \
             $(SRC_DIR)/core/devfactotum.c $(SRC_DIR)/core/auth_p9any.c \
             $(SRC_DIR)/core/auth_dp9ik.c $(SRC_DIR)/core/secstore.c
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
-CLIENT_SRCS = $(SRC_DIR)/client/9pclient.c $(SRC_DIR)/client/sdl_display.c \
+# 9P client (for connecting to 9P servers)
+P9CLIENT_SRCS = $(SRC_DIR)/lib/client/p9client.c
+CLIENT_SRCS = $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c
-SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(TRANSPORT_SRCS) $(CPU_SRCS) \
-       $(AUTH_SRCS) \
-       $(SRC_DIR)/client/9pclient.c
+SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(TRANSPORT_SRCS) $(CPU_SRCS) \
+       $(AUTH_SRCS) $(P9CLIENT_SRCS)
 
 # Additional object files for linking
 WINDOW_OBJS = $(BUILD_DIR)/core/window.o
@@ -96,12 +95,11 @@ CLIENT_OBJS = $(CLIENT_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Targets
 LIB_TARGET = $(BUILD_DIR)/libkryon.a
-SERVER_TARGET = $(BIN_DIR)/kryon-server
 DISPLAY_TARGET = $(BIN_DIR)/kryon-display
 
 # Default target
 .PHONY: all
-all: $(LIB_TARGET) $(SERVER_TARGET)
+all: $(LIB_TARGET)
 ifneq ($(HAVE_SDL2),0)
 all: $(DISPLAY_TARGET)
 endif
@@ -112,6 +110,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/shell
 	mkdir -p $(BUILD_DIR)/transport
 	mkdir -p $(BUILD_DIR)/client
+	mkdir -p $(BUILD_DIR)/lib/client
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
@@ -119,11 +118,6 @@ $(BIN_DIR):
 # Library
 $(LIB_TARGET): $(OBJS) | $(BUILD_DIR)
 	ar rcs $@ $^
-
-# Server binary
-# Use GCC for binaries to get proper RPATH support in Nix
-$(SERVER_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) | $(BIN_DIR)
-	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -DINCLUDE_CPU_SERVER -DINCLUDE_NAMESPACE -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport -I$(SRC_DIR) $< -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS)
 
 # Display client binary
 $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN_DIR)
@@ -133,7 +127,7 @@ $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN
 # Note: Must use GCC for SDL2 because TCC doesn't support immintrin.h
 # We need a separate GCC-compiled library to avoid mixing TCC and GCC object files
 SDL_LIB_TARGET = $(BUILD_DIR)/libkryon_gcc.a
-SDL_SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS)
+SDL_SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS)
 SDL_OBJS = $(SDL_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%_gcc.o)
 
 $(BUILD_DIR)/%_gcc.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
@@ -155,20 +149,24 @@ run-sdl: $(SDL_VIEWER)
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
+# Compile object files in lib/ subdirectory
+$(BUILD_DIR)/lib/%.o: $(SRC_DIR)/lib/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+
+# Compile object files in lib/client/ subdirectory (nested)
+$(BUILD_DIR)/lib/client/p9client.o: $(SRC_DIR)/lib/client/p9client.c
+	@mkdir -p $(BUILD_DIR)/lib/client
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+
 # Clean
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
-# Run server
-.PHONY: run
-run: $(SERVER_TARGET)
-	./$(SERVER_TARGET) --port 17019
-
 # Run display client
 .PHONY: run-display
 run-display: $(DISPLAY_TARGET)
-	./$(DISPLAY_TARGET) --host 127.0.0.1 --port 17019
+	./$(DISPLAY_TARGET) --host 127.0.0.1 --port 17010
 
 # Test 9P server
 .PHONY: test
@@ -206,40 +204,6 @@ test-sdl: $(SDL_TEST)
 	@echo "Starting SDL2 visualization test..."
 	@$(SDL_TEST)
 
-# Run drawing tests
-.PHONY: test-draw
-test-draw: $(SERVER_TARGET) tests
-	@echo "Starting server on port 17019..."
-	@./$(SERVER_TARGET) --port 17019 & \
-	SERVER_PID=$$!; \
-	sleep 1; \
-	echo "Running drawing tests..."; \
-	echo "Test 1: Image allocation"; \
-	$(BIN_DIR)/test_draw_alloc || echo "Test 1 failed"; \
-	echo "Test 2: Line drawing"; \
-	$(BIN_DIR)/test_draw_line || echo "Test 2 failed"; \
-	echo "Test 3: Polygon drawing"; \
-	$(BIN_DIR)/test_draw_poly || echo "Test 3 failed"; \
-	echo "Test 4: Text rendering"; \
-	$(BIN_DIR)/test_draw_text || echo "Test 4 failed"; \
-	echo "Test 5: Bit blit"; \
-	$(BIN_DIR)/test_draw_blt || echo "Test 5 failed"; \
-	sleep 1; \
-	kill $$SERVER_PID 2>/dev/null || true; \
-	echo "Drawing tests complete"
-
-# Integration test
-.PHONY: test-integration
-test-integration: $(SERVER_TARGET) $(DISPLAY_TARGET)
-	@echo "Starting server on port 17019..."
-	@./$(SERVER_TARGET) --port 17019 &
-	@SERVER_PID=$$!; \
-	sleep 1; \
-	echo "Starting display client..."; \
-	timeout 5 ./$(DISPLAY_TARGET) --host 127.0.0.1 --port 17019 || true; \
-	kill $$SERVER_PID 2>/dev/null || true; \
-	echo "Integration test complete"
-
 # Dependencies
 .PHONY: deps
 deps:
@@ -250,14 +214,11 @@ help:
 	@echo "Kryon Core Build System"
 	@echo ""
 	@echo "Targets:"
-	@echo "  all            - Build library, server, and display client (default)"
+	@echo "  all            - Build library and display client (default)"
 	@echo "  clean          - Remove build artifacts"
-	@echo "  run            - Build and run the server"
 	@echo "  run-display    - Build and run the display client"
 	@echo "  tests          - Build test programs"
-	@echo "  test-draw      - Run drawing tests (requires server)"
 	@echo "  test           - Run basic 9P mount test"
-	@echo "  test-integration - Run full integration test"
 	@echo "  deps           - Show Nix shell command"
 	@echo ""
 	@echo "Compiler: tcc (C89/C90)"

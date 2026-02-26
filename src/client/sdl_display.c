@@ -54,6 +54,7 @@ DisplayClient *display_client_create(const DisplayConfig *config)
     int port;
     int width;
     int height;
+    char addr_str[256];
 
     if (config != NULL) {
         host = config->host;
@@ -67,13 +68,16 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         height = DEFAULT_HEIGHT;
     }
 
+    /* Format address as tcp!host!port */
+    sprintf(addr_str, "tcp!%s!%d", host, port);
+
     dc = (DisplayClient *)calloc(1, sizeof(DisplayClient));
     if (dc == NULL) {
         return NULL;
     }
 
     /* Connect to Kryon server */
-    dc->p9 = p9_client_connect(host, port);
+    dc->p9 = p9_connect(addr_str);
     if (dc->p9 == NULL) {
         fprintf(stderr, "Failed to connect to %s:%d\n", host, port);
         free(dc);
@@ -81,24 +85,24 @@ DisplayClient *display_client_create(const DisplayConfig *config)
     }
 
     /* Attach to server */
-    if (p9_client_attach(dc->p9, "") < 0) {
-        fprintf(stderr, "Failed to attach: %s\n", p9_client_error(dc->p9));
-        p9_client_disconnect(dc->p9);
+    if (p9_authenticate(dc->p9, P9_AUTH_NONE, "none", "") < 0) {
+        fprintf(stderr, "Failed to attach: %s\n", p9_error(dc->p9));
+        p9_disconnect(dc->p9);
         free(dc);
         return NULL;
     }
 
     /* Open screen device */
-    dc->screen_fd = p9_client_open_path(dc->p9, "/dev/screen", P9_OREAD);
+    dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
     if (dc->screen_fd < 0) {
-        fprintf(stderr, "Failed to open /dev/screen: %s\n", p9_client_error(dc->p9));
-        p9_client_disconnect(dc->p9);
+        fprintf(stderr, "Failed to open /dev/screen: %s\n", p9_error(dc->p9));
+        p9_disconnect(dc->p9);
         free(dc);
         return NULL;
     }
 
     /* Open mouse device */
-    dc->mouse_fd = p9_client_open_path(dc->p9, "/dev/mouse", P9_OWRITE);
+    dc->mouse_fd = p9_open(dc->p9, "/dev/mouse", P9_OWRITE);
     if (dc->mouse_fd < 0) {
         fprintf(stderr, "Warning: Failed to open /dev/mouse\n");
     }
@@ -112,8 +116,8 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         fprintf(stderr, "Failed to allocate screen buffer\n");
         free(dc->screen_buf);
         free(dc->temp_buf);
-        p9_client_clunk(dc->p9, dc->screen_fd);
-        p9_client_disconnect(dc->p9);
+        p9_close(dc->p9, dc->screen_fd);
+        p9_disconnect(dc->p9);
         free(dc);
         return NULL;
     }
@@ -123,8 +127,8 @@ DisplayClient *display_client_create(const DisplayConfig *config)
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         fprintf(stderr, "Failed to initialize SDL2: %s\n", SDL_GetError());
         free(dc->screen_buf);
-        p9_client_clunk(dc->p9, dc->screen_fd);
-        p9_client_disconnect(dc->p9);
+        p9_close(dc->p9, dc->screen_fd);
+        p9_disconnect(dc->p9);
         free(dc);
         return NULL;
     }
@@ -147,8 +151,8 @@ DisplayClient *display_client_create(const DisplayConfig *config)
             fprintf(stderr, "Failed to create SDL2 window: %s\n", SDL_GetError());
             SDL_Quit();
             free(dc->screen_buf);
-            p9_client_clunk(dc->p9, dc->screen_fd);
-            p9_client_disconnect(dc->p9);
+            p9_close(dc->p9, dc->screen_fd);
+            p9_disconnect(dc->p9);
             free(dc);
             return NULL;
         }
@@ -162,8 +166,8 @@ DisplayClient *display_client_create(const DisplayConfig *config)
             SDL_DestroyWindow(window);
             SDL_Quit();
             free(dc->screen_buf);
-            p9_client_clunk(dc->p9, dc->screen_fd);
-            p9_client_disconnect(dc->p9);
+            p9_close(dc->p9, dc->screen_fd);
+            p9_disconnect(dc->p9);
             free(dc);
             return NULL;
         }
@@ -184,8 +188,8 @@ DisplayClient *display_client_create(const DisplayConfig *config)
             SDL_DestroyWindow(window);
             SDL_Quit();
             free(dc->screen_buf);
-            p9_client_clunk(dc->p9, dc->screen_fd);
-            p9_client_disconnect(dc->p9);
+            p9_close(dc->p9, dc->screen_fd);
+            p9_disconnect(dc->p9);
             free(dc);
             return NULL;
         }
@@ -234,14 +238,14 @@ void display_client_destroy(DisplayClient *dc)
     }
 
     if (dc->screen_fd >= 0) {
-        p9_client_clunk(dc->p9, dc->screen_fd);
+        p9_close(dc->p9, dc->screen_fd);
     }
     if (dc->mouse_fd >= 0) {
-        p9_client_clunk(dc->p9, dc->mouse_fd);
+        p9_close(dc->p9, dc->mouse_fd);
     }
 
     if (dc->p9 != NULL) {
-        p9_client_disconnect(dc->p9);
+        p9_disconnect(dc->p9);
     }
 
     free(dc);
@@ -261,11 +265,11 @@ static int read_screen(DisplayClient *dc)
     to_read = dc->screen_width * dc->screen_height * 4;
 
     /* Reset FID offset to 0 before reading full frame */
-    p9_client_reset_fid(dc->p9, dc->screen_fd);
+    p9_reset_fid(dc->p9, dc->screen_fd);
 
     /* Read raw data into temporary buffer */
     while (total < to_read) {
-        nread = p9_client_read(dc->p9, dc->screen_fd,
+        nread = p9_read(dc->p9, dc->screen_fd,
                                (char *)(dc->temp_buf + total),
                                to_read - total);
         if (nread < 0) {
@@ -398,7 +402,7 @@ int display_client_send_mouse(DisplayClient *dc, int x, int y, int buttons)
         return -1;
     }
 
-    return p9_client_write(dc->p9, dc->mouse_fd, msg, len);
+    return p9_write(dc->p9, dc->mouse_fd, msg, len);
 }
 
 /*

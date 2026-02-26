@@ -1,121 +1,125 @@
 CONTROLLER API
 
-Lua runtime API:
+Kryon provides multiple ways to interact with the window manager filesystem.
 
-    local kryon = require("kryon")
+C API (via Marrow client library):
 
-    -- Filesystem
-    kryon.mount("/mnt/wm")
-    kryon.unmount()
+    #include <marrow_client.h>
+    #include <kryon.h>
 
-    -- Window management
-    local win = kryon.create_window("Title", 800, 600)
-    win.title = "New Title"
-    win.rect = "100 100 800 600"
-    win.visible = 1
-    win:show()
-    win:hide()
-    win:destroy()
+    // Connect to Marrow
+    P9Client *mc = marrow_connect("localhost", 17010);
+    marrow_authenticate(mc, "none", "");
 
-    -- Widget management
-    local btn = kryon.widget("btn_id")
-    local new_btn = kryon.create_widget("button", parent_id)
-    btn.text = "Click Me"
-    btn.value = "state"
-    btn.visible = 1
-    btn.enabled = 1
-    btn:focus()
-    btn:show()
-    btn:hide()
+    // Register as window-manager service
+    marrow_service_register(mc, "kryon", "window-manager",
+                           "Kryon Window Manager");
 
-    -- Event handlers
-    btn.on_click(function()
-        print("Clicked!")
-    end)
+    // Mount /mnt/wm to Marrow's namespace
+    marrow_namespace_mount(mc, "/mnt/wm");
 
-    btn.on_change(function(new_val)
-        print("Value: " .. new_val)
-    end)
+    // Open /dev/draw for rendering
+    DrawClient *dc = drawclient_connect(mc);
 
-    btn.on_focus(function()
-        print("Focused")
-    end)
+    // Create window via filesystem
+    int ctl_fd = marrow_open(mc, "/mnt/wm/ctl", O_WRONLY);
+    write(ctl_fd, "{\"title\":\"My Window\",\"width\":800,\"height\":600}", 40);
+    close(ctl_fd);
 
-    -- Layout loading
-    kryon.load("app.kryon")
+    // Set properties
+    int title_fd = marrow_open(mc, "/mnt/wm/windows/1/title", O_WRONLY);
+    write(title_fd, "New Title", 10);
+    close(title_fd);
 
-    -- Event loop
-    kryon.run()
-    kryon.quit()
-
-C API (direct 9P):
-
-    #include <9p.h>
-    #include <libc.h>
-
-    int fd;
+    // Event loop
+    int event_fd = marrow_open(mc, "/mnt/wm/windows/1/events", O_RDONLY);
     char buf[256];
-
-    // Create window
-    fd = open("/mnt/wm/ctl", O_WRONLY);
-    write(fd, "create_window", 13);
-    close(fd);
-
-    // Set title
-    fd = open("/mnt/wm/windows/1/title", O_WRONLY);
-    write(fd, "My App", 6);
-    close(fd);
-
-    // Create widget
-    fd = open("/mnt/wm/ctl", O_WRONLY);
-    write(fd, "create_widget 1 button 0", 24);
-    close(fd);
-
-    // Set text
-    fd = open("/mnt/wm/windows/1/widgets/1/text", O_WRONLY);
-    write(fd, "Click Me", 8);
-    close(fd);
-
-    // Read events
-    fd = open("/mnt/wm/windows/1/widgets/1/event", O_RDONLY);
-    while (read(fd, buf, sizeof(buf)) > 0) {
+    while (read(event_fd, buf, sizeof(buf)) > 0) {
         printf("Event: %s\n", buf);
     }
 
 Shell (rc) scripting:
 
-    # Create window
-    echo create_window > /mnt/wm/ctl
+    # Create window (via Marrow namespace)
+    echo '{"title":"My Window","width":800,"height":600}' > /mnt/wm/ctl
 
     # Set title
-    echo My App > /mnt/wm/windows/1/title
+    echo "New Title" > /mnt/wm/windows/1/title
 
-    # Create button
-    echo 'create_widget 1 button 0' > /mnt/wm/ctl
+    # Create button widget
+    echo "type=button" > /mnt/wm/windows/1/widgets/new
+
+    # Set button text
+    echo "Click Me" > /mnt/wm/windows/1/widgets/1/properties/text
 
     # Event loop
     while () {
-        event=`{cat /mnt/wm/windows/1/widgets/1/event}
+        event=`{cat /mnt/wm/windows/1/widgets/1/events}
         if (~ $event()) {
             echo Button clicked!
         }
     }
 
-Python (via 9pclient):
+Python (via 9p client to Marrow):
 
     import p9
 
-    kryon = p9.mount("kryon", "/mnt/wm")
+    # Connect to Marrow
+    marrow = p9.mount("tcp!localhost!17010", "")
+
+    # Access Kryon's /mnt/wm
+    wm = marrow.cd("/mnt/wm")
 
     # Create window
-    kryon.ctl.write("create_window")
-    kryon.windows[1].title.write("My App")
+    wm.ctl.write('{"title":"My Window","width":800,"height":600}')
+
+    # Set title
+    marrow.write("/mnt/wm/windows/1/title", "New Title")
 
     # Create button
-    kryon.ctl.write("create_widget 1 button 0")
-    kryon.windows[1].widgets[1].text.write("Click Me")
+    marrow.write("/mnt/wm/windows/1/widgets/new", "type=button")
+
+    # Set text
+    marrow.write("/mnt/wm/windows/1/widgets/1/properties/text", "Click Me")
 
     # Event loop
-    for event in kryon.windows[1].widgets[1].event.events():
-        if event == "clicked":
+    for event in marrow.events("/mnt/wm/windows/1/widgets/1/events"):
+        if "clicked" in event:
             print("Clicked!")
+
+Lua (via 9p client to Marrow):
+
+    local p9 = require("9p")
+
+    -- Connect to Marrow
+    local marrow = p9.connect("tcp!localhost!17010")
+
+    -- Access Kryon's /mnt/wm
+    local wm = marrow:cd("/mnt/wm")
+
+    -- Create window
+    wm:ctl_write('{"title":"My Window","width":800,"height":600}')
+
+    -- Set title
+    marrow:write("/mnt/wm/windows/1/title", "New Title")
+
+    -- Create button
+    marrow:write("/mnt/wm/windows/1/widgets/new", "type=button")
+
+    -- Set text
+    marrow:write("/mnt/wm/windows/1/widgets/1/properties/text", "Click Me")
+
+    -- Event loop
+    for event in marrow:events("/mnt/wm/windows/1/widgets/1/events") do
+        if event:find("clicked") then
+            print("Clicked!")
+        end
+    end
+
+NOTES:
+
+- All operations go through Marrow on port 17010
+- /dev/draw is used for rendering (provided by Marrow)
+- /mnt/wm is provided by Kryon service
+- Window and widget properties are files in /mnt/wm
+- Events are read from event files

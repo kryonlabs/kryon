@@ -86,7 +86,7 @@ int poll_widget_event(P9Client *p9, uint32_t widget_id, KryonEvent *ev)
     snprintf(event_path, sizeof(event_path), "/windows/1/widgets/%u/event", widget_id);
 
     /* Open event file */
-    event_fd = p9_client_open_path(p9, event_path, P9_OREAD);
+    event_fd = p9_open(p9, event_path, P9_OREAD);
     if (event_fd < 0) {
         return -1;
     }
@@ -94,14 +94,14 @@ int poll_widget_event(P9Client *p9, uint32_t widget_id, KryonEvent *ev)
     /* Try to read event (non-blocking) */
     buf = (char *)malloc(512);
     if (buf == NULL) {
-        p9_client_clunk(p9, event_fd);
+        p9_close(p9, event_fd);
         return -1;
     }
 
-    nread = p9_client_read(p9, event_fd, buf, 512);
+    nread = p9_read(p9, event_fd, buf, 512);
 
     /* Clean up */
-    p9_client_clunk(p9, event_fd);
+    p9_close(p9, event_fd);
 
     if (nread <= 0) {
         free(buf);

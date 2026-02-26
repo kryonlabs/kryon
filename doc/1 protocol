@@ -1,48 +1,65 @@
 PROTOCOL
 
-Kryon speaks 9P2000.  All UI state is a filesystem mounted at /mnt/wm.
+Kryon speaks 9P2000 with Marrow.  All UI state is a filesystem mounted at /mnt/wm.
 
 WINDOW MANAGER HIERARCHY
 
-Kryon provides a generic window manager interface at /mnt/wm:
+Kryon provides a window manager interface at /mnt/wm:
 
-    /                               Root (system-level, clean)
-    ├── dev/                        Graphics devices (screen, mouse, kbd)
-    ├── env/                        Environment
-    ├── mnt/                        Mount points
-    │   └── wm/                     Window manager service (Kryon)
-    │       ├── ctl                 Command pipe
-    │       ├── events              Global events
-    │       ├── version             "Kryon 1.0"
-    │       └── windows/            All windows
-    │           ├── 1/              Window 1
-    │           │   ├── title       Window title
-    │           │   ├── rect        Position and size (x y w h)
-    │           │   ├── visible     0 or 1
-    │           │   ├── draw        Draw proxy (legacy compatibility)
-    │           │   ├── mouse       Window-specific mouse
-    │           │   ├── widgets/    Widget tree
-    │           │   │   └── [id]/
-    │           │   │       ├── type        Widget type
-    │           │   │       ├── rect        Geometry
-    │           │   │       ├── text        Content
-    │           │   │       ├── value       State
-    │           │   │       ├── enabled     0 or 1
-    │           │   │       └── event       Event pipe (read-only)
-    │           │   └── event       Window events
-    │           └── 2/              Window 2
-    └── proc/                       Processes
+    /mnt/wm/                         Window manager service
+    ├── ctl                          Create windows (write JSON)
+    ├── version                      "Kryon 1.0"
+    └── windows/                     All windows
+        ├── 1/                      Window 1
+        │   ├── title               Window title (file)
+        │   ├── rect                Position "x,y,w,h" (file)
+        │   ├── visible             "true" or "false" (file)
+        │   ├── focused             "true" or "false" (file)
+        │   ├── widgets/            Widget tree
+        │   │   └── [id]/
+        │   │       ├── type        Widget type (button, label, etc.)
+        │   │       ├── properties/ Widget properties (files)
+        │   │       │   ├── text
+        │   │       │   ├── color
+        │   │       │   ├── x
+        │   │       │   ├── y
+        │   │       │   ├── width
+        │   │       │   └── height
+        │   │       └── events      Read events (file)
+        │   └── events              Window events (read-only)
+        └── 2/                      Window 2
 
 CONTROL INTERFACE
 
-Control pipe (write-only):
+Create window (write JSON to /mnt/wm/ctl):
 
-    echo "create_window" > /mnt/wm/ctl
-    echo "create_widget <window_id> <type> <parent_id>" > /mnt/wm/ctl
-    echo "destroy_window <window_id>" > /mnt/wm/ctl
-    echo "destroy_widget <window_id> <widget_id>" > /mnt/wm/ctl
+    echo '{"title":"My Window","width":800,"height":600}' > /mnt/wm/ctl
 
-Event format (one line per read):
+Response: Window ID (e.g., "1")
+
+Window properties (read/write files):
+
+    /mnt/wm/windows/1/title          "My Window"
+    /mnt/wm/windows/1/rect           "100,100,800,600"
+    /mnt/wm/windows/1/visible        "true"
+    /mnt/wm/windows/1/focused        "false"
+
+Widget management:
+
+    # Create widget (write to new file in widgets/)
+    echo "type=button" > /mnt/wm/windows/1/widgets/new
+
+    # Set properties (write to property files)
+    echo "Click Me" > /mnt/wm/windows/1/widgets/1/properties/text
+    echo "#ff0000" > /mnt/wm/windows/1/widgets/1/properties/color
+
+    # Read events
+    cat /mnt/wm/windows/1/widgets/1/events
+    # Output: clicked x=50 y=20 button=1
+
+EVENT FORMAT
+
+Events are read from event files (one line per event):
 
     clicked x=50 y=20 button=1
     changed value="new text"
@@ -51,17 +68,44 @@ Event format (one line per read):
     focus_gained
     focus_lost
     key_press key=Enter
+    key_release key=Escape
 
-Permissions:
+WIDGET TYPES
 
-    /version        0444    read-only
-    /ctl            0222    write-only
-    /events         0444    read-only
-    /windows/       0755    listable
-    /windows/*/rect 0644    read/write
-    /windows/*/event 0444   read-only
+Kryon supports 89 widget types:
 
-Error codes:
+    Input: button, checkbox, radio, textbox, password, textarea,
+           slider, progress, spinner, combobox, list, tree, table,
+           menu, toolbar, scrollbar, etc.
+
+    Display: label, image, icon, progress, separator, frame,
+              chart, graph, tooltip
+
+    Container: box, hbox, vbox, grid, frame, dialog, panel,
+               scroll, tab, split, deck
+
+    Navigation: menubar, menu, tabbar, breadcrumb
+
+    Form: form, field, label, input, button, submit, validation
+
+    Layout: absolute, relative, flow, flex, grid
+
+    Specialized: terminal, editor, console, filepicker, calendar,
+                clock, map, imageviewer, mediaplayer, webview,
+                pdfviewer, notification, dialog, wizard
+
+PERMISSIONS
+
+    /mnt/wm/version          0444    read-only
+    /mnt/wm/ctl              0222    write-only
+    /mnt/wm/windows/         0755    listable
+    /mnt/wm/windows/*/title  0644    read/write
+    /mnt/wm/windows/*/rect   0644    read/write
+    /mnt/wm/windows/*/events 0444    read-only
+    /mnt/wm/windows/*/widgets/   0755 listable
+    /mnt/wm/windows/*/widgets/*/properties/ 0755 read/write
+
+ERROR CODES
 
     EPERM           Operation not permitted
     ENOENT          File not found
@@ -70,3 +114,4 @@ Error codes:
     EOUTOFRANGE     Value out of range
     ENOSPACE        No space (max widgets reached)
     ENOTSUPPORTED   Operation not supported
+    ENOMEMORY       Out of memory
