@@ -328,8 +328,8 @@ P9Node *tree_create_file(P9Node *parent, const char *name, void *data,
     }
 
     ops->data = data;
-    ops->read = (void *)read;  /* Cast to match new signature */
-    ops->write = (void *)write;
+    ops->read = read;
+    ops->write = write;
     node->data = ops;
 
     if (tree_add_child(parent, node) < 0) {

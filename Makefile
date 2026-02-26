@@ -7,7 +7,7 @@ ifeq ($(CC),)
     CC = gcc
 endif
 
-CFLAGS = -std=c89 -Wall -Wpedantic -g
+CFLAGS = -std=c89 -Wall -Wpedantic -g -D_POSIX_C_SOURCE=200112L
 LDFLAGS =
 
 # Detect Nix environment - use NIX_LDFLAGS for proper RPATH
@@ -38,20 +38,32 @@ ifeq ($(NIX_LDFLAGS),)
     ifneq ($(SDL2_LIBDIR),)
         SDL2_RPATH := -Wl,-rpath=$(SDL2_LIBDIR)
     endif
-else
-    # In Nix, SDL2 is handled by NIX_LDFLAGS
-    SDL2_CFLAGS := $(shell pkg-config --cflags sdl2 2>/dev/null || echo "")
-    SDL2_LIBS := $(shell pkg-config --libs sdl2 2>/dev/null || echo "-lSDL2")
-    SDL2_RPATH :=
-endif
 
-ifeq ($(SDL2_CFLAGS),)
-    HAVE_SDL2 = 0
-    $(warning SDL2 not detected - display client will not build)
+    ifeq ($(SDL2_CFLAGS),)
+        HAVE_SDL2 = 0
+        $(warning SDL2 not detected - display client will not build)
+    else
+        HAVE_SDL2 = 1
+        CFLAGS += -DHAVE_SDL2 $(SDL2_CFLAGS)
+        DISPLAY_LDFLAGS := $(SDL2_LIBS) $(SDL2_RPATH)
+    endif
 else
+    # In Nix, SDL2 is provided by shell.nix - always enable it
     HAVE_SDL2 = 1
-    CFLAGS += -DHAVE_SDL2 $(SDL2_CFLAGS)
+    CFLAGS += -DHAVE_SDL2
+    # Find SDL2 include path in Nix store
+    SDL2_INCLUDE_PATH := $(shell find /nix/store -name "SDL2" -type d 2>/dev/null | grep -v "doc" | head -1 | sed 's|/SDL2||')
+    ifneq ($(SDL2_INCLUDE_PATH),)
+        SDL2_CFLAGS := -I$(SDL2_INCLUDE_PATH)
+        CFLAGS += $(SDL2_CFLAGS)
+    else
+        SDL2_CFLAGS :=
+    endif
+    SDL2_LIBS := -lSDL2
+    SDL2_RPATH :=
     DISPLAY_LDFLAGS := $(SDL2_LIBS) $(SDL2_RPATH)
+    $(info Using SDL2 from Nix environment)
+    $(info SDL2_CFLAGS=$(SDL2_CFLAGS))
 endif
 
 # Directories
@@ -59,6 +71,14 @@ SRC_DIR = src
 INCLUDE_DIR = include
 BUILD_DIR = build
 BIN_DIR = bin
+
+# Marrow graphics library (for linking Kryon with Marrow's graphics)
+MARROW_DIR = ../marrow
+MARROW_INCLUDE = $(MARROW_DIR)/include
+MARROW_GRAPHICS_OBJS = $(BUILD_DIR)/marrow/memdraw.o \
+                       $(BUILD_DIR)/marrow/memimage.o \
+                       $(BUILD_DIR)/marrow/pixconv.o \
+                       $(BUILD_DIR)/marrow/devdraw.o
 
 # Source files
 CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c)
@@ -71,17 +91,19 @@ UI_SRCS = $(SRC_DIR)/core/window.c $(SRC_DIR)/core/widget.c \
 CPU_SRCS = $(SRC_DIR)/core/cpu_server.c $(SRC_DIR)/core/namespace.c \
             $(SRC_DIR)/core/rcpu.c \
             $(SRC_DIR)/shell/rc_wrapper.c
+# Window manager filesystem
+SYS_SRCS = $(SRC_DIR)/sys/wm.c
 # Authentication support
 AUTH_SRCS = $(SRC_DIR)/core/auth_session.c $(SRC_DIR)/core/factotum_keys.c \
             $(SRC_DIR)/core/devfactotum.c $(SRC_DIR)/core/auth_p9any.c \
             $(SRC_DIR)/core/auth_dp9ik.c $(SRC_DIR)/core/secstore.c
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 # 9P client (for connecting to 9P servers)
-P9CLIENT_SRCS = $(SRC_DIR)/lib/client/p9client.c
+P9CLIENT_SRCS = $(SRC_DIR)/lib/client/p9client.c $(SRC_DIR)/lib/client/marrow.c
 CLIENT_SRCS = $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c
 SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(TRANSPORT_SRCS) $(CPU_SRCS) \
-       $(AUTH_SRCS) $(P9CLIENT_SRCS)
+       $(AUTH_SRCS) $(P9CLIENT_SRCS) $(SYS_SRCS)
 
 # Additional object files for linking
 WINDOW_OBJS = $(BUILD_DIR)/core/window.o
@@ -96,10 +118,12 @@ CLIENT_OBJS = $(CLIENT_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 # Targets
 LIB_TARGET = $(BUILD_DIR)/libkryon.a
 DISPLAY_TARGET = $(BIN_DIR)/kryon-display
+KRYON_WM_TARGET = $(BIN_DIR)/kryon-wm
+SAVE_PPM_TARGET = $(BIN_DIR)/save_ppm
 
 # Default target
 .PHONY: all
-all: $(LIB_TARGET)
+all: $(LIB_TARGET) $(KRYON_WM_TARGET) $(SAVE_PPM_TARGET)
 ifneq ($(HAVE_SDL2),0)
 all: $(DISPLAY_TARGET)
 endif
@@ -111,6 +135,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/transport
 	mkdir -p $(BUILD_DIR)/client
 	mkdir -p $(BUILD_DIR)/lib/client
+	mkdir -p $(BUILD_DIR)/sys
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
@@ -119,9 +144,19 @@ $(BIN_DIR):
 $(LIB_TARGET): $(OBJS) | $(BUILD_DIR)
 	ar rcs $@ $^
 
+# Kryon Window Manager binary (connects to Marrow)
+# Using test_main.c for now - full main requires linking with Marrow graphics
+$(KRYON_WM_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) $(MARROW_GRAPHICS_OBJS) | $(BIN_DIR)
+	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport -I$(MARROW_INCLUDE) \
+		$< $(BUILD_DIR)/lib/client/p9client.o $(BUILD_DIR)/lib/client/marrow.o $(MARROW_GRAPHICS_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS) -lm
+
 # Display client binary
 $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN_DIR)
 	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport $< $(CLIENT_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(DISPLAY_LDFLAGS)
+
+# PPM screenshot tool
+$(SAVE_PPM_TARGET): tools/save_ppm.c | $(BIN_DIR)
+	gcc -std=c89 -Wall -Wpedantic -g $< -o $@
 
 # SDL2 viewer (connects to server via 9P)
 # Note: Must use GCC for SDL2 because TCC doesn't support immintrin.h
@@ -147,7 +182,7 @@ run-sdl: $(SDL_VIEWER)
 
 # Compile object files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(MARROW_INCLUDE) -c $< -o $@
 
 # Compile object files in lib/ subdirectory
 $(BUILD_DIR)/lib/%.o: $(SRC_DIR)/lib/%.c | $(BUILD_DIR)
@@ -158,15 +193,52 @@ $(BUILD_DIR)/lib/client/p9client.o: $(SRC_DIR)/lib/client/p9client.c
 	@mkdir -p $(BUILD_DIR)/lib/client
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
+$(BUILD_DIR)/lib/client/marrow.o: $(SRC_DIR)/lib/client/marrow.c
+	@mkdir -p $(BUILD_DIR)/lib/client
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+
+# Build Marrow graphics objects (for linking with Kryon)
+$(BUILD_DIR)/marrow:
+	@mkdir -p $(BUILD_DIR)/marrow
+
+$(BUILD_DIR)/marrow/memdraw.o: $(MARROW_DIR)/lib/graphics/memdraw.c | $(BUILD_DIR)/marrow
+	$(CC) $(CFLAGS) -I$(MARROW_INCLUDE) -c $< -o $@
+
+$(BUILD_DIR)/marrow/memimage.o: $(MARROW_DIR)/lib/graphics/memimage.c | $(BUILD_DIR)/marrow
+	$(CC) $(CFLAGS) -I$(MARROW_INCLUDE) -c $< -o $@
+
+$(BUILD_DIR)/marrow/pixconv.o: $(MARROW_DIR)/lib/graphics/pixconv.c | $(BUILD_DIR)/marrow
+	$(CC) $(CFLAGS) -I$(MARROW_INCLUDE) -c $< -o $@
+
+$(BUILD_DIR)/marrow/devdraw.o: $(MARROW_DIR)/sys/devdraw.c | $(BUILD_DIR)/marrow
+	$(CC) $(CFLAGS) -I$(MARROW_INCLUDE) -c $< -o $@
+
 # Clean
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
+# Convert screenshot to PPM
+.PHONY: convert-ppm
+convert-ppm: $(SAVE_PPM_TARGET)
+	@echo "Converting WM screenshot..."
+	@$(SAVE_PPM_TARGET) /tmp/wm_before.raw 800 600 /tmp/wm_screenshot.ppm || echo "No WM screenshot found"
+	@echo "Converting Display screenshot..."
+	@$(SAVE_PPM_TARGET) /tmp/display_after.raw 800 600 /tmp/display_screenshot.ppm || echo "No Display screenshot found"
+	@echo "Done! View with: xdg-open /tmp/wm_screenshot.ppm /tmp/display_screenshot.ppm"
+
 # Run display client
 .PHONY: run-display
 run-display: $(DISPLAY_TARGET)
 	./$(DISPLAY_TARGET) --host 127.0.0.1 --port 17010
+
+# Run Kryon window manager (connects to Marrow)
+.PHONY: run run-wm
+run: $(KRYON_WM_TARGET)
+	./$(KRYON_WM_TARGET)
+
+run-wm: $(KRYON_WM_TARGET)
+	./$(KRYON_WM_TARGET)
 
 # Test 9P server
 .PHONY: test
@@ -204,6 +276,20 @@ test-sdl: $(SDL_TEST)
 	@echo "Starting SDL2 visualization test..."
 	@$(SDL_TEST)
 
+# Display integration test (builds Marrow first)
+.PHONY: test-display
+test-display: $(BIN_DIR)/test_display
+	@echo "Building Marrow..."
+	@cd ../marrow && $(MAKE) clean && $(MAKE)
+	@echo "Starting display integration test..."
+	@$(BIN_DIR)/test_display
+
+# Add test_display to TEST_BINS if not already included
+TEST_DISPLAY_BIN = $(BIN_DIR)/test_display
+
+$(TEST_DISPLAY_BIN): $(TEST_DIR)/test_display.c | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) $< -o $@ $(LDFLAGS)
+
 # Dependencies
 .PHONY: deps
 deps:
@@ -217,6 +303,7 @@ help:
 	@echo "  all            - Build library and display client (default)"
 	@echo "  clean          - Remove build artifacts"
 	@echo "  run-display    - Build and run the display client"
+	@echo "  test-display   - Build Marrow and run integration test"
 	@echo "  tests          - Build test programs"
 	@echo "  test           - Run basic 9P mount test"
 	@echo "  deps           - Show Nix shell command"

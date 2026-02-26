@@ -34,6 +34,8 @@ typedef struct {
     int width;
     int height;
     int verbose;
+    int stay_open;
+    int dump_screen;    /* Dump screenshot to /tmp/display_after.raw */
 } DisplayConfig;
 
 /*
@@ -63,6 +65,8 @@ struct DisplayClient {
 
     /* Main loop */
     int running;
+    int stay_open;
+    int dump_screen;          /* Dump screenshot flag */
 };
 
 /*

@@ -29,10 +29,12 @@ static void print_usage(const char *progname)
     fprintf(stderr, "\n");
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  --host HOST    Server host (default: 127.0.0.1)\n");
-    fprintf(stderr, "  --port PORT    Server port (default: 17019)\n");
+    fprintf(stderr, "  --port PORT    Server port (default: 17010)\n");
     fprintf(stderr, "  --width W      Window width (default: 800)\n");
     fprintf(stderr, "  --height H     Window height (default: 600)\n");
     fprintf(stderr, "  --verbose      Enable verbose output\n");
+    fprintf(stderr, "  --stay-open    Keep window open (ignore SDL_QUIT events)\n");
+    fprintf(stderr, "  --dump-screen  Dump screenshot to /tmp/display_after.raw\n");
     fprintf(stderr, "  --help         Show this help message\n");
     fprintf(stderr, "\n");
 }
@@ -46,10 +48,12 @@ static int parse_args(int argc, char **argv, DisplayConfig *config)
 
     /* Set defaults */
     config->host = "127.0.0.1";
-    config->port = 17019;
+    config->port = 17010;  /* Marrow's default port */
     config->width = 800;
     config->height = 600;
     config->verbose = 0;
+    config->stay_open = 0;
+    config->dump_screen = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--host") == 0) {
@@ -82,6 +86,10 @@ static int parse_args(int argc, char **argv, DisplayConfig *config)
             i++;
         } else if (strcmp(argv[i], "--verbose") == 0) {
             config->verbose = 1;
+        } else if (strcmp(argv[i], "--stay-open") == 0) {
+            config->stay_open = 1;
+        } else if (strcmp(argv[i], "--dump-screen") == 0) {
+            config->dump_screen = 1;
         } else if (strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             return 1;

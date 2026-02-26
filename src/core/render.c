@@ -50,6 +50,9 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
     render_count++;
 
+    fprintf(stderr, "Rendering widget %d (type=%d, rect='%s', visible=%d)\n",
+            w->id, w->type, w->prop_rect ? w->prop_rect : "(null)", w->prop_visible);
+
     /* Parse widget rectangle */
     if (parse_rect(w->prop_rect, &widget_rect) < 0) {
         return;

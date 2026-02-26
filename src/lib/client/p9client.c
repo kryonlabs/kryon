@@ -23,6 +23,25 @@
 #define P9_MAX_MSG    8192
 
 /*
+ * 64-bit network byte order conversion
+ * Writes 64-bit value in network byte order (big-endian) directly to buffer
+ * This avoids the endianness bug where returning a uint64_t and memcpy'ing it
+ * causes the CPU to reinterpret the bytes in native byte order.
+ */
+static void htonll_bytes(uint8_t *buf, uint64_t value)
+{
+    /* Manually place bytes in big-endian order directly into output buffer */
+    buf[0] = (value >> 56) & 0xFF;
+    buf[1] = (value >> 48) & 0xFF;
+    buf[2] = (value >> 40) & 0xFF;
+    buf[3] = (value >> 32) & 0xFF;
+    buf[4] = (value >> 24) & 0xFF;
+    buf[5] = (value >> 16) & 0xFF;
+    buf[6] = (value >> 8) & 0xFF;
+    buf[7] = value & 0xFF;
+}
+
+/*
  * 9P message types
  */
 #define P9_TVERSION  100
@@ -65,6 +84,7 @@ struct P9Client {
     char error[256];            /* Last error message */
     char username[32];          /* Username */
     char service_name[32];      /* Service name */
+    uint64_t fid_offsets[256];  /* Track offset for each FID */
 };
 
 /*
@@ -238,6 +258,14 @@ P9Client *p9_connect(const char *address)
     client->fid = 0;
     client->tag = 0;
 
+    /* Initialize offset tracking for all FIDs */
+    {
+        int i;
+        for (i = 0; i < 256; i++) {
+            client->fid_offsets[i] = 0;
+        }
+    }
+
     /* Send version message */
     {
         uint8_t msg[128];
@@ -246,6 +274,8 @@ P9Client *p9_connect(const char *address)
         uint16_t *tag;
         uint32_t *size;
         uint8_t *msg_ptr;
+        uint32_t resp_size;
+        uint32_t msg_size;
         ssize_t n;
 
         /* Build Tversion */
@@ -260,14 +290,18 @@ P9Client *p9_connect(const char *address)
         *size = htonl(P9_MAX_MSG);
         msg_ptr += 4;
 
-        strcpy((char *)msg_ptr, P9_VERSION);
-        msg_ptr += strlen(P9_VERSION) + 1;
+        /* Version string with 2-byte length prefix (9P string format) */
+        {
+            uint16_t version_len = strlen(P9_VERSION);
+            *(uint16_t *)msg_ptr = htons(version_len);
+            msg_ptr += 2;
+            memcpy(msg_ptr, P9_VERSION, version_len);
+            msg_ptr += version_len;
+        }
 
         /* Fill size */
-        {
-            uint32_t msg_size = msg_ptr - msg;
-            *(uint32_t *)msg = htonl(msg_size - 4);
-        }
+        msg_size = msg_ptr - msg;
+        *(uint32_t *)msg = htonl(msg_size);
 
         /* Send */
         if (write_n(fd, msg, msg_ptr - msg) < 0) {
@@ -286,15 +320,21 @@ P9Client *p9_connect(const char *address)
             return NULL;
         }
 
-        {
-            uint32_t resp_size = ntohl(*(uint32_t *)resp);
-            n = read_n(fd, resp + 4, resp_size);
-            if (n < resp_size) {
-                fprintf(stderr, "p9_connect: read body failed\n");
-                free(client);
-                close(fd);
-                return NULL;
-            }
+        /* Debug: print raw bytes */
+        fprintf(stderr, "p9_connect: received size bytes: %02x %02x %02x %02x\n",
+                resp[0], resp[1], resp[2], resp[3]);
+
+        resp_size = ntohl(*(uint32_t *)resp);
+        fprintf(stderr, "p9_connect: resp_size (after ntohl): %u\n", resp_size);
+
+        /* resp_size includes the 4-byte size field, so read only the body */
+        n = read_n(fd, resp + 4, resp_size - 4);
+        if (n < resp_size - 4) {
+            fprintf(stderr, "p9_connect: read body failed (got %d, expected %u)\n",
+                    (int)n, resp_size - 4);
+            free(client);
+            close(fd);
+            return NULL;
         }
 
         hdr = (P9Hdr *)resp;
@@ -347,8 +387,10 @@ int p9_authenticate(P9Client *client, int auth_method,
         uint8_t resp[P9_MAX_MSG];
         P9Hdr *hdr;
         uint16_t *tag;
-        uint16_t *fid;
+        uint32_t *fid;
         uint8_t *p;
+        uint32_t msg_size;
+        uint32_t resp_size;
         ssize_t n;
 
         p = msg + 4;
@@ -358,25 +400,32 @@ int p9_authenticate(P9Client *client, int auth_method,
         *tag = htons(client->tag++);
         p += 2;
 
-        fid = (uint16_t *)p;
-        *fid = htons(client->fid++);  /* Fid for root */
-        p += 2;
+        fid = (uint32_t *)p;
+        *fid = htonl(client->fid++);  /* Fid for root */
+        p += 4;
 
-        fid = (uint16_t *)p;
-        *fid = htons(0xFFFFFFFF);  /* No auth fid */
-        p += 2;
+        fid = (uint32_t *)p;
+        *fid = htonl(0xFFFFFFFF);  /* No auth fid */
+        p += 4;
 
-        /* User name */
-        strcpy((char *)p, client->username);
-        p += strlen(client->username) + 1;
+        /* User name with 2-byte length prefix */
+        {
+            uint16_t uname_len = strlen(client->username);
+            *(uint16_t *)p = htons(uname_len);
+            p += 2;
+            memcpy(p, client->username, uname_len);
+            p += uname_len;
+        }
 
-        /* Mount point */
-        strcpy((char *)p, "");
-        p += 1;
+        /* Mount point with 2-byte length prefix */
+        {
+            *(uint16_t *)p = htons(0);
+            p += 2;
+        }
 
         /* Fill size */
-        uint32_t msg_size = p - msg;
-        *(uint32_t *)msg = htonl(msg_size - 4);
+        msg_size = p - msg;
+        *(uint32_t *)msg = htonl(msg_size);
 
         /* Send */
         if (write_n(client->fd, msg, msg_size) < 0) {
@@ -391,9 +440,10 @@ int p9_authenticate(P9Client *client, int auth_method,
             return -1;
         }
 
-        uint32_t resp_size = ntohl(*(uint32_t *)resp);
-        n = read_n(client->fd, resp + 4, resp_size);
-        if (n < resp_size) {
+        resp_size = ntohl(*(uint32_t *)resp);
+        /* resp_size includes the 4-byte size field, so read only the body */
+        n = read_n(client->fd, resp + 4, resp_size - 4);
+        if (n < resp_size - 4) {
             fprintf(stderr, "p9_authenticate: read body failed\n");
             return -1;
         }
@@ -417,18 +467,166 @@ int p9_authenticate(P9Client *client, int auth_method,
 
 /*
  * Open a file on 9P server
+ * Uses Twalk to walk the path, then Topen to open the file
  */
 int p9_open(P9Client *client, const char *path, int mode)
 {
-    /* Implementation for walk + open */
-    /* This is a simplified version - full implementation would walk the path */
+    uint8_t msg[512];
+    uint8_t resp[P9_MAX_MSG];
+    P9Hdr *hdr;
+    uint16_t *tag_ptr;
+    uint32_t *fid_ptr;
+    uint8_t *p;
+    uint32_t msg_size;
+    uint32_t resp_size;
+    ssize_t n;
+    char path_copy[256];
+    char *token;
+    int fid;
+    int root_fid;
+    char *wnames[16];
+    int nwname = 0;
 
     if (client == NULL || path == NULL) {
         return -1;
     }
 
-    /* For now, return the next fid */
-    int fid = client->fid++;
+    /* Skip leading / */
+    if (path[0] == '/') {
+        path++;
+    }
+
+    /* Copy path and tokenize */
+    strncpy(path_copy, path, sizeof(path_copy) - 1);
+    path_copy[sizeof(path_copy) - 1] = '\0';
+
+    token = strtok(path_copy, "/");
+    while (token != NULL && nwname < 16) {
+        wnames[nwname++] = token;
+        token = strtok(NULL, "/");
+    }
+
+    if (nwname == 0) {
+        fprintf(stderr, "p9_open: invalid path '%s'\n", path);
+        return -1;
+    }
+
+    fid = client->fid++;
+    root_fid = 0;  /* Root fid from Tattach */
+
+    /* Build Twalk message: size[4] Twalk tag[2] fid[4] newfid[4] nwname[2] wname[nwname][s] */
+    p = msg + 4;  /* Skip size field */
+    *p++ = P9_TWALK;
+
+    tag_ptr = (uint16_t *)p;
+    *tag_ptr = htons(client->tag++);
+    p += 2;
+
+    fid_ptr = (uint32_t *)p;
+    *fid_ptr = htonl(root_fid);
+    p += 4;
+
+    fid_ptr = (uint32_t *)p;
+    *fid_ptr = htonl(fid);
+    p += 4;
+
+    *(uint16_t *)p = htons(nwname);
+    p += 2;
+
+    /* Add path components */
+    {
+        int i;
+        for (i = 0; i < nwname; i++) {
+            uint16_t len = strlen(wnames[i]);
+            *(uint16_t *)p = htons(len);
+            p += 2;
+            memcpy(p, wnames[i], len);
+            p += len;
+        }
+    }
+
+    /* Fill size */
+    msg_size = p - msg;
+    *(uint32_t *)msg = htonl(msg_size);
+
+    /* Send Twalk */
+    if (write_n(client->fd, msg, msg_size) < 0) {
+        fprintf(stderr, "p9_open: Twalk write failed\n");
+        return -1;
+    }
+
+    /* Receive response */
+    n = read_n(client->fd, resp, 4);
+    if (n < 4) {
+        fprintf(stderr, "p9_open: Twalk read header failed\n");
+        return -1;
+    }
+
+    resp_size = ntohl(*(uint32_t *)resp);
+    n = read_n(client->fd, resp + 4, resp_size - 4);
+    if (n < resp_size - 4) {
+        fprintf(stderr, "p9_open: Twalk read body failed\n");
+        return -1;
+    }
+
+    hdr = (P9Hdr *)resp;
+    if (hdr->type == P9_RERROR) {
+        fprintf(stderr, "p9_open: Twalk failed for '%s'\n", path);
+        return -1;
+    }
+
+    if (hdr->type != P9_RWALK) {
+        fprintf(stderr, "p9_open: unexpected Twalk response type 0x%02x\n", hdr->type);
+        return -1;
+    }
+
+    /* Now Topen the fid */
+    p = msg + 4;
+    *p++ = P9_TOPEN;
+
+    tag_ptr = (uint16_t *)p;
+    *tag_ptr = htons(client->tag++);
+    p += 2;
+
+    fid_ptr = (uint32_t *)p;
+    *fid_ptr = htonl(fid);
+    p += 4;
+
+    *p++ = mode;
+
+    msg_size = p - msg;
+    *(uint32_t *)msg = htonl(msg_size);
+
+    /* Send Topen */
+    if (write_n(client->fd, msg, msg_size) < 0) {
+        fprintf(stderr, "p9_open: Topen write failed\n");
+        return -1;
+    }
+
+    /* Receive response */
+    n = read_n(client->fd, resp, 4);
+    if (n < 4) {
+        fprintf(stderr, "p9_open: Topen read header failed\n");
+        return -1;
+    }
+
+    resp_size = ntohl(*(uint32_t *)resp);
+    n = read_n(client->fd, resp + 4, resp_size - 4);
+    if (n < resp_size - 4) {
+        fprintf(stderr, "p9_open: Topen read body failed\n");
+        return -1;
+    }
+
+    hdr = (P9Hdr *)resp;
+    if (hdr->type == P9_RERROR) {
+        fprintf(stderr, "p9_open: Topen failed for '%s'\n", path);
+        return -1;
+    }
+
+    if (hdr->type != P9_ROPEN) {
+        fprintf(stderr, "p9_open: unexpected Topen response type 0x%02x\n", hdr->type);
+        return -1;
+    }
 
     fprintf(stderr, "p9_open: opened %s (fid=%d)\n", path, fid);
 
@@ -450,18 +648,117 @@ int p9_close(P9Client *client, int fd)
 }
 
 /*
- * Read from a file on Marrow
+ * Read from a file on 9P server
  */
 ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
 {
-    (void)client;
-    (void)fd;
-    (void)buf;
-    (void)count;
+    uint8_t msg[256];
+    uint8_t resp[P9_MAX_MSG];
+    P9Hdr *hdr;
+    uint16_t *tag_ptr;
+    uint32_t *fid_ptr;
+    uint32_t *count_ptr;
+    uint64_t offset;
+    uint8_t *p;
+    uint32_t msg_size;
+    uint32_t resp_size;
+    ssize_t n;
+    uint32_t data_count;
 
-    /* TODO: Implement Tread/Rread */
+    if (client == NULL || buf == NULL) {
+        return -1;
+    }
 
-    return -1;
+    if (fd < 0 || fd >= 256) {
+        fprintf(stderr, "p9_read: invalid fd %d\n", fd);
+        return -1;
+    }
+
+    /* Get current offset for this FID */
+    offset = client->fid_offsets[fd];
+
+    /* Build Tread message: size[4] Tread tag[2] fid[4] offset[8] count[4] */
+    p = msg + 4;  /* Skip size field */
+    *p++ = P9_TREAD;
+
+    tag_ptr = (uint16_t *)p;
+    *tag_ptr = htons(client->tag++);
+    p += 2;
+
+    fid_ptr = (uint32_t *)p;
+    *fid_ptr = htonl((uint32_t)fd);
+    p += 4;
+
+    /* Encode 64-bit offset directly to buffer in network byte order */
+    htonll_bytes(p, offset);
+
+    /* Debug: print raw bytes of offset */
+    fprintf(stderr, "p9_read: offset=%llu raw bytes: %02X %02X %02X %02X %02X %02X %02X %02X\n",
+            (unsigned long long)offset,
+            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+
+    p += 8;
+
+    count_ptr = (uint32_t *)p;
+    *count_ptr = htonl((uint32_t)count);
+    p += 4;
+
+    /* Fill size */
+    msg_size = p - msg;
+    *(uint32_t *)msg = htonl(msg_size);
+
+    /* Debug: log offset being sent */
+    fprintf(stderr, "p9_read: fd=%d offset=%llu count=%zu\n",
+            (unsigned long long)fd, (unsigned long long)offset, count);
+
+    /* Send Tread */
+    if (write_n(client->fd, msg, msg_size) < 0) {
+        fprintf(stderr, "p9_read: write failed\n");
+        return -1;
+    }
+
+    /* Receive response */
+    n = read_n(client->fd, resp, 4);
+    if (n < 4) {
+        fprintf(stderr, "p9_read: read header failed\n");
+        return -1;
+    }
+
+    resp_size = ntohl(*(uint32_t *)resp);
+    /* resp_size includes the 4-byte size field, so read only the body */
+    n = read_n(client->fd, resp + 4, resp_size - 4);
+    if (n < resp_size - 4) {
+        fprintf(stderr, "p9_read: read body failed (got %d, expected %u)\n",
+                (int)n, resp_size - 4);
+        return -1;
+    }
+
+    hdr = (P9Hdr *)resp;
+    if (hdr->type == P9_RERROR) {
+        fprintf(stderr, "p9_read: server returned error\n");
+        return -1;
+    }
+
+    if (hdr->type != P9_RREAD) {
+        fprintf(stderr, "p9_read: unexpected response type 0x%02x\n", hdr->type);
+        return -1;
+    }
+
+    /* Parse Rread: size[4] Rread tag[2] count[4] data[count] */
+    p = resp + 7;  /* Skip header */
+    data_count = ntohl(*(uint32_t *)p);
+    p += 4;
+
+    /* Copy data to buffer */
+    if (data_count > count) {
+        data_count = count;
+    }
+    memcpy(buf, p, data_count);
+
+    /* Update offset for next read */
+    client->fid_offsets[fd] += data_count;
+
+    return (ssize_t)data_count;
 }
 
 /*
@@ -469,14 +766,111 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
  */
 ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count)
 {
-    (void)client;
-    (void)fd;
-    (void)buf;
-    (void)count;
+    uint8_t msg[P9_MAX_MSG];
+    uint8_t resp[P9_MAX_MSG];
+    uint8_t *p;
+    uint32_t *fid_ptr;
+    uint64_t *offset_ptr;
+    uint32_t *count_ptr;
+    uint16_t *tag_ptr;
+    uint32_t msg_size;
+    uint32_t resp_size;
+    ssize_t n;
+    P9Hdr *hdr;
+    uint64_t offset;
 
-    /* TODO: Implement Twrite/Rwrite */
+    if (client == NULL || buf == NULL) {
+        return -1;
+    }
 
-    return -1;
+    if (fd < 0 || fd >= 256) {
+        fprintf(stderr, "p9_write: invalid fd %d\n", fd);
+        return -1;
+    }
+
+    /* Get current offset for this FID */
+    offset = client->fid_offsets[fd];
+
+    /* Build Twrite message */
+    p = msg + 4;  /* Skip size field */
+    *p++ = P9_TWRITE;
+
+    /* Tag */
+    tag_ptr = (uint16_t *)p;
+    *tag_ptr = htons(client->tag++);
+    p += 2;
+
+    /* FID */
+    fid_ptr = (uint32_t *)p;
+    *fid_ptr = htonl(fd);
+    p += 4;
+
+    /* Offset - write directly to buffer in network byte order */
+    htonll_bytes(p, offset);
+
+    /* Debug: print raw bytes of offset */
+    fprintf(stderr, "p9_write: fd=%d offset=%llu raw bytes: %02X %02X %02X %02X %02X %02X %02X %02X\n",
+            (unsigned long long)fd, (unsigned long long)offset,
+            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+
+    p += 8;
+
+    /* Count */
+    count_ptr = (uint32_t *)p;
+    *count_ptr = htonl(count);
+    p += 4;
+
+    /* Data */
+    if (p + count > msg + sizeof(msg)) {
+        fprintf(stderr, "p9_write: data too large (%d bytes)\n", (int)count);
+        return -1;
+    }
+    memcpy(p, buf, count);
+    p += count;
+
+    /* Fill size */
+    msg_size = p - msg;
+    *(uint32_t *)msg = htonl(msg_size);
+
+    /* Debug: log offset being sent */
+    fprintf(stderr, "p9_write: fd=%d offset=%llu count=%zu\n",
+            (unsigned long long)fd, (unsigned long long)offset, count);
+
+    /* Send Twrite */
+    if (write_n(client->fd, msg, msg_size) < 0) {
+        fprintf(stderr, "p9_write: Twrite send failed\n");
+        return -1;
+    }
+
+    /* Receive response */
+    n = read_n(client->fd, resp, 4);
+    if (n < 4) {
+        fprintf(stderr, "p9_write: Twrite read header failed\n");
+        return -1;
+    }
+
+    resp_size = ntohl(*(uint32_t *)resp);
+    n = read_n(client->fd, resp + 4, resp_size - 4);
+    if (n < resp_size - 4) {
+        fprintf(stderr, "p9_write: Twrite read body failed\n");
+        return -1;
+    }
+
+    hdr = (P9Hdr *)resp;
+    if (hdr->type == P9_RERROR) {
+        fprintf(stderr, "p9_write: server returned error\n");
+        return -1;
+    }
+
+    if (hdr->type != P9_RWRITE) {
+        fprintf(stderr, "p9_write: unexpected response type 0x%02x\n", hdr->type);
+        return -1;
+    }
+
+    /* Update offset for next write */
+    client->fid_offsets[fd] += count;
+
+    return (ssize_t)count;
 }
 
 /*
@@ -509,11 +903,19 @@ const char *p9_error(P9Client *client)
  */
 int p9_reset_fid(P9Client *client, int fd)
 {
-    (void)client;
-    (void)fd;
+    if (client == NULL) {
+        return -1;
+    }
 
-    /* For simple reads, we just reopen the file to reset offset */
-    /* TODO: Implement proper Tseek or just close/reopen */
+    if (fd < 0 || fd >= 256) {
+        fprintf(stderr, "p9_reset_fid: invalid fd %d\n", fd);
+        return -1;
+    }
+
+    /* Reset offset to 0 for this FID */
+    client->fid_offsets[fd] = 0;
+
+    fprintf(stderr, "p9_reset_fid: reset fd=%d offset to 0\n", fd);
 
     return 0;
 }

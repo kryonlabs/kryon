@@ -167,9 +167,10 @@ typedef struct {
 
 /*
  * File operation handlers
+ * Note: The actual implementation includes a void *data parameter
  */
-typedef ssize_t (*P9ReadFunc)(char *buf, size_t count, uint64_t offset);
-typedef ssize_t (*P9WriteFunc)(const char *buf, size_t count, uint64_t offset);
+typedef ssize_t (*P9ReadFunc)(char *buf, size_t count, uint64_t offset, void *data);
+typedef ssize_t (*P9WriteFunc)(const char *buf, size_t count, uint64_t offset, void *data);
 
 /*
  * Endianness conversion (9P uses little-endian)
@@ -227,8 +228,8 @@ P9Node *tree_lookup(P9Node *root, const char *path);
 P9Node *tree_walk(P9Node *node, const char *name);
 P9Node *tree_create_dir(P9Node *parent, const char *name);
 P9Node *tree_create_file(P9Node *parent, const char *name, void *data,
-                         ssize_t (*read)(char *, size_t, uint64_t),
-                         ssize_t (*write)(const char *, size_t, uint64_t));
+                         P9ReadFunc read,
+                         P9WriteFunc write);
 int tree_add_child(P9Node *parent, P9Node *child);
 int tree_remove_node(P9Node *node);
 
@@ -263,101 +264,93 @@ size_t handle_tremove(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 size_t handle_tstat(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 
 /*
- * Forward declaration for Memimage (from graphics.h)
+ * Forward declaration for Memimage (from graphics.h in Marrow)
  */
 struct Memimage;
 
 /*
+ * Graphics functions (now provided by Marrow)
+ * These are linked from Marrow's graphics library
+ */
+#ifdef INCLUDE_GRAPHICS
+
+/* Graphics types from Marrow */
+typedef struct {
+    int x;
+    int y;
+} Point;
+
+typedef struct {
+    Point min;
+    Point max;
+} Rectangle;
+
+typedef struct Memimage Memimage;
+
+typedef struct {
+    char *name;
+    short n;
+    unsigned char height;
+    char ascent;
+    void *info;  /* Fontchar* */
+    Memimage *bits;
+} Subfont;
+
+/* Graphics functions from Marrow's graphics library */
+extern void memfillcolor(Memimage *dst, unsigned long color);
+extern void memfillcolor_rect(Memimage *dst, Rectangle r, unsigned long color);
+extern int parse_rect(const char *str, Rectangle *r);
+extern int ptinrect(Point p, Rectangle r);
+extern void memdraw_text(Memimage *dst, Point p, const char *str, unsigned long color);
+extern void memdraw_text_font(Memimage *dst, Point p, const char *str, Subfont *sf, unsigned long color);
+extern Subfont* memdraw_get_default_font(void);
+extern void devdraw_mark_dirty(void);
+
+/* Color constants */
+#define DBlack        0x000000FF
+#define DWhite        0xFFFFFFFF
+#define DRed          0xFF0000FF
+#define DGreen        0x00FF00FF
+#define DBlue         0x0000FFFF
+#define DCyan         0x00FFFFFF
+#define DMagenta      0xFF00FFFF
+#define DYellow       0xFFFF00FF
+
+/* Rectangle helpers */
+#define Pt(x, y)      ((Point){(x), (y)})
+#define Rect(x0, y0, x1, y1)  ((Rectangle){(Point){(x0), (y0)}, (Point){(x1), (y1)}})
+#define Dx(r)   ((r).max.x - (r).min.x)
+#define Dy(r)   ((r).max.y - (r).min.y)
+
+#endif /* INCLUDE_GRAPHICS */
+
+/*
  * Draw connection state (for /dev/draw/[n])
+ * NOTE: These are now provided by Marrow
+ * Kryon uses /dev/draw via the 9P client interface
  */
-#define MAX_DRAW_CONNECTIONS 32
-#define MAX_IMAGES_PER_CONNECTION 256
-
-typedef struct DrawImage {
-    uint32_t id;
-    struct Memimage *img;
-    int in_use;
-} DrawImage;
-
-typedef struct DrawConnection {
-    int id;                       /* Connection number */
-    int screen_id;                /* Screen image ID */
-    int fillimage_id;             /* Fill image ID */
-    int next_image_id;            /* Next allocated image ID */
-    struct Memimage *screen;      /* Screen image */
-    int refresh_enabled;          /* Refresh flag */
-    int screen_dirty;             /* Flag: screen needs refresh */
-    uint32_t qid_path_base;       /* Base QID path for this connection's files */
-    DrawImage images[MAX_IMAGES_PER_CONNECTION];
-    int nimages;
-} DrawConnection;
-
-/*
- * Draw connection management
- */
-int drawconn_init(struct Memimage *screen);
-void drawconn_cleanup(void);
-DrawConnection *drawconn_new(void);
-DrawConnection *drawconn_get(int id);
-void drawconn_delete(int id);
-int drawconn_next_id(void);
-
-/*
- * /dev/draw/new implementation
- */
-int devdraw_new_init(P9Node *draw_dir);
-ssize_t devdraw_new_read(char *buf, size_t count, uint64_t offset, void *data);
-
-/*
- * /dev/draw/[n] directory implementation
- */
-P9Node *drawconn_create_dir(int conn_id);
-
-/*
- * /dev/draw/[n]/data implementation
- */
-ssize_t devdraw_data_read(char *buf, size_t count, uint64_t offset, void *data);
-ssize_t devdraw_data_write(const char *buf, size_t count, uint64_t offset, void *data);
-
-/*
- * /dev/draw/[n]/ctl implementation
- */
-ssize_t devdraw_ctl_read(char *buf, size_t count, uint64_t offset, void *data);
-ssize_t devdraw_ctl_write(const char *buf, size_t count, uint64_t offset, void *data);
-
-/*
- * /dev/draw/[n]/refresh implementation
- */
-ssize_t devdraw_refresh_read(char *buf, size_t count, uint64_t offset, void *data);
-
-/*
- * Screen refresh notification functions
- */
-void drawconn_mark_dirty_all(void);
 
 /*
  * /dev/kbd initialization
+ * NOTE: This is now provided by Marrow
  */
-int devkbd_init(P9Node *dev_dir);
 
 /*
  * Plan 9 graphics protocol processing
+ * NOTE: This is now handled by Marrow
+ * Kryon uses /dev/draw via the 9P client interface
  */
-int process_draw_messages(DrawConnection *conn, const char *buf, size_t count,
-                          char *response, int *resp_len);
 
 /*
  * Compatibility functions for legacy code
+ * NOTE: These are now provided by Marrow
  */
-void devdraw_mark_dirty(void);
-void devdraw_clear_dirty(void);
-int devdraw_is_dirty(void);
-void devdraw_cleanup(void);
 
 /*
  * Main dispatcher
+ * NOTE: This is now provided by Marrow
+ * Kryon is now a client, not a 9P server
  */
-size_t dispatch_9p(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf);
 
 /*
  * Namespace Manager Functions
