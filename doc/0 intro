@@ -1,62 +1,67 @@
 INTRO
 
-Kryon is a window manager service that provides a synthetic UI filesystem
-using the 9P2000 protocol. It runs as a service on Marrow, providing
-structured widgets and window management.
+Kryon is a window manager and widget service that provides a synthetic 
+UI filesystem using the 9P2000 protocol. It runs as an optional extension 
+to Marrow, transforming raw device files into structured, semantic widgets.
 
 ARCHITECTURE
 
-Kryon connects to Marrow and uses its graphics subsystem:
+Kryon attaches to Marrow's hardware namespace and re-exports a managed UI:
 
-    Marrow (Graphics Kernel)
-        ├── /dev/draw          Graphics protocol (Plan 9)
-        ├── /dev/screen        Screen framebuffer
+    Marrow (Core Substrate)
+        ├── /dev/draw          Raw Graphics (Plan 9)
+        ├── /dev/cons          Raw Console I/O
         ├── /dev/mouse         Mouse input
         └── /dev/kbd           Keyboard input
-            ↓ 9P
-    Kryon (Window Manager Service)
-        ├── Marrow Client      Connects to Marrow
-        ├── Window Manager     Creates/manages windows
-        ├── Widget System      89 widget types
-        └── /mnt/wm            Window management filesystem
+            ↓ 9P (Kryon Attaches)
+    Kryon (Unified WM Service)
+        ├── Renderer Logic     [Display Mode | TTY Mode]
+        ├── Window Manager     Manages window stacks and focus
+        ├── Widget System      Semantic UI (Buttons, Lists, etc.)
+        └── /wm                The UI Management Filesystem
 
 KEY FEATURES
 
-Kryon provides file-based window management:
+1. Dual Rendering - Render widgets as pixels (/dev/draw) or text (/dev/cons).
+2. Semantic UI - Interact with widgets as files (e.g., /wm/habits/gym/status).
+3. Mode Agnostic - The same 9P messages drive both a GUI and a TTY.
+4. Hot-Swapping - Toggle between graphical and text modes via /wm/ctl.
+5. Legacy Support - Provides a virtual /wm/dev/draw for pixel-direct apps (Acme).
 
-1. Structured UI - Widgets (buttons, menus, layouts) with state
-2. Filesystem Control - All operations via /mnt/wm/... files
-3. Property Files - Read/write widget properties as files
-4. Event Queues - Read events from files
-5. Marrow Integration - Uses /dev/draw for rendering
+OPERATING MODES
 
-OPERATING MODE
+Kryon is a standalone cell. If not running, Marrow remains a "naked" kernel.
 
-Kryon runs as a service that connects to Marrow:
-
-    # Start Marrow
+    # Start Marrow (Headless/Kernel only)
     marrow --port 17010
 
-    # Start Kryon (connects to Marrow)
-    kryon --marrow localhost:17010
+    # Start Kryon (Connects to Marrow as a client)
+    # Use -t for TTY-only mode (Serial/RISC-V) or -d for Display mode (Pi/GPU)
+    kryon --marrow localhost:17010 --mode display
 
-    # Kryon registers as "window-manager" service
-    # Kryon exports /mnt/wm to Marrow's namespace
-
-    # Applications connect to Marrow (17010)
-    # Applications use /dev/draw directly OR /mnt/wm for windows
+    # Kryon posts its service to /srv/kryon
+    # Standard practice is to mount the service to /wm
+    mount /srv/kryon /wm
 
 QUICK START
 
-    # Start the system
+    # Boot the substrate
     ./marrow/bin/marrow &
+    
+    # Launch the WM Extension
     ./kryon/bin/kryon &
 
-    # Connect with drawterm
-    drawterm -a tcp!localhost!17010
+    # Interaction via CLI or Script:
+    cd /wm
+    
+    # Switch to TTY mode on the fly
+    echo "mode tty" > ctl
+    
+    # Create a new windowed app entry
+    mkdir habits
+    echo '{"title":"Daily Habits","type":"grid"}' > habits/ctl
 
-    # Inside drawterm:
-    cd /mnt/wm
-    echo '{"title":"My Window","width":800,"height":600}' > ctl
+    # Check off a habit via file write (Agentic friendly)
+    echo 1 > habits/water_intake/value
 
-See other files in this directory for complete specification.
+See /docs/widgets.md for a full list of the 89 supported widget types.

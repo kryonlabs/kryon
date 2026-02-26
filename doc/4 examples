@@ -1,27 +1,40 @@
 EXAMPLES
 
-Hello World (direct 9P):
+These examples demonstrate how to interact with Kryon via direct 9P shell 
+commands, the .kryon DSL, and high-level Lua/C controllers.
 
-    # Create window
-    echo "create_window" > /mnt/wm/ctl
+---
 
-    # Set properties
-    echo "Hello World" > /mnt/wm/windows/1/title
-    echo "100 100 400 300" > /mnt/wm/windows/1/rect
-    echo "1" > /mnt/wm/windows/1/visible
+1. Hello World (Direct 9P Shell)
+This shows how to build a UI using only standard Marrow/Plan 9 tools.
 
-    # Create label
-    echo "create_widget 1 label 0" > /mnt/wm/ctl
-    echo "Welcome to Kryon!" > /mnt/wm/windows/1/widgets/1/text
+    # 1. Create a top-level window
+    echo '{"title":"Hello", "w":400, "h":300}' > /wm/ctl
+    
+    # 2. Set position manually (using window ID 1)
+    echo "100 100 400 300" > /wm/win/1/rect
+    
+    # 3. Create a label widget
+    echo "type=label" > /wm/win/1/widgets/new
+    
+    # 4. Set the label text
+    echo "Welcome to Marrow!" > /wm/win/1/widgets/1/text
 
-Counter (.kryon layout):
+
+
+---
+
+2. Counter (.kryon layout + Lua)
+A classic interactive app using the Kryon DSL and Lua controller.
 
     # counter.kryon
-    window "Counter" 300 200 {
-        column gap=10 padding=20 {
+    window counter "Counter" 300 200 {
+        vbox gap=10 padding=20 {
             label lbl_count "Count: 0" align="center"
-            button btn_inc "+"
-            button btn_dec "-"
+            hbox {
+                button btn_inc "+"
+                button btn_dec "-"
+            }
         }
     }
 
@@ -30,63 +43,88 @@ Counter (.kryon layout):
     kryon.load("counter.kryon")
 
     local count = 0
-    local lbl = kryon.widget("lbl_count")
+    local lbl = kryon.widget("counter.lbl_count")
 
-    kryon.widget("btn_inc").on_click(function()
+    kryon.widget("counter.btn_inc").on_click(function()
         count = count + 1
         lbl.text = "Count: " .. count
     end)
 
-    kryon.widget("btn_dec").on_click(function()
+    kryon.widget("counter.btn_dec").on_click(function()
         count = count - 1
         lbl.text = "Count: " .. count
     end)
 
     kryon.run()
 
-Form with validation:
+---
 
-    # login.kryon
-    window "Login" 400 300 {
-        column gap=15 padding=20 {
-            label "Sign In" align="center"
-            textinput txt_user placeholder="Username"
-            passwordinput txt_pass placeholder="Password"
-            button btn_login "Login"
-            label lbl_status "" align="center"
+3. Habits App with Nesting
+Demonstrating recursive windows for a "Settings" sub-interface.
+
+    # habits.kryon
+    window habits "Daily Habits" 400 600 {
+        vbox padding=10 {
+            label "My Tasks"
+            scrollarea tasks {
+                vbox id=task_list {
+                    checkbox t1 "Hydrate"
+                }
+            }
+            button btn_settings "Settings"
         }
     }
 
-    # login.lua
-    local kryon = require("kryon")
-    kryon.load("login.kryon")
-
-    kryon.widget("btn_login").on_click(function()
-        local user = kryon.widget("txt_user").value
-        local pass = kryon.widget("txt_pass").value
-
-        if user == "" or pass == "" then
-            kryon.widget("lbl_status").text = "Please fill all fields"
-        else
-            kryon.widget("lbl_status").text = "Login: " .. user
-        end
+    # In Lua, opening a nested window on click:
+    kryon.widget("habits.btn_settings").on_click(function()
+        -- Create a nested window inside 'habits'
+        local win = kryon.create_window("habits.win.settings", {
+            title = "Settings",
+            w = 200, h = 150
+        })
+        -- Add a mode-switch button inside it
+        win.add_widget("button", "btn_mode", "Toggle TTY/GUI")
     end)
 
-    kryon.run()
 
-Event loop (C):
 
-    int fd = open("/mnt/wm/windows/1/widgets/1/event", O_RDONLY);
-    char event[256];
+---
+
+4. Event Loop (C)
+Directly reading the 9P event stream for a specific widget.
+
+    /* Open the event file for a specific button */
+    int fd = open("/wm/win/1/widgets/1/events", O_RDONLY);
+    char buf[256];
 
     while (1) {
-        int n = read(fd, event, sizeof(event));
+        /* Read blocks until an event occurs */
+        int n = read(fd, buf, sizeof(buf)-1);
         if (n <= 0) break;
 
-        event[n] = '\0';
-        printf("Event: %s\n", event);
-
-        if (strcmp(event, "clicked") == 0) {
-            write(prop_fd, "Clicked!", 8);
+        buf[n] = '\0';
+        
+        /* Example event: "clicked x=45 y=12 button=1" */
+        if (strncmp(buf, "clicked", 7) == 0) {
+            /* Update a property file in response */
+            int pfd = open("/wm/win/1/widgets/2/text", O_WRONLY);
+            write(pfd, "Action Taken!", 13);
+            close(pfd);
         }
     }
+
+---
+
+5. Headless Mode Switching
+Switching between TTY and Graphical modes via the shell.
+
+    # Check current mode
+    cat /wm/mode
+    
+    # Switch to TTY (for Serial Console/RISC-V)
+    echo "tty" > /wm/mode
+    
+    # The habits app now renders as:
+    # [ My Tasks ]
+    # [X] Hydrate
+    # < Settings >

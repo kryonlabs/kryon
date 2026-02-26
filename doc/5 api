@@ -1,125 +1,110 @@
 CONTROLLER API
 
-Kryon provides multiple ways to interact with the window manager filesystem.
+Kryon provides a file-based interface for UI manipulation. Any language 
+capable of performing 9P2000 file operations (open, read, write) can 
+control the window manager.
 
-C API (via 9P client library):
+C API (via lib9pclient):
 
-    #include <p9client.h>
+    #include <9p.h>
     #include <kryon.h>
 
-    // Connect to 9P server (Marrow)
-    P9Client *p9 = p9_connect("tcp!localhost!17010");
-    p9_authenticate(p9, P9_AUTH_NONE, "none", "");
+    // Connect to Marrow Substrate
+    CFid *fd = p9_connect("tcp!localhost!17010");
 
-    // Register as window-manager service
-    p9_service_register(p9, "kryon", "window-manager",
-                       "Kryon Window Manager");
+    // Mount Kryon service to /wm
+    p9_mount(fd, "/srv/kryon", "/wm");
 
-    // Mount /mnt/wm to Marrow's namespace
-    p9_namespace_mount(p9, "/mnt/wm");
+    // Create window via JSON write to ctl
+    int ctl = p9_open(fd, "/wm/ctl", OWRITE);
+    p9_write(fd, ctl, "{\"title\":\"My App\", \"w\":800, \"h\":600}", 38);
+    p9_close(fd, ctl);
 
-    // Open /dev/draw for rendering
-    // (via graphics.h - not shown here)
+    // Set a property (recursive win/ path)
+    int title = p9_open(fd, "/wm/win/1/title", OWRITE);
+    p9_write(fd, title, "Updated Title", 13);
+    p9_close(fd, title);
 
-    // Create window via filesystem
-    int ctl_fd = p9_open(p9, "/mnt/wm/ctl", P9_OWRITE);
-    p9_write(p9, ctl_fd, "{\"title\":\"My Window\",\"width\":800,\"height\":600}", 40);
-    p9_close(p9, ctl_fd);
-
-    // Set properties
-    int title_fd = p9_open(p9, "/mnt/wm/windows/1/title", P9_OWRITE);
-    p9_write(p9, title_fd, "New Title", 10);
-    p9_close(p9, title_fd);
-
-    // Event loop
-    int event_fd = p9_open(p9, "/mnt/wm/windows/1/events", P9_OREAD);
+    // Blocking Event Loop
+    int ev = p9_open(fd, "/wm/win/1/events", OREAD);
     char buf[256];
-    while (p9_read(p9, event_fd, buf, sizeof(buf)) > 0) {
-        printf("Event: %s\n", buf);
+    while(p9_read(fd, ev, buf, sizeof(buf)) > 0) {
+        printf("System Event: %s\n", buf);
     }
 
-Shell (rc) scripting:
 
-    # Create window (via Marrow namespace)
-    echo '{"title":"My Window","width":800,"height":600}' > /mnt/wm/ctl
 
-    # Set title
-    echo "New Title" > /mnt/wm/windows/1/title
+Shell (rc) Scripting:
 
-    # Create button widget
-    echo "type=button" > /mnt/wm/windows/1/widgets/new
+    # Create top-level window
+    echo '{"title":"ShellApp"}' > /wm/ctl
 
-    # Set button text
-    echo "Click Me" > /mnt/wm/windows/1/widgets/1/properties/text
+    # Set title using recursive path
+    echo "Marrow Terminal" > /wm/win/1/title
 
-    # Event loop
-    while () {
-        event=`{cat /mnt/wm/windows/1/widgets/1/events}
-        if (~ $event()) {
-            echo Button clicked!
+    # Create a button widget
+    echo "type=button" > /wm/win/1/widgets/new
+
+    # Update widget property
+    echo "Action" > /wm/win/1/widgets/1/text
+
+    # Simple event listener
+    while() {
+        event = `{cat /wm/win/1/widgets/1/events}
+        if (~ $event clicked*) {
+            echo "Button was pressed!"
         }
     }
 
-Python (via 9p client to Marrow):
+Python (via p9 library):
 
     import p9
 
-    # Connect to Marrow
-    marrow = p9.mount("tcp!localhost!17010", "")
-
-    # Access Kryon's /mnt/wm
-    wm = marrow.cd("/mnt/wm")
+    # Connect to the Marrow node
+    marrow = p9.connect("tcp!localhost!17010")
 
     # Create window
-    wm.ctl.write('{"title":"My Window","width":800,"height":600}')
+    marrow.write("/wm/ctl", '{"title":"PyWin"}')
 
-    # Set title
-    marrow.write("/mnt/wm/windows/1/title", "New Title")
+    # Create a nested window inside win 1
+    marrow.write("/wm/win/1/win/new", '{"title":"SubWindow"}')
 
-    # Create button
-    marrow.write("/mnt/wm/windows/1/widgets/new", "type=button")
+    # Add a checkbox to the subwindow
+    marrow.write("/wm/win/1/win/2/widgets/new", "type=checkbox")
+    marrow.write("/wm/win/1/win/2/widgets/1/text", "Enable AI")
 
-    # Set text
-    marrow.write("/mnt/wm/windows/1/widgets/1/properties/text", "Click Me")
+    # Event generator
+    for event in marrow.listen("/wm/win/1/win/2/widgets/1/events"):
+        if "changed" in event:
+            print("AI Status toggled")
 
-    # Event loop
-    for event in marrow.events("/mnt/wm/windows/1/widgets/1/events"):
-        if "clicked" in event:
-            print("Clicked!")
 
-Lua (via 9p client to Marrow):
+
+Lua (Kryon-Native Scripting):
 
     local p9 = require("9p")
+    local m = p9.connect("tcp!localhost!17010")
 
-    -- Connect to Marrow
-    local marrow = p9.connect("tcp!localhost!17010")
+    -- Create Window
+    m:write("/wm/ctl", '{"title":"LuaApp"}')
 
-    -- Access Kryon's /mnt/wm
-    local wm = marrow:cd("/mnt/wm")
+    -- Set Mode to TTY for serial-link optimization
+    m:write("/wm/mode", "tty")
 
-    -- Create window
-    wm:ctl_write('{"title":"My Window","width":800,"height":600}')
-
-    -- Set title
-    marrow:write("/mnt/wm/windows/1/title", "New Title")
-
-    -- Create button
-    marrow:write("/mnt/wm/windows/1/widgets/new", "type=button")
-
-    -- Set text
-    marrow:write("/mnt/wm/windows/1/widgets/1/properties/text", "Click Me")
+    -- Add a button
+    m:write("/wm/win/1/widgets/new", "type=button")
+    m:write("/wm/win/1/widgets/1/text", "Press Me")
 
     -- Event loop
-    for event in marrow:events("/mnt/wm/windows/1/widgets/1/events") do
-        if event:find("clicked") then
-            print("Clicked!")
+    for ev in m:events("/wm/win/1/widgets/1/events") do
+        if ev:find("clicked") then
+            print("Input detected on /wm/win/1/widgets/1")
         end
     end
 
 NOTES:
 
-- All operations go through Marrow on port 17010
-- /dev/draw is used for rendering (provided by Marrow)
-- /mnt/wm is provided by Kryon service
-- Window and widget properties are files in /mnt/wm
-- Events are read from event files
+- Pathing: Always use `/wm/win/[id]` for windows and `/widgets/[id]` for leaf nodes.
+- Recursion: Windows can be nested: `/wm/win/1/win/2/win/3/...`
+- Mode Switch: Writing "tty" or "display" to `/wm/mode` changes the renderer instantly.
+- Portability: Scripts written for Display mode work perfectly in TTY mode without changes.

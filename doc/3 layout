@@ -1,75 +1,106 @@
 LAYOUT FORMAT
 
-.kryon files declare widget hierarchies with IDs for controllers.
+.kryon files define widget hierarchies and nested window structures. 
+These files are parsed by the Kryon loader to populate the /wm filesystem.
 
-Syntax:
+SYNTAX
 
-    window "title" width height {
-        layout_type param=value param=value {
-            widget_type id "property value"
-            widget_type id param=value
+    window id "Title" [width height] {
+        layout_type [param=value] {
+            widget_type id "property" [param=value]
+            
+            # Nested window support
+            window sub_id "Sub-Window" [x y w h] {
+                ...
+            }
         }
     }
 
-Example:
+EXAMPLE: HABITS APP
 
-    window "Counter" 300 200 {
-        column gap=10 padding=20 {
-            label lbl_count "Count: 0" align="center"
-            button btn_inc "+"
-            button btn_dec "-"
+    window habits "Daily Habits" 400 600 {
+        vbox gap=10 padding=15 {
+            label title "My Tasks" align="center" font="bold"
+            
+            # A scrollable list of habit items
+            scrollarea list_view {
+                vbox gap=5 {
+                    checkbox task1 "Drink Water" value=1
+                    checkbox task2 "Exercise" value=0
+                    checkbox task3 "Read Marrow Docs" value=0
+                }
+            }
+
+            # Nested window for settings
+            window settings "Quick Settings" 200 150 {
+                vbox {
+                    button btn_theme "Toggle TTY/GUI Mode"
+                    button btn_close "Close"
+                }
+            }
         }
     }
 
-Supported layouts:
 
-    column          gap=10 padding=20 align="center"
-    row             gap=10 padding=20 justify="space-between"
-    grid            columns=2 rows=2 gap=10
-    absolute        (manual positioning)
 
-Widget syntax:
+SUPPORTED LAYOUTS
 
-    # Simple text widget
-    label id1 "Hello, World"
+    vbox            gap=10 padding=20 align="center" (Vertical)
+    hbox            gap=10 padding=20 justify="space-between" (Horizontal)
+    grid            cols=2 rows=2 gap=10
+    stack           (Layered widgets, only top is visible/active)
+    absolute        (Manual x,y positioning via rect)
 
-    # Button with ID
-    button btn_submit "Submit"
+WIDGET SYNTAX
 
-    # With parameters
-    textinput name placeholder="Enter name" width=200
-
-    # Container with children
-    column gap=10 {
-        label "First:"
-        textinput first
-        label "Last:"
-        textinput last
+    # Text-heavy widget
+    label lbl_id "Display Text"
+    
+    # Input with ID and properties
+    textinput user_in placeholder="Username" width=200
+    
+    # Nested Widget Logic
+    vbox {
+        button btn_ok "OK" color="#00ff00"
     }
 
-Controller usage (Lua):
+CONTROLLER USAGE (LUA)
 
+    -- Kryon's Lua lib maps ID to the /wm path automatically
     local count = 0
-    local lbl = kryon.widget("lbl_count")
+    local lbl = kryon.widget("habits.list_view.lbl_count")
 
-    kryon.widget("btn_inc").on_click(function()
+    kryon.widget("habits.btn_inc").on_click(function()
         count = count + 1
         lbl.text = "Count: " .. count
+        -- Under the hood: echo "Count: 1" > /wm/win/habits/widgets/lbl_count/text
     end)
 
     kryon.run()
 
-Property types:
+
+
+DIRECT 9P USAGE (Manual override)
+
+If not using a .kryon file, you can drive the WM manually via the shell:
+
+    # 1. Create top-level window
+    echo '{"title":"Manual", "w":300, "h":200}' > /wm/ctl
+    
+    # 2. Create a widget inside window 1
+    echo "type=label" > /wm/win/1/widgets/new
+    
+    # 3. Update the property
+    echo "Hello from Marrow" > /wm/win/1/widgets/1/text
+    
+    # 4. Create a nested sub-window
+    echo '{"title":"Sub"}' > /wm/win/1/win/new
+
+PROPERTY TYPES
 
     string          "text value"
-    integer         42
-    boolean         0 or 1
+    int             42 (Pixels in GUI, Cells in TUI)
+    bool            0 or 1
     rect            "x y w h"
+    color           "#RRGGBB" or "#RRGGBBAA"
     enum            "start" | "center" | "end" | "stretch"
-
-Direct 9P usage (no layout file):
-
-    echo "create_window" > /mnt/kryon/ctl
-    echo "My App" > /mnt/kryon/windows/1/title
-    echo "create_widget 1 label 0" > /mnt/kryon/ctl
-    echo "Hello" > /mnt/kryon/windows/1/widgets/1/text

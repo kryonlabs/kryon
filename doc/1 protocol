@@ -1,117 +1,72 @@
 PROTOCOL
 
-Kryon speaks 9P2000 with Marrow.  All UI state is a filesystem mounted at /mnt/wm.
+Kryon speaks 9P2000 with Marrow. All UI state is a synthetic filesystem 
+mounted at /wm. If the service is not running, /wm is unmounted.
 
-WINDOW MANAGER HIERARCHY
+WINDOW MANAGER HIERARCHY (RECURSIVE)
 
-Kryon provides a window manager interface at /mnt/wm:
+Kryon provides a nested window interface at /wm. Every window is a 
+container that can hold widgets OR other windows.
 
-    /mnt/wm/                         Window manager service
-    ├── ctl                          Create windows (write JSON)
-    ├── version                      "Kryon 1.0"
-    └── windows/                     All windows
-        ├── 1/                      Window 1
-        │   ├── title               Window title (file)
-        │   ├── rect                Position "x,y,w,h" (file)
-        │   ├── visible             "true" or "false" (file)
-        │   ├── focused             "true" or "false" (file)
-        │   ├── widgets/            Widget tree
-        │   │   └── [id]/
-        │   │       ├── type        Widget type (button, label, etc.)
-        │   │       ├── properties/ Widget properties (files)
-        │   │       │   ├── text
-        │   │       │   ├── color
-        │   │       │   ├── x
-        │   │       │   ├── y
-        │   │       │   ├── width
-        │   │       │   └── height
-        │   │       └── events      Read events (file)
-        │   └── events              Window events (read-only)
-        └── 2/                      Window 2
+    /wm/
+    ├── ctl                 Global WM control (write JSON)
+    ├── version             "Kryon 1.0"
+    ├── mode                "display" or "tty" (read/write)
+    └── win/                Top-level windows
+        └── [id]/           Recursive Window Entry
+            ├── ctl         Window control (move, resize, hide)
+            ├── title       Window title
+            ├── rect        Position "x,y,w,h" (relative to parent)
+            ├── win/        NESTED WINDOWS (Recursive)
+            │   └── [id]/   Sub-window with its own widgets/win/
+            ├── widgets/    Widget tree for this level
+            │   └── [id]/
+            │       ├── type
+            │       ├── properties/
+            │       └── events
+            ├── events      Window-level events
+            └── dev/        
+                └── draw    Virtual draw device for this window
 
 CONTROL INTERFACE
 
-Create window (write JSON to /mnt/wm/ctl):
+Create a top-level window:
+    echo '{"title":"Parent"}' > /wm/ctl
 
-    echo '{"title":"My Window","width":800,"height":600}' > /mnt/wm/ctl
-
-Response: Window ID (e.g., "1")
-
-Window properties (read/write files):
-
-    /mnt/wm/windows/1/title          "My Window"
-    /mnt/wm/windows/1/rect           "100,100,800,600"
-    /mnt/wm/windows/1/visible        "true"
-    /mnt/wm/windows/1/focused        "false"
+Create a nested window (inside window 1):
+    echo '{"title":"Child"}' > /wm/win/1/ctl
 
 Widget management:
+    # Create widget in a specific nested window
+    echo "type=button" > /wm/win/1/win/2/widgets/new
 
-    # Create widget (write to new file in widgets/)
-    echo "type=button" > /mnt/wm/windows/1/widgets/new
 
-    # Set properties (write to property files)
-    echo "Click Me" > /mnt/wm/windows/1/widgets/1/properties/text
-    echo "#ff0000" > /mnt/wm/windows/1/widgets/1/properties/color
-
-    # Read events
-    cat /mnt/wm/windows/1/widgets/1/events
-    # Output: clicked x=50 y=20 button=1
 
 EVENT FORMAT
 
-Events are read from event files (one line per event):
+Events include the path to the origin window/widget to handle nesting:
+    /win/1/win/2/widgets/5 clicked x=10 y=5 button=1
 
-    clicked x=50 y=20 button=1
-    changed value="new text"
-    mouse_enter x=10 y=10
-    mouse_leave
-    focus_gained
-    focus_lost
-    key_press key=Enter
-    key_release key=Escape
+WIDGET TYPES (89 TOTAL)
 
-WIDGET TYPES
+Kryon ensures widgets degrade gracefully from Display to TTY mode.
 
-Kryon supports 89 widget types:
-
-    Input: button, checkbox, radio, textbox, password, textarea,
-           slider, progress, spinner, combobox, list, tree, table,
-           menu, toolbar, scrollbar, etc.
-
-    Display: label, image, icon, progress, separator, frame,
-              chart, graph, tooltip
-
-    Container: box, hbox, vbox, grid, frame, dialog, panel,
-               scroll, tab, split, deck
-
-    Navigation: menubar, menu, tabbar, breadcrumb
-
-    Form: form, field, label, input, button, submit, validation
-
-    Layout: absolute, relative, flow, flex, grid
-
-    Specialized: terminal, editor, console, filepicker, calendar,
-                clock, map, imageviewer, mediaplayer, webview,
-                pdfviewer, notification, dialog, wizard
+    Input:      button, checkbox, radio, textbox, slider, list
+    Display:    label, image, icon, progress, chart, graph
+    Container:  box, hbox, vbox, grid, frame, tab, split
+    Special:    terminal, editor, console, filepicker, map
 
 PERMISSIONS
 
-    /mnt/wm/version          0444    read-only
-    /mnt/wm/ctl              0222    write-only
-    /mnt/wm/windows/         0755    listable
-    /mnt/wm/windows/*/title  0644    read/write
-    /mnt/wm/windows/*/rect   0644    read/write
-    /mnt/wm/windows/*/events 0444    read-only
-    /mnt/wm/windows/*/widgets/   0755 listable
-    /mnt/wm/windows/*/widgets/*/properties/ 0755 read/write
+    /wm/ctl                  0222    write-only
+    /wm/mode                 0644    read/write
+    /wm/win/                 0755    listable
+    /wm/win/*/...            0644    recursive read/write access
 
 ERROR CODES
 
     EPERM           Operation not permitted
     ENOENT          File not found
-    EEXIST          File exists
-    EINVAL          Invalid argument
-    EOUTOFRANGE     Value out of range
-    ENOSPACE        No space (max widgets reached)
-    ENOTSUPPORTED   Operation not supported
-    ENOMEMORY       Out of memory
+    EINVAL          Invalid argument (e.g., recursive loop)
+    ENOSPACE        No space (max nesting depth reached)
+    

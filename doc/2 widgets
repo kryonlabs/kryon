@@ -1,56 +1,52 @@
 WIDGETS
 
-Kryon provides 89 widgets.  All widgets have:
+Kryon provides 89 widget types. Every widget is represented as a directory 
+in the /wm namespace. Properties are files within that directory.
 
-    Mandatory properties:
-        type        (string, read-only)  Widget type
-        rect        (string)             "x y w h"
-        visible     (integer)            0 or 1
-        enabled     (integer)            0 or 1
+CORE PROPERTIES (Mandatory for all)
 
-    Widget-specific properties:
-        text        (string)             Label/caption
-        value       (string)             State/value
-        placeholder (string)             Hint text
+    type        (string, RO)    Widget type name
+    rect        (string)        "x y w h" (Pixels in Display mode, Cells in TTY)
+    visible     (int)           0 (hidden) or 1 (visible)
+    enabled     (int)           0 (disabled) or 1 (active)
+    mode_hint   (string)        "auto", "gui-only", "tui-only"
 
-    Events:
-        clicked                  Mouse click
-        changed                  Value changed
-        mouse_enter/leave        Mouse crossing
-        focus_gained/lost        Keyboard focus
-        key_press/release        Keyboard input
+COMMON PROPERTIES
 
-Widget catalog:
+    text        (string)        Label, caption, or content
+    value       (string)        Current state/data (e.g., "1" for checked)
+    placeholder (string)        Hint text for empty inputs
+    tooltip     (string)        Hover/focus description
+
+
+
+WIDGET CATALOG (89 TOTAL)
 
 Input (24):
-    TextInput, PasswordInput, TextArea, SearchInput,
-    NumberInput, EmailInput, UrlInput, TelInput,
-    Checkbox, RadioButton, Dropdown, MultiSelect,
-    ListBox, Switch, Slider, RangeSlider, Rating, Spinbox,
-    DateInput, TimeInput, DateTimeInput, MonthInput, WeekInput,
-    FileInput
+    TextInput, PasswordInput, TextArea, SearchInput, NumberInput, 
+    EmailInput, UrlInput, TelInput, Checkbox, RadioButton, Dropdown, 
+    MultiSelect, ListBox, Switch, Slider, RangeSlider, Rating, Spinbox, 
+    DateInput, TimeInput, DateTimeInput, MonthInput, WeekInput, FileInput
 
 Buttons (8):
-    Button, SubmitButton, ResetButton, IconButton,
-    FloatingActionButton, DropdownButton, SegmentedControl
+    Button, SubmitButton, ResetButton, IconButton, 
+    FloatingActionButton, DropdownButton, SegmentedControl, ToolButton
 
 Display (11):
-    Label, Heading, Paragraph, RichText, Code,
-    Image, ProgressBar, ActivityIndicator, Badge,
-    Divider, Tooltip
+    Label, Heading, Paragraph, RichText, Code, Image, 
+    ProgressBar, ActivityIndicator, Badge, Divider, Tooltip
 
 Containers (11):
-    Container, Box, Frame, Card, ScrollArea,
-    SplitPane, TabContainer, Dialog, Modal,
-    ActionSheet, Drawer
+    Container, Box, Frame, Card, ScrollArea, SplitPane, 
+    TabContainer, Dialog, Modal, ActionSheet, Drawer
 
 Lists (8):
-    ListItem, ListTile, ListView, GridView,
-    DataTable, TreeView, Chip, Tag
+    ListItem, ListTile, ListView, GridView, DataTable, 
+    TreeView, Chip, Tag
 
 Navigation (8):
-    MenuBar, ToolBar, NavBar, NavRail,
-    Breadcrumb, Pagination, Stepper, PageView
+    MenuBar, ToolBar, NavBar, NavRail, Breadcrumb, 
+    Pagination, Stepper, PageView
 
 Menus (4):
     DropdownMenu, ContextMenu, CascadingMenu, PopupMenu
@@ -58,28 +54,42 @@ Menus (4):
 Forms (4):
     Form, FormGroup, ValidationMessage, InputGroup
 
-Windows (4):
+Windows (4): (Used within the /win/ hierarchy)
     Window, DialogWindow, PageScaffold, Fullscreen
 
-Specialized (8):
-    Canvas, Svg, Chart, ColorPicker, SignaturePad,
-    Resizable, Calendar, TableView
+Specialized (7):
+    Canvas, Svg, Chart, ColorPicker, SignaturePad, Resizable, Calendar
 
-Layout system:
+Terminal/Low-Level (1):
+    Terminal (provides a virtual /dev/cons for the widget)
 
-    Container widgets support:
-        layout          "row", "column", "grid", "absolute"
-        gap             integer       pixels between children
-        padding         integer       pixels around edges
-        align           "start", "center", "end", "stretch"
-        justify         "start", "center", "end", "space-between"
 
-    Row layout:
-        Children arranged horizontally
-        Height determined by tallest child
-        Widths expand to fill
 
-    Column layout:
-        Children arranged vertically
-        Width determined by widest child
-        Heights expand to fill
+LAYOUT SYSTEM
+
+Container widgets manage the 'rect' of their children automatically unless 
+set to "absolute".
+
+    layout      (string)    "row", "column", "grid", "stack", "absolute"
+    gap         (int)       Spacing between children (pixels or cells)
+    padding     (int)       Internal border spacing
+    align       (string)    "start", "center", "end", "stretch"
+    justify     (string)    "start", "center", "end", "space-between"
+
+TTY DEGRADATION STRATEGY
+
+When Kryon is in TTY mode, widgets map to character approximations:
+- ProgressBar: [====>    ]
+- Checkbox: [X] or [ ]
+- Button: < Text >
+- Layouts: Grid cells map 1:1 to terminal character coordinates.
+
+EVENTS
+
+Events are read-only streams from the 'events' file of each widget.
+
+    clicked x=50 y=20 button=1
+    changed value="updated text"
+    mouse_enter / mouse_leave
+    focus_gained / focus_lost
+    key_press key=Enter
