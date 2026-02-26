@@ -2,39 +2,39 @@ CONTROLLER API
 
 Kryon provides multiple ways to interact with the window manager filesystem.
 
-C API (via Marrow client library):
+C API (via 9P client library):
 
-    #include <marrow_client.h>
+    #include <p9client.h>
     #include <kryon.h>
 
-    // Connect to Marrow
-    P9Client *mc = marrow_connect("localhost", 17010);
-    marrow_authenticate(mc, "none", "");
+    // Connect to 9P server (Marrow)
+    P9Client *p9 = p9_connect("tcp!localhost!17010");
+    p9_authenticate(p9, P9_AUTH_NONE, "none", "");
 
     // Register as window-manager service
-    marrow_service_register(mc, "kryon", "window-manager",
-                           "Kryon Window Manager");
+    p9_service_register(p9, "kryon", "window-manager",
+                       "Kryon Window Manager");
 
     // Mount /mnt/wm to Marrow's namespace
-    marrow_namespace_mount(mc, "/mnt/wm");
+    p9_namespace_mount(p9, "/mnt/wm");
 
     // Open /dev/draw for rendering
-    DrawClient *dc = drawclient_connect(mc);
+    // (via graphics.h - not shown here)
 
     // Create window via filesystem
-    int ctl_fd = marrow_open(mc, "/mnt/wm/ctl", O_WRONLY);
-    write(ctl_fd, "{\"title\":\"My Window\",\"width\":800,\"height\":600}", 40);
-    close(ctl_fd);
+    int ctl_fd = p9_open(p9, "/mnt/wm/ctl", P9_OWRITE);
+    p9_write(p9, ctl_fd, "{\"title\":\"My Window\",\"width\":800,\"height\":600}", 40);
+    p9_close(p9, ctl_fd);
 
     // Set properties
-    int title_fd = marrow_open(mc, "/mnt/wm/windows/1/title", O_WRONLY);
-    write(title_fd, "New Title", 10);
-    close(title_fd);
+    int title_fd = p9_open(p9, "/mnt/wm/windows/1/title", P9_OWRITE);
+    p9_write(p9, title_fd, "New Title", 10);
+    p9_close(p9, title_fd);
 
     // Event loop
-    int event_fd = marrow_open(mc, "/mnt/wm/windows/1/events", O_RDONLY);
+    int event_fd = p9_open(p9, "/mnt/wm/windows/1/events", P9_OREAD);
     char buf[256];
-    while (read(event_fd, buf, sizeof(buf)) > 0) {
+    while (p9_read(p9, event_fd, buf, sizeof(buf)) > 0) {
         printf("Event: %s\n", buf);
     }
 

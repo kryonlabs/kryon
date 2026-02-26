@@ -138,13 +138,65 @@ P9Client *p9_connect(const char *address)
     struct sockaddr_in addr;
     struct hostent *he;
     int fd;
+    char host_buf[256];
     char *host_str;
     int port;
+    char *port_str;
+    char *p;
 
-    /* For now, just use localhost:17010 */
-    /* TODO: Parse tcp!host!port format */
-    host_str = "localhost";
-    port = 17010;
+    /* Parse address formats:
+     * - tcp!host!port (Plan 9 style)
+     * - host:port (common format)
+     * - host (default port)
+     */
+    if (address == NULL) {
+        fprintf(stderr, "p9_connect: NULL address\n");
+        return NULL;
+    }
+
+    /* Copy address to buffer for parsing */
+    if (strlen(address) >= sizeof(host_buf) - 1) {
+        fprintf(stderr, "p9_connect: address too long\n");
+        return NULL;
+    }
+    strcpy(host_buf, address);
+
+    /* Parse tcp!host!port format */
+    if (strncmp(host_buf, "tcp!", 4) == 0) {
+        p = host_buf + 4;
+        host_str = p;
+
+        /* Find second ! */
+        p = strchr(p, '!');
+        if (p != NULL) {
+            *p = '\0';
+            port_str = p + 1;
+            port = atoi(port_str);
+            if (port <= 0 || port > 65535) {
+                fprintf(stderr, "p9_connect: invalid port in %s\n", address);
+                return NULL;
+            }
+        } else {
+            port = 17010;  /* Default Marrow port */
+        }
+    }
+    /* Parse host:port format */
+    else if (strchr(host_buf, ':') != NULL) {
+        p = strchr(host_buf, ':');
+        *p = '\0';
+        host_str = host_buf;
+        port_str = p + 1;
+        port = atoi(port_str);
+        if (port <= 0 || port > 65535) {
+            fprintf(stderr, "p9_connect: invalid port in %s\n", address);
+            return NULL;
+        }
+    }
+    /* Just hostname, use default port */
+    else {
+        host_str = host_buf;
+        port = 17010;  /* Default Marrow port */
+    }
 
     /* Create socket */
     fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -168,7 +220,7 @@ P9Client *p9_connect(const char *address)
     memcpy(&addr.sin_addr, he->h_addr_list[0], he->h_length);
 
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        fprintf(stderr, "p9_connect: connect failed\n");
+        fprintf(stderr, "p9_connect: connect to %s:%d failed\n", host_str, port);
         close(fd);
         return NULL;
     }
@@ -191,32 +243,34 @@ P9Client *p9_connect(const char *address)
         uint8_t msg[128];
         uint8_t resp[P9_MAX_MSG];
         P9Hdr *hdr;
-        uint32_t *size;
         uint16_t *tag;
-        uint8_t *p;
+        uint32_t *size;
+        uint8_t *msg_ptr;
         ssize_t n;
 
         /* Build Tversion */
-        p = msg + 4;  /* Skip size field */
-        *p++ = P9_TVERSION;
+        msg_ptr = msg + 4;  /* Skip size field */
+        *msg_ptr++ = P9_TVERSION;
 
-        tag = (uint16_t *)p;
+        tag = (uint16_t *)msg_ptr;
         *tag = htons(0xFFFF);  /* NOTAG */
-        p += 2;
+        msg_ptr += 2;
 
-        size = (uint32_t *)p;
+        size = (uint32_t *)msg_ptr;
         *size = htonl(P9_MAX_MSG);
-        p += 4;
+        msg_ptr += 4;
 
-        strcpy((char *)p, P9_VERSION);
-        p += strlen(P9_VERSION) + 1;
+        strcpy((char *)msg_ptr, P9_VERSION);
+        msg_ptr += strlen(P9_VERSION) + 1;
 
         /* Fill size */
-        uint32_t msg_size = p - msg;
-        *(uint32_t *)msg = htonl(msg_size - 4);
+        {
+            uint32_t msg_size = msg_ptr - msg;
+            *(uint32_t *)msg = htonl(msg_size - 4);
+        }
 
         /* Send */
-        if (write_n(fd, msg, msg_size) < 0) {
+        if (write_n(fd, msg, msg_ptr - msg) < 0) {
             fprintf(stderr, "p9_connect: write failed\n");
             free(client);
             close(fd);
@@ -232,13 +286,15 @@ P9Client *p9_connect(const char *address)
             return NULL;
         }
 
-        uint32_t resp_size = ntohl(*(uint32_t *)resp);
-        n = read_n(fd, resp + 4, resp_size);
-        if (n < resp_size) {
-            fprintf(stderr, "p9_connect: read body failed\n");
-            free(client);
-            close(fd);
-            return NULL;
+        {
+            uint32_t resp_size = ntohl(*(uint32_t *)resp);
+            n = read_n(fd, resp + 4, resp_size);
+            if (n < resp_size) {
+                fprintf(stderr, "p9_connect: read body failed\n");
+                free(client);
+                close(fd);
+                return NULL;
+            }
         }
 
         hdr = (P9Hdr *)resp;
