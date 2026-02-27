@@ -125,4 +125,11 @@ void p9_set_namespace(struct P9Node *ns_root);
  */
 struct P9Node *p9_get_namespace(void);
 
+/*
+ * Reconnect to 9P server
+ * Replaces the client with a new connection to the specified address
+ * Returns 0 on success, -1 on failure
+ */
+int p9_reconnect(P9Client **client_ptr, const char *address);
+
 #endif /* KRYON_P9CLIENT_H */

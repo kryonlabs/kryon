@@ -117,6 +117,11 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         return NULL;
     }
 
+    /* Store server address for reconnection */
+    strncpy(dc->server_addr, addr_str, sizeof(dc->server_addr) - 1);
+    dc->server_addr[sizeof(dc->server_addr) - 1] = '\0';
+    dc->connected = 1;  /* Initially connected */
+
     /* Attach to server */
     if (p9_authenticate(dc->p9, P9_AUTH_NONE, "none", "") < 0) {
         fprintf(stderr, "Failed to attach: %s\n", p9_error(dc->p9));
@@ -318,23 +323,46 @@ static int read_screen(DisplayClient *dc)
                                (char *)(dc->temp_buf + total),
                                to_read - total);
         if (nread < 0) {
-            /* Connection lost - try to reopen /dev/screen */
+            /* Connection lost - attempt full reconnection */
             fprintf(stderr, "Connection lost, attempting to reconnect...\n");
 
-            /* Close old file descriptor */
-            p9_close(dc->p9, dc->screen_fd);
+            /* Close old file descriptors */
+            if (dc->screen_fd >= 0) {
+                p9_close(dc->p9, dc->screen_fd);
+                dc->screen_fd = -1;
+            }
+            if (dc->mouse_fd >= 0) {
+                p9_close(dc->p9, dc->mouse_fd);
+                dc->mouse_fd = -1;
+            }
 
-            /* Try to reopen /dev/screen */
-            dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
+            /* Mark as disconnected */
+            dc->connected = 0;
 
-            if (dc->screen_fd < 0) {
-                /* Still failed - wait and try again next frame */
+            /* Reconnect to server */
+            if (p9_reconnect((P9Client **)&dc->p9, dc->server_addr) < 0) {
                 fprintf(stderr, "Reconnection failed, will retry...\n");
                 usleep(100000);  /* 100ms */
                 return 0;  /* Don't exit, try again next frame */
             }
 
-            fprintf(stderr, "Successfully reconnected to /dev/screen\n");
+            /* Re-open /dev/screen */
+            dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
+            if (dc->screen_fd < 0) {
+                fprintf(stderr, "Failed to open /dev/screen after reconnection\n");
+                usleep(100000);
+                return 0;
+            }
+
+            /* Re-open /dev/mouse */
+            dc->mouse_fd = p9_open(dc->p9, "/dev/mouse", P9_OWRITE);
+            if (dc->mouse_fd < 0) {
+                fprintf(stderr, "Warning: Failed to open /dev/mouse after reconnection\n");
+            }
+
+            /* Mark as connected */
+            dc->connected = 1;
+            fprintf(stderr, "Successfully reconnected to server\n");
 
             /* Reset to beginning of frame for new connection */
             p9_reset_fid(dc->p9, dc->screen_fd);
@@ -570,8 +598,8 @@ int display_client_send_mouse(DisplayClient *dc, int x, int y, int buttons)
     char msg[64];
     int len;
 
-    if (dc == NULL || dc->mouse_fd < 0) {
-        return -1;
+    if (dc == NULL || dc->mouse_fd < 0 || !dc->connected) {
+        return -1;  /* Drop events when disconnected */
     }
 
     /* Format: m resized x y buttons msec */
@@ -592,6 +620,11 @@ int display_client_send_key(DisplayClient *dc, int keycode, int pressed)
     (void)dc;
     (void)keycode;
     (void)pressed;
+
+    /* Drop events when disconnected */
+    if (dc == NULL || !dc->connected) {
+        return -1;
+    }
 
     /* TODO: Implement keyboard event sending */
     return 0;
@@ -635,11 +668,27 @@ int display_client_run(DisplayClient *dc)
             dc->refresh_needed = 0;
         }
 
-        /* Process SDL events */
-        {
+        /* Process SDL events only when connected */
+        if (dc->connected) {
             SDL_Event ev;
             while (SDL_PollEvent(&ev)) {
                 handle_sdl_event(dc, &ev);
+            }
+        } else {
+            /* Still need to process quit events even when disconnected */
+            SDL_Event ev;
+            while (SDL_PollEvent(&ev)) {
+                if (ev.type == SDL_QUIT) {
+                    if (dc->stay_open) {
+                        fprintf(stderr, "SDL_QUIT received but ignored (stay-open mode)\n");
+                    } else {
+                        fprintf(stderr, "SDL_QUIT event received, exiting...\n");
+                        dc->running = 0;
+                    }
+                } else if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) {
+                    fprintf(stderr, "ESC pressed, exiting...\n");
+                    dc->running = 0;
+                }
             }
         }
 #endif

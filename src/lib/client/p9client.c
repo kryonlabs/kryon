@@ -1032,3 +1032,49 @@ int p9_clunk(P9Client *client, int fd)
 {
     return p9_close(client, fd);
 }
+
+/*
+ * Reconnect to 9P server
+ * Closes existing connection, reconnects, and re-authenticates
+ * Returns 0 on success, -1 on failure
+ */
+int p9_reconnect(P9Client **client_ptr, const char *address)
+{
+    P9Client *old_client;
+    P9Client *new_client;
+    int old_fd;
+
+    if (client_ptr == NULL || *client_ptr == NULL || address == NULL) {
+        return -1;
+    }
+
+    old_client = *client_ptr;
+
+    /* Create new connection */
+    new_client = p9_connect(address);
+    if (new_client == NULL) {
+        return -1;
+    }
+
+    /* Authenticate with new connection */
+    if (p9_authenticate(new_client, P9_AUTH_NONE, "none", "") < 0) {
+        p9_disconnect(new_client);
+        return -1;
+    }
+
+    /* Save old fd to close later */
+    old_fd = old_client->fd;
+
+    /* Replace old client with new one */
+    *client_ptr = new_client;
+
+    /* Clean up old client (don't use p9_disconnect as it closes socket we want to keep) */
+    free(old_client);
+
+    /* Close old socket after new connection is established */
+    close(old_fd);
+
+    fprintf(stderr, "p9_reconnect: successfully reconnected to %s\n", address);
+
+    return 0;
+}

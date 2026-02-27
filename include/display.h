@@ -44,6 +44,8 @@ typedef struct {
 struct DisplayClient {
     /* 9P client connection */
     void *p9;               /* Opaque P9Client pointer */
+    char server_addr[256];  /* Server address for reconnection */
+    int connected;          /* Connection state flag */
 
     /* Native display (SDL2) */
 #ifdef HAVE_SDL2
