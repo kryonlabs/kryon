@@ -5,6 +5,6 @@
 window demo "Demo Window" 800 600 {
     absolute {
         button btn_click "Click Me" { rect "50 50 200 50" }
-        label lbl_hello "Hello, World!" { rect "50 120 300 40" }
+        label lbl_hello "Hello, World!" { rect "50 120 300 40" color "#FFFF00" }
     }
 }

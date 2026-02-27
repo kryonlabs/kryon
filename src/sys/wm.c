@@ -40,6 +40,19 @@
 #include <stdarg.h>
 
 /*
+ * Forward declarations
+ */
+static ssize_t wm_mount_read(char *buf, size_t count, uint64_t offset, void *data);
+static ssize_t wm_mount_write(const char *buf, size_t count, uint64_t offset, void *data);
+ssize_t vdev_mouse_read(char *buf, size_t count, uint64_t offset, void *data);
+ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset, void *data);
+ssize_t vdev_kbd_read(char *buf, size_t count, uint64_t offset, void *data);
+ssize_t vdev_kbd_write(const char *buf, size_t count, uint64_t offset, void *data);
+ssize_t vdev_cons_read(char *buf, size_t count, uint64_t offset, void *data);
+ssize_t vdev_cons_write(const char *buf, size_t count, uint64_t offset, void *data);
+ssize_t vdev_draw_new_read(char *buf, size_t count, uint64_t offset, void *data);
+
+/*
  * Global window manager filesystem root
  */
 static P9Node *g_wm_root = NULL;
@@ -731,6 +744,15 @@ int wm_create_window_entry_ex(struct KryonWindow *win, P9Node *parent_dir)
     }
     /* ================================================================================== */
 
+    /* ========== NEW: Create /win/{id}/mount - mount control file ========== */
+    file = tree_create_file(win_dir, "mount", win,
+                            wm_mount_read, wm_mount_write);
+    if (file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create mount file\n");
+        return -1;
+    }
+    /* ======================================================================= */
+
     /* ========== NEW: Create /win/{id}/dev/ directory for virtual devices ========== */
     dev_dir = tree_create_dir(win_dir, "dev");
     if (dev_dir == NULL) {
@@ -762,15 +784,17 @@ int wm_create_window_entry_ex(struct KryonWindow *win, P9Node *parent_dir)
         return -1;
     }
 
-    /* Create /dev/mouse (virtual) - placeholder */
-    file = tree_create_file(dev_dir, "mouse", win, NULL, NULL);
+    /* Create /dev/mouse (virtual) */
+    file = tree_create_file(dev_dir, "mouse", win,
+                            vdev_mouse_read, vdev_mouse_write);
     if (file == NULL) {
         fprintf(stderr, "wm_create_window_entry_ex: failed to create mouse file\n");
         return -1;
     }
 
-    /* Create /dev/kbd (virtual) - placeholder */
-    file = tree_create_file(dev_dir, "kbd", win, NULL, NULL);
+    /* Create /dev/kbd (virtual) */
+    file = tree_create_file(dev_dir, "kbd", win,
+                            vdev_kbd_read, vdev_kbd_write);
     if (file == NULL) {
         fprintf(stderr, "wm_create_window_entry_ex: failed to create kbd file\n");
         return -1;
@@ -847,44 +871,79 @@ ssize_t vdev_draw_new_read(char *buf, size_t count, uint64_t offset, void *data)
 }
 
 /*
- * Virtual /dev/cons write handler
- * Writes characters to the console buffer
+ * ========== Mount Control Handlers ==========
  */
-ssize_t vdev_cons_write(const char *buf, size_t count, uint64_t offset,
-                       void *data)
+
+/*
+ * /mnt/wm/win/{id}/mount read handler - shows mount status
+ */
+static ssize_t wm_mount_read(char *buf, size_t count, uint64_t offset, void *data)
 {
     struct KryonWindow *win = (struct KryonWindow *)data;
+    const char *status;
 
-    (void)offset;
-
-    if (win == NULL || buf == NULL || count == 0) {
-        return -1;
+    if (win == NULL) {
+        return 0;
     }
 
-    /* TODO: Implement console buffer write */
-    /* For now, just output to stderr for debugging */
-    fprintf(stderr, "Window %u console: %.*s", win->id, (int)count, buf);
+    /* Return mount status string */
+    if (win->ns_mount_spec != NULL) {
+        status = win->ns_mount_spec;
+    } else {
+        status = "local";  /* Default: local namespace */
+    }
 
-    return count;
+    /* Handle offset */
+    {
+        size_t len = strlen(status);
+        if (offset >= len) {
+            return 0;
+        }
+
+        {
+            size_t to_copy = len - offset;
+            if (to_copy > count) {
+                to_copy = count;
+            }
+
+            memcpy(buf, status + offset, to_copy);
+            return to_copy;
+        }
+    }
 }
 
 /*
- * Virtual /dev/cons read handler
+ * /mnt/wm/win/{id}/mount - Mount control
+ * Write: "tcp!192.168.1.10!17010" or "local!" or "nest!800x600"
  */
-ssize_t vdev_cons_read(char *buf, size_t count, uint64_t offset,
-                      void *data)
+static ssize_t wm_mount_write(const char *buf, size_t count, uint64_t offset, void *data)
 {
     struct KryonWindow *win = (struct KryonWindow *)data;
+    char mount_spec[256];
 
-    if (win == NULL || win->vdev == NULL) {
-        return 0;  /* EOF */
-    }
-
-    /* TODO: Implement console buffer read */
-    (void)buf;
-    (void)count;
     (void)offset;
 
-    return 0;
+    if (win == NULL || count == 0 || count >= sizeof(mount_spec)) {
+        return -1;
+    }
+
+    /* Copy and null-terminate */
+    memcpy(mount_spec, buf, count);
+    mount_spec[count] = '\0';
+
+    /* Strip newline */
+    if (count > 0 && mount_spec[count - 1] == '\n') {
+        mount_spec[count - 1] = '\0';
+    }
+
+    fprintf(stderr, "wm_mount: window %u mounting '%s'\n", win->id, mount_spec);
+
+    /* Call window_namespace_mount to handle the mount */
+    if (window_namespace_mount(win, mount_spec) < 0) {
+        fprintf(stderr, "wm_mount: failed to mount '%s'\n", mount_spec);
+        return -1;
+    }
+
+    return count;
 }
 

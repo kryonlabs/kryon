@@ -5,10 +5,14 @@
 
 #include "namespace.h"
 #include "window.h"
-#include "p9client.h"
+#include "vdev.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
+#include <signal.h>
 
 /*
  * snprintf prototype for C89 compatibility
@@ -24,24 +28,119 @@ int window_namespace_init(struct KryonWindow *win)
         return -1;
     }
 
-    win->ns_client = NULL;
     win->ns_mount_spec = NULL;
     win->ns_type = NS_LOCAL;
-    win->ns_root = NULL;
-    win->remote_screen_fd = -1;
-    win->remote_mouse_fd = -1;
-    win->remote_kbd_fd = -1;
+    win->nested_wm_pid = 0;
+    win->nested_fd_in = -1;
+    win->nested_fd_out = -1;
 
     return 0;
 }
 
 /*
- * Mount a remote WM or filesystem into window
+ * Spawn a nested WM instance in a window
+ *
+ * The nested WM will use this window's virtual devices:
+ * - vdev->draw_buffer becomes its /dev/screen
+ * - vdev->cons_buffer becomes its /dev/cons
+ * - Mouse/kbd events are forwarded via pipes
+ */
+int window_spawn_nested_wm(struct KryonWindow *win)
+{
+    pid_t pid;
+    char win_id_str[32];
+    char pipe_fd_str[32];
+    int sv[2];
+
+    if (win == NULL) {
+        return -1;
+    }
+
+    /* Allocate virtual framebuffer if not exists */
+    if (win->vdev == NULL) {
+        win->vdev = (VirtualDevices *)calloc(1, sizeof(VirtualDevices));
+        if (win->vdev == NULL) {
+            return -1;
+        }
+    }
+
+    if (win->vdev->draw_buffer == NULL) {
+        /* Parse window rect to get dimensions */
+        int w = 800, h = 600;  /* Default */
+        /* TODO: Parse from win->rect */
+        if (vdev_alloc_draw(win, w, h) < 0) {
+            return -1;
+        }
+    }
+
+    /* Create communication pipes for input forwarding */
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
+        perror("socketpair");
+        return -1;
+    }
+    win->nested_fd_in = sv[0];
+    win->nested_fd_out = sv[1];
+
+    /* Mark window as hosting nested WM */
+    win->ns_type = NS_NESTED_WM;
+    if (win->ns_mount_spec != NULL) {
+        free(win->ns_mount_spec);
+    }
+    win->ns_mount_spec = (char *)malloc(6);
+    if (win->ns_mount_spec != NULL) {
+        strcpy(win->ns_mount_spec, "nest!");
+    }
+
+    /* Fork and exec nested WM */
+    pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        close(sv[0]);
+        close(sv[1]);
+        return -1;
+    }
+
+    if (pid == 0) {
+        /* Child: nested WM process */
+
+        /* Close parent's end of pipe */
+        close(sv[0]);
+
+        /* Create unique identifier for this window's devices */
+        snprintf(win_id_str, sizeof(win_id_str), "%u", win->id);
+
+        /* Set environment variables so nested WM knows which window to use */
+        setenv("KRYON_NESTED_WIN_ID", win_id_str, 1);
+
+        /* Pass pipe FD as env var */
+        snprintf(pipe_fd_str, sizeof(pipe_fd_str), "%d", sv[1]);
+        setenv("KRYON_NESTED_PIPE_FD", pipe_fd_str, 1);
+
+        /* Exec nested WM */
+        execl("./bin/kryon-wm", "kryon-wm", "--nested", win_id_str, NULL);
+
+        /* If exec fails */
+        perror("execl kryon-wm");
+        close(sv[1]);
+        exit(1);
+    }
+
+    /* Parent: close child's end of pipe */
+    close(sv[1]);
+
+    /* Store child PID for later cleanup */
+    win->nested_wm_pid = pid;
+
+    fprintf(stderr, "Spawned nested WM (pid=%d) in window %u\n", pid, win->id);
+    return 0;
+}
+
+/*
+ * Mount filesystem into window's namespace
+ *
  * Spec formats:
- *   "local!"              - Empty local namespace
- *   "tcp!host!port"       - Connect to remote WM
- *   "nest!widthxheight"   - Run nested WM (future)
- *   "local!/path"         - Mount local filesystem (future)
+ *   "nest!"              - Run nested WM instance
+ *   "local!/path"        - Mount local filesystem
  */
 int window_namespace_mount(struct KryonWindow *win, const char *spec)
 {
@@ -63,94 +162,32 @@ int window_namespace_mount(struct KryonWindow *win, const char *spec)
         return -1;
     }
 
+    /* Handle "nest!" - spawn nested WM */
+    if (strcmp(type, "nest") == 0) {
+        return window_spawn_nested_wm(win);
+    }
+
     /* Handle "local!" - empty namespace */
     if (strcmp(type, "local") == 0) {
-        /* Check if it's just "local!" (not "local!/path") */
         size_t spec_len = strlen(spec);
+
+        /* "local!" - empty namespace */
         if (spec_len == 6) {
-            /* "local!" - empty namespace */
             win->ns_type = NS_LOCAL;
             if (win->ns_mount_spec != NULL) {
                 free(win->ns_mount_spec);
             }
-            win->ns_mount_spec = strdup("local");
-            if (win->ns_mount_spec == NULL) {
-                return -1;
+            win->ns_mount_spec = (char *)malloc(6);
+            if (win->ns_mount_spec != NULL) {
+                strcpy(win->ns_mount_spec, "local");
             }
             fprintf(stderr, "Mounted local namespace for window %u\n", win->id);
             return 0;
         }
+
         /* TODO: Handle "local!/path" for filesystem mounting */
-    }
-
-    /* Handle "tcp!host!port" - connect to remote WM */
-    if (strcmp(type, "tcp") == 0) {
-        char *host = strtok(NULL, "!");
-        char *port_str = strtok(NULL, "!");
-        char addr[256];
-
-        if (host == NULL || port_str == NULL) {
-            fprintf(stderr, "window_namespace_mount: invalid tcp spec: %s\n", spec);
-            return -1;
-        }
-
-        /* Build address string */
-        snprintf(addr, sizeof(addr), "tcp!%s!%s", host, port_str);
-
-        /* Disconnect existing connection if any */
-        if (win->ns_client != NULL) {
-            p9_disconnect(win->ns_client);
-            win->ns_client = NULL;
-        }
-
-        /* Connect to remote WM */
-        win->ns_client = p9_connect(addr);
-        if (win->ns_client == NULL) {
-            fprintf(stderr, "window_namespace_mount: failed to connect to %s\n", addr);
-            return -1;
-        }
-
-        /* Authenticate */
-        if (p9_authenticate(win->ns_client, 0, "none", "") < 0) {
-            fprintf(stderr, "window_namespace_mount: failed to authenticate with %s\n", addr);
-            p9_disconnect(win->ns_client);
-            win->ns_client = NULL;
-            return -1;
-        }
-
-        /* Open remote /dev/screen for reading */
-        win->remote_screen_fd = p9_open(win->ns_client, "/dev/screen", P9_OREAD);
-        if (win->remote_screen_fd < 0) {
-            fprintf(stderr, "window_namespace_mount: failed to open remote /dev/screen\n");
-            p9_disconnect(win->ns_client);
-            win->ns_client = NULL;
-            return -1;
-        }
-
-        /* Open remote /dev/mouse for writing (optional) */
-        win->remote_mouse_fd = p9_open(win->ns_client, "/dev/mouse", P9_OWRITE);
-        if (win->remote_mouse_fd < 0) {
-            fprintf(stderr, "window_namespace_mount: warning: failed to open remote /dev/mouse\n");
-        }
-
-        /* Open remote /dev/kbd for writing (optional) */
-        win->remote_kbd_fd = p9_open(win->ns_client, "/dev/kbd", P9_OWRITE);
-        if (win->remote_kbd_fd < 0) {
-            fprintf(stderr, "window_namespace_mount: warning: failed to open remote /dev/kbd\n");
-        }
-
-        win->ns_type = NS_REMOTE_WM;
-        if (win->ns_mount_spec != NULL) {
-            free(win->ns_mount_spec);
-        }
-        win->ns_mount_spec = strdup(spec);
-        if (win->ns_mount_spec == NULL) {
-            /* Connection succeeded but strdup failed - non-fatal */
-            fprintf(stderr, "window_namespace_mount: warning: failed to strdup mount spec\n");
-        }
-
-        fprintf(stderr, "Connected window %u to remote WM at %s\n", win->id, addr);
-        return 0;
+        fprintf(stderr, "window_namespace_mount: filesystem mount not yet implemented\n");
+        return -1;
     }
 
     fprintf(stderr, "window_namespace_mount: unknown mount type: %s\n", type);
@@ -166,26 +203,24 @@ int window_namespace_unmount(struct KryonWindow *win)
         return -1;
     }
 
-    /* Close remote connections */
-    if (win->remote_screen_fd >= 0 && win->ns_client != NULL) {
-        p9_close(win->ns_client, win->remote_screen_fd);
-        win->remote_screen_fd = -1;
+    /* Kill nested WM if running */
+    if (win->nested_wm_pid > 0) {
+        fprintf(stderr, "Killing nested WM (pid=%d) in window %u\n",
+                win->nested_wm_pid, win->id);
+        kill(win->nested_wm_pid, SIGTERM);
+        waitpid(win->nested_wm_pid, NULL, 0);
+        win->nested_wm_pid = 0;
     }
 
-    if (win->remote_mouse_fd >= 0 && win->ns_client != NULL) {
-        p9_close(win->ns_client, win->remote_mouse_fd);
-        win->remote_mouse_fd = -1;
+    /* Close communication pipes */
+    if (win->nested_fd_in >= 0) {
+        close(win->nested_fd_in);
+        win->nested_fd_in = -1;
     }
 
-    if (win->remote_kbd_fd >= 0 && win->ns_client != NULL) {
-        p9_close(win->ns_client, win->remote_kbd_fd);
-        win->remote_kbd_fd = -1;
-    }
-
-    /* Disconnect client */
-    if (win->ns_client != NULL) {
-        p9_disconnect(win->ns_client);
-        win->ns_client = NULL;
+    if (win->nested_fd_out >= 0) {
+        close(win->nested_fd_out);
+        win->nested_fd_out = -1;
     }
 
     /* Free mount spec */
@@ -198,15 +233,4 @@ int window_namespace_unmount(struct KryonWindow *win)
     fprintf(stderr, "Unmounted namespace for window %u\n", win->id);
 
     return 0;
-}
-
-/*
- * Resolve path in window's namespace
- */
-P9Node *window_namespace_lookup(struct KryonWindow *win, const char *path)
-{
-    /* TODO: Implement namespace lookup */
-    (void)win;
-    (void)path;
-    return NULL;
 }

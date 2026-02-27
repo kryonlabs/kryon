@@ -7,6 +7,7 @@
 #define KRYON_WINDOW_H
 
 #include "kryon.h"
+#include <sys/types.h>  /* for pid_t */
 
 /*
  * Forward declarations
@@ -14,18 +15,11 @@
 struct KryonWidget;
 struct KryonWindow;
 struct Memimage;
-struct P9Client;
-typedef struct P9Node P9Node;
 
 /*
- * Namespace types (v0.5.0)
+ * Namespace types (moved to namespace.h to avoid duplication)
  */
-typedef enum {
-    NS_LOCAL = 0,            /* Empty namespace (default) */
-    NS_REMOTE_WM,            /* Connected to remote WM server */
-    NS_NESTED_WM,            /* Running nested WM instance */
-    NS_FILESYSTEM            /* Mounted filesystem */
-} NamespaceType;
+#include "namespace.h"
 
 /*
  * Virtual Devices structure (v0.4.0)
@@ -70,16 +64,14 @@ typedef struct KryonWindow {
     /* v0.4.0: Virtual devices */
     VirtualDevices *vdev;           /* Virtual devices (NULL if not allocated) */
 
-    /* v0.5.0: Per-window namespace (rio-style) */
-    struct P9Client *ns_client;     /* 9P client for remote connection (NULL if local) */
-    char *ns_mount_spec;            /* Mount specification: "tcp!192.168.1.10!17010" */
-    NamespaceType ns_type;          /* NS_LOCAL, NS_REMOTE_WM, NS_NESTED_WM, NS_FILESYSTEM */
-    P9Node *ns_root;                /* Root of this window's namespace */
+    /* Per-window namespace */
+    char *ns_mount_spec;            /* Mount specification */
+    NamespaceType ns_type;          /* NS_LOCAL, NS_NESTED_WM, NS_FILESYSTEM */
 
-    /* Remote connection state (if ns_type == NS_REMOTE_WM) */
-    int remote_screen_fd;           /* FD for remote /dev/screen */
-    int remote_mouse_fd;            /* FD for remote /dev/mouse */
-    int remote_kbd_fd;              /* FD for remote /dev/kbd */
+    /* Nested WM state */
+    pid_t nested_wm_pid;            /* PID of nested WM (0 if none) */
+    int nested_fd_in;               /* Pipe for receiving events from nested WM */
+    int nested_fd_out;              /* Pipe for sending events to nested WM */
 
     /* Internal state */
     void *internal_data;            /* Platform-specific data */

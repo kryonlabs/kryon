@@ -50,9 +50,6 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
     render_count++;
 
-    fprintf(stderr, "Rendering widget %d (type=%d, rect='%s', visible=%d)\n",
-            w->id, w->type, w->prop_rect ? w->prop_rect : "(null)", w->prop_visible);
-
     /* Parse widget rectangle */
     if (parse_rect(w->prop_rect, &widget_rect) < 0) {
         return;
@@ -200,45 +197,33 @@ void render_window(KryonWindow *win, Memimage *screen)
         return;
     }
 
-    /* v0.4.0: Determine rendering target */
-    /* If window has virtual framebuffer, render to it */
+    /* Determine rendering target */
+    /* If window has virtual framebuffer (nested WM), render to it */
     /* Otherwise render directly to screen */
     if (win->vdev != NULL && win->vdev->draw_buffer != NULL) {
         target = win->vdev->draw_buffer;
-        /* Clear virtual framebuffer to transparent */
-        /* memfillcolor(target, 0x00000000); */
     } else {
         target = screen;
-        /* Don't clear - let the screen background show through */
     }
-
-    /* Clear window background */
-    /* REMOVED: Don't fill with white - let the screen's dark blue background show through */
-    /* memfillcolor_rect(target, win_rect, 0xFFFFFFFF); */
 
     /* Render all widgets */
     for (i = 0; i < win->nwidgets; i++) {
         render_widget(win->widgets[i], target);
     }
 
-    /* v0.4.0: Recursively render child windows */
+    /* Recursively render child windows */
     for (i = 0; i < win->nchildren; i++) {
         render_window(win->children[i], target);
     }
 
-    /* v0.4.0: If using virtual framebuffer, compose to parent/screen */
+    /* Compose virtual framebuffer to screen (if used) */
     if (win->vdev != NULL && win->vdev->draw_buffer != NULL) {
-        /* TODO: Implement proper composition */
-        /* For now, just blit to screen */
         if (target != screen) {
-            Point sp;
-            Point zero;
-
+            Point sp, zero;
             sp.x = 0;
             sp.y = 0;
             zero.x = 0;
             zero.y = 0;
-
             memdraw(screen, win_rect, win->vdev->draw_buffer, sp, NULL, zero, SoverD);
         }
     }
@@ -252,7 +237,6 @@ void render_all(void)
     KryonWindow *win;
     uint32_t i;
     static int render_count = 0;
-    static int first_done = 0;
 
     if (g_screen == NULL) {
         return;

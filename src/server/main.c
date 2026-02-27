@@ -31,6 +31,11 @@ void render_set_screen(Memimage *screen);
 void render_all(void);
 
 /*
+ * Forward declaration for nested WM mode
+ */
+static int run_nested_wm(const char *win_id, const char *pipe_fd_str);
+
+/*
  * Marrow client connection (for /dev/draw access)
  */
 static P9Client *g_marrow_client = NULL;
@@ -54,7 +59,21 @@ int main(int argc, char **argv)
 {
     int i;
 
-    /* Parse arguments - now takes Marrow address and .kryon file options */
+    /* Parse arguments - check for --nested mode first */
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--nested") == 0) {
+            /* Running in nested WM mode */
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: --nested requires window ID argument\n");
+                return 1;
+            }
+            const char *win_id = argv[i + 1];
+            const char *pipe_fd_str = getenv("KRYON_NESTED_PIPE_FD");
+            return run_nested_wm(win_id, pipe_fd_str);
+        }
+    }
+
+    /* Normal WM mode */
     char *marrow_addr = "tcp!localhost!17010";
     int dump_screen = 0;  /* Flag to enable screenshot dumps */
     const char *load_file = NULL;
@@ -122,7 +141,6 @@ int main(int argc, char **argv)
     }
 
     /* Initialize subsystems */
-    fprintf(stderr, "Kryon Window Manager v0.3\n");
     fprintf(stderr, "Connecting to Marrow at %s...\n", marrow_addr);
 
     /* Connect to Marrow */
@@ -173,14 +191,12 @@ int main(int argc, char **argv)
         p9_disconnect(g_marrow_client);
         return 1;
     }
-    fprintf(stderr, "Created /mnt/wm filesystem\n");
 
     /* Register Kryon as window-manager service */
     if (marrow_service_register(g_marrow_client, "kryon", "window-manager",
                                 "Kryon Window Manager") < 0) {
-        fprintf(stderr, "Error: failed to register with Marrow\n");
-        p9_disconnect(g_marrow_client);
-        return 1;
+        fprintf(stderr, "Warning: failed to register with Marrow (continuing anyway)\n");
+        /* Continue anyway - parser should still work */
     }
 
     /* Mount /mnt/wm into Marrow's namespace */
@@ -234,7 +250,6 @@ int main(int argc, char **argv)
             }
         } else if (load_file != NULL) {
             /* Load specific file */
-            fprintf(stderr, "Loading file: %s\n", load_file);
             result = kryon_load_file(load_file);
             if (result < 0) {
                 fprintf(stderr, "Error: failed to load file: %s\n", load_file);
@@ -248,7 +263,6 @@ int main(int argc, char **argv)
             }
         } else {
             /* Default: load minimal.kry */
-            fprintf(stderr, "Loading default example: minimal.kry\n");
             result = kryon_load_file("examples/minimal.kry");
             if (result < 0) {
                 fprintf(stderr, "Error: failed to load default example\n");
@@ -264,13 +278,13 @@ int main(int argc, char **argv)
             }
         }
 
-        fprintf(stderr, "Loaded %d window(s) from .kryon file(s)\n", result);
+        if (result > 0) {
+        fprintf(stderr, "Loaded %d window(s)\n", result);
+    }
     }
 
     /* NOTE: Rendering is now done through Marrow's /dev/draw */
     /* Create screen buffer and render windows */
-    fprintf(stderr, "\nInitializing rendering...\n");
-
     {
         Memimage *screen;
         Rectangle screen_rect;
@@ -295,20 +309,25 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        fprintf(stderr, "Created screen image: %dx%d\n", screen_width, screen_height);
-
         /* Set screen as global for rendering */
         render_set_screen(screen);
 
+        /* Clear screen to cyan first (so we can see if rendering works) */
+        {
+            Rectangle clear_rect;
+            clear_rect.min.x = 0;
+            clear_rect.min.y = 0;
+            clear_rect.max.x = screen_width;
+            clear_rect.max.y = screen_height;
+            memfillcolor_rect(screen, clear_rect, 0xFF00FFFF);  /* Cyan in BGRA */
+        }
+
         /* Render all windows to screen */
-        fprintf(stderr, "Rendering windows...\n");
         render_all();
 
         /* Extract pixel data */
         pixel_size = screen_width * screen_height * 4;
         pixel_data = screen->data->bdata;
-
-        fprintf(stderr, "Extracted %d bytes of pixel data\n", pixel_size);
 
         /* Verify we have pixel data by checking first few pixels */
         {
@@ -341,7 +360,6 @@ int main(int argc, char **argv)
                 size_t written = fwrite(pixel_data, 1, pixel_size, dump_file);
                 fclose(dump_file);
                 if (written == (size_t)pixel_size) {
-                    fprintf(stderr, "Dumped WM screen to /tmp/wm_before.raw (%d bytes)\n", pixel_size);
                 } else {
                     fprintf(stderr, "Warning: Only wrote %zu of %d bytes to screenshot\n", written, pixel_size);
                 }
@@ -351,7 +369,6 @@ int main(int argc, char **argv)
         }
 
         /* Open /dev/screen on Marrow for writing */
-        fprintf(stderr, "Opening /dev/screen on Marrow for writing...\n");
         screen_fd = p9_open(g_marrow_client, "/dev/screen", P9_OWRITE);
         if (screen_fd < 0) {
             fprintf(stderr, "Warning: failed to open /dev/screen for writing\n");
@@ -364,9 +381,6 @@ int main(int argc, char **argv)
             int bytes_remaining = pixel_size;
             const unsigned char *buffer_ptr = pixel_data;
             int total_written = 0;
-
-            fprintf(stderr, "Writing %d bytes to Marrow screen in chunks of %d...\n",
-                    pixel_size, chunk_size);
 
             while (bytes_remaining > 0) {
                 int bytes_to_write = bytes_remaining;
@@ -387,15 +401,11 @@ int main(int argc, char **argv)
                 buffer_ptr += written;
             }
 
-            if (total_written == pixel_size) {
-                fprintf(stderr, "Successfully wrote %d bytes to Marrow screen\n", total_written);
-            } else {
+            if (total_written != pixel_size) {
                 fprintf(stderr, "Warning: only wrote %d of %d bytes\n", total_written, pixel_size);
             }
             p9_close(g_marrow_client, screen_fd);
         }
-
-        fprintf(stderr, "Rendering complete!\n");
     }
 
     /* Simple event loop */
@@ -428,3 +438,87 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+/*
+ * Run WM in nested mode
+ *
+ * In nested mode:
+ * - Don't connect to Marrow's /dev/screen (use parent's virtual framebuffer)
+ * - Get parent window from environment
+ * - Receive input events via pipe from parent WM
+ */
+static int run_nested_wm(const char *win_id, const char *pipe_fd_str)
+{
+    struct KryonWindow *parent_win;
+    Memimage *virtual_screen;
+    int pipe_fd = -1;
+    char event_buf[256];
+    ssize_t n;
+
+    fprintf(stderr, "Kryon Nested WM (window %s)\n", win_id);
+
+    /* Parse pipe FD from environment */
+    if (pipe_fd_str != NULL) {
+        pipe_fd = atoi(pipe_fd_str);
+        fprintf(stderr, "Using pipe FD %d for input\n", pipe_fd);
+    }
+
+    /* Find parent window */
+    parent_win = window_get((uint32_t)atoi(win_id));
+    if (parent_win == NULL) {
+        fprintf(stderr, "Error: parent window %s not found\n", win_id);
+        return 1;
+    }
+
+    if (parent_win->vdev == NULL || parent_win->vdev->draw_buffer == NULL) {
+        fprintf(stderr, "Error: parent window has no virtual framebuffer\n");
+        return 1;
+    }
+
+    /* Use parent's virtual framebuffer as our screen */
+    virtual_screen = parent_win->vdev->draw_buffer;
+    render_set_screen(virtual_screen);
+
+    fprintf(stderr, "Using virtual framebuffer from parent window\n");
+
+    /* Create minimal window for testing */
+    {
+        struct KryonWindow *test_win;
+        test_win = window_create("Nested Test", 400, 300);
+        if (test_win != NULL) {
+            /* Set rect to fit in parent */
+            window_set_rect(test_win, "10 10 400 300");
+
+            /* Add a simple widget */
+            /* TODO: Create test widget */
+        }
+    }
+
+    /* Render the window to parent's framebuffer */
+    render_all();
+
+    fprintf(stderr, "Nested WM running (press Ctrl-C to exit)\n");
+
+    /* Setup signal handlers */
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
+    /* Event loop - read from pipe or just wait */
+    while (running) {
+        if (pipe_fd >= 0) {
+            /* Check for input events from parent WM */
+            n = read(pipe_fd, event_buf, sizeof(event_buf) - 1);
+            if (n > 0) {
+                event_buf[n] = '\0';
+                /* TODO: Parse and handle input events */
+                fprintf(stderr, "Nested WM received: %s", event_buf);
+            }
+        } else {
+            sleep(1);
+        }
+    }
+
+    fprintf(stderr, "Nested WM shutting down\n");
+    return 0;
+}
+

@@ -283,12 +283,14 @@ static Token peek_token(Parser *p)
     int save_pos = p->pos;
     int save_line = p->line;
     int save_column = p->column;
+    Token save_token = p->current_token;
     Token t = next_token(p);
 
-    /* Restore position */
+    /* Restore position AND current token */
     p->pos = save_pos;
     p->line = save_line;
     p->column = save_column;
+    p->current_token = save_token;
 
     return t;
 }
@@ -403,12 +405,9 @@ static int add_child(KryonNode *parent, KryonNode *child)
  */
 static KryonNode* parse_property_block(Parser *p, KryonNode *node)
 {
-    /* Check if there's a property block */
-    {
-        Token peek = peek_token(p);
-        if (peek.type != TOKEN_LBRACE) {
-            return node;  /* No property block */
-        }
+    /* Check if current token is { (property block) */
+    if (p->current_token.type != TOKEN_LBRACE) {
+        return node;  /* No property block */
     }
 
     /* Consume { */
@@ -424,55 +423,52 @@ static KryonNode* parse_property_block(Parser *p, KryonNode *node)
             /* Clear token value but don't free - we're taking ownership */
             p->current_token.value = NULL;
 
-            /* Expect = */
+            /* Expect = (optional) */
             p->current_token = next_token(p);
             if (p->current_token.type == TOKEN_EQUALS) {
-                /* Clear token */
+                /* Clear token and get value */
                 free_token(&p->current_token);
-
-                /* Get value */
                 p->current_token = next_token(p);
+            }
+            /* If no equals, current_token is already the value */
 
-                if (p->current_token.type == TOKEN_WORD ||
-                    p->current_token.type == TOKEN_STRING) {
-                    char *prop_value = p->current_token.value;
+            if (p->current_token.type == TOKEN_WORD ||
+                p->current_token.type == TOKEN_STRING) {
+                char *prop_value = p->current_token.value;
 
-                    /* Clear token value but don't free - we're taking ownership */
-                    p->current_token.value = NULL;
+                /* Clear token value but don't free - we're taking ownership */
+                p->current_token.value = NULL;
 
-                    /* Store property in node */
-                    if (strcmp(prop_name, "rect") == 0) {
-                        free(node->prop_rect);
-                        node->prop_rect = prop_value;
-                    } else if (strcmp(prop_name, "color") == 0) {
-                        free(node->prop_color);
-                        node->prop_color = prop_value;
-                    } else if (strcmp(prop_name, "gap") == 0) {
-                        node->layout_gap = atoi(prop_value);
-                        free(prop_value);
-                    } else if (strcmp(prop_name, "padding") == 0) {
-                        node->layout_padding = atoi(prop_value);
-                        free(prop_value);
-                    } else if (strcmp(prop_name, "align") == 0) {
-                        free(node->layout_align);
-                        node->layout_align = prop_value;
-                    } else if (strcmp(prop_name, "cols") == 0) {
-                        node->layout_cols = atoi(prop_value);
-                        free(prop_value);
-                    } else if (strcmp(prop_name, "rows") == 0) {
-                        node->layout_rows = atoi(prop_value);
-                        free(prop_value);
-                    } else {
-                        free(prop_value);
-                    }
-
-                    free(prop_name);
+                /* Store property in node */
+                if (strcmp(prop_name, "rect") == 0) {
+                    free(node->prop_rect);
+                    node->prop_rect = prop_value;
+                } else if (strcmp(prop_name, "color") == 0) {
+                    free(node->prop_color);
+                    node->prop_color = prop_value;
+                } else if (strcmp(prop_name, "gap") == 0) {
+                    node->layout_gap = atoi(prop_value);
+                    free(prop_value);
+                } else if (strcmp(prop_name, "padding") == 0) {
+                    node->layout_padding = atoi(prop_value);
+                    free(prop_value);
+                } else if (strcmp(prop_name, "align") == 0) {
+                    free(node->layout_align);
+                    node->layout_align = prop_value;
+                } else if (strcmp(prop_name, "cols") == 0) {
+                    node->layout_cols = atoi(prop_value);
+                    free(prop_value);
+                } else if (strcmp(prop_name, "rows") == 0) {
+                    node->layout_rows = atoi(prop_value);
+                    free(prop_value);
                 } else {
-                    free(prop_name);
-                    break;
+                    free(prop_value);
                 }
+
+                free(prop_name);
             } else {
                 free(prop_name);
+                break;
             }
         } else {
             break;
@@ -551,8 +547,6 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
         strcpy(node->layout_type, layout_type);
     }
 
-    fprintf(stderr, "      parse_layout: type='%s', current_token.type=%d\n", layout_type, p->current_token.type);
-
     /* Expect { */
     if (p->current_token.type != TOKEN_LBRACE) {
         free_node(node);
@@ -596,14 +590,12 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
 
     /* Expect } */
     if (p->current_token.type != TOKEN_RBRACE) {
-        fprintf(stderr, "      parse_layout: expected RBRACE, got type=%d\n", p->current_token.type);
         free_node(node);
         return NULL;
     }
     free_token(&p->current_token);
     p->current_token = next_token(p);
 
-    fprintf(stderr, "      parse_layout: done, next token type=%d\n", p->current_token.type);
     return node;
 }
 
@@ -891,8 +883,6 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
     /* Add widget to window */
     window_add_widget(win, widget);
 
-    fprintf(stderr, "  Created widget %u: %s\n", widget->id, node->widget_type);
-
     return 0;
 }
 
@@ -941,9 +931,6 @@ static int execute_window(KryonNode *node)
         return -1;
     }
 
-    fprintf(stderr, "Created window %u: %s (%dx%d)\n",
-            win->id, win->title, node->width, node->height);
-
     /* Execute children (layouts/widgets) */
     for (i = 0; i < node->nchildren; i++) {
         KryonNode *child = node->children[i];
@@ -991,8 +978,6 @@ int kryon_load_file(const char *filename)
 {
     KryonNode *ast;
     int result;
-
-    fprintf(stderr, "Loading .kryon file: %s\n", filename);
 
     ast = kryon_parse_file(filename);
     if (ast == NULL) {

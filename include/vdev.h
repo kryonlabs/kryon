@@ -9,6 +9,11 @@
 #include "kryon.h"
 
 /*
+ * Forward declaration
+ */
+struct KryonWindow;
+
+/*
  * Virtual /dev/draw functions
  */
 
@@ -97,5 +102,45 @@ ssize_t vdev_cons_write(const char *buf, size_t count, uint64_t offset,
  */
 ssize_t vdev_cons_read(char *buf, size_t count, uint64_t offset,
                       void *data);
+
+/*
+ * Virtual /dev/mouse functions
+ */
+
+/*
+ * Write to mouse device (9P handler)
+ *
+ * Parameters:
+ *   buf - Buffer containing mouse event data
+ *   count - Number of bytes to write
+ *   offset - Offset in file (ignored)
+ *   data - Window pointer
+ *
+ * Returns number of bytes written, or -1 on error
+ */
+ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
+                        void *data);
+
+/*
+ * Read from mouse device (9P handler)
+ */
+ssize_t vdev_mouse_read(char *buf, size_t count, uint64_t offset,
+                       void *data);
+
+/*
+ * Virtual /dev/kbd functions
+ */
+
+/*
+ * Write to keyboard device (9P handler)
+ */
+ssize_t vdev_kbd_write(const char *buf, size_t count, uint64_t offset,
+                      void *data);
+
+/*
+ * Read from keyboard device (9P handler)
+ */
+ssize_t vdev_kbd_read(char *buf, size_t count, uint64_t offset,
+                     void *data);
 
 #endif /* KRYON_VDEV_H */

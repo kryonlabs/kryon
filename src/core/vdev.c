@@ -13,9 +13,11 @@
 #include "graphics.h"
 #include "kryon.h"
 #include "vdev.h"
+#include "namespace.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 /*
  * ========== Virtual /dev/draw Implementation ==========
@@ -249,4 +251,94 @@ ssize_t vdev_cons_read(char *buf, size_t count, uint64_t offset,
 
     memcpy(buf, str + offset, to_copy);
     return to_copy;
+}
+
+/*
+ * ========== Virtual /dev/mouse Implementation ==========
+ */
+
+/*
+ * Virtual /dev/mouse write handler
+ * Writes mouse events - forwards to nested WM if present
+ */
+ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
+                        void *data)
+{
+    struct KryonWindow *win = (struct KryonWindow *)data;
+
+    (void)offset;
+
+    if (win == NULL || buf == NULL || count == 0) {
+        return -1;
+    }
+
+    /* If nested WM is running, forward mouse events via pipe */
+    if (win->ns_type == NS_NESTED_WM && win->nested_fd_out >= 0) {
+        /* Write mouse event to nested WM */
+        ssize_t nwritten = write(win->nested_fd_out, buf, count);
+        (void)nwritten;  /* Ignore write errors for pipe */
+        return count;
+    }
+
+    /* Otherwise handle locally or consume */
+    return count;
+}
+
+/*
+ * Virtual /dev/mouse read handler
+ */
+ssize_t vdev_mouse_read(char *buf, size_t count, uint64_t offset,
+                       void *data)
+{
+    (void)buf;
+    (void)count;
+    (void)offset;
+    (void)data;
+    /* TODO: Implement mouse event queue */
+    return 0;
+}
+
+/*
+ * ========== Virtual /dev/kbd Implementation ==========
+ */
+
+/*
+ * Virtual /dev/kbd write handler
+ * Writes keyboard events - forwards to nested WM if present
+ */
+ssize_t vdev_kbd_write(const char *buf, size_t count, uint64_t offset,
+                      void *data)
+{
+    struct KryonWindow *win = (struct KryonWindow *)data;
+
+    (void)offset;
+
+    if (win == NULL || buf == NULL || count == 0) {
+        return -1;
+    }
+
+    /* If nested WM is running, forward keyboard events via pipe */
+    if (win->ns_type == NS_NESTED_WM && win->nested_fd_out >= 0) {
+        /* Write keyboard event to nested WM */
+        ssize_t nwritten = write(win->nested_fd_out, buf, count);
+        (void)nwritten;  /* Ignore write errors for pipe */
+        return count;
+    }
+
+    /* Otherwise handle locally or consume */
+    return count;
+}
+
+/*
+ * Virtual /dev/kbd read handler
+ */
+ssize_t vdev_kbd_read(char *buf, size_t count, uint64_t offset,
+                     void *data)
+{
+    (void)buf;
+    (void)count;
+    (void)offset;
+    (void)data;
+    /* TODO: Implement keyboard event queue */
+    return 0;
 }
