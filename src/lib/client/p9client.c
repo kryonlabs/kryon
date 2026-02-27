@@ -808,11 +808,6 @@ ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count)
     /* Offset - write directly to buffer in network byte order */
     htonll_bytes(p, offset);
 
-    /* Debug: print raw bytes of offset */
-    fprintf(stderr, "p9_write: fd=%d offset=%llu raw bytes: %02X %02X %02X %02X %02X %02X %02X %02X\n",
-            (unsigned long long)fd, (unsigned long long)offset,
-            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-
     p += 8;
 
     /* Count */
@@ -831,10 +826,6 @@ ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count)
     /* Fill size */
     msg_size = p - msg;
     *(uint32_t *)msg = htonl(msg_size);
-
-    /* Debug: log offset being sent */
-    fprintf(stderr, "p9_write: fd=%d offset=%llu count=%zu\n",
-            (unsigned long long)fd, (unsigned long long)offset, count);
 
     /* Send Twrite */
     if (write_n(client->fd, msg, msg_size) < 0) {

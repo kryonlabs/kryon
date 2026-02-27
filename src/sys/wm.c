@@ -33,6 +33,7 @@
 #include "widget.h"
 #include "events.h"
 #include "kryon.h"
+#include "namespace.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

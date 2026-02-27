@@ -186,7 +186,6 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     P9Hdr hdr;
     P9Fid *fid_obj;
     P9Node *root;
-    int is_cpu_attach;
 
     /* Parse request */
     if (p9_parse_header(in_buf, in_len, &hdr) < 0) {

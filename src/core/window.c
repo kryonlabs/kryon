@@ -4,6 +4,7 @@
 
 #include "window.h"
 #include "widget.h"
+#include "namespace.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -153,6 +154,9 @@ struct KryonWindow *window_create(const char *title, int width, int height)
     window->vdev = NULL;
     window->nested_win_dir = NULL;
 
+    /* v0.5.0: Initialize namespace */
+    window_namespace_init(window);
+
     /* Add to registry */
     windows[nwindows++] = window;
 
@@ -232,6 +236,9 @@ struct KryonWindow *window_create_ex(const char *title, int width, int height,
     window->vdev = NULL;
     window->nested_win_dir = NULL;
 
+    /* v0.5.0: Initialize namespace */
+    window_namespace_init(window);
+
     /* Add to registry */
     windows[nwindows++] = window;
 
@@ -292,6 +299,9 @@ void window_destroy(struct KryonWindow *window)
          } */
         free(window->vdev);
     }
+
+    /* v0.5.0: Clean up namespace */
+    window_namespace_unmount(window);
 
     free(window);
 }

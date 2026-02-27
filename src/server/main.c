@@ -221,10 +221,14 @@ int main(int argc, char **argv)
         if (example_name != NULL) {
             /* Load example from examples/ directory */
             snprintf(example_path, sizeof(example_path), "examples/%s.kry", example_name);
-            fprintf(stderr, "Loading example: %s\n", example_name);
             result = kryon_load_file(example_path);
             if (result < 0) {
                 fprintf(stderr, "Error: failed to load example: %s\n", example_name);
+                p9_disconnect(g_marrow_client);
+                return 1;
+            }
+            if (result == 0) {
+                fprintf(stderr, "Error: no windows created from example: %s\n", example_name);
                 p9_disconnect(g_marrow_client);
                 return 1;
             }
@@ -237,6 +241,11 @@ int main(int argc, char **argv)
                 p9_disconnect(g_marrow_client);
                 return 1;
             }
+            if (result == 0) {
+                fprintf(stderr, "Error: no windows created from file: %s\n", load_file);
+                p9_disconnect(g_marrow_client);
+                return 1;
+            }
         } else {
             /* Default: load minimal.kry */
             fprintf(stderr, "Loading default example: minimal.kry\n");
@@ -244,6 +253,12 @@ int main(int argc, char **argv)
             if (result < 0) {
                 fprintf(stderr, "Error: failed to load default example\n");
                 fprintf(stderr, "Note: Make sure examples/minimal.kry exists or use --load FILE.kryon\n");
+                p9_disconnect(g_marrow_client);
+                return 1;
+            }
+            if (result == 0) {
+                fprintf(stderr, "Error: no windows created from default example\n");
+                fprintf(stderr, "Check examples/minimal.kry for syntax errors\n");
                 p9_disconnect(g_marrow_client);
                 return 1;
             }

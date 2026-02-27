@@ -551,57 +551,7 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
         strcpy(node->layout_type, layout_type);
     }
 
-    /* Check for inline params: gap=10 padding=20 */
-    /* Look ahead without consuming */
-    while (p->current_token.type == TOKEN_WORD) {
-        char *param_name = p->current_token.value;
-        p->current_token.value = NULL;  /* Taking ownership */
-        free_token(&p->current_token);
-        p->current_token = next_token(p);
-
-        /* Expect = */
-        if (p->current_token.type == TOKEN_EQUALS) {
-            free_token(&p->current_token);
-            p->current_token = next_token(p);
-
-            /* Get value */
-            if (p->current_token.type == TOKEN_WORD ||
-                p->current_token.type == TOKEN_STRING) {
-                char *param_value = p->current_token.value;
-                p->current_token.value = NULL;  /* Taking ownership */
-                free_token(&p->current_token);
-                p->current_token = next_token(p);
-
-                /* Store param */
-                if (strcmp(param_name, "gap") == 0) {
-                    node->layout_gap = atoi(param_value);
-                    free(param_value);
-                } else if (strcmp(param_name, "padding") == 0) {
-                    node->layout_padding = atoi(param_value);
-                    free(param_value);
-                } else if (strcmp(param_name, "align") == 0) {
-                    free(node->layout_align);
-                    node->layout_align = param_value;
-                } else if (strcmp(param_name, "cols") == 0) {
-                    node->layout_cols = atoi(param_value);
-                    free(param_value);
-                } else if (strcmp(param_name, "rows") == 0) {
-                    node->layout_rows = atoi(param_value);
-                    free(param_value);
-                } else {
-                    free(param_value);
-                }
-
-                free(param_name);
-            } else {
-                free(param_name);
-                break;
-            }
-        } else {
-            free(param_name);
-            break;
-        }
-    }
+    fprintf(stderr, "      parse_layout: type='%s', current_token.type=%d\n", layout_type, p->current_token.type);
 
     /* Expect { */
     if (p->current_token.type != TOKEN_LBRACE) {
@@ -629,7 +579,7 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
                 strcmp(word, "absolute") == 0 ||
                 strcmp(word, "stack") == 0) {
                 child = parse_layout(p, word);
-                free(word);  /* Layout parsing doesn't take ownership of the type string */
+                free(word);  /* Layout parsing makes its own copy */
             } else {
                 /* It's a widget */
                 child = parse_widget(p, word);
@@ -646,12 +596,14 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
 
     /* Expect } */
     if (p->current_token.type != TOKEN_RBRACE) {
+        fprintf(stderr, "      parse_layout: expected RBRACE, got type=%d\n", p->current_token.type);
         free_node(node);
         return NULL;
     }
     free_token(&p->current_token);
     p->current_token = next_token(p);
 
+    fprintf(stderr, "      parse_layout: done, next token type=%d\n", p->current_token.type);
     return node;
 }
 
@@ -939,10 +891,7 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
     /* Add widget to window */
     window_add_widget(win, widget);
 
-    fprintf(stderr, "  Created widget %u: %s (text='%s', rect='%s')\n",
-            widget->id, node->widget_type,
-            widget->prop_text ? widget->prop_text : "",
-            widget->prop_rect ? widget->prop_rect : "(null)");
+    fprintf(stderr, "  Created widget %u: %s\n", widget->id, node->widget_type);
 
     return 0;
 }
