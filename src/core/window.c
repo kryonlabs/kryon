@@ -130,7 +130,7 @@ struct KryonWindow *window_create(const char *title, int width, int height)
     window->visible = 1;
     window->widgets_node = NULL;
 
-    /* v0.4.0: Initialize parent/child fields */
+    /* Initialize parent/child fields */
     window->parent = NULL;
     window->children = NULL;
     window->nchildren = 0;
@@ -150,11 +150,11 @@ struct KryonWindow *window_create(const char *title, int width, int height)
     window->widgets = (struct KryonWidget **)malloc(window->widget_capacity * sizeof(struct KryonWidget *));
     window->nwidgets = 0;
 
-    /* v0.4.0: Initialize virtual devices to NULL */
+    /* Initialize virtual devices to NULL */
     window->vdev = NULL;
     window->nested_win_dir = NULL;
 
-    /* v0.5.0: Initialize namespace */
+    /* Initialize namespace */
     window_namespace_init(window);
 
     /* Add to registry */
@@ -164,7 +164,7 @@ struct KryonWindow *window_create(const char *title, int width, int height)
 }
 
 /*
- * v0.4.0: Create a new window with parent
+ * Create a new window with parent
  */
 struct KryonWindow *window_create_ex(const char *title, int width, int height,
                                      struct KryonWindow *parent)
@@ -236,7 +236,7 @@ struct KryonWindow *window_create_ex(const char *title, int width, int height,
     window->vdev = NULL;
     window->nested_win_dir = NULL;
 
-    /* v0.5.0: Initialize namespace */
+    /* Initialize namespace */
     window_namespace_init(window);
 
     /* Add to registry */
@@ -261,7 +261,7 @@ void window_destroy(struct KryonWindow *window)
         return;
     }
 
-    /* v0.4.0: Destroy all child windows first */
+    /* Destroy all child windows first */
     for (i = 0; i < window->nchildren; i++) {
         window_destroy(window->children[i]);
     }
@@ -287,7 +287,7 @@ void window_destroy(struct KryonWindow *window)
         free(window->rect);
     }
 
-    /* v0.4.0: Clean up virtual devices */
+    /* Clean up virtual devices */
     if (window->vdev != NULL) {
         /* Free console buffer */
         if (window->vdev->cons_buffer != NULL) {
@@ -300,8 +300,9 @@ void window_destroy(struct KryonWindow *window)
         free(window->vdev);
     }
 
-    /* v0.5.0: Clean up namespace */
+    /* Clean up namespace */
     window_namespace_unmount(window);
+    window_free_namespace(window);
 
     free(window);
 }
@@ -662,7 +663,7 @@ int window_create_fs_entries(struct KryonWindow *window, P9Node *windows_root)
 }
 
 /*
- * ========== v0.4.0: Recursive Window Support ==========
+ * ========== Recursive Window Support ==========
  */
 
 /*

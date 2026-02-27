@@ -6,6 +6,7 @@
  */
 
 #include "p9client.h"
+#include "kryon.h"  For P9Node type and P9Hdr */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+
+/*
+ * 9P message constants
+ */
+#define P9_VERSION    "9P2000"
+#define P9_MAX_MSG    8192
 
 /*
  * 9P message constants
@@ -88,13 +95,122 @@ struct P9Client {
 };
 
 /*
- * 9P message header
+ * Namespace context
+ * Current namespace root for bind mount resolution
+ * This is process-global (not per-connection) for simplicity
+ * In a multi-threaded environment, this would be thread-local
  */
-typedef struct {
-    uint32_t size;
-    uint8_t type;
-    uint16_t tag;
-} P9Hdr;
+static P9Node *current_namespace_root = NULL;
+
+/*
+ * Path cache for namespace resolution
+ * Reduces O(n) tree traversal to O(1) cache lookup for repeated paths
+ */
+#define PATH_CACHE_SIZE 16
+static const char *path_cache_original[PATH_CACHE_SIZE];
+static char path_cache_resolved[PATH_CACHE_SIZE][512];
+static int path_cache_next = 0;
+
+/*
+ * Add entry to path cache
+ */
+static void path_cache_add(const char *original, const char *resolved)
+{
+    int idx = path_cache_next;
+    path_cache_next = (path_cache_next + 1) % PATH_CACHE_SIZE;
+
+    path_cache_original[idx] = original;
+    strncpy(path_cache_resolved[idx], resolved, sizeof(path_cache_resolved[idx]) - 1);
+    path_cache_resolved[idx][sizeof(path_cache_resolved[idx]) - 1] = '\0';
+}
+
+/*
+ * Lookup path in cache
+ * Returns resolved path if found, NULL otherwise
+ */
+static const char *path_cache_lookup(const char *original)
+{
+    int i;
+    for (i = 0; i < PATH_CACHE_SIZE; i++) {
+        if (path_cache_original[i] != NULL &&
+            strcmp(path_cache_original[i], original) == 0) {
+            return path_cache_resolved[i];
+        }
+    }
+    return NULL;
+}
+
+/*
+ * Invalidate path cache (call when namespace changes)
+ */
+static void path_cache_invalidate(void)
+{
+    int i;
+    for (i = 0; i < PATH_CACHE_SIZE; i++) {
+        path_cache_original[i] = NULL;
+        path_cache_resolved[i][0] = '\0';
+    }
+    path_cache_next = 0;
+}
+
+/*
+ * Resolve a path through the current namespace's bind mounts
+ * Returns the actual Marrow path to open
+ *
+ * Example:
+ *   Input:  "/dev/screen"
+ *   Output: "/dev/win1/screen" (after following bind mount)
+ */
+static const char *namespace_resolve_path(const char *path)
+{
+    P9Node *resolved;
+    static char resolved_path[512];  /* Note: not thread-safe, use TLS in prod */
+    const char *cached;
+
+    if (current_namespace_root == NULL) {
+        return path;  /* No namespace, use path as-is */
+    }
+
+    /* Check cache first */
+    cached = path_cache_lookup(path);
+    if (cached != NULL) {
+        return cached;
+    }
+
+    /* Not in cache, resolve the path */
+    resolved = tree_resolve_path(current_namespace_root, path);
+    if (resolved != NULL && resolved->is_bind && resolved->bind_target != NULL) {
+        /* Return bind target (Marrow path) */
+        strncpy(resolved_path, resolved->bind_target, sizeof(resolved_path) - 1);
+        resolved_path[sizeof(resolved_path) - 1] = '\0';
+
+        /* Add to cache for future lookups */
+        path_cache_add(path, resolved_path);
+
+        return resolved_path;
+    }
+
+    /* Path not found in namespace or not a bind, use as-is */
+    return path;
+}
+
+/*
+ * Set current namespace for this thread/connection
+ * This affects all subsequent 9P operations
+ */
+void p9_set_namespace(P9Node *ns_root)
+{
+    current_namespace_root = ns_root;
+    path_cache_invalidate();  /* Clear cache when namespace changes */
+}
+
+/*
+ * Get current namespace
+ */
+P9Node *p9_get_namespace(void)
+{
+    return current_namespace_root;
+}
 
 /*
  * Read n bytes from socket
@@ -486,28 +602,35 @@ int p9_open(P9Client *client, const char *path, int mode)
     int root_fid;
     char *wnames[16];
     int nwname = 0;
+    const char *path_for_log;  /* Original path for error messages */
 
     if (client == NULL || path == NULL) {
         return -1;
     }
 
-    /* Skip leading / */
-    if (path[0] == '/') {
-        path++;
-    }
+    /* Store original path for logging before any modifications */
+    path_for_log = path;
 
-    /* Copy path and tokenize */
+    /* Resolve path through namespace bind mounts */
+    path = namespace_resolve_path(path);
+
+    /* Copy path and tokenize - work with path_copy, not path pointer */
     strncpy(path_copy, path, sizeof(path_copy) - 1);
     path_copy[sizeof(path_copy) - 1] = '\0';
 
-    token = strtok(path_copy, "/");
+    if (path_copy[0] == '/') {
+        token = strtok(path_copy + 1, "/");
+    } else {
+        token = strtok(path_copy, "/");
+    }
+
     while (token != NULL && nwname < 16) {
         wnames[nwname++] = token;
         token = strtok(NULL, "/");
     }
 
     if (nwname == 0) {
-        fprintf(stderr, "p9_open: invalid path '%s'\n", path);
+        fprintf(stderr, "p9_open: invalid path '%s'\n", path_for_log);
         return -1;
     }
 
@@ -571,7 +694,7 @@ int p9_open(P9Client *client, const char *path, int mode)
 
     hdr = (P9Hdr *)resp;
     if (hdr->type == P9_RERROR) {
-        fprintf(stderr, "p9_open: Twalk failed for '%s'\n", path);
+        fprintf(stderr, "p9_open: Twalk failed for '%s'\n", path_for_log);
         return -1;
     }
 
@@ -619,7 +742,7 @@ int p9_open(P9Client *client, const char *path, int mode)
 
     hdr = (P9Hdr *)resp;
     if (hdr->type == P9_RERROR) {
-        fprintf(stderr, "p9_open: Topen failed for '%s'\n", path);
+        fprintf(stderr, "p9_open: Topen failed for '%s'\n", path_for_log);
         return -1;
     }
 
@@ -628,7 +751,7 @@ int p9_open(P9Client *client, const char *path, int mode)
         return -1;
     }
 
-    fprintf(stderr, "p9_open: opened %s (fid=%d)\n", path, fid);
+    fprintf(stderr, "p9_open: opened %s (fid=%d)\n", path_for_log, fid);
 
     return fid;
 }
@@ -692,11 +815,6 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
     /* Encode 64-bit offset directly to buffer in network byte order */
     htonll_bytes(p, offset);
 
-    /* Debug: print raw bytes of offset */
-    fprintf(stderr, "p9_read: offset=%llu raw bytes: %02X %02X %02X %02X %02X %02X %02X %02X\n",
-            (unsigned long long)offset,
-            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-
     p += 8;
 
     count_ptr = (uint32_t *)p;
@@ -706,10 +824,6 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
     /* Fill size */
     msg_size = p - msg;
     *(uint32_t *)msg = htonl(msg_size);
-
-    /* Debug: log offset being sent */
-    fprintf(stderr, "p9_read: fd=%d offset=%llu count=%zu\n",
-            (unsigned long long)fd, (unsigned long long)offset, count);
 
     /* Send Tread */
     if (write_n(client->fd, msg, msg_size) < 0) {

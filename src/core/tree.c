@@ -9,9 +9,15 @@
 #include <time.h>
 
 /*
- * Forward declaration for dynamic node creation
+ * Stub for dynamic node creation
+ * /dev/draw/[n] directories are now provided by Marrow, not created dynamically
+ * This stub returns NULL to disable dynamic creation
  */
-extern P9Node *drawconn_create_dir(int conn_id);
+static P9Node *drawconn_create_dir(int conn_id)
+{
+    (void)conn_id;
+    return NULL;
+}
 
 /*
  * Forward declarations
@@ -68,6 +74,11 @@ static P9Node *node_alloc(const char *name, uint32_t mode)
     node->nchildren = 0;
     node->capacity = 0;
 
+    /* Initialize bind mount fields */
+    node->is_bind = 0;
+    node->bind_target = NULL;
+    node->bind_node = NULL;
+
     return node;
 }
 
@@ -91,12 +102,66 @@ int tree_init(void)
 }
 
 /*
+ * Free a node and all its children recursively
+ */
+static void tree_free_recursive(P9Node *node)
+{
+    int i;
+
+    if (node == NULL) {
+        return;
+    }
+
+    /* Free all children first */
+    for (i = 0; i < node->nchildren; i++) {
+        tree_free_recursive(node->children[i]);
+    }
+
+    /* Free this node's resources */
+    if (node->name != NULL) {
+        free(node->name);
+    }
+    if (node->data != NULL) {
+        free(node->data);
+    }
+    if (node->bind_target != NULL) {
+        free(node->bind_target);
+    }
+    if (node->children != NULL) {
+        free(node->children);
+    }
+
+    free(node);
+}
+
+/*
+ * Free a tree (public API)
+ */
+void tree_free(P9Node *root)
+{
+    if (root == NULL) {
+        return;
+    }
+
+    /* Don't free root's parent reference */
+    root->parent = NULL;
+
+    tree_free_recursive(root);
+}
+
+/*
  * Cleanup the tree
  */
 void tree_cleanup(void)
 {
-    /* For Phase 1, we'll keep it simple and not recursively free */
-    /* In production, we'd walk the tree and free all nodes */
+    if (root_node != NULL) {
+        /* Only free the children, not root itself (it's statically allocated) */
+        int i;
+        for (i = 0; i < root_node->nchildren; i++) {
+            tree_free_recursive(root_node->children[i]);
+        }
+        root_node->nchildren = 0;
+    }
 }
 
 /*
@@ -128,12 +193,6 @@ static int is_numeric_id(const char *name)
 
     return 1;
 }
-
-/*
- * Dynamic node creation callback
- * Called when a directory node needs to create a child dynamically
- */
-extern P9Node *drawconn_create_dir(int conn_id);
 
 /*
  * Walk to a child node by name
@@ -446,8 +505,157 @@ int tree_remove_node(P9Node *node)
     if (node->data != NULL) {
         free(node->data);
     }
+    /* Free bind target if present */
+    if (node->bind_target != NULL) {
+        free(node->bind_target);
+    }
     /* Note: We don't recursively free children - in production this would be needed */
 
     free(node);
     return 0;
+}
+
+/*
+ * Find a child node by name
+ * Returns the child node or NULL if not found
+ */
+static P9Node *tree_find_child(P9Node *parent, const char *name)
+{
+    int i;
+
+    if (parent == NULL || name == NULL) {
+        return NULL;
+    }
+
+    if (parent->children == NULL) {
+        return NULL;
+    }
+
+    for (i = 0; i < parent->nchildren; i++) {
+        if (parent->children[i] != NULL &&
+            strcmp(parent->children[i]->name, name) == 0) {
+            return parent->children[i];
+        }
+    }
+
+    return NULL;
+}
+
+/*
+ * Create a bind mount node
+ *
+ * 'name' is the local name (e.g., "screen")
+ * 'target' is the target path (e.g., "/dev/win1/screen")
+ *
+ * Returns the bind mount node or NULL on error
+ */
+P9Node *tree_create_bind(P9Node *parent, const char *name, const char *target)
+{
+    P9Node *node;
+    P9Node *bind_node;
+
+    if (parent == NULL || name == NULL || target == NULL) {
+        return NULL;
+    }
+
+    /* Resolve target path in global tree */
+    bind_node = tree_resolve_path(root_node, target);
+    if (bind_node == NULL) {
+        fprintf(stderr, "tree_create_bind: target not found: %s\n", target);
+        return NULL;
+    }
+
+    /* Create directory node */
+    node = tree_create_dir(parent, name);
+    if (node == NULL) {
+        return NULL;
+    }
+
+    /* Mark as bind mount */
+    node->is_bind = 1;
+    node->bind_target = (char *)malloc(strlen(target) + 1);
+    if (node->bind_target == NULL) {
+        tree_remove_node(node);
+        return NULL;
+    }
+    strcpy(node->bind_target, target);
+    node->bind_node = bind_node;
+
+    return node;
+}
+
+/*
+ * Resolve a path like "/dev/win1/screen"
+ * Follows bind mounts automatically
+ *
+ * Returns the resolved node or NULL if not found
+ */
+P9Node *tree_resolve_path(P9Node *root, const char *path)
+{
+    char path_copy[512];
+    char *segment;
+    P9Node *current;
+    P9Node *visited[32];
+    int visited_count = 0;
+    int i;
+
+    if (root == NULL || path == NULL) {
+        return NULL;
+    }
+
+    /* Copy path (strtok modifies input) */
+    strncpy(path_copy, path, sizeof(path_copy) - 1);
+    path_copy[sizeof(path_copy) - 1] = '\0';
+
+    current = root;
+
+    /* Skip leading '/' */
+    if (path_copy[0] == '/') {
+        segment = strtok(path_copy + 1, "/");
+    } else {
+        segment = strtok(path_copy, "/");
+    }
+
+    while (segment != NULL) {
+        /* Check for cycles */
+        for (i = 0; i < visited_count; i++) {
+            if (visited[i] == current) {
+                fprintf(stderr, "tree_resolve_path: cycle detected at node '%s'\n",
+                        current->name ? current->name : "(null)");
+                return NULL;
+            }
+        }
+
+        /* Mark as visited */
+        if (visited_count < 32) {
+            visited[visited_count++] = current;
+        }
+
+        /* If current node is a bind mount, jump to target */
+        if (current->is_bind && current->bind_node != NULL) {
+            current = current->bind_node;
+        }
+
+        /* Find child */
+        current = tree_find_child(current, segment);
+        if (current == NULL) {
+            return NULL;  /* Path not found */
+        }
+
+        segment = strtok(NULL, "/");
+    }
+
+    /* Final bind mount resolution */
+    if (current->is_bind && current->bind_node != NULL) {
+        /* Check one more time for cycles */
+        for (i = 0; i < visited_count; i++) {
+            if (visited[i] == current->bind_node) {
+                fprintf(stderr, "tree_resolve_path: cycle detected at final bind\n");
+                return NULL;
+            }
+        }
+        current = current->bind_node;
+    }
+
+    return current;
 }

@@ -247,7 +247,7 @@ void render_all(void)
     /* Clear screen to dark blue */
     memfillcolor(g_screen, DBlue);
 
-    /* v0.4.0: Render only top-level windows */
+    /* Render only top-level windows */
     /* Nested windows will be rendered recursively by their parents */
     for (i = 1; ; i++) {
         win = window_get(i);

@@ -254,6 +254,10 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     P9Node *node, *newnode;
     P9Qid wqid[P9_MAX_WELEM];
     int i;
+    uint16_t name_len;
+    int found;
+    int conn_id;
+    P9Node *dynamic_node;
 
     /* Parse request */
     if (p9_parse_header(in_buf, in_len, &hdr) < 0) {
@@ -277,8 +281,8 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     newnode = node;
     for (i = 0; i < nwname; i++) {
         /* Get string length from buffer (stored 2 bytes before string) */
-        uint16_t name_len = le_get16((uint8_t*)(wnames[i] - 2));
-        int found = 0;
+        name_len = le_get16((uint8_t*)(wnames[i] - 2));
+        found = 0;
 
         /* "." means current directory */
         if (name_len == 1 && wnames[i][0] == '.') {
@@ -307,8 +311,8 @@ size_t handle_twalk(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
                 char temp_name[16];
                 memcpy(temp_name, wnames[i], name_len);
                 temp_name[name_len] = '\0';
-                int conn_id = atoi(temp_name);
-                P9Node *dynamic_node = drawconn_create_dir(conn_id);
+                conn_id = atoi(temp_name);
+                dynamic_node = drawconn_create_dir(conn_id);
                 if (dynamic_node != NULL) {
                     /* Add to children if not already present */
                     int already_exists = 0;
@@ -432,6 +436,8 @@ static size_t handle_directory_read(P9Fid *fid_obj, uint64_t offset, uint32_t co
     int i;
     P9Stat stat;
     size_t stat_size;
+    uint64_t bytes_serialized;
+    P9Node *child;
 
     /* Check if node has children */
     if (dir_node->children == NULL || dir_node->nchildren == 0) {
@@ -440,10 +446,9 @@ static size_t handle_directory_read(P9Fid *fid_obj, uint64_t offset, uint32_t co
     }
 
     /* Build stat for each child, tracking byte offset for pagination */
-    uint64_t bytes_serialized = 0;
+    bytes_serialized = 0;
 
     for (i = 0; i < dir_node->nchildren; i++) {
-        P9Node *child;
 
         /* Safety check */
         if (dir_node->children == NULL || i >= dir_node->nchildren) {

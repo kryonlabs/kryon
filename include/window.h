@@ -31,6 +31,12 @@ typedef struct VirtualDevices {
     int cons_height;                    /* Console height (chars) */
     int cons_cursor_x;                  /* Console cursor X */
     int cons_cursor_y;                  /* Console cursor Y */
+
+    /* Marrow file descriptors for virtual devices */
+    int marrow_screen_fd;               /* FD for /dev/win{N}/screen */
+    int marrow_cons_fd;                 /* FD for /dev/win{N}/cons */
+    int marrow_mouse_fd;                /* FD for /dev/win{N}/mouse */
+    int marrow_kbd_fd;                  /* FD for /dev/win{N}/kbd */
 } VirtualDevices;
 
 /*
@@ -42,7 +48,7 @@ typedef struct KryonWindow {
     char *rect;                     /* "x y w h" */
     int visible;                    /* 0 or 1 */
 
-    /* v0.4.0: Recursive window support */
+    /* Recursive window support */
     struct KryonWindow *parent;     /* Parent window (NULL for top-level) */
     struct KryonWindow **children;  /* Child windows */
     int nchildren;                  /* Number of child windows */
@@ -61,12 +67,16 @@ typedef struct KryonWindow {
     /* Graphics */
     struct Memimage *backing_store; /* Window backing store (optional) */
 
-    /* v0.4.0: Virtual devices */
+    /* Virtual devices */
     VirtualDevices *vdev;           /* Virtual devices (NULL if not allocated) */
 
     /* Per-window namespace */
     char *ns_mount_spec;            /* Mount specification */
     NamespaceType ns_type;          /* NS_LOCAL, NS_NESTED_WM, NS_FILESYSTEM */
+
+    /* Namespace management (bind mounts) */
+    P9Node *ns_root;                /* Root of this window's namespace tree */
+    int ns_bind_count;              /* Number of active bind mounts */
 
     /* Nested WM state */
     pid_t nested_wm_pid;            /* PID of nested WM (0 if none) */
@@ -88,7 +98,7 @@ void window_destroy(struct KryonWindow *window);
 struct KryonWindow *window_get(uint32_t id);
 
 /*
- * v0.4.0: Recursive window support
+ * Recursive window support
  */
 struct KryonWindow *window_create_ex(const char *title, int width, int height,
                                      struct KryonWindow *parent);

@@ -40,6 +40,11 @@ int vdev_alloc_draw(struct KryonWindow *win, int w, int h)
         if (win->vdev == NULL) {
             return -1;
         }
+        /* Initialize Marrow FDs */
+        win->vdev->marrow_screen_fd = -1;
+        win->vdev->marrow_cons_fd = -1;
+        win->vdev->marrow_mouse_fd = -1;
+        win->vdev->marrow_kbd_fd = -1;
     }
 
     /* Free existing buffer if any */

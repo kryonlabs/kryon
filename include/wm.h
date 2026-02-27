@@ -66,7 +66,7 @@ int wm_create_widget_entry(struct KryonWidget *widget);
 int wm_remove_widget_entry(struct KryonWidget *widget);
 
 /*
- * v0.4.0: Extended filesystem entry creation (supports nesting)
+ * Extended filesystem entry creation (supports nesting)
  *
  * Create filesystem entries for a window with explicit parent directory
  * Called by window_create_ex() to support nested windows
@@ -80,7 +80,7 @@ int wm_remove_widget_entry(struct KryonWidget *widget);
 int wm_create_window_entry_ex(struct KryonWindow *win, P9Node *parent_dir);
 
 /*
- * v0.4.0: Resolve window by path
+ * Resolve window by path
  *
  * Resolve a window by path (e.g., "/win/1/win/2/win/3")
  * Returns the window structure, or NULL if not found
@@ -93,7 +93,7 @@ int wm_create_window_entry_ex(struct KryonWindow *win, P9Node *parent_dir);
 struct KryonWindow *wm_resolve_path(const char *path);
 
 /*
- * v0.4.0: Create virtual device entries for a window
+ * Create virtual device entries for a window
  *
  * Creates /dev/draw, /dev/cons, /dev/mouse, /dev/kbd entries
  *
@@ -105,7 +105,7 @@ struct KryonWindow *wm_resolve_path(const char *path);
 int wm_create_vdev_entries(struct KryonWindow *win);
 
 /*
- * v0.4.0: Virtual device handlers
+ * Virtual device handlers
  */
 ssize_t vdev_draw_new_read(char *buf, size_t count, uint64_t offset, void *data);
 ssize_t vdev_cons_write(const char *buf, size_t count, uint64_t offset, void *data);

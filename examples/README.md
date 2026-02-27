@@ -26,6 +26,7 @@ cd /mnt/storage/Projects/KryonLabs/kryon && nix-shell --run "./bin/kryon-view"
 ./bin/kryon-wm --example widgets
 ./bin/kryon-wm --example layouts
 ./bin/kryon-wm --example nested
+./bin/kryon-wm --example minimal
 ```
 
 ### List Available Examples

@@ -129,6 +129,11 @@ typedef struct P9Node {
     struct P9Node   **children;
     int             nchildren;
     int             capacity;
+
+    /* Bind mount fields */
+    int             is_bind;        /* Non-zero if this is a bind mount */
+    char            *bind_target;   /* Target path (e.g., "/dev/win1/screen") */
+    struct P9Node   *bind_node;     /* Resolved target node */
 } P9Node;
 
 /*
@@ -232,6 +237,17 @@ P9Node *tree_create_file(P9Node *parent, const char *name, void *data,
                          P9WriteFunc write);
 int tree_add_child(P9Node *parent, P9Node *child);
 int tree_remove_node(P9Node *node);
+
+/*
+ * Bind mount support
+ */
+P9Node *tree_create_bind(P9Node *parent, const char *name, const char *target);
+P9Node *tree_resolve_path(P9Node *root, const char *path);
+
+/*
+ * Free a tree and all its children
+ */
+void tree_free(P9Node *root);
 
 /*
  * Node operations

@@ -128,7 +128,7 @@ int main(int argc, char **argv)
     signal(SIGTERM, signal_handler);
 
     /* Create display client */
-    fprintf(stderr, "Kryon Display Client v0.1\n");
+    fprintf(stderr, "Kryon Display Client\n");
     fprintf(stderr, "Connecting to %s:%d...\n", config.host, config.port);
 
     dc = display_client_create(&config);

@@ -106,4 +106,23 @@ int p9_clunk(P9Client *client, int fd);
  */
 int p9_reset_fid(P9Client *client, int fd);
 
+/*
+ * Namespace management
+ *
+ * Forward declaration - P9Node is defined in kryon.h
+ * Include kryon.h before p9client.h to use namespace functions
+ */
+struct P9Node;
+
+/*
+ * Set current namespace for this thread/connection
+ * This affects all subsequent 9P operations
+ */
+void p9_set_namespace(struct P9Node *ns_root);
+
+/*
+ * Get current namespace
+ */
+struct P9Node *p9_get_namespace(void);
+
 #endif /* KRYON_P9CLIENT_H */

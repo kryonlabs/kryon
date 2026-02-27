@@ -114,13 +114,14 @@ CLIENT_OBJS = $(CLIENT_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 LIB_TARGET = $(BUILD_DIR)/libkryon.a
 DISPLAY_TARGET = $(BIN_DIR)/kryon-view
 KRYON_WM_TARGET = $(BIN_DIR)/kryon-wm
+KRYON_TARGET = $(BIN_DIR)/kryon
 SAVE_PPM_TARGET = $(BIN_DIR)/save_ppm
 
 # Default target
 .PHONY: all
 all: $(LIB_TARGET) $(KRYON_WM_TARGET) $(SAVE_PPM_TARGET)
 ifneq ($(HAVE_SDL2),0)
-all: $(DISPLAY_TARGET)
+all: $(DISPLAY_TARGET) $(KRYON_TARGET)
 endif
 
 # Create directories
@@ -149,6 +150,11 @@ $(KRYON_WM_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) $(MARROW_GRAPHICS_OBJ
 # Display client binary
 $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN_DIR)
 	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport $< $(CLIENT_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(DISPLAY_LDFLAGS)
+
+# Kryon convenience wrapper
+$(KRYON_TARGET): kryon.sh | $(BIN_DIR)
+	cp kryon.sh $(KRYON_TARGET)
+	chmod +x $(KRYON_TARGET)
 
 # PPM screenshot tool
 $(SAVE_PPM_TARGET): tools/save_ppm.c | $(BIN_DIR)
@@ -251,7 +257,8 @@ TEST_DIR = tests
 TEST_SRCS = $(TEST_DIR)/test_draw_alloc.c $(TEST_DIR)/test_draw_blt.c \
             $(TEST_DIR)/test_draw_line.c $(TEST_DIR)/test_draw_poly.c \
             $(TEST_DIR)/test_draw_text.c \
-            $(TEST_DIR)/test_9p_server.c
+            $(TEST_DIR)/test_9p_server.c \
+            $(TEST_DIR)/test_namespace.c
 TEST_BINS = $(TEST_SRCS:$(TEST_DIR)/%.c=$(BIN_DIR)/%)
 
 # SDL2 test program (for direct visualization)

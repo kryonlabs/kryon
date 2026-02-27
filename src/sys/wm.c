@@ -661,7 +661,7 @@ int wm_remove_widget_entry(struct KryonWidget *widget)
 }
 
 /*
- * ========== v0.4.0: Extended Filesystem Support ==========
+ * ========== Extended Filesystem Support ==========
  */
 
 /*
@@ -836,7 +836,7 @@ int wm_create_vdev_entries(struct KryonWindow *win)
 }
 
 /*
- * ========== v0.4.0: Virtual Device Handlers (Placeholder Implementation) ==========
+ * ========== Virtual Device Handlers (Placeholder Implementation) ==========
  */
 
 /*

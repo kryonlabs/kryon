@@ -1,0 +1,101 @@
+Kryon
+-----
+
+A Plan 9-style window manager using bind mount namespaces for per-window
+isolation.
+
+
+What is Kryon?
+
+Kryon is a window manager that follows Plan 9's philosophy of separating the
+display server from window management. It uses Marrow as the display server and
+implements rio-style namespaces where each window can have its own isolated
+/dev devices through bind mounts.
+
+
+Architecture
+
+    Marrow (Display Server)
+        ├── /dev/screen     - Main framebuffer
+        ├── /dev/cons       - Console
+        ├── /dev/mouse      - Mouse input
+        └── /dev/kbd        - Keyboard input
+
+    Kryon (Window Manager)
+        ├── Manages windows
+        ├── Builds per-window namespaces
+        └── Uses bind mounts for device isolation
+
+Each window gets its own namespace where /dev/screen points to that window's
+virtual devices through bind mounts, just like Plan 9's rio.
+
+
+Building
+
+Kryon uses Nix for dependency management.
+
+    cd /mnt/storage/Projects/KryonLabs/kryon
+    nix-shell --run "make clean && make"
+
+
+Running
+
+First, start Marrow (the display server):
+
+    cd /mnt/storage/Projects/KryonLabs/marrow
+    nix-shell --run "./bin/marrow"
+
+Then start Kryon:
+
+    cd /mnt/storage/Projects/KryonLabs/kryon
+    ./bin/kryon --example minimal
+
+Or run components separately:
+
+    # Terminal 1: Display viewer
+    ./bin/kryon-view
+
+    # Terminal 2: Window manager
+    ./bin/kryon-wm --example minimal
+
+
+Examples
+
+Kryon loads UI definitions from simple text files:
+
+    demo "Demo Window" 800x600 {
+        absolute {
+            button btn_click "Click Me" {
+                x: 50
+                y: 50
+                width: 200
+                height: 40
+            }
+            label lbl_hello "Hello, World!" {
+                x: 50
+                y: 120
+            }
+        }
+    }
+
+See examples/ directory for more examples.
+
+
+Commands
+
+    --example NAME        Load an example from examples/
+    --load FILE.kryon     Load a specific file
+    --blank               Show blank screen
+    --list-examples       List available examples
+    --help                Show help message
+
+
+How It Works
+
+1. Kryon connects to Marrow via 9P protocol
+2. Each window gets a virtual framebuffer
+3. Bind mounts redirect /dev/screen to the window's virtual device
+4. Nested window managers can run in isolated namespaces
+
+This is the Plan 9 way - separate composition from display, use namespaces
+for isolation, and keep everything simple and composable.

@@ -1,0 +1,33 @@
+# Layouts demo - showcase different layout types
+# This demonstrates vbox, hbox, grid, and absolute layouts
+
+window layouts "Layout Showcase" 800 600 {
+    vbox gap=20 padding=20 {
+        # Heading
+        label heading "Layout Type Demonstrations" { color "#00FF00" }
+
+        # VBox section (vertical layout)
+        label vbox_title "VBox (Vertical Box):" { color "#FFFF00" }
+        vbox gap=5 padding=10 {
+            button vb1 "VBox Button 1"
+            button vb2 "VBox Button 2"
+            button vb3 "VBox Button 3"
+        }
+
+        # HBox section (horizontal layout)
+        label hbox_title "HBox (Horizontal Box):" { color "#FFFF00" }
+        hbox gap=5 padding=10 {
+            button hb1 "HBox Btn 1"
+            button hb2 "HBox Btn 2"
+            button hb3 "HBox Btn 3"
+        }
+
+        # Absolute section (manual positioning)
+        label abs_title "Absolute (Manual Positioning):" { color "#FFFF00" }
+        absolute {
+            button abs1 "At (50, 350)" { rect "50 350 150 40" }
+            button abs2 "At (220, 350)" { rect "220 350 150 40" }
+            button abs3 "At (390, 350)" { rect "390 350 150 40" }
+        }
+    }
+}

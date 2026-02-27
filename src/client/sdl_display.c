@@ -318,8 +318,30 @@ static int read_screen(DisplayClient *dc)
                                (char *)(dc->temp_buf + total),
                                to_read - total);
         if (nread < 0) {
-            fprintf(stderr, "Error: p9_read failed\n");
-            return -1;
+            /* Connection lost - try to reopen /dev/screen */
+            fprintf(stderr, "Connection lost, attempting to reconnect...\n");
+
+            /* Close old file descriptor */
+            p9_close(dc->p9, dc->screen_fd);
+
+            /* Try to reopen /dev/screen */
+            dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
+
+            if (dc->screen_fd < 0) {
+                /* Still failed - wait and try again next frame */
+                fprintf(stderr, "Reconnection failed, will retry...\n");
+                usleep(100000);  /* 100ms */
+                return 0;  /* Don't exit, try again next frame */
+            }
+
+            fprintf(stderr, "Successfully reconnected to /dev/screen\n");
+
+            /* Reset to beginning of frame for new connection */
+            p9_reset_fid(dc->p9, dc->screen_fd);
+            total = 0;  /* Restart the read */
+
+            /* Try reading again */
+            continue;
         }
         if (nread == 0) {
             fprintf(stderr, "Error: Server closed connection, got %zu of %zu bytes\n",
@@ -395,6 +417,11 @@ static int update_display(DisplayClient *dc)
     static int first_call = 1;
     uint32_t format;
     int i;
+    int button_offset;
+    int label_offset;
+    FILE *dump_file;
+    size_t buf_size;
+    size_t written;
 
     if (texture == NULL || renderer == NULL) {
         return -1;
@@ -411,8 +438,8 @@ static int update_display(DisplayClient *dc)
         fprintf(stderr, "\n");
 
         /* Check widget pixels */
-        int button_offset = ((50 * dc->screen_width) + 50) * 4;  /* (50,50) */
-        int label_offset = ((120 * dc->screen_width) + 50) * 4;  /* (50,120) */
+        button_offset = ((50 * dc->screen_width) + 50) * 4;  /* (50,50) */
+        label_offset = ((120 * dc->screen_width) + 50) * 4;  /* (50,120) */
 
         fprintf(stderr, "Display sees button at (50,50): %02X %02X %02X %02X (after conversion to SDL format)\n",
                 dc->screen_buf[button_offset], dc->screen_buf[button_offset+1],
@@ -426,10 +453,10 @@ static int update_display(DisplayClient *dc)
 
         /* Dump screenshot if requested */
         if (dc->dump_screen) {
-            FILE *dump_file = fopen("/tmp/display_after.raw", "wb");
+            dump_file = fopen("/tmp/display_after.raw", "wb");
             if (dump_file != NULL) {
-                size_t buf_size = dc->screen_width * dc->screen_height * 4;
-                size_t written = fwrite(dc->screen_buf, 1, buf_size, dump_file);
+                buf_size = dc->screen_width * dc->screen_height * 4;
+                written = fwrite(dc->screen_buf, 1, buf_size, dump_file);
                 fclose(dump_file);
                 if (written == buf_size) {
                     fprintf(stderr, "Dumped display buffer to /tmp/display_after.raw (%zu bytes)\n", written);

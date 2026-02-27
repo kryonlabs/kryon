@@ -525,6 +525,7 @@ size_t p9_build_rremove(uint8_t *buf, uint16_t tag)
 size_t p9_pack_stat(uint8_t *buf, const P9Stat *stat)
 {
     uint8_t *p = buf + 2; /* Skip size field for now */
+    uint16_t stat_data_size;
 
     /* Fixed-width fields */
     le_put16(p, stat->type);     p += 2;
@@ -545,7 +546,7 @@ size_t p9_pack_stat(uint8_t *buf, const P9Stat *stat)
     p += p9_put_string(p, stat->muid);
 
     /* Write the size of the stat data (excluding the size field itself) */
-    uint16_t stat_data_size = (uint16_t)(p - (buf + 2));
+    stat_data_size = (uint16_t)(p - (buf + 2));
     le_put16(buf, stat_data_size);
 
     return (size_t)(p - buf);
@@ -558,15 +559,17 @@ size_t p9_build_rstat(uint8_t *buf, uint16_t tag, const P9Stat *stat)
 {
     /* Skip 7-byte 9P header */
     uint8_t *p = buf + 7;
+    uint8_t *wrapper_len_ptr;
+    size_t stat_size;
 
-    /* * THE FIX: Rstat requires a 2-byte length prefix for the stat data 
+    /* THE FIX: Rstat requires a 2-byte length prefix for the stat data
      * in addition to the stat's own internal length prefix.
      */
-    uint8_t *wrapper_len_ptr = p;
+    wrapper_len_ptr = p;
     p += 2;
 
     /* Pack the actual stat data (this adds the internal 2-byte length) */
-    size_t stat_size = p9_pack_stat(p, stat);
+    stat_size = p9_pack_stat(p, stat);
     p += stat_size;
 
     /* Set the wrapper length (the size of the stat structure we just packed) */
