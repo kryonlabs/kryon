@@ -5,24 +5,27 @@
  * Provides file-based interface to window management
  * File structure:
  * /mnt/wm/
- * ├── ctl                    # Write JSON to create window
- * ├── windows/
- * │   ├── [id]/
- * │   │   ├── ctl            # Window properties (read/write JSON)
- * │   │   ├── title          # Window title (read/write)
- * │   │   ├── rect           # "x y width height" (read/write)
- * │   │   ├── visible        # "true" / "false" (read/write)
- * │   │   ├── widgets/       # Widget directory
- * │   │   │   └── [id]/
- * │   │   │       ├── type    # Widget type name
- * │   │   │       ├── rect    # Widget geometry
- * │   │   │       └── properties/
- * │   │   │           ├── text   # Widget text content
- * │   │   │           ├── color  # Widget color
- * │   │   │           └── ...    # Other properties
- * │   │   └── events         # Event queue (read-only)
- * │   └── ...
- * └── active                # Symlink to focused window ID
+ * ├── ctl                    # Write to create top-level window
+ * ├── win/                   # NEW: Window directory (recursive)
+ * │   └── [id]/              # Window at any level
+ * │       ├── title          # Window title (read/write)
+ * │       ├── rect           # "x y width height" (read/write)
+ * │       ├── visible        # "1" / "0" (read/write)
+ * │       ├── ctl            # Create nested window
+ * │       ├── widgets/       # Widget directory
+ * │       │   └── [id]/
+ * │       │       ├── type    # Widget type
+ * │       │       ├── text    # Widget text
+ * │       │       ├── value   # Widget value
+ * │       │       └── events  # Widget events
+ * │       ├── dev/           # NEW: Virtual devices
+ * │       │   ├── draw       # Virtual /dev/draw
+ * │       │   ├── cons       # Virtual /dev/cons
+ * │       │   ├── mouse      # Virtual /dev/mouse
+ * │       │   └── kbd        # Virtual /dev/kbd
+ * │       └── win/           # NEW: Nested windows
+ * │           └── [id]/      # Child windows (recursive)
+ * └── active                # Symlink to focused window
  */
 
 #include "wm.h"
@@ -399,10 +402,10 @@ int wm_service_init(P9Node *root)
         return -1;
     }
 
-    /* Create /mnt/wm/windows directory */
-    windows_dir = tree_create_dir(wm_dir, "windows");
+    /* Create /mnt/wm/win directory (changed from "windows" in v0.4.0) */
+    windows_dir = tree_create_dir(wm_dir, "win");
     if (windows_dir == NULL) {
-        fprintf(stderr, "wm_service_init: failed to create /mnt/wm/windows\n");
+        fprintf(stderr, "wm_service_init: failed to create /mnt/wm/win\n");
         return -1;
     }
     g_windows_dir = windows_dir;
@@ -642,3 +645,245 @@ int wm_remove_widget_entry(struct KryonWidget *widget)
 
     return 0;
 }
+
+/*
+ * ========== v0.4.0: Extended Filesystem Support ==========
+ */
+
+/*
+ * Create filesystem entries for a window with explicit parent directory
+ * This allows creating nested windows
+ */
+int wm_create_window_entry_ex(struct KryonWindow *win, P9Node *parent_dir)
+{
+    P9Node *win_dir, *events_file, *widgets_dir, *dev_dir, *win_subdir;
+    P9Node *file;
+    char win_name[32];
+
+    if (win == NULL || parent_dir == NULL) {
+        return -1;
+    }
+
+    /* Create window directory name */
+    sprintf(win_name, "%u", win->id);
+
+    /* Create /win/{id} or /win/{parent}/win/{id} directory */
+    win_dir = tree_create_dir(parent_dir, win_name);
+    if (win_dir == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create window dir\n");
+        return -1;
+    }
+
+    win->node = win_dir;
+
+    /* Create /win/{id}/title file */
+    file = tree_create_file(win_dir, "title", win,
+                            wm_window_title_read,
+                            wm_window_title_write);
+    if (file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create title file\n");
+        return -1;
+    }
+
+    /* Create /win/{id}/rect file */
+    file = tree_create_file(win_dir, "rect", win,
+                            wm_window_rect_read,
+                            wm_window_rect_write);
+    if (file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create rect file\n");
+        return -1;
+    }
+
+    /* Create /win/{id}/visible file */
+    file = tree_create_file(win_dir, "visible", win,
+                            wm_window_visible_read,
+                            wm_window_visible_write);
+    if (file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create visible file\n");
+        return -1;
+    }
+
+    /* Create /win/{id}/events file */
+    events_file = tree_create_file(win_dir, "events", win,
+                                    wm_window_events_read,
+                                    NULL);
+    if (events_file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create events file\n");
+        return -1;
+    }
+
+    /* Create /win/{id}/widgets directory */
+    widgets_dir = tree_create_dir(win_dir, "widgets");
+    if (widgets_dir == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create widgets dir\n");
+        return -1;
+    }
+
+    win->widgets_node = widgets_dir;
+
+    /* ========== NEW: Create /win/{id}/ctl for creating nested windows ========== */
+    file = tree_create_file(win_dir, "ctl", win_dir,  /* Pass parent dir as context */
+                            NULL, wm_ctl_write);
+    if (file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create ctl file\n");
+        return -1;
+    }
+    /* ================================================================================== */
+
+    /* ========== NEW: Create /win/{id}/dev/ directory for virtual devices ========== */
+    dev_dir = tree_create_dir(win_dir, "dev");
+    if (dev_dir == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create dev dir\n");
+        return -1;
+    }
+
+    /* Create /dev/draw (virtual) - placeholder for now */
+    {
+        P9Node *draw_dir = tree_create_dir(dev_dir, "draw");
+        if (draw_dir == NULL) {
+            fprintf(stderr, "wm_create_window_entry_ex: failed to create draw dir\n");
+            return -1;
+        }
+        /* Create "new" file for /dev/draw */
+        file = tree_create_file(draw_dir, "new", win,
+                                vdev_draw_new_read, NULL);
+        if (file == NULL) {
+            fprintf(stderr, "wm_create_window_entry_ex: failed to create draw/new file\n");
+            return -1;
+        }
+    }
+
+    /* Create /dev/cons (virtual) */
+    file = tree_create_file(dev_dir, "cons", win,
+                            vdev_cons_read, vdev_cons_write);
+    if (file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create cons file\n");
+        return -1;
+    }
+
+    /* Create /dev/mouse (virtual) - placeholder */
+    file = tree_create_file(dev_dir, "mouse", win, NULL, NULL);
+    if (file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create mouse file\n");
+        return -1;
+    }
+
+    /* Create /dev/kbd (virtual) - placeholder */
+    file = tree_create_file(dev_dir, "kbd", win, NULL, NULL);
+    if (file == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create kbd file\n");
+        return -1;
+    }
+    /* ================================================================================== */
+
+    /* ========== NEW: Create /win/{id}/win/ subdirectory for nesting ========== */
+    win_subdir = tree_create_dir(win_dir, "win");
+    if (win_subdir == NULL) {
+        fprintf(stderr, "wm_create_window_entry_ex: failed to create nested win dir\n");
+        return -1;
+    }
+    /* Store reference for creating nested windows */
+    win->nested_win_dir = win_subdir;
+    /* ====================================================================== */
+
+    fprintf(stderr, "wm_create_window_entry_ex: created entries for window %u\n", win->id);
+    return 0;
+}
+
+/*
+ * Resolve window by path (e.g., "/win/1/win/2/win/3")
+ * This is a wrapper around window_resolve_path() from window.c
+ */
+struct KryonWindow *wm_resolve_path(const char *path)
+{
+    return window_resolve_path(path);
+}
+
+/*
+ * Create virtual device entries for a window
+ */
+int wm_create_vdev_entries(struct KryonWindow *win)
+{
+    /* Virtual devices are now created in wm_create_window_entry_ex() */
+    /* This function is kept for compatibility but delegates to the main function */
+    (void)win;
+    return 0;
+}
+
+/*
+ * ========== v0.4.0: Virtual Device Handlers (Placeholder Implementation) ==========
+ */
+
+/*
+ * Virtual /dev/draw/new handler
+ * Returns 144-byte screen info for the virtual framebuffer
+ */
+ssize_t vdev_draw_new_read(char *buf, size_t count, uint64_t offset, void *data)
+{
+    struct KryonWindow *win = (struct KryonWindow *)data;
+    static unsigned char screen_info[144];
+    size_t to_copy;
+
+    if (win == NULL) {
+        return -1;
+    }
+
+    /* TODO: Allocate virtual framebuffer if not exists */
+    /* TODO: Fill in proper 144-byte screen info */
+    memset(screen_info, 0, sizeof(screen_info));
+
+    if (offset >= sizeof(screen_info)) {
+        return 0;
+    }
+
+    to_copy = sizeof(screen_info) - offset;
+    if (to_copy > count) {
+        to_copy = count;
+    }
+
+    memcpy(buf, screen_info + offset, to_copy);
+    return to_copy;
+}
+
+/*
+ * Virtual /dev/cons write handler
+ * Writes characters to the console buffer
+ */
+ssize_t vdev_cons_write(const char *buf, size_t count, uint64_t offset,
+                       void *data)
+{
+    struct KryonWindow *win = (struct KryonWindow *)data;
+
+    (void)offset;
+
+    if (win == NULL || buf == NULL || count == 0) {
+        return -1;
+    }
+
+    /* TODO: Implement console buffer write */
+    /* For now, just output to stderr for debugging */
+    fprintf(stderr, "Window %u console: %.*s", win->id, (int)count, buf);
+
+    return count;
+}
+
+/*
+ * Virtual /dev/cons read handler
+ */
+ssize_t vdev_cons_read(char *buf, size_t count, uint64_t offset,
+                      void *data)
+{
+    struct KryonWindow *win = (struct KryonWindow *)data;
+
+    if (win == NULL || win->vdev == NULL) {
+        return 0;  /* EOF */
+    }
+
+    /* TODO: Implement console buffer read */
+    (void)buf;
+    (void)count;
+    (void)offset;
+
+    return 0;
+}
+

@@ -178,14 +178,20 @@ void render_widget(KryonWidget *w, Memimage *screen)
 }
 
 /*
- * Render a window and all its widgets
+ * Render a window and all its widgets (recursive)
  */
 void render_window(KryonWindow *win, Memimage *screen)
 {
     Rectangle win_rect;
     int i;
+    Memimage *target;
 
     if (win == NULL || screen == NULL) {
+        return;
+    }
+
+    /* Check visibility */
+    if (!win->visible) {
         return;
     }
 
@@ -194,13 +200,47 @@ void render_window(KryonWindow *win, Memimage *screen)
         return;
     }
 
-    /* Clear window background - use transparent instead of white */
-    /* Don't clear - let the screen background show through */
-    /* memfillcolor_rect(screen, win_rect, 0xFFFFFFFF); */
+    /* v0.4.0: Determine rendering target */
+    /* If window has virtual framebuffer, render to it */
+    /* Otherwise render directly to screen */
+    if (win->vdev != NULL && win->vdev->draw_buffer != NULL) {
+        target = win->vdev->draw_buffer;
+        /* Clear virtual framebuffer to transparent */
+        /* memfillcolor(target, 0x00000000); */
+    } else {
+        target = screen;
+        /* Don't clear - let the screen background show through */
+    }
+
+    /* Clear window background */
+    /* REMOVED: Don't fill with white - let the screen's dark blue background show through */
+    /* memfillcolor_rect(target, win_rect, 0xFFFFFFFF); */
 
     /* Render all widgets */
     for (i = 0; i < win->nwidgets; i++) {
-        render_widget(win->widgets[i], screen);
+        render_widget(win->widgets[i], target);
+    }
+
+    /* v0.4.0: Recursively render child windows */
+    for (i = 0; i < win->nchildren; i++) {
+        render_window(win->children[i], target);
+    }
+
+    /* v0.4.0: If using virtual framebuffer, compose to parent/screen */
+    if (win->vdev != NULL && win->vdev->draw_buffer != NULL) {
+        /* TODO: Implement proper composition */
+        /* For now, just blit to screen */
+        if (target != screen) {
+            Point sp;
+            Point zero;
+
+            sp.x = 0;
+            sp.y = 0;
+            zero.x = 0;
+            zero.y = 0;
+
+            memdraw(screen, win_rect, win->vdev->draw_buffer, sp, NULL, zero, SoverD);
+        }
     }
 }
 
@@ -223,13 +263,15 @@ void render_all(void)
     /* Clear screen to dark blue */
     memfillcolor(g_screen, DBlue);
 
-    /* Render all windows */
+    /* v0.4.0: Render only top-level windows */
+    /* Nested windows will be rendered recursively by their parents */
     for (i = 1; ; i++) {
         win = window_get(i);
         if (win == NULL) {
             break;
         }
-        if (win->visible) {
+        /* Only render top-level windows (parent == NULL) */
+        if (win->visible && win->parent == NULL) {
             render_window(win, g_screen);
         }
     }

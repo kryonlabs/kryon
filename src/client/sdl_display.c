@@ -363,9 +363,21 @@ static int read_screen(DisplayClient *dc)
         fprintf(stderr, "Detected SDL format: 0x%X\n", (unsigned int)sdl_format);
     }
 
+    /* Print first pixel from server on first read (should be BGRA) */
+    if (read_count == 1) {
+        fprintf(stderr, "First pixel from server: %02X %02X %02X %02X (expected BGRA for DBlue: FF 00 00 FF)\n",
+                dc->temp_buf[0], dc->temp_buf[1], dc->temp_buf[2], dc->temp_buf[3]);
+    }
+
     /* Convert from server BGRA to actual SDL format */
     convert_pixels_to_sdl_format(dc->screen_buf, dc->temp_buf,
                                   dc->screen_width, dc->screen_height, cached_sdl_format);
+
+    /* Print first pixel after conversion on first read */
+    if (read_count == 1) {
+        fprintf(stderr, "First pixel after conversion: %02X %02X %02X %02X\n",
+                dc->screen_buf[0], dc->screen_buf[1], dc->screen_buf[2], dc->screen_buf[3]);
+    }
 #endif
 
     return 0;
