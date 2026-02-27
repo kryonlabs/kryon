@@ -1,5 +1,5 @@
 /*
- * Kryon Display Client - Main Entry Point
+ * Kryon View - Display Viewer
  * C89/C90 compliant
  */
 
@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 /*
  * Signal handler for graceful shutdown

@@ -1,0 +1,21 @@
+# Nested windows demo
+# This demonstrates how to create nested window structures
+
+window main "Main Window" 800 600 {
+    vbox gap=10 padding=20 {
+        label title "Nested Window Demo" { color "#00FF00" }
+
+        button btn_action "Perform Action"
+
+        label info "This demo shows the main window. Nested windows are"
+        label info2 "declared inside the main window block."
+    }
+}
+
+# You can also create multiple top-level windows
+window secondary "Secondary Window" 400 300 {
+    vbox gap=10 padding=15 {
+        label subtitle "Secondary Window" { color "#FFFF00" }
+        button btn_close "Close"
+    }
+}

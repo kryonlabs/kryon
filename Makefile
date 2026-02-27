@@ -87,23 +87,18 @@ GRAPHICS_SRCS =
 # UI files (window manager, widgets)
 UI_SRCS = $(SRC_DIR)/core/window.c $(SRC_DIR)/core/widget.c \
            $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c
-# CPU server and namespace support
-CPU_SRCS = $(SRC_DIR)/core/cpu_server.c $(SRC_DIR)/core/namespace.c \
-            $(SRC_DIR)/core/rcpu.c \
-            $(SRC_DIR)/shell/rc_wrapper.c
+# Kryon DSL parser
+KRYON_SRCS = $(SRC_DIR)/kryon/parser.c
 # Window manager filesystem
 SYS_SRCS = $(SRC_DIR)/sys/wm.c
-# Authentication support
-AUTH_SRCS = $(SRC_DIR)/core/auth_session.c $(SRC_DIR)/core/factotum_keys.c \
-            $(SRC_DIR)/core/devfactotum.c $(SRC_DIR)/core/auth_p9any.c \
-            $(SRC_DIR)/core/auth_dp9ik.c $(SRC_DIR)/core/secstore.c
+# Authentication - now handled by Marrow, Kryon only uses 9P client auth
 TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 # 9P client (for connecting to 9P servers)
 P9CLIENT_SRCS = $(SRC_DIR)/lib/client/p9client.c $(SRC_DIR)/lib/client/marrow.c
 CLIENT_SRCS = $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c
-SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(TRANSPORT_SRCS) $(CPU_SRCS) \
-       $(AUTH_SRCS) $(P9CLIENT_SRCS) $(SYS_SRCS)
+SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(KRYON_SRCS) $(TRANSPORT_SRCS) \
+       $(P9CLIENT_SRCS) $(SYS_SRCS)
 
 # Additional object files for linking
 WINDOW_OBJS = $(BUILD_DIR)/core/window.o
@@ -117,7 +112,7 @@ CLIENT_OBJS = $(CLIENT_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Targets
 LIB_TARGET = $(BUILD_DIR)/libkryon.a
-DISPLAY_TARGET = $(BIN_DIR)/kryon-display
+DISPLAY_TARGET = $(BIN_DIR)/kryon-view
 KRYON_WM_TARGET = $(BIN_DIR)/kryon-wm
 SAVE_PPM_TARGET = $(BIN_DIR)/save_ppm
 
@@ -136,6 +131,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/client
 	mkdir -p $(BUILD_DIR)/lib/client
 	mkdir -p $(BUILD_DIR)/sys
+	mkdir -p $(BUILD_DIR)/kryon
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
@@ -146,9 +142,9 @@ $(LIB_TARGET): $(OBJS) | $(BUILD_DIR)
 
 # Kryon Window Manager binary (connects to Marrow)
 # Using test_main.c for now - full main requires linking with Marrow graphics
-$(KRYON_WM_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) $(MARROW_GRAPHICS_OBJS) | $(BIN_DIR)
-	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport -I$(MARROW_INCLUDE) \
-		$< $(BUILD_DIR)/lib/client/p9client.o $(BUILD_DIR)/lib/client/marrow.o $(MARROW_GRAPHICS_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS) -lm
+$(KRYON_WM_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) $(MARROW_GRAPHICS_OBJS) $(BUILD_DIR)/kryon/parser.o | $(BIN_DIR)
+	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport -I$(MARROW_INCLUDE) -I$(SRC_DIR)/kryon \
+		$< $(BUILD_DIR)/lib/client/p9client.o $(BUILD_DIR)/lib/client/marrow.o $(BUILD_DIR)/kryon/parser.o $(MARROW_GRAPHICS_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS) -lm
 
 # Display client binary
 $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN_DIR)

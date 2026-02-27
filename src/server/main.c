@@ -15,6 +15,7 @@
 #include "p9client.h"
 #include "marrow.h"
 #include "kryon.h"
+#include "../kryon/parser.h"
 #include "../include/graphics.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,14 +52,15 @@ static void signal_handler(int sig)
  */
 int main(int argc, char **argv)
 {
-    KryonWindow *win1;
-    KryonWidget *btn;
-    KryonWidget *lbl;
     int i;
 
-    /* Parse arguments - now just takes Marrow address */
+    /* Parse arguments - now takes Marrow address and .kryon file options */
     char *marrow_addr = "tcp!localhost!17010";
     int dump_screen = 0;  /* Flag to enable screenshot dumps */
+    const char *load_file = NULL;
+    const char *example_name = NULL;
+    int list_examples = 0;
+
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--marrow") == 0) {
             if (i + 1 >= argc) {
@@ -69,13 +71,37 @@ int main(int argc, char **argv)
             i++;
         } else if (strcmp(argv[i], "--dump-screen") == 0) {
             dump_screen = 1;
+        } else if (strcmp(argv[i], "--load") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: --load requires an argument\n");
+                return 1;
+            }
+            load_file = argv[i + 1];
+            i++;
+        } else if (strcmp(argv[i], "--example") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: --example requires an argument\n");
+                return 1;
+            }
+            example_name = argv[i + 1];
+            i++;
+        } else if (strcmp(argv[i], "--list-examples") == 0) {
+            list_examples = 1;
         } else if (strcmp(argv[i], "--help") == 0) {
             fprintf(stderr, "Usage: %s [OPTIONS]\n", argv[0]);
             fprintf(stderr, "\n");
             fprintf(stderr, "Options:\n");
-            fprintf(stderr, "  --marrow ADDR   Marrow server address (default: tcp!localhost!17010)\n");
-            fprintf(stderr, "  --dump-screen   Dump screenshot to /tmp/wm_before.raw\n");
-            fprintf(stderr, "  --help          Show this help message\n");
+            fprintf(stderr, "  --marrow ADDR        Marrow server address (default: tcp!localhost!17010)\n");
+            fprintf(stderr, "  --dump-screen        Dump screenshot to /tmp/wm_before.raw\n");
+            fprintf(stderr, "  --load FILE.kryon    Load specific .kryon file\n");
+            fprintf(stderr, "  --example NAME       Load example from examples/\n");
+            fprintf(stderr, "  --list-examples      List available examples\n");
+            fprintf(stderr, "  --help               Show this help message\n");
+            fprintf(stderr, "\n");
+            fprintf(stderr, "Examples:\n");
+            fprintf(stderr, "  %s                           # Load default example (minimal.kry)\n", argv[0]);
+            fprintf(stderr, "  %s --example widgets         # Load widgets example\n", argv[0]);
+            fprintf(stderr, "  %s --load myapp.kryon        # Load custom file\n", argv[0]);
             fprintf(stderr, "\n");
             return 0;
         } else {
@@ -83,6 +109,16 @@ int main(int argc, char **argv)
             fprintf(stderr, "Use --help for usage\n");
             return 1;
         }
+    }
+
+    /* Handle --list-examples */
+    if (list_examples) {
+        printf("Available examples:\n");
+        printf("  minimal    - Simple button and label (default)\n");
+        printf("  widgets    - All widget types\n");
+        printf("  layouts    - Layout demos (vbox, hbox, grid, absolute)\n");
+        printf("  nested     - Multiple top-level windows\n");
+        return 0;
     }
 
     /* Initialize subsystems */
@@ -177,63 +213,44 @@ int main(int argc, char **argv)
     fprintf(stderr, "Window manager initialized\n");
     fprintf(stderr, "Using Marrow's /dev/draw for rendering\n");
 
-    /* Create a test window */
-    win1 = window_create("Demo Window", 800, 600);
-    if (win1 == NULL) {
-        fprintf(stderr, "Error: failed to create window\n");
-        p9_disconnect(g_marrow_client);
-        return 1;
+    /* Load .kryon file(s) */
+    {
+        int result;
+        char example_path[256];
+
+        if (example_name != NULL) {
+            /* Load example from examples/ directory */
+            snprintf(example_path, sizeof(example_path), "examples/%s.kry", example_name);
+            fprintf(stderr, "Loading example: %s\n", example_name);
+            result = kryon_load_file(example_path);
+            if (result < 0) {
+                fprintf(stderr, "Error: failed to load example: %s\n", example_name);
+                p9_disconnect(g_marrow_client);
+                return 1;
+            }
+        } else if (load_file != NULL) {
+            /* Load specific file */
+            fprintf(stderr, "Loading file: %s\n", load_file);
+            result = kryon_load_file(load_file);
+            if (result < 0) {
+                fprintf(stderr, "Error: failed to load file: %s\n", load_file);
+                p9_disconnect(g_marrow_client);
+                return 1;
+            }
+        } else {
+            /* Default: load minimal.kry */
+            fprintf(stderr, "Loading default example: minimal.kry\n");
+            result = kryon_load_file("examples/minimal.kry");
+            if (result < 0) {
+                fprintf(stderr, "Error: failed to load default example\n");
+                fprintf(stderr, "Note: Make sure examples/minimal.kry exists or use --load FILE.kryon\n");
+                p9_disconnect(g_marrow_client);
+                return 1;
+            }
+        }
+
+        fprintf(stderr, "Loaded %d window(s) from .kryon file(s)\n", result);
     }
-
-    fprintf(stderr, "Created window %u: %s\n", win1->id, win1->title);
-
-    /* Add a button widget */
-    btn = widget_create(WIDGET_BUTTON, "btn_click", win1);
-    if (btn == NULL) {
-        fprintf(stderr, "Error: failed to create button widget\n");
-        p9_disconnect(g_marrow_client);
-        return 1;
-    }
-
-    free(btn->prop_text);
-    btn->prop_text = (char *)malloc(10);
-    if (btn->prop_text != NULL) {
-        strcpy(btn->prop_text, "Click Me");
-    }
-
-    free(btn->prop_rect);
-    btn->prop_rect = (char *)malloc(16);
-    if (btn->prop_rect != NULL) {
-        strcpy(btn->prop_rect, "50 50 200 50");
-    }
-
-    window_add_widget(win1, btn);
-    fprintf(stderr, "  Created widget %u: button (text='%s', rect='%s')\n",
-            btn->id, btn->prop_text, btn->prop_rect);
-
-    /* Add a label widget */
-    lbl = widget_create(WIDGET_LABEL, "lbl_hello", win1);
-    if (lbl == NULL) {
-        fprintf(stderr, "Error: failed to create label widget\n");
-        p9_disconnect(g_marrow_client);
-        return 1;
-    }
-
-    free(lbl->prop_text);
-    lbl->prop_text = (char *)malloc(14);
-    if (lbl->prop_text != NULL) {
-        strcpy(lbl->prop_text, "Hello, World!");
-    }
-
-    free(lbl->prop_rect);
-    lbl->prop_rect = (char *)malloc(16);
-    if (lbl->prop_rect != NULL) {
-        strcpy(lbl->prop_rect, "50 120 300 40");
-    }
-
-    window_add_widget(win1, lbl);
-    fprintf(stderr, "  Created widget %u: label (text='%s', rect='%s')\n",
-            lbl->id, lbl->prop_text, lbl->prop_rect);
 
     /* NOTE: Rendering is now done through Marrow's /dev/draw */
     /* Create screen buffer and render windows */

@@ -1,0 +1,45 @@
+# Widgets demo - showcase all implemented widget types
+# This demonstrates various widget types available in Kryon
+
+window widgets "Widget Showcase" 800 600 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Available Widgets" { color "#00FF00" }
+
+        # Buttons
+        button btn1 "Button Widget"
+        button btn2 "Another Button" { color "#FF0000" }
+
+        # Labels
+        label label1 "Label Widget"
+        label label2 "Yellow Label" { color "#FFFF00" }
+        label label3 "Cyan Label" { color "#00FFFF" }
+
+        # Switch/Toggle
+        switch toggle1 "Toggle Switch"
+
+        # Slider
+        slider slider1 "Volume Control"
+
+        # Text Input
+        textinput input1 placeholder="Enter text here..."
+
+        # Checkbox
+        checkbox check1 "Enable Feature"
+
+        # Radio Button
+        radiobutton radio1 "Option A"
+
+        # Dropdown
+        dropdown dropdown1 "Select Option"
+
+        # Progress Bar
+        progressbar progress1 "Loading..."
+
+        # Heading
+        heading heading1 "This is a Heading"
+
+        # Paragraph
+        paragraph paragraph1 "This is a paragraph widget for longer text content."
+    }
+}

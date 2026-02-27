@@ -9,15 +9,6 @@
 #include <unistd.h>
 
 /*
- * CPU server integration
- */
-#ifdef INCLUDE_CPU_SERVER
-extern int cpu_server_init(P9Node *root);
-extern int cpu_handle_new_client(int client_fd, const char *user, const char *aname);
-extern const char *cpu_find_plan9_path(void);
-#endif
-
-/*
  * Current client fd (for CPU server tracking)
  * This is set before handling each message
  */
@@ -205,20 +196,6 @@ size_t handle_tattach(const uint8_t *in_buf, size_t in_len, uint8_t *out_buf)
     if (p9_parse_tattach(in_buf, in_len, &fid, &afid, uname, aname) < 0) {
         return p9_build_rerror(out_buf, hdr.tag, "invalid Tattach");
     }
-
-    /* Check if this is a CPU server attach */
-    is_cpu_attach = (strcmp(aname, "cpu") == 0);
-
-#ifdef INCLUDE_CPU_SERVER
-    if (is_cpu_attach && current_client_fd >= 0) {
-        /* Initialize CPU server session */
-        int session_id = cpu_handle_new_client(current_client_fd, uname, aname);
-        if (session_id < 0) {
-            fprintf(stderr, "handle_tattach: failed to create CPU session\n");
-            return p9_build_rerror(out_buf, hdr.tag, "CPU session failed");
-        }
-    }
-#endif
 
     /* Get root node */
     root = tree_root();
