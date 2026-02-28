@@ -82,6 +82,7 @@ void window_registry_cleanup(void)
     windows = NULL;
     nwindows = 0;
     window_capacity = 0;
+    next_window_id = 1;
 }
 
 /*

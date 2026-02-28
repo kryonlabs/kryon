@@ -23,6 +23,12 @@
 #include <signal.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/inotify.h>
+#include <errno.h>
+#include <poll.h>
 
 /*
  * Forward declarations for render functions
@@ -36,11 +42,82 @@ void render_all(void);
 static int run_nested_wm(const char *win_id, const char *pipe_fd_str);
 
 /*
+ * Forward declarations for file watch functions (hot-reload)
+ */
+static int setup_file_watch(const char *filename);
+static void cleanup_file_watch(void);
+static int is_our_file(const struct inotify_event *event);
+static int reload_kryon_file(void);
+
+/*
+ * List .kry files in a directory recursively
+ */
+static void list_kry_files(const char *base_path, const char *prefix)
+{
+    DIR *dir;
+    struct dirent *entry;
+    struct stat statbuf;
+    char path[512];
+    int has_files = 0;
+
+    dir = opendir(base_path);
+    if (dir == NULL) {
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        /* Skip . and .. */
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        /* Build full path */
+        snprintf(path, sizeof(path), "%s/%s", base_path, entry->d_name);
+
+        /* Get file info */
+        if (stat(path, &statbuf) < 0) {
+            continue;
+        }
+
+        /* If directory, recurse */
+        if (S_ISDIR(statbuf.st_mode)) {
+            char new_prefix[512];
+            snprintf(new_prefix, sizeof(new_prefix), "%s%s/", prefix, entry->d_name);
+            list_kry_files(path, new_prefix);
+        } else if (S_ISREG(statbuf.st_mode)) {
+            /* Check if .kry file */
+            size_t len = strlen(entry->d_name);
+            if (len > 4 && strcmp(entry->d_name + len - 4, ".kry") == 0) {
+                if (!has_files) {
+                    has_files = 1;
+                }
+                /* Print without .kry extension */
+                printf("  %-30s %s%.*s\n", prefix, prefix, (int)(len - 4), entry->d_name);
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
+/*
  * Marrow client connection (for /dev/draw access)
  * Made non-static so namespace.c can access it
  */
 P9Client *g_marrow_client = NULL;
 static int g_marrow_draw_fd = -1;
+
+/*
+ * Global state for file watch mode (hot-reload)
+ */
+static int g_inotify_fd = -1;
+static int g_watch_descriptor = -1;
+static const char *g_watch_file = NULL;
+
+/*
+ * Global screen reference for hot-reload
+ */
+static Memimage *g_screen_buffer = NULL;
 
 /*
  * Signal handler for graceful shutdown
@@ -64,9 +141,9 @@ int main(int argc, char **argv)
     char *marrow_addr;
     int dump_screen;
     const char *load_file;
-    const char *example_name;
     int list_examples;
     int blank_mode;
+    int watch_mode;
 
     /* Parse arguments - check for --nested mode first */
     for (i = 1; i < argc; i++) {
@@ -86,9 +163,9 @@ int main(int argc, char **argv)
     marrow_addr = "tcp!localhost!17010";
     dump_screen = 0;  /* Flag to enable screenshot dumps */
     load_file = NULL;
-    example_name = NULL;
     list_examples = 0;
     blank_mode = 0;
+    watch_mode = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--marrow") == 0) {
@@ -100,41 +177,36 @@ int main(int argc, char **argv)
             i++;
         } else if (strcmp(argv[i], "--dump-screen") == 0) {
             dump_screen = 1;
-        } else if (strcmp(argv[i], "--load") == 0) {
+        } else if (strcmp(argv[i], "--run") == 0) {
             if (i + 1 >= argc) {
-                fprintf(stderr, "Error: --load requires an argument\n");
+                fprintf(stderr, "Error: --run requires a .kry file path\n");
                 return 1;
             }
             load_file = argv[i + 1];
-            i++;
-        } else if (strcmp(argv[i], "--example") == 0) {
-            if (i + 1 >= argc) {
-                fprintf(stderr, "Error: --example requires an argument\n");
-                return 1;
-            }
-            example_name = argv[i + 1];
             i++;
         } else if (strcmp(argv[i], "--list-examples") == 0) {
             list_examples = 1;
         } else if (strcmp(argv[i], "--blank") == 0) {
             blank_mode = 1;
+        } else if (strcmp(argv[i], "--watch") == 0) {
+            watch_mode = 1;
         } else if (strcmp(argv[i], "--help") == 0) {
             fprintf(stderr, "Usage: %s [OPTIONS]\n", argv[0]);
             fprintf(stderr, "\n");
             fprintf(stderr, "Options:\n");
             fprintf(stderr, "  --marrow ADDR        Marrow server address (default: tcp!localhost!17010)\n");
             fprintf(stderr, "  --dump-screen        Dump screenshot to /tmp/wm_before.raw\n");
-            fprintf(stderr, "  --load FILE.kryon    Load specific .kryon file\n");
-            fprintf(stderr, "  --example NAME       Load example from examples/\n");
-            fprintf(stderr, "  --list-examples      List available examples\n");
+            fprintf(stderr, "  --run FILE.kry       Load and run the specified .kry file\n");
+            fprintf(stderr, "  --watch              Enable hot-reload for .kry file\n");
+            fprintf(stderr, "  --list-examples      List available example files\n");
             fprintf(stderr, "  --blank              Clear screen to black and wait\n");
             fprintf(stderr, "  --help               Show this help message\n");
             fprintf(stderr, "\n");
             fprintf(stderr, "Examples:\n");
-            fprintf(stderr, "  %s                           # Load default example (minimal.kry)\n", argv[0]);
-            fprintf(stderr, "  %s --blank                   # Clear screen and wait (no UI)\n", argv[0]);
-            fprintf(stderr, "  %s --example widgets         # Load widgets example\n", argv[0]);
-            fprintf(stderr, "  %s --load myapp.kryon        # Load custom file\n", argv[0]);
+            fprintf(stderr, "  %s --run examples/minimal.kry              # Run minimal example\n", argv[0]);
+            fprintf(stderr, "  %s --run examples/widgets/button.kry       # Run button widget\n", argv[0]);
+            fprintf(stderr, "  %s --run myapp.kry                        # Run custom file\n", argv[0]);
+            fprintf(stderr, "  %s --blank                                # Clear screen (no UI)\n", argv[0]);
             fprintf(stderr, "\n");
             return 0;
         } else {
@@ -146,11 +218,11 @@ int main(int argc, char **argv)
 
     /* Handle --list-examples */
     if (list_examples) {
-        printf("Available examples:\n");
-        printf("  minimal    - Simple button and label (default)\n");
-        printf("  widgets    - All widget types\n");
-        printf("  layouts    - Layout demos (vbox, hbox, grid, absolute)\n");
-        printf("  nested     - Multiple top-level windows\n");
+        printf("Available .kry files in examples/:\n");
+        printf("\n");
+        list_kry_files("examples", "");
+        printf("\n");
+        printf("Usage: %s --run <file.kry>\n", argv[0]);
         return 0;
     }
 
@@ -337,30 +409,16 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    /* Load .kryon file(s) */
+    /* Load .kry file(s) */
     {
         int result;
-        char example_path[256];
 
-        if (example_name != NULL) {
-            /* Load example from examples/ directory */
-            snprintf(example_path, sizeof(example_path), "examples/%s.kry", example_name);
-            result = kryon_load_file(example_path);
-            if (result < 0) {
-                fprintf(stderr, "Error: failed to load example: %s\n", example_name);
-                p9_disconnect(g_marrow_client);
-                return 1;
-            }
-            if (result == 0) {
-                fprintf(stderr, "Error: no windows created from example: %s\n", example_name);
-                p9_disconnect(g_marrow_client);
-                return 1;
-            }
-        } else if (load_file != NULL) {
-            /* Load specific file */
+        if (load_file != NULL) {
+            /* Load specified file */
             result = kryon_load_file(load_file);
             if (result < 0) {
                 fprintf(stderr, "Error: failed to load file: %s\n", load_file);
+                fprintf(stderr, "Use --list-examples to see available files\n");
                 p9_disconnect(g_marrow_client);
                 return 1;
             }
@@ -370,25 +428,24 @@ int main(int argc, char **argv)
                 return 1;
             }
         } else {
-            /* Default: load minimal.kry */
-            result = kryon_load_file("examples/minimal.kry");
-            if (result < 0) {
-                fprintf(stderr, "Error: failed to load default example\n");
-                fprintf(stderr, "Note: Make sure examples/minimal.kry exists or use --load FILE.kryon\n");
-                p9_disconnect(g_marrow_client);
-                return 1;
-            }
-            if (result == 0) {
-                fprintf(stderr, "Error: no windows created from default example\n");
-                fprintf(stderr, "Check examples/minimal.kry for syntax errors\n");
-                p9_disconnect(g_marrow_client);
-                return 1;
-            }
+            /* No file specified - show help and exit */
+            fprintf(stderr, "Error: No .kry file specified\n");
+            fprintf(stderr, "Usage: %s --run <file.kry>\n", argv[0]);
+            fprintf(stderr, "Use --list-examples to see available files\n");
+            p9_disconnect(g_marrow_client);
+            return 1;
         }
 
-        if (result > 0) {
         fprintf(stderr, "Loaded %d window(s)\n", result);
     }
+
+    /* Setup watch mode if requested */
+    if (watch_mode) {
+        if (setup_file_watch(load_file) < 0) {
+            fprintf(stderr, "Warning: failed to setup file watch\n");
+            fprintf(stderr, "Continuing without hot-reload\n");
+            watch_mode = 0;
+        }
     }
 
     /* NOTE: Rendering is now done through Marrow's /dev/draw */
@@ -416,6 +473,9 @@ int main(int argc, char **argv)
             p9_disconnect(g_marrow_client);
             return 1;
         }
+
+        /* Store screen buffer globally for hot-reload */
+        g_screen_buffer = screen;
 
         /* Set screen as global for rendering */
         render_set_screen(screen);
@@ -524,11 +584,65 @@ int main(int argc, char **argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    /* Simple loop - just wait for signals */
-    while (running) {
-        sleep(1);
-        /* TODO: Poll Marrow for events */
-        /* TODO: Handle window manager events */
+    /* Enhanced event loop with optional inotify monitoring */
+    if (watch_mode) {
+        struct pollfd fds[1];
+        char event_buf[4096];
+        ssize_t len;
+        size_t i;
+        time_t last_reload = 0;
+
+        fds[0].fd = g_inotify_fd;
+        fds[0].events = POLLIN;
+
+        fprintf(stderr, "Watch mode active - monitoring for file changes\n");
+
+        while (running) {
+            /* Poll for events with 100ms timeout */
+            int poll_result = poll(fds, 1, 100);
+
+            if (poll_result < 0) {
+                if (errno == EINTR) continue;
+                fprintf(stderr, "Error: poll() failed: %s\n", strerror(errno));
+                break;
+            }
+
+            if (poll_result == 0) continue;  /* Timeout */
+
+            /* Event available - read it */
+            len = read(g_inotify_fd, event_buf, sizeof(event_buf));
+            if (len < 0) {
+                if (errno == EINTR) continue;
+                fprintf(stderr, "Error: read() from inotify failed: %s\n", strerror(errno));
+                break;
+            }
+
+            /* Process events */
+            i = 0;
+            while (i < (size_t)len) {
+                struct inotify_event *event = (struct inotify_event *)&event_buf[i];
+
+                if (is_our_file(event)) {
+                    /* Debounce: wait 1 second after last event */
+                    time_t now = time(NULL);
+                    if (now - last_reload >= 1) {
+                        reload_kryon_file();
+                        last_reload = now;
+                    }
+                }
+
+                i += sizeof(struct inotify_event) + event->len;
+            }
+        }
+
+        cleanup_file_watch();
+    } else {
+        /* Original simple loop */
+        while (running) {
+            sleep(1);
+            /* TODO: Poll Marrow for events */
+            /* TODO: Handle window manager events */
+        }
     }
 
     /* Cleanup */
@@ -545,6 +659,288 @@ int main(int argc, char **argv)
     fprintf(stderr, "Shutdown complete\n");
 
     return 0;
+}
+
+/*
+ * ========== File Watch Functions for Hot-Reload ==========
+ */
+
+/*
+ * Setup inotify watch for a file
+ * Watches the directory containing the file and filters by filename
+ */
+static int setup_file_watch(const char *filename)
+{
+    char path[512];
+    char *last_slash;
+
+    /* Copy path and get directory */
+    strncpy(path, filename, sizeof(path) - 1);
+    path[sizeof(path) - 1] = '\0';
+
+    last_slash = strrchr(path, '/');
+    if (last_slash == NULL) {
+        strcpy(path, ".");
+    } else {
+        *last_slash = '\0';
+    }
+
+    /* Create inotify instance */
+    g_inotify_fd = inotify_init();
+    if (g_inotify_fd < 0) {
+        fprintf(stderr, "Error: inotify_init() failed: %s\n", strerror(errno));
+        return -1;
+    }
+
+    /* Add watch for directory */
+    g_watch_descriptor = inotify_add_watch(g_inotify_fd, path,
+                                          IN_MODIFY | IN_CLOSE_WRITE);
+    if (g_watch_descriptor < 0) {
+        fprintf(stderr, "Error: inotify_add_watch() failed for %s: %s\n",
+                path, strerror(errno));
+        close(g_inotify_fd);
+        g_inotify_fd = -1;
+        return -1;
+    }
+
+    g_watch_file = filename;
+    fprintf(stderr, "Watching for changes: %s\n", filename);
+
+    return 0;
+}
+
+/*
+ * Cleanup inotify watch
+ */
+static void cleanup_file_watch(void)
+{
+    if (g_inotify_fd >= 0) {
+        if (g_watch_descriptor >= 0) {
+            inotify_rm_watch(g_inotify_fd, g_watch_descriptor);
+        }
+        close(g_inotify_fd);
+        g_inotify_fd = -1;
+        g_watch_descriptor = -1;
+        g_watch_file = NULL;
+    }
+}
+
+/*
+ * Check if inotify event is for our watched file
+ */
+static int is_our_file(const struct inotify_event *event)
+{
+    const char *filename;
+
+    if (g_watch_file == NULL || event->len == 0) {
+        return 0;
+    }
+
+    filename = strrchr(g_watch_file, '/');
+    if (filename == NULL) {
+        filename = g_watch_file;
+    } else {
+        filename++;
+    }
+
+    return strcmp(event->name, filename) == 0;
+}
+
+/*
+ * External functions from parser and registries
+ */
+extern KryonNode *kryon_parse_file(const char *filename);
+extern int kryon_execute_ast(KryonNode *ast);
+extern void kryon_free_ast(KryonNode *ast);
+extern int window_registry_init(void);
+extern int widget_registry_init(void);
+extern void window_registry_cleanup(void);
+extern void widget_registry_cleanup(void);
+extern void render_all(void);
+extern KryonWindow *window_get(uint32_t index);
+extern int window_build_namespace(struct KryonWindow *win);
+
+/*
+ * External Marrow client for sending screen updates
+ */
+extern P9Client *g_marrow_client;
+
+/*
+ * Reload the .kry file
+ * Parses first, then destroys old state if parse succeeds
+ * Returns: number of windows on success, -1 on error (old state preserved)
+ */
+static int reload_kryon_file(void)
+{
+    KryonNode *ast;
+    int result;
+    int screen_width = 800;
+    int screen_height = 600;
+    int pixel_size;
+    unsigned char *pixel_data;
+    int screen_fd;
+    ssize_t written;
+    int retry_count;
+    struct timespec delay;
+
+    fprintf(stderr, "\n=== Reloading %s ===\n", g_watch_file);
+
+    /* Parse the file first with retry for empty file (editor save race) */
+    for (retry_count = 0; retry_count < 5; retry_count++) {
+        ast = kryon_parse_file(g_watch_file);
+        if (ast != NULL) {
+            break;  /* Success */
+        }
+
+        /* File might be momentarily empty during editor save */
+        fprintf(stderr, "Parse failed (attempt %d/5), retrying after brief delay...\n", retry_count + 1);
+
+        /* Sleep for 100ms */
+        delay.tv_sec = 0;
+        delay.tv_nsec = 100000000;  /* 100 milliseconds */
+        nanosleep(&delay, NULL);
+    }
+
+    if (ast == NULL) {
+        fprintf(stderr, "Parse error after retries: keeping old windows running\n");
+        fprintf(stderr, "Fix the file and save to retry\n");
+        return -1;
+    }
+
+    /* Parse succeeded - destroy old windows/widgets */
+    fprintf(stderr, "Parse successful - destroying old windows...\n");
+    window_registry_cleanup();
+    widget_registry_reset();  /* Free array without re-destroying widgets */
+
+    /* Clear global namespace to prevent using freed namespace tree */
+    p9_set_namespace(NULL);
+    fprintf(stderr, "Cleared global namespace after cleanup\n");
+
+    /* Re-initialize registries */
+    if (window_registry_init() < 0) {
+        fprintf(stderr, "Error: failed to re-initialize window registry\n");
+        kryon_free_ast(ast);
+        return -1;
+    }
+
+    if (widget_registry_init() < 0) {
+        fprintf(stderr, "Error: failed to re-initialize widget registry\n");
+        kryon_free_ast(ast);
+        return -1;
+    }
+
+    /* Re-set screen for rendering (g_screen_buffer still valid) */
+    if (g_screen_buffer != NULL) {
+        render_set_screen(g_screen_buffer);
+        fprintf(stderr, "Re-set screen buffer for rendering\n");
+    } else {
+        fprintf(stderr, "Warning: g_screen_buffer is NULL after reload\n");
+    }
+
+    /* Execute new AST */
+    result = kryon_execute_ast(ast);
+
+    if (result < 0) {
+        fprintf(stderr, "Error: failed to execute new AST\n");
+        kryon_free_ast(ast);
+        return -1;
+    }
+
+    if (result == 0) {
+        fprintf(stderr, "Warning: no windows created in new version\n");
+        kryon_free_ast(ast);
+        return 0;
+    }
+
+    fprintf(stderr, "Reloaded successfully: %d window(s)\n", result);
+
+    /* Build namespace trees for all newly created windows */
+    {
+        uint32_t i;
+        int ns_built = 0;
+        int ns_failed = 0;
+
+        fprintf(stderr, "Building namespace trees for %d window(s)...\n", result);
+
+        for (i = 1; ; i++) {
+            KryonWindow *win = window_get(i);
+            if (win == NULL) {
+                break;
+            }
+
+            if (window_build_namespace(win) < 0) {
+                fprintf(stderr, "Warning: failed to build namespace for window %u\n", win->id);
+                ns_failed++;
+            } else {
+                ns_built++;
+                fprintf(stderr, "Built namespace for window %u (id=%u, %d widgets)\n",
+                        i, win->id, win->nwidgets);
+            }
+        }
+
+        fprintf(stderr, "Namespace build complete: %d succeeded, %d failed\n",
+                ns_built, ns_failed);
+    }
+
+    /* Re-render all windows */
+    render_all();
+
+    /* Send updated screen to Marrow's /dev/screen */
+    pixel_size = screen_width * screen_height * 4;
+
+    if (g_screen_buffer == NULL) {
+        fprintf(stderr, "Error: screen buffer is NULL, cannot send update\n");
+        kryon_free_ast(ast);
+        return -1;
+    }
+
+    pixel_data = g_screen_buffer->data->bdata;
+
+    fprintf(stderr, "Opening /dev/screen for write...\n");
+    screen_fd = p9_open(g_marrow_client, "/dev/screen", P9_OWRITE);
+    if (screen_fd < 0) {
+        fprintf(stderr, "Error: failed to open /dev/screen (code=%d)\n", screen_fd);
+        fprintf(stderr, "Screen was rendered but not sent to Marrow\n");
+        kryon_free_ast(ast);
+        return result;  /* Return success anyway - windows were reloaded */
+    }
+
+    fprintf(stderr, "Opened /dev/screen with fd=%d\n", screen_fd);
+
+    {
+        int chunk_size = 7000;
+        int bytes_remaining = pixel_size;
+        const unsigned char *buffer_ptr = pixel_data;
+        int total_written = 0;
+
+        while (bytes_remaining > 0) {
+            int bytes_to_write = bytes_remaining;
+            if (bytes_to_write > chunk_size) {
+                bytes_to_write = chunk_size;
+            }
+
+            written = p9_write(g_marrow_client, screen_fd,
+                              buffer_ptr, bytes_to_write);
+            if (written < 0) {
+                fprintf(stderr, "Error: failed to write chunk at position %d\n",
+                        total_written);
+                break;
+            }
+
+            total_written += written;
+            bytes_remaining -= written;
+            buffer_ptr += written;
+        }
+
+        if (total_written != pixel_size) {
+            fprintf(stderr, "Warning: only wrote %d of %d bytes\n", total_written, pixel_size);
+        }
+
+        p9_close(g_marrow_client, screen_fd);
+    }
+
+    kryon_free_ast(ast);
+    return result;
 }
 
 /*

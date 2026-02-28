@@ -1,0 +1,21 @@
+# Progress Bar Widget Demo
+# Demonstrates progressbar widget for showing progress
+
+window progressbar_demo "Progress Bar Widget Demo" 400 300 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Progress Bar Widgets" { color "#00FF00" }
+
+        # Loading progress
+        progressbar progress1 "Loading..."
+
+        # Download progress
+        progressbar progress2 "Downloading..."
+
+        # Installation progress
+        progressbar progress3 "Installing..."
+
+        # Processing progress
+        progressbar progress4 "Processing..."
+    }
+}

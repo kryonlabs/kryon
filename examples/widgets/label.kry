@@ -1,0 +1,30 @@
+# Label Widget Demo
+# Demonstrates label widget with various colors
+
+window label_demo "Label Widget Demo" 400 300 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Label Widgets" { color "#00FF00" }
+
+        # Standard label (default white)
+        label label1 "Standard Label (White)"
+
+        # Red label
+        label label2 "Red Label" { color "#FF0000" }
+
+        # Green label
+        label label3 "Green Label" { color "#00FF00" }
+
+        # Blue label
+        label label4 "Blue Label" { color "#0088FF" }
+
+        # Yellow label
+        label label5 "Yellow Label" { color "#FFFF00" }
+
+        # Cyan label
+        label label6 "Cyan Label" { color "#00FFFF" }
+
+        # Magenta label
+        label label7 "Magenta Label" { color "#FF00FF" }
+    }
+}

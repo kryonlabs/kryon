@@ -31,6 +31,30 @@ void render_set_screen(Memimage *screen)
 }
 
 /*
+ * Parse hex color string "#RRGGBB" to uint32_t 0xRRGGBBAA
+ * Returns color value, or 0 on error
+ */
+static unsigned long parse_color(const char *hex_color)
+{
+    unsigned long r, g, b;
+
+    if (hex_color == NULL || hex_color[0] != '#') {
+        return 0;
+    }
+
+    /* Skip '#' */
+    hex_color++;
+
+    /* Parse RGB */
+    if (sscanf(hex_color, "%2lx%2lx%2lx", &r, &g, &b) != 3) {
+        return 0;
+    }
+
+    /* Return in 0xRRGGBBAA format (AA = FF for opaque) */
+    return (r << 24) | (g << 16) | (b << 8) | 0xFF;
+}
+
+/*
  * Render a single widget to screen
  */
 void render_widget(KryonWidget *w, Memimage *screen)
@@ -60,13 +84,26 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_SUBMIT_BUTTON:
     case WIDGET_ICON_BUTTON:
     case WIDGET_FAB_BUTTON:
-        /* Button rendering */
-        if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
-            /* Green when active: 0x00FF00FF in 9front format */
-            color = DGreen;
+        /* Button rendering - use custom color if specified */
+        if (w->prop_color != NULL && w->prop_color[0] != '\0') {
+            color = parse_color(w->prop_color);
+            if (color == 0) {
+                /* Fallback to default colors on parse error */
+                if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
+                    color = DGreen;
+                } else {
+                    color = DRed;
+                }
+            }
         } else {
-            /* Red when inactive: 0xFF0000FF in 9front format */
-            color = DRed;
+            /* Default colors when no custom color specified */
+            if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
+                /* Green when active: 0x00FF00FF in 9front format */
+                color = DGreen;
+            } else {
+                /* Red when inactive: 0xFF0000FF in 9front format */
+                color = DRed;
+            }
         }
         memfillcolor_rect(screen, widget_rect, color);
 
@@ -76,8 +113,15 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_LABEL:
     case WIDGET_HEADING:
     case WIDGET_PARAGRAPH:
-        /* Label rendering - yellow background */
-        color = DYellow;
+        /* Label rendering - use custom color if specified, else yellow */
+        if (w->prop_color != NULL && w->prop_color[0] != '\0') {
+            color = parse_color(w->prop_color);
+            if (color == 0) {
+                color = DYellow;  /* Fallback to yellow on parse error */
+            }
+        } else {
+            color = DYellow;  /* Default yellow */
+        }
         memfillcolor_rect(screen, widget_rect, color);
 
         /* Render text label */

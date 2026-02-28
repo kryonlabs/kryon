@@ -1,0 +1,18 @@
+# Slider Widget Demo
+# Demonstrates slider widget for numeric input
+
+window slider_demo "Slider Widget Demo" 400 300 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Slider Widgets" { color "#00FF00" }
+
+        # Volume slider
+        slider slider1 "Volume Control"
+
+        # Brightness slider
+        slider slider2 "Brightness"
+
+        # Progress slider
+        slider slider3 "Progress"
+    }
+}

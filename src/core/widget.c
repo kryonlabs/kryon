@@ -72,7 +72,7 @@ int widget_registry_init(void)
 }
 
 /*
- * Cleanup widget registry
+ * Cleanup widget registry (destroys all widgets)
  */
 void widget_registry_cleanup(void)
 {
@@ -84,6 +84,22 @@ void widget_registry_cleanup(void)
 
     for (i = 0; i < nwidgets; i++) {
         widget_destroy(widgets[i]);
+    }
+
+    free(widgets);
+    widgets = NULL;
+    nwidgets = 0;
+    widget_capacity = 0;
+}
+
+/*
+ * Reset widget registry (frees array but does NOT destroy widgets)
+ * Use this when widgets have already been destroyed elsewhere (e.g., by window_destroy)
+ */
+void widget_registry_reset(void)
+{
+    if (widgets == NULL) {
+        return;
     }
 
     free(widgets);
@@ -150,6 +166,11 @@ struct KryonWidget *widget_create(WidgetType type, const char *name,
     widget->prop_placeholder = (char *)malloc(1);
     if (widget->prop_placeholder != NULL) {
         widget->prop_placeholder[0] = '\0';
+    }
+
+    widget->prop_color = (char *)malloc(1);
+    if (widget->prop_color != NULL) {
+        widget->prop_color[0] = '\0';
     }
 
     widget->prop_rect = (char *)malloc(8);
@@ -234,6 +255,10 @@ void widget_destroy(struct KryonWidget *widget)
 
     if (widget->prop_placeholder != NULL) {
         free(widget->prop_placeholder);
+    }
+
+    if (widget->prop_color != NULL) {
+        free(widget->prop_color);
     }
 
     if (widget->layout_type != NULL) {

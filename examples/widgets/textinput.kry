@@ -1,0 +1,21 @@
+# Text Input Widget Demo
+# Demonstrates textinput widget for user input
+
+window textinput_demo "Text Input Widget Demo" 400 300 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Text Input Widgets" { color "#00FF00" }
+
+        # Standard text input
+        textinput input1 placeholder="Enter text here..."
+
+        # Name input
+        textinput input2 placeholder="Your name..."
+
+        # Email input
+        textinput input3 placeholder="your@email.com..."
+
+        # Password input (conceptually - just shows textinput)
+        textinput input4 placeholder="Password..."
+    }
+}

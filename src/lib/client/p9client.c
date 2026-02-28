@@ -87,6 +87,7 @@ struct P9Client {
     int fd;                     /* Socket fd */
     int fid;                    /* Current fid */
     int auth_fid;               /* Authentication fid */
+    int root_fid;               /* Root fid from Tattach */
     uint32_t tag;               /* Current tag */
     char error[256];            /* Last error message */
     char username[32];          /* Username */
@@ -372,6 +373,8 @@ P9Client *p9_connect(const char *address)
     memset(client, 0, sizeof(P9Client));
     client->fd = fd;
     client->fid = 0;
+    client->auth_fid = -1;
+    client->root_fid = -1;
     client->tag = 0;
 
     /* Initialize offset tracking for all FIDs */
@@ -517,7 +520,9 @@ int p9_authenticate(P9Client *client, int auth_method,
         p += 2;
 
         fid = (uint32_t *)p;
-        *fid = htonl(client->fid++);  /* Fid for root */
+        *fid = htonl(client->fid);  /* Fid for root (pre-increment) */
+        client->root_fid = client->fid;  /* Save root fid */
+        client->fid++;
         p += 4;
 
         fid = (uint32_t *)p;
@@ -635,7 +640,15 @@ int p9_open(P9Client *client, const char *path, int mode)
     }
 
     fid = client->fid++;
-    root_fid = 0;  /* Root fid from Tattach */
+    root_fid = client->root_fid;  /* Root fid from Tattach */
+
+    if (root_fid < 0) {
+        fprintf(stderr, "p9_open: ERROR - root_fid not set! Did authentication fail?\n");
+        return -1;
+    }
+
+    fprintf(stderr, "p9_open: walking from root_fid=%d to newfid=%d, path=%s\n",
+            root_fid, fid, path_for_log);
 
     /* Build Twalk message: size[4] Twalk tag[2] fid[4] newfid[4] nwname[2] wname[nwname][s] */
     p = msg + 4;  /* Skip size field */

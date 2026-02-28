@@ -164,6 +164,7 @@ typedef struct KryonWidget {
     char *prop_text;                /* Label/caption */
     char *prop_value;               /* State/value */
     char *prop_placeholder;         /* Hint text */
+    char *prop_color;               /* Custom color in "#RRGGBB" format */
 
     /* Internal state */
     P9Node *node;                   /* Corresponding tree node */
@@ -187,6 +188,7 @@ typedef struct KryonWidget {
  */
 int widget_registry_init(void);
 void widget_registry_cleanup(void);
+void widget_registry_reset(void);
 
 struct KryonWidget *widget_create(WidgetType type, const char *name,
                                    struct KryonWindow *parent_window);

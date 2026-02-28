@@ -1,0 +1,24 @@
+# Button Widget Demo
+# Demonstrates button widget with color variations
+
+window button_demo "Button Widget Demo" 400 300 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Hello ons" { color "#00FF00" }
+
+        # Standard button
+        button btn1 "Standard Button"
+
+        # Red button
+        button btn2 "Red Button" { color "#FF0000" }
+
+        # Green button
+        button btn3 "Green Button" { color "#00FF00" }
+
+        # Blue button
+        button btn4 "Blue Button" { color "#0088FF" }
+
+        # Yellow button
+        button btn5 "Yellow Button" { color "#FFFF00" }
+    }
+}

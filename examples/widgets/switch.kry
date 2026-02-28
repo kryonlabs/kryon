@@ -1,0 +1,18 @@
+# Switch/Toggle Widget Demo
+# Demonstrates switch (toggle) widget
+
+window switch_demo "Switch Widget Demo" 400 300 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Switch/Toggle Widgets" { color "#00FF00" }
+
+        # Standard switch
+        switch toggle1 "Enable Feature"
+
+        # Another switch
+        switch toggle2 "Dark Mode"
+
+        # Third switch
+        switch toggle3 "Notifications"
+    }
+}

@@ -1,0 +1,18 @@
+# Paragraph Widget Demo
+# Demonstrates paragraph widget for longer text content
+
+window paragraph_demo "Paragraph Widget Demo" 500 350 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Paragraph Widgets" { color "#00FF00" }
+
+        # Short paragraph
+        paragraph paragraph1 "This is a short paragraph widget for displaying text content."
+
+        # Medium paragraph
+        paragraph paragraph2 "A paragraph widget is designed to hold longer text content than labels. It wraps text automatically and can display multiple sentences."
+
+        # Long paragraph
+        paragraph paragraph3 "Paragraph widgets are useful for displaying descriptions, instructions, documentation, and other long-form text content. They handle text wrapping automatically and can be used in forms, dialogs, and other UI containers."
+    }
+}

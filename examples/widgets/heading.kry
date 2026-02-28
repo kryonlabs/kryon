@@ -1,0 +1,18 @@
+# Heading Widget Demo
+# Demonstrates heading widget for titles
+
+window heading_demo "Heading Widget Demo" 400 300 {
+    vbox gap=15 padding=20 {
+        # Main heading
+        heading heading1 "Main Heading"
+
+        # Sub heading
+        heading heading2 "Sub Heading"
+
+        # Section heading
+        heading heading3 "Section Heading"
+
+        # Another heading
+        label heading4 "Note: Headings are larger than labels" { color "#FFFF00" }
+    }
+}

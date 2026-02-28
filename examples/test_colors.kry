@@ -1,0 +1,11 @@
+window test "Color Test" 800 600 {
+    absolute {
+        label lbl1 "Red Label" { rect "50 50 200 40" color "#FF0000" }
+        label lbl2 "Green Label" { rect "50 100 200 40" color "#00FF00" }
+        label lbl3 "Blue Label" { rect "50 150 200 40" color "#0000FF" }
+        label lbl4 "Yellow Label" { rect "50 200 200 40" color "#FFFF00" }
+        label lbl5 "Default Color" { rect "50 250 200 40" }
+        heading hdr1 "Red Heading" { rect "50 300 200 40" color "#FF0000" }
+        button btn1 "Custom Button" { rect "50 350 150 40" color "#FF00FF" }
+    }
+}

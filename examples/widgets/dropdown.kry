@@ -1,0 +1,18 @@
+# Dropdown Widget Demo
+# Demonstrates dropdown widget for selection from list
+
+window dropdown_demo "Dropdown Widget Demo" 400 300 {
+    vbox gap=15 padding=20 {
+        # Heading
+        label heading "Dropdown Widgets" { color "#00FF00" }
+
+        # Standard dropdown
+        dropdown dropdown1 "Select Option"
+
+        # Another dropdown
+        dropdown dropdown2 "Choose Country"
+
+        # Third dropdown
+        dropdown dropdown3 "Pick a Color"
+    }
+}

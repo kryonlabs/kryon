@@ -18,10 +18,10 @@ while [[ $# -gt 0 ]]; do
             MARROW_PORT="$2"
             shift 2
             ;;
-        --example|--load|--blank|--list-examples|--help|--dump-screen)
+        --run|--blank|--list-examples|--help|--dump-screen)
             # Pass to WM
             WM_ARGS="$WM_ARGS $1"
-            if [[ "$1" != "--blank" && "$1" != "--list-examples" && "$1" != "--help" && "$1" != "--dump-screen" ]]; then
+            if [[ "$1" == "--run" ]]; then
                 WM_ARGS="$WM_ARGS $2"
                 shift 2
             else
@@ -40,12 +40,16 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --marrow-host HOST    Marrow host (default: 127.0.0.1)"
             echo "  --marrow-port PORT    Marrow port (default: 17010)"
-            echo "  --example NAME        Load example from examples/"
-            echo "  --load FILE.kryon     Load specific .kryon file"
+            echo "  --run FILE.kry        Load and run the specified .kry file"
+            echo "  --list-examples       List available example files"
             echo "  --blank               Clear screen to black and wait"
-            echo "  --list-examples       List available examples"
             echo "  --verbose             Enable verbose output in viewer"
             echo "  --help                Show help message"
+            echo ""
+            echo "Examples:"
+            echo "  $0 --run examples/minimal.kry"
+            echo "  $0 --run examples/widgets/button.kry"
+            echo "  $0 --list-examples"
             exit 1
             ;;
     esac

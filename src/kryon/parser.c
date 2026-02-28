@@ -888,6 +888,14 @@ KryonNode* kryon_parse_file(const char *filename)
     len = ftell(f);
     fseek(f, 0, SEEK_SET);
 
+    fprintf(stderr, "kryon_parse_file: reading %s, size=%d bytes\n", filename, len);
+
+    if (len == 0) {
+        fprintf(stderr, "Error: file is empty: %s\n", filename);
+        fclose(f);
+        return NULL;
+    }
+
     source = (char *)malloc(len + 1);
     if (source == NULL) {
         fclose(f);
@@ -901,6 +909,8 @@ KryonNode* kryon_parse_file(const char *filename)
     }
     source[len] = '\0';
     fclose(f);
+
+    fprintf(stderr, "kryon_parse_file: first 50 chars: %.50s\n", source);
 
     /* Parse */
     ast = kryon_parse_string(source);
@@ -1026,6 +1036,15 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         widget->prop_text = (char *)malloc(strlen(node->text) + 1);
         if (widget->prop_text != NULL) {
             strcpy(widget->prop_text, node->text);
+        }
+    }
+
+    /* Set color */
+    if (node->prop_color != NULL && node->prop_color[0] != '\0') {
+        free(widget->prop_color);
+        widget->prop_color = (char *)malloc(strlen(node->prop_color) + 1);
+        if (widget->prop_color != NULL) {
+            strcpy(widget->prop_color, node->prop_color);
         }
     }
 
