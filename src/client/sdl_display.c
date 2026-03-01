@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #ifdef HAVE_SDL2
 #include <SDL2/SDL.h>
@@ -38,32 +39,22 @@ static void convert_pixels_to_sdl_format(uint8_t *dst, const uint8_t *src, int w
 
     /* Check the actual SDL format and convert accordingly */
     switch (sdl_format) {
-    case 0x16462004:  /* SDL_PIXELFORMAT_ARGB8888 on some systems */
-    case 0x16862004:  /* SDL_PIXELFORMAT_ARGB8888 variant - actually RGBA in memory! */
-        /* The format ID says ARGB but the actual memory layout is RGBA */
-        /* Need to convert from BGRA (server) to RGBA (texture) */
-        for (i = 0; i < pixel_count; i++) {
-            dst[i * 4 + 0] = src[i * 4 + 2];  /* R <- R */
-            dst[i * 4 + 1] = src[i * 4 + 1];  /* G <- G */
-            dst[i * 4 + 2] = src[i * 4 + 0];  /* B <- B */
-            dst[i * 4 + 3] = src[i * 4 + 3];  /* A <- A */
-        }
-        break;
-
-    case 0x36314742:  /* SDL_PIXELFORMAT_RGBA8888 */
-        /* BGRA -> RGBA: [B,G,R,A] -> [R,G,B,A] */
-        for (i = 0; i < pixel_count; i++) {
-            dst[i * 4 + 0] = src[i * 4 + 2];  /* R <- R */
-            dst[i * 4 + 1] = src[i * 4 + 1];  /* G <- G */
-            dst[i * 4 + 2] = src[i * 4 + 0];  /* B <- B */
-            dst[i * 4 + 3] = src[i * 4 + 3];  /* A <- A */
-        }
-        break;
-
-    case 0x32415842:  /* SDL_PIXELFORMAT_BGRA8888 */
-        /* Direct copy - no conversion needed */
+    case 0x16362004:  /* SDL_PIXELFORMAT_ARGB8888 - memory layout [B,G,R,A], matches server BGRA */
+    case 0x16862004:  /* SDL_PIXELFORMAT_BGRA8888 - memory layout [A,R,G,B] on LE, same direct copy */
+        /* Server sends [B,G,R,A]; ARGB8888 memory layout is [B,G,R,A] - direct copy */
         for (i = 0; i < pixel_count * 4; i++) {
             dst[i] = src[i];
+        }
+        break;
+
+    case 0x16462004:  /* SDL_PIXELFORMAT_RGBA8888 - memory layout [A,B,G,R], must swap R<->B */
+    case 0x36314742:  /* SDL_PIXELFORMAT_RGBA8888 variant */
+        /* BGRA -> RGBA: swap R and B channels */
+        for (i = 0; i < pixel_count; i++) {
+            dst[i * 4 + 0] = src[i * 4 + 2];  /* R <- R */
+            dst[i * 4 + 1] = src[i * 4 + 1];  /* G <- G */
+            dst[i * 4 + 2] = src[i * 4 + 0];  /* B <- B */
+            dst[i * 4 + 3] = src[i * 4 + 3];  /* A <- A */
         }
         break;
 
@@ -169,11 +160,9 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         return NULL;
     }
 
-    /* Open mouse device */
-    dc->mouse_fd = p9_open(dc->p9, "/dev/mouse", P9_OWRITE);
-    if (dc->mouse_fd < 0) {
-        fprintf(stderr, "Warning: Failed to open /dev/mouse\n");
-    }
+    /* Open FIFO for mouse IPC; WM may not have created it yet — that's fine */
+    dc->mouse_fifo_fd = open("/tmp/.kryon-mouse-1", O_WRONLY | O_NONBLOCK);
+    /* No warning: WM creates the FIFO after startup; lazy retry in send_mouse */
 
     /* Allocate screen buffer (RGBA32) - with extra space for conversion */
     dc->screen_width = width;
@@ -250,7 +239,7 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         /* Create texture */
         texture = SDL_CreateTexture(
             renderer,
-            SDL_PIXELFORMAT_BGRA8888,  /* Match BGRA format from server - no conversion needed */
+            SDL_PIXELFORMAT_ARGB8888,  /* Server sends BGRA bytes; ARGB8888 has memory layout [B,G,R,A] - direct copy */
             SDL_TEXTUREACCESS_STREAMING,
             width, height
         );
@@ -315,8 +304,8 @@ void display_client_destroy(DisplayClient *dc)
     if (dc->screen_fd >= 0) {
         p9_close(dc->p9, dc->screen_fd);
     }
-    if (dc->mouse_fd >= 0) {
-        p9_close(dc->p9, dc->mouse_fd);
+    if (dc->mouse_fifo_fd >= 0) {
+        close(dc->mouse_fifo_fd);
     }
 
     if (dc->p9 != NULL) {
@@ -361,10 +350,6 @@ static int read_screen(DisplayClient *dc)
                 p9_close(dc->p9, dc->screen_fd);
                 dc->screen_fd = -1;
             }
-            if (dc->mouse_fd >= 0) {
-                p9_close(dc->p9, dc->mouse_fd);
-                dc->mouse_fd = -1;
-            }
 
             /* Mark as disconnected */
             dc->connected = 0;
@@ -382,12 +367,6 @@ static int read_screen(DisplayClient *dc)
                 fprintf(stderr, "Failed to open /dev/screen after reconnection\n");
                 usleep(100000);
                 return 0;
-            }
-
-            /* Re-open /dev/mouse */
-            dc->mouse_fd = p9_open(dc->p9, "/dev/mouse", P9_OWRITE);
-            if (dc->mouse_fd < 0) {
-                fprintf(stderr, "Warning: Failed to open /dev/mouse after reconnection\n");
             }
 
             /* Mark as connected */
@@ -429,35 +408,16 @@ static int read_screen(DisplayClient *dc)
 
     read_count++;
 
-    /* Log successful read */
-    if (read_count == 1 || read_count % 60 == 0) {
-        fprintf(stderr, "read_screen: frame %d, read %zu bytes successfully\n",
-                read_count, total);
-    }
-
 #ifdef HAVE_SDL2
     /* Get actual SDL format on first read, then cache it */
     if (cached_sdl_format == 0 && texture != NULL) {
         SDL_QueryTexture(texture, &sdl_format, NULL, NULL, NULL);
         cached_sdl_format = sdl_format;
-        fprintf(stderr, "Detected SDL format: 0x%X\n", (unsigned int)sdl_format);
-    }
-
-    /* Print first pixel from server on first read (should be BGRA) */
-    if (read_count == 1) {
-        fprintf(stderr, "First pixel from server: %02X %02X %02X %02X (expected BGRA for DBlue: FF 00 00 FF)\n",
-                dc->temp_buf[0], dc->temp_buf[1], dc->temp_buf[2], dc->temp_buf[3]);
     }
 
     /* Convert from server BGRA to actual SDL format */
     convert_pixels_to_sdl_format(dc->screen_buf, dc->temp_buf,
                                   dc->screen_width, dc->screen_height, cached_sdl_format);
-
-    /* Print first pixel after conversion on first read */
-    if (read_count == 1) {
-        fprintf(stderr, "First pixel after conversion: %02X %02X %02X %02X\n",
-                dc->screen_buf[0], dc->screen_buf[1], dc->screen_buf[2], dc->screen_buf[3]);
-    }
 #endif
 
     return 0;
@@ -471,67 +431,23 @@ static int update_display(DisplayClient *dc)
 #ifdef HAVE_SDL2
     SDL_Texture *texture = (SDL_Texture *)dc->sdl_texture;
     SDL_Renderer *renderer = (SDL_Renderer *)dc->sdl_renderer;
-    static int frame_count = 0;
     static int first_call = 1;
-    uint32_t format;
-    int i;
-    int button_offset;
-    int label_offset;
-    FILE *dump_file;
-    size_t buf_size;
-    size_t written;
 
     if (texture == NULL || renderer == NULL) {
         return -1;
     }
 
-    /* Debug: Print texture format and first 4 pixels on first call */
+    /* Dump screenshot on first frame if requested */
     if (first_call) {
-        SDL_QueryTexture(texture, &format, NULL, NULL, NULL);
-        fprintf(stderr, "Texture format: 0x%X (RGBA8888=0x36314742)\n", (unsigned int)format);
-        fprintf(stderr, "First 4 pixels (16 bytes): ");
-        for (i = 0; i < 16 && i < dc->screen_width * dc->screen_height * 4; i++) {
-            fprintf(stderr, "%02X ", dc->screen_buf[i]);
-        }
-        fprintf(stderr, "\n");
-
-        /* Check widget pixels */
-        button_offset = ((50 * dc->screen_width) + 50) * 4;  /* (50,50) */
-        label_offset = ((120 * dc->screen_width) + 50) * 4;  /* (50,120) */
-
-        fprintf(stderr, "Display sees button at (50,50): %02X %02X %02X %02X (after conversion to SDL format)\n",
-                dc->screen_buf[button_offset], dc->screen_buf[button_offset+1],
-                dc->screen_buf[button_offset+2], dc->screen_buf[button_offset+3]);
-
-        fprintf(stderr, "Display sees label at (50,120): %02X %02X %02X %02X (after conversion to SDL format)\n",
-                dc->screen_buf[label_offset], dc->screen_buf[label_offset+1],
-                dc->screen_buf[label_offset+2], dc->screen_buf[label_offset+3]);
-
         first_call = 0;
-
-        /* Dump screenshot if requested */
         if (dc->dump_screen) {
-            dump_file = fopen("/tmp/display_after.raw", "wb");
+            size_t buf_size = dc->screen_width * dc->screen_height * 4;
+            FILE *dump_file = fopen("/tmp/display_after.raw", "wb");
             if (dump_file != NULL) {
-                buf_size = dc->screen_width * dc->screen_height * 4;
-                written = fwrite(dc->screen_buf, 1, buf_size, dump_file);
+                fwrite(dc->screen_buf, 1, buf_size, dump_file);
                 fclose(dump_file);
-                if (written == buf_size) {
-                    fprintf(stderr, "Dumped display buffer to /tmp/display_after.raw (%zu bytes)\n", written);
-                } else {
-                    fprintf(stderr, "Warning: Only wrote %zu of %zu bytes to screenshot\n", written, buf_size);
-                }
-            } else {
-                fprintf(stderr, "Warning: Failed to open /tmp/display_after.raw for writing\n");
             }
         }
-    }
-
-    frame_count++;
-
-    /* Log every 60 frames */
-    if (frame_count % 60 == 0) {
-        fprintf(stderr, "Frame %d: displaying %dx%d\n", frame_count, dc->screen_width, dc->screen_height);
     }
 
     /* Update texture from screen buffer */
@@ -628,18 +544,22 @@ int display_client_send_mouse(DisplayClient *dc, int x, int y, int buttons)
     char msg[64];
     int len;
 
-    if (dc == NULL || dc->mouse_fd < 0 || !dc->connected) {
-        return -1;  /* Drop events when disconnected */
+    if (dc == NULL || !dc->connected) {
+        return -1;
+    }
+
+    /* Retry FIFO open if WM hadn't created it yet */
+    if (dc->mouse_fifo_fd < 0) {
+        dc->mouse_fifo_fd = open("/tmp/.kryon-mouse-1", O_WRONLY | O_NONBLOCK);
+        if (dc->mouse_fifo_fd < 0) {
+            return -1;  /* FIFO not ready yet, drop event silently */
+        }
     }
 
     /* Format: m resized x y buttons msec */
     len = sprintf(msg, "m 0 %11d %11d %11d 0\n", x, y, buttons);
 
-    if (len < 0 || len >= sizeof(msg)) {
-        return -1;
-    }
-
-    return p9_write(dc->p9, dc->mouse_fd, msg, len);
+    return write(dc->mouse_fifo_fd, msg, len);
 }
 
 /*
@@ -675,8 +595,6 @@ void display_client_request_refresh(DisplayClient *dc)
  */
 int display_client_run(DisplayClient *dc)
 {
-    int frame_count = 0;
-
     if (dc == NULL) {
         return -1;
     }
@@ -685,18 +603,16 @@ int display_client_run(DisplayClient *dc)
 
     while (dc->running) {
 #ifdef HAVE_SDL2
-        /* Check for screen updates (~60 FPS) */
-        if (dc->refresh_needed || frame_count % 60 == 0) {
-            if (read_screen(dc) < 0) {
-                fprintf(stderr, "Error reading screen\n");
-                break;
-            }
-            if (update_display(dc) < 0) {
-                fprintf(stderr, "Error updating display\n");
-                break;
-            }
-            dc->refresh_needed = 0;
+        /* Read and display screen every frame */
+        if (read_screen(dc) < 0) {
+            fprintf(stderr, "Error reading screen\n");
+            break;
         }
+        if (update_display(dc) < 0) {
+            fprintf(stderr, "Error updating display\n");
+            break;
+        }
+        dc->refresh_needed = 0;
 
         /* Process SDL events only when connected */
         if (dc->connected) {
@@ -725,8 +641,6 @@ int display_client_run(DisplayClient *dc)
 
         /* Sleep for ~60 FPS */
         usleep(16667);
-
-        frame_count++;
     }
 
     fprintf(stderr, "Display client stopped\n");

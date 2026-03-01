@@ -59,6 +59,13 @@ static P9Node *g_wm_root = NULL;
 static P9Node *g_windows_dir = NULL;
 
 /*
+ * WM control flags (set by writing to /mnt/wm/ctl, checked by main loop)
+ */
+volatile int g_wm_reload_requested = 0;
+volatile int g_wm_quit_requested   = 0;
+char g_wm_load_path[512] = "";
+
+/*
  * Screen dimensions derived from .kry window definition
  */
 static int g_screen_width = 0;
@@ -116,6 +123,29 @@ static ssize_t string_read(char *buf, size_t count, uint64_t offset, const char 
 }
 
 /*
+ * ========== Snarf (clipboard) Buffer ==========
+ */
+static char   g_snarf_buf[65536];
+static size_t g_snarf_len = 0;
+
+static ssize_t wm_snarf_read(char *buf, size_t count, uint64_t offset, void *data)
+{
+    (void)data;
+    return string_read(buf, count, offset, g_snarf_buf);
+}
+
+static ssize_t wm_snarf_write(const char *buf, size_t count, uint64_t offset, void *data)
+{
+    (void)offset;
+    (void)data;
+    if (count >= sizeof(g_snarf_buf)) count = sizeof(g_snarf_buf) - 1;
+    memcpy(g_snarf_buf, buf, count);
+    g_snarf_buf[count] = '\0';
+    g_snarf_len = count;
+    return (ssize_t)count;
+}
+
+/*
  * ========== Window Control File Handlers ==========
  */
 
@@ -129,32 +159,61 @@ static ssize_t string_read(char *buf, size_t count, uint64_t offset, const char 
  */
 static ssize_t wm_ctl_write(const char *buf, size_t count, uint64_t offset, void *data)
 {
-    char cmd[32];
+    char cmd[640];
     char title[256];
     int width, height;
     struct KryonWindow *win;
+    size_t len;
 
     (void)offset;
     (void)data;
 
-    /* Copy to null-terminate */
-    if (count >= sizeof(cmd) - 1) {
+    if (count == 0 || count >= sizeof(cmd)) {
         return -1;
     }
 
-    /* Parse: "new title widthxheight" */
-    if (sscanf(buf, "new %255s %dx%d", title, &width, &height) == 3) {
+    /* Copy and null-terminate */
+    memcpy(cmd, buf, count);
+    cmd[count] = '\0';
+
+    /* Strip trailing newline/carriage-return */
+    len = count;
+    while (len > 0 && (cmd[len - 1] == '\n' || cmd[len - 1] == '\r')) {
+        cmd[--len] = '\0';
+    }
+
+    /* reload - request WM to reload the current .kry file */
+    if (len == 6 && strncmp(cmd, "reload", 6) == 0) {
+        g_wm_reload_requested = 1;
+        return (ssize_t)count;
+    }
+
+    /* quit - request WM to exit */
+    if (len == 4 && strncmp(cmd, "quit", 4) == 0) {
+        g_wm_quit_requested = 1;
+        return (ssize_t)count;
+    }
+
+    /* load PATH - set new file path and request reload */
+    if (len > 5 && strncmp(cmd, "load ", 5) == 0) {
+        strncpy(g_wm_load_path, cmd + 5, sizeof(g_wm_load_path) - 1);
+        g_wm_load_path[sizeof(g_wm_load_path) - 1] = '\0';
+        g_wm_reload_requested = 1;
+        return (ssize_t)count;
+    }
+
+    /* new title widthxheight - create a new window */
+    if (sscanf(cmd, "new %255s %dx%d", title, &width, &height) == 3) {
         win = window_create(title, width, height);
         if (win != NULL) {
-            /* Create filesystem entries for the window */
             wm_create_window_entry(win);
             fprintf(stderr, "wm_ctl: created window '%s' %dx%d (id=%u)\n",
                     title, width, height, win->id);
-            return count;
+            return (ssize_t)count;
         }
     }
 
-    fprintf(stderr, "wm_ctl: failed to parse command. Usage: 'new title widthxheight'\n");
+    fprintf(stderr, "wm_ctl: unknown command '%s'\n", cmd);
     return -1;
 }
 
@@ -288,17 +347,13 @@ static ssize_t wm_window_visible_write(const char *buf, size_t count, uint64_t o
 }
 
 /*
- * /mnt/wm/windows/{id}/events - Event queue (read-only)
+ * /mnt/wm/windows/{id}/events - Event queue (read-only, blocking)
  */
 static ssize_t wm_window_events_read(char *buf, size_t count, uint64_t offset, void *data)
 {
-    (void)buf;
-    (void)count;
-    (void)offset;
-    (void)data;
-    /* For now, return empty */
-    /* TODO: Aggregate events from all widgets in this window */
-    return 0;
+    struct KryonWindow *win = (struct KryonWindow *)data;
+    if (win == NULL || win->event_queue == NULL) return 0;
+    return event_file_read(buf, count, offset, win->event_queue);
 }
 
 /*
@@ -455,6 +510,12 @@ int wm_service_init(P9Node *root)
         return -1;
     }
 
+    /* Create /mnt/wm/snarf - clipboard buffer */
+    if (tree_create_file(wm_dir, "snarf", NULL, wm_snarf_read, wm_snarf_write) == NULL) {
+        fprintf(stderr, "wm_service_init: failed to create /mnt/wm/snarf\n");
+        return -1;
+    }
+
     fprintf(stderr, "wm_service_init: initialized /mnt/wm filesystem\n");
     return 0;
 }
@@ -472,68 +533,8 @@ P9Node *wm_get_root(void)
  */
 int wm_create_window_entry(struct KryonWindow *win)
 {
-    P9Node *win_dir, *title_file, *rect_file, *visible_file, *events_file, *widgets_dir;
-    char win_name[32];
-
-    if (win == NULL || g_windows_dir == NULL) {
-        return -1;
-    }
-
-    /* Create window directory name */
-    sprintf(win_name, "%u", win->id);
-
-    /* Create /mnt/wm/windows/{id} directory */
-    win_dir = tree_create_dir(g_windows_dir, win_name);
-    if (win_dir == NULL) {
-        fprintf(stderr, "wm_create_window_entry: failed to create window dir\n");
-        return -1;
-    }
-
-    /* Create /mnt/wm/windows/{id}/title file */
-    title_file = tree_create_file(win_dir, "title", win,
-                                   wm_window_title_read,
-                                   wm_window_title_write);
-    if (title_file == NULL) {
-        fprintf(stderr, "wm_create_window_entry: failed to create title file\n");
-        return -1;
-    }
-
-    /* Create /mnt/wm/windows/{id}/rect file */
-    rect_file = tree_create_file(win_dir, "rect", win,
-                                  wm_window_rect_read,
-                                  wm_window_rect_write);
-    if (rect_file == NULL) {
-        fprintf(stderr, "wm_create_window_entry: failed to create rect file\n");
-        return -1;
-    }
-
-    /* Create /mnt/wm/windows/{id}/visible file */
-    visible_file = tree_create_file(win_dir, "visible", win,
-                                     wm_window_visible_read,
-                                     wm_window_visible_write);
-    if (visible_file == NULL) {
-        fprintf(stderr, "wm_create_window_entry: failed to create visible file\n");
-        return -1;
-    }
-
-    /* Create /mnt/wm/windows/{id}/events file */
-    events_file = tree_create_file(win_dir, "events", win,
-                                    wm_window_events_read,
-                                    NULL);
-    if (events_file == NULL) {
-        fprintf(stderr, "wm_create_window_entry: failed to create events file\n");
-        return -1;
-    }
-
-    /* Create /mnt/wm/windows/{id}/widgets directory */
-    widgets_dir = tree_create_dir(win_dir, "widgets");
-    if (widgets_dir == NULL) {
-        fprintf(stderr, "wm_create_window_entry: failed to create widgets dir\n");
-        return -1;
-    }
-
-    fprintf(stderr, "wm_create_window_entry: created entries for window %u\n", win->id);
-    return 0;
+    if (win == NULL || g_windows_dir == NULL) return -1;
+    return wm_create_window_entry_ex(win, g_windows_dir);
 }
 
 /*
@@ -720,6 +721,11 @@ int wm_create_window_entry_ex(struct KryonWindow *win, P9Node *parent_dir)
     }
 
     win->node = win_dir;
+
+    /* Allocate per-window event queue */
+    if (win->event_queue == NULL) {
+        win->event_queue = event_queue_create(NULL);
+    }
 
     /* Create /win/{id}/title file */
     file = tree_create_file(win_dir, "title", win,

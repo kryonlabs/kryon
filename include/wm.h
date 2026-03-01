@@ -117,4 +117,12 @@ ssize_t vdev_cons_read(char *buf, size_t count, uint64_t offset, void *data);
  */
 void wm_set_screensize(int width, int height);
 
+/*
+ * WM control flags
+ * Set by writing to /mnt/wm/ctl; checked by the main event loop
+ */
+extern volatile int g_wm_reload_requested;
+extern volatile int g_wm_quit_requested;
+extern char g_wm_load_path[512];
+
 #endif /* KRYON_WM_H */

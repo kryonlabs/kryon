@@ -4,7 +4,7 @@
 window button_demo "Button Widget Demo" 400 300 {
     vbox gap=15 padding=20 {
         # Heading
-        label heading "Hello ons" { color "#00FF00" }
+        label heading "Button example" { color "#000000" }
 
         # Standard button
         button btn1 "Standard Button"

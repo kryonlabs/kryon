@@ -15,17 +15,9 @@ struct KryonWindow;
 struct KryonNode;
 
 /*
- * Rectangle structure
+ * Include graphics types (Point, Rectangle) from canonical source
  */
-typedef struct {
-    int x;
-    int y;
-} Point;
-
-typedef struct {
-    Point min;
-    Point max;
-} Rectangle;
+#include "graphics.h"
 
 /*
  * Alignment enumeration

@@ -93,28 +93,6 @@ EventQueue *event_queue_create(struct KryonWidget *widget)
     EventQueueEntry *entry;
     int new_capacity;
 
-    if (widget == NULL) {
-        return NULL;
-    }
-
-    /* Check if queue already exists */
-    if (widget_event_queue(widget) != NULL) {
-        return NULL;
-    }
-
-    /* Expand registry if needed */
-    if (g_nqueues >= g_queue_capacity) {
-        new_capacity = g_queue_capacity * 2;
-        entry = (EventQueueEntry *)realloc(
-            g_event_queues,
-            new_capacity * sizeof(EventQueueEntry));
-        if (entry == NULL) {
-            return NULL;
-        }
-        g_event_queues = entry;
-        g_queue_capacity = new_capacity;
-    }
-
     /* Allocate queue */
     eq = (EventQueue *)calloc(1, sizeof(EventQueue));
     if (eq == NULL) {
@@ -133,6 +111,33 @@ EventQueue *event_queue_create(struct KryonWidget *widget)
     eq->nevents = 0;
     eq->read_pos = 0;
     eq->write_pos = 0;
+
+    /* NULL widget = standalone queue, not registered globally */
+    if (widget == NULL) {
+        return eq;
+    }
+
+    /* Check if queue already exists */
+    if (widget_event_queue(widget) != NULL) {
+        free(eq->events);
+        free(eq);
+        return NULL;
+    }
+
+    /* Expand registry if needed */
+    if (g_nqueues >= g_queue_capacity) {
+        new_capacity = g_queue_capacity * 2;
+        entry = (EventQueueEntry *)realloc(
+            g_event_queues,
+            new_capacity * sizeof(EventQueueEntry));
+        if (entry == NULL) {
+            free(eq->events);
+            free(eq);
+            return NULL;
+        }
+        g_event_queues = entry;
+        g_queue_capacity = new_capacity;
+    }
 
     /* Add to registry */
     g_event_queues[g_nqueues].widget_id = widget->id;

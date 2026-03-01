@@ -69,6 +69,7 @@ static Rectangle Rect_func(int x0, int y0, int x1, int y1)
  */
 #define DBlack        0x000000FF
 #define DWhite        0xFFFFFFFF
+#define DGray         0x888888FF
 #define DRed          0xFF0000FF
 #define DGreen        0x00FF00FF
 #define DBlue         0x0000FFFF

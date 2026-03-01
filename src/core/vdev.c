@@ -12,12 +12,17 @@
 #include "window.h"
 #include "graphics.h"
 #include "kryon.h"
+
+extern void devdraw_mark_dirty(void);
+extern int g_render_dirty;
 #include "vdev.h"
 #include "namespace.h"
+#include "events.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 /*
  * ========== Virtual /dev/draw Implementation ==========
@@ -270,6 +275,8 @@ ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
                         void *data)
 {
     struct KryonWindow *win = (struct KryonWindow *)data;
+    char tmp[64];
+    int mx = 0, my = 0, mb = 0;
 
     (void)offset;
 
@@ -279,13 +286,38 @@ ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
 
     /* If nested WM is running, forward mouse events via pipe */
     if (win->ns_type == NS_NESTED_WM && win->nested_fd_out >= 0) {
-        /* Write mouse event to nested WM */
         ssize_t nwritten = write(win->nested_fd_out, buf, count);
-        (void)nwritten;  /* Ignore write errors for pipe */
+        (void)nwritten;
         return count;
     }
 
-    /* Otherwise handle locally or consume */
+    /* Parse "x y button" text format - always update mouse position */
+    size_t copy_len = count < sizeof(tmp) - 1 ? count : sizeof(tmp) - 1;
+    memcpy(tmp, buf, copy_len);
+    tmp[copy_len] = '\0';
+    /* "m 0 x y buttons 0\n" — skip leading 'm' and first field */
+    if (sscanf(tmp, "m %*d %d %d %d", &mx, &my, &mb) >= 2) {
+        /* Always update mouse position and trigger re-render */
+        win->mouse_x = mx;
+        win->mouse_y = my;
+        win->mouse_buttons = mb;
+        g_render_dirty = 1;
+
+        /* Only queue events if event_queue exists (for future event system) */
+        if (win->event_queue != NULL) {
+            KryonEvent ev;
+            struct timeval tv;
+            memset(&ev, 0, sizeof(ev));
+            ev.type = (mb == 0) ? EVENT_MOUSE_HOVER : EVENT_MOUSE_CLICK;
+            ev.xy.x = mx;
+            ev.xy.y = my;
+            ev.button = mb;
+            gettimeofday(&tv, NULL);
+            ev.msec = (unsigned long)(tv.tv_sec * 1000 + tv.tv_usec / 1000);
+            event_queue_push(win->event_queue, &ev);
+        }
+    }
+
     return count;
 }
 
@@ -324,13 +356,23 @@ ssize_t vdev_kbd_write(const char *buf, size_t count, uint64_t offset,
 
     /* If nested WM is running, forward keyboard events via pipe */
     if (win->ns_type == NS_NESTED_WM && win->nested_fd_out >= 0) {
-        /* Write keyboard event to nested WM */
         ssize_t nwritten = write(win->nested_fd_out, buf, count);
-        (void)nwritten;  /* Ignore write errors for pipe */
+        (void)nwritten;
         return count;
     }
 
-    /* Otherwise handle locally or consume */
+    /* Push key event to per-window event queue */
+    if (win->event_queue != NULL) {
+        KryonEvent ev;
+        struct timeval tv;
+        memset(&ev, 0, sizeof(ev));
+        ev.type = EVENT_KEY_PRESS;
+        ev.button = (unsigned char)buf[0];  /* keycode = first byte */
+        gettimeofday(&tv, NULL);
+        ev.msec = (unsigned long)(tv.tv_sec * 1000 + tv.tv_usec / 1000);
+        event_queue_push(win->event_queue, &ev);
+    }
+
     return count;
 }
 

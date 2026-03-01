@@ -49,7 +49,7 @@ void layout_get_default_widget_size(const char *widget_type, int *width, int *he
     /* Default sizes for different widget types */
     if (strcmp(widget_type, "button") == 0) {
         *width = 120;
-        *height = 40;
+        *height = 26;
     } else if (strcmp(widget_type, "label") == 0) {
         *width = 100;
         *height = 30;

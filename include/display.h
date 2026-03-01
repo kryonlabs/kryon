@@ -56,7 +56,7 @@ struct DisplayClient {
 
     /* File descriptors */
     int screen_fd;
-    int mouse_fd;
+    int mouse_fifo_fd;  /* Unix FIFO for mouse IPC (/tmp/.kryon-mouse-1) */
     int refresh_needed;
 
     /* Screen buffer */

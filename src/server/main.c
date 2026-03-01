@@ -12,6 +12,7 @@
 #include "window.h"
 #include "widget.h"
 #include "wm.h"
+#include "vdev.h"
 #include "p9client.h"
 #include "marrow.h"
 #include "kryon.h"
@@ -27,6 +28,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/inotify.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
 
@@ -115,11 +117,65 @@ static int g_watch_descriptor = -1;
 static const char *g_watch_file = NULL;
 
 /*
+ * Render-dirty flag: set by vdev when mouse/kbd state changes.
+ * Main loop calls render_all() when this is non-zero.
+ */
+int g_render_dirty = 0;
+
+/*
+ * Mouse IPC via Unix FIFO (/tmp/.kryon-mouse-1)
+ * Bypasses the broken 9P mount path for mouse events.
+ */
+static int g_mouse_fifo_fd = -1;
+
+/* Persistent /dev/screen FID — opened once, reused every frame. */
+static int g_marrow_screen_fd = -1;
+
+/*
  * Global screen reference for hot-reload
  */
 static Memimage *g_screen_buffer = NULL;
 static int g_render_width = 0;
 static int g_render_height = 0;
+
+/*
+ * Push g_screen_buffer pixels to Marrow's /dev/screen.
+ * Called after every render_all() so the display client sees updated pixels.
+ */
+static void push_screen_to_marrow(void)
+{
+    int chunk_size, bytes_remaining, total_written;
+    const unsigned char *buffer_ptr;
+    ssize_t written;
+
+    if (g_screen_buffer == NULL || g_render_width == 0 || g_render_height == 0)
+        return;
+
+    /* Open /dev/screen once; reset offset to 0 on subsequent calls */
+    if (g_marrow_screen_fd < 0) {
+        g_marrow_screen_fd = p9_open(g_marrow_client, "/dev/screen", P9_OWRITE);
+        if (g_marrow_screen_fd < 0)
+            return;
+    } else {
+        p9_reset_fid(g_marrow_client, g_marrow_screen_fd);
+    }
+
+    chunk_size      = 7000;
+    bytes_remaining = g_render_width * g_render_height * 4;
+    buffer_ptr      = g_screen_buffer->data->bdata;
+    total_written   = 0;
+
+    while (bytes_remaining > 0) {
+        int to_write = bytes_remaining < chunk_size ? bytes_remaining : chunk_size;
+        written = p9_write(g_marrow_client, g_marrow_screen_fd, buffer_ptr, to_write);
+        if (written < 0) break;
+        total_written   += (int)written;
+        bytes_remaining -= (int)written;
+        buffer_ptr      += written;
+    }
+    (void)total_written;
+    /* Do NOT close — keep the FID alive for the next frame */
+}
 
 /*
  * Signal handler for graceful shutdown
@@ -445,10 +501,6 @@ int main(int argc, char **argv)
         Rectangle screen_rect;
         int screen_width = 0;
         int screen_height = 0;
-        int pixel_size;
-        unsigned char *pixel_data;
-        int screen_fd;
-        ssize_t written;
 
         /* Derive dimensions from first window definition */
         {
@@ -507,89 +559,23 @@ int main(int argc, char **argv)
             memfillcolor_rect(screen, clear_rect, 0xFF00FFFF);  /* Cyan in BGRA */
         }
 
-        /* Render all windows to screen */
+        /* Render all windows to screen and push pixels to Marrow */
         render_all();
+        push_screen_to_marrow();
 
-        /* Extract pixel data */
-        pixel_size = screen_width * screen_height * 4;
-        pixel_data = screen->data->bdata;
-
-        /* Verify we have pixel data by checking first few pixels */
-        {
-            int i;
-            fprintf(stderr, "First 20 pixels of screen data: ");
-            for (i = 0; i < 20 && i < pixel_size; i++) {
-                fprintf(stderr, "%02X ", pixel_data[i]);
-            }
-            fprintf(stderr, "\n");
-        }
-
-        /* Check widget pixels: button at (50,50) should be RED, label at (50,120) should be YELLOW */
-        {
-            int button_offset = ((50 * screen_width) + 50) * 4;  /* (50,50) */
-            int label_offset = ((120 * screen_width) + 50) * 4;  /* (50,120) */
-
-            fprintf(stderr, "Button pixel at (50,50): %02X %02X %02X %02X (expect RED: FF 00 00 FF)\n",
-                    pixel_data[button_offset], pixel_data[button_offset+1],
-                    pixel_data[button_offset+2], pixel_data[button_offset+3]);
-
-            fprintf(stderr, "Label pixel at (50,120): %02X %02X %02X %02X (expect YELLOW: FF FF 00 FF)\n",
-                    pixel_data[label_offset], pixel_data[label_offset+1],
-                    pixel_data[label_offset+2], pixel_data[label_offset+3]);
-        }
+        /* Create FIFO for mouse IPC and open for reading (non-blocking) */
+        mkfifo("/tmp/.kryon-mouse-1", 0600);
+        g_mouse_fifo_fd = open("/tmp/.kryon-mouse-1", O_RDONLY | O_NONBLOCK);
 
         /* Dump screenshot if requested */
         if (dump_screen) {
+            int pixel_size2 = screen_width * screen_height * 4;
+            unsigned char *pixel_data2 = screen->data->bdata;
             FILE *dump_file = fopen("/tmp/wm_before.raw", "wb");
             if (dump_file != NULL) {
-                size_t written = fwrite(pixel_data, 1, pixel_size, dump_file);
+                fwrite(pixel_data2, 1, pixel_size2, dump_file);
                 fclose(dump_file);
-                if (written == (size_t)pixel_size) {
-                } else {
-                    fprintf(stderr, "Warning: Only wrote %zu of %d bytes to screenshot\n", written, pixel_size);
-                }
-            } else {
-                fprintf(stderr, "Warning: Failed to open /tmp/wm_before.raw for writing\n");
             }
-        }
-
-        /* Open /dev/screen on Marrow for writing */
-        screen_fd = p9_open(g_marrow_client, "/dev/screen", P9_OWRITE);
-        if (screen_fd < 0) {
-            fprintf(stderr, "Warning: failed to open /dev/screen for writing\n");
-            fprintf(stderr, "Pixels rendered locally but not sent to Marrow\n");
-        } else {
-            /* Write pixel data to Marrow's screen in chunks */
-            /* 9P has a max message size of ~8KB, so we need to chunk the writes */
-            /* Account for message overhead: header (23 bytes) + data */
-            int chunk_size = 7000;  /* Safe chunk size after overhead */
-            int bytes_remaining = pixel_size;
-            const unsigned char *buffer_ptr = pixel_data;
-            int total_written = 0;
-
-            while (bytes_remaining > 0) {
-                int bytes_to_write = bytes_remaining;
-                if (bytes_to_write > chunk_size) {
-                    bytes_to_write = chunk_size;
-                }
-
-                written = p9_write(g_marrow_client, screen_fd,
-                                  buffer_ptr, bytes_to_write);
-                if (written < 0) {
-                    fprintf(stderr, "Error: failed to write chunk at position %d\n",
-                            total_written);
-                    break;
-                }
-
-                total_written += written;
-                bytes_remaining -= written;
-                buffer_ptr += written;
-            }
-
-            if (total_written != pixel_size) {
-                fprintf(stderr, "Warning: only wrote %d of %d bytes\n", total_written, pixel_size);
-            }
-            p9_close(g_marrow_client, screen_fd);
         }
     }
 
@@ -627,8 +613,44 @@ event_loop:
         fprintf(stderr, "Watch mode active - monitoring for file changes\n");
 
         while (running) {
-            /* Poll for events with 100ms timeout */
-            int poll_result = poll(fds, 1, 100);
+            int poll_result;
+
+            /* Read mouse events from FIFO */
+            if (g_mouse_fifo_fd >= 0) {
+                char mbuf[128];
+                ssize_t nr = read(g_mouse_fifo_fd, mbuf, sizeof(mbuf) - 1);
+                if (nr > 0) {
+                    KryonWindow *mwin = window_get(1);
+                    if (mwin != NULL) {
+                        vdev_mouse_write(mbuf, nr, 0, mwin);
+                    }
+                }
+            }
+
+            /* Re-render if mouse or other state changed */
+            if (g_render_dirty) {
+                g_render_dirty = 0;
+                render_all();
+                push_screen_to_marrow();
+            }
+
+            /* Check WM control flags */
+            if (g_wm_quit_requested) {
+                running = 0;
+                break;
+            }
+            if (g_wm_reload_requested) {
+                g_wm_reload_requested = 0;
+                if (g_wm_load_path[0] != '\0') {
+                    g_watch_file = g_wm_load_path;
+                }
+                reload_kryon_file();
+                last_reload = time(NULL);
+                g_wm_load_path[0] = '\0';
+            }
+
+            /* Poll inotify with 16ms timeout (~60 fps) */
+            poll_result = poll(fds, 1, 16);
 
             if (poll_result < 0) {
                 if (errno == EINTR) continue;
@@ -666,16 +688,69 @@ event_loop:
 
         cleanup_file_watch();
     } else {
-        /* Original simple loop */
+        /* ~60 fps loop - checks WM control flags and re-renders on input */
         while (running) {
-            sleep(1);
-            /* TODO: Poll Marrow for events */
-            /* TODO: Handle window manager events */
+            struct timespec ts;
+
+            /* Read mouse events from FIFO */
+            if (g_mouse_fifo_fd >= 0) {
+                char mbuf[128];
+                ssize_t nr;
+                nr = read(g_mouse_fifo_fd, mbuf, sizeof(mbuf) - 1);
+                if (nr > 0) {
+                    KryonWindow *mwin;
+                    mbuf[nr] = '\0';
+                    fprintf(stderr, "DEBUG: got mouse data: '%s'\n", mbuf); fflush(stderr);
+                    mwin = window_get(1);
+                    fprintf(stderr, "DEBUG: mwin=%p\n", (void*)mwin); fflush(stderr);
+                    if (mwin != NULL) {
+                        fprintf(stderr, "DEBUG: event_queue=%p\n", (void*)mwin->event_queue); fflush(stderr);
+                        vdev_mouse_write(mbuf, nr, 0, mwin);
+                        fprintf(stderr, "DEBUG: vdev_mouse_write done, dirty=%d\n", g_render_dirty); fflush(stderr);
+                    }
+                }
+            }
+
+            /* Re-render if mouse or other state changed */
+            if (g_render_dirty) {
+                g_render_dirty = 0;
+                render_all();
+                push_screen_to_marrow();
+            }
+
+            ts.tv_sec = 0;
+            ts.tv_nsec = 16000000;  /* ~16 ms → ~60 fps */
+            nanosleep(&ts, NULL);
+            if (g_wm_quit_requested) {
+                running = 0;
+                break;
+            }
+            if (g_wm_reload_requested) {
+                g_wm_reload_requested = 0;
+                if (g_wm_load_path[0] != '\0') {
+                    g_watch_file = g_wm_load_path;
+                }
+                reload_kryon_file();
+                g_wm_load_path[0] = '\0';
+            }
         }
     }
 
     /* Cleanup */
     fprintf(stderr, "\nShutting down...\n");
+
+    /* Close and remove mouse FIFO */
+    if (g_mouse_fifo_fd >= 0) {
+        close(g_mouse_fifo_fd);
+        g_mouse_fifo_fd = -1;
+    }
+    unlink("/tmp/.kryon-mouse-1");
+
+    /* Close persistent screen FID */
+    if (g_marrow_screen_fd >= 0) {
+        p9_close(g_marrow_client, g_marrow_screen_fd);
+        g_marrow_screen_fd = -1;
+    }
 
     /* Unregister from Marrow */
     marrow_service_unregister(g_marrow_client, "kryon");
@@ -805,10 +880,6 @@ static int reload_kryon_file(void)
     int result;
     int screen_width = 0;
     int screen_height = 0;
-    int pixel_size;
-    unsigned char *pixel_data;
-    int screen_fd;
-    ssize_t written;
     int retry_count;
     struct timespec delay;
 
@@ -948,62 +1019,9 @@ static int reload_kryon_file(void)
                 ns_built, ns_failed);
     }
 
-    /* Re-render all windows */
+    /* Re-render all windows and push pixels to Marrow */
     render_all();
-
-    /* Send updated screen to Marrow's /dev/screen */
-    pixel_size = screen_width * screen_height * 4;
-
-    if (g_screen_buffer == NULL) {
-        fprintf(stderr, "Error: screen buffer is NULL, cannot send update\n");
-        kryon_free_ast(ast);
-        return -1;
-    }
-
-    pixel_data = g_screen_buffer->data->bdata;
-
-    fprintf(stderr, "Opening /dev/screen for write...\n");
-    screen_fd = p9_open(g_marrow_client, "/dev/screen", P9_OWRITE);
-    if (screen_fd < 0) {
-        fprintf(stderr, "Error: failed to open /dev/screen (code=%d)\n", screen_fd);
-        fprintf(stderr, "Screen was rendered but not sent to Marrow\n");
-        kryon_free_ast(ast);
-        return result;  /* Return success anyway - windows were reloaded */
-    }
-
-    fprintf(stderr, "Opened /dev/screen with fd=%d\n", screen_fd);
-
-    {
-        int chunk_size = 7000;
-        int bytes_remaining = pixel_size;
-        const unsigned char *buffer_ptr = pixel_data;
-        int total_written = 0;
-
-        while (bytes_remaining > 0) {
-            int bytes_to_write = bytes_remaining;
-            if (bytes_to_write > chunk_size) {
-                bytes_to_write = chunk_size;
-            }
-
-            written = p9_write(g_marrow_client, screen_fd,
-                              buffer_ptr, bytes_to_write);
-            if (written < 0) {
-                fprintf(stderr, "Error: failed to write chunk at position %d\n",
-                        total_written);
-                break;
-            }
-
-            total_written += written;
-            bytes_remaining -= written;
-            buffer_ptr += written;
-        }
-
-        if (total_written != pixel_size) {
-            fprintf(stderr, "Warning: only wrote %d of %d bytes\n", total_written, pixel_size);
-        }
-
-        p9_close(g_marrow_client, screen_fd);
-    }
+    push_screen_to_marrow();
 
     kryon_free_ast(ast);
     return result;

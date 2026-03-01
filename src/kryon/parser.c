@@ -9,6 +9,7 @@
 #include "../include/window.h"
 #include "../include/widget.h"
 #include "../include/layout.h"
+#include "../include/wm.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1163,6 +1164,9 @@ static int execute_window(KryonNode *node)
             execute_widget(child, win);
         }
     }
+
+    /* Register window in /mnt/wm filesystem */
+    wm_create_window_entry(win);
 
     fprintf(stderr, "execute_window: returning success\n");
     return 0;

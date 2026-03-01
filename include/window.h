@@ -7,6 +7,7 @@
 #define KRYON_WINDOW_H
 
 #include "kryon.h"
+#include "events.h"
 #include <sys/types.h>  /* for pid_t */
 
 /*
@@ -82,6 +83,14 @@ typedef struct KryonWindow {
     pid_t nested_wm_pid;            /* PID of nested WM (0 if none) */
     int nested_fd_in;               /* Pipe for receiving events from nested WM */
     int nested_fd_out;              /* Pipe for sending events to nested WM */
+
+    /* Current mouse state (updated by vdev_mouse_write) */
+    int mouse_x;        /* cursor X in window coords */
+    int mouse_y;        /* cursor Y in window coords */
+    int mouse_buttons;  /* button bitmask from last mouse packet */
+
+    /* Per-window event stream */
+    EventQueue *event_queue;        /* Event queue for /mnt/wm/win/{id}/events */
 
     /* Internal state */
     void *internal_data;            /* Platform-specific data */

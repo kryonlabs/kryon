@@ -647,9 +647,6 @@ int p9_open(P9Client *client, const char *path, int mode)
         return -1;
     }
 
-    fprintf(stderr, "p9_open: walking from root_fid=%d to newfid=%d, path=%s\n",
-            root_fid, fid, path_for_log);
-
     /* Build Twalk message: size[4] Twalk tag[2] fid[4] newfid[4] nwname[2] wname[nwname][s] */
     p = msg + 4;  /* Skip size field */
     *p++ = P9_TWALK;
@@ -764,8 +761,6 @@ int p9_open(P9Client *client, const char *path, int mode)
         return -1;
     }
 
-    fprintf(stderr, "p9_open: opened %s (fid=%d)\n", path_for_log, fid);
-
     return fid;
 }
 
@@ -777,8 +772,6 @@ int p9_close(P9Client *client, int fd)
     if (client == NULL) {
         return -1;
     }
-
-    fprintf(stderr, "p9_close: closed fid=%d\n", fd);
 
     return 0;
 }
@@ -1032,8 +1025,6 @@ int p9_reset_fid(P9Client *client, int fd)
 
     /* Reset offset to 0 for this FID */
     client->fid_offsets[fd] = 0;
-
-    fprintf(stderr, "p9_reset_fid: reset fd=%d offset to 0\n", fd);
 
     return 0;
 }

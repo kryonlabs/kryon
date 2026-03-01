@@ -126,25 +126,22 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_SUBMIT_BUTTON:
     case WIDGET_ICON_BUTTON:
     case WIDGET_FAB_BUTTON:
-        /* Button rendering - use custom color if specified */
+        /* Button background: use prop_color if set, else neutral Tk-style gray */
         if (w->prop_color != NULL && w->prop_color[0] != '\0') {
             color = parse_color(w->prop_color);
             if (color == 0) {
-                /* Fallback to default colors on parse error */
-                if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
-                    color = DGreen;
-                } else {
-                    color = DRed;
-                }
+                color = 0xD9D9D9FF;  /* Fallback to gray on parse error */
             }
         } else {
-            /* Default colors when no custom color specified */
-            if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
-                /* Green when active: 0x00FF00FF in 9front format */
-                color = DGreen;
-            } else {
-                /* Red when inactive: 0xFF0000FF in 9front format */
-                color = DRed;
+            color = 0xD9D9D9FF;  /* Tk default button gray */
+        }
+        /* Hover highlight: lighten button when cursor is over it */
+        if (w->parent_window != NULL) {
+            Point mp;
+            mp.x = w->parent_window->mouse_x;
+            mp.y = w->parent_window->mouse_y;
+            if (ptinrect(mp, widget_rect)) {
+                color = lighten_color(color);
             }
         }
         memfillcolor_rect(screen, widget_rect, color);
@@ -177,22 +174,25 @@ void render_widget(KryonWidget *w, Memimage *screen)
             int text_width;
             int button_width, button_height;
 
-            /* White text */
-            text_color = DWhite;
+            /* Choose text color: black on light backgrounds, white on dark */
+            {
+                unsigned int cr = (color >> 24) & 0xFF;
+                unsigned int cg = (color >> 16) & 0xFF;
+                unsigned int cb = (color >> 8) & 0xFF;
+                text_color = ((cr + cg + cb) / 3 > 128) ? DBlack : DWhite;
+            }
 
-            /* Calculate text width (assuming 8px per character for font) */
+            /* Calculate text width (8px per character for built-in font) */
             text_width = (int)strlen(w->prop_text) * 8;
 
             /* Calculate button dimensions */
             button_width = widget_rect.max.x - widget_rect.min.x;
             button_height = widget_rect.max.y - widget_rect.min.y;
 
-            /* Center text: button_center - text_half_width */
+            /* Horizontally center; vertically center 16px-tall font */
             text_pos.x = widget_rect.min.x + (button_width - text_width) / 2;
-            /* Vertically center 16px tall font */
-            text_pos.y = widget_rect.min.y + (button_height - 16) / 2 + 12; /* +12 for baseline */
+            text_pos.y = widget_rect.min.y + (button_height - 16) / 2;
 
-            /* Check if a 9front font is available */
             font = memdraw_get_default_font();
             if (font != NULL) {
                 memdraw_text_font(screen, text_pos, w->prop_text, font, text_color);
@@ -205,31 +205,29 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_LABEL:
     case WIDGET_HEADING:
     case WIDGET_PARAGRAPH:
-        /* Label rendering - use custom color if specified, else yellow */
-        if (w->prop_color != NULL && w->prop_color[0] != '\0') {
-            color = parse_color(w->prop_color);
-            if (color == 0) {
-                color = DYellow;  /* Fallback to yellow on parse error */
-            }
-        } else {
-            color = DYellow;  /* Default yellow */
-        }
-        memfillcolor_rect(screen, widget_rect, color);
-
-        /* Render text label */
+        /* No background fill - label text is rendered directly onto the window background.
+         * prop_color sets the text color; default is black. */
         if (w->prop_text != NULL && w->prop_text[0] != '\0') {
             Point text_pos;
             unsigned long text_color;
             Subfont *font;
+            int widget_height;
 
-            /* Position text with padding */
-            text_pos.x = widget_rect.min.x + 8;
-            text_pos.y = widget_rect.min.y + 12;
+            /* Text color from prop_color, default black */
+            if (w->prop_color != NULL && w->prop_color[0] != '\0') {
+                text_color = parse_color(w->prop_color);
+                if (text_color == 0) {
+                    text_color = DBlack;
+                }
+            } else {
+                text_color = DBlack;
+            }
 
-            /* White text in 9front format */
-            text_color = DWhite;
+            /* Small left padding; vertically center 16px font */
+            widget_height = widget_rect.max.y - widget_rect.min.y;
+            text_pos.x = widget_rect.min.x + 4;
+            text_pos.y = widget_rect.min.y + (widget_height - 16) / 2;
 
-            /* Check if a 9front font is available */
             font = memdraw_get_default_font();
             if (font != NULL) {
                 memdraw_text_font(screen, text_pos, w->prop_text, font, text_color);
@@ -270,8 +268,26 @@ void render_widget(KryonWidget *w, Memimage *screen)
         color = 0xFFFFFFFF;
         memfillcolor_rect(screen, widget_rect, color);
 
-        /* Draw border */
-        /* TODO: Draw border rectangle */
+        /* Draw Tk-style beveled border (thinner than buttons) */
+        {
+            unsigned long border_color = DGray;
+            unsigned long highlight = lighten_color(border_color);
+            unsigned long shadow = darken_color(border_color);
+            int thickness = 1;  /* Thinner than button borders */
+
+            /* Top edge (highlight) */
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                         Pt(widget_rect.max.x - 1, widget_rect.min.y), highlight, thickness);
+            /* Left edge (highlight) */
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                         Pt(widget_rect.min.x, widget_rect.max.y - 1), highlight, thickness);
+            /* Bottom edge (shadow) */
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
+                         Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
+            /* Right edge (shadow) */
+            memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                         Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
+        }
         break;
 
     case WIDGET_SLIDER:
@@ -279,14 +295,83 @@ void render_widget(KryonWidget *w, Memimage *screen)
         /* Slider rendering */
         color = 0xFFE0E0E0;  /* Track color */
         memfillcolor_rect(screen, widget_rect, color);
-        /* TODO: Render slider handle */
+        /* Render slider handle */
+        {
+            float value;
+            int handle_radius = 8;
+            Point center;
+            unsigned long handle_color = DBlue;
+            unsigned long highlight, shadow;
+
+            /* Parse slider value (0-100) */
+            value = 0.0f;
+            if (w->prop_value != NULL) {
+                value = (float)atof(w->prop_value);
+            }
+            if (value < 0.0f) value = 0.0f;
+            if (value > 100.0f) value = 100.0f;
+
+            /* Calculate handle center position */
+            center.x = widget_rect.min.x + (int)((value / 100.0f) * Dx(widget_rect));
+            center.y = widget_rect.min.y + Dy(widget_rect) / 2;
+
+            /* Get highlight/shadow colors */
+            highlight = lighten_color(handle_color);
+            shadow = darken_color(handle_color);
+
+            /* Draw filled circle for handle */
+            memdraw_ellipse(screen, center, handle_radius, handle_radius, handle_color, 1);
+
+            /* Add bevel effect - highlight on top half, shadow on bottom */
+            memdraw_line(screen, Pt(center.x - handle_radius + 1, center.y - handle_radius + 2),
+                         Pt(center.x + handle_radius - 1, center.y - handle_radius + 2), highlight, 1);
+            memdraw_line(screen, Pt(center.x - handle_radius + 1, center.y + handle_radius - 2),
+                         Pt(center.x + handle_radius - 1, center.y + handle_radius - 2), shadow, 1);
+        }
         break;
 
     case WIDGET_PROGRESS_BAR:
         /* Progress bar rendering */
         color = 0xFFE0E0E0;  /* Background */
         memfillcolor_rect(screen, widget_rect, color);
-        /* TODO: Render progress fill */
+        /* Render progress fill based on value */
+        {
+            float progress;
+            Rectangle fill_rect;
+            unsigned long progress_color = DGreen;
+            unsigned long highlight, shadow;
+
+            /* Parse progress value (0-100) */
+            progress = 0.0f;
+            if (w->prop_value != NULL) {
+                progress = (float)atof(w->prop_value);
+            }
+            if (progress < 0.0f) progress = 0.0f;
+            if (progress > 100.0f) progress = 100.0f;
+
+            /* Calculate fill rectangle with 1px padding */
+            fill_rect.min.x = widget_rect.min.x + 1;
+            fill_rect.min.y = widget_rect.min.y + 1;
+            fill_rect.max.x = widget_rect.min.x + 1 + (int)((progress / 100.0f) * (Dx(widget_rect) - 2));
+            fill_rect.max.y = widget_rect.max.y - 1;
+
+            /* Get highlight/shadow colors */
+            highlight = lighten_color(progress_color);
+            shadow = darken_color(progress_color);
+
+            /* Fill the progress area */
+            memfillcolor_rect(screen, fill_rect, progress_color);
+
+            /* Add bevel edges to progress fill */
+            memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.min.y),
+                         Pt(fill_rect.max.x - 1, fill_rect.min.y), highlight, 1);
+            memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.min.y),
+                         Pt(fill_rect.min.x, fill_rect.max.y - 1), highlight, 1);
+            memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.max.y - 1),
+                         Pt(fill_rect.max.x - 1, fill_rect.max.y - 1), shadow, 1);
+            memdraw_line(screen, Pt(fill_rect.max.x - 1, fill_rect.min.y),
+                         Pt(fill_rect.max.x - 1, fill_rect.max.y - 1), shadow, 1);
+        }
         break;
 
     case WIDGET_IMAGE:
@@ -380,8 +465,8 @@ void render_all(void)
 
     render_count++;
 
-    /* Clear screen to dark blue */
-    memfillcolor(g_screen, DBlue);
+    /* Clear screen to Tk-style window background gray */
+    memfillcolor(g_screen, 0xD9D9D9FF);
 
     /* Render only top-level windows */
     /* Nested windows will be rendered recursively by their parents */

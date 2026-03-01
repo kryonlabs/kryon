@@ -5,6 +5,7 @@
 #include "window.h"
 #include "widget.h"
 #include "namespace.h"
+#include "events.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -154,6 +155,7 @@ struct KryonWindow *window_create(const char *title, int width, int height)
     /* Initialize virtual devices to NULL */
     window->vdev = NULL;
     window->nested_win_dir = NULL;
+    window->event_queue = NULL;
 
     /* Initialize namespace */
     window_namespace_init(window);
@@ -236,6 +238,7 @@ struct KryonWindow *window_create_ex(const char *title, int width, int height,
     /* Initialize virtual devices to NULL */
     window->vdev = NULL;
     window->nested_win_dir = NULL;
+    window->event_queue = NULL;
 
     /* Initialize namespace */
     window_namespace_init(window);
@@ -299,6 +302,12 @@ void window_destroy(struct KryonWindow *window)
              memimage_free(window->vdev->draw_buffer);
          } */
         free(window->vdev);
+    }
+
+    /* Clean up per-window event queue */
+    if (window->event_queue != NULL) {
+        event_queue_destroy(window->event_queue);
+        window->event_queue = NULL;
     }
 
     /* Clean up namespace */
