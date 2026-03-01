@@ -32,8 +32,8 @@ static void print_usage(const char *progname)
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  --host HOST    Server host (default: 127.0.0.1)\n");
     fprintf(stderr, "  --port PORT    Server port (default: 17010)\n");
-    fprintf(stderr, "  --width W      Window width (default: 800)\n");
-    fprintf(stderr, "  --height H     Window height (default: 600)\n");
+    fprintf(stderr, "  --width W      Override window width (default: from /mnt/wm/screensize)\n");
+    fprintf(stderr, "  --height H     Override window height (default: from /mnt/wm/screensize)\n");
     fprintf(stderr, "  --verbose      Enable verbose output\n");
     fprintf(stderr, "  --stay-open    Keep window open (ignore SDL_QUIT events)\n");
     fprintf(stderr, "  --dump-screen  Dump screenshot to /tmp/display_after.raw\n");
@@ -48,11 +48,11 @@ static int parse_args(int argc, char **argv, DisplayConfig *config)
 {
     int i;
 
-    /* Set defaults */
+    /* Set defaults — width/height are 0 so the WM-queried value wins */
     config->host = "127.0.0.1";
     config->port = 17010;  /* Marrow's default port */
-    config->width = 800;
-    config->height = 600;
+    config->width = 0;
+    config->height = 0;
     config->verbose = 0;
     config->stay_open = 0;
     config->dump_screen = 0;

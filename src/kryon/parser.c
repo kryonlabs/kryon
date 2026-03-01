@@ -8,6 +8,7 @@
 #include "parser.h"
 #include "../include/window.h"
 #include "../include/widget.h"
+#include "../include/layout.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1066,7 +1067,8 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
 /*
  * Recursively execute layout node
  */
-static int execute_layout(KryonNode *node, struct KryonWindow *win)
+static int execute_layout(KryonNode *node, struct KryonWindow *win,
+                          Rectangle parent_rect)
 {
     int i;
 
@@ -1074,14 +1076,43 @@ static int execute_layout(KryonNode *node, struct KryonWindow *win)
         return -1;
     }
 
-    /* Execute all children (widgets and nested layouts) */
+    /*
+     * STEP 1: Calculate widget positions based on layout type
+     * This sets prop_rect on all children that don't already have one
+     */
+    if (node->layout_type != NULL) {
+        if (layout_calculate(node, win, parent_rect) != 0) {
+            fprintf(stderr, "execute_layout: layout_calculate failed\n");
+            /* Continue anyway - some children might have rects */
+        }
+    }
+
+    /*
+     * STEP 2: Execute all children (widgets and nested layouts)
+     * Widgets now have calculated rects from step 1
+     */
     for (i = 0; i < node->nchildren; i++) {
         KryonNode *child = node->children[i];
 
         if (child->type == NODE_WIDGET) {
             execute_widget(child, win);
         } else if (child->type == NODE_LAYOUT) {
-            execute_layout(child, win);
+            Rectangle child_rect;
+            int x, y, w, h;
+
+            /* Get the child's calculated rectangle for nested layouts */
+            if (child->prop_rect != NULL &&
+                sscanf(child->prop_rect, "%d %d %d %d", &x, &y, &w, &h) == 4) {
+                child_rect.min.x = x;
+                child_rect.min.y = y;
+                child_rect.max.x = x + w;
+                child_rect.max.y = y + h;
+            } else {
+                /* Fallback: use parent rect */
+                child_rect = parent_rect;
+            }
+
+            execute_layout(child, win, child_rect);
         }
     }
 
@@ -1095,6 +1126,7 @@ static int execute_window(KryonNode *node)
 {
     struct KryonWindow *win;
     int i;
+    Rectangle window_rect;
 
     if (node == NULL || node->type != NODE_WINDOW) {
         fprintf(stderr, "execute_window: node is NULL or wrong type\n");
@@ -1112,6 +1144,12 @@ static int execute_window(KryonNode *node)
         return -1;
     }
 
+    /* Calculate window rectangle for layouts (origin at 0,0) */
+    window_rect.min.x = 0;
+    window_rect.min.y = 0;
+    window_rect.max.x = node->width;
+    window_rect.max.y = node->height;
+
     fprintf(stderr, "execute_window: window created, executing %d children\n", node->nchildren);
 
     /* Execute children (layouts/widgets) */
@@ -1119,7 +1157,8 @@ static int execute_window(KryonNode *node)
         KryonNode *child = node->children[i];
 
         if (child->type == NODE_LAYOUT) {
-            execute_layout(child, win);
+            /* Pass window rectangle to layout system for position calculation */
+            execute_layout(child, win, window_rect);
         } else if (child->type == NODE_WIDGET) {
             execute_widget(child, win);
         }

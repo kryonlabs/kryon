@@ -118,6 +118,8 @@ static const char *g_watch_file = NULL;
  * Global screen reference for hot-reload
  */
 static Memimage *g_screen_buffer = NULL;
+static int g_render_width = 0;
+static int g_render_height = 0;
 
 /*
  * Signal handler for graceful shutdown
@@ -226,6 +228,9 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    /* Remove stale screen-size file from previous run */
+    unlink("/tmp/.kryon-screensize");
+
     /* Initialize subsystems */
     fprintf(stderr, "Connecting to Marrow at %s...\n", marrow_addr);
 
@@ -276,19 +281,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "Error: failed to initialize /mnt/wm filesystem\n");
         p9_disconnect(g_marrow_client);
         return 1;
-    }
-
-    /* Register Kryon as window-manager service */
-    if (marrow_service_register(g_marrow_client, "kryon", "window-manager",
-                                "Kryon Window Manager") < 0) {
-        fprintf(stderr, "Warning: failed to register with Marrow (continuing anyway)\n");
-        /* Continue anyway - parser should still work */
-    }
-
-    /* Mount /mnt/wm into Marrow's namespace */
-    if (marrow_namespace_mount(g_marrow_client, "/mnt/wm") < 0) {
-        fprintf(stderr, "Warning: failed to mount /mnt/wm\n");
-        /* Continue anyway - service is registered */
     }
 
     if (window_registry_init() < 0) {
@@ -423,9 +415,7 @@ int main(int argc, char **argv)
                 return 1;
             }
             if (result == 0) {
-                fprintf(stderr, "Error: no windows created from file: %s\n", load_file);
-                p9_disconnect(g_marrow_client);
-                return 1;
+                fprintf(stderr, "No windows defined in file: %s\n", load_file);
             }
         } else {
             /* No file specified - show help and exit */
@@ -453,12 +443,39 @@ int main(int argc, char **argv)
     {
         Memimage *screen;
         Rectangle screen_rect;
-        int screen_width = 800;
-        int screen_height = 600;
+        int screen_width = 0;
+        int screen_height = 0;
         int pixel_size;
         unsigned char *pixel_data;
         int screen_fd;
         ssize_t written;
+
+        /* Derive dimensions from first window definition */
+        {
+            KryonWindow *win = window_get(1);
+            if (win != NULL && win->rect != NULL) {
+                int rx = 0, ry = 0;
+                sscanf(win->rect, "%d %d %d %d", &rx, &ry, &screen_width, &screen_height);
+            }
+        }
+
+        /* Expose via /mnt/wm/screensize for the display client */
+        wm_set_screensize(screen_width, screen_height);
+
+        /* Write dimensions to local file so the viewer can read without 9P */
+        {
+            FILE *sf = fopen("/tmp/.kryon-screensize", "w");
+            if (sf != NULL) { fprintf(sf, "%d %d\n", screen_width, screen_height); fclose(sf); }
+        }
+
+        /* If no window defined: nothing to render */
+        if (screen_width == 0 || screen_height == 0) {
+            fprintf(stderr, "No windows defined — screen is 0x0, skipping render\n");
+            goto event_loop;
+        }
+
+        g_render_width = screen_width;
+        g_render_height = screen_height;
 
         /* Create screen rectangle */
         screen_rect.min.x = 0;
@@ -576,10 +593,22 @@ int main(int argc, char **argv)
         }
     }
 
+    /* Register Kryon as window-manager service and mount /mnt/wm
+     * Done AFTER wm_set_screensize() so clients see the correct size immediately */
+    if (marrow_service_register(g_marrow_client, "kryon", "window-manager",
+                                "Kryon Window Manager") < 0) {
+        fprintf(stderr, "Warning: failed to register with Marrow (continuing anyway)\n");
+    }
+
+    if (marrow_namespace_mount(g_marrow_client, "/mnt/wm") < 0) {
+        fprintf(stderr, "Warning: failed to mount /mnt/wm\n");
+    }
+
     /* Simple event loop */
     fprintf(stderr, "\nKryon window manager running\n");
     fprintf(stderr, "Press Ctrl-C to exit\n");
 
+event_loop:
     /* Setup signal handlers */
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -774,8 +803,8 @@ static int reload_kryon_file(void)
 {
     KryonNode *ast;
     int result;
-    int screen_width = 800;
-    int screen_height = 600;
+    int screen_width = 0;
+    int screen_height = 0;
     int pixel_size;
     unsigned char *pixel_data;
     int screen_fd;
@@ -829,14 +858,6 @@ static int reload_kryon_file(void)
         return -1;
     }
 
-    /* Re-set screen for rendering (g_screen_buffer still valid) */
-    if (g_screen_buffer != NULL) {
-        render_set_screen(g_screen_buffer);
-        fprintf(stderr, "Re-set screen buffer for rendering\n");
-    } else {
-        fprintf(stderr, "Warning: g_screen_buffer is NULL after reload\n");
-    }
-
     /* Execute new AST */
     result = kryon_execute_ast(ast);
 
@@ -846,13 +867,58 @@ static int reload_kryon_file(void)
         return -1;
     }
 
-    if (result == 0) {
-        fprintf(stderr, "Warning: no windows created in new version\n");
-        kryon_free_ast(ast);
-        return 0;
+    /* Derive new screen dimensions from window definition */
+    {
+        KryonWindow *win = window_get(1);
+        if (win != NULL && win->rect != NULL) {
+            int rx = 0, ry = 0;
+            sscanf(win->rect, "%d %d %d %d", &rx, &ry, &screen_width, &screen_height);
+        }
     }
 
-    fprintf(stderr, "Reloaded successfully: %d window(s)\n", result);
+    /* Update /mnt/wm/screensize and local coordination file */
+    wm_set_screensize(screen_width, screen_height);
+    {
+        FILE *sf = fopen("/tmp/.kryon-screensize", "w");
+        if (sf != NULL) { fprintf(sf, "%d %d\n", screen_width, screen_height); fclose(sf); }
+    }
+
+    if (result == 0 || screen_width == 0 || screen_height == 0) {
+        fprintf(stderr, "No windows defined after reload — screen is 0x0\n");
+        g_render_width = 0;
+        g_render_height = 0;
+        kryon_free_ast(ast);
+        return result;
+    }
+
+    fprintf(stderr, "Reloaded successfully: %d window(s) at %dx%d\n",
+            result, screen_width, screen_height);
+
+    /* Reallocate screen buffer if dimensions changed */
+    if (screen_width != g_render_width || screen_height != g_render_height) {
+        Rectangle screen_rect;
+        fprintf(stderr, "Screen size changed from %dx%d to %dx%d — reallocating\n",
+                g_render_width, g_render_height, screen_width, screen_height);
+        if (g_screen_buffer != NULL) {
+            memimage_free(g_screen_buffer);
+            g_screen_buffer = NULL;
+        }
+        screen_rect.min.x = 0;
+        screen_rect.min.y = 0;
+        screen_rect.max.x = screen_width;
+        screen_rect.max.y = screen_height;
+        g_screen_buffer = memimage_alloc(screen_rect, RGBA32);
+        if (g_screen_buffer == NULL) {
+            fprintf(stderr, "Error: failed to reallocate screen buffer\n");
+            kryon_free_ast(ast);
+            return -1;
+        }
+        g_render_width = screen_width;
+        g_render_height = screen_height;
+    }
+
+    /* Set screen for rendering */
+    render_set_screen(g_screen_buffer);
 
     /* Build namespace trees for all newly created windows */
     {

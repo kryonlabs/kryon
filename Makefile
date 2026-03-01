@@ -86,7 +86,8 @@ CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c)
 GRAPHICS_SRCS =
 # UI files (window manager, widgets)
 UI_SRCS = $(SRC_DIR)/core/window.c $(SRC_DIR)/core/widget.c \
-           $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c
+           $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c \
+           $(SRC_DIR)/core/layout.c
 # Kryon DSL parser
 KRYON_SRCS = $(SRC_DIR)/kryon/parser.c
 # Window manager filesystem

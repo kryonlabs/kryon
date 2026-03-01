@@ -130,6 +130,36 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         return NULL;
     }
 
+    /* Query screen dimensions from the local coordination file written by the WM.
+     * This avoids the 9P namespace isolation problem: Marrow mounts are only
+     * visible to connections established AFTER the mount, not existing ones. */
+    if (width == 0 || height == 0) {
+        int retry;
+        for (retry = 0; retry < 50; retry++) {
+            FILE *sf = fopen("/tmp/.kryon-screensize", "r");
+            if (sf != NULL) {
+                fscanf(sf, "%d %d", &width, &height);
+                fclose(sf);
+                if (width > 0 && height > 0) break;
+            }
+            if (retry == 0) {
+                fprintf(stderr, "Waiting for WM to write screen dimensions...\n");
+            }
+            usleep(100000);  /* 100ms */
+        }
+        if (width == 0 || height == 0) {
+            fprintf(stderr, "Warning: could not read screen dimensions after 5s\n");
+        }
+    }
+
+    /* If screen is 0x0: no windows defined, exit cleanly */
+    if (width == 0 || height == 0) {
+        fprintf(stderr, "Screen is 0x0 — no windows defined\n");
+        p9_disconnect(dc->p9);
+        free(dc);
+        return NULL;
+    }
+
     /* Open screen device */
     dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
     if (dc->screen_fd < 0) {

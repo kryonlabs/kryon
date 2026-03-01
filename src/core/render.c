@@ -55,6 +55,48 @@ static unsigned long parse_color(const char *hex_color)
 }
 
 /*
+ * Lighten a color by ~30% for highlight edges (Tk-style bevel)
+ */
+static unsigned long lighten_color(unsigned long color)
+{
+    int r, g, b, a;
+
+    r = ((color >> 24) & 0xFF);
+    g = ((color >> 16) & 0xFF);
+    b = ((color >> 8) & 0xFF);
+    a = color & 0xFF;
+
+    /* Lighten by blending with white (7/8 original + 1/8 white) */
+    r = (r * 7 + 255) / 8;
+    g = (g * 7 + 255) / 8;
+    b = (b * 7 + 255) / 8;
+
+    return ((unsigned long)r << 24) | ((unsigned long)g << 16) |
+           ((unsigned long)b << 8) | a;
+}
+
+/*
+ * Darken a color by ~30% for shadow edges (Tk-style bevel)
+ */
+static unsigned long darken_color(unsigned long color)
+{
+    int r, g, b, a;
+
+    r = ((color >> 24) & 0xFF);
+    g = ((color >> 16) & 0xFF);
+    b = ((color >> 8) & 0xFF);
+    a = color & 0xFF;
+
+    /* Darken to 2/3 of original value */
+    r = r * 2 / 3;
+    g = g * 2 / 3;
+    b = b * 2 / 3;
+
+    return ((unsigned long)r << 24) | ((unsigned long)g << 16) |
+           ((unsigned long)b << 8) | a;
+}
+
+/*
  * Render a single widget to screen
  */
 void render_widget(KryonWidget *w, Memimage *screen)
@@ -107,7 +149,57 @@ void render_widget(KryonWidget *w, Memimage *screen)
         }
         memfillcolor_rect(screen, widget_rect, color);
 
-        /* TODO: Render text label */
+        /* Draw Tk-style beveled edges */
+        {
+            unsigned long highlight = lighten_color(color);
+            unsigned long shadow = darken_color(color);
+            int thickness = 2;
+
+            /* Top edge (highlight) */
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                         Pt(widget_rect.max.x - 1, widget_rect.min.y), highlight, thickness);
+            /* Left edge (highlight) */
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                         Pt(widget_rect.min.x, widget_rect.max.y - 1), highlight, thickness);
+            /* Bottom edge (shadow) */
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
+                         Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
+            /* Right edge (shadow) */
+            memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                         Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
+        }
+
+        /* Render text label - centered */
+        if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+            Point text_pos;
+            unsigned long text_color;
+            Subfont *font;
+            int text_width;
+            int button_width, button_height;
+
+            /* White text */
+            text_color = DWhite;
+
+            /* Calculate text width (assuming 8px per character for font) */
+            text_width = (int)strlen(w->prop_text) * 8;
+
+            /* Calculate button dimensions */
+            button_width = widget_rect.max.x - widget_rect.min.x;
+            button_height = widget_rect.max.y - widget_rect.min.y;
+
+            /* Center text: button_center - text_half_width */
+            text_pos.x = widget_rect.min.x + (button_width - text_width) / 2;
+            /* Vertically center 16px tall font */
+            text_pos.y = widget_rect.min.y + (button_height - 16) / 2 + 12; /* +12 for baseline */
+
+            /* Check if a 9front font is available */
+            font = memdraw_get_default_font();
+            if (font != NULL) {
+                memdraw_text_font(screen, text_pos, w->prop_text, font, text_color);
+            } else {
+                memdraw_text(screen, text_pos, w->prop_text, text_color);
+            }
+        }
         break;
 
     case WIDGET_LABEL:
