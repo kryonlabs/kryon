@@ -52,6 +52,13 @@ static int is_our_file(const struct inotify_event *event);
 static int reload_kryon_file(void);
 
 /*
+ * Forward declarations for event loop handler functions
+ */
+static void handle_mouse_events(void);
+static void handle_inotify_events(void);
+static void process_render_phase(void);
+
+/*
  * List .kry files in a directory recursively
  */
 static void list_kry_files(const char *base_path, const char *prefix)
@@ -186,6 +193,61 @@ static void signal_handler(int sig)
 {
     (void)sig;
     running = 0;
+}
+
+/*
+ * ========== Event Loop Handler Functions ==========
+ */
+
+/*
+ * Handle mouse events from FIFO
+ */
+static void handle_mouse_events(void)
+{
+    char mbuf[128];
+    ssize_t nr = read(g_mouse_fifo_fd, mbuf, sizeof(mbuf) - 1);
+    if (nr > 0) {
+        KryonWindow *win = window_get(1);
+        if (win != NULL) {
+            vdev_mouse_write(mbuf, nr, 0, win);
+        }
+        g_render_dirty = 1;
+    }
+}
+
+/*
+ * Handle inotify events for hot-reload
+ */
+static void handle_inotify_events(void)
+{
+    char event_buf[4096];
+    ssize_t len = read(g_inotify_fd, event_buf, sizeof(event_buf));
+    size_t i = 0;
+    static time_t last_reload = 0;
+
+    while (i < (size_t)len) {
+        struct inotify_event *event = (struct inotify_event *)&event_buf[i];
+        if (is_our_file(event)) {
+            time_t now = time(NULL);
+            if (now - last_reload >= 1) {
+                reload_kryon_file();
+                last_reload = now;
+            }
+        }
+        i += sizeof(struct inotify_event) + event->len;
+    }
+}
+
+/*
+ * Process rendering phase
+ */
+static void process_render_phase(void)
+{
+    if (g_render_dirty) {
+        g_render_dirty = 0;
+        render_all();
+        push_screen_to_marrow();
+    }
 }
 
 /*
@@ -599,137 +661,70 @@ event_loop:
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    /* Enhanced event loop with optional inotify monitoring */
+    /* Unified event loop following Plan 9 philosophy */
     if (watch_mode) {
-        struct pollfd fds[1];
-        char event_buf[4096];
-        ssize_t len;
-        size_t i;
-        time_t last_reload = 0;
-
-        fds[0].fd = g_inotify_fd;
-        fds[0].events = POLLIN;
-
         fprintf(stderr, "Watch mode active - monitoring for file changes\n");
+    }
 
-        while (running) {
-            int poll_result;
+    while (running) {
+        struct pollfd fds[2];
+        int nfds = 0;
+        int poll_result;
+        int i;  /* C90: declare at top of block */
 
-            /* Read mouse events from FIFO */
-            if (g_mouse_fifo_fd >= 0) {
-                char mbuf[128];
-                ssize_t nr = read(g_mouse_fifo_fd, mbuf, sizeof(mbuf) - 1);
-                if (nr > 0) {
-                    KryonWindow *mwin = window_get(1);
-                    if (mwin != NULL) {
-                        vdev_mouse_write(mbuf, nr, 0, mwin);
-                    }
+        /* Build FD array: mouse FIFO is always present */
+        fds[nfds].fd = g_mouse_fifo_fd;
+        fds[nfds].events = POLLIN;
+        nfds++;
+
+        /* Add inotify FD in watch mode */
+        if (watch_mode && g_inotify_fd >= 0) {
+            fds[nfds].fd = g_inotify_fd;
+            fds[nfds].events = POLLIN;
+            nfds++;
+        }
+
+        /* Block until events arrive (indefinite = more efficient) */
+        poll_result = poll(fds, nfds, -1);
+
+        if (poll_result < 0) {
+            if (errno == EINTR) continue;
+            fprintf(stderr, "Error: poll() failed: %s\n", strerror(errno));
+            break;
+        }
+
+        /* Dispatch events to handlers */
+        for (i = 0; i < nfds; i++) {
+            if (fds[i].revents & POLLIN) {
+                if (fds[i].fd == g_mouse_fifo_fd) {
+                    handle_mouse_events();
+                } else if (fds[i].fd == g_inotify_fd) {
+                    handle_inotify_events();
                 }
-            }
-
-            /* Re-render if mouse or other state changed */
-            if (g_render_dirty) {
-                g_render_dirty = 0;
-                render_all();
-                push_screen_to_marrow();
-            }
-
-            /* Check WM control flags */
-            if (g_wm_quit_requested) {
-                running = 0;
-                break;
-            }
-            if (g_wm_reload_requested) {
-                g_wm_reload_requested = 0;
-                if (g_wm_load_path[0] != '\0') {
-                    g_watch_file = g_wm_load_path;
-                }
-                reload_kryon_file();
-                last_reload = time(NULL);
-                g_wm_load_path[0] = '\0';
-            }
-
-            /* Poll inotify with 16ms timeout (~60 fps) */
-            poll_result = poll(fds, 1, 16);
-
-            if (poll_result < 0) {
-                if (errno == EINTR) continue;
-                fprintf(stderr, "Error: poll() failed: %s\n", strerror(errno));
-                break;
-            }
-
-            if (poll_result == 0) continue;  /* Timeout */
-
-            /* Event available - read it */
-            len = read(g_inotify_fd, event_buf, sizeof(event_buf));
-            if (len < 0) {
-                if (errno == EINTR) continue;
-                fprintf(stderr, "Error: read() from inotify failed: %s\n", strerror(errno));
-                break;
-            }
-
-            /* Process events */
-            i = 0;
-            while (i < (size_t)len) {
-                struct inotify_event *event = (struct inotify_event *)&event_buf[i];
-
-                if (is_our_file(event)) {
-                    /* Debounce: wait 1 second after last event */
-                    time_t now = time(NULL);
-                    if (now - last_reload >= 1) {
-                        reload_kryon_file();
-                        last_reload = now;
-                    }
-                }
-
-                i += sizeof(struct inotify_event) + event->len;
             }
         }
 
+        /* Check WM control flags (set by /mnt/wm/ctl writes) */
+        if (g_wm_quit_requested) {
+            running = 0;
+            break;
+        }
+        if (g_wm_reload_requested) {
+            g_wm_reload_requested = 0;
+            if (g_wm_load_path[0] != '\0') {
+                g_watch_file = g_wm_load_path;
+            }
+            reload_kryon_file();
+            g_wm_load_path[0] = '\0';
+        }
+
+        /* Render phase: process dirty flag */
+        process_render_phase();
+    }
+
+    /* Cleanup watch mode resources */
+    if (watch_mode) {
         cleanup_file_watch();
-    } else {
-        /* ~60 fps loop - checks WM control flags and re-renders on input */
-        while (running) {
-            struct timespec ts;
-
-            /* Read mouse events from FIFO */
-            if (g_mouse_fifo_fd >= 0) {
-                char mbuf[128];
-                ssize_t nr;
-                nr = read(g_mouse_fifo_fd, mbuf, sizeof(mbuf) - 1);
-                if (nr > 0) {
-                    KryonWindow *mwin;
-                    mbuf[nr] = '\0';
-                    mwin = window_get(1);
-                    if (mwin != NULL) {
-                        vdev_mouse_write(mbuf, nr, 0, mwin);
-                    }
-                }
-            }
-
-            /* Re-render if mouse or other state changed */
-            if (g_render_dirty) {
-                g_render_dirty = 0;
-                render_all();
-                push_screen_to_marrow();
-            }
-
-            ts.tv_sec = 0;
-            ts.tv_nsec = 16000000;  /* ~16 ms → ~60 fps */
-            nanosleep(&ts, NULL);
-            if (g_wm_quit_requested) {
-                running = 0;
-                break;
-            }
-            if (g_wm_reload_requested) {
-                g_wm_reload_requested = 0;
-                if (g_wm_load_path[0] != '\0') {
-                    g_watch_file = g_wm_load_path;
-                }
-                reload_kryon_file();
-                g_wm_load_path[0] = '\0';
-            }
-        }
     }
 
     /* Cleanup */
