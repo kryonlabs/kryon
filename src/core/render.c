@@ -310,10 +310,10 @@ void render_widget(KryonWidget *w, Memimage *screen)
                 is_hovered = ptinrect(mp, widget_rect);
             }
 
-            /* Tk-style colors (format: 0xRRGGBBAA) */
-            bg_color = is_hovered ? 0xFFE0E0E0 : 0xFFFFFFFF;  /* Light gray on hover, white otherwise */
+            /* Tk-style colors (format: 0xRRGGBBAA) - all RGB equal for neutral gray */
+            bg_color = is_hovered ? 0xE0E0E0FF : 0xFFFFFFFF;  /* Light gray on hover, white otherwise */
             highlight_color = 0xFFFFFFFF;  /* White highlight */
-            shadow_color = 0xFF888888;    /* Dark gray shadow (Tk standard) */
+            shadow_color = 0x808080FF;    /* Dark gray shadow (Tk standard) */
 
             /* Background with hover effect */
             memfillcolor_rect(screen, check_rect, bg_color);
