@@ -4,7 +4,7 @@
 window slider_demo "Slider Widget Demo" 450 500 {
     vbox gap=20 padding=20 {
         # Heading
-        label heading "Interactive Sliders" { color "#00FF00" }
+        label heading "Interactive Sliders" { color "#000000" }
 
         # Single-value sliders
         label "Volume Control (0-100):"

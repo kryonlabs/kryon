@@ -1,7 +1,7 @@
 # Checkbox Widget Demo
 window checkbox_demo "Checkbox Demo" 400 300 {
     vbox gap=15 padding=20 {
-        label heading "Checkbox Demo" { color "#00FF00" }
+        label heading "Checkbox Demo" { color "#000000" }
 
         checkbox chk1 "Unchecked checkbox"
         checkbox chk2 "Pre-checked checkbox" { value "1" }

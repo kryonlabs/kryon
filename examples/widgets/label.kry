@@ -4,7 +4,7 @@
 window label_demo "Label Widget Demo" 400 500 {
     vbox gap=15 padding=20 {
         # Heading
-        label heading "Label Widgets" { color "#00FF00" }
+        label heading "Label Widgets" { color "#000000" }
 
         # Standard label (default white)
         label label1 "Standard Label (White)"

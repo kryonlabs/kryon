@@ -4,7 +4,7 @@
 window progressbar_demo "Progress Bar Widget Demo" 400 500 {
     vbox gap=15 padding=20 {
         # Heading
-        label heading "Progress Bar Widgets" { color "#00FF00" }
+        label heading "Progress Bar Widgets" { color "#000000" }
 
         # 0% progress (empty)
         label label0 "0% - Empty"
