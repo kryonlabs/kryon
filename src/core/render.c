@@ -133,7 +133,7 @@ void render_widget(KryonWidget *w, Memimage *screen)
                 color = 0xD9D9D9FF;  /* Fallback to gray on parse error */
             }
         } else {
-            color = 0xD9D9D9FF;  /* Tk default button gray */
+            color = 0xC0C0C0FF;  /* Button gray - darker than window bg for contrast */
         }
         /* Hover highlight: lighten button when cursor is over it */
         if (w->parent_window != NULL) {
@@ -144,6 +144,20 @@ void render_widget(KryonWidget *w, Memimage *screen)
                 color = lighten_color(color);
             }
         }
+
+        /* Check for pressed state - button appears "sunken" when clicked */
+        int is_pressed = 0;
+        if (w->parent_window != NULL && w->parent_window->mouse_buttons != 0) {
+            Point mp;
+            mp.x = w->parent_window->mouse_x;
+            mp.y = w->parent_window->mouse_y;
+            if (ptinrect(mp, widget_rect)) {
+                is_pressed = 1;
+                /* Darken color to simulate being pressed down */
+                color = darken_color(color);
+            }
+        }
+
         memfillcolor_rect(screen, widget_rect, color);
 
         /* Draw Tk-style beveled edges */
@@ -151,6 +165,13 @@ void render_widget(KryonWidget *w, Memimage *screen)
             unsigned long highlight = lighten_color(color);
             unsigned long shadow = darken_color(color);
             int thickness = 2;
+
+            /* When pressed, invert the bevel to look "sunken" */
+            if (is_pressed) {
+                unsigned long temp = highlight;
+                highlight = shadow;
+                shadow = temp;
+            }
 
             /* Top edge (highlight) */
             memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),

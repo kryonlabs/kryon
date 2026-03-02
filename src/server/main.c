@@ -700,13 +700,9 @@ event_loop:
                 if (nr > 0) {
                     KryonWindow *mwin;
                     mbuf[nr] = '\0';
-                    fprintf(stderr, "DEBUG: got mouse data: '%s'\n", mbuf); fflush(stderr);
                     mwin = window_get(1);
-                    fprintf(stderr, "DEBUG: mwin=%p\n", (void*)mwin); fflush(stderr);
                     if (mwin != NULL) {
-                        fprintf(stderr, "DEBUG: event_queue=%p\n", (void*)mwin->event_queue); fflush(stderr);
                         vdev_mouse_write(mbuf, nr, 0, mwin);
-                        fprintf(stderr, "DEBUG: vdev_mouse_write done, dirty=%d\n", g_render_dirty); fflush(stderr);
                     }
                 }
             }
