@@ -501,18 +501,25 @@ static int handle_sdl_event(DisplayClient *dc
                                 1);
         break;
     case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP:
+        fprintf(stderr, "SDL: MOUSEBUTTONDOWN button=%d\n", ev->button.button);
         display_client_send_mouse(dc,
                                   ev->button.x,
                                   ev->button.y,
-                                  (ev->type == SDL_MOUSEBUTTONDOWN) ? ev->button.button : 0);
+                                  ev->button.button);
+        break;
+    case SDL_MOUSEBUTTONUP:
+        fprintf(stderr, "SDL: MOUSEBUTTONUP button=%d\n", ev->button.button);
+        display_client_send_mouse(dc,
+                                  ev->button.x,
+                                  ev->button.y,
+                                  0);
         break;
 
     case SDL_MOUSEMOTION:
         display_client_send_mouse(dc,
                                   ev->motion.x,
                                   ev->motion.y,
-                                  0);
+                                  ev->motion.state);
         break;
 
     case SDL_KEYUP:
@@ -546,6 +553,10 @@ int display_client_send_mouse(DisplayClient *dc, int x, int y, int buttons)
 
     if (dc == NULL || !dc->connected) {
         return -1;
+    }
+
+    if (buttons != 0) {
+        fprintf(stderr, "send_mouse: x=%d y=%d buttons=%d\n", x, y, buttons);
     }
 
     /* Retry FIFO open if WM hadn't created it yet */

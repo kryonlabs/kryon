@@ -98,6 +98,8 @@ TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
 P9CLIENT_SRCS = $(SRC_DIR)/lib/client/p9client.c $(SRC_DIR)/lib/client/marrow.c
 CLIENT_SRCS = $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c
+# CLI (Flutter-like command-line interface)
+CLI_SRCS = $(SRC_DIR)/cli/main.c $(SRC_DIR)/cli/commands.c $(SRC_DIR)/cli/yaml.c
 SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(KRYON_SRCS) $(TRANSPORT_SRCS) \
        $(P9CLIENT_SRCS) $(SYS_SRCS)
 
@@ -134,6 +136,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/lib/client
 	mkdir -p $(BUILD_DIR)/sys
 	mkdir -p $(BUILD_DIR)/kryon
+	mkdir -p $(BUILD_DIR)/cli
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
@@ -152,9 +155,12 @@ $(KRYON_WM_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) $(MARROW_GRAPHICS_OBJ
 $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN_DIR)
 	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport $< $(CLIENT_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(DISPLAY_LDFLAGS)
 
-# Kryon convenience wrapper
-$(KRYON_TARGET): kryon.sh | $(BIN_DIR)
-	cp kryon.sh $(KRYON_TARGET)
+# Kryon CLI binary (replaces kryon.sh wrapper)
+$(KRYON_TARGET): $(CLI_SRCS) | $(BIN_DIR)
+	@mkdir -p $(BUILD_DIR)/cli
+	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli \
+		$(SRC_DIR)/cli/main.c $(SRC_DIR)/cli/commands.c $(SRC_DIR)/cli/yaml.c \
+		-o $@ $(LDFLAGS)
 	chmod +x $(KRYON_TARGET)
 
 # PPM screenshot tool
@@ -199,6 +205,19 @@ $(BUILD_DIR)/lib/client/p9client.o: $(SRC_DIR)/lib/client/p9client.c
 $(BUILD_DIR)/lib/client/marrow.o: $(SRC_DIR)/lib/client/marrow.c
 	@mkdir -p $(BUILD_DIR)/lib/client
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+
+# Compile CLI object files
+$(BUILD_DIR)/cli/main.o: $(SRC_DIR)/cli/main.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/cli
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -c $< -o $@
+
+$(BUILD_DIR)/cli/commands.o: $(SRC_DIR)/cli/commands.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/cli
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -c $< -o $@
+
+$(BUILD_DIR)/cli/yaml.o: $(SRC_DIR)/cli/yaml.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/cli
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -c $< -o $@
 
 # Build Marrow graphics objects (for linking with Kryon)
 $(BUILD_DIR)/marrow:

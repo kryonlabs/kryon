@@ -297,6 +297,9 @@ ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
     tmp[copy_len] = '\0';
     /* "m 0 x y buttons 0\n" — skip leading 'm' and first field */
     if (sscanf(tmp, "m %*d %d %d %d", &mx, &my, &mb) >= 2) {
+        if (mb != 0) {
+            fprintf(stderr, "vdev_mouse: button=%d pos=(%d,%d)\n", mb, mx, my);
+        }
         /* Save previous button state for click detection */
         win->last_mouse_buttons = win->mouse_buttons;
         /* Always update mouse position and trigger re-render */

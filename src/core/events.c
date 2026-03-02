@@ -265,7 +265,7 @@ EventQueue *widget_event_queue(KryonWidget *widget)
 
 /*
  * Read from event file
- * Returns event data in text format
+ * Returns event data in JSON format for Lua dkjson parsing
  */
 ssize_t event_file_read(char *buf, size_t count, uint64_t offset, EventQueue *eq)
 {
@@ -273,6 +273,7 @@ ssize_t event_file_read(char *buf, size_t count, uint64_t offset, EventQueue *eq
     char msg[512];
     int len;
     const char *type_str;
+    const char *widget_name = "unknown";
 
     (void)offset;  /* Events are stream-oriented */
 
@@ -286,7 +287,12 @@ ssize_t event_file_read(char *buf, size_t count, uint64_t offset, EventQueue *eq
         return 0;
     }
 
-    /* Format event */
+    /* Get widget name if available */
+    if (eq->widget != NULL && eq->widget->name != NULL) {
+        widget_name = eq->widget->name;
+    }
+
+    /* Format event type */
     switch (ev.type) {
         case EVENT_MOUSE_CLICK:
             type_str = "click";
@@ -314,9 +320,14 @@ ssize_t event_file_read(char *buf, size_t count, uint64_t offset, EventQueue *eq
             break;
     }
 
+    /* Format as JSON */
     len = sprintf(msg,
-                  "%s x=%d y=%d button=%d msec=%lu\n",
+                  "{\"type\":\"%s\",\"widget_id\":%u,\"widget_name\":\"%s\",\"window_id\":%u,"
+                  "\"x\":%d,\"y\":%d,\"button\":%d,\"timestamp\":%lu}\n",
                   type_str,
+                  ev.widget_id,
+                  widget_name,
+                  (eq->widget && eq->widget->parent_window) ? eq->widget->parent_window->id : 0,
                   ev.xy.x,
                   ev.xy.y,
                   ev.button,

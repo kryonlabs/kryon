@@ -1114,25 +1114,15 @@ void render_widget(KryonWidget *w, Memimage *screen)
         /* Get or create slider state */
         state = (SliderState *)w->internal_data;
         if (state == NULL) {
-            fprintf(stderr, "Slider: CREATING NEW STATE at %p\n", (void *)state);
             state = slider_state_create();
             if (state == NULL) break;
             w->internal_data = state;
-            fprintf(stderr, "Slider: Created state at %p\n", (void *)state);
             /* Initialize value from prop_value */
             if (w->prop_value != NULL) {
                 state->value = (float)atof(w->prop_value);
                 if (state->value < 0.0f) state->value = 0.0f;
                 if (state->value > 100.0f) state->value = 100.0f;
             }
-        } else {
-            static int last_state_ptr = 0;
-            int current_state_ptr = (int)(long)state;
-            if (last_state_ptr != 0 && last_state_ptr != current_state_ptr) {
-                fprintf(stderr, "Slider: STATE CHANGED! was %p, now %p\n",
-                        (void *)(long)last_state_ptr, (void *)state);
-            }
-            last_state_ptr = current_state_ptr;
         }
 
         value = state->value;
@@ -1204,51 +1194,34 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
         /* Handle mouse interaction */
         if (w->parent_window != NULL && w->prop_enabled) {
-            /* Debug: print mouse state */
-            const char *widget_label = w->prop_text ? w->prop_text : "unnamed";
-            fprintf(stderr, "Slider[%s@%p]: last_btn=%d cur_btn=%d hovering=%d track_hover=%d dragging=%d mouse=(%d,%d) state=%p\n",
-                    widget_label, (void *)w,
-                    w->parent_window->last_mouse_buttons,
-                    w->parent_window->mouse_buttons,
-                    state->is_hovering,
-                    state->is_track_hovering,
-                    state->is_dragging,
-                    mouse_pos.x, mouse_pos.y,
-                    (void *)state);
-
             /* Click on track or handle - start dragging */
             if (w->parent_window->last_mouse_buttons == 0 &&
                 w->parent_window->mouse_buttons != 0) {
-                fprintf(stderr, "Slider[%s@%p]: BUTTON PRESS detected\n", widget_label, (void *)w);
                 if (state->is_hovering || state->is_track_hovering) {
-                    fprintf(stderr, "Slider[%s@%p]: Starting drag - value was %.1f\n", widget_label, (void *)w, state->value);
+                    const char *widget_label = w->prop_text ? w->prop_text : "unnamed";
+                    fprintf(stderr, "DRAG_START: %s last_btn=%d cur_btn=%d\n",
+                            widget_label,
+                            w->parent_window->last_mouse_buttons,
+                            w->parent_window->mouse_buttons);
                     state->is_dragging = 1;
-                    fprintf(stderr, "Slider[%s@%p]: Set is_dragging=1 at state=%p\n", widget_label, (void *)w, (void *)state);
-                    /* Update value from mouse position */
                     update_slider_value(w, calculate_value_from_position(mouse_pos.x, track_rect));
                     state->value = (float)atof(w->prop_value);
-                    fprintf(stderr, "Slider[%s@%p]: Value now %.1f, is_dragging=%d\n", widget_label, (void *)w, state->value, state->is_dragging);
                 }
             }
             /* Release mouse - stop dragging */
             if (w->parent_window->last_mouse_buttons != 0 &&
                 w->parent_window->mouse_buttons == 0) {
-                fprintf(stderr, "Slider[%s@%p]: BUTTON RELEASE - stopping drag\n", widget_label, (void *)w);
+                const char *widget_label = w->prop_text ? w->prop_text : "unnamed";
+                fprintf(stderr, "DRAG_END: %s was_dragging=%d\n",
+                        widget_label,
+                        state->is_dragging);
                 state->is_dragging = 0;
             }
             /* Dragging - update value (independent check, not else-if!) */
             if (state->is_dragging && w->parent_window->mouse_buttons != 0) {
                 float new_val = calculate_value_from_position(mouse_pos.x, track_rect);
-                fprintf(stderr, "Slider[%s@%p]: DRAGGING - new_val=%.1f\n", widget_label, (void *)w, new_val);
                 update_slider_value(w, new_val);
                 state->value = (float)atof(w->prop_value);
-            }
-        } else {
-            if (w->parent_window == NULL) {
-                fprintf(stderr, "Slider: parent_window is NULL!\n");
-            }
-            if (!w->prop_enabled) {
-                fprintf(stderr, "Slider: widget is disabled!\n");
             }
         }
 
