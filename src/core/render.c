@@ -97,6 +97,35 @@ static unsigned long darken_color(unsigned long color)
 }
 
 /*
+ * Check if widget was clicked (mouse released over widget)
+ */
+static int is_widget_clicked(KryonWidget *w)
+{
+    Point mp;
+    Rectangle widget_rect;
+
+    if (w->parent_window == NULL || w->prop_enabled == 0) {
+        return 0;
+    }
+
+    if (parse_rect(w->prop_rect, &widget_rect) < 0) {
+        return 0;
+    }
+
+    /* Detect click: button was pressed, now released */
+    if (w->parent_window->last_mouse_buttons != 0 &&
+        w->parent_window->mouse_buttons == 0) {
+        mp.x = w->parent_window->mouse_x;
+        mp.y = w->parent_window->mouse_y;
+        if (ptinrect(mp, widget_rect)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+/*
  * Render a single widget to screen
  */
 void render_widget(KryonWidget *w, Memimage *screen)
@@ -259,8 +288,65 @@ void render_widget(KryonWidget *w, Memimage *screen)
         break;
 
     case WIDGET_CHECKBOX:
+        {
+            Rectangle check_rect;
+            int check_size = 16;
+            Point text_pos;
+            Subfont *font;
+
+            /* Checkbox indicator */
+            check_rect.min.x = widget_rect.min.x;
+            check_rect.min.y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y - check_size) / 2;
+            check_rect.max.x = check_rect.min.x + check_size;
+            check_rect.max.y = check_rect.min.y + check_size;
+
+            /* White background */
+            memfillcolor_rect(screen, check_rect, 0xFFFFFFFF);
+
+            /* Border */
+            memdraw_line(screen, Pt(check_rect.min.x, check_rect.min.y),
+                         Pt(check_rect.max.x - 1, check_rect.min.y), 0xFF000000, 2);
+            memdraw_line(screen, Pt(check_rect.min.x, check_rect.min.y),
+                         Pt(check_rect.min.x, check_rect.max.y - 1), 0xFF000000, 2);
+            memdraw_line(screen, Pt(check_rect.min.x, check_rect.max.y - 1),
+                         Pt(check_rect.max.x - 1, check_rect.max.y - 1), 0xFF000000, 2);
+            memdraw_line(screen, Pt(check_rect.max.x - 1, check_rect.min.y),
+                         Pt(check_rect.max.x - 1, check_rect.max.y - 1), 0xFF000000, 2);
+
+            /* Checkmark if checked */
+            if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
+                int cx = check_rect.min.x;
+                int cy = check_rect.min.y;
+                memdraw_line(screen, Pt(cx + 4, cy + 8), Pt(cx + 7, cy + 11), 0xFF000000, 2);
+                memdraw_line(screen, Pt(cx + 7, cy + 11), Pt(cx + 12, cy + 5), 0xFF000000, 2);
+            }
+
+            /* Label text */
+            if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                text_pos.x = check_rect.max.x + 4;
+                text_pos.y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y - 16) / 2;
+                font = memdraw_get_default_font();
+                if (font != NULL) {
+                    memdraw_text_font(screen, text_pos, w->prop_text, font, DBlack);
+                } else {
+                    memdraw_text(screen, text_pos, w->prop_text, DBlack);
+                }
+            }
+
+            /* Handle click */
+            if (is_widget_clicked(w)) {
+                int new_val = (w->prop_value == NULL || atoi(w->prop_value) == 0) ? 1 : 0;
+                free(w->prop_value);
+                w->prop_value = (char *)malloc(2);
+                if (w->prop_value != NULL) {
+                    sprintf(w->prop_value, "%d", new_val);
+                }
+            }
+        }
+        break;
+
     case WIDGET_SWITCH:
-        /* Checkbox/toggle rendering */
+        /* Switch/toggle rendering */
         if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
             color = 0xFF00FF00;  /* Green when checked */
         } else {

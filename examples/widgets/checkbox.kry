@@ -1,21 +1,11 @@
 # Checkbox Widget Demo
-# Demonstrates checkbox widget for boolean selection
-
-window checkbox_demo "Checkbox Widget Demo" 400 300 {
+window checkbox_demo "Checkbox Demo" 400 300 {
     vbox gap=15 padding=20 {
-        # Heading
-        label heading "Checkbox Widgets" { color "#00FF00" }
+        label heading "Checkbox Demo" { color "#00FF00" }
 
-        # Standard checkbox
-        checkbox check1 "Enable Feature A"
+        checkbox chk1 "Unchecked checkbox"
+        checkbox chk2 "Another unchecked"
 
-        # Another checkbox
-        checkbox check2 "Enable Feature B"
-
-        # Third checkbox
-        checkbox check3 "Enable Feature C"
-
-        # Fourth checkbox
-        checkbox check4 "Enable Notifications"
+        label info "Click to toggle"
     }
 }

@@ -88,6 +88,7 @@ typedef struct KryonWindow {
     int mouse_x;        /* cursor X in window coords */
     int mouse_y;        /* cursor Y in window coords */
     int mouse_buttons;  /* button bitmask from last mouse packet */
+    int last_mouse_buttons;  /* previous button state for click detection */
 
     /* Per-window event stream */
     EventQueue *event_queue;        /* Event queue for /mnt/wm/win/{id}/events */
