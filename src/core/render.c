@@ -1274,17 +1274,7 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
         /* Check mouse hover state */
         {
-            int square_size = 10;
-            int square_gap = 2;
-            int total_height = square_size * 2 + square_gap;
-            int top_y = center.y - total_height / 2;
-            Rectangle handle_area;
-
-            /* Rectangle covering both squares */
-            handle_area.min.x = center.x - square_size / 2;
-            handle_area.min.y = top_y;
-            handle_area.max.x = center.x + square_size / 2;
-            handle_area.max.y = top_y + total_height;
+            Rectangle handle_area = get_two_square_handle_rect(center);
 
             mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
             mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
@@ -1327,74 +1317,10 @@ void render_widget(KryonWidget *w, Memimage *screen)
         handle_highlight = lighten_color(handle_color);
         handle_shadow = darken_color(handle_color);
 
-        /* Draw TWO-SQUARE handle (Tk style) */
-        {
-            int square_size = 10;  /* Each square is 10x10 pixels */
-            int square_gap = 2;    /* 2 pixel gap between squares */
-            Rectangle sq1, sq2;
-            int total_height = square_size * 2 + square_gap;
-            int top_y = center.y - total_height / 2;
-
-            /* Top square */
-            sq1.min.x = center.x - square_size / 2;
-            sq1.min.y = top_y;
-            sq1.max.x = sq1.min.x + square_size;
-            sq1.max.y = sq1.min.y + square_size;
-
-            /* Bottom square */
-            sq2.min.x = center.x - square_size / 2;
-            sq2.min.y = top_y + square_size + square_gap;
-            sq2.max.x = sq2.min.x + square_size;
-            sq2.max.y = sq2.min.y + square_size;
-
-            /* Draw first square with 3D bevel */
-            memfillcolor_rect(screen, sq1, handle_color);
-            /* Top edge highlight */
-            memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
-                        Pt(sq1.max.x - 1, sq1.min.y), handle_highlight, 2);
-            /* Left edge highlight */
-            memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
-                        Pt(sq1.min.x, sq1.max.y - 1), handle_highlight, 2);
-            /* Bottom edge shadow */
-            memdraw_line(screen, Pt(sq1.min.x, sq1.max.y - 2),
-                        Pt(sq1.max.x - 1, sq1.max.y - 2), handle_shadow, 2);
-            /* Right edge shadow */
-            memdraw_line(screen, Pt(sq1.max.x - 2, sq1.min.y),
-                        Pt(sq1.max.x - 2, sq1.max.y - 1), handle_shadow, 2);
-            /* Border */
-            memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
-                        Pt(sq1.max.x - 1, sq1.min.y), border_color, 1);
-            memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
-                        Pt(sq1.min.x, sq1.max.y - 1), border_color, 1);
-            memdraw_line(screen, Pt(sq1.min.x, sq1.max.y - 1),
-                        Pt(sq1.max.x - 1, sq1.max.y - 1), border_color, 1);
-            memdraw_line(screen, Pt(sq1.max.x - 1, sq1.min.y),
-                        Pt(sq1.max.x - 1, sq1.max.y - 1), border_color, 1);
-
-            /* Draw second square with 3D bevel */
-            memfillcolor_rect(screen, sq2, handle_color);
-            /* Top edge highlight */
-            memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
-                        Pt(sq2.max.x - 1, sq2.min.y), handle_highlight, 2);
-            /* Left edge highlight */
-            memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
-                        Pt(sq2.min.x, sq2.max.y - 1), handle_highlight, 2);
-            /* Bottom edge shadow */
-            memdraw_line(screen, Pt(sq2.min.x, sq2.max.y - 2),
-                        Pt(sq2.max.x - 1, sq2.max.y - 2), handle_shadow, 2);
-            /* Right edge shadow */
-            memdraw_line(screen, Pt(sq2.max.x - 2, sq2.min.y),
-                        Pt(sq2.max.x - 2, sq2.max.y - 1), handle_shadow, 2);
-            /* Border */
-            memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
-                        Pt(sq2.max.x - 1, sq2.min.y), border_color, 1);
-            memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
-                        Pt(sq2.min.x, sq2.max.y - 1), border_color, 1);
-            memdraw_line(screen, Pt(sq2.min.x, sq2.max.y - 1),
-                        Pt(sq2.max.x - 1, sq2.max.y - 1), border_color, 1);
-            memdraw_line(screen, Pt(sq2.max.x - 1, sq2.min.y),
-                        Pt(sq2.max.x - 1, sq2.max.y - 1), border_color, 1);
-        }
+        /* Draw TWO-SQUARE handle (Tk style, horizontal orientation) */
+        draw_two_square_handle(screen, center, handle_color,
+                              border_color, handle_highlight, handle_shadow,
+                              state->is_dragging);
     }
     break;
 
@@ -1486,11 +1412,16 @@ void render_widget(KryonWidget *w, Memimage *screen)
         max_center = calculate_handle_position(track_rect, max_val, handle_radius);
 
         /* Check mouse hover state */
-        mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
-        mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
-        state->is_min_hovering = is_point_in_handle(mouse_pos, min_center, handle_radius);
-        state->is_max_hovering = is_point_in_handle(mouse_pos, max_center, handle_radius);
-        state->is_track_hovering = ptinrect(mouse_pos, track_rect);
+        {
+            Rectangle min_handle_rect = get_two_square_handle_rect(min_center);
+            Rectangle max_handle_rect = get_two_square_handle_rect(max_center);
+
+            mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
+            mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
+            state->is_min_hovering = ptinrect(mouse_pos, min_handle_rect);
+            state->is_max_hovering = ptinrect(mouse_pos, max_handle_rect);
+            state->is_track_hovering = ptinrect(mouse_pos, track_rect);
+        }
 
         /* Handle mouse interaction */
         if (w->parent_window != NULL && w->prop_enabled) {
@@ -1545,31 +1476,33 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
         /* Draw min handle */
         if (state->is_dragging_min) {
-            handle_color = 0xE0E0E0FF;
+            handle_color = 0xD0D0D0FF;  /* Darker when dragging */
         } else if (state->is_min_hovering) {
-            handle_color = 0xF0F0F0FF;
+            handle_color = 0xE8E8E8FF;  /* Lighter on hover */
         } else {
-            handle_color = 0xFFFFFFFF;
+            handle_color = 0xE0E0E0FF;  /* Light gray normally (Tk style) */
         }
         handle_highlight = lighten_color(handle_color);
         handle_shadow = darken_color(handle_color);
 
-        draw_square_handle(screen, min_center, handle_radius, handle_color,
-                           border_color, handle_highlight, handle_shadow, state->is_dragging_min);
+        draw_two_square_handle(screen, min_center, handle_color,
+                              border_color, handle_highlight, handle_shadow,
+                              state->is_dragging_min);
 
         /* Draw max handle */
         if (state->is_dragging_max) {
-            handle_color = 0xE0E0E0FF;
+            handle_color = 0xD0D0D0FF;  /* Darker when dragging */
         } else if (state->is_max_hovering) {
-            handle_color = 0xF0F0F0FF;
+            handle_color = 0xE8E8E8FF;  /* Lighter on hover */
         } else {
-            handle_color = 0xFFFFFFFF;
+            handle_color = 0xE0E0E0FF;  /* Light gray normally (Tk style) */
         }
         handle_highlight = lighten_color(handle_color);
         handle_shadow = darken_color(handle_color);
 
-        draw_square_handle(screen, max_center, handle_radius, handle_color,
-                           border_color, handle_highlight, handle_shadow, state->is_dragging_max);
+        draw_two_square_handle(screen, max_center, handle_color,
+                              border_color, handle_highlight, handle_shadow,
+                              state->is_dragging_max);
     }
     break;
 

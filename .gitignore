@@ -1,18 +1,42 @@
 # --- Kryon Labs Build Artifacts ---
+
 # Compiled binaries
 kryon_server
-bin
-.claude
-
-*.py
-*.exe
-*.out
-*.app
+bin/
+build/
 
 # Objects and Libraries
 *.o
 *.a
 *.so
+*.dylib
+*.dll
+
+# Build outputs by platform
+build/linux/
+build/appimage/
+build/web/
+build/android/
+*.AppImage
+
+# WebAssembly outputs
+*.wasm
+*.js
+*.html
+*.data
+*.wasm.map
+*.js.map
+
+# Android outputs
+*.apk
+*.aab
+*.ap_
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# Kryon Bundles (.krb)
+*.krb
 
 # --- Development Environment ---
 # Nix environment files
@@ -20,6 +44,9 @@ bin
 .nix-shell
 result
 result-*
+
+# Claude Code
+.claude/
 
 # --- Plan 9 / 9front specifics ---
 # Plan 9 compiler output (8.out, 5.out, etc)
@@ -36,16 +63,53 @@ Thumbs.db
 *~
 .vscode/
 .idea/
+*.sublime-*
 
 # --- Logs & Debugging ---
 *.log
 gmon.out
 .gdb_history
+perf.data
+perf.data.old
 
 # --- Test Outputs ---
 *.ppm
 *.raw
 view_image.html
+/tests_output/
 
-# --- Test Output Directory ---
-tests_output/
+# --- Temporary Files ---
+*.tmp
+*.temp
+*~
+.cache/
+
+# --- Generated Files ---
+tags
+TAGS
+*.d
+*.hash
+
+# --- Python (if used for tools) ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.py
+.Python
+venv/
+env/
+
+# --- Coverage & Profiling ---
+*.gcov
+*.gcda
+*.gcno
+coverage/
+cover/
+*.profraw
+*.profdata
+
+# --- Package Manager ---
+.npm/
+.node_repl_history
+package-lock.json
+yarn-error.log
