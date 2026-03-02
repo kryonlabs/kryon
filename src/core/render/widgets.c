@@ -457,6 +457,8 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_SWITCH:
         {
             Rectangle switch_rect;
+            Point text_pos;
+            Subfont *font;
             int switch_width = 40;
             int switch_height = 20;
             int is_on = 0;
@@ -470,8 +472,8 @@ void render_widget(KryonWidget *w, Memimage *screen)
                 is_on = 1;
             }
 
-            /* Center switch in widget rect */
-            switch_rect.min.x = widget_rect.min.x + (widget_rect.max.x - widget_rect.min.x - switch_width) / 2;
+            /* Position switch on left side with space for text */
+            switch_rect.min.x = widget_rect.min.x;
             switch_rect.min.y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y - switch_height) / 2;
             switch_rect.max.x = switch_rect.min.x + switch_width;
             switch_rect.max.y = switch_rect.min.y + switch_height;
@@ -521,6 +523,18 @@ void render_widget(KryonWidget *w, Memimage *screen)
                             Pt(handle_rect.max.x - 1, handle_rect.max.y - 1), 0x999999FF, 1);
                 memdraw_line(screen, Pt(handle_rect.max.x - 1, handle_rect.min.y),
                             Pt(handle_rect.max.x - 1, handle_rect.max.y - 1), 0x999999FF, 1);
+            }
+
+            /* Draw label text to the right of the switch */
+            if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                text_pos.x = switch_rect.max.x + 8;  /* 8px spacing between switch and text */
+                text_pos.y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y - 16) / 2;
+                font = memdraw_get_default_font();
+                if (font != NULL) {
+                    memdraw_text_font(screen, text_pos, w->prop_text, font, DBlack);
+                } else {
+                    memdraw_text(screen, text_pos, w->prop_text, DBlack);
+                }
             }
 
             /* Handle click to toggle */
