@@ -10,3 +10,5 @@ window checkbox_demo "Checkbox Demo" 400 300 {
         label info "Click to toggle"
     }
 }
+
+# Modified for hot-reload test

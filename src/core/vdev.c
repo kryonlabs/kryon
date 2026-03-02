@@ -283,6 +283,12 @@ ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
         return -1;
     }
 
+    /* Check if window is still valid (prevents use-after-free on WM reload) */
+    if (!window_is_valid(win)) {
+        /* Window has been destroyed, ignore this event */
+        return count;
+    }
+
     /* If nested WM is running, forward mouse events via pipe */
     if (win->ns_type == NS_NESTED_WM && win->nested_fd_out >= 0) {
         ssize_t nwritten = write(win->nested_fd_out, buf, count);

@@ -44,6 +44,11 @@ int render_is_widget_clicked(KryonWidget *w)
         return 0;
     }
 
+    /* Check if parent window is still valid (prevents use-after-free on WM reload) */
+    if (!window_is_valid(w->parent_window)) {
+        return 0;
+    }
+
     /* Get mouse position */
     mp.x = w->parent_window->mouse_x;
     mp.y = w->parent_window->mouse_y;

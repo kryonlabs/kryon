@@ -119,8 +119,13 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
     }
 
     /* Get mouse position */
-    mp.x = w->parent_window ? w->parent_window->mouse_x : 0;
-    mp.y = w->parent_window ? w->parent_window->mouse_y : 0;
+    if (w->parent_window != NULL && window_is_valid(w->parent_window)) {
+        mp.x = w->parent_window->mouse_x;
+        mp.y = w->parent_window->mouse_y;
+    } else {
+        mp.x = 0;
+        mp.y = 0;
+    }
 
     switch (w->type) {
     case WIDGET_TEXT_INPUT:
@@ -219,13 +224,18 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
             {
                 Rectangle handle_area = util_get_two_square_handle_rect(center);
                 Point mouse_pos;
-                mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
-                mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
+                if (w->parent_window != NULL && window_is_valid(w->parent_window)) {
+                    mouse_pos.x = w->parent_window->mouse_x;
+                    mouse_pos.y = w->parent_window->mouse_y;
+                } else {
+                    mouse_pos.x = 0;
+                    mouse_pos.y = 0;
+                }
                 state->is_hovering = ptinrect(mouse_pos, handle_area);
                 state->is_track_hovering = ptinrect(mouse_pos, track_rect);
             }
 
-            if (w->parent_window != NULL && w->prop_enabled) {
+            if (w->parent_window != NULL && window_is_valid(w->parent_window) && w->prop_enabled) {
                 if (w->parent_window->last_mouse_buttons == 0 &&
                     w->parent_window->mouse_buttons != 0) {
                     if (state->is_hovering || state->is_track_hovering) {
@@ -354,15 +364,20 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
             Rectangle min_handle_rect = util_get_two_square_handle_rect(min_center);
             Rectangle max_handle_rect = util_get_two_square_handle_rect(max_center);
 
-            mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
-            mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
+            if (w->parent_window != NULL && window_is_valid(w->parent_window)) {
+                mouse_pos.x = w->parent_window->mouse_x;
+                mouse_pos.y = w->parent_window->mouse_y;
+            } else {
+                mouse_pos.x = 0;
+                mouse_pos.y = 0;
+            }
             state->is_min_hovering = ptinrect(mouse_pos, min_handle_rect);
             state->is_max_hovering = ptinrect(mouse_pos, max_handle_rect);
             state->is_track_hovering = ptinrect(mouse_pos, track_rect);
         }
 
         /* Handle mouse interaction */
-        if (w->parent_window != NULL && w->prop_enabled) {
+        if (w->parent_window != NULL && window_is_valid(w->parent_window) && w->prop_enabled) {
             /* Click on min handle - start dragging */
             if (w->parent_window->last_mouse_buttons == 0 &&
                 w->parent_window->mouse_buttons != 0) {
@@ -483,10 +498,14 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
             is_hovered = 0;
 
             /* Check hover state */
-            if (w->parent_window != NULL) {
+            if (w->parent_window != NULL && window_is_valid(w->parent_window)) {
                 mp.x = w->parent_window->mouse_x;
                 mp.y = w->parent_window->mouse_y;
                 is_hovered = ptinrect(mp, widget_rect);
+            } else {
+                mp.x = 0;
+                mp.y = 0;
+                is_hovered = 0;
             }
 
             /* Pass 1: Draw button only (skip popup) */
@@ -634,7 +653,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                     item_rect.max.y = item_rect.min.y + item_height - 1;
 
                     /* Check if mouse is over this item */
-                    if (w->parent_window != NULL) {
+                    if (w->parent_window != NULL && window_is_valid(w->parent_window)) {
                         if (ptinrect(mp, item_rect)) {
                             state->hovered_item = i;
                             item_bg = 0xE0E0E0FF;  /* Light gray hover (R=G=B=224) */
@@ -661,7 +680,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                 }
 
                 /* Handle click on menu item */
-                if (w->parent_window != NULL) {
+                if (w->parent_window != NULL && window_is_valid(w->parent_window)) {
                     if (w->parent_window->last_mouse_buttons != 0 &&
                         w->parent_window->mouse_buttons == 0) {
                         /* Mouse released - check if clicking on popup */
@@ -691,6 +710,119 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
         break;
 
     case WIDGET_PROGRESS_BAR:
+        {
+            float value = 0.0f;
+            float max_value = 100.0f;
+            Rectangle trough_rect, bar_rect;
+            unsigned long trough_color, trough_highlight, trough_shadow;
+            unsigned long bar_color, bar_highlight, bar_shadow;
+            unsigned long border_color;
+            int bar_height;
+            Point text_pos;
+            char text_buf[32];
+            Subfont *font;
+
+            /* Parse value (0-100) */
+            if (w->prop_value != NULL) {
+                value = (float)atof(w->prop_value);
+                if (value < 0.0f) value = 0.0f;
+                if (value > max_value) value = max_value;
+            }
+
+            /* Calculate bar height (20px like sliders) */
+            bar_height = 20;
+            trough_rect.min.x = widget_rect.min.x;
+            trough_rect.min.y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y - bar_height) / 2;
+            trough_rect.max.x = widget_rect.max.x;
+            trough_rect.max.y = trough_rect.min.y + bar_height;
+
+            /* Tk-style colors */
+            trough_color = 0xC0C0C0FF;       /* Neutral gray trough */
+            trough_highlight = 0xE0E0E0FF;   /* Light highlight */
+            trough_shadow = 0xA0A0A0FF;      /* Dark shadow */
+            border_color = 0x000000FF;       /* Black border */
+            bar_color = 0x00008BFF;          /* Dark blue fill (Tk default) */
+            bar_highlight = 0x4169E1FF;      /* Lighter blue highlight */
+            bar_shadow = 0x000060FF;         /* Darker blue shadow */
+
+            /* Draw trough background */
+            memfillcolor_rect(screen, trough_rect, trough_color);
+
+            /* Trough beveled edges */
+            memdraw_line(screen, Pt(trough_rect.min.x, trough_rect.min.y),
+                         Pt(trough_rect.max.x - 1, trough_rect.min.y), trough_highlight, 2);
+            memdraw_line(screen, Pt(trough_rect.min.x, trough_rect.min.y),
+                         Pt(trough_rect.min.x, trough_rect.max.y - 1), trough_highlight, 2);
+            memdraw_line(screen, Pt(trough_rect.min.x, trough_rect.max.y - 1),
+                         Pt(trough_rect.max.x - 1, trough_rect.max.y - 1), trough_shadow, 2);
+            memdraw_line(screen, Pt(trough_rect.max.x - 1, trough_rect.min.y),
+                         Pt(trough_rect.max.x - 1, trough_rect.max.y - 1), trough_shadow, 2);
+
+            /* Trough border */
+            memdraw_line(screen, Pt(trough_rect.min.x, trough_rect.min.y),
+                        Pt(trough_rect.max.x - 1, trough_rect.min.y), border_color, 1);
+            memdraw_line(screen, Pt(trough_rect.min.x, trough_rect.min.y),
+                        Pt(trough_rect.min.x, trough_rect.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(trough_rect.min.x, trough_rect.max.y - 1),
+                        Pt(trough_rect.max.x - 1, trough_rect.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(trough_rect.max.x - 1, trough_rect.min.y),
+                        Pt(trough_rect.max.x - 1, trough_rect.max.y - 1), border_color, 1);
+
+            /* Calculate and draw filled bar */
+            if (value > 0.0f) {
+                int fill_width = (int)((value / max_value) * (Dx(trough_rect) - 6));
+
+                /* Clip fill width to trough width */
+                if (fill_width < 0) fill_width = 0;
+                if (fill_width > Dx(trough_rect) - 6) fill_width = Dx(trough_rect) - 6;
+
+                if (fill_width > 0) {
+                    bar_rect.min.x = trough_rect.min.x + 3;
+                    bar_rect.min.y = trough_rect.min.y + 3;
+                    bar_rect.max.x = bar_rect.min.x + fill_width;
+                    bar_rect.max.y = trough_rect.max.y - 3;
+
+                    memfillcolor_rect(screen, bar_rect, bar_color);
+
+                    /* Bar beveled edges (subtle) */
+                    memdraw_line(screen, Pt(bar_rect.min.x, bar_rect.min.y),
+                                 Pt(bar_rect.max.x - 1, bar_rect.min.y), bar_highlight, 1);
+                    memdraw_line(screen, Pt(bar_rect.min.x, bar_rect.min.y),
+                                 Pt(bar_rect.min.x, bar_rect.max.y - 1), bar_highlight, 1);
+                    memdraw_line(screen, Pt(bar_rect.min.x, bar_rect.max.y - 1),
+                                 Pt(bar_rect.max.x - 1, bar_rect.max.y - 1), bar_shadow, 1);
+                    memdraw_line(screen, Pt(bar_rect.max.x - 1, bar_rect.min.y),
+                                 Pt(bar_rect.max.x - 1, bar_rect.max.y - 1), bar_shadow, 1);
+                }
+            }
+
+            /* Draw percentage text if prop_text is set or if there's room */
+            if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                /* Use custom text */
+                text_pos.x = widget_rect.min.x + 4;
+                text_pos.y = widget_rect.min.y + 2;
+                font = memdraw_get_default_font();
+                if (font != NULL) {
+                    memdraw_text_font(screen, text_pos, w->prop_text, font, DBlack);
+                } else {
+                    memdraw_text(screen, text_pos, w->prop_text, DBlack);
+                }
+            } else if (Dx(widget_rect) > 100) {
+                /* Show percentage if wide enough */
+                int percentage = (int)((value / max_value) * 100.0f);
+                sprintf(text_buf, "%d%%", percentage);
+                text_pos.x = widget_rect.min.x + 4;
+                text_pos.y = widget_rect.min.y + 2;
+                font = memdraw_get_default_font();
+                if (font != NULL) {
+                    memdraw_text_font(screen, text_pos, text_buf, font, DBlack);
+                } else {
+                    memdraw_text(screen, text_pos, text_buf, DBlack);
+                }
+            }
+        }
+        break;
+
     case WIDGET_SWITCH:
     case WIDGET_IMAGE:
     case WIDGET_CANVAS:
@@ -701,9 +833,6 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
             unsigned long placeholder_color = 0xFFD0D0D0;
             if (w->type == WIDGET_DIVIDER) {
                 placeholder_color = 0xFF000000;
-            } else if (w->type == WIDGET_SWITCH) {
-                placeholder_color = (w->prop_value != NULL && atoi(w->prop_value) != 0)
-                                   ? 0xFF00FF00 : 0xFF888888;
             }
             memfillcolor_rect(screen, widget_rect, placeholder_color);
         }

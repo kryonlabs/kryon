@@ -211,8 +211,8 @@ static void handle_mouse_events(void)
         KryonWindow *win = window_get(1);
         if (win != NULL) {
             vdev_mouse_write(mbuf, nr, 0, win);
+            g_render_dirty = 1;  /* Only mark dirty if window exists */
         }
-        g_render_dirty = 1;
     }
 }
 

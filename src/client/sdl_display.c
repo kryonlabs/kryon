@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #ifdef HAVE_SDL2
 #include <SDL2/SDL.h>
@@ -19,6 +22,32 @@
  * usleep prototype for C89 compatibility
  */
 extern int usleep(unsigned int usec);
+
+/*
+ * Signal handler to prevent silent crashes
+ */
+static void signal_handler(int sig)
+{
+    fprintf(stderr, "\n=== KRYON-VIEW CRASH REPORT ===\n");
+    fprintf(stderr, "Received signal %d - ", sig);
+    switch (sig) {
+        case SIGPIPE:
+            fprintf(stderr, "SIGPIPE (broken pipe)\n");
+            fprintf(stderr, "Cause: Connection to WM lost unexpectedly\n");
+            break;
+        case SIGSEGV:
+            fprintf(stderr, "SIGSEGV (segmentation fault)\n");
+            fprintf(stderr, "Cause: Memory access violation - possibly corrupted 9P FID\n");
+            break;
+        default:
+            fprintf(stderr, "Unknown signal\n");
+            break;
+    }
+    fprintf(stderr, "This usually happens when the WM reloads and the 9P connection\n");
+    fprintf(stderr, "becomes invalid. The reconnection logic should handle this gracefully.\n");
+    fprintf(stderr, "==================================\n\n");
+    exit(1);
+}
 
 /*
  * Default configuration
@@ -94,6 +123,10 @@ DisplayClient *display_client_create(const DisplayConfig *config)
 
     /* Format address as tcp!host!port */
     sprintf(addr_str, "tcp!%s!%d", host, port);
+
+    /* Install signal handlers to prevent silent crashes */
+    signal(SIGPIPE, signal_handler);
+    signal(SIGSEGV, signal_handler);
 
     dc = (DisplayClient *)calloc(1, sizeof(DisplayClient));
     if (dc == NULL) {
@@ -615,22 +648,72 @@ int display_client_send_key(DisplayClient *dc, int keycode, int pressed)
 /*
  * Check for screen size changes from WM
  * Returns 1 if size changed, 0 if same, -1 on error
+ *
+ * Also validates that the size values are reasonable:
+ * - Must be positive (width > 0, height > 0)
+ * - Must not be excessively large (max 8192x8192)
  */
 static int check_screen_size_change(int *new_width, int *new_height)
 {
     FILE *sf;
+    int w, h;
 
     sf = fopen("/tmp/.kryon-screensize", "r");
     if (sf == NULL) {
         return -1;
     }
 
-    if (fscanf(sf, "%d %d", new_width, new_height) != 2) {
+    if (fscanf(sf, "%d %d", &w, &h) != 2) {
         fclose(sf);
         return -1;
     }
 
     fclose(sf);
+
+    /* Validate screen size values */
+    if (w <= 0 || h <= 0) {
+        fprintf(stderr, "Warning: Invalid screen dimensions %dx%d (must be positive)\n", w, h);
+        return -1;
+    }
+
+    if (w > 8192 || h > 8192) {
+        fprintf(stderr, "Warning: Screen dimensions %dx%d exceed maximum (8192x8192)\n", w, h);
+        return -1;
+    }
+
+    *new_width = w;
+    *new_height = h;
+    return 0;
+}
+
+/*
+ * Check if WM has reloaded by comparing file modification time
+ * Returns 1 if WM reloaded, 0 if not, -1 on error
+ *
+ * This helps detect when the WM has hot-reloaded even if screen size
+ * hasn't changed, so we can proactively reopen the /dev/screen fid.
+ */
+static int check_wm_reload(void)
+{
+    static time_t last_mtime = 0;
+    struct stat st;
+
+    if (stat("/tmp/.kryon-screensize", &st) < 0) {
+        return -1;
+    }
+
+    if (last_mtime == 0) {
+        /* First call, just record the time */
+        last_mtime = st.st_mtime;
+        return 0;
+    }
+
+    if (st.st_mtime > last_mtime) {
+        fprintf(stderr, "Detected WM reload (screensize file updated)\n");
+        last_mtime = st.st_mtime;
+        return 1;
+    }
+
     return 0;
 }
 
@@ -739,7 +822,9 @@ void display_client_request_refresh(DisplayClient *dc)
 int display_client_run(DisplayClient *dc)
 {
     static int frame_count = 0;  /* Static for C89 compliance */
+    static int wm_reload_detected = 0;  /* Track if WM reload was detected */
     int new_width, new_height;
+    int wm_reload;
 
     if (dc == NULL) {
         return -1;
@@ -749,8 +834,11 @@ int display_client_run(DisplayClient *dc)
 
     while (dc->running) {
 #ifdef HAVE_SDL2
-        /* Check for screen size changes (every ~60 frames = 1 second) */
-        if (++frame_count >= 60) {
+        /* Check for WM reload every frame (via file modification time) */
+        wm_reload = check_wm_reload();
+
+        /* Check for screen size changes (every ~10 frames = ~166ms) */
+        if (++frame_count >= 10) {
             frame_count = 0;
             if (check_screen_size_change(&new_width, &new_height) == 0) {
                 if (new_width != dc->screen_width || new_height != dc->screen_height) {
@@ -759,6 +847,48 @@ int display_client_run(DisplayClient *dc)
                     }
                 }
             }
+        }
+
+        /* If WM reload detected, proactively close and reopen /dev/screen */
+        if (wm_reload == 1 && !wm_reload_detected) {
+            fprintf(stderr, "WM reload detected - proactively reopening /dev/screen\n");
+            wm_reload_detected = 1;
+
+            /* Close old screen FD */
+            if (dc->screen_fd >= 0) {
+                p9_close(dc->p9, dc->screen_fd);
+                dc->screen_fd = -1;
+            }
+
+            /* Reopen /dev/screen with retry logic */
+            {
+                int screen_open_retry = 0;
+                while (screen_open_retry < 10) {
+                    dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
+                    if (dc->screen_fd >= 0) {
+                        fprintf(stderr, "Successfully reopened /dev/screen after WM reload\n");
+                        break;
+                    }
+                    fprintf(stderr, "Failed to reopen /dev/screen (attempt %d), retrying...\n",
+                            screen_open_retry + 1);
+                    usleep(50000);  /* 50ms */
+                    screen_open_retry++;
+                }
+
+                if (dc->screen_fd < 0) {
+                    fprintf(stderr, "Warning: Could not reopen /dev/screen, will rely on read error recovery\n");
+                }
+            }
+
+            /* Reopen mouse FIFO after WM reload */
+            if (dc->mouse_fifo_fd >= 0) {
+                close(dc->mouse_fifo_fd);
+                dc->mouse_fifo_fd = -1;
+            }
+            dc->mouse_fifo_fd = open("/tmp/.kryon-mouse-1", O_WRONLY | O_NONBLOCK);
+        } else if (wm_reload == 0) {
+            /* Reset flag when WM is stable */
+            wm_reload_detected = 0;
         }
 
         /* Read and display screen every frame */

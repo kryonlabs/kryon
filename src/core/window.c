@@ -274,6 +274,14 @@ void window_destroy(struct KryonWindow *window)
         free(window->children);
     }
 
+    /* IMPORTANT: Clear parent_window pointers in widgets before destroying them
+     * This prevents use-after-free bugs during WM hot-reload */
+    for (i = 0; i < window->nwidgets; i++) {
+        if (window->widgets[i] != NULL) {
+            window->widgets[i]->parent_window = NULL;
+        }
+    }
+
     /* Destroy all widgets in this window */
     for (i = 0; i < window->nwidgets; i++) {
         widget_destroy(window->widgets[i]);
@@ -331,6 +339,27 @@ struct KryonWindow *window_get(uint32_t id)
     }
 
     return NULL;
+}
+
+/*
+ * Check if window pointer is still valid (exists in registry)
+ * This prevents use-after-free bugs when WM reloads
+ */
+int window_is_valid(struct KryonWindow *window)
+{
+    int i;
+
+    if (window == NULL || windows == NULL) {
+        return 0;
+    }
+
+    for (i = 0; i < nwindows; i++) {
+        if (windows[i] == window) {
+            return 1;  /* Found in registry - still valid */
+        }
+    }
+
+    return 0;  /* Not in registry - already freed */
 }
 
 /*

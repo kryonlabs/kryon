@@ -106,6 +106,7 @@ void window_registry_cleanup(void);
 struct KryonWindow *window_create(const char *title, int width, int height);
 void window_destroy(struct KryonWindow *window);
 struct KryonWindow *window_get(uint32_t id);
+int window_is_valid(struct KryonWindow *window);
 
 /*
  * Recursive window support
