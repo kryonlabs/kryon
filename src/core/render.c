@@ -28,6 +28,13 @@ extern int g_render_dirty;
 static Memimage *g_screen = NULL;
 
 /*
+ * Rendering context for multi-pass rendering
+ */
+static struct {
+    int render_only_popups;  /* 1 = only render open dropdown popups */
+} g_render_ctx = {0};
+
+/*
  * Dropdown widget state
  */
 typedef struct {
@@ -44,6 +51,11 @@ typedef struct {
 static DropdownState *dropdown_state_create(void);
 static void dropdown_state_destroy(DropdownState *state);
 int dropdown_parse_options(struct KryonWidget *w, const char *options_str);
+
+/*
+ * Forward declarations for click handling
+ */
+static int is_point_in_open_popup(KryonWindow *win, int x, int y);
 
 /*
  * Public cleanup function for widget.c
@@ -136,6 +148,19 @@ static int is_widget_clicked(KryonWidget *w)
         return 0;
     }
 
+    /* Get mouse position */
+    mp.x = w->parent_window->mouse_x;
+    mp.y = w->parent_window->mouse_y;
+
+    /* Block clicks if point is inside any open dropdown popup */
+    if (is_point_in_open_popup(w->parent_window, mp.x, mp.y)) {
+        /* Special case: allow clicks on the dropdown that owns the popup */
+        DropdownState *state = (DropdownState *)w->internal_data;
+        if (w->type != WIDGET_DROPDOWN || state == NULL || !state->is_open) {
+            return 0;
+        }
+    }
+
     if (parse_rect(w->prop_rect, &widget_rect) < 0) {
         return 0;
     }
@@ -146,6 +171,56 @@ static int is_widget_clicked(KryonWidget *w)
         mp.x = w->parent_window->mouse_x;
         mp.y = w->parent_window->mouse_y;
         if (ptinrect(mp, widget_rect)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+/*
+ * Check if point (x,y) is inside any open dropdown popup
+ * Returns 1 if point should be blocked (inside popup), 0 otherwise
+ */
+static int is_point_in_open_popup(KryonWindow *win, int x, int y)
+{
+    int i;
+    Point pt;
+    Rectangle popup_rect;
+    int item_height = 24;
+
+    if (win == NULL) return 0;
+
+    pt.x = x;
+    pt.y = y;
+
+    /* Check all widgets in window */
+    for (i = 0; i < win->nwidgets; i++) {
+        KryonWidget *w = win->widgets[i];
+        DropdownState *state;
+
+        if (w->type != WIDGET_DROPDOWN) continue;
+
+        state = (DropdownState *)w->internal_data;
+        if (state == NULL || !state->is_open) continue;
+        if (state->num_options <= 0 || state->options == NULL) continue;
+
+        /* Parse widget rectangle to get popup position */
+        if (parse_rect(w->prop_rect, &popup_rect) < 0) continue;
+
+        /* Calculate popup rect (extends below button) */
+        popup_rect.min.y = popup_rect.max.y + 1;  /* Below button */
+        popup_rect.max.y = popup_rect.min.y + state->num_options * item_height;
+
+        /* Check if point is inside this popup */
+        if (ptinrect(pt, popup_rect)) {
+            return 1;  /* Point is inside an open popup - block click */
+        }
+    }
+
+    /* Recursively check child windows */
+    for (i = 0; i < win->nchildren; i++) {
+        if (is_point_in_open_popup(win->children[i], x, y)) {
             return 1;
         }
     }
@@ -168,6 +243,11 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
     /* Check visibility */
     if (!w->prop_visible) {
+        return;
+    }
+
+    /* During popup-only pass, skip non-dropdown widgets */
+    if (g_render_ctx.render_only_popups && w->type != WIDGET_DROPDOWN) {
         return;
     }
 
@@ -426,6 +506,8 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_DROPDOWN:
         {
             DropdownState *state = (DropdownState *)w->internal_data;
+            int is_popup_pass = (g_render_ctx.render_only_popups != 0);
+            int has_open_popup = (state != NULL && state->is_open);
             int is_hovered = 0;
             Point mp;
             Point text_pos;
@@ -445,112 +527,118 @@ void render_widget(KryonWidget *w, Memimage *screen)
                 is_hovered = ptinrect(mp, widget_rect);
             }
 
-            /* Determine colors based on state (R=G=B for neutral grays) */
-            if (has_state && state->is_open) {
-                bg_color = 0xD0D0D0FF;  /* Medium gray when open (R=G=B=208) */
-            } else if (is_hovered) {
-                bg_color = 0xE0E0E0FF;  /* Light gray on hover (R=G=B=224) */
-            } else {
-                bg_color = 0xFFFFFFFF;  /* White when closed */
-            }
-            border_color = 0x808080FF;  /* Dark gray border (R=G=B=128) */
-            text_color = 0x000000FF;    /* Black text */
-
-            /* Draw button background */
-            memfillcolor_rect(screen, widget_rect, bg_color);
-
-            /* Draw beveled edges */
-            {
-                uint32_t highlight = 0xFFFFFFFF;  /* White highlight */
-                uint32_t shadow = 0x808080FF;    /* Dark gray shadow */
-                int thickness = 2;
-
-                /* When open, invert bevel to look "sunken" */
+            /* Pass 1: Draw button only (skip popup) */
+            if (!is_popup_pass) {
+                /* Determine colors based on state (R=G=B for neutral grays) */
                 if (has_state && state->is_open) {
-                    uint32_t temp = highlight;
-                    highlight = shadow;
-                    shadow = temp;
+                    bg_color = 0xD0D0D0FF;  /* Medium gray when open (R=G=B=208) */
+                } else if (is_hovered) {
+                    bg_color = 0xE0E0E0FF;  /* Light gray on hover (R=G=B=224) */
+                } else {
+                    bg_color = 0xFFFFFFFF;  /* White when closed */
+                }
+                border_color = 0x808080FF;  /* Dark gray border (R=G=B=128) */
+                text_color = 0x000000FF;    /* Black text */
+
+                /* Draw button background */
+                memfillcolor_rect(screen, widget_rect, bg_color);
+
+                /* Draw beveled edges */
+                {
+                    uint32_t highlight = 0xFFFFFFFF;  /* White highlight */
+                    uint32_t shadow = 0x808080FF;    /* Dark gray shadow */
+                    int thickness = 2;
+
+                    /* When open, invert bevel to look "sunken" */
+                    if (has_state && state->is_open) {
+                        uint32_t temp = highlight;
+                        highlight = shadow;
+                        shadow = temp;
+                    }
+
+                    /* Top edge (highlight) */
+                    memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                                 Pt(widget_rect.max.x - 1, widget_rect.min.y), highlight, thickness);
+                    /* Left edge (highlight) */
+                    memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                                 Pt(widget_rect.min.x, widget_rect.max.y - 1), highlight, thickness);
+                    /* Bottom edge (shadow) */
+                    memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
+                                 Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
+                    /* Right edge (shadow) */
+                    memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                                 Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
                 }
 
-                /* Top edge (highlight) */
+                /* Draw border */
                 memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
-                             Pt(widget_rect.max.x - 1, widget_rect.min.y), highlight, thickness);
-                /* Left edge (highlight) */
+                            Pt(widget_rect.max.x - 1, widget_rect.min.y), border_color, 1);
                 memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
-                             Pt(widget_rect.min.x, widget_rect.max.y - 1), highlight, thickness);
-                /* Bottom edge (shadow) */
+                            Pt(widget_rect.min.x, widget_rect.max.y - 1), border_color, 1);
                 memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
-                             Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
-                /* Right edge (shadow) */
+                            Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
                 memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
-                             Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
-            }
+                            Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
 
-            /* Draw border */
-            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
-                        Pt(widget_rect.max.x - 1, widget_rect.min.y), border_color, 1);
-            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
-                        Pt(widget_rect.min.x, widget_rect.max.y - 1), border_color, 1);
-            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
-                        Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
-            memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
-                        Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
+                /* Calculate text or selected option */
+                button_height = widget_rect.max.y - widget_rect.min.y;
+                text_pos.x = widget_rect.min.x + 4;
+                text_pos.y = widget_rect.min.y + (button_height - 16) / 2;
 
-            /* Calculate text or selected option */
-            button_height = widget_rect.max.y - widget_rect.min.y;
-            text_pos.x = widget_rect.min.x + 4;
-            text_pos.y = widget_rect.min.y + (button_height - 16) / 2;
-
-            if (has_state && state->selected_index >= 0 &&
-                state->selected_index < state->num_options && state->options != NULL) {
-                /* Draw selected option text */
-                font = memdraw_get_default_font();
-                if (font != NULL) {
-                    memdraw_text_font(screen, text_pos, state->options[state->selected_index], font, text_color);
-                } else {
-                    memdraw_text(screen, text_pos, state->options[state->selected_index], text_color);
+                if (has_state && state->selected_index >= 0 &&
+                    state->selected_index < state->num_options && state->options != NULL) {
+                    /* Draw selected option text */
+                    font = memdraw_get_default_font();
+                    if (font != NULL) {
+                        memdraw_text_font(screen, text_pos, state->options[state->selected_index], font, text_color);
+                    } else {
+                        memdraw_text(screen, text_pos, state->options[state->selected_index], text_color);
+                    }
+                } else if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                    /* Draw placeholder text */
+                    font = memdraw_get_default_font();
+                    if (font != NULL) {
+                        memdraw_text_font(screen, text_pos, w->prop_text, font, text_color);
+                    } else {
+                        memdraw_text(screen, text_pos, w->prop_text, text_color);
+                    }
                 }
-            } else if (w->prop_text != NULL && w->prop_text[0] != '\0') {
-                /* Draw placeholder text */
-                font = memdraw_get_default_font();
-                if (font != NULL) {
-                    memdraw_text_font(screen, text_pos, w->prop_text, font, text_color);
-                } else {
-                    memdraw_text(screen, text_pos, w->prop_text, text_color);
+
+                /* Draw down arrow on right side */
+                {
+                    int arrow_x = widget_rect.max.x - arrow_size - 4;
+                    int arrow_y = widget_rect.min.y + (button_height - arrow_size) / 2;
+                    Point arrow_pts[3];
+
+                    arrow_pts[0].x = arrow_x;
+                    arrow_pts[0].y = arrow_y;
+                    arrow_pts[1].x = arrow_x + arrow_size;
+                    arrow_pts[1].y = arrow_y;
+                    arrow_pts[2].x = arrow_x + arrow_size / 2;
+                    arrow_pts[2].y = arrow_y + arrow_size;
+
+                    memdraw_poly(screen, arrow_pts, 3, 0x404040FF, 1);  /* Dark gray arrow (R=G=B=64) */
                 }
-            }
 
-            /* Draw down arrow on right side */
-            {
-                int arrow_x = widget_rect.max.x - arrow_size - 4;
-                int arrow_y = widget_rect.min.y + (button_height - arrow_size) / 2;
-                Point arrow_pts[3];
-
-                arrow_pts[0].x = arrow_x;
-                arrow_pts[0].y = arrow_y;
-                arrow_pts[1].x = arrow_x + arrow_size;
-                arrow_pts[1].y = arrow_y;
-                arrow_pts[2].x = arrow_x + arrow_size / 2;
-                arrow_pts[2].y = arrow_y + arrow_size;
-
-                memdraw_poly(screen, arrow_pts, 3, 0x404040FF, 1);  /* Dark gray arrow (R=G=B=64) */
-            }
-
-            /* Handle click on button */
-            if (is_widget_clicked(w)) {
-                if (!has_state) {
-                    state = dropdown_state_create();
-                    w->internal_data = state;
-                    has_state = (state != NULL);
-                }
-                if (has_state) {
-                    state->is_open = !state->is_open;
-                    g_render_dirty = 1;
+                /* Handle click on button */
+                if (is_widget_clicked(w)) {
+                    if (!has_state) {
+                        state = dropdown_state_create();
+                        w->internal_data = state;
+                        has_state = (state != NULL);
+                    }
+                    if (has_state) {
+                        state->is_open = !state->is_open;
+                        g_render_dirty = 1;
+                    }
                 }
             }
 
-            /* Draw popup list when open */
-            if (has_state && state->is_open && state->num_options > 0 && state->options != NULL) {
+            /* Pass 2: Draw popup only (if open) */
+            if (is_popup_pass && has_open_popup && state->num_options > 0 && state->options != NULL) {
+                border_color = 0x808080FF;  /* Dark gray border (R=G=B=128) */
+                text_color = 0x000000FF;    /* Black text */
+
                 /* Calculate popup rectangle below button */
                 popup_rect.min.x = widget_rect.min.x;
                 popup_rect.min.y = widget_rect.max.y + 1;
@@ -861,8 +949,8 @@ void render_all(void)
     /* Clear screen to Tk-style window background gray */
     memfillcolor(g_screen, 0xD9D9D9FF);
 
-    /* Render only top-level windows */
-    /* Nested windows will be rendered recursively by their parents */
+    /* Pass 1: Render all widgets (no dropdown popups) */
+    g_render_ctx.render_only_popups = 0;
     for (i = 1; ; i++) {
         win = window_get(i);
         if (win == NULL) {
@@ -873,6 +961,22 @@ void render_all(void)
             render_window(win, g_screen);
         }
     }
+
+    /* Pass 2: Render all open dropdown popups on top */
+    g_render_ctx.render_only_popups = 1;
+    for (i = 1; ; i++) {
+        win = window_get(i);
+        if (win == NULL) {
+            break;
+        }
+        /* Only render top-level windows (parent == NULL) */
+        if (win->visible && win->parent == NULL) {
+            render_window(win, g_screen);
+        }
+    }
+
+    /* Reset flag */
+    g_render_ctx.render_only_popups = 0;
 
     /* Notify all drawterm clients that screen updated */
     devdraw_mark_dirty();
