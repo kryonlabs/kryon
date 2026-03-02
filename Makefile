@@ -88,6 +88,14 @@ GRAPHICS_SRCS =
 UI_SRCS = $(SRC_DIR)/core/window.c $(SRC_DIR)/core/widget.c \
            $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c \
            $(SRC_DIR)/core/layout.c
+# Refactored rendering modules
+RENDER_SRCS = $(SRC_DIR)/core/render/primitives.c \
+              $(SRC_DIR)/core/render/widgets.c \
+              $(SRC_DIR)/core/render/events.c \
+              $(SRC_DIR)/core/render/screen.c
+# Utility modules
+UTIL_SRCS = $(SRC_DIR)/core/util/color.c \
+            $(SRC_DIR)/core/util/geom.c
 # Kryon DSL parser
 KRYON_SRCS = $(SRC_DIR)/kryon/parser.c
 # Window manager filesystem
@@ -102,8 +110,8 @@ CLIENT_SRCS = $(SRC_DIR)/client/sdl_display.c \
 CLI_SRCS = $(SRC_DIR)/cli/main.c $(SRC_DIR)/cli/commands.c $(SRC_DIR)/cli/yaml.c
 # Build system (multi-target support)
 BUILD_SRCS = $(SRC_DIR)/build/target.c
-SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(KRYON_SRCS) $(TRANSPORT_SRCS) \
-       $(P9CLIENT_SRCS) $(SYS_SRCS) $(BUILD_SRCS)
+SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(RENDER_SRCS) $(UTIL_SRCS) \
+       $(KRYON_SRCS) $(TRANSPORT_SRCS) $(P9CLIENT_SRCS) $(SYS_SRCS) $(BUILD_SRCS)
 
 # Additional object files for linking
 WINDOW_OBJS = $(BUILD_DIR)/core/window.o
@@ -132,6 +140,8 @@ endif
 # Create directories
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/core
+	mkdir -p $(BUILD_DIR)/core/util
+	mkdir -p $(BUILD_DIR)/core/render
 	mkdir -p $(BUILD_DIR)/shell
 	mkdir -p $(BUILD_DIR)/transport
 	mkdir -p $(BUILD_DIR)/client
@@ -139,6 +149,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)/sys
 	mkdir -p $(BUILD_DIR)/kryon
 	mkdir -p $(BUILD_DIR)/cli
+	mkdir -p $(BUILD_DIR)/build
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
@@ -224,6 +235,32 @@ $(BUILD_DIR)/cli/commands.o: $(SRC_DIR)/cli/commands.c | $(BUILD_DIR)
 $(BUILD_DIR)/cli/yaml.o: $(SRC_DIR)/cli/yaml.c | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)/cli
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build -c $< -o $@
+
+# Compile util object files
+$(BUILD_DIR)/core/util/color.o: $(SRC_DIR)/core/util/color.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/core/util
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+
+$(BUILD_DIR)/core/util/geom.o: $(SRC_DIR)/core/util/geom.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/core/util
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+
+# Compile render object files
+$(BUILD_DIR)/core/render/primitives.o: $(SRC_DIR)/core/render/primitives.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/core/render
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/core/render -c $< -o $@
+
+$(BUILD_DIR)/core/render/widgets.o: $(SRC_DIR)/core/render/widgets.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/core/render
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/core/render -c $< -o $@
+
+$(BUILD_DIR)/core/render/events.o: $(SRC_DIR)/core/render/events.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/core/render
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/core/render -c $< -o $@
+
+$(BUILD_DIR)/core/render/screen.o: $(SRC_DIR)/core/render/screen.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/core/render
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/core/render -c $< -o $@
 
 # Build Marrow graphics objects (for linking with Kryon)
 $(BUILD_DIR)/marrow:
