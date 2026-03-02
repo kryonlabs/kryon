@@ -512,13 +512,8 @@ static KryonNode* parse_widget(Parser *p, const char *widget_type)
 {
     KryonNode *node;
 
-    fprintf(stderr, "parse_widget: type='%s', current token type=%d, value='%s'\n",
-            widget_type, p->current_token.type,
-            p->current_token.value ? p->current_token.value : "(null)");
-
     node = create_node(NODE_WIDGET);
     if (node == NULL) {
-        fprintf(stderr, "parse_widget: failed to create node\n");
         return NULL;
     }
 
@@ -527,16 +522,15 @@ static KryonNode* parse_widget(Parser *p, const char *widget_type)
         strcpy(node->widget_type, widget_type);
     }
 
-    /* Get widget ID (optional, next token) */
-    if (p->current_token.type == TOKEN_WORD ||
-        p->current_token.type == TOKEN_STRING) {
-        fprintf(stderr, "parse_widget: getting ID='%s'\n", p->current_token.value);
+    /* Get widget ID (optional, next token) - only WORD tokens are valid IDs */
+    if (p->current_token.type == TOKEN_WORD) {
         node->id = p->current_token.value;
         p->current_token.value = NULL;  /* Taking ownership, don't free */
         free_token(&p->current_token);
         p->current_token = next_token(p);
-        fprintf(stderr, "parse_widget: after ID, token type=%d\n", p->current_token.type);
     }
+    /* Note: STRING tokens are NOT valid IDs. For labels like `label "text"`,
+     * the string is the display text, not an ID. This prevents parsing sync issues. */
 
     /* Handle inline properties: key=value or key="value" before text or { */
     /* This handles cases like: textinput input1 placeholder="Enter text" */
@@ -577,7 +571,6 @@ static KryonNode* parse_widget(Parser *p, const char *widget_type)
 
     /* Get text (optional string) */
     if (p->current_token.type == TOKEN_STRING) {
-        fprintf(stderr, "parse_widget: getting text='%s'\n", p->current_token.value);
         node->text = p->current_token.value;
         p->current_token.value = NULL;  /* Taking ownership, don't free */
         free_token(&p->current_token);
@@ -585,9 +578,7 @@ static KryonNode* parse_widget(Parser *p, const char *widget_type)
     }
 
     /* Parse property block if present */
-    fprintf(stderr, "parse_widget: calling parse_property_block, token type=%d\n", p->current_token.type);
     node = parse_property_block(p, node);
-    fprintf(stderr, "parse_widget: parse_property_block returned %p\n", (void *)node);
 
     return node;
 }
@@ -699,7 +690,6 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
     /* Parse children */
     while (p->current_token.type != TOKEN_RBRACE &&
            p->current_token.type != TOKEN_EOF) {
-        fprintf(stderr, "parse_layout: child loop, token type=%d\n", p->current_token.type);
         child = NULL;
 
         if (p->current_token.type == TOKEN_WORD) {
@@ -717,7 +707,7 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
                 child = parse_layout(p, word);
                 free(word);  /* Layout parsing makes its own copy */
             } else {
-                /* It's a widget */
+                /* It's a widget - pass the word as widget type */
                 child = parse_widget(p, word);
                 free(word);  /* Widget parsing makes its own copy */
             }

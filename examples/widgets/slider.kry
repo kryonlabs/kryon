@@ -1,18 +1,24 @@
 # Slider Widget Demo
-# Demonstrates slider widget for numeric input
+# Demonstrates interactive slider and range slider widgets
 
-window slider_demo "Slider Widget Demo" 400 300 {
-    vbox gap=15 padding=20 {
+window slider_demo "Slider Widget Demo" 450 500 {
+    vbox gap=20 padding=20 {
         # Heading
-        label heading "Slider Widgets" { color "#00FF00" }
+        label heading "Interactive Sliders" { color "#00FF00" }
 
-        # Volume slider
-        slider slider1 "Volume Control"
+        # Single-value sliders
+        label "Volume Control (0-100):"
+        slider volume_slider "Volume" { }
 
-        # Brightness slider
-        slider slider2 "Brightness"
+        label "Brightness Level:"
+        slider brightness_slider "Brightness" { value "75" }
 
-        # Progress slider
-        slider slider3 "Progress"
+        label "Progress (0-100):"
+        slider progress_slider "Progress" { value "50" }
+
+        # Range slider
+        label "Price Range ($):"
+        rangeslider price_slider "Price Range" { value "25,75" }
+
     }
 }

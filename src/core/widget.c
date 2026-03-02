@@ -281,6 +281,14 @@ void widget_destroy(struct KryonWidget *widget)
         widget->internal_data = NULL;
     }
 
+    /* Free slider internal data */
+    if ((widget->type == WIDGET_SLIDER || widget->type == WIDGET_RANGE_SLIDER) &&
+        widget->internal_data != NULL) {
+        extern void slider_cleanup_widget_internal_data(void *data);
+        slider_cleanup_widget_internal_data(widget->internal_data);
+        widget->internal_data = NULL;
+    }
+
     free(widget);
 }
 
@@ -338,6 +346,7 @@ const char *widget_type_to_string(WidgetType type)
         case WIDGET_PARAGRAPH: return "paragraph";
         case WIDGET_CONTAINER: return "container";
         case WIDGET_PROGRESS_BAR: return "progressbar";
+        case WIDGET_RANGE_SLIDER: return "rangeslider";
         default: return "unknown";
     }
 }
@@ -363,6 +372,7 @@ WidgetType widget_type_from_string(const char *str)
     if (strcmp(str, "paragraph") == 0) return WIDGET_PARAGRAPH;
     if (strcmp(str, "container") == 0) return WIDGET_CONTAINER;
     if (strcmp(str, "progressbar") == 0) return WIDGET_PROGRESS_BAR;
+    if (strcmp(str, "rangeslider") == 0) return WIDGET_RANGE_SLIDER;
 
     return WIDGET_UNKNOWN;
 }

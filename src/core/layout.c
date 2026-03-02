@@ -59,6 +59,9 @@ void layout_get_default_widget_size(const char *widget_type, int *width, int *he
     } else if (strcmp(widget_type, "slider") == 0) {
         *width = 150;
         *height = 30;
+    } else if (strcmp(widget_type, "rangeslider") == 0) {
+        *width = 200;  /* Wider for dual handles */
+        *height = 30;
     } else if (strcmp(widget_type, "textinput") == 0) {
         *width = 150;
         *height = 35;

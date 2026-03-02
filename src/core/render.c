@@ -51,6 +51,29 @@ typedef struct {
 } DropdownState;
 
 /*
+ * Slider widget state
+ */
+typedef struct {
+    float value;           /* Current value (0-100) */
+    int is_dragging;       /* Currently dragging handle */
+    int is_hovering;       /* Mouse over handle */
+    int is_track_hovering; /* Mouse over track area */
+} SliderState;
+
+/*
+ * Range slider widget state
+ */
+typedef struct {
+    float min_value;       /* Current minimum value (0-100) */
+    float max_value;       /* Current maximum value (0-100) */
+    int is_dragging_min;   /* Currently dragging min handle */
+    int is_dragging_max;   /* Currently dragging max handle */
+    int is_min_hovering;   /* Mouse over min handle */
+    int is_max_hovering;   /* Mouse over max handle */
+    int is_track_hovering; /* Mouse over track area */
+} RangeSliderState;
+
+/*
  * Forward declarations for dropdown state management
  */
 static DropdownState *dropdown_state_create(void);
@@ -66,6 +89,19 @@ static int is_point_in_open_popup(KryonWindow *win, int x, int y);
  * Public cleanup function for widget.c
  */
 void dropdown_cleanup_widget_internal_data(void *data);
+
+/*
+ * Forward declarations for slider state management
+ */
+static SliderState *slider_state_create(void);
+static void slider_state_destroy(SliderState *state);
+static RangeSliderState *range_slider_state_create(void);
+static void range_slider_state_destroy(RangeSliderState *state);
+
+/*
+ * Public cleanup function for widget.c
+ */
+void slider_cleanup_widget_internal_data(void *data);
 
 /*
  * Set global screen for rendering
@@ -142,6 +178,68 @@ static unsigned long darken_color(unsigned long color)
 }
 
 /*
+ * Draw Tk-style circular handle for slider
+ * Draws a filled circle using polygon approximation with bevel effect
+ */
+static void draw_square_handle(Memimage *screen, Point center, int radius,
+                                unsigned long color, unsigned long border,
+                                unsigned long highlight, unsigned long shadow,
+                                int is_dragging)
+{
+    Rectangle handle_rect;
+    int thickness = 2;  /* Tk default borderwidth is 2 */
+
+    handle_rect.min.x = center.x - radius;
+    handle_rect.min.y = center.y - radius;
+    handle_rect.max.x = center.x + radius;
+    handle_rect.max.y = center.y + radius;
+
+    /* Fill handle */
+    memfillcolor_rect(screen, handle_rect, color);
+
+    /* 3D bevel effect - draw BEFORE border so border is on top */
+    if (!is_dragging) {
+        /* Normal bevel: highlight on top/left, shadow on bottom/right */
+        /* Top edge (highlight) */
+        memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.min.y),
+                     Pt(handle_rect.max.x - 1, handle_rect.min.y), highlight, thickness);
+        /* Left edge (highlight) */
+        memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.min.y),
+                     Pt(handle_rect.min.x, handle_rect.max.y - 1), highlight, thickness);
+        /* Bottom edge (shadow) */
+        memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.max.y - thickness),
+                     Pt(handle_rect.max.x - 1, handle_rect.max.y - thickness), shadow, thickness);
+        /* Right edge (shadow) */
+        memdraw_line(screen, Pt(handle_rect.max.x - thickness, handle_rect.min.y),
+                     Pt(handle_rect.max.x - thickness, handle_rect.max.y - 1), shadow, thickness);
+    } else {
+        /* Inverted bevel when pressed: shadow on top/left, highlight on bottom/right */
+        /* Top edge (shadow) */
+        memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.min.y),
+                     Pt(handle_rect.max.x - 1, handle_rect.min.y), shadow, thickness);
+        /* Left edge (shadow) */
+        memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.min.y),
+                     Pt(handle_rect.min.x, handle_rect.max.y - 1), shadow, thickness);
+        /* Bottom edge (highlight) */
+        memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.max.y - thickness),
+                     Pt(handle_rect.max.x - 1, handle_rect.max.y - thickness), highlight, thickness);
+        /* Right edge (highlight) */
+        memdraw_line(screen, Pt(handle_rect.max.x - thickness, handle_rect.min.y),
+                     Pt(handle_rect.max.x - thickness, handle_rect.max.y - 1), highlight, thickness);
+    }
+
+    /* Black border on the very edge */
+    memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.min.y),
+                 Pt(handle_rect.max.x - 1, handle_rect.min.y), border, 1);
+    memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.min.y),
+                 Pt(handle_rect.min.x, handle_rect.max.y - 1), border, 1);
+    memdraw_line(screen, Pt(handle_rect.min.x, handle_rect.max.y - 1),
+                 Pt(handle_rect.max.x - 1, handle_rect.max.y - 1), border, 1);
+    memdraw_line(screen, Pt(handle_rect.max.x - 1, handle_rect.min.y),
+                 Pt(handle_rect.max.x - 1, handle_rect.max.y - 1), border, 1);
+}
+
+/*
  * Check if widget was clicked (mouse released over widget)
  */
 static int is_widget_clicked(KryonWidget *w)
@@ -181,6 +279,71 @@ static int is_widget_clicked(KryonWidget *w)
     }
 
     return 0;
+}
+
+/*
+ * Calculate handle center position for slider
+ */
+static Point calculate_handle_position(Rectangle track_rect, float value, int handle_radius)
+{
+    Point center;
+    int track_width;
+
+    track_width = Dx(track_rect) - 6;  /* 3px inset on each side */
+    center.x = track_rect.min.x + 3 + (int)((value / 100.0f) * track_width);
+    center.y = track_rect.min.y + Dy(track_rect) / 2;
+
+    return center;
+}
+
+/*
+ * Check if point is inside handle (square region for detection)
+ * Note: Handle is drawn as square centered at center point
+ */
+static int is_point_in_handle(Point p, Point center, int radius)
+{
+    Rectangle handle_rect;
+    handle_rect.min.x = center.x - radius;
+    handle_rect.min.y = center.y - radius;
+    handle_rect.max.x = center.x + radius;
+    handle_rect.max.y = center.y + radius;
+    return ptinrect(p, handle_rect);
+}
+
+/*
+ * Calculate slider value from mouse position
+ */
+static float calculate_value_from_position(int mouse_x, Rectangle track_rect)
+{
+    int track_start, track_width, offset;
+
+    track_start = track_rect.min.x + 3;  /* 3px inset */
+    track_width = Dx(track_rect) - 6;
+    offset = mouse_x - track_start;
+
+    if (offset < 0) offset = 0;
+    if (offset > track_width) offset = track_width;
+
+    return ((float)offset / (float)track_width) * 100.0f;
+}
+
+/*
+ * Update slider value and trigger re-render
+ */
+static void update_slider_value(struct KryonWidget *w, float new_value)
+{
+    char buf[32];
+
+    if (w == NULL) return;
+
+    if (new_value < 0.0f) new_value = 0.0f;
+    if (new_value > 100.0f) new_value = 100.0f;
+
+    sprintf(buf, "%.1f", new_value);
+    free(w->prop_value);
+    w->prop_value = strdup(buf);
+
+    g_render_dirty = 1;
 }
 
 /*
@@ -937,44 +1100,349 @@ void render_widget(KryonWidget *w, Memimage *screen)
         break;
 
     case WIDGET_SLIDER:
-    case WIDGET_RANGE_SLIDER:
-        /* Slider rendering */
-        color = 0xFFE0E0E0;  /* Track color */
-        memfillcolor_rect(screen, widget_rect, color);
-        /* Render slider handle */
-        {
-            float value;
-            int handle_radius = 8;
-            Point center;
-            unsigned long handle_color = DBlue;
-            unsigned long highlight, shadow;
+    {
+        /* Tk-style slider with track, fill, and interactive handle */
+        SliderState *state;
+        float value;
+        Rectangle track_rect, fill_rect;
+        Point center, mouse_pos;
+        int handle_radius = 10;
+        unsigned long trough_color, trough_highlight, trough_shadow;
+        unsigned long handle_color, handle_highlight, handle_shadow;
+        unsigned long border_color, fill_color;
 
-            /* Parse slider value (0-100) */
-            value = 0.0f;
+        /* Get or create slider state */
+        state = (SliderState *)w->internal_data;
+        if (state == NULL) {
+            fprintf(stderr, "Slider: CREATING NEW STATE at %p\n", (void *)state);
+            state = slider_state_create();
+            if (state == NULL) break;
+            w->internal_data = state;
+            fprintf(stderr, "Slider: Created state at %p\n", (void *)state);
+            /* Initialize value from prop_value */
             if (w->prop_value != NULL) {
-                value = (float)atof(w->prop_value);
+                state->value = (float)atof(w->prop_value);
+                if (state->value < 0.0f) state->value = 0.0f;
+                if (state->value > 100.0f) state->value = 100.0f;
             }
-            if (value < 0.0f) value = 0.0f;
-            if (value > 100.0f) value = 100.0f;
-
-            /* Calculate handle center position */
-            center.x = widget_rect.min.x + (int)((value / 100.0f) * Dx(widget_rect));
-            center.y = widget_rect.min.y + Dy(widget_rect) / 2;
-
-            /* Get highlight/shadow colors */
-            highlight = lighten_color(handle_color);
-            shadow = darken_color(handle_color);
-
-            /* Draw filled circle for handle */
-            memdraw_ellipse(screen, center, handle_radius, handle_radius, handle_color, 1);
-
-            /* Add bevel effect - highlight on top half, shadow on bottom */
-            memdraw_line(screen, Pt(center.x - handle_radius + 1, center.y - handle_radius + 2),
-                         Pt(center.x + handle_radius - 1, center.y - handle_radius + 2), highlight, 1);
-            memdraw_line(screen, Pt(center.x - handle_radius + 1, center.y + handle_radius - 2),
-                         Pt(center.x + handle_radius - 1, center.y + handle_radius - 2), shadow, 1);
+        } else {
+            static int last_state_ptr = 0;
+            int current_state_ptr = (int)(long)state;
+            if (last_state_ptr != 0 && last_state_ptr != current_state_ptr) {
+                fprintf(stderr, "Slider: STATE CHANGED! was %p, now %p\n",
+                        (void *)(long)last_state_ptr, (void *)state);
+            }
+            last_state_ptr = current_state_ptr;
         }
-        break;
+
+        value = state->value;
+
+        /* Color constants - Tk-style */
+        trough_color = 0xE0E0E0FF;      /* Light gray trough */
+        trough_highlight = 0xFFFFFFFF;  /* White highlight */
+        trough_shadow = 0x808080FF;     /* Dark gray shadow */
+        border_color = 0x000000FF;      /* Black border */
+        fill_color = 0x00008BFF;        /* Tk-style blue */
+
+        /* Handle colors based on state */
+        if (state->is_dragging) {
+            handle_color = 0xE0E0E0FF;  /* Darker when dragging */
+        } else if (state->is_hovering) {
+            handle_color = 0xF0F0F0FF;  /* Lighter on hover */
+        } else {
+            handle_color = 0xFFFFFFFF;  /* White normally */
+        }
+        handle_highlight = lighten_color(handle_color);
+        handle_shadow = darken_color(handle_color);
+
+        /* Calculate track rectangle (8px height, centered) */
+        track_rect.min.x = widget_rect.min.x;
+        track_rect.min.y = widget_rect.min.y + Dy(widget_rect) / 2 - 4;
+        track_rect.max.x = widget_rect.max.x;
+        track_rect.max.y = track_rect.min.y + 8;
+
+        /* Draw trough background */
+        memfillcolor_rect(screen, track_rect, trough_color);
+
+        /* Trough beveled edges - highlight (top) */
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.min.y),
+                     Pt(track_rect.max.x - 1, track_rect.min.y), trough_highlight, 2);
+        /* Trough beveled edges - shadow (bottom) */
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.max.y - 1),
+                     Pt(track_rect.max.x - 1, track_rect.max.y - 1), trough_shadow, 2);
+
+        /* Trough border */
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.min.y),
+                     Pt(track_rect.max.x - 1, track_rect.min.y), border_color, 1);
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.min.y),
+                     Pt(track_rect.min.x, track_rect.max.y - 1), border_color, 1);
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.max.y - 1),
+                     Pt(track_rect.max.x - 1, track_rect.max.y - 1), border_color, 1);
+        memdraw_line(screen, Pt(track_rect.max.x - 1, track_rect.min.y),
+                     Pt(track_rect.max.x - 1, track_rect.max.y - 1), border_color, 1);
+
+        /* Calculate and draw blue fill from left edge to handle position */
+        if (value > 0.0f) {
+            fill_rect.min.x = track_rect.min.x + 3;
+            fill_rect.min.y = track_rect.min.y + 3;
+            fill_rect.max.x = track_rect.min.x + 3 + (int)((value / 100.0f) * (Dx(track_rect) - 6));
+            fill_rect.max.y = track_rect.max.y - 3;
+
+            if (fill_rect.max.x > fill_rect.min.x) {
+                memfillcolor_rect(screen, fill_rect, fill_color);
+            }
+        }
+
+        /* Calculate handle center position */
+        center = calculate_handle_position(track_rect, value, handle_radius);
+
+        /* Check mouse hover state */
+        mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
+        mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
+        state->is_hovering = is_point_in_handle(mouse_pos, center, handle_radius);
+        state->is_track_hovering = ptinrect(mouse_pos, track_rect);
+
+        /* Handle mouse interaction */
+        if (w->parent_window != NULL && w->prop_enabled) {
+            /* Debug: print mouse state */
+            const char *widget_label = w->prop_text ? w->prop_text : "unnamed";
+            fprintf(stderr, "Slider[%s@%p]: last_btn=%d cur_btn=%d hovering=%d track_hover=%d dragging=%d mouse=(%d,%d) state=%p\n",
+                    widget_label, (void *)w,
+                    w->parent_window->last_mouse_buttons,
+                    w->parent_window->mouse_buttons,
+                    state->is_hovering,
+                    state->is_track_hovering,
+                    state->is_dragging,
+                    mouse_pos.x, mouse_pos.y,
+                    (void *)state);
+
+            /* Click on track or handle - start dragging */
+            if (w->parent_window->last_mouse_buttons == 0 &&
+                w->parent_window->mouse_buttons != 0) {
+                fprintf(stderr, "Slider[%s@%p]: BUTTON PRESS detected\n", widget_label, (void *)w);
+                if (state->is_hovering || state->is_track_hovering) {
+                    fprintf(stderr, "Slider[%s@%p]: Starting drag - value was %.1f\n", widget_label, (void *)w, state->value);
+                    state->is_dragging = 1;
+                    fprintf(stderr, "Slider[%s@%p]: Set is_dragging=1 at state=%p\n", widget_label, (void *)w, (void *)state);
+                    /* Update value from mouse position */
+                    update_slider_value(w, calculate_value_from_position(mouse_pos.x, track_rect));
+                    state->value = (float)atof(w->prop_value);
+                    fprintf(stderr, "Slider[%s@%p]: Value now %.1f, is_dragging=%d\n", widget_label, (void *)w, state->value, state->is_dragging);
+                }
+            }
+            /* Release mouse - stop dragging */
+            if (w->parent_window->last_mouse_buttons != 0 &&
+                w->parent_window->mouse_buttons == 0) {
+                fprintf(stderr, "Slider[%s@%p]: BUTTON RELEASE - stopping drag\n", widget_label, (void *)w);
+                state->is_dragging = 0;
+            }
+            /* Dragging - update value (independent check, not else-if!) */
+            if (state->is_dragging && w->parent_window->mouse_buttons != 0) {
+                float new_val = calculate_value_from_position(mouse_pos.x, track_rect);
+                fprintf(stderr, "Slider[%s@%p]: DRAGGING - new_val=%.1f\n", widget_label, (void *)w, new_val);
+                update_slider_value(w, new_val);
+                state->value = (float)atof(w->prop_value);
+            }
+        } else {
+            if (w->parent_window == NULL) {
+                fprintf(stderr, "Slider: parent_window is NULL!\n");
+            }
+            if (!w->prop_enabled) {
+                fprintf(stderr, "Slider: widget is disabled!\n");
+            }
+        }
+
+        /* Update handle colors based on current state */
+        if (state->is_dragging) {
+            handle_color = 0xE0E0E0FF;  /* Darker when dragging */
+        } else if (state->is_hovering) {
+            handle_color = 0xF0F0F0FF;  /* Lighter on hover */
+        } else {
+            handle_color = 0xFFFFFFFF;  /* White normally */
+        }
+        handle_highlight = lighten_color(handle_color);
+        handle_shadow = darken_color(handle_color);
+
+        /* Draw square handle with 3D bevel effect */
+        draw_square_handle(screen, center, handle_radius, handle_color,
+                           border_color, handle_highlight, handle_shadow, state->is_dragging);
+    }
+    break;
+
+    case WIDGET_RANGE_SLIDER:
+    {
+        /* Tk-style range slider with dual handles */
+        RangeSliderState *state;
+        float min_val, max_val;
+        Rectangle track_rect, fill_rect;
+        Point min_center, max_center, mouse_pos;
+        int handle_radius = 10;
+        unsigned long trough_color, trough_highlight, trough_shadow;
+        unsigned long handle_color, handle_highlight, handle_shadow;
+        unsigned long border_color, fill_color;
+        const float min_gap = 5.0f;  /* Minimum 5% gap between handles */
+
+        /* Get or create range slider state */
+        state = (RangeSliderState *)w->internal_data;
+        if (state == NULL) {
+            state = range_slider_state_create();
+            if (state == NULL) break;
+            w->internal_data = state;
+            /* Initialize values from prop_value (format: "min,max") */
+            if (w->prop_value != NULL && strchr(w->prop_value, ',') != NULL) {
+                sscanf(w->prop_value, "%f,%f", &state->min_value, &state->max_value);
+                if (state->min_value < 0.0f) state->min_value = 0.0f;
+                if (state->min_value > 100.0f) state->min_value = 100.0f;
+                if (state->max_value < 0.0f) state->max_value = 0.0f;
+                if (state->max_value > 100.0f) state->max_value = 100.0f;
+                /* Ensure min < max with minimum gap */
+                if (state->max_value - state->min_value < min_gap) {
+                    state->max_value = state->min_value + min_gap;
+                    if (state->max_value > 100.0f) {
+                        state->max_value = 100.0f;
+                        state->min_value = 100.0f - min_gap;
+                    }
+                }
+            }
+        }
+
+        min_val = state->min_value;
+        max_val = state->max_value;
+
+        /* Color constants - Tk-style */
+        trough_color = 0xE0E0E0FF;      /* Light gray trough */
+        trough_highlight = 0xFFFFFFFF;  /* White highlight */
+        trough_shadow = 0x808080FF;     /* Dark gray shadow */
+        border_color = 0x000000FF;      /* Black border */
+        fill_color = 0x00008BFF;        /* Tk-style blue */
+
+        /* Calculate track rectangle (8px height, centered) */
+        track_rect.min.x = widget_rect.min.x;
+        track_rect.min.y = widget_rect.min.y + Dy(widget_rect) / 2 - 4;
+        track_rect.max.x = widget_rect.max.x;
+        track_rect.max.y = track_rect.min.y + 8;
+
+        /* Draw trough background */
+        memfillcolor_rect(screen, track_rect, trough_color);
+
+        /* Trough beveled edges - highlight (top) */
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.min.y),
+                     Pt(track_rect.max.x - 1, track_rect.min.y), trough_highlight, 2);
+        /* Trough beveled edges - shadow (bottom) */
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.max.y - 1),
+                     Pt(track_rect.max.x - 1, track_rect.max.y - 1), trough_shadow, 2);
+
+        /* Trough border */
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.min.y),
+                     Pt(track_rect.max.x - 1, track_rect.min.y), border_color, 1);
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.min.y),
+                     Pt(track_rect.min.x, track_rect.max.y - 1), border_color, 1);
+        memdraw_line(screen, Pt(track_rect.min.x, track_rect.max.y - 1),
+                     Pt(track_rect.max.x - 1, track_rect.max.y - 1), border_color, 1);
+        memdraw_line(screen, Pt(track_rect.max.x - 1, track_rect.min.y),
+                     Pt(track_rect.max.x - 1, track_rect.max.y - 1), border_color, 1);
+
+        /* Calculate and draw blue fill between handles */
+        fill_rect.min.x = track_rect.min.x + 3 + (int)((min_val / 100.0f) * (Dx(track_rect) - 6));
+        fill_rect.min.y = track_rect.min.y + 3;
+        fill_rect.max.x = track_rect.min.x + 3 + (int)((max_val / 100.0f) * (Dx(track_rect) - 6));
+        fill_rect.max.y = track_rect.max.y - 3;
+
+        if (fill_rect.max.x > fill_rect.min.x) {
+            memfillcolor_rect(screen, fill_rect, fill_color);
+        }
+
+        /* Calculate handle positions */
+        min_center = calculate_handle_position(track_rect, min_val, handle_radius);
+        max_center = calculate_handle_position(track_rect, max_val, handle_radius);
+
+        /* Check mouse hover state */
+        mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
+        mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
+        state->is_min_hovering = is_point_in_handle(mouse_pos, min_center, handle_radius);
+        state->is_max_hovering = is_point_in_handle(mouse_pos, max_center, handle_radius);
+        state->is_track_hovering = ptinrect(mouse_pos, track_rect);
+
+        /* Handle mouse interaction */
+        if (w->parent_window != NULL && w->prop_enabled) {
+            /* Click on track or handle - start dragging */
+            if (w->parent_window->last_mouse_buttons == 0 &&
+                w->parent_window->mouse_buttons != 0) {
+                if (state->is_min_hovering) {
+                    state->is_dragging_min = 1;
+                } else if (state->is_max_hovering) {
+                    state->is_dragging_max = 1;
+                } else if (state->is_track_hovering) {
+                    /* Move nearest handle */
+                    float new_val = calculate_value_from_position(mouse_pos.x, track_rect);
+                    float dist_to_min = new_val - min_val;
+                    float dist_to_max = max_val - new_val;
+                    if (dist_to_min < dist_to_max) {
+                        state->is_dragging_min = 1;
+                    } else {
+                        state->is_dragging_max = 1;
+                    }
+                }
+            }
+            /* Release mouse - stop dragging */
+            if (w->parent_window->last_mouse_buttons != 0 &&
+                w->parent_window->mouse_buttons == 0) {
+                state->is_dragging_min = 0;
+                state->is_dragging_max = 0;
+            }
+
+            /* Update values while dragging */
+            if (state->is_dragging_min && w->parent_window->mouse_buttons != 0) {
+                float new_val = calculate_value_from_position(mouse_pos.x, track_rect);
+                if (new_val > max_val - min_gap) new_val = max_val - min_gap;
+                if (new_val < 0.0f) new_val = 0.0f;
+                state->min_value = new_val;
+            } else if (state->is_dragging_max && w->parent_window->mouse_buttons != 0) {
+                float new_val = calculate_value_from_position(mouse_pos.x, track_rect);
+                if (new_val < min_val + min_gap) new_val = min_val + min_gap;
+                if (new_val > 100.0f) new_val = 100.0f;
+                state->max_value = new_val;
+            }
+
+            /* Update prop_value if values changed */
+            if (state->is_dragging_min || state->is_dragging_max) {
+                char buf[64];
+                sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                free(w->prop_value);
+                w->prop_value = strdup(buf);
+                g_render_dirty = 1;
+            }
+        }
+
+        /* Draw min handle */
+        if (state->is_dragging_min) {
+            handle_color = 0xE0E0E0FF;
+        } else if (state->is_min_hovering) {
+            handle_color = 0xF0F0F0FF;
+        } else {
+            handle_color = 0xFFFFFFFF;
+        }
+        handle_highlight = lighten_color(handle_color);
+        handle_shadow = darken_color(handle_color);
+
+        draw_square_handle(screen, min_center, handle_radius, handle_color,
+                           border_color, handle_highlight, handle_shadow, state->is_dragging_min);
+
+        /* Draw max handle */
+        if (state->is_dragging_max) {
+            handle_color = 0xE0E0E0FF;
+        } else if (state->is_max_hovering) {
+            handle_color = 0xF0F0F0FF;
+        } else {
+            handle_color = 0xFFFFFFFF;
+        }
+        handle_highlight = lighten_color(handle_color);
+        handle_shadow = darken_color(handle_color);
+
+        draw_square_handle(screen, max_center, handle_radius, handle_color,
+                           border_color, handle_highlight, handle_shadow, state->is_dragging_max);
+    }
+    break;
 
     case WIDGET_PROGRESS_BAR:
     {
@@ -1327,4 +1795,62 @@ void dropdown_cleanup_widget_internal_data(void *data)
 {
     DropdownState *state = (DropdownState *)data;
     dropdown_state_destroy(state);
+}
+
+/*
+ * Create slider state
+ */
+static SliderState *slider_state_create(void)
+{
+    SliderState *state = (SliderState *)calloc(1, sizeof(SliderState));
+    if (state == NULL) return NULL;
+    state->value = 0.0f;
+    state->is_dragging = 0;
+    state->is_hovering = 0;
+    state->is_track_hovering = 0;
+    return state;
+}
+
+/*
+ * Destroy slider state
+ */
+static void slider_state_destroy(SliderState *state)
+{
+    if (state == NULL) return;
+    free(state);
+}
+
+/*
+ * Create range slider state
+ */
+static RangeSliderState *range_slider_state_create(void)
+{
+    RangeSliderState *state = (RangeSliderState *)calloc(1, sizeof(RangeSliderState));
+    if (state == NULL) return NULL;
+    state->min_value = 25.0f;
+    state->max_value = 75.0f;
+    state->is_dragging_min = 0;
+    state->is_dragging_max = 0;
+    state->is_min_hovering = 0;
+    state->is_max_hovering = 0;
+    state->is_track_hovering = 0;
+    return state;
+}
+
+/*
+ * Destroy range slider state
+ */
+static void range_slider_state_destroy(RangeSliderState *state)
+{
+    if (state == NULL) return;
+    free(state);
+}
+
+/*
+ * Public cleanup function for slider widgets
+ */
+void slider_cleanup_widget_internal_data(void *data)
+{
+    if (data == NULL) return;
+    free(data);
 }
