@@ -462,7 +462,7 @@ static KryonNode* parse_property_block(Parser *p, KryonNode *node)
                 } else if (strcmp(prop_name, "align") == 0) {
                     free(node->layout_align);
                     node->layout_align = prop_value;
-                } else if (strcmp(prop_name, "cols") == 0) {
+                } else if (strcmp(prop_name, "cols") == 0 || strcmp(prop_name, "columns") == 0) {
                     node->layout_cols = atoi(prop_value);
                     free(prop_value);
                 } else if (strcmp(prop_name, "rows") == 0) {
@@ -649,7 +649,7 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
                 } else if (strcmp(param_name, "align") == 0) {
                     free(node->layout_align);
                     node->layout_align = param_value;
-                } else if (strcmp(param_name, "cols") == 0) {
+                } else if (strcmp(param_name, "cols") == 0 || strcmp(param_name, "columns") == 0) {
                     node->layout_cols = atoi(param_value);
                     free(param_value);
                 } else if (strcmp(param_name, "rows") == 0) {
@@ -703,7 +703,8 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
                 strcmp(word, "hbox") == 0 ||
                 strcmp(word, "grid") == 0 ||
                 strcmp(word, "absolute") == 0 ||
-                strcmp(word, "stack") == 0) {
+                strcmp(word, "stack") == 0 ||
+                strcmp(word, "scrollarea") == 0) {
                 child = parse_layout(p, word);
                 free(word);  /* Layout parsing makes its own copy */
             } else {
@@ -714,8 +715,13 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
 
             if (child != NULL) {
                 add_child(node, child);
+            } else {
+                /* Parsing failed - break to avoid infinite loop */
+                fprintf(stderr, "parse_layout: failed to parse child, breaking\n");
+                break;
             }
         } else {
+            fprintf(stderr, "parse_layout: unexpected token type %d, breaking\n", p->current_token.type);
             break;
         }
     }
@@ -853,7 +859,8 @@ static KryonNode* parse_window(Parser *p)
                 strcmp(word, "hbox") == 0 ||
                 strcmp(word, "grid") == 0 ||
                 strcmp(word, "absolute") == 0 ||
-                strcmp(word, "stack") == 0) {
+                strcmp(word, "stack") == 0 ||
+                strcmp(word, "scrollarea") == 0) {
                 child = parse_layout(p, word);
                 free(word);  /* Layout parsing makes its own copy */
             } else {
@@ -864,8 +871,13 @@ static KryonNode* parse_window(Parser *p)
 
             if (child != NULL) {
                 add_child(node, child);
+            } else {
+                /* Parsing failed - break to avoid infinite loop */
+                fprintf(stderr, "parse_window: failed to parse child, breaking\n");
+                break;
             }
         } else {
+            fprintf(stderr, "parse_window: unexpected token type %d in content, breaking\n", p->current_token.type);
             break;
         }
     }

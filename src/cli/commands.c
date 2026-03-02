@@ -193,13 +193,27 @@ int cmd_create(int argc, char **argv)
         fprintf(fp, "build/\n");
         fprintf(fp, "*.o\n");
         fprintf(fp, "*.a\n");
+        fprintf(fp, "*.so\n");
+        fprintf(fp, "\n");
+        fprintf(fp, "# Platform-specific outputs\n");
+        fprintf(fp, "*.AppImage\n");
+        fprintf(fp, "*.apk\n");
+        fprintf(fp, "*.aab\n");
+        fprintf(fp, "*.wasm\n");
+        fprintf(fp, "*.krb\n");
         fprintf(fp, "\n");
         fprintf(fp, "# Editor files\n");
         fprintf(fp, "*.swp\n");
         fprintf(fp, "*~\n");
+        fprintf(fp, ".vscode/\n");
+        fprintf(fp, ".idea/\n");
         fprintf(fp, "\n");
         fprintf(fp, "# Logs\n");
         fprintf(fp, "*.log\n");
+        fprintf(fp, "\n");
+        fprintf(fp, "# Temporary files\n");
+        fprintf(fp, "*.tmp\n");
+        fprintf(fp, "*~\n");
         fclose(fp);
     }
 
@@ -219,11 +233,15 @@ int cmd_create(int argc, char **argv)
  */
 int cmd_build(int argc, char **argv)
 {
-    const char *target = "linux";  /* Default target */
+    const char *target_name = "linux";  /* Default target */
+    const KryonTarget *target;
+    KryonBuildOutput output;
+    char make_cmd[512];
+    int result;
 
-    /* TODO: Parse target from argv */
+    /* Parse target from argv */
     if (argc >= 2) {
-        target = argv[1];
+        target_name = argv[1];
     }
 
     /* Check if we're in a project */
@@ -233,28 +251,70 @@ int cmd_build(int argc, char **argv)
         return CLI_ERROR;
     }
 
-    cli_print_info("Building project for target: %s", target);
-
-    /* TODO: Implement actual build logic */
-    if (cli_streq(target, "linux")) {
-        cli_print_info("Building native Linux binary...");
-        /* Shell out to make */
-        printf("  (This would run: nix-shell --run 'make')\n");
-    } else if (cli_streq(target, "appimage")) {
-        cli_print_info("Building AppImage package...");
-        printf("  (AppImage support coming soon)\n");
-    } else if (cli_streq(target, "wasm")) {
-        cli_print_info("Building WebAssembly version...");
-        printf("  (WebAssembly support coming soon)\n");
-    } else if (cli_streq(target, "android")) {
-        cli_print_info("Building Android APK...");
-        printf("  (Android support coming soon)\n");
-    } else {
-        cli_print_error("Unknown target: %s", target);
+    /* Find target configuration */
+    target = target_find(target_name);
+    if (target == NULL) {
+        cli_print_error("Unknown target: %s", target_name);
+        cli_print_info("Available targets: linux, appimage, wasm, android");
         return CLI_INVALID_ARGS;
     }
 
+    cli_print_info("Building project for target: %s (%s)",
+                    target_name, target_get_platform_name(target->platform));
+
+    /* Check if toolchain is available */
+    if (!target_is_available(target)) {
+        cli_print_error("Required toolchain not available for %s", target_name);
+        if (target->needs_emscripten) {
+            cli_print_info("Install Emscripten: https://emscripten.org/docs/getting_started/downloads.html");
+        }
+        if (target->needs_android_ndk) {
+            cli_print_info("Set ANDROID_NDK environment variable");
+        }
+        return CLI_ERROR;
+    }
+
+    /* Create output directories */
+    if (target_create_output_dirs(target, ".", &output) < 0) {
+        cli_print_error("Failed to create output directories");
+        return CLI_ERROR;
+    }
+
+    /* Build based on target type */
+    if (target->platform == KRYON_PLATFORM_LINUX) {
+        cli_print_info("Building native Linux binary...");
+        /* Use nix-shell for reproducible build */
+        snprintf(make_cmd, sizeof(make_cmd),
+                 "cd ../.. && nix-shell --run 'cd kryon && make clean && make all'");
+        result = system(make_cmd);
+        if (result != 0) {
+            cli_print_error("Build failed");
+            return CLI_BUILD_FAILED;
+        }
+    } else if (target->platform == KRYON_PLATFORM_APPIMAGE) {
+        cli_print_info("Building AppImage package...");
+        /* First build Linux binary, then bundle */
+        snprintf(make_cmd, sizeof(make_cmd),
+                 "cd ../.. && nix-shell --run 'cd kryon && make clean && make all'");
+        result = system(make_cmd);
+        if (result == 0) {
+            /* TODO: Run AppImage bundler */
+            cli_print_info("AppImage bundling coming soon");
+        }
+    } else if (target->platform == KRYON_PLATFORM_WASM) {
+        cli_print_info("Building WebAssembly version...");
+        /* Use Emscripten */
+        cli_print_info("WebAssembly support - check platform/wasm/ directory");
+        cli_print_info("Manual build: cd platform/wasm && ./build.sh");
+    } else if (target->platform == KRYON_PLATFORM_ANDROID) {
+        cli_print_info("Building Android APK...");
+        /* Use Android NDK */
+        cli_print_info("Android support - check platform/android/ directory");
+        cli_print_info("Manual build: cd platform/android && ./gradlew assembleRelease");
+    }
+
     cli_print_success("Build complete!");
+    printf("Output: %s\n", output.binary);
     return CLI_OK;
 }
 

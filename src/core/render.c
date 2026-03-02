@@ -240,6 +240,101 @@ static void draw_square_handle(Memimage *screen, Point center, int radius,
 }
 
 /*
+ * Draw Tk-style two-square handle for horizontal sliders
+ * Two squares positioned horizontally (side by side) with 3D bevel effect
+ */
+static void draw_two_square_handle(Memimage *screen, Point center,
+                                    unsigned long color, unsigned long border,
+                                    unsigned long highlight, unsigned long shadow,
+                                    int is_dragging)
+{
+    int square_size = 10;  /* Each square is 10x10 pixels */
+    int square_gap = 2;    /* 2 pixel gap between squares */
+    Rectangle sq1, sq2;
+    int total_width = square_size * 2 + square_gap;
+    int left_x = center.x - total_width / 2;
+
+    /* Left square */
+    sq1.min.x = left_x;
+    sq1.min.y = center.y - square_size / 2;
+    sq1.max.x = sq1.min.x + square_size;
+    sq1.max.y = sq1.min.y + square_size;
+
+    /* Right square */
+    sq2.min.x = left_x + square_size + square_gap;
+    sq2.min.y = center.y - square_size / 2;
+    sq2.max.x = sq2.min.x + square_size;
+    sq2.max.y = sq2.min.y + square_size;
+
+    /* Draw first square with 3D bevel */
+    memfillcolor_rect(screen, sq1, color);
+    /* Top edge highlight */
+    memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
+                Pt(sq1.max.x - 1, sq1.min.y), highlight, 2);
+    /* Left edge highlight */
+    memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
+                Pt(sq1.min.x, sq1.max.y - 1), highlight, 2);
+    /* Bottom edge shadow */
+    memdraw_line(screen, Pt(sq1.min.x, sq1.max.y - 2),
+                Pt(sq1.max.x - 1, sq1.max.y - 2), shadow, 2);
+    /* Right edge shadow */
+    memdraw_line(screen, Pt(sq1.max.x - 2, sq1.min.y),
+                Pt(sq1.max.x - 2, sq1.max.y - 1), shadow, 2);
+    /* Border */
+    memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
+                Pt(sq1.max.x - 1, sq1.min.y), border, 1);
+    memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
+                Pt(sq1.min.x, sq1.max.y - 1), border, 1);
+    memdraw_line(screen, Pt(sq1.min.x, sq1.max.y - 1),
+                Pt(sq1.max.x - 1, sq1.max.y - 1), border, 1);
+    memdraw_line(screen, Pt(sq1.max.x - 1, sq1.min.y),
+                Pt(sq1.max.x - 1, sq1.max.y - 1), border, 1);
+
+    /* Draw second square with 3D bevel */
+    memfillcolor_rect(screen, sq2, color);
+    /* Top edge highlight */
+    memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
+                Pt(sq2.max.x - 1, sq2.min.y), highlight, 2);
+    /* Left edge highlight */
+    memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
+                Pt(sq2.min.x, sq2.max.y - 1), highlight, 2);
+    /* Bottom edge shadow */
+    memdraw_line(screen, Pt(sq2.min.x, sq2.max.y - 2),
+                Pt(sq2.max.x - 1, sq2.max.y - 2), shadow, 2);
+    /* Right edge shadow */
+    memdraw_line(screen, Pt(sq2.max.x - 2, sq2.min.y),
+                Pt(sq2.max.x - 2, sq2.max.y - 1), shadow, 2);
+    /* Border */
+    memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
+                Pt(sq2.max.x - 1, sq2.min.y), border, 1);
+    memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
+                Pt(sq2.min.x, sq2.max.y - 1), border, 1);
+    memdraw_line(screen, Pt(sq2.min.x, sq2.max.y - 1),
+                Pt(sq2.max.x - 1, sq2.max.y - 1), border, 1);
+    memdraw_line(screen, Pt(sq2.max.x - 1, sq2.min.y),
+                Pt(sq2.max.x - 1, sq2.max.y - 1), border, 1);
+}
+
+/*
+ * Get the bounding rectangle for a two-square handle
+ */
+static Rectangle get_two_square_handle_rect(Point center)
+{
+    int square_size = 10;
+    int square_gap = 2;
+    int total_width = square_size * 2 + square_gap;
+    Rectangle rect;
+    int left_x = center.x - total_width / 2;
+
+    rect.min.x = left_x;
+    rect.min.y = center.y - square_size / 2;
+    rect.max.x = left_x + total_width;
+    rect.max.y = center.y + square_size / 2;
+
+    return rect;
+}
+
+/*
  * Check if widget was clicked (mouse released over widget)
  */
 static int is_widget_clicked(KryonWidget *w)
@@ -1106,7 +1201,6 @@ void render_widget(KryonWidget *w, Memimage *screen)
         float value;
         Rectangle track_rect, fill_rect;
         Point center, mouse_pos;
-        int handle_radius = 10;
         unsigned long trough_color, trough_highlight, trough_shadow;
         unsigned long handle_color, handle_highlight, handle_shadow;
         unsigned long border_color, fill_color;
@@ -1128,28 +1222,17 @@ void render_widget(KryonWidget *w, Memimage *screen)
         value = state->value;
 
         /* Color constants - Tk-style */
-        trough_color = 0xE0E0E0FF;      /* Light gray trough */
-        trough_highlight = 0xFFFFFFFF;  /* White highlight */
-        trough_shadow = 0x808080FF;     /* Dark gray shadow */
+        trough_color = 0xC0C0C0FF;      /* Classic Tk trough color */
+        trough_highlight = 0xE0E0E0FF;  /* Lighter highlight */
+        trough_shadow = 0xA0A0A0FF;     /* Darker shadow */
         border_color = 0x000000FF;      /* Black border */
         fill_color = 0x00008BFF;        /* Tk-style blue */
 
-        /* Handle colors based on state */
-        if (state->is_dragging) {
-            handle_color = 0xE0E0E0FF;  /* Darker when dragging */
-        } else if (state->is_hovering) {
-            handle_color = 0xF0F0F0FF;  /* Lighter on hover */
-        } else {
-            handle_color = 0xFFFFFFFF;  /* White normally */
-        }
-        handle_highlight = lighten_color(handle_color);
-        handle_shadow = darken_color(handle_color);
-
-        /* Calculate track rectangle (8px height, centered) */
+        /* Calculate track rectangle (simple 12px height, centered) */
         track_rect.min.x = widget_rect.min.x;
-        track_rect.min.y = widget_rect.min.y + Dy(widget_rect) / 2 - 4;
+        track_rect.min.y = widget_rect.min.y + Dy(widget_rect) / 2 - 6;
         track_rect.max.x = widget_rect.max.x;
-        track_rect.max.y = track_rect.min.y + 8;
+        track_rect.max.y = track_rect.min.y + 12;
 
         /* Draw trough background */
         memfillcolor_rect(screen, track_rect, trough_color);
@@ -1184,13 +1267,30 @@ void render_widget(KryonWidget *w, Memimage *screen)
         }
 
         /* Calculate handle center position */
-        center = calculate_handle_position(track_rect, value, handle_radius);
+        {
+            int handle_radius = 10;
+            center = calculate_handle_position(track_rect, value, handle_radius);
+        }
 
         /* Check mouse hover state */
-        mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
-        mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
-        state->is_hovering = is_point_in_handle(mouse_pos, center, handle_radius);
-        state->is_track_hovering = ptinrect(mouse_pos, track_rect);
+        {
+            int square_size = 10;
+            int square_gap = 2;
+            int total_height = square_size * 2 + square_gap;
+            int top_y = center.y - total_height / 2;
+            Rectangle handle_area;
+
+            /* Rectangle covering both squares */
+            handle_area.min.x = center.x - square_size / 2;
+            handle_area.min.y = top_y;
+            handle_area.max.x = center.x + square_size / 2;
+            handle_area.max.y = top_y + total_height;
+
+            mouse_pos.x = w->parent_window ? w->parent_window->mouse_x : 0;
+            mouse_pos.y = w->parent_window ? w->parent_window->mouse_y : 0;
+            state->is_hovering = ptinrect(mouse_pos, handle_area);
+            state->is_track_hovering = ptinrect(mouse_pos, track_rect);
+        }
 
         /* Handle mouse interaction */
         if (w->parent_window != NULL && w->prop_enabled) {
@@ -1198,11 +1298,6 @@ void render_widget(KryonWidget *w, Memimage *screen)
             if (w->parent_window->last_mouse_buttons == 0 &&
                 w->parent_window->mouse_buttons != 0) {
                 if (state->is_hovering || state->is_track_hovering) {
-                    const char *widget_label = w->prop_text ? w->prop_text : "unnamed";
-                    fprintf(stderr, "DRAG_START: %s last_btn=%d cur_btn=%d\n",
-                            widget_label,
-                            w->parent_window->last_mouse_buttons,
-                            w->parent_window->mouse_buttons);
                     state->is_dragging = 1;
                     update_slider_value(w, calculate_value_from_position(mouse_pos.x, track_rect));
                     state->value = (float)atof(w->prop_value);
@@ -1211,10 +1306,6 @@ void render_widget(KryonWidget *w, Memimage *screen)
             /* Release mouse - stop dragging */
             if (w->parent_window->last_mouse_buttons != 0 &&
                 w->parent_window->mouse_buttons == 0) {
-                const char *widget_label = w->prop_text ? w->prop_text : "unnamed";
-                fprintf(stderr, "DRAG_END: %s was_dragging=%d\n",
-                        widget_label,
-                        state->is_dragging);
                 state->is_dragging = 0;
             }
             /* Dragging - update value (independent check, not else-if!) */
@@ -1227,18 +1318,83 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
         /* Update handle colors based on current state */
         if (state->is_dragging) {
-            handle_color = 0xE0E0E0FF;  /* Darker when dragging */
+            handle_color = 0xD0D0D0FF;  /* Darker when dragging */
         } else if (state->is_hovering) {
-            handle_color = 0xF0F0F0FF;  /* Lighter on hover */
+            handle_color = 0xE8E8E8FF;  /* Lighter on hover */
         } else {
-            handle_color = 0xFFFFFFFF;  /* White normally */
+            handle_color = 0xE0E0E0FF;  /* Light gray normally (Tk style) */
         }
         handle_highlight = lighten_color(handle_color);
         handle_shadow = darken_color(handle_color);
 
-        /* Draw square handle with 3D bevel effect */
-        draw_square_handle(screen, center, handle_radius, handle_color,
-                           border_color, handle_highlight, handle_shadow, state->is_dragging);
+        /* Draw TWO-SQUARE handle (Tk style) */
+        {
+            int square_size = 10;  /* Each square is 10x10 pixels */
+            int square_gap = 2;    /* 2 pixel gap between squares */
+            Rectangle sq1, sq2;
+            int total_height = square_size * 2 + square_gap;
+            int top_y = center.y - total_height / 2;
+
+            /* Top square */
+            sq1.min.x = center.x - square_size / 2;
+            sq1.min.y = top_y;
+            sq1.max.x = sq1.min.x + square_size;
+            sq1.max.y = sq1.min.y + square_size;
+
+            /* Bottom square */
+            sq2.min.x = center.x - square_size / 2;
+            sq2.min.y = top_y + square_size + square_gap;
+            sq2.max.x = sq2.min.x + square_size;
+            sq2.max.y = sq2.min.y + square_size;
+
+            /* Draw first square with 3D bevel */
+            memfillcolor_rect(screen, sq1, handle_color);
+            /* Top edge highlight */
+            memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
+                        Pt(sq1.max.x - 1, sq1.min.y), handle_highlight, 2);
+            /* Left edge highlight */
+            memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
+                        Pt(sq1.min.x, sq1.max.y - 1), handle_highlight, 2);
+            /* Bottom edge shadow */
+            memdraw_line(screen, Pt(sq1.min.x, sq1.max.y - 2),
+                        Pt(sq1.max.x - 1, sq1.max.y - 2), handle_shadow, 2);
+            /* Right edge shadow */
+            memdraw_line(screen, Pt(sq1.max.x - 2, sq1.min.y),
+                        Pt(sq1.max.x - 2, sq1.max.y - 1), handle_shadow, 2);
+            /* Border */
+            memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
+                        Pt(sq1.max.x - 1, sq1.min.y), border_color, 1);
+            memdraw_line(screen, Pt(sq1.min.x, sq1.min.y),
+                        Pt(sq1.min.x, sq1.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(sq1.min.x, sq1.max.y - 1),
+                        Pt(sq1.max.x - 1, sq1.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(sq1.max.x - 1, sq1.min.y),
+                        Pt(sq1.max.x - 1, sq1.max.y - 1), border_color, 1);
+
+            /* Draw second square with 3D bevel */
+            memfillcolor_rect(screen, sq2, handle_color);
+            /* Top edge highlight */
+            memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
+                        Pt(sq2.max.x - 1, sq2.min.y), handle_highlight, 2);
+            /* Left edge highlight */
+            memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
+                        Pt(sq2.min.x, sq2.max.y - 1), handle_highlight, 2);
+            /* Bottom edge shadow */
+            memdraw_line(screen, Pt(sq2.min.x, sq2.max.y - 2),
+                        Pt(sq2.max.x - 1, sq2.max.y - 2), handle_shadow, 2);
+            /* Right edge shadow */
+            memdraw_line(screen, Pt(sq2.max.x - 2, sq2.min.y),
+                        Pt(sq2.max.x - 2, sq2.max.y - 1), handle_shadow, 2);
+            /* Border */
+            memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
+                        Pt(sq2.max.x - 1, sq2.min.y), border_color, 1);
+            memdraw_line(screen, Pt(sq2.min.x, sq2.min.y),
+                        Pt(sq2.min.x, sq2.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(sq2.min.x, sq2.max.y - 1),
+                        Pt(sq2.max.x - 1, sq2.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(sq2.max.x - 1, sq2.min.y),
+                        Pt(sq2.max.x - 1, sq2.max.y - 1), border_color, 1);
+        }
     }
     break;
 

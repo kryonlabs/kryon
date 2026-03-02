@@ -100,8 +100,10 @@ CLIENT_SRCS = $(SRC_DIR)/client/sdl_display.c \
               $(SRC_DIR)/client/eventpoll.c
 # CLI (Flutter-like command-line interface)
 CLI_SRCS = $(SRC_DIR)/cli/main.c $(SRC_DIR)/cli/commands.c $(SRC_DIR)/cli/yaml.c
+# Build system (multi-target support)
+BUILD_SRCS = $(SRC_DIR)/build/target.c
 SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(KRYON_SRCS) $(TRANSPORT_SRCS) \
-       $(P9CLIENT_SRCS) $(SYS_SRCS)
+       $(P9CLIENT_SRCS) $(SYS_SRCS) $(BUILD_SRCS)
 
 # Additional object files for linking
 WINDOW_OBJS = $(BUILD_DIR)/core/window.o
@@ -156,11 +158,10 @@ $(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN
 	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport $< $(CLIENT_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(DISPLAY_LDFLAGS)
 
 # Kryon CLI binary (replaces kryon.sh wrapper)
-$(KRYON_TARGET): $(CLI_SRCS) | $(BIN_DIR)
-	@mkdir -p $(BUILD_DIR)/cli
-	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli \
-		$(SRC_DIR)/cli/main.c $(SRC_DIR)/cli/commands.c $(SRC_DIR)/cli/yaml.c \
-		-o $@ $(LDFLAGS)
+CLI_OBJS = $(BUILD_DIR)/cli/main.o $(BUILD_DIR)/cli/commands.o $(BUILD_DIR)/cli/yaml.o $(BUILD_DIR)/build/target.o
+$(KRYON_TARGET): $(CLI_OBJS) | $(BIN_DIR)
+	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build \
+		$(CLI_OBJS) -o $@ $(LDFLAGS)
 	chmod +x $(KRYON_TARGET)
 
 # PPM screenshot tool
@@ -206,18 +207,23 @@ $(BUILD_DIR)/lib/client/marrow.o: $(SRC_DIR)/lib/client/marrow.c
 	@mkdir -p $(BUILD_DIR)/lib/client
 	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
+# Compile object files in build/ subdirectory
+$(BUILD_DIR)/build/target.o: $(SRC_DIR)/build/target.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/build
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/build -c $< -o $@
+
 # Compile CLI object files
 $(BUILD_DIR)/cli/main.o: $(SRC_DIR)/cli/main.c | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)/cli
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -c $< -o $@
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build -c $< -o $@
 
 $(BUILD_DIR)/cli/commands.o: $(SRC_DIR)/cli/commands.c | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)/cli
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -c $< -o $@
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build -c $< -o $@
 
 $(BUILD_DIR)/cli/yaml.o: $(SRC_DIR)/cli/yaml.c | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)/cli
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -c $< -o $@
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build -c $< -o $@
 
 # Build Marrow graphics objects (for linking with Kryon)
 $(BUILD_DIR)/marrow:

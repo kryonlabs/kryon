@@ -79,4 +79,7 @@ typedef struct CLIKryonYaml {
 int cli_yaml_parse(const char *path, CLIKryonYaml *yaml);
 void cli_yaml_print_default(const char *project_name);
 
+/* Build system integration */
+#include "target.h"
+
 #endif /* CLI_H */
