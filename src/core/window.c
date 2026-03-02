@@ -297,10 +297,10 @@ void window_destroy(struct KryonWindow *window)
         if (window->vdev->cons_buffer != NULL) {
             free(window->vdev->cons_buffer);
         }
-        /* Note: draw_buffer is a Memimage, should be freed by memimage_free */
-        /* if (window->vdev->draw_buffer != NULL) {
-             memimage_free(window->vdev->draw_buffer);
-         } */
+        /* Free framebuffer */
+        if (window->vdev->draw_buffer != NULL) {
+            memimage_free(window->vdev->draw_buffer);
+        }
         free(window->vdev);
     }
 

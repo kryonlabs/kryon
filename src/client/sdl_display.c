@@ -351,6 +351,12 @@ static int read_screen(DisplayClient *dc)
                 dc->screen_fd = -1;
             }
 
+            /* Close mouse FIFO before reconnection */
+            if (dc->mouse_fifo_fd >= 0) {
+                close(dc->mouse_fifo_fd);
+                dc->mouse_fifo_fd = -1;
+            }
+
             /* Mark as disconnected */
             dc->connected = 0;
 
@@ -361,12 +367,31 @@ static int read_screen(DisplayClient *dc)
                 return 0;  /* Don't exit, try again next frame */
             }
 
-            /* Re-open /dev/screen */
-            dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
-            if (dc->screen_fd < 0) {
-                fprintf(stderr, "Failed to open /dev/screen after reconnection\n");
-                usleep(100000);
-                return 0;
+            /* Re-open /dev/screen with retry logic */
+            {
+                int screen_open_retry = 0;
+                while (screen_open_retry < 20) {  /* Try for up to 2 seconds */
+                    dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
+                    if (dc->screen_fd >= 0) {
+                        break;  /* Success! */
+                    }
+                    fprintf(stderr, "Failed to open /dev/screen after reconnection (attempt %d), retrying...\n",
+                            screen_open_retry + 1);
+                    usleep(100000 * (1 << screen_open_retry));  /* Exponential backoff: 100ms, 200ms, 400ms... */
+                    screen_open_retry++;
+                }
+
+                if (dc->screen_fd < 0) {
+                    fprintf(stderr, "Failed to open /dev/screen after 20 attempts, will retry full reconnection\n");
+                    usleep(500000);  /* Wait 500ms before trying full reconnection */
+                    return 0;  /* Don't exit, try again next frame */
+                }
+            }
+
+            /* Reopen mouse FIFO after successful reconnection */
+            dc->mouse_fifo_fd = open("/tmp/.kryon-mouse-1", O_WRONLY | O_NONBLOCK);
+            if (dc->mouse_fifo_fd < 0) {
+                fprintf(stderr, "Warning: Could not reopen mouse FIFO after reconnection\n");
             }
 
             /* Mark as connected */
@@ -555,10 +580,6 @@ int display_client_send_mouse(DisplayClient *dc, int x, int y, int buttons)
         return -1;
     }
 
-    if (buttons != 0) {
-        fprintf(stderr, "send_mouse: x=%d y=%d buttons=%d\n", x, y, buttons);
-    }
-
     /* Retry FIFO open if WM hadn't created it yet */
     if (dc->mouse_fifo_fd < 0) {
         dc->mouse_fifo_fd = open("/tmp/.kryon-mouse-1", O_WRONLY | O_NONBLOCK);
@@ -682,7 +703,7 @@ static int resize_display(DisplayClient *dc, int new_width, int new_height)
     SDL_SetWindowSize(window, new_width, new_height);
 
     texture = SDL_CreateTexture(renderer,
-                                SDL_PIXELFORMAT_RGBA32,
+                                SDL_PIXELFORMAT_ARGB8888,  /* Same as initial texture - matches server BGRA */
                                 SDL_TEXTUREACCESS_STREAMING,
                                 new_width, new_height);
     if (texture == NULL) {
@@ -741,9 +762,19 @@ int display_client_run(DisplayClient *dc)
         }
 
         /* Read and display screen every frame */
-        if (read_screen(dc) < 0) {
-            fprintf(stderr, "Error reading screen\n");
-            break;
+        {
+            static int read_error_count = 0;  /* File-scope persistence, block-scope visibility */
+
+            if (read_screen(dc) < 0) {
+                /* Don't break immediately - might be temporary connection issue */
+                if (++read_error_count > 10) {  /* Only exit after 10 consecutive errors */
+                    fprintf(stderr, "Error reading screen after 10 attempts, exiting...\n");
+                    break;
+                }
+                usleep(100000);  /* Wait before retry */
+                continue;  /* Try again instead of breaking */
+            }
+            read_error_count = 0;  /* Reset counter on success */
         }
         if (update_display(dc) < 0) {
             fprintf(stderr, "Error updating display\n");

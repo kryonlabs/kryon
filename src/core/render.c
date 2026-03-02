@@ -20,6 +20,7 @@
 #include "widget.h"
 #include "render/render.h"
 #include "util.h"
+#include "kryon.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -76,6 +77,7 @@ static SliderState *slider_state_create(void);
 static void slider_state_destroy(SliderState *state);
 static RangeSliderState *range_slider_state_create(void);
 static void range_slider_state_destroy(RangeSliderState *state);
+void mark_dirty(KryonWindow *win);  /* Public for use in other files */
 
 /*
  * ========== Legacy Widget Rendering ==========
@@ -457,6 +459,237 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
     break;
 
     case WIDGET_DROPDOWN:
+        {
+            DropdownState *state;
+            int is_popup_pass;
+            int has_open_popup;
+            int is_hovered;
+            Point mp;
+            Point text_pos;
+            Subfont *font;
+            Rectangle popup_rect;
+            unsigned long bg_color, border_color, text_color;
+            int button_height;
+            int arrow_size = 8;
+            int item_height = 24;
+            int i;
+            int has_state;
+            Point arrow_pts[3];
+
+            state = (DropdownState *)w->internal_data;
+            has_state = (state != NULL);
+            is_popup_pass = *render_only_popups;
+            has_open_popup = (has_state && state->is_open);
+            is_hovered = 0;
+
+            /* Check hover state */
+            if (w->parent_window != NULL) {
+                mp.x = w->parent_window->mouse_x;
+                mp.y = w->parent_window->mouse_y;
+                is_hovered = ptinrect(mp, widget_rect);
+            }
+
+            /* Pass 1: Draw button only (skip popup) */
+            if (!is_popup_pass) {
+                /* Determine colors based on state (R=G=B for neutral grays) */
+                if (has_state && state->is_open) {
+                    bg_color = 0xD0D0D0FF;  /* Medium gray when open (R=G=B=208) */
+                } else if (is_hovered) {
+                    bg_color = 0xE0E0E0FF;  /* Light gray on hover (R=G=B=224) */
+                } else {
+                    bg_color = 0xFFFFFFFF;  /* White when closed */
+                }
+                border_color = 0x808080FF;  /* Dark gray border (R=G=B=128) */
+                text_color = 0x000000FF;    /* Black text */
+
+                /* Draw button background */
+                memfillcolor_rect(screen, widget_rect, bg_color);
+
+                /* Draw beveled edges */
+                {
+                    unsigned long highlight = 0xFFFFFFFF;  /* White highlight */
+                    unsigned long shadow = 0x808080FF;    /* Dark gray shadow */
+                    int thickness = 2;
+
+                    /* When open, invert bevel to look "sunken" */
+                    if (has_state && state->is_open) {
+                        unsigned long temp = highlight;
+                        highlight = shadow;
+                        shadow = temp;
+                    }
+
+                    /* Top edge (highlight) */
+                    memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                                 Pt(widget_rect.max.x - 1, widget_rect.min.y), highlight, thickness);
+                    /* Left edge (highlight) */
+                    memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                                 Pt(widget_rect.min.x, widget_rect.max.y - 1), highlight, thickness);
+                    /* Bottom edge (shadow) */
+                    memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
+                                 Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
+                    /* Right edge (shadow) */
+                    memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                                 Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), shadow, thickness);
+                }
+
+                /* Draw border */
+                memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                            Pt(widget_rect.max.x - 1, widget_rect.min.y), border_color, 1);
+                memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                            Pt(widget_rect.min.x, widget_rect.max.y - 1), border_color, 1);
+                memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
+                            Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
+                memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                            Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
+
+                /* Calculate text or selected option */
+                button_height = widget_rect.max.y - widget_rect.min.y;
+                text_pos.x = widget_rect.min.x + 4;
+                text_pos.y = widget_rect.min.y + (button_height - 16) / 2;
+
+                if (has_state && state->selected_index >= 0 &&
+                    state->selected_index < state->num_options && state->options != NULL) {
+                    /* Draw selected option text */
+                    font = memdraw_get_default_font();
+                    if (font != NULL) {
+                        memdraw_text_font(screen, text_pos, state->options[state->selected_index], font, text_color);
+                    } else {
+                        memdraw_text(screen, text_pos, state->options[state->selected_index], text_color);
+                    }
+                } else if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                    /* Draw placeholder text */
+                    font = memdraw_get_default_font();
+                    if (font != NULL) {
+                        memdraw_text_font(screen, text_pos, w->prop_text, font, text_color);
+                    } else {
+                        memdraw_text(screen, text_pos, w->prop_text, text_color);
+                    }
+                }
+
+                /* Draw down arrow on right side */
+                {
+                    int arrow_x = widget_rect.max.x - arrow_size - 4;
+                    int arrow_y = widget_rect.min.y + (button_height - arrow_size) / 2;
+
+                    arrow_pts[0].x = arrow_x;
+                    arrow_pts[0].y = arrow_y;
+                    arrow_pts[1].x = arrow_x + arrow_size;
+                    arrow_pts[1].y = arrow_y;
+                    arrow_pts[2].x = arrow_x + arrow_size / 2;
+                    arrow_pts[2].y = arrow_y + arrow_size;
+
+                    memdraw_poly(screen, arrow_pts, 3, 0x404040FF, 1);  /* Dark gray arrow (R=G=B=64) */
+                }
+
+                /* Handle click on button */
+                if (render_is_widget_clicked(w)) {
+                    if (!has_state) {
+                        state = dropdown_state_create();
+                        w->internal_data = state;
+                        has_state = (state != NULL);
+                    }
+                    if (has_state) {
+                        state->is_open = !state->is_open;
+                        g_render_dirty = 1;
+                    }
+                }
+            }
+
+            /* Pass 2: Draw popup only (if open) */
+            if (is_popup_pass && has_open_popup && state->num_options > 0 && state->options != NULL) {
+                border_color = 0x808080FF;  /* Dark gray border (R=G=B=128) */
+                text_color = 0x000000FF;    /* Black text */
+
+                /* Calculate popup rectangle below button */
+                popup_rect.min.x = widget_rect.min.x;
+                popup_rect.min.y = widget_rect.max.y + 1;
+                popup_rect.max.x = widget_rect.max.x;
+                popup_rect.max.y = popup_rect.min.y + state->num_options * item_height;
+
+                /* Draw popup background */
+                memfillcolor_rect(screen, popup_rect, 0xFFFFFFFF);  /* White */
+
+                /* Draw popup border */
+                memdraw_line(screen, Pt(popup_rect.min.x, popup_rect.min.y),
+                            Pt(popup_rect.max.x - 1, popup_rect.min.y), border_color, 1);
+                memdraw_line(screen, Pt(popup_rect.min.x, popup_rect.min.y),
+                            Pt(popup_rect.min.x, popup_rect.max.y - 1), border_color, 1);
+                memdraw_line(screen, Pt(popup_rect.min.x, popup_rect.max.y - 1),
+                            Pt(popup_rect.max.x - 1, popup_rect.max.y - 1), border_color, 1);
+                memdraw_line(screen, Pt(popup_rect.max.x - 1, popup_rect.min.y),
+                            Pt(popup_rect.max.x - 1, popup_rect.max.y - 1), border_color, 1);
+
+                /* Reset hovered item */
+                state->hovered_item = -1;
+
+                /* Draw menu items */
+                for (i = 0; i < state->num_options; i++) {
+                    Rectangle item_rect;
+                    unsigned long item_bg = 0xFFFFFFFF;  /* White */
+                    Point item_text_pos;
+
+                    item_rect.min.x = popup_rect.min.x + 1;
+                    item_rect.min.y = popup_rect.min.y + i * item_height + 1;
+                    item_rect.max.x = popup_rect.max.x - 1;
+                    item_rect.max.y = item_rect.min.y + item_height - 1;
+
+                    /* Check if mouse is over this item */
+                    if (w->parent_window != NULL) {
+                        if (ptinrect(mp, item_rect)) {
+                            state->hovered_item = i;
+                            item_bg = 0xE0E0E0FF;  /* Light gray hover (R=G=B=224) */
+                        }
+                    }
+
+                    /* Highlight selected item */
+                    if (i == state->selected_index) {
+                        item_bg = 0xD0D0D0FF;  /* Medium gray (R=G=B=208) */
+                    }
+
+                    /* Draw item background */
+                    memfillcolor_rect(screen, item_rect, item_bg);
+
+                    /* Draw item text */
+                    item_text_pos.x = item_rect.min.x + 4;
+                    item_text_pos.y = item_rect.min.y + (item_height - 16) / 2;
+                    font = memdraw_get_default_font();
+                    if (font != NULL) {
+                        memdraw_text_font(screen, item_text_pos, state->options[i], font, text_color);
+                    } else {
+                        memdraw_text(screen, item_text_pos, state->options[i], text_color);
+                    }
+                }
+
+                /* Handle click on menu item */
+                if (w->parent_window != NULL) {
+                    if (w->parent_window->last_mouse_buttons != 0 &&
+                        w->parent_window->mouse_buttons == 0) {
+                        /* Mouse released - check if clicking on popup */
+                        if (state->hovered_item >= 0 && state->hovered_item < state->num_options) {
+                            /* Select the item */
+                            state->selected_index = state->hovered_item;
+
+                            /* Update prop_value */
+                            free(w->prop_value);
+                            w->prop_value = (char *)malloc(16);
+                            if (w->prop_value != NULL) {
+                                sprintf(w->prop_value, "%d", state->selected_index);
+                            }
+
+                            /* Close popup */
+                            state->is_open = 0;
+                            g_render_dirty = 1;
+                        } else if (!ptinrect(mp, widget_rect) && !ptinrect(mp, popup_rect)) {
+                            /* Clicked outside - close popup */
+                            state->is_open = 0;
+                            g_render_dirty = 1;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+
     case WIDGET_PROGRESS_BAR:
     case WIDGET_SWITCH:
     case WIDGET_IMAGE:
