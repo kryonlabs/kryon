@@ -1,7 +1,7 @@
 # Progress Bar Widget Demo
 # Demonstrates progressbar widget with various progress values
 
-window progressbar_demo "Progress Bar Widget Demo" 400 350 {
+window progressbar_demo "Progress Bar Widget Demo" 400 500 {
     vbox gap=15 padding=20 {
         # Heading
         label heading "Progress Bar Widgets" { color "#00FF00" }

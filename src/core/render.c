@@ -829,7 +829,7 @@ void render_widget(KryonWidget *w, Memimage *screen)
         if (progress > 100.0f) progress = 100.0f;
 
         /* Trough colors */
-        trough_color = 0xFFE0E0E0;      /* Light gray trough */
+        trough_color = 0xE0E0E0FF;      /* Light gray trough (R=G=B=224, A=255) */
         trough_highlight = 0xFFFFFFFF;  /* White highlight */
         trough_shadow = 0x808080FF;     /* Dark gray shadow */
         border_color = 0x000000FF;      /* Black border */

@@ -612,14 +612,14 @@ int main(int argc, char **argv)
         /* Set screen as global for rendering */
         render_set_screen(screen);
 
-        /* Clear screen to cyan first (so we can see if rendering works) */
+        /* Clear screen to Tk-style gray background */
         {
             Rectangle clear_rect;
             clear_rect.min.x = 0;
             clear_rect.min.y = 0;
             clear_rect.max.x = screen_width;
             clear_rect.max.y = screen_height;
-            memfillcolor_rect(screen, clear_rect, 0xFF00FFFF);  /* Cyan in BGRA */
+            memfillcolor_rect(screen, clear_rect, 0xD9D9D9FF);  /* Tk-style gray in BGRA */
         }
 
         /* Render all windows to screen and push pixels to Marrow */

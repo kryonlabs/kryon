@@ -581,6 +581,117 @@ int display_client_send_key(DisplayClient *dc, int keycode, int pressed)
 }
 
 /*
+ * Check for screen size changes from WM
+ * Returns 1 if size changed, 0 if same, -1 on error
+ */
+static int check_screen_size_change(int *new_width, int *new_height)
+{
+    FILE *sf;
+
+    sf = fopen("/tmp/.kryon-screensize", "r");
+    if (sf == NULL) {
+        return -1;
+    }
+
+    if (fscanf(sf, "%d %d", new_width, new_height) != 2) {
+        fclose(sf);
+        return -1;
+    }
+
+    fclose(sf);
+    return 0;
+}
+
+/*
+ * Resize display for new screen dimensions
+ * Called when WM hot-reloads with different window size
+ */
+static int resize_display(DisplayClient *dc, int new_width, int new_height)
+{
+#ifdef HAVE_SDL2
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    SDL_Texture *texture;
+    uint8_t *new_screen_buf;
+    uint8_t *new_temp_buf;
+
+    fprintf(stderr, "Resizing display from %dx%d to %dx%d\n",
+            dc->screen_width, dc->screen_height, new_width, new_height);
+
+    /* Allocate new buffers */
+    new_screen_buf = (uint8_t *)malloc(new_width * new_height * 4);
+    if (new_screen_buf == NULL) {
+        fprintf(stderr, "Failed to allocate new screen buffer\n");
+        return -1;
+    }
+
+    new_temp_buf = (uint8_t *)malloc(new_width * new_height * 4);
+    if (new_temp_buf == NULL) {
+        fprintf(stderr, "Failed to allocate new temp buffer\n");
+        free(new_screen_buf);
+        return -1;
+    }
+
+    /* Close old screen FD */
+    if (dc->screen_fd >= 0) {
+        p9_close(dc->p9, dc->screen_fd);
+        dc->screen_fd = -1;
+    }
+
+    /* Free old buffers */
+    if (dc->screen_buf != NULL) {
+        free(dc->screen_buf);
+    }
+    if (dc->temp_buf != NULL) {
+        free(dc->temp_buf);
+    }
+
+    /* Update dimensions */
+    dc->screen_width = new_width;
+    dc->screen_height = new_height;
+    dc->screen_buf = new_screen_buf;
+    dc->temp_buf = new_temp_buf;
+
+    /* Re-open /dev/screen with new dimensions */
+    dc->screen_fd = p9_open(dc->p9, "/dev/screen", P9_OREAD);
+    if (dc->screen_fd < 0) {
+        fprintf(stderr, "Failed to reopen /dev/screen after resize\n");
+        return -1;
+    }
+
+    /* Resize SDL window and texture */
+    window = (SDL_Window *)dc->sdl_window;
+    renderer = (SDL_Renderer *)dc->sdl_renderer;
+    texture = (SDL_Texture *)dc->sdl_texture;
+
+    if (texture != NULL) {
+        SDL_DestroyTexture(texture);
+    }
+
+    SDL_SetWindowSize(window, new_width, new_height);
+
+    texture = SDL_CreateTexture(renderer,
+                                SDL_PIXELFORMAT_RGBA32,
+                                SDL_TEXTUREACCESS_STREAMING,
+                                new_width, new_height);
+    if (texture == NULL) {
+        fprintf(stderr, "Failed to create new texture: %s\n", SDL_GetError());
+        return -1;
+    }
+
+    dc->sdl_texture = texture;
+
+    fprintf(stderr, "Display resize complete\n");
+    return 0;
+#else
+    (void)dc;
+    (void)new_width;
+    (void)new_height;
+    return -1;
+#endif
+}
+
+/*
  * Request screen refresh
  */
 void display_client_request_refresh(DisplayClient *dc)
@@ -595,6 +706,9 @@ void display_client_request_refresh(DisplayClient *dc)
  */
 int display_client_run(DisplayClient *dc)
 {
+    static int frame_count = 0;  /* Static for C89 compliance */
+    int new_width, new_height;
+
     if (dc == NULL) {
         return -1;
     }
@@ -603,6 +717,18 @@ int display_client_run(DisplayClient *dc)
 
     while (dc->running) {
 #ifdef HAVE_SDL2
+        /* Check for screen size changes (every ~60 frames = 1 second) */
+        if (++frame_count >= 60) {
+            frame_count = 0;
+            if (check_screen_size_change(&new_width, &new_height) == 0) {
+                if (new_width != dc->screen_width || new_height != dc->screen_height) {
+                    if (resize_display(dc, new_width, new_height) < 0) {
+                        fprintf(stderr, "Warning: failed to resize display\n");
+                    }
+                }
+            }
+        }
+
         /* Read and display screen every frame */
         if (read_screen(dc) < 0) {
             fprintf(stderr, "Error reading screen\n");
