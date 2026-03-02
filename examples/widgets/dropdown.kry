@@ -7,12 +7,22 @@ window dropdown_demo "Dropdown Widget Demo" 400 300 {
         label heading "Dropdown Widgets" { color "#00FF00" }
 
         # Standard dropdown
-        dropdown dropdown1 "Select Option"
+        dropdown dropdown1 "Select Option" {
+            options "Apple,Banana,Cherry,Date,Elderberry"
+            value "0"
+        }
 
         # Another dropdown
-        dropdown dropdown2 "Choose Country"
+        dropdown dropdown2 "Choose Country" {
+            options "USA,Canada,UK,France,Germany,Japan"
+        }
 
         # Third dropdown
-        dropdown dropdown3 "Pick a Color"
+        dropdown dropdown3 "Pick a Color" {
+            options "Red,Green,Blue,Yellow,Purple,Orange"
+            value "2"
+        }
+
+        label info "Click dropdowns to test selection"
     }
 }

@@ -273,6 +273,14 @@ void widget_destroy(struct KryonWidget *widget)
         free(widget->layout_justify);
     }
 
+    /* Free dropdown internal data */
+    if (widget->type == WIDGET_DROPDOWN && widget->internal_data != NULL) {
+        /* Use external dropdown cleanup function */
+        extern void dropdown_cleanup_widget_internal_data(void *data);
+        dropdown_cleanup_widget_internal_data(widget->internal_data);
+        widget->internal_data = NULL;
+    }
+
     free(widget);
 }
 
