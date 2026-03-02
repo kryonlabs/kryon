@@ -51,6 +51,7 @@ typedef struct KryonNode {
     char *widget_type;           /* button, label, etc. */
     char *prop_rect;             /* "x y w h" */
     char *prop_color;            /* "#RRGGBB" */
+    char *prop_value;            /* "0", "1", etc. */
 
     /* Tree structure */
     struct KryonNode **children;

@@ -269,7 +269,7 @@ int window_spawn_nested_wm(struct KryonWindow *win)
         setenv("KRYON_NESTED_PIPE_FD", pipe_fd_str, 1);
 
         /* Pass namespace pointer via environment (fork shares parent memory) */
-        snprintf(ns_ptr_str, sizeof(ns_ptr_str), "%p", win->ns_root);
+        snprintf(ns_ptr_str, sizeof(ns_ptr_str), "%p", (void *)win->ns_root);
         setenv("KRYON_NAMESPACE_PTR", ns_ptr_str, 1);
 
         /* Exec nested WM */
@@ -288,7 +288,7 @@ int window_spawn_nested_wm(struct KryonWindow *win)
     win->nested_wm_pid = pid;
 
     fprintf(stderr, "Spawned nested WM (pid=%d) in window %u with namespace %p\n",
-            pid, win->id, win->ns_root);
+            pid, win->id, (void *)win->ns_root);
     return 0;
 }
 

@@ -9,6 +9,7 @@
  * - Provides window management
  */
 
+#define _DEFAULT_SOURCE  /* For usleep() */
 #include "window.h"
 #include "widget.h"
 #include "wm.h"
@@ -380,11 +381,11 @@ int main(int argc, char **argv)
         unsigned char screen_info[144];
         ssize_t n = p9_read(g_marrow_client, g_marrow_draw_fd, screen_info, sizeof(screen_info));
         if (n < 144) {
-            fprintf(stderr, "Error: only read %zd bytes of screen info (expected 144)\n", n);
+            fprintf(stderr, "Error: only read %ld bytes of screen info (expected 144)\n", (long)n);
             p9_disconnect(g_marrow_client);
             return 1;
         }
-        fprintf(stderr, "Connected to Marrow screen (read %zd bytes info)\n", n);
+        fprintf(stderr, "Connected to Marrow screen (read %ld bytes info)\n", (long)n);
     }
 
     /* Initialize Kryon's file tree */
@@ -1056,7 +1057,7 @@ static int validate_namespace_ptr(P9Node *ns_root, uint32_t expected_win_id)
         return -1;
     }
 
-    fprintf(stderr, "validate_namespace_ptr: namespace %p looks valid\n", ns_root);
+    fprintf(stderr, "validate_namespace_ptr: namespace %p looks valid\n", (void *)ns_root);
     return 0;
 }
 
@@ -1098,12 +1099,12 @@ static int run_nested_wm(const char *win_id, const char *pipe_fd_str)
 
         /* Validate namespace pointer */
         if (validate_namespace_ptr(ns_root, atoi(win_id)) < 0) {
-            fprintf(stderr, "Warning: Invalid namespace pointer %p, ignoring\n", ns_root);
+            fprintf(stderr, "Warning: Invalid namespace pointer %p, ignoring\n", (void *)ns_root);
             ns_root = NULL;
         } else {
             /* Set namespace for all subsequent 9P operations */
             p9_set_namespace(ns_root);
-            fprintf(stderr, "Nested WM using namespace %p\n", ns_root);
+            fprintf(stderr, "Nested WM using namespace %p\n", (void *)ns_root);
         }
     } else {
         fprintf(stderr, "Warning: No namespace passed from parent WM\n");

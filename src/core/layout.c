@@ -146,7 +146,18 @@ int layout_calculate_vbox(struct KryonNode *node, struct KryonWindow *win,
     current_y = content_rect.min.y;
 
     for (i = 0; i < node->nchildren; i++) {
-        struct KryonNode *child = node->children[i];
+        struct KryonNode *child;
+
+        if (node->children == NULL) {
+            fprintf(stderr, "layout_calculate_vbox: ERROR - node->children is NULL!\n");
+            return -1;
+        }
+
+        child = node->children[i];
+        if (child == NULL) {
+            fprintf(stderr, "layout_calculate_vbox: ERROR - child %d is NULL!\n", i);
+            return -1;
+        }
         int widget_width, widget_height;
         int x, y;
         char *rect_str;

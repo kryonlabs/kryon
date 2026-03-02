@@ -293,6 +293,8 @@ void render_widget(KryonWidget *w, Memimage *screen)
             int check_size = 16;
             Point text_pos;
             Subfont *font;
+            int is_hovered = 0;
+            uint32_t bg_color, highlight_color, shadow_color;
 
             /* Checkbox indicator */
             check_rect.min.x = widget_rect.min.x;
@@ -300,25 +302,61 @@ void render_widget(KryonWidget *w, Memimage *screen)
             check_rect.max.x = check_rect.min.x + check_size;
             check_rect.max.y = check_rect.min.y + check_size;
 
-            /* White background */
-            memfillcolor_rect(screen, check_rect, 0xFFFFFFFF);
+            /* Check hover state */
+            if (w->parent_window != NULL) {
+                Point mp;
+                mp.x = w->parent_window->mouse_x;
+                mp.y = w->parent_window->mouse_y;
+                is_hovered = ptinrect(mp, widget_rect);
+            }
 
-            /* Border */
+            /* Tk-style colors */
+            bg_color = is_hovered ? 0xFFECECEC : 0xFFFFFFFF;  /* Light gray on hover, white otherwise */
+            highlight_color = 0xFFFFFFFF;  /* White highlight */
+            shadow_color = 0xFF6B6B6B;    /* Dark gray shadow (Tk standard) */
+
+            /* Background with hover effect */
+            memfillcolor_rect(screen, check_rect, bg_color);
+
+            /* Beveled 3D edges - highlight (top/left) */
             memdraw_line(screen, Pt(check_rect.min.x, check_rect.min.y),
-                         Pt(check_rect.max.x - 1, check_rect.min.y), 0xFF000000, 2);
+                         Pt(check_rect.max.x - 1, check_rect.min.y), highlight_color, 2);
             memdraw_line(screen, Pt(check_rect.min.x, check_rect.min.y),
-                         Pt(check_rect.min.x, check_rect.max.y - 1), 0xFF000000, 2);
+                         Pt(check_rect.min.x, check_rect.max.y - 1), highlight_color, 2);
+
+            /* Beveled 3D edges - shadow (bottom/right) */
             memdraw_line(screen, Pt(check_rect.min.x, check_rect.max.y - 1),
-                         Pt(check_rect.max.x - 1, check_rect.max.y - 1), 0xFF000000, 2);
+                         Pt(check_rect.max.x - 1, check_rect.max.y - 1), shadow_color, 2);
             memdraw_line(screen, Pt(check_rect.max.x - 1, check_rect.min.y),
-                         Pt(check_rect.max.x - 1, check_rect.max.y - 1), 0xFF000000, 2);
+                         Pt(check_rect.max.x - 1, check_rect.max.y - 1), shadow_color, 2);
 
-            /* Checkmark if checked */
+            /* Draw dark border for better visibility (Tk style) */
+            /* Use memdraw_line to draw rectangle border since memdraw_rect doesn't exist */
+            memdraw_line(screen, Pt(check_rect.min.x, check_rect.min.y),
+                        Pt(check_rect.max.x - 1, check_rect.min.y), 0xFF000000, 1);
+            memdraw_line(screen, Pt(check_rect.min.x, check_rect.min.y),
+                        Pt(check_rect.min.x, check_rect.max.y - 1), 0xFF000000, 1);
+            memdraw_line(screen, Pt(check_rect.min.x, check_rect.max.y - 1),
+                        Pt(check_rect.max.x - 1, check_rect.max.y - 1), 0xFF000000, 1);
+            memdraw_line(screen, Pt(check_rect.max.x - 1, check_rect.min.y),
+                        Pt(check_rect.max.x - 1, check_rect.max.y - 1), 0xFF000000, 1);
+
+            /* Thick checkmark if checked - Tk style checkmark */
             if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
                 int cx = check_rect.min.x;
                 int cy = check_rect.min.y;
-                memdraw_line(screen, Pt(cx + 4, cy + 8), Pt(cx + 7, cy + 11), 0xFF000000, 2);
-                memdraw_line(screen, Pt(cx + 7, cy + 11), Pt(cx + 12, cy + 5), 0xFF000000, 2);
+                /* Draw a more prominent checkmark with thicker lines */
+                /* Checkmark consists of: vertical line going down-right, then horizontal going up-right */
+                Point check_pts[6];
+                check_pts[0] = Pt(cx + 3, cy + 8);
+                check_pts[1] = Pt(cx + 6, cy + 11);
+                check_pts[2] = Pt(cx + 13, cy + 4);
+                /* Draw thick checkmark using multiple lines for bold appearance */
+                memdraw_line(screen, check_pts[0], check_pts[1], 0xFF000000, 3);
+                memdraw_line(screen, check_pts[1], check_pts[2], 0xFF000000, 3);
+                /* Draw again slightly offset for thickness */
+                memdraw_line(screen, Pt(check_pts[0].x + 1, check_pts[0].y), Pt(check_pts[1].x + 1, check_pts[1].y), 0xFF000000, 3);
+                memdraw_line(screen, Pt(check_pts[1].x + 1, check_pts[1].y), Pt(check_pts[2].x, check_pts[2].y - 1), 0xFF000000, 3);
             }
 
             /* Label text */

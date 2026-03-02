@@ -33,7 +33,7 @@ typedef struct {
 } Rectangle;
 
 /*
- * Rectangle constructors (inline functions for C89 compatibility)
+ * Rectangle constructors (static functions for C89 compatibility)
  */
 static Point Pt_func(int x, int y)
 {

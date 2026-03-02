@@ -4,7 +4,8 @@ window checkbox_demo "Checkbox Demo" 400 300 {
         label heading "Checkbox Demo" { color "#00FF00" }
 
         checkbox chk1 "Unchecked checkbox"
-        checkbox chk2 "Another unchecked"
+        checkbox chk2 "Pre-checked checkbox" { value "1" }
+        checkbox chk3 "Another unchecked"
 
         label info "Click to toggle"
     }

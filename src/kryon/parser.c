@@ -372,6 +372,7 @@ static void free_node(KryonNode *node)
     if (node->widget_type != NULL) free(node->widget_type);
     if (node->prop_rect != NULL) free(node->prop_rect);
     if (node->prop_color != NULL) free(node->prop_color);
+    if (node->prop_value != NULL) free(node->prop_value);
 
     /* Free children array */
     if (node->children != NULL) {
@@ -463,6 +464,9 @@ static KryonNode* parse_property_block(Parser *p, KryonNode *node)
                 } else if (strcmp(prop_name, "rows") == 0) {
                     node->layout_rows = atoi(prop_value);
                     free(prop_value);
+                } else if (strcmp(prop_name, "value") == 0) {
+                    free(node->prop_value);
+                    node->prop_value = prop_value;
                 } else {
                     free(prop_value);
                 }
@@ -1056,6 +1060,15 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         widget->prop_rect = (char *)malloc(strlen(node->prop_rect) + 1);
         if (widget->prop_rect != NULL) {
             strcpy(widget->prop_rect, node->prop_rect);
+        }
+    }
+
+    /* Set value (for checkboxes, switches, etc.) */
+    if (node->prop_value != NULL && node->prop_value[0] != '\0') {
+        free(widget->prop_value);
+        widget->prop_value = (char *)malloc(strlen(node->prop_value) + 1);
+        if (widget->prop_value != NULL) {
+            strcpy(widget->prop_value, node->prop_value);
         }
     }
 
