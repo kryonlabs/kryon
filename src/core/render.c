@@ -812,48 +812,85 @@ void render_widget(KryonWidget *w, Memimage *screen)
         break;
 
     case WIDGET_PROGRESS_BAR:
-        /* Progress bar rendering */
-        color = 0xFFE0E0E0;  /* Background */
-        memfillcolor_rect(screen, widget_rect, color);
-        /* Render progress fill based on value */
-        {
-            float progress;
-            Rectangle fill_rect;
-            unsigned long progress_color = DGreen;
-            unsigned long highlight, shadow;
+    {
+        /* Tk-style progress bar with proper trough and bar bevels */
+        float progress;
+        Rectangle fill_rect;
+        unsigned long trough_color, trough_highlight, trough_shadow;
+        unsigned long bar_color, bar_highlight, bar_shadow;
+        unsigned long border_color;
 
-            /* Parse progress value (0-100) */
-            progress = 0.0f;
-            if (w->prop_value != NULL) {
-                progress = (float)atof(w->prop_value);
-            }
-            if (progress < 0.0f) progress = 0.0f;
-            if (progress > 100.0f) progress = 100.0f;
-
-            /* Calculate fill rectangle with 1px padding */
-            fill_rect.min.x = widget_rect.min.x + 1;
-            fill_rect.min.y = widget_rect.min.y + 1;
-            fill_rect.max.x = widget_rect.min.x + 1 + (int)((progress / 100.0f) * (Dx(widget_rect) - 2));
-            fill_rect.max.y = widget_rect.max.y - 1;
-
-            /* Get highlight/shadow colors */
-            highlight = lighten_color(progress_color);
-            shadow = darken_color(progress_color);
-
-            /* Fill the progress area */
-            memfillcolor_rect(screen, fill_rect, progress_color);
-
-            /* Add bevel edges to progress fill */
-            memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.min.y),
-                         Pt(fill_rect.max.x - 1, fill_rect.min.y), highlight, 1);
-            memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.min.y),
-                         Pt(fill_rect.min.x, fill_rect.max.y - 1), highlight, 1);
-            memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.max.y - 1),
-                         Pt(fill_rect.max.x - 1, fill_rect.max.y - 1), shadow, 1);
-            memdraw_line(screen, Pt(fill_rect.max.x - 1, fill_rect.min.y),
-                         Pt(fill_rect.max.x - 1, fill_rect.max.y - 1), shadow, 1);
+        /* Parse progress value (0-100) */
+        progress = 0.0f;
+        if (w->prop_value != NULL) {
+            progress = (float)atof(w->prop_value);
         }
-        break;
+        if (progress < 0.0f) progress = 0.0f;
+        if (progress > 100.0f) progress = 100.0f;
+
+        /* Trough colors */
+        trough_color = 0xFFE0E0E0;      /* Light gray trough */
+        trough_highlight = 0xFFFFFFFF;  /* White highlight */
+        trough_shadow = 0x808080FF;     /* Dark gray shadow */
+        border_color = 0x000000FF;      /* Black border */
+
+        /* Bar colors - Tk-style blue */
+        bar_color = 0x00008BFF;         /* Dark blue */
+        bar_highlight = lighten_color(bar_color);
+        bar_shadow = darken_color(bar_color);
+
+        /* Draw trough background */
+        memfillcolor_rect(screen, widget_rect, trough_color);
+
+        /* Trough beveled edges - highlight (top/left) */
+        memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                     Pt(widget_rect.max.x - 1, widget_rect.min.y), trough_highlight, 2);
+        memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                     Pt(widget_rect.min.x, widget_rect.max.y - 1), trough_highlight, 2);
+
+        /* Trough beveled edges - shadow (bottom/right) */
+        memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
+                     Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), trough_shadow, 2);
+        memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                     Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), trough_shadow, 2);
+
+        /* Trough border */
+        memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                     Pt(widget_rect.max.x - 1, widget_rect.min.y), border_color, 1);
+        memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                     Pt(widget_rect.min.x, widget_rect.max.y - 1), border_color, 1);
+        memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
+                     Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
+        memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                     Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
+
+        /* Calculate fill rectangle (inset 3px for border + bevel) */
+        if (progress > 0.0f) {
+            fill_rect.min.x = widget_rect.min.x + 3;
+            fill_rect.min.y = widget_rect.min.y + 3;
+            fill_rect.max.x = widget_rect.min.x + 3 + (int)((progress / 100.0f) * (Dx(widget_rect) - 6));
+            fill_rect.max.y = widget_rect.max.y - 3;
+
+            /* Don't draw if fill area is too small */
+            if (fill_rect.max.x > fill_rect.min.x) {
+                /* Draw progress bar fill */
+                memfillcolor_rect(screen, fill_rect, bar_color);
+
+                /* Bar beveled edges - highlight (top/left) */
+                memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.min.y),
+                             Pt(fill_rect.max.x - 1, fill_rect.min.y), bar_highlight, 1);
+                memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.min.y),
+                             Pt(fill_rect.min.x, fill_rect.max.y - 1), bar_highlight, 1);
+
+                /* Bar beveled edges - shadow (bottom/right) */
+                memdraw_line(screen, Pt(fill_rect.min.x, fill_rect.max.y - 1),
+                             Pt(fill_rect.max.x - 1, fill_rect.max.y - 1), bar_shadow, 1);
+                memdraw_line(screen, Pt(fill_rect.max.x - 1, fill_rect.min.y),
+                             Pt(fill_rect.max.x - 1, fill_rect.max.y - 1), bar_shadow, 1);
+            }
+        }
+    }
+    break;
 
     case WIDGET_IMAGE:
     case WIDGET_CANVAS:

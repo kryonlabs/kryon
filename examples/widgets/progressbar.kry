@@ -1,21 +1,29 @@
 # Progress Bar Widget Demo
-# Demonstrates progressbar widget for showing progress
+# Demonstrates progressbar widget with various progress values
 
-window progressbar_demo "Progress Bar Widget Demo" 400 300 {
+window progressbar_demo "Progress Bar Widget Demo" 400 350 {
     vbox gap=15 padding=20 {
         # Heading
         label heading "Progress Bar Widgets" { color "#00FF00" }
 
-        # Loading progress
-        progressbar progress1 "Loading..."
+        # 0% progress (empty)
+        label label0 "0% - Empty"
+        progressbar progress_empty "Empty" { value "0" }
 
-        # Download progress
-        progressbar progress2 "Downloading..."
+        # 25% progress
+        label label25 "25% - Started"
+        progressbar progress_25 "Loading..." { value "25" }
 
-        # Installation progress
-        progressbar progress3 "Installing..."
+        # 50% progress
+        label label50 "50% - Halfway"
+        progressbar progress_50 "Downloading..." { value "50" }
 
-        # Processing progress
-        progressbar progress4 "Processing..."
+        # 75% progress
+        label label75 "75% - Almost done"
+        progressbar progress_75 "Installing..." { value "75" }
+
+        # 100% progress
+        label label100 "100% - Complete"
+        progressbar progress_full "Complete" { value "100" }
     }
 }
