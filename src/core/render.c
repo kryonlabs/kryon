@@ -18,6 +18,11 @@
 extern void devdraw_mark_dirty(void);
 
 /*
+ * strdup prototype for C89 compatibility (not in C89 standard)
+ */
+extern char *strdup(const char *s);
+
+/*
  * Global dirty flag
  */
 extern int g_render_dirty;
@@ -176,6 +181,77 @@ static int is_widget_clicked(KryonWidget *w)
     }
 
     return 0;
+}
+
+/*
+ * Get the group identifier for a radio button
+ * Returns: group name if prop_group is set, otherwise parent container's ID
+ */
+static const char *get_radio_group_id(KryonWidget *w)
+{
+    /* Static buffer for default group name */
+    static char default_group[64];
+
+    /* If explicit group name, use it */
+    if (w->prop_group != NULL && w->prop_group[0] != '\0') {
+        return w->prop_group;
+    }
+
+    /* Otherwise, use parent container as group */
+    if (w->parent != NULL && w->parent->name != NULL) {
+        return w->parent->name;
+    }
+
+    /* Last resort: use parent window ID */
+    snprintf(default_group, sizeof(default_group), "window_%u",
+             w->parent_window ? w->parent_window->id : 0);
+    return default_group;
+}
+
+/*
+ * Deselect all radio buttons in the same group except the clicked one
+ */
+static void deselect_radio_group(KryonWidget *clicked_widget)
+{
+    const char *group_id;
+    int i;
+    int count;
+
+    if (clicked_widget == NULL) {
+        return;
+    }
+
+    group_id = get_radio_group_id(clicked_widget);
+    count = widget_get_count();
+
+    /* Iterate through all widgets */
+    for (i = 0; i < count; i++) {
+        KryonWidget *other;
+
+        other = widget_get_by_index(i);
+        if (other == NULL) {
+            continue;
+        }
+
+        /* Skip non-radio buttons and different groups */
+        if (other->type != WIDGET_RADIO_BUTTON) {
+            continue;
+        }
+        if (strcmp(get_radio_group_id(other), group_id) != 0) {
+            continue;
+        }
+
+        /* Skip the clicked widget */
+        if (other->id == clicked_widget->id) {
+            continue;
+        }
+
+        /* Deselect this radio button */
+        if (other->prop_value != NULL) {
+            free(other->prop_value);
+        }
+        other->prop_value = strdup("0");
+    }
 }
 
 /*
@@ -488,6 +564,95 @@ void render_widget(KryonWidget *w, Memimage *screen)
                 w->prop_value = (char *)malloc(2);
                 if (w->prop_value != NULL) {
                     sprintf(w->prop_value, "%d", new_val);
+                }
+            }
+        }
+        break;
+
+    case WIDGET_RADIO_BUTTON:
+        {
+            /* Tk-style radio button with circular indicator */
+            Rectangle radio_rect;      /* The circular indicator */
+            Point text_pos;
+            Subfont *font;
+            int is_hovered = 0;
+            int is_selected = 0;
+            int radio_diameter = 14;   /* Tk standard: 12-14px */
+            int dot_diameter = 6;      /* Selected dot: 6-8px */
+            uint32_t bg_color, border_color, dot_color;
+
+            /* Check selection state */
+            if (w->prop_value != NULL && atoi(w->prop_value) != 0) {
+                is_selected = 1;
+            }
+
+            /* Radio button indicator (circle) */
+            radio_rect.min.x = widget_rect.min.x;
+            radio_rect.min.y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y - radio_diameter) / 2;
+            radio_rect.max.x = radio_rect.min.x + radio_diameter;
+            radio_rect.max.y = radio_rect.min.y + radio_diameter;
+
+            /* Check hover state */
+            if (w->parent_window != NULL) {
+                Point mp;
+                mp.x = w->parent_window->mouse_x;
+                mp.y = w->parent_window->mouse_y;
+                is_hovered = ptinrect(mp, widget_rect);
+            }
+
+            /* Tk-style colors (RRGGBBAA format) */
+            bg_color = is_hovered ? 0xE0E0E0FF : 0xFFFFFFFF;  /* Light gray on hover, white otherwise */
+            border_color = 0x000000FF;      /* Black border */
+            dot_color = 0x000000FF;         /* Black dot */
+
+            /* Draw circular background (filled rectangle for circle approximation) */
+            memfillcolor_rect(screen, radio_rect, bg_color);
+
+            /* Draw circular border - 4 sides to approximate circle */
+            memdraw_line(screen, Pt(radio_rect.min.x, radio_rect.min.y),
+                         Pt(radio_rect.max.x - 1, radio_rect.min.y), border_color, 1);
+            memdraw_line(screen, Pt(radio_rect.min.x, radio_rect.min.y),
+                         Pt(radio_rect.min.x, radio_rect.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(radio_rect.min.x, radio_rect.max.y - 1),
+                         Pt(radio_rect.max.x - 1, radio_rect.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(radio_rect.max.x - 1, radio_rect.min.y),
+                         Pt(radio_rect.max.x - 1, radio_rect.max.y - 1), border_color, 1);
+
+            /* Draw selected dot (filled circle in center) */
+            if (is_selected) {
+                Rectangle dot_rect;
+                int dot_offset = (radio_diameter - dot_diameter) / 2;
+
+                dot_rect.min.x = radio_rect.min.x + dot_offset;
+                dot_rect.min.y = radio_rect.min.y + dot_offset;
+                dot_rect.max.x = dot_rect.min.x + dot_diameter;
+                dot_rect.max.y = dot_rect.min.y + dot_diameter;
+
+                memfillcolor_rect(screen, dot_rect, dot_color);
+            }
+
+            /* Label text (4px spacing from radio indicator) */
+            if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                text_pos.x = radio_rect.max.x + 4;
+                text_pos.y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y - 16) / 2;
+                font = memdraw_get_default_font();
+                if (font != NULL) {
+                    memdraw_text_font(screen, text_pos, w->prop_text, font, DBlack);
+                } else {
+                    memdraw_text(screen, text_pos, w->prop_text, DBlack);
+                }
+            }
+
+            /* Handle click - select this radio, deselect group members */
+            if (is_widget_clicked(w)) {
+                /* Only act if not already selected */
+                if (!is_selected) {
+                    /* Deselect all other radio buttons in the group */
+                    deselect_radio_group(w);
+
+                    /* Select this radio button */
+                    free(w->prop_value);
+                    w->prop_value = strdup("1");
                 }
             }
         }

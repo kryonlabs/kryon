@@ -301,6 +301,26 @@ struct KryonWidget *widget_get(uint32_t id)
 }
 
 /*
+ * Get total number of widgets
+ */
+int widget_get_count(void)
+{
+    return nwidgets;
+}
+
+/*
+ * Get widget by array index (not ID)
+ * Returns NULL if index is out of bounds
+ */
+struct KryonWidget *widget_get_by_index(int index)
+{
+    if (index < 0 || index >= nwidgets) {
+        return NULL;
+    }
+    return widgets[index];
+}
+
+/*
  * Get widget type as string
  */
 const char *widget_type_to_string(WidgetType type)

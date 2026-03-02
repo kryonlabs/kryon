@@ -1,18 +1,27 @@
 # Radio Button Widget Demo
-# Demonstrates radiobutton widget for single selection
+# Demonstrates radiobutton widget with Tk-style rendering
 
-window radiobutton_demo "Radio Button Widget Demo" 400 300 {
-    vbox gap=15 padding=20 {
+window radiobutton_demo "Radio Button Widget Demo" 450 700 {
+    vbox gap=20 padding=20 {
         # Heading
         label heading "Radio Button Widgets" { color "#00FF00" }
 
-        # Radio options (conceptually a group)
-        radiobutton radio1 "Option A"
-
+        label lbl1 "Default Group (by container):"
+        # These form a group automatically (same parent vbox)
+        radiobutton radio1 "Option A" { value "1" }
         radiobutton radio2 "Option B"
-
         radiobutton radio3 "Option C"
 
-        radiobutton radio4 "Option D"
+        label lbl2 "Color Preference (explicit group):"
+        # These form a group via explicit 'group' property
+        radiobutton color_red "Red" { group "color_group" }
+        radiobutton color_green "Green" { group "color_group" value "1" }
+        radiobutton color_blue "Blue" { group "color_group" }
+
+        label lbl3 "Size Preference (another group):"
+        # Different group name = independent selection
+        radiobutton size_small "Small" { group "size_group" }
+        radiobutton size_medium "Medium" { group "size_group" value "1" }
+        radiobutton size_large "Large" { group "size_group" }
     }
 }

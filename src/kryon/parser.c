@@ -375,6 +375,7 @@ static void free_node(KryonNode *node)
     if (node->prop_rect != NULL) free(node->prop_rect);
     if (node->prop_color != NULL) free(node->prop_color);
     if (node->prop_value != NULL) free(node->prop_value);
+    if (node->prop_group != NULL) free(node->prop_group);
     if (node->prop_options != NULL) free(node->prop_options);
 
     /* Free children array */
@@ -470,6 +471,9 @@ static KryonNode* parse_property_block(Parser *p, KryonNode *node)
                 } else if (strcmp(prop_name, "value") == 0) {
                     free(node->prop_value);
                     node->prop_value = prop_value;
+                } else if (strcmp(prop_name, "group") == 0) {
+                    free(node->prop_group);
+                    node->prop_group = prop_value;
                 } else if (strcmp(prop_name, "options") == 0) {
                     free(node->prop_options);
                     node->prop_options = prop_value;
@@ -1093,6 +1097,15 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         widget->prop_value = (char *)malloc(strlen(node->prop_value) + 1);
         if (widget->prop_value != NULL) {
             strcpy(widget->prop_value, node->prop_value);
+        }
+    }
+
+    /* Set group (for radio buttons) */
+    if (node->prop_group != NULL && node->prop_group[0] != '\0') {
+        free(widget->prop_group);
+        widget->prop_group = (char *)malloc(strlen(node->prop_group) + 1);
+        if (widget->prop_group != NULL) {
+            strcpy(widget->prop_group, node->prop_group);
         }
     }
 

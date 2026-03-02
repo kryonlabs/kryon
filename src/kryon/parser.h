@@ -52,6 +52,7 @@ typedef struct KryonNode {
     char *prop_rect;             /* "x y w h" */
     char *prop_color;            /* "#RRGGBB" */
     char *prop_value;            /* "0", "1", etc. */
+    char *prop_group;            /* Radio button group name */
     char *prop_options;          /* Comma-separated options for dropdown */
 
     /* Tree structure */

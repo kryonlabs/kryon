@@ -165,6 +165,7 @@ typedef struct KryonWidget {
     char *prop_value;               /* State/value */
     char *prop_placeholder;         /* Hint text */
     char *prop_color;               /* Custom color in "#RRGGBB" format */
+    char *prop_group;               /* Radio button group name (optional) */
 
     /* Internal state */
     P9Node *node;                   /* Corresponding tree node */
@@ -194,6 +195,8 @@ struct KryonWidget *widget_create(WidgetType type, const char *name,
                                    struct KryonWindow *parent_window);
 void widget_destroy(struct KryonWidget *widget);
 struct KryonWidget *widget_get(uint32_t id);
+int widget_get_count(void);
+struct KryonWidget *widget_get_by_index(int index);
 
 /*
  * Widget type utilities
