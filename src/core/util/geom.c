@@ -7,7 +7,12 @@
 
 #include "graphics.h"
 #include "util.h"
+#include "widget.h"
 #include <stdlib.h>
+#include <string.h>
+
+/* Forward declaration */
+extern void mark_dirty(struct KryonWindow *win);
 
 /*
  * Calculate handle center position for slider
@@ -79,4 +84,21 @@ Rectangle util_get_two_square_handle_rect(Point center)
     rect.max.y = center.y + square_size / 2;
 
     return rect;
+}
+
+/*
+ * Update range slider value and trigger re-render
+ * Updates both min and max values in "min,max" format
+ * Note: This is called from the render code where state is available,
+ * so this just updates prop_value and marks dirty.
+ * The actual state values are already updated before calling this.
+ */
+void util_update_range_slider_value(KryonWidget *w)
+{
+    /* This function is a no-op placeholder - the actual update happens
+     * in render_widget where we have direct access to RangeSliderState.
+     * We trigger a re-render via mark_dirty in the render code.
+     */
+    if (w == NULL) return;
+    mark_dirty(w->parent_window);
 }

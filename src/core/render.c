@@ -365,21 +365,29 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
             if (w->parent_window->last_mouse_buttons == 0 &&
                 w->parent_window->mouse_buttons != 0) {
                 if (state->is_min_hovering) {
+                    char buf[64];
                     state->is_dragging_min = 1;
                     float new_val = util_calculate_value_from_position(mouse_pos.x, track_rect);
                     if (new_val > state->max_value - min_gap) {
                         new_val = state->max_value - min_gap;
                     }
                     state->min_value = new_val;
-                    util_update_range_slider_value(w);
+                    sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                    free(w->prop_value);
+                    w->prop_value = strdup(buf);
+                    mark_dirty(w->parent_window);
                 } else if (state->is_max_hovering) {
+                    char buf[64];
                     state->is_dragging_max = 1;
                     float new_val = util_calculate_value_from_position(mouse_pos.x, track_rect);
                     if (new_val < state->min_value + min_gap) {
                         new_val = state->min_value + min_gap;
                     }
                     state->max_value = new_val;
-                    util_update_range_slider_value(w);
+                    sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                    free(w->prop_value);
+                    w->prop_value = strdup(buf);
+                    mark_dirty(w->parent_window);
                 }
             }
             /* Release mouse - stop dragging */
@@ -390,21 +398,29 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
             }
             /* Dragging min handle */
             if (state->is_dragging_min && w->parent_window->mouse_buttons != 0) {
+                char buf[64];
                 float new_val = util_calculate_value_from_position(mouse_pos.x, track_rect);
                 if (new_val > state->max_value - min_gap) {
                     new_val = state->max_value - min_gap;
                 }
                 state->min_value = new_val;
-                util_update_range_slider_value(w);
+                sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                free(w->prop_value);
+                w->prop_value = strdup(buf);
+                mark_dirty(w->parent_window);
             }
             /* Dragging max handle */
             if (state->is_dragging_max && w->parent_window->mouse_buttons != 0) {
+                char buf[64];
                 float new_val = util_calculate_value_from_position(mouse_pos.x, track_rect);
                 if (new_val < state->min_value + min_gap) {
                     new_val = state->min_value + min_gap;
                 }
                 state->max_value = new_val;
-                util_update_range_slider_value(w);
+                sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                free(w->prop_value);
+                w->prop_value = strdup(buf);
+                mark_dirty(w->parent_window);
             }
         }
 

@@ -77,4 +77,15 @@ float util_calculate_value_from_position(int mouse_x, Rectangle track_rect);
  */
 Rectangle util_get_two_square_handle_rect(Point center);
 
+/*
+ * Forward declaration for widget type
+ */
+struct KryonWidget;
+
+/*
+ * Update range slider value and trigger re-render
+ * Updates both min and max values in "min,max" format
+ */
+void util_update_range_slider_value(struct KryonWidget *w);
+
 #endif /* KRYON_UTIL_H */
