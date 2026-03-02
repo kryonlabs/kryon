@@ -219,6 +219,8 @@ static Token read_word(Parser *p)
         if (t.value != NULL) {
             memcpy(t.value, p->source + start_pos, len);
             t.value[len] = '\0';
+            fprintf(stderr, "read_word: parsed word='%s' (len=%d) at line %d col %d\n",
+                    t.value, len, t.line, t.column);
         } else {
             t.type = TOKEN_ERROR;
         }
@@ -794,13 +796,17 @@ static KryonNode* parse_window(Parser *p)
         return NULL;
     }
 
+    fprintf(stderr, "parse_window: RAW width token value='%s' (len=%u)\n",
+            p->current_token.value ? p->current_token.value : "(null)",
+            (unsigned int)(p->current_token.value ? strlen(p->current_token.value) : 0));
     node->width = atoi(p->current_token.value);
+    fprintf(stderr, "parse_window: PARSED width=%d\n", node->width);
     free(p->current_token.value);  /* Free the string we just converted */
     p->current_token.value = NULL;
     free_token(&p->current_token);
     p->current_token = next_token(p);
 
-    fprintf(stderr, "parse_window: width=%d, next token type=%d\n", node->width, p->current_token.type);
+    fprintf(stderr, "parse_window: after width, next token type=%d\n", p->current_token.type);
 
     /* Get height */
     if (p->current_token.type != TOKEN_WORD) {
@@ -809,13 +815,17 @@ static KryonNode* parse_window(Parser *p)
         return NULL;
     }
 
+    fprintf(stderr, "parse_window: RAW height token value='%s' (len=%u)\n",
+            p->current_token.value ? p->current_token.value : "(null)",
+            (unsigned int)(p->current_token.value ? strlen(p->current_token.value) : 0));
     node->height = atoi(p->current_token.value);
+    fprintf(stderr, "parse_window: PARSED height=%d\n", node->height);
     free(p->current_token.value);  /* Free the string we just converted */
     p->current_token.value = NULL;
     free_token(&p->current_token);
     p->current_token = next_token(p);
 
-    fprintf(stderr, "parse_window: height=%d, next token type=%d\n", node->height, p->current_token.type);
+    fprintf(stderr, "parse_window: after height, next token type=%d\n", p->current_token.type);
 
     /* Expect { */
     if (p->current_token.type != TOKEN_LBRACE) {
@@ -920,7 +930,17 @@ KryonNode* kryon_parse_file(const char *filename)
     source[len] = '\0';
     fclose(f);
 
-    fprintf(stderr, "kryon_parse_file: first 50 chars: %.50s\n", source);
+    {
+        int debug_len;
+        int i;
+
+        fprintf(stderr, "kryon_parse_file: first 200 chars of source:\n");
+        debug_len = len < 200 ? len : 200;
+        for (i = 0; i < debug_len; i++) {
+            fprintf(stderr, "%c", source[i]);
+        }
+        fprintf(stderr, "\n--- end of first 200 chars ---\n");
+    }
 
     /* Parse */
     ast = kryon_parse_string(source);

@@ -1,7 +1,7 @@
 # Label Widget Demo
 # Demonstrates label widget with various colors
 
-window label_demo "Label Widget Demo" 400 300 {
+window label_demo "Label Widget Demo" 400 500 {
     vbox gap=15 padding=20 {
         # Heading
         label heading "Label Widgets" { color "#00FF00" }
