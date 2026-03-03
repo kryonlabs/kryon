@@ -158,6 +158,18 @@ typedef struct Subfont {
 } Subfont;
 
 /*
+ * Font text width calculation
+ */
+int memdraw_text_width(Subfont *sf, const char *str);
+
+/*
+ * Font text rendering functions
+ */
+void memdraw_text_font(Memimage *dst, Point p, const char *str, Subfont *sf, unsigned long color);
+void memdraw_char_font(Memimage *dst, Point p, int ch, Subfont *sf, unsigned long color);
+Subfont *memdraw_get_default_font(void);
+
+/*
  * Draw operations (Porter-Duff compositing operators)
  */
 #define Clear   0    /* Clear - destination cleared */

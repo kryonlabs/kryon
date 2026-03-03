@@ -41,35 +41,6 @@ extern char *strdup(const char *s);
 extern int g_render_dirty;
 
 /*
- * Draw text at a smaller scale (0.75x) for compact widgets like progress bars
- * This draws text character by character with reduced spacing and positioning
- */
-static void draw_small_text(Memimage *dst, Point p, const char *str, unsigned long color)
-{
-    Point char_pos;
-    int i;
-    int char_width = 4;  /* Smaller character width (reduced from ~6) */
-    int char_spacing = 1;  /* Tighter spacing between characters */
-    Subfont *font;
-
-    font = memdraw_get_default_font();
-    if (font == NULL) {
-        /* Fall back to regular text if font not available */
-        memdraw_text(dst, p, str, color);
-        return;
-    }
-
-    /* Draw each character with tighter spacing */
-    char_pos.x = p.x;
-    char_pos.y = p.y;
-    for (i = 0; str[i] != '\0'; i++) {
-        /* Use memdraw_char_font for individual character rendering */
-        memdraw_char_font(dst, char_pos, str[i], font, color);
-        char_pos.x += char_width + char_spacing;
-    }
-}
-
-/*
  * Widget state structures (legacy - to be migrated)
  */
 typedef struct {
@@ -826,22 +797,37 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
             }
 
             /* Draw percentage text if prop_text is set or if there's room */
-            if (w->prop_text != NULL && w->prop_text[0] != '\0') {
-                /* Use custom text - center it in the bar, white color for better contrast with blue fill */
-                /* Smaller text for compact appearance */
-                int text_width = strlen(w->prop_text) * 5;  /* Approximate width at smaller scale (4px + 1px spacing) */
-                text_pos.x = trough_rect.min.x + (Dx(trough_rect) - text_width) / 2;
-                text_pos.y = trough_rect.min.y + (bar_height - 10) / 2;  /* Center vertically */
-                draw_small_text(screen, text_pos, w->prop_text, DWhite);
-            } else if (Dx(widget_rect) > 60) {
-                /* Show percentage if wide enough - white color for better contrast with blue fill */
-                /* Smaller text for compact appearance */
-                int percentage = (int)((value / max_value) * 100.0f);
-                sprintf(text_buf, "%d%%", percentage);
-                int text_width = strlen(text_buf) * 5;  /* Approximate width at smaller scale (4px + 1px spacing) */
-                text_pos.x = trough_rect.min.x + (Dx(trough_rect) - text_width) / 2;
-                text_pos.y = trough_rect.min.y + (bar_height - 10) / 2;  /* Center vertically */
-                draw_small_text(screen, text_pos, text_buf, DWhite);
+            font = memdraw_get_default_font();
+            if (font != NULL) {
+                /* Use font-aware rendering for proper text centering */
+                if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                    /* Use custom text - calculate actual width for centering */
+                    int text_width = memdraw_text_width(font, w->prop_text);
+                    text_pos.x = trough_rect.min.x + (Dx(trough_rect) - text_width) / 2;
+                    text_pos.y = trough_rect.min.y + (bar_height - font->height) / 2;
+                    memdraw_text_font(screen, text_pos, w->prop_text, font, DWhite);
+                } else if (Dx(widget_rect) > 60) {
+                    /* Show percentage if wide enough */
+                    int percentage = (int)((value / max_value) * 100.0f);
+                    sprintf(text_buf, "%d%%", percentage);
+                    int text_width = memdraw_text_width(font, text_buf);
+                    text_pos.x = trough_rect.min.x + (Dx(trough_rect) - text_width) / 2;
+                    text_pos.y = trough_rect.min.y + (bar_height - font->height) / 2;
+                    memdraw_text_font(screen, text_pos, text_buf, font, DWhite);
+                }
+            } else {
+                /* Fallback to basic text rendering */
+                if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                    text_pos.x = trough_rect.min.x + 10;
+                    text_pos.y = trough_rect.min.y + (bar_height - 12) / 2;
+                    memdraw_text(screen, text_pos, w->prop_text, DWhite);
+                } else if (Dx(widget_rect) > 60) {
+                    int percentage = (int)((value / max_value) * 100.0f);
+                    sprintf(text_buf, "%d%%", percentage);
+                    text_pos.x = trough_rect.min.x + 10;
+                    text_pos.y = trough_rect.min.y + (bar_height - 12) / 2;
+                    memdraw_text(screen, text_pos, text_buf, DWhite);
+                }
             }
         }
         break;

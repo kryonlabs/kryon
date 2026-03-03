@@ -165,6 +165,8 @@ typedef struct KryonWidget {
     char *prop_value;               /* State/value */
     char *prop_placeholder;         /* Hint text */
     char *prop_color;               /* Custom color in "#RRGGBB" format */
+    char *prop_bgcolor;             /* Runtime background color override (writable via 9P) */
+    char *prop_fgcolor;             /* Runtime foreground/text color override (writable via 9P) */
     char *prop_group;               /* Radio button group name (optional) */
 
     /* Focus state */

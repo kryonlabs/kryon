@@ -34,6 +34,10 @@ static ssize_t prop_write_visible(struct KryonWidget *w, const char *buf, size_t
 static ssize_t prop_read_enabled(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
 static ssize_t prop_write_enabled(struct KryonWidget *w, const char *buf, size_t count, uint64_t offset);
 static ssize_t prop_read_event(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
+static ssize_t prop_read_bgcolor(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
+static ssize_t prop_write_bgcolor(struct KryonWidget *w, const char *buf, size_t count, uint64_t offset);
+static ssize_t prop_read_fgcolor(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
+static ssize_t prop_write_fgcolor(struct KryonWidget *w, const char *buf, size_t count, uint64_t offset);
 
 /*
  * Property file data structure
@@ -280,6 +284,14 @@ void widget_destroy(struct KryonWidget *widget)
 
     if (widget->prop_color != NULL) {
         free(widget->prop_color);
+    }
+
+    if (widget->prop_bgcolor != NULL) {
+        free(widget->prop_bgcolor);
+    }
+
+    if (widget->prop_fgcolor != NULL) {
+        free(widget->prop_fgcolor);
     }
 
     if (widget->layout_type != NULL) {
@@ -670,6 +682,114 @@ static ssize_t prop_read_event(struct KryonWidget *w, char *buf, size_t count, u
 }
 
 /*
+ * Read property: bgcolor
+ */
+static ssize_t prop_read_bgcolor(struct KryonWidget *w, char *buf, size_t count, uint64_t offset)
+{
+    const char *val;
+    size_t len;
+
+    if (w == NULL) {
+        return 0;
+    }
+
+    val = (w->prop_bgcolor != NULL) ? w->prop_bgcolor : "";
+    len = strlen(val);
+
+    if (offset >= len) {
+        return 0;
+    }
+    if (offset + count > len) {
+        count = len - offset;
+    }
+
+    memcpy(buf, val + offset, count);
+    return count;
+}
+
+/*
+ * Write property: bgcolor
+ */
+static ssize_t prop_write_bgcolor(struct KryonWidget *w, const char *buf, size_t count, uint64_t offset)
+{
+    if (w == NULL || buf == NULL) {
+        return -1;
+    }
+
+    if (offset > 0) {
+        return -1;
+    }
+
+    free(w->prop_bgcolor);
+    w->prop_bgcolor = (char *)malloc(count + 1);
+    if (w->prop_bgcolor == NULL) {
+        return -1;
+    }
+
+    memcpy(w->prop_bgcolor, buf, count);
+    w->prop_bgcolor[count] = '\0';
+
+    mark_dirty(w->parent_window);
+    render_all();
+
+    return count;
+}
+
+/*
+ * Read property: fgcolor
+ */
+static ssize_t prop_read_fgcolor(struct KryonWidget *w, char *buf, size_t count, uint64_t offset)
+{
+    const char *val;
+    size_t len;
+
+    if (w == NULL) {
+        return 0;
+    }
+
+    val = (w->prop_fgcolor != NULL) ? w->prop_fgcolor : "";
+    len = strlen(val);
+
+    if (offset >= len) {
+        return 0;
+    }
+    if (offset + count > len) {
+        count = len - offset;
+    }
+
+    memcpy(buf, val + offset, count);
+    return count;
+}
+
+/*
+ * Write property: fgcolor
+ */
+static ssize_t prop_write_fgcolor(struct KryonWidget *w, const char *buf, size_t count, uint64_t offset)
+{
+    if (w == NULL || buf == NULL) {
+        return -1;
+    }
+
+    if (offset > 0) {
+        return -1;
+    }
+
+    free(w->prop_fgcolor);
+    w->prop_fgcolor = (char *)malloc(count + 1);
+    if (w->prop_fgcolor == NULL) {
+        return -1;
+    }
+
+    memcpy(w->prop_fgcolor, buf, count);
+    w->prop_fgcolor[count] = '\0';
+
+    mark_dirty(w->parent_window);
+    render_all();
+
+    return count;
+}
+
+/*
  * Create 9P file hierarchy for a widget
  */
 int widget_create_fs_entries(struct KryonWidget *widget, P9Node *widgets_dir)
@@ -776,6 +896,36 @@ int widget_create_fs_entries(struct KryonWidget *widget, P9Node *widgets_dir)
         file = tree_create_file(widget_dir, "event", prop_data,
                                 (P9ReadFunc)widget_property_read,
                                 NULL);
+        if (file == NULL) {
+            free(prop_data);
+            return -1;
+        }
+    }
+
+    /* Create bgcolor file (read-write) */
+    prop_data = (WidgetPropertyData *)malloc(sizeof(WidgetPropertyData));
+    if (prop_data != NULL) {
+        prop_data->widget = widget;
+        prop_data->read_func = prop_read_bgcolor;
+        prop_data->write_func = prop_write_bgcolor;
+        file = tree_create_file(widget_dir, "bgcolor", prop_data,
+                                (P9ReadFunc)widget_property_read,
+                                (P9WriteFunc)widget_property_write);
+        if (file == NULL) {
+            free(prop_data);
+            return -1;
+        }
+    }
+
+    /* Create fgcolor file (read-write) */
+    prop_data = (WidgetPropertyData *)malloc(sizeof(WidgetPropertyData));
+    if (prop_data != NULL) {
+        prop_data->widget = widget;
+        prop_data->read_func = prop_read_fgcolor;
+        prop_data->write_func = prop_write_fgcolor;
+        file = tree_create_file(widget_dir, "fgcolor", prop_data,
+                                (P9ReadFunc)widget_property_read,
+                                (P9WriteFunc)widget_property_write);
         if (file == NULL) {
             free(prop_data);
             return -1;

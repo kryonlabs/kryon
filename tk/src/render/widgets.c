@@ -306,8 +306,13 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_SUBMIT_BUTTON:
     case WIDGET_ICON_BUTTON:
     case WIDGET_FAB_BUTTON:
-        /* Button background: use prop_color if set, else neutral Tk-style gray */
-        if (w->prop_color != NULL && w->prop_color[0] != '\0') {
+        /* Button background: prop_bgcolor > prop_color > default gray */
+        if (w->prop_bgcolor != NULL && w->prop_bgcolor[0] != '\0') {
+            color = util_parse_color(w->prop_bgcolor);
+            if (color == 0) {
+                color = 0xD9D9D9FF;
+            }
+        } else if (w->prop_color != NULL && w->prop_color[0] != '\0') {
             color = util_parse_color(w->prop_color);
             if (color == 0) {
                 color = 0xD9D9D9FF;
@@ -370,7 +375,13 @@ void render_widget(KryonWidget *w, Memimage *screen)
             int text_width;
             int button_width, button_height;
 
-            {
+            /* Text color: prop_fgcolor > auto-calculate from background */
+            if (w->prop_fgcolor != NULL && w->prop_fgcolor[0] != '\0') {
+                text_color = util_parse_color(w->prop_fgcolor);
+                if (text_color == 0) {
+                    text_color = DBlack;
+                }
+            } else {
                 unsigned int cr = (color >> 24) & 0xFF;
                 unsigned int cg = (color >> 16) & 0xFF;
                 unsigned int cb = (color >> 8) & 0xFF;
@@ -402,7 +413,13 @@ void render_widget(KryonWidget *w, Memimage *screen)
             Subfont *font;
             int widget_height;
 
-            if (w->prop_color != NULL && w->prop_color[0] != '\0') {
+            /* Text color: prop_fgcolor > prop_color > black */
+            if (w->prop_fgcolor != NULL && w->prop_fgcolor[0] != '\0') {
+                text_color = util_parse_color(w->prop_fgcolor);
+                if (text_color == 0) {
+                    text_color = DBlack;
+                }
+            } else if (w->prop_color != NULL && w->prop_color[0] != '\0') {
                 text_color = util_parse_color(w->prop_color);
                 if (text_color == 0) {
                     text_color = DBlack;
@@ -794,6 +811,7 @@ void render_widget(KryonWidget *w, Memimage *screen)
 
     case WIDGET_SLIDER:
     case WIDGET_RANGE_SLIDER:
+    case WIDGET_PROGRESS_BAR:
     case WIDGET_DROPDOWN:
         /* Use legacy rendering for these complex widgets */
         {
