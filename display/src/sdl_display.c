@@ -162,7 +162,8 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         for (retry = 0; retry < 50; retry++) {
             FILE *sf = fopen("/tmp/.kryon-screensize", "r");
             if (sf != NULL) {
-                fscanf(sf, "%d %d", &width, &height);
+                int n = fscanf(sf, "%d %d", &width, &height);
+                (void)n;  /* We check width/height instead */
                 fclose(sf);
                 if (width > 0 && height > 0) break;
             }
@@ -439,8 +440,8 @@ static int read_screen(DisplayClient *dc)
             continue;
         }
         if (nread == 0) {
-            fprintf(stderr, "Error: Server closed connection, got %zu of %zu bytes\n",
-                    total, to_read);
+            fprintf(stderr, "Error: Server closed connection, got %lu of %lu bytes\n",
+                    (unsigned long)total, (unsigned long)to_read);
             return -1;  /* Fail fast instead of filling with garbage */
         }
         total += nread;
@@ -448,7 +449,8 @@ static int read_screen(DisplayClient *dc)
 
     /* Verify we read all the data */
     if (total != to_read) {
-        fprintf(stderr, "Error: Only read %zu of %zu bytes - incomplete frame!\n", total, to_read);
+        fprintf(stderr, "Error: Only read %lu of %lu bytes - incomplete frame!\n",
+                (unsigned long)total, (unsigned long)to_read);
         /* Fill remaining with BLACK (all zeros in BGRA) */
         if (total < to_read) {
             size_t i;
