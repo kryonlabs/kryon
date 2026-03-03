@@ -156,6 +156,7 @@ struct KryonWindow *window_create(const char *title, int width, int height)
     window->vdev = NULL;
     window->nested_win_dir = NULL;
     window->event_queue = NULL;
+    window->focused_widget = NULL;
 
     /* Initialize namespace */
     window_namespace_init(window);
@@ -239,6 +240,7 @@ struct KryonWindow *window_create_ex(const char *title, int width, int height,
     window->vdev = NULL;
     window->nested_win_dir = NULL;
     window->event_queue = NULL;
+    window->focused_widget = NULL;
 
     /* Initialize namespace */
     window_namespace_init(window);
@@ -851,5 +853,44 @@ struct KryonWindow *window_find_at_point(struct KryonWindow *root, int x, int y)
     /* Check this window */
     /* TODO: Implement bounds checking */
     return root;
+}
+
+/*
+ * ========== Focus Management ==========
+ */
+
+/*
+ * Set focus to a widget
+ */
+void window_set_focus(struct KryonWindow *win, struct KryonWidget *w)
+{
+    struct KryonWidget *old_focus;
+
+    if (win == NULL) {
+        return;
+    }
+
+    old_focus = win->focused_widget;
+
+    /* Clear old focus */
+    if (old_focus != NULL) {
+        old_focus->prop_focused = 0;
+    }
+
+    /* Set new focus */
+    if (w != NULL && w->prop_focusable) {
+        win->focused_widget = w;
+        w->prop_focused = 1;
+    } else {
+        win->focused_widget = NULL;
+    }
+}
+
+/*
+ * Get currently focused widget
+ */
+struct KryonWidget *window_get_focused(struct KryonWindow *win)
+{
+    return win ? win->focused_widget : NULL;
 }
 

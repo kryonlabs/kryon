@@ -93,6 +93,9 @@ typedef struct KryonWindow {
     /* Per-window event stream */
     EventQueue *event_queue;        /* Event queue for /mnt/wm/win/{id}/events */
 
+    /* Focus management */
+    struct KryonWidget *focused_widget;  /* Currently focused widget */
+
     /* Internal state */
     void *internal_data;            /* Platform-specific data */
 } KryonWindow;
@@ -129,6 +132,12 @@ int window_set_visible(struct KryonWindow *window, int visible);
  * Widget management
  */
 int window_add_widget(struct KryonWindow *window, struct KryonWidget *widget);
+
+/*
+ * Focus management
+ */
+void window_set_focus(struct KryonWindow *win, struct KryonWidget *w);
+struct KryonWidget *window_get_focused(struct KryonWindow *win);
 
 /*
  * File system integration

@@ -173,6 +173,27 @@ struct KryonWidget *widget_create(WidgetType type, const char *name,
         widget->prop_color[0] = '\0';
     }
 
+    /* Initialize focus state */
+    widget->prop_focused = 0;
+    widget->prop_focusable = 0;
+
+    /* Text inputs are focusable */
+    switch (type) {
+        case WIDGET_TEXT_INPUT:
+        case WIDGET_PASSWORD_INPUT:
+        case WIDGET_SEARCH_INPUT:
+        case WIDGET_NUMBER_INPUT:
+        case WIDGET_EMAIL_INPUT:
+        case WIDGET_URL_INPUT:
+        case WIDGET_TEL_INPUT:
+        case WIDGET_TEXT_AREA:
+            widget->prop_focusable = 1;
+            break;
+        default:
+            widget->prop_focusable = 0;
+            break;
+    }
+
     widget->prop_rect = (char *)malloc(8);
     if (widget->prop_rect != NULL) {
         strcpy(widget->prop_rect, "0 0 0 0");

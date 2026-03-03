@@ -1,5 +1,6 @@
-# Kryon Core - Makefile
+# Kryon Core - Makefile (Restructured)
 # C89/C90 compliant build using tcc or gcc
+# New structure: wm/, tk/, display/, cli/, lib/
 
 # Detect compiler
 CC := $(shell command -v tcc 2>/dev/null)
@@ -66,11 +67,17 @@ else
     $(info SDL2_CFLAGS=$(SDL2_CFLAGS))
 endif
 
-# Directories
-SRC_DIR = src
+# Directories (NEW STRUCTURE)
 INCLUDE_DIR = include
 BUILD_DIR = build
 BIN_DIR = bin
+
+# Component source directories
+WM_SRC_DIR = wm/src
+TK_SRC_DIR = tk/src
+DISPLAY_SRC_DIR = display/src
+CLI_SRC_DIR = cli/src
+LIB_SRC_DIR = lib/src
 
 # Marrow graphics library (for linking Kryon with Marrow's graphics)
 MARROW_DIR = ../marrow
@@ -80,48 +87,60 @@ MARROW_GRAPHICS_OBJS = $(BUILD_DIR)/marrow/memdraw.o \
                        $(BUILD_DIR)/marrow/pixconv.o \
                        $(BUILD_DIR)/marrow/devdraw.o
 
-# Source files
-CORE_SRCS = $(wildcard $(SRC_DIR)/core/*.c)
-# Graphics moved to Marrow - Kryon now uses Marrow client
-GRAPHICS_SRCS =
-# UI files (window manager, widgets)
-UI_SRCS = $(SRC_DIR)/core/window.c $(SRC_DIR)/core/widget.c \
-           $(SRC_DIR)/core/render.c $(SRC_DIR)/core/events.c \
-           $(SRC_DIR)/core/layout.c
-# Refactored rendering modules
-RENDER_SRCS = $(SRC_DIR)/core/render/primitives.c \
-              $(SRC_DIR)/core/render/widgets.c \
-              $(SRC_DIR)/core/render/events.c \
-              $(SRC_DIR)/core/render/screen.c
-# Utility modules
-UTIL_SRCS = $(SRC_DIR)/core/util/color.c \
-            $(SRC_DIR)/core/util/geom.c
-# Kryon DSL parser
-KRYON_SRCS = $(SRC_DIR)/kryon/parser.c
-# Window manager filesystem
-SYS_SRCS = $(SRC_DIR)/sys/wm.c
-# Authentication - now handled by Marrow, Kryon only uses 9P client auth
-TRANSPORT_SRCS = $(wildcard $(SRC_DIR)/transport/*.c)
-# 9P client (for connecting to 9P servers)
-P9CLIENT_SRCS = $(SRC_DIR)/lib/client/p9client.c $(SRC_DIR)/lib/client/marrow.c
-CLIENT_SRCS = $(SRC_DIR)/client/sdl_display.c \
-              $(SRC_DIR)/client/eventpoll.c
-# CLI (Flutter-like command-line interface)
-CLI_SRCS = $(SRC_DIR)/cli/main.c $(SRC_DIR)/cli/commands.c $(SRC_DIR)/cli/yaml.c
-# Build system (multi-target support)
-BUILD_SRCS = $(SRC_DIR)/build/target.c
-SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS) $(RENDER_SRCS) $(UTIL_SRCS) \
-       $(KRYON_SRCS) $(TRANSPORT_SRCS) $(P9CLIENT_SRCS) $(SYS_SRCS) $(BUILD_SRCS)
+# Source files by component
+# Toolkit (tk/) - Core UI system
+TK_SRCS = $(TK_SRC_DIR)/widget.c \
+          $(TK_SRC_DIR)/window.c \
+          $(TK_SRC_DIR)/render.c \
+          $(TK_SRC_DIR)/events.c \
+          $(TK_SRC_DIR)/layout.c \
+          $(TK_SRC_DIR)/namespace.c \
+          $(TK_SRC_DIR)/tree.c \
+          $(TK_SRC_DIR)/9p.c \
+          $(TK_SRC_DIR)/ops.c \
+          $(TK_SRC_DIR)/devenv.c \
+          $(TK_SRC_DIR)/vdev.c \
+          $(TK_SRC_DIR)/devfd.c \
+          $(TK_SRC_DIR)/devproc.c \
+          $(TK_SRC_DIR)/devcons.c \
+          $(TK_SRC_DIR)/ctl.c \
+          $(TK_SRC_DIR)/wm.c \
+          $(TK_SRC_DIR)/parser.c \
+          $(TK_SRC_DIR)/target.c \
+          $(TK_SRC_DIR)/render/primitives.c \
+          $(TK_SRC_DIR)/render/widgets.c \
+          $(TK_SRC_DIR)/render/events.c \
+          $(TK_SRC_DIR)/render/screen.c \
+          $(TK_SRC_DIR)/util/color.c \
+          $(TK_SRC_DIR)/util/geom.c
 
-# Additional object files for linking
-WINDOW_OBJS = $(BUILD_DIR)/core/window.o
-WIDGET_OBJS = $(BUILD_DIR)/core/widget.o
+# Library (lib/) - 9P client library
+LIB_SRCS = $(LIB_SRC_DIR)/client/p9client.c \
+           $(LIB_SRC_DIR)/client/marrow.c
+
+# Display client (display/)
+DISPLAY_SRCS = $(DISPLAY_SRC_DIR)/sdl_display.c \
+               $(DISPLAY_SRC_DIR)/eventpoll.c
+
+# CLI tools (cli/)
+CLI_SRCS = $(CLI_SRC_DIR)/main.c \
+           $(CLI_SRC_DIR)/commands.c \
+           $(CLI_SRC_DIR)/yaml.c
+
+# Window manager (wm/) - Server component
+WM_SRCS = $(WM_SRC_DIR)/main.c
+
+# Combined source files for libkryon.a
+SRCS = $(TK_SRCS) $(LIB_SRCS)
 
 # Object files
-OBJS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+TK_OBJS = $(TK_SRCS:$(TK_SRC_DIR)/%.c=$(BUILD_DIR)/tk/%.o)
+LIB_OBJS = $(LIB_SRCS:$(LIB_SRC_DIR)/%.c=$(BUILD_DIR)/lib/%.o)
+DISPLAY_OBJS = $(DISPLAY_SRCS:$(DISPLAY_SRC_DIR)/%.c=$(BUILD_DIR)/display/%.o)
+CLI_OBJS = $(CLI_SRCS:$(CLI_SRC_DIR)/%.c=$(BUILD_DIR)/cli/%.o)
 
-# Client object files
-CLIENT_OBJS = $(CLIENT_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+# All library objects
+OBJS = $(TK_OBJS) $(LIB_OBJS)
 
 # Targets
 LIB_TARGET = $(BUILD_DIR)/libkryon.a
@@ -139,17 +158,14 @@ endif
 
 # Create directories
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)/core
-	mkdir -p $(BUILD_DIR)/core/util
-	mkdir -p $(BUILD_DIR)/core/render
-	mkdir -p $(BUILD_DIR)/shell
-	mkdir -p $(BUILD_DIR)/transport
-	mkdir -p $(BUILD_DIR)/client
+	mkdir -p $(BUILD_DIR)/tk
+	mkdir -p $(BUILD_DIR)/tk/util
+	mkdir -p $(BUILD_DIR)/tk/render
 	mkdir -p $(BUILD_DIR)/lib/client
-	mkdir -p $(BUILD_DIR)/sys
-	mkdir -p $(BUILD_DIR)/kryon
+	mkdir -p $(BUILD_DIR)/display
 	mkdir -p $(BUILD_DIR)/cli
-	mkdir -p $(BUILD_DIR)/build
+	mkdir -p $(BUILD_DIR)/marrow
+	mkdir -p $(BUILD_DIR)/wm
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
@@ -159,20 +175,36 @@ $(LIB_TARGET): $(OBJS) | $(BUILD_DIR)
 	ar rcs $@ $^
 
 # Kryon Window Manager binary (connects to Marrow)
-# Using test_main.c for now - full main requires linking with Marrow graphics
-$(KRYON_WM_TARGET): $(SRC_DIR)/server/main.c $(LIB_TARGET) $(MARROW_GRAPHICS_OBJS) $(BUILD_DIR)/kryon/parser.o | $(BIN_DIR)
-	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport -I$(MARROW_INCLUDE) -I$(SRC_DIR)/kryon \
-		$< $(BUILD_DIR)/lib/client/p9client.o $(BUILD_DIR)/lib/client/marrow.o $(BUILD_DIR)/kryon/parser.o $(MARROW_GRAPHICS_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS) -lm
+$(KRYON_WM_TARGET): $(WM_SRC_DIR)/main.c $(LIB_TARGET) $(MARROW_GRAPHICS_OBJS) | $(BIN_DIR)
+	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) \
+		-I$(INCLUDE_DIR) \
+		-I$(MARROW_INCLUDE) \
+		-I$(TK_SRC_DIR) \
+		-I$(LIB_SRC_DIR) \
+		$< \
+		$(BUILD_DIR)/lib/client/p9client.o \
+		$(BUILD_DIR)/lib/client/marrow.o \
+		$(BUILD_DIR)/tk/parser.o \
+		$(BUILD_DIR)/tk/target.o \
+		$(MARROW_GRAPHICS_OBJS) \
+		-L$(BUILD_DIR) -lkryon -o $@ $(LDFLAGS) -lm
 
 # Display client binary
-$(DISPLAY_TARGET): $(SRC_DIR)/client/main.c $(CLIENT_OBJS) $(LIB_TARGET) | $(BIN_DIR)
-	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/transport $< $(CLIENT_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(DISPLAY_LDFLAGS)
+$(DISPLAY_TARGET): $(DISPLAY_SRC_DIR)/main.c $(DISPLAY_OBJS) $(LIB_TARGET) | $(BIN_DIR)
+	gcc -std=c89 -Wall -Wpedantic -g $(CFLAGS) \
+		-I$(INCLUDE_DIR) \
+		-I$(TK_SRC_DIR) \
+		-I$(LIB_SRC_DIR) \
+		-I$(MARROW_INCLUDE) \
+		$< $(DISPLAY_OBJS) -L$(BUILD_DIR) -lkryon -o $@ $(DISPLAY_LDFLAGS)
 
-# Kryon CLI binary (replaces kryon.sh wrapper)
-CLI_OBJS = $(BUILD_DIR)/cli/main.o $(BUILD_DIR)/cli/commands.o $(BUILD_DIR)/cli/yaml.o $(BUILD_DIR)/build/target.o
-$(KRYON_TARGET): $(CLI_OBJS) | $(BIN_DIR)
-	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build \
-		$(CLI_OBJS) -o $@ $(LDFLAGS)
+# Kryon CLI binary
+$(KRYON_TARGET): $(CLI_OBJS) $(BUILD_DIR)/tk/target.o | $(BIN_DIR)
+	$(CC) -std=c89 -Wall -Wpedantic -g $(CFLAGS) \
+		-I$(INCLUDE_DIR) \
+		-I$(CLI_SRC_DIR) \
+		-I$(TK_SRC_DIR) \
+		$(CLI_OBJS) $(BUILD_DIR)/tk/target.o -o $@ $(LDFLAGS)
 	chmod +x $(KRYON_TARGET)
 
 # PPM screenshot tool
@@ -180,87 +212,48 @@ $(SAVE_PPM_TARGET): tools/save_ppm.c | $(BIN_DIR)
 	gcc -std=c89 -Wall -Wpedantic -g $< -o $@
 
 # SDL2 viewer (connects to server via 9P)
-# Note: Must use GCC for SDL2 because TCC doesn't support immintrin.h
-# We need a separate GCC-compiled library to avoid mixing TCC and GCC object files
 SDL_LIB_TARGET = $(BUILD_DIR)/libkryon_gcc.a
-SDL_SRCS = $(CORE_SRCS) $(GRAPHICS_SRCS) $(UI_SRCS)
-SDL_OBJS = $(SDL_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%_gcc.o)
+SDL_SRCS = $(TK_SRCS)
+SDL_OBJS = $(SDL_SRCS:$(TK_SRC_DIR)/%.c=$(BUILD_DIR)/tk/%_gcc.o)
 
-$(BUILD_DIR)/%_gcc.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
-	gcc -std=c89 -Wall -Wpedantic -g -I$(INCLUDE_DIR) -c $< -o $@
+$(BUILD_DIR)/tk/%_gcc.o: $(TK_SRC_DIR)/%.c | $(BUILD_DIR)
+	gcc -std=c89 -Wall -Wpedantic -g -I$(INCLUDE_DIR) -I$(TK_SRC_DIR) -c $< -o $@
 
 $(SDL_LIB_TARGET): $(SDL_OBJS)
 	ar rcs $@ $^
 
 SDL_VIEWER = $(BIN_DIR)/sdl_viewer
-$(SDL_VIEWER): $(SRC_DIR)/client/sdl_viewer.c $(BUILD_DIR)/client/9pclient_gcc.o $(SDL_LIB_TARGET) | $(BIN_DIR)
-	gcc -std=c89 -Wall -Wpedantic -g -I$(INCLUDE_DIR) $< $(BUILD_DIR)/client/9pclient_gcc.o -L$(BUILD_DIR) -lkryon_gcc -o $@ $(SDL2_CFLAGS) $(SDL2_LIBS) $(SDL2_RPATH)
+$(SDL_VIEWER): $(DISPLAY_SRC_DIR)/sdl_viewer.c $(BUILD_DIR)/display/9pclient_gcc.o $(SDL_LIB_TARGET) | $(BIN_DIR)
+	gcc -std=c89 -Wall -Wpedantic -g \
+		-I$(INCLUDE_DIR) \
+		-I$(TK_SRC_DIR) \
+		$< $(BUILD_DIR)/display/9pclient_gcc.o -L$(BUILD_DIR) -lkryon_gcc -o $@ $(SDL2_CFLAGS) $(SDL2_LIBS) $(SDL2_RPATH)
 
 .PHONY: run-sdl
 run-sdl: $(SDL_VIEWER)
 	@echo "Starting SDL2 viewer..."
 	@$(SDL_VIEWER)
 
-# Compile object files
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(MARROW_INCLUDE) -c $< -o $@
+# Compile toolkit object files
+$(BUILD_DIR)/tk/%.o: $(TK_SRC_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/tk/render
+	@mkdir -p $(BUILD_DIR)/tk/util
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(TK_SRC_DIR) -I$(MARROW_INCLUDE) -c $< -o $@
 
-# Compile object files in lib/ subdirectory
-$(BUILD_DIR)/lib/%.o: $(SRC_DIR)/lib/%.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
-
-# Compile object files in lib/client/ subdirectory (nested)
-$(BUILD_DIR)/lib/client/p9client.o: $(SRC_DIR)/lib/client/p9client.c
+# Compile library object files
+$(BUILD_DIR)/lib/client/%.o: $(LIB_SRC_DIR)/client/%.c | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)/lib/client
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(LIB_SRC_DIR) -c $< -o $@
 
-$(BUILD_DIR)/lib/client/marrow.o: $(SRC_DIR)/lib/client/marrow.c
-	@mkdir -p $(BUILD_DIR)/lib/client
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
-
-# Compile object files in build/ subdirectory
-$(BUILD_DIR)/build/target.o: $(SRC_DIR)/build/target.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/build
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/build -c $< -o $@
+# Compile display client object files
+$(BUILD_DIR)/display/%.o: $(DISPLAY_SRC_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)/display
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(TK_SRC_DIR) -I$(LIB_SRC_DIR) -c $< -o $@
 
 # Compile CLI object files
-$(BUILD_DIR)/cli/main.o: $(SRC_DIR)/cli/main.c | $(BUILD_DIR)
+$(BUILD_DIR)/cli/%.o: $(CLI_SRC_DIR)/%.c | $(BUILD_DIR)
 	@mkdir -p $(BUILD_DIR)/cli
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build -c $< -o $@
-
-$(BUILD_DIR)/cli/commands.o: $(SRC_DIR)/cli/commands.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/cli
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build -c $< -o $@
-
-$(BUILD_DIR)/cli/yaml.o: $(SRC_DIR)/cli/yaml.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/cli
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/cli -I$(SRC_DIR)/build -c $< -o $@
-
-# Compile util object files
-$(BUILD_DIR)/core/util/color.o: $(SRC_DIR)/core/util/color.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/core/util
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
-
-$(BUILD_DIR)/core/util/geom.o: $(SRC_DIR)/core/util/geom.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/core/util
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
-
-# Compile render object files
-$(BUILD_DIR)/core/render/primitives.o: $(SRC_DIR)/core/render/primitives.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/core/render
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/core/render -c $< -o $@
-
-$(BUILD_DIR)/core/render/widgets.o: $(SRC_DIR)/core/render/widgets.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/core/render
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/core/render -c $< -o $@
-
-$(BUILD_DIR)/core/render/events.o: $(SRC_DIR)/core/render/events.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/core/render
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/core/render -c $< -o $@
-
-$(BUILD_DIR)/core/render/screen.o: $(SRC_DIR)/core/render/screen.c | $(BUILD_DIR)
-	@mkdir -p $(BUILD_DIR)/core/render
-	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(SRC_DIR)/core/render -c $< -o $@
+	$(CC) $(CFLAGS) -I$(INCLUDE_DIR) -I$(CLI_SRC_DIR) -I$(TK_SRC_DIR) -c $< -o $@
 
 # Build Marrow graphics objects (for linking with Kryon)
 $(BUILD_DIR)/marrow:
@@ -363,7 +356,14 @@ deps:
 	nix-shell
 
 help:
-	@echo "Kryon Core Build System"
+	@echo "Kryon Core Build System (Restructured)"
+	@echo ""
+	@echo "New Structure:"
+	@echo "  wm/      - Window manager"
+	@echo "  tk/      - UI Toolkit"
+	@echo "  display/ - Display client"
+	@echo "  cli/     - CLI tools"
+	@echo "  lib/     - 9P client library"
 	@echo ""
 	@echo "Targets:"
 	@echo "  all            - Build library and display client (default)"
@@ -375,8 +375,6 @@ help:
 	@echo "  deps           - Show Nix shell command"
 	@echo ""
 	@echo "Compiler: tcc (C89/C90)"
-	@echo "Source:   $(SRC_DIR)"
-	@echo "Include:  $(INCLUDE_DIR)"
 ifeq ($(HAVE_SDL2),1)
 	@echo "SDL2:     Detected"
 else

@@ -6,7 +6,7 @@
  */
 
 #include "layout.h"
-#include "../kryon/parser.h"
+#include "parser.h"
 #include "widget.h"
 #include "window.h"
 #include <stdlib.h>

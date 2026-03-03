@@ -6,10 +6,10 @@
  */
 
 #include "parser.h"
-#include "../include/window.h"
-#include "../include/widget.h"
-#include "../include/layout.h"
-#include "../include/wm.h"
+#include "window.h"
+#include "widget.h"
+#include "layout.h"
+#include "wm.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

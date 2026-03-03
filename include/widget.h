@@ -167,6 +167,10 @@ typedef struct KryonWidget {
     char *prop_color;               /* Custom color in "#RRGGBB" format */
     char *prop_group;               /* Radio button group name (optional) */
 
+    /* Focus state */
+    int prop_focused;               /* Focus state (0 or 1) */
+    int prop_focusable;             /* Can receive focus (0 or 1) */
+
     /* Internal state */
     P9Node *node;                   /* Corresponding tree node */
     void *internal_data;            /* Type-specific data */

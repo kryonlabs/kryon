@@ -17,8 +17,8 @@
 #include "p9client.h"
 #include "marrow.h"
 #include "kryon.h"
-#include "../kryon/parser.h"
-#include "../include/graphics.h"
+#include "parser.h"
+#include "graphics.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

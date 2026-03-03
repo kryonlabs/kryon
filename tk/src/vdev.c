@@ -10,6 +10,7 @@
  */
 
 #include "window.h"
+#include "widget.h"
 #include "graphics.h"
 #include "kryon.h"
 
@@ -349,6 +350,7 @@ ssize_t vdev_mouse_read(char *buf, size_t count, uint64_t offset,
 /*
  * Virtual /dev/kbd write handler
  * Writes keyboard events - forwards to nested WM if present
+ * Routes keyboard events to focused widget for text input
  */
 ssize_t vdev_kbd_write(const char *buf, size_t count, uint64_t offset,
                       void *data)
@@ -366,6 +368,31 @@ ssize_t vdev_kbd_write(const char *buf, size_t count, uint64_t offset,
         ssize_t nwritten = write(win->nested_fd_out, buf, count);
         (void)nwritten;
         return count;
+    }
+
+    /* Route to focused widget if it's a text input */
+    if (win->focused_widget != NULL) {
+        struct KryonWidget *w = win->focused_widget;
+        if (w->type == WIDGET_TEXT_INPUT ||
+            w->type == WIDGET_PASSWORD_INPUT ||
+            w->type == WIDGET_SEARCH_INPUT ||
+            w->type == WIDGET_NUMBER_INPUT ||
+            w->type == WIDGET_EMAIL_INPUT ||
+            w->type == WIDGET_URL_INPUT ||
+            w->type == WIDGET_TEL_INPUT) {
+
+            /* Parse keyboard message: "k 0 keycode msec\n" */
+            char event_type;
+            int keycode;
+            unsigned long msec;
+            if (sscanf(buf, "%c 0 %d %lu", &event_type, &keycode, &msec) == 3) {
+                int pressed = (event_type == 'k');
+                /* Call widget's key handler */
+                extern int text_input_handle_key(struct KryonWidget *w, int keycode, int pressed);
+                text_input_handle_key(w, keycode, pressed);
+                (void)msec;  /* Unused */
+            }
+        }
     }
 
     /* Push key event to per-window event queue */

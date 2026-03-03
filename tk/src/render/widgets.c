@@ -22,6 +22,145 @@ extern int g_render_dirty;
 extern int *render_get_context(void);
 
 /*
+ * Text Input State Structure
+ */
+typedef struct {
+    char *text;        /* Current editing buffer */
+    int cursor_pos;    /* Cursor position */
+    int max_length;    /* Maximum chars (0 = unlimited) */
+} TextInputState;
+
+/*
+ * Create/destroy text input state
+ */
+static TextInputState *text_input_state_create(struct KryonWidget *w)
+{
+    TextInputState *state;
+
+    if (w == NULL) {
+        return NULL;
+    }
+
+    state = (TextInputState *)calloc(1, sizeof(TextInputState));
+    if (state == NULL) {
+        return NULL;
+    }
+
+    if (w->prop_value != NULL && w->prop_value[0] != '\0') {
+        state->text = strdup(w->prop_value);
+    } else {
+        state->text = strdup("");
+    }
+
+    if (state->text == NULL) {
+        free(state);
+        return NULL;
+    }
+
+    state->cursor_pos = (int)strlen(state->text);
+    state->max_length = 0;  /* Unlimited */
+    return state;
+}
+
+static void text_input_state_destroy(TextInputState *state)
+{
+    if (state != NULL) {
+        free(state->text);
+        free(state);
+    }
+}
+
+/*
+ * Text Input Key Handler
+ * Handles keyboard input for text input widgets
+ */
+int text_input_handle_key(struct KryonWidget *w, int keycode, int pressed)
+{
+    TextInputState *state;
+
+    if (w == NULL) {
+        return 0;
+    }
+
+    /* Initialize state on first use */
+    if (w->internal_data == NULL) {
+        w->internal_data = text_input_state_create(w);
+    }
+    state = w->internal_data;
+
+    if (!pressed) {
+        return 0;  /* Only handle press events */
+    }
+
+    /* Handle special keys */
+    switch (keycode) {
+        case 8:  /* Backspace (SDL_SCANCODE_BACKSPACE) */
+            if (state->cursor_pos > 0) {
+                memmove(state->text + state->cursor_pos - 1,
+                        state->text + state->cursor_pos,
+                        strlen(state->text) - state->cursor_pos + 1);
+                state->cursor_pos--;
+            }
+            break;
+
+        case 1073741904:  /* Left arrow (SDL_SCANCODE_LEFT) */
+            if (state->cursor_pos > 0) {
+                state->cursor_pos--;
+            }
+            break;
+
+        case 1073741903:  /* Right arrow (SDL_SCANCODE_RIGHT) */
+            if (state->cursor_pos < (int)strlen(state->text)) {
+                state->cursor_pos++;
+            }
+            break;
+
+        case 1073741906:  /* Home (SDL_SCANCODE_HOME) */
+            state->cursor_pos = 0;
+            break;
+
+        case 1073741901:  /* End (SDL_SCANCODE_END) */
+            state->cursor_pos = (int)strlen(state->text);
+            break;
+
+        case 127:  /* Delete (SDL_SCANCODE_DELETE) */
+            {
+                size_t len = strlen(state->text);
+                if (state->cursor_pos < (int)len) {
+                    memmove(state->text + state->cursor_pos,
+                            state->text + state->cursor_pos + 1,
+                            len - state->cursor_pos);
+                }
+            }
+            break;
+
+        default:
+            /* Handle printable ASCII */
+            if (keycode >= 32 && keycode <= 126) {
+                size_t len = strlen(state->text);
+                if (state->max_length == 0 || len < (size_t)state->max_length) {
+                    memmove(state->text + state->cursor_pos + 1,
+                            state->text + state->cursor_pos,
+                            len - state->cursor_pos + 1);
+                    state->text[state->cursor_pos++] = (char)keycode;
+                }
+            }
+            break;
+    }
+
+    /* Update widget value */
+    free(w->prop_value);
+    w->prop_value = strdup(state->text);
+
+    /* Mark window dirty for re-render */
+    if (w->parent_window != NULL) {
+        g_render_dirty = 1;
+    }
+
+    return 1;
+}
+
+/*
  * Widget state structures
  */
 typedef struct {
@@ -546,12 +685,15 @@ void render_widget(KryonWidget *w, Memimage *screen)
                     sprintf(w->prop_value, "%d", new_val);
                 }
             }
+
+            /* Set focus on click */
+            if (render_is_widget_clicked(w)) {
+                extern void window_set_focus(struct KryonWindow *win, struct KryonWidget *w);
+                window_set_focus(w->parent_window, w);
+            }
         }
         break;
 
-    case WIDGET_SLIDER:
-    case WIDGET_RANGE_SLIDER:
-    case WIDGET_DROPDOWN:
     case WIDGET_TEXT_INPUT:
     case WIDGET_PASSWORD_INPUT:
     case WIDGET_SEARCH_INPUT:
@@ -559,16 +701,134 @@ void render_widget(KryonWidget *w, Memimage *screen)
     case WIDGET_EMAIL_INPUT:
     case WIDGET_URL_INPUT:
     case WIDGET_TEL_INPUT:
-    case WIDGET_IMAGE:
-    case WIDGET_CANVAS:
-    case WIDGET_DIVIDER:
-    default:
-        /* For now, these widgets are handled in the original render.c */
-        /* They will be migrated in a follow-up */
+        {
+            Point text_pos;
+            Subfont *font;
+            TextInputState *state = w->internal_data;
+            const char *text_to_display = NULL;
+            int is_password = (w->type == WIDGET_PASSWORD_INPUT);
+            int is_hovered = 0;
+            uint32_t bg_color, border_color, text_color;
+
+            /* Get text to display from state if available */
+            if (state != NULL && state->text != NULL && state->text[0] != '\0') {
+                text_to_display = state->text;
+            } else if (w->prop_text != NULL && w->prop_text[0] != '\0') {
+                text_to_display = w->prop_text;
+            } else if (w->prop_value != NULL && w->prop_value[0] != '\0') {
+                text_to_display = w->prop_value;
+            }
+
+            /* Check hover state */
+            if (w->parent_window != NULL && window_is_valid(w->parent_window)) {
+                Point mp;
+                mp.x = w->parent_window->mouse_x;
+                mp.y = w->parent_window->mouse_y;
+                is_hovered = ptinrect(mp, widget_rect);
+            }
+
+            /* Tk-style colors - blue border when focused */
+            bg_color = 0xFFFFFFFF;
+            border_color = w->prop_focused ? 0x0000FFFF : (is_hovered ? 0x0000AAFF : 0x808080FF);
+            text_color = 0x000000FF;
+
+            /* Draw background */
+            memfillcolor_rect(screen, widget_rect, bg_color);
+
+            /* Draw border */
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                        Pt(widget_rect.max.x - 1, widget_rect.min.y), border_color, 1);
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                        Pt(widget_rect.min.x, widget_rect.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.max.y - 1),
+                        Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
+            memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                        Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), border_color, 1);
+
+            /* Draw text or placeholder */
+            text_pos.x = widget_rect.min.x + 4;
+            text_pos.y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y - 16) / 2;
+            font = memdraw_get_default_font();
+            if (font != NULL) {
+                if (text_to_display != NULL) {
+                    if (is_password) {
+                        /* Show asterisks for password */
+                        size_t len = strlen(text_to_display);
+                        char *masked = (char *)malloc(len + 1);
+                        if (masked != NULL) {
+                            size_t i;
+                            for (i = 0; i < len; i++) {
+                                masked[i] = '*';
+                            }
+                            masked[len] = '\0';
+                            memdraw_text_font(screen, text_pos, masked, font, text_color);
+                            free(masked);
+                        }
+                    } else {
+                        memdraw_text_font(screen, text_pos, text_to_display, font, text_color);
+                    }
+                } else {
+                    /* Show placeholder text */
+                    memdraw_text_font(screen, text_pos, w->prop_placeholder ? w->prop_placeholder : "", font, 0x808080FF);
+                }
+            }
+
+            /* Draw cursor if focused and state exists */
+            if (w->prop_focused && state != NULL) {
+                int cursor_x = text_pos.x + state->cursor_pos * 8;  /* Assume 8px char width */
+                Rectangle cursor_rect;
+                cursor_rect.min.x = cursor_x;
+                cursor_rect.min.y = text_pos.y;
+                cursor_rect.max.x = cursor_x + 2;
+                cursor_rect.max.y = text_pos.y + 16;
+                memfillcolor_rect(screen, cursor_rect, 0x000000FF);
+            }
+
+            /* Set focus on click */
+            if (render_is_widget_clicked(w)) {
+                extern void window_set_focus(struct KryonWindow *win, struct KryonWidget *w);
+                window_set_focus(w->parent_window, w);
+            }
+        }
+        break;
+
+    case WIDGET_SLIDER:
+    case WIDGET_RANGE_SLIDER:
+    case WIDGET_DROPDOWN:
+        /* Use legacy rendering for these complex widgets */
         {
             extern void render_widget_legacy(KryonWidget *w, Memimage *screen);
             render_widget_legacy(w, screen);
         }
+        break;
+
+    case WIDGET_IMAGE:
+        {
+            /* Image placeholder */
+            memfillcolor_rect(screen, widget_rect, 0xF0F0F0FF);
+            memdraw_line(screen, Pt(widget_rect.min.x, widget_rect.min.y),
+                        Pt(widget_rect.max.x - 1, widget_rect.max.y - 1), 0xCCCCCCFF, 1);
+            memdraw_line(screen, Pt(widget_rect.max.x - 1, widget_rect.min.y),
+                        Pt(widget_rect.min.x, widget_rect.max.y - 1), 0xCCCCCCFF, 1);
+        }
+        break;
+
+    case WIDGET_CANVAS:
+        /* Canvas - transparent/black by default */
+        memfillcolor_rect(screen, widget_rect, 0x000000FF);
+        break;
+
+    case WIDGET_DIVIDER:
+        {
+            int mid_y = widget_rect.min.y + (widget_rect.max.y - widget_rect.min.y) / 2;
+            memdraw_line(screen, Pt(widget_rect.min.x, mid_y),
+                        Pt(widget_rect.max.x - 1, mid_y), 0xC0C0C0FF, 1);
+        }
+        break;
+
+    default:
+        /* Unknown widget type */
+        memfillcolor_rect(screen, widget_rect, 0xFFD0D0D0);
         break;
     }
 }
