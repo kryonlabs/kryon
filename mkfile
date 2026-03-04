@@ -2,10 +2,9 @@
 
 <../mkfile.common
 
-# Force POSIX toolchain (kryon needs SDL2/POSIX threads)
-CC=gcc
-LD=gcc
-O=o
+# Plan 9 toolchain - use libdraw for display
+CFLAGS+=-DUSE_PLAN9_DRAW
+DISPLAY_LDFLAGS=-ldraw -lthread
 
 # Directories
 INCLUDE=include
@@ -61,7 +60,7 @@ setup:V:
 	mkdir -p $BUILD/display $BUILD/cli $BUILD/marrow $BUILD/wm $BIN
 
 # Library
-$LIB_TARGET: ${TK_ALL:%=$BUILD/tk/%.o} ${LIB:%=$BUILD/lib/%.o}
+$LIB_TARGET: ${TK_ALL:%=$BUILD/tk/%.$O} ${LIB:%=$BUILD/lib/%.$O}
 	ar rvc $target $prereq
 
 # Kryon Window Manager binary
@@ -71,16 +70,16 @@ $KRYON_WM_TARGET: $WM_SRC/main.c $LIB_TARGET
 		$BUILD/tk/parser.$O $BUILD/tk/target.$O \
 		-L$BUILD -L$MARROW/build -lkryon -lmarrow -o $target $LDFLAGS -lm
 
-# Display client binary (requires SDL2)
+# Display client binary (SDL2 - no Plan 9 libdraw needed)
 $DISPLAY_TARGET: $DISPLAY_SRC/main.c $BUILD/display/sdl_display.$O $BUILD/display/eventpoll.$O $LIB_TARGET
-	$LD -Wall -g -I$INCLUDE -I$TK_SRC -I$LIB_SRC -I$MARROW_INCLUDE \
+	$LD $CFLAGS -I$INCLUDE -I$TK_SRC -I$LIB_SRC -I$MARROW_INCLUDE \
 		$DISPLAY_SRC/main.c $BUILD/display/sdl_display.$O $BUILD/display/eventpoll.$O \
-		-L$BUILD -L$MARROW/build -lkryon -lmarrow -o $target $LDFLAGS -lSDL2
+		-L$BUILD -L$MARROW/build -lkryon -lmarrow -o $target $LDFLAGS
 
 # Kryon CLI binary
-$KRYON_TARGET: ${CLI:%=$BUILD/cli/%.o} $BUILD/tk/target.$O
+$KRYON_TARGET: ${CLI:%=$BUILD/cli/%.$O} $BUILD/tk/target.$O
 	$LD -Wall -g -I$INCLUDE -I$CLI_SRC -I$TK_SRC \
-		${CLI:%=$BUILD/cli/%.o} $BUILD/tk/target.$O -o $target $LDFLAGS
+		${CLI:%=$BUILD/cli/%.$O} $BUILD/tk/target.$O -o $target $LDFLAGS
 	chmod +x $target
 
 # PPM screenshot tool
@@ -88,10 +87,10 @@ $SAVE_PPM_TARGET: tools/save_ppm.c
 	gcc -Wall -g $prereq -o $target
 
 # Compile rules for tk subdirectories (must come first - more specific)
-$BUILD/tk/render/%.o: $TK_SRC/render/%.c
+$BUILD/tk/render/%.$O: $TK_SRC/render/%.c
 	$CC $CFLAGS -I$INCLUDE -I$TK_SRC -I$MARROW_INCLUDE -c $prereq -o $target
 
-$BUILD/tk/util/%.o: $TK_SRC/util/%.c
+$BUILD/tk/util/%.$O: $TK_SRC/util/%.c
 	$CC $CFLAGS -I$INCLUDE -I$TK_SRC -I$MARROW_INCLUDE -c $prereq -o $target
 
 # Compile rules for tk top-level files only (no subdirectories)
@@ -151,15 +150,15 @@ $BUILD/tk/target.$O: $TK_SRC/target.c
 	$CC $CFLAGS -I$INCLUDE -I$TK_SRC -I$MARROW_INCLUDE -c $prereq -o $target
 
 # Compile rules for lib
-$BUILD/lib/client/%.o: $LIB_SRC/client/%.c
+$BUILD/lib/client/%.$O: $LIB_SRC/client/%.c
 	$CC $CFLAGS -I$INCLUDE -I$LIB_SRC -c $prereq -o $target
 
 # Compile rules for display
-$BUILD/display/%.o: $DISPLAY_SRC/%.c
-	$CC $CFLAGS -DHAVE_SDL2 `sdl2-config --cflags` -I$INCLUDE -I$TK_SRC -I$LIB_SRC -c $prereq -o $target
+$BUILD/display/%.$O: $DISPLAY_SRC/%.c
+	$CC $CFLAGS -I$INCLUDE -I$TK_SRC -I$LIB_SRC -c $prereq -o $target
 
 # Compile rules for CLI
-$BUILD/cli/%.o: $CLI_SRC/%.c
+$BUILD/cli/%.$O: $CLI_SRC/%.c
 	$CC $CFLAGS -I$INCLUDE -I$CLI_SRC -I$TK_SRC -c $prereq -o $target
 
 # Clean

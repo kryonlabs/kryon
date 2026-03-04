@@ -73,8 +73,8 @@ cmd_run() {
     kry_file="$(cd "$(dirname "$kry_file")" && pwd)/$(basename "$kry_file")"
 
     # Check required binaries exist
-    [[ -x "$KRYON_WM" ]]   || die "kryon-wm not found at $KRYON_WM (run: make)"
-    [[ -x "$KRYON_VIEW" ]] || die "kryon-view not found at $KRYON_VIEW (run: make)"
+    [[ -x "$KRYON_WM" ]]   || die "kryon-wm not found at $KRYON_WM (run: mk)"
+    [[ -x "$KRYON_VIEW" ]] || die "kryon-view not found at $KRYON_VIEW (run: mk)"
     [[ -x "$MARROW_BIN" ]] || die "marrow not found at $MARROW_BIN"
 
     local wm_pid="" view_pid=""
@@ -236,7 +236,7 @@ cmd_status() {
 # kryon list
 # ---------------------------------------------------------------------------
 cmd_list() {
-    [[ -x "$KRYON_WM" ]] || die "kryon-wm not found (run: make)"
+    [[ -x "$KRYON_WM" ]] || die "kryon-wm not found (run: mk)"
     "$KRYON_WM" --list-examples
 }
 

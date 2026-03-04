@@ -47,11 +47,16 @@ struct DisplayClient {
     char server_addr[256];  /* Server address for reconnection */
     int connected;          /* Connection state flag */
 
-    /* Native display (SDL2) */
+    /* Native display (SDL2 or Plan 9) */
 #ifdef HAVE_SDL2
     void *sdl_window;       /* SDL_Window* */
     void *sdl_renderer;     /* SDL_Renderer* */
     void *sdl_texture;      /* SDL_Texture* */
+#endif
+#ifdef USE_PLAN9_DRAW
+    void *p9_screen;        /* Image* from Plan 9 libdraw */
+    void *p9_mouse;         /* Mousectl* */
+    void *p9_keyboard;      /* Keyboardctl* */
 #endif
 
     /* File descriptors */
@@ -60,7 +65,7 @@ struct DisplayClient {
     int refresh_needed;
 
     /* Screen buffer */
-    uint8_t *screen_buf;      /* Converted RGBA data for SDL */
+    uint8_t *screen_buf;      /* Converted RGBA data for SDL/Plan 9 */
     uint8_t *temp_buf;        /* Temporary buffer for raw BGRA data from server */
     int screen_width;
     int screen_height;

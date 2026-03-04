@@ -1,5 +1,6 @@
 /*
- * Kryon SDL2 Display Client Implementation
+ * Kryon Display Client Implementation
+ * Supports both SDL2 (Linux) and Plan 9 libdraw (Plan 9)
  * C89/C90 compliant
  */
 
@@ -16,6 +17,13 @@
 
 #ifdef HAVE_SDL2
 #include <SDL2/SDL.h>
+#endif
+
+#ifdef USE_PLAN9_DRAW
+#include <draw.h>
+#include <mouse.h>
+#include <keyboard.h>
+#include <cursor.h>
 #endif
 
 /*
@@ -292,8 +300,45 @@ DisplayClient *display_client_create(const DisplayConfig *config)
 
         dc->sdl_texture = texture;
     }
+#elif defined(USE_PLAN9_DRAW)
+    /* Initialize Plan 9 display */
+    if (initdraw(0, 0, "Kryon Display") < 0) {
+        fprintf(stderr, "Failed to initialize Plan 9 draw: %r\n");
+        free(dc->screen_buf);
+        p9_close(dc->p9, dc->screen_fd);
+        p9_disconnect(dc->p9);
+        free(dc);
+        return NULL;
+    }
+
+    /* Store screen pointer */
+    dc->p9_screen = screen;
+
+    /* Initialize mouse control */
+    dc->p9_mouse = initmouse();
+    if (dc->p9_mouse == NULL) {
+        fprintf(stderr, "Failed to initialize Plan 9 mouse: %r\n");
+        free(dc->screen_buf);
+        p9_close(dc->p9, dc->screen_fd);
+        p9_disconnect(dc->p9);
+        free(dc);
+        return NULL;
+    }
+
+    /* Initialize keyboard control */
+    dc->p9_keyboard = initkeyboard();
+    if (dc->p9_keyboard == NULL) {
+        fprintf(stderr, "Failed to initialize Plan 9 keyboard: %r\n");
+        free(dc->screen_buf);
+        p9_close(dc->p9, dc->screen_fd);
+        p9_disconnect(dc->p9);
+        free(dc);
+        return NULL;
+    }
+
+    fprintf(stderr, "Plan 9 display initialized successfully\n");
 #else
-    fprintf(stderr, "Warning: SDL2 not available, display will be limited\n");
+    fprintf(stderr, "Warning: No display backend available (SDL2 or Plan 9)\n");
 #endif
 
     dc->running = 1;
@@ -326,6 +371,16 @@ void display_client_destroy(DisplayClient *dc)
         SDL_DestroyWindow((SDL_Window *)dc->sdl_window);
     }
     SDL_Quit();
+#endif
+
+#ifdef USE_PLAN9_DRAW
+    if (dc->p9_keyboard != NULL) {
+        closekeyboard((Keyboardctl *)dc->p9_keyboard);
+    }
+    if (dc->p9_mouse != NULL) {
+        closemouse((Mousectl *)dc->p9_mouse);
+    }
+    /* Note: screen is managed by libdraw, no explicit cleanup needed */
 #endif
 
     if (dc->screen_buf != NULL) {
@@ -522,6 +577,38 @@ static int update_display(DisplayClient *dc)
     SDL_RenderPresent(renderer);
 
     return 0;
+
+#elif defined(USE_PLAN9_DRAW)
+    Image *img = (Image *)dc->p9_screen;
+    static int first_call = 1;
+    Rectangle r;
+
+    if (img == NULL) {
+        return -1;
+    }
+
+    /* Dump screenshot on first frame if requested */
+    if (first_call) {
+        first_call = 0;
+        if (dc->dump_screen) {
+            size_t buf_size = dc->screen_width * dc->screen_height * 4;
+            FILE *dump_file = fopen("/tmp/display_after.raw", "wb");
+            if (dump_file != NULL) {
+                fwrite(dc->screen_buf, 1, buf_size, dump_file);
+                fclose(dump_file);
+            }
+        }
+    }
+
+    /* Update Plan 9 screen image from screen buffer */
+    r = Rect(0, 0, dc->screen_width, dc->screen_height);
+    loadimage(img, r, dc->screen_buf, dc->screen_width * dc->screen_height * 4);
+
+    /* Flush the display */
+    flushimage(img, 1);
+
+    return 0;
+
 #else
     fprintf(stderr, "No display backend available\n");
     return -1;
@@ -934,6 +1021,31 @@ int display_client_run(DisplayClient *dc)
                 } else if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) {
                     fprintf(stderr, "ESC pressed, exiting...\n");
                     dc->running = 0;
+                }
+            }
+        }
+#elif defined(USE_PLAN9_DRAW)
+        /* Process Plan 9 events when connected */
+        if (dc->connected) {
+            Mousectl *mc = (Mousectl *)dc->p9_mouse;
+            Keyboardctl *kc = (Keyboardctl *)dc->p9_keyboard;
+
+            /* Handle mouse events */
+            if (mc != NULL) {
+                if (mouse_read(mc, 1) > 0) {
+                    /* Send mouse event to server */
+                    display_client_send_mouse(dc, mc->xy.x, mc->xy.y, mc->buttons);
+                }
+            }
+
+            /* Handle keyboard events */
+            if (kc != NULL) {
+                Rune r;
+                if (kc->kbdc != NULL && kbd_read(kc, &r) > 0) {
+                    /* Convert Rune to keycode */
+                    int keycode = r;
+                    int pressed = 1;  /* Key press */
+                    display_client_send_key(dc, keycode, pressed);
                 }
             }
         }
