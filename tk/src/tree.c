@@ -9,15 +9,10 @@
 #include <time.h>
 
 /*
- * Stub for dynamic node creation
- * /dev/draw/[n] directories are now provided by Marrow, not created dynamically
- * This stub returns NULL to disable dynamic creation
+ * External function from Marrow library
+ * Creates /dev/draw/[n] directory nodes
  */
-static P9Node *drawconn_create_dir(int conn_id)
-{
-    (void)conn_id;
-    return NULL;
-}
+extern P9Node *drawconn_create_dir(int conn_id);
 
 /*
  * Forward declarations

@@ -69,8 +69,10 @@ static KryonNode* parse_window(Parser *p);
 static KryonNode* parse_layout(Parser *p, const char *layout_type);
 static KryonNode* parse_widget(Parser *p, const char *widget_type);
 static KryonNode* parse_property_block(Parser *p, KryonNode *node);
+static void parse_repeat(Parser *p, KryonNode *parent);
 static int execute_window(KryonNode *node);
 static int execute_widget(KryonNode *node, struct KryonWindow *win);
+extern int widget_create_fs_entries(struct KryonWidget *widget, P9Node *widgets_node);
 
 /*
  * ========== Tokenizer ==========
@@ -377,6 +379,9 @@ static void free_node(KryonNode *node)
     if (node->prop_value != NULL) free(node->prop_value);
     if (node->prop_group != NULL) free(node->prop_group);
     if (node->prop_options != NULL) free(node->prop_options);
+    if (node->prop_visible != NULL) free(node->prop_visible);
+    if (node->prop_bgcolor != NULL) free(node->prop_bgcolor);
+    if (node->prop_fgcolor != NULL) free(node->prop_fgcolor);
 
     /* Free children array */
     if (node->children != NULL) {
@@ -387,20 +392,72 @@ static void free_node(KryonNode *node)
 }
 
 /*
- * Add child to node
+ * Add child to node (grows dynamically)
  */
 static int add_child(KryonNode *parent, KryonNode *child)
 {
+    KryonNode **new_children;
+    int new_cap;
+
     if (parent == NULL || child == NULL) {
         return -1;
     }
 
     if (parent->nchildren >= parent->child_capacity) {
-        return -1;
+        new_cap = parent->child_capacity * 2;
+        new_children = (KryonNode **)realloc(
+            parent->children, new_cap * sizeof(KryonNode *));
+        if (new_children == NULL) return -1;
+        parent->children = new_children;
+        parent->child_capacity = new_cap;
     }
 
     parent->children[parent->nchildren++] = child;
     return 0;
+}
+
+/*
+ * Deep-clone a node (used by parse_repeat)
+ */
+static KryonNode* clone_node(KryonNode *src)
+{
+    KryonNode *dst;
+    int i;
+
+    if (src == NULL) return NULL;
+
+    dst = create_node(src->type);
+    if (dst == NULL) return NULL;
+
+    if (src->id)           dst->id           = strdup(src->id);
+    if (src->text)         dst->text         = strdup(src->text);
+    if (src->title)        dst->title        = strdup(src->title);
+    if (src->value)        dst->value        = strdup(src->value);
+    if (src->layout_type)  dst->layout_type  = strdup(src->layout_type);
+    if (src->layout_align) dst->layout_align = strdup(src->layout_align);
+    if (src->widget_type)  dst->widget_type  = strdup(src->widget_type);
+    if (src->prop_rect)    dst->prop_rect    = strdup(src->prop_rect);
+    if (src->prop_color)   dst->prop_color   = strdup(src->prop_color);
+    if (src->prop_value)   dst->prop_value   = strdup(src->prop_value);
+    if (src->prop_group)   dst->prop_group   = strdup(src->prop_group);
+    if (src->prop_options) dst->prop_options = strdup(src->prop_options);
+    if (src->prop_visible) dst->prop_visible = strdup(src->prop_visible);
+    if (src->prop_bgcolor) dst->prop_bgcolor = strdup(src->prop_bgcolor);
+    if (src->prop_fgcolor) dst->prop_fgcolor = strdup(src->prop_fgcolor);
+
+    dst->width           = src->width;
+    dst->height          = src->height;
+    dst->layout_gap      = src->layout_gap;
+    dst->layout_padding  = src->layout_padding;
+    dst->layout_cols     = src->layout_cols;
+    dst->layout_rows     = src->layout_rows;
+
+    for (i = 0; i < src->nchildren; i++) {
+        KryonNode *c = clone_node(src->children[i]);
+        if (c) add_child(dst, c);
+    }
+
+    return dst;
 }
 
 /*
@@ -477,6 +534,15 @@ static KryonNode* parse_property_block(Parser *p, KryonNode *node)
                 } else if (strcmp(prop_name, "options") == 0) {
                     free(node->prop_options);
                     node->prop_options = prop_value;
+                } else if (strcmp(prop_name, "visible") == 0) {
+                    free(node->prop_visible);
+                    node->prop_visible = prop_value;
+                } else if (strcmp(prop_name, "bgcolor") == 0) {
+                    free(node->prop_bgcolor);
+                    node->prop_bgcolor = prop_value;
+                } else if (strcmp(prop_name, "fgcolor") == 0) {
+                    free(node->prop_fgcolor);
+                    node->prop_fgcolor = prop_value;
                 } else {
                     free(prop_value);
                 }
@@ -581,6 +647,60 @@ static KryonNode* parse_widget(Parser *p, const char *widget_type)
     node = parse_property_block(p, node);
 
     return node;
+}
+
+/*
+ * Parse repeat: repeat N prefix widget_type "text" { props }
+ * Generates N clones with IDs prefix0..prefix(N-1), all added to parent.
+ */
+static void parse_repeat(Parser *p, KryonNode *parent)
+{
+    int count, i;
+    char *prefix;
+    char *wtype;
+    KryonNode *tmpl;
+    char id_buf[128];
+
+    /* Read count */
+    if (p->current_token.type != TOKEN_WORD) return;
+    count = atoi(p->current_token.value);
+    free_token(&p->current_token);
+    p->current_token = next_token(p);
+
+    /* Read prefix */
+    if (p->current_token.type != TOKEN_WORD) return;
+    prefix = strdup(p->current_token.value);
+    free_token(&p->current_token);
+    p->current_token = next_token(p);
+
+    /* Read widget type */
+    if (p->current_token.type != TOKEN_WORD) { free(prefix); return; }
+    wtype = p->current_token.value;
+    p->current_token.value = NULL;
+    free_token(&p->current_token);
+    p->current_token = next_token(p);
+
+    /*
+     * parse_widget reads ID only if current token is TOKEN_WORD.
+     * Here the next token is TOKEN_STRING (text) or TOKEN_LBRACE (props),
+     * so no ID is consumed — the template node gets id=NULL.
+     */
+    tmpl = parse_widget(p, wtype);
+    free(wtype);
+    if (tmpl == NULL) { free(prefix); return; }
+
+    for (i = 0; i < count; i++) {
+        KryonNode *copy = clone_node(tmpl);
+        if (copy) {
+            free(copy->id);
+            snprintf(id_buf, sizeof(id_buf), "%s%d", prefix, i);
+            copy->id = strdup(id_buf);
+            add_child(parent, copy);
+        }
+    }
+
+    free_node(tmpl);
+    free(prefix);
 }
 
 /*
@@ -707,6 +827,10 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
                 strcmp(word, "scrollarea") == 0) {
                 child = parse_layout(p, word);
                 free(word);  /* Layout parsing makes its own copy */
+            } else if (strcmp(word, "repeat") == 0) {
+                parse_repeat(p, node);
+                free(word);
+                continue;  /* children added directly, skip add_child below */
             } else {
                 /* It's a widget - pass the word as widget type */
                 child = parse_widget(p, word);
@@ -863,6 +987,10 @@ static KryonNode* parse_window(Parser *p)
                 strcmp(word, "scrollarea") == 0) {
                 child = parse_layout(p, word);
                 free(word);  /* Layout parsing makes its own copy */
+            } else if (strcmp(word, "repeat") == 0) {
+                parse_repeat(p, node);
+                free(word);
+                continue;  /* children added directly, skip add_child below */
             } else {
                 /* It's a widget */
                 child = parse_widget(p, word);
@@ -1102,6 +1230,29 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         }
     }
 
+    /* Apply initial visibility from KRY */
+    if (node->prop_visible != NULL) {
+        widget->prop_visible = (strcmp(node->prop_visible, "0") == 0) ? 0 : 1;
+    }
+
+    /* Apply initial bgcolor from KRY */
+    if (node->prop_bgcolor != NULL && node->prop_bgcolor[0] != '\0') {
+        free(widget->prop_bgcolor);
+        widget->prop_bgcolor = (char *)malloc(strlen(node->prop_bgcolor) + 1);
+        if (widget->prop_bgcolor != NULL) {
+            strcpy(widget->prop_bgcolor, node->prop_bgcolor);
+        }
+    }
+
+    /* Apply initial fgcolor from KRY */
+    if (node->prop_fgcolor != NULL && node->prop_fgcolor[0] != '\0') {
+        free(widget->prop_fgcolor);
+        widget->prop_fgcolor = (char *)malloc(strlen(node->prop_fgcolor) + 1);
+        if (widget->prop_fgcolor != NULL) {
+            strcpy(widget->prop_fgcolor, node->prop_fgcolor);
+        }
+    }
+
     /* Set group (for radio buttons) */
     if (node->prop_group != NULL && node->prop_group[0] != '\0') {
         free(widget->prop_group);
@@ -1225,6 +1376,15 @@ static int execute_window(KryonNode *node)
 
     /* Register window in /mnt/wm filesystem */
     wm_create_window_entry(win);
+
+    /* Create filesystem entries for every widget in this window.
+     * Must happen after wm_create_window_entry() which sets win->widgets_node. */
+    {
+        int j;
+        for (j = 0; j < win->nwidgets; j++) {
+            widget_create_fs_entries(win->widgets[j], win->widgets_node);
+        }
+    }
 
     fprintf(stderr, "execute_window: returning success\n");
     return 0;

@@ -9,6 +9,12 @@
 #include <unistd.h>
 
 /*
+ * External function from Marrow library
+ * Creates /dev/draw/[n] directory nodes
+ */
+extern P9Node *drawconn_create_dir(int conn_id);
+
+/*
  * Current client fd (for CPU server tracking)
  * This is set before handling each message
  */

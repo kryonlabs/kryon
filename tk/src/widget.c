@@ -25,6 +25,7 @@ extern void mark_dirty(struct KryonWindow *win);
  * Forward declarations for property handlers
  */
 static ssize_t prop_read_type(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
+static ssize_t prop_read_name(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
 static ssize_t prop_read_value(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
 static ssize_t prop_write_value(struct KryonWidget *w, const char *buf, size_t count, uint64_t offset);
 static ssize_t prop_read_text(struct KryonWidget *w, char *buf, size_t count, uint64_t offset);
@@ -463,6 +464,28 @@ static ssize_t prop_read_type(struct KryonWidget *w, char *buf, size_t count, ui
 }
 
 /*
+ * Read property: name
+ */
+static ssize_t prop_read_name(struct KryonWidget *w, char *buf, size_t count, uint64_t offset)
+{
+    const char *val;
+    size_t len;
+
+    val = (w != NULL && w->name != NULL) ? w->name : "";
+    len = strlen(val);
+
+    if (offset >= len) {
+        return 0;
+    }
+    if (offset + count > len) {
+        count = len - offset;
+    }
+
+    memcpy(buf, val + offset, count);
+    return count;
+}
+
+/*
  * Read property: value
  */
 static ssize_t prop_read_value(struct KryonWidget *w, char *buf, size_t count, uint64_t offset)
@@ -803,14 +826,33 @@ int widget_create_fs_entries(struct KryonWidget *widget, P9Node *widgets_dir)
         return -1;
     }
 
-    /* Create widget directory: /windows/{id}/widgets/{id} */
-    snprintf(dirname, sizeof(dirname), "%u", widget->id);
-    widget_dir = tree_create_dir(widgets_dir, dirname);
+    /* Create widget directory: use name if available, else numeric ID */
+    if (widget->name != NULL && widget->name[0] != '\0') {
+        widget_dir = tree_create_dir(widgets_dir, widget->name);
+    } else {
+        snprintf(dirname, sizeof(dirname), "%u", widget->id);
+        widget_dir = tree_create_dir(widgets_dir, dirname);
+    }
     if (widget_dir == NULL) {
         return -1;
     }
 
     widget->node = widget_dir;
+
+    /* Create name file (read-only) */
+    prop_data = (WidgetPropertyData *)malloc(sizeof(WidgetPropertyData));
+    if (prop_data != NULL) {
+        prop_data->widget = widget;
+        prop_data->read_func = prop_read_name;
+        prop_data->write_func = NULL;
+        file = tree_create_file(widget_dir, "name", prop_data,
+                                (P9ReadFunc)widget_property_read,
+                                (P9WriteFunc)widget_property_write);
+        if (file == NULL) {
+            free(prop_data);
+            return -1;
+        }
+    }
 
     /* Create type file (read-only) */
     prop_data = (WidgetPropertyData *)malloc(sizeof(WidgetPropertyData));

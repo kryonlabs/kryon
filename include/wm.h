@@ -50,14 +50,6 @@ int wm_create_window_entry(struct KryonWindow *win);
 int wm_remove_window_entry(struct KryonWindow *win);
 
 /*
- * Create filesystem entries for a widget
- * Called by widget_create() to expose widget via /mnt/wm
- *
- * Returns 0 on success, -1 on error
- */
-int wm_create_widget_entry(struct KryonWidget *widget);
-
-/*
  * Remove filesystem entries for a widget
  * Called by widget_destroy() to clean up /mnt/wm
  *

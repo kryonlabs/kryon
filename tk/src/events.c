@@ -287,8 +287,11 @@ ssize_t event_file_read(char *buf, size_t count, uint64_t offset, EventQueue *eq
         return 0;
     }
 
-    /* Get widget name if available */
-    if (eq->widget != NULL && eq->widget->name != NULL) {
+    /* Get widget name: prefer name stamped in event data (set by generate_mouse_event);
+     * fall back to queue's widget (for widget-level queues). */
+    if (ev.data[0] != '\0') {
+        widget_name = ev.data;
+    } else if (eq->widget != NULL && eq->widget->name != NULL) {
         widget_name = eq->widget->name;
     }
 
@@ -477,10 +480,23 @@ int generate_mouse_event(Point xy, int buttons)
     ev.widget_id = target->id;
     ev.xy = xy;
     ev.button = buttons;
-    ev.data[0] = '\0';
 
-    /* Push to queue */
+    /* 1A: Stamp widget name into ev.data for window-level stream */
+    if (target->name != NULL) {
+        strncpy(ev.data, target->name, sizeof(ev.data) - 1);
+        ev.data[sizeof(ev.data) - 1] = '\0';
+    } else {
+        ev.data[0] = '\0';
+    }
+
+    /* Push to widget queue */
     event_queue_push(eq, &ev);
+
+    /* 1B: Route to window event stream (Plan 9: one stream per window) */
+    if (target->parent_window != NULL &&
+        target->parent_window->event_queue != NULL) {
+        event_queue_push(target->parent_window->event_queue, &ev);
+    }
 
     fprintf(stderr, "Mouse event: widget=%u type=%d x=%d y=%d button=%d\n",
             ev.widget_id, ev.type, ev.xy.x, ev.xy.y, ev.button);

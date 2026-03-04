@@ -54,6 +54,9 @@ typedef struct KryonNode {
     char *prop_value;            /* "0", "1", etc. */
     char *prop_group;            /* Radio button group name */
     char *prop_options;          /* Comma-separated options for dropdown */
+    char *prop_visible;          /* "0" or "1" */
+    char *prop_bgcolor;          /* "#RRGGBB" */
+    char *prop_fgcolor;          /* "#RRGGBB" */
 
     /* Tree structure */
     struct KryonNode **children;
