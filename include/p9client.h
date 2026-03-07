@@ -66,6 +66,26 @@ int p9_authenticate(P9Client *client, int auth_method,
 int p9_open(P9Client *client, const char *path, int mode);
 
 /*
+ * Open a streaming device (automatically marks as stream)
+ * Streaming devices always read from offset 0
+ * Returns file descriptor (fid) on success, -1 on failure
+ */
+int p9_open_stream(P9Client *client, const char *path);
+
+/*
+ * Mark an existing FD as a streaming device
+ * Streaming devices will reset offset to 0 before each read
+ */
+void p9_mark_stream(P9Client *client, int fd);
+
+/*
+ * Read from a streaming device (offset always 0)
+ * This is an explicit streaming read function for clarity
+ * Returns number of bytes read on success, -1 on failure
+ */
+ssize_t p9_read_stream(P9Client *client, int fd, void *buf, size_t count);
+
+/*
  * Close a file on 9P server
  * Returns 0 on success, -1 on failure
  */

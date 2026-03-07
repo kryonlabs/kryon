@@ -66,18 +66,6 @@ volatile int g_wm_quit_requested   = 0;
 char g_wm_load_path[512] = "";
 
 /*
- * Screen dimensions derived from .kry window definition
- */
-static int g_screen_width = 0;
-static int g_screen_height = 0;
-
-void wm_set_screensize(int w, int h)
-{
-    g_screen_width = w;
-    g_screen_height = h;
-}
-
-/*
  * ========== String Utilities ==========
  */
 
@@ -85,14 +73,6 @@ void wm_set_screensize(int w, int h)
  * Forward declaration for string_read
  */
 static ssize_t string_read(char *buf, size_t count, uint64_t offset, const char *str);
-
-static ssize_t wm_screensize_read(char *buf, size_t count, uint64_t offset, void *data)
-{
-    char tmp[32];
-    (void)data;
-    snprintf(tmp, sizeof(tmp), "%d %d\n", g_screen_width, g_screen_height);
-    return string_read(buf, count, offset, tmp);
-}
 
 /*
  * Simple string read handler
@@ -503,12 +483,6 @@ int wm_service_init(P9Node *root)
         return -1;
     }
     g_windows_dir = windows_dir;
-
-    /* Create /mnt/wm/screensize - screen dimensions from .kry window definition */
-    if (tree_create_file(wm_dir, "screensize", NULL, wm_screensize_read, NULL) == NULL) {
-        fprintf(stderr, "wm_service_init: failed to create /mnt/wm/screensize\n");
-        return -1;
-    }
 
     /* Create /mnt/wm/snarf - clipboard buffer */
     if (tree_create_file(wm_dir, "snarf", NULL, wm_snarf_read, wm_snarf_write) == NULL) {

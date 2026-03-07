@@ -104,12 +104,6 @@ ssize_t vdev_cons_write(const char *buf, size_t count, uint64_t offset, void *da
 ssize_t vdev_cons_read(char *buf, size_t count, uint64_t offset, void *data);
 
 /*
- * Set screen dimensions (derived from .kry window definition)
- * Exposed via /mnt/wm/screensize for the display client to read
- */
-void wm_set_screensize(int width, int height);
-
-/*
  * WM control flags
  * Set by writing to /mnt/wm/ctl; checked by the main event loop
  */

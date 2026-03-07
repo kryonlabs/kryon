@@ -101,33 +101,20 @@ cmd_run() {
     local wm_extra=""
     [[ $watch -eq 1 ]] && wm_extra="--watch"
 
-    # Remove stale screen-size file so we don't start the viewer with old dims
-    rm -f /tmp/.kryon-screensize
-
     echo "[kryon] Starting kryon-wm: $kry_file"
     "$KRYON_WM" --run "$kry_file" $wm_extra >/tmp/kryon-wm.log 2>&1 &
     wm_pid=$!
 
     # ── Step 3: Wait for WM ready, then launch viewer ───────────────────────
-    # The WM writes /tmp/.kryon-screensize once it has rendered the first frame
-    # and mounted /mnt/wm. We wait for that file before starting the viewer so
-    # the viewer gets the correct dimensions immediately (no 9P namespace race).
+    # The viewer now reads screen dimensions from /dev/draw/new directly.
+    # Give the WM a moment to initialize before starting the viewer.
     echo "[kryon] Waiting for WM to be ready..."
-    local _attempts=0
-    while [[ ! -f /tmp/.kryon-screensize ]] && [[ $_attempts -lt 50 ]]; do
-        # Bail early if the WM already died
-        if ! kill -0 "$wm_pid" 2>/dev/null; then
-            echo "[kryon] Error: kryon-wm exited before becoming ready"
-            echo "[kryon] Check /tmp/kryon-wm.log for details"
-            exit 1
-        fi
-        sleep 0.1
-        _attempts=$((_attempts + 1))
-    done
+    sleep 0.5
 
-    if [[ ! -f /tmp/.kryon-screensize ]]; then
-        echo "[kryon] Error: WM did not become ready after 5s (check /tmp/kryon-wm.log)"
-        kill "$wm_pid" 2>/dev/null || true
+    # Verify WM is still running
+    if ! kill -0 "$wm_pid" 2>/dev/null; then
+        echo "[kryon] Error: kryon-wm exited before becoming ready"
+        echo "[kryon] Check /tmp/kryon-wm.log for details"
         exit 1
     fi
 

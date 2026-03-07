@@ -28,7 +28,6 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <sys/inotify.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
@@ -49,14 +48,14 @@ static int run_nested_wm(const char *win_id, const char *pipe_fd_str);
  */
 static int setup_file_watch(const char *filename);
 static void cleanup_file_watch(void);
-static int is_our_file(const struct inotify_event *event);
+static int check_file_watch(void);
 static int reload_kryon_file(void);
 
 /*
  * Forward declarations for event loop handler functions
  */
 static void handle_mouse_events(void);
-static void handle_inotify_events(void);
+static void handle_keyboard_events(void);
 static void process_render_phase(void);
 
 /*
@@ -118,11 +117,11 @@ P9Client *g_marrow_client = NULL;
 static int g_marrow_draw_fd = -1;
 
 /*
- * Global state for file watch mode (hot-reload)
+ * Global state for file watch mode (hot-reload).
+ * Uses stat() polling — portable, no Linux-specific inotify.
  */
-static int g_inotify_fd = -1;
-static int g_watch_descriptor = -1;
 static const char *g_watch_file = NULL;
+static time_t      g_watch_mtime = 0;
 
 /*
  * Render-dirty flag: set by vdev when mouse/kbd state changes.
@@ -130,11 +129,9 @@ static const char *g_watch_file = NULL;
  */
 int g_render_dirty = 0;
 
-/*
- * Mouse IPC via Unix FIFO (/tmp/.kryon-mouse-1)
- * Bypasses the broken 9P mount path for mouse events.
- */
-static int g_mouse_fifo_fd = -1;
+/* Mouse/keyboard FDs on Marrow for reading events */
+static int g_marrow_mouse_fd = -1;
+static int g_marrow_kbd_fd = -1;
 
 /* Persistent /dev/screen FID — opened once, reused every frame. */
 static int g_marrow_screen_fd = -1;
@@ -159,9 +156,9 @@ static void push_screen_to_marrow(void)
     if (g_screen_buffer == NULL || g_render_width == 0 || g_render_height == 0)
         return;
 
-    /* Open /dev/screen once; reset offset to 0 on subsequent calls */
+    /* Open /dev/screen/data once; reset offset to 0 on subsequent calls */
     if (g_marrow_screen_fd < 0) {
-        g_marrow_screen_fd = p9_open(g_marrow_client, "/dev/screen", P9_OWRITE);
+        g_marrow_screen_fd = p9_open(g_marrow_client, "/dev/screen/data", P9_OWRITE);
         if (g_marrow_screen_fd < 0)
             return;
     } else {
@@ -201,13 +198,15 @@ static void signal_handler(int sig)
  */
 
 /*
- * Handle mouse events from FIFO
+ * Handle mouse events from /dev/mouse
  */
 static void handle_mouse_events(void)
 {
     char mbuf[128];
-    ssize_t nr = read(g_mouse_fifo_fd, mbuf, sizeof(mbuf) - 1);
+    ssize_t nr = p9_read(g_marrow_client, g_marrow_mouse_fd, mbuf, sizeof(mbuf) - 1);
+
     if (nr > 0) {
+        mbuf[nr] = '\0';
         KryonWindow *win = window_get(1);
         if (win != NULL) {
             vdev_mouse_write(mbuf, nr, 0, win);
@@ -217,27 +216,21 @@ static void handle_mouse_events(void)
 }
 
 /*
- * Handle inotify events for hot-reload
+ * Handle keyboard events from /dev/kbd
  */
-static void handle_inotify_events(void)
+static void handle_keyboard_events(void)
 {
-    char event_buf[4096];
-    ssize_t len = read(g_inotify_fd, event_buf, sizeof(event_buf));
-    size_t i = 0;
-    static time_t last_reload = 0;
-
-    while (i < (size_t)len) {
-        struct inotify_event *event = (struct inotify_event *)&event_buf[i];
-        if (is_our_file(event)) {
-            time_t now = time(NULL);
-            if (now - last_reload >= 1) {
-                reload_kryon_file();
-                last_reload = now;
-            }
+    char kbuf[64];
+    ssize_t nr = p9_read(g_marrow_client, g_marrow_kbd_fd, kbuf, sizeof(kbuf) - 1);
+    if (nr > 0) {
+        KryonWindow *win = window_get(1);
+        if (win != NULL) {
+            vdev_kbd_write(kbuf, nr, 0, win);
+            g_render_dirty = 1;
         }
-        i += sizeof(struct inotify_event) + event->len;
     }
 }
+
 
 /*
  * Process rendering phase
@@ -346,9 +339,6 @@ int main(int argc, char **argv)
         printf("Usage: %s --run <file.kry>\n", argv[0]);
         return 0;
     }
-
-    /* Remove stale screen-size file from previous run */
-    unlink("/tmp/.kryon-screensize");
 
     /* Initialize subsystems */
     fprintf(stderr, "Connecting to Marrow at %s...\n", marrow_addr);
@@ -467,10 +457,10 @@ int main(int argc, char **argv)
         pixel_size = screen_width * screen_height * 4;
         pixel_data = screen->data->bdata;
 
-        /* Open /dev/screen on Marrow for writing */
-        screen_fd = p9_open(g_marrow_client, "/dev/screen", P9_OWRITE);
+        /* Open /dev/screen/data on Marrow for writing */
+        screen_fd = p9_open(g_marrow_client, "/dev/screen/data", P9_OWRITE);
         if (screen_fd < 0) {
-            fprintf(stderr, "Warning: failed to open /dev/screen for writing\n");
+            fprintf(stderr, "Warning: failed to open /dev/screen/data for writing\n");
         } else {
             /* Write pixel data to Marrow's screen in chunks */
             int chunk_size = 7000;
@@ -574,13 +564,54 @@ int main(int argc, char **argv)
             }
         }
 
-        /* Expose via /mnt/wm/screensize for the display client */
-        wm_set_screensize(screen_width, screen_height);
+        /* Set Marrow's screen size to match our window dimensions */
+        if (screen_width > 0 && screen_height > 0) {
+            int ctl_fd;
+            char cmd[64];
+            ssize_t written;
+            int cmd_len;
 
-        /* Write dimensions to local file so the viewer can read without 9P */
-        {
-            FILE *sf = fopen("/tmp/.kryon-screensize", "w");
-            if (sf != NULL) { fprintf(sf, "%d %d\n", screen_width, screen_height); fclose(sf); }
+            cmd_len = snprintf(cmd, sizeof(cmd), "screen %dx%d\n", screen_width, screen_height);
+            if (cmd_len > 0 && cmd_len < (int)sizeof(cmd)) {
+                ctl_fd = p9_open(g_marrow_client, "/dev/screen/ctl", P9_OWRITE);
+                if (ctl_fd >= 0) {
+                    written = p9_write(g_marrow_client, ctl_fd, cmd, cmd_len);
+                    if (written == cmd_len) {
+                        fprintf(stderr, "Set Marrow screen size to %dx%d via /dev/screen/ctl\n",
+                                screen_width, screen_height);
+                    } else {
+                        fprintf(stderr, "Warning: failed to write to /dev/screen/ctl\n");
+                    }
+                    p9_close(g_marrow_client, ctl_fd);
+                } else {
+                    fprintf(stderr, "Warning: failed to open /dev/screen/ctl\n");
+                }
+            }
+
+            /* Also write to /dev/display/ctl for display client coordination */
+            {
+                int display_ctl_fd;
+                char display_cmd[64];
+                ssize_t display_written;
+                int display_cmd_len;
+
+                display_cmd_len = snprintf(display_cmd, sizeof(display_cmd), "%dx%d\n", screen_width, screen_height);
+                if (display_cmd_len > 0 && display_cmd_len < (int)sizeof(display_cmd)) {
+                    display_ctl_fd = p9_open(g_marrow_client, "/dev/display/ctl", P9_OWRITE);
+                    if (display_ctl_fd >= 0) {
+                        display_written = p9_write(g_marrow_client, display_ctl_fd, display_cmd, display_cmd_len);
+                        if (display_written == display_cmd_len) {
+                            fprintf(stderr, "Set display size to %dx%d via /dev/display/ctl\n",
+                                    screen_width, screen_height);
+                        } else {
+                            fprintf(stderr, "Warning: failed to write to /dev/display/ctl\n");
+                        }
+                        p9_close(g_marrow_client, display_ctl_fd);
+                    } else {
+                        fprintf(stderr, "Warning: failed to open /dev/display/ctl\n");
+                    }
+                }
+            }
         }
 
         /* If no window defined: nothing to render */
@@ -626,10 +657,23 @@ int main(int argc, char **argv)
         render_all();
         push_screen_to_marrow();
 
-        /* Create FIFO for mouse IPC and open for reading (non-blocking) */
-        mkfifo("/tmp/.kryon-mouse-1", 0600);
-        g_mouse_fifo_fd = open("/tmp/.kryon-mouse-1", O_RDONLY | O_NONBLOCK);
+        /* Open /dev/mouse and /dev/kbd for reading events */
+        /* Use streaming API for these devices - they always read from offset 0 */
+        g_marrow_mouse_fd = p9_open(g_marrow_client, "/dev/mouse", 0);
+        if (g_marrow_mouse_fd >= 0) {
+            p9_mark_stream(g_marrow_client, g_marrow_mouse_fd);
+        }
+        if (g_marrow_mouse_fd < 0) {
+            fprintf(stderr, "Warning: failed to open /dev/mouse\n");
+        }
 
+        g_marrow_kbd_fd = p9_open(g_marrow_client, "/dev/kbd", 0);
+        if (g_marrow_kbd_fd >= 0) {
+            p9_mark_stream(g_marrow_client, g_marrow_kbd_fd);
+        }
+        if (g_marrow_kbd_fd < 0) {
+            fprintf(stderr, "Warning: failed to open /dev/kbd\n");
+        }
         /* Dump screenshot if requested */
         if (dump_screen) {
             int pixel_size2 = screen_width * screen_height * 4;
@@ -642,8 +686,7 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Register Kryon as window-manager service and mount /mnt/wm
-     * Done AFTER wm_set_screensize() so clients see the correct size immediately */
+    /* Register Kryon as window-manager service and mount /mnt/wm */
     if (marrow_service_register(g_marrow_client, "kryon", "window-manager",
                                 "Kryon Window Manager") < 0) {
         fprintf(stderr, "Warning: failed to register with Marrow (continuing anyway)\n");
@@ -669,24 +712,33 @@ event_loop:
 
     while (running) {
         struct pollfd fds[2];
-        int nfds = 0;
         int poll_result;
-        int i;  /* C90: declare at top of block */
+        int nfds = 0;
+        /* C90: declare at top of block */
+        int timeout_ms;
 
-        /* Build FD array: mouse FIFO is always present */
-        fds[nfds].fd = g_mouse_fifo_fd;
-        fds[nfds].events = POLLIN;
-        nfds++;
-
-        /* Add inotify FD in watch mode */
-        if (watch_mode && g_inotify_fd >= 0) {
-            fds[nfds].fd = g_inotify_fd;
+        /* Build FD array: mouse and keyboard */
+        if (g_marrow_mouse_fd >= 0) {
+            fds[nfds].fd = g_marrow_mouse_fd;
+            fds[nfds].events = POLLIN;
+            nfds++;
+        }
+        if (g_marrow_kbd_fd >= 0) {
+            fds[nfds].fd = g_marrow_kbd_fd;
             fds[nfds].events = POLLIN;
             nfds++;
         }
 
-        /* Block until events arrive (indefinite = more efficient) */
-        poll_result = poll(fds, nfds, -1);
+        if (nfds == 0) {
+            /* No input devices - just sleep */
+            usleep(10000);
+            goto check_controls;
+        }
+
+        /* In watch mode, use 1-second timeout to poll file mtime */
+        timeout_ms = watch_mode ? 1000 : 16;  /* 16ms = ~60FPS */
+
+        poll_result = poll(fds, nfds, timeout_ms);
 
         if (poll_result < 0) {
             if (errno == EINTR) continue;
@@ -694,15 +746,21 @@ event_loop:
             break;
         }
 
-        /* Dispatch events to handlers */
-        for (i = 0; i < nfds; i++) {
-            if (fds[i].revents & POLLIN) {
-                if (fds[i].fd == g_mouse_fifo_fd) {
-                    handle_mouse_events();
-                } else if (fds[i].fd == g_inotify_fd) {
-                    handle_inotify_events();
-                }
-            }
+        /* Always try to read from streaming devices (mouse/keyboard)
+         * regardless of poll() result, since 9P streaming doesn't
+         * integrate with poll() properly */
+        if (g_marrow_mouse_fd >= 0) {
+            handle_mouse_events();
+        }
+
+        if (g_marrow_kbd_fd >= 0) {
+            handle_keyboard_events();
+        }
+
+check_controls:
+        /* Check for file changes in watch mode (on timeout or after events) */
+        if (watch_mode && check_file_watch()) {
+            reload_kryon_file();
         }
 
         /* Check WM control flags (set by /mnt/wm/ctl writes) */
@@ -731,12 +789,15 @@ event_loop:
     /* Cleanup */
     fprintf(stderr, "\nShutting down...\n");
 
-    /* Close and remove mouse FIFO */
-    if (g_mouse_fifo_fd >= 0) {
-        close(g_mouse_fifo_fd);
-        g_mouse_fifo_fd = -1;
+    /* Close mouse and keyboard FDs */
+    if (g_marrow_mouse_fd >= 0) {
+        p9_close(g_marrow_client, g_marrow_mouse_fd);
+        g_marrow_mouse_fd = -1;
     }
-    unlink("/tmp/.kryon-mouse-1");
+    if (g_marrow_kbd_fd >= 0) {
+        p9_close(g_marrow_client, g_marrow_kbd_fd);
+        g_marrow_kbd_fd = -1;
+    }
 
     /* Close persistent screen FID */
     if (g_marrow_screen_fd >= 0) {
@@ -759,87 +820,66 @@ event_loop:
 
 /*
  * ========== File Watch Functions for Hot-Reload ==========
+ *
+ * Uses stat() mtime polling — portable POSIX, no Linux-specific inotify.
  */
 
 /*
- * Setup inotify watch for a file
- * Watches the directory containing the file and filters by filename
+ * Setup file watch: record filename and initial mtime.
  */
 static int setup_file_watch(const char *filename)
 {
-    char path[512];
-    char *last_slash;
+    struct stat st;
 
-    /* Copy path and get directory */
-    strncpy(path, filename, sizeof(path) - 1);
-    path[sizeof(path) - 1] = '\0';
-
-    last_slash = strrchr(path, '/');
-    if (last_slash == NULL) {
-        strcpy(path, ".");
-    } else {
-        *last_slash = '\0';
-    }
-
-    /* Create inotify instance */
-    g_inotify_fd = inotify_init();
-    if (g_inotify_fd < 0) {
-        fprintf(stderr, "Error: inotify_init() failed: %s\n", strerror(errno));
+    if (filename == NULL) {
         return -1;
     }
 
-    /* Add watch for directory */
-    g_watch_descriptor = inotify_add_watch(g_inotify_fd, path,
-                                          IN_MODIFY | IN_CLOSE_WRITE);
-    if (g_watch_descriptor < 0) {
-        fprintf(stderr, "Error: inotify_add_watch() failed for %s: %s\n",
-                path, strerror(errno));
-        close(g_inotify_fd);
-        g_inotify_fd = -1;
+    if (stat(filename, &st) < 0) {
+        fprintf(stderr, "Error: stat(%s) failed: %s\n", filename, strerror(errno));
         return -1;
     }
 
-    g_watch_file = filename;
+    g_watch_file  = filename;
+    g_watch_mtime = st.st_mtime;
+
     fprintf(stderr, "Watching for changes: %s\n", filename);
-
     return 0;
 }
 
 /*
- * Cleanup inotify watch
+ * Cleanup file watch state.
  */
 static void cleanup_file_watch(void)
 {
-    if (g_inotify_fd >= 0) {
-        if (g_watch_descriptor >= 0) {
-            inotify_rm_watch(g_inotify_fd, g_watch_descriptor);
-        }
-        close(g_inotify_fd);
-        g_inotify_fd = -1;
-        g_watch_descriptor = -1;
-        g_watch_file = NULL;
-    }
+    g_watch_file  = NULL;
+    g_watch_mtime = 0;
 }
 
 /*
- * Check if inotify event is for our watched file
+ * Check whether the watched file has changed since last check.
+ * Returns 1 if changed (and updates the recorded mtime), 0 otherwise.
  */
-static int is_our_file(const struct inotify_event *event)
+static int check_file_watch(void)
 {
-    const char *filename;
+    struct stat st;
+    time_t new_mtime;
 
-    if (g_watch_file == NULL || event->len == 0) {
+    if (g_watch_file == NULL) {
         return 0;
     }
 
-    filename = strrchr(g_watch_file, '/');
-    if (filename == NULL) {
-        filename = g_watch_file;
-    } else {
-        filename++;
+    if (stat(g_watch_file, &st) < 0) {
+        return 0;
     }
 
-    return strcmp(event->name, filename) == 0;
+    new_mtime = st.st_mtime;
+    if (new_mtime != g_watch_mtime) {
+        g_watch_mtime = new_mtime;
+        return 1;
+    }
+
+    return 0;
 }
 
 /*
@@ -937,13 +977,6 @@ static int reload_kryon_file(void)
             int rx = 0, ry = 0;
             sscanf(win->rect, "%d %d %d %d", &rx, &ry, &screen_width, &screen_height);
         }
-    }
-
-    /* Update /mnt/wm/screensize and local coordination file */
-    wm_set_screensize(screen_width, screen_height);
-    {
-        FILE *sf = fopen("/tmp/.kryon-screensize", "w");
-        if (sf != NULL) { fprintf(sf, "%d %d\n", screen_width, screen_height); fclose(sf); }
     }
 
     if (result == 0 || screen_width == 0 || screen_height == 0) {
@@ -1110,13 +1143,13 @@ static int run_nested_wm(const char *win_id, const char *pipe_fd_str)
         fprintf(stderr, "Warning: No namespace passed from parent WM\n");
     }
 
-    /* Now when we open /dev/screen, the namespace resolver
+    /* Now when we open /dev/screen/data, the namespace resolver
      * will follow the bind mount and actually open /dev/win{N}/screen
      * (which is the virtual device registered with Marrow) */
 
-    screen_fd = p9_open(marrow_client, "/dev/screen", P9_OWRITE);
+    screen_fd = p9_open(marrow_client, "/dev/screen/data", P9_OWRITE);
     if (screen_fd < 0) {
-        fprintf(stderr, "Failed to open /dev/screen (resolves to /dev/win%s/screen)\n",
+        fprintf(stderr, "Failed to open /dev/screen/data (resolves to /dev/win%s/screen)\n",
                 win_id);
         p9_disconnect(marrow_client);
         return 1;

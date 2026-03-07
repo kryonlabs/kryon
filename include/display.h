@@ -48,11 +48,9 @@ struct DisplayClient {
     int connected;          /* Connection state flag */
 
     /* Native display (SDL2 or Plan 9) */
-#ifdef HAVE_SDL2
     void *sdl_window;       /* SDL_Window* */
     void *sdl_renderer;     /* SDL_Renderer* */
     void *sdl_texture;      /* SDL_Texture* */
-#endif
 #ifdef USE_PLAN9_DRAW
     void *p9_screen;        /* Image* from Plan 9 libdraw */
     void *p9_mouse;         /* Mousectl* */

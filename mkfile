@@ -2,9 +2,7 @@
 
 <../mkfile.common
 
-# Plan 9 toolchain - use libdraw for display
-CFLAGS+=-DUSE_PLAN9_DRAW
-DISPLAY_LDFLAGS=-ldraw -lthread
+# SDL2 display client - no native display dependencies
 
 # Directories
 INCLUDE=include
@@ -35,7 +33,6 @@ TK_ALL=$TK $TK_RENDER $TK_UTIL
 LIB=client/p9client client/marrow
 
 # Display client (display/)
-DISPLAY=sdl_display eventpoll
 
 # CLI tools (cli/)
 CLI=main commands yaml
@@ -70,11 +67,14 @@ $KRYON_WM_TARGET: $WM_SRC/main.c $LIB_TARGET
 		$BUILD/tk/parser.$O $BUILD/tk/target.$O \
 		-L$BUILD -L$MARROW/build -lkryon -lmarrow -o $target $LDFLAGS -lm
 
-# Display client binary (SDL2 - no Plan 9 libdraw needed)
-$DISPLAY_TARGET: $DISPLAY_SRC/main.c $BUILD/display/sdl_display.$O $BUILD/display/eventpoll.$O $LIB_TARGET
-	$LD $CFLAGS -I$INCLUDE -I$TK_SRC -I$LIB_SRC -I$MARROW_INCLUDE \
-		$DISPLAY_SRC/main.c $BUILD/display/sdl_display.$O $BUILD/display/eventpoll.$O \
-		-L$BUILD -L$MARROW/build -lkryon -lmarrow -o $target $LDFLAGS
+# Display client binary (SDL2)
+# SDL2 paths from nix-shell environment
+SDL2_CFLAGS=-I/nix/store/mcynwy09jrlhrzms46av9gmwdsmhkmb6-sdl2-compat-2.32.60-dev/include -I/nix/store/mcynwy09jrlhrzms46av9gmwdsmhkmb6-sdl2-compat-2.32.60-dev/include/SDL2
+SDL2_LDFLAGS=-L/nix/store/a0qa793k49129l24sxanqw2j1205vjfc-sdl2-compat-2.32.60/lib -lSDL2
+
+$DISPLAY_TARGET: $LIB_TARGET
+	gcc -Wall -g $DISPLAY_SRC/main.c -I$INCLUDE -I$TK_SRC -I$LIB_SRC -I$MARROW_INCLUDE \
+		$SDL2_CFLAGS -Lbuild -L../marrow/build -lkryon -lmarrow -o bin/kryon-view $SDL2_LDFLAGS
 
 # Kryon CLI binary
 $KRYON_TARGET: ${CLI:%=$BUILD/cli/%.$O} $BUILD/tk/target.$O

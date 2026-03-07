@@ -81,6 +81,18 @@ static void htonll_bytes(uint8_t *buf, uint64_t value)
 #define P9_RWSTAT    127
 
 /*
+ * FID tracking structure
+ */
+typedef struct {
+    uint32_t fid;
+    int is_stream;      /* Is this a streaming device? */
+    uint64_t offset;
+    int in_use;
+} P9FID;
+
+#define MAX_FIDS 256
+
+/*
  * Client state
  */
 struct P9Client {
@@ -92,7 +104,7 @@ struct P9Client {
     char error[256];            /* Last error message */
     char username[32];          /* Username */
     char service_name[32];      /* Service name */
-    uint64_t fid_offsets[256];  /* Track offset for each FID */
+    P9FID fids[MAX_FIDS];       /* Track FID state including streaming */
 };
 
 /*
@@ -377,11 +389,14 @@ P9Client *p9_connect(const char *address)
     client->root_fid = -1;
     client->tag = 0;
 
-    /* Initialize offset tracking for all FIDs */
+    /* Initialize FID tracking for all FIDs */
     {
         int i;
-        for (i = 0; i < 256; i++) {
-            client->fid_offsets[i] = 0;
+        for (i = 0; i < MAX_FIDS; i++) {
+            client->fids[i].fid = 0;
+            client->fids[i].is_stream = 0;
+            client->fids[i].offset = 0;
+            client->fids[i].in_use = 0;
         }
     }
 
@@ -761,6 +776,14 @@ int p9_open(P9Client *client, const char *path, int mode)
         return -1;
     }
 
+    /* Mark FID as in use and initialize state */
+    if (fid >= 0 && fid < MAX_FIDS) {
+        client->fids[fid].fid = fid;
+        client->fids[fid].is_stream = 0;  /* Default to non-streaming */
+        client->fids[fid].offset = 0;
+        client->fids[fid].in_use = 1;
+    }
+
     return fid;
 }
 
@@ -771,6 +794,14 @@ int p9_close(P9Client *client, int fd)
 {
     if (client == NULL) {
         return -1;
+    }
+
+    /* Reset FID state */
+    if (fd >= 0 && fd < MAX_FIDS) {
+        client->fids[fd].in_use = 0;
+        client->fids[fd].is_stream = 0;
+        client->fids[fd].offset = 0;
+        client->fids[fd].fid = 0;
     }
 
     return 0;
@@ -793,18 +824,31 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
     uint32_t resp_size;
     ssize_t n;
     uint32_t data_count;
+    P9FID *fid;
 
     if (client == NULL || buf == NULL) {
         return -1;
     }
 
-    if (fd < 0 || fd >= 256) {
+    if (fd < 0 || fd >= MAX_FIDS) {
         fprintf(stderr, "p9_read: invalid fd %d\n", fd);
         return -1;
     }
 
+    fid = &client->fids[fd];
+    if (!fid->in_use) {
+        fprintf(stderr, "p9_read: fd %d not in use\n", fd);
+        return -1;
+    }
+
+    /* For streaming FIDs, reset offset before read */
+    if (fid->is_stream) {
+        /* fprintf(stderr, "[P9CLIENT] Resetting offset for streaming FD %d\n", fd); */
+        fid->offset = 0;
+    }
+
     /* Get current offset for this FID */
-    offset = client->fid_offsets[fd];
+    offset = fid->offset;
 
     /* Build Tread message: size[4] Tread tag[2] fid[4] offset[8] count[4] */
     p = msg + 4;  /* Skip size field */
@@ -875,8 +919,8 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
     }
     memcpy(buf, p, data_count);
 
-    /* Update offset for next read */
-    client->fid_offsets[fd] += data_count;
+    /* Update offset for next read (will be 0 for streaming) */
+    fid->offset += data_count;
 
     return (ssize_t)data_count;
 }
@@ -898,18 +942,25 @@ ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count)
     ssize_t n;
     P9Hdr *hdr;
     uint64_t offset;
+    P9FID *fid;
 
     if (client == NULL || buf == NULL) {
         return -1;
     }
 
-    if (fd < 0 || fd >= 256) {
+    if (fd < 0 || fd >= MAX_FIDS) {
         fprintf(stderr, "p9_write: invalid fd %d\n", fd);
         return -1;
     }
 
+    fid = &client->fids[fd];
+    if (!fid->in_use) {
+        fprintf(stderr, "p9_write: fd %d not in use\n", fd);
+        return -1;
+    }
+
     /* Get current offset for this FID */
-    offset = client->fid_offsets[fd];
+    offset = fid->offset;
 
     /* Build Twrite message */
     p = msg + 4;  /* Skip size field */
@@ -979,7 +1030,7 @@ ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count)
     }
 
     /* Update offset for next write */
-    client->fid_offsets[fd] += count;
+    fid->offset += count;
 
     return (ssize_t)count;
 }
@@ -1014,17 +1065,25 @@ const char *p9_error(P9Client *client)
  */
 int p9_reset_fid(P9Client *client, int fd)
 {
+    P9FID *fid;
+
     if (client == NULL) {
         return -1;
     }
 
-    if (fd < 0 || fd >= 256) {
+    if (fd < 0 || fd >= MAX_FIDS) {
         fprintf(stderr, "p9_reset_fid: invalid fd %d\n", fd);
         return -1;
     }
 
+    fid = &client->fids[fd];
+    if (!fid->in_use) {
+        fprintf(stderr, "p9_reset_fid: fd %d not in use\n", fd);
+        return -1;
+    }
+
     /* Reset offset to 0 for this FID */
-    client->fid_offsets[fd] = 0;
+    fid->offset = 0;
 
     return 0;
 }
@@ -1081,4 +1140,76 @@ int p9_reconnect(P9Client **client_ptr, const char *address)
     fprintf(stderr, "p9_reconnect: successfully reconnected to %s\n", address);
 
     return 0;
+}
+
+/*
+ * Open a streaming device (automatically marks as stream)
+ * Streaming devices always read from offset 0
+ */
+int p9_open_stream(P9Client *client, const char *path)
+{
+    int fd;
+
+    if (client == NULL || path == NULL) {
+        return -1;
+    }
+
+    fd = p9_open(client, path, 0);
+    if (fd < 0) {
+        return fd;
+    }
+
+    /* Mark this FID as a streaming device */
+    if (fd >= 0 && fd < MAX_FIDS) {
+        client->fids[fd].is_stream = 1;
+        client->fids[fd].offset = 0;
+        /* fprintf(stderr, "[P9CLIENT] Opened %s as streaming device (fd=%d)\n", path, fd); */
+    }
+
+    return fd;
+}
+
+/*
+ * Mark an existing FD as a streaming device
+ */
+void p9_mark_stream(P9Client *client, int fd)
+{
+    if (client == NULL || fd < 0 || fd >= MAX_FIDS) {
+        return;
+    }
+
+    client->fids[fd].is_stream = 1;
+    client->fids[fd].offset = 0;
+    /* fprintf(stderr, "[P9CLIENT] Marked fd=%d as streaming device\n", fd); */
+}
+
+/*
+ * Read from a streaming device (offset always 0)
+ * This is an explicit streaming read function for clarity
+ */
+ssize_t p9_read_stream(P9Client *client, int fd, void *buf, size_t count)
+{
+    P9FID *fid;
+
+    if (client == NULL || buf == NULL) {
+        return -1;
+    }
+
+    if (fd < 0 || fd >= MAX_FIDS) {
+        fprintf(stderr, "p9_read_stream: invalid fd %d\n", fd);
+        return -1;
+    }
+
+    fid = &client->fids[fd];
+    if (!fid->in_use) {
+        fprintf(stderr, "p9_read_stream: fd %d not in use\n", fd);
+        return -1;
+    }
+
+    /* Force offset to 0 for streaming read */
+    fid->offset = 0;
+    fid->is_stream = 1;  /* Ensure it's marked as streaming */
+
+    /* Use regular read - it will now use offset 0 */
+    return p9_read(client, fd, buf, count);
 }

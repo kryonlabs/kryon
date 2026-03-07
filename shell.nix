@@ -7,7 +7,7 @@ pkgs.mkShell {
 
     # SDL2 for display client
     SDL2
-    SDL2.dev
+    pkg-config
 
     # Math library
     glibc.dev
@@ -20,19 +20,11 @@ pkgs.mkShell {
     export PLAN9="${pkgs.plan9port}/plan9"
     export PATH="$PLAN9/bin:${pkgs.plan9port}/bin:$PATH"
 
-    # SDL2 flags for mk
-    export SDL2_CFLAGS="${pkgs.SDL2.dev}/include"
-    export SDL2_LDFLAGS="-L${pkgs.SDL2}/lib -lSDL2"
-
-    # Combine flags for mk
-    export EXTRA_CFLAGS="-I$SDL2_CFLAGS"
-    export EXTRA_LDFLAGS="$SDL2_LDFLAGS"
-
     echo "--- Kryon Labs Dev Environment ---"
     echo "Build tool : mk (Plan 9 make)"
     echo "Compiler   : 9c (Plan 9 C compiler)"
     echo "Linker     : 9l (Plan 9 linker)"
-    echo "SDL2       : Loaded for display client"
+    echo "Display    : Plan 9 libdraw (via plan9port)"
     echo ""
     echo "Commands:"
     echo "  mk           # build everything"
