@@ -1,0 +1,99 @@
+# Counter Demo - State & Event Notification Example
+# This example demonstrates:
+# 1. State declarations in .kry files
+# 2. Event handler attributes (onclick)
+# 3. External process controller pattern
+
+window counter "Counter Demo" 400 300 {
+    # State declaration - these become files in the 9P filesystem
+    state {
+        count = 0
+        step = 1
+    }
+
+    vbox gap=15 padding=20 {
+        # Title
+        label title "Counter System Demo" {
+            color "#6c5ce7"
+            font "bold 14"
+        }
+
+        # Counter display
+        label display "Count: 0" {
+            id="counter_display"
+            color "#00ff00"
+        }
+
+        # Counter controls with event handlers
+        hbox gap=10 {
+            button decrement "-10" {
+                onclick="decrement_large"
+            }
+            button decrement_small "-1" {
+                onclick="decrement"
+            }
+            button increment_small "+1" {
+                onclick="increment"
+            }
+            button increment "+10" {
+                onclick="increment_large"
+            }
+        }
+
+        # Step size control
+        hbox gap=10 {
+            label step_label "Step size:" {}
+            slider step_slider 1 10 {
+                value=1
+                id="step_input"
+            }
+            label step_value "Step: 1" {
+                id="step_display"
+            }
+        }
+
+        # Status display
+        label status "Status: Running" {
+            id="status_display"
+            color "#888888"
+        }
+
+        # Reset button
+        button reset "Reset" {
+            onclick="reset"
+        }
+    }
+}
+
+# Expected filesystem structure after loading:
+#
+# /mnt/wm/windows/1/state/
+#   ├── count          → "0"
+#   └── step           → "1"
+#
+# /mnt/wm/windows/1/events/
+#   ├── decrement      → {"widget":"decrement","event":"click","timestamp":...}
+#   ├── decrement_large→ {"widget":"decrement_large","event":"click","timestamp":...}
+#   ├── increment      → {"widget":"increment","event":"click","timestamp":...}
+#   ├── increment_large→ {"widget":"increment_large","event":"click","timestamp":...}
+#   └── reset          → {"widget":"reset","event":"click","timestamp":...}
+#
+# Usage from Lua (counter-demo.lua):
+#
+# -- Read state
+# local count = tonumber(file_read("/mnt/wm/windows/1/state/count"))
+#
+# -- Write state (updates UI in future with reactive bindings)
+# file_write("/mnt/wm/windows/1/state/count", tostring(count + 1))
+#
+# -- Watch for events
+# while true do
+#     local event_json = file_read("/mnt/wm/windows/1/events/increment")
+#     if event_json and #event_json > 0 then
+#         -- Parse JSON and handle event
+#         handle_event(event_json)
+#         -- Clear event
+#         file_write("/mnt/wm/windows/1/events/increment", "")
+#     end
+#     sleep(0.05)
+# end

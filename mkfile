@@ -23,7 +23,7 @@ MARROW_INCLUDE=$MARROW/include
 # Toolkit (tk/) - Core UI system
 # Note: devenv, devfd, devproc, devcons are now provided by marrow
 TK=widget window render events layout namespace tree 9p ops \
-	vdev ctl wm parser target
+	vdev ctl wm parser state target
 
 TK_RENDER=render/primitives render/widgets render/events render/screen
 TK_UTIL=util/color util/geom
@@ -129,6 +129,9 @@ $BUILD/tk/wm.$O: $TK_SRC/wm.c
 	$CC $CFLAGS -I$INCLUDE -I$TK_SRC -I$MARROW_INCLUDE -c $prereq -o $target
 
 $BUILD/tk/parser.$O: $TK_SRC/parser.c
+	$CC $CFLAGS -I$INCLUDE -I$TK_SRC -I$MARROW_INCLUDE -c $prereq -o $target
+
+$BUILD/tk/state.$O: $TK_SRC/state.c
 	$CC $CFLAGS -I$INCLUDE -I$TK_SRC -I$MARROW_INCLUDE -c $prereq -o $target
 
 $BUILD/tk/target.$O: $TK_SRC/target.c

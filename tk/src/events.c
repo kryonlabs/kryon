@@ -438,7 +438,6 @@ int generate_mouse_event(Point xy, int buttons)
     KryonWidget *target;
     EventQueue *eq;
     KryonEvent ev;
-    struct timeval tv;
 
     target = hit_test(xy);
     if (target == NULL) {
@@ -510,7 +509,6 @@ int generate_mouse_event(Point xy, int buttons)
 int generate_key_event(int keycode, int pressed)
 {
     KryonEvent ev;
-    struct timeval tv;
 
     /* TODO: Implement focus tracking */
     /* For now, keyboard events go to the focused widget (if any) */
@@ -534,6 +532,203 @@ int generate_key_event(int keycode, int pressed)
 
     /* TODO: Route to focused widget */
     fprintf(stderr, "Key event: keycode=%d pressed=%d\n", keycode, pressed);
+
+    return 0;
+}
+
+/*
+ * ========== Event Notification System ==========
+ * Writes JSON events to files for external processes to watch
+ */
+
+#include "kryon.h"
+
+/*
+ * External snprintf for C89
+ */
+extern int snprintf(char *str, size_t size, const char *format, ...);
+
+/*
+ * Event file data structure
+ */
+typedef struct {
+    char *widget_name;        /* Widget name (also filename) */
+    char *last_event;         /* Last event JSON written */
+    struct KryonWindow *win;  /* Parent window */
+} EventFile;
+
+/*
+ * Forward declarations
+ */
+static int event_notification_read(char *buf, size_t count, uint64_t offset, void *data);
+static int event_notification_write(const char *buf, size_t count, uint64_t offset, void *data);
+
+/*
+ * Event notification file read handler
+ * Returns the last event JSON written
+ */
+static int event_notification_read(char *buf, size_t count, uint64_t offset, void *data)
+{
+    EventFile *ef = (EventFile *)data;
+    size_t len;
+    size_t to_copy;
+
+    if (ef == NULL || ef->last_event == NULL) {
+        return 0;
+    }
+
+    len = strlen(ef->last_event);
+
+    if (offset >= len) {
+        return 0;
+    }
+
+    to_copy = len - offset;
+    if (to_copy > count) {
+        to_copy = count;
+    }
+
+    memcpy(buf, ef->last_event + offset, to_copy);
+    return to_copy;
+}
+
+/*
+ * Event notification file write handler
+ * Allows external processes to clear events by writing empty string
+ */
+static int event_notification_write(const char *buf, size_t count, uint64_t offset, void *data)
+{
+    EventFile *ef = (EventFile *)data;
+
+    (void)offset;
+
+    if (ef == NULL) {
+        return -1;
+    }
+
+    /* Free old event */
+    if (ef->last_event != NULL) {
+        free(ef->last_event);
+        ef->last_event = NULL;
+    }
+
+    /* If non-empty write, store it (though typically events are written by emit) */
+    if (count > 0 && buf[0] != '\0') {
+        ef->last_event = strndup(buf, count);
+    }
+
+    return count;
+}
+
+/*
+ * Create events directory for a window
+ * Creates /mnt/wm/windows/{id}/events/ directory
+ */
+int window_create_events_directory(struct KryonWindow *win)
+{
+    P9Node *window_node;
+    P9Node *events_dir;
+
+    if (win == NULL || win->node == NULL) {
+        fprintf(stderr, "window_create_events_directory: invalid window\n");
+        return -1;
+    }
+
+    window_node = win->node;
+
+    /* Create /mnt/wm/windows/{id}/events/ directory */
+    events_dir = tree_create_dir(window_node, "events");
+    if (events_dir == NULL) {
+        fprintf(stderr, "window_create_events_directory: failed to create events directory\n");
+        return -1;
+    }
+
+    fprintf(stderr, "window_create_events_directory: created events directory\n");
+
+    return 0;
+}
+
+/*
+ * Emit an event for a widget
+ * Writes JSON event to /mnt/wm/windows/{id}/events/{widget_name}
+ */
+int widget_emit_event(struct KryonWidget *widget, const char *event_type)
+{
+    struct KryonWindow *win;
+    P9Node *events_dir;
+    P9Node *event_file_node;
+    char event_json[512];
+    char *widget_name;
+    time_t timestamp;
+    EventFile *ef;
+
+    if (widget == NULL || widget->parent_window == NULL) {
+        fprintf(stderr, "widget_emit_event: invalid widget\n");
+        return -1;
+    }
+
+    win = widget->parent_window;
+
+    /* Get widget name (use name if available, otherwise generate one) */
+    if (widget->name != NULL) {
+        widget_name = widget->name;
+    } else {
+        /* Generate a name based on widget type and id */
+        static char buf[64];
+        snprintf(buf, sizeof(buf), "%s_%d",
+                 widget->prop_type ? widget->prop_type : "widget",
+                 (int)widget->id);
+        widget_name = buf;
+    }
+
+    /* Build event JSON */
+    timestamp = time(NULL);
+    snprintf(event_json, sizeof(event_json),
+             "{\"widget\":\"%s\",\"event\":\"%s\",\"timestamp\":%ld}",
+             widget_name,
+             event_type,
+             (long)timestamp);
+
+    fprintf(stderr, "widget_emit_event: %s\n", event_json);
+
+    /* Find events directory */
+    events_dir = tree_walk(win->node, "events");
+    if (events_dir == NULL) {
+        fprintf(stderr, "widget_emit_event: events directory not found\n");
+        return -1;
+    }
+
+    /* Find or create event file */
+    event_file_node = tree_walk(events_dir, widget_name);
+    if (event_file_node == NULL) {
+        /* Create new event file */
+        ef = (EventFile *)malloc(sizeof(EventFile));
+        if (ef == NULL) {
+            return -1;
+        }
+        ef->widget_name = strdup(widget_name);
+        ef->last_event = strdup(event_json);
+        ef->win = win;
+
+        event_file_node = tree_create_file(events_dir, widget_name, ef,
+                                     (P9ReadFunc)event_notification_read,
+                                     (P9WriteFunc)event_notification_write);
+        if (event_file_node == NULL) {
+            free(ef->widget_name);
+            free(ef->last_event);
+            free(ef);
+            return -1;
+        }
+    } else {
+        /* Update existing event file */
+        ef = (EventFile *)event_file_node->data;
+        if (ef != NULL) {
+            if (ef->last_event != NULL) {
+                free(ef->last_event);
+            }
+            ef->last_event = strdup(event_json);
+        }
+    }
 
     return 0;
 }

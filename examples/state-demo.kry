@@ -1,0 +1,114 @@
+# State Demo - Testing State Declarations
+# This example demonstrates the proposed state {} block syntax
+# State is exposed via 9P filesystem at /mnt/wm/windows/{id}/state/
+
+window state_demo "State Demo" 400 300 {
+    # State declaration - these become files in the 9P filesystem
+    state {
+        # Simple values
+        counter = 0
+        step = 1
+        message = "Hello, State!"
+
+        # Boolean
+        enabled = true
+
+        # Array (future: nested structures)
+        # items = ["apple", "banana", "cherry"]
+    }
+
+    vbox gap=15 padding=20 {
+        # Title
+        label title "State System Demo" {
+            color "#6c5ce7"
+            font "bold 14"
+        }
+
+        # Counter display - bound to state.counter
+        label counter_label "Counter: 0" {
+            # bind_text would automatically update when state.counter changes
+            # For now: manual updates via Lua
+            id="counter_display"
+            color "#00ff00"
+        }
+
+        # Counter controls
+        hbox gap=10 {
+            button decrement "-10" {
+                onclick="decrement_large"
+            }
+            button decrement_small "-1" {
+                onclick="decrement"
+            }
+            button increment_small "+1" {
+                onclick="increment"
+            }
+            button increment "+10" {
+                onclick="increment_large"
+            }
+        }
+
+        # Step size control
+        hbox gap=10 {
+            label step_label "Step size:" {}
+            slider step_slider 1 10 {
+                value=1
+                id="step_input"
+            }
+            label step_value "Step: 1" {
+                id="step_display"
+            }
+        }
+
+        # Message display
+        label message_display "Message: Hello, State!" {
+            id="message_display"
+            color "#a29bfe"
+        }
+
+        # Message input
+        hbox gap=10 {
+            textinput message_input {
+                id="message_input"
+                placeholder="Type a message..."
+            }
+            button update_msg "Update" {
+                onclick="update_message"
+            }
+        }
+
+        # Status display
+        label status "Status: Ready" {
+            id="status_display"
+            color "#888888"
+        }
+
+        # Enable/disable toggle
+        hbox gap=10 {
+            checkbox enabled_check "Enable controls" {
+                checked=true
+                id="enabled_check"
+                onclick="toggle_enabled"
+            }
+        }
+    }
+}
+
+# Expected filesystem structure after loading:
+#
+# /mnt/wm/windows/1/state/
+#   ├── counter          → "0"
+#   ├── step             → "1"
+#   ├── message          → "Hello, State!"
+#   └── enabled          → "true"
+#
+# Usage from Lua:
+#
+# -- Read state
+# local counter = file_read("/mnt/wm/windows/1/state/counter")
+#
+# -- Write state (updates UI if bindings are active)
+# file_write("/mnt/wm/windows/1/state/counter", "42")
+#
+# -- Watch for changes (future: reactive bindings)
+# -- Kryon would automatically update counter_label.text when counter changes

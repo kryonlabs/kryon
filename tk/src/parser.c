@@ -69,7 +69,9 @@ static KryonNode* parse_window(Parser *p);
 static KryonNode* parse_layout(Parser *p, const char *layout_type);
 static KryonNode* parse_widget(Parser *p, const char *widget_type);
 static KryonNode* parse_property_block(Parser *p, KryonNode *node);
+static KryonNode* parse_state_block(Parser *p, KryonNode *node);
 static void parse_repeat(Parser *p, KryonNode *parent);
+static int add_state_var(KryonNode *node, const char *key, const char *value);
 static int execute_window(KryonNode *node);
 static int execute_widget(KryonNode *node, struct KryonWindow *win);
 extern int widget_create_fs_entries(struct KryonWidget *widget, P9Node *widgets_node);
@@ -383,6 +385,21 @@ static void free_node(KryonNode *node)
     if (node->prop_bgcolor != NULL) free(node->prop_bgcolor);
     if (node->prop_fgcolor != NULL) free(node->prop_fgcolor);
 
+    /* Free event handler attributes */
+    if (node->onclick_action != NULL) free(node->onclick_action);
+    if (node->onchange_action != NULL) free(node->onchange_action);
+    if (node->onvalue_action != NULL) free(node->onvalue_action);
+
+    /* Free state variables */
+    if (node->state_keys != NULL) {
+        for (i = 0; i < node->nstate_vars; i++) {
+            if (node->state_keys[i] != NULL) free(node->state_keys[i]);
+            if (node->state_values[i] != NULL) free(node->state_values[i]);
+        }
+        free(node->state_keys);
+        free(node->state_values);
+    }
+
     /* Free children array */
     if (node->children != NULL) {
         free(node->children);
@@ -413,6 +430,38 @@ static int add_child(KryonNode *parent, KryonNode *child)
     }
 
     parent->children[parent->nchildren++] = child;
+    return 0;
+}
+
+/*
+ * Add state variable to node (grows dynamically)
+ */
+static int add_state_var(KryonNode *node, const char *key, const char *value)
+{
+    char **new_keys;
+    char **new_values;
+    int new_cap;
+
+    if (node == NULL || key == NULL || value == NULL) {
+        return -1;
+    }
+
+    if (node->nstate_vars >= node->state_capacity) {
+        new_cap = (node->state_capacity == 0) ? 8 : node->state_capacity * 2;
+        new_keys = (char **)realloc(node->state_keys, new_cap * sizeof(char *));
+        new_values = (char **)realloc(node->state_values, new_cap * sizeof(char *));
+        if (new_keys == NULL || new_values == NULL) {
+            return -1;
+        }
+        node->state_keys = new_keys;
+        node->state_values = new_values;
+        node->state_capacity = new_cap;
+    }
+
+    node->state_keys[node->nstate_vars] = strdup(key);
+    node->state_values[node->nstate_vars] = strdup(value);
+    node->nstate_vars++;
+
     return 0;
 }
 
@@ -463,6 +512,69 @@ static KryonNode* clone_node(KryonNode *src)
 /*
  * ========== Parser ==========
  */
+
+/*
+ * Parse state block: state { key=value key=value ... }
+ * Expects current token to be after "state" keyword
+ */
+static KryonNode* parse_state_block(Parser *p, KryonNode *node)
+{
+    fprintf(stderr, "parse_state_block: starting\n");
+
+    /* Expect { */
+    if (p->current_token.type != TOKEN_LBRACE) {
+        fprintf(stderr, "parse_state_block: expected LBRACE, got %d\n", p->current_token.type);
+        return node;
+    }
+    free_token(&p->current_token);
+    p->current_token = next_token(p);
+
+    fprintf(stderr, "parse_state_block: parsing state variables\n");
+
+    /* Parse key=value pairs until } */
+    while (p->current_token.type == TOKEN_WORD) {
+        char *key = p->current_token.value;
+        p->current_token.value = NULL;
+        free_token(&p->current_token);
+        p->current_token = next_token(p);
+
+        /* Optional = */
+        if (p->current_token.type == TOKEN_EQUALS) {
+            free_token(&p->current_token);
+            p->current_token = next_token(p);
+        }
+
+        /* Value */
+        if (p->current_token.type == TOKEN_WORD ||
+            p->current_token.type == TOKEN_STRING) {
+            char *value = p->current_token.value;
+            p->current_token.value = NULL;
+            free_token(&p->current_token);
+            p->current_token = next_token(p);
+
+            /* Store in node */
+            fprintf(stderr, "parse_state_block: adding state var: %s=%s\n", key, value);
+            add_state_var(node, key, value);
+
+            free(key);
+            free(value);
+        } else {
+            free(key);
+            break;
+        }
+    }
+
+    /* Expect } */
+    if (p->current_token.type != TOKEN_RBRACE) {
+        fprintf(stderr, "parse_state_block: expected RBRACE, got %d\n", p->current_token.type);
+        return node;
+    }
+    free_token(&p->current_token);
+    p->current_token = next_token(p);
+
+    fprintf(stderr, "parse_state_block: parsed %d state variables\n", node->nstate_vars);
+    return node;
+}
 
 /*
  * Parse property block: { key=value key="value" }
@@ -543,6 +655,15 @@ static KryonNode* parse_property_block(Parser *p, KryonNode *node)
                 } else if (strcmp(prop_name, "fgcolor") == 0) {
                     free(node->prop_fgcolor);
                     node->prop_fgcolor = prop_value;
+                } else if (strcmp(prop_name, "onclick") == 0) {
+                    free(node->onclick_action);
+                    node->onclick_action = prop_value;
+                } else if (strcmp(prop_name, "onchange") == 0) {
+                    free(node->onchange_action);
+                    node->onchange_action = prop_value;
+                } else if (strcmp(prop_name, "onvalue") == 0) {
+                    free(node->onvalue_action);
+                    node->onvalue_action = prop_value;
                 } else {
                     free(prop_value);
                 }
@@ -978,8 +1099,14 @@ static KryonNode* parse_window(Parser *p)
             free_token(&p->current_token);
             p->current_token = next_token(p);
 
+            /* Check if it's a state block */
+            if (strcmp(word, "state") == 0) {
+                parse_state_block(p, node);
+                free(word);
+                continue;  /* state added to node directly, skip add_child below */
+            }
             /* Check if it's a layout type */
-            if (strcmp(word, "vbox") == 0 ||
+            else if (strcmp(word, "vbox") == 0 ||
                 strcmp(word, "hbox") == 0 ||
                 strcmp(word, "grid") == 0 ||
                 strcmp(word, "absolute") == 0 ||
@@ -1376,6 +1503,17 @@ static int execute_window(KryonNode *node)
 
     /* Register window in /mnt/wm filesystem */
     wm_create_window_entry(win);
+
+    /* Create state directory if state block exists */
+    if (node->nstate_vars > 0) {
+        fprintf(stderr, "execute_window: creating state directory with %d variables\n",
+                node->nstate_vars);
+        window_create_state_directory(win, node);
+    }
+
+    /* Create events directory */
+    fprintf(stderr, "execute_window: creating events directory\n");
+    window_create_events_directory(win);
 
     /* Create filesystem entries for every widget in this window.
      * Must happen after wm_create_window_entry() which sets win->widgets_node. */

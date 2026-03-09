@@ -58,6 +58,17 @@ typedef struct KryonNode {
     char *prop_bgcolor;          /* "#RRGGBB" */
     char *prop_fgcolor;          /* "#RRGGBB" */
 
+    /* Event handler attributes */
+    char *onclick_action;        /* Action to execute on click */
+    char *onchange_action;       /* Action to execute on value change */
+    char *onvalue_action;        /* Action to execute on value update */
+
+    /* State declarations */
+    char **state_keys;           /* State variable names */
+    char **state_values;         /* State variable values */
+    int nstate_vars;
+    int state_capacity;
+
     /* Tree structure */
     struct KryonNode **children;
     int nchildren;
@@ -96,5 +107,16 @@ void kryon_free_ast(KryonNode *ast);
  * Returns number of windows created, or -1 on error
  */
 int kryon_load_file(const char *filename);
+
+/*
+ * State filesystem functions
+ */
+int window_create_state_directory(struct KryonWindow *win, KryonNode *state_node);
+
+/*
+ * Event notification functions
+ */
+int window_create_events_directory(struct KryonWindow *win);
+int widget_emit_event(struct KryonWidget *widget, const char *event_type);
 
 #endif /* KRYON_PARSER_H */
