@@ -6,7 +6,7 @@
  */
 
 #include "p9client.h"
-#include "kryon.h"  For P9Node type and P9Hdr */
+#include "kryon.h"  /* For P9Node type and P9Hdr */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -537,7 +537,7 @@ int p9_authenticate(P9Client *client, int auth_method,
         fid = (uint32_t *)p;
         *fid = htonl(client->fid);  /* Fid for root (pre-increment) */
         client->root_fid = client->fid;  /* Save root fid */
-        client->fid++;
+        client->fid = (client->fid + 1) % MAX_FIDS;  /* Wrap around */
         p += 4;
 
         fid = (uint32_t *)p;
@@ -654,7 +654,24 @@ int p9_open(P9Client *client, const char *path, int mode)
         return -1;
     }
 
-    fid = client->fid++;
+    /* Find next available FID slot with wraparound */
+    {
+        int attempts;
+        for (attempts = 0; attempts < MAX_FIDS; attempts++) {
+            fid = client->fid;
+            client->fid = (client->fid + 1) % MAX_FIDS;
+
+            if (!client->fids[fid].in_use) {
+                break;  /* Found free slot */
+            }
+        }
+
+        if (attempts >= MAX_FIDS) {
+            fprintf(stderr, "p9_open: no free FID slots\n");
+            return -1;
+        }
+    }
+
     root_fid = client->root_fid;  /* Root fid from Tattach */
 
     if (root_fid < 0) {

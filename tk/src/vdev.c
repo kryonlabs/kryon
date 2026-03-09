@@ -311,8 +311,13 @@ ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
         win->mouse_buttons = mb;
         g_render_dirty = 1;
 
-        /* Enqueue mouse data for reading by WM */
-        window_enqueue_mouse(win, buf, count);
+        /* Only enqueue mouse data if there's a nested WM running */
+        /* The queue is meant for nested WMs to read from /dev/winX/dev/mouse */
+        /* If no nested WM is running, don't enqueue - just update the window state */
+        if (win->ns_type == NS_NESTED_WM) {
+            /* Enqueue mouse data for reading by nested WM */
+            window_enqueue_mouse(win, buf, count);
+        }
 
         /* Only queue events if event_queue exists (for future event system) */
         if (win->event_queue != NULL) {
