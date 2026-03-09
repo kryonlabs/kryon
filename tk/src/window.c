@@ -158,6 +158,19 @@ struct KryonWindow *window_create(const char *title, int width, int height)
     window->event_queue = NULL;
     window->focused_widget = NULL;
 
+    /* Initialize mouse/keyboard queues */
+    window->mouse_queue.data = NULL;
+    window->mouse_queue.size = 0;
+    window->mouse_queue.read_pos = 0;
+    window->mouse_queue.write_pos = 0;
+    window->mouse_queue.count = 0;
+
+    window->kbd_queue.data = NULL;
+    window->kbd_queue.size = 0;
+    window->kbd_queue.read_pos = 0;
+    window->kbd_queue.write_pos = 0;
+    window->kbd_queue.count = 0;
+
     /* Initialize namespace */
     window_namespace_init(window);
 
@@ -242,6 +255,19 @@ struct KryonWindow *window_create_ex(const char *title, int width, int height,
     window->event_queue = NULL;
     window->focused_widget = NULL;
 
+    /* Initialize mouse/keyboard queues */
+    window->mouse_queue.data = NULL;
+    window->mouse_queue.size = 0;
+    window->mouse_queue.read_pos = 0;
+    window->mouse_queue.write_pos = 0;
+    window->mouse_queue.count = 0;
+
+    window->kbd_queue.data = NULL;
+    window->kbd_queue.size = 0;
+    window->kbd_queue.read_pos = 0;
+    window->kbd_queue.write_pos = 0;
+    window->kbd_queue.count = 0;
+
     /* Initialize namespace */
     window_namespace_init(window);
 
@@ -319,6 +345,10 @@ void window_destroy(struct KryonWindow *window)
         event_queue_destroy(window->event_queue);
         window->event_queue = NULL;
     }
+
+    /* Clean up mouse and keyboard queues */
+    window_cleanup_mouse_queue(window);
+    window_cleanup_kbd_queue(window);
 
     /* Clean up namespace */
     window_namespace_unmount(window);
@@ -892,5 +922,282 @@ void window_set_focus(struct KryonWindow *win, struct KryonWidget *w)
 struct KryonWidget *window_get_focused(struct KryonWindow *win)
 {
     return win ? win->focused_widget : NULL;
+}
+
+/*
+ * ========== Mouse/Keyboard Queue Management ==========
+ */
+
+/*
+ * Initialize mouse event queue
+ */
+int window_init_mouse_queue(struct KryonWindow *win, int size)
+{
+    if (win == NULL || size <= 0) {
+        return -1;
+    }
+
+    /* Allocate circular buffer */
+    win->mouse_queue.data = (char *)calloc(size, sizeof(char));
+    if (win->mouse_queue.data == NULL) {
+        return -1;
+    }
+
+    win->mouse_queue.size = size;
+    win->mouse_queue.read_pos = 0;
+    win->mouse_queue.write_pos = 0;
+    win->mouse_queue.count = 0;
+
+    return 0;
+}
+
+/*
+ * Initialize keyboard event queue
+ */
+int window_init_kbd_queue(struct KryonWindow *win, int size)
+{
+    if (win == NULL || size <= 0) {
+        return -1;
+    }
+
+    /* Allocate circular buffer */
+    win->kbd_queue.data = (char *)calloc(size, sizeof(char));
+    if (win->kbd_queue.data == NULL) {
+        return -1;
+    }
+
+    win->kbd_queue.size = size;
+    win->kbd_queue.read_pos = 0;
+    win->kbd_queue.write_pos = 0;
+    win->kbd_queue.count = 0;
+
+    return 0;
+}
+
+/*
+ * Cleanup mouse queue
+ */
+void window_cleanup_mouse_queue(struct KryonWindow *win)
+{
+    if (win == NULL) {
+        return;
+    }
+
+    if (win->mouse_queue.data != NULL) {
+        free(win->mouse_queue.data);
+        win->mouse_queue.data = NULL;
+    }
+
+    win->mouse_queue.size = 0;
+    win->mouse_queue.read_pos = 0;
+    win->mouse_queue.write_pos = 0;
+    win->mouse_queue.count = 0;
+}
+
+/*
+ * Cleanup keyboard queue
+ */
+void window_cleanup_kbd_queue(struct KryonWindow *win)
+{
+    if (win == NULL) {
+        return;
+    }
+
+    if (win->kbd_queue.data != NULL) {
+        free(win->kbd_queue.data);
+        win->kbd_queue.data = NULL;
+    }
+
+    win->kbd_queue.size = 0;
+    win->kbd_queue.read_pos = 0;
+    win->kbd_queue.write_pos = 0;
+    win->kbd_queue.count = 0;
+}
+
+/*
+ * Enqueue mouse event data
+ */
+int window_enqueue_mouse(struct KryonWindow *win, const char *data, int len)
+{
+    int avail;
+    int chunk;
+    int i;
+
+    if (win == NULL || data == NULL || len <= 0) {
+        return -1;
+    }
+
+    if (win->mouse_queue.data == NULL) {
+        /* Initialize queue with default size if not initialized */
+        if (window_init_mouse_queue(win, 8192) < 0) {
+            return -1;
+        }
+    }
+
+    /* Check if queue is full */
+    if (win->mouse_queue.count + len > win->mouse_queue.size) {
+        /* Drop oldest events to make room */
+        /* For now, just drop the new data */
+        fprintf(stderr, "window_enqueue_mouse: queue full, dropping event\n");
+        return -1;
+    }
+
+    /* Write to circular buffer */
+    avail = win->mouse_queue.size - win->mouse_queue.write_pos;
+
+    for (i = 0; i < len; ) {
+        chunk = (i + avail < len) ? avail : (len - i);
+
+        memcpy(win->mouse_queue.data + win->mouse_queue.write_pos,
+               data + i, chunk);
+
+        win->mouse_queue.write_pos += chunk;
+        if (win->mouse_queue.write_pos >= win->mouse_queue.size) {
+            win->mouse_queue.write_pos = 0;
+        }
+
+        i += chunk;
+        avail = win->mouse_queue.size - win->mouse_queue.write_pos;
+    }
+
+    win->mouse_queue.count += len;
+    return len;
+}
+
+/*
+ * Enqueue keyboard event data
+ */
+int window_enqueue_kbd(struct KryonWindow *win, const char *data, int len)
+{
+    int avail;
+    int chunk;
+    int i;
+
+    if (win == NULL || data == NULL || len <= 0) {
+        return -1;
+    }
+
+    if (win->kbd_queue.data == NULL) {
+        /* Initialize queue with default size if not initialized */
+        if (window_init_kbd_queue(win, 4096) < 0) {
+            return -1;
+        }
+    }
+
+    /* Check if queue is full */
+    if (win->kbd_queue.count + len > win->kbd_queue.size) {
+        /* Drop oldest events to make room */
+        fprintf(stderr, "window_enqueue_kbd: queue full, dropping event\n");
+        return -1;
+    }
+
+    /* Write to circular buffer */
+    avail = win->kbd_queue.size - win->kbd_queue.write_pos;
+
+    for (i = 0; i < len; ) {
+        chunk = (i + avail < len) ? avail : (len - i);
+
+        memcpy(win->kbd_queue.data + win->kbd_queue.write_pos,
+               data + i, chunk);
+
+        win->kbd_queue.write_pos += chunk;
+        if (win->kbd_queue.write_pos >= win->kbd_queue.size) {
+            win->kbd_queue.write_pos = 0;
+        }
+
+        i += chunk;
+        avail = win->kbd_queue.size - win->kbd_queue.write_pos;
+    }
+
+    win->kbd_queue.count += len;
+    return len;
+}
+
+/*
+ * Dequeue mouse event data
+ */
+int window_dequeue_mouse(struct KryonWindow *win, char *buf, int len)
+{
+    int avail;
+    int chunk;
+    int i;
+    int to_read;
+
+    if (win == NULL || buf == NULL || len <= 0) {
+        return -1;
+    }
+
+    if (win->mouse_queue.data == NULL || win->mouse_queue.count == 0) {
+        return 0;  /* No data available */
+    }
+
+    /* Calculate how much to read */
+    to_read = (win->mouse_queue.count < len) ? win->mouse_queue.count : len;
+
+    /* Read from circular buffer */
+    avail = win->mouse_queue.size - win->mouse_queue.read_pos;
+
+    for (i = 0; i < to_read; ) {
+        chunk = (i + avail < to_read) ? avail : (to_read - i);
+
+        memcpy(buf + i,
+               win->mouse_queue.data + win->mouse_queue.read_pos,
+               chunk);
+
+        win->mouse_queue.read_pos += chunk;
+        if (win->mouse_queue.read_pos >= win->mouse_queue.size) {
+            win->mouse_queue.read_pos = 0;
+        }
+
+        i += chunk;
+        avail = win->mouse_queue.size - win->mouse_queue.read_pos;
+    }
+
+    win->mouse_queue.count -= to_read;
+    return to_read;
+}
+
+/*
+ * Dequeue keyboard event data
+ */
+int window_dequeue_kbd(struct KryonWindow *win, char *buf, int len)
+{
+    int avail;
+    int chunk;
+    int i;
+    int to_read;
+
+    if (win == NULL || buf == NULL || len <= 0) {
+        return -1;
+    }
+
+    if (win->kbd_queue.data == NULL || win->kbd_queue.count == 0) {
+        return 0;  /* No data available */
+    }
+
+    /* Calculate how much to read */
+    to_read = (win->kbd_queue.count < len) ? win->kbd_queue.count : len;
+
+    /* Read from circular buffer */
+    avail = win->kbd_queue.size - win->kbd_queue.read_pos;
+
+    for (i = 0; i < to_read; ) {
+        chunk = (i + avail < to_read) ? avail : (to_read - i);
+
+        memcpy(buf + i,
+               win->kbd_queue.data + win->kbd_queue.read_pos,
+               chunk);
+
+        win->kbd_queue.read_pos += chunk;
+        if (win->kbd_queue.read_pos >= win->kbd_queue.size) {
+            win->kbd_queue.read_pos = 0;
+        }
+
+        i += chunk;
+        avail = win->kbd_queue.size - win->kbd_queue.read_pos;
+    }
+
+    win->kbd_queue.count -= to_read;
+    return to_read;
 }
 

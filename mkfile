@@ -45,11 +45,7 @@ KRYON_TARGET=$BIN/kryon
 SAVE_PPM_TARGET=$BIN/save_ppm
 
 # Default target
-all:V: marrow-lib setup $LIB_TARGET $KRYON_WM_TARGET $DISPLAY_TARGET $SAVE_PPM_TARGET
-
-# Ensure marrow is built first
-marrow-lib:V:
-	(cd ../marrow && mk setup && mk all)
+all:V: setup $LIB_TARGET $KRYON_WM_TARGET $DISPLAY_TARGET $SAVE_PPM_TARGET
 
 # Create directories
 setup:V:

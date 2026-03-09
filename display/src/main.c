@@ -3,7 +3,6 @@
  * C89/C90 compliant
  *
  * Connects to Kryon WM via 9P and displays screen using SDL2.
- * Removed dependencies on Plan 9 libdraw - uses SDL2 directly.
  */
 
 #include "display.h"
@@ -294,6 +293,17 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         return NULL;
     }
 
+    /* Open persistent mouse and keyboard connections */
+    dc->mouse_fd = p9_open(dc->p9, "/dev/mouse", P9_OWRITE);
+    if (dc->mouse_fd < 0) {
+        fprintf(stderr, "Warning: failed to open /dev/mouse\n");
+    }
+
+    dc->kbd_fd = p9_open(dc->p9, "/dev/kbd", P9_OWRITE);
+    if (dc->kbd_fd < 0) {
+        fprintf(stderr, "Warning: failed to open /dev/kbd\n");
+    }
+
     dc->running = 1;
     dc->stay_open = (config != NULL) ? config->stay_open : 0;
     dc->dump_screen = (config != NULL) ? config->dump_screen : 0;
@@ -334,6 +344,17 @@ void display_client_destroy(DisplayClient *dc)
 
     if (dc->screen_buf != NULL) {
         free(dc->screen_buf);
+    }
+
+    /* Close persistent connections */
+    if (dc->mouse_fd >= 0) {
+        p9_close(dc->p9, dc->mouse_fd);
+        dc->mouse_fd = -1;
+    }
+
+    if (dc->kbd_fd >= 0) {
+        p9_close(dc->p9, dc->kbd_fd);
+        dc->kbd_fd = -1;
     }
 
     if (dc->screen_fd >= 0) {

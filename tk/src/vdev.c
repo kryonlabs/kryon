@@ -311,6 +311,9 @@ ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
         win->mouse_buttons = mb;
         g_render_dirty = 1;
 
+        /* Enqueue mouse data for reading by WM */
+        window_enqueue_mouse(win, buf, count);
+
         /* Only queue events if event_queue exists (for future event system) */
         if (win->event_queue != NULL) {
             KryonEvent ev;
@@ -335,12 +338,27 @@ ssize_t vdev_mouse_write(const char *buf, size_t count, uint64_t offset,
 ssize_t vdev_mouse_read(char *buf, size_t count, uint64_t offset,
                        void *data)
 {
-    (void)buf;
-    (void)count;
-    (void)offset;
-    (void)data;
-    /* TODO: Implement mouse event queue */
-    return 0;
+    struct KryonWindow *win = (struct KryonWindow *)data;
+    int result;
+
+    if (win == NULL || buf == NULL || count == 0) {
+        return -1;
+    }
+
+    /* Check if window is still valid */
+    if (!window_is_valid(win)) {
+        return -1;
+    }
+
+    /* Handle offset - for streaming devices, offset should be 0 */
+    if (offset > 0) {
+        return 0;  /* EOF for non-zero offset */
+    }
+
+    /* Dequeue mouse data */
+    result = window_dequeue_mouse(win, buf, count);
+
+    return result;
 }
 
 /*
@@ -407,6 +425,9 @@ ssize_t vdev_kbd_write(const char *buf, size_t count, uint64_t offset,
         event_queue_push(win->event_queue, &ev);
     }
 
+    /* Enqueue keyboard data for reading by WM */
+    window_enqueue_kbd(win, buf, count);
+
     return count;
 }
 
@@ -416,10 +437,25 @@ ssize_t vdev_kbd_write(const char *buf, size_t count, uint64_t offset,
 ssize_t vdev_kbd_read(char *buf, size_t count, uint64_t offset,
                      void *data)
 {
-    (void)buf;
-    (void)count;
-    (void)offset;
-    (void)data;
-    /* TODO: Implement keyboard event queue */
-    return 0;
+    struct KryonWindow *win = (struct KryonWindow *)data;
+    int result;
+
+    if (win == NULL || buf == NULL || count == 0) {
+        return -1;
+    }
+
+    /* Check if window is still valid */
+    if (!window_is_valid(win)) {
+        return -1;
+    }
+
+    /* Handle offset - for streaming devices, offset should be 0 */
+    if (offset > 0) {
+        return 0;  /* EOF for non-zero offset */
+    }
+
+    /* Dequeue keyboard data */
+    result = window_dequeue_kbd(win, buf, count);
+
+    return result;
 }

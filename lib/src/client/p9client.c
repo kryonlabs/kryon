@@ -789,20 +789,88 @@ int p9_open(P9Client *client, const char *path, int mode)
 
 /*
  * Close a file on 9P server
+ * Sends Tclunk message to properly release FID on server
  */
 int p9_close(P9Client *client, int fd)
 {
+    uint8_t msg[256];
+    uint8_t resp[P9_MAX_MSG];
+    P9Hdr *hdr;
+    uint16_t *tag_ptr;
+    uint32_t *fid_ptr;
+    uint8_t *p;
+    uint32_t msg_size;
+    uint32_t resp_size;
+    ssize_t n;
+
     if (client == NULL) {
         return -1;
     }
 
-    /* Reset FID state */
-    if (fd >= 0 && fd < MAX_FIDS) {
-        client->fids[fd].in_use = 0;
-        client->fids[fd].is_stream = 0;
-        client->fids[fd].offset = 0;
-        client->fids[fd].fid = 0;
+    if (fd < 0 || fd >= MAX_FIDS) {
+        fprintf(stderr, "p9_close: invalid fd %d\n", fd);
+        return -1;
     }
+
+    /* Check if FID is in use */
+    if (!client->fids[fd].in_use) {
+        fprintf(stderr, "p9_close: fd %d not in use\n", fd);
+        return -1;
+    }
+
+    /* Build Tclunk message: size[4] Tclunk tag[2] fid[4] */
+    p = msg + 4;  /* Skip size field */
+    *p++ = P9_TCLUNK;
+
+    tag_ptr = (uint16_t *)p;
+    *tag_ptr = htons(client->tag++);
+    p += 2;
+
+    fid_ptr = (uint32_t *)p;
+    *fid_ptr = htonl(fd);
+    p += 4;
+
+    msg_size = p - msg;
+    *(uint32_t *)msg = htonl(msg_size);
+
+    /* Send Tclunk */
+    if (write_n(client->fd, msg, msg_size) < 0) {
+        fprintf(stderr, "p9_close: Tclunk write failed\n");
+        return -1;
+    }
+
+    /* Receive response */
+    n = read_n(client->fd, resp, 4);
+    if (n < 4) {
+        fprintf(stderr, "p9_close: Tclunk read header failed\n");
+        return -1;
+    }
+
+    resp_size = ntohl(*(uint32_t *)resp);
+    n = read_n(client->fd, resp + 4, resp_size - 4);
+    if (n < resp_size - 4) {
+        fprintf(stderr, "p9_close: Tclunk read body failed (got %d, expected %u)\n",
+                (int)n, resp_size - 4);
+        return -1;
+    }
+
+    hdr = (P9Hdr *)resp;
+    if (hdr->type == P9_RERROR) {
+        fprintf(stderr, "p9_close: server returned error for fd %d\n", fd);
+        return -1;
+    }
+
+    if (hdr->type != P9_RCLUNK) {
+        fprintf(stderr, "p9_close: unexpected response type 0x%02x for fd %d\n",
+                hdr->type, fd);
+        return -1;
+    }
+
+    /* Clear local FID state */
+    client->fids[fd].in_use = 0;
+    client->fids[fd].is_stream = 0;
+    client->fids[fd].offset = 0;
+    client->fids[fd].fid = 0;
 
     return 0;
 }

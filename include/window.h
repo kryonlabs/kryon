@@ -90,6 +90,23 @@ typedef struct KryonWindow {
     int mouse_buttons;  /* button bitmask from last mouse packet */
     int last_mouse_buttons;  /* previous button state for click detection */
 
+    /* Mouse and keyboard event queues for /dev/mouse and /dev/kbd */
+    struct {
+        char *data;          /* Circular buffer */
+        int size;            /* Buffer size */
+        int read_pos;        /* Read position */
+        int write_pos;       /* Write position */
+        int count;           /* Number of events queued */
+    } mouse_queue;
+
+    struct {
+        char *data;          /* Circular buffer */
+        int size;            /* Buffer size */
+        int read_pos;        /* Read position */
+        int write_pos;       /* Write position */
+        int count;           /* Number of events queued */
+    } kbd_queue;
+
     /* Per-window event stream */
     EventQueue *event_queue;        /* Event queue for /mnt/wm/win/{id}/events */
 
@@ -132,6 +149,18 @@ int window_set_visible(struct KryonWindow *window, int visible);
  * Widget management
  */
 int window_add_widget(struct KryonWindow *window, struct KryonWidget *widget);
+
+/*
+ * Mouse/Keyboard queue management
+ */
+int window_init_mouse_queue(struct KryonWindow *win, int size);
+int window_init_kbd_queue(struct KryonWindow *win, int size);
+void window_cleanup_mouse_queue(struct KryonWindow *win);
+void window_cleanup_kbd_queue(struct KryonWindow *win);
+int window_enqueue_mouse(struct KryonWindow *win, const char *data, int len);
+int window_enqueue_kbd(struct KryonWindow *win, const char *data, int len);
+int window_dequeue_mouse(struct KryonWindow *win, char *buf, int len);
+int window_dequeue_kbd(struct KryonWindow *win, char *buf, int len);
 
 /*
  * Focus management

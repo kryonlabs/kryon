@@ -62,6 +62,10 @@ struct DisplayClient {
     int mouse_fifo_fd;  /* Unix FIFO for mouse IPC (/tmp/.kryon-mouse-1) */
     int refresh_needed;
 
+    /* Persistent device connections (for efficient event sending) */
+    int mouse_fd;       /* Persistent /dev/mouse connection */
+    int kbd_fd;         /* Persistent /dev/kbd connection */
+
     /* Screen buffer */
     uint8_t *screen_buf;      /* Converted RGBA data for SDL/Plan 9 */
     uint8_t *temp_buf;        /* Temporary buffer for raw BGRA data from server */
