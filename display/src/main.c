@@ -485,18 +485,13 @@ int display_client_send_mouse(DisplayClient *dc, int x, int y, int buttons)
         return -1;
     }
 
-    len = sprintf(msg, "m 0 %11d %11d %11d 0\n", x, y, buttons);
-
-    {
-        int mouse_fd = p9_open(dc->p9, "/dev/mouse", P9_OWRITE);
-        if (mouse_fd >= 0) {
-            p9_write(dc->p9, mouse_fd, msg, len);
-            p9_close(dc->p9, mouse_fd);
-            return 0;
-        }
+    if (dc->mouse_fd < 0) {
+        fprintf(stderr, "display_client_send_mouse: mouse_fd not initialized\n");
+        return -1;
     }
 
-    return -1;
+    len = sprintf(msg, "m 0 %11d %11d %11d 0\n", x, y, buttons);
+    return p9_write(dc->p9, dc->mouse_fd, msg, len);
 }
 
 /*
@@ -511,18 +506,13 @@ int display_client_send_key(DisplayClient *dc, int keycode, int pressed)
         return -1;
     }
 
-    len = sprintf(msg, "k %d %d\n", keycode, pressed);
-
-    {
-        int keybd_fd = p9_open(dc->p9, "/dev/kbd", P9_OWRITE);
-        if (keybd_fd >= 0) {
-            p9_write(dc->p9, keybd_fd, msg, len);
-            p9_close(dc->p9, keybd_fd);
-            return 0;
-        }
+    if (dc->kbd_fd < 0) {
+        fprintf(stderr, "display_client_send_key: kbd_fd not initialized\n");
+        return -1;
     }
 
-    return -1;
+    len = sprintf(msg, "k %d %d\n", keycode, pressed);
+    return p9_write(dc->p9, dc->kbd_fd, msg, len);
 }
 
 /*
