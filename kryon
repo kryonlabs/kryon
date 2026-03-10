@@ -1,0 +1,521 @@
+#!/usr/bin/env rc
+# Kryon CLI - unified launcher for Marrow + WM + viewer
+# Usage: kryon <command> [options]
+
+# ---------------------------------------------------------------------------
+# Locate binaries
+# ---------------------------------------------------------------------------
+KRYON_ROOT = `{dirname $0}
+if (~ `{basename $KRYON_ROOT} bin) {
+    KRYON_ROOT = `{dirname $KRYON_ROOT}
+}
+
+KRYON_WM = $KRYON_ROOT/bin/kryon-wm
+KRYON_VIEW = $KRYON_ROOT/bin/kryon-view
+MARROW_BIN = $KRYON_ROOT/bin/marrow
+MARROW_PORT = 17010
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+fn marrow_running {
+    pgrep marrow >/dev/null >[2=1]
+}
+
+fn wm_running {
+    pgrep kryon-wm >/dev/null >[2=1]
+}
+
+fn view_running {
+    pgrep kryon-view >/dev/null >[2=1]
+}
+
+fn die {
+    echo '[kryon] Error: '$* >[1=2]
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# kryon run FILE.kry [--watch] [--stay-open]
+# ---------------------------------------------------------------------------
+fn cmd_run {
+    kry_file = ()
+    watch = 0
+    stay_open = 0
+
+    for (arg in $*) {
+        switch ($arg) {
+        case --watch
+            watch = 1
+        case --stay-open
+            stay_open = 1
+        case --help
+            cmd_help
+            exit 0
+        case -*
+            die 'unknown option: '^$arg
+        case *
+            if (~ $kry_file ()) {
+                kry_file = $arg
+            }
+            if not {
+                die 'too many arguments'
+            }
+        }
+    }
+
+    if (~ $kry_file ()) {
+        die 'no .kry file specified
+Usage: kryon run FILE.kry [--watch]'
+    }
+
+    # Resolve path
+    if (! test -f $kry_file) {
+        # Try relative to kryon root
+        if (test -f $KRYON_ROOT/$kry_file) {
+            kry_file = $KRYON_ROOT/^$kry_file
+        }
+    if not {
+            die 'file not found: '^$kry_file
+        }
+    }
+
+    # Check binaries
+    if (! test -x $KRYON_WM) {
+        die 'kryon-wm not found at '$KRYON_WM' (run: mk)'
+    }
+    if (! test -x $KRYON_VIEW) {
+        die 'kryon-view not found at '$KRYON_VIEW' (run: mk)'
+    }
+    if (! test -x $MARROW_BIN) {
+        die 'marrow not found at '$MARROW_BIN
+    }
+
+    # Start Marrow
+    if (marrow_running) {
+        echo '[kryon] Marrow already running'
+    }
+    if not {
+        echo '[kryon] Starting Marrow...'
+        $MARROW_BIN >/tmp/marrow.log >[2=1] &
+        sleep 2
+        echo '[kryon] Marrow ready on port '^$MARROW_PORT
+    }
+
+    # Stop existing WM
+    if (wm_running) {
+        echo '[kryon] Stopping existing kryon-wm...'
+        kill -9 kryon-wm >[2]/dev/null
+        sleep 1
+    }
+
+    # Start WM
+    wm_extra = ()
+    if (~ $watch 1) {
+        wm_extra = --watch
+    }
+
+    echo '[kryon] Starting kryon-wm: '^$kry_file
+    $KRYON_WM --run $kry_file $wm_extra >/tmp/kryon-wm.log >[2=1] &
+    wm_pid = $apid
+
+    # Wait for WM ready
+    sleep 1
+
+    # Verify WM is still running
+    if (! ps -p $wm_pid >/dev/null >[2=1]) {
+        echo '[kryon] Error: kryon-wm exited before becoming ready'
+        echo '[kryon] Check /tmp/kryon-wm.log for details'
+        exit 1
+    }
+
+    # Start viewer
+    if (view_running) {
+        echo '[kryon] kryon-view already running'
+    }
+    if not {
+        view_extra = ()
+        if (~ $stay_open 1) {
+            view_extra = --stay-open
+        }
+
+        echo '[kryon] Starting kryon-view...'
+        $KRYON_VIEW $view_extra >/tmp/kryon-view.log >[2=1] &
+        view_pid = $apid
+    }
+
+    # Block until WM exits
+    echo ''
+    echo '[kryon] Running. Press Ctrl-C to stop.'
+    if (~ $watch 1) {
+        echo '[kryon] Watch mode active — edit '^$kry_file^' to hot-reload.'
+    }
+    echo '[kryon] Logs: /tmp/kryon-wm.log  /tmp/marrow.log'
+    echo ''
+
+    # Handle shutdown
+    fn sigint {
+        echo ''
+        echo '[kryon] Stopping...'
+        if (! ~ $wm_pid ()) {
+            kill $wm_pid >[2]/dev/null
+        }
+        if (! ~ $view_pid ()) {
+            kill $view_pid >[2]/dev/null
+        }
+        kill -9 kryon-wm >[2]/dev/null
+        kill -9 kryon-view >[2]/dev/null
+        exit 0
+    }
+
+    wait $wm_pid
+    echo '[kryon] Done.'
+}
+
+# ---------------------------------------------------------------------------
+# kryon stop [--all]
+# ---------------------------------------------------------------------------
+fn cmd_stop {
+    kill_marrow = 0
+
+    if (! ~ $1 ()) {
+        if (~ $1 --all) {
+            kill_marrow = 1
+        }
+    }
+
+    if (wm_running) {
+        pkill -TERM kryon-wm >[2]/dev/null
+        sleep 0.3
+        if (wm_running) {
+            pkill -9 kryon-wm >[2]/dev/null
+        }
+        echo '[kryon] kryon-wm stopped'
+    }
+    if not {
+        echo '[kryon] kryon-wm not running'
+    }
+
+    if (view_running) {
+        pkill -TERM kryon-view >[2]/dev/null
+        sleep 0.3
+        if (view_running) {
+            pkill -9 kryon-view >[2]/dev/null
+        }
+        echo '[kryon] kryon-view stopped'
+    }
+    if not {
+        echo '[kryon] kryon-view not running'
+    }
+
+    if (~ $kill_marrow 1) {
+        if (marrow_running) {
+            pkill -TERM marrow >[2]/dev/null
+            sleep 0.3
+            if (marrow_running) {
+                pkill -9 marrow >[2]/dev/null
+            }
+            echo '[kryon] Marrow stopped'
+        }
+        if not {
+            echo '[kryon] Marrow not running'
+        }
+    }
+    if not {
+        echo '[kryon] Marrow left running (use: kryon stop --all)'
+    }
+}
+
+# ---------------------------------------------------------------------------
+# kryon status
+# ---------------------------------------------------------------------------
+fn cmd_status {
+    echo '=== Kryon Status ==='
+
+    if (marrow_running) {
+        pid = `{pgrep marrow | head -1}
+        echo '  Marrow:     running  (PID '^$pid^', port '^$MARROW_PORT^')'
+    }
+    if not {
+        echo '  Marrow:     stopped'
+    }
+
+    if (wm_running) {
+        pid = `{pgrep kryon-wm | head -1}
+        echo '  kryon-wm:   running  (PID '^$pid^')'
+    }
+    if not {
+        echo '  kryon-wm:   stopped'
+    }
+
+    if (view_running) {
+        pid = `{pgrep kryon-view | head -1}
+        echo '  kryon-view: running  (PID '^$pid^')'
+    }
+    if not {
+        echo '  kryon-view: stopped'
+    }
+}
+
+# ---------------------------------------------------------------------------
+# kryon build [target]
+# ---------------------------------------------------------------------------
+fn cmd_build {
+    target = $1
+
+    if (~ $target ()) {
+        target = all
+    }
+
+    echo '[kryon] Building Kryon...'
+    cd $KRYON_ROOT
+
+    switch ($target) {
+    case all
+        mk all
+    case clean
+        mk clean
+    case install
+        mk install
+    case marrow
+        cd ../marrow
+        mk all
+    case wm
+        mk all
+    case *
+        die 'unknown build target: '^$target
+    }
+}
+
+# ---------------------------------------------------------------------------
+# kryon create <name>
+# ---------------------------------------------------------------------------
+fn cmd_create {
+    name = $1
+
+    if (~ $name ()) {
+        die 'Usage: kryon create <name>'
+    }
+
+    dir = $PWD^/^$name
+    mkdir -p $dir
+
+    # Create .kry file
+    {
+        echo '# '^$name^' - Kryon Application'
+        echo '# Generated by kryon create'
+        echo ''
+        echo 'window "Main Window" "800x600" {'
+        echo '    label {'
+        echo '        text: "Hello, '^$name^'!"'
+        echo '        font: "18px"'
+        echo '    }'
+        echo '}'
+    } >$dir/main.kry
+
+    # Create Lua controller
+    {
+        echo '#!/usr/bin/env lua'
+        echo '-- '^$name^' controller'
+        echo '-- Generated by kryon create'
+        echo ''
+        echo 'local dkjson = require("dkjson")'
+        echo ''
+        echo '-- Connect to Kryon'
+        echo 'local function main()'
+        echo '    print("Starting '^$name^'...")'
+        echo '    '
+        echo '    -- TODO: Add your logic here'
+        echo 'end'
+        echo ''
+        echo 'main()'
+    } >$dir/main.lua
+
+    chmod +x $dir/main.lua
+
+    # Create README
+    {
+        echo '# '^$name
+        echo ''
+        echo 'A Kryon application.'
+        echo ''
+        echo '## Run'
+        echo ''
+        echo 'Development mode:'
+        echo '  kryon run main.kry --watch'
+        echo ''
+        echo 'Production mode:'
+        echo '  kryon run main.kry'
+        echo ''
+        echo 'Build standalone:'
+        echo '  kryon package appimage'
+        echo ''
+        echo '## Controller'
+        echo ''
+        echo '  lua main.lua'
+    } >$dir/README.md
+
+    echo '[kryon] Created project: '^$dir
+    echo '[kryon] Next steps:'
+    echo '   cd '^$name
+    echo '   kryon run main.kry --watch'
+}
+
+# ---------------------------------------------------------------------------
+# kryon package <target> [FILE.kry]
+# ---------------------------------------------------------------------------
+fn cmd_package {
+    target = $1
+    app_file = $2
+
+    if (~ $app_file ()) {
+        app_file = main.kry
+    }
+
+    if (~ $target ()) {
+        die 'Usage: kryon package <appimage|apk|marrow-embed> [FILE.kry]'
+    }
+
+    # Check file exists
+    if (! test -f $app_file) {
+        die 'App file not found: '^$app_file
+    }
+
+    switch ($target) {
+    case appimage
+        echo '[kryon] Creating AppImage...'
+        rc $KRYON_ROOT/scripts/appimage-builder.rc $app_file
+    case apk
+        echo '[kryon] Creating APK...'
+        echo '[kryon] APK builder not yet implemented'
+    case marrow-embed
+        echo '[kryon] Creating marrow-embed binary...'
+        rc $KRYON_ROOT/scripts/marrow-embed.rc $app_file
+    case *
+        die 'Unknown package target: '^$target
+    }
+}
+
+# ---------------------------------------------------------------------------
+# kryon logs [service]
+# ---------------------------------------------------------------------------
+fn cmd_logs {
+    service = $1
+
+    if (~ $service ()) {
+        service = wm
+    }
+
+    switch ($service) {
+    case marrow
+        tail -f /tmp/marrow.log
+    case wm
+        tail -f /tmp/kryon-wm.log
+    case view
+        tail -f /tmp/kryon-view.log
+    case all
+        # tail multiple files (rc doesn't have tail -f for multiple files)
+        echo '[kryon] Watching all logs...'
+        echo '[kryon] Marrow log:'
+        tail -f /tmp/marrow.log &
+        marrow_tail = $apid
+        echo '[kryon] WM log:'
+        tail -f /tmp/kryon-wm.log
+        kill $marrow_tail >[2]/dev/null
+    case *
+        die 'Unknown service: '^$service^' (use: marrow|wm|view|all)'
+    }
+}
+
+# ---------------------------------------------------------------------------
+# kryon list
+# ---------------------------------------------------------------------------
+fn cmd_list {
+    if (! test -x $KRYON_WM) {
+        die 'kryon-wm not found (run: mk)'
+    }
+    $KRYON_WM --list-examples
+}
+
+# ---------------------------------------------------------------------------
+# kryon help
+# ---------------------------------------------------------------------------
+fn cmd_help {
+    echo 'Usage: kryon <command> [options]'
+    echo ''
+    echo 'Development Commands:'
+    echo '  run FILE.kry [--watch] [--stay-open]'
+    echo '      Run a .kry file. Starts Marrow and kryon-view automatically.'
+    echo '      --watch       Hot-reload when file changes'
+    echo '      --stay-open   Keep window open after WM exits'
+    echo ''
+    echo '  build [target]'
+    echo '      Build Kryon. Targets: all, clean, install, marrow, wm'
+    echo '      Alias for: mk [target]'
+    echo ''
+    echo '  create <name>'
+    echo '      Create a new Kryon project with scaffolding'
+    echo ''
+    echo '  package <target> [FILE.kry]'
+    echo '      Package application for distribution.'
+    echo '      Targets: appimage, apk, marrow-embed'
+    echo ''
+    echo 'Production Commands:'
+    echo '  stop [--all]'
+    echo '      Stop kryon-wm and kryon-view. Add --all to stop Marrow too.'
+    echo ''
+    echo '  status'
+    echo '      Show running services with PIDs'
+    echo ''
+    echo '  logs [service]'
+    echo '      Follow logs for service (marrow|wm|view|all)'
+    echo ''
+    echo 'Utility Commands:'
+    echo '  list'
+    echo '      List available .kry example files'
+    echo ''
+    echo '  help'
+    echo '      Show this message'
+    echo ''
+    echo 'Examples:'
+    echo '  kryon create myapp'
+    echo '  cd myapp'
+    echo '  kryon run main.kry --watch'
+    echo ''
+    echo '  kryon build all'
+    echo '  kryon package appimage main.kry'
+    echo ''
+    echo '  kryon status'
+    echo '  kryon logs wm'
+}
+
+# ---------------------------------------------------------------------------
+# Dispatch
+# ---------------------------------------------------------------------------
+command = $1
+shift
+
+switch ($command) {
+case run
+    cmd_run $*
+case stop
+    cmd_stop $*
+case status
+    cmd_status
+case build
+    cmd_build $*
+case create
+    cmd_create $*
+case package
+    cmd_package $*
+case logs
+    cmd_logs $*
+case list
+    cmd_list
+case help
+    cmd_help
+case *
+    echo '[kryon] Unknown command: '^$command >[1=2]
+    echo 'Run ''kryon help'' for usage.' >[1=2]
+    exit 1
+}

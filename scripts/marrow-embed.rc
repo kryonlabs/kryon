@@ -1,0 +1,47 @@
+#!/usr/bin/env rc
+# Embed Marrow and .kry file into single binary
+
+kry_file = $1
+app_name = `{basename $kry_file .kry}
+
+echo '[kryon] Creating embedded binary: '^$app_name
+
+# Create temp directory
+tmpdir = /tmp/kryon-embed-$app_name
+rm -rf $tmpdir
+mkdir -p $tmpdir
+
+# Copy binaries
+cp ../bin/marrow $tmpdir/
+cp bin/kryon-wm $tmpdir/
+cp bin/kryon-view $tmpdir/
+
+# Create launcher
+cat > $tmpdir/$app_name <<'EOF'
+#!/usr/bin/env rc
+# Self-extracting Kryon application
+
+script_dir = `{dirname $0}
+
+# Extract embedded .kry file
+# (In a real implementation, we'd embed the data after a marker)
+# For now, just use a fixed path
+
+# Start services
+$script_dir/marrow &
+sleep 1
+$script_dir/kryon-wm --run $script_dir/app.kry &
+sleep 1
+$script_dir/kryon-view
+
+exit
+EOF
+
+chmod +x $tmpdir/$app_name
+cp $kry_file $tmpdir/app.kry
+
+# Create distribution
+tar czf $app_name.tar.gz -C $tmpdir .
+
+echo '[kryon] Created: '$app_name'.tar.gz'
+echo '[kryon] Extract and run: tar xzf '$app_name'.tar.gz && cd '^$tmpdir^' && ./'^$app_name
