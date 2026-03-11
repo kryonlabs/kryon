@@ -477,7 +477,6 @@ int wm_service_init(P9Node *root)
         return -1;
     }
 
-    /* Create /mnt/wm/win directory (changed from "windows" in v0.4.0) */
     windows_dir = tree_create_dir(wm_dir, "win");
     if (windows_dir == NULL) {
         fprintf(stderr, "wm_service_init: failed to create /mnt/wm/win\n");

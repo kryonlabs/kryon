@@ -33,7 +33,7 @@ end
 
 -- State helpers
 local function state_path(var)
-    return string.format("%s/windows/%d/state/%s", WM_ROOT, state.window_id, var)
+    return string.format("%s/win/%d/state/%s", WM_ROOT, state.window_id, var)
 end
 
 local function state_read(var)
@@ -46,7 +46,7 @@ end
 
 -- Widget helpers
 local function widget_path(name)
-    return string.format("%s/windows/%d/widgets/%s", WM_ROOT, state.window_id, name)
+    return string.format("%s/win/%d/widgets/%s", WM_ROOT, state.window_id, name)
 end
 
 local function widget_write(name, prop, value)
@@ -55,7 +55,7 @@ end
 
 -- Discover widgets by name
 local function discover_widgets()
-    local widgets_dir = WM_ROOT .. "/windows/" .. state.window_id .. "/widgets"
+    local widgets_dir = WM_ROOT .. "/win/" .. state.window_id .. "/widgets"
     local f = io.popen("ls " .. widgets_dir)
     if f then
         for line in f:lines() do
@@ -98,7 +98,7 @@ end
 
 -- Discover window
 local function discover_window()
-    local windows_dir = WM_ROOT .. "/windows"
+    local windows_dir = WM_ROOT .. "/win"
     local f = io.popen("ls " .. windows_dir)
     if f then
         local first = f:read("*a"):match("%d+")
@@ -121,7 +121,7 @@ local function watch_events()
         local widgets = {"increment", "decrement", "increment_large", "decrement_large", "reset"}
 
         for _, widget_name in ipairs(widgets) do
-            local event_path = string.format("%s/windows/%d/events/%s", WM_ROOT, state.window_id, widget_name)
+            local event_path = string.format("%s/win/%d/events/%s", WM_ROOT, state.window_id, widget_name)
             local event_json = file_read(event_path)
 
             if event_json and #event_json > 0 then

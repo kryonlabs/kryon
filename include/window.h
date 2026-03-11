@@ -23,8 +23,8 @@ struct Memimage;
 #include "namespace.h"
 
 /*
- * Virtual Devices structure (v0.4.0)
- */
+ * Virtual Devices structure
+  */
 typedef struct VirtualDevices {
     struct Memimage *draw_buffer;      /* Virtual framebuffer */
     char *cons_buffer;                  /* Console buffer (character grid) */
