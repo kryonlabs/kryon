@@ -7,6 +7,12 @@
 #define TCP_H
 
 #include <sys/types.h>
+
+/* Undefine plan9port macros that conflict with POSIX socket functions */
+#undef accept
+#undef bind
+#undef listen
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -15,17 +21,6 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
-
-/*
- * Byte order conversion (little-endian)
- */
-#ifndef le32toh
-#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define le32toh(x) __builtin_bswap32(x)
-#else
-#define le32toh(x) (x)
-#endif
-#endif
 
 /*
  * Listen on a TCP port (IPv6 dual-stack for IPv4+IPv6)
@@ -176,7 +171,7 @@ static int tcp_recv_msg(int fd, unsigned char *buf, size_t buf_size)
     ssize_t nread;
     size_t total;
 
-    /* Read message length (4 bytes, little-endian) */
+    /* Read message length (4 bytes, little-endian as per lib9's 9P) */
     nread = recv(fd, &msg_len, 4, MSG_PEEK | MSG_DONTWAIT);
     if (nread < 0) {
         if (errno == EWOULDBLOCK || errno == EAGAIN) {
@@ -191,8 +186,8 @@ static int tcp_recv_msg(int fd, unsigned char *buf, size_t buf_size)
         return 0;  /* Not enough data yet */
     }
 
-    /* Convert from network byte order */
-    msg_len = le32toh(msg_len);
+    /* No byte order conversion needed - lib9 uses little-endian */
+    /* The 4-byte length is already in the correct format from recv() */
 
     /* Declare variables at top of block for C89 */
     {

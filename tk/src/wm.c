@@ -34,6 +34,7 @@
 #include "events.h"
 #include "kryon.h"
 #include "namespace.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -524,7 +525,7 @@ int wm_remove_window_entry(struct KryonWindow *win)
     }
 
     /* Create window directory name */
-    sprintf(win_name, "%u", win->id);
+    snprint(win_name, sizeof(win_name), "%u", win->id);
 
     /* Find and remove window directory */
     win_dir = tree_walk(g_windows_dir, win_name);
@@ -557,7 +558,7 @@ int wm_remove_widget_entry(struct KryonWidget *widget)
     }
 
     /* Find parent window directory */
-    sprintf(win_name, "%u", parent_win->id);
+    snprint(win_name, sizeof(win_name), "%u", parent_win->id);
     win_dir = tree_walk(g_windows_dir, win_name);
     if (win_dir == NULL) {
         return -1;
@@ -570,7 +571,7 @@ int wm_remove_widget_entry(struct KryonWidget *widget)
     }
 
     /* Create widget directory name */
-    sprintf(widget_name, "%u", widget->id);
+    snprint(widget_name, sizeof(widget_name), "%u", widget->id);
 
     /* Find and remove widget directory */
     widget_dir = tree_walk(widgets_dir, widget_name);
@@ -601,7 +602,7 @@ int wm_create_window_entry_ex(struct KryonWindow *win, P9Node *parent_dir)
     }
 
     /* Create window directory name */
-    sprintf(win_name, "%u", win->id);
+    snprint(win_name, sizeof(win_name), "%u", win->id);
 
     /* Create /win/{id} or /win/{parent}/win/{id} directory */
     win_dir = tree_create_dir(parent_dir, win_name);

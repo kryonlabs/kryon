@@ -10,15 +10,11 @@
 #include "widget.h"
 #include "layout.h"
 #include "wm.h"
+#include <lib9.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
-/*
- * snprintf prototype for C89 compatibility
- */
-extern int snprintf(char *str, size_t size, const char *format, ...);
 
 /*
  * Token types
@@ -310,7 +306,7 @@ static int expect_token(Parser *p, TokenType type)
 {
     if (p->current_token.type != type) {
         p->has_error = 1;
-        snprintf(p->error_msg, sizeof(p->error_msg),
+        snprint(p->error_msg, sizeof(p->error_msg),
                 "Expected %d at line %d, got %d",
                 type, p->line, p->current_token.type);
         return -1;
@@ -706,7 +702,7 @@ static KryonNode* parse_widget(Parser *p, const char *widget_type)
 
     node->widget_type = (char *)malloc(strlen(widget_type) + 1);
     if (node->widget_type != NULL) {
-        strcpy(node->widget_type, widget_type);
+        strecpy(node->widget_type, node->widget_type + strlen(widget_type) + 1, widget_type);
     }
 
     /* Get widget ID (optional, next token) - only WORD tokens are valid IDs */
@@ -814,7 +810,7 @@ static void parse_repeat(Parser *p, KryonNode *parent)
         KryonNode *copy = clone_node(tmpl);
         if (copy) {
             free(copy->id);
-            snprintf(id_buf, sizeof(id_buf), "%s%d", prefix, i);
+            snprint(id_buf, sizeof(id_buf), "%s%d", prefix, i);
             copy->id = strdup(id_buf);
             add_child(parent, copy);
         }
@@ -844,7 +840,7 @@ static KryonNode* parse_layout(Parser *p, const char *layout_type)
 
     node->layout_type = (char *)malloc(strlen(layout_type) + 1);
     if (node->layout_type != NULL) {
-        strcpy(node->layout_type, layout_type);
+        strecpy(node->layout_type, node->layout_type + strlen(layout_type) + 1, layout_type);
     }
 
     /* Parse layout parameters: key=value or key="value" */
@@ -1226,7 +1222,7 @@ KryonNode* kryon_parse_string(const char *source)
     if (p.source == NULL) {
         return NULL;
     }
-    strcpy(p.source, source);
+    strecpy(p.source, p.source + p.source_len + 1, source);
     p.pos = 0;
     p.line = 1;
     p.column = 1;
@@ -1326,7 +1322,7 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         free(widget->prop_text);
         widget->prop_text = (char *)malloc(strlen(node->text) + 1);
         if (widget->prop_text != NULL) {
-            strcpy(widget->prop_text, node->text);
+            strecpy(widget->prop_text, widget->prop_text + strlen(node->text) + 1, node->text);
         }
     }
 
@@ -1335,7 +1331,7 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         free(widget->prop_color);
         widget->prop_color = (char *)malloc(strlen(node->prop_color) + 1);
         if (widget->prop_color != NULL) {
-            strcpy(widget->prop_color, node->prop_color);
+            strecpy(widget->prop_color, widget->prop_color + strlen(node->prop_color) + 1, node->prop_color);
         }
     }
 
@@ -1344,7 +1340,7 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         free(widget->prop_rect);
         widget->prop_rect = (char *)malloc(strlen(node->prop_rect) + 1);
         if (widget->prop_rect != NULL) {
-            strcpy(widget->prop_rect, node->prop_rect);
+            strecpy(widget->prop_rect, widget->prop_rect + strlen(node->prop_rect) + 1, node->prop_rect);
         }
     }
 
@@ -1353,7 +1349,7 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         free(widget->prop_value);
         widget->prop_value = (char *)malloc(strlen(node->prop_value) + 1);
         if (widget->prop_value != NULL) {
-            strcpy(widget->prop_value, node->prop_value);
+            strecpy(widget->prop_value, widget->prop_value + strlen(node->prop_value) + 1, node->prop_value);
         }
     }
 
@@ -1367,7 +1363,7 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         free(widget->prop_bgcolor);
         widget->prop_bgcolor = (char *)malloc(strlen(node->prop_bgcolor) + 1);
         if (widget->prop_bgcolor != NULL) {
-            strcpy(widget->prop_bgcolor, node->prop_bgcolor);
+            strecpy(widget->prop_bgcolor, widget->prop_bgcolor + strlen(node->prop_bgcolor) + 1, node->prop_bgcolor);
         }
     }
 
@@ -1376,7 +1372,7 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         free(widget->prop_fgcolor);
         widget->prop_fgcolor = (char *)malloc(strlen(node->prop_fgcolor) + 1);
         if (widget->prop_fgcolor != NULL) {
-            strcpy(widget->prop_fgcolor, node->prop_fgcolor);
+            strecpy(widget->prop_fgcolor, widget->prop_fgcolor + strlen(node->prop_fgcolor) + 1, node->prop_fgcolor);
         }
     }
 
@@ -1385,7 +1381,7 @@ static int execute_widget(KryonNode *node, struct KryonWindow *win)
         free(widget->prop_group);
         widget->prop_group = (char *)malloc(strlen(node->prop_group) + 1);
         if (widget->prop_group != NULL) {
-            strcpy(widget->prop_group, node->prop_group);
+            strecpy(widget->prop_group, widget->prop_group + strlen(node->prop_group) + 1, node->prop_group);
         }
     }
 

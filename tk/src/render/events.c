@@ -10,6 +10,7 @@
 #include "graphics.h"
 #include "widget.h"
 #include "window.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,7 +18,6 @@
 /*
  * External functions
  */
-extern char *strdup(const char *s);
 extern int g_render_dirty;
 
 /*
@@ -141,7 +141,7 @@ void render_update_slider_value(KryonWidget *w, float new_value)
     if (new_value < 0.0f) new_value = 0.0f;
     if (new_value > 100.0f) new_value = 100.0f;
 
-    sprintf(buf, "%.1f", new_value);
+    snprint(buf, sizeof(buf), "%.1f", new_value);
     free(w->prop_value);
     w->prop_value = strdup(buf);
 

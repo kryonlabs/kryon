@@ -3,10 +3,18 @@
  */
 
 #include "kryon.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+
+/* Undefine plan9port macros to use standard C library */
+#undef malloc
+#undef free
+#undef realloc
+#undef atoi
+#undef time
 
 /*
  * External function from Marrow library
@@ -53,10 +61,10 @@ static P9Node *node_alloc(const char *name, uint32_t mode)
         free(node);
         return NULL;
     }
-    strcpy(node->name, name);
+    strecpy(node->name, node->name + name_len + 1, name);
 
-    node->qid.type = (mode & P9_DMDIR) ? QTDIR : QTFILE;
-    node->qid.version = 0;
+    node->qid.type = (mode & DMDIR) ? QTDIR : QTFILE;
+    node->qid.vers = 0;
     node->qid.path = next_qid_path++;
 
     node->mode = mode;
@@ -86,7 +94,7 @@ int tree_init(void)
         return -1;  /* Already initialized */
     }
 
-    root_node = node_alloc("/", P9_DMDIR | 0555);
+    root_node = node_alloc("/", DMDIR | 0555);
     if (root_node == NULL) {
         return -1;
     }
@@ -341,7 +349,7 @@ P9Node *tree_create_dir(P9Node *parent, const char *name)
         parent = root_node;
     }
 
-    node = node_alloc(name, P9_DMDIR | 0555);
+    node = node_alloc(name, DMDIR | 0555);
     if (node == NULL) {
         return NULL;
     }
@@ -573,7 +581,7 @@ P9Node *tree_create_bind(P9Node *parent, const char *name, const char *target)
         tree_remove_node(node);
         return NULL;
     }
-    strcpy(node->bind_target, target);
+    strecpy(node->bind_target, node->bind_target + strlen(target) + 1, target);
     node->bind_node = bind_node;
 
     return node;

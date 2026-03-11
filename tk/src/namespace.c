@@ -7,18 +7,24 @@
 #include "window.h"
 #include "vdev.h"
 #include "p9client.h"
+#include <lib9.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+/* Undefine plan9port macros that conflict with POSIX functions */
+#undef accept
+#undef bind
+#undef listen
+#undef wait
+#undef waitpid
+
 #include <sys/wait.h>
+
+/* Now safe to include socket headers */
 #include <sys/socket.h>
 #include <signal.h>
-
-/*
- * snprintf prototype for C89 compatibility
- */
-extern int snprintf(char *str, size_t size, const char *format, ...);
 
 /*
  * Initialize namespace for a window
@@ -79,7 +85,7 @@ int window_build_namespace(struct KryonWindow *win)
     }
 
     /* Bind: /dev/screen → Marrow path "/dev/win{N}/screen" */
-    snprintf(dev_path, sizeof(dev_path), "/dev/win%u/screen", win->id);
+    snprint(dev_path, sizeof(dev_path), "/dev/win%u/screen", win->id);
     if (tree_create_bind(dev_dir, "screen", dev_path) == NULL) {
         fprintf(stderr, "window_build_namespace: failed to bind /dev/screen\n");
         /* Continue anyway */
@@ -88,7 +94,7 @@ int window_build_namespace(struct KryonWindow *win)
     }
 
     /* Bind: /dev/cons → "/dev/win{N}/cons" */
-    snprintf(dev_path, sizeof(dev_path), "/dev/win%u/cons", win->id);
+    snprint(dev_path, sizeof(dev_path), "/dev/win%u/cons", win->id);
     if (tree_create_bind(dev_dir, "cons", dev_path) == NULL) {
         fprintf(stderr, "window_build_namespace: failed to bind /dev/cons\n");
     } else {
@@ -96,7 +102,7 @@ int window_build_namespace(struct KryonWindow *win)
     }
 
     /* Bind: /dev/mouse → "/dev/win{N}/mouse" */
-    snprintf(dev_path, sizeof(dev_path), "/dev/win%u/mouse", win->id);
+    snprint(dev_path, sizeof(dev_path), "/dev/win%u/mouse", win->id);
     if (tree_create_bind(dev_dir, "mouse", dev_path) == NULL) {
         fprintf(stderr, "window_build_namespace: failed to bind /dev/mouse\n");
     } else {
@@ -104,7 +110,7 @@ int window_build_namespace(struct KryonWindow *win)
     }
 
     /* Bind: /dev/kbd → "/dev/win{N}/kbd" */
-    snprintf(dev_path, sizeof(dev_path), "/dev/win%u/kbd", win->id);
+    snprint(dev_path, sizeof(dev_path), "/dev/win%u/kbd", win->id);
     if (tree_create_bind(dev_dir, "kbd", dev_path) == NULL) {
         fprintf(stderr, "window_build_namespace: failed to bind /dev/kbd\n");
     } else {
@@ -137,7 +143,7 @@ int window_register_virtual_devices(struct KryonWindow *win, struct P9Client *ma
     }
 
     /* Create /dev/win{N} directory in Marrow */
-    snprintf(dev_path, sizeof(dev_path), "/dev/win%u", win->id);
+    snprint(dev_path, sizeof(dev_path), "/dev/win%u", win->id);
     if (p9_mkdir(marrow, dev_path) < 0) {
         fprintf(stderr, "window_register_virtual_devices: failed to create %s in Marrow\n", dev_path);
         /* Continue anyway - directory might already exist */
@@ -240,7 +246,7 @@ int window_spawn_nested_wm(struct KryonWindow *win)
     }
     win->ns_mount_spec = (char *)malloc(6);
     if (win->ns_mount_spec != NULL) {
-        strcpy(win->ns_mount_spec, "nest!");
+        strecpy(win->ns_mount_spec, win->ns_mount_spec + 7, "nest!");
     }
 
     /* Fork and exec nested WM */
@@ -259,17 +265,17 @@ int window_spawn_nested_wm(struct KryonWindow *win)
         close(sv[0]);
 
         /* Create unique identifier for this window's devices */
-        snprintf(win_id_str, sizeof(win_id_str), "%u", win->id);
+        snprint(win_id_str, sizeof(win_id_str), "%u", win->id);
 
         /* Set environment variables so nested WM knows which window to use */
         setenv("KRYON_NESTED_WIN_ID", win_id_str, 1);
 
         /* Pass pipe FD as env var */
-        snprintf(pipe_fd_str, sizeof(pipe_fd_str), "%d", sv[1]);
+        snprint(pipe_fd_str, sizeof(pipe_fd_str), "%d", sv[1]);
         setenv("KRYON_NESTED_PIPE_FD", pipe_fd_str, 1);
 
         /* Pass namespace pointer via environment (fork shares parent memory) */
-        snprintf(ns_ptr_str, sizeof(ns_ptr_str), "%p", (void *)win->ns_root);
+        snprint(ns_ptr_str, sizeof(ns_ptr_str), "%p", (void *)win->ns_root);
         setenv("KRYON_NAMESPACE_PTR", ns_ptr_str, 1);
 
         /* Exec nested WM */
@@ -336,7 +342,7 @@ int window_namespace_mount(struct KryonWindow *win, const char *spec)
             }
             win->ns_mount_spec = (char *)malloc(6);
             if (win->ns_mount_spec != NULL) {
-                strcpy(win->ns_mount_spec, "local");
+                strecpy(win->ns_mount_spec, win->ns_mount_spec + 6, "local");
             }
             fprintf(stderr, "Mounted local namespace for window %u\n", win->id);
             return 0;

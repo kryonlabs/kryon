@@ -5,6 +5,7 @@
  * Target platform definitions and management
  */
 
+#include <lib9.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -119,7 +120,7 @@ int target_is_available(const KryonTarget *target)
         char cmd[256];
         int result;
 
-        snprintf(cmd, sizeof(cmd), "which %s > /dev/null 2>&1", target->cc);
+        snprint(cmd, sizeof(cmd), "which %s > /dev/null 2>&1", target->cc);
         result = system(cmd);
         if (result != 0) {
             return 0;  /* Compiler not found */
@@ -172,29 +173,29 @@ int target_create_output_dirs(const KryonTarget *target, const char *project_dir
     }
 
     /* Create output directory */
-    snprintf(path, sizeof(path), "%s/%s", project_dir, target->output_dir);
+    snprint(path, sizeof(path), "%s/%s", project_dir, target->output_dir);
     if (stat(path, &st) != 0) {
         /* Create directory */
         char cmd[KRYON_MAX_PATH];
-        snprintf(cmd, sizeof(cmd), "mkdir -p %s", path);
+        snprint(cmd, sizeof(cmd), "mkdir -p %s", path);
         if (system(cmd) != 0) {
             return -1;
         }
     }
 
     /* Initialize output structure */
-    snprintf(output->binary, sizeof(output->binary), "%s/app%s",
-             target->output_dir, target->output_ext);
-    snprintf(output->resources, sizeof(output->resources), "%s/resources",
-             target->output_dir);
-    snprintf(output->assets, sizeof(output->assets), "%s/assets",
-             target->output_dir);
+    snprint(output->binary, sizeof(output->binary), "%s/app%s",
+          target->output_dir, target->output_ext);
+    snprint(output->resources, sizeof(output->resources), "%s/resources",
+          target->output_dir);
+    snprint(output->assets, sizeof(output->assets), "%s/assets",
+          target->output_dir);
 
     /* Create subdirectories */
-    snprintf(path, sizeof(path), "%s/%s/resources", project_dir, target->output_dir);
+    snprint(path, sizeof(path), "%s/%s/resources", project_dir, target->output_dir);
     mkdir(path, 0755);
 
-    snprintf(path, sizeof(path), "%s/%s/assets", project_dir, target->output_dir);
+    snprint(path, sizeof(path), "%s/%s/assets", project_dir, target->output_dir);
     mkdir(path, 0755);
 
     return 0;
@@ -225,15 +226,15 @@ int target_post_process(const KryonTarget *target, KryonBuildOutput *output)
     /* For AppImage: run AppImage bundler */
     if (target->platform == KRYON_PLATFORM_APPIMAGE) {
         printf("Running AppImage bundler...\n");
-        snprintf(cmd, sizeof(cmd), "scripts/appimage-builder.sh %s %s",
-                 output->binary, target->output_dir);
+        snprint(cmd, sizeof(cmd), "scripts/appimage-builder.sh %s %s",
+               output->binary, target->output_dir);
         return system(cmd);
     }
 
     /* For Android: run gradle build */
     if (target->platform == KRYON_PLATFORM_ANDROID) {
         printf("Running Gradle build...\n");
-        snprintf(cmd, sizeof(cmd), "cd platform/android && ./gradlew assembleRelease");
+        snprint(cmd, sizeof(cmd), "cd platform/android && ./gradlew assembleRelease");
         return system(cmd);
     }
 
@@ -269,22 +270,22 @@ int target_build(const KryonTarget *target, const char *project_dir)
         case KRYON_PLATFORM_LINUX:
             printf("Building native Linux binary...\n");
             /* Use make to build */
-            snprintf(cmd, sizeof(cmd), "make clean && make all");
+            snprint(cmd, sizeof(cmd), "make clean && make all");
             result = system(cmd);
             if (result != 0) {
                 fprintf(stderr, "Build failed\n");
                 return -1;
             }
             /* Copy binary to output directory */
-            snprintf(cmd, sizeof(cmd), "cp bin/kryon-wm %s 2>/dev/null || true",
-                     target->output_dir);
+            snprint(cmd, sizeof(cmd), "cp bin/kryon-wm %s 2>/dev/null || true",
+                  target->output_dir);
             system(cmd);
             break;
 
         case KRYON_PLATFORM_APPIMAGE:
             printf("Building AppImage package...\n");
             /* First build Linux binary */
-            snprintf(cmd, sizeof(cmd), "make clean && make all");
+            snprint(cmd, sizeof(cmd), "make clean && make all");
             result = system(cmd);
             if (result != 0) {
                 fprintf(stderr, "Build failed\n");
@@ -301,7 +302,7 @@ int target_build(const KryonTarget *target, const char *project_dir)
         case KRYON_PLATFORM_WASM:
             printf("Building WebAssembly version...\n");
             /* Use Emscripten build script */
-            snprintf(cmd, sizeof(cmd), "platform/wasm/build.sh");
+            snprint(cmd, sizeof(cmd), "platform/wasm/build.sh");
             result = system(cmd);
             if (result != 0) {
                 fprintf(stderr, "WebAssembly build failed\n");

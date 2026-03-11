@@ -5,6 +5,7 @@
  * Individual command handlers
  */
 
+#include <lib9.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -98,7 +99,7 @@ int cmd_create(int argc, char **argv)
     }
 
     /* Create project directory */
-    snprintf(project_path, sizeof(project_path), "./%s", project_name);
+    snprint(project_path, sizeof(project_path), "./%s", project_name);
 
     if (cli_dir_exists(project_path)) {
         cli_print_error("Directory already exists: %s", project_name);
@@ -113,14 +114,14 @@ int cmd_create(int argc, char **argv)
         return CLI_ERROR;
     }
 
-    snprintf(src_path, sizeof(src_path), "%s/src", project_path);
+    snprint(src_path, sizeof(src_path), "%s/src", project_path);
     if (cli_create_dir(src_path) < 0) {
         cli_print_error("Failed to create src directory");
         return CLI_ERROR;
     }
 
     /* Create kryon.yaml */
-    snprintf(yaml_path, sizeof(yaml_path), "%s/kryon.yaml", project_path);
+    snprint(yaml_path, sizeof(yaml_path), "%s/kryon.yaml", project_path);
     fp = fopen(yaml_path, "w");
     if (fp == NULL) {
         cli_print_error("Failed to create kryon.yaml");
@@ -140,7 +141,7 @@ int cmd_create(int argc, char **argv)
     fclose(fp);
 
     /* Create main.kry */
-    snprintf(main_path, sizeof(main_path), "%s/src/main.kry", project_path);
+    snprint(main_path, sizeof(main_path), "%s/src/main.kry", project_path);
     fp = fopen(main_path, "w");
     if (fp == NULL) {
         cli_print_error("Failed to create main.kry");
@@ -177,16 +178,16 @@ int cmd_create(int argc, char **argv)
     fclose(fp);
 
     /* Create assets directory structure */
-    snprintf(assets_path, sizeof(assets_path), "%s/assets", project_path);
-    snprintf(images_path, sizeof(images_path), "%s/assets/images", project_path);
-    snprintf(fonts_path, sizeof(fonts_path), "%s/assets/fonts", project_path);
+    snprint(assets_path, sizeof(assets_path), "%s/assets", project_path);
+    snprint(images_path, sizeof(images_path), "%s/assets/images", project_path);
+    snprint(fonts_path, sizeof(fonts_path), "%s/assets/fonts", project_path);
 
     cli_create_dir(assets_path);
     cli_create_dir(images_path);
     cli_create_dir(fonts_path);
 
     /* Create .gitignore */
-    snprintf(gitignore_path, sizeof(gitignore_path), "%s/.gitignore", project_path);
+    snprint(gitignore_path, sizeof(gitignore_path), "%s/.gitignore", project_path);
     fp = fopen(gitignore_path, "w");
     if (fp != NULL) {
         fprintf(fp, "# Build outputs\n");
@@ -284,8 +285,8 @@ int cmd_build(int argc, char **argv)
     if (target->platform == KRYON_PLATFORM_LINUX) {
         cli_print_info("Building native Linux binary...");
         /* Use nix-shell for reproducible build */
-        snprintf(make_cmd, sizeof(make_cmd),
-                 "cd ../.. && nix-shell --run 'cd kryon && make clean && make all'");
+        snprint(make_cmd, sizeof(make_cmd),
+              "cd ../.. && nix-shell --run 'cd kryon && make clean && make all'");
         result = system(make_cmd);
         if (result != 0) {
             cli_print_error("Build failed");
@@ -294,8 +295,8 @@ int cmd_build(int argc, char **argv)
     } else if (target->platform == KRYON_PLATFORM_APPIMAGE) {
         cli_print_info("Building AppImage package...");
         /* First build Linux binary, then bundle */
-        snprintf(make_cmd, sizeof(make_cmd),
-                 "cd ../.. && nix-shell --run 'cd kryon && make clean && make all'");
+        snprint(make_cmd, sizeof(make_cmd),
+              "cd ../.. && nix-shell --run 'cd kryon && make clean && make all'");
         result = system(make_cmd);
         if (result == 0) {
             /* TODO: Run AppImage bundler */
@@ -369,9 +370,9 @@ int cmd_run(int argc, char **argv)
 
     /* For now, delegate to existing kryon-wm */
     /* TODO: Replace with direct execution */
-    snprintf(cmd, sizeof(cmd), "./bin/kryon-wm --run %s", kry_file);
+    snprint(cmd, sizeof(cmd), "./bin/kryon-wm --run %s", kry_file);
     if (watch_mode) {
-        strcat(cmd, " --watch");
+        seprint(cmd + strlen(cmd), cmd + sizeof(cmd), " --watch");
     }
 
     cli_print_info("Running: %s", kry_file);

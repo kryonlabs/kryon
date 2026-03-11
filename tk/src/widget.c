@@ -5,15 +5,11 @@
 #include "widget.h"
 #include "window.h"
 #include "events.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
-
-/*
- * snprintf prototype for C89 compatibility
- */
-extern int snprintf(char *str, size_t size, const char *format, ...);
 
 /*
  * External rendering functions
@@ -142,15 +138,15 @@ struct KryonWidget *widget_create(WidgetType type, const char *name,
     if (name != NULL) {
         widget->name = (char *)malloc(strlen(name) + 1);
         if (widget->name != NULL) {
-            strcpy(widget->name, name);
+            strecpy(widget->name, widget->name + strlen(name) + 1, name);
         }
     }
 
     if (widget->name == NULL) {
-        snprintf(buf, sizeof(buf), "widget_%u", widget->id);
+        snprint(buf, sizeof(buf), "widget_%u", widget->id);
         widget->name = (char *)malloc(strlen(buf) + 1);
         if (widget->name != NULL) {
-            strcpy(widget->name, buf);
+            strecpy(widget->name, widget->name + strlen(buf) + 1, buf);
         }
     }
 
@@ -165,7 +161,7 @@ struct KryonWidget *widget_create(WidgetType type, const char *name,
 
     widget->prop_value = (char *)malloc(2);
     if (widget->prop_value != NULL) {
-        strcpy(widget->prop_value, "0");
+        strecpy(widget->prop_value, widget->prop_value + 2, "0");
     }
 
     widget->prop_placeholder = (char *)malloc(1);
@@ -201,22 +197,22 @@ struct KryonWidget *widget_create(WidgetType type, const char *name,
 
     widget->prop_rect = (char *)malloc(8);
     if (widget->prop_rect != NULL) {
-        strcpy(widget->prop_rect, "0 0 0 0");
+        strecpy(widget->prop_rect, widget->prop_rect + 8, "0 0 0 0");
     }
 
     widget->layout_type = (char *)malloc(4);
     if (widget->layout_type != NULL) {
-        strcpy(widget->layout_type, "row");
+        strecpy(widget->layout_type, widget->layout_type + 4, "row");
     }
 
     widget->layout_align = (char *)malloc(6);
     if (widget->layout_align != NULL) {
-        strcpy(widget->layout_align, "start");
+        strecpy(widget->layout_align, widget->layout_align + 6, "start");
     }
 
     widget->layout_justify = (char *)malloc(6);
     if (widget->layout_justify != NULL) {
-        strcpy(widget->layout_justify, "start");
+        strecpy(widget->layout_justify, widget->layout_justify + 6, "start");
     }
 
     widget->layout_gap = 0;
@@ -225,7 +221,7 @@ struct KryonWidget *widget_create(WidgetType type, const char *name,
     /* Set type string */
     widget->prop_type = (char *)malloc(strlen(widget_type_to_string(type)) + 1);
     if (widget->prop_type != NULL) {
-        strcpy(widget->prop_type, widget_type_to_string(type));
+        strecpy(widget->prop_type, widget->prop_type + strlen(widget_type_to_string(type)) + 1, widget_type_to_string(type));
     }
 
     /* Allocate children array */
@@ -830,7 +826,7 @@ int widget_create_fs_entries(struct KryonWidget *widget, P9Node *widgets_dir)
     if (widget->name != NULL && widget->name[0] != '\0') {
         widget_dir = tree_create_dir(widgets_dir, widget->name);
     } else {
-        snprintf(dirname, sizeof(dirname), "%u", widget->id);
+        snprint(dirname, sizeof(dirname), "%u", widget->id);
         widget_dir = tree_create_dir(widgets_dir, dirname);
     }
     if (widget_dir == NULL) {

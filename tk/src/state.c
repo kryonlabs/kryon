@@ -11,14 +11,10 @@
 #include "widget.h"
 #include "wm.h"
 #include "kryon.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-/*
- * External snprintf for C89
- */
-extern int snprintf(char *str, size_t size, const char *format, ...);
 
 /*
  * State variable data structure

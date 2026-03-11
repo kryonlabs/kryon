@@ -8,6 +8,7 @@
 #include "marrow.h"
 #include "p9client.h"
 #include "kryon.h"
+#include <lib9.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +36,7 @@ int marrow_service_register(P9Client *mc, const char *name,
     }
 
     /* Build registration command: "register name type" */
-    snprintf(cmd, sizeof(cmd), "register %s %s", name, type);
+    snprint(cmd, sizeof(cmd), "register %s %s", name, type);
 
     /* Open /svc/ctl */
     svc_fd = p9_open(mc, "/svc/ctl", P9_OWRITE);
@@ -78,7 +79,7 @@ int marrow_namespace_mount(P9Client *mc, const char *path)
     }
 
     /* Build mount command: "mount path" */
-    snprintf(cmd, sizeof(cmd), "mount %s", path);
+    snprint(cmd, sizeof(cmd), "mount %s", path);
 
     /* Open /svc/ctl */
     svc_fd = p9_open(mc, "/svc/ctl", P9_OWRITE);
@@ -118,7 +119,7 @@ int marrow_service_unregister(P9Client *mc, const char *name)
     }
 
     /* Build unregister command: "unregister name" */
-    snprintf(cmd, sizeof(cmd), "unregister %s", name);
+    snprint(cmd, sizeof(cmd), "unregister %s", name);
 
     /* Open /svc/ctl */
     svc_fd = p9_open(mc, "/svc/ctl", P9_OWRITE);

@@ -19,6 +19,7 @@
 #include "kryon.h"
 #include "parser.h"
 #include "graphics.h"
+#include <lib9.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,7 +82,7 @@ static void list_kry_files(const char *base_path, const char *prefix)
         }
 
         /* Build full path */
-        snprintf(path, sizeof(path), "%s/%s", base_path, entry->d_name);
+        snprint(path, sizeof(path), "%s/%s", base_path, entry->d_name);
 
         /* Get file info */
         if (stat(path, &statbuf) < 0) {
@@ -91,7 +92,7 @@ static void list_kry_files(const char *base_path, const char *prefix)
         /* If directory, recurse */
         if (S_ISDIR(statbuf.st_mode)) {
             char new_prefix[512];
-            snprintf(new_prefix, sizeof(new_prefix), "%s%s/", prefix, entry->d_name);
+            snprint(new_prefix, sizeof(new_prefix), "%s%s/", prefix, entry->d_name);
             list_kry_files(path, new_prefix);
         } else if (S_ISREG(statbuf.st_mode)) {
             /* Check if .kry file */
@@ -571,7 +572,7 @@ int main(int argc, char **argv)
             ssize_t written;
             int cmd_len;
 
-            cmd_len = snprintf(cmd, sizeof(cmd), "screen %dx%d\n", screen_width, screen_height);
+            cmd_len = snprint(cmd, sizeof(cmd), "screen %dx%d\n", screen_width, screen_height);
             if (cmd_len > 0 && cmd_len < (int)sizeof(cmd)) {
                 ctl_fd = p9_open(g_marrow_client, "/dev/screen/ctl", P9_OWRITE);
                 if (ctl_fd >= 0) {
@@ -595,7 +596,7 @@ int main(int argc, char **argv)
                 ssize_t display_written;
                 int display_cmd_len;
 
-                display_cmd_len = snprintf(display_cmd, sizeof(display_cmd), "%dx%d\n", screen_width, screen_height);
+                display_cmd_len = snprint(display_cmd, sizeof(display_cmd), "%dx%d\n", screen_width, screen_height);
                 if (display_cmd_len > 0 && display_cmd_len < (int)sizeof(display_cmd)) {
                     display_ctl_fd = p9_open(g_marrow_client, "/dev/display/ctl", P9_OWRITE);
                     if (display_ctl_fd >= 0) {

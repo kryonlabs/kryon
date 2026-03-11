@@ -6,12 +6,30 @@
  */
 
 #include "p9client.h"
-#include "kryon.h"  /* For P9Node type and P9Hdr */
+#include "kryon.h"  /* For P9Node type and lib9's Fcall */
+#include <lib9.h>
+#include <fcall.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+
+/* Undefine plan9port macros that conflict with POSIX socket functions */
+#undef accept
+#undef bind
+#undef listen
+
+/* Undefine plan9port macros to use standard C library */
+#undef malloc
+#undef free
+#undef realloc
+#undef atoi
+#undef time
+#undef read
+#undef write
+#undef close
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -20,72 +38,15 @@
 /*
  * 9P message constants
  */
-#define P9_VERSION    "9P2000"
 #define P9_MAX_MSG    8192
-
-/*
- * 9P message constants
- */
 #define P9_VERSION    "9P2000"
-#define P9_MAX_MSG    8192
 
 /*
- * 64-bit network byte order conversion
- * Writes 64-bit value in network byte order (big-endian) directly to buffer
- * This avoids the endianness bug where returning a uint64_t and memcpy'ing it
- * causes the CPU to reinterpret the bytes in native byte order.
- */
-static void htonll_bytes(uint8_t *buf, uint64_t value)
-{
-    /* Manually place bytes in big-endian order directly into output buffer */
-    buf[0] = (value >> 56) & 0xFF;
-    buf[1] = (value >> 48) & 0xFF;
-    buf[2] = (value >> 40) & 0xFF;
-    buf[3] = (value >> 32) & 0xFF;
-    buf[4] = (value >> 24) & 0xFF;
-    buf[5] = (value >> 16) & 0xFF;
-    buf[6] = (value >> 8) & 0xFF;
-    buf[7] = value & 0xFF;
-}
-
-/*
- * 9P message types
- */
-#define P9_TVERSION  100
-#define P9_RVERSION  101
-#define P9_TAUTH     102
-#define P9_RAUTH     103
-#define P9_TATTACH   104
-#define P9_RATTACH   105
-#define P9_TERROR    106
-#define P9_RERROR    107
-#define P9_TFLUSH    108
-#define P9_RFLUSH    109
-#define P9_TWALK     110
-#define P9_RWALK     111
-#define P9_TOPEN     112
-#define P9_ROPEN     113
-#define P9_TCREATE   114
-#define P9_RCREATE   115
-#define P9_TREAD     116
-#define P9_RREAD     117
-#define P9_TWRITE    118
-#define P9_RWRITE    119
-#define P9_TCLUNK    120
-#define P9_RCLUNK    121
-#define P9_TREMOVE   122
-#define P9_RREMOVE   123
-#define P9_TSTAT     124
-#define P9_RSTAT     125
-#define P9_TWSTAT    126
-#define P9_RWSTAT    127
-
-/*
- * FID tracking structure
+ * FID state structure
  */
 typedef struct {
     uint32_t fid;
-    int is_stream;      /* Is this a streaming device? */
+    int is_stream;
     uint64_t offset;
     int in_use;
 } P9FID;
@@ -308,7 +269,7 @@ P9Client *p9_connect(const char *address)
         fprintf(stderr, "p9_connect: address too long\n");
         return NULL;
     }
-    strcpy(host_buf, address);
+    strecpy(host_buf, host_buf + sizeof(host_buf), address);
 
     /* Parse tcp!host!port format */
     if (strncmp(host_buf, "tcp!", 4) == 0) {
@@ -352,6 +313,17 @@ P9Client *p9_connect(const char *address)
     if (fd < 0) {
         fprintf(stderr, "p9_connect: socket failed\n");
         return NULL;
+    }
+
+    /* Set 5-second socket timeout to prevent infinite hangs */
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        fprintf(stderr, "p9_connect: warning - failed to set receive timeout\n");
+    }
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0) {
+        fprintf(stderr, "p9_connect: warning - failed to set send timeout\n");
     }
 
     /* Resolve host */
@@ -404,41 +376,27 @@ P9Client *p9_connect(const char *address)
     {
         uint8_t msg[128];
         uint8_t resp[P9_MAX_MSG];
-        P9Hdr *hdr;
-        uint16_t *tag;
-        uint32_t *size;
-        uint8_t *msg_ptr;
-        uint32_t resp_size;
-        uint32_t msg_size;
+        Fcall f;
+        uint msg_size;
         ssize_t n;
 
-        /* Build Tversion */
-        msg_ptr = msg + 4;  /* Skip size field */
-        *msg_ptr++ = P9_TVERSION;
+        /* Build Tversion using lib9 */
+        memset(&f, 0, sizeof(f));
+        f.type = Tversion;
+        f.tag = NOTAG;
+        f.msize = P9_MAX_MSG;
+        f.version = P9_VERSION;
 
-        tag = (uint16_t *)msg_ptr;
-        *tag = htons(0xFFFF);  /* NOTAG */
-        msg_ptr += 2;
-
-        size = (uint32_t *)msg_ptr;
-        *size = htonl(P9_MAX_MSG);
-        msg_ptr += 4;
-
-        /* Version string with 2-byte length prefix (9P string format) */
-        {
-            uint16_t version_len = strlen(P9_VERSION);
-            *(uint16_t *)msg_ptr = htons(version_len);
-            msg_ptr += 2;
-            memcpy(msg_ptr, P9_VERSION, version_len);
-            msg_ptr += version_len;
+        msg_size = convS2M(&f, msg, sizeof(msg));
+        if (msg_size == 0) {
+            fprintf(stderr, "p9_connect: convS2M failed\n");
+            free(client);
+            close(fd);
+            return NULL;
         }
 
-        /* Fill size */
-        msg_size = msg_ptr - msg;
-        *(uint32_t *)msg = htonl(msg_size);
-
         /* Send */
-        if (write_n(fd, msg, msg_ptr - msg) < 0) {
+        if (write_n(fd, msg, msg_size) < 0) {
             fprintf(stderr, "p9_connect: write failed\n");
             free(client);
             close(fd);
@@ -454,26 +412,33 @@ P9Client *p9_connect(const char *address)
             return NULL;
         }
 
-        /* Debug: print raw bytes */
-        fprintf(stderr, "p9_connect: received size bytes: %02x %02x %02x %02x\n",
-                resp[0], resp[1], resp[2], resp[3]);
+        /* Parse response size */
+        {
+            uint32_t resp_size = GBIT32(resp);
+            fprintf(stderr, "p9_connect: resp_size: %u\n", resp_size);
 
-        resp_size = ntohl(*(uint32_t *)resp);
-        fprintf(stderr, "p9_connect: resp_size (after ntohl): %u\n", resp_size);
+            /* Read response body */
+            n = read_n(fd, resp + 4, resp_size - 4);
+            if (n < resp_size - 4) {
+                fprintf(stderr, "p9_connect: read body failed (got %d, expected %u)\n",
+                        (int)n, resp_size - 4);
+                free(client);
+                close(fd);
+                return NULL;
+            }
 
-        /* resp_size includes the 4-byte size field, so read only the body */
-        n = read_n(fd, resp + 4, resp_size - 4);
-        if (n < resp_size - 4) {
-            fprintf(stderr, "p9_connect: read body failed (got %d, expected %u)\n",
-                    (int)n, resp_size - 4);
-            free(client);
-            close(fd);
-            return NULL;
+            /* Parse response using lib9 */
+            memset(&f, 0, sizeof(f));
+            if (convM2S(resp, resp_size, &f) == 0) {
+                fprintf(stderr, "p9_connect: convM2S failed\n");
+                free(client);
+                close(fd);
+                return NULL;
+            }
         }
 
-        hdr = (P9Hdr *)resp;
-        if (hdr->type != P9_RVERSION) {
-            fprintf(stderr, "p9_connect: unexpected response type 0x%02x\n", hdr->type);
+        if (f.type != Rversion) {
+            fprintf(stderr, "p9_connect: unexpected response type 0x%02x\n", f.type);
             free(client);
             close(fd);
             return NULL;
@@ -508,60 +473,41 @@ int p9_authenticate(P9Client *client, int auth_method,
                     const char *user, const char *password)
 {
     (void)password;  /* Unused for now */
+    (void)auth_method;  /* Unused for now */
 
     if (client == NULL) {
         return -1;
     }
 
     strncpy(client->username, user ? user : "none", sizeof(client->username) - 1);
+    client->username[sizeof(client->username) - 1] = '\0';
 
     /* Attach as root user */
     {
         uint8_t msg[256];
         uint8_t resp[P9_MAX_MSG];
-        P9Hdr *hdr;
-        uint16_t *tag;
-        uint32_t *fid;
-        uint8_t *p;
-        uint32_t msg_size;
+        Fcall f;
+        uint msg_size;
         uint32_t resp_size;
         ssize_t n;
 
-        p = msg + 4;
-        *p++ = P9_TATTACH;
+        /* Build Tattach using lib9 */
+        memset(&f, 0, sizeof(f));
+        f.type = Tattach;
+        f.tag = client->tag++;
+        f.fid = client->fid;
+        f.afid = NOFID;
+        f.uname = client->username;
+        f.aname = "";
 
-        tag = (uint16_t *)p;
-        *tag = htons(client->tag++);
-        p += 2;
-
-        fid = (uint32_t *)p;
-        *fid = htonl(client->fid);  /* Fid for root (pre-increment) */
         client->root_fid = client->fid;  /* Save root fid */
         client->fid = (client->fid + 1) % MAX_FIDS;  /* Wrap around */
-        p += 4;
 
-        fid = (uint32_t *)p;
-        *fid = htonl(0xFFFFFFFF);  /* No auth fid */
-        p += 4;
-
-        /* User name with 2-byte length prefix */
-        {
-            uint16_t uname_len = strlen(client->username);
-            *(uint16_t *)p = htons(uname_len);
-            p += 2;
-            memcpy(p, client->username, uname_len);
-            p += uname_len;
+        msg_size = convS2M(&f, msg, sizeof(msg));
+        if (msg_size == 0) {
+            fprintf(stderr, "p9_authenticate: convS2M failed\n");
+            return -1;
         }
-
-        /* Mount point with 2-byte length prefix */
-        {
-            *(uint16_t *)p = htons(0);
-            p += 2;
-        }
-
-        /* Fill size */
-        msg_size = p - msg;
-        *(uint32_t *)msg = htonl(msg_size);
 
         /* Send */
         if (write_n(client->fd, msg, msg_size) < 0) {
@@ -576,22 +522,30 @@ int p9_authenticate(P9Client *client, int auth_method,
             return -1;
         }
 
-        resp_size = ntohl(*(uint32_t *)resp);
-        /* resp_size includes the 4-byte size field, so read only the body */
+        /* Parse response size */
+        resp_size = GBIT32(resp);
+
+        /* Read response body */
         n = read_n(client->fd, resp + 4, resp_size - 4);
         if (n < resp_size - 4) {
             fprintf(stderr, "p9_authenticate: read body failed\n");
             return -1;
         }
 
-        hdr = (P9Hdr *)resp;
-        if (hdr->type == P9_RERROR) {
-            fprintf(stderr, "p9_authenticate: attach failed\n");
+        /* Parse response using lib9 */
+        memset(&f, 0, sizeof(f));
+        if (convM2S(resp, resp_size, &f) == 0) {
+            fprintf(stderr, "p9_authenticate: convM2S failed\n");
             return -1;
         }
 
-        if (hdr->type != P9_RATTACH) {
-            fprintf(stderr, "p9_authenticate: unexpected response 0x%02x\n", hdr->type);
+        if (f.type == Rerror) {
+            fprintf(stderr, "p9_authenticate: attach failed: %s\n", f.ename ? f.ename : "unknown");
+            return -1;
+        }
+
+        if (f.type != Rattach) {
+            fprintf(stderr, "p9_authenticate: unexpected response 0x%02x\n", f.type);
             return -1;
         }
     }
@@ -609,11 +563,8 @@ int p9_open(P9Client *client, const char *path, int mode)
 {
     uint8_t msg[512];
     uint8_t resp[P9_MAX_MSG];
-    P9Hdr *hdr;
-    uint16_t *tag_ptr;
-    uint32_t *fid_ptr;
-    uint8_t *p;
-    uint32_t msg_size;
+    Fcall f;
+    uint msg_size;
     uint32_t resp_size;
     ssize_t n;
     char path_copy[256];
@@ -679,40 +630,26 @@ int p9_open(P9Client *client, const char *path, int mode)
         return -1;
     }
 
-    /* Build Twalk message: size[4] Twalk tag[2] fid[4] newfid[4] nwname[2] wname[nwname][s] */
-    p = msg + 4;  /* Skip size field */
-    *p++ = P9_TWALK;
-
-    tag_ptr = (uint16_t *)p;
-    *tag_ptr = htons(client->tag++);
-    p += 2;
-
-    fid_ptr = (uint32_t *)p;
-    *fid_ptr = htonl(root_fid);
-    p += 4;
-
-    fid_ptr = (uint32_t *)p;
-    *fid_ptr = htonl(fid);
-    p += 4;
-
-    *(uint16_t *)p = htons(nwname);
-    p += 2;
-
-    /* Add path components */
+    /* Build Twalk using lib9 */
+    memset(&f, 0, sizeof(f));
+    f.type = Twalk;
+    f.tag = client->tag++;
+    f.fid = root_fid;
+    f.newfid = fid;
+    f.nwname = nwname;
+    /* Copy wname pointers */
     {
         int i;
         for (i = 0; i < nwname; i++) {
-            uint16_t len = strlen(wnames[i]);
-            *(uint16_t *)p = htons(len);
-            p += 2;
-            memcpy(p, wnames[i], len);
-            p += len;
+            f.wname[i] = wnames[i];
         }
     }
 
-    /* Fill size */
-    msg_size = p - msg;
-    *(uint32_t *)msg = htonl(msg_size);
+    msg_size = convS2M(&f, msg, sizeof(msg));
+    if (msg_size == 0) {
+        fprintf(stderr, "p9_open: convS2M failed for Twalk\n");
+        return -1;
+    }
 
     /* Send Twalk */
     if (write_n(client->fd, msg, msg_size) < 0) {
@@ -727,40 +664,44 @@ int p9_open(P9Client *client, const char *path, int mode)
         return -1;
     }
 
-    resp_size = ntohl(*(uint32_t *)resp);
+    /* Parse response size */
+    resp_size = GBIT32(resp);
+
     n = read_n(client->fd, resp + 4, resp_size - 4);
     if (n < resp_size - 4) {
         fprintf(stderr, "p9_open: Twalk read body failed\n");
         return -1;
     }
 
-    hdr = (P9Hdr *)resp;
-    if (hdr->type == P9_RERROR) {
-        fprintf(stderr, "p9_open: Twalk failed for '%s'\n", path_for_log);
+    /* Parse response using lib9 */
+    memset(&f, 0, sizeof(f));
+    if (convM2S(resp, resp_size, &f) == 0) {
+        fprintf(stderr, "p9_open: convM2S failed for Twalk\n");
         return -1;
     }
 
-    if (hdr->type != P9_RWALK) {
-        fprintf(stderr, "p9_open: unexpected Twalk response type 0x%02x\n", hdr->type);
+    if (f.type == Rerror) {
+        fprintf(stderr, "p9_open: Twalk failed for '%s': %s\n", path_for_log, f.ename ? f.ename : "unknown");
+        return -1;
+    }
+
+    if (f.type != Rwalk) {
+        fprintf(stderr, "p9_open: unexpected Twalk response type 0x%02x\n", f.type);
         return -1;
     }
 
     /* Now Topen the fid */
-    p = msg + 4;
-    *p++ = P9_TOPEN;
+    memset(&f, 0, sizeof(f));
+    f.type = Topen;
+    f.tag = client->tag++;
+    f.fid = fid;
+    f.mode = mode;
 
-    tag_ptr = (uint16_t *)p;
-    *tag_ptr = htons(client->tag++);
-    p += 2;
-
-    fid_ptr = (uint32_t *)p;
-    *fid_ptr = htonl(fid);
-    p += 4;
-
-    *p++ = mode;
-
-    msg_size = p - msg;
-    *(uint32_t *)msg = htonl(msg_size);
+    msg_size = convS2M(&f, msg, sizeof(msg));
+    if (msg_size == 0) {
+        fprintf(stderr, "p9_open: convS2M failed for Topen\n");
+        return -1;
+    }
 
     /* Send Topen */
     if (write_n(client->fd, msg, msg_size) < 0) {
@@ -775,21 +716,29 @@ int p9_open(P9Client *client, const char *path, int mode)
         return -1;
     }
 
-    resp_size = ntohl(*(uint32_t *)resp);
+    /* Parse response size */
+    resp_size = GBIT32(resp);
+
     n = read_n(client->fd, resp + 4, resp_size - 4);
     if (n < resp_size - 4) {
         fprintf(stderr, "p9_open: Topen read body failed\n");
         return -1;
     }
 
-    hdr = (P9Hdr *)resp;
-    if (hdr->type == P9_RERROR) {
-        fprintf(stderr, "p9_open: Topen failed for '%s'\n", path_for_log);
+    /* Parse response using lib9 */
+    memset(&f, 0, sizeof(f));
+    if (convM2S(resp, resp_size, &f) == 0) {
+        fprintf(stderr, "p9_open: convM2S failed for Topen\n");
         return -1;
     }
 
-    if (hdr->type != P9_ROPEN) {
-        fprintf(stderr, "p9_open: unexpected Topen response type 0x%02x\n", hdr->type);
+    if (f.type == Rerror) {
+        fprintf(stderr, "p9_open: Topen failed for '%s': %s\n", path_for_log, f.ename ? f.ename : "unknown");
+        return -1;
+    }
+
+    if (f.type != Ropen) {
+        fprintf(stderr, "p9_open: unexpected Topen response type 0x%02x\n", f.type);
         return -1;
     }
 
@@ -812,11 +761,8 @@ int p9_close(P9Client *client, int fd)
 {
     uint8_t msg[256];
     uint8_t resp[P9_MAX_MSG];
-    P9Hdr *hdr;
-    uint16_t *tag_ptr;
-    uint32_t *fid_ptr;
-    uint8_t *p;
-    uint32_t msg_size;
+    Fcall f;
+    uint msg_size;
     uint32_t resp_size;
     ssize_t n;
 
@@ -835,20 +781,17 @@ int p9_close(P9Client *client, int fd)
         return -1;
     }
 
-    /* Build Tclunk message: size[4] Tclunk tag[2] fid[4] */
-    p = msg + 4;  /* Skip size field */
-    *p++ = P9_TCLUNK;
+    /* Build Tclunk using lib9 */
+    memset(&f, 0, sizeof(f));
+    f.type = Tclunk;
+    f.tag = client->tag++;
+    f.fid = fd;
 
-    tag_ptr = (uint16_t *)p;
-    *tag_ptr = htons(client->tag++);
-    p += 2;
-
-    fid_ptr = (uint32_t *)p;
-    *fid_ptr = htonl(fd);
-    p += 4;
-
-    msg_size = p - msg;
-    *(uint32_t *)msg = htonl(msg_size);
+    msg_size = convS2M(&f, msg, sizeof(msg));
+    if (msg_size == 0) {
+        fprintf(stderr, "p9_close: convS2M failed\n");
+        return -1;
+    }
 
     /* Send Tclunk */
     if (write_n(client->fd, msg, msg_size) < 0) {
@@ -863,7 +806,9 @@ int p9_close(P9Client *client, int fd)
         return -1;
     }
 
-    resp_size = ntohl(*(uint32_t *)resp);
+    /* Parse response size */
+    resp_size = GBIT32(resp);
+
     n = read_n(client->fd, resp + 4, resp_size - 4);
     if (n < resp_size - 4) {
         fprintf(stderr, "p9_close: Tclunk read body failed (got %d, expected %u)\n",
@@ -871,15 +816,22 @@ int p9_close(P9Client *client, int fd)
         return -1;
     }
 
-    hdr = (P9Hdr *)resp;
-    if (hdr->type == P9_RERROR) {
-        fprintf(stderr, "p9_close: server returned error for fd %d\n", fd);
+    /* Parse response using lib9 */
+    memset(&f, 0, sizeof(f));
+    if (convM2S(resp, resp_size, &f) == 0) {
+        fprintf(stderr, "p9_close: convM2S failed\n");
         return -1;
     }
 
-    if (hdr->type != P9_RCLUNK) {
+    if (f.type == Rerror) {
+        fprintf(stderr, "p9_close: server returned error for fd %d: %s\n",
+                fd, f.ename ? f.ename : "unknown");
+        return -1;
+    }
+
+    if (f.type != Rclunk) {
         fprintf(stderr, "p9_close: unexpected response type 0x%02x for fd %d\n",
-                hdr->type, fd);
+                f.type, fd);
         return -1;
     }
 
@@ -899,16 +851,11 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
 {
     uint8_t msg[256];
     uint8_t resp[P9_MAX_MSG];
-    P9Hdr *hdr;
-    uint16_t *tag_ptr;
-    uint32_t *fid_ptr;
-    uint32_t *count_ptr;
-    uint64_t offset;
-    uint8_t *p;
-    uint32_t msg_size;
+    Fcall f;
+    uint msg_size;
     uint32_t resp_size;
     ssize_t n;
-    uint32_t data_count;
+    uint64_t offset;
     P9FID *fid;
 
     if (client == NULL || buf == NULL) {
@@ -935,30 +882,19 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
     /* Get current offset for this FID */
     offset = fid->offset;
 
-    /* Build Tread message: size[4] Tread tag[2] fid[4] offset[8] count[4] */
-    p = msg + 4;  /* Skip size field */
-    *p++ = P9_TREAD;
+    /* Build Tread using lib9 */
+    memset(&f, 0, sizeof(f));
+    f.type = Tread;
+    f.tag = client->tag++;
+    f.fid = fd;
+    f.offset = offset;
+    f.count = count;
 
-    tag_ptr = (uint16_t *)p;
-    *tag_ptr = htons(client->tag++);
-    p += 2;
-
-    fid_ptr = (uint32_t *)p;
-    *fid_ptr = htonl((uint32_t)fd);
-    p += 4;
-
-    /* Encode 64-bit offset directly to buffer in network byte order */
-    htonll_bytes(p, offset);
-
-    p += 8;
-
-    count_ptr = (uint32_t *)p;
-    *count_ptr = htonl((uint32_t)count);
-    p += 4;
-
-    /* Fill size */
-    msg_size = p - msg;
-    *(uint32_t *)msg = htonl(msg_size);
+    msg_size = convS2M(&f, msg, sizeof(msg));
+    if (msg_size == 0) {
+        fprintf(stderr, "p9_read: convS2M failed\n");
+        return -1;
+    }
 
     /* Send Tread */
     if (write_n(client->fd, msg, msg_size) < 0) {
@@ -973,8 +909,10 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
         return -1;
     }
 
-    resp_size = ntohl(*(uint32_t *)resp);
-    /* resp_size includes the 4-byte size field, so read only the body */
+    /* Parse response size */
+    resp_size = GBIT32(resp);
+
+    /* Read response body */
     n = read_n(client->fd, resp + 4, resp_size - 4);
     if (n < resp_size - 4) {
         fprintf(stderr, "p9_read: read body failed (got %d, expected %u)\n",
@@ -982,32 +920,33 @@ ssize_t p9_read(P9Client *client, int fd, void *buf, size_t count)
         return -1;
     }
 
-    hdr = (P9Hdr *)resp;
-    if (hdr->type == P9_RERROR) {
-        fprintf(stderr, "p9_read: server returned error\n");
+    /* Parse response using lib9 */
+    memset(&f, 0, sizeof(f));
+    if (convM2S(resp, resp_size, &f) == 0) {
+        fprintf(stderr, "p9_read: convM2S failed\n");
         return -1;
     }
 
-    if (hdr->type != P9_RREAD) {
-        fprintf(stderr, "p9_read: unexpected response type 0x%02x\n", hdr->type);
+    if (f.type == Rerror) {
+        fprintf(stderr, "p9_read: server returned error: %s\n", f.ename ? f.ename : "unknown");
         return -1;
     }
 
-    /* Parse Rread: size[4] Rread tag[2] count[4] data[count] */
-    p = resp + 7;  /* Skip header */
-    data_count = ntohl(*(uint32_t *)p);
-    p += 4;
+    if (f.type != Rread) {
+        fprintf(stderr, "p9_read: unexpected response type 0x%02x\n", f.type);
+        return -1;
+    }
 
     /* Copy data to buffer */
-    if (data_count > count) {
-        data_count = count;
+    if (f.count > count) {
+        f.count = count;
     }
-    memcpy(buf, p, data_count);
+    memcpy(buf, f.data, f.count);
 
     /* Update offset for next read (will be 0 for streaming) */
-    fid->offset += data_count;
+    fid->offset += f.count;
 
-    return (ssize_t)data_count;
+    return (ssize_t)f.count;
 }
 
 /*
@@ -1017,15 +956,10 @@ ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count)
 {
     uint8_t msg[P9_MAX_MSG];
     uint8_t resp[P9_MAX_MSG];
-    uint8_t *p;
-    uint32_t *fid_ptr;
-    uint64_t *offset_ptr;
-    uint32_t *count_ptr;
-    uint16_t *tag_ptr;
-    uint32_t msg_size;
+    Fcall f;
+    uint msg_size;
     uint32_t resp_size;
     ssize_t n;
-    P9Hdr *hdr;
     uint64_t offset;
     P9FID *fid;
 
@@ -1047,41 +981,20 @@ ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count)
     /* Get current offset for this FID */
     offset = fid->offset;
 
-    /* Build Twrite message */
-    p = msg + 4;  /* Skip size field */
-    *p++ = P9_TWRITE;
+    /* Build Twrite using lib9 */
+    memset(&f, 0, sizeof(f));
+    f.type = Twrite;
+    f.tag = client->tag++;
+    f.fid = fd;
+    f.offset = offset;
+    f.count = count;
+    f.data = (char *)buf;  /* Cast away const for lib9 */
 
-    /* Tag */
-    tag_ptr = (uint16_t *)p;
-    *tag_ptr = htons(client->tag++);
-    p += 2;
-
-    /* FID */
-    fid_ptr = (uint32_t *)p;
-    *fid_ptr = htonl(fd);
-    p += 4;
-
-    /* Offset - write directly to buffer in network byte order */
-    htonll_bytes(p, offset);
-
-    p += 8;
-
-    /* Count */
-    count_ptr = (uint32_t *)p;
-    *count_ptr = htonl(count);
-    p += 4;
-
-    /* Data */
-    if (p + count > msg + sizeof(msg)) {
-        fprintf(stderr, "p9_write: data too large (%d bytes)\n", (int)count);
+    msg_size = convS2M(&f, msg, sizeof(msg));
+    if (msg_size == 0) {
+        fprintf(stderr, "p9_write: convS2M failed\n");
         return -1;
     }
-    memcpy(p, buf, count);
-    p += count;
-
-    /* Fill size */
-    msg_size = p - msg;
-    *(uint32_t *)msg = htonl(msg_size);
 
     /* Send Twrite */
     if (write_n(client->fd, msg, msg_size) < 0) {
@@ -1096,21 +1009,29 @@ ssize_t p9_write(P9Client *client, int fd, const void *buf, size_t count)
         return -1;
     }
 
-    resp_size = ntohl(*(uint32_t *)resp);
+    /* Parse response size */
+    resp_size = GBIT32(resp);
+
     n = read_n(client->fd, resp + 4, resp_size - 4);
     if (n < resp_size - 4) {
         fprintf(stderr, "p9_write: Twrite read body failed\n");
         return -1;
     }
 
-    hdr = (P9Hdr *)resp;
-    if (hdr->type == P9_RERROR) {
-        fprintf(stderr, "p9_write: server returned error\n");
+    /* Parse response using lib9 */
+    memset(&f, 0, sizeof(f));
+    if (convM2S(resp, resp_size, &f) == 0) {
+        fprintf(stderr, "p9_write: convM2S failed\n");
         return -1;
     }
 
-    if (hdr->type != P9_RWRITE) {
-        fprintf(stderr, "p9_write: unexpected response type 0x%02x\n", hdr->type);
+    if (f.type == Rerror) {
+        fprintf(stderr, "p9_write: server returned error: %s\n", f.ename ? f.ename : "unknown");
+        return -1;
+    }
+
+    if (f.type != Rwrite) {
+        fprintf(stderr, "p9_write: unexpected response type 0x%02x\n", f.type);
         return -1;
     }
 

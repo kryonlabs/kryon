@@ -6,16 +6,11 @@
 #include "widget.h"
 #include "namespace.h"
 #include "events.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
-
-/*
- * snprintf prototype for C89 compatibility
- * (gcc provides this as an extension)
- */
-extern int snprintf(char *str, size_t size, const char *format, ...);
 
 /*
  * Forward declarations for property handlers
@@ -110,23 +105,23 @@ struct KryonWindow *window_create(const char *title, int width, int height)
     if (title != NULL) {
         window->title = (char *)malloc(strlen(title) + 1);
         if (window->title != NULL) {
-            strcpy(window->title, title);
+            strecpy(window->title, window->title + strlen(title) + 1, title);
         }
     }
 
     if (window->title == NULL) {
-        snprintf(buf, sizeof(buf), "Window %u", window->id);
+        snprint(buf, sizeof(buf), "Window %u", window->id);
         window->title = (char *)malloc(strlen(buf) + 1);
         if (window->title != NULL) {
-            strcpy(window->title, buf);
+            strecpy(window->title, window->title + strlen(buf) + 1, buf);
         }
     }
 
     /* Default rect */
-    snprintf(buf, sizeof(buf), "100 100 %d %d", width, height);
+    snprint(buf, sizeof(buf), "100 100 %d %d", width, height);
     window->rect = (char *)malloc(strlen(buf) + 1);
     if (window->rect != NULL) {
-        strcpy(window->rect, buf);
+        strecpy(window->rect, window->rect + strlen(buf) + 1, buf);
     }
 
     window->visible = 1;
@@ -204,26 +199,26 @@ struct KryonWindow *window_create_ex(const char *title, int width, int height,
     if (title != NULL) {
         window->title = (char *)malloc(strlen(title) + 1);
         if (window->title != NULL) {
-            strcpy(window->title, title);
+            strecpy(window->title, window->title + strlen(title) + 1, title);
         }
     }
 
     if (window->title == NULL) {
         char buf[64];
-        snprintf(buf, sizeof(buf), "Window %u", window->id);
+        snprint(buf, sizeof(buf), "Window %u", window->id);
         window->title = (char *)malloc(strlen(buf) + 1);
         if (window->title != NULL) {
-            strcpy(window->title, buf);
+            strecpy(window->title, window->title + strlen(buf) + 1, buf);
         }
     }
 
     /* Default rect */
     {
         char buf[64];
-        snprintf(buf, sizeof(buf), "100 100 %d %d", width, height);
+        snprint(buf, sizeof(buf), "100 100 %d %d", width, height);
         window->rect = (char *)malloc(strlen(buf) + 1);
         if (window->rect != NULL) {
-            strcpy(window->rect, buf);
+            strecpy(window->rect, window->rect + strlen(buf) + 1, buf);
         }
     }
 
@@ -406,7 +401,7 @@ int window_set_title(struct KryonWindow *window, const char *title)
     free(window->title);
     window->title = (char *)malloc(strlen(title) + 1);
     if (window->title != NULL) {
-        strcpy(window->title, title);
+        strecpy(window->title, window->title + strlen(title) + 1, title);
     }
 
     return 0;
@@ -424,7 +419,7 @@ int window_set_rect(struct KryonWindow *window, const char *rect)
     free(window->rect);
     window->rect = (char *)malloc(strlen(rect) + 1);
     if (window->rect != NULL) {
-        strcpy(window->rect, rect);
+        strecpy(window->rect, window->rect + strlen(rect) + 1, rect);
     }
 
     return 0;
@@ -654,7 +649,7 @@ int window_create_fs_entries(struct KryonWindow *window, P9Node *windows_root)
     }
 
     /* Create window directory: /windows/{id} */
-    snprintf(dirname, sizeof(dirname), "%u", window->id);
+    snprint(dirname, sizeof(dirname), "%u", window->id);
     window_dir = tree_create_dir(windows_root, dirname);
     if (window_dir == NULL) {
         return -1;

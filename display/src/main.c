@@ -7,6 +7,7 @@
 
 #include "display.h"
 #include "p9client.h"
+#include <lib9.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -139,7 +140,7 @@ DisplayClient *display_client_create(const DisplayConfig *config)
         height = 0;
     }
 
-    sprintf(addr_str, "tcp!%s!%d", host, port);
+    snprint(addr_str, sizeof(addr_str), "tcp!%s!%d", host, port);
 
     dc = (DisplayClient *)calloc(1, sizeof(DisplayClient));
     if (dc == NULL) {
@@ -490,7 +491,7 @@ int display_client_send_mouse(DisplayClient *dc, int x, int y, int buttons)
         return -1;
     }
 
-    len = sprintf(msg, "m 0 %11d %11d %11d 0\n", x, y, buttons);
+    len = snprint(msg, sizeof(msg), "m 0 %11d %11d %11d 0\n", x, y, buttons);
     return p9_write(dc->p9, dc->mouse_fd, msg, len);
 }
 
@@ -511,7 +512,7 @@ int display_client_send_key(DisplayClient *dc, int keycode, int pressed)
         return -1;
     }
 
-    len = sprintf(msg, "k %d %d\n", keycode, pressed);
+    len = snprint(msg, sizeof(msg), "k %d %d\n", keycode, pressed);
     return p9_write(dc->p9, dc->kbd_fd, msg, len);
 }
 

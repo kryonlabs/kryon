@@ -10,6 +10,7 @@
 #include "graphics.h"
 #include "widget.h"
 #include "window.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -17,7 +18,6 @@
 /*
  * External functions
  */
-extern char *strdup(const char *s);
 extern int g_render_dirty;
 extern int *render_get_context(void);
 
@@ -211,8 +211,8 @@ static const char *get_radio_group_id(KryonWidget *w)
         return w->parent->name;
     }
 
-    snprintf(default_group, sizeof(default_group), "window_%u",
-             w->parent_window ? w->parent_window->id : 0);
+    snprint(default_group, sizeof(default_group), "window_%u",
+         w->parent_window ? w->parent_window->id : 0);
     return default_group;
 }
 
@@ -519,7 +519,7 @@ void render_widget(KryonWidget *w, Memimage *screen)
                 free(w->prop_value);
                 w->prop_value = (char *)malloc(2);
                 if (w->prop_value != NULL) {
-                    sprintf(w->prop_value, "%d", new_val);
+                    snprint(w->prop_value, strlen(w->prop_value) + 1, "%d", new_val);
                 }
             }
         }
@@ -699,7 +699,7 @@ void render_widget(KryonWidget *w, Memimage *screen)
                 free(w->prop_value);
                 w->prop_value = (char *)malloc(2);
                 if (w->prop_value != NULL) {
-                    sprintf(w->prop_value, "%d", new_val);
+                    snprint(w->prop_value, strlen(w->prop_value) + 1, "%d", new_val);
                 }
             }
 

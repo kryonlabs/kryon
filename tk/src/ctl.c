@@ -6,6 +6,7 @@
 #include "ctl.h"
 #include "window.h"
 #include "widget.h"
+#include <lib9.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +46,7 @@ int ctl_handle_command(const char *command, char *response, size_t response_size
     parsed = sscanf(args, "%63s", cmd);
     if (parsed != 1) {
         if (response_size > 0) {
-            strcpy(response, "Error: no command\n");
+            strecpy(response, response + strlen("Error: no command\n") + 1, "Error: no command\n");
         }
         return -1;
     }
@@ -65,7 +66,7 @@ int ctl_handle_command(const char *command, char *response, size_t response_size
         win = window_create("Untitled", 800, 600);
         if (win == NULL) {
             if (response_size > 0) {
-                strcpy(response, "Error: failed to create window\n");
+                strecpy(response, response + strlen("Error: failed to create window\n") + 1, "Error: failed to create window\n");
             }
             return -1;
         }
@@ -74,13 +75,13 @@ int ctl_handle_command(const char *command, char *response, size_t response_size
         result = window_create_fs_entries(win, g_windows_dir);
         if (result < 0) {
             if (response_size > 0) {
-                strcpy(response, "Error: failed to create FS entries\n");
+                strecpy(response, response + strlen("Error: failed to create FS entries\n") + 1, "Error: failed to create FS entries\n");
             }
             return -1;
         }
 
         if (response_size > 0) {
-            sprintf(response, "Created window %u\n", (unsigned int)win->id);
+            snprint(response, response_size, "Created window %u\n", (unsigned int)win->id);
         }
         return 0;
     }
@@ -88,7 +89,7 @@ int ctl_handle_command(const char *command, char *response, size_t response_size
     /* Handle create_widget - simplified version */
     if (strcmp(cmd, "create_widget") == 0) {
         if (response_size > 0) {
-            strcpy(response, "Error: create_widget not yet implemented\n");
+            strecpy(response, response + strlen("Error: create_widget not yet implemented\n") + 1, "Error: create_widget not yet implemented\n");
         }
         return -1;
     }
@@ -96,7 +97,7 @@ int ctl_handle_command(const char *command, char *response, size_t response_size
     /* Handle destroy_window */
     if (strcmp(cmd, "destroy_window") == 0) {
         if (response_size > 0) {
-            strcpy(response, "Error: destroy_window not yet implemented\n");
+            strecpy(response, response + strlen("Error: destroy_window not yet implemented\n") + 1, "Error: destroy_window not yet implemented\n");
         }
         return -1;
     }
@@ -104,14 +105,14 @@ int ctl_handle_command(const char *command, char *response, size_t response_size
     /* Handle destroy_widget */
     if (strcmp(cmd, "destroy_widget") == 0) {
         if (response_size > 0) {
-            strcpy(response, "Error: destroy_widget not yet implemented\n");
+            strecpy(response, response + strlen("Error: destroy_widget not yet implemented\n") + 1, "Error: destroy_widget not yet implemented\n");
         }
         return -1;
     }
 
     /* Unknown command */
     if (response_size > 0) {
-        sprintf(response, "Error: unknown command '%s'\n", cmd);
+        snprint(response, response_size, "Error: unknown command '%s'\n", cmd);
     }
     return -1;
 }

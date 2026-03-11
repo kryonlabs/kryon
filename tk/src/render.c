@@ -21,6 +21,7 @@
 #include "render/render.h"
 #include "util.h"
 #include "kryon.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -29,11 +30,6 @@
  * External function for marking dirty state
  */
 extern void devdraw_mark_dirty(void);
-
-/*
- * strdup prototype for C89 compatibility (not in C89 standard)
- */
-extern char *strdup(const char *s);
 
 /*
  * Global dirty flag
@@ -389,7 +385,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                         new_val = state->max_value - min_gap;
                     }
                     state->min_value = new_val;
-                    sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                    snprint(buf, sizeof(buf), "%.1f,%.1f", state->min_value, state->max_value);
                     free(w->prop_value);
                     w->prop_value = strdup(buf);
                     mark_dirty(w->parent_window);
@@ -401,7 +397,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                         new_val = state->min_value + min_gap;
                     }
                     state->max_value = new_val;
-                    sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                    snprint(buf, sizeof(buf), "%.1f,%.1f", state->min_value, state->max_value);
                     free(w->prop_value);
                     w->prop_value = strdup(buf);
                     mark_dirty(w->parent_window);
@@ -421,7 +417,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                     new_val = state->max_value - min_gap;
                 }
                 state->min_value = new_val;
-                sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                snprint(buf, sizeof(buf), "%.1f,%.1f", state->min_value, state->max_value);
                 free(w->prop_value);
                 w->prop_value = strdup(buf);
                 mark_dirty(w->parent_window);
@@ -434,7 +430,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                     new_val = state->min_value + min_gap;
                 }
                 state->max_value = new_val;
-                sprintf(buf, "%.1f,%.1f", state->min_value, state->max_value);
+                snprint(buf, sizeof(buf), "%.1f,%.1f", state->min_value, state->max_value);
                 free(w->prop_value);
                 w->prop_value = strdup(buf);
                 mark_dirty(w->parent_window);
@@ -692,7 +688,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                             free(w->prop_value);
                             w->prop_value = (char *)malloc(16);
                             if (w->prop_value != NULL) {
-                                sprintf(w->prop_value, "%d", state->selected_index);
+                                snprint(w->prop_value, strlen(w->prop_value) + 1, "%d", state->selected_index);
                             }
 
                             /* Close popup */
@@ -809,7 +805,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                 } else if (Dx(widget_rect) > 60) {
                     /* Show percentage if wide enough */
                     int percentage = (int)((value / max_value) * 100.0f);
-                    sprintf(text_buf, "%d%%", percentage);
+                    snprint(text_buf, sizeof(text_buf), "%d%%", percentage);
                     int text_width = memdraw_text_width(font, text_buf);
                     text_pos.x = trough_rect.min.x + (Dx(trough_rect) - text_width) / 2;
                     text_pos.y = trough_rect.min.y + (bar_height - font->height) / 2;
@@ -823,7 +819,7 @@ void render_widget_legacy(KryonWidget *w, Memimage *screen)
                     memdraw_text(screen, text_pos, w->prop_text, DWhite);
                 } else if (Dx(widget_rect) > 60) {
                     int percentage = (int)((value / max_value) * 100.0f);
-                    sprintf(text_buf, "%d%%", percentage);
+                    snprint(text_buf, sizeof(text_buf), "%d%%", percentage);
                     text_pos.x = trough_rect.min.x + 10;
                     text_pos.y = trough_rect.min.y + (bar_height - 12) / 2;
                     memdraw_text(screen, text_pos, text_buf, DWhite);
@@ -930,7 +926,7 @@ int dropdown_parse_options(struct KryonWidget *w, const char *options_str)
     len = strlen(options_str);
     str_copy = (char *)malloc(len + 1);
     if (str_copy == NULL) return -1;
-    strcpy(str_copy, options_str);
+    strecpy(str_copy, str_copy + len + 1, options_str);
 
     token = strtok(str_copy, ",");
     while (token != NULL) {
@@ -956,7 +952,7 @@ int dropdown_parse_options(struct KryonWidget *w, const char *options_str)
         w->internal_data = NULL;
         return -1;
     }
-    strcpy(str_copy, options_str);
+    strecpy(str_copy, str_copy + len + 1, options_str);
 
     token = strtok(str_copy, ",");
     while (token != NULL && i < count) {
@@ -968,7 +964,7 @@ int dropdown_parse_options(struct KryonWidget *w, const char *options_str)
             w->internal_data = NULL;
             return -1;
         }
-        strcpy(state->options[i], token);
+        strecpy(state->options[i], state->options[i] + len + 1, token);
         i++;
         token = strtok(NULL, ",");
     }

@@ -9,14 +9,10 @@
 #include "parser.h"
 #include "widget.h"
 #include "window.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-/*
- * snprintf prototype for C89 compatibility
- */
-extern int snprintf(char *str, size_t size, const char *format, ...);
 
 /*
  * Helper: Parse alignment string to enum
@@ -104,7 +100,7 @@ char *layout_format_rect(int x, int y, int width, int height)
     if (rect_str == NULL) {
         return NULL;
     }
-    snprintf(rect_str, 64, "%d %d %d %d", x, y, width, height);
+    snprint(rect_str, 64, "%d %d %d %d", x, y, width, height);
     return rect_str;
 }
 

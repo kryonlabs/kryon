@@ -7,6 +7,7 @@
 #include "widget.h"
 #include "window.h"
 #include "graphics.h"
+#include <lib9.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -324,7 +325,7 @@ ssize_t event_file_read(char *buf, size_t count, uint64_t offset, EventQueue *eq
     }
 
     /* Format as JSON */
-    len = sprintf(msg,
+    len = snprint(msg, sizeof(msg),
                   "{\"type\":\"%s\",\"widget_id\":%u,\"widget_name\":\"%s\",\"window_id\":%u,"
                   "\"x\":%d,\"y\":%d,\"button\":%d,\"timestamp\":%lu}\n",
                   type_str,
@@ -544,11 +545,6 @@ int generate_key_event(int keycode, int pressed)
 #include "kryon.h"
 
 /*
- * External snprintf for C89
- */
-extern int snprintf(char *str, size_t size, const char *format, ...);
-
-/*
  * Event file data structure
  */
 typedef struct {
@@ -675,19 +671,19 @@ int widget_emit_event(struct KryonWidget *widget, const char *event_type)
     } else {
         /* Generate a name based on widget type and id */
         static char buf[64];
-        snprintf(buf, sizeof(buf), "%s_%d",
-                 widget->prop_type ? widget->prop_type : "widget",
-                 (int)widget->id);
+        snprint(buf, sizeof(buf), "%s_%d",
+               widget->prop_type ? widget->prop_type : "widget",
+               (int)widget->id);
         widget_name = buf;
     }
 
     /* Build event JSON */
     timestamp = time(NULL);
-    snprintf(event_json, sizeof(event_json),
-             "{\"widget\":\"%s\",\"event\":\"%s\",\"timestamp\":%ld}",
-             widget_name,
-             event_type,
-             (long)timestamp);
+    snprint(event_json, sizeof(event_json),
+           "{\"widget\":\"%s\",\"event\":\"%s\",\"timestamp\":%ld}",
+           widget_name,
+           event_type,
+           (long)timestamp);
 
     fprintf(stderr, "widget_emit_event: %s\n", event_json);
 
