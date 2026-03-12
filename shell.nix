@@ -2,9 +2,6 @@
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    # Build tool + Plan 9 compiler toolchain (mk, 9c, 9l, 9ar, ...)
-    plan9port
-
     # SDL2 for display client
     SDL2
     pkg-config
@@ -17,14 +14,37 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
-    export PLAN9="${pkgs.plan9port}/plan9"
-    export PATH="$PLAN9/bin:${pkgs.plan9port}/bin:$PATH"
+    # Set ROOT to TaijiOS root (parent of kryon directory)
+    export ROOT="$(cd "$(dirname "$PWD")" && pwd)"
+
+    # Use bootstrapped toolchain from utils/
+    export PLAN9="$ROOT/utils"
+    export OBJTYPE=amd64
+
+    # Add bootstrapped tools to PATH
+    export PATH="$ROOT/$OBJTYPE:$ROOT/utils:$PATH"
+
+    # Verify toolchain is available
+    if [ ! -x "$ROOT/$OBJTYPE/mk" ]; then
+      echo "Error: Toolchain not bootstrapped!"
+      echo "Run from TaijiOS root: nix-shell"
+      exit 1
+    fi
+
+    # SDL2 flags for mk
+    export SDL2_CFLAGS="${pkgs.SDL2.dev}/include"
+    export SDL2_LDFLAGS="-L${pkgs.SDL2}/lib -lSDL2"
+
+    # Combine flags for mk
+    export EXTRA_CFLAGS="-I$SDL2_CFLAGS"
+    export EXTRA_LDFLAGS="$SDL2_LDFLAGS"
 
     echo "--- Kryon Labs Dev Environment ---"
-    echo "Build tool : mk (Plan 9 make)"
-    echo "Compiler   : 9c (Plan 9 C compiler)"
-    echo "Linker     : 9l (Plan 9 linker)"
-    echo "Display    : Plan 9 libdraw (via plan9port)"
+    echo "Toolchain   : Bootstrapped (utils/)"
+    echo "Build tool   : mk (amd64/mk)"
+    echo "Compiler     : 9c (utils/9c)"
+    echo "Linker       : 9l (utils/9l)"
+    echo "Display      : SDL2"
     echo ""
     echo "Commands:"
     echo "  mk           # build everything"

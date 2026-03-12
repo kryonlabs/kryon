@@ -86,7 +86,7 @@ int cmd_create(int argc, char **argv)
 
     if (argc < 2) {
         cli_print_error("Missing project name");
-        printf("Usage: kryon create <name>\n");
+        printf("Usage: tjk create <name>\n");
         return CLI_INVALID_ARGS;
     }
 
@@ -222,7 +222,7 @@ int cmd_create(int argc, char **argv)
     printf("\n");
     printf("Next steps:\n");
     printf("  cd %s\n", project_name);
-    printf("  kryon run\n");
+    printf("  tjk run\n");
     printf("\n");
 
     return CLI_OK;
@@ -248,7 +248,7 @@ int cmd_build(int argc, char **argv)
     /* Check if we're in a project */
     if (!cli_file_exists("kryon.yaml")) {
         cli_print_error("Not a Kryon project (no kryon.yaml found)");
-        cli_print_info("Run 'kryon create <name>' to create a new project");
+        cli_print_info("Run 'tjk create <name>' to create a new project");
         return CLI_ERROR;
     }
 
@@ -338,7 +338,7 @@ int cmd_run(int argc, char **argv)
         } else if (cli_streq(argv[i], "--stay-open")) {
             stay_open = 1;
         } else if (cli_streq(argv[i], "--help") || cli_streq(argv[i], "-h")) {
-            printf("Usage: kryon run [file.kry] [--watch] [--stay-open]\n");
+            printf("Usage: tjk run [file.kry] [--watch] [--stay-open]\n");
             return CLI_OK;
         } else {
             /* Assume it's a file path */
@@ -357,7 +357,7 @@ int cmd_run(int argc, char **argv)
             }
         } else {
             cli_print_error("No .kry file specified and no kryon.yaml found");
-            printf("Usage: kryon run <file.kry>\n");
+            printf("Usage: tjk run <file.kry>\n");
             return CLI_INVALID_ARGS;
         }
     }
@@ -368,9 +368,9 @@ int cmd_run(int argc, char **argv)
         return CLI_FILE_NOT_FOUND;
     }
 
-    /* For now, delegate to existing kryon-wm */
+    /* For now, delegate to kryon WM */
     /* TODO: Replace with direct execution */
-    snprint(cmd, sizeof(cmd), "./bin/kryon-wm --run %s", kry_file);
+    snprint(cmd, sizeof(cmd), "./bin/kryon --run %s", kry_file);
     if (watch_mode) {
         seprint(cmd + strlen(cmd), cmd + sizeof(cmd), " --watch");
     }
@@ -380,7 +380,7 @@ int cmd_run(int argc, char **argv)
         cli_print_info("Watch mode enabled - edit file to hot-reload");
     }
 
-    printf("  (Delegating to kryon-wm: %s)\n", cmd);
+    printf("  (Delegating to kryon WM: %s)\n", cmd);
     /* system(cmd); */  /* Uncomment when ready */
 
     return CLI_OK;
@@ -484,20 +484,20 @@ int cmd_stop(int argc, char **argv)
         kill_marrow = 1;
     }
 
-    /* Stop kryon-wm */
-    if (system("pgrep -x kryon-wm > /dev/null 2>&1") == 0) {
-        system("pkill -TERM kryon-wm 2>/dev/null");
-        cli_print_info("kryon-wm stopped");
+    /* Stop kryon (WM) */
+    if (system("pgrep -x kryon > /dev/null 2>&1") == 0) {
+        system("pkill -TERM kryon 2>/dev/null");
+        cli_print_info("kryon stopped");
     } else {
-        cli_print_info("kryon-wm not running");
+        cli_print_info("kryon not running");
     }
 
-    /* Stop kryon-view */
-    if (system("pgrep -x kryon-view > /dev/null 2>&1") == 0) {
-        system("pkill -TERM kryon-view 2>/dev/null");
-        cli_print_info("kryon-view stopped");
+    /* Stop emu (display client) */
+    if (system("pgrep -x emu > /dev/null 2>&1") == 0) {
+        system("pkill -TERM emu 2>/dev/null");
+        cli_print_info("emu stopped");
     } else {
-        cli_print_info("kryon-view not running");
+        cli_print_info("emu not running");
     }
 
     /* Stop Marrow if --all */
@@ -509,7 +509,7 @@ int cmd_stop(int argc, char **argv)
             cli_print_info("Marrow not running");
         }
     } else {
-        cli_print_info("Marrow left running (use: kryon stop --all)");
+        cli_print_info("Marrow left running (use: tjk stop --all)");
     }
 
     return CLI_OK;
@@ -530,18 +530,18 @@ int cmd_status(int argc, char **argv)
         printf("  Marrow:     stopped\n");
     }
 
-    /* Check kryon-wm */
-    if (system("pgrep -x kryon-wm > /dev/null 2>&1") == 0) {
-        printf("  kryon-wm:   running\n");
+    /* Check kryon (WM) */
+    if (system("pgrep -x kryon > /dev/null 2>&1") == 0) {
+        printf("  kryon (WM): running\n");
     } else {
-        printf("  kryon-wm:   stopped\n");
+        printf("  kryon (WM): stopped\n");
     }
 
-    /* Check kryon-view */
-    if (system("pgrep -x kryon-view > /dev/null 2>&1") == 0) {
-        printf("  kryon-view: running\n");
+    /* Check emu (display client) */
+    if (system("pgrep -x emu > /dev/null 2>&1") == 0) {
+        printf("  emu (display): running\n");
     } else {
-        printf("  kryon-view: stopped\n");
+        printf("  emu (display): stopped\n");
     }
 
     return CLI_OK;
@@ -557,11 +557,11 @@ int cmd_list(int argc, char **argv)
     printf("\n");
 
     /* Reuse the list_kry_files function from server/main.c */
-    /* For now, just delegate to kryon-wm --list-examples */
-    if (cli_file_exists("./bin/kryon-wm")) {
-        system("./bin/kryon-wm --list-examples");
+    /* For now, just delegate to kryon --list-examples */
+    if (cli_file_exists("./bin/kryon")) {
+        system("./bin/kryon --list-examples");
     } else {
-        printf("  (kryon-wm not built - run 'make' first)\n");
+        printf("  (kryon not built - run 'make' first)\n");
     }
 
     return CLI_OK;

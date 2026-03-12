@@ -51,7 +51,7 @@ static const char* get_kryon_root(void)
 void cli_print_error(const char *fmt, ...)
 {
     va_list args;
-    fprintf(stderr, "[kryon] Error: ");
+    fprintf(stderr, "[tjk] Error: ");
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
@@ -64,7 +64,7 @@ void cli_print_error(const char *fmt, ...)
 void cli_print_info(const char *fmt, ...)
 {
     va_list args;
-    printf("[kryon] ");
+    printf("[tjk] ");
     va_start(args, fmt);
     vprintf(fmt, args);
     va_end(args);
@@ -77,7 +77,7 @@ void cli_print_info(const char *fmt, ...)
 void cli_print_success(const char *fmt, ...)
 {
     va_list args;
-    printf("[kryon] ");
+    printf("[tjk] ");
     va_start(args, fmt);
     vprintf(fmt, args);
     va_end(args);
@@ -91,7 +91,7 @@ void cli_print_usage(const char *command)
 {
     if (command == NULL || strlen(command) == 0) {
         /* General help */
-        printf("Usage: kryon <command> [options]\n");
+        printf("Usage: tjk <command> [options]\n");
         printf("\n");
         printf("Available commands:\n");
         printf("  create <name>     Create a new Kryon project\n");
@@ -105,11 +105,11 @@ void cli_print_usage(const char *command)
         printf("  list              List available example files\n");
         printf("  help [command]    Show help for a command\n");
         printf("\n");
-        printf("Run 'kryon help <command>' for more information on a command.\n");
+        printf("Run 'tjk help <command>' for more information on a command.\n");
     } else {
         /* Command-specific help */
         if (cli_streq(command, "create")) {
-            printf("Usage: kryon create <name>\n");
+            printf("Usage: tjk create <name>\n");
             printf("\n");
             printf("Create a new Kryon project with the given name.\n");
             printf("\n");
@@ -117,9 +117,9 @@ void cli_print_usage(const char *command)
             printf("  name              Project name (must be a valid identifier)\n");
             printf("\n");
             printf("Example:\n");
-            printf("  kryon create myapp\n");
+            printf("  tjk create myapp\n");
         } else if (cli_streq(command, "build")) {
-            printf("Usage: kryon build [target]\n");
+            printf("Usage: tjk build [target]\n");
             printf("\n");
             printf("Build the current project for the specified target.\n");
             printf("\n");
@@ -130,9 +130,9 @@ void cli_print_usage(const char *command)
             printf("  android           Build Android APK\n");
             printf("\n");
             printf("Example:\n");
-            printf("  kryon build linux\n");
+            printf("  tjk build linux\n");
         } else if (cli_streq(command, "run")) {
-            printf("Usage: kryon run [file.kry] [--watch] [--stay-open]\n");
+            printf("Usage: tjk run [file.kry] [--watch] [--stay-open]\n");
             printf("\n");
             printf("Run a .kry file. If no file is specified, runs the project\n");
             printf("defined in kryon.yaml.\n");
@@ -142,10 +142,10 @@ void cli_print_usage(const char *command)
             printf("  --stay-open       Keep window open after WM exits\n");
             printf("\n");
             printf("Example:\n");
-            printf("  kryon run examples/minimal.kry\n");
-            printf("  kryon run --watch\n");
+            printf("  tjk run examples/minimal.kry\n");
+            printf("  tjk run --watch\n");
         } else if (cli_streq(command, "stop")) {
-            printf("Usage: kryon stop [--all]\n");
+            printf("Usage: tjk stop [--all]\n");
             printf("\n");
             printf("Stop running Kryon services.\n");
             printf("\n");
@@ -153,11 +153,11 @@ void cli_print_usage(const char *command)
             printf("  --all             Also stop Marrow server\n");
             printf("\n");
             printf("Example:\n");
-            printf("  kryon stop\n");
-            printf("  kryon stop --all\n");
+            printf("  tjk stop\n");
+            printf("  tjk stop --all\n");
         } else {
             printf("Unknown command: %s\n", command);
-            printf("Run 'kryon help' for list of commands.\n");
+            printf("Run 'tjk help' for list of commands.\n");
         }
     }
 }
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
         return cmd_list(argc - 1, argv + 1);
     } else {
         cli_print_error("Unknown command '%s'", command);
-        printf("Run 'kryon help' for usage information.\n");
+        printf("Run 'tjk help' for usage information.\n");
         return CLI_INVALID_ARGS;
     }
 

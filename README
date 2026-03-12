@@ -1,19 +1,16 @@
-Kryon
------
+Kryon: Plan 9 Window Manager
 
 A Plan 9-style window manager using bind mount namespaces for per-window
-isolation.
+isolation. Kryon provides a desktop environment following Plan 9's philosophy
+of separating the display server from window management.
 
+OVERVIEW
 
-What is Kryon?
+Kryon is a window manager that uses Marrow as the display server and implements
+rio-style namespaces where each window can have its own isolated /dev devices
+through bind mounts.
 
-Kryon is a window manager that follows Plan 9's philosophy of separating the
-display server from window management. It uses Marrow as the display server and
-implements rio-style namespaces where each window can have its own isolated
-/dev devices through bind mounts.
-
-
-Architecture
+Architecture:
 
     Marrow (Display Server)
         ├── /dev/screen     - Main framebuffer
@@ -29,39 +26,67 @@ Architecture
 Each window gets its own namespace where /dev/screen points to that window's
 virtual devices through bind mounts, just like Plan 9's rio.
 
+QUICK START
 
-Building
+Build and run:
 
-Kryon uses Nix for dependency management.
-
-    cd /mnt/storage/Projects/KryonLabs/kryon
     nix-shell --run "make clean && make"
 
+Start Marrow (display server):
 
-Running
+    ./marrow --port 17011
 
-First, start Marrow (the display server):
+Start Kryon:
 
-    cd /mnt/storage/Projects/KryonLabs/marrow
-    nix-shell --run "./bin/marrow"
-
-Then start Kryon:
-
-    cd /mnt/storage/Projects/KryonLabs/kryon
     ./bin/kryon --example minimal
 
 Or run components separately:
 
-    # Terminal 1: Display viewer
-    ./bin/kryon-view
+    # Terminal 1: Display viewer (emu)
+    ../emu/bin/emu
 
     # Terminal 2: Window manager
-    ./bin/kryon-wm --example minimal
+    ./bin/kryon --example minimal
 
+DOCUMENTATION
 
-Examples
+See examples/ directory for UI definition examples.
 
-Kryon loads UI definitions from simple text files:
+COMPONENTS
+
+bin/kryon            - Window manager
+bin/tjk              - CLI tool
+examples/            - UI definition examples
+
+Note: The display client (emu) is now in ../emu/
+
+REQUIREMENTS
+
+    - Nix (for dependency management)
+    - Marrow (display server)
+    - SDL2 (graphics backend)
+
+BUILD
+
+    nix-shell --run "make clean && make"     - Build with Nix
+    nix-shell --run "make"                   - Build
+    nix-shell --run "make clean"             - Clean build artifacts
+
+Binary: bin/kryon (window manager), bin/tjk (CLI tool)
+
+CONFIGURATION
+
+Command-line options:
+
+    --example NAME        Load an example from examples/
+    --load FILE.kryon     Load a specific file
+    --blank               Show blank screen
+    --list-examples       List available examples
+    --help                Show help message
+
+EXAMPLES
+
+Create a simple window:
 
     demo "Demo Window" 800x600 {
         absolute {
@@ -78,24 +103,6 @@ Kryon loads UI definitions from simple text files:
         }
     }
 
-See examples/ directory for more examples.
+List services:
 
-
-Commands
-
-    --example NAME        Load an example from examples/
-    --load FILE.kryon     Load a specific file
-    --blank               Show blank screen
-    --list-examples       List available examples
-    --help                Show help message
-
-
-How It Works
-
-1. Kryon connects to Marrow via 9P protocol
-2. Each window gets a virtual framebuffer
-3. Bind mounts redirect /dev/screen to the window's virtual device
-4. Nested window managers can run in isolated namespaces
-
-This is the Plan 9 way - separate composition from display, use namespaces
-for isolation, and keep everything simple and composable.
+    ./bin/kryon --list-examples
