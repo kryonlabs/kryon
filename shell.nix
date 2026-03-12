@@ -32,8 +32,9 @@ pkgs.mkShell {
     echo "  9c -c foo.c  # compile single file with 9c"
     echo "----------------------------------"
     echo ""
-    echo "Run display: ./bin/kryon-view"
-    echo "Run WM:      ./bin/kryon-wm"
-    echo "Test 9P:     9p -a 'tcp!127.0.0.1!17010' ls /"
+    echo "Run display:  ./bin/kryon-view"
+    echo "Run WM:       ./bin/kryon-wm"
+    echo "Run scripts:  ./bin/lu9 script.lua"
+    echo "Test 9P:      9p -a 'tcp!127.0.0.1!17010' ls /"
   '';
 }

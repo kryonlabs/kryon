@@ -1,162 +1,133 @@
-#!/usr/bin/env lua
--- counter-demo.lua - External controller for counter demo
--- Demonstrates event notification system and state file access
+#!/usr/bin/env lu9
+-- counter-demo.lua - External controller using 9P
+-- Updated for lu9 (native Plan 9 filesystem API)
 
-local WM_ROOT = "/mnt/wm"
+local p9 = require("p9")
+
+-- Configuration
+local MOUNT_POINT = "/mnt/term"  -- Where marrow mounts the 9P filesystem
 local POLL_INTERVAL = 0.05
 
-local state = {
-    window_id = nil,
-    widgets = {},
-}
+-- Find first window
+local function find_window()
+    local path = MOUNT_POINT .. "/mnt/wm/win"
+    local fd, err = p9.open(path, "r")
+    if not fd then
+        io.stderr:write("Failed to open " .. path .. ": " .. (err or "unknown") .. "\n")
+        return nil
+    end
 
--- Utilities
-local function file_read(path)
-    local f = io.open(path, "r")
-    if not f then return nil end
-    local data = f:read("*a")
-    f:close()
-    return data:gsub("%s*$", "")
+    local data = fd:read(4096)
+    fd:close()
+
+    local win_id = tonumber(data:match("%d+"))
+    return win_id
 end
 
-local function file_write(path, content)
-    local f = io.open(path, "w")
-    if not f then return false end
-    f:write(tostring(content))
-    f:close()
+local function read_state(win_id, key)
+    local path = MOUNT_POINT .. "/mnt/wm/win/" .. win_id .. "/state/" .. key
+    local fd, err = p9.open(path, "r")
+    if not fd then
+        return nil
+    end
+
+    local data = fd:read(4096)
+    fd:close()
+
+    if data and #data > 0 then
+        return tonumber(data) or 0
+    end
+    return nil
+end
+
+local function write_state(win_id, key, value)
+    local path = MOUNT_POINT .. "/mnt/wm/win/" .. win_id .. "/state/" .. key
+    local fd, err = p9.open(path, "w")
+    if not fd then
+        return false, err
+    end
+
+    fd:write(tostring(value))
+    fd:close()
     return true
 end
 
-local function log(msg)
-    io.stderr:write("[counter] " .. msg .. "\n")
+local function set_widget_text(win_id, widget_name, text)
+    local path = MOUNT_POINT .. "/mnt/wm/win/" .. win_id .. "/widgets/" .. widget_name .. "/text"
+    local fd, err = p9.open(path, "w")
+    if not fd then
+        return false, err
+    end
+
+    fd:write(text)
+    fd:close()
+    return true
 end
 
--- State helpers
-local function state_path(var)
-    return string.format("%s/win/%d/state/%s", WM_ROOT, state.window_id, var)
-end
+local function poll_event(win_id, widget_name)
+    local path = MOUNT_POINT .. "/mnt/wm/win/" .. win_id .. "/events/" .. widget_name
+    local fd, err = p9.open(path, "r")
+    if not fd then
+        return nil
+    end
 
-local function state_read(var)
-    return file_read(state_path(var))
-end
+    local data = fd:read(4096)
+    fd:close()
 
-local function state_write(var, value)
-    return file_write(state_path(var), value)
-end
-
--- Widget helpers
-local function widget_path(name)
-    return string.format("%s/win/%d/widgets/%s", WM_ROOT, state.window_id, name)
-end
-
-local function widget_write(name, prop, value)
-    return file_write(widget_path(name) .. "/" .. prop, value)
-end
-
--- Discover widgets by name
-local function discover_widgets()
-    local widgets_dir = WM_ROOT .. "/win/" .. state.window_id .. "/widgets"
-    local f = io.popen("ls " .. widgets_dir)
-    if f then
-        for line in f:lines() do
-            local widget_file = widgets_dir .. "/" .. line .. "/name"
-            local widget_name = file_read(widget_file)
-            if widget_name then
-                state.widgets[widget_name:gsub("%s*$", "")] = line
-                log("Found widget: " .. widget_name:gsub("%s*$", "") .. " -> " .. line)
-            end
+    if data and #data > 0 then
+        -- Clear event
+        fd = p9.open(path, "w")
+        if fd then
+            fd:write("")
+            fd:close()
         end
-        f:close()
+        return true
     end
-end
-
--- Event handlers
-local function handle_click(widget_name)
-    local count = tonumber(state_read("count") or "0")
-    local step = tonumber(state_read("step") or "1")
-
-    if widget_name == "increment" then
-        count = count + step
-    elseif widget_name == "decrement" then
-        count = count - step
-    elseif widget_name == "increment_large" then
-        count = count + (step * 10)
-    elseif widget_name == "decrement_large" then
-        count = count - (step * 10)
-    elseif widget_name == "reset" then
-        count = 0
-    end
-
-    -- Update state
-    state_write("count", tostring(count))
-
-    -- Update UI
-    widget_write("counter_display", "text", "Count: " .. count)
-
-    log(string.format("%s: count = %d", widget_name, count))
-end
-
--- Discover window
-local function discover_window()
-    local windows_dir = WM_ROOT .. "/win"
-    local f = io.popen("ls " .. windows_dir)
-    if f then
-        local first = f:read("*a"):match("%d+")
-        f:close()
-        if first then
-            state.window_id = tonumber(first)
-            log("Found window: " .. state.window_id)
-            return true
-        end
-    end
-    return false
-end
-
--- Event notification watcher
-local function watch_events()
-    log("Watching events...")
-
-    while true do
-        -- Check each widget's event file
-        local widgets = {"increment", "decrement", "increment_large", "decrement_large", "reset"}
-
-        for _, widget_name in ipairs(widgets) do
-            local event_path = string.format("%s/win/%d/events/%s", WM_ROOT, state.window_id, widget_name)
-            local event_json = file_read(event_path)
-
-            if event_json and #event_json > 0 then
-                -- Parse JSON (simple)
-                local event_type = event_json:match('"event":"([^"]+)"')
-
-                if event_type == "click" then
-                    handle_click(widget_name)
-                end
-
-                -- Clear event file
-                file_write(event_path, "")
-            end
-        end
-
-        os.execute("sleep " .. POLL_INTERVAL)
-    end
+    return nil
 end
 
 -- Main
-local function main()
-    if not discover_window() then
-        log("Error: No window found")
-        return
-    end
-
-    -- Discover widgets
-    discover_widgets()
-
-    -- Initialize display
-    local initial_count = state_read("count")
-    widget_write("counter_display", "text", "Count: " .. (initial_count or "0"))
-
-    -- Start event loop
-    watch_events()
+local win_id = find_window()
+if not win_id then
+    io.stderr:write("No window found. Make sure marrow is running and a counter-demo window is open.\n")
+    os.exit(1)
 end
 
-main()
+local count = read_state(win_id, "count") or 0
+local step = read_state(win_id, "step") or 1
+
+-- Update display
+set_widget_text(win_id, "counter_display", "Count: " .. count)
+
+print("Connected to window " .. win_id .. ", count=" .. count)
+
+-- Event loop
+local widgets = {"increment", "decrement", "increment_large", "decrement_large", "reset"}
+while true do
+    for _, widget in ipairs(widgets) do
+        if poll_event(win_id, widget) then
+            -- Handle click
+            if widget == "increment" then
+                count = count + step
+            elseif widget == "decrement" then
+                count = count - step
+            elseif widget == "increment_large" then
+                count = count + (step * 10)
+            elseif widget == "decrement_large" then
+                count = count - (step * 10)
+            elseif widget == "reset" then
+                count = 0
+            end
+
+            -- Update state
+            write_state(win_id, "count", count)
+
+            -- Update display
+            set_widget_text(win_id, "counter_display", "Count: " .. count)
+
+            print(widget .. ": count = " .. count)
+        end
+    end
+
+    p9.sleep(POLL_INTERVAL * 1000)  -- p9.sleep takes milliseconds
+end

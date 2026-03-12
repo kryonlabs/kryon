@@ -52,7 +52,7 @@ KRYON_TARGET=$BIN/kryon
 SAVE_PPM_TARGET=$BIN/save_ppm
 
 # Default target
-all:V: lib9-setup setup $LIB_TARGET $KRYON_WM_TARGET $DISPLAY_TARGET $SAVE_PPM_TARGET
+all:V: lib9-setup setup $LIB_TARGET $KRYON_WM_TARGET $DISPLAY_TARGET $SAVE_PPM_TARGET build-lua-bindings
 
 # Build lib9 first
 lib9-setup:V:
@@ -66,6 +66,11 @@ setup:V:
 # Library
 $LIB_TARGET: ${TK_ALL:%=$BUILD/tk/%.$O} ${LIB:%=$BUILD/lib/%.$O} $LIB9_LIB
 	ar rvc $target $prereq
+
+# Copy Lua bindings to build directory
+build-lua-bindings:V:
+	mkdir -p $BUILD/lua
+	cp sdk/lua/*.lua $BUILD/lua/ 2>/dev/null || true
 
 # Kryon Window Manager binary
 $KRYON_WM_TARGET: $WM_SRC/main.c $LIB_TARGET $LIB9_LIB
