@@ -36,11 +36,11 @@ int main(int argc, char **argv)
     (void)argv;
 
     /* Paths to binaries */
-    marrow_path = "../marrow/bin/marrow";
+    marrow_path = "../mu/bin/mu";
     display_path = "./bin/kryon-display";
 
     /* Kill any existing instances */
-    (void)system("pkill -f 'marrow --port 17019' 2>/dev/null");
+    (void)system("pkill -f 'mu --port 17019' 2>/dev/null");
     (void)system("pkill -f 'kryon-display' 2>/dev/null");
     sleep(1);
 

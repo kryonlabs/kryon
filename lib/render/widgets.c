@@ -16,6 +16,41 @@
 #include <stdio.h>
 
 /*
+ * Plan 9 Keyboard Constants (from sys/include/keyboard.h)
+ * These are the standard Plan 9 Rune values for special keys
+ */
+#ifndef KF
+#define KF     0xF000
+#endif
+#ifndef Kbs
+#define Kbs    0x08      /* Backspace */
+#endif
+#ifndef Kdel
+#define Kdel   0x7f      /* Delete */
+#endif
+#ifndef Kleft
+#define Kleft  (KF|0x11) /* Left arrow */
+#endif
+#ifndef Kright
+#define Kright (KF|0x12) /* Right arrow */
+#endif
+#ifndef Kup
+#define Kup    (KF|0x0E) /* Up arrow */
+#endif
+#ifndef Kdown
+#define Kdown  0x80      /* Down arrow */
+#endif
+#ifndef Khome
+#define Khome  (KF|0x0D) /* Home */
+#endif
+#ifndef Kend
+#define Kend   (KF|0x18) /* End */
+#endif
+#ifndef Kesc
+#define Kesc   0x1b      /* Escape */
+#endif
+
+/*
  * External functions
  */
 extern int g_render_dirty;
@@ -92,9 +127,9 @@ int text_input_handle_key(struct KryonWidget *w, int keycode, int pressed)
         return 0;  /* Only handle press events */
     }
 
-    /* Handle special keys */
+    /* Handle special keys using Plan 9 keyboard constants */
     switch (keycode) {
-        case 8:  /* Backspace (SDL_SCANCODE_BACKSPACE) */
+        case Kbs:  /* Backspace (0x08) */
             if (state->cursor_pos > 0) {
                 memmove(state->text + state->cursor_pos - 1,
                         state->text + state->cursor_pos,
@@ -103,27 +138,27 @@ int text_input_handle_key(struct KryonWidget *w, int keycode, int pressed)
             }
             break;
 
-        case 1073741904:  /* Left arrow (SDL_SCANCODE_LEFT) */
+        case Kleft:  /* Left arrow (0xF011) */
             if (state->cursor_pos > 0) {
                 state->cursor_pos--;
             }
             break;
 
-        case 1073741903:  /* Right arrow (SDL_SCANCODE_RIGHT) */
+        case Kright:  /* Right arrow (0xF012) */
             if (state->cursor_pos < (int)strlen(state->text)) {
                 state->cursor_pos++;
             }
             break;
 
-        case 1073741906:  /* Home (SDL_SCANCODE_HOME) */
+        case Khome:  /* Home (0xF00D) */
             state->cursor_pos = 0;
             break;
 
-        case 1073741901:  /* End (SDL_SCANCODE_END) */
+        case Kend:  /* End (0xF018) */
             state->cursor_pos = (int)strlen(state->text);
             break;
 
-        case 127:  /* Delete (SDL_SCANCODE_DELETE) */
+        case Kdel:  /* Delete (0x7f) */
             {
                 size_t len = strlen(state->text);
                 if (state->cursor_pos < (int)len) {

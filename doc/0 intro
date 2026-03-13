@@ -30,12 +30,12 @@ KEY FEATURES
 
 OPERATING MODES
 
-Kryon is a standalone cell. If not running, Marrow remains a "naked" kernel.
+Kryon is a standalone cell. If not running, Mu remains a "naked" kernel.
 
-    # Start Marrow (Headless/Kernel only)
-    marrow --port 17010
+    # Start Mu (Headless/Kernel only)
+    mu --port 17010
 
-    # Start Kryon (Connects to Marrow as a client)
+    # Start Kryon (Connects to Mu as a client)
     # Use -t for TTY-only mode (Serial/RISC-V) or -d for Display mode (Pi/GPU)
     kryon --marrow localhost:17010 --mode display
 
@@ -46,8 +46,8 @@ Kryon is a standalone cell. If not running, Marrow remains a "naked" kernel.
 QUICK START
 
     # Boot the substrate
-    ./marrow/bin/marrow &
-    
+    ./mu/bin/mu &
+
     # Launch the WM Extension
     ./kryon/bin/kryon &
 
