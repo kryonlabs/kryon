@@ -1,4 +1,5 @@
 #include "flint_theme.h"
+#include "flint_theme_meta.h"
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -241,6 +242,10 @@ Color flint_theme_get(const char *scope_name, const char *key)
     value = scope_value(flint_theme_scope("lotus"), key);
     if(value != NULL)
         return value->value;
+
+    Color catalog_color;
+    if(flint_theme_catalog_scope_color(scope_name, key, &catalog_color))
+        return catalog_color;
 
     fprintf(stderr, "warning: missing theme color: %s.%s, using fallback\n",
             scope_name != NULL ? scope_name : "(null)",
