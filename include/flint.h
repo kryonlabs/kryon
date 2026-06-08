@@ -6,5 +6,6 @@
 #include "flint_layout.h"
 #include "flint_icons.h"
 #include "flint_theme.h"
+#include "flint_theme_meta.h"
 
 #endif // FLINT_H
