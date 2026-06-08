@@ -9,6 +9,7 @@ ARFLAGS ?= rcs
 SRCS = \
 	src/flint_color.c \
 	src/flint_scaling.c \
+	src/flint_dpi.c \
 	src/flint_layout.c \
 	src/flint_icons.c \
 	src/flint_ui.c \
