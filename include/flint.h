@@ -5,6 +5,7 @@
 #include "flint_scaling.h"
 #include "flint_layout.h"
 #include "flint_icons.h"
+#include "flint_ui.h"
 #include "flint_theme.h"
 #include "flint_theme_meta.h"
 
