@@ -10,7 +10,9 @@ SRCS = \
 	src/flint_color.c \
 	src/flint_scaling.c \
 	src/flint_layout.c \
-	src/flint_icons.c
+	src/flint_icons.c \
+	src/flint_theme.c \
+	src/flint_theme_meta.c
 
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 LIB = libflint.a
