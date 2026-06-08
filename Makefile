@@ -12,6 +12,7 @@ SRCS = \
 	src/flint_layout.c \
 	src/flint_icons.c \
 	src/flint_ui.c \
+	src/flint_text_layout.c \
 	src/flint_theme.c \
 	src/flint_theme_meta.c
 
