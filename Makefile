@@ -1,20 +1,18 @@
-# Flint UI Library Makefile
+CC ?= gcc
+AR ?= ar
+RAYLIB_DIR ?= ../inbe/vendor/raylib/src
+BUILD_DIR ?= build
+CFLAGS ?= -Wall -Wextra -O2
+CPPFLAGS += -Iinclude -I$(RAYLIB_DIR)
+ARFLAGS ?= rcs
 
-CC = gcc
-AR = ar
-CFLAGS = -Wall -Wextra -O2 -Iinclude -I../inbe/vendor/raylib/src
-ARFLAGS = rcs
+SRCS = \
+	src/flint_color.c \
+	src/flint_scaling.c \
+	src/flint_layout.c \
+	src/flint_icons.c
 
-# Source files
-SRCS = src/flint_color.c \
-       src/flint_scaling.c \
-       src/flint_layout.c \
-       src/flint_icons.c
-
-# Object files
-OBJS = $(SRCS:.c=.o)
-
-# Output library
+OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 LIB = libflint.a
 
 .PHONY: all clean
@@ -24,8 +22,11 @@ all: $(LIB)
 $(LIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR):
+	mkdir -p $@
 
 clean:
-	rm -f $(OBJS) $(LIB)
+	rm -rf $(BUILD_DIR) $(LIB)
