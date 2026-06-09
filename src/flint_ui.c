@@ -822,8 +822,11 @@ ui_draw_dropdown_button(InbeApp *app, int id, int x, int y, int w, int h,
     /* Handle click on button */
     if(hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         state->open = !state->open;
-        if(state->open)
+        if(state->open) {
             state->just_opened = 1;
+            state->scroll_offset = 0;
+            state->touch_drag_active = 0;
+        }
     }
 
     /* Mouse wheel to cycle through options */
@@ -994,6 +997,7 @@ ui_draw_dropdown_menu(InbeApp *app, int id)
                 state->just_opened = 0;
                 state->touch_drag_active = 0;
                 state->touch_pressed = 0;
+                state->scroll_offset = 0;
                 changed = 1;
                 EndScissorMode();
                 goto draw_arrow;
