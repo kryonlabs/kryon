@@ -94,6 +94,11 @@ flint_text_layout_reflow(FlintTextLayout *layout, int max_width, int font_size, 
     layout->line_breaks = new_line_breaks;
     layout->line_widths = new_line_widths;
 
+    /* Initialize all line_breaks to -1 (invalid) except line_breaks[0] */
+    for(int i = 1; i < layout->element_count + 1; i++) {
+        layout->line_breaks[i] = -1;
+    }
+
     for(int i = 0; i < layout->element_count; i++) {
         if(layout->elements[i].type == FLINT_TEXT_ELEMENT_TYPE_TEXT && layout->elements[i].text != NULL)
             layout->elements[i].text_width = MeasureText(layout->elements[i].text, font_size);
@@ -154,7 +159,7 @@ flint_text_layout_draw(FlintTextLayout *layout, int x, int *y, int font_size, Co
     int next_break_line = 1;
 
     for(int i = 0; i < layout->element_count; i++) {
-        if(next_break_line <= layout->line_count && i == layout->line_breaks[next_break_line]) {
+        if(next_break_line <= layout->line_count && next_break_line > 0 && i == layout->line_breaks[next_break_line]) {
             current_y += font_size + line_spacing;
             current_x = x;
             next_break_line++;
