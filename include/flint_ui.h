@@ -56,6 +56,9 @@ void ui_draw_icon_link(InbeApp *app, int x, int y, int icon_size, Texture2D icon
 int ui_draw_slider(InbeApp *app, int id, int x, int y, int w, const char *label, int min, int max, int *value, const char *suffix);
 int ui_draw_slider_vertical(InbeApp *app, int id, int x, int y, int h,
                              int min, int max, int *value);
+typedef void (*ui_slider_vertical_mark_callback)(InbeApp *app, int x, int y, int h, int min, int max, int value);
+int ui_draw_slider_vertical_with_marks(InbeApp *app, int id, int x, int y, int h,
+                                       int min, int max, int *value, ui_slider_vertical_mark_callback callback);
 int ui_draw_toggle_switch(InbeApp *app, int x, int y, int w, int h, int *value,
                          const char *off_label, const char *on_label);
 int ui_draw_checkbox_toggle(InbeApp *app, int x, int y, const char *label, int *value);

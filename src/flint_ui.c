@@ -528,6 +528,64 @@ ui_draw_slider_vertical(InbeApp *app, int id, int x, int y, int h,
 }
 
 int
+ui_draw_slider_vertical_with_marks(InbeApp *app, int id, int x, int y, int h,
+                                   int min, int max, int *value, ui_slider_vertical_mark_callback callback)
+{
+    (void)app;
+    Vector2 mouse_world = ui_mouse_world();
+    int my = (int)mouse_world.y;
+    int track_w = flint_px(8);
+    int knob_w = flint_px(20);
+    int knob_h = flint_px(12);
+    int track_x = x - track_w / 2;
+    int min_touch_w = flint_px(36);
+    int changed = 0;
+    Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
+
+    if(g_ui_slider_active_id == id && !IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+        g_ui_slider_active_id = 0;
+
+    /* Draw track */
+    DrawRectangle(track_x, y, track_w, h, flint_darken(c_bg, 28));
+    ui_draw_bevel(track_x, y, track_w, h, flint_darken(c_bg, 55), flint_lighten(c_bg, 35));
+
+    /* Draw custom marks via callback (between track and knob) */
+    if(callback != NULL)
+        callback(app, x, y, h, min, max, *value);
+
+    /* Check for interaction */
+    if(CheckCollisionPointRec(mouse_world, hit)) {
+        ui_mark_clickable();
+        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !ui_dropdown_captures_click(mouse_world))
+            g_ui_slider_active_id = id;
+    }
+
+    /* Handle drag */
+    if(g_ui_slider_active_id == id && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        int old_value = *value;
+        /* Invert Y so 0% is at bottom, 100% at top */
+        float t = 1.0f - (float)(my - y) / (float)h;
+        if(t < 0.0f)
+            t = 0.0f;
+        if(t > 1.0f)
+            t = 1.0f;
+        *value = min + (int)(t * (float)(max - min) + 0.5f);
+        *value = ui_clampi(*value, min, max);
+        changed = (*value != old_value);
+    }
+
+    /* Draw knob */
+    float t = (float)(*value - min) / (float)(max - min);
+    int position_y = y + h - (int)(t * (float)h);  /* Position on track */
+    int knob_y = position_y - knob_h - flint_px(1);  /* Knob top above position */
+    int knob_x = track_x - (knob_w - track_w) / 2;
+    DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
+    ui_draw_bevel(knob_x, knob_y, knob_w, knob_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
+
+    return changed;
+}
+
+int
 ui_draw_toggle_switch(InbeApp *app, int x, int y, int w, int h, int *value,
                      const char *off_label, const char *on_label)
 {
