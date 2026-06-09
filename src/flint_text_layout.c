@@ -137,6 +137,7 @@ flint_text_layout_reflow(FlintTextLayout *layout, int max_width, int font_size, 
     layout->line_widths[layout->line_count] = current_line_width;
     layout->line_count++;
     layout->total_height = layout->line_count > 0 ? layout->line_count * font_size + (layout->line_count - 1) * line_height : 0;
+    layout->line_height = line_height;  /* Store for later use in draw */
 }
 
 void
@@ -149,7 +150,7 @@ flint_text_layout_draw(FlintTextLayout *layout, int x, int *y, int font_size, Co
     int current_y = *y;
     int space_width = MeasureText(" ", font_size);
     int icon_spacing = flint_px(4);
-    int line_spacing = flint_px(4);
+    int line_spacing = (layout->line_height > 0) ? layout->line_height : flint_px(4);
     int next_break_line = 1;
 
     for(int i = 0; i < layout->element_count; i++) {

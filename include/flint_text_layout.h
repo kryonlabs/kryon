@@ -26,6 +26,7 @@ typedef struct FlintTextLayout {
     int line_count;
     int *line_widths;
     int total_height;
+    int line_height;  /* Store line height from reflow for use in draw */
     int last_reflow_width;
 } FlintTextLayout;
 
