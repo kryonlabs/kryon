@@ -678,6 +678,9 @@ typedef struct UIDropdownState {
     const char **options;
     int option_count;
     int *selected_index;
+    int touch_pressed;
+    int touch_press_start_y;
+    int touch_drag_active;
 } UIDropdownState;
 
 #define MAX_DROPDOWNS 8
@@ -775,6 +778,9 @@ get_or_create_dropdown_state(int id)
         dropdown_states[dropdown_state_count].options = NULL;
         dropdown_states[dropdown_state_count].option_count = 0;
         dropdown_states[dropdown_state_count].selected_index = NULL;
+        dropdown_states[dropdown_state_count].touch_pressed = 0;
+        dropdown_states[dropdown_state_count].touch_press_start_y = 0;
+        dropdown_states[dropdown_state_count].touch_drag_active = 0;
         return &dropdown_states[dropdown_state_count++];
     }
 
@@ -894,6 +900,40 @@ ui_draw_dropdown_menu(InbeApp *app, int id)
     Rectangle menu_bounds = {x, dropdown_y, w, dropdown_h};
     Rectangle btn_bounds = {x, y, w, h};
     Vector2 mouse = ui_mouse_world();
+    int my = (int)mouse.y;
+
+    /* Track pointer movement to distinguish click from drag */
+    if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        if(!state->touch_pressed) {
+            /* Pointer just went down */
+            state->touch_pressed = 1;
+            state->touch_press_start_y = my;
+        } else if(!state->touch_drag_active) {
+            /* Check if movement exceeded threshold (making it a drag, not a click) */
+            int dy = my - state->touch_press_start_y;
+            if(abs(dy) > flint_px(8)) {  /* 8px threshold */
+                state->touch_drag_active = 1;
+            }
+        }
+
+        /* If dragging, scroll the dropdown */
+        if(state->touch_drag_active && max_scroll > 0) {
+            int dy = my - state->touch_press_start_y;
+            state->scroll_offset -= dy;
+            /* Update start position for continuous scrolling */
+            state->touch_press_start_y = my;
+
+            /* Clamp scroll offset */
+            if(state->scroll_offset < 0)
+                state->scroll_offset = 0;
+            if(state->scroll_offset > max_scroll)
+                state->scroll_offset = max_scroll;
+        }
+    } else {
+        /* Pointer released - reset state */
+        state->touch_pressed = 0;
+        state->touch_drag_active = 0;
+    }
 
     /* Click outside closes dropdown */
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -946,7 +986,7 @@ ui_draw_dropdown_menu(InbeApp *app, int id)
             DrawRectangle(x, option_y, w, option_h, c_button_hover);
             ui_mark_clickable();
 
-            if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened) {
+            if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened && !state->touch_drag_active) {
                 *selected_index = i;
                 state->open = 0;
                 state->just_opened = 0;
