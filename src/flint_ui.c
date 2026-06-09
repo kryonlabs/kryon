@@ -905,9 +905,10 @@ ui_draw_dropdown_menu(InbeApp *app, int id)
     /* Track pointer movement to distinguish click from drag */
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         if(!state->touch_pressed) {
-            /* Pointer just went down */
+            /* Pointer just went down - reset drag state */
             state->touch_pressed = 1;
             state->touch_press_start_y = my;
+            state->touch_drag_active = 0;
         } else if(!state->touch_drag_active) {
             /* Check if movement exceeded threshold (making it a drag, not a click) */
             int dy = my - state->touch_press_start_y;
@@ -929,10 +930,9 @@ ui_draw_dropdown_menu(InbeApp *app, int id)
             if(state->scroll_offset > max_scroll)
                 state->scroll_offset = max_scroll;
         }
-    } else {
-        /* Pointer released - reset state */
+    } else if(state->touch_pressed) {
+        /* Pointer just released - only reset touch_pressed, keep touch_drag_active for selection check */
         state->touch_pressed = 0;
-        state->touch_drag_active = 0;
     }
 
     /* Click outside closes dropdown */
@@ -941,6 +941,8 @@ ui_draw_dropdown_menu(InbeApp *app, int id)
            !CheckCollisionPointRec(mouse, btn_bounds) &&
            !CheckCollisionPointRec(mouse, menu_bounds)) {
             state->open = 0;
+            state->touch_drag_active = 0;
+            state->touch_pressed = 0;
         }
     }
 
@@ -990,6 +992,8 @@ ui_draw_dropdown_menu(InbeApp *app, int id)
                 *selected_index = i;
                 state->open = 0;
                 state->just_opened = 0;
+                state->touch_drag_active = 0;
+                state->touch_pressed = 0;
                 changed = 1;
                 EndScissorMode();
                 goto draw_arrow;
