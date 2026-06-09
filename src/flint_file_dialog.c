@@ -125,7 +125,7 @@ static void navigate_into(FlintFileDialogInternal *internal, const char *dirname
 static void render_header(FlintFileDialog *dlg, Rectangle dialog_rect) {
     const char *title = dlg->title;
     int title_font = flint_ui_font();
-    Color title_color = flint_theme_get("global", "text");
+    Color title_color = flint_theme_get("default", "text");
 
     int title_x = dialog_rect.x + flint_px(16);
     int title_y = dialog_rect.y + flint_px(12);
@@ -142,16 +142,16 @@ static void render_breadcrumb(FlintFileDialog *dlg, Rectangle dialog_rect) {
 
     internal->breadcrumb_rect = (Rectangle){
         breadcrumb_x, breadcrumb_y,
-        FILE_DIALOG_WIDTH - flint_px(32), breadcrumb_height
+        dialog_rect.width - flint_px(32), breadcrumb_height
     };
 
-    Color bg = flint_theme_get("global", "input_bg");
+    Color bg = flint_theme_get("default", "background");
     DrawRectangleRec(internal->breadcrumb_rect, bg);
 
-    Color border = flint_theme_get("global", "border");
+    Color border = flint_darken(bg, 30);
     DrawRectangleLinesEx(internal->breadcrumb_rect, 1, border);
 
-    Color text = flint_theme_get("global", "text");
+    Color text = flint_theme_get("default", "text");
     int font = flint_ui_font_small();
 
     char display_path[PATH_MAX];
@@ -189,28 +189,25 @@ static void render_file_list(FlintFileDialog *dlg, Rectangle dialog_rect) {
 
     int list_y = dialog_rect.y + flint_px(70);
     int list_x = dialog_rect.x + flint_px(16);
-    int list_width = FILE_DIALOG_WIDTH - flint_px(32);
+    int list_width = dialog_rect.width - flint_px(32);
     int list_height = flint_px(280);
 
     internal->file_list_rect = (Rectangle){
         list_x, list_y, list_width, list_height
     };
 
-    Color bg = flint_theme_get("global", "list_bg");
-    if(bg.a == 0) bg = (Color){245, 245, 245, 255};
+    Color bg = flint_lighten(flint_theme_get("default", "background"), 10);
     DrawRectangleRec(internal->file_list_rect, bg);
 
-    Color border = flint_theme_get("global", "border");
+    Color border = flint_darken(flint_theme_get("default", "background"), 30);
     DrawRectangleLinesEx(internal->file_list_rect, 1, border);
 
     BeginScissorMode(list_x, list_y, list_width, list_height);
 
     int font = flint_ui_font_small();
-    Color text = flint_theme_get("global", "text");
-    Color hover = flint_theme_get("global", "hover");
-    if(hover.a == 0) hover = (Color){200, 200, 200, 255};
-    Color selected = flint_theme_get("global", "selected");
-    if(selected.a == 0) selected = (Color){100, 150, 255, 255};
+    Color text = flint_theme_get("default", "text");
+    Color hover = flint_theme_get("default", "button_hover");
+    Color selected = flint_darken(flint_theme_get("default", "button"), 20);
 
     int start_idx = internal->scroll_offset;
     int visible_items = (int)(list_height / FILE_DIALOG_ITEM_HEIGHT);
@@ -228,12 +225,8 @@ static void render_file_list(FlintFileDialog *dlg, Rectangle dialog_rect) {
             DrawRectangleRec(item_rect, selected);
         }
 
-        const char *icon = internal->entries[i].is_dir ? "📁" : "📄";
-        DrawText(icon, list_x + flint_px(4), item_y + flint_px(4),
-                font, text);
-
         DrawText(internal->entries[i].name,
-                list_x + flint_px(24), item_y + flint_px(4),
+                list_x + flint_px(8), item_y + flint_px(4),
                 font, text);
     }
 
@@ -245,19 +238,18 @@ static void render_filename_input(FlintFileDialog *dlg, Rectangle dialog_rect) {
 
     int input_y = dialog_rect.y + FILE_DIALOG_HEIGHT - flint_px(64);
     int input_x = dialog_rect.x + flint_px(16);
-    int input_width = FILE_DIALOG_WIDTH - flint_px(32);
+    int input_width = dialog_rect.width - flint_px(32);
     int input_height = flint_px(24);
 
     internal->filename_rect = (Rectangle){
         input_x, input_y, input_width, input_height
     };
 
-    Color bg = flint_theme_get("global", "input_bg");
+    Color bg = flint_theme_get("default", "background");
     DrawRectangleRec(internal->filename_rect, bg);
 
-    Color border = flint_theme_get("global", "border");
-    Color accent = flint_theme_get("global", "accent");
-    if(accent.a == 0) accent = (Color){100, 150, 255, 255};
+    Color border = flint_darken(bg, 30);
+    Color accent = flint_theme_get("default", "button");
 
     if(internal->focus_area == 2) {
         DrawRectangleLinesEx(internal->filename_rect, 2, accent);
@@ -265,7 +257,7 @@ static void render_filename_input(FlintFileDialog *dlg, Rectangle dialog_rect) {
         DrawRectangleLinesEx(internal->filename_rect, 1, border);
     }
 
-    Color text = flint_theme_get("global", "text");
+    Color text = flint_theme_get("default", "text");
     Color label_dim = flint_darken(text, 40);
     int font = flint_ui_font_small();
     DrawText("Filename:", input_x, input_y - flint_px(12), font, label_dim);
@@ -300,36 +292,32 @@ static void render_buttons(FlintFileDialog *dlg, Rectangle dialog_rect) {
     int button_height = flint_px(24);
 
     internal->button_cancel_rect = (Rectangle){
-        dialog_rect.x + FILE_DIALOG_WIDTH - flint_px(176),
+        dialog_rect.x + dialog_rect.width - flint_px(176),
         button_y, button_width, button_height
     };
 
     internal->button_ok_rect = (Rectangle){
-        dialog_rect.x + FILE_DIALOG_WIDTH - flint_px(88),
+        dialog_rect.x + dialog_rect.width - flint_px(88),
         button_y, button_width, button_height
     };
 
-    Color cancel_bg = flint_theme_get("global", "button_bg");
-    if(cancel_bg.a == 0) cancel_bg = (Color){220, 220, 220, 255};
-    Color cancel_text = flint_theme_get("global", "button_text");
-    if(cancel_text.a == 0) cancel_text = BLACK;
+    Color cancel_bg = flint_theme_get("default", "button");
+    Color cancel_text = flint_theme_get("default", "text");
 
     DrawRectangleRec(internal->button_cancel_rect, cancel_bg);
     DrawRectangleLinesEx(internal->button_cancel_rect, 1,
-                        flint_theme_get("global", "border"));
+                        flint_darken(cancel_bg, 30));
     DrawText("Cancel",
             internal->button_cancel_rect.x + flint_px(8),
             internal->button_cancel_rect.y + flint_px(4),
             flint_ui_font_small(), cancel_text);
 
-    Color ok_bg = flint_theme_get("global", "button_primary_bg");
-    if(ok_bg.a == 0) ok_bg = (Color){100, 150, 255, 255};
-    Color ok_text = flint_theme_get("global", "button_primary_text");
-    if(ok_text.a == 0) ok_text = WHITE;
+    Color ok_bg = flint_theme_get("default", "button_hover");
+    Color ok_text = flint_theme_get("default", "text");
 
     DrawRectangleRec(internal->button_ok_rect, ok_bg);
     DrawRectangleLinesEx(internal->button_ok_rect, 1,
-                        flint_theme_get("global", "border"));
+                        flint_darken(ok_bg, 30));
 
     const char *ok_text_str = (dlg->mode == FLINT_FILE_DIALOG_SAVE) ? "Save" : "Open";
     DrawText(ok_text_str,
@@ -341,20 +329,22 @@ static void render_buttons(FlintFileDialog *dlg, Rectangle dialog_rect) {
 static void render_file_dialog(FlintFileDialog *dlg, Vector2 screen_size) {
     FlintFileDialogInternal *internal = (FlintFileDialogInternal *)dlg->_internal;
 
+    /* Use exact application width */
+    internal->dialog_width = (int)screen_size.x;
+
     Rectangle dialog_rect = {
-        (screen_size.x - FILE_DIALOG_WIDTH) / 2,
+        0,
         (screen_size.y - FILE_DIALOG_HEIGHT) / 2,
-        FILE_DIALOG_WIDTH,
+        screen_size.x,
         FILE_DIALOG_HEIGHT
     };
 
     DrawRectangle(0, 0, screen_size.x, screen_size.y, (Color){0, 0, 0, 180});
 
-    Color bg_color = flint_theme_get("global", "window_bg");
-    if(bg_color.a == 0) bg_color = WHITE;
+    Color bg_color = flint_theme_get("default", "background");
     DrawRectangleRec(dialog_rect, bg_color);
 
-    Color border_color = flint_theme_get("global", "border");
+    Color border_color = flint_darken(bg_color, 30);
     DrawRectangleLinesEx(dialog_rect, 2, border_color);
 
     render_header(dlg, dialog_rect);

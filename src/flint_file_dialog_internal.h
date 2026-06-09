@@ -5,7 +5,6 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-#define FILE_DIALOG_WIDTH 600
 #define FILE_DIALOG_HEIGHT 400
 #define FILE_DIALOG_ITEM_HEIGHT 28
 #define FILE_DIALOG_VISIBLE_ITEMS 12
@@ -33,6 +32,7 @@ typedef struct {
     float last_click_time;
     float cursor_blink_time;
     int cursor_visible;
+    int dialog_width;  /* Dynamic width */
 } FlintFileDialogInternal;
 
 /* File system operations */
