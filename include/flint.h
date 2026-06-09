@@ -8,6 +8,7 @@
 #include "flint_icons.h"
 #include "flint_ui.h"
 #include "flint_text_layout.h"
+#include "flint_locale.h"
 #include "flint_theme.h"
 #include "flint_theme_meta.h"
 

@@ -39,6 +39,10 @@ void ui_set_colors(Color text, Color bg, Color circle, Color button, Color butto
 void ui_set_frame(Camera2D camera, int *cursor_clickable);
 void ui_set_icons(Texture2D gear_icon, Texture2D x_icon);
 /* DPI scaling, color, and layout functions now from Flint: flint_px, flint_clamp_px, flint_lighten, flint_darken, flint_centered_column, flint_page_side_padding */
+int flint_ui_font(void);
+int flint_ui_font_small(void);
+int flint_ui_text_y(const char *text, int box_y, int box_h, int font);
+void flint_ui_draw_text_centered(const char *text, int center_x, int center_y, int font, Color color);
 void ui_draw_bevel(int x, int y, int w, int h, Color light, Color dark);
 void ui_draw_text_lines(const char **lines, int count, int x, int *y, int font, int line_h, Color color);
 /* Icon fallback drawing now from Flint: flint_draw_icon_fallback */
