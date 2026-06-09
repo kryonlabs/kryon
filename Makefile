@@ -16,7 +16,9 @@ SRCS = \
 	src/flint_text_layout.c \
 	src/flint_locale.c \
 	src/flint_theme.c \
-	src/flint_theme_meta.c
+	src/flint_theme_meta.c \
+	src/flint_file_dialog.c
+
 
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 LIB = libflint.a
