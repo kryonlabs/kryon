@@ -519,7 +519,7 @@ ui_draw_slider_vertical(InbeApp *app, int id, int x, int y, int h,
     /* Draw knob */
     float t = (float)(*value - min) / (float)(max - min);
     int position_y = y + h - (int)(t * (float)h);  /* Position on track */
-    int knob_y = position_y - knob_h - flint_px(2);  /* Knob above position with spacing */
+    int knob_y = position_y - knob_h - flint_px(1);  /* Knob top above position */
     int knob_x = track_x - (knob_w - track_w) / 2;
     DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
     ui_draw_bevel(knob_x, knob_y, knob_w, knob_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
