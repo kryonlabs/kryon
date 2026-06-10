@@ -22,6 +22,7 @@ SRCS = \
 	src/flint_layout.c \
 	src/flint_icons.c \
 	src/flint_icon_assets.c \
+	src/flint_text.c \
 	src/flint_ui.c \
 	src/flint_text_layout.c \
 	src/flint_locale.c \

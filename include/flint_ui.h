@@ -3,6 +3,7 @@
 
 #include "raylib.h"
 #include "flint.h"
+#include "flint_text.h"
 
 typedef enum {
     UI_ICON_SIZE_TINY,

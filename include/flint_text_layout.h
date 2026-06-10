@@ -3,6 +3,7 @@
 
 #include "raylib.h"
 #include "flint_icons.h"
+#include "flint_text.h"
 
 typedef enum {
     FLINT_TEXT_ELEMENT_TYPE_TEXT,

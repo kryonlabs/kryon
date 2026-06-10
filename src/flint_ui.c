@@ -82,7 +82,7 @@ flint_ui_font_small(void)
 int
 flint_ui_text_y(const char *text, int box_y, int box_h, int font)
 {
-    Font font_data = GetFontDefault();
+    Font font_data = flint_text_font();
     float scale;
     float min_top;
     float max_bottom;
@@ -134,10 +134,10 @@ flint_ui_text_y(const char *text, int box_y, int box_h, int font)
 void
 flint_ui_draw_text_centered(const char *text, int center_x, int center_y, int font, Color color)
 {
-    int text_w = MeasureText(text, font);
+    int text_w = flint_text_measure(text, font);
     int y = flint_ui_text_y(text, center_y - font / 2, font, font);
 
-    DrawText(text, center_x - text_w / 2, y, font, color);
+    flint_text_draw(text, center_x - text_w / 2, y, font, color);
 }
 
 void
@@ -153,7 +153,7 @@ void
 flint_ui_draw_text_lines(const char **lines, int count, int x, int *y, int font, int line_h, Color color)
 {
     for(int i = 0; i < count; i++) {
-        DrawText(lines[i], x, *y, font, color);
+        flint_text_draw(lines[i], x, *y, font, color);
         *y += line_h;
     }
 }
@@ -359,7 +359,7 @@ ui_draw_text_btn(int x, int y, const char *label, int *hover)
     int mb = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int font = flint_clamp_px(20, 16, 22);
-    int w = (int)MeasureText(label, font) + flint_px(20);
+    int w = (int)flint_text_measure(label, font) + flint_px(20);
     int h = flint_clamp_px(30, 26, 34);
 
     x = x - w / 2;
@@ -383,7 +383,7 @@ ui_draw_text_btn(int x, int y, const char *label, int *hover)
         *hover = 0;
     }
 
-    DrawText(label, x + flint_px(10), flint_ui_text_y(label, y, h, font), font, c_text);
+    flint_text_draw(label, x + flint_px(10), flint_ui_text_y(label, y, h, font), font, c_text);
 
     return pressed;
 }
@@ -460,10 +460,10 @@ ui_draw_generic_button(int x, int y, int w, int h, const char *label, UIButtonSt
     }
 
     // Draw text (centered)
-    int text_w = MeasureText(label, font);
+    int text_w = flint_text_measure(label, font);
     int text_x = x + (w - text_w) / 2;
     int text_y = flint_ui_text_y(label, y, h, font);
-    DrawText(label, text_x, text_y, font, text_color);
+    flint_text_draw(label, text_x, text_y, font, text_color);
 
     return clicked;
 }
@@ -547,8 +547,8 @@ ui_draw_slider(int id, int x, int y, int w, const char *label,
         g_ui_slider_active_id = 0;
 
     snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
-    DrawText(label, x, y, label_font, c_text);
-    DrawText(value_text, x + w - MeasureText(value_text, value_font), y, value_font, c_text);
+    flint_text_draw(label, x, y, label_font, c_text);
+    flint_text_draw(value_text, x + w - flint_text_measure(value_text, value_font), y, value_font, c_text);
 
     DrawRectangle(x, track_y, w, track_h, flint_darken(c_bg, 28));
     ui_draw_bevel(x, track_y, w, track_h, flint_darken(c_bg, 55), flint_lighten(c_bg, 35));
@@ -698,8 +698,8 @@ ui_draw_toggle_switch(int x, int y, int w, int h, int *value,
     int hover = 0;
     int min_touch = flint_px(36);
     int font = flint_ui_font();
-    int off_w = MeasureText(off_label, font);
-    int on_w = MeasureText(on_label, font);
+    int off_w = flint_text_measure(off_label, font);
+    int on_w = flint_text_measure(on_label, font);
     int min_half_w = (off_w > on_w ? off_w : on_w) + flint_px(16);
     int min_w = min_half_w * 2 + flint_px(6);
     if(w < min_w)
@@ -733,8 +733,8 @@ ui_draw_toggle_switch(int x, int y, int w, int h, int *value,
     /* Center text in each half of the toggle */
     int off_x = x + w / 4 - off_w / 2;
     int on_x = x + w * 3 / 4 - on_w / 2;
-    DrawText(off_label, off_x, flint_ui_text_y(off_label, y, h, font), font, label_color);
-    DrawText(on_label, on_x, flint_ui_text_y(on_label, y, h, font), font, label_color);
+    flint_text_draw(off_label, off_x, flint_ui_text_y(off_label, y, h, font), font, label_color);
+    flint_text_draw(on_label, on_x, flint_ui_text_y(on_label, y, h, font), font, label_color);
 
     return pressed;
 }
@@ -766,7 +766,7 @@ ui_draw_checkbox_toggle(int x, int y, const char *label, int *value)
         DrawLine(x + box_size / 2, y + box_size - padding, x + box_size - padding, y + padding, c_text);
     }
 
-    DrawText(label, x + box_size + flint_px(10), flint_ui_text_y(label, y, box_size, font), font, c_text);
+    flint_text_draw(label, x + box_size + flint_px(10), flint_ui_text_y(label, y, box_size, font), font, c_text);
 
     return pressed;
 }
@@ -947,7 +947,7 @@ ui_draw_dropdown_button(int id, int x, int y, int w, int h,
 
     /* Draw current selection text */
     const char *current_name = options[*selected_index];
-    DrawText(current_name, x + flint_px(12), flint_ui_text_y(current_name, y, h, font), font, c_text);
+    flint_text_draw(current_name, x + flint_px(12), flint_ui_text_y(current_name, y, h, font), font, c_text);
 
     /* Draw dropdown X icon */
     int x_size = arrow_size;
@@ -1105,7 +1105,7 @@ ui_draw_dropdown_menu(int id)
             }
         }
 
-        DrawText(options[i], x + flint_px(12), flint_ui_text_y(options[i], option_y, option_h, font), font, c_text);
+        flint_text_draw(options[i], x + flint_px(12), flint_ui_text_y(options[i], option_y, option_h, font), font, c_text);
     }
 
     EndScissorMode();
@@ -1142,7 +1142,7 @@ ui_nav_button_width(const char *label, int icon_size, int show_label, int font)
     int width = icon_size + padding * 2;
 
     if(show_label && label != NULL && label[0] != '\0')
-        width += flint_px(10) + MeasureText(label, font);
+        width += flint_px(10) + flint_text_measure(label, font);
     return width;
 }
 
@@ -1189,7 +1189,7 @@ ui_draw_nav_button(int x, int y, int icon_size, Texture2D icon, UIIconType icon_
 
     if(show_label && label != NULL && label[0] != '\0') {
         int text_x = x + icon_size + padding * 2 + flint_px(10);
-        DrawText(label, text_x, flint_ui_text_y(label, y, h, font), font, c_text);
+        flint_text_draw(label, text_x, flint_ui_text_y(label, y, h, font), font, c_text);
     }
 
     return pressed;
@@ -1237,7 +1237,7 @@ ui_draw_nav_button_expand(int x, int y, int icon_size, int w, Texture2D icon, UI
 
     if(show_label && label != NULL && label[0] != '\0') {
         int text_x = x + icon_size + padding * 2 + flint_px(10);
-        DrawText(label, text_x, flint_ui_text_y(label, y, h, font), font, c_text);
+        flint_text_draw(label, text_x, flint_ui_text_y(label, y, h, font), font, c_text);
     }
 
     return pressed;
@@ -1323,8 +1323,8 @@ ui_draw_tutorial_image_placeholder(const char *label, int x, int y, int w, int h
     DrawRectangle(x, y, w, h, flint_darken(c_bg, 12));
     ui_draw_bevel(x, y, w, h, flint_darken(c_bg, 45), flint_lighten(c_bg, 35));
     int font = flint_ui_font();
-    int tw = MeasureText(label, font);
-    DrawText(label, x + w / 2 - tw / 2, flint_ui_text_y(label, y, h, font), font, c_text);
+    int tw = flint_text_measure(label, font);
+    flint_text_draw(label, x + w / 2 - tw / 2, flint_ui_text_y(label, y, h, font), font, c_text);
 }
 
 void
@@ -1382,8 +1382,8 @@ ui_draw_modal(const char *title, const char *message,
     ui_draw_bevel(modal_x, modal_y, modal_w, modal_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
 
     /* Title */
-    int title_w = MeasureText(title, title_font);
-    DrawText(title, modal_x + (modal_w - title_w) / 2, modal_y + flint_px(12), title_font, c_text);
+    int title_w = flint_text_measure(title, title_font);
+    flint_text_draw(title, modal_x + (modal_w - title_w) / 2, modal_y + flint_px(12), title_font, c_text);
 
     /* Message (text layout with icon support) */
     int msg_x = modal_x + flint_px(16);
@@ -1413,8 +1413,8 @@ ui_draw_modal(const char *title, const char *message,
         DrawRectangle(cancel_x, btn_y, btn_w, btn_h, c_button);
         ui_draw_bevel(cancel_x, btn_y, btn_w, btn_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
     }
-    int cancel_text_w = MeasureText(cancel_btn, btn_font);
-    DrawText(cancel_btn, cancel_x + (btn_w - cancel_text_w) / 2, flint_ui_text_y(cancel_btn, btn_y, btn_h, btn_font), btn_font, c_text);
+    int cancel_text_w = flint_text_measure(cancel_btn, btn_font);
+    flint_text_draw(cancel_btn, cancel_x + (btn_w - cancel_text_w) / 2, flint_ui_text_y(cancel_btn, btn_y, btn_h, btn_font), btn_font, c_text);
 
     /* Confirm button */
     if(mx >= confirm_x && mx < confirm_x + btn_w && my >= btn_y && my < btn_y + btn_h) {
@@ -1427,8 +1427,8 @@ ui_draw_modal(const char *title, const char *message,
         DrawRectangle(confirm_x, btn_y, btn_w, btn_h, c_circle);
         ui_draw_bevel(confirm_x, btn_y, btn_w, btn_h, flint_lighten(c_circle, 40), flint_darken(c_circle, 40));
     }
-    int confirm_text_w = MeasureText(confirm_btn, btn_font);
-    DrawText(confirm_btn, confirm_x + (btn_w - confirm_text_w) / 2, flint_ui_text_y(confirm_btn, btn_y, btn_h, btn_font), btn_font, c_text);
+    int confirm_text_w = flint_text_measure(confirm_btn, btn_font);
+    flint_text_draw(confirm_btn, confirm_x + (btn_w - confirm_text_w) / 2, flint_ui_text_y(confirm_btn, btn_y, btn_h, btn_font), btn_font, c_text);
 
     return result;
 }
@@ -1463,8 +1463,8 @@ ui_draw_modal_3btn(const char *title, const char *message,
     ui_draw_bevel(modal_x, modal_y, modal_w, modal_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
 
     /* Title */
-    int title_w = MeasureText(title, title_font);
-    DrawText(title, modal_x + (modal_w - title_w) / 2, modal_y + flint_px(12), title_font, c_text);
+    int title_w = flint_text_measure(title, title_font);
+    flint_text_draw(title, modal_x + (modal_w - title_w) / 2, modal_y + flint_px(12), title_font, c_text);
 
     /* Message (text layout with icon support) */
     int msg_x = modal_x + flint_px(16);
@@ -1497,8 +1497,8 @@ ui_draw_modal_3btn(const char *title, const char *message,
         DrawRectangle(left_x, btn_y, btn_w, btn_h, c_button);
         ui_draw_bevel(left_x, btn_y, btn_w, btn_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
     }
-    int left_text_w = MeasureText(left_btn, btn_font);
-    DrawText(left_btn, left_x + (btn_w - left_text_w) / 2, flint_ui_text_y(left_btn, btn_y, btn_h, btn_font), btn_font, c_text);
+    int left_text_w = flint_text_measure(left_btn, btn_font);
+    flint_text_draw(left_btn, left_x + (btn_w - left_text_w) / 2, flint_ui_text_y(left_btn, btn_y, btn_h, btn_font), btn_font, c_text);
 
     /* Middle button (Save) - primary action */
     if(mx >= middle_x && mx < middle_x + btn_w && my >= btn_y && my < btn_y + btn_h) {
@@ -1511,8 +1511,8 @@ ui_draw_modal_3btn(const char *title, const char *message,
         DrawRectangle(middle_x, btn_y, btn_w, btn_h, c_circle);
         ui_draw_bevel(middle_x, btn_y, btn_w, btn_h, flint_lighten(c_circle, 40), flint_darken(c_circle, 40));
     }
-    int middle_text_w = MeasureText(middle_btn, btn_font);
-    DrawText(middle_btn, middle_x + (btn_w - middle_text_w) / 2, flint_ui_text_y(middle_btn, btn_y, btn_h, btn_font), btn_font, c_text);
+    int middle_text_w = flint_text_measure(middle_btn, btn_font);
+    flint_text_draw(middle_btn, middle_x + (btn_w - middle_text_w) / 2, flint_ui_text_y(middle_btn, btn_y, btn_h, btn_font), btn_font, c_text);
 
     /* Right button (Discard) */
     if(mx >= right_x && mx < right_x + btn_w && my >= btn_y && my < btn_y + btn_h) {
@@ -1525,8 +1525,8 @@ ui_draw_modal_3btn(const char *title, const char *message,
         DrawRectangle(right_x, btn_y, btn_w, btn_h, c_button);
         ui_draw_bevel(right_x, btn_y, btn_w, btn_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
     }
-    int right_text_w = MeasureText(right_btn, btn_font);
-    DrawText(right_btn, right_x + (btn_w - right_text_w) / 2, flint_ui_text_y(right_btn, btn_y, btn_h, btn_font), btn_font, c_text);
+    int right_text_w = flint_text_measure(right_btn, btn_font);
+    flint_text_draw(right_btn, right_x + (btn_w - right_text_w) / 2, flint_ui_text_y(right_btn, btn_y, btn_h, btn_font), btn_font, c_text);
 
     return result;
 }
@@ -1555,8 +1555,8 @@ ui_draw_screen_header(const char *title, int show_close)
     DrawLine(0, title_h - 1, ui_view_width, title_h - 1, flint_darken(c_bg, 42));
 
     /* Draw centered title */
-    int title_w = MeasureText(title, title_font);
-    DrawText(title, (ui_view_width - title_w) / 2, flint_ui_text_y(title, 0, title_h, title_font), title_font, c_text);
+    int title_w = flint_text_measure(title, title_font);
+    flint_text_draw(title, (ui_view_width - title_w) / 2, flint_ui_text_y(title, 0, title_h, title_font), title_font, c_text);
 
     /* Draw close button if requested */
     if(show_close) {

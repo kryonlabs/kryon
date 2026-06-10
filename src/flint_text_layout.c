@@ -101,10 +101,10 @@ flint_text_layout_reflow(FlintTextLayout *layout, int max_width, int font_size, 
 
     for(int i = 0; i < layout->element_count; i++) {
         if(layout->elements[i].type == FLINT_TEXT_ELEMENT_TYPE_TEXT && layout->elements[i].text != NULL)
-            layout->elements[i].text_width = MeasureText(layout->elements[i].text, font_size);
+            layout->elements[i].text_width = flint_text_measure(layout->elements[i].text, font_size);
     }
 
-    int space_width = MeasureText(" ", font_size);
+    int space_width = flint_text_measure(" ", font_size);
     int icon_spacing = flint_px(4);
     layout->line_count = 0;
     layout->line_breaks[0] = 0;
@@ -153,7 +153,7 @@ flint_text_layout_draw(FlintTextLayout *layout, int x, int *y, int font_size, Co
 
     int current_x = x;
     int current_y = *y;
-    int space_width = MeasureText(" ", font_size);
+    int space_width = flint_text_measure(" ", font_size);
     int icon_spacing = flint_px(4);
     int line_spacing = (layout->line_height > 0) ? layout->line_height : flint_px(4);
     int next_break_line = 1;
@@ -175,7 +175,7 @@ flint_text_layout_draw(FlintTextLayout *layout, int x, int *y, int font_size, Co
 
         if(layout->elements[i].type == FLINT_TEXT_ELEMENT_TYPE_TEXT) {
             if(layout->elements[i].text != NULL && layout->elements[i].text[0] != '\0') {
-                DrawText(layout->elements[i].text, current_x, current_y, font_size, color);
+                flint_text_draw(layout->elements[i].text, current_x, current_y, font_size, color);
                 current_x += layout->elements[i].text_width;
             }
         } else {
