@@ -50,6 +50,32 @@ flint_text_measure(const char *text, int font_size)
     return (int)size.x;
 }
 
+int
+flint_text_measure_scaled(const char *text, int scale)
+{
+    Font font = active_font();
+    int width = 0;
+
+    if(text == NULL || font.texture.id == 0 || font.glyphs == NULL || font.baseSize <= 0)
+        return 0;
+    if(scale < 1)
+        scale = 1;
+
+    for(int i = 0; text[i] != '\0';) {
+        int codepoint_byte_count = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
+
+        if(codepoint == '\n')
+            break;
+
+        int index = GetGlyphIndex(font, codepoint);
+        width += font.glyphs[index].advanceX * scale;
+        i += codepoint_byte_count;
+    }
+
+    return width;
+}
+
 void
 flint_text_draw(const char *text, int x, int y, int font_size, Color color)
 {
@@ -62,12 +88,61 @@ flint_text_draw(const char *text, int x, int y, int font_size, Color color)
 }
 
 void
+flint_text_draw_scaled(const char *text, int x, int y, int scale, Color color)
+{
+    Font font = active_font();
+    int cursor_x = x;
+
+    if(text == NULL || font.texture.id == 0 || font.glyphs == NULL || font.recs == NULL)
+        return;
+    if(scale < 1)
+        scale = 1;
+
+    for(int i = 0; text[i] != '\0';) {
+        int codepoint_byte_count = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
+
+        if(codepoint == '\n')
+            break;
+
+        int index = GetGlyphIndex(font, codepoint);
+        GlyphInfo glyph = font.glyphs[index];
+        Rectangle src = font.recs[index];
+
+        if(src.width > 0.0f && src.height > 0.0f) {
+            Rectangle dst = {
+                .x = (float)(cursor_x + glyph.offsetX * scale),
+                .y = (float)(y + glyph.offsetY * scale),
+                .width = src.width * (float)scale,
+                .height = src.height * (float)scale
+            };
+            DrawTexturePro(font.texture, src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
+        }
+
+        cursor_x += glyph.advanceX * scale;
+        i += codepoint_byte_count;
+    }
+}
+
+void
 flint_text_draw_centered(const char *text, int center_x, int center_y, int font_size, Color color)
 {
     int text_w = flint_text_measure(text, font_size);
     int y = flint_text_y(text, center_y - font_size / 2, font_size, font_size);
 
     flint_text_draw(text, center_x - text_w / 2, y, font_size, color);
+}
+
+int
+flint_text_y_scaled(const char *text, int box_y, int box_h, int scale)
+{
+    Font font = active_font();
+    int font_size;
+
+    if(scale < 1)
+        scale = 1;
+    font_size = font.baseSize > 0 ? font.baseSize * scale : 16 * scale;
+    return flint_text_y(text, box_y, box_h, font_size);
 }
 
 int
