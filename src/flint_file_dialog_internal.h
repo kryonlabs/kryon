@@ -5,9 +5,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-#define FILE_DIALOG_HEIGHT 400
 #define FILE_DIALOG_ITEM_HEIGHT 28
-#define FILE_DIALOG_VISIBLE_ITEMS 12
 
 typedef struct {
     char name[256];
@@ -29,10 +27,14 @@ typedef struct {
     Rectangle filename_rect;
     Rectangle button_ok_rect;
     Rectangle button_cancel_rect;
+    Rectangle show_hidden_checkbox_rect;
+    Rectangle scrollbar_rect;
     float last_click_time;
     float cursor_blink_time;
     int cursor_visible;
     int dialog_width;  /* Dynamic width */
+    int dialog_height;  /* Dynamic height */
+    int show_hidden_files;  /* 0 = hide, 1 = show */
 } FlintFileDialogInternal;
 
 /* File system operations */
@@ -49,6 +51,7 @@ static void render_breadcrumb(FlintFileDialog *dlg, Rectangle dialog_rect);
 static void render_file_list(FlintFileDialog *dlg, Rectangle dialog_rect);
 static void render_filename_input(FlintFileDialog *dlg, Rectangle dialog_rect);
 static void render_buttons(FlintFileDialog *dlg, Rectangle dialog_rect);
+static void render_scrollbar(FlintFileDialog *dlg, Rectangle dialog_rect);
 
 /* Event handling */
 static int handle_mouse_input(FlintFileDialog *dlg);
