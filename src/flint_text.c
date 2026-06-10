@@ -73,6 +73,48 @@ flint_text_draw_centered(const char *text, int center_x, int center_y, int font_
 int
 flint_text_y(const char *text, int box_y, int box_h, int font_size)
 {
-    (void)text;
-    return box_y + (int)(((float)box_h - (float)font_size) * 0.5f + 0.5f);
+    Font font = active_font();
+    float scale;
+    float min_top = 0.0f;
+    float max_bottom = 0.0f;
+    int seen_glyph = 0;
+
+    if(text == NULL || text[0] == '\0' || font.texture.id == 0 || font.baseSize <= 0)
+        return box_y + (int)(((float)box_h - (float)font_size) * 0.5f + 0.5f);
+
+    scale = (float)font_size / (float)font.baseSize;
+
+    for(int i = 0; text[i] != '\0';) {
+        int codepoint_byte_count = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
+
+        if(codepoint == '\n')
+            break;
+
+        if(codepoint != ' ' && codepoint != '\t') {
+            int index = GetGlyphIndex(font, codepoint);
+            GlyphInfo glyph = font.glyphs[index];
+            Rectangle rec = font.recs[index];
+            float glyph_top = (float)glyph.offsetY * scale - (float)font.glyphPadding * scale;
+            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)font.glyphPadding) * scale;
+
+            if(!seen_glyph) {
+                min_top = glyph_top;
+                max_bottom = glyph_bottom;
+                seen_glyph = 1;
+            } else {
+                if(glyph_top < min_top)
+                    min_top = glyph_top;
+                if(glyph_bottom > max_bottom)
+                    max_bottom = glyph_bottom;
+            }
+        }
+
+        i += codepoint_byte_count;
+    }
+
+    if(!seen_glyph)
+        return box_y + (int)(((float)box_h - (float)font_size) * 0.5f + 0.5f);
+
+    return box_y + (int)(((float)box_h - (max_bottom - min_top)) * 0.5f - min_top + 0.5f);
 }
