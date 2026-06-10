@@ -621,11 +621,21 @@ ui_draw_slider_vertical(int id, int x, int y, int h,
         changed = (*value != old_value);
     }
 
-    /* Draw knob */
     float t = (float)(*value - min) / (float)(max - min);
     int position_y = y + h - (int)(t * (float)h);  /* Position on track */
     int knob_y = position_y - knob_h - flint_px(1);  /* Knob top above position */
     int knob_x = track_x - (knob_w - track_w) / 2;
+
+    if(position_y < y)
+        position_y = y;
+    if(position_y > y + h)
+        position_y = y + h;
+
+    DrawRectangle(track_x, position_y, track_w, y + h - position_y, c_button_hover);
+    ui_draw_bevel(track_x, position_y, track_w, y + h - position_y,
+                  flint_lighten(c_button_hover, 35), flint_darken(c_button_hover, 35));
+
+    /* Draw knob */
     DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
     ui_draw_bevel(knob_x, knob_y, knob_w, knob_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
 
@@ -679,11 +689,21 @@ ui_draw_slider_vertical_with_marks(int id, int x, int y, int h,
         changed = (*value != old_value);
     }
 
-    /* Draw knob */
     float t = (float)(*value - min) / (float)(max - min);
     int position_y = y + h - (int)(t * (float)h);  /* Position on track */
     int knob_y = position_y - knob_h - flint_px(1);  /* Knob top above position */
     int knob_x = track_x - (knob_w - track_w) / 2;
+
+    if(position_y < y)
+        position_y = y;
+    if(position_y > y + h)
+        position_y = y + h;
+
+    DrawRectangle(track_x, position_y, track_w, y + h - position_y, c_button_hover);
+    ui_draw_bevel(track_x, position_y, track_w, y + h - position_y,
+                  flint_lighten(c_button_hover, 35), flint_darken(c_button_hover, 35));
+
+    /* Draw knob */
     DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
     ui_draw_bevel(knob_x, knob_y, knob_w, knob_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
 
@@ -1554,14 +1574,17 @@ ui_draw_screen_header(const char *title, int show_close)
     DrawRectangle(0, 0, ui_view_width, title_h, flint_darken(c_bg, 14));
     DrawLine(0, title_h - 1, ui_view_width, title_h - 1, flint_darken(c_bg, 42));
 
-    /* Draw centered title */
-    int title_w = flint_text_measure(title, title_font);
-    flint_text_draw(title, (ui_view_width - title_w) / 2, flint_ui_text_y(title, 0, title_h, title_font), title_font, c_text);
-
     /* Draw close button if requested */
+    int close_x = ui_view_width - flint_px(40) - ui_icon_btn_padding(UI_ICON_SIZE_TINY);
+    int title_x = flint_px(16);
+    int title_max_w = show_close ? close_x - title_x - flint_px(12) : ui_view_width - title_x * 2;
+    while(title_font > flint_px(14) && flint_text_measure(title, title_font) > title_max_w)
+        title_font--;
+    flint_text_draw(title, title_x, flint_ui_text_y(title, 0, title_h, title_font), title_font, c_text);
+
     if(show_close) {
-        close_clicked = ui_draw_icon_btn(ui_view_width - flint_px(40) - ui_icon_btn_padding(UI_ICON_SIZE_TINY), flint_px(8),
-                                         UI_ICON_SIZE_TINY, g_ui_x_icon, UI_ICON_TYPE_X, &close_hover);
+        close_clicked = ui_draw_icon_btn(close_x, flint_px(8), UI_ICON_SIZE_TINY,
+                                         g_ui_x_icon, UI_ICON_TYPE_X, &close_hover);
     }
 
     return close_clicked;

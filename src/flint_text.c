@@ -22,7 +22,7 @@ font_spacing(Font font, int font_size)
         return 1.0f;
 
     float spacing = (float)font_size / (float)font.baseSize;
-    return spacing < 1.0f ? 1.0f : spacing;
+    return spacing > 0.0f ? spacing : 1.0f;
 }
 
 void
@@ -45,8 +45,6 @@ flint_text_measure(const char *text, int font_size)
 
     if(text == NULL || font.texture.id == 0)
         return 0;
-    if(font_size < font.baseSize)
-        font_size = font.baseSize;
 
     size = MeasureTextEx(font, text, (float)font_size, font_spacing(font, font_size));
     return (int)size.x;
@@ -59,8 +57,6 @@ flint_text_draw(const char *text, int x, int y, int font_size, Color color)
 
     if(text == NULL || font.texture.id == 0)
         return;
-    if(font_size < font.baseSize)
-        font_size = font.baseSize;
 
     DrawTextEx(font, text, (Vector2){(float)x, (float)y}, (float)font_size, font_spacing(font, font_size), color);
 }
