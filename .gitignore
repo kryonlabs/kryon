@@ -4,3 +4,16 @@
 *.dll
 *~
 
+# Build output
+build/
+libflint.a
+
+# Example binaries
+examples/01_file_dialog
+examples/02_buttons
+examples/02_color
+examples/03_scaling
+examples/03_theme
+examples/04_layout
+examples/05_buttons
+examples/06_theme
