@@ -50,6 +50,9 @@ clean:
 $(LIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
+$(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/flint_icons.h
+	sh scripts/embed-icons.sh $(ICON_DIR) $@
+
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
