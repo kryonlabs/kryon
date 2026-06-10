@@ -5,7 +5,7 @@ CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png)
-ICON_ASSETS_C = $(BUILD_DIR)/flint_icon_assets.c
+ICON_ASSETS_C = src/flint_icon_assets.c
 
 # Check if we're in nix-shell and use its flags
 ifneq ($(NIX_CFLAGS_COMPILE),)
@@ -21,6 +21,7 @@ SRCS = \
 	src/flint_dpi.c \
 	src/flint_layout.c \
 	src/flint_icons.c \
+	src/flint_icon_assets.c \
 	src/flint_ui.c \
 	src/flint_text_layout.c \
 	src/flint_locale.c \
@@ -29,7 +30,6 @@ SRCS = \
 	src/flint_file_dialog.c
 
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SRCS))
-OBJS += $(BUILD_DIR)/flint_icon_assets.o
 LIB = libflint.a
 
 .PHONY: all clean run
@@ -50,12 +50,6 @@ $(LIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/flint_icon_assets.c: scripts/embed_icons.py $(ICON_FILES) | $(BUILD_DIR)
-	python3 scripts/embed_icons.py $(ICON_DIR) $@
-
-$(BUILD_DIR)/flint_icon_assets.o: $(ICON_ASSETS_C) include/flint_icons.h | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR):
