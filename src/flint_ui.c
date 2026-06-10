@@ -82,53 +82,7 @@ flint_ui_font_small(void)
 int
 flint_ui_text_y(const char *text, int box_y, int box_h, int font)
 {
-    Font font_data = flint_text_font();
-    float scale;
-    float min_top;
-    float max_bottom;
-    int seen_glyph;
-
-    if(text == NULL || text[0] == '\0' || font_data.texture.id == 0 || font_data.baseSize <= 0)
-        return box_y + (box_h - font) / 2;
-
-    scale = (float)font / (float)font_data.baseSize;
-    min_top = 0.0f;
-    max_bottom = 0.0f;
-    seen_glyph = 0;
-
-    for(int i = 0; text[i] != '\0';) {
-        int codepoint_byte_count = 0;
-        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
-
-        if(codepoint == '\n')
-            break;
-
-        if(codepoint != ' ' && codepoint != '\t') {
-            int index = GetGlyphIndex(font_data, codepoint);
-            GlyphInfo glyph = font_data.glyphs[index];
-            Rectangle rec = font_data.recs[index];
-            float glyph_top = (float)glyph.offsetY * scale - (float)font_data.glyphPadding * scale;
-            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)font_data.glyphPadding) * scale;
-
-            if(!seen_glyph) {
-                min_top = glyph_top;
-                max_bottom = glyph_bottom;
-                seen_glyph = 1;
-            } else {
-                if(glyph_top < min_top)
-                    min_top = glyph_top;
-                if(glyph_bottom > max_bottom)
-                    max_bottom = glyph_bottom;
-            }
-        }
-
-        i += codepoint_byte_count;
-    }
-
-    if(!seen_glyph)
-        return box_y + (box_h - font) / 2;
-
-    return box_y + (int)(((float)box_h - (max_bottom - min_top)) * 0.5f - min_top + 0.5f);
+    return flint_text_y(text, box_y, box_h, font);
 }
 
 void
