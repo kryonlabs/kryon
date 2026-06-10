@@ -112,6 +112,7 @@ int ui_focus_is_active(int id);
 int ui_focus_activate_pressed(int id);
 void ui_focus_set(int id);
 void ui_focus_clear(void);
+void ui_focus_set_text_input_active(int active);
 void ui_focus_draw(Rectangle bounds);
 
 extern int ui_view_height;

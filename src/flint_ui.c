@@ -22,6 +22,7 @@ static int g_ui_focus_active_id = 0;
 static int g_ui_focus_ids[UI_FOCUS_MAX_ITEMS];
 static int g_ui_focus_count = 0;
 static int g_ui_focus_tab_dir = 0;
+static int g_ui_focus_text_input_active = 0;
 
 static Vector2
 ui_mouse_world(void)
@@ -113,7 +114,8 @@ ui_focus_is_active(int id)
 int
 ui_focus_activate_pressed(int id)
 {
-    return ui_focus_is_active(id) && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE));
+    return ui_focus_is_active(id) &&
+           (IsKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && IsKeyPressed(KEY_SPACE)));
 }
 
 void
@@ -126,6 +128,12 @@ void
 ui_focus_clear(void)
 {
     g_ui_focus_active_id = 0;
+}
+
+void
+ui_focus_set_text_input_active(int active)
+{
+    g_ui_focus_text_input_active = active;
 }
 
 void
