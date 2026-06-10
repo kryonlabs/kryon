@@ -168,6 +168,22 @@ flint_draw_icon_fallback(FlintIconType type, int x, int y, int size, Color color
                    (float)(thickness + 1), color);
         break;
     }
+    case FLINT_ICON_TYPE_STACK: {
+        int p = thickness;
+        int layer_h = size / 4;
+        int gap = thickness;
+        int w = size - p * 2;
+        int top_y = y + p * 2;
+        DrawRectangleLinesEx((Rectangle){(float)(x + p), (float)top_y, (float)w, (float)layer_h},
+                             (float)thickness, color);
+        DrawRectangleLinesEx((Rectangle){(float)(x + p), (float)(top_y + layer_h + gap),
+                                         (float)w, (float)layer_h},
+                             (float)thickness, color);
+        DrawRectangleLinesEx((Rectangle){(float)(x + p), (float)(top_y + (layer_h + gap) * 2),
+                                         (float)w, (float)layer_h},
+                             (float)thickness, color);
+        break;
+    }
     case FLINT_ICON_TYPE_MANUAL:
     case FLINT_ICON_TYPE_STAT: {
         DrawRectangle(x + thickness, y + thickness, size - thickness * 2, size - thickness * 2, color);

@@ -166,6 +166,7 @@ ui_icon_to_flint_icon(UIIconType type)
     case UI_ICON_TYPE_PENCIL: return FLINT_ICON_TYPE_PENCIL;
     case UI_ICON_TYPE_SAVE: return FLINT_ICON_TYPE_SAVE;
     case UI_ICON_TYPE_SOUND: return FLINT_ICON_TYPE_SOUND;
+    case UI_ICON_TYPE_STACK: return FLINT_ICON_TYPE_STACK;
     case UI_ICON_TYPE_NONE:
     default: return FLINT_ICON_TYPE_NONE;
     }
@@ -196,6 +197,44 @@ flint_ui_draw_text_centered(const char *text, int center_x, int center_y, int fo
     int y = flint_ui_text_y(text, center_y - font / 2, font, font);
 
     flint_text_draw(text, center_x - text_w / 2, y, font, color);
+}
+
+void
+flint_ui_draw_text_input(Rectangle bounds, const char *text, int cursor_position,
+                         int focused, int cursor_visible, int font,
+                         FlintUITextInputStyle style)
+{
+    const char *value = text ? text : "";
+    int x = (int)bounds.x;
+    int y = (int)bounds.y;
+    int w = (int)bounds.width;
+    int h = (int)bounds.height;
+    int padding_x = style.padding_x > 0 ? style.padding_x : flint_px(10);
+    int text_x = x + padding_x;
+    int text_y = flint_ui_text_y(value, y, h, font);
+    Color border = focused ? style.focus_border : style.border;
+    float radius = style.radius > 0.0f ? style.radius : 0.12f;
+
+    DrawRectangleRounded(bounds, radius, 8, style.background);
+    DrawRectangleRoundedLines(bounds, radius, 8, border);
+
+    BeginScissorMode(x + padding_x, y, w - padding_x * 2, h);
+    flint_text_draw(value, text_x, text_y, font, style.text);
+
+    if(focused && cursor_visible) {
+        char before_cursor[1024];
+        int len = (int)strlen(value);
+        int clamped_cursor = ui_clampi(cursor_position, 0, len);
+        int copy_len = clamped_cursor;
+        if(copy_len >= (int)sizeof(before_cursor))
+            copy_len = (int)sizeof(before_cursor) - 1;
+        memcpy(before_cursor, value, (size_t)copy_len);
+        before_cursor[copy_len] = '\0';
+
+        int cursor_x = text_x + flint_text_measure(before_cursor, font);
+        DrawRectangle(cursor_x, y + flint_px(6), flint_px(2), h - flint_px(12), style.cursor);
+    }
+    EndScissorMode();
 }
 
 void

@@ -31,7 +31,8 @@ typedef enum {
     UI_ICON_TYPE_TRASH,
     UI_ICON_TYPE_PENCIL,
     UI_ICON_TYPE_SAVE,
-    UI_ICON_TYPE_SOUND
+    UI_ICON_TYPE_SOUND,
+    UI_ICON_TYPE_STACK
 } UIIconType;
 
 typedef enum {
@@ -41,6 +42,16 @@ typedef enum {
     UI_BUTTON_STYLE_TAB,
     UI_BUTTON_STYLE_TAB_SELECTED
 } UIButtonStyle;
+
+typedef struct {
+    Color background;
+    Color border;
+    Color focus_border;
+    Color text;
+    Color cursor;
+    float radius;
+    int padding_x;
+} FlintUITextInputStyle;
 
 void ui_init(int width, int height, float dpi);
 void ui_set_colors(Color text, Color bg, Color circle, Color button, Color button_hover, Color icon);
@@ -52,6 +63,9 @@ int flint_ui_font(void);
 int flint_ui_font_small(void);
 int flint_ui_text_y(const char *text, int box_y, int box_h, int font);
 void flint_ui_draw_text_centered(const char *text, int center_x, int center_y, int font, Color color);
+void flint_ui_draw_text_input(Rectangle bounds, const char *text, int cursor_position,
+                              int focused, int cursor_visible, int font,
+                              FlintUITextInputStyle style);
 void ui_draw_bevel(int x, int y, int w, int h, Color light, Color dark);
 void ui_draw_text_lines(const char **lines, int count, int x, int *y, int font, int line_h, Color color);
 /* Icon fallback drawing now from Flint: flint_draw_icon_fallback */
