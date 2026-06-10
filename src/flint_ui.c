@@ -395,71 +395,37 @@ ui_draw_generic_button(int x, int y, int w, int h, const char *label, UIButtonSt
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int font = flint_ui_font_small();
 
-    // Get theme colors based on style
     Color bg, hover_bg, text_color;
-    Color bg_result, hover_bg_result, text_color_result;
 
     switch(style) {
         case UI_BUTTON_STYLE_PRIMARY:
-            // Try to get theme colors, fall back to defaults
-            if(!flint_theme_catalog_color(FLINT_THEME_SKY, 0, "button", &bg_result))
-                bg = (Color){70, 120, 180, 255};
-            else
-                bg = bg_result;
-
-            if(!flint_theme_catalog_color(FLINT_THEME_SKY, 0, "button_hover", &hover_bg_result))
-                hover_bg = (Color){100, 150, 200, 255};
-            else
-                hover_bg = hover_bg_result;
-
-            if(!flint_theme_catalog_color(FLINT_THEME_SKY, 0, "text", &text_color_result))
-                text_color = BLACK;
-            else
-                text_color = text_color_result;
+            bg = c_button;
+            hover_bg = c_button_hover;
+            text_color = c_text;
             break;
 
         case UI_BUTTON_STYLE_SECONDARY:
-            bg = (Color){100, 100, 100, 255};
-            hover_bg = (Color){130, 130, 130, 255};
-
-            if(!flint_theme_catalog_color(FLINT_THEME_SKY, 0, "text", &text_color_result))
-                text_color = WHITE;
-            else
-                text_color = text_color_result;
+            bg = flint_darken(c_bg, 14);
+            hover_bg = c_button;
+            text_color = c_text;
             break;
 
         case UI_BUTTON_STYLE_DANGER:
             bg = (Color){180, 70, 70, 255};
             hover_bg = (Color){200, 90, 90, 255};
-
-            if(!flint_theme_catalog_color(FLINT_THEME_SKY, 0, "text", &text_color_result))
-                text_color = WHITE;
-            else
-                text_color = text_color_result;
+            text_color = WHITE;
             break;
 
         case UI_BUTTON_STYLE_TAB:
-            bg = (Color){80, 80, 80, 255};
-            hover_bg = (Color){110, 110, 110, 255};
-
-            if(!flint_theme_catalog_color(FLINT_THEME_SKY, 0, "text", &text_color_result))
-                text_color = WHITE;
-            else
-                text_color = text_color_result;
+            bg = flint_darken(c_bg, 10);
+            hover_bg = c_button;
+            text_color = c_text;
             break;
 
         case UI_BUTTON_STYLE_TAB_SELECTED:
-            if(!flint_theme_catalog_color(FLINT_THEME_SKY, 0, "button_hover", &bg_result))
-                bg = (Color){100, 150, 200, 255};
-            else
-                bg = bg_result;
-
+            bg = c_button;
             hover_bg = bg;
-
-            if(!flint_theme_catalog_color(FLINT_THEME_SKY, 0, "text", &text_color_result))
-                text_color = WHITE;
-            else
-                text_color = text_color_result;
+            text_color = c_text;
             break;
 
         default:
