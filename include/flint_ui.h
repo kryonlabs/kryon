@@ -101,7 +101,18 @@ int ui_draw_modal(const char *title, const char *message, const char *cancel_btn
 int ui_draw_modal_3btn(const char *title, const char *message, const char *left_btn, const char *middle_btn, const char *right_btn);
 int ui_draw_screen_header(const char *title, int show_close);
 int ui_screen_header_height(void);
+int ui_scrollbar_reserved_width(int max_scroll);
+int ui_scrollbar_content_width(int content_width, int max_scroll);
 int ui_draw_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll);
+
+void ui_focus_begin(void);
+void ui_focus_end(void);
+int ui_focus_register(int id, Rectangle bounds);
+int ui_focus_is_active(int id);
+int ui_focus_activate_pressed(int id);
+void ui_focus_set(int id);
+void ui_focus_clear(void);
+void ui_focus_draw(Rectangle bounds);
 
 extern int ui_view_height;
 extern int ui_view_width;

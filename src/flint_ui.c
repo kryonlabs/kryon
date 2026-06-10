@@ -17,6 +17,12 @@ static Texture2D g_ui_gear_icon = {0};
 static Texture2D g_ui_x_icon = {0};
 static int g_ui_slider_active_id = 0;
 
+#define UI_FOCUS_MAX_ITEMS 256
+static int g_ui_focus_active_id = 0;
+static int g_ui_focus_ids[UI_FOCUS_MAX_ITEMS];
+static int g_ui_focus_count = 0;
+static int g_ui_focus_tab_dir = 0;
+
 static Vector2
 ui_mouse_world(void)
 {
@@ -38,6 +44,96 @@ ui_clampi(int value, int min_value, int max_value)
     if(value > max_value)
         return max_value;
     return value;
+}
+
+void
+ui_focus_begin(void)
+{
+    g_ui_focus_count = 0;
+    g_ui_focus_tab_dir = 0;
+    if(IsKeyPressed(KEY_TAB))
+        g_ui_focus_tab_dir = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
+}
+
+void
+ui_focus_end(void)
+{
+    int current_index = -1;
+    int next_index;
+
+    if(g_ui_focus_count <= 0) {
+        g_ui_focus_active_id = 0;
+        return;
+    }
+
+    if(g_ui_focus_tab_dir == 0)
+        return;
+
+    for(int i = 0; i < g_ui_focus_count; i++) {
+        if(g_ui_focus_ids[i] == g_ui_focus_active_id) {
+            current_index = i;
+            break;
+        }
+    }
+
+    if(current_index < 0)
+        next_index = g_ui_focus_tab_dir > 0 ? 0 : g_ui_focus_count - 1;
+    else
+        next_index = (current_index + g_ui_focus_tab_dir + g_ui_focus_count) % g_ui_focus_count;
+
+    g_ui_focus_active_id = g_ui_focus_ids[next_index];
+}
+
+int
+ui_focus_register(int id, Rectangle bounds)
+{
+    Vector2 mouse_world;
+
+    if(id <= 0)
+        return 0;
+
+    if(g_ui_focus_count < UI_FOCUS_MAX_ITEMS)
+        g_ui_focus_ids[g_ui_focus_count++] = id;
+
+    mouse_world = ui_mouse_world();
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+       CheckCollisionPointRec(mouse_world, bounds) &&
+       !ui_dropdown_captures_click(mouse_world))
+        g_ui_focus_active_id = id;
+
+    return g_ui_focus_active_id == id;
+}
+
+int
+ui_focus_is_active(int id)
+{
+    return id > 0 && g_ui_focus_active_id == id;
+}
+
+int
+ui_focus_activate_pressed(int id)
+{
+    return ui_focus_is_active(id) && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE));
+}
+
+void
+ui_focus_set(int id)
+{
+    g_ui_focus_active_id = id;
+}
+
+void
+ui_focus_clear(void)
+{
+    g_ui_focus_active_id = 0;
+}
+
+void
+ui_focus_draw(Rectangle bounds)
+{
+    DrawRectangleRoundedLinesEx((Rectangle){bounds.x - flint_px(3), bounds.y - flint_px(3),
+                                            bounds.width + flint_px(6), bounds.height + flint_px(6)},
+                                0.10f, 10, flint_px(2), c_button_hover);
 }
 
 static FlintIconType
@@ -1513,6 +1609,24 @@ int
 ui_screen_header_height(void)
 {
     return flint_clamp_px(60, 48, 60);
+}
+
+int
+ui_scrollbar_reserved_width(int max_scroll)
+{
+    return max_scroll > 0 ? flint_px(18) : 0;
+}
+
+int
+ui_scrollbar_content_width(int content_width, int max_scroll)
+{
+    int reserved = ui_scrollbar_reserved_width(max_scroll);
+
+    if(reserved <= 0)
+        return content_width;
+    if(content_width <= reserved)
+        return 0;
+    return content_width - reserved;
 }
 
 int
