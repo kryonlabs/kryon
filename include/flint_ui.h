@@ -4,8 +4,6 @@
 #include "raylib.h"
 #include "flint.h"
 
-typedef struct InbeApp InbeApp;
-
 typedef enum {
     UI_ICON_SIZE_TINY,
     UI_ICON_SIZE_SMALL,
@@ -35,9 +33,18 @@ typedef enum {
     UI_ICON_TYPE_SOUND
 } UIIconType;
 
+typedef enum {
+    UI_BUTTON_STYLE_PRIMARY,
+    UI_BUTTON_STYLE_SECONDARY,
+    UI_BUTTON_STYLE_DANGER,
+    UI_BUTTON_STYLE_TAB,
+    UI_BUTTON_STYLE_TAB_SELECTED
+} UIButtonStyle;
+
 void ui_init(int width, int height, float dpi);
 void ui_set_colors(Color text, Color bg, Color circle, Color button, Color button_hover, Color icon);
-void ui_set_frame(Camera2D camera, int *cursor_clickable);
+void ui_set_frame(Camera2D camera);
+void ui_set_cursor_clickable(int *cursor_clickable);
 void ui_set_icons(Texture2D gear_icon, Texture2D x_icon);
 /* DPI scaling, color, and layout functions now from Flint: flint_px, flint_clamp_px, flint_lighten, flint_darken, flint_centered_column, flint_page_side_padding */
 int flint_ui_font(void);
@@ -49,21 +56,26 @@ void ui_draw_text_lines(const char **lines, int count, int x, int *y, int font, 
 /* Icon fallback drawing now from Flint: flint_draw_icon_fallback */
 int ui_icon_btn_size(UIIconSize size);
 int ui_icon_btn_padding(UIIconSize size);
-int ui_draw_icon_btn(InbeApp *app, int x, int y, UIIconSize size, Texture2D icon, UIIconType icon_type, int *hover);
-int ui_draw_icon_btn_padded(InbeApp *app, int x, int y, int size, int padding, Texture2D icon, UIIconType icon_type, int *hover);
-int ui_draw_text_btn(InbeApp *app, int x, int y, const char *label, int *hover);
-void ui_draw_icon_link(InbeApp *app, int x, int y, int icon_size, Texture2D icon, UIIconType icon_type, const char *url);
-int ui_draw_slider(InbeApp *app, int id, int x, int y, int w, const char *label, int min, int max, int *value, const char *suffix);
-int ui_draw_slider_vertical(InbeApp *app, int id, int x, int y, int h,
+int ui_draw_icon_btn(int x, int y, UIIconSize size, Texture2D icon, UIIconType icon_type, int *hover);
+int ui_draw_icon_btn_padded(int x, int y, int size, int padding, Texture2D icon, UIIconType icon_type, int *hover);
+int ui_draw_text_btn(int x, int y, const char *label, int *hover);
+
+/* Generic button component with unified styling */
+int ui_draw_generic_button(int x, int y, int w, int h, const char *label, UIButtonStyle style, int *hover);
+
+void ui_draw_icon_link(int x, int y, int icon_size, Texture2D icon, UIIconType icon_type, const char *url);
+int ui_draw_slider(int id, int x, int y, int w, const char *label, int min, int max, int *value, const char *suffix);
+int ui_draw_slider_vertical(int id, int x, int y, int h,
                              int min, int max, int *value);
-typedef void (*ui_slider_vertical_mark_callback)(InbeApp *app, int x, int y, int h, int min, int max, int value);
-int ui_draw_slider_vertical_with_marks(InbeApp *app, int id, int x, int y, int h,
-                                       int min, int max, int *value, ui_slider_vertical_mark_callback callback);
-int ui_draw_toggle_switch(InbeApp *app, int x, int y, int w, int h, int *value,
+typedef void (*ui_slider_vertical_mark_callback)(void *user_data, int x, int y, int h, int min, int max, int value);
+int ui_draw_slider_vertical_with_marks(int id, int x, int y, int h,
+                                       int min, int max, int *value, ui_slider_vertical_mark_callback callback,
+                                       void *callback_user_data);
+int ui_draw_toggle_switch(int x, int y, int w, int h, int *value,
                          const char *off_label, const char *on_label);
-int ui_draw_checkbox_toggle(InbeApp *app, int x, int y, const char *label, int *value);
-int ui_draw_dropdown_button(InbeApp *app, int id, int x, int y, int w, int h, const char **options, int option_count, int *selected_index);
-int ui_draw_dropdown_menu(InbeApp *app, int id);
+int ui_draw_checkbox_toggle(int x, int y, const char *label, int *value);
+int ui_draw_dropdown_button(int id, int x, int y, int w, int h, const char **options, int option_count, int *selected_index);
+int ui_draw_dropdown_menu(int id);
 int ui_dropdown_captures_click(Vector2 point);
 typedef struct UITab {
     const char *label;
@@ -79,16 +91,16 @@ typedef struct UITabBar {
 } UITabBar;
 
 int ui_nav_button_width(const char *label, int icon_size, int show_label, int font);
-int ui_draw_nav_button(InbeApp *app, int x, int y, int icon_size, Texture2D icon, UIIconType icon_type, const char *label, int show_label, int *hover);
-int ui_draw_nav_button_expand(InbeApp *app, int x, int y, int icon_size, int w, Texture2D icon, UIIconType icon_type, const char *label, int show_label, int *hover);
-void ui_draw_tab_bar(UITab *tabs, int count, InbeApp *app);
+int ui_draw_nav_button(int x, int y, int icon_size, Texture2D icon, UIIconType icon_type, const char *label, int show_label, int *hover);
+int ui_draw_nav_button_expand(int x, int y, int icon_size, int w, Texture2D icon, UIIconType icon_type, const char *label, int show_label, int *hover);
+void ui_draw_tab_bar(UITab *tabs, int count);
 void ui_draw_tutorial_image_placeholder(const char *label, int x, int y, int w, int h);
 void ui_draw_tutorial_image(Texture2D texture, const char *fallback, int x, int y, int w, int h);
-int ui_draw_modal(InbeApp *app, const char *title, const char *message, const char *cancel_btn, const char *confirm_btn);
-int ui_draw_modal_3btn(InbeApp *app, const char *title, const char *message, const char *left_btn, const char *middle_btn, const char *right_btn);
-int ui_draw_screen_header(InbeApp *app, const char *title, int show_close);
+int ui_draw_modal(const char *title, const char *message, const char *cancel_btn, const char *confirm_btn);
+int ui_draw_modal_3btn(const char *title, const char *message, const char *left_btn, const char *middle_btn, const char *right_btn);
+int ui_draw_screen_header(const char *title, int show_close);
 int ui_screen_header_height(void);
-int ui_draw_scrollbar(InbeApp *app, int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll);
+int ui_draw_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll);
 
 extern int ui_view_height;
 extern int ui_view_width;

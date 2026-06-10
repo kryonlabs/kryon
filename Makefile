@@ -1,9 +1,18 @@
 CC ?= gcc
 AR ?= ar
-RAYLIB_DIR ?= ../inbe/vendor/raylib/src
 BUILD_DIR ?= build
 CFLAGS ?= -Wall -Wextra -O2
-CPPFLAGS += -Iinclude -I$(RAYLIB_DIR)
+CPPFLAGS_BASE = -Iinclude
+ICON_DIR ?= icons
+ICON_FILES = $(wildcard $(ICON_DIR)/*.png)
+ICON_ASSETS_C = $(BUILD_DIR)/flint_icon_assets.c
+
+# Check if we're in nix-shell and use its flags
+ifneq ($(NIX_CFLAGS_COMPILE),)
+    CPPFLAGS_BASE += $(NIX_CFLAGS_COMPILE)
+endif
+
+CPPFLAGS += $(CPPFLAGS_BASE)
 ARFLAGS ?= rcs
 
 SRCS = \
@@ -19,13 +28,23 @@ SRCS = \
 	src/flint_theme_meta.c \
 	src/flint_file_dialog.c
 
-
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SRCS))
+OBJS += $(BUILD_DIR)/flint_icon_assets.o
 LIB = libflint.a
 
-.PHONY: all clean
+.PHONY: all clean run
 
 all: $(LIB)
+
+run:
+	@echo "Building Flint library..."
+	@$(MAKE) -C . $(LIB)
+	@echo ""
+	@echo "Launching examples system..."
+	@$(MAKE) -C examples run
+
+clean:
+	rm -rf $(BUILD_DIR) $(LIB)
 
 $(LIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
@@ -33,8 +52,11 @@ $(LIB): $(OBJS)
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/flint_icon_assets.c: scripts/embed_icons.py $(ICON_FILES) | $(BUILD_DIR)
+	python3 scripts/embed_icons.py $(ICON_DIR) $@
+
+$(BUILD_DIR)/flint_icon_assets.o: $(ICON_ASSETS_C) include/flint_icons.h | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
 $(BUILD_DIR):
 	mkdir -p $@
-
-clean:
-	rm -rf $(BUILD_DIR) $(LIB)
