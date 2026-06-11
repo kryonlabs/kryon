@@ -588,7 +588,7 @@ ui_draw_button_custom(Rectangle bounds, const char *label, int font_size,
             clicked = 1;
     }
 
-    flint_text_draw_fitted_in_rect(label, bounds, font_size, FLINT_TEXT_12, text_color);
+    flint_text_draw_fitted_in_rect(label, bounds, font_size, FLINT_TEXT_16, text_color);
     return clicked;
 }
 
