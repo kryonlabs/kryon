@@ -1072,7 +1072,7 @@ ui_draw_theme_switcher(int x, int y, int w, const char *label,
     }
 
     int circle_size = flint_px(36);
-    int label_gap = flint_px(10);
+    int label_gap = flint_px(14);
     int col_gap = flint_px(20);
     int row_gap = flint_px(16);
     int cell_w = circle_size;
