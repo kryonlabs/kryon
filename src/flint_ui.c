@@ -1034,6 +1034,101 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
     *dropdown_h = total_h;
 }
 
+int
+ui_draw_theme_switcher(int x, int y, int w, const char *label,
+                       const char *light_label, const char *dark_label,
+                       int *theme_id, int *dark_mode)
+{
+    int changed = 0;
+    int font = flint_ui_font();
+    int small_font = flint_ui_font_small();
+    int selected = theme_id != NULL ? *theme_id : FLINT_THEME_SKY;
+    int dark = dark_mode != NULL ? *dark_mode : 0;
+
+    if(selected < 0 || selected >= FLINT_THEME_COUNT)
+        selected = FLINT_THEME_SKY;
+
+    flint_text_draw(label ? label : "Theme", x, y, font, c_text);
+
+    int light_w = flint_text_measure(light_label ? light_label : "Light", font);
+    int dark_w = flint_text_measure(dark_label ? dark_label : "Dark", font);
+    int max_label_w = light_w > dark_w ? light_w : dark_w;
+    int toggle_w = max_label_w * 2 + flint_px(32);
+    int min_toggle_w = flint_px(100);
+    if(toggle_w < min_toggle_w)
+        toggle_w = min_toggle_w;
+    if(toggle_w > w)
+        toggle_w = w;
+
+    int toggle_h = flint_px(28);
+    int toggle_x = x + w - toggle_w - flint_px(8);
+    int toggle_y = y - flint_px(2);
+    if(ui_draw_toggle_switch(toggle_x, toggle_y, toggle_w, toggle_h, &dark,
+                             light_label ? light_label : "Light",
+                             dark_label ? dark_label : "Dark")) {
+        if(dark_mode != NULL)
+            *dark_mode = dark;
+        changed = 1;
+    }
+
+    int circle_size = flint_px(36);
+    int circle_spacing = flint_px(32);
+    int row_spacing = flint_px(48);
+    int per_row = 3;
+    int row_width = per_row * circle_size + (per_row - 1) * circle_spacing;
+    if(row_width > w) {
+        per_row = 2;
+        row_width = per_row * circle_size + (per_row - 1) * circle_spacing;
+    }
+    if(row_width > w) {
+        per_row = 1;
+        row_width = circle_size;
+    }
+
+    int start_x = x + (w - row_width) / 2;
+    int circle_y = y + flint_px(64);
+    Vector2 mouse_world = ui_mouse_world();
+
+    for(int i = 0; i < FLINT_THEME_COUNT; i++) {
+        int row = i / per_row;
+        int col = i % per_row;
+        int cx = start_x + col * (circle_size + circle_spacing) + circle_size / 2;
+        int cy = circle_y + row * (circle_size + row_spacing);
+        Color theme_color = c_circle;
+
+        if(!flint_theme_catalog_color((FlintThemeId)i, dark != 0, "circle", &theme_color)) {
+            const char *scope = flint_theme_scope_for((FlintThemeId)i, dark != 0);
+            theme_color = flint_theme_get(scope, "circle");
+        }
+
+        DrawCircle(cx, cy, circle_size / 2, theme_color);
+        DrawCircleLines(cx, cy, circle_size / 2 + (selected == i ? flint_px(2) : flint_px(1)),
+                        selected == i ? c_text : flint_darken(c_bg, 30));
+
+        Rectangle bounds = {
+            (float)(cx - circle_size / 2 - flint_px(4)),
+            (float)(cy - circle_size / 2 - flint_px(4)),
+            (float)(circle_size + flint_px(8)),
+            (float)(circle_size + flint_px(8))
+        };
+        if(CheckCollisionPointRec(mouse_world, bounds)) {
+            ui_mark_clickable();
+            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !ui_dropdown_captures_click(mouse_world)) {
+                selected = i;
+                if(theme_id != NULL)
+                    *theme_id = i;
+                changed = 1;
+            }
+        }
+
+        const char *name = flint_theme_label((FlintThemeId)i);
+        int name_w = flint_text_measure(name, small_font);
+        flint_text_draw(name, cx - name_w / 2, cy + circle_size / 2 + flint_px(6), small_font, c_text);
+    }
+
+    return changed;
+}
+
 /* Check if any dropdown is currently open and the given point is within its menu bounds.
  * Other UI elements should call this to avoid handling clicks that should go to dropdowns. */
 int
