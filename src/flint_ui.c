@@ -465,18 +465,6 @@ ui_set_icons(Texture2D gear_icon, Texture2D x_icon)
     g_ui_x_icon = x_icon;
 }
 
-/* ================================================================
- * DPI SCALING (using Flint directly)
- * ================================================================ */
-
-/* ui_px and ui_clamp_px removed - use flint_px and flint_clamp_px directly */
-
-/* ================================================================
- * LAYOUT HELPERS (using Flint directly)
- * ================================================================ */
-
-/* ui_centered_column and ui_page_side_padding removed - use flint_* directly */
-
 void
 ui_draw_icon_fallback(UIIconType type, int x, int y, int size, Color color)
 {
