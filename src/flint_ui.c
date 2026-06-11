@@ -237,6 +237,42 @@ flint_ui_draw_text_input(Rectangle bounds, const char *text, int cursor_position
     EndScissorMode();
 }
 
+static FlintTextLayout
+flint_ui_paragraph_layout(FlintUIParagraph paragraph)
+{
+    int font = paragraph.font > 0 ? paragraph.font : flint_ui_font();
+    int line_gap = paragraph.line_gap > 0 ? paragraph.line_gap : flint_px(4);
+    int icon_size = paragraph.icon_size > 0 ? paragraph.icon_size : font;
+    FlintTextLayout layout = flint_text_layout_parse(paragraph.text ? paragraph.text : "",
+                                                     paragraph.icon,
+                                                     paragraph.icon_type,
+                                                     icon_size);
+    flint_text_layout_reflow(&layout, paragraph.width, font, line_gap);
+    return layout;
+}
+
+int
+flint_ui_paragraph_height(FlintUIParagraph paragraph)
+{
+    if(paragraph.width <= 0)
+        return 0;
+    FlintTextLayout layout = flint_ui_paragraph_layout(paragraph);
+    int height = flint_text_layout_get_height(&layout);
+    flint_text_layout_free(&layout);
+    return height;
+}
+
+void
+flint_ui_paragraph_draw(FlintUIParagraph paragraph, int x, int *y)
+{
+    if(y == NULL || paragraph.width <= 0)
+        return;
+    int font = paragraph.font > 0 ? paragraph.font : flint_ui_font();
+    FlintTextLayout layout = flint_ui_paragraph_layout(paragraph);
+    flint_text_layout_draw(&layout, x, y, font, paragraph.color);
+    flint_text_layout_free(&layout);
+}
+
 void
 flint_ui_draw_bevel(int x, int y, int w, int h, Color light, Color dark)
 {

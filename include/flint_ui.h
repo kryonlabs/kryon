@@ -53,6 +53,17 @@ typedef struct {
     int padding_x;
 } FlintUITextInputStyle;
 
+typedef struct {
+    const char *text;
+    Texture2D icon;
+    FlintIconType icon_type;
+    int icon_size;
+    int width;
+    int font;
+    int line_gap;
+    Color color;
+} FlintUIParagraph;
+
 void ui_init(int width, int height, float dpi);
 void ui_set_colors(Color text, Color bg, Color circle, Color button, Color button_hover, Color icon);
 void ui_set_frame(Camera2D camera);
@@ -66,6 +77,8 @@ void flint_ui_draw_text_centered(const char *text, int center_x, int center_y, i
 void flint_ui_draw_text_input(Rectangle bounds, const char *text, int cursor_position,
                               int focused, int cursor_visible, int font,
                               FlintUITextInputStyle style);
+int flint_ui_paragraph_height(FlintUIParagraph paragraph);
+void flint_ui_paragraph_draw(FlintUIParagraph paragraph, int x, int *y);
 void ui_draw_bevel(int x, int y, int w, int h, Color light, Color dark);
 void ui_draw_text_lines(const char **lines, int count, int x, int *y, int font, int line_h, Color color);
 /* Icon fallback drawing now from Flint: flint_draw_icon_fallback */
