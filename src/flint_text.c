@@ -293,6 +293,9 @@ flint_text_draw_fitted_in_rect(const char *text, Rectangle rect, int preferred_s
     if(min_allowed < min_size)
         min_allowed = flint_text_size(min_size + 1);
 
+    if(font_size < min_allowed)
+        font_size = min_allowed;
+
     while(font_size > min_allowed && flint_text_measure(value, font_size) > (int)rect.width)
         font_size = flint_text_size(font_size - 1);
 
