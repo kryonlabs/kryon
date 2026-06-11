@@ -237,6 +237,118 @@ flint_ui_draw_text_input(Rectangle bounds, const char *text, int cursor_position
     EndScissorMode();
 }
 
+int
+flint_ui_button(FlintUIButton button)
+{
+    Vector2 mouse_world = ui_mouse_world();
+    int hovered = !button.disabled && CheckCollisionPointRec(mouse_world, button.bounds);
+    int focused = !button.disabled && button.focus_id > 0 && ui_focus_register(button.focus_id, button.bounds);
+    int clicked = 0;
+    int font = button.font > 0 ? button.font : flint_ui_font();
+    Color background = button.background.a != 0 ? button.background : c_button;
+    Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
+    Color text = button.text.a != 0 ? button.text : c_text;
+    Color border = button.border.a != 0 ? button.border : flint_lighten(background, 32);
+    float radius = button.radius > 0.0f ? button.radius : 0.12f;
+
+    if(button.disabled) {
+        background.a = background.a > 120 ? 120 : background.a;
+        text.a = text.a > 150 ? 150 : text.a;
+    }
+
+    DrawRectangleRounded(button.bounds, radius, 8, hovered ? hover_background : background);
+    DrawRectangleRoundedLines(button.bounds, radius, 8,
+                              hovered ? flint_lighten(hover_background, 40) : border);
+
+    if(hovered) {
+        ui_mark_clickable();
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !ui_dropdown_captures_click(mouse_world))
+            clicked = 1;
+    }
+
+    if(focused) {
+        ui_focus_set_text_input_active(0);
+        ui_focus_draw(button.bounds);
+    }
+
+    flint_text_draw_fitted_in_rect(button.label ? button.label : "", button.bounds,
+                                   font, FLINT_TEXT_16, text);
+    return clicked || ui_focus_activate_pressed(button.focus_id);
+}
+
+int
+flint_ui_icon_button(FlintUIIconButton button)
+{
+    Vector2 mouse_world = ui_mouse_world();
+    int hovered = !button.disabled && CheckCollisionPointRec(mouse_world, button.bounds);
+    int focused = !button.disabled && button.focus_id > 0 && ui_focus_register(button.focus_id, button.bounds);
+    int clicked = 0;
+    int icon_padding = button.icon_padding > 0 ? button.icon_padding : flint_px(4);
+    int draw_size = button.icon_size;
+    Color background = button.background.a != 0 ? button.background : c_button;
+    Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
+    Color icon_color = button.icon_color.a != 0 ? button.icon_color : c_icon;
+    Color border = button.border.a != 0 ? button.border : flint_lighten(background, 32);
+    float radius = button.radius > 0.0f ? button.radius : 0.12f;
+
+    if(draw_size <= 0) {
+        int available_w = (int)button.bounds.width - icon_padding * 2;
+        int available_h = (int)button.bounds.height - icon_padding * 2;
+        draw_size = available_w < available_h ? available_w : available_h;
+    }
+    if(draw_size < 1)
+        draw_size = 1;
+
+    if(button.disabled) {
+        background.a = background.a > 120 ? 120 : background.a;
+        icon_color.a = icon_color.a > 150 ? 150 : icon_color.a;
+    }
+
+    DrawRectangleRounded(button.bounds, radius, 8, hovered ? hover_background : background);
+    DrawRectangleRoundedLines(button.bounds, radius, 8,
+                              hovered ? flint_lighten(hover_background, 40) : border);
+
+    if(hovered) {
+        ui_mark_clickable();
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !ui_dropdown_captures_click(mouse_world))
+            clicked = 1;
+    }
+
+    if(focused) {
+        ui_focus_set_text_input_active(0);
+        ui_focus_draw(button.bounds);
+    }
+
+    int icon_x = (int)(button.bounds.x + (button.bounds.width - (float)draw_size) * 0.5f);
+    int icon_y = (int)(button.bounds.y + (button.bounds.height - (float)draw_size) * 0.5f);
+    if(button.icon.id != 0) {
+        Rectangle src = {0, 0, (float)button.icon.width, (float)button.icon.height};
+        Rectangle dst = {(float)icon_x, (float)icon_y, (float)draw_size, (float)draw_size};
+        DrawTexturePro(button.icon, src, dst, (Vector2){0}, 0, icon_color);
+    } else {
+        flint_draw_icon_fallback(button.icon_type, icon_x, icon_y, draw_size, icon_color);
+    }
+    return clicked || ui_focus_activate_pressed(button.focus_id);
+}
+
+int
+flint_ui_text_input(FlintUITextInput input)
+{
+    int focused = input.focused;
+
+    if(input.focus_id > 0 && ui_focus_register(input.focus_id, input.bounds)) {
+        focused = 1;
+        ui_focus_set_text_input_active(1);
+        ui_focus_draw(input.bounds);
+    }
+
+    flint_ui_draw_text_input(input.bounds, input.text, input.cursor_position,
+                             focused, input.cursor_visible,
+                             input.font > 0 ? input.font : flint_ui_font(),
+                             input.style);
+    return focused;
+}
+
 static FlintTextLayout
 flint_ui_paragraph_layout(FlintUIParagraph paragraph)
 {

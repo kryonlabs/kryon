@@ -54,6 +54,45 @@ typedef struct {
 } FlintUITextInputStyle;
 
 typedef struct {
+    Rectangle bounds;
+    const char *label;
+    int font;
+    int focus_id;
+    int disabled;
+    Color background;
+    Color hover_background;
+    Color text;
+    Color border;
+    float radius;
+} FlintUIButton;
+
+typedef struct {
+    Rectangle bounds;
+    Texture2D icon;
+    FlintIconType icon_type;
+    int icon_size;
+    int icon_padding;
+    int focus_id;
+    int disabled;
+    Color background;
+    Color hover_background;
+    Color icon_color;
+    Color border;
+    float radius;
+} FlintUIIconButton;
+
+typedef struct {
+    Rectangle bounds;
+    const char *text;
+    int cursor_position;
+    int focused;
+    int cursor_visible;
+    int font;
+    int focus_id;
+    FlintUITextInputStyle style;
+} FlintUITextInput;
+
+typedef struct {
     const char *text;
     Texture2D icon;
     FlintIconType icon_type;
@@ -77,6 +116,9 @@ void flint_ui_draw_text_centered(const char *text, int center_x, int center_y, i
 void flint_ui_draw_text_input(Rectangle bounds, const char *text, int cursor_position,
                               int focused, int cursor_visible, int font,
                               FlintUITextInputStyle style);
+int flint_ui_button(FlintUIButton button);
+int flint_ui_icon_button(FlintUIIconButton button);
+int flint_ui_text_input(FlintUITextInput input);
 int flint_ui_paragraph_height(FlintUIParagraph paragraph);
 void flint_ui_paragraph_draw(FlintUIParagraph paragraph, int x, int *y);
 void ui_draw_bevel(int x, int y, int w, int h, Color light, Color dark);
