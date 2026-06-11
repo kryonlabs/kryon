@@ -1072,28 +1072,38 @@ ui_draw_theme_switcher(int x, int y, int w, const char *label,
     }
 
     int circle_size = flint_px(36);
-    int circle_spacing = flint_px(32);
-    int row_spacing = flint_px(48);
+    int label_gap = flint_px(8);
+    int col_gap = flint_px(20);
+    int row_gap = flint_px(16);
+    int cell_w = circle_size;
+    for(int i = 0; i < FLINT_THEME_COUNT; i++) {
+        int name_w = flint_text_measure(flint_theme_label((FlintThemeId)i), small_font) + flint_px(12);
+        if(name_w > cell_w)
+            cell_w = name_w;
+    }
+
     int per_row = 3;
-    int row_width = per_row * circle_size + (per_row - 1) * circle_spacing;
+    int row_width = per_row * cell_w + (per_row - 1) * col_gap;
     if(row_width > w) {
         per_row = 2;
-        row_width = per_row * circle_size + (per_row - 1) * circle_spacing;
+        row_width = per_row * cell_w + (per_row - 1) * col_gap;
     }
     if(row_width > w) {
         per_row = 1;
-        row_width = circle_size;
+        row_width = cell_w;
     }
 
     int start_x = x + (w - row_width) / 2;
     int circle_y = y + flint_px(64);
+    int row_step = circle_size + label_gap + small_font + row_gap;
     Vector2 mouse_world = ui_mouse_world();
 
     for(int i = 0; i < FLINT_THEME_COUNT; i++) {
         int row = i / per_row;
         int col = i % per_row;
-        int cx = start_x + col * (circle_size + circle_spacing) + circle_size / 2;
-        int cy = circle_y + row * (circle_size + row_spacing);
+        int cell_x = start_x + col * (cell_w + col_gap);
+        int cx = cell_x + cell_w / 2;
+        int cy = circle_y + row * row_step;
         Color theme_color = c_circle;
 
         if(!flint_theme_catalog_color((FlintThemeId)i, dark != 0, "circle", &theme_color)) {
@@ -1123,7 +1133,7 @@ ui_draw_theme_switcher(int x, int y, int w, const char *label,
 
         const char *name = flint_theme_label((FlintThemeId)i);
         int name_w = flint_text_measure(name, small_font);
-        flint_text_draw(name, cx - name_w / 2, cy + circle_size / 2 + flint_px(6), small_font, c_text);
+        flint_text_draw(name, cx - name_w / 2, cy + circle_size / 2 + label_gap, small_font, c_text);
     }
 
     return changed;
