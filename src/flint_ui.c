@@ -1426,14 +1426,10 @@ ui_draw_dropdown_menu(int id)
     DrawRectangle(x, dropdown_y, w, dropdown_h, c_button);
     ui_draw_bevel(x, dropdown_y, w, dropdown_h, flint_darken(c_bg, 30), flint_lighten(c_bg, 20));
 
-    /* Clip to menu area - expand to ensure bevel and highlights aren't clipped */
-    int bevel_width = (int)(flint_dpi_scale() + 0.5f);
-    if(bevel_width < 1) bevel_width = 1;
-    int expand = bevel_width + flint_px(2);  /* Extra expansion for hover highlights */
-    BeginScissorMode((int)(g_ui_camera.offset.x + (float)(x - expand) * g_ui_camera.zoom),
-                     (int)(g_ui_camera.offset.y + (float)(dropdown_y - expand) * g_ui_camera.zoom),
-                     (int)((float)(w + expand * 2) * g_ui_camera.zoom),
-                     (int)((float)(dropdown_h + expand * 2) * g_ui_camera.zoom));
+    BeginScissorMode((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
+                     (int)(g_ui_camera.offset.y + (float)dropdown_y * g_ui_camera.zoom),
+                     (int)((float)w * g_ui_camera.zoom),
+                     (int)((float)dropdown_h * g_ui_camera.zoom));
 
     /* Draw options */
     for(int i = 0; i < option_count; i++) {
