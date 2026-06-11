@@ -77,6 +77,13 @@ int ui_draw_text_btn(int x, int y, const char *label, int *hover);
 
 /* Generic button component with unified styling */
 int ui_draw_generic_button(int x, int y, int w, int h, const char *label, UIButtonStyle style, int *hover);
+int ui_draw_button_custom(Rectangle bounds, const char *label, int font_size,
+                          Color background, Color hover_background, Color text_color,
+                          float radius, int *hover);
+int ui_draw_icon_button_custom(Rectangle bounds, Texture2D icon, FlintIconType icon_type,
+                               int icon_size, int icon_padding, Color background,
+                               Color hover_background, Color icon_color,
+                               float radius, int *hover);
 
 void ui_draw_icon_link(int x, int y, int icon_size, Texture2D icon, UIIconType icon_type, const char *url);
 int ui_draw_slider(int id, int x, int y, int w, const char *label, int min, int max, int *value, const char *suffix);

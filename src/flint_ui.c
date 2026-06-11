@@ -565,6 +565,79 @@ ui_draw_generic_button(int x, int y, int w, int h, const char *label, UIButtonSt
     return clicked;
 }
 
+int
+ui_draw_button_custom(Rectangle bounds, const char *label, int font_size,
+                      Color background, Color hover_background, Color text_color,
+                      float radius, int *hover)
+{
+    Vector2 mouse_world = ui_mouse_world();
+    int hovered = CheckCollisionPointRec(mouse_world, bounds);
+    int clicked = 0;
+
+    if(hover != NULL)
+        *hover = hovered;
+
+    DrawRectangleRounded(bounds, radius > 0.0f ? radius : 0.12f, 8,
+                         hovered ? hover_background : background);
+    DrawRectangleRoundedLines(bounds, radius > 0.0f ? radius : 0.12f, 8,
+                              hovered ? flint_lighten(hover_background, 40) : flint_lighten(background, 32));
+
+    if(hovered) {
+        ui_mark_clickable();
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !ui_dropdown_captures_click(mouse_world))
+            clicked = 1;
+    }
+
+    flint_text_draw_fitted_in_rect(label, bounds, font_size, FLINT_TEXT_12, text_color);
+    return clicked;
+}
+
+int
+ui_draw_icon_button_custom(Rectangle bounds, Texture2D icon, FlintIconType icon_type,
+                           int icon_size, int icon_padding, Color background,
+                           Color hover_background, Color icon_color,
+                           float radius, int *hover)
+{
+    Vector2 mouse_world = ui_mouse_world();
+    int hovered = CheckCollisionPointRec(mouse_world, bounds);
+    int clicked = 0;
+    int draw_size = icon_size;
+
+    if(draw_size <= 0) {
+        int available_w = (int)bounds.width - icon_padding * 2;
+        int available_h = (int)bounds.height - icon_padding * 2;
+        draw_size = available_w < available_h ? available_w : available_h;
+    }
+    if(draw_size < 1)
+        draw_size = 1;
+
+    if(hover != NULL)
+        *hover = hovered;
+
+    DrawRectangleRounded(bounds, radius > 0.0f ? radius : 0.12f, 8,
+                         hovered ? hover_background : background);
+    DrawRectangleRoundedLines(bounds, radius > 0.0f ? radius : 0.12f, 8,
+                              hovered ? flint_lighten(hover_background, 40) : flint_lighten(background, 32));
+
+    if(hovered) {
+        ui_mark_clickable();
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !ui_dropdown_captures_click(mouse_world))
+            clicked = 1;
+    }
+
+    int icon_x = (int)(bounds.x + (bounds.width - (float)draw_size) * 0.5f);
+    int icon_y = (int)(bounds.y + (bounds.height - (float)draw_size) * 0.5f);
+    if(icon.id != 0) {
+        Rectangle src = {0, 0, (float)icon.width, (float)icon.height};
+        Rectangle dst = {(float)icon_x, (float)icon_y, (float)draw_size, (float)draw_size};
+        DrawTexturePro(icon, src, dst, (Vector2){0}, 0, icon_color);
+    } else {
+        flint_draw_icon_fallback(icon_type, icon_x, icon_y, draw_size, icon_color);
+    }
+
+    return clicked;
+}
+
 void
 ui_draw_icon_link(int x, int y, int icon_size, Texture2D icon, UIIconType icon_type, const char *url)
 {
