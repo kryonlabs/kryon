@@ -12,5 +12,6 @@
 #include "flint_locale.h"
 #include "flint_theme.h"
 #include "flint_theme_meta.h"
+#include "flint_web.h"
 
 #endif // FLINT_H

@@ -127,6 +127,32 @@ activity = "xyz.example.app.MainActivity"
 
 Only declare platforms that the app actually supports. CLI commands such as `flint build web` and `flint dist android` fail early when the corresponding platform section is missing.
 
+## Web Viewports
+
+For web builds, do not CSS-scale a fixed-size raylib canvas to fit the page.
+That stretches the framebuffer and makes text blurry or clipped. Instead, size
+raylib from the browser viewport and keep it synced when the viewport changes:
+
+```c
+int width = flint_web_viewport_width(320);
+int height = flint_web_viewport_height(560);
+SetConfigFlags(flint_web_window_flags());
+InitWindow(width, height, "App");
+
+while(!WindowShouldClose()) {
+    if(flint_web_sync_window_size()) {
+        flint_set_view_size(GetScreenWidth(), GetScreenHeight());
+    }
+
+    BeginDrawing();
+    /* draw at GetScreenWidth()/GetScreenHeight() */
+    EndDrawing();
+}
+```
+
+Use viewport-filling CSS for the canvas shell, but let raylib own the backing
+framebuffer size through `InitWindow()` and `SetWindowSize()`.
+
 ## Make Layer
 
 Flint also ships reusable Make rules for Raylib applications in `mk/`.
