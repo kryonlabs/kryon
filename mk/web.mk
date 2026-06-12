@@ -61,7 +61,7 @@ $(WEB_WORK_TARGET): $(BUILD_MAKEFILES) $(SRC) $(WEB_FLINT_SRCS) $(CORE_SRCS) $(W
 	@if [ -f manifest.json ]; then cp manifest.json $(WEB_BUILD_DIR)/; fi
 
 $(WEB_TARGET): $(WEB_WORK_TARGET) | $(WEB_DIST_DIR)
-	 [ "$(WEB_BUILD_DIR)" != "$(BUILD_DIR)/web" ]; then rm -rf $(BUILD_DIR)/web; fi
+	@if [ "$(WEB_BUILD_DIR)" != "$(BUILD_DIR)/web" ]; then rm -rf $(BUILD_DIR)/web; fi
 	rm -rf $(WEB_DIST_DIR)
 	mkdir -p $(WEB_DIST_DIR)
 	find $(WEB_BUILD_DIR) -maxdepth 1 -type f \
