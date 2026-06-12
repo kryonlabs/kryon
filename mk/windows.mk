@@ -44,12 +44,18 @@ $(WINDOWS_OBJ_DIR)/%/raylib: | $(WINDOWS_OBJ_DIR)/%
 windows: $(WINDOWS_TARGETS)
 
 define WINDOWS_ARCH_COMMON_RULES
-$(WINDOWS_OBJ_DIR)/$(1)/libinbe.a: $(INBE_DIR)/inbe.c $(INBE_DIR)/inbe.h | $(WINDOWS_OBJ_DIR)/$(1)
-	$(MAKE) -C $(INBE_DIR) clean
-	$(MAKE) -C $(INBE_DIR) CC=$$(WIN_$(1)_CC) AR=$$(WIN_$(1)_AR) RANLIB=$$(WIN_$(1)_RANLIB)
-	cp $(INBE_A) $$@
+ifneq ($(strip $(CORE_SRCS)),)
+$(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a: $(CORE_SRCS) | $(WINDOWS_OBJ_DIR)/$(1)
+	@mkdir -p $(WINDOWS_OBJ_DIR)/$(1)/core
+	@for src in $(CORE_SRCS); do \
+		obj="$(WINDOWS_OBJ_DIR)/$(1)/core/$${src%.c}.o"; \
+		mkdir -p "$$(dirname "$$obj")"; \
+		$$(WIN_$(1)_CC) $(CFLAGS) $(CORE_INCLUDE) -c "$$src" -o "$$obj"; \
+	done
+	find $(WINDOWS_OBJ_DIR)/$(1)/core -name '*.o' -print | sort | xargs $$(WIN_$(1)_AR) rcs $$@
+endif
 
-$(WINDOWS_OBJ_DIR)/$(1)/inbe.res: $(WIN_RESOURCE) $(WIN_ICON) | $(WINDOWS_OBJ_DIR)/$(1)
+$(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res: $(WIN_RESOURCE) $(WIN_ICON) | $(WINDOWS_OBJ_DIR)/$(1)
 	$$(WIN_$(1)_WINDRES) -Iwindows -O coff $$< $$@
 endef
 
@@ -66,24 +72,24 @@ $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a: $(RAYLIB_SOURCES) | $(WINDOWS_O
 		RAYLIB_MODULE_AUDIO=TRUE \
 		RAYLIB_MODULE_MODELS=FALSE \
 		GRAPHICS=$$(WIN_$(2)_GRAPHICS) \
-		CUSTOM_CFLAGS="$(INBE_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
+		CUSTOM_CFLAGS="$(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
 	@for obj in $(RAYLIB_DIR)/*.o; do \
 		[ -e "$$$$obj" ] || continue; \
 		mv "$$$$obj" $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/; \
 	done
 
-$(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe: $(SRC) $(WIN_FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a $(WINDOWS_OBJ_DIR)/$(1)/libinbe.a $(WINDOWS_OBJ_DIR)/$(1)/inbe.res | $(WINDOWS_BIN_DIR)
+$(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe: $(SRC) $(WIN_FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a $(CORE_A) $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res | $(WINDOWS_BIN_DIR)
 	$$(WIN_$(1)_CC) $(CFLAGS) \
-		-I$(RAYLIB_DIR) \
-		-I$(INBE_DIR) \
+		$(APP_INCLUDE) \
 		$(FLINT_INCLUDE) \
-		-Isrc -Isrc/android \
+		$(CORE_INCLUDE) \
+		-I$(RAYLIB_DIR) \
 		-o $$@ \
 		$(SRC) \
 		$(WIN_FLINT_SRCS) \
-		$(WINDOWS_OBJ_DIR)/$(1)/libinbe.a \
+		$(CORE_A) \
 		$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a \
-		$(WINDOWS_OBJ_DIR)/$(1)/inbe.res \
+		$(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res \
 		-L$$(WIN_$(1)_MCFGTHREADS)/lib \
 		$$(WIN_$(2)_LDLIBS) \
 		-mwindows \

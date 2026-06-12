@@ -1,6 +1,5 @@
 BINARY_NAME = $(APP_NAME)-$(PLATFORM)-$(ARCH)
 TARGET = $(LINUX_BIN_DIR)/$(BINARY_NAME)
-LINUX_INBE_A = $(LINUX_OBJ_DIR)/libinbe.a
 
 all: native
 
@@ -16,26 +15,32 @@ $(RAYLIB_A): $(RAYLIB_SOURCES) | $(RAYLIB_BUILD_DIR)
 		RAYLIB_MODULE_MODELS=FALSE \
 		SDL_INCLUDE_PATH="$(RAY_SDL_INCLUDE_DIR)" \
 		SDL_LIBRARIES="$(RAY_SDL_LDLIBS)" \
-		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(RAY_CFLAGS) $(INBE_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
+		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(RAY_CFLAGS) $(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
 
-$(LINUX_INBE_A): $(INBE_DIR)/inbe.c $(INBE_DIR)/inbe.h | $(LINUX_OBJ_DIR)
-	$(MAKE) -C $(INBE_DIR) clean
-	$(MAKE) -C $(INBE_DIR) CC=$(CC) AR=ar
-	cp $(INBE_A) $@
+ifneq ($(strip $(CORE_SRCS)),)
+CORE_OBJS = $(patsubst %.c,$(LINUX_OBJ_DIR)/core/%.o,$(CORE_SRCS))
 
-$(TARGET): $(SRC) $(FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(RAYLIB_A) $(LINUX_INBE_A) | $(LINUX_BIN_DIR)
+$(LINUX_OBJ_DIR)/core/%.o: %.c | $(LINUX_OBJ_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(CORE_INCLUDE) -c $< -o $@
+
+$(CORE_A): $(CORE_OBJS) | $(LINUX_OBJ_DIR)
+	ar rcs $@ $(CORE_OBJS)
+endif
+
+$(TARGET): $(SRC) $(FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(RAYLIB_A) $(CORE_A) | $(LINUX_BIN_DIR)
 	$(CC) $(CFLAGS) \
-		-I$(RAYLIB_DIR) \
-		-I$(INBE_DIR) \
+		$(APP_INCLUDE) \
 		$(FLINT_INCLUDE) \
-		-Isrc -Isrc/android \
+		$(CORE_INCLUDE) \
+		-I$(RAYLIB_DIR) \
 		$(RAY_CFLAGS) \
 		-DSUPPORT_MODULE_RAUDIO=1 \
 		-DSUPPORT_FILEFORMAT_OGG=1 \
 		-o $@ \
 		$(SRC) \
 		$(FLINT_SRCS) \
-		$(LINUX_INBE_A) \
+		$(CORE_A) \
 		$(RAYLIB_A) \
 		$(RAY_LDLIBS) \
 		-lm -lpthread -ldl -lrt \
@@ -86,22 +91,28 @@ build-linux-arch:
 		RAYLIB_MODULE_MODELS=FALSE \
 		SDL_INCLUDE_PATH="$(LINUX_RAY_SDL_INCLUDE_DIR)" \
 		SDL_LIBRARIES="$(LINUX_RAY_SDL_LDLIBS)" \
-		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(LINUX_RAY_CFLAGS) $(INBE_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
+		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(LINUX_RAY_CFLAGS) $(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
 	$(MAKE) -C $(RAYLIB_DIR) clean
-	$(LINUX_CC) $(CFLAGS) -I$(INBE_DIR) -c $(INBE_DIR)/inbe.c -o $(LINUX_OBJ_DIR)/$(ARCH_NAME)/inbe.o
-	$(LINUX_AR) rcs $(LINUX_OBJ_DIR)/$(ARCH_NAME)/libinbe.a $(LINUX_OBJ_DIR)/$(ARCH_NAME)/inbe.o
+	@if [ -n "$(strip $(CORE_SRCS))" ]; then \
+		for src in $(CORE_SRCS); do \
+			obj="$(LINUX_OBJ_DIR)/$(ARCH_NAME)/core/$${src%.c}.o"; \
+			mkdir -p "$$(dirname "$$obj")"; \
+			$(LINUX_CC) $(CFLAGS) $(CORE_INCLUDE) -c "$$src" -o "$$obj"; \
+		done; \
+		find $(LINUX_OBJ_DIR)/$(ARCH_NAME)/core -name '*.o' -print | sort | xargs $(LINUX_AR) rcs $(LINUX_OBJ_DIR)/$(ARCH_NAME)/lib$(APP_NAME)-core.a; \
+	fi
 	$(LINUX_CC) $(CFLAGS) \
-		-I$(RAYLIB_DIR) \
-		-I$(INBE_DIR) \
+		$(APP_INCLUDE) \
 		$(FLINT_INCLUDE) \
-		-Isrc -Isrc/android \
+		$(CORE_INCLUDE) \
+		-I$(RAYLIB_DIR) \
 		$(LINUX_RAY_CFLAGS) \
 		-DSUPPORT_MODULE_RAUDIO=1 \
 		-DSUPPORT_FILEFORMAT_OGG=1 \
 		-o $(LINUX_BIN_DIR)/$(APP_NAME)-linux-$(ARCH_NAME) \
 		$(SRC) \
 		$(FLINT_SRCS) \
-		$(LINUX_OBJ_DIR)/$(ARCH_NAME)/libinbe.a \
+		$(if $(strip $(CORE_SRCS)),$(LINUX_OBJ_DIR)/$(ARCH_NAME)/lib$(APP_NAME)-core.a,) \
 		$(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib/libraylib.a \
 		$(LINUX_RAY_LDLIBS) \
 		-lm -lpthread -ldl -lrt \

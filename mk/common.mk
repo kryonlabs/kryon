@@ -1,10 +1,12 @@
 CC = gcc
 WINDRES = windres
 
-APP_NAME ?= inbe
-SRC ?= src/main.c src/app.c src/app_session.c src/locale.c src/theme_meta.c src/theme.c src/data.c src/miniz.c src/android/android_share.c src/tabs/history_tab.c src/tabs/language_tab.c src/tabs/manual_tab.c src/tabs/settings_tab.c
-INBE_DIR ?= libinbe
-INBE_A = $(INBE_DIR)/libinbe.a
+APP_NAME ?= app
+SRC ?= $(wildcard src/*.c) $(wildcard src/*/*.c)
+CORE_DIR ?=
+CORE_SRCS ?= $(if $(strip $(CORE_DIR)),$(wildcard $(CORE_DIR)/*.c),)
+CORE_INCLUDE ?= $(if $(strip $(CORE_DIR)),-I$(CORE_DIR),)
+CORE_A = $(if $(strip $(CORE_SRCS)),$(LINUX_OBJ_DIR)/lib$(APP_NAME)-core.a,)
 
 RAYLIB_DIR ?= vendor/raylib/src
 RAYLIB_BUILD_DIR = $(LINUX_OBJ_DIR)/native/raylib
@@ -17,7 +19,7 @@ FLINT_INCLUDE = -I$(FLINT_DIR)/include
 
 ANDROID_DIR ?= droid
 GRADLE ?= gradle
-ANDROID_APP_ID ?= xyz.waozi.inbe
+ANDROID_APP_ID ?= xyz.waozi.$(APP_NAME)
 ANDROID_ACTIVITY ?= android.app.NativeActivity
 
 UNAME_S := $(shell uname -s)
@@ -54,7 +56,7 @@ WINDOWS_DIST_DIR = $(BUILD_DIST_DIR)/windows
 ANDROID_BUILD_DIR = $(BUILD_DIR)/android
 ANDROID_DIST_DIR = $(BUILD_DIST_DIR)/android
 WEB_BUILD_DIR = $(BUILD_DIR)/web
-LINUX_ARCHES = x86_64 aarch64
+LINUX_ARCHES ?= x86_64 aarch64
 ANDROID_DIST ?= release
 
 INSTALL_DIR ?= $(HOME)/.local/share/$(APP_NAME)
@@ -63,23 +65,29 @@ TARBALL = $(LINUX_DIST_DIR)/$(APP_NAME)-linux.tar.gz
 
 LOCALE_FILES = $(wildcard locales/*.txt)
 THEME_FILES = $(wildcard $(FLINT_DIR)/themes/*.ini)
-IMAGE_FILES = assets/angel.jpg assets/begin.jpg
-SOUND_FILES = assets/sounds/breath-in.ogg assets/sounds/breath-out.ogg assets/sounds/bell.ogg
-FONT_OUTPUTS = assets/fonts/locales.png assets/fonts/locales.dat
+IMAGE_FILES ?= assets/angel.jpg assets/begin.jpg
+SOUND_FILES ?= assets/sounds/breath-in.ogg assets/sounds/breath-out.ogg assets/sounds/bell.ogg
+FONT_OUTPUTS ?= assets/fonts/locales.png assets/fonts/locales.dat
 FONT_FILES = $(FONT_OUTPUTS)
 EMBEDDED_ASSET_FILES = $(LOCALE_FILES) $(THEME_FILES) $(IMAGE_FILES) $(SOUND_FILES) $(FONT_FILES)
 EMBEDDED_ASSETS_C = $(BUILD_OBJ_DIR)/$(APP_NAME)_embedded_assets.c
 SRC += $(EMBEDDED_ASSETS_C)
 FONT_TOOL ?= vendor/otfchop/otfchop
 FONT_SOURCE ?= vendor/otfchop/unifont-17.0.04.otf
+FONT_INPUTS ?= $(LOCALE_FILES)
+APP_INCLUDE ?= -Isrc -Isrc/android
+RUNTIME_DIRS ?= assets locales themes
 FLINT_MAKEFILES = $(FLINT_MAKE_DIR)project.mk $(FLINT_MAKE_DIR)common.mk $(FLINT_MAKE_DIR)native.mk $(FLINT_MAKE_DIR)windows.mk $(FLINT_MAKE_DIR)web.mk $(FLINT_MAKE_DIR)android.mk $(FLINT_MAKE_DIR)dist.mk $(FLINT_MAKE_DIR)clean.mk
 BUILD_MAKEFILES = Makefile $(FLINT_PROJECT) $(FLINT_MAKEFILES)
+ifneq ($(strip $(FLINT_PROJECT_VARS)),)
+BUILD_MAKEFILES += $(FLINT_PROJECT_VARS)
+endif
 
 assets/fonts:
 	mkdir -p $@
 
-$(FONT_OUTPUTS): $(LOCALE_FILES) $(FONT_TOOL) | assets/fonts
-	$(FONT_TOOL) $(FONT_SOURCE) $(LOCALE_FILES) assets/fonts/locales
+$(FONT_OUTPUTS): $(FONT_INPUTS) $(FONT_TOOL) | assets/fonts
+	$(FONT_TOOL) $(FONT_SOURCE) $(FONT_INPUTS) $(basename $(firstword $(FONT_OUTPUTS)))
 
 $(FONT_TOOL): vendor/otfchop/otfchop.c vendor/otfchop/stb_truetype.h vendor/otfchop/stb_image_write.h
 	$(MAKE) -C vendor/otfchop otfchop
@@ -87,7 +95,7 @@ $(FONT_TOOL): vendor/otfchop/otfchop.c vendor/otfchop/stb_truetype.h vendor/otfc
 $(EMBEDDED_ASSETS_C): $(EMBEDDED_ASSET_FILES) $(FLINT_DIR)/scripts/embed-assets.sh | $(BUILD_OBJ_DIR)
 	sh $(FLINT_DIR)/scripts/embed-assets.sh $@ $(EMBEDDED_ASSET_FILES)
 
-INBE_RAYLIB_CONFIG = $(filter-out -DSUPPORT_MODULE_RAUDIO=0 -DSUPPORT_FILEFORMAT_PNG=0 -DSUPPORT_FILEFORMAT_JPG=0 -DSUPPORT_FILEFORMAT_OGG=0,$(RAY_RAYLIB_CONFIG)) -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1
+APP_RAYLIB_CONFIG = $(filter-out -DSUPPORT_MODULE_RAUDIO=0 -DSUPPORT_FILEFORMAT_PNG=0 -DSUPPORT_FILEFORMAT_JPG=0 -DSUPPORT_FILEFORMAT_OGG=0,$(RAY_RAYLIB_CONFIG)) -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1
 
 CFLAGS = -Wall -Wextra -std=c99 -Os -D_DEFAULT_SOURCE -D_GNU_SOURCE -ffunction-sections -fdata-sections -DSUPPORT_FILEFORMAT_JPG=1 -DMINIZ_NO_ZLIB_COMPATIBLE_NAMES -DFLINT_EMBEDDED_ONLY=1
 LDFLAGS = -Wl,--gc-sections -s

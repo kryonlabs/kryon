@@ -22,6 +22,12 @@ typedef struct FlintProject {
     char name[128];
     char app_id[256];
     char android_activity[256];
+    char android_project[PATH_MAX];
+    char android_keystore[PATH_MAX];
+    char android_key_alias[128];
+    char linux_arches[128];
+    char windows_arches[128];
+    char core_dir[PATH_MAX];
     char version_header[PATH_MAX];
     char itch_user[128];
     char itch_game[128];
@@ -43,6 +49,7 @@ static void usage(FILE *out)
             "Usage:\n"
             "  flint doctor\n"
             "  flint devices\n"
+            "  flint make-vars\n"
             "  flint build [native|linux|windows|web|android]\n"
             "  flint build-all\n"
             "  flint dist [all|linux|windows|android|android-apk|android-bundle|itch]\n"
@@ -97,6 +104,38 @@ static int parse_quoted_value(const char *line, char *out, size_t out_size)
     return 1;
 }
 
+static int parse_quoted_list_value(const char *line, char *out, size_t out_size)
+{
+    const char *p = line;
+    size_t used = 0;
+
+    while((p = strchr(p, '"')) != NULL) {
+        const char *end = strchr(p + 1, '"');
+        size_t len;
+
+        if(end == NULL)
+            break;
+
+        len = (size_t)(end - (p + 1));
+        if(len > 0) {
+            if(used > 0) {
+                if(used + 1 >= out_size)
+                    break;
+                out[used++] = ' ';
+            }
+            if(len >= out_size - used)
+                len = out_size - used - 1;
+            memcpy(out + used, p + 1, len);
+            used += len;
+            out[used] = '\0';
+        }
+
+        p = end + 1;
+    }
+
+    return used > 0;
+}
+
 static int find_project_root(char *out, size_t out_size)
 {
     char current[PATH_MAX];
@@ -133,6 +172,10 @@ static void project_defaults(FlintProject *project)
     snprintf(project->name, sizeof(project->name), "app");
     snprintf(project->app_id, sizeof(project->app_id), "app");
     snprintf(project->android_activity, sizeof(project->android_activity), "android.app.NativeActivity");
+    snprintf(project->android_project, sizeof(project->android_project), "droid");
+    snprintf(project->android_keystore, sizeof(project->android_keystore), "flint-release.keystore");
+    snprintf(project->linux_arches, sizeof(project->linux_arches), "x86_64 aarch64");
+    snprintf(project->windows_arches, sizeof(project->windows_arches), "x86_64 i686");
     snprintf(project->version_header, sizeof(project->version_header), "src/version.h");
     snprintf(project->itch_web_channel, sizeof(project->itch_web_channel), "html5");
     snprintf(project->itch_windows_channel, sizeof(project->itch_windows_channel), "windows");
@@ -192,9 +235,24 @@ static int load_project(FlintProject *project, int required)
                 snprintf(project->app_id, sizeof(project->app_id), "%s", value);
             else if(strncmp(s, "version_header", 14) == 0 && parse_quoted_value(s, value, sizeof(value)))
                 snprintf(project->version_header, sizeof(project->version_header), "%s", value);
+        } else if(strncmp(section, "paths", sizeof(section)) == 0) {
+            if(strncmp(s, "android_project", 15) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->android_project, sizeof(project->android_project), "%s", value);
+            else if(strncmp(s, "core_library", 12) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->core_dir, sizeof(project->core_dir), "%s", value);
         } else if(strncmp(section, "platform.android", sizeof(section)) == 0) {
             if(strncmp(s, "activity", 8) == 0 && parse_quoted_value(s, value, sizeof(value)))
                 snprintf(project->android_activity, sizeof(project->android_activity), "%s", value);
+            else if(strncmp(s, "keystore", 8) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->android_keystore, sizeof(project->android_keystore), "%s", value);
+            else if(strncmp(s, "key_alias", 9) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->android_key_alias, sizeof(project->android_key_alias), "%s", value);
+        } else if(strncmp(section, "platform.linux", sizeof(section)) == 0) {
+            if(strncmp(s, "arches", 6) == 0 && parse_quoted_list_value(s, value, sizeof(value)))
+                snprintf(project->linux_arches, sizeof(project->linux_arches), "%s", value);
+        } else if(strncmp(section, "platform.windows", sizeof(section)) == 0) {
+            if(strncmp(s, "arches", 6) == 0 && parse_quoted_list_value(s, value, sizeof(value)))
+                snprintf(project->windows_arches, sizeof(project->windows_arches), "%s", value);
         } else if(strncmp(section, "dist.itch", sizeof(section)) == 0) {
             if(strncmp(s, "user", 4) == 0 && parse_quoted_value(s, value, sizeof(value)))
                 snprintf(project->itch_user, sizeof(project->itch_user), "%s", value);
@@ -211,8 +269,45 @@ static int load_project(FlintProject *project, int required)
         }
     }
 
+    if(project->android_key_alias[0] == '\0')
+        snprintf(project->android_key_alias, sizeof(project->android_key_alias), "%s-key", project->name);
+
     fclose(file);
     return 1;
+}
+
+static void print_make_value(const char *key, const char *value)
+{
+    const char *p;
+    printf("%s := ", key);
+    for(p = value; *p != '\0'; p++) {
+        if(*p == '$')
+            printf("$$$$");
+        else if(*p == '#')
+            printf("\\#");
+        else
+            putchar(*p);
+    }
+    putchar('\n');
+}
+
+static int command_make_vars(void)
+{
+    FlintProject project;
+    if(!load_project(&project, 1))
+        return 1;
+
+    print_make_value("APP_NAME", project.name);
+    print_make_value("ANDROID_APP_ID", project.app_id);
+    print_make_value("ANDROID_ACTIVITY", project.android_activity);
+    print_make_value("ANDROID_DIR", project.android_project);
+    print_make_value("ANDROID_KEYSTORE", project.android_keystore);
+    print_make_value("ANDROID_KEY_ALIAS", project.android_key_alias);
+    print_make_value("LINUX_ARCHES", project.linux_arches);
+    print_make_value("WINDOWS_ARCHES", project.windows_arches);
+    if(project.core_dir[0] != '\0')
+        print_make_value("CORE_DIR", project.core_dir);
+    return 0;
 }
 
 static int run_process(char *const argv[])
@@ -898,6 +993,8 @@ int main(int argc, char **argv)
         return command_doctor();
     if(strcmp(cmd, "devices") == 0)
         return command_devices();
+    if(strcmp(cmd, "make-vars") == 0)
+        return command_make_vars();
     if(strcmp(cmd, "build") == 0)
         return command_build(argc - 2, argv + 2);
     if(strcmp(cmd, "build-all") == 0)

@@ -2,16 +2,17 @@ android-init-signing:
 	@echo "Generating release keystore..."
 	@mkdir -p ~/.android
 	keytool -genkeypair -v -storetype PKCS12 \
-		-keystore ~/.android/$(APP_NAME)-release.keystore \
-		-alias $(APP_NAME)-key \
+		-keystore ~/.android/$(ANDROID_KEYSTORE) \
+		-alias $(ANDROID_KEY_ALIAS) \
 		-keyalg RSA \
 		-keysize 4096 \
 		-validity 10000
 	@echo ""
-	@echo "Keystore created at ~/.android/$(APP_NAME)-release.keystore"
+	@echo "Keystore created at ~/.android/$(ANDROID_KEYSTORE)"
 	@echo ""
 	@echo "Add this line to $(ANDROID_DIR)/local.properties:"
-	@echo "  keystore.path=$$HOME/.android/$(APP_NAME)-release.keystore"
+	@echo "  keystore.path=$$HOME/.android/$(ANDROID_KEYSTORE)"
+	@echo "  keystore.alias=$(ANDROID_KEY_ALIAS)"
 
 android-copy-assets:
 	$(MAKE) $(FONT_FILES)
@@ -29,7 +30,6 @@ android-release:
 	@if [ -n "$(PASSWORD)" ]; then \
 		PASSWORD_VALUE="$(PASSWORD)"; \
 		unset ANDROID_HOME; $(GRADLE) -p $(ANDROID_DIR) assembleRelease -Pkeystore.password="$$PASSWORD_VALUE" || exit $$?; \
-		$(MAKE) android-copy-release-apks; \
 	elif [ -t 0 ]; then \
 		printf "Keystore password: "; \
 		stty -echo; \
@@ -38,7 +38,6 @@ android-release:
 		printf "\n"; \
 		if [ -n "$$PASSWORD_VALUE" ]; then \
 			unset ANDROID_HOME; $(GRADLE) -p $(ANDROID_DIR) assembleRelease -Pkeystore.password="$$PASSWORD_VALUE" || exit $$?; \
-			$(MAKE) android-copy-release-apks; \
 		else \
 			echo "Keystore password is required"; \
 			exit 1; \
@@ -47,6 +46,7 @@ android-release:
 		echo "Keystore password is required. Run from a terminal or use PASSWORD=your-password."; \
 		exit 1; \
 	fi
+	$(MAKE) android-copy-release-apks
 
 android-bundle:
 	$(MAKE) android-copy-assets
@@ -73,7 +73,9 @@ android-bundle:
 	fi
 
 android-copy-bundle: | $(ANDROID_BUILD_DIR)
-	@VERSION=$$(grep -m1 '^## \[' CHANGELOG.md | sed 's/^## \[\([^]]*\)\].*/\1/'); \
+	@VERSION=$$(grep VERSION_STRING src/version.h 2>/dev/null | head -1 | grep -o '"[^"]*"' | tr -d '"'); \
+	if [ -z "$$VERSION" ]; then VERSION=$$(grep -m1 '^## \[' CHANGELOG.md 2>/dev/null | sed 's/^## \[\([^]]*\)\].*/\1/'); fi; \
+	if [ -z "$$VERSION" ]; then VERSION="preview"; fi; \
 		BUNDLE=$$(find $(ANDROID_DIR)/app/build/outputs/bundle/release -name "*.aab" 2>/dev/null | head -1); \
 		if [ -n "$$BUNDLE" ] && [ -f "$$BUNDLE" ]; then \
 			VERSIONED_BUNDLE="$(ANDROID_BUILD_DIR)/$(APP_NAME)-$$VERSION.aab"; \
@@ -97,7 +99,9 @@ android-copy-debug-apks: | $(ANDROID_BUILD_DIR)
 	done
 
 android-copy-release-apks: | $(ANDROID_BUILD_DIR)
-	@VERSION=$$(grep INBE_VERSION_STRING src/version.h | grep -o '"[^"]*"' | tr -d '"'); \
+	@VERSION=$$(grep VERSION_STRING src/version.h 2>/dev/null | head -1 | grep -o '"[^"]*"' | tr -d '"'); \
+	if [ -z "$$VERSION" ]; then VERSION=$$(grep -m1 '^## \[' CHANGELOG.md 2>/dev/null | sed 's/^## \[\([^]]*\)\].*/\1/'); fi; \
+	if [ -z "$$VERSION" ]; then VERSION="preview"; fi; \
 	UNIVERSAL_APK=$$(find $(ANDROID_DIR)/app/build/outputs/apk/release -name "app-universal-release.apk" 2>/dev/null); \
 	if [ -n "$$UNIVERSAL_APK" ] && [ -f "$$UNIVERSAL_APK" ]; then \
 		VERSIONED_APK="$(ANDROID_BUILD_DIR)/$(APP_NAME)-$$VERSION.apk"; \

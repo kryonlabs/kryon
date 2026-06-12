@@ -1,5 +1,17 @@
 FLINT_MAKE_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 FLINT_PROJECT ?= flint.toml
+FLINT_BIN ?= flint
+FLINT_PROJECT_VARS ?= build/flint-project.mk
+
+ifeq ($(wildcard $(FLINT_PROJECT)),)
+$(error missing $(FLINT_PROJECT))
+endif
+
+$(FLINT_PROJECT_VARS): $(FLINT_PROJECT) $(FLINT_BIN)
+	@mkdir -p $(dir $@)
+	$(FLINT_BIN) make-vars > $@
+
+-include $(FLINT_PROJECT_VARS)
 
 include $(FLINT_MAKE_DIR)common.mk
 include $(FLINT_MAKE_DIR)native.mk
