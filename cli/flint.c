@@ -22,6 +22,17 @@ typedef struct FlintProject {
     char name[128];
     char app_id[256];
     char android_activity[256];
+    char version_header[PATH_MAX];
+    char itch_user[128];
+    char itch_game[128];
+    char itch_web_channel[64];
+    char itch_windows_channel[64];
+    char itch_linux_channel[64];
+    char itch_android_channel[64];
+    int has_linux;
+    int has_windows;
+    int has_web;
+    int has_android;
 } FlintProject;
 
 static void usage(FILE *out)
@@ -32,8 +43,9 @@ static void usage(FILE *out)
             "Usage:\n"
             "  flint doctor\n"
             "  flint devices\n"
-            "  flint build [native|linux|windows|web|android|android-release|android-bundle]\n"
+            "  flint build [native|linux|windows|web|android]\n"
             "  flint build-all\n"
+            "  flint dist [all|linux|windows|android|android-apk|android-bundle|itch]\n"
             "  flint run [native|android|web] [--device ID] [--port PORT]\n"
             "  flint clean\n"
             "  flint help\n",
@@ -121,6 +133,11 @@ static void project_defaults(FlintProject *project)
     snprintf(project->name, sizeof(project->name), "app");
     snprintf(project->app_id, sizeof(project->app_id), "app");
     snprintf(project->android_activity, sizeof(project->android_activity), "android.app.NativeActivity");
+    snprintf(project->version_header, sizeof(project->version_header), "src/version.h");
+    snprintf(project->itch_web_channel, sizeof(project->itch_web_channel), "html5");
+    snprintf(project->itch_windows_channel, sizeof(project->itch_windows_channel), "windows");
+    snprintf(project->itch_linux_channel, sizeof(project->itch_linux_channel), "linux");
+    snprintf(project->itch_android_channel, sizeof(project->itch_android_channel), "android");
 }
 
 static int load_project(FlintProject *project, int required)
@@ -157,6 +174,14 @@ static int load_project(FlintProject *project, int required)
             if(end != NULL) {
                 *end = '\0';
                 snprintf(section, sizeof(section), "%s", s + 1);
+                if(strcmp(section, "platform.linux") == 0)
+                    project->has_linux = 1;
+                else if(strcmp(section, "platform.windows") == 0)
+                    project->has_windows = 1;
+                else if(strcmp(section, "platform.web") == 0)
+                    project->has_web = 1;
+                else if(strcmp(section, "platform.android") == 0)
+                    project->has_android = 1;
             }
             continue;
         }
@@ -165,9 +190,24 @@ static int load_project(FlintProject *project, int required)
                 snprintf(project->name, sizeof(project->name), "%s", value);
             else if(strncmp(s, "id", 2) == 0 && parse_quoted_value(s, value, sizeof(value)))
                 snprintf(project->app_id, sizeof(project->app_id), "%s", value);
+            else if(strncmp(s, "version_header", 14) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->version_header, sizeof(project->version_header), "%s", value);
         } else if(strncmp(section, "platform.android", sizeof(section)) == 0) {
             if(strncmp(s, "activity", 8) == 0 && parse_quoted_value(s, value, sizeof(value)))
                 snprintf(project->android_activity, sizeof(project->android_activity), "%s", value);
+        } else if(strncmp(section, "dist.itch", sizeof(section)) == 0) {
+            if(strncmp(s, "user", 4) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->itch_user, sizeof(project->itch_user), "%s", value);
+            else if(strncmp(s, "game", 4) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->itch_game, sizeof(project->itch_game), "%s", value);
+            else if(strncmp(s, "web_channel", 11) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->itch_web_channel, sizeof(project->itch_web_channel), "%s", value);
+            else if(strncmp(s, "windows_channel", 15) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->itch_windows_channel, sizeof(project->itch_windows_channel), "%s", value);
+            else if(strncmp(s, "linux_channel", 13) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->itch_linux_channel, sizeof(project->itch_linux_channel), "%s", value);
+            else if(strncmp(s, "android_channel", 15) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->itch_android_channel, sizeof(project->itch_android_channel), "%s", value);
         }
     }
 
@@ -236,10 +276,25 @@ static const char *make_target_for_build(const char *target)
         return "native";
     if(strcmp(target, "android") == 0)
         return "android-debug";
-    if(strcmp(target, "android-debug") == 0 || strcmp(target, "android-release") == 0 ||
-       strcmp(target, "android-bundle") == 0 || strcmp(target, "linux") == 0 ||
-       strcmp(target, "windows") == 0 || strcmp(target, "web") == 0)
+    if(strcmp(target, "linux") == 0 || strcmp(target, "windows") == 0 || strcmp(target, "web") == 0)
         return target;
+    return NULL;
+}
+
+static const char *make_target_for_dist(const char *target)
+{
+    if(target == NULL || strcmp(target, "all") == 0)
+        return "dist";
+    if(strcmp(target, "linux") == 0)
+        return "dist-linux";
+    if(strcmp(target, "windows") == 0)
+        return "dist-windows";
+    if(strcmp(target, "android") == 0 || strcmp(target, "android-apk") == 0)
+        return "android-release";
+    if(strcmp(target, "android-bundle") == 0)
+        return "android-bundle";
+    if(strcmp(target, "itch") == 0)
+        return "itch";
     return NULL;
 }
 
@@ -267,16 +322,35 @@ static int run_make(FlintProject *project, const char *target)
 static int command_build_all(void)
 {
     FlintProject project;
-    const char *targets[] = {"linux", "windows", "web", "android-debug"};
-    size_t i;
 
     if(!load_project(&project, 1))
         return 1;
 
-    for(i = 0; i < sizeof(targets) / sizeof(targets[0]); i++) {
+    if(project.has_linux) {
         int rc;
-        printf("flint: build %s\n", targets[i]);
-        rc = run_make(&project, targets[i]);
+        printf("flint: build linux\n");
+        rc = run_make(&project, "linux");
+        if(rc != 0)
+            return rc;
+    }
+    if(project.has_windows) {
+        int rc;
+        printf("flint: build windows\n");
+        rc = run_make(&project, "windows");
+        if(rc != 0)
+            return rc;
+    }
+    if(project.has_web) {
+        int rc;
+        printf("flint: build web\n");
+        rc = run_make(&project, "web");
+        if(rc != 0)
+            return rc;
+    }
+    if(project.has_android) {
+        int rc;
+        printf("flint: build android\n");
+        rc = run_make(&project, "android-debug");
         if(rc != 0)
             return rc;
     }
@@ -287,13 +361,214 @@ static int command_build_all(void)
 static int command_build(int argc, char **argv)
 {
     FlintProject project;
-    const char *target = make_target_for_build(argc > 0 ? argv[0] : "native");
+    const char *requested = argc > 0 ? argv[0] : "native";
+    const char *target = make_target_for_build(requested);
     if(target == NULL) {
         fprintf(stderr, "flint: unknown build target '%s'\n", argc > 0 ? argv[0] : "");
         return 2;
     }
     if(!load_project(&project, 1))
         return 1;
+    if(strcmp(requested, "linux") == 0 && !project.has_linux) {
+        fprintf(stderr, "flint: project does not declare platform.linux\n");
+        return 2;
+    }
+    if(strcmp(requested, "windows") == 0 && !project.has_windows) {
+        fprintf(stderr, "flint: project does not declare platform.windows\n");
+        return 2;
+    }
+    if(strcmp(requested, "web") == 0 && !project.has_web) {
+        fprintf(stderr, "flint: project does not declare platform.web\n");
+        return 2;
+    }
+    if(strcmp(requested, "android") == 0 && !project.has_android) {
+        fprintf(stderr, "flint: project does not declare platform.android\n");
+        return 2;
+    }
+    return run_make(&project, target);
+}
+
+static int read_project_version(FlintProject *project, char *out, size_t out_size)
+{
+    char path[PATH_MAX];
+    FILE *file;
+    char line[1024];
+
+    if(!join_path(path, sizeof(path), project->root, project->version_header))
+        return 0;
+
+    file = fopen(path, "r");
+    if(file == NULL)
+        return 0;
+
+    while(fgets(line, sizeof(line), file) != NULL) {
+        if(strstr(line, "VERSION_STRING") != NULL && parse_quoted_value(line, out, out_size)) {
+            fclose(file);
+            return 1;
+        }
+    }
+
+    fclose(file);
+    return 0;
+}
+
+static int require_artifact(const char *path, const char *label, const char *hint)
+{
+    if(path_exists(path))
+        return 1;
+    fprintf(stderr, "flint: %s not found at %s\n", label, path);
+    fprintf(stderr, "flint: run '%s' first\n", hint);
+    return 0;
+}
+
+static int find_android_release_artifact(FlintProject *project, const char *version, char *out, size_t out_size)
+{
+    char path[PATH_MAX];
+    char command[1024];
+    char output[PATH_MAX];
+    char *newline;
+
+    snprintf(path, sizeof(path), "%s/build/android/%s-%s.apk", project->root, project->name, version);
+    if(path_exists(path)) {
+        snprintf(out, out_size, "%s", path);
+        return 1;
+    }
+
+    snprintf(path, sizeof(path), "%s/build/android/%s-latest.apk", project->root, project->name);
+    if(path_exists(path)) {
+        snprintf(out, out_size, "%s", path);
+        return 1;
+    }
+
+    snprintf(command, sizeof(command),
+             "find '%s/build/android' -maxdepth 1 -type f \\( -name '%s-*.apk' -o -name '*-release.apk' \\) ! -name '*debug*' 2>/dev/null | sort -V | tail -n 1",
+             project->root, project->name);
+
+    FILE *pipe = popen(command, "r");
+    if(pipe == NULL)
+        return 0;
+    if(fgets(output, sizeof(output), pipe) == NULL) {
+        pclose(pipe);
+        return 0;
+    }
+    pclose(pipe);
+
+    newline = strchr(output, '\n');
+    if(newline != NULL)
+        *newline = '\0';
+    if(output[0] == '\0')
+        return 0;
+    snprintf(out, out_size, "%s", output);
+    return 1;
+}
+
+static int butler_push(const char *artifact, const char *target, const char *version)
+{
+    char *argv[] = {"butler", "push", (char *)artifact, (char *)target, "--userversion", (char *)version, NULL};
+    printf("flint: publishing %s to %s\n", artifact, target);
+    return run_process(argv);
+}
+
+static int command_dist_itch(FlintProject *project)
+{
+    char version[128];
+    char web_dir[PATH_MAX];
+    char linux_artifact[PATH_MAX];
+    char windows_artifact[PATH_MAX];
+    char android_artifact[PATH_MAX];
+    char target[512];
+    int rc;
+
+    if(project->itch_user[0] == '\0' || project->itch_game[0] == '\0') {
+        fprintf(stderr, "flint: flint.toml needs [dist.itch] user and game for itch publishing\n");
+        return 1;
+    }
+
+    if(system("command -v butler >/dev/null 2>&1") != 0) {
+        fprintf(stderr, "flint: butler command not found\n");
+        return 1;
+    }
+
+    if(!read_project_version(project, version, sizeof(version))) {
+        fprintf(stderr, "flint: could not determine version from %s\n", project->version_header);
+        return 1;
+    }
+
+    rc = run_make(project, "dist");
+    if(rc != 0)
+        return rc;
+
+    snprintf(web_dir, sizeof(web_dir), "%s/build/web", project->root);
+    snprintf(linux_artifact, sizeof(linux_artifact), "%s/build/dist/linux/%s-linux.tar.gz", project->root, project->name);
+    snprintf(windows_artifact, sizeof(windows_artifact), "%s/build/dist/windows/%s-windows.zip", project->root, project->name);
+
+    if(!require_artifact(web_dir, "Web build", "flint build web"))
+        return 1;
+    if(!require_artifact(linux_artifact, "Linux package", "flint dist linux"))
+        return 1;
+    if(!require_artifact(windows_artifact, "Windows package", "flint dist windows"))
+        return 1;
+    if(!find_android_release_artifact(project, version, android_artifact, sizeof(android_artifact)) ||
+       !require_artifact(android_artifact, "Signed Android APK", "flint dist android"))
+        return 1;
+
+    printf("flint: publishing %s v%s to itch.io\n", project->name, version);
+
+    snprintf(target, sizeof(target), "%s/%s:%s", project->itch_user, project->itch_game, project->itch_web_channel);
+    rc = butler_push(web_dir, target, version);
+    if(rc != 0)
+        return rc;
+
+    snprintf(target, sizeof(target), "%s/%s:%s", project->itch_user, project->itch_game, project->itch_windows_channel);
+    rc = butler_push(windows_artifact, target, version);
+    if(rc != 0)
+        return rc;
+
+    snprintf(target, sizeof(target), "%s/%s:%s", project->itch_user, project->itch_game, project->itch_linux_channel);
+    rc = butler_push(linux_artifact, target, version);
+    if(rc != 0)
+        return rc;
+
+    snprintf(target, sizeof(target), "%s/%s:%s", project->itch_user, project->itch_game, project->itch_android_channel);
+    rc = butler_push(android_artifact, target, version);
+    if(rc != 0)
+        return rc;
+
+    printf("flint: published to https://%s.itch.io/%s\n", project->itch_user, project->itch_game);
+    return 0;
+}
+
+static int command_dist(int argc, char **argv)
+{
+    FlintProject project;
+    const char *requested = argc > 0 ? argv[0] : "all";
+    const char *target = make_target_for_dist(argc > 0 ? argv[0] : "all");
+    if(target == NULL) {
+        fprintf(stderr, "flint: unknown dist target '%s'\n", argc > 0 ? argv[0] : "");
+        return 2;
+    }
+    if(!load_project(&project, 1))
+        return 1;
+    if(strcmp(requested, "linux") == 0 && !project.has_linux) {
+        fprintf(stderr, "flint: project does not declare platform.linux\n");
+        return 2;
+    }
+    if(strcmp(requested, "windows") == 0 && !project.has_windows) {
+        fprintf(stderr, "flint: project does not declare platform.windows\n");
+        return 2;
+    }
+    if((strcmp(requested, "android") == 0 || strcmp(requested, "android-apk") == 0 ||
+        strcmp(requested, "android-bundle") == 0) && !project.has_android) {
+        fprintf(stderr, "flint: project does not declare platform.android\n");
+        return 2;
+    }
+    if(strcmp(requested, "itch") == 0 &&
+       (!project.has_web || !project.has_linux || !project.has_windows || !project.has_android)) {
+        fprintf(stderr, "flint: itch publishing requires web, linux, windows, and android platforms\n");
+        return 2;
+    }
+    if(strcmp(target, "itch") == 0)
+        return command_dist_itch(&project);
     return run_make(&project, target);
 }
 
@@ -523,7 +798,12 @@ static int command_run(int argc, char **argv)
         return run_make(&project, "run");
 
     if(strcmp(target, "android") == 0) {
-        int rc = run_make(&project, "android-debug");
+        int rc;
+        if(!project.has_android) {
+            fprintf(stderr, "flint: project does not declare platform.android\n");
+            return 2;
+        }
+        rc = run_make(&project, "android-debug");
         if(rc != 0)
             return rc;
         if(device == NULL) {
@@ -537,7 +817,12 @@ static int command_run(int argc, char **argv)
     }
 
     if(strcmp(target, "web") == 0) {
-        int rc = run_make(&project, "web");
+        int rc;
+        if(!project.has_web) {
+            fprintf(stderr, "flint: project does not declare platform.web\n");
+            return 2;
+        }
+        rc = run_make(&project, "web");
         if(rc != 0)
             return rc;
         if(!join_path(web_root, sizeof(web_root), project.root, "build/web")) {
@@ -565,7 +850,13 @@ static int command_doctor(void)
     printf("flint %s\n", FLINT_VERSION);
     if(load_project(&project, 0)) {
         printf("project: %s (%s)\n", project.name, project.root);
-        printf("android: %s/%s\n", project.app_id, project.android_activity);
+        printf("platforms:%s%s%s%s\n",
+               project.has_linux ? " linux" : "",
+               project.has_windows ? " windows" : "",
+               project.has_web ? " web" : "",
+               project.has_android ? " android" : "");
+        if(project.has_android)
+            printf("android: %s/%s\n", project.app_id, project.android_activity);
     } else {
         printf("project: no flint.toml found\n");
         ok = 0;
@@ -611,6 +902,8 @@ int main(int argc, char **argv)
         return command_build(argc - 2, argv + 2);
     if(strcmp(cmd, "build-all") == 0)
         return command_build_all();
+    if(strcmp(cmd, "dist") == 0)
+        return command_dist(argc - 2, argv + 2);
     if(strcmp(cmd, "run") == 0)
         return command_run(argc - 2, argv + 2);
     if(strcmp(cmd, "clean") == 0) {

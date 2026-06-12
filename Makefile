@@ -62,7 +62,8 @@ install: $(CLI)
 	@echo "Installing flint to $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
 	@mkdir -p $(BIN_DIR)
-	@cp $(CLI) $(INSTALL_DIR)/flint
+	@cp $(CLI) $(INSTALL_DIR)/flint.tmp
+	@mv -f $(INSTALL_DIR)/flint.tmp $(INSTALL_DIR)/flint
 	@if [ -L $(BIN_DIR)/flint ]; then \
 		echo "Removing existing symlink: $(BIN_DIR)/flint"; \
 		rm $(BIN_DIR)/flint; \

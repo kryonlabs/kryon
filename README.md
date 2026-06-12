@@ -38,7 +38,15 @@ flint doctor
 flint build native
 flint run native
 flint build web
+flint run web
+flint build android
 flint run android --device <adb-device-id>
+flint dist linux
+flint dist windows
+flint dist android
+flint dist android-bundle
+flint dist itch
+flint dist
 ```
 
 ## Raylib App Make Layer
