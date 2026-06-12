@@ -11,8 +11,8 @@ void flint_web_viewport_size(int fallback_width, int fallback_height,
                              int *width, int *height);
 
 /*
- * Web builds should create a resizable high-DPI raylib window and keep the
- * window size synced to the browser viewport. Native builds return 0 here.
+ * Web builds should create a resizable raylib window in CSS-pixel units and
+ * keep the window size synced to the browser viewport. Native builds return 0.
  */
 unsigned int flint_web_window_flags(void);
 

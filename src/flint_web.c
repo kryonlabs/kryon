@@ -54,7 +54,7 @@ unsigned int
 flint_web_window_flags(void)
 {
 #if defined(PLATFORM_WEB)
-    return FLAG_WINDOW_HIGHDPI | FLAG_WINDOW_RESIZABLE;
+    return FLAG_WINDOW_RESIZABLE;
 #else
     return 0;
 #endif
