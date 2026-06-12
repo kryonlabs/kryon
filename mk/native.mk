@@ -6,11 +6,14 @@ all: native
 native: $(TARGET)
 
 $(RAYLIB_A): $(RAYLIB_SOURCES) | $(RAYLIB_BUILD_DIR)
-	$(MAKE) -j1 -C $(RAYLIB_DIR) \
+	@rm -rf $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src
+	@mkdir -p $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src
+	cp -R $(RAYLIB_DIR)/. $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src/
+	$(MAKE) -j1 -C $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src \
 		PLATFORM=PLATFORM_DESKTOP_SDL \
 		GRAPHICS=GRAPHICS_API_OPENGL_ES2 \
 		RAYLIB_LIBTYPE=STATIC \
-		RAYLIB_RELEASE_PATH=../../../$(RAYLIB_BUILD_DIR) \
+		RAYLIB_RELEASE_PATH=../raylib \
 		RAYLIB_MODULE_AUDIO=TRUE \
 		RAYLIB_MODULE_MODELS=FALSE \
 		SDL_INCLUDE_PATH="$(RAY_SDL_INCLUDE_DIR)" \
@@ -18,9 +21,9 @@ $(RAYLIB_A): $(RAYLIB_SOURCES) | $(RAYLIB_BUILD_DIR)
 		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(RAY_CFLAGS) $(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
 
 ifneq ($(strip $(CORE_SRCS)),)
-CORE_OBJS = $(patsubst %.c,$(LINUX_OBJ_DIR)/core/%.o,$(CORE_SRCS))
+CORE_OBJS = $(patsubst %.c,$(LINUX_OBJ_DIR)/$(ARCH)/native/core/%.o,$(CORE_SRCS))
 
-$(LINUX_OBJ_DIR)/core/%.o: %.c | $(LINUX_OBJ_DIR)
+$(LINUX_OBJ_DIR)/$(ARCH)/native/core/%.o: %.c | $(LINUX_OBJ_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(CORE_INCLUDE) -c $< -o $@
 
@@ -79,20 +82,21 @@ build-linux-arch:
 	@mkdir -p $(LINUX_OBJ_DIR)/$(ARCH_NAME) $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib $(LINUX_BIN_DIR)
 	$(MAKE) $(FONT_FILES)
 	$(MAKE) $(EMBEDDED_ASSETS_C)
-	$(MAKE) -C $(RAYLIB_DIR) clean
-	$(MAKE) -j1 -C $(RAYLIB_DIR) \
+	@rm -rf $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src
+	@mkdir -p $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src
+	cp -R $(RAYLIB_DIR)/. $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src/
+	$(MAKE) -j1 -C $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src \
 		CC="$(LINUX_CC)" \
 		AR="$(LINUX_AR)" \
 		PLATFORM=PLATFORM_DESKTOP_SDL \
 		GRAPHICS=GRAPHICS_API_OPENGL_ES2 \
 		RAYLIB_LIBTYPE=STATIC \
-		RAYLIB_RELEASE_PATH=../../../$(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib \
+		RAYLIB_RELEASE_PATH=../raylib \
 		RAYLIB_MODULE_AUDIO=TRUE \
 		RAYLIB_MODULE_MODELS=FALSE \
 		SDL_INCLUDE_PATH="$(LINUX_RAY_SDL_INCLUDE_DIR)" \
 		SDL_LIBRARIES="$(LINUX_RAY_SDL_LDLIBS)" \
 		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(LINUX_RAY_CFLAGS) $(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
-	$(MAKE) -C $(RAYLIB_DIR) clean
 	@if [ -n "$(strip $(CORE_SRCS))" ]; then \
 		for src in $(CORE_SRCS); do \
 			obj="$(LINUX_OBJ_DIR)/$(ARCH_NAME)/core/$${src%.c}.o"; \

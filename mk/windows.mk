@@ -63,22 +63,20 @@ endef
 
 define WINDOWS_ARCH_RENDERER_RULES
 $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a: $(RAYLIB_SOURCES) | $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib
-	$(MAKE) -C $(RAYLIB_DIR) clean RAYLIB_RELEASE_PATH=../../../$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib
-	$(MAKE) -j1 -C $(RAYLIB_DIR) \
+	@rm -rf $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src
+	@mkdir -p $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src
+	cp -R $(RAYLIB_DIR)/. $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src/
+	$(MAKE) -j1 -C $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src \
 		CC="$$(WIN_$(1)_CC)" \
 		AR="$$(WIN_$(1)_AR)" \
 		PLATFORM=$$(WIN_$(2)_PLATFORM) \
 		PLATFORM_OS=WINDOWS \
 		RAYLIB_LIBTYPE=STATIC \
-		RAYLIB_RELEASE_PATH=../../../$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib \
+		RAYLIB_RELEASE_PATH=../raylib \
 		RAYLIB_MODULE_AUDIO=TRUE \
 		RAYLIB_MODULE_MODELS=FALSE \
 		GRAPHICS=$$(WIN_$(2)_GRAPHICS) \
 		CUSTOM_CFLAGS="$(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
-	@for obj in $(RAYLIB_DIR)/*.o; do \
-		[ -e "$$$$obj" ] || continue; \
-		mv "$$$$obj" $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/; \
-	done
 
 $(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe: $(BUILD_MAKEFILES) $(SRC) $(WIN_FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a $(if $(strip $(CORE_SRCS)),$(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a,) $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res | $(WINDOWS_BIN_DIR)
 	$$(WIN_$(1)_CC) $(CFLAGS) \

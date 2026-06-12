@@ -6,10 +6,10 @@ SRC ?= $(wildcard src/*.c) $(wildcard src/*/*.c)
 CORE_DIR ?=
 CORE_SRCS ?= $(if $(strip $(CORE_DIR)),$(wildcard $(CORE_DIR)/*.c),)
 CORE_INCLUDE ?= $(if $(strip $(CORE_DIR)),-I$(CORE_DIR),)
-CORE_A = $(if $(strip $(CORE_SRCS)),$(LINUX_OBJ_DIR)/lib$(APP_NAME)-core.a,)
+CORE_A = $(if $(strip $(CORE_SRCS)),$(LINUX_OBJ_DIR)/$(ARCH)/native/lib$(APP_NAME)-core.a,)
 
 RAYLIB_DIR ?= vendor/raylib/src
-RAYLIB_BUILD_DIR = $(LINUX_OBJ_DIR)/native/raylib
+RAYLIB_BUILD_DIR = $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib
 RAYLIB_A = $(RAYLIB_BUILD_DIR)/libraylib.a
 RAYLIB_SOURCES = $(wildcard $(RAYLIB_DIR)/*.c) $(wildcard $(RAYLIB_DIR)/*.h)
 
