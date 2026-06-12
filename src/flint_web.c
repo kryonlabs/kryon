@@ -1,5 +1,7 @@
 #include "flint_web.h"
 
+#include "flint_dpi.h"
+#include "flint_layout.h"
 #include <raylib.h>
 
 #if defined(PLATFORM_WEB)
@@ -70,6 +72,8 @@ flint_web_sync_window_size(void)
         return 0;
 
     SetWindowSize(width, height);
+    flint_set_view_size(width, height);
+    flint_dpi_update(width, height);
     return 1;
 #else
     return 0;
