@@ -7,7 +7,7 @@ ifeq ($(wildcard $(FLINT_PROJECT)),)
 $(error missing $(FLINT_PROJECT))
 endif
 
-$(FLINT_PROJECT_VARS): $(FLINT_PROJECT) $(FLINT_BIN)
+$(FLINT_PROJECT_VARS): $(FLINT_PROJECT)
 	@mkdir -p $(dir $@)
 	$(FLINT_BIN) make-vars > $@
 
