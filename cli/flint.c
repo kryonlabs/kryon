@@ -27,6 +27,10 @@ typedef struct FlintProject {
     char android_key_alias[128];
     char linux_arches[128];
     char windows_arches[128];
+    char app_sources[4096];
+    char include_dirs[1024];
+    char raylib_dir[PATH_MAX];
+    char flint_dir[PATH_MAX];
     char core_dir[PATH_MAX];
     char version_header[PATH_MAX];
     char itch_user[128];
@@ -136,6 +140,65 @@ static int parse_quoted_list_value(const char *line, char *out, size_t out_size)
     return used > 0;
 }
 
+static int append_space_value(char *out, size_t out_size, const char *value)
+{
+    size_t used;
+    size_t len;
+
+    if(out == NULL || value == NULL || value[0] == '\0' || out_size == 0)
+        return 0;
+
+    used = strlen(out);
+    len = strlen(value);
+
+    if(used > 0) {
+        if(used + 1 >= out_size)
+            return 0;
+        out[used++] = ' ';
+        out[used] = '\0';
+    }
+
+    if(len >= out_size - used)
+        return 0;
+
+    memcpy(out + used, value, len + 1);
+    return 1;
+}
+
+static int append_quoted_list_values(const char *line, char *out, size_t out_size, const char *prefix)
+{
+    const char *p = line;
+    int appended = 0;
+
+    while((p = strchr(p, '"')) != NULL) {
+        const char *end = strchr(p + 1, '"');
+        char value[PATH_MAX];
+        char item[PATH_MAX + 4];
+        size_t len;
+
+        if(end == NULL)
+            break;
+
+        len = (size_t)(end - (p + 1));
+        if(len >= sizeof(value))
+            len = sizeof(value) - 1;
+        memcpy(value, p + 1, len);
+        value[len] = '\0';
+
+        if(prefix != NULL && prefix[0] != '\0')
+            snprintf(item, sizeof(item), "%s%s", prefix, value);
+        else
+            snprintf(item, sizeof(item), "%s", value);
+
+        if(append_space_value(out, out_size, item))
+            appended = 1;
+
+        p = end + 1;
+    }
+
+    return appended;
+}
+
 static int find_project_root(char *out, size_t out_size)
 {
     char current[PATH_MAX];
@@ -176,6 +239,8 @@ static void project_defaults(FlintProject *project)
     snprintf(project->android_keystore, sizeof(project->android_keystore), "flint-release.keystore");
     snprintf(project->linux_arches, sizeof(project->linux_arches), "x86_64 aarch64");
     snprintf(project->windows_arches, sizeof(project->windows_arches), "x86_64 i686");
+    snprintf(project->raylib_dir, sizeof(project->raylib_dir), "vendor/raylib/src");
+    snprintf(project->flint_dir, sizeof(project->flint_dir), "vendor/flint");
     snprintf(project->version_header, sizeof(project->version_header), "src/version.h");
     snprintf(project->itch_web_channel, sizeof(project->itch_web_channel), "html5");
     snprintf(project->itch_windows_channel, sizeof(project->itch_windows_channel), "windows");
@@ -187,6 +252,7 @@ static int load_project(FlintProject *project, int required)
 {
     char path[PATH_MAX];
     char section[128] = "";
+    char active_list[64] = "";
     FILE *file;
     char line[1024];
 
@@ -212,6 +278,18 @@ static int load_project(FlintProject *project, int required)
         char value[256];
         if(*s == '\0' || *s == '#')
             continue;
+
+        if(active_list[0] != '\0') {
+            if(strcmp(active_list, "sources.app") == 0)
+                append_quoted_list_values(s, project->app_sources, sizeof(project->app_sources), NULL);
+            else if(strcmp(active_list, "sources.include_dirs") == 0)
+                append_quoted_list_values(s, project->include_dirs, sizeof(project->include_dirs), "-I");
+
+            if(strchr(s, ']') != NULL)
+                active_list[0] = '\0';
+            continue;
+        }
+
         if(*s == '[') {
             char *end = strchr(s, ']');
             if(end != NULL) {
@@ -240,6 +318,20 @@ static int load_project(FlintProject *project, int required)
                 snprintf(project->android_project, sizeof(project->android_project), "%s", value);
             else if(strncmp(s, "core_library", 12) == 0 && parse_quoted_value(s, value, sizeof(value)))
                 snprintf(project->core_dir, sizeof(project->core_dir), "%s", value);
+            else if(strncmp(s, "raylib", 6) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->raylib_dir, sizeof(project->raylib_dir), "%s", value);
+            else if(strncmp(s, "flint", 5) == 0 && parse_quoted_value(s, value, sizeof(value)))
+                snprintf(project->flint_dir, sizeof(project->flint_dir), "%s", value);
+        } else if(strncmp(section, "sources", sizeof(section)) == 0) {
+            if(strncmp(s, "app", 3) == 0) {
+                append_quoted_list_values(s, project->app_sources, sizeof(project->app_sources), NULL);
+                if(strchr(s, '[') != NULL && strchr(s, ']') == NULL)
+                    snprintf(active_list, sizeof(active_list), "%s", "sources.app");
+            } else if(strncmp(s, "include_dirs", 12) == 0) {
+                append_quoted_list_values(s, project->include_dirs, sizeof(project->include_dirs), "-I");
+                if(strchr(s, '[') != NULL && strchr(s, ']') == NULL)
+                    snprintf(active_list, sizeof(active_list), "%s", "sources.include_dirs");
+            }
         } else if(strncmp(section, "platform.android", sizeof(section)) == 0) {
             if(strncmp(s, "activity", 8) == 0 && parse_quoted_value(s, value, sizeof(value)))
                 snprintf(project->android_activity, sizeof(project->android_activity), "%s", value);
@@ -305,6 +397,14 @@ static int command_make_vars(void)
     print_make_value("ANDROID_KEY_ALIAS", project.android_key_alias);
     print_make_value("LINUX_ARCHES", project.linux_arches);
     print_make_value("WINDOWS_ARCHES", project.windows_arches);
+    if(project.raylib_dir[0] != '\0')
+        print_make_value("RAYLIB_DIR", project.raylib_dir);
+    if(project.flint_dir[0] != '\0')
+        print_make_value("FLINT_DIR", project.flint_dir);
+    if(project.app_sources[0] != '\0')
+        print_make_value("SRC", project.app_sources);
+    if(project.include_dirs[0] != '\0')
+        print_make_value("APP_INCLUDE", project.include_dirs);
     if(project.core_dir[0] != '\0')
         print_make_value("CORE_DIR", project.core_dir);
     return 0;
