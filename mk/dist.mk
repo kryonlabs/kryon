@@ -25,7 +25,8 @@ dist:
 	$(MAKE) windows || exit $$?; \
 	$(MAKE) web || exit $$?; \
 	$(MAKE) dist-linux || exit $$?; \
-	$(MAKE) dist-windows || exit $$?
+	$(MAKE) dist-windows || exit $$?; \
+	$(MAKE) dist-web || exit $$?
 
 dist-linux: linux | $(LINUX_DIST_DIR)
 	@echo "Creating Linux tar.gz package with all Linux arch binaries..."
@@ -109,3 +110,8 @@ dist-windows: windows | $(WINDOWS_DIST_DIR)
 	@rm -f $(WINDOWS_DIST_DIR)/$(APP_NAME)-windows.zip
 	@cd $(WINDOWS_BIN_DIR) && zip -j $(abspath $(WINDOWS_DIST_DIR)/$(APP_NAME)-windows.zip) $(APP_NAME)-windows-*.exe
 	@echo "Created $(WINDOWS_DIST_DIR)/$(APP_NAME)-windows.zip"
+
+
+dist-web: web
+	@echo "Created $(WEB_DIST_DIR)"
+	@echo "Created $(WEB_ZIP)"

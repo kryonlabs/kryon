@@ -40,6 +40,7 @@ FORCE:
 	dist \
 	dist-linux \
 	dist-windows \
+	dist-web \
 	install \
 	uninstall \
 	android-init-signing \

@@ -44,6 +44,7 @@ else
 endif
 
 BUILD_DIR = build
+BUILD_WORK_DIR = $(BUILD_DIR)/work
 BUILD_OBJ_DIR = $(BUILD_DIR)/obj
 BUILD_BIN_DIR = $(BUILD_DIR)/bin
 BUILD_DIST_DIR = $(BUILD_DIR)/dist
@@ -55,7 +56,10 @@ WINDOWS_BIN_DIR = $(BUILD_BIN_DIR)/windows
 WINDOWS_DIST_DIR = $(BUILD_DIST_DIR)/windows
 ANDROID_BUILD_DIR = $(BUILD_DIR)/android
 ANDROID_DIST_DIR = $(BUILD_DIST_DIR)/android
-WEB_BUILD_DIR = $(BUILD_DIR)/web
+WEB_WORK_DIR = $(BUILD_WORK_DIR)/web
+WEB_BUILD_DIR = $(WEB_WORK_DIR)
+WEB_DIST_DIR = $(BUILD_DIST_DIR)/web
+WEB_ZIP = $(BUILD_DIST_DIR)/$(APP_NAME)-web.zip
 LINUX_ARCHES ?= x86_64 aarch64
 ANDROID_DIST ?= release
 
@@ -130,6 +134,9 @@ $(BUILD_BIN_DIR):
 $(BUILD_DIST_DIR):
 	mkdir -p $@
 
+$(BUILD_WORK_DIR):
+	mkdir -p $@
+
 $(LINUX_OBJ_DIR): | $(BUILD_OBJ_DIR)
 	mkdir -p $@
 
@@ -154,7 +161,10 @@ $(ANDROID_DIST_DIR): | $(BUILD_DIST_DIR)
 $(ANDROID_BUILD_DIR): | build
 	mkdir -p $@
 
-$(WEB_BUILD_DIR): | build
+$(WEB_BUILD_DIR): | $(BUILD_WORK_DIR)
+	mkdir -p $@
+
+$(WEB_DIST_DIR): | $(BUILD_DIST_DIR)
 	mkdir -p $@
 
 $(RAYLIB_BUILD_DIR): | build

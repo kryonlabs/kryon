@@ -8,7 +8,7 @@ clean-windows:
 	rm -rf $(WINDOWS_OBJ_DIR) $(WINDOWS_BIN_DIR) $(WINDOWS_DIST_DIR)
 
 clean-web:
-	rm -rf $(WEB_BUILD_DIR)
+	rm -rf $(WEB_BUILD_DIR) $(WEB_DIST_DIR) $(WEB_ZIP) $(BUILD_DIR)/web
 
 clean-raylib:
 	rm -rf $(RAYLIB_BUILD_DIR) \
