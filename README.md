@@ -1,28 +1,44 @@
-# Flint UI Library
+# Flint
 
-Shared UI primitives for Raylib-based applications.
+Shared Raylib application tooling and UI primitives.
 
-Flint provides common UI components and utilities that can be shared across multiple Raylib projects, eliminating code duplication while maintaining project independence.
+Flint has two related parts:
+
+- a small C library of UI, layout, theme, text, icon, DPI, and file-dialog helpers for Raylib applications
+- a `flint` CLI for building, running, packaging, and publishing Raylib apps that use a `flint.toml` project manifest
+
+It is intended to keep Raylib app repositories small while moving common UI code and repeated platform build logic into one shared place.
 
 ## Features
 
 - Color manipulation utilities
 - DPI-aware scaling helpers
 - Layout calculation functions
-- Icon fallback drawing
-- Theme management (coming soon)
-- Button components (coming soon)
-- Text rendering (coming soon)
+- Icon assets and fallback drawing
+- Theme loading and metadata helpers
+- Text rendering and text layout helpers
+- Immediate-mode UI controls
+- Native file dialog helpers
+- Reusable Make rules for native, Linux, Windows, web, and Android Raylib builds
+- `flint` CLI commands for project health checks, builds, runs, distribution packages, Android devices, and itch.io publishing
 
 ## Building
 
-Flint compiles to a static library (`libflint.a`) that can be linked against any Raylib project.
+Build the C library:
 
 ```bash
 make
 ```
 
-Install the Flint CLI with the same local install pattern used by Flint apps:
+This creates `libflint.a`, which can be linked by any Raylib project.
+
+Build only the CLI:
+
+```bash
+make cli
+```
+
+Install the CLI with the same local install pattern used by Flint apps:
 
 ```bash
 make install
@@ -31,15 +47,24 @@ flint help
 
 This installs the binary to `~/.local/share/flint/flint` and creates `~/bin/flint`.
 
-From a Raylib app that has `flint.toml`:
+## CLI
+
+The `flint` command is a thin project command runner for Raylib apps. It finds the nearest `flint.toml`, validates declared platforms, and delegates the actual platform work to Flint's shared Make rules.
+
+Common commands:
 
 ```bash
 flint doctor
+flint version
+flint devices
 flint build native
-flint run native
+flint build linux
+flint build windows
 flint build web
-flint run web
 flint build android
+flint build-all
+flint run native
+flint run web
 flint run android --device <adb-device-id>
 flint dist linux
 flint dist windows
@@ -47,9 +72,62 @@ flint dist android
 flint dist android-bundle
 flint dist itch
 flint dist
+flint clean
 ```
 
-## Raylib App Make Layer
+Use `flint doctor` inside an app repo to confirm that the manifest and required tools are visible. For web runs, `flint run web` builds the web target and serves `build/web` on localhost. For Android runs, `flint run android` builds a debug APK, installs it with `adb`, and launches the configured activity.
+
+When an app has `flake.nix` and Raylib environment variables are not already present, the CLI enters `nix develop` before running Make targets.
+
+## Project Manifest
+
+Apps driven by the CLI and Make layer use a `flint.toml` manifest. A typical app declares metadata, source files, assets, Raylib options, platforms, and optional distribution settings:
+
+```toml
+[app]
+name = "example"
+title = "Example"
+id = "xyz.example.app"
+version_header = "src/version.h"
+
+[paths]
+raylib = "vendor/raylib/src"
+flint = "vendor/flint"
+android_project = "droid"
+
+[sources]
+app = ["src/*.c"]
+include_dirs = ["src"]
+
+[assets]
+images = "assets/images/*"
+themes = "vendor/flint/themes/*.ini"
+
+[raylib]
+audio = true
+models = false
+graphics = "opengl33"
+formats = ["png"]
+
+[platform.linux]
+arches = ["x86_64"]
+
+[platform.windows]
+arches = ["x86_64"]
+
+[platform.web]
+shell = "src/web_shell.html"
+
+[platform.android]
+min_sdk = 23
+target_sdk = 35
+compile_sdk = 35
+activity = "xyz.example.app.MainActivity"
+```
+
+Only declare platforms that the app actually supports. CLI commands such as `flint build web` and `flint dist android` fail early when the corresponding platform section is missing.
+
+## Make Layer
 
 Flint also ships reusable Make rules for Raylib applications in `mk/`.
 An app can keep a small compatibility Makefile and delegate common build targets to Flint:
@@ -63,12 +141,9 @@ FLINT_PROJECT ?= flint.toml
 include $(FLINT_DIR)/mk/project.mk
 ```
 
-The current make layer preserves the existing `make`, `make linux`, `make windows`,
-`make web`, and Android targets while moving the shared platform build logic out
-of app repositories. `flint.toml` is the forward-compatible project manifest for
-the future CLI.
+The make layer preserves direct targets such as `make`, `make linux`, `make windows`, `make web`, and the Android targets. The CLI uses the same targets, so app repositories can support both direct Make usage and the higher-level `flint` commands.
 
-## Usage
+## C Library Usage
 
 Include the Flint headers in your project:
 
@@ -86,6 +161,8 @@ Link against `libflint.a` in your Makefile.
 
 - Inbe
 - Quest
+- Uku
+- Lotus
 
 ## Name Origin
 
