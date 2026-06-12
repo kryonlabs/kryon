@@ -22,6 +22,25 @@ Flint compiles to a static library (`libflint.a`) that can be linked against any
 make
 ```
 
+Install the Flint CLI with the same local install pattern used by Flint apps:
+
+```bash
+make install
+flint help
+```
+
+This installs the binary to `~/.local/share/flint/flint` and creates `~/bin/flint`.
+
+From a Raylib app that has `flint.toml`:
+
+```bash
+flint doctor
+flint build native
+flint run native
+flint build web
+flint run android --device <adb-device-id>
+```
+
 ## Raylib App Make Layer
 
 Flint also ships reusable Make rules for Raylib applications in `mk/`.
