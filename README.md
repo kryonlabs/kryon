@@ -22,6 +22,25 @@ Flint compiles to a static library (`libflint.a`) that can be linked against any
 make
 ```
 
+## Raylib App Make Layer
+
+Flint also ships reusable Make rules for Raylib applications in `mk/`.
+An app can keep a small compatibility Makefile and delegate common build targets to Flint:
+
+```make
+.DEFAULT_GOAL := all
+
+FLINT_DIR ?= vendor/flint
+FLINT_PROJECT ?= flint.toml
+
+include $(FLINT_DIR)/mk/project.mk
+```
+
+The current make layer preserves the existing `make`, `make linux`, `make windows`,
+`make web`, and Android targets while moving the shared platform build logic out
+of app repositories. `flint.toml` is the forward-compatible project manifest for
+the future CLI.
+
 ## Usage
 
 Include the Flint headers in your project:
