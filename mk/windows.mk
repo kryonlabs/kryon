@@ -48,9 +48,9 @@ ifneq ($(strip $(CORE_SRCS)),)
 $(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a: $(BUILD_MAKEFILES) $(CORE_SRCS) | $(WINDOWS_OBJ_DIR)/$(1)
 	@mkdir -p $(WINDOWS_OBJ_DIR)/$(1)/core
 	@for src in $(CORE_SRCS); do \
-		obj="$(WINDOWS_OBJ_DIR)/$(1)/core/$${src%.c}.o"; \
-		mkdir -p "$$(dirname "$$obj")"; \
-		$$(WIN_$(1)_CC) $(CFLAGS) $(CORE_INCLUDE) -c "$$src" -o "$$obj"; \
+		obj="$(WINDOWS_OBJ_DIR)/$(1)/core/$$$${src%.c}.o"; \
+		mkdir -p "$$(dirname "$$$$obj")"; \
+		$$(WIN_$(1)_CC) $(CFLAGS) $(CORE_INCLUDE) -c "$$$$src" -o "$$$$obj"; \
 	done
 	find $(WINDOWS_OBJ_DIR)/$(1)/core -name '*.o' -print | sort | xargs $$(WIN_$(1)_AR) rcs $$@
 endif
