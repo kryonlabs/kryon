@@ -78,7 +78,7 @@ $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a: $(RAYLIB_SOURCES) | $(WINDOWS_O
 		mv "$$$$obj" $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/; \
 	done
 
-$(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe: $(SRC) $(WIN_FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a $(CORE_A) $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res | $(WINDOWS_BIN_DIR)
+$(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe: $(SRC) $(WIN_FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a $(if $(strip $(CORE_SRCS)),$(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a,) $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res | $(WINDOWS_BIN_DIR)
 	$$(WIN_$(1)_CC) $(CFLAGS) \
 		$(APP_INCLUDE) \
 		$(FLINT_INCLUDE) \
@@ -87,7 +87,7 @@ $(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe:
 		-o $$@ \
 		$(SRC) \
 		$(WIN_FLINT_SRCS) \
-		$(CORE_A) \
+		$(if $(strip $(CORE_SRCS)),$(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a,) \
 		$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a \
 		$(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res \
 		-L$$(WIN_$(1)_MCFGTHREADS)/lib \
