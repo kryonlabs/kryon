@@ -15,6 +15,7 @@
 void flint_text_set_font(Font font);
 Font flint_text_font(void);
 Font flint_text_load_chopped_font(const char *png_path, const char *dat_path, int base_size);
+Font flint_text_load_chopped_font_from_memory(const unsigned char *png_data, unsigned int png_size, const unsigned char *dat_data, unsigned int dat_size, int base_size);
 void flint_text_unload_font(Font *font);
 int flint_text_size(int preferred_size);
 int flint_text_dpi_size(int base_size);

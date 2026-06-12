@@ -54,26 +54,32 @@ flint_text_font(void)
 }
 
 Font
-flint_text_load_chopped_font(const char *png_path, const char *dat_path, int base_size)
+flint_text_load_chopped_font_from_memory(const unsigned char *png_data, unsigned int png_size,
+                                         const unsigned char *dat_data, unsigned int dat_size,
+                                         int base_size)
 {
     Font font = {0};
-    FILE *file = NULL;
     FlintChoppedGlyph *glyphs = NULL;
     GlyphInfo *glyph_infos = NULL;
     Rectangle *recs = NULL;
     int32_t glyph_count = 0;
     Image image = {0};
     Texture2D texture = {0};
+    const unsigned char *cursor;
+    size_t glyph_bytes;
 
-    if(png_path == NULL || dat_path == NULL)
+    if(png_data == NULL || png_size == 0 || dat_data == NULL || dat_size < sizeof(glyph_count))
         return font;
 
-    file = fopen(dat_path, "rb");
-    if(file == NULL)
+    cursor = dat_data;
+    memcpy(&glyph_count, cursor, sizeof(glyph_count));
+    cursor += sizeof(glyph_count);
+    if(glyph_count <= 0)
         return font;
 
-    if(fread(&glyph_count, sizeof(glyph_count), 1, file) != 1 || glyph_count <= 0)
-        goto cleanup;
+    glyph_bytes = (size_t)glyph_count * sizeof(*glyphs);
+    if((size_t)dat_size - sizeof(glyph_count) < glyph_bytes)
+        return font;
 
     glyphs = (FlintChoppedGlyph *)calloc((size_t)glyph_count, sizeof(*glyphs));
     glyph_infos = (GlyphInfo *)calloc((size_t)glyph_count, sizeof(*glyph_infos));
@@ -81,12 +87,9 @@ flint_text_load_chopped_font(const char *png_path, const char *dat_path, int bas
     if(glyphs == NULL || glyph_infos == NULL || recs == NULL)
         goto cleanup;
 
-    if(fread(glyphs, sizeof(*glyphs), (size_t)glyph_count, file) != (size_t)glyph_count)
-        goto cleanup;
-    fclose(file);
-    file = NULL;
+    memcpy(glyphs, cursor, glyph_bytes);
 
-    image = LoadImage(png_path);
+    image = LoadImageFromMemory(".png", png_data, (int)png_size);
     if(image.data == NULL)
         goto cleanup;
 
@@ -118,8 +121,6 @@ flint_text_load_chopped_font(const char *png_path, const char *dat_path, int bas
     return font;
 
 cleanup:
-    if(file != NULL)
-        fclose(file);
     if(image.data != NULL)
         UnloadImage(image);
     if(texture.id != 0)
@@ -128,6 +129,55 @@ cleanup:
     free(glyph_infos);
     free(recs);
     return (Font){0};
+}
+
+Font
+flint_text_load_chopped_font(const char *png_path, const char *dat_path, int base_size)
+{
+    Font font = {0};
+    FILE *file = NULL;
+    unsigned char *dat_data = NULL;
+    unsigned char *png_data = NULL;
+    long dat_size;
+    int png_size;
+
+    if(png_path == NULL || dat_path == NULL)
+        return font;
+
+    file = fopen(dat_path, "rb");
+    if(file == NULL)
+        return font;
+
+    if(fseek(file, 0, SEEK_END) != 0)
+        goto cleanup;
+    dat_size = ftell(file);
+    if(dat_size <= 0)
+        goto cleanup;
+    rewind(file);
+
+    dat_data = (unsigned char *)malloc((size_t)dat_size);
+    if(dat_data == NULL)
+        goto cleanup;
+    if(fread(dat_data, 1, (size_t)dat_size, file) != (size_t)dat_size)
+        goto cleanup;
+    fclose(file);
+    file = NULL;
+
+    png_data = LoadFileData(png_path, &png_size);
+    if(png_data == NULL || png_size <= 0)
+        goto cleanup;
+
+    font = flint_text_load_chopped_font_from_memory(png_data, (unsigned int)png_size,
+                                                    dat_data, (unsigned int)dat_size,
+                                                    base_size);
+
+cleanup:
+    if(file != NULL)
+        fclose(file);
+    if(png_data != NULL)
+        UnloadFileData(png_data);
+    free(dat_data);
+    return font;
 }
 
 void

@@ -1,4 +1,5 @@
 #include "flint_locale.h"
+#include "flint_embedded_assets.h"
 
 #include "raylib.h"
 
@@ -328,13 +329,21 @@ load_language_list_from_text(const char *text)
 static int
 load_file_text_from_paths(const char *relative_path, char **out_text)
 {
-#if defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     char *text;
 
     if(out_text == NULL)
         return 0;
     *out_text = NULL;
 
+    text = flint_embedded_asset_text(relative_path);
+    if(text != NULL) {
+        *out_text = text;
+        return 1;
+    }
+
+#if defined(FLINT_EMBEDDED_ONLY)
+    return 0;
+#elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     text = LoadFileText(relative_path);
     if(text != NULL) {
         *out_text = text;
@@ -375,7 +384,6 @@ load_file_text_from_paths(const char *relative_path, char **out_text)
 static int
 load_locale_file_for_code(const char *code, char **out_text)
 {
-#if defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     char path[64];
     char *text;
 
@@ -387,6 +395,15 @@ load_locale_file_for_code(const char *code, char **out_text)
         code = "en";
 
     snprintf(path, sizeof(path), "locales/%s.txt", code);
+    text = flint_embedded_asset_text(path);
+    if(text != NULL) {
+        *out_text = text;
+        return 1;
+    }
+
+#if defined(FLINT_EMBEDDED_ONLY)
+    return 0;
+#elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     text = LoadFileText(path);
     if(text != NULL) {
         *out_text = text;
@@ -403,15 +420,6 @@ load_locale_file_for_code(const char *code, char **out_text)
         "../../../../",
         NULL
     };
-    char path[64];
-
-    if(out_text == NULL)
-        return 0;
-    *out_text = NULL;
-
-    if(code == NULL || code[0] == '\0')
-        code = "en";
-
     for(int i = 0; prefixes[i] != NULL; i++) {
         snprintf(path, sizeof(path), "%slocales/%s.txt", prefixes[i], code);
         if(FileExists(path)) {

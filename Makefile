@@ -6,6 +6,9 @@ CPPFLAGS_BASE = -Iinclude
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png)
 ICON_ASSETS_C = src/flint_icon_assets.c
+EMBED_ASSETS ?= themes
+EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
+EMBED_ASSETS_C = $(BUILD_DIR)/flint_embedded_asset_data.c
 
 # Check if we're in nix-shell and use its flags
 ifneq ($(NIX_CFLAGS_COMPILE),)
@@ -30,7 +33,10 @@ SRCS = \
 	src/flint_theme_meta.c \
 	src/flint_file_dialog.c
 
-OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SRCS))
+SRCS += $(EMBED_ASSETS_C)
+
+OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
+	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
 LIB = libflint.a
 
 .PHONY: all clean run
@@ -53,7 +59,13 @@ $(LIB): $(OBJS)
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/flint_icons.h
 	sh scripts/embed-icons.sh $(ICON_DIR) $@
 
+$(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/flint_embedded_assets.h | $(BUILD_DIR)
+	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
+
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR):

@@ -1,4 +1,5 @@
 #include "flint_theme.h"
+#include "flint_embedded_assets.h"
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -139,23 +140,58 @@ static void load_scope_file(FlintThemeScope *scope)
 {
     FILE *file;
     char line[256];
+    char *embedded_text = NULL;
+    char *embedded_cursor = NULL;
 
     if(scope == NULL || scope->path[0] == '\0')
         return;
 
+    embedded_text = flint_embedded_asset_text(scope->path);
+    if(embedded_text != NULL)
+        embedded_cursor = embedded_text;
+
+#if !defined(FLINT_EMBEDDED_ONLY)
     file = fopen(scope->path, "r");
-    if(file == NULL) {
+    if(file == NULL && embedded_text == NULL) {
         fprintf(stderr, "warning: could not load theme file '%s' for scope '%s'\n",
                 scope->path, scope->name);
         return;
     }
+#else
+    file = NULL;
+    if(embedded_text == NULL)
+        return;
+#endif
 
-    while(fgets(line, sizeof(line), file) != NULL) {
+    while(embedded_text != NULL || fgets(line, sizeof(line), file) != NULL) {
         char key[FLINT_THEME_NAME_SIZE];
         char value[32];
         char *cursor = line;
         int key_len = 0;
         Color color;
+
+        if(embedded_text != NULL) {
+            char *end = strpbrk(embedded_cursor, "\r\n");
+            size_t len;
+
+            if(*embedded_cursor == '\0')
+                break;
+
+            len = end != NULL ? (size_t)(end - embedded_cursor) : strlen(embedded_cursor);
+            if(len >= sizeof(line))
+                len = sizeof(line) - 1;
+            memcpy(line, embedded_cursor, len);
+            line[len] = '\0';
+
+            if(end != NULL) {
+                embedded_cursor = end + 1;
+                if((*end == '\r' && *embedded_cursor == '\n') ||
+                   (*end == '\n' && *embedded_cursor == '\r'))
+                    embedded_cursor++;
+            } else {
+                embedded_cursor += strlen(embedded_cursor);
+            }
+        }
 
         while(isspace((unsigned char)*cursor))
             cursor++;
@@ -184,7 +220,9 @@ static void load_scope_file(FlintThemeScope *scope)
             scope_add_value(scope, key, color);
     }
 
-    fclose(file);
+    if(file != NULL)
+        fclose(file);
+    free(embedded_text);
 }
 
 FlintThemeScope *flint_theme_register_scope(const char *name, const char *path)
