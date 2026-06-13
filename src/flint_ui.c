@@ -1304,9 +1304,18 @@ ui_draw_dropdown_button(int id, int x, int y, int w, int h,
     /* Draw button background */
     DrawRectangleRounded(btn_bounds, 0.3f, 8, flint_darken(c_bg, 8));
 
-    /* Draw current selection text */
+    /* Draw current selection text, clipped before the X icon. */
     const char *current_name = options[*selected_index];
-    flint_text_draw(current_name, x + flint_px(12), flint_ui_text_y(current_name, y, h, font), font, c_text);
+    int text_x = x + flint_px(12);
+    int text_w = arrow_x - arrow_size - flint_px(8) - text_x;
+    if(text_w > 0) {
+        BeginScissorMode((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
+                         (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
+                         (int)((float)text_w * g_ui_camera.zoom),
+                         (int)((float)h * g_ui_camera.zoom));
+        flint_text_draw(current_name, text_x, flint_ui_text_y(current_name, y, h, font), font, c_text);
+        EndScissorMode();
+    }
 
     /* Draw dropdown X icon */
     int x_size = arrow_size;
