@@ -148,6 +148,7 @@ int ui_draw_checkbox_toggle(int x, int y, const char *label, int *value);
 int ui_draw_dropdown_button(int id, int x, int y, int w, int h, const char **options, int option_count, int *selected_index);
 int ui_draw_dropdown_menu(int id);
 int ui_dropdown_captures_click(Vector2 point);
+void ui_set_dropdown_clip_top(int top);
 int ui_draw_theme_switcher(int x, int y, int w, const char *label,
                            const char *light_label, const char *dark_label,
                            int *theme_id, int *dark_mode);

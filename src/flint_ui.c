@@ -1043,6 +1043,13 @@ typedef struct UIDropdownState {
 #define MAX_DROPDOWNS 8
 static UIDropdownState dropdown_states[MAX_DROPDOWNS];
 static int dropdown_state_count = 0;
+static int dropdown_clip_top = 0;
+
+void
+ui_set_dropdown_clip_top(int top)
+{
+    dropdown_clip_top = top > 0 ? top : 0;
+}
 
 static void
 dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdown_h,
@@ -1067,8 +1074,10 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
     padding_bottom = flint_px(4);
     total_h = padding_top + option_h * state->option_count + padding_bottom;
     below_y = state->y + state->h + menu_gap;
+    if(below_y < dropdown_clip_top)
+        below_y = dropdown_clip_top;
     below_space = ui_view_height - below_y - flint_px(16);
-    above_space = state->y - flint_px(16);
+    above_space = state->y - dropdown_clip_top - flint_px(16);
 
     if(below_space < 0)
         below_space = 0;
