@@ -24,6 +24,8 @@
 #include <pthread.h>
 #endif
 
+static FlintRuntimeAssetDownloadBackend g_download_backend = NULL;
+
 static int
 path_is_dir(const char *path)
 {
@@ -146,6 +148,12 @@ flint_runtime_asset_status_text(FlintRuntimeAssetStatus status)
     }
 }
 
+void
+flint_runtime_asset_set_download_backend(FlintRuntimeAssetDownloadBackend backend)
+{
+    g_download_backend = backend;
+}
+
 #if defined(__EMSCRIPTEN__)
 static void
 fetch_done(emscripten_fetch_t *fetch)
@@ -219,6 +227,7 @@ curl_thread_main(void *user_data)
     CURL *curl;
     FILE *file;
     CURLcode res;
+    curl_off_t downloaded = 0;
 
     free(ctx);
     if(download == NULL)
@@ -248,7 +257,9 @@ curl_thread_main(void *user_data)
 
     res = curl_easy_perform(curl);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &download->http_status);
-    curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD_T, &download->bytes);
+    if(curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD_T, &downloaded) == CURLE_OK &&
+       downloaded > 0)
+        download->bytes = (size_t)downloaded;
     curl_easy_cleanup(curl);
     fclose(file);
 
@@ -293,6 +304,16 @@ flint_runtime_asset_download(FlintRuntimeAssetDownload *download,
     }
 
     download->status = FLINT_RUNTIME_ASSET_DOWNLOADING;
+
+    if(g_download_backend != NULL) {
+        if(g_download_backend(download, download->url, download->path))
+            return 1;
+        if(download->status == FLINT_RUNTIME_ASSET_DOWNLOADING) {
+            snprintf(download->error, sizeof(download->error), "runtime asset backend failed");
+            download->status = FLINT_RUNTIME_ASSET_ERROR;
+        }
+        return 0;
+    }
 
 #if defined(__EMSCRIPTEN__)
     {

@@ -21,9 +21,14 @@ typedef struct FlintRuntimeAssetDownload {
     void *platform;
 } FlintRuntimeAssetDownload;
 
+typedef int (*FlintRuntimeAssetDownloadBackend)(FlintRuntimeAssetDownload *download,
+                                                const char *url,
+                                                const char *path);
+
 int flint_runtime_assets_init(const char *app_id);
 int flint_runtime_asset_cache_root(const char *app_id, char *out, size_t out_size);
 int flint_runtime_asset_ensure_dir(const char *path);
+void flint_runtime_asset_set_download_backend(FlintRuntimeAssetDownloadBackend backend);
 int flint_runtime_asset_download(FlintRuntimeAssetDownload *download,
                                  const char *url,
                                  const char *path);
