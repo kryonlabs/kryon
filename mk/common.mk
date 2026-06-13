@@ -69,8 +69,8 @@ TARBALL = $(LINUX_DIST_DIR)/$(APP_NAME)-linux.tar.gz
 
 LOCALE_FILES = $(wildcard locales/*.txt)
 THEME_FILES = $(wildcard $(FLINT_DIR)/themes/*.ini)
-IMAGE_FILES ?= assets/angel.jpg assets/begin.jpg
-SOUND_FILES ?= assets/sounds/breath-in.ogg assets/sounds/breath-out.ogg assets/sounds/bell.ogg
+IMAGE_FILES ?=
+SOUND_FILES ?=
 FONT_OUTPUTS ?= assets/fonts/locales.png assets/fonts/locales.dat
 FONT_FILES = $(FONT_OUTPUTS)
 EMBEDDED_ASSET_FILES = $(LOCALE_FILES) $(THEME_FILES) $(IMAGE_FILES) $(SOUND_FILES) $(FONT_FILES)

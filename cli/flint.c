@@ -29,6 +29,9 @@ typedef struct FlintProject {
     char windows_arches[128];
     char app_sources[4096];
     char include_dirs[1024];
+    char image_files[4096];
+    char sound_files[4096];
+    char font_outputs[1024];
     char raylib_dir[PATH_MAX];
     char flint_dir[PATH_MAX];
     char core_dir[PATH_MAX];
@@ -284,6 +287,12 @@ static int load_project(FlintProject *project, int required)
                 append_quoted_list_values(s, project->app_sources, sizeof(project->app_sources), NULL);
             else if(strcmp(active_list, "sources.include_dirs") == 0)
                 append_quoted_list_values(s, project->include_dirs, sizeof(project->include_dirs), "-I");
+            else if(strcmp(active_list, "assets.images") == 0)
+                append_quoted_list_values(s, project->image_files, sizeof(project->image_files), NULL);
+            else if(strcmp(active_list, "assets.sounds") == 0)
+                append_quoted_list_values(s, project->sound_files, sizeof(project->sound_files), NULL);
+            else if(strcmp(active_list, "assets.fonts") == 0)
+                append_quoted_list_values(s, project->font_outputs, sizeof(project->font_outputs), NULL);
 
             if(strchr(s, ']') != NULL)
                 active_list[0] = '\0';
@@ -331,6 +340,20 @@ static int load_project(FlintProject *project, int required)
                 append_quoted_list_values(s, project->include_dirs, sizeof(project->include_dirs), "-I");
                 if(strchr(s, '[') != NULL && strchr(s, ']') == NULL)
                     snprintf(active_list, sizeof(active_list), "%s", "sources.include_dirs");
+            }
+        } else if(strncmp(section, "assets", sizeof(section)) == 0) {
+            if(strncmp(s, "images", 6) == 0) {
+                append_quoted_list_values(s, project->image_files, sizeof(project->image_files), NULL);
+                if(strchr(s, '[') != NULL && strchr(s, ']') == NULL)
+                    snprintf(active_list, sizeof(active_list), "%s", "assets.images");
+            } else if(strncmp(s, "sounds", 6) == 0) {
+                append_quoted_list_values(s, project->sound_files, sizeof(project->sound_files), NULL);
+                if(strchr(s, '[') != NULL && strchr(s, ']') == NULL)
+                    snprintf(active_list, sizeof(active_list), "%s", "assets.sounds");
+            } else if(strncmp(s, "fonts", 5) == 0) {
+                append_quoted_list_values(s, project->font_outputs, sizeof(project->font_outputs), NULL);
+                if(strchr(s, '[') != NULL && strchr(s, ']') == NULL)
+                    snprintf(active_list, sizeof(active_list), "%s", "assets.fonts");
             }
         } else if(strncmp(section, "platform.android", sizeof(section)) == 0) {
             if(strncmp(s, "activity", 8) == 0 && parse_quoted_value(s, value, sizeof(value)))
@@ -405,6 +428,12 @@ static int command_make_vars(void)
         print_make_value("SRC", project.app_sources);
     if(project.include_dirs[0] != '\0')
         print_make_value("APP_INCLUDE", project.include_dirs);
+    if(project.image_files[0] != '\0')
+        print_make_value("IMAGE_FILES", project.image_files);
+    if(project.sound_files[0] != '\0')
+        print_make_value("SOUND_FILES", project.sound_files);
+    if(project.font_outputs[0] != '\0')
+        print_make_value("FONT_OUTPUTS", project.font_outputs);
     if(project.core_dir[0] != '\0')
         print_make_value("CORE_DIR", project.core_dir);
     return 0;
