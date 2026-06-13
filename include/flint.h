@@ -13,5 +13,6 @@
 #include "flint_theme.h"
 #include "flint_theme_meta.h"
 #include "flint_web.h"
+#include "flint_runtime_assets.h"
 
 #endif // FLINT_H

@@ -14,7 +14,7 @@ WEB_RAYLIB_OBJS = \
 WEB_CFLAGS = -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DFLINT_EMBEDDED_ONLY=1
 WEB_SHELL = src/web_shell.html
 WEB_PUBLIC_FILES = $(wildcard manifest.json) $(shell find web-assets -type f 2>/dev/null)
-WEB_LDFLAGS = -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -lidbfs.js --shell-file $(WEB_SHELL)
+WEB_LDFLAGS = -sUSE_GLFW=3 -sFETCH=1 -sALLOW_MEMORY_GROWTH=1 -lidbfs.js --shell-file $(WEB_SHELL)
 
 $(WEB_RAYLIB_BUILD_DIR):
 	mkdir -p $@

@@ -46,6 +46,7 @@ $(TARGET): $(SRC) $(FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(RAYLIB_A) $
 		$(CORE_A) \
 		$(RAYLIB_A) \
 		$(RAY_LDLIBS) \
+		$(FLINT_RUNTIME_ASSET_LDLIBS) \
 		-lm -lpthread -ldl -lrt \
 		$(LDFLAGS)
 
@@ -119,5 +120,6 @@ build-linux-arch:
 		$(if $(strip $(CORE_SRCS)),$(LINUX_OBJ_DIR)/$(ARCH_NAME)/lib$(APP_NAME)-core.a,) \
 		$(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib/libraylib.a \
 		$(LINUX_RAY_LDLIBS) \
+		$(FLINT_RUNTIME_ASSET_LDLIBS) \
 		-lm -lpthread -ldl -lrt \
 		$(LDFLAGS)

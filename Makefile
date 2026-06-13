@@ -33,7 +33,8 @@ SRCS = \
 	src/flint_locale.c \
 	src/flint_theme.c \
 	src/flint_theme_meta.c \
-	src/flint_file_dialog.c
+	src/flint_file_dialog.c \
+	src/flint_runtime_assets.c
 
 SRCS += $(EMBED_ASSETS_C)
 
