@@ -1203,19 +1203,24 @@ ui_draw_theme_switcher(int x, int y, int w, const char *label,
     return changed;
 }
 
-/* Check if any dropdown is currently open and the given point is within its menu bounds.
- * Other UI elements should call this to avoid handling clicks that should go to dropdowns. */
+/* Check if an open dropdown should own the current click.
+ * Other UI elements should call this so menu clicks and outside-close clicks do
+ * not pass through to controls underneath. */
 int
 ui_dropdown_captures_click(Vector2 point)
 {
     for(int i = 0; i < dropdown_state_count; i++) {
         UIDropdownState *state = &dropdown_states[i];
         if(state->open && state->option_count > 0) {
+            Rectangle button_bounds = {state->x, state->y, state->w, state->h};
             int dropdown_y = 0;
             int dropdown_h = 0;
             dropdown_menu_layout(state, &dropdown_y, &dropdown_h, NULL, NULL);
             Rectangle menu_bounds = {state->x, dropdown_y, state->w, dropdown_h};
-            if(CheckCollisionPointRec(point, menu_bounds))
+            if(CheckCollisionPointRec(point, button_bounds) ||
+               CheckCollisionPointRec(point, menu_bounds) ||
+               IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
+               IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
                 return 1;
         }
     }
@@ -1290,17 +1295,6 @@ ui_draw_dropdown_button(int id, int x, int y, int w, int h,
         }
     }
 
-    /* Mouse wheel to cycle through options */
-    float wheel = GetMouseWheelMove();
-    if(hover && wheel != 0 && !state->open) {
-        if(wheel > 0)
-            *selected_index = (*selected_index + 1) % option_count;
-        else
-            *selected_index = (*selected_index - 1 + option_count) % option_count;
-        state->open = 0;
-        changed = 1;
-    }
-
     /* Draw button background */
     DrawRectangleRounded(btn_bounds, 0.3f, 8, flint_darken(c_bg, 8));
 
@@ -1373,10 +1367,12 @@ ui_draw_dropdown_menu(int id)
     Rectangle btn_bounds = {x, y, w, h};
     Vector2 mouse = ui_mouse_world();
     int my = (int)mouse.y;
+    int pointer_in_dropdown = CheckCollisionPointRec(mouse, btn_bounds) ||
+                              CheckCollisionPointRec(mouse, menu_bounds);
 
     /* Track pointer movement to distinguish click from drag */
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        if(!state->touch_pressed) {
+        if(!state->touch_pressed && pointer_in_dropdown) {
             /* Pointer just went down - reset drag state */
             state->touch_pressed = 1;
             state->touch_press_start_y = my;
