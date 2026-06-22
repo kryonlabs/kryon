@@ -43,11 +43,15 @@ icon_enum()
         ident=$(icon_ident "$name")
         enum=$(icon_enum "$name")
         size=$(wc -c < "$file" | tr -d ' ')
-        printf '    {FLINT_ICON_TYPE_%s, "%s", flint_icon_%s, %su},\n' "$enum" "$name" "$ident" "$size"
+        printf '    {UI_ICON_TYPE_%s, "%s", flint_icon_%s, %su},\n' "$enum" "$name" "$ident" "$size"
         count=$((count + 1))
     done
     printf '};\n\n'
     printf 'const unsigned int flint_icon_asset_count = %su;\n' "$count"
 } > "$tmp"
 
-mv "$tmp" "$out"
+if [ -f "$out" ] && cmp -s "$tmp" "$out"; then
+    rm "$tmp"
+else
+    mv "$tmp" "$out"
+fi

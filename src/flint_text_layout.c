@@ -1,12 +1,13 @@
 #include "flint_text_layout.h"
 
 #include "flint_scaling.h"
+#include "flint_ui.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 FlintTextLayout
-flint_text_layout_parse(const char *input, Texture2D icon, FlintIconType icon_type, int icon_size)
+flint_text_layout_parse(const char *input, Texture2D icon, UIIconType icon_type, int icon_size)
 {
     FlintTextLayout layout = {0};
 
@@ -141,7 +142,13 @@ flint_text_layout_reflow(FlintTextLayout *layout, int max_width, int font_size, 
 
     layout->line_widths[layout->line_count] = current_line_width;
     layout->line_count++;
-    layout->total_height = layout->line_count > 0 ? layout->line_count * font_size + (layout->line_count - 1) * line_height : 0;
+    {
+        int drawn_line_height = flint_text_line_height(font_size);
+        layout->total_height = layout->line_count > 0
+                                   ? layout->line_count * drawn_line_height +
+                                     (layout->line_count - 1) * line_height
+                                   : 0;
+    }
     layout->line_height = line_height;  /* Store for later use in draw */
 }
 
@@ -156,11 +163,12 @@ flint_text_layout_draw(FlintTextLayout *layout, int x, int *y, int font_size, Co
     int space_width = flint_text_measure(" ", font_size);
     int icon_spacing = flint_px(4);
     int line_spacing = (layout->line_height > 0) ? layout->line_height : flint_px(4);
+    int drawn_line_height = flint_text_line_height(font_size);
     int next_break_line = 1;
 
     for(int i = 0; i < layout->element_count; i++) {
         if(next_break_line <= layout->line_count && next_break_line > 0 && i == layout->line_breaks[next_break_line]) {
-            current_y += font_size + line_spacing;
+            current_y += drawn_line_height + line_spacing;
             current_x = x;
             next_break_line++;
         }
@@ -185,14 +193,12 @@ flint_text_layout_draw(FlintTextLayout *layout, int x, int *y, int font_size, Co
                 Rectangle src = {0, 0, (float)icon.width, (float)icon.height};
                 Rectangle dst = {(float)current_x, (float)current_y, (float)icon_size, (float)icon_size};
                 DrawTexturePro(icon, src, dst, (Vector2){0}, 0, color);
-            } else {
-                flint_draw_icon_fallback(layout->elements[i].icon_type, current_x, current_y, icon_size, color);
             }
             current_x += icon_size;
         }
     }
 
-    *y = current_y + font_size;
+    *y = current_y + drawn_line_height;
 }
 
 int

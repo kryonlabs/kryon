@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "flint_scaling.h"
+#include "flint_clip.h"
 #include "flint_color.h"
 #include "flint_theme.h"
 #include "flint_ui.h"
@@ -20,8 +21,27 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+static char g_dialog_theme_scope[FLINT_THEME_NAME_SIZE] = "sky_light";
+
+static Color dialog_theme_get(const char *key) {
+    return flint_theme_get(g_dialog_theme_scope, key);
+}
+
+void flint_file_dialog_set_theme_scope(const char *scope) {
+    if(scope == NULL || scope[0] == '\0') {
+        snprintf(g_dialog_theme_scope, sizeof(g_dialog_theme_scope), "%s", "sky_light");
+        return;
+    }
+
+    snprintf(g_dialog_theme_scope, sizeof(g_dialog_theme_scope), "%s", scope);
+}
+
 static FlintFileDialogInternal *create_internal(void) {
     FlintFileDialogInternal *internal = calloc(1, sizeof(FlintFileDialogInternal));
+    if(internal != NULL) {
+        internal->hover_index = -1;
+        internal->last_clicked_index = -1;
+    }
     return internal;
 }
 
@@ -35,13 +55,90 @@ static int compare_entries(const void *a, const void *b) {
     return strcmp(ea->name, eb->name);
 }
 
+static void join_path(char *dst, size_t dst_size, const char *dir, const char *name);
+
 static void copy_text(char *dst, size_t dst_size, const char *src) {
     if(dst_size == 0) return;
+    if(src == NULL) src = "";
     size_t len = strlen(src);
     if(len >= dst_size)
         len = dst_size - 1;
     memcpy(dst, src, len);
     dst[len] = '\0';
+}
+
+static int ascii_tolower(int c) {
+    if(c >= 'A' && c <= 'Z')
+        return c + ('a' - 'A');
+    return c;
+}
+
+static int extension_equal(const char *a, const char *b, size_t n) {
+    for(size_t i = 0; i < n; i++) {
+        if(ascii_tolower((unsigned char)a[i]) != ascii_tolower((unsigned char)b[i]))
+            return 0;
+    }
+    return 1;
+}
+
+static int file_matches_filter(const char *name, const char *filter) {
+    const char *p;
+    size_t name_len;
+
+    if(filter == NULL || filter[0] == '\0')
+        return 1;
+    if(name == NULL)
+        return 0;
+
+    name_len = strlen(name);
+    p = filter;
+    while(*p != '\0') {
+        char ext[32];
+        size_t ext_len = 0;
+
+        while(*p == ' ' || *p == ',')
+            p++;
+        while(*p != '\0' && *p != ',' && ext_len + 1 < sizeof(ext))
+            ext[ext_len++] = *p++;
+        ext[ext_len] = '\0';
+        while(*p != '\0' && *p != ',')
+            p++;
+
+        if(ext_len > 0 && name_len >= ext_len &&
+           extension_equal(name + name_len - ext_len, ext, ext_len))
+            return 1;
+    }
+
+    return 0;
+}
+
+static int should_show_entry(FlintFileDialogInternal *internal, const char *name, int *is_dir, long *size) {
+    char full_path[PATH_MAX];
+    struct stat st;
+    int entry_is_dir = 0;
+    long entry_size = 0;
+
+    if(internal == NULL || name == NULL)
+        return 0;
+    if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+        return 0;
+    if(!internal->show_hidden_files && name[0] == '.')
+        return 0;
+
+    join_path(full_path, sizeof(full_path), internal->current_dir, name);
+    if(stat(full_path, &st) == 0) {
+        entry_is_dir = S_ISDIR(st.st_mode);
+        entry_size = st.st_size;
+    }
+
+    if(!entry_is_dir && !file_matches_filter(name, internal->extension_filter))
+        return 0;
+
+    if(is_dir != NULL)
+        *is_dir = entry_is_dir;
+    if(size != NULL)
+        *size = entry_size;
+    return 1;
 }
 
 static void join_path(char *dst, size_t dst_size, const char *dir, const char *name) {
@@ -82,9 +179,7 @@ static int scan_directory(FlintFileDialogInternal *internal) {
     int count = 0;
 
     while((entry = readdir(dir))) {
-        if(strcmp(entry->d_name, ".") == 0) continue;
-        if(strcmp(entry->d_name, "..") == 0) continue;
-        if(!internal->show_hidden_files && entry->d_name[0] == '.') continue;
+        if(!should_show_entry(internal, entry->d_name, NULL, NULL)) continue;
         count++;
     }
 
@@ -104,31 +199,16 @@ static int scan_directory(FlintFileDialogInternal *internal) {
     internal->file_count = 0;
 
     while((entry = readdir(dir))) {
-        if(strcmp(entry->d_name, ".") == 0) continue;
-        if(strcmp(entry->d_name, "..") == 0) continue;
-        if(!internal->show_hidden_files && entry->d_name[0] == '.') continue;
+        int is_dir = 0;
+        long size = 0;
+        if(!should_show_entry(internal, entry->d_name, &is_dir, &size)) continue;
 
         copy_text(internal->entries[internal->file_count].name,
                   sizeof(internal->entries[internal->file_count].name),
                   entry->d_name);
 
-        char full_path[PATH_MAX];
-        join_path(full_path, sizeof(full_path), internal->current_dir, entry->d_name);
-        if(strlen(full_path) == sizeof(full_path) - 1) {
-            internal->entries[internal->file_count].is_dir = 0;
-            internal->entries[internal->file_count].size = 0;
-            internal->file_count++;
-            continue;
-        }
-
-        struct stat st;
-        if(stat(full_path, &st) == 0) {
-            internal->entries[internal->file_count].is_dir = S_ISDIR(st.st_mode);
-            internal->entries[internal->file_count].size = st.st_size;
-        } else {
-            internal->entries[internal->file_count].is_dir = 0;
-            internal->entries[internal->file_count].size = 0;
-        }
+        internal->entries[internal->file_count].is_dir = is_dir;
+        internal->entries[internal->file_count].size = size;
 
         internal->file_count++;
     }
@@ -138,6 +218,9 @@ static int scan_directory(FlintFileDialogInternal *internal) {
         qsort(internal->entries, internal->file_count,
               sizeof(DirEntry), compare_entries);
     }
+    internal->hover_index = -1;
+    internal->last_clicked_index = -1;
+    internal->last_click_time = 0.0f;
 
     return 1;
 }
@@ -177,7 +260,7 @@ static void navigate_into(FlintFileDialogInternal *internal, const char *dirname
 static void render_header(FlintFileDialog *dlg, Rectangle dialog_rect) {
     const char *title = dlg->title;
     int title_font = flint_ui_font();
-    Color title_color = flint_theme_get("sky", "text");
+    Color title_color = dialog_theme_get("text");
 
     int title_x = dialog_rect.x + flint_px(16);
     int title_y = dialog_rect.y + flint_px(12);
@@ -197,13 +280,13 @@ static void render_breadcrumb(FlintFileDialog *dlg, Rectangle dialog_rect) {
         dialog_rect.width - flint_px(32), breadcrumb_height
     };
 
-    Color bg = flint_theme_get("sky", "background");
+    Color bg = dialog_theme_get("background");
     DrawRectangleRec(internal->breadcrumb_rect, bg);
 
     Color border = flint_darken(bg, 30);
     DrawRectangleLinesEx(internal->breadcrumb_rect, 1, border);
 
-    Color text = flint_theme_get("sky", "text");
+    Color text = dialog_theme_get("text");
     int font = flint_ui_font_small();
 
     char display_path[PATH_MAX];
@@ -230,7 +313,7 @@ static void render_file_list(FlintFileDialog *dlg, Rectangle dialog_rect) {
     int list_x = dialog_rect.x + flint_px(16);
     int scrollbar_w = flint_px(12);
     int list_width = dialog_rect.width - flint_px(32);
-    int bottom_y = dialog_rect.y + internal->dialog_height - flint_px(72);
+    int bottom_y = dialog_rect.y + internal->dialog_height - flint_px(112);
     int list_height = bottom_y - list_y;
     if(list_height < FILE_DIALOG_ITEM_HEIGHT)
         list_height = FILE_DIALOG_ITEM_HEIGHT;
@@ -239,18 +322,18 @@ static void render_file_list(FlintFileDialog *dlg, Rectangle dialog_rect) {
         list_x, list_y, list_width, list_height
     };
 
-    Color bg = flint_lighten(flint_theme_get("sky", "background"), 10);
+    Color bg = flint_lighten(dialog_theme_get("background"), 10);
     DrawRectangleRec(internal->file_list_rect, bg);
 
-    Color border = flint_darken(flint_theme_get("sky", "background"), 30);
+    Color border = flint_darken(dialog_theme_get("background"), 30);
     DrawRectangleLinesEx(internal->file_list_rect, 1, border);
 
-    BeginScissorMode(list_x, list_y, list_width, list_height);
+    flint_clip_begin(list_x, list_y, list_width, list_height);
 
     int font = flint_ui_font_small();
-    Color text = flint_theme_get("sky", "text");
-    Color hover = flint_theme_get("sky", "button_hover");
-    Color selected = flint_darken(flint_theme_get("sky", "button"), 20);
+    Color text = dialog_theme_get("text");
+    Color hover = dialog_theme_get("button_hover");
+    Color selected = flint_darken(dialog_theme_get("button"), 20);
 
     int start_idx = internal->scroll_offset;
     int visible_items = MAX(1, (int)(list_height / FILE_DIALOG_ITEM_HEIGHT));
@@ -283,7 +366,7 @@ static void render_file_list(FlintFileDialog *dlg, Rectangle dialog_rect) {
         flint_text_draw(display_name, list_x + flint_px(8), item_y + flint_px(4), font, text);
     }
 
-    EndScissorMode();
+    flint_clip_end();
 }
 
 static void render_scrollbar(FlintFileDialog *dlg, Rectangle dialog_rect) {
@@ -305,7 +388,7 @@ static void render_scrollbar(FlintFileDialog *dlg, Rectangle dialog_rect) {
         scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height
     };
 
-    Color bg = flint_darken(flint_theme_get("sky", "background"), 40);
+    Color bg = flint_darken(dialog_theme_get("background"), 40);
     DrawRectangleRec(internal->scrollbar_rect, bg);
 
     int max_scroll = MAX(1, internal->file_count - visible_items);
@@ -318,19 +401,18 @@ static void render_scrollbar(FlintFileDialog *dlg, Rectangle dialog_rect) {
     int thumb_y = scrollbar_y + (int)((internal->scroll_offset / (float)max_scroll) * (float)(scrollbar_height - thumb_height));
 
     Rectangle thumb_rect = {scrollbar_x, thumb_y, scrollbar_width, thumb_height};
-    Color thumb = flint_theme_get("sky", "button");
+    Color thumb = dialog_theme_get("button");
     DrawRectangleRec(thumb_rect, thumb);
 }
 
 static void render_filename_input(FlintFileDialog *dlg, Rectangle dialog_rect) {
     FlintFileDialogInternal *internal = (FlintFileDialogInternal *)dlg->_internal;
 
-    int input_y = dialog_rect.y + internal->dialog_height - flint_px(58);
+    int input_y = dialog_rect.y + internal->dialog_height - flint_px(96);
     int input_x = dialog_rect.x + flint_px(16);
     int font = flint_ui_font_small();
     int label_width = flint_text_measure("Filename:", font) + flint_px(8);
-    int button_area_width = flint_px(176);
-    int input_width = dialog_rect.width - flint_px(32) - label_width - button_area_width;
+    int input_width = dialog_rect.width - flint_px(32) - label_width;
     int input_height = flint_px(24);
     if(input_width < flint_px(24))
         input_width = flint_px(24);
@@ -339,11 +421,11 @@ static void render_filename_input(FlintFileDialog *dlg, Rectangle dialog_rect) {
         input_x + label_width, input_y, input_width, input_height
     };
 
-    Color bg = flint_theme_get("sky", "background");
+    Color bg = dialog_theme_get("background");
     DrawRectangleRec(internal->filename_rect, bg);
 
     Color border = flint_darken(bg, 30);
-    Color accent = flint_theme_get("sky", "button");
+    Color accent = dialog_theme_get("button");
 
     if(internal->focus_area == 2) {
         DrawRectangleLinesEx(internal->filename_rect, 2, accent);
@@ -351,7 +433,7 @@ static void render_filename_input(FlintFileDialog *dlg, Rectangle dialog_rect) {
         DrawRectangleLinesEx(internal->filename_rect, 1, border);
     }
 
-    Color text = flint_theme_get("sky", "text");
+    Color text = dialog_theme_get("text");
     Color label_dim = flint_darken(text, 40);
     flint_text_draw("Filename:", input_x, flint_ui_text_y("Filename:", input_y, input_height, font), font, label_dim);
 
@@ -399,8 +481,8 @@ static void render_buttons(FlintFileDialog *dlg, Rectangle dialog_rect) {
         button_y, button_width, button_height
     };
 
-    Color cancel_bg = flint_theme_get("sky", "button");
-    Color cancel_text = flint_theme_get("sky", "text");
+    Color cancel_bg = dialog_theme_get("button");
+    Color cancel_text = dialog_theme_get("text");
 
     DrawRectangleRec(internal->button_cancel_rect, cancel_bg);
     DrawRectangleLinesEx(internal->button_cancel_rect, 1,
@@ -411,8 +493,8 @@ static void render_buttons(FlintFileDialog *dlg, Rectangle dialog_rect) {
             internal->button_cancel_rect.y + flint_px(4),
             flint_ui_font_small(), cancel_text);
 
-    Color ok_bg = flint_theme_get("sky", "button_hover");
-    Color ok_text = flint_theme_get("sky", "text");
+    Color ok_bg = dialog_theme_get("button_hover");
+    Color ok_text = dialog_theme_get("text");
 
     DrawRectangleRec(internal->button_ok_rect, ok_bg);
     DrawRectangleLinesEx(internal->button_ok_rect, 1,
@@ -423,7 +505,7 @@ static void render_buttons(FlintFileDialog *dlg, Rectangle dialog_rect) {
             internal->button_ok_rect.y + flint_px(4),
             flint_ui_font_small(), ok_text);
 
-    Color text = flint_theme_get("sky", "text");
+    Color text = dialog_theme_get("text");
     int checkbox_size = flint_px(16);
     int checkbox_x = dialog_rect.x + flint_px(16);
     int checkbox_y = dialog_rect.y + internal->dialog_height - flint_px(28);
@@ -446,6 +528,7 @@ static void render_buttons(FlintFileDialog *dlg, Rectangle dialog_rect) {
 
 static void render_file_dialog(FlintFileDialog *dlg, Vector2 screen_size) {
     FlintFileDialogInternal *internal = (FlintFileDialogInternal *)dlg->_internal;
+    Color bg_color;
 
     /* Use exact application width and height */
     internal->dialog_width = (int)screen_size.x;
@@ -458,13 +541,9 @@ static void render_file_dialog(FlintFileDialog *dlg, Vector2 screen_size) {
         screen_size.y
     };
 
-    DrawRectangle(0, 0, screen_size.x, screen_size.y, (Color){0, 0, 0, 180});
-
-    Color bg_color = flint_theme_get("sky", "background");
+    bg_color = dialog_theme_get("background");
+    bg_color.a = 255;
     DrawRectangleRec(dialog_rect, bg_color);
-
-    Color border_color = flint_darken(bg_color, 30);
-    DrawRectangleLinesEx(dialog_rect, 2, border_color);
 
     render_header(dlg, dialog_rect);
     render_breadcrumb(dlg, dialog_rect);
@@ -502,9 +581,10 @@ static int handle_mouse_input(FlintFileDialog *dlg) {
             if(hover_idx >= 0 && hover_idx < internal->file_count) {
                 float current_time = GetTime();
                 if(current_time - internal->last_click_time < 0.5 &&
-                   internal->hover_index == hover_idx) {
+                   internal->last_clicked_index == hover_idx) {
                     if(internal->entries[hover_idx].is_dir) {
                         navigate_into(internal, internal->entries[hover_idx].name);
+                        internal->last_clicked_index = -1;
                     } else {
                         copy_text(internal->selected_file, sizeof(internal->selected_file),
                                   internal->entries[hover_idx].name);
@@ -522,6 +602,7 @@ static int handle_mouse_input(FlintFileDialog *dlg) {
                 }
 
                 internal->last_click_time = current_time;
+                internal->last_clicked_index = hover_idx;
             }
         }
 
@@ -670,42 +751,63 @@ static int
 run_dialog(FlintFileDialog *dlg)
 {
     while(dlg->active && !WindowShouldClose()) {
+        Color bg = dialog_theme_get("background");
+        bg.a = 255;
         BeginDrawing();
-        ClearBackground(RAYWHITE);
-
-        Vector2 screen_size = {(float)GetScreenWidth(), (float)GetScreenHeight()};
-        render_file_dialog(dlg, screen_size);
-
-        handle_mouse_input(dlg);
-        handle_keyboard_input(dlg);
-
+        ClearBackground(bg);
+        flint_file_dialog_update(dlg);
         EndDrawing();
     }
     return dlg->confirmed;
 }
 
-int flint_file_dialog_load(FlintFileDialog *dlg, const char *title) {
-    if(!dlg || !title) return 0;
+void
+flint_file_dialog_begin_load_filtered(FlintFileDialog *dlg, const char *title, const char *filter)
+{
+    FlintFileDialogInternal *internal;
 
+    if(!dlg || !title) return;
     flint_file_dialog_init(dlg);
     dlg->mode = FLINT_FILE_DIALOG_LOAD;
     copy_text(dlg->title, sizeof(dlg->title), title);
-    copy_text(dlg->filter, sizeof(dlg->filter), "*.zip");
+    copy_text(dlg->filter, sizeof(dlg->filter), filter != NULL ? filter : "");
     dlg->active = 1;
     dlg->confirmed = 0;
 
-    FlintFileDialogInternal *internal = (FlintFileDialogInternal *)dlg->_internal;
+    internal = (FlintFileDialogInternal *)dlg->_internal;
+    copy_text(internal->extension_filter, sizeof(internal->extension_filter), dlg->filter);
+    scan_directory(internal);
     internal->filename_input[0] = '\0';
     internal->selected_file[0] = '\0';
-    internal->hover_index = 0;
+    internal->hover_index = -1;
+    internal->last_clicked_index = -1;
     internal->focus_area = 0;
+}
 
+void
+flint_file_dialog_begin_load(FlintFileDialog *dlg, const char *title)
+{
+    flint_file_dialog_begin_load_filtered(dlg, title, NULL);
+}
+
+int flint_file_dialog_load_filtered(FlintFileDialog *dlg, const char *title, const char *filter) {
+    if(!dlg || !title) return 0;
+    flint_file_dialog_begin_load_filtered(dlg, title, filter);
     return run_dialog(dlg);
 }
 
-int flint_file_dialog_save(FlintFileDialog *dlg, const char *title, const char *default_filename) {
-    if(!dlg || !title || !default_filename) return 0;
+int flint_file_dialog_load(FlintFileDialog *dlg, const char *title) {
+    if(!dlg || !title) return 0;
+    flint_file_dialog_begin_load(dlg, title);
+    return run_dialog(dlg);
+}
 
+void
+flint_file_dialog_begin_save(FlintFileDialog *dlg, const char *title, const char *default_filename)
+{
+    FlintFileDialogInternal *internal;
+
+    if(!dlg || !title || !default_filename) return;
     flint_file_dialog_init(dlg);
     dlg->mode = FLINT_FILE_DIALOG_SAVE;
     copy_text(dlg->title, sizeof(dlg->title), title);
@@ -714,12 +816,36 @@ int flint_file_dialog_save(FlintFileDialog *dlg, const char *title, const char *
     dlg->active = 1;
     dlg->confirmed = 0;
 
-    FlintFileDialogInternal *internal = (FlintFileDialogInternal *)dlg->_internal;
+    internal = (FlintFileDialogInternal *)dlg->_internal;
     copy_text(internal->filename_input, sizeof(internal->filename_input), default_filename);
     copy_text(internal->selected_file, sizeof(internal->selected_file), default_filename);
     internal->focus_area = 2;
+}
 
+int flint_file_dialog_save(FlintFileDialog *dlg, const char *title, const char *default_filename) {
+    if(!dlg || !title || !default_filename) return 0;
+    flint_file_dialog_begin_save(dlg, title, default_filename);
     return run_dialog(dlg);
+}
+
+int
+flint_file_dialog_update(FlintFileDialog *dlg)
+{
+    Vector2 screen_size;
+
+    if(dlg == NULL)
+        return 0;
+    if(!dlg->active)
+        return dlg->confirmed ? 1 : 0;
+
+    screen_size = (Vector2){(float)GetScreenWidth(), (float)GetScreenHeight()};
+    render_file_dialog(dlg, screen_size);
+    handle_mouse_input(dlg);
+    handle_keyboard_input(dlg);
+
+    if(dlg->active)
+        return -1;
+    return dlg->confirmed ? 1 : 0;
 }
 
 int flint_file_dialog_select_folder(FlintFileDialog *dlg, const char *title) {
@@ -734,7 +860,8 @@ int flint_file_dialog_select_folder(FlintFileDialog *dlg, const char *title) {
     FlintFileDialogInternal *internal = (FlintFileDialogInternal *)dlg->_internal;
     internal->filename_input[0] = '\0';
     internal->selected_file[0] = '\0';
-    internal->hover_index = 0;
+    internal->hover_index = -1;
+    internal->last_clicked_index = -1;
     internal->focus_area = 0;
 
     if(run_dialog(dlg)) {

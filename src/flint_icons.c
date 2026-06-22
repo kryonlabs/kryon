@@ -1,14 +1,15 @@
 #include "flint_icons.h"
-#include "flint_color.h"
+#include "flint_ui.h"
 #include "raylib.h"
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 
 extern const FlintIconAsset flint_icon_assets[];
 extern const unsigned int flint_icon_asset_count;
 
 const FlintIconAsset *
-flint_icon_asset(FlintIconType type)
+flint_icon_asset(UIIconType type)
 {
     for(unsigned int i = 0; i < flint_icon_asset_count; i++) {
         if(flint_icon_assets[i].type == type)
@@ -51,7 +52,7 @@ load_icon_asset_texture(const FlintIconAsset *asset)
 }
 
 Texture2D
-flint_load_icon_texture(FlintIconType type)
+flint_load_icon_texture(UIIconType type)
 {
     return load_icon_asset_texture(flint_icon_asset(type));
 }
@@ -63,137 +64,123 @@ flint_load_icon_texture_by_name(const char *name)
 }
 
 void
-flint_draw_icon_fallback(FlintIconType type, int x, int y, int size, Color color)
+flint_load_all_icons(Texture2D *icons)
 {
-    int center = size / 2;
-    int thickness = size / 8;
-    if(thickness < 1) thickness = 1;
+    if(icons == NULL)
+        return;
 
-    switch(type) {
-    case FLINT_ICON_TYPE_X: {
-        int p = thickness / 2;
-        DrawLine(x + p, y + p, x + size - p, y + size - p, color);
-        DrawLine(x + size - p, y + p, x + p, y + size - p, color);
-        break;
-    }
-    case FLINT_ICON_TYPE_GEAR: {
-        int outer = size / 2 - thickness;
-        int inner = size / 4;
-        DrawCircle(x + center, y + center, outer, color);
-        for(int i = 0; i < 6; i++) {
-            float angle = i * 60.0f * DEG2RAD;
-            int cx = x + center + (int)(cos(angle) * inner);
-            int cy = y + center + (int)(sin(angle) * inner);
-            DrawLine(x + center, y + center, cx, cy, color);
+    static const char *icon_names[UI_ICON_TYPE_COUNT] = {
+        NULL,                 // UI_ICON_TYPE_NONE (no icon)
+
+        // Core UI icons
+        "gear.png",            // UI_ICON_TYPE_GEAR
+        "x.png",               // UI_ICON_TYPE_X
+        "x-red.png",           // UI_ICON_TYPE_X_RED
+        "manual.png",          // UI_ICON_TYPE_MANUAL
+        "return.png",          // UI_ICON_TYPE_RETURN
+        "backward.png",        // UI_ICON_TYPE_BACKWARD
+        "forward.png",         // UI_ICON_TYPE_FORWARD
+        "play.png",            // UI_ICON_TYPE_PLAY
+        "pause.png",           // UI_ICON_TYPE_PAUSE
+        "stat.png",            // UI_ICON_TYPE_STAT
+        "home.png",            // UI_ICON_TYPE_HOME
+        "trash.png",           // UI_ICON_TYPE_TRASH
+        "edit.png",            // UI_ICON_TYPE_PENCIL
+        "save.png",            // UI_ICON_TYPE_SAVE
+        "wrench.png",          // UI_ICON_TYPE_WRENCH
+        "plus.png",            // UI_ICON_TYPE_PLUS
+        "stack.png",           // UI_ICON_TYPE_STACK
+        "calendar.png",        // UI_ICON_TYPE_CALENDAR
+
+        // Social & payment icons
+        "discord.png",         // UI_ICON_TYPE_DISCORD
+        "telegram.png",        // UI_ICON_TYPE_TELEGRAM
+        "github.png",          // UI_ICON_TYPE_GITHUB
+        "globe.png",           // UI_ICON_TYPE_GLOBE
+        "stripe.png",          // UI_ICON_TYPE_STRIPE
+        "btc.png",             // UI_ICON_TYPE_BTC
+        "monero.png",          // UI_ICON_TYPE_MONERO
+
+        // Sound icons
+        "sound.png",           // UI_ICON_TYPE_SOUND
+        "sound0.png",          // UI_ICON_TYPE_SOUND0
+        "sound1.png",          // UI_ICON_TYPE_SOUND1
+        "sound2.png",          // UI_ICON_TYPE_SOUND2
+        "sound3.png",          // UI_ICON_TYPE_SOUND3
+        "mute.png",            // UI_ICON_TYPE_MUTE
+        "music.png",           // UI_ICON_TYPE_MUSIC
+
+        // Habit & practice icons
+        "habit.png",            // UI_ICON_TYPE_HABIT
+        "amen.png",            // UI_ICON_TYPE_AMEN
+        "weekly.png",          // UI_ICON_TYPE_WEEKLY
+        "inbe.png",            // UI_ICON_TYPE_INBE
+
+        // Meditation & theme icons
+        "droid.png",           // UI_ICON_TYPE_DROID
+        "fdroid.png",          // UI_ICON_TYPE_FDROID
+        "lighton.png",         // UI_ICON_TYPE_LIGHTON
+        "lightoff.png",        // UI_ICON_TYPE_LIGHTOFF
+        "moon.png",            // UI_ICON_TYPE_MOON
+        "sun.png",             // UI_ICON_TYPE_SUN
+        "jupiter.png",         // UI_ICON_TYPE_JUPITER
+        "mars.png",            // UI_ICON_TYPE_MARS
+        "mercury.png",         // UI_ICON_TYPE_MERCURY
+        "venus.png",           // UI_ICON_TYPE_VENUS
+        "saturn.png",          // UI_ICON_TYPE_SATURN
+
+        // Navigation & utility icons
+        "link.png",            // UI_ICON_TYPE_LINK
+        "edit.png",            // UI_ICON_TYPE_EDIT
+        "eye-closed.png",      // UI_ICON_TYPE_EYE_CLOSED
+        "check.png",           // UI_ICON_TYPE_CHECK
+        "quest.png",           // UI_ICON_TYPE_QUEST
+        "routine.png",         // UI_ICON_TYPE_ROUTINE
+        "timeline.png",        // UI_ICON_TYPE_TIMELINE
+        "todos.png",           // UI_ICON_TYPE_TODOS
+        "tile.png",            // UI_ICON_TYPE_TILE
+        "tile2.png",           // UI_ICON_TYPE_TILE2
+        "tile3.png",           // UI_ICON_TYPE_TILE3
+        "tile4.png",           // UI_ICON_TYPE_TILE4
+        "text.png",            // UI_ICON_TYPE_TEXT
+
+        // Platform & store icons
+        "itch.png",            // UI_ICON_TYPE_ITCH
+        "playstore.png",       // UI_ICON_TYPE_PLAYSTORE
+        "tux.png",             // UI_ICON_TYPE_TUX
+        "win.png",             // UI_ICON_TYPE_WIN
+        "uxn.png",             // UI_ICON_TYPE_UXN
+        "wasm.png",            // UI_ICON_TYPE_WASM
+        "wasm4.png",           // UI_ICON_TYPE_WASM4
+        "ray.png",             // UI_ICON_TYPE_RAY
+        "rocket.png",          // UI_ICON_TYPE_ROCKET
+        "srht.png",            // UI_ICON_TYPE_SRHT
+        "tcl.png",             // UI_ICON_TYPE_TCL
+    };
+
+    for(int i = 1; i < UI_ICON_TYPE_COUNT; i++) {
+        if(icon_names[i] != NULL && icons[i].id == 0) {
+            char icon_name[64];
+            char *ext;
+            snprintf(icon_name, sizeof(icon_name), "%s", icon_names[i]);
+            ext = strrchr(icon_name, '.');
+            if(ext != NULL && strcmp(ext, ".png") == 0)
+                *ext = '\0';
+            icons[i] = flint_load_icon_texture_by_name(icon_name);
         }
-        break;
     }
-    case FLINT_ICON_TYPE_BACKWARD: {
-        int p = thickness;
-        DrawTriangle(
-            (Vector2){x + size - p, y + p},
-            (Vector2){x + p, y + center},
-            (Vector2){x + size - p, y + size - p},
-            color
-        );
-        break;
-    }
-    case FLINT_ICON_TYPE_FORWARD: {
-        int p = thickness;
-        DrawTriangle(
-            (Vector2){x + p, y + p},
-            (Vector2){x + size - p, y + center},
-            (Vector2){x + p, y + size - p},
-            color
-        );
-        break;
-    }
-    case FLINT_ICON_TYPE_PLAY: {
-        int p = thickness;
-        DrawTriangle(
-            (Vector2){x + p, y + p},
-            (Vector2){x + size - p, y + center},
-            (Vector2){x + p, y + size - p},
-            color
-        );
-        break;
-    }
-    case FLINT_ICON_TYPE_PAUSE: {
-        int w = size / 3;
-        int p = (size - w * 2) / 3;
-        DrawRectangle(x + p, y + thickness, w, size - thickness * 2, color);
-        DrawRectangle(x + p + w + p, y + thickness, w, size - thickness * 2, color);
-        break;
-    }
-    case FLINT_ICON_TYPE_RETURN:
-    case FLINT_ICON_TYPE_HOME: {
-        int p = thickness;
-        DrawLine(x + center, y + size - p, x + center, y + p, color);
-        DrawLine(x + center, y + p, x + p, y + p + (size / 3), color);
-        DrawLine(x + center, y + p, x + size - p, y + p + (size / 3), color);
-        if(type == FLINT_ICON_TYPE_RETURN) {
-            DrawLine(x + p, y + center, x + size - p, y + center, color);
+}
+
+void
+flint_unload_all_icons(Texture2D *icons)
+{
+    if(icons == NULL)
+        return;
+
+    for(int i = 0; i < UI_ICON_TYPE_COUNT; i++) {
+        if(icons[i].id != 0) {
+            UnloadTexture(icons[i]);
+            icons[i].id = 0;
         }
-        break;
-    }
-    case FLINT_ICON_TYPE_TRASH: {
-        int p = thickness;
-        DrawRectangle(x + p * 2, y + size / 3, size - p * 4, size - p * 3, color);
-        DrawRectangle(x + size / 3, y + p, size / 3, p, color);
-        DrawLine(x + p, y + size / 4, x + size - p, y + size / 4, color);
-        Color dark_color = flint_darken(color, 70);
-        DrawLine(x + size / 3, y + size / 3 + p, x + size / 3, y + size - p * 2, dark_color);
-        DrawLine(x + size * 2 / 3, y + size / 3 + p, x + size * 2 / 3, y + size - p * 2, dark_color);
-        break;
-    }
-    case FLINT_ICON_TYPE_PENCIL: {
-        int p = thickness;
-        DrawLineEx((Vector2){x + p * 2, y + size - p * 2},
-                   (Vector2){x + size - p * 2, y + p * 2},
-                   (float)(thickness + 1), color);
-        DrawTriangle((Vector2){x + size - p * 2, y + p * 2},
-                     (Vector2){x + size - p, y + p},
-                     (Vector2){x + size - p, y + p * 3},
-                     color);
-        DrawLine(x + p, y + size - p, x + p * 3, y + size - p, color);
-        break;
-    }
-    case FLINT_ICON_TYPE_SAVE: {
-        int p = thickness;
-        DrawLineEx((Vector2){x + p * 2, y + center},
-                   (Vector2){x + center - p, y + size - p * 2},
-                   (float)(thickness + 1), color);
-        DrawLineEx((Vector2){x + center - p, y + size - p * 2},
-                   (Vector2){x + size - p, y + p * 2},
-                   (float)(thickness + 1), color);
-        break;
-    }
-    case FLINT_ICON_TYPE_STACK: {
-        int p = thickness;
-        int layer_h = size / 4;
-        int gap = thickness;
-        int w = size - p * 2;
-        int top_y = y + p * 2;
-        DrawRectangleLinesEx((Rectangle){(float)(x + p), (float)top_y, (float)w, (float)layer_h},
-                             (float)thickness, color);
-        DrawRectangleLinesEx((Rectangle){(float)(x + p), (float)(top_y + layer_h + gap),
-                                         (float)w, (float)layer_h},
-                             (float)thickness, color);
-        DrawRectangleLinesEx((Rectangle){(float)(x + p), (float)(top_y + (layer_h + gap) * 2),
-                                         (float)w, (float)layer_h},
-                             (float)thickness, color);
-        break;
-    }
-    case FLINT_ICON_TYPE_MANUAL:
-    case FLINT_ICON_TYPE_STAT: {
-        DrawRectangle(x + thickness, y + thickness, size - thickness * 2, size - thickness * 2, color);
-        DrawLine(x + thickness, y + thickness + size / 3, x + size - thickness, y + thickness + size / 3, color);
-        DrawLine(x + thickness, y + thickness + size * 2 / 3, x + size - thickness, y + thickness + size * 2 / 3, color);
-        break;
-    }
-    default: {
-        DrawCircle(x + center, y + center, size / 3, color);
-        break;
-    }
     }
 }

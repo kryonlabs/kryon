@@ -1,5 +1,6 @@
 #include "flint_theme.h"
 #include "flint_embedded_assets.h"
+#include "flint_theme_meta.h"
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -8,6 +9,7 @@
 static FlintThemeScope scopes[FLINT_THEME_MAX_SCOPES];
 static int scope_count = 0;
 static bool dark_mode = false;
+static int current_theme_id = FLINT_THEME_SKY;
 
 static FlintThemeAggregateVariable aggregate_vars[FLINT_THEME_MAX_VARS];
 static int aggregate_count = 0;
@@ -272,6 +274,10 @@ FlintThemeScope *flint_theme_register_scope_dark(const char *name, const char *p
 
 Color flint_theme_get(const char *scope_name, const char *key)
 {
+    Color catalog_color;
+    if(flint_theme_catalog_scope_color(scope_name, key, &catalog_color))
+        return catalog_color;
+
     FlintThemeValue *value = scope_value(flint_theme_scope(scope_name), key);
     if(value != NULL)
         return value->value;
@@ -297,6 +303,9 @@ Color flint_theme_get(const char *scope_name, const char *key)
     if(key != NULL) {
         if(strstr(key, "background") != NULL || strstr(key, "paper") != NULL)
             return (Color){0xE2, 0xEE, 0xFC, 0xFF};
+        if(strstr(key, "surface") != NULL || strstr(key, "modal") != NULL ||
+           strstr(key, "panel") != NULL)
+            return (Color){0xD4, 0xE4, 0xF5, 0xFF};
         if(strstr(key, "text") != NULL || strstr(key, "foreground") != NULL ||
            strstr(key, "ink") != NULL)
             return (Color){0x24, 0x48, 0x7C, 0xFF};
@@ -634,3 +643,27 @@ void flint_theme_reload_themes(void)
 
     flint_theme_aggregate_all();
 }
+
+void
+flint_theme_set_current(int theme_id, int current_dark_mode)
+{
+    current_theme_id = flint_theme_normalize(theme_id);
+    dark_mode = current_dark_mode != 0;
+}
+
+Color
+flint_theme_current_color(const char *key)
+{
+    Color color = BLANK;
+    flint_theme_catalog_color(flint_theme_normalize(current_theme_id),
+                              dark_mode, key, &color);
+    return color;
+}
+
+Color flint_theme_get_text(void) { return flint_theme_current_color("text"); }
+Color flint_theme_get_bg(void) { return flint_theme_current_color("background"); }
+Color flint_theme_get_surface(void) { return flint_theme_current_color("surface"); }
+Color flint_theme_get_circle(void) { return flint_theme_current_color("circle"); }
+Color flint_theme_get_button(void) { return flint_theme_current_color("button"); }
+Color flint_theme_get_button_hover(void) { return flint_theme_current_color("button_hover"); }
+Color flint_theme_get_icon(void) { return flint_theme_current_color("icon"); }
