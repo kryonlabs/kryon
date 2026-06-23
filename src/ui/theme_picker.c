@@ -122,17 +122,20 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
             theme_color = flint_theme_get(scope, "circle");
         }
 
-        DrawCircle(cx, cy, layout.circle_size / 2, theme_color);
-        DrawCircleLines(cx, cy, layout.circle_size / 2 + (selected == (int)theme ? flint_px(2) : flint_px(1)),
-                        selected == (int)theme ? c_text : flint_darken(c_bg, 30));
-
         Rectangle bounds = {
             (float)(cx - layout.circle_size / 2 - flint_px(4)),
             (float)(cy - layout.circle_size / 2 - flint_px(4)),
             (float)(layout.circle_size + flint_px(8)),
             (float)(layout.circle_size + flint_px(8))
         };
-        if(CheckCollisionPointRec(mouse_world, bounds) && !ui_input_captures_click(mouse_world)) {
+        int is_hovered = CheckCollisionPointRec(mouse_world, bounds) && !ui_input_captures_click(mouse_world);
+
+        int draw_size = is_hovered ? layout.circle_size + flint_px(4) : layout.circle_size;
+        DrawCircle(cx, cy, draw_size / 2, theme_color);
+        DrawCircleLines(cx, cy, draw_size / 2 + (selected == (int)theme ? flint_px(2) : flint_px(1)),
+                        selected == (int)theme ? c_text : flint_darken(c_bg, 30));
+
+        if(is_hovered) {
             ui_mark_clickable();
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
                 selected = theme;
