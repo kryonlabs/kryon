@@ -1,14 +1,34 @@
-# Inbe Flint UI
+# Flint UI
 
-This directory is first-party Inbe UI/runtime support code. It was merged from
-the old Flint project so Inbe can extend the UI system directly without a
-vendored submodule, project manifest, CLI, or separate library target.
+Flint is a lightweight C UI component library for embedded applications and
+runtime environments. It provides core UI primitives and icon asset management
+without external dependencies.
 
 ## Layout
 
-- `include/` - public headers used by Inbe source files
-- `src/` - C implementation files compiled directly into Inbe
+- `include/` - public headers for Flint API
+- `src/` - C implementation files
 - `icons/` - icon bitmaps embedded by the Flint icon asset source
-- `scripts/` - small build helpers, currently asset embedding
+- `scripts/` - build helpers and asset embedding tools
+- `examples/` - example programs demonstrating Flint usage
 
-The root `Makefile` and Android CMake project compile these files directly.
+## Building
+
+Flint can be built directly or integrated as part of a larger project:
+
+```bash
+# Standalone build
+make
+
+# Or via CMake (for Android/embedded platforms)
+cmake -B build
+cmake --build build
+```
+
+## Integration
+
+To integrate Flint into your project:
+
+1. Add `include/` to your header search paths
+2. Compile the `src/` files and link with your application
+3. Use the `scripts/` tools to embed custom icon assets if needed
