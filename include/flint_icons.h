@@ -22,6 +22,9 @@ Texture2D flint_load_icon_texture_by_name(const char *name);
 void flint_load_all_icons(Texture2D *icons);
 void flint_unload_all_icons(Texture2D *icons);
 
+/* Auto-generated icon names array (alphabetical order, matches UIIconType enum) */
+extern const char *flint_icon_names[];
+
 #ifdef __cplusplus
 }
 #endif

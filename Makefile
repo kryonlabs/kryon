@@ -27,6 +27,7 @@ SRCS = \
 	src/flint_layout.c \
 	src/flint_icons.c \
 	src/flint_icon_assets.c \
+	src/flint_icon_names.c \
 	src/flint_text.c \
 	src/flint_ui.c \
 	src/flint_text_layout.c \
@@ -100,6 +101,9 @@ $(CLI): cli/flint.c | $(BUILD_DIR)
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/flint_icons.h
 	sh scripts/embed-icons.sh $(ICON_DIR) $@
+
+src/flint_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
+	@$(MAKE) --quiet $(ICON_ASSETS_C)
 
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/flint_embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
