@@ -194,7 +194,7 @@ ui_input_captures_click(Vector2 point)
 int
 ui_hover_effects_enabled(void)
 {
-#if INBE_ANDROID_BUILD
+#if ANDROID_BUILD
     return 0;
 #else
     return !g_ui_input_blocked;
