@@ -461,6 +461,8 @@ void ui_set_frame(Camera2D camera);
 void flint_ui_set_text_input_platform_callback(FlintUITextInputPlatformCallback callback);
 void ui_set_cursor_clickable(int *cursor_clickable);
 void ui_set_cursor_disabled(int *cursor_disabled);
+void ui_mark_clickable(void);
+void ui_mark_disabled(void);
 void ui_set_icons(Texture2D gear_icon, Texture2D x_icon);
 void ui_set_input_blocked(int blocked);
 int ui_input_captures_click(Vector2 point);
