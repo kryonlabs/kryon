@@ -74,6 +74,5 @@ const char *flint_icon_names[] = {
     "weekly.png",  /* UI_ICON_TYPE_WEEKLY_PNG */
     "win.png",  /* UI_ICON_TYPE_WIN_PNG */
     "wrench.png",  /* UI_ICON_TYPE_WRENCH_PNG */
-    "x-red.png",  /* UI_ICON_TYPE_X_RED_PNG */
     "x.png",  /* UI_ICON_TYPE_X_PNG */
 };

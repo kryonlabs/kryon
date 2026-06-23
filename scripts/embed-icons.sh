@@ -66,7 +66,7 @@ enum_tmp="${enum_out}.tmp"
         printf '    UI_ICON_TYPE_%s,\n' "$enum"
         count=$((count + 1))
     done
-    printf '\n    UI_ICON_TYPE_COUNT = %d\n' "$count"
+    printf '\n    UI_ICON_TYPE_COUNT = %d\n' "$((count + 1))"
     printf '} UIIconType;\n\n'
     printf '#endif /* UI_ICON_TYPES_H */\n'
 } > "$enum_tmp"
