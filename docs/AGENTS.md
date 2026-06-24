@@ -127,6 +127,5 @@ This keeps Flint reusable and prevents project-local vendor edits from diverging
 ## Documentation Rules
 
 Keep `docs/API.md` as the public API reference. Keep this guide as the operational
-guidance for agents and maintainers. Avoid speculative architecture documents unless
-they map to accepted, current work; stale proposals make it harder to know which Flint
-behavior is real.
+guidance for agents and maintainers. Documentation in Flint should describe current
+APIs, current behavior, and the expected downstream workflow.
