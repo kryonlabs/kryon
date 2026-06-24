@@ -1,3 +1,4 @@
+#include "flint_example_font.h"
 #include "flint_scaling.h"
 #include <stdio.h>
 #include <raylib.h>
@@ -7,6 +8,7 @@ int main(void) {
     const int screenHeight = 600;
     InitWindow(screenWidth, screenHeight, "Flint Scaling Example");
     SetTargetFPS(60);
+    flint_example_load_font();
 
     // Test different DPI scales
     float scales[] = {1.0f, 1.5f, 2.0f, 2.5f};
@@ -38,20 +40,20 @@ int main(void) {
         // Draw info
         char info[128];
         snprintf(info, sizeof(info), "DPI Scale: %.1f (Press SPACE to cycle)", scales[scale_index]);
-        DrawText(info, 50, 20, 20, BLACK);
+        flint_text_draw(info, 50, 20, 20, BLACK);
 
         // Draw box with scaled size
         DrawRectangleRec((Rectangle){box_pos.x, box_pos.y, box_size, box_size}, SKYBLUE);
-        DrawText("Scaled Box", box_pos.x + 10, box_pos.y + 10, 16, WHITE);
+        flint_text_draw("Scaled Box", box_pos.x + 10, box_pos.y + 10, 16, WHITE);
 
         // Show base vs scaled
         char size_info[128];
         snprintf(size_info, sizeof(size_info), "Base: %dpx, Scaled: %dpx", box_size_base, box_size);
-        DrawText(size_info, 50, 60, 16, DARKGRAY);
+        flint_text_draw(size_info, 50, 60, 16, DARKGRAY);
 
         // Instructions
-        DrawText("Arrow keys to move box", 50, 90, 16, DARKGRAY);
-        DrawText("Box size scales with DPI", 50, 110, 16, DARKGRAY);
+        flint_text_draw("Arrow keys to move box", 50, 90, 16, DARKGRAY);
+        flint_text_draw("Box size scales with DPI", 50, 110, 16, DARKGRAY);
 
         // Handle box movement
         if(IsKeyDown(KEY_RIGHT)) box_pos.x += 3;
@@ -71,6 +73,7 @@ int main(void) {
 
         EndDrawing();
     }
+    flint_example_unload_font();
 
     CloseWindow();
     return 0;

@@ -1,0 +1,7 @@
+Flint examples use chopped locale fonts.
+English ASCII: The quick brown fox jumps over 1234567890.
+Accents: Réglages, Cvičení, Respiração, Océano.
+Chinese: 设置 中文
+Japanese: 設定 日本語
+Korean: 설정 한국어
+Russian: Настройки Русский

@@ -1,3 +1,4 @@
+#include "flint_example_font.h"
 #include "flint_theme_meta.h"
 #include "flint_scaling.h"
 #include <stdio.h>
@@ -8,6 +9,7 @@ int main(void) {
     const int screenHeight = 600;
     InitWindow(screenWidth, screenHeight, "Flint Theme Example");
     SetTargetFPS(60);
+    flint_example_load_font();
 
     printf("Flint Theme System Example\n");
     printf("=========================\n\n");
@@ -56,7 +58,7 @@ int main(void) {
         const char *theme_name = flint_theme_label(current_theme);
         char title[128];
         snprintf(title, sizeof(title), "Theme: %s (%s mode)", theme_name, dark_mode ? "Dark" : "Light");
-        DrawText(title, flint_px(20), flint_px(20), 24, text);
+        flint_text_draw(title, flint_px(20), flint_px(20), 24, text);
 
         // Draw color swatches
         int y = flint_px(70);
@@ -66,61 +68,61 @@ int main(void) {
         // Background
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, background);
         DrawRectangleLinesEx((Rectangle){x, y, swatch_size, swatch_size}, 1, text);
-        DrawText("Background", x + swatch_size + 10, y + 10, 16, text);
+        flint_text_draw("Background", x + swatch_size + 10, y + 10, 16, text);
 
         // Text
         y += swatch_size + flint_px(20);
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, text);
-        DrawText("Text", x + swatch_size + 10, y + 10, 16, text);
+        flint_text_draw("Text", x + swatch_size + 10, y + 10, 16, text);
 
         // Button
         y += swatch_size + flint_px(20);
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, button);
-        DrawText("Button", x + swatch_size + 10, y + 10, 16, text);
+        flint_text_draw("Button", x + swatch_size + 10, y + 10, 16, text);
 
         // Button Hover
         y += swatch_size + flint_px(20);
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, button_hover);
-        DrawText("Button Hover", x + swatch_size + 10, y + 10, 16, text);
+        flint_text_draw("Button Hover", x + swatch_size + 10, y + 10, 16, text);
 
         // Circle
         y += swatch_size + flint_px(20);
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, circle);
-        DrawText("Circle", x + swatch_size + 10, y + 10, 16, text);
+        flint_text_draw("Circle", x + swatch_size + 10, y + 10, 16, text);
 
         // Draw theme info
         y += swatch_size + flint_px(40);
         char info[128];
         snprintf(info, sizeof(info), "Scope: %s", scope);
-        DrawText(info, x, y, 16, text);
+        flint_text_draw(info, x, y, 16, text);
 
         y += flint_px(30);
         snprintf(info, sizeof(info), "Theme ID: %d", current_theme);
-        DrawText(info, x, y, 16, text);
+        flint_text_draw(info, x, y, 16, text);
 
         // Draw RGB values
         y += flint_px(40);
-        DrawText("Color Values (R,G,B):", x, y, 18, text);
+        flint_text_draw("Color Values (R,G,B):", x, y, 18, text);
         y += flint_px(25);
         snprintf(info, sizeof(info), "Background: %d,%d,%d", background.r, background.g, background.b);
-        DrawText(info, x, y, 14, text);
+        flint_text_draw(info, x, y, 14, text);
         y += flint_px(20);
         snprintf(info, sizeof(info), "Text: %d,%d,%d", text.r, text.g, text.b);
-        DrawText(info, x, y, 14, text);
+        flint_text_draw(info, x, y, 14, text);
         y += flint_px(20);
         snprintf(info, sizeof(info), "Button: %d,%d,%d", button.r, button.g, button.b);
-        DrawText(info, x, y, 14, text);
+        flint_text_draw(info, x, y, 14, text);
 
         // Instructions
         y = flint_px(20);
         x = flint_px(400);
-        DrawText("Controls:", x, y, 18, text);
+        flint_text_draw("Controls:", x, y, 18, text);
         y += flint_px(30);
-        DrawText("SPACE - Next theme", x, y, 16, text);
+        flint_text_draw("SPACE - Next theme", x, y, 16, text);
         y += flint_px(25);
-        DrawText("D - Toggle dark/light mode", x, y, 16, text);
+        flint_text_draw("D - Toggle dark/light mode", x, y, 16, text);
         y += flint_px(25);
-        DrawText("ESC - Exit", x, y, 16, text);
+        flint_text_draw("ESC - Exit", x, y, 16, text);
 
         // Handle input
         if(IsKeyPressed(KEY_SPACE)) {
@@ -137,6 +139,7 @@ int main(void) {
 
         EndDrawing();
     }
+    flint_example_unload_font();
 
     CloseWindow();
     return 0;

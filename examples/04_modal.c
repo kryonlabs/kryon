@@ -1,3 +1,4 @@
+#include "flint_example_font.h"
 #include "flint_theme.h"
 #include "flint_theme_meta.h"
 #include "flint_ui.h"
@@ -18,6 +19,7 @@ main(void)
 
     InitWindow(800, 600, "Flint Modal Example");
     SetTargetFPS(60);
+    flint_example_load_font();
     load_theme();
 
     printf("Flint Modal Example\n");
@@ -32,15 +34,15 @@ main(void)
         flint_set_view_size(GetScreenWidth(), GetScreenHeight());
         ui_set_input_blocked(0);
 
-        DrawText("Modal capture example", 32, 32, 28, flint_theme_get_text());
-        DrawText("Try clicking the background counter while the modal is open.",
+        flint_text_draw("Modal capture example", 32, 32, 28, flint_theme_get_text());
+        flint_text_draw("Try clicking the background counter while the modal is open.",
                  32, 72, 18, flint_darken(flint_theme_get_text(), 30));
 
         if(ui_draw_generic_button(32, 120, 220, 42, "Background Button",
                                   UI_BUTTON_STYLE_SECONDARY, modal_open, &hover)) {
             background_clicks++;
         }
-        DrawText(TextFormat("Background clicks: %d", background_clicks),
+        flint_text_draw(TextFormat("Background clicks: %d", background_clicks),
                  32, 176, 18, flint_theme_get_text());
 
         if(ui_draw_generic_button(32, 230, 220, 42, "Open Modal",
@@ -64,6 +66,7 @@ main(void)
             break;
         EndDrawing();
     }
+    flint_example_unload_font();
 
     CloseWindow();
     return 0;

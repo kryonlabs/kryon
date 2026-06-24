@@ -1,3 +1,4 @@
+#include "flint_example_font.h"
 #include "flint_ui.h"
 #include "flint_scaling.h"
 #include <stdio.h>
@@ -8,6 +9,7 @@ int main(void) {
     const int screenHeight = 600;
     InitWindow(screenWidth, screenHeight, "Flint UI Buttons Example");
     SetTargetFPS(60);
+    flint_example_load_font();
 
     printf("Flint UI Buttons Example\n");
     printf("======================\n\n");
@@ -31,11 +33,11 @@ int main(void) {
         ClearBackground(RAYWHITE);
 
         // Draw title
-        DrawText("Flint UI Buttons Example", flint_px(20), flint_px(20), 24, BLACK);
+        flint_text_draw("Flint UI Buttons Example", flint_px(20), flint_px(20), 24, BLACK);
 
         // Draw instructions
-        DrawText("Click the buttons below to test interactions", flint_px(20), flint_px(50), 16, DARKGRAY);
-        DrawText("(Using ui_draw_generic_button() utility)", flint_px(20), flint_px(70), 14, GRAY);
+        flint_text_draw("Click the buttons below to test interactions", flint_px(20), flint_px(50), 16, DARKGRAY);
+        flint_text_draw("(Using ui_draw_generic_button() utility)", flint_px(20), flint_px(70), 14, GRAY);
 
         // Button 1 - Primary style (using Flint utility)
         int btn1_hover = 0;
@@ -67,26 +69,26 @@ int main(void) {
         // Show click status
         char status[128];
         snprintf(status, sizeof(status), "Button 1: %s", button1_clicked ? "Clicked" : "Not clicked");
-        DrawText(status, flint_px(20), flint_px(260), 16, DARKGRAY);
+        flint_text_draw(status, flint_px(20), flint_px(260), 16, DARKGRAY);
 
         snprintf(status, sizeof(status), "Button 2: %s", button2_clicked ? "Clicked" : "Not clicked");
-        DrawText(status, flint_px(20), flint_px(280), 16, DARKGRAY);
+        flint_text_draw(status, flint_px(20), flint_px(280), 16, DARKGRAY);
 
         snprintf(status, sizeof(status), "Button 3: %s", button3_clicked ? "Clicked" : "Not clicked");
-        DrawText(status, flint_px(20), flint_px(300), 16, DARKGRAY);
+        flint_text_draw(status, flint_px(20), flint_px(300), 16, DARKGRAY);
 
         // Show current scale
         float current_scale = flint_get_dpi_scale();
         char scale_info[64];
         snprintf(scale_info, sizeof(scale_info), "DPI Scale: %.1f (Use UP/DOWN)", current_scale);
-        DrawText(scale_info, flint_px(20), flint_px(340), 16, DARKGRAY);
+        flint_text_draw(scale_info, flint_px(20), flint_px(340), 16, DARKGRAY);
 
         // Show button info
-        DrawText("Button Styles:", flint_px(300), flint_px(100), 18, BLACK);
-        DrawText("- Primary: Blue theme color", flint_px(300), flint_px(120), 14, DARKGRAY);
-        DrawText("- Secondary: Gray color", flint_px(300), flint_px(135), 14, DARKGRAY);
-        DrawText("- Danger: Red for destructive actions", flint_px(300), flint_px(150), 14, DARKGRAY);
-        DrawText("- Tab Selected: Highlighted state", flint_px(300), flint_px(165), 14, DARKGRAY);
+        flint_text_draw("Button Styles:", flint_px(300), flint_px(100), 18, BLACK);
+        flint_text_draw("- Primary: Blue theme color", flint_px(300), flint_px(120), 14, DARKGRAY);
+        flint_text_draw("- Secondary: Gray color", flint_px(300), flint_px(135), 14, DARKGRAY);
+        flint_text_draw("- Danger: Red for destructive actions", flint_px(300), flint_px(150), 14, DARKGRAY);
+        flint_text_draw("- Tab Selected: Highlighted state", flint_px(300), flint_px(165), 14, DARKGRAY);
 
         // Handle scale changes
         if(IsKeyPressed(KEY_UP)) {
@@ -102,6 +104,7 @@ int main(void) {
 
         EndDrawing();
     }
+    flint_example_unload_font();
 
     CloseWindow();
     return 0;

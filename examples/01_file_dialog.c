@@ -1,3 +1,4 @@
+#include "flint_example_font.h"
 #include "flint_file_dialog.h"
 #include "flint_theme.h"
 #include "flint_theme_meta.h"
@@ -10,6 +11,7 @@ int main(void) {
     const int screenHeight = 600;
     InitWindow(screenWidth, screenHeight, "Flint File Dialog Example");
     SetTargetFPS(60);
+    flint_example_load_font();
 
     flint_theme_set_current(FLINT_THEME_SKY, 0);
     flint_file_dialog_set_theme_scope(flint_theme_scope_for(FLINT_THEME_SKY, false));
@@ -29,12 +31,12 @@ int main(void) {
         ClearBackground(flint_theme_get_bg());
 
         // Draw simple UI
-        DrawText("Flint File Dialog Example", 20, 20, 20, flint_theme_get_text());
-        DrawText("Press L for Load, S for Save, ESC to exit", 20, 50, 16, flint_theme_get_text());
+        flint_text_draw("Flint File Dialog Example", 20, 20, 20, flint_theme_get_text());
+        flint_text_draw("Press L for Load, S for Save, ESC to exit", 20, 50, 16, flint_theme_get_text());
 
         if(last_file[0] != 0) {
-            DrawText("Last selected file:", 20, 80, 16, flint_theme_get_text());
-            DrawText(last_file, 20, 100, 14, flint_theme_get_text());
+            flint_text_draw("Last selected file:", 20, 80, 16, flint_theme_get_text());
+            flint_text_draw(last_file, 20, 100, 14, flint_theme_get_text());
         }
 
         // Handle keyboard input
@@ -74,6 +76,7 @@ int main(void) {
     }
 
     flint_file_dialog_cleanup(&dlg);
+    flint_example_unload_font();
     CloseWindow();
 
     return 0;

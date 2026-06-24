@@ -4,6 +4,11 @@ CC ?= gcc
 CFLAGS_BASE ?= -Wall -Wextra -O2
 CFLAGS = $(CFLAGS_BASE) -I../include
 LDFLAGS = -L.. -lflint
+FONT_OUTPUT := assets/fonts/locales
+FONT_OUTPUTS := $(FONT_OUTPUT).png $(FONT_OUTPUT).dat
+FONT_LOCALES := $(wildcard locales/*.txt)
+FONT_TOOL := ../tools/otfchop/otfchop
+FONT_SOURCE := ../tools/otfchop/unifont-17.0.04.otf
 
 # Raylib - use system library from nix-shell
 # Check if we're in nix-shell and use its flags
@@ -20,20 +25,30 @@ LDFLAGS += -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
 EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout
 
-.PHONY: all clean run list
+.PHONY: all clean run list font-assets
 
 all: ../libflint.a $(EXAMPLES)
 
 ../libflint.a:
 	@$(MAKE) -C ..
 
-%: %.c
+$(FONT_TOOL):
+	@$(MAKE) -C ../tools/otfchop otfchop
+
+font-assets: $(FONT_OUTPUTS)
+
+$(FONT_OUTPUTS): $(FONT_LOCALES) $(FONT_TOOL) $(FONT_SOURCE)
+	@mkdir -p assets/fonts
+	@$(FONT_TOOL) $(FONT_SOURCE) $(FONT_LOCALES) $(FONT_OUTPUT)
+
+%: %.c $(FONT_OUTPUTS)
 	@echo "Building $@..."
 	@$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 	@echo "Built: $@"
 
 clean:
 	rm -f $(EXAMPLES)
+	rm -rf assets/fonts
 
 list:
 	@echo "Flint Examples:"

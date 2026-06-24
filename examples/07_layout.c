@@ -1,3 +1,4 @@
+#include "flint_example_font.h"
 #include "flint_layout.h"
 #include "flint_scaling.h"
 #include <stdio.h>
@@ -8,6 +9,7 @@ int main(void) {
     const int screenHeight = 600;
     InitWindow(screenWidth, screenHeight, "Flint Layout Example");
     SetTargetFPS(60);
+    flint_example_load_font();
 
     // Initialize view size
     flint_set_view_size(screenWidth, screenHeight);
@@ -53,13 +55,13 @@ int main(void) {
 
             char label[64];
             snprintf(label, sizeof(label), "Side padding: %d", side_padding);
-            DrawText(label, side_padding + 10, 10, 12, RED);
+            flint_text_draw(label, side_padding + 10, 10, 12, RED);
 
             snprintf(label, sizeof(label), "Content width: %d", content_w);
-            DrawText(label, content_x + 10, content_area.y - 20, 12, RED);
+            flint_text_draw(label, content_x + 10, content_area.y - 20, 12, RED);
 
             snprintf(label, sizeof(label), "Center column X: %d, W: %d", col_x, col_w);
-            DrawText(label, col_x + 10, content_area.y - 20, 12, BLUE);
+            flint_text_draw(label, col_x + 10, content_area.y - 20, 12, BLUE);
 
             // Draw center line
             int center_x = screen_w / 2;
@@ -67,8 +69,8 @@ int main(void) {
         }
 
         // Draw title
-        DrawText("Flint Layout Example", side_padding, flint_px(20), 24, BLACK);
-        DrawText("Press SPACE for layout guides", side_padding, flint_px(48), 16, DARKGRAY);
+        flint_text_draw("Flint Layout Example", side_padding, flint_px(20), 24, BLACK);
+        flint_text_draw("Press SPACE for layout guides", side_padding, flint_px(48), 16, DARKGRAY);
 
         // Handle input
         if(IsKeyPressed(KEY_SPACE)) {
@@ -81,6 +83,7 @@ int main(void) {
 
         EndDrawing();
     }
+    flint_example_unload_font();
 
     CloseWindow();
     return 0;
