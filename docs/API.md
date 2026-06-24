@@ -777,6 +777,8 @@ int ui_draw_modal(const char *title, const char *message,
 
 **Returns:** 1 for cancel, 2 for confirm
 
+Backdrop clicks are blocked automatically by `ui_set_modal_capture`.
+
 #### `ui_draw_modal_3btn`
 
 Three-button modal.
@@ -785,6 +787,8 @@ Three-button modal.
 int ui_draw_modal_3btn(const char *title, const char *message,
                        const char *left_btn, const char *middle_btn, const char *right_btn);
 ```
+
+Backdrop clicks are blocked automatically by `ui_set_modal_capture`.
 
 #### `FlintUIPanelFrame` / `ui_draw_modal_frame`
 
@@ -805,6 +809,8 @@ typedef struct {
 FlintUIPanelFrame ui_draw_modal_frame(int width, int height, const char *title,
                                      Texture2D left_icon, Texture2D right_icon);
 ```
+
+`ui_draw_modal_frame` also updates the modal capture bounds automatically.
 
 ---
 
@@ -965,7 +971,15 @@ int ui_draw_button_row(FlintUIButtonRow row);
 ```c
 int ui_input_captures_click(Vector2 point);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);
+void ui_set_modal_capture(Rectangle bounds);
 ```
+
+`ui_set_modal_capture` defines the active modal rectangle for the frame.
+Any click outside that bounds is treated as captured, so the rest of the screen does not
+receive pointer events while the modal is rendered.
+
+Built-in modal helpers (`ui_draw_modal`, `ui_draw_modal_3btn`, `ui_draw_modal_frame`)
+register their bounds automatically.
 
 ### Input Blocking
 

@@ -54,6 +54,9 @@ ui_draw_modal(const char *title, const char *message,
         modal_h = ui_view_height - flint_px(24);
     modal_x = (ui_view_width - modal_w) / 2;
     modal_y = (ui_view_height - modal_h) / 2;
+    ui_set_modal_capture((Rectangle){
+        (float)modal_x, (float)modal_y, (float)modal_w, (float)modal_h
+    });
     msg_x = modal_x + flint_px(16);
     msg_y = modal_y + title_h;
     btn_y = modal_y + modal_h - btn_h - flint_px(16);
@@ -118,6 +121,9 @@ ui_draw_modal_3btn(const char *title, const char *message,
         modal_h = ui_view_height - flint_px(24);
     modal_x = (ui_view_width - modal_w) / 2;
     modal_y = (ui_view_height - modal_h) / 2;
+    ui_set_modal_capture((Rectangle){
+        (float)modal_x, (float)modal_y, (float)modal_w, (float)modal_h
+    });
     msg_x = modal_x + flint_px(16);
     msg_y = modal_y + title_h;
     btn_y = modal_y + modal_h - btn_h - flint_px(16);
@@ -263,6 +269,9 @@ ui_draw_modal_frame(int width, int height, const char *title,
     frame.content_h = frame.h - flint_px(74);
     title_font = flint_ui_title_font(title, frame.w - icon_w * 2 - flint_px(24));
     title_w = flint_text_measure(title, title_font);
+    ui_set_modal_capture((Rectangle){
+        (float)frame.x, (float)frame.y, (float)frame.w, (float)frame.h
+    });
 
     DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
     DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
