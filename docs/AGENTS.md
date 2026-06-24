@@ -19,15 +19,16 @@ Call `ui_set_frame(camera)` once at the start of every UI frame after the viewpo
 camera are current. It resets per-frame interaction state:
 
 - input blocking
-- modal capture bounds from the previous frame
+- modal capture state from the previous frame
 - input clip stack
 - pointer gesture state
 - clip state
 
 Do not persist `ui_set_input_blocked` or input clips across frames. Register them again
 while rendering the UI that needs them. Modal capture is registered while drawing the
-modal and Flint carries it into the next frame so screens that draw overlays last still
-block controls behind the modal.
+modal and Flint carries it into the next frame. Until the current frame registers the
+modal bounds again, Flint captures all pointer input so controls underneath the modal
+cannot receive clicks before the modal is drawn.
 
 ## Input Capture
 
@@ -43,9 +44,9 @@ Use these APIs by responsibility:
   components that need to decide whether pointer dragging should count as capture.
 - `ui_set_input_blocked(blocked)`: full-frame blocking for overlays that should stop
   all controls for the rest of the frame.
-- `ui_set_modal_capture(bounds)`: modal-specific capture that blocks clicks outside
-  the active modal rectangle while allowing controls inside it. It applies immediately
-  and to the next frame.
+- `ui_set_modal_capture(bounds)`: modal-specific capture that blocks background
+  clicks, then allows controls inside the active modal rectangle after the modal
+  registers its bounds. It applies immediately and to the next frame.
 
 ## Modal Rules
 
@@ -62,8 +63,9 @@ current frame and the next frame.
 When an application draws a custom modal manually, it must call
 `ui_set_modal_capture((Rectangle){x, y, w, h})` immediately after calculating the modal
 rectangle and before drawing modal controls. This prevents clicks outside the modal from
-activating the underlying screen while keeping buttons, sliders, dropdowns, and text
-fields inside the modal usable.
+activating the underlying screen, prevents controls underneath the modal from receiving
+clicks before the modal is drawn, and keeps buttons, sliders, dropdowns, and text fields
+inside the modal usable.
 
 Do not manage modal click blocking in application-level route code. The application
 should decide whether a modal is open and what state changes happen after a modal
@@ -85,6 +87,7 @@ DrawRectangle(0, 0, view_width, view_height, (Color){0, 0, 0, 180});
 DrawRectangle(modal_x, modal_y, modal_w, modal_h, flint_theme_get_surface());
 ```
 
+Before this call on a frame following an active modal, Flint captures all pointer input.
 After this call, normal Flint controls inside the rectangle remain clickable because
 their hit tests are inside the active modal bounds. Controls outside the rectangle see
 the click as captured in the current frame and the next frame.

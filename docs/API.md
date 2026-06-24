@@ -976,8 +976,9 @@ void ui_set_modal_capture(Rectangle bounds);
 ```
 
 `ui_set_modal_capture` defines the active modal rectangle for the current frame and the
-next frame. Any click outside that bounds is treated as captured, so the rest of the
-screen does not receive pointer events while the modal is rendered.
+next frame. While a modal carried from the previous frame has not registered its current
+bounds yet, all pointer input is captured. After registration, clicks outside the bounds
+are captured while controls inside the modal remain usable.
 
 Built-in modal helpers (`ui_draw_modal`, `ui_draw_modal_3btn`, `ui_draw_modal_frame`)
 register their bounds automatically.

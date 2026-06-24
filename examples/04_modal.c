@@ -39,14 +39,14 @@ main(void)
                  32, 72, 18, flint_darken(flint_theme_get_text(), 30));
 
         if(ui_draw_generic_button(32, 120, 220, 42, "Background Button",
-                                  UI_BUTTON_STYLE_SECONDARY, modal_open, &hover)) {
+                                  UI_BUTTON_STYLE_SECONDARY, 0, &hover)) {
             background_clicks++;
         }
         flint_text_draw(TextFormat("Background clicks: %d", background_clicks),
                  32, 176, 18, flint_theme_get_text());
 
         if(ui_draw_generic_button(32, 230, 220, 42, "Open Modal",
-                                  UI_BUTTON_STYLE_PRIMARY, modal_open, &hover)) {
+                                  UI_BUTTON_STYLE_PRIMARY, 0, &hover)) {
             modal_open = 1;
         }
 
