@@ -11,6 +11,11 @@ ICON_ASSETS_C = src/flint_icon_assets.c
 EMBED_ASSETS ?= themes
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/flint_embedded_asset_data.c
+FLINT_FONT_OUT ?= assets/fonts/locales
+FLINT_FONT_LOCALES ?= locales/*.txt
+FLINT_FONT_FALLBACK_LOCALES = tools/otfchop/locales/en.txt
+FLINT_FONT_SOURCE ?= tools/otfchop/unifont-17.0.04.otf
+FLINT_OTFCHOP ?= tools/otfchop/otfchop
 
 # Check if we're in nix-shell and use its flags
 ifneq ($(NIX_CFLAGS_COMPILE),)
@@ -22,8 +27,10 @@ ARFLAGS ?= rcs
 
 SRCS = \
 	src/flint_color.c \
+	src/flint_clip.c \
 	src/flint_scaling.c \
 	src/flint_dpi.c \
+	src/flint_embedded_assets.c \
 	src/flint_layout.c \
 	src/flint_icons.c \
 	src/flint_icon_assets.c \
@@ -35,7 +42,19 @@ SRCS = \
 	src/flint_theme.c \
 	src/flint_theme_meta.c \
 	src/flint_file_dialog.c \
-	src/flint_runtime_assets.c
+	src/flint_runtime_assets.c \
+	src/flint_transition.c \
+	src/ui/bottom_nav.c \
+	src/ui/dropdown.c \
+	src/ui/guide.c \
+	src/ui/icon_controls.c \
+	src/ui/modal.c \
+	src/ui/rows.c \
+	src/ui/scroll.c \
+	src/ui/tab_bar.c \
+	src/ui/theme_picker.c \
+	src/ui/toolbar.c \
+	src/ui/tutorial.c
 
 SRCS += $(EMBED_ASSETS_C)
 
@@ -44,7 +63,7 @@ OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 LIB = libflint.a
 CLI = $(BUILD_DIR)/flint
 
-.PHONY: all clean run install uninstall cli
+.PHONY: all clean run install uninstall cli font-assets
 
 all: $(LIB)
 
@@ -59,6 +78,7 @@ run:
 
 clean:
 	rm -rf $(BUILD_DIR) $(LIB)
+	$(MAKE) -C tools/otfchop clean
 
 install: $(CLI)
 	@echo "Installing flint to $(INSTALL_DIR)..."
@@ -109,10 +129,23 @@ $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/flint_em
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR):
 	mkdir -p $@
+
+$(FLINT_OTFCHOP): tools/otfchop/otfchop.c tools/otfchop/stb_truetype.h tools/otfchop/stb_image_write.h
+	$(MAKE) -C tools/otfchop otfchop
+
+font-assets: $(FLINT_OTFCHOP)
+	@mkdir -p $(dir $(FLINT_FONT_OUT))
+	@set -- $(FLINT_FONT_LOCALES); \
+	if [ "$$1" = "$(FLINT_FONT_LOCALES)" ]; then \
+		set -- $(FLINT_FONT_FALLBACK_LOCALES); \
+	fi; \
+	$(FLINT_OTFCHOP) $(FLINT_FONT_SOURCE) "$$@" $(FLINT_FONT_OUT)

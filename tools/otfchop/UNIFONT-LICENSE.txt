@@ -1,0 +1,18 @@
+GNU Unifont license notice
+
+The Unifont font file used by this repository is licensed under:
+
+    GNU General Public License, version 2 or later
+    with the GNU font embedding exception
+
+Upstream project:
+
+    https://savannah.gnu.org/projects/unifont/
+
+Source distribution:
+
+    https://ftp.gnu.org/gnu/unifont/
+
+This repository does not claim ownership of the Unifont font file.
+Keep this notice with any redistributed copy of the font or derived
+font assets generated from it.

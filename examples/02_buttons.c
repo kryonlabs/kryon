@@ -40,14 +40,14 @@ int main(void) {
         // Button 1 - Primary style (using Flint utility)
         int btn1_hover = 0;
         if(ui_draw_generic_button(flint_px(20), flint_px(100), flint_px(200), flint_px(40),
-                                  "Primary Button", UI_BUTTON_STYLE_PRIMARY, &btn1_hover)) {
+                                  "Primary Button", UI_BUTTON_STYLE_PRIMARY, 0, &btn1_hover)) {
             button1_clicked = 1;
         }
 
         // Button 2 - Secondary style
         int btn2_hover = 0;
         if(ui_draw_generic_button(flint_px(20), flint_px(150), flint_px(200), flint_px(40),
-                                  "Secondary Button", UI_BUTTON_STYLE_SECONDARY, &btn2_hover)) {
+                                  "Secondary Button", UI_BUTTON_STYLE_SECONDARY, 0, &btn2_hover)) {
             button2_clicked = 1;
         }
 
@@ -56,10 +56,10 @@ int main(void) {
         if(button3_clicked) {
             // Change to tab selected style when clicked
             ui_draw_generic_button(flint_px(20), flint_px(200), flint_px(200), flint_px(40),
-                                   "Clicked!", UI_BUTTON_STYLE_TAB_SELECTED, &btn3_hover);
+                                   "Clicked!", UI_BUTTON_STYLE_TAB_SELECTED, 0, &btn3_hover);
         } else {
             if(ui_draw_generic_button(flint_px(20), flint_px(200), flint_px(200), flint_px(40),
-                                       "Click Me (Danger)", UI_BUTTON_STYLE_DANGER, &btn3_hover)) {
+                                       "Click Me (Danger)", UI_BUTTON_STYLE_DANGER, 0, &btn3_hover)) {
                 button3_clicked = 1;
             }
         }
