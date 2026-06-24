@@ -32,3 +32,9 @@ To integrate Flint into your project:
 1. Add `include/` to your header search paths
 2. Compile the `src/` files and link with your application
 3. Use the `scripts/` tools to embed custom icon assets if needed
+
+## Documentation
+
+- `docs/API.md` documents the public API.
+- `docs/AGENTS.md` documents how agents and downstream apps should use Flint,
+  including modal/input capture and submodule update rules.
