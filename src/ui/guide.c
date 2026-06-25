@@ -110,10 +110,11 @@ static int
 guide_icon_button(FlintUIIconButton button)
 {
     int clicked;
+    int was_blocked = g_ui_input_blocked;
 
     ui_set_input_blocked(0);
     clicked = flint_ui_icon_button(button);
-    ui_set_input_blocked(1);
+    ui_set_input_blocked(was_blocked);
     return clicked;
 }
 
