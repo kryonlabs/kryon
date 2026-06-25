@@ -171,13 +171,19 @@ ui_set_input_blocked(int blocked)
 int
 ui_base_input_captures_click(Vector2 point, int include_pointer_drag)
 {
+    int inside_modal_capture = 0;
+
     if(g_ui_input_clip_stack_count > 0 &&
        !CheckCollisionPointRec(point, g_ui_input_clip_stack[g_ui_input_clip_stack_count - 1]))
         return 1;
-    if(g_ui_modal_capture_active &&
-       !CheckCollisionPointRec(point, g_ui_modal_capture_bounds))
-        return 1;
-    return g_ui_input_blocked ||
+
+    if(g_ui_modal_capture_active) {
+        inside_modal_capture = CheckCollisionPointRec(point, g_ui_modal_capture_bounds);
+        if(!inside_modal_capture)
+            return 1;
+    }
+
+    return (!inside_modal_capture && g_ui_input_blocked) ||
            (include_pointer_drag && g_ui_pointer_dragging) ||
            (include_pointer_drag &&
             IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
