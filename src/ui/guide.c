@@ -134,6 +134,7 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
     Rectangle tip;
     int y;
     int finish;
+    int blocked_before_guide;
 
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
         return result;
@@ -163,6 +164,7 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
         return result;
     }
 
+    blocked_before_guide = g_ui_input_blocked;
     ui_set_input_blocked(1);
 
     if(guide.max_width > 0 && tip_w > guide.max_width)
@@ -203,6 +205,7 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
            .icon_padding = flint_px(6)
        })) {
         result.closed = 1;
+        ui_set_input_blocked(blocked_before_guide);
         return result;
     }
 
@@ -253,5 +256,6 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
         }
     }
 
+    ui_set_input_blocked(blocked_before_guide);
     return result;
 }
