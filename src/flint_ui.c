@@ -44,6 +44,7 @@ static int g_ui_focus_count = 0;
 static int g_ui_focus_tab_dir = 0;
 static int g_ui_focus_text_input_active = 0;
 static int g_ui_platform_text_input_active = 0;
+static int g_ui_text_input_requested = 0;
 static FlintUITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
 
 #define UI_TEXT_INPUT_QUEUE_MAX 64
@@ -569,11 +570,11 @@ void
 ui_focus_set_text_input_active(int active)
 {
     active = active != 0;
-    g_ui_focus_text_input_active = active;
-    if(g_ui_platform_text_input_active != active) {
-        g_ui_platform_text_input_active = active;
-        if(g_ui_text_input_platform_callback != NULL)
-            g_ui_text_input_platform_callback(active);
+    if(active) {
+        g_ui_focus_text_input_active = 1;
+        g_ui_text_input_requested = 1;
+    } else {
+        g_ui_focus_text_input_active = 0;
     }
 }
 
@@ -963,6 +964,112 @@ flint_ui_text_field(FlintUITextField field)
     return changed;
 }
 
+int
+flint_ui_readonly_text_box_height(const char *text, int font, int width,
+                                  FlintUITextInputStyle style, int line_gap)
+{
+    char line[1024];
+    int len;
+    int offset = 0;
+    int line_count = 0;
+    int padding_x = style.padding_x > 0 ? style.padding_x : flint_px(10);
+    int padding_y = flint_px(8);
+    int content_w = width - padding_x * 2;
+
+    if(font <= 0)
+        font = flint_ui_font();
+    if(line_gap < 0)
+        line_gap = 0;
+    if(content_w < flint_px(24))
+        content_w = flint_px(24);
+    if(text == NULL)
+        text = "";
+
+    len = (int)strlen(text);
+    while(offset < len) {
+        int chunk_len;
+
+        if(flint_text_measure(text + offset, font) <= content_w) {
+            line_count++;
+            break;
+        }
+        chunk_len = 1;
+        while(offset + chunk_len < len && chunk_len + 1 < (int)sizeof(line)) {
+            snprintf(line, sizeof(line), "%.*s", chunk_len + 1, text + offset);
+            if(flint_text_measure(line, font) > content_w)
+                break;
+            chunk_len++;
+        }
+        offset += chunk_len;
+        line_count++;
+    }
+    if(line_count < 1)
+        line_count = 1;
+    return padding_y * 2 + line_count * flint_text_line_height(font) +
+           (line_count - 1) * line_gap;
+}
+
+int
+flint_ui_readonly_text_box(FlintUIReadonlyTextBox box)
+{
+    char line[1024];
+    const char *text = box.text != NULL ? box.text : "";
+    int font = box.font > 0 ? box.font : flint_ui_font();
+    int padding_x = box.style.padding_x > 0 ? box.style.padding_x : flint_px(10);
+    int padding_y = flint_px(8);
+    int line_gap = box.line_gap > 0 ? box.line_gap : 0;
+    int content_w = (int)box.bounds.width - padding_x * 2;
+    int line_h = flint_text_line_height(font);
+    int offset = 0;
+    int len = (int)strlen(text);
+    int draw_y = (int)box.bounds.y + padding_y;
+    float radius = box.style.radius > 0.0f ? box.style.radius : 0.12f;
+    Vector2 mouse_world = ui_mouse_world();
+    int active = CheckCollisionPointRec(mouse_world, box.bounds) &&
+                 !ui_input_captures_click(mouse_world);
+
+    if(content_w < flint_px(24))
+        content_w = flint_px(24);
+
+    DrawRectangleRounded(box.bounds, radius, 8, box.style.background);
+    DrawRectangleRoundedLines(box.bounds, radius, 8, box.style.border);
+
+    ui_begin_world_clip((Rectangle){box.bounds.x + (float)padding_x, box.bounds.y,
+                                    (float)content_w, box.bounds.height});
+    while(offset < len) {
+        int chunk_len;
+
+        if(flint_text_measure(text + offset, font) <= content_w) {
+            snprintf(line, sizeof(line), "%s", text + offset);
+            flint_text_draw(line, (int)box.bounds.x + padding_x, draw_y,
+                            font, box.style.text);
+            break;
+        }
+
+        chunk_len = 1;
+        while(offset + chunk_len < len && chunk_len + 1 < (int)sizeof(line)) {
+            snprintf(line, sizeof(line), "%.*s", chunk_len + 1, text + offset);
+            if(flint_text_measure(line, font) > content_w)
+                break;
+            chunk_len++;
+        }
+        snprintf(line, sizeof(line), "%.*s", chunk_len, text + offset);
+        flint_text_draw(line, (int)box.bounds.x + padding_x, draw_y,
+                        font, box.style.text);
+        draw_y += line_h + line_gap;
+        offset += chunk_len;
+    }
+    if(len == 0)
+        flint_text_draw("", (int)box.bounds.x + padding_x, draw_y, font, box.style.text);
+    flint_clip_end();
+
+    if(active) {
+        ui_mark_clickable();
+        return IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    }
+    return 0;
+}
+
 static FlintTextLayout
 flint_ui_paragraph_layout(FlintUIParagraph paragraph)
 {
@@ -1071,6 +1178,16 @@ ui_set_colors(Color text, Color bg, Color surface, Color circle, Color button, C
 void
 ui_set_frame(Camera2D camera)
 {
+    int text_input_active = g_ui_text_input_requested != 0;
+
+    if(g_ui_platform_text_input_active != text_input_active) {
+        g_ui_platform_text_input_active = text_input_active;
+        if(g_ui_text_input_platform_callback != NULL)
+            g_ui_text_input_platform_callback(text_input_active);
+    }
+    g_ui_text_input_requested = 0;
+    g_ui_focus_text_input_active = 0;
+
     g_ui_camera = camera;
     ui_update_pointer_gesture();
     g_ui_input_blocked = 0;

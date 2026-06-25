@@ -3,6 +3,7 @@
 *.so
 *.dll
 *~
+*.tmp
 
 # Build output
 build/

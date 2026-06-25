@@ -298,6 +298,14 @@ typedef struct {
 } FlintUILabelTextField;
 
 typedef struct {
+    Rectangle bounds;
+    const char *text;
+    int font;
+    FlintUITextInputStyle style;
+    int line_gap;
+} FlintUIReadonlyTextBox;
+
+typedef struct {
     const char *label;
     int font;
     int info_button;
@@ -487,6 +495,8 @@ int flint_ui_button(FlintUIButton button);
 int flint_ui_icon_button(FlintUIIconButton button);
 int flint_ui_text_input(FlintUITextInput input);
 int flint_ui_text_field(FlintUITextField field);
+int flint_ui_readonly_text_box_height(const char *text, int font, int width, FlintUITextInputStyle style, int line_gap);
+int flint_ui_readonly_text_box(FlintUIReadonlyTextBox box);
 int flint_ui_paragraph_height(FlintUIParagraph paragraph);
 void flint_ui_paragraph_draw(FlintUIParagraph paragraph, int x, int *y);
 FlintUIGuideResult flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide);
