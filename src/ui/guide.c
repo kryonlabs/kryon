@@ -1,9 +1,4 @@
-#include "flint_ui.h"
-#include "flint_color.h"
-#include "flint_dpi.h"
-#include "flint_text.h"
-#include "flint_theme.h"
-#include "raylib.h"
+#include "ui.h"
 #include <stdio.h>
 
 static int
