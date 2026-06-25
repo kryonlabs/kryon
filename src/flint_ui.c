@@ -26,9 +26,6 @@ int g_ui_slider_active_id = 0;
 int g_ui_input_blocked = 0;
 static int g_ui_modal_capture_active = 0;
 static Rectangle g_ui_modal_capture_bounds = {0};
-static int g_ui_modal_capture_pending = 0;
-static int g_ui_next_modal_capture_active = 0;
-static Rectangle g_ui_next_modal_capture_bounds = {0};
 static int g_ui_pointer_down = 0;
 int g_ui_pointer_dragging = 0;
 static int g_ui_pointer_dragged_this_click = 0;
@@ -176,8 +173,6 @@ ui_base_input_captures_click(Vector2 point, int include_pointer_drag)
 {
     if(g_ui_input_clip_stack_count > 0 &&
        !CheckCollisionPointRec(point, g_ui_input_clip_stack[g_ui_input_clip_stack_count - 1]))
-        return 1;
-    if(g_ui_modal_capture_pending)
         return 1;
     if(g_ui_modal_capture_active &&
        !CheckCollisionPointRec(point, g_ui_modal_capture_bounds))
@@ -1191,11 +1186,8 @@ ui_set_frame(Camera2D camera)
     g_ui_camera = camera;
     ui_update_pointer_gesture();
     g_ui_input_blocked = 0;
-    g_ui_modal_capture_active = g_ui_next_modal_capture_active;
-    g_ui_modal_capture_bounds = g_ui_next_modal_capture_bounds;
-    g_ui_modal_capture_pending = g_ui_modal_capture_active;
-    g_ui_next_modal_capture_active = 0;
-    g_ui_next_modal_capture_bounds = (Rectangle){0};
+    g_ui_modal_capture_active = 0;
+    g_ui_modal_capture_bounds = (Rectangle){0};
     g_ui_input_clip_stack_count = 0;
     flint_clip_reset();
 }
@@ -1205,9 +1197,6 @@ ui_set_modal_capture(Rectangle bounds)
 {
     g_ui_modal_capture_active = 1;
     g_ui_modal_capture_bounds = bounds;
-    g_ui_modal_capture_pending = 0;
-    g_ui_next_modal_capture_active = 1;
-    g_ui_next_modal_capture_bounds = bounds;
 }
 
 void
