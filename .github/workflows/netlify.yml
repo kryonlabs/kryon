@@ -30,7 +30,6 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y build-essential zlib1g-dev zip
-
       - name: Set Up Emscripten
         run: |
           set -euo pipefail
@@ -41,7 +40,6 @@ jobs:
           echo "EM_CONFIG=$HOME/emsdk/.emscripten" >> "$GITHUB_ENV"
           echo "$HOME/emsdk" >> "$GITHUB_PATH"
           echo "$HOME/emsdk/upstream/emscripten" >> "$GITHUB_PATH"
-
       - name: Build Site
         run: |
           set -euo pipefail
@@ -67,16 +65,15 @@ jobs:
           name: flint-site
           path: build/site
 
-      - name: Install Netlify CLI
-        run: npm install --global netlify-cli
-
       - name: Deploy Preview To Netlify
-        run: |
-          set -euo pipefail
-          netlify deploy \
-            --dir build/site \
-            --alias "pr-${{ github.event.pull_request.number }}" \
-            --message "Preview ${{ github.event.pull_request.number }}"
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: build/site
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Preview ${{ github.event.pull_request.number }}"
+          enable-pull-request-comment: true
+          enable-commit-comment: false
+          overwrites-pull-request-comment: true
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -94,16 +91,14 @@ jobs:
           name: flint-site
           path: build/site
 
-      - name: Install Netlify CLI
-        run: npm install --global netlify-cli
-
       - name: Deploy Production To Netlify
-        run: |
-          set -euo pipefail
-          netlify deploy \
-            --dir build/site \
-            --prod \
-            --message "Production ${{ github.sha }}"
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: build/site
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Production ${{ github.sha }}"
+          enable-commit-comment: true
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
