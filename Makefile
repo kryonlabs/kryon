@@ -154,7 +154,11 @@ $(FLINT_OTFCHOP): tools/otfchop/otfchop.c tools/otfchop/stb_truetype.h tools/otf
 font-assets: $(FLINT_OTFCHOP)
 	@mkdir -p $(dir $(FLINT_FONT_OUT))
 	@set -- $(FLINT_FONT_LOCALES); \
-	if [ "$$1" = "$(FLINT_FONT_LOCALES)" ]; then \
-		set -- $(FLINT_FONT_FALLBACK_LOCALES); \
-	fi; \
+	case "$(FLINT_FONT_LOCALES)" in \
+		*\**|*\?*) \
+			if [ "$$1" = "$(FLINT_FONT_LOCALES)" ]; then \
+				set -- $(FLINT_FONT_FALLBACK_LOCALES); \
+			fi; \
+			;; \
+	esac; \
 	$(FLINT_OTFCHOP) $(FLINT_FONT_SOURCE) "$$@" $(FLINT_FONT_OUT)
