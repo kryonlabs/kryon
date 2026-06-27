@@ -44,6 +44,9 @@ jobs:
         run: |
           set -euo pipefail
           make docs-site
+          test -f build/site/examples/02_buttons/index.html
+          test -f build/site/examples/02_buttons/index.js
+          test -f build/site/examples/02_buttons/index.wasm
 
       - name: Upload Site Artifact
         uses: actions/upload-artifact@v4
@@ -65,15 +68,20 @@ jobs:
           name: flint-site
           path: build/site
 
+      - name: Install Netlify CLI
+        run: npm install --global netlify-cli
+
       - name: Deploy Preview To Netlify
-        uses: nwtgck/actions-netlify@v3.0
-        with:
-          publish-dir: build/site
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: "Preview ${{ github.event.pull_request.number }}"
-          enable-pull-request-comment: true
-          enable-commit-comment: false
-          overwrites-pull-request-comment: true
+        run: |
+          set -euo pipefail
+          auth_token="$(printf '%s' "$NETLIFY_AUTH_TOKEN" | tr -d '\r\n')"
+          site_id="$(printf '%s' "$NETLIFY_SITE_ID" | tr -d '\r\n')"
+          netlify deploy \
+            --dir build/site \
+            --alias "pr-${{ github.event.pull_request.number }}" \
+            --message "Preview ${{ github.event.pull_request.number }}" \
+            --auth "$auth_token" \
+            --site "$site_id"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -91,14 +99,20 @@ jobs:
           name: flint-site
           path: build/site
 
+      - name: Install Netlify CLI
+        run: npm install --global netlify-cli
+
       - name: Deploy Production To Netlify
-        uses: nwtgck/actions-netlify@v3.0
-        with:
-          publish-dir: build/site
-          production-deploy: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: "Production ${{ github.sha }}"
-          enable-commit-comment: true
+        run: |
+          set -euo pipefail
+          auth_token="$(printf '%s' "$NETLIFY_AUTH_TOKEN" | tr -d '\r\n')"
+          site_id="$(printf '%s' "$NETLIFY_SITE_ID" | tr -d '\r\n')"
+          netlify deploy \
+            --dir build/site \
+            --prod \
+            --message "Production ${{ github.sha }}" \
+            --auth "$auth_token" \
+            --site "$site_id"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
