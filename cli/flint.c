@@ -242,7 +242,6 @@ static void project_defaults(FlintProject *project)
     snprintf(project->android_keystore, sizeof(project->android_keystore), "flint-release.keystore");
     snprintf(project->linux_arches, sizeof(project->linux_arches), "x86_64 aarch64");
     snprintf(project->windows_arches, sizeof(project->windows_arches), "x86_64 i686");
-    snprintf(project->raylib_dir, sizeof(project->raylib_dir), "vendor/raylib/src");
     snprintf(project->flint_dir, sizeof(project->flint_dir), "vendor/flint");
     snprintf(project->version_header, sizeof(project->version_header), "src/version.h");
     snprintf(project->itch_web_channel, sizeof(project->itch_web_channel), "html5");
