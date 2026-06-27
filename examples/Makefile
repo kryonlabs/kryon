@@ -9,6 +9,20 @@ FONT_OUTPUTS := $(FONT_OUTPUT).png $(FONT_OUTPUT).dat
 FONT_LOCALES := $(wildcard locales/*.txt)
 FONT_TOOL := ../tools/otfchop/otfchop
 FONT_SOURCE := ../tools/otfchop/unifont-17.0.04.otf
+BUILD_DIR ?= ../build/examples
+WEB_RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-web
+WEB_RAYLIB_A := $(WEB_RAYLIB_BUILD_DIR)/libraylib.web.a
+WEB_CC ?= emcc
+WEB_AR ?= emar
+WEB_SHELL := web_shell.html
+EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
+FLINT_WEB_SRCS := $(filter-out ../src/flint_file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/ui/*.c))
+FLINT_ALL_WEB_SRCS := $(wildcard ../src/*.c) $(wildcard ../src/ui/*.c)
+WEB_RAYLIB_SRCS := rcore.c rshapes.c rtextures.c rtext.c raudio.c
+WEB_RAYLIB_OBJS := $(patsubst %.c,$(WEB_RAYLIB_BUILD_DIR)/%.o,$(WEB_RAYLIB_SRCS))
+WEB_CFLAGS := -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DFLINT_EMBEDDED_ONLY=1
+WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 --shell-file $(WEB_SHELL)
+WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
 
 # Raylib - use system library from nix-shell
 # Check if we're in nix-shell and use its flags
@@ -25,7 +39,7 @@ LDFLAGS += -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
 EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout
 
-.PHONY: all clean run list font-assets
+.PHONY: all clean run list font-assets web web-clean
 
 all: ../libflint.a $(EXAMPLES)
 
@@ -46,9 +60,44 @@ $(FONT_OUTPUTS): $(FONT_LOCALES) $(FONT_TOOL) $(FONT_SOURCE)
 	@$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 	@echo "Built: $@"
 
+web: $(WEB_OUTPUTS)
+
+$(WEB_RAYLIB_BUILD_DIR):
+	@mkdir -p $@
+
+$(WEB_RAYLIB_BUILD_DIR)/%.o: $(RAYLIB_DIR)/%.c | $(WEB_RAYLIB_BUILD_DIR)
+	@if [ -z "$(RAYLIB_DIR)" ]; then \
+		echo "RAYLIB_DIR must point to raylib/src for web builds"; \
+		exit 1; \
+	fi
+	$(WEB_CC) -c $< -o $@ \
+		-Wall -D_GNU_SOURCE -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 \
+		-Wno-missing-braces -Werror=pointer-arith -fno-strict-aliasing \
+		-std=gnu99 -D_DEFAULT_SOURCE -Os -ffunction-sections -fdata-sections \
+		-I$(RAYLIB_DIR)
+
+$(WEB_RAYLIB_A): $(WEB_RAYLIB_OBJS)
+	$(WEB_AR) rcs $@ $(WEB_RAYLIB_OBJS)
+
+$(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(WEB_SHELL)
+	@echo "Building web example $*..."
+	@mkdir -p $(dir $@)
+	$(WEB_CC) $(WEB_CFLAGS) \
+		-I../include -I$(RAYLIB_DIR) \
+		-o $@ \
+		$< \
+		$(if $(filter 01_file_dialog,$*),$(FLINT_ALL_WEB_SRCS),$(FLINT_WEB_SRCS)) \
+		$(WEB_RAYLIB_A) \
+		$(WEB_LDFLAGS) \
+		--preload-file assets/fonts@assets/fonts
+
+web-clean:
+	rm -rf $(BUILD_DIR) $(EXAMPLES_WEB_SITE_DIR)
+
 clean:
 	rm -f $(EXAMPLES)
 	rm -rf assets/fonts
+	rm -rf $(BUILD_DIR)
 
 list:
 	@echo "Flint Examples:"

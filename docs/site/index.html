@@ -16,6 +16,7 @@
         <a href="#modals">Modals</a>
         <a href="#controls">Controls</a>
         <a href="#fonts">Fonts</a>
+        <a href="examples.html">Examples</a>
       </nav>
     </div>
   </header>
@@ -29,7 +30,8 @@
           <p class="lede">
             Flint provides frame lifecycle, modal capture, text input, buttons,
             dropdowns, checkboxes, theme colors, DPI scaling, and chopped bitmap
-            font support behind a compact C API.
+            font support behind a compact C API. The docs site can also publish
+            live WASM builds of the examples.
           </p>
         </div>
         <pre><code>flint_ui_begin_frame(
@@ -57,6 +59,15 @@ ui_set_colors(text, bg, surface,
           <p>Use your platform's raylib/OpenGL flags as needed.</p>
         </article>
       </div>
+    </section>
+
+    <section class="wrap section">
+      <h2>Try The Examples</h2>
+      <p>
+        The GitHub Pages workflow builds the C examples with Emscripten and
+        publishes them alongside this static site.
+      </p>
+      <p><a class="button-link" href="examples.html">Open live examples</a></p>
     </section>
 
     <section id="frame" class="wrap section">
@@ -135,5 +146,6 @@ flint_text_set_font(font);</code></pre>
   <footer class="wrap footer">
     <p>Flint UI is documented in <code>docs/API.md</code>. This page is static and ready for Netlify.</p>
   </footer>
+  <script src="highlight.js"></script>
 </body>
 </html>

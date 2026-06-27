@@ -1,6 +1,8 @@
 CC ?= gcc
 AR ?= ar
 BUILD_DIR ?= build
+SITE_DIR ?= docs/site
+SITE_BUILD_DIR ?= $(BUILD_DIR)/site
 CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude
 INSTALL_DIR ?= $(HOME)/.local/share/flint
@@ -63,7 +65,7 @@ OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 LIB = libflint.a
 CLI = $(BUILD_DIR)/flint
 
-.PHONY: all clean run install uninstall cli font-assets
+.PHONY: all clean run install uninstall cli font-assets docs-site
 
 all: $(LIB)
 
@@ -79,6 +81,13 @@ run:
 clean:
 	rm -rf $(BUILD_DIR) $(LIB)
 	$(MAKE) -C tools/otfchop clean
+	$(MAKE) -C examples web-clean
+
+docs-site:
+	rm -rf $(SITE_BUILD_DIR)
+	mkdir -p $(SITE_BUILD_DIR)
+	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
+	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
 install: $(CLI)
 	@echo "Installing flint to $(INSTALL_DIR)..."

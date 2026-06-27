@@ -53,6 +53,30 @@ pre code {
   border-radius: 0;
 }
 
+.tok-key {
+  color: #8bd0ff;
+}
+
+.tok-type {
+  color: #a7e0a3;
+}
+
+.tok-fn {
+  color: #f2d17b;
+}
+
+.tok-str {
+  color: #f0a97f;
+}
+
+.tok-num {
+  color: #c7b7ff;
+}
+
+.tok-com {
+  color: #7f958f;
+}
+
 .wrap {
   width: min(1100px, calc(100% - 32px));
   margin: 0 auto;
@@ -139,10 +163,54 @@ h3 {
   color: var(--muted);
 }
 
+.page-title {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
+}
+
+.example-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.example-card {
+  min-height: 112px;
+  display: grid;
+  align-content: space-between;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.example-card span {
+  color: var(--accent);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.example-card strong {
+  font-size: 20px;
 }
 
 article {
