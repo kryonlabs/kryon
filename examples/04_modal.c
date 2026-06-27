@@ -47,10 +47,8 @@ main(void)
 
         BeginDrawing();
         ClearBackground(flint_theme_get_bg());
-        flint_set_view_size(GetScreenWidth(), GetScreenHeight());
-        ui_init(GetScreenWidth(), GetScreenHeight(), flint_get_dpi_scale());
         apply_ui_theme();
-        ui_set_frame((Camera2D){0});
+        flint_ui_begin_frame(GetScreenWidth(), GetScreenHeight(), flint_get_dpi_scale());
 
         flint_text_draw("Modal capture example", 32, 32, 28, flint_theme_get_text());
         flint_text_draw("Try clicking the background counter while the modal is open.",

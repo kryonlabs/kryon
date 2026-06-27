@@ -15,8 +15,13 @@ interaction rules into Flint when more than one screen or project needs them.
 
 ## Frame Lifecycle
 
-Call `ui_set_frame(camera)` once at the start of every UI frame after the viewport and
-camera are current. It resets per-frame interaction state:
+Call `flint_ui_begin_frame(width, height, dpi)` once at the start of a normal
+screen-space UI frame. If the application uses a transformed UI camera, call
+`ui_init(width, height, dpi)` and then `ui_set_frame(camera)` instead. Flint sanitizes
+invalid cameras before using them; a zero-initialized `Camera2D` is treated as
+`flint_ui_default_camera()` so pointer input does not silently break.
+
+Beginning a frame resets per-frame interaction state:
 
 - input blocking
 - modal capture state from the previous frame
@@ -59,6 +64,10 @@ Flint modal helpers own backdrop capture:
 When an application uses one of those helpers, it should not add separate outside-click
 guards or duplicate backdrop blocking. The helper registers the modal bounds for the
 current frame and the next frame.
+
+Prefer `ui_draw_modal_frame` for custom modal content. Use manual
+`ui_set_modal_capture` only for specialized overlays that cannot use the shared modal
+frame.
 
 When an application draws a custom modal manually, it must call
 `ui_set_modal_capture((Rectangle){x, y, w, h})` immediately after calculating the modal

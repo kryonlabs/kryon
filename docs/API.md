@@ -63,6 +63,29 @@ Update the UI camera and reset per-frame state.
 void ui_set_frame(Camera2D camera);
 ```
 
+`ui_set_frame` sanitizes invalid cameras before storing them. A zero-initialized
+`Camera2D` is treated as an untransformed UI camera with `zoom = 1.0f`, so controls
+continue to receive pointer input. If an application does not need a transformed UI
+camera, prefer `flint_ui_begin_frame`.
+
+### `flint_ui_default_camera`
+
+Return the canonical untransformed UI camera.
+
+```c
+Camera2D flint_ui_default_camera(void);
+```
+
+### `flint_ui_begin_frame`
+
+Convenience frame entry point for normal screen-space UI. It updates the viewport/DPI
+state, updates the layout view size, and begins a frame with
+`flint_ui_default_camera()`.
+
+```c
+void flint_ui_begin_frame(int width, int height, float dpi);
+```
+
 ---
 
 ## Core Modules
@@ -983,6 +1006,11 @@ are captured while controls inside the modal remain usable.
 Built-in modal helpers (`ui_draw_modal`, `ui_draw_modal_3btn`, `ui_draw_modal_frame`)
 register their bounds automatically.
 
+Applications should use `ui_draw_modal_frame` for custom modal content instead of
+manually drawing a backdrop and calling `ui_set_modal_capture`. Manual capture remains
+available for specialized overlays, but the helper keeps modal bounds, backdrop, and
+input capture consistent across projects.
+
 ### Input Blocking
 
 ```c
@@ -1151,9 +1179,8 @@ int main(void) {
     InitWindow(320, 560, "Flint Demo");
     SetTargetFPS(60);
 
-    // Initialize Flint UI
+    // Configure Flint UI colors
     float dpi = 1.0f;  // Get from platform
-    ui_init(320, 560, dpi);
     ui_set_colors(
         (Color){240, 240, 240, 255},  // text
         (Color){40, 40, 40, 255},     // bg
@@ -1168,9 +1195,7 @@ int main(void) {
         BeginDrawing();
         ClearBackground(BLACK);
 
-        // Set camera
-        Camera2D camera = {0};
-        ui_set_frame(camera);
+        flint_ui_begin_frame(GetScreenWidth(), GetScreenHeight(), dpi);
 
         // Draw UI
         if (ui_draw_generic_button(10, 10, 100, 36, "Click Me",

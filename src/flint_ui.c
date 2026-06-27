@@ -1176,6 +1176,44 @@ ui_set_colors(Color text, Color bg, Color surface, Color circle, Color button, C
     c_icon = icon;
 }
 
+Camera2D
+flint_ui_default_camera(void)
+{
+    return (Camera2D){
+        .offset = {0.0f, 0.0f},
+        .target = {0.0f, 0.0f},
+        .rotation = 0.0f,
+        .zoom = 1.0f
+    };
+}
+
+static float
+ui_sane_float(float value, float fallback)
+{
+    return isfinite(value) ? value : fallback;
+}
+
+static Camera2D
+ui_sane_camera(Camera2D camera)
+{
+    camera.offset.x = ui_sane_float(camera.offset.x, 0.0f);
+    camera.offset.y = ui_sane_float(camera.offset.y, 0.0f);
+    camera.target.x = ui_sane_float(camera.target.x, 0.0f);
+    camera.target.y = ui_sane_float(camera.target.y, 0.0f);
+    camera.rotation = ui_sane_float(camera.rotation, 0.0f);
+    if(!isfinite(camera.zoom) || fabsf(camera.zoom) < 0.0001f)
+        camera.zoom = 1.0f;
+    return camera;
+}
+
+void
+flint_ui_begin_frame(int width, int height, float dpi)
+{
+    flint_set_view_size(width, height);
+    ui_init(width, height, dpi);
+    ui_set_frame(flint_ui_default_camera());
+}
+
 void
 ui_set_frame(Camera2D camera)
 {
@@ -1189,7 +1227,7 @@ ui_set_frame(Camera2D camera)
     g_ui_text_input_requested = 0;
     g_ui_focus_text_input_active = 0;
 
-    g_ui_camera = camera;
+    g_ui_camera = ui_sane_camera(camera);
     ui_update_pointer_gesture();
     g_ui_input_blocked = 0;
     g_ui_modal_capture_active = 0;
