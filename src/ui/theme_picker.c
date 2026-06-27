@@ -199,7 +199,7 @@ ui_draw_theme_picker(int x, int y, int w, int dark_mode,
 {
     int changed = 0;
 
-    if(ui_draw_theme_grid(x, y + flint_px(54), w, dark_mode != 0, theme_id))
+    if(ui_draw_theme_grid(x, y + flint_px(12), w, dark_mode != 0, theme_id))
         changed = 1;
 
     return changed;
@@ -208,5 +208,5 @@ ui_draw_theme_picker(int x, int y, int w, int dark_mode,
 int
 ui_theme_picker_height(int w)
 {
-    return flint_px(54) + ui_theme_grid_layout(w).height;
+    return flint_px(12) + ui_theme_grid_layout(w).height;
 }

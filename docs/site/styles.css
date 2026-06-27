@@ -6,6 +6,8 @@
   --line: #d9ddd6;
   --panel: #ffffff;
   --accent: #176b5b;
+  --accent-2: #7a4d13;
+  --accent-3: #334b8f;
   --code: #10201d;
 }
 
@@ -108,7 +110,9 @@ pre code {
 
 .hero {
   border-bottom: 1px solid var(--line);
-  background: #eef4ef;
+  background:
+    linear-gradient(135deg, rgba(23, 107, 91, 0.08), rgba(122, 77, 19, 0.08)),
+    #f2f4ef;
 }
 
 .hero-grid {
@@ -118,6 +122,26 @@ pre code {
   gap: 40px;
   align-items: center;
   padding: 56px 0;
+}
+
+.dependency-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 0 28px;
+}
+
+.dependency-strip span {
+  display: grid;
+  min-height: 48px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
 }
 
 .eyebrow {
@@ -185,6 +209,17 @@ h3 {
   gap: 16px;
 }
 
+.app-section {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.app-section > div > p {
+  color: var(--muted);
+}
+
 .example-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -246,6 +281,14 @@ article code {
     grid-template-columns: 1fr;
     min-height: 0;
     padding: 42px 0;
+  }
+
+  .dependency-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-section {
+    grid-template-columns: 1fr;
   }
 
   h1 {

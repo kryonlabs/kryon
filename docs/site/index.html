@@ -15,6 +15,7 @@
         <a href="#frame">Frame</a>
         <a href="#modals">Modals</a>
         <a href="#controls">Controls</a>
+        <a href="#app">App Support</a>
         <a href="#fonts">Fonts</a>
         <a href="examples.html">Examples</a>
       </nav>
@@ -25,13 +26,14 @@
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <p class="eyebrow">C UI components for raylib apps</p>
-          <h1>Stable primitives for small, native-feeling interfaces.</h1>
+          <p class="eyebrow">C UI and app foundations for raylib apps</p>
+          <h1>Small native interfaces with shared app plumbing.</h1>
           <p class="lede">
             Flint provides frame lifecycle, modal capture, text input, buttons,
             dropdowns, checkboxes, theme colors, DPI scaling, and chopped bitmap
-            font support behind a compact C API. The docs site can also publish
-            live WASM builds of the examples.
+            font support behind a compact C API. It also owns shared source
+            submodules for app networking and Lyra account support, so downstream
+            projects do not duplicate the same account, curl, and liboqs wiring.
           </p>
         </div>
         <pre><code>flint_ui_begin_frame(
@@ -42,6 +44,12 @@
 ui_set_colors(text, bg, surface,
               circle, button,
               hover, icon);</code></pre>
+      </div>
+      <div class="wrap dependency-strip" aria-label="Shared app support">
+        <span>UI Core</span>
+        <span>Lyra Accounts</span>
+        <span>liboqs</span>
+        <span>curl + LibreSSL</span>
       </div>
     </section>
 
@@ -123,6 +131,42 @@ ui_draw_label_text_field(row, frame.content_x, frame.content_y, frame.content_w)
           <code>flint_ui_button</code>
           <code>ui_draw_generic_button</code>
           <code>flint_ui_icon_button</code>
+        </article>
+      </div>
+    </section>
+
+    <section id="app" class="wrap section app-section">
+      <div>
+        <h2>App Support</h2>
+        <p>
+          Flint is the source owner for shared application plumbing. Apps keep
+          their build outputs local, but common dependency source lives under
+          Flint so account management and network builds stay consistent.
+        </p>
+      </div>
+      <div class="cards">
+        <article>
+          <h3>Lyra Account</h3>
+          <p>
+            <code>flint_lyra_account</code> creates, imports, exports, signs,
+            and verifies generic account keys without app-specific key names.
+          </p>
+        </article>
+        <article>
+          <h3>liboqs</h3>
+          <p>
+            <code>vendor/liboqs</code> is the shared source for post-quantum
+            signing support. Downstream builds can enable it with
+            <code>FLINT_HAS_LIBOQS</code>.
+          </p>
+        </article>
+        <article>
+          <h3>curl + LibreSSL</h3>
+          <p>
+            <code>vendor/curl</code> is the shared source for app networking.
+            TLS builds should point curl's OpenSSL-compatible options at
+            LibreSSL.
+          </p>
         </article>
       </div>
     </section>
