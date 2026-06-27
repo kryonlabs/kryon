@@ -8,13 +8,11 @@ CORE_SRCS ?= $(if $(strip $(CORE_DIR)),$(wildcard $(CORE_DIR)/*.c),)
 CORE_INCLUDE ?= $(if $(strip $(CORE_DIR)),-I$(CORE_DIR),)
 CORE_A = $(if $(strip $(CORE_SRCS)),$(LINUX_OBJ_DIR)/$(ARCH)/native/lib$(APP_NAME)-core.a,)
 
-RAYLIB_DIR ?= vendor/raylib/src
+FLINT_DIR ?= vendor/flint
 RAYLIB_BUILD_DIR = $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib
 RAYLIB_A = $(RAYLIB_BUILD_DIR)/libraylib.a
-RAYLIB_SOURCES = $(wildcard $(RAYLIB_DIR)/*.c) $(wildcard $(RAYLIB_DIR)/*.h)
-
-FLINT_DIR ?= vendor/flint
-FLINT_SRCS = $(wildcard $(FLINT_DIR)/src/*.c)
+FLINT_ICON_ASSETS_C = $(FLINT_DIR)/src/flint_icon_assets.c
+FLINT_SRCS = $(filter-out $(FLINT_ICON_ASSETS_C),$(wildcard $(FLINT_DIR)/src/*.c) $(wildcard $(FLINT_DIR)/src/ui/*.c)) $(FLINT_ICON_ASSETS_C)
 FLINT_INCLUDE = -I$(FLINT_DIR)/include
 FLINT_CURL_CFLAGS ?= $(shell pkg-config --cflags libcurl 2>/dev/null)
 FLINT_CURL_LDLIBS ?= $(shell pkg-config --libs libcurl 2>/dev/null)
@@ -85,12 +83,12 @@ FONT_FILES = $(FONT_OUTPUTS)
 EMBEDDED_ASSET_FILES = $(LOCALE_FILES) $(THEME_FILES) $(IMAGE_FILES) $(SOUND_FILES) $(FONT_FILES)
 EMBEDDED_ASSETS_C = $(BUILD_OBJ_DIR)/$(APP_NAME)_embedded_assets.c
 SRC += $(EMBEDDED_ASSETS_C)
-FONT_TOOL ?= vendor/otfchop/otfchop
-FONT_SOURCE ?= vendor/otfchop/unifont-17.0.04.otf
+FONT_TOOL ?= $(FLINT_DIR)/tools/otfchop/otfchop
+FONT_SOURCE ?= $(FLINT_DIR)/tools/otfchop/unifont-17.0.04.otf
 FONT_INPUTS ?= $(LOCALE_FILES)
 APP_INCLUDE ?= -Isrc -Isrc/android
 RUNTIME_DIRS ?= assets locales themes
-FLINT_MAKEFILES = $(FLINT_MAKE_DIR)project.mk $(FLINT_MAKE_DIR)common.mk $(FLINT_MAKE_DIR)native.mk $(FLINT_MAKE_DIR)windows.mk $(FLINT_MAKE_DIR)web.mk $(FLINT_MAKE_DIR)android.mk $(FLINT_MAKE_DIR)dist.mk $(FLINT_MAKE_DIR)clean.mk
+FLINT_MAKEFILES = $(FLINT_MAKE_DIR)project.mk $(FLINT_MAKE_DIR)common.mk $(FLINT_MAKE_DIR)raylib.mk $(FLINT_MAKE_DIR)native.mk $(FLINT_MAKE_DIR)windows.mk $(FLINT_MAKE_DIR)web.mk $(FLINT_MAKE_DIR)android.mk $(FLINT_MAKE_DIR)dist.mk $(FLINT_MAKE_DIR)clean.mk
 BUILD_MAKEFILES = Makefile $(FLINT_PROJECT) $(FLINT_MAKEFILES)
 ifneq ($(strip $(FLINT_PROJECT_VARS)),)
 BUILD_MAKEFILES += $(FLINT_PROJECT_VARS)
@@ -102,8 +100,8 @@ assets/fonts:
 $(FONT_OUTPUTS): $(FONT_INPUTS) $(FONT_TOOL) | assets/fonts
 	$(FONT_TOOL) $(FONT_SOURCE) $(FONT_INPUTS) $(basename $(firstword $(FONT_OUTPUTS)))
 
-$(FONT_TOOL): vendor/otfchop/otfchop.c vendor/otfchop/stb_truetype.h vendor/otfchop/stb_image_write.h
-	$(MAKE) -C vendor/otfchop otfchop
+$(FONT_TOOL): $(FLINT_DIR)/tools/otfchop/otfchop.c $(FLINT_DIR)/tools/otfchop/stb_truetype.h $(FLINT_DIR)/tools/otfchop/stb_image_write.h
+	$(MAKE) -C $(FLINT_DIR)/tools/otfchop otfchop
 
 $(EMBEDDED_ASSETS_C): $(EMBEDDED_ASSET_FILES) $(FLINT_DIR)/scripts/embed-assets.sh | $(BUILD_OBJ_DIR)
 	sh $(FLINT_DIR)/scripts/embed-assets.sh $@ $(EMBEDDED_ASSET_FILES)

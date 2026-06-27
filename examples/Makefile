@@ -4,6 +4,7 @@ CC ?= gcc
 CFLAGS_BASE ?= -Wall -Wextra -O2
 CFLAGS = $(CFLAGS_BASE) -I../include
 LDFLAGS = -L.. -lflint
+FLINT_DIR := ..
 FONT_OUTPUT := assets/fonts/locales
 FONT_OUTPUTS := $(FONT_OUTPUT).png $(FONT_OUTPUT).dat
 FONT_LOCALES := $(wildcard locales/*.txt)
@@ -18,8 +19,8 @@ WEB_SHELL := web_shell.html
 EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
 FLINT_WEB_SRCS := $(filter-out ../src/flint_file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/ui/*.c))
 FLINT_ALL_WEB_SRCS := $(wildcard ../src/*.c) $(wildcard ../src/ui/*.c)
-WEB_RAYLIB_SRCS := rcore.c rshapes.c rtextures.c rtext.c raudio.c
-WEB_RAYLIB_OBJS := $(patsubst %.c,$(WEB_RAYLIB_BUILD_DIR)/%.o,$(WEB_RAYLIB_SRCS))
+include ../mk/raylib.mk
+WEB_RAYLIB_OBJS = $(FLINT_RAYLIB_WEB_OBJS)
 WEB_CFLAGS := -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DFLINT_EMBEDDED_ONLY=1
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 --shell-file $(WEB_SHELL)
 WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
@@ -76,7 +77,7 @@ $(WEB_RAYLIB_BUILD_DIR)/%.o: $(RAYLIB_DIR)/%.c | $(WEB_RAYLIB_BUILD_DIR)
 		-std=gnu99 -D_DEFAULT_SOURCE -Os -ffunction-sections -fdata-sections \
 		-I$(RAYLIB_DIR)
 
-$(WEB_RAYLIB_A): $(WEB_RAYLIB_OBJS)
+$(WEB_RAYLIB_A): flint-raylib-check $(RAYLIB_SOURCES) $(WEB_RAYLIB_OBJS)
 	$(WEB_AR) rcs $@ $(WEB_RAYLIB_OBJS)
 
 $(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(WEB_SHELL)

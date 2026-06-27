@@ -14,6 +14,7 @@ $(FLINT_PROJECT_VARS): $(FLINT_PROJECT)
 -include $(FLINT_PROJECT_VARS)
 
 include $(FLINT_MAKE_DIR)common.mk
+include $(FLINT_MAKE_DIR)raylib.mk
 include $(FLINT_MAKE_DIR)native.mk
 include $(FLINT_MAKE_DIR)windows.mk
 include $(FLINT_MAKE_DIR)web.mk
@@ -37,6 +38,7 @@ FORCE:
 	clean-windows \
 	clean-web \
 	clean-raylib \
+	flint-raylib-check \
 	dist \
 	dist-linux \
 	dist-windows \

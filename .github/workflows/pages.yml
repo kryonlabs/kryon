@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Packages
         run: |
@@ -41,16 +43,10 @@ jobs:
           echo "$HOME/emsdk" >> "$GITHUB_PATH"
           echo "$HOME/emsdk/upstream/emscripten" >> "$GITHUB_PATH"
 
-      - name: Fetch raylib
-        run: |
-          set -euo pipefail
-          mkdir -p build
-          git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git build/raylib-src
-
       - name: Build Site
         run: |
           set -euo pipefail
-          make docs-site RAYLIB_DIR="$PWD/build/raylib-src/src"
+          make docs-site
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

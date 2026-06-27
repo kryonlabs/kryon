@@ -9,7 +9,7 @@ This directory contains example programs demonstrating Flint library components.
 ## Requirements
 
 - Flint library must be built (`make` in parent directory)
-- Raylib (checked in: `../raylib`, `vendor/raylib`, `/usr/local`, `/usr`)
+- Raylib from Flint's `vendor/raylib` submodule, or set `RAYLIB_DIR=/path/to/raylib/src`
 - X11 libraries (Linux): `-lGL -lm -lpthread -ldl -lrt -lX11`
 
 ## Building Examples
