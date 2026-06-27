@@ -1,2 +1,3 @@
 [build]
-  publish = "docs/site"
+  command = "make docs-site"
+  publish = "build/site"
