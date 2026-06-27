@@ -7,7 +7,6 @@
   <style>
     html,
     body {
-      width: 100%;
       height: 100%;
       margin: 0;
       overflow: hidden;
@@ -21,9 +20,30 @@
       place-items: center;
     }
 
+    .canvas-stage {
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding: 12px;
+    }
+
+    .canvas-frame {
+      width: min(100vw - 24px, 800px);
+      aspect-ratio: 4 / 3;
+      max-height: calc(100vh - 24px);
+      max-height: calc(100dvh - 24px);
+      position: relative;
+    }
+
     canvas.emscripten {
-      width: 100vw !important;
-      height: 100vh !important;
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
       max-width: none !important;
       max-height: none !important;
       border: 0;
@@ -42,7 +62,11 @@
   </style>
 </head>
 <body>
-  <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <div class="canvas-stage">
+    <div class="canvas-frame" id="canvas-frame">
+      <canvas class="emscripten" id="canvas" width="800" height="600" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    </div>
+  </div>
   <div id="status">Loading...</div>
   <script>
     var Module = {

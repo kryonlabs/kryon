@@ -10,6 +10,7 @@ int main(void) {
     InitWindow(screenWidth, screenHeight, "Flint UI Buttons Example");
     SetTargetFPS(60);
     flint_example_load_font();
+    ui_init(screenWidth, screenHeight, flint_get_dpi_scale());
 
     printf("Flint UI Buttons Example\n");
     printf("======================\n\n");
@@ -31,6 +32,8 @@ int main(void) {
     while(!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(RAYWHITE);
+        flint_ui_begin_frame(GetScreenWidth(), GetScreenHeight(), flint_get_dpi_scale());
+        ui_set_colors(BLACK, RAYWHITE, LIGHTGRAY, SKYBLUE, BLUE, DARKBLUE, BLACK);
 
         // Draw title
         flint_text_draw("Flint UI Buttons Example", flint_px(20), flint_px(20), 24, BLACK);
