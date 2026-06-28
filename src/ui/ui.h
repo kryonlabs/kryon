@@ -21,7 +21,6 @@ extern Camera2D g_ui_camera;
 extern Texture2D g_ui_gear_icon;
 extern Texture2D g_ui_x_icon;
 extern int g_ui_slider_active_id;
-extern int g_ui_input_blocked;
 extern int g_ui_pointer_dragging;
 extern int g_ui_pointer_owner;
 

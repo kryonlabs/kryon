@@ -23,9 +23,6 @@ static int *g_ui_cursor_disabled = NULL;
 Texture2D g_ui_gear_icon = {0};
 Texture2D g_ui_x_icon = {0};
 int g_ui_slider_active_id = 0;
-int g_ui_input_blocked = 0;
-static int g_ui_modal_capture_active = 0;
-static Rectangle g_ui_modal_capture_bounds = {0};
 static int g_ui_pointer_down = 0;
 int g_ui_pointer_dragging = 0;
 static int g_ui_pointer_dragged_this_click = 0;
@@ -54,6 +51,15 @@ static double g_ui_backspace_next_repeat_at = 0.0;
 #define UI_INPUT_CLIP_STACK_MAX 16
 static Rectangle g_ui_input_clip_stack[UI_INPUT_CLIP_STACK_MAX];
 static int g_ui_input_clip_stack_count = 0;
+
+#define UI_INPUT_CAPTURE_STACK_MAX 16
+typedef struct UIInputCapture {
+    Rectangle bounds;
+    int allow_inside;
+} UIInputCapture;
+
+static UIInputCapture g_ui_input_capture_stack[UI_INPUT_CAPTURE_STACK_MAX];
+static int g_ui_input_capture_stack_count = 0;
 
 Vector2
 ui_mouse_world(void)
@@ -163,28 +169,35 @@ ui_update_pointer_gesture(void)
 }
 
 void
-ui_set_input_blocked(int blocked)
+ui_clear_input_captures(void)
 {
-    g_ui_input_blocked = blocked != 0;
+    g_ui_input_capture_stack_count = 0;
+}
+
+void
+ui_push_input_capture(Rectangle bounds, int allow_inside)
+{
+    if(g_ui_input_capture_stack_count >= UI_INPUT_CAPTURE_STACK_MAX)
+        return;
+    g_ui_input_capture_stack[g_ui_input_capture_stack_count++] =
+        (UIInputCapture){bounds, allow_inside != 0};
 }
 
 int
 ui_base_input_captures_click(Vector2 point, int include_pointer_drag)
 {
-    int inside_modal_capture = 0;
-
     if(g_ui_input_clip_stack_count > 0 &&
        !CheckCollisionPointRec(point, g_ui_input_clip_stack[g_ui_input_clip_stack_count - 1]))
         return 1;
 
-    if(g_ui_modal_capture_active) {
-        inside_modal_capture = CheckCollisionPointRec(point, g_ui_modal_capture_bounds);
-        if(!inside_modal_capture)
+    if(g_ui_input_capture_stack_count > 0) {
+        UIInputCapture capture =
+            g_ui_input_capture_stack[g_ui_input_capture_stack_count - 1];
+        if(!capture.allow_inside || !CheckCollisionPointRec(point, capture.bounds))
             return 1;
     }
 
-    return (!inside_modal_capture && g_ui_input_blocked) ||
-           (include_pointer_drag && g_ui_pointer_dragging) ||
+    return (include_pointer_drag && g_ui_pointer_dragging) ||
            (include_pointer_drag &&
             IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
             g_ui_pointer_dragged_this_click);
@@ -209,7 +222,7 @@ ui_hover_effects_enabled(void)
 #if ANDROID_BUILD
     return 0;
 #else
-    return !g_ui_input_blocked;
+    return 1;
 #endif
 }
 
@@ -1229,9 +1242,7 @@ ui_set_frame(Camera2D camera)
 
     g_ui_camera = ui_sane_camera(camera);
     ui_update_pointer_gesture();
-    g_ui_input_blocked = 0;
-    g_ui_modal_capture_active = 0;
-    g_ui_modal_capture_bounds = (Rectangle){0};
+    ui_clear_input_captures();
     g_ui_input_clip_stack_count = 0;
     flint_clip_reset();
 }
@@ -1239,8 +1250,8 @@ ui_set_frame(Camera2D camera)
 void
 ui_set_modal_capture(Rectangle bounds)
 {
-    g_ui_modal_capture_active = 1;
-    g_ui_modal_capture_bounds = bounds;
+    ui_clear_input_captures();
+    ui_push_input_capture(bounds, 1);
 }
 
 void

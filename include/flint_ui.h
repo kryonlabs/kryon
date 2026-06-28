@@ -468,6 +468,8 @@ int ui_is_desktop_mode(void);
 Camera2D flint_ui_default_camera(void);
 void flint_ui_begin_frame(int width, int height, float dpi);
 void ui_set_frame(Camera2D camera);
+void ui_clear_input_captures(void);
+void ui_push_input_capture(Rectangle bounds, int allow_inside);
 void ui_set_modal_capture(Rectangle bounds);
 void flint_ui_set_text_input_platform_callback(FlintUITextInputPlatformCallback callback);
 void ui_set_cursor_clickable(int *cursor_clickable);
@@ -475,7 +477,6 @@ void ui_set_cursor_disabled(int *cursor_disabled);
 void ui_mark_clickable(void);
 void ui_mark_disabled(void);
 void ui_set_icons(Texture2D gear_icon, Texture2D x_icon);
-void ui_set_input_blocked(int blocked);
 int ui_input_captures_click(Vector2 point);
 int ui_hover_effects_enabled(void);
 /* DPI scaling, color, and layout functions now from Flint: flint_px, flint_clamp_px, flint_lighten, flint_darken, flint_centered_column, flint_page_side_padding */

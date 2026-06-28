@@ -101,18 +101,6 @@ guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
     return (Rectangle){(float)x, (float)y, (float)w, (float)h};
 }
 
-static int
-guide_icon_button(FlintUIIconButton button)
-{
-    int clicked;
-    int was_blocked = g_ui_input_blocked;
-
-    ui_set_input_blocked(0);
-    clicked = flint_ui_icon_button(button);
-    ui_set_input_blocked(was_blocked);
-    return clicked;
-}
-
 FlintUIGuideResult
 flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
 {
@@ -134,7 +122,6 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
     Rectangle tip;
     int y;
     int finish;
-    int blocked_before_guide;
 
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
         return result;
@@ -164,9 +151,6 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
         return result;
     }
 
-    blocked_before_guide = g_ui_input_blocked;
-    ui_set_input_blocked(1);
-
     if(guide.max_width > 0 && tip_w > guide.max_width)
         tip_w = guide.max_width;
     else if(tip_w > flint_px(300))
@@ -184,6 +168,7 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
         tip_h = flint_px(112);
     tip = guide_tip_bounds(guide.steps[step].anchor, tip_w, tip_h, view_w, view_h,
                            guide.reserved_top, guide.reserved_bottom);
+    ui_set_modal_capture(tip);
 
     DrawRectangle(0, 0, view_w, view_h, (Color){0, 0, 0, 86});
     DrawRectangleLinesEx(guide.steps[step].anchor, (float)flint_px(2),
@@ -193,7 +178,7 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
                               flint_darken(flint_theme_get_button(), 35));
     guide_draw_arrow(tip, guide.steps[step].anchor);
 
-    if(guide_icon_button((FlintUIIconButton){
+    if(flint_ui_icon_button((FlintUIIconButton){
            .bounds = {
                tip.x + tip.width - pad - close_size,
                tip.y + pad,
@@ -205,7 +190,6 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
            .icon_padding = flint_px(6)
        })) {
         result.closed = 1;
-        ui_set_input_blocked(blocked_before_guide);
         return result;
     }
 
@@ -220,7 +204,7 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
 
     finish = step >= guide.count - 1;
     if(step > 0) {
-        if(guide_icon_button((FlintUIIconButton){
+        if(flint_ui_icon_button((FlintUIIconButton){
                .bounds = {
                    tip.x + tip.width - pad - button_size * 2 - flint_px(8),
                    tip.y + tip.height - pad - button_size,
@@ -236,7 +220,7 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
             result.step = *guide.step;
         }
     }
-    if(guide_icon_button((FlintUIIconButton){
+    if(flint_ui_icon_button((FlintUIIconButton){
            .bounds = {
                tip.x + tip.width - pad - button_size,
                tip.y + tip.height - pad - button_size,
@@ -256,6 +240,5 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
         }
     }
 
-    ui_set_input_blocked(blocked_before_guide);
     return result;
 }

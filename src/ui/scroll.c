@@ -204,11 +204,13 @@ ui_scroll_container_begin(FlintUIScrollArea area)
                 content_dragging = 1;
                 *area.scroll_offset = content_drag_start_scroll - dy;
                 *area.scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
-                ui_set_input_blocked(1);
+                ui_push_input_capture((Rectangle){0, 0, (float)ui_view_width,
+                                                  (float)ui_view_height}, 0);
             }
         } else if(content_drag_active) {
             if(content_dragging)
-                ui_set_input_blocked(1);
+                ui_push_input_capture((Rectangle){0, 0, (float)ui_view_width,
+                                                  (float)ui_view_height}, 0);
             content_drag_active = 0;
             content_dragging = 0;
         }
