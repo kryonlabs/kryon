@@ -23,6 +23,7 @@ const char *flint_icon_names[] = {
     "inbe.png",  /* UI_ICON_TYPE_INBE_PNG */
     "itch.png",  /* UI_ICON_TYPE_ITCH_PNG */
     "jupiter.png",  /* UI_ICON_TYPE_JUPITER_PNG */
+    "leadercat.png",  /* UI_ICON_TYPE_LEADERCAT_PNG */
     "lightoff.png",  /* UI_ICON_TYPE_LIGHTOFF_PNG */
     "lighton.png",  /* UI_ICON_TYPE_LIGHTON_PNG */
     "link.png",  /* UI_ICON_TYPE_LINK_PNG */
