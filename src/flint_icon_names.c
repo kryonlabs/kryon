@@ -36,9 +36,11 @@ const char *flint_icon_names[] = {
     "mute.png",  /* UI_ICON_TYPE_MUTE_PNG */
     "pause.png",  /* UI_ICON_TYPE_PAUSE_PNG */
     "pencil.png",  /* UI_ICON_TYPE_PENCIL_PNG */
+    "pet.png",  /* UI_ICON_TYPE_PET_PNG */
     "play.png",  /* UI_ICON_TYPE_PLAY_PNG */
     "playstore.png",  /* UI_ICON_TYPE_PLAYSTORE_PNG */
     "plus.png",  /* UI_ICON_TYPE_PLUS_PNG */
+    "profile.png",  /* UI_ICON_TYPE_PROFILE_PNG */
     "quest.png",  /* UI_ICON_TYPE_QUEST_PNG */
     "ray.png",  /* UI_ICON_TYPE_RAY_PNG */
     "return.png",  /* UI_ICON_TYPE_RETURN_PNG */
