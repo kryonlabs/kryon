@@ -1296,6 +1296,20 @@ ui_icon_btn_padding(UIIconSize size)
     return flint_ui_icon_btn_padding((int)size);
 }
 
+void
+ui_draw_icon_texture(int x, int y, int size, Texture2D icon, Color tint)
+{
+    Rectangle src;
+    Rectangle dst;
+
+    if(icon.id == 0 || size <= 0)
+        return;
+
+    src = (Rectangle){0, 0, (float)icon.width, (float)icon.height};
+    dst = (Rectangle){(float)x, (float)y, (float)size, (float)size};
+    DrawTexturePro(icon, src, dst, (Vector2){0}, 0, tint);
+}
+
 int
 ui_draw_icon_btn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 {
@@ -1330,11 +1344,7 @@ ui_draw_icon_btn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
         *hover = 0;
     }
 
-    if(icon.id != 0) {
-        Rectangle src = {0, 0, icon.width, icon.height};
-        Rectangle dst = {x + padding, y + padding, (float)btn_size, (float)btn_size};
-        DrawTexturePro(icon, src, dst, (Vector2){0}, 0, c_icon);
-    }
+    ui_draw_icon_texture(x + padding, y + padding, btn_size, icon, c_icon);
 
     return pressed;
 }
@@ -1370,11 +1380,7 @@ ui_draw_icon_btn_padded(int x, int y, int size, int padding, Texture2D icon, int
         *hover = 0;
     }
 
-    if(icon.id != 0) {
-        Rectangle src = {0, 0, icon.width, icon.height};
-        Rectangle dst = {x + padding, y + padding, (float)size, (float)size};
-        DrawTexturePro(icon, src, dst, (Vector2){0}, 0, c_icon);
-    }
+    ui_draw_icon_texture(x + padding, y + padding, size, icon, c_icon);
 
     return pressed;
 }
@@ -1634,11 +1640,7 @@ ui_draw_icon_link(int x, int y, int icon_size, Texture2D icon, const char *url)
         ui_draw_bevel(btn_x, btn_y, btn_w, btn_h, flint_lighten(c_button, 40), flint_darken(c_button, 40));
     }
 
-    if(icon.id != 0) {
-        Rectangle src = {0, 0, icon.width, icon.height};
-        Rectangle dst = {x, y, (float)icon_size, (float)icon_size};
-        DrawTexturePro(icon, src, dst, (Vector2){0}, 0, c_icon);
-    }
+    ui_draw_icon_texture(x, y, icon_size, icon, c_icon);
 
     if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
        !ui_input_captures_click(mouse_world) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {

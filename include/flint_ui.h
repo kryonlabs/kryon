@@ -507,6 +507,7 @@ void ui_draw_text_lines(const char **lines, int count, int x, int *y, int font, 
 /* Icon fallback drawing now from Flint: flint_draw_icon_fallback */
 int ui_icon_btn_size(UIIconSize size);
 int ui_icon_btn_padding(UIIconSize size);
+void ui_draw_icon_texture(int x, int y, int size, Texture2D icon, Color tint);
 int ui_draw_icon_btn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
 int ui_draw_icon_btn_padded(int x, int y, int size, int padding, Texture2D icon, int *hover);
 int ui_draw_info_button(int center_x, int center_y, int diameter);
