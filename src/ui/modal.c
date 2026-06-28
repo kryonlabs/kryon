@@ -296,33 +296,6 @@ ui_draw_modal_frame(int width, int height, const char *title,
 
     return frame;
 }
-int
-ui_draw_screen_header(const char *title, int show_close)
-{
-    (void)c_bg; /* unused */
-    int title_h = ui_screen_header_height();
-    int title_font;
-    int close_hover = 0;
-    int close_clicked = 0;
-
-    /* Draw header background */
-    DrawRectangle(0, 0, ui_view_width, title_h, flint_darken(c_bg, 14));
-    DrawLine(0, title_h - 1, ui_view_width, title_h - 1, flint_darken(c_bg, 42));
-
-    /* Draw close button if requested */
-    int close_x = ui_view_width - flint_px(40) - ui_icon_btn_padding(UI_ICON_SIZE_TINY);
-    int title_x = flint_px(16);
-    int title_max_w = show_close ? close_x - title_x - flint_px(12) : ui_view_width - title_x * 2;
-    title_font = flint_ui_title_font(title, title_max_w);
-    flint_text_draw(title, title_x, flint_ui_text_y(title, 0, title_h, title_font), title_font, c_text);
-
-    if(show_close) {
-        close_clicked = ui_draw_icon_btn(close_x, flint_px(8), UI_ICON_SIZE_TINY,
-                                         g_ui_x_icon, &close_hover);
-    }
-
-    return close_clicked;
-}
 
 /* ================================================================
  * SCROLLBAR

@@ -563,7 +563,6 @@ void ui_draw_tutorial_image(Texture2D texture, const char *fallback, int x, int 
 int ui_draw_modal(const char *title, const char *message, const char *cancel_btn, const char *confirm_btn);
 int ui_draw_modal_3btn(const char *title, const char *message, const char *left_btn, const char *middle_btn, const char *right_btn);
 int ui_paragraph_modal_height(FlintUIParagraphModalMeasure measure);
-int ui_draw_screen_header(const char *title, int show_close);
 int ui_screen_header_height(void);
 FlintUIHeader ui_draw_title_header(int height, const char *title,
                                    Texture2D left_icon,
