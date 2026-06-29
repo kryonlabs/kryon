@@ -13,6 +13,7 @@
 #include "flint_transition.h"
 #include "flint_locale.h"
 #include "flint_lyra_account.h"
+#include "flint_lyra_sync.h"
 #include "flint_theme.h"
 #include "flint_theme_meta.h"
 #include "flint_web.h"

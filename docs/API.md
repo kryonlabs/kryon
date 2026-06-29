@@ -16,6 +16,7 @@ Flint is a lightweight C UI component library for embedded applications and runt
   - [Icons](#icons)
   - [Theme](#theme)
   - [Locale](#locale)
+  - [Lyra Sync](#lyra-sync)
   - [Transitions](#transitions)
   - [Runtime Assets](#runtime-assets)
   - [Web Utilities](#web-utilities)
@@ -477,6 +478,108 @@ int locale_index_of(const char *code);
 const char *locale_current_code(void);
 int locale_current_index(void);
 ```
+
+---
+
+### Lyra Sync
+
+Common Lyra sync protocol helpers. Flint owns URL handling, token auth,
+challenge/login, bearer requests, sync posting, account deletion, and small JSON
+helpers. Applications still own their local data model and provide callbacks to
+build sync payloads, apply sync responses, store auth tokens, and perform
+platform HTTP.
+
+#### `FlintLyraSyncResult`
+
+```c
+typedef enum FlintLyraSyncResult {
+    FLINT_LYRA_SYNC_OK = 0,
+    FLINT_LYRA_SYNC_INVALID_URL,
+    FLINT_LYRA_SYNC_NO_ACCOUNT,
+    FLINT_LYRA_SYNC_PAYLOAD_FAILED,
+    FLINT_LYRA_SYNC_CHALLENGE_FAILED,
+    FLINT_LYRA_SYNC_SIGN_FAILED,
+    FLINT_LYRA_SYNC_REQUEST_FAILED,
+    FLINT_LYRA_SYNC_AUTH_FAILED
+} FlintLyraSyncResult;
+```
+
+#### `FlintLyraSyncConfig`
+
+```c
+typedef struct FlintLyraSyncConfig {
+    const char *base_url;
+    const FlintLyraAccount *account;
+    const char *client_id;
+    FlintLyraSyncHttpRequestFn http_request;
+    FlintLyraSyncGetTextFn get_text;
+    FlintLyraSyncSetTextFn set_text;
+    FlintLyraSyncBuildPayloadFn build_payload;
+    FlintLyraSyncFreePayloadFn free_payload;
+    FlintLyraSyncApplyResponseFn apply_response;
+    FlintLyraSyncVoidFn purge_synced_deleted;
+    FlintLyraSyncLogFn log_http_failure;
+    void *user;
+} FlintLyraSyncConfig;
+```
+
+`http_request` is platform-owned. Native apps can implement it with libcurl,
+Android apps can bridge through JNI, and web apps can bridge to JavaScript fetch.
+`get_text` and `set_text` store `sync_auth_token` and
+`sync_auth_token_expires_at`.
+
+#### URL Helpers
+
+```c
+int flint_lyra_sync_url_valid(const char *url);
+int flint_lyra_sync_normalize_url(const char *input, char *out, size_t out_size);
+int flint_lyra_sync_join_url(char *out, size_t out_size,
+                             const char *base_url, const char *path);
+int flint_lyra_sync_join_ws_url(char *out, size_t out_size,
+                                const char *base_url, const char *path);
+```
+
+Remote sync URLs must be HTTPS. HTTP is accepted only for loopback hosts such as
+`localhost`, `127.0.0.1`, and Android emulator host `10.0.2.2`.
+
+#### Buffer And JSON Helpers
+
+```c
+int flint_lyra_sync_buffer_append(FlintLyraSyncBuffer *buffer,
+                                  const void *data, size_t bytes);
+int flint_lyra_sync_buffer_append_json_string(FlintLyraSyncBuffer *buffer,
+                                              const char *text);
+void flint_lyra_sync_buffer_free(FlintLyraSyncBuffer *buffer);
+int flint_lyra_sync_find_json_string(const char *json, const char *key,
+                                     char *out, size_t out_size);
+long long flint_lyra_sync_find_json_int64(const char *json, const char *key,
+                                          long long fallback);
+```
+
+These are intentionally small helpers for Lyra protocol payload construction and
+simple response fields. Applications that already have a full JSON parser should
+keep using it for domain data.
+
+#### Auth And Sync
+
+```c
+void flint_lyra_sync_clear_auth_token(const FlintLyraSyncConfig *cfg);
+FlintLyraSyncResult flint_lyra_sync_login(const FlintLyraSyncConfig *cfg);
+FlintLyraSyncResult flint_lyra_sync_run(const FlintLyraSyncConfig *cfg);
+FlintLyraSyncResult flint_lyra_sync_bearer_request(const FlintLyraSyncConfig *cfg,
+                                                   const char *method,
+                                                   const char *path,
+                                                   const char *body,
+                                                   char *out,
+                                                   size_t out_size);
+FlintLyraSyncResult flint_lyra_sync_delete_account(const FlintLyraSyncConfig *cfg);
+const char *flint_lyra_sync_result_name(FlintLyraSyncResult result);
+```
+
+`flint_lyra_sync_run` loads or refreshes an auth token, asks the app callback for
+a local-first payload, posts it to `/api/v1/sync`, applies the response through
+the callback, and purges synced tombstones on success. `flint_lyra_sync_bearer_request`
+is for app-specific Lyra endpoints that use the same account token.
 
 ---
 

@@ -42,6 +42,7 @@ SRCS = \
 	src/flint_text_layout.c \
 	src/flint_locale.c \
 	src/flint_lyra_account.c \
+	src/flint_lyra_sync.c \
 	src/flint_theme.c \
 	src/flint_theme_meta.c \
 	src/flint_file_dialog.c \
@@ -66,6 +67,7 @@ OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 LIB = libflint.a
 CLI = $(BUILD_DIR)/flint
 LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
+LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 
 .PHONY: all clean run install uninstall cli font-assets docs-site test
 
@@ -91,8 +93,9 @@ docs-site:
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: $(LYRA_ACCOUNT_TEST)
+test: $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST)
 	$(LYRA_ACCOUNT_TEST)
+	$(LYRA_SYNC_TEST)
 
 install: $(CLI)
 	@echo "Installing flint to $(INSTALL_DIR)..."
@@ -136,6 +139,10 @@ $(CLI): cli/flint.c | $(BUILD_DIR)
 $(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/flint_lyra_account.c include/flint_lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_account_test.c src/flint_lyra_account.c -o $@
+
+$(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/flint_lyra_sync.c src/flint_lyra_account.c include/flint_lyra_sync.h include/flint_lyra_account.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_sync_test.c src/flint_lyra_sync.c src/flint_lyra_account.c -o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/flint_icons.h
 	sh scripts/embed-icons.sh $(ICON_DIR) $@

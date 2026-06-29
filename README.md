@@ -2,7 +2,7 @@
 
 Flint is a lightweight C UI and app support library for embedded applications
 and runtime environments. It provides core UI primitives, icon asset
-management, shared Lyra account helpers, and common third-party source
+management, shared Lyra account and sync helpers, and common third-party source
 submodules for applications built on Flint.
 
 ## Layout
