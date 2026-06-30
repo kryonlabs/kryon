@@ -98,6 +98,8 @@ static int file_matches_filter(const char *name, const char *filter) {
 
         while(*p == ' ' || *p == ',')
             p++;
+        if(*p == '*')
+            p++;
         while(*p != '\0' && *p != ',' && ext_len + 1 < sizeof(ext))
             ext[ext_len++] = *p++;
         ext[ext_len] = '\0';
@@ -225,8 +227,17 @@ static int scan_directory(FlintFileDialogInternal *internal) {
     return 1;
 }
 
-static void navigate_home(FlintFileDialogInternal *internal) {
+static void navigate_to_start_dir(FlintFileDialogInternal *internal) {
+    char cwd[PATH_MAX];
     const char *home = getenv("HOME");
+
+    if(internal == NULL)
+        return;
+    if(getcwd(cwd, sizeof(cwd)) != NULL && cwd[0] != '\0') {
+        copy_text(internal->current_dir, sizeof(internal->current_dir), cwd);
+        if(scan_directory(internal))
+            return;
+    }
     if(home) {
         copy_text(internal->current_dir, sizeof(internal->current_dir), home);
         scan_directory(internal);
@@ -740,7 +751,7 @@ void flint_file_dialog_init(FlintFileDialog *dlg) {
 
     FlintFileDialogInternal *internal = (FlintFileDialogInternal *)dlg->_internal;
 
-    navigate_home(internal);
+    navigate_to_start_dir(internal);
     if(internal->current_dir[0] == '\0') {
         copy_text(internal->current_dir, sizeof(internal->current_dir), "/");
         scan_directory(internal);

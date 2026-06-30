@@ -49,7 +49,7 @@ static int scan_directory(FlintFileDialogInternal *internal);
 static int compare_entries(const void *a, const void *b);
 static void navigate_up(FlintFileDialogInternal *internal);
 static void navigate_into(FlintFileDialogInternal *internal, const char *dirname);
-static void navigate_home(FlintFileDialogInternal *internal);
+static void navigate_to_start_dir(FlintFileDialogInternal *internal);
 
 /* Rendering functions */
 static void render_file_dialog(FlintFileDialog *dlg, Vector2 screen_size);
