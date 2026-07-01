@@ -322,6 +322,18 @@ typedef struct {
 } FlintUICheckboxRow;
 
 typedef struct {
+    Rectangle bounds;
+    const char *label;
+    int font;
+    int disabled;
+    Color background;
+    Color hover_background;
+    Color border;
+    Color hover_border;
+    Color text;
+} FlintUIOverlayButton;
+
+typedef struct {
     const char *text;
     Texture2D icon;
     UIIconType icon_type;
@@ -526,6 +538,7 @@ int ui_section_label_height(FlintUISectionLabel label);
 int ui_draw_section_label(FlintUISectionLabel label, int x, int y);
 int ui_checkbox_row_height(FlintUICheckboxRow row);
 int ui_draw_checkbox_row(FlintUICheckboxRow row, int x, int y);
+int ui_draw_overlay_button(FlintUIOverlayButton button);
 int ui_button_row_height(FlintUIButtonRow row);
 int ui_draw_button_row(FlintUIButtonRow row);
 int ui_draw_text_btn(int x, int y, const char *label, int *hover);

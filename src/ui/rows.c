@@ -99,6 +99,47 @@ ui_draw_checkbox_row(FlintUICheckboxRow row, int x, int y)
 }
 
 int
+ui_draw_overlay_button(FlintUIOverlayButton button)
+{
+    Vector2 mouse;
+    int hovered;
+    int font;
+    int text_w;
+    Color background;
+    Color border;
+    Color text;
+
+    if(button.bounds.width <= 0 || button.bounds.height <= 0)
+        return 0;
+
+    mouse = ui_mouse_world();
+    hovered = !button.disabled && CheckCollisionPointRec(mouse, button.bounds);
+    font = button.font > 0 ? button.font : flint_ui_font();
+    background = hovered && button.hover_background.a != 0
+                     ? button.hover_background
+                     : button.background;
+    border = hovered && button.hover_border.a != 0
+                 ? button.hover_border
+                 : button.border;
+    text = button.text.a != 0 ? button.text : c_text;
+
+    if(background.a != 0)
+        DrawRectangleRec(button.bounds, background);
+    if(border.a != 0)
+        DrawRectangleLinesEx(button.bounds, flint_px(1), border);
+    if(button.label != NULL) {
+        text_w = flint_text_measure(button.label, font);
+        flint_text_draw(button.label,
+                        (int)(button.bounds.x + (button.bounds.width - text_w) / 2),
+                        flint_ui_text_y(button.label, (int)button.bounds.y,
+                                        (int)button.bounds.height, font),
+                        font, text);
+    }
+
+    return hovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+}
+
+int
 ui_button_row_height(FlintUIButtonRow row)
 {
     return row.height > 0 ? row.height : flint_px(40);
