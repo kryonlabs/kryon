@@ -486,6 +486,8 @@ void flint_ui_begin_frame(int width, int height, float dpi);
 void ui_set_frame(Camera2D camera);
 void ui_clear_input_captures(void);
 void ui_push_input_capture(Rectangle bounds, int allow_inside);
+void ui_push_input_clip(Rectangle bounds);
+void ui_pop_input_clip(void);
 void ui_set_modal_capture(Rectangle bounds);
 void flint_ui_set_text_input_platform_callback(FlintUITextInputPlatformCallback callback);
 void ui_set_cursor_clickable(int *cursor_clickable);
