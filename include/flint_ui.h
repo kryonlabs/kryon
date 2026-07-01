@@ -451,12 +451,6 @@ typedef struct {
     int right_clicked;
 } FlintUIPanelFrame;
 
-typedef struct {
-    int height;
-    int left_clicked;
-    int right_clicked;
-} FlintUIHeader;
-
 typedef int (*FlintUIScrollPageHeightFn)(int content_width, void *user_data);
 
 typedef struct {
@@ -588,10 +582,6 @@ void ui_draw_tutorial_image(Texture2D texture, const char *fallback, int x, int 
 int ui_draw_modal(const char *title, const char *message, const char *cancel_btn, const char *confirm_btn);
 int ui_draw_modal_3btn(const char *title, const char *message, const char *left_btn, const char *middle_btn, const char *right_btn);
 int ui_paragraph_modal_height(FlintUIParagraphModalMeasure measure);
-int ui_screen_header_height(void);
-FlintUIHeader ui_draw_title_header(int height, const char *title,
-                                   Texture2D left_icon,
-                                   Texture2D right_icon);
 int flint_ui_title_bar_height(void);
 void flint_ui_title_bar(const char *title, int height);
 int flint_ui_return_title_bar(Texture2D return_icon, const char *title,

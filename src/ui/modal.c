@@ -202,45 +202,6 @@ ui_paragraph_modal_height(FlintUIParagraphModalMeasure measure)
  * SCREEN HEADER (TITLE BAR)
  * ================================================================ */
 
-int
-ui_screen_header_height(void)
-{
-    return flint_clamp_px(60, 48, 60);
-}
-
-FlintUIHeader
-ui_draw_title_header(int height, const char *title,
-                     Texture2D left_icon,
-                     Texture2D right_icon)
-{
-    FlintUIHeader header = {height, 0, 0};
-    int icon_size = flint_px(20);
-    int icon_padding = flint_px(8);
-    int icon_w = icon_size + icon_padding * 2;
-    int title_font = flint_ui_title_font(title, ui_view_width - icon_w * 2 - flint_px(48));
-    int title_w = flint_text_measure(title, title_font);
-    int hover = 0;
-
-    DrawRectangle(0, 0, ui_view_width, height, c_bg);
-    DrawLine(0, height - 1, ui_view_width, height - 1, flint_darken(c_button, 18));
-
-    if(left_icon.id != 0) {
-        header.left_clicked = ui_draw_icon_btn_padded(flint_px(12), flint_px(12),
-                                                      icon_size, icon_padding,
-                                                      left_icon, &hover);
-    }
-    if(right_icon.id != 0) {
-        header.right_clicked = ui_draw_icon_btn_padded(ui_view_width - icon_w - flint_px(12),
-                                                       flint_px(12), icon_size, icon_padding,
-                                                       right_icon, &hover);
-    }
-
-    flint_text_draw(title, (ui_view_width - title_w) / 2,
-                    flint_ui_text_y(title, 0, height, title_font),
-                    title_font, c_text);
-    return header;
-}
-
 static void
 flint_ui_title_bar_background(int height)
 {
