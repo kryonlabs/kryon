@@ -214,6 +214,16 @@ typedef struct {
 } FlintUIToolbarHeaderResult;
 
 typedef struct {
+    int id;
+    const char **options;
+    int option_count;
+    int *selected_index;
+    int disabled;
+    int min_width;
+    int height;
+} FlintUITitleBarDropdown;
+
+typedef struct {
     const char *text;
     int font;
     Color color;
@@ -582,6 +592,13 @@ int ui_screen_header_height(void);
 FlintUIHeader ui_draw_title_header(int height, const char *title,
                                    Texture2D left_icon,
                                    Texture2D right_icon);
+int flint_ui_title_bar_height(void);
+void flint_ui_title_bar(const char *title, int height);
+int flint_ui_return_title_bar(Texture2D return_icon, const char *title,
+                              int height);
+int flint_ui_return_dropdown_title_bar(Texture2D return_icon,
+                                       FlintUITitleBarDropdown dropdown,
+                                       int height);
 FlintUIPanelFrame ui_draw_modal_frame(int width, int height, const char *title,
                                       Texture2D left_icon,
                                       Texture2D right_icon);

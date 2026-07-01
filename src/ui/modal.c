@@ -241,6 +241,108 @@ ui_draw_title_header(int height, const char *title,
     return header;
 }
 
+static void
+flint_ui_title_bar_background(int height)
+{
+    DrawRectangle(0, 0, ui_view_width, height, flint_darken(c_bg, 14));
+    DrawLine(0, height - 1, ui_view_width, height - 1,
+             flint_darken(c_bg, 42));
+}
+
+static int
+flint_ui_title_bar_return_button(Texture2D return_icon, int height)
+{
+    int icon_size = flint_px(18);
+    int padding = flint_px(5);
+    int button_size = icon_size + padding * 2;
+    int x = flint_px(4);
+    int y = (height - button_size) / 2;
+    int hover = 0;
+
+    if(y < 0)
+        y = 0;
+    return ui_draw_icon_btn_padded(x, y, icon_size, padding, return_icon, &hover);
+}
+
+static void
+flint_ui_title_bar_draw_centered_title(const char *title, int height,
+                                       int side_reserved)
+{
+    int font = flint_ui_font();
+    int title_w;
+    int max_w = ui_view_width - side_reserved * 2;
+
+    if(title == NULL)
+        title = "";
+    if(max_w < flint_px(48))
+        max_w = ui_view_width - flint_px(16);
+    title_w = flint_text_measure(title, font);
+    while(font > flint_px(12) && title_w > max_w) {
+        font--;
+        title_w = flint_text_measure(title, font);
+    }
+    flint_text_draw(title, (ui_view_width - title_w) / 2,
+                    flint_ui_text_y(title, 0, height, font),
+                    font, c_text);
+}
+
+int
+flint_ui_title_bar_height(void)
+{
+    return ui_tab_bar_height();
+}
+
+void
+flint_ui_title_bar(const char *title, int height)
+{
+    flint_ui_title_bar_background(height);
+    flint_ui_title_bar_draw_centered_title(title, height, flint_px(12));
+}
+
+int
+flint_ui_return_title_bar(Texture2D return_icon, const char *title,
+                          int height)
+{
+    int clicked;
+
+    flint_ui_title_bar_background(height);
+    clicked = flint_ui_title_bar_return_button(return_icon, height);
+    flint_ui_title_bar_draw_centered_title(title, height, flint_px(56));
+    return clicked;
+}
+
+int
+flint_ui_return_dropdown_title_bar(Texture2D return_icon,
+                                   FlintUITitleBarDropdown dropdown,
+                                   int height)
+{
+    int icon_size = flint_px(18);
+    int icon_padding = flint_px(5);
+    int back_w = icon_size + icon_padding * 2;
+    int gap = flint_px(4);
+    int dropdown_x = flint_px(4) + back_w + gap;
+    int dropdown_h = dropdown.height > 0 ? dropdown.height : flint_px(32);
+    int dropdown_y = (height - dropdown_h) / 2;
+    int dropdown_w = ui_view_width - dropdown_x - flint_px(4);
+    int clicked;
+
+    if(dropdown_y < 0)
+        dropdown_y = 0;
+    if(dropdown.min_width > 0 && dropdown_w < dropdown.min_width)
+        dropdown_w = ui_view_width - dropdown_x;
+    if(dropdown_w < 1)
+        dropdown_w = 1;
+
+    flint_ui_title_bar_background(height);
+    clicked = flint_ui_title_bar_return_button(return_icon, height);
+    if(!dropdown.disabled)
+        ui_draw_dropdown_button(dropdown.id, dropdown_x, dropdown_y,
+                                dropdown_w, dropdown_h,
+                                dropdown.options, dropdown.option_count,
+                                dropdown.selected_index);
+    return clicked;
+}
+
 FlintUIPanelFrame
 ui_draw_modal_frame(int width, int height, const char *title,
                     Texture2D left_icon,
