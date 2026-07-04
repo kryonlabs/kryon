@@ -1,5 +1,6 @@
 #include "flint_text.h"
 #include "flint_clip.h"
+#include "flint_embedded_assets.h"
 #include "flint_scaling.h"
 
 #include <stdint.h>
@@ -10,6 +11,8 @@
 
 static Font g_flint_text_font = {0};
 static Font g_flint_text_small_font = {0};
+static Font g_flint_default_font = {0};
+static int g_flint_default_font_attempted = 0;
 
 static int
 font_valid(Font font)
@@ -34,6 +37,19 @@ active_font(void)
 {
     if(font_valid(g_flint_text_font))
         return g_flint_text_font;
+
+    if(!font_valid(g_flint_default_font) && !g_flint_default_font_attempted) {
+        const FlintEmbeddedAsset *png = flint_embedded_asset("assets/fonts/locales.png");
+        const FlintEmbeddedAsset *dat = flint_embedded_asset("assets/fonts/locales.dat");
+
+        g_flint_default_font_attempted = 1;
+        if(png != NULL && dat != NULL) {
+            g_flint_default_font = flint_text_load_chopped_font_from_memory(
+                png->data, png->size, dat->data, dat->size, FLINT_TEXT_BASE_SIZE);
+        }
+    }
+    if(font_valid(g_flint_default_font))
+        return g_flint_default_font;
 
     return GetFontDefault();
 }

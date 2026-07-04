@@ -8,6 +8,7 @@
 # Build output
 build/
 libflint.a
+assets/fonts/
 
 # Example binaries
 examples/01_file_dialog
@@ -20,4 +21,3 @@ examples/05_buttons
 examples/06_theme
 
 tools/otfchop/otfchop
-

@@ -14,7 +14,9 @@ EMBED_ASSETS ?= themes
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/flint_embedded_asset_data.c
 FLINT_FONT_OUT ?= assets/fonts/locales
+FLINT_FONT_OUTPUTS = $(FLINT_FONT_OUT).png $(FLINT_FONT_OUT).dat
 FLINT_FONT_LOCALES ?= locales/*.txt
+FLINT_FONT_LOCALE_FILES = $(wildcard $(FLINT_FONT_LOCALES))
 FLINT_FONT_FALLBACK_LOCALES = tools/otfchop/locales/en.txt
 FLINT_FONT_SOURCE ?= tools/otfchop/unifont-17.0.04.otf
 FLINT_OTFCHOP ?= tools/otfchop/otfchop
@@ -150,8 +152,8 @@ $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/flint_icons.h
 src/flint_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
 	@$(MAKE) --quiet $(ICON_ASSETS_C)
 
-$(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/flint_embedded_assets.h | $(BUILD_DIR)
-	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
+$(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) $(FLINT_FONT_OUTPUTS) scripts/embed-assets.sh include/flint_embedded_assets.h | $(BUILD_DIR)
+	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS) $(FLINT_FONT_OUTPUTS)
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
@@ -167,7 +169,9 @@ $(BUILD_DIR):
 $(FLINT_OTFCHOP): tools/otfchop/otfchop.c tools/otfchop/stb_truetype.h tools/otfchop/stb_image_write.h
 	$(MAKE) -C tools/otfchop otfchop
 
-font-assets: $(FLINT_OTFCHOP)
+font-assets: $(FLINT_FONT_OUTPUTS)
+
+$(FLINT_FONT_OUTPUTS): $(FLINT_OTFCHOP) $(FLINT_FONT_SOURCE) $(FLINT_FONT_FALLBACK_LOCALES) $(FLINT_FONT_LOCALE_FILES)
 	@mkdir -p $(dir $(FLINT_FONT_OUT))
 	@set -- $(FLINT_FONT_LOCALES); \
 	case "$(FLINT_FONT_LOCALES)" in \
