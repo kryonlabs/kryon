@@ -29,6 +29,9 @@ typedef struct {
 /* Initialize file dialog */
 void flint_file_dialog_init(FlintFileDialog *dlg);
 
+/* Set the current folder shown by the dialog. Returns 1 when the folder exists. */
+int flint_file_dialog_set_current_dir(FlintFileDialog *dlg, const char *path);
+
 /* Set an explicit theme scope; pass NULL or empty to follow the current Flint theme. */
 void flint_file_dialog_set_theme_scope(const char *scope);
 

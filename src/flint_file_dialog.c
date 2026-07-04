@@ -6,6 +6,7 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #include "flint_scaling.h"
 #include "flint_clip.h"
@@ -23,6 +24,9 @@
 
 static char g_dialog_theme_scope[FLINT_THEME_NAME_SIZE] = "";
 
+static void copy_text(char *dst, size_t dst_size, const char *src);
+static int scan_directory(FlintFileDialogInternal *internal);
+
 static Color dialog_theme_get(const char *key) {
     if(g_dialog_theme_scope[0] == '\0')
         return flint_theme_current_color(key);
@@ -36,6 +40,33 @@ void flint_file_dialog_set_theme_scope(const char *scope) {
     }
 
     snprintf(g_dialog_theme_scope, sizeof(g_dialog_theme_scope), "%s", scope);
+}
+
+int
+flint_file_dialog_set_current_dir(FlintFileDialog *dlg, const char *path)
+{
+    FlintFileDialogInternal *internal;
+    struct stat st;
+
+    if(dlg == NULL || path == NULL || path[0] == '\0')
+        return 0;
+    if(stat(path, &st) != 0 || !S_ISDIR(st.st_mode))
+        return 0;
+    if(dlg->_internal == NULL)
+        flint_file_dialog_init(dlg);
+
+    internal = (FlintFileDialogInternal *)dlg->_internal;
+    if(internal == NULL)
+        return 0;
+
+    copy_text(internal->current_dir, sizeof(internal->current_dir), path);
+    internal->selected_file[0] = '\0';
+    internal->filename_input[0] = '\0';
+    internal->hover_index = -1;
+    internal->last_clicked_index = -1;
+    internal->scroll_offset = 0;
+    scan_directory(internal);
+    return 1;
 }
 
 static FlintFileDialogInternal *create_internal(void) {
