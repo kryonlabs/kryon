@@ -46,6 +46,7 @@ int flint_file_dialog_select_folder(FlintFileDialog *dlg, const char *title);
 void flint_file_dialog_begin_load(FlintFileDialog *dlg, const char *title);
 void flint_file_dialog_begin_load_filtered(FlintFileDialog *dlg, const char *title, const char *filter);
 void flint_file_dialog_begin_save(FlintFileDialog *dlg, const char *title, const char *default_filename);
+void flint_file_dialog_begin_select_folder(FlintFileDialog *dlg, const char *title);
 
 /* Draw/update active dialog: 1 confirmed, 0 cancelled, -1 still active. */
 int flint_file_dialog_update(FlintFileDialog *dlg);

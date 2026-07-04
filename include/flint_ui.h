@@ -480,6 +480,7 @@ typedef void (*FlintUITextInputPlatformCallback)(int active);
 
 void ui_init(int width, int height, float dpi);
 void ui_set_colors(Color text, Color bg, Color surface, Color circle, Color button, Color button_hover, Color icon);
+void flint_ui_apply_current_theme(void);
 int ui_is_desktop_mode(void);
 Camera2D flint_ui_default_camera(void);
 void flint_ui_begin_frame(int width, int height, float dpi);

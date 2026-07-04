@@ -4,6 +4,7 @@
 #include "flint_clip.h"
 #include "flint_dpi.h"
 #include "flint.h"
+#include "flint_theme.h"
 #include "flint_text_layout.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1187,6 +1188,18 @@ ui_set_colors(Color text, Color bg, Color surface, Color circle, Color button, C
     c_button = button;
     c_button_hover = button_hover;
     c_icon = icon;
+}
+
+void
+flint_ui_apply_current_theme(void)
+{
+    ui_set_colors(flint_theme_get_text(),
+                  flint_theme_get_bg(),
+                  flint_theme_get_surface(),
+                  flint_theme_get_circle(),
+                  flint_theme_get_button(),
+                  flint_theme_get_button_hover(),
+                  flint_theme_get_icon());
 }
 
 Camera2D
