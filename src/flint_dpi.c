@@ -1,10 +1,16 @@
 #include "flint_dpi.h"
 
+#if defined(__FreeBSD__) && !defined(PLATFORM_WEB)
+#define GL_FRAMEBUFFER_SRGB 0x8DB9
+extern void glDisable(unsigned int cap);
+#endif
+
 FlintDpiState flint_dpi_state;
 
 void
 flint_dpi_init(void)
 {
+    flint_dpi_fix_framebuffer_color();
     flint_dpi_state.view_width = FLINT_DPI_BASE_WIDTH;
     flint_dpi_state.view_height = FLINT_DPI_BASE_HEIGHT;
     flint_dpi_state.ui_scale = 1.0f;
@@ -13,6 +19,16 @@ flint_dpi_init(void)
     flint_dpi_state.base_width = FLINT_DPI_BASE_WIDTH;
     flint_dpi_state.base_height = FLINT_DPI_BASE_HEIGHT;
     flint_dpi_state.needs_update = 0;
+}
+
+void
+flint_dpi_fix_framebuffer_color(void)
+{
+#if defined(__FreeBSD__) && !defined(PLATFORM_WEB)
+    if(IsWindowReady()) {
+        glDisable(GL_FRAMEBUFFER_SRGB);
+    }
+#endif
 }
 
 void

@@ -24,6 +24,7 @@ typedef struct FlintDpiState {
 extern FlintDpiState flint_dpi_state;
 
 void flint_dpi_init(void);
+void flint_dpi_fix_framebuffer_color(void);
 void flint_dpi_invalidate(void);
 void flint_dpi_update(int view_width, int view_height);
 int flint_dpi_is_dirty(void);
