@@ -77,6 +77,7 @@ LIB = libflint.a
 CLI = $(BUILD_DIR)/flint
 LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
 LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
+TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 
 .PHONY: all clean run install uninstall cli font-assets docs-site test
 
@@ -102,9 +103,10 @@ docs-site:
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST)
+test: $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
+	$(TRANSITION_TEST)
 
 install: $(CLI)
 	@echo "Installing flint to $(INSTALL_DIR)..."
@@ -152,6 +154,10 @@ $(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra_account.c include/lyra_
 $(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/lyra_sync.c src/lyra_account.c include/lyra_sync.h include/lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_sync_test.c src/lyra_sync.c src/lyra_account.c -o $@
+
+$(TRANSITION_TEST): tests/transition_test.c src/ui_transition.c include/ui_transition.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui_transition.c -o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh $(ICON_DIR) $@

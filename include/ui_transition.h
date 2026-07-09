@@ -12,15 +12,15 @@ typedef enum UITransitionPhase {
 typedef struct UITransition {
     int active;
     int phase;
-    int ticks;
-    int duration;
+    float elapsed_seconds;
+    float duration_seconds;
 } UITransition;
 
 void ResetUITransition(UITransition *transition);
-void BeginUITransition(UITransition *transition, int duration);
+void BeginUITransition(UITransition *transition, float duration_seconds);
 void ReverseUITransitionToOut(UITransition *transition);
 float GetUITransitionAlpha(const UITransition *transition);
-int StepUITransition(UITransition *transition);
+int StepUITransition(UITransition *transition, float delta_seconds);
 void DrawUITransitionFade(const UITransition *transition,
                                 int width, int height, Color color);
 

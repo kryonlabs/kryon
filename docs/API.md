@@ -593,8 +593,8 @@ Transition effects for screen changes.
 typedef struct UITransition {
     int active;
     int phase;
-    int ticks;
-    int duration;
+    float elapsed_seconds;
+    float duration_seconds;
 } UITransition;
 ```
 
@@ -602,7 +602,7 @@ typedef struct UITransition {
 
 ```c
 void ResetUITransition(UITransition *transition);
-void BeginUITransition(UITransition *transition, int duration);
+void BeginUITransition(UITransition *transition, float duration_seconds);
 ```
 
 #### `ReverseUITransitionToOut`
@@ -615,7 +615,7 @@ void ReverseUITransitionToOut(UITransition *transition);
 
 ```c
 float GetUITransitionAlpha(const UITransition *transition);
-int StepUITransition(UITransition *transition);
+int StepUITransition(UITransition *transition, float delta_seconds);
 ```
 
 #### `DrawUITransitionFade`

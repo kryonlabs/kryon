@@ -2,6 +2,23 @@
 
 #include <stddef.h>
 
+static float
+ClampTransitionProgress(float value)
+{
+    if(value < 0.0f)
+        return 0.0f;
+    if(value > 1.0f)
+        return 1.0f;
+    return value;
+}
+
+static float
+SmoothTransitionProgress(float value)
+{
+    value = ClampTransitionProgress(value);
+    return value * value * (3.0f - 2.0f * value);
+}
+
 void
 ResetUITransition(UITransition *transition)
 {
@@ -9,21 +26,21 @@ ResetUITransition(UITransition *transition)
         return;
     transition->active = 0;
     transition->phase = UI_TRANSITION_NONE;
-    transition->ticks = 0;
-    transition->duration = 0;
+    transition->elapsed_seconds = 0.0f;
+    transition->duration_seconds = 0.0f;
 }
 
 void
-BeginUITransition(UITransition *transition, int duration)
+BeginUITransition(UITransition *transition, float duration_seconds)
 {
     if(transition == NULL)
         return;
-    if(duration <= 0)
-        duration = 1;
+    if(duration_seconds <= 0.0f)
+        duration_seconds = 0.001f;
     transition->active = 1;
     transition->phase = UI_TRANSITION_OUT;
-    transition->ticks = 0;
-    transition->duration = duration;
+    transition->elapsed_seconds = 0.0f;
+    transition->duration_seconds = duration_seconds;
 }
 
 void
@@ -33,9 +50,9 @@ ReverseUITransitionToOut(UITransition *transition)
         return;
     if(transition->phase == UI_TRANSITION_IN) {
         transition->phase = UI_TRANSITION_OUT;
-        transition->ticks = transition->duration - transition->ticks;
-        if(transition->ticks < 0)
-            transition->ticks = 0;
+        transition->elapsed_seconds = transition->duration_seconds - transition->elapsed_seconds;
+        if(transition->elapsed_seconds < 0.0f)
+            transition->elapsed_seconds = 0.0f;
     }
 }
 
@@ -44,13 +61,9 @@ GetUITransitionAlpha(const UITransition *transition)
 {
     float progress;
 
-    if(transition == NULL || !transition->active || transition->duration <= 0)
+    if(transition == NULL || !transition->active || transition->duration_seconds <= 0.0f)
         return 0.0f;
-    progress = (float)transition->ticks / (float)transition->duration;
-    if(progress < 0.0f)
-        progress = 0.0f;
-    if(progress > 1.0f)
-        progress = 1.0f;
+    progress = SmoothTransitionProgress(transition->elapsed_seconds / transition->duration_seconds);
     if(transition->phase == UI_TRANSITION_OUT)
         return progress;
     if(transition->phase == UI_TRANSITION_IN)
@@ -59,18 +72,20 @@ GetUITransitionAlpha(const UITransition *transition)
 }
 
 int
-StepUITransition(UITransition *transition)
+StepUITransition(UITransition *transition, float delta_seconds)
 {
     if(transition == NULL || !transition->active)
         return UI_TRANSITION_NONE;
 
-    transition->ticks++;
-    if(transition->ticks < transition->duration)
+    if(delta_seconds < 0.0f)
+        delta_seconds = 0.0f;
+    transition->elapsed_seconds += delta_seconds;
+    if(transition->elapsed_seconds < transition->duration_seconds)
         return UI_TRANSITION_NONE;
 
     if(transition->phase == UI_TRANSITION_OUT) {
         transition->phase = UI_TRANSITION_IN;
-        transition->ticks = 0;
+        transition->elapsed_seconds = 0.0f;
         return UI_TRANSITION_OUT;
     }
 
