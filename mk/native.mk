@@ -5,7 +5,7 @@ all: native
 
 native: $(TARGET)
 
-$(RAYLIB_A): $(RAYLIB_SOURCES) | $(RAYLIB_BUILD_DIR)
+$(RAYLIB_A): $(RAYLIB_SOURCES) $(BUILD_MAKEFILES) | $(RAYLIB_BUILD_DIR)
 	@rm -rf $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src
 	@mkdir -p $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src
 	cp -R $(RAYLIB_DIR)/. $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src/
