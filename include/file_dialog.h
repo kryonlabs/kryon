@@ -45,7 +45,7 @@ int LoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filte
 /* Select folder dialog - returns 1 if folder selected, 0 if cancelled */
 int SelectFileDialogFolder(FileDialog *dlg, const char *title);
 
-/* Begin non-blocking dialogs. Call UpdateFileDialog() each frame while active. */
+/* Compatibility wrappers. Desktop GTK dialogs complete before Begin* returns. */
 void BeginLoadFileDialog(FileDialog *dlg, const char *title);
 void BeginLoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filter);
 void BeginSaveFileDialog(FileDialog *dlg, const char *title, const char *default_filename);
