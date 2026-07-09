@@ -1,7 +1,7 @@
 #include "ui.h"
 
 int
-ui_draw_icon_slider_popup(FlintUIIconSliderPopup popup)
+DrawUIIconSliderPopup(UIIconSliderPopup popup)
 {
     int hover = 0;
     int popup_w;
@@ -13,15 +13,15 @@ ui_draw_icon_slider_popup(FlintUIIconSliderPopup popup)
     if(popup.open == NULL || popup.value == NULL)
         return 0;
 
-    if(ui_draw_icon_btn_padded(popup.x, popup.y, popup.icon_size,
+    if(DrawUIPaddedIconBtn(popup.x, popup.y, popup.icon_size,
                                popup.icon_padding, popup.icon, &hover))
         *popup.open = !*popup.open;
 
     if(!*popup.open)
         return 0;
 
-    popup_w = popup.popup_width > 0 ? popup.popup_width : flint_px(44);
-    popup_h = popup.popup_height > 0 ? popup.popup_height : flint_px(200);
+    popup_w = popup.popup_width > 0 ? popup.popup_width : ScaleUIPx(44);
+    popup_h = popup.popup_height > 0 ? popup.popup_height : ScaleUIPx(200);
     popup_x = popup.x;
     popup_y = popup.y + popup.icon_size + popup.icon_padding * 2;
     mouse = ui_mouse_world();
@@ -34,28 +34,28 @@ ui_draw_icon_slider_popup(FlintUIIconSliderPopup popup)
     }
 
     DrawRectangle(popup_x, popup_y, popup_w, popup_h, c_surface);
-    ui_draw_bevel(popup_x, popup_y, popup_w, popup_h,
-                  flint_lighten(c_surface, 40), flint_darken(c_surface, 40));
+    DrawUIBevel(popup_x, popup_y, popup_w, popup_h,
+                  LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
-    return ui_draw_slider_vertical(popup.id, popup_x + popup_w / 2,
-                                   popup_y + flint_px(10),
-                                   popup_h - flint_px(20),
+    return DrawUIVerticalSlider(popup.id, popup_x + popup_w / 2,
+                                   popup_y + ScaleUIPx(10),
+                                   popup_h - ScaleUIPx(20),
                                    popup.min, popup.max, popup.value);
 }
 
-FlintUIIconRowResult
-ui_draw_bottom_icon_row(FlintUIBottomIconRow row)
+UIIconRowResult
+DrawUIBottomIconRow(UIBottomIconRow row)
 {
-    FlintUIIconRowResult result = {-1, 0, 0};
+    UIIconRowResult result = {-1, 0, 0};
     int count = row.count;
-    int icon_size = row.icon_size > 0 ? row.icon_size : flint_px(24);
-    int icon_padding = row.icon_padding > 0 ? row.icon_padding : flint_px(10);
-    int gap = row.gap > 0 ? row.gap : flint_px(12);
-    int side_margin = row.side_margin > 0 ? row.side_margin : flint_px(24);
-    int bottom_margin = row.bottom_margin > 0 ? row.bottom_margin : flint_px(6);
-    int min_icon_size = row.min_icon_size > 0 ? row.min_icon_size : flint_px(16);
-    int min_icon_padding = row.min_icon_padding > 0 ? row.min_icon_padding : flint_px(6);
-    int min_gap = row.min_gap > 0 ? row.min_gap : flint_px(8);
+    int icon_size = row.icon_size > 0 ? row.icon_size : ScaleUIPx(24);
+    int icon_padding = row.icon_padding > 0 ? row.icon_padding : ScaleUIPx(10);
+    int gap = row.gap > 0 ? row.gap : ScaleUIPx(12);
+    int side_margin = row.side_margin > 0 ? row.side_margin : ScaleUIPx(24);
+    int bottom_margin = row.bottom_margin > 0 ? row.bottom_margin : ScaleUIPx(6);
+    int min_icon_size = row.min_icon_size > 0 ? row.min_icon_size : ScaleUIPx(16);
+    int min_icon_padding = row.min_icon_padding > 0 ? row.min_icon_padding : ScaleUIPx(6);
+    int min_gap = row.min_gap > 0 ? row.min_gap : ScaleUIPx(8);
     int available_w;
     int max_btn_w;
     int button_w;
@@ -66,8 +66,8 @@ ui_draw_bottom_icon_row(FlintUIBottomIconRow row)
         return result;
 
     available_w = row.view_width - side_margin * 2;
-    if(available_w < flint_px(120))
-        available_w = flint_px(120);
+    if(available_w < ScaleUIPx(120))
+        available_w = ScaleUIPx(120);
 
     max_btn_w = row.max_button_width > 0 ? row.max_button_width : available_w;
     if(count > 1) {
@@ -104,7 +104,7 @@ ui_draw_bottom_icon_row(FlintUIBottomIconRow row)
 
         if(row.items[i].disabled)
             continue;
-        if(ui_draw_icon_btn_padded(x, result.y, icon_size, icon_padding,
+        if(DrawUIPaddedIconBtn(x, result.y, icon_size, icon_padding,
                                    row.items[i].icon, &hover))
             result.clicked_index = i;
     }

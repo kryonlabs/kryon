@@ -1,34 +1,34 @@
-#include "flint_example_font.h"
-#include "flint_theme_meta.h"
-#include "flint_scaling.h"
+#include "example_ui_font.h"
+#include "theme_meta.h"
+#include "ui_scaling.h"
 #include <stdio.h>
 #include <raylib.h>
 
 int main(void) {
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "Flint Theme Example");
+    InitWindow(screenWidth, screenHeight, "File UI Toolkit Theme Example");
     SetTargetFPS(60);
-    flint_example_load_font();
+    LoadExampleUIFont();
 
-    printf("Flint Theme System Example\n");
+    printf("File UI Toolkit Theme System Example\n");
     printf("=========================\n\n");
-    printf("This example demonstrates Flint theme catalog:\n");
-    printf("  - flint_theme_catalog_color() - Get theme colors\n");
-    printf("  - flint_theme_scope_for() - Get theme scope name\n");
-    printf("  - FlintThemeId enum - All available themes\n\n");
+    printf("This example demonstrates File UI Toolkit theme catalog:\n");
+    printf("  - GetThemeCatalogColor() - Get theme colors\n");
+    printf("  - GetThemeScopeName() - Get theme scope name\n");
+    printf("  - ThemeId enum - All available themes\n\n");
     printf("Press SPACE to cycle through themes\n");
     printf("Press D to toggle light/dark mode\n");
     printf("Press ESC to exit\n\n");
 
     // Available themes
-    FlintThemeId themes[] = {
-        FLINT_THEME_SKY,
-        FLINT_THEME_OCEAN,
-        FLINT_THEME_FOREST,
-        FLINT_THEME_SUNSET,
-        FLINT_THEME_LAVENDER,
-        FLINT_THEME_CHERRY,
+    ThemeId themes[] = {
+        THEME_SKY,
+        THEME_OCEAN,
+        THEME_FOREST,
+        THEME_SUNSET,
+        THEME_LAVENDER,
+        THEME_CHERRY,
     };
     int num_themes = 6;
     int theme_index = 0;
@@ -38,91 +38,91 @@ int main(void) {
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
-        FlintThemeId current_theme = themes[theme_index];
+        ThemeId current_theme = themes[theme_index];
 
         // Get theme scope for proper color access
-        const char* scope = flint_theme_scope_for(current_theme, dark_mode);
+        const char* scope = GetThemeScopeName(current_theme, dark_mode);
 
         // Get theme colors using catalog (works without theme files)
         Color background, text, button, button_hover, circle;
-        flint_theme_catalog_color(current_theme, dark_mode, "background", &background);
-        flint_theme_catalog_color(current_theme, dark_mode, "text", &text);
-        flint_theme_catalog_color(current_theme, dark_mode, "button", &button);
-        flint_theme_catalog_color(current_theme, dark_mode, "button_hover", &button_hover);
-        flint_theme_catalog_color(current_theme, dark_mode, "circle", &circle);
+        GetThemeCatalogColor(current_theme, dark_mode, "background", &background);
+        GetThemeCatalogColor(current_theme, dark_mode, "text", &text);
+        GetThemeCatalogColor(current_theme, dark_mode, "button", &button);
+        GetThemeCatalogColor(current_theme, dark_mode, "button_hover", &button_hover);
+        GetThemeCatalogColor(current_theme, dark_mode, "circle", &circle);
 
         // Fill background with theme color
         ClearBackground(background);
 
         // Draw title with theme text color
-        const char *theme_name = flint_theme_label(current_theme);
+        const char *theme_name = GetThemeLabel(current_theme);
         char title[128];
         snprintf(title, sizeof(title), "Theme: %s (%s mode)", theme_name, dark_mode ? "Dark" : "Light");
-        flint_text_draw(title, flint_px(20), flint_px(20), 24, text);
+        DrawUIText(title, ScaleUIPx(20), ScaleUIPx(20), 24, text);
 
         // Draw color swatches
-        int y = flint_px(70);
-        int x = flint_px(20);
-        int swatch_size = flint_px(60);
+        int y = ScaleUIPx(70);
+        int x = ScaleUIPx(20);
+        int swatch_size = ScaleUIPx(60);
 
         // Background
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, background);
         DrawRectangleLinesEx((Rectangle){x, y, swatch_size, swatch_size}, 1, text);
-        flint_text_draw("Background", x + swatch_size + 10, y + 10, 16, text);
+        DrawUIText("Background", x + swatch_size + 10, y + 10, 16, text);
 
         // Text
-        y += swatch_size + flint_px(20);
+        y += swatch_size + ScaleUIPx(20);
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, text);
-        flint_text_draw("Text", x + swatch_size + 10, y + 10, 16, text);
+        DrawUIText("Text", x + swatch_size + 10, y + 10, 16, text);
 
         // Button
-        y += swatch_size + flint_px(20);
+        y += swatch_size + ScaleUIPx(20);
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, button);
-        flint_text_draw("Button", x + swatch_size + 10, y + 10, 16, text);
+        DrawUIText("Button", x + swatch_size + 10, y + 10, 16, text);
 
         // Button Hover
-        y += swatch_size + flint_px(20);
+        y += swatch_size + ScaleUIPx(20);
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, button_hover);
-        flint_text_draw("Button Hover", x + swatch_size + 10, y + 10, 16, text);
+        DrawUIText("Button Hover", x + swatch_size + 10, y + 10, 16, text);
 
         // Circle
-        y += swatch_size + flint_px(20);
+        y += swatch_size + ScaleUIPx(20);
         DrawRectangleRec((Rectangle){x, y, swatch_size, swatch_size}, circle);
-        flint_text_draw("Circle", x + swatch_size + 10, y + 10, 16, text);
+        DrawUIText("Circle", x + swatch_size + 10, y + 10, 16, text);
 
         // Draw theme info
-        y += swatch_size + flint_px(40);
+        y += swatch_size + ScaleUIPx(40);
         char info[128];
         snprintf(info, sizeof(info), "Scope: %s", scope);
-        flint_text_draw(info, x, y, 16, text);
+        DrawUIText(info, x, y, 16, text);
 
-        y += flint_px(30);
+        y += ScaleUIPx(30);
         snprintf(info, sizeof(info), "Theme ID: %d", current_theme);
-        flint_text_draw(info, x, y, 16, text);
+        DrawUIText(info, x, y, 16, text);
 
         // Draw RGB values
-        y += flint_px(40);
-        flint_text_draw("Color Values (R,G,B):", x, y, 18, text);
-        y += flint_px(25);
+        y += ScaleUIPx(40);
+        DrawUIText("Color Values (R,G,B):", x, y, 18, text);
+        y += ScaleUIPx(25);
         snprintf(info, sizeof(info), "Background: %d,%d,%d", background.r, background.g, background.b);
-        flint_text_draw(info, x, y, 14, text);
-        y += flint_px(20);
+        DrawUIText(info, x, y, 14, text);
+        y += ScaleUIPx(20);
         snprintf(info, sizeof(info), "Text: %d,%d,%d", text.r, text.g, text.b);
-        flint_text_draw(info, x, y, 14, text);
-        y += flint_px(20);
+        DrawUIText(info, x, y, 14, text);
+        y += ScaleUIPx(20);
         snprintf(info, sizeof(info), "Button: %d,%d,%d", button.r, button.g, button.b);
-        flint_text_draw(info, x, y, 14, text);
+        DrawUIText(info, x, y, 14, text);
 
         // Instructions
-        y = flint_px(20);
-        x = flint_px(400);
-        flint_text_draw("Controls:", x, y, 18, text);
-        y += flint_px(30);
-        flint_text_draw("SPACE - Next theme", x, y, 16, text);
-        y += flint_px(25);
-        flint_text_draw("D - Toggle dark/light mode", x, y, 16, text);
-        y += flint_px(25);
-        flint_text_draw("ESC - Exit", x, y, 16, text);
+        y = ScaleUIPx(20);
+        x = ScaleUIPx(400);
+        DrawUIText("Controls:", x, y, 18, text);
+        y += ScaleUIPx(30);
+        DrawUIText("SPACE - Next theme", x, y, 16, text);
+        y += ScaleUIPx(25);
+        DrawUIText("D - Toggle dark/light mode", x, y, 16, text);
+        y += ScaleUIPx(25);
+        DrawUIText("ESC - Exit", x, y, 16, text);
 
         // Handle input
         if(IsKeyPressed(KEY_SPACE)) {
@@ -139,7 +139,7 @@ int main(void) {
 
         EndDrawing();
     }
-    flint_example_unload_font();
+    UnloadExampleUIFont();
 
     CloseWindow();
     return 0;

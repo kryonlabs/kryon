@@ -1,20 +1,20 @@
 #include "ui.h"
 
 void
-ui_draw_tutorial_image_placeholder(const char *label, int x, int y, int w, int h)
+DrawUITutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 {
-    DrawRectangle(x, y, w, h, flint_darken(c_bg, 12));
-    ui_draw_bevel(x, y, w, h, flint_darken(c_bg, 45), flint_lighten(c_bg, 35));
-    int font = flint_ui_font();
-    int tw = flint_text_measure(label, font);
-    flint_text_draw(label, x + w / 2 - tw / 2, flint_ui_text_y(label, y, h, font), font, c_text);
+    DrawRectangle(x, y, w, h, DarkenUIColor(c_bg, 12));
+    DrawUIBevel(x, y, w, h, DarkenUIColor(c_bg, 45), LightenUIColor(c_bg, 35));
+    int font = GetUIFontSize();
+    int tw = MeasureUIText(label, font);
+    DrawUIText(label, x + w / 2 - tw / 2, GetUIControlTextY(label, y, h, font), font, c_text);
 }
 
 void
-ui_draw_tutorial_image(Texture2D texture, const char *fallback, int x, int y, int w, int h)
+DrawUITutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h)
 {
     if(texture.id == 0) {
-        ui_draw_tutorial_image_placeholder(fallback, x, y, w, h);
+        DrawUITutorialImagePlaceholder(fallback, x, y, w, h);
         return;
     }
 

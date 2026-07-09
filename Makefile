@@ -9,10 +9,10 @@ INSTALL_DIR ?= $(HOME)/.local/share/flint
 BIN_DIR ?= $(HOME)/bin
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png)
-ICON_ASSETS_C = src/flint_icon_assets.c
+ICON_ASSETS_C = src/ui_icon_assets.c
 EMBED_ASSETS ?= themes
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
-EMBED_ASSETS_C = $(BUILD_DIR)/flint_embedded_asset_data.c
+EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
 FLINT_FONT_OUT ?= assets/fonts/locales
 FLINT_FONT_OUTPUTS = $(FLINT_FONT_OUT).png $(FLINT_FONT_OUT).dat
 FLINT_FONT_LOCALES ?= locales/*.txt
@@ -30,27 +30,27 @@ CPPFLAGS += $(CPPFLAGS_BASE)
 ARFLAGS ?= rcs
 
 SRCS = \
-	src/flint_color.c \
-	src/flint_clip.c \
-	src/flint_scaling.c \
-	src/flint_dpi.c \
-	src/flint_embedded_assets.c \
-	src/flint_layout.c \
-	src/flint_icons.c \
-	src/flint_icon_assets.c \
-	src/flint_icon_names.c \
-	src/flint_text.c \
-	src/flint_ui.c \
-	src/flint_text_layout.c \
-	src/flint_locale.c \
-	src/flint_lyra_account.c \
-	src/flint_lyra_sync.c \
-	src/flint_theme.c \
-	src/flint_theme_meta.c \
-	src/flint_system_theme.c \
-	src/flint_file_dialog.c \
-	src/flint_runtime_assets.c \
-	src/flint_transition.c \
+	src/ui_color.c \
+	src/ui_clip.c \
+	src/ui_scaling.c \
+	src/ui_dpi.c \
+	src/embedded_assets.c \
+	src/ui_layout.c \
+	src/ui_icons.c \
+	src/ui_icon_assets.c \
+	src/ui_icon_names.c \
+	src/ui_text.c \
+	src/ui.c \
+	src/ui_text_layout.c \
+	src/locale.c \
+	src/lyra_account.c \
+	src/lyra_sync.c \
+	src/theme.c \
+	src/theme_meta.c \
+	src/system_theme.c \
+	src/file_dialog.c \
+	src/runtime_assets.c \
+	src/ui_transition.c \
 	src/ui/bottom_nav.c \
 	src/ui/dropdown.c \
 	src/ui/guide.c \
@@ -67,7 +67,7 @@ SRCS += $(EMBED_ASSETS_C)
 
 SYSTEM_THEME_PKG := $(shell if pkg-config --exists gtk+-3.0 2>/dev/null; then printf '%s' gtk+-3.0; fi)
 ifneq ($(strip $(SYSTEM_THEME_PKG)),)
-    CPPFLAGS += $(shell pkg-config --cflags $(SYSTEM_THEME_PKG)) -DFLINT_SYSTEM_THEME_GTK
+    CPPFLAGS += $(shell pkg-config --cflags $(SYSTEM_THEME_PKG)) -DSYSTEM_THEME_GTK
     LDLIBS += $(shell pkg-config --libs $(SYSTEM_THEME_PKG))
 endif
 
@@ -145,21 +145,21 @@ $(LIB): $(OBJS)
 $(CLI): cli/flint.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/flint_lyra_account.c include/flint_lyra_account.h | $(BUILD_DIR)
+$(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra_account.c include/lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_account_test.c src/flint_lyra_account.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_account_test.c src/lyra_account.c -o $@
 
-$(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/flint_lyra_sync.c src/flint_lyra_account.c include/flint_lyra_sync.h include/flint_lyra_account.h | $(BUILD_DIR)
+$(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/lyra_sync.c src/lyra_account.c include/lyra_sync.h include/lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_sync_test.c src/flint_lyra_sync.c src/flint_lyra_account.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_sync_test.c src/lyra_sync.c src/lyra_account.c -o $@
 
-$(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/flint_icons.h
+$(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh $(ICON_DIR) $@
 
-src/flint_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
+src/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
 	@$(MAKE) --quiet $(ICON_ASSETS_C)
 
-$(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) $(FLINT_FONT_OUTPUTS) scripts/embed-assets.sh include/flint_embedded_assets.h | $(BUILD_DIR)
+$(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) $(FLINT_FONT_OUTPUTS) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS) $(FLINT_FONT_OUTPUTS)
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)

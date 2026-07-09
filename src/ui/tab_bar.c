@@ -1,15 +1,15 @@
 #include "ui.h"
 
 int
-ui_tab_bar_height(void)
+GetUITabBarHeight(void)
 {
-    return flint_px(36);
+    return ScaleUIPx(36);
 }
 
 static int
-ui_tab_bar_tab_width(FlintUITabBar bar, int index, int min_tab_w, int icon_tab_w)
+ui_tab_bar_tab_width(UITabBar bar, int index, int min_tab_w, int icon_tab_w)
 {
-    const FlintUITab *tab;
+    const UITab *tab;
 
     if(index < 0 || index >= bar.count || bar.tabs == NULL)
         return min_tab_w;
@@ -22,18 +22,18 @@ ui_tab_bar_tab_width(FlintUITabBar bar, int index, int min_tab_w, int icon_tab_w
 }
 
 int
-ui_draw_tab_bar(FlintUITabBar bar)
+DrawUITabBar(UITabBar bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int clicked_tab = -1;
-    int font = bar.font > 0 ? bar.font : FLINT_TEXT_12;
+    int font = bar.font > 0 ? bar.font : UI_TEXT_12;
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
     int bar_h = (int)bar.bounds.height;
-    int tab_gap = flint_px(4);
-    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : flint_px(120);
+    int tab_gap = ScaleUIPx(4);
+    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : ScaleUIPx(120);
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : min_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
     static int default_scroll_offset = 0;
@@ -46,8 +46,8 @@ ui_draw_tab_bar(FlintUITabBar bar)
         return -1;
 
     // Draw tab bar background (recessed appearance)
-    DrawRectangle(bar_x, bar_y, bar_w, bar_h, flint_darken(c_bg, 12));
-    DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, flint_darken(c_bg, 38));
+    DrawRectangle(bar_x, bar_y, bar_w, bar_h, DarkenUIColor(c_bg, 12));
+    DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, DarkenUIColor(c_bg, 38));
 
     if(max_tab_w < min_tab_w)
         max_tab_w = min_tab_w;
@@ -95,25 +95,25 @@ ui_draw_tab_bar(FlintUITabBar bar)
     int tab_x = bar_x + tab_gap - *scroll_offset;
 
     for(int i = 0; i < bar.count; i++) {
-        const FlintUITab *tab = &bar.tabs[i];
+        const UITab *tab = &bar.tabs[i];
         int tab_w = ui_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
         Rectangle tab_rect = {(float)tab_x, (float)bar_y, (float)tab_w, (float)bar_h};
-        int input_captured = ui_input_captures_click(mouse_world);
+        int input_captured = UIInputCapturesClick(mouse_world);
         int is_active = CheckCollisionPointRec(mouse_world, tab_rect) && !input_captured;
-        int is_hovered = is_active && ui_hover_effects_enabled();
+        int is_hovered = is_active && UIHoverEffectsEnabled();
         int is_selected = i == bar.selected_index;
         int is_disabled = tab->disabled;
 
         // Determine tab background color
         Color tab_fill;
         if(is_disabled) {
-            tab_fill = flint_darken(c_bg, 18);
+            tab_fill = DarkenUIColor(c_bg, 18);
         } else if(is_selected) {
             tab_fill = c_button;
         } else if(is_hovered) {
-            tab_fill = flint_darken(c_button_hover, 8);
+            tab_fill = DarkenUIColor(c_button_hover, 8);
         } else {
-            tab_fill = flint_darken(c_bg, 10);
+            tab_fill = DarkenUIColor(c_bg, 10);
         }
 
         // Draw tab shape with rounded top corners (Chromium-style)
@@ -123,39 +123,39 @@ ui_draw_tab_bar(FlintUITabBar bar)
         // Apply 3D bevel effect for depth
         if(is_selected) {
             // Strong bevel for selected tab (appears raised)
-            ui_draw_bevel(tab_x, bar_y, tab_w, bar_h,
-                         flint_lighten(tab_fill, 50),
-                         flint_darken(tab_fill, 30));
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+                         LightenUIColor(tab_fill, 50),
+                         DarkenUIColor(tab_fill, 30));
         } else if(is_hovered && !is_disabled) {
             // Enhanced bevel for hovered tab
-            ui_draw_bevel(tab_x, bar_y, tab_w, bar_h,
-                         flint_lighten(tab_fill, 30),
-                         flint_darken(tab_fill, 20));
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+                         LightenUIColor(tab_fill, 30),
+                         DarkenUIColor(tab_fill, 20));
         } else if(!is_disabled) {
             // Subtle bevel for normal tab
-            ui_draw_bevel(tab_x, bar_y, tab_w, bar_h,
-                         flint_lighten(tab_fill, 20),
-                         flint_darken(tab_fill, 15));
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+                         LightenUIColor(tab_fill, 20),
+                         DarkenUIColor(tab_fill, 15));
         }
 
         // Draw tab text and icon
-        int text_pad = flint_px(8);
-        int icon_size = tab->icon_size > 0 ? tab->icon_size : flint_px(16);
+        int text_pad = ScaleUIPx(8);
+        int icon_size = tab->icon_size > 0 ? tab->icon_size : ScaleUIPx(16);
         int icon_x = tab_x + text_pad;
-        int text_x = icon_x + icon_size + flint_px(4);
-        int content_h = bar_h - flint_px(8);
+        int text_x = icon_x + icon_size + ScaleUIPx(4);
+        int content_h = bar_h - ScaleUIPx(8);
         int content_y = bar_y + (bar_h - content_h) / 2;
 
         Color text_color = c_text;
         Color icon_color = c_icon;
 
         if(is_disabled) {
-            text_color = flint_darken(c_text, 70);
+            text_color = DarkenUIColor(c_text, 70);
             text_color.a = text_color.a > 150 ? 150 : text_color.a;
-            icon_color = flint_darken(c_icon, 40);
+            icon_color = DarkenUIColor(c_icon, 40);
         } else if(is_selected) {
-            text_color = flint_lighten(c_text, 10);
-            icon_color = flint_lighten(c_icon, 10);
+            text_color = LightenUIColor(c_text, 10);
+            icon_color = LightenUIColor(c_icon, 10);
         }
 
         // Draw icon if present
@@ -168,7 +168,7 @@ ui_draw_tab_bar(FlintUITabBar bar)
             };
             Rectangle icon_src = {0, 0, (float)tab->icon.width, (float)tab->icon.height};
             DrawTexturePro(tab->icon, icon_src, icon_rect, (Vector2){0}, 0, icon_color);
-            text_x = icon_x + icon_size + flint_px(4);
+            text_x = icon_x + icon_size + ScaleUIPx(4);
         } else {
             text_x = tab_x + text_pad;
         }
@@ -182,15 +182,15 @@ ui_draw_tab_bar(FlintUITabBar bar)
         };
 
         if(text_rect.width > 0 && tab->label != NULL) {
-            flint_ui_draw_text_left_in_rect(tab->label, text_rect, font, text_color);
+            DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
         }
 
         // Handle click detection
         if(is_active) {
             if(is_disabled)
-                ui_mark_disabled();
+                MarkUIDisabled();
             else
-                ui_mark_clickable();
+                MarkUIClickable();
 
             if(released)
                 clicked_tab = i;

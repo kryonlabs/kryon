@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Flint UI</title>
+  <title>UI</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
     <div class="wrap nav">
-      <strong>Flint UI</strong>
+      <strong>UI</strong>
       <nav>
         <a href="#start">Start</a>
         <a href="#frame">Frame</a>
@@ -29,19 +29,19 @@
           <p class="eyebrow">C UI and app foundations for raylib apps</p>
           <h1>Small native interfaces with shared app plumbing.</h1>
           <p class="lede">
-            Flint provides frame lifecycle, modal capture, text input, buttons,
+            File UI Toolkit provides frame lifecycle, modal capture, text input, buttons,
             dropdowns, checkboxes, theme colors, DPI scaling, and chopped bitmap
             font support behind a compact C API. It also owns shared source
             submodules for app networking and Lyra account support, so downstream
             projects do not duplicate the same account, curl, and liboqs wiring.
           </p>
         </div>
-        <pre><code>flint_ui_begin_frame(
+        <pre><code>BeginUIFrame(
     GetScreenWidth(),
     GetScreenHeight(),
-    flint_get_dpi_scale());
+    GetUIScale());
 
-ui_set_colors(text, bg, surface,
+SetUIColors(text, bg, surface,
               circle, button,
               hover, icon);</code></pre>
       </div>
@@ -57,7 +57,7 @@ ui_set_colors(text, bg, surface,
       <h2>Start</h2>
       <div class="cards">
         <article>
-          <h3>Build Flint</h3>
+          <h3>Build File UI Toolkit</h3>
           <pre><code>make libflint.a</code></pre>
           <p>Include <code>flint.h</code> or specific headers from <code>include/</code>.</p>
         </article>
@@ -81,19 +81,19 @@ ui_set_colors(text, bg, surface,
     <section id="frame" class="wrap section">
       <h2>Frame Lifecycle</h2>
       <p>
-        For normal screen-space UI, call <code>flint_ui_begin_frame</code> once
+        For normal screen-space UI, call <code>BeginUIFrame</code> once
         per frame. It updates the layout viewport, UI viewport, DPI scale, and
         frame state with a safe default camera.
       </p>
       <pre><code>BeginDrawing();
-flint_ui_begin_frame(GetScreenWidth(), GetScreenHeight(), flint_get_dpi_scale());
-ui_set_colors(flint_theme_get_text(), flint_theme_get_bg(),
-              flint_theme_get_surface(), flint_theme_get_circle(),
-              flint_theme_get_button(), flint_theme_get_button_hover(),
-              flint_theme_get_icon());</code></pre>
+BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
+SetUIColors(GetThemeText(), GetThemeBackground(),
+              GetThemeSurface(), GetThemeCircle(),
+              GetThemeButton(), GetThemeButtonHover(),
+              GetThemeIcon());</code></pre>
       <p>
-        If you need a transformed UI camera, call <code>ui_init</code> and
-        <code>ui_set_frame(camera)</code>. Flint normalizes invalid cameras, so a
+        If you need a transformed UI camera, call <code>InitUI</code> and
+        <code>SetUIFrame(camera)</code>. File UI Toolkit normalizes invalid cameras, so a
         zeroed camera no longer breaks pointer input.
       </p>
     </section>
@@ -101,15 +101,15 @@ ui_set_colors(flint_theme_get_text(), flint_theme_get_bg(),
     <section id="modals" class="wrap section">
       <h2>Modals</h2>
       <p>
-        Prefer <code>ui_draw_modal_frame</code> for custom modal content. It
+        Prefer <code>DrawUIModalFrame</code> for custom modal content. It
         draws the shared modal frame and registers modal input capture so
         background controls cannot receive clicks.
       </p>
-      <pre><code>FlintUIPanelFrame frame = ui_draw_modal_frame(
-    flint_px(360), flint_px(260), "Edit",
+      <pre><code>UIPanelFrame frame = DrawUIModalFrame(
+    ScaleUIPx(360), ScaleUIPx(260), "Edit",
     (Texture2D){0}, (Texture2D){0});
 
-ui_draw_label_text_field(row, frame.content_x, frame.content_y, frame.content_w);</code></pre>
+DrawUILabelTextField(row, frame.content_x, frame.content_y, frame.content_w);</code></pre>
     </section>
 
     <section id="controls" class="wrap section">
@@ -117,20 +117,20 @@ ui_draw_label_text_field(row, frame.content_x, frame.content_y, frame.content_w)
       <div class="cards">
         <article>
           <h3>Text Input</h3>
-          <code>flint_ui_text_field</code>
-          <code>ui_draw_label_text_field</code>
+          <code>DrawUITextField</code>
+          <code>DrawUILabelTextField</code>
         </article>
         <article>
           <h3>Choices</h3>
-          <code>ui_draw_checkbox_toggle</code>
-          <code>ui_draw_toggle_switch</code>
-          <code>ui_draw_dropdown_button</code>
+          <code>DrawUICheckboxToggle</code>
+          <code>DrawUIToggleSwitch</code>
+          <code>DrawUIDropdownButton</code>
         </article>
         <article>
           <h3>Actions</h3>
-          <code>flint_ui_button</code>
-          <code>ui_draw_generic_button</code>
-          <code>flint_ui_icon_button</code>
+          <code>DrawUIButton</code>
+          <code>DrawUIGenericButton</code>
+          <code>DrawUIIconButton</code>
         </article>
       </div>
     </section>
@@ -139,16 +139,16 @@ ui_draw_label_text_field(row, frame.content_x, frame.content_y, frame.content_w)
       <div>
         <h2>App Support</h2>
         <p>
-          Flint is the source owner for shared application plumbing. Apps keep
+          File UI Toolkit is the source owner for shared application plumbing. Apps keep
           their build outputs local, but common dependency source lives under
-          Flint so account management and network builds stay consistent.
+          File UI Toolkit so account management and network builds stay consistent.
         </p>
       </div>
       <div class="cards">
         <article>
           <h3>Lyra Account</h3>
           <p>
-            <code>flint_lyra_account</code> creates, imports, exports, signs,
+            <code>LyraAccount</code> creates, imports, exports, signs,
             and verifies generic account keys without app-specific key names.
           </p>
         </article>
@@ -157,7 +157,7 @@ ui_draw_label_text_field(row, frame.content_x, frame.content_y, frame.content_w)
           <p>
             <code>vendor/liboqs</code> is the shared source for post-quantum
             signing support. Downstream builds can enable it with
-            <code>FLINT_HAS_LIBOQS</code>.
+            <code>HAS_LIBOQS</code>.
           </p>
         </article>
         <article>
@@ -174,21 +174,21 @@ ui_draw_label_text_field(row, frame.content_x, frame.content_y, frame.content_w)
     <section id="fonts" class="wrap section">
       <h2>Fonts</h2>
       <p>
-        Flint ships <code>tools/otfchop</code> for generating bitmap font
+        File UI Toolkit ships <code>tools/otfchop</code> for generating bitmap font
         atlases and metadata. Load generated assets with
-        <code>flint_text_load_chopped_font</code>, then install the font with
-        <code>flint_text_set_font</code> and <code>flint_text_set_small_font</code>.
+        <code>LoadUIChoppedFont</code>, then install the font with
+        <code>SetUIFont</code> and <code>SetUISmallFont</code>.
       </p>
-      <pre><code>Font font = flint_text_load_chopped_font(
+      <pre><code>Font font = LoadUIChoppedFont(
     "assets/fonts/locales.png",
     "assets/fonts/locales.dat",
-    FLINT_TEXT_BASE_SIZE);
-flint_text_set_font(font);</code></pre>
+    UI_TEXT_BASE_SIZE);
+SetUIFont(font);</code></pre>
     </section>
   </main>
 
   <footer class="wrap footer">
-    <p>Flint UI is documented in <code>docs/API.md</code>. This page is static and ready for Netlify.</p>
+    <p>UI is documented in <code>docs/API.md</code>. This page is static and ready for Netlify.</p>
   </footer>
   <script src="highlight.js"></script>
 </body>

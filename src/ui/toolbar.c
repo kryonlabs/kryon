@@ -1,27 +1,27 @@
 #include "ui.h"
 
-FlintUIToolbarResult
-ui_draw_toolbar(FlintUIToolbar toolbar)
+UIToolbarResult
+DrawUIToolbar(UIToolbar toolbar)
 {
-    FlintUIToolbarResult result = {-1, -1};
+    UIToolbarResult result = {-1, -1};
     int side_padding = toolbar.side_padding < 0
                            ? 0
                            : (toolbar.side_padding > 0 ? toolbar.side_padding
-                                                       : flint_px(12));
+                                                       : ScaleUIPx(12));
     int action_icon_size = toolbar.action_icon_size > 0
                                ? toolbar.action_icon_size
-                               : flint_px(20);
+                               : ScaleUIPx(20);
     int action_icon_padding = toolbar.action_icon_padding > 0
                                   ? toolbar.action_icon_padding
-                                  : flint_px(8);
-    int action_gap = toolbar.action_gap > 0 ? toolbar.action_gap : flint_px(6);
+                                  : ScaleUIPx(8);
+    int action_gap = toolbar.action_gap > 0 ? toolbar.action_gap : ScaleUIPx(6);
     int action_w = action_icon_size + action_icon_padding * 2;
     int action_y = toolbar.y + (toolbar.height - action_w) / 2;
     int controls_x = toolbar.x + toolbar.width - side_padding;
 
     if(toolbar.draw_menu) {
         if(toolbar.options != NULL && toolbar.selected_index != NULL &&
-           ui_draw_dropdown_menu(toolbar.id))
+           DrawUIDropdownMenu(toolbar.id))
             result.selected_menu_item = toolbar.selected_index != NULL
                                             ? *toolbar.selected_index
                                             : -1;
@@ -29,10 +29,10 @@ ui_draw_toolbar(FlintUIToolbar toolbar)
     }
 
     DrawRectangle(toolbar.x, toolbar.y, toolbar.width, toolbar.height,
-                  flint_darken(c_bg, 14));
+                  DarkenUIColor(c_bg, 14));
     DrawLine(toolbar.x, toolbar.y + toolbar.height - 1,
              toolbar.x + toolbar.width, toolbar.y + toolbar.height - 1,
-             flint_darken(c_bg, 42));
+             DarkenUIColor(c_bg, 42));
 
     if(toolbar.actions != NULL && toolbar.action_count > 0) {
         for(int i = toolbar.action_count - 1; i >= 0; i--) {
@@ -42,7 +42,7 @@ ui_draw_toolbar(FlintUIToolbar toolbar)
             controls_x -= action_w;
             action_x = controls_x;
             if(!toolbar.actions[i].disabled &&
-               ui_draw_icon_btn_padded(action_x, action_y, action_icon_size,
+               DrawUIPaddedIconBtn(action_x, action_y, action_icon_size,
                                        action_icon_padding,
                                        toolbar.actions[i].icon, &hover))
                 result.clicked_action = i;
@@ -54,7 +54,7 @@ ui_draw_toolbar(FlintUIToolbar toolbar)
        toolbar.selected_index != NULL) {
         int dropdown_h = toolbar.dropdown_height > 0
                              ? toolbar.dropdown_height
-                             : flint_px(36);
+                             : ScaleUIPx(36);
         int dropdown_x = 0;
         int dropdown_y = toolbar.y;
         int dropdown_w = controls_x - dropdown_x;
@@ -71,7 +71,7 @@ ui_draw_toolbar(FlintUIToolbar toolbar)
             dropdown_w = dropdown_available_w;
         if(dropdown_w < 0)
             dropdown_w = 0;
-        ui_draw_dropdown_button(toolbar.id, dropdown_x, dropdown_y,
+        DrawUIDropdownButton(toolbar.id, dropdown_x, dropdown_y,
                                 dropdown_w, dropdown_h,
                                 toolbar.options, toolbar.option_count,
                                 toolbar.selected_index);
@@ -80,27 +80,27 @@ ui_draw_toolbar(FlintUIToolbar toolbar)
     return result;
 }
 
-FlintUIToolbarHeaderResult
-ui_draw_toolbar_header(FlintUIToolbarHeader header)
+UIToolbarHeaderResult
+DrawUIToolbarHeader(UIToolbarHeader header)
 {
-    FlintUIToolbarHeaderResult result;
-    FlintUIToolbar toolbar = header.toolbar;
-    int height = toolbar.height > 0 ? toolbar.height : flint_px(58);
-    int icon_size = header.leading_icon_size > 0 ? header.leading_icon_size : flint_px(20);
-    int icon_padding = header.leading_icon_padding > 0 ? header.leading_icon_padding : flint_px(8);
+    UIToolbarHeaderResult result;
+    UIToolbar toolbar = header.toolbar;
+    int height = toolbar.height > 0 ? toolbar.height : ScaleUIPx(58);
+    int icon_size = header.leading_icon_size > 0 ? header.leading_icon_size : ScaleUIPx(20);
+    int icon_padding = header.leading_icon_padding > 0 ? header.leading_icon_padding : ScaleUIPx(8);
     int leading_w = header.leading_width;
     int hover = 0;
 
     memset(&result, 0, sizeof(result));
     if(leading_w <= 0 && header.leading_icon.id != 0)
-        leading_w = icon_size + icon_padding * 2 + flint_px(24);
+        leading_w = icon_size + icon_padding * 2 + ScaleUIPx(24);
 
     if(!toolbar.draw_menu) {
-        DrawRectangle(0, 0, ui_view_width, height, flint_darken(c_bg, 14));
+        DrawRectangle(0, 0, ui_view_width, height, DarkenUIColor(c_bg, 14));
         DrawLine(0, height - 1, ui_view_width, height - 1,
-                 flint_darken(c_bg, 42));
+                 DarkenUIColor(c_bg, 42));
         if(header.leading_icon.id != 0) {
-            result.leading_clicked = ui_draw_icon_btn_padded(flint_px(12), flint_px(12),
+            result.leading_clicked = DrawUIPaddedIconBtn(ScaleUIPx(12), ScaleUIPx(12),
                                                              icon_size, icon_padding,
                                                              header.leading_icon,
                                                              &hover);
@@ -113,6 +113,6 @@ ui_draw_toolbar_header(FlintUIToolbarHeader header)
             toolbar.width = 0;
     }
 
-    result.toolbar = ui_draw_toolbar(toolbar);
+    result.toolbar = DrawUIToolbar(toolbar);
     return result;
 }

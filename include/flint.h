@@ -1,22 +1,22 @@
-#ifndef FLINT_H
-#define FLINT_H
+#ifndef UIKIT_H
+#define UIKIT_H
 
-#include "flint_color.h"
-#include "flint_scaling.h"
-#include "flint_dpi.h"
-#include "flint_layout.h"
-#include "flint_clip.h"
-#include "flint_icons.h"
-#include "flint_text.h"
-#include "flint_ui.h"
-#include "flint_text_layout.h"
-#include "flint_transition.h"
-#include "flint_locale.h"
-#include "flint_lyra_account.h"
-#include "flint_lyra_sync.h"
-#include "flint_theme.h"
-#include "flint_theme_meta.h"
-#include "flint_web.h"
-#include "flint_runtime_assets.h"
+#include "ui_color.h"
+#include "ui_scaling.h"
+#include "ui_dpi.h"
+#include "ui_layout.h"
+#include "ui_clip.h"
+#include "ui_icons.h"
+#include "ui_text.h"
+#include "ui.h"
+#include "ui_text_layout.h"
+#include "ui_transition.h"
+#include "locale.h"
+#include "lyra_account.h"
+#include "lyra_sync.h"
+#include "theme.h"
+#include "theme_meta.h"
+#include "web.h"
+#include "runtime_assets.h"
 
-#endif // FLINT_H
+#endif // UIKIT_H

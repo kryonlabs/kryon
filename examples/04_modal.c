@@ -1,27 +1,27 @@
-#include "flint_example_font.h"
-#include "flint_scaling.h"
-#include "flint_theme.h"
-#include "flint_theme_meta.h"
-#include "flint_ui.h"
+#include "example_ui_font.h"
+#include "ui_scaling.h"
+#include "theme.h"
+#include "theme_meta.h"
+#include "ui.h"
 #include <raylib.h>
 #include <stdio.h>
 
 static void
 load_theme(void)
 {
-    flint_theme_set_current(FLINT_THEME_SKY, 0);
+    SetCurrentTheme(THEME_SKY, 0);
 }
 
 static void
 apply_ui_theme(void)
 {
-    ui_set_colors(flint_theme_get_text(),
-                  flint_theme_get_bg(),
-                  flint_theme_get_surface(),
-                  flint_theme_get_circle(),
-                  flint_theme_get_button(),
-                  flint_theme_get_button_hover(),
-                  flint_theme_get_icon());
+    SetUIColors(GetThemeText(),
+                  GetThemeBackground(),
+                  GetThemeSurface(),
+                  GetThemeCircle(),
+                  GetThemeButton(),
+                  GetThemeButtonHover(),
+                  GetThemeIcon());
 }
 
 int
@@ -32,84 +32,84 @@ main(void)
     int modal_clicks = 0;
     int last_result = 0;
 
-    InitWindow(800, 600, "Flint Modal Example");
+    InitWindow(800, 600, "File UI Toolkit Modal Example");
     SetTargetFPS(60);
-    flint_example_load_font();
+    LoadExampleUIFont();
     load_theme();
-    ui_init(GetScreenWidth(), GetScreenHeight(), 1.0f);
+    InitUI(GetScreenWidth(), GetScreenHeight(), 1.0f);
     apply_ui_theme();
 
-    printf("Flint Modal Example\n");
+    printf("File UI Toolkit Modal Example\n");
     printf("Click Open Modal. While it is open, background clicks are blocked.\n");
 
     while(!WindowShouldClose()) {
         int hover = 0;
 
         BeginDrawing();
-        ClearBackground(flint_theme_get_bg());
+        ClearBackground(GetThemeBackground());
         apply_ui_theme();
-        flint_ui_begin_frame(GetScreenWidth(), GetScreenHeight(), flint_get_dpi_scale());
+        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
 
-        flint_text_draw("Modal capture example", 32, 32, 28, flint_theme_get_text());
-        flint_text_draw("Try clicking the background counter while the modal is open.",
-                 32, 72, 18, flint_darken(flint_theme_get_text(), 30));
+        DrawUIText("Modal capture example", 32, 32, 28, GetThemeText());
+        DrawUIText("Try clicking the background counter while the modal is open.",
+                 32, 72, 18, DarkenUIColor(GetThemeText(), 30));
 
-        if(ui_draw_generic_button(32, 120, 220, 42, "Background Button",
+        if(DrawUIGenericButton(32, 120, 220, 42, "Background Button",
                                   UI_BUTTON_STYLE_SECONDARY, 0, &hover)) {
             background_clicks++;
         }
-        flint_text_draw(TextFormat("Background clicks: %d", background_clicks),
-                 32, 176, 18, flint_theme_get_text());
-        flint_text_draw(TextFormat("Last modal result: %s",
+        DrawUIText(TextFormat("Background clicks: %d", background_clicks),
+                 32, 176, 18, GetThemeText());
+        DrawUIText(TextFormat("Last modal result: %s",
                                    last_result == 1 ? "cancel" :
                                    last_result == 2 ? "confirm" : "none"),
-                 32, 204, 18, flint_theme_get_text());
+                 32, 204, 18, GetThemeText());
 
-        if(ui_draw_generic_button(32, 230, 220, 42, "Open Modal",
+        if(DrawUIGenericButton(32, 230, 220, 42, "Open Modal",
                                   UI_BUTTON_STYLE_PRIMARY, 0, &hover)) {
             modal_open = 1;
         }
 
         if(modal_open) {
-            FlintUIPanelFrame frame;
+            UIPanelFrame frame;
             int x;
             int y;
             int button_w;
             int button_h;
             int gap;
 
-            frame = ui_draw_modal_frame(flint_px(380), flint_px(270),
+            frame = DrawUIModalFrame(ScaleUIPx(380), ScaleUIPx(270),
                                         "Real Modal", (Texture2D){0}, (Texture2D){0});
             x = frame.content_x;
             y = frame.content_y;
 
-            flint_text_draw("This is an actual modal frame.", x, y,
-                            20, flint_theme_get_text());
-            y += flint_px(34);
-            flint_text_draw("Clicking outside is blocked while it is open.",
-                            x, y, 18, flint_darken(flint_theme_get_text(), 30));
-            y += flint_px(30);
-            flint_text_draw(TextFormat("Modal-only clicks: %d", modal_clicks),
-                            x, y, 18, flint_theme_get_text());
-            y += flint_px(38);
+            DrawUIText("This is an actual modal frame.", x, y,
+                            20, GetThemeText());
+            y += ScaleUIPx(34);
+            DrawUIText("Clicking outside is blocked while it is open.",
+                            x, y, 18, DarkenUIColor(GetThemeText(), 30));
+            y += ScaleUIPx(30);
+            DrawUIText(TextFormat("Modal-only clicks: %d", modal_clicks),
+                            x, y, 18, GetThemeText());
+            y += ScaleUIPx(38);
 
-            if(ui_draw_generic_button(x, y, frame.content_w, flint_px(40),
+            if(DrawUIGenericButton(x, y, frame.content_w, ScaleUIPx(40),
                                       "Button inside modal", UI_BUTTON_STYLE_SECONDARY,
                                       0, &hover)) {
                 modal_clicks++;
             }
 
-            button_h = flint_px(40);
-            button_w = (frame.content_w - flint_px(12)) / 2;
-            gap = flint_px(12);
-            y = frame.y + frame.h - button_h - flint_px(18);
+            button_h = ScaleUIPx(40);
+            button_w = (frame.content_w - ScaleUIPx(12)) / 2;
+            gap = ScaleUIPx(12);
+            y = frame.y + frame.h - button_h - ScaleUIPx(18);
 
-            if(ui_draw_generic_button(x, y, button_w, button_h, "Cancel",
+            if(DrawUIGenericButton(x, y, button_w, button_h, "Cancel",
                                       UI_BUTTON_STYLE_SECONDARY, 0, &hover)) {
                 modal_open = 0;
                 last_result = 1;
             }
-            if(ui_draw_generic_button(x + button_w + gap, y, button_w, button_h,
+            if(DrawUIGenericButton(x + button_w + gap, y, button_w, button_h,
                                       "Confirm", UI_BUTTON_STYLE_PRIMARY, 0, &hover)) {
                 modal_open = 0;
                 last_result = 2;
@@ -121,7 +121,7 @@ main(void)
             break;
         EndDrawing();
     }
-    flint_example_unload_font();
+    UnloadExampleUIFont();
 
     CloseWindow();
     return 0;

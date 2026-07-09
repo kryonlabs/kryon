@@ -1,6 +1,6 @@
-# Flint Examples
+# File UI Toolkit Examples
 
-This directory contains example programs demonstrating Flint library components.
+This directory contains example programs demonstrating File UI Toolkit library components.
 
 ## Available Examples
 
@@ -8,8 +8,8 @@ This directory contains example programs demonstrating Flint library components.
 
 ## Requirements
 
-- Flint library must be built (`make` in parent directory)
-- Raylib from Flint's `vendor/raylib` submodule, or set `RAYLIB_DIR=/path/to/raylib/src`
+- File UI Toolkit library must be built (`make` in parent directory)
+- Raylib from File UI Toolkit's `vendor/raylib` submodule, or set `RAYLIB_DIR=/path/to/raylib/src`
 - X11 libraries (Linux): `-lGL -lm -lpthread -ldl -lrt -lX11`
 
 ## Building Examples
@@ -38,8 +38,8 @@ make run
 ## Example Features
 
 ### 01_file_dialog
-- Demonstrates Flint file dialog component
-- Theme integration with all 6 Flint themes
+- Demonstrates File UI Toolkit file dialog component
+- Theme integration with all 6 File UI Toolkit themes
 - Load and save dialog modes
 - Hidden files filtering (checkbox)
 - Full keyboard/mouse interaction

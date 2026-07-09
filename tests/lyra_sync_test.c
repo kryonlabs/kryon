@@ -1,4 +1,4 @@
-#include "flint_lyra_sync.h"
+#include "lyra_sync.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +51,7 @@ test_set_text(const char *key, const char *value, void *user)
 static int
 test_http(const char *method, const char *url, const char *body,
           const char *const *headers, int header_count,
-          FlintLyraSyncBuffer *response, long *status, void *user)
+          LyraSyncBuffer *response, long *status, void *user)
 {
     TestCtx *ctx = user;
     snprintf(ctx->last_method, sizeof(ctx->last_method), "%s", method != NULL ? method : "");
@@ -64,7 +64,7 @@ test_http(const char *method, const char *url, const char *body,
     }
     if(status != NULL)
         *status = 200;
-    return flint_lyra_sync_buffer_append(response, "{\"status\":\"ok\",\"changes\":{}}",
+    return AppendLyraSyncBuffer(response, "{\"status\":\"ok\",\"changes\":{}}",
                                          strlen("{\"status\":\"ok\",\"changes\":{}}"));
 }
 
@@ -103,7 +103,7 @@ test_purge(void *user)
 }
 
 static void
-fill_account(FlintLyraAccount *account)
+fill_account(LyraAccount *account)
 {
     memset(account, 0, sizeof(*account));
     memset(account->public_id, 'a', 64);
@@ -117,17 +117,17 @@ test_url_helpers(void)
 {
     char out[128];
 
-    check(flint_lyra_sync_url_valid("https://api.example.test"), "https url valid");
-    check(flint_lyra_sync_url_valid("localhost:8080"), "localhost shorthand valid");
-    check(!flint_lyra_sync_url_valid("http://example.test"), "plain remote http rejected");
-    check(flint_lyra_sync_normalize_url("localhost:8080", out, sizeof(out)) &&
+    check(IsLyraSyncURLValid("https://api.example.test"), "https url valid");
+    check(IsLyraSyncURLValid("localhost:8080"), "localhost shorthand valid");
+    check(!IsLyraSyncURLValid("http://example.test"), "plain remote http rejected");
+    check(NormalizeLyraSyncURL("localhost:8080", out, sizeof(out)) &&
               strcmp(out, "http://localhost:8080") == 0,
           "normalize localhost");
-    check(flint_lyra_sync_join_url(out, sizeof(out), "https://api.example.test/",
+    check(JoinLyraSyncURL(out, sizeof(out), "https://api.example.test/",
                                    "/api/v1/sync") &&
               strcmp(out, "https://api.example.test/api/v1/sync") == 0,
           "join trims trailing slash");
-    check(flint_lyra_sync_join_ws_url(out, sizeof(out), "https://api.example.test",
+    check(JoinLyraSyncWebSocketURL(out, sizeof(out), "https://api.example.test",
                                       "/api/v1/sync/ws") &&
               strcmp(out, "wss://api.example.test/api/v1/sync/ws") == 0,
           "join websocket https");
@@ -136,18 +136,18 @@ test_url_helpers(void)
 static void
 test_json_helpers(void)
 {
-    FlintLyraSyncBuffer buffer = {0};
+    LyraSyncBuffer buffer = {0};
     char value[32];
 
-    check(flint_lyra_sync_buffer_append_json_string(&buffer, "a\"b\n") &&
+    check(AppendLyraSyncBufferJSONString(&buffer, "a\"b\n") &&
               strcmp(buffer.data, "\"a\\\"b\\n\"") == 0,
           "json string escaping");
-    flint_lyra_sync_buffer_free(&buffer);
-    check(flint_lyra_sync_find_json_string("{\"auth_token\":\"tok\"}", "auth_token",
+    FreeLyraSyncBuffer(&buffer);
+    check(FindLyraSyncJSONString("{\"auth_token\":\"tok\"}", "auth_token",
                                            value, sizeof(value)) &&
               strcmp(value, "tok") == 0,
           "json string find");
-    check(flint_lyra_sync_find_json_int64("{\"expires_in_seconds\":42}",
+    check(FindLyraSyncJSONInt64("{\"expires_in_seconds\":42}",
                                           "expires_in_seconds", 0) == 42,
           "json int find");
 }
@@ -156,9 +156,9 @@ static void
 test_sync_run_with_valid_token(void)
 {
     TestCtx ctx = {0};
-    FlintLyraAccount account;
-    FlintLyraSyncConfig cfg;
-    FlintLyraSyncResult result;
+    LyraAccount account;
+    LyraSyncConfig cfg;
+    LyraSyncResult result;
 
     fill_account(&account);
     snprintf(ctx.token, sizeof(ctx.token), "saved-token");
@@ -176,8 +176,8 @@ test_sync_run_with_valid_token(void)
     cfg.purge_synced_deleted = test_purge;
     cfg.user = &ctx;
 
-    result = flint_lyra_sync_run(&cfg);
-    check(result == FLINT_LYRA_SYNC_OK, "sync run returns ok");
+    result = RunLyraSync(&cfg);
+    check(result == LYRA_SYNC_OK, "sync run returns ok");
     check(strcmp(ctx.last_method, "POST") == 0, "sync uses post");
     check(strcmp(ctx.last_url, "https://api.example.test/api/v1/sync") == 0,
           "sync posts to sync path");

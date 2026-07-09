@@ -6,75 +6,75 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
     int active = CheckCollisionPointRec(mouse_world, bounds);
-    int hovered = active && ui_hover_effects_enabled();
+    int hovered = active && UIHoverEffectsEnabled();
     Color fill = hovered ? c_button_hover : c_button;
     int text_w;
 
     DrawRectangle(x, y, w, h, fill);
-    ui_draw_bevel(x, y, w, h, flint_lighten(fill, 40), flint_darken(fill, 40));
+    DrawUIBevel(x, y, w, h, LightenUIColor(fill, 40), DarkenUIColor(fill, 40));
     if(active)
-        ui_mark_clickable();
+        MarkUIClickable();
 
-    text_w = flint_text_measure(label, font);
-    flint_text_draw(label, x + (w - text_w) / 2, flint_ui_text_y(label, y, h, font),
+    text_w = MeasureUIText(label, font);
+    DrawUIText(label, x + (w - text_w) / 2, GetUIControlTextY(label, y, h, font),
                     font, c_text);
 
     return active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
 }
 
 int
-ui_draw_modal(const char *title, const char *message,
+DrawUIModal(const char *title, const char *message,
                const char *cancel_btn, const char *confirm_btn)
 {
-    int modal_w = flint_px(280);
+    int modal_w = ScaleUIPx(280);
     int modal_x;
     int modal_y;
-    int title_font = flint_ui_font();
-    int msg_font = flint_ui_font();
-    int btn_font = flint_ui_font();
-    int btn_h = flint_clamp_px(36, 32, 40);
-    int btn_w = flint_px(100);
-    int btn_gap = flint_px(12);
-    int title_h = flint_px(32);
+    int title_font = GetUIFontSize();
+    int msg_font = GetUIFontSize();
+    int btn_font = GetUIFontSize();
+    int btn_h = ClampUIPx(36, 32, 40);
+    int btn_w = ScaleUIPx(100);
+    int btn_gap = ScaleUIPx(12);
+    int title_h = ScaleUIPx(32);
     int msg_x;
     int msg_y;
-    int msg_w = modal_w - flint_px(32);
-    int msg_gap = flint_px(18);
+    int msg_w = modal_w - ScaleUIPx(32);
+    int msg_gap = ScaleUIPx(18);
     int modal_h;
     int btn_y;
     Vector2 mouse_world = ui_mouse_world();
-    FlintTextLayout msg_layout = flint_text_layout_parse(message, g_ui_gear_icon,
+    UITextLayout msg_layout = ParseUITextLayout(message, g_ui_gear_icon,
                                                           UI_ICON_TYPE_GEAR, msg_font);
-    flint_text_layout_reflow(&msg_layout, msg_w, msg_font, flint_px(4));
+    ReflowUITextLayout(&msg_layout, msg_w, msg_font, ScaleUIPx(4));
 
-    modal_h = title_h + flint_text_layout_get_height(&msg_layout) + msg_gap + btn_h + flint_px(20);
-    if(modal_h < flint_px(160))
-        modal_h = flint_px(160);
-    if(modal_h > ui_view_height - flint_px(24))
-        modal_h = ui_view_height - flint_px(24);
+    modal_h = title_h + GetUITextLayoutHeight(&msg_layout) + msg_gap + btn_h + ScaleUIPx(20);
+    if(modal_h < ScaleUIPx(160))
+        modal_h = ScaleUIPx(160);
+    if(modal_h > ui_view_height - ScaleUIPx(24))
+        modal_h = ui_view_height - ScaleUIPx(24);
     modal_x = (ui_view_width - modal_w) / 2;
     modal_y = (ui_view_height - modal_h) / 2;
-    ui_set_modal_capture((Rectangle){
+    SetUIModalCapture((Rectangle){
         (float)modal_x, (float)modal_y, (float)modal_w, (float)modal_h
     });
-    msg_x = modal_x + flint_px(16);
+    msg_x = modal_x + ScaleUIPx(16);
     msg_y = modal_y + title_h;
-    btn_y = modal_y + modal_h - btn_h - flint_px(16);
+    btn_y = modal_y + modal_h - btn_h - ScaleUIPx(16);
 
     /* Dim background */
     DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
 
     /* Modal background */
     DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
-    ui_draw_bevel(modal_x, modal_y, modal_w, modal_h, flint_lighten(c_surface, 40), flint_darken(c_surface, 40));
+    DrawUIBevel(modal_x, modal_y, modal_w, modal_h, LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
     /* Title */
-    int title_w = flint_text_measure(title, title_font);
-    flint_text_draw(title, modal_x + (modal_w - title_w) / 2, modal_y + flint_px(12), title_font, c_text);
+    int title_w = MeasureUIText(title, title_font);
+    DrawUIText(title, modal_x + (modal_w - title_w) / 2, modal_y + ScaleUIPx(12), title_font, c_text);
 
     /* Draw the layout */
-    flint_text_layout_draw(&msg_layout, msg_x, &msg_y, msg_font, c_text);
-    flint_text_layout_free(&msg_layout);
+    DrawUITextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
+    FreeUITextLayout(&msg_layout);
 
     /* Buttons */
     int cancel_x = modal_x + (modal_w - btn_w * 2 - btn_gap) / 2;
@@ -90,58 +90,58 @@ ui_draw_modal(const char *title, const char *message,
 }
 
 int
-ui_draw_modal_3btn(const char *title, const char *message,
+DrawUIModal3Button(const char *title, const char *message,
                     const char *left_btn, const char *middle_btn, const char *right_btn)
 {
-    int modal_w = flint_px(300);
+    int modal_w = ScaleUIPx(300);
     int modal_x;
     int modal_y;
-    int title_font = flint_ui_font();
-    int msg_font = flint_ui_font();
-    int btn_font = flint_ui_font();
-    int btn_h = flint_clamp_px(36, 32, 40);
-    int btn_w = flint_px(90);
-    int btn_gap = flint_px(8);
-    int title_h = flint_px(32);
+    int title_font = GetUIFontSize();
+    int msg_font = GetUIFontSize();
+    int btn_font = GetUIFontSize();
+    int btn_h = ClampUIPx(36, 32, 40);
+    int btn_w = ScaleUIPx(90);
+    int btn_gap = ScaleUIPx(8);
+    int title_h = ScaleUIPx(32);
     int msg_x;
     int msg_y;
-    int msg_w = modal_w - flint_px(32);
-    int msg_gap = flint_px(18);
+    int msg_w = modal_w - ScaleUIPx(32);
+    int msg_gap = ScaleUIPx(18);
     int modal_h;
     int btn_y;
     Vector2 mouse_world = ui_mouse_world();
-    FlintTextLayout msg_layout = flint_text_layout_parse(message, g_ui_gear_icon,
+    UITextLayout msg_layout = ParseUITextLayout(message, g_ui_gear_icon,
                                                           UI_ICON_TYPE_GEAR, msg_font);
-    flint_text_layout_reflow(&msg_layout, msg_w, msg_font, flint_px(4));
+    ReflowUITextLayout(&msg_layout, msg_w, msg_font, ScaleUIPx(4));
 
-    modal_h = title_h + flint_text_layout_get_height(&msg_layout) + msg_gap + btn_h + flint_px(20);
-    if(modal_h < flint_px(160))
-        modal_h = flint_px(160);
-    if(modal_h > ui_view_height - flint_px(24))
-        modal_h = ui_view_height - flint_px(24);
+    modal_h = title_h + GetUITextLayoutHeight(&msg_layout) + msg_gap + btn_h + ScaleUIPx(20);
+    if(modal_h < ScaleUIPx(160))
+        modal_h = ScaleUIPx(160);
+    if(modal_h > ui_view_height - ScaleUIPx(24))
+        modal_h = ui_view_height - ScaleUIPx(24);
     modal_x = (ui_view_width - modal_w) / 2;
     modal_y = (ui_view_height - modal_h) / 2;
-    ui_set_modal_capture((Rectangle){
+    SetUIModalCapture((Rectangle){
         (float)modal_x, (float)modal_y, (float)modal_w, (float)modal_h
     });
-    msg_x = modal_x + flint_px(16);
+    msg_x = modal_x + ScaleUIPx(16);
     msg_y = modal_y + title_h;
-    btn_y = modal_y + modal_h - btn_h - flint_px(16);
+    btn_y = modal_y + modal_h - btn_h - ScaleUIPx(16);
 
     /* Dim background */
     DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
 
     /* Modal background */
     DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
-    ui_draw_bevel(modal_x, modal_y, modal_w, modal_h, flint_lighten(c_surface, 40), flint_darken(c_surface, 40));
+    DrawUIBevel(modal_x, modal_y, modal_w, modal_h, LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
     /* Title */
-    int title_w = flint_text_measure(title, title_font);
-    flint_text_draw(title, modal_x + (modal_w - title_w) / 2, modal_y + flint_px(12), title_font, c_text);
+    int title_w = MeasureUIText(title, title_font);
+    DrawUIText(title, modal_x + (modal_w - title_w) / 2, modal_y + ScaleUIPx(12), title_font, c_text);
 
     /* Draw the layout */
-    flint_text_layout_draw(&msg_layout, msg_x, &msg_y, msg_font, c_text);
-    flint_text_layout_free(&msg_layout);
+    DrawUITextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
+    FreeUITextLayout(&msg_layout);
 
     /* Calculate button positions */
     int total_btn_w = btn_w * 3 + btn_gap * 2;
@@ -162,37 +162,37 @@ ui_draw_modal_3btn(const char *title, const char *message,
 }
 
 int
-ui_paragraph_modal_height(FlintUIParagraphModalMeasure measure)
+GetUIParagraphModalHeight(UIParagraphModalMeasure measure)
 {
-    int width = measure.width > 0 ? measure.width : flint_px(320);
-    int header_h = measure.header_h > 0 ? measure.header_h : flint_px(58);
-    int button_h = measure.button_h > 0 ? measure.button_h : flint_px(36);
-    int line_gap = measure.line_gap > 0 ? measure.line_gap : flint_px(4);
-    int font = measure.font > 0 ? measure.font : flint_ui_font();
+    int width = measure.width > 0 ? measure.width : ScaleUIPx(320);
+    int header_h = measure.header_h > 0 ? measure.header_h : ScaleUIPx(58);
+    int button_h = measure.button_h > 0 ? measure.button_h : ScaleUIPx(36);
+    int line_gap = measure.line_gap > 0 ? measure.line_gap : ScaleUIPx(4);
+    int font = measure.font > 0 ? measure.font : GetUIFontSize();
     int extra_lines = measure.extra_lines > 0 ? measure.extra_lines : 0;
     int min_h = measure.min_height > 0 ? measure.min_height : 0;
     int content_w;
-    FlintUIParagraph paragraph;
+    UIParagraph paragraph;
     int height;
 
-    if(width > ui_view_width - flint_px(24))
-        width = ui_view_width - flint_px(24);
-    if(width < flint_px(160))
-        width = flint_px(160);
-    content_w = width - flint_px(36);
-    if(content_w < flint_px(120))
-        content_w = flint_px(120);
-    paragraph = (FlintUIParagraph){
+    if(width > ui_view_width - ScaleUIPx(24))
+        width = ui_view_width - ScaleUIPx(24);
+    if(width < ScaleUIPx(160))
+        width = ScaleUIPx(160);
+    content_w = width - ScaleUIPx(36);
+    if(content_w < ScaleUIPx(120))
+        content_w = ScaleUIPx(120);
+    paragraph = (UIParagraph){
         .text = measure.message,
         .width = content_w,
         .font = font,
         .line_gap = line_gap
     };
     height = header_h +
-             flint_ui_paragraph_height(paragraph) +
+             GetUIParagraphHeight(paragraph) +
              extra_lines * (font + line_gap) +
              button_h +
-             flint_px(18);
+             ScaleUIPx(18);
     if(height < min_h)
         height = min_h;
     return height;
@@ -203,88 +203,88 @@ ui_paragraph_modal_height(FlintUIParagraphModalMeasure measure)
  * ================================================================ */
 
 static void
-flint_ui_title_bar_background(int height)
+DrawUITitleBarBackground(int height)
 {
-    DrawRectangle(0, 0, ui_view_width, height, flint_darken(c_bg, 14));
+    DrawRectangle(0, 0, ui_view_width, height, DarkenUIColor(c_bg, 14));
     DrawLine(0, height - 1, ui_view_width, height - 1,
-             flint_darken(c_bg, 42));
+             DarkenUIColor(c_bg, 42));
 }
 
 static int
-flint_ui_title_bar_return_button(Texture2D return_icon, int height)
+DrawUITitleBarReturnButton(Texture2D return_icon, int height)
 {
-    int icon_size = flint_px(18);
-    int padding = flint_px(5);
+    int icon_size = ScaleUIPx(18);
+    int padding = ScaleUIPx(5);
     int button_size = icon_size + padding * 2;
-    int x = flint_px(4);
+    int x = ScaleUIPx(4);
     int y = (height - button_size) / 2;
     int hover = 0;
 
     if(y < 0)
         y = 0;
-    return ui_draw_icon_btn_padded(x, y, icon_size, padding, return_icon, &hover);
+    return DrawUIPaddedIconBtn(x, y, icon_size, padding, return_icon, &hover);
 }
 
 static void
-flint_ui_title_bar_draw_centered_title(const char *title, int height,
+DrawUITitleBarCenteredTitle(const char *title, int height,
                                        int side_reserved)
 {
-    int font = flint_ui_font();
+    int font = GetUIFontSize();
     int title_w;
     int max_w = ui_view_width - side_reserved * 2;
 
     if(title == NULL)
         title = "";
-    if(max_w < flint_px(48))
-        max_w = ui_view_width - flint_px(16);
-    title_w = flint_text_measure(title, font);
-    while(font > flint_px(12) && title_w > max_w) {
+    if(max_w < ScaleUIPx(48))
+        max_w = ui_view_width - ScaleUIPx(16);
+    title_w = MeasureUIText(title, font);
+    while(font > ScaleUIPx(12) && title_w > max_w) {
         font--;
-        title_w = flint_text_measure(title, font);
+        title_w = MeasureUIText(title, font);
     }
-    flint_text_draw(title, (ui_view_width - title_w) / 2,
-                    flint_ui_text_y(title, 0, height, font),
+    DrawUIText(title, (ui_view_width - title_w) / 2,
+                    GetUIControlTextY(title, 0, height, font),
                     font, c_text);
 }
 
 int
-flint_ui_title_bar_height(void)
+GetUITitleBarHeight(void)
 {
-    return ui_tab_bar_height();
+    return GetUITabBarHeight();
 }
 
 void
-flint_ui_title_bar(const char *title, int height)
+DrawUITitleBar(const char *title, int height)
 {
-    flint_ui_title_bar_background(height);
-    flint_ui_title_bar_draw_centered_title(title, height, flint_px(12));
+    DrawUITitleBarBackground(height);
+    DrawUITitleBarCenteredTitle(title, height, ScaleUIPx(12));
 }
 
 int
-flint_ui_return_title_bar(Texture2D return_icon, const char *title,
+DrawUIReturnTitleBar(Texture2D return_icon, const char *title,
                           int height)
 {
     int clicked;
 
-    flint_ui_title_bar_background(height);
-    clicked = flint_ui_title_bar_return_button(return_icon, height);
-    flint_ui_title_bar_draw_centered_title(title, height, flint_px(56));
+    DrawUITitleBarBackground(height);
+    clicked = DrawUITitleBarReturnButton(return_icon, height);
+    DrawUITitleBarCenteredTitle(title, height, ScaleUIPx(56));
     return clicked;
 }
 
 int
-flint_ui_return_dropdown_title_bar(Texture2D return_icon,
-                                   FlintUITitleBarDropdown dropdown,
+DrawUIReturnDropdownTitleBar(Texture2D return_icon,
+                                   UITitleBarDropdown dropdown,
                                    int height)
 {
-    int icon_size = flint_px(18);
-    int icon_padding = flint_px(5);
+    int icon_size = ScaleUIPx(18);
+    int icon_padding = ScaleUIPx(5);
     int back_w = icon_size + icon_padding * 2;
-    int gap = flint_px(4);
-    int dropdown_x = flint_px(4) + back_w + gap;
-    int dropdown_h = dropdown.height > 0 ? dropdown.height : flint_px(32);
+    int gap = ScaleUIPx(4);
+    int dropdown_x = ScaleUIPx(4) + back_w + gap;
+    int dropdown_h = dropdown.height > 0 ? dropdown.height : ScaleUIPx(32);
     int dropdown_y = (height - dropdown_h) / 2;
-    int dropdown_w = ui_view_width - dropdown_x - flint_px(4);
+    int dropdown_w = ui_view_width - dropdown_x - ScaleUIPx(4);
     int clicked;
 
     if(dropdown_y < 0)
@@ -294,65 +294,65 @@ flint_ui_return_dropdown_title_bar(Texture2D return_icon,
     if(dropdown_w < 1)
         dropdown_w = 1;
 
-    flint_ui_title_bar_background(height);
-    clicked = flint_ui_title_bar_return_button(return_icon, height);
+    DrawUITitleBarBackground(height);
+    clicked = DrawUITitleBarReturnButton(return_icon, height);
     if(!dropdown.disabled)
-        ui_draw_dropdown_button(dropdown.id, dropdown_x, dropdown_y,
+        DrawUIDropdownButton(dropdown.id, dropdown_x, dropdown_y,
                                 dropdown_w, dropdown_h,
                                 dropdown.options, dropdown.option_count,
                                 dropdown.selected_index);
     return clicked;
 }
 
-FlintUIPanelFrame
-ui_draw_modal_frame(int width, int height, const char *title,
+UIPanelFrame
+DrawUIModalFrame(int width, int height, const char *title,
                     Texture2D left_icon,
                     Texture2D right_icon)
 {
-    FlintUIPanelFrame frame = {0};
+    UIPanelFrame frame = {0};
     int title_font;
-    int icon_size = flint_px(20);
-    int icon_padding = flint_px(8);
+    int icon_size = ScaleUIPx(20);
+    int icon_padding = ScaleUIPx(8);
     int icon_w = icon_size + icon_padding * 2;
     int title_w;
     int hover = 0;
 
-    if(width > ui_view_width - flint_px(24))
-        width = ui_view_width - flint_px(24);
-    if(height > ui_view_height - flint_px(24))
-        height = ui_view_height - flint_px(24);
+    if(width > ui_view_width - ScaleUIPx(24))
+        width = ui_view_width - ScaleUIPx(24);
+    if(height > ui_view_height - ScaleUIPx(24))
+        height = ui_view_height - ScaleUIPx(24);
 
     frame.w = width;
     frame.h = height;
     frame.x = (ui_view_width - width) / 2;
     frame.y = (ui_view_height - height) / 2;
-    frame.content_x = frame.x + flint_px(18);
-    frame.content_y = frame.y + flint_px(58);
-    frame.content_w = frame.w - flint_px(36);
-    frame.content_h = frame.h - flint_px(74);
-    title_font = flint_ui_title_font(title, frame.w - icon_w * 2 - flint_px(24));
-    title_w = flint_text_measure(title, title_font);
-    ui_set_modal_capture((Rectangle){
+    frame.content_x = frame.x + ScaleUIPx(18);
+    frame.content_y = frame.y + ScaleUIPx(58);
+    frame.content_w = frame.w - ScaleUIPx(36);
+    frame.content_h = frame.h - ScaleUIPx(74);
+    title_font = GetUITitleFontSize(title, frame.w - icon_w * 2 - ScaleUIPx(24));
+    title_w = MeasureUIText(title, title_font);
+    SetUIModalCapture((Rectangle){
         (float)frame.x, (float)frame.y, (float)frame.w, (float)frame.h
     });
 
     DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
     DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
-    ui_draw_bevel(frame.x, frame.y, frame.w, frame.h,
-                  flint_lighten(c_surface, 40), flint_darken(c_surface, 40));
+    DrawUIBevel(frame.x, frame.y, frame.w, frame.h,
+                  LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
-    flint_text_draw(title, frame.x + (frame.w - title_w) / 2,
-                    frame.y + flint_px(14), title_font, c_text);
+    DrawUIText(title, frame.x + (frame.w - title_w) / 2,
+                    frame.y + ScaleUIPx(14), title_font, c_text);
 
     if(left_icon.id != 0) {
-        frame.left_clicked = ui_draw_icon_btn_padded(frame.x + flint_px(6),
-                                                     frame.y + flint_px(6),
+        frame.left_clicked = DrawUIPaddedIconBtn(frame.x + ScaleUIPx(6),
+                                                     frame.y + ScaleUIPx(6),
                                                      icon_size, icon_padding,
                                                      left_icon, &hover);
     }
     if(right_icon.id != 0) {
-        frame.right_clicked = ui_draw_icon_btn_padded(frame.x + frame.w - icon_w - flint_px(6),
-                                                      frame.y + flint_px(6),
+        frame.right_clicked = DrawUIPaddedIconBtn(frame.x + frame.w - icon_w - ScaleUIPx(6),
+                                                      frame.y + ScaleUIPx(6),
                                                       icon_size, icon_padding,
                                                       right_icon, &hover);
     }

@@ -1,4 +1,4 @@
-# Flint Examples Makefile
+# UI Examples Makefile
 
 CC ?= cc
 CFLAGS_BASE ?= -Wall -Wextra -O2
@@ -22,11 +22,11 @@ WEB_CC ?= emcc
 WEB_AR ?= emar
 WEB_SHELL := web_shell.html
 EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
-FLINT_WEB_SRCS := $(filter-out ../src/flint_file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/ui/*.c))
+FLINT_WEB_SRCS := $(filter-out ../src/file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/ui/*.c))
 FLINT_ALL_WEB_SRCS := $(wildcard ../src/*.c) $(wildcard ../src/ui/*.c)
 include ../mk/raylib.mk
 WEB_RAYLIB_OBJS = $(FLINT_RAYLIB_WEB_OBJS)
-WEB_CFLAGS := -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DFLINT_EMBEDDED_ONLY=1
+WEB_CFLAGS := -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY --shell-file $(WEB_SHELL)
 WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
 
@@ -106,13 +106,13 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 list:
-	@echo "Flint Examples:"
+	@echo "UI Examples:"
 	@for i in $(EXAMPLES); do \
 		echo "  $$i"; \
 		done
 
 run:
-	@echo "Flint Examples"
+	@echo "UI Examples"
 	@echo "================"
 	@echo ""
 	@echo "Available examples:"

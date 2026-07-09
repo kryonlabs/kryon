@@ -20,16 +20,16 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
     int tip_right = (int)(tip.x + tip.width);
     int tip_top = (int)tip.y;
     int tip_bottom = (int)(tip.y + tip.height);
-    int arrow_size = flint_px(10);
+    int arrow_size = ScaleUIPx(10);
     Vector2 start, end;
-    Color color = flint_theme_get_text();
+    Color color = GetThemeText();
 
     if(anchor_cy < tip_top) {
         start.x = (float)anchor_cx;
         start.y = (float)(anchor_cy + anchor.height / 2);
         end.x = (float)anchor_cx;
         end.y = (float)tip_top;
-        DrawLineEx(start, end, (float)flint_px(2), color);
+        DrawLineEx(start, end, (float)ScaleUIPx(2), color);
         DrawTriangle((Vector2){end.x, end.y},
                      (Vector2){end.x - arrow_size, end.y - arrow_size},
                      (Vector2){end.x + arrow_size, end.y - arrow_size},
@@ -39,7 +39,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
         start.y = (float)(anchor_cy - anchor.height / 2);
         end.x = (float)anchor_cx;
         end.y = (float)tip_bottom;
-        DrawLineEx(start, end, (float)flint_px(2), color);
+        DrawLineEx(start, end, (float)ScaleUIPx(2), color);
         DrawTriangle((Vector2){end.x, end.y},
                      (Vector2){end.x + arrow_size, end.y + arrow_size},
                      (Vector2){end.x - arrow_size, end.y + arrow_size},
@@ -49,7 +49,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
         start.y = (float)anchor_cy;
         end.x = (float)tip_left;
         end.y = (float)anchor_cy;
-        DrawLineEx(start, end, (float)flint_px(2), color);
+        DrawLineEx(start, end, (float)ScaleUIPx(2), color);
         DrawTriangle((Vector2){end.x, end.y},
                      (Vector2){end.x - arrow_size, end.y - arrow_size},
                      (Vector2){end.x - arrow_size, end.y + arrow_size},
@@ -59,7 +59,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
         start.y = (float)anchor_cy;
         end.x = (float)tip_right;
         end.y = (float)anchor_cy;
-        DrawLineEx(start, end, (float)flint_px(2), color);
+        DrawLineEx(start, end, (float)ScaleUIPx(2), color);
         DrawTriangle((Vector2){end.x, end.y},
                      (Vector2){end.x + arrow_size, end.y - arrow_size},
                      (Vector2){end.x + arrow_size, end.y + arrow_size},
@@ -71,8 +71,8 @@ static Rectangle
 guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
                  int reserved_top, int reserved_bottom)
 {
-    int margin = flint_px(12);
-    int gap = flint_px(20);
+    int margin = ScaleUIPx(12);
+    int gap = ScaleUIPx(20);
     int bottom = view_h - reserved_bottom;
     int x = (int)(anchor.x + anchor.width / 2) - w / 2;
     int y;
@@ -101,22 +101,22 @@ guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
     return (Rectangle){(float)x, (float)y, (float)w, (float)h};
 }
 
-FlintUIGuideResult
-flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
+UIGuideResult
+DrawUIGuideOverlay(UIGuideOverlay guide)
 {
-    FlintUIGuideResult result = {0};
+    UIGuideResult result = {0};
     int view_w = guide.view_width > 0 ? guide.view_width : ui_view_width;
     int view_h = guide.view_height > 0 ? guide.view_height : ui_view_height;
     int step;
-    int margin = flint_px(12);
+    int margin = ScaleUIPx(12);
     int tip_w = view_w - margin * 2;
-    int pad = flint_px(12);
-    int button_size = flint_px(34);
-    int close_size = flint_px(28);
-    int page_font = FLINT_TEXT_12;
-    int line_gap = guide.line_gap > 0 ? guide.line_gap : flint_px(6);
+    int pad = ScaleUIPx(12);
+    int button_size = ScaleUIPx(34);
+    int close_size = ScaleUIPx(28);
+    int page_font = UI_TEXT_12;
+    int line_gap = guide.line_gap > 0 ? guide.line_gap : ScaleUIPx(6);
     char page_text[32];
-    FlintUIParagraph paragraph;
+    UIParagraph paragraph;
     int paragraph_h;
     int tip_h;
     Rectangle tip;
@@ -153,32 +153,32 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
 
     if(guide.max_width > 0 && tip_w > guide.max_width)
         tip_w = guide.max_width;
-    else if(tip_w > flint_px(300))
-        tip_w = flint_px(300);
+    else if(tip_w > ScaleUIPx(300))
+        tip_w = ScaleUIPx(300);
 
-    paragraph = (FlintUIParagraph){
+    paragraph = (UIParagraph){
         .text = guide.steps[step].text,
-        .width = tip_w - pad * 2 - close_size - flint_px(8),
+        .width = tip_w - pad * 2 - close_size - ScaleUIPx(8),
         .font = guide.paragraph_font,
         .line_gap = line_gap
     };
-    paragraph_h = flint_ui_paragraph_height(paragraph);
-    tip_h = pad + paragraph_h + flint_px(12) + button_size + pad;
-    if(tip_h < flint_px(112))
-        tip_h = flint_px(112);
+    paragraph_h = GetUIParagraphHeight(paragraph);
+    tip_h = pad + paragraph_h + ScaleUIPx(12) + button_size + pad;
+    if(tip_h < ScaleUIPx(112))
+        tip_h = ScaleUIPx(112);
     tip = guide_tip_bounds(guide.steps[step].anchor, tip_w, tip_h, view_w, view_h,
                            guide.reserved_top, guide.reserved_bottom);
-    ui_set_modal_capture(tip);
+    SetUIModalCapture(tip);
 
     DrawRectangle(0, 0, view_w, view_h, (Color){0, 0, 0, 86});
-    DrawRectangleLinesEx(guide.steps[step].anchor, (float)flint_px(2),
-                         flint_theme_get_text());
-    DrawRectangleRounded(tip, 0.08f, 8, flint_theme_get_button());
+    DrawRectangleLinesEx(guide.steps[step].anchor, (float)ScaleUIPx(2),
+                         GetThemeText());
+    DrawRectangleRounded(tip, 0.08f, 8, GetThemeButton());
     DrawRectangleRoundedLines(tip, 0.08f, 8,
-                              flint_darken(flint_theme_get_button(), 35));
+                              DarkenUIColor(GetThemeButton(), 35));
     guide_draw_arrow(tip, guide.steps[step].anchor);
 
-    if(flint_ui_icon_button((FlintUIIconButton){
+    if(DrawUIIconButton((UIIconButton){
            .bounds = {
                tip.x + tip.width - pad - close_size,
                tip.y + pad,
@@ -186,41 +186,41 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
                (float)close_size
            },
            .icon = guide.close_icon,
-           .icon_size = flint_px(16),
-           .icon_padding = flint_px(6)
+           .icon_size = ScaleUIPx(16),
+           .icon_padding = ScaleUIPx(6)
        })) {
         result.closed = 1;
         return result;
     }
 
     y = (int)tip.y + pad;
-    flint_ui_paragraph_draw(paragraph, (int)tip.x + pad, &y);
+    DrawUIParagraph(paragraph, (int)tip.x + pad, &y);
 
     snprintf(page_text, sizeof(page_text), "%d/%d", step + 1, guide.count);
-    flint_text_draw(page_text, (int)tip.x + pad,
+    DrawUIText(page_text, (int)tip.x + pad,
                     (int)tip.y + (int)tip.height - pad - button_size +
                         (button_size - page_font) / 2,
-                    page_font, flint_theme_get_text());
+                    page_font, GetThemeText());
 
     finish = step >= guide.count - 1;
     if(step > 0) {
-        if(flint_ui_icon_button((FlintUIIconButton){
+        if(DrawUIIconButton((UIIconButton){
                .bounds = {
-                   tip.x + tip.width - pad - button_size * 2 - flint_px(8),
+                   tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8),
                    tip.y + tip.height - pad - button_size,
                    (float)button_size,
                    (float)button_size
                },
                .icon = guide.back_icon,
-               .icon_size = flint_px(19),
-               .icon_padding = flint_px(7)
+               .icon_size = ScaleUIPx(19),
+               .icon_padding = ScaleUIPx(7)
            })) {
             *guide.step = step - 1;
             result.changed = 1;
             result.step = *guide.step;
         }
     }
-    if(flint_ui_icon_button((FlintUIIconButton){
+    if(DrawUIIconButton((UIIconButton){
            .bounds = {
                tip.x + tip.width - pad - button_size,
                tip.y + tip.height - pad - button_size,
@@ -228,8 +228,8 @@ flint_ui_draw_guide_overlay(FlintUIGuideOverlay guide)
                (float)button_size
            },
            .icon = finish ? guide.done_icon : guide.next_icon,
-           .icon_size = flint_px(19),
-           .icon_padding = flint_px(7)
+           .icon_size = ScaleUIPx(19),
+           .icon_padding = ScaleUIPx(7)
        })) {
         if(finish) {
             result.finished = 1;

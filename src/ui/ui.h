@@ -1,11 +1,11 @@
-#ifndef FLINT_UI_INTERNAL_H
-#define FLINT_UI_INTERNAL_H
+#ifndef UI_INTERNAL_H
+#define UI_INTERNAL_H
 
-#include "flint_ui.h"
-#include "flint_clip.h"
-#include "flint_dpi.h"
+#include "ui.h"
+#include "ui_clip.h"
+#include "ui_dpi.h"
 #include "flint.h"
-#include "flint_text_layout.h"
+#include "ui_text_layout.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -32,14 +32,14 @@ enum {
 };
 
 Vector2 ui_mouse_world(void);
-void ui_mark_clickable(void);
-void ui_mark_disabled(void);
+void MarkUIClickable(void);
+void MarkUIDisabled(void);
 int ui_pointer_drag_is_horizontal(void);
-int ui_hover_effects_enabled(void);
+int UIHoverEffectsEnabled(void);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);
 int ui_input_captures_click_internal(Vector2 point, int include_pointer_drag);
-void ui_push_input_clip(Rectangle bounds);
-void ui_pop_input_clip(void);
+void PushUIInputClip(Rectangle bounds);
+void PopUIInputClip(void);
 int ui_clampi(int value, int min_value, int max_value);
 
 #endif

@@ -1,6 +1,6 @@
-# Flint UI API Documentation
+# UI API Documentation
 
-Flint is a lightweight C UI component library for embedded applications and runtime environments. It provides core UI primitives and icon asset management without external dependencies.
+File UI Toolkit is a lightweight C UI component library for embedded applications and runtime environments. It provides core UI primitives and icon asset management without external dependencies.
 
 ## Table of Contents
 
@@ -35,12 +35,12 @@ Flint is a lightweight C UI component library for embedded applications and runt
 
 ## Initialization
 
-### `ui_init`
+### `InitUI`
 
 Initialize the UI system with viewport dimensions and DPI scale.
 
 ```c
-void ui_init(int width, int height, float dpi);
+void InitUI(int width, int height, float dpi);
 ```
 
 **Parameters:**
@@ -48,43 +48,43 @@ void ui_init(int width, int height, float dpi);
 - `height` - Viewport height in pixels
 - `dpi` - DPI scale factor (1.0 = 96 DPI)
 
-### `ui_set_colors`
+### `SetUIColors`
 
 Set the global color scheme for UI elements.
 
 ```c
-void ui_set_colors(Color text, Color bg, Color surface, Color circle, Color button, Color button_hover, Color icon);
+void SetUIColors(Color text, Color bg, Color surface, Color circle, Color button, Color button_hover, Color icon);
 ```
 
-### `ui_set_frame`
+### `SetUIFrame`
 
 Update the UI camera and reset per-frame state.
 
 ```c
-void ui_set_frame(Camera2D camera);
+void SetUIFrame(Camera2D camera);
 ```
 
-`ui_set_frame` sanitizes invalid cameras before storing them. A zero-initialized
+`SetUIFrame` sanitizes invalid cameras before storing them. A zero-initialized
 `Camera2D` is treated as an untransformed UI camera with `zoom = 1.0f`, so controls
 continue to receive pointer input. If an application does not need a transformed UI
-camera, prefer `flint_ui_begin_frame`.
+camera, prefer `BeginUIFrame`.
 
-### `flint_ui_default_camera`
+### `GetUIDefaultCamera`
 
 Return the canonical untransformed UI camera.
 
 ```c
-Camera2D flint_ui_default_camera(void);
+Camera2D GetUIDefaultCamera(void);
 ```
 
-### `flint_ui_begin_frame`
+### `BeginUIFrame`
 
 Convenience frame entry point for normal screen-space UI. It updates the viewport/DPI
 state, updates the layout view size, and begins a frame with
-`flint_ui_default_camera()`.
+`GetUIDefaultCamera()`.
 
 ```c
-void flint_ui_begin_frame(int width, int height, float dpi);
+void BeginUIFrame(int width, int height, float dpi);
 ```
 
 ---
@@ -93,12 +93,12 @@ void flint_ui_begin_frame(int width, int height, float dpi);
 
 ### Color
 
-#### `flint_lighten`
+#### `LightenUIColor`
 
 Lighten a color by adding to each RGB component.
 
 ```c
-Color flint_lighten(Color c, int amount);
+Color LightenUIColor(Color c, int amount);
 ```
 
 **Parameters:**
@@ -107,60 +107,60 @@ Color flint_lighten(Color c, int amount);
 
 **Returns:** Lightened color
 
-#### `flint_darken`
+#### `DarkenUIColor`
 
 Darken a color by subtracting from each RGB component.
 
 ```c
-Color flint_darken(Color c, int amount);
+Color DarkenUIColor(Color c, int amount);
 ```
 
 ---
 
 ### Scaling
 
-#### `flint_set_dpi_scale`
+#### `SetUIScale`
 
 Set the DPI scale factor (call once at startup).
 
 ```c
-void flint_set_dpi_scale(float scale);
+void SetUIScale(float scale);
 ```
 
-#### `flint_get_dpi_scale`
+#### `GetUIScale`
 
 Get the current DPI scale factor.
 
 ```c
-float flint_get_dpi_scale(void);
+float GetUIScale(void);
 ```
 
-#### `flint_px`
+#### `ScaleUIPx`
 
 Scale a pixel value by the DPI factor.
 
 ```c
-int flint_px(int px);
+int ScaleUIPx(int px);
 ```
 
-#### `flint_clamp_px`
+#### `ClampUIPx`
 
 Scale and clamp a pixel value between min and max.
 
 ```c
-int flint_clamp_px(int px, int min_px, int max_px);
+int ClampUIPx(int px, int min_px, int max_px);
 ```
 
 ---
 
 ### DPI
 
-#### `flint_dpi_state`
+#### `ui_dpi_state`
 
 Global DPI state structure.
 
 ```c
-typedef struct FlintDpiState {
+typedef struct UIDPIState {
     int view_width;
     int view_height;
     float ui_scale;
@@ -169,52 +169,52 @@ typedef struct FlintDpiState {
     int base_width;
     int base_height;
     int needs_update;
-} FlintDpiState;
+} UIDPIState;
 ```
 
-#### `flint_dpi_init`
+#### `InitUIDPI`
 
 Initialize DPI system.
 
 ```c
-void flint_dpi_init(void);
+void InitUIDPI(void);
 ```
 
-#### `flint_dpi_update`
+#### `UpdateUIDPI`
 
 Update DPI state for new viewport size.
 
 ```c
-void flint_dpi_update(int view_width, int view_height);
+void UpdateUIDPI(int view_width, int view_height);
 ```
 
 ---
 
 ### Layout
 
-#### `flint_set_view_size`
+#### `SetUIViewSize`
 
 Set the view dimensions.
 
 ```c
-void flint_set_view_size(int width, int height);
+void SetUIViewSize(int width, int height);
 ```
 
-#### `flint_view_width` / `flint_view_height`
+#### `GetUIViewWidth` / `GetUIViewHeight`
 
 Get current view dimensions.
 
 ```c
-int flint_view_width(void);
-int flint_view_height(void);
+int GetUIViewWidth(void);
+int GetUIViewHeight(void);
 ```
 
-#### `flint_centered_column`
+#### `GetUICenteredColumn`
 
 Calculate centered column dimensions.
 
 ```c
-void flint_centered_column(int max_w, int side_pad, int *x, int *w);
+void GetUICenteredColumn(int max_w, int side_pad, int *x, int *w);
 ```
 
 **Parameters:**
@@ -223,48 +223,48 @@ void flint_centered_column(int max_w, int side_pad, int *x, int *w);
 - `x` - Output: x position (can be NULL)
 - `w` - Output: width (can be NULL)
 
-#### `flint_page_side_padding`
+#### `GetUIPageSidePadding`
 
 Calculate page side padding based on current view width.
 
 ```c
-int flint_page_side_padding(void);
+int GetUIPageSidePadding(void);
 ```
 
 ---
 
 ### Clipping
 
-#### `flint_clip_intersection`
+#### `GetUIClipIntersection`
 
 Calculate intersection of two rectangles.
 
 ```c
-Rectangle flint_clip_intersection(Rectangle a, Rectangle b);
+Rectangle GetUIClipIntersection(Rectangle a, Rectangle b);
 ```
 
-#### `flint_clip_begin`
+#### `BeginUIClip`
 
 Begin a clipping region.
 
 ```c
-void flint_clip_begin(int x, int y, int w, int h);
+void BeginUIClip(int x, int y, int w, int h);
 ```
 
-#### `flint_clip_end`
+#### `EndUIClip`
 
 End the current clipping region.
 
 ```c
-void flint_clip_end(void);
+void EndUIClip(void);
 ```
 
-#### `flint_clip_reset`
+#### `ResetUIClip`
 
 Reset all clipping.
 
 ```c
-void flint_clip_reset(void);
+void ResetUIClip(void);
 ```
 
 ---
@@ -274,41 +274,41 @@ void flint_clip_reset(void);
 #### Font Management
 
 ```c
-void flint_text_set_font(Font font);
-void flint_text_set_small_font(Font font);
-Font flint_text_font(void);
+void SetUIFont(Font font);
+void SetUISmallFont(Font font);
+Font GetUIFont(void);
 ```
 
 #### Font Loading
 
 ```c
-Font flint_text_load_chopped_font(const char *png_path, const char *dat_path, int base_size);
-Font flint_text_load_chopped_font_from_memory(const unsigned char *png_data, unsigned int png_size,
+Font LoadUIChoppedFont(const char *png_path, const char *dat_path, int base_size);
+Font LoadUIChoppedFontFromMemory(const unsigned char *png_data, unsigned int png_size,
                                               const unsigned char *dat_data, unsigned int dat_size, int base_size);
-void flint_text_unload_font(Font *font);
+void UnloadUIFont(Font *font);
 ```
 
 #### Text Measurement
 
 ```c
-int flint_text_measure(const char *text, int font_size);
-int flint_text_height(const char *text, int font_size);
-int flint_text_line_height(int font_size);
+int MeasureUIText(const char *text, int font_size);
+int GetUITextHeight(const char *text, int font_size);
+int GetUITextLineHeight(int font_size);
 ```
 
 #### Text Drawing
 
 ```c
-void flint_text_draw(const char *text, int x, int y, int font_size, Color color);
-void flint_text_draw_scaled(const char *text, int x, int y, int scale, Color color);
-void flint_text_draw_centered(const char *text, int center_x, int center_y, int font_size, Color color);
-void flint_text_draw_in_rect(const char *text, Rectangle rect, int font_size, Color color);
+void DrawUIText(const char *text, int x, int y, int font_size, Color color);
+void DrawScaledUIText(const char *text, int x, int y, int scale, Color color);
+void DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, Color color);
+void DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color);
 ```
 
 #### Vertical Centering
 
 ```c
-int flint_text_y(const char *text, int box_y, int box_h, int font_size);
+int GetUITextY(const char *text, int box_y, int box_h, int font_size);
 ```
 
 ---
@@ -317,11 +317,11 @@ int flint_text_y(const char *text, int box_y, int box_h, int font_size);
 
 Layout text with embedded icons and line breaks.
 
-#### `FlintTextLayout`
+#### `UITextLayout`
 
 ```c
-typedef struct FlintTextLayout {
-    FlintTextElement *elements;
+typedef struct UITextLayout {
+    UITextElement *elements;
     int element_count;
     int *line_breaks;
     int line_count;
@@ -329,67 +329,67 @@ typedef struct FlintTextLayout {
     int total_height;
     int line_height;
     int last_reflow_width;
-} FlintTextLayout;
+} UITextLayout;
 ```
 
-#### `flint_text_layout_parse`
+#### `ParseUITextLayout`
 
 Parse text input into a layout.
 
 ```c
-FlintTextLayout flint_text_layout_parse(const char *input, Texture2D icon, UIIconType icon_type, int icon_size);
+UITextLayout ParseUITextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size);
 ```
 
-#### `flint_text_layout_reflow`
+#### `ReflowUITextLayout`
 
 Reflow layout for a given width.
 
 ```c
-void flint_text_layout_reflow(FlintTextLayout *layout, int max_width, int font_size, int line_height);
+void ReflowUITextLayout(UITextLayout *layout, int max_width, int font_size, int line_height);
 ```
 
-#### `flint_text_layout_draw`
+#### `DrawUITextLayout`
 
 Draw the layout.
 
 ```c
-void flint_text_layout_draw(FlintTextLayout *layout, int x, int *y, int font_size, Color color);
+void DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size, Color color);
 ```
 
-#### `flint_text_layout_get_height` / `flint_text_layout_free`
+#### `GetUITextLayoutHeight` / `FreeUITextLayout`
 
 ```c
-int flint_text_layout_get_height(FlintTextLayout *layout);
-void flint_text_layout_free(FlintTextLayout *layout);
+int GetUITextLayoutHeight(UITextLayout *layout);
+void FreeUITextLayout(UITextLayout *layout);
 ```
 
 ---
 
 ### Icons
 
-#### `flint_icon_asset`
+#### `GetUIIconAsset`
 
 Get icon asset by type or name.
 
 ```c
-const FlintIconAsset *flint_icon_asset(UIIconType type);
-const FlintIconAsset *flint_icon_asset_by_name(const char *name);
+const UIIconAsset *GetUIIconAsset(UIIconType type);
+const UIIconAsset *GetUIIconAssetByName(const char *name);
 ```
 
-#### `flint_load_icon_texture`
+#### `LoadUIIconTexture`
 
 Load an icon texture.
 
 ```c
-Texture2D flint_load_icon_texture(UIIconType type);
-Texture2D flint_load_icon_texture_by_name(const char *name);
+Texture2D LoadUIIconTexture(UIIconType type);
+Texture2D LoadUIIconTextureByName(const char *name);
 ```
 
-#### `flint_load_all_icons` / `flint_unload_all_icons`
+#### `LoadAllUIIconTextures` / `UnloadAllUIIconTextures`
 
 ```c
-void flint_load_all_icons(Texture2D *icons);
-void flint_unload_all_icons(Texture2D *icons);
+void LoadAllUIIconTextures(Texture2D *icons);
+void UnloadAllUIIconTextures(Texture2D *icons);
 ```
 
 ---
@@ -398,54 +398,54 @@ void flint_unload_all_icons(Texture2D *icons);
 
 Theme management for colors and appearance.
 
-#### `flint_theme_reset` / `flint_theme_register_scope`
+#### `ResetTheme` / `RegisterThemeScope`
 
 ```c
-void flint_theme_reset(void);
-FlintThemeScope *flint_theme_register_scope(const char *name, const char *path);
-FlintThemeScope *flint_theme_register_scope_dark(const char *name, const char *path, const char *dark_path);
+void ResetTheme(void);
+ThemeScope *RegisterThemeScope(const char *name, const char *path);
+ThemeScope *RegisterDarkThemeScope(const char *name, const char *path, const char *dark_path);
 ```
 
-#### `flint_theme_get` / `flint_theme_set_color`
+#### `GetThemeColor` / `SetThemeColor`
 
 ```c
-Color flint_theme_get(const char *scope, const char *key);
-bool flint_theme_set_color(const char *scope, const char *key, Color color);
+Color GetThemeColor(const char *scope, const char *key);
+bool SetThemeColor(const char *scope, const char *key, Color color);
 ```
 
-#### `flint_theme_save_scope` / `flint_theme_save_all`
+#### `SaveThemeScope` / `SaveAllThemes`
 
 ```c
-bool flint_theme_save_scope(const char *scope);
-bool flint_theme_save_all(void);
+bool SaveThemeScope(const char *scope);
+bool SaveAllThemes(void);
 ```
 
 #### Theme Export/Import
 
 ```c
-bool flint_theme_export_theme(const char *path);
-bool flint_theme_import_theme(const char *path);
+bool ExportTheme(const char *path);
+bool ImportTheme(const char *path);
 ```
 
 #### Dark Mode
 
 ```c
-void flint_theme_set_dark_mode(bool dark);
-bool flint_theme_get_dark_mode(void);
-void flint_theme_set_current(int theme_id, int dark_mode);
+void SetThemeDarkMode(bool dark);
+bool GetThemeDarkMode(void);
+void SetCurrentTheme(int theme_id, int dark_mode);
 ```
 
 #### Theme Colors
 
 ```c
-Color flint_theme_current_color(const char *key);
-Color flint_theme_get_text(void);
-Color flint_theme_get_bg(void);
-Color flint_theme_get_surface(void);
-Color flint_theme_get_circle(void);
-Color flint_theme_get_button(void);
-Color flint_theme_get_button_hover(void);
-Color flint_theme_get_icon(void);
+Color GetCurrentThemeColor(const char *key);
+Color GetThemeText(void);
+Color GetThemeBackground(void);
+Color GetThemeSurface(void);
+Color GetThemeCircle(void);
+Color GetThemeButton(void);
+Color GetThemeButtonHover(void);
+Color GetThemeIcon(void);
 ```
 
 ---
@@ -454,73 +454,73 @@ Color flint_theme_get_icon(void);
 
 Localization support.
 
-#### `locale_init` / `locale_set`
+#### `InitLocale` / `SetLocale`
 
 ```c
-void locale_init(void);
-int locale_set(const char *code);
+void InitLocale(void);
+int SetLocale(const char *code);
 ```
 
-#### `locale_get` / `locale_format`
+#### `GetLocaleText` / `FormatLocaleText`
 
 ```c
-const char *locale_get(const char *key);
-void locale_format(char *dst, size_t dst_size, const char *key, ...);
+const char *GetLocaleText(const char *key);
+void FormatLocaleText(char *dst, size_t dst_size, const char *key, ...);
 ```
 
 #### Locale Information
 
 ```c
-int locale_count(void);
-const char *locale_code_at(int index);
-const char *locale_label_at(int index);
-int locale_index_of(const char *code);
-const char *locale_current_code(void);
-int locale_current_index(void);
+int GetLocaleCount(void);
+const char *GetLocaleCode(int index);
+const char *GetLocaleLabel(int index);
+int GetLocaleIndex(const char *code);
+const char *GetCurrentLocaleCode(void);
+int GetCurrentLocaleIndex(void);
 ```
 
 ---
 
 ### Lyra Sync
 
-Common Lyra sync protocol helpers. Flint owns URL handling, token auth,
+Common Lyra sync protocol helpers. File UI Toolkit owns URL handling, token auth,
 challenge/login, bearer requests, sync posting, account deletion, and small JSON
 helpers. Applications still own their local data model and provide callbacks to
 build sync payloads, apply sync responses, store auth tokens, and perform
 platform HTTP.
 
-#### `FlintLyraSyncResult`
+#### `LyraSyncResult`
 
 ```c
-typedef enum FlintLyraSyncResult {
-    FLINT_LYRA_SYNC_OK = 0,
-    FLINT_LYRA_SYNC_INVALID_URL,
-    FLINT_LYRA_SYNC_NO_ACCOUNT,
-    FLINT_LYRA_SYNC_PAYLOAD_FAILED,
-    FLINT_LYRA_SYNC_CHALLENGE_FAILED,
-    FLINT_LYRA_SYNC_SIGN_FAILED,
-    FLINT_LYRA_SYNC_REQUEST_FAILED,
-    FLINT_LYRA_SYNC_AUTH_FAILED
-} FlintLyraSyncResult;
+typedef enum LyraSyncResult {
+    LYRA_SYNC_OK = 0,
+    LYRA_SYNC_INVALID_URL,
+    LYRA_SYNC_NO_ACCOUNT,
+    LYRA_SYNC_PAYLOAD_FAILED,
+    LYRA_SYNC_CHALLENGE_FAILED,
+    LYRA_SYNC_SIGN_FAILED,
+    LYRA_SYNC_REQUEST_FAILED,
+    LYRA_SYNC_AUTH_FAILED
+} LyraSyncResult;
 ```
 
-#### `FlintLyraSyncConfig`
+#### `LyraSyncConfig`
 
 ```c
-typedef struct FlintLyraSyncConfig {
+typedef struct LyraSyncConfig {
     const char *base_url;
-    const FlintLyraAccount *account;
+    const LyraAccount *account;
     const char *client_id;
-    FlintLyraSyncHttpRequestFn http_request;
-    FlintLyraSyncGetTextFn get_text;
-    FlintLyraSyncSetTextFn set_text;
-    FlintLyraSyncBuildPayloadFn build_payload;
-    FlintLyraSyncFreePayloadFn free_payload;
-    FlintLyraSyncApplyResponseFn apply_response;
-    FlintLyraSyncVoidFn purge_synced_deleted;
-    FlintLyraSyncLogFn log_http_failure;
+    LyraSyncHttpRequestFn http_request;
+    LyraSyncGetTextFn get_text;
+    LyraSyncSetTextFn set_text;
+    LyraSyncBuildPayloadFn build_payload;
+    LyraSyncFreePayloadFn free_payload;
+    LyraSyncApplyResponseFn apply_response;
+    LyraSyncVoidFn purge_synced_deleted;
+    LyraSyncLogFn log_http_failure;
     void *user;
-} FlintLyraSyncConfig;
+} LyraSyncConfig;
 ```
 
 `http_request` is platform-owned. Native apps can implement it with libcurl,
@@ -531,11 +531,11 @@ Android apps can bridge through JNI, and web apps can bridge to JavaScript fetch
 #### URL Helpers
 
 ```c
-int flint_lyra_sync_url_valid(const char *url);
-int flint_lyra_sync_normalize_url(const char *input, char *out, size_t out_size);
-int flint_lyra_sync_join_url(char *out, size_t out_size,
+int IsLyraSyncURLValid(const char *url);
+int NormalizeLyraSyncURL(const char *input, char *out, size_t out_size);
+int JoinLyraSyncURL(char *out, size_t out_size,
                              const char *base_url, const char *path);
-int flint_lyra_sync_join_ws_url(char *out, size_t out_size,
+int JoinLyraSyncWebSocketURL(char *out, size_t out_size,
                                 const char *base_url, const char *path);
 ```
 
@@ -545,14 +545,14 @@ Remote sync URLs must be HTTPS. HTTP is accepted only for loopback hosts such as
 #### Buffer And JSON Helpers
 
 ```c
-int flint_lyra_sync_buffer_append(FlintLyraSyncBuffer *buffer,
+int AppendLyraSyncBuffer(LyraSyncBuffer *buffer,
                                   const void *data, size_t bytes);
-int flint_lyra_sync_buffer_append_json_string(FlintLyraSyncBuffer *buffer,
+int AppendLyraSyncBufferJSONString(LyraSyncBuffer *buffer,
                                               const char *text);
-void flint_lyra_sync_buffer_free(FlintLyraSyncBuffer *buffer);
-int flint_lyra_sync_find_json_string(const char *json, const char *key,
+void FreeLyraSyncBuffer(LyraSyncBuffer *buffer);
+int FindLyraSyncJSONString(const char *json, const char *key,
                                      char *out, size_t out_size);
-long long flint_lyra_sync_find_json_int64(const char *json, const char *key,
+long long FindLyraSyncJSONInt64(const char *json, const char *key,
                                           long long fallback);
 ```
 
@@ -563,22 +563,22 @@ keep using it for domain data.
 #### Auth And Sync
 
 ```c
-void flint_lyra_sync_clear_auth_token(const FlintLyraSyncConfig *cfg);
-FlintLyraSyncResult flint_lyra_sync_login(const FlintLyraSyncConfig *cfg);
-FlintLyraSyncResult flint_lyra_sync_run(const FlintLyraSyncConfig *cfg);
-FlintLyraSyncResult flint_lyra_sync_bearer_request(const FlintLyraSyncConfig *cfg,
+void ClearLyraSyncAuthToken(const LyraSyncConfig *cfg);
+LyraSyncResult LoginLyraSync(const LyraSyncConfig *cfg);
+LyraSyncResult RunLyraSync(const LyraSyncConfig *cfg);
+LyraSyncResult RequestLyraSyncBearer(const LyraSyncConfig *cfg,
                                                    const char *method,
                                                    const char *path,
                                                    const char *body,
                                                    char *out,
                                                    size_t out_size);
-FlintLyraSyncResult flint_lyra_sync_delete_account(const FlintLyraSyncConfig *cfg);
-const char *flint_lyra_sync_result_name(FlintLyraSyncResult result);
+LyraSyncResult DeleteLyraSyncAccount(const LyraSyncConfig *cfg);
+const char *GetLyraSyncResultName(LyraSyncResult result);
 ```
 
-`flint_lyra_sync_run` loads or refreshes an auth token, asks the app callback for
+`RunLyraSync` loads or refreshes an auth token, asks the app callback for
 a local-first payload, posts it to `/api/v1/sync`, applies the response through
-the callback, and purges synced tombstones on success. `flint_lyra_sync_bearer_request`
+the callback, and purges synced tombstones on success. `RequestLyraSyncBearer`
 is for app-specific Lyra endpoints that use the same account token.
 
 ---
@@ -587,41 +587,41 @@ is for app-specific Lyra endpoints that use the same account token.
 
 Transition effects for screen changes.
 
-#### `FlintTransition`
+#### `UITransition`
 
 ```c
-typedef struct FlintTransition {
+typedef struct UITransition {
     int active;
     int phase;
     int ticks;
     int duration;
-} FlintTransition;
+} UITransition;
 ```
 
-#### `flint_transition_reset` / `flint_transition_begin`
+#### `ResetUITransition` / `BeginUITransition`
 
 ```c
-void flint_transition_reset(FlintTransition *transition);
-void flint_transition_begin(FlintTransition *transition, int duration);
+void ResetUITransition(UITransition *transition);
+void BeginUITransition(UITransition *transition, int duration);
 ```
 
-#### `flint_transition_reverse_to_out`
+#### `ReverseUITransitionToOut`
 
 ```c
-void flint_transition_reverse_to_out(FlintTransition *transition);
+void ReverseUITransitionToOut(UITransition *transition);
 ```
 
-#### `flint_transition_alpha` / `flint_transition_step`
+#### `GetUITransitionAlpha` / `StepUITransition`
 
 ```c
-float flint_transition_alpha(const FlintTransition *transition);
-int flint_transition_step(FlintTransition *transition);
+float GetUITransitionAlpha(const UITransition *transition);
+int StepUITransition(UITransition *transition);
 ```
 
-#### `flint_transition_draw_fade`
+#### `DrawUITransitionFade`
 
 ```c
-void flint_transition_draw_fade(const FlintTransition *transition, int width, int height, Color color);
+void DrawUITransitionFade(const UITransition *transition, int width, int height, Color color);
 ```
 
 ---
@@ -630,36 +630,36 @@ void flint_transition_draw_fade(const FlintTransition *transition, int width, in
 
 Download and cache runtime assets.
 
-#### `flint_runtime_assets_init`
+#### `InitRuntimeAssets`
 
 Initialize runtime asset system.
 
 ```c
-int flint_runtime_assets_init(const char *app_id);
+int InitRuntimeAssets(const char *app_id);
 ```
 
-#### `flint_runtime_asset_cache_root`
+#### `GetRuntimeAssetCacheRoot`
 
 Get cache root directory.
 
 ```c
-int flint_runtime_asset_cache_root(const char *app_id, char *out, size_t out_size);
+int GetRuntimeAssetCacheRoot(const char *app_id, char *out, size_t out_size);
 ```
 
-#### `flint_runtime_asset_download`
+#### `DownloadRuntimeAsset`
 
 Download an asset.
 
 ```c
-int flint_runtime_asset_download(FlintRuntimeAssetDownload *download, const char *url, const char *path);
+int DownloadRuntimeAsset(RuntimeAssetDownload *download, const char *url, const char *path);
 ```
 
-#### `flint_runtime_asset_set_download_backend`
+#### `SetRuntimeAssetDownloadBackend`
 
 Set custom download backend.
 
 ```c
-void flint_runtime_asset_set_download_backend(FlintRuntimeAssetDownloadBackend backend);
+void SetRuntimeAssetDownloadBackend(RuntimeAssetDownloadBackend backend);
 ```
 
 ---
@@ -668,19 +668,19 @@ void flint_runtime_asset_set_download_backend(FlintRuntimeAssetDownloadBackend b
 
 Web platform specific utilities.
 
-#### `flint_web_viewport_size`
+#### `GetWebViewportSize`
 
 Get browser viewport size.
 
 ```c
-void flint_web_viewport_size(int fallback_width, int fallback_height, int *width, int *height);
+void GetWebViewportSize(int fallback_width, int fallback_height, int *width, int *height);
 ```
 
-#### `flint_web_window_flags` / `flint_web_sync_window_size`
+#### `GetWebWindowFlags` / `SyncWebWindowSize`
 
 ```c
-unsigned int flint_web_window_flags(void);
-int flint_web_sync_window_size(void);
+unsigned int GetWebWindowFlags(void);
+int SyncWebWindowSize(void);
 ```
 
 ---
@@ -689,7 +689,7 @@ int flint_web_sync_window_size(void);
 
 ### Buttons
 
-#### `FlintUIButton`
+#### `UIButton`
 
 ```c
 typedef struct {
@@ -703,20 +703,20 @@ typedef struct {
     Color text;
     Color border;
     float radius;
-} FlintUIButton;
+} UIButton;
 ```
 
-#### `flint_ui_button`
+#### `DrawUIButton`
 
 Draw and handle a button.
 
 ```c
-int flint_ui_button(FlintUIButton button);
+int DrawUIButton(UIButton button);
 ```
 
 **Returns:** 1 if clicked, 0 otherwise
 
-#### `FlintUIIconButton`
+#### `UIIconButton`
 
 ```c
 typedef struct {
@@ -732,20 +732,20 @@ typedef struct {
     Color icon_color;
     Color border;
     float radius;
-} FlintUIIconButton;
+} UIIconButton;
 ```
 
-#### `flint_ui_icon_button`
+#### `DrawUIIconButton`
 
 ```c
-int flint_ui_icon_button(FlintUIIconButton button);
+int DrawUIIconButton(UIIconButton button);
 ```
 
 ---
 
 ### Text Input
 
-#### `FlintUITextInputStyle`
+#### `UITextInputStyle`
 
 ```c
 typedef struct {
@@ -756,10 +756,10 @@ typedef struct {
     Color cursor;
     float radius;
     int padding_x;
-} FlintUITextInputStyle;
+} UITextInputStyle;
 ```
 
-#### `FlintUITextInput`
+#### `UITextInput`
 
 ```c
 typedef struct {
@@ -770,11 +770,11 @@ typedef struct {
     int cursor_visible;
     int font;
     int focus_id;
-    FlintUITextInputStyle style;
-} FlintUITextInput;
+    UITextInputStyle style;
+} UITextInput;
 ```
 
-#### `FlintUITextField`
+#### `UITextField`
 
 ```c
 typedef struct {
@@ -786,18 +786,18 @@ typedef struct {
     int max_codepoints;
     int font;
     int focus_id;
-    FlintUITextInputStyle style;
-    FlintUITextInputFilter filter;
+    UITextInputStyle style;
+    UITextInputFilter filter;
     void *filter_user_data;
     int *commit_pressed;
-} FlintUITextField;
+} UITextField;
 ```
 
-#### `flint_ui_text_input` / `flint_ui_text_field`
+#### `DrawUITextInputControl` / `DrawUITextField`
 
 ```c
-int flint_ui_text_input(FlintUITextInput input);
-int flint_ui_text_field(FlintUITextField field);
+int DrawUITextInputControl(UITextInput input);
+int DrawUITextField(UITextField field);
 ```
 
 ---
@@ -813,23 +813,23 @@ typedef struct {
     Texture2D icon;
     int active;
     int disabled;
-} FlintUIBottomNavItem;
+} UIBottomNavItem;
 
 typedef struct {
     int view_width;
     int view_height;
     int count;
-    const FlintUIBottomNavItem *items;
+    const UIBottomNavItem *items;
     int height;
     int icon_size;
     int icon_padding;
     int side_margin;
     int bottom_margin;
     int max_button_width;
-} FlintUIBottomNav;
+} UIBottomNav;
 
-FlintUIBottomNavResult ui_draw_bottom_nav(FlintUIBottomNav nav);
-int ui_bottom_nav_height(void);
+UIBottomNavResult DrawUIBottomNav(UIBottomNav nav);
+int GetUIBottomNavHeight(void);
 ```
 
 #### Toolbar
@@ -846,10 +846,10 @@ typedef struct {
     int option_count;
     int *selected_index;
     // ... more fields
-} FlintUIToolbar;
+} UIToolbar;
 
-FlintUIToolbarResult ui_draw_toolbar(FlintUIToolbar toolbar);
-FlintUIToolbarHeaderResult ui_draw_toolbar_header(FlintUIToolbarHeader header);
+UIToolbarResult DrawUIToolbar(UIToolbar toolbar);
+UIToolbarHeaderResult DrawUIToolbarHeader(UIToolbarHeader header);
 ```
 
 #### Tab Bar
@@ -861,11 +861,11 @@ typedef struct {
     int icon_size;
     int disabled;
     Color accent;
-} FlintUITab;
+} UITab;
 
 typedef struct {
     Rectangle bounds;
-    const FlintUITab *tabs;
+    const UITab *tabs;
     int count;
     int selected_index;
     int font;
@@ -873,31 +873,31 @@ typedef struct {
     int max_tab_width;
     int *scroll_offset;
     int focus_selected;
-} FlintUITabBar;
+} UITabBar;
 
-int ui_draw_tab_bar(FlintUITabBar bar);
-int ui_tab_bar_height(void);
+int DrawUITabBar(UITabBar bar);
+int GetUITabBarHeight(void);
 ```
 
 #### Dropdown
 
 ```c
-int ui_draw_dropdown_button(int id, int x, int y, int w, int h,
+int DrawUIDropdownButton(int id, int x, int y, int w, int h,
                             const char **options, int option_count, int *selected_index);
-int ui_draw_dropdown_menu(int id);
-int ui_dropdown_captures_click(Vector2 point);
+int DrawUIDropdownMenu(int id);
+int UIDropdownCapturesClick(Vector2 point);
 ```
 
 ---
 
 ### Modals
 
-#### `ui_draw_modal`
+#### `DrawUIModal`
 
 Simple two-button modal.
 
 ```c
-int ui_draw_modal(const char *title, const char *message,
+int DrawUIModal(const char *title, const char *message,
                   const char *cancel_btn, const char *confirm_btn);
 ```
 
@@ -905,18 +905,18 @@ int ui_draw_modal(const char *title, const char *message,
 
 Backdrop clicks are blocked automatically for the current frame and the next frame.
 
-#### `ui_draw_modal_3btn`
+#### `DrawUIModal3Button`
 
 Three-button modal.
 
 ```c
-int ui_draw_modal_3btn(const char *title, const char *message,
+int DrawUIModal3Button(const char *title, const char *message,
                        const char *left_btn, const char *middle_btn, const char *right_btn);
 ```
 
 Backdrop clicks are blocked automatically for the current frame and the next frame.
 
-#### `FlintUIPanelFrame` / `ui_draw_modal_frame`
+#### `UIPanelFrame` / `DrawUIModalFrame`
 
 ```c
 typedef struct {
@@ -930,13 +930,13 @@ typedef struct {
     int content_h;
     int left_clicked;
     int right_clicked;
-} FlintUIPanelFrame;
+} UIPanelFrame;
 
-FlintUIPanelFrame ui_draw_modal_frame(int width, int height, const char *title,
+UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
                                      Texture2D left_icon, Texture2D right_icon);
 ```
 
-`ui_draw_modal_frame` also updates the modal capture bounds automatically for the
+`DrawUIModalFrame` also updates the modal capture bounds automatically for the
 current frame and the next frame.
 
 ---
@@ -954,7 +954,7 @@ typedef struct {
     int *scroll_offset;
     int wheel_step;
     int scrollbar_x;
-} FlintUIScrollArea;
+} UIScrollArea;
 
 typedef struct {
     int content_x;
@@ -963,17 +963,17 @@ typedef struct {
     int viewport_h;
     int content_h;
     int max_scroll;
-} FlintUIScrollView;
+} UIScrollView;
 
-FlintUIScrollView ui_scroll_container_measure(FlintUIScrollArea area);
-FlintUIScrollView ui_scroll_container_begin(FlintUIScrollArea area);
-void ui_scroll_container_end(FlintUIScrollArea area, FlintUIScrollView view);
+UIScrollView MeasureUIScrollContainer(UIScrollArea area);
+UIScrollView BeginUIScrollContainer(UIScrollArea area);
+void EndUIScrollContainer(UIScrollArea area, UIScrollView view);
 ```
 
 #### Scroll Page
 
 ```c
-typedef int (*FlintUIScrollPageHeightFn)(int content_width, void *user_data);
+typedef int (*UIScrollPageHeightFn)(int content_width, void *user_data);
 
 typedef struct {
     int y;
@@ -985,27 +985,27 @@ typedef struct {
     int wheel_step;
     int scrollbar_x;
     int measure_passes;
-    FlintUIScrollPageHeightFn content_height;
+    UIScrollPageHeightFn content_height;
     void *user_data;
-} FlintUIScrollPageSpec;
+} UIScrollPageSpec;
 
 typedef struct {
-    FlintUIScrollArea area;
-    FlintUIScrollView view;
+    UIScrollArea area;
+    UIScrollView view;
     int content_x;
     int content_y;
     int content_w;
     int content_h;
-} FlintUIScrollPage;
+} UIScrollPage;
 
-FlintUIScrollPage ui_scroll_page_begin(FlintUIScrollPageSpec spec);
-void ui_scroll_page_end(FlintUIScrollPage page);
+UIScrollPage BeginUIScrollPage(UIScrollPageSpec spec);
+void EndUIScrollPage(UIScrollPage page);
 ```
 
 #### Scrollbar
 
 ```c
-int ui_draw_scrollbar(int x, int y, int viewport_h, int content_h,
+int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
                      int *scroll_offset, int max_scroll);
 ```
 
@@ -1016,24 +1016,24 @@ int ui_draw_scrollbar(int x, int y, int viewport_h, int content_h,
 #### Sliders
 
 ```c
-int ui_draw_slider(int id, int x, int y, int w, const char *label,
+int DrawUISlider(int id, int x, int y, int w, const char *label,
                    int min, int max, int *value, const char *suffix);
-int ui_draw_slider_vertical(int id, int x, int y, int h,
+int DrawUIVerticalSlider(int id, int x, int y, int h,
                             int min, int max, int *value);
 ```
 
 #### Toggle Switch
 
 ```c
-int ui_draw_toggle_switch(int x, int y, int w, int h, int *value,
+int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
                          const char *off_label, const char *on_label);
 ```
 
 #### Checkbox
 
 ```c
-int ui_draw_checkbox_toggle(int x, int y, const char *label, int *value);
-int ui_draw_checkbox_toggle_disabled(int x, int y, const char *label,
+int DrawUICheckboxToggle(int x, int y, const char *label, int *value);
+int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                      int *value, int disabled);
 ```
 
@@ -1048,7 +1048,7 @@ typedef struct {
     const char *text;
     int font;
     Color color;
-} FlintUIInfoRow;
+} UIInfoRow;
 
 typedef struct {
     int x;
@@ -1056,14 +1056,14 @@ typedef struct {
     int width;
     int row_height;
     int padding_x;
-    const FlintUIInfoRow *rows;
+    const UIInfoRow *rows;
     int row_count;
     Color background;
     Color separator;
     Color default_text;
-} FlintUIInfoRows;
+} UIInfoRows;
 
-void ui_draw_info_rows(FlintUIInfoRows rows);
+void DrawUIInfoRows(UIInfoRows rows);
 ```
 
 #### Button Rows
@@ -1073,7 +1073,7 @@ typedef struct {
     const char *label;
     UIButtonStyle style;
     int disabled;
-} FlintUIButtonRowItem;
+} UIButtonRowItem;
 
 typedef struct {
     int x;
@@ -1081,12 +1081,12 @@ typedef struct {
     int width;
     int height;
     int gap;
-    const FlintUIButtonRowItem *items;
+    const UIButtonRowItem *items;
     int count;
-} FlintUIButtonRow;
+} UIButtonRow;
 
-int ui_button_row_height(FlintUIButtonRow row);
-int ui_draw_button_row(FlintUIButtonRow row);
+int GetUIButtonRowHeight(UIButtonRow row);
+int DrawUIButtonRow(UIButtonRow row);
 ```
 
 ---
@@ -1096,21 +1096,21 @@ int ui_draw_button_row(FlintUIButtonRow row);
 ### Input Capture
 
 ```c
-int ui_input_captures_click(Vector2 point);
+int UIInputCapturesClick(Vector2 point);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);
-void ui_set_modal_capture(Rectangle bounds);
+void SetUIModalCapture(Rectangle bounds);
 ```
 
-`ui_set_modal_capture` defines the active modal rectangle for the current frame and the
+`SetUIModalCapture` defines the active modal rectangle for the current frame and the
 next frame. While a modal carried from the previous frame has not registered its current
 bounds yet, all pointer input is captured. After registration, clicks outside the bounds
 are captured while controls inside the modal remain usable.
 
-Built-in modal helpers (`ui_draw_modal`, `ui_draw_modal_3btn`, `ui_draw_modal_frame`)
+Built-in modal helpers (`DrawUIModal`, `DrawUIModal3Button`, `DrawUIModalFrame`)
 register their bounds automatically.
 
-Applications should use `ui_draw_modal_frame` for custom modal content instead of
-manually drawing a backdrop and calling `ui_set_modal_capture`. Manual capture remains
+Applications should use `DrawUIModalFrame` for custom modal content instead of
+manually drawing a backdrop and calling `SetUIModalCapture`. Manual capture remains
 available for specialized overlays, but the helper keeps modal bounds, backdrop, and
 input capture consistent across projects.
 
@@ -1123,15 +1123,15 @@ void ui_set_input_blocked(int blocked);
 ### Hover Effects
 
 ```c
-int ui_hover_effects_enabled(void);
+int UIHoverEffectsEnabled(void);
 ```
 
 ### Text Input Queuing
 
 ```c
-void flint_ui_text_input_queue_codepoint(int codepoint);
-void flint_ui_text_input_queue_backspace(void);
-void flint_ui_text_input_queue_enter(void);
+void QueueUITextInputCodepoint(int codepoint);
+void QueueUITextInputBackspace(void);
+void QueueUITextInputEnter(void);
 ```
 
 ---
@@ -1143,14 +1143,14 @@ Keyboard navigation and focus management.
 ### Focus Begin/End
 
 ```c
-void ui_focus_begin(void);
-void ui_focus_end(void);
+void BeginUIFocus(void);
+void EndUIFocus(void);
 ```
 
 ### Focus Registration
 
 ```c
-int ui_focus_register(int id, Rectangle bounds);
+int RegisterUIFocus(int id, Rectangle bounds);
 ```
 
 **Returns:** 1 if this element has focus
@@ -1158,22 +1158,22 @@ int ui_focus_register(int id, Rectangle bounds);
 ### Focus State
 
 ```c
-int ui_focus_is_active(int id);
-int ui_focus_activate_pressed(int id);
+int IsUIFocusActive(int id);
+int IsUIFocusActivatePressed(int id);
 ```
 
 ### Focus Control
 
 ```c
-void ui_focus_set(int id);
-void ui_focus_clear(void);
-void ui_focus_set_text_input_active(int active);
+void SetUIFocus(int id);
+void ClearUIFocus(void);
+void SetUIFocusTextInputActive(int active);
 ```
 
 ### Focus Indicator
 
 ```c
-void ui_focus_draw(Rectangle bounds);
+void DrawUIFocus(Rectangle bounds);
 ```
 
 ---
@@ -1183,31 +1183,31 @@ void ui_focus_draw(Rectangle bounds);
 ### Bevel Drawing
 
 ```c
-void ui_draw_bevel(int x, int y, int w, int h, Color light, Color dark);
+void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
 ```
 
 ### Icon Buttons
 
 ```c
-int ui_icon_btn_size(UIIconSize size);
-int ui_icon_btn_padding(UIIconSize size);
-int ui_draw_icon_btn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
-int ui_draw_icon_btn_padded(int x, int y, int size, int padding, Texture2D icon, int *hover);
+int GetUIIconButtonSize(UIIconSize size);
+int GetUIIconButtonPadding(UIIconSize size);
+int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
+int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *hover);
 ```
 
 ### Generic Button
 
 ```c
-int ui_draw_generic_button(int x, int y, int w, int h, const char *label,
+int DrawUIGenericButton(int x, int y, int w, int h, const char *label,
                            UIButtonStyle style, int disabled, int *hover);
 ```
 
 ### Text Drawing Helpers
 
 ```c
-void flint_ui_draw_text_centered(const char *text, int center_x, int center_y, int font, Color color);
-void flint_ui_draw_text_left_in_rect(const char *text, Rectangle rect, int font_size, Color color);
-void ui_draw_fitted_text_in_rect(const char *text, Rectangle rect, int preferred_size, int min_size, Color color);
+void DrawCenteredUIControlText(const char *text, int center_x, int center_y, int font, Color color);
+void DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Color color);
+void DrawFittedUITextInRect(const char *text, Rectangle rect, int preferred_size, int min_size, Color color);
 ```
 
 ---
@@ -1243,19 +1243,19 @@ typedef enum {
 
 ```c
 typedef enum {
-    FLINT_THEME_SKY,
-    FLINT_THEME_OCEAN,
-    FLINT_THEME_FOREST,
-    FLINT_THEME_SUNSET,
-    FLINT_THEME_LAVENDER,
-    FLINT_THEME_CHERRY,
-    FLINT_THEME_DAWN,
-    FLINT_THEME_SAGE,
-    FLINT_THEME_INK,
-    FLINT_THEME_MONO,
-    FLINT_THEME_MINT,
-    FLINT_THEME_COBALT
-} FlintThemeId;
+    THEME_SKY,
+    THEME_OCEAN,
+    THEME_FOREST,
+    THEME_SUNSET,
+    THEME_LAVENDER,
+    THEME_CHERRY,
+    THEME_DAWN,
+    THEME_SAGE,
+    THEME_INK,
+    THEME_MONO,
+    THEME_MINT,
+    THEME_COBALT
+} ThemeId;
 ```
 
 ---
@@ -1263,11 +1263,11 @@ typedef enum {
 ## Text Sizes
 
 ```c
-#define FLINT_TEXT_8 8
-#define FLINT_TEXT_12 12
-#define FLINT_TEXT_16 16
-#define FLINT_TEXT_24 24
-#define FLINT_TEXT_BASE_SIZE 16
+#define UI_TEXT_8 8
+#define UI_TEXT_12 12
+#define UI_TEXT_16 16
+#define UI_TEXT_24 24
+#define UI_TEXT_BASE_SIZE 16
 ```
 
 ---
@@ -1279,12 +1279,12 @@ typedef enum {
 
 int main(void) {
     // Initialize window with Raylib
-    InitWindow(320, 560, "Flint Demo");
+    InitWindow(320, 560, "File UI Toolkit Demo");
     SetTargetFPS(60);
 
-    // Configure Flint UI colors
+    // Configure UI colors
     float dpi = 1.0f;  // Get from platform
-    ui_set_colors(
+    SetUIColors(
         (Color){240, 240, 240, 255},  // text
         (Color){40, 40, 40, 255},     // bg
         (Color){60, 60, 60, 255},     // surface
@@ -1298,10 +1298,10 @@ int main(void) {
         BeginDrawing();
         ClearBackground(BLACK);
 
-        flint_ui_begin_frame(GetScreenWidth(), GetScreenHeight(), dpi);
+        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), dpi);
 
         // Draw UI
-        if (ui_draw_generic_button(10, 10, 100, 36, "Click Me",
+        if (DrawUIGenericButton(10, 10, 100, 36, "Click Me",
                                    UI_BUTTON_STYLE_PRIMARY, 0, NULL)) {
             // Button clicked
         }
