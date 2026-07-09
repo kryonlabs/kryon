@@ -65,17 +65,6 @@ SRCS = \
 
 SRCS += $(EMBED_ASSETS_C)
 
-FILE_DIALOG_PKG := gtk+-3.0
-ifeq ($(shell pkg-config --exists $(FILE_DIALOG_PKG) 2>/dev/null; echo $$?),0)
-    FILE_DIALOG_CFLAGS := $(shell pkg-config --cflags $(FILE_DIALOG_PKG))
-    FILE_DIALOG_LDLIBS := $(shell pkg-config --libs $(FILE_DIALOG_PKG))
-else
-    $(error gtk+-3.0 is required to build Flint file_dialog.c on desktop)
-endif
-
-CPPFLAGS += $(FILE_DIALOG_CFLAGS)
-LDLIBS += $(FILE_DIALOG_LDLIBS)
-
 SYSTEM_THEME_PKG := $(shell if pkg-config --exists gtk+-3.0 2>/dev/null; then printf '%s' gtk+-3.0; fi)
 ifneq ($(strip $(SYSTEM_THEME_PKG)),)
     CPPFLAGS += $(shell pkg-config --cflags $(SYSTEM_THEME_PKG)) -DSYSTEM_THEME_GTK

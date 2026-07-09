@@ -5,7 +5,12 @@ CFLAGS_BASE ?= -Wall -Wextra -O2
 CFLAGS = $(CFLAGS_BASE) -I../include
 LDFLAGS = -L.. -lflint
 UNAME_S := $(shell uname -s)
-EXAMPLE_SYSTEM_LDLIBS := -lraylib -lGL -lm -lpthread -lX11
+RAYLIB_PKG_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null)
+RAYLIB_PKG_LIBS := $(shell pkg-config --libs raylib 2>/dev/null || printf '%s' '-L/usr/local/lib -lraylib')
+GL_X11_PKG_LIBS := $(shell pkg-config --libs gl x11 2>/dev/null || printf '%s' '-L/usr/local/lib -lGL -lX11')
+GTK_PKG_CFLAGS := $(shell pkg-config --cflags gtk+-3.0 2>/dev/null)
+GTK_PKG_LIBS := $(shell pkg-config --libs gtk+-3.0 2>/dev/null)
+EXAMPLE_SYSTEM_LDLIBS := $(RAYLIB_PKG_LIBS) $(GL_X11_PKG_LIBS) $(GTK_PKG_LIBS) -lm -lpthread
 ifeq ($(UNAME_S),Linux)
     EXAMPLE_SYSTEM_LDLIBS += -ldl -lrt
 endif
@@ -32,6 +37,8 @@ WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EX
 
 # Raylib - use system library from nix-shell
 # Check if we're in nix-shell and use its flags
+CFLAGS += $(RAYLIB_PKG_CFLAGS)
+CFLAGS += $(GTK_PKG_CFLAGS)
 ifneq ($(NIX_CFLAGS_COMPILE),)
     CFLAGS += $(NIX_CFLAGS_COMPILE)
 endif
