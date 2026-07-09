@@ -70,7 +70,7 @@ linux-x86_64: | $(LINUX_BIN_DIR) $(LINUX_OBJ_DIR)
 
 linux-aarch64: | $(LINUX_BIN_DIR) $(LINUX_OBJ_DIR)
 	@if [ -z "$(AARCH64_CC)" ] || [ -z "$(AARCH64_AR)" ] || [ -z "$(AARCH64_RAY_CFLAGS)" ] || [ -z "$(AARCH64_RAY_LDLIBS)" ] || [ -z "$(AARCH64_RAY_SDL_LDLIBS)" ] || [ -z "$(AARCH64_RAY_SDL_INCLUDE_DIR)" ]; then \
-		echo "AARCH64 cross-build variables are missing. Enter the flake shell with 'nix develop'."; \
+		echo "AARCH64 cross-build variables are missing. Install a cross toolchain and sysroot, or set AARCH64_CC/AARCH64_AR/AARCH64_RAY_* explicitly."; \
 		exit 1; \
 	fi
 	$(MAKE) build-linux-arch \

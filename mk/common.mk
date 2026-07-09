@@ -145,19 +145,19 @@ LDFLAGS = -Wl,--gc-sections -s
 .NOTPARALLEL:
 
 ifeq ($(strip $(RAY_CFLAGS)),)
-$(error RAY_CFLAGS is not set. Enter the ray flake shell with 'nix develop')
+$(error RAY_CFLAGS is not set. Install pkg-config metadata for $(RAY_PKGS), or set RAY_CFLAGS explicitly)
 endif
 ifeq ($(strip $(RAY_LDLIBS)),)
-$(error RAY_LDLIBS is not set. Enter the ray flake shell with 'nix develop')
+$(error RAY_LDLIBS is not set. Install pkg-config metadata for $(RAY_PKGS), or set RAY_LDLIBS explicitly)
 endif
 ifeq ($(strip $(RAY_SDL_LDLIBS)),)
-$(error RAY_SDL_LDLIBS is not set. Enter the ray flake shell with 'nix develop')
+$(error RAY_SDL_LDLIBS is not set. Install SDL2 development files or set RAY_SDL_LDLIBS explicitly)
 endif
 ifeq ($(strip $(RAY_SDL_INCLUDE_DIR)),)
-$(error RAY_SDL_INCLUDE_DIR is not set. Enter the ray flake shell with 'nix develop')
+$(error RAY_SDL_INCLUDE_DIR is not set. Install SDL2 development files or set RAY_SDL_INCLUDE_DIR explicitly)
 endif
 ifeq ($(strip $(RAY_RAYLIB_CONFIG)),)
-$(error RAY_RAYLIB_CONFIG is not set. Enter the ray flake shell with 'nix develop')
+$(error RAY_RAYLIB_CONFIG is not set. Set RAY_RAYLIB_CONFIG explicitly)
 endif
 
 build:
