@@ -33,6 +33,16 @@ static Color dialog_theme_get(const char *key) {
     return flint_theme_get(g_dialog_theme_scope, key);
 }
 
+static void dialog_apply_theme(void) {
+    ui_set_colors(dialog_theme_get("text"),
+                  dialog_theme_get("background"),
+                  dialog_theme_get("surface"),
+                  dialog_theme_get("circle"),
+                  dialog_theme_get("button"),
+                  dialog_theme_get("button_hover"),
+                  flint_theme_get_icon());
+}
+
 void flint_file_dialog_set_theme_scope(const char *scope) {
     if(scope == NULL || scope[0] == '\0') {
         g_dialog_theme_scope[0] = '\0';
@@ -590,7 +600,7 @@ static void render_file_dialog(FlintFileDialog *dlg, Vector2 screen_size) {
     bg_color = dialog_theme_get("background");
     bg_color.a = 255;
     DrawRectangleRec(dialog_rect, bg_color);
-    flint_ui_apply_current_theme();
+    dialog_apply_theme();
 
     render_header(dlg, dialog_rect);
     render_breadcrumb(dlg, dialog_rect);
