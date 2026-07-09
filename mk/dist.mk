@@ -40,7 +40,7 @@ dist-linux: linux | $(LINUX_DIST_DIR)
 		exit 1; \
 	fi
 	@rm -f $(TARBALL)
-	@find $(LINUX_BIN_DIR) -maxdepth 1 -type f -name '$(APP_NAME)-linux-*' -executable -printf '%f\n' | sort > $(LINUX_DIST_DIR)/$(APP_NAME)-linux.files
+	@find $(LINUX_BIN_DIR) -maxdepth 1 -type f -name '$(APP_NAME)-linux-*' -perm -111 -exec basename {} \; | sort > $(LINUX_DIST_DIR)/$(APP_NAME)-linux.files
 	@tar -czf $(abspath $(TARBALL)) -C $(LINUX_BIN_DIR) -T $(abspath $(LINUX_DIST_DIR)/$(APP_NAME)-linux.files)
 	@rm -f $(LINUX_DIST_DIR)/$(APP_NAME)-linux.files
 	@echo "Created $(TARBALL)"

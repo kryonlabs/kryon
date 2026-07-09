@@ -1,4 +1,5 @@
-CC = gcc
+CC ?= cc
+AR ?= ar
 WINDRES = windres
 
 APP_NAME ?= app
@@ -24,6 +25,7 @@ FLINT_NATIVE_CFLAGS ?=
 FLINT_NATIVE_LDLIBS ?=
 FLINT_RAYLIB_MODULE_AUDIO ?= TRUE
 FLINT_NATIVE_SUPPORT_FLAGS ?= -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1
+FLINT_NATIVE_SYSTEM_LDLIBS ?= -lm -lpthread
 ifneq ($(strip $(FLINT_CURL_LDLIBS)),)
 FLINT_RUNTIME_ASSET_CFLAGS = -DFLINT_HAS_LIBCURL=1 $(FLINT_CURL_CFLAGS)
 FLINT_RUNTIME_ASSET_LDLIBS = $(FLINT_CURL_LDLIBS)
@@ -42,13 +44,18 @@ UNAME_M := $(shell uname -m)
 
 ifeq ($(UNAME_S),Linux)
     PLATFORM = linux
+    FLINT_NATIVE_SYSTEM_LDLIBS += -ldl -lrt
 else ifeq ($(UNAME_S),Darwin)
     PLATFORM = macos
+else ifeq ($(UNAME_S),FreeBSD)
+    PLATFORM = freebsd
 else
     PLATFORM = unknown
 endif
 
 ifeq ($(UNAME_M),x86_64)
+    ARCH = x86_64
+else ifeq ($(UNAME_M),amd64)
     ARCH = x86_64
 else ifeq ($(UNAME_M),aarch64)
     ARCH = aarch64
@@ -96,6 +103,15 @@ FONT_SOURCE ?= $(FLINT_DIR)/tools/otfchop/unifont-17.0.04.otf
 FONT_INPUTS ?= $(LOCALE_FILES)
 APP_INCLUDE ?= -Isrc -Isrc/android
 RUNTIME_DIRS ?= assets locales themes
+RAY_PKGS ?= sdl2 libdrm gbm egl glesv2
+RAY_SDL_CFLAGS ?= $(shell pkg-config --cflags sdl2 2>/dev/null)
+RAY_SDL_LDLIBS ?= $(shell pkg-config --libs sdl2 2>/dev/null)
+RAY_GL_CFLAGS ?= $(shell pkg-config --cflags libdrm gbm egl glesv2 2>/dev/null)
+RAY_GL_LDLIBS ?= $(shell pkg-config --libs libdrm gbm egl glesv2 2>/dev/null)
+RAY_CFLAGS ?= $(strip $(RAY_SDL_CFLAGS) $(RAY_GL_CFLAGS))
+RAY_LDLIBS ?= $(strip $(RAY_SDL_LDLIBS) $(RAY_GL_LDLIBS))
+RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
+RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSUPPORT_AUTOMATION_EVENTS=0 -DSUPPORT_CLIPBOARD_IMAGE=0 -DSUPPORT_FILEFORMAT_BMP=0 -DSUPPORT_FILEFORMAT_GIF=0 -DSUPPORT_FILEFORMAT_QOI=0 -DSUPPORT_FILEFORMAT_DDS=0 -DSUPPORT_FILEFORMAT_TTF=0
 FLINT_MAKEFILES = $(FLINT_MAKE_DIR)project.mk $(FLINT_MAKE_DIR)common.mk $(FLINT_MAKE_DIR)raylib.mk $(FLINT_MAKE_DIR)native.mk $(FLINT_MAKE_DIR)windows.mk $(FLINT_MAKE_DIR)web.mk $(FLINT_MAKE_DIR)android.mk $(FLINT_MAKE_DIR)dist.mk $(FLINT_MAKE_DIR)clean.mk
 BUILD_MAKEFILES = Makefile $(FLINT_PROJECT) $(FLINT_MAKEFILES)
 ifneq ($(strip $(FLINT_PROJECT_VARS)),)

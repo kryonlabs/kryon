@@ -10,6 +10,8 @@ $(RAYLIB_A): $(RAYLIB_SOURCES) | $(RAYLIB_BUILD_DIR)
 	@mkdir -p $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src
 	cp -R $(RAYLIB_DIR)/. $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src/
 	$(MAKE) -j1 -C $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src \
+		CC="$(CC)" \
+		AR="$(AR)" \
 		PLATFORM=PLATFORM_DESKTOP_SDL \
 		GRAPHICS=GRAPHICS_API_OPENGL_ES2 \
 		RAYLIB_LIBTYPE=STATIC \
@@ -48,7 +50,7 @@ $(TARGET): $(SRC) $(FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(RAYLIB_A) $
 		$(RAY_LDLIBS) \
 		$(FLINT_RUNTIME_ASSET_LDLIBS) \
 		$(FLINT_NATIVE_LDLIBS) \
-		-lm -lpthread -ldl -lrt \
+		$(FLINT_NATIVE_SYSTEM_LDLIBS) \
 		$(LDFLAGS)
 
 run: $(TARGET)
@@ -123,5 +125,5 @@ build-linux-arch:
 		$(LINUX_RAY_LDLIBS) \
 		$(FLINT_RUNTIME_ASSET_LDLIBS) \
 		$(FLINT_NATIVE_LDLIBS) \
-		-lm -lpthread -ldl -lrt \
+		$(FLINT_NATIVE_SYSTEM_LDLIBS) \
 		$(LDFLAGS)

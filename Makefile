@@ -1,4 +1,4 @@
-CC ?= gcc
+CC ?= cc
 AR ?= ar
 BUILD_DIR ?= build
 SITE_DIR ?= docs/site

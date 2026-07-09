@@ -1,9 +1,14 @@
 # Flint Examples Makefile
 
-CC ?= gcc
+CC ?= cc
 CFLAGS_BASE ?= -Wall -Wextra -O2
 CFLAGS = $(CFLAGS_BASE) -I../include
 LDFLAGS = -L.. -lflint
+UNAME_S := $(shell uname -s)
+EXAMPLE_SYSTEM_LDLIBS := -lraylib -lGL -lm -lpthread -lX11
+ifeq ($(UNAME_S),Linux)
+    EXAMPLE_SYSTEM_LDLIBS += -ldl -lrt
+endif
 FLINT_DIR := ..
 FONT_OUTPUT := assets/fonts/locales
 FONT_OUTPUTS := $(FONT_OUTPUT).png $(FONT_OUTPUT).dat
@@ -36,7 +41,7 @@ ifneq ($(RAYLIB_DIR),)
     CFLAGS += -I$(RAYLIB_DIR)/raylib/include
 endif
 
-LDFLAGS += -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+LDFLAGS += $(EXAMPLE_SYSTEM_LDLIBS)
 
 EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout
 

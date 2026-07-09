@@ -7,9 +7,3 @@
 [submodule "vendor/curl"]
 	path = vendor/curl
 	url = https://github.com/curl/curl.git
-[submodule "vendor/libressl"]
-	path = vendor/libressl
-	url = https://github.com/libressl/portable
-[submodule "vendor/openbsd"]
-	path = vendor/openbsd
-	url = https://github.com/libressl/openbsd
