@@ -10,9 +10,13 @@ static FlintThemeScope scopes[FLINT_THEME_MAX_SCOPES];
 static int scope_count = 0;
 static bool dark_mode = false;
 static int current_theme_id = FLINT_THEME_SKY;
+static FlintThemeSource theme_source = FLINT_THEME_SOURCE_APP;
+static FlintThemeMode theme_mode = FLINT_THEME_MODE_LIGHT;
 
 static FlintThemeAggregateVariable aggregate_vars[FLINT_THEME_MAX_VARS];
 static int aggregate_count = 0;
+
+bool flint_theme_system_color(const char *key, Color *color);
 
 static void copy_text(char *dst, int size, const char *src)
 {
@@ -582,11 +586,12 @@ bool flint_theme_import_theme(const char *path)
 void flint_theme_set_dark_mode(bool dark)
 {
     dark_mode = dark;
+    theme_mode = dark ? FLINT_THEME_MODE_DARK : FLINT_THEME_MODE_LIGHT;
 }
 
 bool flint_theme_get_dark_mode(void)
 {
-    return dark_mode;
+    return flint_theme_effective_dark_mode();
 }
 
 void flint_theme_reload_themes(void)
@@ -645,6 +650,48 @@ void flint_theme_reload_themes(void)
 }
 
 void
+flint_theme_set_source(FlintThemeSource source)
+{
+    if(source != FLINT_THEME_SOURCE_SYSTEM)
+        source = FLINT_THEME_SOURCE_APP;
+    theme_source = source;
+}
+
+FlintThemeSource
+flint_theme_get_source(void)
+{
+    return theme_source;
+}
+
+void
+flint_theme_set_mode(FlintThemeMode mode)
+{
+    if(mode < FLINT_THEME_MODE_SYSTEM || mode > FLINT_THEME_MODE_DARK)
+        mode = FLINT_THEME_MODE_SYSTEM;
+    theme_mode = mode;
+    if(mode == FLINT_THEME_MODE_LIGHT)
+        dark_mode = false;
+    else if(mode == FLINT_THEME_MODE_DARK)
+        dark_mode = true;
+}
+
+FlintThemeMode
+flint_theme_get_mode(void)
+{
+    return theme_mode;
+}
+
+bool
+flint_theme_effective_dark_mode(void)
+{
+    if(theme_mode == FLINT_THEME_MODE_LIGHT)
+        return false;
+    if(theme_mode == FLINT_THEME_MODE_DARK)
+        return true;
+    return flint_theme_system_prefers_dark();
+}
+
+void
 flint_theme_set_current(int theme_id, int current_dark_mode)
 {
     current_theme_id = flint_theme_normalize(theme_id);
@@ -655,8 +702,11 @@ Color
 flint_theme_current_color(const char *key)
 {
     Color color = BLANK;
+    if(theme_source == FLINT_THEME_SOURCE_SYSTEM &&
+       flint_theme_system_color(key, &color))
+        return color;
     flint_theme_catalog_color(flint_theme_normalize(current_theme_id),
-                              dark_mode, key, &color);
+                              flint_theme_effective_dark_mode(), key, &color);
     return color;
 }
 

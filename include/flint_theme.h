@@ -30,6 +30,17 @@ typedef struct {
     int scope_count;
 } FlintThemeAggregateVariable;
 
+typedef enum {
+    FLINT_THEME_SOURCE_APP = 0,
+    FLINT_THEME_SOURCE_SYSTEM = 1
+} FlintThemeSource;
+
+typedef enum {
+    FLINT_THEME_MODE_SYSTEM = 0,
+    FLINT_THEME_MODE_LIGHT = 1,
+    FLINT_THEME_MODE_DARK = 2
+} FlintThemeMode;
+
 void flint_theme_reset(void);
 FlintThemeScope *flint_theme_register_scope(const char *name, const char *path);
 FlintThemeScope *flint_theme_register_scope_dark(const char *name, const char *path, const char *dark_path);
@@ -56,6 +67,17 @@ bool flint_theme_import_theme(const char *path);
 void flint_theme_set_dark_mode(bool dark);
 bool flint_theme_get_dark_mode(void);
 void flint_theme_reload_themes(void);
+
+void flint_theme_set_source(FlintThemeSource source);
+FlintThemeSource flint_theme_get_source(void);
+void flint_theme_set_mode(FlintThemeMode mode);
+FlintThemeMode flint_theme_get_mode(void);
+bool flint_theme_system_available(void);
+const char *flint_theme_system_name(void);
+bool flint_theme_refresh_system(void);
+bool flint_theme_system_prefers_dark(void);
+void flint_theme_set_system_dark_mode(bool dark);
+bool flint_theme_effective_dark_mode(void);
 
 void flint_theme_set_current(int theme_id, int dark_mode);
 Color flint_theme_current_color(const char *key);

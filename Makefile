@@ -47,6 +47,7 @@ SRCS = \
 	src/flint_lyra_sync.c \
 	src/flint_theme.c \
 	src/flint_theme_meta.c \
+	src/flint_system_theme.c \
 	src/flint_file_dialog.c \
 	src/flint_runtime_assets.c \
 	src/flint_transition.c \
@@ -63,6 +64,12 @@ SRCS = \
 	src/ui/tutorial.c
 
 SRCS += $(EMBED_ASSETS_C)
+
+SYSTEM_THEME_PKG := $(shell if pkg-config --exists gtk+-3.0 2>/dev/null; then printf '%s' gtk+-3.0; fi)
+ifneq ($(strip $(SYSTEM_THEME_PKG)),)
+    CPPFLAGS += $(shell pkg-config --cflags $(SYSTEM_THEME_PKG)) -DFLINT_SYSTEM_THEME_GTK
+    LDLIBS += $(shell pkg-config --libs $(SYSTEM_THEME_PKG))
+endif
 
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
