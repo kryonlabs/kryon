@@ -498,6 +498,8 @@ void MarkUIDisabled(void);
 void SetUIIcons(Texture2D gear_icon, Texture2D x_icon);
 int UIInputCapturesClick(Vector2 point);
 int UIHoverEffectsEnabled(void);
+void SetUITransitionCuesEnabled(int enabled);
+int UITransitionCuesEnabled(void);
 /* DPI scaling, color, and layout functions now from File UI Toolkit: ScaleUIPx, ClampUIPx, LightenUIColor, DarkenUIColor, GetUICenteredColumn, GetUIPageSidePadding */
 int GetUIFontSize(void);
 int GetUISmallFontSize(void);

@@ -36,6 +36,7 @@ DrawUITabBar(UITabBar bar)
     int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : ScaleUIPx(120);
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : min_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
+    int cues = UITransitionCuesEnabled();
     static int default_scroll_offset = 0;
     static Vector2 last_drag_pos = {0};
     static int is_dragging = 0;
@@ -111,7 +112,7 @@ DrawUITabBar(UITabBar bar)
         } else if(is_selected) {
             tab_fill = c_button;
         } else if(is_hovered) {
-            tab_fill = DarkenUIColor(c_button_hover, 8);
+            tab_fill = DarkenUIColor(c_button_hover, cues ? 2 : 8);
         } else {
             tab_fill = DarkenUIColor(c_bg, 10);
         }
@@ -126,11 +127,25 @@ DrawUITabBar(UITabBar bar)
             DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 50),
                          DarkenUIColor(tab_fill, 30));
+            if(cues && tab_w > ScaleUIPx(18)) {
+                int cue_h = ScaleUIPx(2);
+                if(cue_h < 1)
+                    cue_h = 1;
+                DrawRectangle(tab_x + ScaleUIPx(9), bar_y + bar_h - cue_h,
+                              tab_w - ScaleUIPx(18), cue_h,
+                              LightenUIColor(c_button_hover, 18));
+            }
         } else if(is_hovered && !is_disabled) {
             // Enhanced bevel for hovered tab
             DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
-                         LightenUIColor(tab_fill, 30),
+                         LightenUIColor(tab_fill, cues ? 42 : 30),
                          DarkenUIColor(tab_fill, 20));
+            if(cues && tab_w > ScaleUIPx(8)) {
+                Color cue = LightenUIColor(tab_fill, 40);
+                cue.a = cue.a > 150 ? 150 : cue.a;
+                DrawRectangle(tab_x + ScaleUIPx(4), bar_y + ScaleUIPx(1),
+                              tab_w - ScaleUIPx(8), ScaleUIPx(1), cue);
+            }
         } else if(!is_disabled) {
             // Subtle bevel for normal tab
             DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
@@ -155,7 +170,7 @@ DrawUITabBar(UITabBar bar)
             icon_color = DarkenUIColor(c_icon, 40);
         } else if(is_selected) {
             text_color = LightenUIColor(c_text, 10);
-            icon_color = LightenUIColor(c_icon, 10);
+            icon_color = LightenUIColor(c_icon, cues ? 18 : 10);
         }
 
         // Draw icon if present

@@ -20,6 +20,7 @@ DrawUIBottomNav(UIBottomNav nav)
     int tab_w;
     int group_w;
     int start_x;
+    int cues = UITransitionCuesEnabled();
 
     result.y = y;
     result.height = height;
@@ -58,6 +59,18 @@ DrawUIBottomNav(UIBottomNav nav)
                                   item->disabled, &hover)) {
             result.clicked_index = i;
             result.clicked_route = item->route;
+        }
+
+        if(cues && item->active && !item->disabled && w > ScaleUIPx(20)) {
+            int cue_h = ScaleUIPx(2);
+            if(cue_h < 1)
+                cue_h = 1;
+            DrawRectangle(x + ScaleUIPx(10), y + height - cue_h,
+                          w - ScaleUIPx(20), cue_h,
+                          LightenUIColor(c_button_hover, 18));
+            icon_color = LightenUIColor(icon_color, 18);
+        } else if(cues && hover && !item->disabled) {
+            icon_color = LightenUIColor(icon_color, 8);
         }
 
         if(item->icon.id != 0) {

@@ -29,6 +29,7 @@ int g_ui_pointer_dragging = 0;
 static int g_ui_pointer_dragged_this_click = 0;
 static int g_ui_pointer_start_x = 0;
 static int g_ui_pointer_start_y = 0;
+static int g_ui_transition_cues_enabled = 0;
 
 int g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
 
@@ -225,6 +226,18 @@ UIHoverEffectsEnabled(void)
 #else
     return 1;
 #endif
+}
+
+void
+SetUITransitionCuesEnabled(int enabled)
+{
+    g_ui_transition_cues_enabled = enabled ? 1 : 0;
+}
+
+int
+UITransitionCuesEnabled(void)
+{
+    return g_ui_transition_cues_enabled;
 }
 
 void
@@ -805,15 +818,28 @@ DrawUIButton(UIButton button)
     Color text = button.text.a != 0 ? button.text : c_text;
     Color border = button.border.a != 0 ? button.border : LightenUIColor(background, 32);
     float radius = button.radius > 0.0f ? button.radius : 0.12f;
+    int cues = UITransitionCuesEnabled();
+    Color draw_background;
+    Color draw_border;
 
     if(button.disabled) {
         background.a = background.a > 120 ? 120 : background.a;
         text.a = text.a > 150 ? 150 : text.a;
     }
 
-    DrawRectangleRounded(button.bounds, radius, 8, hovered ? hover_background : background);
-    DrawRectangleRoundedLines(button.bounds, radius, 8,
-                              hovered ? LightenUIColor(hover_background, 40) : border);
+    draw_background = hovered ? hover_background : background;
+    draw_border = hovered ? LightenUIColor(hover_background, cues ? 54 : 40) : border;
+    if(cues && hovered)
+        draw_background = LightenUIColor(draw_background, 6);
+
+    DrawRectangleRounded(button.bounds, radius, 8, draw_background);
+    DrawRectangleRoundedLines(button.bounds, radius, 8, draw_border);
+    if(cues && hovered && button.bounds.width > 4 && button.bounds.height > 4) {
+        Color cue = LightenUIColor(draw_background, 42);
+        cue.a = cue.a > 170 ? 170 : cue.a;
+        DrawRectangle((int)button.bounds.x + 2, (int)button.bounds.y + 1,
+                      (int)button.bounds.width - 4, ScaleUIPx(1), cue);
+    }
 
     if(button.disabled && !captured && mouse_inside)
         MarkUIDisabled();
@@ -851,6 +877,9 @@ DrawUIIconButton(UIIconButton button)
     Color icon_color = button.icon_color.a != 0 ? button.icon_color : c_text;
     Color border = button.border.a != 0 ? button.border : DarkenUIColor(background, 35);
     float radius = button.radius > 0.0f ? button.radius : 0.12f;
+    int cues = UITransitionCuesEnabled();
+    Color draw_background;
+    Color draw_border;
 
     if(draw_size <= 0) {
         int available_w = (int)button.bounds.width - icon_padding * 2;
@@ -865,9 +894,21 @@ DrawUIIconButton(UIIconButton button)
         icon_color.a = icon_color.a > 150 ? 150 : icon_color.a;
     }
 
-    DrawRectangleRounded(button.bounds, radius, 8, hovered ? hover_background : background);
-    DrawRectangleRoundedLines(button.bounds, radius, 8,
-                              hovered ? LightenUIColor(hover_background, 40) : border);
+    draw_background = hovered ? hover_background : background;
+    draw_border = hovered ? LightenUIColor(hover_background, cues ? 54 : 40) : border;
+    if(cues && hovered) {
+        draw_background = LightenUIColor(draw_background, 6);
+        icon_color = LightenUIColor(icon_color, 8);
+    }
+
+    DrawRectangleRounded(button.bounds, radius, 8, draw_background);
+    DrawRectangleRoundedLines(button.bounds, radius, 8, draw_border);
+    if(cues && hovered && button.bounds.width > 4 && button.bounds.height > 4) {
+        Color cue = LightenUIColor(draw_background, 42);
+        cue.a = cue.a > 170 ? 170 : cue.a;
+        DrawRectangle((int)button.bounds.x + 2, (int)button.bounds.y + 1,
+                      (int)button.bounds.width - 4, ScaleUIPx(1), cue);
+    }
 
     if(button.disabled && !captured && mouse_inside)
         MarkUIDisabled();
@@ -1495,6 +1536,7 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
     int captured = UIInputCapturesClick(mouse_world);
     int active = mouse_inside && !disabled && !captured;
     int hovered = active && UIHoverEffectsEnabled();
+    int cues = UITransitionCuesEnabled();
 
     if(disabled) {
         bg = DarkenUIColor(bg, 22);
@@ -1512,8 +1554,16 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
 
     if(active) {
         Color draw_bg = hovered ? hover_bg : bg;
+        if(cues && hovered)
+            draw_bg = LightenUIColor(draw_bg, 8);
         DrawRectangleRec(bounds, draw_bg);
-        DrawUIBevel(x, y, w, h, LightenUIColor(draw_bg, 40), DarkenUIColor(draw_bg, 40));
+        DrawUIBevel(x, y, w, h, LightenUIColor(draw_bg, cues && hovered ? 56 : 40),
+                    DarkenUIColor(draw_bg, 40));
+        if(cues && hovered && w > 4 && h > 4) {
+            Color cue = LightenUIColor(draw_bg, 42);
+            cue.a = cue.a > 165 ? 165 : cue.a;
+            DrawRectangle(x + 2, y + 1, w - 4, ScaleUIPx(1), cue);
+        }
         MarkUIClickable();
 
         if(released) {
@@ -1522,6 +1572,14 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
     } else {
         DrawRectangleRec(bounds, bg);
         DrawUIBevel(x, y, w, h, LightenUIColor(bg, 40), DarkenUIColor(bg, 40));
+    }
+
+    if(cues && style == UI_BUTTON_STYLE_TAB_SELECTED && !disabled && w > ScaleUIPx(18)) {
+        int cue_h = ScaleUIPx(2);
+        if(cue_h < 1)
+            cue_h = 1;
+        DrawRectangle(x + ScaleUIPx(9), y + h - cue_h, w - ScaleUIPx(18),
+                      cue_h, LightenUIColor(c_button_hover, 18));
     }
 
     int text_w = MeasureUIText(label, font);
@@ -1544,6 +1602,7 @@ DrawUISubtabBar(UISubtabBar bar)
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
     int bar_h = (int)bar.bounds.height;
+    int cues = UITransitionCuesEnabled();
 
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 || bar.bounds.height <= 0)
         return -1;
@@ -1583,10 +1642,17 @@ DrawUISubtabBar(UISubtabBar bar)
 
         if(is_hovered && !is_disabled && !is_selected)
             DrawRectangle(tab_x, bar_y + ScaleUIPx(2), draw_w, tab_h - ScaleUIPx(4),
-                          DarkenUIColor(c_button_hover, 10));
+                          cues ? LightenUIColor(DarkenUIColor(c_button_hover, 10), 6)
+                               : DarkenUIColor(c_button_hover, 10));
 
         if(is_selected) {
-            int underline_h = ScaleUIPx(3);
+            int underline_h = ScaleUIPx(cues ? 4 : 3);
+            if(cues) {
+                Color glow = accent;
+                glow.a = glow.a > 90 ? 90 : glow.a;
+                DrawRectangle(tab_x + ScaleUIPx(10), bar_y + tab_h - underline_h - ScaleUIPx(2),
+                              draw_w - ScaleUIPx(20), ScaleUIPx(2), glow);
+            }
             DrawRectangle(tab_x + ScaleUIPx(10), bar_y + tab_h - underline_h,
                           draw_w - ScaleUIPx(20), underline_h, accent);
         }

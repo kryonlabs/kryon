@@ -1124,7 +1124,13 @@ void ui_set_input_blocked(int blocked);
 
 ```c
 int UIHoverEffectsEnabled(void);
+void SetUITransitionCuesEnabled(int enabled);
+int UITransitionCuesEnabled(void);
 ```
+
+`SetUITransitionCuesEnabled` controls the extra subtle hover and selected-state cues
+used by built-in controls. Leave it disabled when an application has transitions
+turned off.
 
 ### Text Input Queuing
 
