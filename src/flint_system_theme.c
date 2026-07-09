@@ -222,6 +222,12 @@ flint_theme_system_name(void)
     return system_palette.name;
 }
 
+const char *
+flint_theme_system_name_cached(void)
+{
+    return system_palette.name;
+}
+
 bool
 flint_theme_system_prefers_dark(void)
 {

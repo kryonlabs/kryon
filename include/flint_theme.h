@@ -74,6 +74,7 @@ void flint_theme_set_mode(FlintThemeMode mode);
 FlintThemeMode flint_theme_get_mode(void);
 bool flint_theme_system_available(void);
 const char *flint_theme_system_name(void);
+const char *flint_theme_system_name_cached(void);
 bool flint_theme_refresh_system(void);
 bool flint_theme_system_prefers_dark(void);
 void flint_theme_set_system_dark_mode(bool dark);
