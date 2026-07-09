@@ -36,6 +36,40 @@ static FlintSystemThemePalette system_palette = {
     .name = "System"
 };
 
+static const FlintSystemThemePalette material_light_palette = {
+    .background = {0xFF, 0xFB, 0xFE, 0xFF},
+    .surface = {0xF7, 0xF2, 0xFA, 0xFF},
+    .text = {0x1D, 0x1B, 0x20, 0xFF},
+    .circle = {0x67, 0x50, 0xA4, 0xFF},
+    .button = {0xE7, 0xE0, 0xEC, 0xFF},
+    .button_hover = {0xD0, 0xBC, 0xFF, 0xFF},
+    .icon = {0x1D, 0x1B, 0x20, 0xFF},
+    .link = {0x67, 0x50, 0xA4, 0xFF},
+    .available = 1,
+    .prefers_dark = 0,
+    .name = "Material"
+};
+
+static const FlintSystemThemePalette material_dark_palette = {
+    .background = {0x14, 0x12, 0x18, 0xFF},
+    .surface = {0x21, 0x1F, 0x26, 0xFF},
+    .text = {0xE6, 0xE0, 0xE9, 0xFF},
+    .circle = {0xD0, 0xBC, 0xFF, 0xFF},
+    .button = {0x4A, 0x44, 0x58, 0xFF},
+    .button_hover = {0x67, 0x50, 0xA4, 0xFF},
+    .icon = {0xE6, 0xE0, 0xE9, 0xFF},
+    .link = {0xD0, 0xBC, 0xFF, 0xFF},
+    .available = 1,
+    .prefers_dark = 1,
+    .name = "Material"
+};
+
+static void
+apply_material_palette(bool dark)
+{
+    system_palette = dark ? material_dark_palette : material_light_palette;
+}
+
 #if defined(FLINT_SYSTEM_THEME_GTK)
 static Color
 color_from_unit(double r, double g, double b, double a)
@@ -199,9 +233,13 @@ flint_theme_system_prefers_dark(void)
 void
 flint_theme_set_system_dark_mode(bool dark)
 {
+    if(!system_palette.available ||
+       strcmp(system_palette.name, "System") == 0 ||
+       strcmp(system_palette.name, "Material") == 0) {
+        apply_material_palette(dark);
+        return;
+    }
     system_palette.prefers_dark = dark ? 1 : 0;
-    if(!system_palette.available)
-        snprintf(system_palette.name, sizeof(system_palette.name), "%s", "System");
 }
 
 bool

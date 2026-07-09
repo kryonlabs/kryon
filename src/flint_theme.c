@@ -702,6 +702,8 @@ Color
 flint_theme_current_color(const char *key)
 {
     Color color = BLANK;
+    if(key != NULL && strcmp(key, "icon") == 0)
+        return WHITE;
     if(theme_source == FLINT_THEME_SOURCE_SYSTEM &&
        flint_theme_system_color(key, &color))
         return color;
@@ -716,4 +718,4 @@ Color flint_theme_get_surface(void) { return flint_theme_current_color("surface"
 Color flint_theme_get_circle(void) { return flint_theme_current_color("circle"); }
 Color flint_theme_get_button(void) { return flint_theme_current_color("button"); }
 Color flint_theme_get_button_hover(void) { return flint_theme_current_color("button_hover"); }
-Color flint_theme_get_icon(void) { return flint_theme_current_color("icon"); }
+Color flint_theme_get_icon(void) { return WHITE; }
