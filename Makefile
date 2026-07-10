@@ -76,7 +76,7 @@ LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
 LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 
-.PHONY: all clean run font-assets docs-site test
+.PHONY: all clean run font-assets docs-site test bsd-check
 
 all: $(LIB)
 
@@ -102,6 +102,11 @@ test: $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
 	$(TRANSITION_TEST)
+
+bsd-check:
+	$(MAKE) clean
+	$(MAKE) all
+	$(MAKE) test
 
 $(LIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^

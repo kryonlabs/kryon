@@ -29,6 +29,14 @@ cmake -B build
 cmake --build build
 ```
 
+On FreeBSD, use the repository `makefile` entrypoint. It delegates to the GNU
+Make build while keeping `make` as the command maintainers and downstream apps
+can run:
+
+```bash
+make bsd-check
+```
+
 ## Integration
 
 To integrate Flint into your project:
