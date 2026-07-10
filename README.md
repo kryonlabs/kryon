@@ -36,8 +36,8 @@ To integrate Flint into your project:
 1. Add `include/` to your header search paths
 2. Compile the `src/` files and link with your application
 3. Use the `scripts/` tools to embed custom icon assets if needed
-4. Include `mk/vendor.mk` or `mk/project.mk` when your app enables networking or
-   Lyra account support
+4. Include explicit Make fragments such as `mk/vendor.mk` when your app enables
+   networking or Lyra account support
 
 Applications should keep build artifacts in their own build directories, but
 the dependency source of truth and common build recipes should live under Flint.

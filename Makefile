@@ -5,8 +5,6 @@ SITE_DIR ?= docs/site
 SITE_BUILD_DIR ?= $(BUILD_DIR)/site
 CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude -Ivendor/raylib/src
-INSTALL_DIR ?= $(HOME)/.local/share/flint
-BIN_DIR ?= $(HOME)/bin
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png)
 ICON_ASSETS_C = src/ui_icon_assets.c
@@ -74,16 +72,13 @@ endif
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
 LIB = libflint.a
-CLI = $(BUILD_DIR)/flint
 LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
 LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 
-.PHONY: all clean run install uninstall cli font-assets docs-site test
+.PHONY: all clean run font-assets docs-site test
 
 all: $(LIB)
-
-cli: $(CLI)
 
 run:
 	@echo "Building Flint library..."
@@ -108,44 +103,8 @@ test: $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST)
 	$(LYRA_SYNC_TEST)
 	$(TRANSITION_TEST)
 
-install: $(CLI)
-	@echo "Installing flint to $(INSTALL_DIR)..."
-	@mkdir -p $(INSTALL_DIR)
-	@mkdir -p $(BIN_DIR)
-	@cp $(CLI) $(INSTALL_DIR)/flint.tmp
-	@mv -f $(INSTALL_DIR)/flint.tmp $(INSTALL_DIR)/flint
-	@if [ -L $(BIN_DIR)/flint ]; then \
-		echo "Removing existing symlink: $(BIN_DIR)/flint"; \
-		rm $(BIN_DIR)/flint; \
-	elif [ -e $(BIN_DIR)/flint ]; then \
-		echo "Error: $(BIN_DIR)/flint exists and is not a symlink"; \
-		echo "Please remove it manually and try again"; \
-		exit 1; \
-	fi
-	@ln -s $(INSTALL_DIR)/flint $(BIN_DIR)/flint
-	@echo "Created symlink: $(BIN_DIR)/flint -> $(INSTALL_DIR)/flint"
-	@echo "Installation complete. Run 'flint help'."
-
-uninstall:
-	@echo "Uninstalling flint..."
-	@if [ -L $(BIN_DIR)/flint ]; then \
-		echo "Removing symlink: $(BIN_DIR)/flint"; \
-		rm $(BIN_DIR)/flint; \
-	elif [ -e $(BIN_DIR)/flint ]; then \
-		echo "Warning: $(BIN_DIR)/flint exists but is not a symlink"; \
-		echo "Skipping symlink removal"; \
-	fi
-	@if [ -d $(INSTALL_DIR) ]; then \
-		echo "Removing directory: $(INSTALL_DIR)"; \
-		rm -rf $(INSTALL_DIR); \
-	fi
-	@echo "Uninstall complete"
-
 $(LIB): $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
-
-$(CLI): cli/flint.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $< -o $@
 
 $(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra_account.c include/lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
