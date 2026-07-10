@@ -102,6 +102,9 @@ int
 DrawUIOverlayButton(UIOverlayButton button)
 {
     Vector2 mouse;
+    int mouse_inside;
+    int captured;
+    int active;
     int hovered;
     int font;
     int text_w;
@@ -113,7 +116,10 @@ DrawUIOverlayButton(UIOverlayButton button)
         return 0;
 
     mouse = ui_mouse_world();
-    hovered = !button.disabled && CheckCollisionPointRec(mouse, button.bounds);
+    mouse_inside = CheckCollisionPointRec(mouse, button.bounds);
+    captured = UIInputCapturesClick(mouse);
+    active = !button.disabled && !captured && mouse_inside;
+    hovered = active && UIHoverEffectsEnabled();
     font = button.font > 0 ? button.font : GetUIFontSize();
     background = hovered && button.hover_background.a != 0
                      ? button.hover_background
@@ -136,7 +142,12 @@ DrawUIOverlayButton(UIOverlayButton button)
                         font, text);
     }
 
-    return hovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    if(button.disabled && !captured && mouse_inside)
+        MarkUIDisabled();
+    if(active)
+        MarkUIClickable();
+
+    return active && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
 int
