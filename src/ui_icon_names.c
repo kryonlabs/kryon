@@ -24,6 +24,7 @@ const char *ui_icon_names[] = {
     "itch.png",  /* UI_ICON_TYPE_ITCH_PNG */
     "jupiter.png",  /* UI_ICON_TYPE_JUPITER_PNG */
     "leadercat.png",  /* UI_ICON_TYPE_LEADERCAT_PNG */
+    "left.png",  /* UI_ICON_TYPE_LEFT_PNG */
     "lightoff.png",  /* UI_ICON_TYPE_LIGHTOFF_PNG */
     "lighton.png",  /* UI_ICON_TYPE_LIGHTON_PNG */
     "link.png",  /* UI_ICON_TYPE_LINK_PNG */
@@ -44,6 +45,7 @@ const char *ui_icon_names[] = {
     "quest.png",  /* UI_ICON_TYPE_QUEST_PNG */
     "ray.png",  /* UI_ICON_TYPE_RAY_PNG */
     "return.png",  /* UI_ICON_TYPE_RETURN_PNG */
+    "right.png",  /* UI_ICON_TYPE_RIGHT_PNG */
     "rocket.png",  /* UI_ICON_TYPE_ROCKET_PNG */
     "routine.png",  /* UI_ICON_TYPE_ROUTINE_PNG */
     "saturn.png",  /* UI_ICON_TYPE_SATURN_PNG */
