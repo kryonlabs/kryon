@@ -1,15 +1,15 @@
 BINARY_NAME = $(APP_NAME)-$(PLATFORM)-$(ARCH)
-TARGET = $(LINUX_BIN_DIR)/$(BINARY_NAME)
+TARGET = $(NATIVE_BIN_DIR)/$(BINARY_NAME)
 
 all: native
 
 native: $(TARGET)
 
 $(RAYLIB_A): $(RAYLIB_SOURCES) $(BUILD_MAKEFILES) | $(RAYLIB_BUILD_DIR)
-	@rm -rf $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src
-	@mkdir -p $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src
-	cp -R $(RAYLIB_DIR)/. $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src/
-	$(MAKE) -j1 -C $(LINUX_OBJ_DIR)/$(ARCH)/native/raylib-src \
+	@rm -rf $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src
+	@mkdir -p $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src
+	cp -R $(RAYLIB_DIR)/. $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src/
+	$(MAKE) -j1 -C $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src \
 		CC="$(CC)" \
 		AR="$(AR)" \
 		PLATFORM=PLATFORM_DESKTOP_SDL \
@@ -23,17 +23,17 @@ $(RAYLIB_A): $(RAYLIB_SOURCES) $(BUILD_MAKEFILES) | $(RAYLIB_BUILD_DIR)
 		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(RAY_CFLAGS) $(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
 
 ifneq ($(strip $(CORE_SRCS)),)
-CORE_OBJS = $(patsubst %.c,$(LINUX_OBJ_DIR)/$(ARCH)/native/core/%.o,$(CORE_SRCS))
+CORE_OBJS = $(patsubst %.c,$(NATIVE_OBJ_DIR)/$(ARCH)/native/core/%.o,$(CORE_SRCS))
 
-$(LINUX_OBJ_DIR)/$(ARCH)/native/core/%.o: %.c | $(LINUX_OBJ_DIR)
+$(NATIVE_OBJ_DIR)/$(ARCH)/native/core/%.o: %.c | $(NATIVE_OBJ_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(CORE_INCLUDE) -c $< -o $@
 
-$(CORE_A): $(CORE_OBJS) | $(LINUX_OBJ_DIR)
+$(CORE_A): $(CORE_OBJS) | $(NATIVE_OBJ_DIR)
 	ar rcs $@ $(CORE_OBJS)
 endif
 
-$(TARGET): $(SRC) $(FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(RAYLIB_A) $(CORE_A) $(FLINT_NATIVE_DEPS) | $(LINUX_BIN_DIR)
+$(TARGET): $(SRC) $(FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(RAYLIB_A) $(CORE_A) $(FLINT_NATIVE_DEPS) | $(NATIVE_BIN_DIR)
 	$(CC) $(CFLAGS) \
 		$(APP_INCLUDE) \
 		$(FLINT_INCLUDE) \
