@@ -101,15 +101,27 @@ SetUIColors(GetThemeText(), GetThemeBackground(),
     <section id="modals" class="wrap section">
       <h2>Modals</h2>
       <p>
-        Prefer <code>DrawUIModalFrame</code> for custom modal content. It
-        draws the shared modal frame and registers modal input capture so
-        background controls cannot receive clicks.
+        Use <code>DrawUIActionModal</code> for title, message, and action-button
+        dialogs. It measures labels, fits button text, wraps long action rows,
+        and registers modal input capture so background controls cannot receive
+        clicks.
       </p>
-      <pre><code>UIPanelFrame frame = DrawUIModalFrame(
-    ScaleUIPx(360), ScaleUIPx(260), "Edit",
-    (Texture2D){0}, (Texture2D){0});
+      <pre><code>UIModalAction actions[2] = {
+    { "Keep running", UI_BUTTON_STYLE_PRIMARY, 0 },
+    { "Quit", UI_BUTTON_STYLE_DANGER, 0 }
+};
 
-DrawUILabelTextField(row, frame.content_x, frame.content_y, frame.content_w);</code></pre>
+int result = DrawUIActionModal((UIModalSpec){
+    .title = "Close app?",
+    .message = "Choose what the app should do next.",
+    .actions = actions,
+    .action_count = 2,
+    .close_icon = close_icon
+});</code></pre>
+      <p>
+        Use <code>DrawUIModalFrame</code> when a dialog needs custom controls
+        such as text fields, sliders, or scrollable content.
+      </p>
     </section>
 
     <section id="controls" class="wrap section">

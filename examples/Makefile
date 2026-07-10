@@ -21,18 +21,20 @@ FONT_LOCALES := $(wildcard locales/*.txt)
 FONT_TOOL := ../tools/otfchop/otfchop
 FONT_SOURCE := ../tools/otfchop/unifont-17.0.04.otf
 BUILD_DIR ?= ../build/examples
+WEB_EMBED_ASSETS_C := $(BUILD_DIR)/embedded_asset_data.c
+WEB_EMBED_ASSET_FILES := $(shell find ../themes -type f 2>/dev/null)
 WEB_RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-web
 WEB_RAYLIB_A := $(WEB_RAYLIB_BUILD_DIR)/libraylib.web.a
 WEB_CC ?= emcc
 WEB_AR ?= emar
 WEB_SHELL := web_shell.html
 EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
-FLINT_WEB_SRCS := $(filter-out ../src/file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/ui/*.c))
-FLINT_ALL_WEB_SRCS := $(wildcard ../src/*.c) $(wildcard ../src/ui/*.c)
+FLINT_WEB_SRCS := $(filter-out ../src/file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/ui/*.c)) $(WEB_EMBED_ASSETS_C)
+FLINT_ALL_WEB_SRCS := $(wildcard ../src/*.c) $(wildcard ../src/ui/*.c) $(WEB_EMBED_ASSETS_C)
 include ../mk/raylib.mk
 WEB_RAYLIB_OBJS = $(FLINT_RAYLIB_WEB_OBJS)
-WEB_CFLAGS := -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1
-WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY --shell-file $(WEB_SHELL)
+WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1
+WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
 WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
 
 # Raylib - use system library from nix-shell
@@ -92,17 +94,21 @@ $(WEB_RAYLIB_BUILD_DIR)/%.o: $(RAYLIB_DIR)/%.c | $(WEB_RAYLIB_BUILD_DIR)
 $(WEB_RAYLIB_A): flint-raylib-check $(RAYLIB_SOURCES) $(WEB_RAYLIB_OBJS)
 	$(WEB_AR) rcs $@ $(WEB_RAYLIB_OBJS)
 
-$(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(WEB_SHELL)
+$(WEB_EMBED_ASSETS_C): $(WEB_EMBED_ASSET_FILES) ../scripts/embed-assets.sh ../include/embedded_assets.h | $(BUILD_DIR)
+	sh ../scripts/embed-assets.sh $@ ../themes
+
+$(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(WEB_EMBED_ASSETS_C) $(WEB_SHELL)
 	@echo "Building web example $*..."
 	@mkdir -p $(dir $@)
 	$(WEB_CC) $(WEB_CFLAGS) \
 		-I../include -I$(RAYLIB_DIR) \
-		-o $@ \
+		-o $(dir $@)/index.js \
 		$< \
 		$(if $(filter 01_file_dialog,$*),$(FLINT_ALL_WEB_SRCS),$(FLINT_WEB_SRCS)) \
 		$(WEB_RAYLIB_A) \
 		$(WEB_LDFLAGS) \
 		--preload-file assets/fonts@assets/fonts
+	perl -0pe 's#\{\{\{ SCRIPT \}\}\}#<script async src="index.js"></script>#g' $(WEB_SHELL) > $@
 
 web-clean:
 	rm -rf $(BUILD_DIR) $(EXAMPLES_WEB_SITE_DIR)

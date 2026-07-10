@@ -892,6 +892,39 @@ int UIDropdownCapturesClick(Vector2 point);
 
 ### Modals
 
+#### `DrawUIActionModal`
+
+Adaptive action modal for a title, message, optional close icon, and one to
+three action buttons.
+
+```c
+typedef struct {
+    const char *label;
+    UIButtonStyle style;
+    int disabled;
+} UIModalAction;
+
+typedef struct {
+    const char *title;
+    const char *message;
+    const UIModalAction *actions;
+    int action_count;
+    Texture2D close_icon;
+    int max_width;
+} UIModalSpec;
+
+int DrawUIActionModal(UIModalSpec modal);
+```
+
+**Returns:** `-1` when the close icon is clicked, `0` for no action, or the
+1-based action index.
+
+The modal width is capped to the viewport and `max_width`, body text reflows to
+the content width, and action buttons measure their labels. Button text is fitted
+inside the button, and the action row wraps to multiple rows when labels do not
+fit. Backdrop clicks are blocked automatically for the current frame and the next
+frame.
+
 #### `DrawUIModal`
 
 Simple two-button modal.
@@ -903,7 +936,9 @@ int DrawUIModal(const char *title, const char *message,
 
 **Returns:** 1 for cancel, 2 for confirm
 
-Backdrop clicks are blocked automatically for the current frame and the next frame.
+Compatibility wrapper around `DrawUIActionModal`. It uses an adaptive width,
+reflows message text, fits button labels, and wraps actions when needed. Backdrop
+clicks are blocked automatically for the current frame and the next frame.
 
 #### `DrawUIModal3Button`
 
@@ -914,7 +949,9 @@ int DrawUIModal3Button(const char *title, const char *message,
                        const char *left_btn, const char *middle_btn, const char *right_btn);
 ```
 
-Backdrop clicks are blocked automatically for the current frame and the next frame.
+Compatibility wrapper around `DrawUIActionModal`. It uses an adaptive width,
+reflows message text, fits button labels, and wraps actions when needed. Backdrop
+clicks are blocked automatically for the current frame and the next frame.
 
 #### `UIPanelFrame` / `DrawUIModalFrame`
 
@@ -1089,6 +1126,10 @@ int GetUIButtonRowHeight(UIButtonRow row);
 int DrawUIButtonRow(UIButtonRow row);
 ```
 
+`GetUIButtonRowHeight` returns the full wrapped height needed for the row.
+`DrawUIButtonRow` measures labels, fits text inside each button, and wraps into
+additional rows when the configured width cannot hold every action on one line.
+
 ---
 
 ## Input Handling
@@ -1106,13 +1147,14 @@ next frame. While a modal carried from the previous frame has not registered its
 bounds yet, all pointer input is captured. After registration, clicks outside the bounds
 are captured while controls inside the modal remain usable.
 
-Built-in modal helpers (`DrawUIModal`, `DrawUIModal3Button`, `DrawUIModalFrame`)
-register their bounds automatically.
+Built-in modal helpers (`DrawUIActionModal`, `DrawUIModal`,
+`DrawUIModal3Button`, `DrawUIModalFrame`) register their bounds automatically.
 
-Applications should use `DrawUIModalFrame` for custom modal content instead of
-manually drawing a backdrop and calling `SetUIModalCapture`. Manual capture remains
-available for specialized overlays, but the helper keeps modal bounds, backdrop, and
-input capture consistent across projects.
+Applications should use `DrawUIActionModal` for standard title/message/action
+dialogs and `DrawUIModalFrame` for custom modal content instead of manually
+drawing a backdrop and calling `SetUIModalCapture`. Manual capture remains
+available for specialized overlays, but the helpers keep modal bounds, backdrop,
+and input capture consistent across projects.
 
 ### Input Blocking
 
