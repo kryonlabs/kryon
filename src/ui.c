@@ -1582,10 +1582,8 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
                       cue_h, LightenUIColor(c_button_hover, 18));
     }
 
-    int text_w = MeasureUIText(label, font);
-    int text_x = x + (w - text_w) / 2;
-    int text_y = GetUIControlTextY(label, y, h, font);
-    DrawUIText(label, text_x, text_y, font, text_color);
+    DrawFittedUITextInRect(label, (Rectangle){(float)x, (float)y, (float)w, (float)h},
+                                font, UI_TEXT_8, text_color);
 
     return clicked;
 }

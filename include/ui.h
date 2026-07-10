@@ -249,6 +249,21 @@ typedef struct {
 } UIButtonRowItem;
 
 typedef struct {
+    const char *label;
+    UIButtonStyle style;
+    int disabled;
+} UIModalAction;
+
+typedef struct {
+    const char *title;
+    const char *message;
+    const UIModalAction *actions;
+    int action_count;
+    Texture2D close_icon;
+    int max_width;
+} UIModalSpec;
+
+typedef struct {
     int x;
     int y;
     int width;
@@ -584,6 +599,7 @@ int DrawUIThemePicker(int x, int y, int w, int dark_mode, int *theme_id);
 int GetUIThemePickerHeight(int w);
 void DrawUITutorialImagePlaceholder(const char *label, int x, int y, int w, int h);
 void DrawUITutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h);
+int DrawUIActionModal(UIModalSpec modal);
 int DrawUIModal(const char *title, const char *message, const char *cancel_btn, const char *confirm_btn);
 int DrawUIModal3Button(const char *title, const char *message, const char *left_btn, const char *middle_btn, const char *right_btn);
 int GetUIParagraphModalHeight(UIParagraphModalMeasure measure);

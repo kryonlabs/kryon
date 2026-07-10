@@ -153,7 +153,39 @@ DrawUIOverlayButton(UIOverlayButton button)
 int
 GetUIButtonRowHeight(UIButtonRow row)
 {
-    return row.height > 0 ? row.height : ScaleUIPx(40);
+    int height = row.height > 0 ? row.height : ScaleUIPx(40);
+    int gap = row.gap > 0 ? row.gap : ScaleUIPx(10);
+    int width = row.width;
+    int row_w = 0;
+    int rows = 1;
+    int font = GetUISmallFontSize();
+
+    if(row.items == NULL || row.count <= 0)
+        return height;
+    if(width <= 0)
+        return height;
+
+    for(int i = 0; i < row.count; i++) {
+        int item_w = MeasureUIText(row.items[i].label != NULL ? row.items[i].label : "",
+                                   font) + ScaleUIPx(28);
+        int min_w = ScaleUIPx(104);
+        int max_w = ScaleUIPx(176);
+        int next_w;
+
+        if(item_w < min_w)
+            item_w = min_w;
+        if(item_w > max_w)
+            item_w = max_w;
+        next_w = row_w > 0 ? row_w + gap + item_w : item_w;
+        if(row_w > 0 && next_w > width) {
+            rows++;
+            row_w = item_w;
+        } else {
+            row_w = next_w;
+        }
+    }
+
+    return rows * height + (rows - 1) * gap;
 }
 
 int
@@ -161,25 +193,62 @@ DrawUIButtonRow(UIButtonRow row)
 {
     int clicked = -1;
     int gap = row.gap > 0 ? row.gap : ScaleUIPx(10);
-    int button_w;
+    int row_start = 0;
+    int row_w = 0;
+    int row_count = 0;
+    int y = row.y;
+    int font = GetUISmallFontSize();
 
-    if(row.items == NULL || row.count <= 0 || row.width <= 0 || row.height <= 0)
+    if(row.height <= 0)
+        row.height = ScaleUIPx(40);
+    if(row.items == NULL || row.count <= 0 || row.width <= 0)
         return -1;
 
-    button_w = (row.width - gap * (row.count - 1)) / row.count;
-    if(button_w <= 0)
-        return -1;
+    for(int i = 0; i <= row.count; i++) {
+        int end_row = i == row.count;
+        int item_w = 0;
+        int next_w;
 
-    for(int i = 0; i < row.count; i++) {
-        int hover = 0;
-        int x = row.x + i * (button_w + gap);
+        if(!end_row) {
+            item_w = MeasureUIText(row.items[i].label != NULL ? row.items[i].label : "",
+                                   font) + ScaleUIPx(28);
+            if(item_w < ScaleUIPx(104))
+                item_w = ScaleUIPx(104);
+            if(item_w > ScaleUIPx(176))
+                item_w = ScaleUIPx(176);
+        }
+        next_w = row_w > 0 ? row_w + gap + item_w : item_w;
 
-        if(DrawUIGenericButton(x, row.y, button_w, row.height,
-                                  row.items[i].label,
-                                  row.items[i].style,
-                                  row.items[i].disabled,
-                                  &hover))
-            clicked = i;
+        if(!end_row && (row_w == 0 || next_w <= row.width)) {
+            row_w = next_w;
+            row_count++;
+            continue;
+        }
+
+        if(row_count > 0) {
+            int button_w = (row.width - gap * (row_count - 1)) / row_count;
+            int x = row.x + (row.width - (button_w * row_count + gap * (row_count - 1))) / 2;
+
+            if(button_w <= 0)
+                return clicked;
+            for(int j = 0; j < row_count; j++) {
+                int hover = 0;
+                int item_index = row_start + j;
+
+                if(DrawUIGenericButton(x, y, button_w, row.height,
+                                          row.items[item_index].label,
+                                          row.items[item_index].style,
+                                          row.items[item_index].disabled,
+                                          &hover))
+                    clicked = item_index;
+                x += button_w + gap;
+            }
+            y += row.height + gap;
+        }
+
+        row_start = i;
+        row_w = item_w;
+        row_count = end_row ? 0 : 1;
     }
 
     return clicked;
