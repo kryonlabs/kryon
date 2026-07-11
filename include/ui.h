@@ -268,6 +268,7 @@ typedef struct {
     Texture2D pfp_icon;
     const Texture2D *icons;
     UIIconType pfp_icon_type;
+    int content_padding_x;
     int current_frame;
     int block_click_frame;
 } UISidebarAccountHeader;

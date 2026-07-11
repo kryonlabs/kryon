@@ -900,7 +900,9 @@ UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePic
 ```
 
 `DrawUISidebarAccountHeader` draws the standard account top area with banner,
-username, subtitle, friends summary, and pfp. It returns separate click flags
+username, subtitle, friends summary, and pfp. `content_padding_x` overrides
+the internal horizontal inset while the header bounds can fill its parent. It
+returns separate click flags
 for pfp, username, and friends so applications keep ownership of route changes
 and persistence.
 

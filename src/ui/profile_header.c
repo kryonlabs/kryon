@@ -121,7 +121,9 @@ DrawUISidebarAccountHeader(UISidebarAccountHeader header)
     int banner_h = ScaleUIPx(48);
     int avatar_r = ScaleUIPx(28);
     int avatar_size = avatar_r * 2;
-    int avatar_x = header.x + ScaleUIPx(16) + avatar_r;
+    int padding_x = header.content_padding_x > 0 ? header.content_padding_x
+                                                     : ScaleUIPx(16);
+    int avatar_x = header.x + padding_x + avatar_r;
     int avatar_y = header.y + banner_h + ScaleUIPx(24);
     int name_x = avatar_x + avatar_r + ScaleUIPx(14);
     int name_y = avatar_y - ScaleUIPx(14);
