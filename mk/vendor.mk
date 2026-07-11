@@ -134,7 +134,7 @@ $(FLINT_CURL_SO): $(FLINT_CURL_DIR)/CMakeLists.txt | $(FLINT_VENDOR_ORDER_ONLY)
 
 $(FLINT_CURL_PROTOCOL_CHECK): $(FLINT_CURL_SO)
 	@if [ "$(FLINT_CURL_REQUIRE_WEBSOCKETS)" = "1" ]; then \
-		$(FLINT_CURL_BUILD_DIR)/curl-config --protocols | grep -Eq '(^|[[:space:]])WS([[:space:]]|$$)' || { echo "vendored libcurl was built without WS protocol support"; exit 1; }; \
-		$(FLINT_CURL_BUILD_DIR)/curl-config --protocols | grep -Eq '(^|[[:space:]])WSS([[:space:]]|$$)' || { echo "vendored libcurl was built without WSS protocol support"; exit 1; }; \
+		sh $(FLINT_CURL_BUILD_DIR)/curl-config --protocols | grep -Eq '(^|[[:space:]])WS([[:space:]]|$$)' || { echo "vendored libcurl was built without WS protocol support"; exit 1; }; \
+		sh $(FLINT_CURL_BUILD_DIR)/curl-config --protocols | grep -Eq '(^|[[:space:]])WSS([[:space:]]|$$)' || { echo "vendored libcurl was built without WSS protocol support"; exit 1; }; \
 	fi
 	@touch $@
