@@ -274,9 +274,9 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
     UIProfilePicturePickerResult result = {0};
     static int default_scroll_offset = 0;
     int count = GetUIProfilePictureIconCount();
-    int width = modal.max_width > 0 ? ScaleUIPx(modal.max_width) : ScaleUIPx(360);
+    int width = modal.max_width > 0 ? ScaleUIPx(modal.max_width) : ScaleUIPx(520);
     int gap = ScaleUIPx(8);
-    int columns = count < 3 ? count : 3;
+    int columns;
     int content_w;
     int cell;
     int rows;
@@ -301,6 +301,11 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
         width = ScaleUIPx(240);
 
     content_w = width - ScaleUIPx(36);
+    columns = (content_w + gap) / (ScaleUIPx(64) + gap);
+    if(columns < 3)
+        columns = 3;
+    if(columns > count)
+        columns = count;
     if(columns < 1)
         columns = 1;
     cell = (content_w - (columns - 1) * gap) / columns;
