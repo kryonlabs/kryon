@@ -25,5 +25,5 @@ if [ -f "$audio" ] && ! grep -q 'Flint: restore backend PlaySound rename after W
 fi
 
 if [ -f "$rgfw_core" ] && ! grep -q "Flint: restore backend renames after Win32 header workaround" "$rgfw_core"; then
-    perl -i -pe "if (/#undef LoadImage/) { \$_ .= \"\n    #if defined(FLINT_RAYLIB_BACKEND_RENAME_H)\n        #define CloseWindow FlintRaylibBackend_CloseWindow\n        #define ShowCursor FlintRaylibBackend_ShowCursor\n    #endif                         // Flint: restore backend renames after Win32 header workaround\n\"; }" "$rgfw_core"
+    perl -i -pe 'if (/#undef Rectangle/ && ++$seen == 2) { $_ .= "\n    #if defined(FLINT_RAYLIB_BACKEND_RENAME_H)\n        #define CloseWindow FlintRaylibBackend_CloseWindow\n        #define ShowCursor FlintRaylibBackend_ShowCursor\n    #endif                         // Flint: restore backend renames after Win32 header workaround\n"; }' "$rgfw_core"
 fi
