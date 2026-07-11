@@ -20,6 +20,6 @@
 #include "theme_meta.h"
 #include "web.h"
 #include "runtime_assets.h"
-#include "DesktopTray.h"
+#include "desktop_tray.h"
 
 #endif /* FLINT_H */

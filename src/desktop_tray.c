@@ -1,4 +1,4 @@
-#include "DesktopTray.h"
+#include "desktop_tray.h"
 
 #if defined(FLINT_DESKTOP_TRAY_ENABLED)
 

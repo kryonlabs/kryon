@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UI</title>
+  <title>Flint</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
     <div class="wrap nav">
-      <strong>UI</strong>
+      <strong>Flint</strong>
       <nav>
         <a href="#start">Start</a>
         <a href="#frame">Frame</a>
@@ -26,14 +26,13 @@
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <p class="eyebrow">C UI and app foundations for raylib apps</p>
-          <h1>Small native interfaces with shared app plumbing.</h1>
+          <p class="eyebrow">C support library for raylib-style apps</p>
+          <h1>Small native UI with shared app plumbing.</h1>
           <p class="lede">
-            File UI Toolkit provides frame lifecycle, modal capture, text input, buttons,
-            dropdowns, checkboxes, theme colors, DPI scaling, and chopped bitmap
-            font support behind a compact C API. It also owns shared source
-            submodules for app networking and Lyra account support, so downstream
-            projects do not duplicate the same account, curl, and liboqs wiring.
+            Flint keeps a raylib-compatible public surface available through
+            <code>flint.h</code>, then adds UI controls, layout helpers, text
+            rendering, themes, embedded assets, locale loading, file dialogs,
+            runtime asset downloads, and Lyra account/sync helpers.
           </p>
         </div>
         <pre><code>BeginUIFrame(
@@ -57,8 +56,8 @@ SetUIColors(text, bg, surface,
       <h2>Start</h2>
       <div class="cards">
         <article>
-          <h3>Build File UI Toolkit</h3>
-          <pre><code>make libflint.a</code></pre>
+          <h3>Build Flint</h3>
+          <pre><code>make</code></pre>
           <p>Include <code>flint.h</code> or specific headers from <code>include/</code>.</p>
         </article>
         <article>
@@ -93,7 +92,7 @@ SetUIColors(GetThemeText(), GetThemeBackground(),
               GetThemeIcon());</code></pre>
       <p>
         If you need a transformed UI camera, call <code>InitUI</code> and
-        <code>SetUIFrame(camera)</code>. File UI Toolkit normalizes invalid cameras, so a
+        <code>SetUIFrame(camera)</code>. Flint normalizes invalid cameras, so a
         zeroed camera no longer breaks pointer input.
       </p>
     </section>
@@ -151,9 +150,10 @@ int result = DrawUIActionModal((UIModalSpec){
       <div>
         <h2>App Support</h2>
         <p>
-          File UI Toolkit is the source owner for shared application plumbing. Apps keep
-          their build outputs local, but common dependency source lives under
-          File UI Toolkit so account management and network builds stay consistent.
+          Flint is the source owner for shared application plumbing. Apps keep
+          their build outputs local, while common dependency source and build
+          recipes live under Flint so account management and network builds stay
+          consistent.
         </p>
       </div>
       <div class="cards">
@@ -176,8 +176,8 @@ int result = DrawUIActionModal((UIModalSpec){
           <h3>curl + LibreSSL</h3>
           <p>
             <code>vendor/curl</code> is the shared source for app networking.
-            TLS builds should point curl's OpenSSL-compatible options at
-            LibreSSL.
+            TLS builds use curl's OpenSSL-compatible options through the
+            <code>OPENSSL_*</code> make variables.
           </p>
         </article>
       </div>
@@ -186,7 +186,7 @@ int result = DrawUIActionModal((UIModalSpec){
     <section id="fonts" class="wrap section">
       <h2>Fonts</h2>
       <p>
-        File UI Toolkit ships <code>tools/otfchop</code> for generating bitmap font
+        Flint ships <code>tools/otfchop</code> for generating bitmap font
         atlases and metadata. Load generated assets with
         <code>LoadUIChoppedFont</code>, then install the font with
         <code>SetUIFont</code> and <code>SetUISmallFont</code>.
@@ -200,7 +200,7 @@ SetUIFont(font);</code></pre>
   </main>
 
   <footer class="wrap footer">
-    <p>UI is documented in <code>docs/API.md</code>. This page is static and ready for Netlify.</p>
+    <p>Flint is documented in <code>docs/API.md</code>. This page is static and ready for Netlify.</p>
   </footer>
   <script src="highlight.js"></script>
 </body>

@@ -7,16 +7,16 @@
 int main(void) {
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "File UI Toolkit Layout Example");
+    InitWindow(screenWidth, screenHeight, "Flint Layout Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
 
     // Initialize view size
     SetUIViewSize(screenWidth, screenHeight);
 
-    printf("File UI Toolkit Layout Utilities Example\n");
+    printf("Flint Layout Utilities Example\n");
     printf("==============================\n\n");
-    printf("This example demonstrates File UI Toolkit layout functions:\n");
+    printf("This example demonstrates Flint layout functions:\n");
     printf("  - GetUIPageSidePadding() - Get side padding for content\n");
     printf("  - GetUICenteredColumn() - Calculate centered column\n");
     printf("  - GetUIViewWidth() - Get available content width\n\n");
@@ -69,7 +69,7 @@ int main(void) {
         }
 
         // Draw title
-        DrawUIText("File UI Toolkit Layout Example", side_padding, ScaleUIPx(20), 24, BLACK);
+        DrawUIText("Flint Layout Example", side_padding, ScaleUIPx(20), 24, BLACK);
         DrawUIText("Press SPACE for layout guides", side_padding, ScaleUIPx(48), 16, DARKGRAY);
 
         // Handle input

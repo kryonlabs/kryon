@@ -560,7 +560,7 @@ int UIInputCapturesClick(Vector2 point);
 int UIHoverEffectsEnabled(void);
 void SetUITransitionCuesEnabled(int enabled);
 int UITransitionCuesEnabled(void);
-/* DPI scaling, color, and layout functions now from File UI Toolkit: ScaleUIPx, ClampUIPx, LightenUIColor, DarkenUIColor, GetUICenteredColumn, GetUIPageSidePadding */
+/* DPI scaling, color, and layout functions now from Flint: ScaleUIPx, ClampUIPx, LightenUIColor, DarkenUIColor, GetUICenteredColumn, GetUIPageSidePadding */
 int GetUIFontSize(void);
 int GetUISmallFontSize(void);
 int GetUITitleFontSize(const char *title, int max_width);
@@ -587,7 +587,7 @@ void DrawUIParagraph(UIParagraph paragraph, int x, int *y);
 UIGuideResult DrawUIGuideOverlay(UIGuideOverlay guide);
 void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
 void DrawUITextLines(const char **lines, int count, int x, int *y, int font, int line_h, Color color);
-/* Icon fallback drawing now from File UI Toolkit: DrawUIIconFallback */
+/* Icon fallback drawing now from Flint: DrawUIIconFallback */
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
 void DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint);

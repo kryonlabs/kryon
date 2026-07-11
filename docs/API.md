@@ -1,6 +1,6 @@
 # UI API Documentation
 
-File UI Toolkit is a lightweight C UI component library for embedded applications and runtime environments. It provides core UI primitives and icon asset management without external dependencies.
+Flint is a lightweight C UI component library for embedded applications and runtime environments. It provides core UI primitives and icon asset management without external dependencies.
 
 ## Table of Contents
 
@@ -485,7 +485,7 @@ int GetCurrentLocaleIndex(void);
 
 ### Lyra Sync
 
-Common Lyra sync protocol helpers. File UI Toolkit owns URL handling, token auth,
+Common Lyra sync protocol helpers. Flint owns URL handling, token auth,
 challenge/login, bearer requests, sync posting, account deletion, and small JSON
 helpers. Applications still own their local data model and provide callbacks to
 build sync payloads, apply sync responses, store auth tokens, and perform
@@ -1352,7 +1352,7 @@ typedef enum {
 
 int main(void) {
     // Initialize window with Raylib
-    InitWindow(320, 560, "File UI Toolkit Demo");
+    InitWindow(320, 560, "Flint Demo");
     SetTargetFPS(60);
 
     // Configure UI colors

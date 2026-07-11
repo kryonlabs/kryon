@@ -9,7 +9,7 @@ int main(void) {
     // Window setup
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "File UI Toolkit File Dialog Example");
+    InitWindow(screenWidth, screenHeight, "Flint File Dialog Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
 
@@ -19,7 +19,7 @@ int main(void) {
     FileDialog dlg;
     InitFileDialog(&dlg);
 
-    printf("File UI Toolkit File Dialog Example\n");
+    printf("Flint File Dialog Example\n");
     printf("Press [L] to test Load dialog\n");
     printf("Press [S] to test Save dialog\n");
     printf("Press [ESC] to exit\n\n");
@@ -31,7 +31,7 @@ int main(void) {
         ClearBackground(GetThemeBackground());
 
         // Draw simple UI
-        DrawUIText("File UI Toolkit File Dialog Example", 20, 20, 20, GetThemeText());
+        DrawUIText("Flint File Dialog Example", 20, 20, 20, GetThemeText());
         DrawUIText("Press L for Load, S for Save, ESC to exit", 20, 50, 16, GetThemeText());
 
         if(last_file[0] != 0) {

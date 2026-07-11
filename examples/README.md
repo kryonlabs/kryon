@@ -1,6 +1,6 @@
-# File UI Toolkit Examples
+# Flint Examples
 
-This directory contains example programs demonstrating File UI Toolkit library components.
+This directory contains example programs demonstrating Flint library components.
 
 ## Available Examples
 
@@ -8,7 +8,7 @@ This directory contains example programs demonstrating File UI Toolkit library c
 
 ## Requirements
 
-- File UI Toolkit library must be built (`make` in parent directory)
+- Flint library must be built (`make` in parent directory)
 - Include Flint with `#include "flint.h"`; Flint provides the Raylib-compatible public API surface
 - X11 libraries (Linux): `-lGL -lm -lpthread -ldl -lrt -lX11`
 
@@ -38,8 +38,8 @@ make run
 ## Example Features
 
 ### 01_file_dialog
-- Demonstrates File UI Toolkit file dialog component
-- Theme integration with all 6 File UI Toolkit themes
+- Demonstrates Flint file dialog component
+- Theme integration with all 6 Flint themes
 - Load and save dialog modes
 - Hidden files filtering (checkbox)
 - Full keyboard/mouse interaction

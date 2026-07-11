@@ -6,7 +6,7 @@
 int main(void) {
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "File UI Toolkit Scaling Example");
+    InitWindow(screenWidth, screenHeight, "Flint Scaling Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
 
@@ -15,9 +15,9 @@ int main(void) {
     int num_scales = 4;
     int scale_index = 0;
 
-    printf("File UI Toolkit DPI Scaling Example\n");
+    printf("Flint DPI Scaling Example\n");
     printf("=======================\n\n");
-    printf("This example demonstrates File UI Toolkit DPI scaling functions:\n");
+    printf("This example demonstrates Flint DPI scaling functions:\n");
     printf("  - ScaleUIPx(value) - Scale pixels by DPI factor\n");
     printf("  - ClampUIPx(value, min, max) - Scale and clamp pixels\n\n");
     printf("Press SPACE to cycle DPI scales\n");

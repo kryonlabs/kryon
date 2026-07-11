@@ -7,13 +7,13 @@
 int main(void) {
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "File UI Toolkit Theme Example");
+    InitWindow(screenWidth, screenHeight, "Flint Theme Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
 
-    printf("File UI Toolkit Theme System Example\n");
+    printf("Flint Theme System Example\n");
     printf("=========================\n\n");
-    printf("This example demonstrates File UI Toolkit theme catalog:\n");
+    printf("This example demonstrates Flint theme catalog:\n");
     printf("  - GetThemeCatalogColor() - Get theme colors\n");
     printf("  - GetThemeScopeName() - Get theme scope name\n");
     printf("  - ThemeId enum - All available themes\n\n");

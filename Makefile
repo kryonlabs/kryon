@@ -51,7 +51,7 @@ SRCS = \
 	src/theme.c \
 	src/theme_meta.c \
 	src/system_theme.c \
-	src/DesktopTray.c \
+	src/desktop_tray.c \
 	src/file_dialog.c \
 	src/runtime_assets.c \
 	src/ui_transition.c \
