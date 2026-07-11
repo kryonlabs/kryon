@@ -132,6 +132,20 @@ ui_draw_pfp_texture(Texture2D icon, int x, int y, int size)
 }
 
 static void
+ui_draw_pfp_texture_in_circle(Texture2D icon, int cx, int cy, int radius)
+{
+    int inner_size = radius * 14 / 10;
+    int x;
+    int y;
+
+    if(inner_size > radius * 2)
+        inner_size = radius * 2;
+    x = cx - inner_size / 2;
+    y = cy - inner_size / 2;
+    ui_draw_pfp_texture(icon, x, y, inner_size);
+}
+
+static void
 ui_draw_pfp_fallback(int x, int y, int size, Color color)
 {
     int cx = x + size / 2;
@@ -210,8 +224,7 @@ DrawUISidebarAccountHeader(UISidebarAccountHeader header)
     DrawCircleLines(avatar_x, avatar_y, (float)avatar_r,
                     DarkenUIColor(c_text, 38));
     if(pfp_icon.id != 0)
-        ui_draw_pfp_texture(pfp_icon, avatar_x - avatar_r,
-                            avatar_y - avatar_r, avatar_size);
+        ui_draw_pfp_texture_in_circle(pfp_icon, avatar_x, avatar_y, avatar_r);
     else
         ui_draw_pfp_fallback(avatar_x - avatar_r, avatar_y - avatar_r,
                              avatar_size, c_icon);
