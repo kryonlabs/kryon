@@ -9,6 +9,7 @@ $(RAYLIB_A): $(RAYLIB_SOURCES) $(BUILD_MAKEFILES) | $(RAYLIB_BUILD_DIR)
 	@rm -rf $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src
 	@mkdir -p $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src
 	cp -R $(RAYLIB_DIR)/. $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src/
+	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src
 	$(MAKE) -j1 -C $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src \
 		CC="$(CC)" \
 		AR="$(AR)" \
@@ -89,6 +90,7 @@ build-linux-arch:
 	@rm -rf $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src
 	@mkdir -p $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src
 	cp -R $(RAYLIB_DIR)/. $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src/
+	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src
 	$(MAKE) -j1 -C $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib-src \
 		CC="$(LINUX_CC)" \
 		AR="$(LINUX_AR)" \

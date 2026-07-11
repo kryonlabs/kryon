@@ -1,6 +1,6 @@
 [submodule "vendor/raylib"]
 	path = vendor/raylib
-	url = git@github.com:waozixyz/raylib.git
+	url = https://github.com/raysan5/raylib.git
 [submodule "vendor/liboqs"]
 	path = vendor/liboqs
 	url = https://github.com/open-quantum-safe/liboqs.git

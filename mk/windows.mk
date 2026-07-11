@@ -66,6 +66,7 @@ $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a: $(RAYLIB_SOURCES) | $(WINDOWS_O
 	@rm -rf $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src
 	@mkdir -p $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src
 	cp -R $(RAYLIB_DIR)/. $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src/
+	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src
 	$(MAKE) -j1 -C $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src \
 		CC="$$(WIN_$(1)_CC)" \
 		AR="$$(WIN_$(1)_AR)" \
