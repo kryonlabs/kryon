@@ -32,7 +32,6 @@ EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
 FLINT_WEB_SRCS := $(filter-out ../src/file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/ui/*.c)) $(WEB_EMBED_ASSETS_C)
 FLINT_ALL_WEB_SRCS := $(wildcard ../src/*.c) $(wildcard ../src/ui/*.c) $(WEB_EMBED_ASSETS_C)
 include ../mk/raylib.mk
-WEB_RAYLIB_OBJS = $(FLINT_RAYLIB_WEB_OBJS)
 WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
 WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
@@ -77,22 +76,8 @@ $(FONT_OUTPUTS): $(FONT_LOCALES) $(FONT_TOOL) $(FONT_SOURCE)
 
 web: $(WEB_OUTPUTS)
 
-$(WEB_RAYLIB_BUILD_DIR):
+$(BUILD_DIR):
 	@mkdir -p $@
-
-$(WEB_RAYLIB_BUILD_DIR)/%.o: $(RAYLIB_DIR)/%.c | $(WEB_RAYLIB_BUILD_DIR)
-	@if [ -z "$(RAYLIB_DIR)" ]; then \
-		echo "RAYLIB_DIR must point to raylib/src for web builds"; \
-		exit 1; \
-	fi
-	$(WEB_CC) -c $< -o $@ \
-		-Wall -D_GNU_SOURCE -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 \
-		-Wno-missing-braces -Werror=pointer-arith -fno-strict-aliasing \
-		-std=gnu99 -D_DEFAULT_SOURCE -Os -ffunction-sections -fdata-sections \
-		-I$(RAYLIB_DIR)
-
-$(WEB_RAYLIB_A): flint-raylib-check $(RAYLIB_SOURCES) $(WEB_RAYLIB_OBJS)
-	$(WEB_AR) rcs $@ $(WEB_RAYLIB_OBJS)
 
 $(WEB_EMBED_ASSETS_C): $(WEB_EMBED_ASSET_FILES) ../scripts/embed-assets.sh ../include/embedded_assets.h | $(BUILD_DIR)
 	sh ../scripts/embed-assets.sh $@ ../themes

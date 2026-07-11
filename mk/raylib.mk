@@ -16,3 +16,85 @@ flint-raylib-check:
 		echo "Initialize Flint submodules or set RAYLIB_DIR=/path/to/raylib/src"; \
 		exit 1; \
 	fi
+
+FLINT_RAYLIB_MODULE_AUDIO ?= TRUE
+FLINT_RAYLIB_MODULE_MODELS ?= FALSE
+FLINT_RAYLIB_BUILD_OPT_FLAGS ?= -Os -ffunction-sections -fdata-sections
+
+define FLINT_RAYLIB_DESKTOP_RULE
+$(1): flint-raylib-check $(RAYLIB_SOURCES)
+	rm -rf $(2)
+	mkdir -p $(2) $(3)
+	cp -R $(RAYLIB_DIR)/. $(2)/
+	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(2)
+	$(MAKE) -j1 -C $(2) \
+		CC="$(4)" \
+		AR="$(5)" \
+		$(if $(strip $(6)),RANLIB="$(6)",) \
+		PLATFORM=PLATFORM_DESKTOP_SDL \
+		GRAPHICS=GRAPHICS_API_OPENGL_ES2 \
+		RAYLIB_LIBTYPE=STATIC \
+		RAYLIB_RELEASE_PATH=../$(notdir $(3)) \
+		RAYLIB_MODULE_AUDIO=$(FLINT_RAYLIB_MODULE_AUDIO) \
+		RAYLIB_MODULE_MODELS=$(FLINT_RAYLIB_MODULE_MODELS) \
+		SDL_INCLUDE_PATH="$(7)" \
+		SDL_LIBRARIES="$(8)" \
+		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(9) $(APP_RAYLIB_CONFIG) $(FLINT_RAYLIB_BUILD_OPT_FLAGS)"
+endef
+
+define FLINT_RAYLIB_WEB_RULE
+$(1): flint-raylib-check $(RAYLIB_SOURCES)
+	rm -rf $(2)
+	mkdir -p $(2) $(3)
+	cp -R $(RAYLIB_DIR)/. $(2)/
+	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(2)
+	$(MAKE) -j1 -C $(2) \
+		PLATFORM=PLATFORM_WEB \
+		RAYLIB_LIBTYPE=STATIC \
+		RAYLIB_RELEASE_PATH=../$(notdir $(3)) \
+		RAYLIB_MODULE_AUDIO=$(FLINT_RAYLIB_MODULE_AUDIO) \
+		RAYLIB_MODULE_MODELS=$(FLINT_RAYLIB_MODULE_MODELS) \
+		CC="$(4)" \
+		AR="$(5)" \
+		CUSTOM_CFLAGS="$(APP_RAYLIB_CONFIG) $(FLINT_RAYLIB_BUILD_OPT_FLAGS)"
+endef
+
+define FLINT_RAYLIB_WINDOWS_RULE
+$(1): flint-raylib-check $(RAYLIB_SOURCES)
+	rm -rf $(2)
+	mkdir -p $(2) $(3)
+	cp -R $(RAYLIB_DIR)/. $(2)/
+	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(2)
+	$(MAKE) -j1 -C $(2) \
+		OS=Windows_NT \
+		PLATFORM=PLATFORM_DESKTOP_RGFW \
+		GRAPHICS=GRAPHICS_API_OPENGL_11 \
+		RAYLIB_LIBTYPE=STATIC \
+		RAYLIB_RELEASE_PATH=../$(notdir $(3)) \
+		RAYLIB_MODULE_AUDIO=$(FLINT_RAYLIB_MODULE_AUDIO) \
+		RAYLIB_MODULE_MODELS=$(FLINT_RAYLIB_MODULE_MODELS) \
+		CC="$(4)" \
+		AR="$(5)" \
+		RANLIB="$(6)" \
+		CUSTOM_CFLAGS="$(APP_RAYLIB_CONFIG) $(FLINT_RAYLIB_BUILD_OPT_FLAGS)"
+endef
+
+ifneq ($(strip $(RAYLIB_A)),)
+$(eval $(call FLINT_RAYLIB_DESKTOP_RULE,$(RAYLIB_A),$(or $(RAYLIB_SOURCE_BUILD_DIR),$(dir $(RAYLIB_BUILD_DIR))raylib-src),$(RAYLIB_BUILD_DIR),$(CC),$(or $(AR),ar),,$(RAY_SDL_INCLUDE_DIR),$(RAY_SDL_LDLIBS),$(RAY_CFLAGS)))
+endif
+
+ifneq ($(strip $(WEB_RAYLIB_A)),)
+$(eval $(call FLINT_RAYLIB_WEB_RULE,$(WEB_RAYLIB_A),$(or $(WEB_RAYLIB_SOURCE_BUILD_DIR),$(dir $(WEB_RAYLIB_BUILD_DIR))raylib-src),$(WEB_RAYLIB_BUILD_DIR),$(WEB_CC),$(WEB_AR)))
+endif
+
+ifneq ($(strip $(CLICK_RAYLIB_A)),)
+$(eval $(call FLINT_RAYLIB_DESKTOP_RULE,$(CLICK_RAYLIB_A),$(or $(CLICK_RAYLIB_SOURCE_BUILD_DIR),$(dir $(CLICK_RAYLIB_BUILD_DIR))raylib-src),$(CLICK_RAYLIB_BUILD_DIR),$(AARCH64_CC),$(AARCH64_AR),$(AARCH64_RANLIB),$(AARCH64_RAY_SDL_INCLUDE_DIR),$(AARCH64_RAY_SDL_LDLIBS),$(AARCH64_RAY_CFLAGS)))
+endif
+
+ifneq ($(strip $(WIN64_RAYLIB_A)),)
+$(eval $(call FLINT_RAYLIB_WINDOWS_RULE,$(WIN64_RAYLIB_A),$(or $(WIN64_RAYLIB_SOURCE_BUILD_DIR),$(dir $(WIN64_RAYLIB_BUILD_DIR))raylib-src),$(WIN64_RAYLIB_BUILD_DIR),$(WIN64_CC),$(WIN64_AR),$(WIN64_RANLIB)))
+endif
+
+ifneq ($(strip $(WIN32_RAYLIB_A)),)
+$(eval $(call FLINT_RAYLIB_WINDOWS_RULE,$(WIN32_RAYLIB_A),$(or $(WIN32_RAYLIB_SOURCE_BUILD_DIR),$(dir $(WIN32_RAYLIB_BUILD_DIR))raylib-src),$(WIN32_RAYLIB_BUILD_DIR),$(WIN32_CC),$(WIN32_AR),$(WIN32_RANLIB)))
+endif
