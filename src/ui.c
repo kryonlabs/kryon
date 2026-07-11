@@ -968,7 +968,6 @@ DrawUIHref(UIHref link)
     int clicked = 0;
     Color color = link.color.a != 0 ? link.color : c_link;
 
-    (void)link.href;
     if(bounds.width <= 0)
         bounds.width = (float)text_w;
     if(bounds.height <= 0)
@@ -1008,7 +1007,19 @@ DrawUIHref(UIHref link)
         SetUIFocusTextInputActive(0);
         DrawUIFocus(bounds);
     }
-    return clicked || IsUIFocusActivatePressed(link.focus_id);
+    if(!link.disabled && (clicked || IsUIFocusActivatePressed(link.focus_id))) {
+        if(link.href != NULL && link.href[0] != '\0') {
+#if defined(PLATFORM_WEB)
+            EM_ASM({
+                window.location.href = UTF8ToString($0);
+            }, link.href);
+#else
+            OpenURL(link.href);
+#endif
+        }
+        return 1;
+    }
+    return 0;
 }
 
 int
