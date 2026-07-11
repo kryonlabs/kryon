@@ -20,7 +20,7 @@ WIN_i686_WINDRES = $(WIN32_WINDRES)
 WIN_i686_MCFGTHREADS = $(WIN32_MCFGTHREADS)
 WIN_RESOURCE ?= windows/$(APP_NAME).rc
 WIN_ICON ?= windows/$(APP_NAME).ico
-WIN_FLINT_SRCS = $(filter-out $(FLINT_DIR)/src/file_dialog.c,$(FLINT_SRCS))
+WIN_FLINT_SRCS = $(filter-out $(FLINT_DIR)/src/file_dialog/file_dialog.c,$(FLINT_SRCS))
 
 include $(FLINT_MAKE_DIR)raylib.mk
 
