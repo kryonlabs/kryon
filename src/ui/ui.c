@@ -34,6 +34,7 @@ static int g_ui_focus_active_id = 0;
 static int g_ui_focus_ids[UI_FOCUS_MAX_ITEMS];
 static int g_ui_focus_count = 0;
 static int g_ui_focus_tab_dir = 0;
+static int g_ui_focus_frame_open = 0;
 static int g_ui_focus_text_input_active = 0;
 static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
@@ -536,6 +537,7 @@ BeginUIFocus(void)
 {
     g_ui_focus_count = 0;
     g_ui_focus_tab_dir = 0;
+    g_ui_focus_frame_open = 1;
     if(IsKeyPressed(KEY_TAB))
         g_ui_focus_tab_dir = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
 }
@@ -546,8 +548,14 @@ EndUIFocus(void)
     int current_index = -1;
     int next_index;
 
+    if(!g_ui_focus_frame_open)
+        return;
+
+    g_ui_focus_frame_open = 0;
+
     if(g_ui_focus_count <= 0) {
         g_ui_focus_active_id = 0;
+        g_ui_focus_tab_dir = 0;
         return;
     }
 
@@ -567,6 +575,7 @@ EndUIFocus(void)
         next_index = (current_index + g_ui_focus_tab_dir + g_ui_focus_count) % g_ui_focus_count;
 
     g_ui_focus_active_id = g_ui_focus_ids[next_index];
+    g_ui_focus_tab_dir = 0;
 }
 
 int
@@ -1385,6 +1394,9 @@ void
 SetUIFrame(Camera2D camera)
 {
     int text_input_active = g_ui_text_input_requested != 0;
+
+    EndUIFocus();
+    BeginUIFocus();
 
     if(g_ui_platform_text_input_active != text_input_active) {
         g_ui_platform_text_input_active = text_input_active;

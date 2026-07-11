@@ -68,8 +68,9 @@ void SetUIFrame(Camera2D camera);
 
 `SetUIFrame` sanitizes invalid cameras before storing them. A zero-initialized
 `Camera2D` is treated as an untransformed UI camera with `zoom = 1.0f`, so controls
-continue to receive pointer input. If an application does not need a transformed UI
-camera, prefer `BeginUIFrame`.
+continue to receive pointer input. It also closes the previous focus pass and
+starts a new one, so registered focus controls are reset every frame. If an
+application does not need a transformed UI camera, prefer `BeginUIFrame`.
 
 ### `GetUIDefaultCamera`
 
@@ -1282,6 +1283,10 @@ Keyboard navigation and focus management.
 void BeginUIFocus(void);
 void EndUIFocus(void);
 ```
+
+Normal UI code does not need to call these. `BeginUIFrame` and `SetUIFrame`
+manage the focus pass automatically. Use these only for custom frame lifecycles
+that do not go through Flint's normal frame entry points.
 
 ### Focus Registration
 

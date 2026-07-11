@@ -26,6 +26,7 @@ Beginning a frame resets per-frame interaction state:
 - input blocking
 - modal capture state from the previous frame
 - input clip stack
+- focus registrations
 - pointer gesture state
 - clip state
 
