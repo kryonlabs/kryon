@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 
 void
 DrawUIInfoRows(UIInfoRows rows)

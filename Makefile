@@ -32,7 +32,7 @@ endif
 CPPFLAGS += $(CPPFLAGS_BASE)
 ARFLAGS ?= rcs
 
-SRCS := $(wildcard src/*.c) $(wildcard src/*/*.c)
+SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
 SRCS += $(EMBED_ASSETS_C)
 
@@ -101,22 +101,22 @@ $(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_WRAPPERS_C)
 		$(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) \
 		$(FLINT_RAYLIB_WRAPPERS_C)
 
-$(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra_account.c include/lyra_account.h | $(BUILD_DIR)
+$(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra/lyra_account.c include/lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_account_test.c src/lyra_account.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_account_test.c src/lyra/lyra_account.c -o $@
 
-$(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/lyra_sync.c src/lyra_account.c include/lyra_sync.h include/lyra_account.h | $(BUILD_DIR)
+$(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/lyra/lyra_sync.c src/lyra/lyra_account.c include/lyra_sync.h include/lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_sync_test.c src/lyra_sync.c src/lyra_account.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_sync_test.c src/lyra/lyra_sync.c src/lyra/lyra_account.c -o $@
 
-$(TRANSITION_TEST): tests/transition_test.c src/ui_transition.c include/ui_transition.h | $(BUILD_DIR)
+$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui_transition.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui/ui_transition.c -o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh "$(ICON_DIR)" $@
 
-src/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
+src/ui/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
 	@$(MAKE) --quiet $(ICON_ASSETS_C)
 
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) $(FLINT_FONT_OUTPUTS) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)

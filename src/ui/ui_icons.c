@@ -1,5 +1,5 @@
 #include "ui_icons.h"
-#include "ui.h"
+#include "ui_internal.h"
 #include "flint.h"
 #include <math.h>
 #include <stdio.h>

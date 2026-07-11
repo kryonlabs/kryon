@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 #include <stdio.h>
 
 static int

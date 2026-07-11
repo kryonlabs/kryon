@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 
 static int
 ui_modal_button(int x, int y, int w, int h, const char *label, int font,

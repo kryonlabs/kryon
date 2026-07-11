@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 
 int
 GetUITabBarHeight(void)

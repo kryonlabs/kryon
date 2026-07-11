@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 
 typedef struct UIReorderState {
     int list_id;

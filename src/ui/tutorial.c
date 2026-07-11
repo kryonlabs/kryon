@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 
 void
 DrawUITutorialImagePlaceholder(const char *label, int x, int y, int w, int h)

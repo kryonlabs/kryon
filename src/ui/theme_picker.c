@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 #include "ui_layout.h"
 #include "locale.h"
 

@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 
 int
 GetUIScrollbarReservedWidth(int max_scroll)

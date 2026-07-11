@@ -1,12 +1,22 @@
-#include "ui.h"
+#include "ui_internal.h"
 
 static const UIIconType ui_profile_picture_icons[] = {
+    UI_ICON_TYPE_PFP_BAMBUS,
     UI_ICON_TYPE_PFP_BIRD,
     UI_ICON_TYPE_PFP_BOWL,
+    UI_ICON_TYPE_PFP_BUSH,
     UI_ICON_TYPE_PFP_CACTUS,
+    UI_ICON_TYPE_PFP_COFFEE,
+    UI_ICON_TYPE_PFP_FLOWER1,
+    UI_ICON_TYPE_PFP_FLOWER2,
     UI_ICON_TYPE_PFP_HEART,
     UI_ICON_TYPE_PFP_INCENSE,
     UI_ICON_TYPE_PFP_LOTUS,
+    UI_ICON_TYPE_PFP_MOUNTAIN,
+    UI_ICON_TYPE_PFP_MUSHROOM,
+    UI_ICON_TYPE_PFP_PERSON1,
+    UI_ICON_TYPE_PFP_RAINBOW,
+    UI_ICON_TYPE_PFP_TENT,
     UI_ICON_TYPE_PFP_TREE1,
     UI_ICON_TYPE_PFP_TREE2,
     UI_ICON_TYPE_PFP_TREE3,
@@ -15,12 +25,22 @@ static const UIIconType ui_profile_picture_icons[] = {
 };
 
 static const int ui_profile_picture_lyra_ids[] = {
+    UI_LYRA_PROFILE_ICON_BAMBUS,
     UI_LYRA_PROFILE_ICON_BIRD,
     UI_LYRA_PROFILE_ICON_BOWL,
+    UI_LYRA_PROFILE_ICON_BUSH,
     UI_LYRA_PROFILE_ICON_CACTUS,
+    UI_LYRA_PROFILE_ICON_COFFEE,
+    UI_LYRA_PROFILE_ICON_FLOWER1,
+    UI_LYRA_PROFILE_ICON_FLOWER2,
     UI_LYRA_PROFILE_ICON_HEART,
     UI_LYRA_PROFILE_ICON_INCENSE,
     UI_LYRA_PROFILE_ICON_LOTUS,
+    UI_LYRA_PROFILE_ICON_MOUNTAIN,
+    UI_LYRA_PROFILE_ICON_MUSHROOM,
+    UI_LYRA_PROFILE_ICON_PERSON1,
+    UI_LYRA_PROFILE_ICON_RAINBOW,
+    UI_LYRA_PROFILE_ICON_TENT,
     UI_LYRA_PROFILE_ICON_TREE1,
     UI_LYRA_PROFILE_ICON_TREE2,
     UI_LYRA_PROFILE_ICON_TREE3,
@@ -29,12 +49,22 @@ static const int ui_profile_picture_lyra_ids[] = {
 };
 
 static const char *ui_profile_picture_names[] = {
+    "pfp_bambus",
     "pfp_bird",
     "pfp_bowl",
+    "pfp_bush",
     "pfp_cactus",
+    "pfp_coffee",
+    "pfp_flower1",
+    "pfp_flower2",
     "pfp_heart",
     "pfp_incense",
     "pfp_lotus",
+    "pfp_mountain",
+    "pfp_mushroom",
+    "pfp_person1",
+    "pfp_rainbow",
+    "pfp_tent",
     "pfp_tree1",
     "pfp_tree2",
     "pfp_tree3",
@@ -217,13 +247,23 @@ UIProfilePicturePickerResult
 DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
 {
     UIProfilePicturePickerResult result = {0};
+    static int default_scroll_offset = 0;
     int count = GetUIProfilePictureIconCount();
     int width = modal.max_width > 0 ? ScaleUIPx(modal.max_width) : ScaleUIPx(360);
-    int cell = ScaleUIPx(68);
-    int gap = ScaleUIPx(10);
-    int columns;
+    int gap = ScaleUIPx(8);
+    int columns = count < 3 ? count : 3;
+    int content_w;
+    int cell;
     int rows;
+    int grid_w;
+    int content_h;
     int height;
+    int max_height;
+    int icon_inset;
+    int *scroll_offset = modal.scroll_offset != NULL ? modal.scroll_offset
+                                                     : &default_scroll_offset;
+    UIScrollArea scroll_area;
+    UIScrollView scroll_view;
     UIPanelFrame frame;
     UIIconType selected =
         modal.selected_icon_type != NULL ? *modal.selected_icon_type
@@ -234,13 +274,22 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
         width = ui_view_width - ScaleUIPx(24);
     if(width < ScaleUIPx(240))
         width = ScaleUIPx(240);
-    columns = (width - ScaleUIPx(36) + gap) / (cell + gap);
-    if(columns < 2)
-        columns = 2;
-    if(columns > count)
-        columns = count;
-    rows = (count + columns - 1) / columns;
-    height = ScaleUIPx(74) + rows * cell + (rows - 1) * gap + ScaleUIPx(18);
+
+    content_w = width - ScaleUIPx(36);
+    if(columns < 1)
+        columns = 1;
+    cell = (content_w - (columns - 1) * gap) / columns;
+    if(cell > ScaleUIPx(64))
+        cell = ScaleUIPx(64);
+    if(cell < ScaleUIPx(52))
+        cell = ScaleUIPx(52);
+    grid_w = columns * cell + (columns - 1) * gap;
+    rows = columns > 0 ? (count + columns - 1) / columns : 0;
+    content_h = rows > 0 ? rows * cell + (rows - 1) * gap : 0;
+    height = ScaleUIPx(74) + content_h + ScaleUIPx(18);
+    max_height = ui_view_height - ScaleUIPx(24);
+    if(height > max_height)
+        height = max_height;
 
     frame = DrawUIModalFrame(width, height,
                              modal.title != NULL ? modal.title : "Profile picture",
@@ -250,14 +299,25 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
         return result;
     }
 
+    scroll_area = (UIScrollArea){
+        .bounds = {(float)frame.content_x, (float)frame.content_y,
+                   (float)frame.content_w, (float)frame.content_h},
+        .content_height = content_h,
+        .content_x = frame.content_x,
+        .content_width = frame.content_w,
+        .scroll_offset = scroll_offset,
+        .wheel_step = cell + gap
+    };
+    scroll_view = BeginUIScrollContainer(scroll_area);
+
     mouse = ui_mouse_world();
+    icon_inset = ScaleUIPx(12);
     for(int i = 0; i < count; i++) {
         int row = i / columns;
         int col = i % columns;
-        int grid_w = columns * cell + (columns - 1) * gap;
-        int x = frame.content_x + (frame.content_w - grid_w) / 2 +
+        int x = scroll_view.content_x + (scroll_view.content_w - grid_w) / 2 +
                 col * (cell + gap);
-        int y = frame.content_y + row * (cell + gap);
+        int y = scroll_view.content_y + row * (cell + gap);
         UIIconType type = GetUIProfilePictureIconType(i);
         Texture2D icon = {0};
         Rectangle bounds = {(float)x, (float)y, (float)cell, (float)cell};
@@ -277,11 +337,11 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
            type < UI_ICON_TYPE_COUNT)
             icon = modal.icons[type];
         if(icon.id != 0)
-            ui_draw_pfp_texture(icon, x + ScaleUIPx(10), y + ScaleUIPx(10),
-                                cell - ScaleUIPx(20));
+            ui_draw_pfp_texture(icon, x + icon_inset, y + icon_inset,
+                                cell - icon_inset * 2);
         else
-            ui_draw_pfp_fallback(x + ScaleUIPx(10), y + ScaleUIPx(10),
-                                 cell - ScaleUIPx(20), c_icon);
+            ui_draw_pfp_fallback(x + icon_inset, y + icon_inset,
+                                 cell - icon_inset * 2, c_icon);
 
         if(hovered) {
             MarkUIClickable();
@@ -295,6 +355,7 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
             }
         }
     }
+    EndUIScrollContainer(scroll_area, scroll_view);
 
     return result;
 }

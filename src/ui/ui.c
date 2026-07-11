@@ -1,11 +1,6 @@
-#include "ui.h"
+#include "ui_internal.h"
 #include "platform.h"
-#include "ui/ui.h"
-#include "ui_clip.h"
-#include "ui_dpi.h"
-#include "flint.h"
 #include "theme.h"
-#include "ui_text_layout.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

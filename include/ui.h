@@ -286,6 +286,7 @@ typedef struct {
     UIIconType *selected_icon_type;
     Texture2D close_icon;
     int max_width;
+    int *scroll_offset;
 } UIProfilePicturePickerModal;
 
 typedef struct {
@@ -307,7 +308,17 @@ typedef enum {
     UI_LYRA_PROFILE_ICON_TREE2 = 8,
     UI_LYRA_PROFILE_ICON_TREE3 = 9,
     UI_LYRA_PROFILE_ICON_TREE4 = 10,
-    UI_LYRA_PROFILE_ICON_TREE5 = 11
+    UI_LYRA_PROFILE_ICON_TREE5 = 11,
+    UI_LYRA_PROFILE_ICON_BAMBUS = 12,
+    UI_LYRA_PROFILE_ICON_BUSH = 13,
+    UI_LYRA_PROFILE_ICON_COFFEE = 14,
+    UI_LYRA_PROFILE_ICON_FLOWER1 = 15,
+    UI_LYRA_PROFILE_ICON_FLOWER2 = 16,
+    UI_LYRA_PROFILE_ICON_MOUNTAIN = 17,
+    UI_LYRA_PROFILE_ICON_MUSHROOM = 18,
+    UI_LYRA_PROFILE_ICON_PERSON1 = 19,
+    UI_LYRA_PROFILE_ICON_RAINBOW = 20,
+    UI_LYRA_PROFILE_ICON_TENT = 21
 } UILyraProfileIcon;
 
 typedef struct {

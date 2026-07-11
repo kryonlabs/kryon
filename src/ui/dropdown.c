@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui_internal.h"
 
 
 /* Per-dropdown state to track open/closed and click handling */
