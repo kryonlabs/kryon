@@ -1,4 +1,5 @@
 #include "runtime_assets.h"
+#include "platform.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,7 +27,7 @@
 #include <pthread.h>
 #endif
 
-#if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && !defined(HAS_LIBCURL) && !defined(ANDROID_BUILD)
+#if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && !defined(HAS_LIBCURL) && !ANDROID_BUILD
 #error "Flint runtime assets require Emscripten fetch, Windows WinINet, libcurl, or an Android app backend"
 #endif
 

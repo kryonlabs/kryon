@@ -8,6 +8,7 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
     int popup_h;
     int popup_x;
     int popup_y;
+    int button_w;
     Vector2 mouse;
 
     if(popup.open == NULL || popup.value == NULL)
@@ -20,9 +21,12 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
     if(!*popup.open)
         return 0;
 
-    popup_w = popup.popup_width > 0 ? popup.popup_width : ScaleUIPx(44);
+    button_w = popup.icon_size + popup.icon_padding * 2;
+    popup_w = popup.popup_width > 0 ? popup.popup_width : button_w;
+    if(popup_w < button_w)
+        popup_w = button_w;
     popup_h = popup.popup_height > 0 ? popup.popup_height : ScaleUIPx(200);
-    popup_x = popup.x;
+    popup_x = popup.x + button_w / 2 - popup_w / 2;
     popup_y = popup.y + popup.icon_size + popup.icon_padding * 2;
     mouse = ui_mouse_world();
 

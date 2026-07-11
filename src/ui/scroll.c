@@ -336,10 +336,20 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
 
     float scroll_ratio = max_scroll > 0 ? (float)*scroll_offset / (float)max_scroll : 0.0f;
     int track_span = viewport_h - thumb_height;
-    int thumb_y = y + (int)(scroll_ratio * track_span);
+    int thumb_y;
 
     Vector2 mouse_pos = ui_mouse_world();
     int my = (int)mouse_pos.y;
+    if(scroll_ratio < 0.0f)
+        scroll_ratio = 0.0f;
+    if(scroll_ratio > 1.0f)
+        scroll_ratio = 1.0f;
+    thumb_y = y + (int)(scroll_ratio * (float)track_span);
+    if(thumb_y < y)
+        thumb_y = y;
+    if(thumb_y + thumb_height > y + viewport_h)
+        thumb_y = y + viewport_h - thumb_height;
+
     Rectangle thumb_bounds = {x + track_padding, thumb_y, scrollbar_width - track_padding * 2, thumb_height};
     int input_captured = ui_input_captures_click_internal(mouse_pos, 0);
     int thumb_active = CheckCollisionPointRec(mouse_pos, thumb_bounds) && !input_captured;

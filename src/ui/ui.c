@@ -1988,13 +1988,18 @@ DrawUIVerticalSlider(int id, int x, int y, int h,
 
     float t = (float)(*value - min) / (float)(max - min);
     int position_y = y + h - (int)(t * (float)h);  /* Position on track */
-    int knob_y = position_y - knob_h - ScaleUIPx(1);  /* Knob top above position */
+    int knob_y;
     int knob_x = track_x - (knob_w - track_w) / 2;
 
     if(position_y < y)
         position_y = y;
     if(position_y > y + h)
         position_y = y + h;
+    knob_y = position_y - knob_h / 2;
+    if(knob_y < y)
+        knob_y = y;
+    if(knob_y + knob_h > y + h)
+        knob_y = y + h - knob_h;
 
     DrawRectangle(track_x, position_y, track_w, y + h - position_y, c_button_hover);
     DrawUIBevel(track_x, position_y, track_w, y + h - position_y,
@@ -2066,13 +2071,18 @@ DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
 
     float t = (float)(*value - min) / (float)(max - min);
     int position_y = y + h - (int)(t * (float)h);  /* Position on track */
-    int knob_y = position_y - knob_h - ScaleUIPx(1);  /* Knob top above position */
+    int knob_y;
     int knob_x = track_x - (knob_w - track_w) / 2;
 
     if(position_y < y)
         position_y = y;
     if(position_y > y + h)
         position_y = y + h;
+    knob_y = position_y - knob_h / 2;
+    if(knob_y < y)
+        knob_y = y;
+    if(knob_y + knob_h > y + h)
+        knob_y = y + h - knob_h;
 
     DrawRectangle(track_x, position_y, track_w, y + h - position_y, c_button_hover);
     DrawUIBevel(track_x, position_y, track_w, y + h - position_y,
