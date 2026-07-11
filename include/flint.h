@@ -1,5 +1,7 @@
-#ifndef UIKIT_H
-#define UIKIT_H
+#ifndef FLINT_H
+#define FLINT_H
+
+#include "flint_compat.generated.h"
 
 #include "ui_color.h"
 #include "ui_scaling.h"
@@ -20,4 +22,4 @@
 #include "runtime_assets.h"
 #include "DesktopTray.h"
 
-#endif // UIKIT_H
+#endif /* FLINT_H */

@@ -1,7 +1,7 @@
 #ifndef UI_DPI_H
 #define UI_DPI_H
 
-#include "raylib.h"
+#include "flint.h"
 
 #ifdef __cplusplus
 extern "C" {

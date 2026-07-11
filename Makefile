@@ -4,13 +4,17 @@ BUILD_DIR ?= build
 SITE_DIR ?= docs/site
 SITE_BUILD_DIR ?= $(BUILD_DIR)/site
 CFLAGS ?= -Wall -Wextra -O2
-CPPFLAGS_BASE = -Iinclude -Ivendor/raylib/src
+CPPFLAGS_BASE = -Iinclude
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png)
 ICON_ASSETS_C = src/ui_icon_assets.c
 EMBED_ASSETS ?= themes
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
+FLINT_COMPAT_GENERATOR = tools/generate-flint-compat.sh
+FLINT_BOUNDARY_CHECK = tools/check-flint-boundaries.sh
+FLINT_COMPAT_HEADER = include/flint_compat.generated.h
+FLINT_BACKEND_RENAME_HEADER = $(BUILD_DIR)/generated/raylib_backend_rename.h
 FLINT_FONT_OUT ?= assets/fonts/locales
 FLINT_FONT_OUTPUTS = $(FLINT_FONT_OUT).png $(FLINT_FONT_OUT).dat
 FLINT_FONT_LOCALES ?= locales/*.txt
@@ -77,7 +81,7 @@ LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
 LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 
-.PHONY: all clean run font-assets docs-site test bsd-check
+.PHONY: all clean run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check
 
 all: $(LIB)
 
@@ -99,7 +103,7 @@ docs-site:
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST)
+test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
 	$(TRANSITION_TEST)
@@ -109,8 +113,23 @@ bsd-check:
 	$(MAKE) all
 	$(MAKE) test
 
-$(LIB): $(OBJS)
+flint-compat: $(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER)
+
+flint-compat-check: | $(BUILD_DIR)
+	sh $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h \
+		$(BUILD_DIR)/check/flint_compat.generated.h \
+		$(BUILD_DIR)/check/raylib_backend_rename.h
+	cmp $(FLINT_COMPAT_HEADER) $(BUILD_DIR)/check/flint_compat.generated.h
+
+flint-boundary-check:
+	sh $(FLINT_BOUNDARY_CHECK) .
+
+$(LIB): $(FLINT_COMPAT_HEADER) $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
+
+$(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER): $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h | $(BUILD_DIR)
+	sh $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h \
+		$(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER)
 
 $(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra_account.c include/lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

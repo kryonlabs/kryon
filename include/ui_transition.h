@@ -1,7 +1,7 @@
 #ifndef UI_TRANSITION_H
 #define UI_TRANSITION_H
 
-#include "raylib.h"
+#include "flint.h"
 
 typedef enum UITransitionPhase {
     UI_TRANSITION_NONE = 0,

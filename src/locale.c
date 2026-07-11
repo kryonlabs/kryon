@@ -2,7 +2,7 @@
 #include "platform.h"
 #include "embedded_assets.h"
 
-#include "raylib.h"
+#include "flint.h"
 
 #include <stdarg.h>
 #include <stdio.h>

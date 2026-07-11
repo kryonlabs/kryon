@@ -1,7 +1,7 @@
 #ifndef FILE_DIALOG_H
 #define FILE_DIALOG_H
 
-#include "raylib.h"
+#include "flint.h"
 
 #ifdef __cplusplus
 extern "C" {

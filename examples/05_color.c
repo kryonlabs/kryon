@@ -2,7 +2,7 @@
 #include "ui_color.h"
 #include "ui_scaling.h"
 #include <stdio.h>
-#include <raylib.h>
+#include "flint.h"
 
 int main(void) {
     const int screenWidth = 800;

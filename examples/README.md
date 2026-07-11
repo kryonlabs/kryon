@@ -9,7 +9,7 @@ This directory contains example programs demonstrating File UI Toolkit library c
 ## Requirements
 
 - File UI Toolkit library must be built (`make` in parent directory)
-- Raylib from File UI Toolkit's `vendor/raylib` submodule, or set `RAYLIB_DIR=/path/to/raylib/src`
+- Include Flint with `#include "flint.h"`; Flint provides the Raylib-compatible public API surface
 - X11 libraries (Linux): `-lGL -lm -lpthread -ldl -lrt -lX11`
 
 ## Building Examples

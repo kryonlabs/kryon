@@ -1,7 +1,7 @@
 #ifndef THEME_H
 #define THEME_H
 
-#include "raylib.h"
+#include "flint.h"
 #include <stdbool.h>
 
 #define THEME_MAX_SCOPES 24

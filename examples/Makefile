@@ -5,7 +5,6 @@ CFLAGS_BASE ?= -Wall -Wextra -O2
 CFLAGS = $(CFLAGS_BASE) -I../include
 LDFLAGS = -L.. -lflint
 UNAME_S := $(shell uname -s)
-RAYLIB_PKG_CFLAGS := $(shell pkg-config --cflags raylib 2>/dev/null)
 RAYLIB_PKG_LIBS := $(shell pkg-config --libs raylib 2>/dev/null || printf '%s' '-L/usr/local/lib -lraylib')
 GL_X11_PKG_LIBS := $(shell pkg-config --libs gl x11 2>/dev/null || printf '%s' '-L/usr/local/lib -lGL -lX11')
 GTK_PKG_CFLAGS := $(shell pkg-config --cflags gtk+-3.0 2>/dev/null)
@@ -36,17 +35,10 @@ WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
 WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
 
-# Raylib - use system library from nix-shell
 # Check if we're in nix-shell and use its flags
-CFLAGS += $(RAYLIB_PKG_CFLAGS)
 CFLAGS += $(GTK_PKG_CFLAGS)
 ifneq ($(NIX_CFLAGS_COMPILE),)
     CFLAGS += $(NIX_CFLAGS_COMPILE)
-endif
-ifneq ($(RAYLIB_DIR),)
-    CFLAGS += -I$(RAYLIB_DIR)
-    CFLAGS += -I$(RAYLIB_DIR)/raylib
-    CFLAGS += -I$(RAYLIB_DIR)/raylib/include
 endif
 
 LDFLAGS += $(EXAMPLE_SYSTEM_LDLIBS)
@@ -86,7 +78,7 @@ $(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(WEB
 	@echo "Building web example $*..."
 	@mkdir -p $(dir $@)
 	$(WEB_CC) $(WEB_CFLAGS) \
-		-I../include -I$(RAYLIB_DIR) \
+		-I../include \
 		-o $(dir $@)/index.js \
 		$< \
 		$(if $(filter 01_file_dialog,$*),$(FLINT_ALL_WEB_SRCS),$(FLINT_WEB_SRCS)) \

@@ -1,7 +1,7 @@
 #ifndef UI_COLOR_H
 #define UI_COLOR_H
 
-#include "raylib.h"
+#include "flint.h"
 
 #ifdef __cplusplus
 extern "C" {

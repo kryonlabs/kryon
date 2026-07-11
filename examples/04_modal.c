@@ -3,7 +3,7 @@
 #include "theme.h"
 #include "theme_meta.h"
 #include "ui.h"
-#include <raylib.h>
+#include "flint.h"
 #include <stdio.h>
 
 static void

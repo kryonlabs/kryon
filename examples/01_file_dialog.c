@@ -3,7 +3,7 @@
 #include "theme.h"
 #include "theme_meta.h"
 #include <stdio.h>
-#include <raylib.h>
+#include "flint.h"
 
 int main(void) {
     // Window setup

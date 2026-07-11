@@ -1,7 +1,7 @@
 #ifndef THEME_META_H
 #define THEME_META_H
 
-#include "raylib.h"
+#include "flint.h"
 
 #include <stdbool.h>
 

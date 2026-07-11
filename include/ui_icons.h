@@ -1,7 +1,7 @@
 #ifndef UI_ICONS_H
 #define UI_ICONS_H
 
-#include "raylib.h"
+#include "flint.h"
 #include "ui_icon_types.h"
 
 #ifdef __cplusplus

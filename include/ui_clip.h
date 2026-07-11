@@ -1,7 +1,7 @@
 #ifndef UI_CLIP_H
 #define UI_CLIP_H
 
-#include "raylib.h"
+#include "flint.h"
 
 Rectangle GetUIClipIntersection(Rectangle a, Rectangle b);
 Rectangle GetUIClipEffective(Rectangle bounds);
