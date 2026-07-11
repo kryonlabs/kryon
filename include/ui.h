@@ -294,6 +294,21 @@ typedef struct {
     UIIconType selected_icon_type;
 } UIProfilePicturePickerResult;
 
+typedef enum {
+    UI_LYRA_PROFILE_ICON_NONE = 0,
+    UI_LYRA_PROFILE_ICON_BIRD = 1,
+    UI_LYRA_PROFILE_ICON_BOWL = 2,
+    UI_LYRA_PROFILE_ICON_CACTUS = 3,
+    UI_LYRA_PROFILE_ICON_HEART = 4,
+    UI_LYRA_PROFILE_ICON_INCENSE = 5,
+    UI_LYRA_PROFILE_ICON_LOTUS = 6,
+    UI_LYRA_PROFILE_ICON_TREE1 = 7,
+    UI_LYRA_PROFILE_ICON_TREE2 = 8,
+    UI_LYRA_PROFILE_ICON_TREE3 = 9,
+    UI_LYRA_PROFILE_ICON_TREE4 = 10,
+    UI_LYRA_PROFILE_ICON_TREE5 = 11
+} UILyraProfileIcon;
+
 typedef struct {
     int id;
     const char **options;
@@ -644,6 +659,8 @@ UIToolbarHeaderResult DrawUIToolbarHeader(UIToolbarHeader header);
 int GetUIProfilePictureIconCount(void);
 UIIconType GetUIProfilePictureIconType(int index);
 const char *GetUIProfilePictureIconName(int index);
+UIIconType GetUIProfilePictureIconTypeForLyraID(int lyra_id);
+int GetUILyraIDForProfilePictureIconType(UIIconType type);
 UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeader header);
 UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal);
 void DrawUIInfoRows(UIInfoRows rows);

@@ -398,6 +398,16 @@ Profile-picture PNGs in `pfp/` are embedded into the same icon catalog with
 `GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
 the standard profile-picture options.
 
+Flint also exposes stable `UI_LYRA_PROFILE_ICON_*` IDs and mapping helpers:
+
+```c
+UIIconType GetUIProfilePictureIconTypeForLyraID(int lyra_id);
+int GetUILyraIDForProfilePictureIconType(UIIconType type);
+```
+
+Use those IDs for server storage or sync payloads instead of generated
+`UIIconType` ordinals.
+
 ---
 
 ### Theme
