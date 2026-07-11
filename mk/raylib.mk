@@ -9,6 +9,7 @@ FLINT_RAYLIB_GENERATED_DIR ?= $(BUILD_DIR)/generated
 FLINT_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(FLINT_RAYLIB_GENERATED_DIR)/flint_compat.generated.h
 FLINT_RAYLIB_BACKEND_RENAME_HEADER ?= $(FLINT_RAYLIB_GENERATED_DIR)/raylib_backend_rename.h
 FLINT_RAYLIB_WRAPPERS_C ?= $(FLINT_RAYLIB_GENERATED_DIR)/flint_raylib_wrappers.c
+FLINT_RAYLIB_PREPARE_SCRIPT ?= $(FLINT_DIR)/scripts/prepare-raylib-source.sh
 FLINT_RAYLIB_BACKEND_RENAME_CFLAG = -include $(abspath $(FLINT_RAYLIB_BACKEND_RENAME_HEADER))
 
 FLINT_RAYLIB_WEB_BASE_SRCS = rcore.c rshapes.c rtextures.c rtext.c raudio.c
@@ -36,11 +37,11 @@ FLINT_RAYLIB_MODULE_MODELS ?= TRUE
 FLINT_RAYLIB_BUILD_OPT_FLAGS ?= -Os -ffunction-sections -fdata-sections
 
 define FLINT_RAYLIB_DESKTOP_RULE
-$(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(BUILD_MAKEFILES)
+$(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
 	rm -rf $(2)
 	mkdir -p $(2) $(3)
 	cp -R $(RAYLIB_DIR)/. $(2)/
-	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(2)
+	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2)
 	$(MAKE) -j1 -C $(2) \
 		CC="$(4)" \
 		AR="$(5)" \
@@ -57,11 +58,11 @@ $(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER)
 endef
 
 define FLINT_RAYLIB_WEB_RULE
-$(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(BUILD_MAKEFILES)
+$(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
 	rm -rf $(2)
 	mkdir -p $(2) $(3)
 	cp -R $(RAYLIB_DIR)/. $(2)/
-	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(2)
+	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2)
 	$(MAKE) -j1 -C $(2) \
 		PLATFORM=PLATFORM_WEB \
 		RAYLIB_LIBTYPE=STATIC \
@@ -74,11 +75,11 @@ $(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER)
 endef
 
 define FLINT_RAYLIB_WINDOWS_RULE
-$(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(BUILD_MAKEFILES)
+$(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
 	rm -rf $(2)
 	mkdir -p $(2) $(3)
 	cp -R $(RAYLIB_DIR)/. $(2)/
-	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(2)
+	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2)
 	$(MAKE) -j1 -C $(2) \
 		OS=Windows_NT \
 		PLATFORM=PLATFORM_DESKTOP_RGFW \
@@ -94,11 +95,11 @@ $(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER)
 endef
 
 define FLINT_RAYLIB_WINDOWS_PLATFORM_RULE
-$(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(BUILD_MAKEFILES)
+$(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
 	rm -rf $(2)
 	mkdir -p $(2) $(3)
 	cp -R $(RAYLIB_DIR)/. $(2)/
-	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(2)
+	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2)
 	$(MAKE) -j1 -C $(2) \
 		OS=Windows_NT \
 		PLATFORM=$(7) \
