@@ -267,11 +267,55 @@ EndUIScrollContainer(UIScrollArea area, UIScrollView view)
  * SCROLLBAR
  * ================================================================ */
 
+static int
+ui_scrollbar_abs_diff(int a, int b)
+{
+    return a > b ? a - b : b - a;
+}
+
+static int
+ui_scrollbar_luminance(Color color)
+{
+    return ((int)color.r * 77 + (int)color.g * 150 + (int)color.b * 29) / 256;
+}
+
+static int
+ui_scrollbar_color_delta(Color a, Color b)
+{
+    return ui_scrollbar_abs_diff(a.r, b.r) +
+           ui_scrollbar_abs_diff(a.g, b.g) +
+           ui_scrollbar_abs_diff(a.b, b.b);
+}
+
+static Color
+ui_scrollbar_contrast_from(Color color, int amount)
+{
+    return ui_scrollbar_luminance(color) < 128
+               ? LightenUIColor(color, amount)
+               : DarkenUIColor(color, amount);
+}
+
+static Color
+ui_scrollbar_ensure_visible(Color color, Color against,
+                            int amount, int min_delta, int min_luminance_delta)
+{
+    int delta = ui_scrollbar_color_delta(color, against);
+    int luminance_delta = ui_scrollbar_abs_diff(ui_scrollbar_luminance(color),
+                                                ui_scrollbar_luminance(against));
+
+    if(delta >= min_delta && luminance_delta >= min_luminance_delta)
+        return color;
+
+    return ui_scrollbar_contrast_from(against, amount);
+}
+
 int
 DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll)
 {
     /* Don't show scrollbar if no scrolling needed */
     if(max_scroll <= 0)
+        return 0;
+    if(viewport_h <= 0 || content_h <= 0 || scroll_offset == NULL)
         return 0;
 
     static int scrollbar_drag_active = 0;
@@ -291,7 +335,8 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
         thumb_height = viewport_h;
 
     float scroll_ratio = max_scroll > 0 ? (float)*scroll_offset / (float)max_scroll : 0.0f;
-    int thumb_y = y + (int)(scroll_ratio * (viewport_h - thumb_height));
+    int track_span = viewport_h - thumb_height;
+    int thumb_y = y + (int)(scroll_ratio * track_span);
 
     Vector2 mouse_pos = ui_mouse_world();
     int my = (int)mouse_pos.y;
@@ -314,7 +359,9 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
         } else {
             /* Continue drag */
             int dy = my - scrollbar_drag_start_y;
-            float scroll_per_pixel = (float)max_scroll / (float)(viewport_h - thumb_height);
+            float scroll_per_pixel = track_span > 0
+                                         ? (float)max_scroll / (float)track_span
+                                         : 0.0f;
             int new_scroll = scrollbar_drag_start_scroll + (int)(dy * scroll_per_pixel);
             *scroll_offset = new_scroll;
             if(*scroll_offset < 0) *scroll_offset = 0;
@@ -326,10 +373,16 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
         scrollbar_drag_active = 0;
     }
 
-    DrawRectangle(x, y, scrollbar_width, viewport_h, DarkenUIColor(c_bg, 20));
+    Color track_color = ui_scrollbar_ensure_visible(
+        ui_scrollbar_contrast_from(c_bg, 22), c_bg, 34, 36, 16);
+    DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
 
     Color thumb_color = thumb_hover || scrollbar_drag_active ? c_button_hover : c_button;
+    thumb_color = ui_scrollbar_ensure_visible(thumb_color, track_color, 72, 78, 28);
+    thumb_color = ui_scrollbar_ensure_visible(thumb_color, c_bg, 64, 62, 22);
     DrawRectangleRec(thumb_bounds, thumb_color);
+    DrawRectangleLinesEx(thumb_bounds, (float)ScaleUIPx(1),
+                         ui_scrollbar_contrast_from(thumb_color, 34));
 
     return 1;
 }
