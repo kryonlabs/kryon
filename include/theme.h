@@ -89,5 +89,6 @@ Color GetThemeCircle(void);
 Color GetThemeButton(void);
 Color GetThemeButtonHover(void);
 Color GetThemeIcon(void);
+Color GetThemeLink(void);
 
 #endif

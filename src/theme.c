@@ -719,3 +719,4 @@ Color GetThemeCircle(void) { return GetCurrentThemeColor("circle"); }
 Color GetThemeButton(void) { return GetCurrentThemeColor("button"); }
 Color GetThemeButtonHover(void) { return GetCurrentThemeColor("button_hover"); }
 Color GetThemeIcon(void) { return WHITE; }
+Color GetThemeLink(void) { return GetCurrentThemeColor("link"); }

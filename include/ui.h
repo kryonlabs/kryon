@@ -60,6 +60,17 @@ typedef struct {
 } UIIconButton;
 
 typedef struct {
+    Rectangle bounds;
+    const char *text;
+    const char *href;
+    int font;
+    int focus_id;
+    int disabled;
+    Color color;
+    Color hover_color;
+} UIHref;
+
+typedef struct {
     int id;
     int x;
     int y;
@@ -528,6 +539,7 @@ typedef void (*UITextInputPlatformCallback)(int active);
 
 void InitUI(int width, int height, float dpi);
 void SetUIColors(Color text, Color bg, Color surface, Color circle, Color button, Color button_hover, Color icon);
+void SetUILinkColor(Color link);
 void ApplyCurrentUITheme(void);
 int IsUIDesktopMode(void);
 Camera2D GetUIDefaultCamera(void);
@@ -565,6 +577,7 @@ void QueueUITextInputBackspace(void);
 void QueueUITextInputEnter(void);
 int DrawUIButton(UIButton button);
 int DrawUIIconButton(UIIconButton button);
+int DrawUIHref(UIHref link);
 int DrawUITextInputControl(UITextInput input);
 int DrawUITextField(UITextField field);
 int GetUIReadonlyTextBoxHeight(const char *text, int font, int width, UITextInputStyle style, int line_gap);

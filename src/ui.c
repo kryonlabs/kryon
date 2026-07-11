@@ -17,7 +17,7 @@
 /* Global UI state */
 int ui_view_width = 320;
 int ui_view_height = 560;
-Color c_text, c_bg, c_surface, c_circle, c_button, c_button_hover, c_icon;
+Color c_text, c_bg, c_surface, c_circle, c_button, c_button_hover, c_icon, c_link;
 Camera2D g_ui_camera;
 static int *g_ui_cursor_clickable = NULL;
 static int *g_ui_cursor_disabled = NULL;
@@ -953,6 +953,65 @@ DrawUITextInputControl(UITextInput input)
 }
 
 int
+DrawUIHref(UIHref link)
+{
+    Vector2 mouse_world = ui_mouse_world();
+    int font = link.font > 0 ? link.font : GetUIFontSize();
+    const char *text = link.text != NULL ? link.text : "";
+    int text_w = MeasureUIText(text, font);
+    Rectangle bounds = link.bounds;
+    int mouse_inside;
+    int captured;
+    int active;
+    int hovered;
+    int focused;
+    int clicked = 0;
+    Color color = link.color.a != 0 ? link.color : c_link;
+
+    (void)link.href;
+    if(bounds.width <= 0)
+        bounds.width = (float)text_w;
+    if(bounds.height <= 0)
+        bounds.height = (float)GetUITextHeight(text, font);
+    if(bounds.height <= 0)
+        bounds.height = (float)font;
+
+    mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
+    captured = UIInputCapturesClick(mouse_world);
+    active = !link.disabled && !captured && mouse_inside;
+    hovered = active && UIHoverEffectsEnabled();
+    focused = !link.disabled && link.focus_id > 0 &&
+              RegisterUIFocus(link.focus_id, bounds);
+
+    if(link.disabled)
+        color = DarkenUIColor(color, 38);
+    else if(hovered)
+        color = link.hover_color.a != 0 ? link.hover_color : LightenUIColor(color, 18);
+
+    if(active) {
+        MarkUIClickable();
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+            clicked = 1;
+    } else if(link.disabled && !captured && mouse_inside) {
+        MarkUIDisabled();
+    }
+
+    DrawUIText(text, (int)bounds.x,
+               GetUIControlTextY(text, (int)bounds.y, (int)bounds.height, font),
+               font, color);
+    if(hovered && text_w > 0) {
+        int underline_y = (int)(bounds.y + bounds.height) - ScaleUIPx(2);
+        DrawLine((int)bounds.x, underline_y, (int)bounds.x + text_w,
+                 underline_y, color);
+    }
+    if(focused) {
+        SetUIFocusTextInputActive(0);
+        DrawUIFocus(bounds);
+    }
+    return clicked || IsUIFocusActivatePressed(link.focus_id);
+}
+
+int
 DrawUITextField(UITextField field)
 {
     int changed = 0;
@@ -1229,6 +1288,13 @@ SetUIColors(Color text, Color bg, Color surface, Color circle, Color button, Col
     c_button = button;
     c_button_hover = button_hover;
     c_icon = icon;
+    c_link = GetThemeLink();
+}
+
+void
+SetUILinkColor(Color link)
+{
+    c_link = link;
 }
 
 void
@@ -1241,6 +1307,7 @@ ApplyCurrentUITheme(void)
                   GetThemeButton(),
                   GetThemeButtonHover(),
                   GetThemeIcon());
+    SetUILinkColor(GetThemeLink());
 }
 
 Camera2D

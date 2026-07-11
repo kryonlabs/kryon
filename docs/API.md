@@ -54,6 +54,7 @@ Set the global color scheme for UI elements.
 
 ```c
 void SetUIColors(Color text, Color bg, Color surface, Color circle, Color button, Color button_hover, Color icon);
+void SetUILinkColor(Color link);
 ```
 
 ### `SetUIFrame`
@@ -446,6 +447,7 @@ Color GetThemeCircle(void);
 Color GetThemeButton(void);
 Color GetThemeButtonHover(void);
 Color GetThemeIcon(void);
+Color GetThemeLink(void);
 ```
 
 ---
@@ -739,6 +741,29 @@ typedef struct {
 
 ```c
 int DrawUIIconButton(UIIconButton button);
+```
+
+#### `UIHref`
+
+```c
+typedef struct {
+    Rectangle bounds;
+    const char *text;
+    const char *href;
+    int font;
+    int focus_id;
+    int disabled;
+    Color color;
+    Color hover_color;
+} UIHref;
+```
+
+#### `DrawUIHref`
+
+Draw and handle a text link using the current theme link color by default.
+
+```c
+int DrawUIHref(UIHref link);
 ```
 
 ---
