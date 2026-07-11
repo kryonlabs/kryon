@@ -1,27 +1,11 @@
 BINARY_NAME = $(APP_NAME)-$(PLATFORM)-$(ARCH)
 TARGET = $(NATIVE_BIN_DIR)/$(BINARY_NAME)
 
+include $(FLINT_MAKE_DIR)raylib.mk
+
 all: native
 
 native: $(TARGET)
-
-$(RAYLIB_A): $(RAYLIB_SOURCES) $(BUILD_MAKEFILES) | $(RAYLIB_BUILD_DIR)
-	@rm -rf $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src
-	@mkdir -p $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src
-	cp -R $(RAYLIB_DIR)/. $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src/
-	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src
-	$(MAKE) -j1 -C $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib-src \
-		CC="$(CC)" \
-		AR="$(AR)" \
-		PLATFORM=PLATFORM_DESKTOP_SDL \
-		GRAPHICS=GRAPHICS_API_OPENGL_ES2 \
-		RAYLIB_LIBTYPE=STATIC \
-		RAYLIB_RELEASE_PATH=../raylib \
-		RAYLIB_MODULE_AUDIO=$(FLINT_RAYLIB_MODULE_AUDIO) \
-		RAYLIB_MODULE_MODELS=FALSE \
-		SDL_INCLUDE_PATH="$(RAY_SDL_INCLUDE_DIR)" \
-		SDL_LIBRARIES="$(RAY_SDL_LDLIBS)" \
-		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(RAY_CFLAGS) $(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
 
 ifneq ($(strip $(CORE_SRCS)),)
 CORE_OBJS = $(patsubst %.c,$(NATIVE_OBJ_DIR)/$(ARCH)/native/core/%.o,$(CORE_SRCS))

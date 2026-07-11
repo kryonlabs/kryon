@@ -22,6 +22,8 @@ WIN_RESOURCE ?= windows/$(APP_NAME).rc
 WIN_ICON ?= windows/$(APP_NAME).ico
 WIN_FLINT_SRCS = $(filter-out $(FLINT_DIR)/src/file_dialog.c,$(FLINT_SRCS))
 
+include $(FLINT_MAKE_DIR)raylib.mk
+
 WIN_opengl_TARGET_PREFIX = $(APP_NAME)-windows-
 WIN_opengl_TARGET_SUFFIX =
 WIN_opengl_PLATFORM = PLATFORM_DESKTOP
@@ -62,22 +64,7 @@ $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res: $(WIN_RESOURCE) $(WIN_ICON) | $(WINDOWS
 endef
 
 define WINDOWS_ARCH_RENDERER_RULES
-$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a: $(RAYLIB_SOURCES) | $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib
-	@rm -rf $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src
-	@mkdir -p $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src
-	cp -R $(RAYLIB_DIR)/. $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src/
-	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src
-	$(MAKE) -j1 -C $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src \
-		CC="$$(WIN_$(1)_CC)" \
-		AR="$$(WIN_$(1)_AR)" \
-		PLATFORM=$$(WIN_$(2)_PLATFORM) \
-		PLATFORM_OS=WINDOWS \
-		RAYLIB_LIBTYPE=STATIC \
-		RAYLIB_RELEASE_PATH=../raylib \
-		RAYLIB_MODULE_AUDIO=TRUE \
-		RAYLIB_MODULE_MODELS=FALSE \
-		GRAPHICS=$$(WIN_$(2)_GRAPHICS) \
-		CUSTOM_CFLAGS="$(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
+$$(eval $$(call FLINT_RAYLIB_WINDOWS_PLATFORM_RULE,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib,$$(WIN_$(1)_CC),$$(WIN_$(1)_AR),$$(WIN_$(1)_RANLIB),$$(WIN_$(2)_PLATFORM),$$(WIN_$(2)_GRAPHICS)))
 
 $(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe: $(BUILD_MAKEFILES) $(SRC) $(WIN_FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a $(if $(strip $(CORE_SRCS)),$(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a,) $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res | $(WINDOWS_BIN_DIR)
 	$$(WIN_$(1)_CC) $(CFLAGS) \

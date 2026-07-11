@@ -1,3 +1,6 @@
+ifndef FLINT_RAYLIB_MK_INCLUDED
+FLINT_RAYLIB_MK_INCLUDED := 1
+
 FLINT_DIR ?= vendor/flint
 RAYLIB_DIR ?= $(FLINT_DIR)/vendor/raylib/src
 
@@ -22,7 +25,7 @@ FLINT_RAYLIB_MODULE_MODELS ?= FALSE
 FLINT_RAYLIB_BUILD_OPT_FLAGS ?= -Os -ffunction-sections -fdata-sections
 
 define FLINT_RAYLIB_DESKTOP_RULE
-$(1): flint-raylib-check $(RAYLIB_SOURCES)
+$(1): flint-raylib-check $(RAYLIB_SOURCES) $(BUILD_MAKEFILES)
 	rm -rf $(2)
 	mkdir -p $(2) $(3)
 	cp -R $(RAYLIB_DIR)/. $(2)/
@@ -43,7 +46,7 @@ $(1): flint-raylib-check $(RAYLIB_SOURCES)
 endef
 
 define FLINT_RAYLIB_WEB_RULE
-$(1): flint-raylib-check $(RAYLIB_SOURCES)
+$(1): flint-raylib-check $(RAYLIB_SOURCES) $(BUILD_MAKEFILES)
 	rm -rf $(2)
 	mkdir -p $(2) $(3)
 	cp -R $(RAYLIB_DIR)/. $(2)/
@@ -60,7 +63,7 @@ $(1): flint-raylib-check $(RAYLIB_SOURCES)
 endef
 
 define FLINT_RAYLIB_WINDOWS_RULE
-$(1): flint-raylib-check $(RAYLIB_SOURCES)
+$(1): flint-raylib-check $(RAYLIB_SOURCES) $(BUILD_MAKEFILES)
 	rm -rf $(2)
 	mkdir -p $(2) $(3)
 	cp -R $(RAYLIB_DIR)/. $(2)/
@@ -69,6 +72,27 @@ $(1): flint-raylib-check $(RAYLIB_SOURCES)
 		OS=Windows_NT \
 		PLATFORM=PLATFORM_DESKTOP_RGFW \
 		GRAPHICS=GRAPHICS_API_OPENGL_11 \
+		RAYLIB_LIBTYPE=STATIC \
+		RAYLIB_RELEASE_PATH=../$(notdir $(3)) \
+		RAYLIB_MODULE_AUDIO=$(FLINT_RAYLIB_MODULE_AUDIO) \
+		RAYLIB_MODULE_MODELS=$(FLINT_RAYLIB_MODULE_MODELS) \
+		CC="$(4)" \
+		AR="$(5)" \
+		RANLIB="$(6)" \
+		CUSTOM_CFLAGS="$(APP_RAYLIB_CONFIG) $(FLINT_RAYLIB_BUILD_OPT_FLAGS)"
+endef
+
+define FLINT_RAYLIB_WINDOWS_PLATFORM_RULE
+$(1): flint-raylib-check $(RAYLIB_SOURCES) $(BUILD_MAKEFILES)
+	rm -rf $(2)
+	mkdir -p $(2) $(3)
+	cp -R $(RAYLIB_DIR)/. $(2)/
+	sh $(FLINT_DIR)/scripts/prepare-raylib-source.sh $(2)
+	$(MAKE) -j1 -C $(2) \
+		OS=Windows_NT \
+		PLATFORM=$(7) \
+		PLATFORM_OS=WINDOWS \
+		GRAPHICS=$(8) \
 		RAYLIB_LIBTYPE=STATIC \
 		RAYLIB_RELEASE_PATH=../$(notdir $(3)) \
 		RAYLIB_MODULE_AUDIO=$(FLINT_RAYLIB_MODULE_AUDIO) \
@@ -97,4 +121,6 @@ endif
 
 ifneq ($(strip $(WIN32_RAYLIB_A)),)
 $(eval $(call FLINT_RAYLIB_WINDOWS_RULE,$(WIN32_RAYLIB_A),$(or $(WIN32_RAYLIB_SOURCE_BUILD_DIR),$(dir $(WIN32_RAYLIB_BUILD_DIR))raylib-src),$(WIN32_RAYLIB_BUILD_DIR),$(WIN32_CC),$(WIN32_AR),$(WIN32_RANLIB)))
+endif
+
 endif
