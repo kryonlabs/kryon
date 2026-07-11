@@ -18,5 +18,6 @@
 #include "theme_meta.h"
 #include "web.h"
 #include "runtime_assets.h"
+#include "DesktopTray.h"
 
 #endif // UIKIT_H
