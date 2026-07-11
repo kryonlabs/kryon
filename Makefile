@@ -7,7 +7,7 @@ CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude
 ICON_DIR ?= icons pfp
 ICON_FILES = $(foreach dir,$(ICON_DIR),$(wildcard $(dir)/*.png))
-ICON_ASSETS_C = src/ui_icon_assets.c
+ICON_ASSETS_C = src/ui/ui_icon_assets.c
 EMBED_ASSETS ?= themes
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
@@ -32,42 +32,7 @@ endif
 CPPFLAGS += $(CPPFLAGS_BASE)
 ARFLAGS ?= rcs
 
-SRCS = \
-	src/ui_color.c \
-	src/ui_clip.c \
-	src/ui_scaling.c \
-	src/ui_dpi.c \
-	src/embedded_assets.c \
-	src/ui_layout.c \
-	src/ui_icons.c \
-	src/ui_icon_assets.c \
-	src/ui_icon_names.c \
-	src/ui_text.c \
-	src/ui.c \
-	src/ui_text_layout.c \
-	src/locale.c \
-	src/lyra_account.c \
-	src/lyra_sync.c \
-	src/theme.c \
-	src/theme_meta.c \
-	src/system_theme.c \
-	src/desktop_tray.c \
-	src/file_dialog.c \
-	src/runtime_assets.c \
-	src/ui_transition.c \
-	src/ui/bottom_nav.c \
-	src/ui/dropdown.c \
-	src/ui/guide.c \
-	src/ui/icon_controls.c \
-	src/ui/modal.c \
-	src/ui/reorder.c \
-	src/ui/rows.c \
-	src/ui/scroll.c \
-	src/ui/profile_header.c \
-	src/ui/tab_bar.c \
-	src/ui/theme_picker.c \
-	src/ui/toolbar.c \
-	src/ui/tutorial.c
+SRCS := $(wildcard src/*.c) $(wildcard src/*/*.c)
 
 SRCS += $(EMBED_ASSETS_C)
 

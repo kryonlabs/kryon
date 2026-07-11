@@ -29,8 +29,8 @@ WEB_AR ?= emar
 WEB_SHELL := web_shell.html
 EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
 include ../mk/raylib.mk
-FLINT_WEB_SRCS := $(filter-out ../src/file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/ui/*.c)) $(WEB_EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
-FLINT_ALL_WEB_SRCS := $(wildcard ../src/*.c) $(wildcard ../src/ui/*.c) $(WEB_EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
+FLINT_WEB_SRCS := $(filter-out ../src/file_dialog/file_dialog.c,$(wildcard ../src/*.c) $(wildcard ../src/*/*.c)) $(WEB_EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
+FLINT_ALL_WEB_SRCS := $(wildcard ../src/*.c) $(wildcard ../src/*/*.c) $(WEB_EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
 WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
 WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
