@@ -5,23 +5,27 @@ static const UIIconType ui_profile_picture_icons[] = {
     UI_ICON_TYPE_PFP_BIRD,
     UI_ICON_TYPE_PFP_BOWL,
     UI_ICON_TYPE_PFP_BUSH,
+    UI_ICON_TYPE_PFP_BUTTERFLY,
     UI_ICON_TYPE_PFP_CACTUS,
     UI_ICON_TYPE_PFP_COFFEE,
+    UI_ICON_TYPE_PFP_DRAGONFLY,
+    UI_ICON_TYPE_PFP_FIREPLACE,
     UI_ICON_TYPE_PFP_FLOWER1,
     UI_ICON_TYPE_PFP_FLOWER2,
+    UI_ICON_TYPE_PFP_FOX,
     UI_ICON_TYPE_PFP_HEART,
     UI_ICON_TYPE_PFP_INCENSE,
     UI_ICON_TYPE_PFP_LOTUS,
     UI_ICON_TYPE_PFP_MOUNTAIN,
     UI_ICON_TYPE_PFP_MUSHROOM,
+    UI_ICON_TYPE_PFP_PALM,
     UI_ICON_TYPE_PFP_PERSON1,
     UI_ICON_TYPE_PFP_RAINBOW,
     UI_ICON_TYPE_PFP_TENT,
     UI_ICON_TYPE_PFP_TREE1,
     UI_ICON_TYPE_PFP_TREE2,
     UI_ICON_TYPE_PFP_TREE3,
-    UI_ICON_TYPE_PFP_TREE4,
-    UI_ICON_TYPE_PFP_TREE5
+    UI_ICON_TYPE_PFP_TREE4
 };
 
 static const int ui_profile_picture_lyra_ids[] = {
@@ -29,23 +33,27 @@ static const int ui_profile_picture_lyra_ids[] = {
     UI_LYRA_PROFILE_ICON_BIRD,
     UI_LYRA_PROFILE_ICON_BOWL,
     UI_LYRA_PROFILE_ICON_BUSH,
+    UI_LYRA_PROFILE_ICON_BUTTERFLY,
     UI_LYRA_PROFILE_ICON_CACTUS,
     UI_LYRA_PROFILE_ICON_COFFEE,
+    UI_LYRA_PROFILE_ICON_DRAGONFLY,
+    UI_LYRA_PROFILE_ICON_FIREPLACE,
     UI_LYRA_PROFILE_ICON_FLOWER1,
     UI_LYRA_PROFILE_ICON_FLOWER2,
+    UI_LYRA_PROFILE_ICON_FOX,
     UI_LYRA_PROFILE_ICON_HEART,
     UI_LYRA_PROFILE_ICON_INCENSE,
     UI_LYRA_PROFILE_ICON_LOTUS,
     UI_LYRA_PROFILE_ICON_MOUNTAIN,
     UI_LYRA_PROFILE_ICON_MUSHROOM,
+    UI_LYRA_PROFILE_ICON_PALM,
     UI_LYRA_PROFILE_ICON_PERSON1,
     UI_LYRA_PROFILE_ICON_RAINBOW,
     UI_LYRA_PROFILE_ICON_TENT,
     UI_LYRA_PROFILE_ICON_TREE1,
     UI_LYRA_PROFILE_ICON_TREE2,
     UI_LYRA_PROFILE_ICON_TREE3,
-    UI_LYRA_PROFILE_ICON_TREE4,
-    UI_LYRA_PROFILE_ICON_TREE5
+    UI_LYRA_PROFILE_ICON_TREE4
 };
 
 static const char *ui_profile_picture_names[] = {
@@ -53,23 +61,27 @@ static const char *ui_profile_picture_names[] = {
     "pfp_bird",
     "pfp_bowl",
     "pfp_bush",
+    "pfp_butterfly",
     "pfp_cactus",
     "pfp_coffee",
+    "pfp_dragonfly",
+    "pfp_fireplace",
     "pfp_flower1",
     "pfp_flower2",
+    "pfp_fox",
     "pfp_heart",
     "pfp_incense",
     "pfp_lotus",
     "pfp_mountain",
     "pfp_mushroom",
+    "pfp_palm",
     "pfp_person1",
     "pfp_rainbow",
     "pfp_tent",
     "pfp_tree1",
     "pfp_tree2",
     "pfp_tree3",
-    "pfp_tree4",
-    "pfp_tree5"
+    "pfp_tree4"
 };
 
 int

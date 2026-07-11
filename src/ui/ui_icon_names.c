@@ -84,15 +84,20 @@ const char *ui_icon_names[] = {
     "pfp_bird.png",  /* UI_ICON_TYPE_PFP_BIRD */
     "pfp_bowl.png",  /* UI_ICON_TYPE_PFP_BOWL */
     "pfp_bush.png",  /* UI_ICON_TYPE_PFP_BUSH */
+    "pfp_butterfly.png",  /* UI_ICON_TYPE_PFP_BUTTERFLY */
     "pfp_cactus.png",  /* UI_ICON_TYPE_PFP_CACTUS */
     "pfp_coffee.png",  /* UI_ICON_TYPE_PFP_COFFEE */
+    "pfp_dragonfly.png",  /* UI_ICON_TYPE_PFP_DRAGONFLY */
+    "pfp_fireplace.png",  /* UI_ICON_TYPE_PFP_FIREPLACE */
     "pfp_flower1.png",  /* UI_ICON_TYPE_PFP_FLOWER1 */
     "pfp_flower2.png",  /* UI_ICON_TYPE_PFP_FLOWER2 */
+    "pfp_fox.png",  /* UI_ICON_TYPE_PFP_FOX */
     "pfp_heart.png",  /* UI_ICON_TYPE_PFP_HEART */
     "pfp_incense.png",  /* UI_ICON_TYPE_PFP_INCENSE */
     "pfp_lotus.png",  /* UI_ICON_TYPE_PFP_LOTUS */
     "pfp_mountain.png",  /* UI_ICON_TYPE_PFP_MOUNTAIN */
     "pfp_mushroom.png",  /* UI_ICON_TYPE_PFP_MUSHROOM */
+    "pfp_palm.png",  /* UI_ICON_TYPE_PFP_PALM */
     "pfp_person1.png",  /* UI_ICON_TYPE_PFP_PERSON1 */
     "pfp_rainbow.png",  /* UI_ICON_TYPE_PFP_RAINBOW */
     "pfp_tent.png",  /* UI_ICON_TYPE_PFP_TENT */
@@ -100,5 +105,4 @@ const char *ui_icon_names[] = {
     "pfp_tree2.png",  /* UI_ICON_TYPE_PFP_TREE2 */
     "pfp_tree3.png",  /* UI_ICON_TYPE_PFP_TREE3 */
     "pfp_tree4.png",  /* UI_ICON_TYPE_PFP_TREE4 */
-    "pfp_tree5.png",  /* UI_ICON_TYPE_PFP_TREE5 */
 };
