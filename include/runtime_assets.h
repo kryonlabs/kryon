@@ -7,8 +7,7 @@ typedef enum RuntimeAssetStatus {
     RUNTIME_ASSET_IDLE = 0,
     RUNTIME_ASSET_DOWNLOADING,
     RUNTIME_ASSET_READY,
-    RUNTIME_ASSET_ERROR,
-    RUNTIME_ASSET_UNSUPPORTED
+    RUNTIME_ASSET_ERROR
 } RuntimeAssetStatus;
 
 typedef struct RuntimeAssetDownload {

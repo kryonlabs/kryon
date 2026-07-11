@@ -35,6 +35,9 @@ FLINT_DIR ?= .
 FLINT_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
 include mk/vendor.mk
 
+CPPFLAGS += -DHAS_LIBOQS=1 $(FLINT_LIBOQS_INCLUDE) \
+	-DHAS_LIBCURL=1 $(FLINT_CURL_CFLAGS)
+
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
 SRCS += $(EMBED_ASSETS_C)
@@ -98,7 +101,7 @@ flint-compat-check: | $(BUILD_DIR)
 flint-boundary-check:
 	sh $(FLINT_BOUNDARY_CHECK) .
 
-$(LIB): $(FLINT_COMPAT_HEADER) $(OBJS)
+$(LIB): $(FLINT_COMPAT_HEADER) $(OBJS) | $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_WRAPPERS_C): $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h | $(BUILD_DIR)

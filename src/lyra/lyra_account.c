@@ -1,8 +1,10 @@
 #include "lyra_account.h"
 
-#if defined(HAS_LIBOQS)
-#include <oqs/oqs.h>
+#if !defined(HAS_LIBOQS)
+#error "Flint Lyra accounts require HAS_LIBOQS; build and link liboqs instead of disabling account crypto"
 #endif
+
+#include <oqs/oqs.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -341,11 +343,7 @@ LyraSha256Hex(const uint8_t *data, size_t len, char out_hex[LYRA_PUBLIC_ID_HEX_S
 int
 IsLyraAccountAvailable(void)
 {
-#if defined(HAS_LIBOQS)
     return 1;
-#else
-    return 0;
-#endif
 }
 
 int
@@ -458,7 +456,6 @@ ExportLyraAccountFile(const LyraAccount *account, const char *filename)
 int
 CreateLyraAccount(LyraAccount *account)
 {
-#if defined(HAS_LIBOQS)
     OQS_SIG *sig;
     uint8_t public_key[1312];
     uint8_t private_key[2560];
@@ -487,17 +484,12 @@ CreateLyraAccount(LyraAccount *account)
                  sizeof(generated.private_key_hex));
     *account = generated;
     return 1;
-#else
-    (void)account;
-    return 0;
-#endif
 }
 
 int
 SignLyraAccountHex(const LyraAccount *account, const uint8_t *message,
                             size_t message_len, char *out_signature_hex, size_t out_size)
 {
-#if defined(HAS_LIBOQS)
     OQS_SIG *sig;
     uint8_t private_key[2560];
     uint8_t signature[2420];
@@ -525,12 +517,4 @@ SignLyraAccountHex(const LyraAccount *account, const uint8_t *message,
     OQS_SIG_free(sig);
     bytes_to_hex(signature, sizeof(signature), out_signature_hex, out_size);
     return out_signature_hex[0] != '\0';
-#else
-    (void)account;
-    (void)message;
-    (void)message_len;
-    (void)out_signature_hex;
-    (void)out_size;
-    return 0;
-#endif
 }

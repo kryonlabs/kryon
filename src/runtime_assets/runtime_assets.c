@@ -26,6 +26,10 @@
 #include <pthread.h>
 #endif
 
+#if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && !defined(HAS_LIBCURL) && !defined(ANDROID_BUILD)
+#error "Flint runtime assets require Emscripten fetch, Windows WinINet, libcurl, or an Android app backend"
+#endif
+
 static RuntimeAssetDownloadBackend g_download_backend = NULL;
 
 static int
@@ -145,7 +149,6 @@ GetRuntimeAssetStatusText(RuntimeAssetStatus status)
     case RUNTIME_ASSET_DOWNLOADING: return "downloading";
     case RUNTIME_ASSET_READY: return "ready";
     case RUNTIME_ASSET_ERROR: return "error";
-    case RUNTIME_ASSET_UNSUPPORTED: return "unsupported";
     default: return "unknown";
     }
 }
@@ -512,8 +515,8 @@ DownloadRuntimeAsset(RuntimeAssetDownload *download,
         return 1;
     }
 #else
-    snprintf(download->error, sizeof(download->error), "runtime asset downloads are not enabled for this build");
-    download->status = RUNTIME_ASSET_UNSUPPORTED;
+    snprintf(download->error, sizeof(download->error), "runtime asset download backend is not initialized");
+    download->status = RUNTIME_ASSET_ERROR;
     return 0;
 #endif
 }
