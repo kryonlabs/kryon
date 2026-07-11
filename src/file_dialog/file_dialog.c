@@ -1,11 +1,133 @@
 #include "file_dialog.h"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if defined(PLATFORM_WEB)
+
+static void
+reset_dialog_result(FileDialog *dlg, FileDialogMode mode, const char *title,
+                    const char *filter, const char *default_filename)
+{
+    if(dlg == NULL)
+        return;
+    dlg->active = 0;
+    dlg->mode = mode;
+    dlg->confirmed = 0;
+    dlg->result_path[0] = '\0';
+    snprintf(dlg->title, sizeof(dlg->title), "%s", title != NULL ? title : "");
+    snprintf(dlg->filter, sizeof(dlg->filter), "%s", filter != NULL ? filter : "");
+    snprintf(dlg->default_name, sizeof(dlg->default_name), "%s",
+             default_filename != NULL ? default_filename : "");
+}
+
+void
+InitFileDialog(FileDialog *dlg)
+{
+    if(dlg != NULL)
+        memset(dlg, 0, sizeof(FileDialog));
+}
+
+int
+SetFileDialogCurrentDir(FileDialog *dlg, const char *path)
+{
+    (void)dlg;
+    (void)path;
+    return 0;
+}
+
+void
+SetFileDialogThemeScope(const char *scope)
+{
+    (void)scope;
+}
+
+const char *
+GetFileDialogBackendName(void)
+{
+    return "none";
+}
+
+void
+BeginLoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filter)
+{
+    reset_dialog_result(dlg, FILE_DIALOG_LOAD, title, filter, NULL);
+}
+
+void
+BeginLoadFileDialog(FileDialog *dlg, const char *title)
+{
+    BeginLoadFilteredFileDialog(dlg, title, NULL);
+}
+
+int
+LoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filter)
+{
+    reset_dialog_result(dlg, FILE_DIALOG_LOAD, title, filter, NULL);
+    return 0;
+}
+
+int
+LoadFileDialog(FileDialog *dlg, const char *title)
+{
+    return LoadFilteredFileDialog(dlg, title, NULL);
+}
+
+void
+BeginSaveFileDialog(FileDialog *dlg, const char *title, const char *default_filename)
+{
+    reset_dialog_result(dlg, FILE_DIALOG_SAVE, title, NULL, default_filename);
+}
+
+int
+SaveFileDialog(FileDialog *dlg, const char *title, const char *default_filename)
+{
+    reset_dialog_result(dlg, FILE_DIALOG_SAVE, title, NULL, default_filename);
+    return 0;
+}
+
+void
+BeginSelectFileDialogFolder(FileDialog *dlg, const char *title)
+{
+    reset_dialog_result(dlg, FILE_DIALOG_SELECT_FOLDER, title, NULL, NULL);
+}
+
+int
+SelectFileDialogFolder(FileDialog *dlg, const char *title)
+{
+    reset_dialog_result(dlg, FILE_DIALOG_SELECT_FOLDER, title, NULL, NULL);
+    return 0;
+}
+
+int
+UpdateFileDialog(FileDialog *dlg)
+{
+    if(dlg == NULL)
+        return 0;
+    return dlg->confirmed ? 1 : 0;
+}
+
+const char *
+GetFileDialogPath(FileDialog *dlg)
+{
+    if(dlg == NULL || dlg->result_path[0] == '\0')
+        return NULL;
+    return dlg->result_path;
+}
+
+void
+CloseFileDialog(FileDialog *dlg)
+{
+    if(dlg != NULL)
+        memset(dlg, 0, sizeof(FileDialog));
+}
+
+#else
+
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -19,11 +141,12 @@ typedef struct {
 } FileDialogInternal;
 
 typedef enum {
-    DIALOG_HELPER_NONE,
-    DIALOG_HELPER_KDIALOG,
-    DIALOG_HELPER_YAD,
-    DIALOG_HELPER_ZENITY
-} DialogHelper;
+    DIALOG_BACKEND_AUTO,
+    DIALOG_BACKEND_NONE,
+    DIALOG_BACKEND_ZENITY,
+    DIALOG_BACKEND_KDIALOG,
+    DIALOG_BACKEND_YAD
+} DialogBackend;
 
 static FileDialogInternal *
 ensure_internal(FileDialog *dlg)
@@ -72,10 +195,8 @@ command_exists(const char *name)
     while(*start != '\0') {
         end = strchr(start, ':');
         dir_len = end != NULL ? (size_t)(end - start) : strlen(start);
-        if(dir_len == 0)
-            dir_len = 1;
         if(dir_len + 1 + strlen(name) < sizeof(candidate)) {
-            if(dir_len == 1 && start[0] == ':')
+            if(dir_len == 0)
                 snprintf(candidate, sizeof(candidate), "./%s", name);
             else
                 snprintf(candidate, sizeof(candidate), "%.*s/%s", (int)dir_len, start, name);
@@ -89,28 +210,81 @@ command_exists(const char *name)
     return 0;
 }
 
-static DialogHelper
-select_helper(void)
+static DialogBackend
+backend_from_name(const char *name)
+{
+    if(name == NULL || name[0] == '\0' || strcmp(name, "auto") == 0)
+        return DIALOG_BACKEND_AUTO;
+    if(strcmp(name, "none") == 0 || strcmp(name, "off") == 0 ||
+       strcmp(name, "disabled") == 0)
+        return DIALOG_BACKEND_NONE;
+    if(strcmp(name, "zenity") == 0)
+        return DIALOG_BACKEND_ZENITY;
+    if(strcmp(name, "kdialog") == 0)
+        return DIALOG_BACKEND_KDIALOG;
+    if(strcmp(name, "yad") == 0)
+        return DIALOG_BACKEND_YAD;
+    return DIALOG_BACKEND_AUTO;
+}
+
+static int
+backend_available(DialogBackend backend)
+{
+    switch(backend) {
+    case DIALOG_BACKEND_ZENITY:
+        return command_exists("zenity");
+    case DIALOG_BACKEND_KDIALOG:
+        return command_exists("kdialog");
+    case DIALOG_BACKEND_YAD:
+        return command_exists("yad");
+    default:
+        return 0;
+    }
+}
+
+static DialogBackend
+select_backend_from_request(DialogBackend requested)
+{
+    if(requested == DIALOG_BACKEND_NONE)
+        return DIALOG_BACKEND_NONE;
+    if(requested != DIALOG_BACKEND_AUTO)
+        return backend_available(requested) ? requested : DIALOG_BACKEND_NONE;
+
+    if(backend_available(DIALOG_BACKEND_ZENITY))
+        return DIALOG_BACKEND_ZENITY;
+    if(backend_available(DIALOG_BACKEND_KDIALOG))
+        return DIALOG_BACKEND_KDIALOG;
+    if(backend_available(DIALOG_BACKEND_YAD))
+        return DIALOG_BACKEND_YAD;
+    return DIALOG_BACKEND_NONE;
+}
+
+static DialogBackend
+select_backend(void)
 {
     const char *requested = getenv("FLINT_FILE_DIALOG_BACKEND");
+    DialogBackend env_backend = backend_from_name(requested);
 
-    if(requested != NULL && requested[0] != '\0') {
-        if(strcmp(requested, "kdialog") == 0 && command_exists("kdialog"))
-            return DIALOG_HELPER_KDIALOG;
-        if(strcmp(requested, "yad") == 0 && command_exists("yad"))
-            return DIALOG_HELPER_YAD;
-        if(strcmp(requested, "zenity") == 0 && command_exists("zenity"))
-            return DIALOG_HELPER_ZENITY;
-        if(strcmp(requested, "none") == 0)
-            return DIALOG_HELPER_NONE;
+    return select_backend_from_request(env_backend);
+}
+
+static const char *
+backend_name(DialogBackend backend)
+{
+    switch(backend) {
+    case DIALOG_BACKEND_AUTO:
+        return "auto";
+    case DIALOG_BACKEND_NONE:
+        return "none";
+    case DIALOG_BACKEND_ZENITY:
+        return "zenity";
+    case DIALOG_BACKEND_KDIALOG:
+        return "kdialog";
+    case DIALOG_BACKEND_YAD:
+        return "yad";
+    default:
+        return "unknown";
     }
-    if(command_exists("kdialog"))
-        return DIALOG_HELPER_KDIALOG;
-    if(command_exists("yad"))
-        return DIALOG_HELPER_YAD;
-    if(command_exists("zenity"))
-        return DIALOG_HELPER_ZENITY;
-    return DIALOG_HELPER_NONE;
 }
 
 static void
@@ -210,7 +384,7 @@ build_filter_patterns(char *out, size_t out_size, const char *filter)
 }
 
 static void
-build_filter_arg(char *out, size_t out_size, const char *filter, DialogHelper helper)
+build_filter_arg(char *out, size_t out_size, const char *filter, DialogBackend backend)
 {
     char patterns[256];
 
@@ -219,7 +393,7 @@ build_filter_arg(char *out, size_t out_size, const char *filter, DialogHelper he
     out[0] = '\0';
     build_filter_patterns(patterns, sizeof(patterns), filter);
     if(patterns[0] != '\0') {
-        if(helper == DIALOG_HELPER_KDIALOG)
+        if(backend == DIALOG_BACKEND_KDIALOG)
             snprintf(out, out_size, "%s|Files", patterns);
         else
             snprintf(out, out_size, "Files | %s", patterns);
@@ -297,7 +471,7 @@ run_external_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
                     const char *filter, const char *default_filename)
 {
     FileDialogInternal *internal;
-    DialogHelper helper;
+    DialogBackend backend;
     char path[PATH_MAX];
     char start_path[PATH_MAX];
     char filter_arg[320];
@@ -314,14 +488,14 @@ run_external_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
     if(internal == NULL)
         return 0;
 
-    helper = select_helper();
-    if(helper == DIALOG_HELPER_NONE)
+    backend = select_backend();
+    if(backend == DIALOG_BACKEND_NONE)
         return 0;
 
     build_start_path(start_path, sizeof(start_path), internal->current_dir, default_filename);
-    build_filter_arg(filter_arg, sizeof(filter_arg), filter, helper);
+    build_filter_arg(filter_arg, sizeof(filter_arg), filter, backend);
 
-    if(helper == DIALOG_HELPER_KDIALOG) {
+    if(backend == DIALOG_BACKEND_KDIALOG) {
         argv[argc++] = "kdialog";
         if(title != NULL && title[0] != '\0') {
             argv[argc++] = "--title";
@@ -340,7 +514,7 @@ run_external_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
                 argv[argc++] = filter_arg;
         }
     } else {
-        argv[argc++] = helper == DIALOG_HELPER_YAD ? "yad" : "zenity";
+        argv[argc++] = backend == DIALOG_BACKEND_YAD ? "yad" : "zenity";
         argv[argc++] = "--file-selection";
         if(title != NULL && title[0] != '\0') {
             snprintf(title_arg, sizeof(title_arg), "--title=%s", title);
@@ -396,6 +570,12 @@ void
 SetFileDialogThemeScope(const char *scope)
 {
     (void)scope;
+}
+
+const char *
+GetFileDialogBackendName(void)
+{
+    return backend_name(select_backend());
 }
 
 void
@@ -476,3 +656,5 @@ CloseFileDialog(FileDialog *dlg)
     free(dlg->_internal);
     memset(dlg, 0, sizeof(FileDialog));
 }
+
+#endif

@@ -16,6 +16,7 @@ Color c_text, c_bg, c_surface, c_circle, c_button, c_button_hover, c_icon, c_lin
 Camera2D g_ui_camera;
 static int *g_ui_cursor_clickable = NULL;
 static int *g_ui_cursor_disabled = NULL;
+static int g_ui_cursor_priority = 0;
 Texture2D g_ui_gear_icon = {0};
 Texture2D g_ui_x_icon = {0};
 int g_ui_slider_active_id = 0;
@@ -45,6 +46,13 @@ static int g_ui_text_input_backspace_count = 0;
 static int g_ui_text_input_enter_count = 0;
 static double g_ui_backspace_next_repeat_at = 0.0;
 
+enum {
+    UI_CURSOR_PRIORITY_DEFAULT = 0,
+    UI_CURSOR_PRIORITY_CLICKABLE = 1,
+    UI_CURSOR_PRIORITY_TEXT = 1,
+    UI_CURSOR_PRIORITY_DISABLED = 2
+};
+
 #define UI_INPUT_CLIP_STACK_MAX 16
 static Rectangle g_ui_input_clip_stack[UI_INPUT_CLIP_STACK_MAX];
 static int g_ui_input_clip_stack_count = 0;
@@ -64,11 +72,21 @@ ui_mouse_world(void)
     return GetScreenToWorld2D(GetMousePosition(), g_ui_camera);
 }
 
+static void
+ui_set_cursor_intent(int cursor, int priority)
+{
+    if(priority < g_ui_cursor_priority)
+        return;
+    g_ui_cursor_priority = priority;
+    SetMouseCursor(cursor);
+}
+
 void
 MarkUIClickable(void)
 {
     if(g_ui_cursor_clickable != NULL)
         *g_ui_cursor_clickable = 1;
+    ui_set_cursor_intent(MOUSE_CURSOR_POINTING_HAND, UI_CURSOR_PRIORITY_CLICKABLE);
 }
 
 void
@@ -76,6 +94,13 @@ MarkUIDisabled(void)
 {
     if(g_ui_cursor_disabled != NULL)
         *g_ui_cursor_disabled = 1;
+    ui_set_cursor_intent(MOUSE_CURSOR_NOT_ALLOWED, UI_CURSOR_PRIORITY_DISABLED);
+}
+
+static void
+MarkUITextCursor(void)
+{
+    ui_set_cursor_intent(MOUSE_CURSOR_IBEAM, UI_CURSOR_PRIORITY_TEXT);
 }
 
 static int
@@ -1047,6 +1072,8 @@ DrawUITextField(UITextField field)
     mouse_world = ui_mouse_world();
     mouse_inside = CheckCollisionPointRec(mouse_world, field.bounds);
     captured = UIInputCapturesClick(mouse_world);
+    if(mouse_inside && !captured)
+        MarkUITextCursor();
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if(mouse_inside && !captured) {
@@ -1366,6 +1393,8 @@ SetUIFrame(Camera2D camera)
     }
     g_ui_text_input_requested = 0;
     g_ui_focus_text_input_active = 0;
+    g_ui_cursor_priority = UI_CURSOR_PRIORITY_DEFAULT;
+    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 
     g_ui_camera = ui_sane_camera(camera);
     ui_update_pointer_gesture();

@@ -1,4 +1,6 @@
 #include "example_ui_font.h"
+#include "theme.h"
+#include "theme_meta.h"
 #include "ui_scaling.h"
 #include <stdio.h>
 #include "flint.h"
@@ -9,6 +11,8 @@ int main(void) {
     InitWindow(screenWidth, screenHeight, "Flint Scaling Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
+    InitUI(screenWidth, screenHeight, GetUIScale());
+    SetCurrentTheme(THEME_SKY, 0);
 
     // Test different DPI scales
     float scales[] = {1.0f, 1.5f, 2.0f, 2.5f};
@@ -28,11 +32,15 @@ int main(void) {
     int box_size_base = 100;
 
     while(!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-
         // Set current DPI scale
         SetUIScale(scales[scale_index]);
+
+        BeginDrawing();
+        ClearBackground(GetThemeBackground());
+        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
+        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
+                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
+                    GetThemeIcon());
 
         // Scale box size
         int box_size = ScaleUIPx(box_size_base);
@@ -40,20 +48,20 @@ int main(void) {
         // Draw info
         char info[128];
         snprintf(info, sizeof(info), "DPI Scale: %.1f (Press SPACE to cycle)", scales[scale_index]);
-        DrawUIText(info, 50, 20, 20, BLACK);
+        DrawUIText(info, 50, 20, 20, GetThemeText());
 
         // Draw box with scaled size
-        DrawRectangleRec((Rectangle){box_pos.x, box_pos.y, box_size, box_size}, SKYBLUE);
-        DrawUIText("Scaled Box", box_pos.x + 10, box_pos.y + 10, 16, WHITE);
+        DrawRectangleRec((Rectangle){box_pos.x, box_pos.y, box_size, box_size}, GetThemeButton());
+        DrawUIText("Scaled Box", box_pos.x + 10, box_pos.y + 10, 16, GetThemeText());
 
         // Show base vs scaled
         char size_info[128];
         snprintf(size_info, sizeof(size_info), "Base: %dpx, Scaled: %dpx", box_size_base, box_size);
-        DrawUIText(size_info, 50, 60, 16, DARKGRAY);
+        DrawUIText(size_info, 50, 60, 16, GetThemeText());
 
         // Instructions
-        DrawUIText("Arrow keys to move box", 50, 90, 16, DARKGRAY);
-        DrawUIText("Box size scales with DPI", 50, 110, 16, DARKGRAY);
+        DrawUIText("Arrow keys to move box", 50, 90, 16, GetThemeText());
+        DrawUIText("Box size scales with DPI", 50, 110, 16, GetThemeText());
 
         // Handle box movement
         if(IsKeyDown(KEY_RIGHT)) box_pos.x += 3;

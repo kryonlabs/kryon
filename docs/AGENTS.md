@@ -125,6 +125,20 @@ Keep behavior in the app when it is domain-specific:
 - app-specific icons and assets
 - business rules for confirmation or cancellation
 
+## File Dialog Backends
+
+Flint owns desktop file dialog backend selection. Applications should call
+`LoadFileDialog`, `SaveFileDialog`, or `SelectFileDialogFolder` instead of invoking
+desktop-specific picker commands directly.
+
+The default backend order is `zenity`, then `kdialog`, then `yad`. For local
+diagnostics and packaging checks, `FLINT_FILE_DIALOG_BACKEND` can be set to `auto`,
+`zenity`, `kdialog`, `yad`, or `none`.
+
+Do not add permanent app dependencies on an XFCE-specific picker. If a downstream app
+needs different desktop behavior, add the backend support in Flint first, then update
+the downstream submodule pointer.
+
 ## Downstream Submodule Workflow
 
 Applications should vendor Flint as a git submodule. Do not edit

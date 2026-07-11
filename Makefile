@@ -31,6 +31,9 @@ endif
 
 CPPFLAGS += $(CPPFLAGS_BASE)
 ARFLAGS ?= rcs
+FLINT_DIR ?= .
+FLINT_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
+include mk/vendor.mk
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
@@ -48,6 +51,7 @@ LIB = libflint.a
 LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
 LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
+FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
 
 .PHONY: all clean run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check
 
@@ -71,10 +75,11 @@ docs-site:
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST)
+test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
 	$(TRANSITION_TEST)
+	$(FILE_DIALOG_BACKEND_TEST)
 
 bsd-check:
 	$(MAKE) clean
@@ -101,17 +106,25 @@ $(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_WRAPPERS_C)
 		$(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) \
 		$(FLINT_RAYLIB_WRAPPERS_C)
 
-$(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra/lyra_account.c include/lyra_account.h | $(BUILD_DIR)
+$(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra/lyra_account.c include/lyra_account.h $(FLINT_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_account_test.c src/lyra/lyra_account.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DHAS_LIBOQS=1 $(FLINT_LIBOQS_INCLUDE) \
+		tests/lyra_account_test.c src/lyra/lyra_account.c \
+		$(FLINT_LIBOQS_A) -lm -o $@
 
-$(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/lyra/lyra_sync.c src/lyra/lyra_account.c include/lyra_sync.h include/lyra_account.h | $(BUILD_DIR)
+$(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/lyra/lyra_sync.c src/lyra/lyra_account.c include/lyra_sync.h include/lyra_account.h $(FLINT_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/lyra_sync_test.c src/lyra/lyra_sync.c src/lyra/lyra_account.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DHAS_LIBOQS=1 $(FLINT_LIBOQS_INCLUDE) \
+		tests/lyra_sync_test.c src/lyra/lyra_sync.c src/lyra/lyra_account.c \
+		$(FLINT_LIBOQS_A) -lm -o $@
 
 $(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui/ui_transition.c -o $@
+
+$(FILE_DIALOG_BACKEND_TEST): tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c include/file_dialog.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c -o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh "$(ICON_DIR)" $@

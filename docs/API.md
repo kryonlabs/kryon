@@ -19,6 +19,7 @@ Flint is a lightweight C UI component library for embedded applications and runt
   - [Lyra Sync](#lyra-sync)
   - [Transitions](#transitions)
   - [Runtime Assets](#runtime-assets)
+  - [File Dialogs](#file-dialogs)
   - [Web Utilities](#web-utilities)
 - [UI Components](#ui-components)
   - [Buttons](#buttons)
@@ -677,6 +678,35 @@ Set custom download backend.
 
 ```c
 void SetRuntimeAssetDownloadBackend(RuntimeAssetDownloadBackend backend);
+```
+
+---
+
+### File Dialogs
+
+Open native desktop file dialogs through an external helper backend. The default
+backend order is `zenity`, then `kdialog`, then `yad`. `FLINT_FILE_DIALOG_BACKEND`
+can force `zenity`, `kdialog`, `yad`, `auto`, or `none` for debugging and packaging
+checks. Explicit forced backends fail closed when the helper is not available.
+
+#### `GetFileDialogBackendName`
+
+Return a stable backend name for logs, diagnostics, and examples.
+
+```c
+const char *GetFileDialogBackendName(void);
+```
+
+#### `LoadFileDialog` / `SaveFileDialog` / `SelectFileDialogFolder`
+
+Open file, save file, or folder selection dialogs. They return `1` when the user
+selects a path and `0` when the user cancels or no backend is available.
+
+```c
+int LoadFileDialog(FileDialog *dlg, const char *title);
+int LoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filter);
+int SaveFileDialog(FileDialog *dlg, const char *title, const char *default_filename);
+int SelectFileDialogFolder(FileDialog *dlg, const char *title);
 ```
 
 ---

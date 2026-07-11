@@ -345,6 +345,9 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
     int thumb_active = CheckCollisionPointRec(mouse_pos, thumb_bounds) && !input_captured;
     int thumb_hover = thumb_active && UIHoverEffectsEnabled();
 
+    if(thumb_active)
+        MarkUIClickable();
+
     /* Handle drag state */
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
        (!input_captured || scrollbar_drag_active)) {

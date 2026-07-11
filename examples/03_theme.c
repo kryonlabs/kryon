@@ -10,6 +10,8 @@ int main(void) {
     InitWindow(screenWidth, screenHeight, "Flint Theme Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
+    InitUI(screenWidth, screenHeight, GetUIScale());
+    SetCurrentTheme(THEME_SKY, 0);
 
     printf("Flint Theme System Example\n");
     printf("=========================\n\n");
@@ -36,9 +38,10 @@ int main(void) {
 
     while(!WindowShouldClose()) {
         BeginDrawing();
-        ClearBackground(RAYWHITE);
 
         ThemeId current_theme = themes[theme_index];
+        SetCurrentTheme(current_theme, dark_mode);
+        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
 
         // Get theme scope for proper color access
         const char* scope = GetThemeScopeName(current_theme, dark_mode);
@@ -50,6 +53,8 @@ int main(void) {
         GetThemeCatalogColor(current_theme, dark_mode, "button", &button);
         GetThemeCatalogColor(current_theme, dark_mode, "button_hover", &button_hover);
         GetThemeCatalogColor(current_theme, dark_mode, "circle", &circle);
+        SetUIColors(text, background, GetThemeSurface(), circle, button, button_hover,
+                    GetThemeIcon());
 
         // Fill background with theme color
         ClearBackground(background);

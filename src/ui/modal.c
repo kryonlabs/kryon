@@ -5,7 +5,8 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
                 Vector2 mouse_world)
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
-    int active = CheckCollisionPointRec(mouse_world, bounds);
+    int active = CheckCollisionPointRec(mouse_world, bounds) &&
+                 !UIInputCapturesClick(mouse_world);
     int hovered = active && UIHoverEffectsEnabled();
     Color fill = hovered ? c_button_hover : c_button;
 
