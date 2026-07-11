@@ -19,6 +19,6 @@ if [ -f "$audio" ] && ! grep -q 'AUDIO_DEVICE_PERIODS' "$audio"; then
     perl -0pi -e 's@(config\.periodSizeInFrames = AUDIO_DEVICE_PERIOD_SIZE_IN_FRAMES;\n)@$1    config.periods = AUDIO_DEVICE_PERIODS;\n@' "$audio"
 fi
 
-if [ -f "$audio" ] && ! grep -q 'FLINT_RAYLIB_BACKEND_RENAME_H' "$audio"; then
-    perl -0pi -e 's@#undef PlaySound\s*// Win32 API: windows\.h > mmsystem\.h defines PlaySound macro@#if defined(PlaySound) \&\& !defined(FLINT_RAYLIB_BACKEND_RENAME_H)\n#undef PlaySound\n#endif                         // Win32 API: windows.h > mmsystem.h defines PlaySound macro@' "$audio"
+if [ -f "$audio" ] && ! grep -q 'Flint: restore backend PlaySound rename after Win32 headers' "$audio"; then
+    perl -0pi -e 's@#undef PlaySound\s*// Win32 API: windows\.h > mmsystem\.h defines PlaySound macro@#if defined(PlaySound)\n#undef PlaySound\n#endif\n#if defined(FLINT_RAYLIB_BACKEND_RENAME_H)\n#define PlaySound FlintRaylibBackend_PlaySound\n#endif                         // Flint: restore backend PlaySound rename after Win32 headers@' "$audio"
 fi
