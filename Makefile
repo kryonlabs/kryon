@@ -15,6 +15,7 @@ FLINT_COMPAT_GENERATOR = tools/generate-flint-compat.sh
 FLINT_BOUNDARY_CHECK = tools/check-flint-boundaries.sh
 FLINT_COMPAT_HEADER = include/flint_compat.generated.h
 FLINT_BACKEND_RENAME_HEADER = $(BUILD_DIR)/generated/raylib_backend_rename.h
+FLINT_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/flint_raylib_wrappers.c
 FLINT_FONT_OUT ?= assets/fonts/locales
 FLINT_FONT_OUTPUTS = $(FLINT_FONT_OUT).png $(FLINT_FONT_OUT).dat
 FLINT_FONT_LOCALES ?= locales/*.txt
@@ -113,12 +114,13 @@ bsd-check:
 	$(MAKE) all
 	$(MAKE) test
 
-flint-compat: $(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER)
+flint-compat: $(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_WRAPPERS_C)
 
 flint-compat-check: | $(BUILD_DIR)
 	sh $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h \
 		$(BUILD_DIR)/check/flint_compat.generated.h \
-		$(BUILD_DIR)/check/raylib_backend_rename.h
+		$(BUILD_DIR)/check/raylib_backend_rename.h \
+		$(BUILD_DIR)/check/flint_raylib_wrappers.c
 	cmp $(FLINT_COMPAT_HEADER) $(BUILD_DIR)/check/flint_compat.generated.h
 
 flint-boundary-check:
@@ -127,9 +129,10 @@ flint-boundary-check:
 $(LIB): $(FLINT_COMPAT_HEADER) $(OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
-$(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER): $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h | $(BUILD_DIR)
+$(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_WRAPPERS_C): $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h | $(BUILD_DIR)
 	sh $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h \
-		$(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER)
+		$(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) \
+		$(FLINT_RAYLIB_WRAPPERS_C)
 
 $(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra_account.c include/lyra_account.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

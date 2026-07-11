@@ -71,7 +71,6 @@ $(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe:
 		$(APP_INCLUDE) \
 		$(FLINT_INCLUDE) \
 		$(CORE_INCLUDE) \
-		-I$(RAYLIB_DIR) \
 		-o $$@ \
 		$(SRC) \
 		$(WIN_FLINT_SRCS) \

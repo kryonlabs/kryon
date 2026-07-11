@@ -17,7 +17,7 @@ FLINT_DIR ?= vendor/flint
 RAYLIB_BUILD_DIR = $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib
 RAYLIB_A = $(RAYLIB_BUILD_DIR)/libraylib.a
 FLINT_ICON_ASSETS_C = $(FLINT_DIR)/src/ui_icon_assets.c
-FLINT_SRCS = $(filter-out $(FLINT_ICON_ASSETS_C),$(wildcard $(FLINT_DIR)/src/*.c) $(wildcard $(FLINT_DIR)/src/ui/*.c)) $(FLINT_ICON_ASSETS_C)
+FLINT_SRCS = $(filter-out $(FLINT_ICON_ASSETS_C),$(wildcard $(FLINT_DIR)/src/*.c) $(wildcard $(FLINT_DIR)/src/ui/*.c)) $(FLINT_ICON_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
 FLINT_INCLUDE = -I$(FLINT_DIR)/include
 FLINT_USE_SYSTEM_CURL ?= 1
 ifeq ($(FLINT_USE_SYSTEM_CURL),1)
