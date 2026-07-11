@@ -14,6 +14,20 @@ static const UIIconType ui_profile_picture_icons[] = {
     UI_ICON_TYPE_PFP_TREE5
 };
 
+static const char *ui_profile_picture_names[] = {
+    "pfp_bird",
+    "pfp_bowl",
+    "pfp_cactus",
+    "pfp_heart",
+    "pfp_incense",
+    "pfp_lotus",
+    "pfp_tree1",
+    "pfp_tree2",
+    "pfp_tree3",
+    "pfp_tree4",
+    "pfp_tree5"
+};
+
 int
 GetUIProfilePictureIconCount(void)
 {
@@ -32,10 +46,9 @@ GetUIProfilePictureIconType(int index)
 const char *
 GetUIProfilePictureIconName(int index)
 {
-    UIIconType type = GetUIProfilePictureIconType(index);
-    const UIIconAsset *asset = GetUIIconAsset(type);
-
-    return asset != NULL ? asset->name : NULL;
+    if(index < 0 || index >= GetUIProfilePictureIconCount())
+        return NULL;
+    return ui_profile_picture_names[index];
 }
 
 static void
