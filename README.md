@@ -11,7 +11,7 @@ runtime asset downloads, and Lyra account/sync helpers.
 - `include/` - public headers, including `flint.h` and generated raylib
   compatibility declarations
 - `src/` - Flint implementation files, with reusable UI modules under `src/ui/`
-- `icons/` - PNG icon inputs embedded into `src/ui_icon_assets.c`
+- `icons/` and `pfp/` - PNG icon inputs embedded into `src/ui_icon_assets.c`
 - `themes/` - built-in theme files for the runtime theme loader
 - `assets/fonts/` - generated locale font atlas outputs
 - `mk/` - Make fragments for native, web, Android, Windows, packaging, and

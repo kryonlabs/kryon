@@ -393,6 +393,11 @@ void LoadAllUIIconTextures(Texture2D *icons);
 void UnloadAllUIIconTextures(Texture2D *icons);
 ```
 
+Profile-picture PNGs in `pfp/` are embedded into the same icon catalog with
+`UI_ICON_TYPE_PFP_*` enum values. Use `GetUIProfilePictureIconCount`,
+`GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
+the standard profile-picture options.
+
 ---
 
 ### Theme
@@ -876,6 +881,22 @@ typedef struct {
 UIToolbarResult DrawUIToolbar(UIToolbar toolbar);
 UIToolbarHeaderResult DrawUIToolbarHeader(UIToolbarHeader header);
 ```
+
+#### Sidebar Account Header
+
+```c
+UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeader header);
+UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal);
+```
+
+`DrawUISidebarAccountHeader` draws the standard account top area with banner,
+username, subtitle, friends summary, and pfp. It returns separate click flags
+for pfp, username, and friends so applications keep ownership of route changes
+and persistence.
+
+`DrawUIProfilePicturePickerModal` draws the shared pfp selection modal over the
+standard built-in pfp icon set and writes the selected `UIIconType` when the
+user chooses one.
 
 #### Tab Bar
 

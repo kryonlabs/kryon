@@ -258,6 +258,43 @@ typedef struct {
 } UIToolbarHeaderResult;
 
 typedef struct {
+    int x;
+    int y;
+    int width;
+    int height;
+    const char *username;
+    const char *subtitle;
+    const char *friends_text;
+    Texture2D pfp_icon;
+    const Texture2D *icons;
+    UIIconType pfp_icon_type;
+    int current_frame;
+    int block_click_frame;
+} UISidebarAccountHeader;
+
+typedef struct {
+    int pfp_clicked;
+    int username_clicked;
+    int friends_clicked;
+    int height;
+} UISidebarAccountHeaderResult;
+
+typedef struct {
+    const char *title;
+    const Texture2D *icons;
+    UIIconType *selected_icon_type;
+    Texture2D close_icon;
+    int max_width;
+} UIProfilePicturePickerModal;
+
+typedef struct {
+    int closed;
+    int changed;
+    int selected_index;
+    UIIconType selected_icon_type;
+} UIProfilePicturePickerResult;
+
+typedef struct {
     int id;
     const char **options;
     int option_count;
@@ -604,6 +641,11 @@ void DrawUIReorderHandle(int x, int y, int w, int h, int active);
 void DrawUIReorderPlaceholder(Rectangle bounds);
 UIToolbarResult DrawUIToolbar(UIToolbar toolbar);
 UIToolbarHeaderResult DrawUIToolbarHeader(UIToolbarHeader header);
+int GetUIProfilePictureIconCount(void);
+UIIconType GetUIProfilePictureIconType(int index);
+const char *GetUIProfilePictureIconName(int index);
+UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeader header);
+UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal);
 void DrawUIInfoRows(UIInfoRows rows);
 int GetUILabelTextFieldHeight(UILabelTextField row);
 int DrawUILabelTextField(UILabelTextField row, int x, int y, int w);

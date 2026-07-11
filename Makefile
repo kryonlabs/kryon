@@ -5,8 +5,8 @@ SITE_DIR ?= docs/site
 SITE_BUILD_DIR ?= $(BUILD_DIR)/site
 CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude
-ICON_DIR ?= icons
-ICON_FILES = $(wildcard $(ICON_DIR)/*.png)
+ICON_DIR ?= icons pfp
+ICON_FILES = $(foreach dir,$(ICON_DIR),$(wildcard $(dir)/*.png))
 ICON_ASSETS_C = src/ui_icon_assets.c
 EMBED_ASSETS ?= themes
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
@@ -63,6 +63,7 @@ SRCS = \
 	src/ui/reorder.c \
 	src/ui/rows.c \
 	src/ui/scroll.c \
+	src/ui/profile_header.c \
 	src/ui/tab_bar.c \
 	src/ui/theme_picker.c \
 	src/ui/toolbar.c \
@@ -148,7 +149,7 @@ $(TRANSITION_TEST): tests/transition_test.c src/ui_transition.c include/ui_trans
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui_transition.c -o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
-	sh scripts/embed-icons.sh $(ICON_DIR) $@
+	sh scripts/embed-icons.sh "$(ICON_DIR)" $@
 
 src/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
 	@$(MAKE) --quiet $(ICON_ASSETS_C)
