@@ -93,6 +93,14 @@ package-freebsd: freebsd-pkg-check validate-desktop
 		printf 'maintainer: "%s"\n' "$(APP_MAINTAINER)"; \
 		printf 'www: "%s"\n' "$(APP_WWW)"; \
 		printf 'prefix: "%s"\n' "$(PREFIX)"; \
+		printf 'categories: [ '; \
+		first=1; \
+		for category in $$(printf '%s\n' "$(APP_CATEGORIES)" | tr ';' ' '); do \
+			if [ "$$first" -eq 0 ]; then printf ', '; fi; \
+			printf '"%s"' "$$category"; \
+			first=0; \
+		done; \
+		printf ' ]\n'; \
 		if [ -n "$(strip $(FREEBSD_PKG_ABI))" ]; then printf 'abi: "%s"\n' "$(FREEBSD_PKG_ABI)"; fi; \
 		if [ -n "$(strip $(APP_LICENSE))" ]; then printf 'licenselogic: "single"\nlicenses: [ "%s" ]\n' "$(APP_LICENSE)"; fi; \
 		printf 'deps: {\n'; \
