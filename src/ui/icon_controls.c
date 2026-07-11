@@ -9,13 +9,15 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
     int popup_x;
     int popup_y;
     int button_w;
+    int icon_clicked;
     Vector2 mouse;
 
     if(popup.open == NULL || popup.value == NULL)
         return 0;
 
-    if(DrawUIPaddedIconBtn(popup.x, popup.y, popup.icon_size,
-                               popup.icon_padding, popup.icon, &hover))
+    icon_clicked = DrawUIPaddedIconBtn(popup.x, popup.y, popup.icon_size,
+                                       popup.icon_padding, popup.icon, &hover);
+    if(icon_clicked)
         *popup.open = !*popup.open;
 
     if(!*popup.open)
@@ -27,10 +29,10 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
         popup_w = button_w;
     popup_h = popup.popup_height > 0 ? popup.popup_height : ScaleUIPx(200);
     popup_x = popup.x + button_w / 2 - popup_w / 2;
-    popup_y = popup.y + popup.icon_size + popup.icon_padding * 2;
+    popup_y = popup.y + popup.icon_size + popup.icon_padding * 2 + ScaleUIPx(4);
     mouse = ui_mouse_world();
 
-    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+    if(!icon_clicked && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
        (mouse.x < popup_x || mouse.x > popup_x + popup_w ||
         mouse.y < popup_y || mouse.y > popup_y + popup_h)) {
         *popup.open = 0;
@@ -42,8 +44,8 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
                   LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
     return DrawUIVerticalSlider(popup.id, popup_x + popup_w / 2,
-                                   popup_y + ScaleUIPx(10),
-                                   popup_h - ScaleUIPx(20),
+                                   popup_y + ScaleUIPx(14),
+                                   popup_h - ScaleUIPx(24),
                                    popup.min, popup.max, popup.value);
 }
 

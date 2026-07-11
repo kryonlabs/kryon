@@ -38,10 +38,14 @@ FLINT_RAYLIB_BUILD_OPT_FLAGS ?= -Os -ffunction-sections -fdata-sections
 
 define FLINT_RAYLIB_DESKTOP_RULE
 $(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
-	rm -rf $(2)
-	mkdir -p $(2) $(3)
-	cp -R $(RAYLIB_DIR)/. $(2)/
-	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2)
+	@set -e; \
+	lock="$(2).lock"; \
+	while ! mkdir "$$lock" 2>/dev/null; do sleep 1; done; \
+	trap 'rmdir "$$lock"' 0 1 2 3 15; \
+	rm -rf $(2); \
+	mkdir -p $(2) $(3); \
+	cp -R $(RAYLIB_DIR)/. $(2)/; \
+	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2); \
 	$(MAKE) -j1 -C $(2) \
 		CC="$(4)" \
 		AR="$(5)" \
@@ -59,10 +63,14 @@ endef
 
 define FLINT_RAYLIB_WEB_RULE
 $(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
-	rm -rf $(2)
-	mkdir -p $(2) $(3)
-	cp -R $(RAYLIB_DIR)/. $(2)/
-	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2)
+	@set -e; \
+	lock="$(2).lock"; \
+	while ! mkdir "$$lock" 2>/dev/null; do sleep 1; done; \
+	trap 'rmdir "$$lock"' 0 1 2 3 15; \
+	rm -rf $(2); \
+	mkdir -p $(2) $(3); \
+	cp -R $(RAYLIB_DIR)/. $(2)/; \
+	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2); \
 	$(MAKE) -j1 -C $(2) \
 		PLATFORM=PLATFORM_WEB \
 		RAYLIB_LIBTYPE=STATIC \
@@ -76,10 +84,14 @@ endef
 
 define FLINT_RAYLIB_WINDOWS_RULE
 $(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
-	rm -rf $(2)
-	mkdir -p $(2) $(3)
-	cp -R $(RAYLIB_DIR)/. $(2)/
-	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2)
+	@set -e; \
+	lock="$(2).lock"; \
+	while ! mkdir "$$lock" 2>/dev/null; do sleep 1; done; \
+	trap 'rmdir "$$lock"' 0 1 2 3 15; \
+	rm -rf $(2); \
+	mkdir -p $(2) $(3); \
+	cp -R $(RAYLIB_DIR)/. $(2)/; \
+	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2); \
 	$(MAKE) -j1 -C $(2) \
 		OS=Windows_NT \
 		PLATFORM=PLATFORM_DESKTOP_RGFW \
@@ -96,10 +108,14 @@ endef
 
 define FLINT_RAYLIB_WINDOWS_PLATFORM_RULE
 $(1): flint-raylib-check $(RAYLIB_SOURCES) $(FLINT_RAYLIB_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
-	rm -rf $(2)
-	mkdir -p $(2) $(3)
-	cp -R $(RAYLIB_DIR)/. $(2)/
-	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2)
+	@set -e; \
+	lock="$(2).lock"; \
+	while ! mkdir "$$lock" 2>/dev/null; do sleep 1; done; \
+	trap 'rmdir "$$lock"' 0 1 2 3 15; \
+	rm -rf $(2); \
+	mkdir -p $(2) $(3); \
+	cp -R $(RAYLIB_DIR)/. $(2)/; \
+	sh $(FLINT_RAYLIB_PREPARE_SCRIPT) $(2); \
 	$(MAKE) -j1 -C $(2) \
 		OS=Windows_NT \
 		PLATFORM=$(7) \
