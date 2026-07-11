@@ -18,3 +18,7 @@ if [ -f "$audio" ] && ! grep -q 'AUDIO_DEVICE_PERIODS' "$audio"; then
     perl -0pi -e 's@(#ifndef AUDIO_DEVICE_PERIOD_SIZE_IN_FRAMES\n\s*#define AUDIO_DEVICE_PERIOD_SIZE_IN_FRAMES 0[^\n]*\n#endif\n)@$1#ifndef AUDIO_DEVICE_PERIODS\n    #define AUDIO_DEVICE_PERIODS 0    // Device buffer period count. 0 uses miniaudio default\n#endif\n@' "$audio"
     perl -0pi -e 's@(config\.periodSizeInFrames = AUDIO_DEVICE_PERIOD_SIZE_IN_FRAMES;\n)@$1    config.periods = AUDIO_DEVICE_PERIODS;\n@' "$audio"
 fi
+
+if [ -f "$audio" ] && ! grep -q 'FLINT_RAYLIB_BACKEND_RENAME_H' "$audio"; then
+    perl -0pi -e 's@#undef PlaySound\s*// Win32 API: windows\.h > mmsystem\.h defines PlaySound macro@#if defined(PlaySound) \&\& !defined(FLINT_RAYLIB_BACKEND_RENAME_H)\n#undef PlaySound\n#endif                         // Win32 API: windows.h > mmsystem.h defines PlaySound macro@' "$audio"
+fi
