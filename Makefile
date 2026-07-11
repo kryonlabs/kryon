@@ -60,6 +60,7 @@ SRCS = \
 	src/ui/guide.c \
 	src/ui/icon_controls.c \
 	src/ui/modal.c \
+	src/ui/reorder.c \
 	src/ui/rows.c \
 	src/ui/scroll.c \
 	src/ui/tab_bar.c \
