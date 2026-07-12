@@ -44,6 +44,23 @@ Run the focused tests with:
 make test
 ```
 
+Build a distributable static-library archive with:
+
+```bash
+make dist-static
+```
+
+The archive contains `libflint.a`, public headers, API docs, `liboqs.a`,
+`libcurl.a`, a `flint.pc` file, and the submodule revisions used to build it.
+
+## Releases
+
+Flint releases are tag-driven. Run the `Release` GitHub Actions workflow with a
+version such as `v0.1.0`; the workflow validates the version, creates and pushes
+the annotated tag, checks out that tag, builds and tests Flint, packages the
+static-library archive, uploads it as an artifact, and attaches it to the GitHub
+release. Pushing a `v*` tag manually uses the same build-and-publish path.
+
 ## Integration
 
 To integrate Flint into your project:

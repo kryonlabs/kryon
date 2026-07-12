@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example v0.1.0"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    name: Create Release Tag
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Validate Version
+        id: version
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.version }}"
+          case "$tag" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Version must look like v0.1.0" >&2; exit 1 ;;
+          esac
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "Tag $tag already exists" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create And Push Tag
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+  build-release:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    needs: create-tag
+    if: always() && (github.event_name == 'push' || needs.create-tag.result == 'success')
+
+    steps:
+      - name: Resolve Tag
+        id: ref
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ needs.create-tag.outputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.tag }}
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Packages
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config zlib1g-dev
+
+      - name: Build And Test
+        run: |
+          set -euo pipefail
+          make clean
+          make all
+          make test
+
+      - name: Package Static Library
+        run: |
+          set -euo pipefail
+          make dist-static VERSION="${{ steps.ref.outputs.tag }}"
+          archive="$(find dist -maxdepth 1 -type f -name flint-*-static.tar.gz | head -n 1)"
+          test -n "$archive"
+          echo "FLINT_STATIC_ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Upload Static Library Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flint-static-library-${{ steps.ref.outputs.tag }}
+          path: ${{ env.FLINT_STATIC_ARCHIVE }}
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ref.outputs.tag }}
+          name: Flint ${{ steps.ref.outputs.tag }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          files: ${{ env.FLINT_STATIC_ARCHIVE }}

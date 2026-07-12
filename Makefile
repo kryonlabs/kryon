@@ -3,6 +3,10 @@ AR ?= ar
 BUILD_DIR ?= build
 SITE_DIR ?= docs/site
 SITE_BUILD_DIR ?= $(BUILD_DIR)/site
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || printf '%s' 0.0.0)
+DIST_DIR ?= dist
+STATIC_DIST_ROOT := $(BUILD_DIR)/dist/flint-$(VERSION)-static
+STATIC_DIST_ARCHIVE := $(DIST_DIR)/flint-$(VERSION)-static.tar.gz
 CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude
 ICON_DIR ?= icons pfp
@@ -56,7 +60,7 @@ LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
 
-.PHONY: all clean run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check
+.PHONY: all clean run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check dist-static
 
 all: $(LIB)
 
@@ -103,6 +107,33 @@ flint-boundary-check:
 
 $(LIB): $(FLINT_COMPAT_HEADER) $(OBJS) | $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK)
 	$(AR) $(ARFLAGS) $@ $^
+
+dist-static: $(STATIC_DIST_ARCHIVE)
+
+$(STATIC_DIST_ARCHIVE): $(LIB) $(FLINT_LIBOQS_A) $(FLINT_CURL_SO) README.md LICENSE docs/API.md
+	rm -rf $(STATIC_DIST_ROOT)
+	mkdir -p $(STATIC_DIST_ROOT)/include $(STATIC_DIST_ROOT)/lib $(STATIC_DIST_ROOT)/lib/pkgconfig $(STATIC_DIST_ROOT)/docs $(DIST_DIR)
+	cp -R include/. $(STATIC_DIST_ROOT)/include/
+	cp $(LIB) $(STATIC_DIST_ROOT)/lib/
+	cp $(FLINT_LIBOQS_A) $(STATIC_DIST_ROOT)/lib/
+	cp $(FLINT_CURL_A) $(STATIC_DIST_ROOT)/lib/
+	cp README.md LICENSE $(STATIC_DIST_ROOT)/
+	cp docs/API.md $(STATIC_DIST_ROOT)/docs/
+	git submodule status > $(STATIC_DIST_ROOT)/SUBMODULES.txt
+	printf '%s\n' '$(VERSION)' > $(STATIC_DIST_ROOT)/VERSION
+	printf '%s\n' \
+		'prefix=$${pcfiledir}/../..' \
+		'exec_prefix=$${prefix}' \
+		'libdir=$${prefix}/lib' \
+		'includedir=$${prefix}/include' \
+		'' \
+		'Name: Flint' \
+		'Description: Flint C support library for raylib-style applications' \
+		'Version: $(VERSION)' \
+		'Cflags: -I$${includedir} -DHAS_LIBOQS=1 -DHAS_LIBCURL=1 -DCURL_STATICLIB' \
+		'Libs: -L$${libdir} -lflint -loqs -lcurl -lssl -lcrypto -lpthread -lm' \
+		> $(STATIC_DIST_ROOT)/lib/pkgconfig/flint.pc
+	tar -C $(BUILD_DIR)/dist -czf $@ flint-$(VERSION)-static
 
 $(FLINT_COMPAT_HEADER) $(FLINT_BACKEND_RENAME_HEADER) $(FLINT_RAYLIB_WRAPPERS_C): $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h | $(BUILD_DIR)
 	sh $(FLINT_COMPAT_GENERATOR) vendor/raylib/src/raylib.h \

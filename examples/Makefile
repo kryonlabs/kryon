@@ -24,6 +24,9 @@ WEB_EMBED_ASSETS_C := $(BUILD_DIR)/embedded_asset_data.c
 WEB_EMBED_ASSET_FILES := $(shell find ../themes -type f 2>/dev/null)
 WEB_RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-web
 WEB_RAYLIB_A := $(WEB_RAYLIB_BUILD_DIR)/libraylib.web.a
+FLINT_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
+FLINT_WEB_LIBOQS_BUILD_DIR ?= $(FLINT_VENDOR_BUILD_DIR)/web-liboqs
+include ../mk/vendor.mk
 WEB_CC ?= emcc
 WEB_AR ?= emar
 WEB_SHELL := web_shell.html
@@ -32,7 +35,7 @@ include ../mk/raylib.mk
 FLINT_LIBRARY_SRCS := $(shell find ../src -type f -name '*.c' | LC_ALL=C sort)
 FLINT_WEB_SRCS := $(filter-out ../src/file_dialog/file_dialog.c,$(FLINT_LIBRARY_SRCS)) $(WEB_EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
 FLINT_ALL_WEB_SRCS := $(FLINT_LIBRARY_SRCS) $(WEB_EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
-WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1
+WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1 -DHAS_LIBOQS=1 -I$(FLINT_WEB_LIBOQS_BUILD_DIR)/include
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
 WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
 
@@ -75,7 +78,7 @@ $(BUILD_DIR):
 $(WEB_EMBED_ASSETS_C): $(WEB_EMBED_ASSET_FILES) ../scripts/embed-assets.sh ../include/embedded_assets.h | $(BUILD_DIR)
 	sh ../scripts/embed-assets.sh $@ ../themes
 
-$(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(WEB_EMBED_ASSETS_C) $(WEB_SHELL)
+$(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(FLINT_WEB_LIBOQS_A) $(WEB_EMBED_ASSETS_C) $(WEB_SHELL)
 	@echo "Building web example $*..."
 	@mkdir -p $(dir $@)
 	$(WEB_CC) $(WEB_CFLAGS) \
@@ -84,6 +87,7 @@ $(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(WEB
 		$< \
 		$(if $(filter 01_file_dialog,$*),$(FLINT_ALL_WEB_SRCS),$(FLINT_WEB_SRCS)) \
 		$(WEB_RAYLIB_A) \
+		$(FLINT_WEB_LIBOQS_A) \
 		$(WEB_LDFLAGS) \
 		--preload-file assets/fonts@assets/fonts
 	perl -0pe 's#\{\{\{ SCRIPT \}\}\}#<script async src="index.js"></script>#g' $(WEB_SHELL) > $@
