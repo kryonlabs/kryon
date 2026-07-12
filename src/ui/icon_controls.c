@@ -10,15 +10,20 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
     int popup_y;
     int button_w;
     int icon_clicked;
+    int was_open;
     Vector2 mouse;
 
     if(popup.open == NULL || popup.value == NULL)
         return 0;
 
+    was_open = *popup.open;
     icon_clicked = DrawUIPaddedIconBtn(popup.x, popup.y, popup.icon_size,
                                        popup.icon_padding, popup.icon, &hover);
-    if(icon_clicked)
-        *popup.open = !*popup.open;
+    if(icon_clicked) {
+        *popup.open = !was_open;
+        if(was_open)
+            return 0;
+    }
 
     if(!*popup.open)
         return 0;
@@ -32,7 +37,7 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
     popup_y = popup.y + popup.icon_size + popup.icon_padding * 2 + ScaleUIPx(4);
     mouse = ui_mouse_world();
 
-    if(!icon_clicked && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+    if(!icon_clicked && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
        (mouse.x < popup_x || mouse.x > popup_x + popup_w ||
         mouse.y < popup_y || mouse.y > popup_y + popup_h)) {
         *popup.open = 0;
