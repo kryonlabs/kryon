@@ -18,6 +18,7 @@ EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
 FLINT_COMPAT_GENERATOR = tools/generate-flint-compat.sh
 FLINT_BOUNDARY_CHECK = tools/check-flint-boundaries.sh
+FLINT_COMPAT_SYMBOL_CHECK = tools/check-raylib-compat-symbols.sh
 FLINT_COMPAT_HEADER = include/flint_compat.generated.h
 FLINT_BACKEND_RENAME_HEADER = $(BUILD_DIR)/generated/raylib_backend_rename.h
 FLINT_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/flint_raylib_wrappers.c
@@ -98,6 +99,8 @@ LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
+RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
+RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(FLINT_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check dist-static check-static-package install-static
 
@@ -121,12 +124,13 @@ docs-site:
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST)
+test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
 	$(TRANSITION_TEST)
 	$(FILE_DIALOG_BACKEND_TEST)
 	$(MARKDOWN_TEST)
+	$(RAYLIB_COMPAT_TEST)
 
 bsd-check:
 	$(MAKE) clean
@@ -141,6 +145,9 @@ flint-compat-check: | $(BUILD_DIR)
 		$(BUILD_DIR)/check/raylib_backend_rename.h \
 		$(BUILD_DIR)/check/flint_raylib_wrappers.c
 	cmp $(FLINT_COMPAT_HEADER) $(BUILD_DIR)/check/flint_compat.generated.h
+	sh $(FLINT_COMPAT_SYMBOL_CHECK) vendor/raylib/src/raylib.h \
+		$(BUILD_DIR)/check/raylib_backend_rename.h \
+		$(BUILD_DIR)/check/flint_raylib_wrappers.c
 
 flint-boundary-check:
 	sh $(FLINT_BOUNDARY_CHECK) .
@@ -229,6 +236,12 @@ $(MARKDOWN_TEST): tests/markdown_test.c src/markdown.c include/markdown.h $(FLIN
 $(FILE_DIALOG_BACKEND_TEST): tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c include/file_dialog.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c -o $@
+
+$(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/raylib_compat_test.c \
+		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) \
+		-o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh "$(ICON_DIR)" $@
