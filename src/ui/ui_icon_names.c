@@ -6,22 +6,16 @@ const char *ui_icon_names[] = {
     NULL,  /* UI_ICON_TYPE_NONE */
     "amen.png",  /* UI_ICON_TYPE_AMEN */
     "backward.png",  /* UI_ICON_TYPE_BACKWARD */
-    "btc.png",  /* UI_ICON_TYPE_BTC */
     "calendar.png",  /* UI_ICON_TYPE_CALENDAR */
     "check.png",  /* UI_ICON_TYPE_CHECK */
-    "discord.png",  /* UI_ICON_TYPE_DISCORD */
-    "droid.png",  /* UI_ICON_TYPE_DROID */
     "edit.png",  /* UI_ICON_TYPE_EDIT */
     "eye-closed.png",  /* UI_ICON_TYPE_EYE_CLOSED */
-    "fdroid.png",  /* UI_ICON_TYPE_FDROID */
     "forward.png",  /* UI_ICON_TYPE_FORWARD */
     "gear.png",  /* UI_ICON_TYPE_GEAR */
-    "github.png",  /* UI_ICON_TYPE_GITHUB */
     "globe.png",  /* UI_ICON_TYPE_GLOBE */
     "habit.png",  /* UI_ICON_TYPE_HABIT */
     "home.png",  /* UI_ICON_TYPE_HOME */
     "inbe.png",  /* UI_ICON_TYPE_INBE */
-    "itch.png",  /* UI_ICON_TYPE_ITCH */
     "jupiter.png",  /* UI_ICON_TYPE_JUPITER */
     "leadercat.png",  /* UI_ICON_TYPE_LEADERCAT */
     "left.png",  /* UI_ICON_TYPE_LEFT */
@@ -31,7 +25,6 @@ const char *ui_icon_names[] = {
     "manual.png",  /* UI_ICON_TYPE_MANUAL */
     "mars.png",  /* UI_ICON_TYPE_MARS */
     "mercury.png",  /* UI_ICON_TYPE_MERCURY */
-    "monero.png",  /* UI_ICON_TYPE_MONERO */
     "moon.png",  /* UI_ICON_TYPE_MOON */
     "music.png",  /* UI_ICON_TYPE_MUSIC */
     "mute.png",  /* UI_ICON_TYPE_MUTE */
@@ -39,11 +32,9 @@ const char *ui_icon_names[] = {
     "pencil.png",  /* UI_ICON_TYPE_PENCIL */
     "pet.png",  /* UI_ICON_TYPE_PET */
     "play.png",  /* UI_ICON_TYPE_PLAY */
-    "playstore.png",  /* UI_ICON_TYPE_PLAYSTORE */
     "plus.png",  /* UI_ICON_TYPE_PLUS */
     "profile.png",  /* UI_ICON_TYPE_PROFILE */
     "quest.png",  /* UI_ICON_TYPE_QUEST */
-    "ray.png",  /* UI_ICON_TYPE_RAY */
     "return.png",  /* UI_ICON_TYPE_RETURN */
     "right.png",  /* UI_ICON_TYPE_RIGHT */
     "rocket.png",  /* UI_ICON_TYPE_ROCKET */
@@ -55,31 +46,26 @@ const char *ui_icon_names[] = {
     "sound1.png",  /* UI_ICON_TYPE_SOUND1 */
     "sound2.png",  /* UI_ICON_TYPE_SOUND2 */
     "sound3.png",  /* UI_ICON_TYPE_SOUND3 */
-    "srht.png",  /* UI_ICON_TYPE_SRHT */
     "stack.png",  /* UI_ICON_TYPE_STACK */
     "stat.png",  /* UI_ICON_TYPE_STAT */
-    "stripe.png",  /* UI_ICON_TYPE_STRIPE */
     "sun.png",  /* UI_ICON_TYPE_SUN */
-    "tcl.png",  /* UI_ICON_TYPE_TCL */
-    "telegram.png",  /* UI_ICON_TYPE_TELEGRAM */
     "text.png",  /* UI_ICON_TYPE_TEXT */
-    "tile.png",  /* UI_ICON_TYPE_TILE */
-    "tile2.png",  /* UI_ICON_TYPE_TILE2 */
-    "tile3.png",  /* UI_ICON_TYPE_TILE3 */
-    "tile4.png",  /* UI_ICON_TYPE_TILE4 */
     "timeline.png",  /* UI_ICON_TYPE_TIMELINE */
     "todos.png",  /* UI_ICON_TYPE_TODOS */
     "trash.png",  /* UI_ICON_TYPE_TRASH */
-    "tux.png",  /* UI_ICON_TYPE_TUX */
-    "uxn.png",  /* UI_ICON_TYPE_UXN */
     "venus.png",  /* UI_ICON_TYPE_VENUS */
     "wao.png",  /* UI_ICON_TYPE_WAO */
-    "wasm.png",  /* UI_ICON_TYPE_WASM */
-    "wasm4.png",  /* UI_ICON_TYPE_WASM4 */
     "weekly.png",  /* UI_ICON_TYPE_WEEKLY */
-    "win.png",  /* UI_ICON_TYPE_WIN */
     "wrench.png",  /* UI_ICON_TYPE_WRENCH */
     "x.png",  /* UI_ICON_TYPE_X */
+    "language_ray.png",  /* UI_ICON_TYPE_LANGUAGE_RAY */
+    "language_tcl.png",  /* UI_ICON_TYPE_LANGUAGE_TCL */
+    "language_uxn.png",  /* UI_ICON_TYPE_LANGUAGE_UXN */
+    "language_wasm.png",  /* UI_ICON_TYPE_LANGUAGE_WASM */
+    "language_wasm4.png",  /* UI_ICON_TYPE_LANGUAGE_WASM4 */
+    "payments_btc.png",  /* UI_ICON_TYPE_PAYMENTS_BTC */
+    "payments_monero.png",  /* UI_ICON_TYPE_PAYMENTS_MONERO */
+    "payments_stripe.png",  /* UI_ICON_TYPE_PAYMENTS_STRIPE */
     "pfp_bambus.png",  /* UI_ICON_TYPE_PFP_BAMBUS */
     "pfp_bird.png",  /* UI_ICON_TYPE_PFP_BIRD */
     "pfp_bowl.png",  /* UI_ICON_TYPE_PFP_BOWL */
@@ -105,4 +91,18 @@ const char *ui_icon_names[] = {
     "pfp_tree2.png",  /* UI_ICON_TYPE_PFP_TREE2 */
     "pfp_tree3.png",  /* UI_ICON_TYPE_PFP_TREE3 */
     "pfp_tree4.png",  /* UI_ICON_TYPE_PFP_TREE4 */
+    "platforms_discord.png",  /* UI_ICON_TYPE_PLATFORMS_DISCORD */
+    "platforms_droid.png",  /* UI_ICON_TYPE_PLATFORMS_DROID */
+    "platforms_fdroid.png",  /* UI_ICON_TYPE_PLATFORMS_FDROID */
+    "platforms_github.png",  /* UI_ICON_TYPE_PLATFORMS_GITHUB */
+    "platforms_itch.png",  /* UI_ICON_TYPE_PLATFORMS_ITCH */
+    "platforms_playstore.png",  /* UI_ICON_TYPE_PLATFORMS_PLAYSTORE */
+    "platforms_srht.png",  /* UI_ICON_TYPE_PLATFORMS_SRHT */
+    "platforms_telegram.png",  /* UI_ICON_TYPE_PLATFORMS_TELEGRAM */
+    "platforms_tux.png",  /* UI_ICON_TYPE_PLATFORMS_TUX */
+    "platforms_win.png",  /* UI_ICON_TYPE_PLATFORMS_WIN */
+    "tiles_tile.png",  /* UI_ICON_TYPE_TILES_TILE */
+    "tiles_tile2.png",  /* UI_ICON_TYPE_TILES_TILE2 */
+    "tiles_tile3.png",  /* UI_ICON_TYPE_TILES_TILE3 */
+    "tiles_tile4.png",  /* UI_ICON_TYPE_TILES_TILE4 */
 };
