@@ -86,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libssl-dev pkg-config zlib1g-dev
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config zlib1g-dev libsdl2-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev
 
       - name: Build And Test
         run: |
@@ -99,6 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           make dist-static CMAKE=/usr/bin/cmake VERSION="${{ steps.ref.outputs.tag }}"
+          make check-static-package CMAKE=/usr/bin/cmake VERSION="${{ steps.ref.outputs.tag }}"
           archive="$(find dist -maxdepth 1 -type f -name flint-*-static.tar.gz | head -n 1)"
           test -n "$archive"
           echo "FLINT_STATIC_ARCHIVE=$archive" >> "$GITHUB_ENV"

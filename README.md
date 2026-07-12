@@ -50,8 +50,19 @@ Build a distributable static-library archive with:
 make dist-static
 ```
 
-The archive contains `libflint.a`, public headers, API docs, `liboqs.a`,
-`libcurl.a`, a `flint.pc` file, and the submodule revisions used to build it.
+The archive is an extracted SDK layout. It contains `libflint.a`,
+`libraylib.a`, vendored static dependency libraries, public headers, API docs,
+example consumers, CMake and pkg-config metadata, third-party notices, a package
+manifest, and the submodule revisions used to build it. Validate it with:
+
+```bash
+make check-static-package
+```
+
+`libflint.a` stays focused on Flint object files. Companion libraries are shipped
+beside it and linked through `lib/pkgconfig/flint.pc`. OpenSSL is still treated
+as an external system/toolchain dependency unless explicit OpenSSL static library
+paths are supplied at build time.
 
 ## Releases
 
