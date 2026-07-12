@@ -1,5 +1,6 @@
 #include "ui_text.h"
 #include "ui_clip.h"
+#include "ui_internal.h"
 #include "embedded_assets.h"
 #include "ui_scaling.h"
 
@@ -13,6 +14,17 @@ static Font g_flint_text_font = {0};
 static Font g_flint_text_small_font = {0};
 static Font g_flint_default_font = {0};
 static int g_flint_default_font_attempted = 0;
+
+static Rectangle
+text_world_rect_to_screen(Rectangle rect)
+{
+    return (Rectangle){
+        g_ui_camera.offset.x + rect.x * g_ui_camera.zoom,
+        g_ui_camera.offset.y + rect.y * g_ui_camera.zoom,
+        rect.width * g_ui_camera.zoom,
+        rect.height * g_ui_camera.zoom
+    };
+}
 
 static int
 font_valid(Font font)
@@ -401,8 +413,10 @@ DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color)
     int y = GetUITextY(value, (int)rect.y, (int)rect.height, font_size);
     int clip_guard = 1;
 
-    BeginUIClip((int)rect.x, (int)rect.y - clip_guard,
-                     (int)rect.width, (int)rect.height + clip_guard * 2);
+    Rectangle clip = text_world_rect_to_screen((Rectangle){
+        rect.x, rect.y - clip_guard, rect.width, rect.height + clip_guard * 2
+    });
+    BeginUIClip((int)clip.x, (int)clip.y, (int)clip.width, (int)clip.height);
     DrawUIText(value, x, y, font_size, color);
     EndUIClip();
 }
