@@ -388,7 +388,6 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
                 result.changed = type != selected;
                 result.selected_index = i;
                 result.selected_icon_type = type;
-                result.closed = 1;
             }
         }
     }
