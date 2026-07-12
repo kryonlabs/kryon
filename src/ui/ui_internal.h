@@ -37,6 +37,8 @@ void MarkUIClickable(void);
 void MarkUIDisabled(void);
 int ui_pointer_drag_is_horizontal(void);
 int UIHoverEffectsEnabled(void);
+int UIReleaseConsumed(void);
+void UIConsumeRelease(void);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);
 int ui_input_captures_click_internal(Vector2 point, int include_pointer_drag);
 void PushUIInputClip(Rectangle bounds);

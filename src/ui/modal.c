@@ -18,7 +18,11 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
     DrawFittedUITextInRect(label, (Rectangle){(float)x, (float)y, (float)w, (float)h},
                                 font, UI_TEXT_8, c_text);
 
-    return active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        UIConsumeRelease();
+        return 1;
+    }
+    return 0;
 }
 
 static int

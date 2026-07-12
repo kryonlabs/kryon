@@ -26,6 +26,7 @@ static int g_ui_pointer_dragged_this_click = 0;
 static int g_ui_pointer_start_x = 0;
 static int g_ui_pointer_start_y = 0;
 static int g_ui_transition_cues_enabled = 0;
+static int g_ui_release_consumed = 0;
 
 int g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
 
@@ -168,6 +169,7 @@ ui_update_pointer_gesture(void)
         g_ui_pointer_down = 1;
         g_ui_pointer_dragging = 0;
         g_ui_pointer_dragged_this_click = 0;
+        g_ui_release_consumed = 0;
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
         g_ui_pointer_start_x = mx;
         g_ui_pointer_start_y = my;
@@ -187,6 +189,7 @@ ui_update_pointer_gesture(void)
         g_ui_pointer_down = 0;
         g_ui_pointer_dragging = 0;
         g_ui_pointer_dragged_this_click = 0;
+        g_ui_release_consumed = 0;
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
     }
 }
@@ -209,6 +212,9 @@ PushUIInputCapture(Rectangle bounds, int allow_inside)
 int
 ui_base_input_captures_click(Vector2 point, int include_pointer_drag)
 {
+    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && g_ui_release_consumed)
+        return 1;
+
     if(g_ui_input_clip_stack_count > 0 &&
        !CheckCollisionPointRec(point, g_ui_input_clip_stack[g_ui_input_clip_stack_count - 1]))
         return 1;
@@ -237,6 +243,19 @@ int
 UIInputCapturesClick(Vector2 point)
 {
     return ui_input_captures_click_internal(point, 1);
+}
+
+int
+UIReleaseConsumed(void)
+{
+    return g_ui_release_consumed;
+}
+
+void
+UIConsumeRelease(void)
+{
+    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        g_ui_release_consumed = 1;
 }
 
 int
@@ -891,6 +910,8 @@ DrawUIButton(UIButton button)
 
     DrawFittedUITextInRect(button.label ? button.label : "", button.bounds,
                                 font, UI_TEXT_16, text);
+    if(clicked)
+        UIConsumeRelease();
     return clicked || IsUIFocusActivatePressed(button.focus_id);
 }
 
@@ -965,6 +986,8 @@ DrawUIIconButton(UIIconButton button)
         Rectangle dst = {(float)icon_x, (float)icon_y, (float)draw_size, (float)draw_size};
         DrawTexturePro(button.icon, src, dst, (Vector2){0}, 0, icon_color);
     }
+    if(clicked)
+        UIConsumeRelease();
     return clicked || IsUIFocusActivatePressed(button.focus_id);
 }
 
@@ -1041,6 +1064,8 @@ DrawUIHref(UIHref link)
         SetUIFocusTextInputActive(0);
         DrawUIFocus(bounds);
     }
+    if(clicked)
+        UIConsumeRelease();
     if(!link.disabled && (clicked || IsUIFocusActivatePressed(link.focus_id))) {
         if(link.href != NULL && link.href[0] != '\0') {
 #if defined(PLATFORM_WEB)
@@ -1549,7 +1574,10 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
 
     if(active) {
         MarkUIClickable();
-        return IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            UIConsumeRelease();
+            return 1;
+        }
     }
     return 0;
 }
@@ -1840,6 +1868,8 @@ DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 
     DrawUIIconTexture(x + padding, y + padding, btn_size, icon, c_icon);
 
+    if(pressed)
+        UIConsumeRelease();
     return pressed;
 }
 
@@ -1876,6 +1906,8 @@ DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *ho
 
     DrawUIIconTexture(x + padding, y + padding, size, icon, c_icon);
 
+    if(pressed)
+        UIConsumeRelease();
     return pressed;
 }
 
@@ -1921,6 +1953,8 @@ DrawUITextButton(int x, int y, const char *label, int *hover)
     DrawFittedUITextInRect(label, (Rectangle){(float)x, (float)y, (float)w, (float)h},
                                 font, UI_TEXT_12, c_text);
 
+    if(pressed)
+        UIConsumeRelease();
     return pressed;
 }
 
@@ -2026,6 +2060,8 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
     DrawFittedUITextInRect(label, (Rectangle){(float)x, (float)y, (float)w, (float)h},
                                 font, UI_TEXT_8, text_color);
 
+    if(clicked)
+        UIConsumeRelease();
     return clicked;
 }
 
@@ -2127,6 +2163,8 @@ DrawUISubtabBar(UISubtabBar bar)
         }
     }
 
+    if(clicked_tab >= 0)
+        UIConsumeRelease();
     return clicked_tab;
 }
 
@@ -2161,6 +2199,7 @@ DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
 
     if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
        !UIInputCapturesClick(mouse_world) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        UIConsumeRelease();
 #if defined(PLATFORM_WEB)
         EM_ASM({
             window.location.href = UTF8ToString($0);
@@ -2447,8 +2486,10 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
                   !UIInputCapturesClick(mouse_world) &&
                   IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
 
-    if(pressed)
+    if(pressed) {
         *value = !(*value);
+        UIConsumeRelease();
+    }
 
     Color bg = DarkenUIColor(c_bg, 8);
     DrawRectangle(x, y, w, h, bg);
@@ -2498,8 +2539,10 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     int pressed = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
                   !UIInputCapturesClick(mouse_world) &&
                   IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
-    if(pressed)
+    if(pressed) {
         *value = !(*value);
+        UIConsumeRelease();
+    }
 
     DrawRectangle(x, y + (row_h - box_size) / 2, box_size, box_size, box_color);
     DrawUIBevel(x, y + (row_h - box_size) / 2, box_size, box_size,
@@ -2561,5 +2604,9 @@ DrawUIInfoButton(int center_x, int center_y, int diameter)
     font = GetUISmallFontSize();
     DrawCenteredUIControlText("i", center_x, center_y, font, text);
 
-    return active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        UIConsumeRelease();
+        return 1;
+    }
+    return 0;
 }

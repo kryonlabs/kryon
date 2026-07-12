@@ -188,6 +188,7 @@ DrawUIDropdownButton(int id, int x, int y, int w, int h,
 
     /* Handle click on button */
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        UIConsumeRelease();
         state->open = !state->open;
         if(state->open) {
             state->just_opened = 1;
@@ -365,6 +366,7 @@ DrawUIDropdownMenu(int id)
             MarkUIClickable();
 
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened && !state->touch_drag_active) {
+                UIConsumeRelease();
                 *selected_index = i;
                 state->open = 0;
                 state->just_opened = 0;

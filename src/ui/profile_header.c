@@ -227,8 +227,10 @@ DrawUISidebarAccountHeader(UISidebarAccountHeader header)
                          0.06f, 8, DarkenUIColor(c_surface, 6));
     if(CheckCollisionPointRec(mouse, pfp_bounds) && !UIInputCapturesClick(mouse)) {
         MarkUIClickable();
-        if(released)
+        if(released) {
+            UIConsumeRelease();
             result.pfp_clicked = 1;
+        }
     }
     DrawCircle(avatar_x, avatar_y, (float)(avatar_r + ScaleUIPx(3)), c_surface);
     DrawCircle(avatar_x, avatar_y, (float)avatar_r,
@@ -244,8 +246,10 @@ DrawUISidebarAccountHeader(UISidebarAccountHeader header)
     if(CheckCollisionPointRec(mouse, username_bounds) &&
        !UIInputCapturesClick(mouse)) {
         MarkUIClickable();
-        if(released)
+        if(released) {
+            UIConsumeRelease();
             result.username_clicked = 1;
+        }
     }
     DrawFittedUITextInRect(username, username_bounds, name_font,
                            UI_TEXT_8, c_text);
@@ -258,8 +262,10 @@ DrawUISidebarAccountHeader(UISidebarAccountHeader header)
         DrawRectangleRounded(friends_bounds, 0.18f, 8,
                              LightenUIColor(c_surface, 8));
         MarkUIClickable();
-        if(released)
+        if(released) {
+            UIConsumeRelease();
             result.friends_clicked = 1;
+        }
     }
     if(friends_text[0] != '\0')
         DrawUIText(friends_text, header.x + ScaleUIPx(12),
@@ -376,6 +382,7 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
         if(hovered) {
             MarkUIClickable();
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                UIConsumeRelease();
                 if(modal.selected_icon_type != NULL)
                     *modal.selected_icon_type = type;
                 result.changed = type != selected;

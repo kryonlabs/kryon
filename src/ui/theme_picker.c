@@ -138,6 +138,7 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
         if(is_hovered) {
             MarkUIClickable();
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                UIConsumeRelease();
                 selected = theme;
                 if(theme_id != NULL)
                     *theme_id = theme;

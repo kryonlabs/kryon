@@ -246,5 +246,7 @@ DrawUITabBar(UITabBar bar)
         }
     }
 
+    if(clicked_tab >= 0)
+        UIConsumeRelease();
     return clicked_tab;
 }

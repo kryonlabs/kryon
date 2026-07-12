@@ -643,6 +643,8 @@ void MarkUIClickable(void);
 void MarkUIDisabled(void);
 void SetUIIcons(Texture2D gear_icon, Texture2D x_icon);
 int UIInputCapturesClick(Vector2 point);
+int UIReleaseConsumed(void);
+void UIConsumeRelease(void);
 int UIHoverEffectsEnabled(void);
 void SetUITransitionCuesEnabled(int enabled);
 int UITransitionCuesEnabled(void);
