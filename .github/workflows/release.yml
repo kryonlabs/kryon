@@ -91,14 +91,14 @@ jobs:
       - name: Build And Test
         run: |
           set -euo pipefail
-          make clean
-          make all
-          make test
+          make clean CMAKE=/usr/bin/cmake
+          make all CMAKE=/usr/bin/cmake
+          make test CMAKE=/usr/bin/cmake
 
       - name: Package Static Library
         run: |
           set -euo pipefail
-          make dist-static VERSION="${{ steps.ref.outputs.tag }}"
+          make dist-static CMAKE=/usr/bin/cmake VERSION="${{ steps.ref.outputs.tag }}"
           archive="$(find dist -maxdepth 1 -type f -name flint-*-static.tar.gz | head -n 1)"
           test -n "$archive"
           echo "FLINT_STATIC_ARCHIVE=$archive" >> "$GITHUB_ENV"

@@ -169,11 +169,11 @@ src/ui/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_typ
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) $(FLINT_FONT_OUTPUTS) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS) $(FLINT_FONT_OUTPUTS)
 
-$(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 

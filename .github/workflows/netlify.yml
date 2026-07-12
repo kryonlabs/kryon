@@ -43,7 +43,7 @@ jobs:
       - name: Build Site
         run: |
           set -euo pipefail
-          make docs-site
+          make docs-site CMAKE=/usr/bin/cmake
           test -f build/site/examples/02_buttons/index.html
           test -f build/site/examples/02_buttons/index.js
           test -f build/site/examples/02_buttons/index.wasm
