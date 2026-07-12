@@ -243,7 +243,8 @@ int main(int argc, char* argv[]) {
     }
 
     stbtt_fontinfo font;
-    if (!stbtt_InitFont(&font, font_buffer, 0)) {
+    int font_offset = stbtt_GetFontOffsetForIndex(font_buffer, 0);
+    if (font_offset < 0 || !stbtt_InitFont(&font, font_buffer, font_offset)) {
         fprintf(stderr, "Error: Failed to initialize font\n");
         free(font_buffer);
         free_codepoint_set(&set);
