@@ -35,7 +35,7 @@ int SetFileDialogCurrentDir(FileDialog *dlg, const char *path);
 /* Set an explicit theme scope; pass NULL or empty to follow the current UI theme. */
 void SetFileDialogThemeScope(const char *scope);
 
-/* Return the resolved desktop helper name: zenity, kdialog, yad, or none. */
+/* Return the resolved backend name: web, zenity, kdialog, yad, or none. */
 const char *GetFileDialogBackendName(void);
 
 /* FLINT_FILE_DIALOG_BACKEND can force auto, zenity, kdialog, yad, or none. */
@@ -50,7 +50,8 @@ int LoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filte
 /* Select folder dialog - returns 1 if folder selected, 0 if cancelled */
 int SelectFileDialogFolder(FileDialog *dlg, const char *title);
 
-/* Compatibility wrappers. Desktop GTK dialogs complete before Begin* returns. */
+/* Compatibility wrappers. Desktop helpers complete before Begin* returns;
+   web dialogs complete through UpdateFileDialog(). */
 void BeginLoadFileDialog(FileDialog *dlg, const char *title);
 void BeginLoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filter);
 void BeginSaveFileDialog(FileDialog *dlg, const char *title, const char *default_filename);

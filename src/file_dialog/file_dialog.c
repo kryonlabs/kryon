@@ -6,20 +6,110 @@
 
 #if defined(PLATFORM_WEB)
 
+#include <emscripten.h>
+
+static int web_file_dialog_next_id = 1;
+
+static void
+web_clear_dialog_result(FileDialog *dlg)
+{
+    if(dlg == NULL)
+        return;
+    EM_ASM({
+        if(Module.__flintFileDialogResults)
+            delete Module.__flintFileDialogResults[String($0)];
+    }, dlg);
+}
+
 static void
 reset_dialog_result(FileDialog *dlg, FileDialogMode mode, const char *title,
                     const char *filter, const char *default_filename)
 {
     if(dlg == NULL)
         return;
+    web_clear_dialog_result(dlg);
     dlg->active = 0;
     dlg->mode = mode;
     dlg->confirmed = 0;
-    dlg->result_path[0] = '\0';
+    dlg->result_path[0] = 0;
     snprintf(dlg->title, sizeof(dlg->title), "%s", title != NULL ? title : "");
     snprintf(dlg->filter, sizeof(dlg->filter), "%s", filter != NULL ? filter : "");
     snprintf(dlg->default_name, sizeof(dlg->default_name), "%s",
              default_filename != NULL ? default_filename : "");
+}
+
+static void
+begin_web_load_dialog(FileDialog *dlg, const char *title, const char *filter)
+{
+    if(dlg == NULL)
+        return;
+    reset_dialog_result(dlg, FILE_DIALOG_LOAD, title, filter, NULL);
+    dlg->active = 1;
+    snprintf(dlg->result_path, sizeof(dlg->result_path), "/tmp/flint-file-dialog-%d",
+             web_file_dialog_next_id++);
+    if(web_file_dialog_next_id <= 0)
+        web_file_dialog_next_id = 1;
+
+    EM_ASM({
+        const key = String($0);
+        const resultPath = UTF8ToString($1);
+        const rawAccept = $2 ? UTF8ToString($2) : "";
+        const results = Module.__flintFileDialogResults = Module.__flintFileDialogResults || {};
+        results[key] = {status: 0};
+
+        const normalizeAccept = (value) => String(value || "")
+            .split(",")
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+            .map((entry) => entry.startsWith("*.") ? entry.substring(1) : entry)
+            .join(",");
+
+        const input = document.createElement("input");
+        let settled = false;
+        const finish = (status) => {
+            if(settled)
+                return;
+            settled = true;
+            results[key] = {status};
+            input.remove();
+        };
+
+        input.type = "file";
+        input.accept = normalizeAccept(rawAccept);
+        input.style.display = "none";
+        input.onchange = async function() {
+            try {
+                if(!input.files || input.files.length === 0) {
+                    finish(2);
+                    return;
+                }
+                const bytes = new Uint8Array(await input.files[0].arrayBuffer());
+                try { FS.mkdirTree("/tmp"); } catch(e) {}
+                try { FS.unlink(resultPath); } catch(e) {}
+                FS.writeFile(resultPath, bytes);
+                finish(1);
+            } catch(e) {
+                console.error("Flint web file dialog failed:", e);
+                finish(3);
+            }
+        };
+        input.addEventListener("cancel", () => finish(2));
+
+        document.body.appendChild(input);
+        const finishCancelledAfterFocus = () => {
+            setTimeout(() => {
+                if(!settled && (!input.files || input.files.length === 0))
+                    finish(2);
+            }, 500);
+        };
+        window.addEventListener("focus", finishCancelledAfterFocus, {once: true});
+        try {
+            input.click();
+        } catch(e) {
+            console.error("Flint web file dialog could not open:", e);
+            finish(3);
+        }
+    }, dlg, dlg->result_path, dlg->filter);
 }
 
 void
@@ -46,13 +136,13 @@ SetFileDialogThemeScope(const char *scope)
 const char *
 GetFileDialogBackendName(void)
 {
-    return "none";
+    return "web";
 }
 
 void
 BeginLoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filter)
 {
-    reset_dialog_result(dlg, FILE_DIALOG_LOAD, title, filter, NULL);
+    begin_web_load_dialog(dlg, title, filter);
 }
 
 void
@@ -64,7 +154,7 @@ BeginLoadFileDialog(FileDialog *dlg, const char *title)
 int
 LoadFilteredFileDialog(FileDialog *dlg, const char *title, const char *filter)
 {
-    reset_dialog_result(dlg, FILE_DIALOG_LOAD, title, filter, NULL);
+    BeginLoadFilteredFileDialog(dlg, title, filter);
     return 0;
 }
 
@@ -103,15 +193,38 @@ SelectFileDialogFolder(FileDialog *dlg, const char *title)
 int
 UpdateFileDialog(FileDialog *dlg)
 {
+    int status;
+
     if(dlg == NULL)
         return 0;
-    return dlg->confirmed ? 1 : 0;
+    if(!dlg->active)
+        return dlg->confirmed ? 1 : 0;
+
+    status = EM_ASM_INT({
+        const results = Module.__flintFileDialogResults || {};
+        const result = results[String($0)];
+        return result ? (result.status | 0) : 0;
+    }, dlg);
+    if(status == 0)
+        return -1;
+
+    dlg->active = 0;
+    if(status == 1) {
+        dlg->confirmed = 1;
+        web_clear_dialog_result(dlg);
+        return 1;
+    }
+
+    dlg->confirmed = 0;
+    dlg->result_path[0] = 0;
+    web_clear_dialog_result(dlg);
+    return 0;
 }
 
 const char *
 GetFileDialogPath(FileDialog *dlg)
 {
-    if(dlg == NULL || dlg->result_path[0] == '\0')
+    if(dlg == NULL || dlg->result_path[0] == 0)
         return NULL;
     return dlg->result_path;
 }
@@ -119,8 +232,10 @@ GetFileDialogPath(FileDialog *dlg)
 void
 CloseFileDialog(FileDialog *dlg)
 {
-    if(dlg != NULL)
+    if(dlg != NULL) {
+        web_clear_dialog_result(dlg);
         memset(dlg, 0, sizeof(FileDialog));
+    }
 }
 
 #else
