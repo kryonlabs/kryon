@@ -40,7 +40,8 @@ FLINT_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
 include mk/vendor.mk
 
 CPPFLAGS += -DHAS_LIBOQS=1 $(FLINT_LIBOQS_INCLUDE) \
-	-DHAS_LIBCURL=1 $(FLINT_CURL_CFLAGS)
+	-DHAS_LIBCURL=1 $(FLINT_CURL_CFLAGS) \
+	$(FLINT_MARKDOWN_CFLAGS)
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
@@ -59,6 +60,7 @@ LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
 LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
+MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 
 .PHONY: all clean run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check dist-static
 
@@ -82,11 +84,12 @@ docs-site:
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST)
+test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
 	$(TRANSITION_TEST)
 	$(FILE_DIALOG_BACKEND_TEST)
+	$(MARKDOWN_TEST)
 
 bsd-check:
 	$(MAKE) clean
@@ -105,18 +108,19 @@ flint-compat-check: | $(BUILD_DIR)
 flint-boundary-check:
 	sh $(FLINT_BOUNDARY_CHECK) .
 
-$(LIB): $(FLINT_COMPAT_HEADER) $(OBJS) | $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK)
-	$(AR) $(ARFLAGS) $@ $^
+$(LIB): $(OBJS) | $(FLINT_COMPAT_HEADER) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK) $(FLINT_MARKDOWN_DEPS)
+	$(AR) $(ARFLAGS) $@ $(OBJS)
 
 dist-static: $(STATIC_DIST_ARCHIVE)
 
-$(STATIC_DIST_ARCHIVE): $(LIB) $(FLINT_LIBOQS_A) $(FLINT_CURL_SO) README.md LICENSE docs/API.md
+$(STATIC_DIST_ARCHIVE): $(LIB) $(FLINT_LIBOQS_A) $(FLINT_CURL_A) $(FLINT_MARKDOWN_DEPS) README.md LICENSE docs/API.md
 	rm -rf $(STATIC_DIST_ROOT)
 	mkdir -p $(STATIC_DIST_ROOT)/include $(STATIC_DIST_ROOT)/lib $(STATIC_DIST_ROOT)/lib/pkgconfig $(STATIC_DIST_ROOT)/docs $(DIST_DIR)
 	cp -R include/. $(STATIC_DIST_ROOT)/include/
 	cp $(LIB) $(STATIC_DIST_ROOT)/lib/
 	cp $(FLINT_LIBOQS_A) $(STATIC_DIST_ROOT)/lib/
 	cp $(FLINT_CURL_A) $(STATIC_DIST_ROOT)/lib/
+	cp $(FLINT_MARKDOWN_DEPS) $(STATIC_DIST_ROOT)/lib/
 	cp README.md LICENSE $(STATIC_DIST_ROOT)/
 	cp docs/API.md $(STATIC_DIST_ROOT)/docs/
 	git submodule status > $(STATIC_DIST_ROOT)/SUBMODULES.txt
@@ -130,8 +134,8 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(FLINT_LIBOQS_A) $(FLINT_CURL_SO) README.md LICE
 		'Name: Flint' \
 		'Description: Flint C support library for raylib-style applications' \
 		'Version: $(VERSION)' \
-		'Cflags: -I$${includedir} -DHAS_LIBOQS=1 -DHAS_LIBCURL=1 -DCURL_STATICLIB' \
-		'Libs: -L$${libdir} -lflint -loqs -lcurl -lssl -lcrypto -lpthread -lm' \
+		'Cflags: -I$${includedir} -DHAS_LIBOQS=1 -DHAS_LIBCURL=1 -DCURL_STATICLIB -DFLINT_HAS_CMARK_GFM=1' \
+		'Libs: -L$${libdir} -lflint -loqs -lcurl -lcmark-gfm-extensions -lcmark-gfm -lssl -lcrypto -lpthread -lm' \
 		> $(STATIC_DIST_ROOT)/lib/pkgconfig/flint.pc
 	tar -C $(BUILD_DIR)/dist -czf $@ flint-$(VERSION)-static
 
@@ -156,6 +160,12 @@ $(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_tr
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui/ui_transition.c -o $@
 
+$(MARKDOWN_TEST): tests/markdown_test.c src/markdown.c include/markdown.h $(FLINT_MARKDOWN_DEPS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(FLINT_MARKDOWN_CFLAGS) \
+		tests/markdown_test.c src/markdown.c \
+		$(FLINT_MARKDOWN_LDLIBS) -o $@
+
 $(FILE_DIALOG_BACKEND_TEST): tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c include/file_dialog.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c -o $@
@@ -169,11 +179,11 @@ src/ui/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_typ
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) $(FLINT_FONT_OUTPUTS) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS) $(FLINT_FONT_OUTPUTS)
 
-$(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK)
+$(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK) $(FLINT_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK)
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK) $(FLINT_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 

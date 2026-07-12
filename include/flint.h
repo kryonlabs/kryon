@@ -21,5 +21,6 @@
 #include "web.h"
 #include "runtime_assets.h"
 #include "desktop_tray.h"
+#include "markdown.h"
 
 #endif /* FLINT_H */

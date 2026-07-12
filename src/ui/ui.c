@@ -638,9 +638,9 @@ SetUIFocusTextInputActive(int active)
 void
 DrawUIFocus(Rectangle bounds)
 {
-    DrawRectangleRoundedLinesEx((Rectangle){bounds.x - ScaleUIPx(3), bounds.y - ScaleUIPx(3),
-                                            bounds.width + ScaleUIPx(6), bounds.height + ScaleUIPx(6)},
-                                0.10f, 10, ScaleUIPx(2), c_button_hover);
+    DrawRectangleLinesEx((Rectangle){bounds.x - ScaleUIPx(3), bounds.y - ScaleUIPx(3),
+                                     bounds.width + ScaleUIPx(6), bounds.height + ScaleUIPx(6)},
+                         ScaleUIPx(2), c_button_hover);
 }
 
 int
@@ -697,13 +697,18 @@ DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
     int text_x = x + padding_x;
     int text_y = GetUIControlTextY(value, y, h, font);
     Color border = focused ? style.focus_border : style.border;
-    float radius = style.radius > 0.0f ? style.radius : 0.12f;
+    float radius = style.radius >= 0.0f ? style.radius : 0.12f;
 
     if(focused)
         SetUIFocusTextInputActive(1);
 
-    DrawRectangleRounded(bounds, radius, 8, style.background);
-    DrawRectangleRoundedLines(bounds, radius, 8, border);
+    if(radius <= 0.0f) {
+        DrawRectangleRec(bounds, style.background);
+        DrawRectangleLinesEx(bounds, 1, border);
+    } else {
+        DrawRectangleRounded(bounds, radius, 8, style.background);
+        DrawRectangleRoundedLines(bounds, radius, 8, border);
+    }
 
     ui_begin_world_clip((Rectangle){(float)(x + padding_x), (float)(y - clip_guard),
                                     (float)(w - padding_x * 2),
@@ -1051,6 +1056,323 @@ DrawUIHref(UIHref link)
     return 0;
 }
 
+static int
+ui_text_line_start(const char *text, int cursor)
+{
+    int i;
+
+    if(text == NULL || cursor <= 0)
+        return 0;
+    for(i = cursor - 1; i >= 0; i--) {
+        if(text[i] == '\n')
+            return i + 1;
+    }
+    return 0;
+}
+
+static int
+ui_text_line_end(const char *text, int cursor)
+{
+    int len;
+    int i;
+
+    if(text == NULL)
+        return 0;
+    len = (int)strlen(text);
+    cursor = ui_clampi(cursor, 0, len);
+    for(i = cursor; i < len; i++) {
+        if(text[i] == '\n')
+            return i;
+    }
+    return len;
+}
+
+static int
+ui_text_column_x(const char *text, int start, int cursor, int font)
+{
+    char prefix[1024];
+    int len;
+
+    if(text == NULL || cursor <= start)
+        return 0;
+    len = cursor - start;
+    if(len >= (int)sizeof(prefix))
+        len = (int)sizeof(prefix) - 1;
+    memcpy(prefix, text + start, (size_t)len);
+    prefix[len] = '\0';
+    return MeasureUIText(prefix, font);
+}
+
+static int
+ui_text_cursor_from_line_x(const char *text, int start, int end, int font, int target_x)
+{
+    char prefix[1024];
+    int i;
+
+    if(target_x <= 0)
+        return start;
+    for(i = start + 1; i <= end; i++) {
+        int len = i - start;
+        if(len >= (int)sizeof(prefix))
+            len = (int)sizeof(prefix) - 1;
+        memcpy(prefix, text + start, (size_t)len);
+        prefix[len] = '\0';
+        if(MeasureUIText(prefix, font) >= target_x)
+            return i;
+    }
+    return end;
+}
+
+static int
+ui_text_move_vertical(const char *text, int cursor, int font, int dir)
+{
+    int start;
+    int end;
+    int target_x;
+    int other_start;
+    int other_end;
+
+    if(text == NULL)
+        return 0;
+    start = ui_text_line_start(text, cursor);
+    end = ui_text_line_end(text, cursor);
+    target_x = ui_text_column_x(text, start, cursor, font);
+    if(dir < 0) {
+        if(start == 0)
+            return cursor;
+        other_end = start - 1;
+        other_start = ui_text_line_start(text, other_end);
+    } else {
+        int len = (int)strlen(text);
+        if(end >= len)
+            return cursor;
+        other_start = end + 1;
+        other_end = ui_text_line_end(text, other_start);
+    }
+    return ui_text_cursor_from_line_x(text, other_start, other_end, font, target_x);
+}
+
+static int
+ui_text_area_line_font(const char *text, int start, int end, int base_font)
+{
+    int hashes = 0;
+
+    if(text == NULL)
+        return base_font;
+    while(start + hashes < end && hashes < 6 && text[start + hashes] == '#')
+        hashes++;
+    if(hashes > 0 && start + hashes < end && text[start + hashes] == ' ' && base_font < UI_TEXT_24) {
+        if(hashes <= 2)
+            return UI_TEXT_24;
+    }
+    return base_font;
+}
+
+static int
+ui_text_area_line_height(const char *text, int start, int end, int base_font, int line_gap)
+{
+    int line_font = ui_text_area_line_font(text, start, end, base_font);
+    return GetUITextLineHeight(line_font) + line_gap;
+}
+
+static int
+ui_text_area_content_height(const char *text, int font, int line_gap)
+{
+    int len;
+    int line_start = 0;
+    int height = 0;
+
+    if(text == NULL)
+        text = "";
+    len = (int)strlen(text);
+    for(int i = 0; i <= len; i++) {
+        if(text[i] == '\n' || text[i] == '\0') {
+            height += ui_text_area_line_height(text, line_start, i, font, line_gap);
+            line_start = i + 1;
+        }
+    }
+    return height;
+}
+
+static int
+ui_text_area_cursor_from_point(const char *text, int font, int line_gap, int x, int y, int mouse_x, int mouse_y, int scroll_y)
+{
+    int len;
+    int line_start = 0;
+    int draw_y = 0;
+    int target_y;
+
+    if(text == NULL)
+        return 0;
+    len = (int)strlen(text);
+    target_y = mouse_y - y + scroll_y;
+    if(target_y < 0)
+        target_y = 0;
+    for(int i = 0; i <= len; i++) {
+        if(text[i] == '\n' || text[i] == '\0') {
+            int line_font = ui_text_area_line_font(text, line_start, i, font);
+            int line_h = GetUITextLineHeight(line_font) + line_gap;
+            if(target_y < draw_y + line_h || text[i] == '\0')
+                return ui_text_cursor_from_line_x(text, line_start, i, line_font, mouse_x - x);
+            draw_y += line_h;
+            line_start = i + 1;
+        }
+    }
+    return len;
+}
+
+static void
+ui_draw_text_area_text(const char *text, int cursor, int focused, Rectangle bounds, int font, int line_gap, int scroll_y, UITextInputStyle style)
+{
+    char line[1024];
+    int len;
+    int line_start = 0;
+    int padding_x = style.padding_x > 0 ? style.padding_x : ScaleUIPx(10);
+    int padding_y = ScaleUIPx(8);
+    int text_x = (int)bounds.x + padding_x;
+    int text_y = (int)bounds.y + padding_y - scroll_y;
+    int draw_y = text_y;
+
+    if(text == NULL)
+        text = "";
+    len = (int)strlen(text);
+    for(int i = 0; i <= len; i++) {
+        if(text[i] == '\n' || text[i] == '\0') {
+            int line_len = i - line_start;
+            int line_font = ui_text_area_line_font(text, line_start, i, font);
+            int line_h = GetUITextLineHeight(line_font) + line_gap;
+            if(line_len >= (int)sizeof(line))
+                line_len = (int)sizeof(line) - 1;
+            memcpy(line, text + line_start, (size_t)line_len);
+            line[line_len] = '\0';
+            DrawUIText(line, text_x, draw_y, line_font, style.text);
+            if(focused && cursor >= line_start && cursor <= i && (((int)(GetTime() * 2.0)) % 2 == 0)) {
+                int cursor_x = text_x + ui_text_column_x(text, line_start, cursor, line_font);
+                DrawRectangle(cursor_x, draw_y, ScaleUIPx(2), GetUITextLineHeight(line_font), style.cursor);
+            }
+            draw_y += line_h;
+            line_start = i + 1;
+        }
+    }
+}
+
+int
+DrawUITextArea(UITextArea area)
+{
+    int changed = 0;
+    int focused;
+    int font;
+    int line_gap;
+    int line_h;
+    int padding_x;
+    int padding_y;
+    int scroll_y;
+    int content_h;
+    int max_scroll;
+    Vector2 mouse_world;
+    int mouse_inside;
+    int captured;
+    Color border;
+    float radius;
+    int enter_requested;
+
+    if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
+        return 0;
+
+    font = area.font > 0 ? area.font : GetUIFontSize();
+    line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
+    line_h = GetUITextLineHeight(font) + line_gap;
+    padding_x = area.style.padding_x > 0 ? area.style.padding_x : ScaleUIPx(10);
+    padding_y = ScaleUIPx(8);
+    focused = *area.focused != 0;
+    scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
+
+    if(area.focus_id > 0 && RegisterUIFocus(area.focus_id, area.bounds)) {
+        focused = 1;
+        DrawUIFocus(area.bounds);
+    }
+
+    mouse_world = ui_mouse_world();
+    mouse_inside = CheckCollisionPointRec(mouse_world, area.bounds);
+    captured = UIInputCapturesClick(mouse_world);
+    if(mouse_inside && !captured)
+        MarkUITextCursor();
+
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if(mouse_inside && !captured) {
+            focused = 1;
+            *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
+                (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
+                (int)mouse_world.x, (int)mouse_world.y, scroll_y);
+        } else if(focused) {
+            focused = 0;
+        }
+    }
+
+    *area.focused = focused;
+    SetUIFocusTextInputActive(focused);
+    enter_requested = focused && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || g_ui_text_input_enter_count > 0);
+    if(focused) {
+        changed = EditUIText((UITextEdit){
+            .text = area.text,
+            .text_size = area.text_size,
+            .cursor_position = area.cursor_position,
+            .max_codepoints = area.max_codepoints,
+            .filter = area.filter,
+            .filter_user_data = area.filter_user_data
+        });
+        if(enter_requested) {
+            int len = (int)strlen(area.text);
+            *area.cursor_position = ui_clampi(*area.cursor_position, 0, len);
+            if((size_t)(len + 2) <= area.text_size) {
+                memmove(area.text + *area.cursor_position + 1,
+                        area.text + *area.cursor_position,
+                        (size_t)(len - *area.cursor_position + 1));
+                area.text[*area.cursor_position] = '\n';
+                (*area.cursor_position)++;
+                changed = 1;
+            }
+            g_ui_text_input_enter_count = 0;
+        }
+        if(IsKeyPressed(KEY_UP))
+            *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, -1);
+        if(IsKeyPressed(KEY_DOWN))
+            *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, 1);
+    } else {
+        int text_len = (int)strlen(area.text);
+        *area.cursor_position = ui_clampi(*area.cursor_position, 0, text_len);
+    }
+
+    content_h = ui_text_area_content_height(area.text, font, line_gap);
+    max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
+    if(max_scroll < 0)
+        max_scroll = 0;
+    if(mouse_inside)
+        scroll_y -= (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
+    scroll_y = ui_clampi(scroll_y, 0, max_scroll);
+    if(area.scroll_y != NULL)
+        *area.scroll_y = scroll_y;
+
+    border = focused ? area.style.focus_border : area.style.border;
+    radius = area.style.radius >= 0.0f ? area.style.radius : 0.12f;
+    if(radius <= 0.0f) {
+        DrawRectangleRec(area.bounds, area.style.background);
+        DrawRectangleLinesEx(area.bounds, 1, border);
+    } else {
+        DrawRectangleRounded(area.bounds, radius, 8, area.style.background);
+        DrawRectangleRoundedLines(area.bounds, radius, 8, border);
+    }
+
+    ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
+                                    area.bounds.width - padding_x * 2, area.bounds.height - padding_y * 2});
+    if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
+        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y, font, area.style.border);
+    else
+        ui_draw_text_area_text(area.text, *area.cursor_position, focused, area.bounds, font, line_gap, scroll_y, area.style);
+    EndUIClip();
+    return changed;
+}
+
 int
 DrawUITextField(UITextField field)
 {
@@ -1180,7 +1502,7 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
     int offset = 0;
     int len = (int)strlen(text);
     int draw_y = (int)box.bounds.y + padding_y;
-    float radius = box.style.radius > 0.0f ? box.style.radius : 0.12f;
+    float radius = box.style.radius >= 0.0f ? box.style.radius : 0.12f;
     Vector2 mouse_world = ui_mouse_world();
     int active = CheckCollisionPointRec(mouse_world, box.bounds) &&
                  !UIInputCapturesClick(mouse_world);
@@ -1188,8 +1510,13 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
     if(content_w < ScaleUIPx(24))
         content_w = ScaleUIPx(24);
 
-    DrawRectangleRounded(box.bounds, radius, 8, box.style.background);
-    DrawRectangleRoundedLines(box.bounds, radius, 8, box.style.border);
+    if(radius <= 0.0f) {
+        DrawRectangleRec(box.bounds, box.style.background);
+        DrawRectangleLinesEx(box.bounds, 1, box.style.border);
+    } else {
+        DrawRectangleRounded(box.bounds, radius, 8, box.style.background);
+        DrawRectangleRoundedLines(box.bounds, radius, 8, box.style.border);
+    }
 
     ui_begin_world_clip((Rectangle){box.bounds.x + (float)padding_x, box.bounds.y,
                                     (float)content_w, box.bounds.height});

@@ -425,6 +425,23 @@ typedef struct {
 } UITextField;
 
 typedef struct {
+    Rectangle bounds;
+    char *text;
+    size_t text_size;
+    int *cursor_position;
+    int *focused;
+    int *scroll_y;
+    int max_codepoints;
+    int font;
+    int line_gap;
+    int focus_id;
+    const char *placeholder;
+    UITextInputStyle style;
+    UITextInputFilter filter;
+    void *filter_user_data;
+} UITextArea;
+
+typedef struct {
     const char *label;
     UITextField field;
     int label_font;
@@ -649,6 +666,7 @@ int DrawUIIconButton(UIIconButton button);
 int DrawUIHref(UIHref link);
 int DrawUITextInputControl(UITextInput input);
 int DrawUITextField(UITextField field);
+int DrawUITextArea(UITextArea area);
 int GetUIReadonlyTextBoxHeight(const char *text, int font, int width, UITextInputStyle style, int line_gap);
 int DrawUIReadonlyTextBox(UIReadonlyTextBox box);
 int GetUIParagraphHeight(UIParagraph paragraph);
