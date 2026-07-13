@@ -268,6 +268,34 @@ UIConsumeRelease(void)
 }
 
 int
+UIPointerReleaseConsumed(void)
+{
+    return UIReleaseConsumed();
+}
+
+void
+UIConsumePointerRelease(void)
+{
+    UIConsumeRelease();
+}
+
+int
+UIPointerReleaseAvailable(Vector2 point)
+{
+    return IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+           !UIInputCapturesClick(point);
+}
+
+int
+UIPointerReleaseOutside(Rectangle bounds)
+{
+    Vector2 mouse = ui_mouse_world();
+
+    return UIPointerReleaseAvailable(mouse) &&
+           !CheckCollisionPointRec(mouse, bounds);
+}
+
+int
 UIHoverEffectsEnabled(void)
 {
 #if ANDROID_BUILD
