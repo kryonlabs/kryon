@@ -2,6 +2,7 @@
 #include "ui_color.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if defined(SYSTEM_THEME_GTK)
@@ -195,6 +196,122 @@ gtk_system_theme_refresh(void)
     return 1;
 }
 #endif
+
+static void
+copy_path(char *out, int out_size, const char *path, int len)
+{
+    if(out == NULL || out_size <= 0)
+        return;
+    if(path == NULL || len <= 0) {
+        out[0] = '\0';
+        return;
+    }
+    if(len >= out_size)
+        len = out_size - 1;
+    snprintf(out, (size_t)out_size, "%.*s", len, path);
+}
+
+static int
+path_exists(const char *path)
+{
+    FILE *file;
+
+    if(path == NULL || path[0] == '\0')
+        return 0;
+    file = fopen(path, "rb");
+    if(file == NULL)
+        return 0;
+    fclose(file);
+    return 1;
+}
+
+static int
+read_text_file(const char *path, char *out, int out_size)
+{
+    FILE *file;
+    size_t n;
+
+    if(path == NULL || out == NULL || out_size <= 1)
+        return 0;
+    file = fopen(path, "rb");
+    if(file == NULL)
+        return 0;
+    n = fread(out, 1, (size_t)out_size - 1, file);
+    out[n] = '\0';
+    fclose(file);
+    return n > 0;
+}
+
+static int
+xfce_desktop_config_path(char *out, int out_size)
+{
+    const char *config = getenv("XDG_CONFIG_HOME");
+    const char *home = getenv("HOME");
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    if(config != NULL && config[0] != '\0')
+        snprintf(out, (size_t)out_size,
+                 "%s/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml",
+                 config);
+    else if(home != NULL && home[0] != '\0')
+        snprintf(out, (size_t)out_size,
+                 "%s/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml",
+                 home);
+    else
+        return 0;
+    return out[0] != '\0';
+}
+
+static int
+find_xml_value(const char *tag, char *out, int out_size)
+{
+    const char *value;
+    const char *end;
+
+    if(tag == NULL)
+        return 0;
+    value = strstr(tag, "value=\"");
+    if(value == NULL)
+        return 0;
+    value += 7;
+    end = strchr(value, '"');
+    if(end == NULL || end == value)
+        return 0;
+    copy_path(out, out_size, value, (int)(end - value));
+    return out != NULL && out[0] != '\0';
+}
+
+bool
+GetSystemDesktopBackground(char *out, int out_size)
+{
+    char config_path[512];
+    char text[65536];
+    const char *cursor;
+
+    if(out == NULL || out_size <= 0)
+        return false;
+    out[0] = '\0';
+
+    if(!xfce_desktop_config_path(config_path, sizeof(config_path)))
+        return false;
+    if(!read_text_file(config_path, text, sizeof(text)))
+        return false;
+
+    cursor = text;
+    while((cursor = strstr(cursor, "name=\"last-image\"")) != NULL) {
+        char path[512];
+
+        path[0] = '\0';
+        if(find_xml_value(cursor, path, sizeof(path)) && path_exists(path)) {
+            copy_path(out, out_size, path, (int)strlen(path));
+            return true;
+        }
+        cursor += 17;
+    }
+
+    return false;
+}
 
 bool
 RefreshSystemTheme(void)

@@ -44,11 +44,18 @@ UpdateUIDPI(int view_width, int view_height)
 {
     int previous_width = ui_dpi_state.view_width;
     int previous_height = ui_dpi_state.view_height;
+    int base_height = ui_dpi_state.base_height;
+
+    if(base_height <= 0)
+        InitUIDPI();
+    base_height = ui_dpi_state.base_height > 0 ? ui_dpi_state.base_height : UI_DPI_BASE_HEIGHT;
 
     if(previous_width != view_width || previous_height != view_height) {
         ui_dpi_state.view_width = view_width;
         ui_dpi_state.view_height = view_height;
-        ui_dpi_state.ui_scale = (float)view_height / (float)ui_dpi_state.base_height;
+        ui_dpi_state.ui_scale = view_height > 0 ? (float)view_height / (float)base_height : 1.0f;
+        if(!(ui_dpi_state.ui_scale > 0.0f) || ui_dpi_state.ui_scale > 8.0f)
+            ui_dpi_state.ui_scale = 1.0f;
         ui_dpi_state.ui_scale_clamped = (ui_dpi_state.ui_scale < 1.0f) ? 1.0f : ui_dpi_state.ui_scale;
         ui_dpi_state.needs_update = 1;
     } else {

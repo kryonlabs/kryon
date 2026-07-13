@@ -336,13 +336,12 @@ load_file_text_from_paths(const char *relative_path, char **out_text)
         return 0;
     *out_text = NULL;
 
+#if defined(UI_EMBEDDED_ONLY)
     text = LoadEmbeddedAssetText(relative_path);
     if(text != NULL) {
         *out_text = text;
         return 1;
     }
-
-#if defined(UI_EMBEDDED_ONLY)
     return 0;
 #elif ANDROID_BUILD
     text = LoadFileText(relative_path);
@@ -350,7 +349,11 @@ load_file_text_from_paths(const char *relative_path, char **out_text)
         *out_text = text;
         return 1;
     }
-
+    text = LoadEmbeddedAssetText(relative_path);
+    if(text != NULL) {
+        *out_text = text;
+        return 1;
+    }
     return 0;
 #else
     static const char *prefixes[] = {
@@ -364,19 +367,21 @@ load_file_text_from_paths(const char *relative_path, char **out_text)
 
     char path[256];
 
-    if(out_text == NULL)
-        return 0;
-    *out_text = NULL;
-
     for(int i = 0; prefixes[i] != NULL; i++) {
         snprintf(path, sizeof(path), "%s%s", prefixes[i], relative_path);
         if(FileExists(path)) {
-            char *text = LoadFileText(path);
+            text = LoadFileText(path);
             if(text != NULL) {
                 *out_text = text;
                 return 1;
             }
         }
+    }
+
+    text = LoadEmbeddedAssetText(relative_path);
+    if(text != NULL) {
+        *out_text = text;
+        return 1;
     }
     return 0;
 #endif
@@ -392,25 +397,29 @@ load_locale_file_for_code(const char *code, char **out_text)
         return 0;
     *out_text = NULL;
 
-    if(code == NULL || code[0] == '\0')
+    if(code == NULL || code[0] == 0)
         code = "en";
 
+#if defined(UI_EMBEDDED_ONLY)
     snprintf(path, sizeof(path), "locales/%s.txt", code);
     text = LoadEmbeddedAssetText(path);
     if(text != NULL) {
         *out_text = text;
         return 1;
     }
-
-#if defined(UI_EMBEDDED_ONLY)
     return 0;
 #elif ANDROID_BUILD
+    snprintf(path, sizeof(path), "locales/%s.txt", code);
     text = LoadFileText(path);
     if(text != NULL) {
         *out_text = text;
         return 1;
     }
-
+    text = LoadEmbeddedAssetText(path);
+    if(text != NULL) {
+        *out_text = text;
+        return 1;
+    }
     return 0;
 #else
     static const char *prefixes[] = {
@@ -421,10 +430,11 @@ load_locale_file_for_code(const char *code, char **out_text)
         "../../../../",
         NULL
     };
+
     for(int i = 0; prefixes[i] != NULL; i++) {
         snprintf(path, sizeof(path), "%slocales/%s.txt", prefixes[i], code);
         if(FileExists(path)) {
-            char *text = LoadFileText(path);
+            text = LoadFileText(path);
             if(text != NULL) {
                 *out_text = text;
                 return 1;
@@ -432,6 +442,12 @@ load_locale_file_for_code(const char *code, char **out_text)
         }
     }
 
+    snprintf(path, sizeof(path), "locales/%s.txt", code);
+    text = LoadEmbeddedAssetText(path);
+    if(text != NULL) {
+        *out_text = text;
+        return 1;
+    }
     return 0;
 #endif
 }
