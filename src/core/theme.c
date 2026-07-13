@@ -718,5 +718,5 @@ Color GetThemeSurface(void) { return GetCurrentThemeColor("surface"); }
 Color GetThemeCircle(void) { return GetCurrentThemeColor("circle"); }
 Color GetThemeButton(void) { return GetCurrentThemeColor("button"); }
 Color GetThemeButtonHover(void) { return GetCurrentThemeColor("button_hover"); }
-Color GetThemeIcon(void) { return WHITE; }
+Color GetThemeIcon(void) { return GetCurrentThemeColor("icon"); }
 Color GetThemeLink(void) { return GetCurrentThemeColor("link"); }
