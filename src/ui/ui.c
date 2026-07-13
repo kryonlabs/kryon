@@ -209,6 +209,15 @@ PushUIInputCapture(Rectangle bounds, int allow_inside)
         (UIInputCapture){bounds, allow_inside != 0};
 }
 
+void
+BeginUIModalLayer(void)
+{
+    ClearUIInputCaptures();
+    PushUIInputCapture((Rectangle){0.0f, 0.0f,
+                                   (float)ui_view_width,
+                                   (float)ui_view_height}, 0);
+}
+
 int
 ui_base_input_captures_click(Vector2 point, int include_pointer_drag)
 {

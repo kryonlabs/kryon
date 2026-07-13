@@ -633,6 +633,7 @@ void BeginUIFrame(int width, int height, float dpi);
 void SetUIFrame(Camera2D camera);
 void ClearUIInputCaptures(void);
 void PushUIInputCapture(Rectangle bounds, int allow_inside);
+void BeginUIModalLayer(void);
 void PushUIInputClip(Rectangle bounds);
 void PopUIInputClip(void);
 void SetUIModalCapture(Rectangle bounds);
