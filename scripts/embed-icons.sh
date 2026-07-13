@@ -45,10 +45,18 @@ icon_name()
         printf 'static const unsigned char ui_icon_%s[] = {\n' "$ident"
         od -An -v -tx1 "$file" | awk '
         {
-            printf "   ";
-            for(i = 1; i <= NF; i++)
+            for(i = 1; i <= NF; i++) {
+                if(n % 32 == 0)
+                    printf "   ";
                 printf " 0x%s,", $i;
-            printf "\n";
+                n++;
+                if(n % 32 == 0)
+                    printf "\n";
+            }
+        }
+        END {
+            if(n % 32 != 0)
+                printf "\n";
         }'
         printf '};\n\n'
     done
