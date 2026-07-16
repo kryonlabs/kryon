@@ -1,9 +1,33 @@
 # Changelog
 
-## [0.1.0] - 2026-07-16
+## [v0.1.3] - 2026-07-16
 
 ### Changed
 
 - Add public Flint version metadata for release artifacts.
 - Move font atlas generation to the vendored fontchop submodule.
 - Replace the single implicit UI font with a registered font selection API.
+- Improve generated icon asset formatting and desktop/embedded fallbacks.
+
+### Added
+
+- Add Markdown support and text area UI.
+- Add pointer release helper APIs and modal layer input capture.
+
+## [v0.1.2] - 2026-07-12
+
+### Added
+
+- Add web file dialog loading.
+
+## [v0.1.1] - 2026-07-12
+
+### Fixed
+
+- Fix release CI vendor builds.
+
+## [v0.1.0] - 2026-07-12
+
+### Added
+
+- Add Flint release automation.
