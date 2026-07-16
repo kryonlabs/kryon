@@ -1,6 +1,7 @@
 #ifndef FLINT_H
 #define FLINT_H
 
+#include "flint_version.h"
 #include "flint_compat.generated.h"
 
 #include "ui_color.h"

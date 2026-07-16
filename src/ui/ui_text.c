@@ -10,10 +10,18 @@
 #include <string.h>
 #include <stddef.h>
 
-static Font g_flint_text_font = {0};
-static Font g_flint_text_small_font = {0};
-static Font g_flint_default_font = {0};
-static int g_flint_default_font_attempted = 0;
+#define UI_FONT_MAX_REGISTERED 16
+#define UI_FONT_DEFAULT_NAME "default"
+
+typedef struct UIFontEntry {
+    char name[32];
+    Font font;
+    Font small_font;
+} UIFontEntry;
+
+static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
+static int g_ui_font_count = 0;
+static int g_ui_active_font = -1;
 
 static Rectangle
 text_world_rect_to_screen(Rectangle rect)
@@ -33,6 +41,52 @@ font_valid(Font font)
            font.glyphCount > 0 && font.baseSize > 0;
 }
 
+int
+UIFontHasGlyph(Font font, int codepoint)
+{
+    if(!font_valid(font))
+        return 0;
+
+    for(int i = 0; i < font.glyphCount; i++) {
+        if(font.glyphs[i].value == codepoint)
+            return 1;
+    }
+
+    return 0;
+}
+
+static int
+font_entry_index(const char *name)
+{
+    const char *key = name != NULL && name[0] != '\0' ? name : UI_FONT_DEFAULT_NAME;
+
+    for(int i = 0; i < g_ui_font_count; i++) {
+        if(strcmp(g_ui_fonts[i].name, key) == 0)
+            return i;
+    }
+
+    return -1;
+}
+
+static int
+font_entry_alloc(const char *name)
+{
+    const char *key = name != NULL && name[0] != '\0' ? name : UI_FONT_DEFAULT_NAME;
+    int index = font_entry_index(key);
+
+    if(index >= 0)
+        return index;
+    if(g_ui_font_count >= UI_FONT_MAX_REGISTERED)
+        return -1;
+
+    index = g_ui_font_count++;
+    memset(&g_ui_fonts[index], 0, sizeof(g_ui_fonts[index]));
+    snprintf(g_ui_fonts[index].name, sizeof(g_ui_fonts[index].name), "%s", key);
+    if(g_ui_active_font < 0)
+        g_ui_active_font = index;
+    return index;
+}
+
 typedef struct UIChoppedGlyph {
     int32_t value;
     int32_t x;
@@ -47,21 +101,9 @@ typedef struct UIChoppedGlyph {
 static Font
 active_font(void)
 {
-    if(font_valid(g_flint_text_font))
-        return g_flint_text_font;
-
-    if(!font_valid(g_flint_default_font) && !g_flint_default_font_attempted) {
-        const EmbeddedAsset *png = GetEmbeddedAsset("assets/fonts/locales.png");
-        const EmbeddedAsset *dat = GetEmbeddedAsset("assets/fonts/locales.dat");
-
-        g_flint_default_font_attempted = 1;
-        if(png != NULL && dat != NULL) {
-            g_flint_default_font = LoadUIChoppedFontFromMemory(
-                png->data, png->size, dat->data, dat->size, UI_TEXT_BASE_SIZE);
-        }
-    }
-    if(font_valid(g_flint_default_font))
-        return g_flint_default_font;
+    if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
+       font_valid(g_ui_fonts[g_ui_active_font].font))
+        return g_ui_fonts[g_ui_active_font].font;
 
     return GetFontDefault();
 }
@@ -69,10 +111,45 @@ active_font(void)
 static Font
 active_font_for_size(int font_size)
 {
-    if(font_size == UI_TEXT_8 && font_valid(g_flint_text_small_font))
-        return g_flint_text_small_font;
+    if(font_size == UI_TEXT_8 && g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
+       font_valid(g_ui_fonts[g_ui_active_font].small_font))
+        return g_ui_fonts[g_ui_active_font].small_font;
 
     return active_font();
+}
+
+static Font
+font_for_codepoint(int codepoint, int font_size)
+{
+    Font font = active_font_for_size(font_size);
+
+    if(UIFontHasGlyph(font, codepoint))
+        return font;
+
+    for(int i = 0; i < g_ui_font_count; i++) {
+        Font candidate = font_size == UI_TEXT_8 && font_valid(g_ui_fonts[i].small_font) ?
+            g_ui_fonts[i].small_font : g_ui_fonts[i].font;
+        if(UIFontHasGlyph(candidate, codepoint))
+            return candidate;
+    }
+
+    return font;
+}
+
+static Font
+font_for_scaled_codepoint(int codepoint)
+{
+    Font font = active_font();
+
+    if(UIFontHasGlyph(font, codepoint))
+        return font;
+
+    for(int i = 0; i < g_ui_font_count; i++) {
+        if(UIFontHasGlyph(g_ui_fonts[i].font, codepoint))
+            return g_ui_fonts[i].font;
+    }
+
+    return font;
 }
 
 static int
@@ -89,22 +166,54 @@ font_integer_scale(int font_size)
 }
 
 
-void
-SetUIFont(Font font)
-{
-    g_flint_text_font = font;
-}
-
-void
-SetUISmallFont(Font font)
-{
-    g_flint_text_small_font = font;
-}
-
 Font
 GetUIFont(void)
 {
     return active_font();
+}
+
+int
+RegisterUIFont(const char *name, Font font)
+{
+    int index;
+
+    if(!font_valid(font))
+        return 0;
+
+    index = font_entry_alloc(name);
+    if(index < 0)
+        return 0;
+
+    g_ui_fonts[index].font = font;
+    return 1;
+}
+
+int
+RegisterUISmallFont(const char *name, Font font)
+{
+    int index;
+
+    if(!font_valid(font))
+        return 0;
+
+    index = font_entry_alloc(name);
+    if(index < 0)
+        return 0;
+
+    g_ui_fonts[index].small_font = font;
+    return 1;
+}
+
+int
+UseUIFont(const char *name)
+{
+    int index = font_entry_index(name);
+
+    if(index < 0 || !font_valid(g_ui_fonts[index].font))
+        return 0;
+
+    g_ui_active_font = index;
+    return 1;
 }
 
 Font
@@ -198,55 +307,6 @@ cleanup:
     return (Font){0};
 }
 
-Font
-LoadUIChoppedFont(const char *png_path, const char *dat_path, int base_size)
-{
-    Font font = {0};
-    FILE *file = NULL;
-    unsigned char *dat_data = NULL;
-    unsigned char *png_data = NULL;
-    long dat_size;
-    int png_size;
-
-    if(png_path == NULL || dat_path == NULL)
-        return font;
-
-    file = fopen(dat_path, "rb");
-    if(file == NULL)
-        return font;
-
-    if(fseek(file, 0, SEEK_END) != 0)
-        goto cleanup;
-    dat_size = ftell(file);
-    if(dat_size <= 0)
-        goto cleanup;
-    rewind(file);
-
-    dat_data = (unsigned char *)malloc((size_t)dat_size);
-    if(dat_data == NULL)
-        goto cleanup;
-    if(fread(dat_data, 1, (size_t)dat_size, file) != (size_t)dat_size)
-        goto cleanup;
-    fclose(file);
-    file = NULL;
-
-    png_data = LoadFileData(png_path, &png_size);
-    if(png_data == NULL || png_size <= 0)
-        goto cleanup;
-
-    font = LoadUIChoppedFontFromMemory(png_data, (unsigned int)png_size,
-                                                    dat_data, (unsigned int)dat_size,
-                                                    base_size);
-
-cleanup:
-    if(file != NULL)
-        fclose(file);
-    if(png_data != NULL)
-        UnloadFileData(png_data);
-    free(dat_data);
-    return font;
-}
-
 void
 UnloadUIFont(Font *font)
 {
@@ -257,6 +317,14 @@ UnloadUIFont(Font *font)
     free(font->glyphs);
     free(font->recs);
     *font = (Font){0};
+}
+
+void
+ClearUIFonts(void)
+{
+    memset(g_ui_fonts, 0, sizeof(g_ui_fonts));
+    g_ui_font_count = 0;
+    g_ui_active_font = -1;
 }
 
 int
@@ -290,11 +358,12 @@ GetUITextHeight(const char *text, int font_size)
         if(codepoint == '\n')
             break;
         if(codepoint != ' ' && codepoint != '\t') {
-            int index = GetGlyphIndex(font, codepoint);
-            GlyphInfo glyph = font.glyphs[index];
-            Rectangle rec = font.recs[index];
-            float glyph_top = (float)glyph.offsetY * scale - (float)font.glyphPadding * scale;
-            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)font.glyphPadding) * scale;
+            Font glyph_font = font_for_codepoint(codepoint, font_size);
+            int index = GetGlyphIndex(glyph_font, codepoint);
+            GlyphInfo glyph = glyph_font.glyphs[index];
+            Rectangle rec = glyph_font.recs[index];
+            float glyph_top = (float)glyph.offsetY * scale - (float)glyph_font.glyphPadding * scale;
+            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)glyph_font.glyphPadding) * scale;
 
             if(!seen_glyph) {
                 min_top = glyph_top;
@@ -342,8 +411,9 @@ MeasureScaledUIText(const char *text, int scale)
         if(codepoint == '\n')
             break;
 
-        int index = GetGlyphIndex(font, codepoint);
-        width += font.glyphs[index].advanceX * scale;
+        Font glyph_font = font_for_scaled_codepoint(codepoint);
+        int index = GetGlyphIndex(glyph_font, codepoint);
+        width += glyph_font.glyphs[index].advanceX * scale;
         i += codepoint_byte_count;
     }
 
@@ -374,9 +444,10 @@ DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
         if(codepoint == '\n')
             break;
 
-        int index = GetGlyphIndex(font, codepoint);
-        GlyphInfo glyph = font.glyphs[index];
-        Rectangle src = font.recs[index];
+        Font glyph_font = font_for_scaled_codepoint(codepoint);
+        int index = GetGlyphIndex(glyph_font, codepoint);
+        GlyphInfo glyph = glyph_font.glyphs[index];
+        Rectangle src = glyph_font.recs[index];
 
         if(src.width > 0.0f && src.height > 0.0f) {
             Rectangle dst = {
@@ -385,7 +456,7 @@ DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
                 .width = src.width * (float)scale,
                 .height = src.height * (float)scale
             };
-            DrawTexturePro(font.texture, src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
+            DrawTexturePro(glyph_font.texture, src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
         }
 
         cursor_x += glyph.advanceX * scale;
@@ -455,11 +526,12 @@ GetUITextY(const char *text, int box_y, int box_h, int font_size)
             break;
 
         if(codepoint != ' ' && codepoint != '\t') {
-            int index = GetGlyphIndex(font, codepoint);
-            GlyphInfo glyph = font.glyphs[index];
-            Rectangle rec = font.recs[index];
-            float glyph_top = (float)glyph.offsetY * scale - (float)font.glyphPadding * scale;
-            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)font.glyphPadding) * scale;
+            Font glyph_font = font_for_codepoint(codepoint, font_size);
+            int index = GetGlyphIndex(glyph_font, codepoint);
+            GlyphInfo glyph = glyph_font.glyphs[index];
+            Rectangle rec = glyph_font.recs[index];
+            float glyph_top = (float)glyph.offsetY * scale - (float)glyph_font.glyphPadding * scale;
+            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)glyph_font.glyphPadding) * scale;
 
             if(!seen_glyph) {
                 min_top = glyph_top;

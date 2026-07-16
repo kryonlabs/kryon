@@ -4,7 +4,9 @@ BUILD_DIR ?= build
 PREFIX ?= /usr/local
 SITE_DIR ?= docs/site
 SITE_BUILD_DIR ?= $(BUILD_DIR)/site
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || printf '%s' 0.0.0)
+VERSION_FILE ?= include/flint_version.h
+FLINT_VERSION_STRING := $(shell sed -n 's/^#define FLINT_VERSION_STRING "\([^"]*\)".*/\1/p' $(VERSION_FILE) 2>/dev/null)
+VERSION ?= $(if $(strip $(FLINT_VERSION_STRING)),$(FLINT_VERSION_STRING),$(shell git describe --tags --always --dirty 2>/dev/null || printf '%s' 0.0.0))
 DIST_DIR ?= dist
 STATIC_DIST_ROOT := $(BUILD_DIR)/dist/flint-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/flint-$(VERSION)-static.tar.gz
@@ -24,13 +26,14 @@ FLINT_BACKEND_RENAME_HEADER = $(BUILD_DIR)/generated/raylib_backend_rename.h
 FLINT_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/flint_raylib_wrappers.c
 FLINT_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(FLINT_COMPAT_HEADER)
 FLINT_RAYLIB_BACKEND_RENAME_HEADER ?= $(FLINT_BACKEND_RENAME_HEADER)
-FLINT_FONT_OUT ?= assets/fonts/locales
+FLINT_FONT_OUT ?= assets/fonts/ui
 FLINT_FONT_OUTPUTS = $(FLINT_FONT_OUT).png $(FLINT_FONT_OUT).dat
 FLINT_FONT_LOCALES ?= locales/*.txt
 FLINT_FONT_LOCALE_FILES = $(wildcard $(FLINT_FONT_LOCALES))
-FLINT_FONT_FALLBACK_LOCALES = tools/otfchop/locales/en.txt
-FLINT_FONT_SOURCE ?= tools/otfchop/unifont-17.0.04.otf
-FLINT_OTFCHOP ?= tools/otfchop/otfchop
+FLINT_FONT_SOURCE ?= vendor/fontchop/fonts/unifont-17.0.04.otf
+FLINT_FONT_RANGES ?= ascii
+FLINT_FONT_MISSING ?= fail
+FLINT_FONTCHOP ?= vendor/fontchop/fontchop
 UNAME_S := $(shell uname -s 2>/dev/null)
 UNAME_M := $(shell uname -m 2>/dev/null)
 ifeq ($(UNAME_M),amd64)
@@ -102,7 +105,7 @@ MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(FLINT_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check dist-static check-static-package install-static
+.PHONY: all clean run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check version release-check dist-static check-static-package install-static
 
 all: $(LIB)
 
@@ -115,7 +118,7 @@ run:
 
 clean:
 	rm -rf $(BUILD_DIR) $(LIB)
-	$(MAKE) -C tools/otfchop clean
+	$(MAKE) -C vendor/fontchop clean
 	$(MAKE) -C examples web-clean
 
 docs-site:
@@ -155,7 +158,14 @@ flint-boundary-check:
 $(LIB): $(OBJS) | $(FLINT_COMPAT_HEADER) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK) $(FLINT_MARKDOWN_DEPS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
-dist-static: $(STATIC_DIST_ARCHIVE)
+version:
+	@printf '%s\n' '$(VERSION)'
+
+release-check:
+	@test -n '$(VERSION)'
+	@grep -q '^## \[$(VERSION)\]' CHANGELOG.md
+
+dist-static: release-check $(STATIC_DIST_ARCHIVE)
 
 check-static-package: $(STATIC_DIST_ARCHIVE)
 	sh scripts/check-static-package.sh $(STATIC_DIST_ARCHIVE)
@@ -164,7 +174,7 @@ install-static: $(STATIC_DIST_ARCHIVE)
 	mkdir -p $(DESTDIR)$(PREFIX)
 	tar -xzf $(STATIC_DIST_ARCHIVE) -C $(DESTDIR)$(PREFIX) --strip-components=1
 
-$(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(FLINT_LIBOQS_A) $(FLINT_CURL_A) $(FLINT_MARKDOWN_DEPS) README.md LICENSE THIRD_PARTY_NOTICES.md docs/API.md examples/package/minimal.c examples/package/markdown.c scripts/check-static-package.sh
+$(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(FLINT_LIBOQS_A) $(FLINT_CURL_A) $(FLINT_MARKDOWN_DEPS) README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md docs/API.md examples/package/minimal.c examples/package/markdown.c scripts/check-static-package.sh
 	rm -rf $(STATIC_DIST_ROOT)
 	mkdir -p $(STATIC_DIST_ROOT)/include $(STATIC_DIST_ROOT)/lib $(STATIC_DIST_ROOT)/lib/pkgconfig $(STATIC_DIST_ROOT)/lib/cmake/flint $(STATIC_DIST_ROOT)/share/doc/flint $(STATIC_DIST_ROOT)/share/licenses/flint $(STATIC_DIST_ROOT)/examples $(DIST_DIR)
 	cp -R include/. $(STATIC_DIST_ROOT)/include/
@@ -172,7 +182,7 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(FLINT_LIBOQS_A) $(FLINT_CURL_A) $(F
 	cp README.md $(STATIC_DIST_ROOT)/
 	cp LICENSE $(STATIC_DIST_ROOT)/
 	cp LICENSE THIRD_PARTY_NOTICES.md $(STATIC_DIST_ROOT)/share/licenses/flint/
-	cp docs/API.md $(STATIC_DIST_ROOT)/share/doc/flint/
+	cp CHANGELOG.md docs/API.md $(STATIC_DIST_ROOT)/share/doc/flint/
 	cp examples/package/*.c $(STATIC_DIST_ROOT)/examples/
 	git submodule status > $(STATIC_DIST_ROOT)/SUBMODULES.txt
 	printf '%s\n' '$(VERSION)' > $(STATIC_DIST_ROOT)/VERSION
@@ -263,19 +273,14 @@ $(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(FLINT_OTFCHOP): tools/otfchop/otfchop.c tools/otfchop/stb_truetype.h tools/otfchop/stb_image_write.h
-	$(MAKE) -C tools/otfchop otfchop
+$(FLINT_FONTCHOP): vendor/fontchop/fontchop.c vendor/fontchop/stb_truetype.h vendor/fontchop/stb_image_write.h
+	$(MAKE) -C vendor/fontchop fontchop
 
 font-assets: $(FLINT_FONT_OUTPUTS)
 
-$(FLINT_FONT_OUTPUTS): $(FLINT_OTFCHOP) $(FLINT_FONT_SOURCE) $(FLINT_FONT_FALLBACK_LOCALES) $(FLINT_FONT_LOCALE_FILES)
+$(FLINT_FONT_OUTPUTS): $(FLINT_FONTCHOP) $(FLINT_FONT_SOURCE) $(FLINT_FONT_LOCALE_FILES)
 	@mkdir -p $(dir $(FLINT_FONT_OUT))
-	@set -- $(FLINT_FONT_LOCALES); \
-	case "$(FLINT_FONT_LOCALES)" in \
-		*\**|*\?*) \
-			if [ "$$1" = "$(FLINT_FONT_LOCALES)" ]; then \
-				set -- $(FLINT_FONT_FALLBACK_LOCALES); \
-			fi; \
-			;; \
-	esac; \
-	$(FLINT_OTFCHOP) $(FLINT_FONT_SOURCE) "$$@" $(FLINT_FONT_OUT)
+	$(FLINT_FONTCHOP) --font "$(FLINT_FONT_SOURCE)" --output "$(FLINT_FONT_OUT)" \
+		$(foreach range,$(FLINT_FONT_RANGES),--range "$(range)") \
+		--missing "$(FLINT_FONT_MISSING)" \
+		$(foreach input,$(FLINT_FONT_LOCALE_FILES),--input "$(input)")

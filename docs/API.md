@@ -277,18 +277,20 @@ void ResetUIClip(void);
 #### Font Management
 
 ```c
-void SetUIFont(Font font);
-void SetUISmallFont(Font font);
 Font GetUIFont(void);
+int RegisterUIFont(const char *name, Font font);
+int RegisterUISmallFont(const char *name, Font font);
+int UseUIFont(const char *name);
+int UIFontHasGlyph(Font font, int codepoint);
 ```
 
 #### Font Loading
 
 ```c
-Font LoadUIChoppedFont(const char *png_path, const char *dat_path, int base_size);
 Font LoadUIChoppedFontFromMemory(const unsigned char *png_data, unsigned int png_size,
                                               const unsigned char *dat_data, unsigned int dat_size, int base_size);
 void UnloadUIFont(Font *font);
+void ClearUIFonts(void);
 ```
 
 #### Text Measurement

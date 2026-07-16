@@ -9,7 +9,7 @@
 build/
 dist/
 libflint.a
-assets/fonts/
+assets/fonts/*
 
 # Example binaries
 examples/01_file_dialog

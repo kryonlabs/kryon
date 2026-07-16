@@ -14,11 +14,13 @@ ifeq ($(UNAME_S),Linux)
     EXAMPLE_SYSTEM_LDLIBS += -ldl -lrt
 endif
 FLINT_DIR := ..
-FONT_OUTPUT := assets/fonts/locales
+FONT_OUTPUT := assets/fonts/ui
 FONT_OUTPUTS := $(FONT_OUTPUT).png $(FONT_OUTPUT).dat
 FONT_LOCALES := $(wildcard locales/*.txt)
-FONT_TOOL := ../tools/otfchop/otfchop
-FONT_SOURCE := ../tools/otfchop/unifont-17.0.04.otf
+FONT_TOOL := ../vendor/fontchop/fontchop
+FONT_SOURCE := ../vendor/fontchop/fonts/unifont-17.0.04.otf
+FONT_RANGES := ascii
+FONT_MISSING := fail
 BUILD_DIR ?= ../build/examples
 WEB_EMBED_ASSETS_C := $(BUILD_DIR)/embedded_asset_data.c
 WEB_EMBED_ASSET_FILES := $(shell find ../themes -type f 2>/dev/null)
@@ -57,13 +59,13 @@ all: ../libflint.a $(EXAMPLES)
 	@$(MAKE) -C ..
 
 $(FONT_TOOL):
-	@$(MAKE) -C ../tools/otfchop otfchop
+	@$(MAKE) -C ../vendor/fontchop fontchop
 
 font-assets: $(FONT_OUTPUTS)
 
 $(FONT_OUTPUTS): $(FONT_LOCALES) $(FONT_TOOL) $(FONT_SOURCE)
 	@mkdir -p assets/fonts
-	@$(FONT_TOOL) $(FONT_SOURCE) $(FONT_LOCALES) $(FONT_OUTPUT)
+	@$(FONT_TOOL) --font "$(FONT_SOURCE)" --output "$(FONT_OUTPUT)" $(foreach range,$(FONT_RANGES),--range "$(range)") --missing "$(FONT_MISSING)" $(foreach input,$(FONT_LOCALES),--input "$(input)")
 
 %: %.c $(FONT_OUTPUTS)
 	@echo "Building $@..."
