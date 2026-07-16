@@ -152,19 +152,18 @@ font_for_scaled_codepoint(int codepoint)
     return font;
 }
 
-static int
-font_integer_scale(int font_size)
+static float
+font_size_scale(Font font, int font_size)
 {
     int target_size = ScaleUIPx(font_size);
-    int base_size = UI_TEXT_BASE_SIZE;
-    int scale;
+    int base_size = font.baseSize > 0 ? font.baseSize : UI_TEXT_BASE_SIZE;
 
-    if(target_size < base_size)
+    if(target_size <= 0)
+        target_size = font_size > 0 ? font_size : base_size;
+    if(target_size <= 0)
         target_size = base_size;
-    scale = (target_size + base_size / 2) / base_size;
-    return scale > 0 ? scale : 1;
+    return (float)target_size / (float)base_size;
 }
-
 
 Font
 GetUIFont(void)
@@ -331,11 +330,26 @@ int
 MeasureUIText(const char *text, int font_size)
 {
     Font font = active_font_for_size(font_size);
+    int width = 0;
 
-    if(text == NULL || font.texture.id == 0)
+    if(text == NULL || font.texture.id == 0 || font.glyphs == NULL || font.baseSize <= 0)
         return 0;
 
-    return MeasureScaledUIText(text, font_integer_scale(font_size));
+    for(int i = 0; text[i] != '\0';) {
+        int codepoint_byte_count = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
+        Font glyph_font;
+        int index;
+
+        if(codepoint == '\n')
+            break;
+        glyph_font = font_for_codepoint(codepoint, font_size);
+        index = GetGlyphIndex(glyph_font, codepoint);
+        width += (int)((float)glyph_font.glyphs[index].advanceX *
+                       font_size_scale(glyph_font, font_size) + 0.5f);
+        i += codepoint_byte_count;
+    }
+    return width;
 }
 
 int
@@ -350,7 +364,7 @@ GetUITextHeight(const char *text, int font_size)
     if(text == NULL || text[0] == '\0' || font.texture.id == 0 || font.baseSize <= 0)
         return font_size;
 
-    scale = (float)font_integer_scale(font_size);
+    scale = font_size_scale(font, font_size);
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
         int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
@@ -362,8 +376,9 @@ GetUITextHeight(const char *text, int font_size)
             int index = GetGlyphIndex(glyph_font, codepoint);
             GlyphInfo glyph = glyph_font.glyphs[index];
             Rectangle rec = glyph_font.recs[index];
-            float glyph_top = (float)glyph.offsetY * scale - (float)glyph_font.glyphPadding * scale;
-            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)glyph_font.glyphPadding) * scale;
+            float glyph_scale = font_size_scale(glyph_font, font_size);
+            float glyph_top = (float)glyph.offsetY * glyph_scale - (float)glyph_font.glyphPadding * glyph_scale;
+            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)glyph_font.glyphPadding) * glyph_scale;
 
             if(!seen_glyph) {
                 min_top = glyph_top;
@@ -380,7 +395,7 @@ GetUITextHeight(const char *text, int font_size)
     }
 
     if(!seen_glyph)
-        return font.baseSize * font_integer_scale(font_size);
+        return (int)((float)font.baseSize * scale + 0.5f);
     return (int)(max_bottom - min_top + 0.5f);
 }
 
@@ -388,9 +403,10 @@ int
 GetUITextLineHeight(int font_size)
 {
     Font font = active_font_for_size(font_size);
-    int scale = font_integer_scale(font_size);
+    float scale = font_size_scale(font, font_size);
 
-    return font.baseSize > 0 ? font.baseSize * scale : UI_TEXT_BASE_SIZE * scale;
+    return font.baseSize > 0 ? (int)((float)font.baseSize * scale + 0.5f) :
+        (int)((float)UI_TEXT_BASE_SIZE * scale + 0.5f);
 }
 
 int
@@ -423,7 +439,43 @@ MeasureScaledUIText(const char *text, int scale)
 void
 DrawUIText(const char *text, int x, int y, int font_size, Color color)
 {
-    DrawScaledUIText(text, x, y, font_integer_scale(font_size), color);
+    Font font = active_font_for_size(font_size);
+    int cursor_x = x;
+
+    if(text == NULL || font.texture.id == 0 || font.glyphs == NULL || font.recs == NULL)
+        return;
+
+    for(int i = 0; text[i] != '\0';) {
+        int codepoint_byte_count = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
+        Font glyph_font;
+        int index;
+        float scale;
+        GlyphInfo glyph;
+        Rectangle src;
+
+        if(codepoint == '\n')
+            break;
+
+        glyph_font = font_for_codepoint(codepoint, font_size);
+        index = GetGlyphIndex(glyph_font, codepoint);
+        scale = font_size_scale(glyph_font, font_size);
+        glyph = glyph_font.glyphs[index];
+        src = glyph_font.recs[index];
+
+        if(src.width > 0.0f && src.height > 0.0f) {
+            Rectangle dst = {
+                .x = (float)cursor_x + (float)glyph.offsetX * scale,
+                .y = (float)y + (float)glyph.offsetY * scale,
+                .width = src.width * scale,
+                .height = src.height * scale
+            };
+            DrawTexturePro(glyph_font.texture, src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
+        }
+
+        cursor_x += (int)((float)glyph.advanceX * scale + 0.5f);
+        i += codepoint_byte_count;
+    }
 }
 
 void
@@ -468,7 +520,8 @@ void
 DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, Color color)
 {
     Font font = active_font_for_size(font_size);
-    int actual_size = font.baseSize > 0 ? font.baseSize * font_integer_scale(font_size) : font_size;
+    int actual_size = font.baseSize > 0 ?
+        (int)((float)font.baseSize * font_size_scale(font, font_size) + 0.5f) : font_size;
     int text_w = MeasureUIText(text, font_size);
     int y = GetUITextY(text, center_y - actual_size / 2, actual_size, font_size);
 
@@ -508,15 +561,12 @@ int
 GetUITextY(const char *text, int box_y, int box_h, int font_size)
 {
     Font font = active_font_for_size(font_size);
-    float scale;
     float min_top = 0.0f;
     float max_bottom = 0.0f;
     int seen_glyph = 0;
 
     if(text == NULL || text[0] == '\0' || font.texture.id == 0 || font.baseSize <= 0)
         return box_y + (int)(((float)box_h - (float)font_size) * 0.5f + 0.5f);
-
-    scale = (float)font_integer_scale(font_size);
 
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -530,8 +580,9 @@ GetUITextY(const char *text, int box_y, int box_h, int font_size)
             int index = GetGlyphIndex(glyph_font, codepoint);
             GlyphInfo glyph = glyph_font.glyphs[index];
             Rectangle rec = glyph_font.recs[index];
-            float glyph_top = (float)glyph.offsetY * scale - (float)glyph_font.glyphPadding * scale;
-            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)glyph_font.glyphPadding) * scale;
+            float glyph_scale = font_size_scale(glyph_font, font_size);
+            float glyph_top = (float)glyph.offsetY * glyph_scale - (float)glyph_font.glyphPadding * glyph_scale;
+            float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)glyph_font.glyphPadding) * glyph_scale;
 
             if(!seen_glyph) {
                 min_top = glyph_top;
