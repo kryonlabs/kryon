@@ -3,10 +3,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // Set the view dimensions (should be called when window/viewport changes)
 void SetUIViewSize(int width, int height);
 
@@ -22,9 +18,5 @@ void GetUICenteredColumn(int max_w, int side_pad, int *x, int *w);
 
 // Calculate page side padding based on current view width
 int GetUIPageSidePadding(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // UI_LAYOUT_H

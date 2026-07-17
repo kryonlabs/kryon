@@ -5,10 +5,6 @@
 #include "ui_icon_types.h"
 #include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef enum {
     UI_ICON_SIZE_TINY,
     UI_ICON_SIZE_SMALL,
@@ -189,9 +185,5 @@ int DrawUIDropdownMenu(int id);
 int UIDropdownCapturesClick(Vector2 point);
 void SetUIDropdownClipTop(int top);
 void SetUIDropdownClipBottom(int bottom);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -3,10 +3,6 @@
 
 #include "flint_compat.generated.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef void (*UITextInputPlatformCallback)(int active);
 
 void InitUI(int width, int height, float dpi);
@@ -56,9 +52,5 @@ void DrawUIFocus(Rectangle bounds);
 
 extern int ui_view_height;
 extern int ui_view_width;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
