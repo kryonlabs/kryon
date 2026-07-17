@@ -16,7 +16,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
         MarkUIClickable();
 
     DrawFittedUITextInRect(label, (Rectangle){(float)x, (float)y, (float)w, (float)h},
-                                font, UI_TEXT_8, c_text);
+                                font, UI_TEXT_12, c_text);
 
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         UIConsumeRelease();
@@ -38,8 +38,8 @@ ui_modal_clampi(int value, int min_value, int max_value)
 static int
 ui_modal_action_width(const char *label, int font)
 {
-    int width = MeasureUIText(label != NULL ? label : "", font) + ScaleUIPx(28);
-    int min_width = ScaleUIPx(104);
+    int width = MeasureUIText(label != NULL ? label : "", font) + ScaleUIPx(34);
+    int min_width = ScaleUIPx(112);
     int max_width = ScaleUIPx(176);
 
     return ui_modal_clampi(width, min_width, max_width);
