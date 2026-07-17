@@ -9,6 +9,8 @@
 #include "ui_dpi.h"
 #include "ui_layout.h"
 #include "ui_clip.h"
+#include "ui_core.h"
+#include "ui_controls.h"
 #include "ui_icons.h"
 #include "ui_text.h"
 #include "ui.h"

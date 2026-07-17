@@ -1876,123 +1876,115 @@ DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
     int padding = GetUIIconButtonPadding(size);
     int w = btn_size + padding * 2;
     int h = btn_size + padding * 2;
-
+    Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
     Vector2 mouse_world = ui_mouse_world();
-    int mx = (int)mouse_world.x;
-    int my = (int)mouse_world.y;
-    int mb = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-    int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
-    int pressed = 0;
+    int hovered = CheckCollisionPointRec(mouse_world, bounds) &&
+                  !UIInputCapturesClick(mouse_world) &&
+                  UIHoverEffectsEnabled();
 
-    if(mx > x && mx < x + w && my > y && my < y + h && !UIInputCapturesClick(mouse_world)) {
-        int show_hover = UIHoverEffectsEnabled();
-        Color fill = show_hover ? c_button_hover : c_button;
-        DrawRectangle(x, y, w, h, fill);
-        DrawUIBevel(x, y, w, h, LightenUIColor(fill, 40), DarkenUIColor(fill, 40));
-        *hover = show_hover;
-        MarkUIClickable();
-        if(show_hover && mb) {
-            DrawUIBevel(x, y, w, h, LightenUIColor(c_button_hover, 40), DarkenUIColor(c_button_hover, 40));
-        }
-        if(released) {
-            pressed = 1;
-        }
-    } else {
-        DrawRectangle(x, y, w, h, c_button);
-        DrawUIBevel(x, y, w, h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-        *hover = 0;
-    }
-
-    DrawUIIconTexture(x + padding, y + padding, btn_size, icon, c_icon);
-
-    if(pressed)
-        UIConsumeRelease();
-    return pressed;
+    if(hover != NULL)
+        *hover = hovered;
+    return DrawUIIconButton((UIIconButton){
+        .bounds = bounds,
+        .icon = icon,
+        .icon_size = btn_size,
+        .icon_padding = padding,
+        .background = c_button,
+        .hover_background = c_button_hover,
+        .icon_color = c_icon,
+        .border = DarkenUIColor(c_button, 35),
+        .radius = 0.12f
+    });
 }
 
 int
 DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int mx = (int)mouse_world.x;
-    int my = (int)mouse_world.y;
-    int mb = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-    int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int w = size + padding * 2;
     int h = size + padding * 2;
-    int pressed = 0;
+    Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
+    int hovered = CheckCollisionPointRec(mouse_world, bounds) &&
+                  !UIInputCapturesClick(mouse_world) &&
+                  UIHoverEffectsEnabled();
 
-    if(mx > x && mx < x + w && my > y && my < y + h && !UIInputCapturesClick(mouse_world)) {
-        int show_hover = UIHoverEffectsEnabled();
-        Color fill = show_hover ? c_button_hover : c_button;
-        DrawRectangle(x, y, w, h, fill);
-        DrawUIBevel(x, y, w, h, LightenUIColor(fill, 40), DarkenUIColor(fill, 20));
-        *hover = show_hover;
-        MarkUIClickable();
-        if(show_hover && mb) {
-            DrawUIBevel(x, y, w, h, LightenUIColor(c_button_hover, 40), DarkenUIColor(c_button_hover, 40));
-        }
-        if(released) {
-            pressed = 1;
-        }
-    } else {
-        DrawRectangle(x, y, w, h, c_button);
-        DrawUIBevel(x, y, w, h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 20));
-        *hover = 0;
-    }
-
-    DrawUIIconTexture(x + padding, y + padding, size, icon, c_icon);
-
-    if(pressed)
-        UIConsumeRelease();
-    return pressed;
+    if(hover != NULL)
+        *hover = hovered;
+    return DrawUIIconButton((UIIconButton){
+        .bounds = bounds,
+        .icon = icon,
+        .icon_size = size,
+        .icon_padding = padding,
+        .background = c_button,
+        .hover_background = c_button_hover,
+        .icon_color = c_icon,
+        .border = DarkenUIColor(c_button, 35),
+        .radius = 0.12f
+    });
 }
 
 int
 DrawUITextButton(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int mx = (int)mouse_world.x;
-    int my = (int)mouse_world.y;
-    int local_hover = 0;
-
-    int mb = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-    int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int font = UI_TEXT_16;
-    int w = (int)MeasureUIText(label, font) + ScaleUIPx(24);
+    const char *text = label != NULL ? label : "";
+    int w = (int)MeasureUIText(text, font) + ScaleUIPx(24);
     int h = GetUITextLineHeight(font) + ScaleUIPx(12);
+    Rectangle bounds;
+    int hovered;
 
     x = x - w / 2;
-    if(!hover)
-        hover = &local_hover;
+    bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    hovered = CheckCollisionPointRec(mouse_world, bounds) &&
+              !UIInputCapturesClick(mouse_world) &&
+              UIHoverEffectsEnabled();
+    if(hover != NULL)
+        *hover = hovered;
+    return DrawUIButton((UIButton){
+        .bounds = bounds,
+        .label = text,
+        .font = font,
+        .background = c_button,
+        .hover_background = c_button_hover,
+        .text = c_text,
+        .border = LightenUIColor(c_button, 32),
+        .radius = 0.12f
+    });
+}
 
-    int pressed = 0;
-
-    if(mx > x && mx < x + w && my > y && my < y + h && !UIInputCapturesClick(mouse_world)) {
-        int show_hover = UIHoverEffectsEnabled();
-        Color fill = show_hover ? c_button_hover : c_button;
-        DrawRectangle(x, y, w, h, fill);
-        DrawUIBevel(x, y, w, h, LightenUIColor(fill, 40), DarkenUIColor(fill, 40));
-        *hover = show_hover;
-        MarkUIClickable();
-        if(show_hover && mb) {
-            DrawUIBevel(x, y, w, h, LightenUIColor(c_button_hover, 40), DarkenUIColor(c_button_hover, 40));
-        }
-        if(released) {
-            pressed = 1;
-        }
-    } else {
-        DrawRectangle(x, y, w, h, c_button);
-        DrawUIBevel(x, y, w, h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-        *hover = 0;
+static void
+ui_button_style_colors(UIButtonStyle style, Color *bg, Color *hover_bg,
+                       Color *text_color)
+{
+    switch(style) {
+    case UI_BUTTON_STYLE_SECONDARY:
+        *bg = DarkenUIColor(c_bg, 14);
+        *hover_bg = c_button;
+        *text_color = c_text;
+        return;
+    case UI_BUTTON_STYLE_DANGER:
+        *bg = (Color){180, 70, 70, 255};
+        *hover_bg = (Color){200, 90, 90, 255};
+        *text_color = WHITE;
+        return;
+    case UI_BUTTON_STYLE_TAB:
+        *bg = DarkenUIColor(c_bg, 10);
+        *hover_bg = c_button;
+        *text_color = c_text;
+        return;
+    case UI_BUTTON_STYLE_TAB_SELECTED:
+        *bg = c_button;
+        *hover_bg = c_button;
+        *text_color = c_text;
+        return;
+    case UI_BUTTON_STYLE_PRIMARY:
+    default:
+        *bg = c_button;
+        *hover_bg = c_button_hover;
+        *text_color = c_text;
+        return;
     }
-
-    DrawFittedUITextInRect(label, (Rectangle){(float)x, (float)y, (float)w, (float)h},
-                                font, UI_TEXT_12, c_text);
-
-    if(pressed)
-        UIConsumeRelease();
-    return pressed;
 }
 
 int
@@ -2000,93 +1992,39 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
                        UIButtonStyle style, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int font = GetUISmallFontSize();
-
-    Color bg, hover_bg, text_color;
-
-    switch(style) {
-        case UI_BUTTON_STYLE_PRIMARY:
-            bg = c_button;
-            hover_bg = c_button_hover;
-            text_color = c_text;
-            break;
-
-        case UI_BUTTON_STYLE_SECONDARY:
-            bg = DarkenUIColor(c_bg, 14);
-            hover_bg = c_button;
-            text_color = c_text;
-            break;
-
-        case UI_BUTTON_STYLE_DANGER:
-            bg = (Color){180, 70, 70, 255};
-            hover_bg = (Color){200, 90, 90, 255};
-            text_color = WHITE;
-            break;
-
-        case UI_BUTTON_STYLE_TAB:
-            bg = DarkenUIColor(c_bg, 10);
-            hover_bg = c_button;
-            text_color = c_text;
-            break;
-
-        case UI_BUTTON_STYLE_TAB_SELECTED:
-            bg = c_button;
-            hover_bg = bg;
-            text_color = c_text;
-            break;
-
-        default:
-            bg = c_button;
-            hover_bg = c_button_hover;
-            text_color = c_text;
-            break;
-    }
-
     Rectangle bounds = {x, y, w, h};
     int mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
     int captured = UIInputCapturesClick(mouse_world);
-    int active = mouse_inside && !disabled && !captured;
-    int hovered = active && UIHoverEffectsEnabled();
-    int cues = UITransitionCuesEnabled();
+    int hovered = mouse_inside && !disabled && !captured && UIHoverEffectsEnabled();
+    int clicked;
+    Color bg;
+    Color hover_bg;
+    Color text_color;
 
+    ui_button_style_colors(style, &bg, &hover_bg, &text_color);
     if(disabled) {
         bg = DarkenUIColor(bg, 22);
-        hover_bg = bg;
         text_color = DarkenUIColor(text_color, 70);
-        if(!captured && mouse_inside)
-            MarkUIDisabled();
     }
 
-    if(hover != NULL) {
+    if(hover != NULL)
         *hover = hovered;
-    }
 
-    int clicked = 0;
+    clicked = DrawUIButton((UIButton){
+        .bounds = bounds,
+        .label = label,
+        .font = font,
+        .disabled = disabled,
+        .background = bg,
+        .hover_background = hover_bg,
+        .text = text_color,
+        .border = LightenUIColor(bg, 32),
+        .radius = 0.08f
+    });
 
-    if(active) {
-        Color draw_bg = hovered ? hover_bg : bg;
-        if(cues && hovered)
-            draw_bg = LightenUIColor(draw_bg, 8);
-        DrawRectangleRec(bounds, draw_bg);
-        DrawUIBevel(x, y, w, h, LightenUIColor(draw_bg, cues && hovered ? 56 : 40),
-                    DarkenUIColor(draw_bg, 40));
-        if(cues && hovered && w > 4 && h > 4) {
-            Color cue = LightenUIColor(draw_bg, 42);
-            cue.a = cue.a > 165 ? 165 : cue.a;
-            DrawRectangle(x + 2, y + 1, w - 4, ScaleUIPx(1), cue);
-        }
-        MarkUIClickable();
-
-        if(released) {
-            clicked = 1;
-        }
-    } else {
-        DrawRectangleRec(bounds, bg);
-        DrawUIBevel(x, y, w, h, LightenUIColor(bg, 40), DarkenUIColor(bg, 40));
-    }
-
-    if(cues && style == UI_BUTTON_STYLE_TAB_SELECTED && !disabled && w > ScaleUIPx(18)) {
+    if(UITransitionCuesEnabled() && style == UI_BUTTON_STYLE_TAB_SELECTED &&
+       !disabled && w > ScaleUIPx(18)) {
         int cue_h = ScaleUIPx(2);
         if(cue_h < 1)
             cue_h = 1;
@@ -2094,11 +2032,6 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
                       cue_h, LightenUIColor(c_button_hover, 18));
     }
 
-    DrawFittedUITextInRect(label, (Rectangle){(float)x, (float)y, (float)w, (float)h},
-                                font, UI_TEXT_8, text_color);
-
-    if(clicked)
-        UIConsumeRelease();
     return clicked;
 }
 
