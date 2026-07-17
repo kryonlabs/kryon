@@ -726,7 +726,8 @@ GetUITitleFontSize(const char *title, int max_width)
 int
 GetUIControlTextY(const char *text, int box_y, int box_h, int font)
 {
-    return GetUITextY(text, box_y, box_h, font);
+    (void)text;
+    return GetUITextY("Hg", box_y, box_h, font);
 }
 
 void
