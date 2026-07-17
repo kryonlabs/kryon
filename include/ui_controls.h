@@ -28,6 +28,7 @@ typedef struct {
     Color cursor;
     float radius;
     int padding_x;
+    int padding_y;
 } UITextInputStyle;
 
 typedef struct {

@@ -488,6 +488,34 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
 }
 
 static int
+ui_control_height_for_font(int font)
+{
+    int line_h = GetUITextLineHeight(font);
+    int pad_y = ScaleUIPx(8);
+
+    if(line_h < font)
+        line_h = font;
+    return line_h + pad_y * 2;
+}
+
+static int
+ui_control_cursor_height(int font, int box_h)
+{
+    int h = GetUITextLineHeight(font);
+    int max_h = box_h - ScaleUIPx(8);
+
+    if(h < font)
+        h = font;
+    if(max_h < ScaleUIPx(8))
+        max_h = box_h;
+    if(h > max_h)
+        h = max_h;
+    if(h < ScaleUIPx(8))
+        h = ScaleUIPx(8);
+    return h;
+}
+
+static int
 ui_text_next_smaller_size(int font_size)
 {
     if(font_size > UI_TEXT_16)
@@ -734,7 +762,8 @@ void
 DrawCenteredUIControlText(const char *text, int center_x, int center_y, int font, Color color)
 {
     int text_w = MeasureUIText(text, font);
-    int y = GetUIControlTextY(text, center_y - font / 2, font, font);
+    int h = ui_control_height_for_font(font);
+    int y = GetUIControlTextY(text, center_y - h / 2, h, font);
 
     DrawUIText(text, center_x - text_w / 2, y, font, color);
 }
@@ -753,6 +782,8 @@ DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
     int clip_guard = 1;
     int text_x = x + padding_x;
     int text_y = GetUIControlTextY(value, y, h, font);
+    int cursor_h = ui_control_cursor_height(font, h);
+    int cursor_y = y + (h - cursor_h) / 2;
     Color border = focused ? style.focus_border : style.border;
     float radius = style.radius >= 0.0f ? style.radius : 0.12f;
 
@@ -783,7 +814,7 @@ DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
         before_cursor[copy_len] = '\0';
 
         int cursor_x = text_x + MeasureUIText(before_cursor, font);
-        DrawRectangle(cursor_x, y + ScaleUIPx(6), ScaleUIPx(2), h - ScaleUIPx(12), style.cursor);
+        DrawRectangle(cursor_x, cursor_y, ScaleUIPx(2), cursor_h, style.cursor);
     }
     EndUIClip();
 }
@@ -1291,7 +1322,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused, Rectangle boun
     int len;
     int line_start = 0;
     int padding_x = style.padding_x > 0 ? style.padding_x : ScaleUIPx(10);
-    int padding_y = ScaleUIPx(8);
+    int padding_y = style.padding_y > 0 ? style.padding_y : ScaleUIPx(8);
     int text_x = (int)bounds.x + padding_x;
     int text_y = (int)bounds.y + padding_y - scroll_y;
     int draw_y = text_y;
@@ -1329,6 +1360,7 @@ DrawUITextArea(UITextArea area)
     int line_h;
     int padding_x;
     int padding_y;
+    int first_line_y;
     int scroll_y;
     int content_h;
     int max_scroll;
@@ -1346,7 +1378,9 @@ DrawUITextArea(UITextArea area)
     line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
     line_h = GetUITextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0 ? area.style.padding_x : ScaleUIPx(10);
-    padding_y = ScaleUIPx(8);
+    padding_y = area.style.padding_y > 0 ? area.style.padding_y : ScaleUIPx(8);
+    first_line_y = GetUIControlTextY("Hg", (int)area.bounds.y + padding_y,
+                                     line_h, font);
     focused = *area.focused != 0;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
 
@@ -1410,7 +1444,7 @@ DrawUITextArea(UITextArea area)
     max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
     if(max_scroll < 0)
         max_scroll = 0;
-    if(mouse_inside)
+    if(mouse_inside && !captured)
         scroll_y -= (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
     scroll_y = ui_clampi(scroll_y, 0, max_scroll);
     if(area.scroll_y != NULL)
@@ -1429,7 +1463,8 @@ DrawUITextArea(UITextArea area)
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
                                     area.bounds.width - padding_x * 2, area.bounds.height - padding_y * 2});
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
-        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y, font, area.style.border);
+        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
+                   first_line_y, font, area.style.border);
     else
         ui_draw_text_area_text(area.text, *area.cursor_position, focused, area.bounds, font, line_gap, scroll_y, area.style);
     EndUIClip();
@@ -1515,7 +1550,7 @@ GetUIReadonlyTextBoxHeight(const char *text, int font, int width,
     int offset = 0;
     int line_count = 0;
     int padding_x = style.padding_x > 0 ? style.padding_x : ScaleUIPx(10);
-    int padding_y = ScaleUIPx(8);
+    int padding_y = style.padding_y > 0 ? style.padding_y : ScaleUIPx(8);
     int content_w = width - padding_x * 2;
 
     if(font <= 0)
@@ -1558,7 +1593,7 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
     const char *text = box.text != NULL ? box.text : "";
     int font = box.font > 0 ? box.font : GetUIFontSize();
     int padding_x = box.style.padding_x > 0 ? box.style.padding_x : ScaleUIPx(10);
-    int padding_y = ScaleUIPx(8);
+    int padding_y = box.style.padding_y > 0 ? box.style.padding_y : ScaleUIPx(8);
     int line_gap = box.line_gap > 0 ? box.line_gap : 0;
     int content_w = (int)box.bounds.width - padding_x * 2;
     int line_h = GetUITextLineHeight(font);
