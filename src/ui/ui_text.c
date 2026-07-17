@@ -739,11 +739,9 @@ DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
 void
 DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, Color color)
 {
-    Font font = active_font_for_size(font_size);
-    int actual_size = font.baseSize > 0 ?
-        (int)((float)font.baseSize * font_size_scale(font, font_size) + 0.5f) : font_size;
     int text_w = MeasureUIText(text, font_size);
-    int y = GetUITextY(text, center_y - actual_size / 2, actual_size, font_size);
+    int line_h = GetUITextLineHeight(font_size);
+    int y = GetUITextY("Hg", center_y - line_h / 2, line_h, font_size);
 
     DrawUIText(text, center_x - text_w / 2, y, font_size, color);
 }

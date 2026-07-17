@@ -702,8 +702,6 @@ Color
 GetCurrentThemeColor(const char *key)
 {
     Color color = BLANK;
-    if(key != NULL && strcmp(key, "icon") == 0)
-        return WHITE;
     if(theme_source == THEME_SOURCE_SYSTEM &&
        SystemThemeColor(key, &color))
         return color;
