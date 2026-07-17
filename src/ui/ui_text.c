@@ -306,15 +306,104 @@ cleanup:
     return (Font){0};
 }
 
+static int
+append_codepoint_range(int *codepoints, int index, int first, int last)
+{
+    for(int codepoint = first; codepoint <= last; codepoint++)
+        codepoints[index++] = codepoint;
+    return index;
+}
+
+static int *
+ui_font_codepoints(int *out_count)
+{
+    int count = 0;
+    int *codepoints;
+
+    count += 0x7E - 0x20 + 1;
+    count += 0x024F - 0x00A0 + 1;
+    count += 0x206F - 0x2000 + 1;
+    count += 0x20CF - 0x20A0 + 1;
+    count += 0x03FF - 0x0370 + 1;
+    count += 0x04FF - 0x0400 + 1;
+
+    codepoints = calloc((size_t)count, sizeof(*codepoints));
+    if(codepoints == NULL) {
+        *out_count = 0;
+        return NULL;
+    }
+
+    count = 0;
+    count = append_codepoint_range(codepoints, count, 0x20, 0x7E);
+    count = append_codepoint_range(codepoints, count, 0x00A0, 0x024F);
+    count = append_codepoint_range(codepoints, count, 0x2000, 0x206F);
+    count = append_codepoint_range(codepoints, count, 0x20A0, 0x20CF);
+    count = append_codepoint_range(codepoints, count, 0x0370, 0x03FF);
+    count = append_codepoint_range(codepoints, count, 0x0400, 0x04FF);
+    *out_count = count;
+    return codepoints;
+}
+
+Font
+LoadUIFontFromMemory(const char *file_type, const unsigned char *font_data,
+                     unsigned int font_size, int base_size)
+{
+    Font font = {0};
+    int codepoint_count = 0;
+    int *codepoints;
+
+    if(font_data == NULL || font_size == 0)
+        return font;
+
+    codepoints = ui_font_codepoints(&codepoint_count);
+    if(codepoints == NULL || codepoint_count == 0)
+        return font;
+
+    font = LoadFontFromMemory(
+        file_type != NULL && file_type[0] != '\0' ? file_type : ".ttf",
+        font_data, (int)font_size,
+        base_size > 0 ? base_size : UI_TEXT_BASE_SIZE,
+        codepoints, codepoint_count);
+    free(codepoints);
+
+    if(font_valid(font))
+        SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
+    return font;
+}
+
+Font
+LoadUIFontAsset(const char *path, int base_size)
+{
+    const EmbeddedAsset *asset;
+    const char *file_type;
+    unsigned char *data;
+    int data_size = 0;
+    Font font;
+
+    if(path == NULL || path[0] == '\0')
+        return (Font){0};
+
+    file_type = GetEmbeddedAssetExtension(path);
+    asset = GetEmbeddedAsset(path);
+    if(asset != NULL)
+        return LoadUIFontFromMemory(file_type, asset->data, asset->size, base_size);
+
+    data = LoadFileData(path, &data_size);
+    if(data == NULL || data_size <= 0)
+        return (Font){0};
+
+    font = LoadUIFontFromMemory(file_type, data, (unsigned int)data_size, base_size);
+    UnloadFileData(data);
+    return font;
+}
+
 void
 UnloadUIFont(Font *font)
 {
     if(font == NULL || font->texture.id == 0)
         return;
 
-    UnloadTexture(font->texture);
-    free(font->glyphs);
-    free(font->recs);
+    UnloadFont(*font);
     *font = (Font){0};
 }
 

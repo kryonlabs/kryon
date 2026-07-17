@@ -27,7 +27,8 @@ FLINT_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/flint_raylib_wrappers.c
 FLINT_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(FLINT_COMPAT_HEADER)
 FLINT_RAYLIB_BACKEND_RENAME_HEADER ?= $(FLINT_BACKEND_RENAME_HEADER)
 FLINT_FONT_OUT ?= assets/fonts/ui
-FLINT_FONT_OUTPUTS = $(FLINT_FONT_OUT).png $(FLINT_FONT_OUT).dat
+FLINT_FONT_MODE ?= glyphs
+FLINT_FONT_OUTPUTS = $(if $(filter font,$(FLINT_FONT_MODE)),$(FLINT_FONT_OUT).ttf,$(FLINT_FONT_OUT).png $(FLINT_FONT_OUT).dat)
 FLINT_FONT_LOCALES ?= locales/*.txt
 FLINT_FONT_LOCALE_FILES = $(wildcard $(FLINT_FONT_LOCALES))
 FLINT_FONT_SOURCE ?= vendor/fontchop/fonts/unifont-17.0.04.otf
@@ -280,7 +281,7 @@ font-assets: $(FLINT_FONT_OUTPUTS)
 
 $(FLINT_FONT_OUTPUTS): $(FLINT_FONTCHOP) $(FLINT_FONT_SOURCE) $(FLINT_FONT_LOCALE_FILES)
 	@mkdir -p $(dir $(FLINT_FONT_OUT))
-	$(FLINT_FONTCHOP) --font "$(FLINT_FONT_SOURCE)" --output "$(FLINT_FONT_OUT)" \
+	$(FLINT_FONTCHOP) --mode "$(FLINT_FONT_MODE)" --font "$(FLINT_FONT_SOURCE)" --output "$(FLINT_FONT_OUT)" \
 		$(foreach range,$(FLINT_FONT_RANGES),--range "$(range)") \
 		--missing "$(FLINT_FONT_MISSING)" \
 		$(foreach input,$(FLINT_FONT_LOCALE_FILES),--input "$(input)")
