@@ -12,6 +12,7 @@
 Font GetUIFont(void);
 int RegisterUIFont(const char *name, Font font);
 int RegisterUISmallFont(const char *name, Font font);
+int RegisterUIFontSize(const char *name, int ui_size, Font font);
 int UseUIFont(const char *name);
 int UIFontHasGlyph(Font font, int codepoint);
 Font LoadUIChoppedFontFromMemory(const unsigned char *png_data, unsigned int png_size, const unsigned char *dat_data, unsigned int dat_size, int base_size);

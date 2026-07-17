@@ -12,11 +12,11 @@
 
 #define UI_FONT_MAX_REGISTERED 16
 #define UI_FONT_DEFAULT_NAME "default"
+#define UI_FONT_SIZE_COUNT 4
 
 typedef struct UIFontEntry {
     char name[32];
-    Font font;
-    Font small_font;
+    Font fonts[UI_FONT_SIZE_COUNT];
 } UIFontEntry;
 
 static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
@@ -39,6 +39,60 @@ font_valid(Font font)
 {
     return font.texture.id != 0 && font.glyphs != NULL && font.recs != NULL &&
            font.glyphCount > 0 && font.baseSize > 0;
+}
+
+static int
+font_size_slot(int font_size)
+{
+    switch(font_size) {
+    case UI_TEXT_8:
+        return 0;
+    case UI_TEXT_12:
+        return 1;
+    case UI_TEXT_16:
+        return 2;
+    case UI_TEXT_24:
+        return 3;
+    default:
+        return -1;
+    }
+}
+
+static Font
+entry_default_font(UIFontEntry *entry)
+{
+    if(entry == NULL)
+        return (Font){0};
+    if(font_valid(entry->fonts[font_size_slot(UI_TEXT_BASE_SIZE)]))
+        return entry->fonts[font_size_slot(UI_TEXT_BASE_SIZE)];
+    for(int i = 0; i < UI_FONT_SIZE_COUNT; i++) {
+        if(font_valid(entry->fonts[i]))
+            return entry->fonts[i];
+    }
+    return (Font){0};
+}
+
+static Font
+entry_font_for_size(UIFontEntry *entry, int font_size)
+{
+    int target_size = ScaleUIPx(font_size);
+    int slot;
+
+    if(entry == NULL)
+        return (Font){0};
+    if(target_size <= 0)
+        target_size = font_size;
+
+    for(int i = 0; i < UI_FONT_SIZE_COUNT; i++) {
+        if(font_valid(entry->fonts[i]) && entry->fonts[i].baseSize == target_size)
+            return entry->fonts[i];
+    }
+
+    slot = font_size_slot(font_size);
+    if(slot >= 0 && font_valid(entry->fonts[slot]))
+        return entry->fonts[slot];
+
+    return entry_default_font(entry);
 }
 
 int
@@ -102,8 +156,8 @@ static Font
 active_font(void)
 {
     if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
-       font_valid(g_ui_fonts[g_ui_active_font].font))
-        return g_ui_fonts[g_ui_active_font].font;
+       font_valid(entry_default_font(&g_ui_fonts[g_ui_active_font])))
+        return entry_default_font(&g_ui_fonts[g_ui_active_font]);
 
     return GetFontDefault();
 }
@@ -111,9 +165,11 @@ active_font(void)
 static Font
 active_font_for_size(int font_size)
 {
-    if(font_size == UI_TEXT_8 && g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
-       font_valid(g_ui_fonts[g_ui_active_font].small_font))
-        return g_ui_fonts[g_ui_active_font].small_font;
+    if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count) {
+        Font font = entry_font_for_size(&g_ui_fonts[g_ui_active_font], font_size);
+        if(font_valid(font))
+            return font;
+    }
 
     return active_font();
 }
@@ -127,8 +183,7 @@ font_for_codepoint(int codepoint, int font_size)
         return font;
 
     for(int i = 0; i < g_ui_font_count; i++) {
-        Font candidate = font_size == UI_TEXT_8 && font_valid(g_ui_fonts[i].small_font) ?
-            g_ui_fonts[i].small_font : g_ui_fonts[i].font;
+        Font candidate = entry_font_for_size(&g_ui_fonts[i], font_size);
         if(UIFontHasGlyph(candidate, codepoint))
             return candidate;
     }
@@ -145,8 +200,9 @@ font_for_scaled_codepoint(int codepoint)
         return font;
 
     for(int i = 0; i < g_ui_font_count; i++) {
-        if(UIFontHasGlyph(g_ui_fonts[i].font, codepoint))
-            return g_ui_fonts[i].font;
+        Font candidate = entry_default_font(&g_ui_fonts[i]);
+        if(UIFontHasGlyph(candidate, codepoint))
+            return candidate;
     }
 
     return font;
@@ -174,32 +230,32 @@ GetUIFont(void)
 int
 RegisterUIFont(const char *name, Font font)
 {
-    int index;
-
-    if(!font_valid(font))
-        return 0;
-
-    index = font_entry_alloc(name);
-    if(index < 0)
-        return 0;
-
-    g_ui_fonts[index].font = font;
-    return 1;
+    return RegisterUIFontSize(name, UI_TEXT_BASE_SIZE, font);
 }
 
 int
 RegisterUISmallFont(const char *name, Font font)
 {
+    return RegisterUIFontSize(name, UI_TEXT_8, font);
+}
+
+int
+RegisterUIFontSize(const char *name, int ui_size, Font font)
+{
     int index;
+    int slot;
 
     if(!font_valid(font))
+        return 0;
+    slot = font_size_slot(ui_size);
+    if(slot < 0)
         return 0;
 
     index = font_entry_alloc(name);
     if(index < 0)
         return 0;
 
-    g_ui_fonts[index].small_font = font;
+    g_ui_fonts[index].fonts[slot] = font;
     return 1;
 }
 
@@ -208,7 +264,7 @@ UseUIFont(const char *name)
 {
     int index = font_entry_index(name);
 
-    if(index < 0 || !font_valid(g_ui_fonts[index].font))
+    if(index < 0 || !font_valid(entry_default_font(&g_ui_fonts[index])))
         return 0;
 
     g_ui_active_font = index;
