@@ -12,11 +12,19 @@
 
 #define UI_FONT_MAX_REGISTERED 16
 #define UI_FONT_DEFAULT_NAME "default"
+#define UI_FONT_CACHE_COUNT 8
 
 typedef struct UIFontEntry {
     char name[32];
     Font font;
     Font small_font;
+    const char *file_type;
+    const unsigned char *font_data;
+    unsigned int font_data_size;
+    int *codepoints;
+    int codepoint_count;
+    Font cache[UI_FONT_CACHE_COUNT];
+    int cache_size[UI_FONT_CACHE_COUNT];
 } UIFontEntry;
 
 static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
@@ -98,12 +106,87 @@ typedef struct UIChoppedGlyph {
     int32_t advanceX;
 } UIChoppedGlyph;
 
+static int
+font_physical_size(int font_size)
+{
+    int size = ScaleUIPx(font_size);
+
+    if(size <= 0)
+        size = font_size > 0 ? font_size : UI_TEXT_BASE_SIZE;
+    if(size <= 0)
+        size = UI_TEXT_BASE_SIZE;
+    return size;
+}
+
+static void
+clear_font_cache(UIFontEntry *entry)
+{
+    if(entry == NULL)
+        return;
+    for(int i = 0; i < UI_FONT_CACHE_COUNT; i++) {
+        if(font_valid(entry->cache[i]))
+            UnloadFont(entry->cache[i]);
+        entry->cache[i] = (Font){0};
+        entry->cache_size[i] = 0;
+    }
+}
+
+static Font
+load_font_source_size(UIFontEntry *entry, int physical_size)
+{
+    Font font;
+
+    if(entry == NULL || entry->font_data == NULL || entry->font_data_size == 0)
+        return (Font){0};
+
+    font = LoadFontFromMemory(
+        entry->file_type != NULL && entry->file_type[0] != '\0' ? entry->file_type : ".ttf",
+        entry->font_data, (int)entry->font_data_size, physical_size,
+        entry->codepoints, entry->codepoint_count);
+    if(font_valid(font))
+        SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
+    return font;
+}
+
+static Font
+entry_source_font_for_size(UIFontEntry *entry, int font_size)
+{
+    int physical_size = font_physical_size(font_size);
+    int empty = -1;
+
+    if(entry == NULL || entry->font_data == NULL || entry->font_data_size == 0)
+        return (Font){0};
+
+    for(int i = 0; i < UI_FONT_CACHE_COUNT; i++) {
+        if(entry->cache_size[i] == physical_size && font_valid(entry->cache[i]))
+            return entry->cache[i];
+        if(empty < 0 && entry->cache_size[i] == 0)
+            empty = i;
+    }
+
+    if(empty < 0) {
+        empty = 0;
+        if(font_valid(entry->cache[empty]))
+            UnloadFont(entry->cache[empty]);
+    }
+
+    entry->cache[empty] = load_font_source_size(entry, physical_size);
+    entry->cache_size[empty] = font_valid(entry->cache[empty]) ? physical_size : 0;
+    return entry->cache[empty];
+}
+
 static Font
 active_font(void)
 {
-    if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
-       font_valid(g_ui_fonts[g_ui_active_font].font))
-        return g_ui_fonts[g_ui_active_font].font;
+    if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count) {
+        Font font;
+
+        font = entry_source_font_for_size(&g_ui_fonts[g_ui_active_font], UI_TEXT_BASE_SIZE);
+        if(font_valid(font))
+            return font;
+        if(font_valid(g_ui_fonts[g_ui_active_font].font))
+            return g_ui_fonts[g_ui_active_font].font;
+    }
 
     return GetFontDefault();
 }
@@ -111,9 +194,15 @@ active_font(void)
 static Font
 active_font_for_size(int font_size)
 {
-    if(font_size == UI_TEXT_8 && g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
-       font_valid(g_ui_fonts[g_ui_active_font].small_font))
-        return g_ui_fonts[g_ui_active_font].small_font;
+    if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count) {
+        Font font;
+
+        font = entry_source_font_for_size(&g_ui_fonts[g_ui_active_font], font_size);
+        if(font_valid(font))
+            return font;
+        if(font_size == UI_TEXT_8 && font_valid(g_ui_fonts[g_ui_active_font].small_font))
+            return g_ui_fonts[g_ui_active_font].small_font;
+    }
 
     return active_font();
 }
@@ -123,16 +212,7 @@ font_for_codepoint(int codepoint, int font_size)
 {
     Font font = active_font_for_size(font_size);
 
-    if(UIFontHasGlyph(font, codepoint))
-        return font;
-
-    for(int i = 0; i < g_ui_font_count; i++) {
-        Font candidate = font_size == UI_TEXT_8 && font_valid(g_ui_fonts[i].small_font) ?
-            g_ui_fonts[i].small_font : g_ui_fonts[i].font;
-        if(UIFontHasGlyph(candidate, codepoint))
-            return candidate;
-    }
-
+    (void)codepoint;
     return font;
 }
 
@@ -141,27 +221,16 @@ font_for_scaled_codepoint(int codepoint)
 {
     Font font = active_font();
 
-    if(UIFontHasGlyph(font, codepoint))
-        return font;
-
-    for(int i = 0; i < g_ui_font_count; i++) {
-        if(UIFontHasGlyph(g_ui_fonts[i].font, codepoint))
-            return g_ui_fonts[i].font;
-    }
-
+    (void)codepoint;
     return font;
 }
 
 static float
 font_size_scale(Font font, int font_size)
 {
-    int target_size = ScaleUIPx(font_size);
+    int target_size = font_physical_size(font_size);
     int base_size = font.baseSize > 0 ? font.baseSize : UI_TEXT_BASE_SIZE;
 
-    if(target_size <= 0)
-        target_size = font_size > 0 ? font_size : base_size;
-    if(target_size <= 0)
-        target_size = base_size;
     return (float)target_size / (float)base_size;
 }
 
@@ -183,6 +252,7 @@ RegisterUIFont(const char *name, Font font)
     if(index < 0)
         return 0;
 
+    clear_font_cache(&g_ui_fonts[index]);
     g_ui_fonts[index].font = font;
     return 1;
 }
@@ -199,8 +269,45 @@ RegisterUISmallFont(const char *name, Font font)
     if(index < 0)
         return 0;
 
+    clear_font_cache(&g_ui_fonts[index]);
     g_ui_fonts[index].small_font = font;
     return 1;
+}
+
+int
+RegisterUIFontSource(const char *name, const char *file_type,
+                     const unsigned char *font_data, unsigned int font_size,
+                     const int *codepoints, int codepoint_count)
+{
+    int index;
+
+    if(font_data == NULL || font_size == 0)
+        return 0;
+
+    index = font_entry_alloc(name);
+    if(index < 0)
+        return 0;
+
+    clear_font_cache(&g_ui_fonts[index]);
+    free(g_ui_fonts[index].codepoints);
+    g_ui_fonts[index].codepoints = NULL;
+    g_ui_fonts[index].codepoint_count = 0;
+
+    if(codepoints != NULL && codepoint_count > 0) {
+        g_ui_fonts[index].codepoints = calloc((size_t)codepoint_count, sizeof(*codepoints));
+        if(g_ui_fonts[index].codepoints == NULL)
+            return 0;
+        memcpy(g_ui_fonts[index].codepoints, codepoints,
+               (size_t)codepoint_count * sizeof(*codepoints));
+        g_ui_fonts[index].codepoint_count = codepoint_count;
+    }
+
+    g_ui_fonts[index].file_type = file_type;
+    g_ui_fonts[index].font_data = font_data;
+    g_ui_fonts[index].font_data_size = font_size;
+    g_ui_fonts[index].font = (Font){0};
+    g_ui_fonts[index].small_font = (Font){0};
+    return font_valid(entry_source_font_for_size(&g_ui_fonts[index], UI_TEXT_BASE_SIZE));
 }
 
 int
@@ -208,7 +315,10 @@ UseUIFont(const char *name)
 {
     int index = font_entry_index(name);
 
-    if(index < 0 || !font_valid(g_ui_fonts[index].font))
+    if(index < 0)
+        return 0;
+    if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], UI_TEXT_BASE_SIZE)) &&
+       !font_valid(g_ui_fonts[index].font))
         return 0;
 
     g_ui_active_font = index;
@@ -410,6 +520,10 @@ UnloadUIFont(Font *font)
 void
 ClearUIFonts(void)
 {
+    for(int i = 0; i < g_ui_font_count; i++) {
+        clear_font_cache(&g_ui_fonts[i]);
+        free(g_ui_fonts[i].codepoints);
+    }
     memset(g_ui_fonts, 0, sizeof(g_ui_fonts));
     g_ui_font_count = 0;
     g_ui_active_font = -1;
