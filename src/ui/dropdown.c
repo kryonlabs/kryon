@@ -4,6 +4,7 @@
 /* Per-dropdown state to track open/closed and click handling */
 #define MAX_DROPDOWN_OPTIONS 128
 #define DROPDOWN_OPTION_TEXT_SIZE 256
+#define DROPDOWN_OPTION_FONT_SIZE 32
 
 typedef struct UIDropdownState {
     int id;
@@ -12,7 +13,9 @@ typedef struct UIDropdownState {
     int scroll_offset;
     int x, y, w, h;
     const char *options[MAX_DROPDOWN_OPTIONS];
+    const char *option_fonts[MAX_DROPDOWN_OPTIONS];
     char option_text[MAX_DROPDOWN_OPTIONS][DROPDOWN_OPTION_TEXT_SIZE];
+    char option_font_text[MAX_DROPDOWN_OPTIONS][DROPDOWN_OPTION_FONT_SIZE];
     int option_count;
     int *selected_index;
     int touch_pressed;
@@ -147,6 +150,27 @@ int
 DrawUIDropdownButton(int id, int x, int y, int w, int h,
                         const char **options, int option_count, int *selected_index)
 {
+    UIDropdownOption dropdown_options[MAX_DROPDOWN_OPTIONS];
+
+    if(option_count < 0)
+        option_count = 0;
+    if(option_count > MAX_DROPDOWN_OPTIONS)
+        option_count = MAX_DROPDOWN_OPTIONS;
+
+    for(int i = 0; i < option_count; i++) {
+        dropdown_options[i].label = options != NULL ? options[i] : NULL;
+        dropdown_options[i].font_name = NULL;
+    }
+
+    return DrawUIDropdownButtonEx(id, x, y, w, h, dropdown_options,
+                                  option_count, selected_index);
+}
+
+int
+DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
+                       const UIDropdownOption *options, int option_count,
+                       int *selected_index)
+{
     UIDropdownState *state = get_or_create_dropdown_state(id);
     int font = GetUIFontSize();
     int arrow_pad = ScaleUIPx(24);
@@ -179,8 +203,13 @@ DrawUIDropdownButton(int id, int x, int y, int w, int h,
     state->option_count = option_count;
     for(int i = 0; i < option_count; i++) {
         snprintf(state->option_text[i], sizeof(state->option_text[i]), "%s",
-                 options != NULL && options[i] != NULL ? options[i] : "");
+                 options != NULL && options[i].label != NULL ? options[i].label : "");
         state->options[i] = state->option_text[i];
+        snprintf(state->option_font_text[i], sizeof(state->option_font_text[i]), "%s",
+                 options != NULL && options[i].font_name != NULL ? options[i].font_name : "");
+        state->option_fonts[i] = state->option_font_text[i][0] != '\0'
+                                     ? state->option_font_text[i]
+                                     : NULL;
     }
 
     if(active)
@@ -210,15 +239,18 @@ DrawUIDropdownButton(int id, int x, int y, int w, int h,
     if(current_index < 0 || current_index >= option_count)
         current_index = 0;
     const char *current_name = option_count > 0 ? state->options[current_index] : "";
+    const char *current_font = option_count > 0 ? state->option_fonts[current_index] : NULL;
     int text_x = x + ScaleUIPx(12);
     int text_w = arrow_x - arrow_size - ScaleUIPx(8) - text_x;
     if(text_w > 0) {
+        int font_token = PushUIFont(current_font);
         BeginUIClip((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
                          (int)((float)text_w * g_ui_camera.zoom),
                          (int)((float)h * g_ui_camera.zoom));
         DrawUIText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, c_text);
         EndUIClip();
+        PopUIFont(font_token);
     }
 
     /* Draw dropdown X icon */
@@ -252,6 +284,7 @@ DrawUIDropdownMenu(int id)
     int option_count = state->option_count;
     int *selected_index = state->selected_index;
     const char **options = state->options;
+    const char **option_fonts = state->option_fonts;
 
     int dropdown_y = 0;
     int dropdown_h = 0;
@@ -379,7 +412,13 @@ DrawUIDropdownMenu(int id)
             }
         }
 
-        DrawUIText(options[i], x + ScaleUIPx(12), GetUIControlTextY(options[i], option_y, option_h, font), font, c_text);
+        {
+            int font_token = PushUIFont(option_fonts[i]);
+            DrawUIText(options[i], x + ScaleUIPx(12),
+                       GetUIControlTextY(options[i], option_y, option_h, font),
+                       font, c_text);
+            PopUIFont(font_token);
+        }
     }
 
     EndUIClip();

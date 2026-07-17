@@ -179,9 +179,18 @@ int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
 int DrawUICheckboxToggle(int x, int y, const char *label, int *value);
 int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                  int *value, int disabled);
+
+typedef struct {
+    const char *label;
+    const char *font_name;
+} UIDropdownOption;
+
 int DrawUIDropdownButton(int id, int x, int y, int w, int h,
                          const char **options, int option_count,
                          int *selected_index);
+int DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
+                           const UIDropdownOption *options, int option_count,
+                           int *selected_index);
 int DrawUIDropdownMenu(int id);
 int UIDropdownCapturesClick(Vector2 point);
 void SetUIDropdownClipTop(int top);

@@ -325,6 +325,23 @@ UseUIFont(const char *name)
     return 1;
 }
 
+int
+PushUIFont(const char *name)
+{
+    int token = g_ui_active_font;
+
+    if(name != NULL && name[0] != '\0')
+        (void)UseUIFont(name);
+    return token;
+}
+
+void
+PopUIFont(int token)
+{
+    if(token >= 0 && token < g_ui_font_count)
+        g_ui_active_font = token;
+}
+
 Font
 LoadUIChoppedFontFromMemory(const unsigned char *png_data, unsigned int png_size,
                                          const unsigned char *dat_data, unsigned int dat_size,
