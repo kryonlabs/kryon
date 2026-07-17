@@ -294,6 +294,10 @@ ApplyDesktopTrayStatus(gpointer user_data)
         gtk_status_icon_set_tooltip_text(TrayStatusIcon, text);
     }
 #endif
+#if defined(FLINT_DESKTOP_TRAY_AYATANA) || defined(FLINT_DESKTOP_TRAY_APPINDICATOR)
+    if(TrayIndicator != NULL)
+        app_indicator_set_title(TrayIndicator, text);
+#endif
 
     return G_SOURCE_REMOVE;
 }
