@@ -186,12 +186,11 @@ int result = DrawUIActionModal((UIModalSpec){
     <section id="fonts" class="wrap section">
       <h2>Fonts</h2>
       <p>
-        Flint vendors <code>fontchop</code> in <code>vendor/fontchop</code> for generating bitmap
-        atlases or subset TrueType fonts. Load generated assets with
-        <code>LoadUIFontAsset</code> or <code>LoadUIChoppedFontFromMemory</code>, register the
+        Flint loads application-supplied TrueType or OpenType font assets.
+        Load assets with <code>LoadUIFontAsset</code>, register the
         result with <code>RegisterUIFont</code>, then switch fonts with <code>UseUIFont</code>.
       </p>
-      <pre><code>Font font = LoadUIFontAsset("assets/fonts/ui.ttf", UI_TEXT_BASE_SIZE);
+      <pre><code>Font font = LoadUIFontAsset("fonts/noto/NotoSans-Regular.ttf", UI_TEXT_BASE_SIZE);
 RegisterUIFont("ui", font);
 UseUIFont("ui");</code></pre>
     </section>

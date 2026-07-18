@@ -13,7 +13,7 @@ runtime asset downloads, and Lyra account/sync helpers.
 - `src/` - Flint implementation files, with reusable UI modules under `src/ui/`
 - `icons/` and `pfp/` - PNG icon inputs embedded into `src/ui/ui_icon_assets.c`
 - `themes/` - built-in theme files for the runtime theme loader
-- `assets/fonts/` - generated locale font atlas outputs
+- `fonts/noto/` - bundled Noto Sans TTF/OTF font assets
 - `mk/` - Make fragments for native, web, Android, Windows, packaging, and
   vendored dependency builds
 - `scripts/` - asset embedding, icon embedding, raylib preparation, and boundary

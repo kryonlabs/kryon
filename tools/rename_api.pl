@@ -226,8 +226,6 @@ my @pairs = (
     [qw(flint_text_set_font SetUIFont)],
     [qw(flint_text_set_small_font SetUISmallFont)],
     [qw(flint_text_font GetUIFont)],
-    [qw(flint_text_load_chopped_font LoadUIChoppedFont)],
-    [qw(flint_text_load_chopped_font_from_memory LoadUIChoppedFontFromMemory)],
     [qw(flint_text_unload_font UnloadUIFont)],
     [qw(flint_text_measure MeasureUIText)],
     [qw(flint_text_height GetUITextHeight)],

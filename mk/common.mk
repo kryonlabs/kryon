@@ -100,28 +100,7 @@ LOCALE_FILES = $(wildcard locales/*.txt)
 THEME_FILES = $(wildcard $(FLINT_DIR)/themes/*.ini)
 IMAGE_FILES ?=
 SOUND_FILES ?=
-FONT_TOOL ?= $(FLINT_DIR)/vendor/fontchop/fontchop
-FONT_SOURCE ?= $(FLINT_DIR)/vendor/fontchop/fonts/unifont-17.0.04.otf
-FONT_INPUTS ?= $(LOCALE_FILES)
-FONT_OUTPUT ?= assets/fonts/ui
-FONT_RANGES ?= ascii
-FONT_MODE ?= glyphs
-FONT_BASE_SIZE ?= 16
-FONT_CELL_SIZE ?= 32
-FONT_ATLAS_WIDTH ?= 512
-FONT_MISSING ?= fail
-FONT_SETS ?= default
-FONT_default_OUTPUT ?= $(FONT_OUTPUT)
-FONT_default_SOURCE ?= $(FONT_SOURCE)
-FONT_default_INPUTS ?= $(FONT_INPUTS)
-FONT_default_RANGES ?= $(FONT_RANGES)
-FONT_default_MODE ?= $(FONT_MODE)
-FONT_default_BASE_SIZE ?= $(FONT_BASE_SIZE)
-FONT_default_CELL_SIZE ?= $(FONT_CELL_SIZE)
-FONT_default_ATLAS_WIDTH ?= $(FONT_ATLAS_WIDTH)
-FONT_default_MISSING ?= $(FONT_MISSING)
-FONT_SET_OUTPUTS = $(foreach set,$(FONT_SETS),$(if $(filter font,$(FONT_$(set)_MODE)),$(FONT_$(set)_OUTPUT).ttf,$(FONT_$(set)_OUTPUT).png $(FONT_$(set)_OUTPUT).dat))
-FONT_FILES = $(FONT_SET_OUTPUTS)
+FONT_FILES ?= $(wildcard fonts/noto/*.ttf fonts/noto/*.otf)
 EMBEDDED_ASSET_FILES = $(LOCALE_FILES) $(THEME_FILES) $(IMAGE_FILES) $(SOUND_FILES) $(FONT_FILES)
 EMBEDDED_ASSETS_C = $(BUILD_OBJ_DIR)/$(APP_NAME)_embedded_assets.c
 SRC += $(EMBEDDED_ASSETS_C)
@@ -138,19 +117,6 @@ RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null
 RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSUPPORT_AUTOMATION_EVENTS=0 -DSUPPORT_CLIPBOARD_IMAGE=0 -DSUPPORT_FILEFORMAT_BMP=0 -DSUPPORT_FILEFORMAT_GIF=0 -DSUPPORT_FILEFORMAT_QOI=0 -DSUPPORT_FILEFORMAT_DDS=0 -DSUPPORT_FILEFORMAT_TTF=1
 FLINT_MAKEFILES = $(FLINT_MAKE_DIR)common.mk $(FLINT_MAKE_DIR)raylib.mk $(FLINT_MAKE_DIR)native.mk $(FLINT_MAKE_DIR)windows.mk $(FLINT_MAKE_DIR)web.mk $(FLINT_MAKE_DIR)android.mk $(FLINT_MAKE_DIR)dist.mk $(FLINT_MAKE_DIR)package-freebsd.mk $(FLINT_MAKE_DIR)clean.mk
 BUILD_MAKEFILES = Makefile $(FLINT_MAKEFILES)
-
-assets/fonts:
-	mkdir -p $@
-
-define FLINT_FONT_RULE
-$$(FONT_$(1)_OUTPUT).png $$(FONT_$(1)_OUTPUT).dat $$(FONT_$(1)_OUTPUT).ttf: $$(FONT_$(1)_INPUTS) $$(FONT_$(1)_SOURCE) $$(FONT_TOOL) | assets/fonts
-	$$(FONT_TOOL) --mode "$$(FONT_$(1)_MODE)" --font "$$(FONT_$(1)_SOURCE)" --output "$$(FONT_$(1)_OUTPUT)" $$(foreach range,$$(FONT_$(1)_RANGES),--range "$$(range)") --base-size "$$(FONT_$(1)_BASE_SIZE)" --cell-size "$$(FONT_$(1)_CELL_SIZE)" --atlas-width "$$(FONT_$(1)_ATLAS_WIDTH)" --missing "$$(FONT_$(1)_MISSING)" $$(foreach input,$$(FONT_$(1)_INPUTS),--input "$$(input)")
-endef
-
-$(foreach set,$(FONT_SETS),$(eval $(call FLINT_FONT_RULE,$(set))))
-
-$(FONT_TOOL): $(FLINT_DIR)/vendor/fontchop/fontchop.c $(FLINT_DIR)/vendor/fontchop/stb_truetype.h $(FLINT_DIR)/vendor/fontchop/stb_image_write.h
-	$(MAKE) -C $(FLINT_DIR)/vendor/fontchop fontchop
 
 $(EMBEDDED_ASSETS_C): $(EMBEDDED_ASSET_FILES) $(FLINT_DIR)/scripts/embed-assets.sh | $(BUILD_OBJ_DIR)
 	sh $(FLINT_DIR)/scripts/embed-assets.sh $@ $(EMBEDDED_ASSET_FILES)

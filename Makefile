@@ -11,11 +11,11 @@ DIST_DIR ?= dist
 STATIC_DIST_ROOT := $(BUILD_DIR)/dist/flint-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/flint-$(VERSION)-static.tar.gz
 CFLAGS ?= -Wall -Wextra -O2
-CPPFLAGS_BASE = -Iinclude
+CPPFLAGS_BASE = -Iinclude -I$(FLINT_DIR)/vendor/clay
 ICON_DIR ?= icons language payments platforms tiles pfp
 ICON_FILES = $(foreach dir,$(ICON_DIR),$(wildcard $(dir)/*.png))
 ICON_ASSETS_C = src/ui/ui_icon_assets.c
-EMBED_ASSETS ?= themes
+EMBED_ASSETS ?= themes fonts/noto
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
 FLINT_COMPAT_GENERATOR = tools/generate-flint-compat.sh
@@ -26,15 +26,6 @@ FLINT_BACKEND_RENAME_HEADER = $(BUILD_DIR)/generated/raylib_backend_rename.h
 FLINT_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/flint_raylib_wrappers.c
 FLINT_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(FLINT_COMPAT_HEADER)
 FLINT_RAYLIB_BACKEND_RENAME_HEADER ?= $(FLINT_BACKEND_RENAME_HEADER)
-FLINT_FONT_OUT ?= assets/fonts/ui
-FLINT_FONT_MODE ?= glyphs
-FLINT_FONT_OUTPUTS = $(if $(filter font,$(FLINT_FONT_MODE)),$(FLINT_FONT_OUT).ttf,$(FLINT_FONT_OUT).png $(FLINT_FONT_OUT).dat)
-FLINT_FONT_LOCALES ?= locales/*.txt
-FLINT_FONT_LOCALE_FILES = $(wildcard $(FLINT_FONT_LOCALES))
-FLINT_FONT_SOURCE ?= vendor/fontchop/fonts/unifont-17.0.04.otf
-FLINT_FONT_RANGES ?= ascii
-FLINT_FONT_MISSING ?= fail
-FLINT_FONTCHOP ?= vendor/fontchop/fontchop
 UNAME_S := $(shell uname -s 2>/dev/null)
 UNAME_M := $(shell uname -m 2>/dev/null)
 ifeq ($(UNAME_M),amd64)
@@ -119,7 +110,6 @@ run:
 
 clean:
 	rm -rf $(BUILD_DIR) $(LIB)
-	$(MAKE) -C vendor/fontchop clean
 	$(MAKE) -C examples web-clean
 
 docs-site:
@@ -260,8 +250,8 @@ $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 src/ui/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
 	@$(MAKE) --quiet $(ICON_ASSETS_C)
 
-$(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) $(FLINT_FONT_OUTPUTS) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
-	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS) $(FLINT_FONT_OUTPUTS)
+$(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
+	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK) $(FLINT_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
@@ -274,14 +264,5 @@ $(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR) $(FLINT_LIBOQS_A) $(FLINT_CURL
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(FLINT_FONTCHOP): vendor/fontchop/fontchop.c vendor/fontchop/stb_truetype.h vendor/fontchop/stb_image_write.h
-	$(MAKE) -C vendor/fontchop fontchop
-
-font-assets: $(FLINT_FONT_OUTPUTS)
-
-$(FLINT_FONT_OUTPUTS): $(FLINT_FONTCHOP) $(FLINT_FONT_SOURCE) $(FLINT_FONT_LOCALE_FILES)
-	@mkdir -p $(dir $(FLINT_FONT_OUT))
-	$(FLINT_FONTCHOP) --mode "$(FLINT_FONT_MODE)" --font "$(FLINT_FONT_SOURCE)" --output "$(FLINT_FONT_OUT)" \
-		$(foreach range,$(FLINT_FONT_RANGES),--range "$(range)") \
-		--missing "$(FLINT_FONT_MISSING)" \
-		$(foreach input,$(FLINT_FONT_LOCALE_FILES),--input "$(input)")
+font-assets:
+	@printf '%s\n' 'font assets are checked in or supplied by downstream apps'

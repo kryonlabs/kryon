@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.1.4] - 2026-07-18
+
+### Changed
+
+- Add Clay as a vendored layout dependency for future Flint UI work.
+- Remove the vendored fontchop dependency and chopped bitmap font assets.
+
 ## [v0.1.3] - 2026-07-16
 
 ### Changed

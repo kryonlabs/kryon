@@ -14,13 +14,7 @@ ifeq ($(UNAME_S),Linux)
     EXAMPLE_SYSTEM_LDLIBS += -ldl -lrt
 endif
 FLINT_DIR := ..
-FONT_OUTPUT := assets/fonts/ui
-FONT_OUTPUTS := $(FONT_OUTPUT).png $(FONT_OUTPUT).dat
-FONT_LOCALES := $(wildcard locales/*.txt)
-FONT_TOOL := ../vendor/fontchop/fontchop
-FONT_SOURCE := ../vendor/fontchop/fonts/unifont-17.0.04.otf
-FONT_RANGES := ascii
-FONT_MISSING := fail
+FONT_OUTPUTS := $(wildcard ../fonts/noto/*.ttf ../fonts/noto/*.otf)
 BUILD_DIR ?= ../build/examples
 WEB_EMBED_ASSETS_C := $(BUILD_DIR)/embedded_asset_data.c
 WEB_EMBED_ASSET_FILES := $(shell find ../themes -type f 2>/dev/null)
@@ -58,14 +52,8 @@ all: ../libflint.a $(EXAMPLES)
 ../libflint.a:
 	@$(MAKE) -C ..
 
-$(FONT_TOOL):
-	@$(MAKE) -C ../vendor/fontchop fontchop
-
-font-assets: $(FONT_OUTPUTS)
-
-$(FONT_OUTPUTS): $(FONT_LOCALES) $(FONT_TOOL) $(FONT_SOURCE)
-	@mkdir -p assets/fonts
-	@$(FONT_TOOL) --font "$(FONT_SOURCE)" --output "$(FONT_OUTPUT)" $(foreach range,$(FONT_RANGES),--range "$(range)") --missing "$(FONT_MISSING)" $(foreach input,$(FONT_LOCALES),--input "$(input)")
+font-assets:
+	@printf '%s\n' 'font assets are checked in'
 
 %: %.c $(FONT_OUTPUTS)
 	@echo "Building $@..."
@@ -91,7 +79,7 @@ $(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(FLI
 		$(WEB_RAYLIB_A) \
 		$(FLINT_WEB_LIBOQS_A) \
 		$(WEB_LDFLAGS) \
-		--preload-file assets/fonts@assets/fonts
+		--preload-file ../fonts/noto@fonts/noto
 	perl -0pe 's#\{\{\{ SCRIPT \}\}\}#<script async src="index.js"></script>#g' $(WEB_SHELL) > $@
 
 web-clean:
@@ -99,7 +87,6 @@ web-clean:
 
 clean:
 	rm -f $(EXAMPLES)
-	rm -rf assets/fonts
 	rm -rf $(BUILD_DIR)
 
 list:

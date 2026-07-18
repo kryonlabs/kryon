@@ -4,7 +4,6 @@
 #include "embedded_assets.h"
 #include "ui_scaling.h"
 
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,17 +105,6 @@ font_entry_alloc(const char *name)
         g_ui_active_font = index;
     return index;
 }
-
-typedef struct UIChoppedGlyph {
-    int32_t value;
-    int32_t x;
-    int32_t y;
-    int32_t w;
-    int32_t h;
-    int32_t offsetX;
-    int32_t offsetY;
-    int32_t advanceX;
-} UIChoppedGlyph;
 
 static int
 font_physical_size(int font_size)
@@ -352,97 +340,6 @@ PopUIFont(int token)
 {
     if(token >= 0 && token < g_ui_font_count)
         g_ui_active_font = token;
-}
-
-Font
-LoadUIChoppedFontFromMemory(const unsigned char *png_data, unsigned int png_size,
-                                         const unsigned char *dat_data, unsigned int dat_size,
-                                         int base_size)
-{
-    Font font = {0};
-    UIChoppedGlyph *glyphs = NULL;
-    GlyphInfo *glyph_infos = NULL;
-    Rectangle *recs = NULL;
-    int32_t glyph_count = 0;
-    Image image = {0};
-    Texture2D texture = {0};
-    const unsigned char *cursor;
-    size_t glyph_bytes;
-
-    if(png_data == NULL || png_size == 0 || dat_data == NULL || dat_size < sizeof(glyph_count))
-        return font;
-
-    cursor = dat_data;
-    memcpy(&glyph_count, cursor, sizeof(glyph_count));
-    cursor += sizeof(glyph_count);
-    if(glyph_count <= 0)
-        return font;
-
-    glyph_bytes = (size_t)glyph_count * sizeof(*glyphs);
-    if((size_t)dat_size - sizeof(glyph_count) < glyph_bytes)
-        return font;
-
-    glyphs = (UIChoppedGlyph *)calloc((size_t)glyph_count, sizeof(*glyphs));
-    glyph_infos = (GlyphInfo *)calloc((size_t)glyph_count, sizeof(*glyph_infos));
-    recs = (Rectangle *)calloc((size_t)glyph_count, sizeof(*recs));
-    if(glyphs == NULL || glyph_infos == NULL || recs == NULL)
-        goto cleanup;
-
-    memcpy(glyphs, cursor, glyph_bytes);
-
-    image = LoadImageFromMemory(".png", png_data, (int)png_size);
-    if(image.data == NULL)
-        goto cleanup;
-
-#if defined(_WIN32)
-    {
-        int pot_w = 1;
-        int pot_h = 1;
-        while(pot_w < image.width)
-            pot_w <<= 1;
-        while(pot_h < image.height)
-            pot_h <<= 1;
-        if(pot_w != image.width || pot_h != image.height)
-            ImageResizeCanvas(&image, pot_w, pot_h, 0, 0, BLANK);
-    }
-#endif
-
-    texture = LoadTextureFromImage(image);
-    UnloadImage(image);
-    image = (Image){0};
-    if(texture.id == 0)
-        goto cleanup;
-    SetTextureFilter(texture, TEXTURE_FILTER_POINT);
-
-    for(int i = 0; i < glyph_count; i++) {
-        glyph_infos[i].value = glyphs[i].value;
-        glyph_infos[i].offsetX = glyphs[i].offsetX;
-        glyph_infos[i].offsetY = glyphs[i].offsetY;
-        glyph_infos[i].advanceX = glyphs[i].advanceX;
-        glyph_infos[i].image = (Image){0};
-        recs[i] = (Rectangle){(float)glyphs[i].x, (float)glyphs[i].y,
-                              (float)glyphs[i].w, (float)glyphs[i].h};
-    }
-
-    font.texture = texture;
-    font.glyphs = glyph_infos;
-    font.recs = recs;
-    font.glyphCount = glyph_count;
-    font.baseSize = base_size > 0 ? base_size : UI_TEXT_BASE_SIZE;
-    font.glyphPadding = 0;
-
-    free(glyphs);
-    return font;
-
-cleanup:
-    if(image.data != NULL)
-        UnloadImage(image);
-    if(texture.id != 0)
-        UnloadTexture(texture);
-    free(glyphs);
-    free(glyph_infos);
-    free(recs);
-    return (Font){0};
 }
 
 static int
