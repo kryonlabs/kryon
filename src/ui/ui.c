@@ -978,7 +978,7 @@ DrawUIButton(UIButton button)
     }
 
     DrawFittedUITextInRect(button.label ? button.label : "", button.bounds,
-                                font, UI_TEXT_16, text);
+                                font, UI_TEXT_8, text);
     if(clicked)
         UIConsumeRelease();
     return clicked || IsUIFocusActivatePressed(button.focus_id);
