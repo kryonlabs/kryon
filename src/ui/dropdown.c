@@ -171,6 +171,7 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
                        const UIDropdownOption *options, int option_count,
                        int *selected_index)
 {
+    char editor_id[96];
     UIDropdownState *state = get_or_create_dropdown_state(id);
     int font = GetUIFontSize();
     int arrow_pad = ScaleUIPx(24);
@@ -185,6 +186,27 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
                       ? !ui_base_input_captures_click(mouse, 1)
                       : !UIInputCapturesClick(mouse));
     int hover = active && UIHoverEffectsEnabled();
+
+    snprintf(editor_id, sizeof(editor_id), "dropdown:%d", id);
+    UIEditorApplyBounds(editor_id, &btn_bounds);
+    x = (int)btn_bounds.x;
+    y = (int)btn_bounds.y;
+    w = (int)btn_bounds.width;
+    h = (int)btn_bounds.height;
+    if(w < ScaleUIPx(32))
+        w = ScaleUIPx(32);
+    if(h < ScaleUIPx(24))
+        h = ScaleUIPx(24);
+    btn_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    button_inside = CheckCollisionPointRec(mouse, btn_bounds);
+    active = button_inside &&
+             (state->open
+                  ? !ui_base_input_captures_click(mouse, 1)
+                  : !UIInputCapturesClick(mouse));
+    hover = active && UIHoverEffectsEnabled();
+    UIEditorRegisterWidget(editor_id, "dropdown", &btn_bounds,
+                           UI_EDITOR_WIDGET_MOVABLE |
+                           UI_EDITOR_WIDGET_RESIZABLE);
 
     /* Calculate arrow position */
     int arrow_x = x + w - arrow_pad;

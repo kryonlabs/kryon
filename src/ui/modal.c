@@ -403,6 +403,7 @@ DrawUIModalFrame(int width, int height, const char *title,
                     Texture2D left_icon,
                     Texture2D right_icon)
 {
+    char editor_id[96];
     UIPanelFrame frame = {0};
     int title_font;
     int icon_size = ScaleUIPx(20);
@@ -420,6 +421,26 @@ DrawUIModalFrame(int width, int height, const char *title,
     frame.h = height;
     frame.x = (ui_view_width - width) / 2;
     frame.y = (ui_view_height - height) / 2;
+    snprintf(editor_id, sizeof(editor_id), "tmp:modal:%s",
+             title != NULL && title[0] != '\0' ? title : "untitled");
+    {
+        Rectangle bounds = {(float)frame.x, (float)frame.y,
+                            (float)frame.w, (float)frame.h};
+        UIEditorApplyBounds(editor_id, &bounds);
+        frame.x = (int)bounds.x;
+        frame.y = (int)bounds.y;
+        frame.w = (int)bounds.width;
+        frame.h = (int)bounds.height;
+        if(frame.w < ScaleUIPx(120))
+            frame.w = ScaleUIPx(120);
+        if(frame.h < ScaleUIPx(96))
+            frame.h = ScaleUIPx(96);
+        bounds = (Rectangle){(float)frame.x, (float)frame.y,
+                             (float)frame.w, (float)frame.h};
+        UIEditorRegisterWidget(editor_id, "modal", &bounds,
+                               UI_EDITOR_WIDGET_MOVABLE |
+                               UI_EDITOR_WIDGET_RESIZABLE);
+    }
     frame.content_x = frame.x + ScaleUIPx(18);
     frame.content_y = frame.y + ScaleUIPx(58);
     frame.content_w = frame.w - ScaleUIPx(36);

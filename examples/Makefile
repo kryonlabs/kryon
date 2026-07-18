@@ -5,17 +5,27 @@ CFLAGS_BASE ?= -Wall -Wextra -O2
 CFLAGS = $(CFLAGS_BASE) -I../include
 LDFLAGS = -L.. -lflint
 UNAME_S := $(shell uname -s)
-RAYLIB_PKG_LIBS := $(shell pkg-config --libs raylib 2>/dev/null || printf '%s' '-L/usr/local/lib -lraylib')
 GL_X11_PKG_LIBS := $(shell pkg-config --libs gl x11 2>/dev/null || printf '%s' '-L/usr/local/lib -lGL -lX11')
 GTK_PKG_CFLAGS := $(shell pkg-config --cflags gtk+-3.0 2>/dev/null)
 GTK_PKG_LIBS := $(shell pkg-config --libs gtk+-3.0 2>/dev/null)
-EXAMPLE_SYSTEM_LDLIBS := $(RAYLIB_PKG_LIBS) $(GL_X11_PKG_LIBS) $(GTK_PKG_LIBS) -lm -lpthread
+RAY_PKGS ?= sdl2 libdrm gbm egl glesv2
+RAY_SDL_CFLAGS ?= $(shell pkg-config --cflags sdl2 2>/dev/null)
+RAY_SDL_LDLIBS ?= $(shell pkg-config --libs sdl2 2>/dev/null)
+RAY_GL_CFLAGS ?= $(shell pkg-config --cflags libdrm gbm egl glesv2 2>/dev/null)
+RAY_GL_LDLIBS ?= $(shell pkg-config --libs libdrm gbm egl glesv2 2>/dev/null)
+RAY_CFLAGS ?= $(strip $(RAY_SDL_CFLAGS) $(RAY_GL_CFLAGS))
+RAY_LDLIBS ?= $(strip $(RAY_SDL_LDLIBS) $(RAY_GL_LDLIBS))
+RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
+EXAMPLE_SYSTEM_LDLIBS := $(RAY_LDLIBS) $(GL_X11_PKG_LIBS) $(GTK_PKG_LIBS) -lm -lpthread
 ifeq ($(UNAME_S),Linux)
     EXAMPLE_SYSTEM_LDLIBS += -ldl -lrt
 endif
 FLINT_DIR := ..
 FONT_OUTPUTS := $(wildcard ../fonts/noto/*.ttf ../fonts/noto/*.otf)
 BUILD_DIR ?= ../build/examples
+RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-native
+RAYLIB_LIB_NAME := raylib
+RAYLIB_A := $(RAYLIB_BUILD_DIR)/lib$(RAYLIB_LIB_NAME).a
 WEB_EMBED_ASSETS_C := $(BUILD_DIR)/embedded_asset_data.c
 WEB_EMBED_ASSET_FILES := $(shell find ../themes -type f 2>/dev/null)
 WEB_RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-web
@@ -41,9 +51,9 @@ ifneq ($(NIX_CFLAGS_COMPILE),)
     CFLAGS += $(NIX_CFLAGS_COMPILE)
 endif
 
-LDFLAGS += $(EXAMPLE_SYSTEM_LDLIBS)
+LDFLAGS += $(RAYLIB_A) $(EXAMPLE_SYSTEM_LDLIBS)
 
-EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout
+EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout 08_editor_gallery
 
 .PHONY: all clean run list font-assets web web-clean
 
@@ -55,7 +65,7 @@ all: ../libflint.a $(EXAMPLES)
 font-assets:
 	@printf '%s\n' 'font assets are checked in'
 
-%: %.c $(FONT_OUTPUTS)
+%: %.c ../libflint.a $(RAYLIB_A) $(FONT_OUTPUTS)
 	@echo "Building $@..."
 	@$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 	@echo "Built: $@"
@@ -107,6 +117,7 @@ run:
 	@echo "  5) color"
 	@echo "  6) scaling"
 	@echo "  7) layout"
+	@echo "  8) editor_gallery"
 	@echo ""
 	@read -p "Enter example number: " num; \
 	case "$$num" in \
@@ -117,6 +128,7 @@ run:
 		5) example="05_color";; \
 		6) example="06_scaling";; \
 		7) example="07_layout";; \
+		8) example="08_editor_gallery";; \
 		*) example=;; \
 	esac; \
 	if [ -n "$$example" ]; then \

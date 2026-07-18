@@ -9,6 +9,7 @@
 #include "ui_core.h"
 #include "ui_controls.h"
 #include "ui_draw.h"
+#include "ui_editor.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_overlay.h"
