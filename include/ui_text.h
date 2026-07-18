@@ -29,6 +29,11 @@ int GetUITextHeight(const char *text, int font_size);
 int GetUITextLineHeight(int font_size);
 int MeasureScaledUIText(const char *text, int scale);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
+void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
+                  int selectable);
+void DrawUINonSelectableText(const char *text, int x, int y, int font_size, Color color);
+int PushUITextSelectable(int selectable);
+void PopUITextSelectable(int token);
 void DrawScaledUIText(const char *text, int x, int y, int scale, Color color);
 void DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, Color color);
 void DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color);

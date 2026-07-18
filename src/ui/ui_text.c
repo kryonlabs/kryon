@@ -30,6 +30,18 @@ typedef struct UIFontEntry {
 static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
 static int g_ui_font_count = 0;
 static int g_ui_active_font = -1;
+static int g_ui_text_selectable_stack[16];
+static int g_ui_text_selectable_stack_count = 0;
+static int g_ui_text_selectable = 1;
+
+typedef struct UITextSelectionState {
+    int id;
+    int anchor;
+    int cursor;
+    int dragging;
+} UITextSelectionState;
+
+static UITextSelectionState g_ui_text_selection = {0};
 
 static Rectangle
 text_world_rect_to_screen(Rectangle rect)
@@ -572,6 +584,163 @@ MeasureUIText(const char *text, int font_size)
     return width;
 }
 
+static int
+ui_text_hash_int(int hash, int value)
+{
+    unsigned int h = (unsigned int)hash;
+
+    h ^= (unsigned int)value + 0x9e3779b9u + (h << 6) + (h >> 2);
+    return (int)(h & 0x7fffffff);
+}
+
+static int
+ui_text_id(const char *text, int x, int y, int font_size)
+{
+    uintptr_t ptr = (uintptr_t)text;
+    int hash = 5381;
+
+    hash = ui_text_hash_int(hash, (int)(ptr & 0xffffffffu));
+    hash = ui_text_hash_int(hash, (int)(ptr >> 32));
+    hash = ui_text_hash_int(hash, x);
+    hash = ui_text_hash_int(hash, y);
+    hash = ui_text_hash_int(hash, font_size);
+    if(hash == 0)
+        hash = 1;
+    return hash;
+}
+
+static int
+ui_text_line_byte_len(const char *text)
+{
+    int len = 0;
+
+    if(text == NULL)
+        return 0;
+    while(text[len] != '\0' && text[len] != '\n')
+        len++;
+    return len;
+}
+
+static int
+ui_text_width_bytes(const char *text, int byte_len, int font_size)
+{
+    Font font = active_font_for_size(font_size);
+    int width = 0;
+
+    if(text == NULL || byte_len <= 0 || font.texture.id == 0 ||
+       font.glyphs == NULL || font.baseSize <= 0)
+        return 0;
+
+    for(int i = 0; i < byte_len && text[i] != '\0';) {
+        int codepoint_byte_count = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
+        Font glyph_font;
+        int index;
+
+        if(codepoint == '\n')
+            break;
+        if(codepoint_byte_count <= 0)
+            codepoint_byte_count = 1;
+        if(i + codepoint_byte_count > byte_len)
+            break;
+        glyph_font = font_for_codepoint(codepoint, font_size);
+        index = GetGlyphIndex(glyph_font, codepoint);
+        width += (int)((float)glyph_font.glyphs[index].advanceX *
+                       font_size_scale(glyph_font, font_size) + 0.5f);
+        i += codepoint_byte_count;
+    }
+
+    return width;
+}
+
+static int
+ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
+{
+    int byte_len = ui_text_line_byte_len(text);
+    int cursor_x = 0;
+
+    if(text == NULL || target_x <= 0)
+        return 0;
+
+    for(int i = 0; i < byte_len;) {
+        int codepoint_byte_count = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
+        Font glyph_font;
+        int index;
+        int advance;
+
+        if(codepoint_byte_count <= 0)
+            codepoint_byte_count = 1;
+        if(i + codepoint_byte_count > byte_len)
+            return i;
+        glyph_font = font_for_codepoint(codepoint, font_size);
+        index = GetGlyphIndex(glyph_font, codepoint);
+        advance = (int)((float)glyph_font.glyphs[index].advanceX *
+                        font_size_scale(glyph_font, font_size) + 0.5f);
+        if(target_x < cursor_x + advance / 2)
+            return i;
+        cursor_x += advance;
+        i += codepoint_byte_count;
+    }
+
+    return byte_len;
+}
+
+static Color
+ui_text_default_selection_color(Color text_color)
+{
+    Color color = c_link.a != 0 ? c_link : text_color;
+
+    color.a = 88;
+    return color;
+}
+
+static void
+ui_text_copy_selection(const char *text, int start, int end)
+{
+    char *copy;
+    int len;
+
+    if(text == NULL || end <= start)
+        return;
+
+    len = end - start;
+    copy = (char *)malloc((size_t)len + 1);
+    if(copy == NULL)
+        return;
+    memcpy(copy, text + start, (size_t)len);
+    copy[len] = '\0';
+    SetClipboardText(copy);
+    free(copy);
+}
+
+static void
+ui_text_draw_selection(const char *text, int x, int y, int font_size,
+                       Color color, int start, int end)
+{
+    int line_h;
+    int start_x;
+    int end_x;
+
+    if(text == NULL || end <= start)
+        return;
+
+    line_h = GetUITextLineHeight(font_size);
+    start_x = x + ui_text_width_bytes(text, start, font_size);
+    end_x = x + ui_text_width_bytes(text, end, font_size);
+    if(end_x <= start_x)
+        return;
+
+    DrawRectangle(start_x, y, end_x - start_x, line_h, color);
+}
+
+static int
+ui_text_mod_key_down(void)
+{
+    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
+           IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
+}
+
 int
 GetUITextHeight(const char *text, int font_size)
 {
@@ -657,13 +826,81 @@ MeasureScaledUIText(const char *text, int scale)
 }
 
 void
-DrawUIText(const char *text, int x, int y, int font_size, Color color)
+DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
+             int selectable_arg)
 {
     Font font = active_font_for_size(font_size);
     int cursor_x = x;
+    int selectable;
+    int id;
+    int byte_len;
+    int text_w;
+    int line_h;
+    int selected_start = 0;
+    int selected_end = 0;
 
     if(text == NULL || font.texture.id == 0 || font.glyphs == NULL || font.recs == NULL)
         return;
+
+    selectable = selectable_arg && g_ui_text_selectable && text[0] != '\0';
+    byte_len = ui_text_line_byte_len(text);
+    text_w = MeasureUIText(text, font_size);
+    line_h = GetUITextLineHeight(font_size);
+    id = selectable ? ui_text_id(text, x, y, font_size) : 0;
+
+    if(selectable) {
+        Rectangle bounds = {(float)x, (float)y, (float)text_w, (float)line_h};
+        Vector2 mouse = ui_mouse_world();
+        int inside = CheckCollisionPointRec(mouse, bounds);
+        int captured = UIInputCapturesClick(mouse);
+
+        if(inside && !captured)
+            SetMouseCursor(MOUSE_CURSOR_IBEAM);
+
+        if(inside && !captured && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            int offset = ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);
+
+            g_ui_text_selection.id = id;
+            g_ui_text_selection.anchor = offset;
+            g_ui_text_selection.cursor = offset;
+            g_ui_text_selection.dragging = 1;
+        }
+        if(g_ui_text_selection.id == id && g_ui_text_selection.dragging) {
+            if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+                g_ui_text_selection.cursor =
+                    ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);
+            } else {
+                g_ui_text_selection.dragging = 0;
+            }
+        }
+        if(g_ui_text_selection.id == id && ui_text_mod_key_down() && IsKeyPressed(KEY_C)) {
+            int start = g_ui_text_selection.anchor;
+            int end = g_ui_text_selection.cursor;
+
+            if(start > end) {
+                int tmp = start;
+                start = end;
+                end = tmp;
+            }
+            start = ui_clampi(start, 0, byte_len);
+            end = ui_clampi(end, 0, byte_len);
+            ui_text_copy_selection(text, start, end);
+        }
+        if(g_ui_text_selection.id == id) {
+            selected_start = g_ui_text_selection.anchor;
+            selected_end = g_ui_text_selection.cursor;
+            if(selected_start > selected_end) {
+                int tmp = selected_start;
+                selected_start = selected_end;
+                selected_end = tmp;
+            }
+            selected_start = ui_clampi(selected_start, 0, byte_len);
+            selected_end = ui_clampi(selected_end, 0, byte_len);
+            ui_text_draw_selection(text, x, y, font_size,
+                                   ui_text_default_selection_color(color),
+                                   selected_start, selected_end);
+        }
+    }
 
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -696,6 +933,39 @@ DrawUIText(const char *text, int x, int y, int font_size, Color color)
         cursor_x += (int)((float)glyph.advanceX * scale + 0.5f);
         i += codepoint_byte_count;
     }
+}
+
+void
+DrawUIText(const char *text, int x, int y, int font_size, Color color)
+{
+    DrawUITextEx(text, x, y, font_size, color, 1);
+}
+
+void
+DrawUINonSelectableText(const char *text, int x, int y, int font_size, Color color)
+{
+    DrawUITextEx(text, x, y, font_size, color, 0);
+}
+
+int
+PushUITextSelectable(int selectable)
+{
+    int token = g_ui_text_selectable;
+
+    if(g_ui_text_selectable_stack_count <
+       (int)(sizeof(g_ui_text_selectable_stack) / sizeof(g_ui_text_selectable_stack[0])))
+        g_ui_text_selectable_stack[g_ui_text_selectable_stack_count++] = token;
+    g_ui_text_selectable = selectable != 0;
+    return token;
+}
+
+void
+PopUITextSelectable(int token)
+{
+    if(g_ui_text_selectable_stack_count > 0)
+        g_ui_text_selectable = g_ui_text_selectable_stack[--g_ui_text_selectable_stack_count];
+    else
+        g_ui_text_selectable = token != 0;
 }
 
 void

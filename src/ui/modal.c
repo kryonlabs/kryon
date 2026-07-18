@@ -2,26 +2,30 @@
 
 static int
 ui_modal_button(int x, int y, int w, int h, const char *label, int font,
-                Vector2 mouse_world)
+                UIButtonStyle style, Vector2 mouse_world)
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
     int active = CheckCollisionPointRec(mouse_world, bounds) &&
                  !UIInputCapturesClick(mouse_world);
-    int hovered = active && UIHoverEffectsEnabled();
-    Color fill = hovered ? c_button_hover : c_button;
+    Color background = style == UI_BUTTON_STYLE_PRIMARY ? c_button : c_surface;
+    Color hover_background = style == UI_BUTTON_STYLE_PRIMARY ? c_button_hover :
+                             LightenUIColor(c_surface, 14);
+    Color text = style == UI_BUTTON_STYLE_PRIMARY ? WHITE : c_text;
 
-    DrawRectangle(x, y, w, h, fill);
-    DrawUIBevel(x, y, w, h, LightenUIColor(fill, 40), DarkenUIColor(fill, 40));
     if(active)
         MarkUIClickable();
 
-    DrawFittedUITextInRect(label, (Rectangle){(float)x, (float)y, (float)w, (float)h},
-                                font, UI_TEXT_12, c_text);
-
-    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        UIConsumeRelease();
+    if(DrawUIButton((UIButton){
+        .bounds = bounds,
+        .label = label,
+        .font = font,
+        .background = background,
+        .hover_background = hover_background,
+        .text = text,
+        .border = DarkenUIColor(background, 28),
+        .radius = 0.08f
+    }))
         return 1;
-    }
     return 0;
 }
 
@@ -38,9 +42,9 @@ ui_modal_clampi(int value, int min_value, int max_value)
 static int
 ui_modal_action_width(const char *label, int font)
 {
-    int width = MeasureUIText(label != NULL ? label : "", font) + ScaleUIPx(34);
-    int min_width = ScaleUIPx(112);
-    int max_width = ScaleUIPx(176);
+    int width = MeasureUIText(label != NULL ? label : "", font) + ScaleUIPx(24);
+    int min_width = ScaleUIPx(88);
+    int max_width = ScaleUIPx(150);
 
     return ui_modal_clampi(width, min_width, max_width);
 }
@@ -102,6 +106,7 @@ ui_modal_draw_actions(const UIModalAction *actions, int count,
 
                 if(ui_modal_button(draw_x, y, equal_w, button_h,
                                    actions[action_index].label, font,
+                                   actions[action_index].style,
                                    mouse_world))
                     result = action_index + 1;
                 draw_x += equal_w + gap;
@@ -129,7 +134,7 @@ DrawUIActionModal(UIModalSpec modal)
     int title_font;
     int msg_font = GetUIFontSize();
     int btn_font = GetUISmallFontSize();
-    int btn_h = ClampUIPx(36, 32, 40);
+    int btn_h = ClampUIPx(30, 28, 32);
     int btn_gap = ScaleUIPx(8);
     int title_h = ScaleUIPx(48);
     int padding_x = ScaleUIPx(18);

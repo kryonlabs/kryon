@@ -2,8 +2,8 @@
 #include "ui_layout.h"
 #include "locale.h"
 
-#define UI_THEME_SETTINGS_ROW_H 36
-#define UI_THEME_SETTINGS_ROW_GAP 14
+#define UI_THEME_SETTINGS_ROW_H 30
+#define UI_THEME_SETTINGS_ROW_GAP 10
 
 
 static const ThemeId theme_picker_order[THEME_COUNT] = {
