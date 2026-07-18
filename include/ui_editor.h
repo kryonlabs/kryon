@@ -14,6 +14,9 @@ void BeginUIEditorFrame(const char *project_root);
 void EndUIEditorFrame(void);
 void SetUIEditorEnabled(int enabled);
 int UIEditorEnabled(void);
+void SetUIEditorCanvasBounds(Rectangle bounds);
+int PushUIEditorChrome(int enabled);
+void PopUIEditorChrome(int token);
 int UIEditorInputCapturesClick(Vector2 point);
 void UIEditorApplyBounds(const char *id, Rectangle *bounds);
 void UIEditorRegisterWidget(const char *id, const char *kind,

@@ -33,6 +33,9 @@ typedef struct UIEditorState {
     int dragging;
     int resizing;
     int selected;
+    int chrome_depth;
+    int canvas_active;
+    Rectangle canvas_bounds;
     Vector2 drag_start;
     Rectangle edit_start;
     char project_root[UI_EDITOR_PATH_MAX];
@@ -246,6 +249,7 @@ BeginUIEditorFrame(const char *project_root)
         return;
     ui_editor_load_layout();
     g_ui_editor.widget_count = 0;
+    g_ui_editor.canvas_active = 0;
     if(IsKeyPressed(KEY_F12))
         g_ui_editor.visible = !g_ui_editor.visible;
 }
@@ -270,11 +274,46 @@ UIEditorEnabled(void)
     return g_ui_editor.enabled;
 }
 
+void
+SetUIEditorCanvasBounds(Rectangle bounds)
+{
+    ui_editor_init_from_env();
+    g_ui_editor.canvas_bounds = bounds;
+    g_ui_editor.canvas_active = bounds.width > 0.0f && bounds.height > 0.0f;
+}
+
+int
+PushUIEditorChrome(int enabled)
+{
+    int token;
+
+    ui_editor_init_from_env();
+    token = g_ui_editor.chrome_depth;
+    if(enabled)
+        g_ui_editor.chrome_depth++;
+    return token;
+}
+
+void
+PopUIEditorChrome(int token)
+{
+    ui_editor_init_from_env();
+    if(token < 0)
+        token = 0;
+    g_ui_editor.chrome_depth = token;
+}
+
 int
 UIEditorInputCapturesClick(Vector2 point)
 {
-    (void)point;
     ui_editor_init_from_env();
+    if(g_ui_editor.chrome_depth > 0)
+        return 0;
+    if(g_ui_editor.dragging || g_ui_editor.resizing)
+        return 1;
+    if(g_ui_editor.canvas_active &&
+       !CheckCollisionPointRec(point, g_ui_editor.canvas_bounds))
+        return 0;
     return g_ui_editor.enabled && g_ui_editor.visible;
 }
 
@@ -304,6 +343,11 @@ UIEditorRegisterWidget(const char *id, const char *kind,
     ui_editor_init_from_env();
     if(!g_ui_editor.enabled || id == NULL || id[0] == '\0' ||
        bounds == NULL || g_ui_editor.widget_count >= UI_EDITOR_MAX_WIDGETS)
+        return;
+    if(g_ui_editor.chrome_depth > 0)
+        return;
+    if(g_ui_editor.canvas_active &&
+       !CheckCollisionRecs(*bounds, g_ui_editor.canvas_bounds))
         return;
     widget = &g_ui_editor.widgets[g_ui_editor.widget_count++];
     memset(widget, 0, sizeof(*widget));
@@ -384,6 +428,11 @@ ui_editor_update_interaction(void)
     int can_move;
     int can_resize;
 
+    if(g_ui_editor.canvas_active &&
+       !CheckCollisionPointRec(mouse, g_ui_editor.canvas_bounds) &&
+       !g_ui_editor.dragging && !g_ui_editor.resizing)
+        return;
+
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         ui_editor_select_at(mouse);
         if(g_ui_editor.selected >= 0) {
@@ -451,6 +500,11 @@ ui_editor_draw_inspector(void)
     Color border = LightenUIColor(c_surface, 35);
     int y = (int)panel.y + ScaleUIPx(10);
     char line[160];
+
+    if(g_ui_editor.canvas_active) {
+        panel.x = g_ui_editor.canvas_bounds.x + ScaleUIPx(10);
+        panel.y = g_ui_editor.canvas_bounds.y + ScaleUIPx(10);
+    }
 
     panel_bg.a = panel_bg.a > 220 ? panel_bg.a : 220;
     DrawRectangleRec(panel, panel_bg);
