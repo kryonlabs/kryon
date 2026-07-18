@@ -13,7 +13,7 @@
 #endif
 
 #define CLAY_IMPLEMENTATION
-#include "clay.h"
+#include "../../vendor/clay/clay.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
