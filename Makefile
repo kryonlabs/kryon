@@ -97,15 +97,14 @@ MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(FLINT_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean run editor font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check version release-check dist-static check-static-package install-static
+.PHONY: all clean run examples-run editor font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check version release-check dist-static check-static-package install-static
 
 all: $(LIB)
 
 run:
-	@echo "Building Flint library..."
-	@$(MAKE) -C . $(LIB)
-	@echo ""
-	@echo "Launching examples system..."
+	@$(MAKE) editor
+
+examples-run:
 	@$(MAKE) -C examples run
 
 editor:
