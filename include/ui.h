@@ -16,5 +16,6 @@
 #include "ui_reorder.h"
 #include "ui_rows.h"
 #include "ui_scroll.h"
+#include "ui_toast.h"
 
 #endif

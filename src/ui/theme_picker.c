@@ -247,13 +247,13 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
 {
     int changed = 0;
     int small_font = UI_TEXT_12;
-    int selected = theme_id != NULL ? *theme_id : THEME_SKY;
+    int selected = theme_id != NULL ? *theme_id : THEME_SUNSET;
     UIThemeGridLayout layout = ui_theme_grid_layout(w);
     int start_x = x + (w - layout.row_width) / 2;
     Vector2 mouse_world = ui_mouse_world();
 
     if(selected < 0 || selected >= THEME_COUNT)
-        selected = THEME_SKY;
+        selected = THEME_SUNSET;
 
     for(int i = 0; i < THEME_COUNT; i++) {
         ThemeId theme = theme_picker_order[i];

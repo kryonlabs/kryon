@@ -62,7 +62,7 @@ ThemeId
 NormalizeTheme(int theme)
 {
     if(theme < 0 || theme >= THEME_COUNT)
-        return THEME_SKY;
+        return THEME_SUNSET;
     return (ThemeId)theme;
 }
 

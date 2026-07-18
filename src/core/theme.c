@@ -9,7 +9,7 @@
 static ThemeScope scopes[THEME_MAX_SCOPES];
 static int scope_count = 0;
 static bool dark_mode = false;
-static int current_theme_id = THEME_SKY;
+static int current_theme_id = THEME_SUNSET;
 static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
 static ThemeMode theme_mode = THEME_MODE_SYSTEM;
 

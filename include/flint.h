@@ -21,6 +21,7 @@
 #include "ui_rows.h"
 #include "ui_scroll.h"
 #include "ui_text.h"
+#include "ui_toast.h"
 #include "ui.h"
 #include "ui_text_layout.h"
 #include "ui_transition.h"
