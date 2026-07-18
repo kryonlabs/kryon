@@ -21,6 +21,9 @@ normalize_path(const char *path)
     match = strstr(path, "/assets/");
     if(match != NULL)
         return match + 1;
+    match = strstr(path, "/fonts/");
+    if(match != NULL)
+        return match + 1;
 
     return path;
 }
