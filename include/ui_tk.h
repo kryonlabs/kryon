@@ -135,6 +135,32 @@ typedef struct {
 } UITreeView;
 
 typedef struct {
+    const char *label;
+    int depth;
+    int id;
+    int is_dir;
+    int selectable;
+} UICascadingTreeItem;
+
+typedef struct {
+    int *ids;
+    int *count;
+    int capacity;
+} UICascadingTreeExpansion;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const UICascadingTreeItem *items;
+    int item_count;
+    int *selected_id;
+    int *activated_id;
+    UICascadingTreeExpansion expanded;
+    int *scroll_offset;
+    int row_height;
+} UICascadingTreeView;
+
+typedef struct {
     const char **cells;
     int cell_count;
 } UITableRow;
@@ -247,6 +273,7 @@ void DrawUIImageBox(UIImageBox image);
 
 int DrawUIListBox(UIListBox list);
 int DrawUITreeView(UITreeView tree);
+int DrawUICascadingTreeView(UICascadingTreeView tree);
 int DrawUITableView(UITableView table);
 
 UICanvasResult BeginUICanvas(UICanvas canvas);

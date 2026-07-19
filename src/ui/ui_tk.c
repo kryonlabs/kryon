@@ -574,6 +574,158 @@ DrawUITreeView(UITreeView tree)
     return changed;
 }
 
+static int
+ui_tree_expanded_index(UICascadingTreeExpansion expansion, int id)
+{
+    int count = expansion.count != NULL ? *expansion.count : 0;
+
+    for(int i = 0; i < count; i++) {
+        if(expansion.ids != NULL && expansion.ids[i] == id)
+            return i;
+    }
+    return -1;
+}
+
+static int
+ui_tree_is_expanded(UICascadingTreeExpansion expansion, int id)
+{
+    return ui_tree_expanded_index(expansion, id) >= 0;
+}
+
+static void
+ui_tree_toggle_expanded(UICascadingTreeExpansion *expansion, int id)
+{
+    int index;
+    int count;
+
+    if(expansion == NULL || expansion->ids == NULL ||
+       expansion->count == NULL || expansion->capacity <= 0)
+        return;
+    count = *expansion->count;
+    index = ui_tree_expanded_index(*expansion, id);
+    if(index >= 0) {
+        for(int i = index; i + 1 < count; i++)
+            expansion->ids[i] = expansion->ids[i + 1];
+        if(count > 0)
+            expansion->ids[count - 1] = 0;
+        *expansion->count = count - 1;
+        return;
+    }
+    if(count >= expansion->capacity)
+        return;
+    expansion->ids[count++] = id;
+    *expansion->count = count;
+}
+
+static int
+ui_tree_item_visible(const UICascadingTreeItem *items, int index,
+                     UICascadingTreeExpansion expansion)
+{
+    int depth;
+
+    if(items == NULL || index < 0)
+        return 0;
+    depth = items[index].depth;
+    for(int i = index - 1; i >= 0; i--) {
+        if(items[i].depth >= depth)
+            continue;
+        if(items[i].is_dir && !ui_tree_is_expanded(expansion, items[i].id))
+            return 0;
+        depth = items[i].depth;
+        if(depth <= 0)
+            break;
+    }
+    return 1;
+}
+
+int
+DrawUICascadingTreeView(UICascadingTreeView tree)
+{
+    int font = GetUIFontSize();
+    int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
+    int scroll_y;
+    int max_scroll;
+    int visible_count = 0;
+    int changed = 0;
+
+    if(row_h <= 0)
+        row_h = 1;
+    for(int i = 0; i < tree.item_count; i++) {
+        if(ui_tree_item_visible(tree.items, i, tree.expanded))
+            visible_count++;
+    }
+    max_scroll = ui_update_scroll(tree.bounds, visible_count * row_h,
+                                  tree.scroll_offset, row_h);
+    scroll_y = tree.scroll_offset != NULL ? *tree.scroll_offset : 0;
+
+    ui_draw_panel(tree.bounds);
+    BeginUIClip((int)tree.bounds.x, (int)tree.bounds.y,
+                (int)tree.bounds.width, (int)tree.bounds.height);
+    visible_count = 0;
+    for(int i = 0; i < tree.item_count; i++) {
+        const UICascadingTreeItem *item;
+        Rectangle row;
+        Rectangle text_rect;
+        int hot;
+        int expanded;
+        int x;
+        int y;
+
+        if(!ui_tree_item_visible(tree.items, i, tree.expanded))
+            continue;
+        item = &tree.items[i];
+        y = (int)tree.bounds.y + visible_count * row_h - scroll_y;
+        visible_count++;
+        if(y + row_h < (int)tree.bounds.y ||
+           y > (int)(tree.bounds.y + tree.bounds.height))
+            continue;
+
+        row = (Rectangle){tree.bounds.x, (float)y, tree.bounds.width,
+                          (float)row_h};
+        hot = ui_hot(row);
+        expanded = item->is_dir && ui_tree_is_expanded(tree.expanded, item->id);
+        x = (int)row.x + ScaleUIPx(8 + item->depth * 18);
+        if(tree.selected_id != NULL && *tree.selected_id == item->id)
+            DrawRectangleRec(row, c_button);
+        else if(hot)
+            DrawRectangleRec(row, c_button_hover);
+        if(hot)
+            MarkUIClickable();
+
+        if(item->is_dir)
+            DrawUIText(expanded ? "v" : ">", x, ui_row_text_y(row, font),
+                       font, c_icon);
+        text_rect = (Rectangle){
+            (float)(x + ScaleUIPx(18)),
+            row.y,
+            tree.bounds.x + tree.bounds.width - (float)ScaleUIPx(10) -
+                (float)(x + ScaleUIPx(18)),
+            row.height
+        };
+        DrawUITextInRect(item->label != NULL ? item->label : "", text_rect,
+                         font, c_text);
+
+        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            UIConsumeRelease();
+            if(item->is_dir) {
+                ui_tree_toggle_expanded(&tree.expanded, item->id);
+                changed = 1;
+            } else if(item->selectable && tree.selected_id != NULL) {
+                *tree.selected_id = item->id;
+                if(tree.activated_id != NULL)
+                    *tree.activated_id = item->id;
+                changed = 1;
+            }
+        }
+    }
+    EndUIClip();
+    if(tree.scroll_offset != NULL && max_scroll > 0)
+        DrawUIScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+                        (int)tree.bounds.y, (int)tree.bounds.height,
+                        visible_count * row_h, tree.scroll_offset, max_scroll);
+    return changed;
+}
+
 int
 DrawUITableView(UITableView table)
 {
