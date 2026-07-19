@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 enum {
@@ -52,6 +53,30 @@ path_basename(const char *path)
             base = p + 1;
     }
     return base;
+}
+
+static void
+shell_quote(char *dst, size_t dst_size, const char *src)
+{
+    size_t n = 0;
+
+    if(dst_size == 0)
+        return;
+    dst[n++] = '\'';
+    while(src != NULL && *src != '\0' && n + 5 < dst_size) {
+        if(*src == '\'') {
+            dst[n++] = '\'';
+            dst[n++] = '\\';
+            dst[n++] = '\'';
+            dst[n++] = '\'';
+        } else {
+            dst[n++] = *src;
+        }
+        src++;
+    }
+    if(n + 1 < dst_size)
+        dst[n++] = '\'';
+    dst[n] = '\0';
 }
 
 static UITextInputStyle
@@ -104,6 +129,9 @@ editor_load_project_host(EditorProject *project, char *status, size_t status_siz
     FlintEditorHostCreateFunc create_host;
     void *symbol;
     char *error;
+    char build_script[EDITOR_PATH_CAP];
+    char quoted_path[EDITOR_PATH_CAP + 16];
+    char command[EDITOR_PATH_CAP + 64];
 
     if(project == NULL || !project->loaded) {
         snprintf(status, status_size, "Open a Flint project first");
@@ -113,9 +141,20 @@ editor_load_project_host(EditorProject *project, char *status, size_t status_siz
     snprintf(project->host_path, sizeof(project->host_path),
              "%s/.flint/editor_host.so", project->path);
     if(!FileExists(project->host_path)) {
-        snprintf(status, status_size, "No editor host: %s",
-                 project->host_path);
-        return 0;
+        snprintf(build_script, sizeof(build_script),
+                 "%s/.flint/build-editor-host", project->path);
+        if(!FileExists(build_script)) {
+            snprintf(status, status_size, "No editor host: %s",
+                     project->host_path);
+            return 0;
+        }
+        shell_quote(quoted_path, sizeof(quoted_path), project->path);
+        snprintf(command, sizeof(command),
+                 "cd %s && sh .flint/build-editor-host", quoted_path);
+        if(system(command) != 0 || !FileExists(project->host_path)) {
+            snprintf(status, status_size, "Could not build editor host");
+            return 0;
+        }
     }
 
     project->host_library = dlopen(project->host_path, RTLD_NOW | RTLD_LOCAL);
