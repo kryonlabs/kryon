@@ -20,6 +20,12 @@ typedef enum {
     UI_BUTTON_STYLE_TAB_SELECTED
 } UIButtonStyle;
 
+typedef enum {
+    UI_SYNTAX_NONE,
+    UI_SYNTAX_KRY,
+    UI_SYNTAX_C
+} UISyntaxMode;
+
 typedef struct {
     Color background;
     Color border;
@@ -120,6 +126,7 @@ typedef struct {
     int line_gap;
     int focus_id;
     const char *placeholder;
+    UISyntaxMode syntax;
     UITextInputStyle style;
     UITextInputFilter filter;
     void *filter_user_data;

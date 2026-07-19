@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "platform.h"
 #include "theme.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1412,8 +1413,183 @@ ui_text_area_cursor_from_point(const char *text, int font, int line_gap, int x, 
     return len;
 }
 
+static int
+ui_syntax_is_ident_start(char c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
+}
+
+static int
+ui_syntax_is_ident(char c)
+{
+    return ui_syntax_is_ident_start(c) || (c >= '0' && c <= '9') || c == '-';
+}
+
+static int
+ui_syntax_word_eq(const char *text, int len, const char *word)
+{
+    return (int)strlen(word) == len && strncmp(text, word, (size_t)len) == 0;
+}
+
+static int
+ui_syntax_kry_keyword(const char *text, int len)
+{
+    static const char *keywords[] = {
+        "action", "args", "bind", "button", "checkbox", "circle",
+        "const", "def", "down", "dropdown", "elif", "else", "enter",
+        "exit", "fn", "if", "include", "label", "listen", "logic",
+        "on", "radiobutton", "screen", "slider", "spacer", "switch",
+        "text", "tick", "toggle", "up", "var", "window", "write"
+    };
+
+    for(size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
+        if(ui_syntax_word_eq(text, len, keywords[i]))
+            return 1;
+    }
+    return 0;
+}
+
+static int
+ui_syntax_c_keyword(const char *text, int len)
+{
+    static const char *keywords[] = {
+        "break", "case", "char", "const", "continue", "default", "do",
+        "double", "else", "enum", "float", "for", "if", "int", "long",
+        "return", "short", "sizeof", "static", "struct", "switch",
+        "typedef", "void", "while"
+    };
+
+    for(size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
+        if(ui_syntax_word_eq(text, len, keywords[i]))
+            return 1;
+    }
+    return 0;
+}
+
+static Color
+ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
+                      int first_token, UITextInputStyle style)
+{
+    Color keyword = GetThemeButtonHover();
+    Color string = LightenUIColor(GetThemeText(), 34);
+    Color number = LightenUIColor(GetThemeButtonHover(), 20);
+    Color path = GetThemeIcon();
+    Color comment = DarkenUIColor(GetThemeText(), 44);
+
+    if(len <= 0)
+        return style.text;
+    if(syntax == UI_SYNTAX_KRY && first_token && text[0] == '#')
+        return comment;
+    if(text[0] == '"')
+        return string;
+    if((text[0] >= '0' && text[0] <= '9') ||
+       (text[0] == '-' && len > 1 && text[1] >= '0' && text[1] <= '9'))
+        return number;
+    if(syntax == UI_SYNTAX_KRY &&
+       (text[0] == '/' ||
+        (text[0] == '.' && len > 1 && (text[1] == '/' || text[1] == '.')) ||
+        text[0] == '%'))
+        return path;
+    if(syntax == UI_SYNTAX_KRY && ui_syntax_kry_keyword(text, len))
+        return keyword;
+    if(syntax == UI_SYNTAX_C && ui_syntax_c_keyword(text, len))
+        return keyword;
+    return style.text;
+}
+
+static int
+ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
+                    int first_token)
+{
+    int i = index;
+
+    if(i >= len)
+        return 0;
+    if(line[i] == ' ' || line[i] == '\t') {
+        while(i < len && (line[i] == ' ' || line[i] == '\t'))
+            i++;
+        return i - index;
+    }
+    if(syntax == UI_SYNTAX_KRY && first_token && line[i] == '#')
+        return len - index;
+    if(syntax == UI_SYNTAX_C && line[i] == '/' && i + 1 < len &&
+       line[i + 1] == '/')
+        return len - index;
+    if(line[i] == '"') {
+        i++;
+        while(i < len) {
+            if(line[i] == '\\' && i + 1 < len) {
+                i += 2;
+                continue;
+            }
+            if(line[i++] == '"')
+                break;
+        }
+        return i - index;
+    }
+    if(line[i] == '/' || line[i] == '%' ||
+       (line[i] == '.' && i + 1 < len && (line[i + 1] == '/' || line[i + 1] == '.'))) {
+        i++;
+        while(i < len && !isspace((unsigned char)line[i]) &&
+              strchr("{}[](),", line[i]) == NULL)
+            i++;
+        return i - index;
+    }
+    if((line[i] >= '0' && line[i] <= '9') ||
+       (line[i] == '-' && i + 1 < len && line[i + 1] >= '0' && line[i + 1] <= '9')) {
+        i++;
+        while(i < len && ((line[i] >= '0' && line[i] <= '9') ||
+                          line[i] == '.' || line[i] == 'x' ||
+                          (line[i] >= 'A' && line[i] <= 'F') ||
+                          (line[i] >= 'a' && line[i] <= 'f')))
+            i++;
+        return i - index;
+    }
+    if(ui_syntax_is_ident_start(line[i])) {
+        i++;
+        while(i < len && ui_syntax_is_ident(line[i]))
+            i++;
+        return i - index;
+    }
+    return 1;
+}
+
 static void
-ui_draw_text_area_text(const char *text, int cursor, int focused, Rectangle bounds, int font, int line_gap, int scroll_y, UITextInputStyle style)
+ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
+                    UISyntaxMode syntax, UITextInputStyle style)
+{
+    char token[1024];
+    int offset = 0;
+    int first_token = 1;
+
+    while(offset < len) {
+        int token_len = ui_syntax_token_len(line, len, offset, syntax,
+                                            first_token);
+        Color color;
+        int token_is_first;
+
+        if(token_len <= 0)
+            break;
+        if(token_len >= (int)sizeof(token))
+            token_len = (int)sizeof(token) - 1;
+        memcpy(token, line + offset, (size_t)token_len);
+        token[token_len] = '\0';
+        token_is_first = first_token;
+        color = ui_syntax_token_color(syntax, token, token_len, token_is_first,
+                                      style);
+        if(token[0] != ' ' && token[0] != '\t')
+            first_token = 0;
+        DrawUIText(token, x, y, font, color);
+        x += MeasureUIText(token, font);
+        offset += token_len;
+    }
+}
+
+static void
+ui_draw_text_area_text(const char *text, int cursor, int focused,
+                       Rectangle bounds, int font, int line_gap,
+                       int scroll_y, UISyntaxMode syntax,
+                       UITextInputStyle style)
 {
     char line[1024];
     int len;
@@ -1436,7 +1612,11 @@ ui_draw_text_area_text(const char *text, int cursor, int focused, Rectangle boun
                 line_len = (int)sizeof(line) - 1;
             memcpy(line, text + line_start, (size_t)line_len);
             line[line_len] = '\0';
-            DrawUIText(line, text_x, draw_y, line_font, style.text);
+            if(syntax == UI_SYNTAX_NONE)
+                DrawUIText(line, text_x, draw_y, line_font, style.text);
+            else
+                ui_draw_syntax_line(line, line_len, text_x, draw_y,
+                                    line_font, syntax, style);
             if(focused && cursor >= line_start && cursor <= i && (((int)(GetTime() * 2.0)) % 2 == 0)) {
                 int cursor_x = text_x + ui_text_column_x(text, line_start, cursor, line_font);
                 DrawRectangle(cursor_x, draw_y, ScaleUIPx(2), GetUITextLineHeight(line_font), style.cursor);
@@ -1571,7 +1751,9 @@ DrawUITextArea(UITextArea area)
         DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
     else
-        ui_draw_text_area_text(area.text, *area.cursor_position, focused, area.bounds, font, line_gap, scroll_y, area.style);
+        ui_draw_text_area_text(area.text, *area.cursor_position, focused,
+                               area.bounds, font, line_gap, scroll_y,
+                               area.syntax, area.style);
     EndUIClip();
     return changed;
 }
