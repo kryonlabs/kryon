@@ -879,6 +879,7 @@ DrawUISourceView(UISourceView source)
     int y;
     int line_no = 1;
     const char *line;
+    Vector2 mouse;
 
     if(line_h <= 0)
         line_h = 1;
@@ -889,6 +890,11 @@ DrawUISourceView(UISourceView source)
                        source.bounds.height - (float)(pad * 2)};
     if(view.width <= 0.0f || view.height <= 0.0f)
         return 0;
+    mouse = ui_mouse_world();
+    if(ui_contains(view, mouse)) {
+        PushUIInputCapture(view, 1);
+        MarkUIClickable();
+    }
 
     content_h = line_count * line_h;
     content_w = gutter_w + ui_source_max_line_width(text, font) + ScaleUIPx(24);
