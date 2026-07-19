@@ -769,8 +769,7 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
                           font, item->is_dir ? GetThemeText()
                                              : GetThemeIcon());
 
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            UIConsumeRelease();
+        if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(item->is_dir) {
                 ui_tree_toggle_expanded(&tree.expanded, item->id);
                 changed = 1;
