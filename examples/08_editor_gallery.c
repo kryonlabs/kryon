@@ -1,9 +1,11 @@
 #include "example_ui_font.h"
+#include "file_dialog.h"
 #include "theme.h"
 #include "theme_meta.h"
 #include "ui.h"
 #include "flint.h"
 #include <stdio.h>
+#include <string.h>
 
 typedef enum EditorTool {
     EDITOR_TOOL_SELECT,
@@ -49,9 +51,48 @@ draw_palette_button(int x, int *y, int w, const char *label, int active)
     return clicked;
 }
 
+static int
+draw_menu_button(int x, int y, const char *label, int active)
+{
+    return DrawUIGenericButton(x, y, ScaleUIPx(78), ScaleUIPx(28), label,
+                               active ? UI_BUTTON_STYLE_PRIMARY
+                                      : UI_BUTTON_STYLE_SECONDARY,
+                               0, NULL);
+}
+
+static void
+draw_project_menu(int x, int y, int *open, FileDialog *project_dialog)
+{
+    int w = ScaleUIPx(188);
+    int item_h = ScaleUIPx(32);
+
+    if(open == NULL || !*open)
+        return;
+    DrawRectangle(x, y, w, item_h * 4 + ScaleUIPx(10), GetThemeSurface());
+    DrawRectangleLines(x, y, w, item_h * 4 + ScaleUIPx(10),
+                       DarkenUIColor(GetThemeSurface(), 38));
+    y += ScaleUIPx(5);
+    if(DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
+                           "Open Project", UI_BUTTON_STYLE_PRIMARY, 0, NULL)) {
+        BeginSelectFileDialogFolder(project_dialog, "Open Flint Project");
+        *open = 0;
+    }
+    y += item_h;
+    DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
+                        "New Project", UI_BUTTON_STYLE_SECONDARY, 0, NULL);
+    y += item_h;
+    DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
+                        "Save Layout", UI_BUTTON_STYLE_SECONDARY, 0, NULL);
+    y += item_h;
+    DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
+                        "Reveal Folder", UI_BUTTON_STYLE_SECONDARY, 0, NULL);
+}
+
 static void
 draw_editor_chrome(int view_w, int view_h, Rectangle canvas, EditorTool *tool,
-                   int *view_mode, int *preview_enabled)
+                   int *view_mode, int *preview_enabled, int *project_menu_open,
+                   int *edit_menu_open, int *view_menu_open,
+                   FileDialog *project_dialog, const char *project_path)
 {
     int chrome = PushUIEditorChrome(1);
     int top_h = ScaleUIPx(54);
@@ -66,22 +107,44 @@ draw_editor_chrome(int view_w, int view_h, Rectangle canvas, EditorTool *tool,
     DrawRectangle(0, 0, view_w, top_h, DarkenUIColor(GetThemeBackground(), 12));
     DrawLine(0, top_h - 1, view_w, top_h - 1,
              DarkenUIColor(GetThemeBackground(), 42));
-    DrawUIText("Flint Editor", ScaleUIPx(18), ScaleUIPx(15), UI_TEXT_24,
+    DrawUIText("Flint Editor", ScaleUIPx(14), ScaleUIPx(14), UI_TEXT_24,
                GetThemeText());
-    DrawUIText("/home/wao/src/flint", ScaleUIPx(168), ScaleUIPx(20),
-               UI_TEXT_12, GetThemeIcon());
-    DrawUIDropdownButton(801, view_w - ScaleUIPx(440), ScaleUIPx(10),
+    if(draw_menu_button(ScaleUIPx(150), ScaleUIPx(13), "Project", *project_menu_open)) {
+        *project_menu_open = !*project_menu_open;
+        *edit_menu_open = 0;
+        *view_menu_open = 0;
+    }
+    if(draw_menu_button(ScaleUIPx(234), ScaleUIPx(13), "Edit", *edit_menu_open)) {
+        *edit_menu_open = !*edit_menu_open;
+        *project_menu_open = 0;
+        *view_menu_open = 0;
+    }
+    if(draw_menu_button(ScaleUIPx(318), ScaleUIPx(13), "View", *view_menu_open)) {
+        *view_menu_open = !*view_menu_open;
+        *project_menu_open = 0;
+        *edit_menu_open = 0;
+    }
+    DrawUIReadonlyTextBox((UIReadonlyTextBox){
+        .bounds = {(float)ScaleUIPx(410), (float)ScaleUIPx(9),
+                   (float)(view_w - ScaleUIPx(874)), (float)ScaleUIPx(36)},
+        .text = project_path,
+        .style = editor_input_style()
+    });
+    if(DrawUIGenericButton(view_w - ScaleUIPx(452), ScaleUIPx(10),
+                           ScaleUIPx(116), ScaleUIPx(34), "Open Project",
+                           UI_BUTTON_STYLE_PRIMARY, 0, NULL))
+        BeginSelectFileDialogFolder(project_dialog, "Open Flint Project");
+    DrawUIDropdownButton(801, view_w - ScaleUIPx(326), ScaleUIPx(10),
                          ScaleUIPx(160), ScaleUIPx(34),
                          modes, 3, view_mode);
-    DrawUIGenericButton(view_w - ScaleUIPx(268), ScaleUIPx(10),
-                        ScaleUIPx(92), ScaleUIPx(34), "Run",
+    DrawUIGenericButton(view_w - ScaleUIPx(156), ScaleUIPx(10),
+                        ScaleUIPx(64), ScaleUIPx(34), "Run",
                         UI_BUTTON_STYLE_PRIMARY, 0, NULL);
-    DrawUIGenericButton(view_w - ScaleUIPx(168), ScaleUIPx(10),
-                        ScaleUIPx(92), ScaleUIPx(34), "Save",
+    DrawUIGenericButton(view_w - ScaleUIPx(84), ScaleUIPx(10),
+                        ScaleUIPx(64), ScaleUIPx(34), "Save",
                         UI_BUTTON_STYLE_SECONDARY, 0, NULL);
-    DrawUIGenericButton(view_w - ScaleUIPx(68), ScaleUIPx(10),
-                        ScaleUIPx(50), ScaleUIPx(34), "F12",
-                        UI_BUTTON_STYLE_SECONDARY, 0, NULL);
+    draw_project_menu(ScaleUIPx(150), top_h - ScaleUIPx(2),
+                      project_menu_open, project_dialog);
 
     draw_panel((Rectangle){0, (float)top_h, (float)side_w,
                            (float)(view_h - top_h - bottom_h)}, "Palette");
@@ -107,7 +170,7 @@ draw_editor_chrome(int view_w, int view_h, Rectangle canvas, EditorTool *tool,
     y += ScaleUIPx(22);
     DrawUIReadonlyTextBox((UIReadonlyTextBox){
         .bounds = {(float)x, (float)y, (float)(side_w - ScaleUIPx(28)), (float)ScaleUIPx(94)},
-        .text = "Open a Flint project, compose screens on the canvas, then save layout overrides.",
+        .text = project_path,
         .style = editor_input_style(),
         .line_gap = ScaleUIPx(3)
     });
@@ -250,6 +313,11 @@ main(void)
     int area_cursor = 12;
     int area_focused = 0;
     int area_scroll = 0;
+    int project_menu_open = 0;
+    int edit_menu_open = 0;
+    int view_menu_open = 0;
+    FileDialog project_dialog;
+    char project_path[FILE_DIALOG_PATH_MAX] = "/home/wao/src/flint";
     char text_value[128] = "Flint";
     char area_value[256] = "Edit this text area.\nThen drag the editor handles.";
 
@@ -259,6 +327,8 @@ main(void)
     InitUI(screen_w, screen_h, GetUIScale());
     SetCurrentTheme(THEME_SKY, 0);
     SetUIEditorEnabled(1);
+    InitFileDialog(&project_dialog);
+    SetFileDialogCurrentDir(&project_dialog, project_path);
 
     while(!WindowShouldClose()) {
         int view_w = GetScreenWidth();
@@ -267,6 +337,7 @@ main(void)
         int left_w = ScaleUIPx(228);
         int right_w = ScaleUIPx(270);
         int bottom_h = ScaleUIPx(34);
+        int dialog_result;
         Rectangle canvas = {
             (float)left_w,
             (float)top_h,
@@ -281,6 +352,12 @@ main(void)
         SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
                     GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
                     GetThemeIcon());
+        dialog_result = UpdateFileDialog(&project_dialog);
+        if(dialog_result == 1) {
+            snprintf(project_path, sizeof(project_path), "%s",
+                     GetFileDialogPath(&project_dialog));
+            SetFileDialogCurrentDir(&project_dialog, project_path);
+        }
         SetUIEditorCanvasBounds(canvas);
 
         draw_canvas(canvas, &slider_value, &vertical_value, &toggle_value,
@@ -290,13 +367,16 @@ main(void)
                     &area_cursor, &area_focused, &area_scroll);
         DrawUIEditorOverlay();
         draw_editor_chrome(view_w, view_h, canvas, &tool, &view_mode,
-                           &preview_enabled);
+                           &preview_enabled, &project_menu_open,
+                           &edit_menu_open, &view_menu_open,
+                           &project_dialog, project_path);
 
         EndUIFocus();
         EndDrawing();
     }
 
     UnloadExampleUIFont();
+    CloseFileDialog(&project_dialog);
     CloseWindow();
     return 0;
 }
