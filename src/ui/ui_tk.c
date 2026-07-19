@@ -783,6 +783,173 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
     return changed;
 }
 
+static int
+ui_source_line_count(const char *text)
+{
+    int count = 1;
+
+    if(text == NULL || text[0] == '\0')
+        return 0;
+    for(const char *p = text; *p != '\0'; p++) {
+        if(*p == '\n')
+            count++;
+    }
+    return count;
+}
+
+static int
+ui_source_line_width(const char *text, int len, int font)
+{
+    char line[1024];
+    int n = len;
+
+    if(text == NULL)
+        return 0;
+    if(n < 0)
+        n = 0;
+    if(n >= (int)sizeof(line))
+        n = (int)sizeof(line) - 1;
+    memcpy(line, text, (size_t)n);
+    line[n] = '\0';
+    return MeasureUIText(line, font);
+}
+
+static int
+ui_source_max_line_width(const char *text, int font)
+{
+    int max_w = 0;
+    const char *line;
+
+    if(text == NULL)
+        return 0;
+    line = text;
+    while(*line != '\0') {
+        const char *end = strchr(line, '\n');
+        int width;
+
+        if(end == NULL)
+            end = line + strlen(line);
+        width = ui_source_line_width(line, (int)(end - line), font);
+        if(width > max_w)
+            max_w = width;
+        if(*end == '\0')
+            break;
+        line = end + 1;
+    }
+    return max_w;
+}
+
+static void
+ui_draw_source_line(const char *text, int len, int x, int y, int font,
+                    Color color)
+{
+    char line[1024];
+    int n = len;
+
+    if(text == NULL)
+        return;
+    if(n < 0)
+        n = 0;
+    if(n >= (int)sizeof(line))
+        n = (int)sizeof(line) - 1;
+    memcpy(line, text, (size_t)n);
+    line[n] = '\0';
+    DrawUIText(line, x, y, font, color);
+}
+
+int
+DrawUISourceView(UISourceView source)
+{
+    const char *text = source.text != NULL ? source.text : "";
+    int font = source.font_size > 0 ? source.font_size : GetUISmallFontSize();
+    int line_h = source.line_height > 0 ? ScaleUIPx(source.line_height)
+                                        : GetUITextLineHeight(font) + ScaleUIPx(4);
+    int pad = ScaleUIPx(12);
+    int gutter_w = source.show_line_numbers ? ScaleUIPx(58) : 0;
+    Rectangle view;
+    int line_count = ui_source_line_count(text);
+    int content_h;
+    int content_w;
+    int max_scroll_y;
+    int max_scroll_x = 0;
+    int scroll_y = source.scroll_y != NULL ? *source.scroll_y : 0;
+    int scroll_x = source.scroll_x != NULL ? *source.scroll_x : 0;
+    int first_line;
+    int y_offset;
+    int y;
+    int line_no = 1;
+    const char *line;
+
+    if(line_h <= 0)
+        line_h = 1;
+    ui_draw_panel(source.bounds);
+    view = (Rectangle){source.bounds.x + (float)pad,
+                       source.bounds.y + (float)pad,
+                       source.bounds.width - (float)(pad * 2),
+                       source.bounds.height - (float)(pad * 2)};
+    if(view.width <= 0.0f || view.height <= 0.0f)
+        return 0;
+
+    content_h = line_count * line_h;
+    content_w = gutter_w + ui_source_max_line_width(text, font) + ScaleUIPx(24);
+    max_scroll_y = ui_update_scroll(view, content_h, source.scroll_y, line_h);
+    if(source.scroll_y != NULL)
+        scroll_y = *source.scroll_y;
+    if(source.scroll_x != NULL) {
+        max_scroll_x = ui_scroll_max(content_w, (int)view.width);
+        if(*source.scroll_x < 0)
+            *source.scroll_x = 0;
+        if(*source.scroll_x > max_scroll_x)
+            *source.scroll_x = max_scroll_x;
+        scroll_x = *source.scroll_x;
+    }
+
+    first_line = scroll_y / line_h;
+    y_offset = scroll_y % line_h;
+    y = (int)view.y - y_offset;
+    line = text;
+    while(*line != '\0' && line_no <= first_line) {
+        const char *next = strchr(line, '\n');
+        if(next == NULL)
+            break;
+        line = next + 1;
+        line_no++;
+    }
+
+    BeginUIClip((int)view.x, (int)view.y, (int)view.width, (int)view.height);
+    while(*line != '\0' && y < (int)(view.y + view.height)) {
+        const char *end = strchr(line, '\n');
+        int len;
+
+        if(end == NULL)
+            end = line + strlen(line);
+        len = (int)(end - line);
+        if(source.show_line_numbers) {
+            DrawUIText(TextFormat("%d", line_no), (int)view.x, y, font,
+                       c_icon);
+        }
+        BeginUIClip((int)view.x + gutter_w, y,
+                    (int)view.width - gutter_w - ScaleUIPx(10), line_h);
+        ui_draw_source_line(line, len,
+                            (int)view.x + gutter_w - scroll_x, y, font,
+                            c_text);
+        EndUIClip();
+        if(*end == '\0')
+            break;
+        line = end + 1;
+        line_no++;
+        y += line_h;
+    }
+    EndUIClip();
+
+    if(source.scroll_y != NULL && max_scroll_y > 0)
+        DrawUIScrollbar((int)(source.bounds.x + source.bounds.width -
+                              ScaleUIPx(8)),
+                        (int)source.bounds.y, (int)source.bounds.height,
+                        content_h, source.scroll_y, max_scroll_y);
+    return max_scroll_x > 0 || max_scroll_y > 0;
+}
+
 int
 DrawUITableView(UITableView table)
 {

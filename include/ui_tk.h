@@ -161,6 +161,16 @@ typedef struct {
 } UICascadingTreeView;
 
 typedef struct {
+    Rectangle bounds;
+    const char *text;
+    int *scroll_x;
+    int *scroll_y;
+    int font_size;
+    int line_height;
+    int show_line_numbers;
+} UISourceView;
+
+typedef struct {
     const char **cells;
     int cell_count;
 } UITableRow;
@@ -274,6 +284,7 @@ void DrawUIImageBox(UIImageBox image);
 int DrawUIListBox(UIListBox list);
 int DrawUITreeView(UITreeView tree);
 int DrawUICascadingTreeView(UICascadingTreeView tree);
+int DrawUISourceView(UISourceView source);
 int DrawUITableView(UITableView table);
 
 UICanvasResult BeginUICanvas(UICanvas canvas);

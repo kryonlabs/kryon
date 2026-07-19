@@ -22,6 +22,18 @@ main(void)
         {"assets", 1, 18, 1, 0},
         {"background.png", 2, 19, 0, 1}
     };
+    const char *source_text =
+        "#include \"flint.h\"\n"
+        "\n"
+        "static void\n"
+        "draw_start_screen(Rectangle bounds)\n"
+        "{\n"
+        "    DrawRectangleRec(bounds, GetThemeBackground());\n"
+        "    DrawUIText(\"Start\", 40, 40, UI_TEXT_24, GetThemeText());\n"
+        "    if(DrawUIGenericButton(40, 90, 180, 34, \"Open\", UI_BUTTON_STYLE_PRIMARY, 0, NULL)) {\n"
+        "        /* action lives in app C code */\n"
+        "    }\n"
+        "}\n";
     const char *cols[] = {"Name", "Kind"};
     const char *row0[] = {"main.c", "C source"};
     const char *row1[] = {"README.md", "Markdown"};
@@ -37,6 +49,8 @@ main(void)
     int list_scroll = 0;
     int tree_scroll = 0;
     int cascade_scroll = 0;
+    int source_scroll_x = 0;
+    int source_scroll_y = 0;
     int table_scroll = 0;
 
     InitWindow(900, 620, "Flint Collections");
@@ -74,10 +88,18 @@ main(void)
         });
         if(cascade_activated != 0) {
             DrawUIText(TextFormat("Selected id: %d", cascade_activated),
-                       430, 315, UI_TEXT_16, GetThemeText());
+                       430, 285, UI_TEXT_16, GetThemeText());
         }
         DrawUIText("Folders use +/- and toggle open. Files select.",
-                   430, 345, UI_TEXT_16, GetThemeIcon());
+                   430, 315, UI_TEXT_16, GetThemeIcon());
+        DrawUISourceView((UISourceView){
+            .bounds = {430, 345, 410, 200},
+            .text = source_text,
+            .scroll_x = &source_scroll_x,
+            .scroll_y = &source_scroll_y,
+            .font_size = UI_TEXT_12,
+            .show_line_numbers = 1
+        });
 
         EndDrawing();
     }
