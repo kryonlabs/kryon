@@ -655,8 +655,9 @@ ui_draw_tree_text(const char *text, Rectangle rect, int font, Color color)
 static void
 ui_draw_tree_disclosure(Rectangle box, int expanded, int hot)
 {
-    Color bg = hot ? c_button_hover : c_surface;
-    Color border = hot ? c_icon : c_button;
+    Color bg = hot ? GetThemeButtonHover() : GetThemeSurface();
+    Color border = hot ? GetThemeIcon() : GetThemeButton();
+    Color mark = GetThemeIcon();
     int cx = (int)(box.x + box.width / 2.0f);
     int cy = (int)(box.y + box.height / 2.0f);
     int pad = ScaleUIPx(4);
@@ -664,16 +665,16 @@ ui_draw_tree_disclosure(Rectangle box, int expanded, int hot)
     DrawRectangleRec(box, bg);
     DrawRectangleLinesEx(box, 1.0f, border);
     DrawLine((int)box.x + pad, cy, (int)(box.x + box.width) - pad, cy,
-             c_icon);
+             mark);
     if(!expanded)
         DrawLine(cx, (int)box.y + pad, cx, (int)(box.y + box.height) - pad,
-                 c_icon);
+                 mark);
 }
 
 static void
 ui_draw_tree_file_mark(Rectangle box, int hot)
 {
-    Color border = hot ? c_icon : c_button;
+    Color border = hot ? GetThemeIcon() : GetThemeButton();
     int inset = ScaleUIPx(3);
 
     DrawRectangleLines((int)box.x + inset, (int)box.y + inset,
@@ -690,6 +691,7 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
 {
     int font = GetUIFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
+    Vector2 mouse = ui_mouse_world();
     int scroll_y;
     int max_scroll;
     int visible_count = 0;
@@ -700,6 +702,10 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
     for(int i = 0; i < tree.item_count; i++) {
         if(ui_tree_item_visible(tree.items, i, tree.expanded))
             visible_count++;
+    }
+    if(ui_contains(tree.bounds, mouse)) {
+        PushUIInputCapture(tree.bounds, 1);
+        MarkUIClickable();
     }
     max_scroll = ui_update_scroll(tree.bounds, visible_count * row_h,
                                   tree.scroll_offset, row_h);
@@ -736,9 +742,9 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
         expanded = item->is_dir && ui_tree_is_expanded(tree.expanded, item->id);
         x = (int)row.x + ScaleUIPx(8 + item->depth * 18);
         if(tree.selected_id != NULL && *tree.selected_id == item->id)
-            DrawRectangleRec(row, c_button);
+            DrawRectangleRec(row, GetThemeButton());
         else if(hot)
-            DrawRectangleRec(row, c_button_hover);
+            DrawRectangleRec(row, GetThemeButtonHover());
         if(hot)
             MarkUIClickable();
 
@@ -760,7 +766,8 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
             row.height
         };
         ui_draw_tree_text(item->label != NULL ? item->label : "", text_rect,
-                          font, item->is_dir ? c_text : c_icon);
+                          font, item->is_dir ? GetThemeText()
+                                             : GetThemeIcon());
 
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
@@ -932,13 +939,13 @@ DrawUISourceView(UISourceView source)
         len = (int)(end - line);
         if(source.show_line_numbers) {
             DrawUIText(TextFormat("%d", line_no), (int)view.x, y, font,
-                       c_icon);
+                       GetThemeIcon());
         }
         BeginUIClip((int)view.x + gutter_w, y,
                     (int)view.width - gutter_w - ScaleUIPx(10), line_h);
         ui_draw_source_line(line, len,
                             (int)view.x + gutter_w - scroll_x, y, font,
-                            c_text);
+                            GetThemeText());
         EndUIClip();
         if(*end == '\0')
             break;
