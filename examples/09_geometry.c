@@ -14,9 +14,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         UIFrame frame = BeginUIFrameBox((Rectangle){40, 40, 720, 220}, 16, 16, 10);
         Rectangle title = UIFramePack(&frame, UI_SIDE_TOP, 34);

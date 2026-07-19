@@ -49,12 +49,12 @@ void InitUI(int width, int height, float dpi);
 - `height` - Viewport height in pixels
 - `dpi` - DPI scale factor (1.0 = 96 DPI)
 
-### `SetUIColors`
+### `SetCurrentTheme`
 
-Set the global color scheme for UI elements.
+Set the active theme. UI controls automatically use the active theme colors.
 
 ```c
-void SetUIColors(Color text, Color bg, Color surface, Color circle, Color button, Color button_hover, Color icon);
+void SetCurrentTheme(int theme_id, int current_dark_mode);
 void SetUILinkColor(Color link);
 ```
 
@@ -1470,17 +1470,9 @@ int main(void) {
     InitWindow(320, 560, "Flint Demo");
     SetTargetFPS(60);
 
-    // Configure UI colors
+    // Configure UI theme
+    SetCurrentTheme(THEME_SKY, 0);
     float dpi = 1.0f;  // Get from platform
-    SetUIColors(
-        (Color){240, 240, 240, 255},  // text
-        (Color){40, 40, 40, 255},     // bg
-        (Color){60, 60, 60, 255},     // surface
-        (Color){80, 80, 80, 255},     // circle
-        (Color){160, 160, 160, 255},  // button
-        (Color){180, 180, 180, 255},  // button_hover
-        (Color){200, 200, 200, 255}   // icon
-    );
 
     while (!WindowShouldClose()) {
         BeginDrawing();

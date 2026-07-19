@@ -40,9 +40,7 @@
     GetScreenHeight(),
     GetUIScale());
 
-SetUIColors(text, bg, surface,
-              circle, button,
-              hover, icon);</code></pre>
+SetCurrentTheme(THEME_SKY, 0);</code></pre>
       </div>
       <div class="wrap dependency-strip" aria-label="Shared app support">
         <span>UI Core</span>
@@ -85,11 +83,8 @@ SetUIColors(text, bg, surface,
         frame state with a safe default camera.
       </p>
       <pre><code>BeginDrawing();
-BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-SetUIColors(GetThemeText(), GetThemeBackground(),
-              GetThemeSurface(), GetThemeCircle(),
-              GetThemeButton(), GetThemeButtonHover(),
-              GetThemeIcon());</code></pre>
+SetCurrentTheme(THEME_SKY, 0);
+BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());</code></pre>
       <p>
         If you need a transformed UI camera, call <code>InitUI</code> and
         <code>SetUIFrame(camera)</code>. Flint normalizes invalid cameras, so a

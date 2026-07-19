@@ -6,8 +6,6 @@
 typedef void (*UITextInputPlatformCallback)(int active);
 
 void InitUI(int width, int height, float dpi);
-void SetUIColors(Color text, Color bg, Color surface, Color circle,
-                 Color button, Color button_hover, Color icon);
 void SetUILinkColor(Color link);
 void ApplyCurrentUITheme(void);
 int IsUIDesktopMode(void);

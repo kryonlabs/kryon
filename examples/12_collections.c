@@ -31,9 +31,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         DrawUIListBox((UIListBox){{40, 60, 180, 180}, 301, items, 4, &list_sel, &scroll, 30});
         DrawUITreeView((UITreeView){{260, 60, 220, 180}, 302, tree, 4, &tree_sel, &scroll, 28});

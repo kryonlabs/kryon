@@ -53,8 +53,6 @@ int main(void) {
         GetThemeCatalogColor(current_theme, dark_mode, "button", &button);
         GetThemeCatalogColor(current_theme, dark_mode, "button_hover", &button_hover);
         GetThemeCatalogColor(current_theme, dark_mode, "circle", &circle);
-        SetUIColors(text, background, GetThemeSurface(), circle, button, button_hover,
-                    GetThemeIcon());
 
         // Fill background with theme color
         ClearBackground(background);

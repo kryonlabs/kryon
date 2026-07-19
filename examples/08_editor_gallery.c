@@ -349,9 +349,6 @@ main(void)
         ClearBackground(GetThemeBackground());
         BeginUIFrame(view_w, view_h, GetUIScale());
         BeginUIEditorFrame(".");
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
         dialog_result = UpdateFileDialog(&project_dialog);
         if(dialog_result == 1) {
             snprintf(project_path, sizeof(project_path), "%s",

@@ -30,9 +30,6 @@ int main(void) {
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         // Draw title
         DrawUIText("UI Buttons Example", ScaleUIPx(20), ScaleUIPx(20), 24, GetThemeText());

@@ -12,18 +12,6 @@ load_theme(void)
     SetCurrentTheme(THEME_SKY, 0);
 }
 
-static void
-apply_ui_theme(void)
-{
-    SetUIColors(GetThemeText(),
-                  GetThemeBackground(),
-                  GetThemeSurface(),
-                  GetThemeCircle(),
-                  GetThemeButton(),
-                  GetThemeButtonHover(),
-                  GetThemeIcon());
-}
-
 int
 main(void)
 {
@@ -37,7 +25,6 @@ main(void)
     LoadExampleUIFont();
     load_theme();
     InitUI(GetScreenWidth(), GetScreenHeight(), 1.0f);
-    apply_ui_theme();
 
     printf("Flint Modal Example\n");
     printf("Click Open Modal. While it is open, background clicks are blocked.\n");
@@ -47,7 +34,6 @@ main(void)
 
         BeginDrawing();
         ClearBackground(GetThemeBackground());
-        apply_ui_theme();
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
 
         DrawUIText("Modal capture example", 32, 32, 28, GetThemeText());

@@ -29,9 +29,6 @@ int main(void) {
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         int x = ScaleUIPx(32);
         int y = ScaleUIPx(28);

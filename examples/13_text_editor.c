@@ -21,9 +21,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         DrawUITextArea((UITextArea){{40, 70, 520, 180}, text, sizeof(text), &cursor,
                                    &focused, &scroll, 500, 16, 6, 401,

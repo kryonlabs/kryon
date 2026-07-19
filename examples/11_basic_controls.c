@@ -20,9 +20,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         DrawUIText("Basic controls", 40, 40, 24, GetThemeText());
         int picked = DrawUIRadioButton((UIRadioButton){{40, 90, 160, 28}, "Choice A", 1, radio == 1, 0});

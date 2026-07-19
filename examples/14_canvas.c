@@ -20,9 +20,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         UICanvasResult canvas = BeginUICanvas((UICanvas){{40, 50, 620, 420}, &sx, &sy, &zoom});
         DrawUICanvasGrid((Rectangle){40, 50, 620, 420}, 24, GetThemeButton());

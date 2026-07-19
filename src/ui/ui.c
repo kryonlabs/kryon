@@ -1869,8 +1869,9 @@ IsUIDesktopMode(void)
     return ui_view_width >= ScaleUIPx(500);
 }
 
-void
-SetUIColors(Color text, Color bg, Color surface, Color circle, Color button, Color button_hover, Color icon)
+static void
+ui_set_theme_colors(Color text, Color bg, Color surface, Color circle,
+                    Color button, Color button_hover, Color icon)
 {
     c_text = text;
     c_bg = bg;
@@ -1891,13 +1892,13 @@ SetUILinkColor(Color link)
 void
 ApplyCurrentUITheme(void)
 {
-    SetUIColors(GetThemeText(),
-                  GetThemeBackground(),
-                  GetThemeSurface(),
-                  GetThemeCircle(),
-                  GetThemeButton(),
-                  GetThemeButtonHover(),
-                  GetThemeIcon());
+    ui_set_theme_colors(GetThemeText(),
+                        GetThemeBackground(),
+                        GetThemeSurface(),
+                        GetThemeCircle(),
+                        GetThemeButton(),
+                        GetThemeButtonHover(),
+                        GetThemeIcon());
     SetUILinkColor(GetThemeLink());
 }
 

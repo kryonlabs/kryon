@@ -1,6 +1,7 @@
 #include "theme.h"
 #include "embedded_assets.h"
 #include "theme_meta.h"
+#include "ui_core.h"
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -696,6 +697,7 @@ SetCurrentTheme(int theme_id, int current_dark_mode)
 {
     current_theme_id = NormalizeTheme(theme_id);
     dark_mode = current_dark_mode != 0;
+    ApplyCurrentUITheme();
 }
 
 Color

@@ -20,9 +20,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         if(DrawUIGenericButton(40, 60, 150, 34, "Message", UI_BUTTON_STYLE_PRIMARY, 0, NULL)) dialog = 1;
         if(DrawUIGenericButton(40, 104, 150, 34, "Confirm", UI_BUTTON_STYLE_PRIMARY, 0, NULL)) dialog = 2;

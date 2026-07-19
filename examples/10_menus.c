@@ -42,9 +42,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         UIMenuBarResult menu = DrawUIMenuBar(100, (Rectangle){0, 0, GetScreenWidth(), 34}, menus, 3, &open);
         if(menu.activated_id != 0)

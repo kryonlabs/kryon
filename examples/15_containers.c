@@ -19,9 +19,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         DrawUINotebook((UINotebook){{40, 50, 680, 400}, tabs, 3, &tab});
         DrawUIPanedView((UIPanedView){{40, 100, 680, 280}, 501, 1, &split, 120, 160});

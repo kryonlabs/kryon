@@ -20,9 +20,6 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        SetUIColors(GetThemeText(), GetThemeBackground(), GetThemeSurface(),
-                    GetThemeCircle(), GetThemeButton(), GetThemeButtonHover(),
-                    GetThemeIcon());
 
         DrawUIGenericButton(40, 80, 180, 36, "Save", UI_BUTTON_STYLE_PRIMARY, 0, NULL);
         DrawUICheckboxToggle(40, 134, "Enabled", &enabled);

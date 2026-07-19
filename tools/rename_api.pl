@@ -334,7 +334,6 @@ my @pairs = (
     [qw(flint_web_sync_window_size SyncWebWindowSize)],
 
     [qw(ui_init InitUI)],
-    [qw(ui_set_colors SetUIColors)],
     [qw(ui_is_desktop_mode IsUIDesktopMode)],
     [qw(ui_set_frame SetUIFrame)],
     [qw(ui_clear_input_captures ClearUIInputCaptures)],
