@@ -8,6 +8,7 @@
 
 #include "ui_core.h"
 #include "ui_controls.h"
+#include "ui_tk.h"
 #include "ui_draw.h"
 #include "ui_editor.h"
 #include "ui_modal.h"

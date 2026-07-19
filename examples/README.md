@@ -5,6 +5,23 @@ This directory contains example programs demonstrating Flint library components.
 ## Available Examples
 
 1. **01_file_dialog** - File dialog component with theme integration
+2. **02_buttons** - Button styles and click handling
+3. **03_theme** - Theme switching
+4. **04_modal** - Modal dialogs
+5. **05_color** - Color helpers
+6. **06_scaling** - UI scaling
+7. **07_layout** - Existing layout helpers
+8. **08_editor_gallery** - Editor overlay/gallery
+9. **09_geometry** - Packed frames, grid cells, placement, separators
+10. **10_menus** - Menubar and menu items
+11. **11_basic_controls** - Radio, progress, spinbox, combobox, label frame
+12. **12_collections** - Listbox, tree view, table view
+13. **13_text_editor** - Text area plus clipboard helpers
+14. **14_canvas** - Canvas clipping, grid, and hit testing
+15. **15_containers** - Notebook, paned view, collapsible section
+16. **16_dialogs** - Message, confirm, prompt, and color picker
+17. **17_keyboard_platform** - Accelerators and clipboard
+18. **18_accessibility** - Accessibility/debug node overlay
 
 ## Requirements
 
@@ -37,13 +54,12 @@ make run
 
 ## Example Features
 
-### 01_file_dialog
-- Demonstrates Flint file dialog component
-- Theme integration with all 6 Flint themes
-- Load and save dialog modes
-- Hidden files filtering (checkbox)
-- Full keyboard/mouse interaction
-- Direct component testing without full application
+### Toolkit Examples
+
+The toolkit examples use one direct API shape per widget: fill the struct that
+describes the widget state and call the matching `DrawUI...` function. Geometry
+uses `BeginUIFrameBox`, `UIFramePack`, `UIGridCell`, and `UIPlace`; canvas uses
+`BeginUICanvas` / `EndUICanvas`.
 
 ## Usage
 

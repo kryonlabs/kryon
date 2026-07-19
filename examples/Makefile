@@ -53,7 +53,9 @@ endif
 
 LDFLAGS += $(RAYLIB_A) $(EXAMPLE_SYSTEM_LDLIBS)
 
-EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout 08_editor_gallery
+EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout 08_editor_gallery \
+	09_geometry 10_menus 11_basic_controls 12_collections 13_text_editor \
+	14_canvas 15_containers 16_dialogs 17_keyboard_platform 18_accessibility
 
 .PHONY: all clean run list font-assets web web-clean
 
@@ -118,6 +120,16 @@ run:
 	@echo "  6) scaling"
 	@echo "  7) layout"
 	@echo "  8) editor_gallery"
+	@echo "  9) geometry"
+	@echo "  10) menus"
+	@echo "  11) basic_controls"
+	@echo "  12) collections"
+	@echo "  13) text_editor"
+	@echo "  14) canvas"
+	@echo "  15) containers"
+	@echo "  16) dialogs"
+	@echo "  17) keyboard_platform"
+	@echo "  18) accessibility"
 	@echo ""
 	@read -p "Enter example number: " num; \
 	case "$$num" in \
@@ -129,6 +141,16 @@ run:
 		6) example="06_scaling";; \
 		7) example="07_layout";; \
 		8) example="08_editor_gallery";; \
+		9) example="09_geometry";; \
+		10) example="10_menus";; \
+		11) example="11_basic_controls";; \
+		12) example="12_collections";; \
+		13) example="13_text_editor";; \
+		14) example="14_canvas";; \
+		15) example="15_containers";; \
+		16) example="16_dialogs";; \
+		17) example="17_keyboard_platform";; \
+		18) example="18_accessibility";; \
 		*) example=;; \
 	esac; \
 	if [ -n "$$example" ]; then \

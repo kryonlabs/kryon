@@ -2,9 +2,9 @@
 
 Flint is a small C support library for raylib-style applications. It keeps a
 raylib-compatible public surface available through `flint.h`, then adds the
-pieces shared by downstream apps: UI controls, layout helpers, text rendering,
-themes, embedded assets, locale loading, file dialogs, desktop tray support,
-runtime asset downloads, and Lyra account/sync helpers.
+pieces shared by downstream apps: UI controls, Tk-style toolkit widgets, layout
+helpers, text rendering, themes, embedded assets, locale loading, file dialogs,
+desktop tray support, runtime asset downloads, and Lyra account/sync helpers.
 
 ## Layout
 
@@ -103,3 +103,11 @@ stay private to `src/` unless a downstream app needs the API in `include/`.
 - `docs/site/` contains the static documentation website.
 - `docs/AGENTS.md` documents how downstream apps should use Flint, including
   modal/input capture and submodule update rules.
+
+## Toolkit Direction
+
+The `ui_tk.h` layer is Flint's pragmatic Tk replacement surface. It stays in the
+raylib style: one direct struct-and-call path per widget, caller-owned state,
+immediate-mode drawing, and no builder objects or scripting runtime. The numbered
+examples `09_geometry` through `18_accessibility` demonstrate each toolkit
+feature family.

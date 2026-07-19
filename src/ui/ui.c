@@ -151,6 +151,13 @@ ui_pointer_dy(void)
     return (int)mouse.y - g_ui_pointer_start_y;
 }
 
+static int
+ui_mod_key_down(void)
+{
+    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
+           IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
+}
+
 int
 ui_pointer_drag_is_horizontal(void)
 {
@@ -891,6 +898,33 @@ EditUIText(UITextEdit edit)
     if(IsKeyPressed(KEY_END)) {
         *edit.cursor_position = (int)strlen(edit.text);
         changed = 1;
+    }
+
+    if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
+        SetClipboardText(edit.text);
+    }
+    if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
+        SetClipboardText(edit.text);
+        edit.text[0] = '\0';
+        *edit.cursor_position = 0;
+        changed = 1;
+    }
+    if(ui_mod_key_down() && IsKeyPressed(KEY_V)) {
+        const char *clip = GetClipboardText();
+        if(clip != NULL) {
+            for(int i = 0; clip[i] != '\0';) {
+                int bytes = 0;
+                int cp = GetCodepointNext(&clip[i], &bytes);
+                if(bytes <= 0)
+                    break;
+                if((edit.filter == NULL || edit.filter(cp, edit.filter_user_data)) &&
+                   ui_text_insert_codepoint(edit.text, edit.text_size,
+                                            edit.cursor_position, cp,
+                                            edit.max_codepoints))
+                    changed = 1;
+                i += bytes;
+            }
+        }
     }
 
     {

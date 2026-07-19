@@ -95,6 +95,7 @@ TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
+UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(FLINT_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean run examples-run font-assets docs-site test bsd-check flint-compat flint-compat-check flint-boundary-check version release-check dist-static check-static-package install-static
@@ -117,13 +118,14 @@ docs-site:
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST)
+test: flint-compat-check flint-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
 	$(TRANSITION_TEST)
 	$(FILE_DIALOG_BACKEND_TEST)
 	$(MARKDOWN_TEST)
 	$(RAYLIB_COMPAT_TEST)
+	$(UI_TK_TEST)
 
 bsd-check:
 	$(MAKE) clean
@@ -241,6 +243,12 @@ $(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(RAYLIB_A) | $(BUILD_D
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/raylib_compat_test.c \
 		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) \
+		-o $@
+
+$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tk_test.c \
+		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h

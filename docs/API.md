@@ -1415,6 +1415,51 @@ typedef enum {
 
 ---
 
+## Pragmatic Tk Toolkit
+
+`ui_tk.h` adds Flint's Tk-replacement layer. The rule is one simple way to use
+each widget: prepare a plain struct, keep state in caller variables, and call the
+matching immediate-mode function each frame.
+
+```c
+UIFrame frame = BeginUIFrameBox((Rectangle){40, 40, 320, 200}, 12, 12, 8);
+Rectangle row = UIFramePack(&frame, UI_SIDE_TOP, 32);
+
+int selected = 0;
+DrawUIListBox((UIListBox){
+    .bounds = row,
+    .id = 10,
+    .items = items,
+    .item_count = item_count,
+    .selected_index = &selected,
+    .row_height = 30
+});
+```
+
+Collection widgets use `scroll_offset` as a caller-owned pixel offset. Canvas
+uses the same one-call shape: draw between `BeginUICanvas` and `EndUICanvas`;
+scroll and zoom in the `UICanvas` struct are applied to canvas drawing and hit
+coordinates.
+
+Text fields and text areas use the shared `EditUIText` core. Ctrl/Cmd+C copies
+the field buffer, Ctrl/Cmd+X cuts it, and Ctrl/Cmd+V pastes clipboard text
+through the existing codepoint filter.
+
+Feature families:
+
+- Geometry: `BeginUIFrameBox`, `UIFramePack`, `UIGridCell`, `UIPlace`, `DrawUISeparator`
+- Menus: `DrawUIMenuBar`, `DrawUIPopupMenu`
+- Basic controls: `DrawUIRadioButton`, `DrawUIProgressBar`, `DrawUISpinbox`, `DrawUICombobox`, `DrawUILabelFrame`, `DrawUIImageBox`
+- Collections: `DrawUIListBox`, `DrawUITreeView`, `DrawUITableView`
+- Canvas: `BeginUICanvas`, `EndUICanvas`, `DrawUICanvasGrid`, `UICanvasHitTest`
+- Containers: `DrawUINotebook`, `DrawUIPanedView`, `DrawUICollapsible`
+- Dialogs/platform: `DrawUIMessageDialog`, `DrawUIConfirmDialog`, `DrawUIPromptDialog`, `DrawUIColorPicker`, `DispatchUIAccelerators`, clipboard helpers
+- Accessibility/debug: `DrawUIFocusDebugOverlay`
+
+Examples `09_geometry` through `18_accessibility` demonstrate these APIs.
+
+---
+
 ## Integration Example
 
 ```c
