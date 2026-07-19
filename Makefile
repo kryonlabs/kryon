@@ -76,7 +76,7 @@ CPPFLAGS += -DHAS_LIBOQS=1 $(FLINT_LIBOQS_INCLUDE) \
 	-DHAS_LIBCURL=1 $(FLINT_CURL_CFLAGS) \
 	$(FLINT_MARKDOWN_CFLAGS)
 
-SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
+SRCS := $(shell find src -type f -name '*.c' ! -path 'src/editor/*' | LC_ALL=C sort)
 
 SRCS += $(EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
 
@@ -89,6 +89,8 @@ endif
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
 LIB = libflint.a
+EDITOR_TARGET = $(BUILD_DIR)/bin/flint-editor
+EDITOR_FONT_FILES := $(wildcard fonts/noto/*.ttf fonts/noto/*.otf)
 LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
 LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
@@ -108,8 +110,12 @@ examples-run:
 	@$(MAKE) -C examples run
 
 editor:
-	@$(MAKE) -C examples 08_editor_gallery
-	@cd examples && FLINT_EDITOR=1 FLINT_PROJECT_ROOT="$(abspath .)" ./08_editor_gallery
+	@$(MAKE) $(EDITOR_TARGET)
+	@if [ -n "$(FLINT_EDITOR_PROJECT)" ]; then \
+		FLINT_EDITOR=1 FLINT_PROJECT_ROOT="$(abspath .)" $(EDITOR_TARGET) "$(abspath $(FLINT_EDITOR_PROJECT))"; \
+	else \
+		FLINT_EDITOR=1 FLINT_PROJECT_ROOT="$(abspath .)" $(EDITOR_TARGET); \
+	fi
 
 clean:
 	rm -rf $(BUILD_DIR) $(LIB)
@@ -151,6 +157,13 @@ flint-boundary-check:
 
 $(LIB): $(OBJS) | $(FLINT_COMPAT_HEADER) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK) $(FLINT_MARKDOWN_DEPS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+$(EDITOR_TARGET): src/editor/flint_editor.c $(LIB) $(RAYLIB_A) $(EDITOR_FONT_FILES) | $(BUILD_DIR)
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(RAY_CFLAGS) -o $@ \
+		src/editor/flint_editor.c \
+		$(LIB) $(RAYLIB_A) \
+		$(RAY_LDLIBS) $(LDLIBS) -lpthread -lm
 
 version:
 	@printf '%s\n' '$(VERSION)'

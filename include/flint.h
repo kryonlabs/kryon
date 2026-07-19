@@ -34,5 +34,6 @@
 #include "runtime_assets.h"
 #include "desktop_tray.h"
 #include "markdown.h"
+#include "flint_editor_host.h"
 
 #endif /* FLINT_H */
