@@ -319,6 +319,7 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
         return 0;
 
     static int scrollbar_drag_active = 0;
+    static int *scrollbar_drag_offset = NULL;
     static int scrollbar_drag_start_y = 0;
     static int scrollbar_drag_start_scroll = 0;
 
@@ -360,16 +361,18 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
 
     /* Handle drag state */
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       (!input_captured || scrollbar_drag_active)) {
+       (!input_captured ||
+        (scrollbar_drag_active && scrollbar_drag_offset == scroll_offset))) {
         if(!scrollbar_drag_active) {
             /* Start drag if clicking on thumb */
             if(thumb_active && g_ui_pointer_owner == UI_POINTER_OWNER_NONE) {
                 scrollbar_drag_active = 1;
+                scrollbar_drag_offset = scroll_offset;
                 g_ui_pointer_owner = UI_POINTER_OWNER_SCROLL;
                 scrollbar_drag_start_y = my;
                 scrollbar_drag_start_scroll = *scroll_offset;
             }
-        } else {
+        } else if(scrollbar_drag_offset == scroll_offset) {
             /* Continue drag */
             int dy = my - scrollbar_drag_start_y;
             float scroll_per_pixel = track_span > 0
@@ -384,13 +387,18 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
         if(scrollbar_drag_active && g_ui_pointer_owner == UI_POINTER_OWNER_SCROLL)
             g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
         scrollbar_drag_active = 0;
+        scrollbar_drag_offset = NULL;
     }
 
     Color track_color = ui_scrollbar_ensure_visible(
         ui_scrollbar_contrast_from(c_bg, 22), c_bg, 34, 36, 16);
     DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
 
-    Color thumb_color = thumb_hover || scrollbar_drag_active ? c_button_hover : c_button;
+    Color thumb_color = thumb_hover ||
+                        (scrollbar_drag_active &&
+                         scrollbar_drag_offset == scroll_offset)
+                            ? c_button_hover
+                            : c_button;
     thumb_color = ui_scrollbar_ensure_visible(thumb_color, track_color, 72, 78, 28);
     thumb_color = ui_scrollbar_ensure_visible(thumb_color, c_bg, 64, 62, 22);
     DrawRectangleRec(thumb_bounds, thumb_color);
