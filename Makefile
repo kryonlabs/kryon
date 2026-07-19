@@ -91,6 +91,7 @@ OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 LIB = libflint.a
 EDITOR_TARGET = $(BUILD_DIR)/bin/flint-editor
 EDITOR_FONT_FILES := $(wildcard fonts/noto/*.ttf fonts/noto/*.otf)
+EDITOR_LDFLAGS ?= -Wl,-export-dynamic
 LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
 LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
@@ -163,7 +164,7 @@ $(EDITOR_TARGET): src/editor/flint_editor.c $(LIB) $(RAYLIB_A) $(EDITOR_FONT_FIL
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(RAY_CFLAGS) -o $@ \
 		src/editor/flint_editor.c \
 		$(LIB) $(RAYLIB_A) \
-		$(RAY_LDLIBS) $(LDLIBS) -lpthread -lm
+		$(EDITOR_LDFLAGS) $(RAY_LDLIBS) $(LDLIBS) -lpthread -lm
 
 version:
 	@printf '%s\n' '$(VERSION)'

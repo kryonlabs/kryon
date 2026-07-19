@@ -3,6 +3,9 @@
 #include "theme.h"
 #include "ui.h"
 
+#if !defined(_WIN32)
+#include <dlfcn.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 
@@ -13,9 +16,12 @@ enum {
 typedef struct EditorProject {
     char path[EDITOR_PATH_CAP];
     char name[96];
+    char host_path[EDITOR_PATH_CAP];
     int loaded;
     int selected_screen;
     FlintEditorHost *host;
+    void *host_library;
+    FlintEditorHostDestroyFunc destroy_host;
 } EditorProject;
 
 static void
@@ -71,6 +77,95 @@ editor_set_project(EditorProject *project, const char *path)
     snprintf(project->path, sizeof(project->path), "%s", path);
     snprintf(project->name, sizeof(project->name), "%s", path_basename(path));
     project->loaded = 1;
+}
+
+static void
+editor_close_project(EditorProject *project)
+{
+    if(project == NULL)
+        return;
+    if(project->destroy_host != NULL && project->host != NULL)
+        project->destroy_host(project->host);
+#if !defined(_WIN32)
+    if(project->host_library != NULL)
+        dlclose(project->host_library);
+#endif
+    memset(project, 0, sizeof(*project));
+}
+
+static int
+editor_load_project_host(EditorProject *project, char *status, size_t status_size)
+{
+#if defined(_WIN32)
+    (void)project;
+    snprintf(status, status_size, "Editor host loading is not implemented on Windows yet");
+    return 0;
+#else
+    FlintEditorHostCreateFunc create_host;
+    void *symbol;
+    char *error;
+
+    if(project == NULL || !project->loaded) {
+        snprintf(status, status_size, "Open a Flint project first");
+        return 0;
+    }
+
+    snprintf(project->host_path, sizeof(project->host_path),
+             "%s/.flint/editor_host.so", project->path);
+    if(!FileExists(project->host_path)) {
+        snprintf(status, status_size, "No editor host: %s",
+                 project->host_path);
+        return 0;
+    }
+
+    project->host_library = dlopen(project->host_path, RTLD_NOW | RTLD_LOCAL);
+    if(project->host_library == NULL) {
+        snprintf(status, status_size, "Host load failed: %s", dlerror());
+        return 0;
+    }
+
+    dlerror();
+    symbol = dlsym(project->host_library, "flint_editor_host_create");
+    error = dlerror();
+    if(error != NULL || symbol == NULL) {
+        snprintf(status, status_size, "Host is missing flint_editor_host_create");
+        dlclose(project->host_library);
+        project->host_library = NULL;
+        return 0;
+    }
+    create_host = (FlintEditorHostCreateFunc)symbol;
+
+    dlerror();
+    symbol = dlsym(project->host_library, "flint_editor_host_destroy");
+    error = dlerror();
+    if(error == NULL && symbol != NULL)
+        project->destroy_host = (FlintEditorHostDestroyFunc)symbol;
+
+    project->host = create_host(FLINT_EDITOR_HOST_ABI_VERSION, project->path);
+    if(project->host == NULL) {
+        snprintf(status, status_size, "Host rejected Flint editor ABI %d",
+                 FLINT_EDITOR_HOST_ABI_VERSION);
+        dlclose(project->host_library);
+        project->host_library = NULL;
+        project->destroy_host = NULL;
+        return 0;
+    }
+    project->selected_screen = 0;
+    if(project->host->select_screen != NULL)
+        project->host->select_screen(project->host->userdata, 0);
+    snprintf(status, status_size, "Loaded editor host for %s", project->name);
+    return 1;
+#endif
+}
+
+static void
+editor_open_project(EditorProject *project, const char *path,
+                    char *status, size_t status_size)
+{
+    editor_close_project(project);
+    editor_set_project(project, path);
+    if(!editor_load_project_host(project, status, status_size))
+        return;
 }
 
 static void
@@ -238,7 +333,9 @@ draw_top_bar(int view_w, int *project_menu_open, int *edit_menu_open,
         BeginSelectFileDialogFolder(project_dialog, "Open Flint Project");
     DrawUIGenericButton(view_w - ScaleUIPx(156), ScaleUIPx(10),
                         ScaleUIPx(64), ScaleUIPx(34), "Run",
-                        UI_BUTTON_STYLE_SECONDARY, 0, NULL);
+                        project->host != NULL ? UI_BUTTON_STYLE_PRIMARY
+                                              : UI_BUTTON_STYLE_SECONDARY,
+                        0, NULL);
     DrawUIGenericButton(view_w - ScaleUIPx(84), ScaleUIPx(10),
                         ScaleUIPx(64), ScaleUIPx(34), "Save",
                         UI_BUTTON_STYLE_SECONDARY, 0, NULL);
@@ -317,8 +414,8 @@ main(int argc, char **argv)
     InitFileDialog(&project_dialog);
 
     if(argc > 1 && argv[1] != NULL && argv[1][0] != '\0') {
-        editor_set_project(&project, argv[1]);
-        snprintf(status_text, sizeof(status_text), "Opened %s", project.name);
+        editor_open_project(&project, argv[1], status_text,
+                            sizeof(status_text));
     }
     SetFileDialogCurrentDir(&project_dialog,
                             project.loaded ? project.path : GetWorkingDirectory());
@@ -347,9 +444,9 @@ main(int argc, char **argv)
                     GetThemeIcon());
         dialog_result = UpdateFileDialog(&project_dialog);
         if(dialog_result == 1) {
-            editor_set_project(&project, GetFileDialogPath(&project_dialog));
+            editor_open_project(&project, GetFileDialogPath(&project_dialog),
+                                status_text, sizeof(status_text));
             SetFileDialogCurrentDir(&project_dialog, project.path);
-            snprintf(status_text, sizeof(status_text), "Opened %s", project.name);
         }
 
         SetUIEditorCanvasBounds(canvas);
@@ -364,6 +461,7 @@ main(int argc, char **argv)
     }
 
     ClearUIFonts();
+    editor_close_project(&project);
     CloseFileDialog(&project_dialog);
     CloseWindow();
     return 0;

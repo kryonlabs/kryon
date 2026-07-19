@@ -3,6 +3,8 @@
 
 #include "flint_compat.generated.h"
 
+#define FLINT_EDITOR_HOST_ABI_VERSION 1
+
 typedef struct FlintEditorScreen {
     const char *id;
     const char *group;
@@ -16,5 +18,9 @@ typedef struct FlintEditorHost {
     void (*select_screen)(void *userdata, int index);
     void (*draw)(void *userdata, Rectangle viewport);
 } FlintEditorHost;
+
+typedef FlintEditorHost *(*FlintEditorHostCreateFunc)(int abi_version,
+                                                      const char *project_path);
+typedef void (*FlintEditorHostDestroyFunc)(FlintEditorHost *host);
 
 #endif
