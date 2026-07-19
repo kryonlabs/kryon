@@ -6,12 +6,14 @@
 #if !defined(_WIN32)
 #include <dlfcn.h>
 #endif
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 enum {
     EDITOR_PATH_CAP = FILE_DIALOG_PATH_MAX,
+    EDITOR_MAX_RECENT_PROJECTS = 12,
 };
 
 typedef struct EditorProject {
@@ -24,6 +26,11 @@ typedef struct EditorProject {
     void *host_library;
     FlintEditorHostDestroyFunc destroy_host;
 } EditorProject;
+
+typedef struct EditorRecentProjects {
+    int count;
+    char paths[EDITOR_MAX_RECENT_PROJECTS][EDITOR_PATH_CAP];
+} EditorRecentProjects;
 
 static void
 load_editor_font(void)
@@ -90,6 +97,98 @@ editor_input_style(void)
         .cursor = GetThemeText(),
         .radius = 0.08f
     };
+}
+
+static void
+editor_recent_path(char *path, size_t path_size)
+{
+    const char *home = getenv("HOME");
+
+    if(path_size == 0)
+        return;
+    if(home == NULL || home[0] == '\0')
+        snprintf(path, path_size, ".flint/recent_projects.txt");
+    else
+        snprintf(path, path_size, "%s/.flint/recent_projects.txt", home);
+}
+
+static void
+editor_load_recent_projects(EditorRecentProjects *recent)
+{
+    FILE *file;
+    char path[EDITOR_PATH_CAP];
+    char line[EDITOR_PATH_CAP];
+
+    if(recent == NULL)
+        return;
+    memset(recent, 0, sizeof(*recent));
+    editor_recent_path(path, sizeof(path));
+    file = fopen(path, "r");
+    if(file == NULL)
+        return;
+
+    while(recent->count < EDITOR_MAX_RECENT_PROJECTS &&
+          fgets(line, sizeof(line), file) != NULL) {
+        size_t len = strlen(line);
+        while(len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
+            line[--len] = '\0';
+        if(line[0] == '\0')
+            continue;
+        snprintf(recent->paths[recent->count],
+                 sizeof(recent->paths[recent->count]), "%s", line);
+        recent->count++;
+    }
+    fclose(file);
+}
+
+static void
+editor_save_recent_projects(const EditorRecentProjects *recent)
+{
+    FILE *file;
+    char path[EDITOR_PATH_CAP];
+    char dir[EDITOR_PATH_CAP];
+    char *slash;
+
+    if(recent == NULL)
+        return;
+    editor_recent_path(path, sizeof(path));
+    snprintf(dir, sizeof(dir), "%s", path);
+    slash = strrchr(dir, '/');
+    if(slash != NULL) {
+        *slash = '\0';
+        mkdir(dir, 0755);
+    }
+
+    file = fopen(path, "w");
+    if(file == NULL)
+        return;
+    for(int i = 0; i < recent->count; i++)
+        fprintf(file, "%s\n", recent->paths[i]);
+    fclose(file);
+}
+
+static void
+editor_add_recent_project(EditorRecentProjects *recent, const char *path)
+{
+    int existing = -1;
+
+    if(recent == NULL || path == NULL || path[0] == '\0')
+        return;
+    for(int i = 0; i < recent->count; i++) {
+        if(strcmp(recent->paths[i], path) == 0) {
+            existing = i;
+            break;
+        }
+    }
+    if(existing < 0 && recent->count < EDITOR_MAX_RECENT_PROJECTS)
+        existing = recent->count++;
+    if(existing < 0)
+        existing = EDITOR_MAX_RECENT_PROJECTS - 1;
+    for(int i = existing; i > 0; i--)
+        snprintf(recent->paths[i], sizeof(recent->paths[i]), "%s",
+                 recent->paths[i - 1]);
+    snprintf(recent->paths[0], sizeof(recent->paths[0]), "%s", path);
+    editor_save_recent_projects(recent);
 }
 
 static void
@@ -199,10 +298,12 @@ editor_load_project_host(EditorProject *project, char *status, size_t status_siz
 
 static void
 editor_open_project(EditorProject *project, const char *path,
-                    char *status, size_t status_size)
+                    EditorRecentProjects *recent, char *status,
+                    size_t status_size)
 {
     editor_close_project(project);
     editor_set_project(project, path);
+    editor_add_recent_project(recent, path);
     if(!editor_load_project_host(project, status, status_size))
         return;
 }
@@ -253,7 +354,9 @@ draw_project_menu(int x, int y, int *open, FileDialog *project_dialog)
 }
 
 static void
-draw_left_sidebar(Rectangle bounds, EditorProject *project)
+draw_left_sidebar(Rectangle bounds, EditorProject *project,
+                  EditorRecentProjects *recent, char *status,
+                  size_t status_size)
 {
     int x = (int)bounds.x + ScaleUIPx(14);
     int y = (int)bounds.y + ScaleUIPx(48);
@@ -265,7 +368,21 @@ draw_left_sidebar(Rectangle bounds, EditorProject *project)
     y += ScaleUIPx(22);
 
     if(!project->loaded) {
-        DrawUIText("Open a Flint project.", x, y, UI_TEXT_16, GetThemeIcon());
+        DrawUIText("Recent Projects", x, y, UI_TEXT_16, GetThemeText());
+        y += ScaleUIPx(30);
+        if(recent == NULL || recent->count == 0) {
+            DrawUIText("No recent projects.", x, y, UI_TEXT_16,
+                       GetThemeIcon());
+            return;
+        }
+        for(int i = 0; i < recent->count; i++) {
+            if(DrawUIGenericButton(x, y, (int)bounds.width - ScaleUIPx(28),
+                                   ScaleUIPx(34), path_basename(recent->paths[i]),
+                                   UI_BUTTON_STYLE_SECONDARY, 0, NULL))
+                editor_open_project(project, recent->paths[i], recent,
+                                    status, status_size);
+            y += ScaleUIPx(42);
+        }
         return;
     }
     if(project->host == NULL || project->host->screen_count == NULL ||
@@ -326,7 +443,10 @@ draw_canvas(Rectangle canvas, const EditorProject *project)
                    x, y, UI_TEXT_16, GetThemeIcon());
         return;
     }
+    BeginScissorMode((int)canvas.x, (int)canvas.y,
+                     (int)canvas.width, (int)canvas.height);
     project->host->draw(project->host->userdata, canvas);
+    EndScissorMode();
 }
 
 static void
@@ -384,9 +504,9 @@ draw_top_bar(int view_w, int *project_menu_open, int *edit_menu_open,
 
 static void
 draw_chrome(int view_w, int view_h, Rectangle canvas, EditorProject *project,
-            int *preview_enabled, int *project_menu_open, int *edit_menu_open,
-            int *view_menu_open, FileDialog *project_dialog,
-            const char *status_text)
+            EditorRecentProjects *recent, int *preview_enabled,
+            int *project_menu_open, int *edit_menu_open, int *view_menu_open,
+            FileDialog *project_dialog, char *status_text, size_t status_size)
 {
     int chrome = PushUIEditorChrome(1);
     int top_h = ScaleUIPx(54);
@@ -401,7 +521,7 @@ draw_chrome(int view_w, int view_h, Rectangle canvas, EditorProject *project,
                  project_dialog, project);
     draw_left_sidebar((Rectangle){0, (float)top_h, (float)side_w,
                                   (float)(view_h - top_h - bottom_h)},
-                      project);
+                      project, recent, status_text, status_size);
 
     draw_panel((Rectangle){(float)(view_w - inspector_w), (float)top_h,
                            (float)inspector_w,
@@ -442,6 +562,7 @@ main(int argc, char **argv)
     int view_menu_open = 0;
     FileDialog project_dialog;
     EditorProject project = {0};
+    EditorRecentProjects recent;
     char status_text[160] = "Ready";
 
     InitWindow(screen_w, screen_h, "Flint Editor");
@@ -451,9 +572,10 @@ main(int argc, char **argv)
     SetCurrentTheme(THEME_SKY, 0);
     SetUIEditorEnabled(1);
     InitFileDialog(&project_dialog);
+    editor_load_recent_projects(&recent);
 
     if(argc > 1 && argv[1] != NULL && argv[1][0] != '\0') {
-        editor_open_project(&project, argv[1], status_text,
+        editor_open_project(&project, argv[1], &recent, status_text,
                             sizeof(status_text));
     }
     SetFileDialogCurrentDir(&project_dialog,
@@ -484,16 +606,17 @@ main(int argc, char **argv)
         dialog_result = UpdateFileDialog(&project_dialog);
         if(dialog_result == 1) {
             editor_open_project(&project, GetFileDialogPath(&project_dialog),
-                                status_text, sizeof(status_text));
+                                &recent, status_text, sizeof(status_text));
             SetFileDialogCurrentDir(&project_dialog, project.path);
         }
 
         SetUIEditorCanvasBounds(canvas);
         draw_canvas(canvas, &project);
         DrawUIEditorOverlay();
-        draw_chrome(view_w, view_h, canvas, &project, &preview_enabled,
-                    &project_menu_open, &edit_menu_open, &view_menu_open,
-                    &project_dialog, status_text);
+        draw_chrome(view_w, view_h, canvas, &project, &recent,
+                    &preview_enabled, &project_menu_open, &edit_menu_open,
+                    &view_menu_open, &project_dialog, status_text,
+                    sizeof(status_text));
 
         EndUIFocus();
         EndDrawing();

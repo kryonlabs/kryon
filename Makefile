@@ -76,7 +76,7 @@ CPPFLAGS += -DHAS_LIBOQS=1 $(FLINT_LIBOQS_INCLUDE) \
 	-DHAS_LIBCURL=1 $(FLINT_CURL_CFLAGS) \
 	$(FLINT_MARKDOWN_CFLAGS)
 
-SRCS := $(shell find src -type f -name '*.c' ! -path 'src/editor/*' | LC_ALL=C sort)
+SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
 SRCS += $(EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
 
@@ -159,10 +159,10 @@ flint-boundary-check:
 $(LIB): $(OBJS) | $(FLINT_COMPAT_HEADER) $(FLINT_LIBOQS_A) $(FLINT_CURL_PROTOCOL_CHECK) $(FLINT_MARKDOWN_DEPS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
-$(EDITOR_TARGET): src/editor/flint_editor.c $(LIB) $(RAYLIB_A) $(EDITOR_FONT_FILES) | $(BUILD_DIR)
+$(EDITOR_TARGET): cmd/flint-editor/main.c $(LIB) $(RAYLIB_A) $(EDITOR_FONT_FILES) | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(RAY_CFLAGS) -o $@ \
-		src/editor/flint_editor.c \
+		cmd/flint-editor/main.c \
 		$(LIB) $(RAYLIB_A) \
 		$(EDITOR_LDFLAGS) $(RAY_LDLIBS) $(LDLIBS) -lpthread -lm
 
