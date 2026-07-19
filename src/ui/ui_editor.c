@@ -99,6 +99,14 @@ UIEditorRegisterWidget(const char *id, const char *kind,
 
 FLINT_EDITOR_WEAK
 void
+UIEditorSetWidgetAction(const char *id, const char *action)
+{
+    (void)id;
+    (void)action;
+}
+
+FLINT_EDITOR_WEAK
+void
 DrawUIEditorOverlay(void)
 {
 }

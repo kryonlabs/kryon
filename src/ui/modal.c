@@ -10,7 +10,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
     Color background = style == UI_BUTTON_STYLE_PRIMARY ? c_button : c_surface;
     Color hover_background = style == UI_BUTTON_STYLE_PRIMARY ? c_button_hover :
                              LightenUIColor(c_surface, 14);
-    Color text = style == UI_BUTTON_STYLE_PRIMARY ? WHITE : c_text;
+    Color text = c_text;
 
     if(active)
         MarkUIClickable();

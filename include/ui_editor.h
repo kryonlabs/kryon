@@ -13,6 +13,7 @@ enum {
 typedef struct UIEditorSelection {
     char id[96];
     char kind[32];
+    char action[64];
     Rectangle bounds;
     int flags;
     int valid;
@@ -31,6 +32,7 @@ int UIEditorInputCapturesClick(Vector2 point);
 void UIEditorApplyBounds(const char *id, Rectangle *bounds);
 void UIEditorRegisterWidget(const char *id, const char *kind,
                             Rectangle *bounds, int flags);
+void UIEditorSetWidgetAction(const char *id, const char *action);
 void DrawUIEditorOverlay(void);
 
 #endif

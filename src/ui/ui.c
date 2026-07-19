@@ -1002,6 +1002,7 @@ DrawUIButton(UIButton button)
     UIEditorRegisterWidget(editor_id, "button", &button.bounds,
                            UI_EDITOR_WIDGET_MOVABLE |
                            UI_EDITOR_WIDGET_RESIZABLE);
+    UIEditorSetWidgetAction(editor_id, button.label);
 
     mouse_inside = CheckCollisionPointRec(mouse_world, button.bounds);
     captured = UIInputCapturesClick(mouse_world);
@@ -2123,7 +2124,7 @@ ui_button_style_colors(UIButtonStyle style, Color *bg, Color *hover_bg,
     case UI_BUTTON_STYLE_DANGER:
         *bg = (Color){180, 70, 70, 255};
         *hover_bg = (Color){200, 90, 90, 255};
-        *text_color = WHITE;
+        *text_color = c_text;
         return;
     case UI_BUTTON_STYLE_TAB:
         *bg = DarkenUIColor(c_bg, 10);
