@@ -7,6 +7,7 @@ typedef struct FlintAppScreen {
     const char *id;
     const char *group;
     const char *title;
+    const char *source_path;
     void (*enter)(void *app, int screen_index);
     void (*draw)(void *app, Rectangle viewport);
 } FlintAppScreen;

@@ -10,10 +10,20 @@ enum {
     UI_EDITOR_WIDGET_TEMPORARY_ID = 1 << 3
 };
 
+typedef struct UIEditorSelection {
+    char id[96];
+    char kind[32];
+    Rectangle bounds;
+    int flags;
+    int valid;
+} UIEditorSelection;
+
 void BeginUIEditorFrame(const char *project_root);
 void EndUIEditorFrame(void);
 void SetUIEditorEnabled(int enabled);
 int UIEditorEnabled(void);
+int UIEditorWidgetCount(void);
+UIEditorSelection UIEditorGetSelection(void);
 void SetUIEditorCanvasBounds(Rectangle bounds);
 int PushUIEditorChrome(int enabled);
 void PopUIEditorChrome(int token);
