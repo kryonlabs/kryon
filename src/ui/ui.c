@@ -499,7 +499,7 @@ static int
 ui_control_height_for_font(int font)
 {
     int line_h = GetUITextLineHeight(font);
-    int pad_y = ScaleUIPx(8);
+    int pad_y = ScaleUIPx(5);
 
     if(line_h < font)
         line_h = font;
@@ -991,7 +991,7 @@ DrawUIButton(UIButton button)
     Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
     Color text = button.text.a != 0 ? button.text : c_text;
     Color border = button.border.a != 0 ? button.border : LightenUIColor(background, 32);
-    float radius = button.radius > 0.0f ? button.radius : 0.12f;
+    float radius = button.radius > 0.0f ? button.radius : 0.06f;
     int cues = UITransitionCuesEnabled();
     Color draw_background;
     Color draw_border;
@@ -1062,13 +1062,13 @@ DrawUIIconButton(UIIconButton button)
     int hovered;
     int focused;
     int clicked = 0;
-    int icon_padding = button.icon_padding > 0 ? button.icon_padding : ScaleUIPx(4);
+    int icon_padding = button.icon_padding > 0 ? button.icon_padding : ScaleUIPx(3);
     int draw_size = button.icon_size;
     Color background = button.background.a != 0 ? button.background : c_button;
     Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
     Color icon_color = button.icon_color.a != 0 ? button.icon_color : c_text;
     Color border = button.border.a != 0 ? button.border : DarkenUIColor(background, 35);
-    float radius = button.radius > 0.0f ? button.radius : 0.12f;
+    float radius = button.radius > 0.0f ? button.radius : 0.06f;
     int cues = UITransitionCuesEnabled();
     Color draw_background;
     Color draw_border;
@@ -1835,11 +1835,11 @@ int
 GetUIIconBtnSize(int size)
 {
     switch(size) {
-    case UI_ICON_SIZE_TINY: return ClampUIPx(18, 16, 40);
-    case UI_ICON_SIZE_SMALL: return ClampUIPx(22, 20, 36);
-    case UI_ICON_SIZE_MEDIUM: return ClampUIPx(26, 24, 40);
-    case UI_ICON_SIZE_LARGE: return ClampUIPx(30, 28, 44);
-    default: return ClampUIPx(22, 20, 36);
+    case UI_ICON_SIZE_TINY: return ClampUIPx(12, 10, 18);
+    case UI_ICON_SIZE_SMALL: return ClampUIPx(14, 12, 20);
+    case UI_ICON_SIZE_MEDIUM: return ClampUIPx(16, 14, 24);
+    case UI_ICON_SIZE_LARGE: return ClampUIPx(20, 18, 28);
+    default: return ClampUIPx(14, 12, 20);
     }
 }
 
@@ -1847,11 +1847,11 @@ int
 GetUIIconBtnPadding(int size)
 {
     switch(size) {
-    case UI_ICON_SIZE_TINY: return ScaleUIPx(8);
-    case UI_ICON_SIZE_SMALL: return ScaleUIPx(10);
-    case UI_ICON_SIZE_MEDIUM: return ScaleUIPx(12);
-    case UI_ICON_SIZE_LARGE: return ScaleUIPx(14);
-    default: return ScaleUIPx(10);
+    case UI_ICON_SIZE_TINY: return ScaleUIPx(4);
+    case UI_ICON_SIZE_SMALL: return ScaleUIPx(5);
+    case UI_ICON_SIZE_MEDIUM: return ScaleUIPx(6);
+    case UI_ICON_SIZE_LARGE: return ScaleUIPx(7);
+    default: return ScaleUIPx(5);
     }
 }
 
@@ -2086,10 +2086,10 @@ int
 DrawUITextButton(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int font = UI_TEXT_16;
+    int font = GetUISmallFontSize();
     const char *text = label != NULL ? label : "";
-    int w = (int)MeasureUIText(text, font) + ScaleUIPx(24);
-    int h = GetUITextLineHeight(font) + ScaleUIPx(12);
+    int w = (int)MeasureUIText(text, font) + ScaleUIPx(16);
+    int h = GetUITextLineHeight(font) + ScaleUIPx(8);
     Rectangle bounds;
     int hovered;
 
@@ -2108,7 +2108,7 @@ DrawUITextButton(int x, int y, const char *label, int *hover)
         .hover_background = c_button_hover,
         .text = c_text,
         .border = LightenUIColor(c_button, 32),
-        .radius = 0.12f
+        .radius = 0.06f
     });
 }
 

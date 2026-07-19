@@ -804,18 +804,52 @@ ui_source_line_count(const char *text)
 }
 
 static int
+ui_source_expand_line(char *dst, size_t dst_size, const char *text, int len,
+                      int tab_width)
+{
+    int col = 0;
+    int out = 0;
+
+    if(dst == NULL || dst_size == 0)
+        return 0;
+    if(text == NULL || len <= 0) {
+        dst[0] = '\0';
+        return 0;
+    }
+    if(tab_width <= 0)
+        tab_width = 4;
+    for(int i = 0; i < len && out < (int)dst_size - 1; i++) {
+        unsigned char c = (unsigned char)text[i];
+
+        if(c == '\t') {
+            int spaces = tab_width - (col % tab_width);
+            while(spaces-- > 0 && out < (int)dst_size - 1) {
+                dst[out++] = ' ';
+                col++;
+            }
+        } else if(c == '\r') {
+            continue;
+        } else if(c < 32) {
+            dst[out++] = ' ';
+            col++;
+        } else {
+            dst[out++] = (char)c;
+            col++;
+        }
+    }
+    dst[out] = '\0';
+    return out;
+}
+
+static int
 ui_source_line_width(const char *text, int len, int font)
 {
     char line[1024];
-    int n = len;
+    int n;
 
     if(text == NULL)
         return 0;
-    if(n < 0)
-        n = 0;
-    if(n >= (int)sizeof(line))
-        n = (int)sizeof(line) - 1;
-    memcpy(line, text, (size_t)n);
+    n = ui_source_expand_line(line, sizeof(line), text, len, 4);
     line[n] = '\0';
     return MeasureUIText(line, font);
 }
@@ -850,15 +884,11 @@ ui_draw_source_line(const char *text, int len, int x, int y, int font,
                     Color color)
 {
     char line[1024];
-    int n = len;
+    int n;
 
     if(text == NULL)
         return;
-    if(n < 0)
-        n = 0;
-    if(n >= (int)sizeof(line))
-        n = (int)sizeof(line) - 1;
-    memcpy(line, text, (size_t)n);
+    n = ui_source_expand_line(line, sizeof(line), text, len, 4);
     line[n] = '\0';
     DrawUIText(line, x, y, font, color);
 }

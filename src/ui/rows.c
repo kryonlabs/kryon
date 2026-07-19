@@ -153,8 +153,8 @@ DrawUIOverlayButton(UIOverlayButton button)
 int
 GetUIButtonRowHeight(UIButtonRow row)
 {
-    int height = row.height > 0 ? row.height : ScaleUIPx(40);
-    int gap = row.gap > 0 ? row.gap : ScaleUIPx(10);
+    int height = row.height > 0 ? row.height : ScaleUIPx(30);
+    int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);
     int width = row.width;
     int row_w = 0;
     int rows = 1;
@@ -167,9 +167,9 @@ GetUIButtonRowHeight(UIButtonRow row)
 
     for(int i = 0; i < row.count; i++) {
         int item_w = MeasureUIText(row.items[i].label != NULL ? row.items[i].label : "",
-                                   font) + ScaleUIPx(28);
-        int min_w = ScaleUIPx(104);
-        int max_w = ScaleUIPx(176);
+                                   font) + ScaleUIPx(20);
+        int min_w = ScaleUIPx(76);
+        int max_w = ScaleUIPx(144);
         int next_w;
 
         if(item_w < min_w)
@@ -192,7 +192,7 @@ int
 DrawUIButtonRow(UIButtonRow row)
 {
     int clicked = -1;
-    int gap = row.gap > 0 ? row.gap : ScaleUIPx(10);
+    int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);
     int row_start = 0;
     int row_w = 0;
     int row_count = 0;
@@ -200,7 +200,7 @@ DrawUIButtonRow(UIButtonRow row)
     int font = GetUISmallFontSize();
 
     if(row.height <= 0)
-        row.height = ScaleUIPx(40);
+        row.height = ScaleUIPx(30);
     if(row.items == NULL || row.count <= 0 || row.width <= 0)
         return -1;
 
@@ -211,11 +211,11 @@ DrawUIButtonRow(UIButtonRow row)
 
         if(!end_row) {
             item_w = MeasureUIText(row.items[i].label != NULL ? row.items[i].label : "",
-                                   font) + ScaleUIPx(28);
-            if(item_w < ScaleUIPx(104))
-                item_w = ScaleUIPx(104);
-            if(item_w > ScaleUIPx(176))
-                item_w = ScaleUIPx(176);
+                                   font) + ScaleUIPx(20);
+            if(item_w < ScaleUIPx(76))
+                item_w = ScaleUIPx(76);
+            if(item_w > ScaleUIPx(144))
+                item_w = ScaleUIPx(144);
         }
         next_w = row_w > 0 ? row_w + gap + item_w : item_w;
 
