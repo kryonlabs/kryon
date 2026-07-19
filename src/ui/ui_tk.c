@@ -638,6 +638,53 @@ ui_tree_item_visible(const UICascadingTreeItem *items, int index,
     return 1;
 }
 
+static void
+ui_draw_tree_text(const char *text, Rectangle rect, int font, Color color)
+{
+    const char *value = text != NULL ? text : "";
+    int y;
+
+    if(rect.width <= 0 || rect.height <= 0)
+        return;
+    y = GetUITextY(value, (int)rect.y, (int)rect.height, font);
+    BeginUIClip((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
+    DrawUIText(value, (int)rect.x, y, font, color);
+    EndUIClip();
+}
+
+static void
+ui_draw_tree_disclosure(Rectangle box, int expanded, int hot)
+{
+    Color bg = hot ? c_button_hover : c_surface;
+    Color border = hot ? c_icon : c_button;
+    int cx = (int)(box.x + box.width / 2.0f);
+    int cy = (int)(box.y + box.height / 2.0f);
+    int pad = ScaleUIPx(4);
+
+    DrawRectangleRec(box, bg);
+    DrawRectangleLinesEx(box, 1.0f, border);
+    DrawLine((int)box.x + pad, cy, (int)(box.x + box.width) - pad, cy,
+             c_icon);
+    if(!expanded)
+        DrawLine(cx, (int)box.y + pad, cx, (int)(box.y + box.height) - pad,
+                 c_icon);
+}
+
+static void
+ui_draw_tree_file_mark(Rectangle box, int hot)
+{
+    Color border = hot ? c_icon : c_button;
+    int inset = ScaleUIPx(3);
+
+    DrawRectangleLines((int)box.x + inset, (int)box.y + inset,
+                       (int)box.width - inset * 2,
+                       (int)box.height - inset * 2, border);
+    DrawLine((int)(box.x + box.width) - inset * 2,
+             (int)box.y + inset,
+             (int)(box.x + box.width) - inset,
+             (int)box.y + inset * 2, border);
+}
+
 int
 DrawUICascadingTreeView(UICascadingTreeView tree)
 {
@@ -666,10 +713,13 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
         const UICascadingTreeItem *item;
         Rectangle row;
         Rectangle text_rect;
+        Rectangle mark;
         int hot;
         int expanded;
         int x;
         int y;
+        int mark_size = ScaleUIPx(16);
+        int gap = ScaleUIPx(8);
 
         if(!ui_tree_item_visible(tree.items, i, tree.expanded))
             continue;
@@ -692,18 +742,25 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
         if(hot)
             MarkUIClickable();
 
+        mark = (Rectangle){
+            (float)x,
+            row.y + ((float)row_h - (float)mark_size) * 0.5f,
+            (float)mark_size,
+            (float)mark_size
+        };
         if(item->is_dir)
-            DrawUIText(expanded ? "v" : ">", x, ui_row_text_y(row, font),
-                       font, c_icon);
+            ui_draw_tree_disclosure(mark, expanded, hot);
+        else
+            ui_draw_tree_file_mark(mark, hot);
         text_rect = (Rectangle){
-            (float)(x + ScaleUIPx(18)),
+            mark.x + mark.width + (float)gap,
             row.y,
             tree.bounds.x + tree.bounds.width - (float)ScaleUIPx(10) -
-                (float)(x + ScaleUIPx(18)),
+                (mark.x + mark.width + (float)gap),
             row.height
         };
-        DrawUITextInRect(item->label != NULL ? item->label : "", text_rect,
-                         font, c_text);
+        ui_draw_tree_text(item->label != NULL ? item->label : "", text_rect,
+                          font, item->is_dir ? c_text : c_icon);
 
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();

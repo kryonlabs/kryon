@@ -58,7 +58,8 @@ main(void)
                                       rows, 2, NULL, &row_sel, &sort_col,
                                       &table_scroll, 28});
 
-        DrawUIText("Cascading tree", 40, 275, UI_TEXT_16, GetThemeText());
+        DrawUIText("Cascading file browser", 40, 275, UI_TEXT_16,
+                   GetThemeText());
         cascade_activated = 0;
         DrawUICascadingTreeView((UICascadingTreeView){
             .bounds = {40, 305, 360, 240},
@@ -75,6 +76,8 @@ main(void)
             DrawUIText(TextFormat("Selected id: %d", cascade_activated),
                        430, 315, UI_TEXT_16, GetThemeText());
         }
+        DrawUIText("Folders use +/- and toggle open. Files select.",
+                   430, 345, UI_TEXT_16, GetThemeIcon());
 
         EndDrawing();
     }
