@@ -16,6 +16,7 @@ typedef struct UIEditorSelection {
     char action[64];
     Rectangle bounds;
     int flags;
+    int kind_index;
     int valid;
 } UIEditorSelection;
 

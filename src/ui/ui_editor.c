@@ -192,6 +192,11 @@ UIEditorGetSelection(void)
                       widget->action);
     selection.bounds = widget->bounds;
     selection.flags = widget->flags;
+    selection.kind_index = 1;
+    for(int i = 0; i < g_ui_editor.selected; i++) {
+        if(ui_editor_streq(g_ui_editor.widgets[i].kind, widget->kind))
+            selection.kind_index++;
+    }
     selection.valid = 1;
     return selection;
 }
