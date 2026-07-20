@@ -1488,11 +1488,11 @@ static Color
 ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
                       int first_token, UITextInputStyle style)
 {
-    Color keyword = (Color){0, 0, 170, 255};
-    Color string = (Color){0, 116, 32, 255};
-    Color number = (Color){128, 0, 128, 255};
-    Color path = (Color){128, 64, 0, 255};
-    Color comment = (Color){96, 96, 96, 255};
+    Color keyword = (Color){0, 0, 160, 255};
+    Color string = (Color){0, 96, 0, 255};
+    Color number = (Color){128, 0, 96, 255};
+    Color path = (Color){120, 72, 0, 255};
+    Color comment = (Color){88, 88, 88, 255};
 
     if(len <= 0)
         return style.text;
