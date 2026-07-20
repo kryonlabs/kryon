@@ -10,6 +10,8 @@ VERSION ?= $(if $(strip $(KRYON_VERSION_STRING)),$(KRYON_VERSION_STRING),$(shell
 DIST_DIR ?= dist
 STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
+KC = $(BUILD_DIR)/bin/kc
+KI = $(BUILD_DIR)/bin/ki
 CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude -I$(KRYON_DIR)/vendor/clay
 ICON_DIR ?= icons language payments platforms tiles pfp
@@ -53,6 +55,7 @@ RAY_GL_CFLAGS ?= $(shell pkg-config --cflags libdrm gbm egl glesv2 2>/dev/null)
 RAY_GL_LDLIBS ?= $(shell pkg-config --libs libdrm gbm egl glesv2 2>/dev/null)
 RAY_CFLAGS ?= $(strip $(RAY_SDL_CFLAGS) $(RAY_GL_CFLAGS))
 RAY_LDLIBS ?= $(strip $(RAY_SDL_LDLIBS) $(RAY_GL_LDLIBS))
+CURL_CODEC_LDLIBS != pkg-config --libs libbrotlidec libbrotlicommon libzstd 2>/dev/null || true
 RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
 RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSUPPORT_AUTOMATION_EVENTS=0 -DSUPPORT_CLIPBOARD_IMAGE=0 -DSUPPORT_FILEFORMAT_BMP=0 -DSUPPORT_FILEFORMAT_GIF=0 -DSUPPORT_FILEFORMAT_QOI=0 -DSUPPORT_FILEFORMAT_DDS=0 -DSUPPORT_FILEFORMAT_TTF=1
 APP_RAYLIB_CONFIG ?= $(filter-out -DSUPPORT_MODULE_RAUDIO=0 -DSUPPORT_FILEFORMAT_PNG=0 -DSUPPORT_FILEFORMAT_JPG=0 -DSUPPORT_FILEFORMAT_OGG=0 -DSUPPORT_FILEFORMAT_MP3=0,$(RAY_RAYLIB_CONFIG)) -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1
@@ -98,12 +101,26 @@ RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean run examples-run font-assets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install-static
+.PHONY: all clean run tools examples-run font-assets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install-static
 
-all: $(LIB)
+all: $(LIB) $(KC) $(KI)
 
-run:
-	@printf '%s\n' 'Kryon is a library and IDE toolkit. Run the IDE from ../kryon-ide with: make run'
+run: $(KI)
+	@if [ -n "$(PROJECT)" ]; then \
+		project_path=$$(cd "$(PROJECT)" && pwd); \
+		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
+	elif [ -n "$(ARGS)" ]; then \
+		project_path=$$(cd "$(ARGS)" && pwd); \
+		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
+	elif [ -n "$(KRYON_PROJECT)" ]; then \
+		project_path=$$(cd "$(KRYON_PROJECT)" && pwd); \
+		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
+	else \
+		project_path=$$(pwd); \
+		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI); \
+	fi
+
+tools: $(KC) $(KI)
 
 examples-run:
 	@$(MAKE) -C examples run
@@ -151,6 +168,18 @@ kryon-boundary-check:
 
 $(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+$(KC): cmd/kc/kc.c | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) -o $@ cmd/kc/kc.c
+
+$(KI): cmd/ki/main.c $(LIB) $(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) $(CPPFLAGS) -Isrc/ui $(RAY_CFLAGS) -o $@ \
+		cmd/ki/main.c \
+		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
+		$(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_LDLIBS) \
+		$(KRYON_MARKDOWN_LDLIBS) \
+		-Wl,-export-dynamic $(RAY_LDLIBS) $(LDLIBS) \
+		$(CURL_CODEC_LDLIBS) -lz -lpthread -lm
 
 version:
 	@printf '%s\n' '$(VERSION)'
@@ -271,6 +300,9 @@ $(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR) $(KRYON_LIBOQS_A) $(KRYON_CURL
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR):
+	mkdir -p $@
+
+$(BUILD_DIR)/bin:
 	mkdir -p $@
 
 font-assets:
