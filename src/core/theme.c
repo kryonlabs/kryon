@@ -10,9 +10,9 @@
 static ThemeScope scopes[THEME_MAX_SCOPES];
 static int scope_count = 0;
 static bool dark_mode = false;
-static int current_theme_id = THEME_SUNSET;
-static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
-static ThemeMode theme_mode = THEME_MODE_SYSTEM;
+static int current_theme_id = THEME_MONO;
+static ThemeSource theme_source = THEME_SOURCE_APP;
+static ThemeMode theme_mode = THEME_MODE_LIGHT;
 
 static ThemeAggregateVariable aggregate_vars[THEME_MAX_VARS];
 static int aggregate_count = 0;
