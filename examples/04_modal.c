@@ -20,13 +20,13 @@ main(void)
     int last_result = 0;
     const char *last_label = "none";
 
-    InitWindow(800, 600, "Flint Modal Example");
+    InitWindow(800, 600, "Kryon Modal Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
     load_theme();
     InitUI(GetScreenWidth(), GetScreenHeight(), 1.0f);
 
-    printf("Flint Modal Example\n");
+    printf("Kryon Modal Example\n");
     printf("Click Open Modal. While it is open, background clicks are blocked.\n");
 
     while(!WindowShouldClose()) {
@@ -63,7 +63,7 @@ main(void)
 
             last_result = DrawUIActionModal((UIModalSpec){
                 .title = "Adaptive Action Modal",
-                .message = "Flint measures action labels, fits text inside buttons, and wraps the action row when the dialog is narrow.",
+                .message = "Kryon measures action labels, fits text inside buttons, and wraps the action row when the dialog is narrow.",
                 .actions = actions,
                 .action_count = 3,
                 .max_width = 420

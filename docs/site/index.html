@@ -3,197 +3,144 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Flint</title>
+  <title>Kryon - Network-Native UI Cartridge System</title>
+  <meta name="description" content="Define interfaces in .kry, compile to clean native code, and inspect every widget from the Kryon IDE.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Kryon - Network-Native UI Cartridge System">
+  <meta property="og:description" content="Define interfaces in .kry, compile to clean native code, and inspect every widget from the Kryon IDE.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Kryon - Network-Native UI Cartridge System">
+  <meta name="twitter:description" content="Define UIs in .kry, compile to clean C, and work visually in the IDE.">
+  <meta name="theme-color" content="#557777">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="wrap nav">
-      <strong>Flint</strong>
-      <nav>
-        <a href="#start">Start</a>
-        <a href="#frame">Frame</a>
-        <a href="#modals">Modals</a>
-        <a href="#controls">Controls</a>
-        <a href="#app">App Support</a>
-        <a href="#fonts">Fonts</a>
-        <a href="examples.html">Examples</a>
-      </nav>
-    </div>
-  </header>
+  <div class="content">
+    <header class="hero">
+      <img class="hero-icon" src="icons/rocket.png" width="128" height="128" alt="Kryon">
+      <h1>KRYON</h1>
+      <p class="tagline">The Network-Native UI Cartridge System</p>
+      <p class="tagline-detail">Define UIs in .kry &bull; Compile to clean C &bull; Inspect live widgets</p>
+    </header>
 
-  <main>
-    <section class="hero">
-      <div class="wrap hero-grid">
-        <div>
-          <p class="eyebrow">C support library for raylib-style apps</p>
-          <h1>Small native UI with shared app plumbing.</h1>
-          <p class="lede">
-            Flint keeps a raylib-compatible public surface available through
-            <code>kryon.h</code>, then adds UI controls, layout helpers, text
-            rendering, themes, embedded assets, locale loading, file dialogs,
-            runtime asset downloads, and Lyra account/sync helpers.
-          </p>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="#about">About</a>
+      <a href="#features">Features</a>
+      <a href="#philosophy">Philosophy</a>
+      <a href="#platforms">Platforms</a>
+      <a href="#start">Start</a>
+      <a href="examples.html">Examples</a>
+    </nav>
+
+    <main>
+      <section id="about">
+        <h2>What is Kryon?</h2>
+        <p>Kryon is a UI cartridge system for native applications. Write interface structure in simple .kry files, compile it into readable C, and keep the runtime small enough for desktop, mobile, web, and embedded targets.</p>
+        <p>The IDE is part of the system: every visible widget can carry source metadata, so preview clicks can jump back to the line that generated the widget.</p>
+      </section>
+
+      <section id="features">
+        <h2>Core Features</h2>
+        <div class="grid">
+          <article class="feature">
+            <img src="icons/text.png" width="48" height="48" alt="">
+            <h3>Widget-Focused .kry</h3>
+            <p>Pages and reusable widgets stay in concise source files instead of hand-written screen C.</p>
+          </article>
+          <article class="feature">
+            <img src="icons/stack.png" width="48" height="48" alt="">
+            <h3>Clean C Output</h3>
+            <p>The compiler emits normal C and headers in a fresh generated folder for direct interop.</p>
+          </article>
+          <article class="feature">
+            <img src="icons/globe.png" width="48" height="48" alt="">
+            <h3>Live Widget Preview</h3>
+            <p>Hot reload keeps the preview tied to current .kry source instead of a fake mock view.</p>
+          </article>
+          <article class="feature">
+            <img src="icons/wrench.png" width="48" height="48" alt="">
+            <h3>Widget Gallery</h3>
+            <p>Search registered widgets, drop them into pages, move them visually, and keep source links intact.</p>
+          </article>
         </div>
-        <pre><code>BeginUIFrame(
-    GetScreenWidth(),
-    GetScreenHeight(),
-    GetUIScale());
+      </section>
 
-SetCurrentTheme(THEME_SKY, 0);</code></pre>
-      </div>
-      <div class="wrap dependency-strip" aria-label="Shared app support">
-        <span>UI Core</span>
-        <span>Lyra Accounts</span>
-        <span>liboqs</span>
-        <span>curl + LibreSSL</span>
-      </div>
-    </section>
+      <section id="philosophy">
+        <h2>Philosophy</h2>
+        <ul class="philosophy-list">
+          <li><strong>Everything visible is a widget</strong> - source, bounds, state, and inspection all belong to the widget tree.</li>
+          <li><strong>Source stays primary</strong> - .kry files own screens and reusable UI pieces; C is the generated interop target.</li>
+          <li><strong>The IDE is modular</strong> - file browser, source editor, preview, inspector, widget gallery, and search are swappable panes.</li>
+          <li><strong>Default private API</strong> - only exported functions enter generated headers, keeping build boundaries small.</li>
+          <li><strong>Native first</strong> - direct C, raylib-style calls, and predictable runtime behavior across targets.</li>
+        </ul>
+      </section>
 
-    <section id="start" class="wrap section">
-      <h2>Start</h2>
-      <div class="cards">
-        <article>
-          <h3>Build Flint</h3>
-          <pre><code>make</code></pre>
-          <p>Include <code>kryon.h</code> or specific headers from <code>include/</code>.</p>
-        </article>
-        <article>
-          <h3>Link</h3>
-          <pre><code>-Lvendor/flint -lflint -lraylib -lGL -lm -lpthread -ldl -lrt -lX11</code></pre>
-          <p>Use your platform's raylib/OpenGL flags as needed.</p>
-        </article>
-      </div>
-    </section>
+      <section id="platforms">
+        <h2>Platforms</h2>
+        <p>Kryon targets the same interface source at the environments apps actually ship to.</p>
+        <div class="platform-grid">
+          <article class="platform">
+            <img src="platforms/tux.png" width="32" height="32" alt="">
+            <h3>Linux</h3>
+            <p>Native desktop builds.</p>
+          </article>
+          <article class="platform">
+            <img src="platforms/droid.png" width="32" height="32" alt="">
+            <h3>Android</h3>
+            <p>Mobile runtime support.</p>
+          </article>
+          <article class="platform">
+            <img src="language/wasm.png" width="32" height="32" alt="">
+            <h3>Browser</h3>
+            <p>WebAssembly examples and previews.</p>
+          </article>
+          <article class="platform">
+            <img src="icons/gear.png" width="32" height="32" alt="">
+            <h3>Native</h3>
+            <p>Small C runtime and generated sources.</p>
+          </article>
+          <article class="platform">
+            <img src="icons/link.png" width="32" height="32" alt="">
+            <h3>Network</h3>
+            <p>Ready for path-based remote control.</p>
+          </article>
+        </div>
+      </section>
 
-    <section class="wrap section">
-      <h2>Try The Examples</h2>
-      <p>
-        The GitHub Pages workflow builds the C examples with Emscripten and
-        publishes them alongside this static site.
-      </p>
-      <p><a class="button-link" href="examples.html">Open live examples</a></p>
-    </section>
+      <section id="start">
+        <h2>Get Started</h2>
+        <p>Build the runtime and tools:</p>
+        <pre><code>git clone https://github.com/kryonlabs/kryon
+cd kryon
+make</code></pre>
+        <p>A simple .kry shape:</p>
+        <pre><code>include "kryon.h"
 
-    <section id="frame" class="wrap section">
-      <h2>Frame Lifecycle</h2>
-      <p>
-        For normal screen-space UI, call <code>BeginUIFrame</code> once
-        per frame. It updates the layout viewport, UI viewport, DPI scale, and
-        frame state with a safe default camera.
-      </p>
-      <pre><code>BeginDrawing();
-SetCurrentTheme(THEME_SKY, 0);
-BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());</code></pre>
-      <p>
-        If you need a transformed UI camera, call <code>InitUI</code> and
-        <code>SetUIFrame(camera)</code>. Flint normalizes invalid cameras, so a
-        zeroed camera no longer breaks pointer input.
-      </p>
-    </section>
+pub fn AppHome(app: *InbeApp) {
+    var y: int = ScaleUIPx(24)
 
-    <section id="modals" class="wrap section">
-      <h2>Modals</h2>
-      <p>
-        Use <code>DrawUIActionModal</code> for title, message, and action-button
-        dialogs. It measures labels, fits button text, wraps long action rows,
-        and registers modal input capture so background controls cannot receive
-        clicks.
-      </p>
-      <pre><code>UIModalAction actions[2] = {
-    { "Keep running", UI_BUTTON_STYLE_PRIMARY, 0 },
-    { "Quit", UI_BUTTON_STYLE_DANGER, 0 }
-};
+    draw DrawUIText("Inner Breeze", ScaleUIPx(20), y, UI_TEXT_24, GetThemeText())
+    draw app_draw_bottom_nav(app)
+}</code></pre>
+        <p>Compile and run through the IDE:</p>
+        <pre><code>make -C ../kryon-ide run PROJECT=../inbe</code></pre>
+      </section>
 
-int result = DrawUIActionModal((UIModalSpec){
-    .title = "Close app?",
-    .message = "Choose what the app should do next.",
-    .actions = actions,
-    .action_count = 2,
-    .close_icon = close_icon
-});</code></pre>
-      <p>
-        Use <code>DrawUIModalFrame</code> when a dialog needs custom controls
-        such as text fields, sliders, or scrollable content.
-      </p>
-    </section>
+      <section id="docs">
+        <h2>Documentation</h2>
+        <ul class="link-list">
+          <li><a href="API.md">API reference</a> - runtime and widget surface</li>
+          <li><a href="examples.html">Live examples</a> - browser builds of the C examples</li>
+          <li><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">Source repository</a> - code, issues, and releases</li>
+        </ul>
+      </section>
+    </main>
 
-    <section id="controls" class="wrap section">
-      <h2>Controls</h2>
-      <div class="cards">
-        <article>
-          <h3>Text Input</h3>
-          <code>DrawUITextField</code>
-          <code>DrawUILabelTextField</code>
-        </article>
-        <article>
-          <h3>Choices</h3>
-          <code>DrawUICheckboxToggle</code>
-          <code>DrawUIToggleSwitch</code>
-          <code>DrawUIDropdownButton</code>
-        </article>
-        <article>
-          <h3>Actions</h3>
-          <code>DrawUIButton</code>
-          <code>DrawUIGenericButton</code>
-          <code>DrawUIIconButton</code>
-        </article>
-      </div>
-    </section>
-
-    <section id="app" class="wrap section app-section">
-      <div>
-        <h2>App Support</h2>
-        <p>
-          Flint is the source owner for shared application plumbing. Apps keep
-          their build outputs local, while common dependency source and build
-          recipes live under Flint so account management and network builds stay
-          consistent.
-        </p>
-      </div>
-      <div class="cards">
-        <article>
-          <h3>Lyra Account</h3>
-          <p>
-            <code>LyraAccount</code> creates, imports, exports, signs,
-            and verifies generic account keys without app-specific key names.
-          </p>
-        </article>
-        <article>
-          <h3>liboqs</h3>
-          <p>
-            <code>vendor/liboqs</code> is the shared source for post-quantum
-            signing support. Downstream builds can enable it with
-            <code>HAS_LIBOQS</code>.
-          </p>
-        </article>
-        <article>
-          <h3>curl + LibreSSL</h3>
-          <p>
-            <code>vendor/curl</code> is the shared source for app networking.
-            TLS builds use curl's OpenSSL-compatible options through the
-            <code>OPENSSL_*</code> make variables.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <section id="fonts" class="wrap section">
-      <h2>Fonts</h2>
-      <p>
-        Flint loads application-supplied TrueType or OpenType font assets.
-        Load assets with <code>LoadUIFontAsset</code>, register the
-        result with <code>RegisterUIFont</code>, then switch fonts with <code>UseUIFont</code>.
-      </p>
-      <pre><code>Font font = LoadUIFontAsset("fonts/noto/NotoSans-Regular.ttf", UI_TEXT_BASE_SIZE);
-RegisterUIFont("ui", font);
-UseUIFont("ui");</code></pre>
-    </section>
-  </main>
-
-  <footer class="wrap footer">
-    <p>Flint is documented in <code>docs/API.md</code>.</p>
-  </footer>
+    <footer>
+      <p>&copy; 2026 Kryon Labs | <a href="https://waozi.xyz" target="_blank" rel="noopener">Made by Waozi</a></p>
+    </footer>
+  </div>
   <script src="highlight.js"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 #ifndef UI_CORE_H
 #define UI_CORE_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 
 typedef void (*UITextInputPlatformCallback)(int active);
 

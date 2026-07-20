@@ -1,7 +1,7 @@
 #ifndef UI_SCROLL_H
 #define UI_SCROLL_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 
 typedef struct {
     Rectangle bounds;

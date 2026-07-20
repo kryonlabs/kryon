@@ -3,7 +3,7 @@
 CC ?= cc
 CFLAGS_BASE ?= -Wall -Wextra -O2
 CFLAGS = $(CFLAGS_BASE) -I../include
-LDFLAGS = -L.. -lflint
+LDFLAGS = -L.. -lkryon
 UNAME_S := $(shell uname -s)
 GL_X11_PKG_LIBS := $(shell pkg-config --libs gl x11 2>/dev/null || printf '%s' '-L/usr/local/lib -lGL -lX11')
 GTK_PKG_CFLAGS := $(shell pkg-config --cflags gtk+-3.0 2>/dev/null)
@@ -20,7 +20,7 @@ EXAMPLE_SYSTEM_LDLIBS := $(RAY_LDLIBS) $(GL_X11_PKG_LIBS) $(GTK_PKG_LIBS) -lm -l
 ifeq ($(UNAME_S),Linux)
     EXAMPLE_SYSTEM_LDLIBS += -ldl -lrt
 endif
-FLINT_DIR := ..
+KRYON_DIR := ..
 FONT_OUTPUTS := $(wildcard ../fonts/noto/*.ttf ../fonts/noto/*.otf)
 BUILD_DIR ?= ../build/examples
 RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-native
@@ -30,18 +30,18 @@ WEB_EMBED_ASSETS_C := $(BUILD_DIR)/embedded_asset_data.c
 WEB_EMBED_ASSET_FILES := $(shell find ../themes -type f 2>/dev/null)
 WEB_RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-web
 WEB_RAYLIB_A := $(WEB_RAYLIB_BUILD_DIR)/libraylib.web.a
-FLINT_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
-FLINT_WEB_LIBOQS_BUILD_DIR ?= $(FLINT_VENDOR_BUILD_DIR)/web-liboqs
+KRYON_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
+KRYON_WEB_LIBOQS_BUILD_DIR ?= $(KRYON_VENDOR_BUILD_DIR)/web-liboqs
 include ../mk/vendor.mk
 WEB_CC ?= emcc
 WEB_AR ?= emar
 WEB_SHELL := web_shell.html
 EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
 include ../mk/raylib.mk
-FLINT_LIBRARY_SRCS := $(shell find ../src -type f -name '*.c' | LC_ALL=C sort)
-FLINT_WEB_SRCS := $(filter-out ../src/file_dialog/file_dialog.c,$(FLINT_LIBRARY_SRCS)) $(WEB_EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
-FLINT_ALL_WEB_SRCS := $(FLINT_LIBRARY_SRCS) $(WEB_EMBED_ASSETS_C) $(FLINT_RAYLIB_WRAPPERS_C)
-WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1 -DHAS_LIBOQS=1 -I$(FLINT_WEB_LIBOQS_BUILD_DIR)/include
+KRYON_LIBRARY_SRCS := $(shell find ../src -type f -name '*.c' | LC_ALL=C sort)
+KRYON_WEB_SRCS := $(filter-out ../src/file_dialog/file_dialog.c,$(KRYON_LIBRARY_SRCS)) $(WEB_EMBED_ASSETS_C) $(KRYON_RAYLIB_WRAPPERS_C)
+KRYON_ALL_WEB_SRCS := $(KRYON_LIBRARY_SRCS) $(WEB_EMBED_ASSETS_C) $(KRYON_RAYLIB_WRAPPERS_C)
+WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1 -DHAS_LIBOQS=1 -I$(KRYON_WEB_LIBOQS_BUILD_DIR)/include
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
 WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
 
@@ -59,15 +59,15 @@ EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_la
 
 .PHONY: all clean run list font-assets web web-clean
 
-all: ../libflint.a $(EXAMPLES)
+all: ../libkryon.a $(EXAMPLES)
 
-../libflint.a:
+../libkryon.a:
 	@$(MAKE) -C ..
 
 font-assets:
 	@printf '%s\n' 'font assets are checked in'
 
-%: %.c ../libflint.a $(RAYLIB_A) $(FONT_OUTPUTS)
+%: %.c ../libkryon.a $(RAYLIB_A) $(FONT_OUTPUTS)
 	@echo "Building $@..."
 	@$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 	@echo "Built: $@"
@@ -80,16 +80,16 @@ $(BUILD_DIR):
 $(WEB_EMBED_ASSETS_C): $(WEB_EMBED_ASSET_FILES) ../scripts/embed-assets.sh ../include/embedded_assets.h | $(BUILD_DIR)
 	sh ../scripts/embed-assets.sh $@ ../themes
 
-$(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(FLINT_WEB_LIBOQS_A) $(WEB_EMBED_ASSETS_C) $(WEB_SHELL)
+$(EXAMPLES_WEB_SITE_DIR)/%/index.html: %.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(KRYON_WEB_LIBOQS_A) $(WEB_EMBED_ASSETS_C) $(WEB_SHELL)
 	@echo "Building web example $*..."
 	@mkdir -p $(dir $@)
 	$(WEB_CC) $(WEB_CFLAGS) \
 		-I../include \
 		-o $(dir $@)/index.js \
 		$< \
-		$(if $(filter 01_file_dialog,$*),$(FLINT_ALL_WEB_SRCS),$(FLINT_WEB_SRCS)) \
+		$(if $(filter 01_file_dialog,$*),$(KRYON_ALL_WEB_SRCS),$(KRYON_WEB_SRCS)) \
 		$(WEB_RAYLIB_A) \
-		$(FLINT_WEB_LIBOQS_A) \
+		$(KRYON_WEB_LIBOQS_A) \
 		$(WEB_LDFLAGS) \
 		--preload-file ../fonts/noto@fonts/noto
 	perl -0pe 's#\{\{\{ SCRIPT \}\}\}#<script async src="index.js"></script>#g' $(WEB_SHELL) > $@

@@ -28,7 +28,7 @@
 #endif
 
 #if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && !defined(HAS_LIBCURL) && !ANDROID_BUILD
-#error "Flint runtime assets require Emscripten fetch, Windows WinINet, libcurl, or an Android app backend"
+#error "Kryon runtime assets require Emscripten fetch, Windows WinINet, libcurl, or an Android app backend"
 #endif
 
 static RuntimeAssetDownloadBackend g_download_backend = NULL;
@@ -76,7 +76,7 @@ EnsureRuntimeAssetDir(const char *path)
 int
 GetRuntimeAssetCacheRoot(const char *app_id, char *out, size_t out_size)
 {
-    const char *id = (app_id != NULL && app_id[0] != '\0') ? app_id : "flint";
+    const char *id = (app_id != NULL && app_id[0] != '\0') ? app_id : "kryon";
 
     if(out == NULL || out_size == 0)
         return 0;
@@ -126,15 +126,15 @@ InitRuntimeAssets(const char *app_id)
                 if(!FS.analyzePath(path).exists)
                     FS.mkdir(path);
             }
-            if(!Module.__flintRuntimeAssetsMounted) {
+            if(!Module.__kryonRuntimeAssetsMounted) {
                 FS.mount(IDBFS, {}, '/persistent_data');
-                Module.__flintRuntimeAssetsMounted = true;
+                Module.__kryonRuntimeAssetsMounted = true;
             }
             FS.syncfs(true, function(err) {
-                if(err) console.error('flint runtime asset sync failed', err);
+                if(err) console.error('kryon runtime asset sync failed', err);
             });
         } catch(e) {
-            console.error('flint runtime asset init failed', e);
+            console.error('kryon runtime asset init failed', e);
         }
     }, root);
 #endif
@@ -194,7 +194,7 @@ fetch_done(emscripten_fetch_t *fetch)
     download->status = RUNTIME_ASSET_READY;
     EM_ASM({
         FS.syncfs(false, function(err) {
-            if(err) console.error('flint runtime asset save failed', err);
+            if(err) console.error('kryon runtime asset save failed', err);
         });
     });
     emscripten_fetch_close(fetch);
@@ -260,7 +260,7 @@ windows_download_thread_main(void *user_data)
         return 0;
     }
 
-    internet = InternetOpenA("flint-runtime-assets/1",
+    internet = InternetOpenA("kryon-runtime-assets/1",
                              INTERNET_OPEN_TYPE_PRECONFIG,
                              NULL, NULL, 0);
     if(internet == NULL) {
@@ -396,7 +396,7 @@ curl_thread_main(void *user_data)
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_file);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "flint-runtime-assets/1");
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "kryon-runtime-assets/1");
     curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curl_progress);

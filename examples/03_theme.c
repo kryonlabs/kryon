@@ -7,15 +7,15 @@
 int main(void) {
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "Flint Theme Example");
+    InitWindow(screenWidth, screenHeight, "Kryon Theme Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(screenWidth, screenHeight, GetUIScale());
     SetCurrentTheme(THEME_SKY, 0);
 
-    printf("Flint Theme System Example\n");
+    printf("Kryon Theme System Example\n");
     printf("=========================\n\n");
-    printf("This example demonstrates Flint theme catalog:\n");
+    printf("This example demonstrates Kryon theme catalog:\n");
     printf("  - GetThemeCatalogColor() - Get theme colors\n");
     printf("  - GetThemeScopeName() - Get theme scope name\n");
     printf("  - ThemeId enum - All available themes\n\n");

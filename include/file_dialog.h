@@ -38,7 +38,7 @@ void SetFileDialogThemeScope(const char *scope);
 /* Return the resolved backend name: web, zenity, kdialog, yad, or none. */
 const char *GetFileDialogBackendName(void);
 
-/* FLINT_FILE_DIALOG_BACKEND can force auto, zenity, kdialog, yad, or none. */
+/* KRYON_FILE_DIALOG_BACKEND can force auto, zenity, kdialog, yad, or none. */
 
 /* Save file dialog - returns 1 if file selected, 0 if cancelled */
 int SaveFileDialog(FileDialog *dlg, const char *title, const char *default_filename);

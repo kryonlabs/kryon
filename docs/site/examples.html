@@ -3,29 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Flint Examples</title>
+  <title>Kryon Examples</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="wrap nav">
-      <strong><a href="index.html">Flint</a></strong>
-      <nav>
-        <a href="index.html#start">Start</a>
-        <a href="index.html#frame">Frame</a>
-        <a href="examples.html">Examples</a>
-      </nav>
-    </div>
-  </header>
+  <div class="content">
+    <header class="hero">
+      <img class="hero-icon" src="icons/rocket.png" width="96" height="96" alt="Kryon">
+      <h1>KRYON</h1>
+      <p class="tagline">Live Examples</p>
+      <p class="tagline-detail">C widgets &bull; WebAssembly builds &bull; Runtime controls</p>
+    </header>
 
-  <main class="wrap section">
-    <h1 class="page-title">Live Examples</h1>
-    <p class="lede">
-      These examples are built from the C sources with Emscripten and published
-      with the docs site. Open one to test the same controls in the browser.
-    </p>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="index.html#features">Features</a>
+      <a href="index.html#start">Start</a>
+      <a href="examples.html">Examples</a>
+    </nav>
 
-    <div class="example-grid">
+    <main>
+      <section>
+        <h2>Examples</h2>
+        <p class="lede">
+          These examples are built from the C sources with Emscripten and published
+          with the docs site. Open one to test the same controls in the browser.
+        </p>
+
+        <div class="example-grid">
       <a class="example-card" href="examples/01_file_dialog/index.html">
         <span>01</span>
         <strong>File Dialog</strong>
@@ -98,8 +103,10 @@
         <span>18</span>
         <strong>Accessibility</strong>
       </a>
-    </div>
-  </main>
+        </div>
+      </section>
+    </main>
+  </div>
   <script src="highlight.js"></script>
 </body>
 </html>

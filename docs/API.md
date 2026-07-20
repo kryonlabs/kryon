@@ -1,6 +1,6 @@
 # UI API Documentation
 
-Flint is a lightweight C UI component library for embedded applications and runtime environments. It provides core UI primitives and icon asset management without external dependencies.
+Kryon is a lightweight C UI component library for embedded applications and runtime environments. It provides core UI primitives and icon asset management without external dependencies.
 
 ## Table of Contents
 
@@ -402,7 +402,7 @@ Profile-picture PNGs in `pfp/` are embedded into the same icon catalog with
 `GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
 the standard profile-picture options.
 
-Flint also exposes stable `UI_LYRA_PROFILE_ICON_*` IDs and mapping helpers:
+Kryon also exposes stable `UI_LYRA_PROFILE_ICON_*` IDs and mapping helpers:
 
 ```c
 UIIconType GetUIProfilePictureIconTypeForLyraID(int lyra_id);
@@ -504,7 +504,7 @@ int GetCurrentLocaleIndex(void);
 
 ### Lyra Sync
 
-Common Lyra sync protocol helpers. Flint owns URL handling, token auth,
+Common Lyra sync protocol helpers. Kryon owns URL handling, token auth,
 challenge/login, bearer requests, sync posting, account deletion, and small JSON
 helpers. Applications still own their local data model and provide callbacks to
 build sync payloads, apply sync responses, store auth tokens, and perform
@@ -688,7 +688,7 @@ void SetRuntimeAssetDownloadBackend(RuntimeAssetDownloadBackend backend);
 ### File Dialogs
 
 Open native desktop file dialogs through an external helper backend. The default
-backend order is `zenity`, then `kdialog`, then `yad`. `FLINT_FILE_DIALOG_BACKEND`
+backend order is `zenity`, then `kdialog`, then `yad`. `KRYON_FILE_DIALOG_BACKEND`
 can force `zenity`, `kdialog`, `yad`, `auto`, or `none` for debugging and packaging
 checks. Explicit forced backends fail closed when the helper is not available.
 
@@ -1288,7 +1288,7 @@ void EndUIFocus(void);
 
 Normal UI code does not need to call these. `BeginUIFrame` and `SetUIFrame`
 manage the focus pass automatically. Use these only for custom frame lifecycles
-that do not go through Flint's normal frame entry points.
+that do not go through Kryon's normal frame entry points.
 
 ### Focus Registration
 
@@ -1417,7 +1417,7 @@ typedef enum {
 
 ## Pragmatic Tk Toolkit
 
-`ui_tk.h` adds Flint's Tk-replacement layer. The rule is one simple way to use
+`ui_tk.h` adds Kryon's Tk-replacement layer. The rule is one simple way to use
 each widget: prepare a plain struct, keep state in caller variables, and call the
 matching immediate-mode function each frame.
 
@@ -1467,7 +1467,7 @@ Examples `09_geometry` through `18_accessibility` demonstrate these APIs.
 
 int main(void) {
     // Initialize window with Raylib
-    InitWindow(320, 560, "Flint Demo");
+    InitWindow(320, 560, "Kryon Demo");
     SetTargetFPS(60);
 
     // Configure UI theme

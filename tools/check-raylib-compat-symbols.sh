@@ -3,7 +3,7 @@ set -eu
 
 raylib_header=${1:-vendor/raylib/src/raylib.h}
 rename_header=${2:-build/generated/raylib_backend_rename.h}
-wrapper_source=${3:-build/generated/flint_raylib_wrappers.c}
+wrapper_source=${3:-build/generated/kryon_raylib_wrappers.c}
 
 if [ ! -f "$raylib_header" ]; then
     echo "raylib header not found: $raylib_header" >&2

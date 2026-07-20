@@ -4,8 +4,8 @@
 #include <string.h>
 
 int main(void) {
-    const char *markdown = "# Flint\n\n- [x] packaged\n";
-    char *html = FlintMarkdownToHTML(markdown, strlen(markdown), FLINT_MARKDOWN_GFM);
+    const char *markdown = "# Kryon\n\n- [x] packaged\n";
+    char *html = KryonMarkdownToHTML(markdown, strlen(markdown), KRYON_MARKDOWN_GFM);
     if (!html) {
         return 1;
     }
@@ -13,6 +13,6 @@ int main(void) {
     if (!ok) {
         fputs(html, stderr);
     }
-    FlintMarkdownFree(html);
+    KryonMarkdownFree(html);
     return ok ? 0 : 1;
 }

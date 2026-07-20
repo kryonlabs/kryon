@@ -10,7 +10,7 @@ main(void)
     int combo = 0;
     int progress = 45;
 
-    InitWindow(800, 600, "Flint Basic Controls");
+    InitWindow(800, 600, "Kryon Basic Controls");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());

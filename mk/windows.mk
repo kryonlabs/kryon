@@ -20,9 +20,9 @@ WIN_i686_WINDRES = $(WIN32_WINDRES)
 WIN_i686_MCFGTHREADS = $(WIN32_MCFGTHREADS)
 WIN_RESOURCE ?= windows/$(APP_NAME).rc
 WIN_ICON ?= windows/$(APP_NAME).ico
-WIN_FLINT_SRCS = $(filter-out $(FLINT_DIR)/src/file_dialog/file_dialog.c,$(FLINT_SRCS))
+WIN_KRYON_SRCS = $(filter-out $(KRYON_DIR)/src/file_dialog/file_dialog.c,$(KRYON_SRCS))
 
-include $(FLINT_MAKE_DIR)raylib.mk
+include $(KRYON_MAKE_DIR)raylib.mk
 
 WIN_opengl_TARGET_PREFIX = $(APP_NAME)-windows-
 WIN_opengl_TARGET_SUFFIX =
@@ -64,16 +64,16 @@ $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res: $(WIN_RESOURCE) $(WIN_ICON) | $(WINDOWS
 endef
 
 define WINDOWS_ARCH_RENDERER_RULES
-$$(eval $$(call FLINT_RAYLIB_WINDOWS_PLATFORM_RULE,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib,$$(WIN_$(1)_CC),$$(WIN_$(1)_AR),$$(WIN_$(1)_RANLIB),$$(WIN_$(2)_PLATFORM),$$(WIN_$(2)_GRAPHICS)))
+$$(eval $$(call KRYON_RAYLIB_WINDOWS_PLATFORM_RULE,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib-src,$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib,$$(WIN_$(1)_CC),$$(WIN_$(1)_AR),$$(WIN_$(1)_RANLIB),$$(WIN_$(2)_PLATFORM),$$(WIN_$(2)_GRAPHICS)))
 
-$(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe: $(BUILD_MAKEFILES) $(SRC) $(WIN_FLINT_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a $(if $(strip $(CORE_SRCS)),$(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a,) $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res | $(WINDOWS_BIN_DIR)
+$(WINDOWS_BIN_DIR)/$$(WIN_$(2)_TARGET_PREFIX)$(1)$$(WIN_$(2)_TARGET_SUFFIX).exe: $(BUILD_MAKEFILES) $(SRC) $(WIN_KRYON_SRCS) $(FONT_FILES) $(EMBEDDED_ASSETS_C) $(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a $(if $(strip $(CORE_SRCS)),$(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a,) $(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res | $(WINDOWS_BIN_DIR)
 	$$(WIN_$(1)_CC) $(CFLAGS) \
 		$(APP_INCLUDE) \
-		$(FLINT_INCLUDE) \
+		$(KRYON_INCLUDE) \
 		$(CORE_INCLUDE) \
 		-o $$@ \
 		$(SRC) \
-		$(WIN_FLINT_SRCS) \
+		$(WIN_KRYON_SRCS) \
 		$(if $(strip $(CORE_SRCS)),$(WINDOWS_OBJ_DIR)/$(1)/lib$(APP_NAME)-core.a,) \
 		$(WINDOWS_OBJ_DIR)/$(1)/$(2)/raylib/libraylib.a \
 		$(WINDOWS_OBJ_DIR)/$(1)/$(APP_NAME).res \

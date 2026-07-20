@@ -10,7 +10,7 @@ main(void)
     };
     int enabled = 1;
 
-    InitWindow(800, 600, "Flint Accessibility");
+    InitWindow(800, 600, "Kryon Accessibility");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());

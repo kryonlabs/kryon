@@ -9,7 +9,7 @@ main(void)
     int split = 260;
     int open = 1;
 
-    InitWindow(800, 600, "Flint Containers");
+    InitWindow(800, 600, "Kryon Containers");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());

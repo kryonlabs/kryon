@@ -11,7 +11,7 @@ main(void)
     int focused = 0;
     int scroll = 0;
 
-    InitWindow(800, 600, "Flint Text Editor");
+    InitWindow(800, 600, "Kryon Text Editor");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());

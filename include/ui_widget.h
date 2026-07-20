@@ -1,7 +1,7 @@
 #ifndef UI_WIDGET_H
 #define UI_WIDGET_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 
 typedef struct UIWidget {
     char id[96];

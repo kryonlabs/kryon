@@ -16,8 +16,8 @@ web_clear_dialog_result(FileDialog *dlg)
     if(dlg == NULL)
         return;
     EM_ASM({
-        if(Module.__flintFileDialogResults)
-            delete Module.__flintFileDialogResults[String($0)];
+        if(Module.__kryonFileDialogResults)
+            delete Module.__kryonFileDialogResults[String($0)];
     }, dlg);
 }
 
@@ -45,7 +45,7 @@ begin_web_load_dialog(FileDialog *dlg, const char *title, const char *filter)
         return;
     reset_dialog_result(dlg, FILE_DIALOG_LOAD, title, filter, NULL);
     dlg->active = 1;
-    snprintf(dlg->result_path, sizeof(dlg->result_path), "/tmp/flint-file-dialog-%d",
+    snprintf(dlg->result_path, sizeof(dlg->result_path), "/tmp/kryon-file-dialog-%d",
              web_file_dialog_next_id++);
     if(web_file_dialog_next_id <= 0)
         web_file_dialog_next_id = 1;
@@ -54,7 +54,7 @@ begin_web_load_dialog(FileDialog *dlg, const char *title, const char *filter)
         const key = String($0);
         const resultPath = UTF8ToString($1);
         const rawAccept = $2 ? UTF8ToString($2) : "";
-        const results = Module.__flintFileDialogResults = Module.__flintFileDialogResults || {};
+        const results = Module.__kryonFileDialogResults = Module.__kryonFileDialogResults || {};
         results[key] = {status: 0};
 
         const normalizeAccept = (value) => String(value || "")
@@ -89,7 +89,7 @@ begin_web_load_dialog(FileDialog *dlg, const char *title, const char *filter)
                 FS.writeFile(resultPath, bytes);
                 finish(1);
             } catch(e) {
-                console.error("Flint web file dialog failed:", e);
+                console.error("Kryon web file dialog failed:", e);
                 finish(3);
             }
         };
@@ -106,7 +106,7 @@ begin_web_load_dialog(FileDialog *dlg, const char *title, const char *filter)
         try {
             input.click();
         } catch(e) {
-            console.error("Flint web file dialog could not open:", e);
+            console.error("Kryon web file dialog could not open:", e);
             finish(3);
         }
     }, dlg, dlg->result_path, dlg->filter);
@@ -201,7 +201,7 @@ UpdateFileDialog(FileDialog *dlg)
         return dlg->confirmed ? 1 : 0;
 
     status = EM_ASM_INT({
-        const results = Module.__flintFileDialogResults || {};
+        const results = Module.__kryonFileDialogResults || {};
         const result = results[String($0)];
         return result ? (result.status | 0) : 0;
     }, dlg);
@@ -377,7 +377,7 @@ select_backend_from_request(DialogBackend requested)
 static DialogBackend
 select_backend(void)
 {
-    const char *requested = getenv("FLINT_FILE_DIALOG_BACKEND");
+    const char *requested = getenv("KRYON_FILE_DIALOG_BACKEND");
     DialogBackend env_backend = backend_from_name(requested);
 
     return select_backend_from_request(env_backend);

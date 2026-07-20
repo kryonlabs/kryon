@@ -4,14 +4,14 @@
 
 ### Changed
 
-- Add Clay as a vendored layout dependency for future Flint UI work.
+- Add Clay as a vendored layout dependency for future Kryon UI work.
 - Remove the vendored fontchop dependency and chopped bitmap font assets.
 
 ## [v0.1.3] - 2026-07-16
 
 ### Changed
 
-- Add public Flint version metadata for release artifacts.
+- Add public Kryon version metadata for release artifacts.
 - Move font atlas generation to the vendored fontchop submodule.
 - Replace the single implicit UI font with a registered font selection API.
 - Improve generated icon asset formatting and desktop/embedded fallbacks.
@@ -37,4 +37,4 @@
 
 ### Added
 
-- Add Flint release automation.
+- Add Kryon release automation.

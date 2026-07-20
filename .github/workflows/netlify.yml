@@ -51,7 +51,7 @@ jobs:
       - name: Upload Site Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flint-site
+          name: kryon-site
           path: build/site
           if-no-files-found: error
 
@@ -65,7 +65,7 @@ jobs:
       - name: Download Site Artifact
         uses: actions/download-artifact@v4
         with:
-          name: flint-site
+          name: kryon-site
           path: build/site
 
       - name: Install Netlify CLI
@@ -96,7 +96,7 @@ jobs:
       - name: Download Site Artifact
         uses: actions/download-artifact@v4
         with:
-          name: flint-site
+          name: kryon-site
           path: build/site
 
       - name: Install Netlify CLI

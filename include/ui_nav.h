@@ -1,7 +1,7 @@
 #ifndef UI_NAV_H
 #define UI_NAV_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 #include "ui_controls.h"
 #include "ui_icon_types.h"
 

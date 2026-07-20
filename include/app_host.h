@@ -1,7 +1,7 @@
 #ifndef APP_HOST_H
 #define APP_HOST_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 
 #define APP_HOST_ABI_VERSION 3
 

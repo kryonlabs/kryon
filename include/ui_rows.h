@@ -1,7 +1,7 @@
 #ifndef UI_ROWS_H
 #define UI_ROWS_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 #include "ui_controls.h"
 
 typedef struct {

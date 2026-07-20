@@ -1,8 +1,8 @@
 #ifndef KRYON_H
 #define KRYON_H
 
-#include "flint_version.h"
-#include "flint_compat.generated.h"
+#include "kryon_version.h"
+#include "kryon_compat.generated.h"
 
 #include "ui_color.h"
 #include "ui_scaling.h"

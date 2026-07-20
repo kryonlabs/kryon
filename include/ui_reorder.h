@@ -1,7 +1,7 @@
 #ifndef UI_REORDER_H
 #define UI_REORDER_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 
 typedef struct {
     int id;

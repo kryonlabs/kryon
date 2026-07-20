@@ -32,7 +32,7 @@ main(void)
     int open = -1;
     char status[64] = "No menu command";
 
-    InitWindow(800, 600, "Flint Menus");
+    InitWindow(800, 600, "Kryon Menus");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());

@@ -1,7 +1,7 @@
 #ifndef UI_PROFILE_H
 #define UI_PROFILE_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 #include "ui_icon_types.h"
 
 typedef struct {

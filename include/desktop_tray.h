@@ -1,5 +1,5 @@
-#ifndef FLINT_DESKTOP_TRAY_H
-#define FLINT_DESKTOP_TRAY_H
+#ifndef KRYON_DESKTOP_TRAY_H
+#define KRYON_DESKTOP_TRAY_H
 
 typedef enum DesktopTrayMenuItemKind {
     DESKTOP_TRAY_MENU_ITEM_ACTION = 0,

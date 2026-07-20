@@ -74,7 +74,7 @@ draw_project_menu(int x, int y, int *open, FileDialog *project_dialog)
     y += ScaleUIPx(5);
     if(DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
                            "Open Project", UI_BUTTON_STYLE_PRIMARY, 0, NULL)) {
-        BeginSelectFileDialogFolder(project_dialog, "Open Flint Project");
+        BeginSelectFileDialogFolder(project_dialog, "Open Kryon Project");
         *open = 0;
     }
     y += item_h;
@@ -107,7 +107,7 @@ draw_editor_chrome(int view_w, int view_h, Rectangle canvas, EditorTool *tool,
     DrawRectangle(0, 0, view_w, top_h, DarkenUIColor(GetThemeBackground(), 12));
     DrawLine(0, top_h - 1, view_w, top_h - 1,
              DarkenUIColor(GetThemeBackground(), 42));
-    DrawUIText("Flint Editor", ScaleUIPx(14), ScaleUIPx(14), UI_TEXT_24,
+    DrawUIText("Kryon Editor", ScaleUIPx(14), ScaleUIPx(14), UI_TEXT_24,
                GetThemeText());
     if(draw_menu_button(ScaleUIPx(150), ScaleUIPx(13), "Project", *project_menu_open)) {
         *project_menu_open = !*project_menu_open;
@@ -133,7 +133,7 @@ draw_editor_chrome(int view_w, int view_h, Rectangle canvas, EditorTool *tool,
     if(DrawUIGenericButton(view_w - ScaleUIPx(452), ScaleUIPx(10),
                            ScaleUIPx(116), ScaleUIPx(34), "Open Project",
                            UI_BUTTON_STYLE_PRIMARY, 0, NULL))
-        BeginSelectFileDialogFolder(project_dialog, "Open Flint Project");
+        BeginSelectFileDialogFolder(project_dialog, "Open Kryon Project");
     DrawUIDropdownButton(801, view_w - ScaleUIPx(326), ScaleUIPx(10),
                          ScaleUIPx(160), ScaleUIPx(34),
                          modes, 3, view_mode);
@@ -209,7 +209,7 @@ draw_editor_chrome(int view_w, int view_h, Rectangle canvas, EditorTool *tool,
              DarkenUIColor(GetThemeBackground(), 42));
     DrawUIText("Ready", ScaleUIPx(14), view_h - bottom_h + ScaleUIPx(9),
                UI_TEXT_12, GetThemeIcon());
-    DrawUIText("Drag widgets in the canvas. Ctrl+S saves .flint/editor_layout.ini.",
+    DrawUIText("Drag widgets in the canvas. Ctrl+S saves .kryon/editor_layout.ini.",
                side_w + ScaleUIPx(18), view_h - bottom_h + ScaleUIPx(9),
                UI_TEXT_12, GetThemeIcon());
 
@@ -282,7 +282,7 @@ draw_canvas(Rectangle canvas, int *slider_value, int *vertical_value,
 
     DrawUIReadonlyTextBox((UIReadonlyTextBox){
         .bounds = {(float)x, (float)y, (float)ScaleUIPx(360), (float)ScaleUIPx(96)},
-        .text = "This is the editable design canvas. Flint widgets register themselves with the editor overlay.",
+        .text = "This is the editable design canvas. Kryon widgets register themselves with the editor overlay.",
         .style = editor_input_style(),
         .line_gap = ScaleUIPx(3)
     });
@@ -317,11 +317,11 @@ main(void)
     int edit_menu_open = 0;
     int view_menu_open = 0;
     FileDialog project_dialog;
-    char project_path[FILE_DIALOG_PATH_MAX] = "/home/wao/src/flint";
-    char text_value[128] = "Flint";
+    char project_path[FILE_DIALOG_PATH_MAX] = "/home/wao/src/kryon";
+    char text_value[128] = "Kryon";
     char area_value[256] = "Edit this text area.\nThen drag the editor handles.";
 
-    InitWindow(screen_w, screen_h, "Flint Editor");
+    InitWindow(screen_w, screen_h, "Kryon Editor");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(screen_w, screen_h, GetUIScale());

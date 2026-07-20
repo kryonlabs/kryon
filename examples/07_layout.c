@@ -9,7 +9,7 @@
 int main(void) {
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "Flint Layout Example");
+    InitWindow(screenWidth, screenHeight, "Kryon Layout Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(screenWidth, screenHeight, GetUIScale());
@@ -18,9 +18,9 @@ int main(void) {
     // Initialize view size
     SetUIViewSize(screenWidth, screenHeight);
 
-    printf("Flint Layout Utilities Example\n");
+    printf("Kryon Layout Utilities Example\n");
     printf("==============================\n\n");
-    printf("This example demonstrates Flint layout functions:\n");
+    printf("This example demonstrates Kryon layout functions:\n");
     printf("  - GetUIPageSidePadding() - Get side padding for content\n");
     printf("  - GetUICenteredColumn() - Calculate centered column\n");
     printf("  - GetUIViewWidth() - Get available content width\n\n");
@@ -74,7 +74,7 @@ int main(void) {
         }
 
         // Draw title
-        DrawUIText("Flint Layout Example", side_padding, ScaleUIPx(20), 24, GetThemeText());
+        DrawUIText("Kryon Layout Example", side_padding, ScaleUIPx(20), 24, GetThemeText());
         DrawUIText("Press SPACE for layout guides", side_padding, ScaleUIPx(48), 16, GetThemeText());
 
         // Handle input

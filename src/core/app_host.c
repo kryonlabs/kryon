@@ -5,7 +5,7 @@
 int
 IsUIInspectActive(void)
 {
-    const char *value = getenv("FLINT_INSPECT");
+    const char *value = getenv("KRYON_INSPECT");
 
     return value != NULL && value[0] != '\0' && value[0] != '0';
 }

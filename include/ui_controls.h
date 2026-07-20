@@ -1,7 +1,7 @@
 #ifndef UI_CONTROLS_H
 #define UI_CONTROLS_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 #include "ui_icon_types.h"
 #include <stddef.h>
 

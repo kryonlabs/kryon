@@ -53,7 +53,7 @@ main(void)
     int source_scroll_y = 0;
     int table_scroll = 0;
 
-    InitWindow(900, 620, "Flint Collections");
+    InitWindow(900, 620, "Kryon Collections");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(900, 620, GetUIScale());

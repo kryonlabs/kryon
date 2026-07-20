@@ -10,7 +10,7 @@ main(void)
     int sy = 0;
     float zoom = 1.0f;
 
-    InitWindow(800, 600, "Flint Canvas");
+    InitWindow(800, 600, "Kryon Canvas");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());

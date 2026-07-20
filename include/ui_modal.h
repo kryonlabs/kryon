@@ -1,7 +1,7 @@
 #ifndef UI_MODAL_H
 #define UI_MODAL_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 #include "ui_controls.h"
 
 typedef struct {

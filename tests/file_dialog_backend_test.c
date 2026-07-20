@@ -51,7 +51,7 @@ set_test_path(const char *dir)
 static void
 test_backend_priority(void)
 {
-    char template[] = "/tmp/flint-file-dialog-test.XXXXXX";
+    char template[] = "/tmp/kryon-file-dialog-test.XXXXXX";
     char *dir = mkdtemp(template);
 
     if(dir == NULL) {
@@ -59,7 +59,7 @@ test_backend_priority(void)
         failures++;
         return;
     }
-    unsetenv("FLINT_FILE_DIALOG_BACKEND");
+    unsetenv("KRYON_FILE_DIALOG_BACKEND");
     set_test_path(dir);
     check_backend("no helper returns none", "none");
 
@@ -76,7 +76,7 @@ test_backend_priority(void)
 static void
 test_forced_backend(void)
 {
-    char template[] = "/tmp/flint-file-dialog-test.XXXXXX";
+    char template[] = "/tmp/kryon-file-dialog-test.XXXXXX";
     char *dir = mkdtemp(template);
 
     if(dir == NULL) {
@@ -88,13 +88,13 @@ test_forced_backend(void)
 
     write_fake_command(dir, "zenity");
     write_fake_command(dir, "yad");
-    setenv("FLINT_FILE_DIALOG_BACKEND", "yad", 1);
+    setenv("KRYON_FILE_DIALOG_BACKEND", "yad", 1);
     check_backend("env forces available backend", "yad");
 
-    setenv("FLINT_FILE_DIALOG_BACKEND", "kdialog", 1);
+    setenv("KRYON_FILE_DIALOG_BACKEND", "kdialog", 1);
     check_backend("env missing backend fails closed", "none");
 
-    setenv("FLINT_FILE_DIALOG_BACKEND", "none", 1);
+    setenv("KRYON_FILE_DIALOG_BACKEND", "none", 1);
     check_backend("env disables backend", "none");
 }
 

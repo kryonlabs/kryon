@@ -16,7 +16,7 @@ static const char *gfm_extensions[] = {
 };
 
 char *
-FlintMarkdownToHTML(const char *markdown, size_t markdown_len, int options)
+KryonMarkdownToHTML(const char *markdown, size_t markdown_len, int options)
 {
     cmark_parser *parser;
     cmark_node *doc;
@@ -27,9 +27,9 @@ FlintMarkdownToHTML(const char *markdown, size_t markdown_len, int options)
 
     if(markdown == NULL)
         markdown = "";
-    if((options & FLINT_MARKDOWN_UNSAFE_HTML) != 0)
+    if((options & KRYON_MARKDOWN_UNSAFE_HTML) != 0)
         cmark_options |= CMARK_OPT_UNSAFE;
-    if((options & FLINT_MARKDOWN_SMART) != 0)
+    if((options & KRYON_MARKDOWN_SMART) != 0)
         cmark_options |= CMARK_OPT_SMART;
 
     mem = cmark_get_default_mem_allocator();
@@ -37,7 +37,7 @@ FlintMarkdownToHTML(const char *markdown, size_t markdown_len, int options)
     if(parser == NULL)
         return NULL;
 
-    if((options & FLINT_MARKDOWN_GFM) != 0) {
+    if((options & KRYON_MARKDOWN_GFM) != 0) {
         cmark_gfm_core_extensions_ensure_registered();
         for(size_t i = 0; i < sizeof(gfm_extensions) / sizeof(gfm_extensions[0]); i++) {
             cmark_syntax_extension *ext = cmark_find_syntax_extension(gfm_extensions[i]);
@@ -61,7 +61,7 @@ FlintMarkdownToHTML(const char *markdown, size_t markdown_len, int options)
 }
 
 void
-FlintMarkdownFree(char *text)
+KryonMarkdownFree(char *text)
 {
     free(text);
 }
@@ -70,7 +70,7 @@ FlintMarkdownFree(char *text)
 #include <string.h>
 
 char *
-FlintMarkdownToHTML(const char *markdown, size_t markdown_len, int options)
+KryonMarkdownToHTML(const char *markdown, size_t markdown_len, int options)
 {
     char *copy;
     (void)options;
@@ -88,7 +88,7 @@ FlintMarkdownToHTML(const char *markdown, size_t markdown_len, int options)
 }
 
 void
-FlintMarkdownFree(char *text)
+KryonMarkdownFree(char *text)
 {
     free(text);
 }

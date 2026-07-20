@@ -1,7 +1,7 @@
 #ifndef UI_TK_H
 #define UI_TK_H
 
-#include "flint_compat.generated.h"
+#include "kryon_compat.generated.h"
 
 typedef enum {
     UI_SIDE_TOP,

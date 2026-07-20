@@ -1,6 +1,6 @@
 #include "desktop_tray.h"
 
-#if defined(FLINT_DESKTOP_TRAY_ENABLED)
+#if defined(KRYON_DESKTOP_TRAY_ENABLED)
 
 #include <SDL.h>
 #include <gtk/gtk.h>
@@ -11,9 +11,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#if defined(FLINT_DESKTOP_TRAY_AYATANA)
+#if defined(KRYON_DESKTOP_TRAY_AYATANA)
 #include <libayatana-appindicator/app-indicator.h>
-#elif defined(FLINT_DESKTOP_TRAY_APPINDICATOR)
+#elif defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
 #include <libappindicator/app-indicator.h>
 #endif
 
@@ -48,10 +48,10 @@ static char TrayStatusText[128] = "App";
 static const char *const *TrayIconPaths;
 static DesktopTrayMenuState TrayMenuData;
 static GtkWidget *TrayMenu;
-#if defined(FLINT_DESKTOP_TRAY_GTK_STATUS_ICON)
+#if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
 static GtkStatusIcon *TrayStatusIcon;
 #endif
-#if defined(FLINT_DESKTOP_TRAY_AYATANA) || defined(FLINT_DESKTOP_TRAY_APPINDICATOR)
+#if defined(KRYON_DESKTOP_TRAY_AYATANA) || defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
 static AppIndicator *TrayIndicator;
 #endif
 
@@ -218,12 +218,12 @@ ApplyDesktopTrayMenu(gpointer user_data)
     old_menu = TrayMenu;
     TrayMenu = next_menu;
 
-#if defined(FLINT_DESKTOP_TRAY_AYATANA) || defined(FLINT_DESKTOP_TRAY_APPINDICATOR)
+#if defined(KRYON_DESKTOP_TRAY_AYATANA) || defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
     if(TrayIndicator != NULL)
         app_indicator_set_menu(TrayIndicator, GTK_MENU(TrayMenu));
 #endif
 
-#if defined(FLINT_DESKTOP_TRAY_GTK_STATUS_ICON)
+#if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
     if(old_menu != NULL)
         gtk_widget_destroy(old_menu);
 #else
@@ -288,13 +288,13 @@ ApplyDesktopTrayStatus(gpointer user_data)
     TrayStatusUpdatePending = 0;
     pthread_mutex_unlock(&TrayStatusLock);
 
-#if defined(FLINT_DESKTOP_TRAY_GTK_STATUS_ICON)
+#if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
     if(TrayStatusIcon != NULL) {
         gtk_status_icon_set_title(TrayStatusIcon, text);
         gtk_status_icon_set_tooltip_text(TrayStatusIcon, text);
     }
 #endif
-#if defined(FLINT_DESKTOP_TRAY_AYATANA) || defined(FLINT_DESKTOP_TRAY_APPINDICATOR)
+#if defined(KRYON_DESKTOP_TRAY_AYATANA) || defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
     if(TrayIndicator != NULL)
         app_indicator_set_title(TrayIndicator, text);
 #endif
@@ -350,7 +350,7 @@ GetDesktopTrayIconPath(void)
     return NULL;
 }
 
-#if defined(FLINT_DESKTOP_TRAY_GTK_STATUS_ICON)
+#if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
 static void
 DesktopTrayStatusIconActivate(GtkStatusIcon *status_icon, gpointer user_data)
 {
@@ -394,7 +394,7 @@ DesktopTrayThreadMain(void *arg)
         return NULL;
     }
 
-#if defined(FLINT_DESKTOP_TRAY_AYATANA) || defined(FLINT_DESKTOP_TRAY_APPINDICATOR)
+#if defined(KRYON_DESKTOP_TRAY_AYATANA) || defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
     TrayIndicator = app_indicator_new(TrayIconName, TrayIconName,
                                       APP_INDICATOR_CATEGORY_APPLICATION_STATUS);
     if(TrayIndicator == NULL) {
@@ -414,7 +414,7 @@ DesktopTrayThreadMain(void *arg)
     menu = CreateDesktopTrayMenu();
     TrayMenu = menu;
     app_indicator_set_menu(TrayIndicator, GTK_MENU(menu));
-#elif defined(FLINT_DESKTOP_TRAY_GTK_STATUS_ICON)
+#elif defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
     menu = CreateDesktopTrayMenu();
     TrayMenu = menu;
     {
@@ -443,7 +443,7 @@ DesktopTrayThreadMain(void *arg)
     gtk_main();
     SetDesktopTrayState(DESKTOP_TRAY_STATE_STOPPED);
     TrayMenu = NULL;
-#if defined(FLINT_DESKTOP_TRAY_AYATANA) || defined(FLINT_DESKTOP_TRAY_APPINDICATOR)
+#if defined(KRYON_DESKTOP_TRAY_AYATANA) || defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
     TrayIndicator = NULL;
 #endif
 

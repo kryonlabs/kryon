@@ -4,7 +4,7 @@
 int
 main(void)
 {
-    InitWindow(800, 600, "Flint Geometry");
+    InitWindow(800, 600, "Kryon Geometry");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());

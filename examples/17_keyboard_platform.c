@@ -11,7 +11,7 @@ main(void)
     };
     char status[96] = "Press Ctrl+N or Ctrl+S";
 
-    InitWindow(800, 600, "Flint Keyboard");
+    InitWindow(800, 600, "Kryon Keyboard");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());

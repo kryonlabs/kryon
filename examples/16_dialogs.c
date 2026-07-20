@@ -10,7 +10,7 @@ main(void)
     int focused = 0;
     Color color = {120, 160, 220, 255};
 
-    InitWindow(800, 600, "Flint Dialogs");
+    InitWindow(800, 600, "Kryon Dialogs");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(800, 600, GetUIScale());
@@ -26,7 +26,7 @@ main(void)
         if(DrawUIGenericButton(40, 148, 150, 34, "Prompt", UI_BUTTON_STYLE_PRIMARY, 0, NULL)) dialog = 3;
         DrawUIColorPicker((Rectangle){240, 60, 320, 160}, &color);
 
-        if(dialog == 1 && DrawUIMessageDialog((UIMessageDialog){"Message", "Hello from Flint.", "OK"}) > 0) dialog = 0;
+        if(dialog == 1 && DrawUIMessageDialog((UIMessageDialog){"Message", "Hello from Kryon.", "OK"}) > 0) dialog = 0;
         if(dialog == 2 && DrawUIConfirmDialog((UIConfirmDialog){"Confirm", "Continue?", "No", "Yes"}) != 0) dialog = 0;
         if(dialog == 3 && DrawUIPromptDialog((UIPromptDialog){"Prompt", prompt, sizeof(prompt), &cursor, &focused, "Cancel", "Save"}) != 0) dialog = 0;
 

@@ -9,15 +9,15 @@
 int main(void) {
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "Flint Color Example");
+    InitWindow(screenWidth, screenHeight, "Kryon Color Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(screenWidth, screenHeight, GetUIScale());
     SetCurrentTheme(THEME_SKY, 0);
 
-    printf("Flint Color Utilities Example\n");
+    printf("Kryon Color Utilities Example\n");
     printf("===========================\n\n");
-    printf("This example demonstrates Flint color manipulation functions:\n");
+    printf("This example demonstrates Kryon color manipulation functions:\n");
     printf("  - LightenUIColor(color, amount)\n");
     printf("  - DarkenUIColor(color, amount)\n\n");
     printf("Press SPACE to cycle through color examples\n");

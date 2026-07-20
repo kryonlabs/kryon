@@ -16,7 +16,7 @@ int main(void) {
 
     printf("UI Buttons Example\n");
     printf("======================\n\n");
-    printf("This example demonstrates Flint's unified button component:\n");
+    printf("This example demonstrates Kryon's unified button component:\n");
     printf("  - DrawUIGenericButton() - Single function for all button styles\n");
     printf("  - Automatic hover detection and click handling\n");
     printf("  - Theme integration with consistent styling\n");
@@ -38,7 +38,7 @@ int main(void) {
         DrawUIText("Click the buttons below to test interactions", ScaleUIPx(20), ScaleUIPx(50), 16, GetThemeText());
         DrawUIText("Buttons return a one-frame click event.", ScaleUIPx(20), ScaleUIPx(70), 14, GetThemeIcon());
 
-        // Button 1 - Primary style (using Flint utility)
+        // Button 1 - Primary style (using Kryon utility)
         int btn1_hover = 0;
         if(DrawUIGenericButton(ScaleUIPx(20), ScaleUIPx(100), ScaleUIPx(200), ScaleUIPx(40),
                                   "Primary Button", UI_BUTTON_STYLE_PRIMARY, 0, &btn1_hover)) {

@@ -1,6 +1,6 @@
-# Flint Examples
+# Kryon Examples
 
-This directory contains example programs demonstrating Flint library components.
+This directory contains example programs demonstrating Kryon library components.
 
 ## Available Examples
 
@@ -25,8 +25,8 @@ This directory contains example programs demonstrating Flint library components.
 
 ## Requirements
 
-- Flint library must be built (`make` in parent directory)
-- Include Flint with `#include "kryon.h"`; Flint provides the Raylib-compatible public API surface
+- Kryon library must be built (`make` in parent directory)
+- Include Kryon with `#include "kryon.h"`; Kryon provides the Raylib-compatible public API surface
 - X11 libraries (Linux): `-lGL -lm -lpthread -ldl -lrt -lX11`
 
 ## Building Examples

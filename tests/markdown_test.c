@@ -10,11 +10,11 @@ static int contains(const char *haystack, const char *needle)
 int main(void)
 {
     const char *markdown = "# Title\n\n- [x] done\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n~~gone~~\n";
-    char *html = FlintMarkdownToHTML(markdown, strlen(markdown), FLINT_MARKDOWN_GFM);
+    char *html = KryonMarkdownToHTML(markdown, strlen(markdown), KRYON_MARKDOWN_GFM);
     int ok = 1;
 
     if(html == NULL) {
-        fprintf(stderr, "FlintMarkdownToHTML returned NULL\n");
+        fprintf(stderr, "KryonMarkdownToHTML returned NULL\n");
         return 1;
     }
     ok &= contains(html, "<h1>Title</h1>");
@@ -23,6 +23,6 @@ int main(void)
     ok &= contains(html, "<del>gone</del>");
     if(!ok)
         fprintf(stderr, "unexpected html:\n%s\n", html);
-    FlintMarkdownFree(html);
+    KryonMarkdownFree(html);
     return ok ? 0 : 1;
 }

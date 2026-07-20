@@ -1,7 +1,7 @@
 #include "lyra_account.h"
 
 #if !defined(HAS_LIBOQS)
-#error "Flint Lyra accounts require HAS_LIBOQS; build and link liboqs instead of disabling account crypto"
+#error "Kryon Lyra accounts require HAS_LIBOQS; build and link liboqs instead of disabling account crypto"
 #endif
 
 #include <oqs/oqs.h>

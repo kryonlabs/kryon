@@ -88,7 +88,7 @@ ui_inspect_default_project_root(void)
 
     if(g_ui_inspect.project_root[0] != '\0')
         return;
-    root = getenv("FLINT_PROJECT_ROOT");
+    root = getenv("KRYON_PROJECT_ROOT");
     if(root != NULL && root[0] != '\0') {
         ui_inspect_strncpy(g_ui_inspect.project_root,
                           sizeof(g_ui_inspect.project_root), root);
@@ -106,7 +106,7 @@ ui_inspect_init_from_env(void)
     if(g_ui_inspect.initialized)
         return;
     g_ui_inspect.initialized = 1;
-    env = getenv("FLINT_INSPECT");
+    env = getenv("KRYON_INSPECT");
     g_ui_inspect.enabled = env != NULL && env[0] != '\0' && env[0] != '0';
     g_ui_inspect.visible = g_ui_inspect.enabled;
     ui_inspect_default_project_root();

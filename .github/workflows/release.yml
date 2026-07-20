@@ -100,21 +100,21 @@ jobs:
           set -euo pipefail
           make dist-static CMAKE=/usr/bin/cmake VERSION="${{ steps.ref.outputs.tag }}"
           make check-static-package CMAKE=/usr/bin/cmake VERSION="${{ steps.ref.outputs.tag }}"
-          archive="$(find dist -maxdepth 1 -type f -name flint-*-static.tar.gz | head -n 1)"
+          archive="$(find dist -maxdepth 1 -type f -name kryon-*-static.tar.gz | head -n 1)"
           test -n "$archive"
-          echo "FLINT_STATIC_ARCHIVE=$archive" >> "$GITHUB_ENV"
+          echo "KRYON_STATIC_ARCHIVE=$archive" >> "$GITHUB_ENV"
 
       - name: Upload Static Library Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flint-static-library-${{ steps.ref.outputs.tag }}
-          path: ${{ env.FLINT_STATIC_ARCHIVE }}
+          name: kryon-static-library-${{ steps.ref.outputs.tag }}
+          path: ${{ env.KRYON_STATIC_ARCHIVE }}
           if-no-files-found: error
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ref.outputs.tag }}
-          name: Flint ${{ steps.ref.outputs.tag }}
+          name: Kryon ${{ steps.ref.outputs.tag }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
-          files: ${{ env.FLINT_STATIC_ARCHIVE }}
+          files: ${{ env.KRYON_STATIC_ARCHIVE }}

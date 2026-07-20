@@ -150,8 +150,8 @@ gtk_system_theme_refresh(void)
 
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    label = gtk_label_new("flint");
-    button = gtk_button_new_with_label("flint");
+    label = gtk_label_new("kryon");
+    button = gtk_button_new_with_label("kryon");
     gtk_container_add(GTK_CONTAINER(window), box);
     gtk_container_add(GTK_CONTAINER(box), label);
     gtk_container_add(GTK_CONTAINER(box), button);

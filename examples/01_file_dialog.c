@@ -8,7 +8,7 @@
 int main(void) {
     const int screenWidth = 800;
     const int screenHeight = 600;
-    InitWindow(screenWidth, screenHeight, "Flint File Dialog Example");
+    InitWindow(screenWidth, screenHeight, "Kryon File Dialog Example");
     SetTargetFPS(60);
     LoadExampleUIFont();
     InitUI(screenWidth, screenHeight, GetUIScale());
@@ -19,7 +19,7 @@ int main(void) {
     FileDialog dlg;
     InitFileDialog(&dlg);
 
-    printf("Flint File Dialog Example\n");
+    printf("Kryon File Dialog Example\n");
     printf("Click the buttons to test load, save, and folder dialogs\n\n");
 
     char last_path[512] = {0};
@@ -40,7 +40,7 @@ int main(void) {
         char backend_text[160];
         snprintf(backend_text, sizeof(backend_text), "Backend: %s", GetFileDialogBackendName());
 
-        DrawUIText("Flint File Dialog", x, y, 24, GetThemeText());
+        DrawUIText("Kryon File Dialog", x, y, 24, GetThemeText());
         y += ScaleUIPx(38);
         DrawUIText(backend_text, x, y, 15, GetThemeText());
         y += ScaleUIPx(40);
