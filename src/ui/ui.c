@@ -41,6 +41,7 @@ static int g_ui_focus_text_input_active = 0;
 static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
 static UITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
+static int g_ui_text_area_drag_id = 0;
 
 #define UI_TEXT_INPUT_QUEUE_MAX 64
 static int g_ui_text_input_codepoints[UI_TEXT_INPUT_QUEUE_MAX];
@@ -1487,11 +1488,11 @@ static Color
 ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
                       int first_token, UITextInputStyle style)
 {
-    Color keyword = GetThemeButtonHover();
-    Color string = LightenUIColor(GetThemeText(), 34);
-    Color number = LightenUIColor(GetThemeButtonHover(), 20);
-    Color path = GetThemeIcon();
-    Color comment = DarkenUIColor(GetThemeText(), 44);
+    Color keyword = (Color){0, 0, 170, 255};
+    Color string = (Color){0, 116, 32, 255};
+    Color number = (Color){128, 0, 128, 255};
+    Color path = (Color){128, 64, 0, 255};
+    Color comment = (Color){96, 96, 96, 255};
 
     if(len <= 0)
         return style.text;
@@ -1672,6 +1673,7 @@ DrawUITextArea(UITextArea area)
     Color border;
     float radius;
     int enter_requested;
+    int drag_id;
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
@@ -1703,10 +1705,12 @@ DrawUITextArea(UITextArea area)
     captured = UIInputCapturesClick(mouse_world);
     if(mouse_inside && !captured)
         MarkUITextCursor();
+    drag_id = area.focus_id > 0 ? area.focus_id : 1;
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if(mouse_inside && !captured) {
             focused = 1;
+            g_ui_text_area_drag_id = drag_id;
             *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
                 (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
                 (int)mouse_world.x, (int)mouse_world.y, scroll_y);
@@ -1714,6 +1718,20 @@ DrawUITextArea(UITextArea area)
             focused = 0;
         }
     }
+    if(g_ui_text_area_drag_id == drag_id && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        if((int)mouse_world.y < (int)area.bounds.y + padding_y)
+            scroll_y -= line_h;
+        if((int)mouse_world.y > (int)(area.bounds.y + area.bounds.height) - padding_y)
+            scroll_y += line_h;
+        if(scroll_y < 0)
+            scroll_y = 0;
+        focused = 1;
+        *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
+            (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
+            (int)mouse_world.x, (int)mouse_world.y, scroll_y);
+    }
+    if(g_ui_text_area_drag_id == drag_id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        g_ui_text_area_drag_id = 0;
 
     *area.focused = focused;
     SetUIFocusTextInputActive(focused);
