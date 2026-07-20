@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_widget.h"
 
 int
 GetUIBottomNavHeight(void)
@@ -21,6 +22,8 @@ DrawUIBottomNav(UIBottomNav nav)
     int group_w;
     int start_x;
     int cues = UITransitionCuesEnabled();
+    UIWidget widget;
+    Rectangle bounds;
 
     result.y = y;
     result.height = height;
@@ -39,6 +42,10 @@ DrawUIBottomNav(UIBottomNav nav)
         group_w = available_w;
     tab_w = group_w / count;
     start_x = side_margin + (available_w - group_w) / 2;
+    bounds = (Rectangle){0, y, nav.view_width, height};
+    widget = BeginUIWidget("bottom_nav", "tmp:bottom-nav", bounds,
+                           UI_WIDGET_READONLY);
+    UIWidgetSetAction(&widget, "DrawUIBottomNav");
 
     DrawRectangle(0, y, nav.view_width, height, DarkenUIColor(c_bg, 10));
     DrawLine(0, y, nav.view_width, y, DarkenUIColor(c_bg, 42));
@@ -81,6 +88,7 @@ DrawUIBottomNav(UIBottomNav nav)
         }
     }
 
+    EndUIWidget(&widget);
     return result;
 }
 

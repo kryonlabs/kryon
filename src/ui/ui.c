@@ -269,7 +269,7 @@ ui_input_captures_click_internal(Vector2 point, int include_pointer_drag)
 int
 UIInputCapturesClick(Vector2 point)
 {
-    return UIEditorInputCapturesClick(point) ||
+    return UIInspectInputCapturesClick(point) ||
            ui_input_captures_click_internal(point, 1);
 }
 
@@ -543,7 +543,7 @@ ui_control_height_for_font(int font)
 }
 
 static const char *
-ui_editor_control_id(char *buf, size_t buf_size, const char *kind,
+ui_inspect_control_id(char *buf, size_t buf_size, const char *kind,
                      int numeric_id, const char *label)
 {
     if(numeric_id > 0) {
@@ -1015,6 +1015,7 @@ int
 DrawUIButton(UIButton button)
 {
     char editor_id[96];
+    UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int mouse_inside;
     int captured;
@@ -1032,13 +1033,15 @@ DrawUIButton(UIButton button)
     Color draw_background;
     Color draw_border;
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "button", button.focus_id, button.label),
-                        &button.bounds);
-    UIEditorRegisterWidget(editor_id, "button", &button.bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
-    UIEditorSetWidgetAction(editor_id, button.label);
+    widget = BeginUIWidget("button",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "button", button.focus_id,
+                                                 button.label),
+                           button.bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    button.bounds = widget.bounds;
+    UIWidgetSetAction(&widget, button.label);
 
     mouse_inside = CheckCollisionPointRec(mouse_world, button.bounds);
     captured = UIInputCapturesClick(mouse_world);
@@ -1084,6 +1087,7 @@ DrawUIButton(UIButton button)
                                 font, UI_TEXT_8, text);
     if(clicked)
         UIConsumeRelease();
+    EndUIWidget(&widget);
     return clicked || IsUIFocusActivatePressed(button.focus_id);
 }
 
@@ -1091,6 +1095,7 @@ int
 DrawUIIconButton(UIIconButton button)
 {
     char editor_id[96];
+    UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int mouse_inside;
     int captured;
@@ -1109,12 +1114,14 @@ DrawUIIconButton(UIIconButton button)
     Color draw_background;
     Color draw_border;
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "icon_button", button.focus_id, NULL),
-                        &button.bounds);
-    UIEditorRegisterWidget(editor_id, "icon_button", &button.bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    widget = BeginUIWidget("icon_button",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "icon_button",
+                                                 button.focus_id, NULL),
+                           button.bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    button.bounds = widget.bounds;
 
     mouse_inside = CheckCollisionPointRec(mouse_world, button.bounds);
     captured = UIInputCapturesClick(mouse_world);
@@ -1175,6 +1182,7 @@ DrawUIIconButton(UIIconButton button)
     }
     if(clicked)
         UIConsumeRelease();
+    EndUIWidget(&widget);
     return clicked || IsUIFocusActivatePressed(button.focus_id);
 }
 
@@ -1182,14 +1190,17 @@ int
 DrawUITextInputControl(UITextInput input)
 {
     char editor_id[96];
+    UIWidget widget;
     int focused = input.focused;
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "text_input", input.focus_id, NULL),
-                        &input.bounds);
-    UIEditorRegisterWidget(editor_id, "text_input", &input.bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    widget = BeginUIWidget("text_input",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "text_input",
+                                                 input.focus_id, NULL),
+                           input.bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    input.bounds = widget.bounds;
 
     if(input.focus_id > 0 && RegisterUIFocus(input.focus_id, input.bounds)) {
         focused = 1;
@@ -1201,6 +1212,7 @@ DrawUITextInputControl(UITextInput input)
                              focused, input.cursor_visible,
                              input.font > 0 ? input.font : GetUIFontSize(),
                              input.style);
+    EndUIWidget(&widget);
     return focused;
 }
 
@@ -1208,6 +1220,7 @@ int
 DrawUIHref(UIHref link)
 {
     char editor_id[96];
+    UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int font = link.font > 0 ? link.font : GetUIFontSize();
     const char *text = link.text != NULL ? link.text : "";
@@ -1228,11 +1241,13 @@ DrawUIHref(UIHref link)
     if(bounds.height <= 0)
         bounds.height = (float)font;
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "href", link.focus_id, text), &bounds);
-    UIEditorRegisterWidget(editor_id, "href", &bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    widget = BeginUIWidget("href",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "href", link.focus_id, text),
+                           bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    bounds = widget.bounds;
 
     mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
     captured = UIInputCapturesClick(mouse_world);
@@ -1278,8 +1293,10 @@ DrawUIHref(UIHref link)
             OpenURL(link.href);
 #endif
         }
+        EndUIWidget(&widget);
         return 1;
     }
+    EndUIWidget(&widget);
     return 0;
 }
 
@@ -1727,6 +1744,7 @@ int
 DrawUITextArea(UITextArea area)
 {
     char editor_id[96];
+    UIWidget widget;
     int changed = 0;
     int focused;
     int font;
@@ -1752,12 +1770,14 @@ DrawUITextArea(UITextArea area)
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "text_area", area.focus_id, area.placeholder),
-                        &area.bounds);
-    UIEditorRegisterWidget(editor_id, "text_area", &area.bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    widget = BeginUIWidget("text_area",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "text_area", area.focus_id,
+                                                 area.placeholder),
+                           area.bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    area.bounds = widget.bounds;
 
     font = area.font > 0 ? area.font : GetUIFontSize();
     line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
@@ -1944,6 +1964,7 @@ DrawUITextArea(UITextArea area)
                                area.syntax, area.style, selection_start,
                                selection_end);
     EndUIClip();
+    EndUIWidget(&widget);
     return changed;
 }
 
@@ -1951,6 +1972,7 @@ int
 DrawUITextField(UITextField field)
 {
     char editor_id[96];
+    UIWidget widget;
     int changed = 0;
     int focused;
     int font;
@@ -1966,11 +1988,14 @@ DrawUITextField(UITextField field)
        field.cursor_position == NULL || field.focused == NULL)
         return 0;
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "text_field", field.focus_id, NULL), &field.bounds);
-    UIEditorRegisterWidget(editor_id, "text_field", &field.bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    widget = BeginUIWidget("text_field",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "text_field",
+                                                 field.focus_id, NULL),
+                           field.bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    field.bounds = widget.bounds;
 
     font = field.font > 0 ? field.font : GetUIFontSize();
     padding_x = field.style.padding_x > 0 ? field.style.padding_x : ScaleUIPx(10);
@@ -2021,6 +2046,7 @@ DrawUITextField(UITextField field)
     DrawUITextInput(field.bounds, field.text, *field.cursor_position,
                              focused, focused && (((int)(GetTime() * 2.0)) % 2 == 0),
                              font, field.style);
+    EndUIWidget(&widget);
     return changed;
 }
 
@@ -2073,6 +2099,7 @@ int
 DrawUIReadonlyTextBox(UIReadonlyTextBox box)
 {
     char editor_id[96];
+    UIWidget widget;
     char line[1024];
     const char *text = box.text != NULL ? box.text : "";
     int font = box.font > 0 ? box.font : GetUIFontSize();
@@ -2088,11 +2115,14 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
     Vector2 mouse_world = ui_mouse_world();
     int active;
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "readonly_text_box", 0, text), &box.bounds);
-    UIEditorRegisterWidget(editor_id, "readonly_text_box", &box.bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    widget = BeginUIWidget("readonly_text_box",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "readonly_text_box", 0,
+                                                 text),
+                           box.bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    box.bounds = widget.bounds;
 
     active = CheckCollisionPointRec(mouse_world, box.bounds) &&
              !UIInputCapturesClick(mouse_world);
@@ -2141,9 +2171,11 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
         MarkUIClickable();
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
+            EndUIWidget(&widget);
             return 1;
         }
     }
+    EndUIWidget(&widget);
     return 0;
 }
 
@@ -2334,7 +2366,7 @@ SetUIFrame(Camera2D camera)
     ClearUIInputCaptures();
     g_ui_input_clip_stack_count = 0;
     ResetUIClip();
-    BeginUIEditorFrame(NULL);
+    BeginUIInspectFrame(NULL);
 }
 
 void
@@ -2734,6 +2766,7 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)ScaleUIPx(56)};
+    UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int mx = (int)mouse_world.x;
     int label_font = GetUIFontSize();
@@ -2748,8 +2781,13 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
     char value_text[32];
     Rectangle hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "slider", id, label), &editor_bounds);
+    widget = BeginUIWidget("slider",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "slider", id, label),
+                           editor_bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    editor_bounds = widget.bounds;
     x = (int)editor_bounds.x;
     y = (int)editor_bounds.y;
     w = (int)editor_bounds.width;
@@ -2759,9 +2797,7 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
     knob_y = track_y - (knob_h - track_h) / 2;
     hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)ScaleUIPx(56)};
-    UIEditorRegisterWidget(editor_id, "slider", &editor_bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    UIWidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
@@ -2814,6 +2850,7 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
     DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
     DrawUIBevel(knob_x, knob_y, knob_w, knob_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
 
+    EndUIWidget(&widget);
     return changed;
 }
 
@@ -2824,6 +2861,7 @@ DrawUIVerticalSlider(int id, int x, int y, int h,
     char editor_id[96];
     Rectangle editor_bounds = {(float)(x - ScaleUIPx(18)), (float)y,
                                (float)ScaleUIPx(36), (float)h};
+    UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
     int track_w = ScaleUIPx(8);
@@ -2834,8 +2872,13 @@ DrawUIVerticalSlider(int id, int x, int y, int h,
     int changed = 0;
     Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "vertical_slider", id, NULL), &editor_bounds);
+    widget = BeginUIWidget("vertical_slider",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "vertical_slider", id, NULL),
+                           editor_bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    editor_bounds = widget.bounds;
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
@@ -2845,9 +2888,7 @@ DrawUIVerticalSlider(int id, int x, int y, int h,
     hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
     editor_bounds = (Rectangle){(float)(x - ScaleUIPx(18)), (float)y,
                                 (float)ScaleUIPx(36), (float)h};
-    UIEditorRegisterWidget(editor_id, "vertical_slider", &editor_bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    UIWidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
@@ -2910,6 +2951,7 @@ DrawUIVerticalSlider(int id, int x, int y, int h,
     DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
     DrawUIBevel(knob_x, knob_y, knob_w, knob_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
 
+    EndUIWidget(&widget);
     return changed;
 }
 
@@ -2921,6 +2963,7 @@ DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
     char editor_id[96];
     Rectangle editor_bounds = {(float)(x - ScaleUIPx(18)), (float)y,
                                (float)ScaleUIPx(36), (float)h};
+    UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
     int track_w = ScaleUIPx(8);
@@ -2931,8 +2974,14 @@ DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
     int changed = 0;
     Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "vertical_slider_marks", id, NULL), &editor_bounds);
+    widget = BeginUIWidget("vertical_slider_marks",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "vertical_slider_marks", id,
+                                                 NULL),
+                           editor_bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    editor_bounds = widget.bounds;
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
@@ -2942,9 +2991,7 @@ DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
     hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
     editor_bounds = (Rectangle){(float)(x - ScaleUIPx(18)), (float)y,
                                 (float)ScaleUIPx(36), (float)h};
-    UIEditorRegisterWidget(editor_id, "vertical_slider_marks", &editor_bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    UIWidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
@@ -3011,6 +3058,7 @@ DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
     DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
     DrawUIBevel(knob_x, knob_y, knob_w, knob_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
 
+    EndUIWidget(&widget);
     return changed;
 }
 
@@ -3020,6 +3068,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)h};
+    UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = ScaleUIPx(36);
     int font = GetUIFontSize();
@@ -3033,8 +3082,13 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         h = ScaleUIPx(34);
 
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "toggle", 0, off_label), &editor_bounds);
+    widget = BeginUIWidget("toggle",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "toggle", 0, off_label),
+                           editor_bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    editor_bounds = widget.bounds;
     x = (int)editor_bounds.x;
     y = (int)editor_bounds.y;
     w = (int)editor_bounds.width;
@@ -3044,9 +3098,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     if(h < ScaleUIPx(34))
         h = ScaleUIPx(34);
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    UIEditorRegisterWidget(editor_id, "toggle", &editor_bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
+    UIWidgetSetBounds(&widget, editor_bounds);
 
     Rectangle bounds = ui_centered_min_hit_rect(x, y, w, h, min_touch, min_touch);
 
@@ -3081,6 +3133,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     DrawUIText(off_label, off_x, GetUIControlTextY(off_label, y, h, font), font, label_color);
     DrawUIText(on_label, on_x, GetUIControlTextY(on_label, y, h, font), font, label_color);
 
+    EndUIWidget(&widget);
     return pressed;
 }
 
@@ -3089,6 +3142,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                 int *value, int disabled)
 {
     char editor_id[96];
+    UIWidget widget;
     int font = GetUIFontSize();
     int box_size = ScaleUIPx(22);
     int label_gap = ScaleUIPx(10);
@@ -3101,13 +3155,15 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     Color mark_color = disabled ? DarkenUIColor(c_text, 35) : c_text;
     Color label_color = disabled ? DarkenUIColor(c_text, 35) : c_text;
 
-    UIEditorApplyBounds(ui_editor_control_id(editor_id, sizeof(editor_id),
-                        "checkbox", 0, label), &bounds);
+    widget = BeginUIWidget("checkbox",
+                           ui_inspect_control_id(editor_id, sizeof(editor_id),
+                                                 "checkbox", 0, label),
+                           bounds,
+                           UI_WIDGET_MOVABLE |
+                           UI_WIDGET_RESIZABLE);
+    bounds = widget.bounds;
     x = (int)bounds.x;
     y = (int)bounds.y;
-    UIEditorRegisterWidget(editor_id, "checkbox", &bounds,
-                           UI_EDITOR_WIDGET_MOVABLE |
-                           UI_EDITOR_WIDGET_RESIZABLE);
 
     if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world)) {
         if(disabled)
@@ -3142,6 +3198,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                     GetUIControlTextY(label, y, row_h, font),
                     font, label_color);
 
+    EndUIWidget(&widget);
     return pressed;
 }
 

@@ -1,7 +1,7 @@
 #ifndef UI_ICONS_H
 #define UI_ICONS_H
 
-#include "flint.h"
+#include "kryon.h"
 #include "ui_icon_types.h"
 
 typedef struct UIIconAsset {

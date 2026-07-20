@@ -25,6 +25,6 @@ typedef AppHost *(*CreateAppHostCallback)(int abi_version,
                                           const char *project_path);
 typedef void (*DestroyAppHostCallback)(AppHost *host);
 
-int IsUIEditorActive(void);
+int IsUIInspectActive(void);
 
 #endif

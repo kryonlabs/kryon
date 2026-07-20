@@ -3,7 +3,7 @@
 #include "theme_meta.h"
 #include "ui.h"
 #include <stdio.h>
-#include "flint.h"
+#include "kryon.h"
 
 int main(void) {
     const int screenWidth = 800;

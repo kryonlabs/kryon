@@ -3,7 +3,7 @@
 #include "theme.h"
 #include "theme_meta.h"
 #include "ui.h"
-#include "flint.h"
+#include "kryon.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -94,7 +94,7 @@ draw_editor_chrome(int view_w, int view_h, Rectangle canvas, EditorTool *tool,
                    int *edit_menu_open, int *view_menu_open,
                    FileDialog *project_dialog, const char *project_path)
 {
-    int chrome = PushUIEditorChrome(1);
+    int chrome = PushUIInspectChrome(1);
     int top_h = ScaleUIPx(54);
     int side_w = ScaleUIPx(228);
     int inspector_w = ScaleUIPx(270);
@@ -214,7 +214,7 @@ draw_editor_chrome(int view_w, int view_h, Rectangle canvas, EditorTool *tool,
                UI_TEXT_12, GetThemeIcon());
 
     DrawUIDropdownMenu(801);
-    PopUIEditorChrome(chrome);
+    PopUIInspectChrome(chrome);
 }
 
 static void
@@ -326,7 +326,7 @@ main(void)
     LoadExampleUIFont();
     InitUI(screen_w, screen_h, GetUIScale());
     SetCurrentTheme(THEME_SKY, 0);
-    SetUIEditorEnabled(1);
+    SetUIInspectEnabled(1);
     InitFileDialog(&project_dialog);
     SetFileDialogCurrentDir(&project_dialog, project_path);
 
@@ -348,21 +348,21 @@ main(void)
         BeginDrawing();
         ClearBackground(GetThemeBackground());
         BeginUIFrame(view_w, view_h, GetUIScale());
-        BeginUIEditorFrame(".");
+        BeginUIInspectFrame(".");
         dialog_result = UpdateFileDialog(&project_dialog);
         if(dialog_result == 1) {
             snprintf(project_path, sizeof(project_path), "%s",
                      GetFileDialogPath(&project_dialog));
             SetFileDialogCurrentDir(&project_dialog, project_path);
         }
-        SetUIEditorCanvasBounds(canvas);
+        SetUIInspectCanvasBounds(canvas);
 
         draw_canvas(canvas, &slider_value, &vertical_value, &toggle_value,
                     &checkbox_value, &dropdown_index,
                     text_value, sizeof(text_value), &text_cursor,
                     &text_focused, area_value, sizeof(area_value),
                     &area_cursor, &area_focused, &area_scroll);
-        DrawUIEditorOverlay();
+        DrawUIInspectOverlay();
         draw_editor_chrome(view_w, view_h, canvas, &tool, &view_mode,
                            &preview_enabled, &project_menu_open,
                            &edit_menu_open, &view_menu_open,

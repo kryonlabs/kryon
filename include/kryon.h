@@ -1,5 +1,5 @@
-#ifndef FLINT_H
-#define FLINT_H
+#ifndef KRYON_H
+#define KRYON_H
 
 #include "flint_version.h"
 #include "flint_compat.generated.h"
@@ -38,4 +38,4 @@
 #include "app_host.h"
 #include "app_runtime.h"
 
-#endif /* FLINT_H */
+#endif /* KRYON_H */

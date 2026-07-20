@@ -26,7 +26,7 @@ This directory contains example programs demonstrating Flint library components.
 ## Requirements
 
 - Flint library must be built (`make` in parent directory)
-- Include Flint with `#include "flint.h"`; Flint provides the Raylib-compatible public API surface
+- Include Flint with `#include "kryon.h"`; Flint provides the Raylib-compatible public API surface
 - X11 libraries (Linux): `-lGL -lm -lpthread -ldl -lrt -lX11`
 
 ## Building Examples

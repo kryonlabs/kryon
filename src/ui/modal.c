@@ -405,6 +405,7 @@ DrawUIModalFrame(int width, int height, const char *title,
 {
     char editor_id[96];
     UIPanelFrame frame = {0};
+    UIWidget widget;
     int title_font;
     int icon_size = ScaleUIPx(20);
     int icon_padding = ScaleUIPx(8);
@@ -426,7 +427,10 @@ DrawUIModalFrame(int width, int height, const char *title,
     {
         Rectangle bounds = {(float)frame.x, (float)frame.y,
                             (float)frame.w, (float)frame.h};
-        UIEditorApplyBounds(editor_id, &bounds);
+        widget = BeginUIWidget("modal", editor_id, bounds,
+                               UI_WIDGET_MOVABLE |
+                               UI_WIDGET_RESIZABLE);
+        bounds = widget.bounds;
         frame.x = (int)bounds.x;
         frame.y = (int)bounds.y;
         frame.w = (int)bounds.width;
@@ -437,9 +441,7 @@ DrawUIModalFrame(int width, int height, const char *title,
             frame.h = ScaleUIPx(96);
         bounds = (Rectangle){(float)frame.x, (float)frame.y,
                              (float)frame.w, (float)frame.h};
-        UIEditorRegisterWidget(editor_id, "modal", &bounds,
-                               UI_EDITOR_WIDGET_MOVABLE |
-                               UI_EDITOR_WIDGET_RESIZABLE);
+        UIWidgetSetBounds(&widget, bounds);
     }
     frame.content_x = frame.x + ScaleUIPx(18);
     frame.content_y = frame.y + ScaleUIPx(58);
@@ -472,6 +474,7 @@ DrawUIModalFrame(int width, int height, const char *title,
                                                       right_icon, &hover);
     }
 
+    EndUIWidget(&widget);
     return frame;
 }
 

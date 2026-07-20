@@ -1,6 +1,6 @@
 #include "ui_icons.h"
 #include "ui_internal.h"
-#include "flint.h"
+#include "kryon.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>

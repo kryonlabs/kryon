@@ -1,7 +1,7 @@
 #ifndef UI_TRANSITION_H
 #define UI_TRANSITION_H
 
-#include "flint.h"
+#include "kryon.h"
 
 typedef enum UITransitionPhase {
     UI_TRANSITION_NONE = 0,

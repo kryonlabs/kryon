@@ -1,7 +1,7 @@
 #ifndef UI_TEXT_H
 #define UI_TEXT_H
 
-#include "flint.h"
+#include "kryon.h"
 
 #define UI_TEXT_8 8
 #define UI_TEXT_12 12

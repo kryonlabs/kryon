@@ -10,7 +10,7 @@
 #include "ui_controls.h"
 #include "ui_tk.h"
 #include "ui_draw.h"
-#include "ui_editor.h"
+#include "ui_inspect.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_overlay.h"
@@ -19,5 +19,6 @@
 #include "ui_rows.h"
 #include "ui_scroll.h"
 #include "ui_toast.h"
+#include "ui_widget.h"
 
 #endif

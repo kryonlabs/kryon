@@ -1,7 +1,7 @@
 #ifndef UI_DPI_H
 #define UI_DPI_H
 
-#include "flint.h"
+#include "kryon.h"
 
 #define UI_DPI_BASE_WIDTH 320
 #define UI_DPI_BASE_HEIGHT 560

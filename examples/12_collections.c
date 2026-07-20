@@ -1,5 +1,5 @@
 #include "example_ui_font.h"
-#include "flint.h"
+#include "kryon.h"
 
 int
 main(void)
@@ -23,7 +23,7 @@ main(void)
         {"background.png", 2, 19, 0, 1}
     };
     const char *source_text =
-        "#include \"flint.h\"\n"
+        "#include \"kryon.h\"\n"
         "\n"
         "static void\n"
         "draw_start_screen(Rectangle bounds)\n"

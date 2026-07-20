@@ -1,6 +1,6 @@
 #include "markdown.h"
 
-#if defined(FLINT_HAS_CMARK_GFM)
+#if defined(KRYON_HAS_CMARK_GFM)
 #include "cmark-gfm.h"
 #include "cmark-gfm-core-extensions.h"
 #include "cmark-gfm-extension_api.h"

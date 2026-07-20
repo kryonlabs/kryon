@@ -1,7 +1,7 @@
 #ifndef UI_COLOR_H
 #define UI_COLOR_H
 
-#include "flint.h"
+#include "kryon.h"
 
 // Lighten a color by adding to each RGB component
 Color LightenUIColor(Color c, int amount);

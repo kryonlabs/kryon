@@ -1,6 +1,7 @@
 #include "ui_text.h"
 #include "ui_clip.h"
 #include "ui_internal.h"
+#include "ui_widget.h"
 #include "embedded_assets.h"
 #include "ui_scaling.h"
 
@@ -744,6 +745,18 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
     text_w = MeasureUIText(text, font_size);
     line_h = GetUITextLineHeight(font_size);
     id = selectable ? ui_text_id(text, x, y, font_size) : 0;
+
+    if(text[0] != '\0' && text_w > 0 && line_h > 0) {
+        char inspect_id[96];
+        Rectangle bounds = {(float)x, (float)y, (float)text_w, (float)line_h};
+        int inspect_hash = ui_text_id(text, x, y, font_size);
+        UIWidget widget;
+
+        snprintf(inspect_id, sizeof(inspect_id), "tmp:text:%d", inspect_hash);
+        widget = BeginUIWidget("text", inspect_id, bounds, UI_WIDGET_READONLY);
+        UIWidgetSetAction(&widget, text);
+        EndUIWidget(&widget);
+    }
 
     if(selectable) {
         Rectangle bounds = {(float)x, (float)y, (float)text_w, (float)line_h};

@@ -2,7 +2,7 @@
 
 #include "ui_dpi.h"
 #include "ui_layout.h"
-#include "flint.h"
+#include "kryon.h"
 
 #if defined(PLATFORM_WEB)
 #include <emscripten.h>

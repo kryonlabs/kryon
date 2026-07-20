@@ -1,7 +1,7 @@
 #ifndef THEME_META_H
 #define THEME_META_H
 
-#include "flint.h"
+#include "kryon.h"
 
 #include <stdbool.h>
 

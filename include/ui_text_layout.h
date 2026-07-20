@@ -1,7 +1,7 @@
 #ifndef UI_TEXT_LAYOUT_H
 #define UI_TEXT_LAYOUT_H
 
-#include "flint.h"
+#include "kryon.h"
 #include "ui_icon_types.h"
 #include "ui_text.h"
 

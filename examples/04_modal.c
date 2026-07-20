@@ -3,7 +3,7 @@
 #include "theme.h"
 #include "theme_meta.h"
 #include "ui.h"
-#include "flint.h"
+#include "kryon.h"
 #include <stdio.h>
 
 static void

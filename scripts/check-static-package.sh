@@ -21,7 +21,7 @@ if [ -z "$root" ]; then
 fi
 
 for path in \
-    include/flint.h \
+    include/kryon.h \
     include/markdown.h \
     lib/libflint.a \
     lib/libraylib.a \

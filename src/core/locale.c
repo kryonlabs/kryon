@@ -2,7 +2,7 @@
 #include "platform.h"
 #include "embedded_assets.h"
 
-#include "flint.h"
+#include "kryon.h"
 
 #include <stdarg.h>
 #include <stdio.h>

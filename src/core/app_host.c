@@ -3,9 +3,9 @@
 #include <stdlib.h>
 
 int
-IsUIEditorActive(void)
+IsUIInspectActive(void)
 {
-    const char *value = getenv("FLINT_EDITOR");
+    const char *value = getenv("FLINT_INSPECT");
 
     return value != NULL && value[0] != '\0' && value[0] != '0';
 }

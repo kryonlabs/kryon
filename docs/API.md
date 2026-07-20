@@ -1463,7 +1463,7 @@ Examples `09_geometry` through `18_accessibility` demonstrate these APIs.
 ## Integration Example
 
 ```c
-#include "flint.h"
+#include "kryon.h"
 
 int main(void) {
     // Initialize window with Raylib

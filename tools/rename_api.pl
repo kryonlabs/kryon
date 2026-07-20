@@ -128,7 +128,7 @@ my @pairs = (
     [qw(FLINT_TRANSITION_IN UI_TRANSITION_IN)],
     [qw(FLINT_TRANSITION_OUT UI_TRANSITION_OUT)],
     [qw(FLINT_EMBEDDED_ONLY UI_EMBEDDED_ONLY)],
-    [qw(FLINT_HAS_LIBOQS HAS_LIBOQS)],
+    [qw(KRYON_HAS_LIBOQS HAS_LIBOQS)],
 
     [qw(flint_dpi_state ui_dpi_state)],
     [qw(flint_clip_intersection GetUIClipIntersection)],
@@ -439,9 +439,9 @@ for my $file (@files) {
         $text =~ s/\b\Q$old\E\b/$new/g;
     }
 
-    $text =~ s/#ifndef FLINT_H\b/#ifndef UIKIT_H/g;
-    $text =~ s/#define FLINT_H\b/#define UIKIT_H/g;
-    $text =~ s/#endif \/\/ FLINT_H/#endif \/\/ UIKIT_H/g;
+    $text =~ s/#ifndef KRYON_H\b/#ifndef UIKIT_H/g;
+    $text =~ s/#define KRYON_H\b/#define UIKIT_H/g;
+    $text =~ s/#endif \/\/ KRYON_H/#endif \/\/ UIKIT_H/g;
 
     open my $out, '>', $file or die "$file: $!";
     print {$out} $text;

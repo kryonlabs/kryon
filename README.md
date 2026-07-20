@@ -1,14 +1,14 @@
 # Flint
 
 Flint is a small C support library for raylib-style applications. It keeps a
-raylib-compatible public surface available through `flint.h`, then adds the
+raylib-compatible public surface available through `kryon.h`, then adds the
 pieces shared by downstream apps: UI controls, Tk-style toolkit widgets, layout
 helpers, text rendering, themes, embedded assets, locale loading, file dialogs,
 desktop tray support, runtime asset downloads, and Lyra account/sync helpers.
 
 ## Layout
 
-- `include/` - public headers, including `flint.h` and generated raylib
+- `include/` - public headers, including `kryon.h` and generated raylib
   compatibility declarations
 - `src/` - Flint implementation files, with reusable UI modules under `src/ui/`
 - `icons/` and `pfp/` - PNG icon inputs embedded into `src/ui/ui_icon_assets.c`
@@ -77,7 +77,7 @@ release. Pushing a `v*` tag manually uses the same build-and-publish path.
 To integrate Flint into your project:
 
 1. Add `include/` to your header search paths
-2. Include `flint.h` for the raylib-compatible API plus Flint modules
+2. Include `kryon.h` for the raylib-compatible API plus Flint modules
 3. Compile Flint sources from `src/` and `src/ui/`, or use the `mk/` fragments
    to let Flint assemble source lists and platform flags
 4. Use `scripts/embed-icons.sh` and `scripts/embed-assets.sh` when your app

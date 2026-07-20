@@ -4,7 +4,7 @@
 #include "ui_layout.h"
 #include "ui_scaling.h"
 #include <stdio.h>
-#include "flint.h"
+#include "kryon.h"
 
 int main(void) {
     const int screenWidth = 800;

@@ -10,7 +10,7 @@ check_direct_raylib_includes() {
 
 matches=$(check_direct_raylib_includes)
 if [ -n "$matches" ]; then
-    echo "Direct raylib.h includes found; include flint.h instead:" >&2
+    echo "Direct raylib.h includes found; include kryon.h instead:" >&2
     echo "$matches" >&2
     status=1
 fi
