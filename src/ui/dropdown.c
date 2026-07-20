@@ -1,5 +1,7 @@
 #include "ui_internal.h"
 
+#include "locale.h"
+
 
 /* Per-dropdown state to track open/closed and click handling */
 #define MAX_DROPDOWN_OPTIONS 128
@@ -28,6 +30,20 @@ static UIDropdownState dropdown_states[MAX_DROPDOWNS];
 static int dropdown_state_count = 0;
 static int dropdown_clip_top = 0;
 static int dropdown_clip_bottom = 0;
+
+static const char *
+locale_dropdown_font_name(const char *code)
+{
+    if(code == NULL)
+        return "ui-lang-latin";
+    if(strcmp(code, "ja") == 0)
+        return "ui-lang-ja";
+    if(strcmp(code, "ko") == 0)
+        return "ui-lang-ko";
+    if(strcmp(code, "zh") == 0)
+        return "ui-lang-zh";
+    return "ui-lang-latin";
+}
 
 static Color
 ui_dropdown_panel_color(int amount)
@@ -286,6 +302,34 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
     DrawLine(x1, y2, x2, y1, c_text);
 
     return changed;
+}
+
+int
+DrawUILocaleDropdownButton(int id, int x, int y, int w, int h,
+                           int *selected_index)
+{
+    UIDropdownOption options[MAX_DROPDOWN_OPTIONS];
+    int count = GetLocaleCount();
+
+    if(selected_index == NULL)
+        return 0;
+    if(count < 0)
+        count = 0;
+    if(count > MAX_DROPDOWN_OPTIONS)
+        count = MAX_DROPDOWN_OPTIONS;
+    for(int i = 0; i < count; i++) {
+        options[i].label = GetLocaleLabel(i);
+        options[i].font_name = locale_dropdown_font_name(GetLocaleCode(i));
+    }
+    if(count <= 0) {
+        const char *fallback[] = {"Language"};
+        return DrawUIDropdownButton(id, x, y, w, h, fallback, 1,
+                                    selected_index);
+    }
+    if(*selected_index < 0 || *selected_index >= count)
+        *selected_index = 0;
+    return DrawUIDropdownButtonEx(id, x, y, w, h, options, count,
+                                  selected_index);
 }
 
 int

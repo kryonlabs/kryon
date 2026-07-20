@@ -199,6 +199,8 @@ int DrawUIDropdownButton(int id, int x, int y, int w, int h,
 int DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
                            const UIDropdownOption *options, int option_count,
                            int *selected_index);
+int DrawUILocaleDropdownButton(int id, int x, int y, int w, int h,
+                               int *selected_index);
 int DrawUIDropdownMenu(int id);
 int UIDropdownCapturesClick(Vector2 point);
 void SetUIDropdownClipTop(int top);
