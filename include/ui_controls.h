@@ -23,7 +23,8 @@ typedef enum {
 typedef enum {
     UI_SYNTAX_NONE,
     UI_SYNTAX_KRY,
-    UI_SYNTAX_C
+    UI_SYNTAX_C,
+    UI_SYNTAX_MAKE
 } UISyntaxMode;
 
 typedef struct {

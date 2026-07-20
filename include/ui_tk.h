@@ -61,6 +61,16 @@ typedef struct {
 } UIMenuBarResult;
 
 typedef struct {
+    int id;
+    Rectangle trigger;
+    const UIMenuItem *items;
+    int item_count;
+    int *open;
+    int *x;
+    int *y;
+} UIContextMenu;
+
+typedef struct {
     Rectangle bounds;
     const char *label;
     int id;
@@ -273,6 +283,7 @@ void DrawUISeparator(Rectangle bounds, int vertical);
 
 UIMenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int *open_index);
 int DrawUIPopupMenu(int id, int x, int y, const UIMenuItem *items, int item_count);
+int DrawUIContextMenu(UIContextMenu menu);
 
 int DrawUIRadioButton(UIRadioButton radio);
 void DrawUIProgressBar(UIProgressBar progress);

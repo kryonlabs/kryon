@@ -349,6 +349,45 @@ DrawUIPopupMenu(int id, int x, int y, const UIMenuItem *items, int item_count)
 }
 
 int
+DrawUIContextMenu(UIContextMenu menu)
+{
+    Vector2 mouse = ui_mouse_world();
+    int open_local = 0;
+    int x_local = 0;
+    int y_local = 0;
+    int activated;
+
+    if(menu.open == NULL)
+        menu.open = &open_local;
+    if(menu.x == NULL)
+        menu.x = &x_local;
+    if(menu.y == NULL)
+        menu.y = &y_local;
+    if(ui_contains(menu.trigger, mouse) &&
+       !UIInputCapturesClick(mouse) &&
+       IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+        *menu.open = 1;
+        *menu.x = (int)mouse.x;
+        *menu.y = (int)mouse.y;
+    }
+    if(!*menu.open)
+        return 0;
+
+    activated = draw_menu_items(menu.id, *menu.x, *menu.y,
+                                menu.items, menu.item_count);
+    if(activated != 0) {
+        *menu.open = 0;
+        return activated;
+    }
+    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+       (!g_menu_panel_valid || !ui_contains(g_menu_panel_bounds, mouse))) {
+        UIConsumeRelease();
+        *menu.open = 0;
+    }
+    return 0;
+}
+
+int
 DrawUIRadioButton(UIRadioButton radio)
 {
     int font = GetUIFontSize();

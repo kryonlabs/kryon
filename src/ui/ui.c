@@ -1437,9 +1437,10 @@ ui_syntax_kry_keyword(const char *text, int len)
     static const char *keywords[] = {
         "action", "args", "bind", "button", "checkbox", "circle",
         "const", "def", "down", "dropdown", "elif", "else", "enter",
-        "exit", "fn", "if", "include", "label", "listen", "logic",
-        "on", "radiobutton", "screen", "slider", "spacer", "switch",
-        "text", "tick", "toggle", "up", "var", "window", "write"
+        "exit", "fn", "guard", "icon_button", "if", "include", "label",
+        "let", "listen", "logic", "native", "on", "page", "radiobutton",
+        "screen", "set", "slider", "spacer", "switch", "text", "tick",
+        "toggle", "up", "var", "window", "write"
     };
 
     for(size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
@@ -1466,6 +1467,22 @@ ui_syntax_c_keyword(const char *text, int len)
     return 0;
 }
 
+static int
+ui_syntax_make_keyword(const char *text, int len)
+{
+    static const char *keywords[] = {
+        "define", "else", "endef", "endif", "export", "ifdef", "ifeq",
+        "ifndef", "ifneq", "include", "override", "private", "undefine",
+        "unexport", "vpath"
+    };
+
+    for(size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
+        if(ui_syntax_word_eq(text, len, keywords[i]))
+            return 1;
+    }
+    return 0;
+}
+
 static Color
 ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
                       int first_token, UITextInputStyle style)
@@ -1478,7 +1495,8 @@ ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
 
     if(len <= 0)
         return style.text;
-    if(syntax == UI_SYNTAX_KRY && first_token && text[0] == '#')
+    if((syntax == UI_SYNTAX_KRY || syntax == UI_SYNTAX_MAKE) &&
+       first_token && text[0] == '#')
         return comment;
     if(text[0] == '"')
         return string;
@@ -1494,6 +1512,10 @@ ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
         return keyword;
     if(syntax == UI_SYNTAX_C && ui_syntax_c_keyword(text, len))
         return keyword;
+    if(syntax == UI_SYNTAX_MAKE && ui_syntax_make_keyword(text, len))
+        return keyword;
+    if(syntax == UI_SYNTAX_MAKE && len > 1 && text[0] == '$')
+        return path;
     return style.text;
 }
 
@@ -1510,7 +1532,8 @@ ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
             i++;
         return i - index;
     }
-    if(syntax == UI_SYNTAX_KRY && first_token && line[i] == '#')
+    if((syntax == UI_SYNTAX_KRY || syntax == UI_SYNTAX_MAKE) &&
+       first_token && line[i] == '#')
         return len - index;
     if(syntax == UI_SYNTAX_C && line[i] == '/' && i + 1 < len &&
        line[i + 1] == '/')
@@ -1528,6 +1551,7 @@ ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
         return i - index;
     }
     if(line[i] == '/' || line[i] == '%' ||
+       (syntax == UI_SYNTAX_MAKE && line[i] == '$') ||
        (line[i] == '.' && i + 1 < len && (line[i + 1] == '/' || line[i + 1] == '.'))) {
         i++;
         while(i < len && !isspace((unsigned char)line[i]) &&
