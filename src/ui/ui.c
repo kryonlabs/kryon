@@ -43,6 +43,15 @@ static int g_ui_text_input_requested = 0;
 static UITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
 static int g_ui_text_area_drag_id = 0;
 
+typedef struct UITextAreaSelection {
+    int id;
+    int anchor;
+    int cursor;
+    int dragging;
+} UITextAreaSelection;
+
+static UITextAreaSelection g_ui_text_area_selection = {0};
+
 #define UI_TEXT_INPUT_QUEUE_MAX 64
 static int g_ui_text_input_codepoints[UI_TEXT_INPUT_QUEUE_MAX];
 static int g_ui_text_input_codepoint_count = 0;
@@ -460,6 +469,31 @@ ui_text_delete_range(char *text, size_t text_size, int *cursor, int start, int e
         return 0;
     memmove(text + start, text + end, (size_t)(len - end + 1));
     *cursor = start;
+    return 1;
+}
+
+static int
+ui_text_copy_range(const char *text, int start, int end)
+{
+    char *copy;
+    int len;
+    int text_len;
+
+    if(text == NULL)
+        return 0;
+    text_len = (int)strlen(text);
+    start = ui_clampi(start, 0, text_len);
+    end = ui_clampi(end, 0, text_len);
+    if(end <= start)
+        return 0;
+    len = end - start;
+    copy = malloc((size_t)len + 1);
+    if(copy == NULL)
+        return 0;
+    memcpy(copy, text + start, (size_t)len);
+    copy[len] = '\0';
+    SetClipboardText(copy);
+    free(copy);
     return 1;
 }
 
@@ -1439,7 +1473,7 @@ ui_syntax_kry_keyword(const char *text, int len)
         "action", "args", "bind", "button", "checkbox", "circle",
         "const", "def", "down", "dropdown", "elif", "else", "enter",
         "exit", "fn", "guard", "icon_button", "if", "include", "label",
-        "let", "listen", "logic", "native", "on", "page", "radiobutton",
+        "let", "listen", "logic", "native", "on", "page", "pub", "radiobutton",
         "screen", "set", "slider", "spacer", "switch", "text", "tick",
         "toggle", "up", "var", "window", "write"
     };
@@ -1580,6 +1614,38 @@ ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
 }
 
 static void
+ui_draw_text_area_selection(const char *text, int line_start, int line_end,
+                            int x, int y, int font, Color color,
+                            int selection_start, int selection_end)
+{
+    int start;
+    int end;
+    int start_x;
+    int end_x;
+
+    if(text == NULL || selection_end <= selection_start)
+        return;
+    start = selection_start > line_start ? selection_start : line_start;
+    end = selection_end < line_end ? selection_end : line_end;
+    if(selection_start <= line_end && selection_end > line_end &&
+       end == line_end)
+        end = line_end;
+    if(end < start)
+        return;
+    if(end == start && !(selection_start <= line_start &&
+                         selection_end > line_end))
+        return;
+    start_x = x + ui_text_column_x(text, line_start, start, font);
+    end_x = x + ui_text_column_x(text, line_start, end, font);
+    if(selection_start <= line_start && selection_end > line_end)
+        end_x += ScaleUIPx(6);
+    if(end_x <= start_x)
+        end_x = start_x + ScaleUIPx(4);
+    DrawRectangle(start_x, y, end_x - start_x, GetUITextLineHeight(font),
+                  color);
+}
+
+static void
 ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
                     UISyntaxMode syntax, UITextInputStyle style)
 {
@@ -1614,7 +1680,8 @@ static void
 ui_draw_text_area_text(const char *text, int cursor, int focused,
                        Rectangle bounds, int font, int line_gap,
                        int scroll_y, UISyntaxMode syntax,
-                       UITextInputStyle style)
+                       UITextInputStyle style, int selection_start,
+                       int selection_end)
 {
     char line[1024];
     int len;
@@ -1637,6 +1704,10 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                 line_len = (int)sizeof(line) - 1;
             memcpy(line, text + line_start, (size_t)line_len);
             line[line_len] = '\0';
+            ui_draw_text_area_selection(text, line_start, i, text_x, draw_y,
+                                        line_font,
+                                        (Color){0, 96, 192, 72},
+                                        selection_start, selection_end);
             if(syntax == UI_SYNTAX_NONE)
                 DrawUIText(line, text_x, draw_y, line_font, style.text);
             else
@@ -1670,6 +1741,9 @@ DrawUITextArea(UITextArea area)
     Vector2 mouse_world;
     int mouse_inside;
     int captured;
+    int selection_start = 0;
+    int selection_end = 0;
+    int selection_key_handled = 0;
     Color border;
     float radius;
     int enter_requested;
@@ -1714,6 +1788,10 @@ DrawUITextArea(UITextArea area)
             *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
                 (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
                 (int)mouse_world.x, (int)mouse_world.y, scroll_y);
+            g_ui_text_area_selection.id = drag_id;
+            g_ui_text_area_selection.anchor = *area.cursor_position;
+            g_ui_text_area_selection.cursor = *area.cursor_position;
+            g_ui_text_area_selection.dragging = 1;
         } else if(focused) {
             focused = 0;
         }
@@ -1729,22 +1807,81 @@ DrawUITextArea(UITextArea area)
         *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
             (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
             (int)mouse_world.x, (int)mouse_world.y, scroll_y);
+        if(g_ui_text_area_selection.id == drag_id) {
+            g_ui_text_area_selection.cursor = *area.cursor_position;
+            g_ui_text_area_selection.dragging = 1;
+        }
     }
-    if(g_ui_text_area_drag_id == drag_id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    if(g_ui_text_area_drag_id == drag_id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         g_ui_text_area_drag_id = 0;
+        if(g_ui_text_area_selection.id == drag_id)
+            g_ui_text_area_selection.dragging = 0;
+    }
 
     *area.focused = focused;
     SetUIFocusTextInputActive(focused);
     enter_requested = focused && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || g_ui_text_input_enter_count > 0);
+    if(g_ui_text_area_selection.id == drag_id) {
+        selection_start = g_ui_text_area_selection.anchor;
+        selection_end = g_ui_text_area_selection.cursor;
+        if(selection_start > selection_end) {
+            int tmp = selection_start;
+            selection_start = selection_end;
+            selection_end = tmp;
+        }
+        selection_start = ui_clampi(selection_start, 0, (int)strlen(area.text));
+        selection_end = ui_clampi(selection_end, 0, (int)strlen(area.text));
+    }
     if(focused) {
-        changed = EditUIText((UITextEdit){
-            .text = area.text,
-            .text_size = area.text_size,
-            .cursor_position = area.cursor_position,
-            .max_codepoints = area.max_codepoints,
-            .filter = area.filter,
-            .filter_user_data = area.filter_user_data
-        });
+        if(ui_mod_key_down() && IsKeyPressed(KEY_C) &&
+           selection_end > selection_start) {
+            ui_text_copy_range(area.text, selection_start, selection_end);
+            selection_key_handled = 1;
+        }
+        if(ui_mod_key_down() && IsKeyPressed(KEY_X) &&
+           selection_end > selection_start) {
+            if(ui_text_copy_range(area.text, selection_start, selection_end) &&
+               ui_text_delete_range(area.text, area.text_size,
+                                    area.cursor_position, selection_start,
+                                    selection_end)) {
+                g_ui_text_area_selection.anchor = *area.cursor_position;
+                g_ui_text_area_selection.cursor = *area.cursor_position;
+                changed = 1;
+            }
+            selection_key_handled = 1;
+        }
+        if(ui_mod_key_down() && IsKeyPressed(KEY_V) &&
+           selection_end > selection_start) {
+            if(ui_text_delete_range(area.text, area.text_size,
+                                    area.cursor_position, selection_start,
+                                    selection_end)) {
+                g_ui_text_area_selection.anchor = *area.cursor_position;
+                g_ui_text_area_selection.cursor = *area.cursor_position;
+                changed = 1;
+            }
+        }
+        if((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
+           selection_end > selection_start) {
+            if(ui_text_delete_range(area.text, area.text_size,
+                                    area.cursor_position, selection_start,
+                                    selection_end)) {
+                g_ui_text_area_selection.anchor = *area.cursor_position;
+                g_ui_text_area_selection.cursor = *area.cursor_position;
+                changed = 1;
+            }
+            g_ui_text_input_backspace_count = 0;
+            selection_key_handled = 1;
+        }
+        if(!selection_key_handled) {
+            changed |= EditUIText((UITextEdit){
+                .text = area.text,
+                .text_size = area.text_size,
+                .cursor_position = area.cursor_position,
+                .max_codepoints = area.max_codepoints,
+                .filter = area.filter,
+                .filter_user_data = area.filter_user_data
+            });
+        }
         if(enter_requested) {
             int len = (int)strlen(area.text);
             *area.cursor_position = ui_clampi(*area.cursor_position, 0, len);
@@ -1762,6 +1899,15 @@ DrawUITextArea(UITextArea area)
             *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, -1);
         if(IsKeyPressed(KEY_DOWN))
             *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, 1);
+        if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
+           IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN)) {
+            if(!g_ui_text_area_selection.dragging) {
+                g_ui_text_area_selection.id = drag_id;
+                g_ui_text_area_selection.anchor = *area.cursor_position;
+                g_ui_text_area_selection.cursor = *area.cursor_position;
+            }
+        }
     } else {
         int text_len = (int)strlen(area.text);
         *area.cursor_position = ui_clampi(*area.cursor_position, 0, text_len);
@@ -1795,7 +1941,8 @@ DrawUITextArea(UITextArea area)
     else
         ui_draw_text_area_text(area.text, *area.cursor_position, focused,
                                area.bounds, font, line_gap, scroll_y,
-                               area.syntax, area.style);
+                               area.syntax, area.style, selection_start,
+                               selection_end);
     EndUIClip();
     return changed;
 }
