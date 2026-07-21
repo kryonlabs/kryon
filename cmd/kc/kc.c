@@ -1552,7 +1552,7 @@ parse_kry(KryFile *file)
                 line_start = p + 1;
                 line_no++;
                 continue;
-            } else if(starts_word(line, "app")) {
+            } else if(!in_screen && starts_word(line, "app")) {
                 char *q = trim(line + strlen("app"));
 
                 if(depth != 0)
