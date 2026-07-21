@@ -28,6 +28,12 @@ screen valid {
     native NativeThing()
     c #if 0
     c #endif
+    for int i = 0; i < 2; i++ {
+        if i == 0 {
+            continue
+        }
+        value += i
+    }
 }
 EOF
 
@@ -42,6 +48,17 @@ grep -Eq '__auto_type __kryon_assign_[0-9]+_0 = second;' "$out/src/valid.c"
 grep -Eq '__auto_type __kryon_assign_[0-9]+_1 = first;' "$out/src/valid.c"
 grep -Eq 'first = __kryon_assign_[0-9]+_0;' "$out/src/valid.c"
 grep -Eq 'second = __kryon_assign_[0-9]+_1;' "$out/src/valid.c"
+grep -q 'continue;' "$out/src/valid.c"
+
+{
+    printf 'cimport "thing.h"\n\n'
+    for i in $(seq 1 40); do
+        printf 'pub fn many_%02d() -> int {\n    return %d\n}\n\n' "$i" "$i"
+    done
+} > "$work/src/many_functions.kry"
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/many_functions.kry" >"$err" 2>&1
+grep -q 'int many_40(void);' "$out/src/many_functions.h"
 
 cat > "$work/src/settings_ui.kry" <<'EOF'
 mod settings_ui

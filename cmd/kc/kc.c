@@ -13,7 +13,6 @@ enum {
     KC_NAME_MAX = 128,
     KC_INCLUDE_MAX = 64,
     KC_USE_MAX = 32,
-    KC_FUNCTION_MAX = 32,
     KC_CALL_MAX = 64,
     KC_RAW_MAX = 1024,
     KC_STATE_MAX = 128,
@@ -51,12 +50,13 @@ typedef struct KryFile {
     char module[KC_NAME_MAX];
     char use_aliases[KC_USE_MAX][KC_NAME_MAX];
     char use_modules[KC_USE_MAX][KC_NAME_MAX];
-    KryFunction functions[KC_FUNCTION_MAX];
+    KryFunction *functions;
     int raw_count;
     int state_count;
     int include_count;
     int use_count;
     int function_count;
+    int function_cap;
     int current_line;
     KryFunction *current;
 } KryFile;
@@ -84,6 +84,28 @@ add_state_line(KryFile *file, const char *line)
     snprintf(file->state[file->state_count],
              sizeof(file->state[file->state_count]), "%s", line);
     file->state_count++;
+}
+
+static KryFunction *
+add_function(KryFile *file)
+{
+    KryFunction *next;
+    KryFunction *fn;
+    int next_cap;
+
+    if(file == NULL)
+        return NULL;
+    if(file->function_count >= file->function_cap) {
+        next_cap = file->function_cap == 0 ? 32 : file->function_cap * 2;
+        next = realloc(file->functions, (size_t)next_cap * sizeof(*next));
+        if(next == NULL)
+            die("%s: out of memory while growing function list", file->path);
+        file->functions = next;
+        file->function_cap = next_cap;
+    }
+    fn = &file->functions[file->function_count++];
+    memset(fn, 0, sizeof(*fn));
+    return fn;
 }
 
 static void
@@ -1130,6 +1152,8 @@ parse_statement(KryFile *file, int line_no, char *line)
             if(strchr(q, '(') != NULL)
                 emit_source_pop(file);
         }
+    } else if(strcmp(line, "continue") == 0) {
+        add_body(file, "    continue;");
     } else if(starts_word(line, "var")) {
         char *q = trim(line + strlen("var"));
         char name[KC_NAME_MAX];
@@ -1677,10 +1701,7 @@ parse_kry(KryFile *file)
                 if(depth != 0)
                     die("%s:%d: nested functions are not supported",
                         file->path, line_no);
-                if(file->function_count >= KC_FUNCTION_MAX)
-                    die("%s:%d: too many functions", file->path, line_no);
-                fn = &file->functions[file->function_count++];
-                memset(fn, 0, sizeof(*fn));
+                fn = add_function(file);
                 file->current = fn;
                 if(!parse_ident(&q, fn->screen, sizeof(fn->screen)))
                     die("%s:%d: expected screen name", file->path, line_no);
