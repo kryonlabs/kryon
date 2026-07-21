@@ -132,6 +132,9 @@ typedef struct EditorProject {
     long live_module_mtime;
     long source_mtime;
     double last_reload_check;
+    long selected_file_mtime;
+    double last_source_file_check;
+    int source_external_change_reported;
     int reload_failed;
     int inspect_active;
     int inspect_menu_open;
@@ -3158,8 +3161,98 @@ editor_save_source_file(EditorProject *project, char *status,
         return 0;
     }
     project->source_dirty = 0;
+    project->selected_file_mtime = GetFileModTime(path);
+    project->source_external_change_reported = 0;
     snprintf(status, status_size, "Saved %s", project->source_scroll_file);
     return 1;
+}
+
+static long
+editor_selected_source_mtime(EditorProject *project)
+{
+    char path[EDITOR_PATH_CAP];
+
+    if(project == NULL || project->source_scroll_file[0] == '\0')
+        return 0;
+    snprintf(path, sizeof(path), "%s/%s", project->path,
+             project->source_scroll_file);
+    return GetFileModTime(path);
+}
+
+static int
+editor_source_changed_on_disk(EditorProject *project)
+{
+    long mtime;
+
+    if(project == NULL || project->selected_file_mtime <= 0)
+        return 0;
+    mtime = editor_selected_source_mtime(project);
+    return mtime > project->selected_file_mtime;
+}
+
+static int
+editor_reload_source_file(EditorProject *project, char *status,
+                          size_t status_size)
+{
+    char path[EDITOR_PATH_CAP];
+    int source_len;
+
+    if(project == NULL || project->source_scroll_file[0] == '\0')
+        return 0;
+    snprintf(path, sizeof(path), "%s/%s", project->path,
+             project->source_scroll_file);
+    if(!editor_read_text_file(path, project->source, sizeof(project->source))) {
+        snprintf(status, status_size, "Could not reload %s",
+                 project->source_scroll_file);
+        return 0;
+    }
+    source_len = (int)strlen(project->source);
+    project->source_cursor = ui_clampi(project->source_cursor, 0, source_len);
+    SetUITextAreaSelection(1501, project->source_cursor,
+                           project->source_cursor);
+    project->source_dirty = 0;
+    project->source_loaded = 1;
+    project->selected_file_mtime = GetFileModTime(path);
+    project->source_external_change_reported = 0;
+    editor_free_history(project->undo_items, &project->undo_count);
+    editor_free_history(project->redo_items, &project->redo_count);
+    snprintf(status, status_size, "Reloaded %s", project->source_scroll_file);
+    return 1;
+}
+
+static void
+editor_maybe_reload_source_file(EditorProject *project, char *status,
+                                size_t status_size)
+{
+    double now;
+    long mtime;
+
+    if(project == NULL || !project->source_loaded ||
+       project->source_scroll_file[0] == '\0')
+        return;
+    now = GetTime();
+    if(now - project->last_source_file_check < 0.6)
+        return;
+    project->last_source_file_check = now;
+    mtime = editor_selected_source_mtime(project);
+    if(mtime <= 0)
+        return;
+    if(project->selected_file_mtime <= 0) {
+        project->selected_file_mtime = mtime;
+        return;
+    }
+    if(mtime <= project->selected_file_mtime)
+        return;
+    if(project->source_dirty) {
+        if(!project->source_external_change_reported) {
+            snprintf(status, status_size,
+                     "%s changed on disk; autosave paused",
+                     project->source_scroll_file);
+            project->source_external_change_reported = 1;
+        }
+        return;
+    }
+    editor_reload_source_file(project, status, status_size);
 }
 
 static int
@@ -3187,6 +3280,15 @@ editor_maybe_autosave_source(EditorProject *project, char *status,
 {
     if(project == NULL || !project->source_dirty)
         return;
+    if(editor_source_changed_on_disk(project)) {
+        if(!project->source_external_change_reported) {
+            snprintf(status, status_size,
+                     "%s changed on disk; autosave paused",
+                     project->source_scroll_file);
+            project->source_external_change_reported = 1;
+        }
+        return;
+    }
     if(GetTime() - project->source_last_edit_time < 0.65)
         return;
     editor_save_source_now(project, status, status_size);
@@ -3612,6 +3714,9 @@ draw_source_code(Rectangle content, EditorProject *project,
         project->source_focused = 0;
         project->source_dirty = 0;
         project->source_loaded = 0;
+        project->selected_file_mtime = 0;
+        project->last_source_file_check = 0.0;
+        project->source_external_change_reported = 0;
         editor_free_history(project->undo_items, &project->undo_count);
         editor_free_history(project->redo_items, &project->redo_count);
     }
@@ -3624,6 +3729,9 @@ draw_source_code(Rectangle content, EditorProject *project,
         return;
     }
     project->source_loaded = 1;
+    if(project->selected_file_mtime <= 0)
+        project->selected_file_mtime = GetFileModTime(path);
+    editor_maybe_reload_source_file(project, status, status_size);
     if(project->source_pending_valid) {
         int line_no;
         int line_h;
@@ -4072,6 +4180,7 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
     Rectangle device;
     Camera2D preview_camera = {0};
     Camera2D editor_camera;
+    int inspect_transform = 0;
     int inspect_chrome = 0;
     int old_keyboard_enabled;
     int preview_keyboard_enabled;
@@ -4124,6 +4233,7 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
     preview_camera.target = (Vector2){0.0f, 0.0f};
     preview_camera.rotation = 0.0f;
     preview_camera.zoom = device.width / (float)project->preview_width;
+    inspect_transform = PushUIInspectTransform(preview_camera);
     editor_camera = g_ui_camera;
     g_ui_camera = preview_camera;
     old_view_w = ui_view_width;
@@ -4149,6 +4259,7 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
     SetUIViewSize(old_view_w, old_view_h);
     g_ui_camera = editor_camera;
     PopUIInputClip();
+    PopUIInspectTransform(inspect_transform);
     EndScissorMode();
     draw_preview_context_menu(project, device, status, status_size);
 }
@@ -4236,8 +4347,11 @@ draw_output_panel(Rectangle bounds, EditorProject *project,
     if(DrawUIGenericButton((int)(bounds.x + bounds.width) - ScaleUIPx(66),
                            (int)bounds.y + ScaleUIPx(4),
                            ScaleUIPx(56), ScaleUIPx(21), "Close",
-                           UI_BUTTON_STYLE_SECONDARY, 0, NULL))
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
         project->output_visible = 0;
+        snprintf(status, status_size, "Output closed");
+        return;
+    }
 
     diag = (Rectangle){bounds.x + (float)pad,
                        bounds.y + (float)header_h + (float)pad,
@@ -4415,8 +4529,12 @@ draw_canvas(Rectangle frame, Rectangle content, EditorProject *project,
         draw_source_pane(source, project, status, status_size);
     }
     if(output_h > 0) {
+        int chrome;
+
         editor_restore_ide_ui_frame(GetScreenWidth(), GetScreenHeight());
+        chrome = PushUIInspectChrome(1);
         draw_output_panel(output, project, status, status_size);
+        PopUIInspectChrome(chrome);
     }
 }
 
@@ -5012,15 +5130,13 @@ main(int argc, char **argv)
         draw_canvas(canvas_frame, canvas_content, &project, &recent, &sidebar,
                     status_text, sizeof(status_text));
         if(editor_selected_file_has_preview(&project) &&
-           !project.preview_interact) {
+           !project.preview_interact && preview_bounds_valid) {
             Vector2 mouse = GetMousePosition();
 
-            if(preview_bounds_valid)
-                SetUIInspectCanvasBounds(preview_bounds);
+            SetUIInspectCanvasBounds(preview_bounds);
             DrawUIInspectOverlay();
             if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
                !IsKeyDown(KEY_LEFT_ALT) && !IsKeyDown(KEY_RIGHT_ALT) &&
-               preview_bounds_valid &&
                CheckCollisionPointRec(mouse, preview_bounds)) {
                 UIInspectSelection selection = UIInspectGetSelection();
 

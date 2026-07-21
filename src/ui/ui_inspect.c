@@ -8,6 +8,7 @@
 #define UI_INSPECT_ACTION_MAX 64
 #define UI_INSPECT_PATH_MAX 512
 #define UI_INSPECT_SOURCE_STACK_MAX 32
+#define UI_INSPECT_TRANSFORM_STACK_MAX 16
 
 typedef struct UIInspectWidget {
     char id[UI_INSPECT_ID_MAX];
@@ -41,6 +42,8 @@ typedef struct UIInspectState {
     int chrome_depth;
     int canvas_active;
     Rectangle canvas_bounds;
+    Camera2D transform_stack[UI_INSPECT_TRANSFORM_STACK_MAX];
+    int transform_depth;
     Vector2 drag_start;
     Rectangle edit_start;
     char project_root[UI_INSPECT_PATH_MAX];
@@ -160,8 +163,11 @@ BeginUIInspectFrame(const char *project_root)
     }
     if(!g_ui_inspect.enabled)
         return;
+    if(project_root != NULL)
+        g_ui_inspect.transform_depth = 0;
     g_ui_inspect.widget_count = 0;
-    g_ui_inspect.canvas_active = 0;
+    if(project_root != NULL || g_ui_inspect.transform_depth <= 0)
+        g_ui_inspect.canvas_active = 0;
     g_ui_inspect.source_depth = 0;
     g_ui_inspect.widget_depth = 0;
     if(IsKeyPressed(KEY_F12))
@@ -256,12 +262,52 @@ ui_inspect_mouse_screen(void)
 static Rectangle
 ui_inspect_rect_to_screen(Rectangle bounds)
 {
+    Camera2D camera = g_ui_inspect.transform_depth > 0
+                          ? g_ui_inspect.transform_stack[g_ui_inspect.transform_depth - 1]
+                          : g_ui_camera;
+
     return (Rectangle){
-        g_ui_camera.offset.x + bounds.x * g_ui_camera.zoom,
-        g_ui_camera.offset.y + bounds.y * g_ui_camera.zoom,
-        bounds.width * g_ui_camera.zoom,
-        bounds.height * g_ui_camera.zoom
+        camera.offset.x + bounds.x * camera.zoom,
+        camera.offset.y + bounds.y * camera.zoom,
+        bounds.width * camera.zoom,
+        bounds.height * camera.zoom
     };
+}
+
+static float
+ui_inspect_screen_zoom(void)
+{
+    Camera2D camera = g_ui_inspect.transform_depth > 0
+                          ? g_ui_inspect.transform_stack[g_ui_inspect.transform_depth - 1]
+                          : g_ui_camera;
+
+    return camera.zoom > 0.0f ? camera.zoom : 1.0f;
+}
+
+int
+PushUIInspectTransform(Camera2D camera)
+{
+    int token;
+
+    ui_inspect_init_from_env();
+    token = g_ui_inspect.transform_depth;
+    if(g_ui_inspect.transform_depth >= UI_INSPECT_TRANSFORM_STACK_MAX)
+        return token;
+    if(camera.zoom <= 0.0f)
+        camera.zoom = 1.0f;
+    g_ui_inspect.transform_stack[g_ui_inspect.transform_depth++] = camera;
+    return token;
+}
+
+void
+PopUIInspectTransform(int token)
+{
+    ui_inspect_init_from_env();
+    if(token < 0)
+        token = 0;
+    if(token > g_ui_inspect.transform_depth)
+        token = g_ui_inspect.transform_depth;
+    g_ui_inspect.transform_depth = token;
 }
 
 int
@@ -371,7 +417,7 @@ ui_inspect_register_widget(const char *id, const char *kind,
                       kind != NULL ? kind : "widget");
     widget->bounds = *bounds;
     widget->screen_bounds = screen_bounds;
-    widget->screen_zoom = g_ui_camera.zoom > 0.0f ? g_ui_camera.zoom : 1.0f;
+    widget->screen_zoom = ui_inspect_screen_zoom();
     widget->flags = flags;
     widget->parent = g_ui_inspect.widget_depth > 0
                          ? g_ui_inspect.widget_stack[g_ui_inspect.widget_depth - 1]
@@ -457,7 +503,7 @@ UIWidgetSetBounds(UIWidget *widget, Rectangle bounds)
     inspect = &g_ui_inspect.widgets[widget->index];
     inspect->bounds = bounds;
     inspect->screen_bounds = ui_inspect_rect_to_screen(bounds);
-    inspect->screen_zoom = g_ui_camera.zoom > 0.0f ? g_ui_camera.zoom : 1.0f;
+    inspect->screen_zoom = ui_inspect_screen_zoom();
 }
 
 void

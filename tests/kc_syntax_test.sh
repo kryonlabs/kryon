@@ -16,9 +16,13 @@ mkdir -p "$work/src" "$out"
 
 cat > "$work/src/valid.kry" <<'EOF'
 screen valid {
+    first, second := 0
+    first, second = 1
+    value := first + second
     do InitializeThing()
     draw DrawThing()
-    set value = 1
+    value = 1
+    first, second = second, first
     native NativeThing()
     c #if 0
     c #endif
@@ -26,6 +30,12 @@ screen valid {
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/valid.kry" >"$err" 2>&1
+grep -q '__auto_type first = 0;' "$out/src/valid.c"
+grep -q '__auto_type second = 0;' "$out/src/valid.c"
+grep -q 'first = 1;' "$out/src/valid.c"
+grep -q 'second = 1;' "$out/src/valid.c"
+grep -q 'first = second;' "$out/src/valid.c"
+grep -q 'second = first;' "$out/src/valid.c"
 
 cat > "$work/src/preview.kry" <<'EOF'
 preview stage_preview(viewport: Rectangle) {
@@ -48,18 +58,31 @@ fi
 grep -q 'implicit call statements are not allowed' "$err"
 grep -Eq 'implicit_call\.kry:2:1: error:' "$err"
 
-cat > "$work/src/implicit_assignment.kry" <<'EOF'
+cat > "$work/src/bad_multi_decl.kry" <<'EOF'
 screen bad {
-    value = 1
+    a, b := 1, 2, 3
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/implicit_assignment.kry" >"$err" 2>&1; then
-    echo "implicit assignment was accepted" >&2
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_multi_decl.kry" >"$err" 2>&1; then
+    echo "bad multi-value declaration was accepted" >&2
     exit 1
 fi
-grep -q 'implicit assignments are not allowed' "$err"
-grep -Eq 'implicit_assignment\.kry:2:1: error:' "$err"
+grep -q 'inferred declaration count mismatch' "$err"
+grep -Eq 'bad_multi_decl\.kry:2:1: error:' "$err"
+
+cat > "$work/src/bad_multi_assignment.kry" <<'EOF'
+screen bad {
+    a, b = 1, 2, 3
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_multi_assignment.kry" >"$err" 2>&1; then
+    echo "bad multi-value assignment was accepted" >&2
+    exit 1
+fi
+grep -q 'assignment count mismatch' "$err"
+grep -Eq 'bad_multi_assignment\.kry:2:1: error:' "$err"
 
 cat > "$work/src/unbalanced.kry" <<'EOF'
 screen bad {

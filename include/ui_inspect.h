@@ -23,6 +23,8 @@ int UIInspectWidgetCount(void);
 UIInspectSelection UIInspectGetSelection(void);
 int UIInspectSelectAt(Vector2 point);
 void SetUIInspectCanvasBounds(Rectangle bounds);
+int PushUIInspectTransform(Camera2D camera);
+void PopUIInspectTransform(int token);
 int PushUIInspectChrome(int enabled);
 void PopUIInspectChrome(int token);
 int UIInspectInputCapturesClick(Vector2 point);

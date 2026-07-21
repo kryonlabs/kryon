@@ -507,6 +507,243 @@ parse_label_token(char **sp, char *dst, size_t dst_size)
     return n > 0;
 }
 
+static char *
+find_inferred_decl_op(char *line)
+{
+    int depth = 0;
+    int in_string = 0;
+    int escaped = 0;
+
+    for(char *p = line; p != NULL && *p != '\0'; p++) {
+        if(in_string) {
+            if(escaped)
+                escaped = 0;
+            else if(*p == '\\')
+                escaped = 1;
+            else if(*p == '"')
+                in_string = 0;
+            continue;
+        }
+        if(*p == '#')
+            return NULL;
+        if(*p == '"') {
+            in_string = 1;
+            continue;
+        }
+        if(*p == '(' || *p == '{' || *p == '[')
+            depth++;
+        else if(*p == ')' || *p == '}' || *p == ']')
+            depth--;
+        else if(depth == 0 && p[0] == ':' && p[1] == '=')
+            return p;
+    }
+    return NULL;
+}
+
+static int
+split_top_level_list(const char *src, char parts[][KC_BODY_LINE_MAX], int max)
+{
+    int count = 0;
+    int depth = 0;
+    int in_string = 0;
+    int escaped = 0;
+    const char *start = src;
+
+    for(const char *p = src; p != NULL; p++) {
+        int at_end = *p == '\0';
+
+        if(!at_end && in_string) {
+            if(escaped)
+                escaped = 0;
+            else if(*p == '\\')
+                escaped = 1;
+            else if(*p == '"')
+                in_string = 0;
+            continue;
+        }
+        if(!at_end) {
+            if(*p == '"') {
+                in_string = 1;
+                continue;
+            }
+            if(*p == '(' || *p == '{' || *p == '[')
+                depth++;
+            else if(*p == ')' || *p == '}' || *p == ']')
+                depth--;
+        }
+        if((at_end || (*p == ',' && depth == 0)) && count < max) {
+            size_t n = (size_t)(p - start);
+
+            while(n > 0 && isspace((unsigned char)start[n - 1]))
+                n--;
+            while(n > 0 && isspace((unsigned char)*start)) {
+                start++;
+                n--;
+            }
+            if(n >= KC_BODY_LINE_MAX)
+                n = KC_BODY_LINE_MAX - 1;
+            memcpy(parts[count], start, n);
+            parts[count][n] = '\0';
+            count++;
+            start = p + 1;
+        }
+        if(at_end)
+            break;
+    }
+    return count;
+}
+
+static int
+line_is_inferred_decl(char *line)
+{
+    char tmp[KC_BODY_LINE_MAX];
+    char names[KC_CALL_MAX][KC_BODY_LINE_MAX];
+    char *op;
+    int count;
+
+    snprintf(tmp, sizeof(tmp), "%s", line);
+    op = find_inferred_decl_op(tmp);
+    if(op == NULL)
+        return 0;
+    *op = '\0';
+    count = split_top_level_list(trim(tmp), names, KC_CALL_MAX);
+    if(count <= 0)
+        return 0;
+    for(int i = 0; i < count; i++) {
+        if(!is_ident_text(names[i]))
+            return 0;
+    }
+    return 1;
+}
+
+static void
+emit_inferred_decl(KryFile *file, int line_no, char *line, int is_state)
+{
+    char names[KC_CALL_MAX][KC_BODY_LINE_MAX];
+    char exprs[KC_CALL_MAX][KC_BODY_LINE_MAX];
+    char *op;
+    char *lhs;
+    char *rhs;
+    int name_count;
+    int expr_count;
+
+    op = find_inferred_decl_op(line);
+    if(op == NULL)
+        die("%s:%d: expected ':=' in inferred declaration", file->path,
+            line_no);
+    *op = '\0';
+    lhs = trim(line);
+    rhs = trim(op + 2);
+    if(lhs[0] == '\0' || rhs[0] == '\0')
+        die("%s:%d: expected names and values around ':='", file->path,
+            line_no);
+    name_count = split_top_level_list(lhs, names, KC_CALL_MAX);
+    expr_count = split_top_level_list(rhs, exprs, KC_CALL_MAX);
+    if(name_count != expr_count && expr_count != 1)
+        die("%s:%d: inferred declaration count mismatch: %d names, %d values",
+            file->path, line_no, name_count, expr_count);
+    for(int i = 0; i < name_count; i++) {
+        char out[KC_BODY_LINE_MAX];
+        const char *expr = expr_count == 1 ? exprs[0] : exprs[i];
+
+        if(!is_ident_text(names[i]))
+            die("%s:%d: invalid inferred variable name '%s'", file->path,
+                line_no, names[i]);
+        if(expr[0] == '\0')
+            die("%s:%d: expected inferred value for '%s'", file->path,
+                line_no, names[i]);
+        snprintf(out, sizeof(out), "%s__auto_type %s = %s;",
+                 is_state ? "static " : "", names[i], expr);
+        if(is_state) {
+            add_state_line(file, out);
+        } else {
+            if(strchr(expr, '(') != NULL)
+                emit_source_push(file, line_no);
+            add_body(file, "    %s", out);
+            if(strchr(expr, '(') != NULL)
+                emit_source_pop(file);
+        }
+    }
+}
+
+static char *
+find_assignment_op(char *line)
+{
+    int depth = 0;
+    int in_string = 0;
+    int escaped = 0;
+
+    for(char *p = line; p != NULL && *p != '\0'; p++) {
+        if(in_string) {
+            if(escaped)
+                escaped = 0;
+            else if(*p == '\\')
+                escaped = 1;
+            else if(*p == '"')
+                in_string = 0;
+            continue;
+        }
+        if(*p == '#')
+            return NULL;
+        if(*p == '"') {
+            in_string = 1;
+            continue;
+        }
+        if(*p == '(' || *p == '{' || *p == '[')
+            depth++;
+        else if(*p == ')' || *p == '}' || *p == ']')
+            depth--;
+        else if(depth == 0 && *p == '=') {
+            if(p > line && (p[-1] == ':' || p[-1] == '=' || p[-1] == '<' ||
+                            p[-1] == '>' || p[-1] == '!'))
+                continue;
+            if(p[1] == '=')
+                continue;
+            return p;
+        }
+    }
+    return NULL;
+}
+
+static void
+emit_assignment(KryFile *file, int line_no, char *line)
+{
+    char names[KC_CALL_MAX][KC_BODY_LINE_MAX];
+    char exprs[KC_CALL_MAX][KC_BODY_LINE_MAX];
+    char *op;
+    char *lhs;
+    char *rhs;
+    int name_count;
+    int expr_count;
+
+    op = find_assignment_op(line);
+    if(op == NULL)
+        die("%s:%d: expected '=' in assignment", file->path, line_no);
+    *op = '\0';
+    lhs = trim(line);
+    rhs = trim(op + 1);
+    if(lhs[0] == '\0' || rhs[0] == '\0')
+        die("%s:%d: expected names and values around '='", file->path,
+            line_no);
+    name_count = split_top_level_list(lhs, names, KC_CALL_MAX);
+    expr_count = split_top_level_list(rhs, exprs, KC_CALL_MAX);
+    if(name_count != expr_count && expr_count != 1)
+        die("%s:%d: assignment count mismatch: %d names, %d values",
+            file->path, line_no, name_count, expr_count);
+    for(int i = 0; i < name_count; i++) {
+        const char *expr = expr_count == 1 ? exprs[0] : exprs[i];
+
+        if(names[i][0] == '\0' || expr[0] == '\0')
+            die("%s:%d: expected assignment target and value", file->path,
+                line_no);
+        if(strchr(expr, '(') != NULL)
+            emit_source_push(file, line_no);
+        add_body(file, "    %s = %s;", names[i], expr);
+        if(strchr(expr, '(') != NULL)
+            emit_source_pop(file);
+    }
+}
+
 static void
 emit_state_decl(KryFile *file, int line_no, char *line)
 {
@@ -517,6 +754,10 @@ emit_state_decl(KryFile *file, int line_no, char *line)
     char *type;
     char *expr = NULL;
 
+    if(line_is_inferred_decl(line)) {
+        emit_inferred_decl(file, line_no, line, 1);
+        return;
+    }
     if(starts_word(line, "let"))
         die("%s:%d: legacy 'let' syntax was removed; use 'name: type = value'",
             file->path, line_no);
@@ -590,6 +831,15 @@ line_is_assignment_statement(const char *line)
     return 0;
 }
 
+static int
+line_is_mutation_statement(const char *line)
+{
+    return line != NULL &&
+           (strstr(line, "+=") != NULL || strstr(line, "-=") != NULL ||
+            strstr(line, "*=") != NULL || strstr(line, "/=") != NULL ||
+            strstr(line, "++") != NULL || strstr(line, "--") != NULL);
+}
+
 static void
 count_line_braces(const char *line, int *opens, int *closes)
 {
@@ -630,6 +880,8 @@ parse_statement(KryFile *file, int line_no, char *line)
     } else if(starts_word(line, "let")) {
         die("%s:%d: legacy 'let' syntax was removed; use 'var name: type = value'",
             file->path, line_no);
+    } else if(line_is_inferred_decl(line)) {
+        emit_inferred_decl(file, line_no, line, 0);
     } else if(starts_word(line, "background")) {
         char *q = trim(line + strlen("background"));
 
@@ -1037,6 +1289,10 @@ parse_statement(KryFile *file, int line_no, char *line)
                       hit, q);
         emit_source_pop(file);
         add_body_line(file, 0, "    if(%s) {", hit);
+    } else if(line_is_mutation_statement(line)) {
+        add_body(file, "    %s;", line);
+    } else if(find_assignment_op(line) != NULL) {
+        emit_assignment(file, line_no, line);
     } else {
         size_t n = strlen(line);
 
@@ -1045,8 +1301,8 @@ parse_statement(KryFile *file, int line_no, char *line)
                 file->path, line_no, line, line);
         }
         if(line_is_assignment_statement(line)) {
-            die("%s:%d: implicit assignments are not allowed; use 'set %s'",
-                file->path, line_no, line);
+            die("%s:%d: invalid assignment syntax: %s", file->path, line_no,
+                line);
         }
         die("%s:%d: unknown statement: %s", file->path, line_no, line);
     }
@@ -1240,11 +1496,12 @@ parse_kry(KryFile *file)
                          sizeof(file->includes[file->include_count]),
                          "%s.h", import_base);
                 file->include_count++;
-            } else if(starts_word(line, "screen") ||
-                      starts_word(line, "preview") ||
-                      starts_word(line, "page") ||
-                      starts_word(line, "fn") ||
-                      starts_word(line, "pub")) {
+            } else if(!in_screen &&
+                      (starts_word(line, "screen") ||
+                       starts_word(line, "preview") ||
+                       starts_word(line, "page") ||
+                       starts_word(line, "fn") ||
+                       starts_word(line, "pub"))) {
                 int is_pub = 0;
                 int is_fn;
                 KryFunction *fn;

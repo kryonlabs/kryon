@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "ui_inspect.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +56,32 @@ main(void)
         check_int("canvas screen y", (int)p.y, 50);
         check_int("canvas rect w", (int)rr.width, 40);
         check_int("canvas rect h", (int)rr.height, 20);
+    }
+
+    {
+        Camera2D camera = {0};
+        UIWidget widget;
+        UIInspectSelection selection;
+        int token;
+
+        SetUIInspectEnabled(1);
+        BeginUIInspectFrame(".");
+        SetUIInspectCanvasBounds((Rectangle){40, 50, 200, 120});
+        camera.offset = (Vector2){40, 50};
+        camera.zoom = 2.0f;
+        token = PushUIInspectTransform(camera);
+        BeginUIInspectFrame(NULL);
+        widget = BeginUIWidget("test", "inspect-transform",
+                               (Rectangle){10, 20, 30, 15}, 0);
+        EndUIWidget(&widget);
+        check_int("inspect transformed count", UIInspectWidgetCount(), 1);
+        check_int("inspect transformed hit",
+                  UIInspectSelectAt((Vector2){65, 95}), 1);
+        selection = UIInspectGetSelection();
+        check_int("inspect selected x", (int)selection.bounds.x, 10);
+        check_int("inspect transformed miss",
+                  UIInspectSelectAt((Vector2){20, 20}), 0);
+        PopUIInspectTransform(token);
     }
 
     return 0;
