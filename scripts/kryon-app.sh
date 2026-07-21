@@ -36,6 +36,12 @@ command=$1
 target=${2:-}
 
 cd "$project"
+project_id=$(pwd | cksum | awk '{print $1}')
+lock_dir="${TMPDIR:-/tmp}/kryon-app-${project_id}.lock"
+while ! mkdir "$lock_dir" 2>/dev/null; do
+    sleep 1
+done
+trap 'rmdir "$lock_dir"' 0 1 2 3 15
 
 if [ "$(uname -s 2>/dev/null || true)" = "FreeBSD" ] && command -v gmake >/dev/null 2>&1; then
     make_cmd=${MAKE:-gmake}
