@@ -1987,13 +1987,17 @@ main(int argc, char **argv)
         return 1;
     }
     for(int i = first_file; i < argc; i++) {
-        KryFile file = {0};
+        KryFile *file;
 
-        file.path = argv[i];
-        file.no_main = no_main;
-        parse_kry(&file);
-        write_generated(&file, root, out_dir);
-        free(file.text);
+        file = calloc(1, sizeof(*file));
+        if(file == NULL)
+            die("out of memory");
+        file->path = argv[i];
+        file->no_main = no_main;
+        parse_kry(file);
+        write_generated(file, root, out_dir);
+        free(file->text);
+        free(file);
     }
     return 0;
 }
