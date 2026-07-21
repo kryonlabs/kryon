@@ -32,10 +32,13 @@ EOF
 "$kc" --no-main --root "$work" -o "$out" "$work/src/valid.kry" >"$err" 2>&1
 grep -q '__auto_type first = 0;' "$out/src/valid.c"
 grep -q '__auto_type second = 0;' "$out/src/valid.c"
-grep -q 'first = 1;' "$out/src/valid.c"
-grep -q 'second = 1;' "$out/src/valid.c"
-grep -q 'first = second;' "$out/src/valid.c"
-grep -q 'second = first;' "$out/src/valid.c"
+grep -Eq '__auto_type __kryon_assign_[0-9]+_0 = 1;' "$out/src/valid.c"
+grep -Eq 'first = __kryon_assign_[0-9]+_0;' "$out/src/valid.c"
+grep -Eq 'second = __kryon_assign_[0-9]+_0;' "$out/src/valid.c"
+grep -Eq '__auto_type __kryon_assign_[0-9]+_0 = second;' "$out/src/valid.c"
+grep -Eq '__auto_type __kryon_assign_[0-9]+_1 = first;' "$out/src/valid.c"
+grep -Eq 'first = __kryon_assign_[0-9]+_0;' "$out/src/valid.c"
+grep -Eq 'second = __kryon_assign_[0-9]+_1;' "$out/src/valid.c"
 
 cat > "$work/src/preview.kry" <<'EOF'
 preview stage_preview(viewport: Rectangle) {

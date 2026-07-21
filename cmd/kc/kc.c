@@ -730,18 +730,49 @@ emit_assignment(KryFile *file, int line_no, char *line)
     if(name_count != expr_count && expr_count != 1)
         die("%s:%d: assignment count mismatch: %d names, %d values",
             file->path, line_no, name_count, expr_count);
-    for(int i = 0; i < name_count; i++) {
-        const char *expr = expr_count == 1 ? exprs[0] : exprs[i];
-
-        if(names[i][0] == '\0' || expr[0] == '\0')
+    if(expr_count == 1 && name_count == 1) {
+        if(names[0][0] == '\0' || exprs[0][0] == '\0')
             die("%s:%d: expected assignment target and value", file->path,
                 line_no);
-        if(strchr(expr, '(') != NULL)
+        if(strchr(exprs[0], '(') != NULL)
             emit_source_push(file, line_no);
-        add_body(file, "    %s = %s;", names[i], expr);
-        if(strchr(expr, '(') != NULL)
+        add_body(file, "    %s = %s;", names[0], exprs[0]);
+        if(strchr(exprs[0], '(') != NULL)
+            emit_source_pop(file);
+        return;
+    }
+
+    for(int i = 0; i < name_count; i++) {
+        if(names[i][0] == '\0')
+            die("%s:%d: expected assignment target", file->path, line_no);
+    }
+    for(int i = 0; i < expr_count; i++) {
+        if(exprs[i][0] == '\0')
+            die("%s:%d: expected assignment value", file->path, line_no);
+    }
+
+    if(expr_count == 1) {
+        if(strchr(exprs[0], '(') != NULL)
+            emit_source_push(file, line_no);
+        add_body(file, "    __auto_type __kryon_assign_%d_0 = %s;", line_no,
+                 exprs[0]);
+        if(strchr(exprs[0], '(') != NULL)
+            emit_source_pop(file);
+        for(int i = 0; i < name_count; i++)
+            add_body(file, "    %s = __kryon_assign_%d_0;", names[i], line_no);
+        return;
+    }
+
+    for(int i = 0; i < expr_count; i++) {
+        if(strchr(exprs[i], '(') != NULL)
+            emit_source_push(file, line_no);
+        add_body(file, "    __auto_type __kryon_assign_%d_%d = %s;", line_no,
+                 i, exprs[i]);
+        if(strchr(exprs[i], '(') != NULL)
             emit_source_pop(file);
     }
+    for(int i = 0; i < name_count; i++)
+        add_body(file, "    %s = __kryon_assign_%d_%d;", names[i], line_no, i);
 }
 
 static void
