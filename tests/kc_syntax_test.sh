@@ -34,6 +34,9 @@ screen valid {
         }
         value += i
     }
+    while value < 3 {
+        value++
+    }
     app := (void*)0
     native (void)app
 }
@@ -51,6 +54,7 @@ grep -Eq '__auto_type __kryon_assign_[0-9]+_1 = first;' "$out/src/valid.c"
 grep -Eq 'first = __kryon_assign_[0-9]+_0;' "$out/src/valid.c"
 grep -Eq 'second = __kryon_assign_[0-9]+_1;' "$out/src/valid.c"
 grep -q 'continue;' "$out/src/valid.c"
+grep -q 'while(value < 3)' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
 {

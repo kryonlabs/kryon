@@ -1320,6 +1320,18 @@ parse_statement(KryFile *file, int line_no, char *line)
             return;
         }
         add_body(file, "    for(%s) {", q);
+    } else if(starts_word(line, "while")) {
+        char *q = trim(line + strlen("while"));
+        size_t n = strlen(q);
+
+        if(n == 0 || q[n - 1] != '{')
+            die("%s:%d: expected while condition ending with {", file->path,
+                line_no);
+        q[n - 1] = '\0';
+        q = trim(q);
+        if(q[0] == '\0')
+            die("%s:%d: expected while condition", file->path, line_no);
+        add_body(file, "    while(%s) {", q);
     } else if(starts_word(line, "button")) {
         char *q = trim(line + strlen("button"));
         size_t n = strlen(q);
