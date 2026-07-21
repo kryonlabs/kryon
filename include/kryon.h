@@ -37,5 +37,9 @@
 #include "markdown.h"
 #include "app_host.h"
 #include "app_runtime.h"
+#include "preview_canvas.h"
+#include "preview_host.h"
+#include "preview_io.h"
+#include "preview_layers.h"
 
 #endif /* KRYON_H */

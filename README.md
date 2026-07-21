@@ -90,6 +90,35 @@ the dependency source of truth and common build recipes should live under Kryon.
 For TLS-enabled curl builds, `mk/vendor.mk` passes the `OPENSSL_*` make
 variables through to the vendored curl CMake build.
 
+## App Builds
+
+Kryon owns the app command surface through `kryon-app`. From an app repository:
+
+```sh
+kryon-app build native
+kryon-app build web
+kryon-app build android-debug
+kryon-app package appimage
+kryon-app preview
+```
+
+App `project.kryon` files should use `target` entries that call `kryon-app`
+rather than embedding platform-specific build commands directly. Existing app
+Makefiles can remain as backend glue while repeated native, web, Android, and
+packaging logic moves into Kryon `mk/` fragments.
+
+## Preview Projects
+
+Kryon IDE can host richer project previews without requiring the project to be
+rewritten as `.kry` screens. A project can add `project.kryon` metadata such as
+`preview_size`, `preview_asset_root`, and `preview_scene`, then provide a
+`build_live` command that builds `build/kryon/live_preview.so`. The live module
+continues to expose the normal `CreateKryonLivePreview`/`AppHost` entry point,
+and can optionally expose `CreateKryonPreviewHost` for future scene/layer editing
+metadata. This keeps gameplay or simulation code in the app while letting Kryon
+IDE select scenes, draw interactive previews, and eventually edit shared preview
+layers.
+
 ## Conventions
 
 Kryon follows raylib-style C conventions where practical: lowercase module

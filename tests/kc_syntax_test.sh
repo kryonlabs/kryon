@@ -27,6 +27,14 @@ EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/valid.kry" >"$err" 2>&1
 
+cat > "$work/src/preview.kry" <<'EOF'
+preview stage_preview(viewport: Rectangle) {
+    background BLACK
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/preview.kry" >"$err" 2>&1
+
 cat > "$work/src/implicit_call.kry" <<'EOF'
 screen bad {
     InitializeThing()

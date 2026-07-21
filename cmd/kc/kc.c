@@ -1241,6 +1241,7 @@ parse_kry(KryFile *file)
                          "%s.h", import_base);
                 file->include_count++;
             } else if(starts_word(line, "screen") ||
+                      starts_word(line, "preview") ||
                       starts_word(line, "page") ||
                       starts_word(line, "fn") ||
                       starts_word(line, "pub")) {
@@ -1260,9 +1261,11 @@ parse_kry(KryFile *file)
                 is_fn = starts_word(decl, "fn");
                 q = starts_word(decl, "screen")
                         ? decl + strlen("screen")
+                        : (starts_word(decl, "preview")
+                               ? decl + strlen("preview")
                         : (starts_word(decl, "page")
                                ? decl + strlen("page")
-                               : decl + strlen("fn"));
+                               : decl + strlen("fn")));
 
                 if(depth != 0)
                     die("%s:%d: nested functions are not supported",

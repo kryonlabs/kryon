@@ -12,6 +12,7 @@ STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
 KC = $(BUILD_DIR)/bin/kc
 KI = $(BUILD_DIR)/bin/kryon
+KRYON_APP = $(BUILD_DIR)/bin/kryon-app
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
@@ -101,11 +102,12 @@ FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
+PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean run tools examples-run font-assets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
 
-all: $(LIB) $(KC) $(KI)
+all: $(LIB) $(KC) $(KI) $(KRYON_APP)
 
 run: $(KI)
 	@if [ -n "$(PROJECT)" ]; then \
@@ -122,11 +124,12 @@ run: $(KI)
 		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI); \
 	fi
 
-tools: $(KC) $(KI)
+tools: $(KC) $(KI) $(KRYON_APP)
 
-install: $(KI)
+install: $(KI) $(KRYON_APP)
 	mkdir -p $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 755 $(KI) $(DESTDIR)$(BINDIR)/kryon
+	$(INSTALL) -m 755 $(KRYON_APP) $(DESTDIR)$(BINDIR)/kryon-app
 
 examples-run:
 	@$(MAKE) -C examples run
@@ -143,7 +146,7 @@ docs-site:
 	cp -R icons platforms language $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
@@ -152,6 +155,7 @@ test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_
 	$(MARKDOWN_TEST)
 	$(RAYLIB_COMPAT_TEST)
 	$(UI_TK_TEST)
+	$(PREVIEW_TEST)
 
 bsd-check:
 	$(MAKE) clean
@@ -178,6 +182,10 @@ $(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL
 
 $(KC): cmd/kc/kc.c | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -o $@ cmd/kc/kc.c
+
+$(KRYON_APP): scripts/kryon-app.sh | $(BUILD_DIR)/bin
+	cp scripts/kryon-app.sh $@
+	chmod 755 $@
 
 $(KI): cmd/ki/main.c $(LIB) $(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS) -Isrc/ui $(RAY_CFLAGS) -o $@ \
@@ -286,6 +294,12 @@ $(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(RAYLIB_A) | $(BUILD_D
 $(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tk_test.c \
+		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+$(PREVIEW_TEST): tests/preview_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/preview_test.c \
 		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 

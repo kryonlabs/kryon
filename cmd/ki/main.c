@@ -22,6 +22,7 @@ enum {
     EDITOR_MAX_TREE_ITEMS = 1024,
     EDITOR_MAX_EXPANDED_DIRS = 256,
     EDITOR_MAX_RUN_TARGETS = 16,
+    EDITOR_MAX_PREVIEW_SCENES = 128,
     EDITOR_MAX_OPEN_FILES = 12,
     EDITOR_MAX_SEARCH_RESULTS = 160,
     EDITOR_MAX_DIAGNOSTICS = 128,
@@ -50,6 +51,13 @@ typedef struct EditorRunTarget {
     char name[48];
     char command[EDITOR_PATH_CAP];
 } EditorRunTarget;
+
+typedef struct EditorPreviewScene {
+    char id[64];
+    char group[64];
+    char title[128];
+    char source_path[EDITOR_PATH_CAP];
+} EditorPreviewScene;
 
 typedef struct EditorOpenFile {
     char path[EDITOR_PATH_CAP];
@@ -133,6 +141,9 @@ typedef struct EditorProject {
     int preview_interact;
     int preview_width;
     int preview_height;
+    char preview_asset_root[EDITOR_PATH_CAP];
+    EditorPreviewScene preview_scenes[EDITOR_MAX_PREVIEW_SCENES];
+    int preview_scene_count;
     int preview_preset;
     EditorPreviewScaleMode preview_scale_mode;
     char search_text[128];
@@ -150,8 +161,10 @@ typedef struct EditorProject {
     int diagnostic_count;
     int selected_diagnostic;
     AppHost *host;
+    PreviewHost *preview_host;
     void *live_library;
     DestroyAppHostCallback destroy_live_host;
+    DestroyPreviewHostCallback destroy_preview_host;
 } EditorProject;
 
 typedef struct EditorRecentProjects {
@@ -591,6 +604,60 @@ editor_parse_three_quoted_values(char *line, const char *key, char *a,
 }
 
 static int
+editor_parse_four_quoted_values(char *line, const char *key, char *a,
+                                size_t a_size, char *b, size_t b_size,
+                                char *c, size_t c_size, char *d,
+                                size_t d_size)
+{
+    char *p;
+    char *end;
+    char *values[4] = {a, b, c, d};
+    size_t sizes[4] = {a_size, b_size, c_size, d_size};
+    size_t key_len;
+
+    if(line == NULL || key == NULL || a == NULL || b == NULL || c == NULL ||
+       d == NULL)
+        return 0;
+    key_len = strlen(key);
+    if(strncmp(line, key, key_len) != 0)
+        return 0;
+    p = line + key_len;
+    if(*p != ' ' && *p != '\t')
+        return 0;
+    for(int i = 0; i < 4; i++) {
+        while(*p == ' ' || *p == '\t')
+            p++;
+        if(*p != '"')
+            return 0;
+        p++;
+        end = strchr(p, '"');
+        if(end == NULL)
+            return 0;
+        *end = '\0';
+        snprintf(values[i], sizes[i], "%s", p);
+        p = end + 1;
+    }
+    return 1;
+}
+
+static int
+editor_parse_two_ints(char *line, const char *key, int *a, int *b)
+{
+    char *p;
+    size_t key_len;
+
+    if(line == NULL || key == NULL || a == NULL || b == NULL)
+        return 0;
+    key_len = strlen(key);
+    if(strncmp(line, key, key_len) != 0)
+        return 0;
+    p = line + key_len;
+    if(*p != ' ' && *p != '\t')
+        return 0;
+    return sscanf(p, " %d %d", a, b) == 2;
+}
+
+static int
 editor_project_has_make_target(const EditorProject *project, const char *target)
 {
     char path[EDITOR_PATH_CAP];
@@ -618,6 +685,18 @@ editor_project_has_make_target(const EditorProject *project, const char *target)
     return 0;
 }
 
+static int
+editor_project_has_kryon_app(const EditorProject *project)
+{
+    char path[EDITOR_PATH_CAP];
+
+    if(project == NULL)
+        return 0;
+    path_join(path, sizeof(path), project->path,
+              "vendor/kryon/scripts/kryon-app.sh");
+    return FileExists(path);
+}
+
 static void
 editor_add_run_target(EditorProject *project, const char *label,
                       const char *name, const char *command)
@@ -640,31 +719,37 @@ editor_detect_run_targets(EditorProject *project)
         const char *label;
         const char *name;
         const char *make_target;
+        const char *kryon_command;
     } candidates[] = {
-        {"Native", "native", "run"},
-        {"Web", "web", "web"},
-        {"Android Debug", "android-debug", "android-debug"},
-        {"Android Release", "android-release", "android-release"},
-        {"Windows", "windows", "windows"},
-        {"AppImage", "appimage", "appimage"},
-        {"Click", "click", "click"},
-        {"Snap", "snap", "snap"},
-        {"Flatpak", "flatpak", "flatpak"}
+        {"Native", "native", "run", "run native"},
+        {"Web", "web", "web", "build web"},
+        {"Android Debug", "android-debug", "android-debug", "build android-debug"},
+        {"Android Release", "android-release", "android-release", "build android-release"},
+        {"Windows", "windows", "windows", "build windows"},
+        {"AppImage", "appimage", "appimage", "package appimage"},
+        {"Click", "click", "click", "package click"},
+        {"Snap", "snap", "snap", "package snap"},
+        {"Flatpak", "flatpak", "flatpak", "package flatpak"}
     };
+    int has_kryon_app;
 
     if(project == NULL)
         return;
     project->selected_run_target = 0;
     if(project->run_target_count > 0)
         return;
+    has_kryon_app = editor_project_has_kryon_app(project);
     for(size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
         if(editor_project_has_make_target(project, candidates[i].make_target)) {
-            char command[96];
+            char command[EDITOR_PATH_CAP];
 
-            snprintf(command, sizeof(command), "make %s",
-                     strcmp(candidates[i].make_target, "run") == 0
-                         ? "run"
-                         : candidates[i].make_target);
+            if(has_kryon_app)
+                snprintf(command, sizeof(command),
+                         "sh vendor/kryon/scripts/kryon-app.sh %s",
+                         candidates[i].kryon_command);
+            else
+                snprintf(command, sizeof(command), "make %s",
+                         candidates[i].make_target);
             editor_add_run_target(project, candidates[i].label,
                                   candidates[i].name, command);
         }
@@ -688,6 +773,8 @@ editor_load_project_config(EditorProject *project)
     project->build_live_command[0] = '\0';
     project->auto_live_build = 1;
     project->run_target_count = 0;
+    project->preview_scene_count = 0;
+    project->preview_asset_root[0] = '\0';
 
     path_join(path, sizeof(path), project->path, "project.kryon");
     file = fopen(path, "r");
@@ -698,6 +785,8 @@ editor_load_project_config(EditorProject *project)
         char label[48];
         char name[48];
         char command[EDITOR_PATH_CAP];
+        char title[128];
+        char source_path[EDITOR_PATH_CAP];
 
         if(trimmed[0] == '\0' || trimmed[0] == '#')
             continue;
@@ -729,6 +818,39 @@ editor_load_project_config(EditorProject *project)
                                             name, sizeof(name),
                                             command, sizeof(command))) {
             editor_add_run_target(project, label, name, command);
+            continue;
+        }
+        if(editor_parse_three_quoted_values(trimmed, "target",
+                                            label, sizeof(label),
+                                            name, sizeof(name),
+                                            command, sizeof(command))) {
+            editor_add_run_target(project, label, name, command);
+            continue;
+        }
+        if(editor_parse_two_ints(trimmed, "preview_size",
+                                 &project->preview_width,
+                                 &project->preview_height))
+            continue;
+        if(editor_parse_quoted_value(trimmed, "preview_asset_root",
+                                     project->preview_asset_root,
+                                     sizeof(project->preview_asset_root)))
+            continue;
+        if(editor_parse_four_quoted_values(trimmed, "preview_scene",
+                                           name, sizeof(name),
+                                           label, sizeof(label),
+                                           title, sizeof(title),
+                                           source_path,
+                                           sizeof(source_path))) {
+            EditorPreviewScene *scene;
+
+            if(project->preview_scene_count >= EDITOR_MAX_PREVIEW_SCENES)
+                continue;
+            scene = &project->preview_scenes[project->preview_scene_count++];
+            snprintf(scene->id, sizeof(scene->id), "%s", name);
+            snprintf(scene->group, sizeof(scene->group), "%s", label);
+            snprintf(scene->title, sizeof(scene->title), "%s", title);
+            snprintf(scene->source_path, sizeof(scene->source_path), "%s",
+                     source_path);
             continue;
         }
     }
@@ -902,8 +1024,7 @@ editor_selected_file_has_preview(const EditorProject *project)
 {
     if(project == NULL || !project->loaded || project->selected_file[0] == '\0')
         return project != NULL && project->host != NULL;
-    return path_ext_eq(project->selected_file, ".kry") &&
-           editor_source_path_has_screen(project, project->selected_file);
+    return editor_source_path_has_screen(project, project->selected_file);
 }
 
 static const char *
@@ -1252,6 +1373,8 @@ editor_unload_live_module(EditorProject *project)
 {
     if(project == NULL)
         return;
+    if(project->destroy_preview_host != NULL && project->preview_host != NULL)
+        project->destroy_preview_host(project->preview_host);
     if(project->destroy_live_host != NULL && project->host != NULL)
         project->destroy_live_host(project->host);
 #if !defined(_WIN32)
@@ -1259,8 +1382,10 @@ editor_unload_live_module(EditorProject *project)
         dlclose(project->live_library);
 #endif
     project->host = NULL;
+    project->preview_host = NULL;
     project->live_library = NULL;
     project->destroy_live_host = NULL;
+    project->destroy_preview_host = NULL;
 }
 
 static void
@@ -1363,6 +1488,8 @@ editor_parse_kry_screen_line(char *line, EditorKryScreen *screen,
         return 0;
     if(editor_starts_word(line, "screen"))
         p = editor_trim_line(line + strlen("screen"));
+    else if(editor_starts_word(line, "preview"))
+        p = editor_trim_line(line + strlen("preview"));
     else if(editor_starts_word(line, "page"))
         p = editor_trim_line(line + strlen("page"));
     else
@@ -1829,6 +1956,25 @@ editor_load_live_module(EditorProject *project, char *status, size_t status_size
         project->live_library = NULL;
         project->destroy_live_host = NULL;
         return 0;
+    }
+
+    dlerror();
+    symbol = dlsym(project->live_library, "CreateKryonPreviewHost");
+    error = dlerror();
+    if(error == NULL && symbol != NULL) {
+        CreatePreviewHostCallback create_preview_host;
+
+        create_preview_host = (CreatePreviewHostCallback)symbol;
+        project->preview_host = create_preview_host(PREVIEW_HOST_ABI_VERSION,
+                                                    project->path);
+        dlerror();
+        symbol = dlsym(project->live_library, "DestroyKryonPreviewHost");
+        error = dlerror();
+        if(error == NULL && symbol != NULL)
+            project->destroy_preview_host =
+                (DestroyPreviewHostCallback)symbol;
+    } else {
+        dlerror();
     }
     if(selected_file[0] != '\0' &&
        SetAppScreenBySourcePath(project->host, selected_file)) {
