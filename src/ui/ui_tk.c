@@ -1364,13 +1364,16 @@ DrawUIColorPicker(Rectangle bounds, Color *color)
 int
 UIAcceleratorPressed(UIAccelerator accelerator)
 {
-    if(accelerator.ctrl && !(IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)))
+    if(accelerator.ctrl &&
+       !(UIKeyDown(KEY_LEFT_CONTROL) || UIKeyDown(KEY_RIGHT_CONTROL)))
         return 0;
-    if(accelerator.shift && !(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)))
+    if(accelerator.shift &&
+       !(UIKeyDown(KEY_LEFT_SHIFT) || UIKeyDown(KEY_RIGHT_SHIFT)))
         return 0;
-    if(accelerator.alt && !(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)))
+    if(accelerator.alt &&
+       !(UIKeyDown(KEY_LEFT_ALT) || UIKeyDown(KEY_RIGHT_ALT)))
         return 0;
-    return IsKeyPressed(accelerator.key) ? accelerator.id : 0;
+    return UIKeyPressed(accelerator.key) ? accelerator.id : 0;
 }
 
 int

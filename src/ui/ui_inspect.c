@@ -57,6 +57,14 @@ typedef struct UIInspectState {
 
 static UIInspectState g_ui_inspect;
 
+static void ui_inspect_select_at(Vector2 mouse);
+
+static int
+ui_inspect_bypass_down(void)
+{
+    return IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT);
+}
+
 static void
 ui_inspect_strncpy(char *dst, size_t dst_size, const char *src)
 {
@@ -216,6 +224,21 @@ UIInspectGetSelection(void)
     return selection;
 }
 
+int
+UIInspectSelectAt(Vector2 point)
+{
+    ui_inspect_init_from_env();
+    if(!g_ui_inspect.enabled || !g_ui_inspect.visible)
+        return 0;
+    if(ui_inspect_bypass_down())
+        return 0;
+    if(g_ui_inspect.canvas_active &&
+       !CheckCollisionPointRec(point, g_ui_inspect.canvas_bounds))
+        return 0;
+    ui_inspect_select_at(point);
+    return g_ui_inspect.selected >= 0;
+}
+
 void
 SetUIInspectCanvasBounds(Rectangle bounds)
 {
@@ -268,6 +291,8 @@ UIInspectInputCapturesClick(Vector2 point)
     ui_inspect_init_from_env();
     (void)point;
     if(g_ui_inspect.chrome_depth > 0)
+        return 0;
+    if(ui_inspect_bypass_down())
         return 0;
     if(g_ui_inspect.dragging || g_ui_inspect.resizing)
         return 1;
@@ -523,6 +548,8 @@ ui_inspect_update_interaction(void)
     if(g_ui_inspect.canvas_active &&
        !CheckCollisionPointRec(screen_mouse, g_ui_inspect.canvas_bounds) &&
        !g_ui_inspect.dragging && !g_ui_inspect.resizing)
+        return;
+    if(ui_inspect_bypass_down())
         return;
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {

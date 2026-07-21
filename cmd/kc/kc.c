@@ -14,6 +14,8 @@ enum {
     KC_INCLUDE_MAX = 64,
     KC_FUNCTION_MAX = 32,
     KC_CALL_MAX = 64,
+    KC_RAW_MAX = 1024,
+    KC_STATE_MAX = 128,
     KC_BODY_MAX = 512,
     KC_BODY_LINE_MAX = 1024,
 };
@@ -34,8 +36,20 @@ typedef struct KryFunction {
 typedef struct KryFile {
     char *path;
     char *text;
+    char app_title[256];
+    int app_width;
+    int app_height;
+    int app_fps;
+    int app_font_examples;
+    char app_theme[KC_NAME_MAX];
+    int app_dark_mode;
+    int no_main;
+    char raw[KC_RAW_MAX][KC_BODY_LINE_MAX];
+    char state[KC_STATE_MAX][KC_BODY_LINE_MAX];
     char includes[KC_INCLUDE_MAX][KC_PATH_MAX];
     KryFunction functions[KC_FUNCTION_MAX];
+    int raw_count;
+    int state_count;
     int include_count;
     int function_count;
     int current_line;
@@ -44,6 +58,26 @@ typedef struct KryFile {
 
 static void die(const char *fmt, ...);
 static void strip_kry_ext(char *dst, size_t dst_size, const char *path);
+
+static void
+add_raw_line(KryFile *file, const char *line)
+{
+    if(file->raw_count >= KC_RAW_MAX)
+        die("%s: top-level raw block is too large", file->path);
+    snprintf(file->raw[file->raw_count],
+             sizeof(file->raw[file->raw_count]), "%s", line);
+    file->raw_count++;
+}
+
+static void
+add_state_line(KryFile *file, const char *line)
+{
+    if(file->state_count >= KC_STATE_MAX)
+        die("%s: state block is too large", file->path);
+    snprintf(file->state[file->state_count],
+             sizeof(file->state[file->state_count]), "%s", line);
+    file->state_count++;
+}
 
 static void
 add_body_line(KryFile *file, int source_line, const char *fmt, ...)
@@ -150,6 +184,22 @@ parse_ident(char **sp, char *dst, size_t dst_size)
     dst[n] = '\0';
     *sp = s;
     return 1;
+}
+
+static int
+is_ident_text(const char *text)
+{
+    char tmp[KC_NAME_MAX];
+    char *p;
+
+    if(text == NULL || text[0] == '\0')
+        return 0;
+    snprintf(tmp, sizeof(tmp), "%s", text);
+    p = tmp;
+    if(!parse_ident(&p, tmp, sizeof(tmp)))
+        return 0;
+    p = trim(p);
+    return p[0] == '\0';
 }
 
 static int
@@ -321,6 +371,151 @@ convert_arg_list(char *dst, size_t dst_size, const char *src)
 }
 
 static int
+read_prop_value(const char *src, const char *key, char *dst, size_t dst_size)
+{
+    char pattern[64];
+    const char *p;
+    const char *end;
+    int depth = 0;
+    int in_string = 0;
+
+    snprintf(pattern, sizeof(pattern), "%s:", key);
+    p = strstr(src, pattern);
+    if(p == NULL)
+        return 0;
+    p += strlen(pattern);
+    while(*p == ' ' || *p == '\t')
+        p++;
+    end = p;
+    while(*end != '\0') {
+        if(*end == '"' && (end == p || end[-1] != '\\'))
+            in_string = !in_string;
+        if(!in_string) {
+            if(*end == '(' || *end == '{' || *end == '[')
+                depth++;
+            else if(*end == ')' || *end == '}' || *end == ']')
+                depth--;
+            else if(depth <= 0 && (*end == ' ' || *end == '\t')) {
+                const char *next = end;
+
+                while(*next == ' ' || *next == '\t')
+                    next++;
+                if(isalpha((unsigned char)*next) || *next == '_') {
+                    const char *colon = next;
+
+                    while(isalnum((unsigned char)*colon) || *colon == '_')
+                        colon++;
+                    if(*colon == ':')
+                        break;
+                }
+            }
+        }
+        end++;
+    }
+    while(end > p && (end[-1] == ' ' || end[-1] == '\t'))
+        end--;
+    if((size_t)(end - p) >= dst_size)
+        end = p + dst_size - 1;
+    memcpy(dst, p, (size_t)(end - p));
+    dst[end - p] = '\0';
+    return dst[0] != '\0';
+}
+
+static int
+parse_label_token(char **sp, char *dst, size_t dst_size)
+{
+    char *s = *sp;
+    size_t n = 0;
+
+    while(*s == ' ' || *s == '\t')
+        s++;
+    if(*s == '"') {
+        char text[512];
+
+        if(!parse_quoted(sp, text, sizeof(text)))
+            return 0;
+        c_string_literal(dst, dst_size, text);
+        return 1;
+    }
+    int depth = 0;
+    int in_string = 0;
+
+    while(*s != '\0') {
+        if(*s == '"' && (s == *sp || s[-1] != '\\'))
+            in_string = !in_string;
+        if(!in_string) {
+            if(*s == '(' || *s == '{' || *s == '[')
+                depth++;
+            else if(*s == ')' || *s == '}' || *s == ']')
+                depth--;
+            else if(depth <= 0 && isspace((unsigned char)*s)) {
+                char *next = s;
+
+                while(*next == ' ' || *next == '\t')
+                    next++;
+                if(isalpha((unsigned char)*next) || *next == '_') {
+                    char *colon = next;
+
+                    while(isalnum((unsigned char)*colon) || *colon == '_')
+                        colon++;
+                    if(*colon == ':')
+                        break;
+                }
+            }
+        }
+        if(n + 1 < dst_size)
+            dst[n++] = *s;
+        s++;
+    }
+    while(n > 0 && isspace((unsigned char)dst[n - 1]))
+        n--;
+    dst[n] = '\0';
+    *sp = s;
+    return n > 0;
+}
+
+static void
+emit_state_decl(KryFile *file, int line_no, char *line)
+{
+    char *colon;
+    char *eq;
+    char name[KC_NAME_MAX];
+    char decl[512];
+    char *type;
+    char *expr = NULL;
+
+    if(starts_word(line, "let"))
+        die("%s:%d: legacy 'let' syntax was removed; use 'name: type = value'",
+            file->path, line_no);
+    colon = strchr(line, ':');
+    if(colon == NULL)
+        die("%s:%d: expected ':' in state declaration", file->path, line_no);
+    *colon = '\0';
+    snprintf(name, sizeof(name), "%s", trim(line));
+    if(!is_ident_text(name))
+        die("%s:%d: invalid state variable name '%s'", file->path,
+            line_no, name);
+    type = trim(colon + 1);
+    eq = strchr(type, '=');
+    if(eq != NULL) {
+        *eq = '\0';
+        expr = trim(eq + 1);
+    }
+    convert_var_decl(decl, sizeof(decl), name, trim(type));
+    if(expr != NULL && expr[0] != '\0') {
+        char out[KC_BODY_LINE_MAX];
+
+        snprintf(out, sizeof(out), "static %s = %s;", decl, expr);
+        add_state_line(file, out);
+    } else {
+        char out[KC_BODY_LINE_MAX];
+
+        snprintf(out, sizeof(out), "static %s;", decl);
+        add_state_line(file, out);
+    }
+}
+
+static int
 line_is_close(const char *line)
 {
     return strcmp(line, "}") == 0;
@@ -367,6 +562,132 @@ parse_statement(KryFile *file, int line_no, char *line)
 {
     if(line_is_close(line)) {
         add_body(file, "    }");
+    } else if(starts_word(line, "let")) {
+        die("%s:%d: legacy 'let' syntax was removed; use 'var name: type = value'",
+            file->path, line_no);
+    } else if(starts_word(line, "background")) {
+        char *q = trim(line + strlen("background"));
+
+        if(q[0] == '\0')
+            die("%s:%d: expected background color", file->path, line_no);
+        add_body(file,
+                 "    DrawRectangleRec((Rectangle){0, 0, GetUIViewWidth(), GetUIViewHeight()}, %s);",
+                 q);
+    } else if(starts_word(line, "set_theme")) {
+        char *q = trim(line + strlen("set_theme"));
+        char theme[KC_NAME_MAX];
+        char *mode;
+
+        if(!parse_ident(&q, theme, sizeof(theme)))
+            die("%s:%d: expected theme id", file->path, line_no);
+        mode = trim(q);
+        if(mode[0] == '\0')
+            mode = "0";
+        add_body(file, "    SetCurrentTheme(%s, %s);", theme, mode);
+    } else if(starts_word(line, "text")) {
+        char *q = trim(line + strlen("text"));
+        char label[512];
+        char x[128] = "0";
+        char y[128] = "0";
+        char size[128] = "UI_TEXT_16";
+        char color[256] = "GetThemeText()";
+
+        if(!parse_label_token(&q, label, sizeof(label)))
+            die("%s:%d: expected text label", file->path, line_no);
+        q = trim(q);
+        read_prop_value(q, "x", x, sizeof(x));
+        read_prop_value(q, "y", y, sizeof(y));
+        read_prop_value(q, "size", size, sizeof(size));
+        read_prop_value(q, "color", color, sizeof(color));
+        emit_source_push(file, line_no);
+        add_body(file, "    DrawUIText(%s, %s, %s, %s, %s);",
+                 label[0] == '"' ? label : label, x, y, size, color);
+        emit_source_pop(file);
+    } else if(starts_word(line, "rect")) {
+        char *q = trim(line + strlen("rect"));
+        char x[128] = "0";
+        char y[128] = "0";
+        char w[128] = "0";
+        char h[128] = "0";
+        char fill[256] = "GetThemeSurface()";
+        char border[256] = "";
+
+        if(strchr(q, '=') != NULL)
+            die("%s:%d: rect draws a rectangle; use 'var name: Rectangle = {...}' for declarations",
+                file->path, line_no);
+        if(!read_prop_value(q, "x", x, sizeof(x)) ||
+           !read_prop_value(q, "y", y, sizeof(y)) ||
+           !read_prop_value(q, "w", w, sizeof(w)) ||
+           !read_prop_value(q, "h", h, sizeof(h)))
+            die("%s:%d: rect requires x:, y:, w:, and h:", file->path,
+                line_no);
+        read_prop_value(q, "fill", fill, sizeof(fill));
+        read_prop_value(q, "border", border, sizeof(border));
+        add_body(file,
+                 "    DrawRectangleRec((Rectangle){%s, %s, %s, %s}, %s);",
+                 x, y, w, h, fill);
+        if(border[0] != '\0')
+            add_body(file,
+                     "    DrawRectangleLinesEx((Rectangle){%s, %s, %s, %s}, 1, %s);",
+                     x, y, w, h, border);
+    } else if(starts_word(line, "line")) {
+        char *q = trim(line + strlen("line"));
+        char x1[128] = "0";
+        char y1[128] = "0";
+        char x2[128] = "0";
+        char y2[128] = "0";
+        char color[256] = "GetThemeText()";
+
+        read_prop_value(q, "x1", x1, sizeof(x1));
+        read_prop_value(q, "y1", y1, sizeof(y1));
+        read_prop_value(q, "x2", x2, sizeof(x2));
+        read_prop_value(q, "y2", y2, sizeof(y2));
+        read_prop_value(q, "color", color, sizeof(color));
+        add_body(file, "    DrawLine(%s, %s, %s, %s, %s);",
+                 x1, y1, x2, y2, color);
+    } else if(starts_word(line, "swatch")) {
+        char *q = trim(line + strlen("swatch"));
+        char label[512];
+        char x[128] = "0";
+        char y[128] = "0";
+        char size[128] = "ScaleUIPx(48)";
+        char color[256] = "GetThemeButton()";
+        char text_color[256] = "GetThemeText()";
+
+        if(!parse_label_token(&q, label, sizeof(label)))
+            die("%s:%d: expected swatch label", file->path, line_no);
+        q = trim(q);
+        read_prop_value(q, "x", x, sizeof(x));
+        read_prop_value(q, "y", y, sizeof(y));
+        read_prop_value(q, "size", size, sizeof(size));
+        read_prop_value(q, "color", color, sizeof(color));
+        read_prop_value(q, "text_color", text_color, sizeof(text_color));
+        add_body(file,
+                 "    DrawRectangleRec((Rectangle){%s, %s, %s, %s}, %s);",
+                 x, y, size, size, color);
+        add_body(file,
+                 "    DrawRectangleLinesEx((Rectangle){%s, %s, %s, %s}, 1, %s);",
+                 x, y, size, size, text_color);
+        add_body(file, "    DrawUIText(%s, (%s) + (%s) + ScaleUIPx(10), (%s) + ScaleUIPx(10), UI_TEXT_16, %s);",
+                 label, x, size, y, text_color);
+    } else if(starts_word(line, "on key_down")) {
+        char *q = trim(line + strlen("on key_down"));
+        size_t n = strlen(q);
+
+        if(n == 0 || q[n - 1] != '{')
+            die("%s:%d: expected key_down block ending with {",
+                file->path, line_no);
+        q[n - 1] = '\0';
+        add_body(file, "    if(UIKeyDown(%s)) {", trim(q));
+    } else if(starts_word(line, "on key")) {
+        char *q = trim(line + strlen("on key"));
+        size_t n = strlen(q);
+
+        if(n == 0 || q[n - 1] != '{')
+            die("%s:%d: expected key block ending with {", file->path,
+                line_no);
+        q[n - 1] = '\0';
+        add_body(file, "    if(UIKeyPressed(%s)) {", trim(q));
     } else if(starts_else_if(line)) {
         char *q = starts_word(line, "else if")
                       ? trim(line + strlen("else if"))
@@ -393,10 +714,15 @@ parse_statement(KryFile *file, int line_no, char *line)
     } else if(starts_word(line, "return")) {
         char *q = trim(line + strlen("return"));
 
-        if(q[0] == '\0')
+        if(q[0] == '\0') {
             add_body(file, "    return;");
-        else
+        } else {
+            if(strchr(q, '(') != NULL)
+                emit_source_push(file, line_no);
             add_body(file, "    return %s;", q);
+            if(strchr(q, '(') != NULL)
+                emit_source_pop(file);
+        }
     } else if(starts_word(line, "var")) {
         char *q = trim(line + strlen("var"));
         char name[KC_NAME_MAX];
@@ -428,16 +754,6 @@ parse_statement(KryFile *file, int line_no, char *line)
         else
             add_body(file, "    %s;", decl);
         if(expr != NULL && expr[0] != '\0' && strchr(expr, '(') != NULL)
-            emit_source_pop(file);
-    } else if(starts_word(line, "let")) {
-        char *q = trim(line + strlen("let"));
-
-        if(q[0] == '\0')
-            die("%s:%d: expected declaration", file->path, line_no);
-        if(strchr(q, '(') != NULL)
-            emit_source_push(file, line_no);
-        add_body(file, "    %s;", q);
-        if(strchr(q, '(') != NULL)
             emit_source_pop(file);
     } else if(starts_word(line, "set")) {
         char *q = trim(line + strlen("set"));
@@ -502,8 +818,8 @@ parse_statement(KryFile *file, int line_no, char *line)
         add_body(file, "    if(%s %c %s) {", name, is_min ? '<' : '>', q);
         add_body(file, "        %s = %s;", name, q);
         add_body(file, "    }");
-    } else if(starts_word(line, "rect")) {
-        char *q = trim(line + strlen("rect"));
+    } else if(starts_word(line, "c_rect")) {
+        char *q = trim(line + strlen("c_rect"));
         char name[KC_NAME_MAX];
 
         if(!parse_ident(&q, name, sizeof(name)))
@@ -577,16 +893,41 @@ parse_statement(KryFile *file, int line_no, char *line)
         char *q = trim(line + strlen("button"));
         size_t n = strlen(q);
         char hit[KC_NAME_MAX];
+        char label[512];
+        char x[128] = "0";
+        char y[128] = "0";
+        char w[128] = "ScaleUIPx(120)";
+        char h[128] = "ScaleUIPx(34)";
+        char style[128] = "UI_BUTTON_STYLE_PRIMARY";
 
         if(n == 0 || q[n - 1] != '{')
             die("%s:%d: expected button arguments ending with {", file->path,
                 line_no);
         q[n - 1] = '\0';
         q = trim(q);
+        if(strchr(q, '(') != NULL && q[0] != '"') {
+            snprintf(hit, sizeof(hit), "__kry_hit_%d", line_no);
+            add_body_line(file, 0, "    int %s;", hit);
+            emit_source_push(file, line_no);
+            add_body_line(file, 0, "    %s = DrawUIGenericButton(%s);", hit, q);
+            emit_source_pop(file);
+            add_body_line(file, 0, "    if(%s) {", hit);
+            return;
+        }
+        if(!parse_label_token(&q, label, sizeof(label)))
+            die("%s:%d: expected button label", file->path, line_no);
+        q = trim(q);
+        read_prop_value(q, "x", x, sizeof(x));
+        read_prop_value(q, "y", y, sizeof(y));
+        read_prop_value(q, "w", w, sizeof(w));
+        read_prop_value(q, "h", h, sizeof(h));
+        read_prop_value(q, "style", style, sizeof(style));
         snprintf(hit, sizeof(hit), "__kry_hit_%d", line_no);
         add_body_line(file, 0, "    int %s;", hit);
         emit_source_push(file, line_no);
-        add_body_line(file, 0, "    %s = DrawUIGenericButton(%s);", hit, q);
+        add_body_line(file, 0,
+                      "    %s = DrawUIGenericButton(%s, %s, %s, %s, %s, %s, 0, NULL);",
+                      hit, x, y, w, h, label, style);
         emit_source_pop(file);
         add_body_line(file, 0, "    if(%s) {", hit);
     } else if(starts_word(line, "event") || starts_word(line, "on")) {
@@ -686,6 +1027,9 @@ parse_kry(KryFile *file)
     int line_no = 1;
     int depth = 0;
     int in_screen = 0;
+    int in_app = 0;
+    int in_state = 0;
+    int in_raw = 0;
 
     file->text = read_text_file(file->path);
     text = file->text;
@@ -698,6 +1042,21 @@ parse_kry(KryFile *file)
 
         *p = '\0';
         line = trim(line_start);
+        if(in_raw) {
+            if(strcmp(line, "endraw") == 0) {
+                in_raw = 0;
+            } else if(in_screen && depth > 0) {
+                add_body_line(file, line_no, "%s", line_start);
+            } else {
+                add_raw_line(file, line_start);
+            }
+            *p = saved;
+            if(saved == '\0')
+                break;
+            line_start = p + 1;
+            line_no++;
+            continue;
+        }
         if(line[0] != '\0' && line[0] != '#') {
             int opens = 0;
             int closes = 0;
@@ -708,7 +1067,101 @@ parse_kry(KryFile *file)
                 else if(*q == '}')
                     closes++;
             }
-            if(starts_word(line, "include")) {
+            if(in_app) {
+                if(!(line_is_close(line) && depth == 1)) {
+                    if(starts_word(line, "size")) {
+                        char *q = trim(line + strlen("size"));
+
+                        file->app_width = atoi(q);
+                        while(*q != '\0' && !isspace((unsigned char)*q))
+                            q++;
+                        file->app_height = atoi(trim(q));
+                    } else if(starts_word(line, "fps")) {
+                        file->app_fps = atoi(trim(line + strlen("fps")));
+                    } else if(starts_word(line, "font")) {
+                        char *q = trim(line + strlen("font"));
+
+                        if(strcmp(q, "examples") == 0)
+                            file->app_font_examples = 1;
+                    } else if(starts_word(line, "theme")) {
+                        char *q = trim(line + strlen("theme"));
+                        char mode[KC_NAME_MAX] = "";
+
+                        if(!parse_ident(&q, file->app_theme,
+                                        sizeof(file->app_theme)))
+                            die("%s:%d: expected theme id", file->path,
+                                line_no);
+                        parse_ident(&q, mode, sizeof(mode));
+                        file->app_dark_mode = strcmp(mode, "dark") == 0;
+                    } else {
+                        die("%s:%d: unknown app property: %s",
+                            file->path, line_no, line);
+                    }
+                }
+                depth += opens;
+                depth -= closes;
+                if(depth < 0)
+                    die("%s:%d: unexpected }", file->path, line_no);
+                if(depth == 0)
+                    in_app = 0;
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(in_state) {
+                if(!(line_is_close(line) && depth == 1)) {
+                    file->current_line = line_no;
+                    emit_state_decl(file, line_no, line);
+                    file->current_line = 0;
+                }
+                depth += opens;
+                depth -= closes;
+                if(depth < 0)
+                    die("%s:%d: unexpected }", file->path, line_no);
+                if(depth == 0)
+                    in_state = 0;
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(starts_word(line, "app")) {
+                char *q = trim(line + strlen("app"));
+
+                if(depth != 0)
+                    die("%s:%d: nested app blocks are not supported",
+                        file->path, line_no);
+                if(!parse_quoted(&q, file->app_title,
+                                 sizeof(file->app_title)))
+                    die("%s:%d: expected app title", file->path, line_no);
+                in_app = 1;
+                depth += opens;
+                depth -= closes;
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(starts_word(line, "state")) {
+                if(depth != 0)
+                    die("%s:%d: nested state blocks are not supported",
+                        file->path, line_no);
+                in_state = 1;
+                depth += opens;
+                depth -= closes;
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(starts_word(line, "raw")) {
+                in_raw = 1;
+            } else if(starts_word(line, "include")) {
                 char *q = line + strlen("include");
 
                 if(file->include_count >= KC_INCLUDE_MAX)
@@ -829,6 +1282,9 @@ parse_kry(KryFile *file)
                     parse_statement(file, line_no, line);
                     file->current_line = 0;
                 }
+            } else {
+                die("%s:%d: unknown top-level statement: %s",
+                    file->path, line_no, line);
             }
             depth += opens;
             depth -= closes;
@@ -847,6 +1303,8 @@ parse_kry(KryFile *file)
     }
     if(file->function_count == 0)
         die("%s: missing screen declaration", file->path);
+    if(in_raw)
+        die("%s: unterminated raw block", file->path);
     if(depth != 0)
         warn_at(file->path, line_no, "unbalanced braces");
 }
@@ -915,6 +1373,10 @@ header_guard(char *dst, size_t dst_size, const char *rel)
 {
     size_t n = 0;
 
+    if(dst_size > 2) {
+        dst[n++] = 'K';
+        dst[n++] = '_';
+    }
     for(const char *p = rel; *p != '\0' && n + 1 < dst_size; p++) {
         unsigned char ch = (unsigned char)*p;
 
@@ -988,6 +1450,60 @@ function_name(char *dst, size_t dst_size, const KryFunction *fn)
         snprintf(dst, dst_size, "%s_kry_draw", fn->screen);
 }
 
+static int
+function_takes_rectangle(const KryFunction *fn)
+{
+    return fn != NULL && strstr(fn->args, "Rectangle") != NULL;
+}
+
+static void
+write_app_main(FILE *out, const KryFile *file)
+{
+    const KryFunction *screen = NULL;
+    char screen_name[KC_NAME_MAX + 16];
+    char title[512];
+    int width = file->app_width > 0 ? file->app_width : 800;
+    int height = file->app_height > 0 ? file->app_height : 600;
+    int fps = file->app_fps > 0 ? file->app_fps : 60;
+
+    if(file->app_title[0] == '\0')
+        return;
+    for(int i = 0; i < file->function_count; i++) {
+        if(file->functions[i].is_public && !file->functions[i].exact_name) {
+            screen = &file->functions[i];
+            break;
+        }
+    }
+    if(screen == NULL)
+        return;
+    function_name(screen_name, sizeof(screen_name), screen);
+    c_string_literal(title, sizeof(title), file->app_title);
+    fprintf(out, "\nint\nmain(void)\n{\n");
+    fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
+    fprintf(out, "    SetTargetFPS(%d);\n", fps);
+    if(file->app_font_examples)
+        fprintf(out, "    LoadExampleUIFont();\n");
+    fprintf(out, "    InitUI(%d, %d, GetUIScale());\n", width, height);
+    if(file->app_theme[0] != '\0')
+        fprintf(out, "    SetCurrentTheme(%s, %d);\n",
+                file->app_theme, file->app_dark_mode);
+    fprintf(out, "    while(!WindowShouldClose()) {\n");
+    fprintf(out, "        BeginDrawing();\n");
+    fprintf(out, "        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());\n");
+    if(function_takes_rectangle(screen))
+        fprintf(out, "        %s((Rectangle){0, 0, GetScreenWidth(), GetScreenHeight()});\n",
+                screen_name);
+    else
+        fprintf(out, "        %s();\n", screen_name);
+    fprintf(out, "        EndDrawing();\n");
+    fprintf(out, "    }\n");
+    if(file->app_font_examples)
+        fprintf(out, "    UnloadExampleUIFont();\n");
+    fprintf(out, "    CloseWindow();\n");
+    fprintf(out, "    return 0;\n");
+    fprintf(out, "}\n");
+}
+
 static void
 write_generated(const KryFile *file, const char *root, const char *out_dir)
 {
@@ -1042,7 +1558,20 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         die("%s: open failed: %s", cpath, strerror(errno));
     fprintf(out, "/* Generated by kc from %s. */\n", rel);
     fprintf(out, "#include \"%s\"\n", hbase);
+    fprintf(out, "#include <stdio.h>\n");
     fprintf(out, "#include \"ui_inspect.h\"\n");
+    if(file->app_font_examples)
+        fprintf(out, "#include \"example_ui_font.h\"\n");
+    if(file->raw_count > 0) {
+        fputc('\n', out);
+        for(int i = 0; i < file->raw_count; i++)
+            fprintf(out, "%s\n", file->raw[i]);
+    }
+    if(file->state_count > 0) {
+        fputc('\n', out);
+        for(int i = 0; i < file->state_count; i++)
+            fprintf(out, "%s\n", file->state[i]);
+    }
     for(int i = 0; i < file->function_count; i++) {
         const KryFunction *fn = &file->functions[i];
         const char *args = fn->args[0] != '\0' ? fn->args : "void";
@@ -1070,13 +1599,15 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         }
         fprintf(out, "}\n");
     }
+    if(!file->no_main)
+        write_app_main(out, file);
     fclose(out);
 }
 
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: kc --root DIR -o DIR file.kry ...\n");
+    fprintf(stderr, "usage: kc [--no-main] --root DIR -o DIR file.kry ...\n");
 }
 
 int
@@ -1084,6 +1615,7 @@ main(int argc, char **argv)
 {
     const char *root = ".";
     const char *out_dir = NULL;
+    int no_main = 0;
     int first_file = 0;
 
     for(int i = 1; i < argc; i++) {
@@ -1095,6 +1627,8 @@ main(int argc, char **argv)
             if(++i >= argc)
                 die("-o needs a directory");
             out_dir = argv[i];
+        } else if(strcmp(argv[i], "--no-main") == 0) {
+            no_main = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -1111,6 +1645,7 @@ main(int argc, char **argv)
         KryFile file = {0};
 
         file.path = argv[i];
+        file.no_main = no_main;
         parse_kry(&file);
         write_generated(&file, root, out_dir);
         free(file.text);

@@ -1,0 +1,32 @@
+include "kryon.h"
+
+app "Kryon Collections" {
+    size 900 620
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    list_sel: int = 0
+    tree_sel: int = 1
+    row_sel: int = 0
+    sort_col: int = 0
+    list_scroll: int = 0
+    tree_scroll: int = 0
+    table_scroll: int = 0
+    items: [4] const char * = {"One","Two","Three","Four"}
+}
+
+screen CollectionsExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    var tree: [4] UITreeItem = {{"Project",0,1,1,1},{"src",1,2,1,1},{"main.kry",2,3,0,1},{"README.md",1,4,0,1}}
+    var cols: [2] const char * = {"Name","Kind"}
+    var row0: [2] const char * = {"main.kry","Kry source"}
+    var row1: [2] const char * = {"README.md","Markdown"}
+    var rows: [2] UITableRow = {{row0,2},{row1,2}}
+    draw DrawUIListBox((UIListBox){{40,60,180,180},301,items,4,&list_sel,&list_scroll,30})
+    draw DrawUITreeView((UITreeView){{260,60,220,180},302,tree,4,&tree_sel,&tree_scroll,28})
+    draw DrawUITableView((UITableView){{520,60,320,180},303,cols,2,rows,2,NULL,&row_sel,&sort_col,&table_scroll,28})
+    text "Collections: list,tree,and table" x: 40 y: 280 size: 18 color: GetThemeText()
+}

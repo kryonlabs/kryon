@@ -21,6 +21,7 @@ void SetUIInspectEnabled(int enabled);
 int UIInspectEnabled(void);
 int UIInspectWidgetCount(void);
 UIInspectSelection UIInspectGetSelection(void);
+int UIInspectSelectAt(Vector2 point);
 void SetUIInspectCanvasBounds(Rectangle bounds);
 int PushUIInspectChrome(int enabled);
 void PopUIInspectChrome(int token);

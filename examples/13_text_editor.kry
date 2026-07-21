@@ -1,0 +1,28 @@
+include "kryon.h"
+
+app "Kryon Text Editor" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    text_value: [512] char = "Edit this text."
+    cursor: int = 15
+    focused: int = 0
+    scroll: int = 0
+}
+
+screen TextEditorExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    draw DrawUITextArea((UITextArea){{40,70,520,180},text_value,sizeof(text_value),&cursor,&focused,&scroll,500,UI_TEXT_16,6,401,"Write here",UI_SYNTAX_NONE,{0},NULL,NULL})
+    text "Ctrl/Cmd+C,X,and V work in the text area." x: 40 y: 260 size: UI_TEXT_16 color: GetThemeText()
+    button "Copy" x: 40 y: 300 w: 110 h: 34 style: UI_BUTTON_STYLE_SECONDARY {
+        set SetUIClipboardTextValue(text_value)
+    }
+    button "Paste" x: 170 y: 300 w: 110 h: 34 style: UI_BUTTON_STYLE_SECONDARY {
+        var clip: const char * = GetUIClipboardTextValue()
+        set snprintf(text_value,sizeof(text_value),"%s",clip)
+    }
+}

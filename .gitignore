@@ -10,14 +10,4 @@ build/
 dist/
 assets/fonts/*
 
-# Example binaries
-examples/01_file_dialog
-examples/02_buttons
-examples/02_color
-examples/03_scaling
-examples/03_theme
-examples/04_modal
-examples/05_buttons
-examples/06_theme
-
 tools/otfchop/otfchop

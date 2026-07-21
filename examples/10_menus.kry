@@ -1,0 +1,25 @@
+include "kryon.h"
+
+app "Kryon Menus" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    open_menu: int = -1
+    status: [64] char = "No menu command"
+}
+
+screen MenusExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    var file_items: [4] UIMenuItem = {{UI_MENU_COMMAND,"New","Ctrl+N",1,0,0,NULL,0},{UI_MENU_COMMAND,"Open","Ctrl+O",2,0,0,NULL,0},{UI_MENU_SEPARATOR,NULL,NULL,0,0,0,NULL,0},{UI_MENU_COMMAND,"Quit","Esc",3,0,0,NULL,0}}
+    var view_items: [3] UIMenuItem = {{UI_MENU_CHECK,"Show Grid","G",4,0,1,NULL,0},{UI_MENU_RADIO,"Compact",NULL,5,0,0,NULL,0},{UI_MENU_RADIO,"Comfortable",NULL,6,0,1,NULL,0}}
+    var menus: [2] UIMenu = {{{0},"File",file_items,4},{{0},"View",view_items,3}}
+    var result: UIMenuBarResult = DrawUIMenuBar(100,(Rectangle){0,0,GetScreenWidth(),34},menus,2,&open_menu)
+    if result.activated_id != 0 {
+        set snprintf(status,sizeof(status),"Command %d",result.activated_id)
+    }
+    text status x: 40 y: 80 size: 20 color: GetThemeText()
+}

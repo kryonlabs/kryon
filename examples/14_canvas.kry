@@ -1,0 +1,30 @@
+include "kryon.h"
+
+app "Kryon Canvas" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    selected: int = -1
+    sx: int = 0
+    sy: int = 0
+    zoom: float = 1.0f
+    shapes: [2] Rectangle = {{100,100,90,60},{260,140,120,80}}
+}
+
+screen CanvasExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    var canvas: UICanvasResult = BeginUICanvas((UICanvas){{40,50,620,420},&sx,&sy,&zoom})
+    draw DrawUICanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
+    for i in 0..2 {
+        draw DrawRectangleRec(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface())
+        draw DrawRectangleLinesEx(shapes[i],2.0f,GetThemeIcon())
+    }
+    if canvas.active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
+        set selected = UICanvasHitTest(canvas.world,shapes,2)
+    }
+    draw EndUICanvas((UICanvas){{40,50,620,420},&sx,&sy,&zoom})
+}

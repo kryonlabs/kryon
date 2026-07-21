@@ -635,8 +635,8 @@ ui_text_draw_selection(const char *text, int x, int y, int font_size,
 static int
 ui_text_mod_key_down(void)
 {
-    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
-           IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
+    return UIKeyDown(KEY_LEFT_CONTROL) || UIKeyDown(KEY_RIGHT_CONTROL) ||
+           UIKeyDown(KEY_LEFT_SUPER) || UIKeyDown(KEY_RIGHT_SUPER);
 }
 
 int
@@ -783,7 +783,8 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                 g_ui_text_selection.dragging = 0;
             }
         }
-        if(g_ui_text_selection.id == id && ui_text_mod_key_down() && IsKeyPressed(KEY_C)) {
+        if(g_ui_text_selection.id == id && ui_text_mod_key_down() &&
+           UIKeyPressed(KEY_C)) {
             int start = g_ui_text_selection.anchor;
             int end = g_ui_text_selection.cursor;
 

@@ -1,0 +1,51 @@
+include "kryon.h"
+
+app "Kryon Geometry" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+screen GeometryExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    set SetUIViewSize(GetScreenWidth(),GetScreenHeight())
+    var shell: Rectangle = {40,42,GetUIViewWidth()-80,GetUIViewHeight()-84}
+    var frame: UIFrame = BeginUIFrameBox(shell,16,16,12)
+    var header: Rectangle = UIFramePack(&frame,UI_SIDE_TOP,54)
+    var footer: Rectangle = UIFramePack(&frame,UI_SIDE_BOTTOM,46)
+    var rail: Rectangle = UIFramePack(&frame,UI_SIDE_LEFT,150)
+    var body: Rectangle = frame.bounds
+    var grid: UIGrid = {body,2,3,10,10,16,16}
+    var card0: Rectangle = UIGridCell(grid,0,0,1,2)
+    var card1: Rectangle = UIGridCell(grid,0,2,1,1)
+    var card2: Rectangle = UIGridCell(grid,1,0,1,1)
+    var card3: Rectangle = UIGridCell(grid,1,1,1,2)
+    var badge: Rectangle = UIPlace(card1,14,42,92,28)
+    var action: Rectangle = UIPlace(footer,16,7,150,32)
+    text "Geometry helpers" x: 40 y: 14 size: UI_TEXT_24 color: GetThemeText()
+    draw DrawRectangleRec(shell,GetThemeSurface())
+    draw DrawRectangleLinesEx(shell,1,GetThemeIcon())
+    draw DrawRectangleRec(header,GetThemeButton())
+    draw DrawRectangleRec(rail,DarkenUIColor(GetThemeSurface(),8))
+    draw DrawUISeparator((Rectangle){rail.x+rail.width+6,rail.y,1,rail.height},1)
+    text "Packed header" x: header.x+16 y: header.y+16 size: UI_TEXT_16 color: GetThemeText()
+    text "Left rail" x: rail.x+16 y: rail.y+16 size: UI_TEXT_16 color: GetThemeText()
+    draw DrawRectangleRec(card0,DarkenUIColor(GetThemeSurface(),12))
+    draw DrawRectangleLinesEx(card0,1,GetThemeButton())
+    draw DrawRectangleRec(card1,DarkenUIColor(GetThemeSurface(),16))
+    draw DrawRectangleLinesEx(card1,1,GetThemeButton())
+    draw DrawRectangleRec(card2,DarkenUIColor(GetThemeSurface(),18))
+    draw DrawRectangleLinesEx(card2,1,GetThemeButton())
+    draw DrawRectangleRec(card3,DarkenUIColor(GetThemeSurface(),22))
+    draw DrawRectangleLinesEx(card3,1,GetThemeButton())
+    text "UIGridCell 2-column span" x: card0.x+14 y: card0.y+18 size: UI_TEXT_16 color: GetThemeText()
+    text "UIPlace badge" x: card1.x+14 y: card1.y+18 size: UI_TEXT_16 color: GetThemeText()
+    draw DrawRectangleRec(badge,GetThemeButtonHover())
+    text "badge" x: badge.x+18 y: badge.y+7 size: UI_TEXT_12 color: GetThemeText()
+    text "cell 1,0" x: card2.x+14 y: card2.y+18 size: UI_TEXT_16 color: GetThemeText()
+    text "wide footer cell" x: card3.x+14 y: card3.y+18 size: UI_TEXT_16 color: GetThemeText()
+    draw DrawUISeparator((Rectangle){footer.x,footer.y-7,footer.width,1},0)
+    draw DrawRectangleRec(action,GetThemeButton())
+    text "placed action" x: action.x+14 y: action.y+9 size: UI_TEXT_12 color: GetThemeText()
+}

@@ -1,0 +1,25 @@
+include "kryon.h"
+
+app "Kryon Containers" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    tab: int = 0
+    split: int = 260
+    open: int = 1
+    tabs: [3] const char * = {"Files","Search","Output"}
+}
+
+screen ContainersExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    draw DrawUINotebook((UINotebook){{40,50,680,400},tabs,3,&tab})
+    draw DrawUIPanedView((UIPanedView){{40,100,680,280},501,1,&split,120,160})
+    draw DrawUICollapsible((UICollapsible){{60,410,320,120},"Details",&open})
+    if open {
+        text "Collapsible content" x: 80 y: 455 size: UI_TEXT_16 color: GetThemeText()
+    }
+}

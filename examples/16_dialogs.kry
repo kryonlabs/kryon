@@ -1,0 +1,39 @@
+include "kryon.h"
+
+app "Kryon Dialogs" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    dialog: int = 0
+    prompt: [128] char = "value"
+    cursor: int = 5
+    focused: int = 0
+    color: Color = {120,160,220,255}
+}
+
+screen DialogsExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    button "Message" x: 40 y: 60 w: 150 h: 34 style: UI_BUTTON_STYLE_PRIMARY {
+        set dialog = 1
+    }
+    button "Confirm" x: 40 y: 104 w: 150 h: 34 style: UI_BUTTON_STYLE_PRIMARY {
+        set dialog = 2
+    }
+    button "Prompt" x: 40 y: 148 w: 150 h: 34 style: UI_BUTTON_STYLE_PRIMARY {
+        set dialog = 3
+    }
+    draw DrawUIColorPicker((Rectangle){240,60,320,160},&color)
+    if dialog == 1 && DrawUIMessageDialog((UIMessageDialog){"Message","Hello from Kryon.","OK"}) > 0 {
+        set dialog = 0
+    }
+    if dialog == 2 && DrawUIConfirmDialog((UIConfirmDialog){"Confirm","Continue?","No","Yes"}) != 0 {
+        set dialog = 0
+    }
+    if dialog == 3 && DrawUIPromptDialog((UIPromptDialog){"Prompt",prompt,sizeof(prompt),&cursor,&focused,"Cancel","Save"}) != 0 {
+        set dialog = 0
+    }
+}

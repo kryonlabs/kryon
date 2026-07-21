@@ -1,0 +1,44 @@
+include "kryon.h"
+
+app "Kryon Modal Example" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    modal_open: int = 0
+    background_clicks: int = 0
+    last_label: [64] char = "none"
+}
+
+screen ModalExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    text "Modal capture example" x: 32 y: 32 size: UI_TEXT_24 color: GetThemeText()
+    text "Open the modal and background clicks are blocked." x: 32 y: 72 size: UI_TEXT_16 color: GetThemeIcon()
+    button "Background Button" x: 32 y: 120 w: 220 h: 42 style: UI_BUTTON_STYLE_SECONDARY {
+        set background_clicks++
+    }
+    text TextFormat("Background clicks:%d",background_clicks) x: 32 y: 176 size: UI_TEXT_16 color: GetThemeText()
+    text TextFormat("Last modal result:%s",last_label) x: 32 y: 204 size: UI_TEXT_16 color: GetThemeText()
+    button "Open Modal" x: 32 y: 240 w: 220 h: 42 style: UI_BUTTON_STYLE_PRIMARY {
+        set modal_open = 1
+    }
+    if modal_open {
+        var actions: [3] UIModalAction = {{"Cancel",UI_BUTTON_STYLE_SECONDARY,0},{"Confirm",UI_BUTTON_STYLE_PRIMARY,0},{"Delete",UI_BUTTON_STYLE_DANGER,0}}
+        var result: int = DrawUIActionModal((UIModalSpec){"Adaptive Action Modal","Kryon measures action labels and blocks background clicks.",actions,3,420})
+        if result == 1 {
+            set modal_open = 0
+            set snprintf(last_label,sizeof(last_label),"cancel")
+        }
+        if result == 2 {
+            set modal_open = 0
+            set snprintf(last_label,sizeof(last_label),"confirm")
+        }
+        if result == 3 {
+            set modal_open = 0
+            set snprintf(last_label,sizeof(last_label),"delete")
+        }
+    }
+}

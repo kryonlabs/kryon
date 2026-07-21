@@ -157,6 +157,8 @@ void QueueUITextInputBackspace(void);
 void QueueUITextInputEnter(void);
 int DrawUITextField(UITextField field);
 int DrawUITextArea(UITextArea area);
+int GetUITextAreaSelection(int focus_id, int *start, int *end);
+void SetUITextAreaSelection(int focus_id, int anchor, int cursor);
 int GetUIReadonlyTextBoxHeight(const char *text, int font, int width,
                                UITextInputStyle style, int line_gap);
 int DrawUIReadonlyTextBox(UIReadonlyTextBox box);

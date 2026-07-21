@@ -28,6 +28,7 @@ static int g_ui_pointer_start_x = 0;
 static int g_ui_pointer_start_y = 0;
 static int g_ui_transition_cues_enabled = 0;
 static int g_ui_release_consumed = 0;
+static int g_ui_keyboard_input_enabled = 1;
 
 int g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
 
@@ -42,15 +43,22 @@ static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
 static UITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
 static int g_ui_text_area_drag_id = 0;
+static int g_ui_text_area_last_click_id = 0;
+static int g_ui_text_area_last_click_cursor = -1;
+static int g_ui_text_area_last_click_x = 0;
+static int g_ui_text_area_last_click_y = 0;
+static double g_ui_text_area_last_click_time = 0.0;
 
-typedef struct UITextAreaSelection {
+typedef struct UITextSelection {
     int id;
     int anchor;
     int cursor;
     int dragging;
-} UITextAreaSelection;
+} UITextSelection;
 
-static UITextAreaSelection g_ui_text_area_selection = {0};
+static UITextSelection g_ui_text_area_selection = {0};
+static UITextSelection g_ui_text_field_selection = {0};
+static int g_ui_text_field_drag_id = 0;
 
 #define UI_TEXT_INPUT_QUEUE_MAX 64
 static int g_ui_text_input_codepoints[UI_TEXT_INPUT_QUEUE_MAX];
@@ -122,6 +130,33 @@ ui_iabs(int value)
     return value < 0 ? -value : value;
 }
 
+int
+SetUIKeyboardInputEnabled(int enabled)
+{
+    int old = g_ui_keyboard_input_enabled;
+
+    g_ui_keyboard_input_enabled = enabled != 0;
+    return old;
+}
+
+int
+UIKeyboardInputEnabled(void)
+{
+    return g_ui_keyboard_input_enabled;
+}
+
+int
+UIKeyPressed(int key)
+{
+    return g_ui_keyboard_input_enabled && IsKeyPressed(key);
+}
+
+int
+UIKeyDown(int key)
+{
+    return g_ui_keyboard_input_enabled && IsKeyDown(key);
+}
+
 static int
 ui_pointer_dx(void)
 {
@@ -135,11 +170,11 @@ ui_backspace_repeat_count(void)
     double now;
     int count = 0;
 
-    if(IsKeyPressed(KEY_BACKSPACE)) {
+    if(UIKeyPressed(KEY_BACKSPACE)) {
         g_ui_backspace_next_repeat_at = GetTime() + 0.34;
         return 1;
     }
-    if(!IsKeyDown(KEY_BACKSPACE)) {
+    if(!UIKeyDown(KEY_BACKSPACE)) {
         g_ui_backspace_next_repeat_at = 0.0;
         return 0;
     }
@@ -165,8 +200,8 @@ ui_pointer_dy(void)
 static int
 ui_mod_key_down(void)
 {
-    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
-           IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
+    return UIKeyDown(KEY_LEFT_CONTROL) || UIKeyDown(KEY_RIGHT_CONTROL) ||
+           UIKeyDown(KEY_LEFT_SUPER) || UIKeyDown(KEY_RIGHT_SUPER);
 }
 
 int
@@ -497,6 +532,96 @@ ui_text_copy_range(const char *text, int start, int end)
     return 1;
 }
 
+static int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
+                                    int codepoint, int max_codepoints);
+
+static int
+ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
+                     int max_codepoints)
+{
+    int len;
+
+    if(text == NULL || text_size == 0 || cursor == NULL || ch == '\0')
+        return 0;
+    if(max_codepoints > 0 && ui_utf8_codepoint_count(text) >= max_codepoints)
+        return 0;
+    len = (int)strlen(text);
+    *cursor = ui_clampi(*cursor, 0, len);
+    if((size_t)(len + 2) > text_size)
+        return 0;
+    memmove(text + *cursor + 1, text + *cursor,
+            (size_t)(len - *cursor + 1));
+    text[*cursor] = ch;
+    (*cursor)++;
+    return 1;
+}
+
+static int
+ui_text_paste_clipboard(UITextEdit edit, int allow_newlines)
+{
+    const char *clip;
+    int changed = 0;
+
+    if(edit.text == NULL || edit.text_size == 0 ||
+       edit.cursor_position == NULL)
+        return 0;
+    clip = GetClipboardText();
+    if(clip == NULL)
+        return 0;
+    for(int i = 0; clip[i] != '\0';) {
+        int bytes = 0;
+        int cp;
+
+        if(clip[i] == '\r') {
+            i++;
+            continue;
+        }
+        if(clip[i] == '\n') {
+            if(allow_newlines &&
+               ui_text_insert_ascii(edit.text, edit.text_size,
+                                    edit.cursor_position, '\n',
+                                    edit.max_codepoints))
+                changed = 1;
+            i++;
+            continue;
+        }
+        cp = GetCodepointNext(&clip[i], &bytes);
+        if(bytes <= 0)
+            break;
+        if((edit.filter == NULL ||
+            edit.filter(cp, edit.filter_user_data)) &&
+           ui_text_insert_codepoint(edit.text, edit.text_size,
+                                    edit.cursor_position, cp,
+                                    edit.max_codepoints))
+            changed = 1;
+        i += bytes;
+    }
+    return changed;
+}
+
+static void
+ui_selection_range(UITextSelection selection, const char *text,
+                   int *start, int *end)
+{
+    int len = text != NULL ? (int)strlen(text) : 0;
+
+    if(start != NULL)
+        *start = 0;
+    if(end != NULL)
+        *end = 0;
+    if(selection.anchor <= selection.cursor) {
+        if(start != NULL)
+            *start = ui_clampi(selection.anchor, 0, len);
+        if(end != NULL)
+            *end = ui_clampi(selection.cursor, 0, len);
+    } else {
+        if(start != NULL)
+            *start = ui_clampi(selection.cursor, 0, len);
+        if(end != NULL)
+            *end = ui_clampi(selection.anchor, 0, len);
+    }
+}
+
 static Rectangle
 ui_world_rect_to_screen(Rectangle rect)
 {
@@ -682,8 +807,8 @@ BeginUIFocus(void)
     g_ui_focus_count = 0;
     g_ui_focus_tab_dir = 0;
     g_ui_focus_frame_open = 1;
-    if(IsKeyPressed(KEY_TAB))
-        g_ui_focus_tab_dir = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
+    if(UIKeyPressed(KEY_TAB))
+        g_ui_focus_tab_dir = (UIKeyDown(KEY_LEFT_SHIFT) || UIKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
 }
 
 void
@@ -752,7 +877,7 @@ int
 IsUIFocusActivatePressed(int id)
 {
     return IsUIFocusActive(id) &&
-           (IsKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && IsKeyPressed(KEY_SPACE)));
+           (UIKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && UIKeyPressed(KEY_SPACE)));
 }
 
 void
@@ -828,10 +953,11 @@ DrawCenteredUIControlText(const char *text, int center_x, int center_y, int font
     DrawUIText(text, center_x - text_w / 2, y, font, color);
 }
 
-void
-DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
-                         int focused, int cursor_visible, int font,
-                         UITextInputStyle style)
+static void
+DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
+                  int focused, int cursor_visible, int font,
+                  UITextInputStyle style, int selection_start,
+                  int selection_end)
 {
     const char *value = text ? text : "";
     int x = (int)bounds.x;
@@ -861,6 +987,35 @@ DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
     ui_begin_world_clip((Rectangle){(float)(x + padding_x), (float)(y - clip_guard),
                                     (float)(w - padding_x * 2),
                                     (float)(h + clip_guard * 2)});
+    if(selection_end > selection_start) {
+        char prefix[1024];
+        char selected_text[1024];
+        int len = (int)strlen(value);
+        int prefix_len;
+        int selected_len;
+        int sel_x;
+        int sel_w;
+
+        selection_start = ui_clampi(selection_start, 0, len);
+        selection_end = ui_clampi(selection_end, 0, len);
+        prefix_len = selection_start;
+        selected_len = selection_end - selection_start;
+        if(prefix_len >= (int)sizeof(prefix))
+            prefix_len = (int)sizeof(prefix) - 1;
+        if(selected_len >= (int)sizeof(selected_text))
+            selected_len = (int)sizeof(selected_text) - 1;
+        memcpy(prefix, value, (size_t)prefix_len);
+        prefix[prefix_len] = '\0';
+        memcpy(selected_text, value + selection_start, (size_t)selected_len);
+        selected_text[selected_len] = '\0';
+        sel_x = text_x + MeasureUIText(prefix, font);
+        sel_w = MeasureUIText(selected_text, font);
+        if(sel_w < ScaleUIPx(2))
+            sel_w = ScaleUIPx(2);
+        DrawRectangle(sel_x, text_y, sel_w,
+                      GetUITextLineHeight(font),
+                      (Color){78, 132, 196, 135});
+    }
     DrawUIText(value, text_x, text_y, font, style.text);
 
     if(focused && cursor_visible) {
@@ -877,6 +1032,15 @@ DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
         DrawRectangle(cursor_x, cursor_y, ScaleUIPx(2), cursor_h, style.cursor);
     }
     EndUIClip();
+}
+
+void
+DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
+                         int focused, int cursor_visible, int font,
+                         UITextInputStyle style)
+{
+    DrawUITextInputEx(bounds, text, cursor_position, focused, cursor_visible,
+                      font, style, 0, 0);
 }
 
 static int
@@ -918,49 +1082,33 @@ EditUIText(UITextEdit edit)
 
     len = (int)strlen(edit.text);
     *edit.cursor_position = ui_clampi(*edit.cursor_position, 0, len);
+    if(!UIKeyboardInputEnabled())
+        return 0;
 
-    if(IsKeyPressed(KEY_LEFT)) {
+    if(UIKeyPressed(KEY_LEFT)) {
         *edit.cursor_position = ui_utf8_prev_offset(edit.text, *edit.cursor_position);
-        changed = 1;
     }
-    if(IsKeyPressed(KEY_RIGHT)) {
+    if(UIKeyPressed(KEY_RIGHT)) {
         *edit.cursor_position = ui_utf8_next_offset(edit.text, *edit.cursor_position);
-        changed = 1;
     }
-    if(IsKeyPressed(KEY_HOME)) {
+    if(UIKeyPressed(KEY_HOME)) {
         *edit.cursor_position = 0;
-        changed = 1;
     }
-    if(IsKeyPressed(KEY_END)) {
+    if(UIKeyPressed(KEY_END)) {
         *edit.cursor_position = (int)strlen(edit.text);
-        changed = 1;
     }
 
-    if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
+    if(ui_mod_key_down() && UIKeyPressed(KEY_C)) {
         SetClipboardText(edit.text);
     }
-    if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
+    if(ui_mod_key_down() && UIKeyPressed(KEY_X)) {
         SetClipboardText(edit.text);
         edit.text[0] = '\0';
         *edit.cursor_position = 0;
         changed = 1;
     }
-    if(ui_mod_key_down() && IsKeyPressed(KEY_V)) {
-        const char *clip = GetClipboardText();
-        if(clip != NULL) {
-            for(int i = 0; clip[i] != '\0';) {
-                int bytes = 0;
-                int cp = GetCodepointNext(&clip[i], &bytes);
-                if(bytes <= 0)
-                    break;
-                if((edit.filter == NULL || edit.filter(cp, edit.filter_user_data)) &&
-                   ui_text_insert_codepoint(edit.text, edit.text_size,
-                                            edit.cursor_position, cp,
-                                            edit.max_codepoints))
-                    changed = 1;
-                i += bytes;
-            }
-        }
+    if(ui_mod_key_down() && UIKeyPressed(KEY_V)) {
+        changed |= ui_text_paste_clipboard(edit, 0);
     }
 
     {
@@ -974,14 +1122,14 @@ EditUIText(UITextEdit edit)
         g_ui_text_input_backspace_count = 0;
     }
 
-    if(IsKeyPressed(KEY_DELETE)) {
+    if(UIKeyPressed(KEY_DELETE)) {
         int end = ui_utf8_next_offset(edit.text, *edit.cursor_position);
         changed |= ui_text_delete_range(edit.text, edit.text_size,
                                         edit.cursor_position,
                                         *edit.cursor_position, end);
     }
 
-    if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+    if(UIKeyPressed(KEY_ENTER) || UIKeyPressed(KEY_KP_ENTER) ||
        g_ui_text_input_enter_count > 0) {
         if(edit.commit_pressed != NULL)
             *edit.commit_pressed = 1;
@@ -1466,6 +1614,44 @@ ui_text_area_cursor_from_point(const char *text, int font, int line_gap, int x, 
 }
 
 static int
+ui_text_area_word_char(char c)
+{
+    unsigned char u = (unsigned char)c;
+
+    return isalnum(u) || c == '_' || c == '-';
+}
+
+static int
+ui_text_area_select_word(const char *text, int cursor, int *start, int *end)
+{
+    int len;
+    int left;
+    int right;
+
+    if(text == NULL || start == NULL || end == NULL)
+        return 0;
+    len = (int)strlen(text);
+    cursor = ui_clampi(cursor, 0, len);
+    if(cursor > 0 && (cursor == len ||
+                      !ui_text_area_word_char(text[cursor])))
+        cursor--;
+    if(cursor < 0 || cursor >= len ||
+       !ui_text_area_word_char(text[cursor]))
+        return 0;
+    left = cursor;
+    right = cursor + 1;
+    while(left > 0 && ui_text_area_word_char(text[left - 1]))
+        left--;
+    while(right < len && ui_text_area_word_char(text[right]))
+        right++;
+    if(right <= left)
+        return 0;
+    *start = left;
+    *end = right;
+    return 1;
+}
+
+static int
 ui_syntax_is_ident_start(char c)
 {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
@@ -1490,7 +1676,7 @@ ui_syntax_kry_keyword(const char *text, int len)
         "action", "args", "bind", "button", "checkbox", "circle",
         "const", "def", "down", "dropdown", "elif", "else", "enter",
         "exit", "fn", "guard", "icon_button", "if", "include", "label",
-        "let", "listen", "logic", "native", "on", "page", "pub", "radiobutton",
+        "listen", "logic", "native", "on", "page", "pub", "radiobutton",
         "screen", "set", "slider", "spacer", "switch", "text", "tick",
         "toggle", "up", "var", "window", "write"
     };
@@ -1766,6 +1952,7 @@ DrawUITextArea(UITextArea area)
     float radius;
     int enter_requested;
     int drag_id;
+    int double_clicked = 0;
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
@@ -1803,15 +1990,49 @@ DrawUITextArea(UITextArea area)
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if(mouse_inside && !captured) {
+            int clicked_cursor;
+            double now = GetTime();
+            int click_dx = (int)mouse_world.x - g_ui_text_area_last_click_x;
+            int click_dy = (int)mouse_world.y - g_ui_text_area_last_click_y;
+            int double_click_slop = ScaleUIPx(6);
+
             focused = 1;
-            g_ui_text_area_drag_id = drag_id;
-            *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
+            clicked_cursor = ui_text_area_cursor_from_point(area.text, font, line_gap,
                 (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
                 (int)mouse_world.x, (int)mouse_world.y, scroll_y);
-            g_ui_text_area_selection.id = drag_id;
-            g_ui_text_area_selection.anchor = *area.cursor_position;
-            g_ui_text_area_selection.cursor = *area.cursor_position;
-            g_ui_text_area_selection.dragging = 1;
+            *area.cursor_position = clicked_cursor;
+            if(g_ui_text_area_last_click_id == drag_id &&
+               now - g_ui_text_area_last_click_time <= 0.45 &&
+               click_dx >= -double_click_slop &&
+               click_dx <= double_click_slop &&
+               click_dy >= -double_click_slop &&
+               click_dy <= double_click_slop) {
+                int word_start;
+                int word_end;
+
+                if(ui_text_area_select_word(area.text, clicked_cursor,
+                                            &word_start, &word_end)) {
+                    g_ui_text_area_selection.id = drag_id;
+                    g_ui_text_area_selection.anchor = word_start;
+                    g_ui_text_area_selection.cursor = word_end;
+                    g_ui_text_area_selection.dragging = 0;
+                    *area.cursor_position = word_end;
+                    double_clicked = 1;
+                    g_ui_text_area_drag_id = 0;
+                }
+            }
+            if(!double_clicked) {
+                g_ui_text_area_drag_id = drag_id;
+                g_ui_text_area_selection.id = drag_id;
+                g_ui_text_area_selection.anchor = *area.cursor_position;
+                g_ui_text_area_selection.cursor = *area.cursor_position;
+                g_ui_text_area_selection.dragging = 1;
+            }
+            g_ui_text_area_last_click_id = drag_id;
+            g_ui_text_area_last_click_cursor = clicked_cursor;
+            g_ui_text_area_last_click_x = (int)mouse_world.x;
+            g_ui_text_area_last_click_y = (int)mouse_world.y;
+            g_ui_text_area_last_click_time = now;
         } else if(focused) {
             focused = 0;
         }
@@ -1840,7 +2061,10 @@ DrawUITextArea(UITextArea area)
 
     *area.focused = focused;
     SetUIFocusTextInputActive(focused);
-    enter_requested = focused && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || g_ui_text_input_enter_count > 0);
+    enter_requested = focused && UIKeyboardInputEnabled() &&
+                      (UIKeyPressed(KEY_ENTER) ||
+                       UIKeyPressed(KEY_KP_ENTER) ||
+                       g_ui_text_input_enter_count > 0);
     if(g_ui_text_area_selection.id == drag_id) {
         selection_start = g_ui_text_area_selection.anchor;
         selection_end = g_ui_text_area_selection.cursor;
@@ -1852,13 +2076,25 @@ DrawUITextArea(UITextArea area)
         selection_start = ui_clampi(selection_start, 0, (int)strlen(area.text));
         selection_end = ui_clampi(selection_end, 0, (int)strlen(area.text));
     }
-    if(focused) {
-        if(ui_mod_key_down() && IsKeyPressed(KEY_C) &&
+    if(focused && UIKeyboardInputEnabled()) {
+        if(ui_mod_key_down() && UIKeyPressed(KEY_A)) {
+            int len = (int)strlen(area.text);
+
+            g_ui_text_area_selection.id = drag_id;
+            g_ui_text_area_selection.anchor = 0;
+            g_ui_text_area_selection.cursor = len;
+            g_ui_text_area_selection.dragging = 0;
+            *area.cursor_position = len;
+            selection_start = 0;
+            selection_end = len;
+            selection_key_handled = 1;
+        }
+        if(ui_mod_key_down() && UIKeyPressed(KEY_C) &&
            selection_end > selection_start) {
             ui_text_copy_range(area.text, selection_start, selection_end);
             selection_key_handled = 1;
         }
-        if(ui_mod_key_down() && IsKeyPressed(KEY_X) &&
+        if(ui_mod_key_down() && UIKeyPressed(KEY_X) &&
            selection_end > selection_start) {
             if(ui_text_copy_range(area.text, selection_start, selection_end) &&
                ui_text_delete_range(area.text, area.text_size,
@@ -1870,17 +2106,40 @@ DrawUITextArea(UITextArea area)
             }
             selection_key_handled = 1;
         }
-        if(ui_mod_key_down() && IsKeyPressed(KEY_V) &&
+        if(ui_mod_key_down() && UIKeyPressed(KEY_V) &&
            selection_end > selection_start) {
-            if(ui_text_delete_range(area.text, area.text_size,
-                                    area.cursor_position, selection_start,
-                                    selection_end)) {
+            ui_text_delete_range(area.text, area.text_size,
+                                 area.cursor_position, selection_start,
+                                 selection_end);
+            if(ui_text_paste_clipboard((UITextEdit){
+                   .text = area.text,
+                   .text_size = area.text_size,
+                   .cursor_position = area.cursor_position,
+                   .max_codepoints = area.max_codepoints,
+                   .filter = area.filter,
+                   .filter_user_data = area.filter_user_data
+               }, 1)) {
+                changed = 1;
+            }
+            g_ui_text_area_selection.anchor = *area.cursor_position;
+            g_ui_text_area_selection.cursor = *area.cursor_position;
+            selection_key_handled = 1;
+        } else if(ui_mod_key_down() && UIKeyPressed(KEY_V)) {
+            if(ui_text_paste_clipboard((UITextEdit){
+                   .text = area.text,
+                   .text_size = area.text_size,
+                   .cursor_position = area.cursor_position,
+                   .max_codepoints = area.max_codepoints,
+                   .filter = area.filter,
+                   .filter_user_data = area.filter_user_data
+               }, 1)) {
                 g_ui_text_area_selection.anchor = *area.cursor_position;
                 g_ui_text_area_selection.cursor = *area.cursor_position;
                 changed = 1;
             }
+            selection_key_handled = 1;
         }
-        if((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
+        if((UIKeyPressed(KEY_BACKSPACE) || UIKeyPressed(KEY_DELETE)) &&
            selection_end > selection_start) {
             if(ui_text_delete_range(area.text, area.text_size,
                                     area.cursor_position, selection_start,
@@ -1891,6 +2150,81 @@ DrawUITextArea(UITextArea area)
             }
             g_ui_text_input_backspace_count = 0;
             selection_key_handled = 1;
+        }
+        if(ui_mod_key_down() &&
+           (UIKeyPressed(KEY_C) || UIKeyPressed(KEY_X) ||
+            UIKeyPressed(KEY_V)))
+            selection_key_handled = 1;
+        if(!selection_key_handled && selection_end > selection_start &&
+           !ui_mod_key_down()) {
+            int inserted = 0;
+            int deleted_selection = 0;
+            int codepoint = GetCharPressed();
+
+            while(codepoint > 0) {
+                if(!deleted_selection) {
+                    ui_text_delete_range(area.text, area.text_size,
+                                         area.cursor_position,
+                                         selection_start, selection_end);
+                    deleted_selection = 1;
+                }
+                if((area.filter == NULL ||
+                    area.filter(codepoint, area.filter_user_data)) &&
+                   ui_text_insert_codepoint(area.text, area.text_size,
+                                            area.cursor_position, codepoint,
+                                            area.max_codepoints))
+                    changed = 1;
+                inserted = 1;
+                codepoint = GetCharPressed();
+            }
+            for(int i = 0; i < g_ui_text_input_codepoint_count; i++) {
+                codepoint = g_ui_text_input_codepoints[i];
+                if(!deleted_selection) {
+                    ui_text_delete_range(area.text, area.text_size,
+                                         area.cursor_position,
+                                         selection_start, selection_end);
+                    deleted_selection = 1;
+                }
+                if((area.filter == NULL ||
+                    area.filter(codepoint, area.filter_user_data)) &&
+                   ui_text_insert_codepoint(area.text, area.text_size,
+                                            area.cursor_position, codepoint,
+                                            area.max_codepoints))
+                    changed = 1;
+                inserted = 1;
+            }
+            if(g_ui_text_input_codepoint_count > 0)
+                g_ui_text_input_codepoint_count = 0;
+            if(enter_requested) {
+                int len;
+
+                if(!deleted_selection) {
+                    ui_text_delete_range(area.text, area.text_size,
+                                         area.cursor_position,
+                                         selection_start, selection_end);
+                    deleted_selection = 1;
+                }
+                len = (int)strlen(area.text);
+                *area.cursor_position = ui_clampi(*area.cursor_position, 0, len);
+                if((size_t)(len + 2) <= area.text_size) {
+                    memmove(area.text + *area.cursor_position + 1,
+                            area.text + *area.cursor_position,
+                            (size_t)(len - *area.cursor_position + 1));
+                    area.text[*area.cursor_position] = '\n';
+                    (*area.cursor_position)++;
+                    changed = 1;
+                }
+                g_ui_text_input_enter_count = 0;
+                enter_requested = 0;
+                inserted = 1;
+            }
+            if(inserted) {
+                g_ui_text_area_selection.id = drag_id;
+                g_ui_text_area_selection.anchor = *area.cursor_position;
+                g_ui_text_area_selection.cursor = *area.cursor_position;
+                g_ui_text_area_selection.dragging = 0;
+                selection_key_handled = 1;
+            }
         }
         if(!selection_key_handled) {
             changed |= EditUIText((UITextEdit){
@@ -1915,13 +2249,13 @@ DrawUITextArea(UITextArea area)
             }
             g_ui_text_input_enter_count = 0;
         }
-        if(IsKeyPressed(KEY_UP))
+        if(UIKeyPressed(KEY_UP))
             *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, -1);
-        if(IsKeyPressed(KEY_DOWN))
+        if(UIKeyPressed(KEY_DOWN))
             *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, 1);
-        if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
-           IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN)) {
+        if(changed || UIKeyPressed(KEY_LEFT) || UIKeyPressed(KEY_RIGHT) ||
+           UIKeyPressed(KEY_HOME) || UIKeyPressed(KEY_END) ||
+           UIKeyPressed(KEY_UP) || UIKeyPressed(KEY_DOWN)) {
             if(!g_ui_text_area_selection.dragging) {
                 g_ui_text_area_selection.id = drag_id;
                 g_ui_text_area_selection.anchor = *area.cursor_position;
@@ -1969,6 +2303,46 @@ DrawUITextArea(UITextArea area)
 }
 
 int
+GetUITextAreaSelection(int focus_id, int *start, int *end)
+{
+    int selection_start;
+    int selection_end;
+
+    if(start != NULL)
+        *start = 0;
+    if(end != NULL)
+        *end = 0;
+    if(focus_id <= 0 || g_ui_text_area_selection.id != focus_id)
+        return 0;
+    selection_start = g_ui_text_area_selection.anchor;
+    selection_end = g_ui_text_area_selection.cursor;
+    if(selection_start > selection_end) {
+        int tmp = selection_start;
+
+        selection_start = selection_end;
+        selection_end = tmp;
+    }
+    if(selection_end <= selection_start)
+        return 0;
+    if(start != NULL)
+        *start = selection_start;
+    if(end != NULL)
+        *end = selection_end;
+    return 1;
+}
+
+void
+SetUITextAreaSelection(int focus_id, int anchor, int cursor)
+{
+    if(focus_id <= 0)
+        return;
+    g_ui_text_area_selection.id = focus_id;
+    g_ui_text_area_selection.anchor = anchor;
+    g_ui_text_area_selection.cursor = cursor;
+    g_ui_text_area_selection.dragging = 0;
+}
+
+int
 DrawUITextField(UITextField field)
 {
     char editor_id[96];
@@ -1978,6 +2352,9 @@ DrawUITextField(UITextField field)
     int font;
     int padding_x;
     int commit_pressed = 0;
+    int selection_start = 0;
+    int selection_end = 0;
+    int selection_handled = 0;
     Vector2 mouse_world;
     int mouse_inside;
     int captured;
@@ -2018,34 +2395,189 @@ DrawUITextField(UITextField field)
             *field.cursor_position = ui_text_cursor_from_x(
                 field.text, font, (int)field.bounds.x + padding_x,
                 (int)mouse_world.x);
+            g_ui_text_field_selection.id = field.focus_id;
+            g_ui_text_field_selection.anchor = *field.cursor_position;
+            g_ui_text_field_selection.cursor = *field.cursor_position;
+            g_ui_text_field_selection.dragging = 1;
+            g_ui_text_field_drag_id = field.focus_id;
         } else if(focused) {
             focused = 0;
         }
     }
+    if(g_ui_text_field_drag_id == field.focus_id &&
+       IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        focused = 1;
+        *field.cursor_position = ui_text_cursor_from_x(
+            field.text, font, (int)field.bounds.x + padding_x,
+            (int)mouse_world.x);
+        g_ui_text_field_selection.cursor = *field.cursor_position;
+        g_ui_text_field_selection.dragging = 1;
+    }
+    if(g_ui_text_field_drag_id == field.focus_id &&
+       IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        g_ui_text_field_drag_id = 0;
+        g_ui_text_field_selection.dragging = 0;
+    }
 
     *field.focused = focused;
     SetUIFocusTextInputActive(focused);
+    if(g_ui_text_field_selection.id == field.focus_id)
+        ui_selection_range(g_ui_text_field_selection, field.text,
+                           &selection_start, &selection_end);
 
-    if(focused) {
-        changed = EditUIText((UITextEdit){
-            .text = field.text,
-            .text_size = field.text_size,
-            .cursor_position = field.cursor_position,
-            .max_codepoints = field.max_codepoints,
-            .filter = field.filter,
-            .filter_user_data = field.filter_user_data,
-            .commit_pressed = field.commit_pressed != NULL
-                                  ? field.commit_pressed
-                                  : &commit_pressed
-        });
+    if(focused && UIKeyboardInputEnabled()) {
+        if(ui_mod_key_down() && UIKeyPressed(KEY_A)) {
+            int len = (int)strlen(field.text);
+
+            g_ui_text_field_selection.id = field.focus_id;
+            g_ui_text_field_selection.anchor = 0;
+            g_ui_text_field_selection.cursor = len;
+            g_ui_text_field_selection.dragging = 0;
+            *field.cursor_position = len;
+            selection_start = 0;
+            selection_end = len;
+            selection_handled = 1;
+        }
+        if(ui_mod_key_down() && UIKeyPressed(KEY_C)) {
+            if(selection_end > selection_start)
+                ui_text_copy_range(field.text, selection_start, selection_end);
+            else
+                SetClipboardText(field.text);
+            selection_handled = 1;
+        }
+        if(ui_mod_key_down() && UIKeyPressed(KEY_X)) {
+            if(selection_end > selection_start) {
+                if(ui_text_copy_range(field.text, selection_start,
+                                      selection_end) &&
+                   ui_text_delete_range(field.text, field.text_size,
+                                        field.cursor_position,
+                                        selection_start, selection_end))
+                    changed = 1;
+            } else {
+                SetClipboardText(field.text);
+                field.text[0] = '\0';
+                *field.cursor_position = 0;
+                changed = 1;
+            }
+            g_ui_text_field_selection.anchor = *field.cursor_position;
+            g_ui_text_field_selection.cursor = *field.cursor_position;
+            selection_start = selection_end = *field.cursor_position;
+            selection_handled = 1;
+        }
+        if(ui_mod_key_down() && UIKeyPressed(KEY_V)) {
+            if(selection_end > selection_start)
+                ui_text_delete_range(field.text, field.text_size,
+                                     field.cursor_position, selection_start,
+                                     selection_end);
+            if(ui_text_paste_clipboard((UITextEdit){
+                   .text = field.text,
+                   .text_size = field.text_size,
+                   .cursor_position = field.cursor_position,
+                   .max_codepoints = field.max_codepoints,
+                   .filter = field.filter,
+                   .filter_user_data = field.filter_user_data
+               }, 0))
+                changed = 1;
+            g_ui_text_field_selection.anchor = *field.cursor_position;
+            g_ui_text_field_selection.cursor = *field.cursor_position;
+            selection_start = selection_end = *field.cursor_position;
+            selection_handled = 1;
+        }
+        if((UIKeyPressed(KEY_BACKSPACE) || UIKeyPressed(KEY_DELETE)) &&
+           selection_end > selection_start) {
+            if(ui_text_delete_range(field.text, field.text_size,
+                                    field.cursor_position, selection_start,
+                                    selection_end))
+                changed = 1;
+            g_ui_text_input_backspace_count = 0;
+            g_ui_text_field_selection.anchor = *field.cursor_position;
+            g_ui_text_field_selection.cursor = *field.cursor_position;
+            selection_start = selection_end = *field.cursor_position;
+            selection_handled = 1;
+        }
+        if(!selection_handled && selection_end > selection_start &&
+           !ui_mod_key_down()) {
+            int inserted = 0;
+            int deleted_selection = 0;
+            int codepoint = GetCharPressed();
+
+            while(codepoint > 0) {
+                if(!deleted_selection) {
+                    ui_text_delete_range(field.text, field.text_size,
+                                         field.cursor_position,
+                                         selection_start, selection_end);
+                    deleted_selection = 1;
+                }
+                if((field.filter == NULL ||
+                    field.filter(codepoint, field.filter_user_data)) &&
+                   ui_text_insert_codepoint(field.text, field.text_size,
+                                            field.cursor_position, codepoint,
+                                            field.max_codepoints))
+                    changed = 1;
+                inserted = 1;
+                codepoint = GetCharPressed();
+            }
+            for(int i = 0; i < g_ui_text_input_codepoint_count; i++) {
+                codepoint = g_ui_text_input_codepoints[i];
+                if(!deleted_selection) {
+                    ui_text_delete_range(field.text, field.text_size,
+                                         field.cursor_position,
+                                         selection_start, selection_end);
+                    deleted_selection = 1;
+                }
+                if((field.filter == NULL ||
+                    field.filter(codepoint, field.filter_user_data)) &&
+                   ui_text_insert_codepoint(field.text, field.text_size,
+                                            field.cursor_position, codepoint,
+                                            field.max_codepoints))
+                    changed = 1;
+                inserted = 1;
+            }
+            if(g_ui_text_input_codepoint_count > 0)
+                g_ui_text_input_codepoint_count = 0;
+            if(inserted) {
+                g_ui_text_field_selection.anchor = *field.cursor_position;
+                g_ui_text_field_selection.cursor = *field.cursor_position;
+                selection_start = selection_end = *field.cursor_position;
+                selection_handled = 1;
+            }
+        }
+        if(!selection_handled) {
+            changed = EditUIText((UITextEdit){
+                .text = field.text,
+                .text_size = field.text_size,
+                .cursor_position = field.cursor_position,
+                .max_codepoints = field.max_codepoints,
+                .filter = field.filter,
+                .filter_user_data = field.filter_user_data,
+                .commit_pressed = field.commit_pressed != NULL
+                                      ? field.commit_pressed
+                                      : &commit_pressed
+            });
+        }
+        if(changed || UIKeyPressed(KEY_LEFT) || UIKeyPressed(KEY_RIGHT) ||
+           UIKeyPressed(KEY_HOME) || UIKeyPressed(KEY_END)) {
+            if(!g_ui_text_field_selection.dragging) {
+                g_ui_text_field_selection.id = field.focus_id;
+                g_ui_text_field_selection.anchor = *field.cursor_position;
+                g_ui_text_field_selection.cursor = *field.cursor_position;
+                selection_start = selection_end = *field.cursor_position;
+            }
+        }
     } else {
         int len = (int)strlen(field.text);
         *field.cursor_position = ui_clampi(*field.cursor_position, 0, len);
+        if(g_ui_text_field_selection.id == field.focus_id) {
+            g_ui_text_field_selection.anchor = *field.cursor_position;
+            g_ui_text_field_selection.cursor = *field.cursor_position;
+            selection_start = selection_end = *field.cursor_position;
+        }
     }
 
-    DrawUITextInput(field.bounds, field.text, *field.cursor_position,
-                             focused, focused && (((int)(GetTime() * 2.0)) % 2 == 0),
-                             font, field.style);
+    DrawUITextInputEx(field.bounds, field.text, *field.cursor_position,
+                      focused,
+                      focused && (((int)(GetTime() * 2.0)) % 2 == 0),
+                      font, field.style, selection_start, selection_end);
     EndUIWidget(&widget);
     return changed;
 }

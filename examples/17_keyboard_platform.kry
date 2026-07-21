@@ -1,0 +1,27 @@
+include "kryon.h"
+
+app "Kryon Keyboard Platform" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    copied: int = 0
+    message: [128] char = "Press Ctrl/Cmd+C to copy text."
+}
+
+screen KeyboardPlatformExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    text "Keyboard and clipboard" x: 40 y: 40 size: UI_TEXT_24 color: GetThemeText()
+    text message x: 40 y: 90 size: UI_TEXT_16 color: GetThemeText()
+    if UIAcceleratorPressed((UIAccelerator){KEY_C,1,0,0,1}) {
+        set SetUIClipboardTextValue("Copied from Kryon")
+        set snprintf(message,sizeof(message),"Copied to clipboard")
+        set copied = 1
+    }
+    if copied {
+        text "Clipboard updated." x: 40 y: 130 size: UI_TEXT_16 color: GetThemeLink()
+    }
+}

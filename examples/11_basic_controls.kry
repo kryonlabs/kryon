@@ -1,0 +1,42 @@
+include "kryon.h"
+
+app "Kryon Basic Controls" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    radio: int = 1
+    spin: int = 4
+    combo: int = 0
+    progress: int = 45
+    choices: [3] const char * = {"Alpha","Beta","Gamma"}
+}
+
+screen BasicControlsExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    text "Basic controls" x: 40 y: 40 size: UI_TEXT_24 color: GetThemeText()
+    var picked: int = DrawUIRadioButton((UIRadioButton){{40,90,160,28},"Choice A",1,radio==1,0})
+    if picked {
+        set radio = picked
+    }
+    set picked = DrawUIRadioButton((UIRadioButton){{40,124,160,28},"Choice B",2,radio==2,0})
+    if picked {
+        set radio = picked
+    }
+    draw DrawUISpinbox((UISpinbox){{240,90,140,34},201,0,10,1,&spin,0})
+    draw DrawUICombobox((UICombobox){{240,140,180,34},202,choices,3,&combo,0})
+    draw DrawUIProgressBar((UIProgressBar){{40,210,380,28},0,100,progress,"Progress"})
+    on key KEY_RIGHT {
+        if progress < 100 {
+            set progress += 5
+        }
+    }
+    on key KEY_LEFT {
+        if progress > 0 {
+            set progress -= 5
+        }
+    }
+}

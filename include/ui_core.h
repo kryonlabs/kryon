@@ -12,6 +12,10 @@ int IsUIDesktopMode(void);
 Camera2D GetUIDefaultCamera(void);
 void BeginUIFrame(int width, int height, float dpi);
 void SetUIFrame(Camera2D camera);
+int SetUIKeyboardInputEnabled(int enabled);
+int UIKeyboardInputEnabled(void);
+int UIKeyPressed(int key);
+int UIKeyDown(int key);
 
 void ClearUIInputCaptures(void);
 void PushUIInputCapture(Rectangle bounds, int allow_inside);

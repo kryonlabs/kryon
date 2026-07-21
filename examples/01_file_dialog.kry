@@ -1,0 +1,50 @@
+include "kryon.h"
+include "file_dialog.h"
+include "stdio.h"
+
+app "Kryon File Dialog Example" {
+    size 800 600
+    fps 60
+    font examples
+    theme THEME_SKY light
+}
+
+state {
+    dlg: FileDialog = {0}
+    status: [256] char = "Choose an action."
+    last_path: [512] char = ""
+    dlg_ready: int = 0
+}
+
+screen FileDialogExample(viewport: Rectangle) {
+    background GetThemeBackground()
+    if dlg_ready == 0 {
+        do InitFileDialog(&dlg)
+        set dlg_ready = 1
+    }
+    text "Kryon File Dialog" x: ScaleUIPx(32) y: ScaleUIPx(28) size: UI_TEXT_24 color: GetThemeText()
+    text "Dialog backend and result state" x: ScaleUIPx(32) y: ScaleUIPx(66) size: UI_TEXT_16 color: GetThemeIcon()
+    button "Open File" x: ScaleUIPx(32) y: ScaleUIPx(116) w: ScaleUIPx(180) h: ScaleUIPx(42) style: UI_BUTTON_STYLE_PRIMARY {
+        set BeginLoadFileDialog(&dlg,"Open File")
+        set snprintf(status,sizeof(status),"Open file requested.")
+    }
+    button "Save File" x: ScaleUIPx(226) y: ScaleUIPx(116) w: ScaleUIPx(180) h: ScaleUIPx(42) style: UI_BUTTON_STYLE_SECONDARY {
+        set BeginSaveFileDialog(&dlg,"Save File","untitled.kry")
+        set snprintf(status,sizeof(status),"Save file requested.")
+    }
+    button "Select Folder" x: ScaleUIPx(420) y: ScaleUIPx(116) w: ScaleUIPx(180) h: ScaleUIPx(42) style: UI_BUTTON_STYLE_SECONDARY {
+        set BeginSelectFileDialogFolder(&dlg,"Select Folder")
+        set snprintf(status,sizeof(status),"Folder selection requested.")
+    }
+    var dialog_result: int = UpdateFileDialog(&dlg)
+    if dialog_result == 1 {
+        set snprintf(last_path,sizeof(last_path),"%s",GetFileDialogPath(&dlg))
+        set snprintf(status,sizeof(status),"Selected: %s",last_path)
+    }
+    if dialog_result < 0 {
+        set snprintf(status,sizeof(status),"Dialog cancelled.")
+    }
+    text "Status" x: ScaleUIPx(32) y: ScaleUIPx(210) size: 18 color: GetThemeText()
+    text status x: ScaleUIPx(32) y: ScaleUIPx(242) size: UI_TEXT_16 color: GetThemeText()
+    text last_path x: ScaleUIPx(32) y: ScaleUIPx(274) size: UI_TEXT_16 color: GetThemeIcon()
+}

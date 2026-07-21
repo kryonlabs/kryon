@@ -1,6 +1,8 @@
 # Kryon Examples
 
-This directory contains example programs demonstrating Kryon library components.
+This directory contains `.kry` example programs demonstrating Kryon library
+components. The C files used for native and web builds are generated into
+`../build/examples/codegen` and are not source files.
 
 ## Available Examples
 
@@ -11,22 +13,21 @@ This directory contains example programs demonstrating Kryon library components.
 5. **05_color** - Color helpers
 6. **06_scaling** - UI scaling
 7. **07_layout** - Existing layout helpers
-8. **08_editor_gallery** - Editor overlay/gallery
-9. **09_geometry** - Packed frames, grid cells, placement, separators
-10. **10_menus** - Menubar and menu items
-11. **11_basic_controls** - Radio, progress, spinbox, combobox, label frame
-12. **12_collections** - Listbox, tree view, table view
-13. **13_text_editor** - Text area plus clipboard helpers
-14. **14_canvas** - Canvas clipping, grid, and hit testing
-15. **15_containers** - Notebook, paned view, collapsible section
-16. **16_dialogs** - Message, confirm, prompt, and color picker
-17. **17_keyboard_platform** - Accelerators and clipboard
-18. **18_accessibility** - Accessibility/debug node overlay
+8. **09_geometry** - Packed frames, grid cells, placement, separators
+9. **10_menus** - Menubar and menu items
+10. **11_basic_controls** - Radio, progress, spinbox, combobox, label frame
+11. **12_collections** - Listbox, tree view, table view
+12. **13_text_editor** - Text area plus clipboard helpers
+13. **14_canvas** - Canvas clipping, grid, and hit testing
+14. **15_containers** - Notebook, paned view, collapsible section
+15. **16_dialogs** - Message, confirm, prompt, and color picker
+16. **17_keyboard_platform** - Accelerators and clipboard
+17. **18_accessibility** - Accessibility/debug node overlay
 
 ## Requirements
 
 - Kryon library must be built (`make` in parent directory)
-- Include Kryon with `#include "kryon.h"`; Kryon provides the Raylib-compatible public API surface
+- Edit the `.kry` files; generated C/H in `../build/examples/codegen` is disposable
 - X11 libraries (Linux): `-lGL -lm -lpthread -ldl -lrt -lX11`
 
 ## Building Examples
@@ -36,11 +37,15 @@ This directory contains example programs demonstrating Kryon library components.
 make
 
 # Build specific example
-make 01_file_dialog
+make ../build/examples/bin/01_file_dialog
 
 # Clean examples
 make clean
 ```
+
+Each build transpiles `NN_name.kry` with `kc`, writes generated C/H under
+`../build/examples/codegen`, then compiles the standalone example binary under
+`../build/examples/bin`.
 
 ## Running Examples
 
@@ -49,8 +54,20 @@ make clean
 make run
 
 # Run directly (after building)
-./01_file_dialog
+../build/examples/bin/01_file_dialog
 ```
+
+## IDE Preview
+
+Open this directory with Kryon:
+
+```bash
+kryon .
+```
+
+The IDE automatically discovers `.kry` screens, builds a live preview host under
+`build/kryon`, and reloads when `.kry` sources change. A `project.kryon` file is
+only needed for full projects that want custom build or run targets.
 
 ## Example Features
 

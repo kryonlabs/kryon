@@ -1,7 +1,7 @@
 CC ?= cc
 AR ?= ar
 BUILD_DIR ?= build
-PREFIX ?= /usr/local
+PREFIX ?= $(HOME)/.local
 SITE_DIR ?= docs/site
 SITE_BUILD_DIR ?= $(BUILD_DIR)/site
 VERSION_FILE ?= include/kryon_version.h
@@ -11,7 +11,9 @@ DIST_DIR ?= dist
 STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
 KC = $(BUILD_DIR)/bin/kc
-KI = $(BUILD_DIR)/bin/ki
+KI = $(BUILD_DIR)/bin/kryon
+BINDIR ?= $(PREFIX)/bin
+INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude -I$(KRYON_DIR)/vendor/clay
 ICON_DIR ?= icons language payments platforms tiles pfp
@@ -101,7 +103,7 @@ RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean run tools examples-run font-assets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install-static
+.PHONY: all clean run tools examples-run font-assets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
 
 all: $(LIB) $(KC) $(KI)
 
@@ -121,6 +123,10 @@ run: $(KI)
 	fi
 
 tools: $(KC) $(KI)
+
+install: $(KI)
+	mkdir -p $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 755 $(KI) $(DESTDIR)$(BINDIR)/kryon
 
 examples-run:
 	@$(MAKE) -C examples run

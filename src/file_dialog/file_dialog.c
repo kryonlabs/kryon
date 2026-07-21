@@ -65,7 +65,7 @@ begin_web_load_dialog(FileDialog *dlg, const char *title, const char *filter)
             .join(",");
 
         const input = document.createElement("input");
-        let settled = false;
+        var settled = false;
         const finish = (status) => {
             if(settled)
                 return;

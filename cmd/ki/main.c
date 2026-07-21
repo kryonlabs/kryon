@@ -7,6 +7,7 @@
 #if !defined(_WIN32)
 #include <dirent.h>
 #include <dlfcn.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 #include <sys/stat.h>
@@ -21,16 +22,62 @@ enum {
     EDITOR_MAX_TREE_ITEMS = 1024,
     EDITOR_MAX_EXPANDED_DIRS = 256,
     EDITOR_MAX_RUN_TARGETS = 16,
+    EDITOR_MAX_OPEN_FILES = 12,
+    EDITOR_MAX_SEARCH_RESULTS = 160,
+    EDITOR_MAX_DIAGNOSTICS = 128,
+    EDITOR_MAX_KRY_SCREENS = 128,
     EDITOR_HISTORY_MAX = 32,
     EDITOR_TREE_DEPTH = 8,
     EDITOR_SOURCE_MAX_BYTES = 512 * 1024,
+    EDITOR_OUTPUT_MAX_BYTES = 128 * 1024,
 };
+
+typedef enum EditorLayoutMode {
+    EDITOR_LAYOUT_SPLIT,
+    EDITOR_LAYOUT_SOURCE,
+    EDITOR_LAYOUT_PREVIEW
+} EditorLayoutMode;
+
+typedef enum EditorPreviewScaleMode {
+    EDITOR_PREVIEW_SCALE_FIT,
+    EDITOR_PREVIEW_SCALE_100,
+    EDITOR_PREVIEW_SCALE_75,
+    EDITOR_PREVIEW_SCALE_50
+} EditorPreviewScaleMode;
 
 typedef struct EditorRunTarget {
     char label[48];
     char name[48];
     char command[EDITOR_PATH_CAP];
 } EditorRunTarget;
+
+typedef struct EditorOpenFile {
+    char path[EDITOR_PATH_CAP];
+    int cursor;
+    int scroll_y;
+} EditorOpenFile;
+
+typedef struct EditorSearchResult {
+    char path[EDITOR_PATH_CAP];
+    int line;
+    char excerpt[160];
+} EditorSearchResult;
+
+typedef struct EditorDiagnostic {
+    char path[EDITOR_PATH_CAP];
+    int line;
+    int column;
+    char severity[16];
+    char message[160];
+} EditorDiagnostic;
+
+typedef struct EditorKryScreen {
+    char source_path[EDITOR_PATH_CAP];
+    char header_path[EDITOR_PATH_CAP];
+    char name[96];
+    char title[128];
+    int takes_viewport;
+} EditorKryScreen;
 
 typedef struct EditorProject {
     char path[EDITOR_PATH_CAP];
@@ -49,21 +96,32 @@ typedef struct EditorProject {
     int source_loaded;
     double source_last_edit_time;
     char source[EDITOR_SOURCE_MAX_BYTES];
+    EditorOpenFile open_files[EDITOR_MAX_OPEN_FILES];
+    int open_file_count;
+    int active_open_file;
+    char find_text[128];
+    int find_cursor;
+    int find_focused;
+    char replace_text[128];
+    int replace_cursor;
+    int replace_focused;
+    int find_replace_visible;
     char *undo_items[EDITOR_HISTORY_MAX];
     char *redo_items[EDITOR_HISTORY_MAX];
     int undo_count;
     int redo_count;
     char image_file[EDITOR_PATH_CAP];
     Texture2D image_texture;
-    char host_path[EDITOR_PATH_CAP];
+    char live_module_path[EDITOR_PATH_CAP];
     int loaded;
     int selected_screen;
-    char host_rel_path[EDITOR_PATH_CAP];
-    char build_host_command[EDITOR_PATH_CAP];
+    char live_module_rel_path[EDITOR_PATH_CAP];
+    char build_live_command[EDITOR_PATH_CAP];
+    int auto_live_build;
     EditorRunTarget run_targets[EDITOR_MAX_RUN_TARGETS];
     int run_target_count;
     int selected_run_target;
-    long host_mtime;
+    long live_module_mtime;
     long source_mtime;
     double last_reload_check;
     int reload_failed;
@@ -71,9 +129,29 @@ typedef struct EditorProject {
     int inspect_menu_open;
     int inspect_menu_x;
     int inspect_menu_y;
+    EditorLayoutMode layout_mode;
+    int preview_interact;
+    int preview_width;
+    int preview_height;
+    int preview_preset;
+    EditorPreviewScaleMode preview_scale_mode;
+    char search_text[128];
+    int search_cursor;
+    int search_focused;
+    int search_visible;
+    int search_scroll_y;
+    EditorSearchResult search_results[EDITOR_MAX_SEARCH_RESULTS];
+    int search_result_count;
+    int selected_search_result;
+    char output[EDITOR_OUTPUT_MAX_BYTES];
+    int output_visible;
+    int output_scroll_y;
+    EditorDiagnostic diagnostics[EDITOR_MAX_DIAGNOSTICS];
+    int diagnostic_count;
+    int selected_diagnostic;
     AppHost *host;
-    void *host_library;
-    DestroyAppHostCallback destroy_host;
+    void *live_library;
+    DestroyAppHostCallback destroy_live_host;
 } EditorProject;
 
 typedef struct EditorRecentProjects {
@@ -101,6 +179,20 @@ typedef struct EditorTreeItem {
     char label[128];
     char path[EDITOR_PATH_CAP];
 } EditorTreeItem;
+
+static int editor_save_source_file(EditorProject *project, char *status,
+                                   size_t status_size);
+static void editor_select_file(EditorProject *project, const char *path);
+static void editor_search_project(EditorProject *project, char *status,
+                                  size_t status_size);
+static int editor_run_capture(EditorProject *project, const char *command,
+                              char *status, size_t status_size);
+static int editor_build_capture(EditorProject *project, const char *command,
+                                const char *success, const char *failure,
+                                char *status, size_t status_size);
+static void editor_open_file_at_line(EditorProject *project, const char *path,
+                                     int line_no, char *status,
+                                     size_t status_size);
 
 static void
 load_editor_font(void)
@@ -159,6 +251,108 @@ editor_source_font_size(EditorProject *project)
     return project->source_font_size;
 }
 
+static void
+editor_preview_init(EditorProject *project)
+{
+    if(project == NULL)
+        return;
+    if(project->preview_width <= 0)
+        project->preview_width = 800;
+    if(project->preview_height <= 0)
+        project->preview_height = 600;
+    if(project->preview_width < 240)
+        project->preview_width = 240;
+    if(project->preview_width > 2560)
+        project->preview_width = 2560;
+    if(project->preview_height < 240)
+        project->preview_height = 240;
+    if(project->preview_height > 2560)
+        project->preview_height = 2560;
+    if(project->preview_scale_mode < EDITOR_PREVIEW_SCALE_FIT ||
+       project->preview_scale_mode > EDITOR_PREVIEW_SCALE_50)
+        project->preview_scale_mode = EDITOR_PREVIEW_SCALE_FIT;
+    if(project->preview_preset < 0 || project->preview_preset > 4)
+        project->preview_preset = 0;
+}
+
+static Rectangle
+editor_preview_stage_rect(Rectangle content)
+{
+    int toolbar_h = ScaleUIPx(42);
+    int pad = ScaleUIPx(18);
+
+    return (Rectangle){
+        content.x + (float)pad,
+        content.y + (float)toolbar_h + (float)pad,
+        content.width - (float)(pad * 2),
+        content.height - (float)toolbar_h - (float)(pad * 2)
+    };
+}
+
+static float
+editor_preview_scale(const EditorProject *project, Rectangle stage)
+{
+    float scale_w;
+    float scale_h;
+    float scale;
+
+    if(project == NULL || project->preview_width <= 0 ||
+       project->preview_height <= 0)
+        return 1.0f;
+    if(project->preview_scale_mode == EDITOR_PREVIEW_SCALE_100)
+        return 1.0f;
+    if(project->preview_scale_mode == EDITOR_PREVIEW_SCALE_75)
+        return 0.75f;
+    if(project->preview_scale_mode == EDITOR_PREVIEW_SCALE_50)
+        return 0.5f;
+    scale_w = stage.width / (float)project->preview_width;
+    scale_h = stage.height / (float)project->preview_height;
+    scale = scale_w < scale_h ? scale_w : scale_h;
+    if(scale > 1.0f)
+        scale = 1.0f;
+    if(scale < 0.1f)
+        scale = 0.1f;
+    return scale;
+}
+
+static Rectangle
+editor_preview_device_rect(Rectangle content, const EditorProject *project)
+{
+    Rectangle stage = editor_preview_stage_rect(content);
+    float scale = editor_preview_scale(project, stage);
+    float w = project != NULL ? (float)project->preview_width * scale : 0.0f;
+    float h = project != NULL ? (float)project->preview_height * scale : 0.0f;
+
+    if(w <= 0.0f || h <= 0.0f)
+        return (Rectangle){0};
+    return (Rectangle){
+        stage.x + (stage.width - w) * 0.5f,
+        stage.y + (stage.height - h) * 0.5f,
+        w,
+        h
+    };
+}
+
+static void
+editor_preview_apply_preset(EditorProject *project)
+{
+    static const int sizes[][2] = {
+        {800, 600},
+        {1280, 720},
+        {390, 844},
+        {768, 1024},
+        {600, 600}
+    };
+
+    if(project == NULL)
+        return;
+    editor_preview_init(project);
+    if(project->preview_preset < 0 || project->preview_preset >= 5)
+        return;
+    project->preview_width = sizes[project->preview_preset][0];
+    project->preview_height = sizes[project->preview_preset][1];
+}
+
 static const char *
 path_basename(const char *path)
 {
@@ -190,6 +384,28 @@ path_join(char *dst, size_t dst_size, const char *a, const char *b)
         snprintf(dst, dst_size, "%s%s", a, b);
     else
         snprintf(dst, dst_size, "%s/%s", a, b);
+}
+
+static void
+path_dirname(char *dst, size_t dst_size, const char *path)
+{
+    char *slash;
+
+    if(dst == NULL || dst_size == 0)
+        return;
+    if(path == NULL || path[0] == '\0') {
+        snprintf(dst, dst_size, ".");
+        return;
+    }
+    snprintf(dst, dst_size, "%s", path);
+    slash = strrchr(dst, '/');
+    if(slash == NULL) {
+        snprintf(dst, dst_size, ".");
+    } else if(slash == dst) {
+        slash[1] = '\0';
+    } else {
+        *slash = '\0';
+    }
 }
 
 static char *
@@ -466,10 +682,11 @@ editor_load_project_config(EditorProject *project)
 
     if(project == NULL)
         return;
-    snprintf(project->host_rel_path, sizeof(project->host_rel_path),
-             "build/kryon/editor_host.so");
-    snprintf(project->build_host_command, sizeof(project->build_host_command),
-             "make kryon-host");
+    snprintf(project->live_module_rel_path,
+             sizeof(project->live_module_rel_path),
+             "build/kryon/live_preview.so");
+    project->build_live_command[0] = '\0';
+    project->auto_live_build = 1;
     project->run_target_count = 0;
 
     path_join(path, sizeof(path), project->path, "project.kryon");
@@ -487,13 +704,26 @@ editor_load_project_config(EditorProject *project)
         if(editor_parse_quoted_value(trimmed, "name", project->name,
                                      sizeof(project->name)))
             continue;
-        if(editor_parse_quoted_value(trimmed, "host", project->host_rel_path,
-                                     sizeof(project->host_rel_path)))
+        if(editor_parse_quoted_value(trimmed, "live",
+                                     project->live_module_rel_path,
+                                     sizeof(project->live_module_rel_path)))
             continue;
+        if(editor_parse_quoted_value(trimmed, "host",
+                                     project->live_module_rel_path,
+                                     sizeof(project->live_module_rel_path)))
+            continue;
+        if(editor_parse_quoted_value(trimmed, "build_live",
+                                     project->build_live_command,
+                                     sizeof(project->build_live_command))) {
+            project->auto_live_build = 0;
+            continue;
+        }
         if(editor_parse_quoted_value(trimmed, "build_host",
-                                     project->build_host_command,
-                                     sizeof(project->build_host_command)))
+                                     project->build_live_command,
+                                     sizeof(project->build_live_command))) {
+            project->auto_live_build = 0;
             continue;
+        }
         if(editor_parse_three_quoted_values(trimmed, "run_target",
                                             label, sizeof(label),
                                             name, sizeof(name),
@@ -694,8 +924,7 @@ editor_open_active_screen_source(EditorProject *project)
 
     if(project == NULL || source_path == NULL || source_path[0] == '\0')
         return 0;
-    snprintf(project->selected_file, sizeof(project->selected_file), "%s",
-             source_path);
+    editor_select_file(project, source_path);
     editor_select_source_path(project, source_path);
     return 1;
 }
@@ -886,6 +1115,117 @@ editor_add_recent_project(EditorRecentProjects *recent, const char *path)
     editor_save_recent_projects(recent);
 }
 
+static int
+editor_find_open_file(const EditorProject *project, const char *path)
+{
+    if(project == NULL || path == NULL || path[0] == '\0')
+        return -1;
+    for(int i = 0; i < project->open_file_count; i++) {
+        if(strcmp(project->open_files[i].path, path) == 0)
+            return i;
+    }
+    return -1;
+}
+
+static void
+editor_store_active_open_file(EditorProject *project)
+{
+    int index;
+
+    if(project == NULL || project->source_scroll_file[0] == '\0')
+        return;
+    index = editor_find_open_file(project, project->source_scroll_file);
+    if(index < 0)
+        return;
+    project->open_files[index].cursor = project->source_cursor;
+    project->open_files[index].scroll_y = project->source_scroll_y;
+}
+
+static int
+editor_add_open_file(EditorProject *project, const char *path)
+{
+    int index;
+
+    if(project == NULL || path == NULL || path[0] == '\0')
+        return -1;
+    index = editor_find_open_file(project, path);
+    if(index >= 0)
+        return index;
+    if(project->open_file_count >= EDITOR_MAX_OPEN_FILES) {
+        memmove(project->open_files, project->open_files + 1,
+                sizeof(project->open_files[0]) *
+                    (EDITOR_MAX_OPEN_FILES - 1));
+        project->open_file_count = EDITOR_MAX_OPEN_FILES - 1;
+        if(project->active_open_file > 0)
+            project->active_open_file--;
+    }
+    index = project->open_file_count++;
+    memset(&project->open_files[index], 0, sizeof(project->open_files[index]));
+    snprintf(project->open_files[index].path,
+             sizeof(project->open_files[index].path), "%s", path);
+    return index;
+}
+
+static void
+editor_select_file(EditorProject *project, const char *path)
+{
+    int index;
+
+    if(project == NULL || path == NULL || path[0] == '\0')
+        return;
+    editor_store_active_open_file(project);
+    index = editor_add_open_file(project, path);
+    if(index >= 0)
+        project->active_open_file = index;
+    snprintf(project->selected_file, sizeof(project->selected_file), "%s",
+             path);
+    if(path_ext_eq(path, ".kry")) {
+        project->layout_mode = EDITOR_LAYOUT_SPLIT;
+        editor_select_source_path(project, path);
+    }
+}
+
+static int
+editor_create_new_file(EditorProject *project, char *status,
+                       size_t status_size)
+{
+    char rel[64];
+    char path[EDITOR_PATH_CAP];
+    FILE *file;
+
+    if(project == NULL || !project->loaded)
+        return 0;
+    for(int i = 1; i < 1000; i++) {
+        snprintf(rel, sizeof(rel), "new%d.kry", i);
+        path_join(path, sizeof(path), project->path, rel);
+        if(FileExists(path))
+            continue;
+        file = fopen(path, "wb");
+        if(file == NULL)
+            break;
+        fprintf(file, "screen \"%s\" {\n    text \"New screen\"\n}\n",
+                rel);
+        fclose(file);
+        editor_select_file(project, rel);
+        project->source_loaded = 0;
+        snprintf(status, status_size, "Created %s", rel);
+        return 1;
+    }
+    snprintf(status, status_size, "Could not create a new file");
+    return 0;
+}
+
+static void
+editor_output_clear(EditorProject *project)
+{
+    if(project == NULL)
+        return;
+    project->output[0] = '\0';
+    project->output_scroll_y = 0;
+    project->diagnostic_count = 0;
+    project->selected_diagnostic = -1;
+}
+
 static void
 editor_set_project(EditorProject *project, const char *path)
 {
@@ -896,24 +1236,31 @@ editor_set_project(EditorProject *project, const char *path)
     snprintf(project->path, sizeof(project->path), "%s", path);
     snprintf(project->name, sizeof(project->name), "%s", path_basename(path));
     project->loaded = 1;
+    project->layout_mode = EDITOR_LAYOUT_SPLIT;
+    project->preview_width = 800;
+    project->preview_height = 600;
+    project->preview_preset = 0;
+    project->preview_scale_mode = EDITOR_PREVIEW_SCALE_FIT;
+    project->selected_diagnostic = -1;
+    project->selected_search_result = -1;
     editor_load_project_config(project);
     editor_detect_run_targets(project);
 }
 
 static void
-editor_unload_project_host(EditorProject *project)
+editor_unload_live_module(EditorProject *project)
 {
     if(project == NULL)
         return;
-    if(project->destroy_host != NULL && project->host != NULL)
-        project->destroy_host(project->host);
+    if(project->destroy_live_host != NULL && project->host != NULL)
+        project->destroy_live_host(project->host);
 #if !defined(_WIN32)
-    if(project->host_library != NULL)
-        dlclose(project->host_library);
+    if(project->live_library != NULL)
+        dlclose(project->live_library);
 #endif
     project->host = NULL;
-    project->host_library = NULL;
-    project->destroy_host = NULL;
+    project->live_library = NULL;
+    project->destroy_live_host = NULL;
 }
 
 static void
@@ -925,17 +1272,448 @@ editor_close_project(EditorProject *project)
         UnloadTexture(project->image_texture);
     editor_free_history(project->undo_items, &project->undo_count);
     editor_free_history(project->redo_items, &project->redo_count);
-    editor_unload_project_host(project);
+    editor_unload_live_module(project);
     memset(project, 0, sizeof(*project));
 }
 
 static int
-editor_build_project_host(EditorProject *project, char *status,
-                          size_t status_size)
+editor_starts_word(const char *s, const char *word)
+{
+    size_t n;
+
+    if(s == NULL || word == NULL)
+        return 0;
+    n = strlen(word);
+    return strncmp(s, word, n) == 0 &&
+           (s[n] == '\0' || s[n] == ' ' || s[n] == '\t' || s[n] == '(');
+}
+
+static void
+editor_strip_kry_ext(char *dst, size_t dst_size, const char *path)
+{
+    size_t len;
+
+    if(dst == NULL || dst_size == 0)
+        return;
+    if(path == NULL) {
+        dst[0] = '\0';
+        return;
+    }
+    len = strlen(path);
+    if(len > 4 && strcmp(path + len - 4, ".kry") == 0)
+        len -= 4;
+    if(len >= dst_size)
+        len = dst_size - 1;
+    memcpy(dst, path, len);
+    dst[len] = '\0';
+}
+
+static void
+editor_make_screen_title(char *dst, size_t dst_size, const char *rel_path)
+{
+    char tmp[128];
+    const char *base;
+    char *dot;
+
+    if(dst == NULL || dst_size == 0)
+        return;
+    base = path_basename(rel_path);
+    snprintf(tmp, sizeof(tmp), "%s", base);
+    dot = strrchr(tmp, '.');
+    if(dot != NULL)
+        *dot = '\0';
+    if(tmp[0] >= '0' && tmp[0] <= '9' &&
+       tmp[1] >= '0' && tmp[1] <= '9' && tmp[2] == '_')
+        memmove(tmp, tmp + 3, strlen(tmp + 3) + 1);
+    for(char *p = tmp; *p != '\0'; p++)
+        if(*p == '_')
+            *p = ' ';
+    snprintf(dst, dst_size, "%s", tmp);
+}
+
+static void
+editor_generated_header_path(char *dst, size_t dst_size, const char *rel_path)
+{
+    char base[EDITOR_PATH_CAP];
+
+    editor_strip_kry_ext(base, sizeof(base), rel_path);
+    snprintf(dst, dst_size, "%s.h", base);
+}
+
+static void
+editor_generated_c_path(char *dst, size_t dst_size, const char *codegen_dir,
+                        const char *rel_path)
+{
+    char base[EDITOR_PATH_CAP];
+    char crel[EDITOR_PATH_CAP];
+
+    editor_strip_kry_ext(base, sizeof(base), rel_path);
+    snprintf(crel, sizeof(crel), "%s.c", base);
+    path_join(dst, dst_size, codegen_dir, crel);
+}
+
+static int
+editor_parse_kry_screen_line(char *line, EditorKryScreen *screen,
+                             const char *rel_path)
+{
+    char *p;
+    size_t n = 0;
+
+    if(line == NULL || screen == NULL || rel_path == NULL)
+        return 0;
+    if(editor_starts_word(line, "screen"))
+        p = editor_trim_line(line + strlen("screen"));
+    else if(editor_starts_word(line, "page"))
+        p = editor_trim_line(line + strlen("page"));
+    else
+        return 0;
+    if(!((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') || *p == '_'))
+        return 0;
+    while((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+          (*p >= '0' && *p <= '9') || *p == '_') {
+        if(n + 1 < sizeof(screen->name))
+            screen->name[n++] = *p;
+        p++;
+    }
+    screen->name[n] = '\0';
+    snprintf(screen->source_path, sizeof(screen->source_path), "%s", rel_path);
+    editor_generated_header_path(screen->header_path,
+                                 sizeof(screen->header_path), rel_path);
+    editor_make_screen_title(screen->title, sizeof(screen->title), rel_path);
+    screen->takes_viewport = strstr(p, "Rectangle") != NULL;
+    return screen->name[0] != '\0';
+}
+
+static int
+editor_collect_kry_screens_file(const char *root, const char *rel_path,
+                                EditorKryScreen *screens, int *count)
+{
+    char path[EDITOR_PATH_CAP];
+    char line[1024];
+    FILE *file;
+
+    if(root == NULL || rel_path == NULL || screens == NULL || count == NULL ||
+       *count >= EDITOR_MAX_KRY_SCREENS)
+        return 0;
+    path_join(path, sizeof(path), root, rel_path);
+    file = fopen(path, "r");
+    if(file == NULL)
+        return 0;
+    while(fgets(line, sizeof(line), file) != NULL &&
+          *count < EDITOR_MAX_KRY_SCREENS) {
+        char *trimmed = editor_trim_line(line);
+        EditorKryScreen screen = {0};
+
+        if(editor_parse_kry_screen_line(trimmed, &screen, rel_path))
+            screens[(*count)++] = screen;
+    }
+    fclose(file);
+    return 1;
+}
+
+static int
+editor_collect_kry_screens_dir(const char *root, const char *rel_dir,
+                               EditorKryScreen *screens, int *count,
+                               int depth)
+{
+#if defined(_WIN32)
+    (void)root;
+    (void)rel_dir;
+    (void)screens;
+    (void)count;
+    (void)depth;
+    return 0;
+#else
+    char dir_path[EDITOR_PATH_CAP];
+    DIR *dir;
+    struct dirent *entry;
+
+    if(root == NULL || screens == NULL || count == NULL ||
+       depth > EDITOR_TREE_DEPTH || *count >= EDITOR_MAX_KRY_SCREENS)
+        return 0;
+    if(rel_dir == NULL || rel_dir[0] == '\0')
+        snprintf(dir_path, sizeof(dir_path), "%s", root);
+    else
+        path_join(dir_path, sizeof(dir_path), root, rel_dir);
+    dir = opendir(dir_path);
+    if(dir == NULL)
+        return 0;
+    while((entry = readdir(dir)) != NULL && *count < EDITOR_MAX_KRY_SCREENS) {
+        char child_rel[EDITOR_PATH_CAP];
+        char child_path[EDITOR_PATH_CAP];
+        struct stat st;
+
+        if(strcmp(entry->d_name, ".") == 0 ||
+           strcmp(entry->d_name, "..") == 0 ||
+           path_is_hidden(entry->d_name) ||
+           path_is_ignored_dir(entry->d_name))
+            continue;
+        if(rel_dir != NULL && rel_dir[0] != '\0')
+            path_join(child_rel, sizeof(child_rel), rel_dir, entry->d_name);
+        else
+            snprintf(child_rel, sizeof(child_rel), "%s", entry->d_name);
+        path_join(child_path, sizeof(child_path), root, child_rel);
+        if(stat(child_path, &st) != 0)
+            continue;
+        if(S_ISDIR(st.st_mode)) {
+            editor_collect_kry_screens_dir(root, child_rel, screens, count,
+                                           depth + 1);
+        } else if(path_ext_eq(child_rel, ".kry")) {
+            editor_collect_kry_screens_file(root, child_rel, screens, count);
+        }
+    }
+    closedir(dir);
+    return *count > 0;
+#endif
+}
+
+static int
+editor_path_has_file(const char *root, const char *rel)
+{
+    char path[EDITOR_PATH_CAP];
+
+    path_join(path, sizeof(path), root, rel);
+    return FileExists(path);
+}
+
+static int
+editor_find_kryon_root(const EditorProject *project, char *root,
+                       size_t root_size)
+{
+    char cwd[EDITOR_PATH_CAP];
+    char parent[EDITOR_PATH_CAP];
+    char vendor[EDITOR_PATH_CAP];
+
+    if(root == NULL || root_size == 0)
+        return 0;
+    if(getenv("KRYON_SDK_ROOT") != NULL &&
+       editor_path_has_file(getenv("KRYON_SDK_ROOT"), "include/kryon.h")) {
+        snprintf(root, root_size, "%s", getenv("KRYON_SDK_ROOT"));
+        return 1;
+    }
+    if(getcwd(cwd, sizeof(cwd)) != NULL &&
+       editor_path_has_file(cwd, "include/kryon.h")) {
+        snprintf(root, root_size, "%s", cwd);
+        return 1;
+    }
+    if(project != NULL) {
+        snprintf(parent, sizeof(parent), "%s", project->path);
+        char *slash = strrchr(parent, '/');
+        if(slash != NULL && slash != parent) {
+            *slash = '\0';
+            if(editor_path_has_file(parent, "include/kryon.h")) {
+                snprintf(root, root_size, "%s", parent);
+                return 1;
+            }
+        }
+        path_join(vendor, sizeof(vendor), project->path, "vendor/kryon");
+        if(editor_path_has_file(vendor, "include/kryon.h")) {
+            snprintf(root, root_size, "%s", vendor);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void
+editor_command_append(char *command, size_t command_size, const char *text)
+{
+    size_t len;
+
+    if(command == NULL || text == NULL || command_size == 0)
+        return;
+    len = strlen(command);
+    if(len + 1 >= command_size)
+        return;
+    snprintf(command + len, command_size - len, "%s", text);
+}
+
+static void
+editor_command_append_quoted(char *command, size_t command_size,
+                             const char *text)
+{
+    char quoted[EDITOR_PATH_CAP + 16];
+
+    shell_quote(quoted, sizeof(quoted), text);
+    editor_command_append(command, command_size, quoted);
+}
+
+static int
+editor_write_auto_live_host(const char *host_path, const EditorKryScreen *screens,
+                            int screen_count)
+{
+    FILE *file;
+
+    file = fopen(host_path, "wb");
+    if(file == NULL)
+        return 0;
+    fprintf(file, "#include \"kryon.h\"\n");
+    fprintf(file, "#include <stdlib.h>\n\n");
+    for(int i = 0; i < screen_count; i++)
+        fprintf(file, "#include \"%s\"\n", screens[i].header_path);
+    fprintf(file, "\ntypedef struct KryonLiveState {\n");
+    fprintf(file, "    AppHost host;\n");
+    fprintf(file, "    App app;\n");
+    fprintf(file, "} KryonLiveState;\n\n");
+    for(int i = 0; i < screen_count; i++) {
+        fprintf(file, "static void\n");
+        fprintf(file, "kryon_live_draw_%d(void *app, Rectangle viewport)\n", i);
+        fprintf(file, "{\n");
+        fprintf(file, "    (void)app;\n");
+        if(screens[i].takes_viewport)
+            fprintf(file, "    %s_kry_draw(viewport);\n", screens[i].name);
+        else
+            fprintf(file, "    %s_kry_draw();\n", screens[i].name);
+        fprintf(file, "}\n\n");
+    }
+    fprintf(file, "static const AppScreen kryon_live_screens[] = {\n");
+    for(int i = 0; i < screen_count; i++) {
+        fprintf(file,
+                "    {\"%s\", \"Examples\", \"%s\", \"%s\", 0, kryon_live_draw_%d}%s\n",
+                screens[i].name, screens[i].title, screens[i].source_path, i,
+                i + 1 < screen_count ? "," : "");
+    }
+    fprintf(file, "};\n\n");
+    fprintf(file, "AppHost *\n");
+    fprintf(file, "CreateKryonLivePreview(int abi_version, const char *project_path)\n");
+    fprintf(file, "{\n");
+    fprintf(file, "    KryonLiveState *state;\n");
+    fprintf(file, "    (void)project_path;\n");
+    fprintf(file, "    if(abi_version != APP_HOST_ABI_VERSION)\n");
+    fprintf(file, "        return 0;\n");
+    fprintf(file, "    state = calloc(1, sizeof(*state));\n");
+    fprintf(file, "    if(state == 0)\n");
+    fprintf(file, "        return 0;\n");
+    fprintf(file, "    state->app.app = state;\n");
+    fprintf(file, "    state->app.screens = kryon_live_screens;\n");
+    fprintf(file, "    state->app.screen_count = %d;\n", screen_count);
+    fprintf(file, "    BindAppHost(&state->app, &state->host);\n");
+    fprintf(file, "    return &state->host;\n");
+    fprintf(file, "}\n\n");
+    fprintf(file, "void\n");
+    fprintf(file, "DestroyKryonLivePreview(AppHost *host)\n");
+    fprintf(file, "{\n");
+    fprintf(file, "    App *app = host != 0 ? (App *)host->userdata : 0;\n");
+    fprintf(file, "    KryonLiveState *state = app != 0 ? (KryonLiveState *)app->app : 0;\n");
+    fprintf(file, "    free(state);\n");
+    fprintf(file, "}\n");
+    fclose(file);
+    return 1;
+}
+
+static int
+editor_build_auto_live_module(EditorProject *project, char *status,
+                              size_t status_size)
 {
 #if defined(_WIN32)
     (void)project;
-    snprintf(status, status_size, "Editor host build is not implemented on Windows yet");
+    snprintf(status, status_size, "Automatic Kryon preview build is not implemented on Windows yet");
+    return 0;
+#else
+    EditorKryScreen screens[EDITOR_MAX_KRY_SCREENS];
+    int screen_count = 0;
+    char kryon_root[EDITOR_PATH_CAP];
+    char kc_path[EDITOR_PATH_CAP];
+    char build_dir[EDITOR_PATH_CAP];
+    char codegen_dir[EDITOR_PATH_CAP];
+    char host_path[EDITOR_PATH_CAP];
+    char next_module_path[EDITOR_PATH_CAP];
+    char command[EDITOR_OUTPUT_MAX_BYTES];
+
+    if(project == NULL || !project->loaded) {
+        snprintf(status, status_size, "Open a project first");
+        return 0;
+    }
+    if(!editor_collect_kry_screens_dir(project->path, "", screens,
+                                       &screen_count, 0) ||
+       screen_count <= 0) {
+        snprintf(status, status_size, "No previewable .kry screens found");
+        return 0;
+    }
+    if(!editor_find_kryon_root(project, kryon_root, sizeof(kryon_root))) {
+        snprintf(status, status_size, "Could not find Kryon SDK root for automatic preview");
+        return 0;
+    }
+    path_join(build_dir, sizeof(build_dir), project->path, "build/kryon");
+    path_join(codegen_dir, sizeof(codegen_dir), build_dir, "codegen");
+    path_join(host_path, sizeof(host_path), build_dir, "live_preview_host.c");
+    path_join(project->live_module_path, sizeof(project->live_module_path),
+              project->path, project->live_module_rel_path);
+    snprintf(next_module_path, sizeof(next_module_path), "%s.next",
+             project->live_module_path);
+    command[0] = '\0';
+    editor_command_append(command, sizeof(command), "mkdir -p ");
+    editor_command_append_quoted(command, sizeof(command), build_dir);
+    if(system(command) != 0) {
+        snprintf(status, status_size, "Could not create automatic preview build directory");
+        return 0;
+    }
+    if(!editor_write_auto_live_host(host_path, screens, screen_count)) {
+        snprintf(status, status_size, "Could not write automatic preview host");
+        return 0;
+    }
+    path_join(kc_path, sizeof(kc_path), kryon_root, "build/bin/kc");
+    if(!FileExists(kc_path))
+        snprintf(kc_path, sizeof(kc_path), "kc");
+
+    command[0] = '\0';
+    editor_command_append(command, sizeof(command), "mkdir -p ");
+    editor_command_append_quoted(command, sizeof(command), codegen_dir);
+    editor_command_append(command, sizeof(command), " && ");
+    editor_command_append(command, sizeof(command), "cd ");
+    editor_command_append_quoted(command, sizeof(command), project->path);
+    editor_command_append(command, sizeof(command), " && ");
+    editor_command_append_quoted(command, sizeof(command), kc_path);
+    editor_command_append(command, sizeof(command), " --no-main --root .");
+    editor_command_append(command, sizeof(command), " -o ");
+    editor_command_append_quoted(command, sizeof(command), codegen_dir);
+    for(int i = 0; i < screen_count; i++) {
+        editor_command_append(command, sizeof(command), " ");
+        editor_command_append_quoted(command, sizeof(command), screens[i].source_path);
+    }
+    editor_command_append(command, sizeof(command), " && cc -shared -fPIC -DKRYON_LIVE_PREVIEW -I");
+    editor_command_append_quoted(command, sizeof(command), kryon_root);
+    editor_command_append(command, sizeof(command), "/include -I");
+    editor_command_append_quoted(command, sizeof(command), project->path);
+    editor_command_append(command, sizeof(command), " -I");
+    editor_command_append_quoted(command, sizeof(command), codegen_dir);
+    editor_command_append(command, sizeof(command), " -o ");
+    editor_command_append_quoted(command, sizeof(command), next_module_path);
+    editor_command_append(command, sizeof(command), " ");
+    editor_command_append_quoted(command, sizeof(command), host_path);
+    for(int i = 0; i < screen_count; i++) {
+        char generated_c[EDITOR_PATH_CAP];
+
+        editor_generated_c_path(generated_c, sizeof(generated_c), codegen_dir,
+                                screens[i].source_path);
+        editor_command_append(command, sizeof(command), " ");
+        editor_command_append_quoted(command, sizeof(command), generated_c);
+    }
+    editor_command_append(command, sizeof(command), " && mv ");
+    editor_command_append_quoted(command, sizeof(command), next_module_path);
+    editor_command_append(command, sizeof(command), " ");
+    editor_command_append_quoted(command, sizeof(command), project->live_module_path);
+    if(!editor_build_capture(project, command,
+                             "Built automatic Kryon preview",
+                             "Could not build automatic Kryon preview",
+                             status, status_size) ||
+       !FileExists(project->live_module_path)) {
+        if(status[0] == '\0')
+            snprintf(status, status_size,
+                     "Could not build automatic Kryon preview");
+        return 0;
+    }
+    return 1;
+#endif
+}
+
+static int
+editor_build_live_module(EditorProject *project, char *status,
+                         size_t status_size)
+{
+#if defined(_WIN32)
+    (void)project;
+    snprintf(status, status_size, "Kryon live preview build is not implemented on Windows yet");
     return 0;
 #else
     char quoted_path[EDITOR_PATH_CAP + 16];
@@ -946,26 +1724,34 @@ editor_build_project_host(EditorProject *project, char *status,
         return 0;
     }
 
-    path_join(project->host_path, sizeof(project->host_path), project->path,
-              project->host_rel_path);
+    if(project->auto_live_build || project->build_live_command[0] == '\0')
+        return editor_build_auto_live_module(project, status, status_size);
+
+    path_join(project->live_module_path, sizeof(project->live_module_path),
+              project->path, project->live_module_rel_path);
     shell_quote(quoted_path, sizeof(quoted_path), project->path);
     snprintf(command, sizeof(command), "cd %s && %s",
-             quoted_path, project->build_host_command);
-    if(system(command) != 0 || !FileExists(project->host_path)) {
-        snprintf(status, status_size, "Could not build editor host");
+             quoted_path, project->build_live_command);
+    if(!editor_build_capture(project, command,
+                             "Built Kryon live preview",
+                             "Could not build Kryon live preview",
+                             status, status_size) ||
+       !FileExists(project->live_module_path)) {
+        if(status[0] == '\0')
+            snprintf(status, status_size,
+                     "Could not build Kryon live preview");
         return 0;
     }
-    snprintf(status, status_size, "Built editor host");
     return 1;
 #endif
 }
 
 static int
-editor_load_project_host(EditorProject *project, char *status, size_t status_size)
+editor_load_live_module(EditorProject *project, char *status, size_t status_size)
 {
 #if defined(_WIN32)
     (void)project;
-    snprintf(status, status_size, "Editor host loading is not implemented on Windows yet");
+    snprintf(status, status_size, "Kryon live preview loading is not implemented on Windows yet");
     return 0;
 #else
     CreateAppHostCallback create_host;
@@ -978,43 +1764,70 @@ editor_load_project_host(EditorProject *project, char *status, size_t status_siz
         return 0;
     }
 
-    path_join(project->host_path, sizeof(project->host_path), project->path,
-              project->host_rel_path);
-    if(!FileExists(project->host_path) &&
-       !editor_build_project_host(project, status, status_size))
+    path_join(project->live_module_path, sizeof(project->live_module_path),
+              project->path, project->live_module_rel_path);
+    if(project->auto_live_build) {
+        long source_mtime = editor_project_source_mtime(project);
+        long live_mtime = GetFileModTime(project->live_module_path);
+
+        if(live_mtime <= 0 || source_mtime > live_mtime) {
+            if(!editor_build_live_module(project, status, status_size)) {
+                project->reload_failed = 1;
+                project->source_mtime = source_mtime;
+                return 0;
+            }
+        }
+    } else if(!FileExists(project->live_module_path) &&
+              !editor_build_live_module(project, status, status_size)) {
+        project->reload_failed = 1;
         return 0;
+    }
     snprintf(selected_file, sizeof(selected_file), "%s", project->selected_file);
 
-    project->host_library = dlopen(project->host_path, RTLD_NOW | RTLD_LOCAL);
-    if(project->host_library == NULL) {
-        snprintf(status, status_size, "Host load failed: %s", dlerror());
+    project->live_library = dlopen(project->live_module_path,
+                                   RTLD_NOW | RTLD_LOCAL);
+    if(project->live_library == NULL) {
+        snprintf(status, status_size, "Live preview load failed: %s",
+                 dlerror());
         return 0;
     }
 
     dlerror();
-    symbol = dlsym(project->host_library, "CreateAppHost");
+    symbol = dlsym(project->live_library, "CreateKryonLivePreview");
     error = dlerror();
     if(error != NULL || symbol == NULL) {
-        snprintf(status, status_size, "Host is missing CreateAppHost");
-        dlclose(project->host_library);
-        project->host_library = NULL;
+        dlerror();
+        symbol = dlsym(project->live_library, "CreateAppHost");
+        error = dlerror();
+    }
+    if(error != NULL || symbol == NULL) {
+        snprintf(status, status_size, "Live preview is missing CreateKryonLivePreview");
+        dlclose(project->live_library);
+        project->live_library = NULL;
         return 0;
     }
     create_host = (CreateAppHostCallback)symbol;
 
     dlerror();
-    symbol = dlsym(project->host_library, "DestroyAppHost");
+    symbol = dlsym(project->live_library, "DestroyKryonLivePreview");
     error = dlerror();
     if(error == NULL && symbol != NULL)
-        project->destroy_host = (DestroyAppHostCallback)symbol;
+        project->destroy_live_host = (DestroyAppHostCallback)symbol;
+    else {
+        dlerror();
+        symbol = dlsym(project->live_library, "DestroyAppHost");
+        error = dlerror();
+        if(error == NULL && symbol != NULL)
+            project->destroy_live_host = (DestroyAppHostCallback)symbol;
+    }
 
     project->host = create_host(APP_HOST_ABI_VERSION, project->path);
     if(project->host == NULL) {
-        snprintf(status, status_size, "Host rejected app host ABI %d",
+        snprintf(status, status_size, "Live preview rejected app ABI %d",
                  APP_HOST_ABI_VERSION);
-        dlclose(project->host_library);
-        project->host_library = NULL;
-        project->destroy_host = NULL;
+        dlclose(project->live_library);
+        project->live_library = NULL;
+        project->destroy_live_host = NULL;
         return 0;
     }
     if(selected_file[0] != '\0' &&
@@ -1031,17 +1844,18 @@ editor_load_project_host(EditorProject *project, char *status, size_t status_siz
             snprintf(project->selected_file, sizeof(project->selected_file),
                      "%s", first.source_path);
     }
-    project->host_mtime = GetFileModTime(project->host_path);
+    project->live_module_mtime = GetFileModTime(project->live_module_path);
     project->source_mtime = editor_project_source_mtime(project);
     project->reload_failed = 0;
-    snprintf(status, status_size, "Loaded editor host for %s", project->name);
+    snprintf(status, status_size, "Loaded Kryon live preview for %s",
+             project->name);
     return 1;
 #endif
 }
 
 static int
-editor_reload_project_host(EditorProject *project, char *status,
-                           size_t status_size)
+editor_reload_live_module(EditorProject *project, char *status,
+                          size_t status_size)
 {
     char selected_file[EDITOR_PATH_CAP];
     int selected_run_target;
@@ -1050,38 +1864,44 @@ editor_reload_project_host(EditorProject *project, char *status,
         return 0;
     snprintf(selected_file, sizeof(selected_file), "%s", project->selected_file);
     selected_run_target = project->selected_run_target;
-    editor_unload_project_host(project);
-    if(!editor_build_project_host(project, status, status_size)) {
+    if(!editor_build_live_module(project, status, status_size)) {
         project->reload_failed = 1;
         return 0;
     }
+    editor_unload_live_module(project);
     snprintf(project->selected_file, sizeof(project->selected_file), "%s",
              selected_file);
     project->selected_run_target = selected_run_target;
-    return editor_load_project_host(project, status, status_size);
+    return editor_load_live_module(project, status, status_size);
 }
 
 static void
-editor_maybe_reload_project_host(EditorProject *project, char *status,
-                                 size_t status_size)
+editor_maybe_reload_live_module(EditorProject *project, char *status,
+                                size_t status_size)
 {
     long source_mtime;
     double now;
 
-    if(project == NULL || !project->loaded || project->host == NULL)
+    if(project == NULL || !project->loaded)
         return;
     now = GetTime();
     if(now - project->last_reload_check < 2.0)
         return;
     project->last_reload_check = now;
     source_mtime = editor_project_source_mtime(project);
-    if(source_mtime <= 0 || source_mtime <= project->source_mtime)
+    if(source_mtime <= 0)
+        return;
+    if(source_mtime <= project->source_mtime &&
+       (project->host != NULL || project->reload_failed))
         return;
     project->source_mtime = source_mtime;
-    if(project->reload_failed && source_mtime <= project->host_mtime)
+    if(project->reload_failed && source_mtime <= project->live_module_mtime)
         return;
-    snprintf(status, status_size, "Project changed; rebuilding editor host");
-    editor_reload_project_host(project, status, status_size);
+    snprintf(status, status_size, "Project changed; rebuilding Kryon live preview");
+    if(project->host == NULL)
+        editor_load_live_module(project, status, status_size);
+    else
+        editor_reload_live_module(project, status, status_size);
 }
 
 static void
@@ -1098,8 +1918,35 @@ editor_open_project(EditorProject *project, const char *path,
     editor_close_project(project);
     editor_set_project(project, path);
     editor_add_recent_project(recent, path);
-    if(!editor_load_project_host(project, status, status_size))
+    if(!editor_load_live_module(project, status, status_size))
         return;
+}
+
+static int
+editor_resolve_project_path(char *dst, size_t dst_size, const char *path)
+{
+    if(dst == NULL || dst_size == 0 || path == NULL || path[0] == '\0')
+        return 0;
+#if defined(_WIN32)
+    snprintf(dst, dst_size, "%s", path);
+    return 1;
+#else
+    struct stat st;
+    char *resolved;
+
+    resolved = realpath(path, NULL);
+    if(resolved == NULL)
+        return 0;
+    if(stat(resolved, &st) != 0 ||
+       !(S_ISDIR(st.st_mode) ||
+         (S_ISREG(st.st_mode) && path_ext_eq(resolved, ".kry")))) {
+        free(resolved);
+        return 0;
+    }
+    snprintf(dst, dst_size, "%s", resolved);
+    free(resolved);
+    return 1;
+#endif
 }
 
 static int
@@ -1107,17 +1954,26 @@ editor_run_project(EditorProject *project, char *status, size_t status_size)
 {
 #if defined(_WIN32)
     (void)project;
+    (void)status_size;
     snprintf(status, status_size, "Run is not implemented on Windows yet");
     return 0;
 #else
-    char quoted_path[EDITOR_PATH_CAP + 16];
-    char command[EDITOR_PATH_CAP * 2 + 128];
-    pid_t pid;
     const EditorRunTarget *target;
+    char base[EDITOR_PATH_CAP];
+    char command[EDITOR_PATH_CAP * 2 + 96];
 
     if(project == NULL || !project->loaded) {
         snprintf(status, status_size, "Open a project first");
         return 0;
+    }
+    if(path_ext_eq(project->selected_file, ".kry") &&
+       strcmp(path_basename(project->path), "examples") == 0) {
+        editor_strip_kry_ext(base, sizeof(base), project->selected_file);
+        snprintf(command, sizeof(command),
+                 "make ../build/examples/bin/%s && "
+                 "(../build/examples/bin/%s >/tmp/kryon-run-example.log 2>&1 &)",
+                 base, base);
+        return editor_run_capture(project, command, status, status_size);
     }
     if(project->selected_run_target < 0 ||
        project->selected_run_target >= project->run_target_count) {
@@ -1125,22 +1981,7 @@ editor_run_project(EditorProject *project, char *status, size_t status_size)
         return 0;
     }
     target = &project->run_targets[project->selected_run_target];
-
-    shell_quote(quoted_path, sizeof(quoted_path), project->path);
-    snprintf(command, sizeof(command), "cd %s && %s", quoted_path,
-             target->command);
-    pid = fork();
-    if(pid < 0) {
-        snprintf(status, status_size, "Could not launch project");
-        return 0;
-    }
-    if(pid == 0) {
-        execl("/bin/sh", "sh", "-lc", command, (char *)NULL);
-        _exit(127);
-    }
-    snprintf(status, status_size, "Running %s (%s)", project->name,
-             target->name);
-    return 1;
+    return editor_run_capture(project, target->command, status, status_size);
 #endif
 }
 
@@ -1165,15 +2006,18 @@ draw_menu_button(int x, int y, const char *label, int active)
 }
 
 static void
-draw_project_menu(int x, int y, int *open, FileDialog *project_dialog)
+draw_project_menu(int x, int y, int *open, FileDialog *project_dialog,
+                  EditorProject *project, char *status, size_t status_size)
 {
     int w = ScaleUIPx(188);
     int item_h = ScaleUIPx(32);
+    int item_count = project != NULL && project->loaded ? 4 : 3;
 
     if(open == NULL || !*open)
         return;
-    DrawRectangle(x, y, w, item_h * 3 + ScaleUIPx(10), GetThemeSurface());
-    DrawRectangleLines(x, y, w, item_h * 3 + ScaleUIPx(10),
+    DrawRectangle(x, y, w, item_h * item_count + ScaleUIPx(10),
+                  GetThemeSurface());
+    DrawRectangleLines(x, y, w, item_h * item_count + ScaleUIPx(10),
                        DarkenUIColor(GetThemeSurface(), 38));
     y += ScaleUIPx(5);
     if(DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
@@ -1182,11 +2026,29 @@ draw_project_menu(int x, int y, int *open, FileDialog *project_dialog)
         *open = 0;
     }
     y += item_h;
-    DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
-                        "New Project", UI_BUTTON_STYLE_SECONDARY, 0, NULL);
+    if(DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
+                           "New File", UI_BUTTON_STYLE_SECONDARY,
+                           project == NULL || !project->loaded, NULL)) {
+        editor_create_new_file(project, status, status_size);
+        *open = 0;
+    }
     y += item_h;
-    DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
-                        "Save", UI_BUTTON_STYLE_SECONDARY, 0, NULL);
+    if(DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12), item_h,
+                           "Save", UI_BUTTON_STYLE_SECONDARY,
+                           project == NULL || !project->source_loaded, NULL)) {
+        editor_save_source_file(project, status, status_size);
+        *open = 0;
+    }
+    if(project != NULL && project->loaded) {
+        y += item_h;
+        if(DrawUIGenericButton(x + ScaleUIPx(6), y, w - ScaleUIPx(12),
+                               item_h, "Close Project",
+                               UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+            editor_close_project(project);
+            snprintf(status, status_size, "Closed project");
+            *open = 0;
+        }
+    }
 }
 
 static int
@@ -1417,6 +2279,75 @@ draw_left_sidebar(Rectangle bounds, EditorProject *project,
         return;
     }
 
+    draw_sidebar_section(x, &y, "Search");
+    {
+        int commit = 0;
+        int field_h = ScaleUIPx(30);
+        int btn_w = ScaleUIPx(56);
+        int result_h = ScaleUIPx(26);
+        int max_results_h = ScaleUIPx(136);
+
+        DrawUITextField((UITextField){
+            .bounds = {(float)x, (float)y,
+                       (float)(w - btn_w - ScaleUIPx(8)),
+                       (float)field_h},
+            .text = project->search_text,
+            .text_size = sizeof(project->search_text),
+            .cursor_position = &project->search_cursor,
+            .focused = &project->search_focused,
+            .font = UI_TEXT_16,
+            .focus_id = 1211,
+            .style = editor_input_style(),
+            .commit_pressed = &commit
+        });
+        if(DrawUIGenericButton(x + w - btn_w, y, btn_w, field_h, "Find",
+                               UI_BUTTON_STYLE_SECONDARY,
+                               project->search_text[0] == '\0', NULL) ||
+           commit)
+            editor_search_project(project, status, status_size);
+        y += field_h + ScaleUIPx(8);
+
+        if(project->search_visible) {
+            Rectangle results = {(float)x, (float)y, (float)w,
+                                 (float)max_results_h};
+            int draw_y = y - project->search_scroll_y;
+
+            DrawRectangleRec(results, DarkenUIColor(GetThemeSurface(), 4));
+            DrawRectangleLinesEx(results, 1,
+                                 DarkenUIColor(GetThemeSurface(), 38));
+            PushUIInputClip(results);
+            for(int i = 0; i < project->search_result_count; i++) {
+                char label[220];
+                int active = i == project->selected_search_result;
+
+                if(draw_y + result_h >= y &&
+                   draw_y <= y + max_results_h) {
+                    snprintf(label, sizeof(label), "%s:%d %s",
+                             project->search_results[i].path,
+                             project->search_results[i].line,
+                             project->search_results[i].excerpt);
+                    if(draw_sidebar_row(x + ScaleUIPx(4), draw_y,
+                                        w - ScaleUIPx(8), label, active)) {
+                        project->selected_search_result = i;
+                        editor_open_file_at_line(project,
+                            project->search_results[i].path,
+                            project->search_results[i].line,
+                            status, status_size);
+                    }
+                }
+                draw_y += result_h;
+            }
+            PopUIInputClip();
+            if(CheckCollisionPointRec(GetMousePosition(), results)) {
+                project->search_scroll_y -=
+                    (int)(GetMouseWheelMove() * (float)result_h * 3.0f);
+                if(project->search_scroll_y < 0)
+                    project->search_scroll_y = 0;
+            }
+            y += max_results_h + ScaleUIPx(12);
+        }
+    }
+
     draw_sidebar_section(x, &y, "Files");
     editor_build_project_tree(project, project->path, 0, tree_items,
                               &tree_count);
@@ -1447,8 +2378,7 @@ draw_left_sidebar(Rectangle bounds, EditorProject *project,
     activated_path = editor_tree_path_for_id(tree_items, tree_count,
                                              activated_id);
     if(activated_path != NULL) {
-        snprintf(project->selected_file, sizeof(project->selected_file),
-                 "%s", activated_path);
+        editor_select_file(project, activated_path);
         sidebar->selected_id = activated_id;
         sidebar->revealed_id = activated_id;
         if(editor_select_source_path(project, activated_path)) {
@@ -1517,6 +2447,342 @@ editor_write_text_file(const char *path, const char *buffer)
 }
 
 static int
+editor_file_is_text(const char *path)
+{
+    const char *base = path_basename(path);
+
+    return path_ext_eq(path, ".kry") ||
+           path_ext_eq(path, ".c") ||
+           path_ext_eq(path, ".h") ||
+           path_ext_eq(path, ".md") ||
+           path_ext_eq(path, ".txt") ||
+           path_ext_eq(path, ".mk") ||
+           strcmp(base, "Makefile") == 0 ||
+           strcmp(base, "makefile") == 0 ||
+           strcmp(base, "project.kryon") == 0;
+}
+
+static void
+editor_trim_excerpt(char *text)
+{
+    char *trimmed;
+
+    if(text == NULL)
+        return;
+    trimmed = editor_trim_line(text);
+    if(trimmed != text)
+        memmove(text, trimmed, strlen(trimmed) + 1);
+}
+
+static void
+editor_add_search_result(EditorProject *project, const char *path,
+                         int line_no, const char *line)
+{
+    EditorSearchResult *result;
+
+    if(project == NULL || path == NULL || line == NULL ||
+       project->search_result_count >= EDITOR_MAX_SEARCH_RESULTS)
+        return;
+    result = &project->search_results[project->search_result_count++];
+    snprintf(result->path, sizeof(result->path), "%s", path);
+    result->line = line_no;
+    snprintf(result->excerpt, sizeof(result->excerpt), "%s", line);
+    editor_trim_excerpt(result->excerpt);
+}
+
+static void
+editor_search_file(EditorProject *project, const char *abs_path,
+                   const char *rel_path, const char *query)
+{
+    char text[EDITOR_SOURCE_MAX_BYTES];
+    int line_start = 0;
+    int line_no = 1;
+    int len;
+
+    if(project == NULL || query == NULL || query[0] == '\0' ||
+       abs_path == NULL || rel_path == NULL ||
+       project->search_result_count >= EDITOR_MAX_SEARCH_RESULTS)
+        return;
+    if(strstr(rel_path, query) != NULL)
+        editor_add_search_result(project, rel_path, 1, "file match");
+    if(!editor_file_is_text(rel_path))
+        return;
+    if(!editor_read_text_file(abs_path, text, sizeof(text)))
+        return;
+    len = (int)strlen(text);
+    for(int i = 0; i <= len; i++) {
+        if(text[i] == '\n' || text[i] == '\0') {
+            char line[192];
+            int line_len = i - line_start;
+
+            if(line_len >= (int)sizeof(line))
+                line_len = (int)sizeof(line) - 1;
+            memcpy(line, text + line_start, (size_t)line_len);
+            line[line_len] = '\0';
+            if(strstr(line, query) != NULL)
+                editor_add_search_result(project, rel_path, line_no, line);
+            line_start = i + 1;
+            line_no++;
+        }
+        if(project->search_result_count >= EDITOR_MAX_SEARCH_RESULTS)
+            return;
+    }
+}
+
+static void
+editor_search_dir(EditorProject *project, const char *dir_path,
+                  const char *query, int depth)
+{
+    EditorTreeEntry entries[EDITOR_MAX_TREE_ENTRIES];
+    char rel_path[EDITOR_PATH_CAP];
+    int entry_count;
+
+    if(project == NULL || dir_path == NULL || query == NULL ||
+       depth > EDITOR_TREE_DEPTH ||
+       project->search_result_count >= EDITOR_MAX_SEARCH_RESULTS)
+        return;
+    entry_count = editor_read_tree_entries(dir_path, entries,
+                                           EDITOR_MAX_TREE_ENTRIES);
+    for(int i = 0; i < entry_count; i++) {
+        editor_relative_path(rel_path, sizeof(rel_path), project,
+                             entries[i].path);
+        if(entries[i].is_dir) {
+            if(!path_is_ignored_dir(entries[i].name))
+                editor_search_dir(project, entries[i].path, query, depth + 1);
+        } else {
+            editor_search_file(project, entries[i].path, rel_path, query);
+        }
+        if(project->search_result_count >= EDITOR_MAX_SEARCH_RESULTS)
+            return;
+    }
+}
+
+static void
+editor_search_project(EditorProject *project, char *status,
+                      size_t status_size)
+{
+    if(project == NULL || !project->loaded)
+        return;
+    project->search_result_count = 0;
+    project->selected_search_result = -1;
+    project->search_visible = 1;
+    project->search_scroll_y = 0;
+    if(project->search_text[0] == '\0') {
+        snprintf(status, status_size, "Enter a search query");
+        return;
+    }
+    editor_search_dir(project, project->path, project->search_text, 0);
+    snprintf(status, status_size, "Found %d result%s for %s",
+             project->search_result_count,
+             project->search_result_count == 1 ? "" : "s",
+             project->search_text);
+}
+
+static int
+editor_parse_diagnostic_line(EditorProject *project, char *line)
+{
+    char *p1;
+    char *p2;
+    char *p3;
+    char *message;
+    EditorDiagnostic *diag;
+    int line_no;
+    int column = 0;
+
+    if(project == NULL || line == NULL ||
+       project->diagnostic_count >= EDITOR_MAX_DIAGNOSTICS)
+        return 0;
+    p1 = strchr(line, ':');
+    if(p1 == NULL)
+        return 0;
+    p2 = strchr(p1 + 1, ':');
+    if(p2 == NULL)
+        return 0;
+    *p1 = '\0';
+    *p2 = '\0';
+    line_no = atoi(p1 + 1);
+    if(line_no <= 0)
+        return 0;
+    p3 = strchr(p2 + 1, ':');
+    if(p3 != NULL) {
+        char *after_col = p2 + 1;
+        int all_digits = 1;
+
+        for(char *p = after_col; p < p3; p++) {
+            if(*p < '0' || *p > '9') {
+                all_digits = 0;
+                break;
+            }
+        }
+        if(all_digits) {
+            *p3 = '\0';
+            column = atoi(after_col);
+            message = p3 + 1;
+        } else {
+            message = p2 + 1;
+        }
+    } else {
+        message = p2 + 1;
+    }
+    message = editor_trim_line(message);
+    diag = &project->diagnostics[project->diagnostic_count++];
+    snprintf(diag->path, sizeof(diag->path), "%s", line);
+    diag->line = line_no;
+    diag->column = column;
+    if(strstr(message, "error") != NULL)
+        snprintf(diag->severity, sizeof(diag->severity), "error");
+    else if(strstr(message, "warning") != NULL)
+        snprintf(diag->severity, sizeof(diag->severity), "warning");
+    else
+        snprintf(diag->severity, sizeof(diag->severity), "info");
+    snprintf(diag->message, sizeof(diag->message), "%s", message);
+    return 1;
+}
+
+static void
+editor_parse_diagnostics(EditorProject *project)
+{
+    char line[1024];
+    int line_start = 0;
+    int len;
+
+    if(project == NULL)
+        return;
+    project->diagnostic_count = 0;
+    project->selected_diagnostic = -1;
+    len = (int)strlen(project->output);
+    for(int i = 0; i <= len; i++) {
+        if(project->output[i] == '\n' || project->output[i] == '\0') {
+            int line_len = i - line_start;
+
+            if(line_len >= (int)sizeof(line))
+                line_len = (int)sizeof(line) - 1;
+            memcpy(line, project->output + line_start, (size_t)line_len);
+            line[line_len] = '\0';
+            editor_parse_diagnostic_line(project, line);
+            line_start = i + 1;
+        }
+        if(project->diagnostic_count >= EDITOR_MAX_DIAGNOSTICS)
+            return;
+    }
+}
+
+static int
+editor_run_capture(EditorProject *project, const char *command,
+                   char *status, size_t status_size)
+{
+#if defined(_WIN32)
+    (void)project;
+    (void)command;
+    snprintf(status, status_size, "Task output is not implemented on Windows yet");
+    return 0;
+#else
+    char quoted_path[EDITOR_PATH_CAP + 16];
+    char *shell_command;
+    FILE *pipe;
+    size_t used = 0;
+    size_t command_len;
+    int rc;
+
+    if(project == NULL || !project->loaded || command == NULL ||
+       command[0] == '\0')
+        return 0;
+    editor_output_clear(project);
+    project->output_visible = 1;
+    shell_quote(quoted_path, sizeof(quoted_path), project->path);
+    command_len = strlen(quoted_path) + strlen(command) + 16;
+    shell_command = malloc(command_len);
+    if(shell_command == NULL) {
+        snprintf(status, status_size, "Out of memory");
+        return 0;
+    }
+    snprintf(shell_command, command_len, "cd %s && %s 2>&1",
+             quoted_path, command);
+    pipe = popen(shell_command, "r");
+    if(pipe == NULL) {
+        free(shell_command);
+        snprintf(status, status_size, "Could not start task");
+        return 0;
+    }
+    while(used + 1 < sizeof(project->output)) {
+        size_t n = fread(project->output + used, 1,
+                         sizeof(project->output) - used - 1, pipe);
+        used += n;
+        if(n == 0)
+            break;
+    }
+    project->output[used] = '\0';
+    rc = pclose(pipe);
+    free(shell_command);
+    editor_parse_diagnostics(project);
+    if(WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
+        snprintf(status, status_size, "Task succeeded: %s", command);
+        return 1;
+    }
+    snprintf(status, status_size, "Task failed: %s", command);
+    return 0;
+#endif
+}
+
+static int
+editor_build_capture(EditorProject *project, const char *command,
+                     const char *success, const char *failure,
+                     char *status, size_t status_size)
+{
+#if defined(_WIN32)
+    (void)project;
+    (void)command;
+    (void)success;
+    (void)failure;
+    snprintf(status, status_size, "Build output is not implemented on Windows yet");
+    return 0;
+#else
+    char *shell_command;
+    FILE *pipe;
+    size_t used = 0;
+    size_t command_len;
+    int rc;
+
+    if(project == NULL || !project->loaded || command == NULL ||
+       command[0] == '\0')
+        return 0;
+    editor_output_clear(project);
+    command_len = strlen(command) + 8;
+    shell_command = malloc(command_len);
+    if(shell_command == NULL) {
+        snprintf(status, status_size, "Out of memory");
+        return 0;
+    }
+    snprintf(shell_command, command_len, "%s 2>&1", command);
+    pipe = popen(shell_command, "r");
+    if(pipe == NULL) {
+        free(shell_command);
+        snprintf(status, status_size, "Could not start build");
+        return 0;
+    }
+    while(used + 1 < sizeof(project->output)) {
+        size_t n = fread(project->output + used, 1,
+                         sizeof(project->output) - used - 1, pipe);
+        used += n;
+        if(n == 0)
+            break;
+    }
+    project->output[used] = '\0';
+    rc = pclose(pipe);
+    free(shell_command);
+    editor_parse_diagnostics(project);
+    if(WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
+        project->output_visible = 0;
+        snprintf(status, status_size, "%s", success);
+        return 1;
+    }
+    project->output_visible = 1;
+    snprintf(status, status_size, "%s", failure);
+    return 0;
+#endif
+}
+
+static int
 editor_source_cursor_for_line(const char *text, int line_no)
 {
     int line = 1;
@@ -1545,6 +2811,40 @@ editor_source_line_for_cursor(const char *text, int cursor)
             line_no++;
     }
     return line_no;
+}
+
+static void
+editor_open_file_at_line(EditorProject *project, const char *path,
+                         int line_no, char *status, size_t status_size)
+{
+    char abs_path[EDITOR_PATH_CAP];
+    char text[EDITOR_SOURCE_MAX_BYTES];
+    int cursor = 0;
+    int line_h;
+
+    if(project == NULL || path == NULL || path[0] == '\0')
+        return;
+    editor_select_file(project, path);
+    if(line_no > 0) {
+        path_join(abs_path, sizeof(abs_path), project->path, path);
+        if(editor_read_text_file(abs_path, text, sizeof(text)))
+            cursor = editor_source_cursor_for_line(text, line_no);
+        project->source_pending_cursor = cursor;
+        project->source_pending_line = line_no;
+        project->source_pending_valid = 1;
+        project->source_highlight_line = line_no;
+        line_h = GetUITextLineHeight(editor_source_font_size(project)) +
+                 ScaleUIPx(2);
+        project->source_scroll_y = (line_no - 2) * line_h;
+        if(project->source_scroll_y < 0)
+            project->source_scroll_y = 0;
+    }
+    if(status != NULL && status_size > 0) {
+        if(line_no > 0)
+            snprintf(status, status_size, "Opened %s:%d", path, line_no);
+        else
+            snprintf(status, status_size, "Opened %s", path);
+    }
 }
 
 static int
@@ -1647,9 +2947,10 @@ editor_jump_to_active_widget_source(EditorProject *project,
     if(line_no <= 0)
         return 0;
     cursor = editor_source_cursor_for_line(text, line_no);
-    snprintf(project->selected_file, sizeof(project->selected_file), "%s",
-             rel_path);
+    editor_select_file(project, rel_path);
     editor_select_source_path(project, rel_path);
+    if(editor_selected_file_has_preview(project))
+        project->layout_mode = EDITOR_LAYOUT_SPLIT;
     project->source_pending_cursor = cursor;
     project->source_pending_line = line_no;
     project->source_pending_valid = 1;
@@ -1716,7 +3017,7 @@ editor_save_source_now(EditorProject *project, char *status,
     if(path_ext_eq(saved_file, ".kry")) {
         snprintf(status, status_size, "Saved %s; rebuilding preview",
                  saved_file);
-        editor_reload_project_host(project, status, status_size);
+        editor_reload_live_module(project, status, status_size);
     }
     return 1;
 }
@@ -1787,24 +3088,342 @@ editor_adjust_source_zoom(EditorProject *project, int delta, char *status,
     snprintf(status, status_size, "Source font: %dpx", font_size);
 }
 
+static int
+editor_scroll_to_cursor(EditorProject *project, int line_no)
+{
+    int line_h;
+
+    if(project == NULL || line_no <= 0)
+        return 0;
+    line_h = GetUITextLineHeight(editor_source_font_size(project)) +
+             ScaleUIPx(2);
+    project->source_scroll_y = (line_no - 2) * line_h;
+    if(project->source_scroll_y < 0)
+        project->source_scroll_y = 0;
+    project->source_highlight_line = line_no;
+    return 1;
+}
+
+static int
+editor_find_next_source(EditorProject *project, char *status,
+                        size_t status_size)
+{
+    char *hit;
+    int len;
+
+    if(project == NULL || project->find_text[0] == '\0' ||
+       !project->source_loaded)
+        return 0;
+    len = (int)strlen(project->source);
+    project->source_cursor = ui_clampi(project->source_cursor, 0, len);
+    hit = strstr(project->source + project->source_cursor + 1,
+                 project->find_text);
+    if(hit == NULL)
+        hit = strstr(project->source, project->find_text);
+    if(hit == NULL) {
+        snprintf(status, status_size, "No match: %s", project->find_text);
+        return 0;
+    }
+    project->source_cursor = (int)(hit - project->source);
+    editor_scroll_to_cursor(project,
+        editor_source_line_for_cursor(project->source, project->source_cursor));
+    snprintf(status, status_size, "Found %s", project->find_text);
+    return 1;
+}
+
+static int
+editor_replace_next_source(EditorProject *project, char *status,
+                           size_t status_size)
+{
+    char *hit;
+    int source_len;
+    int find_len;
+    int replace_len;
+    char *before;
+
+    if(project == NULL || project->find_text[0] == '\0' ||
+       !project->source_loaded)
+        return 0;
+    source_len = (int)strlen(project->source);
+    find_len = (int)strlen(project->find_text);
+    replace_len = (int)strlen(project->replace_text);
+    project->source_cursor = ui_clampi(project->source_cursor, 0, source_len);
+    hit = strstr(project->source + project->source_cursor,
+                 project->find_text);
+    if(hit == NULL)
+        hit = strstr(project->source, project->find_text);
+    if(hit == NULL) {
+        snprintf(status, status_size, "No match: %s", project->find_text);
+        return 0;
+    }
+    if(source_len - find_len + replace_len + 1 > EDITOR_SOURCE_MAX_BYTES) {
+        snprintf(status, status_size, "Replacement is too large");
+        return 0;
+    }
+    before = editor_strdup(project->source);
+    if(before != NULL)
+        editor_push_history(project->undo_items, &project->undo_count, before);
+    free(before);
+    memmove(hit + replace_len, hit + find_len,
+            (size_t)(source_len - (int)(hit - project->source) - find_len + 1));
+    memcpy(hit, project->replace_text, (size_t)replace_len);
+    project->source_cursor = (int)(hit - project->source) + replace_len;
+    project->source_dirty = 1;
+    project->source_last_edit_time = GetTime();
+    editor_scroll_to_cursor(project,
+        editor_source_line_for_cursor(project->source, project->source_cursor));
+    snprintf(status, status_size, "Replaced %s", project->find_text);
+    return 1;
+}
+
+static void
+editor_fill_find_from_selection(EditorProject *project)
+{
+    int start;
+    int end;
+    int len;
+
+    if(project == NULL || !project->source_loaded)
+        return;
+    if(!GetUITextAreaSelection(1501, &start, &end))
+        return;
+    len = (int)strlen(project->source);
+    start = ui_clampi(start, 0, len);
+    end = ui_clampi(end, 0, len);
+    if(end <= start)
+        return;
+    len = end - start;
+    if(len >= (int)sizeof(project->find_text))
+        len = (int)sizeof(project->find_text) - 1;
+    for(int i = 0; i < len; i++) {
+        if(project->source[start + i] == '\n' ||
+           project->source[start + i] == '\r') {
+            len = i;
+            break;
+        }
+    }
+    if(len <= 0)
+        return;
+    memcpy(project->find_text, project->source + start, (size_t)len);
+    project->find_text[len] = '\0';
+    project->find_cursor = len;
+}
+
+static void
+editor_source_line_bounds(const char *text, int cursor, int *start, int *end)
+{
+    int len;
+    int s;
+    int e;
+
+    if(start != NULL)
+        *start = 0;
+    if(end != NULL)
+        *end = 0;
+    if(text == NULL)
+        return;
+    len = (int)strlen(text);
+    cursor = ui_clampi(cursor, 0, len);
+    s = cursor;
+    while(s > 0 && text[s - 1] != '\n')
+        s--;
+    e = cursor;
+    while(e < len && text[e] != '\n')
+        e++;
+    if(start != NULL)
+        *start = s;
+    if(end != NULL)
+        *end = e;
+}
+
+static int
+editor_copy_source_range(const char *text, int start, int end)
+{
+    char *copy;
+    int len;
+    int text_len;
+
+    if(text == NULL)
+        return 0;
+    text_len = (int)strlen(text);
+    start = ui_clampi(start, 0, text_len);
+    end = ui_clampi(end, 0, text_len);
+    if(end <= start)
+        return 0;
+    len = end - start;
+    copy = malloc((size_t)len + 1);
+    if(copy == NULL)
+        return 0;
+    memcpy(copy, text + start, (size_t)len);
+    copy[len] = '\0';
+    SetClipboardText(copy);
+    free(copy);
+    return 1;
+}
+
+static int
+editor_delete_source_range(EditorProject *project, int start, int end)
+{
+    int len;
+
+    if(project == NULL)
+        return 0;
+    len = (int)strlen(project->source);
+    start = ui_clampi(start, 0, len);
+    end = ui_clampi(end, 0, len);
+    if(end <= start)
+        return 0;
+    memmove(project->source + start, project->source + end,
+            (size_t)(len - end + 1));
+    project->source_cursor = start;
+    SetUITextAreaSelection(1501, start, start);
+    return 1;
+}
+
+static int
+editor_insert_source_text(EditorProject *project, const char *text)
+{
+    int source_len;
+    int insert_len;
+    int cursor;
+
+    if(project == NULL || text == NULL || text[0] == '\0')
+        return 0;
+    source_len = (int)strlen(project->source);
+    insert_len = (int)strlen(text);
+    cursor = ui_clampi(project->source_cursor, 0, source_len);
+    if(source_len + insert_len + 1 > EDITOR_SOURCE_MAX_BYTES)
+        insert_len = EDITOR_SOURCE_MAX_BYTES - source_len - 1;
+    if(insert_len <= 0)
+        return 0;
+    memmove(project->source + cursor + insert_len,
+            project->source + cursor,
+            (size_t)(source_len - cursor + 1));
+    memcpy(project->source + cursor, text, (size_t)insert_len);
+    project->source_cursor = cursor + insert_len;
+    SetUITextAreaSelection(1501, project->source_cursor,
+                           project->source_cursor);
+    return 1;
+}
+
+static int
+editor_source_line_count(const char *text)
+{
+    int lines = 1;
+
+    if(text == NULL || text[0] == '\0')
+        return 1;
+    for(const char *p = text; *p != '\0'; p++)
+        if(*p == '\n')
+            lines++;
+    return lines;
+}
+
+static int
+editor_handle_source_clipboard(EditorProject *project, int textarea_changed,
+                               char *status, size_t status_size)
+{
+    int start = 0;
+    int end = 0;
+    int has_selection;
+
+    if(project == NULL || !project->source_focused || !editor_mod_key_down())
+        return 0;
+    has_selection = GetUITextAreaSelection(1501, &start, &end);
+    if(IsKeyPressed(KEY_C)) {
+        if(!has_selection)
+            editor_source_line_bounds(project->source, project->source_cursor,
+                                      &start, &end);
+        if(editor_copy_source_range(project->source, start, end)) {
+            snprintf(status, status_size, "Copied source");
+            return 1;
+        }
+    }
+    if(IsKeyPressed(KEY_X)) {
+        if(!has_selection)
+            editor_source_line_bounds(project->source, project->source_cursor,
+                                      &start, &end);
+        if(editor_copy_source_range(project->source, start, end) &&
+           editor_delete_source_range(project, start, end)) {
+            snprintf(status, status_size, "Cut source");
+            return 1;
+        }
+    }
+    if(IsKeyPressed(KEY_V) && !textarea_changed) {
+        const char *clip = GetClipboardText();
+
+        if(has_selection)
+            editor_delete_source_range(project, start, end);
+        if(editor_insert_source_text(project, clip)) {
+            snprintf(status, status_size, "Pasted source");
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void
+draw_source_tabs(Rectangle bounds, EditorProject *project,
+                 char *status, size_t status_size)
+{
+    int x = (int)bounds.x;
+    int tab_h = (int)bounds.height;
+
+    if(project == NULL || project->open_file_count <= 0)
+        return;
+    for(int i = 0; i < project->open_file_count; i++) {
+        char label[128];
+        int w;
+
+        snprintf(label, sizeof(label), "%s%s",
+                 i == project->active_open_file && project->source_dirty
+                     ? "* "
+                     : "",
+                 path_basename(project->open_files[i].path));
+        w = MeasureUIText(label, UI_TEXT_12) + ScaleUIPx(22);
+        if(w < ScaleUIPx(72))
+            w = ScaleUIPx(72);
+        if(x + w > (int)(bounds.x + bounds.width))
+            break;
+        if(DrawUIGenericButton(x, (int)bounds.y, w, tab_h, label,
+                               i == project->active_open_file
+                                   ? UI_BUTTON_STYLE_PRIMARY
+                                   : UI_BUTTON_STYLE_SECONDARY,
+                               0, NULL)) {
+            editor_open_file_at_line(project, project->open_files[i].path, 0,
+                                     status, status_size);
+            project->source_cursor = project->open_files[i].cursor;
+            project->source_scroll_y = project->open_files[i].scroll_y;
+        }
+        x += w + ScaleUIPx(4);
+    }
+}
+
 static void
 draw_source_code(Rectangle content, EditorProject *project,
                  char *status, size_t status_size)
 {
     char path[EDITOR_PATH_CAP];
     char *before_edit = NULL;
+    int source_changed = 0;
+    int textarea_changed = 0;
     int pad = ScaleUIPx(16);
+    int tabs_h = ScaleUIPx(28);
     int toolbar_h = ScaleUIPx(30);
     int gap = ScaleUIPx(8);
+    int find_h = project != NULL && project->find_replace_visible
+                     ? toolbar_h + gap
+                     : 0;
+    int toolbar_y = (int)content.y + pad + tabs_h + gap;
+    int find_y = toolbar_y + toolbar_h + gap;
     char zoom_text[16];
-    const char *dirty_label = project != NULL && project->source_dirty
-                                  ? "Modified"
-                                  : "Saved";
     Rectangle bounds = {
         content.x + (float)pad,
-        content.y + (float)pad + (float)toolbar_h + (float)gap,
+        content.y + (float)pad + (float)tabs_h + (float)gap +
+            (float)toolbar_h + (float)gap + (float)find_h,
         content.width - (float)(pad * 2),
-        content.height - (float)(pad * 2 + toolbar_h + gap)
+        content.height -
+            (float)(pad * 2 + tabs_h + toolbar_h + gap * 2 + find_h)
     };
 
     DrawRectangleRec(content, GetThemeBackground());
@@ -1815,12 +3434,22 @@ draw_source_code(Rectangle content, EditorProject *project,
     snprintf(path, sizeof(path), "%s/%s", project->path,
              project->selected_file);
     if(strcmp(project->source_scroll_file, project->selected_file) != 0) {
+        int index;
+
+        editor_store_active_open_file(project);
         if(project->source_dirty)
             editor_save_source_file(project, status, status_size);
         snprintf(project->source_scroll_file, sizeof(project->source_scroll_file),
                  "%s", project->selected_file);
-        project->source_scroll_y = 0;
-        project->source_cursor = 0;
+        index = editor_add_open_file(project, project->selected_file);
+        if(index >= 0) {
+            project->active_open_file = index;
+            project->source_scroll_y = project->open_files[index].scroll_y;
+            project->source_cursor = project->open_files[index].cursor;
+        } else {
+            project->source_scroll_y = 0;
+            project->source_cursor = 0;
+        }
         project->source_focused = 0;
         project->source_dirty = 0;
         project->source_loaded = 0;
@@ -1855,35 +3484,119 @@ draw_source_code(Rectangle content, EditorProject *project,
     }
     snprintf(zoom_text, sizeof(zoom_text), "%dpx",
              editor_source_font_size(project));
-    if(DrawUIGenericButton((int)content.x + pad, (int)content.y + pad,
+    draw_source_tabs((Rectangle){content.x + (float)pad,
+                                 content.y + (float)pad,
+                                 content.width - (float)(pad * 2),
+                                 (float)tabs_h},
+                     project, status, status_size);
+    if(DrawUIGenericButton((int)content.x + pad,
+                           toolbar_y,
                            ScaleUIPx(30), toolbar_h, "-",
                            UI_BUTTON_STYLE_SECONDARY, 0, NULL))
         editor_adjust_source_zoom(project, -4, status, status_size);
     DrawUIReadonlyTextBox((UIReadonlyTextBox){
         .bounds = {(float)((int)content.x + pad + ScaleUIPx(36)),
-                   (float)((int)content.y + pad),
+                   (float)toolbar_y,
                    (float)ScaleUIPx(58), (float)toolbar_h},
         .text = zoom_text,
         .style = editor_input_style()
     });
     if(DrawUIGenericButton((int)content.x + pad + ScaleUIPx(100),
-                           (int)content.y + pad,
+                           toolbar_y,
                            ScaleUIPx(30), toolbar_h, "+",
                            UI_BUTTON_STYLE_SECONDARY, 0, NULL))
         editor_adjust_source_zoom(project, 4, status, status_size);
-    DrawUIText(dirty_label,
-               (int)(content.x + content.width) - pad -
-                   MeasureUIText(dirty_label, UI_TEXT_12),
-               (int)content.y + pad + ScaleUIPx(8),
-               UI_TEXT_12,
-               project->source_dirty ? (Color){150, 74, 0, 255}
-                                     : DarkenUIColor(GetThemeText(), 45));
+    if(DrawUIGenericButton((int)content.x + pad + ScaleUIPx(140),
+                           toolbar_y,
+                           ScaleUIPx(56), toolbar_h, "Find",
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+        project->find_replace_visible = !project->find_replace_visible;
+        if(project->find_replace_visible) {
+            editor_fill_find_from_selection(project);
+            project->find_focused = 1;
+            project->source_focused = 0;
+            SetUIFocus(1502);
+        }
+    }
+    if(DrawUIGenericButton((int)content.x + pad + ScaleUIPx(204),
+                           toolbar_y,
+                           ScaleUIPx(58), toolbar_h, "Save",
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL))
+        editor_save_source_now(project, status, status_size);
+    if(project->find_replace_visible) {
+        DrawUITextField((UITextField){
+            .bounds = {(float)((int)content.x + pad),
+                       (float)find_y,
+                       (float)ScaleUIPx(190), (float)toolbar_h},
+            .text = project->find_text,
+            .text_size = sizeof(project->find_text),
+            .cursor_position = &project->find_cursor,
+            .focused = &project->find_focused,
+            .font = UI_TEXT_16,
+            .focus_id = 1502,
+            .style = editor_input_style()
+        });
+        if(DrawUIGenericButton((int)content.x + pad + ScaleUIPx(198),
+                               find_y,
+                               ScaleUIPx(54), toolbar_h, "Next",
+                               UI_BUTTON_STYLE_SECONDARY,
+                               project->find_text[0] == '\0', NULL))
+            editor_find_next_source(project, status, status_size);
+        DrawUITextField((UITextField){
+            .bounds = {(float)((int)content.x + pad + ScaleUIPx(260)),
+                       (float)find_y,
+                       (float)ScaleUIPx(160), (float)toolbar_h},
+            .text = project->replace_text,
+            .text_size = sizeof(project->replace_text),
+            .cursor_position = &project->replace_cursor,
+            .focused = &project->replace_focused,
+            .font = UI_TEXT_16,
+            .focus_id = 1503,
+            .style = editor_input_style()
+        });
+        if(DrawUIGenericButton((int)content.x + pad + ScaleUIPx(428),
+                               find_y,
+                               ScaleUIPx(76), toolbar_h, "Replace",
+                               UI_BUTTON_STYLE_SECONDARY,
+                               project->find_text[0] == '\0', NULL))
+            editor_replace_next_source(project, status, status_size);
+        if(DrawUIGenericButton((int)content.x + pad + ScaleUIPx(512),
+                               find_y,
+                               ScaleUIPx(56), toolbar_h, "Close",
+                               UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+            project->find_replace_visible = 0;
+            project->find_focused = 0;
+            project->replace_focused = 0;
+        }
+    }
+    {
+        char state_text[96];
+        int line_no = editor_source_line_for_cursor(project->source,
+                                                    project->source_cursor);
+
+        snprintf(state_text, sizeof(state_text), "%s  Ln %d",
+                 project->source_dirty ? "Modified" : "Saved", line_no);
+        DrawUIText(state_text,
+                   (int)(content.x + content.width) - pad -
+                       MeasureUIText(state_text, UI_TEXT_12),
+                   toolbar_y + ScaleUIPx(8),
+                   UI_TEXT_12,
+                   project->source_dirty ? (Color){150, 74, 0, 255}
+                                         : DarkenUIColor(GetThemeText(), 45));
+    }
     if(bounds.height < ScaleUIPx(80))
         bounds.height = ScaleUIPx(80);
     before_edit = editor_strdup(project->source);
     if(project->source_focused && editor_mod_key_down()) {
         if(IsKeyPressed(KEY_S)) {
             editor_save_source_now(project, status, status_size);
+        } else if(IsKeyPressed(KEY_F)) {
+            project->find_replace_visible = 1;
+            editor_fill_find_from_selection(project);
+            project->source_focused = 0;
+            project->find_focused = 1;
+            SetUIFocus(1502);
+            snprintf(status, status_size, "Find in file");
         } else if(IsKeyPressed(KEY_Z)) {
             if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
                 editor_redo_source(project, status, status_size);
@@ -1893,7 +3606,7 @@ draw_source_code(Rectangle content, EditorProject *project,
             editor_redo_source(project, status, status_size);
         }
     }
-    if(DrawUITextArea((UITextArea){
+    textarea_changed = DrawUITextArea((UITextArea){
         .bounds = bounds,
         .text = project->source,
         .text_size = sizeof(project->source),
@@ -1907,7 +3620,25 @@ draw_source_code(Rectangle content, EditorProject *project,
         .placeholder = "",
         .syntax = editor_source_syntax(project->selected_file),
         .style = editor_input_style()
-    })) {
+    });
+    source_changed = textarea_changed;
+    if(editor_handle_source_clipboard(project, textarea_changed, status,
+                                      status_size))
+        source_changed = 1;
+    {
+        int source_line_h = GetUITextLineHeight(editor_source_font_size(project)) +
+                            ScaleUIPx(2);
+        int content_h = editor_source_line_count(project->source) * source_line_h +
+                        ScaleUIPx(16);
+        int max_scroll = content_h - (int)bounds.height;
+
+        if(max_scroll < 0)
+            max_scroll = 0;
+        DrawUIScrollbar((int)(bounds.x + bounds.width - ScaleUIPx(8)),
+                        (int)bounds.y, (int)bounds.height, content_h,
+                        &project->source_scroll_y, max_scroll);
+    }
+    if(source_changed) {
         if(before_edit != NULL)
             editor_push_history(project->undo_items, &project->undo_count,
                                 before_edit);
@@ -1933,6 +3664,7 @@ draw_source_code(Rectangle content, EditorProject *project,
             DrawRectangleLinesEx(line_rect, ScaleUIPx(2),
                                  (Color){212, 146, 28, 255});
     }
+    editor_store_active_open_file(project);
     free(before_edit);
 }
 
@@ -2036,17 +3768,165 @@ draw_preview_context_menu(EditorProject *project, Rectangle preview,
 }
 
 static void
+draw_preview_error(Rectangle content, const EditorProject *project)
+{
+    int pad = ScaleUIPx(18);
+    int y = (int)content.y + pad;
+    int line_h = GetUITextLineHeight(UI_TEXT_12) + ScaleUIPx(3);
+    int line_start = 0;
+    int len;
+
+    DrawRectangleRec(content, (Color){55, 32, 32, 255});
+    DrawRectangleLinesEx(content, 1, (Color){166, 73, 73, 255});
+    DrawUIText("Preview build failed", (int)content.x + pad, y,
+               UI_TEXT_24, (Color){255, 226, 226, 255});
+    y += ScaleUIPx(40);
+    if(project == NULL || project->output[0] == '\0') {
+        DrawUIText("Fix the Kry source and save to rebuild.",
+                   (int)content.x + pad, y, UI_TEXT_16,
+                   (Color){255, 226, 226, 255});
+        return;
+    }
+    if(project->diagnostic_count > 0) {
+        const EditorDiagnostic *d = &project->diagnostics[0];
+        char diag[260];
+
+        snprintf(diag, sizeof(diag), "%s:%d: %s",
+                 d->path, d->line, d->message);
+        DrawUIText(diag, (int)content.x + pad, y, UI_TEXT_16,
+                   (Color){255, 226, 226, 255});
+        y += ScaleUIPx(30);
+    }
+    len = (int)strlen(project->output);
+    PushUIInputClip(content);
+    for(int i = 0; i <= len && y < (int)(content.y + content.height - pad);
+        i++) {
+        if(project->output[i] == '\n' || project->output[i] == '\0') {
+            char line[420];
+            int line_len = i - line_start;
+
+            if(line_len >= (int)sizeof(line))
+                line_len = (int)sizeof(line) - 1;
+            memcpy(line, project->output + line_start, (size_t)line_len);
+            line[line_len] = '\0';
+            DrawUIText(line, (int)content.x + pad, y, UI_TEXT_12,
+                       (Color){255, 226, 226, 255});
+            y += line_h;
+            line_start = i + 1;
+        }
+    }
+    PopUIInputClip();
+}
+
+static void
+draw_preview_toolbar(Rectangle content, EditorProject *project,
+                     char *status, size_t status_size)
+{
+    static const char *preset_labels[] = {
+        "800x600", "Desktop", "Phone", "Tablet", "Square"
+    };
+    static const char *scale_labels[] = {"Fit", "100%", "75%", "50%"};
+    int x = (int)content.x + ScaleUIPx(12);
+    int y = (int)content.y + ScaleUIPx(7);
+    int h = ScaleUIPx(28);
+    int old_preset;
+    int old_scale;
+    char size_text[48];
+
+    if(project == NULL)
+        return;
+    editor_preview_init(project);
+    old_preset = project->preview_preset;
+    old_scale = (int)project->preview_scale_mode;
+    DrawUIDropdownButton(1305, x, y, ScaleUIPx(108), h,
+                         preset_labels, 5, &project->preview_preset);
+    x += ScaleUIPx(116);
+    if(DrawUIGenericButton(x, y, ScaleUIPx(32), h, "-W",
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+        project->preview_width -= 40;
+        project->preview_preset = 0;
+    }
+    x += ScaleUIPx(36);
+    if(DrawUIGenericButton(x, y, ScaleUIPx(32), h, "+W",
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+        project->preview_width += 40;
+        project->preview_preset = 0;
+    }
+    x += ScaleUIPx(40);
+    if(DrawUIGenericButton(x, y, ScaleUIPx(32), h, "-H",
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+        project->preview_height -= 40;
+        project->preview_preset = 0;
+    }
+    x += ScaleUIPx(36);
+    if(DrawUIGenericButton(x, y, ScaleUIPx(32), h, "+H",
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+        project->preview_height += 40;
+        project->preview_preset = 0;
+    }
+    x += ScaleUIPx(40);
+    if(DrawUIGenericButton(x, y, ScaleUIPx(64), h, "Rotate",
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+        int tmp = project->preview_width;
+
+        project->preview_width = project->preview_height;
+        project->preview_height = tmp;
+        project->preview_preset = 0;
+    }
+    x += ScaleUIPx(72);
+    DrawUIDropdownButton(1306, x, y, ScaleUIPx(82), h,
+                         scale_labels, 4,
+                         (int *)&project->preview_scale_mode);
+    snprintf(size_text, sizeof(size_text), "%d x %d",
+             project->preview_width, project->preview_height);
+    DrawUIText(size_text, (int)(content.x + content.width) -
+                            ScaleUIPx(94), y + ScaleUIPx(7),
+               UI_TEXT_12, GetThemeIcon());
+    if(DrawUIDropdownMenu(1305) && old_preset != project->preview_preset) {
+        editor_preview_apply_preset(project);
+        snprintf(status, status_size, "Preview viewport: %s",
+                 preset_labels[project->preview_preset]);
+    }
+    if(DrawUIDropdownMenu(1306) &&
+       old_scale != (int)project->preview_scale_mode) {
+        snprintf(status, status_size, "Preview scale: %s",
+                 scale_labels[(int)project->preview_scale_mode]);
+    }
+    editor_preview_init(project);
+}
+
+static void
 draw_preview_pane(Rectangle content, EditorProject *project, char *status,
                   size_t status_size)
 {
     int x = (int)content.x + ScaleUIPx(28);
     int y = (int)content.y + ScaleUIPx(28);
+    Rectangle stage;
+    Rectangle device;
+    Camera2D preview_camera = {0};
+    Camera2D editor_camera;
+    int inspect_chrome = 0;
+    int old_keyboard_enabled;
+    int preview_keyboard_enabled;
+    int old_view_w;
+    int old_view_h;
 
     DrawRectangleRec(content, GetThemeBackground());
+    if(project != NULL)
+        editor_preview_init(project);
+    if(project != NULL && project->loaded) {
+        draw_preview_toolbar(content, project, status, status_size);
+        stage = editor_preview_stage_rect(content);
+        if(project->reload_failed) {
+            draw_preview_error(stage, project);
+            return;
+        }
+    }
     if(project == NULL || project->host == NULL) {
-        DrawUIText("Editor host required", x, y, UI_TEXT_24, GetThemeText());
+        DrawUIText("Kryon live preview unavailable", x, y, UI_TEXT_24,
+                   GetThemeText());
         y += ScaleUIPx(40);
-        DrawUIText("Kryon renders the real app here after the project exposes its editor host.",
+        DrawUIText("Open a folder with .kry screens to preview them here.",
                    x, y, UI_TEXT_16, GetThemeIcon());
         return;
     }
@@ -2059,14 +3939,51 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
         return;
     }
 
-    SetUIInspectCanvasBounds(content);
-    BeginScissorMode((int)content.x, (int)content.y,
-                     (int)content.width, (int)content.height);
-    PushUIInputClip(content);
-    DrawAppScreen((AppHost *)project->host, content);
+    stage = editor_preview_stage_rect(content);
+    device = editor_preview_device_rect(content, project);
+    if(device.width <= 0.0f || device.height <= 0.0f)
+        return;
+
+    DrawRectangleRec(stage, DarkenUIColor(GetThemeBackground(), 7));
+    DrawRectangleRec(device, GetThemeBackground());
+    DrawRectangleLinesEx(device, 1, DarkenUIColor(GetThemeBackground(), 48));
+    SetUIInspectCanvasBounds(device);
+    BeginScissorMode((int)device.x, (int)device.y,
+                     (int)device.width, (int)device.height);
+    PushUIInputClip((Rectangle){0.0f, 0.0f,
+                                (float)project->preview_width,
+                                (float)project->preview_height});
+    preview_camera.offset = (Vector2){device.x, device.y};
+    preview_camera.target = (Vector2){0.0f, 0.0f};
+    preview_camera.rotation = 0.0f;
+    preview_camera.zoom = device.width / (float)project->preview_width;
+    editor_camera = g_ui_camera;
+    g_ui_camera = preview_camera;
+    old_view_w = ui_view_width;
+    old_view_h = ui_view_height;
+    SetUIViewSize(project->preview_width, project->preview_height);
+    preview_keyboard_enabled = project->preview_interact &&
+                               !project->source_focused &&
+                               !project->find_focused &&
+                               !project->replace_focused &&
+                               !project->search_focused;
+    old_keyboard_enabled = SetUIKeyboardInputEnabled(preview_keyboard_enabled);
+    if(project->preview_interact)
+        inspect_chrome = PushUIInspectChrome(1);
+    BeginMode2D(preview_camera);
+    DrawAppScreen((AppHost *)project->host,
+                  (Rectangle){0.0f, 0.0f,
+                              (float)project->preview_width,
+                              (float)project->preview_height});
+    EndMode2D();
+    if(project->preview_interact)
+        PopUIInspectChrome(inspect_chrome);
+    SetUIKeyboardInputEnabled(old_keyboard_enabled);
+    SetUIViewSize(old_view_w, old_view_h);
+    g_ui_camera = editor_camera;
     PopUIInputClip();
     EndScissorMode();
-    draw_preview_context_menu(project, content, status, status_size);
+    draw_preview_context_menu(project, device, status, status_size);
 }
 
 static void
@@ -2083,17 +4000,196 @@ draw_source_pane(Rectangle content, EditorProject *project,
 }
 
 static void
+draw_output_text(Rectangle bounds, EditorProject *project)
+{
+    int line_h = GetUITextLineHeight(UI_TEXT_12) + ScaleUIPx(2);
+    int y = (int)bounds.y + ScaleUIPx(8) -
+            (project != NULL ? project->output_scroll_y : 0);
+    int line_start = 0;
+    int len;
+
+    if(project == NULL)
+        return;
+    DrawRectangleRec(bounds, DarkenUIColor(GetThemeSurface(), 3));
+    DrawRectangleLinesEx(bounds, 1, DarkenUIColor(GetThemeSurface(), 36));
+    PushUIInputClip(bounds);
+    len = (int)strlen(project->output);
+    for(int i = 0; i <= len; i++) {
+        if(project->output[i] == '\n' || project->output[i] == '\0') {
+            char line[1024];
+            int line_len = i - line_start;
+
+            if(line_len >= (int)sizeof(line))
+                line_len = (int)sizeof(line) - 1;
+            memcpy(line, project->output + line_start, (size_t)line_len);
+            line[line_len] = '\0';
+            if(y + line_h >= bounds.y && y <= bounds.y + bounds.height)
+                DrawUIText(line, (int)bounds.x + ScaleUIPx(8), y,
+                           UI_TEXT_12, GetThemeText());
+            y += line_h;
+            line_start = i + 1;
+        }
+    }
+    PopUIInputClip();
+    if(CheckCollisionPointRec(GetMousePosition(), bounds)) {
+        project->output_scroll_y -=
+            (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
+        if(project->output_scroll_y < 0)
+            project->output_scroll_y = 0;
+    }
+}
+
+static void
+draw_output_panel(Rectangle bounds, EditorProject *project,
+                  char *status, size_t status_size)
+{
+    int pad = ScaleUIPx(10);
+    int header_h = ScaleUIPx(28);
+    int diag_w = ScaleUIPx(360);
+    Rectangle header = {bounds.x, bounds.y, bounds.width, (float)header_h};
+    Rectangle diag;
+    Rectangle output;
+
+    if(project == NULL || !project->output_visible)
+        return;
+    DrawRectangleRec(bounds, GetThemeSurface());
+    DrawRectangleLinesEx(bounds, 1, DarkenUIColor(GetThemeSurface(), 42));
+    DrawRectangleRec(header, DarkenUIColor(GetThemeSurface(), 8));
+    DrawUIText("Output", (int)bounds.x + pad,
+               (int)bounds.y + ScaleUIPx(7), UI_TEXT_12, GetThemeText());
+    if(project->diagnostic_count > 0) {
+        char label[64];
+
+        snprintf(label, sizeof(label), "%d diagnostics",
+                 project->diagnostic_count);
+        DrawUIText(label, (int)bounds.x + ScaleUIPx(92),
+                   (int)bounds.y + ScaleUIPx(7), UI_TEXT_12,
+                   (Color){150, 74, 0, 255});
+    }
+    if(DrawUIGenericButton((int)(bounds.x + bounds.width) - ScaleUIPx(66),
+                           (int)bounds.y + ScaleUIPx(4),
+                           ScaleUIPx(56), ScaleUIPx(21), "Close",
+                           UI_BUTTON_STYLE_SECONDARY, 0, NULL))
+        project->output_visible = 0;
+
+    diag = (Rectangle){bounds.x + (float)pad,
+                       bounds.y + (float)header_h + (float)pad,
+                       (float)diag_w,
+                       bounds.height - (float)header_h - (float)(pad * 2)};
+    output = (Rectangle){diag.x + diag.width + (float)pad,
+                         diag.y,
+                         bounds.width - diag.width - (float)(pad * 3),
+                         diag.height};
+    if(project->diagnostic_count <= 0) {
+        output.x = bounds.x + (float)pad;
+        output.width = bounds.width - (float)(pad * 2);
+    } else {
+        int y = (int)diag.y + ScaleUIPx(6);
+        int row_h = ScaleUIPx(26);
+
+        DrawRectangleRec(diag, DarkenUIColor(GetThemeSurface(), 3));
+        DrawRectangleLinesEx(diag, 1, DarkenUIColor(GetThemeSurface(), 36));
+        PushUIInputClip(diag);
+        for(int i = 0; i < project->diagnostic_count; i++) {
+            char label[256];
+            EditorDiagnostic *d = &project->diagnostics[i];
+
+            snprintf(label, sizeof(label), "%s:%d %s",
+                     path_basename(d->path), d->line, d->message);
+            if(draw_sidebar_row((int)diag.x + ScaleUIPx(4), y,
+                                (int)diag.width - ScaleUIPx(8), label,
+                                i == project->selected_diagnostic)) {
+                char rel[EDITOR_PATH_CAP];
+
+                project->selected_diagnostic = i;
+                editor_relative_path(rel, sizeof(rel), project, d->path);
+                editor_open_file_at_line(project, rel, d->line,
+                                         status, status_size);
+            }
+            y += row_h;
+        }
+        PopUIInputClip();
+    }
+    draw_output_text(output, project);
+}
+
+static void
+draw_recent_projects_grid(Rectangle content, EditorProject *project,
+                          EditorRecentProjects *recent,
+                          EditorSidebarState *sidebar,
+                          char *status, size_t status_size)
+{
+    int pad = ScaleUIPx(34);
+    int x0 = (int)content.x + pad;
+    int y = (int)content.y + pad;
+    int gap = ScaleUIPx(14);
+    int min_card_w = ScaleUIPx(220);
+    int card_h = ScaleUIPx(78);
+    int available_w = (int)content.width - pad * 2;
+    int cols;
+    int card_w;
+
+    DrawRectangleRec(content, GetThemeBackground());
+    DrawUIText("Recent Projects", x0, y, UI_TEXT_24, GetThemeText());
+    y += ScaleUIPx(44);
+    if(recent == NULL || recent->count == 0) {
+        DrawUIText("Use Project / Open Project to choose an app folder.",
+                   x0, y, UI_TEXT_16, GetThemeIcon());
+        return;
+    }
+    cols = available_w / (min_card_w + gap);
+    if(cols < 1)
+        cols = 1;
+    if(cols > 3)
+        cols = 3;
+    card_w = (available_w - gap * (cols - 1)) / cols;
+    for(int i = 0; i < recent->count; i++) {
+        int col = i % cols;
+        int row = i / cols;
+        int x = x0 + col * (card_w + gap);
+        int card_y = y + row * (card_h + gap);
+        Rectangle card = {(float)x, (float)card_y,
+                          (float)card_w, (float)card_h};
+        Vector2 mouse = GetMousePosition();
+        int hovered = CheckCollisionPointRec(mouse, card);
+
+        if(card_y + card_h > (int)(content.y + content.height - pad))
+            break;
+        DrawRectangleRec(card, hovered ? GetThemeButtonHover()
+                                       : GetThemeSurface());
+        DrawRectangleLinesEx(card, 1, DarkenUIColor(GetThemeSurface(), 42));
+        DrawUIText(path_basename(recent->paths[i]),
+                   x + ScaleUIPx(12), card_y + ScaleUIPx(12),
+                   UI_TEXT_16, GetThemeText());
+        DrawUIText(recent->paths[i],
+                   x + ScaleUIPx(12), card_y + ScaleUIPx(42),
+                   UI_TEXT_12, GetThemeIcon());
+        if(hovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            editor_open_project(project, recent->paths[i], recent,
+                                status, status_size);
+            if(sidebar != NULL)
+                memset(sidebar, 0, sizeof(*sidebar));
+        }
+    }
+}
+
+static void
 draw_canvas(Rectangle frame, Rectangle content, EditorProject *project,
+            EditorRecentProjects *recent, EditorSidebarState *sidebar,
             char *status, size_t status_size)
 {
     int header_h = editor_canvas_header_height();
     int title_x = (int)frame.x + ScaleUIPx(14);
-    int x = (int)content.x + ScaleUIPx(34);
-    int y = (int)content.y + ScaleUIPx(34);
     int divider = ScaleUIPx(6);
+    int output_h = project != NULL && project->output_visible
+                       ? ScaleUIPx(190)
+                       : 0;
+    int has_preview = project != NULL && editor_selected_file_has_preview(project);
     AppScreenInfo active_screen = {0};
+    Rectangle work = content;
     Rectangle preview = content;
     Rectangle source = content;
+    Rectangle output = {0};
     char title[EDITOR_PATH_CAP + 4];
     const char *title_text;
 
@@ -2118,23 +4214,83 @@ draw_canvas(Rectangle frame, Rectangle content, EditorProject *project,
                GetThemeText());
 
     if(project == NULL || !project->loaded) {
-        DrawUIText("Open a project", x, y, UI_TEXT_24, GetThemeText());
-        y += ScaleUIPx(40);
-        DrawUIText("Use Project / Open Project to choose an app folder.",
-                   x, y, UI_TEXT_16, GetThemeIcon());
+        draw_recent_projects_grid(content, project, recent, sidebar,
+                                  status, status_size);
         return;
     }
 
-    source.width = (content.width - divider) * 0.5f;
-    preview.x = source.x + source.width + divider;
-    preview.width = content.width - source.width - divider;
-    DrawRectangleRec((Rectangle){source.x + source.width, source.y,
-                                 (float)divider, source.height},
-                     DarkenUIColor(GetThemeBackground(), 32));
+    if(output_h > 0 && output_h < (int)content.height - ScaleUIPx(120)) {
+        work.height -= (float)output_h;
+        output = (Rectangle){content.x,
+                             content.y + work.height,
+                             content.width,
+                             (float)output_h};
+    }
 
-    draw_preview_pane(preview, project, status, status_size);
-    editor_restore_ide_ui_frame(GetScreenWidth(), GetScreenHeight());
-    draw_source_pane(source, project, status, status_size);
+    if(project->layout_mode == EDITOR_LAYOUT_SOURCE ||
+       (project->layout_mode == EDITOR_LAYOUT_SPLIT && !has_preview)) {
+        source = work;
+        draw_source_pane(source, project, status, status_size);
+    } else if(project->layout_mode == EDITOR_LAYOUT_PREVIEW) {
+        preview = work;
+        draw_preview_pane(preview, project, status, status_size);
+    } else {
+        source = work;
+        preview = work;
+        source.width = (work.width - divider) * 0.5f;
+        preview.x = source.x + source.width + divider;
+        preview.width = work.width - source.width - divider;
+        DrawRectangleRec((Rectangle){source.x + source.width, source.y,
+                                     (float)divider, source.height},
+                         DarkenUIColor(GetThemeBackground(), 32));
+        draw_preview_pane(preview, project, status, status_size);
+        editor_restore_ide_ui_frame(GetScreenWidth(), GetScreenHeight());
+        draw_source_pane(source, project, status, status_size);
+    }
+    if(output_h > 0) {
+        editor_restore_ide_ui_frame(GetScreenWidth(), GetScreenHeight());
+        draw_output_panel(output, project, status, status_size);
+    }
+}
+
+static int
+editor_preview_bounds(Rectangle content, const EditorProject *project,
+                      Rectangle *preview_out)
+{
+    int divider = ScaleUIPx(6);
+    int output_h = project != NULL && project->output_visible
+                       ? ScaleUIPx(190)
+                       : 0;
+    Rectangle work = content;
+    Rectangle source = content;
+    Rectangle preview = content;
+
+    if(preview_out != NULL)
+        *preview_out = (Rectangle){0};
+    if(project == NULL || !project->loaded ||
+       !editor_selected_file_has_preview(project))
+        return 0;
+    if(project->layout_mode == EDITOR_LAYOUT_SOURCE)
+        return 0;
+    if(output_h > 0 && output_h < (int)content.height - ScaleUIPx(120))
+        work.height -= (float)output_h;
+    if(project->layout_mode == EDITOR_LAYOUT_PREVIEW) {
+        preview = work;
+    } else {
+        source = work;
+        preview = work;
+        source.width = (work.width - divider) * 0.5f;
+        preview.x = source.x + source.width + divider;
+        preview.width = work.width - source.width - divider;
+    }
+    if(preview.width <= 0.0f || preview.height <= 0.0f)
+        return 0;
+    if(preview_out != NULL)
+        *preview_out = editor_preview_device_rect(preview, project);
+    if(preview_out != NULL &&
+       (preview_out->width <= 0.0f || preview_out->height <= 0.0f))
+        return 0;
+    return 1;
 }
 
 static void
@@ -2157,8 +4313,6 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
     int chrome = PushUIInspectChrome(1);
     int top_h = editor_top_bar_height();
     int menu_x = ScaleUIPx(10);
-    int path_x = ScaleUIPx(90);
-    int path_w = view_w - ScaleUIPx(660);
     int run_y = ScaleUIPx(7);
     int run_h = ScaleUIPx(28);
     int redo_x = view_w - ScaleUIPx(70);
@@ -2166,12 +4320,15 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
     int run_x = view_w - ScaleUIPx(186);
     int target_x = view_w - ScaleUIPx(332);
     int target_w = ScaleUIPx(138);
+    int layout_x = view_w - ScaleUIPx(596);
+    int layout_w = ScaleUIPx(132);
+    int preview_mode_x = view_w - ScaleUIPx(720);
+    int preview_mode_w = ScaleUIPx(116);
+    const char *layout_labels[] = {"Split", "Source", "Preview"};
+    const char *preview_mode_labels[] = {"Inspect", "Interact"};
     const char *target_labels[EDITOR_MAX_RUN_TARGETS];
     int target_count = 0;
     int old_target = project != NULL ? project->selected_run_target : 0;
-
-    if(path_w < ScaleUIPx(150))
-        path_w = ScaleUIPx(150);
 
     DrawRectangle(0, 0, view_w, top_h, DarkenUIColor(GetThemeBackground(), 12));
     DrawLine(0, top_h - 1, view_w, top_h - 1,
@@ -2179,12 +4336,23 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
     if(draw_menu_button(menu_x, ScaleUIPx(9), "Project", *project_menu_open)) {
         *project_menu_open = !*project_menu_open;
     }
-    DrawUIReadonlyTextBox((UIReadonlyTextBox){
-        .bounds = {(float)path_x, (float)ScaleUIPx(6),
-                   (float)path_w, (float)ScaleUIPx(30)},
-        .text = project != NULL && project->loaded ? project->path : "",
-        .style = editor_input_style()
-    });
+    if(project != NULL && project->loaded) {
+        int selected_layout = (int)project->layout_mode;
+
+        DrawUIDropdownButton(1303, layout_x, run_y, layout_w, run_h,
+                             layout_labels, 3, &selected_layout);
+        if(selected_layout >= 0 && selected_layout < 3)
+            project->layout_mode = (EditorLayoutMode)selected_layout;
+        if(editor_selected_file_has_preview(project)) {
+            int selected_preview_mode = project->preview_interact ? 1 : 0;
+
+            DrawUIDropdownButton(1304, preview_mode_x, run_y,
+                                 preview_mode_w, run_h,
+                                 preview_mode_labels, 2,
+                                 &selected_preview_mode);
+            project->preview_interact = selected_preview_mode == 1;
+        }
+    }
     if(DrawUIGenericButton(view_w - ScaleUIPx(454), run_y,
                            ScaleUIPx(112), run_h, "Open Project",
                            UI_BUTTON_STYLE_PRIMARY, 0, NULL))
@@ -2238,10 +4406,24 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
         snprintf(status_text, status_size, "Run target: %s",
                  project->run_targets[project->selected_run_target].label);
     }
+    if(DrawUIDropdownMenu(1303) && project != NULL && project->loaded) {
+        snprintf(status_text, status_size, "Layout: %s",
+                 layout_labels[(int)project->layout_mode]);
+    }
+    if(DrawUIDropdownMenu(1304) && project != NULL && project->loaded &&
+       editor_selected_file_has_preview(project)) {
+        snprintf(status_text, status_size, "Preview mode: %s",
+                 preview_mode_labels[project->preview_interact ? 1 : 0]);
+    }
+    if(project != NULL && project->loaded && !project->output_visible &&
+       project->output[0] != '\0') {
+        if(DrawUIGenericButton(view_w - ScaleUIPx(780), run_y,
+                               ScaleUIPx(56), run_h, "Output",
+                               UI_BUTTON_STYLE_SECONDARY, 0, NULL))
+            project->output_visible = 1;
+    }
     SetUIDropdownClipTop(0);
     SetUIDropdownClipBottom(0);
-    draw_project_menu(menu_x, top_h - ScaleUIPx(2),
-                      project_menu_open, project_dialog);
     PopUIInspectChrome(chrome);
 }
 
@@ -2259,9 +4441,14 @@ draw_chrome(int view_w, int view_h, EditorProject *project,
                      ? collapsed_w
                      : ScaleUIPx(320);
     int bottom_h = editor_bottom_bar_height();
+    int menu_x = ScaleUIPx(10);
+    int menu_y = top_h - ScaleUIPx(2);
 
     draw_top_bar(view_w, project_menu_open, project_dialog, project, play_icon,
                  status_text, status_size);
+    if(project_menu_open != NULL && *project_menu_open)
+        PushUIInputCapture((Rectangle){0.0f, 0.0f, (float)view_w,
+                                       (float)view_h}, 0);
     if(sidebar != NULL && sidebar->collapsed) {
         Rectangle strip = {0, (float)top_h, (float)side_w,
                            (float)(view_h - top_h - bottom_h)};
@@ -2277,6 +4464,8 @@ draw_chrome(int view_w, int view_h, EditorProject *project,
                                       (float)(view_h - top_h - bottom_h)},
                           project, recent, sidebar, status_text, status_size);
     }
+    if(project_menu_open != NULL && *project_menu_open)
+        ClearUIInputCaptures();
 
     DrawRectangle(0, view_h - bottom_h, view_w, bottom_h,
                   DarkenUIColor(GetThemeBackground(), 14));
@@ -2284,6 +4473,8 @@ draw_chrome(int view_w, int view_h, EditorProject *project,
              DarkenUIColor(GetThemeBackground(), 42));
     DrawUIText(status_text, ScaleUIPx(12), view_h - bottom_h + ScaleUIPx(7),
                UI_TEXT_12, GetThemeText());
+    draw_project_menu(menu_x, menu_y, project_menu_open, project_dialog,
+                      project, status_text, status_size);
     PopUIInspectChrome(chrome);
 }
 
@@ -2322,6 +4513,178 @@ run_screen_smoke(EditorProject *project)
     return 0;
 }
 
+static int
+color_delta(Color a, Color b)
+{
+    int dr = (int)a.r - (int)b.r;
+    int dg = (int)a.g - (int)b.g;
+    int db = (int)a.b - (int)b.b;
+
+    if(dr < 0)
+        dr = -dr;
+    if(dg < 0)
+        dg = -dg;
+    if(db < 0)
+        db = -db;
+    return dr + dg + db;
+}
+
+static int
+count_region_detail_pixels(Image image, Rectangle region)
+{
+    Color *pixels;
+    Color base;
+    int x0;
+    int y0;
+    int x1;
+    int y1;
+    int count = 0;
+
+    if(image.data == NULL || image.width <= 0 || image.height <= 0)
+        return 0;
+    x0 = ui_clampi((int)region.x, 0, image.width - 1);
+    y0 = ui_clampi((int)region.y, 0, image.height - 1);
+    x1 = ui_clampi((int)(region.x + region.width), x0 + 1, image.width);
+    y1 = ui_clampi((int)(region.y + region.height), y0 + 1, image.height);
+    pixels = LoadImageColors(image);
+    if(pixels == NULL)
+        return 0;
+    base = pixels[y0 * image.width + x0];
+    for(int y = y0; y < y1; y++) {
+        for(int x = x0; x < x1; x++) {
+            Color pixel = pixels[y * image.width + x];
+
+            if(color_delta(pixel, base) > 48)
+                count++;
+        }
+    }
+    UnloadImageColors(pixels);
+    return count;
+}
+
+static int
+run_ide_smoke(EditorProject *project, EditorRecentProjects *recent,
+              EditorSidebarState *sidebar, FileDialog *project_dialog,
+              Texture2D play_icon, const char *screenshot_path)
+{
+    int view_w = GetScreenWidth();
+    int view_h = GetScreenHeight();
+    int top_h = editor_top_bar_height();
+    int left_w = sidebar != NULL && sidebar->collapsed ? ScaleUIPx(42) : ScaleUIPx(320);
+    int bottom_h = editor_bottom_bar_height();
+    int canvas_header_h = editor_canvas_header_height();
+    int divider = ScaleUIPx(6);
+    int detail_pixels;
+    int inspect_widgets = 0;
+    int source_pick_ok = 0;
+    char status_text[160] = "IDE smoke";
+    Rectangle canvas_frame = {
+        (float)left_w,
+        (float)top_h,
+        (float)(view_w - left_w),
+        (float)(view_h - top_h - bottom_h)
+    };
+    Rectangle canvas_content = {
+        canvas_frame.x,
+        canvas_frame.y + canvas_header_h,
+        canvas_frame.width,
+        canvas_frame.height - canvas_header_h
+    };
+    Rectangle source = canvas_content;
+    Rectangle preview = canvas_content;
+    Rectangle sample;
+    Image image;
+
+    if(project == NULL || !project->loaded || !editor_selected_file_has_preview(project)) {
+        TraceLog(LOG_ERROR, "KRYON_SMOKE_IDE: selected file has no preview");
+        return 1;
+    }
+    source.width = (canvas_content.width - (float)divider) * 0.5f;
+    preview.x = source.x + source.width + (float)divider;
+    preview.width = canvas_content.width - source.width - (float)divider;
+    sample = (Rectangle){
+        preview.x + ScaleUIPx(24),
+        preview.y + ScaleUIPx(24),
+        preview.width - ScaleUIPx(48),
+        preview.height - ScaleUIPx(48)
+    };
+
+    for(int frame = 0; frame < 3 && !WindowShouldClose(); frame++) {
+        BeginDrawing();
+        ClearBackground(GetThemeBackground());
+        BeginUIFrame(view_w, view_h, editor_ui_scale());
+        BeginUIInspectFrame(project->path);
+        SetUIInspectCanvasBounds(canvas_content);
+        draw_canvas(canvas_frame, canvas_content, project, recent, sidebar,
+                    status_text, sizeof(status_text));
+        if(editor_selected_file_has_preview(project))
+            DrawUIInspectOverlay();
+        editor_restore_ide_ui_frame(view_w, view_h);
+        draw_chrome(view_w, view_h, project, recent, sidebar, &(int){0},
+                    project_dialog, play_icon, status_text,
+                    sizeof(status_text));
+        EndUIFocus();
+        EndDrawing();
+    }
+    inspect_widgets = UIInspectWidgetCount();
+    for(int py = (int)sample.y; py < (int)(sample.y + sample.height) && !source_pick_ok;
+        py += ScaleUIPx(24)) {
+        for(int px = (int)sample.x;
+            px < (int)(sample.x + sample.width) && !source_pick_ok;
+            px += ScaleUIPx(24)) {
+            UIInspectSelection selection;
+
+            if(!UIInspectSelectAt((Vector2){(float)px, (float)py}))
+                continue;
+            selection = UIInspectGetSelection();
+            if(selection.valid && selection.source_line > 0 &&
+               selection.source_path[0] != '\0' &&
+               editor_jump_to_active_widget_source(project, &selection,
+                                                   status_text,
+                                                   sizeof(status_text)))
+                source_pick_ok = 1;
+        }
+    }
+    if(source_pick_ok && !WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(GetThemeBackground());
+        BeginUIFrame(view_w, view_h, editor_ui_scale());
+        BeginUIInspectFrame(project->path);
+        SetUIInspectCanvasBounds(canvas_content);
+        draw_canvas(canvas_frame, canvas_content, project, recent, sidebar,
+                    status_text, sizeof(status_text));
+        if(editor_selected_file_has_preview(project))
+            DrawUIInspectOverlay();
+        editor_restore_ide_ui_frame(view_w, view_h);
+        draw_chrome(view_w, view_h, project, recent, sidebar, &(int){0},
+                    project_dialog, play_icon, status_text,
+                    sizeof(status_text));
+        EndUIFocus();
+        EndDrawing();
+    }
+
+    image = LoadImageFromScreen();
+    if(screenshot_path != NULL && screenshot_path[0] != '\0')
+        ExportImage(image, screenshot_path);
+    detail_pixels = count_region_detail_pixels(image, sample);
+    TraceLog(LOG_INFO, "KRYON_SMOKE_IDE: screenshot %s", screenshot_path);
+    TraceLog(LOG_INFO, "KRYON_SMOKE_IDE: selected %s preview detail pixels %d",
+             project->selected_file, detail_pixels);
+    TraceLog(LOG_INFO, "KRYON_SMOKE_IDE: inspect widgets %d source pick %s",
+             inspect_widgets, source_pick_ok ? "ok" : "failed");
+    UnloadImage(image);
+    if(detail_pixels < 2500) {
+        TraceLog(LOG_ERROR, "KRYON_SMOKE_IDE: preview pane looks blank");
+        return 1;
+    }
+    if(inspect_widgets <= 0 || !source_pick_ok) {
+        TraceLog(LOG_ERROR,
+                 "KRYON_SMOKE_IDE: preview widget source inspection failed");
+        return 1;
+    }
+    return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -2335,12 +4698,21 @@ main(int argc, char **argv)
     Texture2D play_icon = {0};
     char status_text[160] = "Ready";
     int smoke_screens = 0;
+    int smoke_ide = 0;
     const char *project_arg = NULL;
+    const char *smoke_screenshot_path = "/tmp/kryon-ide-smoke.png";
+    char project_path[EDITOR_PATH_CAP];
 
     if(argc > 1 && strcmp(argv[1], "--smoke-screens") == 0) {
         smoke_screens = 1;
         if(argc > 2)
             project_arg = argv[2];
+    } else if(argc > 1 && strcmp(argv[1], "--smoke-ide") == 0) {
+        smoke_ide = 1;
+        if(argc > 2)
+            project_arg = argv[2];
+        if(argc > 3)
+            smoke_screenshot_path = argv[3];
     } else if(argc > 1) {
         project_arg = argv[1];
     }
@@ -2357,8 +4729,29 @@ main(int argc, char **argv)
     editor_load_recent_projects(&recent);
 
     if(project_arg != NULL && project_arg[0] != '\0') {
-        editor_open_project(&project, project_arg, &recent, status_text,
-                            sizeof(status_text));
+        if(editor_resolve_project_path(project_path, sizeof(project_path),
+                                       project_arg)) {
+            if(path_ext_eq(project_path, ".kry")) {
+                char project_dir[EDITOR_PATH_CAP];
+                const char *file_name = path_basename(project_path);
+
+                path_dirname(project_dir, sizeof(project_dir), project_path);
+                editor_open_project(&project, project_dir, &recent,
+                                    status_text, sizeof(status_text));
+                if(project.loaded) {
+                    editor_select_file(&project, file_name);
+                    editor_select_source_path(&project, file_name);
+                    snprintf(status_text, sizeof(status_text), "Opened %s",
+                             file_name);
+                }
+            } else {
+                editor_open_project(&project, project_path, &recent,
+                                    status_text, sizeof(status_text));
+            }
+        } else {
+            snprintf(status_text, sizeof(status_text),
+                     "Could not open project path: %s", project_arg);
+        }
         if(smoke_screens && project.host == NULL)
             TraceLog(LOG_ERROR, "KRYON_SMOKE: %s", status_text);
     }
@@ -2367,6 +4760,18 @@ main(int argc, char **argv)
 
     if(smoke_screens) {
         int result = run_screen_smoke(&project);
+        editor_close_project(&project);
+        if(play_icon.id != 0)
+            UnloadTexture(play_icon);
+        ClearUIFonts();
+        CloseFileDialog(&project_dialog);
+        CloseWindow();
+        return result;
+    }
+    if(smoke_ide) {
+        int result = run_ide_smoke(&project, &recent, &sidebar,
+                                   &project_dialog, play_icon,
+                                   smoke_screenshot_path);
         editor_close_project(&project);
         if(play_icon.id != 0)
             UnloadTexture(play_icon);
@@ -2396,6 +4801,8 @@ main(int argc, char **argv)
             canvas_frame.width,
             canvas_frame.height - canvas_header_h
         };
+        Rectangle preview_bounds = {0};
+        int preview_bounds_valid;
 
         BeginDrawing();
         ClearBackground(GetThemeBackground());
@@ -2409,19 +4816,51 @@ main(int argc, char **argv)
             project_dialog.confirmed = 0;
             project_dialog.result_path[0] = '\0';
         }
+        if(project.loaded && editor_mod_key_down() &&
+           (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) &&
+           IsKeyPressed(KEY_F)) {
+            project.search_focused = 1;
+            project.source_focused = 0;
+            SetUIFocus(1211);
+            if(project.search_text[0] != '\0')
+                editor_search_project(&project, status_text,
+                                      sizeof(status_text));
+            else
+                snprintf(status_text, sizeof(status_text), "Search project");
+        }
+        if(project.loaded && editor_mod_key_down() && IsKeyPressed(KEY_P)) {
+            project.search_focused = 1;
+            project.source_focused = 0;
+            SetUIFocus(1211);
+            snprintf(status_text, sizeof(status_text), "Quick open/search");
+        }
         editor_maybe_autosave_source(&project, status_text,
                                      sizeof(status_text));
-        editor_maybe_reload_project_host(&project, status_text,
-                                         sizeof(status_text));
+        editor_maybe_reload_live_module(&project, status_text,
+                                        sizeof(status_text));
 
         SetUIInspectCanvasBounds(canvas_content);
-        draw_canvas(canvas_frame, canvas_content, &project, status_text,
-                    sizeof(status_text));
-        if(editor_selected_file_has_preview(&project)) {
+        preview_bounds_valid =
+            editor_preview_bounds(canvas_content, &project, &preview_bounds);
+        draw_canvas(canvas_frame, canvas_content, &project, &recent, &sidebar,
+                    status_text, sizeof(status_text));
+        if(editor_selected_file_has_preview(&project) &&
+           !project.preview_interact) {
+            Vector2 mouse = GetMousePosition();
+
+            if(preview_bounds_valid)
+                SetUIInspectCanvasBounds(preview_bounds);
             DrawUIInspectOverlay();
-            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+               !IsKeyDown(KEY_LEFT_ALT) && !IsKeyDown(KEY_RIGHT_ALT) &&
+               preview_bounds_valid &&
+               CheckCollisionPointRec(mouse, preview_bounds)) {
                 UIInspectSelection selection = UIInspectGetSelection();
 
+                if(UIInspectSelectAt(mouse))
+                    selection = UIInspectGetSelection();
+                else
+                    selection.valid = 0;
                 if(selection.valid)
                     editor_jump_to_active_widget_source(&project, &selection,
                                                         status_text,
