@@ -12,6 +12,7 @@ enum {
     KC_TEXT_MAX = 1024 * 1024,
     KC_NAME_MAX = 128,
     KC_INCLUDE_MAX = 64,
+    KC_USE_MAX = 32,
     KC_FUNCTION_MAX = 32,
     KC_CALL_MAX = 64,
     KC_RAW_MAX = 1024,
@@ -47,10 +48,14 @@ typedef struct KryFile {
     char raw[KC_RAW_MAX][KC_BODY_LINE_MAX];
     char state[KC_STATE_MAX][KC_BODY_LINE_MAX];
     char includes[KC_INCLUDE_MAX][KC_PATH_MAX];
+    char module[KC_NAME_MAX];
+    char use_aliases[KC_USE_MAX][KC_NAME_MAX];
+    char use_modules[KC_USE_MAX][KC_NAME_MAX];
     KryFunction functions[KC_FUNCTION_MAX];
     int raw_count;
     int state_count;
     int include_count;
+    int use_count;
     int function_count;
     int current_line;
     KryFunction *current;
@@ -59,6 +64,7 @@ typedef struct KryFile {
 static void die(const char *fmt, ...);
 static char *trim(char *s);
 static void strip_kry_ext(char *dst, size_t dst_size, const char *path);
+static void module_symbol(char *dst, size_t dst_size, const char *module);
 
 static void
 add_raw_line(KryFile *file, const char *line)
@@ -236,6 +242,34 @@ is_ident_text(const char *text)
 }
 
 static int
+parse_module_name(char **sp, char *dst, size_t dst_size)
+{
+    char part[KC_NAME_MAX];
+    char *s = *sp;
+    size_t n = 0;
+
+    if(!parse_ident(&s, part, sizeof(part)))
+        return 0;
+    while(1) {
+        size_t part_len = strlen(part);
+
+        if(n + part_len + 1 >= dst_size)
+            return 0;
+        memcpy(dst + n, part, part_len);
+        n += part_len;
+        if(*s != '.')
+            break;
+        dst[n++] = '.';
+        s++;
+        if(!parse_ident(&s, part, sizeof(part)))
+            return 0;
+    }
+    dst[n] = '\0';
+    *sp = s;
+    return 1;
+}
+
+static int
 parse_quoted(char **sp, char *dst, size_t dst_size)
 {
     char *s = *sp;
@@ -338,6 +372,31 @@ emit_call(KryFile *file, const char *prefix, const char *expr,
     memcpy(name, expr, n);
     name[n] = '\0';
     add_body(file, "%s%s%s%s", prefix, native_widget_name(name), open, suffix);
+}
+
+static void
+module_symbol(char *dst, size_t dst_size, const char *module)
+{
+    size_t n = 0;
+
+    if(dst_size == 0)
+        return;
+    for(const char *p = module != NULL ? module : ""; *p != '\0' && n + 1 < dst_size; p++) {
+        if(*p == '.')
+            dst[n++] = '_';
+        else
+            dst[n++] = *p;
+    }
+    dst[n] = '\0';
+}
+
+static void
+module_header(char *dst, size_t dst_size, const char *module)
+{
+    char sym[KC_NAME_MAX];
+
+    module_symbol(sym, sizeof(sym), module);
+    snprintf(dst, dst_size, "%s.h", sym);
 }
 
 static void
@@ -1502,6 +1561,18 @@ parse_kry(KryFile *file)
                 continue;
             } else if(starts_word(line, "raw")) {
                 in_raw = 1;
+            } else if(starts_word(line, "mod")) {
+                char *q = trim(line + strlen("mod"));
+                char module[KC_NAME_MAX];
+
+                if(depth != 0)
+                    die("%s:%d: mod must be top-level", file->path, line_no);
+                if(file->module[0] != '\0')
+                    die("%s:%d: duplicate mod declaration", file->path, line_no);
+                if(!parse_module_name(&q, module, sizeof(module)) ||
+                   trim(q)[0] != '\0')
+                    die("%s:%d: expected module name", file->path, line_no);
+                module_symbol(file->module, sizeof(file->module), module);
             } else if(starts_word(line, "cimport")) {
                 char *q = line + strlen("cimport");
 
@@ -1526,6 +1597,54 @@ parse_kry(KryFile *file)
                 snprintf(file->includes[file->include_count],
                          sizeof(file->includes[file->include_count]),
                          "%s.h", import_base);
+                file->include_count++;
+            } else if(starts_word(line, "use") ||
+                      strstr(line, ":= use") != NULL) {
+                char *q = line;
+                char alias[KC_NAME_MAX] = "";
+                char module[KC_NAME_MAX];
+                char module_sym[KC_NAME_MAX];
+                char header[KC_PATH_MAX];
+                char *op;
+
+                if(file->use_count >= KC_USE_MAX)
+                    die("%s:%d: too many uses", file->path, line_no);
+                if(file->include_count >= KC_INCLUDE_MAX)
+                    die("%s:%d: too many includes", file->path, line_no);
+                op = find_inferred_decl_op(line);
+                if(op != NULL) {
+                    *op = '\0';
+                    q = trim(line);
+                    if(!is_ident_text(q))
+                        die("%s:%d: invalid use binding '%s'", file->path,
+                            line_no, q);
+                    snprintf(alias, sizeof(alias), "%s", q);
+                    q = trim(op + 2);
+                    if(!starts_word(q, "use"))
+                        die("%s:%d: expected use after ':='", file->path,
+                            line_no);
+                    q = trim(q + strlen("use"));
+                } else {
+                    q = trim(q + strlen("use"));
+                }
+                if(!parse_quoted(&q, module, sizeof(module)) ||
+                   trim(q)[0] != '\0')
+                    die("%s:%d: expected quoted module name", file->path,
+                        line_no);
+                module_symbol(module_sym, sizeof(module_sym), module);
+                if(alias[0] == '\0')
+                    snprintf(alias, sizeof(alias), "%s", module_sym);
+                snprintf(file->use_aliases[file->use_count],
+                         sizeof(file->use_aliases[file->use_count]),
+                         "%s", alias);
+                snprintf(file->use_modules[file->use_count],
+                         sizeof(file->use_modules[file->use_count]),
+                         "%s", module_sym);
+                file->use_count++;
+                module_header(header, sizeof(header), module);
+                snprintf(file->includes[file->include_count],
+                         sizeof(file->includes[file->include_count]),
+                         "%s", header);
                 file->include_count++;
             } else if(!in_screen &&
                       (starts_word(line, "screen") ||
@@ -1763,10 +1882,170 @@ brace_delta(const char *line)
     return delta;
 }
 
+static int
+kry_function_c_name(char *dst, size_t dst_size, const KryFile *file,
+                    const KryFunction *fn)
+{
+    char base[KC_NAME_MAX + 16];
+
+    if(fn->exact_name)
+        snprintf(base, sizeof(base), "%s", fn->screen);
+    else
+        snprintf(base, sizeof(base), "%s_kry_draw", fn->screen);
+    if(file->module[0] != '\0') {
+        snprintf(dst, dst_size, "%s_%s", file->module, base);
+        return 1;
+    }
+    snprintf(dst, dst_size, "%s", base);
+    return 1;
+}
+
+static const KryFunction *
+find_local_function(const KryFile *file, const char *name)
+{
+    for(int i = 0; i < file->function_count; i++) {
+        const KryFunction *fn = &file->functions[i];
+        char base[KC_NAME_MAX + 16];
+
+        if(fn->exact_name)
+            snprintf(base, sizeof(base), "%s", fn->screen);
+        else
+            snprintf(base, sizeof(base), "%s_kry_draw", fn->screen);
+        if(strcmp(name, base) == 0 || strcmp(name, fn->screen) == 0)
+            return fn;
+    }
+    return NULL;
+}
+
+static int
+module_for_alias(const KryFile *file, const char *alias, char *module,
+                 size_t module_size)
+{
+    for(int i = 0; i < file->use_count; i++) {
+        if(strcmp(alias, file->use_aliases[i]) == 0) {
+            snprintf(module, module_size, "%s", file->use_modules[i]);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void
-write_body_line(FILE *out, const char *line, int *indent)
+rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
+                 const char *src)
+{
+    size_t n = 0;
+    int in_string = 0;
+    int escaped = 0;
+
+    if(dst_size == 0)
+        return;
+    for(const char *p = src; *p != '\0' && n + 1 < dst_size;) {
+        if(in_string) {
+            dst[n++] = *p;
+            if(escaped) {
+                escaped = 0;
+            } else if(*p == '\\') {
+                escaped = 1;
+            } else if(*p == '"') {
+                in_string = 0;
+            }
+            p++;
+            continue;
+        }
+        if(*p == '"') {
+            in_string = 1;
+            dst[n++] = *p++;
+            continue;
+        }
+        if((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+           *p == '_') {
+            char ident[KC_NAME_MAX];
+            const char *start = p;
+            const char *after;
+            size_t ident_len = 0;
+
+            while((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+                  (*p >= '0' && *p <= '9') || *p == '_') {
+                if(ident_len + 1 < sizeof(ident))
+                    ident[ident_len++] = *p;
+                p++;
+            }
+            ident[ident_len] = '\0';
+            after = p;
+            while(*after == ' ' || *after == '\t')
+                after++;
+            if(*after == '.') {
+                const char *member_start;
+                char member[KC_NAME_MAX];
+                char module[KC_NAME_MAX];
+                size_t member_len = 0;
+
+                after++;
+                while(*after == ' ' || *after == '\t')
+                    after++;
+                member_start = after;
+                if(((*after >= 'A' && *after <= 'Z') ||
+                    (*after >= 'a' && *after <= 'z') || *after == '_')) {
+                    while((*after >= 'A' && *after <= 'Z') ||
+                          (*after >= 'a' && *after <= 'z') ||
+                          (*after >= '0' && *after <= '9') ||
+                          *after == '_') {
+                        if(member_len + 1 < sizeof(member))
+                            member[member_len++] = *after;
+                        after++;
+                    }
+                    member[member_len] = '\0';
+                    if(module_for_alias(file, ident, module, sizeof(module))) {
+                        int written = snprintf(dst + n, dst_size - n,
+                                               "%s_%s", module, member);
+                        if(written < 0)
+                            written = 0;
+                        if((size_t)written >= dst_size - n)
+                            n = dst_size - 1;
+                        else
+                            n += (size_t)written;
+                        p = after;
+                        continue;
+                    }
+                    (void)member_start;
+                }
+            } else if(*after == '(') {
+                const KryFunction *fn = NULL;
+
+                if(start == src ||
+                   (start[-1] != '.' && start[-1] != '>'))
+                    fn = find_local_function(file, ident);
+
+                if(fn != NULL) {
+                    char cname[KC_NAME_MAX * 2];
+                    int written;
+
+                    kry_function_c_name(cname, sizeof(cname), file, fn);
+                    written = snprintf(dst + n, dst_size - n, "%s", cname);
+                    if(written < 0)
+                        written = 0;
+                    if((size_t)written >= dst_size - n)
+                        n = dst_size - 1;
+                    else
+                        n += (size_t)written;
+                    continue;
+                }
+            }
+            while(start < p && n + 1 < dst_size)
+                dst[n++] = *start++;
+            continue;
+        }
+        dst[n++] = *p++;
+    }
+    dst[n] = '\0';
+}
+
+static void
+write_body_line(FILE *out, const KryFile *file, const char *line, int *indent)
 {
     const char *text = skip_indent(line);
+    char rewritten[KC_BODY_LINE_MAX];
     int delta;
 
     if(text[0] == '}')
@@ -1777,7 +2056,13 @@ write_body_line(FILE *out, const char *line, int *indent)
         for(int i = 0; i < *indent; i++)
             fputs("    ", out);
     }
-    fprintf(out, "%s\n", text);
+    if(text[0] == '#') {
+        fprintf(out, "%s\n", text);
+    } else {
+        rewrite_kry_expr(rewritten, sizeof(rewritten), file, text);
+        fprintf(out, "%s\n", rewritten);
+        text = rewritten;
+    }
     delta = brace_delta(text);
     if(text[0] == '}')
         delta++;
@@ -1787,12 +2072,10 @@ write_body_line(FILE *out, const char *line, int *indent)
 }
 
 static void
-function_name(char *dst, size_t dst_size, const KryFunction *fn)
+function_name(char *dst, size_t dst_size, const KryFile *file,
+              const KryFunction *fn)
 {
-    if(fn->exact_name)
-        snprintf(dst, dst_size, "%s", fn->screen);
-    else
-        snprintf(dst, dst_size, "%s_kry_draw", fn->screen);
+    kry_function_c_name(dst, dst_size, file, fn);
 }
 
 static int
@@ -1821,7 +2104,7 @@ write_app_main(FILE *out, const KryFile *file)
     }
     if(screen == NULL)
         return;
-    function_name(screen_name, sizeof(screen_name), screen);
+    function_name(screen_name, sizeof(screen_name), file, screen);
     c_string_literal(title, sizeof(title), file->app_title);
     fprintf(out, "\nint\nmain(void)\n{\n");
     fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
@@ -1891,7 +2174,7 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
 
         if(!fn->is_public)
             continue;
-        function_name(name, sizeof(name), fn);
+        function_name(name, sizeof(name), file, fn);
         fprintf(out, "%s %s(%s);\n", return_type, name, args);
     }
     fputc('\n', out);
@@ -1926,11 +2209,11 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         char name[KC_NAME_MAX + 16];
         int indent = 1;
 
-        function_name(name, sizeof(name), fn);
+        function_name(name, sizeof(name), file, fn);
         fprintf(out, "\n%s%s\n%s(%s)\n{\n",
                 fn->is_public ? "" : "static ", return_type, name, args);
         for(int j = 0; j < fn->body_count; j++)
-            write_body_line(out, fn->body[j], &indent);
+            write_body_line(out, file, fn->body[j], &indent);
         for(int j = 0; j < fn->call_count; j++) {
             const char *call = fn->calls[j];
             size_t len = strlen(call);

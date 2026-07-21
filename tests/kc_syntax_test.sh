@@ -43,6 +43,49 @@ grep -Eq '__auto_type __kryon_assign_[0-9]+_1 = first;' "$out/src/valid.c"
 grep -Eq 'first = __kryon_assign_[0-9]+_0;' "$out/src/valid.c"
 grep -Eq 'second = __kryon_assign_[0-9]+_1;' "$out/src/valid.c"
 
+cat > "$work/src/settings_ui.kry" <<'EOF'
+mod settings_ui
+cimport "thing.h"
+
+fn helper(value: int) -> int {
+    return value + 1
+}
+
+pub fn toggle_row_height(label: const char*, w: int) -> int {
+    return helper(w)
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/settings_ui.kry" >"$err" 2>&1
+grep -q '^settings_ui_helper(int value)' "$out/src/settings_ui.c"
+grep -q 'int settings_ui_toggle_row_height(const char\* label, int w);' "$out/src/settings_ui.h"
+grep -q 'return settings_ui_helper(w);' "$out/src/settings_ui.c"
+
+cat > "$work/src/settings_session.kry" <<'EOF'
+cimport "thing.h"
+ui := use "settings_ui"
+
+pub fn draw_session(label: const char*, w: int) -> int {
+    return ui.toggle_row_height(label, w)
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/settings_session.kry" >"$err" 2>&1
+grep -q '#include "settings_ui.h"' "$out/src/settings_session.h"
+grep -q 'return settings_ui_toggle_row_height(label, w);' "$out/src/settings_session.c"
+
+cat > "$work/src/settings_direct.kry" <<'EOF'
+cimport "thing.h"
+use "settings_ui"
+
+pub fn draw_direct(label: const char*, w: int) -> int {
+    return settings_ui.toggle_row_height(label, w)
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/settings_direct.kry" >"$err" 2>&1
+grep -q 'return settings_ui_toggle_row_height(label, w);' "$out/src/settings_direct.c"
+
 cat > "$work/src/preview.kry" <<'EOF'
 preview stage_preview(viewport: Rectangle) {
     background BLACK

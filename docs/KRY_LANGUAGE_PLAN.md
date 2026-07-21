@@ -95,8 +95,13 @@ whm_update(InbeApp *app, float dt)
 - `cimport "header.h"` includes a C header directly.
 - `import "file.kry"` includes the generated `file.h`; it does not create a
   package or namespace.
-- Public Kry function names are explicit C names, such as `settings_draw` or
-  `whm_update`.
+- `mod settings_ui` gives a file a flat C symbol prefix.
+- `use "settings_ui"` includes `settings_ui.h` and allows direct qualified
+  calls such as `settings_ui.toggle_row_height(...)`.
+- `ui := use "settings_ui"` binds a short compile-time module handle, so
+  `ui.toggle_row_height(...)` still emits `settings_ui_toggle_row_height(...)`.
+- Public Kry functions inside a module emit prefixed C names, such as
+  `settings_ui_toggle_row_height`.
 - C pointer spelling remains accepted: `InbeApp*`.
 - C field access remains accepted: `app->field` and `value.field`.
 - C constants, enums, structs, and functions are used directly after `cimport`.
@@ -108,6 +113,8 @@ whm_update(InbeApp *app, float dt)
 Add these before attempting broad app migration:
 
 - `cimport "header.h"` for explicit C interop.
+- flat `mod name` and `use "name"` for scoped Kry-to-Kry calls that still
+  emit plain C symbols.
 - `type Name { field: Type }` emitting `typedef struct Name Name; struct Name`.
 - `const Name: Type = value` and inferred `const Name = value`.
 - `switch`, `case`, and `default` with C-style fallthrough disabled by default;
@@ -116,8 +123,8 @@ Add these before attempting broad app migration:
 - module-level `var` for file-local state.
 - focused compiler tests that compare important generated C lines.
 
-Do not add packages yet. File names and explicit C-style exported names are the
-namespace.
+Do not add a runtime package system. Kry modules are compile-time scope and C
+symbol-prefix rules only.
 
 ## Inbe Migration Boundary
 
