@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kryon - Visual and Agentic Cross-Platform App Development</title>
-  <meta name="description" content="Visual and agentic cross-platform app development with .kry, clean C output, live previews, fixed device canvases, diagnostics, and click-to-source inspection.">
+  <meta name="description" content="Visual and agentic cross-platform app development with .kry, clean C output, live previews, diagnostics, and click-to-source inspection.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/">
   <meta property="og:title" content="Kryon - Visual and Agentic Cross-Platform App Development">
-  <meta property="og:description" content="Visual and agentic cross-platform app development with .kry, clean C output, live previews, fixed device canvases, diagnostics, and click-to-source inspection.">
+  <meta property="og:description" content="Visual and agentic cross-platform app development with .kry, clean C output, live previews, diagnostics, and click-to-source inspection.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://kryonlabs.com/">
   <meta name="twitter:title" content="Kryon - Visual and Agentic Cross-Platform App Development">
-  <meta name="twitter:description" content="Visual and agentic cross-platform app development in .kry with the Kryon IDE.">
+  <meta name="twitter:description" content="Visual and agentic cross-platform app development in .kry with clean C output.">
   <meta name="twitter:site" content="@kryonlabs">
   <meta name="twitter:creator" content="@kryonlabs">
   <meta name="theme-color" content="#557777">
@@ -21,7 +21,7 @@
 <body>
   <div class="content">
     <header class="hero">
-      <img class="hero-icon" src="icons/rocket.png" width="128" height="128" alt="Kryon">
+      <img class="hero-icon" src="icons/kryon.png" width="128" height="128" alt="Kryon">
       <h1>KRYON</h1>
       <p class="tagline">Visual and agentic cross-platform app development</p>
       <p class="tagline-detail">Write .kry &bull; Compile to clean C &bull; Preview, inspect, and debug live</p>
@@ -30,18 +30,17 @@
     <nav class="site-nav" aria-label="Primary">
       <a href="#about">About</a>
       <a href="#features">Features</a>
-      <a href="#ide">IDE</a>
       <a href="#philosophy">Philosophy</a>
       <a href="#platforms">Platforms</a>
       <a href="#start">Start</a>
-      <a href="examples.html">Examples</a>
+      <a href="api.html">API</a>
     </nav>
 
     <main>
       <section id="about">
         <h2>What is Kryon?</h2>
         <p>Kryon is a UI cartridge system for native applications. Write interface structure in simple .kry files, compile it into readable C, and keep the runtime small enough for desktop, mobile, web, and embedded targets.</p>
-        <p>The Kryon IDE is built around the same source model: open a project or file path, edit .kry directly, see a live fixed-size preview, and click a widget to jump back to the source line that generated it.</p>
+        <p>The Kryon IDE is built around the same source model: open a project or file path, edit .kry directly, see a live preview, and click a widget to jump back to the source line that generated it.</p>
       </section>
 
       <section id="features">
@@ -53,13 +52,13 @@
             <p>Pages and reusable widgets stay in concise source files with explicit typed variables and direct compiler errors for unknown syntax.</p>
           </article>
           <article class="feature">
-            <img src="icons/stack.png" width="48" height="48" alt="">
+            <img src="icons/c.png" width="48" height="48" alt="">
             <h3>Clean C Output</h3>
             <p>The compiler emits normal C and headers in a fresh generated folder for direct interop.</p>
           </article>
           <article class="feature">
             <img src="icons/globe.png" width="48" height="48" alt="">
-            <h3>Live IDE Preview</h3>
+            <h3>Live Preview</h3>
             <p>Hot reload rebuilds real .kry output, keeps the last good state during compilation, and shows diagnostics when the build fails.</p>
           </article>
           <article class="feature">
@@ -69,40 +68,12 @@
           </article>
         </div>
       </section>
-
-      <section id="ide">
-        <h2>Kryon IDE</h2>
-        <p>The IDE is a project workspace for real Kryon apps, not a mock preview shell. It opens folders or individual .kry files, builds the live preview target, and keeps source, diagnostics, run targets, and recent projects in one focused screen.</p>
-        <div class="grid">
-          <article class="feature">
-            <img src="icons/edit.png" width="48" height="48" alt="">
-            <h3>Readable Source Editing</h3>
-            <p>Tabbed source files, multiline text editing, selection highlighting, clipboard support, undo/redo, line jump, scrollbars, and search/replace on demand.</p>
-          </article>
-          <article class="feature">
-            <img src="icons/play.png" width="48" height="48" alt="">
-            <h3>Fixed Preview Canvas</h3>
-            <p>Render inside an explicit viewport with desktop, phone, tablet, square, rotate, fit, 100%, 75%, and 50% scaling controls.</p>
-          </article>
-          <article class="feature">
-            <img src="icons/link.png" width="48" height="48" alt="">
-            <h3>Click To Source</h3>
-            <p>Inspect mode overlays widget bounds and jumps from a preview click to the .kry source. Interact mode lets normal app clicks through.</p>
-          </article>
-          <article class="feature">
-            <img src="icons/gear.png" width="48" height="48" alt="">
-            <h3>Project Workflow</h3>
-            <p>Open or close projects, choose run targets from project.kryon, use recent projects, and see build output with parsed diagnostics.</p>
-          </article>
-        </div>
-      </section>
-
       <section id="philosophy">
         <h2>Philosophy</h2>
         <ul class="philosophy-list">
           <li><strong>Everything visible is a widget</strong> - source, bounds, state, and inspection all belong to the widget tree.</li>
           <li><strong>Source stays primary</strong> - .kry files own screens and reusable UI pieces; C is the generated interop target.</li>
-          <li><strong>The IDE is source-aware</strong> - file browser, source editor, fixed preview canvas, inspector, diagnostics, and search stay tied to .kry files.</li>
+          <li><strong>The IDE is source-aware</strong> - file browser, source editor, live preview, inspector, diagnostics, and search stay tied to .kry files.</li>
           <li><strong>Default private API</strong> - only exported functions enter generated headers, keeping build boundaries small.</li>
           <li><strong>Native first</strong> - direct C, raylib-style calls, and predictable runtime behavior across targets.</li>
         </ul>
@@ -125,7 +96,7 @@
           <article class="platform">
             <img src="language/wasm.png" width="32" height="32" alt="">
             <h3>Browser</h3>
-            <p>WebAssembly examples and previews.</p>
+            <p>WebAssembly runtime and previews.</p>
           </article>
           <article class="platform">
             <img src="icons/gear.png" width="32" height="32" alt="">
@@ -143,7 +114,7 @@
       <section id="start">
         <h2>Get Started</h2>
         <p>Build the runtime and tools:</p>
-        <pre><code>git clone https://github.com/kryonlabs/kryon
+        <pre><code>git clone https://github.com/kryonlabs/kryon.git
 cd kryon
 make
 make install</code></pre>
@@ -158,14 +129,13 @@ pub fn AppHome(app: InbeApp*) {
 }</code></pre>
         <p>Open a project or a single .kry file in the IDE:</p>
         <pre><code>kryon .
-kryon examples/03_theme.kry</code></pre>
+kryon path/to/app.kry</code></pre>
       </section>
 
       <section id="docs">
         <h2>Documentation</h2>
         <ul class="link-list">
-          <li><a href="API.md">API reference</a> - runtime and widget surface</li>
-          <li><a href="examples.html">Live examples</a> - browser builds generated from .kry examples</li>
+          <li><a href="api.html">API reference</a> - runtime and widget surface</li>
           <li><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">Source repository</a> - code, issues, and releases</li>
         </ul>
       </section>

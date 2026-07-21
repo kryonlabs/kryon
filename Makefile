@@ -142,9 +142,9 @@ docs-site:
 	rm -rf $(SITE_BUILD_DIR)
 	mkdir -p $(SITE_BUILD_DIR)
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
-	cp docs/API.md $(SITE_BUILD_DIR)/API.md
 	cp -R icons platforms language $(SITE_BUILD_DIR)/
-	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
+	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
+	rm -f $(SITE_BUILD_DIR)/api-template.html
 
 test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
@@ -201,7 +201,7 @@ version:
 
 release-check:
 	@test -n '$(VERSION)'
-	@grep -q '^## \[$(VERSION)\]' CHANGELOG.md
+	@grep -q '^## $(VERSION) ' CHANGELOG.md
 
 dist-static: release-check $(STATIC_DIST_ARCHIVE)
 

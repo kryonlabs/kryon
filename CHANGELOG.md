@@ -1,13 +1,30 @@
 # Changelog
 
-## [v0.1.4] - 2026-07-18
+## v0.1.5 - 2026-07-21
+
+### Added
+
+- Add the Kryon logo as the site and IDE app icon.
+- Add C-close Kry language direction docs.
+- Add automatic release tagging when the checked-in Kryon version changes.
+
+### Changed
+
+- Replace Kry `include` syntax with explicit `cimport` for C headers.
+- Use cleaner changelog version headings without brackets.
+
+### Fixed
+
+- Allocate Kry compiler state on the heap to avoid Linux runner stack crashes.
+
+## v0.1.4 - 2026-07-18
 
 ### Changed
 
 - Add Clay as a vendored layout dependency for future Kryon UI work.
 - Remove the vendored fontchop dependency and chopped bitmap font assets.
 
-## [v0.1.3] - 2026-07-16
+## v0.1.3 - 2026-07-16
 
 ### Changed
 
@@ -21,19 +38,19 @@
 - Add Markdown support and text area UI.
 - Add pointer release helper APIs and modal layer input capture.
 
-## [v0.1.2] - 2026-07-12
+## v0.1.2 - 2026-07-12
 
 ### Added
 
 - Add web file dialog loading.
 
-## [v0.1.1] - 2026-07-12
+## v0.1.1 - 2026-07-12
 
 ### Fixed
 
 - Fix release CI vendor builds.
 
-## [v0.1.0] - 2026-07-12
+## v0.1.0 - 2026-07-12
 
 ### Added
 

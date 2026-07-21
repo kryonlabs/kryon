@@ -6,6 +6,7 @@ const char *ui_icon_names[] = {
     NULL,  /* UI_ICON_TYPE_NONE */
     "amen.png",  /* UI_ICON_TYPE_AMEN */
     "backward.png",  /* UI_ICON_TYPE_BACKWARD */
+    "c.png",  /* UI_ICON_TYPE_C */
     "calendar.png",  /* UI_ICON_TYPE_CALENDAR */
     "check.png",  /* UI_ICON_TYPE_CHECK */
     "edit.png",  /* UI_ICON_TYPE_EDIT */
@@ -16,6 +17,7 @@ const char *ui_icon_names[] = {
     "home.png",  /* UI_ICON_TYPE_HOME */
     "inbe.png",  /* UI_ICON_TYPE_INBE */
     "jupiter.png",  /* UI_ICON_TYPE_JUPITER */
+    "kryon.png",  /* UI_ICON_TYPE_KRYON */
     "leadercat.png",  /* UI_ICON_TYPE_LEADERCAT */
     "left.png",  /* UI_ICON_TYPE_LEFT */
     "lightoff.png",  /* UI_ICON_TYPE_LIGHTOFF */

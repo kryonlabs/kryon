@@ -29,7 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake zlib1g-dev zip
+          sudo apt-get install -y build-essential cmake cmark zlib1g-dev zip
       - name: Set Up Emscripten
         run: |
           set -euo pipefail
@@ -44,9 +44,11 @@ jobs:
         run: |
           set -euo pipefail
           make docs-site CMAKE=/usr/bin/cmake
-          test -f build/site/examples/02_buttons/index.html
-          test -f build/site/examples/02_buttons/index.js
-          test -f build/site/examples/02_buttons/index.wasm
+          test -f build/site/index.html
+          test -f build/site/api.html
+          test -f build/site/icons/kryon.png
+          test -f build/site/icons/c.png
+          test ! -f build/site/API.md
 
       - name: Upload Site Artifact
         uses: actions/upload-artifact@v4
@@ -76,6 +78,8 @@ jobs:
           set -euo pipefail
           auth_token="$(printf '%s' "$NETLIFY_AUTH_TOKEN" | tr -d '\r\n')"
           site_id="$(printf '%s' "$NETLIFY_SITE_ID" | tr -d '\r\n')"
+          test -n "$auth_token" || { echo "::error::NETLIFY_AUTH_TOKEN is empty or missing"; exit 1; }
+          test -n "$site_id" || { echo "::error::NETLIFY_SITE_ID is empty or missing; use the Netlify Site ID, not the site URL"; exit 1; }
           netlify deploy \
             --dir build/site \
             --alias "pr-${{ github.event.pull_request.number }}" \
@@ -107,6 +111,8 @@ jobs:
           set -euo pipefail
           auth_token="$(printf '%s' "$NETLIFY_AUTH_TOKEN" | tr -d '\r\n')"
           site_id="$(printf '%s' "$NETLIFY_SITE_ID" | tr -d '\r\n')"
+          test -n "$auth_token" || { echo "::error::NETLIFY_AUTH_TOKEN is empty or missing"; exit 1; }
+          test -n "$site_id" || { echo "::error::NETLIFY_SITE_ID is empty or missing; use the Netlify Site ID, not the site URL"; exit 1; }
           netlify deploy \
             --dir build/site \
             --prod \

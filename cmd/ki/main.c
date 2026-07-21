@@ -4975,6 +4975,8 @@ main(int argc, char **argv)
 {
     const int screen_w = 1400;
     const int screen_h = 900;
+    const UIIconAsset *window_icon_asset;
+    Image window_icon = {0};
     int project_menu_open = 0;
     FileDialog project_dialog;
     EditorProject project = {0};
@@ -5004,6 +5006,15 @@ main(int argc, char **argv)
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screen_w, screen_h, "Kryon IDE");
+    window_icon_asset = GetUIIconAsset(UI_ICON_TYPE_KRYON);
+    if(window_icon_asset != NULL) {
+        window_icon = LoadImageFromMemory(".png", window_icon_asset->data,
+                                          (int)window_icon_asset->size);
+        if(window_icon.data != NULL) {
+            SetWindowIcon(window_icon);
+            UnloadImage(window_icon);
+        }
+    }
     SetTargetFPS(60);
     load_editor_font();
     play_icon = LoadUIIconTexture(UI_ICON_TYPE_PLAY);

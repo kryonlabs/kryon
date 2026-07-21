@@ -2,8 +2,12 @@ name: Release
 
 on:
   push:
+    branches:
+      - master
     tags:
       - "v*"
+    paths:
+      - "include/kryon_version.h"
   workflow_dispatch:
     inputs:
       version:
@@ -23,7 +27,7 @@ jobs:
   create-tag:
     name: Create Release Tag
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/')
     outputs:
       tag: ${{ steps.version.outputs.tag }}
 
@@ -38,18 +42,25 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          tag="${{ inputs.version }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.version }}"
+          else
+            tag="$(sed -n 's/^#define KRYON_VERSION_STRING "\([^"]*\)".*/\1/p' include/kryon_version.h)"
+          fi
           case "$tag" in
             v[0-9]*.[0-9]*.[0-9]*) ;;
             *) echo "Version must look like v0.1.0" >&2; exit 1 ;;
           esac
+          grep -q "^## $tag " CHANGELOG.md
           if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-            echo "Tag $tag already exists" >&2
-            exit 1
+            echo "Tag $tag already exists; nothing to release."
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Create And Push Tag
+        if: steps.version.outputs.tag != ''
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -61,14 +72,14 @@ jobs:
     name: Build Release Artifacts
     runs-on: ubuntu-latest
     needs: create-tag
-    if: always() && (github.event_name == 'push' || needs.create-tag.result == 'success')
+    if: always() && (startsWith(github.ref, 'refs/tags/') || needs.create-tag.outputs.tag != '')
 
     steps:
       - name: Resolve Tag
         id: ref
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ -n "${{ needs.create-tag.outputs.tag }}" ]; then
             tag="${{ needs.create-tag.outputs.tag }}"
           else
             tag="${GITHUB_REF_NAME}"

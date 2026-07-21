@@ -190,8 +190,7 @@ section > p,
 }
 
 .grid,
-.platform-grid,
-.example-grid {
+.platform-grid {
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
@@ -258,25 +257,6 @@ section > p,
   font-size: 12px;
 }
 
-.example-card {
-  flex: 0 0 158px;
-  min-height: 104px;
-  padding: 14px;
-  display: grid;
-  align-content: space-between;
-  color: #000000;
-}
-
-.example-card span {
-  color: var(--dark);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.example-card strong {
-  font-size: 16px;
-}
-
 .philosophy-list,
 .link-list {
   list-style: none;
@@ -302,6 +282,22 @@ section > p,
   flex-direction: row;
   align-items: center;
   gap: 10px;
+}
+
+.api-reference h1,
+.api-reference h2,
+.api-reference h3,
+.api-reference h4 {
+  margin-top: 28px;
+}
+
+.api-reference h1:first-child {
+  margin-top: 0;
+}
+
+.api-reference p,
+.api-reference li {
+  max-width: 82ch;
 }
 
 footer {
@@ -364,14 +360,12 @@ footer p {
   }
 
   .grid,
-  .platform-grid,
-  .example-grid {
+  .platform-grid {
     gap: 16px;
   }
 
   .feature,
-  .platform,
-  .example-card {
+  .platform {
     flex: 1 1 140px;
   }
 }
