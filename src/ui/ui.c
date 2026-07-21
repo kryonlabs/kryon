@@ -1673,12 +1673,13 @@ static int
 ui_syntax_kry_keyword(const char *text, int len)
 {
     static const char *keywords[] = {
-        "action", "args", "bind", "button", "checkbox", "circle",
-        "const", "def", "down", "dropdown", "elif", "else", "enter",
-        "exit", "fn", "guard", "icon_button", "if", "include", "label",
-        "listen", "logic", "native", "on", "page", "pub", "radiobutton",
-        "screen", "set", "slider", "spacer", "switch", "text", "tick",
-        "toggle", "up", "var", "window", "write"
+        "app", "args", "background", "button", "c", "c_rect", "call",
+        "clamp_max", "clamp_min", "do", "draw", "else", "endraw", "event",
+        "fn", "font", "for", "fps", "guard", "icon_button", "if", "import",
+        "in", "include", "key", "key_down", "line", "native", "on", "page",
+        "pub", "raw", "rect", "return", "returns", "screen", "set",
+        "set_theme", "size", "state", "swatch", "text", "texture", "theme",
+        "var", "widget"
     };
 
     for(size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {

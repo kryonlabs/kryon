@@ -143,7 +143,8 @@ docs-site:
 	cp -R icons platforms language $(SITE_BUILD_DIR)/
 	$(MAKE) -C examples web EXAMPLES_WEB_SITE_DIR="$(abspath $(SITE_BUILD_DIR))/examples"
 
-test: kryon-compat-check kryon-boundary-check $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST)
+	sh tests/kc_syntax_test.sh $(KC)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
 	$(TRANSITION_TEST)

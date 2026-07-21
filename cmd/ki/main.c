@@ -2650,6 +2650,7 @@ editor_parse_diagnostics(EditorProject *project)
         return;
     project->diagnostic_count = 0;
     project->selected_diagnostic = -1;
+    project->source_highlight_line = 0;
     len = (int)strlen(project->output);
     for(int i = 0; i <= len; i++) {
         if(project->output[i] == '\n' || project->output[i] == '\0') {
@@ -2663,7 +2664,19 @@ editor_parse_diagnostics(EditorProject *project)
             line_start = i + 1;
         }
         if(project->diagnostic_count >= EDITOR_MAX_DIAGNOSTICS)
-            return;
+            break;
+    }
+    for(int i = 0; i < project->diagnostic_count; i++) {
+        char rel[EDITOR_PATH_CAP];
+
+        editor_relative_path(rel, sizeof(rel), project,
+                             project->diagnostics[i].path);
+        if(strcmp(rel, project->source_scroll_file) == 0 ||
+           strcmp(rel, project->selected_file) == 0) {
+            project->source_highlight_line = project->diagnostics[i].line;
+            project->selected_diagnostic = i;
+            break;
+        }
     }
 }
 
@@ -3768,7 +3781,8 @@ draw_preview_context_menu(EditorProject *project, Rectangle preview,
 }
 
 static void
-draw_preview_error(Rectangle content, const EditorProject *project)
+draw_preview_error(Rectangle content, EditorProject *project,
+                   char *status, size_t status_size)
 {
     int pad = ScaleUIPx(18);
     int y = (int)content.y + pad;
@@ -3790,12 +3804,19 @@ draw_preview_error(Rectangle content, const EditorProject *project)
     if(project->diagnostic_count > 0) {
         const EditorDiagnostic *d = &project->diagnostics[0];
         char diag[260];
+        char rel[EDITOR_PATH_CAP];
 
         snprintf(diag, sizeof(diag), "%s:%d: %s",
                  d->path, d->line, d->message);
         DrawUIText(diag, (int)content.x + pad, y, UI_TEXT_16,
                    (Color){255, 226, 226, 255});
-        y += ScaleUIPx(30);
+        editor_relative_path(rel, sizeof(rel), project, d->path);
+        if(DrawUIGenericButton((int)content.x + pad, y + ScaleUIPx(24),
+                               ScaleUIPx(86), ScaleUIPx(28), "Open",
+                               UI_BUTTON_STYLE_SECONDARY, 0, NULL))
+            editor_open_file_at_line(project, rel, d->line, status,
+                                     status_size);
+        y += ScaleUIPx(60);
     }
     len = (int)strlen(project->output);
     PushUIInputClip(content);
@@ -3918,7 +3939,7 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
         draw_preview_toolbar(content, project, status, status_size);
         stage = editor_preview_stage_rect(content);
         if(project->reload_failed) {
-            draw_preview_error(stage, project);
+            draw_preview_error(stage, project, status, status_size);
             return;
         }
     }

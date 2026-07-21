@@ -57,6 +57,7 @@ typedef struct KryFile {
 } KryFile;
 
 static void die(const char *fmt, ...);
+static char *trim(char *s);
 static void strip_kry_ext(char *dst, size_t dst_size, const char *path);
 
 static void
@@ -121,24 +122,56 @@ static void
 die(const char *fmt, ...)
 {
     va_list args;
+    char message[2048];
+    char *p1;
+    char *p2;
+    char *p3;
+    int line = 0;
+    int column = 1;
 
     va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
+    vsnprintf(message, sizeof(message), fmt, args);
     va_end(args);
-    fputc('\n', stderr);
+    p1 = strchr(message, ':');
+    p2 = p1 != NULL ? strchr(p1 + 1, ':') : NULL;
+    if(p1 != NULL && p2 != NULL) {
+        int all_digits = 1;
+
+        for(char *p = p1 + 1; p < p2; p++) {
+            if(*p < '0' || *p > '9') {
+                all_digits = 0;
+                break;
+            }
+        }
+        if(all_digits) {
+            *p1 = '\0';
+            *p2 = '\0';
+            line = atoi(p1 + 1);
+            p3 = strchr(p2 + 1, ':');
+            if(p3 != NULL) {
+                int column_digits = 1;
+
+                for(char *p = p2 + 1; p < p3; p++) {
+                    if(*p < '0' || *p > '9') {
+                        column_digits = 0;
+                        break;
+                    }
+                }
+                if(column_digits) {
+                    *p3 = '\0';
+                    column = atoi(p2 + 1);
+                    p2 = p3;
+                }
+            }
+            if(column <= 0)
+                column = 1;
+            fprintf(stderr, "%s:%d:%d: error: %s\n",
+                    message, line, column, trim(p2 + 1));
+            exit(1);
+        }
+    }
+    fprintf(stderr, "kc: error: %s\n", message);
     exit(1);
-}
-
-static void
-warn_at(const char *path, int line, const char *fmt, ...)
-{
-    va_list args;
-
-    fprintf(stderr, "%s:%d: ", path, line);
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    fputc('\n', stderr);
 }
 
 static char *
@@ -555,6 +588,38 @@ line_is_assignment_statement(const char *line)
         return 1;
     }
     return 0;
+}
+
+static void
+count_line_braces(const char *line, int *opens, int *closes)
+{
+    int in_string = 0;
+    int escaped = 0;
+
+    *opens = 0;
+    *closes = 0;
+    for(const char *p = line; p != NULL && *p != '\0'; p++) {
+        if(in_string) {
+            if(escaped) {
+                escaped = 0;
+            } else if(*p == '\\') {
+                escaped = 1;
+            } else if(*p == '"') {
+                in_string = 0;
+            }
+            continue;
+        }
+        if(*p == '#')
+            break;
+        if(*p == '"') {
+            in_string = 1;
+            continue;
+        }
+        if(*p == '{')
+            (*opens)++;
+        else if(*p == '}')
+            (*closes)++;
+    }
 }
 
 static void
@@ -976,18 +1041,12 @@ parse_statement(KryFile *file, int line_no, char *line)
         size_t n = strlen(line);
 
         if(n > 2 && line[n - 1] == ')' && strchr(line, '(') != NULL) {
-            emit_source_push(file, line_no);
-            emit_call(file, "    ", line, ";");
-            emit_source_pop(file);
-            return;
+            die("%s:%d: implicit call statements are not allowed; use 'do %s' or 'draw %s'",
+                file->path, line_no, line, line);
         }
         if(line_is_assignment_statement(line)) {
-            if(strchr(line, '(') != NULL)
-                emit_source_push(file, line_no);
-            add_body(file, "    %s;", line);
-            if(strchr(line, '(') != NULL)
-                emit_source_pop(file);
-            return;
+            die("%s:%d: implicit assignments are not allowed; use 'set %s'",
+                file->path, line_no, line);
         }
         die("%s:%d: unknown statement: %s", file->path, line_no, line);
     }
@@ -1061,12 +1120,7 @@ parse_kry(KryFile *file)
             int opens = 0;
             int closes = 0;
 
-            for(char *q = line; *q != '\0'; q++) {
-                if(*q == '{')
-                    opens++;
-                else if(*q == '}')
-                    closes++;
-            }
+            count_line_braces(line, &opens, &closes);
             if(in_app) {
                 if(!(line_is_close(line) && depth == 1)) {
                     if(starts_word(line, "size")) {
@@ -1306,7 +1360,7 @@ parse_kry(KryFile *file)
     if(in_raw)
         die("%s: unterminated raw block", file->path);
     if(depth != 0)
-        warn_at(file->path, line_no, "unbalanced braces");
+        die("%s:%d: unbalanced braces", file->path, line_no);
 }
 
 static const char *
