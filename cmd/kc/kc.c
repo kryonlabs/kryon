@@ -1502,14 +1502,14 @@ parse_kry(KryFile *file)
                 continue;
             } else if(starts_word(line, "raw")) {
                 in_raw = 1;
-            } else if(starts_word(line, "include")) {
-                char *q = line + strlen("include");
+            } else if(starts_word(line, "cimport")) {
+                char *q = line + strlen("cimport");
 
                 if(file->include_count >= KC_INCLUDE_MAX)
                     die("%s:%d: too many includes", file->path, line_no);
                 if(!parse_quoted(&q, file->includes[file->include_count],
                                  sizeof(file->includes[file->include_count])))
-                    die("%s:%d: expected quoted include path", file->path,
+                    die("%s:%d: expected quoted C header path", file->path,
                         line_no);
                 file->include_count++;
             } else if(starts_word(line, "import")) {

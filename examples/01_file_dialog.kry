@@ -1,6 +1,6 @@
-include "kryon.h"
-include "file_dialog.h"
-include "stdio.h"
+cimport "kryon.h"
+cimport "file_dialog.h"
+cimport "stdio.h"
 
 app "Kryon File Dialog Example" {
     size 800 600

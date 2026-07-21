@@ -148,9 +148,9 @@ cd kryon
 make
 make install</code></pre>
         <p>A simple .kry shape:</p>
-        <pre><code>include "kryon.h"
+        <pre><code>cimport "kryon.h"
 
-pub fn AppHome(app: *InbeApp) {
+pub fn AppHome(app: InbeApp*) {
     var y: int = ScaleUIPx(24)
 
     draw DrawUIText("Inner Breeze", ScaleUIPx(20), y, UI_TEXT_24, GetThemeText())

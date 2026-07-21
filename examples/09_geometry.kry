@@ -1,4 +1,4 @@
-include "kryon.h"
+cimport "kryon.h"
 
 app "Kryon Geometry" {
     size 800 600

@@ -140,3 +140,10 @@ raylib style: one direct struct-and-call path per widget, caller-owned state,
 immediate-mode drawing, and no builder objects or scripting runtime. The numbered
 examples `09_geometry` through `18_accessibility` demonstrate each toolkit
 feature family.
+
+## Kry Language Direction
+
+`docs/KRY_LANGUAGE_PLAN.md` describes the migration path for making `.kry` a
+C-close, C-transpiled app language with direct C interoperability. The goal is
+for apps to move product UI and screen controllers into Kry while keeping native
+platform, storage, and performance-sensitive code in C.

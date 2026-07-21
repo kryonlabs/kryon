@@ -15,6 +15,8 @@ trap cleanup EXIT INT TERM
 mkdir -p "$work/src" "$out"
 
 cat > "$work/src/valid.kry" <<'EOF'
+cimport "thing.h"
+
 screen valid {
     first, second := 0
     first, second = 1
@@ -30,6 +32,7 @@ screen valid {
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/valid.kry" >"$err" 2>&1
+grep -q '#include "thing.h"' "$out/src/valid.h"
 grep -q '__auto_type first = 0;' "$out/src/valid.c"
 grep -q '__auto_type second = 0;' "$out/src/valid.c"
 grep -Eq '__auto_type __kryon_assign_[0-9]+_0 = 1;' "$out/src/valid.c"
@@ -86,6 +89,20 @@ if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_multi_assignment.kry"
 fi
 grep -q 'assignment count mismatch' "$err"
 grep -Eq 'bad_multi_assignment\.kry:2:1: error:' "$err"
+
+cat > "$work/src/bad_include.kry" <<'EOF'
+include "thing.h"
+
+screen bad {
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_include.kry" >"$err" 2>&1; then
+    echo "legacy include was accepted" >&2
+    exit 1
+fi
+grep -q 'unknown top-level statement: include "thing.h"' "$err"
+grep -Eq 'bad_include\.kry:1:1: error:' "$err"
 
 cat > "$work/src/unbalanced.kry" <<'EOF'
 screen bad {
