@@ -1288,6 +1288,48 @@ emit_enum_end(KryFile *file, int is_public)
     add_type_line(file, is_public, "};");
 }
 
+static void
+emit_type_alias(KryFile *file, int line_no, int is_public, char *line)
+{
+    char tmp[KC_BODY_LINE_MAX];
+    char name[KC_NAME_MAX];
+    char out[KC_BODY_LINE_MAX];
+    char *q;
+    char *eq;
+    char *rhs;
+    char *slot;
+    size_t head_len;
+
+    snprintf(tmp, sizeof(tmp), "%s", line);
+    q = trim(tmp);
+    if(is_public)
+        q = trim(q + strlen("pub"));
+    q = trim(q + strlen("type"));
+    if(!parse_ident(&q, name, sizeof(name)))
+        die("%s:%d: expected type alias name", file->path, line_no);
+    q = trim(q);
+    if(q[0] != '=')
+        die("%s:%d: expected '=' in type alias", file->path, line_no);
+    rhs = trim(q + 1);
+    if(rhs[0] == '\0')
+        die("%s:%d: expected type alias value", file->path, line_no);
+    eq = rhs + strlen(rhs);
+    while(eq > rhs && isspace((unsigned char)eq[-1]))
+        *--eq = '\0';
+    if(eq > rhs && eq[-1] == ';')
+        *--eq = '\0';
+
+    slot = strstr(rhs, "(*)");
+    if(slot != NULL) {
+        head_len = (size_t)(slot - rhs);
+        snprintf(out, sizeof(out), "typedef %.*s(*%s)%s;",
+                 (int)head_len, rhs, name, slot + 3);
+    } else {
+        snprintf(out, sizeof(out), "typedef %s %s;", rhs, name);
+    }
+    add_type_line(file, is_public, "%s", out);
+}
+
 static int
 line_is_close(const char *line)
 {
@@ -2614,6 +2656,14 @@ parse_kry(KryFile *file)
                 line_start = p + 1;
                 line_no++;
                 continue;
+            } else if(!in_screen &&
+                      (starts_word(line, "type") ||
+                       (starts_word(line, "pub") &&
+                        starts_word(trim(line + strlen("pub")), "type")))) {
+                if(depth != 0)
+                    die("%s:%d: type alias must be top-level",
+                        file->path, line_no);
+                emit_type_alias(file, line_no, starts_word(line, "pub"), line);
             } else if(!in_screen &&
                       (starts_word(line, "struct") ||
                        (starts_word(line, "pub") &&

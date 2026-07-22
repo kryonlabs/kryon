@@ -343,6 +343,9 @@ pub enum {
     PUBLIC_SECOND
 }
 
+pub type Callback = int (*)(int)
+type LocalSize = unsigned long
+
 enum {
     LOCAL_FIRST = 1
     LOCAL_SECOND
@@ -370,6 +373,8 @@ EOF
 grep -q 'enum {' "$out/src/native_structs.h"
 grep -q 'PUBLIC_FIRST = 1,' "$out/src/native_structs.h"
 grep -q 'PUBLIC_SECOND,' "$out/src/native_structs.h"
+grep -Fq 'typedef int (*Callback)(int);' "$out/src/native_structs.h"
+grep -q 'typedef unsigned long LocalSize;' "$out/src/native_structs.c"
 grep -q 'LOCAL_FIRST = 1,' "$out/src/native_structs.c"
 grep -q 'LOCAL_SECOND,' "$out/src/native_structs.c"
 grep -q 'typedef struct PublicPair {' "$out/src/native_structs.h"
