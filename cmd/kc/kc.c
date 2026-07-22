@@ -1941,6 +1941,8 @@ parse_statement(KryFile *file, int line_no, char *line)
 {
     if(line_is_close(line)) {
         add_body(file, "    }");
+    } else if(strcmp(line, "{") == 0) {
+        add_body(file, "    {");
     } else if(starts_word(line, "let")) {
         die("%s:%d: legacy 'let' syntax was removed; use 'name: type = value'",
             file->path, line_no);
@@ -3224,8 +3226,9 @@ process_screen_line:
                             stmt_line = pending_line;
                             parsed_pending = 1;
                         }
-                    } else if((is_block_stmt ? group_delta : stmt_delta) > 0 ||
-                              line_needs_continuation(line)) {
+                    } else if(strcmp(line, "{") != 0 &&
+                              ((is_block_stmt ? group_delta : stmt_delta) > 0 ||
+                               line_needs_continuation(line))) {
                         append_statement_line(file, pending_stmt,
                                               sizeof(pending_stmt), line);
                         pending_line = line_no;

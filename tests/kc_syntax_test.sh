@@ -55,9 +55,10 @@ screen valid {
     value = value > 0
         ? value
         : 1
-    c {
-    value++
-    c }
+    {
+        scoped: int = 9
+        value = scoped
+    }
     label: [32] char = {0}
     explicit_count: int = 3
     zero_count: int
@@ -91,7 +92,8 @@ grep -q 'value = value + 1;' "$out/src/valid.c"
 grep -q 'if(CheckThing( value, 1)) {' "$out/src/valid.c"
 grep -q 'value = value > 0 ? value : 1;' "$out/src/valid.c"
 grep -q '    {' "$out/src/valid.c"
-grep -q '    value++;' "$out/src/valid.c"
+grep -Fq 'int scoped = 9;' "$out/src/valid.c"
+grep -Fq 'value = scoped;' "$out/src/valid.c"
 grep -Fq 'char label[32] = {0};' "$out/src/valid.c"
 grep -Fq 'int explicit_count = 3;' "$out/src/valid.c"
 grep -Fq 'int zero_count = {0};' "$out/src/valid.c"
