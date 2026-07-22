@@ -288,6 +288,20 @@ starts_word(const char *s, const char *word)
 }
 
 static int
+starts_statement_word(const char *s, const char *word)
+{
+    size_t n = strlen(word);
+    const char *p;
+
+    if(!starts_word(s, word))
+        return 0;
+    p = s + n;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    return *p != '=' && *p != ':' && *p != ',' && *p != '[';
+}
+
+static int
 parse_ident(char **sp, char *dst, size_t dst_size)
 {
     char *s = *sp;
@@ -1807,7 +1821,7 @@ parse_statement(KryFile *file, int line_no, char *line)
         if(mode[0] == '\0')
             mode = "0";
         add_body(file, "    SetCurrentTheme(%s, %s);", theme, mode);
-    } else if(starts_word(line, "text")) {
+    } else if(starts_statement_word(line, "text")) {
         char *q = trim(line + strlen("text"));
         char label[512];
         char x[128] = "0";
