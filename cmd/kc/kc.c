@@ -2670,20 +2670,8 @@ parse_kry(KryFile *file)
                         line_no);
                 file->include_count++;
             } else if(starts_word(line, "import")) {
-                char *q = line + strlen("import");
-                char import_path[KC_PATH_MAX];
-                char import_base[KC_PATH_MAX];
-
-                if(file->include_count >= KC_INCLUDE_MAX)
-                    die("%s:%d: too many imports", file->path, line_no);
-                if(!parse_quoted(&q, import_path, sizeof(import_path)))
-                    die("%s:%d: expected quoted import path", file->path,
-                        line_no);
-                strip_kry_ext(import_base, sizeof(import_base), import_path);
-                snprintf(file->includes[file->include_count],
-                         sizeof(file->includes[file->include_count]),
-                         "%s.h", import_base);
-                file->include_count++;
+                die("%s:%d: import was removed; use 'name := use \"path\"'",
+                    file->path, line_no);
             } else if(starts_word(line, "use") ||
                       strstr(line, ":= use") != NULL) {
                 char *q = line;

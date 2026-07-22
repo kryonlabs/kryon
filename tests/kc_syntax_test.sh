@@ -169,6 +169,36 @@ grep -q '#include "src/ui/panel.h"' "$out/src/panel_host.h"
 grep -q 'void ui_panel_draw(void\* app);' "$out/src/ui/panel.h"
 grep -q 'ui_panel_draw(app);' "$out/src/panel_host.c"
 
+cat > "$work/src/panel_direct_host.kry" <<'EOF'
+cimport "thing.h"
+use "src/ui/panel"
+
+pub fn draw_panel_direct_host(app: void*) {
+    do ui_panel.draw(app)
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" \
+    "$work/src/ui/panel.kry" "$work/src/panel_direct_host.kry" >"$err" 2>&1
+grep -q '#include "src/ui/panel.h"' "$out/src/panel_direct_host.h"
+grep -q 'ui_panel_draw(app);' "$out/src/panel_direct_host.c"
+
+cat > "$work/src/legacy_import.kry" <<'EOF'
+cimport "thing.h"
+import "src/ui/panel.kry"
+
+pub fn old_import_host(app: void*) {
+    do ui_panel.draw(app)
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" \
+    "$work/src/legacy_import.kry" >"$err" 2>&1; then
+    echo "legacy import unexpectedly succeeded" >&2
+    exit 1
+fi
+grep -q "import was removed" "$err"
+
 cat > "$work/src/preview.kry" <<'EOF'
 preview stage_preview(viewport: Rectangle) {
     background BLACK

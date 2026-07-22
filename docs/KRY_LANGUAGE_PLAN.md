@@ -16,7 +16,7 @@ Kry should take inspiration from Plan 9, Go, and raylib:
 - explicit exported function names
 - simple structs and plain data flow
 - early returns
-- no hidden packages or namespace model
+- compile-time modules only, with no runtime package system
 - direct calls into C
 - generated C that is easy to inspect
 
@@ -93,15 +93,21 @@ whm_update(InbeApp *app, float dt)
 ## Interop Rules
 
 - `cimport "header.h"` includes a C header directly.
-- `import "file.kry"` includes the generated `file.h`; it does not create a
-  package or namespace.
 - `mod settings_ui` gives a file a flat C symbol prefix.
+- `mod settings.ui` gives a file the C symbol prefix `settings_ui`.
 - `use "settings_ui"` includes `settings_ui.h` and allows direct qualified
   calls such as `settings_ui.toggle_row_height(...)`.
+- `use "src/screens/settings/settings_ui"` includes
+  `src/screens/settings/settings_ui.h`. If that file declares
+  `mod settings.ui`, calls use the module prefix from the source:
+  `settings_ui.toggle_row_height(...)` emits
+  `settings_ui_toggle_row_height(...)`.
 - `ui := use "settings_ui"` binds a short compile-time module handle, so
   `ui.toggle_row_height(...)` still emits `settings_ui_toggle_row_height(...)`.
 - Public Kry functions inside a module emit prefixed C names, such as
   `settings_ui_toggle_row_height`.
+- `use` is the Kry-to-Kry dependency mechanism. The old header-only `import`
+  form is removed so modules do not drift back into manual C wiring.
 - C pointer spelling remains accepted: `InbeApp*`.
 - C field access remains accepted: `app->field` and `value.field`.
 - C constants, enums, structs, and functions are used directly after `cimport`.
@@ -113,8 +119,8 @@ whm_update(InbeApp *app, float dt)
 Add these before attempting broad app migration:
 
 - `cimport "header.h"` for explicit C interop.
-- flat `mod name` and `use "name"` for scoped Kry-to-Kry calls that still
-  emit plain C symbols.
+- `mod name`, `mod dir.name`, and `use "path/to/file"` for scoped Kry-to-Kry
+  calls that still emit plain C symbols.
 - `type Name { field: Type }` emitting `typedef struct Name Name; struct Name`.
 - `const Name: Type = value` and inferred `const Name = value`.
 - `switch`, `case`, and `default` with C-style fallthrough disabled by default;
