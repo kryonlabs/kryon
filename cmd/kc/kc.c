@@ -1845,6 +1845,8 @@ parse_statement(KryFile *file, int line_no, char *line)
         }
     } else if(strcmp(line, "continue") == 0) {
         add_body(file, "    continue;");
+    } else if(strcmp(line, "break") == 0) {
+        add_body(file, "    break;");
     } else if(starts_word(line, "var")) {
         die("%s:%d: 'var' syntax was removed; use 'name: type = value'",
             file->path, line_no);

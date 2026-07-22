@@ -32,6 +32,7 @@ screen valid {
         if i == 0 {
             continue
         }
+        break
         value += i
     }
     while value < 3 {
@@ -74,6 +75,7 @@ grep -Eq '__auto_type __kryon_assign_[0-9]+_1 = first;' "$out/src/valid.c"
 grep -Eq 'first = __kryon_assign_[0-9]+_0;' "$out/src/valid.c"
 grep -Eq 'second = __kryon_assign_[0-9]+_1;' "$out/src/valid.c"
 grep -q 'continue;' "$out/src/valid.c"
+grep -q 'break;' "$out/src/valid.c"
 grep -q 'while(value < 3)' "$out/src/valid.c"
 grep -q 'DrawThing( value, (ThingSpec){ .value = value, .label = "hello" } );' "$out/src/valid.c"
 grep -q 'value = value + 1;' "$out/src/valid.c"
