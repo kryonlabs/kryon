@@ -32,7 +32,7 @@ body {
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 16px;
   line-height: calc(1ex / 0.32);
-  cursor: default;
+  cursor: url("cursors/arrow.png") 0 0, default;
 }
 
 body::before {
@@ -69,6 +69,7 @@ a {
   color: var(--link);
   text-decoration: none;
   font-weight: 700;
+  cursor: url("cursors/hand.png") 6 1, pointer;
 }
 
 a:hover {
@@ -110,6 +111,7 @@ pre {
   box-shadow:
     inset 1px 1px 0 0 var(--shadow),
     1px 1px 0 0 var(--button-highlight);
+  cursor: url("cursors/ibeam.png") 15 16, text;
 }
 
 pre code {
@@ -190,7 +192,8 @@ section > p,
 }
 
 .grid,
-.platform-grid {
+.platform-grid,
+.goal-list {
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
@@ -202,6 +205,7 @@ section > p,
 
 .feature,
 .platform,
+.goal,
 .example-card,
 .supporter-box {
   background-color: var(--panel-bg);
@@ -231,6 +235,21 @@ section > p,
 .feature p {
   margin: 0;
   font-size: 13px;
+}
+
+.goal {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.goal h3 {
+  margin-top: 0;
+}
+
+.goal p {
+  margin-bottom: 0;
+  color: var(--muted);
 }
 
 .platform {
@@ -360,7 +379,8 @@ footer p {
   }
 
   .grid,
-  .platform-grid {
+  .platform-grid,
+  .goal-list {
     gap: 16px;
   }
 

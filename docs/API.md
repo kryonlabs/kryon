@@ -16,7 +16,7 @@ Kryon is a lightweight C UI component library for embedded applications and runt
   - [Icons](#icons)
   - [Theme](#theme)
   - [Locale](#locale)
-  - [Lyra Sync](#lyra-sync)
+  - [Sync](#sync)
   - [Transitions](#transitions)
   - [Runtime Assets](#runtime-assets)
   - [File Dialogs](#file-dialogs)
@@ -502,9 +502,9 @@ int GetCurrentLocaleIndex(void);
 
 ---
 
-### Lyra Sync
+### Sync
 
-Common Lyra sync protocol helpers. Kryon owns URL handling, token auth,
+Lyra Sync is Kryon's common sync protocol layer. Kryon owns URL handling, token auth,
 challenge/login, bearer requests, sync posting, account deletion, and small JSON
 helpers. Applications still own their local data model and provide callbacks to
 build sync payloads, apply sync responses, store auth tokens, and perform

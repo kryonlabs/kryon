@@ -3,19 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon - Visual and Agentic Cross-Platform App Development</title>
-  <meta name="description" content="Visual and agentic cross-platform app development with .kry, clean C output, live previews, diagnostics, and click-to-source inspection.">
+  <title>Kryon - Native Cross-Platform App and Game Development</title>
+  <meta name="description" content="Native cross-platform app and game development with .kry, human-readable C99 output, a full native widget toolkit, and an interactive AI-native IDE.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/">
-  <meta property="og:title" content="Kryon - Visual and Agentic Cross-Platform App Development">
-  <meta property="og:description" content="Visual and agentic cross-platform app development with .kry, clean C output, live previews, diagnostics, and click-to-source inspection.">
+  <meta property="og:title" content="Kryon - Native Cross-Platform App and Game Development">
+  <meta property="og:description" content="Native cross-platform app and game development with .kry, human-readable C99 output, a full native widget toolkit, and an interactive AI-native IDE.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://kryonlabs.com/">
-  <meta name="twitter:title" content="Kryon - Visual and Agentic Cross-Platform App Development">
-  <meta name="twitter:description" content="Visual and agentic cross-platform app development in .kry with clean C output.">
+  <meta name="twitter:title" content="Kryon - Native Cross-Platform App and Game Development">
+  <meta name="twitter:description" content="Native cross-platform app and game development in .kry with readable C99 output.">
   <meta name="twitter:site" content="@kryonlabs">
   <meta name="twitter:creator" content="@kryonlabs">
   <meta name="theme-color" content="#557777">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/kryon.png">
+  <link rel="apple-touch-icon" href="icons/kryon.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -23,12 +25,13 @@
     <header class="hero">
       <img class="hero-icon" src="icons/kryon.png" width="128" height="128" alt="Kryon">
       <h1>KRYON</h1>
-      <p class="tagline">Visual and agentic cross-platform app development</p>
-      <p class="tagline-detail">Write .kry &bull; Compile to clean C &bull; Preview, inspect, and debug live</p>
+      <p class="tagline">Native cross-platform app and game development</p>
+      <p class="tagline-detail">Write .kry &bull; Translate to readable C99 &bull; Build visually with an AI-native IDE</p>
     </header>
 
     <nav class="site-nav" aria-label="Primary">
       <a href="#about">About</a>
+      <a href="#goals">Goals</a>
       <a href="#features">Features</a>
       <a href="#philosophy">Philosophy</a>
       <a href="#platforms">Platforms</a>
@@ -39,8 +42,30 @@
     <main>
       <section id="about">
         <h2>What is Kryon?</h2>
-        <p>Kryon is a UI cartridge system for native applications. Write interface structure in simple .kry files, compile it into readable C, and keep the runtime small enough for desktop, mobile, web, and embedded targets.</p>
+        <p>Kryon is a native app and game development stack built around .kry source files, a small runtime, and clean translation to human-readable C99.</p>
         <p>The Kryon IDE is built around the same source model: open a project or file path, edit .kry directly, see a live preview, and click a widget to jump back to the source line that generated it.</p>
+      </section>
+
+      <section id="goals">
+        <h2>Goals</h2>
+        <div class="goal-list">
+          <article class="goal">
+            <h3>Native Cross-Platform</h3>
+            <p>One source model for desktop, mobile, browser, and embedded targets, with platform behavior exposed as first-class Kryon features.</p>
+          </article>
+          <article class="goal">
+            <h3>Readable C99</h3>
+            <p>.kry translates to plain, inspectable C99 that can be built, debugged, and shipped by normal C toolchains.</p>
+          </article>
+          <article class="goal">
+            <h3>Full Native UI</h3>
+            <p>The widget toolkit should cover real product interfaces: layout, text, inputs, navigation, overlays, inspection, themes, and runtime assets.</p>
+          </article>
+          <article class="goal">
+            <h3>AI-Native IDE</h3>
+            <p>The IDE should make visual app and game development direct: live preview, source-aware inspection, diagnostics, and agent-assisted edits in one loop.</p>
+          </article>
+        </div>
       </section>
 
       <section id="features">

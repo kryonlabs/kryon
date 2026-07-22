@@ -20,16 +20,18 @@
   function highlight(text) {
     var placeholders = [];
 
+    function keep(html) {
+      var id = placeholders.length;
+      placeholders.push(html);
+      return "\u0000P" + id + "X\u0000";
+    }
+
     text = escapeHtml(text);
     text = text.replace(comments, function(match) {
-      var id = placeholders.length;
-      placeholders.push(span("tok-com", match));
-      return "\u0000" + id + "\u0000";
+      return keep(span("tok-com", match));
     });
     text = text.replace(strings, function(match) {
-      var id = placeholders.length;
-      placeholders.push(span("tok-str", match));
-      return "\u0000" + id + "\u0000";
+      return keep(span("tok-str", match));
     });
     text = text
       .replace(types, function(match) { return span("tok-type", match); })
@@ -39,7 +41,7 @@
         return span("tok-fn", name);
       });
 
-    return text.replace(/\u0000(\d+)\u0000/g, function(_, id) {
+    return text.replace(/\u0000P(\d+)X\u0000/g, function(_, id) {
       return placeholders[Number(id)];
     });
   }

@@ -143,6 +143,7 @@ docs-site:
 	mkdir -p $(SITE_BUILD_DIR)
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	cp -R icons platforms language $(SITE_BUILD_DIR)/
+	cp -R $(SITE_DIR)/cursors $(SITE_BUILD_DIR)/
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
