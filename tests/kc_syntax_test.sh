@@ -205,6 +205,36 @@ grep -q 'return NULL == NULL ? 1 : 0;' "$out/src/native_c_features.c"
 grep -q '#else' "$out/src/native_c_features.c"
 grep -q '#endif' "$out/src/native_c_features.c"
 
+cat > "$work/src/native_structs.kry" <<'EOF'
+cimport "stddef.h"
+
+pub struct PublicPair {
+    name: const char*
+    values: [2] int
+}
+
+struct LocalCtx {
+    count: int
+    pair: PublicPair*
+}
+
+pub fn native_struct_count(pair: PublicPair*) -> int {
+    ctx: LocalCtx = {0}
+    ctx.count = pair != nil ? 2 : 0
+    ctx.pair = pair
+    return ctx.count
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/native_structs.kry" >"$err" 2>&1
+grep -q 'typedef struct PublicPair {' "$out/src/native_structs.h"
+grep -q 'const char\* name;' "$out/src/native_structs.h"
+grep -q 'int values\[2\];' "$out/src/native_structs.h"
+grep -q '} PublicPair;' "$out/src/native_structs.h"
+grep -q 'typedef struct LocalCtx {' "$out/src/native_structs.c"
+grep -q 'PublicPair\* pair;' "$out/src/native_structs.c"
+grep -q '} LocalCtx;' "$out/src/native_structs.c"
+
 cat > "$work/src/multiline_fn_decl.kry" <<'EOF'
 cimport "stddef.h"
 

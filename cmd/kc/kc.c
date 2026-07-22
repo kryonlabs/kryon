@@ -15,6 +15,7 @@ enum {
     KC_USE_MAX = 32,
     KC_CALL_MAX = 64,
     KC_CONST_MAX = 64,
+    KC_TYPE_MAX = 64,
     KC_RAW_MAX = 1024,
     KC_STATE_MAX = 128,
     KC_BODY_MAX = 512,
@@ -46,6 +47,8 @@ typedef struct KryFile {
     int app_dark_mode;
     int no_main;
     char raw[KC_RAW_MAX][KC_BODY_LINE_MAX];
+    char public_types[KC_TYPE_MAX][KC_BODY_LINE_MAX];
+    char private_types[KC_TYPE_MAX][KC_BODY_LINE_MAX];
     char state[KC_STATE_MAX][KC_BODY_LINE_MAX];
     char includes[KC_INCLUDE_MAX][KC_PATH_MAX];
     char const_names[KC_CONST_MAX][KC_NAME_MAX];
@@ -55,6 +58,8 @@ typedef struct KryFile {
     char use_modules[KC_USE_MAX][KC_NAME_MAX];
     KryFunction *functions;
     int raw_count;
+    int public_type_count;
+    int private_type_count;
     int state_count;
     int include_count;
     int const_count;
@@ -80,6 +85,28 @@ add_raw_line(KryFile *file, const char *line)
     snprintf(file->raw[file->raw_count],
              sizeof(file->raw[file->raw_count]), "%s", line);
     file->raw_count++;
+}
+
+static void
+add_type_line(KryFile *file, int is_public, const char *fmt, ...)
+{
+    char (*types)[KC_BODY_LINE_MAX];
+    int *count;
+    va_list ap;
+
+    if(is_public) {
+        types = file->public_types;
+        count = &file->public_type_count;
+    } else {
+        types = file->private_types;
+        count = &file->private_type_count;
+    }
+    if(*count >= KC_TYPE_MAX)
+        die("%s: type block is too large", file->path);
+    va_start(ap, fmt);
+    vsnprintf(types[*count], sizeof(types[*count]), fmt, ap);
+    va_end(ap);
+    (*count)++;
 }
 
 static void
@@ -1140,6 +1167,59 @@ emit_top_static_decl_start(KryFile *file, int line_no, char *line)
     return emit_state_decl_start(file, line_no, q);
 }
 
+static void
+emit_struct_field(KryFile *file, int line_no, int is_public, const char *line)
+{
+    char tmp[KC_BODY_LINE_MAX];
+    char out[KC_BODY_LINE_MAX];
+    char *colon;
+    char *name;
+    char *type;
+
+    snprintf(tmp, sizeof(tmp), "%s", line);
+    colon = strchr(tmp, ':');
+    if(colon == NULL)
+        die("%s:%d: expected ':' in struct field declaration",
+            file->path, line_no);
+    *colon = '\0';
+    name = trim(tmp);
+    type = trim(colon + 1);
+    if(!is_ident_text(name))
+        die("%s:%d: invalid struct field name '%s'", file->path,
+            line_no, name);
+    if(type[0] == '\0')
+        die("%s:%d: expected struct field type", file->path, line_no);
+    convert_var_decl(out, sizeof(out), name, type);
+    add_type_line(file, is_public, "    %s;", out);
+}
+
+static void
+emit_struct_start(KryFile *file, int line_no, int is_public, char *line,
+                  char *name, size_t name_size)
+{
+    char *q = trim(line);
+    size_t n;
+
+    if(is_public)
+        q = trim(q + strlen("pub"));
+    q = trim(q + strlen("struct"));
+    n = strlen(q);
+    if(n == 0 || q[n - 1] != '{')
+        die("%s:%d: expected '{' after struct name", file->path, line_no);
+    q[n - 1] = '\0';
+    q = trim(q);
+    if(!is_ident_text(q))
+        die("%s:%d: invalid struct name '%s'", file->path, line_no, q);
+    snprintf(name, name_size, "%s", q);
+    add_type_line(file, is_public, "typedef struct %s {", name);
+}
+
+static void
+emit_struct_end(KryFile *file, int is_public, const char *name)
+{
+    add_type_line(file, is_public, "} %s;", name);
+}
+
 static int
 line_is_close(const char *line)
 {
@@ -2056,6 +2136,9 @@ parse_kry(KryFile *file)
     int state_decl_depth = 0;
     int in_top_static_decl = 0;
     int top_static_decl_depth = 0;
+    int in_struct = 0;
+    int struct_is_public = 0;
+    char struct_name[KC_NAME_MAX] = "";
     int in_c_block = 0;
     int in_raw = 0;
     char pending_stmt[KC_BODY_LINE_MAX * 4] = "";
@@ -2136,7 +2219,31 @@ parse_kry(KryFile *file)
                 continue;
             }
             count_line_braces(line, &opens, &closes);
-            if(in_c_block) {
+            if(in_struct) {
+                if(line_is_close(line)) {
+                    emit_struct_end(file, struct_is_public, struct_name);
+                    in_struct = 0;
+                    struct_is_public = 0;
+                    struct_name[0] = '\0';
+                    depth += opens;
+                    depth -= closes;
+                    if(depth < 0)
+                        die("%s:%d: unexpected }", file->path, line_no);
+                    *p = saved;
+                    if(saved == '\0')
+                        break;
+                    line_start = p + 1;
+                    line_no++;
+                    continue;
+                }
+                emit_struct_field(file, line_no, struct_is_public, line);
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(in_c_block) {
                 if(line_is_close(line)) {
                     in_c_block = 0;
                     depth += opens;
@@ -2317,6 +2424,25 @@ parse_kry(KryFile *file)
                 } else {
                     emit_top_static_decl(file, line_no, line);
                 }
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(!in_screen &&
+                      (starts_word(line, "struct") ||
+                       (starts_word(line, "pub") &&
+                        starts_word(trim(line + strlen("pub")), "struct")))) {
+                if(depth != 0)
+                    die("%s:%d: struct declaration must be top-level",
+                        file->path, line_no);
+                struct_is_public = starts_word(line, "pub");
+                emit_struct_start(file, line_no, struct_is_public, line,
+                                  struct_name, sizeof(struct_name));
+                in_struct = 1;
+                depth += opens;
+                depth -= closes;
                 *p = saved;
                 if(saved == '\0')
                     break;
@@ -2658,6 +2784,8 @@ parse_kry(KryFile *file)
         die("%s: unterminated raw block", file->path);
     if(in_c_block)
         die("%s: unterminated c block", file->path);
+    if(in_struct)
+        die("%s:%d: unterminated struct declaration", file->path, line_no);
     if(macro_count != 0)
         die("%s:%d: unterminated #if block", file->path, line_no);
     if(pending_decl[0] != '\0')
@@ -3072,6 +3200,10 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         fprintf(out, "#include \"%s\"\n", file->includes[i]);
     if(file->include_count > 0)
         fputc('\n', out);
+    for(int i = 0; i < file->public_type_count; i++)
+        fprintf(out, "%s\n", file->public_types[i]);
+    if(file->public_type_count > 0)
+        fputc('\n', out);
     for(int i = 0; i < file->function_count; i++) {
         const KryFunction *fn = &file->functions[i];
         const char *args = fn->args[0] != '\0' ? fn->args : "void";
@@ -3102,6 +3234,11 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         fputc('\n', out);
         for(int i = 0; i < file->raw_count; i++)
             fprintf(out, "%s\n", file->raw[i]);
+    }
+    if(file->private_type_count > 0) {
+        fputc('\n', out);
+        for(int i = 0; i < file->private_type_count; i++)
+            fprintf(out, "%s\n", file->private_types[i]);
     }
     for(int i = 0; i < file->function_count; i++) {
         const KryFunction *fn = &file->functions[i];
