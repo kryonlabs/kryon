@@ -210,6 +210,16 @@ grep -q '#endif' "$out/src/native_c_features.c"
 cat > "$work/src/native_structs.kry" <<'EOF'
 cimport "stddef.h"
 
+pub enum {
+    PUBLIC_FIRST = 1
+    PUBLIC_SECOND
+}
+
+enum {
+    LOCAL_FIRST = 1
+    LOCAL_SECOND
+}
+
 pub struct PublicPair {
     name: const char*
     values: [2] int
@@ -222,13 +232,18 @@ struct LocalCtx {
 
 pub fn native_struct_count(pair: PublicPair*) -> int {
     ctx: LocalCtx = {0}
-    ctx.count = pair != nil ? 2 : 0
+    ctx.count = pair != nil ? PUBLIC_SECOND + LOCAL_SECOND : 0
     ctx.pair = pair
     return ctx.count
 }
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/native_structs.kry" >"$err" 2>&1
+grep -q 'enum {' "$out/src/native_structs.h"
+grep -q 'PUBLIC_FIRST = 1,' "$out/src/native_structs.h"
+grep -q 'PUBLIC_SECOND,' "$out/src/native_structs.h"
+grep -q 'LOCAL_FIRST = 1,' "$out/src/native_structs.c"
+grep -q 'LOCAL_SECOND,' "$out/src/native_structs.c"
 grep -q 'typedef struct PublicPair {' "$out/src/native_structs.h"
 grep -q 'const char\* name;' "$out/src/native_structs.h"
 grep -q 'int values\[2\];' "$out/src/native_structs.h"

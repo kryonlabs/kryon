@@ -1220,6 +1220,42 @@ emit_struct_end(KryFile *file, int is_public, const char *name)
     add_type_line(file, is_public, "} %s;", name);
 }
 
+static void
+emit_enum_item(KryFile *file, int line_no, int is_public, const char *line)
+{
+    char tmp[KC_BODY_LINE_MAX];
+    char *q;
+    size_t n;
+
+    snprintf(tmp, sizeof(tmp), "%s", line);
+    q = trim(tmp);
+    n = strlen(q);
+    if(n > 0 && q[n - 1] == ',')
+        q[--n] = '\0';
+    if(n == 0)
+        die("%s:%d: expected enum item", file->path, line_no);
+    add_type_line(file, is_public, "    %s,", q);
+}
+
+static void
+emit_enum_start(KryFile *file, int line_no, int is_public, char *line)
+{
+    char *q = trim(line);
+
+    if(is_public)
+        q = trim(q + strlen("pub"));
+    q = trim(q + strlen("enum"));
+    if(strcmp(q, "{") != 0)
+        die("%s:%d: expected anonymous enum block", file->path, line_no);
+    add_type_line(file, is_public, "enum {");
+}
+
+static void
+emit_enum_end(KryFile *file, int is_public)
+{
+    add_type_line(file, is_public, "};");
+}
+
 static int
 line_is_close(const char *line)
 {
@@ -2141,6 +2177,8 @@ parse_kry(KryFile *file)
     int in_struct = 0;
     int struct_is_public = 0;
     char struct_name[KC_NAME_MAX] = "";
+    int in_enum = 0;
+    int enum_is_public = 0;
     int in_c_block = 0;
     int in_raw = 0;
     char pending_stmt[KC_BODY_LINE_MAX * 4] = "";
@@ -2239,6 +2277,29 @@ parse_kry(KryFile *file)
                     continue;
                 }
                 emit_struct_field(file, line_no, struct_is_public, line);
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(in_enum) {
+                if(line_is_close(line)) {
+                    emit_enum_end(file, enum_is_public);
+                    in_enum = 0;
+                    enum_is_public = 0;
+                    depth += opens;
+                    depth -= closes;
+                    if(depth < 0)
+                        die("%s:%d: unexpected }", file->path, line_no);
+                    *p = saved;
+                    if(saved == '\0')
+                        break;
+                    line_start = p + 1;
+                    line_no++;
+                    continue;
+                }
+                emit_enum_item(file, line_no, enum_is_public, line);
                 *p = saved;
                 if(saved == '\0')
                     break;
@@ -2443,6 +2504,24 @@ parse_kry(KryFile *file)
                 emit_struct_start(file, line_no, struct_is_public, line,
                                   struct_name, sizeof(struct_name));
                 in_struct = 1;
+                depth += opens;
+                depth -= closes;
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(!in_screen &&
+                      (starts_word(line, "enum") ||
+                       (starts_word(line, "pub") &&
+                        starts_word(trim(line + strlen("pub")), "enum")))) {
+                if(depth != 0)
+                    die("%s:%d: enum declaration must be top-level",
+                        file->path, line_no);
+                enum_is_public = starts_word(line, "pub");
+                emit_enum_start(file, line_no, enum_is_public, line);
+                in_enum = 1;
                 depth += opens;
                 depth -= closes;
                 *p = saved;
