@@ -1460,6 +1460,55 @@ line_needs_continuation(const char *line)
     return 0;
 }
 
+static int
+line_starts_continuation(const char *line)
+{
+    const char *q = line;
+
+    if(q == NULL)
+        return 0;
+    while(*q == ' ' || *q == '\t')
+        q++;
+    if(q[0] == '?' || q[0] == ':' || q[0] == '.' || q[0] == ',' ||
+       q[0] == '+' || q[0] == '*' || q[0] == '/' || q[0] == '%')
+        return 1;
+    if(q[0] == '-' && q[1] != '>')
+        return 1;
+    if((q[0] == '&' && q[1] == '&') ||
+       (q[0] == '|' && q[1] == '|') ||
+       (q[0] == '=' && q[1] == '=') ||
+       (q[0] == '!' && q[1] == '=') ||
+       (q[0] == '<' && q[1] == '=') ||
+       (q[0] == '>' && q[1] == '='))
+        return 1;
+    return 0;
+}
+
+static int
+line_starts_char(const char *line, char c)
+{
+    const char *q = line;
+
+    if(q == NULL)
+        return 0;
+    while(*q == ' ' || *q == '\t')
+        q++;
+    return q[0] == c;
+}
+
+static int
+line_can_accept_leading_continuation(const char *line)
+{
+    return line != NULL &&
+           (starts_word(line, "return") ||
+            starts_word(line, "do") ||
+            starts_word(line, "draw") ||
+            starts_word(line, "widget") ||
+            line_is_inferred_decl((char *)line) ||
+            find_typed_decl_colon((char *)line) != NULL ||
+            line_is_assignment_statement(line));
+}
+
 static void
 append_statement_line(KryFile *file, char *dst, size_t dst_size,
                       const char *line)
@@ -2186,6 +2235,7 @@ parse_kry(KryFile *file)
     int pending_line = 0;
     int pending_delta = 0;
     int pending_is_block = 0;
+    int pending_can_lead_continue = 0;
     int pending_decl_line = 0;
     int pending_decl_delta = 0;
     int macro_depths[64];
@@ -2719,7 +2769,16 @@ parse_kry(KryFile *file)
                 if(line_is_close(line) && depth == 1 &&
                    !(macro_count > 0 &&
                      depth == macro_depths[macro_count - 1])) {
-                    /* closing the page */
+                    if(pending_stmt[0] != '\0') {
+                        file->current_line = pending_line;
+                        parse_statement(file, pending_line, pending_stmt);
+                        file->current_line = 0;
+                        pending_stmt[0] = '\0';
+                        pending_line = 0;
+                        pending_delta = 0;
+                        pending_is_block = 0;
+                        pending_can_lead_continue = 0;
+                    }
                 } else {
                     int stmt_line = line_no;
                     char *stmt = line;
@@ -2729,6 +2788,7 @@ parse_kry(KryFile *file)
                     int parsed_pending = 0;
                     char *macro_condition = NULL;
 
+process_screen_line:
                     if(pending_stmt[0] == '\0' && macro_count > 0 &&
                        line_is_close(line) &&
                        depth == macro_depths[macro_count - 1]) {
@@ -2791,25 +2851,45 @@ parse_kry(KryFile *file)
                     }
 
                     if(pending_stmt[0] != '\0') {
-                        append_statement_line(file, pending_stmt,
-                                              sizeof(pending_stmt), line);
-                        pending_delta += pending_is_block ? group_delta
-                                                           : stmt_delta;
-                        if(pending_delta > 0 || line_needs_continuation(line)) {
-                            depth += opens;
-                            depth -= closes;
-                            if(depth < 0)
-                                die("%s:%d: unexpected }", file->path, line_no);
-                            *p = saved;
-                            if(saved == '\0')
-                                break;
-                            line_start = p + 1;
-                            line_no++;
-                            continue;
+                        if(pending_can_lead_continue &&
+                           pending_delta == 0 &&
+                           !line_starts_continuation(line)) {
+                            file->current_line = pending_line;
+                            parse_statement(file, pending_line,
+                                            pending_stmt);
+                            file->current_line = 0;
+                            pending_stmt[0] = '\0';
+                            pending_line = 0;
+                            pending_delta = 0;
+                            pending_is_block = 0;
+                            pending_can_lead_continue = 0;
+                            goto process_screen_line;
+                        } else {
+                            append_statement_line(file, pending_stmt,
+                                                  sizeof(pending_stmt), line);
+                            pending_delta += pending_is_block ? group_delta
+                                                               : stmt_delta;
+                            pending_can_lead_continue =
+                                pending_delta == 0 && line_starts_char(line, '?');
+                            if(pending_delta > 0 ||
+                               pending_can_lead_continue ||
+                               line_needs_continuation(line)) {
+                                depth += opens;
+                                depth -= closes;
+                                if(depth < 0)
+                                    die("%s:%d: unexpected }", file->path,
+                                        line_no);
+                                *p = saved;
+                                if(saved == '\0')
+                                    break;
+                                line_start = p + 1;
+                                line_no++;
+                                continue;
+                            }
+                            stmt = pending_stmt;
+                            stmt_line = pending_line;
+                            parsed_pending = 1;
                         }
-                        stmt = pending_stmt;
-                        stmt_line = pending_line;
-                        parsed_pending = 1;
                     } else if((is_block_stmt ? group_delta : stmt_delta) > 0 ||
                               line_needs_continuation(line)) {
                         append_statement_line(file, pending_stmt,
@@ -2828,16 +2908,37 @@ parse_kry(KryFile *file)
                         line_start = p + 1;
                         line_no++;
                         continue;
-                    }
-
-                    file->current_line = stmt_line;
-                    parse_statement(file, stmt_line, stmt);
-                    file->current_line = 0;
-                    if(parsed_pending) {
-                        pending_stmt[0] = '\0';
-                        pending_line = 0;
+                    } else if(!is_block_stmt &&
+                              line_can_accept_leading_continuation(line)) {
+                        append_statement_line(file, pending_stmt,
+                                              sizeof(pending_stmt), line);
+                        pending_line = line_no;
                         pending_delta = 0;
                         pending_is_block = 0;
+                        pending_can_lead_continue = 1;
+                        depth += opens;
+                        depth -= closes;
+                        if(depth < 0)
+                            die("%s:%d: unexpected }", file->path, line_no);
+                        *p = saved;
+                        if(saved == '\0')
+                            break;
+                        line_start = p + 1;
+                        line_no++;
+                        continue;
+                    }
+
+                    if(stmt[0] != '\0') {
+                        file->current_line = stmt_line;
+                        parse_statement(file, stmt_line, stmt);
+                        file->current_line = 0;
+                        if(parsed_pending) {
+                            pending_stmt[0] = '\0';
+                            pending_line = 0;
+                            pending_delta = 0;
+                            pending_is_block = 0;
+                            pending_can_lead_continue = 0;
+                        }
                     }
                 }
             } else {
@@ -2872,11 +2973,11 @@ parse_kry(KryFile *file)
     if(pending_decl[0] != '\0')
         die("%s:%d: unterminated function declaration", file->path,
             pending_decl_line);
+    if(depth != 0)
+        die("%s:%d: unbalanced braces", file->path, line_no);
     if(pending_stmt[0] != '\0')
         die("%s:%d: unterminated continued statement", file->path,
             pending_line);
-    if(depth != 0)
-        die("%s:%d: unbalanced braces", file->path, line_no);
 }
 
 static const char *
