@@ -1029,6 +1029,33 @@ line_starts_block_statement(const char *line)
            line_is_else(line);
 }
 
+static int
+line_needs_continuation(const char *line)
+{
+    const char *end;
+
+    if(line == NULL)
+        return 0;
+    end = line + strlen(line);
+    while(end > line && isspace((unsigned char)end[-1]))
+        end--;
+    if(end == line)
+        return 0;
+    if(end[-1] == ',' || end[-1] == '+' || end[-1] == '-' ||
+       end[-1] == '*' || end[-1] == '/' || end[-1] == '%' ||
+       end[-1] == '?' || end[-1] == ':' || end[-1] == '=')
+        return 1;
+    if(end - line >= 2) {
+        const char *op = end - 2;
+
+        if(strcmp(op, "&&") == 0 || strcmp(op, "||") == 0 ||
+           strcmp(op, "==") == 0 || strcmp(op, "!=") == 0 ||
+           strcmp(op, "<=") == 0 || strcmp(op, ">=") == 0)
+            return 1;
+    }
+    return 0;
+}
+
 static void
 append_statement_line(KryFile *file, char *dst, size_t dst_size,
                       const char *line)
@@ -1850,7 +1877,7 @@ parse_kry(KryFile *file)
                         append_statement_line(file, pending_stmt,
                                               sizeof(pending_stmt), line);
                         pending_delta += stmt_delta;
-                        if(pending_delta > 0) {
+                        if(pending_delta > 0 || line_needs_continuation(line)) {
                             depth += opens;
                             depth -= closes;
                             if(depth < 0)
@@ -1865,7 +1892,8 @@ parse_kry(KryFile *file)
                         stmt = pending_stmt;
                         stmt_line = pending_line;
                         parsed_pending = 1;
-                    } else if(stmt_delta > 0 && !line_starts_block_statement(line)) {
+                    } else if((stmt_delta > 0 || line_needs_continuation(line)) &&
+                              !line_starts_block_statement(line)) {
                         append_statement_line(file, pending_stmt,
                                               sizeof(pending_stmt), line);
                         pending_line = line_no;

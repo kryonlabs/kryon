@@ -44,6 +44,8 @@ screen valid {
             .label = "hello"
         }
     )
+    value = value +
+            1
     app := (void*)0
     native (void)app
 }
@@ -63,6 +65,7 @@ grep -Eq 'second = __kryon_assign_[0-9]+_1;' "$out/src/valid.c"
 grep -q 'continue;' "$out/src/valid.c"
 grep -q 'while(value < 3)' "$out/src/valid.c"
 grep -q 'DrawThing( value, (ThingSpec){ .value = value, .label = "hello" } );' "$out/src/valid.c"
+grep -q 'value = value + 1;' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
 {
