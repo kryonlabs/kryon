@@ -28,6 +28,7 @@ typedef struct KryFunction {
     char return_type[KC_NAME_MAX];
     int exact_name;
     int is_public;
+    int global_name;
     char calls[KC_CALL_MAX][512];
     char body[KC_BODY_MAX][KC_BODY_LINE_MAX];
     int body_line[KC_BODY_MAX];
@@ -2728,6 +2729,7 @@ parse_kry(KryFile *file)
                        starts_word(line, "fn") ||
                        starts_word(line, "pub"))) {
                 int is_pub = 0;
+                int global_name = 0;
                 int is_fn;
                 KryFunction *fn;
                 char *decl = line;
@@ -2736,6 +2738,10 @@ parse_kry(KryFile *file)
                 if(starts_word(decl, "pub")) {
                     is_pub = 1;
                     decl = trim(decl + strlen("pub"));
+                    if(starts_word(decl, "export")) {
+                        global_name = 1;
+                        decl = trim(decl + strlen("export"));
+                    }
                     if(!starts_word(decl, "fn"))
                         die("%s:%d: expected fn after pub", file->path,
                             line_no);
@@ -2754,6 +2760,7 @@ parse_kry(KryFile *file)
                         file->path, line_no);
                 fn = add_function(file);
                 file->current = fn;
+                fn->global_name = global_name;
                 if(!parse_ident(&q, fn->screen, sizeof(fn->screen)))
                     die("%s:%d: expected screen name", file->path, line_no);
                 fn->exact_name = is_fn;
@@ -3144,7 +3151,7 @@ kry_function_c_name(char *dst, size_t dst_size, const KryFile *file,
         snprintf(base, sizeof(base), "%s", fn->screen);
     else
         snprintf(base, sizeof(base), "%s_kry_draw", fn->screen);
-    if(file->module[0] != '\0') {
+    if(file->module[0] != '\0' && !fn->global_name) {
         snprintf(dst, dst_size, "%s_%s", file->module, base);
         return 1;
     }

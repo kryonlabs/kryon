@@ -106,6 +106,8 @@ whm_update(InbeApp *app, float dt)
   `ui.toggle_row_height(...)` still emits `settings_ui_toggle_row_height(...)`.
 - Public Kry functions inside a module emit prefixed C names, such as
   `settings_ui_toggle_row_height`.
+- `pub export fn c_name(...)` keeps the exact C symbol even inside a module.
+  Use it only for C ABI entry points that app C calls directly.
 - `use` is the Kry-to-Kry dependency mechanism. The old header-only `import`
   form is removed so modules do not drift back into manual C wiring.
 - C pointer spelling remains accepted: `InbeApp*`.

@@ -152,6 +152,10 @@ cimport "thing.h"
 pub fn draw(app: void*) {
     native (void)app
 }
+
+pub export fn panel_c_entry(app: void*) {
+    native (void)app
+}
 EOF
 
 cat > "$work/src/panel_host.kry" <<'EOF'
@@ -167,6 +171,11 @@ EOF
     "$work/src/ui/panel.kry" "$work/src/panel_host.kry" >"$err" 2>&1
 grep -q '#include "src/ui/panel.h"' "$out/src/panel_host.h"
 grep -q 'void ui_panel_draw(void\* app);' "$out/src/ui/panel.h"
+grep -q 'void panel_c_entry(void\* app);' "$out/src/ui/panel.h"
+if grep -q 'ui_panel_panel_c_entry' "$out/src/ui/panel.h"; then
+    echo "pub export fn was module-prefixed" >&2
+    exit 1
+fi
 grep -q 'ui_panel_draw(app);' "$out/src/panel_host.c"
 
 cat > "$work/src/panel_direct_host.kry" <<'EOF'
