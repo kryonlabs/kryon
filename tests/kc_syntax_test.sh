@@ -144,6 +144,31 @@ EOF
 "$kc" --no-main --root "$work" -o "$out" "$work/src/settings_direct.kry" >"$err" 2>&1
 grep -q 'return settings_ui_toggle_row_height(label, w);' "$out/src/settings_direct.c"
 
+mkdir -p "$work/src/ui"
+cat > "$work/src/ui/panel.kry" <<'EOF'
+mod ui.panel
+cimport "thing.h"
+
+pub fn draw(app: void*) {
+    native (void)app
+}
+EOF
+
+cat > "$work/src/panel_host.kry" <<'EOF'
+cimport "thing.h"
+panel := use "src/ui/panel"
+
+pub fn draw_panel_host(app: void*) {
+    do panel.draw(app)
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" \
+    "$work/src/ui/panel.kry" "$work/src/panel_host.kry" >"$err" 2>&1
+grep -q '#include "src/ui/panel.h"' "$out/src/panel_host.h"
+grep -q 'void ui_panel_draw(void\* app);' "$out/src/ui/panel.h"
+grep -q 'ui_panel_draw(app);' "$out/src/panel_host.c"
+
 cat > "$work/src/preview.kry" <<'EOF'
 preview stage_preview(viewport: Rectangle) {
     background BLACK

@@ -37,6 +37,7 @@ typedef struct KryFunction {
 
 typedef struct KryFile {
     char *path;
+    const char *root;
     char *text;
     char app_title[256];
     int app_width;
@@ -76,6 +77,9 @@ static int is_ident_text(const char *text);
 static void rewrite_nil_tokens(char *dst, size_t dst_size, const char *src);
 static void strip_kry_ext(char *dst, size_t dst_size, const char *path);
 static void module_symbol(char *dst, size_t dst_size, const char *module);
+static void module_header(char *dst, size_t dst_size, const char *module);
+static void resolve_use_module(char *dst, size_t dst_size,
+                               const KryFile *file, const char *module);
 
 static void
 add_raw_line(KryFile *file, const char *line)
@@ -460,7 +464,7 @@ module_symbol(char *dst, size_t dst_size, const char *module)
     if(dst_size == 0)
         return;
     for(const char *p = module != NULL ? module : ""; *p != '\0' && n + 1 < dst_size; p++) {
-        if(*p == '.')
+        if(*p == '.' || *p == '/' || *p == '\\')
             dst[n++] = '_';
         else
             dst[n++] = *p;
@@ -471,10 +475,23 @@ module_symbol(char *dst, size_t dst_size, const char *module)
 static void
 module_header(char *dst, size_t dst_size, const char *module)
 {
-    char sym[KC_NAME_MAX];
+    char base[KC_PATH_MAX];
+    size_t n = 0;
 
-    module_symbol(sym, sizeof(sym), module);
-    snprintf(dst, dst_size, "%s.h", sym);
+    strip_kry_ext(base, sizeof(base), module);
+    if(dst_size == 0)
+        return;
+    for(const char *p = base; *p != '\0' && n + 1 < dst_size; p++) {
+        if(*p == '.')
+            dst[n++] = '/';
+        else
+            dst[n++] = *p;
+    }
+    if(n + 3 < dst_size) {
+        dst[n++] = '.';
+        dst[n++] = 'h';
+    }
+    dst[n] = '\0';
 }
 
 static void
@@ -2210,6 +2227,45 @@ read_text_file(const char *path)
 }
 
 static void
+resolve_use_module(char *dst, size_t dst_size, const KryFile *file,
+                   const char *module)
+{
+    char header[KC_PATH_MAX];
+    char rel[KC_PATH_MAX];
+    char path[KC_PATH_MAX];
+    FILE *in;
+    char line[KC_BODY_LINE_MAX];
+
+    module_symbol(dst, dst_size, module);
+    module_header(header, sizeof(header), module);
+    snprintf(rel, sizeof(rel), "%s", header);
+    if(strlen(rel) > 2 && strcmp(rel + strlen(rel) - 2, ".h") == 0)
+        snprintf(rel + strlen(rel) - 2, sizeof(rel) - strlen(rel) + 2,
+                 ".kry");
+    if(file->root != NULL && file->root[0] != '\0')
+        snprintf(path, sizeof(path), "%s/%s", file->root, rel);
+    else
+        snprintf(path, sizeof(path), "%s", rel);
+
+    in = fopen(path, "rb");
+    if(in == NULL)
+        return;
+    while(fgets(line, sizeof(line), in) != NULL) {
+        char *q = trim(line);
+        char name[KC_NAME_MAX];
+
+        if(!starts_word(q, "mod"))
+            continue;
+        q = trim(q + strlen("mod"));
+        if(parse_module_name(&q, name, sizeof(name)) &&
+           trim(q)[0] == '\0')
+            module_symbol(dst, dst_size, name);
+        break;
+    }
+    fclose(in);
+}
+
+static void
 parse_kry(KryFile *file)
 {
     char *text;
@@ -2661,7 +2717,8 @@ parse_kry(KryFile *file)
                    trim(q)[0] != '\0')
                     die("%s:%d: expected quoted module name", file->path,
                         line_no);
-                module_symbol(module_sym, sizeof(module_sym), module);
+                resolve_use_module(module_sym, sizeof(module_sym), file,
+                                   module);
                 if(alias[0] == '\0')
                     snprintf(alias, sizeof(alias), "%s", module_sym);
                 snprintf(file->use_aliases[file->use_count],
@@ -3516,6 +3573,7 @@ main(int argc, char **argv)
         if(file == NULL)
             die("out of memory");
         file->path = argv[i];
+        file->root = root;
         file->no_main = no_main;
         parse_kry(file);
         write_generated(file, root, out_dir);
