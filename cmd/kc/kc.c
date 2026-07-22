@@ -1056,6 +1056,7 @@ line_starts_block_statement(const char *line)
            starts_word(line, "event") ||
            starts_word(line, "on") ||
            starts_word(line, "icon_button") ||
+           starts_word(line, "c") ||
            starts_else_if(line) ||
            line_is_else(line);
 }
@@ -1072,8 +1073,14 @@ line_needs_continuation(const char *line)
         end--;
     if(end == line)
         return 0;
-    if(end[-1] == ',' || end[-1] == '+' || end[-1] == '-' ||
-       end[-1] == '*' || end[-1] == '/' || end[-1] == '%' ||
+    if(end[-1] == ',')
+        return 1;
+    if(end[-1] == '+' || end[-1] == '-') {
+        if(end - line >= 2 && end[-2] == end[-1])
+            return 0;
+        return 1;
+    }
+    if(end[-1] == '*' || end[-1] == '/' || end[-1] == '%' ||
        end[-1] == '?' || end[-1] == ':' || end[-1] == '=')
         return 1;
     if(end - line >= 2) {

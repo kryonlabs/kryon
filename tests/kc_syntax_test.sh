@@ -51,6 +51,9 @@ screen valid {
         1) {
         value++
     }
+    c {
+    value++
+    c }
     app := (void*)0
     native (void)app
 }
@@ -72,6 +75,8 @@ grep -q 'while(value < 3)' "$out/src/valid.c"
 grep -q 'DrawThing( value, (ThingSpec){ .value = value, .label = "hello" } );' "$out/src/valid.c"
 grep -q 'value = value + 1;' "$out/src/valid.c"
 grep -q 'if(CheckThing( value, 1)) {' "$out/src/valid.c"
+grep -q '    {' "$out/src/valid.c"
+grep -q '    value++;' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
 {
