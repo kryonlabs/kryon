@@ -14,6 +14,7 @@ enum {
     KC_INCLUDE_MAX = 64,
     KC_USE_MAX = 32,
     KC_CALL_MAX = 64,
+    KC_CONST_MAX = 64,
     KC_RAW_MAX = 1024,
     KC_STATE_MAX = 128,
     KC_BODY_MAX = 512,
@@ -47,6 +48,8 @@ typedef struct KryFile {
     char raw[KC_RAW_MAX][KC_BODY_LINE_MAX];
     char state[KC_STATE_MAX][KC_BODY_LINE_MAX];
     char includes[KC_INCLUDE_MAX][KC_PATH_MAX];
+    char const_names[KC_CONST_MAX][KC_NAME_MAX];
+    char const_exprs[KC_CONST_MAX][KC_BODY_LINE_MAX];
     char module[KC_NAME_MAX];
     char use_aliases[KC_USE_MAX][KC_NAME_MAX];
     char use_modules[KC_USE_MAX][KC_NAME_MAX];
@@ -54,6 +57,7 @@ typedef struct KryFile {
     int raw_count;
     int state_count;
     int include_count;
+    int const_count;
     int use_count;
     int function_count;
     int function_cap;
@@ -63,6 +67,7 @@ typedef struct KryFile {
 
 static void die(const char *fmt, ...);
 static char *trim(char *s);
+static int is_ident_text(const char *text);
 static void strip_kry_ext(char *dst, size_t dst_size, const char *path);
 static void module_symbol(char *dst, size_t dst_size, const char *module);
 
@@ -84,6 +89,29 @@ add_state_line(KryFile *file, const char *line)
     snprintf(file->state[file->state_count],
              sizeof(file->state[file->state_count]), "%s", line);
     file->state_count++;
+}
+
+static void
+add_const(KryFile *file, int line_no, const char *name, const char *expr)
+{
+    if(!is_ident_text(name))
+        die("%s:%d: invalid compile-time constant name '%s'",
+            file->path, line_no, name);
+    if(expr == NULL || expr[0] == '\0')
+        die("%s:%d: expected compile-time constant expression",
+            file->path, line_no);
+    if(file->const_count >= KC_CONST_MAX)
+        die("%s:%d: too many compile-time constants", file->path, line_no);
+    for(int i = 0; i < file->const_count; i++) {
+        if(strcmp(file->const_names[i], name) == 0)
+            die("%s:%d: duplicate compile-time constant '%s'",
+                file->path, line_no, name);
+    }
+    snprintf(file->const_names[file->const_count],
+             sizeof(file->const_names[file->const_count]), "%s", name);
+    snprintf(file->const_exprs[file->const_count],
+             sizeof(file->const_exprs[file->const_count]), "%s", expr);
+    file->const_count++;
 }
 
 static KryFunction *
@@ -1020,6 +1048,26 @@ add_state_continuation_line(KryFile *file, const char *line, int is_last)
     add_state_line(file, out);
 }
 
+static void
+emit_top_static_decl(KryFile *file, int line_no, char *line)
+{
+    char *q = trim(line + strlen("static"));
+
+    if(q[0] == '\0')
+        die("%s:%d: expected static declaration", file->path, line_no);
+    emit_state_decl(file, line_no, q);
+}
+
+static int
+emit_top_static_decl_start(KryFile *file, int line_no, char *line)
+{
+    char *q = trim(line + strlen("static"));
+
+    if(q[0] == '\0')
+        die("%s:%d: expected static declaration", file->path, line_no);
+    return emit_state_decl_start(file, line_no, q);
+}
+
 static int
 line_is_close(const char *line)
 {
@@ -1030,6 +1078,16 @@ static int
 line_is_else(const char *line)
 {
     return strcmp(line, "else {") == 0 || strcmp(line, "} else {") == 0;
+}
+
+static int
+line_is_hash_compile(const char *line)
+{
+    return strncmp(line, "#if", 3) == 0 ||
+           strncmp(line, "#else_if", 8) == 0 ||
+           strncmp(line, "#else", 5) == 0 ||
+           strncmp(line, "} #else_if", 10) == 0 ||
+           strncmp(line, "} #else", 7) == 0;
 }
 
 static int
@@ -1176,6 +1234,7 @@ line_starts_block_statement(const char *line)
            starts_word(line, "on") ||
            starts_word(line, "icon_button") ||
            starts_word(line, "c") ||
+           line_is_hash_compile(line) ||
            starts_else_if(line) ||
            line_is_else(line);
 }
@@ -1229,6 +1288,237 @@ append_statement_line(KryFile *file, char *dst, size_t dst_size,
     if(used + need + 1 >= dst_size)
         die("%s: continued statement is too large", file->path);
     memcpy(dst + used, line, need + 1);
+}
+
+static int
+split_hash_if_suffix(char *line, char **condition)
+{
+    char *hash_if = strstr(line, " #if ");
+
+    *condition = NULL;
+    if(hash_if == NULL)
+        return 0;
+    *hash_if = '\0';
+    *condition = trim(hash_if + strlen(" #if "));
+    return (*condition)[0] != '\0';
+}
+
+static char *
+trim_trailing_open_brace(char *q)
+{
+    size_t n;
+
+    q = trim(q);
+    n = strlen(q);
+    if(n == 0 || q[n - 1] != '{')
+        return NULL;
+    q[n - 1] = '\0';
+    return trim(q);
+}
+
+static int
+parse_hash_if_start(char *line, char **condition)
+{
+    char *q;
+
+    if(strncmp(line, "#if", 3) == 0 &&
+       (line[3] == '\0' || isspace((unsigned char)line[3]))) {
+        q = trim(line + 3);
+    } else if(strncmp(line, "} #else_if", 10) == 0 &&
+              (line[10] == '\0' || isspace((unsigned char)line[10]))) {
+        q = trim(line + 10);
+    } else if(strncmp(line, "#else_if", 8) == 0 &&
+              (line[8] == '\0' || isspace((unsigned char)line[8]))) {
+        q = trim(line + 8);
+    } else {
+        return 0;
+    }
+    q = trim_trailing_open_brace(q);
+    if(q == NULL || q[0] == '\0')
+        return 0;
+    *condition = q;
+    return 1;
+}
+
+static int
+line_is_hash_else(char *line)
+{
+    return strcmp(line, "} #else {") == 0 || strcmp(line, "#else {") == 0;
+}
+
+static void
+expand_compile_expr(char *dst, size_t dst_size, const KryFile *file,
+                    const char *src)
+{
+    size_t n = 0;
+    int in_string = 0;
+    int escaped = 0;
+
+    if(dst_size == 0)
+        return;
+    for(const char *p = src; p != NULL && *p != '\0' && n + 1 < dst_size;) {
+        if(in_string) {
+            dst[n++] = *p;
+            if(escaped)
+                escaped = 0;
+            else if(*p == '\\')
+                escaped = 1;
+            else if(*p == '"')
+                in_string = 0;
+            p++;
+            continue;
+        }
+        if(*p == '"') {
+            in_string = 1;
+            dst[n++] = *p++;
+            continue;
+        }
+        if(*p == '#' && strncmp(p, "#defined", 8) == 0) {
+            const char *word_end = p + 8;
+
+            if(*word_end == '\0' || *word_end == '(' ||
+               isspace((unsigned char)*word_end)) {
+                const char *text = "defined";
+                size_t len = strlen(text);
+
+                if(n + len >= dst_size)
+                    break;
+                memcpy(dst + n, text, len);
+                n += len;
+                p += 8;
+                continue;
+            }
+        }
+        if((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+           *p == '_') {
+            char ident[KC_NAME_MAX];
+            size_t ident_len = 0;
+            int found = 0;
+
+            while((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+                  (*p >= '0' && *p <= '9') || *p == '_') {
+                if(ident_len + 1 < sizeof(ident))
+                    ident[ident_len++] = *p;
+                p++;
+            }
+            ident[ident_len] = '\0';
+            for(int i = 0; i < file->const_count; i++) {
+                if(strcmp(file->const_names[i], ident) == 0) {
+                    char expanded[KC_BODY_LINE_MAX];
+                    int written;
+
+                    expand_compile_expr(expanded, sizeof(expanded), file,
+                                        file->const_exprs[i]);
+                    written = snprintf(dst + n, dst_size - n, "(%s)",
+                                       expanded);
+                    if(written < 0)
+                        written = 0;
+                    if((size_t)written >= dst_size - n)
+                        n = dst_size - 1;
+                    else
+                        n += (size_t)written;
+                    found = 1;
+                    break;
+                }
+            }
+            if(!found) {
+                size_t len = strlen(ident);
+
+                if(n + len >= dst_size)
+                    break;
+                memcpy(dst + n, ident, len);
+                n += len;
+            }
+            continue;
+        }
+        dst[n++] = *p++;
+    }
+    dst[n] = '\0';
+}
+
+static void
+add_raw_conditional_line(KryFile *file, const char *condition,
+                         const char *line)
+{
+    if(condition != NULL && condition[0] != '\0') {
+        char guard[KC_BODY_LINE_MAX];
+        char expanded[KC_BODY_LINE_MAX];
+
+        expand_compile_expr(expanded, sizeof(expanded), file, condition);
+        snprintf(guard, sizeof(guard), "#if %s", expanded);
+        add_raw_line(file, guard);
+    }
+    add_raw_line(file, line);
+    if(condition != NULL && condition[0] != '\0')
+        add_raw_line(file, "#endif");
+}
+
+static void
+emit_c_block_line(KryFile *file, int line_no, char *line)
+{
+    char *condition = NULL;
+
+    split_hash_if_suffix(line, &condition);
+    if(starts_word(line, "include")) {
+        char *q = trim(line + strlen("include"));
+        char header[KC_PATH_MAX];
+        char out[KC_BODY_LINE_MAX];
+
+        if(!parse_quoted(&q, header, sizeof(header)))
+            die("%s:%d: expected quoted include path", file->path, line_no);
+        snprintf(out, sizeof(out), "#include \"%s\"", header);
+        add_raw_conditional_line(file, condition, out);
+    } else if(starts_word(line, "define")) {
+        char *q = trim(line + strlen("define"));
+        char *eq = strchr(q, '=');
+        char name[KC_NAME_MAX];
+        char out[KC_BODY_LINE_MAX];
+
+        if(eq == NULL)
+            die("%s:%d: expected '=' in define", file->path, line_no);
+        *eq = '\0';
+        snprintf(name, sizeof(name), "%s", trim(q));
+        if(!is_ident_text(name))
+            die("%s:%d: invalid define name '%s'", file->path, line_no, name);
+        snprintf(out, sizeof(out), "#define %s %s", name, trim(eq + 1));
+        add_raw_conditional_line(file, condition, out);
+    } else if(starts_word(line, "extern")) {
+        char *q = trim(line + strlen("extern"));
+        char name[KC_NAME_MAX];
+        char args[512] = "";
+        char ret[KC_NAME_MAX] = "void";
+        char out[KC_BODY_LINE_MAX];
+
+        if(!starts_word(q, "fn"))
+            die("%s:%d: expected extern fn", file->path, line_no);
+        q = trim(q + strlen("fn"));
+        if(!parse_ident(&q, name, sizeof(name)))
+            die("%s:%d: expected extern function name", file->path, line_no);
+        q = trim(q);
+        if(q[0] == '(') {
+            char *end = strrchr(q, ')');
+
+            if(end == NULL)
+                die("%s:%d: expected ')' in extern function", file->path,
+                    line_no);
+            *end = '\0';
+            convert_arg_list(args, sizeof(args), trim(q + 1));
+            q = trim(end + 1);
+        }
+        if(q[0] == '-' && q[1] == '>') {
+            q = trim(q + 2);
+            if(q[0] == '\0')
+                die("%s:%d: expected extern return type", file->path,
+                    line_no);
+            snprintf(ret, sizeof(ret), "%s", q);
+        }
+        snprintf(out, sizeof(out), "%s %s(%s);", ret, name,
+                 args[0] != '\0' ? args : "void");
+        add_raw_conditional_line(file, condition, out);
+    } else {
+        die("%s:%d: unknown c block statement: %s", file->path, line_no,
+            line);
+    }
 }
 
 static void
@@ -1692,11 +1982,16 @@ parse_kry(KryFile *file)
     int in_state = 0;
     int in_state_decl = 0;
     int state_decl_depth = 0;
+    int in_top_static_decl = 0;
+    int top_static_decl_depth = 0;
+    int in_c_block = 0;
     int in_raw = 0;
     char pending_stmt[KC_BODY_LINE_MAX * 4] = "";
     int pending_line = 0;
     int pending_delta = 0;
     int pending_is_block = 0;
+    int macro_depths[64];
+    int macro_count = 0;
 
     file->text = read_text_file(file->path);
     text = file->text;
@@ -1724,12 +2019,33 @@ parse_kry(KryFile *file)
             line_no++;
             continue;
         }
-        if(line[0] != '\0' && line[0] != '#') {
+        if(line[0] != '\0' && (line[0] != '#' || line_is_hash_compile(line))) {
             int opens = 0;
             int closes = 0;
 
             count_line_braces(line, &opens, &closes);
-            if(in_app) {
+            if(in_c_block) {
+                if(line_is_close(line)) {
+                    in_c_block = 0;
+                    depth += opens;
+                    depth -= closes;
+                    if(depth < 0)
+                        die("%s:%d: unexpected }", file->path, line_no);
+                    *p = saved;
+                    if(saved == '\0')
+                        break;
+                    line_start = p + 1;
+                    line_no++;
+                    continue;
+                }
+                emit_c_block_line(file, line_no, line);
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(in_app) {
                 if(!(line_is_close(line) && depth == 1)) {
                     if(starts_word(line, "size")) {
                         char *q = trim(line + strlen("size"));
@@ -1810,6 +2126,39 @@ parse_kry(KryFile *file)
                 line_start = p + 1;
                 line_no++;
                 continue;
+            } else if(in_top_static_decl) {
+                int decl_opens = 0;
+                int decl_closes = 0;
+
+                count_line_braces(line, &decl_opens, &decl_closes);
+                top_static_decl_depth += decl_opens;
+                top_static_decl_depth -= decl_closes;
+                add_state_continuation_line(file, line,
+                                            top_static_decl_depth <= 0);
+                if(top_static_decl_depth <= 0) {
+                    in_top_static_decl = 0;
+                    top_static_decl_depth = 0;
+                }
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(!in_screen && strstr(line, "::") != NULL) {
+                char *op = strstr(line, "::");
+                char name[KC_NAME_MAX];
+                char *lhs;
+                char *rhs;
+
+                if(depth != 0)
+                    die("%s:%d: compile-time constant must be top-level",
+                        file->path, line_no);
+                *op = '\0';
+                lhs = trim(line);
+                rhs = trim(op + 2);
+                snprintf(name, sizeof(name), "%s", lhs);
+                add_const(file, line_no, name, rhs);
             } else if(!in_screen && starts_word(line, "app")) {
                 char *q = trim(line + strlen("app"));
 
@@ -1841,8 +2190,38 @@ parse_kry(KryFile *file)
                 line_start = p + 1;
                 line_no++;
                 continue;
+            } else if(!in_screen && starts_word(line, "static")) {
+                int decl_opens = 0;
+                int decl_closes = 0;
+
+                if(depth != 0)
+                    die("%s:%d: static declaration must be top-level",
+                        file->path, line_no);
+                count_line_braces(line, &decl_opens, &decl_closes);
+                if(strchr(line, '=') != NULL && decl_opens > decl_closes) {
+                    emit_top_static_decl_start(file, line_no, line);
+                    in_top_static_decl = 1;
+                    top_static_decl_depth = decl_opens - decl_closes;
+                } else {
+                    emit_top_static_decl(file, line_no, line);
+                }
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
             } else if(starts_word(line, "raw")) {
                 in_raw = 1;
+            } else if(!in_screen && starts_word(line, "c")) {
+                char *q = trim(line + strlen("c"));
+
+                if(depth != 0)
+                    die("%s:%d: c block must be top-level", file->path,
+                        line_no);
+                if(strcmp(q, "{") != 0)
+                    die("%s:%d: expected c block", file->path, line_no);
+                in_c_block = 1;
             } else if(starts_word(line, "mod")) {
                 char *q = trim(line + strlen("mod"));
                 char module[KC_NAME_MAX];
@@ -2018,7 +2397,9 @@ parse_kry(KryFile *file)
                          sizeof(fn->calls[fn->call_count]), "%s", q);
                 fn->call_count++;
             } else if(in_screen && depth > 0) {
-                if(line_is_close(line) && depth == 1) {
+                if(line_is_close(line) && depth == 1 &&
+                   !(macro_count > 0 &&
+                     depth == macro_depths[macro_count - 1])) {
                     /* closing the page */
                 } else {
                     int stmt_line = line_no;
@@ -2027,6 +2408,68 @@ parse_kry(KryFile *file)
                     int stmt_delta = line_delim_delta(line);
                     int group_delta = line_group_delta(line);
                     int parsed_pending = 0;
+                    char *macro_condition = NULL;
+
+                    if(pending_stmt[0] == '\0' && macro_count > 0 &&
+                       line_is_close(line) &&
+                       depth == macro_depths[macro_count - 1]) {
+                        add_body(file, "    #endif");
+                        macro_count--;
+                        if(depth < 0)
+                            die("%s:%d: unexpected }", file->path, line_no);
+                        *p = saved;
+                        if(saved == '\0')
+                            break;
+                        line_start = p + 1;
+                        line_no++;
+                        continue;
+                    }
+                    if(pending_stmt[0] == '\0' &&
+                       parse_hash_if_start(line, &macro_condition)) {
+                        char expanded[KC_BODY_LINE_MAX];
+
+                        expand_compile_expr(expanded, sizeof(expanded), file,
+                                            macro_condition);
+                        if(strncmp(line, "} #else_if", 10) == 0 ||
+                           strncmp(line, "#else_if", 8) == 0) {
+                            if(macro_count <= 0 ||
+                               depth != macro_depths[macro_count - 1])
+                                die("%s:%d: #else_if without matching #if",
+                                    file->path, line_no);
+                            add_body(file, "    #elif %s", expanded);
+                        } else {
+                            if(macro_count >= (int)(sizeof(macro_depths) /
+                                                   sizeof(macro_depths[0])))
+                                die("%s:%d: too many nested #if blocks",
+                                    file->path, line_no);
+                            macro_depths[macro_count++] = depth;
+                            add_body(file, "    #if %s", expanded);
+                        }
+                        /* } #else { keeps the same compile-time block depth. */
+                        if(depth < 0)
+                            die("%s:%d: unexpected }", file->path, line_no);
+                        *p = saved;
+                        if(saved == '\0')
+                            break;
+                        line_start = p + 1;
+                        line_no++;
+                        continue;
+                    }
+                    if(pending_stmt[0] == '\0' && line_is_hash_else(line)) {
+                        if(macro_count <= 0 ||
+                           depth != macro_depths[macro_count - 1])
+                            die("%s:%d: #else without matching #if",
+                                file->path, line_no);
+                        add_body(file, "    #else");
+                        if(depth < 0)
+                            die("%s:%d: unexpected }", file->path, line_no);
+                        *p = saved;
+                        if(saved == '\0')
+                            break;
+                        line_start = p + 1;
+                        line_no++;
+                        continue;
+                    }
 
                     if(pending_stmt[0] != '\0') {
                         append_statement_line(file, pending_stmt,
@@ -2101,6 +2544,10 @@ parse_kry(KryFile *file)
         die("%s: missing screen declaration", file->path);
     if(in_raw)
         die("%s: unterminated raw block", file->path);
+    if(in_c_block)
+        die("%s: unterminated c block", file->path);
+    if(macro_count != 0)
+        die("%s:%d: unterminated #if block", file->path, line_no);
     if(pending_stmt[0] != '\0')
         die("%s:%d: unterminated continued statement", file->path,
             pending_line);
@@ -2310,6 +2757,17 @@ rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
             after = p;
             while(*after == ' ' || *after == '\t')
                 after++;
+            if(strcmp(ident, "nil") == 0) {
+                int written = snprintf(dst + n, dst_size - n, "NULL");
+
+                if(written < 0)
+                    written = 0;
+                if((size_t)written >= dst_size - n)
+                    n = dst_size - 1;
+                else
+                    n += (size_t)written;
+                continue;
+            }
             if(*after == '.') {
                 const char *member_start;
                 char member[KC_NAME_MAX];
@@ -2529,6 +2987,19 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         fputc('\n', out);
         for(int i = 0; i < file->raw_count; i++)
             fprintf(out, "%s\n", file->raw[i]);
+    }
+    for(int i = 0; i < file->function_count; i++) {
+        const KryFunction *fn = &file->functions[i];
+        const char *args = fn->args[0] != '\0' ? fn->args : "void";
+        const char *return_type = fn->return_type[0] != '\0'
+                                      ? fn->return_type
+                                      : "void";
+        char name[KC_NAME_MAX + 16];
+
+        if(fn->is_public)
+            continue;
+        function_name(name, sizeof(name), file, fn);
+        fprintf(out, "\nstatic %s %s(%s);\n", return_type, name, args);
     }
     if(file->state_count > 0) {
         fputc('\n', out);

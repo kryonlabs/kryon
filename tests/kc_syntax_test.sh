@@ -166,6 +166,45 @@ grep -q 'static const char\* labels\[2\] = {' "$out/src/state_multiline.c"
 grep -q '"one",' "$out/src/state_multiline.c"
 grep -q '"two",' "$out/src/state_multiline.c"
 
+cat > "$work/src/native_c_features.kry" <<'EOF'
+ANDROID :: #defined(ANDROID_BUILD)
+FEATURE_ENABLED :: ANDROID
+
+c {
+    include "stddef.h"
+    define FEATURE_VALUE = 7
+    extern fn platform_ping(value: int) -> int #if FEATURE_ENABLED
+}
+
+static records: [2] const int = {
+    helper_value(),
+    FEATURE_VALUE,
+}
+
+fn helper_value() -> int {
+    return nil == nil ? 1 : 0
+}
+
+pub fn native_feature_value() -> int {
+    #if FEATURE_ENABLED {
+        return platform_ping(records[0])
+    } #else {
+        return records[1]
+    }
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/native_c_features.kry" >"$err" 2>&1
+grep -q '#include "stddef.h"' "$out/src/native_c_features.c"
+grep -q '#define FEATURE_VALUE 7' "$out/src/native_c_features.c"
+grep -q '#if ((defined(ANDROID_BUILD)))' "$out/src/native_c_features.c"
+grep -q 'int platform_ping(int value);' "$out/src/native_c_features.c"
+grep -q 'static int helper_value(void);' "$out/src/native_c_features.c"
+grep -q 'static const int records\[2\] = {' "$out/src/native_c_features.c"
+grep -q 'return NULL == NULL ? 1 : 0;' "$out/src/native_c_features.c"
+grep -q '#else' "$out/src/native_c_features.c"
+grep -q '#endif' "$out/src/native_c_features.c"
+
 cat > "$work/src/implicit_call.kry" <<'EOF'
 screen bad {
     InitializeThing()
