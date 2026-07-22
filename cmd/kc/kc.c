@@ -1016,6 +1016,37 @@ line_delim_delta(const char *line)
 }
 
 static int
+line_group_delta(const char *line)
+{
+    int delta = 0;
+    int in_string = 0;
+    int escaped = 0;
+
+    for(const char *p = line; p != NULL && *p != '\0'; p++) {
+        if(in_string) {
+            if(escaped)
+                escaped = 0;
+            else if(*p == '\\')
+                escaped = 1;
+            else if(*p == '"')
+                in_string = 0;
+            continue;
+        }
+        if(*p == '#')
+            break;
+        if(*p == '"') {
+            in_string = 1;
+            continue;
+        }
+        if(*p == '(' || *p == '[')
+            delta++;
+        else if(*p == ')' || *p == ']')
+            delta--;
+    }
+    return delta;
+}
+
+static int
 line_starts_block_statement(const char *line)
 {
     return starts_word(line, "if") ||
@@ -1564,6 +1595,7 @@ parse_kry(KryFile *file)
     char pending_stmt[KC_BODY_LINE_MAX * 4] = "";
     int pending_line = 0;
     int pending_delta = 0;
+    int pending_is_block = 0;
 
     file->text = read_text_file(file->path);
     text = file->text;
@@ -1870,13 +1902,16 @@ parse_kry(KryFile *file)
                 } else {
                     int stmt_line = line_no;
                     char *stmt = line;
+                    int is_block_stmt = line_starts_block_statement(line);
                     int stmt_delta = line_delim_delta(line);
+                    int group_delta = line_group_delta(line);
                     int parsed_pending = 0;
 
                     if(pending_stmt[0] != '\0') {
                         append_statement_line(file, pending_stmt,
                                               sizeof(pending_stmt), line);
-                        pending_delta += stmt_delta;
+                        pending_delta += pending_is_block ? group_delta
+                                                           : stmt_delta;
                         if(pending_delta > 0 || line_needs_continuation(line)) {
                             depth += opens;
                             depth -= closes;
@@ -1892,12 +1927,14 @@ parse_kry(KryFile *file)
                         stmt = pending_stmt;
                         stmt_line = pending_line;
                         parsed_pending = 1;
-                    } else if((stmt_delta > 0 || line_needs_continuation(line)) &&
-                              !line_starts_block_statement(line)) {
+                    } else if((is_block_stmt ? group_delta : stmt_delta) > 0 ||
+                              line_needs_continuation(line)) {
                         append_statement_line(file, pending_stmt,
                                               sizeof(pending_stmt), line);
                         pending_line = line_no;
-                        pending_delta = stmt_delta;
+                        pending_delta = is_block_stmt ? group_delta
+                                                      : stmt_delta;
+                        pending_is_block = is_block_stmt;
                         depth += opens;
                         depth -= closes;
                         if(depth < 0)
@@ -1917,6 +1954,7 @@ parse_kry(KryFile *file)
                         pending_stmt[0] = '\0';
                         pending_line = 0;
                         pending_delta = 0;
+                        pending_is_block = 0;
                     }
                 }
             } else {
