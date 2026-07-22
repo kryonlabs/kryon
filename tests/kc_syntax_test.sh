@@ -208,6 +208,8 @@ EOF
 
 "$kc" --no-main --root "$work" -o "$out" \
     "$work/src/ui/panel.kry" "$work/src/panel_host.kry" >"$err" 2>&1
+grep -q '#include "src/ui/panel.h"' "$out/kryon_project.h"
+grep -q '#include "src/panel_host.h"' "$out/kryon_project.h"
 grep -q '#include "src/ui/panel.h"' "$out/src/panel_host.h"
 grep -q 'void ui_panel_draw(void\* app);' "$out/src/ui/panel.h"
 grep -q 'void panel_c_entry(void\* app);' "$out/src/ui/panel.h"
