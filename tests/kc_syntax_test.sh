@@ -131,16 +131,28 @@ fn callback(value: int) -> int {
     return value
 }
 
+fn start(value: int) -> int {
+    return value
+}
+
 pub fn bind_callback() -> Handler {
     return (Handler){
         .callback = callback,
     }
+}
+
+pub fn check_shadow(start: int*) -> int {
+    if start != nil {
+        return 1
+    }
+    return 0
 }
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/function_pointer.kry" >"$err" 2>&1
 grep -q 'static int fp_callback(int value);' "$out/src/function_pointer.c"
 grep -q '\.callback = fp_callback,' "$out/src/function_pointer.c"
+grep -q 'if(start != NULL)' "$out/src/function_pointer.c"
 
 cat > "$work/src/settings_session.kry" <<'EOF'
 cimport "thing.h"

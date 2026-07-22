@@ -3189,6 +3189,23 @@ module_for_alias(const KryFile *file, const char *alias, char *module,
     return 0;
 }
 
+static int
+function_value_context(const char *src, const char *start, const char *after)
+{
+    const char *prev = start;
+
+    while(prev > src && (prev[-1] == ' ' || prev[-1] == '\t'))
+        prev--;
+    while(*after == ' ' || *after == '\t')
+        after++;
+    if(!(*after == '\0' || *after == ',' || *after == '}' || *after == ')'))
+        return 0;
+    if(prev == src)
+        return 1;
+    return prev[-1] == '=' || prev[-1] == ',' || prev[-1] == '{' ||
+           prev[-1] == '(' || prev[-1] == '?';
+}
+
 static void
 rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
                  const char *src)
@@ -3280,8 +3297,10 @@ rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
                     }
                     (void)member_start;
                 }
-            } else if(start == src ||
-                      (start[-1] != '.' && start[-1] != '>')) {
+            } else if((start == src ||
+                       (start[-1] != '.' && start[-1] != '>')) &&
+                      (*after == '(' ||
+                       function_value_context(src, start, after))) {
                 const KryFunction *fn = find_local_function(file, ident);
 
                 if(fn != NULL) {
