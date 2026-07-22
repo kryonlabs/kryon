@@ -309,8 +309,8 @@ FEATURE_VALUE :: #define 7
 
 c {
     include "stddef.h"
-    extern fn platform_ping(value: int) -> int #if FEATURE_ENABLED
 }
+extern fn platform_ping(value: int) -> int #if FEATURE_ENABLED
 
 static records: [2] const int = {
     helper_value(),
@@ -351,9 +351,7 @@ cimport "thing.h"
 #if WEB {
     cinclude <emscripten.h>
     PLATFORM_VALUE :: #define 7
-    c {
-        extern fn web_ping(value: int) -> int
-    }
+    extern fn web_ping(value: int) -> int
     static web_ready: int = 1
 
     pub type WebCallback = int (*)(int)

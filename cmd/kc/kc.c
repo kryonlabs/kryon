@@ -1841,6 +1841,45 @@ emit_c_block_line(KryFile *file, int line_no, char *line,
     }
 }
 
+static void
+emit_extern_fn(KryFile *file, int line_no, char *line,
+               const char *active_guard)
+{
+    char *q = trim(line + strlen("extern"));
+    char *condition = NULL;
+    char name[KC_NAME_MAX];
+    char args[512] = "";
+    char ret[KC_NAME_MAX] = "void";
+    char out[KC_BODY_LINE_MAX];
+
+    split_hash_if_suffix(q, &condition);
+    if(!starts_word(q, "fn"))
+        die("%s:%d: expected extern fn", file->path, line_no);
+    q = trim(q + strlen("fn"));
+    if(!parse_ident(&q, name, sizeof(name)))
+        die("%s:%d: expected extern function name", file->path, line_no);
+    q = trim(q);
+    if(q[0] == '(') {
+        char *end = strrchr(q, ')');
+
+        if(end == NULL)
+            die("%s:%d: expected ')' in extern function", file->path,
+                line_no);
+        *end = '\0';
+        convert_arg_list(args, sizeof(args), trim(q + 1));
+        q = trim(end + 1);
+    }
+    if(q[0] == '-' && q[1] == '>') {
+        q = trim(q + 2);
+        if(q[0] == '\0')
+            die("%s:%d: expected extern return type", file->path, line_no);
+        snprintf(ret, sizeof(ret), "%s", q);
+    }
+    snprintf(out, sizeof(out), "%s %s(%s);", ret, name,
+             args[0] != '\0' ? args : "void");
+    add_raw_conditional_line(file, active_guard, condition, out);
+}
+
 static int
 parse_top_macro_line(KryFile *file, int line_no, char *line,
                      KryMacroFrame *macros, int *macro_count)
@@ -2899,6 +2938,15 @@ parse_kry(KryFile *file)
                                     top_macro_count);
                 snprintf(out, sizeof(out), "#include %s", header);
                 add_raw_conditional_line(file, guard, NULL, out);
+            } else if(starts_word(line, "extern")) {
+                char guard[KC_BODY_LINE_MAX];
+
+                if(depth != 0)
+                    die("%s:%d: extern declaration must be top-level",
+                        file->path, line_no);
+                current_macro_guard(guard, sizeof(guard), top_macros,
+                                    top_macro_count);
+                emit_extern_fn(file, line_no, line, guard);
             } else if(starts_word(line, "import")) {
                 die("%s:%d: import was removed; use 'name := use \"path\"'",
                     file->path, line_no);
