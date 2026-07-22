@@ -11,6 +11,7 @@ enum {
     KC_USE_MAX = 32,
     KC_CALL_MAX = 64,
     KC_CONST_MAX = 64,
+    KC_DEFINE_MAX = 64,
     KC_TYPE_MAX = 64,
     KC_RAW_MAX = 1024,
     KC_STATE_MAX = 128,
@@ -53,6 +54,9 @@ typedef struct KryFile {
     char include_guards[KC_INCLUDE_MAX][KC_BODY_LINE_MAX];
     char const_names[KC_CONST_MAX][KC_NAME_MAX];
     char const_exprs[KC_CONST_MAX][KC_BODY_LINE_MAX];
+    char define_names[KC_DEFINE_MAX][KC_NAME_MAX];
+    char define_values[KC_DEFINE_MAX][KC_BODY_LINE_MAX];
+    char define_guards[KC_DEFINE_MAX][KC_BODY_LINE_MAX];
     char module[KC_NAME_MAX];
     char use_aliases[KC_USE_MAX][KC_NAME_MAX];
     char use_modules[KC_USE_MAX][KC_NAME_MAX];
@@ -63,6 +67,7 @@ typedef struct KryFile {
     int state_count;
     int include_count;
     int const_count;
+    int define_count;
     int use_count;
     int function_count;
     int function_cap;

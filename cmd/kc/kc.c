@@ -84,6 +84,30 @@ add_const(KryFile *file, int line_no, const char *name, const char *expr)
     file->const_count++;
 }
 
+static void
+add_define(KryFile *file, int line_no, const char *name, const char *value,
+           const char *guard)
+{
+    if(!is_ident_text(name))
+        die("%s:%d: invalid define name '%s'", file->path, line_no, name);
+    if(value == NULL || value[0] == '\0')
+        die("%s:%d: expected define value", file->path, line_no);
+    if(file->define_count >= KC_DEFINE_MAX)
+        die("%s:%d: too many defines", file->path, line_no);
+    for(int i = 0; i < file->define_count; i++) {
+        if(strcmp(file->define_names[i], name) == 0)
+            die("%s:%d: duplicate define '%s'", file->path, line_no, name);
+    }
+    snprintf(file->define_names[file->define_count],
+             sizeof(file->define_names[file->define_count]), "%s", name);
+    snprintf(file->define_values[file->define_count],
+             sizeof(file->define_values[file->define_count]), "%s", value);
+    snprintf(file->define_guards[file->define_count],
+             sizeof(file->define_guards[file->define_count]), "%s",
+             guard != NULL ? guard : "");
+    file->define_count++;
+}
+
 static KryFunction *
 add_function(KryFile *file)
 {
@@ -2686,7 +2710,16 @@ parse_kry(KryFile *file)
                 lhs = trim(line);
                 rhs = trim(op + 2);
                 snprintf(name, sizeof(name), "%s", lhs);
-                add_const(file, line_no, name, rhs);
+                if(starts_word(rhs, "#define")) {
+                    char guard[KC_BODY_LINE_MAX];
+                    char *value = trim(rhs + strlen("#define"));
+
+                    current_macro_guard(guard, sizeof(guard), top_macros,
+                                        top_macro_count);
+                    add_define(file, line_no, name, value, guard);
+                } else {
+                    add_const(file, line_no, name, rhs);
+                }
             } else if(!in_screen && starts_word(line, "app")) {
                 char *q = trim(line + strlen("app"));
 
@@ -3778,6 +3811,17 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
     fprintf(out, "#include \"ui_inspect.h\"\n");
     if(file->app_font_examples)
         fprintf(out, "#include \"example_ui_font.h\"\n");
+    if(file->define_count > 0) {
+        fputc('\n', out);
+        for(int i = 0; i < file->define_count; i++) {
+            if(file->define_guards[i][0] != '\0')
+                fprintf(out, "#if %s\n", file->define_guards[i]);
+            fprintf(out, "#define %s %s\n", file->define_names[i],
+                    file->define_values[i]);
+            if(file->define_guards[i][0] != '\0')
+                fprintf(out, "#endif\n");
+        }
+    }
     if(file->raw_count > 0) {
         fputc('\n', out);
         for(int i = 0; i < file->raw_count; i++)

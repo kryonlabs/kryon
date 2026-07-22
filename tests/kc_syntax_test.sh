@@ -305,10 +305,10 @@ grep -q '"two",' "$out/src/state_multiline.c"
 cat > "$work/src/native_c_features.kry" <<'EOF'
 ANDROID :: #defined(ANDROID_BUILD)
 FEATURE_ENABLED :: ANDROID
+FEATURE_VALUE :: #define 7
 
 c {
     include "stddef.h"
-    define FEATURE_VALUE = 7
     extern fn platform_ping(value: int) -> int #if FEATURE_ENABLED
 }
 
@@ -350,8 +350,8 @@ cimport "thing.h"
 
 #if WEB {
     cinclude <emscripten.h>
+    PLATFORM_VALUE :: #define 7
     c {
-        define PLATFORM_VALUE = 7
         extern fn web_ping(value: int) -> int
     }
     static web_ready: int = 1
