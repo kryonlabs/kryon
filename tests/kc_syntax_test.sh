@@ -146,6 +146,26 @@ EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/preview.kry" >"$err" 2>&1
 
+cat > "$work/src/state_multiline.kry" <<'EOF'
+cimport "stddef.h"
+
+state {
+    labels: [2] const char* = {
+        "one",
+        "two",
+    }
+}
+
+pub fn state_label(index: int) -> const char* {
+    return labels[index]
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/state_multiline.kry" >"$err" 2>&1
+grep -q 'static const char\* labels\[2\] = {' "$out/src/state_multiline.c"
+grep -q '"one",' "$out/src/state_multiline.c"
+grep -q '"two",' "$out/src/state_multiline.c"
+
 cat > "$work/src/implicit_call.kry" <<'EOF'
 screen bad {
     InitializeThing()

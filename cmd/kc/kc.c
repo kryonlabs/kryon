@@ -967,6 +967,60 @@ emit_state_decl(KryFile *file, int line_no, char *line)
 }
 
 static int
+emit_state_decl_start(KryFile *file, int line_no, char *line)
+{
+    char *colon;
+    char *eq;
+    char name[KC_NAME_MAX];
+    char decl[512];
+    char *type;
+    char *expr;
+    char out[KC_BODY_LINE_MAX];
+
+    colon = strchr(line, ':');
+    if(colon == NULL)
+        die("%s:%d: expected ':' in state declaration", file->path, line_no);
+    eq = strchr(colon + 1, '=');
+    if(eq == NULL)
+        return 0;
+
+    *colon = '\0';
+    snprintf(name, sizeof(name), "%s", trim(line));
+    if(!is_ident_text(name))
+        die("%s:%d: invalid state variable name '%s'", file->path,
+            line_no, name);
+
+    *eq = '\0';
+    type = trim(colon + 1);
+    expr = trim(eq + 1);
+    convert_var_decl(decl, sizeof(decl), name, type);
+    snprintf(out, sizeof(out), "static %s = %s", decl, expr);
+    add_state_line(file, out);
+    return 1;
+}
+
+static void
+add_state_continuation_line(KryFile *file, const char *line, int is_last)
+{
+    char out[KC_BODY_LINE_MAX];
+    size_t len;
+
+    snprintf(out, sizeof(out), "%s", line);
+    if(is_last) {
+        len = strlen(out);
+        while(len > 0 && isspace((unsigned char)out[len - 1]))
+            out[--len] = '\0';
+        if(len > 0 && out[len - 1] == ',')
+            out[--len] = '\0';
+        if(len + 2 >= sizeof(out))
+            die("%s: state declaration is too large", file->path);
+        out[len++] = ';';
+        out[len] = '\0';
+    }
+    add_state_line(file, out);
+}
+
+static int
 line_is_close(const char *line)
 {
     return strcmp(line, "}") == 0;
@@ -1636,6 +1690,8 @@ parse_kry(KryFile *file)
     int in_screen = 0;
     int in_app = 0;
     int in_state = 0;
+    int in_state_decl = 0;
+    int state_decl_depth = 0;
     int in_raw = 0;
     char pending_stmt[KC_BODY_LINE_MAX * 4] = "";
     int pending_line = 0;
@@ -1718,8 +1774,28 @@ parse_kry(KryFile *file)
                 continue;
             } else if(in_state) {
                 if(!(line_is_close(line) && depth == 1)) {
+                    int decl_opens = 0;
+                    int decl_closes = 0;
+
                     file->current_line = line_no;
-                    emit_state_decl(file, line_no, line);
+                    count_line_braces(line, &decl_opens, &decl_closes);
+                    if(in_state_decl) {
+                        state_decl_depth += decl_opens;
+                        state_decl_depth -= decl_closes;
+                        add_state_continuation_line(file, line,
+                                                    state_decl_depth <= 0);
+                        if(state_decl_depth <= 0) {
+                            in_state_decl = 0;
+                            state_decl_depth = 0;
+                        }
+                    } else if(strchr(line, '=') != NULL &&
+                              decl_opens > decl_closes) {
+                        emit_state_decl_start(file, line_no, line);
+                        in_state_decl = 1;
+                        state_decl_depth = decl_opens - decl_closes;
+                    } else {
+                        emit_state_decl(file, line_no, line);
+                    }
                     file->current_line = 0;
                 }
                 depth += opens;
