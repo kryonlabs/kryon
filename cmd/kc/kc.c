@@ -3026,8 +3026,9 @@ process_screen_line:
         line_start = p + 1;
         line_no++;
     }
-    if(file->function_count == 0)
-        die("%s: missing screen declaration", file->path);
+    if(file->function_count == 0 && file->public_type_count == 0 &&
+       file->private_type_count == 0)
+        die("%s: missing declarations", file->path);
     if(in_raw)
         die("%s: unterminated raw block", file->path);
     if(in_c_block)

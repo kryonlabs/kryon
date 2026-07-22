@@ -219,6 +219,25 @@ if grep -q 'ui_panel_panel_c_entry' "$out/src/ui/panel.h"; then
 fi
 grep -q 'ui_panel_draw(app);' "$out/src/panel_host.c"
 
+mkdir -p "$work/src/settings"
+cat > "$work/src/settings/types.kry" <<'EOF'
+mod settings.types
+cimport "thing.h"
+
+pub struct SettingsThemeState {
+    value: int
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/settings/types.kry" >"$err" 2>&1
+grep -q '#include "thing.h"' "$out/src/settings/types.h"
+grep -q 'typedef struct SettingsThemeState {' "$out/src/settings/types.h"
+grep -q 'int value;' "$out/src/settings/types.h"
+
+"$kc" --no-main --root "$work" -o "$out" \
+    "$work/src/settings/types.kry" "$work/src/panel_host.kry" >"$err" 2>&1
+grep -q '#include "src/settings/types.h"' "$out/kryon_project.h"
+
 cat > "$work/src/panel_direct_host.kry" <<'EOF'
 cimport "thing.h"
 use "src/ui/panel"
