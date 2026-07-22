@@ -2059,9 +2059,12 @@ parse_kry(KryFile *file)
     int in_c_block = 0;
     int in_raw = 0;
     char pending_stmt[KC_BODY_LINE_MAX * 4] = "";
+    char pending_decl[KC_BODY_LINE_MAX * 4] = "";
     int pending_line = 0;
     int pending_delta = 0;
     int pending_is_block = 0;
+    int pending_decl_line = 0;
+    int pending_decl_delta = 0;
     int macro_depths[64];
     int macro_count = 0;
 
@@ -2073,6 +2076,7 @@ parse_kry(KryFile *file)
             continue;
         char saved = *p;
         char *line;
+        char completed_decl[KC_BODY_LINE_MAX * 4];
 
         *p = '\0';
         line = trim(line_start);
@@ -2095,6 +2099,42 @@ parse_kry(KryFile *file)
             int opens = 0;
             int closes = 0;
 
+            if(pending_decl[0] != '\0') {
+                append_statement_line(file, pending_decl,
+                                      sizeof(pending_decl), line);
+                pending_decl_delta += line_group_delta(line);
+                if(pending_decl_delta > 0 || line_needs_continuation(line)) {
+                    *p = saved;
+                    if(saved == '\0')
+                        break;
+                    line_start = p + 1;
+                    line_no++;
+                    continue;
+                }
+                snprintf(completed_decl, sizeof(completed_decl), "%s",
+                         pending_decl);
+                line = completed_decl;
+                pending_decl[0] = '\0';
+                pending_decl_line = 0;
+                pending_decl_delta = 0;
+            } else if(!in_screen && depth == 0 &&
+                      (starts_word(line, "fn") || starts_word(line, "pub") ||
+                       starts_word(line, "screen") ||
+                       starts_word(line, "preview") ||
+                       starts_word(line, "page")) &&
+                      (line_group_delta(line) > 0 ||
+                       line_needs_continuation(line))) {
+                append_statement_line(file, pending_decl,
+                                      sizeof(pending_decl), line);
+                pending_decl_line = line_no;
+                pending_decl_delta = line_group_delta(line);
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            }
             count_line_braces(line, &opens, &closes);
             if(in_c_block) {
                 if(line_is_close(line)) {
@@ -2620,6 +2660,9 @@ parse_kry(KryFile *file)
         die("%s: unterminated c block", file->path);
     if(macro_count != 0)
         die("%s:%d: unterminated #if block", file->path, line_no);
+    if(pending_decl[0] != '\0')
+        die("%s:%d: unterminated function declaration", file->path,
+            pending_decl_line);
     if(pending_stmt[0] != '\0')
         die("%s:%d: unterminated continued statement", file->path,
             pending_line);

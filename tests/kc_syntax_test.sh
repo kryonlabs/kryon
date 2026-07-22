@@ -205,6 +205,20 @@ grep -q 'return NULL == NULL ? 1 : 0;' "$out/src/native_c_features.c"
 grep -q '#else' "$out/src/native_c_features.c"
 grep -q '#endif' "$out/src/native_c_features.c"
 
+cat > "$work/src/multiline_fn_decl.kry" <<'EOF'
+cimport "stddef.h"
+
+pub fn multiline_sum(first: int,
+                     second: int,
+                     third: int) -> int {
+    return first + second + third
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/multiline_fn_decl.kry" >"$err" 2>&1
+grep -q 'int multiline_sum(int first, int second, int third);' "$out/src/multiline_fn_decl.h"
+grep -q 'multiline_sum(int first, int second, int third)' "$out/src/multiline_fn_decl.c"
+
 cat > "$work/src/implicit_call.kry" <<'EOF'
 screen bad {
     InitializeThing()
