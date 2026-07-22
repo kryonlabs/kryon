@@ -180,8 +180,10 @@ kryon-boundary-check:
 $(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
-$(KC): cmd/kc/kc.c | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -o $@ cmd/kc/kc.c
+KC_SRCS := cmd/kc/kc.c cmd/kc/kc_macros.c
+
+$(KC): $(KC_SRCS) cmd/kc/kc_internal.h | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) -o $@ $(KC_SRCS)
 
 $(KRYON_APP): scripts/kryon-app.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon-app.sh $@

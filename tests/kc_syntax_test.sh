@@ -63,6 +63,10 @@ screen valid {
     zero_count: int
     text: int = 1
     text = 2
+    path: const char*
+    if path == nil {
+        path = "fallback"
+    }
     app := (void*)0
     native (void)app
 }
@@ -93,6 +97,8 @@ grep -Fq 'int explicit_count = 3;' "$out/src/valid.c"
 grep -Fq 'int zero_count = {0};' "$out/src/valid.c"
 grep -Fq 'int text = 1;' "$out/src/valid.c"
 grep -Fq 'text = 2;' "$out/src/valid.c"
+grep -Fq 'const char* path = {0};' "$out/src/valid.c"
+grep -Fq 'if(path == NULL)' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
 {
@@ -334,6 +340,60 @@ grep -q 'static const int records\[2\] = {' "$out/src/native_c_features.c"
 grep -q 'return NULL == NULL ? 1 : 0;' "$out/src/native_c_features.c"
 grep -q '#else' "$out/src/native_c_features.c"
 grep -q '#endif' "$out/src/native_c_features.c"
+
+cat > "$work/src/top_level_macros.kry" <<'EOF'
+WEB :: #defined(PLATFORM_WEB)
+DESKTOP :: !WEB
+
+mod platform.test
+cimport "thing.h"
+
+#if WEB {
+    cinclude <emscripten.h>
+    c {
+        define PLATFORM_VALUE = 7
+        extern fn web_ping(value: int) -> int
+    }
+    static web_ready: int = 1
+
+    pub type WebCallback = int (*)(int)
+
+    pub struct WebState {
+        value: int
+    }
+
+    pub fn platform_value() -> int {
+        return web_ping(web_ready)
+    }
+} #else_if DESKTOP {
+    static desktop_ready: int = 2
+
+    fn desktop_value() -> int {
+        return desktop_ready
+    }
+
+    pub fn platform_value() -> int {
+        return desktop_value()
+    }
+} #else {
+    pub fn platform_value() -> int {
+        return 0
+    }
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/top_level_macros.kry" >"$err" 2>&1
+grep -q '#if (defined(PLATFORM_WEB))' "$out/src/top_level_macros.h"
+grep -q 'typedef int (\*WebCallback)(int);' "$out/src/top_level_macros.h"
+grep -q 'typedef struct WebState {' "$out/src/top_level_macros.h"
+grep -q 'int platform_test_platform_value(void);' "$out/src/top_level_macros.h"
+grep -q '#include <emscripten.h>' "$out/src/top_level_macros.c"
+grep -q '#define PLATFORM_VALUE 7' "$out/src/top_level_macros.c"
+grep -q 'int web_ping(int value);' "$out/src/top_level_macros.c"
+grep -q 'static int web_ready = 1;' "$out/src/top_level_macros.c"
+grep -q 'static int platform_test_desktop_value(void);' "$out/src/top_level_macros.c"
+grep -q 'static int desktop_ready = 2;' "$out/src/top_level_macros.c"
+grep -q '#if !((defined(PLATFORM_WEB))) && ((!(defined(PLATFORM_WEB))))' "$out/src/top_level_macros.c"
 
 cat > "$work/src/native_structs.kry" <<'EOF'
 cimport "stddef.h"
