@@ -354,6 +354,8 @@ cimport "thing.h"
     cinclude <emscripten.h>
     PLATFORM_VALUE :: #define 7
     extern fn web_ping(value: int) -> int
+    extern intrinsic web fn web_download_file(path: const char*, filename: const char*, mime: const char*) -> int
+    extern intrinsic web fn web_context_click_in_bounds(x0: int, y0: int, x1: int, y1: int) -> int
     static web_ready: int = 1
 
     pub type WebCallback = int (*)(int)
@@ -364,6 +366,14 @@ cimport "thing.h"
 
     pub fn platform_value() -> int {
         return web_ping(web_ready)
+    }
+
+    pub fn platform_download(path: const char*) -> int {
+        return web_download_file(path, "file.bin", "application/octet-stream")
+    }
+
+    pub fn platform_context_click() -> int {
+        return web_context_click_in_bounds(1, 2, 3, 4)
     }
 } #else_if DESKTOP {
     static desktop_ready: int = 2
@@ -390,6 +400,12 @@ grep -q 'int platform_test_platform_value(void);' "$out/src/top_level_macros.h"
 grep -q '#include <emscripten.h>' "$out/src/top_level_macros.c"
 grep -q '#define PLATFORM_VALUE 7' "$out/src/top_level_macros.c"
 grep -q 'int web_ping(int value);' "$out/src/top_level_macros.c"
+grep -q 'static int' "$out/src/top_level_macros.c"
+grep -Fq 'web_download_file(const char* path, const char* filename, const char* mime)' "$out/src/top_level_macros.c"
+grep -Fq 'web_context_click_in_bounds(int x0, int y0, int x1, int y1)' "$out/src/top_level_macros.c"
+grep -Fq 'return web_download_file(path, "file.bin", "application/octet-stream");' "$out/src/top_level_macros.c"
+grep -Fq 'return web_context_click_in_bounds(1, 2, 3, 4);' "$out/src/top_level_macros.c"
+grep -Fq 'EM_ASM_INT' "$out/src/top_level_macros.c"
 grep -q 'static int web_ready = 1;' "$out/src/top_level_macros.c"
 grep -q 'static int platform_test_desktop_value(void);' "$out/src/top_level_macros.c"
 grep -q 'static int desktop_ready = 2;' "$out/src/top_level_macros.c"

@@ -1880,6 +1880,121 @@ emit_extern_fn(KryFile *file, int line_no, char *line,
     add_raw_conditional_line(file, active_guard, condition, out);
 }
 
+static void
+emit_web_intrinsic_wrapper(KryFile *file, int line_no, const char *name,
+                           const char *args, const char *ret,
+                           const char *active_guard)
+{
+    char guard[KC_BODY_LINE_MAX];
+    char backend_guard[KC_BODY_LINE_MAX];
+
+    if(strcmp(ret, "int") != 0)
+        die("%s:%d: web intrinsic '%s' must return int",
+            file->path, line_no, name);
+    combine_compile_guards(guard, sizeof(guard), active_guard,
+                           "defined(PLATFORM_WEB)");
+    snprintf(backend_guard, sizeof(backend_guard), "%s", guard);
+    add_guard_line(file, backend_guard, 0, 0, 0);
+    add_raw_line(file, "static int");
+    {
+        char line[KC_BODY_LINE_MAX];
+
+        snprintf(line, sizeof(line), "%s(%s)", name,
+                 args[0] != '\0' ? args : "void");
+        add_raw_line(file, line);
+    }
+    add_raw_line(file, "{");
+    if(strcmp(name, "web_download_file") == 0) {
+        add_raw_line(file, "    return EM_ASM_INT({");
+        add_raw_line(file, "        try {");
+        add_raw_line(file, "            const path = UTF8ToString($0);");
+        add_raw_line(file, "            const filename = UTF8ToString($1);");
+        add_raw_line(file, "            const mime = UTF8ToString($2);");
+        add_raw_line(file, "            const bytes = FS.readFile(path);");
+        add_raw_line(file, "            const blob = new Blob([bytes], {type: mime || \"application/octet-stream\"});");
+        add_raw_line(file, "            const url = URL.createObjectURL(blob);");
+        add_raw_line(file, "            const a = document.createElement(\"a\");");
+        add_raw_line(file, "            a.href = url;");
+        add_raw_line(file, "            a.download = filename || \"download\";");
+        add_raw_line(file, "            a.style.display = \"none\";");
+        add_raw_line(file, "            document.body.appendChild(a);");
+        add_raw_line(file, "            a.click();");
+        add_raw_line(file, "            a.remove();");
+        add_raw_line(file, "            setTimeout(() => URL.revokeObjectURL(url), 1000);");
+        add_raw_line(file, "            return 1;");
+        add_raw_line(file, "        } catch(e) {");
+        add_raw_line(file, "            console.error(\"Kry web download failed:\", e);");
+        add_raw_line(file, "            return 0;");
+        add_raw_line(file, "        }");
+        add_raw_line(file, "    }, path, filename, mime);");
+    } else if(strcmp(name, "web_context_click_in_bounds") == 0) {
+        add_raw_line(file, "    return EM_ASM_INT({");
+        add_raw_line(file, "        const click = Module.__inbeContextClick;");
+        add_raw_line(file, "        if(!click)");
+        add_raw_line(file, "            return 0;");
+        add_raw_line(file, "        if(Date.now() - click.time > 750) {");
+        add_raw_line(file, "            Module.__inbeContextClick = null;");
+        add_raw_line(file, "            return 0;");
+        add_raw_line(file, "        }");
+        add_raw_line(file, "        if(click.x >= $0 && click.x <= $2 && click.y >= $1 && click.y <= $3) {");
+        add_raw_line(file, "            Module.__inbeContextClick = null;");
+        add_raw_line(file, "            return 1;");
+        add_raw_line(file, "        }");
+        add_raw_line(file, "        return 0;");
+        add_raw_line(file, "    }, x0, y0, x1, y1);");
+    } else {
+        die("%s:%d: unknown web intrinsic '%s'", file->path, line_no, name);
+    }
+    add_raw_line(file, "}");
+    if(backend_guard[0] != '\0')
+        add_guard_end(file, 0, 0, 0);
+}
+
+static void
+emit_intrinsic_fn(KryFile *file, int line_no, char *line,
+                  const char *active_guard)
+{
+    char *q = trim(line + strlen("extern"));
+    char backend[KC_NAME_MAX];
+    char name[KC_NAME_MAX];
+    char args[512] = "";
+    char ret[KC_NAME_MAX] = "void";
+
+    if(!starts_word(q, "intrinsic"))
+        die("%s:%d: expected extern intrinsic", file->path, line_no);
+    q = trim(q + strlen("intrinsic"));
+    if(!parse_ident(&q, backend, sizeof(backend)))
+        die("%s:%d: expected intrinsic backend", file->path, line_no);
+    if(strcmp(backend, "web") != 0)
+        die("%s:%d: unknown intrinsic backend '%s'",
+            file->path, line_no, backend);
+    q = trim(q);
+    if(!starts_word(q, "fn"))
+        die("%s:%d: expected intrinsic fn", file->path, line_no);
+    q = trim(q + strlen("fn"));
+    if(!parse_ident(&q, name, sizeof(name)))
+        die("%s:%d: expected intrinsic function name", file->path, line_no);
+    q = trim(q);
+    if(q[0] == '(') {
+        char *end = strrchr(q, ')');
+
+        if(end == NULL)
+            die("%s:%d: expected ')' in intrinsic function", file->path,
+                line_no);
+        *end = '\0';
+        convert_arg_list(args, sizeof(args), trim(q + 1));
+        q = trim(end + 1);
+    }
+    if(q[0] == '-' && q[1] == '>') {
+        q = trim(q + 2);
+        if(q[0] == '\0')
+            die("%s:%d: expected intrinsic return type", file->path,
+                line_no);
+        snprintf(ret, sizeof(ret), "%s", q);
+    }
+    emit_web_intrinsic_wrapper(file, line_no, name, args, ret, active_guard);
+}
+
 static int
 parse_top_macro_line(KryFile *file, int line_no, char *line,
                      KryMacroFrame *macros, int *macro_count)
@@ -2948,7 +3063,10 @@ parse_kry(KryFile *file)
                         file->path, line_no);
                 current_macro_guard(guard, sizeof(guard), top_macros,
                                     top_macro_count);
-                emit_extern_fn(file, line_no, line, guard);
+                if(starts_word(trim(line + strlen("extern")), "intrinsic"))
+                    emit_intrinsic_fn(file, line_no, line, guard);
+                else
+                    emit_extern_fn(file, line_no, line, guard);
             } else if(starts_word(line, "import")) {
                 die("%s:%d: import was removed; use 'name := use \"path\"'",
                     file->path, line_no);
