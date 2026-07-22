@@ -3206,9 +3206,90 @@ function_value_context(const char *src, const char *start, const char *after)
            prev[-1] == '(' || prev[-1] == '?';
 }
 
+static int
+name_in_c_parameter_list(const char *args, const char *name)
+{
+    size_t name_len = strlen(name);
+
+    for(const char *p = args; *p != '\0'; p++) {
+        if(((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+            *p == '_') && strncmp(p, name, name_len) == 0 &&
+           !((p[name_len] >= 'A' && p[name_len] <= 'Z') ||
+             (p[name_len] >= 'a' && p[name_len] <= 'z') ||
+             (p[name_len] >= '0' && p[name_len] <= '9') ||
+             p[name_len] == '_')) {
+            const char *after = p + name_len;
+
+            while(*after == ' ' || *after == '\t')
+                after++;
+            if(*after == ',' || *after == '\0')
+                return 1;
+        }
+    }
+    return 0;
+}
+
+static int
+kry_declares_name(const char *line, const char *name)
+{
+    char ident[KC_NAME_MAX];
+    size_t name_len = strlen(name);
+    const char *p = skip_indent(line);
+    size_t ident_len = 0;
+
+    if(strncmp(p, "for ", 4) == 0)
+        p = skip_indent(p + 4);
+    if(strncmp(p, "int ", 4) == 0)
+        p = skip_indent(p + 4);
+    while(((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+           (*p >= '0' && *p <= '9') || *p == '_' || *p == ',' ||
+           *p == ' ' || *p == '\t') && *p != '\0') {
+        if((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+           *p == '_') {
+            ident_len = 0;
+            while((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+                  (*p >= '0' && *p <= '9') || *p == '_') {
+                if(ident_len + 1 < sizeof(ident))
+                    ident[ident_len++] = *p;
+                p++;
+            }
+            ident[ident_len] = '\0';
+            if(strcmp(ident, name) == 0) {
+                const char *after = p;
+
+                while(*after == ' ' || *after == '\t')
+                    after++;
+                if(*after == ':' || *after == ',' || *after == '=')
+                    return 1;
+            }
+            continue;
+        }
+        if(*p == ':' || *p == '=')
+            break;
+        p++;
+    }
+
+    (void)name_len;
+    return 0;
+}
+
+static int
+function_has_local_name(const KryFunction *fn, const char *name)
+{
+    if(fn == NULL)
+        return 0;
+    if(name_in_c_parameter_list(fn->args, name))
+        return 1;
+    for(int i = 0; i < fn->body_count; i++) {
+        if(kry_declares_name(fn->body[i], name))
+            return 1;
+    }
+    return 0;
+}
+
 static void
 rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
-                 const char *src)
+                 const KryFunction *current_fn, const char *src)
 {
     size_t n = 0;
     int in_string = 0;
@@ -3301,7 +3382,10 @@ rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
                        (start[-1] != '.' && start[-1] != '>')) &&
                       (*after == '(' ||
                        function_value_context(src, start, after))) {
-                const KryFunction *fn = find_local_function(file, ident);
+                const KryFunction *fn = NULL;
+
+                if(!function_has_local_name(current_fn, ident))
+                    fn = find_local_function(file, ident);
 
                 if(fn != NULL) {
                     char cname[KC_NAME_MAX * 2];
@@ -3328,7 +3412,8 @@ rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
 }
 
 static void
-write_body_line(FILE *out, const KryFile *file, const char *line, int *indent)
+write_body_line(FILE *out, const KryFile *file, const KryFunction *fn,
+                const char *line, int *indent)
 {
     const char *text = skip_indent(line);
     char rewritten[KC_BODY_LINE_MAX];
@@ -3345,7 +3430,7 @@ write_body_line(FILE *out, const KryFile *file, const char *line, int *indent)
     if(text[0] == '#') {
         fprintf(out, "%s\n", text);
     } else {
-        rewrite_kry_expr(rewritten, sizeof(rewritten), file, text);
+        rewrite_kry_expr(rewritten, sizeof(rewritten), file, fn, text);
         fprintf(out, "%s\n", rewritten);
         text = rewritten;
     }
@@ -3521,7 +3606,7 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         fprintf(out, "\n%s%s\n%s(%s)\n{\n",
                 fn->is_public ? "" : "static ", return_type, name, args);
         for(int j = 0; j < fn->body_count; j++)
-            write_body_line(out, file, fn->body[j], &indent);
+            write_body_line(out, file, fn, fn->body[j], &indent);
         for(int j = 0; j < fn->call_count; j++) {
             const char *call = fn->calls[j];
             size_t len = strlen(call);
