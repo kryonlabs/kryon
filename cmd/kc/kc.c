@@ -3280,12 +3280,9 @@ rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
                     }
                     (void)member_start;
                 }
-            } else if(*after == '(') {
-                const KryFunction *fn = NULL;
-
-                if(start == src ||
-                   (start[-1] != '.' && start[-1] != '>'))
-                    fn = find_local_function(file, ident);
+            } else if(start == src ||
+                      (start[-1] != '.' && start[-1] != '>')) {
+                const KryFunction *fn = find_local_function(file, ident);
 
                 if(fn != NULL) {
                     char cname[KC_NAME_MAX * 2];

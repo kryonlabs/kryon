@@ -119,6 +119,29 @@ grep -q '^settings_ui_helper(int value)' "$out/src/settings_ui.c"
 grep -q 'int settings_ui_toggle_row_height(const char\* label, int w);' "$out/src/settings_ui.h"
 grep -q 'return settings_ui_helper(w);' "$out/src/settings_ui.c"
 
+cat > "$work/src/function_pointer.kry" <<'EOF'
+mod fp
+cimport "thing.h"
+
+struct Handler {
+    callback: int (*)(int)
+}
+
+fn callback(value: int) -> int {
+    return value
+}
+
+pub fn bind_callback() -> Handler {
+    return (Handler){
+        .callback = callback,
+    }
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/function_pointer.kry" >"$err" 2>&1
+grep -q 'static int fp_callback(int value);' "$out/src/function_pointer.c"
+grep -q '\.callback = fp_callback,' "$out/src/function_pointer.c"
+
 cat > "$work/src/settings_session.kry" <<'EOF'
 cimport "thing.h"
 ui := use "settings_ui"
