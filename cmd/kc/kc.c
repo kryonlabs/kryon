@@ -68,6 +68,7 @@ typedef struct KryFile {
 static void die(const char *fmt, ...);
 static char *trim(char *s);
 static int is_ident_text(const char *text);
+static void rewrite_nil_tokens(char *dst, size_t dst_size, const char *src);
 static void strip_kry_ext(char *dst, size_t dst_size, const char *path);
 static void module_symbol(char *dst, size_t dst_size, const char *module);
 
@@ -983,8 +984,10 @@ emit_state_decl(KryFile *file, int line_no, char *line)
     convert_var_decl(decl, sizeof(decl), name, trim(type));
     if(expr != NULL && expr[0] != '\0') {
         char out[KC_BODY_LINE_MAX];
+        char rewritten[KC_BODY_LINE_MAX];
 
-        snprintf(out, sizeof(out), "static %s = %s;", decl, expr);
+        rewrite_nil_tokens(rewritten, sizeof(rewritten), expr);
+        snprintf(out, sizeof(out), "static %s = %s;", decl, rewritten);
         add_state_line(file, out);
     } else {
         char out[KC_BODY_LINE_MAX];
@@ -1022,18 +1025,87 @@ emit_state_decl_start(KryFile *file, int line_no, char *line)
     type = trim(colon + 1);
     expr = trim(eq + 1);
     convert_var_decl(decl, sizeof(decl), name, type);
-    snprintf(out, sizeof(out), "static %s = %s", decl, expr);
+    {
+        char rewritten[KC_BODY_LINE_MAX];
+
+        rewrite_nil_tokens(rewritten, sizeof(rewritten), expr);
+        snprintf(out, sizeof(out), "static %s = %s", decl, rewritten);
+    }
     add_state_line(file, out);
     return 1;
+}
+
+static void
+rewrite_nil_tokens(char *dst, size_t dst_size, const char *src)
+{
+    size_t n = 0;
+    int in_string = 0;
+    int escaped = 0;
+
+    if(dst_size == 0)
+        return;
+    for(const char *p = src; p != NULL && *p != '\0' && n + 1 < dst_size;) {
+        if(in_string) {
+            dst[n++] = *p;
+            if(escaped)
+                escaped = 0;
+            else if(*p == '\\')
+                escaped = 1;
+            else if(*p == '"')
+                in_string = 0;
+            p++;
+            continue;
+        }
+        if(*p == '"') {
+            in_string = 1;
+            dst[n++] = *p++;
+            continue;
+        }
+        if((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+           *p == '_') {
+            char ident[KC_NAME_MAX];
+            size_t ident_len = 0;
+            const char *start = p;
+
+            while((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+                  (*p >= '0' && *p <= '9') || *p == '_') {
+                if(ident_len + 1 < sizeof(ident))
+                    ident[ident_len++] = *p;
+                p++;
+            }
+            ident[ident_len] = '\0';
+            if(strcmp(ident, "nil") == 0) {
+                const char *text = "NULL";
+                size_t len = strlen(text);
+
+                if(n + len >= dst_size)
+                    break;
+                memcpy(dst + n, text, len);
+                n += len;
+            } else {
+                size_t len = (size_t)(p - start);
+
+                if(n + len >= dst_size)
+                    break;
+                memcpy(dst + n, start, len);
+                n += len;
+            }
+            continue;
+        }
+        dst[n++] = *p++;
+    }
+    dst[n] = '\0';
 }
 
 static void
 add_state_continuation_line(KryFile *file, const char *line, int is_last)
 {
     char out[KC_BODY_LINE_MAX];
+    char rewritten[KC_BODY_LINE_MAX];
     size_t len;
 
-    snprintf(out, sizeof(out), "%s", line);
+    rewrite_nil_tokens(rewritten, sizeof(rewritten), line);
+    snprintf(out, sizeof(out), "%s", rewritten);
     if(is_last) {
         len = strlen(out);
         while(len > 0 && isspace((unsigned char)out[len - 1]))
