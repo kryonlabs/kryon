@@ -54,6 +54,9 @@ screen valid {
     c {
     value++
     c }
+    label: [32] char = {0}
+    explicit_count: int = 3
+    zero_count: int
     app := (void*)0
     native (void)app
 }
@@ -77,6 +80,9 @@ grep -q 'value = value + 1;' "$out/src/valid.c"
 grep -q 'if(CheckThing( value, 1)) {' "$out/src/valid.c"
 grep -q '    {' "$out/src/valid.c"
 grep -q '    value++;' "$out/src/valid.c"
+grep -Fq 'char label[32] = {0};' "$out/src/valid.c"
+grep -Fq 'int explicit_count = 3;' "$out/src/valid.c"
+grep -Fq 'int zero_count = {0};' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
 {
@@ -192,6 +198,19 @@ if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_include.kry" >"$err" 
 fi
 grep -q 'unknown top-level statement: include "thing.h"' "$err"
 grep -Eq 'bad_include\.kry:1:1: error:' "$err"
+
+cat > "$work/src/bad_var.kry" <<'EOF'
+screen bad {
+    var label: [32] char = {0}
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_var.kry" >"$err" 2>&1; then
+    echo "legacy var declaration was accepted" >&2
+    exit 1
+fi
+grep -q "'var' syntax was removed" "$err"
+grep -Eq 'bad_var\.kry:2:1: error:' "$err"
 
 cat > "$work/src/unbalanced.kry" <<'EOF'
 screen bad {

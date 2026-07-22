@@ -697,6 +697,35 @@ line_is_inferred_decl(char *line)
     return 1;
 }
 
+static char *
+find_typed_decl_colon(char *line)
+{
+    char name[KC_NAME_MAX];
+    char *p = line;
+
+    if(!parse_ident(&p, name, sizeof(name)))
+        return NULL;
+    p = trim(p);
+    if(p[0] != ':' || p[1] == '=' || p[1] == ':')
+        return NULL;
+    return p;
+}
+
+static int
+line_is_typed_decl(char *line)
+{
+    char tmp[KC_BODY_LINE_MAX];
+    char *colon;
+    char *type;
+
+    snprintf(tmp, sizeof(tmp), "%s", line);
+    colon = find_typed_decl_colon(tmp);
+    if(colon == NULL)
+        return 0;
+    type = trim(colon + 1);
+    return type[0] != '\0';
+}
+
 static void
 emit_inferred_decl(KryFile *file, int line_no, char *line, int is_state)
 {
@@ -745,6 +774,42 @@ emit_inferred_decl(KryFile *file, int line_no, char *line, int is_state)
                 emit_source_pop(file);
         }
     }
+}
+
+static void
+emit_typed_decl(KryFile *file, int line_no, char *line)
+{
+    char name[KC_NAME_MAX];
+    char decl[512];
+    char *colon;
+    char *type;
+    char *eq;
+    char *expr = NULL;
+    char *p = line;
+
+    if(!parse_ident(&p, name, sizeof(name)))
+        die("%s:%d: expected variable name", file->path, line_no);
+    colon = trim(p);
+    if(colon[0] != ':' || colon[1] == '=' || colon[1] == ':')
+        die("%s:%d: expected ':' in typed declaration", file->path, line_no);
+    type = trim(colon + 1);
+    eq = strchr(type, '=');
+    if(eq != NULL) {
+        *eq = '\0';
+        expr = trim(eq + 1);
+    }
+    type = trim(type);
+    if(type[0] == '\0')
+        die("%s:%d: expected variable type", file->path, line_no);
+    convert_var_decl(decl, sizeof(decl), name, type);
+    if(expr != NULL && expr[0] != '\0' && strchr(expr, '(') != NULL)
+        emit_source_push(file, line_no);
+    if(expr != NULL && expr[0] != '\0')
+        add_body(file, "    %s = %s;", decl, expr);
+    else
+        add_body(file, "    %s = {0};", decl);
+    if(expr != NULL && expr[0] != '\0' && strchr(expr, '(') != NULL)
+        emit_source_pop(file);
 }
 
 static char *
@@ -1118,10 +1183,12 @@ parse_statement(KryFile *file, int line_no, char *line)
     if(line_is_close(line)) {
         add_body(file, "    }");
     } else if(starts_word(line, "let")) {
-        die("%s:%d: legacy 'let' syntax was removed; use 'var name: type = value'",
+        die("%s:%d: legacy 'let' syntax was removed; use 'name: type = value'",
             file->path, line_no);
     } else if(line_is_inferred_decl(line)) {
         emit_inferred_decl(file, line_no, line, 0);
+    } else if(line_is_typed_decl(line)) {
+        emit_typed_decl(file, line_no, line);
     } else if(starts_word(line, "background")) {
         char *q = trim(line + strlen("background"));
 
@@ -1283,37 +1350,8 @@ parse_statement(KryFile *file, int line_no, char *line)
     } else if(strcmp(line, "continue") == 0) {
         add_body(file, "    continue;");
     } else if(starts_word(line, "var")) {
-        char *q = trim(line + strlen("var"));
-        char name[KC_NAME_MAX];
-        char decl[512];
-        char *type;
-        char *eq;
-        char *expr = NULL;
-
-        if(!parse_ident(&q, name, sizeof(name)))
-            die("%s:%d: expected variable name", file->path, line_no);
-        q = trim(q);
-        if(*q != ':')
-            die("%s:%d: expected ':' in variable declaration", file->path,
-                line_no);
-        type = trim(q + 1);
-        eq = strchr(type, '=');
-        if(eq != NULL) {
-            *eq = '\0';
-            expr = trim(eq + 1);
-        }
-        type = trim(type);
-        if(type[0] == '\0')
-            die("%s:%d: expected variable type", file->path, line_no);
-        convert_var_decl(decl, sizeof(decl), name, type);
-        if(expr != NULL && expr[0] != '\0' && strchr(expr, '(') != NULL)
-            emit_source_push(file, line_no);
-        if(expr != NULL && expr[0] != '\0')
-            add_body(file, "    %s = %s;", decl, expr);
-        else
-            add_body(file, "    %s;", decl);
-        if(expr != NULL && expr[0] != '\0' && strchr(expr, '(') != NULL)
-            emit_source_pop(file);
+        die("%s:%d: 'var' syntax was removed; use 'name: type = value'",
+            file->path, line_no);
     } else if(starts_word(line, "set")) {
         char *q = trim(line + strlen("set"));
 
