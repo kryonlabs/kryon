@@ -984,6 +984,69 @@ count_line_braces(const char *line, int *opens, int *closes)
     }
 }
 
+static int
+line_delim_delta(const char *line)
+{
+    int delta = 0;
+    int in_string = 0;
+    int escaped = 0;
+
+    for(const char *p = line; p != NULL && *p != '\0'; p++) {
+        if(in_string) {
+            if(escaped)
+                escaped = 0;
+            else if(*p == '\\')
+                escaped = 1;
+            else if(*p == '"')
+                in_string = 0;
+            continue;
+        }
+        if(*p == '#')
+            break;
+        if(*p == '"') {
+            in_string = 1;
+            continue;
+        }
+        if(*p == '(' || *p == '[' || *p == '{')
+            delta++;
+        else if(*p == ')' || *p == ']' || *p == '}')
+            delta--;
+    }
+    return delta;
+}
+
+static int
+line_starts_block_statement(const char *line)
+{
+    return starts_word(line, "if") ||
+           starts_word(line, "for") ||
+           starts_word(line, "while") ||
+           starts_word(line, "button") ||
+           starts_word(line, "event") ||
+           starts_word(line, "on") ||
+           starts_word(line, "icon_button") ||
+           starts_else_if(line) ||
+           line_is_else(line);
+}
+
+static void
+append_statement_line(KryFile *file, char *dst, size_t dst_size,
+                      const char *line)
+{
+    size_t used = strlen(dst);
+    size_t need = strlen(line);
+
+    if(used != 0) {
+        if(used + 2 >= dst_size)
+            die("%s: continued statement is too large", file->path);
+        dst[used++] = ' ';
+        dst[used] = '\0';
+    }
+    if(used + need + 1 >= dst_size)
+        die("%s: continued statement is too large", file->path);
+    memcpy(dst + used, line, need + 1);
+}
+
 static void
 parse_statement(KryFile *file, int line_no, char *line)
 {
@@ -1471,6 +1534,9 @@ parse_kry(KryFile *file)
     int in_app = 0;
     int in_state = 0;
     int in_raw = 0;
+    char pending_stmt[KC_BODY_LINE_MAX * 4] = "";
+    int pending_line = 0;
+    int pending_delta = 0;
 
     file->text = read_text_file(file->path);
     text = file->text;
@@ -1775,9 +1841,55 @@ parse_kry(KryFile *file)
                 if(line_is_close(line) && depth == 1) {
                     /* closing the page */
                 } else {
-                    file->current_line = line_no;
-                    parse_statement(file, line_no, line);
+                    int stmt_line = line_no;
+                    char *stmt = line;
+                    int stmt_delta = line_delim_delta(line);
+                    int parsed_pending = 0;
+
+                    if(pending_stmt[0] != '\0') {
+                        append_statement_line(file, pending_stmt,
+                                              sizeof(pending_stmt), line);
+                        pending_delta += stmt_delta;
+                        if(pending_delta > 0) {
+                            depth += opens;
+                            depth -= closes;
+                            if(depth < 0)
+                                die("%s:%d: unexpected }", file->path, line_no);
+                            *p = saved;
+                            if(saved == '\0')
+                                break;
+                            line_start = p + 1;
+                            line_no++;
+                            continue;
+                        }
+                        stmt = pending_stmt;
+                        stmt_line = pending_line;
+                        parsed_pending = 1;
+                    } else if(stmt_delta > 0 && !line_starts_block_statement(line)) {
+                        append_statement_line(file, pending_stmt,
+                                              sizeof(pending_stmt), line);
+                        pending_line = line_no;
+                        pending_delta = stmt_delta;
+                        depth += opens;
+                        depth -= closes;
+                        if(depth < 0)
+                            die("%s:%d: unexpected }", file->path, line_no);
+                        *p = saved;
+                        if(saved == '\0')
+                            break;
+                        line_start = p + 1;
+                        line_no++;
+                        continue;
+                    }
+
+                    file->current_line = stmt_line;
+                    parse_statement(file, stmt_line, stmt);
                     file->current_line = 0;
+                    if(parsed_pending) {
+                        pending_stmt[0] = '\0';
+                        pending_line = 0;
+                        pending_delta = 0;
+                    }
                 }
             } else {
                 die("%s:%d: unknown top-level statement: %s",
@@ -1802,6 +1914,9 @@ parse_kry(KryFile *file)
         die("%s: missing screen declaration", file->path);
     if(in_raw)
         die("%s: unterminated raw block", file->path);
+    if(pending_stmt[0] != '\0')
+        die("%s:%d: unterminated continued statement", file->path,
+            pending_line);
     if(depth != 0)
         die("%s:%d: unbalanced braces", file->path, line_no);
 }
