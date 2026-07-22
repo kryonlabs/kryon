@@ -4106,7 +4106,6 @@ draw_preview_toolbar(Rectangle content, EditorProject *project,
     int h = ScaleUIPx(28);
     int old_preset;
     int old_scale;
-    char size_text[48];
 
     if(project == NULL)
         return;
@@ -4116,47 +4115,9 @@ draw_preview_toolbar(Rectangle content, EditorProject *project,
     DrawUIDropdownButton(1305, x, y, ScaleUIPx(108), h,
                          preset_labels, 5, &project->preview_preset);
     x += ScaleUIPx(116);
-    if(DrawUIGenericButton(x, y, ScaleUIPx(32), h, "-W",
-                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
-        project->preview_width -= 40;
-        project->preview_preset = 0;
-    }
-    x += ScaleUIPx(36);
-    if(DrawUIGenericButton(x, y, ScaleUIPx(32), h, "+W",
-                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
-        project->preview_width += 40;
-        project->preview_preset = 0;
-    }
-    x += ScaleUIPx(40);
-    if(DrawUIGenericButton(x, y, ScaleUIPx(32), h, "-H",
-                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
-        project->preview_height -= 40;
-        project->preview_preset = 0;
-    }
-    x += ScaleUIPx(36);
-    if(DrawUIGenericButton(x, y, ScaleUIPx(32), h, "+H",
-                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
-        project->preview_height += 40;
-        project->preview_preset = 0;
-    }
-    x += ScaleUIPx(40);
-    if(DrawUIGenericButton(x, y, ScaleUIPx(64), h, "Rotate",
-                           UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
-        int tmp = project->preview_width;
-
-        project->preview_width = project->preview_height;
-        project->preview_height = tmp;
-        project->preview_preset = 0;
-    }
-    x += ScaleUIPx(72);
     DrawUIDropdownButton(1306, x, y, ScaleUIPx(82), h,
                          scale_labels, 4,
                          (int *)&project->preview_scale_mode);
-    snprintf(size_text, sizeof(size_text), "%d x %d",
-             project->preview_width, project->preview_height);
-    DrawUIText(size_text, (int)(content.x + content.width) -
-                            ScaleUIPx(94), y + ScaleUIPx(7),
-               UI_TEXT_12, GetThemeIcon());
     if(DrawUIDropdownMenu(1305) && old_preset != project->preview_preset) {
         editor_preview_apply_preset(project);
         snprintf(status, status_size, "Preview viewport: %s",
@@ -4235,7 +4196,7 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
     preview_camera.zoom = device.width / (float)project->preview_width;
     inspect_transform = PushUIInspectTransform(preview_camera);
     editor_camera = g_ui_camera;
-    g_ui_camera = preview_camera;
+    SetUIFrame(preview_camera);
     old_view_w = ui_view_width;
     old_view_h = ui_view_height;
     SetUIViewSize(project->preview_width, project->preview_height);
@@ -4257,7 +4218,7 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
         PopUIInspectChrome(inspect_chrome);
     SetUIKeyboardInputEnabled(old_keyboard_enabled);
     SetUIViewSize(old_view_w, old_view_h);
-    g_ui_camera = editor_camera;
+    SetUIFrame(editor_camera);
     PopUIInputClip();
     PopUIInspectTransform(inspect_transform);
     EndScissorMode();

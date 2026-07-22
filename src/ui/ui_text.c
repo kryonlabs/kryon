@@ -6,6 +6,7 @@
 #include "ui_scaling.h"
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
@@ -498,7 +499,9 @@ ui_text_id(const char *text, int x, int y, int font_size)
     int hash = 5381;
 
     hash = ui_text_hash_int(hash, (int)(ptr & 0xffffffffu));
+#if UINTPTR_MAX > 0xffffffffu
     hash = ui_text_hash_int(hash, (int)(ptr >> 32));
+#endif
     hash = ui_text_hash_int(hash, x);
     hash = ui_text_hash_int(hash, y);
     hash = ui_text_hash_int(hash, font_size);
