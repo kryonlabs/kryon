@@ -837,6 +837,72 @@ line_is_typed_decl(char *line)
     return type[0] != '\0';
 }
 
+static int
+c_decl_type_allowed(const char *type)
+{
+    char first[KC_NAME_MAX];
+    const char *p = type;
+    size_t n = 0;
+
+    while(*p == ' ' || *p == '\t')
+        p++;
+    while((isalnum((unsigned char)*p) || *p == '_') && n + 1 < sizeof(first))
+        first[n++] = *p++;
+    first[n] = '\0';
+    return strcmp(first, "char") == 0 ||
+           strcmp(first, "const") == 0 ||
+           strcmp(first, "double") == 0 ||
+           strcmp(first, "float") == 0 ||
+           strcmp(first, "int") == 0 ||
+           strcmp(first, "long") == 0 ||
+           strcmp(first, "short") == 0 ||
+           strcmp(first, "size_t") == 0 ||
+           strcmp(first, "unsigned") == 0 ||
+           strcmp(first, "void") == 0 ||
+           (first[0] >= 'A' && first[0] <= 'Z') ||
+           strstr(first, "_t") != NULL;
+}
+
+static int
+line_is_c_uninit_decl(const char *line)
+{
+    char tmp[KC_BODY_LINE_MAX];
+    char *s;
+    char *name;
+    char *type_end;
+    char *array;
+
+    if(line == NULL || line[0] == '\0')
+        return 0;
+    if(strpbrk(line, "=(){}:,") != NULL)
+        return 0;
+    snprintf(tmp, sizeof(tmp), "%s", line);
+    s = trim(tmp);
+    if(s[0] == '\0')
+        return 0;
+    array = strchr(s, '[');
+    if(array != NULL) {
+        name = array;
+        while(name > s &&
+              (isalnum((unsigned char)name[-1]) || name[-1] == '_'))
+            name--;
+        *array = '\0';
+    } else {
+        name = s + strlen(s);
+        while(name > s &&
+              (isalnum((unsigned char)name[-1]) || name[-1] == '_'))
+            name--;
+    }
+    if(!is_ident_text(name))
+        return 0;
+    type_end = name;
+    while(type_end > s && (type_end[-1] == ' ' || type_end[-1] == '\t'))
+        *--type_end = '\0';
+    while(type_end > s && type_end[-1] == '*')
+        *--type_end = '\0';
+    return c_decl_type_allowed(s);
+}
+
 static void
 emit_inferred_decl(KryFile *file, int line_no, char *line, int is_state)
 {
@@ -2126,6 +2192,8 @@ parse_statement(KryFile *file, int line_no, char *line)
         emit_inferred_decl(file, line_no, line, 0);
     } else if(line_is_typed_decl(line)) {
         emit_typed_decl(file, line_no, line);
+    } else if(line_is_c_uninit_decl(line)) {
+        add_body(file, "    %s;", line);
     } else if(starts_word(line, "background")) {
         char *q = trim(line + strlen("background"));
 

@@ -75,6 +75,10 @@ screen valid {
         value = scoped
     }
     label: [32] char = {0}
+    int c_count
+    char c_label[16]
+    Color c_color
+    void* c_ptr
     explicit_count: int = 3
     zero_count: int
     text: int = 1
@@ -131,6 +135,10 @@ grep -q '    {' "$out/src/valid.c"
 grep -Fq 'int scoped = 9;' "$out/src/valid.c"
 grep -Fq 'value = scoped;' "$out/src/valid.c"
 grep -Fq 'char label[32] = {0};' "$out/src/valid.c"
+grep -Fq 'int c_count;' "$out/src/valid.c"
+grep -Fq 'char c_label[16];' "$out/src/valid.c"
+grep -Fq 'Color c_color;' "$out/src/valid.c"
+grep -Fq 'void* c_ptr;' "$out/src/valid.c"
 grep -Fq 'int explicit_count = 3;' "$out/src/valid.c"
 grep -Fq 'int zero_count = {0};' "$out/src/valid.c"
 grep -Fq 'int text = 1;' "$out/src/valid.c"
