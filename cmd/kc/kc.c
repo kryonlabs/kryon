@@ -11,6 +11,7 @@
 
 static void die(const char *fmt, ...);
 static char *trim(char *s);
+static const char *skip_indent(const char *line);
 static int is_ident_text(const char *text);
 static void rewrite_nil_tokens(char *dst, size_t dst_size, const char *src);
 static void strip_kry_ext(char *dst, size_t dst_size, const char *path);
@@ -1489,6 +1490,7 @@ static int
 line_starts_block_statement(const char *line)
 {
     return starts_word(line, "if") ||
+           starts_word(line, "switch") ||
            starts_word(line, "for") ||
            starts_word(line, "while") ||
            starts_word(line, "button") ||
@@ -1507,6 +1509,8 @@ line_needs_continuation(const char *line)
     const char *end;
 
     if(line == NULL)
+        return 0;
+    if(starts_word(line, "case") || strcmp(skip_indent(line), "default:") == 0)
         return 0;
     end = line + strlen(line);
     while(end > line && isspace((unsigned char)end[-1]))
@@ -2334,6 +2338,32 @@ parse_statement(KryFile *file, int line_no, char *line)
         if(q[0] == '\0')
             die("%s:%d: expected if condition", file->path, line_no);
         add_body(file, "    if(%s) {", q);
+    } else if(starts_word(line, "switch")) {
+        char *q = trim(line + strlen("switch"));
+        size_t n = strlen(q);
+
+        if(n == 0 || q[n - 1] != '{')
+            die("%s:%d: expected switch expression ending with {",
+                file->path, line_no);
+        q[n - 1] = '\0';
+        q = trim(q);
+        if(q[0] == '\0')
+            die("%s:%d: expected switch expression", file->path, line_no);
+        add_body(file, "    switch(%s) {", q);
+    } else if(starts_word(line, "case")) {
+        char *q = trim(line + strlen("case"));
+        size_t n = strlen(q);
+
+        if(n == 0 || q[n - 1] != ':')
+            die("%s:%d: expected case label ending with ':'", file->path,
+                line_no);
+        q[n - 1] = '\0';
+        q = trim(q);
+        if(q[0] == '\0')
+            die("%s:%d: expected case label", file->path, line_no);
+        add_body(file, "    case %s:", q);
+    } else if(strcmp(line, "default:") == 0) {
+        add_body(file, "    default:");
     } else if(starts_word(line, "for")) {
         char *q = trim(line + strlen("for"));
         size_t n = strlen(q);

@@ -68,6 +68,13 @@ screen valid {
     if path == nil {
         path = "fallback"
     }
+    switch value {
+    case 1:
+        value = 2
+        break
+    default:
+        value = 3
+    }
     app := (void*)0
     native (void)app
 }
@@ -101,6 +108,9 @@ grep -Fq 'int text = 1;' "$out/src/valid.c"
 grep -Fq 'text = 2;' "$out/src/valid.c"
 grep -Fq 'const char* path = {0};' "$out/src/valid.c"
 grep -Fq 'if(path == NULL)' "$out/src/valid.c"
+grep -Fq 'switch(value) {' "$out/src/valid.c"
+grep -Fq 'case 1:' "$out/src/valid.c"
+grep -Fq 'default:' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
 {
