@@ -1,4 +1,4 @@
-cimport "kryon.h"
+#import "kryon.h"
 
 app "Kryon Collections" {
     size 900 620

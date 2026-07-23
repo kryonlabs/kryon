@@ -15,13 +15,17 @@ trap cleanup EXIT INT TERM
 mkdir -p "$work/src" "$out"
 
 cat > "$work/src/valid.kry" <<'EOF'
-cimport "thing.h"
+#import "thing.h"
+
+shared_count :: int #global #export
+local_counter :: int = 7 #global
 
 screen valid {
     first, second := 0
     first, second = 1
     value := first + second
-    do InitializeThing()
+    unused second
+    InitializeThing()
     draw DrawThing()
     value = 1
     first, second = second, first
@@ -44,7 +48,7 @@ screen valid {
     while value < 3 {
         value++
     }
-    do DrawThing(
+    DrawThing(
         value,
         (ThingSpec){
             .value = value,
@@ -87,6 +91,15 @@ screen valid {
     if path == nil {
         path = "fallback"
     }
+    if value < 0 {
+        value = 0
+    }
+    else if value == 0 {
+        value = 1
+    }
+    else {
+        value = 2
+    }
     switch value {
     case 1:
         value = 2
@@ -94,18 +107,27 @@ screen valid {
     default:
         value = 3
     }
+    if value > 4 {
+        goto done
+    }
+    value = 4
+done:
+    value++
     enum {
         LOCAL_ACTION_NONE,
         LOCAL_ACTION_RUN
     }
     value = LOCAL_ACTION_RUN
     app := (void*)0
-    native (void)app
+    unused app
 }
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/valid.kry" >"$err" 2>&1
 grep -q '#include "thing.h"' "$out/src/valid.h"
+grep -Fq 'extern int shared_count;' "$out/src/valid.h"
+grep -Fq 'int shared_count;' "$out/src/valid.c"
+grep -Fq 'int local_counter = 7;' "$out/src/valid.c"
 grep -q '__auto_type first = 0;' "$out/src/valid.c"
 grep -q '__auto_type second = 0;' "$out/src/valid.c"
 grep -Eq '__auto_type __kryon_assign_[0-9]+_0 = 1;' "$out/src/valid.c"
@@ -115,6 +137,8 @@ grep -Eq '__auto_type __kryon_assign_[0-9]+_0 = second;' "$out/src/valid.c"
 grep -Eq '__auto_type __kryon_assign_[0-9]+_1 = first;' "$out/src/valid.c"
 grep -Eq 'first = __kryon_assign_[0-9]+_0;' "$out/src/valid.c"
 grep -Eq 'second = __kryon_assign_[0-9]+_1;' "$out/src/valid.c"
+grep -q '(void)second;' "$out/src/valid.c"
+grep -q '(void)app;' "$out/src/valid.c"
 grep -q 'continue;' "$out/src/valid.c"
 grep -q 'break;' "$out/src/valid.c"
 grep -Fq 'value += i;' "$out/src/valid.c"
@@ -145,17 +169,193 @@ grep -Fq 'int text = 1;' "$out/src/valid.c"
 grep -Fq 'text = 2;' "$out/src/valid.c"
 grep -Fq 'const char* path = {0};' "$out/src/valid.c"
 grep -Fq 'if(path == NULL)' "$out/src/valid.c"
+grep -Fq 'else if(value == 0) {' "$out/src/valid.c"
+grep -Fq 'else {' "$out/src/valid.c"
 grep -Fq 'switch(value) {' "$out/src/valid.c"
 grep -Fq 'case 1:' "$out/src/valid.c"
 grep -Fq 'default:' "$out/src/valid.c"
+grep -Fq 'goto done;' "$out/src/valid.c"
+grep -Fq 'done:' "$out/src/valid.c"
 grep -Fq 'enum { LOCAL_ACTION_NONE, LOCAL_ACTION_RUN };' "$out/src/valid.c"
 grep -Fq 'value = LOCAL_ACTION_RUN;' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
+cat > "$work/src/colon_decl.kry" <<'EOF'
+#module "colon_decl"
+#import "thing.h"
+
+shared_count :: int #global #export
+local_counter :: int = 7 #global
+
+helper :: (value: int) -> int {
+    return value + 1
+}
+
+private_helper :: (value: int) -> int #private {
+    return value - 1
+}
+
+c_entry :: (value: int) -> int #export {
+    return helper(value)
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/colon_decl.kry" >"$err" 2>&1
+grep -Fq 'extern int shared_count;' "$out/src/colon_decl.h"
+grep -Fq 'int shared_count;' "$out/src/colon_decl.c"
+grep -Fq 'int local_counter = 7;' "$out/src/colon_decl.c"
+grep -Fq 'int colon_decl_helper(int value);' "$out/src/colon_decl.h"
+grep -Fq 'int c_entry(int value);' "$out/src/colon_decl.h"
+if grep -Fq 'private_helper' "$out/src/colon_decl.h"; then
+    echo "private function leaked into generated header" >&2
+    exit 1
+fi
+grep -Fq 'static int' "$out/src/colon_decl.c"
+grep -Fq 'private_helper(int value)' "$out/src/colon_decl.c"
+grep -Fq 'colon_decl_helper(value);' "$out/src/colon_decl.c"
+
+cat > "$work/src/colon_import_host.kry" <<'EOF'
+#import "thing.h"
+panel :: #import "src/ui/panel"
+
+draw_host :: (app: void*) {
+    panel.draw(app)
+}
+EOF
+
+mkdir -p "$work/src/ui"
+cat > "$work/src/ui/panel.kry" <<'EOF'
+#module "ui.panel"
+#import "thing.h"
+
+draw :: (app: void*) {
+    native (void)app
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" \
+    "$work/src/ui/panel.kry" "$work/src/colon_import_host.kry" >"$err" 2>&1
+grep -q '#include "thing.h"' "$out/src/colon_import_host.h"
+grep -q '#include "src/ui/panel.h"' "$out/src/colon_import_host.h"
+grep -q 'ui_panel_draw(app);' "$out/src/colon_import_host.c"
+
+cat > "$work/src/colon_types.kry" <<'EOF'
+#import "thing.h"
+#import <stddef.h>
+#import "private_dep.h" #private
+
+Pair :: struct {
+    left: int
+    right: int
+}
+
+Mode :: enum {
+    MODE_NONE,
+    MODE_RUN,
+}
+
+#enum {
+    ANON_NONE,
+    ANON_RUN,
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/colon_types.kry" >"$err" 2>&1
+grep -q 'typedef struct Pair {' "$out/src/colon_types.h"
+grep -q '#include <stddef.h>' "$out/src/colon_types.c"
+grep -q '#include "private_dep.h"' "$out/src/colon_types.c"
+if grep -q '#include "private_dep.h"' "$out/src/colon_types.h"; then
+    echo "private import leaked into generated header" >&2
+    exit 1
+fi
+grep -q 'int left;' "$out/src/colon_types.h"
+grep -q '} Pair;' "$out/src/colon_types.h"
+grep -q 'typedef enum Mode {' "$out/src/colon_types.h"
+grep -q 'MODE_RUN,' "$out/src/colon_types.h"
+grep -q '} Mode;' "$out/src/colon_types.h"
+grep -q 'enum {' "$out/src/colon_types.h"
+grep -q 'ANON_RUN,' "$out/src/colon_types.h"
+
+cat > "$work/src/module_default.kry" <<'EOF'
+#module "ui.panel"
+
+panel_value :: () -> int {
+    return 7
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/module_default.kry" >"$err" 2>&1
+grep -q 'int ui_panel_panel_value(void);' "$out/src/module_default.h"
+grep -q '#include "src/module_default.h"' "$out/src/module_default.c"
+
+cat > "$work/src/externs.kry" <<'EOF'
+GetExternalApp :: () -> struct external_app* #extern
+
+WEB :: #defined(PLATFORM_WEB)
+
+#if WEB {
+    web_download_file :: (path: const char*, filename: const char*, mime: const char*) -> int #intrinsic "web"
+}
+
+externs_touch :: () -> int {
+    return 1
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/externs.kry" >"$err" 2>&1
+grep -Fq 'struct external_app* GetExternalApp(void);' "$out/src/externs.c"
+grep -q 'static int' "$out/src/externs.c"
+grep -Fq 'web_download_file(const char* path, const char* filename, const char* mime)' "$out/src/externs.c"
+
+cat > "$work/src/interop_directives.kry" <<'EOF'
+WIN32 :: #defined(_WIN32)
+
+#if WIN32 {
+    #pragma "GCC diagnostic push"
+    #error "missing platform bridge"
+    MessageBoxA :: (hwnd: void*,
+                    text: const char*,
+                    caption: const char*,
+                    kind: unsigned int) -> int #extern #storage "__declspec(dllimport)" #abi "__stdcall"
+}
+
+trace_log :: (level: int, text: const char*, ...) -> void #extern
+callback_attr :: (value: int) -> void #extern #attr "__attribute__((weak))"
+
+interop_touch :: () -> int {
+    return 1
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/interop_directives.kry" >"$err" 2>&1
+grep -q '#pragma GCC diagnostic push' "$out/src/interop_directives.c"
+grep -q '#error "missing platform bridge"' "$out/src/interop_directives.c"
+grep -Fq '__declspec(dllimport) int __stdcall MessageBoxA(void* hwnd, const char* text, const char* caption, unsigned int kind);' "$out/src/interop_directives.c"
+grep -Fq 'void trace_log(int level, const char* text, ...);' "$out/src/interop_directives.c"
+grep -Fq 'void callback_attr(int value) __attribute__((weak));' "$out/src/interop_directives.c"
+
+cat > "$work/src/source_api.kry" <<'EOF'
+#module "storage.source"
+#output "source_impl"
+#import "source_api.h"
+
+source_open :: () -> int #export {
+    return 1
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/source_api.kry" >"$err" 2>&1
+grep -q '#include "source_api.h"' "$out/src/source_impl.h"
+grep -q '#include "src/source_impl.h"' "$out/src/source_impl.c"
+if test -e "$out/src/source_api.h"; then
+    echo "module implementation generated colliding source_api.h" >&2
+    exit 1
+fi
+
 {
-    printf 'cimport "thing.h"\n\n'
+    printf '#import "thing.h"\n\n'
     for i in $(seq 1 40); do
-        printf 'pub fn many_%02d() -> int {\n    return %d\n}\n\n' "$i" "$i"
+        printf 'many_%02d :: () -> int {\n    return %d\n}\n\n' "$i" "$i"
     done
 } > "$work/src/many_functions.kry"
 
@@ -163,46 +363,46 @@ grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 grep -q 'int many_40(void);' "$out/src/many_functions.h"
 
 cat > "$work/src/settings_ui.kry" <<'EOF'
-mod settings_ui
-cimport "thing.h"
+#module "settings_ui"
+#import "thing.h"
 
-fn helper(value: int) -> int {
+helper :: (value: int) -> int #private {
     return value + 1
 }
 
-pub fn toggle_row_height(label: const char*, w: int) -> int {
+toggle_row_height :: (label: const char*, w: int) -> int {
     return helper(w)
 }
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/settings_ui.kry" >"$err" 2>&1
-grep -q '^settings_ui_helper(int value)' "$out/src/settings_ui.c"
+grep -q '^static int settings_ui_helper(int value)' "$out/src/settings_ui.c"
 grep -q 'int settings_ui_toggle_row_height(const char\* label, int w);' "$out/src/settings_ui.h"
 grep -q 'return settings_ui_helper(w);' "$out/src/settings_ui.c"
 
 cat > "$work/src/function_pointer.kry" <<'EOF'
-mod fp
-cimport "thing.h"
+#module "fp"
+#import "thing.h"
 
-struct Handler {
+Handler :: struct {
     callback: int (*)(int)
 }
 
-fn callback(value: int) -> int {
+callback :: (value: int) -> int #private {
     return value
 }
 
-fn start(value: int) -> int {
+start :: (value: int) -> int #private {
     return value
 }
 
-pub fn bind_callback() -> Handler {
+bind_callback :: () -> Handler {
     return (Handler){
         .callback = callback,
     }
 }
 
-pub fn check_shadow(start: int*) -> int {
+check_shadow :: (start: int*) -> int {
     if start != nil {
         return 1
     }
@@ -216,10 +416,10 @@ grep -q '\.callback = fp_callback,' "$out/src/function_pointer.c"
 grep -q 'if(start != NULL)' "$out/src/function_pointer.c"
 
 cat > "$work/src/settings_session.kry" <<'EOF'
-cimport "thing.h"
-ui := use "settings_ui"
+#import "thing.h"
+ui :: #import "settings_ui"
 
-pub fn draw_session(label: const char*, w: int) -> int {
+draw_session :: (label: const char*, w: int) -> int {
     return ui.toggle_row_height(label, w)
 }
 EOF
@@ -229,14 +429,14 @@ grep -q '#include "settings_ui.h"' "$out/src/settings_session.h"
 grep -q 'return settings_ui_toggle_row_height(label, w);' "$out/src/settings_session.c"
 
 cat > "$work/src/args_local.kry" <<'EOF'
-cimport "thing.h"
-cinclude <stdlib.h>
+#import "thing.h"
+#import <stdlib.h>
 
-struct WorkerArgs {
+WorkerArgs :: struct {
     value: int
 }
 
-fn worker(userdata: void*) -> void* {
+worker :: (userdata: void*) -> void* #private {
     args := (WorkerArgs*)userdata
     if args != nil {
         args->value = 1
@@ -244,13 +444,13 @@ fn worker(userdata: void*) -> void* {
     return userdata
 }
 
-pub fn allocate_args() -> int {
+allocate_args :: () -> int {
     args: WorkerArgs*
     args = malloc(sizeof(*args))
     if args == nil {
         return 0
     }
-    do free(args)
+    free(args)
     return 1
 }
 EOF
@@ -262,10 +462,10 @@ grep -Fq 'WorkerArgs* args = {0};' "$out/src/args_local.c"
 grep -Fq 'args = malloc(sizeof(*args));' "$out/src/args_local.c"
 
 cat > "$work/src/settings_direct.kry" <<'EOF'
-cimport "thing.h"
-use "settings_ui"
+#import "thing.h"
+#import "settings_ui"
 
-pub fn draw_direct(label: const char*, w: int) -> int {
+draw_direct :: (label: const char*, w: int) -> int {
     return settings_ui.toggle_row_height(label, w)
 }
 EOF
@@ -275,24 +475,24 @@ grep -q 'return settings_ui_toggle_row_height(label, w);' "$out/src/settings_dir
 
 mkdir -p "$work/src/ui"
 cat > "$work/src/ui/panel.kry" <<'EOF'
-mod ui.panel
-cimport "thing.h"
+#module "ui.panel"
+#import "thing.h"
 
-pub fn draw(app: void*) {
+draw :: (app: void*) {
     native (void)app
 }
 
-pub export fn panel_c_entry(app: void*) {
+panel_c_entry :: (app: void*) #export {
     native (void)app
 }
 EOF
 
 cat > "$work/src/panel_host.kry" <<'EOF'
-cimport "thing.h"
-panel := use "src/ui/panel"
+#import "thing.h"
+panel :: #import "src/ui/panel"
 
-pub fn draw_panel_host(app: void*) {
-    do panel.draw(app)
+draw_panel_host :: (app: void*) {
+    panel.draw(app)
 }
 EOF
 
@@ -304,17 +504,17 @@ grep -q '#include "src/ui/panel.h"' "$out/src/panel_host.h"
 grep -q 'void ui_panel_draw(void\* app);' "$out/src/ui/panel.h"
 grep -q 'void panel_c_entry(void\* app);' "$out/src/ui/panel.h"
 if grep -q 'ui_panel_panel_c_entry' "$out/src/ui/panel.h"; then
-    echo "pub export fn was module-prefixed" >&2
+    echo "export function was module-prefixed" >&2
     exit 1
 fi
 grep -q 'ui_panel_draw(app);' "$out/src/panel_host.c"
 
 mkdir -p "$work/src/settings"
 cat > "$work/src/settings/types.kry" <<'EOF'
-mod settings.types
-cimport "thing.h"
+#module "settings.types"
+#import "thing.h"
 
-pub struct SettingsThemeState {
+SettingsThemeState :: struct {
     value: int
 }
 EOF
@@ -329,11 +529,11 @@ grep -q 'int value;' "$out/src/settings/types.h"
 grep -q '#include "src/settings/types.h"' "$out/kryon_project.h"
 
 cat > "$work/src/panel_direct_host.kry" <<'EOF'
-cimport "thing.h"
-use "src/ui/panel"
+#import "thing.h"
+#import "src/ui/panel"
 
-pub fn draw_panel_direct_host(app: void*) {
-    do ui_panel.draw(app)
+draw_panel_direct_host :: (app: void*) {
+    ui_panel.draw(app)
 }
 EOF
 
@@ -342,21 +542,21 @@ EOF
 grep -q '#include "src/ui/panel.h"' "$out/src/panel_direct_host.h"
 grep -q 'ui_panel_draw(app);' "$out/src/panel_direct_host.c"
 
-cat > "$work/src/legacy_import.kry" <<'EOF'
-cimport "thing.h"
+cat > "$work/src/bad_import.kry" <<'EOF'
+#import "thing.h"
 import "src/ui/panel.kry"
 
-pub fn old_import_host(app: void*) {
-    do ui_panel.draw(app)
+old_import_host :: (app: void*) {
+    ui_panel.draw(app)
 }
 EOF
 
 if "$kc" --no-main --root "$work" -o "$out" \
-    "$work/src/legacy_import.kry" >"$err" 2>&1; then
-    echo "legacy import unexpectedly succeeded" >&2
+    "$work/src/bad_import.kry" >"$err" 2>&1; then
+    echo "removed import unexpectedly succeeded" >&2
     exit 1
 fi
-grep -q "import was removed" "$err"
+grep -q 'unknown top-level statement: import "src/ui/panel.kry"' "$err"
 
 cat > "$work/src/preview.kry" <<'EOF'
 preview stage_preview(viewport: Rectangle) {
@@ -367,7 +567,7 @@ EOF
 "$kc" --no-main --root "$work" -o "$out" "$work/src/preview.kry" >"$err" 2>&1
 
 cat > "$work/src/state_multiline.kry" <<'EOF'
-cimport "stddef.h"
+#import "stddef.h"
 
 state {
     labels: [2] const char* = {
@@ -376,7 +576,7 @@ state {
     }
 }
 
-pub fn state_label(index: int) -> const char* {
+state_label :: (index: int) -> const char* {
     return labels[index]
 }
 EOF
@@ -391,23 +591,23 @@ ANDROID :: #defined(ANDROID_BUILD)
 FEATURE_ENABLED :: ANDROID
 FEATURE_VALUE :: #define 7
 
-c {
-    include "stddef.h"
-}
-extern fn platform_ping(value: int) -> int #if FEATURE_ENABLED
+#import "stddef.h" #private
+platform_ping :: (value: int,
+                        tag: const char*) -> int #extern #if FEATURE_ENABLED
+platform_context :: () -> void* #extern #if FEATURE_ENABLED
 
 static records: [2] const int = {
     helper_value(),
     FEATURE_VALUE,
 }
 
-fn helper_value() -> int {
+helper_value :: () -> int #private {
     return nil == nil ? 1 : 0
 }
 
-pub fn native_feature_value() -> int {
+native_feature_value :: () -> int {
     #if FEATURE_ENABLED {
-        return platform_ping(records[0])
+        return platform_ping(records[0], "native")
     } #else {
         return records[1]
     }
@@ -418,7 +618,8 @@ EOF
 grep -q '#include "stddef.h"' "$out/src/native_c_features.c"
 grep -q '#define FEATURE_VALUE 7' "$out/src/native_c_features.c"
 grep -q '#if ((defined(ANDROID_BUILD)))' "$out/src/native_c_features.c"
-grep -q 'int platform_ping(int value);' "$out/src/native_c_features.c"
+grep -Fq 'int platform_ping(int value, const char* tag);' "$out/src/native_c_features.c"
+grep -Fq 'void* platform_context(void);' "$out/src/native_c_features.c"
 grep -q 'static int helper_value(void);' "$out/src/native_c_features.c"
 grep -q 'static const int records\[2\] = {' "$out/src/native_c_features.c"
 grep -q 'return NULL == NULL ? 1 : 0;' "$out/src/native_c_features.c"
@@ -429,46 +630,50 @@ cat > "$work/src/top_level_macros.kry" <<'EOF'
 WEB :: #defined(PLATFORM_WEB)
 DESKTOP :: !WEB
 
-mod platform.test
-cimport "thing.h"
+#module "platform.test"
+#import "thing.h"
 
 #if WEB {
-    cinclude <emscripten.h>
+    #import <emscripten.h>
     PLATFORM_VALUE :: #define 7
-    extern fn web_ping(value: int) -> int
-    extern intrinsic web fn web_download_file(path: const char*, filename: const char*, mime: const char*) -> int
-    extern intrinsic web fn web_context_click_in_bounds(x0: int, y0: int, x1: int, y1: int) -> int
+    guarded_counter :: int = 3 #global #export
+    web_ping :: (value: int,
+                       tag: const char*) -> int #extern
+    web_download_file :: (path: const char*,
+                                              filename: const char*,
+                                              mime: const char*) -> int #intrinsic "web"
+    web_context_click_in_bounds :: (x0: int, y0: int, x1: int, y1: int) -> int #intrinsic "web"
     static web_ready: int = 1
 
-    pub type WebCallback = int (*)(int)
+    WebCallback :: int (*)(int) #type
 
-    pub struct WebState {
+    WebState :: struct {
         value: int
     }
 
-    pub fn platform_value() -> int {
-        return web_ping(web_ready)
+    platform_value :: () -> int {
+        return web_ping(web_ready, "web")
     }
 
-    pub fn platform_download(path: const char*) -> int {
+    platform_download :: (path: const char*) -> int {
         return web_download_file(path, "file.bin", "application/octet-stream")
     }
 
-    pub fn platform_context_click() -> int {
+    platform_context_click :: () -> int {
         return web_context_click_in_bounds(1, 2, 3, 4)
     }
 } #else_if DESKTOP {
     static desktop_ready: int = 2
 
-    fn desktop_value() -> int {
+    desktop_value :: () -> int #private {
         return desktop_ready
     }
 
-    pub fn platform_value() -> int {
+    platform_value :: () -> int {
         return desktop_value()
     }
 } #else {
-    pub fn platform_value() -> int {
+    platform_value :: () -> int {
         return 0
     }
 }
@@ -479,59 +684,63 @@ grep -q '#if (defined(PLATFORM_WEB))' "$out/src/top_level_macros.h"
 grep -q 'typedef int (\*WebCallback)(int);' "$out/src/top_level_macros.h"
 grep -q 'typedef struct WebState {' "$out/src/top_level_macros.h"
 grep -q 'int platform_test_platform_value(void);' "$out/src/top_level_macros.h"
+grep -q 'extern int guarded_counter;' "$out/src/top_level_macros.h"
 grep -q '#include <emscripten.h>' "$out/src/top_level_macros.c"
 grep -q '#define PLATFORM_VALUE 7' "$out/src/top_level_macros.c"
-grep -q 'int web_ping(int value);' "$out/src/top_level_macros.c"
+grep -q 'int guarded_counter = 3;' "$out/src/top_level_macros.c"
+grep -Fq 'int web_ping(int value, const char* tag);' "$out/src/top_level_macros.c"
 grep -q 'static int' "$out/src/top_level_macros.c"
 grep -Fq 'web_download_file(const char* path, const char* filename, const char* mime)' "$out/src/top_level_macros.c"
 grep -Fq 'web_context_click_in_bounds(int x0, int y0, int x1, int y1)' "$out/src/top_level_macros.c"
 grep -Fq 'return web_download_file(path, "file.bin", "application/octet-stream");' "$out/src/top_level_macros.c"
 grep -Fq 'return web_context_click_in_bounds(1, 2, 3, 4);' "$out/src/top_level_macros.c"
 grep -Fq 'EM_ASM_INT' "$out/src/top_level_macros.c"
+grep -Fq 'Module.__kryonContextClick' "$out/src/top_level_macros.c"
+! grep -Fq 'Module.__inbeContextClick' "$out/src/top_level_macros.c"
 grep -q 'static int web_ready = 1;' "$out/src/top_level_macros.c"
 grep -q 'static int platform_test_desktop_value(void);' "$out/src/top_level_macros.c"
 grep -q 'static int desktop_ready = 2;' "$out/src/top_level_macros.c"
 grep -q '#if !((defined(PLATFORM_WEB))) && ((!(defined(PLATFORM_WEB))))' "$out/src/top_level_macros.c"
 
 cat > "$work/src/native_structs.kry" <<'EOF'
-cimport "stddef.h"
+#import "stddef.h"
 
-pub enum {
+#enum {
     PUBLIC_FIRST = 1
     PUBLIC_SECOND
 }
 
-pub enum PublicMode {
+PublicMode :: enum {
     PUBLIC_MODE_ONE = 1
     PUBLIC_MODE_TWO
 }
 
-pub type Callback = int (*)(int)
-type LocalSize = unsigned long
+Callback :: int (*)(int) #type
+LocalSize :: unsigned long #type #private
 
-enum {
+#enum #private {
     LOCAL_FIRST = 1
     LOCAL_SECOND
 }
 
-enum LocalMode {
+LocalMode :: enum #private {
     LOCAL_MODE_ONE = 1
     LOCAL_MODE_TWO
 }
 
-pub struct PublicPair {
+PublicPair :: struct {
     name: const char*
     values: [2] int
     matrix: [2][3] int
     mode: PublicMode
 }
 
-struct LocalCtx {
+LocalCtx :: struct #private {
     count: int
     pair: PublicPair*
 }
 
-pub fn native_struct_count(pair: PublicPair*) -> int {
+native_struct_count :: (pair: PublicPair*) -> int {
     ctx: LocalCtx = {0}
     ctx.count = pair != nil ? PUBLIC_SECOND + LOCAL_SECOND : 0
     ctx.pair = pair
@@ -564,9 +773,9 @@ grep -q 'PublicPair\* pair;' "$out/src/native_structs.c"
 grep -q '} LocalCtx;' "$out/src/native_structs.c"
 
 cat > "$work/src/multiline_fn_decl.kry" <<'EOF'
-cimport "stddef.h"
+#import "stddef.h"
 
-pub fn multiline_sum(first: int,
+multiline_sum :: (first: int,
                      second: int,
                      third: int) -> int {
     return first + second + third
@@ -578,17 +787,32 @@ grep -q 'int multiline_sum(int first, int second, int third);' "$out/src/multili
 grep -q 'multiline_sum(int first, int second, int third)' "$out/src/multiline_fn_decl.c"
 
 cat > "$work/src/implicit_call.kry" <<'EOF'
-screen bad {
+screen calls {
     InitializeThing()
+    DrawThing(
+        1,
+        2)
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/implicit_call.kry" >"$err" 2>&1; then
-    echo "implicit call was accepted" >&2
-    exit 1
-fi
-grep -q 'implicit call statements are not allowed' "$err"
-grep -Eq 'implicit_call\.kry:2:1: error:' "$err"
+"$kc" --no-main --root "$work" -o "$out" "$work/src/implicit_call.kry" >"$err" 2>&1
+grep -q 'InitializeThing();' "$out/src/implicit_call.c"
+grep -q 'DrawThing( 1, 2);' "$out/src/implicit_call.c"
+
+cat > "$work/src/expression_statement.kry" <<'EOF'
+#import "stddef.h"
+
+expression_statement :: (env: void*, object: void*, method: void*) {
+    (*env)->CallVoidMethod(env, object, method)
+    (*env)->DeleteLocalRef(
+        env,
+        object)
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/expression_statement.kry" >"$err" 2>&1
+grep -q '(\*env)->CallVoidMethod(env, object, method);' "$out/src/expression_statement.c"
+grep -q '(\*env)->DeleteLocalRef( env, object);' "$out/src/expression_statement.c"
 
 cat > "$work/src/bad_multi_decl.kry" <<'EOF'
 screen bad {
@@ -624,7 +848,7 @@ screen bad {
 EOF
 
 if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_include.kry" >"$err" 2>&1; then
-    echo "legacy include was accepted" >&2
+    echo "removed include was accepted" >&2
     exit 1
 fi
 grep -q 'unknown top-level statement: include "thing.h"' "$err"
@@ -637,15 +861,41 @@ screen bad {
 EOF
 
 if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_var.kry" >"$err" 2>&1; then
-    echo "legacy var declaration was accepted" >&2
+    echo "removed var declaration was accepted" >&2
     exit 1
 fi
 grep -q "'var' syntax was removed" "$err"
 grep -Eq 'bad_var\.kry:2:1: error:' "$err"
 
-cat > "$work/src/unbalanced.kry" <<'EOF'
+cat > "$work/src/bad_do.kry" <<'EOF'
 screen bad {
     do InitializeThing()
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_do.kry" >"$err" 2>&1; then
+    echo "removed do statement was accepted" >&2
+    exit 1
+fi
+grep -q "'do' syntax was removed" "$err"
+grep -Eq 'bad_do\.kry:2:1: error:' "$err"
+
+cat > "$work/src/bad_goto.kry" <<'EOF'
+screen bad {
+    goto
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_goto.kry" >"$err" 2>&1; then
+    echo "bad goto statement was accepted" >&2
+    exit 1
+fi
+grep -q 'expected goto label name' "$err"
+grep -Eq 'bad_goto\.kry:2:1: error:' "$err"
+
+cat > "$work/src/unbalanced.kry" <<'EOF'
+screen bad {
+    InitializeThing()
 EOF
 
 if "$kc" --no-main --root "$work" -o "$out" "$work/src/unbalanced.kry" >"$err" 2>&1; then

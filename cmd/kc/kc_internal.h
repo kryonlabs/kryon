@@ -50,6 +50,8 @@ typedef struct KryFile {
     char public_types[KC_TYPE_MAX][KC_BODY_LINE_MAX];
     char private_types[KC_TYPE_MAX][KC_BODY_LINE_MAX];
     char state[KC_STATE_MAX][KC_BODY_LINE_MAX];
+    char public_globals[KC_STATE_MAX][KC_BODY_LINE_MAX];
+    char globals[KC_STATE_MAX][KC_BODY_LINE_MAX];
     char includes[KC_INCLUDE_MAX][KC_PATH_MAX];
     char include_guards[KC_INCLUDE_MAX][KC_BODY_LINE_MAX];
     char const_names[KC_CONST_MAX][KC_NAME_MAX];
@@ -58,6 +60,7 @@ typedef struct KryFile {
     char define_values[KC_DEFINE_MAX][KC_BODY_LINE_MAX];
     char define_guards[KC_DEFINE_MAX][KC_BODY_LINE_MAX];
     char module[KC_NAME_MAX];
+    char module_file[KC_NAME_MAX];
     char use_aliases[KC_USE_MAX][KC_NAME_MAX];
     char use_modules[KC_USE_MAX][KC_NAME_MAX];
     KryFunction *functions;
@@ -65,6 +68,8 @@ typedef struct KryFile {
     int public_type_count;
     int private_type_count;
     int state_count;
+    int public_global_count;
+    int global_count;
     int include_count;
     int const_count;
     int define_count;

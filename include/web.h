@@ -16,6 +16,9 @@ void SetWebOrientationMode(int mode);
  * keep the window size synced to the browser viewport. Native builds return 0.
  */
 unsigned int GetWebWindowFlags(void);
+int IsWebStorageSyncPending(void);
+void ScheduleWebStorageSync(int delay_ms, int log_success);
+void FlushWebStorageSync(int log_success);
 
 /*
  * Resize raylib's window to the current browser viewport when it changes.

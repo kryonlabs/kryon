@@ -1,4 +1,4 @@
-cimport "kryon.h"
+#import "kryon.h"
 
 app "Kryon Theme Example" {
     size 800 600
@@ -12,7 +12,7 @@ state {
     dark_mode: int = 0
 }
 
-fn ThemeAt(index: int) -> ThemeId {
+ThemeAt :: (index: int) -> ThemeId {
     if index == 0 {
         return THEME_SKY
     }
@@ -49,30 +49,30 @@ fn ThemeAt(index: int) -> ThemeId {
     return THEME_COBALT
 }
 
-fn ThemeSwatch(label: const char *, y: int, value: Color, label_color: Color) {
+ThemeSwatch :: (label: const char *, y: int, value: Color, label_color: Color) {
     var x: int = ScaleUIPx(20)
     var size: int = ScaleUIPx(56)
     swatch label x: x y: y size: size color: value text_color: label_color
 }
 
-fn ThemeButton(label: const char *, x: int, y: int, w: int) -> int {
+ThemeButton :: (label: const char *, x: int, y: int, w: int) -> int {
     var h: int = ScaleUIPx(38)
     return DrawUIGenericButton(x,y,w,h,label,UI_BUTTON_STYLE_SECONDARY,0,NULL)
 }
 
-fn ThemeLabel(label: const char *, value: const char *, y: int, size: int, text_color: Color) {
+ThemeLabel :: (label: const char *, value: const char *, y: int, size: int, text_color: Color) {
     text TextFormat("%s%s",label,value) x: ScaleUIPx(20) y: y size: size color: text_color
 }
 
-fn ThemeSideLabel(label: const char *, value: const char *, y: int, text_color: Color) {
+ThemeSideLabel :: (label: const char *, value: const char *, y: int, text_color: Color) {
     text TextFormat("%s%s",label,value) x: ScaleUIPx(320) y: y size: UI_TEXT_16 color: text_color
 }
 
-fn ThemeSideInt(label: const char *, y: int, value: int, text_color: Color) {
+ThemeSideInt :: (label: const char *, y: int, value: int, text_color: Color) {
     text TextFormat("%s%d",label,value) x: ScaleUIPx(320) y: y size: UI_TEXT_16 color: text_color
 }
 
-fn ThemeRGB(label: const char *, y: int, value: Color, text_color: Color) {
+ThemeRGB :: (label: const char *, y: int, value: Color, text_color: Color) {
     var rgb_text: const char * = TextFormat("%s RGB:%d,%d,%d",label,value.r,value.g,value.b)
     text rgb_text x: ScaleUIPx(320) y: y size: 14 color: text_color
 }

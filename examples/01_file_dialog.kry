@@ -1,6 +1,6 @@
-cimport "kryon.h"
-cimport "file_dialog.h"
-cimport "stdio.h"
+#import "kryon.h"
+#import "file_dialog.h"
+#import "stdio.h"
 
 app "Kryon File Dialog Example" {
     size 800 600
@@ -19,7 +19,7 @@ state {
 screen FileDialogExample(viewport: Rectangle) {
     background GetThemeBackground()
     if dlg_ready == 0 {
-        do InitFileDialog(&dlg)
+        InitFileDialog(&dlg)
         set dlg_ready = 1
     }
     text "Kryon File Dialog" x: ScaleUIPx(32) y: ScaleUIPx(28) size: UI_TEXT_24 color: GetThemeText()

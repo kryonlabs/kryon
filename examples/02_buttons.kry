@@ -1,4 +1,4 @@
-cimport "kryon.h"
+#import "kryon.h"
 
 app "UI Buttons Example" {
     size 800 600

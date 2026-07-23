@@ -69,7 +69,7 @@ Apps own:
 
 ## Migration Phases
 
-1. Rename legacy build variables and paths from Flint to Kryon in every app.
+1. Rename old build variables and paths from Flint to Kryon in every app.
    `vendor/kryon` is the only runtime submodule path.
 2. Keep app Makefiles working, but make them use `KRYON_DIR` and Kryon-owned
    `mk/*.mk` includes exclusively.

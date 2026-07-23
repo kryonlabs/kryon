@@ -12,6 +12,8 @@ typedef struct TestCtx {
     char last_url[256];
     char last_body[256];
     char last_auth[128];
+    char last_user[128];
+    char last_signature[256];
     int apply_called;
     int purge_called;
 } TestCtx;
@@ -58,9 +60,19 @@ test_http(const char *method, const char *url, const char *body,
     snprintf(ctx->last_url, sizeof(ctx->last_url), "%s", url != NULL ? url : "");
     snprintf(ctx->last_body, sizeof(ctx->last_body), "%s", body != NULL ? body : "");
     ctx->last_auth[0] = '\0';
+    ctx->last_user[0] = '\0';
+    ctx->last_signature[0] = '\0';
     for(int i = 0; i < header_count; i++) {
         if(headers[i] != NULL && strncmp(headers[i], "Authorization:", 14) == 0)
             snprintf(ctx->last_auth, sizeof(ctx->last_auth), "%s", headers[i]);
+        if(headers[i] != NULL &&
+           (strncmp(headers[i], "X-Lyra-User:", 12) == 0 ||
+            strncmp(headers[i], "X-Inbe-User:", 12) == 0))
+            snprintf(ctx->last_user, sizeof(ctx->last_user), "%s", headers[i]);
+        if(headers[i] != NULL &&
+           (strncmp(headers[i], "X-Lyra-Signature:", 17) == 0 ||
+            strncmp(headers[i], "X-Inbe-Signature:", 17) == 0))
+            snprintf(ctx->last_signature, sizeof(ctx->last_signature), "%s", headers[i]);
     }
     if(status != NULL)
         *status = 200;
@@ -183,8 +195,67 @@ test_sync_run_with_valid_token(void)
           "sync posts to sync path");
     check(strcmp(ctx.last_auth, "Authorization: Bearer saved-token") == 0,
           "sync sends bearer token");
+    check(strncmp(ctx.last_user, "X-Lyra-User:", 12) == 0,
+          "sync uses generic user header by default");
     check(ctx.apply_called == 1, "sync applies response");
     check(ctx.purge_called == 1, "sync purges after success");
+}
+
+static int
+test_login_http(const char *method, const char *url, const char *body,
+                const char *const *headers, int header_count,
+                LyraSyncBuffer *response, long *status, void *user)
+{
+    TestCtx *ctx = user;
+
+    test_http(method, url, body, headers, header_count, response, status, user);
+    if(strstr(url, "/challenge") != NULL) {
+        FreeLyraSyncBuffer(response);
+        return AppendLyraSyncBuffer(response,
+                                    "{\"nonce\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+                                    strlen("{\"nonce\":\"0000000000000000000000000000000000000000000000000000000000000000\"}"));
+    }
+    if(strstr(url, "/login") != NULL) {
+        (void)ctx;
+        FreeLyraSyncBuffer(response);
+        return AppendLyraSyncBuffer(response,
+                                    "{\"auth_token\":\"new-token\",\"expires_in_seconds\":3600}",
+                                    strlen("{\"auth_token\":\"new-token\",\"expires_in_seconds\":3600}"));
+    }
+    return 1;
+}
+
+static void
+test_login_uses_configured_wire_names(void)
+{
+    TestCtx ctx = {0};
+    LyraAccount account;
+    LyraSyncConfig cfg;
+    LyraSyncResult result;
+
+    if(!CreateLyraAccount(&account)) {
+        check(0, "create account for login override test");
+        return;
+    }
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.base_url = "https://api.example.test";
+    cfg.account = &account;
+    cfg.client_id = "client-123";
+    cfg.signature_context = "inbe-sync-v1";
+    cfg.user_header_name = "X-Inbe-User";
+    cfg.signature_header_name = "X-Inbe-Signature";
+    cfg.http_request = test_login_http;
+    cfg.get_text = test_get_text;
+    cfg.set_text = test_set_text;
+    cfg.user = &ctx;
+
+    result = LoginLyraSync(&cfg);
+    check(result == LYRA_SYNC_OK, "login with configured wire names returns ok");
+    check(strncmp(ctx.last_user, "X-Inbe-User:", 12) == 0,
+          "login uses configured user header");
+    check(strncmp(ctx.last_signature, "X-Inbe-Signature:", 17) == 0,
+          "login uses configured signature header");
+    check(strcmp(ctx.token, "new-token") == 0, "login saves auth token");
 }
 
 int
@@ -193,5 +264,6 @@ main(void)
     test_url_helpers();
     test_json_helpers();
     test_sync_run_with_valid_token();
+    test_login_uses_configured_wire_names();
     return failures == 0 ? 0 : 1;
 }

@@ -65,7 +65,7 @@ test_export_parse_roundtrip(void)
 }
 
 static void
-test_legacy_imports(void)
+test_old_imports(void)
 {
     LyraAccount account;
     LyraAccount parsed;
@@ -76,13 +76,13 @@ test_legacy_imports(void)
     snprintf(text, sizeof(text),
              "inbe-sync-key-v1\nalgorithm=ML-DSA-44\npublic_key=%s\nsecret_key=%s\n",
              account.public_key_hex, account.private_key_hex);
-    check_true("legacy secret_key import", ParseLyraAccountText(text, &parsed));
-    check_true("legacy derived public id", strcmp(parsed.public_id, account.public_id) == 0);
+    check_true("old secret_key import", ParseLyraAccountText(text, &parsed));
+    check_true("old derived public id", strcmp(parsed.public_id, account.public_id) == 0);
 
     snprintf(text, sizeof(text),
              "account-key-v1\nalgorithm=ML-DSA-44\npublic_id=%s\npublic_key=%s\nprivate_key=%s\n",
              account.public_id, account.public_key_hex, account.private_key_hex);
-    check_true("legacy account-key import", ParseLyraAccountText(text, &parsed));
+    check_true("old account-key import", ParseLyraAccountText(text, &parsed));
 
     snprintf(json, sizeof(json),
              "{\"exported_key\":\"lyra-account-key-v1\\nalgorithm=ML-DSA-44\\npublic_id=%s\\npublic_key=%s\\nprivate_key=%s\\n\"}",
@@ -108,7 +108,7 @@ int
 main(void)
 {
     test_export_parse_roundtrip();
-    test_legacy_imports();
+    test_old_imports();
     test_reject_mismatch();
     if(failures != 0)
         return 1;

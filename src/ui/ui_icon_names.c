@@ -4,7 +4,9 @@
 
 const char *ui_icon_names[] = {
     NULL,  /* UI_ICON_TYPE_NONE */
+    "activity.png",  /* UI_ICON_TYPE_ACTIVITY */
     "amen.png",  /* UI_ICON_TYPE_AMEN */
+    "app.png",  /* UI_ICON_TYPE_APP */
     "backward.png",  /* UI_ICON_TYPE_BACKWARD */
     "c.png",  /* UI_ICON_TYPE_C */
     "calendar.png",  /* UI_ICON_TYPE_CALENDAR */
@@ -13,9 +15,7 @@ const char *ui_icon_names[] = {
     "forward.png",  /* UI_ICON_TYPE_FORWARD */
     "gear.png",  /* UI_ICON_TYPE_GEAR */
     "globe.png",  /* UI_ICON_TYPE_GLOBE */
-    "habit.png",  /* UI_ICON_TYPE_HABIT */
     "home.png",  /* UI_ICON_TYPE_HOME */
-    "inbe.png",  /* UI_ICON_TYPE_INBE */
     "jupiter.png",  /* UI_ICON_TYPE_JUPITER */
     "kryon.png",  /* UI_ICON_TYPE_KRYON */
     "leadercat.png",  /* UI_ICON_TYPE_LEADERCAT */

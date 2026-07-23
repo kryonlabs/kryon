@@ -11,6 +11,9 @@
 #define LYRA_ACCOUNT_DELETE_WITH_KEY_PATH "/api/v1/account/delete-with-key"
 #define LYRA_SYNC_AUTH_TOKEN_KEY "sync_auth_token"
 #define LYRA_SYNC_AUTH_TOKEN_EXPIRES_KEY "sync_auth_token_expires_at"
+#define LYRA_SYNC_SIGNATURE_CONTEXT "lyra-sync-v1"
+#define LYRA_SYNC_USER_HEADER "X-Lyra-User"
+#define LYRA_SYNC_SIGNATURE_HEADER "X-Lyra-Signature"
 
 const char *
 GetLyraSyncResultName(LyraSyncResult result)
@@ -289,21 +292,44 @@ sync_log_http_failure(const LyraSyncConfig *cfg, const char *step,
 }
 
 static int
-sync_build_message(const char *method, const char *path, const char *nonce_hex,
-                   const char *body, char *out, size_t out_size)
+sync_build_message(const LyraSyncConfig *cfg, const char *method, const char *path,
+                   const char *nonce_hex, const char *body, char *out,
+                   size_t out_size)
 {
     char body_hash[65];
+    const char *context;
     int len;
 
-    if(method == NULL || path == NULL || nonce_hex == NULL || body == NULL ||
-       out == NULL || out_size == 0)
+    if(cfg == NULL || method == NULL || path == NULL || nonce_hex == NULL ||
+       body == NULL || out == NULL || out_size == 0)
         return 0;
     LyraSha256Hex((const uint8_t *)body, strlen(body), body_hash);
     if(body_hash[0] == '\0')
         return 0;
-    len = snprintf(out, out_size, "inbe-sync-v1\n%s\n%s\n%s\n%s\n",
-                   method, path, body_hash, nonce_hex);
+    context = cfg->signature_context != NULL && cfg->signature_context[0] != '\0'
+                  ? cfg->signature_context
+                  : LYRA_SYNC_SIGNATURE_CONTEXT;
+    len = snprintf(out, out_size, "%s\n%s\n%s\n%s\n%s\n", context, method,
+                   path, body_hash, nonce_hex);
     return len > 0 && (size_t)len < out_size;
+}
+
+static const char *
+sync_user_header_name(const LyraSyncConfig *cfg)
+{
+    return cfg != NULL && cfg->user_header_name != NULL &&
+                   cfg->user_header_name[0] != '\0'
+               ? cfg->user_header_name
+               : LYRA_SYNC_USER_HEADER;
+}
+
+static const char *
+sync_signature_header_name(const LyraSyncConfig *cfg)
+{
+    return cfg != NULL && cfg->signature_header_name != NULL &&
+                   cfg->signature_header_name[0] != '\0'
+               ? cfg->signature_header_name
+               : LYRA_SYNC_SIGNATURE_HEADER;
 }
 
 static int
@@ -402,7 +428,7 @@ LoginLyraSync(const LyraSyncConfig *cfg)
         FreeLyraSyncBuffer(&body);
         return challenge_result;
     }
-    if(!sync_build_message("POST", LYRA_LOGIN_PATH, nonce_hex,
+    if(!sync_build_message(cfg, "POST", LYRA_LOGIN_PATH, nonce_hex,
                            body.data, message, sizeof(message))) {
         FreeLyraSyncBuffer(&body);
         return LYRA_SYNC_SIGN_FAILED;
@@ -413,8 +439,10 @@ LoginLyraSync(const LyraSyncConfig *cfg)
         return LYRA_SYNC_SIGN_FAILED;
     }
     JoinLyraSyncURL(url, sizeof(url), cfg->base_url, LYRA_LOGIN_PATH);
-    snprintf(user_header, sizeof(user_header), "X-Inbe-User: %s", cfg->account->public_id);
-    snprintf(signature_header, sizeof(signature_header), "X-Inbe-Signature: %s", signature_hex);
+    snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
+             cfg->account->public_id);
+    snprintf(signature_header, sizeof(signature_header), "%s: %s",
+             sync_signature_header_name(cfg), signature_hex);
     headers[0] = "Content-Type: application/json";
     headers[1] = user_header;
     headers[2] = signature_header;
@@ -466,7 +494,8 @@ sync_send_bearer(const LyraSyncConfig *cfg, const char *body, const char *token)
     int ok;
 
     JoinLyraSyncURL(url, sizeof(url), cfg->base_url, LYRA_SYNC_PATH);
-    snprintf(user_header, sizeof(user_header), "X-Inbe-User: %s", cfg->account->public_id);
+    snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
+             cfg->account->public_id);
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
              token != NULL ? token : "");
     headers[0] = "Content-Type: application/json";
@@ -587,7 +616,8 @@ RequestLyraSyncBearer(const LyraSyncConfig *cfg, const char *method,
 retry:
     if(!JoinLyraSyncURL(url, sizeof(url), cfg->base_url, path))
         return LYRA_SYNC_INVALID_URL;
-    snprintf(user_header, sizeof(user_header), "X-Inbe-User: %s", cfg->account->public_id);
+    snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
+             cfg->account->public_id);
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", token);
     if(body != NULL)
         headers[header_count++] = "Content-Type: application/json";

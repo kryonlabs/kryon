@@ -99,6 +99,47 @@ GetWebWindowFlags(void)
 }
 
 int
+IsWebStorageSyncPending(void)
+{
+#if defined(PLATFORM_WEB)
+    return EM_ASM_INT({
+        return Module.__kryonStorageSyncing || Module.__kryonStorageSyncPending ? 1 : 0;
+    });
+#else
+    return 0;
+#endif
+}
+
+void
+ScheduleWebStorageSync(int delay_ms, int log_success)
+{
+#if defined(PLATFORM_WEB)
+    EM_ASM({
+        if(typeof Module.__kryonScheduleStorageSync === 'function')
+            Module.__kryonScheduleStorageSync($0, !!$1);
+    }, delay_ms, log_success);
+#else
+    (void)delay_ms;
+    (void)log_success;
+#endif
+}
+
+void
+FlushWebStorageSync(int log_success)
+{
+#if defined(PLATFORM_WEB)
+    EM_ASM({
+        if(typeof Module.__kryonFlushStorageSync === 'function')
+            Module.__kryonFlushStorageSync(!!$0);
+        else if(typeof Module.__kryonScheduleStorageSync === 'function')
+            Module.__kryonScheduleStorageSync(0, !!$0);
+    }, log_success);
+#else
+    (void)log_success;
+#endif
+}
+
+int
 SyncWebWindowSize(void)
 {
 #if defined(PLATFORM_WEB)
@@ -111,12 +152,8 @@ SyncWebWindowSize(void)
     int current_height;
     int delta_w;
     int delta_h;
-    int storage_syncing;
 
-    storage_syncing = EM_ASM_INT({
-        return Module.__inbeStorageSyncing || Module.__inbeStorageSyncPending ? 1 : 0;
-    });
-    if(storage_syncing)
+    if(IsWebStorageSyncPending())
         return 0;
 
     GetWebViewportSize(GetScreenWidth(), GetScreenHeight(), &width, &height);

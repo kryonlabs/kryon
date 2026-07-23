@@ -42,6 +42,9 @@ typedef struct LyraSyncConfig {
     const char *base_url;
     const LyraAccount *account;
     const char *client_id;
+    const char *signature_context;
+    const char *user_header_name;
+    const char *signature_header_name;
     LyraSyncHttpRequestFn http_request;
     LyraSyncGetTextFn get_text;
     LyraSyncSetTextFn set_text;

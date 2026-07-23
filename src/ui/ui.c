@@ -1675,7 +1675,7 @@ ui_syntax_kry_keyword(const char *text, int len)
     static const char *keywords[] = {
         "app", "args", "background", "button", "c", "c_rect", "call",
         "cimport", "clamp_max", "clamp_min", "do", "draw", "else", "endraw",
-        "event", "fn", "font", "for", "fps", "guard", "icon_button", "if",
+        "event", "fn", "font", "for", "fps", "global", "goto", "guard", "icon_button", "if",
         "import", "in", "key", "key_down", "line", "mod", "native", "on", "page",
         "pub", "raw", "rect", "return", "returns", "screen", "set",
         "set_theme", "size", "state", "swatch", "text", "texture", "theme",
@@ -1694,7 +1694,7 @@ ui_syntax_c_keyword(const char *text, int len)
 {
     static const char *keywords[] = {
         "break", "case", "char", "const", "continue", "default", "do",
-        "double", "else", "enum", "float", "for", "if", "int", "long",
+        "double", "else", "enum", "float", "for", "goto", "if", "int", "long",
         "return", "short", "sizeof", "static", "struct", "switch",
         "typedef", "void", "while"
     };

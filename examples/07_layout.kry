@@ -1,4 +1,4 @@
-cimport "kryon.h"
+#import "kryon.h"
 
 app "Kryon Layout Example" {
     size 800 600
@@ -11,12 +11,12 @@ state {
     max_width: int = 560
 }
 
-fn LayoutInfo(label: const char *, value: int, x: int, y: int) {
+LayoutInfo :: (label: const char *, value: int, x: int, y: int) {
     var info: const char * = TextFormat("%s:%d",label,value)
     text info x: x y: y size: UI_TEXT_16 color: GetThemeText()
 }
 
-fn WidthButton(label: const char *, x: int, y: int, value: int) -> int {
+WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
     var style: int = UI_BUTTON_STYLE_SECONDARY
     if max_width == value {
         set style = UI_BUTTON_STYLE_PRIMARY
@@ -24,7 +24,7 @@ fn WidthButton(label: const char *, x: int, y: int, value: int) -> int {
     return DrawUIGenericButton(x,y,ScaleUIPx(110),ScaleUIPx(34),label,style,0,NULL)
 }
 
-fn LayoutNote(label: const char *, x: int, y: int, color: Color) {
+LayoutNote :: (label: const char *, x: int, y: int, color: Color) {
     text label x: x y: y size: UI_TEXT_16 color: color
 }
 
