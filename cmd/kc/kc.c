@@ -1271,22 +1271,38 @@ emit_enum_item(KryFile *file, int line_no, int is_public, const char *line)
 }
 
 static void
-emit_enum_start(KryFile *file, int line_no, int is_public, char *line)
+emit_enum_start(KryFile *file, int line_no, int is_public, char *line,
+                char *name, size_t name_size)
 {
     char *q = trim(line);
+    size_t n;
 
     if(is_public)
         q = trim(q + strlen("pub"));
     q = trim(q + strlen("enum"));
-    if(strcmp(q, "{") != 0)
-        die("%s:%d: expected anonymous enum block", file->path, line_no);
-    add_type_line(file, is_public, "enum {");
+    n = strlen(q);
+    if(n == 0 || q[n - 1] != '{')
+        die("%s:%d: expected '{' after enum name", file->path, line_no);
+    q[n - 1] = '\0';
+    q = trim(q);
+    if(q[0] == '\0') {
+        name[0] = '\0';
+        add_type_line(file, is_public, "enum {");
+        return;
+    }
+    if(!is_ident_text(q))
+        die("%s:%d: invalid enum name '%s'", file->path, line_no, q);
+    snprintf(name, name_size, "%s", q);
+    add_type_line(file, is_public, "typedef enum %s {", name);
 }
 
 static void
-emit_enum_end(KryFile *file, int is_public)
+emit_enum_end(KryFile *file, int is_public, const char *name)
 {
-    add_type_line(file, is_public, "};");
+    if(name != NULL && name[0] != '\0')
+        add_type_line(file, is_public, "} %s;", name);
+    else
+        add_type_line(file, is_public, "};");
 }
 
 static void
@@ -2594,6 +2610,7 @@ parse_kry(KryFile *file)
     char type_guard[KC_BODY_LINE_MAX] = "";
     int in_enum = 0;
     int enum_is_public = 0;
+    char enum_name[KC_NAME_MAX] = "";
     int in_c_block = 0;
     char c_block_guard[KC_BODY_LINE_MAX] = "";
     char state_block_guard[KC_BODY_LINE_MAX] = "";
@@ -2709,13 +2726,14 @@ parse_kry(KryFile *file)
                 continue;
             } else if(in_enum) {
                 if(line_is_close(line)) {
-                    emit_enum_end(file, enum_is_public);
+                    emit_enum_end(file, enum_is_public, enum_name);
                     if(type_guard[0] != '\0') {
                         add_guard_end(file, enum_is_public, 1, 0);
                         type_guard[0] = '\0';
                     }
                     in_enum = 0;
                     enum_is_public = 0;
+                    enum_name[0] = '\0';
                     depth += opens;
                     depth -= closes;
                     if(depth < 0)
@@ -3021,7 +3039,8 @@ parse_kry(KryFile *file)
                 current_macro_guard(type_guard, sizeof(type_guard),
                                     top_macros, top_macro_count);
                 add_guard_line(file, type_guard, enum_is_public, 1, 0);
-                emit_enum_start(file, line_no, enum_is_public, line);
+                emit_enum_start(file, line_no, enum_is_public, line,
+                                enum_name, sizeof(enum_name));
                 in_enum = 1;
                 depth += opens;
                 depth -= closes;

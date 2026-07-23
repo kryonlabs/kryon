@@ -429,6 +429,11 @@ pub enum {
     PUBLIC_SECOND
 }
 
+pub enum PublicMode {
+    PUBLIC_MODE_ONE = 1
+    PUBLIC_MODE_TWO
+}
+
 pub type Callback = int (*)(int)
 type LocalSize = unsigned long
 
@@ -437,9 +442,15 @@ enum {
     LOCAL_SECOND
 }
 
+enum LocalMode {
+    LOCAL_MODE_ONE = 1
+    LOCAL_MODE_TWO
+}
+
 pub struct PublicPair {
     name: const char*
     values: [2] int
+    mode: PublicMode
 }
 
 struct LocalCtx {
@@ -459,13 +470,20 @@ EOF
 grep -q 'enum {' "$out/src/native_structs.h"
 grep -q 'PUBLIC_FIRST = 1,' "$out/src/native_structs.h"
 grep -q 'PUBLIC_SECOND,' "$out/src/native_structs.h"
+grep -q 'typedef enum PublicMode {' "$out/src/native_structs.h"
+grep -q 'PUBLIC_MODE_TWO,' "$out/src/native_structs.h"
+grep -q '} PublicMode;' "$out/src/native_structs.h"
 grep -Fq 'typedef int (*Callback)(int);' "$out/src/native_structs.h"
 grep -q 'typedef unsigned long LocalSize;' "$out/src/native_structs.c"
 grep -q 'LOCAL_FIRST = 1,' "$out/src/native_structs.c"
 grep -q 'LOCAL_SECOND,' "$out/src/native_structs.c"
+grep -q 'typedef enum LocalMode {' "$out/src/native_structs.c"
+grep -q 'LOCAL_MODE_TWO,' "$out/src/native_structs.c"
+grep -q '} LocalMode;' "$out/src/native_structs.c"
 grep -q 'typedef struct PublicPair {' "$out/src/native_structs.h"
 grep -q 'const char\* name;' "$out/src/native_structs.h"
 grep -q 'int values\[2\];' "$out/src/native_structs.h"
+grep -q 'PublicMode mode;' "$out/src/native_structs.h"
 grep -q '} PublicPair;' "$out/src/native_structs.h"
 grep -q 'typedef struct LocalCtx {' "$out/src/native_structs.c"
 grep -q 'PublicPair\* pair;' "$out/src/native_structs.c"
