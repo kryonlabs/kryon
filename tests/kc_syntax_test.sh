@@ -220,6 +220,39 @@ EOF
 grep -q '#include "settings_ui.h"' "$out/src/settings_session.h"
 grep -q 'return settings_ui_toggle_row_height(label, w);' "$out/src/settings_session.c"
 
+cat > "$work/src/args_local.kry" <<'EOF'
+cimport "thing.h"
+cinclude <stdlib.h>
+
+struct WorkerArgs {
+    value: int
+}
+
+fn worker(userdata: void*) -> void* {
+    args := (WorkerArgs*)userdata
+    if args != nil {
+        args->value = 1
+    }
+    return userdata
+}
+
+pub fn allocate_args() -> int {
+    args: WorkerArgs*
+    args = malloc(sizeof(*args))
+    if args == nil {
+        return 0
+    }
+    do free(args)
+    return 1
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/args_local.kry" >"$err" 2>&1
+grep -q 'static void\* worker(void\* userdata);' "$out/src/args_local.c"
+grep -Fq 'args = (WorkerArgs*)userdata;' "$out/src/args_local.c"
+grep -Fq 'WorkerArgs* args = {0};' "$out/src/args_local.c"
+grep -Fq 'args = malloc(sizeof(*args));' "$out/src/args_local.c"
+
 cat > "$work/src/settings_direct.kry" <<'EOF'
 cimport "thing.h"
 use "settings_ui"

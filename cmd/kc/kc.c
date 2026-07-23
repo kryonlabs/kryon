@@ -264,6 +264,20 @@ starts_statement_word(const char *s, const char *word)
 }
 
 static int
+starts_header_directive(const char *s, const char *word)
+{
+    size_t n = strlen(word);
+    const char *p;
+
+    if(!starts_word(s, word))
+        return 0;
+    p = s + n;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    return isalpha((unsigned char)*p) || *p == '_' || *p == '*';
+}
+
+static int
 parse_ident(char **sp, char *dst, size_t dst_size)
 {
     char *s = *sp;
@@ -3273,14 +3287,16 @@ parse_kry(KryFile *file)
                              "%s", trim(q));
                 }
                 in_screen = 1;
-            } else if(in_screen && depth > 0 && starts_word(line, "args")) {
+            } else if(in_screen && depth > 0 &&
+                      starts_header_directive(line, "args")) {
                 char *q = trim(line + strlen("args"));
                 KryFunction *fn = file->current;
 
                 if(fn == NULL)
                     die("%s:%d: args outside function", file->path, line_no);
                 snprintf(fn->args, sizeof(fn->args), "%s", q);
-            } else if(in_screen && depth > 0 && starts_word(line, "returns")) {
+            } else if(in_screen && depth > 0 &&
+                      starts_header_directive(line, "returns")) {
                 char *q = trim(line + strlen("returns"));
                 KryFunction *fn = file->current;
 
@@ -3289,7 +3305,8 @@ parse_kry(KryFile *file)
                 if(q[0] == '\0')
                     die("%s:%d: expected return type", file->path, line_no);
                 snprintf(fn->return_type, sizeof(fn->return_type), "%s", q);
-            } else if(in_screen && depth > 0 && starts_word(line, "call")) {
+            } else if(in_screen && depth > 0 &&
+                      starts_header_directive(line, "call")) {
                 char *q = trim(line + strlen("call"));
                 KryFunction *fn = file->current;
 
