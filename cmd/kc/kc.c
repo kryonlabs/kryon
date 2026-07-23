@@ -2367,6 +2367,14 @@ parse_statement(KryFile *file, int line_no, char *line)
         if(q[0] == '\0')
             die("%s:%d: expected texture expression", file->path, line_no);
         add_body(file, "    Texture2D %s = %s;", name, q);
+    } else if(starts_word(line, "enum")) {
+        char *q = trim(line + strlen("enum"));
+        size_t n = strlen(q);
+
+        if(n == 0 || q[n - 1] != '}')
+            die("%s:%d: expected enum block ending with }", file->path,
+                line_no);
+        add_body(file, "    enum %s;", q);
     } else if(starts_word(line, "if")) {
         char *q = trim(line + strlen("if"));
         size_t n = strlen(q);

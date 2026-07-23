@@ -81,6 +81,11 @@ screen valid {
     default:
         value = 3
     }
+    enum {
+        LOCAL_ACTION_NONE,
+        LOCAL_ACTION_RUN
+    }
+    value = LOCAL_ACTION_RUN
     app := (void*)0
     native (void)app
 }
@@ -124,6 +129,8 @@ grep -Fq 'if(path == NULL)' "$out/src/valid.c"
 grep -Fq 'switch(value) {' "$out/src/valid.c"
 grep -Fq 'case 1:' "$out/src/valid.c"
 grep -Fq 'default:' "$out/src/valid.c"
+grep -Fq 'enum { LOCAL_ACTION_NONE, LOCAL_ACTION_RUN };' "$out/src/valid.c"
+grep -Fq 'value = LOCAL_ACTION_RUN;' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
 {
