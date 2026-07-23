@@ -28,6 +28,7 @@ typedef int (*RuntimeAssetDownloadBackend)(RuntimeAssetDownload *download,
 int InitRuntimeAssets(const char *app_id);
 int GetRuntimeAssetCacheRoot(const char *app_id, char *out, size_t out_size);
 int EnsureRuntimeAssetDir(const char *path);
+int SyncRuntimeAssets(void);
 void SetRuntimeAssetDownloadBackend(RuntimeAssetDownloadBackend backend);
 int DownloadRuntimeAsset(RuntimeAssetDownload *download,
                                  const char *url,

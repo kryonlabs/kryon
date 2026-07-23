@@ -142,6 +142,21 @@ InitRuntimeAssets(const char *app_id)
     return 1;
 }
 
+int
+SyncRuntimeAssets(void)
+{
+#if defined(__EMSCRIPTEN__)
+    EM_ASM({
+        if(typeof FS !== 'undefined' && FS.syncfs) {
+            FS.syncfs(false, function(err) {
+                if(err) console.error('kryon runtime asset save failed', err);
+            });
+        }
+    });
+#endif
+    return 1;
+}
+
 const char *
 GetRuntimeAssetStatusText(RuntimeAssetStatus status)
 {
@@ -192,11 +207,7 @@ fetch_done(emscripten_fetch_t *fetch)
 
     fclose(file);
     download->status = RUNTIME_ASSET_READY;
-    EM_ASM({
-        FS.syncfs(false, function(err) {
-            if(err) console.error('kryon runtime asset save failed', err);
-        });
-    });
+    SyncRuntimeAssets();
     emscripten_fetch_close(fetch);
 }
 
