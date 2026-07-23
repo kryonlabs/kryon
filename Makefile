@@ -103,6 +103,7 @@ MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
+PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean run tools examples-run font-assets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
@@ -147,7 +148,7 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
 	$(LYRA_ACCOUNT_TEST)
 	$(LYRA_SYNC_TEST)
@@ -157,6 +158,7 @@ test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_
 	$(RAYLIB_COMPAT_TEST)
 	$(UI_TK_TEST)
 	$(PREVIEW_TEST)
+	$(PLATFORM_THREAD_TEST)
 
 bsd-check:
 	$(MAKE) clean
@@ -305,6 +307,11 @@ $(PREVIEW_TEST): tests/preview_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/preview_test.c \
 		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+$(PLATFORM_THREAD_TEST): tests/platform_thread_test.c src/platform/platform_thread.c include/platform.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/platform_thread_test.c \
+		src/platform/platform_thread.c -lpthread -o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh "$(ICON_DIR)" $@

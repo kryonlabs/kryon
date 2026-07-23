@@ -58,6 +58,15 @@ screen valid {
         1) {
         value++
     }
+    if value > 0 &&
+       first >= 0 {
+        value++
+    }
+    for int j = 0;
+        j < 2;
+        j++ {
+        value += j
+    }
     value = value > 0
         ? value
         : 1
@@ -115,6 +124,8 @@ grep -q 'while(value < 3)' "$out/src/valid.c"
 grep -q 'DrawThing( value, (ThingSpec){ .value = value, .label = "hello" } );' "$out/src/valid.c"
 grep -q 'value = value + 1;' "$out/src/valid.c"
 grep -q 'if(CheckThing( value, 1)) {' "$out/src/valid.c"
+grep -Fq 'if(value > 0 && first >= 0) {' "$out/src/valid.c"
+grep -Fq 'for(int j = 0; j < 2; j++) {' "$out/src/valid.c"
 grep -q 'value = value > 0 ? value : 1;' "$out/src/valid.c"
 grep -q '    {' "$out/src/valid.c"
 grep -Fq 'int scoped = 9;' "$out/src/valid.c"

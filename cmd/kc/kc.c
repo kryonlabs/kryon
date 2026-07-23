@@ -1551,6 +1551,8 @@ line_needs_continuation(const char *line)
         return 0;
     if(end[-1] == ',')
         return 1;
+    if(end[-1] == ';')
+        return 1;
     if(end[-1] == '+' || end[-1] == '-') {
         if(end - line >= 2 && end[-2] == end[-1])
             return 0;
