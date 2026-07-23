@@ -1392,6 +1392,9 @@ line_is_assignment_statement(const char *line)
         return 0;
     if(strstr(line, "+=") != NULL || strstr(line, "-=") != NULL ||
        strstr(line, "*=") != NULL || strstr(line, "/=") != NULL ||
+       strstr(line, "%=") != NULL || strstr(line, "&=") != NULL ||
+       strstr(line, "|=") != NULL || strstr(line, "^=") != NULL ||
+       strstr(line, "<<=") != NULL || strstr(line, ">>=") != NULL ||
        strstr(line, "++") != NULL || strstr(line, "--") != NULL)
         return 1;
     for(p = line; *p != '\0'; p++) {
@@ -1413,6 +1416,9 @@ line_is_mutation_statement(const char *line)
     return line != NULL &&
            (strstr(line, "+=") != NULL || strstr(line, "-=") != NULL ||
             strstr(line, "*=") != NULL || strstr(line, "/=") != NULL ||
+            strstr(line, "%=") != NULL || strstr(line, "&=") != NULL ||
+            strstr(line, "|=") != NULL || strstr(line, "^=") != NULL ||
+            strstr(line, "<<=") != NULL || strstr(line, ">>=") != NULL ||
             strstr(line, "++") != NULL || strstr(line, "--") != NULL);
 }
 
