@@ -1687,9 +1687,9 @@ line_is_hash_else(char *line)
     return strcmp(line, "} #else {") == 0 || strcmp(line, "#else {") == 0;
 }
 
-void
-expand_compile_expr(char *dst, size_t dst_size, const KryFile *file,
-                    const char *src)
+static void
+expand_compile_expr_depth(char *dst, size_t dst_size, const KryFile *file,
+                          const char *src, int depth)
 {
     size_t n = 0;
     int in_string = 0;
@@ -1697,6 +1697,10 @@ expand_compile_expr(char *dst, size_t dst_size, const KryFile *file,
 
     if(dst_size == 0)
         return;
+    if(depth > 32) {
+        dst[0] = '\0';
+        return;
+    }
     for(const char *p = src; p != NULL && *p != '\0' && n + 1 < dst_size;) {
         if(in_string) {
             dst[n++] = *p;
@@ -1748,8 +1752,8 @@ expand_compile_expr(char *dst, size_t dst_size, const KryFile *file,
                     char expanded[KC_BODY_LINE_MAX];
                     int written;
 
-                    expand_compile_expr(expanded, sizeof(expanded), file,
-                                        file->const_exprs[i]);
+                    expand_compile_expr_depth(expanded, sizeof(expanded), file,
+                                              file->const_exprs[i], depth + 1);
                     written = snprintf(dst + n, dst_size - n, "(%s)",
                                        expanded);
                     if(written < 0)
@@ -1775,6 +1779,13 @@ expand_compile_expr(char *dst, size_t dst_size, const KryFile *file,
         dst[n++] = *p++;
     }
     dst[n] = '\0';
+}
+
+void
+expand_compile_expr(char *dst, size_t dst_size, const KryFile *file,
+                    const char *src)
+{
+    expand_compile_expr_depth(dst, dst_size, file, src, 0);
 }
 
 static void
