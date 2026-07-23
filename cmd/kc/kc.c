@@ -520,16 +520,24 @@ convert_var_decl(char *dst, size_t dst_size, const char *name,
     snprintf(tmp, sizeof(tmp), "%s", type != NULL ? type : "");
     t = trim(tmp);
     if(t[0] == '[') {
-        char *end = strchr(t, ']');
+        char dims[256] = "";
+        char *p = t;
 
-        if(end != NULL) {
+        while(*p == '[') {
+            char *end = strchr(p, ']');
             char *size;
-            char *element;
 
+            if(end == NULL)
+                break;
             *end = '\0';
-            size = trim(t + 1);
-            element = trim(end + 1);
-            snprintf(dst, dst_size, "%s %s[%s]", element, name, size);
+            size = trim(p + 1);
+            strncat(dims, "[", sizeof(dims) - strlen(dims) - 1);
+            strncat(dims, size, sizeof(dims) - strlen(dims) - 1);
+            strncat(dims, "]", sizeof(dims) - strlen(dims) - 1);
+            p = trim(end + 1);
+        }
+        if(dims[0] != '\0') {
+            snprintf(dst, dst_size, "%s %s%s", p, name, dims);
             return;
         }
     }

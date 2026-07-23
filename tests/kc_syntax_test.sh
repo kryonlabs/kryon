@@ -450,6 +450,7 @@ enum LocalMode {
 pub struct PublicPair {
     name: const char*
     values: [2] int
+    matrix: [2][3] int
     mode: PublicMode
 }
 
@@ -483,6 +484,7 @@ grep -q '} LocalMode;' "$out/src/native_structs.c"
 grep -q 'typedef struct PublicPair {' "$out/src/native_structs.h"
 grep -q 'const char\* name;' "$out/src/native_structs.h"
 grep -q 'int values\[2\];' "$out/src/native_structs.h"
+grep -q 'int matrix\[2\]\[3\];' "$out/src/native_structs.h"
 grep -q 'PublicMode mode;' "$out/src/native_structs.h"
 grep -q '} PublicPair;' "$out/src/native_structs.h"
 grep -q 'typedef struct LocalCtx {' "$out/src/native_structs.c"
