@@ -12,7 +12,7 @@ enum {
     KC_CALL_MAX = 64,
     KC_CONST_MAX = 64,
     KC_DEFINE_MAX = 64,
-    KC_TYPE_MAX = 64,
+    KC_TYPE_MAX = 256,
     KC_RAW_MAX = 1024,
     KC_STATE_MAX = 128,
     KC_BODY_MAX = 512,
