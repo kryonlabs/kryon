@@ -4582,6 +4582,14 @@ draw_start_page(Rectangle content, EditorProject *project,
         *new_project_requested = 1;
     y += ScaleUIPx(44) + ScaleUIPx(22);
 
+    /* Recent projects and examples share a responsive card grid. */
+    int cards_cols = col_w / (ScaleUIPx(200) + gap);
+    if(cards_cols < 1)
+        cards_cols = 1;
+    if(cards_cols > 3)
+        cards_cols = 3;
+    int cards_col_w = (col_w - gap * (cards_cols - 1)) / cards_cols;
+
     DrawUIText("Recent Projects", x0, y, UI_TEXT_16, GetThemeIcon());
     y += ScaleUIPx(26);
     if(recent == NULL || recent->count == 0) {
@@ -4590,9 +4598,14 @@ draw_start_page(Rectangle content, EditorProject *project,
         y += ScaleUIPx(24);
     } else {
         for(int i = 0; i < recent->count; i++) {
-            if(y + card_h > bottom_limit)
+            int col = i % cards_cols;
+            int row = i / cards_cols;
+            int card_x = x0 + col * (cards_col_w + gap);
+            int card_y = y + row * (card_h + gap);
+
+            if(card_y + card_h > bottom_limit)
                 break;
-            if(draw_start_card(x0, y, col_w, card_h,
+            if(draw_start_card(card_x, card_y, cards_col_w, card_h,
                                path_basename(recent->paths[i]),
                                recent->paths[i])) {
                 editor_open_project(project, recent->paths[i], recent,
@@ -4600,8 +4613,8 @@ draw_start_page(Rectangle content, EditorProject *project,
                 if(sidebar != NULL)
                     memset(sidebar, 0, sizeof(*sidebar));
             }
-            y += card_h + gap;
         }
+        y += ((recent->count + cards_cols - 1) / cards_cols) * (card_h + gap);
     }
 
     y += ScaleUIPx(10);
@@ -4610,8 +4623,6 @@ draw_start_page(Rectangle content, EditorProject *project,
         char ex_paths[EDITOR_MAX_EXAMPLES][EDITOR_PATH_CAP];
         char ex_titles[EDITOR_MAX_EXAMPLES][EDITOR_EXAMPLE_TITLE_CAP];
         int ex_count = 0;
-        int cards_cols;
-        int cards_col_w;
 
         DrawUIText("Examples", x0, y, UI_TEXT_16, GetThemeIcon());
         y += ScaleUIPx(26);
@@ -4627,12 +4638,6 @@ draw_start_page(Rectangle content, EditorProject *project,
                        GetThemeIcon());
             return;
         }
-        cards_cols = col_w / (ScaleUIPx(200) + gap);
-        if(cards_cols < 1)
-            cards_cols = 1;
-        if(cards_cols > 3)
-            cards_cols = 3;
-        cards_col_w = (col_w - gap * (cards_cols - 1)) / cards_cols;
         for(int i = 0; i < ex_count; i++) {
             int col = i % cards_cols;
             int row = i / cards_cols;

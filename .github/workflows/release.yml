@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Validate Version
+      - name: Resolve Version
         id: version
         run: |
           set -euo pipefail
@@ -51,13 +51,56 @@ jobs:
             v[0-9]*.[0-9]*.[0-9]*) ;;
             *) echo "Version must look like v0.1.0" >&2; exit 1 ;;
           esac
-          grep -q "^## $tag " CHANGELOG.md
           if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
             echo "Tag $tag already exists; nothing to release."
             echo "tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure CHANGELOG Entry
+        if: steps.version.outputs.tag != ''
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # If the entry already exists (hand-written by a maintainer), use it as-is.
+          if grep -q "^## $tag " CHANGELOG.md; then
+            echo "CHANGELOG entry for $tag already present."
+            exit 0
+          fi
+
+          # Otherwise generate one from commits since the most recent tag.
+          prev_tag="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+          date="$(date +%Y-%m-%d)"
+          range="${prev_tag:+$prev_tag..}HEAD"
+          range="${range:-HEAD}"
+
+          {
+            printf '## %s - %s\n\n' "$tag" "$date"
+            printf '### Changed\n\n'
+            git log "$range" --no-merges --pretty=format:'- %s' \
+              | sed -E 's/^- ([a-z])/- \u\1/'
+            printf '\n\n'
+          } > /tmp/new_entry.md
+
+          # Insert the generated block immediately after the "# Changelog" heading.
+          cp CHANGELOG.md CHANGELOG.md.bak
+          awk -v entry=/tmp/new_entry.md '
+            FNR==1 && /^# Changelog/ {
+              print
+              while ((getline line < entry) > 0) print line
+              next
+            }
+            { print }
+          ' CHANGELOG.md.bak > CHANGELOG.md
+          rm -f CHANGELOG.md.bak
+
+          git add CHANGELOG.md
+          git commit -m "Update CHANGELOG for $tag" || echo "No CHANGELOG changes to commit."
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Create And Push Tag
         if: steps.version.outputs.tag != ''
@@ -97,7 +140,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake libssl-dev pkg-config zlib1g-dev libsdl2-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config zlib1g-dev libzstd-dev libbrotli-dev libsdl2-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev
 
       - name: Build And Test
         run: |
