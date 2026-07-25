@@ -26,10 +26,10 @@ screen valid {
     value := first + second
     unused second
     InitializeThing()
-    draw DrawThing()
+    DrawThing()
     value = 1
     first, second = second, first
-    native NativeThing()
+    NativeThing()
     c #if 0
     c #endif
     for int i = 0; i < 2; i++ {
@@ -229,7 +229,7 @@ cat > "$work/src/ui/panel.kry" <<'EOF'
 #import "thing.h"
 
 draw :: (app: void*) {
-    native (void)app
+    unused app
 }
 EOF
 
@@ -479,11 +479,11 @@ cat > "$work/src/ui/panel.kry" <<'EOF'
 #import "thing.h"
 
 draw :: (app: void*) {
-    native (void)app
+    unused app
 }
 
 panel_c_entry :: (app: void*) #export {
-    native (void)app
+    unused app
 }
 EOF
 
@@ -560,7 +560,7 @@ grep -q 'unknown top-level statement: import "src/ui/panel.kry"' "$err"
 
 cat > "$work/src/preview.kry" <<'EOF'
 preview stage_preview(viewport: Rectangle) {
-    background BLACK
+    WidgetBackground(BLACK)
 }
 EOF
 
@@ -879,6 +879,22 @@ if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_do.kry" >"$err" 2>&1;
 fi
 grep -q "'do' syntax was removed" "$err"
 grep -Eq 'bad_do\.kry:2:1: error:' "$err"
+
+# Removed widget verbs: draw, native, set, widget must now error with a
+# migration hint, mirroring the let/var/do removals above.
+for verb in draw native set widget; do
+    cat > "$work/src/bad_${verb}.kry" <<EOF
+screen bad {
+    ${verb} InitializeThing()
+}
+EOF
+    if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_${verb}.kry" >"$err" 2>&1; then
+        echo "removed ${verb} statement was accepted" >&2
+        exit 1
+    fi
+    grep -q "was removed" "$err"
+    grep -Eq "bad_${verb}\.kry:2:1: error:" "$err"
+done
 
 cat > "$work/src/bad_goto.kry" <<'EOF'
 screen bad {

@@ -12,18 +12,24 @@ state {
 }
 
 screen ColorExample(viewport: Rectangle) {
-    background GetThemeBackground()
+    WidgetBackground(GetThemeBackground())
     colors: [5] Color = {GetThemeButton(),GetThemeButtonHover(),GetThemeCircle(),GetThemeSurface(),GetThemeLink()}
     base: Color = colors[color_index]
     light: Color = LightenUIColor(base,40)
     dark: Color = DarkenUIColor(base,40)
-    text "Color Utilities" x: 50 y: 20 size: UI_TEXT_24 color: GetThemeText()
-    swatch "Original" x: 50 y: 70 size: 70 color: base text_color: GetThemeText()
-    swatch "Lightened" x: 50 y: 160 size: 70 color: light text_color: GetThemeText()
-    swatch "Darkened" x: 50 y: 250 size: 70 color: dark text_color: GetThemeText()
-    text TextFormat("Color %d/5 - SPACE cycles",color_index+1) x: 320 y: 82 size: 18 color: GetThemeText()
-    text TextFormat("RGB:%d,%d,%d",base.r,base.g,base.b) x: 320 y: 116 size: UI_TEXT_16 color: GetThemeText()
+    WidgetText("Color Utilities", 50, 20, UI_TEXT_24, GetThemeText())
+    WidgetRect(50, 70, 70, 70, base, BLANK)
+    WidgetRect(50, 70, 70, 70, BLANK, GetThemeText())
+    WidgetText("Original", 50+70+ScaleUIPx(10), 70+ScaleUIPx(10), UI_TEXT_16, GetThemeText())
+    WidgetRect(50, 160, 70, 70, light, BLANK)
+    WidgetRect(50, 160, 70, 70, BLANK, GetThemeText())
+    WidgetText("Lightened", 50+70+ScaleUIPx(10), 160+ScaleUIPx(10), UI_TEXT_16, GetThemeText())
+    WidgetRect(50, 250, 70, 70, dark, BLANK)
+    WidgetRect(50, 250, 70, 70, BLANK, GetThemeText())
+    WidgetText("Darkened", 50+70+ScaleUIPx(10), 250+ScaleUIPx(10), UI_TEXT_16, GetThemeText())
+    WidgetText(TextFormat("Color %d/5 - SPACE cycles",color_index+1), 320, 82, 18, GetThemeText())
+    WidgetText(TextFormat("RGB:%d,%d,%d",base.r,base.g,base.b), 320, 116, UI_TEXT_16, GetThemeText())
     on key KEY_SPACE {
-        set color_index = (color_index + 1) % 5
+        color_index = (color_index + 1) % 5
     }
 }

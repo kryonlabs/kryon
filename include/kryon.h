@@ -26,6 +26,7 @@
 #include "ui.h"
 #include "ui_text_layout.h"
 #include "ui_transition.h"
+#include "ui_widgets.h"
 #include "locale.h"
 #include "lyra_account.h"
 #include "lyra_sync.h"

@@ -2708,13 +2708,8 @@ parse_statement(KryFile *file, int line_no, char *line)
     } else if(line_is_c_uninit_decl(line)) {
         add_body(file, "    %s;", line);
     } else if(starts_word(line, "background")) {
-        char *q = trim(line + strlen("background"));
-
-        if(q[0] == '\0')
-            die("%s:%d: expected background color", file->path, line_no);
-        add_body(file,
-                 "    DrawRectangleRec((Rectangle){0, 0, GetUIViewWidth(), GetUIViewHeight()}, %s);",
-                 q);
+        die("%s:%d: 'background' widget keyword was removed; call WidgetBackground(color) instead",
+            file->path, line_no);
     } else if(starts_word(line, "set_theme")) {
         char *q = trim(line + strlen("set_theme"));
         char theme[KC_NAME_MAX];
@@ -2727,91 +2722,17 @@ parse_statement(KryFile *file, int line_no, char *line)
             mode = "0";
         add_body(file, "    SetCurrentTheme(%s, %s);", theme, mode);
     } else if(starts_statement_word(line, "text")) {
-        char *q = trim(line + strlen("text"));
-        char label[512];
-        char x[128] = "0";
-        char y[128] = "0";
-        char size[128] = "UI_TEXT_16";
-        char color[256] = "GetThemeText()";
-
-        if(!parse_label_token(&q, label, sizeof(label)))
-            die("%s:%d: expected text label", file->path, line_no);
-        q = trim(q);
-        read_prop_value(q, "x", x, sizeof(x));
-        read_prop_value(q, "y", y, sizeof(y));
-        read_prop_value(q, "size", size, sizeof(size));
-        read_prop_value(q, "color", color, sizeof(color));
-        emit_source_push(file, line_no);
-        add_body(file, "    DrawUIText(%s, %s, %s, %s, %s);",
-                 label[0] == '"' ? label : label, x, y, size, color);
-        emit_source_pop(file);
+        die("%s:%d: 'text' widget keyword was removed; call WidgetText(label, x, y, size, color) instead",
+            file->path, line_no);
     } else if(starts_word(line, "rect")) {
-        char *q = trim(line + strlen("rect"));
-        char x[128] = "0";
-        char y[128] = "0";
-        char w[128] = "0";
-        char h[128] = "0";
-        char fill[256] = "GetThemeSurface()";
-        char border[256] = "";
-
-        if(strchr(q, '=') != NULL)
-            die("%s:%d: rect draws a rectangle; use 'var name: Rectangle = {...}' for declarations",
-                file->path, line_no);
-        if(!read_prop_value(q, "x", x, sizeof(x)) ||
-           !read_prop_value(q, "y", y, sizeof(y)) ||
-           !read_prop_value(q, "w", w, sizeof(w)) ||
-           !read_prop_value(q, "h", h, sizeof(h)))
-            die("%s:%d: rect requires x:, y:, w:, and h:", file->path,
-                line_no);
-        read_prop_value(q, "fill", fill, sizeof(fill));
-        read_prop_value(q, "border", border, sizeof(border));
-        add_body(file,
-                 "    DrawRectangleRec((Rectangle){%s, %s, %s, %s}, %s);",
-                 x, y, w, h, fill);
-        if(border[0] != '\0')
-            add_body(file,
-                     "    DrawRectangleLinesEx((Rectangle){%s, %s, %s, %s}, 1, %s);",
-                     x, y, w, h, border);
+        die("%s:%d: 'rect' widget keyword was removed; call WidgetRect(x, y, w, h, fill, border) instead",
+            file->path, line_no);
     } else if(starts_word(line, "line")) {
-        char *q = trim(line + strlen("line"));
-        char x1[128] = "0";
-        char y1[128] = "0";
-        char x2[128] = "0";
-        char y2[128] = "0";
-        char color[256] = "GetThemeText()";
-
-        read_prop_value(q, "x1", x1, sizeof(x1));
-        read_prop_value(q, "y1", y1, sizeof(y1));
-        read_prop_value(q, "x2", x2, sizeof(x2));
-        read_prop_value(q, "y2", y2, sizeof(y2));
-        read_prop_value(q, "color", color, sizeof(color));
-        add_body(file, "    DrawLine(%s, %s, %s, %s, %s);",
-                 x1, y1, x2, y2, color);
+        die("%s:%d: 'line' widget keyword was removed; call WidgetLine(x1, y1, x2, y2, color) instead",
+            file->path, line_no);
     } else if(starts_word(line, "swatch")) {
-        char *q = trim(line + strlen("swatch"));
-        char label[512];
-        char x[128] = "0";
-        char y[128] = "0";
-        char size[128] = "ScaleUIPx(48)";
-        char color[256] = "GetThemeButton()";
-        char text_color[256] = "GetThemeText()";
-
-        if(!parse_label_token(&q, label, sizeof(label)))
-            die("%s:%d: expected swatch label", file->path, line_no);
-        q = trim(q);
-        read_prop_value(q, "x", x, sizeof(x));
-        read_prop_value(q, "y", y, sizeof(y));
-        read_prop_value(q, "size", size, sizeof(size));
-        read_prop_value(q, "color", color, sizeof(color));
-        read_prop_value(q, "text_color", text_color, sizeof(text_color));
-        add_body(file,
-                 "    DrawRectangleRec((Rectangle){%s, %s, %s, %s}, %s);",
-                 x, y, size, size, color);
-        add_body(file,
-                 "    DrawRectangleLinesEx((Rectangle){%s, %s, %s, %s}, 1, %s);",
-                 x, y, size, size, text_color);
-        add_body(file, "    DrawUIText(%s, (%s) + (%s) + ScaleUIPx(10), (%s) + ScaleUIPx(10), UI_TEXT_16, %s);",
-                 label, x, size, y, text_color);
+        die("%s:%d: 'swatch' widget keyword was removed; draw a rect + text with WidgetRect/WidgetText instead",
+            file->path, line_no);
     } else if(starts_word(line, "on key_down")) {
         char *q = trim(line + strlen("on key_down"));
         size_t n = strlen(q);
@@ -2887,17 +2808,15 @@ parse_statement(KryFile *file, int line_no, char *line)
 
         if(q[0] == '\0')
             die("%s:%d: expected assignment", file->path, line_no);
-        if(strchr(q, '(') != NULL)
-            emit_source_push(file, line_no);
-        add_body(file, "    %s;", q);
-        if(strchr(q, '(') != NULL)
-            emit_source_pop(file);
+        die("%s:%d: 'set' was removed; write the assignment directly: %s",
+            file->path, line_no, q);
     } else if(starts_word(line, "native")) {
         char *q = trim(line + strlen("native"));
 
         if(q[0] == '\0')
             die("%s:%d: expected native expression", file->path, line_no);
-        add_body(file, "    %s;", q);
+        die("%s:%d: 'native' was removed; call it directly: %s",
+            file->path, line_no, q);
     } else if(starts_word(line, "unused")) {
         char *q = trim(line + strlen("unused"));
 
@@ -2925,9 +2844,8 @@ parse_statement(KryFile *file, int line_no, char *line)
 
         if(q[0] == '\0')
             die("%s:%d: expected expression", file->path, line_no);
-        emit_source_push(file, line_no);
-        emit_call(file, "    ", q, ";");
-        emit_source_pop(file);
+        die("%s:%d: 'draw'/'widget' was removed; call it directly: %s",
+            file->path, line_no, q);
     } else if(starts_word(line, "advance")) {
         char *q = trim(line + strlen("advance"));
         char name[KC_NAME_MAX];

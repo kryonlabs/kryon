@@ -13,23 +13,23 @@ state {
 }
 
 screen ButtonsExample(viewport: Rectangle) {
-    background GetThemeBackground()
-    text "UI Buttons Example" x: ScaleUIPx(20) y: ScaleUIPx(20) size: UI_TEXT_24 color: GetThemeText()
-    text "Click the buttons below to test interactions" x: ScaleUIPx(20) y: ScaleUIPx(54) size: UI_TEXT_16 color: GetThemeText()
+    WidgetBackground(GetThemeBackground())
+    WidgetText("UI Buttons Example", ScaleUIPx(20), ScaleUIPx(20), UI_TEXT_24, GetThemeText())
+    WidgetText("Click the buttons below to test interactions", ScaleUIPx(20), ScaleUIPx(54), UI_TEXT_16, GetThemeText())
     button "Primary Button" x: ScaleUIPx(20) y: ScaleUIPx(100) w: ScaleUIPx(200) h: ScaleUIPx(40) style: UI_BUTTON_STYLE_PRIMARY {
-        set click_count++
-        set snprintf(last_action,sizeof(last_action),"Primary Button clicked.")
+        click_count++
+        snprintf(last_action,sizeof(last_action),"Primary Button clicked.")
     }
     button "Secondary Button" x: ScaleUIPx(20) y: ScaleUIPx(150) w: ScaleUIPx(200) h: ScaleUIPx(40) style: UI_BUTTON_STYLE_SECONDARY {
-        set click_count++
-        set snprintf(last_action,sizeof(last_action),"Secondary Button clicked.")
+        click_count++
+        snprintf(last_action,sizeof(last_action),"Secondary Button clicked.")
     }
     button "Danger Button" x: ScaleUIPx(20) y: ScaleUIPx(200) w: ScaleUIPx(200) h: ScaleUIPx(40) style: UI_BUTTON_STYLE_DANGER {
-        set click_count++
-        set snprintf(last_action,sizeof(last_action),"Danger Button clicked.")
+        click_count++
+        snprintf(last_action,sizeof(last_action),"Danger Button clicked.")
     }
-    text TextFormat("Clicks:%d",click_count) x: ScaleUIPx(20) y: ScaleUIPx(260) size: UI_TEXT_16 color: GetThemeText()
-    text last_action x: ScaleUIPx(20) y: ScaleUIPx(290) size: UI_TEXT_16 color: GetThemeText()
-    text "Button Styles" x: ScaleUIPx(300) y: ScaleUIPx(100) size: 18 color: GetThemeText()
-    text "Primary,secondary,and danger styles use the active theme." x: ScaleUIPx(300) y: ScaleUIPx(130) size: 14 color: GetThemeIcon()
+    WidgetText(TextFormat("Clicks:%d",click_count), ScaleUIPx(20), ScaleUIPx(260), UI_TEXT_16, GetThemeText())
+    WidgetText(last_action, ScaleUIPx(20), ScaleUIPx(290), UI_TEXT_16, GetThemeText())
+    WidgetText("Button Styles", ScaleUIPx(300), ScaleUIPx(100), 18, GetThemeText())
+    WidgetText("Primary,secondary,and danger styles use the active theme.", ScaleUIPx(300), ScaleUIPx(130), 14, GetThemeIcon())
 }

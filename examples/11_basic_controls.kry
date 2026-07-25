@@ -16,27 +16,27 @@ state {
 }
 
 screen BasicControlsExample(viewport: Rectangle) {
-    background GetThemeBackground()
-    text "Basic controls" x: 40 y: 40 size: UI_TEXT_24 color: GetThemeText()
+    WidgetBackground(GetThemeBackground())
+    WidgetText("Basic controls", 40, 40, UI_TEXT_24, GetThemeText())
     picked: int = DrawUIRadioButton((UIRadioButton){{40,90,160,28},"Choice A",1,radio==1,0})
     if picked {
-        set radio = picked
+        radio = picked
     }
-    set picked = DrawUIRadioButton((UIRadioButton){{40,124,160,28},"Choice B",2,radio==2,0})
+    picked = DrawUIRadioButton((UIRadioButton){{40,124,160,28},"Choice B",2,radio==2,0})
     if picked {
-        set radio = picked
+        radio = picked
     }
-    draw DrawUISpinbox((UISpinbox){{240,90,140,34},201,0,10,1,&spin,0})
-    draw DrawUICombobox((UICombobox){{240,140,180,34},202,choices,3,&combo,0})
-    draw DrawUIProgressBar((UIProgressBar){{40,210,380,28},0,100,progress,"Progress"})
+    DrawUISpinbox((UISpinbox){{240,90,140,34},201,0,10,1,&spin,0})
+    DrawUICombobox((UICombobox){{240,140,180,34},202,choices,3,&combo,0})
+    DrawUIProgressBar((UIProgressBar){{40,210,380,28},0,100,progress,"Progress"})
     on key KEY_RIGHT {
         if progress < 100 {
-            set progress += 5
+            progress += 5
         }
     }
     on key KEY_LEFT {
         if progress > 0 {
-            set progress -= 5
+            progress -= 5
         }
     }
 }

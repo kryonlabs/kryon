@@ -13,23 +13,23 @@ state {
 
 LayoutInfo :: (label: const char *, value: int, x: int, y: int) {
     info: const char * = TextFormat("%s:%d",label,value)
-    text info x: x y: y size: UI_TEXT_16 color: GetThemeText()
+    WidgetText(info, x, y, UI_TEXT_16, GetThemeText())
 }
 
 WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
     style: int = UI_BUTTON_STYLE_SECONDARY
     if max_width == value {
-        set style = UI_BUTTON_STYLE_PRIMARY
+        style = UI_BUTTON_STYLE_PRIMARY
     }
     return DrawUIGenericButton(x,y,ScaleUIPx(110),ScaleUIPx(34),label,style,0,NULL)
 }
 
 LayoutNote :: (label: const char *, x: int, y: int, color: Color) {
-    text label x: x y: y size: UI_TEXT_16 color: color
+    WidgetText(label, x, y, UI_TEXT_16, color)
 }
 
 screen LayoutExample(viewport: Rectangle) {
-    background GetThemeBackground()
+    WidgetBackground(GetThemeBackground())
     side_padding: int = GetUIPageSidePadding()
     page_x: int = side_padding
     page_w: int = GetUIViewWidth() - side_padding * 2
@@ -43,27 +43,27 @@ screen LayoutExample(viewport: Rectangle) {
     btn0_x: int = column_x + ScaleUIPx(16)
     btn1_x: int = column_x + ScaleUIPx(138)
     btn2_x: int = column_x + ScaleUIPx(260)
-    set GetUICenteredColumn(max_width,side_padding,&column_x,&column_w)
-    set btn0_x = column_x + ScaleUIPx(16)
-    set btn1_x = column_x + ScaleUIPx(138)
-    set btn2_x = column_x + ScaleUIPx(260)
-    text "Responsive layout" x: page_x y: ScaleUIPx(16) size: UI_TEXT_24 color: GetThemeText()
-    rect x: page_x y: y w: page_w h: guide_h fill: GetThemeSurface() border: GetThemeIcon()
-    line x1: side_padding y1: y x2: side_padding y2: y+guide_h color: GetThemeLink()
-    line x1: right_edge y1: y x2: right_edge y2: y+guide_h color: GetThemeLink()
-    rect x: column_x y: column_y w: column_w h: ScaleUIPx(360) fill: GetThemeBackground() border: GetThemeButton()
-    draw LayoutInfo("View width", GetUIViewWidth(), column_x+16, y+ScaleUIPx(54))
-    draw LayoutInfo("Side padding", side_padding, column_x+16, y+ScaleUIPx(84))
-    draw LayoutInfo("Column max", max_width, column_x+16, y+ScaleUIPx(114))
+    GetUICenteredColumn(max_width,side_padding,&column_x,&column_w)
+    btn0_x = column_x + ScaleUIPx(16)
+    btn1_x = column_x + ScaleUIPx(138)
+    btn2_x = column_x + ScaleUIPx(260)
+    WidgetText("Responsive layout", page_x, ScaleUIPx(16), UI_TEXT_24, GetThemeText())
+    WidgetRect(page_x, y, page_w, guide_h, GetThemeSurface(), GetThemeIcon())
+    WidgetLine(side_padding, y, side_padding, y+guide_h, GetThemeLink())
+    WidgetLine(right_edge, y, right_edge, y+guide_h, GetThemeLink())
+    WidgetRect(column_x, column_y, column_w, ScaleUIPx(360), GetThemeBackground(), GetThemeButton())
+    LayoutInfo("View width", GetUIViewWidth(), column_x+16, y+ScaleUIPx(54))
+    LayoutInfo("Side padding", side_padding, column_x+16, y+ScaleUIPx(84))
+    LayoutInfo("Column max", max_width, column_x+16, y+ScaleUIPx(114))
     if WidthButton("Narrow", btn0_x, btn_y, 360) {
-        set max_width = 360
+        max_width = 360
     }
     if WidthButton("Medium", btn1_x, btn_y, 560) {
-        set max_width = 560
+        max_width = 560
     }
     if WidthButton("Wide", btn2_x, btn_y, 720) {
-        set max_width = 720
+        max_width = 720
     }
-    draw LayoutNote("Resize the preview/window or choose a width.", column_x+16, y+ScaleUIPx(240), GetThemeText())
-    draw LayoutNote("The column stays centered and clamped.", column_x+16, y+ScaleUIPx(272), GetThemeIcon())
+    LayoutNote("Resize the preview/window or choose a width.", column_x+16, y+ScaleUIPx(240), GetThemeText())
+    LayoutNote("The column stays centered and clamped.", column_x+16, y+ScaleUIPx(272), GetThemeIcon())
 }

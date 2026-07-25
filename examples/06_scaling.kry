@@ -15,27 +15,27 @@ state {
 }
 
 screen ScalingExample(viewport: Rectangle) {
-    set SetUIScale(scales[scale_index])
-    background GetThemeBackground()
+    SetUIScale(scales[scale_index])
+    WidgetBackground(GetThemeBackground())
     box_size: int = ScaleUIPx(100)
-    text TextFormat("DPI Scale:%.1f",scales[scale_index]) x: 50 y: 20 size: 20 color: GetThemeText()
-    rect x: box_x y: box_y w: box_size h: box_size fill: GetThemeButton() border: GetThemeIcon()
-    text "Scaled Box" x: box_x + 10 y: box_y + 10 size: UI_TEXT_16 color: GetThemeText()
-    text TextFormat("Base:100px Scaled:%dpx",box_size) x: 50 y: 60 size: UI_TEXT_16 color: GetThemeText()
-    text "SPACE cycles DPI,arrows move box" x: 50 y: 90 size: UI_TEXT_16 color: GetThemeIcon()
+    WidgetText(TextFormat("DPI Scale:%.1f",scales[scale_index]), 50, 20, 20, GetThemeText())
+    WidgetRect(box_x, box_y, box_size, box_size, GetThemeButton(), GetThemeIcon())
+    WidgetText("Scaled Box", box_x + 10, box_y + 10, UI_TEXT_16, GetThemeText())
+    WidgetText(TextFormat("Base:100px Scaled:%dpx",box_size), 50, 60, UI_TEXT_16, GetThemeText())
+    WidgetText("SPACE cycles DPI,arrows move box", 50, 90, UI_TEXT_16, GetThemeIcon())
     on key_down KEY_RIGHT {
-        set box_x += 3
+        box_x += 3
     }
     on key_down KEY_LEFT {
-        set box_x -= 3
+        box_x -= 3
     }
     on key_down KEY_DOWN {
-        set box_y += 3
+        box_y += 3
     }
     on key_down KEY_UP {
-        set box_y -= 3
+        box_y -= 3
     }
     on key KEY_SPACE {
-        set scale_index = (scale_index + 1) % 4
+        scale_index = (scale_index + 1) % 4
     }
 }

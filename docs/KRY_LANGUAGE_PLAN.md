@@ -101,4 +101,7 @@ Kry statements use C-like expressions with cleaner declaration syntax:
 - `name: Type = expr` or `name: Type` for typed locals.
 - plain function calls, assignments, `if`, `while`, `for`, `switch`, `case`,
   `default`, labels, `goto`, `break`, `continue`, and `return`.
-- `native expr` and `c line` remain explicit escape hatches for low-level glue.
+- `c line` remains an explicit escape hatch for raw C glue. Widgets are
+  ordinary library functions (WidgetText, WidgetRect, WidgetLine,
+  WidgetBackground, WidgetButton) declared in `ui_widgets.h`; there are no
+  special widget keywords.

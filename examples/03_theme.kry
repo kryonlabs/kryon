@@ -52,7 +52,9 @@ ThemeAt :: (index: int) -> ThemeId {
 ThemeSwatch :: (label: const char *, y: int, value: Color, label_color: Color) {
     x: int = ScaleUIPx(20)
     size: int = ScaleUIPx(56)
-    swatch label x: x y: y size: size color: value text_color: label_color
+    WidgetRect(x, y, size, size, value, BLANK)
+    WidgetRect(x, y, size, size, BLANK, label_color)
+    WidgetText(label, x+size+ScaleUIPx(10), y+ScaleUIPx(10), UI_TEXT_16, label_color)
 }
 
 ThemeButton :: (label: const char *, x: int, y: int, w: int) -> int {
@@ -61,20 +63,20 @@ ThemeButton :: (label: const char *, x: int, y: int, w: int) -> int {
 }
 
 ThemeLabel :: (label: const char *, value: const char *, y: int, size: int, text_color: Color) {
-    text TextFormat("%s%s",label,value) x: ScaleUIPx(20) y: y size: size color: text_color
+    WidgetText(TextFormat("%s%s",label,value), ScaleUIPx(20), y, size, text_color)
 }
 
 ThemeSideLabel :: (label: const char *, value: const char *, y: int, text_color: Color) {
-    text TextFormat("%s%s",label,value) x: ScaleUIPx(320) y: y size: UI_TEXT_16 color: text_color
+    WidgetText(TextFormat("%s%s",label,value), ScaleUIPx(320), y, UI_TEXT_16, text_color)
 }
 
 ThemeSideInt :: (label: const char *, y: int, value: int, text_color: Color) {
-    text TextFormat("%s%d",label,value) x: ScaleUIPx(320) y: y size: UI_TEXT_16 color: text_color
+    WidgetText(TextFormat("%s%d",label,value), ScaleUIPx(320), y, UI_TEXT_16, text_color)
 }
 
 ThemeRGB :: (label: const char *, y: int, value: Color, text_color: Color) {
     rgb_text: const char * = TextFormat("%s RGB:%d,%d,%d",label,value.r,value.g,value.b)
-    text rgb_text x: ScaleUIPx(320) y: y size: 14 color: text_color
+    WidgetText(rgb_text, ScaleUIPx(320), y, 14, text_color)
 }
 
 screen ThemeExample(viewport: Rectangle) {
@@ -83,43 +85,43 @@ screen ThemeExample(viewport: Rectangle) {
     right_x: int = ScaleUIPx(420)
     button_w: int = ScaleUIPx(112)
     mode_w: int = ScaleUIPx(232)
-    native SetCurrentTheme(current_theme, dark_mode)
+    SetCurrentTheme(current_theme, dark_mode)
     background: Color
     text_color: Color
     button: Color
     button_hover: Color
     circle: Color
-    set GetThemeCatalogColor(current_theme,dark_mode,"background",&background)
-    set GetThemeCatalogColor(current_theme,dark_mode,"text",&text_color)
-    set GetThemeCatalogColor(current_theme,dark_mode,"button",&button)
-    set GetThemeCatalogColor(current_theme,dark_mode,"button_hover",&button_hover)
-    set GetThemeCatalogColor(current_theme,dark_mode,"circle",&circle)
-    background background
-    draw ThemeLabel("Theme:    ",GetThemeLabel(current_theme),ScaleUIPx(20),UI_TEXT_24,text_color)
-    draw ThemeLabel("Mode:",dark_mode?"Dark":"Light",ScaleUIPx(50),UI_TEXT_16,text_color)
+    GetThemeCatalogColor(current_theme,dark_mode,"background",&background)
+    GetThemeCatalogColor(current_theme,dark_mode,"text",&text_color)
+    GetThemeCatalogColor(current_theme,dark_mode,"button",&button)
+    GetThemeCatalogColor(current_theme,dark_mode,"button_hover",&button_hover)
+    GetThemeCatalogColor(current_theme,dark_mode,"circle",&circle)
+    WidgetBackground(background)
+    ThemeLabel("Theme:    ",GetThemeLabel(current_theme),ScaleUIPx(20),UI_TEXT_24,text_color)
+    ThemeLabel("Mode:",dark_mode?"Dark":"Light",ScaleUIPx(50),UI_TEXT_16,text_color)
     if ThemeButton("Prev Theme", left_x, ScaleUIPx(18), button_w) {
-        set theme_index = (theme_index + 11) % 12
+        theme_index = (theme_index + 11) % 12
     }
     if ThemeButton("Next Theme", right_x, ScaleUIPx(18), button_w) {
-        set theme_index = (theme_index + 1) % 12
+        theme_index = (theme_index + 1) % 12
     }
     if dark_mode {
         if ThemeButton("Light Mode", left_x, ScaleUIPx(64), mode_w) {
-            set dark_mode = 0
+            dark_mode = 0
         }
     } else {
         if ThemeButton("Dark Mode", left_x, ScaleUIPx(64), mode_w) {
-            set dark_mode = 1
+            dark_mode = 1
         }
     }
-    draw ThemeSwatch("Background", ScaleUIPx(90), background, text_color)
-    draw ThemeSwatch("Text", ScaleUIPx(160), text_color, text_color)
-    draw ThemeSwatch("Button", ScaleUIPx(230), button, text_color)
-    draw ThemeSwatch("Button Hover", ScaleUIPx(300), button_hover, text_color)
-    draw ThemeSwatch("Circle", ScaleUIPx(370), circle, text_color)
+    ThemeSwatch("Background", ScaleUIPx(90), background, text_color)
+    ThemeSwatch("Text", ScaleUIPx(160), text_color, text_color)
+    ThemeSwatch("Button", ScaleUIPx(230), button, text_color)
+    ThemeSwatch("Button Hover", ScaleUIPx(300), button_hover, text_color)
+    ThemeSwatch("Circle", ScaleUIPx(370), circle, text_color)
     scope: const char * = GetThemeScopeName(current_theme,dark_mode)
-    draw ThemeSideLabel("Scope:", scope, ScaleUIPx(120), text_color)
-    draw ThemeSideInt("Theme ID:", ScaleUIPx(152), current_theme, text_color)
-    draw ThemeRGB("Background", ScaleUIPx(200), background, text_color)
-    draw ThemeRGB("Text", ScaleUIPx(224), text_color, text_color)
+    ThemeSideLabel("Scope:", scope, ScaleUIPx(120), text_color)
+    ThemeSideInt("Theme ID:", ScaleUIPx(152), current_theme, text_color)
+    ThemeRGB("Background", ScaleUIPx(200), background, text_color)
+    ThemeRGB("Text", ScaleUIPx(224), text_color, text_color)
 }
