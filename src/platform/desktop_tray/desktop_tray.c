@@ -310,10 +310,30 @@ QuitDesktopTrayMain(gpointer user_data)
     return G_SOURCE_REMOVE;
 }
 
+static int
+IconFileExistsAt(char *buf, size_t bufsize, const char *dir, const char *subdir)
+{
+    int n;
+
+    n = snprintf(buf, bufsize, "%s", dir);
+    if(n < 0 || (size_t)n >= bufsize)
+        return 0;
+    if(subdir != NULL) {
+        n = snprintf(buf + strlen(buf), bufsize - strlen(buf), "/%s", subdir);
+        if(n < 0 || (size_t)n >= bufsize - strlen(buf))
+            return 0;
+    }
+    n = snprintf(buf + strlen(buf), bufsize - strlen(buf), "/%s.png", TrayIconName);
+    if(n < 0 || (size_t)n >= bufsize - strlen(buf))
+        return 0;
+    return g_file_test(buf, G_FILE_TEST_IS_REGULAR) ? 1 : 0;
+}
+
 static const char *
 GetDesktopTrayIconPath(void)
 {
     static char path[512];
+    static char exe_dir[384];
     static const char *const exe_links[] = {
 #if defined(__FreeBSD__)
         "/proc/curproc/file",
@@ -323,27 +343,74 @@ GetDesktopTrayIconPath(void)
 #endif
         NULL
     };
+    /* Standard hicolor sizes, largest first (sharpest rendering). */
+    static const char *const hicolor_sizes[] = {
+        "512x512", "256x256", "192x192", "128x128", "96x96", "64x64", "48x48",
+        "32x32", "24x24", "16x16", "scalable", NULL
+    };
+    exe_dir[0] = '\0';
 
     for(int i = 0; exe_links[i] != NULL; i++) {
-        ssize_t len = readlink(exe_links[i], path, sizeof(path) - 128);
-        if(len > 0 && (size_t)len < sizeof(path) - 128) {
+        ssize_t len = readlink(exe_links[i], exe_dir, sizeof(exe_dir) - 1);
+        if(len > 0 && (size_t)len < sizeof(exe_dir) - 1) {
             char *slash;
-            path[len] = '\0';
-            slash = strrchr(path, '/');
+            exe_dir[len] = '\0';
+            slash = strrchr(exe_dir, '/');
             if(slash != NULL) {
-                slash[1] = '\0';
-                strncat(path, TrayIconName, sizeof(path) - strlen(path) - 1);
-                strncat(path, ".png", sizeof(path) - strlen(path) - 1);
-                if(g_file_test(path, G_FILE_TEST_IS_REGULAR))
-                    return path;
+                *slash = '\0';
+                break;
             }
+            exe_dir[0] = '\0';
         }
     }
 
+    /* 1. Icon next to the executable (e.g. portable/AppImage layout). */
+    if(exe_dir[0] != '\0') {
+        if(IconFileExistsAt(path, sizeof(path), exe_dir, NULL))
+            return path;
+    }
+
+    /* 2. Caller-supplied candidate paths (often CWD-relative). */
     if(TrayIconPaths != NULL) {
         for(int i = 0; TrayIconPaths[i] != NULL; i++) {
             if(g_file_test(TrayIconPaths[i], G_FILE_TEST_IS_REGULAR))
                 return TrayIconPaths[i];
+        }
+    }
+
+    /* 3. Installed hicolor theme icons relative to the executable
+     *    (<exedir>/../share/icons/hicolor/<size>/apps/<icon>.png). This is where
+     *    the icon actually ships when installed via a package/AppImage. */
+    if(exe_dir[0] != '\0') {
+        for(int i = 0; hicolor_sizes[i] != NULL; i++) {
+            char apps_dir[448];
+            int n = snprintf(apps_dir, sizeof(apps_dir),
+                             "%s/../share/icons/hicolor/%s/apps",
+                             exe_dir, hicolor_sizes[i]);
+            if(n > 0 && (size_t)n < sizeof(apps_dir) &&
+               IconFileExistsAt(path, sizeof(path), apps_dir, NULL))
+                return path;
+        }
+    }
+
+    /* 4. System data dirs ($XDG_DATA_DIRS, default /usr/local/share:/usr/share). */
+    {
+        const char *data_dirs = getenv("XDG_DATA_DIRS");
+        char buf[512];
+        if(data_dirs == NULL || data_dirs[0] == '\0')
+            data_dirs = "/usr/local/share:/usr/share";
+        snprintf(buf, sizeof(buf), "%s", data_dirs);
+        char *tok = strtok(buf, ":");
+        while(tok != NULL) {
+            for(int i = 0; hicolor_sizes[i] != NULL; i++) {
+                char apps_dir[512];
+                int n = snprintf(apps_dir, sizeof(apps_dir),
+                                 "%s/icons/hicolor/%s/apps", tok, hicolor_sizes[i]);
+                if(n > 0 && (size_t)n < sizeof(apps_dir) &&
+                   IconFileExistsAt(path, sizeof(path), apps_dir, NULL))
+                    return path;
+            }
+            tok = strtok(NULL, ":");
         }
     }
 
