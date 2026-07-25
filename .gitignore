@@ -4,6 +4,7 @@
 *.dll
 *~
 *.tmp
+.zcode
 
 # Build output
 build/
