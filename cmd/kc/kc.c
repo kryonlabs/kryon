@@ -472,38 +472,16 @@ emit_source_pop(KryFile *file)
     add_body_line(file, 0, "    PopUIInspectSource();");
 }
 
-static const char *
-native_widget_name(const char *name)
-{
-    if(strcmp(name, "CenteredColumn") == 0)
-        return "GetUICenteredColumn";
-    if(strcmp(name, "ScrollEnd") == 0)
-        return "EndUIScrollPage";
-    if(strcmp(name, "Text") == 0)
-        return "DrawUIText";
-    if(strcmp(name, "TextButton") == 0)
-        return "DrawUITextButton";
-    return name;
-}
-
 static void
 emit_call(KryFile *file, const char *prefix, const char *expr,
           const char *suffix)
 {
-    char name[KC_NAME_MAX];
-    const char *open = strchr(expr, '(');
-    size_t n;
-
-    if(open == NULL) {
-        add_body(file, "%s%s%s", prefix, expr, suffix);
-        return;
-    }
-    n = (size_t)(open - expr);
-    if(n >= sizeof(name))
-        n = sizeof(name) - 1;
-    memcpy(name, expr, n);
-    name[n] = '\0';
-    add_body(file, "%s%s%s%s", prefix, native_widget_name(name), open, suffix);
+    /*
+     * Calls pass through verbatim. The compiler does not rewrite function
+     * names: a widget is whatever library function the source calls, and
+     * source-inspection wrapping is applied uniformly to statement calls.
+     */
+    add_body(file, "%s%s%s", prefix, expr, suffix);
 }
 
 static void
