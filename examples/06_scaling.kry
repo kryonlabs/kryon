@@ -17,7 +17,7 @@ state {
 screen ScalingExample(viewport: Rectangle) {
     set SetUIScale(scales[scale_index])
     background GetThemeBackground()
-    var box_size: int = ScaleUIPx(100)
+    box_size: int = ScaleUIPx(100)
     text TextFormat("DPI Scale:%.1f",scales[scale_index]) x: 50 y: 20 size: 20 color: GetThemeText()
     rect x: box_x y: box_y w: box_size h: box_size fill: GetThemeButton() border: GetThemeIcon()
     text "Scaled Box" x: box_x + 10 y: box_y + 10 size: UI_TEXT_16 color: GetThemeText()

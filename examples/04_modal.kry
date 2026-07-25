@@ -26,8 +26,8 @@ screen ModalExample(viewport: Rectangle) {
         set modal_open = 1
     }
     if modal_open {
-        var actions: [3] UIModalAction = {{"Cancel",UI_BUTTON_STYLE_SECONDARY,0},{"Confirm",UI_BUTTON_STYLE_PRIMARY,0},{"Delete",UI_BUTTON_STYLE_DANGER,0}}
-        var result: int = DrawUIActionModal((UIModalSpec){"Adaptive Action Modal","Kryon measures action labels and blocks background clicks.",actions,3,420})
+        actions: [3] UIModalAction = {{"Cancel",UI_BUTTON_STYLE_SECONDARY,0},{"Confirm",UI_BUTTON_STYLE_PRIMARY,0},{"Delete",UI_BUTTON_STYLE_DANGER,0}}
+        result: int = DrawUIActionModal((UIModalSpec){"Adaptive Action Modal","Kryon measures action labels and blocks background clicks.",actions,3,420})
         if result == 1 {
             set modal_open = 0
             set snprintf(last_label,sizeof(last_label),"cancel")

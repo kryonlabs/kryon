@@ -50,13 +50,13 @@ ThemeAt :: (index: int) -> ThemeId {
 }
 
 ThemeSwatch :: (label: const char *, y: int, value: Color, label_color: Color) {
-    var x: int = ScaleUIPx(20)
-    var size: int = ScaleUIPx(56)
+    x: int = ScaleUIPx(20)
+    size: int = ScaleUIPx(56)
     swatch label x: x y: y size: size color: value text_color: label_color
 }
 
 ThemeButton :: (label: const char *, x: int, y: int, w: int) -> int {
-    var h: int = ScaleUIPx(38)
+    h: int = ScaleUIPx(38)
     return DrawUIGenericButton(x,y,w,h,label,UI_BUTTON_STYLE_SECONDARY,0,NULL)
 }
 
@@ -73,22 +73,22 @@ ThemeSideInt :: (label: const char *, y: int, value: int, text_color: Color) {
 }
 
 ThemeRGB :: (label: const char *, y: int, value: Color, text_color: Color) {
-    var rgb_text: const char * = TextFormat("%s RGB:%d,%d,%d",label,value.r,value.g,value.b)
+    rgb_text: const char * = TextFormat("%s RGB:%d,%d,%d",label,value.r,value.g,value.b)
     text rgb_text x: ScaleUIPx(320) y: y size: 14 color: text_color
 }
 
 screen ThemeExample(viewport: Rectangle) {
-    var current_theme: ThemeId = ThemeAt(theme_index)
-    var left_x: int = ScaleUIPx(300)
-    var right_x: int = ScaleUIPx(420)
-    var button_w: int = ScaleUIPx(112)
-    var mode_w: int = ScaleUIPx(232)
-    set_theme current_theme dark_mode
-    var background: Color
-    var text_color: Color
-    var button: Color
-    var button_hover: Color
-    var circle: Color
+    current_theme: ThemeId = ThemeAt(theme_index)
+    left_x: int = ScaleUIPx(300)
+    right_x: int = ScaleUIPx(420)
+    button_w: int = ScaleUIPx(112)
+    mode_w: int = ScaleUIPx(232)
+    native SetCurrentTheme(current_theme, dark_mode)
+    background: Color
+    text_color: Color
+    button: Color
+    button_hover: Color
+    circle: Color
     set GetThemeCatalogColor(current_theme,dark_mode,"background",&background)
     set GetThemeCatalogColor(current_theme,dark_mode,"text",&text_color)
     set GetThemeCatalogColor(current_theme,dark_mode,"button",&button)
@@ -117,7 +117,7 @@ screen ThemeExample(viewport: Rectangle) {
     draw ThemeSwatch("Button", ScaleUIPx(230), button, text_color)
     draw ThemeSwatch("Button Hover", ScaleUIPx(300), button_hover, text_color)
     draw ThemeSwatch("Circle", ScaleUIPx(370), circle, text_color)
-    var scope: const char * = GetThemeScopeName(current_theme,dark_mode)
+    scope: const char * = GetThemeScopeName(current_theme,dark_mode)
     draw ThemeSideLabel("Scope:", scope, ScaleUIPx(120), text_color)
     draw ThemeSideInt("Theme ID:", ScaleUIPx(152), current_theme, text_color)
     draw ThemeRGB("Background", ScaleUIPx(200), background, text_color)

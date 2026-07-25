@@ -18,7 +18,7 @@ state {
 screen BasicControlsExample(viewport: Rectangle) {
     background GetThemeBackground()
     text "Basic controls" x: 40 y: 40 size: UI_TEXT_24 color: GetThemeText()
-    var picked: int = DrawUIRadioButton((UIRadioButton){{40,90,160,28},"Choice A",1,radio==1,0})
+    picked: int = DrawUIRadioButton((UIRadioButton){{40,90,160,28},"Choice A",1,radio==1,0})
     if picked {
         set radio = picked
     }

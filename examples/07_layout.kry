@@ -12,12 +12,12 @@ state {
 }
 
 LayoutInfo :: (label: const char *, value: int, x: int, y: int) {
-    var info: const char * = TextFormat("%s:%d",label,value)
+    info: const char * = TextFormat("%s:%d",label,value)
     text info x: x y: y size: UI_TEXT_16 color: GetThemeText()
 }
 
 WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
-    var style: int = UI_BUTTON_STYLE_SECONDARY
+    style: int = UI_BUTTON_STYLE_SECONDARY
     if max_width == value {
         set style = UI_BUTTON_STYLE_PRIMARY
     }
@@ -30,19 +30,19 @@ LayoutNote :: (label: const char *, x: int, y: int, color: Color) {
 
 screen LayoutExample(viewport: Rectangle) {
     background GetThemeBackground()
-    var side_padding: int = GetUIPageSidePadding()
-    var page_x: int = side_padding
-    var page_w: int = GetUIViewWidth() - side_padding * 2
-    var column_x: int = 0
-    var column_w: int = 0
-    var y: int = ScaleUIPx(42)
-    var guide_h: int = ScaleUIPx(450)
-    var column_y: int = y + ScaleUIPx(30)
-    var btn_y: int = y + ScaleUIPx(170)
-    var right_edge: int = GetUIViewWidth() - side_padding
-    var btn0_x: int = column_x + ScaleUIPx(16)
-    var btn1_x: int = column_x + ScaleUIPx(138)
-    var btn2_x: int = column_x + ScaleUIPx(260)
+    side_padding: int = GetUIPageSidePadding()
+    page_x: int = side_padding
+    page_w: int = GetUIViewWidth() - side_padding * 2
+    column_x: int = 0
+    column_w: int = 0
+    y: int = ScaleUIPx(42)
+    guide_h: int = ScaleUIPx(450)
+    column_y: int = y + ScaleUIPx(30)
+    btn_y: int = y + ScaleUIPx(170)
+    right_edge: int = GetUIViewWidth() - side_padding
+    btn0_x: int = column_x + ScaleUIPx(16)
+    btn1_x: int = column_x + ScaleUIPx(138)
+    btn2_x: int = column_x + ScaleUIPx(260)
     set GetUICenteredColumn(max_width,side_padding,&column_x,&column_w)
     set btn0_x = column_x + ScaleUIPx(16)
     set btn1_x = column_x + ScaleUIPx(138)

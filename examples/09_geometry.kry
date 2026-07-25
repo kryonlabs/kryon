@@ -10,19 +10,19 @@ app "Kryon Geometry" {
 screen GeometryExample(viewport: Rectangle) {
     background GetThemeBackground()
     set SetUIViewSize(GetScreenWidth(),GetScreenHeight())
-    var shell: Rectangle = {40,42,GetUIViewWidth()-80,GetUIViewHeight()-84}
-    var frame: UIFrame = BeginUIFrameBox(shell,16,16,12)
-    var header: Rectangle = UIFramePack(&frame,UI_SIDE_TOP,54)
-    var footer: Rectangle = UIFramePack(&frame,UI_SIDE_BOTTOM,46)
-    var rail: Rectangle = UIFramePack(&frame,UI_SIDE_LEFT,150)
-    var body: Rectangle = frame.bounds
-    var grid: UIGrid = {body,2,3,10,10,16,16}
-    var card0: Rectangle = UIGridCell(grid,0,0,1,2)
-    var card1: Rectangle = UIGridCell(grid,0,2,1,1)
-    var card2: Rectangle = UIGridCell(grid,1,0,1,1)
-    var card3: Rectangle = UIGridCell(grid,1,1,1,2)
-    var badge: Rectangle = UIPlace(card1,14,42,92,28)
-    var action: Rectangle = UIPlace(footer,16,7,150,32)
+    shell: Rectangle = {40,42,GetUIViewWidth()-80,GetUIViewHeight()-84}
+    frame: UIFrame = BeginUIFrameBox(shell,16,16,12)
+    header: Rectangle = UIFramePack(&frame,UI_SIDE_TOP,54)
+    footer: Rectangle = UIFramePack(&frame,UI_SIDE_BOTTOM,46)
+    rail: Rectangle = UIFramePack(&frame,UI_SIDE_LEFT,150)
+    body: Rectangle = frame.bounds
+    grid: UIGrid = {body,2,3,10,10,16,16}
+    card0: Rectangle = UIGridCell(grid,0,0,1,2)
+    card1: Rectangle = UIGridCell(grid,0,2,1,1)
+    card2: Rectangle = UIGridCell(grid,1,0,1,1)
+    card3: Rectangle = UIGridCell(grid,1,1,1,2)
+    badge: Rectangle = UIPlace(card1,14,42,92,28)
+    action: Rectangle = UIPlace(footer,16,7,150,32)
     text "Geometry helpers" x: 40 y: 14 size: UI_TEXT_24 color: GetThemeText()
     draw DrawRectangleRec(shell,GetThemeSurface())
     draw DrawRectangleLinesEx(shell,1,GetThemeIcon())
