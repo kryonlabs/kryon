@@ -59,6 +59,13 @@ typedef struct UITextSelection {
 static UITextSelection g_ui_text_area_selection = {0};
 static UITextSelection g_ui_text_field_selection = {0};
 static int g_ui_text_field_drag_id = 0;
+/* Identity of the widget that currently owns text input focus, set to the
+ * address of its `focused` flag. Only one text input (UITextField or
+ * UITextArea) may be focused at a time; when one claims focus on click it
+ * displaces any other, so e.g. clicking a text area clears an open text
+ * field's cursor (and vice versa). Works across widget types without relying
+ * on focus_id (which defaults to 0 and is shared when unset). */
+static int *g_ui_text_focus_owner = NULL;
 
 #define UI_TEXT_INPUT_QUEUE_MAX 64
 static int g_ui_text_input_codepoints[UI_TEXT_INPUT_QUEUE_MAX];
@@ -807,6 +814,9 @@ BeginUIFocus(void)
     g_ui_focus_count = 0;
     g_ui_focus_tab_dir = 0;
     g_ui_focus_frame_open = 1;
+    /* Text focus ownership is re-claimed each frame by whichever text widget
+     * is clicked; clear last frame's owner so stale ownership doesn't linger. */
+    g_ui_text_focus_owner = NULL;
     if(UIKeyPressed(KEY_TAB))
         g_ui_focus_tab_dir = (UIKeyDown(KEY_LEFT_SHIFT) || UIKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
 }
@@ -865,6 +875,31 @@ RegisterUIFocus(int id, Rectangle bounds)
         g_ui_focus_active_id = id;
 
     return g_ui_focus_active_id == id;
+}
+
+static void
+ClaimUITextFocus(int *focused)
+{
+    if(focused == NULL)
+        return;
+    g_ui_text_focus_owner = focused;
+}
+
+static int
+IsUITextFocusOwner(int *focused)
+{
+    /* A widget keeps focus only while it remains the active owner. Clicking
+     * another text input claims ownership and displaces this one, clearing its
+     * blinking cursor. The owner resets each frame before any widget runs. */
+    if(focused == NULL)
+        return 0;
+    if(g_ui_text_focus_owner == focused)
+        return 1;
+    if(g_ui_text_focus_owner != NULL) {
+        *focused = 0;
+        return 0;
+    }
+    return *focused != 0;
 }
 
 int
@@ -1975,6 +2010,7 @@ DrawUITextArea(UITextArea area)
     first_line_y = GetUIControlTextY("Hg", (int)area.bounds.y + padding_y,
                                      line_h, font);
     focused = *area.focused != 0;
+    focused = IsUITextFocusOwner(area.focused) ? focused : 0;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
 
     if(area.focus_id > 0 && RegisterUIFocus(area.focus_id, area.bounds)) {
@@ -1998,6 +2034,7 @@ DrawUITextArea(UITextArea area)
             int double_click_slop = ScaleUIPx(6);
 
             focused = 1;
+            ClaimUITextFocus(area.focused);
             clicked_cursor = ui_text_area_cursor_from_point(area.text, font, line_gap,
                 (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
                 (int)mouse_world.x, (int)mouse_world.y, scroll_y);
@@ -2046,6 +2083,7 @@ DrawUITextArea(UITextArea area)
         if(scroll_y < 0)
             scroll_y = 0;
         focused = 1;
+        ClaimUITextFocus(area.focused);
         *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
             (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
             (int)mouse_world.x, (int)mouse_world.y, scroll_y);
@@ -2378,6 +2416,7 @@ DrawUITextField(UITextField field)
     font = field.font > 0 ? field.font : GetUIFontSize();
     padding_x = field.style.padding_x > 0 ? field.style.padding_x : ScaleUIPx(10);
     focused = *field.focused != 0;
+    focused = IsUITextFocusOwner(field.focused) ? focused : 0;
 
     if(field.focus_id > 0 && RegisterUIFocus(field.focus_id, field.bounds)) {
         focused = 1;
@@ -2393,6 +2432,7 @@ DrawUITextField(UITextField field)
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if(mouse_inside && !captured) {
             focused = 1;
+            ClaimUITextFocus(field.focused);
             *field.cursor_position = ui_text_cursor_from_x(
                 field.text, font, (int)field.bounds.x + padding_x,
                 (int)mouse_world.x);
@@ -2408,6 +2448,7 @@ DrawUITextField(UITextField field)
     if(g_ui_text_field_drag_id == field.focus_id &&
        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         focused = 1;
+        ClaimUITextFocus(field.focused);
         *field.cursor_position = ui_text_cursor_from_x(
             field.text, font, (int)field.bounds.x + padding_x,
             (int)mouse_world.x);
