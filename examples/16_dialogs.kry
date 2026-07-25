@@ -17,13 +17,13 @@ state {
 
 screen DialogsExample(viewport: Rectangle) {
     WidgetBackground(GetThemeBackground())
-    button "Message" x: 40 y: 60 w: 150 h: 34 style: UI_BUTTON_STYLE_PRIMARY {
+    if WidgetButton(40, 60, 150, 34, "Message", UI_BUTTON_STYLE_PRIMARY) {
         dialog = 1
     }
-    button "Confirm" x: 40 y: 104 w: 150 h: 34 style: UI_BUTTON_STYLE_PRIMARY {
+    if WidgetButton(40, 104, 150, 34, "Confirm", UI_BUTTON_STYLE_PRIMARY) {
         dialog = 2
     }
-    button "Prompt" x: 40 y: 148 w: 150 h: 34 style: UI_BUTTON_STYLE_PRIMARY {
+    if WidgetButton(40, 148, 150, 34, "Prompt", UI_BUTTON_STYLE_PRIMARY) {
         dialog = 3
     }
     DrawUIColorPicker((Rectangle){240,60,320,160},&color)

@@ -18,10 +18,10 @@ screen TextEditorExample(viewport: Rectangle) {
     WidgetBackground(GetThemeBackground())
     DrawUITextArea((UITextArea){{40,70,520,180},text_value,sizeof(text_value),&cursor,&focused,&scroll,500,UI_TEXT_16,6,401,"Write here",UI_SYNTAX_NONE,{0},NULL,NULL})
     WidgetText("Ctrl/Cmd+C,X,and V work in the text area.", 40, 260, UI_TEXT_16, GetThemeText())
-    button "Copy" x: 40 y: 300 w: 110 h: 34 style: UI_BUTTON_STYLE_SECONDARY {
+    if WidgetButton(40, 300, 110, 34, "Copy", UI_BUTTON_STYLE_SECONDARY) {
         SetUIClipboardTextValue(text_value)
     }
-    button "Paste" x: 170 y: 300 w: 110 h: 34 style: UI_BUTTON_STYLE_SECONDARY {
+    if WidgetButton(170, 300, 110, 34, "Paste", UI_BUTTON_STYLE_SECONDARY) {
         clip: const char * = GetUIClipboardTextValue()
         snprintf(text_value,sizeof(text_value),"%s",clip)
     }

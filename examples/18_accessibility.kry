@@ -15,7 +15,7 @@ screen AccessibilityExample(viewport: Rectangle) {
     WidgetBackground(GetThemeBackground())
     WidgetText("Accessibility overlay", 40, 40, UI_TEXT_24, GetThemeText())
     DrawUICheckboxToggle(40,90,"Show focus/debug overlay",&enabled)
-    button "Focusable Button" x: 40 y: 140 w: 200 h: 40 style: UI_BUTTON_STYLE_PRIMARY {
+    if WidgetButton(40, 140, 200, 40, "Focusable Button", UI_BUTTON_STYLE_PRIMARY) {
         enabled = !enabled
     }
     if enabled {

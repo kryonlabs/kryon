@@ -95,13 +95,22 @@ session_entry :: (app: InbeApp*) #export {
 - `#pragma "text"` and `#error "message"` emit guarded C preprocessor
   directives for compiler and platform integration.
 
-Kry statements use C-like expressions with cleaner declaration syntax:
+Kry statements are deliberately minimal — declarations, assignments, calls,
+and control flow. There are no widget keywords and no bespoke sugar verbs:
 
 - `name := expr` for inferred locals.
 - `name: Type = expr` or `name: Type` for typed locals.
-- plain function calls, assignments, `if`, `while`, `for`, `switch`, `case`,
-  `default`, labels, `goto`, `break`, `continue`, and `return`.
-- `c line` remains an explicit escape hatch for raw C glue. Widgets are
-  ordinary library functions (WidgetText, WidgetRect, WidgetLine,
-  WidgetBackground, WidgetButton) declared in `ui_widgets.h`; there are no
-  special widget keywords.
+- `name = expr` assignments (including compound `+=`, `%=`, `&=`, ...).
+- plain function calls (any call used as a statement is a draw call and is
+  automatically wrapped with source-inspection metadata for click-to-source).
+- `if`, `else if`, `else`, `while`, `for`, `switch`, `case`, `default`,
+  labels, `goto`, `break`, `continue`, `guard`, and `return`.
+- `c line` for raw C glue and `unused expr` to silence unused-value warnings.
+
+Widgets are ordinary library functions (WidgetText, WidgetRect, WidgetLine,
+WidgetBackground, WidgetButton) declared in `ui_widgets.h`; the compiler
+treats them exactly like any other call. Input handling is plain control
+flow: `if (UIKeyPressed(KEY_A)) { ... }`, `if (UIKeyDown(KEY_A)) { ... }`.
+Event-style blocks (`button ... {`, `on key ... {`, `event ... {`) and
+arithmetic/declaration sugar (`advance x by N`, `clamp_min`, `c_rect`,
+`texture`, `set_theme`) were removed in favor of their direct equivalents.

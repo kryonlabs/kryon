@@ -16,15 +16,15 @@ screen ButtonsExample(viewport: Rectangle) {
     WidgetBackground(GetThemeBackground())
     WidgetText("UI Buttons Example", ScaleUIPx(20), ScaleUIPx(20), UI_TEXT_24, GetThemeText())
     WidgetText("Click the buttons below to test interactions", ScaleUIPx(20), ScaleUIPx(54), UI_TEXT_16, GetThemeText())
-    button "Primary Button" x: ScaleUIPx(20) y: ScaleUIPx(100) w: ScaleUIPx(200) h: ScaleUIPx(40) style: UI_BUTTON_STYLE_PRIMARY {
+    if WidgetButton(ScaleUIPx(20), ScaleUIPx(100), ScaleUIPx(200), ScaleUIPx(40), "Primary Button", UI_BUTTON_STYLE_PRIMARY) {
         click_count++
         snprintf(last_action,sizeof(last_action),"Primary Button clicked.")
     }
-    button "Secondary Button" x: ScaleUIPx(20) y: ScaleUIPx(150) w: ScaleUIPx(200) h: ScaleUIPx(40) style: UI_BUTTON_STYLE_SECONDARY {
+    if WidgetButton(ScaleUIPx(20), ScaleUIPx(150), ScaleUIPx(200), ScaleUIPx(40), "Secondary Button", UI_BUTTON_STYLE_SECONDARY) {
         click_count++
         snprintf(last_action,sizeof(last_action),"Secondary Button clicked.")
     }
-    button "Danger Button" x: ScaleUIPx(20) y: ScaleUIPx(200) w: ScaleUIPx(200) h: ScaleUIPx(40) style: UI_BUTTON_STYLE_DANGER {
+    if WidgetButton(ScaleUIPx(20), ScaleUIPx(200), ScaleUIPx(200), ScaleUIPx(40), "Danger Button", UI_BUTTON_STYLE_DANGER) {
         click_count++
         snprintf(last_action,sizeof(last_action),"Danger Button clicked.")
     }

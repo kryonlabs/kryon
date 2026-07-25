@@ -896,6 +896,34 @@ EOF
     grep -Eq "bad_${verb}\.kry:2:1: error:" "$err"
 done
 
+# Removed sugar keywords (second pass): each must error with a migration hint.
+# Each has distinct syntax, so they get bespoke test cases.
+check_removed() {
+    # $1 = short name, $2 = .kry body, $3 = expected error substring
+    cat > "$work/src/bad_$1.kry" <<EOF
+screen bad {
+$2
+}
+EOF
+    if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_$1.kry" >"$err" 2>&1; then
+        echo "removed $1 statement was accepted" >&2
+        exit 1
+    fi
+    grep -q "$3" "$err"
+    grep -Eq "bad_$1\.kry:2:1: error:" "$err"
+}
+check_removed advance        '    advance x by 1'                       "advance"
+check_removed clamp_min      '    clamp_min x 1'                        "clamp_min"
+check_removed clamp_max      '    clamp_max x 1'                        "clamp_max"
+check_removed c_rect         '    c_rect r = 0,0,1,1'                   "c_rect"
+check_removed texture        '    texture t = 0'                        "texture"
+check_removed set_theme      '    set_theme THEME_SKY light'            "set_theme"
+check_removed button         '    button "x" x: 0 y: 0 {'               "button"
+check_removed event          '    event foo() {'                        "event"
+check_removed icon_button    '    icon_button 0 {'                      "icon_button"
+check_removed on_key         '    on key KEY_A {'                       "on key"
+check_removed on_key_down    '    on key_down KEY_A {'                  "on key_down"
+
 cat > "$work/src/bad_goto.kry" <<'EOF'
 screen bad {
     goto

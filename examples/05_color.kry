@@ -29,7 +29,7 @@ screen ColorExample(viewport: Rectangle) {
     WidgetText("Darkened", 50+70+ScaleUIPx(10), 250+ScaleUIPx(10), UI_TEXT_16, GetThemeText())
     WidgetText(TextFormat("Color %d/5 - SPACE cycles",color_index+1), 320, 82, 18, GetThemeText())
     WidgetText(TextFormat("RGB:%d,%d,%d",base.r,base.g,base.b), 320, 116, UI_TEXT_16, GetThemeText())
-    on key KEY_SPACE {
+    if (UIKeyPressed(KEY_SPACE)) {
         color_index = (color_index + 1) % 5
     }
 }

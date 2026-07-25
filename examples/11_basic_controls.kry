@@ -29,12 +29,12 @@ screen BasicControlsExample(viewport: Rectangle) {
     DrawUISpinbox((UISpinbox){{240,90,140,34},201,0,10,1,&spin,0})
     DrawUICombobox((UICombobox){{240,140,180,34},202,choices,3,&combo,0})
     DrawUIProgressBar((UIProgressBar){{40,210,380,28},0,100,progress,"Progress"})
-    on key KEY_RIGHT {
+    if (UIKeyPressed(KEY_RIGHT)) {
         if progress < 100 {
             progress += 5
         }
     }
-    on key KEY_LEFT {
+    if (UIKeyPressed(KEY_LEFT)) {
         if progress > 0 {
             progress -= 5
         }

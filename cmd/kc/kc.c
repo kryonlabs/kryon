@@ -2181,10 +2181,6 @@ line_starts_block_statement(const char *line)
            starts_word(line, "switch") ||
            starts_word(line, "for") ||
            starts_word(line, "while") ||
-           starts_word(line, "button") ||
-           starts_word(line, "event") ||
-           starts_word(line, "on") ||
-           starts_word(line, "icon_button") ||
            starts_word(line, "c") ||
            line_is_hash_compile(line) ||
            starts_else_if(line) ||
@@ -2274,8 +2270,6 @@ line_can_accept_leading_continuation(const char *line)
 {
     return line != NULL &&
            (starts_word(line, "return") ||
-            starts_word(line, "draw") ||
-            starts_word(line, "widget") ||
             line_is_inferred_decl((char *)line) ||
             find_typed_decl_colon((char *)line) != NULL ||
             line_is_assignment_statement(line));
@@ -2701,26 +2695,18 @@ parse_statement(KryFile *file, int line_no, char *line)
     } else if(starts_word(line, "let")) {
         die("%s:%d: 'let' syntax was removed; use 'name: type = value'",
             file->path, line_no);
+    } else if(starts_word(line, "background")) {
+        die("%s:%d: 'background' widget keyword was removed; call WidgetBackground(color) instead",
+            file->path, line_no);
+    } else if(starts_word(line, "set_theme")) {
+        die("%s:%d: 'set_theme' was removed; call SetCurrentTheme(id, mode) directly",
+            file->path, line_no);
     } else if(line_is_inferred_decl(line)) {
         emit_inferred_decl(file, line_no, line, 0);
     } else if(line_is_typed_decl(line)) {
         emit_typed_decl(file, line_no, line);
     } else if(line_is_c_uninit_decl(line)) {
         add_body(file, "    %s;", line);
-    } else if(starts_word(line, "background")) {
-        die("%s:%d: 'background' widget keyword was removed; call WidgetBackground(color) instead",
-            file->path, line_no);
-    } else if(starts_word(line, "set_theme")) {
-        char *q = trim(line + strlen("set_theme"));
-        char theme[KC_NAME_MAX];
-        char *mode;
-
-        if(!parse_ident(&q, theme, sizeof(theme)))
-            die("%s:%d: expected theme id", file->path, line_no);
-        mode = trim(q);
-        if(mode[0] == '\0')
-            mode = "0";
-        add_body(file, "    SetCurrentTheme(%s, %s);", theme, mode);
     } else if(starts_statement_word(line, "text")) {
         die("%s:%d: 'text' widget keyword was removed; call WidgetText(label, x, y, size, color) instead",
             file->path, line_no);
@@ -2734,23 +2720,11 @@ parse_statement(KryFile *file, int line_no, char *line)
         die("%s:%d: 'swatch' widget keyword was removed; draw a rect + text with WidgetRect/WidgetText instead",
             file->path, line_no);
     } else if(starts_word(line, "on key_down")) {
-        char *q = trim(line + strlen("on key_down"));
-        size_t n = strlen(q);
-
-        if(n == 0 || q[n - 1] != '{')
-            die("%s:%d: expected key_down block ending with {",
-                file->path, line_no);
-        q[n - 1] = '\0';
-        add_body(file, "    if(UIKeyDown(%s)) {", trim(q));
+        die("%s:%d: 'on key_down' was removed; use 'if (UIKeyDown(KEY)) {'",
+            file->path, line_no);
     } else if(starts_word(line, "on key")) {
-        char *q = trim(line + strlen("on key"));
-        size_t n = strlen(q);
-
-        if(n == 0 || q[n - 1] != '{')
-            die("%s:%d: expected key block ending with {", file->path,
-                line_no);
-        q[n - 1] = '\0';
-        add_body(file, "    if(UIKeyPressed(%s)) {", trim(q));
+        die("%s:%d: 'on key' was removed; use 'if (UIKeyPressed(KEY)) {'",
+            file->path, line_no);
     } else if(starts_else_if(line)) {
         char *q = starts_word(line, "else if")
                       ? trim(line + strlen("else if"))
@@ -2847,62 +2821,18 @@ parse_statement(KryFile *file, int line_no, char *line)
         die("%s:%d: 'draw'/'widget' was removed; call it directly: %s",
             file->path, line_no, q);
     } else if(starts_word(line, "advance")) {
-        char *q = trim(line + strlen("advance"));
-        char name[KC_NAME_MAX];
-
-        if(!parse_ident(&q, name, sizeof(name)))
-            die("%s:%d: expected variable name", file->path, line_no);
-        q = trim(q);
-        if(!starts_word(q, "by"))
-            die("%s:%d: expected 'by' in advance statement", file->path,
-                line_no);
-        q = trim(q + strlen("by"));
-        if(q[0] == '\0')
-            die("%s:%d: expected advance expression", file->path, line_no);
-        add_body(file, "    %s += %s;", name, q);
+        die("%s:%d: 'advance x by N' was removed; write 'x += N' directly",
+            file->path, line_no);
     } else if(starts_word(line, "clamp_min") ||
               starts_word(line, "clamp_max")) {
-        int is_min = starts_word(line, "clamp_min");
-        char *q = trim(line + strlen(is_min ? "clamp_min" : "clamp_max"));
-        char name[KC_NAME_MAX];
-
-        if(!parse_ident(&q, name, sizeof(name)))
-            die("%s:%d: expected variable name", file->path, line_no);
-        q = trim(q);
-        if(q[0] == '\0')
-            die("%s:%d: expected clamp expression", file->path, line_no);
-        add_body(file, "    if(%s %c %s) {", name, is_min ? '<' : '>', q);
-        add_body(file, "        %s = %s;", name, q);
-        add_body(file, "    }");
+        die("%s:%d: 'clamp_min/max' was removed; write 'if (x < N) x = N' directly",
+            file->path, line_no);
     } else if(starts_word(line, "c_rect")) {
-        char *q = trim(line + strlen("c_rect"));
-        char name[KC_NAME_MAX];
-
-        if(!parse_ident(&q, name, sizeof(name)))
-            die("%s:%d: expected rectangle name", file->path, line_no);
-        q = trim(q);
-        if(*q != '=')
-            die("%s:%d: expected '=' in rect statement", file->path,
-                line_no);
-        q = trim(q + 1);
-        if(q[0] == '\0')
-            die("%s:%d: expected rectangle expression list", file->path,
-                line_no);
-        add_body(file, "    Rectangle %s = (Rectangle){%s};", name, q);
+        die("%s:%d: 'c_rect' was removed; declare with 'name: Rectangle = (Rectangle){...}'",
+            file->path, line_no);
     } else if(starts_word(line, "texture")) {
-        char *q = trim(line + strlen("texture"));
-        char name[KC_NAME_MAX];
-
-        if(!parse_ident(&q, name, sizeof(name)))
-            die("%s:%d: expected texture name", file->path, line_no);
-        q = trim(q);
-        if(*q != '=')
-            die("%s:%d: expected '=' in texture statement", file->path,
-                line_no);
-        q = trim(q + 1);
-        if(q[0] == '\0')
-            die("%s:%d: expected texture expression", file->path, line_no);
-        add_body(file, "    Texture2D %s = %s;", name, q);
+        die("%s:%d: 'texture' was removed; declare with 'name: Texture2D = ...'",
+            file->path, line_no);
     } else if(starts_word(line, "enum")) {
         char *q = trim(line + strlen("enum"));
         size_t n = strlen(q);
@@ -2992,88 +2922,14 @@ parse_statement(KryFile *file, int line_no, char *line)
             die("%s:%d: expected while condition", file->path, line_no);
         add_body(file, "    while(%s) {", q);
     } else if(starts_word(line, "button")) {
-        char *q = trim(line + strlen("button"));
-        size_t n = strlen(q);
-        char hit[KC_NAME_MAX];
-        char label[512];
-        char x[128] = "0";
-        char y[128] = "0";
-        char w[128] = "ScaleUIPx(120)";
-        char h[128] = "ScaleUIPx(34)";
-        char style[128] = "UI_BUTTON_STYLE_PRIMARY";
-
-        if(n == 0 || q[n - 1] != '{')
-            die("%s:%d: expected button arguments ending with {", file->path,
-                line_no);
-        q[n - 1] = '\0';
-        q = trim(q);
-        if(strchr(q, '(') != NULL && q[0] != '"') {
-            snprintf(hit, sizeof(hit), "__kry_hit_%d", line_no);
-            add_body_line(file, 0, "    int %s;", hit);
-            emit_source_push(file, line_no);
-            add_body_line(file, 0, "    %s = DrawUIGenericButton(%s);", hit, q);
-            emit_source_pop(file);
-            add_body_line(file, 0, "    if(%s) {", hit);
-            return;
-        }
-        if(!parse_label_token(&q, label, sizeof(label)))
-            die("%s:%d: expected button label", file->path, line_no);
-        q = trim(q);
-        read_prop_value(q, "x", x, sizeof(x));
-        read_prop_value(q, "y", y, sizeof(y));
-        read_prop_value(q, "w", w, sizeof(w));
-        read_prop_value(q, "h", h, sizeof(h));
-        read_prop_value(q, "style", style, sizeof(style));
-        snprintf(hit, sizeof(hit), "__kry_hit_%d", line_no);
-        add_body_line(file, 0, "    int %s;", hit);
-        emit_source_push(file, line_no);
-        add_body_line(file, 0,
-                      "    %s = DrawUIGenericButton(%s, %s, %s, %s, %s, %s, 0, NULL);",
-                      hit, x, y, w, h, label, style);
-        emit_source_pop(file);
-        add_body_line(file, 0, "    if(%s) {", hit);
+        die("%s:%d: 'button' block keyword was removed; use 'if WidgetButton(x, y, w, h, label, style) {'",
+            file->path, line_no);
     } else if(starts_word(line, "event") || starts_word(line, "on")) {
-        char *q = starts_word(line, "event")
-                      ? trim(line + strlen("event"))
-                      : trim(line + strlen("on"));
-        size_t n = strlen(q);
-        char hit[KC_NAME_MAX];
-
-        if(n == 0 || q[n - 1] != '{')
-            die("%s:%d: expected event expression ending with {", file->path,
-                line_no);
-        q[n - 1] = '\0';
-        q = trim(q);
-        snprintf(hit, sizeof(hit), "__kry_hit_%d", line_no);
-        add_body_line(file, 0, "    int %s;", hit);
-        emit_source_push(file, line_no);
-        {
-            char prefix[KC_NAME_MAX + 8];
-
-            snprintf(prefix, sizeof(prefix), "    %s = ", hit);
-            emit_call(file, prefix, q, ";");
-            file->current->body_line[file->current->body_count - 1] = 0;
-        }
-        emit_source_pop(file);
-        add_body_line(file, 0, "    if(%s) {", hit);
+        die("%s:%d: 'event'/'on' block keyword was removed; use 'if (expr) {' with a bool-returning call",
+            file->path, line_no);
     } else if(starts_word(line, "icon_button")) {
-        char *q = trim(line + strlen("icon_button"));
-        size_t n = strlen(q);
-        char hit[KC_NAME_MAX];
-
-        if(n == 0 || q[n - 1] != '{')
-            die("%s:%d: expected icon_button arguments ending with {",
-                file->path, line_no);
-        q[n - 1] = '\0';
-        q = trim(q);
-        snprintf(hit, sizeof(hit), "__kry_hit_%d", line_no);
-        add_body_line(file, 0, "    int %s;", hit);
-        emit_source_push(file, line_no);
-        add_body_line(file, 0,
-                      "    %s = DrawUIIconButton((UIIconButton){%s});",
-                      hit, q);
-        emit_source_pop(file);
-        add_body_line(file, 0, "    if(%s) {", hit);
+        die("%s:%d: 'icon_button' block keyword was removed; use 'if DrawUIIconButton((UIIconButton){...}) {'",
+            file->path, line_no);
     } else if(line[strlen(line) - 1] == ')' && strchr(line, '(') != NULL &&
               find_assignment_op(line) == NULL) {
         emit_source_push(file, line_no);

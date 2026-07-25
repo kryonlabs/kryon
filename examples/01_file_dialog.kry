@@ -24,15 +24,15 @@ screen FileDialogExample(viewport: Rectangle) {
     }
     WidgetText("Kryon File Dialog", ScaleUIPx(32), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
     WidgetText("Dialog backend and result state", ScaleUIPx(32), ScaleUIPx(66), UI_TEXT_16, GetThemeIcon())
-    button "Open File" x: ScaleUIPx(32) y: ScaleUIPx(116) w: ScaleUIPx(180) h: ScaleUIPx(42) style: UI_BUTTON_STYLE_PRIMARY {
+    if WidgetButton(ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Open File", UI_BUTTON_STYLE_PRIMARY) {
         BeginLoadFileDialog(&dlg,"Open File")
         snprintf(status,sizeof(status),"Open file requested.")
     }
-    button "Save File" x: ScaleUIPx(226) y: ScaleUIPx(116) w: ScaleUIPx(180) h: ScaleUIPx(42) style: UI_BUTTON_STYLE_SECONDARY {
+    if WidgetButton(ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Save File", UI_BUTTON_STYLE_SECONDARY) {
         BeginSaveFileDialog(&dlg,"Save File","untitled.kry")
         snprintf(status,sizeof(status),"Save file requested.")
     }
-    button "Select Folder" x: ScaleUIPx(420) y: ScaleUIPx(116) w: ScaleUIPx(180) h: ScaleUIPx(42) style: UI_BUTTON_STYLE_SECONDARY {
+    if WidgetButton(ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Select Folder", UI_BUTTON_STYLE_SECONDARY) {
         BeginSelectFileDialogFolder(&dlg,"Select Folder")
         snprintf(status,sizeof(status),"Folder selection requested.")
     }

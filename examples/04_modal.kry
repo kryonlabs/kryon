@@ -17,12 +17,12 @@ screen ModalExample(viewport: Rectangle) {
     WidgetBackground(GetThemeBackground())
     WidgetText("Modal capture example", 32, 32, UI_TEXT_24, GetThemeText())
     WidgetText("Open the modal and background clicks are blocked.", 32, 72, UI_TEXT_16, GetThemeIcon())
-    button "Background Button" x: 32 y: 120 w: 220 h: 42 style: UI_BUTTON_STYLE_SECONDARY {
+    if WidgetButton(32, 120, 220, 42, "Background Button", UI_BUTTON_STYLE_SECONDARY) {
         background_clicks++
     }
     WidgetText(TextFormat("Background clicks:%d",background_clicks), 32, 176, UI_TEXT_16, GetThemeText())
     WidgetText(TextFormat("Last modal result:%s",last_label), 32, 204, UI_TEXT_16, GetThemeText())
-    button "Open Modal" x: 32 y: 240 w: 220 h: 42 style: UI_BUTTON_STYLE_PRIMARY {
+    if WidgetButton(32, 240, 220, 42, "Open Modal", UI_BUTTON_STYLE_PRIMARY) {
         modal_open = 1
     }
     if modal_open {
