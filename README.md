@@ -102,6 +102,16 @@ kryon-app package appimage
 kryon-app preview
 ```
 
+For local development against a sync backend, run a Lyra server in the
+foreground. `dev-backend` locates the server source at `$LYRA_DIR` or as a
+sibling checkout (`../lyra`), isolates its data under `<project>/.kryon/`, and
+prints the sync URL to point your app at. Tokens are regenerated each start,
+so it is for local development only:
+
+```sh
+kryon-app dev-backend          # serves http://127.0.0.1:8080
+```
+
 App `project.kryon` files should use `target` entries that call `kryon-app`
 rather than embedding platform-specific build commands directly. Existing app
 Makefiles can remain as backend glue while repeated native, web, Android, and
