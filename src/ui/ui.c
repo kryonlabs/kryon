@@ -59,13 +59,22 @@ typedef struct UITextSelection {
 static UITextSelection g_ui_text_area_selection = {0};
 static UITextSelection g_ui_text_field_selection = {0};
 static int g_ui_text_field_drag_id = 0;
-/* Identity of the widget that currently owns text input focus, set to the
- * address of its `focused` flag. Only one text input (UITextField or
- * UITextArea) may be focused at a time; when one claims focus on click it
- * displaces any other, so e.g. clicking a text area clears an open text
- * field's cursor (and vice versa). Works across widget types without relying
- * on focus_id (which defaults to 0 and is shared when unset). */
+/* Identity of the widget that currently owns text input focus, recorded as the
+ * address of its `focused` flag. Ownership is PERSISTENT across frames: it does
+ * not reset at frame start, it only changes when a text input is clicked (or
+ * explicitly claimed). This guarantees that at most one text input (UITextField
+ * or UITextArea) is ever treated as focused, so at most one blinking caret can
+ * ever be drawn - the UI layer owns focus, never trusting stale per-widget
+ * flags. Works across widget types without relying on focus_id (which defaults
+ * to 0 and is shared when unset). */
 static int *g_ui_text_focus_owner = NULL;
+/* Frame counter and the frame on which the current owner last confirmed it is
+ * still alive. If the owner has not run for a frame, ownership is considered
+ * released (the user navigated away from that screen / the widget is gone),
+ * which lets a new screen's autofocus adopt cleanly. */
+static unsigned long g_ui_text_focus_frame = 0;
+static unsigned long g_ui_text_focus_owner_frame = 0;
+static int *g_ui_text_focus_owner_this_frame = NULL;
 
 #define UI_TEXT_INPUT_QUEUE_MAX 64
 static int g_ui_text_input_codepoints[UI_TEXT_INPUT_QUEUE_MAX];
@@ -814,9 +823,16 @@ BeginUIFocus(void)
     g_ui_focus_count = 0;
     g_ui_focus_tab_dir = 0;
     g_ui_focus_frame_open = 1;
-    /* Text focus ownership is re-claimed each frame by whichever text widget
-     * is clicked; clear last frame's owner so stale ownership doesn't linger. */
-    g_ui_text_focus_owner = NULL;
+    /* Advance the frame counter and release ownership if the current owner did
+     * not render last frame (the user navigated away or the widget is gone).
+     * This lets a new screen's autofocus adopt cleanly, while still preventing
+     * two live widgets from both showing a caret within a single frame. */
+    g_ui_text_focus_frame++;
+    if(g_ui_text_focus_owner != NULL &&
+       g_ui_text_focus_owner_frame != g_ui_text_focus_frame - 1 &&
+       g_ui_text_focus_owner_frame != g_ui_text_focus_frame)
+        g_ui_text_focus_owner = NULL;
+    g_ui_text_focus_owner_this_frame = NULL;
     if(UIKeyPressed(KEY_TAB))
         g_ui_focus_tab_dir = (UIKeyDown(KEY_LEFT_SHIFT) || UIKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
 }
@@ -882,24 +898,48 @@ ClaimUITextFocus(int *focused)
 {
     if(focused == NULL)
         return;
+    /* Displace any previous owner first by clearing its flag, so its caret
+     * disappears immediately this frame even though it has not re-run yet. */
+    if(g_ui_text_focus_owner != NULL && g_ui_text_focus_owner != focused)
+        *g_ui_text_focus_owner = 0;
     g_ui_text_focus_owner = focused;
+    g_ui_text_focus_owner_this_frame = focused;
+    g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
+    *focused = 1;
 }
 
 static int
 IsUITextFocusOwner(int *focused)
 {
-    /* A widget keeps focus only while it remains the active owner. Clicking
-     * another text input claims ownership and displaces this one, clearing its
-     * blinking cursor. The owner resets each frame before any widget runs. */
+    /* Strict single-owner enforcement. A text input is focused if and only if
+     * it is the recorded owner. Ownership survives across frames (so a stale
+     * per-widget `focused` flag can never revive a caret that another input
+     * owns) but is auto-released if the owner stops rendering (navigation
+     * away), letting a new screen autofocus cleanly. Within one frame, only the
+     * first widget to claim/adopt wins; every other text input is denied. */
     if(focused == NULL)
         return 0;
-    if(g_ui_text_focus_owner == focused)
+    if(g_ui_text_focus_owner == focused) {
+        g_ui_text_focus_owner_this_frame = focused;
+        g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
         return 1;
-    if(g_ui_text_focus_owner != NULL) {
+    }
+    /* Already owned by someone else this frame: deny and clear stale flag. */
+    if(g_ui_text_focus_owner_this_frame != NULL) {
         *focused = 0;
         return 0;
     }
-    return *focused != 0;
+    /* No owner yet this frame. Allow adoption only if the app set this widget's
+     * flag (autofocus / programmatic SetUIFocus). First adoption wins; any
+     * later widget with a stale flag is denied above. */
+    if(*focused != 0 && g_ui_text_focus_owner == NULL) {
+        g_ui_text_focus_owner = focused;
+        g_ui_text_focus_owner_this_frame = focused;
+        g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
+        return 1;
+    }
+    *focused = 0;
+    return 0;
 }
 
 int
