@@ -1216,6 +1216,8 @@ cat > "$work/src/ast.kry" <<'EOF'
 #import "thing.h"
 ast_fn :: (n: int) -> int {
     v := 0
+    count: int = 5
+    name: const char* = "hi"
     defer Cleanup(v)
     if n > 0 {
         return n
@@ -1255,6 +1257,11 @@ grep -Eq '^WHILE ' "$err"
 grep -Eq '^SWITCH ' "$err"
 grep -Eq '^DEFER ' "$err"
 grep -Eq '^RETURN ' "$err"
+# Typed declarations classify as DECL (not ASSIGN): "int count = 5;" and
+# "const char* name = "hi";" are declarations, while "v += i" is an assignment.
+grep -Eq '^DECL .*int count = 5;' "$err"
+grep -Eq '^DECL .*const char\* name =' "$err"
+grep -Eq '^  ASSIGN .*v \+= i;' "$err"
 # --dump-ast must NOT write the generated .c/.h (it parses but skips emit).
 if [ -f "$out/src/ast.c" ]; then
     echo "dump-ast wrote generated files" >&2

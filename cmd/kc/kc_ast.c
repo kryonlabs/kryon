@@ -116,19 +116,58 @@ classify_fragment(const char *raw)
     if(strncmp(t, "(void)", 6) == 0)
         return AST_STMT_UNUSED;
 
-    /* Assignment vs expression vs decl: kc emits all of these as full C
-     * statements ending in ';'. Distinguish by the `=` / compound-assign
-     * operator vs a bare call. Decl uses __auto_type or an explicit type. */
+    /* Mutation statements: x++, x--, x += y, etc. (no `=` as declaration). */
+    if(strstr(t, "++") != NULL || strstr(t, "--") != NULL ||
+       strstr(t, "+=") != NULL || strstr(t, "-=") != NULL ||
+       strstr(t, "*=") != NULL || strstr(t, "/=") != NULL ||
+       strstr(t, "%=") != NULL || strstr(t, "&=") != NULL ||
+       strstr(t, "|=") != NULL || strstr(t, "^=") != NULL ||
+       strstr(t, "<<=") != NULL || strstr(t, ">>=") != NULL)
+        return AST_STMT_ASSIGN;
+
+    /* Declarations vs assignments. kc emits:
+     *   __auto_type name = expr;           → inferred decl
+     *   Type name = expr;                  → typed decl (Type is >=1 word)
+     *   Type name[N] = {...};              → typed array decl
+     *   name = expr;                       → assignment
+     *   name.field = expr; / name[i] = ... → assignment
+     * A typed decl has a multi-token prefix (the type) before the lvalue. */
     if(strstr(t, "=") != NULL) {
         /* __auto_type ... = ... is an inferred decl. */
         if(strncmp(t, "__auto_type", 11) == 0)
             return AST_STMT_DECL;
-        /* "Type name = ..." or "Type name[N] = ..." is a typed decl. We
-         * can't perfectly distinguish typed decl from assignment without a
-         * type table, but a line whose first token is not a known lvalue
-         * pattern is most likely a decl if it contains a type-ish token.
-         * For Phase 1, classify =-bearing lines as ASSIGN; Phase 2's direct
-         * build fixes this precisely. */
+
+        /* Heuristic: a typed declaration's first token is a C type keyword or
+         * a capitalized identifier (a typedef/struct name like Color,
+         * Rectangle). An assignment's first token is a lowercase variable
+         * name. If the first token looks like a type and there's a second
+         * token (the name), classify as DECL. */
+        {
+            char first[128];
+            const char *p = t;
+            size_t fn = 0;
+
+            while((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+                  *p == '_') {
+                if(fn + 1 < sizeof(first))
+                    first[fn++] = *p;
+                p++;
+            }
+            first[fn] = '\0';
+            /* Skip whitespace/type-qualifiers to see if there's a name after. */
+            while(*p == ' ' || *p == '\t')
+                p++;
+            /* Known C type keywords that start a typed declaration. */
+            if(fn > 0 && *p != '\0' && *p != '=' &&
+               (strcmp(first, "int") == 0 || strcmp(first, "char") == 0 ||
+                strcmp(first, "float") == 0 || strcmp(first, "double") == 0 ||
+                strcmp(first, "void") == 0 || strcmp(first, "long") == 0 ||
+                strcmp(first, "short") == 0 || strcmp(first, "unsigned") == 0 ||
+                strcmp(first, "signed") == 0 || strcmp(first, "const") == 0 ||
+                strcmp(first, "static") == 0 || strcmp(first, "bool") == 0 ||
+                (first[0] >= 'A' && first[0] <= 'Z')))
+                return AST_STMT_DECL;
+        }
         return AST_STMT_ASSIGN;
     }
 
