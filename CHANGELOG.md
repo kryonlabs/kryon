@@ -1,4 +1,15 @@
 # Changelog
+## v0.1.7 - 2026-07-26
+
+### Changed
+
+- Bump version to v0.1.7
+- Remove native_widget_name compiler name-rewrite hack
+- Finish removing Kry sugar verbs — language is now minimal
+- Remove redundant Kry verbs; widgets are now a library
+- Rework Platforms grid: add Windows, macOS, FreeBSD
+- Make text input focus exclusive across UITextField and UITextArea
+
 ## v0.1.6 - 2026-07-25
 
 ### Changed
