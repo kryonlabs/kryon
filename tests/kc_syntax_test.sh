@@ -1076,3 +1076,100 @@ grep -Eq 'PopUIInspectSource\(\);' "$out/src/if_call.c"
 grep -Eq 'if\(__kryon_cond_4\) \{' "$out/src/if_call.c"
 # A non-call condition is emitted unchanged (no temp, no wrapping).
 grep -Fq 'if(value > 0) {' "$out/src/if_call.c"
+
+# --- compound assignment operators not previously covered (-=, *=, /=, --)
+cat > "$work/src/compound.kry" <<'EOF'
+#import "thing.h"
+screen Compound {
+    v := 10
+    v -= 2
+    v *= 3
+    v /= 4
+    v--
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/compound.kry" >"$err" 2>&1
+grep -Fq 'v -= 2;' "$out/src/compound.c"
+grep -Fq 'v *= 3;' "$out/src/compound.c"
+grep -Fq 'v /= 4;' "$out/src/compound.c"
+grep -Fq 'v--;' "$out/src/compound.c"
+
+# --- defer inside a while loop and before continue (loop-body defer)
+cat > "$work/src/defer_while.kry" <<'EOF'
+#import "thing.h"
+loop :: (n: int) -> int {
+    i := 0
+    while i < n {
+        defer Tick(i)
+        i++
+        if i == 2 {
+            continue
+        }
+    }
+    return i
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_while.kry" >"$err" 2>&1
+# defer declared before the continue fires before the continue.
+grep -E -A1 'Tick\(i\);$' "$out/src/defer_while.c" | grep -Eq 'continue;'
+# defer also fires at the end of each iteration that reaches the loop close.
+grep -E -B1 'Tick\(i\);$' "$out/src/defer_while.c" | grep -Eq '\}'
+
+# --- defer inside an anonymous block scope (block-close defer)
+cat > "$work/src/defer_block.kry" <<'EOF'
+#import "thing.h"
+block_fn :: () -> int {
+    s := 1
+    {
+        defer Scoped()
+        s = 2
+    }
+    return s
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_block.kry" >"$err" 2>&1
+# Scoped fires at the anonymous block's closing brace (after s = 2).
+grep -E -B1 'Scoped\(\);$' "$out/src/defer_block.c" | grep -Eq 's = 2;'
+
+# --- main generation: omitting --no-main emits an int main entry point
+cat > "$work/src/withmain.kry" <<'EOF'
+#import "thing.h"
+app "Test App" {
+    size 800 600
+    fps 60
+}
+screen Main {
+    WidgetText("hi", 0, 0, 16, GetThemeText())
+}
+EOF
+
+"$kc" --root "$work" -o "$out" "$work/src/withmain.kry" >"$err" 2>&1
+grep -Eq '^int$' "$out/src/withmain.c"
+grep -Eq '^main\(void\)$' "$out/src/withmain.c"
+grep -q 'InitWindow(800, 600, "Test App");' "$out/src/withmain.c"
+grep -q 'SetTargetFPS(60);' "$out/src/withmain.c"
+grep -q 'while(!WindowShouldClose())' "$out/src/withmain.c"
+grep -q 'Main_kry_draw();' "$out/src/withmain.c"
+# --no-main must NOT emit main.
+"$kc" --no-main --root "$work" -o "$out" "$work/src/withmain.kry" >"$err" 2>&1
+if grep -q 'int main' "$out/src/withmain.c"; then
+    echo "--no-main still emitted main" >&2
+    exit 1
+fi
+
+# --- removed keyword: 'let' produces a removal error
+cat > "$work/src/bad_let.kry" <<'EOF'
+screen bad {
+    let x = 1
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_let.kry" >"$err" 2>&1; then
+    echo "let was accepted" >&2
+    exit 1
+fi
+grep -q "'let' syntax was removed" "$err"
+grep -Eq 'bad_let\.kry:2:1: error:' "$err"
