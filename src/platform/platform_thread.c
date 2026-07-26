@@ -1,5 +1,7 @@
 #include "platform.h"
 
+#include <stddef.h>
+
 #if defined(_WIN32)
 #include <stdlib.h>
 
