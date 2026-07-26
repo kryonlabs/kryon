@@ -2836,7 +2836,22 @@ parse_statement(KryFile *file, int line_no, char *line)
         q = trim(q);
         if(q[0] == '\0')
             die("%s:%d: expected if condition", file->path, line_no);
-        add_body(file, "    if(%s) {", q);
+        /* If the condition is a function call (e.g. `WidgetButton(...)`),
+         * wrap it so the call registers its source location for click-to-
+         * source inspection. Evaluating into a temp and popping before the
+         * branch keeps the Push/Pop balanced regardless of else/return. */
+        {
+            size_t cn = strlen(q);
+            if(strchr(q, '(') != NULL && cn > 0 && q[cn - 1] == ')') {
+                emit_source_push(file, line_no);
+                add_body(file, "    __auto_type __kryon_cond_%d = %s;",
+                         line_no, q);
+                emit_source_pop(file);
+                add_body(file, "    if(__kryon_cond_%d) {", line_no);
+            } else {
+                add_body(file, "    if(%s) {", q);
+            }
+        }
     } else if(starts_word(line, "switch")) {
         char *q = trim(line + strlen("switch"));
         size_t n = strlen(q);

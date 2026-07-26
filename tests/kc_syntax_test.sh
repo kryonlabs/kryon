@@ -151,7 +151,11 @@ grep -Fq 'value >>= 1;' "$out/src/valid.c"
 grep -q 'while(value < 3)' "$out/src/valid.c"
 grep -q 'DrawThing( value, (ThingSpec){ .value = value, .label = "hello" } );' "$out/src/valid.c"
 grep -q 'value = value + 1;' "$out/src/valid.c"
-grep -q 'if(CheckThing( value, 1)) {' "$out/src/valid.c"
+# A call used as an if condition is wrapped so it registers a source location
+# for click-to-source: Push, evaluate into a temp, Pop, then test the temp.
+grep -Eq '__auto_type __kryon_cond_[0-9]+ = CheckThing\( value, 1\);' "$out/src/valid.c"
+grep -Eq 'if\(__kryon_cond_[0-9]+\) \{' "$out/src/valid.c"
+# A non-call condition is emitted unchanged.
 grep -Fq 'if(value > 0 && first >= 0) {' "$out/src/valid.c"
 grep -Fq 'for(int j = 0; j < 2; j++) {' "$out/src/valid.c"
 grep -q 'value = value > 0 ? value : 1;' "$out/src/valid.c"
@@ -1047,3 +1051,28 @@ if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_defer.kry" >"$err" 2>
 fi
 grep -q 'expected defer statement' "$err"
 grep -Eq 'bad_defer\.kry:2:1: error:' "$err"
+
+# --- a call used as an if condition registers its source line for inspection
+# (regression: WidgetButton-in-if previously had no source, so click-to-source
+# on buttons did nothing)
+cat > "$work/src/if_call.kry" <<'EOF'
+#import "thing.h"
+
+screen IfCall {
+    if WidgetButton(0, 0, 100, 40, "Click", UI_BUTTON_STYLE_PRIMARY) {
+        DoThing()
+    }
+    if value > 0 {
+        DoThing()
+    }
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/if_call.kry" >"$err" 2>&1
+# The call condition is wrapped: Push, temp assign, Pop, then test the temp.
+grep -Eq 'PushUIInspectSource\([^)]*if_call\.kry", 4\);' "$out/src/if_call.c"
+grep -Eq '__auto_type __kryon_cond_4 = WidgetButton\(' "$out/src/if_call.c"
+grep -Eq 'PopUIInspectSource\(\);' "$out/src/if_call.c"
+grep -Eq 'if\(__kryon_cond_4\) \{' "$out/src/if_call.c"
+# A non-call condition is emitted unchanged (no temp, no wrapping).
+grep -Fq 'if(value > 0) {' "$out/src/if_call.c"
