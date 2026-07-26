@@ -200,13 +200,11 @@ test cases for:
    the scope-unwinding code is the most likely thing a hand-written parser
    gets wrong, and it's the cleverest part of the oracle.
 
-   **Bug found during Phase 0:** defer inside `switch` cases is broken today.
-   `apply_defers` treats the whole switch as one scope and runs every
-   case's accumulated defers at the switch's closing `}`, so a defer in
-   `case 1` leaks into `default` and runs on the wrong path. Phase 0 does
-   **not** pin this (it would lock in a bug); the AST rewrite gives each
-   case its own scope node and fixes it. Phase 0 covers defer in `while`,
-   before `continue`, and in anonymous blocks — all of which work correctly.
+   **Bug found during Phase 0, fixed in Phase 2:** defer inside `switch` cases
+   was broken — `apply_defers` treated the whole switch as one scope, so a
+   defer in `case 1` leaked into `default`. Phase 2 gives each case its own
+   scope (`KRY_SCOPE_CASE`) and a `spent` flag so case-local defers fire on
+   their own path only. Test `defer_switch.kry` pins the fix.
 3. **`pub struct` / `pub enum`** — a real parse path (kc.c:~1697,~1733) with
    zero coverage today.
 4. **`let` and widget-keyword removals** (`background`,`rect`,`line`,`swatch`,

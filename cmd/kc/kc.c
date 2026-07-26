@@ -4209,17 +4209,21 @@ rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
  */
 
 /* A pending defer: the scope index (into the scope stack) that owns it and the
- * statement text (a Kry fragment, retranslated at output like other lines). */
+ * statement text (a Kry fragment, retranslated at output like other lines).
+ * `spent` marks a defer already emitted by an early exit (break/continue/
+ * return) so a later scope boundary doesn't re-emit it. */
 typedef struct KryDefer {
     int scope_index;
+    int spent;
     char stmt[KC_BODY_LINE_MAX];
 } KryDefer;
 
 /* Scope kinds, to decide what break/continue unwind. */
 enum {
     KRY_SCOPE_BLOCK,   /* plain { } or function body                  */
-    KRY_SCOPE_BRANCH,  /* if / else if / else / switch / case / default */
-    KRY_SCOPE_LOOP      /* for / while — break/continue unwind to here  */
+    KRY_SCOPE_BRANCH,  /* if / else if / else / switch                 */
+    KRY_SCOPE_LOOP,    /* for / while — break/continue unwind to here  */
+    KRY_SCOPE_CASE     /* a switch case body (implicit scope)          */
 };
 
 /* Classify a body line into a scope kind for the scope it OPENS, or -1 if it
@@ -4291,13 +4295,30 @@ apply_defers(KryFunction *fn)
 
     /* Emit every pending defer owned by scope indices in (after, top], i.e.
      * unwind from the innermost scope down to (not including) `after`. Within
-     * a scope, defers run in reverse registration order. */
+     * a scope, defers run in reverse registration order. Skips defers already
+     * spent (emitted by an earlier break/continue/return). */
 #define EMIT_UNWIND(after)                                                  \
     do {                                                                    \
         for(int s = scope_count - 1; s > (after); s--) {                    \
             for(int d = defer_count - 1; d >= 0; d--) {                     \
-                if(defers[d].scope_index == s)                              \
+                if(defers[d].scope_index == s && !defers[d].spent) {        \
                     EMIT_BODY(defers[d].stmt);                              \
+                }                                                           \
+            }                                                               \
+        }                                                                   \
+    } while(0)
+
+    /* Like EMIT_UNWIND, but marks the emitted defers as spent so a later
+     * scope boundary (case label, close brace) doesn't re-emit them. Used by
+     * early exits (break/continue/return). */
+#define EMIT_UNWIND_AND_SPEND(after)                                        \
+    do {                                                                    \
+        for(int s = scope_count - 1; s > (after); s--) {                    \
+            for(int d = defer_count - 1; d >= 0; d--) {                     \
+                if(defers[d].scope_index == s && !defers[d].spent) {        \
+                    EMIT_BODY(defers[d].stmt);                              \
+                    defers[d].spent = 1;                                    \
+                }                                                           \
             }                                                               \
         }                                                                   \
     } while(0)
@@ -4315,6 +4336,7 @@ apply_defers(KryFunction *fn)
                 continue;   /* malformed; parse_statement already validated */
             if(defer_count < KC_BODY_MAX) {
                 defers[defer_count].scope_index = scope_count - 1;
+                defers[defer_count].spent = 0;
                 snprintf(defers[defer_count].stmt,
                          sizeof(defers[defer_count].stmt), "    %s;", stmt);
                 defer_count++;
@@ -4336,6 +4358,12 @@ apply_defers(KryFunction *fn)
                scope_kind[scope_count] == KRY_SCOPE_BLOCK &&
                scope_kind[scope_count - 1] == KRY_SCOPE_LOOP)
                 scope_count--;
+            /* If the scope just closed was a switch case, also pop the
+             * switch (its `}` closes both the case and the switch). */
+            if(scope_count >= 2 &&
+               scope_kind[scope_count] == KRY_SCOPE_CASE &&
+               scope_kind[scope_count - 1] == KRY_SCOPE_BRANCH)
+                scope_count--;
             /* Drop defers that belonged to the closed scope(s). */
             {
                 int kept = 0;
@@ -4352,24 +4380,83 @@ apply_defers(KryFunction *fn)
             continue;
         }
 
-        /* return: unwind everything back to the function body. */
+        /* case / default: a switch case is an implicit scope boundary.
+         * The previous case's defers fire here (the fall-through path) and
+         * are then dropped whether or not they were spent by an earlier
+         * break/return. Then a fresh case scope is pushed for the new case
+         * so its defers attach to it, not the switch. */
+        if(strncmp(text, "case ", 5) == 0 || strcmp(text, "default:") == 0) {
+            int case_scope = -1;
+            if(scope_count > 0 &&
+               scope_kind[scope_count - 1] == KRY_SCOPE_CASE)
+                case_scope = scope_count - 1;
+            if(case_scope >= 0) {
+                /* Fire this case's unspent defers (fall-through), then drop
+                 * all of this case's defers and pop the case scope. */
+                for(int d = defer_count - 1; d >= 0; d--) {
+                    if(defers[d].scope_index == case_scope && !defers[d].spent)
+                        EMIT_BODY(defers[d].stmt);
+                }
+                {
+                    int kept = 0;
+                    for(int d = 0; d < defer_count; d++)
+                        if(defers[d].scope_index != case_scope)
+                            defers[kept++] = defers[d];
+                    defer_count = kept;
+                }
+                scope_count--;
+            }
+            EMIT_BODY(raw);
+            if(scope_count < KC_BODY_MAX)
+                scope_kind[scope_count++] = KRY_SCOPE_CASE;
+            continue;
+        }
+
+        /* return: unwind everything back to the function body. Returns must
+         * fire all defers on every path (the function is exiting), so they
+         * use the non-spending unwind — a defer can't be "used up" by one
+         * return when a later return also needs it. EXCEPTION: defers in a
+         * switch-case scope ARE spent, because the case boundary after the
+         * return would otherwise re-emit them (a case is one-shot). */
         if(strncmp(text, "return", 6) == 0 &&
            (text[6] == ';' || text[6] == ' ' || text[6] == '\t')) {
             EMIT_UNWIND(-1);
+            /* Spend case-scope defers so the following case boundary doesn't
+             * re-emit them. */
+            for(int s = scope_count - 1; s > 0; s--) {
+                if(scope_kind[s] == KRY_SCOPE_CASE) {
+                    for(int d = 0; d < defer_count; d++)
+                        if(defers[d].scope_index == s)
+                            defers[d].spent = 1;
+                }
+            }
             EMIT_BODY(raw);
             continue;
         }
 
-        /* break / continue: unwind down to (not including) the nearest loop. */
+        /* break / continue: unwind to the enclosing loop or switch case.
+         * In a loop, the defer must fire every iteration (at the loop-body
+         * close), so the non-spending unwind is correct. In a switch case,
+         * the case boundary is a one-shot boundary, so break spends the
+         * case's defers to prevent the case-label handler re-emitting them. */
         if(strcmp(text, "break;") == 0 || strcmp(text, "continue;") == 0) {
             int target = 0;
+            int in_case = 0;
             for(int s = scope_count - 1; s > 0; s--) {
                 if(scope_kind[s] == KRY_SCOPE_LOOP) {
                     target = s;
                     break;
                 }
+                if(scope_kind[s] == KRY_SCOPE_CASE) {
+                    target = s - 1;
+                    in_case = 1;
+                    break;
+                }
             }
-            EMIT_UNWIND(target);
+            if(in_case)
+                EMIT_UNWIND_AND_SPEND(target);
+            else
+                EMIT_UNWIND(target);
             EMIT_BODY(raw);
             continue;
         }

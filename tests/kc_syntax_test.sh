@@ -1052,6 +1052,43 @@ fi
 grep -q 'expected defer statement' "$err"
 grep -Eq 'bad_defer\.kry:2:1: error:' "$err"
 
+# --- defer inside switch cases: each case's defers fire on its own path only
+# (regression: apply_defers previously treated the switch as one scope, leaking
+# case defers across cases — a defer in case 1 ran in default too)
+cat > "$work/src/defer_switch.kry" <<'EOF'
+#import "thing.h"
+sw :: (s: int) -> int {
+    switch s {
+    case 1:
+        defer Cleanup(s)
+        break
+    case 2:
+        defer Other(s)
+        return s
+    default:
+        defer Default(s)
+    }
+    return 0
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_switch.kry" >"$err" 2>&1
+# Cleanup fires before break (case 1 path).
+grep -E -A1 'Cleanup\(s\);$' "$out/src/defer_switch.c" | grep -Eq 'break;'
+# Other fires before return (case 2 path).
+grep -E -A1 'Other\(s\);$' "$out/src/defer_switch.c" | grep -Eq 'return s;'
+# Default fires at the switch close (default fall-through path).
+grep -E -B1 'Default\(s\);$' "$out/src/defer_switch.c" | grep -Eq 'default:'
+# No defer leaks across cases: Cleanup must NOT appear after case 2 or default,
+# Other must NOT appear after default. Count occurrences — each should fire
+# exactly once.
+[ "$(grep -c 'Cleanup(s);' "$out/src/defer_switch.c")" = 1 ] || {
+    echo "defer_switch: Cleanup leaked across cases" >&2; exit 1; }
+[ "$(grep -c 'Other(s);' "$out/src/defer_switch.c")" = 1 ] || {
+    echo "defer_switch: Other leaked across cases" >&2; exit 1; }
+[ "$(grep -c 'Default(s);' "$out/src/defer_switch.c")" = 1 ] || {
+    echo "defer_switch: Default fired more than once" >&2; exit 1; }
+
 # --- a call used as an if condition registers its source line for inspection
 # (regression: WidgetButton-in-if previously had no source, so click-to-source
 # on buttons did nothing)
