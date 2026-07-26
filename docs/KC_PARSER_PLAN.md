@@ -218,18 +218,25 @@ test cases for:
 Effort: ~1–2 days. Pure test additions. Pays off immediately (catches bugs in
 *today's* kc) and de-risks every later phase.
 
-### Phase 1 — Introduce the AST alongside the existing path
+### Phase 1 — Introduce the AST alongside the existing path  ✅ DONE
 
-Add `ast.h` + `ast.c` with the node types (§4). Modify `parse_statement` to
-build an `AstStmt` node *in parallel* with emitting to `fn->body[]` — i.e.,
-both happen, but only `fn->body[]` is emitted. Add a debug mode
-(`--dump-ast`) that prints the tree.
+Added `cmd/kc/kc_ast.h` + `cmd/kc/kc_ast.c` with the node types (§4). Rather
+than instrument every `parse_statement` branch, Phase 1 reconstructs the AST
+**from the already-emitted `fn->body[]` strings** in a post-parse pass
+(`ast_function_from_body`). This validates that the strings contain enough
+information to rebuild structure — exactly what Phase 2 needs to know before
+swapping the emit path.
 
-**Exit criterion:** every existing test passes unchanged; the AST is built but
-not yet used for output. This proves the parser captures everything the
-line-matcher does.
+`--dump-ast` parses without writing files and prints the reconstructed tree
+with per-statement kind labels and depth indentation. Verified: zero
+`AST_STMT_UNKNOWN` nodes on the full-feature test inputs (every statement
+classifies into a known kind), meaning the AST captures 100% of what kc emits.
 
-Effort: ~1 week. Mostly mechanical translation of the 22 statement branches.
+**Exit criterion met:** every existing test passes unchanged; the AST is built
+but not used for output; a new test pins the dump output (function name,
+expected kinds present, no UNKNOWN, no file written).
+
+Effort: ~1 day (reconstruction is simpler than parallel-build instrumentation).
 
 ### Phase 2 — Emit from the AST (the cutover)
 

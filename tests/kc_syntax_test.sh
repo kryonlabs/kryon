@@ -1173,3 +1173,53 @@ if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_let.kry" >"$err" 2>&1
 fi
 grep -q "'let' syntax was removed" "$err"
 grep -Eq 'bad_let\.kry:2:1: error:' "$err"
+
+# --- --dump-ast reconstructs an AST with no unclassified (UNKNOWN) nodes
+cat > "$work/src/ast.kry" <<'EOF'
+#import "thing.h"
+ast_fn :: (n: int) -> int {
+    v := 0
+    defer Cleanup(v)
+    if n > 0 {
+        return n
+    }
+    for int i = 0; i < n; i++ {
+        v += i
+        if i == 2 {
+            break
+        }
+    }
+    while v < 3 {
+        v++
+    }
+    switch v {
+    case 1:
+        v = 2
+    default:
+        v = 3
+    }
+    unused v
+    return v
+}
+EOF
+
+"$kc" --dump-ast --no-main --root "$work" -o "$out" "$work/src/ast.kry" >"$err" 2>&1
+# The dump header names the function.
+grep -q 'function ast_fn' "$err"
+# Every statement kind is classified — no UNKNOWN nodes (full capture).
+if grep -q ' UNKNOWN ' "$err"; then
+    echo "dump-ast produced unclassified nodes" >&2
+    exit 1
+fi
+# The expected control-flow kinds are present.
+grep -Eq '^IF ' "$err"
+grep -Eq '^FOR ' "$err"
+grep -Eq '^WHILE ' "$err"
+grep -Eq '^SWITCH ' "$err"
+grep -Eq '^DEFER ' "$err"
+grep -Eq '^RETURN ' "$err"
+# --dump-ast must NOT write the generated .c/.h (it parses but skips emit).
+if [ -f "$out/src/ast.c" ]; then
+    echo "dump-ast wrote generated files" >&2
+    exit 1
+fi

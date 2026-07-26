@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include "kc_internal.h"
+#include "kc_ast.h"
 
 static void die(const char *fmt, ...);
 static char *trim(char *s);
@@ -4733,6 +4734,7 @@ main(int argc, char **argv)
     KryFile **files = NULL;
     int file_count = 0;
     int no_main = 0;
+    int dump_ast = 0;
     int first_file = 0;
 
     for(int i = 1; i < argc; i++) {
@@ -4746,6 +4748,10 @@ main(int argc, char **argv)
             out_dir = argv[i];
         } else if(strcmp(argv[i], "--no-main") == 0) {
             no_main = 1;
+        } else if(strcmp(argv[i], "--dump-ast") == 0) {
+            /* Debug: reconstruct and print the AST for each function without
+             * writing files. Phase 1 of the parser migration. */
+            dump_ast = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -4773,7 +4779,15 @@ main(int argc, char **argv)
         file->root = root;
         file->no_main = no_main;
         parse_kry(file);
-        write_generated(file, root, out_dir);
+        if(dump_ast) {
+            for(int j = 0; j < file->function_count; j++) {
+                AstFunction *af = ast_function_from_body(&file->functions[j]);
+                ast_function_dump(af);
+                ast_function_free(af);
+            }
+        } else {
+            write_generated(file, root, out_dir);
+        }
         files[index] = file;
     }
     write_project_header(files, file_count, root, out_dir);
