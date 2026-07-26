@@ -1,4 +1,14 @@
 # Changelog
+## Unreleased
+
+### Added
+
+- Add `defer` to the Kry language: `defer STMT` runs `STMT` at the enclosing
+  block's exit (fall-through, `return`, `break`, `continue`), in reverse
+  registration order across nested scopes. A compile-time transform that
+  splices the statement into the generated C at every exit point — no runtime
+  cost. `goto` out of a deferred scope is left to explicit cleanup.
+
 ## v0.1.7 - 2026-07-26
 
 ### Changed

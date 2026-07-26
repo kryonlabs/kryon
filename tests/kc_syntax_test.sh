@@ -948,3 +948,102 @@ if "$kc" --no-main --root "$work" -o "$out" "$work/src/unbalanced.kry" >"$err" 2
 fi
 grep -q 'unbalanced braces' "$err"
 grep -Eq 'unbalanced\.kry:[0-9]+:1: error:' "$err"
+
+# --- defer: deferred statements run at scope exit, before return/break/continue
+cat > "$work/src/defer.kry" <<'EOF'
+#import "thing.h"
+
+work :: (x: int) -> int {
+    f := x
+    defer Release(f)
+    if x < 0 {
+        return 0
+    }
+    if x > 10 {
+        return x
+    }
+    for int i = 0; i < 3; i++ {
+        defer Log(i)
+        if i == 1 {
+            break
+        }
+    }
+    return x + f
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer.kry" >"$err" 2>&1
+# Function-body defer fires before each return and before the final return.
+# The defer and return land on consecutive lines; use grep -A1 (no -q, since
+# -q suppresses the context lines the second grep needs to see).
+grep -Fq 'Release(f);' "$out/src/defer.c"
+grep -E -A1 'Release\(f\);$' "$out/src/defer.c" | grep -Eq 'return 0;'
+grep -Fq 'return x;' "$out/src/defer.c"
+grep -Fq 'return x + f;' "$out/src/defer.c"
+# Loop-body defer fires before break (registered before the break in source).
+grep -E -A1 'Log\(i\);$' "$out/src/defer.c" | grep -Eq 'break;'
+# Loop-body defer also fires at the end of each non-break iteration.
+grep -E -B1 'Log\(i\);$' "$out/src/defer.c" | grep -Eq '\}'
+# The original `defer` declaration must not survive into the output.
+if grep -q 'defer ' "$out/src/defer.c"; then
+    echo "defer declaration leaked into generated C" >&2
+    exit 1
+fi
+
+# --- defer: multiple defers in one scope run in reverse (LIFO) order
+cat > "$work/src/defer_order.kry" <<'EOF'
+#import "thing.h"
+
+multi :: () -> int {
+    defer First()
+    defer Second()
+    defer Third()
+    return 0
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_order.kry" >"$err" 2>&1
+# Defers run in reverse (LIFO) order: Third (registered last) runs first,
+# First (registered first) runs last. Compare line numbers in the output.
+l_third=$(grep -n 'Third();' "$out/src/defer_order.c" | cut -d: -f1)
+l_second=$(grep -n 'Second();' "$out/src/defer_order.c" | cut -d: -f1)
+l_first=$(grep -n 'First();' "$out/src/defer_order.c" | cut -d: -f1)
+[ -n "$l_third" ] && [ -n "$l_second" ] && [ -n "$l_first" ] || {
+    echo "defer order: missing one of Third/Second/First" >&2; exit 1; }
+[ "$l_third" -lt "$l_second" ] && [ "$l_second" -lt "$l_first" ] || {
+    echo "defer order: expected Third < Second < First by line" >&2; exit 1; }
+
+# --- defer: break/continue unwind only the enclosing loop body
+cat > "$work/src/defer_break.kry" <<'EOF'
+#import "thing.h"
+
+loop_fn :: (n: int) -> int {
+    for int i = 0; i < n; i++ {
+        defer Cleanup(i)
+        if i == 2 {
+            break
+        }
+    }
+    return n
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_break.kry" >"$err" 2>&1
+# Cleanup fires before the break (defer declared before the break in source).
+grep -E -A1 'Cleanup\(i\);$' "$out/src/defer_break.c" | grep -Eq 'break;'
+# Cleanup also fires at the end of each iteration that reaches the loop close.
+grep -E -B1 'Cleanup\(i\);$' "$out/src/defer_break.c" | grep -Eq '\}'
+
+# --- defer: malformed (missing statement) is a clean error
+cat > "$work/src/bad_defer.kry" <<'EOF'
+screen bad {
+    defer
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_defer.kry" >"$err" 2>&1; then
+    echo "empty defer was accepted" >&2
+    exit 1
+fi
+grep -q 'expected defer statement' "$err"
+grep -Eq 'bad_defer\.kry:2:1: error:' "$err"
