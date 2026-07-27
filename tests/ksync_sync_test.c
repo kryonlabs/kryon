@@ -1,4 +1,4 @@
-#include "lyra_sync.h"
+#include "ksync_sync.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,7 +53,7 @@ test_set_text(const char *key, const char *value, void *user)
 static int
 test_http(const char *method, const char *url, const char *body,
           const char *const *headers, int header_count,
-          LyraSyncBuffer *response, long *status, void *user)
+          KsyncSyncBuffer *response, long *status, void *user)
 {
     TestCtx *ctx = user;
     snprintf(ctx->last_method, sizeof(ctx->last_method), "%s", method != NULL ? method : "");
@@ -66,17 +66,15 @@ test_http(const char *method, const char *url, const char *body,
         if(headers[i] != NULL && strncmp(headers[i], "Authorization:", 14) == 0)
             snprintf(ctx->last_auth, sizeof(ctx->last_auth), "%s", headers[i]);
         if(headers[i] != NULL &&
-           (strncmp(headers[i], "X-Lyra-User:", 12) == 0 ||
-            strncmp(headers[i], "X-Inbe-User:", 12) == 0))
+           strncmp(headers[i], "X-Ksync-User:", strlen("X-Ksync-User:")) == 0)
             snprintf(ctx->last_user, sizeof(ctx->last_user), "%s", headers[i]);
         if(headers[i] != NULL &&
-           (strncmp(headers[i], "X-Lyra-Signature:", 17) == 0 ||
-            strncmp(headers[i], "X-Inbe-Signature:", 17) == 0))
+           strncmp(headers[i], "X-Ksync-Signature:", strlen("X-Ksync-Signature:")) == 0)
             snprintf(ctx->last_signature, sizeof(ctx->last_signature), "%s", headers[i]);
     }
     if(status != NULL)
         *status = 200;
-    return AppendLyraSyncBuffer(response, "{\"status\":\"ok\",\"changes\":{}}",
+    return AppendKsyncSyncBuffer(response, "{\"status\":\"ok\",\"changes\":{}}",
                                          strlen("{\"status\":\"ok\",\"changes\":{}}"));
 }
 
@@ -115,7 +113,7 @@ test_purge(void *user)
 }
 
 static void
-fill_account(LyraAccount *account)
+fill_account(KsyncAccount *account)
 {
     memset(account, 0, sizeof(*account));
     memset(account->public_id, 'a', 64);
@@ -129,17 +127,17 @@ test_url_helpers(void)
 {
     char out[128];
 
-    check(IsLyraSyncURLValid("https://api.example.test"), "https url valid");
-    check(IsLyraSyncURLValid("localhost:8080"), "localhost shorthand valid");
-    check(!IsLyraSyncURLValid("http://example.test"), "plain remote http rejected");
-    check(NormalizeLyraSyncURL("localhost:8080", out, sizeof(out)) &&
+    check(IsKsyncSyncURLValid("https://api.example.test"), "https url valid");
+    check(IsKsyncSyncURLValid("localhost:8080"), "localhost shorthand valid");
+    check(!IsKsyncSyncURLValid("http://example.test"), "plain remote http rejected");
+    check(NormalizeKsyncSyncURL("localhost:8080", out, sizeof(out)) &&
               strcmp(out, "http://localhost:8080") == 0,
           "normalize localhost");
-    check(JoinLyraSyncURL(out, sizeof(out), "https://api.example.test/",
+    check(JoinKsyncSyncURL(out, sizeof(out), "https://api.example.test/",
                                    "/api/v1/sync") &&
               strcmp(out, "https://api.example.test/api/v1/sync") == 0,
           "join trims trailing slash");
-    check(JoinLyraSyncWebSocketURL(out, sizeof(out), "https://api.example.test",
+    check(JoinKsyncSyncWebSocketURL(out, sizeof(out), "https://api.example.test",
                                       "/api/v1/sync/ws") &&
               strcmp(out, "wss://api.example.test/api/v1/sync/ws") == 0,
           "join websocket https");
@@ -148,18 +146,18 @@ test_url_helpers(void)
 static void
 test_json_helpers(void)
 {
-    LyraSyncBuffer buffer = {0};
+    KsyncSyncBuffer buffer = {0};
     char value[32];
 
-    check(AppendLyraSyncBufferJSONString(&buffer, "a\"b\n") &&
+    check(AppendKsyncSyncBufferJSONString(&buffer, "a\"b\n") &&
               strcmp(buffer.data, "\"a\\\"b\\n\"") == 0,
           "json string escaping");
-    FreeLyraSyncBuffer(&buffer);
-    check(FindLyraSyncJSONString("{\"auth_token\":\"tok\"}", "auth_token",
+    FreeKsyncSyncBuffer(&buffer);
+    check(FindKsyncSyncJSONString("{\"auth_token\":\"tok\"}", "auth_token",
                                            value, sizeof(value)) &&
               strcmp(value, "tok") == 0,
           "json string find");
-    check(FindLyraSyncJSONInt64("{\"expires_in_seconds\":42}",
+    check(FindKsyncSyncJSONInt64("{\"expires_in_seconds\":42}",
                                           "expires_in_seconds", 0) == 42,
           "json int find");
 }
@@ -168,9 +166,9 @@ static void
 test_sync_run_with_valid_token(void)
 {
     TestCtx ctx = {0};
-    LyraAccount account;
-    LyraSyncConfig cfg;
-    LyraSyncResult result;
+    KsyncAccount account;
+    KsyncSyncConfig cfg;
+    KsyncSyncResult result;
 
     fill_account(&account);
     snprintf(ctx.token, sizeof(ctx.token), "saved-token");
@@ -188,14 +186,14 @@ test_sync_run_with_valid_token(void)
     cfg.purge_synced_deleted = test_purge;
     cfg.user = &ctx;
 
-    result = RunLyraSync(&cfg);
-    check(result == LYRA_SYNC_OK, "sync run returns ok");
+    result = RunKsyncSync(&cfg);
+    check(result == KSYNC_SYNC_OK, "sync run returns ok");
     check(strcmp(ctx.last_method, "POST") == 0, "sync uses post");
     check(strcmp(ctx.last_url, "https://api.example.test/api/v1/sync") == 0,
           "sync posts to sync path");
     check(strcmp(ctx.last_auth, "Authorization: Bearer saved-token") == 0,
           "sync sends bearer token");
-    check(strncmp(ctx.last_user, "X-Lyra-User:", 12) == 0,
+    check(strncmp(ctx.last_user, "X-Ksync-User:", strlen("X-Ksync-User:")) == 0,
           "sync uses generic user header by default");
     check(ctx.apply_called == 1, "sync applies response");
     check(ctx.purge_called == 1, "sync purges after success");
@@ -204,21 +202,21 @@ test_sync_run_with_valid_token(void)
 static int
 test_login_http(const char *method, const char *url, const char *body,
                 const char *const *headers, int header_count,
-                LyraSyncBuffer *response, long *status, void *user)
+                KsyncSyncBuffer *response, long *status, void *user)
 {
     TestCtx *ctx = user;
 
     test_http(method, url, body, headers, header_count, response, status, user);
     if(strstr(url, "/challenge") != NULL) {
-        FreeLyraSyncBuffer(response);
-        return AppendLyraSyncBuffer(response,
+        FreeKsyncSyncBuffer(response);
+        return AppendKsyncSyncBuffer(response,
                                     "{\"nonce\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
                                     strlen("{\"nonce\":\"0000000000000000000000000000000000000000000000000000000000000000\"}"));
     }
     if(strstr(url, "/login") != NULL) {
         (void)ctx;
-        FreeLyraSyncBuffer(response);
-        return AppendLyraSyncBuffer(response,
+        FreeKsyncSyncBuffer(response);
+        return AppendKsyncSyncBuffer(response,
                                     "{\"auth_token\":\"new-token\",\"expires_in_seconds\":3600}",
                                     strlen("{\"auth_token\":\"new-token\",\"expires_in_seconds\":3600}"));
     }
@@ -229,11 +227,11 @@ static void
 test_login_uses_configured_wire_names(void)
 {
     TestCtx ctx = {0};
-    LyraAccount account;
-    LyraSyncConfig cfg;
-    LyraSyncResult result;
+    KsyncAccount account;
+    KsyncSyncConfig cfg;
+    KsyncSyncResult result;
 
-    if(!CreateLyraAccount(&account)) {
+    if(!CreateKsyncAccount(&account)) {
         check(0, "create account for login override test");
         return;
     }
@@ -241,19 +239,20 @@ test_login_uses_configured_wire_names(void)
     cfg.base_url = "https://api.example.test";
     cfg.account = &account;
     cfg.client_id = "client-123";
-    cfg.signature_context = "inbe-sync-v1";
-    cfg.user_header_name = "X-Inbe-User";
-    cfg.signature_header_name = "X-Inbe-Signature";
+    cfg.signature_context = "ksync-sync-v1";
+    cfg.user_header_name = "X-Ksync-User";
+    cfg.signature_header_name = "X-Ksync-Signature";
     cfg.http_request = test_login_http;
     cfg.get_text = test_get_text;
     cfg.set_text = test_set_text;
     cfg.user = &ctx;
 
-    result = LoginLyraSync(&cfg);
-    check(result == LYRA_SYNC_OK, "login with configured wire names returns ok");
-    check(strncmp(ctx.last_user, "X-Inbe-User:", 12) == 0,
+    result = LoginKsyncSync(&cfg);
+    check(result == KSYNC_SYNC_OK, "login with configured wire names returns ok");
+    check(strncmp(ctx.last_user, "X-Ksync-User:", strlen("X-Ksync-User:")) == 0,
           "login uses configured user header");
-    check(strncmp(ctx.last_signature, "X-Inbe-Signature:", 17) == 0,
+    check(strncmp(ctx.last_signature, "X-Ksync-Signature:",
+                  strlen("X-Ksync-Signature:")) == 0,
           "login uses configured signature header");
     check(strcmp(ctx.token, "new-token") == 0, "login saves auth token");
 }

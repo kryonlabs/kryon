@@ -402,11 +402,11 @@ Profile-picture PNGs in `pfp/` are embedded into the same icon catalog with
 `GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
 the standard profile-picture options.
 
-Kryon also exposes stable `UI_LYRA_PROFILE_ICON_*` IDs and mapping helpers:
+Kryon also exposes stable `UI_KSYNC_PROFILE_ICON_*` IDs and mapping helpers:
 
 ```c
-UIIconType GetUIProfilePictureIconTypeForLyraID(int lyra_id);
-int GetUILyraIDForProfilePictureIconType(UIIconType type);
+UIIconType GetUIProfilePictureIconTypeForKsyncID(int ksync_id);
+int GetUIKsyncIDForProfilePictureIconType(UIIconType type);
 ```
 
 Use those IDs for server storage or sync payloads instead of generated
@@ -504,44 +504,44 @@ int GetCurrentLocaleIndex(void);
 
 ### Sync
 
-Lyra Sync is Kryon's common sync protocol layer. Kryon owns URL handling, token auth,
+Ksync Sync is Kryon's common sync protocol layer. Kryon owns URL handling, token auth,
 challenge/login, bearer requests, sync posting, account deletion, and small JSON
 helpers. Applications still own their local data model and provide callbacks to
 build sync payloads, apply sync responses, store auth tokens, and perform
 platform HTTP.
 
-#### `LyraSyncResult`
+#### `KsyncSyncResult`
 
 ```c
-typedef enum LyraSyncResult {
-    LYRA_SYNC_OK = 0,
-    LYRA_SYNC_INVALID_URL,
-    LYRA_SYNC_NO_ACCOUNT,
-    LYRA_SYNC_PAYLOAD_FAILED,
-    LYRA_SYNC_CHALLENGE_FAILED,
-    LYRA_SYNC_SIGN_FAILED,
-    LYRA_SYNC_REQUEST_FAILED,
-    LYRA_SYNC_AUTH_FAILED
-} LyraSyncResult;
+typedef enum KsyncSyncResult {
+    KSYNC_SYNC_OK = 0,
+    KSYNC_SYNC_INVALID_URL,
+    KSYNC_SYNC_NO_ACCOUNT,
+    KSYNC_SYNC_PAYLOAD_FAILED,
+    KSYNC_SYNC_CHALLENGE_FAILED,
+    KSYNC_SYNC_SIGN_FAILED,
+    KSYNC_SYNC_REQUEST_FAILED,
+    KSYNC_SYNC_AUTH_FAILED
+} KsyncSyncResult;
 ```
 
-#### `LyraSyncConfig`
+#### `KsyncSyncConfig`
 
 ```c
-typedef struct LyraSyncConfig {
+typedef struct KsyncSyncConfig {
     const char *base_url;
-    const LyraAccount *account;
+    const KsyncAccount *account;
     const char *client_id;
-    LyraSyncHttpRequestFn http_request;
-    LyraSyncGetTextFn get_text;
-    LyraSyncSetTextFn set_text;
-    LyraSyncBuildPayloadFn build_payload;
-    LyraSyncFreePayloadFn free_payload;
-    LyraSyncApplyResponseFn apply_response;
-    LyraSyncVoidFn purge_synced_deleted;
-    LyraSyncLogFn log_http_failure;
+    KsyncSyncHttpRequestFn http_request;
+    KsyncSyncGetTextFn get_text;
+    KsyncSyncSetTextFn set_text;
+    KsyncSyncBuildPayloadFn build_payload;
+    KsyncSyncFreePayloadFn free_payload;
+    KsyncSyncApplyResponseFn apply_response;
+    KsyncSyncVoidFn purge_synced_deleted;
+    KsyncSyncLogFn log_http_failure;
     void *user;
-} LyraSyncConfig;
+} KsyncSyncConfig;
 ```
 
 `http_request` is platform-owned. Native apps can implement it with libcurl,
@@ -552,11 +552,11 @@ Android apps can bridge through JNI, and web apps can bridge to JavaScript fetch
 #### URL Helpers
 
 ```c
-int IsLyraSyncURLValid(const char *url);
-int NormalizeLyraSyncURL(const char *input, char *out, size_t out_size);
-int JoinLyraSyncURL(char *out, size_t out_size,
+int IsKsyncSyncURLValid(const char *url);
+int NormalizeKsyncSyncURL(const char *input, char *out, size_t out_size);
+int JoinKsyncSyncURL(char *out, size_t out_size,
                              const char *base_url, const char *path);
-int JoinLyraSyncWebSocketURL(char *out, size_t out_size,
+int JoinKsyncSyncWebSocketURL(char *out, size_t out_size,
                                 const char *base_url, const char *path);
 ```
 
@@ -566,41 +566,41 @@ Remote sync URLs must be HTTPS. HTTP is accepted only for loopback hosts such as
 #### Buffer And JSON Helpers
 
 ```c
-int AppendLyraSyncBuffer(LyraSyncBuffer *buffer,
+int AppendKsyncSyncBuffer(KsyncSyncBuffer *buffer,
                                   const void *data, size_t bytes);
-int AppendLyraSyncBufferJSONString(LyraSyncBuffer *buffer,
+int AppendKsyncSyncBufferJSONString(KsyncSyncBuffer *buffer,
                                               const char *text);
-void FreeLyraSyncBuffer(LyraSyncBuffer *buffer);
-int FindLyraSyncJSONString(const char *json, const char *key,
+void FreeKsyncSyncBuffer(KsyncSyncBuffer *buffer);
+int FindKsyncSyncJSONString(const char *json, const char *key,
                                      char *out, size_t out_size);
-long long FindLyraSyncJSONInt64(const char *json, const char *key,
+long long FindKsyncSyncJSONInt64(const char *json, const char *key,
                                           long long fallback);
 ```
 
-These are intentionally small helpers for Lyra protocol payload construction and
+These are intentionally small helpers for Ksync protocol payload construction and
 simple response fields. Applications that already have a full JSON parser should
 keep using it for domain data.
 
 #### Auth And Sync
 
 ```c
-void ClearLyraSyncAuthToken(const LyraSyncConfig *cfg);
-LyraSyncResult LoginLyraSync(const LyraSyncConfig *cfg);
-LyraSyncResult RunLyraSync(const LyraSyncConfig *cfg);
-LyraSyncResult RequestLyraSyncBearer(const LyraSyncConfig *cfg,
+void ClearKsyncSyncAuthToken(const KsyncSyncConfig *cfg);
+KsyncSyncResult LoginKsyncSync(const KsyncSyncConfig *cfg);
+KsyncSyncResult RunKsyncSync(const KsyncSyncConfig *cfg);
+KsyncSyncResult RequestKsyncSyncBearer(const KsyncSyncConfig *cfg,
                                                    const char *method,
                                                    const char *path,
                                                    const char *body,
                                                    char *out,
                                                    size_t out_size);
-LyraSyncResult DeleteLyraSyncAccount(const LyraSyncConfig *cfg);
-const char *GetLyraSyncResultName(LyraSyncResult result);
+KsyncSyncResult DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg);
+const char *GetKsyncSyncResultName(KsyncSyncResult result);
 ```
 
-`RunLyraSync` loads or refreshes an auth token, asks the app callback for
+`RunKsyncSync` loads or refreshes an auth token, asks the app callback for
 a local-first payload, posts it to `/api/v1/sync`, applies the response through
-the callback, and purges synced tombstones on success. `RequestLyraSyncBearer`
-is for app-specific Lyra endpoints that use the same account token.
+the callback, and purges synced tombstones on success. `RequestKsyncSyncBearer`
+is for app-specific Ksync endpoints that use the same account token.
 
 ---
 

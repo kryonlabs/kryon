@@ -1,7 +1,7 @@
-#include "lyra_account.h"
+#include "ksync_account.h"
 
 #if !defined(HAS_LIBOQS)
-#error "Kryon Lyra accounts require HAS_LIBOQS; build and link liboqs instead of disabling account crypto"
+#error "Kryon Ksync accounts require HAS_LIBOQS; build and link liboqs instead of disabling account crypto"
 #endif
 
 #include <oqs/oqs.h>
@@ -11,16 +11,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LYRA_ACCOUNT_KEY_HEADER "lyra-account-key-v1"
-#define LYRA_LEGACY_UKU_KEY_HEADER "account-key-v1"
-#define LYRA_LEGACY_INBE_KEY_HEADER "inbe-sync-key-v1"
+#define KSYNC_ACCOUNT_KEY_HEADER "ksync-account-key-v1"
+#define KSYNC_LEGACY_UKU_KEY_HEADER "account-key-v1"
+#define KSYNC_LEGACY_INBE_KEY_HEADER "inbe-sync-key-v1"
 
-typedef struct LyraSha256Ctx {
+typedef struct KsyncSha256Ctx {
     uint32_t state[8];
     uint64_t bit_len;
     uint8_t data[64];
     size_t data_len;
-} LyraSha256Ctx;
+} KsyncSha256Ctx;
 
 static const uint32_t sha256_k[64] = {
     0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U, 0x3956c25bU, 0x59f111f1U,
@@ -43,7 +43,7 @@ rotr32(uint32_t value, uint32_t bits)
 }
 
 static void
-sha256_transform(LyraSha256Ctx *ctx, const uint8_t data[64])
+sha256_transform(KsyncSha256Ctx *ctx, const uint8_t data[64])
 {
     uint32_t m[64];
     uint32_t a, b, c, d, e, f, g, h;
@@ -97,7 +97,7 @@ sha256_transform(LyraSha256Ctx *ctx, const uint8_t data[64])
 }
 
 static void
-sha256_init(LyraSha256Ctx *ctx)
+sha256_init(KsyncSha256Ctx *ctx)
 {
     memset(ctx, 0, sizeof(*ctx));
     ctx->state[0] = 0x6a09e667U;
@@ -111,7 +111,7 @@ sha256_init(LyraSha256Ctx *ctx)
 }
 
 static void
-sha256_update(LyraSha256Ctx *ctx, const uint8_t *data, size_t len)
+sha256_update(KsyncSha256Ctx *ctx, const uint8_t *data, size_t len)
 {
     for(size_t i = 0; i < len; i++) {
         ctx->data[ctx->data_len++] = data[i];
@@ -124,7 +124,7 @@ sha256_update(LyraSha256Ctx *ctx, const uint8_t *data, size_t len)
 }
 
 static void
-sha256_final(LyraSha256Ctx *ctx, uint8_t hash[32])
+sha256_final(KsyncSha256Ctx *ctx, uint8_t hash[32])
 {
     size_t i = ctx->data_len;
 
@@ -215,7 +215,7 @@ copy_key_value(char *out, size_t out_size, const char *value, size_t value_len)
 }
 
 static void
-parse_account_line(LyraAccount *account, const char *line, size_t line_len)
+parse_account_line(KsyncAccount *account, const char *line, size_t line_len)
 {
     if(account == NULL || line == NULL)
         return;
@@ -324,10 +324,10 @@ read_file_text(const char *filename)
 }
 
 void
-LyraSha256Hex(const uint8_t *data, size_t len, char out_hex[LYRA_PUBLIC_ID_HEX_SIZE])
+KsyncSha256Hex(const uint8_t *data, size_t len, char out_hex[KSYNC_PUBLIC_ID_HEX_SIZE])
 {
     uint8_t digest[32];
-    LyraSha256Ctx sha;
+    KsyncSha256Ctx sha;
 
     if(out_hex == NULL)
         return;
@@ -337,27 +337,27 @@ LyraSha256Hex(const uint8_t *data, size_t len, char out_hex[LYRA_PUBLIC_ID_HEX_S
     sha256_init(&sha);
     sha256_update(&sha, data, len);
     sha256_final(&sha, digest);
-    bytes_to_hex(digest, sizeof(digest), out_hex, LYRA_PUBLIC_ID_HEX_SIZE);
+    bytes_to_hex(digest, sizeof(digest), out_hex, KSYNC_PUBLIC_ID_HEX_SIZE);
 }
 
 int
-IsLyraAccountAvailable(void)
+IsKsyncAccountAvailable(void)
 {
     return 1;
 }
 
 int
-HasLyraAccountValues(const LyraAccount *account)
+HasKsyncAccountValues(const KsyncAccount *account)
 {
     return account != NULL && account->public_id[0] != '\0' &&
            account->public_key_hex[0] != '\0' && account->private_key_hex[0] != '\0';
 }
 
 int
-ValidateLyraAccount(LyraAccount *account)
+ValidateKsyncAccount(KsyncAccount *account)
 {
     uint8_t public_key[1312];
-    char expected_public_id[LYRA_PUBLIC_ID_HEX_SIZE];
+    char expected_public_id[KSYNC_PUBLIC_ID_HEX_SIZE];
 
     if(account == NULL)
         return 0;
@@ -366,7 +366,7 @@ ValidateLyraAccount(LyraAccount *account)
         return 0;
     if(!hex_to_bytes(account->public_key_hex, public_key, sizeof(public_key)))
         return 0;
-    LyraSha256Hex(public_key, sizeof(public_key), expected_public_id);
+    KsyncSha256Hex(public_key, sizeof(public_key), expected_public_id);
     if(account->public_id[0] == '\0') {
         snprintf(account->public_id, sizeof(account->public_id), "%s", expected_public_id);
         return 1;
@@ -377,11 +377,11 @@ ValidateLyraAccount(LyraAccount *account)
 }
 
 int
-ParseLyraAccountText(const char *text, LyraAccount *account)
+ParseKsyncAccountText(const char *text, KsyncAccount *account)
 {
     const char *line;
     const char *next;
-    char exported_key[LYRA_ACCOUNT_EXPORT_TEXT_SIZE];
+    char exported_key[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
 
     if(text == NULL || account == NULL)
         return 0;
@@ -402,46 +402,46 @@ ParseLyraAccountText(const char *text, LyraAccount *account)
         parse_account_line(account, line, (size_t)(next - line));
         line = next + 1;
     }
-    return ValidateLyraAccount(account);
+    return ValidateKsyncAccount(account);
 }
 
 int
-ExportLyraAccountText(const LyraAccount *account, char *out, size_t out_size)
+ExportKsyncAccountText(const KsyncAccount *account, char *out, size_t out_size)
 {
     int len;
 
-    if(!HasLyraAccountValues(account) || out == NULL || out_size == 0)
+    if(!HasKsyncAccountValues(account) || out == NULL || out_size == 0)
         return 0;
     len = snprintf(out, out_size,
-                   LYRA_ACCOUNT_KEY_HEADER
+                   KSYNC_ACCOUNT_KEY_HEADER
                    "\nalgorithm=ML-DSA-44\npublic_id=%s\npublic_key=%s\nprivate_key=%s\n",
                    account->public_id, account->public_key_hex, account->private_key_hex);
     return len > 0 && (size_t)len < out_size;
 }
 
 int
-ImportLyraAccountFile(const char *filename, LyraAccount *account)
+ImportKsyncAccountFile(const char *filename, KsyncAccount *account)
 {
     char *body = read_file_text(filename);
     int ok;
 
     if(body == NULL)
         return 0;
-    ok = ParseLyraAccountText(body, account);
+    ok = ParseKsyncAccountText(body, account);
     free(body);
     return ok;
 }
 
 int
-ExportLyraAccountFile(const LyraAccount *account, const char *filename)
+ExportKsyncAccountFile(const KsyncAccount *account, const char *filename)
 {
-    char body[LYRA_ACCOUNT_EXPORT_TEXT_SIZE];
+    char body[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
     FILE *file;
     size_t len;
     int ok;
 
     if(filename == NULL || filename[0] == '\0' ||
-       !ExportLyraAccountText(account, body, sizeof(body)))
+       !ExportKsyncAccountText(account, body, sizeof(body)))
         return 0;
     file = fopen(filename, "wb");
     if(file == NULL)
@@ -454,12 +454,12 @@ ExportLyraAccountFile(const LyraAccount *account, const char *filename)
 }
 
 int
-CreateLyraAccount(LyraAccount *account)
+CreateKsyncAccount(KsyncAccount *account)
 {
     OQS_SIG *sig;
     uint8_t public_key[1312];
     uint8_t private_key[2560];
-    LyraAccount generated;
+    KsyncAccount generated;
 
     if(account == NULL)
         return 0;
@@ -477,7 +477,7 @@ CreateLyraAccount(LyraAccount *account)
     }
     OQS_SIG_free(sig);
 
-    LyraSha256Hex(public_key, sizeof(public_key), generated.public_id);
+    KsyncSha256Hex(public_key, sizeof(public_key), generated.public_id);
     bytes_to_hex(public_key, sizeof(public_key), generated.public_key_hex,
                  sizeof(generated.public_key_hex));
     bytes_to_hex(private_key, sizeof(private_key), generated.private_key_hex,
@@ -487,7 +487,7 @@ CreateLyraAccount(LyraAccount *account)
 }
 
 int
-SignLyraAccountHex(const LyraAccount *account, const uint8_t *message,
+SignKsyncAccountHex(const KsyncAccount *account, const uint8_t *message,
                             size_t message_len, char *out_signature_hex, size_t out_size)
 {
     OQS_SIG *sig;
@@ -495,7 +495,7 @@ SignLyraAccountHex(const LyraAccount *account, const uint8_t *message,
     uint8_t signature[2420];
     size_t signature_len = 0;
 
-    if(!HasLyraAccountValues(account) || out_signature_hex == NULL ||
+    if(!HasKsyncAccountValues(account) || out_signature_hex == NULL ||
        out_size < sizeof(signature) * 2 + 1 || (message == NULL && message_len > 0))
         return 0;
     out_signature_hex[0] = '\0';

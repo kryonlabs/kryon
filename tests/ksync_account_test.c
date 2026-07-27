@@ -1,4 +1,4 @@
-#include "lyra_account.h"
+#include "ksync_account.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +30,7 @@ bytes_to_hex_local(const unsigned char *bytes, size_t len, char *out, size_t out
 }
 
 static void
-make_account(LyraAccount *account)
+make_account(KsyncAccount *account)
 {
     unsigned char public_key[1312];
     unsigned char private_key[2560];
@@ -40,7 +40,7 @@ make_account(LyraAccount *account)
         public_key[i] = (unsigned char)(i * 7U + 11U);
     for(size_t i = 0; i < sizeof(private_key); i++)
         private_key[i] = (unsigned char)(i * 17U + 3U);
-    LyraSha256Hex(public_key, sizeof(public_key), account->public_id);
+    KsyncSha256Hex(public_key, sizeof(public_key), account->public_id);
     bytes_to_hex_local(public_key, sizeof(public_key), account->public_key_hex,
                        sizeof(account->public_key_hex));
     bytes_to_hex_local(private_key, sizeof(private_key), account->private_key_hex,
@@ -50,14 +50,14 @@ make_account(LyraAccount *account)
 static void
 test_export_parse_roundtrip(void)
 {
-    LyraAccount account;
-    LyraAccount parsed;
-    char text[LYRA_ACCOUNT_EXPORT_TEXT_SIZE];
+    KsyncAccount account;
+    KsyncAccount parsed;
+    char text[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
 
     make_account(&account);
-    check_true("export text", ExportLyraAccountText(&account, text, sizeof(text)));
-    check_true("generic header", strstr(text, "lyra-account-key-v1\n") == text);
-    check_true("parse exported text", ParseLyraAccountText(text, &parsed));
+    check_true("export text", ExportKsyncAccountText(&account, text, sizeof(text)));
+    check_true("generic header", strstr(text, "ksync-account-key-v1\n") == text);
+    check_true("parse exported text", ParseKsyncAccountText(text, &parsed));
     check_true("roundtrip public id", strcmp(parsed.public_id, account.public_id) == 0);
     check_true("roundtrip public key", strcmp(parsed.public_key_hex, account.public_key_hex) == 0);
     check_true("roundtrip private key",
@@ -67,41 +67,46 @@ test_export_parse_roundtrip(void)
 static void
 test_old_imports(void)
 {
-    LyraAccount account;
-    LyraAccount parsed;
-    char text[LYRA_ACCOUNT_EXPORT_TEXT_SIZE];
-    char json[LYRA_ACCOUNT_EXPORT_TEXT_SIZE + 128];
+    KsyncAccount account;
+    KsyncAccount parsed;
+    char text[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
+    char json[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE + 128];
 
     make_account(&account);
     snprintf(text, sizeof(text),
              "inbe-sync-key-v1\nalgorithm=ML-DSA-44\npublic_key=%s\nsecret_key=%s\n",
              account.public_key_hex, account.private_key_hex);
-    check_true("old secret_key import", ParseLyraAccountText(text, &parsed));
+    check_true("old secret_key import", ParseKsyncAccountText(text, &parsed));
     check_true("old derived public id", strcmp(parsed.public_id, account.public_id) == 0);
 
     snprintf(text, sizeof(text),
              "account-key-v1\nalgorithm=ML-DSA-44\npublic_id=%s\npublic_key=%s\nprivate_key=%s\n",
              account.public_id, account.public_key_hex, account.private_key_hex);
-    check_true("old account-key import", ParseLyraAccountText(text, &parsed));
+    check_true("old account-key import", ParseKsyncAccountText(text, &parsed));
+
+    snprintf(text, sizeof(text),
+             "lyra-account-key-v1\nalgorithm=ML-DSA-44\npublic_id=%s\npublic_key=%s\nprivate_key=%s\n",
+             account.public_id, account.public_key_hex, account.private_key_hex);
+    check_true("old lyra account-key import", ParseKsyncAccountText(text, &parsed));
 
     snprintf(json, sizeof(json),
-             "{\"exported_key\":\"lyra-account-key-v1\\nalgorithm=ML-DSA-44\\npublic_id=%s\\npublic_key=%s\\nprivate_key=%s\\n\"}",
+             "{\"exported_key\":\"ksync-account-key-v1\\nalgorithm=ML-DSA-44\\npublic_id=%s\\npublic_key=%s\\nprivate_key=%s\\n\"}",
              account.public_id, account.public_key_hex, account.private_key_hex);
-    check_true("json exported_key import", ParseLyraAccountText(json, &parsed));
+    check_true("json exported_key import", ParseKsyncAccountText(json, &parsed));
 }
 
 static void
 test_reject_mismatch(void)
 {
-    LyraAccount account;
-    char text[LYRA_ACCOUNT_EXPORT_TEXT_SIZE];
+    KsyncAccount account;
+    char text[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
 
     make_account(&account);
     account.public_id[0] = account.public_id[0] == '0' ? '1' : '0';
     snprintf(text, sizeof(text),
-             "lyra-account-key-v1\nalgorithm=ML-DSA-44\npublic_id=%s\npublic_key=%s\nprivate_key=%s\n",
+             "ksync-account-key-v1\nalgorithm=ML-DSA-44\npublic_id=%s\npublic_key=%s\nprivate_key=%s\n",
              account.public_id, account.public_key_hex, account.private_key_hex);
-    check_true("reject mismatched public id", !ParseLyraAccountText(text, &account));
+    check_true("reject mismatched public id", !ParseKsyncAccountText(text, &account));
 }
 
 int
@@ -112,6 +117,6 @@ main(void)
     test_reject_mismatch();
     if(failures != 0)
         return 1;
-    printf("lyra account tests passed\n");
+    printf("ksync account tests passed\n");
     return 0;
 }

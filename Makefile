@@ -31,6 +31,22 @@ KRYON_BACKEND_RENAME_HEADER = $(BUILD_DIR)/generated/raylib_backend_rename.h
 KRYON_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/kryon_raylib_wrappers.c
 KRYON_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(KRYON_COMPAT_HEADER)
 KRYON_RAYLIB_BACKEND_RENAME_HEADER ?= $(KRYON_BACKEND_RENAME_HEADER)
+
+# Graphics/input backend. The kryon surface (kryon_compat.generated.h) is
+# backend-neutral; the concrete implementation is selected at link time here.
+#   raylib  -> generated raylib forwarders + libraylib.a   (default, unchanged)
+#   canvas  -> src/backend/canvas_backend.c (HTML5 Canvas2D; no raylib)
+#   null    -> src/backend/null_backend.c   (no-ops; for headless tests)
+KRYON_BACKEND ?= raylib
+ifeq ($(KRYON_BACKEND),raylib)
+  KRYON_BACKEND_SRCS = $(KRYON_RAYLIB_WRAPPERS_C)
+else ifeq ($(KRYON_BACKEND),canvas)
+  KRYON_BACKEND_SRCS = src/backend/canvas_backend.c
+else ifeq ($(KRYON_BACKEND),null)
+  KRYON_BACKEND_SRCS = src/backend/null_backend.c
+else
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
+endif
 UNAME_S := $(shell uname -s 2>/dev/null)
 UNAME_M := $(shell uname -m 2>/dev/null)
 ifeq ($(UNAME_M),amd64)
@@ -87,7 +103,7 @@ CPPFLAGS += -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
-SRCS += $(EMBED_ASSETS_C) $(KRYON_RAYLIB_WRAPPERS_C)
+SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
 
 SYSTEM_THEME_PKG := $(shell if pkg-config --exists gtk+-3.0 2>/dev/null; then printf '%s' gtk+-3.0; fi)
 ifneq ($(strip $(SYSTEM_THEME_PKG)),)
@@ -98,8 +114,8 @@ endif
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
 LIB = libkryon.a
-LYRA_ACCOUNT_TEST = $(BUILD_DIR)/tests/lyra_account_test
-LYRA_SYNC_TEST = $(BUILD_DIR)/tests/lyra_sync_test
+KSYNC_ACCOUNT_TEST = $(BUILD_DIR)/tests/ksync_account_test
+KSYNC_SYNC_TEST = $(BUILD_DIR)/tests/ksync_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
@@ -151,10 +167,10 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(LYRA_ACCOUNT_TEST) $(LYRA_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
-	$(LYRA_ACCOUNT_TEST)
-	$(LYRA_SYNC_TEST)
+	$(KSYNC_ACCOUNT_TEST)
+	$(KSYNC_SYNC_TEST)
 	$(TRANSITION_TEST)
 	$(FILE_DIALOG_BACKEND_TEST)
 	$(MARKDOWN_TEST)
@@ -195,13 +211,24 @@ $(KRYON_APP): scripts/kryon-app.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon-app.sh $@
 	chmod 755 $@
 
-$(KI): cmd/ki/main.c $(LIB) $(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) $(CPPFLAGS) -Isrc/ui $(RAY_CFLAGS) -o $@ \
+# Per-backend link inputs. raylib links libraylib.a + SDL/GL; canvas/null do not.
+ifeq ($(KRYON_BACKEND),raylib)
+  KRYON_BACKEND_LINK_PREREQ = $(RAYLIB_A)
+  KRYON_BACKEND_LINK_CFLAGS = $(RAY_CFLAGS)
+  KRYON_BACKEND_LINK_LIBS = $(RAYLIB_A) $(RAY_LDLIBS)
+else
+  KRYON_BACKEND_LINK_PREREQ =
+  KRYON_BACKEND_LINK_CFLAGS =
+  KRYON_BACKEND_LINK_LIBS =
+endif
+
+$(KI): cmd/ki/main.c $(LIB) $(KRYON_BACKEND_LINK_PREREQ) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) $(CPPFLAGS) -Isrc/ui $(KRYON_BACKEND_LINK_CFLAGS) -o $@ \
 		cmd/ki/main.c \
 		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
-		$(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_LDLIBS) \
+		$(KRYON_BACKEND_LINK_LIBS) $(KRYON_LIBOQS_A) $(KRYON_CURL_LDLIBS) \
 		$(KRYON_MARKDOWN_LDLIBS) \
-		-Wl,-export-dynamic $(RAY_LDLIBS) $(LDLIBS) \
+		-Wl,-export-dynamic $(LDLIBS) \
 		$(CURL_CODEC_LDLIBS) -lz -lpthread -lm
 
 version:
@@ -267,16 +294,16 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(K
 		> $(STATIC_DIST_ROOT)/lib/cmake/kryon/KryonConfig.cmake
 	tar -C $(BUILD_DIR)/dist -czf $@ kryon-$(VERSION)-static
 
-$(LYRA_ACCOUNT_TEST): tests/lyra_account_test.c src/lyra/lyra_account.c include/lyra_account.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
+$(KSYNC_ACCOUNT_TEST): tests/ksync_account_test.c src/ksync/ksync_account.c include/ksync_account.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
-		tests/lyra_account_test.c src/lyra/lyra_account.c \
+		tests/ksync_account_test.c src/ksync/ksync_account.c \
 		$(KRYON_LIBOQS_A) -lm -o $@
 
-$(LYRA_SYNC_TEST): tests/lyra_sync_test.c src/lyra/lyra_sync.c src/lyra/lyra_account.c include/lyra_sync.h include/lyra_account.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
+$(KSYNC_SYNC_TEST): tests/ksync_sync_test.c src/ksync/ksync_sync.c src/ksync/ksync_account.c include/ksync_sync.h include/ksync_account.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
-		tests/lyra_sync_test.c src/lyra/lyra_sync.c src/lyra/lyra_account.c \
+		tests/ksync_sync_test.c src/ksync/ksync_sync.c src/ksync/ksync_account.c \
 		$(KRYON_LIBOQS_A) -lm -o $@
 
 $(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h | $(BUILD_DIR)

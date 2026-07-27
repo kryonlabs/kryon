@@ -4,7 +4,7 @@ Kryon is a small C support library for raylib-style applications. It keeps a
 raylib-compatible public surface available through `kryon.h`, then adds the
 pieces shared by downstream apps: UI controls, Tk-style toolkit widgets, layout
 helpers, text rendering, themes, embedded assets, locale loading, file dialogs,
-desktop tray support, runtime asset downloads, and Lyra account/sync helpers.
+desktop tray support, runtime asset downloads, and Ksync account/sync helpers.
 
 ## Layout
 
@@ -100,6 +100,16 @@ kryon-app build web
 kryon-app build android-debug
 kryon-app package appimage
 kryon-app preview
+```
+
+For local development against a sync backend, run a Ksync server in the
+foreground. `dev-backend` locates the server source at `$KSYNC_DIR` or as a
+sibling checkout (`../ksync`), isolates its data under `<project>/.kryon/`, and
+prints the sync URL to point your app at. Tokens are regenerated each start,
+so it is for local development only:
+
+```sh
+kryon-app dev-backend          # serves http://127.0.0.1:8080
 ```
 
 App `project.kryon` files should use `target` entries that call `kryon-app`

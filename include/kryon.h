@@ -2,6 +2,9 @@
 #define KRYON_H
 
 #include "kryon_version.h"
+/* Kryon's graphics/input API surface (currently tracks raylib). The concrete
+ * backend is selected at link time via the KRYON_BACKEND make variable; see
+ * the preamble in kryon_compat.generated.h. */
 #include "kryon_compat.generated.h"
 
 #include "ui_color.h"
@@ -28,8 +31,8 @@
 #include "ui_transition.h"
 #include "ui_widgets.h"
 #include "locale.h"
-#include "lyra_account.h"
-#include "lyra_sync.h"
+#include "ksync_account.h"
+#include "ksync_sync.h"
 #include "theme.h"
 #include "theme_meta.h"
 #include "web.h"
