@@ -43,7 +43,9 @@ static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
 static UITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
 static int g_ui_text_area_drag_id = 0;
+static int *g_ui_text_area_drag_owner = NULL;
 static int g_ui_text_area_last_click_id = 0;
+static int *g_ui_text_area_last_click_owner = NULL;
 static int g_ui_text_area_last_click_cursor = -1;
 static int g_ui_text_area_last_click_x = 0;
 static int g_ui_text_area_last_click_y = 0;
@@ -51,6 +53,7 @@ static double g_ui_text_area_last_click_time = 0.0;
 
 typedef struct UITextSelection {
     int id;
+    int *owner;
     int anchor;
     int cursor;
     int dragging;
@@ -59,6 +62,7 @@ typedef struct UITextSelection {
 static UITextSelection g_ui_text_area_selection = {0};
 static UITextSelection g_ui_text_field_selection = {0};
 static int g_ui_text_field_drag_id = 0;
+static int *g_ui_text_field_drag_owner = NULL;
 /* Identity of the widget that currently owns text input focus, recorded as the
  * address of its `focused` flag. Ownership is PERSISTENT across frames: it does
  * not reset at frame start, it only changes when a text input is clicked (or
@@ -102,6 +106,55 @@ typedef struct UIInputCapture {
 
 static UIInputCapture g_ui_input_capture_stack[UI_INPUT_CAPTURE_STACK_MAX];
 static int g_ui_input_capture_stack_count = 0;
+
+static void
+ui_text_selection_clear(UITextSelection *selection)
+{
+    if(selection == NULL)
+        return;
+    selection->id = 0;
+    selection->owner = NULL;
+    selection->anchor = 0;
+    selection->cursor = 0;
+    selection->dragging = 0;
+}
+
+static void
+ui_clear_text_field_selection(void)
+{
+    ui_text_selection_clear(&g_ui_text_field_selection);
+    g_ui_text_field_drag_id = 0;
+    g_ui_text_field_drag_owner = NULL;
+}
+
+static void
+ui_clear_text_area_selection(void)
+{
+    ui_text_selection_clear(&g_ui_text_area_selection);
+    g_ui_text_area_drag_id = 0;
+    g_ui_text_area_drag_owner = NULL;
+}
+
+static int
+ui_text_selection_matches(UITextSelection selection, int id, int *owner)
+{
+    if(owner != NULL && selection.owner == owner)
+        return 1;
+    return id > 0 && selection.id == id;
+}
+
+static void
+ui_text_selection_set(UITextSelection *selection, int id, int *owner,
+                      int anchor, int cursor, int dragging)
+{
+    if(selection == NULL)
+        return;
+    selection->id = id;
+    selection->owner = owner;
+    selection->anchor = anchor;
+    selection->cursor = cursor;
+    selection->dragging = dragging;
+}
 
 Vector2
 ui_mouse_world(void)
@@ -906,6 +959,26 @@ ClaimUITextFocus(int *focused)
     g_ui_text_focus_owner_this_frame = focused;
     g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
     *focused = 1;
+}
+
+static void
+ClaimUITextFieldFocus(int *focused)
+{
+    int *previous = g_ui_text_focus_owner;
+
+    ClaimUITextFocus(focused);
+    if(g_ui_text_focus_owner == focused && previous != focused)
+        ui_clear_text_area_selection();
+}
+
+static void
+ClaimUITextAreaFocus(int *focused)
+{
+    int *previous = g_ui_text_focus_owner;
+
+    ClaimUITextFocus(focused);
+    if(g_ui_text_focus_owner == focused && previous != focused)
+        ui_clear_text_field_selection();
 }
 
 static int
@@ -2055,6 +2128,7 @@ DrawUITextArea(UITextArea area)
 
     if(area.focus_id > 0 && RegisterUIFocus(area.focus_id, area.bounds)) {
         focused = 1;
+        ClaimUITextAreaFocus(area.focused);
         DrawUIFocus(area.bounds);
     }
 
@@ -2074,12 +2148,13 @@ DrawUITextArea(UITextArea area)
             int double_click_slop = ScaleUIPx(6);
 
             focused = 1;
-            ClaimUITextFocus(area.focused);
+            ClaimUITextAreaFocus(area.focused);
             clicked_cursor = ui_text_area_cursor_from_point(area.text, font, line_gap,
                 (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
                 (int)mouse_world.x, (int)mouse_world.y, scroll_y);
             *area.cursor_position = clicked_cursor;
-            if(g_ui_text_area_last_click_id == drag_id &&
+            if(g_ui_text_area_last_click_owner == area.focused &&
+               (drag_id <= 0 || g_ui_text_area_last_click_id == drag_id) &&
                now - g_ui_text_area_last_click_time <= 0.45 &&
                click_dx >= -double_click_slop &&
                click_dx <= double_click_slop &&
@@ -2090,23 +2165,24 @@ DrawUITextArea(UITextArea area)
 
                 if(ui_text_area_select_word(area.text, clicked_cursor,
                                             &word_start, &word_end)) {
-                    g_ui_text_area_selection.id = drag_id;
-                    g_ui_text_area_selection.anchor = word_start;
-                    g_ui_text_area_selection.cursor = word_end;
-                    g_ui_text_area_selection.dragging = 0;
+                    ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                          area.focused, word_start, word_end,
+                                          0);
                     *area.cursor_position = word_end;
                     double_clicked = 1;
                     g_ui_text_area_drag_id = 0;
+                    g_ui_text_area_drag_owner = NULL;
                 }
             }
             if(!double_clicked) {
                 g_ui_text_area_drag_id = drag_id;
-                g_ui_text_area_selection.id = drag_id;
-                g_ui_text_area_selection.anchor = *area.cursor_position;
-                g_ui_text_area_selection.cursor = *area.cursor_position;
-                g_ui_text_area_selection.dragging = 1;
+                g_ui_text_area_drag_owner = area.focused;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, *area.cursor_position,
+                                      *area.cursor_position, 1);
             }
             g_ui_text_area_last_click_id = drag_id;
+            g_ui_text_area_last_click_owner = area.focused;
             g_ui_text_area_last_click_cursor = clicked_cursor;
             g_ui_text_area_last_click_x = (int)mouse_world.x;
             g_ui_text_area_last_click_y = (int)mouse_world.y;
@@ -2115,7 +2191,8 @@ DrawUITextArea(UITextArea area)
             focused = 0;
         }
     }
-    if(g_ui_text_area_drag_id == drag_id && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+    if(g_ui_text_area_drag_owner == area.focused &&
+       IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         if((int)mouse_world.y < (int)area.bounds.y + padding_y)
             scroll_y -= line_h;
         if((int)mouse_world.y > (int)(area.bounds.y + area.bounds.height) - padding_y)
@@ -2123,18 +2200,22 @@ DrawUITextArea(UITextArea area)
         if(scroll_y < 0)
             scroll_y = 0;
         focused = 1;
-        ClaimUITextFocus(area.focused);
+        ClaimUITextAreaFocus(area.focused);
         *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
             (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
             (int)mouse_world.x, (int)mouse_world.y, scroll_y);
-        if(g_ui_text_area_selection.id == drag_id) {
+        if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
+                                     area.focused)) {
             g_ui_text_area_selection.cursor = *area.cursor_position;
             g_ui_text_area_selection.dragging = 1;
         }
     }
-    if(g_ui_text_area_drag_id == drag_id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    if(g_ui_text_area_drag_owner == area.focused &&
+       IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         g_ui_text_area_drag_id = 0;
-        if(g_ui_text_area_selection.id == drag_id)
+        g_ui_text_area_drag_owner = NULL;
+        if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
+                                     area.focused))
             g_ui_text_area_selection.dragging = 0;
     }
 
@@ -2144,7 +2225,8 @@ DrawUITextArea(UITextArea area)
                       (UIKeyPressed(KEY_ENTER) ||
                        UIKeyPressed(KEY_KP_ENTER) ||
                        g_ui_text_input_enter_count > 0);
-    if(g_ui_text_area_selection.id == drag_id) {
+    if(focused && ui_text_selection_matches(g_ui_text_area_selection, drag_id,
+                                            area.focused)) {
         selection_start = g_ui_text_area_selection.anchor;
         selection_end = g_ui_text_area_selection.cursor;
         if(selection_start > selection_end) {
@@ -2159,10 +2241,8 @@ DrawUITextArea(UITextArea area)
         if(ui_mod_key_down() && UIKeyPressed(KEY_A)) {
             int len = (int)strlen(area.text);
 
-            g_ui_text_area_selection.id = drag_id;
-            g_ui_text_area_selection.anchor = 0;
-            g_ui_text_area_selection.cursor = len;
-            g_ui_text_area_selection.dragging = 0;
+            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                  area.focused, 0, len, 0);
             *area.cursor_position = len;
             selection_start = 0;
             selection_end = len;
@@ -2179,8 +2259,9 @@ DrawUITextArea(UITextArea area)
                ui_text_delete_range(area.text, area.text_size,
                                     area.cursor_position, selection_start,
                                     selection_end)) {
-                g_ui_text_area_selection.anchor = *area.cursor_position;
-                g_ui_text_area_selection.cursor = *area.cursor_position;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, *area.cursor_position,
+                                      *area.cursor_position, 0);
                 changed = 1;
             }
             selection_key_handled = 1;
@@ -2200,8 +2281,9 @@ DrawUITextArea(UITextArea area)
                }, 1)) {
                 changed = 1;
             }
-            g_ui_text_area_selection.anchor = *area.cursor_position;
-            g_ui_text_area_selection.cursor = *area.cursor_position;
+            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                  area.focused, *area.cursor_position,
+                                  *area.cursor_position, 0);
             selection_key_handled = 1;
         } else if(ui_mod_key_down() && UIKeyPressed(KEY_V)) {
             if(ui_text_paste_clipboard((UITextEdit){
@@ -2212,8 +2294,9 @@ DrawUITextArea(UITextArea area)
                    .filter = area.filter,
                    .filter_user_data = area.filter_user_data
                }, 1)) {
-                g_ui_text_area_selection.anchor = *area.cursor_position;
-                g_ui_text_area_selection.cursor = *area.cursor_position;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, *area.cursor_position,
+                                      *area.cursor_position, 0);
                 changed = 1;
             }
             selection_key_handled = 1;
@@ -2223,8 +2306,9 @@ DrawUITextArea(UITextArea area)
             if(ui_text_delete_range(area.text, area.text_size,
                                     area.cursor_position, selection_start,
                                     selection_end)) {
-                g_ui_text_area_selection.anchor = *area.cursor_position;
-                g_ui_text_area_selection.cursor = *area.cursor_position;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, *area.cursor_position,
+                                      *area.cursor_position, 0);
                 changed = 1;
             }
             g_ui_text_input_backspace_count = 0;
@@ -2298,10 +2382,9 @@ DrawUITextArea(UITextArea area)
                 inserted = 1;
             }
             if(inserted) {
-                g_ui_text_area_selection.id = drag_id;
-                g_ui_text_area_selection.anchor = *area.cursor_position;
-                g_ui_text_area_selection.cursor = *area.cursor_position;
-                g_ui_text_area_selection.dragging = 0;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, *area.cursor_position,
+                                      *area.cursor_position, 0);
                 selection_key_handled = 1;
             }
         }
@@ -2336,9 +2419,9 @@ DrawUITextArea(UITextArea area)
            UIKeyPressed(KEY_HOME) || UIKeyPressed(KEY_END) ||
            UIKeyPressed(KEY_UP) || UIKeyPressed(KEY_DOWN)) {
             if(!g_ui_text_area_selection.dragging) {
-                g_ui_text_area_selection.id = drag_id;
-                g_ui_text_area_selection.anchor = *area.cursor_position;
-                g_ui_text_area_selection.cursor = *area.cursor_position;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, *area.cursor_position,
+                                      *area.cursor_position, 0);
             }
         }
     } else {
@@ -2415,10 +2498,8 @@ SetUITextAreaSelection(int focus_id, int anchor, int cursor)
 {
     if(focus_id <= 0)
         return;
-    g_ui_text_area_selection.id = focus_id;
-    g_ui_text_area_selection.anchor = anchor;
-    g_ui_text_area_selection.cursor = cursor;
-    g_ui_text_area_selection.dragging = 0;
+    ui_text_selection_set(&g_ui_text_area_selection, focus_id, NULL,
+                          anchor, cursor, 0);
 }
 
 int
@@ -2460,6 +2541,7 @@ DrawUITextField(UITextField field)
 
     if(field.focus_id > 0 && RegisterUIFocus(field.focus_id, field.bounds)) {
         focused = 1;
+        ClaimUITextFieldFocus(field.focused);
         DrawUIFocus(field.bounds);
     }
 
@@ -2472,38 +2554,40 @@ DrawUITextField(UITextField field)
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if(mouse_inside && !captured) {
             focused = 1;
-            ClaimUITextFocus(field.focused);
+            ClaimUITextFieldFocus(field.focused);
             *field.cursor_position = ui_text_cursor_from_x(
                 field.text, font, (int)field.bounds.x + padding_x,
                 (int)mouse_world.x);
-            g_ui_text_field_selection.id = field.focus_id;
-            g_ui_text_field_selection.anchor = *field.cursor_position;
-            g_ui_text_field_selection.cursor = *field.cursor_position;
-            g_ui_text_field_selection.dragging = 1;
             g_ui_text_field_drag_id = field.focus_id;
+            g_ui_text_field_drag_owner = field.focused;
+            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                                  field.focused, *field.cursor_position,
+                                  *field.cursor_position, 1);
         } else if(focused) {
             focused = 0;
         }
     }
-    if(g_ui_text_field_drag_id == field.focus_id &&
+    if(g_ui_text_field_drag_owner == field.focused &&
        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         focused = 1;
-        ClaimUITextFocus(field.focused);
+        ClaimUITextFieldFocus(field.focused);
         *field.cursor_position = ui_text_cursor_from_x(
             field.text, font, (int)field.bounds.x + padding_x,
             (int)mouse_world.x);
         g_ui_text_field_selection.cursor = *field.cursor_position;
         g_ui_text_field_selection.dragging = 1;
     }
-    if(g_ui_text_field_drag_id == field.focus_id &&
+    if(g_ui_text_field_drag_owner == field.focused &&
        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         g_ui_text_field_drag_id = 0;
+        g_ui_text_field_drag_owner = NULL;
         g_ui_text_field_selection.dragging = 0;
     }
 
     *field.focused = focused;
     SetUIFocusTextInputActive(focused);
-    if(g_ui_text_field_selection.id == field.focus_id)
+    if(focused && ui_text_selection_matches(g_ui_text_field_selection,
+                                            field.focus_id, field.focused))
         ui_selection_range(g_ui_text_field_selection, field.text,
                            &selection_start, &selection_end);
 
@@ -2511,10 +2595,8 @@ DrawUITextField(UITextField field)
         if(ui_mod_key_down() && UIKeyPressed(KEY_A)) {
             int len = (int)strlen(field.text);
 
-            g_ui_text_field_selection.id = field.focus_id;
-            g_ui_text_field_selection.anchor = 0;
-            g_ui_text_field_selection.cursor = len;
-            g_ui_text_field_selection.dragging = 0;
+            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                                  field.focused, 0, len, 0);
             *field.cursor_position = len;
             selection_start = 0;
             selection_end = len;
@@ -2541,8 +2623,9 @@ DrawUITextField(UITextField field)
                 *field.cursor_position = 0;
                 changed = 1;
             }
-            g_ui_text_field_selection.anchor = *field.cursor_position;
-            g_ui_text_field_selection.cursor = *field.cursor_position;
+            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                                  field.focused, *field.cursor_position,
+                                  *field.cursor_position, 0);
             selection_start = selection_end = *field.cursor_position;
             selection_handled = 1;
         }
@@ -2560,8 +2643,9 @@ DrawUITextField(UITextField field)
                    .filter_user_data = field.filter_user_data
                }, 0))
                 changed = 1;
-            g_ui_text_field_selection.anchor = *field.cursor_position;
-            g_ui_text_field_selection.cursor = *field.cursor_position;
+            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                                  field.focused, *field.cursor_position,
+                                  *field.cursor_position, 0);
             selection_start = selection_end = *field.cursor_position;
             selection_handled = 1;
         }
@@ -2572,8 +2656,9 @@ DrawUITextField(UITextField field)
                                     selection_end))
                 changed = 1;
             g_ui_text_input_backspace_count = 0;
-            g_ui_text_field_selection.anchor = *field.cursor_position;
-            g_ui_text_field_selection.cursor = *field.cursor_position;
+            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                                  field.focused, *field.cursor_position,
+                                  *field.cursor_position, 0);
             selection_start = selection_end = *field.cursor_position;
             selection_handled = 1;
         }
@@ -2618,8 +2703,10 @@ DrawUITextField(UITextField field)
             if(g_ui_text_input_codepoint_count > 0)
                 g_ui_text_input_codepoint_count = 0;
             if(inserted) {
-                g_ui_text_field_selection.anchor = *field.cursor_position;
-                g_ui_text_field_selection.cursor = *field.cursor_position;
+                ui_text_selection_set(&g_ui_text_field_selection,
+                                      field.focus_id, field.focused,
+                                      *field.cursor_position,
+                                      *field.cursor_position, 0);
                 selection_start = selection_end = *field.cursor_position;
                 selection_handled = 1;
             }
@@ -2640,20 +2727,16 @@ DrawUITextField(UITextField field)
         if(changed || UIKeyPressed(KEY_LEFT) || UIKeyPressed(KEY_RIGHT) ||
            UIKeyPressed(KEY_HOME) || UIKeyPressed(KEY_END)) {
             if(!g_ui_text_field_selection.dragging) {
-                g_ui_text_field_selection.id = field.focus_id;
-                g_ui_text_field_selection.anchor = *field.cursor_position;
-                g_ui_text_field_selection.cursor = *field.cursor_position;
+                ui_text_selection_set(&g_ui_text_field_selection,
+                                      field.focus_id, field.focused,
+                                      *field.cursor_position,
+                                      *field.cursor_position, 0);
                 selection_start = selection_end = *field.cursor_position;
             }
         }
     } else {
         int len = (int)strlen(field.text);
         *field.cursor_position = ui_clampi(*field.cursor_position, 0, len);
-        if(g_ui_text_field_selection.id == field.focus_id) {
-            g_ui_text_field_selection.anchor = *field.cursor_position;
-            g_ui_text_field_selection.cursor = *field.cursor_position;
-            selection_start = selection_end = *field.cursor_position;
-        }
     }
 
     DrawUITextInputEx(field.bounds, field.text, *field.cursor_position,
