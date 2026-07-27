@@ -656,6 +656,44 @@ ui_tree_toggle_expanded(UICascadingTreeExpansion *expansion, int id)
     *expansion->count = count;
 }
 
+static void
+ui_tree_remove_expanded(UICascadingTreeExpansion *expansion, int id)
+{
+    int index;
+    int count;
+
+    if(expansion == NULL || expansion->ids == NULL || expansion->count == NULL)
+        return;
+    count = *expansion->count;
+    index = ui_tree_expanded_index(*expansion, id);
+    if(index < 0)
+        return;
+    for(int i = index; i + 1 < count; i++)
+        expansion->ids[i] = expansion->ids[i + 1];
+    if(count > 0)
+        expansion->ids[count - 1] = 0;
+    *expansion->count = count - 1;
+}
+
+static void
+ui_tree_collapse_item_and_children(const UICascadingTreeItem *items,
+                                   int item_count, int index,
+                                   UICascadingTreeExpansion *expansion)
+{
+    int depth;
+
+    if(items == NULL || index < 0 || index >= item_count || expansion == NULL)
+        return;
+    depth = items[index].depth;
+    ui_tree_remove_expanded(expansion, items[index].id);
+    for(int i = index + 1; i < item_count; i++) {
+        if(items[i].depth <= depth)
+            break;
+        if(items[i].is_dir)
+            ui_tree_remove_expanded(expansion, items[i].id);
+    }
+}
+
 static int
 ui_tree_item_visible(const UICascadingTreeItem *items, int index,
                      UICascadingTreeExpansion expansion)
@@ -810,7 +848,12 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
 
         if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(item->is_dir) {
-                ui_tree_toggle_expanded(&tree.expanded, item->id);
+                if(expanded)
+                    ui_tree_collapse_item_and_children(tree.items,
+                                                       tree.item_count, i,
+                                                       &tree.expanded);
+                else
+                    ui_tree_toggle_expanded(&tree.expanded, item->id);
                 changed = 1;
             } else if(item->selectable && tree.selected_id != NULL) {
                 *tree.selected_id = item->id;

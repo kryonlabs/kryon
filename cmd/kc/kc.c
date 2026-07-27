@@ -253,6 +253,43 @@ die(const char *fmt, ...)
     exit(1);
 }
 
+void
+kc_error(KryFile *file, int line_no, const char *fmt, ...)
+{
+    va_list args;
+    KryDiagnostic *diag;
+
+    if(file == NULL || file->diagnostic_count >= KC_DIAGNOSTIC_MAX) {
+        char msg[2048];
+        va_start(args, fmt);
+        vsnprintf(msg, sizeof(msg), fmt, args);
+        va_end(args);
+        die("%s", msg);
+    }
+    diag = &file->diagnostics[file->diagnostic_count++];
+    snprintf(diag->path, sizeof(diag->path), "%s", file->path);
+    diag->line = line_no > 0 ? line_no : 1;
+    diag->column = 1;
+    va_start(args, fmt);
+    vsnprintf(diag->message, sizeof(diag->message), fmt, args);
+    va_end(args);
+}
+
+int
+kc_flush_diagnostics(const KryFile *file)
+{
+    int i;
+
+    if(file == NULL)
+        return 0;
+    for(i = 0; i < file->diagnostic_count; i++) {
+        const KryDiagnostic *d = &file->diagnostics[i];
+        fprintf(stderr, "%s:%d:%d: error: %s\n", d->path, d->line, d->column,
+                d->message);
+    }
+    return file->diagnostic_count;
+}
+
 static char *
 trim(char *s)
 {
@@ -4822,6 +4859,7 @@ main(int argc, char **argv)
     int file_count = 0;
     int no_main = 0;
     int dump_ast = 0;
+    int had_errors = 0;
     int first_file = 0;
 
     for(int i = 1; i < argc; i++) {
@@ -4866,7 +4904,10 @@ main(int argc, char **argv)
         file->root = root;
         file->no_main = no_main;
         parse_kry(file);
-        if(dump_ast) {
+        if(file->diagnostic_count > 0) {
+            kc_flush_diagnostics(file);
+            had_errors = 1;
+        } else if(dump_ast) {
             for(int j = 0; j < file->function_count; j++) {
                 AstFunction *af = ast_function_from_body(&file->functions[j]);
                 ast_function_dump(af);
@@ -4877,7 +4918,8 @@ main(int argc, char **argv)
         }
         files[index] = file;
     }
-    write_project_header(files, file_count, root, out_dir);
+    if(!had_errors)
+        write_project_header(files, file_count, root, out_dir);
     for(int i = 0; i < file_count; i++) {
         KryFile *file = files[i];
 
@@ -4885,5 +4927,5 @@ main(int argc, char **argv)
         free(file);
     }
     free(files);
-    return 0;
+    return had_errors ? 1 : 0;
 }
