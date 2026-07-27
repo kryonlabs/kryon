@@ -5,6 +5,14 @@
 
 #define APP_HOST_ABI_VERSION 3
 
+typedef struct KryonInputOverride {
+    int enabled;
+    int mouse_inside;
+    int pass_buttons;
+    Vector2 mouse_position;
+    Vector2 mouse_delta;
+} KryonInputOverride;
+
 typedef struct AppScreenInfo {
     const char *id;
     const char *group;
@@ -25,6 +33,8 @@ typedef AppHost *(*CreateAppHostCallback)(int abi_version,
                                           const char *project_path);
 typedef void (*DestroyAppHostCallback)(AppHost *host);
 
+void BeginKryonInputOverride(KryonInputOverride input);
+void EndKryonInputOverride(void);
 int IsUIInspectActive(void);
 
 #endif

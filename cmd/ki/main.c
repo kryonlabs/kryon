@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+void rlDrawRenderBatchActive(void);
+
 enum {
     EDITOR_PATH_CAP = FILE_DIALOG_PATH_MAX,
     EDITOR_MAX_RECENT_PROJECTS = 12,
@@ -36,6 +38,16 @@ enum {
     EDITOR_EXAMPLE_TITLE_CAP = 96,
 };
 
+enum {
+    EDITOR_KRY_SCREEN_ARG_NONE,
+    EDITOR_KRY_SCREEN_ARG_APP,
+    EDITOR_KRY_SCREEN_ARG_VIEWPORT
+};
+
+typedef void (*EditorKryDrawNoArgs)(void);
+typedef void (*EditorKryDrawApp)(void *app);
+typedef void (*EditorKryDrawViewport)(Rectangle viewport);
+
 typedef enum EditorLayoutMode {
     EDITOR_LAYOUT_SPLIT,
     EDITOR_LAYOUT_SOURCE,
@@ -46,7 +58,8 @@ typedef enum EditorPreviewScaleMode {
     EDITOR_PREVIEW_SCALE_FIT,
     EDITOR_PREVIEW_SCALE_100,
     EDITOR_PREVIEW_SCALE_75,
-    EDITOR_PREVIEW_SCALE_50
+    EDITOR_PREVIEW_SCALE_50,
+    EDITOR_PREVIEW_SCALE_CUSTOM
 } EditorPreviewScaleMode;
 
 typedef struct EditorRunTarget {
@@ -87,6 +100,7 @@ typedef struct EditorKryScreen {
     char header_path[EDITOR_PATH_CAP];
     char name[96];
     char title[128];
+    int arg_kind;
     int takes_viewport;
 } EditorKryScreen;
 
@@ -123,6 +137,9 @@ typedef struct EditorProject {
     int redo_count;
     char image_file[EDITOR_PATH_CAP];
     Texture2D image_texture;
+    RenderTexture2D preview_texture;
+    int preview_texture_width;
+    int preview_texture_height;
     char live_module_path[EDITOR_PATH_CAP];
     int loaded;
     int selected_screen;
@@ -147,9 +164,15 @@ typedef struct EditorProject {
     int preview_interact;
     int preview_width;
     int preview_height;
+    float preview_zoom;
+    float preview_pan_x;
+    float preview_pan_y;
     char preview_asset_root[EDITOR_PATH_CAP];
     EditorPreviewScene preview_scenes[EDITOR_MAX_PREVIEW_SCENES];
     int preview_scene_count;
+    int generated_preview_active;
+    EditorKryScreen generated_preview_screen;
+    void *generated_preview_draw;
     int preview_preset;
     EditorPreviewScaleMode preview_scale_mode;
     char search_text[128];
@@ -166,6 +189,7 @@ typedef struct EditorProject {
     EditorDiagnostic diagnostics[EDITOR_MAX_DIAGNOSTICS];
     int diagnostic_count;
     int selected_diagnostic;
+    double last_state_save;
     AppHost *host;
     PreviewHost *preview_host;
     void *live_library;
@@ -202,6 +226,10 @@ typedef struct EditorTreeItem {
 static int editor_save_source_file(EditorProject *project, char *status,
                                    size_t status_size);
 static void editor_select_file(EditorProject *project, const char *path);
+static int editor_collect_kry_screens_dir(const char *root,
+                                          const char *rel_dir,
+                                          EditorKryScreen *screens,
+                                          int *count, int depth);
 static void editor_search_project(EditorProject *project, char *status,
                                   size_t status_size);
 static int editor_run_capture(EditorProject *project, const char *command,
@@ -288,8 +316,14 @@ editor_preview_init(EditorProject *project)
     if(project->preview_height > 2560)
         project->preview_height = 2560;
     if(project->preview_scale_mode < EDITOR_PREVIEW_SCALE_FIT ||
-       project->preview_scale_mode > EDITOR_PREVIEW_SCALE_50)
+       project->preview_scale_mode > EDITOR_PREVIEW_SCALE_CUSTOM)
         project->preview_scale_mode = EDITOR_PREVIEW_SCALE_FIT;
+    if(project->preview_zoom <= 0.0f)
+        project->preview_zoom = 1.0f;
+    if(project->preview_zoom < 0.10f)
+        project->preview_zoom = 0.10f;
+    if(project->preview_zoom > 8.0f)
+        project->preview_zoom = 8.0f;
     if(project->preview_preset < 0 || project->preview_preset > 4)
         project->preview_preset = 0;
 }
@@ -335,7 +369,7 @@ editor_preview_scale(const EditorProject *project, Rectangle stage)
 }
 
 static Rectangle
-editor_preview_device_rect(Rectangle content, const EditorProject *project)
+editor_preview_canvas_rect(Rectangle content, const EditorProject *project)
 {
     Rectangle stage = editor_preview_stage_rect(content);
     float scale = editor_preview_scale(project, stage);
@@ -350,6 +384,78 @@ editor_preview_device_rect(Rectangle content, const EditorProject *project)
         w,
         h
     };
+}
+
+static Rectangle
+editor_preview_device_rect(Rectangle content, const EditorProject *project)
+{
+    Rectangle canvas = editor_preview_canvas_rect(content, project);
+    float zoom = project != NULL && project->preview_zoom > 0.0f
+               ? project->preview_zoom : 1.0f;
+    float w = canvas.width;
+    float h = canvas.height;
+
+    if(w <= 0.0f || h <= 0.0f)
+        return (Rectangle){0};
+    if(zoom < 0.10f)
+        zoom = 0.10f;
+    if(zoom > 8.0f)
+        zoom = 8.0f;
+    w *= zoom;
+    h *= zoom;
+    return (Rectangle){
+        canvas.x + (canvas.width - w) * 0.5f +
+            (project != NULL ? project->preview_pan_x : 0.0f),
+        canvas.y + (canvas.height - h) * 0.5f +
+            (project != NULL ? project->preview_pan_y : 0.0f),
+        w,
+        h
+    };
+}
+
+static void
+editor_preview_clamp_view(EditorProject *project, Rectangle content)
+{
+    Rectangle stage;
+    Rectangle canvas;
+    float scale;
+    float zoom;
+    float w;
+    float h;
+    float max_pan;
+
+    if(project == NULL)
+        return;
+    editor_preview_init(project);
+    stage = editor_preview_stage_rect(content);
+    canvas = editor_preview_canvas_rect(content, project);
+    scale = editor_preview_scale(project, stage);
+    zoom = project->preview_zoom;
+    if(zoom < 0.10f)
+        zoom = 0.10f;
+    if(zoom > 8.0f)
+        zoom = 8.0f;
+    w = (float)project->preview_width * scale * zoom;
+    h = (float)project->preview_height * scale * zoom;
+
+    if(w <= canvas.width) {
+        project->preview_pan_x = 0.0f;
+    } else {
+        max_pan = (w - canvas.width) * 0.5f;
+        if(project->preview_pan_x < -max_pan)
+            project->preview_pan_x = -max_pan;
+        if(project->preview_pan_x > max_pan)
+            project->preview_pan_x = max_pan;
+    }
+    if(h <= canvas.height) {
+        project->preview_pan_y = 0.0f;
+    } else {
+        max_pan = (h - canvas.height) * 0.5f;
+        if(project->preview_pan_y < -max_pan)
+            project->preview_pan_y = -max_pan;
+        if(project->preview_pan_y > max_pan)
+            project->preview_pan_y = max_pan;
+    }
 }
 
 static void
@@ -370,6 +476,34 @@ editor_preview_apply_preset(EditorProject *project)
         return;
     project->preview_width = sizes[project->preview_preset][0];
     project->preview_height = sizes[project->preview_preset][1];
+    project->preview_zoom = 1.0f;
+    project->preview_pan_x = 0.0f;
+    project->preview_pan_y = 0.0f;
+}
+
+static int
+editor_preview_ensure_texture(EditorProject *project)
+{
+    if(project == NULL)
+        return 0;
+    editor_preview_init(project);
+    if(project->preview_texture.id != 0 &&
+       (project->preview_texture_width != project->preview_width ||
+        project->preview_texture_height != project->preview_height)) {
+        UnloadRenderTexture(project->preview_texture);
+        memset(&project->preview_texture, 0, sizeof(project->preview_texture));
+        project->preview_texture_width = 0;
+        project->preview_texture_height = 0;
+    }
+    if(project->preview_texture.id == 0) {
+        project->preview_texture =
+            LoadRenderTexture(project->preview_width, project->preview_height);
+        if(project->preview_texture.id == 0)
+            return 0;
+        project->preview_texture_width = project->preview_width;
+        project->preview_texture_height = project->preview_height;
+    }
+    return 1;
 }
 
 static const char *
@@ -425,6 +559,34 @@ path_dirname(char *dst, size_t dst_size, const char *path)
     } else {
         *slash = '\0';
     }
+}
+
+static int
+editor_find_project_root_for_file(char *dst, size_t dst_size,
+                                  const char *file_path)
+{
+    char current[EDITOR_PATH_CAP];
+    char marker[EDITOR_PATH_CAP];
+
+    if(dst == NULL || dst_size == 0 || file_path == NULL ||
+       file_path[0] == '\0')
+        return 0;
+    path_dirname(current, sizeof(current), file_path);
+    for(;;) {
+        char *slash;
+
+        path_join(marker, sizeof(marker), current, "project.kryon");
+        if(FileExists(marker)) {
+            snprintf(dst, dst_size, "%s", current);
+            return 1;
+        }
+        slash = strrchr(current, '/');
+        if(slash == NULL || slash == current)
+            break;
+        *slash = '\0';
+    }
+    path_dirname(dst, dst_size, file_path);
+    return 1;
 }
 
 static char *
@@ -987,50 +1149,100 @@ tree_entry_compare(const void *a, const void *b)
 }
 
 static int
+editor_source_path_matches(const EditorProject *project,
+                           const char *screen_source,
+                           const char *source_path)
+{
+    const char *screen_rel = screen_source;
+    const char *source_rel = source_path;
+    size_t root_len;
+
+    if(screen_source == NULL || source_path == NULL)
+        return 0;
+    while(screen_rel[0] == '.' && screen_rel[1] == '/')
+        screen_rel += 2;
+    while(source_rel[0] == '.' && source_rel[1] == '/')
+        source_rel += 2;
+    if(strcmp(screen_rel, source_rel) == 0)
+        return 1;
+    if(project == NULL || project->path[0] == '\0')
+        return 0;
+    root_len = strlen(project->path);
+    if(strncmp(source_path, project->path, root_len) == 0 &&
+       source_path[root_len] == '/') {
+        source_rel = source_path + root_len + 1;
+        while(source_rel[0] == '.' && source_rel[1] == '/')
+            source_rel += 2;
+        if(strcmp(screen_rel, source_rel) == 0)
+            return 1;
+    }
+    if(strncmp(screen_source, project->path, root_len) == 0 &&
+       screen_source[root_len] == '/') {
+        screen_rel = screen_source + root_len + 1;
+        while(screen_rel[0] == '.' && screen_rel[1] == '/')
+            screen_rel += 2;
+        return strcmp(screen_rel, source_rel) == 0;
+    }
+    return 0;
+}
+
+static int
 editor_select_source_path(EditorProject *project, const char *source_path)
 {
     int screen_count;
 
     if(project == NULL || project->host == NULL || source_path == NULL)
         return 0;
+    project->generated_preview_active = 0;
+    project->generated_preview_draw = NULL;
     screen_count = GetAppScreenCount(project->host);
     for(int i = 0; i < screen_count; i++) {
         AppScreenInfo screen = GetAppScreen(project->host, i);
-        if(screen.source_path != NULL &&
-           strcmp(screen.source_path, source_path) == 0) {
+        if(editor_source_path_matches(project, screen.source_path,
+                                      source_path)) {
             project->selected_screen = i;
-            if(SetAppScreenBySourcePath(project->host, source_path))
+            if(SetAppScreenBySourcePath(project->host, screen.source_path))
                 return 1;
             SetAppScreen(project->host, i);
             return 1;
         }
     }
-    return 0;
-}
+#if !defined(_WIN32)
+    if(project->live_library != NULL) {
+        EditorKryScreen screens[EDITOR_MAX_KRY_SCREENS];
+        int count = 0;
 
-static int
-editor_source_path_has_screen(const EditorProject *project, const char *source_path)
-{
-    int screen_count;
+        if(editor_collect_kry_screens_dir(project->path, "", screens,
+                                          &count, 0)) {
+            for(int i = 0; i < count; i++) {
+                char symbol[128];
+                void *draw;
 
-    if(project == NULL || project->host == NULL || source_path == NULL)
-        return 0;
-    screen_count = GetAppScreenCount((AppHost *)project->host);
-    for(int i = 0; i < screen_count; i++) {
-        AppScreenInfo screen = GetAppScreen((AppHost *)project->host, i);
-        if(screen.source_path != NULL &&
-           strcmp(screen.source_path, source_path) == 0)
-            return 1;
+                if(!editor_source_path_matches(project, screens[i].source_path,
+                                               source_path))
+                    continue;
+                snprintf(symbol, sizeof(symbol), "%s_kry_draw",
+                         screens[i].name);
+                dlerror();
+                draw = dlsym(project->live_library, symbol);
+                if(draw == NULL)
+                    return 0;
+                project->generated_preview_active = 1;
+                project->generated_preview_screen = screens[i];
+                project->generated_preview_draw = draw;
+                project->selected_screen = -1;
+                return 1;
+            }
+        }
     }
+#endif
     return 0;
 }
 
 static int
 editor_selected_file_has_preview(const EditorProject *project)
 {
-    if(project == NULL || !project->loaded || project->selected_file[0] == '\0')
-        return project != NULL && project->host != NULL;
-    return editor_source_path_has_screen(project, project->selected_file);
+    return project != NULL && project->loaded && project->host != NULL;
 }
 
 static const char *
@@ -1040,6 +1252,8 @@ editor_active_screen_source_path(EditorProject *project)
 
     if(project == NULL || project->host == NULL)
         return NULL;
+    if(project->generated_preview_active)
+        return project->generated_preview_screen.source_path;
     screen = GetAppScreen(project->host, project->selected_screen);
     return screen.source_path;
 }
@@ -1342,6 +1556,259 @@ editor_select_file(EditorProject *project, const char *path)
     }
 }
 
+static void
+editor_close_open_file(EditorProject *project, int index,
+                       char *status, size_t status_size)
+{
+    int was_active;
+
+    if(project == NULL || index < 0 || index >= project->open_file_count)
+        return;
+    was_active = index == project->active_open_file;
+    if(was_active && project->source_dirty) {
+        snprintf(status, status_size, "Save %s before closing",
+                 path_basename(project->open_files[index].path));
+        return;
+    }
+    if(was_active)
+        editor_store_active_open_file(project);
+    if(index + 1 < project->open_file_count)
+        memmove(project->open_files + index, project->open_files + index + 1,
+                sizeof(project->open_files[0]) *
+                    (project->open_file_count - index - 1));
+    project->open_file_count--;
+    if(project->open_file_count <= 0) {
+        project->active_open_file = -1;
+        project->selected_file[0] = '\0';
+        project->source_scroll_file[0] = '\0';
+        project->source_loaded = 0;
+        project->source_dirty = 0;
+        snprintf(status, status_size, "Closed file");
+        return;
+    }
+    if(project->active_open_file > index)
+        project->active_open_file--;
+    if(was_active) {
+        if(index >= project->open_file_count)
+            index = project->open_file_count - 1;
+        project->active_open_file = index;
+        snprintf(project->selected_file, sizeof(project->selected_file), "%s",
+                 project->open_files[index].path);
+        snprintf(project->source_scroll_file,
+                 sizeof(project->source_scroll_file), "%s",
+                 project->open_files[index].path);
+        project->source_cursor = project->open_files[index].cursor;
+        project->source_scroll_y = project->open_files[index].scroll_y;
+        project->source_loaded = 0;
+        project->source_dirty = 0;
+    }
+    snprintf(status, status_size, "Closed file");
+}
+
+static void
+editor_write_quoted(FILE *file, const char *value)
+{
+    const char *s = value != NULL ? value : "";
+
+    fputc('"', file);
+    for(const char *p = s; *p != '\0'; p++) {
+        if(*p == '"' || *p == '\\')
+            fputc('\\', file);
+        fputc(*p, file);
+    }
+    fputc('"', file);
+}
+
+static void
+editor_project_state_path(const EditorProject *project, char *path, size_t path_size)
+{
+    if(path == NULL || path_size == 0)
+        return;
+    path[0] = '\0';
+    if(project == NULL || project->path[0] == '\0')
+        return;
+    path_join(path, path_size, project->path, ".kryon-ide-state");
+}
+
+static void
+editor_save_project_state(EditorProject *project)
+{
+    char path[EDITOR_PATH_CAP];
+    FILE *file;
+
+    if(project == NULL || !project->loaded)
+        return;
+    editor_store_active_open_file(project);
+    editor_project_state_path(project, path, sizeof(path));
+    if(path[0] == '\0')
+        return;
+    file = fopen(path, "w");
+    if(file == NULL)
+        return;
+
+    fprintf(file, "layout %d\n", (int)project->layout_mode);
+    fprintf(file, "selected_screen %d\n", project->selected_screen);
+    fprintf(file, "selected_file ");
+    editor_write_quoted(file, project->selected_file);
+    fprintf(file, "\n");
+    fprintf(file, "active_open_file %d\n", project->active_open_file);
+    fprintf(file, "preview %d %d %d %d %.4f %.2f %.2f\n",
+            project->preview_width, project->preview_height,
+            project->preview_preset, (int)project->preview_scale_mode,
+            project->preview_zoom, project->preview_pan_x,
+            project->preview_pan_y);
+    fprintf(file, "output %d %d\n", project->output_visible,
+            project->output_scroll_y);
+    for(int i = 0; i < project->open_file_count; i++) {
+        fprintf(file, "open_file ");
+        editor_write_quoted(file, project->open_files[i].path);
+        fprintf(file, " %d %d\n", project->open_files[i].cursor,
+                project->open_files[i].scroll_y);
+    }
+    fclose(file);
+    project->last_state_save = GetTime();
+}
+
+static int
+editor_parse_int_line(char *line, const char *key, int *value)
+{
+    char *p;
+    size_t key_len;
+
+    if(line == NULL || key == NULL || value == NULL)
+        return 0;
+    key_len = strlen(key);
+    if(strncmp(line, key, key_len) != 0)
+        return 0;
+    p = line + key_len;
+    if(*p != ' ' && *p != '\t')
+        return 0;
+    return sscanf(p, " %d", value) == 1;
+}
+
+static int
+editor_parse_open_file_state(char *line, char *path, size_t path_size,
+                             int *cursor, int *scroll_y)
+{
+    char *p;
+    char *end;
+
+    if(line == NULL || path == NULL || cursor == NULL || scroll_y == NULL)
+        return 0;
+    if(strncmp(line, "open_file", 9) != 0)
+        return 0;
+    p = line + 9;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    if(*p != '"')
+        return 0;
+    p++;
+    end = strchr(p, '"');
+    if(end == NULL)
+        return 0;
+    *end = '\0';
+    snprintf(path, path_size, "%s", p);
+    return sscanf(end + 1, " %d %d", cursor, scroll_y) == 2;
+}
+
+static void
+editor_load_project_state(EditorProject *project)
+{
+    char path[EDITOR_PATH_CAP];
+    char line[1024];
+    FILE *file;
+
+    if(project == NULL || !project->loaded)
+        return;
+    editor_project_state_path(project, path, sizeof(path));
+    if(path[0] == '\0')
+        return;
+    file = fopen(path, "r");
+    if(file == NULL)
+        return;
+    project->open_file_count = 0;
+    project->active_open_file = -1;
+    while(fgets(line, sizeof(line), file) != NULL) {
+        char *trimmed = editor_trim_line(line);
+        char open_path[EDITOR_PATH_CAP];
+        int cursor = 0;
+        int scroll_y = 0;
+        int value = 0;
+
+        if(trimmed[0] == '\0' || trimmed[0] == '#')
+            continue;
+        if(editor_parse_int_line(trimmed, "layout", &value)) {
+            if(value >= EDITOR_LAYOUT_SPLIT && value <= EDITOR_LAYOUT_PREVIEW)
+                project->layout_mode = (EditorLayoutMode)value;
+            continue;
+        }
+        if(editor_parse_int_line(trimmed, "selected_screen",
+                                 &project->selected_screen))
+            continue;
+        if(editor_parse_quoted_value(trimmed, "selected_file",
+                                     project->selected_file,
+                                     sizeof(project->selected_file)))
+            continue;
+        if(editor_parse_int_line(trimmed, "active_open_file",
+                                 &project->active_open_file))
+            continue;
+        if(strncmp(trimmed, "preview ", 8) == 0) {
+            sscanf(trimmed + 8, "%d %d %d %d %f %f %f",
+                   &project->preview_width, &project->preview_height,
+                   &project->preview_preset,
+                   (int *)&project->preview_scale_mode,
+                   &project->preview_zoom, &project->preview_pan_x,
+                   &project->preview_pan_y);
+            continue;
+        }
+        if(editor_parse_two_ints(trimmed, "output",
+                                 &project->output_visible,
+                                 &project->output_scroll_y))
+            continue;
+        if(editor_parse_open_file_state(trimmed, open_path,
+                                        sizeof(open_path), &cursor,
+                                        &scroll_y)) {
+            int index = editor_add_open_file(project, open_path);
+
+            if(index >= 0) {
+                project->open_files[index].cursor = cursor;
+                project->open_files[index].scroll_y = scroll_y;
+            }
+            continue;
+        }
+    }
+    fclose(file);
+    if(project->active_open_file < 0 ||
+       project->active_open_file >= project->open_file_count)
+        project->active_open_file = project->open_file_count > 0 ? 0 : -1;
+    if(project->selected_file[0] == '\0' && project->active_open_file >= 0)
+        snprintf(project->selected_file, sizeof(project->selected_file), "%s",
+                 project->open_files[project->active_open_file].path);
+    if(project->active_open_file >= 0) {
+        EditorOpenFile *open = &project->open_files[project->active_open_file];
+
+        snprintf(project->source_scroll_file, sizeof(project->source_scroll_file),
+                 "%s", open->path);
+        project->source_cursor = open->cursor;
+        project->source_scroll_y = open->scroll_y;
+    }
+    if(project->layout_mode == EDITOR_LAYOUT_SOURCE)
+        project->layout_mode = EDITOR_LAYOUT_SPLIT;
+    editor_preview_init(project);
+}
+
+static void
+editor_maybe_save_project_state(EditorProject *project)
+{
+    double now;
+
+    if(project == NULL || !project->loaded)
+        return;
+    now = GetTime();
+    if(project->last_state_save <= 0.0 || now - project->last_state_save >= 2.0)
+        editor_save_project_state(project);
+}
+
 static int
 editor_create_new_file(EditorProject *project, char *status,
                        size_t status_size)
@@ -1402,6 +1869,7 @@ editor_set_project(EditorProject *project, const char *path)
     project->selected_search_result = -1;
     editor_load_project_config(project);
     editor_detect_run_targets(project);
+    editor_load_project_state(project);
 }
 
 static void
@@ -1429,8 +1897,11 @@ editor_close_project(EditorProject *project)
 {
     if(project == NULL)
         return;
+    editor_save_project_state(project);
     if(project->image_texture.id != 0)
         UnloadTexture(project->image_texture);
+    if(project->preview_texture.id != 0)
+        UnloadRenderTexture(project->preview_texture);
     editor_free_history(project->undo_items, &project->undo_count);
     editor_free_history(project->redo_items, &project->redo_count);
     editor_unload_live_module(project);
@@ -1538,12 +2009,31 @@ editor_parse_kry_screen_line(char *line, EditorKryScreen *screen,
             screen->name[n++] = *p;
         p++;
     }
+    if(p[0] == '(') {
+        char args[512];
+        char *end = strrchr(p, ')');
+
+        if(end == NULL)
+            return 0;
+        *end = '\0';
+        snprintf(args, sizeof(args), "%s", editor_trim_line(p + 1));
+        if(strstr(args, "Rectangle") != NULL) {
+            screen->arg_kind = EDITOR_KRY_SCREEN_ARG_VIEWPORT;
+            screen->takes_viewport = 1;
+        } else if(args[0] != '\0') {
+            screen->arg_kind = EDITOR_KRY_SCREEN_ARG_APP;
+        }
+        p = end + 1;
+    }
     screen->name[n] = '\0';
     snprintf(screen->source_path, sizeof(screen->source_path), "%s", rel_path);
     editor_generated_header_path(screen->header_path,
                                  sizeof(screen->header_path), rel_path);
     editor_make_screen_title(screen->title, sizeof(screen->title), rel_path);
-    screen->takes_viewport = strstr(p, "Rectangle") != NULL;
+    if(strstr(p, "Rectangle") != NULL) {
+        screen->arg_kind = EDITOR_KRY_SCREEN_ARG_VIEWPORT;
+        screen->takes_viewport = 1;
+    }
     return screen->name[0] != '\0';
 }
 
@@ -1567,6 +2057,20 @@ editor_collect_kry_screens_file(const char *root, const char *rel_path,
         char *trimmed = editor_trim_line(line);
         EditorKryScreen screen = {0};
 
+        if(editor_starts_word(trimmed, "args") && *count > 0) {
+            EditorKryScreen *last = &screens[*count - 1];
+            char *args = editor_trim_line(trimmed + strlen("args"));
+
+            if(strcmp(last->source_path, rel_path) == 0) {
+                if(strstr(args, "Rectangle") != NULL) {
+                    last->arg_kind = EDITOR_KRY_SCREEN_ARG_VIEWPORT;
+                    last->takes_viewport = 1;
+                } else if(args[0] != '\0') {
+                    last->arg_kind = EDITOR_KRY_SCREEN_ARG_APP;
+                }
+            }
+            continue;
+        }
         if(editor_parse_kry_screen_line(trimmed, &screen, rel_path))
             screens[(*count)++] = screen;
     }
@@ -2083,8 +2587,8 @@ editor_load_live_module(EditorProject *project, char *status, size_t status_size
     } else {
         dlerror();
     }
-    if(selected_file[0] != '\0' &&
-       SetAppScreenBySourcePath(project->host, selected_file)) {
+    if(selected_file[0] != '\0') {
+        (void)editor_select_source_path(project, selected_file);
         snprintf(project->selected_file, sizeof(project->selected_file),
                  "%s", selected_file);
     } else {
@@ -2417,16 +2921,6 @@ editor_sidebar_has_expanded(const EditorSidebarState *sidebar, int id)
     return 0;
 }
 
-static void
-editor_sidebar_add_expanded(EditorSidebarState *sidebar, int id)
-{
-    if(sidebar == NULL || id == 0 || editor_sidebar_has_expanded(sidebar, id))
-        return;
-    if(sidebar->expanded_count >= EDITOR_MAX_EXPANDED_DIRS)
-        return;
-    sidebar->expanded_ids[sidebar->expanded_count++] = id;
-}
-
 static int
 editor_tree_item_path_visible(const char *path,
                               const EditorSidebarState *sidebar)
@@ -2450,42 +2944,22 @@ editor_tree_item_path_visible(const char *path,
 }
 
 static void
-editor_sidebar_reveal_selected(EditorSidebarState *sidebar,
-                               const EditorTreeItem *items, int count,
-                               const char *selected_path, Rectangle bounds,
-                               int row_height)
+editor_sidebar_sync_visible_selection(EditorSidebarState *sidebar,
+                                      const char *selected_path)
 {
-    char parent[EDITOR_PATH_CAP];
     int selected_id;
-    int visible_index = 0;
 
-    if(sidebar == NULL || selected_path == NULL || selected_path[0] == '\0')
+    if(sidebar == NULL)
         return;
+    if(selected_path == NULL || selected_path[0] == '\0') {
+        sidebar->selected_id = 0;
+        return;
+    }
     selected_id = editor_tree_id(selected_path);
-    snprintf(parent, sizeof(parent), "%s", selected_path);
-    for(char *p = parent; *p != '\0'; p++) {
-        if(*p != '/')
-            continue;
-        *p = '\0';
-        editor_sidebar_add_expanded(sidebar, editor_tree_id(parent));
-        *p = '/';
-    }
-    sidebar->selected_id = selected_id;
-    if(sidebar->revealed_id == selected_id)
-        return;
-    for(int i = 0; i < count; i++) {
-        if(!editor_tree_item_path_visible(items[i].path, sidebar))
-            continue;
-        if(items[i].item.id == selected_id) {
-            int row_h = ScaleUIPx(row_height);
-            int target_y = visible_index * row_h -
-                           ((int)bounds.height - row_h) / 3;
-            sidebar->scroll_y = target_y > 0 ? target_y : 0;
-            sidebar->revealed_id = selected_id;
-            return;
-        }
-        visible_index++;
-    }
+    if(editor_tree_item_path_visible(selected_path, sidebar))
+        sidebar->selected_id = selected_id;
+    else if(sidebar->selected_id == selected_id)
+        sidebar->selected_id = 0;
 }
 
 static void
@@ -2617,10 +3091,7 @@ draw_left_sidebar(Rectangle bounds, EditorProject *project,
     tree_bounds = (Rectangle){(float)x, (float)y, (float)w,
                               bounds.y + bounds.height - ScaleUIPx(14) -
                                   (float)y};
-    if(project->selected_file[0] != '\0')
-        editor_sidebar_reveal_selected(sidebar, tree_items, tree_count,
-                                       project->selected_file, tree_bounds,
-                                       28);
+    editor_sidebar_sync_visible_selection(sidebar, project->selected_file);
     DrawUICascadingTreeView((UICascadingTreeView){
         .bounds = tree_bounds,
         .id = 1201,
@@ -3289,8 +3760,7 @@ editor_jump_to_active_widget_source(EditorProject *project,
         return 0;
     cursor = editor_source_cursor_for_line(text, line_no);
     editor_select_file(project, rel_path);
-    editor_select_source_path(project, rel_path);
-    if(editor_selected_file_has_preview(project))
+    if(project->layout_mode == EDITOR_LAYOUT_PREVIEW)
         project->layout_mode = EDITOR_LAYOUT_SPLIT;
     project->source_pending_cursor = cursor;
     project->source_pending_line = line_no;
@@ -3770,8 +4240,13 @@ editor_handle_source_clipboard(EditorProject *project, int textarea_changed,
     if(project == NULL || !project->source_focused || !editor_mod_key_down())
         return 0;
     has_selection = GetUITextAreaSelection(1501, &start, &end);
+    if(start > end) {
+        int tmp = start;
+        start = end;
+        end = tmp;
+    }
     if(IsKeyPressed(KEY_C)) {
-        if(!has_selection)
+        if(!has_selection || start == end)
             editor_source_line_bounds(project->source, project->source_cursor,
                                       &start, &end);
         if(editor_copy_source_range(project->source, start, end)) {
@@ -3780,13 +4255,13 @@ editor_handle_source_clipboard(EditorProject *project, int textarea_changed,
         }
     }
     if(IsKeyPressed(KEY_X)) {
-        if(!has_selection)
+        if(!has_selection || start == end)
             editor_source_line_bounds(project->source, project->source_cursor,
                                       &start, &end);
         if(editor_copy_source_range(project->source, start, end) &&
            editor_delete_source_range(project, start, end)) {
             snprintf(status, status_size, "Cut source");
-            return 1;
+            return 2;
         }
     }
     if(IsKeyPressed(KEY_V) && !textarea_changed) {
@@ -3796,7 +4271,7 @@ editor_handle_source_clipboard(EditorProject *project, int textarea_changed,
             editor_delete_source_range(project, start, end);
         if(editor_insert_source_text(project, clip)) {
             snprintf(status, status_size, "Pasted source");
-            return 1;
+            return 2;
         }
     }
     return 0;
@@ -3814,18 +4289,19 @@ draw_source_tabs(Rectangle bounds, EditorProject *project,
     for(int i = 0; i < project->open_file_count; i++) {
         char label[128];
         int w;
+        int close_w = ScaleUIPx(22);
 
         snprintf(label, sizeof(label), "%s%s",
                  i == project->active_open_file && project->source_dirty
                      ? "* "
-                     : "",
+                 : "",
                  path_basename(project->open_files[i].path));
-        w = MeasureUIText(label, UI_TEXT_12) + ScaleUIPx(22);
+        w = MeasureUIText(label, UI_TEXT_12) + ScaleUIPx(34) + close_w;
         if(w < ScaleUIPx(72))
             w = ScaleUIPx(72);
         if(x + w > (int)(bounds.x + bounds.width))
             break;
-        if(DrawUIGenericButton(x, (int)bounds.y, w, tab_h, label,
+        if(DrawUIGenericButton(x, (int)bounds.y, w - close_w, tab_h, label,
                                i == project->active_open_file
                                    ? UI_BUTTON_STYLE_PRIMARY
                                    : UI_BUTTON_STYLE_SECONDARY,
@@ -3834,6 +4310,12 @@ draw_source_tabs(Rectangle bounds, EditorProject *project,
                                      status, status_size);
             project->source_cursor = project->open_files[i].cursor;
             project->source_scroll_y = project->open_files[i].scroll_y;
+        }
+        if(DrawUIGenericButton(x + w - close_w, (int)bounds.y,
+                               close_w, tab_h, "x",
+                               UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+            editor_close_open_file(project, i, status, status_size);
+            break;
         }
         x += w + ScaleUIPx(4);
     }
@@ -4069,7 +4551,7 @@ draw_source_code(Rectangle content, EditorProject *project,
     });
     source_changed = textarea_changed;
     if(editor_handle_source_clipboard(project, textarea_changed, status,
-                                      status_size))
+                                      status_size) == 2)
         source_changed = 1;
     {
         int source_line_h = GetUITextLineHeight(editor_source_font_size(project)) +
@@ -4273,30 +4755,42 @@ draw_preview_error(Rectangle content, EditorProject *project,
 }
 
 static void
-draw_preview_toolbar(Rectangle content, EditorProject *project,
-                     char *status, size_t status_size)
+draw_preview_toolbar_buttons(Rectangle content, EditorProject *project)
 {
     static const char *preset_labels[] = {
         "800x600", "Desktop", "Phone", "Tablet", "Square"
     };
-    static const char *scale_labels[] = {"Fit", "100%", "75%", "50%"};
+    static const char *scale_labels[] = {"Fit", "100%", "75%", "50%", "Custom"};
     int x = (int)content.x + ScaleUIPx(12);
     int y = (int)content.y + ScaleUIPx(7);
     int h = ScaleUIPx(28);
+
+    if(project == NULL)
+        return;
+    editor_preview_init(project);
+    DrawUIDropdownButton(1305, x, y, ScaleUIPx(108), h,
+                         preset_labels, 5, &project->preview_preset);
+    x += ScaleUIPx(116);
+    DrawUIDropdownButton(1306, x, y, ScaleUIPx(96), h,
+                         scale_labels, 5,
+                         (int *)&project->preview_scale_mode);
+}
+
+static void
+draw_preview_toolbar_menus(Rectangle content, EditorProject *project,
+                           char *status, size_t status_size)
+{
+    static const char *preset_labels[] = {
+        "800x600", "Desktop", "Phone", "Tablet", "Square"
+    };
+    static const char *scale_labels[] = {"Fit", "100%", "75%", "50%", "Custom"};
     int old_preset;
     int old_scale;
 
     if(project == NULL)
         return;
-    editor_preview_init(project);
     old_preset = project->preview_preset;
     old_scale = (int)project->preview_scale_mode;
-    DrawUIDropdownButton(1305, x, y, ScaleUIPx(108), h,
-                         preset_labels, 5, &project->preview_preset);
-    x += ScaleUIPx(116);
-    DrawUIDropdownButton(1306, x, y, ScaleUIPx(82), h,
-                         scale_labels, 4,
-                         (int *)&project->preview_scale_mode);
     if(DrawUIDropdownMenu(1305) && old_preset != project->preview_preset) {
         editor_preview_apply_preset(project);
         snprintf(status, status_size, "Preview viewport: %s",
@@ -4304,10 +4798,131 @@ draw_preview_toolbar(Rectangle content, EditorProject *project,
     }
     if(DrawUIDropdownMenu(1306) &&
        old_scale != (int)project->preview_scale_mode) {
+        if(project->preview_scale_mode != EDITOR_PREVIEW_SCALE_CUSTOM) {
+            project->preview_zoom = 1.0f;
+            project->preview_pan_x = 0.0f;
+            project->preview_pan_y = 0.0f;
+        }
+        editor_preview_clamp_view(project, content);
         snprintf(status, status_size, "Preview scale: %s",
                  scale_labels[(int)project->preview_scale_mode]);
     }
     editor_preview_init(project);
+}
+
+static void
+editor_preview_handle_view_input(Rectangle content, EditorProject *project,
+                                 char *status, size_t status_size)
+{
+    Rectangle stage;
+    Rectangle old_device;
+    Vector2 mouse;
+    float wheel;
+
+    if(project == NULL)
+        return;
+    editor_preview_init(project);
+    stage = editor_preview_stage_rect(content);
+    mouse = GetMousePosition();
+    if(!CheckCollisionPointRec(mouse, stage))
+        return;
+
+    if(IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
+        Vector2 delta = GetMouseDelta();
+        project->preview_pan_x += delta.x;
+        project->preview_pan_y += delta.y;
+        project->preview_scale_mode = EDITOR_PREVIEW_SCALE_CUSTOM;
+        editor_preview_clamp_view(project, content);
+    }
+
+    if(editor_mod_key_down() && IsKeyPressed(KEY_ZERO)) {
+        project->preview_scale_mode = EDITOR_PREVIEW_SCALE_FIT;
+        project->preview_zoom = 1.0f;
+        project->preview_pan_x = 0.0f;
+        project->preview_pan_y = 0.0f;
+        snprintf(status, status_size, "Preview fit reset");
+    }
+
+    wheel = GetMouseWheelMove();
+    if(wheel == 0.0f || !editor_mod_key_down())
+        return;
+
+    old_device = editor_preview_device_rect(content, project);
+    if(old_device.width <= 0.0f || old_device.height <= 0.0f)
+        return;
+
+    {
+        float old_scale = old_device.width / (float)project->preview_width;
+        float world_x = (mouse.x - old_device.x) / old_scale;
+        float world_y = (mouse.y - old_device.y) / old_scale;
+        float new_zoom = project->preview_zoom > 0.0f ? project->preview_zoom : 1.0f;
+        int steps = wheel > 0.0f ? (int)wheel : (int)-wheel;
+
+        if(steps < 1)
+            steps = 1;
+        for(int i = 0; i < steps; i++)
+            new_zoom *= wheel > 0.0f ? 1.12f : 1.0f / 1.12f;
+        if(new_zoom < 0.10f)
+            new_zoom = 0.10f;
+        if(new_zoom > 8.0f)
+            new_zoom = 8.0f;
+        project->preview_scale_mode = EDITOR_PREVIEW_SCALE_CUSTOM;
+        project->preview_zoom = new_zoom;
+
+        {
+            Rectangle canvas = editor_preview_canvas_rect(content, project);
+            float base_scale = editor_preview_scale(project, stage);
+            float new_scale = base_scale * project->preview_zoom;
+            float new_w = (float)project->preview_width * new_scale;
+            float new_h = (float)project->preview_height * new_scale;
+            float new_x = mouse.x - world_x * new_scale;
+            float new_y = mouse.y - world_y * new_scale;
+
+            project->preview_pan_x = new_x + new_w * 0.5f -
+                (canvas.x + canvas.width * 0.5f);
+            project->preview_pan_y = new_y + new_h * 0.5f -
+                (canvas.y + canvas.height * 0.5f);
+        }
+        editor_preview_clamp_view(project, content);
+        snprintf(status, status_size, "Preview zoom %.0f%%",
+                 project->preview_zoom * 100.0f);
+    }
+}
+
+static void
+editor_draw_project_preview(EditorProject *project, Rectangle viewport)
+{
+    if(project == NULL || project->host == NULL)
+        return;
+    if(project->generated_preview_active &&
+       project->generated_preview_draw != NULL) {
+        if(project->generated_preview_screen.arg_kind ==
+           EDITOR_KRY_SCREEN_ARG_VIEWPORT) {
+            EditorKryDrawViewport draw =
+                (EditorKryDrawViewport)project->generated_preview_draw;
+
+            draw(viewport);
+            return;
+        }
+        if(project->generated_preview_screen.arg_kind ==
+           EDITOR_KRY_SCREEN_ARG_APP) {
+            EditorKryDrawApp draw =
+                (EditorKryDrawApp)project->generated_preview_draw;
+            App *runtime = project->host->userdata;
+
+            draw(runtime != NULL ? runtime->app : NULL);
+            return;
+        }
+        {
+            EditorKryDrawNoArgs draw =
+                (EditorKryDrawNoArgs)project->generated_preview_draw;
+
+            (void)viewport;
+            draw();
+            return;
+        }
+    }
+    DrawAppScreen((AppHost *)project->host, viewport);
 }
 
 static void
@@ -4317,23 +4932,33 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
     int x = (int)content.x + ScaleUIPx(28);
     int y = (int)content.y + ScaleUIPx(28);
     Rectangle stage;
+    Rectangle canvas;
     Rectangle device;
     Camera2D preview_camera = {0};
+    Camera2D render_camera = {0};
     Camera2D editor_camera;
+    Rectangle src_rect;
+    Rectangle dst_rect;
     int inspect_transform = 0;
     int inspect_chrome = 0;
     int old_keyboard_enabled;
     int preview_keyboard_enabled;
     int old_view_w;
     int old_view_h;
+    Vector2 mouse;
+    Vector2 mouse_delta;
+    Vector2 preview_mouse = {-100000.0f, -100000.0f};
+    Vector2 preview_delta = {0.0f, 0.0f};
+    KryonInputOverride input_override = {0};
 
     DrawRectangleRec(content, GetThemeBackground());
     if(project != NULL)
         editor_preview_init(project);
     if(project != NULL && project->loaded) {
-        draw_preview_toolbar(content, project, status, status_size);
+        editor_preview_handle_view_input(content, project, status, status_size);
         stage = editor_preview_stage_rect(content);
         if(project->reload_failed) {
+            draw_preview_toolbar_buttons(content, project);
             draw_preview_error(stage, project, status, status_size);
             return;
         }
@@ -4346,26 +4971,28 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
                    x, y, UI_TEXT_16, GetThemeIcon());
         return;
     }
-    if(!editor_selected_file_has_preview(project)) {
-        DrawUIText("No preview for this file", x, y, UI_TEXT_24,
+    stage = editor_preview_stage_rect(content);
+    editor_preview_clamp_view(project, content);
+    canvas = editor_preview_canvas_rect(content, project);
+    device = editor_preview_device_rect(content, project);
+    if(canvas.width <= 0.0f || canvas.height <= 0.0f ||
+       device.width <= 0.0f || device.height <= 0.0f)
+        return;
+    if(!editor_preview_ensure_texture(project)) {
+        DrawUIText("Could not create preview render target",
+                   (int)canvas.x + ScaleUIPx(12),
+                   (int)canvas.y + ScaleUIPx(12), UI_TEXT_16,
                    GetThemeText());
-        y += ScaleUIPx(40);
-        DrawUIText("Select a .kry screen source to preview it here.",
-                   x, y, UI_TEXT_16, GetThemeIcon());
         return;
     }
 
-    stage = editor_preview_stage_rect(content);
-    device = editor_preview_device_rect(content, project);
-    if(device.width <= 0.0f || device.height <= 0.0f)
-        return;
-
     DrawRectangleRec(stage, DarkenUIColor(GetThemeBackground(), 7));
-    DrawRectangleRec(device, GetThemeBackground());
-    DrawRectangleLinesEx(device, 1, DarkenUIColor(GetThemeBackground(), 48));
-    SetUIInspectCanvasBounds(device);
-    BeginScissorMode((int)device.x, (int)device.y,
-                     (int)device.width, (int)device.height);
+    SetUIInspectCanvasBounds(canvas);
+    BeginUIClip((int)canvas.x, (int)canvas.y,
+                (int)canvas.width, (int)canvas.height);
+    DrawRectangleRec(canvas, GetThemeBackground());
+    DrawRectangleLinesEx(canvas, 1, DarkenUIColor(GetThemeBackground(), 48));
+    EndUIClip();
     PushUIInputClip((Rectangle){0.0f, 0.0f,
                                 (float)project->preview_width,
                                 (float)project->preview_height});
@@ -4375,7 +5002,8 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
     preview_camera.zoom = device.width / (float)project->preview_width;
     inspect_transform = PushUIInspectTransform(preview_camera);
     editor_camera = g_ui_camera;
-    SetUIFrame(preview_camera);
+    render_camera = GetUIDefaultCamera();
+    SetUIFrame(render_camera);
     old_view_w = ui_view_width;
     old_view_h = ui_view_height;
     SetUIViewSize(project->preview_width, project->preview_height);
@@ -4387,22 +5015,65 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
     old_keyboard_enabled = SetUIKeyboardInputEnabled(preview_keyboard_enabled);
     if(project->preview_interact)
         inspect_chrome = PushUIInspectChrome(1);
-    BeginMode2D(preview_camera);
-    DrawAppScreen((AppHost *)project->host,
-                  (Rectangle){0.0f, 0.0f,
-                              (float)project->preview_width,
-                              (float)project->preview_height});
-    EndMode2D();
+
+    rlDrawRenderBatchActive();
+    BeginTextureMode(project->preview_texture);
+    ClearBackground(GetThemeBackground());
+    mouse = GetMousePosition();
+    mouse_delta = GetMouseDelta();
+    if(CheckCollisionPointRec(mouse, canvas)) {
+        preview_mouse.x = (mouse.x - device.x) *
+            (float)project->preview_width / device.width;
+        preview_mouse.y = (mouse.y - device.y) *
+            (float)project->preview_height / device.height;
+        if(preview_mouse.x >= 0.0f &&
+           preview_mouse.y >= 0.0f &&
+           preview_mouse.x <= (float)project->preview_width &&
+           preview_mouse.y <= (float)project->preview_height) {
+            preview_delta.x = mouse_delta.x *
+                (float)project->preview_width / device.width;
+            preview_delta.y = mouse_delta.y *
+                (float)project->preview_height / device.height;
+            input_override.mouse_inside = 1;
+        }
+    }
+    input_override.mouse_position = preview_mouse;
+    input_override.mouse_delta = preview_delta;
+    input_override.pass_buttons = project->preview_interact;
+    BeginKryonInputOverride(input_override);
+    editor_draw_project_preview(project,
+                                (Rectangle){0.0f, 0.0f,
+                                            (float)project->preview_width,
+                                            (float)project->preview_height});
+    EndKryonInputOverride();
+    rlDrawRenderBatchActive();
+    EndTextureMode();
+    rlDrawRenderBatchActive();
+
     if(project->preview_interact)
         PopUIInspectChrome(inspect_chrome);
     SetUIKeyboardInputEnabled(old_keyboard_enabled);
     SetUIViewSize(old_view_w, old_view_h);
     g_ui_camera = editor_camera;
     SetUIScale(editor_ui_scale());
+    SetCurrentTheme(THEME_MONO, 0);
+    ApplyCurrentUITheme();
     PopUIInputClip();
     PopUIInspectTransform(inspect_transform);
-    EndScissorMode();
-    draw_preview_context_menu(project, device, status, status_size);
+
+    src_rect = (Rectangle){0.0f, 0.0f,
+                           (float)project->preview_width,
+                           -(float)project->preview_height};
+    dst_rect = device;
+    BeginUIClip((int)canvas.x, (int)canvas.y,
+                (int)canvas.width, (int)canvas.height);
+    DrawTexturePro(project->preview_texture.texture, src_rect, dst_rect,
+                   (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+    DrawRectangleLinesEx(canvas, 1, DarkenUIColor(GetThemeBackground(), 48));
+    rlDrawRenderBatchActive();
+    EndUIClip();
+    draw_preview_toolbar_buttons(content, project);
+    draw_preview_context_menu(project, stage, status, status_size);
 }
 
 static void
@@ -4426,26 +5097,61 @@ draw_output_text(Rectangle bounds, EditorProject *project)
             (project != NULL ? project->output_scroll_y : 0);
     int line_start = 0;
     int len;
+    int text_x = (int)bounds.x + ScaleUIPx(8);
+    int max_w = (int)bounds.width - ScaleUIPx(16);
 
     if(project == NULL)
         return;
+    if(max_w < ScaleUIPx(80))
+        max_w = ScaleUIPx(80);
     DrawRectangleRec(bounds, DarkenUIColor(GetThemeSurface(), 3));
     DrawRectangleLinesEx(bounds, 1, DarkenUIColor(GetThemeSurface(), 36));
     PushUIInputClip(bounds);
     len = (int)strlen(project->output);
     for(int i = 0; i <= len; i++) {
         if(project->output[i] == '\n' || project->output[i] == '\0') {
-            char line[1024];
             int line_len = i - line_start;
+            int wrap_start = 0;
 
-            if(line_len >= (int)sizeof(line))
-                line_len = (int)sizeof(line) - 1;
-            memcpy(line, project->output + line_start, (size_t)line_len);
-            line[line_len] = '\0';
-            if(y + line_h >= bounds.y && y <= bounds.y + bounds.height)
-                DrawUIText(line, (int)bounds.x + ScaleUIPx(8), y,
-                           UI_TEXT_12, GetThemeText());
-            y += line_h;
+            while(wrap_start < line_len || (line_len == 0 && wrap_start == 0)) {
+                char line[1024];
+                int wrap_len = line_len - wrap_start;
+                int fit_len = 0;
+                int last_space = -1;
+
+                if(wrap_len >= (int)sizeof(line))
+                    wrap_len = (int)sizeof(line) - 1;
+                for(int j = 0; j < wrap_len; j++) {
+                    line[j] = project->output[line_start + wrap_start + j];
+                    line[j + 1] = '\0';
+                    if(line[j] == ' ' || line[j] == '\t')
+                        last_space = j;
+                    if(MeasureUIText(line, UI_TEXT_12) > max_w) {
+                        if(last_space > 0)
+                            fit_len = last_space;
+                        else if(j > 0)
+                            fit_len = j;
+                        else
+                            fit_len = 1;
+                        break;
+                    }
+                }
+                if(fit_len <= 0)
+                    fit_len = wrap_len;
+                memcpy(line, project->output + line_start + wrap_start,
+                       (size_t)fit_len);
+                line[fit_len] = '\0';
+                if(y + line_h >= bounds.y && y <= bounds.y + bounds.height)
+                    DrawUIText(line, text_x, y, UI_TEXT_12, GetThemeText());
+                y += line_h;
+                if(line_len == 0)
+                    break;
+                wrap_start += fit_len;
+                while(wrap_start < line_len &&
+                      (project->output[line_start + wrap_start] == ' ' ||
+                       project->output[line_start + wrap_start] == '\t'))
+                    wrap_start++;
+            }
             line_start = i + 1;
         }
     }
@@ -4673,7 +5379,7 @@ draw_canvas(Rectangle frame, Rectangle content, EditorProject *project,
     int output_h = project != NULL && project->output_visible
                        ? ScaleUIPx(190)
                        : 0;
-    int has_preview = project != NULL && editor_selected_file_has_preview(project);
+    int has_preview = project != NULL && project->host != NULL;
     AppScreenInfo active_screen = {0};
     Rectangle work = content;
     Rectangle preview = content;
@@ -4690,8 +5396,15 @@ draw_canvas(Rectangle frame, Rectangle content, EditorProject *project,
              (int)(frame.x + frame.width), (int)frame.y + header_h,
              DarkenUIColor(GetThemeSurface(), 38));
 
-    if(project != NULL && project->host != NULL)
+    if(project != NULL && project->generated_preview_active) {
+        active_screen.id = project->generated_preview_screen.name;
+        active_screen.group = "Generated";
+        active_screen.title = project->generated_preview_screen.title;
+        active_screen.source_path =
+            project->generated_preview_screen.source_path;
+    } else if(project != NULL && project->host != NULL) {
         active_screen = GetAppScreen(project->host, project->selected_screen);
+    }
     title_text = project != NULL && project->selected_file[0] != '\0'
                      ? project->selected_file
                      : (active_screen.title != NULL ? active_screen.title
@@ -4716,8 +5429,7 @@ draw_canvas(Rectangle frame, Rectangle content, EditorProject *project,
                              (float)output_h};
     }
 
-    if(project->layout_mode == EDITOR_LAYOUT_SOURCE ||
-       (project->layout_mode == EDITOR_LAYOUT_SPLIT && !has_preview)) {
+    if(!has_preview) {
         source = work;
         draw_source_pane(source, project, status, status_size);
     } else if(project->layout_mode == EDITOR_LAYOUT_PREVIEW) {
@@ -4744,6 +5456,14 @@ draw_canvas(Rectangle frame, Rectangle content, EditorProject *project,
         draw_output_panel(output, project, status, status_size);
         PopUIInspectChrome(chrome);
     }
+    editor_restore_ide_ui_frame(GetScreenWidth(), GetScreenHeight());
+    DrawRectangle((int)frame.x, (int)frame.y, (int)frame.width, header_h,
+                  GetThemeSurface());
+    DrawLine((int)frame.x, (int)frame.y + header_h,
+             (int)(frame.x + frame.width), (int)frame.y + header_h,
+             DarkenUIColor(GetThemeSurface(), 38));
+    DrawUIText(title, title_x, (int)frame.y + ScaleUIPx(14), UI_TEXT_16,
+               GetThemeText());
 }
 
 static int
@@ -4760,8 +5480,7 @@ editor_preview_bounds(Rectangle content, const EditorProject *project,
 
     if(preview_out != NULL)
         *preview_out = (Rectangle){0};
-    if(project == NULL || !project->loaded ||
-       !editor_selected_file_has_preview(project))
+    if(project == NULL || !project->loaded || project->host == NULL)
         return 0;
     if(project->layout_mode == EDITOR_LAYOUT_SOURCE)
         return 0;
@@ -4778,11 +5497,14 @@ editor_preview_bounds(Rectangle content, const EditorProject *project,
     }
     if(preview.width <= 0.0f || preview.height <= 0.0f)
         return 0;
-    if(preview_out != NULL)
-        *preview_out = editor_preview_device_rect(preview, project);
-    if(preview_out != NULL &&
-       (preview_out->width <= 0.0f || preview_out->height <= 0.0f))
-        return 0;
+    if(preview_out != NULL) {
+        Rectangle canvas = editor_preview_canvas_rect(preview, project);
+
+        if(canvas.width <= 0.0f || canvas.height <= 0.0f)
+            return 0;
+        *preview_out = canvas;
+        return 1;
+    }
     return 1;
 }
 
@@ -4813,11 +5535,8 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
     int run_x = view_w - ScaleUIPx(186);
     int target_x = view_w - ScaleUIPx(332);
     int target_w = ScaleUIPx(138);
-    int layout_x = view_w - ScaleUIPx(596);
-    int layout_w = ScaleUIPx(132);
     int preview_mode_x = view_w - ScaleUIPx(720);
     int preview_mode_w = ScaleUIPx(116);
-    const char *layout_labels[] = {"Split", "Source", "Preview"};
     const char *preview_mode_labels[] = {"Inspect", "Interact"};
     const char *target_labels[EDITOR_MAX_RUN_TARGETS];
     int target_count = 0;
@@ -4830,12 +5549,6 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
         *project_menu_open = !*project_menu_open;
     }
     if(project != NULL && project->loaded) {
-        int selected_layout = (int)project->layout_mode;
-
-        DrawUIDropdownButton(1303, layout_x, run_y, layout_w, run_h,
-                             layout_labels, 3, &selected_layout);
-        if(selected_layout >= 0 && selected_layout < 3)
-            project->layout_mode = (EditorLayoutMode)selected_layout;
         if(editor_selected_file_has_preview(project)) {
             int selected_preview_mode = project->preview_interact ? 1 : 0;
 
@@ -4898,10 +5611,6 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
        project->selected_run_target != old_target) {
         snprintf(status_text, status_size, "Run target: %s",
                  project->run_targets[project->selected_run_target].label);
-    }
-    if(DrawUIDropdownMenu(1303) && project != NULL && project->loaded) {
-        snprintf(status_text, status_size, "Layout: %s",
-                 layout_labels[(int)project->layout_mode]);
     }
     if(DrawUIDropdownMenu(1304) && project != NULL && project->loaded &&
        editor_selected_file_has_preview(project)) {
@@ -5060,7 +5769,8 @@ count_region_detail_pixels(Image image, Rectangle region)
 static int
 run_ide_smoke(EditorProject *project, EditorRecentProjects *recent,
               EditorSidebarState *sidebar, FileDialog *project_dialog,
-              Texture2D play_icon, const char *screenshot_path)
+              Texture2D play_icon, const char *screenshot_path,
+              const char *source_path, float smoke_zoom)
 {
     int view_w = GetScreenWidth();
     int view_h = GetScreenHeight();
@@ -5087,9 +5797,24 @@ run_ide_smoke(EditorProject *project, EditorRecentProjects *recent,
     };
     Rectangle source = canvas_content;
     Rectangle preview = canvas_content;
+    Rectangle preview_bounds = {0};
     Rectangle sample;
     Image image;
 
+    if(project != NULL && project->loaded && source_path != NULL &&
+       source_path[0] != '\0') {
+        editor_select_file(project, source_path);
+        editor_select_source_path(project, source_path);
+        if(smoke_zoom > 0.0f) {
+            project->preview_scale_mode = EDITOR_PREVIEW_SCALE_CUSTOM;
+            project->preview_zoom = smoke_zoom;
+        } else {
+            project->preview_scale_mode = EDITOR_PREVIEW_SCALE_FIT;
+            project->preview_zoom = 1.0f;
+        }
+        project->preview_pan_x = 0.0f;
+        project->preview_pan_y = 0.0f;
+    }
     if(project == NULL || !project->loaded || !editor_selected_file_has_preview(project)) {
         TraceLog(LOG_ERROR, "KRYON_SMOKE_IDE: selected file has no preview");
         return 1;
@@ -5097,11 +5822,12 @@ run_ide_smoke(EditorProject *project, EditorRecentProjects *recent,
     source.width = (canvas_content.width - (float)divider) * 0.5f;
     preview.x = source.x + source.width + (float)divider;
     preview.width = canvas_content.width - source.width - (float)divider;
+    editor_preview_bounds(canvas_content, project, &preview_bounds);
     sample = (Rectangle){
-        preview.x + ScaleUIPx(24),
-        preview.y + ScaleUIPx(24),
-        preview.width - ScaleUIPx(48),
-        preview.height - ScaleUIPx(48)
+        preview_bounds.x + ScaleUIPx(18),
+        preview_bounds.y + ScaleUIPx(18),
+        preview_bounds.width - ScaleUIPx(36),
+        preview_bounds.height - ScaleUIPx(36)
     };
 
     for(int frame = 0; frame < 3 && !WindowShouldClose(); frame++) {
@@ -5112,8 +5838,14 @@ run_ide_smoke(EditorProject *project, EditorRecentProjects *recent,
         SetUIInspectCanvasBounds(canvas_content);
         draw_canvas(canvas_frame, canvas_content, project, recent, sidebar,
                     &(int){0}, status_text, sizeof(status_text));
-        if(editor_selected_file_has_preview(project))
+        if(editor_selected_file_has_preview(project)) {
+            editor_preview_bounds(canvas_content, project, &preview_bounds);
+            BeginScissorMode((int)preview_bounds.x, (int)preview_bounds.y,
+                             (int)preview_bounds.width,
+                             (int)preview_bounds.height);
             DrawUIInspectOverlay();
+            EndScissorMode();
+        }
         inspect_widgets = UIInspectWidgetCount();
         editor_restore_ide_ui_frame(view_w, view_h);
         draw_chrome(view_w, view_h, project, recent, sidebar, &(int){0},
@@ -5148,8 +5880,14 @@ run_ide_smoke(EditorProject *project, EditorRecentProjects *recent,
         SetUIInspectCanvasBounds(canvas_content);
         draw_canvas(canvas_frame, canvas_content, project, recent, sidebar,
                     &(int){0}, status_text, sizeof(status_text));
-        if(editor_selected_file_has_preview(project))
+        if(editor_selected_file_has_preview(project)) {
+            editor_preview_bounds(canvas_content, project, &preview_bounds);
+            BeginScissorMode((int)preview_bounds.x, (int)preview_bounds.y,
+                             (int)preview_bounds.width,
+                             (int)preview_bounds.height);
             DrawUIInspectOverlay();
+            EndScissorMode();
+        }
         editor_restore_ide_ui_frame(view_w, view_h);
         draw_chrome(view_w, view_h, project, recent, sidebar, &(int){0},
                     project_dialog, play_icon, &(int){0}, status_text,
@@ -5200,6 +5938,8 @@ main(int argc, char **argv)
     int smoke_ide = 0;
     const char *project_arg = NULL;
     const char *smoke_screenshot_path = "/tmp/kryon-ide-smoke.png";
+    const char *smoke_source_path = NULL;
+    float smoke_zoom = 0.0f;
     char project_path[EDITOR_PATH_CAP];
 
     if(argc > 1 && strcmp(argv[1], "--smoke-screens") == 0) {
@@ -5212,6 +5952,10 @@ main(int argc, char **argv)
             project_arg = argv[2];
         if(argc > 3)
             smoke_screenshot_path = argv[3];
+        if(argc > 4)
+            smoke_source_path = argv[4];
+        if(argc > 5)
+            smoke_zoom = (float)atof(argv[5]);
     } else if(argc > 1) {
         project_arg = argv[1];
     }
@@ -5233,6 +5977,11 @@ main(int argc, char **argv)
     InitUI(screen_w, screen_h, editor_ui_scale());
     SetCurrentTheme(THEME_MONO, 0);
     SetUIInspectEnabled(1);
+#if defined(_WIN32)
+    _putenv_s("KRYON_INSPECT", "1");
+#else
+    setenv("KRYON_INSPECT", "1", 1);
+#endif
     InitFileDialog(&project_dialog);
     InitFileDialog(&new_project_dialog);
     editor_load_recent_projects(&recent);
@@ -5242,16 +5991,20 @@ main(int argc, char **argv)
                                        project_arg)) {
             if(path_ext_eq(project_path, ".kry")) {
                 char project_dir[EDITOR_PATH_CAP];
-                const char *file_name = path_basename(project_path);
+                char rel_path[EDITOR_PATH_CAP];
 
-                path_dirname(project_dir, sizeof(project_dir), project_path);
+                editor_find_project_root_for_file(project_dir,
+                                                  sizeof(project_dir),
+                                                  project_path);
                 editor_open_project(&project, project_dir, &recent,
                                     status_text, sizeof(status_text));
                 if(project.loaded) {
-                    editor_select_file(&project, file_name);
-                    editor_select_source_path(&project, file_name);
+                    editor_relative_path(rel_path, sizeof(rel_path), &project,
+                                         project_path);
+                    editor_select_file(&project, rel_path);
+                    editor_select_source_path(&project, rel_path);
                     snprintf(status_text, sizeof(status_text), "Opened %s",
-                             file_name);
+                             rel_path);
                 }
             } else {
                 editor_open_project(&project, project_path, &recent,
@@ -5281,7 +6034,8 @@ main(int argc, char **argv)
     if(smoke_ide) {
         int result = run_ide_smoke(&project, &recent, &sidebar,
                                    &project_dialog, play_icon,
-                                   smoke_screenshot_path);
+                                   smoke_screenshot_path,
+                                   smoke_source_path, smoke_zoom);
         editor_close_project(&project);
         if(play_icon.id != 0)
             UnloadTexture(play_icon);
@@ -5380,6 +6134,7 @@ main(int argc, char **argv)
                                      sizeof(status_text));
         editor_maybe_reload_live_module(&project, status_text,
                                         sizeof(status_text));
+        editor_maybe_save_project_state(&project);
 
         SetUIInspectCanvasBounds(canvas_content);
         preview_bounds_valid =
@@ -5391,7 +6146,11 @@ main(int argc, char **argv)
             Vector2 mouse = GetMousePosition();
 
             SetUIInspectCanvasBounds(preview_bounds);
+            BeginScissorMode((int)preview_bounds.x, (int)preview_bounds.y,
+                             (int)preview_bounds.width,
+                             (int)preview_bounds.height);
             DrawUIInspectOverlay();
+            EndScissorMode();
             if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
                !IsKeyDown(KEY_LEFT_ALT) && !IsKeyDown(KEY_RIGHT_ALT) &&
                CheckCollisionPointRec(mouse, preview_bounds)) {
@@ -5408,6 +6167,12 @@ main(int argc, char **argv)
             }
         }
         editor_restore_ide_ui_frame(view_w, view_h);
+        if(editor_selected_file_has_preview(&project) && preview_bounds_valid) {
+            SetCurrentTheme(THEME_MONO, 0);
+            ApplyCurrentUITheme();
+            draw_preview_toolbar_menus(preview_bounds, &project,
+                                       status_text, sizeof(status_text));
+        }
         if(CheckCollisionPointRec(GetMousePosition(), canvas_content))
             PushUIInputCapture(canvas_content, 1);
         draw_chrome(view_w, view_h, &project, &recent, &sidebar,

@@ -151,7 +151,11 @@ grep -Fq 'value >>= 1;' "$out/src/valid.c"
 grep -q 'while(value < 3)' "$out/src/valid.c"
 grep -q 'DrawThing( value, (ThingSpec){ .value = value, .label = "hello" } );' "$out/src/valid.c"
 grep -q 'value = value + 1;' "$out/src/valid.c"
-grep -q 'if(CheckThing( value, 1)) {' "$out/src/valid.c"
+# A call used as an if condition is wrapped so it registers a source location
+# for click-to-source: Push, evaluate into a temp, Pop, then test the temp.
+grep -Eq '__auto_type __kryon_cond_[0-9]+ = CheckThing\( value, 1\);' "$out/src/valid.c"
+grep -Eq 'if\(__kryon_cond_[0-9]+\) \{' "$out/src/valid.c"
+# A non-call condition is emitted unchanged.
 grep -Fq 'if(value > 0 && first >= 0) {' "$out/src/valid.c"
 grep -Fq 'for(int j = 0; j < 2; j++) {' "$out/src/valid.c"
 grep -q 'value = value > 0 ? value : 1;' "$out/src/valid.c"
@@ -948,3 +952,318 @@ if "$kc" --no-main --root "$work" -o "$out" "$work/src/unbalanced.kry" >"$err" 2
 fi
 grep -q 'unbalanced braces' "$err"
 grep -Eq 'unbalanced\.kry:[0-9]+:1: error:' "$err"
+
+# --- defer: deferred statements run at scope exit, before return/break/continue
+cat > "$work/src/defer.kry" <<'EOF'
+#import "thing.h"
+
+work :: (x: int) -> int {
+    f := x
+    defer Release(f)
+    if x < 0 {
+        return 0
+    }
+    if x > 10 {
+        return x
+    }
+    for int i = 0; i < 3; i++ {
+        defer Log(i)
+        if i == 1 {
+            break
+        }
+    }
+    return x + f
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer.kry" >"$err" 2>&1
+# Function-body defer fires before each return and before the final return.
+# The defer and return land on consecutive lines; use grep -A1 (no -q, since
+# -q suppresses the context lines the second grep needs to see).
+grep -Fq 'Release(f);' "$out/src/defer.c"
+grep -E -A1 'Release\(f\);$' "$out/src/defer.c" | grep -Eq 'return 0;'
+grep -Fq 'return x;' "$out/src/defer.c"
+grep -Fq 'return x + f;' "$out/src/defer.c"
+# Loop-body defer fires before break (registered before the break in source).
+grep -E -A1 'Log\(i\);$' "$out/src/defer.c" | grep -Eq 'break;'
+# Loop-body defer also fires at the end of each non-break iteration.
+grep -E -B1 'Log\(i\);$' "$out/src/defer.c" | grep -Eq '\}'
+# The original `defer` declaration must not survive into the output.
+if grep -q 'defer ' "$out/src/defer.c"; then
+    echo "defer declaration leaked into generated C" >&2
+    exit 1
+fi
+
+# --- defer: multiple defers in one scope run in reverse (LIFO) order
+cat > "$work/src/defer_order.kry" <<'EOF'
+#import "thing.h"
+
+multi :: () -> int {
+    defer First()
+    defer Second()
+    defer Third()
+    return 0
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_order.kry" >"$err" 2>&1
+# Defers run in reverse (LIFO) order: Third (registered last) runs first,
+# First (registered first) runs last. Compare line numbers in the output.
+l_third=$(grep -n 'Third();' "$out/src/defer_order.c" | cut -d: -f1)
+l_second=$(grep -n 'Second();' "$out/src/defer_order.c" | cut -d: -f1)
+l_first=$(grep -n 'First();' "$out/src/defer_order.c" | cut -d: -f1)
+[ -n "$l_third" ] && [ -n "$l_second" ] && [ -n "$l_first" ] || {
+    echo "defer order: missing one of Third/Second/First" >&2; exit 1; }
+[ "$l_third" -lt "$l_second" ] && [ "$l_second" -lt "$l_first" ] || {
+    echo "defer order: expected Third < Second < First by line" >&2; exit 1; }
+
+# --- defer: break/continue unwind only the enclosing loop body
+cat > "$work/src/defer_break.kry" <<'EOF'
+#import "thing.h"
+
+loop_fn :: (n: int) -> int {
+    for int i = 0; i < n; i++ {
+        defer Cleanup(i)
+        if i == 2 {
+            break
+        }
+    }
+    return n
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_break.kry" >"$err" 2>&1
+# Cleanup fires before the break (defer declared before the break in source).
+grep -E -A1 'Cleanup\(i\);$' "$out/src/defer_break.c" | grep -Eq 'break;'
+# Cleanup also fires at the end of each iteration that reaches the loop close.
+grep -E -B1 'Cleanup\(i\);$' "$out/src/defer_break.c" | grep -Eq '\}'
+
+# --- defer: malformed (missing statement) is a clean error
+cat > "$work/src/bad_defer.kry" <<'EOF'
+screen bad {
+    defer
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_defer.kry" >"$err" 2>&1; then
+    echo "empty defer was accepted" >&2
+    exit 1
+fi
+grep -q 'expected defer statement' "$err"
+grep -Eq 'bad_defer\.kry:2:1: error:' "$err"
+
+# --- defer inside switch cases: each case's defers fire on its own path only
+# (regression: apply_defers previously treated the switch as one scope, leaking
+# case defers across cases — a defer in case 1 ran in default too)
+cat > "$work/src/defer_switch.kry" <<'EOF'
+#import "thing.h"
+sw :: (s: int) -> int {
+    switch s {
+    case 1:
+        defer Cleanup(s)
+        break
+    case 2:
+        defer Other(s)
+        return s
+    default:
+        defer Default(s)
+    }
+    return 0
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_switch.kry" >"$err" 2>&1
+# Cleanup fires before break (case 1 path).
+grep -E -A1 'Cleanup\(s\);$' "$out/src/defer_switch.c" | grep -Eq 'break;'
+# Other fires before return (case 2 path).
+grep -E -A1 'Other\(s\);$' "$out/src/defer_switch.c" | grep -Eq 'return s;'
+# Default fires at the switch close (default fall-through path).
+grep -E -B1 'Default\(s\);$' "$out/src/defer_switch.c" | grep -Eq 'default:'
+# No defer leaks across cases: Cleanup must NOT appear after case 2 or default,
+# Other must NOT appear after default. Count occurrences — each should fire
+# exactly once.
+[ "$(grep -c 'Cleanup(s);' "$out/src/defer_switch.c")" = 1 ] || {
+    echo "defer_switch: Cleanup leaked across cases" >&2; exit 1; }
+[ "$(grep -c 'Other(s);' "$out/src/defer_switch.c")" = 1 ] || {
+    echo "defer_switch: Other leaked across cases" >&2; exit 1; }
+[ "$(grep -c 'Default(s);' "$out/src/defer_switch.c")" = 1 ] || {
+    echo "defer_switch: Default fired more than once" >&2; exit 1; }
+
+# --- a call used as an if condition registers its source line for inspection
+# (regression: WidgetButton-in-if previously had no source, so click-to-source
+# on buttons did nothing)
+cat > "$work/src/if_call.kry" <<'EOF'
+#import "thing.h"
+
+screen IfCall {
+    if WidgetButton(0, 0, 100, 40, "Click", UI_BUTTON_STYLE_PRIMARY) {
+        DoThing()
+    }
+    if value > 0 {
+        DoThing()
+    }
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/if_call.kry" >"$err" 2>&1
+# The call condition is wrapped: Push, temp assign, Pop, then test the temp.
+grep -Eq 'PushUIInspectSource\([^)]*if_call\.kry", 4\);' "$out/src/if_call.c"
+grep -Eq '__auto_type __kryon_cond_4 = WidgetButton\(' "$out/src/if_call.c"
+grep -Eq 'PopUIInspectSource\(\);' "$out/src/if_call.c"
+grep -Eq 'if\(__kryon_cond_4\) \{' "$out/src/if_call.c"
+# A non-call condition is emitted unchanged (no temp, no wrapping).
+grep -Fq 'if(value > 0) {' "$out/src/if_call.c"
+
+# --- compound assignment operators not previously covered (-=, *=, /=, --)
+cat > "$work/src/compound.kry" <<'EOF'
+#import "thing.h"
+screen Compound {
+    v := 10
+    v -= 2
+    v *= 3
+    v /= 4
+    v--
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/compound.kry" >"$err" 2>&1
+grep -Fq 'v -= 2;' "$out/src/compound.c"
+grep -Fq 'v *= 3;' "$out/src/compound.c"
+grep -Fq 'v /= 4;' "$out/src/compound.c"
+grep -Fq 'v--;' "$out/src/compound.c"
+
+# --- defer inside a while loop and before continue (loop-body defer)
+cat > "$work/src/defer_while.kry" <<'EOF'
+#import "thing.h"
+loop :: (n: int) -> int {
+    i := 0
+    while i < n {
+        defer Tick(i)
+        i++
+        if i == 2 {
+            continue
+        }
+    }
+    return i
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_while.kry" >"$err" 2>&1
+# defer declared before the continue fires before the continue.
+grep -E -A1 'Tick\(i\);$' "$out/src/defer_while.c" | grep -Eq 'continue;'
+# defer also fires at the end of each iteration that reaches the loop close.
+grep -E -B1 'Tick\(i\);$' "$out/src/defer_while.c" | grep -Eq '\}'
+
+# --- defer inside an anonymous block scope (block-close defer)
+cat > "$work/src/defer_block.kry" <<'EOF'
+#import "thing.h"
+block_fn :: () -> int {
+    s := 1
+    {
+        defer Scoped()
+        s = 2
+    }
+    return s
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_block.kry" >"$err" 2>&1
+# Scoped fires at the anonymous block's closing brace (after s = 2).
+grep -E -B1 'Scoped\(\);$' "$out/src/defer_block.c" | grep -Eq 's = 2;'
+
+# --- main generation: omitting --no-main emits an int main entry point
+cat > "$work/src/withmain.kry" <<'EOF'
+#import "thing.h"
+app "Test App" {
+    size 800 600
+    fps 60
+}
+screen Main {
+    WidgetText("hi", 0, 0, 16, GetThemeText())
+}
+EOF
+
+"$kc" --root "$work" -o "$out" "$work/src/withmain.kry" >"$err" 2>&1
+grep -Eq '^int$' "$out/src/withmain.c"
+grep -Eq '^main\(void\)$' "$out/src/withmain.c"
+grep -q 'InitWindow(800, 600, "Test App");' "$out/src/withmain.c"
+grep -q 'SetTargetFPS(60);' "$out/src/withmain.c"
+grep -q 'while(!WindowShouldClose())' "$out/src/withmain.c"
+grep -q 'Main_kry_draw();' "$out/src/withmain.c"
+# --no-main must NOT emit main.
+"$kc" --no-main --root "$work" -o "$out" "$work/src/withmain.kry" >"$err" 2>&1
+if grep -q 'int main' "$out/src/withmain.c"; then
+    echo "--no-main still emitted main" >&2
+    exit 1
+fi
+
+# --- removed keyword: 'let' produces a removal error
+cat > "$work/src/bad_let.kry" <<'EOF'
+screen bad {
+    let x = 1
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_let.kry" >"$err" 2>&1; then
+    echo "let was accepted" >&2
+    exit 1
+fi
+grep -q "'let' syntax was removed" "$err"
+grep -Eq 'bad_let\.kry:2:1: error:' "$err"
+
+# --- --dump-ast reconstructs an AST with no unclassified (UNKNOWN) nodes
+cat > "$work/src/ast.kry" <<'EOF'
+#import "thing.h"
+ast_fn :: (n: int) -> int {
+    v := 0
+    count: int = 5
+    name: const char* = "hi"
+    defer Cleanup(v)
+    if n > 0 {
+        return n
+    }
+    for int i = 0; i < n; i++ {
+        v += i
+        if i == 2 {
+            break
+        }
+    }
+    while v < 3 {
+        v++
+    }
+    switch v {
+    case 1:
+        v = 2
+    default:
+        v = 3
+    }
+    unused v
+    return v
+}
+EOF
+
+"$kc" --dump-ast --no-main --root "$work" -o "$out" "$work/src/ast.kry" >"$err" 2>&1
+# The dump header names the function.
+grep -q 'function ast_fn' "$err"
+# Every statement kind is classified — no UNKNOWN nodes (full capture).
+if grep -q ' UNKNOWN ' "$err"; then
+    echo "dump-ast produced unclassified nodes" >&2
+    exit 1
+fi
+# The expected control-flow kinds are present.
+grep -Eq '^IF ' "$err"
+grep -Eq '^FOR ' "$err"
+grep -Eq '^WHILE ' "$err"
+grep -Eq '^SWITCH ' "$err"
+grep -Eq '^DEFER ' "$err"
+grep -Eq '^RETURN ' "$err"
+# Typed declarations classify as DECL (not ASSIGN): "int count = 5;" and
+# "const char* name = "hi";" are declarations, while "v += i" is an assignment.
+grep -Eq '^DECL .*int count = 5;' "$err"
+grep -Eq '^DECL .*const char\* name =' "$err"
+grep -Eq '^  ASSIGN .*v \+= i;' "$err"
+# --dump-ast must NOT write the generated .c/.h (it parses but skips emit).
+if [ -f "$out/src/ast.c" ]; then
+    echo "dump-ast wrote generated files" >&2
+    exit 1
+fi

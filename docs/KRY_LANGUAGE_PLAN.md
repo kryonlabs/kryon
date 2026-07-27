@@ -104,8 +104,34 @@ and control flow. There are no widget keywords and no bespoke sugar verbs:
 - plain function calls (any call used as a statement is a draw call and is
   automatically wrapped with source-inspection metadata for click-to-source).
 - `if`, `else if`, `else`, `while`, `for`, `switch`, `case`, `default`,
-  labels, `goto`, `break`, `continue`, `guard`, and `return`.
+  labels, `goto`, `break`, `continue`, `guard`, `defer`, and `return`.
 - `c line` for raw C glue and `unused expr` to silence unused-value warnings.
+
+`defer STMT` schedules `STMT` to run when the enclosing block exits, replacing
+the cleanup-`goto` idiom:
+
+```kry
+load_asset :: (path: const char*) -> Asset* {
+    f := fopen(path, "rb")
+    defer fclose(f)
+    if f == nil {
+        return nil        # fclose runs here
+    }
+    ...
+    return parse(f)       # fclose runs here too
+}                         # and here, on fall-through
+```
+
+A deferred statement fires on scope exit however the block is left: by
+falling off the end, by `return`, or by `break`/`continue` that leaves the
+block. Multiple defers in one block run in reverse (last-registered-first)
+order, and defers in inner scopes run before those in outer scopes. A defer
+only fires if it was declared before the exit that triggers it.
+
+`defer` is a compile-time transform: the statement is spliced into the
+generated C at every exit point of its scope, with no runtime cost. `goto`
+that jumps out of a deferred scope does not run the defer — use explicit
+cleanup labels if you mix the two.
 
 Widgets are ordinary library functions (WidgetText, WidgetRect, WidgetLine,
 WidgetBackground, WidgetButton) declared in `ui_widgets.h`; the compiler

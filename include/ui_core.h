@@ -12,6 +12,7 @@ int IsUIDesktopMode(void);
 Camera2D GetUIDefaultCamera(void);
 void BeginUIFrame(int width, int height, float dpi);
 void SetUIFrame(Camera2D camera);
+void SetUIMouseWorldOverride(int enabled, Vector2 position);
 int SetUIKeyboardInputEnabled(int enabled);
 int UIKeyboardInputEnabled(void);
 int UIKeyPressed(int key);
