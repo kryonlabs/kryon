@@ -29,6 +29,8 @@ static int g_ui_pointer_start_y = 0;
 static int g_ui_transition_cues_enabled = 0;
 static int g_ui_release_consumed = 0;
 static int g_ui_keyboard_input_enabled = 1;
+static int g_ui_mouse_world_override_enabled = 0;
+static Vector2 g_ui_mouse_world_override = {0};
 
 int g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
 
@@ -106,7 +108,16 @@ static int g_ui_input_capture_stack_count = 0;
 Vector2
 ui_mouse_world(void)
 {
+    if(g_ui_mouse_world_override_enabled)
+        return g_ui_mouse_world_override;
     return GetScreenToWorld2D(GetMousePosition(), g_ui_camera);
+}
+
+void
+SetUIMouseWorldOverride(int enabled, Vector2 position)
+{
+    g_ui_mouse_world_override_enabled = enabled ? 1 : 0;
+    g_ui_mouse_world_override = position;
 }
 
 static void
@@ -1306,8 +1317,10 @@ DrawUIButton(UIButton button)
         DrawUIFocus(button.bounds);
     }
 
-    DrawFittedUITextInRect(button.label ? button.label : "", button.bounds,
-                                font, UI_TEXT_8, text);
+    DrawCenteredUIControlText(button.label ? button.label : "",
+                              (int)(button.bounds.x + button.bounds.width * 0.5f),
+                              (int)(button.bounds.y + button.bounds.height * 0.5f),
+                              font, text);
     if(clicked)
         UIConsumeRelease();
     EndUIWidget(&widget);
