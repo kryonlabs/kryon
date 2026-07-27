@@ -14,6 +14,12 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#ifndef NOGDI
+#define NOGDI
+#endif
+#ifndef NOUSER
+#define NOUSER
+#endif
 #include <windows.h>
 #elif defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
 #define KRYON_PLATFORM_NO_THREADS 1
