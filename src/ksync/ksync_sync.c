@@ -1,39 +1,39 @@
-#include "lyra_sync.h"
+#include "ksync_sync.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#define LYRA_SYNC_PATH "/api/v1/sync"
-#define LYRA_CHALLENGE_PATH "/api/v1/sync/challenge"
-#define LYRA_LOGIN_PATH "/api/v1/sync/login"
-#define LYRA_ACCOUNT_DELETE_WITH_KEY_PATH "/api/v1/account/delete-with-key"
-#define LYRA_SYNC_AUTH_TOKEN_KEY "sync_auth_token"
-#define LYRA_SYNC_AUTH_TOKEN_EXPIRES_KEY "sync_auth_token_expires_at"
-#define LYRA_SYNC_SIGNATURE_CONTEXT "lyra-sync-v1"
-#define LYRA_SYNC_USER_HEADER "X-Lyra-User"
-#define LYRA_SYNC_SIGNATURE_HEADER "X-Lyra-Signature"
+#define KSYNC_SYNC_PATH "/api/v1/sync"
+#define KSYNC_CHALLENGE_PATH "/api/v1/sync/challenge"
+#define KSYNC_LOGIN_PATH "/api/v1/sync/login"
+#define KSYNC_ACCOUNT_DELETE_WITH_KEY_PATH "/api/v1/account/delete-with-key"
+#define KSYNC_SYNC_AUTH_TOKEN_KEY "sync_auth_token"
+#define KSYNC_SYNC_AUTH_TOKEN_EXPIRES_KEY "sync_auth_token_expires_at"
+#define KSYNC_SYNC_SIGNATURE_CONTEXT "ksync-sync-v1"
+#define KSYNC_SYNC_USER_HEADER "X-Ksync-User"
+#define KSYNC_SYNC_SIGNATURE_HEADER "X-Ksync-Signature"
 
 const char *
-GetLyraSyncResultName(LyraSyncResult result)
+GetKsyncSyncResultName(KsyncSyncResult result)
 {
     switch(result) {
-        case LYRA_SYNC_OK:
+        case KSYNC_SYNC_OK:
             return "ok";
-        case LYRA_SYNC_INVALID_URL:
+        case KSYNC_SYNC_INVALID_URL:
             return "invalid_url";
-        case LYRA_SYNC_NO_ACCOUNT:
+        case KSYNC_SYNC_NO_ACCOUNT:
             return "no_account";
-        case LYRA_SYNC_PAYLOAD_FAILED:
+        case KSYNC_SYNC_PAYLOAD_FAILED:
             return "payload_failed";
-        case LYRA_SYNC_CHALLENGE_FAILED:
+        case KSYNC_SYNC_CHALLENGE_FAILED:
             return "challenge_failed";
-        case LYRA_SYNC_SIGN_FAILED:
+        case KSYNC_SYNC_SIGN_FAILED:
             return "sign_failed";
-        case LYRA_SYNC_REQUEST_FAILED:
+        case KSYNC_SYNC_REQUEST_FAILED:
             return "request_failed";
-        case LYRA_SYNC_AUTH_FAILED:
+        case KSYNC_SYNC_AUTH_FAILED:
             return "auth_failed";
         default:
             return "unknown";
@@ -70,7 +70,7 @@ sync_loopback_authority_valid(const char *authority)
 }
 
 int
-IsLyraSyncURLValid(const char *url)
+IsKsyncSyncURLValid(const char *url)
 {
     if(url == NULL || url[0] == '\0')
         return 0;
@@ -82,14 +82,14 @@ IsLyraSyncURLValid(const char *url)
 }
 
 int
-NormalizeLyraSyncURL(const char *input, char *out, size_t out_size)
+NormalizeKsyncSyncURL(const char *input, char *out, size_t out_size)
 {
     int len;
 
     if(out == NULL || out_size == 0)
         return 0;
     out[0] = '\0';
-    if(!IsLyraSyncURLValid(input))
+    if(!IsKsyncSyncURLValid(input))
         return 0;
     if(sync_has_prefix(input, "https://") || sync_has_prefix(input, "http://"))
         len = snprintf(out, out_size, "%s", input);
@@ -99,7 +99,7 @@ NormalizeLyraSyncURL(const char *input, char *out, size_t out_size)
 }
 
 int
-JoinLyraSyncURL(char *out, size_t out_size, const char *base_url, const char *path)
+JoinKsyncSyncURL(char *out, size_t out_size, const char *base_url, const char *path)
 {
     size_t len;
     int written;
@@ -117,7 +117,7 @@ JoinLyraSyncURL(char *out, size_t out_size, const char *base_url, const char *pa
 }
 
 int
-JoinLyraSyncWebSocketURL(char *out, size_t out_size, const char *base_url, const char *path)
+JoinKsyncSyncWebSocketURL(char *out, size_t out_size, const char *base_url, const char *path)
 {
     char http_url[768];
     const char *body;
@@ -127,7 +127,7 @@ JoinLyraSyncWebSocketURL(char *out, size_t out_size, const char *base_url, const
     if(out == NULL || out_size == 0)
         return 0;
     out[0] = '\0';
-    if(!JoinLyraSyncURL(http_url, sizeof(http_url), base_url, path))
+    if(!JoinKsyncSyncURL(http_url, sizeof(http_url), base_url, path))
         return 0;
     if(sync_has_prefix(http_url, "https://")) {
         scheme = "wss://";
@@ -143,7 +143,7 @@ JoinLyraSyncWebSocketURL(char *out, size_t out_size, const char *base_url, const
 }
 
 int
-AppendLyraSyncBuffer(LyraSyncBuffer *buffer, const void *data, size_t bytes)
+AppendKsyncSyncBuffer(KsyncSyncBuffer *buffer, const void *data, size_t bytes)
 {
     char *next;
     size_t next_cap;
@@ -167,11 +167,11 @@ AppendLyraSyncBuffer(LyraSyncBuffer *buffer, const void *data, size_t bytes)
 }
 
 int
-AppendLyraSyncBufferJSONString(LyraSyncBuffer *buffer, const char *text)
+AppendKsyncSyncBufferJSONString(KsyncSyncBuffer *buffer, const char *text)
 {
     const char *p;
 
-    if(!AppendLyraSyncBuffer(buffer, "\"", 1))
+    if(!AppendKsyncSyncBuffer(buffer, "\"", 1))
         return 0;
     if(text == NULL)
         text = "";
@@ -179,38 +179,38 @@ AppendLyraSyncBufferJSONString(LyraSyncBuffer *buffer, const char *text)
         char escaped[2];
         switch(*p) {
             case '\\':
-                if(!AppendLyraSyncBuffer(buffer, "\\\\", 2))
+                if(!AppendKsyncSyncBuffer(buffer, "\\\\", 2))
                     return 0;
                 break;
             case '"':
-                if(!AppendLyraSyncBuffer(buffer, "\\\"", 2))
+                if(!AppendKsyncSyncBuffer(buffer, "\\\"", 2))
                     return 0;
                 break;
             case '\n':
-                if(!AppendLyraSyncBuffer(buffer, "\\n", 2))
+                if(!AppendKsyncSyncBuffer(buffer, "\\n", 2))
                     return 0;
                 break;
             case '\r':
-                if(!AppendLyraSyncBuffer(buffer, "\\r", 2))
+                if(!AppendKsyncSyncBuffer(buffer, "\\r", 2))
                     return 0;
                 break;
             case '\t':
-                if(!AppendLyraSyncBuffer(buffer, "\\t", 2))
+                if(!AppendKsyncSyncBuffer(buffer, "\\t", 2))
                     return 0;
                 break;
             default:
                 escaped[0] = *p;
                 escaped[1] = '\0';
-                if(!AppendLyraSyncBuffer(buffer, escaped, 1))
+                if(!AppendKsyncSyncBuffer(buffer, escaped, 1))
                     return 0;
                 break;
         }
     }
-    return AppendLyraSyncBuffer(buffer, "\"", 1);
+    return AppendKsyncSyncBuffer(buffer, "\"", 1);
 }
 
 void
-FreeLyraSyncBuffer(LyraSyncBuffer *buffer)
+FreeKsyncSyncBuffer(KsyncSyncBuffer *buffer)
 {
     if(buffer == NULL)
         return;
@@ -219,7 +219,7 @@ FreeLyraSyncBuffer(LyraSyncBuffer *buffer)
 }
 
 int
-FindLyraSyncJSONString(const char *json, const char *key, char *out, size_t out_size)
+FindKsyncSyncJSONString(const char *json, const char *key, char *out, size_t out_size)
 {
     char pattern[64];
     const char *p;
@@ -255,7 +255,7 @@ FindLyraSyncJSONString(const char *json, const char *key, char *out, size_t out_
 }
 
 long long
-FindLyraSyncJSONInt64(const char *json, const char *key, long long fallback)
+FindKsyncSyncJSONInt64(const char *json, const char *key, long long fallback)
 {
     const char *p;
     char pattern[64];
@@ -276,7 +276,7 @@ FindLyraSyncJSONInt64(const char *json, const char *key, long long fallback)
 }
 
 static int
-sync_config_valid(const LyraSyncConfig *cfg)
+sync_config_valid(const KsyncSyncConfig *cfg)
 {
     return cfg != NULL && cfg->base_url != NULL && cfg->account != NULL &&
            cfg->client_id != NULL && cfg->http_request != NULL &&
@@ -284,7 +284,7 @@ sync_config_valid(const LyraSyncConfig *cfg)
 }
 
 static void
-sync_log_http_failure(const LyraSyncConfig *cfg, const char *step,
+sync_log_http_failure(const KsyncSyncConfig *cfg, const char *step,
                       long status, const char *response)
 {
     if(cfg != NULL && cfg->log_http_failure != NULL)
@@ -292,7 +292,7 @@ sync_log_http_failure(const LyraSyncConfig *cfg, const char *step,
 }
 
 static int
-sync_build_message(const LyraSyncConfig *cfg, const char *method, const char *path,
+sync_build_message(const KsyncSyncConfig *cfg, const char *method, const char *path,
                    const char *nonce_hex, const char *body, char *out,
                    size_t out_size)
 {
@@ -303,37 +303,37 @@ sync_build_message(const LyraSyncConfig *cfg, const char *method, const char *pa
     if(cfg == NULL || method == NULL || path == NULL || nonce_hex == NULL ||
        body == NULL || out == NULL || out_size == 0)
         return 0;
-    LyraSha256Hex((const uint8_t *)body, strlen(body), body_hash);
+    KsyncSha256Hex((const uint8_t *)body, strlen(body), body_hash);
     if(body_hash[0] == '\0')
         return 0;
     context = cfg->signature_context != NULL && cfg->signature_context[0] != '\0'
                   ? cfg->signature_context
-                  : LYRA_SYNC_SIGNATURE_CONTEXT;
+                  : KSYNC_SYNC_SIGNATURE_CONTEXT;
     len = snprintf(out, out_size, "%s\n%s\n%s\n%s\n%s\n", context, method,
                    path, body_hash, nonce_hex);
     return len > 0 && (size_t)len < out_size;
 }
 
 static const char *
-sync_user_header_name(const LyraSyncConfig *cfg)
+sync_user_header_name(const KsyncSyncConfig *cfg)
 {
     return cfg != NULL && cfg->user_header_name != NULL &&
                    cfg->user_header_name[0] != '\0'
                ? cfg->user_header_name
-               : LYRA_SYNC_USER_HEADER;
+               : KSYNC_SYNC_USER_HEADER;
 }
 
 static const char *
-sync_signature_header_name(const LyraSyncConfig *cfg)
+sync_signature_header_name(const KsyncSyncConfig *cfg)
 {
     return cfg != NULL && cfg->signature_header_name != NULL &&
                    cfg->signature_header_name[0] != '\0'
                ? cfg->signature_header_name
-               : LYRA_SYNC_SIGNATURE_HEADER;
+               : KSYNC_SYNC_SIGNATURE_HEADER;
 }
 
 static int
-sync_load_valid_auth_token(const LyraSyncConfig *cfg, char *out, size_t out_size)
+sync_load_valid_auth_token(const KsyncSyncConfig *cfg, char *out, size_t out_size)
 {
     const char *token;
     const char *expires_text;
@@ -343,9 +343,9 @@ sync_load_valid_auth_token(const LyraSyncConfig *cfg, char *out, size_t out_size
     if(!sync_config_valid(cfg) || out == NULL || out_size == 0)
         return 0;
     out[0] = '\0';
-    token = cfg->get_text(LYRA_SYNC_AUTH_TOKEN_KEY, cfg->user);
+    token = cfg->get_text(KSYNC_SYNC_AUTH_TOKEN_KEY, cfg->user);
     snprintf(token_copy, sizeof(token_copy), "%s", token != NULL ? token : "");
-    expires_text = cfg->get_text(LYRA_SYNC_AUTH_TOKEN_EXPIRES_KEY, cfg->user);
+    expires_text = cfg->get_text(KSYNC_SYNC_AUTH_TOKEN_EXPIRES_KEY, cfg->user);
     expires_at = expires_text != NULL ? atoll(expires_text) : 0;
     if(token_copy[0] == '\0' || expires_at <= (long long)time(NULL))
         return 0;
@@ -354,91 +354,91 @@ sync_load_valid_auth_token(const LyraSyncConfig *cfg, char *out, size_t out_size
 }
 
 void
-ClearLyraSyncAuthToken(const LyraSyncConfig *cfg)
+ClearKsyncSyncAuthToken(const KsyncSyncConfig *cfg)
 {
     if(!sync_config_valid(cfg))
         return;
-    cfg->set_text(LYRA_SYNC_AUTH_TOKEN_KEY, "", cfg->user);
-    cfg->set_text(LYRA_SYNC_AUTH_TOKEN_EXPIRES_KEY, "", cfg->user);
+    cfg->set_text(KSYNC_SYNC_AUTH_TOKEN_KEY, "", cfg->user);
+    cfg->set_text(KSYNC_SYNC_AUTH_TOKEN_EXPIRES_KEY, "", cfg->user);
 }
 
-static LyraSyncResult
-sync_fetch_challenge(const LyraSyncConfig *cfg, const char *user_id,
+static KsyncSyncResult
+sync_fetch_challenge(const KsyncSyncConfig *cfg, const char *user_id,
                      char nonce_hex[65])
 {
     char url[768];
-    LyraSyncBuffer response = {0};
+    KsyncSyncBuffer response = {0};
     long status = 0;
     int ok;
 
     nonce_hex[0] = '\0';
-    if(!JoinLyraSyncURL(url, sizeof(url), cfg->base_url,
-                                 LYRA_CHALLENGE_PATH))
-        return LYRA_SYNC_INVALID_URL;
+    if(!JoinKsyncSyncURL(url, sizeof(url), cfg->base_url,
+                                 KSYNC_CHALLENGE_PATH))
+        return KSYNC_SYNC_INVALID_URL;
     if(strlen(url) + strlen(user_id) + 10 >= sizeof(url))
-        return LYRA_SYNC_INVALID_URL;
+        return KSYNC_SYNC_INVALID_URL;
     strncat(url, "?user_id=", sizeof(url) - strlen(url) - 1);
     strncat(url, user_id, sizeof(url) - strlen(url) - 1);
     ok = cfg->http_request("GET", url, NULL, NULL, 0, &response, &status, cfg->user);
     if(!ok || status != 200 ||
-       !FindLyraSyncJSONString(response.data, "nonce", nonce_hex, 65) ||
+       !FindKsyncSyncJSONString(response.data, "nonce", nonce_hex, 65) ||
        strlen(nonce_hex) != 64) {
         sync_log_http_failure(cfg, "challenge", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return status == 401 ? LYRA_SYNC_AUTH_FAILED : LYRA_SYNC_CHALLENGE_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return status == 401 ? KSYNC_SYNC_AUTH_FAILED : KSYNC_SYNC_CHALLENGE_FAILED;
     }
-    FreeLyraSyncBuffer(&response);
-    return LYRA_SYNC_OK;
+    FreeKsyncSyncBuffer(&response);
+    return KSYNC_SYNC_OK;
 }
 
-LyraSyncResult
-LoginLyraSync(const LyraSyncConfig *cfg)
+KsyncSyncResult
+LoginKsyncSync(const KsyncSyncConfig *cfg)
 {
     char nonce_hex[65];
     char message[256];
-    char signature_hex[LYRA_SIGNATURE_HEX_SIZE];
+    char signature_hex[KSYNC_SIGNATURE_HEX_SIZE];
     char url[768];
     char user_header[96];
-    char signature_header[LYRA_SIGNATURE_HEX_SIZE + 32];
+    char signature_header[KSYNC_SIGNATURE_HEX_SIZE + 32];
     const char *headers[3];
-    LyraSyncBuffer body = {0};
-    LyraSyncBuffer response = {0};
+    KsyncSyncBuffer body = {0};
+    KsyncSyncBuffer response = {0};
     long status = 0;
-    LyraSyncResult challenge_result;
+    KsyncSyncResult challenge_result;
     int ok;
     char token[4096];
     long long expires_in;
     long long expires_at;
 
-    if(!sync_config_valid(cfg) || !HasLyraAccountValues(cfg->account))
-        return LYRA_SYNC_NO_ACCOUNT;
-    if(!AppendLyraSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
-       !AppendLyraSyncBufferJSONString(&body, cfg->account->public_id) ||
-       !AppendLyraSyncBuffer(&body, ",\"client_id\":", strlen(",\"client_id\":")) ||
-       !AppendLyraSyncBufferJSONString(&body, cfg->client_id) ||
-       !AppendLyraSyncBuffer(&body, ",\"public_key\":", strlen(",\"public_key\":")) ||
-       !AppendLyraSyncBufferJSONString(&body, cfg->account->public_key_hex) ||
-       !AppendLyraSyncBuffer(&body, "}", 1)) {
-        FreeLyraSyncBuffer(&body);
-        return LYRA_SYNC_PAYLOAD_FAILED;
+    if(!sync_config_valid(cfg) || !HasKsyncAccountValues(cfg->account))
+        return KSYNC_SYNC_NO_ACCOUNT;
+    if(!AppendKsyncSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
+       !AppendKsyncSyncBufferJSONString(&body, cfg->account->public_id) ||
+       !AppendKsyncSyncBuffer(&body, ",\"client_id\":", strlen(",\"client_id\":")) ||
+       !AppendKsyncSyncBufferJSONString(&body, cfg->client_id) ||
+       !AppendKsyncSyncBuffer(&body, ",\"public_key\":", strlen(",\"public_key\":")) ||
+       !AppendKsyncSyncBufferJSONString(&body, cfg->account->public_key_hex) ||
+       !AppendKsyncSyncBuffer(&body, "}", 1)) {
+        FreeKsyncSyncBuffer(&body);
+        return KSYNC_SYNC_PAYLOAD_FAILED;
     }
 
     challenge_result = sync_fetch_challenge(cfg, cfg->account->public_id, nonce_hex);
-    if(challenge_result != LYRA_SYNC_OK) {
-        FreeLyraSyncBuffer(&body);
+    if(challenge_result != KSYNC_SYNC_OK) {
+        FreeKsyncSyncBuffer(&body);
         return challenge_result;
     }
-    if(!sync_build_message(cfg, "POST", LYRA_LOGIN_PATH, nonce_hex,
+    if(!sync_build_message(cfg, "POST", KSYNC_LOGIN_PATH, nonce_hex,
                            body.data, message, sizeof(message))) {
-        FreeLyraSyncBuffer(&body);
-        return LYRA_SYNC_SIGN_FAILED;
+        FreeKsyncSyncBuffer(&body);
+        return KSYNC_SYNC_SIGN_FAILED;
     }
-    if(!SignLyraAccountHex(cfg->account, (const uint8_t *)message, strlen(message),
+    if(!SignKsyncAccountHex(cfg->account, (const uint8_t *)message, strlen(message),
                                     signature_hex, sizeof(signature_hex))) {
-        FreeLyraSyncBuffer(&body);
-        return LYRA_SYNC_SIGN_FAILED;
+        FreeKsyncSyncBuffer(&body);
+        return KSYNC_SYNC_SIGN_FAILED;
     }
-    JoinLyraSyncURL(url, sizeof(url), cfg->base_url, LYRA_LOGIN_PATH);
+    JoinKsyncSyncURL(url, sizeof(url), cfg->base_url, KSYNC_LOGIN_PATH);
     snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
              cfg->account->public_id);
     snprintf(signature_header, sizeof(signature_header), "%s: %s",
@@ -447,27 +447,27 @@ LoginLyraSync(const LyraSyncConfig *cfg)
     headers[1] = user_header;
     headers[2] = signature_header;
     ok = cfg->http_request("POST", url, body.data, headers, 3, &response, &status, cfg->user);
-    FreeLyraSyncBuffer(&body);
+    FreeKsyncSyncBuffer(&body);
     if(!ok) {
         sync_log_http_failure(cfg, "login request", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_REQUEST_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_REQUEST_FAILED;
     }
     if(status == 401) {
         sync_log_http_failure(cfg, "login auth", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_AUTH_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_AUTH_FAILED;
     }
     if(status < 200 || status >= 300) {
         sync_log_http_failure(cfg, "login", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_REQUEST_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_REQUEST_FAILED;
     }
-    expires_in = FindLyraSyncJSONInt64(response.data, "expires_in_seconds", 3600);
-    if(!FindLyraSyncJSONString(response.data, "auth_token", token, sizeof(token))) {
+    expires_in = FindKsyncSyncJSONInt64(response.data, "expires_in_seconds", 3600);
+    if(!FindKsyncSyncJSONString(response.data, "auth_token", token, sizeof(token))) {
         sync_log_http_failure(cfg, "login payload", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_PAYLOAD_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_PAYLOAD_FAILED;
     }
     expires_at = (long long)time(NULL) + expires_in - 30;
     if(expires_at < (long long)time(NULL))
@@ -475,25 +475,25 @@ LoginLyraSync(const LyraSyncConfig *cfg)
     {
         char text[32];
         snprintf(text, sizeof(text), "%lld", expires_at);
-        cfg->set_text(LYRA_SYNC_AUTH_TOKEN_KEY, token, cfg->user);
-        cfg->set_text(LYRA_SYNC_AUTH_TOKEN_EXPIRES_KEY, text, cfg->user);
+        cfg->set_text(KSYNC_SYNC_AUTH_TOKEN_KEY, token, cfg->user);
+        cfg->set_text(KSYNC_SYNC_AUTH_TOKEN_EXPIRES_KEY, text, cfg->user);
     }
-    FreeLyraSyncBuffer(&response);
-    return LYRA_SYNC_OK;
+    FreeKsyncSyncBuffer(&response);
+    return KSYNC_SYNC_OK;
 }
 
-static LyraSyncResult
-sync_send_bearer(const LyraSyncConfig *cfg, const char *body, const char *token)
+static KsyncSyncResult
+sync_send_bearer(const KsyncSyncConfig *cfg, const char *body, const char *token)
 {
     char url[768];
     char user_header[96];
     char auth_header[4200];
     const char *headers[3];
-    LyraSyncBuffer response = {0};
+    KsyncSyncBuffer response = {0};
     long status = 0;
     int ok;
 
-    JoinLyraSyncURL(url, sizeof(url), cfg->base_url, LYRA_SYNC_PATH);
+    JoinKsyncSyncURL(url, sizeof(url), cfg->base_url, KSYNC_SYNC_PATH);
     snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
              cfg->account->public_id);
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
@@ -504,68 +504,68 @@ sync_send_bearer(const LyraSyncConfig *cfg, const char *body, const char *token)
     ok = cfg->http_request("POST", url, body, headers, 3, &response, &status, cfg->user);
     if(!ok) {
         sync_log_http_failure(cfg, "sync request", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_REQUEST_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_REQUEST_FAILED;
     }
     if(status == 401) {
         sync_log_http_failure(cfg, "sync auth", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_AUTH_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_AUTH_FAILED;
     }
     if(status < 200 || status >= 300) {
         sync_log_http_failure(cfg, "sync", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_REQUEST_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_REQUEST_FAILED;
     }
     if(cfg->apply_response == NULL || !cfg->apply_response(response.data, cfg->user)) {
         sync_log_http_failure(cfg, "sync payload", status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_PAYLOAD_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_PAYLOAD_FAILED;
     }
-    FreeLyraSyncBuffer(&response);
-    return LYRA_SYNC_OK;
+    FreeKsyncSyncBuffer(&response);
+    return KSYNC_SYNC_OK;
 }
 
-LyraSyncResult
-RunLyraSync(const LyraSyncConfig *cfg)
+KsyncSyncResult
+RunKsyncSync(const KsyncSyncConfig *cfg)
 {
     char *payload;
-    LyraSyncResult result;
+    KsyncSyncResult result;
     char token[4096];
 
     if(!sync_config_valid(cfg) || cfg->build_payload == NULL || cfg->free_payload == NULL)
-        return LYRA_SYNC_PAYLOAD_FAILED;
-    if(!IsLyraSyncURLValid(cfg->base_url))
-        return LYRA_SYNC_INVALID_URL;
-    if(!HasLyraAccountValues(cfg->account))
-        return LYRA_SYNC_NO_ACCOUNT;
+        return KSYNC_SYNC_PAYLOAD_FAILED;
+    if(!IsKsyncSyncURLValid(cfg->base_url))
+        return KSYNC_SYNC_INVALID_URL;
+    if(!HasKsyncAccountValues(cfg->account))
+        return KSYNC_SYNC_NO_ACCOUNT;
     if(!sync_load_valid_auth_token(cfg, token, sizeof(token))) {
-        result = LoginLyraSync(cfg);
-        if(result != LYRA_SYNC_OK)
+        result = LoginKsyncSync(cfg);
+        if(result != KSYNC_SYNC_OK)
             return result;
         if(!sync_load_valid_auth_token(cfg, token, sizeof(token)))
-            return LYRA_SYNC_AUTH_FAILED;
+            return KSYNC_SYNC_AUTH_FAILED;
     }
     payload = cfg->build_payload(cfg->account->public_id, cfg->account->public_key_hex, cfg->user);
     if(payload == NULL)
-        return LYRA_SYNC_PAYLOAD_FAILED;
+        return KSYNC_SYNC_PAYLOAD_FAILED;
     result = sync_send_bearer(cfg, payload, token);
-    if(result == LYRA_SYNC_AUTH_FAILED) {
-        ClearLyraSyncAuthToken(cfg);
-        result = LoginLyraSync(cfg);
-        if(result == LYRA_SYNC_OK && sync_load_valid_auth_token(cfg, token, sizeof(token)))
+    if(result == KSYNC_SYNC_AUTH_FAILED) {
+        ClearKsyncSyncAuthToken(cfg);
+        result = LoginKsyncSync(cfg);
+        if(result == KSYNC_SYNC_OK && sync_load_valid_auth_token(cfg, token, sizeof(token)))
             result = sync_send_bearer(cfg, payload, token);
-        else if(result == LYRA_SYNC_OK)
-            result = LYRA_SYNC_AUTH_FAILED;
+        else if(result == KSYNC_SYNC_OK)
+            result = KSYNC_SYNC_AUTH_FAILED;
     }
     cfg->free_payload(payload, cfg->user);
-    if(result == LYRA_SYNC_OK && cfg->purge_synced_deleted != NULL)
+    if(result == KSYNC_SYNC_OK && cfg->purge_synced_deleted != NULL)
         cfg->purge_synced_deleted(cfg->user);
     return result;
 }
 
 static int
-sync_copy_response_text(const LyraSyncBuffer *response, char *out, size_t out_size)
+sync_copy_response_text(const KsyncSyncBuffer *response, char *out, size_t out_size)
 {
     if(out == NULL || out_size == 0)
         return 1;
@@ -578,8 +578,8 @@ sync_copy_response_text(const LyraSyncBuffer *response, char *out, size_t out_si
     return 1;
 }
 
-LyraSyncResult
-RequestLyraSyncBearer(const LyraSyncConfig *cfg, const char *method,
+KsyncSyncResult
+RequestKsyncSyncBearer(const KsyncSyncConfig *cfg, const char *method,
                                const char *path, const char *body,
                                char *out, size_t out_size)
 {
@@ -589,33 +589,33 @@ RequestLyraSyncBearer(const LyraSyncConfig *cfg, const char *method,
     char auth_header[4200];
     const char *headers[3];
     int header_count = 0;
-    LyraSyncBuffer response = {0};
+    KsyncSyncBuffer response = {0};
     long status = 0;
-    LyraSyncResult result;
+    KsyncSyncResult result;
     int ok;
     int retried_auth = 0;
 
     if(out != NULL && out_size > 0)
         out[0] = '\0';
     if(!sync_config_valid(cfg))
-        return LYRA_SYNC_PAYLOAD_FAILED;
-    if(!IsLyraSyncURLValid(cfg->base_url))
-        return LYRA_SYNC_INVALID_URL;
+        return KSYNC_SYNC_PAYLOAD_FAILED;
+    if(!IsKsyncSyncURLValid(cfg->base_url))
+        return KSYNC_SYNC_INVALID_URL;
     if(method == NULL || path == NULL)
-        return LYRA_SYNC_PAYLOAD_FAILED;
-    if(!HasLyraAccountValues(cfg->account))
-        return LYRA_SYNC_NO_ACCOUNT;
+        return KSYNC_SYNC_PAYLOAD_FAILED;
+    if(!HasKsyncAccountValues(cfg->account))
+        return KSYNC_SYNC_NO_ACCOUNT;
     if(!sync_load_valid_auth_token(cfg, token, sizeof(token))) {
-        result = LoginLyraSync(cfg);
-        if(result != LYRA_SYNC_OK)
+        result = LoginKsyncSync(cfg);
+        if(result != KSYNC_SYNC_OK)
             return result;
         if(!sync_load_valid_auth_token(cfg, token, sizeof(token)))
-            return LYRA_SYNC_AUTH_FAILED;
+            return KSYNC_SYNC_AUTH_FAILED;
     }
 
 retry:
-    if(!JoinLyraSyncURL(url, sizeof(url), cfg->base_url, path))
-        return LYRA_SYNC_INVALID_URL;
+    if(!JoinKsyncSyncURL(url, sizeof(url), cfg->base_url, path))
+        return KSYNC_SYNC_INVALID_URL;
     snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
              cfg->account->public_id);
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", token);
@@ -627,73 +627,73 @@ retry:
                            &response, &status, cfg->user);
     if(!ok) {
         sync_log_http_failure(cfg, path, status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_REQUEST_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_REQUEST_FAILED;
     }
     if(status == 401) {
-        FreeLyraSyncBuffer(&response);
-        ClearLyraSyncAuthToken(cfg);
+        FreeKsyncSyncBuffer(&response);
+        ClearKsyncSyncAuthToken(cfg);
         if(retried_auth)
-            return LYRA_SYNC_AUTH_FAILED;
+            return KSYNC_SYNC_AUTH_FAILED;
         retried_auth = 1;
-        result = LoginLyraSync(cfg);
-        if(result != LYRA_SYNC_OK)
+        result = LoginKsyncSync(cfg);
+        if(result != KSYNC_SYNC_OK)
             return result;
         if(!sync_load_valid_auth_token(cfg, token, sizeof(token)))
-            return LYRA_SYNC_AUTH_FAILED;
+            return KSYNC_SYNC_AUTH_FAILED;
         status = 0;
         header_count = 0;
         goto retry;
     }
     if(status < 200 || status >= 300) {
         sync_log_http_failure(cfg, path, status, response.data);
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_REQUEST_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_REQUEST_FAILED;
     }
     if(!sync_copy_response_text(&response, out, out_size)) {
-        FreeLyraSyncBuffer(&response);
-        return LYRA_SYNC_PAYLOAD_FAILED;
+        FreeKsyncSyncBuffer(&response);
+        return KSYNC_SYNC_PAYLOAD_FAILED;
     }
-    FreeLyraSyncBuffer(&response);
-    return LYRA_SYNC_OK;
+    FreeKsyncSyncBuffer(&response);
+    return KSYNC_SYNC_OK;
 }
 
-LyraSyncResult
-DeleteLyraSyncAccount(const LyraSyncConfig *cfg)
+KsyncSyncResult
+DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg)
 {
     char url[768];
-    char exported_key[LYRA_ACCOUNT_EXPORT_TEXT_SIZE];
-    LyraSyncBuffer body = {0};
-    LyraSyncBuffer response = {0};
+    char exported_key[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
+    KsyncSyncBuffer body = {0};
+    KsyncSyncBuffer response = {0};
     const char *headers[1] = {"Content-Type: application/json"};
     long status = 0;
     int ok;
 
     if(!sync_config_valid(cfg))
-        return LYRA_SYNC_PAYLOAD_FAILED;
-    if(!IsLyraSyncURLValid(cfg->base_url))
-        return LYRA_SYNC_INVALID_URL;
-    if(!HasLyraAccountValues(cfg->account))
-        return LYRA_SYNC_NO_ACCOUNT;
-    if(!ExportLyraAccountText(cfg->account, exported_key, sizeof(exported_key)))
-        return LYRA_SYNC_PAYLOAD_FAILED;
-    if(!AppendLyraSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
-       !AppendLyraSyncBufferJSONString(&body, cfg->account->public_id) ||
-       !AppendLyraSyncBuffer(&body, ",\"exported_key\":", strlen(",\"exported_key\":")) ||
-       !AppendLyraSyncBufferJSONString(&body, exported_key) ||
-       !AppendLyraSyncBuffer(&body, "}", 1)) {
-        FreeLyraSyncBuffer(&body);
-        return LYRA_SYNC_PAYLOAD_FAILED;
+        return KSYNC_SYNC_PAYLOAD_FAILED;
+    if(!IsKsyncSyncURLValid(cfg->base_url))
+        return KSYNC_SYNC_INVALID_URL;
+    if(!HasKsyncAccountValues(cfg->account))
+        return KSYNC_SYNC_NO_ACCOUNT;
+    if(!ExportKsyncAccountText(cfg->account, exported_key, sizeof(exported_key)))
+        return KSYNC_SYNC_PAYLOAD_FAILED;
+    if(!AppendKsyncSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
+       !AppendKsyncSyncBufferJSONString(&body, cfg->account->public_id) ||
+       !AppendKsyncSyncBuffer(&body, ",\"exported_key\":", strlen(",\"exported_key\":")) ||
+       !AppendKsyncSyncBufferJSONString(&body, exported_key) ||
+       !AppendKsyncSyncBuffer(&body, "}", 1)) {
+        FreeKsyncSyncBuffer(&body);
+        return KSYNC_SYNC_PAYLOAD_FAILED;
     }
 
-    JoinLyraSyncURL(url, sizeof(url), cfg->base_url,
-                             LYRA_ACCOUNT_DELETE_WITH_KEY_PATH);
+    JoinKsyncSyncURL(url, sizeof(url), cfg->base_url,
+                             KSYNC_ACCOUNT_DELETE_WITH_KEY_PATH);
     ok = cfg->http_request("POST", url, body.data, headers, 1, &response, &status, cfg->user);
-    FreeLyraSyncBuffer(&body);
-    FreeLyraSyncBuffer(&response);
+    FreeKsyncSyncBuffer(&body);
+    FreeKsyncSyncBuffer(&response);
     if(!ok)
-        return LYRA_SYNC_REQUEST_FAILED;
+        return KSYNC_SYNC_REQUEST_FAILED;
     if(status == 401 || status == 403)
-        return LYRA_SYNC_AUTH_FAILED;
-    return status >= 200 && status < 300 ? LYRA_SYNC_OK : LYRA_SYNC_REQUEST_FAILED;
+        return KSYNC_SYNC_AUTH_FAILED;
+    return status >= 200 && status < 300 ? KSYNC_SYNC_OK : KSYNC_SYNC_REQUEST_FAILED;
 }

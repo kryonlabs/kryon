@@ -3,7 +3,7 @@ set -eu
 
 usage() {
   echo "Usage: $0 <module-name> [--apply]"
-  echo "Example: $0 lyra --apply"
+  echo "Example: $0 ksync --apply"
   exit 1
 }
 
@@ -15,7 +15,7 @@ if [ "${2:-}" = "--apply" ]; then APPLY=1; fi
 SRC_DIR=src
 TARGET_DIR=$SRC_DIR/$MODULE
 
-# gather candidate files: src/lyra_*.c and src/lyra_*.h
+# gather candidate files: src/ksync_*.c and src/ksync_*.h
 candidates=$(find "$SRC_DIR" -maxdepth 1 -type f \( -name "${MODULE}_*.[ch]" -o -name "${MODULE}*.c" -o -name "${MODULE}*.h" \) | sort)
 
 if [ -z "$candidates" ]; then
