@@ -29,6 +29,7 @@ KRYON_COMPAT_SYMBOL_CHECK = tools/check-raylib-compat-symbols.sh
 KRYON_COMPAT_HEADER = include/kryon_compat.generated.h
 KRYON_BACKEND_RENAME_HEADER = $(BUILD_DIR)/generated/raylib_backend_rename.h
 KRYON_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/kryon_raylib_wrappers.c
+KRYON_NULL_BACKEND_C = $(BUILD_DIR)/generated/kryon_null_backend.c
 KRYON_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(KRYON_COMPAT_HEADER)
 KRYON_RAYLIB_BACKEND_RENAME_HEADER ?= $(KRYON_BACKEND_RENAME_HEADER)
 
@@ -36,14 +37,14 @@ KRYON_RAYLIB_BACKEND_RENAME_HEADER ?= $(KRYON_BACKEND_RENAME_HEADER)
 # backend-neutral; the concrete implementation is selected at link time here.
 #   raylib  -> generated raylib forwarders + libraylib.a   (default, unchanged)
 #   canvas  -> src/backend/canvas_backend.c (HTML5 Canvas2D; no raylib)
-#   null    -> src/backend/null_backend.c   (no-ops; for headless tests)
+#   null    -> generated zero-return stubs  (no-ops; for headless tests)
 KRYON_BACKEND ?= raylib
 ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_SRCS = $(KRYON_RAYLIB_WRAPPERS_C)
 else ifeq ($(KRYON_BACKEND),canvas)
   KRYON_BACKEND_SRCS = src/backend/canvas_backend.c
 else ifeq ($(KRYON_BACKEND),null)
-  KRYON_BACKEND_SRCS = src/backend/null_backend.c
+  KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
 else
   $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
 endif

@@ -19,6 +19,17 @@ enum {
     KC_BODY_LINE_MAX = 1024,
 };
 
+/* A recorded diagnostic (Phase 4 error recovery). kc fills these during parse
+ * instead of aborting on the first error, so the IDE can show many at once. */
+#define KC_DIAGNOSTIC_MAX 64
+
+typedef struct KryDiagnostic {
+    char path[KC_PATH_MAX];
+    int line;
+    int column;
+    char message[KC_BODY_LINE_MAX];
+} KryDiagnostic;
+
 typedef struct KryFunction {
     char screen[KC_NAME_MAX];
     char args[512];
@@ -78,6 +89,8 @@ typedef struct KryFile {
     int function_cap;
     int current_line;
     KryFunction *current;
+    KryDiagnostic diagnostics[KC_DIAGNOSTIC_MAX];
+    int diagnostic_count;
 } KryFile;
 
 typedef struct KryMacroFrame {
@@ -101,5 +114,16 @@ void current_macro_guard(char *dst, size_t dst_size,
                          const KryMacroFrame *macros, int macro_count);
 void append_macro_excluded(char *dst, size_t dst_size, const char *current,
                            const char *next);
+
+/* --- error recovery (Phase 4) ------------------------------------------- */
+
+/* Record a diagnostic and continue parsing. Use in place of die() for
+ * recoverable parse errors (bad statement, missing token, etc.). Fatal errors
+ * (out of memory, bad CLI args) still use die(). */
+void kc_error(KryFile *file, int line_no, const char *fmt, ...);
+
+/* Print all accumulated diagnostics to stderr and return the count. Caller
+ * exits nonzero if any were printed. */
+int kc_flush_diagnostics(const KryFile *file);
 
 #endif
