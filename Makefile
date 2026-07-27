@@ -23,6 +23,10 @@ ICON_ASSETS_C = src/ui/ui_icon_assets.c
 EMBED_ASSETS ?= themes fonts/noto
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
+FONT_SUBSET_OUT_DIR ?= $(BUILD_DIR)/fonts/subset
+FONT_SUBSET_SOURCE_DIR ?= $(KRYON_DIR)/fonts/noto
+FONT_SUBSET_PREFIX ?= App
+FONT_SUBSET_CORPUS ?=
 KRYON_COMPAT_GENERATOR = tools/generate-kryon-compat.sh
 KRYON_BOUNDARY_CHECK = tools/check-kryon-boundaries.sh
 KRYON_COMPAT_SYMBOL_CHECK = tools/check-raylib-compat-symbols.sh
@@ -126,7 +130,7 @@ PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
 PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean run tools examples-run font-assets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
+.PHONY: all clean run tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
 
 all: $(LIB) $(KC) $(KI) $(KRYON_APP)
 
@@ -370,3 +374,10 @@ $(BUILD_DIR)/bin:
 
 font-assets:
 	@printf '%s\n' 'font assets are checked in or supplied by downstream apps'
+
+font-subsets:
+	@if [ -z "$(strip $(FONT_SUBSET_CORPUS))" ]; then \
+		echo "Set FONT_SUBSET_CORPUS to one or more files/directories"; \
+		exit 1; \
+	fi
+	sh scripts/subset-fonts.sh "$(FONT_SUBSET_OUT_DIR)" "$(FONT_SUBSET_SOURCE_DIR)" "$(FONT_SUBSET_PREFIX)" $(FONT_SUBSET_CORPUS)
