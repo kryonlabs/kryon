@@ -1854,10 +1854,15 @@ static int
 ui_syntax_c_keyword(const char *text, int len)
 {
     static const char *keywords[] = {
-        "break", "case", "char", "const", "continue", "default", "do",
-        "double", "else", "enum", "float", "for", "goto", "if", "int", "long",
-        "return", "short", "sizeof", "static", "struct", "switch",
-        "typedef", "void", "while"
+        "auto", "break", "case", "char", "const", "continue", "default",
+        "do", "double", "else", "enum", "extern", "float", "for", "goto",
+        "if", "inline", "int", "long", "register", "restrict", "return",
+        "short", "signed", "sizeof", "static", "struct", "switch", "typedef",
+        "union", "unsigned", "void", "volatile", "while",
+        /* Common C99/C11 standard-library types highlighted as keywords. */
+        "bool", "true", "false", "size_t", "ssize_t", "ptrdiff_t",
+        "int8_t", "int16_t", "int32_t", "int64_t",
+        "uint8_t", "uint16_t", "uint32_t", "uint64_t", "NULL"
     };
 
     for(size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
@@ -1898,11 +1903,17 @@ ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
     if((syntax == UI_SYNTAX_KRY || syntax == UI_SYNTAX_MAKE) &&
        first_token && text[0] == '#')
         return comment;
+    if(syntax == UI_SYNTAX_C && first_token && text[0] == '#')
+        return path;
     if(text[0] == '"')
+        return string;
+    if(syntax == UI_SYNTAX_C && text[0] == '\'')
         return string;
     if((text[0] >= '0' && text[0] <= '9') ||
        (text[0] == '-' && len > 1 && text[1] >= '0' && text[1] <= '9'))
         return number;
+    if(syntax == UI_SYNTAX_C && len >= 2 && text[0] == '/' && text[1] == '*')
+        return comment;
     if(syntax == UI_SYNTAX_KRY &&
        (text[0] == '/' ||
         (text[0] == '.' && len > 1 && (text[1] == '/' || text[1] == '.')) ||
@@ -1921,12 +1932,26 @@ ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
 
 static int
 ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
-                    int first_token)
+                    int first_token, int *in_block_comment)
 {
     int i = index;
 
     if(i >= len)
         return 0;
+    /* Continuing a C block comment from a previous line: consume to the
+       closing star-slash (or to end of line, leaving the flag set). */
+    if(in_block_comment != NULL && *in_block_comment) {
+        while(i < len) {
+            if(line[i] == '*' && i + 1 < len && line[i + 1] == '/') {
+                i += 2;
+                *in_block_comment = 0;
+                break;
+            }
+            i++;
+        }
+        if(i > index)
+            return i - index;
+    }
     if(line[i] == ' ' || line[i] == '\t') {
         while(i < len && (line[i] == ' ' || line[i] == '\t'))
             i++;
@@ -1934,6 +1959,8 @@ ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
     }
     if((syntax == UI_SYNTAX_KRY || syntax == UI_SYNTAX_MAKE) &&
        first_token && line[i] == '#')
+        return len - index;
+    if(syntax == UI_SYNTAX_C && first_token && line[i] == '#')
         return len - index;
     if(syntax == UI_SYNTAX_C && line[i] == '/' && i + 1 < len &&
        line[i + 1] == '/')
@@ -1948,6 +1975,36 @@ ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
             if(line[i++] == '"')
                 break;
         }
+        return i - index;
+    }
+    if(syntax == UI_SYNTAX_C && line[i] == '\'') {
+        i++;
+        while(i < len) {
+            if(line[i] == '\\' && i + 1 < len) {
+                i += 2;
+                continue;
+            }
+            if(line[i++] == '\'')
+                break;
+        }
+        return i - index;
+    }
+    if(syntax == UI_SYNTAX_C && line[i] == '/' && i + 1 < len &&
+       line[i + 1] == '*') {
+        /* C block comment open-slash-star: closes on this line, or runs to
+           EOL and leaves in_block_comment set for the following lines. */
+        i += 2;
+        while(i < len) {
+            if(line[i] == '*' && i + 1 < len && line[i + 1] == '/') {
+                i += 2;
+                if(in_block_comment != NULL)
+                    *in_block_comment = 0;
+                break;
+            }
+            i++;
+        }
+        if(i >= len && in_block_comment != NULL)
+            *in_block_comment = 1;
         return i - index;
     }
     if(line[i] == '/' || line[i] == '%' ||
@@ -2012,15 +2069,18 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
 
 static void
 ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
-                    UISyntaxMode syntax, UITextInputStyle style)
+                    UISyntaxMode syntax, UITextInputStyle style,
+                    int *in_block_comment)
 {
     char token[1024];
     int offset = 0;
     int first_token = 1;
 
     while(offset < len) {
+        int was_in_block_comment = in_block_comment != NULL &&
+                                   *in_block_comment;
         int token_len = ui_syntax_token_len(line, len, offset, syntax,
-                                            first_token);
+                                            first_token, in_block_comment);
         Color color;
         int token_is_first;
 
@@ -2031,8 +2091,11 @@ ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
         memcpy(token, line + offset, (size_t)token_len);
         token[token_len] = '\0';
         token_is_first = first_token;
-        color = ui_syntax_token_color(syntax, token, token_len, token_is_first,
-                                      style);
+        if(was_in_block_comment)
+            color = (Color){88, 88, 88, 255};
+        else
+            color = ui_syntax_token_color(syntax, token, token_len,
+                                          token_is_first, style);
         if(token[0] != ' ' && token[0] != '\t')
             first_token = 0;
         DrawUIText(token, x, y, font, color);
@@ -2046,16 +2109,20 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                        Rectangle bounds, int font, int line_gap,
                        int scroll_y, UISyntaxMode syntax,
                        UITextInputStyle style, int selection_start,
-                       int selection_end)
+                       int selection_end, int text_x_offset)
 {
     char line[1024];
+    char num[16];
     int len;
     int line_start = 0;
+    int line_no = 1;
+    int in_block_comment = 0;
     int padding_x = style.padding_x > 0 ? style.padding_x : ScaleUIPx(10);
     int padding_y = style.padding_y > 0 ? style.padding_y : ScaleUIPx(8);
-    int text_x = (int)bounds.x + padding_x;
+    int text_x = (int)bounds.x + padding_x + text_x_offset;
     int text_y = (int)bounds.y + padding_y - scroll_y;
     int draw_y = text_y;
+    Color gutter_color = (Color){88, 88, 88, 255};
 
     if(text == NULL)
         text = "";
@@ -2077,13 +2144,22 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                 DrawUIText(line, text_x, draw_y, line_font, style.text);
             else
                 ui_draw_syntax_line(line, line_len, text_x, draw_y,
-                                    line_font, syntax, style);
+                                    line_font, syntax, style,
+                                    &in_block_comment);
             if(focused && cursor >= line_start && cursor <= i && (((int)(GetTime() * 2.0)) % 2 == 0)) {
                 int cursor_x = text_x + ui_text_column_x(text, line_start, cursor, line_font);
                 DrawRectangle(cursor_x, draw_y, ScaleUIPx(2), GetUITextLineHeight(line_font), style.cursor);
             }
+            if(text_x_offset > 0) {
+                snprintf(num, sizeof(num), "%d", line_no);
+                DrawUIText(num,
+                           (int)bounds.x + padding_x + text_x_offset -
+                               MeasureUIText(num, line_font) - ScaleUIPx(6),
+                           draw_y, line_font, gutter_color);
+            }
             draw_y += line_h;
             line_start = i + 1;
+            line_no++;
         }
     }
 }
@@ -2133,6 +2209,18 @@ DrawUITextArea(UITextArea area)
     line_h = GetUITextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0 ? area.style.padding_x : ScaleUIPx(10);
     padding_y = area.style.padding_y > 0 ? area.style.padding_y : ScaleUIPx(8);
+    int gutter_w = 0;
+    if(area.show_line_numbers) {
+        int total_lines = 1;
+        const char *p;
+        for(p = area.text; *p; p++)
+            if(*p == '\n')
+                total_lines++;
+        char digit_str[16];
+        snprintf(digit_str, sizeof(digit_str), "%d", total_lines);
+        /* Room for the widest line number plus a right gap. */
+        gutter_w = MeasureUIText(digit_str, font) + ScaleUIPx(12);
+    }
     first_line_y = GetUIControlTextY("Hg", (int)area.bounds.y + padding_y,
                                      line_h, font);
     focused = *area.focused != 0;
@@ -2163,7 +2251,7 @@ DrawUITextArea(UITextArea area)
             focused = 1;
             ClaimUITextAreaFocus(area.focused);
             clicked_cursor = ui_text_area_cursor_from_point(area.text, font, line_gap,
-                (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
+                (int)area.bounds.x + padding_x + gutter_w, (int)area.bounds.y + padding_y,
                 (int)mouse_world.x, (int)mouse_world.y, scroll_y);
             *area.cursor_position = clicked_cursor;
             if(g_ui_text_area_last_click_owner == area.focused &&
@@ -2215,7 +2303,7 @@ DrawUITextArea(UITextArea area)
         focused = 1;
         ClaimUITextAreaFocus(area.focused);
         *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
-            (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
+            (int)area.bounds.x + padding_x + gutter_w, (int)area.bounds.y + padding_y,
             (int)mouse_world.x, (int)mouse_world.y, scroll_y);
         if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
                                      area.focused)) {
@@ -2465,13 +2553,13 @@ DrawUITextArea(UITextArea area)
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
                                     area.bounds.width - padding_x * 2, area.bounds.height - padding_y * 2});
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
-        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
+        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x + gutter_w,
                    first_line_y, font, area.style.border);
     else
         ui_draw_text_area_text(area.text, *area.cursor_position, focused,
                                area.bounds, font, line_gap, scroll_y,
                                area.syntax, area.style, selection_start,
-                               selection_end);
+                               selection_end, gutter_w);
     EndUIClip();
     EndUIWidget(&widget);
     return changed;

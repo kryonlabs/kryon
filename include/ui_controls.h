@@ -131,6 +131,7 @@ typedef struct {
     UITextInputStyle style;
     UITextInputFilter filter;
     void *filter_user_data;
+    int show_line_numbers;   /* when nonzero, draw a line-number gutter */
 } UITextArea;
 
 typedef struct {

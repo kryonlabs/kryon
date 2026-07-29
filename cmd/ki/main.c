@@ -104,6 +104,14 @@ typedef struct EditorKryScreen {
     int takes_viewport;
 } EditorKryScreen;
 
+/* One undo/redo checkpoint: the full source snapshot plus the cursor position
+   at that snapshot, so undo restores the caret where the edit happened instead
+   of jumping to end-of-buffer. */
+typedef struct EditorHistoryEntry {
+    char *text;
+    int cursor;
+} EditorHistoryEntry;
+
 typedef struct EditorProject {
     char path[EDITOR_PATH_CAP];
     char name[96];
@@ -131,8 +139,8 @@ typedef struct EditorProject {
     int replace_cursor;
     int replace_focused;
     int find_replace_visible;
-    char *undo_items[EDITOR_HISTORY_MAX];
-    char *redo_items[EDITOR_HISTORY_MAX];
+    EditorHistoryEntry undo_items[EDITOR_HISTORY_MAX];
+    EditorHistoryEntry redo_items[EDITOR_HISTORY_MAX];
     int undo_count;
     int redo_count;
     char image_file[EDITOR_PATH_CAP];
@@ -606,48 +614,55 @@ editor_strdup(const char *text)
 }
 
 static void
-editor_free_history(char **items, int *count)
+editor_free_history(EditorHistoryEntry *items, int *count)
 {
     if(items == NULL || count == NULL)
         return;
     for(int i = 0; i < *count; i++) {
-        free(items[i]);
-        items[i] = NULL;
+        free(items[i].text);
+        items[i].text = NULL;
+        items[i].cursor = 0;
     }
     *count = 0;
 }
 
 static void
-editor_push_history(char **items, int *count, const char *text)
+editor_push_history(EditorHistoryEntry *items, int *count, const char *text,
+                    int cursor)
 {
     char *copy;
 
     if(items == NULL || count == NULL)
         return;
-    if(*count > 0 && strcmp(items[*count - 1], text != NULL ? text : "") == 0)
+    if(*count > 0 && strcmp(items[*count - 1].text, text != NULL ? text : "") == 0)
         return;
     copy = editor_strdup(text);
     if(copy == NULL)
         return;
     if(*count >= EDITOR_HISTORY_MAX) {
-        free(items[0]);
+        free(items[0].text);
         memmove(items, items + 1, sizeof(items[0]) * (EDITOR_HISTORY_MAX - 1));
         *count = EDITOR_HISTORY_MAX - 1;
     }
-    items[*count] = copy;
+    items[*count].text = copy;
+    items[*count].cursor = cursor;
     (*count)++;
 }
 
 static int
-editor_pop_history(char **items, int *count, char *dst, size_t dst_size)
+editor_pop_history(EditorHistoryEntry *items, int *count, char *dst,
+                   size_t dst_size, int *cursor_out)
 {
     char *text;
 
     if(items == NULL || count == NULL || dst == NULL || dst_size == 0 ||
        *count <= 0)
         return 0;
-    text = items[*count - 1];
-    items[*count - 1] = NULL;
+    text = items[*count - 1].text;
+    if(cursor_out != NULL)
+        *cursor_out = items[*count - 1].cursor;
+    items[*count - 1].text = NULL;
+    items[*count - 1].cursor = 0;
     (*count)--;
     snprintf(dst, dst_size, "%s", text != NULL ? text : "");
     free(text);
@@ -3947,15 +3962,19 @@ static int
 editor_undo_source(EditorProject *project, char *status, size_t status_size)
 {
     char current[EDITOR_SOURCE_MAX_BYTES];
+    int restored_cursor = 0;
 
     if(project == NULL || project->undo_count <= 0)
         return 0;
     snprintf(current, sizeof(current), "%s", project->source);
-    editor_push_history(project->redo_items, &project->redo_count, current);
+    editor_push_history(project->redo_items, &project->redo_count, current,
+                        project->source_cursor);
     if(!editor_pop_history(project->undo_items, &project->undo_count,
-                           project->source, sizeof(project->source)))
+                           project->source, sizeof(project->source),
+                           &restored_cursor))
         return 0;
-    project->source_cursor = (int)strlen(project->source);
+    project->source_cursor =
+        restored_cursor > 0 ? restored_cursor : (int)strlen(project->source);
     project->source_dirty = 1;
     project->source_last_edit_time = GetTime();
     snprintf(status, status_size, "Undo");
@@ -3966,15 +3985,19 @@ static int
 editor_redo_source(EditorProject *project, char *status, size_t status_size)
 {
     char current[EDITOR_SOURCE_MAX_BYTES];
+    int restored_cursor = 0;
 
     if(project == NULL || project->redo_count <= 0)
         return 0;
     snprintf(current, sizeof(current), "%s", project->source);
-    editor_push_history(project->undo_items, &project->undo_count, current);
+    editor_push_history(project->undo_items, &project->undo_count, current,
+                        project->source_cursor);
     if(!editor_pop_history(project->redo_items, &project->redo_count,
-                           project->source, sizeof(project->source)))
+                           project->source, sizeof(project->source),
+                           &restored_cursor))
         return 0;
-    project->source_cursor = (int)strlen(project->source);
+    project->source_cursor =
+        restored_cursor > 0 ? restored_cursor : (int)strlen(project->source);
     project->source_dirty = 1;
     project->source_last_edit_time = GetTime();
     snprintf(status, status_size, "Redo");
@@ -4072,7 +4095,8 @@ editor_replace_next_source(EditorProject *project, char *status,
     }
     before = editor_strdup(project->source);
     if(before != NULL)
-        editor_push_history(project->undo_items, &project->undo_count, before);
+        editor_push_history(project->undo_items, &project->undo_count, before,
+                            (int)(hit - project->source));
     free(before);
     memmove(hit + replace_len, hit + find_len,
             (size_t)(source_len - (int)(hit - project->source) - find_len + 1));
@@ -4084,6 +4108,74 @@ editor_replace_next_source(EditorProject *project, char *status,
         editor_source_line_for_cursor(project->source, project->source_cursor));
     snprintf(status, status_size, "Replaced %s", project->find_text);
     return 1;
+}
+
+static int
+editor_replace_all_source(EditorProject *project, char *status,
+                          size_t status_size)
+{
+    char *before;
+    int source_len;
+    int find_len;
+    int replace_len;
+    int replaced = 0;
+    int growth;
+    int write;
+    char *read;
+    char tmp[EDITOR_SOURCE_MAX_BYTES];
+
+    if(project == NULL || project->find_text[0] == '\0' ||
+       !project->source_loaded)
+        return 0;
+    source_len = (int)strlen(project->source);
+    find_len = (int)strlen(project->find_text);
+    replace_len = (int)strlen(project->replace_text);
+    before = editor_strdup(project->source);
+    if(before != NULL)
+        editor_push_history(project->undo_items, &project->undo_count, before,
+                            project->source_cursor);
+    free(before);
+    /* Build the result into tmp, counting matches, then copy back. This avoids
+       O(n^2) repeated memmove and keeps one undo entry for the whole batch. */
+    write = 0;
+    read = project->source;
+    while(read < project->source + source_len) {
+        char *hit = strstr(read, project->find_text);
+        int copy_len;
+
+        if(hit == NULL) {
+            copy_len = (int)((project->source + source_len) - read);
+            if(write + copy_len + 1 > EDITOR_SOURCE_MAX_BYTES)
+                goto too_large;
+            memcpy(tmp + write, read, (size_t)copy_len);
+            write += copy_len;
+            break;
+        }
+        copy_len = (int)(hit - read);
+        if(write + copy_len + replace_len + 1 > EDITOR_SOURCE_MAX_BYTES)
+            goto too_large;
+        memcpy(tmp + write, read, (size_t)copy_len);
+        write += copy_len;
+        memcpy(tmp + write, project->replace_text, (size_t)replace_len);
+        write += replace_len;
+        read = hit + find_len;
+        replaced++;
+    }
+    tmp[write] = '\0';
+    /* Honor the pre-edit cursor if it still falls within the new text. */
+    project->source_cursor =
+        project->source_cursor <= write ? project->source_cursor : write;
+    memcpy(project->source, tmp, (size_t)write + 1);
+    project->source_dirty = 1;
+    project->source_last_edit_time = GetTime();
+    if(replaced == 0)
+        snprintf(status, status_size, "No matches: %s", project->find_text);
+    else
+        snprintf(status, status_size, "Replaced %d", replaced);
+    return 1;
+too_large:
+    snprintf(status, status_size, "Replace-all result too large");
+    return 0;
 }
 
 static void
@@ -4327,6 +4419,7 @@ draw_source_code(Rectangle content, EditorProject *project,
 {
     char path[EDITOR_PATH_CAP];
     char *before_edit = NULL;
+    int before_cursor = 0;
     int source_changed = 0;
     int textarea_changed = 0;
     int pad = ScaleUIPx(16);
@@ -4490,6 +4583,12 @@ draw_source_code(Rectangle content, EditorProject *project,
             editor_replace_next_source(project, status, status_size);
         if(DrawUIGenericButton((int)content.x + pad + ScaleUIPx(512),
                                find_y,
+                               ScaleUIPx(90), toolbar_h, "Replace All",
+                               UI_BUTTON_STYLE_SECONDARY,
+                               project->find_text[0] == '\0', NULL))
+            editor_replace_all_source(project, status, status_size);
+        if(DrawUIGenericButton((int)content.x + pad + ScaleUIPx(610),
+                               find_y,
                                ScaleUIPx(56), toolbar_h, "Close",
                                UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
             project->find_replace_visible = 0;
@@ -4515,6 +4614,7 @@ draw_source_code(Rectangle content, EditorProject *project,
     if(bounds.height < ScaleUIPx(80))
         bounds.height = ScaleUIPx(80);
     before_edit = editor_strdup(project->source);
+    before_cursor = project->source_cursor;
     if(project->source_focused && editor_mod_key_down()) {
         if(IsKeyPressed(KEY_S)) {
             editor_save_source_now(project, status, status_size);
@@ -4547,7 +4647,8 @@ draw_source_code(Rectangle content, EditorProject *project,
         .focus_id = 1501,
         .placeholder = "",
         .syntax = editor_source_syntax(project->selected_file),
-        .style = editor_input_style()
+        .style = editor_input_style(),
+        .show_line_numbers = 1
     });
     source_changed = textarea_changed;
     if(editor_handle_source_clipboard(project, textarea_changed, status,
@@ -4569,7 +4670,7 @@ draw_source_code(Rectangle content, EditorProject *project,
     if(source_changed) {
         if(before_edit != NULL)
             editor_push_history(project->undo_items, &project->undo_count,
-                                before_edit);
+                                before_edit, before_cursor);
         editor_free_history(project->redo_items, &project->redo_count);
         project->source_dirty = 1;
         project->source_last_edit_time = GetTime();
