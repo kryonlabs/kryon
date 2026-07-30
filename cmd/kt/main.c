@@ -22,6 +22,7 @@ typedef struct KTOptions {
 
 typedef struct KTRun {
     char root[KT_PATH_MAX];
+    char clip[KT_LINE_MAX];
     FILE *log;
     int steps;
     int failures;
@@ -32,6 +33,8 @@ kt_usage(FILE *out)
 {
     fprintf(out,
             "usage: kt [-headless] [-snap] [-bless] [tests/file.kt ...]\n");
+    fprintf(out,
+            "commands: open tap type key see shot mkdir write append copy paste mv exists notexists contains\n");
 }
 
 static char *
@@ -142,6 +145,73 @@ kt_parse_arg(char **cursor, char *out, size_t out_size, char *err,
 }
 
 static int
+kt_parse_tail(char **cursor, char *out, size_t out_size, char *err,
+              size_t err_size)
+{
+    char *s = kt_trim(*cursor);
+
+    if(*s == '\0') {
+        snprintf(err, err_size, "missing argument");
+        return 0;
+    }
+    return kt_parse_arg(&s, out, out_size, err, err_size);
+}
+
+static int
+kt_safe_relpath(const char *path)
+{
+    const char *p;
+
+    if(path == NULL || path[0] == '\0' || path[0] == '/')
+        return 0;
+    for(p = path; *p != '\0'; p++) {
+        if((p == path || p[-1] == '/') && p[0] == '.' &&
+           p[1] == '.' && (p[2] == '/' || p[2] == '\0'))
+            return 0;
+    }
+    return 1;
+}
+
+static int
+kt_project_path(KTRun *run, const char *rel, char *out, size_t out_size)
+{
+    if(!kt_safe_relpath(rel))
+        return 0;
+    return kt_join(out, out_size, run->root, rel);
+}
+
+static int
+kt_read_file(const char *path, char *out, size_t out_size)
+{
+    FILE *f;
+    size_t n;
+
+    f = fopen(path, "rb");
+    if(f == NULL)
+        return 0;
+    n = fread(out, 1, out_size > 0 ? out_size - 1 : 0, f);
+    if(out_size > 0)
+        out[n] = '\0';
+    fclose(f);
+    return 1;
+}
+
+static int
+kt_write_file(const char *path, const char *text, const char *mode)
+{
+    FILE *f = fopen(path, mode);
+
+    if(f == NULL)
+        return 0;
+    if(text != NULL && fputs(text, f) == EOF) {
+        fclose(f);
+        return 0;
+    }
+    fclose(f);
+    return 1;
+}
+
+static int
 kt_open_log(KTRun *run)
 {
     char path[KT_PATH_MAX];
@@ -172,14 +242,20 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
     char *cursor = line;
     char cmd[32];
     char arg[KT_LINE_MAX];
+    char arg2[KT_LINE_MAX];
     char err[128];
+    char path[KT_PATH_MAX];
+    char path2[KT_PATH_MAX];
+    char text[KT_LINE_MAX];
     char snapshots[KT_PATH_MAX];
 
     if(!kt_parse_word(&cursor, cmd, sizeof(cmd)))
         return 1;
     if(strcmp(cmd, "open") == 0 || strcmp(cmd, "tap") == 0 ||
        strcmp(cmd, "type") == 0 || strcmp(cmd, "key") == 0 ||
-       strcmp(cmd, "see") == 0 || strcmp(cmd, "shot") == 0) {
+       strcmp(cmd, "see") == 0 || strcmp(cmd, "shot") == 0 ||
+       strcmp(cmd, "copy") == 0 || strcmp(cmd, "exists") == 0 ||
+       strcmp(cmd, "notexists") == 0 || strcmp(cmd, "mkdir") == 0) {
         if(!kt_parse_arg(&cursor, arg, sizeof(arg), err, sizeof(err))) {
             fprintf(stderr, "%s:%d: %s\n", file, line_no, err);
             return 0;
@@ -206,6 +282,106 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
                         line_no);
                 return 0;
             }
+        }
+        if(strcmp(cmd, "copy") == 0)
+            snprintf(run->clip, sizeof(run->clip), "%s", arg);
+        if(strcmp(cmd, "exists") == 0) {
+            struct stat st;
+
+            if(!kt_project_path(run, arg, path, sizeof(path)) ||
+               stat(path, &st) != 0) {
+                fprintf(stderr, "%s:%d: path does not exist: %s\n", file,
+                        line_no, arg);
+                return 0;
+            }
+        }
+        if(strcmp(cmd, "notexists") == 0) {
+            struct stat st;
+
+            if(!kt_project_path(run, arg, path, sizeof(path)) ||
+               stat(path, &st) == 0) {
+                fprintf(stderr, "%s:%d: path exists: %s\n", file, line_no,
+                        arg);
+                return 0;
+            }
+        }
+        if(strcmp(cmd, "mkdir") == 0) {
+            if(!kt_project_path(run, arg, path, sizeof(path)) ||
+               !kt_mkdir(path)) {
+                fprintf(stderr, "%s:%d: could not create directory: %s\n",
+                        file, line_no, arg);
+                return 0;
+            }
+        }
+        kt_log(run, file, line_no, cmd, arg);
+        run->steps++;
+        return 1;
+    }
+    if(strcmp(cmd, "write") == 0 || strcmp(cmd, "append") == 0 ||
+       strcmp(cmd, "contains") == 0) {
+        if(!kt_parse_word(&cursor, arg, sizeof(arg))) {
+            fprintf(stderr, "%s:%d: missing path\n", file, line_no);
+            return 0;
+        }
+        if(!kt_parse_tail(&cursor, arg2, sizeof(arg2), err, sizeof(err))) {
+            fprintf(stderr, "%s:%d: %s\n", file, line_no, err);
+            return 0;
+        }
+        if(!kt_project_path(run, arg, path, sizeof(path))) {
+            fprintf(stderr, "%s:%d: unsafe path: %s\n", file, line_no, arg);
+            return 0;
+        }
+        if(strcmp(cmd, "contains") == 0) {
+            if(!kt_read_file(path, text, sizeof(text)) ||
+               strstr(text, arg2) == NULL) {
+                fprintf(stderr, "%s:%d: file does not contain text: %s\n",
+                        file, line_no, arg);
+                return 0;
+            }
+        } else if(!kt_write_file(path, arg2,
+                                 strcmp(cmd, "append") == 0 ? "ab" : "wb")) {
+            fprintf(stderr, "%s:%d: could not write file: %s\n", file, line_no,
+                    arg);
+            return 0;
+        }
+        kt_log(run, file, line_no, cmd, arg);
+        run->steps++;
+        return 1;
+    }
+    if(strcmp(cmd, "paste") == 0) {
+        if(!kt_parse_arg(&cursor, arg, sizeof(arg), err, sizeof(err))) {
+            fprintf(stderr, "%s:%d: %s\n", file, line_no, err);
+            return 0;
+        }
+        if(run->clip[0] == '\0') {
+            fprintf(stderr, "%s:%d: clipboard is empty\n", file, line_no);
+            return 0;
+        }
+        if(!kt_project_path(run, arg, path, sizeof(path)) ||
+           !kt_write_file(path, run->clip, "ab")) {
+            fprintf(stderr, "%s:%d: could not paste into file: %s\n", file,
+                    line_no, arg);
+            return 0;
+        }
+        kt_log(run, file, line_no, cmd, arg);
+        run->steps++;
+        return 1;
+    }
+    if(strcmp(cmd, "mv") == 0) {
+        if(!kt_parse_word(&cursor, arg, sizeof(arg))) {
+            fprintf(stderr, "%s:%d: missing source path\n", file, line_no);
+            return 0;
+        }
+        if(!kt_parse_tail(&cursor, arg2, sizeof(arg2), err, sizeof(err))) {
+            fprintf(stderr, "%s:%d: %s\n", file, line_no, err);
+            return 0;
+        }
+        if(!kt_project_path(run, arg, path, sizeof(path)) ||
+           !kt_project_path(run, arg2, path2, sizeof(path2)) ||
+           rename(path, path2) != 0) {
+            fprintf(stderr, "%s:%d: could not move %s to %s\n", file, line_no,
+                    arg, arg2);
+            return 0;
         }
         kt_log(run, file, line_no, cmd, arg);
         run->steps++;

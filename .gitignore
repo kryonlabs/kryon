@@ -5,6 +5,7 @@
 *~
 *.tmp
 .zcode
+.kryon-ide-state
 
 # Build output
 build/
