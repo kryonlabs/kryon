@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #define KT_LINE_MAX 4096
@@ -21,9 +23,13 @@ typedef struct KTOptions {
 } KTOptions;
 
 typedef struct KTRun {
+    const KTOptions *options;
+    const char *argv0;
     char root[KT_PATH_MAX];
     char clip[KT_LINE_MAX];
+    char target[16];
     FILE *log;
+    pid_t visual_pid;
     int steps;
     int failures;
 } KTRun;
@@ -34,7 +40,8 @@ kt_usage(FILE *out)
     fprintf(out,
             "usage: kt [-headless] [-snap] [-bless] [tests/file.kt ...]\n");
     fprintf(out,
-            "commands: open tap type key see shot mkdir write append copy paste mv exists notexists contains\n");
+            "commands: target open tap type key see shot wait mkdir write append copy paste mv exists notexists contains\n");
+    fprintf(out, "without -headless, kt opens target app by default; use 'target ide' to test the IDE\n");
 }
 
 static char *
@@ -211,6 +218,84 @@ kt_write_file(const char *path, const char *text, const char *mode)
     return 1;
 }
 
+static void
+kt_tool_path(char *out, size_t out_size, const char *argv0,
+             const char *tool)
+{
+    const char *slash;
+    size_t dir_len;
+
+    if(argv0 == NULL)
+        argv0 = "";
+    slash = strrchr(argv0, '/');
+    if(slash == NULL) {
+        snprintf(out, out_size, "%s", tool);
+        return;
+    }
+    dir_len = (size_t)(slash - argv0);
+    if(dir_len + 1 + strlen(tool) + 1 > out_size) {
+        snprintf(out, out_size, "%s", tool);
+        return;
+    }
+    memcpy(out, argv0, dir_len);
+    out[dir_len] = '/';
+    snprintf(out + dir_len + 1, out_size - dir_len - 1, "%s", tool);
+}
+
+static int
+kt_start_visual(KTRun *run)
+{
+    char tool[KT_PATH_MAX];
+
+    if(run->options == NULL || run->options->headless)
+        return 1;
+    if(run->visual_pid > 0)
+        return 1;
+    if(strcmp(run->target, "none") == 0)
+        return 1;
+    kt_tool_path(tool, sizeof(tool), run->argv0,
+                 strcmp(run->target, "ide") == 0 ? "kryon" : "kryon-app");
+    run->visual_pid = fork();
+    if(run->visual_pid < 0)
+        return 0;
+    if(run->visual_pid == 0) {
+        setenv("KRYON_INSPECT", "1", 1);
+        setenv("KRYON_PROJECT_ROOT", run->root, 1);
+        if(strcmp(run->target, "ide") == 0) {
+            execl(tool, tool, run->root, (char *)NULL);
+            execlp("kryon", "kryon", run->root, (char *)NULL);
+        } else {
+            execl(tool, tool, "--project", run->root, "run", "native",
+                  (char *)NULL);
+            execlp("kryon-app", "kryon-app", "--project", run->root, "run",
+                   "native", (char *)NULL);
+        }
+        _exit(127);
+    }
+    usleep(800000);
+    return 1;
+}
+
+static void
+kt_stop_visual(KTRun *run)
+{
+    int status;
+
+    if(run->visual_pid <= 0)
+        return;
+    kill(run->visual_pid, SIGTERM);
+    waitpid(run->visual_pid, &status, 0);
+    run->visual_pid = 0;
+}
+
+static void
+kt_visual_step_delay(KTRun *run)
+{
+    if(run->options != NULL && !run->options->headless &&
+       run->visual_pid > 0)
+        usleep(180000);
+}
+
 static int
 kt_open_log(KTRun *run)
 {
@@ -251,14 +336,25 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
 
     if(!kt_parse_word(&cursor, cmd, sizeof(cmd)))
         return 1;
-    if(strcmp(cmd, "open") == 0 || strcmp(cmd, "tap") == 0 ||
+    if(strcmp(cmd, "target") == 0 || strcmp(cmd, "open") == 0 ||
+       strcmp(cmd, "tap") == 0 ||
        strcmp(cmd, "type") == 0 || strcmp(cmd, "key") == 0 ||
        strcmp(cmd, "see") == 0 || strcmp(cmd, "shot") == 0 ||
+       strcmp(cmd, "wait") == 0 ||
        strcmp(cmd, "copy") == 0 || strcmp(cmd, "exists") == 0 ||
        strcmp(cmd, "notexists") == 0 || strcmp(cmd, "mkdir") == 0) {
         if(!kt_parse_arg(&cursor, arg, sizeof(arg), err, sizeof(err))) {
             fprintf(stderr, "%s:%d: %s\n", file, line_no, err);
             return 0;
+        }
+        if(strcmp(cmd, "target") == 0) {
+            if(strcmp(arg, "app") != 0 && strcmp(arg, "ide") != 0 &&
+               strcmp(arg, "none") != 0) {
+                fprintf(stderr, "%s:%d: unknown target: %s\n", file, line_no,
+                        arg);
+                return 0;
+            }
+            snprintf(run->target, sizeof(run->target), "%s", arg);
         }
         if(strcmp(cmd, "open") == 0) {
             struct stat st;
@@ -274,6 +370,11 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
                         line_no);
                 return 0;
             }
+            if(!kt_start_visual(run)) {
+                fprintf(stderr, "%s:%d: could not start Kryon visual runner\n",
+                        file, line_no);
+                return 0;
+            }
         }
         if(strcmp(cmd, "shot") == 0) {
             if(!kt_join(snapshots, sizeof(snapshots), run->root, "snapshots") ||
@@ -285,6 +386,15 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
         }
         if(strcmp(cmd, "copy") == 0)
             snprintf(run->clip, sizeof(run->clip), "%s", arg);
+        if(strcmp(cmd, "wait") == 0) {
+            int ms = atoi(arg);
+
+            if(ms < 0)
+                ms = 0;
+            if(ms > 30000)
+                ms = 30000;
+            usleep((useconds_t)ms * 1000);
+        }
         if(strcmp(cmd, "exists") == 0) {
             struct stat st;
 
@@ -315,6 +425,7 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
         }
         kt_log(run, file, line_no, cmd, arg);
         run->steps++;
+        kt_visual_step_delay(run);
         return 1;
     }
     if(strcmp(cmd, "write") == 0 || strcmp(cmd, "append") == 0 ||
@@ -346,6 +457,7 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
         }
         kt_log(run, file, line_no, cmd, arg);
         run->steps++;
+        kt_visual_step_delay(run);
         return 1;
     }
     if(strcmp(cmd, "paste") == 0) {
@@ -365,6 +477,7 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
         }
         kt_log(run, file, line_no, cmd, arg);
         run->steps++;
+        kt_visual_step_delay(run);
         return 1;
     }
     if(strcmp(cmd, "mv") == 0) {
@@ -385,6 +498,7 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
         }
         kt_log(run, file, line_no, cmd, arg);
         run->steps++;
+        kt_visual_step_delay(run);
         return 1;
     }
     fprintf(stderr, "%s:%d: unknown command: %s\n", file, line_no, cmd);
@@ -392,7 +506,7 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
 }
 
 static int
-kt_run_file(const KTOptions *options, const char *path)
+kt_run_file(const KTOptions *options, const char *argv0, const char *path)
 {
     FILE *f;
     KTRun run = {0};
@@ -400,8 +514,10 @@ kt_run_file(const KTOptions *options, const char *path)
     int line_no = 0;
     int ok = 1;
 
-    (void)options;
+    run.options = options;
+    run.argv0 = argv0;
     snprintf(run.root, sizeof(run.root), ".");
+    snprintf(run.target, sizeof(run.target), "app");
     if(!kt_open_log(&run)) {
         fprintf(stderr, "%s: could not open logs/kt.log\n", path);
         return 0;
@@ -429,6 +545,7 @@ kt_run_file(const KTOptions *options, const char *path)
                 run.failures);
         fclose(run.log);
     }
+    kt_stop_visual(&run);
     fclose(f);
     return ok;
 }
@@ -502,7 +619,7 @@ main(int argc, char **argv)
         return 2;
     }
     for(int i = 0; i < options.file_count; i++) {
-        if(!kt_run_file(&options, options.files[i]))
+        if(!kt_run_file(&options, argv[0], options.files[i]))
             ok = 0;
     }
     return ok ? 0 : 1;
