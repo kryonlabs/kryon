@@ -1447,7 +1447,7 @@ const char *
 GetUIClipboardTextValue(void)
 {
     const char *text = GetClipboardText();
-    if(text != NULL)
+    if(text != NULL && text[0] != '\0')
         snprintf(g_clipboard_text, sizeof(g_clipboard_text), "%s", text);
     return g_clipboard_text;
 }

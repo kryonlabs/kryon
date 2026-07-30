@@ -5750,9 +5750,6 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
     int run_x = view_w - ScaleUIPx(186);
     int target_x = view_w - ScaleUIPx(332);
     int target_w = ScaleUIPx(138);
-    int preview_mode_x = view_w - ScaleUIPx(720);
-    int preview_mode_w = ScaleUIPx(116);
-    const char *preview_mode_labels[] = {"Inspect", "Interact"};
     const char *target_labels[EDITOR_MAX_RUN_TARGETS];
     int target_count = 0;
     int old_target = project != NULL ? project->selected_run_target : 0;
@@ -5762,17 +5759,6 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
              DarkenUIColor(GetThemeBackground(), 42));
     if(draw_menu_button(menu_x, ScaleUIPx(9), "Project", *project_menu_open)) {
         *project_menu_open = !*project_menu_open;
-    }
-    if(project != NULL && project->loaded) {
-        if(editor_selected_file_has_preview(project)) {
-            int selected_preview_mode = project->preview_interact ? 1 : 0;
-
-            DrawUIDropdownButton(1304, preview_mode_x, run_y,
-                                 preview_mode_w, run_h,
-                                 preview_mode_labels, 2,
-                                 &selected_preview_mode);
-            project->preview_interact = selected_preview_mode == 1;
-        }
     }
     if(DrawUIGenericButton(view_w - ScaleUIPx(454), run_y,
                            ScaleUIPx(112), run_h, "Open Project",
@@ -5826,11 +5812,6 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
        project->selected_run_target != old_target) {
         snprintf(status_text, status_size, "Run target: %s",
                  project->run_targets[project->selected_run_target].label);
-    }
-    if(DrawUIDropdownMenu(1304) && project != NULL && project->loaded &&
-       editor_selected_file_has_preview(project)) {
-        snprintf(status_text, status_size, "Preview mode: %s",
-                 preview_mode_labels[project->preview_interact ? 1 : 0]);
     }
     if(project != NULL && project->loaded && !project->output_visible) {
         if(DrawUIGenericButton(view_w - ScaleUIPx(920), run_y,
