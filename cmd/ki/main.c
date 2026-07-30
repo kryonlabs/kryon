@@ -8,6 +8,8 @@
 #include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
@@ -31,6 +33,7 @@ enum {
     EDITOR_MAX_DIAGNOSTICS = 128,
     EDITOR_MAX_KRY_SCREENS = 128,
     EDITOR_HISTORY_MAX = 32,
+    EDITOR_CONSOLE_HISTORY_MAX = 32,
     EDITOR_TREE_DEPTH = 8,
     EDITOR_SOURCE_MAX_BYTES = 512 * 1024,
     EDITOR_OUTPUT_MAX_BYTES = 128 * 1024,
@@ -199,6 +202,14 @@ typedef struct EditorProject {
     int console_cursor;
     int console_focused;
     int console_scroll_y;
+    int console_running;
+    long console_pid;
+    int console_fd;
+    int console_exit_status;
+    char console_command[512];
+    char console_history[EDITOR_CONSOLE_HISTORY_MAX][512];
+    int console_history_count;
+    int console_history_index;
     EditorDiagnostic diagnostics[EDITOR_MAX_DIAGNOSTICS];
     int diagnostic_count;
     int selected_diagnostic;
@@ -1890,6 +1901,8 @@ editor_set_project(EditorProject *project, const char *path)
     project->preview_scale_mode = EDITOR_PREVIEW_SCALE_FIT;
     project->selected_diagnostic = -1;
     project->selected_search_result = -1;
+    project->console_fd = -1;
+    project->console_exit_status = -1;
     editor_load_project_config(project);
     editor_detect_run_targets(project);
     editor_load_project_state(project);
@@ -1915,11 +1928,14 @@ editor_unload_live_module(EditorProject *project)
     project->destroy_preview_host = NULL;
 }
 
+static void editor_console_stop(EditorProject *project, const char *reason);
+
 static void
 editor_close_project(EditorProject *project)
 {
     if(project == NULL)
         return;
+    editor_console_stop(project, "stopped");
     editor_save_project_state(project);
     if(project->image_texture.id != 0)
         UnloadTexture(project->image_texture);
@@ -3543,6 +3559,158 @@ editor_console_append(EditorProject *project, const char *text)
     memcpy(project->console_output + used, text, add + 1);
 }
 
+static void
+editor_console_add_history(EditorProject *project, const char *command)
+{
+    if(project == NULL || command == NULL || command[0] == '\0')
+        return;
+    if(project->console_history_count > 0 &&
+       strcmp(project->console_history[project->console_history_count - 1],
+              command) == 0) {
+        project->console_history_index = project->console_history_count;
+        return;
+    }
+    if(project->console_history_count >= EDITOR_CONSOLE_HISTORY_MAX) {
+        memmove(project->console_history, project->console_history + 1,
+                sizeof(project->console_history[0]) *
+                    (EDITOR_CONSOLE_HISTORY_MAX - 1));
+        project->console_history_count = EDITOR_CONSOLE_HISTORY_MAX - 1;
+    }
+    snprintf(project->console_history[project->console_history_count],
+             sizeof(project->console_history[0]), "%s", command);
+    project->console_history_count++;
+    project->console_history_index = project->console_history_count;
+}
+
+static void
+editor_console_history_step(EditorProject *project, int dir)
+{
+    int index;
+
+    if(project == NULL || project->console_history_count <= 0)
+        return;
+    index = project->console_history_index;
+    if(dir < 0) {
+        if(index > 0)
+            index--;
+    } else if(index < project->console_history_count) {
+        index++;
+    }
+    project->console_history_index = index;
+    if(index >= 0 && index < project->console_history_count) {
+        snprintf(project->console_input, sizeof(project->console_input), "%s",
+                 project->console_history[index]);
+        project->console_cursor = (int)strlen(project->console_input);
+    } else {
+        project->console_input[0] = '\0';
+        project->console_cursor = 0;
+    }
+}
+
+static void
+editor_console_finish(EditorProject *project, int status_code, char *status,
+                      size_t status_size)
+{
+    if(project == NULL)
+        return;
+    if(project->console_fd >= 0) {
+#if !defined(_WIN32)
+        close(project->console_fd);
+#endif
+        project->console_fd = -1;
+    }
+    project->console_pid = 0;
+    project->console_running = 0;
+    project->console_exit_status = status_code;
+    if(status_code == 0) {
+        editor_console_append(project, "\n[exit 0]\n");
+        if(status != NULL && status_size > 0)
+            snprintf(status, status_size, "Console command succeeded");
+    } else {
+        char line[64];
+
+        snprintf(line, sizeof(line), "\n[exit %d]\n", status_code);
+        editor_console_append(project, line);
+        if(status != NULL && status_size > 0)
+            snprintf(status, status_size, "Console command failed");
+    }
+    project->console_scroll_y = 0;
+}
+
+static void
+editor_console_stop(EditorProject *project, const char *reason)
+{
+    if(project == NULL)
+        return;
+#if !defined(_WIN32)
+    if(project->console_running && project->console_pid > 0) {
+        kill((pid_t)project->console_pid, SIGTERM);
+        waitpid((pid_t)project->console_pid, NULL, 0);
+    }
+    if(project->console_fd >= 0)
+        close(project->console_fd);
+#else
+    (void)reason;
+#endif
+    if(project->console_running && reason != NULL) {
+        editor_console_append(project, "\n[");
+        editor_console_append(project, reason);
+        editor_console_append(project, "]\n");
+    }
+    project->console_running = 0;
+    project->console_pid = 0;
+    project->console_fd = -1;
+}
+
+static void
+editor_console_poll(EditorProject *project, char *status, size_t status_size)
+{
+#if defined(_WIN32)
+    (void)project;
+    (void)status;
+    (void)status_size;
+#else
+    char buffer[2048];
+    ssize_t n;
+    int wait_status;
+    pid_t done;
+
+    if(project == NULL || !project->console_running)
+        return;
+    for(;;) {
+        n = read(project->console_fd, buffer, sizeof(buffer) - 1);
+        if(n > 0) {
+            buffer[n] = '\0';
+            editor_console_append(project, buffer);
+            project->console_scroll_y = 0;
+            continue;
+        }
+        if(n < 0 && errno == EINTR)
+            continue;
+        break;
+    }
+    done = waitpid((pid_t)project->console_pid, &wait_status, WNOHANG);
+    if(done == 0)
+        return;
+    if(done < 0) {
+        editor_console_finish(project, 1, status, status_size);
+        return;
+    }
+    while((n = read(project->console_fd, buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[n] = '\0';
+        editor_console_append(project, buffer);
+    }
+    if(WIFEXITED(wait_status))
+        editor_console_finish(project, WEXITSTATUS(wait_status), status,
+                              status_size);
+    else if(WIFSIGNALED(wait_status))
+        editor_console_finish(project, 128 + WTERMSIG(wait_status), status,
+                              status_size);
+    else
+        editor_console_finish(project, 1, status, status_size);
+#endif
+}
+
 static int
 editor_run_console_command(EditorProject *project, char *status,
                            size_t status_size)
@@ -3553,50 +3721,58 @@ editor_run_console_command(EditorProject *project, char *status,
     return 0;
 #else
     char command[sizeof(project->console_input)];
-    char quoted_path[EDITOR_PATH_CAP + 16];
-    char *shell_command;
-    FILE *pipe;
-    size_t command_len;
-    char buffer[2048];
-    int rc;
+    int pipefd[2];
+    pid_t pid;
+    int flags;
 
     if(project == NULL || !project->loaded)
         return 0;
+    if(project->console_running) {
+        snprintf(status, status_size, "Console command already running");
+        return 0;
+    }
     snprintf(command, sizeof(command), "%s", project->console_input);
     if(editor_trim_line(command)[0] == '\0')
         return 0;
+    editor_console_add_history(project, command);
+    snprintf(project->console_command, sizeof(project->console_command), "%s",
+             command);
     editor_console_append(project, "$ ");
     editor_console_append(project, command);
     editor_console_append(project, "\n");
     project->console_input[0] = '\0';
     project->console_cursor = 0;
-    shell_quote(quoted_path, sizeof(quoted_path), project->path);
-    command_len = strlen(quoted_path) + strlen(command) + 16;
-    shell_command = malloc(command_len);
-    if(shell_command == NULL) {
-        snprintf(status, status_size, "Out of memory");
+    if(pipe(pipefd) != 0) {
+        snprintf(status, status_size, "Could not create console pipe");
         return 0;
     }
-    snprintf(shell_command, command_len, "cd %s && %s 2>&1",
-             quoted_path, command);
-    pipe = popen(shell_command, "r");
-    if(pipe == NULL) {
-        free(shell_command);
+    pid = fork();
+    if(pid < 0) {
+        close(pipefd[0]);
+        close(pipefd[1]);
         snprintf(status, status_size, "Could not start console command");
         return 0;
     }
-    while(fgets(buffer, sizeof(buffer), pipe) != NULL)
-        editor_console_append(project, buffer);
-    rc = pclose(pipe);
-    free(shell_command);
-    editor_console_append(project, "\n");
-    project->console_scroll_y = 0;
-    if(WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
-        snprintf(status, status_size, "Console command succeeded");
-        return 1;
+    if(pid == 0) {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+        close(pipefd[1]);
+        chdir(project->path);
+        execl("/bin/sh", "sh", "-lc", command, (char *)NULL);
+        _exit(127);
     }
-    snprintf(status, status_size, "Console command failed");
-    return 0;
+    close(pipefd[1]);
+    flags = fcntl(pipefd[0], F_GETFL, 0);
+    if(flags >= 0)
+        fcntl(pipefd[0], F_SETFL, flags | O_NONBLOCK);
+    project->console_fd = pipefd[0];
+    project->console_pid = (long)pid;
+    project->console_running = 1;
+    project->console_exit_status = -1;
+    project->console_scroll_y = 0;
+    snprintf(status, status_size, "Console command running");
+    return 1;
 #endif
 }
 
@@ -5362,14 +5538,22 @@ draw_console_panel(Rectangle bounds, EditorProject *project,
                    char *status, size_t status_size)
 {
     int input_h = ScaleUIPx(30);
+    int toolbar_h = ScaleUIPx(28);
     int gap = ScaleUIPx(8);
     int prompt_w = ScaleUIPx(18);
+    int button_w = ScaleUIPx(58);
     int commit = 0;
-    Rectangle log_bounds = {
+    Rectangle toolbar = {
         bounds.x,
         bounds.y,
         bounds.width,
-        bounds.height - (float)input_h - (float)gap
+        (float)toolbar_h
+    };
+    Rectangle log_bounds = {
+        bounds.x,
+        bounds.y + (float)toolbar_h + (float)gap,
+        bounds.width,
+        bounds.height - (float)toolbar_h - (float)input_h - (float)gap * 2
     };
     Rectangle prompt_bounds = {
         bounds.x,
@@ -5380,12 +5564,44 @@ draw_console_panel(Rectangle bounds, EditorProject *project,
     Rectangle input_bounds = {
         bounds.x + (float)prompt_w,
         prompt_bounds.y,
-        bounds.width - (float)prompt_w,
+        bounds.width - (float)prompt_w - (float)(button_w * 2) - (float)(gap * 2),
+        (float)input_h
+    };
+    Rectangle stop_bounds = {
+        input_bounds.x + input_bounds.width + (float)gap,
+        prompt_bounds.y,
+        (float)button_w,
+        (float)input_h
+    };
+    Rectangle clear_bounds = {
+        stop_bounds.x + stop_bounds.width + (float)gap,
+        prompt_bounds.y,
+        (float)button_w,
         (float)input_h
     };
 
     if(project == NULL)
         return;
+    editor_console_poll(project, status, status_size);
+    DrawRectangleRec(toolbar, DarkenUIColor(GetThemeSurface(), 4));
+    DrawRectangleLinesEx(toolbar, 1, DarkenUIColor(GetThemeSurface(), 34));
+    if(project->console_running) {
+        char running[640];
+
+        snprintf(running, sizeof(running), "running: %s",
+                 project->console_command[0] != '\0'
+                     ? project->console_command
+                     : "command");
+        DrawUIText(running, (int)toolbar.x + ScaleUIPx(8),
+                   (int)toolbar.y + ScaleUIPx(7), UI_TEXT_12,
+                   GetThemeText());
+    } else {
+        const char *ready = project->console_exit_status >= 0 ? "ready" : "shell";
+
+        DrawUIText(ready, (int)toolbar.x + ScaleUIPx(8),
+                   (int)toolbar.y + ScaleUIPx(7), UI_TEXT_12,
+                   DarkenUIColor(GetThemeText(), 20));
+    }
     draw_text_log(log_bounds, project->console_output,
                   &project->console_scroll_y);
     DrawRectangleRec(prompt_bounds, DarkenUIColor(GetThemeSurface(), 3));
@@ -5405,6 +5621,29 @@ draw_console_panel(Rectangle bounds, EditorProject *project,
         .commit_pressed = &commit
     })) {
         snprintf(status, status_size, "Console input");
+    }
+    if(project->console_focused && IsKeyPressed(KEY_UP))
+        editor_console_history_step(project, -1);
+    if(project->console_focused && IsKeyPressed(KEY_DOWN))
+        editor_console_history_step(project, 1);
+    if(project->console_focused && project->console_running &&
+       editor_mod_key_down() && IsKeyPressed(KEY_C)) {
+        editor_console_stop(project, "stopped");
+        snprintf(status, status_size, "Console command stopped");
+    }
+    if(DrawUIGenericButton((int)stop_bounds.x, (int)stop_bounds.y,
+                           (int)stop_bounds.width, (int)stop_bounds.height,
+                           "Stop", UI_BUTTON_STYLE_SECONDARY,
+                           !project->console_running, NULL)) {
+        editor_console_stop(project, "stopped");
+        snprintf(status, status_size, "Console command stopped");
+    }
+    if(DrawUIGenericButton((int)clear_bounds.x, (int)clear_bounds.y,
+                           (int)clear_bounds.width, (int)clear_bounds.height,
+                           "Clear", UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+        project->console_output[0] = '\0';
+        project->console_scroll_y = 0;
+        snprintf(status, status_size, "Console cleared");
     }
     if(commit)
         editor_run_console_command(project, status, status_size);
@@ -6373,6 +6612,7 @@ main(int argc, char **argv)
                                      sizeof(status_text));
         editor_maybe_reload_live_module(&project, status_text,
                                         sizeof(status_text));
+        editor_console_poll(&project, status_text, sizeof(status_text));
         editor_maybe_save_project_state(&project);
 
         SetUIInspectCanvasBounds(canvas_content);
