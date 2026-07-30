@@ -214,8 +214,7 @@ if grep -Fq 'private_helper' "$out/src/colon_decl.h"; then
     echo "private function leaked into generated header" >&2
     exit 1
 fi
-grep -Fq 'static int' "$out/src/colon_decl.c"
-grep -Fq 'private_helper(int value)' "$out/src/colon_decl.c"
+grep -Eq 'static KRYON_PRIVATE_UNUSED int .*private_helper\(int value\)' "$out/src/colon_decl.c"
 grep -Fq 'colon_decl_helper(value);' "$out/src/colon_decl.c"
 
 cat > "$work/src/colon_import_host.kry" <<'EOF'
@@ -380,7 +379,7 @@ toggle_row_height :: (label: const char*, w: int) -> int {
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/settings_ui.kry" >"$err" 2>&1
-grep -q '^static int settings_ui_helper(int value)' "$out/src/settings_ui.c"
+grep -Eq '^static KRYON_PRIVATE_UNUSED int settings_ui_helper\(int value\)' "$out/src/settings_ui.c"
 grep -q 'int settings_ui_toggle_row_height(const char\* label, int w);' "$out/src/settings_ui.h"
 grep -q 'return settings_ui_helper(w);' "$out/src/settings_ui.c"
 
@@ -415,7 +414,7 @@ check_shadow :: (start: int*) -> int {
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/function_pointer.kry" >"$err" 2>&1
-grep -q 'static int fp_callback(int value);' "$out/src/function_pointer.c"
+grep -Eq 'static KRYON_PRIVATE_UNUSED int fp_callback\(int value\);' "$out/src/function_pointer.c"
 grep -q '\.callback = fp_callback,' "$out/src/function_pointer.c"
 grep -q 'if(start != NULL)' "$out/src/function_pointer.c"
 
@@ -460,7 +459,7 @@ allocate_args :: () -> int {
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/args_local.kry" >"$err" 2>&1
-grep -q 'static void\* worker(void\* userdata);' "$out/src/args_local.c"
+grep -Eq 'static KRYON_PRIVATE_UNUSED void\* worker\(void\* userdata\);' "$out/src/args_local.c"
 grep -Fq 'args = (WorkerArgs*)userdata;' "$out/src/args_local.c"
 grep -Fq 'WorkerArgs* args = {0};' "$out/src/args_local.c"
 grep -Fq 'args = malloc(sizeof(*args));' "$out/src/args_local.c"
@@ -624,7 +623,7 @@ grep -q '#define FEATURE_VALUE 7' "$out/src/native_c_features.c"
 grep -q '#if ((defined(ANDROID_BUILD)))' "$out/src/native_c_features.c"
 grep -Fq 'int platform_ping(int value, const char* tag);' "$out/src/native_c_features.c"
 grep -Fq 'void* platform_context(void);' "$out/src/native_c_features.c"
-grep -q 'static int helper_value(void);' "$out/src/native_c_features.c"
+grep -Eq 'static KRYON_PRIVATE_UNUSED int helper_value\(void\);' "$out/src/native_c_features.c"
 grep -q 'static const int records\[2\] = {' "$out/src/native_c_features.c"
 grep -q 'return NULL == NULL ? 1 : 0;' "$out/src/native_c_features.c"
 grep -q '#else' "$out/src/native_c_features.c"
@@ -702,7 +701,7 @@ grep -Fq 'EM_ASM_INT' "$out/src/top_level_macros.c"
 grep -Fq 'Module.__kryonContextClick' "$out/src/top_level_macros.c"
 ! grep -Fq 'Module.__inbeContextClick' "$out/src/top_level_macros.c"
 grep -q 'static int web_ready = 1;' "$out/src/top_level_macros.c"
-grep -q 'static int platform_test_desktop_value(void);' "$out/src/top_level_macros.c"
+grep -Eq 'static KRYON_PRIVATE_UNUSED int platform_test_desktop_value\(void\);' "$out/src/top_level_macros.c"
 grep -q 'static int desktop_ready = 2;' "$out/src/top_level_macros.c"
 grep -q '#if !((defined(PLATFORM_WEB))) && ((!(defined(PLATFORM_WEB))))' "$out/src/top_level_macros.c"
 

@@ -56,7 +56,8 @@ typedef enum EditorLayoutMode {
 
 typedef enum EditorBottomPanelMode {
     EDITOR_BOTTOM_PANEL_OUTPUT,
-    EDITOR_BOTTOM_PANEL_PROBLEMS
+    EDITOR_BOTTOM_PANEL_PROBLEMS,
+    EDITOR_BOTTOM_PANEL_CONSOLE
 } EditorBottomPanelMode;
 
 typedef enum EditorPreviewScaleMode {
@@ -192,6 +193,11 @@ typedef struct EditorProject {
     int output_visible;
     EditorBottomPanelMode bottom_panel_mode;
     int output_scroll_y;
+    char console_output[EDITOR_OUTPUT_MAX_BYTES];
+    char console_input[512];
+    int console_cursor;
+    int console_focused;
+    int console_scroll_y;
     EditorDiagnostic diagnostics[EDITOR_MAX_DIAGNOSTICS];
     int diagnostic_count;
     int selected_diagnostic;
@@ -1774,7 +1780,7 @@ editor_load_project_state(EditorProject *project)
             continue;
         if(editor_parse_int_line(trimmed, "bottom_panel", &value)) {
             if(value >= EDITOR_BOTTOM_PANEL_OUTPUT &&
-               value <= EDITOR_BOTTOM_PANEL_PROBLEMS)
+               value <= EDITOR_BOTTOM_PANEL_CONSOLE)
                 project->bottom_panel_mode = (EditorBottomPanelMode)value;
             continue;
         }
@@ -1808,7 +1814,7 @@ editor_load_project_state(EditorProject *project)
     if(project->layout_mode == EDITOR_LAYOUT_SOURCE)
         project->layout_mode = EDITOR_LAYOUT_SPLIT;
     if(project->bottom_panel_mode < EDITOR_BOTTOM_PANEL_OUTPUT ||
-       project->bottom_panel_mode > EDITOR_BOTTOM_PANEL_PROBLEMS)
+       project->bottom_panel_mode > EDITOR_BOTTOM_PANEL_CONSOLE)
         project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_OUTPUT;
     editor_preview_init(project);
 }
@@ -3501,10 +3507,96 @@ editor_show_bottom_panel(EditorProject *project, EditorBottomPanelMode mode)
     if(project == NULL)
         return;
     if(mode < EDITOR_BOTTOM_PANEL_OUTPUT ||
-       mode > EDITOR_BOTTOM_PANEL_PROBLEMS)
+       mode > EDITOR_BOTTOM_PANEL_CONSOLE)
         mode = EDITOR_BOTTOM_PANEL_OUTPUT;
     project->bottom_panel_mode = mode;
     project->output_visible = 1;
+}
+
+static void
+editor_console_append(EditorProject *project, const char *text)
+{
+    size_t used;
+    size_t add;
+
+    if(project == NULL || text == NULL || text[0] == '\0')
+        return;
+    used = strlen(project->console_output);
+    add = strlen(text);
+    if(add + 1 >= sizeof(project->console_output)) {
+        text += add - (sizeof(project->console_output) - 2);
+        add = strlen(text);
+    }
+    if(used + add + 1 >= sizeof(project->console_output)) {
+        size_t remove = used + add + 1 - sizeof(project->console_output);
+
+        if(remove < used) {
+            memmove(project->console_output, project->console_output + remove,
+                    used - remove + 1);
+            used -= remove;
+        } else {
+            project->console_output[0] = '\0';
+            used = 0;
+        }
+    }
+    memcpy(project->console_output + used, text, add + 1);
+}
+
+static int
+editor_run_console_command(EditorProject *project, char *status,
+                           size_t status_size)
+{
+#if defined(_WIN32)
+    (void)project;
+    snprintf(status, status_size, "Console is not implemented on Windows yet");
+    return 0;
+#else
+    char command[sizeof(project->console_input)];
+    char quoted_path[EDITOR_PATH_CAP + 16];
+    char *shell_command;
+    FILE *pipe;
+    size_t command_len;
+    char buffer[2048];
+    int rc;
+
+    if(project == NULL || !project->loaded)
+        return 0;
+    snprintf(command, sizeof(command), "%s", project->console_input);
+    if(editor_trim_line(command)[0] == '\0')
+        return 0;
+    editor_console_append(project, "$ ");
+    editor_console_append(project, command);
+    editor_console_append(project, "\n");
+    project->console_input[0] = '\0';
+    project->console_cursor = 0;
+    shell_quote(quoted_path, sizeof(quoted_path), project->path);
+    command_len = strlen(quoted_path) + strlen(command) + 16;
+    shell_command = malloc(command_len);
+    if(shell_command == NULL) {
+        snprintf(status, status_size, "Out of memory");
+        return 0;
+    }
+    snprintf(shell_command, command_len, "cd %s && %s 2>&1",
+             quoted_path, command);
+    pipe = popen(shell_command, "r");
+    if(pipe == NULL) {
+        free(shell_command);
+        snprintf(status, status_size, "Could not start console command");
+        return 0;
+    }
+    while(fgets(buffer, sizeof(buffer), pipe) != NULL)
+        editor_console_append(project, buffer);
+    rc = pclose(pipe);
+    free(shell_command);
+    editor_console_append(project, "\n");
+    project->console_scroll_y = 0;
+    if(WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
+        snprintf(status, status_size, "Console command succeeded");
+        return 1;
+    }
+    snprintf(status, status_size, "Console command failed");
+    return 0;
+#endif
 }
 
 static int
@@ -4199,7 +4291,7 @@ editor_copy_source_range(const char *text, int start, int end)
         return 0;
     memcpy(copy, text + start, (size_t)len);
     copy[len] = '\0';
-    SetClipboardText(copy);
+    SetUIClipboardTextValue(copy);
     free(copy);
     return 1;
 }
@@ -4298,7 +4390,7 @@ editor_handle_source_clipboard(EditorProject *project, int textarea_changed,
         }
     }
     if(IsKeyPressed(KEY_V) && !textarea_changed) {
-        const char *clip = GetClipboardText();
+        const char *clip = GetUIClipboardTextValue();
 
         if(has_selection)
             editor_delete_source_range(project, start, end);
@@ -5123,26 +5215,26 @@ draw_source_pane(Rectangle content, EditorProject *project,
 }
 
 static void
-draw_output_text(Rectangle bounds, EditorProject *project)
+draw_text_log(Rectangle bounds, const char *text, int *scroll_y)
 {
     int line_h = GetUITextLineHeight(UI_TEXT_12) + ScaleUIPx(2);
     int y = (int)bounds.y + ScaleUIPx(8) -
-            (project != NULL ? project->output_scroll_y : 0);
+            (scroll_y != NULL ? *scroll_y : 0);
     int line_start = 0;
     int len;
     int text_x = (int)bounds.x + ScaleUIPx(8);
     int max_w = (int)bounds.width - ScaleUIPx(16);
 
-    if(project == NULL)
+    if(text == NULL)
         return;
     if(max_w < ScaleUIPx(80))
         max_w = ScaleUIPx(80);
     DrawRectangleRec(bounds, DarkenUIColor(GetThemeSurface(), 3));
     DrawRectangleLinesEx(bounds, 1, DarkenUIColor(GetThemeSurface(), 36));
     PushUIInputClip(bounds);
-    len = (int)strlen(project->output);
+    len = (int)strlen(text);
     for(int i = 0; i <= len; i++) {
-        if(project->output[i] == '\n' || project->output[i] == '\0') {
+        if(text[i] == '\n' || text[i] == '\0') {
             int line_len = i - line_start;
             int wrap_start = 0;
 
@@ -5155,7 +5247,7 @@ draw_output_text(Rectangle bounds, EditorProject *project)
                 if(wrap_len >= (int)sizeof(line))
                     wrap_len = (int)sizeof(line) - 1;
                 for(int j = 0; j < wrap_len; j++) {
-                    line[j] = project->output[line_start + wrap_start + j];
+                    line[j] = text[line_start + wrap_start + j];
                     line[j + 1] = '\0';
                     if(line[j] == ' ' || line[j] == '\t')
                         last_space = j;
@@ -5171,7 +5263,7 @@ draw_output_text(Rectangle bounds, EditorProject *project)
                 }
                 if(fit_len <= 0)
                     fit_len = wrap_len;
-                memcpy(line, project->output + line_start + wrap_start,
+                memcpy(line, text + line_start + wrap_start,
                        (size_t)fit_len);
                 line[fit_len] = '\0';
                 if(y + line_h >= bounds.y && y <= bounds.y + bounds.height)
@@ -5181,20 +5273,26 @@ draw_output_text(Rectangle bounds, EditorProject *project)
                     break;
                 wrap_start += fit_len;
                 while(wrap_start < line_len &&
-                      (project->output[line_start + wrap_start] == ' ' ||
-                       project->output[line_start + wrap_start] == '\t'))
+                      (text[line_start + wrap_start] == ' ' ||
+                       text[line_start + wrap_start] == '\t'))
                     wrap_start++;
             }
             line_start = i + 1;
         }
     }
     PopUIInputClip();
-    if(CheckCollisionPointRec(GetMousePosition(), bounds)) {
-        project->output_scroll_y -=
-            (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
-        if(project->output_scroll_y < 0)
-            project->output_scroll_y = 0;
+    if(scroll_y != NULL && CheckCollisionPointRec(GetMousePosition(), bounds)) {
+        *scroll_y -= (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
+        if(*scroll_y < 0)
+            *scroll_y = 0;
     }
+}
+
+static void
+draw_output_text(Rectangle bounds, EditorProject *project)
+{
+    if(project != NULL)
+        draw_text_log(bounds, project->output, &project->output_scroll_y);
 }
 
 static void
@@ -5235,6 +5333,59 @@ draw_problems_panel(Rectangle bounds, EditorProject *project,
 }
 
 static void
+draw_console_panel(Rectangle bounds, EditorProject *project,
+                   char *status, size_t status_size)
+{
+    int input_h = ScaleUIPx(30);
+    int gap = ScaleUIPx(8);
+    int prompt_w = ScaleUIPx(18);
+    int commit = 0;
+    Rectangle log_bounds = {
+        bounds.x,
+        bounds.y,
+        bounds.width,
+        bounds.height - (float)input_h - (float)gap
+    };
+    Rectangle prompt_bounds = {
+        bounds.x,
+        bounds.y + bounds.height - (float)input_h,
+        (float)prompt_w,
+        (float)input_h
+    };
+    Rectangle input_bounds = {
+        bounds.x + (float)prompt_w,
+        prompt_bounds.y,
+        bounds.width - (float)prompt_w,
+        (float)input_h
+    };
+
+    if(project == NULL)
+        return;
+    draw_text_log(log_bounds, project->console_output,
+                  &project->console_scroll_y);
+    DrawRectangleRec(prompt_bounds, DarkenUIColor(GetThemeSurface(), 3));
+    DrawUIText("$", (int)prompt_bounds.x + ScaleUIPx(6),
+               (int)prompt_bounds.y + ScaleUIPx(8), UI_TEXT_12,
+               GetThemeText());
+    if(DrawUITextField((UITextField){
+        .bounds = input_bounds,
+        .text = project->console_input,
+        .text_size = sizeof(project->console_input),
+        .cursor_position = &project->console_cursor,
+        .focused = &project->console_focused,
+        .max_codepoints = (int)sizeof(project->console_input) - 1,
+        .font = UI_TEXT_12,
+        .focus_id = 1510,
+        .style = editor_input_style(),
+        .commit_pressed = &commit
+    })) {
+        snprintf(status, status_size, "Console input");
+    }
+    if(commit)
+        editor_run_console_command(project, status, status_size);
+}
+
+static void
 draw_bottom_panel(Rectangle bounds, EditorProject *project,
                   char *status, size_t status_size)
 {
@@ -5250,7 +5401,7 @@ draw_bottom_panel(Rectangle bounds, EditorProject *project,
     if(project == NULL || !project->output_visible)
         return;
     if(project->bottom_panel_mode < EDITOR_BOTTOM_PANEL_OUTPUT ||
-       project->bottom_panel_mode > EDITOR_BOTTOM_PANEL_PROBLEMS)
+       project->bottom_panel_mode > EDITOR_BOTTOM_PANEL_CONSOLE)
         project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_OUTPUT;
 
     DrawRectangleRec(bounds, GetThemeSurface());
@@ -5277,6 +5428,17 @@ draw_bottom_panel(Rectangle bounds, EditorProject *project,
                                : UI_BUTTON_STYLE_SECONDARY,
                            0, NULL))
         project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_OUTPUT;
+    if(DrawUIGenericButton((int)bounds.x + pad + ScaleUIPx(194),
+                           (int)bounds.y + ScaleUIPx(5),
+                           ScaleUIPx(78), ScaleUIPx(22), "Console",
+                           project->bottom_panel_mode ==
+                                   EDITOR_BOTTOM_PANEL_CONSOLE
+                               ? UI_BUTTON_STYLE_PRIMARY
+                               : UI_BUTTON_STYLE_SECONDARY,
+                           0, NULL)) {
+        project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_CONSOLE;
+        project->console_focused = 1;
+    }
     if(DrawUIGenericButton((int)(bounds.x + bounds.width) - ScaleUIPx(66),
                            (int)bounds.y + ScaleUIPx(5),
                            ScaleUIPx(56), ScaleUIPx(22), "Close",
@@ -5288,6 +5450,8 @@ draw_bottom_panel(Rectangle bounds, EditorProject *project,
 
     if(project->bottom_panel_mode == EDITOR_BOTTOM_PANEL_PROBLEMS)
         draw_problems_panel(body, project, status, status_size);
+    else if(project->bottom_panel_mode == EDITOR_BOTTOM_PANEL_CONSOLE)
+        draw_console_panel(body, project, status, status_size);
     else
         draw_output_text(body, project);
 }
@@ -5669,6 +5833,12 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
                  preview_mode_labels[project->preview_interact ? 1 : 0]);
     }
     if(project != NULL && project->loaded && !project->output_visible) {
+        if(DrawUIGenericButton(view_w - ScaleUIPx(920), run_y,
+                               ScaleUIPx(76), run_h, "Console",
+                               UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
+            editor_show_bottom_panel(project, EDITOR_BOTTOM_PANEL_CONSOLE);
+            project->console_focused = 1;
+        }
         if(project->diagnostic_count > 0) {
             char label[64];
 

@@ -607,7 +607,7 @@ ui_text_copy_range(const char *text, int start, int end)
         return 0;
     memcpy(copy, text + start, (size_t)len);
     copy[len] = '\0';
-    SetClipboardText(copy);
+    SetUIClipboardTextValue(copy);
     free(copy);
     return 1;
 }
@@ -645,7 +645,7 @@ ui_text_paste_clipboard(UITextEdit edit, int allow_newlines)
     if(edit.text == NULL || edit.text_size == 0 ||
        edit.cursor_position == NULL)
         return 0;
-    clip = GetClipboardText();
+    clip = GetUIClipboardTextValue();
     if(clip == NULL)
         return 0;
     for(int i = 0; clip[i] != '\0';) {
@@ -1258,10 +1258,10 @@ EditUIText(UITextEdit edit)
     }
 
     if(ui_mod_key_down() && UIKeyPressed(KEY_C)) {
-        SetClipboardText(edit.text);
+        SetUIClipboardTextValue(edit.text);
     }
     if(ui_mod_key_down() && UIKeyPressed(KEY_X)) {
-        SetClipboardText(edit.text);
+        SetUIClipboardTextValue(edit.text);
         edit.text[0] = '\0';
         *edit.cursor_position = 0;
         changed = 1;
@@ -2619,7 +2619,7 @@ DrawUITextField(UITextField field)
             if(selection_end > selection_start)
                 ui_text_copy_range(field.text, selection_start, selection_end);
             else
-                SetClipboardText(field.text);
+                SetUIClipboardTextValue(field.text);
             selection_handled = 1;
         }
         if(ui_mod_key_down() && UIKeyPressed(KEY_X)) {
@@ -2631,7 +2631,7 @@ DrawUITextField(UITextField field)
                                         selection_start, selection_end))
                     changed = 1;
             } else {
-                SetClipboardText(field.text);
+                SetUIClipboardTextValue(field.text);
                 field.text[0] = '\0';
                 *field.cursor_position = 0;
                 changed = 1;
