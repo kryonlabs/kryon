@@ -54,6 +54,11 @@ typedef enum EditorLayoutMode {
     EDITOR_LAYOUT_PREVIEW
 } EditorLayoutMode;
 
+typedef enum EditorBottomPanelMode {
+    EDITOR_BOTTOM_PANEL_OUTPUT,
+    EDITOR_BOTTOM_PANEL_PROBLEMS
+} EditorBottomPanelMode;
+
 typedef enum EditorPreviewScaleMode {
     EDITOR_PREVIEW_SCALE_FIT,
     EDITOR_PREVIEW_SCALE_100,
@@ -185,6 +190,7 @@ typedef struct EditorProject {
     int selected_search_result;
     char output[EDITOR_OUTPUT_MAX_BYTES];
     int output_visible;
+    EditorBottomPanelMode bottom_panel_mode;
     int output_scroll_y;
     EditorDiagnostic diagnostics[EDITOR_MAX_DIAGNOSTICS];
     int diagnostic_count;
@@ -1659,6 +1665,7 @@ editor_save_project_state(EditorProject *project)
             project->preview_pan_y);
     fprintf(file, "output %d %d\n", project->output_visible,
             project->output_scroll_y);
+    fprintf(file, "bottom_panel %d\n", (int)project->bottom_panel_mode);
     for(int i = 0; i < project->open_file_count; i++) {
         fprintf(file, "open_file ");
         editor_write_quoted(file, project->open_files[i].path);
@@ -1765,6 +1772,12 @@ editor_load_project_state(EditorProject *project)
                                  &project->output_visible,
                                  &project->output_scroll_y))
             continue;
+        if(editor_parse_int_line(trimmed, "bottom_panel", &value)) {
+            if(value >= EDITOR_BOTTOM_PANEL_OUTPUT &&
+               value <= EDITOR_BOTTOM_PANEL_PROBLEMS)
+                project->bottom_panel_mode = (EditorBottomPanelMode)value;
+            continue;
+        }
         if(editor_parse_open_file_state(trimmed, open_path,
                                         sizeof(open_path), &cursor,
                                         &scroll_y)) {
@@ -1794,6 +1807,9 @@ editor_load_project_state(EditorProject *project)
     }
     if(project->layout_mode == EDITOR_LAYOUT_SOURCE)
         project->layout_mode = EDITOR_LAYOUT_SPLIT;
+    if(project->bottom_panel_mode < EDITOR_BOTTOM_PANEL_OUTPUT ||
+       project->bottom_panel_mode > EDITOR_BOTTOM_PANEL_PROBLEMS)
+        project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_OUTPUT;
     editor_preview_init(project);
 }
 
@@ -3479,6 +3495,18 @@ editor_parse_diagnostics(EditorProject *project)
     }
 }
 
+static void
+editor_show_bottom_panel(EditorProject *project, EditorBottomPanelMode mode)
+{
+    if(project == NULL)
+        return;
+    if(mode < EDITOR_BOTTOM_PANEL_OUTPUT ||
+       mode > EDITOR_BOTTOM_PANEL_PROBLEMS)
+        mode = EDITOR_BOTTOM_PANEL_OUTPUT;
+    project->bottom_panel_mode = mode;
+    project->output_visible = 1;
+}
+
 static int
 editor_run_capture(EditorProject *project, const char *command,
                    char *status, size_t status_size)
@@ -3500,7 +3528,7 @@ editor_run_capture(EditorProject *project, const char *command,
        command[0] == '\0')
         return 0;
     editor_output_clear(project);
-    project->output_visible = 1;
+    editor_show_bottom_panel(project, EDITOR_BOTTOM_PANEL_OUTPUT);
     shell_quote(quoted_path, sizeof(quoted_path), project->path);
     command_len = strlen(quoted_path) + strlen(command) + 16;
     shell_command = malloc(command_len);
@@ -3527,6 +3555,8 @@ editor_run_capture(EditorProject *project, const char *command,
     rc = pclose(pipe);
     free(shell_command);
     editor_parse_diagnostics(project);
+    if(project->diagnostic_count > 0)
+        editor_show_bottom_panel(project, EDITOR_BOTTOM_PANEL_PROBLEMS);
     if(WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
         snprintf(status, status_size, "Task succeeded: %s", command);
         return 1;
@@ -3585,10 +3615,13 @@ editor_build_capture(EditorProject *project, const char *command,
     editor_parse_diagnostics(project);
     if(WIFEXITED(rc) && WEXITSTATUS(rc) == 0) {
         project->output_visible = 0;
+        project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_OUTPUT;
         snprintf(status, status_size, "%s", success);
         return 1;
     }
-    project->output_visible = 1;
+    editor_show_bottom_panel(project, project->diagnostic_count > 0
+                                          ? EDITOR_BOTTOM_PANEL_PROBLEMS
+                                          : EDITOR_BOTTOM_PANEL_OUTPUT);
     snprintf(status, status_size, "%s", failure);
     return 0;
 #endif
@@ -5165,80 +5198,98 @@ draw_output_text(Rectangle bounds, EditorProject *project)
 }
 
 static void
-draw_output_panel(Rectangle bounds, EditorProject *project,
+draw_problems_panel(Rectangle bounds, EditorProject *project,
+                    char *status, size_t status_size)
+{
+    int y = (int)bounds.y + ScaleUIPx(6);
+    int row_h = ScaleUIPx(28);
+
+    if(project == NULL)
+        return;
+    DrawRectangleRec(bounds, DarkenUIColor(GetThemeSurface(), 3));
+    DrawRectangleLinesEx(bounds, 1, DarkenUIColor(GetThemeSurface(), 36));
+    if(project->diagnostic_count <= 0) {
+        DrawUIText("No problems", (int)bounds.x + ScaleUIPx(8), y,
+                   UI_TEXT_12, DarkenUIColor(GetThemeText(), 42));
+        return;
+    }
+    PushUIInputClip(bounds);
+    for(int i = 0; i < project->diagnostic_count; i++) {
+        char label[320];
+        char rel[EDITOR_PATH_CAP];
+        EditorDiagnostic *d = &project->diagnostics[i];
+
+        editor_relative_path(rel, sizeof(rel), project, d->path);
+        snprintf(label, sizeof(label), "%s:%d:%d  %s  %s",
+                 rel, d->line, d->column, d->severity, d->message);
+        if(draw_sidebar_row((int)bounds.x + ScaleUIPx(4), y,
+                            (int)bounds.width - ScaleUIPx(8), label,
+                            i == project->selected_diagnostic)) {
+            project->selected_diagnostic = i;
+            editor_open_file_at_line(project, rel, d->line,
+                                     status, status_size);
+        }
+        y += row_h;
+    }
+    PopUIInputClip();
+}
+
+static void
+draw_bottom_panel(Rectangle bounds, EditorProject *project,
                   char *status, size_t status_size)
 {
     int pad = ScaleUIPx(10);
-    int header_h = ScaleUIPx(28);
-    int diag_w = ScaleUIPx(360);
+    int header_h = ScaleUIPx(32);
     Rectangle header = {bounds.x, bounds.y, bounds.width, (float)header_h};
-    Rectangle diag;
-    Rectangle output;
+    Rectangle body = {bounds.x + (float)pad,
+                      bounds.y + (float)header_h + (float)pad,
+                      bounds.width - (float)(pad * 2),
+                      bounds.height - (float)header_h - (float)(pad * 2)};
+    char problems_label[64];
 
     if(project == NULL || !project->output_visible)
         return;
+    if(project->bottom_panel_mode < EDITOR_BOTTOM_PANEL_OUTPUT ||
+       project->bottom_panel_mode > EDITOR_BOTTOM_PANEL_PROBLEMS)
+        project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_OUTPUT;
+
     DrawRectangleRec(bounds, GetThemeSurface());
     DrawRectangleLinesEx(bounds, 1, DarkenUIColor(GetThemeSurface(), 42));
     DrawRectangleRec(header, DarkenUIColor(GetThemeSurface(), 8));
-    DrawUIText("Output", (int)bounds.x + pad,
-               (int)bounds.y + ScaleUIPx(7), UI_TEXT_12, GetThemeText());
-    if(project->diagnostic_count > 0) {
-        char label[64];
 
-        snprintf(label, sizeof(label), "%d diagnostics",
-                 project->diagnostic_count);
-        DrawUIText(label, (int)bounds.x + ScaleUIPx(92),
-                   (int)bounds.y + ScaleUIPx(7), UI_TEXT_12,
-                   (Color){150, 74, 0, 255});
-    }
+    snprintf(problems_label, sizeof(problems_label), "Problems %d",
+             project->diagnostic_count);
+    if(DrawUIGenericButton((int)bounds.x + pad,
+                           (int)bounds.y + ScaleUIPx(5),
+                           ScaleUIPx(102), ScaleUIPx(22), problems_label,
+                           project->bottom_panel_mode ==
+                                   EDITOR_BOTTOM_PANEL_PROBLEMS
+                               ? UI_BUTTON_STYLE_PRIMARY
+                               : UI_BUTTON_STYLE_SECONDARY,
+                           0, NULL))
+        project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_PROBLEMS;
+    if(DrawUIGenericButton((int)bounds.x + pad + ScaleUIPx(110),
+                           (int)bounds.y + ScaleUIPx(5),
+                           ScaleUIPx(76), ScaleUIPx(22), "Output",
+                           project->bottom_panel_mode ==
+                                   EDITOR_BOTTOM_PANEL_OUTPUT
+                               ? UI_BUTTON_STYLE_PRIMARY
+                               : UI_BUTTON_STYLE_SECONDARY,
+                           0, NULL))
+        project->bottom_panel_mode = EDITOR_BOTTOM_PANEL_OUTPUT;
     if(DrawUIGenericButton((int)(bounds.x + bounds.width) - ScaleUIPx(66),
-                           (int)bounds.y + ScaleUIPx(4),
-                           ScaleUIPx(56), ScaleUIPx(21), "Close",
+                           (int)bounds.y + ScaleUIPx(5),
+                           ScaleUIPx(56), ScaleUIPx(22), "Close",
                            UI_BUTTON_STYLE_SECONDARY, 0, NULL)) {
         project->output_visible = 0;
-        snprintf(status, status_size, "Output closed");
+        snprintf(status, status_size, "Bottom panel closed");
         return;
     }
 
-    diag = (Rectangle){bounds.x + (float)pad,
-                       bounds.y + (float)header_h + (float)pad,
-                       (float)diag_w,
-                       bounds.height - (float)header_h - (float)(pad * 2)};
-    output = (Rectangle){diag.x + diag.width + (float)pad,
-                         diag.y,
-                         bounds.width - diag.width - (float)(pad * 3),
-                         diag.height};
-    if(project->diagnostic_count <= 0) {
-        output.x = bounds.x + (float)pad;
-        output.width = bounds.width - (float)(pad * 2);
-    } else {
-        int y = (int)diag.y + ScaleUIPx(6);
-        int row_h = ScaleUIPx(26);
-
-        DrawRectangleRec(diag, DarkenUIColor(GetThemeSurface(), 3));
-        DrawRectangleLinesEx(diag, 1, DarkenUIColor(GetThemeSurface(), 36));
-        PushUIInputClip(diag);
-        for(int i = 0; i < project->diagnostic_count; i++) {
-            char label[256];
-            EditorDiagnostic *d = &project->diagnostics[i];
-
-            snprintf(label, sizeof(label), "%s:%d %s",
-                     path_basename(d->path), d->line, d->message);
-            if(draw_sidebar_row((int)diag.x + ScaleUIPx(4), y,
-                                (int)diag.width - ScaleUIPx(8), label,
-                                i == project->selected_diagnostic)) {
-                char rel[EDITOR_PATH_CAP];
-
-                project->selected_diagnostic = i;
-                editor_relative_path(rel, sizeof(rel), project, d->path);
-                editor_open_file_at_line(project, rel, d->line,
-                                         status, status_size);
-            }
-            y += row_h;
-        }
-        PopUIInputClip();
-    }
-    draw_output_text(output, project);
+    if(project->bottom_panel_mode == EDITOR_BOTTOM_PANEL_PROBLEMS)
+        draw_problems_panel(body, project, status, status_size);
+    else
+        draw_output_text(body, project);
 }
 
 static int
@@ -5453,7 +5504,7 @@ draw_canvas(Rectangle frame, Rectangle content, EditorProject *project,
 
         editor_restore_ide_ui_frame(GetScreenWidth(), GetScreenHeight());
         chrome = PushUIInspectChrome(1);
-        draw_output_panel(output, project, status, status_size);
+        draw_bottom_panel(output, project, status, status_size);
         PopUIInspectChrome(chrome);
     }
     editor_restore_ide_ui_frame(GetScreenWidth(), GetScreenHeight());
@@ -5617,12 +5668,24 @@ draw_top_bar(int view_w, int *project_menu_open, FileDialog *project_dialog,
         snprintf(status_text, status_size, "Preview mode: %s",
                  preview_mode_labels[project->preview_interact ? 1 : 0]);
     }
-    if(project != NULL && project->loaded && !project->output_visible &&
-       project->output[0] != '\0') {
-        if(DrawUIGenericButton(view_w - ScaleUIPx(780), run_y,
-                               ScaleUIPx(56), run_h, "Output",
-                               UI_BUTTON_STYLE_SECONDARY, 0, NULL))
-            project->output_visible = 1;
+    if(project != NULL && project->loaded && !project->output_visible) {
+        if(project->diagnostic_count > 0) {
+            char label[64];
+
+            snprintf(label, sizeof(label), "Problems %d",
+                     project->diagnostic_count);
+            if(DrawUIGenericButton(view_w - ScaleUIPx(836), run_y,
+                                   ScaleUIPx(104), run_h, label,
+                                   UI_BUTTON_STYLE_SECONDARY, 0, NULL))
+                editor_show_bottom_panel(project,
+                                         EDITOR_BOTTOM_PANEL_PROBLEMS);
+        } else if(project->output[0] != '\0') {
+            if(DrawUIGenericButton(view_w - ScaleUIPx(790), run_y,
+                                   ScaleUIPx(66), run_h, "Output",
+                                   UI_BUTTON_STYLE_SECONDARY, 0, NULL))
+                editor_show_bottom_panel(project,
+                                         EDITOR_BOTTOM_PANEL_OUTPUT);
+        }
     }
     SetUIDropdownClipTop(0);
     SetUIDropdownClipBottom(0);
