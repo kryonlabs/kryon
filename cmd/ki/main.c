@@ -5,6 +5,7 @@
 #include "ui_internal.h"
 
 #if !defined(_WIN32)
+#include <ctype.h>
 #include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
@@ -139,6 +140,13 @@ typedef struct EditorProject {
     int replace_cursor;
     int replace_focused;
     int find_replace_visible;
+    int palette_visible;
+    int palette_mode;          /* 0 = quick open (files), 1 = commands */
+    char palette_text[128];
+    int palette_cursor;
+    int palette_focused;
+    int palette_selected;      /* highlighted result index */
+    int palette_scroll_y;
     EditorHistoryEntry undo_items[EDITOR_HISTORY_MAX];
     EditorHistoryEntry redo_items[EDITOR_HISTORY_MAX];
     int undo_count;
@@ -2914,6 +2922,107 @@ editor_build_project_tree(EditorProject *project, const char *dir_path,
     }
 }
 
+/* --- Command palette / quick-open ---------------------------------------- */
+
+enum {
+    EDITOR_PALETTE_QUICK_OPEN,
+    EDITOR_PALETTE_COMMANDS
+};
+
+/* Command palette entry. command_id is interpreted by draw_palette. */
+typedef struct {
+    const char *label;
+    int command_id;
+} EditorPaletteCommand;
+
+enum {
+    EDITOR_CMD_SAVE,
+    EDITOR_CMD_UNDO,
+    EDITOR_CMD_REDO,
+    EDITOR_CMD_FIND,
+    EDITOR_CMD_TOGGLE_PREVIEW,
+    EDITOR_CMD_SOURCE_ONLY,
+    EDITOR_CMD_SPLIT,
+    EDITOR_CMD_RUN,
+    EDITOR_CMD_BUILD,
+    EDITOR_CMD_ZOOM_IN,
+    EDITOR_CMD_ZOOM_OUT,
+    EDITOR_CMD_COUNT
+};
+
+static const EditorPaletteCommand editor_palette_commands[] = {
+    {"Save", EDITOR_CMD_SAVE},
+    {"Undo", EDITOR_CMD_UNDO},
+    {"Redo", EDITOR_CMD_REDO},
+    {"Find / Replace", EDITOR_CMD_FIND},
+    {"View: Preview Only", EDITOR_CMD_TOGGLE_PREVIEW},
+    {"View: Source Only", EDITOR_CMD_SOURCE_ONLY},
+    {"View: Split", EDITOR_CMD_SPLIT},
+    {"Run", EDITOR_CMD_RUN},
+    {"Build", EDITOR_CMD_BUILD},
+    {"Zoom In", EDITOR_CMD_ZOOM_IN},
+    {"Zoom Out", EDITOR_CMD_ZOOM_OUT}
+};
+
+/*
+ * Subsequence fuzzy match: every query char must appear in target in order
+ * (case-insensitive). Returns a score > 0 on match (higher = tighter), 0
+ * otherwise. Rewards consecutive matches and matches at word boundaries so
+ * "sma" ranks "session_main" above "scroll_max_anchor".
+ */
+static int
+editor_fuzzy_score(const char *query, const char *target)
+{
+    int score = 0;
+    int consecutive = 0;
+    char prev_target = '_';
+
+    if(query == NULL || target == NULL)
+        return 0;
+    while(*query != '\0' && *target != '\0') {
+        char q = (char)tolower((unsigned char)*query);
+        char t = (char)tolower((unsigned char)*target);
+        if(q == t) {
+            consecutive++;
+            score += consecutive * 2;
+            if(prev_target == '_' || prev_target == '/' ||
+               prev_target == '.' || prev_target == '\\' ||
+               prev_target == ' ' || prev_target == '-')
+                score += 4;
+            query++;
+        } else {
+            consecutive = 0;
+        }
+        prev_target = *target;
+        target++;
+    }
+    return *query == '\0' ? (score > 0 ? score : 1) : 0;
+}
+
+static void
+editor_open_palette(EditorProject *project, int mode)
+{
+    if(project == NULL)
+        return;
+    project->palette_visible = 1;
+    project->palette_mode = mode;
+    project->palette_text[0] = '\0';
+    project->palette_cursor = 0;
+    project->palette_focused = 1;
+    project->palette_selected = 0;
+    project->palette_scroll_y = 0;
+    project->source_focused = 0;
+}
+
+static void
+editor_close_palette(EditorProject *project)
+{
+    if(project == NULL)
+        return;
+    project->palette_visible = 0;
+    project->palette_focused = 0;
+}
+
 static const char *
 editor_tree_path_for_id(const EditorTreeItem *items, int count, int id)
 {
@@ -4119,7 +4228,6 @@ editor_replace_all_source(EditorProject *project, char *status,
     int find_len;
     int replace_len;
     int replaced = 0;
-    int growth;
     int write;
     char *read;
     char tmp[EDITOR_SOURCE_MAX_BYTES];
@@ -5177,6 +5285,221 @@ draw_preview_pane(Rectangle content, EditorProject *project, char *status,
     draw_preview_context_menu(project, stage, status, status_size);
 }
 
+static int
+editor_run_palette_command(EditorProject *project, int command_id, char *status,
+                           size_t status_size)
+{
+    switch(command_id) {
+    case EDITOR_CMD_SAVE:
+        editor_save_source_now(project, status, status_size);
+        return 1;
+    case EDITOR_CMD_UNDO:
+        editor_undo_source(project, status, status_size);
+        return 1;
+    case EDITOR_CMD_REDO:
+        editor_redo_source(project, status, status_size);
+        return 1;
+    case EDITOR_CMD_FIND:
+        project->find_replace_visible = 1;
+        project->source_focused = 1;
+        return 1;
+    case EDITOR_CMD_TOGGLE_PREVIEW:
+        project->layout_mode = EDITOR_LAYOUT_PREVIEW;
+        return 1;
+    case EDITOR_CMD_SOURCE_ONLY:
+        project->layout_mode = EDITOR_LAYOUT_SOURCE;
+        return 1;
+    case EDITOR_CMD_SPLIT:
+        project->layout_mode = EDITOR_LAYOUT_SPLIT;
+        return 1;
+    case EDITOR_CMD_RUN:
+        editor_run_project(project, status, status_size);
+        return 1;
+    case EDITOR_CMD_BUILD:
+        if(project->selected_run_target >= 0 &&
+           project->selected_run_target < project->run_target_count)
+            editor_build_capture(project,
+                                 project->run_targets[project->selected_run_target].command,
+                                 "Built project", "Could not build project",
+                                 status, status_size);
+        else
+            snprintf(status, status_size, "No run target selected");
+        return 1;
+    case EDITOR_CMD_ZOOM_IN:
+        editor_adjust_source_zoom(project, 2, status, status_size);
+        return 1;
+    case EDITOR_CMD_ZOOM_OUT:
+        editor_adjust_source_zoom(project, -2, status, status_size);
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+/*
+ * Command palette (Ctrl+Shift+P) and quick-open (Ctrl+P). A centered overlay
+ * with a query field and a filtered, fuzzy-ranked result list. Drawn as a
+ * plain panel (no modal-frame widget) with its own input capture, matching the
+ * IDE's existing inline-panel style.
+ */
+static void
+draw_palette(EditorProject *project, char *status, size_t status_size)
+{
+    Rectangle panel;
+    Rectangle input_bounds;
+    int input_changed = 0;
+    int view_w;
+    int view_h;
+    int panel_w;
+    int panel_h;
+    int list_x;
+    int list_y;
+    int list_w;
+    int list_h;
+    int item_h = ScaleUIPx(28);
+    int font = UI_TEXT_16;
+    int max_results = 10;
+    int visible_results = 0;
+    int selected_command = -1;
+    const char *selected_path = NULL;
+    EditorTreeItem files[EDITOR_MAX_TREE_ITEMS];
+    int file_count = 0;
+    int title_font = UI_TEXT_16;
+
+    if(project == NULL || !project->palette_visible)
+        return;
+
+    view_w = GetScreenWidth();
+    view_h = GetScreenHeight();
+    panel_w = ScaleUIPx(520);
+    if(panel_w > view_w - ScaleUIPx(32))
+        panel_w = view_w - ScaleUIPx(32);
+    panel_h = ScaleUIPx(64) + item_h * max_results;
+
+    /* Dim the workspace and capture all input so nothing behind reacts. */
+    PushUIInputCapture((Rectangle){0, 0, (float)view_w, (float)view_h}, 0);
+    DrawRectangle(0, 0, view_w, view_h, (Color){0, 0, 0, 170});
+
+    panel = (Rectangle){(float)((view_w - panel_w) / 2),
+                        (float)((view_h - panel_h) / 2),
+                        (float)panel_w, (float)panel_h};
+    DrawRectangleRec(panel, GetThemeSurface());
+    DrawRectangleLinesEx(panel, 1, DarkenUIColor(GetThemeSurface(), 40));
+    DrawUIText(project->palette_mode == EDITOR_PALETTE_COMMANDS
+                   ? "Command Palette" : "Quick Open",
+               (int)panel.x + ScaleUIPx(16), (int)panel.y + ScaleUIPx(10),
+               title_font, GetThemeText());
+
+    input_bounds = (Rectangle){(int)panel.x + ScaleUIPx(16),
+                               (int)panel.y + ScaleUIPx(36),
+                               panel_w - ScaleUIPx(32), ScaleUIPx(30)};
+    input_changed = DrawUITextField((UITextField){
+        .bounds = input_bounds,
+        .text = project->palette_text,
+        .text_size = sizeof(project->palette_text),
+        .cursor_position = &project->palette_cursor,
+        .focused = &project->palette_focused,
+        .max_codepoints = (int)sizeof(project->palette_text) - 1,
+        .font = font,
+        .focus_id = 1701,
+        .style = editor_input_style()
+    });
+
+    list_x = (int)panel.x + ScaleUIPx(16);
+    list_y = (int)panel.y + ScaleUIPx(72);
+    list_w = panel_w - ScaleUIPx(32);
+    list_h = item_h * max_results;
+
+    /* Keyboard navigation. */
+    if(UIKeyPressed(KEY_ESCAPE)) {
+        editor_close_palette(project);
+        return;
+    }
+    if(UIKeyPressed(KEY_DOWN))
+        project->palette_selected++;
+    if(UIKeyPressed(KEY_UP))
+        project->palette_selected--;
+
+    /* Build the filtered result list and draw it. */
+    BeginUIClip(list_x, list_y, list_w, list_h);
+    {
+        int draw_y = list_y - project->palette_scroll_y;
+        int result_index = 0;
+
+        if(project->palette_mode == EDITOR_PALETTE_COMMANDS) {
+            for(int i = 0; i < EDITOR_CMD_COUNT; i++) {
+                if(project->palette_text[0] != '\0' &&
+                   editor_fuzzy_score(project->palette_text,
+                                      editor_palette_commands[i].label) == 0)
+                    continue;
+                if(result_index == project->palette_selected)
+                    selected_command = editor_palette_commands[i].command_id;
+                if(result_index >= project->palette_selected &&
+                   result_index < project->palette_selected + max_results) {
+                    Color bg = (result_index == project->palette_selected)
+                                   ? GetThemeButtonHover() : GetThemeSurface();
+                    DrawRectangle(list_x, draw_y, list_w, item_h, bg);
+                    DrawUIText(editor_palette_commands[i].label,
+                               list_x + ScaleUIPx(10), draw_y + ScaleUIPx(5),
+                               font, GetThemeText());
+                    draw_y += item_h;
+                }
+                result_index++;
+                visible_results++;
+            }
+        } else {
+            editor_build_project_tree(project, project->path, 0, files,
+                                      &file_count);
+            for(int i = 0; i < file_count; i++) {
+                if(project->palette_text[0] != '\0' &&
+                   editor_fuzzy_score(project->palette_text,
+                                      files[i].path) == 0)
+                    continue;
+                if(result_index == project->palette_selected)
+                    selected_path = files[i].path;
+                if(result_index >= project->palette_selected &&
+                   result_index < project->palette_selected + max_results) {
+                    Color bg = (result_index == project->palette_selected)
+                                   ? GetThemeButtonHover() : GetThemeSurface();
+                    DrawRectangle(list_x, draw_y, list_w, item_h, bg);
+                    DrawUIText(files[i].path, list_x + ScaleUIPx(10),
+                               draw_y + ScaleUIPx(5), font, GetThemeText());
+                    draw_y += item_h;
+                }
+                result_index++;
+                visible_results++;
+            }
+        }
+    }
+    EndUIClip();
+
+    /* Clamp selection into range. */
+    if(project->palette_selected < 0)
+        project->palette_selected = 0;
+    if(visible_results > 0 && project->palette_selected > visible_results - 1)
+        project->palette_selected = visible_results - 1;
+
+    /* Execute on Enter. */
+    if(UIKeyPressed(KEY_ENTER) || UIKeyPressed(KEY_KP_ENTER)) {
+        if(project->palette_mode == EDITOR_PALETTE_COMMANDS &&
+           selected_command >= 0) {
+            editor_run_palette_command(project, selected_command, status,
+                                       status_size);
+            editor_close_palette(project);
+        } else if(project->palette_mode == EDITOR_PALETTE_QUICK_OPEN &&
+                  selected_path != NULL) {
+            editor_select_file(project, selected_path);
+            editor_select_source_path(project, selected_path);
+            editor_close_palette(project);
+            snprintf(status, status_size, "Opened %s", selected_path);
+        }
+    }
+
+    /* Any text edit re-ranks and resets the selection. */
+    if(input_changed)
+        project->palette_selected = 0;
+}
+
 static void
 draw_source_pane(Rectangle content, EditorProject *project,
                  char *status, size_t status_size)
@@ -6225,11 +6548,15 @@ main(int argc, char **argv)
             else
                 snprintf(status_text, sizeof(status_text), "Search project");
         }
-        if(project.loaded && editor_mod_key_down() && IsKeyPressed(KEY_P)) {
-            project.search_focused = 1;
-            project.source_focused = 0;
-            SetUIFocus(1211);
-            snprintf(status_text, sizeof(status_text), "Quick open/search");
+        if(project.loaded && editor_mod_key_down() &&
+           (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) &&
+           IsKeyPressed(KEY_P)) {
+            editor_open_palette(&project, EDITOR_PALETTE_COMMANDS);
+            snprintf(status_text, sizeof(status_text), "Command palette");
+        } else if(project.loaded && editor_mod_key_down() &&
+                  IsKeyPressed(KEY_P)) {
+            editor_open_palette(&project, EDITOR_PALETTE_QUICK_OPEN);
+            snprintf(status_text, sizeof(status_text), "Quick open");
         }
         editor_maybe_autosave_source(&project, status_text,
                                      sizeof(status_text));
@@ -6279,6 +6606,8 @@ main(int argc, char **argv)
         draw_chrome(view_w, view_h, &project, &recent, &sidebar,
                     &project_menu_open, &project_dialog, play_icon,
                     &new_project_requested, status_text, sizeof(status_text));
+
+        draw_palette(&project, status_text, sizeof(status_text));
 
         EndUIFocus();
         EndDrawing();
