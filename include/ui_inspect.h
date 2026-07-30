@@ -15,11 +15,28 @@ typedef struct UIInspectSelection {
     int valid;
 } UIInspectSelection;
 
+typedef struct UIInspectNode {
+    char name[96];
+    char role[32];
+    char text[64];
+    char value[128];
+    char source_path[512];
+    Rectangle bounds;
+    int flags;
+    int order;
+    int parent;
+    int source_line;
+    int valid;
+} UIInspectNode;
+
 void BeginUIInspectFrame(const char *project_root);
 void EndUIInspectFrame(void);
 void SetUIInspectEnabled(int enabled);
 int UIInspectEnabled(void);
 int UIInspectWidgetCount(void);
+int UIInspectNodeCount(void);
+int UIInspectGetNode(int index, UIInspectNode *node);
+int UIInspectFindNode(const char *selector, UIInspectNode *node);
 UIInspectSelection UIInspectGetSelection(void);
 int UIInspectSelectAt(Vector2 point);
 void SetUIInspectCanvasBounds(Rectangle bounds);

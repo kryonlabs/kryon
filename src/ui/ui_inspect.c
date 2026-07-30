@@ -201,6 +201,81 @@ UIInspectWidgetCount(void)
     return g_ui_inspect.widget_count;
 }
 
+static void
+ui_inspect_fill_node(UIInspectNode *node, const UIInspectWidget *widget)
+{
+    if(node == NULL || widget == NULL)
+        return;
+    memset(node, 0, sizeof(*node));
+    ui_inspect_strncpy(node->name, sizeof(node->name), widget->id);
+    ui_inspect_strncpy(node->role, sizeof(node->role), widget->kind);
+    ui_inspect_strncpy(node->text, sizeof(node->text), widget->action);
+    ui_inspect_strncpy(node->source_path, sizeof(node->source_path),
+                      widget->source_path);
+    node->bounds = widget->bounds;
+    node->flags = widget->flags;
+    node->order = widget->order;
+    node->parent = widget->parent;
+    node->source_line = widget->source_line;
+    node->valid = 1;
+}
+
+int
+UIInspectNodeCount(void)
+{
+    ui_inspect_init_from_env();
+    return g_ui_inspect.widget_count;
+}
+
+int
+UIInspectGetNode(int index, UIInspectNode *node)
+{
+    ui_inspect_init_from_env();
+    if(index < 0 || index >= g_ui_inspect.widget_count || node == NULL)
+        return 0;
+    ui_inspect_fill_node(node, &g_ui_inspect.widgets[index]);
+    return 1;
+}
+
+static int
+ui_inspect_match_selector(const UIInspectWidget *widget, const char *selector)
+{
+    const char *value;
+    char source[UI_INSPECT_PATH_MAX + 32];
+
+    if(widget == NULL || selector == NULL || selector[0] == '\0')
+        return 0;
+    if(selector[0] == '@') {
+        value = selector + 1;
+        return ui_inspect_streq(widget->id, value);
+    }
+    if(strncmp(selector, "role=", 5) == 0)
+        return ui_inspect_streq(widget->kind, selector + 5);
+    if(strncmp(selector, "text=", 5) == 0)
+        return ui_inspect_streq(widget->action, selector + 5);
+    if(strchr(selector, ':') != NULL && widget->source_path[0] != '\0') {
+        snprintf(source, sizeof(source), "%s:%d", widget->source_path,
+                 widget->source_line);
+        return ui_inspect_streq(source, selector);
+    }
+    return ui_inspect_streq(widget->id, selector) ||
+           ui_inspect_streq(widget->kind, selector) ||
+           ui_inspect_streq(widget->action, selector);
+}
+
+int
+UIInspectFindNode(const char *selector, UIInspectNode *node)
+{
+    ui_inspect_init_from_env();
+    for(int i = g_ui_inspect.widget_count - 1; i >= 0; i--) {
+        if(ui_inspect_match_selector(&g_ui_inspect.widgets[i], selector)) {
+            ui_inspect_fill_node(node, &g_ui_inspect.widgets[i]);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 UIInspectSelection
 UIInspectGetSelection(void)
 {

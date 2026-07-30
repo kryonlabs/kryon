@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "kryon_test.h"
 #include "ui_inspect.h"
 
 #include <stdio.h>
@@ -61,6 +62,7 @@ main(void)
     {
         Camera2D camera = {0};
         UIWidget widget;
+        UIInspectNode node;
         UIInspectSelection selection;
         int token;
 
@@ -75,6 +77,11 @@ main(void)
                                (Rectangle){10, 20, 30, 15}, 0);
         EndUIWidget(&widget);
         check_int("inspect transformed count", UIInspectWidgetCount(), 1);
+        check_int("inspect node count", UIInspectNodeCount(), 1);
+        check_int("inspect find @name",
+                  UIInspectFindNode("@inspect-transform", &node), 1);
+        check_int("inspect find role", KryTFind("role=test", &node), 1);
+        check_int("inspect node line default", node.source_line, 0);
         check_int("inspect transformed hit",
                   UIInspectSelectAt((Vector2){65, 95}), 1);
         selection = UIInspectGetSelection();

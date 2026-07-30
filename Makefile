@@ -11,6 +11,7 @@ DIST_DIR ?= dist
 STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
 KC = $(BUILD_DIR)/bin/kc
+KT = $(BUILD_DIR)/bin/kt
 KI = $(BUILD_DIR)/bin/kryon
 KRYON_APP = $(BUILD_DIR)/bin/kryon-app
 BINDIR ?= $(PREFIX)/bin
@@ -132,7 +133,7 @@ RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_
 
 .PHONY: all clean run tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
 
-all: $(LIB) $(KC) $(KI) $(KRYON_APP)
+all: $(LIB) $(KC) $(KT) $(KI) $(KRYON_APP)
 
 run: $(KI)
 	@if [ -n "$(PROJECT)" ]; then \
@@ -149,10 +150,11 @@ run: $(KI)
 		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI); \
 	fi
 
-tools: $(KC) $(KI) $(KRYON_APP)
+tools: $(KC) $(KT) $(KI) $(KRYON_APP)
 
-install: $(KI) $(KRYON_APP)
+install: $(KT) $(KI) $(KRYON_APP)
 	mkdir -p $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 755 $(KT) $(DESTDIR)$(BINDIR)/kt
 	$(INSTALL) -m 755 $(KI) $(DESTDIR)$(BINDIR)/kryon
 	$(INSTALL) -m 755 $(KRYON_APP) $(DESTDIR)$(BINDIR)/kryon-app
 
@@ -172,8 +174,9 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
+	sh tests/kt_cli_test.sh $(KT)
 	$(KSYNC_ACCOUNT_TEST)
 	$(KSYNC_SYNC_TEST)
 	$(TRANSITION_TEST)
@@ -212,6 +215,9 @@ KC_HDRS := cmd/kc/kc_internal.h cmd/kc/kc_ast.h
 
 $(KC): $(KC_SRCS) $(KC_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -o $@ $(KC_SRCS)
+
+$(KT): cmd/kt/main.c | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ cmd/kt/main.c
 
 $(KRYON_APP): scripts/kryon-app.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon-app.sh $@
