@@ -48,6 +48,7 @@ typedef struct KryFunction {
 typedef struct KryFile {
     char *path;
     const char *root;
+    char display_path[KC_PATH_MAX];
     char *text;
     char app_title[256];
     int app_width;

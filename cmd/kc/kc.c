@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "kc_internal.h"
 #include "kc_ast.h"
@@ -17,6 +18,8 @@ static int is_ident_text(const char *text);
 static int line_is_goto_label(const char *line, char *label,
                               size_t label_size);
 static void rewrite_nil_tokens(char *dst, size_t dst_size, const char *src);
+static void normalize_source_path(char *dst, size_t dst_size, const char *path);
+static const char *relative_path(const char *root, const char *path);
 static void strip_kry_ext(char *dst, size_t dst_size, const char *path);
 static void module_symbol(char *dst, size_t dst_size, const char *module);
 static void module_header(char *dst, size_t dst_size, const char *module);
@@ -500,7 +503,9 @@ emit_source_push(KryFile *file, int line_no)
 {
     char path[KC_PATH_MAX + 8];
 
-    c_string_literal(path, sizeof(path), file->path);
+    c_string_literal(path, sizeof(path),
+                     file->display_path[0] != '\0' ? file->display_path
+                                                    : file->path);
     add_body_line(file, 0, "    PushUIInspectSource(%s, %d);", path, line_no);
 }
 
@@ -666,110 +671,6 @@ convert_arg_list(char *dst, size_t dst_size, const char *src)
         strncat(out, item, sizeof(out) - strlen(out) - 1);
     }
     snprintf(dst, dst_size, "%s", out);
-}
-
-static int
-read_prop_value(const char *src, const char *key, char *dst, size_t dst_size)
-{
-    char pattern[64];
-    const char *p;
-    const char *end;
-    int depth = 0;
-    int in_string = 0;
-
-    snprintf(pattern, sizeof(pattern), "%s:", key);
-    p = strstr(src, pattern);
-    if(p == NULL)
-        return 0;
-    p += strlen(pattern);
-    while(*p == ' ' || *p == '\t')
-        p++;
-    end = p;
-    while(*end != '\0') {
-        if(*end == '"' && (end == p || end[-1] != '\\'))
-            in_string = !in_string;
-        if(!in_string) {
-            if(*end == '(' || *end == '{' || *end == '[')
-                depth++;
-            else if(*end == ')' || *end == '}' || *end == ']')
-                depth--;
-            else if(depth <= 0 && (*end == ' ' || *end == '\t')) {
-                const char *next = end;
-
-                while(*next == ' ' || *next == '\t')
-                    next++;
-                if(isalpha((unsigned char)*next) || *next == '_') {
-                    const char *colon = next;
-
-                    while(isalnum((unsigned char)*colon) || *colon == '_')
-                        colon++;
-                    if(*colon == ':')
-                        break;
-                }
-            }
-        }
-        end++;
-    }
-    while(end > p && (end[-1] == ' ' || end[-1] == '\t'))
-        end--;
-    if((size_t)(end - p) >= dst_size)
-        end = p + dst_size - 1;
-    memcpy(dst, p, (size_t)(end - p));
-    dst[end - p] = '\0';
-    return dst[0] != '\0';
-}
-
-static int
-parse_label_token(char **sp, char *dst, size_t dst_size)
-{
-    char *s = *sp;
-    size_t n = 0;
-
-    while(*s == ' ' || *s == '\t')
-        s++;
-    if(*s == '"') {
-        char text[512];
-
-        if(!parse_quoted(sp, text, sizeof(text)))
-            return 0;
-        c_string_literal(dst, dst_size, text);
-        return 1;
-    }
-    int depth = 0;
-    int in_string = 0;
-
-    while(*s != '\0') {
-        if(*s == '"' && (s == *sp || s[-1] != '\\'))
-            in_string = !in_string;
-        if(!in_string) {
-            if(*s == '(' || *s == '{' || *s == '[')
-                depth++;
-            else if(*s == ')' || *s == '}' || *s == ']')
-                depth--;
-            else if(depth <= 0 && isspace((unsigned char)*s)) {
-                char *next = s;
-
-                while(*next == ' ' || *next == '\t')
-                    next++;
-                if(isalpha((unsigned char)*next) || *next == '_') {
-                    char *colon = next;
-
-                    while(isalnum((unsigned char)*colon) || *colon == '_')
-                        colon++;
-                    if(*colon == ':')
-                        break;
-                }
-            }
-        }
-        if(n + 1 < dst_size)
-            dst[n++] = *s;
-        s++;
-    }
-    while(n > 0 && isspace((unsigned char)dst[n - 1]))
-        n--;
-    dst[n] = '\0';
-    *sp = s;
-    return n > 0;
 }
 
 static char *
@@ -3855,14 +3756,82 @@ process_screen_line:
 static const char *
 relative_path(const char *root, const char *path)
 {
+    static char rel[KC_PATH_MAX];
+    char root_abs[KC_PATH_MAX];
+    char path_abs[KC_PATH_MAX];
     size_t n;
 
     if(root == NULL || root[0] == '\0')
         return path;
+    normalize_source_path(root_abs, sizeof(root_abs), root);
+    normalize_source_path(path_abs, sizeof(path_abs), path);
+    n = strlen(root_abs);
+    if(strncmp(path_abs, root_abs, n) == 0 && path_abs[n] == '/') {
+        snprintf(rel, sizeof(rel), "%s", path_abs + n + 1);
+        return rel;
+    }
     n = strlen(root);
     if(strncmp(path, root, n) == 0 && path[n] == '/')
         return path + n + 1;
     return path;
+}
+
+static void
+normalize_source_path(char *dst, size_t dst_size, const char *path)
+{
+    char absolute[KC_PATH_MAX];
+    char normalized[KC_PATH_MAX];
+    char *parts[KC_PATH_MAX / 2];
+    int count = 0;
+    char *save = NULL;
+    char *part;
+    size_t used = 0;
+
+    if(dst_size == 0)
+        return;
+    dst[0] = '\0';
+    if(path == NULL || path[0] == '\0')
+        return;
+
+    if(path[0] == '/') {
+        snprintf(absolute, sizeof(absolute), "%s", path);
+    } else {
+        char cwd[KC_PATH_MAX];
+
+        if(getcwd(cwd, sizeof(cwd)) == NULL)
+            snprintf(cwd, sizeof(cwd), ".");
+        snprintf(absolute, sizeof(absolute), "%s/%s", cwd, path);
+    }
+
+    for(part = strtok_r(absolute, "/", &save); part != NULL;
+        part = strtok_r(NULL, "/", &save)) {
+        if(strcmp(part, ".") == 0 || part[0] == '\0')
+            continue;
+        if(strcmp(part, "..") == 0) {
+            if(count > 0)
+                count--;
+            continue;
+        }
+        if(count < (int)(sizeof(parts) / sizeof(parts[0])))
+            parts[count++] = part;
+    }
+
+    normalized[used++] = '/';
+    normalized[used] = '\0';
+    for(int i = 0; i < count; i++) {
+        size_t len = strlen(parts[i]);
+
+        if(used > 1 && used + 1 < sizeof(normalized))
+            normalized[used++] = '/';
+        if(used + len >= sizeof(normalized))
+            len = sizeof(normalized) - used - 1;
+        memcpy(normalized + used, parts[i], len);
+        used += len;
+        normalized[used] = '\0';
+        if(len < strlen(parts[i]))
+            break;
+    }
+    snprintf(dst, dst_size, "%s", normalized);
 }
 
 static void
@@ -4714,6 +4683,11 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
     fprintf(out, "#include \"%s\"\n", hbase);
     fprintf(out, "#include <stdio.h>\n");
     fprintf(out, "#include \"ui_inspect.h\"\n");
+    fprintf(out, "#if defined(__GNUC__) || defined(__clang__)\n");
+    fprintf(out, "#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
+    fprintf(out, "#else\n");
+    fprintf(out, "#define KRYON_PRIVATE_UNUSED\n");
+    fprintf(out, "#endif\n");
     if(file->app_font_examples)
         fprintf(out, "#include \"example_ui_font.h\"\n");
     if(file->define_count > 0) {
@@ -4755,7 +4729,8 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         function_name(name, sizeof(name), file, fn);
         if(fn->guard[0] != '\0')
             fprintf(out, "\n#if %s", fn->guard);
-        fprintf(out, "\nstatic %s %s(%s);\n", return_type, name, args);
+        fprintf(out, "\nstatic KRYON_PRIVATE_UNUSED %s %s(%s);\n",
+                return_type, name, args);
         if(fn->guard[0] != '\0')
             fprintf(out, "#endif\n");
     }
@@ -4779,8 +4754,11 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         function_name(name, sizeof(name), file, fn);
         if(fn->guard[0] != '\0')
             fprintf(out, "\n#if %s\n", fn->guard);
-        fprintf(out, "\n%s%s\n%s(%s)\n{\n",
-                fn->is_public ? "" : "static ", return_type, name, args);
+        if(fn->is_public)
+            fprintf(out, "\n%s\n%s(%s)\n{\n", return_type, name, args);
+        else
+            fprintf(out, "\nstatic KRYON_PRIVATE_UNUSED %s\n%s(%s)\n{\n",
+                    return_type, name, args);
         for(int j = 0; j < fn->body_count; j++)
             write_body_line(out, file, fn, fn->body[j], &indent);
         for(int j = 0; j < fn->call_count; j++) {
@@ -4902,6 +4880,8 @@ main(int argc, char **argv)
             die("out of memory");
         file->path = argv[i];
         file->root = root;
+        snprintf(file->display_path, sizeof(file->display_path), "%s",
+                 relative_path(root, file->path));
         file->no_main = no_main;
         parse_kry(file);
         if(file->diagnostic_count > 0) {
