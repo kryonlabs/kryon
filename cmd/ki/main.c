@@ -127,6 +127,7 @@ typedef struct EditorProject {
     int source_loaded;
     double source_last_edit_time;
     char source[EDITOR_SOURCE_MAX_BYTES];
+    char source_clipboard[EDITOR_OUTPUT_MAX_BYTES];
     EditorOpenFile open_files[EDITOR_MAX_OPEN_FILES];
     int open_file_count;
     int active_open_file;
@@ -4272,14 +4273,16 @@ editor_source_line_bounds(const char *text, int cursor, int *start, int *end)
 }
 
 static int
-editor_copy_source_range(const char *text, int start, int end)
+editor_copy_source_range(EditorProject *project, int start, int end)
 {
     char *copy;
     int len;
     int text_len;
+    const char *text;
 
-    if(text == NULL)
+    if(project == NULL)
         return 0;
+    text = project->source;
     text_len = (int)strlen(text);
     start = ui_clampi(start, 0, text_len);
     end = ui_clampi(end, 0, text_len);
@@ -4291,6 +4294,8 @@ editor_copy_source_range(const char *text, int start, int end)
         return 0;
     memcpy(copy, text + start, (size_t)len);
     copy[len] = '\0';
+    snprintf(project->source_clipboard, sizeof(project->source_clipboard),
+             "%s", copy);
     SetUIClipboardTextValue(copy);
     free(copy);
     return 1;
@@ -4341,6 +4346,18 @@ editor_insert_source_text(EditorProject *project, const char *text)
     return 1;
 }
 
+static const char *
+editor_source_clipboard_text(EditorProject *project)
+{
+    const char *clip = GetClipboardText();
+
+    if(clip != NULL && clip[0] != '\0')
+        return clip;
+    if(project != NULL && project->source_clipboard[0] != '\0')
+        return project->source_clipboard;
+    return GetUIClipboardTextValue();
+}
+
 static int
 editor_source_line_count(const char *text)
 {
@@ -4370,11 +4387,19 @@ editor_handle_source_clipboard(EditorProject *project, int textarea_changed,
         start = end;
         end = tmp;
     }
+    if(IsKeyPressed(KEY_A)) {
+        int len = (int)strlen(project->source);
+
+        project->source_cursor = len;
+        SetUITextAreaSelection(1501, 0, len);
+        snprintf(status, status_size, "Selected all source");
+        return 1;
+    }
     if(IsKeyPressed(KEY_C)) {
         if(!has_selection || start == end)
             editor_source_line_bounds(project->source, project->source_cursor,
                                       &start, &end);
-        if(editor_copy_source_range(project->source, start, end)) {
+        if(editor_copy_source_range(project, start, end)) {
             snprintf(status, status_size, "Copied source");
             return 1;
         }
@@ -4383,14 +4408,14 @@ editor_handle_source_clipboard(EditorProject *project, int textarea_changed,
         if(!has_selection || start == end)
             editor_source_line_bounds(project->source, project->source_cursor,
                                       &start, &end);
-        if(editor_copy_source_range(project->source, start, end) &&
+        if(editor_copy_source_range(project, start, end) &&
            editor_delete_source_range(project, start, end)) {
             snprintf(status, status_size, "Cut source");
             return 2;
         }
     }
     if(IsKeyPressed(KEY_V) && !textarea_changed) {
-        const char *clip = GetUIClipboardTextValue();
+        const char *clip = editor_source_clipboard_text(project);
 
         if(has_selection)
             editor_delete_source_range(project, start, end);
