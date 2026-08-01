@@ -50,13 +50,14 @@
   These lift the IDE's inline POSIX surface into a reusable library so a
   `.kry`-written IDE can spawn `make kryon-host`, walk the project tree, and
   `dlopen` the resulting `app_host.so`. Windows has stub implementations.
-- Move the self-hosted IDE rewrite in Kry into the standalone KITE repository:
+- Move the self-hosted IDE rewrite in Kry into the standalone IDE repository:
   `app.kry` owns the window loop via the new `app{}` hooks; `state.kry`,
   `start_page.kry`, `project.kry`, `tree.kry`, and `editor.kry` implement the
   start page, project-open flow (file dialog + `kry_fs`), a file-tree sidebar
   (`kry_fs_list_dir` + `DrawUICascadingTreeView`), and a read-only source viewer
-  (`kry_fs_read_file` + `DrawUITextArea`). KITE transpiles those modules in one
-  `kc` invocation and links the generated C against `libkryon.a` + raylib.
+  (`kry_fs_read_file` + `DrawUITextArea`). The IDE repository transpiles those
+  modules in one `kc` invocation and links the generated C against `libkryon.a`
+  + raylib.
 - The `.kry` IDE gains an editable editor with multi-tab open files, Ctrl+S
   save (`kry_fs_write_file`), dirty markers, and Ctrl+Z/Ctrl+Y undo/redo
   (heap-snapshot ring), plus a live-preview pane (`preview.kry`) that runs
