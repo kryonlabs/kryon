@@ -5,7 +5,6 @@
 #define UI_THEME_SETTINGS_ROW_H 30
 #define UI_THEME_SETTINGS_ROW_GAP 10
 
-
 static const ThemeId theme_picker_order[THEME_COUNT] = {
     THEME_SKY,
     THEME_OCEAN,
@@ -20,16 +19,6 @@ static const ThemeId theme_picker_order[THEME_COUNT] = {
     THEME_LAVENDER,
     THEME_MONO
 };
-
-static int
-ui_theme_clampi(int value, int min_value, int max_value)
-{
-    if(value < min_value)
-        return min_value;
-    if(value > max_value)
-        return max_value;
-    return value;
-}
 
 typedef struct {
     int circle_size;
@@ -119,7 +108,7 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
         ui_theme_settings_text(settings.source_app_label, "App");
     source_options[THEME_SOURCE_SYSTEM] =
         ui_theme_settings_text(settings.source_system_label, "System");
-    *settings.theme_source = ui_theme_clampi(*settings.theme_source,
+    *settings.theme_source = ui_clampi(*settings.theme_source,
                                              THEME_SOURCE_APP,
                                              source_count - 1);
     DrawUIText(ui_theme_settings_text(settings.theme_label, "Theme"),
@@ -138,7 +127,7 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
             ui_theme_settings_text(settings.mode_light_label, "Light");
         mode_options[THEME_MODE_DARK] =
             ui_theme_settings_text(settings.mode_dark_label, "Dark");
-        *settings.theme_mode = ui_theme_clampi(*settings.theme_mode,
+        *settings.theme_mode = ui_clampi(*settings.theme_mode,
                                                THEME_MODE_SYSTEM,
                                                THEME_MODE_DARK);
         DrawUIText(ui_theme_settings_text(settings.mode_label, "Mode"),
@@ -161,7 +150,7 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
     if(*settings.theme_source == THEME_SOURCE_APP) {
         for(int i = 0; i < THEME_COUNT; i++)
             theme_options[i] = ui_theme_label((ThemeId)i);
-        *settings.theme_id = ui_theme_clampi(*settings.theme_id, 0,
+        *settings.theme_id = ui_clampi(*settings.theme_id, 0,
                                              THEME_COUNT - 1);
         DrawUIText(ui_theme_settings_text(settings.palette_label, "Palette"),
                    settings.x, y, font, c_text);
@@ -192,17 +181,17 @@ DrawUIThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state)
     result.changed = result.source_changed || result.mode_changed ||
                      result.palette_changed;
     if(settings.theme_source != NULL)
-        *settings.theme_source = ui_theme_clampi(*settings.theme_source,
+        *settings.theme_source = ui_clampi(*settings.theme_source,
                                                  THEME_SOURCE_APP,
                                                  settings.allow_system_source
                                                      ? THEME_SOURCE_SYSTEM
                                                      : THEME_SOURCE_APP);
     if(settings.theme_mode != NULL)
-        *settings.theme_mode = ui_theme_clampi(*settings.theme_mode,
+        *settings.theme_mode = ui_clampi(*settings.theme_mode,
                                                THEME_MODE_SYSTEM,
                                                THEME_MODE_DARK);
     if(settings.theme_id != NULL)
-        *settings.theme_id = ui_theme_clampi(*settings.theme_id, 0,
+        *settings.theme_id = ui_clampi(*settings.theme_id, 0,
                                              THEME_COUNT - 1);
     return result;
 }

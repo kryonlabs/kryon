@@ -64,3 +64,20 @@ if (cd "$tmp" && "$kt" tests/escape.kt >/dev/null 2>&1); then
     echo "kt accepted path escape" >&2
     exit 1
 fi
+
+mkdir -p "$tmp/fake-home/.kryon"
+if command -v env >/dev/null 2>&1; then
+    (
+        cd "$tmp"
+        HOME="$tmp/fake-home" "$(dirname "$kt")/kryon" --temp-session . >/dev/null 2>&1 &
+        pid=$!
+        sleep 1
+        kill "$pid" 2>/dev/null || true
+        wait "$pid" 2>/dev/null || true
+    )
+fi
+if test -f "$tmp/fake-home/.kryon/recent_projects.txt" &&
+   grep -q "$tmp" "$tmp/fake-home/.kryon/recent_projects.txt"; then
+    echo "temp IDE session wrote generated project to recent history" >&2
+    exit 1
+fi

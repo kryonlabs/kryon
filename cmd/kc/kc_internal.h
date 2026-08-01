@@ -15,7 +15,6 @@ enum {
     KC_TYPE_MAX = 256,
     KC_RAW_MAX = 1024,
     KC_STATE_MAX = 128,
-    KC_BODY_MAX = 512,
     KC_BODY_LINE_MAX = 1024,
 };
 
@@ -39,11 +38,25 @@ typedef struct KryFunction {
     int is_public;
     int global_name;
     char calls[KC_CALL_MAX][512];
-    char body[KC_BODY_MAX][KC_BODY_LINE_MAX];
-    int body_line[KC_BODY_MAX];
+    /* Function bodies grow on demand (see grow_body()). body[i] holds one
+     * pre-translated C statement line; body_line[i] is its .kry source line.
+     * There is no fixed per-function cap — large UI draw functions can emit
+     * thousands of lines. */
+    char **body;
+    int *body_line;
+    int body_cap;
     int call_count;
     int body_count;
 } KryFunction;
+
+typedef struct KryRoute {
+    char id[KC_NAME_MAX];
+    char title[KC_NAME_MAX];
+    char group[KC_NAME_MAX];
+    char page[KC_NAME_MAX];
+    char source_path[KC_PATH_MAX];
+    char guard[KC_BODY_LINE_MAX];
+} KryRoute;
 
 typedef struct KryFile {
     char *path;
@@ -55,6 +68,13 @@ typedef struct KryFile {
     int app_height;
     int app_fps;
     int app_font_examples;
+    /* Optional lifecycle hooks named in the app{} block. When `frame` is set,
+     * kc emits a main() that calls init() once, frame() each iteration, and
+     * shutdown() at exit — giving the program full ownership of its loop. When
+     * unset, kc falls back to the single-screen main() used by the examples. */
+    char app_init[KC_NAME_MAX];
+    char app_frame[KC_NAME_MAX];
+    char app_shutdown[KC_NAME_MAX];
     char app_theme[KC_NAME_MAX];
     int app_dark_mode;
     int no_main;
@@ -76,6 +96,7 @@ typedef struct KryFile {
     char use_aliases[KC_USE_MAX][KC_NAME_MAX];
     char use_modules[KC_USE_MAX][KC_NAME_MAX];
     KryFunction *functions;
+    KryRoute *routes;
     int raw_count;
     int public_type_count;
     int private_type_count;
@@ -88,6 +109,8 @@ typedef struct KryFile {
     int use_count;
     int function_count;
     int function_cap;
+    int route_count;
+    int route_cap;
     int current_line;
     KryFunction *current;
     KryDiagnostic diagnostics[KC_DIAGNOSTIC_MAX];
@@ -115,6 +138,8 @@ void current_macro_guard(char *dst, size_t dst_size,
                          const KryMacroFrame *macros, int macro_count);
 void append_macro_excluded(char *dst, size_t dst_size, const char *current,
                            const char *next);
+void write_project_source(KryFile **files, int file_count, const char *root,
+                          const char *out_dir);
 
 /* --- error recovery (Phase 4) ------------------------------------------- */
 

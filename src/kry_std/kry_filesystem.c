@@ -1,0 +1,215 @@
+/*
+ * kry_filesystem.c - Kry standard library: filesystem access.
+ *
+ * Lifts the IDE's inline opendir/readdir/stat, text read/write, recursive
+ * mkdir, and realpath helpers (cmd/ki editor_read_tree_entries,
+ * editor_read_text_file, editor_ensure_dir, editor_resolve_project_path) into a
+ * reusable library so .kry programs can build file trees and read sources.
+ */
+/* Request POSIX 2008 + default (BSD) extensions so realpath(), lstat(), and
+ * dt_type are declared regardless of how the including TU sets feature macros. */
+#if !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+#if !defined(_DEFAULT_SOURCE)
+#define _DEFAULT_SOURCE
+#endif
+
+#include "kry_filesystem.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#if !defined(_WIN32)
+#include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+int
+kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
+{
+    DIR *d;
+    struct dirent *e;
+    int count = 0;
+
+    if(dir == NULL || out == NULL || cap <= 0)
+        return 0;
+    d = opendir(dir);
+    if(d == NULL)
+        return 0;
+    while((e = readdir(d)) != NULL) {
+        const char *name = e->d_name;
+        size_t len;
+
+        if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+            continue;
+        if(name[0] == '.')
+            continue;   /* skip hidden entries */
+        if(count >= cap)
+            break;
+        len = strlen(name);
+        if(len >= KRY_FS_NAME_MAX)
+            continue;
+        memcpy(out[count].name, name, len + 1);
+        /* Use d_type when available; fall back to stat. */
+#ifdef DTTOIF
+        if(e->d_type != DT_UNKNOWN)
+            out[count].is_dir = (e->d_type == DT_DIR);
+        else
+#endif
+        {
+            char full[4096];
+            struct stat st;
+
+            snprintf(full, sizeof(full), "%s/%s", dir, name);
+            out[count].is_dir = (stat(full, &st) == 0 && S_ISDIR(st.st_mode));
+        }
+        count++;
+    }
+    closedir(d);
+    return count;
+}
+
+int
+kry_fs_stat(const char *path, KryFileStat *out)
+{
+    struct stat st;
+
+    if(path == NULL || out == NULL)
+        return 0;
+    out->exists = 0;
+    out->is_dir = 0;
+    out->mtime = -1;
+    if(stat(path, &st) != 0)
+        return 1;   /* stat-able call; path just doesn't exist */
+    out->exists = 1;
+    out->is_dir = S_ISDIR(st.st_mode);
+    out->mtime = (long)st.st_mtime;
+    return 1;
+}
+
+long
+kry_fs_mtime(const char *path)
+{
+    KryFileStat st;
+
+    if(!kry_fs_stat(path, &st))
+        return -1;
+    return st.mtime;
+}
+
+int
+kry_fs_mkdir_p(const char *path)
+{
+    char tmp[4096];
+    size_t len;
+
+    if(path == NULL || path[0] == '\0')
+        return -1;
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    len = strlen(tmp);
+    if(len == 0)
+        return -1;
+    /* Strip trailing separators. */
+    while(len > 0 && tmp[len - 1] == '/')
+        tmp[--len] = '\0';
+    for(size_t i = 1; i < len; i++) {
+        if(tmp[i] == '/') {
+            tmp[i] = '\0';
+            if(mkdir(tmp, 0755) != 0 && errno != EEXIST)
+                return -1;
+            tmp[i] = '/';
+        }
+    }
+    if(mkdir(tmp, 0755) != 0 && errno != EEXIST)
+        return -1;
+    return 0;
+}
+
+int
+kry_fs_realpath(const char *path, char *out, int cap)
+{
+    char *resolved;
+
+    if(path == NULL || out == NULL || cap <= 0)
+        return 0;
+    resolved = realpath(path, NULL);
+    if(resolved == NULL)
+        return 0;
+    snprintf(out, (size_t)cap, "%s", resolved);
+    free(resolved);
+    return 1;
+}
+
+int
+kry_fs_read_file(const char *path, char *buf, int cap)
+{
+    FILE *f;
+    size_t got;
+
+    if(path == NULL || buf == NULL || cap <= 0)
+        return -1;
+    f = fopen(path, "rb");
+    if(f == NULL)
+        return -1;
+    got = fread(buf, 1, (size_t)cap - 1, f);
+    fclose(f);
+    buf[got] = '\0';
+    return (int)got;
+}
+
+int
+kry_fs_write_file(const char *path, const char *text, int len)
+{
+    FILE *f;
+    size_t wrote;
+
+    if(path == NULL || text == NULL || len < 0)
+        return -1;
+    f = fopen(path, "wb");
+    if(f == NULL)
+        return -1;
+    wrote = fwrite(text, 1, (size_t)len, f);
+    fclose(f);
+    return (int)wrote == len ? (int)wrote : -1;
+}
+
+int
+kry_fs_exists(const char *path)
+{
+    struct stat st;
+
+    if(path == NULL)
+        return 0;
+    return stat(path, &st) == 0;
+}
+
+#else  /* _WIN32 */
+
+int kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
+{
+    (void)dir; (void)out; (void)cap; return 0;
+}
+int kry_fs_stat(const char *path, KryFileStat *out)
+{
+    (void)path; (void)out; return 0;
+}
+long kry_fs_mtime(const char *path) { (void)path; return -1; }
+int kry_fs_mkdir_p(const char *path) { (void)path; return -1; }
+int kry_fs_realpath(const char *path, char *out, int cap)
+{
+    (void)path; (void)out; (void)cap; return 0;
+}
+int kry_fs_read_file(const char *path, char *buf, int cap)
+{
+    (void)path; (void)buf; (void)cap; return -1;
+}
+int kry_fs_write_file(const char *path, const char *text, int len)
+{
+    (void)path; (void)text; (void)len; return -1;
+}
+int kry_fs_exists(const char *path) { (void)path; return 0; }
+
+#endif /* _WIN32 */

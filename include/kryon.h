@@ -46,4 +46,10 @@
 #include "preview_io.h"
 #include "preview_layers.h"
 
+/* Kry standard library: platform surfaces (process, filesystem, dynamic
+ * libraries) usable directly from .kry apps. */
+#include "kry_process.h"
+#include "kry_filesystem.h"
+#include "kry_dylib.h"
+
 #endif /* KRYON_H */

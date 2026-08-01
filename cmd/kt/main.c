@@ -259,11 +259,11 @@ kt_start_visual(KTRun *run)
     if(run->visual_pid < 0)
         return 0;
     if(run->visual_pid == 0) {
-        setenv("KRYON_INSPECT", "1", 1);
         setenv("KRYON_PROJECT_ROOT", run->root, 1);
         if(strcmp(run->target, "ide") == 0) {
-            execl(tool, tool, run->root, (char *)NULL);
-            execlp("kryon", "kryon", run->root, (char *)NULL);
+            execl(tool, tool, "--temp-session", run->root, (char *)NULL);
+            execlp("kryon", "kryon", "--temp-session", run->root,
+                   (char *)NULL);
         } else {
             execl(tool, tool, "--project", run->root, "run", "native",
                   (char *)NULL);

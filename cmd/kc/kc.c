@@ -11,10 +11,27 @@
 #include "kc_internal.h"
 #include "kc_ast.h"
 
+#include <setjmp.h>
+
+/* Error recovery: parse_statement and the top-level dispatcher install a
+ * recovery target (setjmp) before parsing each statement. A die() reached
+ * during parsing that carries a "%s:%d:" location is recorded as a diagnostic
+ * and longjmps back to that boundary, so one malformed statement does not abort
+ * the whole compile — kc keeps going and reports every recoverable error.
+ * Fatal conditions (out of memory, bad CLI args) die() with no location and
+ * abort as before. */
+static jmp_buf g_kc_recover_buf;
+static int g_kc_recovering = 0;
+static KryFile *g_kc_current_file = NULL;
+
 static void die(const char *fmt, ...);
+int kc_flush_diagnostics(const KryFile *file);
 static char *trim(char *s);
 static const char *skip_indent(const char *line);
 static int is_ident_text(const char *text);
+static int starts_word(const char *s, const char *word);
+static int parse_ident(char **sp, char *dst, size_t dst_size);
+static int parse_quoted(char **sp, char *dst, size_t dst_size);
 static int line_is_goto_label(const char *line, char *label,
                               size_t label_size);
 static void rewrite_nil_tokens(char *dst, size_t dst_size, const char *src);
@@ -25,6 +42,13 @@ static void module_symbol(char *dst, size_t dst_size, const char *module);
 static void module_header(char *dst, size_t dst_size, const char *module);
 static void resolve_use_module(char *dst, size_t dst_size,
                                const KryFile *file, const char *module);
+static void convert_var_decl_file(char *dst, size_t dst_size,
+                                  const char *name, const char *type,
+                                  const KryFile *file);
+static void convert_arg_list_file(char *dst, size_t dst_size,
+                                  const char *src, const KryFile *file);
+static void strip_module_alias(char *dst, size_t dst_size,
+                               const KryFile *file, const char *src);
 static void add_raw_conditional_line(KryFile *file, const char *active_guard,
                                      const char *condition, const char *line);
 static void emit_web_intrinsic_wrapper(KryFile *file, int line_no,
@@ -162,6 +186,98 @@ add_function(KryFile *file)
     return fn;
 }
 
+static KryRoute *
+add_route(KryFile *file, int line_no, const char *id,
+          const KryMacroFrame *macros, int macro_count)
+{
+    KryRoute *next;
+    KryRoute *route;
+    int next_cap;
+
+    if(file == NULL)
+        return NULL;
+    if(!is_ident_text(id))
+        die("%s:%d: invalid route id '%s'", file->path, line_no, id);
+    for(int i = 0; i < file->route_count; i++) {
+        if(strcmp(file->routes[i].id, id) == 0)
+            die("%s:%d: duplicate route '%s'", file->path, line_no, id);
+    }
+    if(file->route_count >= file->route_cap) {
+        next_cap = file->route_cap == 0 ? 16 : file->route_cap * 2;
+        next = realloc(file->routes, (size_t)next_cap * sizeof(*next));
+        if(next == NULL)
+            die("%s: out of memory while growing route list", file->path);
+        file->routes = next;
+        file->route_cap = next_cap;
+    }
+    route = &file->routes[file->route_count++];
+    memset(route, 0, sizeof(*route));
+    snprintf(route->id, sizeof(route->id), "%s", id);
+    snprintf(route->title, sizeof(route->title), "%s", id);
+    snprintf(route->group, sizeof(route->group), "Project");
+    snprintf(route->page, sizeof(route->page), "%s", id);
+    snprintf(route->source_path, sizeof(route->source_path), "%s",
+             file->display_path);
+    current_macro_guard(route->guard, sizeof(route->guard), macros,
+                        macro_count);
+    return route;
+}
+
+static void
+parse_route_property(KryFile *file, int line_no, KryRoute *route, char *line)
+{
+    char *q;
+
+    if(route == NULL)
+        die("%s:%d: route property outside route", file->path, line_no);
+    if(starts_word(line, "title")) {
+        q = trim(line + strlen("title"));
+        if(!parse_quoted(&q, route->title, sizeof(route->title)) ||
+           trim(q)[0] != '\0')
+            die("%s:%d: expected quoted route title", file->path, line_no);
+    } else if(starts_word(line, "group")) {
+        q = trim(line + strlen("group"));
+        if(!parse_quoted(&q, route->group, sizeof(route->group)) ||
+           trim(q)[0] != '\0')
+            die("%s:%d: expected quoted route group", file->path, line_no);
+    } else if(starts_word(line, "page")) {
+        q = trim(line + strlen("page"));
+        if(!parse_ident(&q, route->page, sizeof(route->page)) ||
+           trim(q)[0] != '\0')
+            die("%s:%d: expected route page id", file->path, line_no);
+    } else {
+        die("%s:%d: unknown route property: %s", file->path, line_no, line);
+    }
+}
+
+/* Ensure fn->body/body_line have room for one more statement, growing the
+ * buffers geometrically. Body lines are heap-allocated char[KC_BODY_LINE_MAX]
+ * each; there is no fixed per-function cap. */
+static void
+grow_body(KryFunction *fn)
+{
+    int next_cap;
+    char **next_body;
+    int *next_line;
+
+    if(fn->body_count < fn->body_cap)
+        return;
+    next_cap = fn->body_cap == 0 ? 128 : fn->body_cap * 2;
+    next_body = realloc(fn->body, (size_t)next_cap * sizeof(*next_body));
+    next_line = realloc(fn->body_line, (size_t)next_cap * sizeof(*next_line));
+    if(next_body == NULL || next_line == NULL)
+        die("out of memory while growing function body");
+    /* Zero the newly grown slots so vsnprintf writes into a valid buffer. */
+    for(int i = fn->body_cap; i < next_cap; i++) {
+        next_body[i] = calloc(KC_BODY_LINE_MAX, 1);
+        if(next_body[i] == NULL)
+            die("out of memory while growing function body");
+    }
+    fn->body = next_body;
+    fn->body_line = next_line;
+    fn->body_cap = next_cap;
+}
+
 static void
 add_body_line(KryFile *file, int source_line, const char *fmt, ...)
 {
@@ -171,11 +287,9 @@ add_body_line(KryFile *file, int source_line, const char *fmt, ...)
     fn = file->current;
     if(fn == NULL)
         die("%s: statement outside function", file->path);
-    if(fn->body_count >= KC_BODY_MAX)
-        die("%s: generated body is too large", file->path);
+    grow_body(fn);
     va_start(args, fmt);
-    vsnprintf(fn->body[fn->body_count],
-              sizeof(fn->body[fn->body_count]), fmt, args);
+    vsnprintf(fn->body[fn->body_count], KC_BODY_LINE_MAX, fmt, args);
     va_end(args);
     fn->body_line[fn->body_count] = source_line;
     fn->body_count++;
@@ -190,11 +304,9 @@ add_body(KryFile *file, const char *fmt, ...)
     fn = file->current;
     if(fn == NULL)
         die("%s: statement outside function", file->path);
-    if(fn->body_count >= KC_BODY_MAX)
-        die("%s: generated body is too large", file->path);
+    grow_body(fn);
     va_start(args, fmt);
-    vsnprintf(fn->body[fn->body_count],
-              sizeof(fn->body[fn->body_count]), fmt, args);
+    vsnprintf(fn->body[fn->body_count], KC_BODY_LINE_MAX, fmt, args);
     va_end(args);
     fn->body_line[fn->body_count] = file->current_line;
     fn->body_count++;
@@ -247,11 +359,27 @@ die(const char *fmt, ...)
             }
             if(column <= 0)
                 column = 1;
+            /* During parsing, a located error is recoverable: record it as a
+             * diagnostic and jump back to the statement boundary so kc can
+             * report the next error too. Fatal (non-parse) callers never set
+             * the recovery flag and fall through to exit. */
+            if(g_kc_recovering && g_kc_current_file != NULL) {
+                kc_error(g_kc_current_file, line, "%s", trim(p2 + 1));
+                g_kc_current_file->diagnostics[g_kc_current_file->diagnostic_count - 1].column = column;
+                longjmp(g_kc_recover_buf, 1);
+            }
+            /* A fatal error reached mid-parse: print any diagnostics already
+             * recorded by earlier recoveries before aborting, so the user sees
+             * every error found so far, not just this last one. */
+            if(g_kc_current_file != NULL && g_kc_current_file->diagnostic_count > 0)
+                kc_flush_diagnostics(g_kc_current_file);
             fprintf(stderr, "%s:%d:%d: error: %s\n",
                     message, line, column, trim(p2 + 1));
             exit(1);
         }
     }
+    if(g_kc_current_file != NULL && g_kc_current_file->diagnostic_count > 0)
+        kc_flush_diagnostics(g_kc_current_file);
     fprintf(stderr, "kc: error: %s\n", message);
     exit(1);
 }
@@ -602,10 +730,24 @@ static void
 convert_var_decl(char *dst, size_t dst_size, const char *name,
                  const char *type)
 {
+    convert_var_decl_file(dst, dst_size, name, type, NULL);
+}
+
+static void
+convert_var_decl_file(char *dst, size_t dst_size, const char *name,
+                      const char *type, const KryFile *file)
+{
     char tmp[512];
+    char stripped[512];
     char *t;
 
-    snprintf(tmp, sizeof(tmp), "%s", type != NULL ? type : "");
+    if(file != NULL)
+        strip_module_alias(stripped, sizeof(stripped), file,
+                           type != NULL ? type : "");
+    else
+        snprintf(stripped, sizeof(stripped), "%s",
+                 type != NULL ? type : "");
+    snprintf(tmp, sizeof(tmp), "%s", stripped);
     t = trim(tmp);
     if(t[0] == '[') {
         char dims[256] = "";
@@ -639,6 +781,13 @@ convert_var_decl(char *dst, size_t dst_size, const char *name,
 static void
 convert_arg_list(char *dst, size_t dst_size, const char *src)
 {
+    convert_arg_list_file(dst, dst_size, src, NULL);
+}
+
+static void
+convert_arg_list_file(char *dst, size_t dst_size, const char *src,
+                      const KryFile *file)
+{
     char tmp[512];
     char out[512] = "";
     char *part;
@@ -663,7 +812,7 @@ convert_arg_list(char *dst, size_t dst_size, const char *src)
                 *colon = '\0';
                 name = trim(part);
                 type = trim(colon + 1);
-                convert_var_decl(item, sizeof(item), name, type);
+                convert_var_decl_file(item, sizeof(item), name, type, file);
             }
         }
         if(out[0] != '\0')
@@ -952,7 +1101,7 @@ emit_typed_decl(KryFile *file, int line_no, char *line)
     type = trim(type);
     if(type[0] == '\0')
         die("%s:%d: expected variable type", file->path, line_no);
-    convert_var_decl(decl, sizeof(decl), name, type);
+    convert_var_decl_file(decl, sizeof(decl), name, type, file);
     if(expr != NULL && expr[0] != '\0' && strchr(expr, '(') != NULL)
         emit_source_push(file, line_no);
     if(expr != NULL && expr[0] != '\0')
@@ -1103,7 +1252,7 @@ emit_state_decl(KryFile *file, int line_no, char *line)
         *eq = '\0';
         expr = trim(eq + 1);
     }
-    convert_var_decl(decl, sizeof(decl), name, trim(type));
+    convert_var_decl_file(decl, sizeof(decl), name, trim(type), file);
     if(expr != NULL && expr[0] != '\0') {
         char out[KC_BODY_LINE_MAX];
         char rewritten[KC_BODY_LINE_MAX];
@@ -1146,7 +1295,7 @@ emit_state_decl_start(KryFile *file, int line_no, char *line)
     *eq = '\0';
     type = trim(colon + 1);
     expr = trim(eq + 1);
-    convert_var_decl(decl, sizeof(decl), name, type);
+    convert_var_decl_file(decl, sizeof(decl), name, type, file);
     {
         char rewritten[KC_BODY_LINE_MAX];
 
@@ -1309,7 +1458,7 @@ emit_colon_extern_decl(KryFile *file, int line_no, char *name, char *rhs,
     if(end == NULL)
         die("%s:%d: expected ')' in extern function", file->path, line_no);
     *end = '\0';
-    convert_arg_list(args, sizeof(args), trim(q + 1));
+    convert_arg_list_file(args, sizeof(args), trim(q + 1), file);
 
     suffix = trim(end + 1);
     if(suffix[0] == '-' && suffix[1] == '>') {
@@ -1389,7 +1538,7 @@ emit_colon_function_decl(KryFile *file, int line_no, char *name, char *rhs,
     fn->exact_name = 1;
     fn->is_public = 1;
     snprintf(fn->screen, sizeof(fn->screen), "%s", name);
-    convert_arg_list(fn->args, sizeof(fn->args), trim(q + 1));
+    convert_arg_list_file(fn->args, sizeof(fn->args), trim(q + 1), file);
     snprintf(fn->guard, sizeof(fn->guard), "%s", guard != NULL ? guard : "");
 
     suffix = trim(end + 1);
@@ -1411,7 +1560,7 @@ emit_colon_function_decl(KryFile *file, int line_no, char *name, char *rhs,
         ret = trim(ret);
         if(ret[0] == '\0')
             die("%s:%d: expected return type", file->path, line_no);
-        snprintf(fn->return_type, sizeof(fn->return_type), "%s", ret);
+        strip_module_alias(fn->return_type, sizeof(fn->return_type), file, ret);
     } else {
         char *export_tag = strstr(suffix, "#export");
         char *private_tag = strstr(suffix, "#private");
@@ -1581,7 +1730,7 @@ emit_colon_global_decl(KryFile *file, int line_no, const char *name, char *rhs,
     if(type[0] == '\0')
         die("%s:%d: expected global type", file->path, line_no);
 
-    convert_var_decl(decl, sizeof(decl), name, trim(type));
+    convert_var_decl_file(decl, sizeof(decl), name, trim(type), file);
     if(eq != NULL) {
         char rewritten[KC_BODY_LINE_MAX];
 
@@ -1634,7 +1783,7 @@ emit_struct_field(KryFile *file, int line_no, int is_public, const char *line)
             line_no, name);
     if(type[0] == '\0')
         die("%s:%d: expected struct field type", file->path, line_no);
-    convert_var_decl(out, sizeof(out), name, type);
+    convert_var_decl_file(out, sizeof(out), name, type, file);
     add_type_line(file, is_public, "    %s;", out);
 }
 
@@ -2441,7 +2590,7 @@ emit_c_block_line(KryFile *file, int line_no, char *line,
                 die("%s:%d: expected ')' in extern function", file->path,
                     line_no);
             *end = '\0';
-            convert_arg_list(args, sizeof(args), trim(q + 1));
+            convert_arg_list_file(args, sizeof(args), trim(q + 1), file);
             q = trim(end + 1);
         }
         if(q[0] == '-' && q[1] == '>') {
@@ -2962,9 +3111,15 @@ parse_kry(KryFile *file)
 {
     char *text;
     char *line_start;
+
+    /* Enable per-statement error recovery for this file. Located die() calls
+     * reached while parsing record a diagnostic and longjmp to the nearest
+     * statement boundary instead of aborting the compile. */
+    g_kc_current_file = file;
     int line_no = 1;
     int depth = 0;
     int in_screen = 0;
+    int in_route = 0;
     int in_app = 0;
     int in_state = 0;
     int in_state_decl = 0;
@@ -2995,6 +3150,7 @@ parse_kry(KryFile *file)
     int macro_count = 0;
     KryMacroFrame top_macros[64];
     int top_macro_count = 0;
+    KryRoute *current_route = NULL;
 
     file->text = read_text_file(file->path);
     text = file->text;
@@ -3168,6 +3324,27 @@ parse_kry(KryFile *file)
                                 line_no);
                         parse_ident(&q, mode, sizeof(mode));
                         file->app_dark_mode = strcmp(mode, "dark") == 0;
+                    } else if(starts_word(line, "init")) {
+                        char *q = trim(line + strlen("init"));
+
+                        if(!parse_ident(&q, file->app_init,
+                                        sizeof(file->app_init)))
+                            die("%s:%d: expected init function name",
+                                file->path, line_no);
+                    } else if(starts_word(line, "frame")) {
+                        char *q = trim(line + strlen("frame"));
+
+                        if(!parse_ident(&q, file->app_frame,
+                                        sizeof(file->app_frame)))
+                            die("%s:%d: expected frame function name",
+                                file->path, line_no);
+                    } else if(starts_word(line, "shutdown")) {
+                        char *q = trim(line + strlen("shutdown"));
+
+                        if(!parse_ident(&q, file->app_shutdown,
+                                        sizeof(file->app_shutdown)))
+                            die("%s:%d: expected shutdown function name",
+                                file->path, line_no);
                     } else {
                         die("%s:%d: unknown app property: %s",
                             file->path, line_no, line);
@@ -3179,6 +3356,23 @@ parse_kry(KryFile *file)
                     die("%s:%d: unexpected }", file->path, line_no);
                 if(depth == 0)
                     in_app = 0;
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
+            } else if(in_route) {
+                if(!(line_is_close(line) && depth == 1))
+                    parse_route_property(file, line_no, current_route, line);
+                depth += opens;
+                depth -= closes;
+                if(depth < 0)
+                    die("%s:%d: unexpected }", file->path, line_no);
+                if(depth == 0) {
+                    in_route = 0;
+                    current_route = NULL;
+                }
                 *p = saved;
                 if(saved == '\0')
                     break;
@@ -3375,6 +3569,29 @@ parse_kry(KryFile *file)
                 } else {
                     add_const(file, line_no, name, rhs);
                 }
+            } else if(!in_screen && starts_word(line, "route")) {
+                char *q = trim(line + strlen("route"));
+                char id[KC_NAME_MAX];
+
+                if(depth != 0)
+                    die("%s:%d: nested route blocks are not supported",
+                        file->path, line_no);
+                if(!parse_ident(&q, id, sizeof(id)))
+                    die("%s:%d: expected route id", file->path, line_no);
+                q = trim(q);
+                if(strcmp(q, "{") != 0)
+                    die("%s:%d: expected route block", file->path, line_no);
+                current_route = add_route(file, line_no, id, top_macros,
+                                          top_macro_count);
+                in_route = 1;
+                depth += opens;
+                depth -= closes;
+                *p = saved;
+                if(saved == '\0')
+                    break;
+                line_start = p + 1;
+                line_no++;
+                continue;
             } else if(!in_screen && starts_word(line, "app")) {
                 char *q = trim(line + strlen("app"));
 
@@ -3487,7 +3704,7 @@ parse_kry(KryFile *file)
                         die("%s:%d: expected ) in page argument list",
                             file->path, line_no);
                     *end = '\0';
-                    convert_arg_list(fn->args, sizeof(fn->args), trim(q + 1));
+                    convert_arg_list_file(fn->args, sizeof(fn->args), trim(q + 1), file);
                     q = trim(end + 1);
                 }
                 if(q[0] == '-' && q[1] == '>') {
@@ -3497,8 +3714,8 @@ parse_kry(KryFile *file)
                             line_no);
                     if(q[strlen(q) - 1] == '{')
                         q[strlen(q) - 1] = '\0';
-                    snprintf(fn->return_type, sizeof(fn->return_type),
-                             "%s", trim(q));
+                    strip_module_alias(fn->return_type, sizeof(fn->return_type),
+                                        file, trim(q));
                 }
                 in_screen = 1;
             } else if(in_screen && depth > 0 &&
@@ -3508,7 +3725,7 @@ parse_kry(KryFile *file)
 
                 if(fn == NULL)
                     die("%s:%d: args outside function", file->path, line_no);
-                snprintf(fn->args, sizeof(fn->args), "%s", q);
+                strip_module_alias(fn->args, sizeof(fn->args), file, q);
             } else if(in_screen && depth > 0 &&
                       starts_header_directive(line, "returns")) {
                 char *q = trim(line + strlen("returns"));
@@ -3518,7 +3735,8 @@ parse_kry(KryFile *file)
                     die("%s:%d: returns outside function", file->path, line_no);
                 if(q[0] == '\0')
                     die("%s:%d: expected return type", file->path, line_no);
-                snprintf(fn->return_type, sizeof(fn->return_type), "%s", q);
+                strip_module_alias(fn->return_type, sizeof(fn->return_type),
+                                    file, q);
             } else if(in_screen && depth > 0 &&
                       starts_header_directive(line, "call")) {
                 char *q = trim(line + strlen("call"));
@@ -3540,7 +3758,11 @@ parse_kry(KryFile *file)
                      depth == macro_depths[macro_count - 1])) {
                     if(pending_stmt[0] != '\0') {
                         file->current_line = pending_line;
-                        parse_statement(file, pending_line, pending_stmt);
+                        if(setjmp(g_kc_recover_buf) == 0) {
+                            g_kc_recovering = 1;
+                            parse_statement(file, pending_line, pending_stmt);
+                        }
+                        g_kc_recovering = 0;
                         file->current_line = 0;
                         pending_stmt[0] = '\0';
                         pending_line = 0;
@@ -3624,8 +3846,12 @@ process_screen_line:
                            pending_delta == 0 &&
                            !line_starts_continuation(line)) {
                             file->current_line = pending_line;
-                            parse_statement(file, pending_line,
-                                            pending_stmt);
+                            if(setjmp(g_kc_recover_buf) == 0) {
+                                g_kc_recovering = 1;
+                                parse_statement(file, pending_line,
+                                                pending_stmt);
+                            }
+                            g_kc_recovering = 0;
                             file->current_line = 0;
                             pending_stmt[0] = '\0';
                             pending_line = 0;
@@ -3700,7 +3926,11 @@ process_screen_line:
 
                     if(stmt[0] != '\0') {
                         file->current_line = stmt_line;
-                        parse_statement(file, stmt_line, stmt);
+                        if(setjmp(g_kc_recover_buf) == 0) {
+                            g_kc_recovering = 1;
+                            parse_statement(file, stmt_line, stmt);
+                        }
+                        g_kc_recovering = 0;
                         file->current_line = 0;
                         if(parsed_pending) {
                             pending_stmt[0] = '\0';
@@ -3731,12 +3961,14 @@ process_screen_line:
         line_no++;
     }
     if(file->function_count == 0 && file->public_type_count == 0 &&
-       file->private_type_count == 0)
+       file->private_type_count == 0 && file->route_count == 0)
         die("%s: missing declarations", file->path);
     if(in_raw)
         die("%s: unterminated raw block", file->path);
     if(in_c_block)
         die("%s: unterminated c block", file->path);
+    if(in_route)
+        die("%s:%d: unterminated route block", file->path, line_no);
     if(in_struct)
         die("%s:%d: unterminated struct declaration", file->path, line_no);
     if(macro_count != 0)
@@ -3971,11 +4203,84 @@ module_for_alias(const KryFile *file, const char *alias, char *module,
 {
     for(int i = 0; i < file->use_count; i++) {
         if(strcmp(alias, file->use_aliases[i]) == 0) {
-            snprintf(module, module_size, "%s", file->use_modules[i]);
+            if(module != NULL && module_size > 0)
+                snprintf(module, module_size, "%s", file->use_modules[i]);
             return 1;
         }
     }
     return 0;
+}
+
+/* Rewrite qualified type references in C type text. Kry imports another module
+ * with `alias :: #import "mod/path"` and then writes `alias.Type` to reference a
+ * struct/enum declared there. In C the type uses its bare declared name across
+ * translation units (kc emits `typedef struct Counter {...} Counter;` without a
+ * module prefix), so `alias.Type` must become just `Type`. This is distinct from
+ * qualified *calls* (`alias.fn(...)`), which kc rewrites to `module_fn(...)`.
+ *
+ * Walks the text, and for each `alias.member` pair where alias is a known module
+ * alias, emits `member` verbatim and skips past `alias.`. Everything else
+ * (including string literals, since type text never contains them in practice)
+ * is copied unchanged. */
+static void
+strip_module_alias(char *dst, size_t dst_size, const KryFile *file,
+                   const char *src)
+{
+    size_t n = 0;
+
+    if(dst_size == 0)
+        return;
+    for(const char *p = src; *p != '\0' && n + 1 < dst_size;) {
+        if((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+           *p == '_') {
+            char ident[KC_NAME_MAX];
+            const char *after;
+            size_t ident_len = 0;
+
+            while((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') ||
+                  (*p >= '0' && *p <= '9') || *p == '_') {
+                if(ident_len + 1 < sizeof(ident))
+                    ident[ident_len++] = *p;
+                p++;
+            }
+            ident[ident_len] = '\0';
+            after = p;
+            while(*after == ' ' || *after == '\t')
+                after++;
+            if(*after == '.' &&
+               module_for_alias(file, ident, NULL, 0)) {
+                const char *member = after + 1;
+
+                while(*member == ' ' || *member == '\t')
+                    member++;
+                if((*member >= 'A' && *member <= 'Z') ||
+                   (*member >= 'a' && *member <= 'z') ||
+                   *member == '_') {
+                    /* Drop `alias.` and copy only the member name. */
+                    while((*member >= 'A' && *member <= 'Z') ||
+                          (*member >= 'a' && *member <= 'z') ||
+                          (*member >= '0' && *member <= '9') ||
+                          *member == '_') {
+                        if(n + 1 < dst_size)
+                            dst[n++] = *member;
+                        member++;
+                    }
+                    p = member;
+                    continue;
+                }
+            }
+            /* Not a qualified type: copy the identifier as-is. */
+            {
+                size_t i;
+
+                for(i = 0; i < ident_len && n + 1 < dst_size; i++)
+                    dst[n++] = ident[i];
+            }
+            continue;
+        }
+        dst[n++] = *p++;
+    }
+    dst[n] = '\0';
 }
 
 static int
@@ -4154,8 +4459,24 @@ rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
                     }
                     member[member_len] = '\0';
                     if(module_for_alias(file, ident, module, sizeof(module))) {
-                        int written = snprintf(dst + n, dst_size - n,
+                        const char *peek = after;
+                        int written;
+
+                        while(*peek == ' ' || *peek == '\t')
+                            peek++;
+                        if(*peek == '(') {
+                            /* Qualified call: alias.fn(...) -> module_fn(...).
+                             * Module functions are emitted with the module
+                             * prefix. */
+                            written = snprintf(dst + n, dst_size - n,
                                                "%s_%s", module, member);
+                        } else {
+                            /* Qualified type/value: alias.Type -> Type.
+                             * Structs and enums use their bare declared name
+                             * in C, so drop the module alias. */
+                            written = snprintf(dst + n, dst_size - n,
+                                               "%s", member);
+                        }
                         if(written < 0)
                             written = 0;
                         if((size_t)written >= dst_size - n)
@@ -4278,23 +4599,35 @@ apply_defers(KryFunction *fn)
     if(!has_defer)
         return;
 
+    /* Working buffers, heap-allocated and sized to the body. There is no fixed
+     * cap: scope_count and defer_count are each bounded by body_count, and the
+     * rebuilt body holds at most each original line plus each defer emitted
+     * once at a scope exit, so 2*body_count is a safe upper bound. */
+    int cap = fn->body_count * 2 + 16;
+    int *scope_kind = calloc((size_t)cap, sizeof(*scope_kind));
+    KryDefer *defers = calloc((size_t)cap, sizeof(*defers));
+    char **out_body = calloc((size_t)cap, sizeof(*out_body));
+    if(scope_kind == NULL || defers == NULL || out_body == NULL)
+        die("out of memory in apply_defers");
+    for(int i = 0; i < cap; i++) {
+        out_body[i] = calloc(KC_BODY_LINE_MAX, 1);
+        if(out_body[i] == NULL)
+            die("out of memory in apply_defers");
+    }
+
     /* Scope stack: index 0 is the function body. */
-    int scope_kind[KC_BODY_MAX];
     int scope_count = 0;
     scope_kind[scope_count++] = KRY_SCOPE_BLOCK;
 
     /* Pending defers, in registration order. */
-    KryDefer defers[KC_BODY_MAX];
     int defer_count = 0;
 
-    /* Rebuilt body. */
-    static char out_body[KC_BODY_MAX][KC_BODY_LINE_MAX];
     int out_count = 0;
 
 #define EMIT_BODY(text)                                            \
     do {                                                           \
-        if(out_count >= KC_BODY_MAX) goto done;                    \
-        snprintf(out_body[out_count], sizeof(out_body[out_count]), \
+        if(out_count >= cap) goto done;                            \
+        snprintf(out_body[out_count], KC_BODY_LINE_MAX,            \
                  "%s", (text));                                    \
         out_count++;                                               \
     } while(0)
@@ -4340,7 +4673,7 @@ apply_defers(KryFunction *fn)
                 stmt++;
             if(*stmt == '\0')
                 continue;   /* malformed; parse_statement already validated */
-            if(defer_count < KC_BODY_MAX) {
+            if(defer_count < cap) {
                 defers[defer_count].scope_index = scope_count - 1;
                 defers[defer_count].spent = 0;
                 snprintf(defers[defer_count].stmt,
@@ -4381,7 +4714,7 @@ apply_defers(KryFunction *fn)
             EMIT_BODY(raw);
             /* If the line reopens a scope (`} else {`, `} else if (...) {`),
              * push a fresh branch scope for the new block. */
-            if(strchr(text, '{') != NULL && scope_count < KC_BODY_MAX)
+            if(strchr(text, '{') != NULL && scope_count < cap)
                 scope_kind[scope_count++] = KRY_SCOPE_BRANCH;
             continue;
         }
@@ -4413,7 +4746,7 @@ apply_defers(KryFunction *fn)
                 scope_count--;
             }
             EMIT_BODY(raw);
-            if(scope_count < KC_BODY_MAX)
+            if(scope_count < cap)
                 scope_kind[scope_count++] = KRY_SCOPE_CASE;
             continue;
         }
@@ -4475,11 +4808,11 @@ apply_defers(KryFunction *fn)
         if(text[0] != '#' && brace_delta(text) > 0) {
             int kind = scope_kind_for_open(text);
             if(kind == KRY_SCOPE_LOOP) {
-                if(scope_count < KC_BODY_MAX)
+                if(scope_count < cap)
                     scope_kind[scope_count++] = KRY_SCOPE_LOOP;
-                if(scope_count < KC_BODY_MAX)
+                if(scope_count < cap)
                     scope_kind[scope_count++] = KRY_SCOPE_BLOCK;
-            } else if(scope_count < KC_BODY_MAX) {
+            } else if(scope_count < cap) {
                 scope_kind[scope_count++] = kind;
             }
         }
@@ -4504,11 +4837,34 @@ done:
 #undef EMIT_BODY
 #undef EMIT_UNWIND
 
-    for(int i = 0; i < out_count && i < KC_BODY_MAX; i++) {
-        snprintf(fn->body[i], sizeof(fn->body[i]), "%s", out_body[i]);
+    /* Grow fn->body/body_line to hold the rebuilt body (defers can expand it
+     * beyond the original line count), then splice the rebuilt lines back in. */
+    if(out_count > fn->body_cap) {
+        char **nb = realloc(fn->body, (size_t)out_count * sizeof(*nb));
+        int *nl = realloc(fn->body_line,
+                          (size_t)out_count * sizeof(*nl));
+        if(nb == NULL || nl == NULL)
+            die("out of memory splicing deferred body");
+        for(int i = fn->body_cap; i < out_count; i++) {
+            nb[i] = calloc(KC_BODY_LINE_MAX, 1);
+            if(nb[i] == NULL)
+                die("out of memory splicing deferred body");
+        }
+        fn->body = nb;
+        fn->body_line = nl;
+        fn->body_cap = out_count;
+    }
+    for(int i = 0; i < out_count; i++) {
+        snprintf(fn->body[i], KC_BODY_LINE_MAX, "%s", out_body[i]);
         fn->body_line[i] = 0;
     }
     fn->body_count = out_count;
+
+    for(int i = 0; i < cap; i++)
+        free(out_body[i]);
+    free(out_body);
+    free(scope_kind);
+    free(defers);
 }
 
 static void
@@ -4555,11 +4911,28 @@ function_takes_rectangle(const KryFunction *fn)
     return fn != NULL && strstr(fn->args, "Rectangle") != NULL;
 }
 
+/* Resolve a lifecycle hook name (declared in the app{} block) to the C symbol
+ * for the function it names in this file. Colon functions get their module/
+ * export-correct C name; anything not found is emitted verbatim so the C
+ * compiler reports the unresolved symbol with a real name. */
+static void
+app_hook_c_name(char *dst, size_t dst_size, const KryFile *file,
+                const char *hook_name)
+{
+    for(int i = 0; i < file->function_count; i++) {
+        const KryFunction *fn = &file->functions[i];
+
+        if(fn->exact_name && strcmp(fn->screen, hook_name) == 0) {
+            kry_function_c_name(dst, dst_size, file, fn);
+            return;
+        }
+    }
+    snprintf(dst, dst_size, "%s", hook_name);
+}
+
 static void
 write_app_main(FILE *out, const KryFile *file)
 {
-    const KryFunction *screen = NULL;
-    char screen_name[KC_NAME_MAX + 16];
     char title[512];
     int width = file->app_width > 0 ? file->app_width : 800;
     int height = file->app_height > 0 ? file->app_height : 600;
@@ -4567,40 +4940,92 @@ write_app_main(FILE *out, const KryFile *file)
 
     if(file->app_title[0] == '\0')
         return;
-    for(int i = 0; i < file->function_count; i++) {
-        if(file->functions[i].is_public && !file->functions[i].exact_name) {
-            screen = &file->functions[i];
-            break;
-        }
-    }
-    if(screen == NULL)
-        return;
-    function_name(screen_name, sizeof(screen_name), file, screen);
     c_string_literal(title, sizeof(title), file->app_title);
-    fprintf(out, "\nint\nmain(void)\n{\n");
-    fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
-    fprintf(out, "    SetTargetFPS(%d);\n", fps);
-    if(file->app_font_examples)
-        fprintf(out, "    LoadExampleUIFont();\n");
-    fprintf(out, "    InitUI(%d, %d, GetUIScale());\n", width, height);
-    if(file->app_theme[0] != '\0')
-        fprintf(out, "    SetCurrentTheme(%s, %d);\n",
-                file->app_theme, file->app_dark_mode);
-    fprintf(out, "    while(!WindowShouldClose()) {\n");
-    fprintf(out, "        BeginDrawing();\n");
-    fprintf(out, "        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());\n");
-    if(function_takes_rectangle(screen))
-        fprintf(out, "        %s((Rectangle){0, 0, GetScreenWidth(), GetScreenHeight()});\n",
-                screen_name);
-    else
-        fprintf(out, "        %s();\n", screen_name);
-    fprintf(out, "        EndDrawing();\n");
-    fprintf(out, "    }\n");
-    if(file->app_font_examples)
-        fprintf(out, "    UnloadExampleUIFont();\n");
-    fprintf(out, "    CloseWindow();\n");
-    fprintf(out, "    return 0;\n");
-    fprintf(out, "}\n");
+
+    /* Hook-driven main: the program owns its loop. init() runs once before the
+     * window loop, frame() runs each iteration, shutdown() runs once after.
+     * The framework does not bracket drawing or UI frames — the program calls
+     * BeginDrawing/BeginUIFrame/EndDrawing itself, so it can host nested
+     * render-texture passes, input overrides, and inspection overlays exactly
+     * like a hand-written C app. */
+    if(file->app_frame[0] != '\0') {
+        char init_name[KC_NAME_MAX + 16];
+        char frame_name[KC_NAME_MAX + 16];
+        char shutdown_name[KC_NAME_MAX + 16];
+
+        app_hook_c_name(frame_name, sizeof(frame_name), file,
+                        file->app_frame);
+        fprintf(out, "\nint\nmain(void)\n{\n");
+        fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
+        fprintf(out, "    SetTargetFPS(%d);\n", fps);
+        if(file->app_font_examples)
+            fprintf(out, "    LoadExampleUIFont();\n");
+        fprintf(out, "    InitUI(%d, %d, GetUIScale());\n", width, height);
+        if(file->app_theme[0] != '\0')
+            fprintf(out, "    SetCurrentTheme(%s, %d);\n",
+                    file->app_theme, file->app_dark_mode);
+        if(file->app_init[0] != '\0') {
+            app_hook_c_name(init_name, sizeof(init_name), file,
+                            file->app_init);
+            fprintf(out, "    %s();\n", init_name);
+        }
+        fprintf(out, "    while(!WindowShouldClose())\n");
+        fprintf(out, "        %s();\n", frame_name);
+        if(file->app_shutdown[0] != '\0') {
+            app_hook_c_name(shutdown_name, sizeof(shutdown_name), file,
+                            file->app_shutdown);
+            fprintf(out, "    %s();\n", shutdown_name);
+        }
+        if(file->app_font_examples)
+            fprintf(out, "    UnloadExampleUIFont();\n");
+        fprintf(out, "    CloseWindow();\n");
+        fprintf(out, "    return 0;\n");
+        fprintf(out, "}\n");
+        return;
+    }
+
+    /* Single-screen main (the examples' app{}/screen dialect): one public
+     * non-exact screen function is called each frame inside a fixed
+     * BeginDrawing/BeginUIFrame/EndDrawing block. */
+    {
+        const KryFunction *screen = NULL;
+        char screen_name[KC_NAME_MAX + 16];
+
+        for(int i = 0; i < file->function_count; i++) {
+            if(file->functions[i].is_public &&
+               !file->functions[i].exact_name) {
+                screen = &file->functions[i];
+                break;
+            }
+        }
+        if(screen == NULL)
+            return;
+        function_name(screen_name, sizeof(screen_name), file, screen);
+        fprintf(out, "\nint\nmain(void)\n{\n");
+        fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
+        fprintf(out, "    SetTargetFPS(%d);\n", fps);
+        if(file->app_font_examples)
+            fprintf(out, "    LoadExampleUIFont();\n");
+        fprintf(out, "    InitUI(%d, %d, GetUIScale());\n", width, height);
+        if(file->app_theme[0] != '\0')
+            fprintf(out, "    SetCurrentTheme(%s, %d);\n",
+                    file->app_theme, file->app_dark_mode);
+        fprintf(out, "    while(!WindowShouldClose()) {\n");
+        fprintf(out, "        BeginDrawing();\n");
+        fprintf(out, "        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());\n");
+        if(function_takes_rectangle(screen))
+            fprintf(out, "        %s((Rectangle){0, 0, GetScreenWidth(), GetScreenHeight()});\n",
+                    screen_name);
+        else
+            fprintf(out, "        %s();\n", screen_name);
+        fprintf(out, "        EndDrawing();\n");
+        fprintf(out, "    }\n");
+        if(file->app_font_examples)
+            fprintf(out, "    UnloadExampleUIFont();\n");
+        fprintf(out, "    CloseWindow();\n");
+        fprintf(out, "    return 0;\n");
+        fprintf(out, "}\n");
+    }
 }
 
 static void
@@ -4789,6 +5214,20 @@ generated_header_rel(char *dst, size_t dst_size, const KryFile *file,
     char gen_rel[KC_PATH_MAX];
 
     strip_kry_ext(gen_rel, sizeof(gen_rel), rel);
+    if(file->module_file[0] != '\0') {
+        char dir[KC_PATH_MAX];
+        char *slash;
+
+        snprintf(dir, sizeof(dir), "%s", gen_rel);
+        slash = strrchr(dir, '/');
+        if(slash != NULL) {
+            *slash = '\0';
+            snprintf(gen_rel, sizeof(gen_rel), "%s/%s", dir,
+                     file->module_file);
+        } else {
+            snprintf(gen_rel, sizeof(gen_rel), "%s", file->module_file);
+        }
+    }
     snprintf(dst, dst_size, "%s.h", gen_rel);
 }
 
@@ -4898,11 +5337,23 @@ main(int argc, char **argv)
         }
         files[index] = file;
     }
-    if(!had_errors)
+    if(!had_errors) {
         write_project_header(files, file_count, root, out_dir);
+        write_project_source(files, file_count, root, out_dir);
+    }
     for(int i = 0; i < file_count; i++) {
         KryFile *file = files[i];
 
+        for(int j = 0; j < file->function_count; j++) {
+            KryFunction *fn = &file->functions[j];
+
+            for(int k = 0; k < fn->body_cap; k++)
+                free(fn->body[k]);
+            free(fn->body);
+            free(fn->body_line);
+        }
+        free(file->functions);
+        free(file->routes);
         free(file->text);
         free(file);
     }

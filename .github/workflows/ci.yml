@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+# Cancel a superseded run on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-linux:
+    name: Build and test (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Packages
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libssl-dev pkg-config \
+            zlib1g-dev libzstd-dev libbrotli-dev \
+            libsdl2-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev
+
+      - name: Build
+        run: |
+          set -euo pipefail
+          make clean CMAKE=/usr/bin/cmake
+          make all CMAKE=/usr/bin/cmake
+
+      - name: Test
+        run: make test CMAKE=/usr/bin/cmake
+
+  test-freebsd:
+    name: Build and test (FreeBSD)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build and test on FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          mem: 4096
+          prepare: |
+            set -eu
+            pkg install -y gmake cmake pkgconf \
+              sdl2 libdrm gbm egl glesv2 \
+              curl openssl zstd brotli \
+              git
+          run: |
+            set -eu
+            gmake clean
+            gmake all
+            gmake test

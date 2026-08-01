@@ -85,7 +85,7 @@ CURL_CODEC_LDLIBS ?= $(strip \
   $(shell pkg-config --libs libbrotlicommon 2>/dev/null) \
   $(shell pkg-config --libs libzstd 2>/dev/null))
 RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
-RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSUPPORT_AUTOMATION_EVENTS=0 -DSUPPORT_CLIPBOARD_IMAGE=0 -DSUPPORT_FILEFORMAT_BMP=0 -DSUPPORT_FILEFORMAT_GIF=0 -DSUPPORT_FILEFORMAT_QOI=0 -DSUPPORT_FILEFORMAT_DDS=0 -DSUPPORT_FILEFORMAT_TTF=1
+RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSUPPORT_AUTOMATION_EVENTS=0 -DSUPPORT_CLIPBOARD_IMAGE=0 -DSUPPORT_FILEFORMAT_BMP=0 -DSUPPORT_FILEFORMAT_GIF=0 -DSUPPORT_FILEFORMAT_QOI=0 -DSUPPORT_FILEFORMAT_DDS=0 -DSUPPORT_FILEFORMAT_TTF=1 -DMAX_CLIPBOARD_BUFFER_LENGTH=1048576
 APP_RAYLIB_CONFIG ?= $(filter-out -DSUPPORT_MODULE_RAUDIO=0 -DSUPPORT_FILEFORMAT_PNG=0 -DSUPPORT_FILEFORMAT_JPG=0 -DSUPPORT_FILEFORMAT_OGG=0 -DSUPPORT_FILEFORMAT_MP3=0,$(RAY_RAYLIB_CONFIG)) -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1
 KRYON_STATIC_PACKAGE_EXTERNAL_LIBS ?= $(RAY_LDLIBS) $(KRYON_OPENSSL_SSL_LDLIB) $(KRYON_OPENSSL_CRYPTO_LDLIB) -lpthread -lm
 KRYON_STATIC_PACKAGE_LIBS ?= -lkryon -lraylib -loqs -lcurl -lcmark-gfm-extensions -lcmark-gfm $(KRYON_STATIC_PACKAGE_EXTERNAL_LIBS)
@@ -129,6 +129,7 @@ RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
 PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
+UI_TEXT_EDIT_TEST = $(BUILD_DIR)/tests/ui_text_edit_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean run tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
@@ -138,16 +139,16 @@ all: $(LIB) $(KC) $(KT) $(KI) $(KRYON_APP)
 run: $(KI)
 	@if [ -n "$(PROJECT)" ]; then \
 		project_path=$$(cd "$(PROJECT)" && pwd); \
-		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
+		KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
 	elif [ -n "$(ARGS)" ]; then \
 		project_path=$$(cd "$(ARGS)" && pwd); \
-		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
+		KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
 	elif [ -n "$(KRYON_PROJECT)" ]; then \
 		project_path=$$(cd "$(KRYON_PROJECT)" && pwd); \
-		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
+		KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
 	else \
 		project_path=$$(pwd); \
-		KRYON_INSPECT=1 KRYON_PROJECT_ROOT="$$project_path" $(KI); \
+		KRYON_PROJECT_ROOT="$$project_path" $(KI); \
 	fi
 
 tools: $(KC) $(KT) $(KI) $(KRYON_APP)
@@ -174,7 +175,7 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KI) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
 	sh tests/kt_cli_test.sh $(KT)
 	$(KSYNC_ACCOUNT_TEST)
@@ -186,6 +187,7 @@ test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KSYNC_ACCOUNT_TEST) 
 	$(UI_TK_TEST)
 	$(PREVIEW_TEST)
 	$(PLATFORM_THREAD_TEST)
+	$(UI_TEXT_EDIT_TEST)
 
 bsd-check:
 	$(MAKE) clean
@@ -219,6 +221,9 @@ $(KC): $(KC_SRCS) $(KC_HDRS) | $(BUILD_DIR)/bin
 $(KT): cmd/kt/main.c | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ cmd/kt/main.c
 
+KI_SRCS := cmd/ki/main.c cmd/ki/start_page.c
+KI_HDRS := cmd/ki/ki_internal.h
+
 $(KRYON_APP): scripts/kryon-app.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon-app.sh $@
 	chmod 755 $@
@@ -234,9 +239,9 @@ else
   KRYON_BACKEND_LINK_LIBS =
 endif
 
-$(KI): cmd/ki/main.c $(LIB) $(KRYON_BACKEND_LINK_PREREQ) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)/bin
+$(KI): $(KI_SRCS) $(KI_HDRS) $(LIB) $(KRYON_BACKEND_LINK_PREREQ) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS) -Isrc/ui $(KRYON_BACKEND_LINK_CFLAGS) -o $@ \
-		cmd/ki/main.c \
+		$(KI_SRCS) \
 		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
 		$(KRYON_BACKEND_LINK_LIBS) $(KRYON_LIBOQS_A) $(KRYON_CURL_LDLIBS) \
 		$(KRYON_MARKDOWN_LDLIBS) \
@@ -355,6 +360,10 @@ $(PLATFORM_THREAD_TEST): tests/platform_thread_test.c src/platform/platform_thre
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/platform_thread_test.c \
 		src/platform/platform_thread.c -lpthread -o $@
 
+$(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c src/ui/ui_text_edit.c include/kryon.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_text_edit_test.c src/ui/ui_text_edit.c -o $@
+
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh "$(ICON_DIR)" $@
 
@@ -366,11 +375,11 @@ $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c | $(BUILD_DIR) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c $< -o $@
 
 $(BUILD_DIR):
 	mkdir -p $@

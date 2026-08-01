@@ -7,9 +7,9 @@ app_screen_count(void *userdata)
 {
     App *app = userdata;
 
-    if(app == 0 || app->screens == 0 || app->screen_count < 0)
+    if(app == 0 || app->routes == 0 || app->route_count < 0)
         return 0;
-    return app->screen_count;
+    return app->route_count;
 }
 
 static AppScreenInfo
@@ -18,14 +18,11 @@ app_screen(void *userdata, int index)
     App *app = userdata;
     AppScreenInfo screen = {0};
 
-    if(app == 0 || app->screens == 0 ||
-       index < 0 || index >= app->screen_count)
+    if(app == 0 || app->routes == 0 ||
+       index < 0 || index >= app->route_count)
         return screen;
 
-    screen.id = app->screens[index].id;
-    screen.group = app->screens[index].group;
-    screen.title = app->screens[index].title;
-    screen.source_path = app->screens[index].source_path;
+    screen = app->routes[index];
     return screen;
 }
 
@@ -34,13 +31,13 @@ app_select_screen(void *userdata, int index)
 {
     App *app = userdata;
 
-    if(app == 0 || app->screens == 0 ||
-       index < 0 || index >= app->screen_count)
+    if(app == 0 || app->routes == 0 ||
+       index < 0 || index >= app->route_count)
         return;
 
-    app->selected_screen = index;
-    if(app->screens[index].enter != 0)
-        app->screens[index].enter(app->app, index);
+    app->selected_route = index;
+    if(app->routes[index].enter != 0)
+        app->routes[index].enter(app->app, index);
 }
 
 static int
@@ -48,11 +45,11 @@ app_select_source_path(void *userdata, const char *source_path)
 {
     App *app = userdata;
 
-    if(app == 0 || app->screens == 0 || source_path == 0)
+    if(app == 0 || app->routes == 0 || source_path == 0)
         return 0;
-    for(int i = 0; i < app->screen_count; i++) {
-        if(app->screens[i].source_path != 0 &&
-           strcmp(app->screens[i].source_path, source_path) == 0) {
+    for(int i = 0; i < app->route_count; i++) {
+        if(app->routes[i].source_path != 0 &&
+           strcmp(app->routes[i].source_path, source_path) == 0) {
             app_select_screen(userdata, i);
             return 1;
         }
@@ -66,13 +63,13 @@ app_draw(void *userdata, Rectangle viewport)
     App *app = userdata;
     int index;
 
-    if(app == 0 || app->screens == 0 || app->screen_count <= 0)
+    if(app == 0 || app->routes == 0 || app->route_count <= 0)
         return;
-    index = app->selected_screen;
-    if(index < 0 || index >= app->screen_count)
+    index = app->selected_route;
+    if(index < 0 || index >= app->route_count)
         index = 0;
-    if(app->screens[index].draw != 0)
-        app->screens[index].draw(app->app, viewport);
+    if(app->routes[index].draw != 0)
+        app->routes[index].draw(app->app, viewport);
 }
 
 void

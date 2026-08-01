@@ -2,6 +2,7 @@
 #include "ui_text_backend.h"
 #include "ui_clip.h"
 #include "ui_internal.h"
+#include "ui_tk.h"
 #include "ui_widget.h"
 #include "embedded_assets.h"
 #include "ui_scaling.h"
@@ -746,7 +747,7 @@ ui_text_copy_selection(const char *text, int start, int end)
         return;
     memcpy(copy, text + start, (size_t)len);
     copy[len] = '\0';
-    SetClipboardText(copy);
+    SetUIClipboardTextValue(copy);
     free(copy);
 }
 

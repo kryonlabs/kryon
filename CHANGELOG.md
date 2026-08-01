@@ -8,6 +8,109 @@
   registration order across nested scopes. A compile-time transform that
   splices the statement into the generated C at every exit point — no runtime
   cost. `goto` out of a deferred scope is left to explicit cleanup.
+- Resolve qualified type references across modules. Writing
+  `alias.Type` after `alias :: #import "mod/path"` now produces the bare C type
+  name in every position — parameter lists, return types, struct fields, local
+  declarations, and `#global` declarations — instead of emitting `alias.Type`
+  verbatim (a C syntax error) or wrongly module-prefixing it. Structs and enums
+  use their declared name across translation units, so the alias prefix is
+  dropped. Qualified *calls* (`alias.fn(...)`) still rewrite to `module_fn(...)`
+  as before. The first multi-module `.kry` program (state + draw + host) now
+  compiles, links, and runs end to end.
+- Remove the fixed per-function body cap. `kc` previously rejected any function
+  whose generated body exceeded `KC_BODY_MAX = 512` statements with
+  "generated body is too large", which blocks large UI draw functions.
+  `KryFunction.body`/`body_line` are now heap arrays that grow geometrically
+  (via `grow_body`), and the `apply_defers` splice pass allocates its working
+  buffers sized to the body. A 1,500-statement function compiles cleanly.
+  Verified clean under ASAN/UBSAN/LeakSanitizer; the previously-leaked
+  `file->functions`/`routes` arrays are now freed on exit.
+- Collect multiple parse errors instead of aborting on the first. Parsing now
+  installs a per-statement recovery boundary: a malformed statement records a
+  diagnostic and parsing continues with the next, so a file with several errors
+  reports all of them (the IDE's problems pane becomes useful while editing).
+  A file that previously reported one error and exited now reports every
+  recoverable error in source order. Fatal conditions (out of memory, CLI
+  misuse) still abort as before, and any diagnostics already recorded are
+  flushed first. Examples and valid code are unaffected (byte-identical).
+- Standalone `.kry` apps can own their frame loop. The `app{}` block now
+  accepts `init`, `frame`, and `shutdown` hooks naming `.kry` functions; when
+  `frame` is set, `kc` emits a `main()` that calls `init()` once, `frame()`
+  each iteration, and `shutdown()` at exit — without bracketing drawing, so the
+  program calls `BeginDrawing`/`BeginUIFrame`/`EndDrawing` itself and can host
+  nested render-texture passes and inspection overlays like a hand-written C
+  app. This is the entry point a self-hosted IDE uses. Without hooks the
+  existing single-screen `app{}`/`screen` dialect is unchanged (byte-identical).
+- Add the Kry standard platform library: `kry_process` (spawn a shell command
+  with non-blocking stdout/stderr polling, used for builds and consoles),
+  `kry_filesystem` (directory iteration, stat/mtime, recursive mkdir, realpath,
+  text read/write), and `kry_dylib` (dlopen/dlsym/dlclose for loading a built
+  app host). Declared in `kryon.h` and implemented under `src/kry_std/`, so they
+  are linked into `libkryon.a` and callable directly from `.kry` via `#extern`.
+  These lift the IDE's inline POSIX surface into a reusable library so a
+  `.kry`-written IDE can spawn `make kryon-host`, walk the project tree, and
+  `dlopen` the resulting `app_host.so`. Windows has stub implementations.
+- Move the self-hosted IDE rewrite in Kry into the standalone KITE repository:
+  `app.kry` owns the window loop via the new `app{}` hooks; `state.kry`,
+  `start_page.kry`, `project.kry`, `tree.kry`, and `editor.kry` implement the
+  start page, project-open flow (file dialog + `kry_fs`), a file-tree sidebar
+  (`kry_fs_list_dir` + `DrawUICascadingTreeView`), and a read-only source viewer
+  (`kry_fs_read_file` + `DrawUITextArea`). KITE transpiles those modules in one
+  `kc` invocation and links the generated C against `libkryon.a` + raylib.
+- The `.kry` IDE gains an editable editor with multi-tab open files, Ctrl+S
+  save (`kry_fs_write_file`), dirty markers, and Ctrl+Z/Ctrl+Y undo/redo
+  (heap-snapshot ring), plus a live-preview pane (`preview.kry`) that runs
+  `make kryon-host` via `kry_process`, `dlopen`s the resulting `app_host.so`
+  via `kry_dylib`, and renders the host into a `RenderTexture` — the full
+  non-blocking build + hot-reload loop, written in Kry.
+- Add the IDE console and problems panels in Kry (`console.kry`,
+  `problems.kry`): an interactive shell that runs typed commands via
+  `kry_process` and drains output each frame, and a diagnostics parser that
+  splits `path:line:col: message` lines from build output into a problems
+  list, shown in a bottom panel that auto-opens when a build reports errors.
+- Compile kryon library objects with `-fPIC` so they link into PIE executables
+  and `dlopen`'d app hosts on distros that default to PIE.
+
+### Changed
+
+- Fix copy/cut/paste/select-all in the IDE source editor. `DrawUITextArea` had
+  its own generic clipboard handler that raced the IDE's
+  `editor_handle_source_clipboard` on the same one-shot keypress, so Ctrl+C/V
+  worked inconsistently. The generic handler is removed; the IDE now owns the
+  source-editor clipboard (it has the byte-cap, line-copy fallback, and status
+  messages). The stale `!textarea_changed` guard that silently skipped paste is
+  dropped too.
+- Raise the clipboard size caps so large selections copy and paste in full.
+  The kryon UI buffer (`g_clipboard_text`) grew from 4096 to 1 MiB, and the
+  vendored raylib SDL `GetClipboardText` buffer (`MAX_CLIPBOARD_BUFFER_LENGTH`,
+  a fixed 1024 that truncated pastes to 1019 bytes + `...`) is overridden to the
+  same 1 MiB via a `-D` flag passed through `RAY_RAYLIB_CONFIG` — no vendored
+  raylib source is edited. Both caps are now symmetric and above the editor's
+  512 KiB source buffer, which becomes the real ceiling.
+- Make hot-reload (and run targets) non-blocking. The IDE ran the app-host build
+  as a synchronous `popen`+`fread` on the UI thread, freezing the window for the
+  whole compile. Builds now use the same `fork`+`pipe`+`waitpid(WNOHANG)` pattern
+  as the console runner (`editor_build_start`/`editor_build_poll`), drained each
+  frame from the main loop; the app host is `dlopen`ed on the poll that observes
+  a successful exit. The reload poll is lowered from 2.0s to 0.5s so a finished
+  build is picked up promptly, and builds are serialized with the console.
+- Split the screen-header (title bar) widgets out of `modal.c` into a new
+  `src/ui/ui_titlebar.c`, leaving `modal.c` holding only modal/dialog code.
+  Removed an orphaned empty scrollbar section marker.
+- Consolidate duplicated helpers: the three byte-identical `clampi` copies in
+  `guide.c`, `modal.c`, and `theme_picker.c` now use the shared `ui_clampi`.
+  Add shared `ui_draw_box_background`, `ui_caret_blink_visible`, and
+  `ui_open_url` helpers, replacing inlined copies in the text widgets and links.
+- Correct the README preview-projects section: the IDE previews `.kry` by
+  rebuilding and `dlopen`ing an app host, not by rendering source directly.
+- Remove the empty leftover `src/editor/` directory; the editor lives in
+  `cmd/ki/`.
+- Add CI workflow (`.github/workflows/ci.yml`) that builds and runs `make test`
+  on push and pull request for Linux and FreeBSD. Tests previously only ran at
+  release time.
+- Extract the UTF-8 codec and text-buffer helpers from `ui.c` into a new
+  `src/ui/ui_text_edit.c`, with a `tests/ui_text_edit_test.c` covering the
+  insert/delete/offset logic.
 
 ## v0.1.7 - 2026-07-26
 

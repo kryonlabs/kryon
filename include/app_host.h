@@ -13,12 +13,16 @@ typedef struct KryonInputOverride {
     Vector2 mouse_delta;
 } KryonInputOverride;
 
-typedef struct AppScreenInfo {
+typedef struct AppRouteInfo {
     const char *id;
     const char *group;
     const char *title;
     const char *source_path;
-} AppScreenInfo;
+    void (*enter)(void *app, int route_index);
+    void (*draw)(void *app, Rectangle viewport);
+} AppRouteInfo;
+
+typedef AppRouteInfo AppScreenInfo;
 
 typedef struct AppHost {
     void *userdata;

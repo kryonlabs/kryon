@@ -2,7 +2,10 @@
 #include "ui_tk.h"
 
 #define UI_TK_MENU_MAX 8
-#define UI_TK_CLIPBOARD_MAX 4096
+/* Large enough that the editor's source buffer (512 KiB) is the real ceiling,
+ * not this. Matches the raylib SDL read buffer set via RAY_RAYLIB_CONFIG so
+ * copy and paste caps stay symmetric. */
+#define UI_TK_CLIPBOARD_MAX (1024 * 1024)
 
 static int g_menu_open_id = 0;
 static int g_menu_submenu_id = 0;

@@ -65,7 +65,7 @@ Open this directory with Kryon:
 kryon .
 ```
 
-The IDE automatically discovers `.kry` screens, builds a live preview host under
+The IDE automatically discovers `.kry` screens, builds the generated app host under
 `build/kryon`, and reloads when `.kry` sources change. A `project.kryon` file is
 only needed for full projects that want custom build or run targets.
 

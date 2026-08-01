@@ -1,16 +1,6 @@
 #include "ui_internal.h"
 #include <stdio.h>
 
-static int
-guide_clampi(int value, int min, int max)
-{
-    if(value < min)
-        return min;
-    if(value > max)
-        return max;
-    return value;
-}
-
 static void
 guide_draw_arrow(Rectangle tip, Rectangle anchor)
 {
@@ -126,7 +116,7 @@ DrawUIGuideOverlay(UIGuideOverlay guide)
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
         return result;
 
-    step = guide_clampi(*guide.step, 0, guide.count - 1);
+    step = ui_clampi(*guide.step, 0, guide.count - 1);
     *guide.step = step;
     result.step = step;
 

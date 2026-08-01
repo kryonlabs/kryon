@@ -365,6 +365,23 @@ fi
 "$kc" --no-main --root "$work" -o "$out" "$work/src/many_functions.kry" >"$err" 2>&1
 grep -q 'int many_40(void);' "$out/src/many_functions.h"
 
+# --- a single function with a body well past the old 512-line cap must compile.
+# Function bodies grow on demand; there is no fixed per-function statement cap,
+# so large UI draw functions are not rejected.
+{
+    printf '#import "thing.h"\n\n'
+    printf 'big :: () -> int {\n    total: int = 0\n'
+    for i in $(seq 1 700); do
+        printf '    total += %d\n' "$i"
+    done
+    printf '    return total\n}\n'
+} > "$work/src/big_body.kry"
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/big_body.kry" >"$err" 2>&1
+[ "$(grep -c 'total += ' "$out/src/big_body.c")" -ge 700 ] || {
+    echo "large function body was truncated" >&2; exit 1; }
+grep -q 'return total;' "$out/src/big_body.c"
+
 cat > "$work/src/settings_ui.kry" <<'EOF'
 #module "settings_ui"
 #import "thing.h"
@@ -940,6 +957,35 @@ fi
 grep -q 'expected goto label name' "$err"
 grep -Eq 'bad_goto\.kry:2:1: error:' "$err"
 
+# --- error recovery: a file with several distinct errors reports all of them,
+# not just the first. Each malformed statement records a diagnostic and parsing
+# continues, so the IDE's problems pane can show every error at once.
+cat > "$work/src/multi_error.kry" <<'EOF'
+screen multi {
+    a, b := 1, 2, 3
+    var x = 5
+    let y = 6
+    good := 10
+    c, d = 1, 2, 3
+}
+EOF
+
+if "$kc" --no-main --root "$work" -o "$out" "$work/src/multi_error.kry" >"$err" 2>&1; then
+    echo "multi-error file was accepted" >&2
+    exit 1
+fi
+# All four distinct errors must appear, in source order.
+grep -q 'multi_error\.kry:2:1: error: inferred declaration count mismatch' "$err"
+grep -q "multi_error\.kry:3:1: error: 'var' syntax was removed" "$err"
+grep -q "multi_error\.kry:4:1: error: 'let' syntax was removed" "$err"
+grep -q 'multi_error\.kry:6:1: error: assignment count mismatch' "$err"
+# Exactly four error lines (no spurious duplicates from recovery).
+[ "$(grep -c ': error:' "$err")" -eq 4 ] || {
+    echo "multi-error recovery produced wrong error count:" >&2
+    grep ': error:' "$err" >&2
+    exit 1
+}
+
 cat > "$work/src/unbalanced.kry" <<'EOF'
 screen bad {
     InitializeThing()
@@ -1196,6 +1242,68 @@ if grep -q 'int main' "$out/src/withmain.c"; then
     exit 1
 fi
 
+# --- hook-driven main: when the app{} block names init/frame/shutdown hooks,
+# kc emits a main() that calls init() once, frame() each iteration, and
+# shutdown() at exit, WITHOUT bracketing drawing — the program owns its loop.
+# This is how a standalone .kry app (like the IDE) takes full control of the
+# frame, including nested render-texture passes and inspection overlays.
+cat > "$work/src/hookmain.kry" <<'EOF'
+#import "thing.h"
+
+app "Hook App" {
+    size 640 480
+    fps 60
+    init on_init
+    frame on_frame
+    shutdown on_shutdown
+}
+
+on_init :: () {
+    DrawThing(0)
+}
+
+on_frame :: () {
+    DrawThing(1)
+}
+
+on_shutdown :: () {
+    DrawThing(2)
+}
+EOF
+
+"$kc" --root "$work" -o "$out" "$work/src/hookmain.kry" >"$err" 2>&1
+# init runs once before the loop; frame inside it; shutdown after.
+grep -q 'on_init();' "$out/src/hookmain.c"
+grep -q 'while(!WindowShouldClose())' "$out/src/hookmain.c"
+grep -q 'on_frame();' "$out/src/hookmain.c"
+grep -q 'on_shutdown();' "$out/src/hookmain.c"
+# The program owns drawing: kc must NOT emit BeginDrawing/EndDrawing itself.
+if grep -q 'BeginDrawing' "$out/src/hookmain.c"; then
+    echo "hook-driven main emitted BeginDrawing (should be program-owned)" >&2
+    exit 1
+fi
+# A module-qualified hook resolves to its module-prefixed C name.
+cat > "$work/src/hookmod.kry" <<'EOF'
+#module "hookmod"
+#import "thing.h"
+
+app "Hook Mod App" {
+    size 640 480
+    frame step
+}
+
+step :: () {
+    DrawThing(1)
+}
+EOF
+
+"$kc" --root "$work" -o "$out" "$work/src/hookmod.kry" >"$err" 2>&1
+grep -q 'hookmod_step();' "$out/src/hookmod.c"
+if grep -q 'BeginDrawing' "$out/src/hookmod.c"; then
+    echo "module hook-driven main emitted BeginDrawing" >&2
+    exit 1
+fi
+
 # --- removed keyword: 'let' produces a removal error
 cat > "$work/src/bad_let.kry" <<'EOF'
 screen bad {
@@ -1266,3 +1374,70 @@ if [ -f "$out/src/ast.c" ]; then
     echo "dump-ast wrote generated files" >&2
     exit 1
 fi
+
+# --- qualified type references across modules: alias.Type must resolve to the
+# bare C type name in every position (params, return, struct field, local, and
+# global), while qualified *calls* (alias.fn(...)) keep rewriting to
+# module_fn(...). Structs/enums are emitted with their bare declared name in C,
+# so the alias prefix must be dropped, not module-prefixed.
+mkdir -p "$work/src/mod_types"
+cat > "$work/src/mod_types/state.kry" <<'EOF'
+#module "mod_types.state"
+#import "thing.h"
+
+Counter :: struct {
+    value: int
+}
+
+counter_tick :: (c: Counter*) -> int {
+    c->value += 1
+    return c->value
+}
+EOF
+
+cat > "$work/src/mod_types/host.kry" <<'EOF'
+#import "thing.h"
+state :: #import "src/mod_types/state"
+
+counter :: state.Counter = {0} #global
+
+panel :: (c: state.Counter*) -> state.Counter {
+    local: state.Counter = {0}
+    local.value = state.counter_tick(c)
+    return local
+}
+
+Pair :: struct {
+    inner: state.Counter
+    ptr: state.Counter*
+}
+
+take :: (c: state.Counter*) -> int {
+    return state.counter_tick(c)
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" \
+    "$work/src/mod_types/state.kry" "$work/src/mod_types/host.kry" >"$err" 2>&1
+# Qualified call rewrites to the module-prefixed C function name.
+grep -q 'mod_types_state_counter_tick(c);' "$out/src/mod_types/host.c"
+# Qualified types resolve to the bare C type name in every position:
+# parameter, return type, struct field, local declaration, and global.
+# (The header carries the single-line prototype; the .c splits the return
+# type onto its own line, so assert the parameter line there.)
+grep -q 'Counter panel(Counter\* c);' "$out/src/mod_types/host.h"
+grep -q 'panel(Counter\* c)' "$out/src/mod_types/host.c"
+grep -q 'Counter local = {0};' "$out/src/mod_types/host.c"
+grep -q 'Counter inner;' "$out/src/mod_types/host.h"
+grep -q 'Counter\* ptr;' "$out/src/mod_types/host.h"
+grep -q 'int take(Counter\* c);' "$out/src/mod_types/host.h"
+grep -q 'Counter counter = {0};' "$out/src/mod_types/host.c"
+# The header includes the imported module's generated header.
+grep -q '#include "src/mod_types/state.h"' "$out/src/mod_types/host.h"
+# No qualified alias text survives into the generated C.
+if grep -q 'state.Counter' "$out/src/mod_types/host.c" \
+    || grep -q 'state.Counter' "$out/src/mod_types/host.h"; then
+    echo "qualified type alias leaked into generated C" >&2
+    exit 1
+fi
+

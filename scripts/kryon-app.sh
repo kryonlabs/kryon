@@ -7,7 +7,7 @@ usage()
 usage: kryon-app [--project DIR] COMMAND [TARGET]
 
 Commands:
-  preview                 build the app live-preview module
+  host                    build the generated Kryon app host
   run [native]            run the native app
   build TARGET            build native, web, android-debug, android-release,
                           android-bundle, windows, or dist
@@ -70,8 +70,8 @@ run_make()
 }
 
 case "$command" in
-preview)
-    run_make kryon-live
+host)
+    run_make kryon-host
     ;;
 run)
     case "${target:-native}" in

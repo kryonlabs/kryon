@@ -119,15 +119,16 @@ packaging logic moves into Kryon `mk/` fragments.
 
 ## Preview Projects
 
-Kryon IDE can host richer project previews without requiring the project to be
-rewritten as `.kry` screens. A project can add `project.kryon` metadata such as
-`preview_size`, `preview_asset_root`, and `preview_scene`, then provide a
-`build_live` command that builds `build/kryon/live_preview.so`. The live module
-continues to expose the normal `CreateKryonLivePreview`/`AppHost` entry point,
-and can optionally expose `CreateKryonPreviewHost` for future scene/layer editing
-metadata. This keeps gameplay or simulation code in the app while letting Kryon
-IDE select scenes, draw interactive previews, and eventually edit shared preview
-layers.
+Kryon IDE previews `.kry` source by compiling it to an app host and loading it
+into the embedded viewport. On each source change the IDE rebuilds the project's
+app host (`make kryon-host`, producing `build/kryon/app_host.so`), `dlopen`s it,
+and resolves `CreateAppHost`/`DestroyAppHost`. The build runs in the background
+(`fork` + non-blocking pipe, drained each frame) so the window stays responsive
+during the compile; once it finishes the new app host is loaded and the preview
+updates. Source changes are polled a few times per second.
+
+A project can add `project.kryon` metadata such as `preview_size`,
+`preview_asset_root`, and `preview_scene` to control the embedded viewport.
 
 ## Conventions
 

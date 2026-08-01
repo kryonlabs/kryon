@@ -49,4 +49,27 @@ void PushUIInputClip(Rectangle bounds);
 void PopUIInputClip(void);
 int ui_clampi(int value, int min_value, int max_value);
 
+/* Draws a filled box with an outline: rounded when radius > 0, otherwise a
+ * plain rectangle with a 1px line border. Used by text input, text area, and
+ * read-only box backgrounds. */
+void ui_draw_box_background(Rectangle bounds, float radius, Color background,
+                            Color border);
+/* Blink phase of the text caret: on roughly every other half-second. */
+int ui_caret_blink_visible(void);
+/* Navigate to a URL: in-browser redirect on web, platform opener otherwise.
+ * A no-op for a NULL/empty url. */
+void ui_open_url(const char *url);
+
+/* UTF-8 codec and text-buffer helpers (implemented in ui_text_edit.c). */
+int ui_utf8_next_offset(const char *text, int offset);
+int ui_utf8_prev_offset(const char *text, int offset);
+int ui_utf8_codepoint_count(const char *text);
+int ui_utf8_encode(int codepoint, char out[5]);
+int ui_text_delete_range(char *text, size_t text_size, int *cursor,
+                         int start, int end);
+int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
+                         int max_codepoints);
+int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
+                             int codepoint, int max_codepoints);
+
 #endif

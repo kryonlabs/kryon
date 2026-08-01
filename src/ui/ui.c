@@ -421,6 +421,28 @@ UIPointerReleaseAvailable(Vector2 point)
 }
 
 int
+UIHandleClick(Rectangle bounds, int disabled, int *hover)
+{
+    Vector2 mouse_world = ui_mouse_world();
+    int mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
+    int captured = UIInputCapturesClick(mouse_world);
+    int active = mouse_inside && !captured && !disabled;
+
+    if(hover != NULL)
+        *hover = active && UIHoverEffectsEnabled();
+    if(disabled && mouse_inside && !captured)
+        MarkUIDisabled();
+    if(active)
+        MarkUIClickable();
+    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+       !UIPointerReleaseConsumed()) {
+        UIConsumeRelease();
+        return 1;
+    }
+    return 0;
+}
+
+int
 UIPointerReleaseOutside(Rectangle bounds)
 {
     Vector2 mouse = ui_mouse_world();
@@ -478,113 +500,37 @@ ui_clampi(int value, int min_value, int max_value)
     return value;
 }
 
-static int
-ui_utf8_next_offset(const char *text, int offset)
+void
+ui_draw_box_background(Rectangle bounds, float radius, Color background,
+                       Color border)
 {
-    int codepoint_size = 0;
-    int len;
-
-    if(text == NULL)
-        return 0;
-    len = (int)strlen(text);
-    if(offset < 0)
-        offset = 0;
-    if(offset >= len)
-        return len;
-
-    GetCodepointNext(text + offset, &codepoint_size);
-    if(codepoint_size <= 0)
-        codepoint_size = 1;
-    if(offset + codepoint_size > len)
-        return len;
-    return offset + codepoint_size;
+    if(radius <= 0.0f) {
+        DrawRectangleRec(bounds, background);
+        DrawRectangleLinesEx(bounds, 1, border);
+    } else {
+        DrawRectangleRounded(bounds, radius, 8, background);
+        DrawRectangleRoundedLines(bounds, radius, 8, border);
+    }
 }
 
-static int
-ui_utf8_prev_offset(const char *text, int offset)
+int
+ui_caret_blink_visible(void)
 {
-    int len;
-
-    if(text == NULL)
-        return 0;
-    len = (int)strlen(text);
-    if(offset > len)
-        offset = len;
-    if(offset <= 0)
-        return 0;
-
-    offset--;
-    while(offset > 0 && (((unsigned char)text[offset] & 0xC0) == 0x80))
-        offset--;
-    return offset;
+    return ((int)(GetTime() * 2.0)) % 2 == 0;
 }
 
-static int
-ui_utf8_codepoint_count(const char *text)
+void
+ui_open_url(const char *url)
 {
-    int count = 0;
-
-    if(text == NULL)
-        return 0;
-    for(int i = 0; text[i] != '\0';) {
-        int next = ui_utf8_next_offset(text, i);
-        if(next <= i)
-            break;
-        count++;
-        i = next;
-    }
-    return count;
-}
-
-static int
-ui_utf8_encode(int codepoint, char out[5])
-{
-    if(out == NULL)
-        return 0;
-    if(codepoint < 0x80) {
-        out[0] = (char)codepoint;
-        out[1] = '\0';
-        return 1;
-    }
-    if(codepoint < 0x800) {
-        out[0] = (char)(0xC0 | (codepoint >> 6));
-        out[1] = (char)(0x80 | (codepoint & 0x3F));
-        out[2] = '\0';
-        return 2;
-    }
-    if(codepoint < 0x10000) {
-        out[0] = (char)(0xE0 | (codepoint >> 12));
-        out[1] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-        out[2] = (char)(0x80 | (codepoint & 0x3F));
-        out[3] = '\0';
-        return 3;
-    }
-    if(codepoint <= 0x10FFFF) {
-        out[0] = (char)(0xF0 | (codepoint >> 18));
-        out[1] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
-        out[2] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-        out[3] = (char)(0x80 | (codepoint & 0x3F));
-        out[4] = '\0';
-        return 4;
-    }
-    return 0;
-}
-
-static int
-ui_text_delete_range(char *text, size_t text_size, int *cursor, int start, int end)
-{
-    int len;
-
-    if(text == NULL || text_size == 0 || cursor == NULL)
-        return 0;
-    len = (int)strlen(text);
-    start = ui_clampi(start, 0, len);
-    end = ui_clampi(end, 0, len);
-    if(end <= start)
-        return 0;
-    memmove(text + start, text + end, (size_t)(len - end + 1));
-    *cursor = start;
-    return 1;
+    if(url == NULL || url[0] == '\0')
+        return;
+#if defined(PLATFORM_WEB)
+    EM_ASM({
+        window.location.href = UTF8ToString($0);
+    }, url);
+#else
+    OpenURL(url);
+#endif
 }
 
 static int
@@ -609,30 +555,6 @@ ui_text_copy_range(const char *text, int start, int end)
     copy[len] = '\0';
     SetUIClipboardTextValue(copy);
     free(copy);
-    return 1;
-}
-
-static int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
-                                    int codepoint, int max_codepoints);
-
-static int
-ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
-                     int max_codepoints)
-{
-    int len;
-
-    if(text == NULL || text_size == 0 || cursor == NULL || ch == '\0')
-        return 0;
-    if(max_codepoints > 0 && ui_utf8_codepoint_count(text) >= max_codepoints)
-        return 0;
-    len = (int)strlen(text);
-    *cursor = ui_clampi(*cursor, 0, len);
-    if((size_t)(len + 2) > text_size)
-        return 0;
-    memmove(text + *cursor + 1, text + *cursor,
-            (size_t)(len - *cursor + 1));
-    text[*cursor] = ch;
-    (*cursor)++;
     return 1;
 }
 
@@ -828,33 +750,6 @@ DrawFittedUITextInRect(const char *text, Rectangle rect,
     while(font_size > min_allowed && MeasureUIText(value, font_size) > (int)rect.width)
         font_size = ui_text_next_smaller_size(font_size);
     ui_draw_text_centered_in_rect(value, rect, font_size, color);
-}
-
-static int
-ui_text_insert_codepoint(char *text, size_t text_size, int *cursor, int codepoint,
-                         int max_codepoints)
-{
-    char encoded[5];
-    int encoded_len;
-    int len;
-
-    if(text == NULL || text_size == 0 || cursor == NULL || codepoint < 32)
-        return 0;
-    if(max_codepoints > 0 && ui_utf8_codepoint_count(text) >= max_codepoints)
-        return 0;
-
-    encoded_len = ui_utf8_encode(codepoint, encoded);
-    if(encoded_len <= 0)
-        return 0;
-    len = (int)strlen(text);
-    *cursor = ui_clampi(*cursor, 0, len);
-    if((size_t)(len + encoded_len + 1) > text_size)
-        return 0;
-
-    memmove(text + *cursor + encoded_len, text + *cursor, (size_t)(len - *cursor + 1));
-    memcpy(text + *cursor, encoded, (size_t)encoded_len);
-    *cursor += encoded_len;
-    return 1;
 }
 
 void
@@ -1135,13 +1030,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     if(focused)
         SetUIFocusTextInputActive(1);
 
-    if(radius <= 0.0f) {
-        DrawRectangleRec(bounds, style.background);
-        DrawRectangleLinesEx(bounds, 1, border);
-    } else {
-        DrawRectangleRounded(bounds, radius, 8, style.background);
-        DrawRectangleRoundedLines(bounds, radius, 8, border);
-    }
+    ui_draw_box_background(bounds, radius, style.background, border);
 
     ui_begin_world_clip((Rectangle){(float)(x + padding_x), (float)(y - clip_guard),
                                     (float)(w - padding_x * 2),
@@ -1323,10 +1212,6 @@ DrawUIButton(UIButton button)
 {
     char editor_id[96];
     UIWidget widget;
-    Vector2 mouse_world = ui_mouse_world();
-    int mouse_inside;
-    int captured;
-    int active;
     int hovered;
     int focused;
     int clicked = 0;
@@ -1350,10 +1235,7 @@ DrawUIButton(UIButton button)
     button.bounds = widget.bounds;
     UIWidgetSetAction(&widget, button.label);
 
-    mouse_inside = CheckCollisionPointRec(mouse_world, button.bounds);
-    captured = UIInputCapturesClick(mouse_world);
-    active = !button.disabled && !captured && mouse_inside;
-    hovered = active && UIHoverEffectsEnabled();
+    clicked = UIHandleClick(button.bounds, button.disabled, &hovered);
     focused = !button.disabled && button.focus_id > 0 &&
               RegisterUIFocus(button.focus_id, button.bounds);
 
@@ -1376,15 +1258,6 @@ DrawUIButton(UIButton button)
                       (int)button.bounds.width - 4, ScaleUIPx(1), cue);
     }
 
-    if(button.disabled && !captured && mouse_inside)
-        MarkUIDisabled();
-
-    if(active) {
-        MarkUIClickable();
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            clicked = 1;
-    }
-
     if(focused) {
         SetUIFocusTextInputActive(0);
         DrawUIFocus(button.bounds);
@@ -1394,8 +1267,6 @@ DrawUIButton(UIButton button)
                               (int)(button.bounds.x + button.bounds.width * 0.5f),
                               (int)(button.bounds.y + button.bounds.height * 0.5f),
                               font, text);
-    if(clicked)
-        UIConsumeRelease();
     EndUIWidget(&widget);
     return clicked || IsUIFocusActivatePressed(button.focus_id);
 }
@@ -1405,10 +1276,6 @@ DrawUIIconButton(UIIconButton button)
 {
     char editor_id[96];
     UIWidget widget;
-    Vector2 mouse_world = ui_mouse_world();
-    int mouse_inside;
-    int captured;
-    int active;
     int hovered;
     int focused;
     int clicked = 0;
@@ -1432,10 +1299,7 @@ DrawUIIconButton(UIIconButton button)
                            UI_WIDGET_RESIZABLE);
     button.bounds = widget.bounds;
 
-    mouse_inside = CheckCollisionPointRec(mouse_world, button.bounds);
-    captured = UIInputCapturesClick(mouse_world);
-    active = !button.disabled && !captured && mouse_inside;
-    hovered = active && UIHoverEffectsEnabled();
+    clicked = UIHandleClick(button.bounds, button.disabled, &hovered);
     focused = !button.disabled && button.focus_id > 0 &&
               RegisterUIFocus(button.focus_id, button.bounds);
 
@@ -1468,15 +1332,6 @@ DrawUIIconButton(UIIconButton button)
                       (int)button.bounds.width - 4, ScaleUIPx(1), cue);
     }
 
-    if(button.disabled && !captured && mouse_inside)
-        MarkUIDisabled();
-
-    if(active) {
-        MarkUIClickable();
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            clicked = 1;
-    }
-
     if(focused) {
         SetUIFocusTextInputActive(0);
         DrawUIFocus(button.bounds);
@@ -1489,8 +1344,6 @@ DrawUIIconButton(UIIconButton button)
         Rectangle dst = {(float)icon_x, (float)icon_y, (float)draw_size, (float)draw_size};
         DrawTexturePro(button.icon, src, dst, (Vector2){0}, 0, icon_color);
     }
-    if(clicked)
-        UIConsumeRelease();
     EndUIWidget(&widget);
     return clicked || IsUIFocusActivatePressed(button.focus_id);
 }
@@ -1593,15 +1446,7 @@ DrawUIHref(UIHref link)
     if(clicked)
         UIConsumeRelease();
     if(!link.disabled && (clicked || IsUIFocusActivatePressed(link.focus_id))) {
-        if(link.href != NULL && link.href[0] != '\0') {
-#if defined(PLATFORM_WEB)
-            EM_ASM({
-                window.location.href = UTF8ToString($0);
-            }, link.href);
-#else
-            OpenURL(link.href);
-#endif
-        }
+        ui_open_url(link.href);
         EndUIWidget(&widget);
         return 1;
     }
@@ -2078,7 +1923,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
             else
                 ui_draw_syntax_line(line, line_len, text_x, draw_y,
                                     line_font, syntax, style);
-            if(focused && cursor >= line_start && cursor <= i && (((int)(GetTime() * 2.0)) % 2 == 0)) {
+            if(focused && cursor >= line_start && cursor <= i && ui_caret_blink_visible()) {
                 int cursor_x = text_x + ui_text_column_x(text, line_start, cursor, line_font);
                 DrawRectangle(cursor_x, draw_y, ScaleUIPx(2), GetUITextLineHeight(line_font), style.cursor);
             }
@@ -2109,6 +1954,7 @@ DrawUITextArea(UITextArea area)
     int captured;
     int selection_start = 0;
     int selection_end = 0;
+    int has_selection = 0;
     int selection_key_handled = 0;
     Color border;
     float radius;
@@ -2238,8 +2084,17 @@ DrawUITextArea(UITextArea area)
                       (UIKeyPressed(KEY_ENTER) ||
                        UIKeyPressed(KEY_KP_ENTER) ||
                        g_ui_text_input_enter_count > 0);
-    if(focused && ui_text_selection_matches(g_ui_text_area_selection, drag_id,
-                                            area.focused)) {
+    has_selection = ui_text_selection_matches(g_ui_text_area_selection, drag_id,
+                                              area.focused);
+    if(has_selection && !focused && UIKeyboardInputEnabled() &&
+       ui_mod_key_down() &&
+       (UIKeyPressed(KEY_C) || UIKeyPressed(KEY_X) ||
+        UIKeyPressed(KEY_V))) {
+        focused = 1;
+        ClaimUITextAreaFocus(area.focused);
+        *area.focused = 1;
+    }
+    if(focused && has_selection) {
         selection_start = g_ui_text_area_selection.anchor;
         selection_end = g_ui_text_area_selection.cursor;
         if(selection_start > selection_end) {
@@ -2454,13 +2309,7 @@ DrawUITextArea(UITextArea area)
 
     border = focused ? area.style.focus_border : area.style.border;
     radius = area.style.radius >= 0.0f ? area.style.radius : 0.12f;
-    if(radius <= 0.0f) {
-        DrawRectangleRec(area.bounds, area.style.background);
-        DrawRectangleLinesEx(area.bounds, 1, border);
-    } else {
-        DrawRectangleRounded(area.bounds, radius, 8, area.style.background);
-        DrawRectangleRoundedLines(area.bounds, radius, 8, border);
-    }
+    ui_draw_box_background(area.bounds, radius, area.style.background, border);
 
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
                                     area.bounds.width - padding_x * 2, area.bounds.height - padding_y * 2});
@@ -2754,7 +2603,7 @@ DrawUITextField(UITextField field)
 
     DrawUITextInputEx(field.bounds, field.text, *field.cursor_position,
                       focused,
-                      focused && (((int)(GetTime() * 2.0)) % 2 == 0),
+                      focused && ui_caret_blink_visible(),
                       font, field.style, selection_start, selection_end);
     EndUIWidget(&widget);
     return changed;
@@ -2840,13 +2689,7 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
     if(content_w < ScaleUIPx(24))
         content_w = ScaleUIPx(24);
 
-    if(radius <= 0.0f) {
-        DrawRectangleRec(box.bounds, box.style.background);
-        DrawRectangleLinesEx(box.bounds, 1, box.style.border);
-    } else {
-        DrawRectangleRounded(box.bounds, radius, 8, box.style.background);
-        DrawRectangleRoundedLines(box.bounds, radius, 8, box.style.border);
-    }
+    ui_draw_box_background(box.bounds, radius, box.style.background, box.style.border);
 
     ui_begin_world_clip((Rectangle){box.bounds.x + (float)padding_x, box.bounds.y,
                                     (float)content_w, box.bounds.height});
@@ -3442,13 +3285,7 @@ DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
     if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
        !UIInputCapturesClick(mouse_world) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         UIConsumeRelease();
-#if defined(PLATFORM_WEB)
-        EM_ASM({
-            window.location.href = UTF8ToString($0);
-        }, url);
-#else
-        OpenURL(url);
-#endif
+        ui_open_url(url);
     }
 }
 
