@@ -1,10 +1,8 @@
 /*
  * kry_filesystem.c - Kry standard library: filesystem access.
  *
- * Lifts the IDE's inline opendir/readdir/stat, text read/write, recursive
- * mkdir, and realpath helpers (cmd/ki editor_read_tree_entries,
- * editor_read_text_file, editor_ensure_dir, editor_resolve_project_path) into a
- * reusable library so .kry programs can build file trees and read sources.
+ * Filesystem helpers for Kry apps: opendir/readdir/stat, text read/write,
+ * recursive mkdir, and realpath wrapped in a small C surface.
  */
 /* Request POSIX 2008 + default (BSD) extensions so realpath(), lstat(), and
  * dt_type are declared regardless of how the including TU sets feature macros. */
@@ -26,6 +24,45 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+static int
+kry_ascii_lower(int c)
+{
+    if(c >= 'A' && c <= 'Z')
+        return c + ('a' - 'A');
+    return c;
+}
+
+static int
+kry_name_cmp(const char *a, const char *b)
+{
+    const unsigned char *pa = (const unsigned char *)a;
+    const unsigned char *pb = (const unsigned char *)b;
+
+    while(*pa != '\0' && *pb != '\0') {
+        int ca = kry_ascii_lower(*pa);
+        int cb = kry_ascii_lower(*pb);
+
+        if(ca != cb)
+            return ca - cb;
+        pa++;
+        pb++;
+    }
+    if(*pa != *pb)
+        return (int)*pa - (int)*pb;
+    return strcmp(a, b);
+}
+
+static int
+kry_dir_entry_cmp(const void *a, const void *b)
+{
+    const KryDirEntry *ea = (const KryDirEntry *)a;
+    const KryDirEntry *eb = (const KryDirEntry *)b;
+
+    if(ea->is_dir != eb->is_dir)
+        return eb->is_dir - ea->is_dir;
+    return kry_name_cmp(ea->name, eb->name);
+}
 
 int
 kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
@@ -69,6 +106,7 @@ kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
         count++;
     }
     closedir(d);
+    qsort(out, (size_t)count, sizeof(out[0]), kry_dir_entry_cmp);
     return count;
 }
 

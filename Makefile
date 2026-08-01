@@ -12,7 +12,6 @@ STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
 KC = $(BUILD_DIR)/bin/kc
 KT = $(BUILD_DIR)/bin/kt
-KI = $(BUILD_DIR)/bin/kryon
 KRYON_APP = $(BUILD_DIR)/bin/kryon-app
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
@@ -132,31 +131,15 @@ PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
 UI_TEXT_EDIT_TEST = $(BUILD_DIR)/tests/ui_text_edit_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean run tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
 
-all: $(LIB) $(KC) $(KT) $(KI) $(KRYON_APP)
+all: $(LIB) $(KC) $(KT) $(KRYON_APP)
 
-run: $(KI)
-	@if [ -n "$(PROJECT)" ]; then \
-		project_path=$$(cd "$(PROJECT)" && pwd); \
-		KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
-	elif [ -n "$(ARGS)" ]; then \
-		project_path=$$(cd "$(ARGS)" && pwd); \
-		KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
-	elif [ -n "$(KRYON_PROJECT)" ]; then \
-		project_path=$$(cd "$(KRYON_PROJECT)" && pwd); \
-		KRYON_PROJECT_ROOT="$$project_path" $(KI) "$$project_path"; \
-	else \
-		project_path=$$(pwd); \
-		KRYON_PROJECT_ROOT="$$project_path" $(KI); \
-	fi
+tools: $(KC) $(KT) $(KRYON_APP)
 
-tools: $(KC) $(KT) $(KI) $(KRYON_APP)
-
-install: $(KT) $(KI) $(KRYON_APP)
+install: $(KT) $(KRYON_APP)
 	mkdir -p $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 755 $(KT) $(DESTDIR)$(BINDIR)/kt
-	$(INSTALL) -m 755 $(KI) $(DESTDIR)$(BINDIR)/kryon
 	$(INSTALL) -m 755 $(KRYON_APP) $(DESTDIR)$(BINDIR)/kryon-app
 
 examples-run:
@@ -175,7 +158,7 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KI) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
 	sh tests/kt_cli_test.sh $(KT)
 	$(KSYNC_ACCOUNT_TEST)
@@ -221,32 +204,9 @@ $(KC): $(KC_SRCS) $(KC_HDRS) | $(BUILD_DIR)/bin
 $(KT): cmd/kt/main.c | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ cmd/kt/main.c
 
-KI_SRCS := cmd/ki/main.c cmd/ki/start_page.c
-KI_HDRS := cmd/ki/ki_internal.h
-
 $(KRYON_APP): scripts/kryon-app.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon-app.sh $@
 	chmod 755 $@
-
-# Per-backend link inputs. raylib links libraylib.a + SDL/GL; canvas/null do not.
-ifeq ($(KRYON_BACKEND),raylib)
-  KRYON_BACKEND_LINK_PREREQ = $(RAYLIB_A)
-  KRYON_BACKEND_LINK_CFLAGS = $(RAY_CFLAGS)
-  KRYON_BACKEND_LINK_LIBS = $(RAYLIB_A) $(RAY_LDLIBS)
-else
-  KRYON_BACKEND_LINK_PREREQ =
-  KRYON_BACKEND_LINK_CFLAGS =
-  KRYON_BACKEND_LINK_LIBS =
-endif
-
-$(KI): $(KI_SRCS) $(KI_HDRS) $(LIB) $(KRYON_BACKEND_LINK_PREREQ) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) $(CPPFLAGS) -Isrc/ui $(KRYON_BACKEND_LINK_CFLAGS) -o $@ \
-		$(KI_SRCS) \
-		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
-		$(KRYON_BACKEND_LINK_LIBS) $(KRYON_LIBOQS_A) $(KRYON_CURL_LDLIBS) \
-		$(KRYON_MARKDOWN_LDLIBS) \
-		-Wl,-export-dynamic $(LDLIBS) \
-		$(CURL_CODEC_LDLIBS) -lz -lpthread -lm
 
 version:
 	@printf '%s\n' '$(VERSION)'

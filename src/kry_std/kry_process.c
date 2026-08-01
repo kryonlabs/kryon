@@ -1,10 +1,9 @@
 /*
  * kry_process.c - Kry standard library: subprocess execution.
  *
- * Mirrors the fork/pipe/dup2/execl + non-blocking waitpid pattern the IDE used
- * inline (cmd/ki editor_build_start/poll/stop, editor_run_console_command),
- * lifted into a reusable library so .kry programs can run builds, consoles, and
- * run targets without touching POSIX directly.
+ * Small subprocess API for Kry apps: fork/pipe/dup2/execl with non-blocking
+ * waitpid so apps can run builds, consoles, and run targets without touching
+ * POSIX directly.
  */
 /* Request POSIX 2008 + default extensions so fork/pipe/dup2/waitpid/kill are
  * declared regardless of how the including TU sets feature macros. */

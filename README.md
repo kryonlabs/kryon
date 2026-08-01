@@ -119,10 +119,11 @@ packaging logic moves into Kryon `mk/` fragments.
 
 ## Preview Projects
 
-Kryon IDE previews `.kry` source by compiling it to an app host and loading it
-into the embedded viewport. On each source change the IDE rebuilds the project's
-app host (`make kryon-host`, producing `build/kryon/app_host.so`), `dlopen`s it,
-and resolves `CreateAppHost`/`DestroyAppHost`. The build runs in the background
+The standalone Kryon IDE previews `.kry` source by compiling it to an app host
+and loading it into the embedded viewport. On each source change the IDE rebuilds
+the project's app host (`make kryon-host`, producing
+`build/kryon/app_host.so`), `dlopen`s it, and resolves
+`CreateAppHost`/`DestroyAppHost`. The build runs in the background
 (`fork` + non-blocking pipe, drained each frame) so the window stays responsive
 during the compile; once it finishes the new app host is loaded and the preview
 updates. Source changes are polled a few times per second.

@@ -74,6 +74,9 @@
 
 ### Changed
 
+- Remove the bundled C IDE. Kryon now builds only the library, compiler,
+  tooling, and `kryon-app`; the Kry-written standalone IDE lives outside this
+  repository.
 - Fix copy/cut/paste/select-all in the IDE source editor. `DrawUITextArea` had
   its own generic clipboard handler that raced the IDE's
   `editor_handle_source_clipboard` on the same one-shot keypress, so Ctrl+C/V
@@ -104,8 +107,8 @@
   `ui_open_url` helpers, replacing inlined copies in the text widgets and links.
 - Correct the README preview-projects section: the IDE previews `.kry` by
   rebuilding and `dlopen`ing an app host, not by rendering source directly.
-- Remove the empty leftover `src/editor/` directory; the editor lives in
-  `cmd/ki/`.
+- Remove the empty leftover `src/editor/` directory; the C editor lived under
+  the command tree before the standalone IDE migration.
 - Add CI workflow (`.github/workflows/ci.yml`) that builds and runs `make test`
   on push and pull request for Linux and FreeBSD. Tests previously only ran at
   release time.
