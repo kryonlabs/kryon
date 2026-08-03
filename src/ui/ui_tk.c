@@ -772,6 +772,8 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
     int font = GetUIFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
     Vector2 mouse = ui_mouse_world();
+    int blocked = UIInputCapturesClick(mouse);
+    int contains;
     int scroll_y;
     int max_scroll;
     int visible_count = 0;
@@ -783,13 +785,14 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
         if(ui_tree_item_visible(tree.items, i, tree.expanded))
             visible_count++;
     }
-    if(ui_contains(tree.bounds, mouse)) {
-        PushUIInputCapture(tree.bounds, 1);
-        MarkUIClickable();
-    }
+    contains = ui_contains(tree.bounds, mouse);
     max_scroll = ui_update_scroll(tree.bounds, visible_count * row_h,
                                   tree.scroll_offset, row_h);
     scroll_y = tree.scroll_offset != NULL ? *tree.scroll_offset : 0;
+    if(contains && !blocked) {
+        PushUIInputCapture(tree.bounds, 1);
+        MarkUIClickable();
+    }
 
     ui_draw_panel(tree.bounds);
     BeginUIClip((int)tree.bounds.x, (int)tree.bounds.y,
@@ -818,7 +821,7 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
 
         row = (Rectangle){tree.bounds.x, (float)y, tree.bounds.width,
                           (float)row_h};
-        hot = ui_hot(row);
+        hot = ui_contains(row, mouse) && !blocked;
         expanded = item->is_dir && ui_tree_is_expanded(tree.expanded, item->id);
         x = (int)row.x + ScaleUIPx(8 + item->depth * 18);
         if(tree.selected_id != NULL && *tree.selected_id == item->id)
