@@ -1732,11 +1732,12 @@ static Color
 ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
                       int first_token, UITextInputStyle style)
 {
-    Color keyword = (Color){0, 0, 160, 255};
-    Color string = (Color){0, 96, 0, 255};
-    Color number = (Color){128, 0, 96, 255};
-    Color path = (Color){120, 72, 0, 255};
-    Color comment = (Color){88, 88, 88, 255};
+    int dark = GetEffectiveThemeDarkMode();
+    Color keyword = dark ? (Color){142, 160, 240, 255} : (Color){36, 72, 172, 255};
+    Color string = dark ? (Color){110, 200, 176, 255} : (Color){34, 126, 82, 255};
+    Color number = dark ? (Color){213, 145, 82, 255} : (Color){150, 72, 126, 255};
+    Color path = dark ? (Color){205, 170, 110, 255} : (Color){138, 96, 32, 255};
+    Color comment = dark ? (Color){138, 146, 160, 255} : (Color){104, 112, 124, 255};
 
     if(len <= 0)
         return style.text;
