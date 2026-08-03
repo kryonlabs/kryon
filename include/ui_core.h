@@ -7,6 +7,18 @@ typedef void (*UITextInputPlatformCallback)(int active);
 typedef void (*UIKeyInputPlatformCallback)(void);
 typedef int (*UIKeyPlatformCallback)(int key);
 
+typedef struct UIFrameState {
+    int view_width;
+    int view_height;
+    Camera2D camera;
+    int input_clip_count;
+    int input_capture_count;
+    int cursor_priority;
+    int cursor_had_intent;
+    int mouse_world_override_enabled;
+    Vector2 mouse_world_override;
+} UIFrameState;
+
 void InitUI(int width, int height, float dpi);
 void SetUILinkColor(Color link);
 void ApplyCurrentUITheme(void);
@@ -14,6 +26,8 @@ int IsUIDesktopMode(void);
 Camera2D GetUIDefaultCamera(void);
 void BeginUIFrame(int width, int height, float dpi);
 void SetUIFrame(Camera2D camera);
+UIFrameState SaveUIFrameState(void);
+void RestoreUIFrameState(UIFrameState state);
 void SetUIMouseWorldOverride(int enabled, Vector2 position);
 int SetUIKeyboardInputEnabled(int enabled);
 int UIKeyboardInputEnabled(void);

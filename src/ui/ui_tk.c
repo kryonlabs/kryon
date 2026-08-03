@@ -791,7 +791,6 @@ DrawUICascadingTreeView(UICascadingTreeView tree)
     scroll_y = tree.scroll_offset != NULL ? *tree.scroll_offset : 0;
     if(contains && !blocked) {
         PushUIInputCapture(tree.bounds, 1);
-        MarkUIClickable();
     }
 
     ui_draw_panel(tree.bounds);

@@ -18,6 +18,8 @@ Camera2D g_ui_camera;
 static int *g_ui_cursor_clickable = NULL;
 static int *g_ui_cursor_disabled = NULL;
 static int g_ui_cursor_priority = 0;
+static int g_ui_cursor_current = MOUSE_CURSOR_DEFAULT;
+static int g_ui_cursor_had_intent = 0;
 Texture2D g_ui_gear_icon = {0};
 Texture2D g_ui_x_icon = {0};
 int g_ui_slider_active_id = 0;
@@ -95,8 +97,9 @@ static double g_ui_backspace_next_repeat_at = 0.0;
 enum {
     UI_CURSOR_PRIORITY_DEFAULT = 0,
     UI_CURSOR_PRIORITY_CLICKABLE = 1,
-    UI_CURSOR_PRIORITY_TEXT = 1,
-    UI_CURSOR_PRIORITY_DISABLED = 2
+    UI_CURSOR_PRIORITY_TEXT = 2,
+    UI_CURSOR_PRIORITY_RESIZE = 3,
+    UI_CURSOR_PRIORITY_DISABLED = 4
 };
 
 #define UI_INPUT_CLIP_STACK_MAX 16
@@ -182,6 +185,10 @@ ui_set_cursor_intent(int cursor, int priority)
     if(priority < g_ui_cursor_priority)
         return;
     g_ui_cursor_priority = priority;
+    g_ui_cursor_had_intent = 1;
+    if(g_ui_cursor_current == cursor)
+        return;
+    g_ui_cursor_current = cursor;
     SetMouseCursor(cursor);
 }
 
@@ -200,6 +207,14 @@ MarkUICursor(int cursor)
 
     if(cursor == MOUSE_CURSOR_NOT_ALLOWED)
         priority = UI_CURSOR_PRIORITY_DISABLED;
+    else if(cursor == MOUSE_CURSOR_IBEAM)
+        priority = UI_CURSOR_PRIORITY_TEXT;
+    else if(cursor == MOUSE_CURSOR_RESIZE_EW ||
+            cursor == MOUSE_CURSOR_RESIZE_NS ||
+            cursor == MOUSE_CURSOR_RESIZE_NWSE ||
+            cursor == MOUSE_CURSOR_RESIZE_NESW ||
+            cursor == MOUSE_CURSOR_RESIZE_ALL)
+        priority = UI_CURSOR_PRIORITY_RESIZE;
     ui_set_cursor_intent(cursor, priority);
 }
 
@@ -2949,8 +2964,12 @@ SetUIFrame(Camera2D camera)
     }
     g_ui_text_input_requested = 0;
     g_ui_focus_text_input_active = 0;
+    if(!g_ui_cursor_had_intent && g_ui_cursor_current != MOUSE_CURSOR_DEFAULT) {
+        g_ui_cursor_current = MOUSE_CURSOR_DEFAULT;
+        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+    }
     g_ui_cursor_priority = UI_CURSOR_PRIORITY_DEFAULT;
-    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+    g_ui_cursor_had_intent = 0;
 
     g_ui_camera = ui_sane_camera(camera);
     ui_update_pointer_gesture();
@@ -2958,6 +2977,38 @@ SetUIFrame(Camera2D camera)
     g_ui_input_clip_stack_count = 0;
     ResetUIClip();
     BeginUIInspectFrame(NULL);
+}
+
+UIFrameState
+SaveUIFrameState(void)
+{
+    UIFrameState state;
+
+    state.view_width = ui_view_width;
+    state.view_height = ui_view_height;
+    state.camera = g_ui_camera;
+    state.input_clip_count = g_ui_input_clip_stack_count;
+    state.input_capture_count = g_ui_input_capture_stack_count;
+    state.cursor_priority = g_ui_cursor_priority;
+    state.cursor_had_intent = g_ui_cursor_had_intent;
+    state.mouse_world_override_enabled = g_ui_mouse_world_override_enabled;
+    state.mouse_world_override = g_ui_mouse_world_override;
+    return state;
+}
+
+void
+RestoreUIFrameState(UIFrameState state)
+{
+    ui_view_width = state.view_width;
+    ui_view_height = state.view_height;
+    g_ui_camera = state.camera;
+    g_ui_input_clip_stack_count = state.input_clip_count;
+    g_ui_input_capture_stack_count = state.input_capture_count;
+    g_ui_cursor_priority = state.cursor_priority;
+    g_ui_cursor_had_intent = state.cursor_had_intent;
+    g_ui_mouse_world_override_enabled = state.mouse_world_override_enabled;
+    g_ui_mouse_world_override = state.mouse_world_override;
+    ResetUIClip();
 }
 
 void
