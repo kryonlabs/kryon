@@ -18,6 +18,11 @@ int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                          int max_codepoints);
 int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
                              int codepoint, int max_codepoints);
+typedef int (*UITextInputFilter)(int codepoint, void *user_data);
+int ui_text_insert_text(char *text, size_t text_size, int *cursor,
+                        const char *input, int allow_newlines,
+                        UITextInputFilter filter, void *filter_user_data,
+                        int max_codepoints);
 
 static int failures = 0;
 
@@ -215,6 +220,55 @@ test_delete_range(void)
     check_str("unchanged on empty delete", buf2, "abc");
 }
 
+static int
+reject_digits_filter(int codepoint, void *user_data)
+{
+    (void)user_data;
+    return codepoint < '0' || codepoint > '9';
+}
+
+static void
+test_insert_text_bulk(void)
+{
+    char buf[64] = "ac";
+    int cursor = 1;
+
+    check_true("bulk insert middle",
+               ui_text_insert_text(buf, sizeof(buf), &cursor, "b\n\xc3\xa9",
+                                   1, NULL, NULL, 0));
+    check_str("bulk insert result", buf, "ab\n\xc3\xa9""c");
+    check_int("bulk insert cursor", cursor, 5);
+
+    char single_line[64] = "ab";
+    int c2 = 1;
+    check_true("bulk insert strips newlines when disallowed",
+               ui_text_insert_text(single_line, sizeof(single_line), &c2,
+                                   "X\r\nY", 0, NULL, NULL, 0));
+    check_str("bulk insert no newlines result", single_line, "aXYb");
+
+    char filtered[64] = "";
+    int c3 = 0;
+    check_true("bulk insert filter",
+               ui_text_insert_text(filtered, sizeof(filtered), &c3,
+                                   "a1b2c3", 1, reject_digits_filter,
+                                   NULL, 0));
+    check_str("bulk insert filter result", filtered, "abc");
+
+    char capped[8] = "ab";
+    int c4 = 2;
+    check_true("bulk insert byte capped",
+               ui_text_insert_text(capped, sizeof(capped), &c4,
+                                   "cdefghi", 1, NULL, NULL, 0));
+    check_str("bulk insert byte capped result", capped, "abcdefg");
+
+    char cp_capped[64] = "ab";
+    int c5 = 2;
+    check_true("bulk insert codepoint capped",
+               ui_text_insert_text(cp_capped, sizeof(cp_capped), &c5,
+                                   "cdef", 1, NULL, NULL, 4));
+    check_str("bulk insert codepoint capped result", cp_capped, "abcd");
+}
+
 int
 main(void)
 {
@@ -225,6 +279,7 @@ main(void)
     test_insert_ascii();
     test_insert_codepoint();
     test_delete_range();
+    test_insert_text_bulk();
     if(failures != 0) {
         fprintf(stderr, "%d text-edit test(s) failed\n", failures);
         return 1;

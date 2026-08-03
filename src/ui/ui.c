@@ -44,6 +44,9 @@ static int g_ui_focus_text_input_active = 0;
 static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
 static UITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
+static UIKeyInputPlatformCallback g_ui_key_input_update_callback = NULL;
+static UIKeyPlatformCallback g_ui_key_pressed_callback = NULL;
+static UIKeyPlatformCallback g_ui_key_down_callback = NULL;
 static int g_ui_text_area_drag_id = 0;
 static int *g_ui_text_area_drag_owner = NULL;
 static int g_ui_text_area_last_click_id = 0;
@@ -210,6 +213,12 @@ ui_iabs(int value)
     return value < 0 ? -value : value;
 }
 
+static int
+ui_key_prefers_platform(int key)
+{
+    return key >= 32 && key <= 126;
+}
+
 int
 SetUIKeyboardInputEnabled(int enabled)
 {
@@ -228,13 +237,43 @@ UIKeyboardInputEnabled(void)
 int
 UIKeyPressed(int key)
 {
-    return g_ui_keyboard_input_enabled && IsKeyPressed(key);
+    if(!g_ui_keyboard_input_enabled)
+        return 0;
+    if(g_ui_key_pressed_callback != NULL && ui_key_prefers_platform(key))
+        return g_ui_key_pressed_callback(key);
+    if(IsKeyPressed(key))
+        return 1;
+    return g_ui_key_pressed_callback != NULL &&
+           g_ui_key_pressed_callback(key);
 }
 
 int
 UIKeyDown(int key)
 {
-    return g_ui_keyboard_input_enabled && IsKeyDown(key);
+    if(!g_ui_keyboard_input_enabled)
+        return 0;
+    if(g_ui_key_down_callback != NULL && ui_key_prefers_platform(key))
+        return g_ui_key_down_callback(key);
+    if(IsKeyDown(key))
+        return 1;
+    return g_ui_key_down_callback != NULL && g_ui_key_down_callback(key);
+}
+
+void
+SetUIKeyPlatformCallbacks(UIKeyInputPlatformCallback update,
+                          UIKeyPlatformCallback key_pressed,
+                          UIKeyPlatformCallback key_down)
+{
+    g_ui_key_input_update_callback = update;
+    g_ui_key_pressed_callback = key_pressed;
+    g_ui_key_down_callback = key_down;
+}
+
+void
+UpdateUIKeyPlatformState(void)
+{
+    if(g_ui_key_input_update_callback != NULL)
+        g_ui_key_input_update_callback();
 }
 
 static int
@@ -562,7 +601,6 @@ static int
 ui_text_paste_clipboard(UITextEdit edit, int allow_newlines)
 {
     const char *clip;
-    int changed = 0;
 
     if(edit.text == NULL || edit.text_size == 0 ||
        edit.cursor_position == NULL)
@@ -570,35 +608,10 @@ ui_text_paste_clipboard(UITextEdit edit, int allow_newlines)
     clip = GetUIClipboardTextValue();
     if(clip == NULL)
         return 0;
-    for(int i = 0; clip[i] != '\0';) {
-        int bytes = 0;
-        int cp;
-
-        if(clip[i] == '\r') {
-            i++;
-            continue;
-        }
-        if(clip[i] == '\n') {
-            if(allow_newlines &&
-               ui_text_insert_ascii(edit.text, edit.text_size,
-                                    edit.cursor_position, '\n',
-                                    edit.max_codepoints))
-                changed = 1;
-            i++;
-            continue;
-        }
-        cp = GetCodepointNext(&clip[i], &bytes);
-        if(bytes <= 0)
-            break;
-        if((edit.filter == NULL ||
-            edit.filter(cp, edit.filter_user_data)) &&
-           ui_text_insert_codepoint(edit.text, edit.text_size,
-                                    edit.cursor_position, cp,
-                                    edit.max_codepoints))
-            changed = 1;
-        i += bytes;
-    }
-    return changed;
+    return ui_text_insert_text(edit.text, edit.text_size,
+                               edit.cursor_position, clip, allow_newlines,
+                               edit.filter, edit.filter_user_data,
+                               edit.max_codepoints);
 }
 
 static void
@@ -1902,6 +1915,8 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     int text_x = (int)bounds.x + padding_x;
     int text_y = (int)bounds.y + padding_y - scroll_y;
     int draw_y = text_y;
+    int clip_top = (int)bounds.y + padding_y;
+    int clip_bottom = (int)(bounds.y + bounds.height) - padding_y;
 
     if(text == NULL)
         text = "";
@@ -1911,22 +1926,30 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
             int line_len = i - line_start;
             int line_font = ui_text_area_line_font(text, line_start, i, font);
             int line_h = GetUITextLineHeight(line_font) + line_gap;
-            if(line_len >= (int)sizeof(line))
-                line_len = (int)sizeof(line) - 1;
-            memcpy(line, text + line_start, (size_t)line_len);
-            line[line_len] = '\0';
-            ui_draw_text_area_selection(text, line_start, i, text_x, draw_y,
-                                        line_font,
-                                        (Color){0, 96, 192, 72},
-                                        selection_start, selection_end);
-            if(syntax == UI_SYNTAX_NONE)
-                DrawUIText(line, text_x, draw_y, line_font, style.text);
-            else
-                ui_draw_syntax_line(line, line_len, text_x, draw_y,
-                                    line_font, syntax, style);
-            if(focused && cursor >= line_start && cursor <= i && ui_caret_blink_visible()) {
-                int cursor_x = text_x + ui_text_column_x(text, line_start, cursor, line_font);
-                DrawRectangle(cursor_x, draw_y, ScaleUIPx(2), GetUITextLineHeight(line_font), style.cursor);
+
+            if(draw_y + line_h >= clip_top && draw_y <= clip_bottom) {
+                if(line_len >= (int)sizeof(line))
+                    line_len = (int)sizeof(line) - 1;
+                memcpy(line, text + line_start, (size_t)line_len);
+                line[line_len] = '\0';
+                ui_draw_text_area_selection(text, line_start, i, text_x, draw_y,
+                                            line_font,
+                                            (Color){0, 96, 192, 72},
+                                            selection_start, selection_end);
+                if(syntax == UI_SYNTAX_NONE)
+                    DrawUIText(line, text_x, draw_y, line_font, style.text);
+                else
+                    ui_draw_syntax_line(line, line_len, text_x, draw_y,
+                                        line_font, syntax, style);
+                if(focused && cursor >= line_start && cursor <= i &&
+                   ui_caret_blink_visible()) {
+                    int cursor_x = text_x + ui_text_column_x(text, line_start,
+                                                             cursor,
+                                                             line_font);
+                    DrawRectangle(cursor_x, draw_y, ScaleUIPx(2),
+                                  GetUITextLineHeight(line_font),
+                                  style.cursor);
+                }
             }
             draw_y += line_h;
             line_start = i + 1;
@@ -1962,6 +1985,9 @@ DrawUITextArea(UITextArea area)
     int enter_requested;
     int drag_id;
     int double_clicked = 0;
+    int copy_pressed = 0;
+    int cut_pressed = 0;
+    int paste_pressed = 0;
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
@@ -2081,6 +2107,9 @@ DrawUITextArea(UITextArea area)
 
     *area.focused = focused;
     SetUIFocusTextInputActive(focused);
+    copy_pressed = UIKeyPressed(KEY_C);
+    cut_pressed = UIKeyPressed(KEY_X);
+    paste_pressed = UIKeyPressed(KEY_V);
     enter_requested = focused && UIKeyboardInputEnabled() &&
                       (UIKeyPressed(KEY_ENTER) ||
                        UIKeyPressed(KEY_KP_ENTER) ||
@@ -2089,8 +2118,7 @@ DrawUITextArea(UITextArea area)
                                               area.focused);
     if(has_selection && !focused && UIKeyboardInputEnabled() &&
        ui_mod_key_down() &&
-       (UIKeyPressed(KEY_C) || UIKeyPressed(KEY_X) ||
-        UIKeyPressed(KEY_V))) {
+       (copy_pressed || cut_pressed || paste_pressed)) {
         focused = 1;
         ClaimUITextAreaFocus(area.focused);
         *area.focused = 1;
@@ -2117,12 +2145,12 @@ DrawUITextArea(UITextArea area)
             selection_end = len;
             selection_key_handled = 1;
         }
-        if(ui_mod_key_down() && UIKeyPressed(KEY_C) &&
+        if(ui_mod_key_down() && copy_pressed &&
            selection_end > selection_start) {
             ui_text_copy_range(area.text, selection_start, selection_end);
             selection_key_handled = 1;
         }
-        if(ui_mod_key_down() && UIKeyPressed(KEY_X) &&
+        if(ui_mod_key_down() && cut_pressed &&
            selection_end > selection_start) {
             if(ui_text_copy_range(area.text, selection_start, selection_end) &&
                ui_text_delete_range(area.text, area.text_size,
@@ -2135,7 +2163,7 @@ DrawUITextArea(UITextArea area)
             }
             selection_key_handled = 1;
         }
-        if(ui_mod_key_down() && UIKeyPressed(KEY_V) &&
+        if(ui_mod_key_down() && paste_pressed &&
            selection_end > selection_start) {
             ui_text_delete_range(area.text, area.text_size,
                                  area.cursor_position, selection_start,
@@ -2154,7 +2182,7 @@ DrawUITextArea(UITextArea area)
                                   area.focused, *area.cursor_position,
                                   *area.cursor_position, 0);
             selection_key_handled = 1;
-        } else if(ui_mod_key_down() && UIKeyPressed(KEY_V)) {
+        } else if(ui_mod_key_down() && paste_pressed) {
             if(ui_text_paste_clipboard((UITextEdit){
                    .text = area.text,
                    .text_size = area.text_size,
@@ -2184,8 +2212,7 @@ DrawUITextArea(UITextArea area)
             selection_key_handled = 1;
         }
         if(ui_mod_key_down() &&
-           (UIKeyPressed(KEY_C) || UIKeyPressed(KEY_X) ||
-            UIKeyPressed(KEY_V)))
+           (copy_pressed || cut_pressed || paste_pressed))
             selection_key_handled = 1;
         if(!selection_key_handled && selection_end > selection_start &&
            !ui_mod_key_down()) {

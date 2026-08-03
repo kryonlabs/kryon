@@ -71,5 +71,9 @@ int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                          int max_codepoints);
 int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
                              int codepoint, int max_codepoints);
+int ui_text_insert_text(char *text, size_t text_size, int *cursor,
+                        const char *input, int allow_newlines,
+                        UITextInputFilter filter, void *filter_user_data,
+                        int max_codepoints);
 
 #endif

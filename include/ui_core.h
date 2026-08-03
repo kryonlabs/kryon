@@ -4,6 +4,8 @@
 #include "kryon_compat.generated.h"
 
 typedef void (*UITextInputPlatformCallback)(int active);
+typedef void (*UIKeyInputPlatformCallback)(void);
+typedef int (*UIKeyPlatformCallback)(int key);
 
 void InitUI(int width, int height, float dpi);
 void SetUILinkColor(Color link);
@@ -17,6 +19,10 @@ int SetUIKeyboardInputEnabled(int enabled);
 int UIKeyboardInputEnabled(void);
 int UIKeyPressed(int key);
 int UIKeyDown(int key);
+void SetUIKeyPlatformCallbacks(UIKeyInputPlatformCallback update,
+                               UIKeyPlatformCallback key_pressed,
+                               UIKeyPlatformCallback key_down);
+void UpdateUIKeyPlatformState(void);
 
 void ClearUIInputCaptures(void);
 void PushUIInputCapture(Rectangle bounds, int allow_inside);
