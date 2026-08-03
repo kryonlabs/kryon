@@ -44,6 +44,7 @@ static int g_ui_focus_count = 0;
 static int g_ui_focus_tab_dir = 0;
 static int g_ui_focus_frame_open = 0;
 static int g_ui_focus_text_input_active = 0;
+static unsigned long g_ui_overlays_drawn_frame = 0;
 static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
 static UITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
@@ -91,6 +92,23 @@ static int g_ui_text_context_id = 0;
 static int *g_ui_text_context_owner = NULL;
 static int g_ui_text_context_x = 0;
 static int g_ui_text_context_y = 0;
+static unsigned long g_ui_frame_serial = 0;
+static unsigned long g_ui_text_context_target_frame = 0;
+static char *g_ui_text_context_text = NULL;
+static size_t g_ui_text_context_text_size = 0;
+static int *g_ui_text_context_cursor = NULL;
+static int g_ui_text_context_max_codepoints = 0;
+static UITextInputFilter g_ui_text_context_filter = NULL;
+static void *g_ui_text_context_filter_user_data = NULL;
+static UITextSelection *g_ui_text_context_selection = NULL;
+static int g_ui_text_context_selection_start = 0;
+static int g_ui_text_context_selection_end = 0;
+static int g_ui_text_context_allow_newlines = 0;
+static int g_ui_text_context_copy_all_when_empty = 0;
+static int g_ui_text_context_changed = 0;
+static int g_ui_text_context_changed_kind = UI_TEXT_CONTEXT_NONE;
+static int g_ui_text_context_changed_id = 0;
+static int *g_ui_text_context_changed_owner = NULL;
 /* Identity of the widget that currently owns text input focus, recorded as the
  * address of its `focused` flag. Ownership is PERSISTENT across frames: it does
  * not reset at frame start, it only changes when a text input is clicked (or
@@ -707,6 +725,24 @@ ui_text_context_close(void)
     g_ui_text_context_kind = UI_TEXT_CONTEXT_NONE;
     g_ui_text_context_id = 0;
     g_ui_text_context_owner = NULL;
+    g_ui_text_context_target_frame = 0;
+}
+
+static void
+ui_text_context_clear_target(void)
+{
+    g_ui_text_context_text = NULL;
+    g_ui_text_context_text_size = 0;
+    g_ui_text_context_cursor = NULL;
+    g_ui_text_context_max_codepoints = 0;
+    g_ui_text_context_filter = NULL;
+    g_ui_text_context_filter_user_data = NULL;
+    g_ui_text_context_selection = NULL;
+    g_ui_text_context_selection_start = 0;
+    g_ui_text_context_selection_end = 0;
+    g_ui_text_context_allow_newlines = 0;
+    g_ui_text_context_copy_all_when_empty = 0;
+    g_ui_text_context_target_frame = 0;
 }
 
 static int
@@ -733,6 +769,48 @@ ui_text_context_open_for(int kind, int id, int *owner,
     g_ui_text_context_y = (int)mouse.y;
     return 1;
 #endif
+}
+
+static int
+ui_text_context_take_changed(int kind, int id, int *owner)
+{
+    if(!g_ui_text_context_changed ||
+       g_ui_text_context_changed_kind != kind ||
+       g_ui_text_context_changed_owner != owner ||
+       (id > 0 && g_ui_text_context_changed_id != id))
+        return 0;
+    g_ui_text_context_changed = 0;
+    g_ui_text_context_changed_kind = UI_TEXT_CONTEXT_NONE;
+    g_ui_text_context_changed_id = 0;
+    g_ui_text_context_changed_owner = NULL;
+    return 1;
+}
+
+static void
+ui_text_context_register_target(int kind, int id, int *owner,
+                                char *text, size_t text_size,
+                                int *cursor_position, int max_codepoints,
+                                UITextInputFilter filter,
+                                void *filter_user_data,
+                                UITextSelection *selection,
+                                int selection_start, int selection_end,
+                                int allow_newlines,
+                                int copy_all_when_empty)
+{
+    if(!ui_text_context_matches(kind, id, owner))
+        return;
+    g_ui_text_context_text = text;
+    g_ui_text_context_text_size = text_size;
+    g_ui_text_context_cursor = cursor_position;
+    g_ui_text_context_max_codepoints = max_codepoints;
+    g_ui_text_context_filter = filter;
+    g_ui_text_context_filter_user_data = filter_user_data;
+    g_ui_text_context_selection = selection;
+    g_ui_text_context_selection_start = selection_start;
+    g_ui_text_context_selection_end = selection_end;
+    g_ui_text_context_allow_newlines = allow_newlines;
+    g_ui_text_context_copy_all_when_empty = copy_all_when_empty;
+    g_ui_text_context_target_frame = g_ui_frame_serial;
 }
 
 static int
@@ -798,35 +876,38 @@ ui_text_apply_context_command(int command, UITextEdit edit,
 }
 
 static int
-ui_text_draw_context_menu(int kind, int id, int *owner, const char *text,
-                          int selection_start, int selection_end,
-                          int copy_all_when_empty)
+ui_text_draw_context_overlay(void)
 {
 #if ANDROID_BUILD
-    (void)kind;
-    (void)id;
-    (void)owner;
-    (void)text;
-    (void)selection_start;
-    (void)selection_end;
-    (void)copy_all_when_empty;
     return 0;
 #else
     UIMenuItem items[4];
-    int has_text = text != NULL && text[0] != '\0';
-    int has_selection = selection_end > selection_start;
+    int has_text = g_ui_text_context_text != NULL &&
+                   g_ui_text_context_text[0] != '\0';
+    int has_selection = g_ui_text_context_selection_end >
+                        g_ui_text_context_selection_start;
     int command;
 
-    if(!ui_text_context_matches(kind, id, owner))
+    if(!g_ui_text_context_open)
         return 0;
+    if(g_ui_text_context_target_frame != g_ui_frame_serial ||
+       g_ui_text_context_text == NULL ||
+       g_ui_text_context_cursor == NULL ||
+       g_ui_text_context_selection == NULL) {
+        ui_text_context_close();
+        ui_text_context_clear_target();
+        return 0;
+    }
 
     items[0] = (UIMenuItem){UI_MENU_COMMAND, "Cut", "Ctrl+X",
                             UI_TEXT_CONTEXT_CUT,
-                            !(has_selection || (copy_all_when_empty && has_text)),
+                            !(has_selection ||
+                              (g_ui_text_context_copy_all_when_empty && has_text)),
                             0, NULL, 0};
     items[1] = (UIMenuItem){UI_MENU_COMMAND, "Copy", "Ctrl+C",
                             UI_TEXT_CONTEXT_COPY,
-                            !(has_selection || (copy_all_when_empty && has_text)),
+                            !(has_selection ||
+                              (g_ui_text_context_copy_all_when_empty && has_text)),
                             0, NULL, 0};
     items[2] = (UIMenuItem){UI_MENU_COMMAND, "Paste", "Ctrl+V",
                             UI_TEXT_CONTEXT_PASTE,
@@ -836,7 +917,7 @@ ui_text_draw_context_menu(int kind, int id, int *owner, const char *text,
                             !has_text, 0, NULL, 0};
 
     command = DrawUIContextMenu((UIContextMenu){
-        .id = 8500 + kind,
+        .id = 8500 + g_ui_text_context_kind,
         .trigger = (Rectangle){-10000.0f, -10000.0f, 1.0f, 1.0f},
         .items = items,
         .item_count = 4,
@@ -844,8 +925,33 @@ ui_text_draw_context_menu(int kind, int id, int *owner, const char *text,
         .x = &g_ui_text_context_x,
         .y = &g_ui_text_context_y
     });
-    if(command != 0)
+    if(command != 0) {
+        int changed = ui_text_apply_context_command(
+            command,
+            (UITextEdit){
+                .text = g_ui_text_context_text,
+                .text_size = g_ui_text_context_text_size,
+                .cursor_position = g_ui_text_context_cursor,
+                .max_codepoints = g_ui_text_context_max_codepoints,
+                .filter = g_ui_text_context_filter,
+                .filter_user_data = g_ui_text_context_filter_user_data
+            },
+            g_ui_text_context_selection,
+            g_ui_text_context_id,
+            g_ui_text_context_owner,
+            g_ui_text_context_selection_start,
+            g_ui_text_context_selection_end,
+            g_ui_text_context_allow_newlines,
+            g_ui_text_context_copy_all_when_empty);
+        if(changed) {
+            g_ui_text_context_changed = 1;
+            g_ui_text_context_changed_kind = g_ui_text_context_kind;
+            g_ui_text_context_changed_id = g_ui_text_context_id;
+            g_ui_text_context_changed_owner = g_ui_text_context_owner;
+        }
         ui_text_context_close();
+        ui_text_context_clear_target();
+    }
     return command;
 #endif
 }
@@ -2191,7 +2297,7 @@ DrawUITextArea(UITextArea area)
     Vector2 mouse_world;
     int mouse_inside;
     int captured;
-    int context_command = 0;
+    int context_active = 0;
     int selection_start = 0;
     int selection_end = 0;
     int has_selection = 0;
@@ -2240,6 +2346,14 @@ DrawUITextArea(UITextArea area)
     if(mouse_inside && !captured)
         MarkUITextCursor();
     drag_id = area.focus_id > 0 ? area.focus_id : 1;
+    changed |= ui_text_context_take_changed(UI_TEXT_CONTEXT_AREA, drag_id,
+                                            area.focused);
+    context_active = ui_text_context_matches(UI_TEXT_CONTEXT_AREA, drag_id,
+                                             area.focused);
+    if(context_active) {
+        focused = 1;
+        ClaimUITextAreaFocus(area.focused);
+    }
 
     if(ui_text_context_open_for(UI_TEXT_CONTEXT_AREA, drag_id, area.focused,
                                 area.bounds, mouse_world, captured)) {
@@ -2314,7 +2428,7 @@ DrawUITextArea(UITextArea area)
             g_ui_text_area_last_click_x = (int)mouse_world.x;
             g_ui_text_area_last_click_y = (int)mouse_world.y;
             g_ui_text_area_last_click_time = now;
-        } else if(focused) {
+        } else if(focused && !context_active) {
             focused = 0;
         }
     }
@@ -2364,7 +2478,7 @@ DrawUITextArea(UITextArea area)
         ClaimUITextAreaFocus(area.focused);
         *area.focused = 1;
     }
-    if(focused && has_selection) {
+    if((focused || context_active) && has_selection) {
         selection_start = g_ui_text_area_selection.anchor;
         selection_end = g_ui_text_area_selection.cursor;
         if(selection_start > selection_end) {
@@ -2566,27 +2680,13 @@ DrawUITextArea(UITextArea area)
         *area.cursor_position = ui_clampi(*area.cursor_position, 0, text_len);
     }
 
-    context_command = ui_text_draw_context_menu(
-        UI_TEXT_CONTEXT_AREA, drag_id, area.focused, area.text,
-        selection_start, selection_end, 0);
-    if(context_command != 0) {
-        changed |= ui_text_apply_context_command(
-            context_command,
-            (UITextEdit){
-                .text = area.text,
-                .text_size = area.text_size,
-                .cursor_position = area.cursor_position,
-                .max_codepoints = area.max_codepoints,
-                .filter = area.filter,
-                .filter_user_data = area.filter_user_data
-            },
-            &g_ui_text_area_selection, drag_id, area.focused,
-            selection_start, selection_end, 1, 0);
-        if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
-                                     area.focused))
-            ui_selection_range(g_ui_text_area_selection, area.text,
-                               &selection_start, &selection_end);
-    }
+    ui_text_context_register_target(UI_TEXT_CONTEXT_AREA, drag_id,
+                                    area.focused, area.text, area.text_size,
+                                    area.cursor_position,
+                                    area.max_codepoints, area.filter,
+                                    area.filter_user_data,
+                                    &g_ui_text_area_selection,
+                                    selection_start, selection_end, 1, 0);
 
     content_h = ui_text_area_content_height(area.text, font, line_gap);
     max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
@@ -2671,7 +2771,7 @@ DrawUITextField(UITextField field)
     Vector2 mouse_world;
     int mouse_inside;
     int captured;
-    int context_command = 0;
+    int context_active = 0;
 
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
@@ -2704,6 +2804,14 @@ DrawUITextField(UITextField field)
     captured = UIInputCapturesClick(mouse_world);
     if(mouse_inside && !captured)
         MarkUITextCursor();
+    changed |= ui_text_context_take_changed(UI_TEXT_CONTEXT_FIELD,
+                                            field.focus_id, field.focused);
+    context_active = ui_text_context_matches(UI_TEXT_CONTEXT_FIELD,
+                                             field.focus_id, field.focused);
+    if(context_active) {
+        focused = 1;
+        ClaimUITextFieldFocus(field.focused);
+    }
 
     if(ui_text_context_open_for(UI_TEXT_CONTEXT_FIELD, field.focus_id,
                                 field.focused, field.bounds, mouse_world,
@@ -2742,7 +2850,7 @@ DrawUITextField(UITextField field)
             ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
                                   field.focused, *field.cursor_position,
                                   *field.cursor_position, 1);
-        } else if(focused) {
+        } else if(focused && !context_active) {
             focused = 0;
         }
     }
@@ -2765,8 +2873,9 @@ DrawUITextField(UITextField field)
 
     *field.focused = focused;
     SetUIFocusTextInputActive(focused);
-    if(focused && ui_text_selection_matches(g_ui_text_field_selection,
-                                            field.focus_id, field.focused))
+    if((focused || context_active) &&
+       ui_text_selection_matches(g_ui_text_field_selection,
+                                 field.focus_id, field.focused))
         ui_selection_range(g_ui_text_field_selection, field.text,
                            &selection_start, &selection_end);
 
@@ -2918,28 +3027,13 @@ DrawUITextField(UITextField field)
         *field.cursor_position = ui_clampi(*field.cursor_position, 0, len);
     }
 
-    context_command = ui_text_draw_context_menu(
-        UI_TEXT_CONTEXT_FIELD, field.focus_id, field.focused, field.text,
-        selection_start, selection_end, 1);
-    if(context_command != 0) {
-        changed |= ui_text_apply_context_command(
-            context_command,
-            (UITextEdit){
-                .text = field.text,
-                .text_size = field.text_size,
-                .cursor_position = field.cursor_position,
-                .max_codepoints = field.max_codepoints,
-                .filter = field.filter,
-                .filter_user_data = field.filter_user_data
-            },
-            &g_ui_text_field_selection, field.focus_id, field.focused,
-            selection_start, selection_end, 0, 1);
-        if(ui_text_selection_matches(g_ui_text_field_selection,
-                                     field.focus_id, field.focused)) {
-            ui_selection_range(g_ui_text_field_selection, field.text,
-                               &selection_start, &selection_end);
-        }
-    }
+    ui_text_context_register_target(UI_TEXT_CONTEXT_FIELD, field.focus_id,
+                                    field.focused, field.text,
+                                    field.text_size, field.cursor_position,
+                                    field.max_codepoints, field.filter,
+                                    field.filter_user_data,
+                                    &g_ui_text_field_selection,
+                                    selection_start, selection_end, 0, 1);
 
     DrawUITextInputEx(field.bounds, field.text, *field.cursor_position,
                       focused,
@@ -3243,6 +3337,7 @@ SetUIFrame(Camera2D camera)
 
     EndUIFocus();
     BeginUIFocus();
+    g_ui_frame_serial++;
 
     if(g_ui_platform_text_input_active != text_input_active) {
         g_ui_platform_text_input_active = text_input_active;
@@ -3261,9 +3356,23 @@ SetUIFrame(Camera2D camera)
     g_ui_camera = ui_sane_camera(camera);
     ui_update_pointer_gesture();
     ClearUIInputCaptures();
+    if(g_ui_text_context_open)
+        PushUIInputCapture((Rectangle){0.0f, 0.0f,
+                                       (float)ui_view_width,
+                                       (float)ui_view_height}, 0);
     g_ui_input_clip_stack_count = 0;
     ResetUIClip();
     BeginUIInspectFrame(NULL);
+}
+
+void
+DrawUIFrameOverlays(void)
+{
+    if(g_ui_overlays_drawn_frame == g_ui_frame_serial)
+        return;
+    g_ui_overlays_drawn_frame = g_ui_frame_serial;
+    ResetUIClip();
+    ui_text_draw_context_overlay();
 }
 
 UIFrameState
@@ -3280,6 +3389,7 @@ SaveUIFrameState(void)
     state.cursor_had_intent = g_ui_cursor_had_intent;
     state.mouse_world_override_enabled = g_ui_mouse_world_override_enabled;
     state.mouse_world_override = g_ui_mouse_world_override;
+    state.frame_serial = g_ui_frame_serial;
     return state;
 }
 
@@ -3295,6 +3405,7 @@ RestoreUIFrameState(UIFrameState state)
     g_ui_cursor_had_intent = state.cursor_had_intent;
     g_ui_mouse_world_override_enabled = state.mouse_world_override_enabled;
     g_ui_mouse_world_override = state.mouse_world_override;
+    g_ui_frame_serial = state.frame_serial;
     ResetUIClip();
 }
 

@@ -184,6 +184,32 @@ grep -Fq 'enum { LOCAL_ACTION_NONE, LOCAL_ACTION_RUN };' "$out/src/valid.c"
 grep -Fq 'value = LOCAL_ACTION_RUN;' "$out/src/valid.c"
 grep -Fq '__auto_type app = (void*)0;' "$out/src/valid.c"
 
+cat > "$work/src/app_loop.kry" <<'EOF'
+app "App Loop" {
+    size 320 200
+    fps 60
+}
+
+screen AppLoop() {
+    WidgetText("hello", 10, 10, UI_TEXT_14, GetThemeText())
+}
+EOF
+
+"$kc" --root "$work" -o "$out" "$work/src/app_loop.kry" >"$err" 2>&1
+awk '
+    /DrawUIFrameOverlays\(\);/ { overlays = NR }
+    /EndUIFocus\(\);/ { focus = NR }
+    /EndDrawing\(\);/ { drawing = NR }
+    END {
+        if(overlays > 0 && focus > overlays && drawing > focus)
+            exit 0
+        exit 1
+    }
+' "$out/src/app_loop.c" || {
+    echo "generated app loop must draw UI overlays before EndUIFocus" >&2
+    exit 1
+}
+
 cat > "$work/src/colon_decl.kry" <<'EOF'
 #module "colon_decl"
 #import "thing.h"
@@ -1440,4 +1466,3 @@ if grep -q 'state.Counter' "$out/src/mod_types/host.c" \
     echo "qualified type alias leaked into generated C" >&2
     exit 1
 fi
-

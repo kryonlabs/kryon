@@ -5018,6 +5018,8 @@ write_app_main(FILE *out, const KryFile *file)
                     screen_name);
         else
             fprintf(out, "        %s();\n", screen_name);
+        fprintf(out, "        DrawUIFrameOverlays();\n");
+        fprintf(out, "        EndUIFocus();\n");
         fprintf(out, "        EndDrawing();\n");
         fprintf(out, "    }\n");
         if(file->app_font_examples)

@@ -55,6 +55,19 @@ ui_draw_panel(Rectangle bounds)
 }
 
 static void
+ui_draw_menu_panel(Rectangle bounds)
+{
+    Color surface = GetThemeSurface();
+    Color border = GetThemeButton();
+    Color shadow = Fade(GetThemeText(), 0.16f);
+
+    DrawRectangleRec((Rectangle){bounds.x + 2.0f, bounds.y + 2.0f,
+                                 bounds.width, bounds.height}, shadow);
+    DrawRectangleRec(bounds, surface);
+    DrawRectangleLinesEx(bounds, 1.0f, border);
+}
+
+static void
 ui_menu_track_panel(Rectangle bounds)
 {
     float x1;
@@ -225,6 +238,7 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
     int w = ScaleUIPx(180);
     int activated = 0;
     Rectangle panel;
+    Vector2 mouse;
 
     (void)id;
     if(items == NULL || item_count <= 0)
@@ -238,15 +252,19 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
     }
 
     panel = (Rectangle){(float)x, (float)y, (float)w, (float)(row_h * item_count + ScaleUIPx(8))};
-    ui_draw_panel(panel);
+    ui_draw_menu_panel(panel);
     ui_menu_track_panel(panel);
     PushUIInputCapture(panel, 1);
+    mouse = ui_mouse_world();
+    if(ui_contains(panel, mouse))
+        MarkUICursor(MOUSE_CURSOR_DEFAULT);
 
     for(int i = 0; i < item_count; i++) {
         Rectangle row = {(float)x + 4, (float)y + 4 + (float)(i * row_h),
                          (float)w - 8, (float)row_h};
         const UIMenuItem *item = &items[i];
-        int hot = ui_hot(row) && !item->disabled && item->kind != UI_MENU_SEPARATOR;
+        int row_hot = ui_contains(row, mouse) && item->kind != UI_MENU_SEPARATOR;
+        int hot = row_hot && !item->disabled;
 
         if(item->kind == UI_MENU_SEPARATOR) {
             DrawUISeparator(row, 0);
@@ -254,21 +272,24 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
         }
 
         if(hot) {
-            DrawRectangleRec(row, c_button_hover);
+            DrawRectangleRec(row, GetThemeButtonHover());
             MarkUIClickable();
         }
-        if(item->disabled)
+        if(item->disabled && row_hot)
             MarkUIDisabled();
         if(item->checked)
-            DrawUIText("*", (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, c_icon);
+            DrawUIText("*", (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, GetThemeIcon());
         DrawUIText(item->label != NULL ? item->label : "", (int)row.x + ScaleUIPx(28),
-                   ui_row_text_y(row, font), font, item->disabled ? c_button : c_text);
+                   ui_row_text_y(row, font),
+                   font, item->disabled ? GetThemeButton() : GetThemeText());
         if(item->accelerator != NULL)
             DrawUIText(item->accelerator, (int)(row.x + row.width - accel_w),
-                       ui_row_text_y(row, font), font, item->disabled ? c_button : c_icon);
+                       ui_row_text_y(row, font),
+                       font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(item->kind == UI_MENU_SUBMENU)
             DrawUIText(">", (int)(row.x + row.width - ScaleUIPx(18)),
-                       ui_row_text_y(row, font), font, item->disabled ? c_button : c_icon);
+                       ui_row_text_y(row, font),
+                       font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(hot && item->kind == UI_MENU_SUBMENU)
             g_menu_submenu_id = item->id;
         if(item->kind == UI_MENU_SUBMENU && g_menu_submenu_id == item->id &&

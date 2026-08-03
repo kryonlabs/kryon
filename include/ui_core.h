@@ -17,6 +17,7 @@ typedef struct UIFrameState {
     int cursor_had_intent;
     int mouse_world_override_enabled;
     Vector2 mouse_world_override;
+    unsigned long frame_serial;
 } UIFrameState;
 
 void InitUI(int width, int height, float dpi);
@@ -28,6 +29,7 @@ void BeginUIFrame(int width, int height, float dpi);
 void SetUIFrame(Camera2D camera);
 UIFrameState SaveUIFrameState(void);
 void RestoreUIFrameState(UIFrameState state);
+void DrawUIFrameOverlays(void);
 void SetUIMouseWorldOverride(int enabled, Vector2 position);
 int SetUIKeyboardInputEnabled(int enabled);
 int UIKeyboardInputEnabled(void);
