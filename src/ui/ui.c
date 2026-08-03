@@ -194,6 +194,16 @@ MarkUIClickable(void)
 }
 
 void
+MarkUICursor(int cursor)
+{
+    int priority = UI_CURSOR_PRIORITY_CLICKABLE;
+
+    if(cursor == MOUSE_CURSOR_NOT_ALLOWED)
+        priority = UI_CURSOR_PRIORITY_DISABLED;
+    ui_set_cursor_intent(cursor, priority);
+}
+
+void
 MarkUIDisabled(void)
 {
     if(g_ui_cursor_disabled != NULL)

@@ -904,7 +904,7 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
         int captured = UIInputCapturesClick(mouse);
 
         if(inside && !captured)
-            SetMouseCursor(MOUSE_CURSOR_IBEAM);
+            MarkUICursor(MOUSE_CURSOR_IBEAM);
 
         if(inside && !captured && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             int offset = ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);

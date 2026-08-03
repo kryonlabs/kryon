@@ -34,6 +34,7 @@ void SetUIModalCapture(Rectangle bounds);
 void SetUITextInputPlatformCallback(UITextInputPlatformCallback callback);
 void SetUICursorClickable(int *cursor_clickable);
 void SetUICursorDisabled(int *cursor_disabled);
+void MarkUICursor(int cursor);
 void MarkUIClickable(void);
 void MarkUIDisabled(void);
 void SetUIIcons(Texture2D gear_icon, Texture2D x_icon);

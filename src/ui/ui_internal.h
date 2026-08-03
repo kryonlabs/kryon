@@ -33,6 +33,7 @@ enum {
 };
 
 Vector2 ui_mouse_world(void);
+void MarkUICursor(int cursor);
 void MarkUIClickable(void);
 void MarkUIDisabled(void);
 int ui_pointer_drag_is_horizontal(void);
