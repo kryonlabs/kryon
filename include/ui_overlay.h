@@ -37,6 +37,7 @@ typedef struct {
     int draw_mode_menu;
     int draw_palette_menu;
     int draw_style_menu;
+    int palette_index;
 } UIThemeSettingsState;
 
 typedef struct {

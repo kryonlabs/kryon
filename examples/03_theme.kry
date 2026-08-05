@@ -1,127 +1,138 @@
 #import "kryon.h"
 
 app "Kryon Theme Example" {
-    size 800 600
+    size 900 680
     fps 60
     font examples
     theme THEME_SKY light
 }
 
 state {
-    theme_index: int = 0
-    dark_mode: int = 0
+    theme_source: int = THEME_SOURCE_APP
+    theme_mode: int = THEME_MODE_LIGHT
+    theme_id: int = THEME_SKY
+    theme_style: int = THEME_STYLE_SYSTEM
+    menu_state: UIThemeSettingsState = {0}
+    slider_value: int = 64
+    toggle_value: int = 1
+    check_value: int = 1
+    text_value: [128] char = "Live Kryon text field"
+    text_cursor: int = 21
+    text_focused: int = 0
+    combo_index: int = 1
 }
 
-ThemeAt :: (index: int) -> ThemeId {
-    if index == 0 {
-        return THEME_SKY
+ClampInt :: (value: int, min_value: int, max_value: int) -> int {
+    if value < min_value {
+        return min_value
     }
-    if index == 1 {
-        return THEME_OCEAN
+    if value > max_value {
+        return max_value
     }
-    if index == 2 {
-        return THEME_FOREST
-    }
-    if index == 3 {
-        return THEME_SUNSET
-    }
-    if index == 4 {
-        return THEME_LAVENDER
-    }
-    if index == 5 {
-        return THEME_CHERRY
-    }
-    if index == 6 {
-        return THEME_DAWN
-    }
-    if index == 7 {
-        return THEME_SAGE
-    }
-    if index == 8 {
-        return THEME_INK
-    }
-    if index == 9 {
-        return THEME_MONO
-    }
-    if index == 10 {
-        return THEME_MINT
-    }
-    return THEME_COBALT
+    return value
 }
 
-ThemeSwatch :: (label: const char *, y: int, value: Color, label_color: Color) {
-    x: int = ScaleUIPx(20)
-    size: int = ScaleUIPx(56)
-    WidgetRect(x, y, size, size, value, BLANK)
-    WidgetRect(x, y, size, size, BLANK, label_color)
-    WidgetText(label, x+size+ScaleUIPx(10), y+ScaleUIPx(10), UI_TEXT_16, label_color)
+ThemeDarkMode :: () -> int {
+    if theme_mode == THEME_MODE_DARK {
+        return 1
+    }
+    if theme_mode == THEME_MODE_LIGHT {
+        return 0
+    }
+    return SystemThemePrefersDark() ? 1 : 0
 }
 
-ThemeButton :: (label: const char *, x: int, y: int, w: int) -> int {
-    h: int = ScaleUIPx(38)
-    return DrawUIGenericButton(x,y,w,h,label,UI_BUTTON_STYLE_SECONDARY,0,NULL)
+ApplyThemeState :: () {
+    theme_source = ClampInt(theme_source, THEME_SOURCE_APP, THEME_SOURCE_SYSTEM)
+    theme_mode = ClampInt(theme_mode, THEME_MODE_SYSTEM, THEME_MODE_DARK)
+    theme_style = ClampInt(theme_style, THEME_STYLE_SYSTEM, THEME_STYLE_AERO)
+    theme_id = ClampInt(theme_id, 0, THEME_COUNT - 1)
+    SetThemeSource((ThemeSource)theme_source)
+    SetThemeMode((ThemeMode)theme_mode)
+    SetThemeStyle((ThemeStyle)theme_style)
+    SetCurrentTheme(theme_id, ThemeDarkMode())
 }
 
-ThemeLabel :: (label: const char *, value: const char *, y: int, size: int, text_color: Color) {
-    WidgetText(TextFormat("%s%s",label,value), ScaleUIPx(20), y, size, text_color)
+TokenValue :: (label: const char *, value: int, x: int, y: int) {
+    DrawUIText(TextFormat("%s %d", label, value), x, y, UI_TEXT_12, GetThemeIcon())
 }
 
-ThemeSideLabel :: (label: const char *, value: const char *, y: int, text_color: Color) {
-    WidgetText(TextFormat("%s%s",label,value), ScaleUIPx(320), y, UI_TEXT_16, text_color)
-}
+ControlDemo :: (x: int, y: int, w: int) {
+    options: [3] const char * = {"One", "Two", "Three"}
+    field_style := (UITextInputStyle){
+        DarkenUIColor(GetThemeBackground(), 6),
+        DarkenUIColor(GetThemeBackground(), 38),
+        GetThemeButtonHover(),
+        GetThemeText(),
+        GetThemeText(),
+        0.08f,
+        ScaleUIPx(12),
+        ScaleUIPx(8)
+    }
 
-ThemeSideInt :: (label: const char *, y: int, value: int, text_color: Color) {
-    WidgetText(TextFormat("%s%d",label,value), ScaleUIPx(320), y, UI_TEXT_16, text_color)
-}
+    DrawUIText("Live controls", x, y, UI_TEXT_24, GetThemeText())
+    y += ScaleUIPx(46)
+    DrawUIButton((UIButton){{x, y, ScaleUIPx(190), ScaleUIPx(44)}, "Primary", UI_TEXT_16, 301, 0,
+                            GetThemeButton(), GetThemeButtonHover(),
+                            GetThemeText(), DarkenUIColor(GetThemeButton(), 35), 0.06f})
+    DrawUIButton((UIButton){{x + ScaleUIPx(210), y, ScaleUIPx(190), ScaleUIPx(44)}, "Secondary", UI_TEXT_16, 302, 0,
+                            GetThemeSurface(), LightenUIColor(GetThemeSurface(), 12),
+                            GetThemeText(), DarkenUIColor(GetThemeSurface(), 35), 0.06f})
+    y += ScaleUIPx(70)
 
-ThemeRGB :: (label: const char *, y: int, value: Color, text_color: Color) {
-    rgb_text: const char * = TextFormat("%s RGB:%d,%d,%d",label,value.r,value.g,value.b)
-    WidgetText(rgb_text, ScaleUIPx(320), y, 14, text_color)
+    DrawUITextField((UITextField){{x, y, w, ScaleUIPx(44)}, text_value, sizeof(text_value),
+                                  &text_cursor, &text_focused, 80, UI_TEXT_16, 303,
+                                  field_style, NULL, NULL, NULL})
+    y += ScaleUIPx(70)
+    DrawUIDropdownButton(304, x, y, w, ScaleUIPx(44), options, 3, &combo_index)
+    y += ScaleUIPx(72)
+    DrawUISlider(305, x, y, w, "Slider", 0, 100, &slider_value, "")
+    y += ScaleUIPx(72)
+    DrawUIToggleSwitch(x, y, ScaleUIPx(180), ScaleUIPx(48), &toggle_value, "Off", "On")
+    DrawUICheckboxToggle(x + ScaleUIPx(230), y + ScaleUIPx(12), "Checkbox", &check_value)
 }
 
 screen ThemeExample(viewport: Rectangle) {
-    current_theme: ThemeId = ThemeAt(theme_index)
-    left_x: int = ScaleUIPx(300)
-    right_x: int = ScaleUIPx(420)
-    button_w: int = ScaleUIPx(112)
-    mode_w: int = ScaleUIPx(232)
-    SetCurrentTheme(current_theme, dark_mode)
-    background: Color
-    text_color: Color
-    button: Color
-    button_hover: Color
-    circle: Color
-    GetThemeCatalogColor(current_theme,dark_mode,"background",&background)
-    GetThemeCatalogColor(current_theme,dark_mode,"text",&text_color)
-    GetThemeCatalogColor(current_theme,dark_mode,"button",&button)
-    GetThemeCatalogColor(current_theme,dark_mode,"button_hover",&button_hover)
-    GetThemeCatalogColor(current_theme,dark_mode,"circle",&circle)
-    WidgetBackground(background)
-    ThemeLabel("Theme:    ",GetThemeLabel(current_theme),ScaleUIPx(20),UI_TEXT_24,text_color)
-    ThemeLabel("Mode:",dark_mode?"Dark":"Light",ScaleUIPx(50),UI_TEXT_16,text_color)
-    if ThemeButton("Prev Theme", left_x, ScaleUIPx(18), button_w) {
-        theme_index = (theme_index + 11) % 12
+    ApplyThemeState()
+    WidgetBackground(GetThemeBackground())
+
+    margin: int = ScaleUIPx(26)
+    panel_w: int = ScaleUIPx(310)
+    right_x: int = margin + panel_w + ScaleUIPx(42)
+    settings := (UIThemeSettings){
+        .id_base = 101,
+        .x = margin,
+        .y = ScaleUIPx(64),
+        .w = panel_w,
+        .theme_source = &theme_source,
+        .theme_mode = &theme_mode,
+        .theme_id = &theme_id,
+        .theme_style = &theme_style,
+        .allow_system_source = 1,
+        .allow_system_mode = 1
     }
-    if ThemeButton("Next Theme", right_x, ScaleUIPx(18), button_w) {
-        theme_index = (theme_index + 1) % 12
+
+    DrawUIText("Kryon Native Theme State", margin, ScaleUIPx(24), UI_TEXT_24, GetThemeText())
+    DrawUIText("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), UI_TEXT_16, GetThemeIcon())
+    DrawUIThemeSettings(settings, &menu_state)
+
+    ControlDemo(right_x, ScaleUIPx(88), ScaleUIPx(420))
+
+    tokens := GetUIStyleTokens()
+    token_y: int = ScaleUIPx(520)
+    DrawUIText("Active style tokens", right_x, token_y, UI_TEXT_16, GetThemeText())
+    token_y += ScaleUIPx(30)
+    TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
+    TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)
+    token_y += ScaleUIPx(24)
+    TokenValue("border alpha", tokens.border_alpha, right_x, token_y)
+    TokenValue("shadow alpha", tokens.shadow_alpha, right_x + ScaleUIPx(150), token_y)
+    token_y += ScaleUIPx(24)
+    TokenValue("touch target", tokens.touch_target_min, right_x, token_y)
+    TokenValue("shadow y", tokens.shadow_offset_y, right_x + ScaleUIPx(150), token_y)
+
+    result := DrawUIThemeSettingsMenus(settings, &menu_state)
+    if result.changed {
+        ApplyThemeState()
     }
-    if dark_mode {
-        if ThemeButton("Light Mode", left_x, ScaleUIPx(64), mode_w) {
-            dark_mode = 0
-        }
-    } else {
-        if ThemeButton("Dark Mode", left_x, ScaleUIPx(64), mode_w) {
-            dark_mode = 1
-        }
-    }
-    ThemeSwatch("Background", ScaleUIPx(90), background, text_color)
-    ThemeSwatch("Text", ScaleUIPx(160), text_color, text_color)
-    ThemeSwatch("Button", ScaleUIPx(230), button, text_color)
-    ThemeSwatch("Button Hover", ScaleUIPx(300), button_hover, text_color)
-    ThemeSwatch("Circle", ScaleUIPx(370), circle, text_color)
-    scope: const char * = GetThemeScopeName(current_theme,dark_mode)
-    ThemeSideLabel("Scope:", scope, ScaleUIPx(120), text_color)
-    ThemeSideInt("Theme ID:", ScaleUIPx(152), current_theme, text_color)
-    ThemeRGB("Background", ScaleUIPx(200), background, text_color)
-    ThemeRGB("Text", ScaleUIPx(224), text_color, text_color)
 }

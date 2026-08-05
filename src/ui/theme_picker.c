@@ -6,18 +6,18 @@
 #define UI_THEME_SETTINGS_ROW_GAP 10
 
 static const ThemeId theme_picker_order[THEME_COUNT] = {
-    THEME_SKY,
-    THEME_OCEAN,
     THEME_COBALT,
-    THEME_FOREST,
-    THEME_SAGE,
-    THEME_MINT,
-    THEME_SUNSET,
-    THEME_INK,
-    THEME_DAWN,
     THEME_CHERRY,
+    THEME_DAWN,
+    THEME_FOREST,
     THEME_LAVENDER,
-    THEME_MONO
+    THEME_MINT,
+    THEME_MONO,
+    THEME_OCEAN,
+    THEME_SAGE,
+    THEME_INK,
+    THEME_SKY,
+    THEME_SUNSET
 };
 
 typedef struct {
@@ -42,6 +42,39 @@ static const char *
 ui_theme_settings_text(const char *text, const char *fallback)
 {
     return text != NULL && text[0] != '\0' ? text : fallback;
+}
+
+static int
+ui_theme_palette_option_count(UIThemeSettings settings)
+{
+    return THEME_COUNT + (settings.allow_system_source ? 1 : 0);
+}
+
+static int
+ui_theme_palette_index(UIThemeSettings settings)
+{
+    int offset = settings.allow_system_source ? 1 : 0;
+    int theme = settings.theme_id != NULL ? *settings.theme_id : THEME_SKY;
+
+    if(settings.allow_system_source && settings.theme_source != NULL &&
+       *settings.theme_source == THEME_SOURCE_SYSTEM)
+        return 0;
+    for(int i = 0; i < THEME_COUNT; i++) {
+        if(theme_picker_order[i] == NormalizeTheme(theme))
+            return i + offset;
+    }
+    return offset;
+}
+
+static ThemeId
+ui_theme_palette_theme_at(UIThemeSettings settings, int index)
+{
+    int offset = settings.allow_system_source ? 1 : 0;
+
+    index -= offset;
+    if(index < 0 || index >= THEME_COUNT)
+        return THEME_SKY;
+    return theme_picker_order[index];
 }
 
 static const char *
@@ -77,15 +110,11 @@ ui_theme_style_option_label(UIThemeSettings settings, ThemeStyle style)
 int
 GetUIThemeSettingsHeight(UIThemeSettings settings)
 {
-    int rows = 1;
+    int rows = 2;
 
     if(settings.theme_source == NULL || settings.theme_mode == NULL ||
        settings.theme_id == NULL)
         return 0;
-    if(*settings.theme_source == THEME_SOURCE_APP || settings.allow_system_mode)
-        rows++;
-    if(*settings.theme_source == THEME_SOURCE_APP)
-        rows++;
     if(settings.theme_style != NULL)
         rows++;
     return rows * (GetUIFontSize() + ScaleUIPx(8) + ScaleUIPx(UI_THEME_SETTINGS_ROW_H)) +
@@ -95,16 +124,16 @@ GetUIThemeSettingsHeight(UIThemeSettings settings)
 int
 DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
 {
-    const char *source_options[2];
     const char *mode_options[3];
-    const char *theme_options[THEME_COUNT];
+    const char *theme_options[THEME_COUNT + 1];
     const char *style_options[THEME_STYLE_AERO + 1];
     int y = settings.y;
     int label_gap = ScaleUIPx(8);
     int row_h = ScaleUIPx(UI_THEME_SETTINGS_ROW_H);
     int row_gap = ScaleUIPx(UI_THEME_SETTINGS_ROW_GAP);
     int font = GetUIFontSize();
-    int source_count;
+    int palette_count;
+    int palette_index;
 
     if(state != NULL)
         memset(state, 0, sizeof(*state));
@@ -112,72 +141,52 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
        settings.theme_id == NULL || settings.w <= 0)
         return y;
 
-    source_count = settings.allow_system_source ? 2 : 1;
-    source_options[THEME_SOURCE_APP] =
-        ui_theme_settings_text(settings.source_app_label,
-                               GetLocaleText("theme_app"));
-    source_options[THEME_SOURCE_SYSTEM] =
-        ui_theme_settings_text(settings.source_system_label,
-                               GetLocaleText("theme_system"));
-    *settings.theme_source = ui_clampi(*settings.theme_source,
-                                             THEME_SOURCE_APP,
-                                             source_count - 1);
-    DrawUIText(ui_theme_settings_text(settings.theme_label,
-                                      GetLocaleText("theme_label")),
+    mode_options[THEME_MODE_SYSTEM] =
+        ui_theme_settings_text(settings.mode_system_label,
+                               GetLocaleText("theme_follow_device"));
+    mode_options[THEME_MODE_LIGHT] =
+        ui_theme_settings_text(settings.mode_light_label,
+                               GetLocaleText("theme_light"));
+    mode_options[THEME_MODE_DARK] =
+        ui_theme_settings_text(settings.mode_dark_label,
+                               GetLocaleText("theme_dark"));
+    *settings.theme_mode = ui_clampi(*settings.theme_mode,
+                                     THEME_MODE_SYSTEM,
+                                     THEME_MODE_DARK);
+    DrawUIText(ui_theme_settings_text(settings.mode_label,
+                                      GetLocaleText("theme_mode_label")),
                settings.x, y, font, c_text);
-    DrawUIDropdownButton(settings.id_base, settings.x, y + font + label_gap,
-                         settings.w, row_h, source_options, source_count,
-                         settings.theme_source);
+    DrawUIDropdownButton(settings.id_base + 1, settings.x, y + font + label_gap,
+                         settings.w, row_h, mode_options, 3,
+                         settings.theme_mode);
     if(state != NULL)
-        state->draw_source_menu = 1;
+        state->draw_mode_menu = 1;
     y += font + label_gap + row_h + row_gap;
 
-    if(*settings.theme_source == THEME_SOURCE_APP || settings.allow_system_mode) {
-        mode_options[THEME_MODE_SYSTEM] =
-            ui_theme_settings_text(settings.mode_system_label,
-                                   GetLocaleText("theme_follow_device"));
-        mode_options[THEME_MODE_LIGHT] =
-            ui_theme_settings_text(settings.mode_light_label,
-                                   GetLocaleText("theme_light"));
-        mode_options[THEME_MODE_DARK] =
-            ui_theme_settings_text(settings.mode_dark_label,
-                                   GetLocaleText("theme_dark"));
-        *settings.theme_mode = ui_clampi(*settings.theme_mode,
-                                               THEME_MODE_SYSTEM,
-                                               THEME_MODE_DARK);
-        DrawUIText(ui_theme_settings_text(settings.mode_label,
-                                          GetLocaleText("theme_mode_label")),
-                   settings.x, y, font, c_text);
-        DrawUIDropdownButton(settings.id_base + 1, settings.x, y + font + label_gap,
-                             settings.w, row_h, mode_options, 3,
-                             settings.theme_mode);
-        if(state != NULL)
-            state->draw_mode_menu = 1;
-        y += font + label_gap + row_h + row_gap;
-    } else {
-        *settings.theme_mode = THEME_MODE_SYSTEM;
-        if(settings.system_theme_label != NULL && settings.system_theme_label[0] != '\0') {
-            DrawUIText(settings.system_theme_label, settings.x, y,
-                       GetUISmallFontSize(), DarkenUIColor(c_text, 28));
-            y += GetUISmallFontSize() + row_gap;
-        }
-    }
-
-    if(*settings.theme_source == THEME_SOURCE_APP) {
+    palette_count = ui_theme_palette_option_count(settings);
+    palette_index = ui_theme_palette_index(settings);
+    if(settings.allow_system_source) {
+        theme_options[0] = ui_theme_settings_text(settings.source_system_label,
+                                                  GetLocaleText("theme_system"));
         for(int i = 0; i < THEME_COUNT; i++)
-            theme_options[i] = ui_theme_label((ThemeId)i);
-        *settings.theme_id = ui_clampi(*settings.theme_id, 0,
-                                             THEME_COUNT - 1);
-        DrawUIText(ui_theme_settings_text(settings.palette_label,
-                                          GetLocaleText("theme_color_label")),
-                   settings.x, y, font, c_text);
-        DrawUIDropdownButton(settings.id_base + 2, settings.x, y + font + label_gap,
-                             settings.w, row_h, theme_options, THEME_COUNT,
-                             settings.theme_id);
-        if(state != NULL)
-            state->draw_palette_menu = 1;
-        y += font + label_gap + row_h + row_gap;
+            theme_options[i + 1] = ui_theme_label(theme_picker_order[i]);
+    } else {
+        for(int i = 0; i < THEME_COUNT; i++)
+            theme_options[i] = ui_theme_label(theme_picker_order[i]);
     }
+    if(state != NULL) {
+        state->palette_index = ui_clampi(palette_index, 0, palette_count - 1);
+        palette_index = state->palette_index;
+    }
+    DrawUIText(ui_theme_settings_text(settings.palette_label,
+                                      GetLocaleText("theme_color_label")),
+               settings.x, y, font, c_text);
+    DrawUIDropdownButton(settings.id_base + 2, settings.x, y + font + label_gap,
+                         settings.w, row_h, theme_options, palette_count,
+                         state != NULL ? &state->palette_index : &palette_index);
+    if(state != NULL)
+        state->draw_palette_menu = 1;
+    y += font + label_gap + row_h + row_gap;
 
     if(settings.theme_style != NULL) {
         for(int i = THEME_STYLE_SYSTEM; i <= THEME_STYLE_AERO; i++)
@@ -208,12 +217,30 @@ DrawUIThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state)
 
     if(state == NULL)
         return result;
-    if(state->draw_source_menu && DrawUIDropdownMenu(settings.id_base))
-        result.source_changed = 1;
     if(state->draw_mode_menu && DrawUIDropdownMenu(settings.id_base + 1))
         result.mode_changed = 1;
-    if(state->draw_palette_menu && DrawUIDropdownMenu(settings.id_base + 2))
+    if(state->draw_palette_menu && DrawUIDropdownMenu(settings.id_base + 2)) {
+        int previous_source = settings.theme_source != NULL ? *settings.theme_source : THEME_SOURCE_APP;
+        int previous_theme = settings.theme_id != NULL ? *settings.theme_id : THEME_SKY;
+        int palette_count = ui_theme_palette_option_count(settings);
+
+        state->palette_index = ui_clampi(state->palette_index, 0, palette_count - 1);
+        if(settings.allow_system_source && state->palette_index == 0) {
+            if(settings.theme_source != NULL)
+                *settings.theme_source = THEME_SOURCE_SYSTEM;
+        } else {
+            if(settings.theme_source != NULL)
+                *settings.theme_source = THEME_SOURCE_APP;
+            if(settings.theme_id != NULL)
+                *settings.theme_id = ui_theme_palette_theme_at(settings,
+                                                               state->palette_index);
+        }
         result.palette_changed = 1;
+        result.source_changed =
+            settings.theme_source != NULL && previous_source != *settings.theme_source;
+        if(settings.theme_id != NULL && previous_theme != *settings.theme_id)
+            result.palette_changed = 1;
+    }
     if(state->draw_style_menu && DrawUIDropdownMenu(settings.id_base + 3))
         result.style_changed = 1;
     result.changed = result.source_changed || result.mode_changed ||

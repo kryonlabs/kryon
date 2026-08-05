@@ -478,8 +478,23 @@ DrawUIDropdownMenu(int id)
         int option_hover = option_active && UIHoverEffectsEnabled();
 
         if(option_active) {
-            if(option_hover)
-                DrawRectangle(x, option_y, w, option_h, c_button_hover);
+            if(option_hover) {
+                if(ui_modern_style()) {
+                    UIStyleTokens tokens = GetUIStyleTokens();
+                    int inset = ScaleUIPx(4);
+                    Rectangle hover_bounds = {
+                        (float)(x + inset),
+                        (float)(option_y + ScaleUIPx(2)),
+                        (float)(option_w - inset * 2),
+                        (float)(option_h - ScaleUIPx(4))
+                    };
+                    if(hover_bounds.width > 0 && hover_bounds.height > 0)
+                        DrawRectangleRounded(hover_bounds, tokens.control_radius,
+                                             12, c_button_hover);
+                } else {
+                    DrawRectangle(x, option_y, w, option_h, c_button_hover);
+                }
+            }
             MarkUIClickable();
 
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened && !state->touch_drag_active) {
