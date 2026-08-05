@@ -129,6 +129,17 @@ static unsigned long g_ui_text_focus_frame = 0;
 static unsigned long g_ui_text_focus_owner_frame = 0;
 static int *g_ui_text_focus_owner_this_frame = NULL;
 
+#define UI_BUTTON_ANIM_MAX 128
+
+typedef struct UIButtonAnimState {
+    unsigned int key;
+    unsigned long frame_seen;
+    float hover;
+    float press;
+} UIButtonAnimState;
+
+static UIButtonAnimState g_ui_button_anim[UI_BUTTON_ANIM_MAX];
+
 #define UI_TEXT_INPUT_QUEUE_MAX 64
 static int g_ui_text_input_codepoints[UI_TEXT_INPUT_QUEUE_MAX];
 static int g_ui_text_input_codepoint_count = 0;
@@ -1429,6 +1440,29 @@ ClaimUITextAreaFocus(int *focused)
         ui_clear_text_field_selection();
 }
 
+static void
+ReleaseUITextFocus(int *focused)
+{
+    if(focused == NULL)
+        return;
+    if(g_ui_text_focus_owner == focused)
+        g_ui_text_focus_owner = NULL;
+    if(g_ui_text_focus_owner_this_frame == focused)
+        g_ui_text_focus_owner_this_frame = NULL;
+    *focused = 0;
+    ui_text_context_close();
+    if(g_ui_text_field_drag_owner == focused) {
+        g_ui_text_field_drag_id = 0;
+        g_ui_text_field_drag_owner = NULL;
+        g_ui_text_field_selection.dragging = 0;
+    }
+    if(g_ui_text_area_drag_owner == focused) {
+        g_ui_text_area_drag_id = 0;
+        g_ui_text_area_drag_owner = NULL;
+        g_ui_text_area_selection.dragging = 0;
+    }
+}
+
 static int
 IsUITextFocusOwner(int *focused)
 {
@@ -1766,6 +1800,10 @@ DrawUIButton(UIButton button)
     int cues = UITransitionCuesEnabled();
     Color draw_background;
     Color draw_border;
+    UIButtonAnimState *anim = NULL;
+    float hover_amount = 0.0f;
+    float press_amount = 0.0f;
+    Rectangle draw_bounds;
 
     widget = BeginUIWidget("button",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -1780,32 +1818,78 @@ DrawUIButton(UIButton button)
     clicked = UIHandleClick(button.bounds, button.disabled, &hovered);
     focused = !button.disabled && button.focus_id > 0 &&
               RegisterUIFocus(button.focus_id, button.bounds);
+    draw_bounds = button.bounds;
+
+    if(GetEffectiveThemeStyle() == THEME_STYLE_MATERIAL && !button.disabled) {
+        unsigned int key = 2166136261u;
+        const char *label = button.label != NULL ? button.label : "";
+
+        key = (key ^ (unsigned int)button.focus_id) * 16777619u;
+        key = (key ^ (unsigned int)(int)button.bounds.x) * 16777619u;
+        key = (key ^ (unsigned int)(int)button.bounds.y) * 16777619u;
+        key = (key ^ (unsigned int)(int)button.bounds.width) * 16777619u;
+        key = (key ^ (unsigned int)(int)button.bounds.height) * 16777619u;
+        while(*label != '\0')
+            key = (key ^ (unsigned char)*label++) * 16777619u;
+        anim = &g_ui_button_anim[key % UI_BUTTON_ANIM_MAX];
+        if(anim->key != key || g_ui_frame_serial - anim->frame_seen > 12) {
+            memset(anim, 0, sizeof(*anim));
+            anim->key = key;
+        }
+        anim->frame_seen = g_ui_frame_serial;
+        {
+            float dt = GetFrameTime();
+            float hover_target = hovered ? 1.0f : 0.0f;
+            float press_target = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT) ? 1.0f : 0.0f;
+            float hover_step = dt * 10.0f;
+            float press_step = dt * 16.0f;
+
+            if(hover_step > 1.0f)
+                hover_step = 1.0f;
+            if(press_step > 1.0f)
+                press_step = 1.0f;
+            anim->hover += (hover_target - anim->hover) * hover_step;
+            anim->press += (press_target - anim->press) * press_step;
+            hover_amount = anim->hover;
+            press_amount = anim->press;
+        }
+        draw_bounds.y += (float)ScaleUIPx(2) * press_amount;
+    } else {
+        hover_amount = hovered ? 1.0f : 0.0f;
+    }
 
     if(button.disabled) {
         background.a = background.a > 120 ? 120 : background.a;
         text.a = text.a > 150 ? 150 : text.a;
     }
-    draw_background = hovered ? hover_background : background;
-    draw_border = hovered ? LightenUIColor(hover_background, cues ? 54 : 40) : border;
+    draw_background = ColorLerp(background, hover_background, hover_amount);
+    draw_border = ColorLerp(border, LightenUIColor(hover_background, cues ? 54 : 40),
+                            hover_amount);
     if(cues && hovered)
         draw_background = LightenUIColor(draw_background, 6);
 
-    ui_draw_control_background(button.bounds, draw_background, draw_border, radius);
+    ui_draw_control_background(draw_bounds, draw_background, draw_border, radius);
+    if(GetEffectiveThemeStyle() == THEME_STYLE_MATERIAL &&
+       !button.disabled && press_amount > 0.01f) {
+        Color overlay = WHITE;
+        overlay.a = (unsigned char)(34.0f * press_amount);
+        DrawRectangleRounded(draw_bounds, ui_control_radius(radius), 12, overlay);
+    }
     if(cues && hovered && button.bounds.width > 4 && button.bounds.height > 4) {
         Color cue = LightenUIColor(draw_background, 42);
         cue.a = cue.a > 170 ? 170 : cue.a;
-        DrawRectangle((int)button.bounds.x + 2, (int)button.bounds.y + 1,
+        DrawRectangle((int)draw_bounds.x + 2, (int)draw_bounds.y + 1,
                       (int)button.bounds.width - 4, ScaleUIPx(1), cue);
     }
 
     if(focused) {
         SetUIFocusTextInputActive(0);
-        DrawUIFocus(button.bounds);
+        DrawUIFocus(draw_bounds);
     }
 
     DrawCenteredUIControlText(button.label ? button.label : "",
-                              (int)(button.bounds.x + button.bounds.width * 0.5f),
-                              (int)(button.bounds.y + button.bounds.height * 0.5f),
+                              (int)(draw_bounds.x + draw_bounds.width * 0.5f),
+                              (int)(draw_bounds.y + draw_bounds.height * 0.5f),
                               font, text);
     EndUIWidget(&widget);
     return clicked || IsUIFocusActivatePressed(button.focus_id);
@@ -2634,6 +2718,7 @@ DrawUITextArea(UITextArea area)
             g_ui_text_area_last_click_time = now;
         } else if(focused && !context_active) {
             focused = 0;
+            ReleaseUITextFocus(area.focused);
         }
     }
     if(g_ui_text_area_drag_owner == area.focused &&
@@ -2666,6 +2751,12 @@ DrawUITextArea(UITextArea area)
 
     *area.focused = focused;
     SetUIFocusTextInputActive(focused);
+    if(focused && UIKeyPressed(KEY_ESCAPE)) {
+        focused = 0;
+        ReleaseUITextFocus(area.focused);
+        *area.focused = 0;
+        SetUIFocusTextInputActive(0);
+    }
     copy_pressed = UIKeyPressed(KEY_C);
     cut_pressed = UIKeyPressed(KEY_X);
     paste_pressed = UIKeyPressed(KEY_V);
@@ -3056,6 +3147,7 @@ DrawUITextField(UITextField field)
                                   *field.cursor_position, 1);
         } else if(focused && !context_active) {
             focused = 0;
+            ReleaseUITextFocus(field.focused);
         }
     }
     if(g_ui_text_field_drag_owner == field.focused &&
@@ -3077,6 +3169,12 @@ DrawUITextField(UITextField field)
 
     *field.focused = focused;
     SetUIFocusTextInputActive(focused);
+    if(focused && UIKeyPressed(KEY_ESCAPE)) {
+        focused = 0;
+        ReleaseUITextFocus(field.focused);
+        *field.focused = 0;
+        SetUIFocusTextInputActive(0);
+    }
     if((focused || context_active) &&
        ui_text_selection_matches(g_ui_text_field_selection,
                                  field.focus_id, field.focused))

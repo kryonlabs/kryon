@@ -21,6 +21,40 @@ static int aggregate_count = 0;
 
 bool SystemThemeColor(const char *key, Color *color);
 
+static int
+theme_text_contains_ci(const char *text, const char *needle)
+{
+    size_t needle_len;
+
+    if(text == NULL || needle == NULL || needle[0] == '\0')
+        return 0;
+    needle_len = strlen(needle);
+    for(const char *p = text; *p != '\0'; p++) {
+        size_t i = 0;
+        while(i < needle_len && p[i] != '\0' &&
+              tolower((unsigned char)p[i]) ==
+              tolower((unsigned char)needle[i]))
+            i++;
+        if(i == needle_len)
+            return 1;
+    }
+    return 0;
+}
+
+static int
+system_theme_is_classic(void)
+{
+    const char *name = GetSystemThemeNameCached();
+
+    return theme_text_contains_ci(name, "chicago") ||
+           theme_text_contains_ci(name, "win95") ||
+           theme_text_contains_ci(name, "win98") ||
+           theme_text_contains_ci(name, "classic") ||
+           theme_text_contains_ci(name, "redmond") ||
+           theme_text_contains_ci(name, "motif") ||
+           theme_text_contains_ci(name, "platinum");
+}
+
 static void copy_text(char *dst, int size, const char *src)
 {
     snprintf(dst, (size_t)size, "%s", src ? src : "");
@@ -703,7 +737,8 @@ ThemeStyle
 GetEffectiveThemeStyle(void)
 {
     if(theme_style == THEME_STYLE_SYSTEM)
-        return GetDefaultPlatformThemeStyle();
+        return system_theme_is_classic() ? THEME_STYLE_RETRO :
+                                           GetDefaultPlatformThemeStyle();
     return theme_style;
 }
 
