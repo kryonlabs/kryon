@@ -68,6 +68,36 @@ ui_theme_settings_text(const char *text, const char *fallback)
     return text != NULL && text[0] != '\0' ? text : fallback;
 }
 
+static const char *
+ui_theme_style_option_label(UIThemeSettings settings, ThemeStyle style)
+{
+    switch(style) {
+    case THEME_STYLE_SYSTEM:
+        return ui_theme_settings_text(settings.style_system_label,
+                                      GetThemeStyleLabel(style));
+    case THEME_STYLE_RETRO:
+        return ui_theme_settings_text(settings.style_retro_label,
+                                      GetThemeStyleLabel(style));
+    case THEME_STYLE_MATERIAL:
+        return ui_theme_settings_text(settings.style_material_label,
+                                      GetThemeStyleLabel(style));
+    case THEME_STYLE_FLUENT:
+        return ui_theme_settings_text(settings.style_fluent_label,
+                                      GetThemeStyleLabel(style));
+    case THEME_STYLE_ADWAITA:
+        return ui_theme_settings_text(settings.style_adwaita_label,
+                                      GetThemeStyleLabel(style));
+    case THEME_STYLE_LIQUID_GLASS:
+        return ui_theme_settings_text(settings.style_liquid_glass_label,
+                                      GetThemeStyleLabel(style));
+    case THEME_STYLE_AERO:
+        return ui_theme_settings_text(settings.style_aero_label,
+                                      GetThemeStyleLabel(style));
+    default:
+        return GetThemeStyleLabel(THEME_STYLE_SYSTEM);
+    }
+}
+
 int
 GetUIThemeSettingsHeight(UIThemeSettings settings)
 {
@@ -80,6 +110,8 @@ GetUIThemeSettingsHeight(UIThemeSettings settings)
         rows++;
     if(*settings.theme_source == THEME_SOURCE_APP)
         rows++;
+    if(settings.theme_style != NULL)
+        rows++;
     return rows * (GetUIFontSize() + ScaleUIPx(8) + ScaleUIPx(UI_THEME_SETTINGS_ROW_H)) +
            (rows - 1) * ScaleUIPx(UI_THEME_SETTINGS_ROW_GAP);
 }
@@ -90,6 +122,7 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
     const char *source_options[2];
     const char *mode_options[3];
     const char *theme_options[THEME_COUNT];
+    const char *style_options[THEME_STYLE_AERO + 1];
     int y = settings.y;
     int label_gap = ScaleUIPx(8);
     int row_h = ScaleUIPx(UI_THEME_SETTINGS_ROW_H);
@@ -162,6 +195,25 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
         y += font + label_gap + row_h + row_gap;
     }
 
+    if(settings.theme_style != NULL) {
+        for(int i = THEME_STYLE_SYSTEM; i <= THEME_STYLE_AERO; i++)
+            style_options[i] =
+                ui_theme_style_option_label(settings, (ThemeStyle)i);
+        *settings.theme_style = ui_clampi(*settings.theme_style,
+                                          THEME_STYLE_SYSTEM,
+                                          THEME_STYLE_AERO);
+        DrawUIText(ui_theme_settings_text(settings.style_label,
+                                          GetLocaleText("theme_style_label")),
+                   settings.x, y, font, c_text);
+        DrawUIDropdownButton(settings.id_base + 3,
+                             settings.x, y + font + label_gap,
+                             settings.w, row_h, style_options,
+                             THEME_STYLE_AERO + 1, settings.theme_style);
+        if(state != NULL)
+            state->draw_style_menu = 1;
+        y += font + label_gap + row_h + row_gap;
+    }
+
     return y - row_gap;
 }
 
@@ -178,8 +230,10 @@ DrawUIThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state)
         result.mode_changed = 1;
     if(state->draw_palette_menu && DrawUIDropdownMenu(settings.id_base + 2))
         result.palette_changed = 1;
+    if(state->draw_style_menu && DrawUIDropdownMenu(settings.id_base + 3))
+        result.style_changed = 1;
     result.changed = result.source_changed || result.mode_changed ||
-                     result.palette_changed;
+                     result.palette_changed || result.style_changed;
     if(settings.theme_source != NULL)
         *settings.theme_source = ui_clampi(*settings.theme_source,
                                                  THEME_SOURCE_APP,
@@ -193,6 +247,10 @@ DrawUIThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state)
     if(settings.theme_id != NULL)
         *settings.theme_id = ui_clampi(*settings.theme_id, 0,
                                              THEME_COUNT - 1);
+    if(settings.theme_style != NULL)
+        *settings.theme_style = ui_clampi(*settings.theme_style,
+                                          THEME_STYLE_SYSTEM,
+                                          THEME_STYLE_AERO);
     return result;
 }
 

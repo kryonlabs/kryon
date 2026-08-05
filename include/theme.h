@@ -2,6 +2,7 @@
 #define THEME_H
 
 #include "kryon.h"
+#include "theme_style.h"
 #include <stdbool.h>
 
 #define THEME_MAX_SCOPES 24
@@ -72,6 +73,11 @@ void SetThemeSource(ThemeSource source);
 ThemeSource GetThemeSource(void);
 void SetThemeMode(ThemeMode mode);
 ThemeMode GetThemeMode(void);
+void SetThemeStyle(ThemeStyle style);
+ThemeStyle GetThemeStyle(void);
+ThemeStyle GetEffectiveThemeStyle(void);
+ThemeStyle GetDefaultPlatformThemeStyle(void);
+const char *GetThemeStyleLabel(ThemeStyle style);
 bool IsSystemThemeAvailable(void);
 const char *GetSystemThemeName(void);
 const char *GetSystemThemeNameCached(void);

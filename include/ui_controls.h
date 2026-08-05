@@ -2,6 +2,7 @@
 #define UI_CONTROLS_H
 
 #include "kryon_compat.generated.h"
+#include "theme_style.h"
 #include "ui_icon_types.h"
 #include <stddef.h>
 
@@ -141,8 +142,28 @@ typedef struct {
     int line_gap;
 } UIReadonlyTextBox;
 
+/* Public control style ABI. Apps can select a named ThemeStyle or override
+ * these tokens directly when they need full control. */
+typedef struct UIStyleTokens {
+    float control_radius;
+    float panel_radius;
+    unsigned char control_alpha;
+    unsigned char panel_alpha;
+    unsigned char border_alpha;
+    unsigned char shadow_alpha;
+    unsigned char shine_alpha;
+    int bevel_enabled;
+    int touch_target_min;
+    int shadow_offset_y;
+} UIStyleTokens;
+
 typedef void (*UIVerticalSliderMarkCallback)(void *user_data, int x, int y,
                                              int h, int min, int max, int value);
+
+UIStyleTokens GetUIStyleTokens(void);
+UIStyleTokens GetUIStyleTokensForThemeStyle(ThemeStyle style);
+void SetUIStyleTokens(UIStyleTokens tokens);
+void ClearUIStyleTokensOverride(void);
 
 int DrawUIButton(UIButton button);
 int DrawUIIconButton(UIIconButton button);

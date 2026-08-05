@@ -49,6 +49,14 @@ int ui_input_captures_click_internal(Vector2 point, int include_pointer_drag);
 void PushUIInputClip(Rectangle bounds);
 void PopUIInputClip(void);
 int ui_clampi(int value, int min_value, int max_value);
+int ui_retro_style(void);
+int ui_modern_style(void);
+float ui_control_radius(float classic_radius);
+int ui_control_bevel_enabled(void);
+int ui_touch_target_min(void);
+Color ui_alpha(Color color, unsigned char alpha);
+void ui_draw_control_background(Rectangle bounds, Color background,
+                                Color border, float classic_radius);
 
 /* Draws a filled box with an outline: rounded when radius > 0, otherwise a
  * plain rectangle with a 1px line border. Used by text input, text area, and

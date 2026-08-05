@@ -36,6 +36,7 @@ typedef struct {
     int draw_source_menu;
     int draw_mode_menu;
     int draw_palette_menu;
+    int draw_style_menu;
 } UIThemeSettingsState;
 
 typedef struct {
@@ -46,6 +47,7 @@ typedef struct {
     int *theme_source;
     int *theme_mode;
     int *theme_id;
+    int *theme_style;
     int allow_system_source;
     int allow_system_mode;
     const char *theme_label;
@@ -56,6 +58,14 @@ typedef struct {
     const char *mode_light_label;
     const char *mode_dark_label;
     const char *palette_label;
+    const char *style_label;
+    const char *style_system_label;
+    const char *style_retro_label;
+    const char *style_material_label;
+    const char *style_fluent_label;
+    const char *style_adwaita_label;
+    const char *style_liquid_glass_label;
+    const char *style_aero_label;
     const char *system_theme_label;
 } UIThemeSettings;
 
@@ -64,6 +74,7 @@ typedef struct {
     int source_changed;
     int mode_changed;
     int palette_changed;
+    int style_changed;
 } UIThemeSettingsResult;
 
 UIGuideResult DrawUIGuideOverlay(UIGuideOverlay guide);

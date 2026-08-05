@@ -269,10 +269,15 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
     /* Draw button background */
     button_bg = state->open ? ui_dropdown_panel_color(28)
                             : (hover ? c_button_hover : ui_dropdown_panel_color(16));
-    DrawRectangleRec(btn_bounds, button_bg);
-    DrawUIBevel(x, y, w, h,
-                  state->open ? LightenUIColor(button_bg, 34) : LightenUIColor(button_bg, 24),
-                  state->open ? DarkenUIColor(button_bg, 38) : DarkenUIColor(button_bg, 30));
+    if(ui_modern_style()) {
+        Color border = LightenUIColor(button_bg, 20);
+        ui_draw_control_background(btn_bounds, button_bg, border, 0.06f);
+    } else {
+        DrawRectangleRec(btn_bounds, button_bg);
+        DrawUIBevel(x, y, w, h,
+                    state->open ? LightenUIColor(button_bg, 34) : LightenUIColor(button_bg, 24),
+                    state->open ? DarkenUIColor(button_bg, 38) : DarkenUIColor(button_bg, 30));
+    }
 
     /* Draw current selection text, clipped before the X icon. */
     int current_index = selected_index != NULL ? *selected_index : 0;
@@ -441,9 +446,19 @@ DrawUIDropdownMenu(int id)
     }
 
     /* Draw dropdown background */
-    DrawRectangle(x, dropdown_y, w, dropdown_h, ui_dropdown_panel_color(18));
-    DrawUIBevel(x, dropdown_y, w, dropdown_h,
-                  ui_dropdown_panel_color(32), ui_dropdown_panel_color(8));
+    if(ui_modern_style()) {
+        UIStyleTokens tokens = GetUIStyleTokens();
+        Color panel = ui_dropdown_panel_color(18);
+        Color border = ui_dropdown_panel_color(36);
+        if(tokens.panel_alpha < panel.a)
+            panel.a = tokens.panel_alpha;
+        ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
+                                   panel, border, tokens.panel_radius);
+    } else {
+        DrawRectangle(x, dropdown_y, w, dropdown_h, ui_dropdown_panel_color(18));
+        DrawUIBevel(x, dropdown_y, w, dropdown_h,
+                    ui_dropdown_panel_color(32), ui_dropdown_panel_color(8));
+    }
 
     BeginUIClip((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
                      (int)(g_ui_camera.offset.y + (float)dropdown_y * g_ui_camera.zoom),

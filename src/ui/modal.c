@@ -176,8 +176,19 @@ DrawUIActionModal(UIModalSpec modal)
     btn_y = modal_y + modal_h - buttons_h - padding_bottom;
 
     DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
-    DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
-    DrawUIBevel(modal_x, modal_y, modal_w, modal_h, LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
+    if(ui_modern_style()) {
+        UIStyleTokens tokens = GetUIStyleTokens();
+        Rectangle bounds = {modal_x, modal_y, modal_w, modal_h};
+        Color surface = c_surface;
+        Color border = LightenUIColor(c_surface, 24);
+        if(tokens.panel_alpha < surface.a)
+            surface.a = tokens.panel_alpha;
+        ui_draw_control_background(bounds, surface, border, tokens.panel_radius);
+    } else {
+        DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
+        DrawUIBevel(modal_x, modal_y, modal_w, modal_h,
+                    LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
+    }
 
     title_font = GetUITitleFontSize(modal.title, modal_w - ScaleUIPx(92));
     title_w = MeasureUIText(modal.title != NULL ? modal.title : "", title_font);
@@ -338,9 +349,19 @@ DrawUIModalFrame(int width, int height, const char *title,
     });
 
     DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
-    DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
-    DrawUIBevel(frame.x, frame.y, frame.w, frame.h,
-                  LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
+    if(ui_modern_style()) {
+        UIStyleTokens tokens = GetUIStyleTokens();
+        Rectangle bounds = {frame.x, frame.y, frame.w, frame.h};
+        Color surface = c_surface;
+        Color border = LightenUIColor(c_surface, 24);
+        if(tokens.panel_alpha < surface.a)
+            surface.a = tokens.panel_alpha;
+        ui_draw_control_background(bounds, surface, border, tokens.panel_radius);
+    } else {
+        DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
+        DrawUIBevel(frame.x, frame.y, frame.w, frame.h,
+                    LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
+    }
 
     DrawUIText(title, frame.x + (frame.w - title_w) / 2,
                     frame.y + ScaleUIPx(14), title_font, c_text);

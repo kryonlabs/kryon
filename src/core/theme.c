@@ -1,5 +1,6 @@
 #include "theme.h"
 #include "embedded_assets.h"
+#include "locale.h"
 #include "theme_meta.h"
 #include "ui_core.h"
 #include <stdlib.h>
@@ -13,6 +14,7 @@ static bool dark_mode = false;
 static int current_theme_id = THEME_MONO;
 static ThemeSource theme_source = THEME_SOURCE_APP;
 static ThemeMode theme_mode = THEME_MODE_LIGHT;
+static ThemeStyle theme_style = THEME_STYLE_SYSTEM;
 
 static ThemeAggregateVariable aggregate_vars[THEME_MAX_VARS];
 static int aggregate_count = 0;
@@ -680,6 +682,92 @@ ThemeMode
 GetThemeMode(void)
 {
     return theme_mode;
+}
+
+void
+SetThemeStyle(ThemeStyle style)
+{
+    if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_AERO)
+        style = THEME_STYLE_SYSTEM;
+    theme_style = style;
+    ApplyCurrentUITheme();
+}
+
+ThemeStyle
+GetThemeStyle(void)
+{
+    return theme_style;
+}
+
+ThemeStyle
+GetEffectiveThemeStyle(void)
+{
+    if(theme_style == THEME_STYLE_SYSTEM)
+        return GetDefaultPlatformThemeStyle();
+    return theme_style;
+}
+
+ThemeStyle
+GetDefaultPlatformThemeStyle(void)
+{
+#if defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
+    return THEME_STYLE_MATERIAL;
+#elif defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
+    return THEME_STYLE_AERO;
+#elif defined(_WIN32)
+    return THEME_STYLE_FLUENT;
+#elif defined(__APPLE__)
+    return THEME_STYLE_LIQUID_GLASS;
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+    return THEME_STYLE_ADWAITA;
+#else
+    return THEME_STYLE_AERO;
+#endif
+}
+
+const char *
+GetThemeStyleLabel(ThemeStyle style)
+{
+    const char *key = NULL;
+    const char *fallback = "System";
+    const char *text;
+
+    switch(style) {
+    case THEME_STYLE_SYSTEM:
+        key = "theme_style_system";
+        fallback = "System";
+        break;
+    case THEME_STYLE_RETRO:
+        key = "theme_style_retro";
+        fallback = "Retro";
+        break;
+    case THEME_STYLE_MATERIAL:
+        key = "theme_style_material";
+        fallback = "Material";
+        break;
+    case THEME_STYLE_FLUENT:
+        key = "theme_style_fluent";
+        fallback = "Fluent";
+        break;
+    case THEME_STYLE_ADWAITA:
+        key = "theme_style_adwaita";
+        fallback = "Adwaita";
+        break;
+    case THEME_STYLE_LIQUID_GLASS:
+        key = "theme_style_liquid_glass";
+        fallback = "Liquid Glass";
+        break;
+    case THEME_STYLE_AERO:
+        key = "theme_style_aero";
+        fallback = "Aero";
+        break;
+    default:
+        return "System";
+    }
+    text = GetLocaleText(key);
+    if(text == NULL || text[0] == '\0' || strcmp(text, key) == 0)
+        return fallback;
+    return text;
 }
 
 bool

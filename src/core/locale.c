@@ -494,6 +494,24 @@ static void
 load_base_locale(void)
 {
     char *text = NULL;
+    static const struct {
+        const char *key;
+        const char *value;
+    } defaults[] = {
+        {"theme_style_label", "Style"},
+        {"theme_style_system", "System"},
+        {"theme_style_retro", "Retro"},
+        {"theme_style_material", "Material"},
+        {"theme_style_fluent", "Fluent"},
+        {"theme_style_adwaita", "Adwaita"},
+        {"theme_style_liquid_glass", "Liquid Glass"},
+        {"theme_style_aero", "Aero"},
+    };
+
+    for(size_t i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++)
+        set_locale_entry(&g_base_entries, &g_base_count, &g_base_cap,
+                         defaults[i].key, defaults[i].value);
+
     if(load_file_text_from_paths("locales/en.txt", &text)) {
         load_locale_text_into(&g_base_entries, &g_base_count, &g_base_cap, text);
         UnloadFileText(text);

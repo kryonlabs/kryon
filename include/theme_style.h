@@ -1,0 +1,14 @@
+#ifndef THEME_STYLE_H
+#define THEME_STYLE_H
+
+typedef enum ThemeStyle {
+    THEME_STYLE_SYSTEM = 0,
+    THEME_STYLE_RETRO,
+    THEME_STYLE_MATERIAL,
+    THEME_STYLE_FLUENT,
+    THEME_STYLE_ADWAITA,
+    THEME_STYLE_LIQUID_GLASS,
+    THEME_STYLE_AERO
+} ThemeStyle;
+
+#endif

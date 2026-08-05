@@ -7,7 +7,18 @@
 static void
 DrawUITitleBarBackground(int height)
 {
-    DrawRectangle(0, 0, ui_view_width, height, DarkenUIColor(c_bg, 14));
+    Color bar = DarkenUIColor(c_bg, 14);
+    if(ui_modern_style()) {
+        UIStyleTokens tokens = GetUIStyleTokens();
+        if(tokens.panel_alpha < bar.a)
+            bar.a = tokens.panel_alpha;
+    }
+    DrawRectangle(0, 0, ui_view_width, height, bar);
+    if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
+        Color shine = WHITE;
+        shine.a = GetUIStyleTokens().shine_alpha;
+        DrawRectangle(0, 0, ui_view_width, ScaleUIPx(1), shine);
+    }
     DrawLine(0, height - 1, ui_view_width, height - 1,
              DarkenUIColor(c_bg, 42));
 }

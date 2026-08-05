@@ -28,8 +28,18 @@ DrawUIToolbar(UIToolbar toolbar)
         return result;
     }
 
-    DrawRectangle(toolbar.x, toolbar.y, toolbar.width, toolbar.height,
-                  DarkenUIColor(c_bg, 14));
+    Color bar = DarkenUIColor(c_bg, 14);
+    if(ui_modern_style()) {
+        UIStyleTokens tokens = GetUIStyleTokens();
+        if(tokens.panel_alpha < bar.a)
+            bar.a = tokens.panel_alpha;
+    }
+    DrawRectangle(toolbar.x, toolbar.y, toolbar.width, toolbar.height, bar);
+    if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
+        Color shine = WHITE;
+        shine.a = GetUIStyleTokens().shine_alpha;
+        DrawRectangle(toolbar.x, toolbar.y, toolbar.width, ScaleUIPx(1), shine);
+    }
     DrawLine(toolbar.x, toolbar.y + toolbar.height - 1,
              toolbar.x + toolbar.width, toolbar.y + toolbar.height - 1,
              DarkenUIColor(c_bg, 42));
@@ -96,7 +106,18 @@ DrawUIToolbarHeader(UIToolbarHeader header)
         leading_w = icon_size + icon_padding * 2 + ScaleUIPx(24);
 
     if(!toolbar.draw_menu) {
-        DrawRectangle(0, 0, ui_view_width, height, DarkenUIColor(c_bg, 14));
+        Color bar = DarkenUIColor(c_bg, 14);
+        if(ui_modern_style()) {
+            UIStyleTokens tokens = GetUIStyleTokens();
+            if(tokens.panel_alpha < bar.a)
+                bar.a = tokens.panel_alpha;
+        }
+        DrawRectangle(0, 0, ui_view_width, height, bar);
+        if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
+            Color shine = WHITE;
+            shine.a = GetUIStyleTokens().shine_alpha;
+            DrawRectangle(0, 0, ui_view_width, ScaleUIPx(1), shine);
+        }
         DrawLine(0, height - 1, ui_view_width, height - 1,
                  DarkenUIColor(c_bg, 42));
         if(header.leading_icon.id != 0) {
