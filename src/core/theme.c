@@ -725,6 +725,31 @@ GetDefaultPlatformThemeStyle(void)
 #endif
 }
 
+int
+GetDefaultThemeForThemeStyle(ThemeStyle style)
+{
+    if(style == THEME_STYLE_SYSTEM)
+        style = GetDefaultPlatformThemeStyle();
+
+    switch(style) {
+    case THEME_STYLE_RETRO:
+        return THEME_MONO;
+    case THEME_STYLE_MATERIAL:
+        return THEME_MINT;
+    case THEME_STYLE_FLUENT:
+        return THEME_COBALT;
+    case THEME_STYLE_ADWAITA:
+        return THEME_SAGE;
+    case THEME_STYLE_LIQUID_GLASS:
+        return THEME_DAWN;
+    case THEME_STYLE_AERO:
+        return THEME_OCEAN;
+    case THEME_STYLE_SYSTEM:
+    default:
+        return THEME_MONO;
+    }
+}
+
 const char *
 GetThemeStyleLabel(ThemeStyle style)
 {

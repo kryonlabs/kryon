@@ -35,31 +35,7 @@ typedef struct {
 static const char *
 ui_theme_label(ThemeId theme)
 {
-    const char *key = NULL;
-    const char *label;
-
-    switch(NormalizeTheme(theme)) {
-    case THEME_SKY: key = "theme_sky"; break;
-    case THEME_OCEAN: key = "theme_ocean"; break;
-    case THEME_FOREST: key = "theme_forest"; break;
-    case THEME_SUNSET: key = "theme_sunset"; break;
-    case THEME_LAVENDER: key = "theme_lavender"; break;
-    case THEME_CHERRY: key = "theme_cherry"; break;
-    case THEME_DAWN: key = "theme_dawn"; break;
-    case THEME_SAGE: key = "theme_sage"; break;
-    case THEME_INK: key = "theme_sepia"; break;
-    case THEME_MONO: key = "theme_mono"; break;
-    case THEME_MINT: key = "theme_mint"; break;
-    case THEME_COBALT: key = "theme_cobalt"; break;
-    default: break;
-    }
-
-    if(key == NULL)
-        return GetThemeLabel(theme);
-    label = GetLocaleText(key);
-    if(label == NULL || label[0] == '\0' || strcmp(label, key) == 0)
-        return GetThemeLabel(theme);
-    return label;
+    return GetThemeLabel(theme);
 }
 
 static const char *
@@ -138,13 +114,16 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
 
     source_count = settings.allow_system_source ? 2 : 1;
     source_options[THEME_SOURCE_APP] =
-        ui_theme_settings_text(settings.source_app_label, "App");
+        ui_theme_settings_text(settings.source_app_label,
+                               GetLocaleText("theme_app"));
     source_options[THEME_SOURCE_SYSTEM] =
-        ui_theme_settings_text(settings.source_system_label, "System");
+        ui_theme_settings_text(settings.source_system_label,
+                               GetLocaleText("theme_system"));
     *settings.theme_source = ui_clampi(*settings.theme_source,
                                              THEME_SOURCE_APP,
                                              source_count - 1);
-    DrawUIText(ui_theme_settings_text(settings.theme_label, "Theme"),
+    DrawUIText(ui_theme_settings_text(settings.theme_label,
+                                      GetLocaleText("theme_label")),
                settings.x, y, font, c_text);
     DrawUIDropdownButton(settings.id_base, settings.x, y + font + label_gap,
                          settings.w, row_h, source_options, source_count,
@@ -155,15 +134,19 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
 
     if(*settings.theme_source == THEME_SOURCE_APP || settings.allow_system_mode) {
         mode_options[THEME_MODE_SYSTEM] =
-            ui_theme_settings_text(settings.mode_system_label, "Follow device");
+            ui_theme_settings_text(settings.mode_system_label,
+                                   GetLocaleText("theme_follow_device"));
         mode_options[THEME_MODE_LIGHT] =
-            ui_theme_settings_text(settings.mode_light_label, "Light");
+            ui_theme_settings_text(settings.mode_light_label,
+                                   GetLocaleText("theme_light"));
         mode_options[THEME_MODE_DARK] =
-            ui_theme_settings_text(settings.mode_dark_label, "Dark");
+            ui_theme_settings_text(settings.mode_dark_label,
+                                   GetLocaleText("theme_dark"));
         *settings.theme_mode = ui_clampi(*settings.theme_mode,
                                                THEME_MODE_SYSTEM,
                                                THEME_MODE_DARK);
-        DrawUIText(ui_theme_settings_text(settings.mode_label, "Mode"),
+        DrawUIText(ui_theme_settings_text(settings.mode_label,
+                                          GetLocaleText("theme_mode_label")),
                    settings.x, y, font, c_text);
         DrawUIDropdownButton(settings.id_base + 1, settings.x, y + font + label_gap,
                              settings.w, row_h, mode_options, 3,
@@ -185,7 +168,8 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
             theme_options[i] = ui_theme_label((ThemeId)i);
         *settings.theme_id = ui_clampi(*settings.theme_id, 0,
                                              THEME_COUNT - 1);
-        DrawUIText(ui_theme_settings_text(settings.palette_label, "Palette"),
+        DrawUIText(ui_theme_settings_text(settings.palette_label,
+                                          GetLocaleText("theme_color_label")),
                    settings.x, y, font, c_text);
         DrawUIDropdownButton(settings.id_base + 2, settings.x, y + font + label_gap,
                              settings.w, row_h, theme_options, THEME_COUNT,

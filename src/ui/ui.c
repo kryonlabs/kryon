@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_text.h"
 #include "ui_tk.h"
 #include "platform.h"
 #include "theme.h"
@@ -627,37 +628,37 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
         };
     case THEME_STYLE_MATERIAL:
         return (UIStyleTokens){
-            .control_radius = 0.38f,
-            .panel_radius = 0.22f,
+            .control_radius = 0.50f,
+            .panel_radius = 0.30f,
             .control_alpha = 255,
             .panel_alpha = 255,
             .border_alpha = 0,
-            .shadow_alpha = 60,
+            .shadow_alpha = 96,
             .shine_alpha = 0,
             .bevel_enabled = 0,
             .touch_target_min = 44,
-            .shadow_offset_y = 3
+            .shadow_offset_y = 5
         };
     case THEME_STYLE_FLUENT:
         return (UIStyleTokens){
-            .control_radius = 0.18f,
-            .panel_radius = 0.18f,
-            .control_alpha = 228,
-            .panel_alpha = 238,
-            .border_alpha = 190,
-            .shadow_alpha = 24,
-            .shine_alpha = 44,
+            .control_radius = 0.16f,
+            .panel_radius = 0.16f,
+            .control_alpha = 246,
+            .panel_alpha = 248,
+            .border_alpha = 220,
+            .shadow_alpha = 32,
+            .shine_alpha = 92,
             .bevel_enabled = 0,
             .touch_target_min = 36,
             .shadow_offset_y = 1
         };
     case THEME_STYLE_ADWAITA:
         return (UIStyleTokens){
-            .control_radius = 0.14f,
-            .panel_radius = 0.16f,
+            .control_radius = 0.10f,
+            .panel_radius = 0.12f,
             .control_alpha = 255,
             .panel_alpha = 255,
-            .border_alpha = 230,
+            .border_alpha = 255,
             .shadow_alpha = 0,
             .shine_alpha = 0,
             .bevel_enabled = 0,
@@ -667,12 +668,12 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     case THEME_STYLE_LIQUID_GLASS:
         return (UIStyleTokens){
             .control_radius = 0.45f,
-            .panel_radius = 0.32f,
-            .control_alpha = 178,
-            .panel_alpha = 214,
-            .border_alpha = 150,
-            .shadow_alpha = 36,
-            .shine_alpha = 76,
+            .panel_radius = 0.36f,
+            .control_alpha = 150,
+            .panel_alpha = 188,
+            .border_alpha = 190,
+            .shadow_alpha = 56,
+            .shine_alpha = 132,
             .bevel_enabled = 0,
             .touch_target_min = 40,
             .shadow_offset_y = 2
@@ -681,13 +682,13 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     case THEME_STYLE_SYSTEM:
     default:
         return (UIStyleTokens){
-            .control_radius = 0.24f,
+            .control_radius = 0.26f,
             .panel_radius = 0.22f,
-            .control_alpha = 236,
-            .panel_alpha = 242,
-            .border_alpha = 160,
-            .shadow_alpha = 18,
-            .shine_alpha = 28,
+            .control_alpha = 238,
+            .panel_alpha = 244,
+            .border_alpha = 190,
+            .shadow_alpha = 30,
+            .shine_alpha = 108,
             .bevel_enabled = 0,
             .touch_target_min = 36,
             .shadow_offset_y = 1
@@ -3454,6 +3455,7 @@ InitUI(int width, int height, float dpi)
     ui_view_width = width;
     ui_view_height = height;
     SetUIScale(dpi);
+    EnsureUIDefaultFont();
 }
 
 int

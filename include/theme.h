@@ -77,6 +77,7 @@ void SetThemeStyle(ThemeStyle style);
 ThemeStyle GetThemeStyle(void);
 ThemeStyle GetEffectiveThemeStyle(void);
 ThemeStyle GetDefaultPlatformThemeStyle(void);
+int GetDefaultThemeForThemeStyle(ThemeStyle style);
 const char *GetThemeStyleLabel(ThemeStyle style);
 bool IsSystemThemeAvailable(void);
 const char *GetSystemThemeName(void);

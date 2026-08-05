@@ -37,6 +37,7 @@ typedef struct UIFontEntry {
 static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
 static int g_ui_font_count = 0;
 static int g_ui_active_font = -1;
+static int g_ui_default_font_attempted = 0;
 static int g_ui_text_selectable_stack[16];
 static int g_ui_text_selectable_stack_count = 0;
 static int g_ui_text_selectable = 1;
@@ -348,6 +349,40 @@ GetUIFont(void)
 }
 
 int
+EnsureUIDefaultFont(void)
+{
+    static const char *paths[] = {
+        "fonts/noto/NotoSans-Regular.ttf",
+        "../fonts/noto/NotoSans-Regular.ttf",
+        "vendor/kryon/fonts/noto/NotoSans-Regular.ttf",
+        NULL
+    };
+
+    if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
+       font_valid(entry_font_for_size(&g_ui_fonts[g_ui_active_font],
+                                      UI_TEXT_BASE_SIZE)))
+        return 1;
+    if(!IsWindowReady())
+        return 0;
+    if(g_ui_default_font_attempted)
+        return 0;
+
+    g_ui_default_font_attempted = 1;
+    for(int i = 0; paths[i] != NULL; i++) {
+        Font font = LoadUIFontAsset(paths[i], UI_TEXT_BASE_SIZE);
+
+        if(!font_valid(font))
+            continue;
+        if(RegisterUIFont(UI_FONT_DEFAULT_NAME, font) &&
+           UseUIFont(UI_FONT_DEFAULT_NAME))
+            return 1;
+        UnloadFont(font);
+    }
+
+    return 0;
+}
+
+int
 RegisterUIFont(const char *name, Font font)
 {
     int index;
@@ -598,6 +633,7 @@ ClearUIFonts(void)
     memset(g_ui_fonts, 0, sizeof(g_ui_fonts));
     g_ui_font_count = 0;
     g_ui_active_font = -1;
+    g_ui_default_font_attempted = 0;
 }
 
 int

@@ -1,4 +1,5 @@
 #include "theme_meta.h"
+#include "locale.h"
 
 #include <string.h>
 
@@ -72,10 +73,38 @@ GetThemeMeta(ThemeId theme)
     return &themes[NormalizeTheme(theme)];
 }
 
+static const char *
+theme_locale_key(ThemeId theme)
+{
+    switch(NormalizeTheme(theme)) {
+    case THEME_SKY: return "theme_sky";
+    case THEME_OCEAN: return "theme_ocean";
+    case THEME_FOREST: return "theme_forest";
+    case THEME_SUNSET: return "theme_sunset";
+    case THEME_LAVENDER: return "theme_lavender";
+    case THEME_CHERRY: return "theme_cherry";
+    case THEME_DAWN: return "theme_dawn";
+    case THEME_SAGE: return "theme_sage";
+    case THEME_INK: return "theme_sepia";
+    case THEME_MONO: return "theme_mono";
+    case THEME_MINT: return "theme_mint";
+    case THEME_COBALT: return "theme_cobalt";
+    default: return NULL;
+    }
+}
+
 const char *
 GetThemeLabel(ThemeId theme)
 {
-    return GetThemeMeta(theme)->name;
+    const char *key = theme_locale_key(theme);
+    const char *label;
+
+    if(key == NULL)
+        return GetThemeMeta(theme)->name;
+    label = GetLocaleText(key);
+    if(label == NULL || label[0] == '\0' || strcmp(label, key) == 0)
+        return GetThemeMeta(theme)->name;
+    return label;
 }
 
 const char *

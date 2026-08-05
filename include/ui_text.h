@@ -10,6 +10,7 @@
 #define UI_TEXT_BASE_SIZE 16
 
 Font GetUIFont(void);
+int EnsureUIDefaultFont(void);
 int RegisterUIFont(const char *name, Font font);
 int RegisterUISmallFont(const char *name, Font font);
 int RegisterUIFontSource(const char *name, const char *file_type,
