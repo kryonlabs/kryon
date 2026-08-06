@@ -88,6 +88,54 @@ UIGetNodeHeight(const UIWidgetNode *node)
 {
     if(node == NULL)
         return 0;
+    switch(node->kind) {
+    case UI_WIDGET_PARAGRAPH_NODE:
+        if(node->props != NULL)
+            return GetUIParagraphHeight(*(const UIParagraph *)node->props);
+        break;
+    case UI_WIDGET_READONLY_TEXT_BOX_NODE:
+        if(node->props != NULL) {
+            const UIReadonlyTextBox *box = node->props;
+            return GetUIReadonlyTextBoxHeight(box->text, box->font,
+                                              (int)box->bounds.width,
+                                              box->style, box->line_gap);
+        }
+        break;
+    case UI_WIDGET_LABEL_TEXT_FIELD_NODE:
+        if(node->props != NULL)
+            return GetUILabelTextFieldHeight(*(const UILabelTextField *)node->props);
+        break;
+    case UI_WIDGET_SECTION_LABEL_NODE:
+        if(node->props != NULL)
+            return GetUISectionLabelHeight(*(const UISectionLabel *)node->props);
+        break;
+    case UI_WIDGET_CHECKBOX_ROW_NODE:
+        if(node->props != NULL)
+            return GetUICheckboxRowHeight(*(const UICheckboxRow *)node->props);
+        break;
+    case UI_WIDGET_BUTTON_ROW_NODE:
+        if(node->props != NULL)
+            return GetUIButtonRowHeight(*(const UIButtonRow *)node->props);
+        break;
+    case UI_WIDGET_BOTTOM_NAV_NODE:
+        return GetUIBottomNavHeight();
+    case UI_WIDGET_TAB_BAR_NODE:
+        return GetUITabBarHeight();
+    case UI_WIDGET_THEME_SETTINGS_NODE:
+        if(node->props != NULL)
+            return GetUIThemeSettingsHeight(*(const UIThemeSettings *)node->props);
+        break;
+    case UI_WIDGET_THEME_PICKER_NODE:
+        return GetUIThemePickerHeight((int)node->bounds.width);
+    case UI_WIDGET_PARAGRAPH_MODAL_NODE:
+        if(node->props != NULL)
+            return GetUIParagraphModalHeight(*(const UIParagraphModalMeasure *)node->props);
+        break;
+    case UI_WIDGET_TITLE_BAR_NODE:
+        return GetUITitleBarHeight();
+    default:
+        break;
+    }
     return (int)ceilf(node->bounds.height);
 }
 
@@ -120,6 +168,35 @@ UITextNode(const char *text, int x, int y, int font_size, Color color)
 }
 
 void
+UITextInRectNode(const char *text, Rectangle rect, int font_size, Color color)
+{
+    ui_tree_add(0, UI_WIDGET_TEXT_NODE, rect, text);
+    UIRenderTextInRect(text, rect, font_size, color);
+}
+
+void
+UIParagraphNode(UIParagraph paragraph, int x, int *y)
+{
+    int start_y = y != NULL ? *y : 0;
+
+    ui_tree_add(0, UI_WIDGET_PARAGRAPH_NODE,
+                (Rectangle){x, start_y, paragraph.width,
+                            0}, &paragraph);
+    UIRenderParagraph(paragraph, x, y);
+}
+
+void
+UITextLinesNode(const char **lines, int count, int x, int *y, int font,
+                int line_h, Color color)
+{
+    int start_y = y != NULL ? *y : 0;
+
+    ui_tree_add(0, UI_WIDGET_TEXT_NODE,
+                (Rectangle){x, start_y, 0, count * line_h}, lines);
+    UIRenderTextLines(lines, count, x, y, font, line_h, color);
+}
+
+void
 UIRectNode(int x, int y, int w, int h, Color fill, Color border)
 {
     ui_tree_add(0, UI_WIDGET_RECT_NODE, (Rectangle){x, y, w, h}, NULL);
@@ -138,6 +215,13 @@ UILineNode(int x1, int y1, int x2, int y2, Color color)
 
     ui_tree_add(0, UI_WIDGET_LINE_NODE, (Rectangle){x, y, w, h}, NULL);
     DrawLine(x1, y1, x2, y2, color);
+}
+
+void
+UIBevelNode(int x, int y, int w, int h, Color light, Color dark)
+{
+    ui_tree_add(0, UI_WIDGET_RECT_NODE, (Rectangle){x, y, w, h}, NULL);
+    UIRenderBevel(x, y, w, h, light, dark);
 }
 
 int
@@ -193,7 +277,7 @@ UITextFieldNode(UITextField field)
 int
 UIReadonlyTextBoxNode(UIReadonlyTextBox box)
 {
-    ui_tree_add(0, UI_WIDGET_TEXT_NODE, box.bounds, &box);
+    ui_tree_add(0, UI_WIDGET_READONLY_TEXT_BOX_NODE, box.bounds, &box);
     return UIRenderReadonlyTextBox(box);
 }
 
@@ -246,6 +330,14 @@ UIIconLinkNode(int id, int x, int y, int icon_size, Texture2D icon,
     UIRenderIconLink(x, y, icon_size, icon, url);
 }
 
+void
+UIIconTextureNode(int id, int x, int y, int size, Texture2D icon, Color tint)
+{
+    ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, size, size},
+                NULL);
+    UIRenderIconTexture(x, y, size, icon, tint);
+}
+
 int
 UIDropdownNode(int id, int x, int y, int w, int h,
                const char **options, int option_count, int *selected_index)
@@ -265,6 +357,14 @@ UIDropdownNodeEx(int id, int x, int y, int w, int h,
                 selected_index);
     return UIRenderDropdownEx(id, x, y, w, h, options, option_count,
                             selected_index);
+}
+
+int
+UILocaleDropdownNode(int id, int x, int y, int w, int h, int *selected_index)
+{
+    ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
+                selected_index);
+    return UIRenderLocaleDropdown(id, x, y, w, h, selected_index);
 }
 
 int
@@ -323,9 +423,8 @@ UIThemeSettingsNode(UIThemeSettings settings, UIThemeSettingsState *state,
     UIThemeSettingsResult next = {0};
 
     ui_tree_add(settings.id_base, UI_WIDGET_THEME_SETTINGS_NODE,
-                (Rectangle){settings.x, settings.y, settings.w,
-                            GetUIThemeSettingsHeight(settings)},
-                state);
+                (Rectangle){settings.x, settings.y, settings.w, 0},
+                &settings);
     UIRenderThemeSettings(settings, state);
     next = UIRenderThemeSettingsMenus(settings, state);
     if(result != NULL)
@@ -539,8 +638,8 @@ UIThemeSwitcherNode(int x, int y, int w, const char *label,
 int
 UIThemePickerNode(int x, int y, int w, int dark_mode, int *theme_id)
 {
-    ui_tree_add(0, UI_WIDGET_THEME_SETTINGS_NODE,
-                (Rectangle){x, y, w, GetUIThemePickerHeight(w)}, theme_id);
+    ui_tree_add(0, UI_WIDGET_THEME_PICKER_NODE,
+                (Rectangle){x, y, w, 0}, theme_id);
     return UIRenderThemePicker(x, y, w, dark_mode, theme_id);
 }
 
@@ -560,6 +659,15 @@ UITutorialImageNode(Texture2D texture, const char *fallback, int x, int y,
 }
 
 void
+UITransitionFadeNode(const UITransition *transition, int width, int height,
+                     Color color)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, width, height},
+                transition);
+    UIRenderTransitionFade(transition, width, height, color);
+}
+
+void
 UIInfoRowsNode(UIInfoRows rows)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
@@ -571,24 +679,24 @@ UIInfoRowsNode(UIInfoRows rows)
 int
 UILabelTextFieldNode(UILabelTextField row, int x, int y, int w)
 {
-    ui_tree_add(row.field.focus_id, UI_WIDGET_TEXT_FIELD_NODE,
-                (Rectangle){x, y, w, GetUILabelTextFieldHeight(row)}, &row);
+    ui_tree_add(row.field.focus_id, UI_WIDGET_LABEL_TEXT_FIELD_NODE,
+                (Rectangle){x, y, w, 0}, &row);
     return UIRenderLabelTextField(row, x, y, w);
 }
 
 int
 UISectionLabelNode(UISectionLabel label, int x, int y)
 {
-    ui_tree_add(0, UI_WIDGET_TEXT_NODE,
-                (Rectangle){x, y, 0, GetUISectionLabelHeight(label)}, &label);
+    ui_tree_add(0, UI_WIDGET_SECTION_LABEL_NODE,
+                (Rectangle){x, y, 0, 0}, &label);
     return UIRenderSectionLabel(label, x, y);
 }
 
 int
 UICheckboxRowNode(UICheckboxRow row, int x, int y)
 {
-    ui_tree_add(0, UI_WIDGET_CHECKBOX_NODE,
-                (Rectangle){x, y, 0, GetUICheckboxRowHeight(row)}, &row);
+    ui_tree_add(0, UI_WIDGET_CHECKBOX_ROW_NODE,
+                (Rectangle){x, y, 0, 0}, &row);
     return UIRenderCheckboxRow(row, x, y);
 }
 
@@ -602,9 +710,8 @@ UIOverlayButtonNode(UIOverlayButton button)
 int
 UIButtonRowNode(UIButtonRow row)
 {
-    ui_tree_add(0, UI_WIDGET_BUTTON_NODE,
-                (Rectangle){row.x, row.y, row.width,
-                            GetUIButtonRowHeight(row)}, &row);
+    ui_tree_add(0, UI_WIDGET_BUTTON_ROW_NODE,
+                (Rectangle){row.x, row.y, row.width, 0}, &row);
     return UIRenderButtonRow(row);
 }
 
@@ -627,7 +734,7 @@ UIBottomIconRowNode(UIBottomIconRow row)
 UIBottomNavResult
 UIBottomNavNode(UIBottomNav nav)
 {
-    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
+    ui_tree_add(0, UI_WIDGET_BOTTOM_NAV_NODE,
                 (Rectangle){0, 0, nav.view_width, nav.view_height}, &nav);
     return UIRenderBottomNav(nav);
 }
@@ -658,14 +765,14 @@ UIToolbarHeaderNode(UIToolbarHeader header)
 int
 UISubtabBarNode(UISubtabBar bar)
 {
-    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bar.bounds, &bar);
+    ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
     return UIRenderSubtabBar(bar);
 }
 
 int
 UITabBarNode(UITabBar bar)
 {
-    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bar.bounds, &bar);
+    ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
     return UIRenderTabBar(bar);
 }
 
@@ -682,6 +789,20 @@ UIProfilePicturePickerNode(UIProfilePicturePickerModal modal)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
     return UIRenderProfilePicturePickerModal(modal);
+}
+
+void
+UIReorderHandleNode(int id, int x, int y, int w, int h, int active)
+{
+    ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, w, h}, NULL);
+    UIRenderReorderHandle(x, y, w, h, active);
+}
+
+void
+UIReorderPlaceholderNode(Rectangle bounds)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, NULL);
+    UIRenderReorderPlaceholder(bounds);
 }
 
 int
@@ -704,7 +825,7 @@ UIModal3ButtonNode(const char *title, const char *message,
 void
 UITitleBarNode(const char *title, int height)
 {
-    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
+    ui_tree_add(0, UI_WIDGET_TITLE_BAR_NODE,
                 (Rectangle){0, 0, ui_view_width, height}, title);
     UIRenderTitleBar(title, height);
 }
@@ -712,7 +833,7 @@ UITitleBarNode(const char *title, int height)
 int
 UIReturnTitleBarNode(Texture2D return_icon, const char *title, int height)
 {
-    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
+    ui_tree_add(0, UI_WIDGET_TITLE_BAR_NODE,
                 (Rectangle){0, 0, ui_view_width, height}, title);
     return UIRenderReturnTitleBar(return_icon, title, height);
 }
@@ -721,7 +842,7 @@ int
 UIReturnDropdownTitleBarNode(Texture2D return_icon,
                              UITitleBarDropdown dropdown, int height)
 {
-    ui_tree_add(dropdown.id, UI_WIDGET_DROPDOWN_NODE,
+    ui_tree_add(dropdown.id, UI_WIDGET_TITLE_BAR_NODE,
                 (Rectangle){0, 0, ui_view_width, height}, &dropdown);
     return UIRenderReturnDropdownTitleBar(return_icon, dropdown, height);
 }

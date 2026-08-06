@@ -10,6 +10,8 @@
 #include "ui_rows.h"
 #include "ui_tk.h"
 
+typedef struct UITransition UITransition;
+
 typedef int UINodeId;
 
 typedef enum UIWidgetKind {
@@ -25,6 +27,17 @@ typedef enum UIWidgetKind {
     UI_WIDGET_TOGGLE_NODE,
     UI_WIDGET_CHECKBOX_NODE,
     UI_WIDGET_THEME_SETTINGS_NODE,
+    UI_WIDGET_PARAGRAPH_NODE,
+    UI_WIDGET_READONLY_TEXT_BOX_NODE,
+    UI_WIDGET_LABEL_TEXT_FIELD_NODE,
+    UI_WIDGET_SECTION_LABEL_NODE,
+    UI_WIDGET_CHECKBOX_ROW_NODE,
+    UI_WIDGET_BUTTON_ROW_NODE,
+    UI_WIDGET_BOTTOM_NAV_NODE,
+    UI_WIDGET_TAB_BAR_NODE,
+    UI_WIDGET_THEME_PICKER_NODE,
+    UI_WIDGET_PARAGRAPH_MODAL_NODE,
+    UI_WIDGET_TITLE_BAR_NODE,
     UI_WIDGET_CUSTOM_NODE
 } UIWidgetKind;
 
@@ -54,8 +67,16 @@ int UIGetNodeHeightById(int id);
 
 void UIBackground(Color color);
 void UITextNode(const char *text, int x, int y, int font_size, Color color);
+void UITextInRectNode(const char *text, Rectangle rect, int font_size,
+                      Color color);
+void UIParagraphNode(UIParagraph paragraph, int x, int *y);
+void UITextLinesNode(const char **lines, int count, int x, int *y,
+                     int font, int line_h, Color color);
 void UIRectNode(int x, int y, int w, int h, Color fill, Color border);
 void UILineNode(int x1, int y1, int x2, int y2, Color color);
+void UIBevelNode(int x, int y, int w, int h, Color light, Color dark);
+void UIIconTextureNode(int id, int x, int y, int size, Texture2D icon,
+                       Color tint);
 int UIButtonNode(UIButton button);
 int UIIconButtonNode(UIIconButton button);
 int UIHrefNode(UIHref link);
@@ -79,6 +100,8 @@ int UIDropdownNode(int id, int x, int y, int w, int h,
 int UIDropdownNodeEx(int id, int x, int y, int w, int h,
                      const UIDropdownOption *options, int option_count,
                      int *selected_index);
+int UILocaleDropdownNode(int id, int x, int y, int w, int h,
+                         int *selected_index);
 int UISliderNode(int id, int x, int y, int w, const char *label,
                  int min, int max, int *value, const char *suffix);
 int UIVerticalSliderNode(int id, int x, int y, int h, int min, int max,
@@ -129,6 +152,8 @@ void UITutorialImagePlaceholderNode(const char *label, int x, int y,
                                     int w, int h);
 void UITutorialImageNode(Texture2D texture, const char *fallback,
                          int x, int y, int w, int h);
+void UITransitionFadeNode(const UITransition *transition, int width,
+                          int height, Color color);
 void UIInfoRowsNode(UIInfoRows rows);
 int UILabelTextFieldNode(UILabelTextField row, int x, int y, int w);
 int UISectionLabelNode(UISectionLabel label, int x, int y);
@@ -145,6 +170,8 @@ int UISubtabBarNode(UISubtabBar bar);
 int UITabBarNode(UITabBar bar);
 UISidebarAccountHeaderResult UISidebarAccountHeaderNode(UISidebarAccountHeader header);
 UIProfilePicturePickerResult UIProfilePicturePickerNode(UIProfilePicturePickerModal modal);
+void UIReorderHandleNode(int id, int x, int y, int w, int h, int active);
+void UIReorderPlaceholderNode(Rectangle bounds);
 int UIModalNode(const char *title, const char *message,
                 const char *cancel_btn, const char *confirm_btn);
 int UIModal3ButtonNode(const char *title, const char *message,
