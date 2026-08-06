@@ -14,46 +14,12 @@ static bool dark_mode = false;
 static int current_theme_id = THEME_MONO;
 static ThemeSource theme_source = THEME_SOURCE_APP;
 static ThemeMode theme_mode = THEME_MODE_LIGHT;
-static ThemeStyle theme_style = THEME_STYLE_SYSTEM;
+static ThemeStyle theme_style = THEME_STYLE_RETRO;
 
 static ThemeAggregateVariable aggregate_vars[THEME_MAX_VARS];
 static int aggregate_count = 0;
 
 bool SystemThemeColor(const char *key, Color *color);
-
-static int
-theme_text_contains_ci(const char *text, const char *needle)
-{
-    size_t needle_len;
-
-    if(text == NULL || needle == NULL || needle[0] == '\0')
-        return 0;
-    needle_len = strlen(needle);
-    for(const char *p = text; *p != '\0'; p++) {
-        size_t i = 0;
-        while(i < needle_len && p[i] != '\0' &&
-              tolower((unsigned char)p[i]) ==
-              tolower((unsigned char)needle[i]))
-            i++;
-        if(i == needle_len)
-            return 1;
-    }
-    return 0;
-}
-
-static int
-system_theme_is_classic(void)
-{
-    const char *name = GetSystemThemeNameCached();
-
-    return theme_text_contains_ci(name, "chicago") ||
-           theme_text_contains_ci(name, "win95") ||
-           theme_text_contains_ci(name, "win98") ||
-           theme_text_contains_ci(name, "classic") ||
-           theme_text_contains_ci(name, "redmond") ||
-           theme_text_contains_ci(name, "motif") ||
-           theme_text_contains_ci(name, "platinum");
-}
 
 static void copy_text(char *dst, int size, const char *src)
 {
@@ -721,43 +687,27 @@ GetThemeMode(void)
 void
 SetThemeStyle(ThemeStyle style)
 {
-    if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_AERO)
-        style = THEME_STYLE_SYSTEM;
-    theme_style = style;
+    (void)style;
+    theme_style = THEME_STYLE_RETRO;
     ApplyCurrentUITheme();
 }
 
 ThemeStyle
 GetThemeStyle(void)
 {
-    return theme_style;
+    return THEME_STYLE_RETRO;
 }
 
 ThemeStyle
 GetEffectiveThemeStyle(void)
 {
-    if(theme_style == THEME_STYLE_SYSTEM)
-        return system_theme_is_classic() ? THEME_STYLE_RETRO :
-                                           GetDefaultPlatformThemeStyle();
-    return theme_style;
+    return THEME_STYLE_RETRO;
 }
 
 ThemeStyle
 GetDefaultPlatformThemeStyle(void)
 {
-#if defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
-    return THEME_STYLE_MATERIAL;
-#elif defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
-    return THEME_STYLE_AERO;
-#elif defined(_WIN32)
-    return THEME_STYLE_FLUENT;
-#elif defined(__APPLE__)
-    return THEME_STYLE_LIQUID_GLASS;
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-    return THEME_STYLE_ADWAITA;
-#else
-    return THEME_STYLE_AERO;
-#endif
+    return THEME_STYLE_RETRO;
 }
 
 int
