@@ -41,6 +41,17 @@ typedef enum UIWidgetKind {
     UI_WIDGET_CUSTOM_NODE
 } UIWidgetKind;
 
+typedef union UIWidgetData {
+    UIParagraph paragraph;
+    UIReadonlyTextBox readonly_text_box;
+    UILabelTextField label_text_field;
+    UISectionLabel section_label;
+    UICheckboxRow checkbox_row;
+    UIButtonRow button_row;
+    UIThemeSettings theme_settings;
+    UIParagraphModalMeasure paragraph_modal;
+} UIWidgetData;
+
 typedef struct UIWidgetNode {
     int id;
     UIWidgetKind kind;
@@ -50,6 +61,7 @@ typedef struct UIWidgetNode {
     int next_sibling;
     const void *props;
     void *state;
+    UIWidgetData data;
     unsigned flags;
 } UIWidgetNode;
 

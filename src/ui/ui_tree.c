@@ -28,6 +28,14 @@ ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
     return index;
 }
 
+static UIWidgetNode *
+ui_tree_node(UINodeId id)
+{
+    if(id < 0 || id >= ui_tree_node_count)
+        return NULL;
+    return &ui_tree_nodes[id];
+}
+
 void
 UIBeginTree(int screen_id)
 {
@@ -86,37 +94,36 @@ UIGetTreeNodes(int *count)
 int
 UIGetNodeHeight(const UIWidgetNode *node)
 {
+    const UIReadonlyTextBox *box;
+
     if(node == NULL)
         return 0;
     switch(node->kind) {
     case UI_WIDGET_PARAGRAPH_NODE:
         if(node->props != NULL)
             return GetUIParagraphHeight(*(const UIParagraph *)node->props);
-        break;
+        return GetUIParagraphHeight(node->data.paragraph);
     case UI_WIDGET_READONLY_TEXT_BOX_NODE:
-        if(node->props != NULL) {
-            const UIReadonlyTextBox *box = node->props;
-            return GetUIReadonlyTextBoxHeight(box->text, box->font,
-                                              (int)box->bounds.width,
-                                              box->style, box->line_gap);
-        }
-        break;
+        box = node->props != NULL ? node->props : &node->data.readonly_text_box;
+        return GetUIReadonlyTextBoxHeight(box->text, box->font,
+                                          (int)box->bounds.width,
+                                          box->style, box->line_gap);
     case UI_WIDGET_LABEL_TEXT_FIELD_NODE:
         if(node->props != NULL)
             return GetUILabelTextFieldHeight(*(const UILabelTextField *)node->props);
-        break;
+        return GetUILabelTextFieldHeight(node->data.label_text_field);
     case UI_WIDGET_SECTION_LABEL_NODE:
         if(node->props != NULL)
             return GetUISectionLabelHeight(*(const UISectionLabel *)node->props);
-        break;
+        return GetUISectionLabelHeight(node->data.section_label);
     case UI_WIDGET_CHECKBOX_ROW_NODE:
         if(node->props != NULL)
             return GetUICheckboxRowHeight(*(const UICheckboxRow *)node->props);
-        break;
+        return GetUICheckboxRowHeight(node->data.checkbox_row);
     case UI_WIDGET_BUTTON_ROW_NODE:
         if(node->props != NULL)
             return GetUIButtonRowHeight(*(const UIButtonRow *)node->props);
-        break;
+        return GetUIButtonRowHeight(node->data.button_row);
     case UI_WIDGET_BOTTOM_NAV_NODE:
         return GetUIBottomNavHeight();
     case UI_WIDGET_TAB_BAR_NODE:
@@ -124,13 +131,13 @@ UIGetNodeHeight(const UIWidgetNode *node)
     case UI_WIDGET_THEME_SETTINGS_NODE:
         if(node->props != NULL)
             return GetUIThemeSettingsHeight(*(const UIThemeSettings *)node->props);
-        break;
+        return GetUIThemeSettingsHeight(node->data.theme_settings);
     case UI_WIDGET_THEME_PICKER_NODE:
         return GetUIThemePickerHeight((int)node->bounds.width);
     case UI_WIDGET_PARAGRAPH_MODAL_NODE:
         if(node->props != NULL)
             return GetUIParagraphModalHeight(*(const UIParagraphModalMeasure *)node->props);
-        break;
+        return GetUIParagraphModalHeight(node->data.paragraph_modal);
     case UI_WIDGET_TITLE_BAR_NODE:
         return GetUITitleBarHeight();
     default:
@@ -177,11 +184,15 @@ UITextInRectNode(const char *text, Rectangle rect, int font_size, Color color)
 void
 UIParagraphNode(UIParagraph paragraph, int x, int *y)
 {
+    UIWidgetNode *node;
+    UINodeId id;
     int start_y = y != NULL ? *y : 0;
 
-    ui_tree_add(0, UI_WIDGET_PARAGRAPH_NODE,
-                (Rectangle){x, start_y, paragraph.width,
-                            0}, &paragraph);
+    id = ui_tree_add(0, UI_WIDGET_PARAGRAPH_NODE,
+                     (Rectangle){x, start_y, paragraph.width, 0}, NULL);
+    node = ui_tree_node(id);
+    if(node != NULL)
+        node->data.paragraph = paragraph;
     UIRenderParagraph(paragraph, x, y);
 }
 
@@ -277,7 +288,13 @@ UITextFieldNode(UITextField field)
 int
 UIReadonlyTextBoxNode(UIReadonlyTextBox box)
 {
-    ui_tree_add(0, UI_WIDGET_READONLY_TEXT_BOX_NODE, box.bounds, &box);
+    UIWidgetNode *node;
+    UINodeId id;
+
+    id = ui_tree_add(0, UI_WIDGET_READONLY_TEXT_BOX_NODE, box.bounds, NULL);
+    node = ui_tree_node(id);
+    if(node != NULL)
+        node->data.readonly_text_box = box;
     return UIRenderReadonlyTextBox(box);
 }
 
@@ -420,11 +437,16 @@ int
 UIThemeSettingsNode(UIThemeSettings settings, UIThemeSettingsState *state,
                     UIThemeSettingsResult *result)
 {
+    UIWidgetNode *node;
+    UINodeId id;
     UIThemeSettingsResult next = {0};
 
-    ui_tree_add(settings.id_base, UI_WIDGET_THEME_SETTINGS_NODE,
-                (Rectangle){settings.x, settings.y, settings.w, 0},
-                &settings);
+    id = ui_tree_add(settings.id_base, UI_WIDGET_THEME_SETTINGS_NODE,
+                     (Rectangle){settings.x, settings.y, settings.w, 0},
+                     NULL);
+    node = ui_tree_node(id);
+    if(node != NULL)
+        node->data.theme_settings = settings;
     UIRenderThemeSettings(settings, state);
     next = UIRenderThemeSettingsMenus(settings, state);
     if(result != NULL)
@@ -679,24 +701,42 @@ UIInfoRowsNode(UIInfoRows rows)
 int
 UILabelTextFieldNode(UILabelTextField row, int x, int y, int w)
 {
-    ui_tree_add(row.field.focus_id, UI_WIDGET_LABEL_TEXT_FIELD_NODE,
-                (Rectangle){x, y, w, 0}, &row);
+    UIWidgetNode *node;
+    UINodeId id;
+
+    id = ui_tree_add(row.field.focus_id, UI_WIDGET_LABEL_TEXT_FIELD_NODE,
+                     (Rectangle){x, y, w, 0}, NULL);
+    node = ui_tree_node(id);
+    if(node != NULL)
+        node->data.label_text_field = row;
     return UIRenderLabelTextField(row, x, y, w);
 }
 
 int
 UISectionLabelNode(UISectionLabel label, int x, int y)
 {
-    ui_tree_add(0, UI_WIDGET_SECTION_LABEL_NODE,
-                (Rectangle){x, y, 0, 0}, &label);
+    UIWidgetNode *node;
+    UINodeId id;
+
+    id = ui_tree_add(0, UI_WIDGET_SECTION_LABEL_NODE,
+                     (Rectangle){x, y, 0, 0}, NULL);
+    node = ui_tree_node(id);
+    if(node != NULL)
+        node->data.section_label = label;
     return UIRenderSectionLabel(label, x, y);
 }
 
 int
 UICheckboxRowNode(UICheckboxRow row, int x, int y)
 {
-    ui_tree_add(0, UI_WIDGET_CHECKBOX_ROW_NODE,
-                (Rectangle){x, y, 0, 0}, &row);
+    UIWidgetNode *node;
+    UINodeId id;
+
+    id = ui_tree_add(0, UI_WIDGET_CHECKBOX_ROW_NODE,
+                     (Rectangle){x, y, 0, 0}, NULL);
+    node = ui_tree_node(id);
+    if(node != NULL)
+        node->data.checkbox_row = row;
     return UIRenderCheckboxRow(row, x, y);
 }
 
@@ -710,8 +750,14 @@ UIOverlayButtonNode(UIOverlayButton button)
 int
 UIButtonRowNode(UIButtonRow row)
 {
-    ui_tree_add(0, UI_WIDGET_BUTTON_ROW_NODE,
-                (Rectangle){row.x, row.y, row.width, 0}, &row);
+    UIWidgetNode *node;
+    UINodeId id;
+
+    id = ui_tree_add(0, UI_WIDGET_BUTTON_ROW_NODE,
+                     (Rectangle){row.x, row.y, row.width, 0}, NULL);
+    node = ui_tree_node(id);
+    if(node != NULL)
+        node->data.button_row = row;
     return UIRenderButtonRow(row);
 }
 
