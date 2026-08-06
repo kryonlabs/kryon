@@ -25,6 +25,8 @@ typedef struct UIDropdownState {
     int touch_pressed;
     int touch_press_start_y;
     int touch_drag_active;
+    int clip_top;
+    int clip_bottom;
 } UIDropdownState;
 
 #define MAX_DROPDOWNS 24
@@ -90,11 +92,11 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
     padding_bottom = ScaleUIPx(4);
     total_h = padding_top + option_h * state->option_count + padding_bottom;
     below_y = state->y + state->h + menu_gap;
-    if(below_y < dropdown_clip_top)
-        below_y = dropdown_clip_top;
-    bottom_limit = dropdown_clip_bottom > 0 ? dropdown_clip_bottom : ui_view_height;
+    if(below_y < state->clip_top)
+        below_y = state->clip_top;
+    bottom_limit = state->clip_bottom > 0 ? state->clip_bottom : ui_view_height;
     below_space = bottom_limit - below_y - ScaleUIPx(16);
-    above_space = state->y - dropdown_clip_top - ScaleUIPx(16);
+    above_space = state->y - state->clip_top - ScaleUIPx(16);
 
     if(below_space < 0)
         below_space = 0;
@@ -196,6 +198,8 @@ get_or_create_dropdown_state(int id)
         dropdown_states[dropdown_state_count].touch_pressed = 0;
         dropdown_states[dropdown_state_count].touch_press_start_y = 0;
         dropdown_states[dropdown_state_count].touch_drag_active = 0;
+        dropdown_states[dropdown_state_count].clip_top = 0;
+        dropdown_states[dropdown_state_count].clip_bottom = 0;
         return &dropdown_states[dropdown_state_count++];
     }
 
@@ -285,6 +289,8 @@ UIRenderDropdownEx(int id, int x, int y, int w, int h,
     state->y = y;
     state->w = w;
     state->h = h;
+    state->clip_top = dropdown_clip_top;
+    state->clip_bottom = dropdown_clip_bottom;
     state->selected_index = selected_index != NULL ? *selected_index : state->selected_index;
     if(option_count < 0)
         option_count = 0;
