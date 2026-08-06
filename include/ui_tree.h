@@ -10,7 +10,7 @@
 #include "ui_rows.h"
 #include "ui_tk.h"
 
-typedef struct UITransition UITransition;
+struct UITransition;
 
 typedef int UINodeId;
 
@@ -177,7 +177,7 @@ void UITutorialImagePlaceholderNode(const char *label, int x, int y,
                                     int w, int h);
 void UITutorialImageNode(Texture2D texture, const char *fallback,
                          int x, int y, int w, int h);
-void UITransitionFadeNode(const UITransition *transition, int width,
+void UITransitionFadeNode(const struct UITransition *transition, int width,
                           int height, Color color);
 void UIInfoRowsNode(UIInfoRows rows);
 int UILabelTextFieldNode(UILabelTextField row, int x, int y, int w);
