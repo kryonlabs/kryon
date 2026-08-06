@@ -301,13 +301,10 @@ int GetUITextHeight(const char *text, int font_size);
 int GetUITextLineHeight(int font_size);
 ```
 
-#### Text Drawing
+#### Text Nodes
 
 ```c
-void DrawUIText(const char *text, int x, int y, int font_size, Color color);
-void DrawScaledUIText(const char *text, int x, int y, int scale, Color color);
-void DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, Color color);
-void DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color);
+void UITextNode(const char *text, int x, int y, int font_size, Color color);
 ```
 
 #### Vertical Centering
@@ -351,14 +348,6 @@ Reflow layout for a given width.
 
 ```c
 void ReflowUITextLayout(UITextLayout *layout, int max_width, int font_size, int line_height);
-```
-
-#### `DrawUITextLayout`
-
-Draw the layout.
-
-```c
-void DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size, Color color);
 ```
 
 #### `GetUITextLayoutHeight` / `FreeUITextLayout`
@@ -639,12 +628,6 @@ float GetUITransitionAlpha(const UITransition *transition);
 int StepUITransition(UITransition *transition, float delta_seconds);
 ```
 
-#### `DrawUITransitionFade`
-
-```c
-void DrawUITransitionFade(const UITransition *transition, int width, int height, Color color);
-```
-
 ---
 
 ### Runtime Assets
@@ -756,12 +739,12 @@ typedef struct {
 } UIButton;
 ```
 
-#### `DrawUIButton`
+#### `UIButtonNode`
 
 Draw and handle a button.
 
 ```c
-int DrawUIButton(UIButton button);
+int UIButtonNode(UIButton button);
 ```
 
 **Returns:** 1 if clicked, 0 otherwise
@@ -785,10 +768,10 @@ typedef struct {
 } UIIconButton;
 ```
 
-#### `DrawUIIconButton`
+#### `UIIconButtonNode`
 
 ```c
-int DrawUIIconButton(UIIconButton button);
+int UIIconButtonNode(UIIconButton button);
 ```
 
 #### `UIHref`
@@ -806,12 +789,12 @@ typedef struct {
 } UIHref;
 ```
 
-#### `DrawUIHref`
+#### `UIHrefNode`
 
 Draw and handle a text link using the current theme link color by default.
 
 ```c
-int DrawUIHref(UIHref link);
+int UIHrefNode(UIHref link);
 ```
 
 ---
@@ -866,11 +849,11 @@ typedef struct {
 } UITextField;
 ```
 
-#### `DrawUITextInputControl` / `DrawUITextField`
+#### `UITextInputControlNode` / `UITextFieldNode`
 
 ```c
-int DrawUITextInputControl(UITextInput input);
-int DrawUITextField(UITextField field);
+int UITextInputControlNode(UITextInput input);
+int UITextFieldNode(UITextField field);
 ```
 
 ---
@@ -901,8 +884,7 @@ typedef struct {
     int max_button_width;
 } UIBottomNav;
 
-UIBottomNavResult DrawUIBottomNav(UIBottomNav nav);
-int GetUIBottomNavHeight(void);
+UIBottomNavResult UIBottomNavNode(UIBottomNav nav);
 ```
 
 #### Toolbar
@@ -921,25 +903,25 @@ typedef struct {
     // ... more fields
 } UIToolbar;
 
-UIToolbarResult DrawUIToolbar(UIToolbar toolbar);
-UIToolbarHeaderResult DrawUIToolbarHeader(UIToolbarHeader header);
+UIToolbarResult UIToolbarNode(UIToolbar toolbar);
+UIToolbarHeaderResult UIToolbarHeaderNode(UIToolbarHeader header);
 ```
 
 #### Sidebar Account Header
 
 ```c
-UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeader header);
-UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal);
+UISidebarAccountHeaderResult UISidebarAccountHeaderNode(UISidebarAccountHeader header);
+UIProfilePicturePickerResult UIProfilePicturePickerNode(UIProfilePicturePickerModal modal);
 ```
 
-`DrawUISidebarAccountHeader` draws the standard account top area with banner,
+`UISidebarAccountHeaderNode` draws the standard account top area with banner,
 username, subtitle, friends summary, and pfp. `content_padding_x` overrides
 the internal horizontal inset while the header bounds can fill its parent. It
 returns separate click flags
 for pfp, username, and friends so applications keep ownership of route changes
 and persistence.
 
-`DrawUIProfilePicturePickerModal` draws the shared pfp selection modal over the
+`UIProfilePicturePickerNode` draws the shared pfp selection modal over the
 standard built-in pfp icon set and writes the selected `UIIconType` when the
 user chooses one.
 
@@ -966,24 +948,22 @@ typedef struct {
     int focus_selected;
 } UITabBar;
 
-int DrawUITabBar(UITabBar bar);
-int GetUITabBarHeight(void);
+int UITabBarNode(UITabBar bar);
 ```
 
 #### Dropdown
 
 ```c
-int DrawUIDropdownButton(int id, int x, int y, int w, int h,
+int UIDropdownNode(int id, int x, int y, int w, int h,
                             const char **options, int option_count, int *selected_index);
-int DrawUIDropdownMenu(int id);
-int UIDropdownCapturesClick(Vector2 point);
+void UIRenderOverlays(void);
 ```
 
 ---
 
 ### Modals
 
-#### `DrawUIActionModal`
+#### `UIActionModalNode`
 
 Adaptive action modal for a title, message, optional close icon, and one to
 three action buttons.
@@ -1004,7 +984,7 @@ typedef struct {
     int max_width;
 } UIModalSpec;
 
-int DrawUIActionModal(UIModalSpec modal);
+int UIActionModalNode(UIModalSpec modal);
 ```
 
 **Returns:** `-1` when the close icon is clicked, `0` for no action, or the
@@ -1016,35 +996,35 @@ inside the button, and the action row wraps to multiple rows when labels do not
 fit. Backdrop clicks are blocked automatically for the current frame and the next
 frame.
 
-#### `DrawUIModal`
+#### `UIModalNode`
 
 Simple two-button modal.
 
 ```c
-int DrawUIModal(const char *title, const char *message,
+int UIModalNode(const char *title, const char *message,
                   const char *cancel_btn, const char *confirm_btn);
 ```
 
 **Returns:** 1 for cancel, 2 for confirm
 
-Compatibility wrapper around `DrawUIActionModal`. It uses an adaptive width,
+Compatibility wrapper around `UIActionModalNode`. It uses an adaptive width,
 reflows message text, fits button labels, and wraps actions when needed. Backdrop
 clicks are blocked automatically for the current frame and the next frame.
 
-#### `DrawUIModal3Button`
+#### `UIModal3ButtonNode`
 
 Three-button modal.
 
 ```c
-int DrawUIModal3Button(const char *title, const char *message,
+int UIModal3ButtonNode(const char *title, const char *message,
                        const char *left_btn, const char *middle_btn, const char *right_btn);
 ```
 
-Compatibility wrapper around `DrawUIActionModal`. It uses an adaptive width,
+Compatibility wrapper around `UIActionModalNode`. It uses an adaptive width,
 reflows message text, fits button labels, and wraps actions when needed. Backdrop
 clicks are blocked automatically for the current frame and the next frame.
 
-#### `UIPanelFrame` / `DrawUIModalFrame`
+#### `UIPanelFrame` / `UIModalFrameNode`
 
 ```c
 typedef struct {
@@ -1060,11 +1040,11 @@ typedef struct {
     int right_clicked;
 } UIPanelFrame;
 
-UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
+UIPanelFrame UIModalFrameNode(int width, int height, const char *title,
                                      Texture2D left_icon, Texture2D right_icon);
 ```
 
-`DrawUIModalFrame` also updates the modal capture bounds automatically for the
+`UIModalFrameNode` also updates the modal capture bounds automatically for the
 current frame and the next frame.
 
 ---
@@ -1130,11 +1110,11 @@ UIScrollPage BeginUIScrollPage(UIScrollPageSpec spec);
 void EndUIScrollPage(UIScrollPage page);
 ```
 
-#### Scrollbar
+#### Node Measurement
 
 ```c
-int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
-                     int *scroll_offset, int max_scroll);
+int UIGetNodeHeight(const UIWidgetNode *node);
+int UIGetNodeHeightById(int id);
 ```
 
 ---
@@ -1144,24 +1124,24 @@ int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
 #### Sliders
 
 ```c
-int DrawUISlider(int id, int x, int y, int w, const char *label,
+int UISliderNode(int id, int x, int y, int w, const char *label,
                    int min, int max, int *value, const char *suffix);
-int DrawUIVerticalSlider(int id, int x, int y, int h,
+int UIVerticalSliderNode(int id, int x, int y, int h,
                             int min, int max, int *value);
 ```
 
 #### Toggle Switch
 
 ```c
-int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
+int UIToggleNode(int x, int y, int w, int h, int *value,
                          const char *off_label, const char *on_label);
 ```
 
 #### Checkbox
 
 ```c
-int DrawUICheckboxToggle(int x, int y, const char *label, int *value);
-int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
+int UICheckboxNode(int x, int y, const char *label, int *value);
+int UICheckboxNode(int x, int y, const char *label,
                                      int *value, int disabled);
 ```
 
@@ -1191,7 +1171,7 @@ typedef struct {
     Color default_text;
 } UIInfoRows;
 
-void DrawUIInfoRows(UIInfoRows rows);
+void UIInfoRowsNode(UIInfoRows rows);
 ```
 
 #### Button Rows
@@ -1213,13 +1193,12 @@ typedef struct {
     int count;
 } UIButtonRow;
 
-int GetUIButtonRowHeight(UIButtonRow row);
-int DrawUIButtonRow(UIButtonRow row);
+int UIButtonRowNode(UIButtonRow row);
 ```
 
-`GetUIButtonRowHeight` returns the full wrapped height needed for the row.
-`DrawUIButtonRow` measures labels, fits text inside each button, and wraps into
-additional rows when the configured width cannot hold every action on one line.
+`UIButtonRowNode` measures labels, stores the final height on its node, fits
+text inside each button, and wraps into additional rows when the configured
+width cannot hold every action on one line.
 
 ---
 
@@ -1238,11 +1217,11 @@ next frame. While a modal carried from the previous frame has not registered its
 bounds yet, all pointer input is captured. After registration, clicks outside the bounds
 are captured while controls inside the modal remain usable.
 
-Built-in modal helpers (`DrawUIActionModal`, `DrawUIModal`,
-`DrawUIModal3Button`, `DrawUIModalFrame`) register their bounds automatically.
+Built-in modal helpers (`UIActionModalNode`, `UIModalNode`,
+`UIModal3ButtonNode`, `UIModalFrameNode`) register their bounds automatically.
 
-Applications should use `DrawUIActionModal` for standard title/message/action
-dialogs and `DrawUIModalFrame` for custom modal content instead of manually
+Applications should use `UIActionModalNode` for standard title/message/action
+dialogs and `UIModalFrameNode` for custom modal content instead of manually
 drawing a backdrop and calling `SetUIModalCapture`. Manual capture remains
 available for specialized overlays, but the helpers keep modal bounds, backdrop,
 and input capture consistent across projects.
@@ -1316,32 +1295,26 @@ void SetUIFocusTextInputActive(int active);
 ### Focus Indicator
 
 ```c
-void DrawUIFocus(Rectangle bounds);
+void UIFocusNode(Rectangle bounds);
 ```
 
 ---
 
 ## Utility Functions
 
-### Bevel Drawing
-
-```c
-void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
-```
-
 ### Icon Buttons
 
 ```c
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
-int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
-int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *hover);
+int UIIconBtnNode(int id, int x, int y, UIIconSize size, Texture2D icon, int *hover);
+int UIPaddedIconBtnNode(int id, int x, int y, int size, int padding, Texture2D icon, int *hover);
 ```
 
 ### Generic Button
 
 ```c
-int DrawUIGenericButton(int x, int y, int w, int h, const char *label,
+int UIGenericButtonNode(int x, int y, int w, int h, const char *label,
                            UIButtonStyle style, int disabled, int *hover);
 ```
 
@@ -1426,7 +1399,7 @@ UIFrame frame = BeginUIFrameBox((Rectangle){40, 40, 320, 200}, 12, 12, 8);
 Rectangle row = UIFramePack(&frame, UI_SIDE_TOP, 32);
 
 int selected = 0;
-DrawUIListBox((UIListBox){
+UIListBoxNode((UIListBox){
     .bounds = row,
     .id = 10,
     .items = items,
@@ -1447,14 +1420,14 @@ through the existing codepoint filter.
 
 Feature families:
 
-- Geometry: `BeginUIFrameBox`, `UIFramePack`, `UIGridCell`, `UIPlace`, `DrawUISeparator`
-- Menus: `DrawUIMenuBar`, `DrawUIPopupMenu`
-- Basic controls: `DrawUIRadioButton`, `DrawUIProgressBar`, `DrawUISpinbox`, `DrawUICombobox`, `DrawUILabelFrame`, `DrawUIImageBox`
-- Collections: `DrawUIListBox`, `DrawUITreeView`, `DrawUITableView`
-- Canvas: `BeginUICanvas`, `EndUICanvas`, `DrawUICanvasGrid`, `UICanvasHitTest`
-- Containers: `DrawUINotebook`, `DrawUIPanedView`, `DrawUICollapsible`
-- Dialogs/platform: `DrawUIMessageDialog`, `DrawUIConfirmDialog`, `DrawUIPromptDialog`, `DrawUIColorPicker`, `DispatchUIAccelerators`, clipboard helpers
-- Accessibility/debug: `DrawUIFocusDebugOverlay`
+- Geometry: `BeginUIFrameBox`, `UIFramePack`, `UIGridCell`, `UIPlace`, `UISeparatorNode`
+- Menus: `UIMenuBarNode`, `UIPopupMenuNode`
+- Basic controls: `UIRadioNode`, `UIProgressNode`, `UISpinboxNode`, `UIComboboxNode`, `UILabelFrameNode`, `UIImageBoxNode`
+- Collections: `UIListBoxNode`, `UITreeViewNode`, `UITableViewNode`
+- Canvas: `BeginUICanvas`, `EndUICanvas`, `UICanvasGridNode`, `UICanvasHitTest`
+- Containers: `UINotebookNode`, `UIPanedViewNode`, `UICollapsibleNode`
+- Dialogs/platform: `UIMessageDialogNode`, `UIConfirmDialogNode`, `UIPromptDialogNode`, `UIColorPickerNode`, `DispatchUIAccelerators`, clipboard helpers
+- Accessibility/debug: `UIFocusDebugOverlayNode`
 
 Examples `09_geometry` through `18_accessibility` demonstrate these APIs.
 
@@ -1481,7 +1454,7 @@ int main(void) {
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), dpi);
 
         // Draw UI
-        if (DrawUIGenericButton(10, 10, 100, 36, "Click Me",
+        if (UIGenericButtonNode(10, 10, 100, 36, "Click Me",
                                    UI_BUTTON_STYLE_PRIMARY, 0, NULL)) {
             // Button clicked
         }

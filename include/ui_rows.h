@@ -78,15 +78,4 @@ typedef struct {
     Color text;
 } UIOverlayButton;
 
-void DrawUIInfoRows(UIInfoRows rows);
-int GetUILabelTextFieldHeight(UILabelTextField row);
-int DrawUILabelTextField(UILabelTextField row, int x, int y, int w);
-int GetUISectionLabelHeight(UISectionLabel label);
-int DrawUISectionLabel(UISectionLabel label, int x, int y);
-int GetUICheckboxRowHeight(UICheckboxRow row);
-int DrawUICheckboxRow(UICheckboxRow row, int x, int y);
-int DrawUIOverlayButton(UIOverlayButton button);
-int GetUIButtonRowHeight(UIButtonRow row);
-int DrawUIButtonRow(UIButtonRow row);
-
 #endif

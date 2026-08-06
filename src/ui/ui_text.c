@@ -899,7 +899,7 @@ MeasureScaledUIText(const char *text, int scale)
 }
 
 void
-DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
+UIRenderTextEx(const char *text, int x, int y, int font_size, Color color,
              int selectable_arg)
 {
     Font font = active_font_for_size(font_size);
@@ -1020,15 +1020,15 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
 }
 
 void
-DrawUIText(const char *text, int x, int y, int font_size, Color color)
+UIRenderText(const char *text, int x, int y, int font_size, Color color)
 {
-    DrawUITextEx(text, x, y, font_size, color, 1);
+    UIRenderTextEx(text, x, y, font_size, color, 1);
 }
 
 void
-DrawUINonSelectableText(const char *text, int x, int y, int font_size, Color color)
+UIRenderNonSelectableText(const char *text, int x, int y, int font_size, Color color)
 {
-    DrawUITextEx(text, x, y, font_size, color, 0);
+    UIRenderTextEx(text, x, y, font_size, color, 0);
 }
 
 int
@@ -1096,11 +1096,11 @@ DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, 
     int line_h = GetUITextLineHeight(font_size);
     int y = GetUITextY("Hg", center_y - line_h / 2, line_h, font_size);
 
-    DrawUIText(text, center_x - text_w / 2, y, font_size, color);
+    UIRenderText(text, center_x - text_w / 2, y, font_size, color);
 }
 
 void
-DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color)
+UIRenderTextInRect(const char *text, Rectangle rect, int font_size, Color color)
 {
     const char *value = text != NULL ? text : "";
     int text_w = MeasureUIText(value, font_size);
@@ -1112,7 +1112,7 @@ DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color)
         rect.x, rect.y - clip_guard, rect.width, rect.height + clip_guard * 2
     });
     BeginUIClip((int)clip.x, (int)clip.y, (int)clip.width, (int)clip.height);
-    DrawUIText(value, x, y, font_size, color);
+    UIRenderText(value, x, y, font_size, color);
     EndUIClip();
 }
 

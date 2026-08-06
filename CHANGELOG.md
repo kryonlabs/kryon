@@ -54,8 +54,8 @@
   `app.kry` owns the window loop via the new `app{}` hooks; `state.kry`,
   `start_page.kry`, `project.kry`, `tree.kry`, and `editor.kry` implement the
   start page, project-open flow (file dialog + `kry_fs`), a file-tree sidebar
-  (`kry_fs_list_dir` + `DrawUICascadingTreeView`), and a read-only source viewer
-  (`kry_fs_read_file` + `DrawUITextArea`). The IDE repository transpiles those
+  (`kry_fs_list_dir` + `UICascadingTreeViewNode`), and a read-only source viewer
+  (`kry_fs_read_file` + `UITextAreaNode`). The IDE repository transpiles those
   modules in one `kc` invocation and links the generated C against `libkryon.a`
   + raylib.
 - The `.kry` IDE gains an editable editor with multi-tab open files, Ctrl+S
@@ -77,7 +77,7 @@
 - Remove the bundled C IDE. Kryon now builds only the library, compiler,
   tooling, and `kryon-app`; the Kry-written standalone IDE lives outside this
   repository.
-- Fix copy/cut/paste/select-all in the IDE source editor. `DrawUITextArea` had
+- Fix copy/cut/paste/select-all in the IDE source editor. `UITextAreaNode` had
   its own generic clipboard handler that raced the IDE's
   `editor_handle_source_clipboard` on the same one-shot keypress, so Ctrl+C/V
   worked inconsistently. The generic handler is removed; the IDE now owns the

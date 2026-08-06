@@ -20,5 +20,6 @@
 #include "ui_scroll.h"
 #include "ui_toast.h"
 #include "ui_widget.h"
+#include "ui_tree.h"
 
 #endif

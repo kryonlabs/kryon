@@ -19,16 +19,4 @@ int GetUIFontSize(void);
 int GetUISmallFontSize(void);
 int GetUITitleFontSize(const char *title, int max_width);
 int GetUIControlTextY(const char *text, int box_y, int box_h, int font);
-void DrawCenteredUIControlText(const char *text, int center_x, int center_y,
-                               int font, Color color);
-void DrawLeftUIControlTextInRect(const char *text, Rectangle rect,
-                                 int font_size, Color color);
-void DrawFittedUITextInRect(const char *text, Rectangle rect,
-                            int preferred_size, int min_size, Color color);
-int GetUIParagraphHeight(UIParagraph paragraph);
-void DrawUIParagraph(UIParagraph paragraph, int x, int *y);
-void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
-void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
-                     int line_h, Color color);
-
 #endif

@@ -53,20 +53,4 @@ typedef struct {
     int right_clicked;
 } UIPanelFrame;
 
-int DrawUIActionModal(UIModalSpec modal);
-int DrawUIModal(const char *title, const char *message,
-                const char *cancel_btn, const char *confirm_btn);
-int DrawUIModal3Button(const char *title, const char *message,
-                       const char *left_btn, const char *middle_btn,
-                       const char *right_btn);
-int GetUIParagraphModalHeight(UIParagraphModalMeasure measure);
-int GetUITitleBarHeight(void);
-void DrawUITitleBar(const char *title, int height);
-int DrawUIReturnTitleBar(Texture2D return_icon, const char *title,
-                         int height);
-int DrawUIReturnDropdownTitleBar(Texture2D return_icon,
-                                 UITitleBarDropdown dropdown, int height);
-UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
-                              Texture2D left_icon, Texture2D right_icon);
-
 #endif

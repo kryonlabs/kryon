@@ -39,7 +39,7 @@ ClearUIToast(void)
 }
 
 void
-DrawUIToast(void)
+UIRenderToast(void)
 {
     int font = GetUISmallFontSize();
     int pad_x = ScaleUIPx(14);
@@ -86,7 +86,7 @@ DrawUIToast(void)
     DrawRectangleRounded(bounds, 0.18f, 12, DarkenUIColor(c_surface, 18));
     DrawRectangleRoundedLinesEx(bounds, 0.18f, 12, ScaleUIPx(1),
                                 DarkenUIColor(c_surface, 46));
-    DrawUIText(display,
+    UIRenderText(display,
                x + (w - text_w) / 2,
                GetUIControlTextY(display, y, h, font),
                font, c_text);

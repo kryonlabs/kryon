@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 UIToolbarResult
-DrawUIToolbar(UIToolbar toolbar)
+UIRenderToolbar(UIToolbar toolbar)
 {
     UIToolbarResult result = {-1, -1};
     int side_padding = toolbar.side_padding < 0
@@ -18,15 +18,6 @@ DrawUIToolbar(UIToolbar toolbar)
     int action_w = action_icon_size + action_icon_padding * 2;
     int action_y = toolbar.y + (toolbar.height - action_w) / 2;
     int controls_x = toolbar.x + toolbar.width - side_padding;
-
-    if(toolbar.draw_menu) {
-        if(toolbar.options != NULL && toolbar.selected_index != NULL &&
-           DrawUIDropdownMenu(toolbar.id))
-            result.selected_menu_item = toolbar.selected_index != NULL
-                                            ? *toolbar.selected_index
-                                            : -1;
-        return result;
-    }
 
     Color bar = DarkenUIColor(c_bg, 14);
     if(ui_modern_style()) {
@@ -52,7 +43,7 @@ DrawUIToolbar(UIToolbar toolbar)
             controls_x -= action_w;
             action_x = controls_x;
             if(!toolbar.actions[i].disabled &&
-               DrawUIPaddedIconBtn(action_x, action_y, action_icon_size,
+               UIRenderPaddedIconBtn(action_x, action_y, action_icon_size,
                                        action_icon_padding,
                                        toolbar.actions[i].icon, &hover))
                 result.clicked_action = i;
@@ -81,17 +72,20 @@ DrawUIToolbar(UIToolbar toolbar)
             dropdown_w = dropdown_available_w;
         if(dropdown_w < 0)
             dropdown_w = 0;
-        DrawUIDropdownButton(toolbar.id, dropdown_x, dropdown_y,
-                                dropdown_w, dropdown_h,
-                                toolbar.options, toolbar.option_count,
-                                toolbar.selected_index);
+        if(UIRenderDropdown(toolbar.id, dropdown_x, dropdown_y,
+                          dropdown_w, dropdown_h,
+                          toolbar.options, toolbar.option_count,
+                          toolbar.selected_index))
+            result.selected_menu_item = toolbar.selected_index != NULL
+                                            ? *toolbar.selected_index
+                                            : -1;
     }
 
     return result;
 }
 
 UIToolbarHeaderResult
-DrawUIToolbarHeader(UIToolbarHeader header)
+UIRenderToolbarHeader(UIToolbarHeader header)
 {
     UIToolbarHeaderResult result;
     UIToolbar toolbar = header.toolbar;
@@ -121,7 +115,7 @@ DrawUIToolbarHeader(UIToolbarHeader header)
         DrawLine(0, height - 1, ui_view_width, height - 1,
                  DarkenUIColor(c_bg, 42));
         if(header.leading_icon.id != 0) {
-            result.leading_clicked = DrawUIPaddedIconBtn(ScaleUIPx(12), ScaleUIPx(12),
+            result.leading_clicked = UIRenderPaddedIconBtn(ScaleUIPx(12), ScaleUIPx(12),
                                                              icon_size, icon_padding,
                                                              header.leading_icon,
                                                              &hover);
@@ -134,6 +128,6 @@ DrawUIToolbarHeader(UIToolbarHeader header)
             toolbar.width = 0;
     }
 
-    result.toolbar = DrawUIToolbar(toolbar);
+    result.toolbar = UIRenderToolbar(toolbar);
     return result;
 }

@@ -56,7 +56,5 @@ UIScrollView BeginUIScrollContainer(UIScrollArea area);
 void EndUIScrollContainer(UIScrollArea area, UIScrollView view);
 UIScrollPage BeginUIScrollPage(UIScrollPageSpec spec);
 void EndUIScrollPage(UIScrollPage page);
-int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
-                    int *scroll_offset, int max_scroll);
 
 #endif

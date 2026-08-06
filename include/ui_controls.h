@@ -165,67 +165,21 @@ UIStyleTokens GetUIStyleTokensForThemeStyle(ThemeStyle style);
 void SetUIStyleTokens(UIStyleTokens tokens);
 void ClearUIStyleTokensOverride(void);
 
-int DrawUIButton(UIButton button);
-int DrawUIIconButton(UIIconButton button);
-int DrawUIHref(UIHref link);
-int DrawUITextInputControl(UITextInput input);
-void DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
-                     int focused, int cursor_visible, int font,
-                     UITextInputStyle style);
 int EditUIText(UITextEdit edit);
 void QueueUITextInputCodepoint(int codepoint);
 void QueueUITextInputBackspace(void);
 void QueueUITextInputEnter(void);
-int DrawUITextField(UITextField field);
-int DrawUITextArea(UITextArea area);
 int GetUITextAreaSelection(int focus_id, int *start, int *end);
 void SetUITextAreaSelection(int focus_id, int anchor, int cursor);
-int GetUIReadonlyTextBoxHeight(const char *text, int font, int width,
-                               UITextInputStyle style, int line_gap);
-int DrawUIReadonlyTextBox(UIReadonlyTextBox box);
 
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
-void DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint);
-int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
-int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
-                        int *hover);
-int DrawUIInfoButton(int center_x, int center_y, int diameter);
-int DrawUITextButton(int x, int y, const char *label, int *hover);
-int DrawUIGenericButton(int x, int y, int w, int h, const char *label,
-                        UIButtonStyle style, int disabled, int *hover);
-
-void DrawUIIconLink(int x, int y, int icon_size, Texture2D icon,
-                    const char *url);
-int DrawUISlider(int id, int x, int y, int w, const char *label, int min,
-                 int max, int *value, const char *suffix);
-int DrawUIVerticalSlider(int id, int x, int y, int h, int min, int max,
-                         int *value);
-int DrawUIVerticalSliderWithMarks(int id, int x, int y, int h, int min,
-                                  int max, int *value,
-                                  UIVerticalSliderMarkCallback callback,
-                                  void *callback_user_data);
-int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
-                       const char *off_label, const char *on_label);
-int DrawUICheckboxToggle(int x, int y, const char *label, int *value);
-int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
-                                 int *value, int disabled);
 
 typedef struct {
     const char *label;
     const char *font_name;
 } UIDropdownOption;
 
-int DrawUIDropdownButton(int id, int x, int y, int w, int h,
-                         const char **options, int option_count,
-                         int *selected_index);
-int DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
-                           const UIDropdownOption *options, int option_count,
-                           int *selected_index);
-int DrawUILocaleDropdownButton(int id, int x, int y, int w, int h,
-                               int *selected_index);
-int DrawUIDropdownMenu(int id);
-int UIDropdownCapturesClick(Vector2 point);
 void SetUIDropdownClipTop(int top);
 void SetUIDropdownClipBottom(int bottom);
 

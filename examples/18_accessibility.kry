@@ -14,11 +14,11 @@ state {
 screen AccessibilityExample(viewport: Rectangle) {
     WidgetBackground(GetThemeBackground())
     WidgetText("Accessibility overlay", 40, 40, UI_TEXT_24, GetThemeText())
-    DrawUICheckboxToggle(40,90,"Show focus/debug overlay",&enabled)
+    UICheckboxNode(1801,40,90,"Show focus/debug overlay",&enabled)
     if WidgetButton(40, 140, 200, 40, "Focusable Button", UI_BUTTON_STYLE_PRIMARY) {
         enabled = !enabled
     }
     if enabled {
-        DrawUIFocus((Rectangle){36,136,208,48})
+        UIFocusNode((Rectangle){36,136,208,48})
     }
 }

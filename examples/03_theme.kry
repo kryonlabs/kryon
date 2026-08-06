@@ -8,8 +8,8 @@ app "Kryon Theme Example" {
 }
 
 state {
-    theme_source: int = THEME_SOURCE_APP
-    theme_mode: int = THEME_MODE_LIGHT
+    theme_source: int = THEME_SOURCE_SYSTEM
+    theme_mode: int = THEME_MODE_SYSTEM
     theme_id: int = THEME_SKY
     theme_style: int = THEME_STYLE_SYSTEM
     menu_state: UIThemeSettingsState = {0}
@@ -54,7 +54,7 @@ ApplyThemeState :: () {
 }
 
 TokenValue :: (label: const char *, value: int, x: int, y: int) {
-    DrawUIText(TextFormat("%s %d", label, value), x, y, UI_TEXT_12, GetThemeIcon())
+    UITextNode(TextFormat("%s %d", label, value), x, y, UI_TEXT_12, GetThemeIcon())
 }
 
 ControlDemo :: (x: int, y: int, w: int) {
@@ -70,31 +70,31 @@ ControlDemo :: (x: int, y: int, w: int) {
         ScaleUIPx(8)
     }
 
-    DrawUIText("Live controls", x, y, UI_TEXT_24, GetThemeText())
+    UITextNode("Live controls", x, y, UI_TEXT_24, GetThemeText())
     y += ScaleUIPx(46)
-    DrawUIButton((UIButton){{x, y, ScaleUIPx(190), ScaleUIPx(44)}, "Primary", UI_TEXT_16, 301, 0,
+    UIButtonNode((UIButton){{x, y, ScaleUIPx(190), ScaleUIPx(44)}, "Primary", UI_TEXT_16, 301, 0,
                             GetThemeButton(), GetThemeButtonHover(),
                             GetThemeText(), DarkenUIColor(GetThemeButton(), 35), 0.06f})
-    DrawUIButton((UIButton){{x + ScaleUIPx(210), y, ScaleUIPx(190), ScaleUIPx(44)}, "Secondary", UI_TEXT_16, 302, 0,
+    UIButtonNode((UIButton){{x + ScaleUIPx(210), y, ScaleUIPx(190), ScaleUIPx(44)}, "Secondary", UI_TEXT_16, 302, 0,
                             GetThemeSurface(), LightenUIColor(GetThemeSurface(), 12),
                             GetThemeText(), DarkenUIColor(GetThemeSurface(), 35), 0.06f})
     y += ScaleUIPx(70)
 
-    DrawUITextField((UITextField){{x, y, w, ScaleUIPx(44)}, text_value, sizeof(text_value),
+    UITextFieldNode((UITextField){{x, y, w, ScaleUIPx(44)}, text_value, sizeof(text_value),
                                   &text_cursor, &text_focused, 80, UI_TEXT_16, 303,
                                   field_style, NULL, NULL, NULL})
     y += ScaleUIPx(70)
-    DrawUIDropdownButton(304, x, y, w, ScaleUIPx(44), options, 3, &combo_index)
+    UIDropdownNode(304, x, y, w, ScaleUIPx(44), options, 3, &combo_index)
     y += ScaleUIPx(72)
-    DrawUISlider(305, x, y, w, "Slider", 0, 100, &slider_value, "")
+    UISliderNode(305, x, y, w, "Slider", 0, 100, &slider_value, "")
     y += ScaleUIPx(72)
-    DrawUIToggleSwitch(x, y, ScaleUIPx(180), ScaleUIPx(48), &toggle_value, "Off", "On")
-    DrawUICheckboxToggle(x + ScaleUIPx(230), y + ScaleUIPx(12), "Checkbox", &check_value)
+    UIToggleNode(306, x, y, ScaleUIPx(180), ScaleUIPx(48), &toggle_value, "Off", "On")
+    UICheckboxNode(307, x + ScaleUIPx(230), y + ScaleUIPx(12), "Checkbox", &check_value)
 }
 
 screen ThemeExample(viewport: Rectangle) {
     ApplyThemeState()
-    WidgetBackground(GetThemeBackground())
+    UIBackground(GetThemeBackground())
 
     margin: int = ScaleUIPx(26)
     panel_w: int = ScaleUIPx(310)
@@ -109,18 +109,23 @@ screen ThemeExample(viewport: Rectangle) {
         .theme_id = &theme_id,
         .theme_style = &theme_style,
         .allow_system_source = 1,
-        .allow_system_mode = 1
+        .allow_system_mode = 1,
+        .palette_label = "Color palette",
+        .source_system_label = "System colors",
+        .style_label = "Widget style",
+        .style_system_label = "System style"
     }
 
-    DrawUIText("Kryon Native Theme State", margin, ScaleUIPx(24), UI_TEXT_24, GetThemeText())
-    DrawUIText("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), UI_TEXT_16, GetThemeIcon())
-    DrawUIThemeSettings(settings, &menu_state)
+    UITextNode("Kryon Native Theme State", margin, ScaleUIPx(24), UI_TEXT_24, GetThemeText())
+    UITextNode("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), UI_TEXT_16, GetThemeIcon())
+    result: UIThemeSettingsResult = {0}
+    UIThemeSettingsNode(settings, &menu_state, &result)
 
     ControlDemo(right_x, ScaleUIPx(88), ScaleUIPx(420))
 
     tokens := GetUIStyleTokens()
     token_y: int = ScaleUIPx(520)
-    DrawUIText("Active style tokens", right_x, token_y, UI_TEXT_16, GetThemeText())
+    UITextNode("Active style tokens", right_x, token_y, UI_TEXT_16, GetThemeText())
     token_y += ScaleUIPx(30)
     TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
     TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)
@@ -131,7 +136,6 @@ screen ThemeExample(viewport: Rectangle) {
     TokenValue("touch target", tokens.touch_target_min, right_x, token_y)
     TokenValue("shadow y", tokens.shadow_offset_y, right_x + ScaleUIPx(150), token_y)
 
-    result := DrawUIThemeSettingsMenus(settings, &menu_state)
     if result.changed {
         ApplyThemeState()
     }

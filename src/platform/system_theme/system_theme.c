@@ -20,6 +20,7 @@ typedef struct SystemThemePalette {
     Color link;
     int available;
     int prefers_dark;
+    int supports_mode;
     char name[THEME_NAME_SIZE];
 } SystemThemePalette;
 
@@ -34,8 +35,13 @@ static SystemThemePalette system_palette = {
     .link = {0x20, 0x70, 0xC0, 0xFF},
     .available = 0,
     .prefers_dark = 0,
+    .supports_mode = 0,
     .name = "System"
 };
+
+static SystemThemePalette system_light_palette;
+static SystemThemePalette system_dark_palette;
+static int system_prefers_dark = 0;
 
 static const SystemThemePalette material_light_palette = {
     .background = {0xFF, 0xFB, 0xFE, 0xFF},
@@ -69,6 +75,12 @@ static void
 apply_material_palette(bool dark)
 {
     system_palette = dark ? material_dark_palette : material_light_palette;
+    system_palette.supports_mode = 1;
+    system_prefers_dark = dark ? 1 : 0;
+    system_light_palette = material_light_palette;
+    system_dark_palette = material_dark_palette;
+    system_light_palette.supports_mode = 1;
+    system_dark_palette.supports_mode = 1;
 }
 
 #if defined(SYSTEM_THEME_GTK)
@@ -114,23 +126,117 @@ style_background_for(GtkStyleContext *context, GtkStateFlags state, Color fallba
 }
 
 static int
+color_channel_delta(unsigned char a, unsigned char b)
+{
+    return a > b ? a - b : b - a;
+}
+
+static int
+color_delta(Color a, Color b)
+{
+    return color_channel_delta(a.r, b.r) +
+           color_channel_delta(a.g, b.g) +
+           color_channel_delta(a.b, b.b);
+}
+
+static int
+palette_colors_differ(SystemThemePalette a, SystemThemePalette b)
+{
+    int background_delta = color_delta(a.background, b.background);
+    int surface_delta = color_delta(a.surface, b.surface);
+    int text_delta = color_delta(a.text, b.text);
+    int button_delta = color_delta(a.button, b.button);
+
+    return background_delta + surface_delta + text_delta + button_delta >= 96;
+}
+
+static int
+gtk_sample_palette(GtkSettings *settings, gboolean prefer_dark,
+                   const char *theme_name, SystemThemePalette *out)
+{
+    GtkWidget *window;
+    GtkWidget *box;
+    GtkWidget *label;
+    GtkWidget *button;
+    GtkWidget *entry;
+    Color bg;
+    Color surface;
+    Color view_bg;
+    Color text;
+    Color button_bg;
+    Color button_hover;
+    Color accent;
+
+    if(settings == NULL || out == NULL)
+        return 0;
+
+    g_object_set(settings,
+                 "gtk-application-prefer-dark-theme", prefer_dark,
+                 NULL);
+    while(gtk_events_pending())
+        gtk_main_iteration_do(FALSE);
+
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    label = gtk_label_new("kryon");
+    button = gtk_button_new_with_label("kryon");
+    entry = gtk_entry_new();
+    gtk_container_add(GTK_CONTAINER(window), box);
+    gtk_container_add(GTK_CONTAINER(box), label);
+    gtk_container_add(GTK_CONTAINER(box), button);
+    gtk_container_add(GTK_CONTAINER(box), entry);
+    gtk_widget_realize(window);
+    gtk_widget_realize(box);
+    gtk_widget_realize(label);
+    gtk_widget_realize(button);
+    gtk_widget_realize(entry);
+
+    bg = style_background_for(gtk_widget_get_style_context(window), GTK_STATE_FLAG_NORMAL,
+                              system_palette.background);
+    surface = style_background_for(gtk_widget_get_style_context(box), GTK_STATE_FLAG_NORMAL,
+                                   bg);
+    view_bg = style_background_for(gtk_widget_get_style_context(entry), GTK_STATE_FLAG_NORMAL,
+                                   bg);
+    text = style_color_for(gtk_widget_get_style_context(label), GTK_STATE_FLAG_NORMAL,
+                           system_palette.text);
+    button_bg = style_background_for(gtk_widget_get_style_context(button), GTK_STATE_FLAG_NORMAL,
+                                     surface);
+    button_hover = style_background_for(gtk_widget_get_style_context(button), GTK_STATE_FLAG_PRELIGHT,
+                                        LightenUIColor(button_bg, 18));
+    accent = button_hover;
+    if(accent.r == button_bg.r && accent.g == button_bg.g && accent.b == button_bg.b)
+        accent = LightenUIColor(button_bg, 24);
+
+    *out = system_palette;
+    out->background = view_bg;
+    out->surface = surface;
+    out->text = text;
+    out->button = button_bg;
+    out->button_hover = button_hover;
+    out->circle = accent;
+    out->icon = text;
+    out->link = accent;
+    out->prefers_dark = prefer_dark ? 1 : 0;
+    out->available = 1;
+    snprintf(out->name, sizeof(out->name), "%s",
+             theme_name != NULL && theme_name[0] != '\0' ? theme_name : "GTK");
+
+    gtk_widget_destroy(window);
+
+    while(gtk_events_pending())
+        gtk_main_iteration_do(FALSE);
+
+    return 1;
+}
+
+static int
 gtk_system_theme_refresh(void)
 {
     static int initialized = 0;
     static int init_ok = 0;
     GtkSettings *settings;
-    GtkWidget *window;
-    GtkWidget *box;
-    GtkWidget *label;
-    GtkWidget *button;
     char *theme_name = NULL;
     gboolean prefer_dark = FALSE;
-    Color bg;
-    Color surface;
-    Color text;
-    Color button_bg;
-    Color button_hover;
-    Color accent;
 
     if(!initialized) {
         init_ok = gtk_init_check(NULL, NULL) ? 1 : 0;
@@ -148,46 +254,25 @@ gtk_system_theme_refresh(void)
                  "gtk-application-prefer-dark-theme", &prefer_dark,
                  NULL);
 
-    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    label = gtk_label_new("kryon");
-    button = gtk_button_new_with_label("kryon");
-    gtk_container_add(GTK_CONTAINER(window), box);
-    gtk_container_add(GTK_CONTAINER(box), label);
-    gtk_container_add(GTK_CONTAINER(box), button);
-    gtk_widget_realize(window);
-    gtk_widget_realize(box);
-    gtk_widget_realize(label);
-    gtk_widget_realize(button);
+    if(!gtk_sample_palette(settings, FALSE, theme_name, &system_light_palette) ||
+       !gtk_sample_palette(settings, TRUE, theme_name, &system_dark_palette)) {
+        g_object_set(settings,
+                     "gtk-application-prefer-dark-theme", prefer_dark,
+                     NULL);
+        g_free(theme_name);
+        return 0;
+    }
 
-    bg = style_background_for(gtk_widget_get_style_context(window), GTK_STATE_FLAG_NORMAL,
-                              system_palette.background);
-    surface = style_background_for(gtk_widget_get_style_context(box), GTK_STATE_FLAG_NORMAL,
-                                   bg);
-    text = style_color_for(gtk_widget_get_style_context(label), GTK_STATE_FLAG_NORMAL,
-                           system_palette.text);
-    button_bg = style_background_for(gtk_widget_get_style_context(button), GTK_STATE_FLAG_NORMAL,
-                                     surface);
-    button_hover = style_background_for(gtk_widget_get_style_context(button), GTK_STATE_FLAG_PRELIGHT,
-                                        LightenUIColor(button_bg, 18));
-    accent = button_hover;
-    if(accent.r == button_bg.r && accent.g == button_bg.g && accent.b == button_bg.b)
-        accent = LightenUIColor(button_bg, 24);
-
-    system_palette.background = bg;
-    system_palette.surface = surface;
-    system_palette.text = text;
-    system_palette.button = button_bg;
-    system_palette.button_hover = button_hover;
-    system_palette.circle = accent;
-    system_palette.icon = text;
-    system_palette.link = accent;
+    system_light_palette.supports_mode =
+        palette_colors_differ(system_light_palette, system_dark_palette);
+    system_dark_palette.supports_mode = system_light_palette.supports_mode;
+    system_palette = prefer_dark ? system_dark_palette : system_light_palette;
     system_palette.prefers_dark = prefer_dark ? 1 : 0;
-    system_palette.available = 1;
-    snprintf(system_palette.name, sizeof(system_palette.name), "%s",
-             theme_name != NULL && theme_name[0] != '\0' ? theme_name : "GTK");
+    system_prefers_dark = prefer_dark ? 1 : 0;
 
-    gtk_widget_destroy(window);
+    g_object_set(settings,
+                 "gtk-application-prefer-dark-theme", prefer_dark,
+                 NULL);
     g_free(theme_name);
 
     while(gtk_events_pending())
@@ -350,7 +435,15 @@ SystemThemePrefersDark(void)
 {
     if(!system_palette.available)
         RefreshSystemTheme();
-    return system_palette.prefers_dark != 0;
+    return system_prefers_dark != 0;
+}
+
+bool
+SystemThemeSupportsMode(void)
+{
+    if(!system_palette.available)
+        RefreshSystemTheme();
+    return system_palette.supports_mode != 0;
 }
 
 void
@@ -362,7 +455,11 @@ SetSystemThemeDarkMode(bool dark)
         apply_material_palette(dark);
         return;
     }
-    system_palette.prefers_dark = dark ? 1 : 0;
+    if(system_palette.supports_mode) {
+        system_palette = dark ? system_dark_palette : system_light_palette;
+        system_palette.prefers_dark = dark ? 1 : 0;
+        return;
+    }
 }
 
 bool

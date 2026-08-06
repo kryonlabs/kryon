@@ -19,7 +19,9 @@ typedef struct UIDropdownState {
     char option_text[MAX_DROPDOWN_OPTIONS][DROPDOWN_OPTION_TEXT_SIZE];
     char option_font_text[MAX_DROPDOWN_OPTIONS][DROPDOWN_OPTION_FONT_SIZE];
     int option_count;
-    int *selected_index;
+    int selected_index;
+    int pending_changed;
+    int pending_index;
     int touch_pressed;
     int touch_press_start_y;
     int touch_drag_active;
@@ -123,15 +125,53 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
 }
 
 int
-UIDropdownCapturesClick(Vector2 point)
+ui_dropdown_captures_click(Vector2 point)
 {
-    (void)point;
     for(int i = 0; i < dropdown_state_count; i++) {
         UIDropdownState *state = &dropdown_states[i];
-        if(state->open && state->option_count > 0)
+        int dropdown_y = 0;
+        int dropdown_h = 0;
+        Rectangle bounds;
+
+        if(!state->open || state->option_count <= 0)
+            continue;
+        dropdown_menu_layout(state, &dropdown_y, &dropdown_h, NULL, NULL);
+        bounds = (Rectangle){state->x, dropdown_y, state->w, dropdown_h};
+        if(CheckCollisionPointRec(point, bounds))
             return 1;
     }
     return 0;
+}
+
+static void
+close_dropdown_state(UIDropdownState *state)
+{
+    if(state == NULL)
+        return;
+    state->open = 0;
+    state->just_opened = 0;
+    state->touch_pressed = 0;
+    state->touch_drag_active = 0;
+}
+
+void
+ui_dropdown_close(int id)
+{
+    for(int i = 0; i < dropdown_state_count; i++) {
+        if(dropdown_states[i].id == id) {
+            close_dropdown_state(&dropdown_states[i]);
+            return;
+        }
+    }
+}
+
+static void
+close_other_dropdowns(int id)
+{
+    for(int i = 0; i < dropdown_state_count; i++) {
+        if(dropdown_states[i].id != id)
+            close_dropdown_state(&dropdown_states[i]);
+    }
 }
 
 static UIDropdownState *
@@ -150,7 +190,9 @@ get_or_create_dropdown_state(int id)
         dropdown_states[dropdown_state_count].just_opened = 0;
         dropdown_states[dropdown_state_count].scroll_offset = 0;
         dropdown_states[dropdown_state_count].option_count = 0;
-        dropdown_states[dropdown_state_count].selected_index = NULL;
+        dropdown_states[dropdown_state_count].selected_index = 0;
+        dropdown_states[dropdown_state_count].pending_changed = 0;
+        dropdown_states[dropdown_state_count].pending_index = 0;
         dropdown_states[dropdown_state_count].touch_pressed = 0;
         dropdown_states[dropdown_state_count].touch_press_start_y = 0;
         dropdown_states[dropdown_state_count].touch_drag_active = 0;
@@ -163,8 +205,8 @@ get_or_create_dropdown_state(int id)
 }
 
 int
-DrawUIDropdownButton(int id, int x, int y, int w, int h,
-                        const char **options, int option_count, int *selected_index)
+UIRenderDropdown(int id, int x, int y, int w, int h,
+               const char **options, int option_count, int *selected_index)
 {
     UIDropdownOption dropdown_options[MAX_DROPDOWN_OPTIONS];
 
@@ -178,14 +220,14 @@ DrawUIDropdownButton(int id, int x, int y, int w, int h,
         dropdown_options[i].font_name = NULL;
     }
 
-    return DrawUIDropdownButtonEx(id, x, y, w, h, dropdown_options,
-                                  option_count, selected_index);
+    return UIRenderDropdownEx(id, x, y, w, h, dropdown_options,
+                            option_count, selected_index);
 }
 
 int
-DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
-                       const UIDropdownOption *options, int option_count,
-                       int *selected_index)
+UIRenderDropdownEx(int id, int x, int y, int w, int h,
+                 const UIDropdownOption *options, int option_count,
+                 int *selected_index)
 {
     char editor_id[96];
     UIDropdownState *state = get_or_create_dropdown_state(id);
@@ -226,16 +268,24 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
                   : !UIInputCapturesClick(mouse));
     hover = active && UIHoverEffectsEnabled();
 
+    if(state->pending_changed) {
+        if(selected_index != NULL)
+            *selected_index = state->pending_index;
+        state->selected_index = state->pending_index;
+        state->pending_changed = 0;
+        changed = 1;
+    }
+
     /* Calculate arrow position */
     int arrow_x = x + w - arrow_pad;
     int arrow_y = y + h / 2;
 
-    /* Store state for menu drawing */
+    /* Store state for overlay drawing */
     state->x = x;
     state->y = y;
     state->w = w;
     state->h = h;
-    state->selected_index = selected_index;
+    state->selected_index = selected_index != NULL ? *selected_index : state->selected_index;
     if(option_count < 0)
         option_count = 0;
     if(option_count > MAX_DROPDOWN_OPTIONS)
@@ -260,6 +310,7 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
         UIConsumeRelease();
         state->open = !state->open;
         if(state->open) {
+            close_other_dropdowns(id);
             state->just_opened = 1;
             state->scroll_offset = 0;
             state->touch_drag_active = 0;
@@ -269,18 +320,24 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
     /* Draw button background */
     button_bg = state->open ? ui_dropdown_panel_color(28)
                             : (hover ? c_button_hover : ui_dropdown_panel_color(16));
-    if(ui_modern_style()) {
+    if(ui_material_style()) {
+        Color surface = ui_material_surface_container();
+        Color border = state->open ? c_circle : ui_material_outline();
+
+        ui_draw_control_background(btn_bounds, surface, border, 0.18f);
+        ui_material_state_layer(btn_bounds, c_text, hover || state->open, 0, 0);
+    } else if(ui_modern_style()) {
         Color border = LightenUIColor(button_bg, 20);
         ui_draw_control_background(btn_bounds, button_bg, border, 0.06f);
     } else {
         DrawRectangleRec(btn_bounds, button_bg);
-        DrawUIBevel(x, y, w, h,
+        UIRenderBevel(x, y, w, h,
                     state->open ? LightenUIColor(button_bg, 34) : LightenUIColor(button_bg, 24),
                     state->open ? DarkenUIColor(button_bg, 38) : DarkenUIColor(button_bg, 30));
     }
 
     /* Draw current selection text, clipped before the X icon. */
-    int current_index = selected_index != NULL ? *selected_index : 0;
+    int current_index = state->selected_index;
     if(current_index < 0 || current_index >= option_count)
         current_index = 0;
     const char *current_name = option_count > 0 ? state->options[current_index] : "";
@@ -293,7 +350,7 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
                          (int)((float)text_w * g_ui_camera.zoom),
                          (int)((float)h * g_ui_camera.zoom));
-        DrawUIText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, c_text);
+        UIRenderText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, c_text);
         EndUIClip();
         PopUIFont(font_token);
     }
@@ -313,8 +370,8 @@ DrawUIDropdownButtonEx(int id, int x, int y, int w, int h,
 }
 
 int
-DrawUILocaleDropdownButton(int id, int x, int y, int w, int h,
-                           int *selected_index)
+UIRenderLocaleDropdown(int id, int x, int y, int w, int h,
+                     int *selected_index)
 {
     UIDropdownOption options[MAX_DROPDOWN_OPTIONS];
     int count = GetLocaleCount();
@@ -331,23 +388,25 @@ DrawUILocaleDropdownButton(int id, int x, int y, int w, int h,
     }
     if(count <= 0) {
         const char *fallback[] = {"Language"};
-        return DrawUIDropdownButton(id, x, y, w, h, fallback, 1,
-                                    selected_index);
+        return UIRenderDropdown(id, x, y, w, h, fallback, 1, selected_index);
     }
     if(*selected_index < 0 || *selected_index >= count)
         *selected_index = 0;
-    return DrawUIDropdownButtonEx(id, x, y, w, h, options, count,
-                                  selected_index);
+    return UIRenderDropdownEx(id, x, y, w, h, options, count, selected_index);
 }
 
-int
-DrawUIDropdownMenu(int id)
+static int
+draw_dropdown_menu(int id)
 {
     UIDropdownState *state = get_or_create_dropdown_state(id);
     int changed = 0;
 
-    if(!state->open || state->option_count <= 0 || state->selected_index == NULL)
+    if(!state->open)
         return 0;
+    if(state->option_count <= 0) {
+        close_dropdown_state(state);
+        return 0;
+    }
 
     int font = GetUIFontSize();
     int x = state->x;
@@ -356,7 +415,6 @@ DrawUIDropdownMenu(int id)
     int h = state->h;
     int option_h = h;
     int option_count = state->option_count;
-    int *selected_index = state->selected_index;
     const char **options = state->options;
     const char **option_fonts = state->option_fonts;
 
@@ -423,11 +481,9 @@ DrawUIDropdownMenu(int id)
     /* Click outside closes dropdown */
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if(!state->just_opened &&
-           !CheckCollisionPointRec(mouse, btn_bounds) &&
+            !CheckCollisionPointRec(mouse, btn_bounds) &&
            !CheckCollisionPointRec(mouse, menu_bounds)) {
-            state->open = 0;
-            state->touch_drag_active = 0;
-            state->touch_pressed = 0;
+            close_dropdown_state(state);
         }
     }
 
@@ -446,7 +502,14 @@ DrawUIDropdownMenu(int id)
     }
 
     /* Draw dropdown background */
-    if(ui_modern_style()) {
+    if(ui_material_style()) {
+        UIStyleTokens tokens = GetUIStyleTokens();
+        Color panel = ui_material_surface_container();
+        Color border = ui_material_outline();
+
+        ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
+                                   panel, border, tokens.panel_radius);
+    } else if(ui_modern_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
         Color panel = ui_dropdown_panel_color(18);
         Color border = ui_dropdown_panel_color(36);
@@ -456,7 +519,7 @@ DrawUIDropdownMenu(int id)
                                    panel, border, tokens.panel_radius);
     } else {
         DrawRectangle(x, dropdown_y, w, dropdown_h, ui_dropdown_panel_color(18));
-        DrawUIBevel(x, dropdown_y, w, dropdown_h,
+        UIRenderBevel(x, dropdown_y, w, dropdown_h,
                     ui_dropdown_panel_color(32), ui_dropdown_panel_color(8));
     }
 
@@ -468,42 +531,67 @@ DrawUIDropdownMenu(int id)
     /* Draw options */
     for(int i = 0; i < option_count; i++) {
         int option_y = dropdown_y + padding_top + i * option_h - state->scroll_offset;
-        Rectangle option_bounds = {x, option_y, option_w, option_h};
+        int content_top = dropdown_y + padding_top;
+        int content_bottom = dropdown_y + dropdown_h - padding_bottom;
+        int visible_y = option_y > content_top ? option_y : content_top;
+        int option_bottom = option_y + option_h;
+        int visible_bottom = option_bottom < content_bottom ? option_bottom : content_bottom;
+        int visible_h = visible_bottom - visible_y;
+        Rectangle visible_bounds = {x, visible_y, option_w, visible_h};
 
         /* Skip if outside visible area - use inclusive bounds for last item */
-        if(option_y + option_h < dropdown_y || option_y >= dropdown_y + dropdown_h)
+        if(visible_h <= 0)
             continue;
 
-        int option_active = CheckCollisionPointRec(mouse, option_bounds);
+        int option_active = CheckCollisionPointRec(mouse, visible_bounds);
         int option_hover = option_active && UIHoverEffectsEnabled();
+
+        if(ui_material_style() && state->selected_index == i) {
+            Color selected = c_circle;
+            selected.a = 28;
+            DrawRectangleRounded((Rectangle){(float)(x + ScaleUIPx(4)),
+                                             (float)(visible_y + ScaleUIPx(2)),
+                                             (float)(option_w - ScaleUIPx(8)),
+                                             (float)(visible_h - ScaleUIPx(4))},
+                                 0.50f, 12, selected);
+        }
 
         if(option_active) {
             if(option_hover) {
-                if(ui_modern_style()) {
+                if(ui_material_style()) {
+                    int inset = ScaleUIPx(4);
+                    Rectangle hover_bounds = {
+                        (float)(x + inset),
+                        (float)(visible_y + ScaleUIPx(2)),
+                        (float)(option_w - inset * 2),
+                        (float)(visible_h - ScaleUIPx(4))
+                    };
+                    if(hover_bounds.width > 0 && hover_bounds.height > 0)
+                        ui_material_state_layer(hover_bounds, c_text, 1, 0, 0);
+                } else if(ui_modern_style()) {
                     UIStyleTokens tokens = GetUIStyleTokens();
                     int inset = ScaleUIPx(4);
                     Rectangle hover_bounds = {
                         (float)(x + inset),
-                        (float)(option_y + ScaleUIPx(2)),
+                        (float)(visible_y + ScaleUIPx(2)),
                         (float)(option_w - inset * 2),
-                        (float)(option_h - ScaleUIPx(4))
+                        (float)(visible_h - ScaleUIPx(4))
                     };
                     if(hover_bounds.width > 0 && hover_bounds.height > 0)
                         DrawRectangleRounded(hover_bounds, tokens.control_radius,
                                              12, c_button_hover);
                 } else {
-                    DrawRectangle(x, option_y, w, option_h, c_button_hover);
+                    DrawRectangle(x, visible_y, w, visible_h, c_button_hover);
                 }
             }
             MarkUIClickable();
 
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened && !state->touch_drag_active) {
                 UIConsumeRelease();
-                *selected_index = i;
-                state->open = 0;
-                state->just_opened = 0;
-                state->touch_drag_active = 0;
-                state->touch_pressed = 0;
+                state->selected_index = i;
+                state->pending_index = i;
+                state->pending_changed = 1;
+                close_dropdown_state(state);
                 state->scroll_offset = 0;
                 changed = 1;
                 EndUIClip();
@@ -513,7 +601,7 @@ DrawUIDropdownMenu(int id)
 
         {
             int font_token = PushUIFont(option_fonts[i]);
-            DrawUIText(options[i], x + ScaleUIPx(12),
+            UIRenderText(options[i], x + ScaleUIPx(12),
                        GetUIControlTextY(options[i], option_y, option_h, font),
                        font, c_text);
             PopUIFont(font_token);
@@ -523,7 +611,7 @@ DrawUIDropdownMenu(int id)
     EndUIClip();
 
     if(max_scroll > 0)
-        DrawUIScrollbar(x + w - scrollbar_w, dropdown_y + ScaleUIPx(2),
+        UIRenderScrollbar(x + w - scrollbar_w, dropdown_y + ScaleUIPx(2),
                           dropdown_h - ScaleUIPx(4), content_h, &state->scroll_offset, max_scroll);
 
 draw_arrow:
@@ -545,6 +633,15 @@ draw_arrow:
     DrawLine(x1, y1, x2, y2, c_text);
     DrawLine(x1, y2, x2, y1, c_text);
     return changed;
+}
+
+void
+ui_draw_dropdown_overlays(void)
+{
+    for(int i = 0; i < dropdown_state_count; i++) {
+        if(dropdown_states[i].open)
+            draw_dropdown_menu(dropdown_states[i].id);
+    }
 }
 
 /* ================================================================

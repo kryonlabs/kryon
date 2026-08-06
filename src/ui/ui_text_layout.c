@@ -1,7 +1,7 @@
 #include "ui_text_layout.h"
 
 #include "ui_scaling.h"
-#include "ui.h"
+#include "ui_internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -207,7 +207,7 @@ ui_text_layout_draw_text_line(UITextLayout *layout, int start, int end,
         text_count++;
     }
     line[offset] = '\0';
-    DrawUIText(line, x, y, font_size, color);
+    UIRenderText(line, x, y, font_size, color);
     free(line);
 }
 
@@ -230,7 +230,7 @@ ui_text_layout_draw_mixed_line(UITextLayout *layout, int start, int end,
 
         if(layout->elements[i].type == UI_TEXT_ELEMENT_TEXT) {
             if(layout->elements[i].text != NULL && layout->elements[i].text[0] != '\0') {
-                DrawUIText(layout->elements[i].text, current_x, y, font_size, color);
+                UIRenderText(layout->elements[i].text, current_x, y, font_size, color);
                 current_x += layout->elements[i].text_width;
             }
         } else {
@@ -247,7 +247,7 @@ ui_text_layout_draw_mixed_line(UITextLayout *layout, int start, int end,
 }
 
 void
-DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size, Color color)
+UIRenderTextLayout(UITextLayout *layout, int x, int *y, int font_size, Color color)
 {
     if(layout == NULL || layout->elements == NULL || layout->element_count == 0)
         return;

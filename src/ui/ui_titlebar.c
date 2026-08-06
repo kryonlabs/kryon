@@ -5,7 +5,7 @@
  * ui_modal.h, which kryon.h includes. */
 
 static void
-DrawUITitleBarBackground(int height)
+UIRenderTitleBarBackground(int height)
 {
     Color bar = DarkenUIColor(c_bg, 14);
     if(ui_modern_style()) {
@@ -24,7 +24,7 @@ DrawUITitleBarBackground(int height)
 }
 
 static int
-DrawUITitleBarReturnButton(Texture2D return_icon, int height)
+UIRenderTitleBarReturnButton(Texture2D return_icon, int height)
 {
     int icon_size = ScaleUIPx(18);
     int padding = ScaleUIPx(5);
@@ -35,11 +35,11 @@ DrawUITitleBarReturnButton(Texture2D return_icon, int height)
 
     if(y < 0)
         y = 0;
-    return DrawUIPaddedIconBtn(x, y, icon_size, padding, return_icon, &hover);
+    return UIRenderPaddedIconBtn(x, y, icon_size, padding, return_icon, &hover);
 }
 
 static void
-DrawUITitleBarCenteredTitle(const char *title, int height,
+UIRenderTitleBarCenteredTitle(const char *title, int height,
                                        int side_reserved)
 {
     int font = GetUIFontSize();
@@ -55,7 +55,7 @@ DrawUITitleBarCenteredTitle(const char *title, int height,
         font--;
         title_w = MeasureUIText(title, font);
     }
-    DrawUIText(title, (ui_view_width - title_w) / 2,
+    UIRenderText(title, (ui_view_width - title_w) / 2,
                     GetUIControlTextY(title, 0, height, font),
                     font, c_text);
 }
@@ -67,26 +67,26 @@ GetUITitleBarHeight(void)
 }
 
 void
-DrawUITitleBar(const char *title, int height)
+UIRenderTitleBar(const char *title, int height)
 {
-    DrawUITitleBarBackground(height);
-    DrawUITitleBarCenteredTitle(title, height, ScaleUIPx(12));
+    UIRenderTitleBarBackground(height);
+    UIRenderTitleBarCenteredTitle(title, height, ScaleUIPx(12));
 }
 
 int
-DrawUIReturnTitleBar(Texture2D return_icon, const char *title,
+UIRenderReturnTitleBar(Texture2D return_icon, const char *title,
                           int height)
 {
     int clicked;
 
-    DrawUITitleBarBackground(height);
-    clicked = DrawUITitleBarReturnButton(return_icon, height);
-    DrawUITitleBarCenteredTitle(title, height, ScaleUIPx(56));
+    UIRenderTitleBarBackground(height);
+    clicked = UIRenderTitleBarReturnButton(return_icon, height);
+    UIRenderTitleBarCenteredTitle(title, height, ScaleUIPx(56));
     return clicked;
 }
 
 int
-DrawUIReturnDropdownTitleBar(Texture2D return_icon,
+UIRenderReturnDropdownTitleBar(Texture2D return_icon,
                                    UITitleBarDropdown dropdown,
                                    int height)
 {
@@ -107,12 +107,12 @@ DrawUIReturnDropdownTitleBar(Texture2D return_icon,
     if(dropdown_w < 1)
         dropdown_w = 1;
 
-    DrawUITitleBarBackground(height);
-    clicked = DrawUITitleBarReturnButton(return_icon, height);
+    UIRenderTitleBarBackground(height);
+    clicked = UIRenderTitleBarReturnButton(return_icon, height);
     if(!dropdown.disabled)
-        DrawUIDropdownButton(dropdown.id, dropdown_x, dropdown_y,
-                                dropdown_w, dropdown_h,
-                                dropdown.options, dropdown.option_count,
-                                dropdown.selected_index);
+        UIRenderDropdown(dropdown.id, dropdown_x, dropdown_y,
+                       dropdown_w, dropdown_h,
+                       dropdown.options, dropdown.option_count,
+                       dropdown.selected_index);
     return clicked;
 }

@@ -197,16 +197,26 @@ EOF
 
 "$kc" --root "$work" -o "$out" "$work/src/app_loop.kry" >"$err" 2>&1
 awk '
-    /DrawUIFrameOverlays\(\);/ { overlays = NR }
+    /UIBeginTree\(1\);/ { begin_tree = NR }
+    /UIEndTree\(\);/ { end_tree = NR }
+    /UIReconcileTree\(\);/ { reconcile = NR }
+    /UILayoutTree\(\);/ { layout = NR }
+    /UIRouteInput\(\);/ { input = NR }
+    /UIUpdateTree\(\);/ { update = NR }
+    /UIRenderTree\(\);/ { render = NR }
+    /UIRenderOverlays\(\);/ { overlays = NR }
     /EndUIFocus\(\);/ { focus = NR }
     /EndDrawing\(\);/ { drawing = NR }
     END {
-        if(overlays > 0 && focus > overlays && drawing > focus)
+        if(begin_tree > 0 && end_tree > begin_tree &&
+           reconcile > end_tree && layout > reconcile &&
+           input > layout && update > input && render > update &&
+           overlays > render && focus > overlays && drawing > focus)
             exit 0
         exit 1
     }
 ' "$out/src/app_loop.c" || {
-    echo "generated app loop must draw UI overlays before EndUIFocus" >&2
+    echo "generated app loop must run the widget tree pipeline before EndUIFocus" >&2
     exit 1
 }
 

@@ -16,7 +16,7 @@ state {
 
 screen TextEditorExample(viewport: Rectangle) {
     WidgetBackground(GetThemeBackground())
-    DrawUITextArea((UITextArea){{40,70,520,180},text_value,sizeof(text_value),&cursor,&focused,&scroll,500,UI_TEXT_16,6,401,"Write here",UI_SYNTAX_NONE,{0},NULL,NULL})
+    UITextAreaNode((UITextArea){{40,70,520,180},text_value,sizeof(text_value),&cursor,&focused,&scroll,500,UI_TEXT_16,6,401,"Write here",UI_SYNTAX_NONE,{0},NULL,NULL})
     WidgetText("Ctrl/Cmd+C,X,and V work in the text area.", 40, 260, UI_TEXT_16, GetThemeText())
     if WidgetButton(40, 300, 110, 34, "Copy", UI_BUTTON_STYLE_SECONDARY) {
         SetUIClipboardTextValue(text_value)

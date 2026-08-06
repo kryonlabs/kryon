@@ -28,7 +28,7 @@ screen GeometryExample(viewport: Rectangle) {
     DrawRectangleLinesEx(shell,1,GetThemeIcon())
     DrawRectangleRec(header,GetThemeButton())
     DrawRectangleRec(rail,DarkenUIColor(GetThemeSurface(),8))
-    DrawUISeparator((Rectangle){rail.x+rail.width+6,rail.y,1,rail.height},1)
+    UISeparatorNode((Rectangle){rail.x+rail.width+6,rail.y,1,rail.height},1)
     WidgetText("Packed header", header.x+16, header.y+16, UI_TEXT_16, GetThemeText())
     WidgetText("Left rail", rail.x+16, rail.y+16, UI_TEXT_16, GetThemeText())
     DrawRectangleRec(card0,DarkenUIColor(GetThemeSurface(),12))
@@ -45,7 +45,7 @@ screen GeometryExample(viewport: Rectangle) {
     WidgetText("badge", badge.x+18, badge.y+7, UI_TEXT_12, GetThemeText())
     WidgetText("cell 1,0", card2.x+14, card2.y+18, UI_TEXT_16, GetThemeText())
     WidgetText("wide footer cell", card3.x+14, card3.y+18, UI_TEXT_16, GetThemeText())
-    DrawUISeparator((Rectangle){footer.x,footer.y-7,footer.width,1},0)
+    UISeparatorNode((Rectangle){footer.x,footer.y-7,footer.width,1},0)
     DrawRectangleRec(action,GetThemeButton())
     WidgetText("placed action", action.x+14, action.y+9, UI_TEXT_12, GetThemeText())
 }

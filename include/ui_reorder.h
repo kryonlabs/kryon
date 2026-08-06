@@ -38,7 +38,5 @@ typedef struct {
 } UIReorderListResult;
 
 UIReorderListResult UpdateUIReorderList(UIReorderList list);
-void DrawUIReorderHandle(int x, int y, int w, int h, int active);
-void DrawUIReorderPlaceholder(Rectangle bounds);
 
 #endif

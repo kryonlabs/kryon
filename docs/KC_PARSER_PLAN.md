@@ -19,7 +19,7 @@ dispatches it, and emits translated C fragments into `fn->body[]`
 choice caps what the language can ever do:
 
 - **No type checking.** A line-matcher can't know `items` was declared
-  `const char**` three lines ago, so `DrawUIListBox(..., items, ...)` with the
+  `const char**` three lines ago, so `UIListBoxNode(..., items, ...)` with the
   wrong shape surfaces as a C error 500 lines into generated code, not at the
   call site.
 - **`__auto_type` for every inferred local.** `x := f()` becomes
@@ -257,7 +257,7 @@ narrow: track declared types of locals and params, and check call arguments
 against... what? kc has no function-signature database. Two options:
 
 - **Option A (cheap):** check *shape* only — pointer-ness, array-ness —
-  against the C declaration text. Catches `DrawUIListBox(..., items, ...)` when
+  against the C declaration text. Catches `UIListBoxNode(..., items, ...)` when
   `items` is `[4] const char*` and the call wants `const char**`. Doesn't need
   a type DB.
 - **Option B (full):** parse `#import`ed headers' signatures into a symbol

@@ -78,7 +78,5 @@ UIIconType GetUIProfilePictureIconType(int index);
 const char *GetUIProfilePictureIconName(int index);
 UIIconType GetUIProfilePictureIconTypeForKsyncID(int ksync_id);
 int GetUIKsyncIDForProfilePictureIconType(UIIconType type);
-UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeader header);
-UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal);
 
 #endif

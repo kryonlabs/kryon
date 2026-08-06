@@ -47,6 +47,5 @@ void PopUIInspectChrome(int token);
 int UIInspectInputCapturesClick(Vector2 point);
 void PushUIInspectSource(const char *path, int line);
 void PopUIInspectSource(void);
-void DrawUIInspectOverlay(void);
 
 #endif

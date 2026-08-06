@@ -85,6 +85,7 @@ const char *GetSystemThemeNameCached(void);
 bool RefreshSystemTheme(void);
 bool GetSystemDesktopBackground(char *out, int out_size);
 bool SystemThemePrefersDark(void);
+bool SystemThemeSupportsMode(void);
 void SetSystemThemeDarkMode(bool dark);
 bool GetEffectiveThemeDarkMode(void);
 

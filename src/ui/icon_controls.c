@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 int
-DrawUIIconSliderPopup(UIIconSliderPopup popup)
+UIRenderIconSliderPopup(UIIconSliderPopup popup)
 {
     int hover = 0;
     int popup_w;
@@ -17,7 +17,7 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
         return 0;
 
     was_open = *popup.open;
-    icon_clicked = DrawUIPaddedIconBtn(popup.x, popup.y, popup.icon_size,
+    icon_clicked = UIRenderPaddedIconBtn(popup.x, popup.y, popup.icon_size,
                                        popup.icon_padding, popup.icon, &hover);
     if(icon_clicked) {
         *popup.open = !was_open;
@@ -45,17 +45,17 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
     }
 
     DrawRectangle(popup_x, popup_y, popup_w, popup_h, c_surface);
-    DrawUIBevel(popup_x, popup_y, popup_w, popup_h,
+    UIRenderBevel(popup_x, popup_y, popup_w, popup_h,
                   LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
-    return DrawUIVerticalSlider(popup.id, popup_x + popup_w / 2,
+    return UIRenderVerticalSlider(popup.id, popup_x + popup_w / 2,
                                    popup_y + ScaleUIPx(14),
                                    popup_h - ScaleUIPx(24),
                                    popup.min, popup.max, popup.value);
 }
 
 UIIconRowResult
-DrawUIBottomIconRow(UIBottomIconRow row)
+UIRenderBottomIconRow(UIBottomIconRow row)
 {
     UIIconRowResult result = {-1, 0, 0};
     int count = row.count;
@@ -115,7 +115,7 @@ DrawUIBottomIconRow(UIBottomIconRow row)
 
         if(row.items[i].disabled)
             continue;
-        if(DrawUIPaddedIconBtn(x, result.y, icon_size, icon_padding,
+        if(UIRenderPaddedIconBtn(x, result.y, icon_size, icon_padding,
                                    row.items[i].icon, &hover))
             result.clicked_index = i;
     }

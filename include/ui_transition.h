@@ -21,7 +21,5 @@ void BeginUITransition(UITransition *transition, float duration_seconds);
 void ReverseUITransitionToOut(UITransition *transition);
 float GetUITransitionAlpha(const UITransition *transition);
 int StepUITransition(UITransition *transition, float delta_seconds);
-void DrawUITransitionFade(const UITransition *transition,
-                                int width, int height, Color color);
 
 #endif

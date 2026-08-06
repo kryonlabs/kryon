@@ -94,7 +94,7 @@ StepUITransition(UITransition *transition, float delta_seconds)
 }
 
 void
-DrawUITransitionFade(const UITransition *transition,
+UIRenderTransitionFade(const UITransition *transition,
                            int width, int height, Color color)
 {
     int alpha;

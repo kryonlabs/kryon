@@ -29,7 +29,6 @@ void BeginUIFrame(int width, int height, float dpi);
 void SetUIFrame(Camera2D camera);
 UIFrameState SaveUIFrameState(void);
 void RestoreUIFrameState(UIFrameState state);
-void DrawUIFrameOverlays(void);
 void SetUIMouseWorldOverride(int enabled, Vector2 position);
 int SetUIKeyboardInputEnabled(int enabled);
 int UIKeyboardInputEnabled(void);
@@ -75,7 +74,6 @@ int IsUIFocusActivatePressed(int id);
 void SetUIFocus(int id);
 void ClearUIFocus(void);
 void SetUIFocusTextInputActive(int active);
-void DrawUIFocus(Rectangle bounds);
 
 extern int ui_view_height;
 extern int ui_view_width;

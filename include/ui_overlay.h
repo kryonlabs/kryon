@@ -78,19 +78,4 @@ typedef struct {
     int style_changed;
 } UIThemeSettingsResult;
 
-UIGuideResult DrawUIGuideOverlay(UIGuideOverlay guide);
-int GetUIThemeSettingsHeight(UIThemeSettings settings);
-int DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state);
-UIThemeSettingsResult DrawUIThemeSettingsMenus(UIThemeSettings settings,
-                                               UIThemeSettingsState *state);
-int DrawUIThemeSwitcher(int x, int y, int w, const char *label,
-                        const char *light_label, const char *dark_label,
-                        int *theme_id, int *dark_mode);
-int DrawUIThemePicker(int x, int y, int w, int dark_mode, int *theme_id);
-int GetUIThemePickerHeight(int w);
-void DrawUITutorialImagePlaceholder(const char *label, int x, int y,
-                                    int w, int h);
-void DrawUITutorialImage(Texture2D texture, const char *fallback,
-                         int x, int y, int w, int h);
-
 #endif

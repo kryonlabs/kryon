@@ -22,7 +22,7 @@ ui_tab_bar_tab_width(UITabBar bar, int index, int min_tab_w, int icon_tab_w)
 }
 
 int
-DrawUITabBar(UITabBar bar)
+UIRenderTabBar(UITabBar bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -124,7 +124,7 @@ DrawUITabBar(UITabBar bar)
         // Apply 3D bevel effect for depth
         if(is_selected) {
             // Strong bevel for selected tab (appears raised)
-            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+            UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 50),
                          DarkenUIColor(tab_fill, 30));
             if(cues && tab_w > ScaleUIPx(18)) {
@@ -137,7 +137,7 @@ DrawUITabBar(UITabBar bar)
             }
         } else if(is_hovered && !is_disabled) {
             // Enhanced bevel for hovered tab
-            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+            UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, cues ? 42 : 30),
                          DarkenUIColor(tab_fill, 20));
             if(cues && tab_w > ScaleUIPx(8)) {
@@ -148,7 +148,7 @@ DrawUITabBar(UITabBar bar)
             }
         } else if(!is_disabled) {
             // Subtle bevel for normal tab
-            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+            UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 20),
                          DarkenUIColor(tab_fill, 15));
         }

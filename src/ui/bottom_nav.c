@@ -8,7 +8,7 @@ GetUIBottomNavHeight(void)
 }
 
 UIBottomNavResult
-DrawUIBottomNav(UIBottomNav nav)
+UIRenderBottomNav(UIBottomNav nav)
 {
     UIBottomNavResult result = {-1, -1, 0, 0};
     int count = nav.count;
@@ -45,7 +45,7 @@ DrawUIBottomNav(UIBottomNav nav)
     bounds = (Rectangle){0, y, nav.view_width, height};
     widget = BeginUIWidget("bottom_nav", "tmp:bottom-nav", bounds,
                            UI_WIDGET_READONLY);
-    UIWidgetSetAction(&widget, "DrawUIBottomNav");
+    UIWidgetSetAction(&widget, "UIRenderBottomNav");
 
     DrawRectangle(0, y, nav.view_width, height, DarkenUIColor(c_bg, 10));
     DrawLine(0, y, nav.view_width, y, DarkenUIColor(c_bg, 42));
@@ -62,7 +62,7 @@ DrawUIBottomNav(UIBottomNav nav)
                                   : UI_BUTTON_STYLE_TAB;
         Color icon_color = item->disabled ? DarkenUIColor(c_icon, 40) : c_icon;
 
-        if(DrawUIGenericButton(x, y, w, height, "", style,
+        if(UIRenderGenericButton(x, y, w, height, "", style,
                                   item->disabled, &hover)) {
             result.clicked_index = i;
             result.clicked_route = item->route;
@@ -106,7 +106,7 @@ bottom_nav_option_index(const UIBottomNavOption *options, int option_count,
 }
 
 UIBottomNavConfigResult
-DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal)
+UIRenderBottomNavConfigModal(UIBottomNavConfigModal modal)
 {
     static int route_scroll_offset = 0;
     UIBottomNavConfigResult result = {0, 0};
@@ -151,7 +151,7 @@ DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal)
         selected[i] = bottom_nav_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);
 
-    frame = DrawUIModalFrame(ScaleUIPx(340),
+    frame = UIRenderModalFrame(ScaleUIPx(340),
                                 ScaleUIPx(128) + row_h * route_count + add_h + ScaleUIPx(58),
                                 modal.title,
                                 (Texture2D){0},
@@ -197,12 +197,17 @@ DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal)
                                      ? modal.slot_labels[i]
                                      : "";
         int remove_hover = 0;
-        DrawUIText(slot_label, frame.content_x, y, GetUIFontSize(), c_text);
-        DrawUIDropdownButton(modal.id + i, frame.content_x,
-                                y + ScaleUIPx(22), frame.content_w - remove_w - ScaleUIPx(8),
-                                dropdown_h, option_labels, option_count,
-                                &selected[i]);
-        if(DrawUIPaddedIconBtn(frame.content_x + frame.content_w - remove_w,
+        UIRenderText(slot_label, frame.content_x, y, GetUIFontSize(), c_text);
+        if(UIRenderDropdown(modal.id + i, frame.content_x,
+                          y + ScaleUIPx(22),
+                          frame.content_w - remove_w - ScaleUIPx(8),
+                          dropdown_h, option_labels, option_count,
+                          &selected[i]) &&
+           modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {
+            modal.routes[i] = modal.options[selected[i]].route;
+            result.changed = 1;
+        }
+        if(UIRenderPaddedIconBtn(frame.content_x + frame.content_w - remove_w,
                                   y + ScaleUIPx(22), ScaleUIPx(20),
                                   ScaleUIPx(8), modal.close_icon,
                                   &remove_hover)) {
@@ -222,11 +227,11 @@ DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal)
     SetUIDropdownClipBottom(add_y - ScaleUIPx(8));
 
     y = add_y;
-    dropdown_blocks_buttons = UIDropdownCapturesClick(ui_mouse_world());
+    dropdown_blocks_buttons = ui_dropdown_captures_click(ui_mouse_world());
     if(route_count < max_route_count && modal.routes != NULL) {
         int add_hover = 0;
         add_w = frame.content_w < ScaleUIPx(180) ? frame.content_w : ScaleUIPx(180);
-        if(DrawUIGenericButton(frame.content_x + (frame.content_w - add_w) / 2,
+        if(UIRenderGenericButton(frame.content_x + (frame.content_w - add_w) / 2,
                                   y, add_w, add_h, modal.add_label,
                                   UI_BUTTON_STYLE_SECONDARY,
                                   dropdown_blocks_buttons, &add_hover)) {
@@ -240,29 +245,22 @@ DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal)
 
     {
         int x = frame.x + (frame.w - total_button_w) / 2;
-        if(DrawUIGenericButton(x, button_y, button_w, button_h,
+        if(UIRenderGenericButton(x, button_y, button_w, button_h,
                                   modal.reset_label, UI_BUTTON_STYLE_SECONDARY,
                                   dropdown_blocks_buttons, &reset_hover))
             result.action = 3;
         x += button_w + button_gap;
-        if(DrawUIGenericButton(x, button_y, button_w, button_h,
+        if(UIRenderGenericButton(x, button_y, button_w, button_h,
                                   modal.cancel_label, UI_BUTTON_STYLE_SECONDARY,
                                   dropdown_blocks_buttons, &cancel_hover))
             result.action = 1;
         x += button_w + button_gap;
-        if(DrawUIGenericButton(x, button_y, button_w, button_h,
+        if(UIRenderGenericButton(x, button_y, button_w, button_h,
                                   modal.save_label, UI_BUTTON_STYLE_PRIMARY,
                                   dropdown_blocks_buttons, &save_hover))
             result.action = 2;
     }
 
-    for(int i = 0; i < route_count; i++) {
-        if(DrawUIDropdownMenu(modal.id + i) &&
-           modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {
-            modal.routes[i] = modal.options[selected[i]].route;
-            result.changed = 1;
-        }
-    }
     SetUIDropdownClipTop(0);
     SetUIDropdownClipBottom(0);
 

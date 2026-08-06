@@ -15,7 +15,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
     if(active)
         MarkUIClickable();
 
-    if(DrawUIButton((UIButton){
+    if(UIRenderButton((UIButton){
         .bounds = bounds,
         .label = label,
         .font = font,
@@ -113,7 +113,7 @@ ui_modal_draw_actions(const UIModalAction *actions, int count,
 }
 
 int
-DrawUIActionModal(UIModalSpec modal)
+UIRenderActionModal(UIModalSpec modal)
 {
     int screen_pad = ScaleUIPx(24);
     int modal_min_w = ScaleUIPx(280);
@@ -186,17 +186,17 @@ DrawUIActionModal(UIModalSpec modal)
         ui_draw_control_background(bounds, surface, border, tokens.panel_radius);
     } else {
         DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
-        DrawUIBevel(modal_x, modal_y, modal_w, modal_h,
+        UIRenderBevel(modal_x, modal_y, modal_w, modal_h,
                     LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
     }
 
     title_font = GetUITitleFontSize(modal.title, modal_w - ScaleUIPx(92));
     title_w = MeasureUIText(modal.title != NULL ? modal.title : "", title_font);
-    DrawUIText(modal.title != NULL ? modal.title : "",
+    UIRenderText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
                modal_y + ScaleUIPx(14), title_font, c_text);
 
-    DrawUITextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
+    UIRenderTextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
     FreeUITextLayout(&msg_layout);
 
     if(modal.close_icon.id != 0) {
@@ -205,7 +205,7 @@ DrawUIActionModal(UIModalSpec modal)
         int icon_w = icon_size + icon_padding * 2;
         int hover = 0;
 
-        if(DrawUIPaddedIconBtn(modal_x + modal_w - icon_w - ScaleUIPx(6),
+        if(UIRenderPaddedIconBtn(modal_x + modal_w - icon_w - ScaleUIPx(6),
                                modal_y + ScaleUIPx(6), icon_size,
                                icon_padding, modal.close_icon, &hover))
             result = -1;
@@ -220,7 +220,7 @@ DrawUIActionModal(UIModalSpec modal)
 }
 
 int
-DrawUIModal(const char *title, const char *message,
+UIRenderModal(const char *title, const char *message,
                const char *cancel_btn, const char *confirm_btn)
 {
     UIModalAction actions[2] = {
@@ -228,7 +228,7 @@ DrawUIModal(const char *title, const char *message,
         { confirm_btn, UI_BUTTON_STYLE_PRIMARY, 0 }
     };
 
-    return DrawUIActionModal((UIModalSpec){
+    return UIRenderActionModal((UIModalSpec){
         .title = title,
         .message = message,
         .actions = actions,
@@ -238,7 +238,7 @@ DrawUIModal(const char *title, const char *message,
 }
 
 int
-DrawUIModal3Button(const char *title, const char *message,
+UIRenderModal3Button(const char *title, const char *message,
                     const char *left_btn, const char *middle_btn, const char *right_btn)
 {
     UIModalAction actions[3] = {
@@ -247,7 +247,7 @@ DrawUIModal3Button(const char *title, const char *message,
         { right_btn, UI_BUTTON_STYLE_DANGER, 0 }
     };
 
-    return DrawUIActionModal((UIModalSpec){
+    return UIRenderActionModal((UIModalSpec){
         .title = title,
         .message = message,
         .actions = actions,
@@ -294,7 +294,7 @@ GetUIParagraphModalHeight(UIParagraphModalMeasure measure)
 }
 
 UIPanelFrame
-DrawUIModalFrame(int width, int height, const char *title,
+UIRenderModalFrame(int width, int height, const char *title,
                     Texture2D left_icon,
                     Texture2D right_icon)
 {
@@ -359,21 +359,21 @@ DrawUIModalFrame(int width, int height, const char *title,
         ui_draw_control_background(bounds, surface, border, tokens.panel_radius);
     } else {
         DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
-        DrawUIBevel(frame.x, frame.y, frame.w, frame.h,
+        UIRenderBevel(frame.x, frame.y, frame.w, frame.h,
                     LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
     }
 
-    DrawUIText(title, frame.x + (frame.w - title_w) / 2,
+    UIRenderText(title, frame.x + (frame.w - title_w) / 2,
                     frame.y + ScaleUIPx(14), title_font, c_text);
 
     if(left_icon.id != 0) {
-        frame.left_clicked = DrawUIPaddedIconBtn(frame.x + ScaleUIPx(6),
+        frame.left_clicked = UIRenderPaddedIconBtn(frame.x + ScaleUIPx(6),
                                                      frame.y + ScaleUIPx(6),
                                                      icon_size, icon_padding,
                                                      left_icon, &hover);
     }
     if(right_icon.id != 0) {
-        frame.right_clicked = DrawUIPaddedIconBtn(frame.x + frame.w - icon_w - ScaleUIPx(6),
+        frame.right_clicked = UIRenderPaddedIconBtn(frame.x + frame.w - icon_w - ScaleUIPx(6),
                                                       frame.y + ScaleUIPx(6),
                                                       icon_size, icon_padding,
                                                       right_icon, &hover);

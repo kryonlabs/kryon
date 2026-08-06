@@ -279,45 +279,14 @@ UIFrame BeginUIFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap);
 Rectangle UIFramePack(UIFrame *frame, UISide side, int size);
 Rectangle UIGridCell(UIGrid grid, int row, int col, int row_span, int col_span);
 Rectangle UIPlace(Rectangle parent, int x, int y, int w, int h);
-void DrawUISeparator(Rectangle bounds, int vertical);
-
-UIMenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int *open_index);
-int DrawUIPopupMenu(int id, int x, int y, const UIMenuItem *items, int item_count);
-int DrawUIContextMenu(UIContextMenu menu);
-
-int DrawUIRadioButton(UIRadioButton radio);
-void DrawUIProgressBar(UIProgressBar progress);
-int DrawUISpinbox(UISpinbox spinbox);
-int DrawUICombobox(UICombobox combo);
-void DrawUILabelFrame(UILabelFrame frame);
-void DrawUIImageBox(UIImageBox image);
-
-int DrawUIListBox(UIListBox list);
-int DrawUITreeView(UITreeView tree);
-int DrawUICascadingTreeView(UICascadingTreeView tree);
-int DrawUISourceView(UISourceView source);
-int DrawUITableView(UITableView table);
-
 UICanvasResult BeginUICanvas(UICanvas canvas);
 void EndUICanvas(UICanvas canvas);
-void DrawUICanvasGrid(Rectangle bounds, int step, Color color);
 int UICanvasHitTest(Vector2 point, Rectangle *items, int item_count);
 Vector2 UICanvasToScreen(UICanvas canvas, Vector2 point);
 Rectangle UICanvasRectToScreen(UICanvas canvas, Rectangle rect);
-
-int DrawUINotebook(UINotebook notebook);
-int DrawUIPanedView(UIPanedView panes);
-int DrawUICollapsible(UICollapsible section);
-
-int DrawUIMessageDialog(UIMessageDialog dialog);
-int DrawUIConfirmDialog(UIConfirmDialog dialog);
-int DrawUIPromptDialog(UIPromptDialog dialog);
-int DrawUIColorPicker(Rectangle bounds, Color *color);
 
 int UIAcceleratorPressed(UIAccelerator accelerator);
 int DispatchUIAccelerators(const UIAccelerator *accelerators, int count);
 int SetUIClipboardTextValue(const char *text);
 const char *GetUIClipboardTextValue(void);
-void DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
-
 #endif

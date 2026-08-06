@@ -3015,7 +3015,7 @@ parse_statement(KryFile *file, int line_no, char *line)
         die("%s:%d: 'event'/'on' block keyword was removed; use 'if (expr) {' with a bool-returning call",
             file->path, line_no);
     } else if(starts_word(line, "icon_button")) {
-        die("%s:%d: 'icon_button' block keyword was removed; use 'if DrawUIIconButton((UIIconButton){...}) {'",
+        die("%s:%d: 'icon_button' block keyword was removed; use 'if UIButtonNode((UIButton){...}) {'",
             file->path, line_no);
     } else if(line[strlen(line) - 1] == ')' && strchr(line, '(') != NULL &&
               find_assignment_op(line) == NULL) {
@@ -5013,12 +5013,19 @@ write_app_main(FILE *out, const KryFile *file)
         fprintf(out, "    while(!WindowShouldClose()) {\n");
         fprintf(out, "        BeginDrawing();\n");
         fprintf(out, "        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());\n");
+        fprintf(out, "        UIBeginTree(1);\n");
         if(function_takes_rectangle(screen))
             fprintf(out, "        %s((Rectangle){0, 0, GetScreenWidth(), GetScreenHeight()});\n",
                     screen_name);
         else
             fprintf(out, "        %s();\n", screen_name);
-        fprintf(out, "        DrawUIFrameOverlays();\n");
+        fprintf(out, "        UIEndTree();\n");
+        fprintf(out, "        UIReconcileTree();\n");
+        fprintf(out, "        UILayoutTree();\n");
+        fprintf(out, "        UIRouteInput();\n");
+        fprintf(out, "        UIUpdateTree();\n");
+        fprintf(out, "        UIRenderTree();\n");
+        fprintf(out, "        UIRenderOverlays();\n");
         fprintf(out, "        EndUIFocus();\n");
         fprintf(out, "        EndDrawing();\n");
         fprintf(out, "    }\n");

@@ -852,9 +852,11 @@ Color
 GetCurrentThemeColor(const char *key)
 {
     Color color = BLANK;
-    if(theme_source == THEME_SOURCE_SYSTEM &&
-       SystemThemeColor(key, &color))
-        return color;
+    if(theme_source == THEME_SOURCE_SYSTEM) {
+        SetSystemThemeDarkMode(GetEffectiveThemeDarkMode());
+        if(SystemThemeColor(key, &color))
+            return color;
+    }
     GetThemeCatalogColor(NormalizeTheme(current_theme_id),
                               GetEffectiveThemeDarkMode(), key, &color);
     return color;

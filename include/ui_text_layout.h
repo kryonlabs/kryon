@@ -33,7 +33,6 @@ typedef struct UITextLayout {
 
 UITextLayout ParseUITextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size);
 void ReflowUITextLayout(UITextLayout *layout, int max_width, int font_size, int line_height);
-void DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size, Color color);
 int GetUITextLayoutHeight(UITextLayout *layout);
 void FreeUITextLayout(UITextLayout *layout);
 

@@ -183,15 +183,4 @@ typedef struct {
     int focus_selected;
 } UITabBar;
 
-int DrawUIIconSliderPopup(UIIconSliderPopup popup);
-UIIconRowResult DrawUIBottomIconRow(UIBottomIconRow row);
-int GetUIBottomNavHeight(void);
-UIBottomNavResult DrawUIBottomNav(UIBottomNav nav);
-UIBottomNavConfigResult DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal);
-UIToolbarResult DrawUIToolbar(UIToolbar toolbar);
-UIToolbarHeaderResult DrawUIToolbarHeader(UIToolbarHeader header);
-int DrawUISubtabBar(UISubtabBar bar);
-int DrawUITabBar(UITabBar bar);
-int GetUITabBarHeight(void);
-
 #endif

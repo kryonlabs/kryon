@@ -60,9 +60,6 @@ static int g_ui_text_area_last_click_cursor = -1;
 static int g_ui_text_area_last_click_x = 0;
 static int g_ui_text_area_last_click_y = 0;
 static double g_ui_text_area_last_click_time = 0.0;
-static UIStyleTokens g_ui_style_override;
-static int g_ui_style_override_enabled = 0;
-
 typedef struct UITextSelection {
     int id;
     int *owner;
@@ -495,7 +492,7 @@ int
 ui_input_captures_click_internal(Vector2 point, int include_pointer_drag)
 {
     return ui_base_input_captures_click(point, include_pointer_drag) ||
-           UIDropdownCapturesClick(point);
+           ui_dropdown_captures_click(point);
 }
 
 int
@@ -615,224 +612,6 @@ ui_clampi(int value, int min_value, int max_value)
     if(value > max_value)
         return max_value;
     return value;
-}
-
-UIStyleTokens
-GetUIStyleTokensForThemeStyle(ThemeStyle style)
-{
-    if(style == THEME_STYLE_SYSTEM)
-        style = GetDefaultPlatformThemeStyle();
-
-    switch(style) {
-    case THEME_STYLE_RETRO:
-        return (UIStyleTokens){
-            .control_radius = 0.06f,
-            .panel_radius = 0.0f,
-            .control_alpha = 255,
-            .panel_alpha = 255,
-            .border_alpha = 255,
-            .shadow_alpha = 0,
-            .shine_alpha = 0,
-            .bevel_enabled = 1,
-            .touch_target_min = 36,
-            .shadow_offset_y = 0
-        };
-    case THEME_STYLE_MATERIAL:
-        return (UIStyleTokens){
-            .control_radius = 0.50f,
-            .panel_radius = 0.30f,
-            .control_alpha = 255,
-            .panel_alpha = 255,
-            .border_alpha = 0,
-            .shadow_alpha = 96,
-            .shine_alpha = 0,
-            .bevel_enabled = 0,
-            .touch_target_min = 44,
-            .shadow_offset_y = 5
-        };
-    case THEME_STYLE_FLUENT:
-        return (UIStyleTokens){
-            .control_radius = 0.16f,
-            .panel_radius = 0.16f,
-            .control_alpha = 246,
-            .panel_alpha = 248,
-            .border_alpha = 220,
-            .shadow_alpha = 32,
-            .shine_alpha = 92,
-            .bevel_enabled = 0,
-            .touch_target_min = 36,
-            .shadow_offset_y = 1
-        };
-    case THEME_STYLE_ADWAITA:
-        return (UIStyleTokens){
-            .control_radius = 0.10f,
-            .panel_radius = 0.12f,
-            .control_alpha = 255,
-            .panel_alpha = 255,
-            .border_alpha = 255,
-            .shadow_alpha = 0,
-            .shine_alpha = 0,
-            .bevel_enabled = 0,
-            .touch_target_min = 40,
-            .shadow_offset_y = 0
-        };
-    case THEME_STYLE_LIQUID_GLASS:
-        return (UIStyleTokens){
-            .control_radius = 0.45f,
-            .panel_radius = 0.36f,
-            .control_alpha = 150,
-            .panel_alpha = 188,
-            .border_alpha = 190,
-            .shadow_alpha = 56,
-            .shine_alpha = 132,
-            .bevel_enabled = 0,
-            .touch_target_min = 40,
-            .shadow_offset_y = 2
-        };
-    case THEME_STYLE_AERO:
-    case THEME_STYLE_SYSTEM:
-    default:
-        return (UIStyleTokens){
-            .control_radius = 0.26f,
-            .panel_radius = 0.22f,
-            .control_alpha = 238,
-            .panel_alpha = 244,
-            .border_alpha = 190,
-            .shadow_alpha = 30,
-            .shine_alpha = 108,
-            .bevel_enabled = 0,
-            .touch_target_min = 36,
-            .shadow_offset_y = 1
-        };
-    }
-}
-
-UIStyleTokens
-GetUIStyleTokens(void)
-{
-    if(g_ui_style_override_enabled)
-        return g_ui_style_override;
-    return GetUIStyleTokensForThemeStyle(GetEffectiveThemeStyle());
-}
-
-void
-SetUIStyleTokens(UIStyleTokens tokens)
-{
-    g_ui_style_override = tokens;
-    g_ui_style_override_enabled = 1;
-}
-
-void
-ClearUIStyleTokensOverride(void)
-{
-    memset(&g_ui_style_override, 0, sizeof(g_ui_style_override));
-    g_ui_style_override_enabled = 0;
-}
-
-int
-ui_retro_style(void)
-{
-    return GetUIStyleTokens().bevel_enabled != 0;
-}
-
-int
-ui_modern_style(void)
-{
-    return !ui_retro_style();
-}
-
-float
-ui_control_radius(float classic_radius)
-{
-    UIStyleTokens tokens = GetUIStyleTokens();
-    return tokens.bevel_enabled ? classic_radius : tokens.control_radius;
-}
-
-int
-ui_control_bevel_enabled(void)
-{
-    return GetUIStyleTokens().bevel_enabled != 0;
-}
-
-int
-ui_touch_target_min(void)
-{
-    return ScaleUIPx(GetUIStyleTokens().touch_target_min);
-}
-
-Color
-ui_alpha(Color color, unsigned char alpha)
-{
-    color.a = alpha;
-    return color;
-}
-
-void
-ui_draw_control_background(Rectangle bounds, Color background, Color border,
-                           float classic_radius)
-{
-    UIStyleTokens tokens = GetUIStyleTokens();
-    float radius = tokens.bevel_enabled ? classic_radius : tokens.control_radius;
-
-    if(tokens.bevel_enabled) {
-        if(classic_radius <= 0.0f) {
-            DrawRectangleRec(bounds, background);
-            DrawRectangleLinesEx(bounds, 1, border);
-        } else {
-            DrawRectangleRounded(bounds, classic_radius, 8, background);
-            DrawRectangleRoundedLines(bounds, classic_radius, 8, border);
-        }
-        return;
-    }
-
-    if(classic_radius > 0.0f)
-        radius = classic_radius;
-
-    if(tokens.shadow_alpha > 0 && tokens.shadow_offset_y > 0) {
-        Color shadow = DarkenUIColor(c_bg, 35);
-        shadow.a = tokens.shadow_alpha;
-        DrawRectangleRounded((Rectangle){bounds.x,
-                                         bounds.y + ScaleUIPx(tokens.shadow_offset_y),
-                                         bounds.width, bounds.height},
-                             radius, 12, shadow);
-    }
-
-    if(tokens.control_alpha < background.a)
-        background.a = tokens.control_alpha;
-    if(tokens.border_alpha < border.a)
-        border.a = tokens.border_alpha;
-    DrawRectangleRounded(bounds, radius, 12, background);
-    if(border.a != 0)
-        DrawRectangleRoundedLines(bounds, radius, 12, border);
-    if(tokens.shine_alpha > 0) {
-        Color shine = WHITE;
-        shine.a = tokens.shine_alpha;
-        int inset = ScaleUIPx(2);
-        int shine_h = ScaleUIPx(3);
-        if(bounds.width > (float)(inset * 2) && bounds.height > (float)(shine_h + inset))
-            DrawRectangleRounded((Rectangle){bounds.x + (float)inset,
-                                             bounds.y + ScaleUIPx(1),
-                                             bounds.width - (float)(inset * 2),
-                                             (float)shine_h},
-                                 radius, 8, shine);
-    }
-}
-
-void
-ui_draw_box_background(Rectangle bounds, float radius, Color background,
-                       Color border)
-{
-    if(ui_modern_style()) {
-        ui_draw_control_background(bounds, background, border, radius);
-        return;
-    }
-    if(radius <= 0.0f) {
-        DrawRectangleRec(bounds, background);
-        DrawRectangleLinesEx(bounds, 1, border);
-    } else {
-        DrawRectangleRounded(bounds, radius, 8, background);
-        DrawRectangleRoundedLines(bounds, radius, 8, border);
-    }
 }
 
 int
@@ -1135,7 +914,7 @@ ui_text_draw_context_overlay(void)
                             UI_TEXT_CONTEXT_SELECT_ALL,
                             !has_text, 0, NULL, 0};
 
-    command = DrawUIContextMenu((UIContextMenu){
+    command = UIRenderContextMenu((UIContextMenu){
         .id = 8500 + g_ui_text_context_kind,
         .trigger = (Rectangle){-10000.0f, -10000.0f, 1.0f, 1.0f},
         .items = items,
@@ -1205,7 +984,7 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
 
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
                                     rect.width, rect.height + guard * 2});
-    DrawUIText(value, x, y, font_size, color);
+    UIRenderText(value, x, y, font_size, color);
     EndUIClip();
 }
 
@@ -1220,7 +999,7 @@ ui_control_height_for_font(int font)
     return line_h + pad_y * 2;
 }
 
-static const char *
+const char *
 ui_inspect_control_id(char *buf, size_t buf_size, const char *kind,
                      int numeric_id, const char *label)
 {
@@ -1284,7 +1063,7 @@ DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Col
 
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
                                     rect.width, rect.height + guard * 2});
-    DrawUIText(value, (int)rect.x, y, font_size, color);
+    UIRenderText(value, (int)rect.x, y, font_size, color);
     EndUIClip();
 }
 
@@ -1441,7 +1220,7 @@ ClaimUITextAreaFocus(int *focused)
 }
 
 static void
-ReleaseUITextFocus(int *focused)
+ReleaseUITextFocus(int *focused, int focus_id)
 {
     if(focused == NULL)
         return;
@@ -1449,6 +1228,8 @@ ReleaseUITextFocus(int *focused)
         g_ui_text_focus_owner = NULL;
     if(g_ui_text_focus_owner_this_frame == focused)
         g_ui_text_focus_owner_this_frame = NULL;
+    if(focus_id > 0 && g_ui_focus_active_id == focus_id)
+        g_ui_focus_active_id = 0;
     *focused = 0;
     ui_text_context_close();
     if(g_ui_text_field_drag_owner == focused) {
@@ -1535,7 +1316,7 @@ SetUIFocusTextInputActive(int active)
 }
 
 void
-DrawUIFocus(Rectangle bounds)
+UIRenderFocus(Rectangle bounds)
 {
     DrawRectangleLinesEx((Rectangle){bounds.x - ScaleUIPx(3), bounds.y - ScaleUIPx(3),
                                      bounds.width + ScaleUIPx(6), bounds.height + ScaleUIPx(6)},
@@ -1580,11 +1361,11 @@ DrawCenteredUIControlText(const char *text, int center_x, int center_y, int font
     int h = ui_control_height_for_font(font);
     int y = GetUIControlTextY(text, center_y - h / 2, h, font);
 
-    DrawUIText(text, center_x - text_w / 2, y, font, color);
+    UIRenderText(text, center_x - text_w / 2, y, font, color);
 }
 
 static void
-DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
+UIRenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int cursor_visible, int font,
                   UITextInputStyle style, int selection_start,
                   int selection_end)
@@ -1606,7 +1387,19 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     if(focused)
         SetUIFocusTextInputActive(1);
 
-    ui_draw_box_background(bounds, radius, style.background, border);
+    if(ui_material_style()) {
+        Color background = ui_material_surface_container();
+        Color outline = focused ? c_circle : ui_material_outline();
+
+        DrawRectangleRounded(bounds, 0.18f, 12, background);
+        DrawRectangle((int)bounds.x + ScaleUIPx(8),
+                      (int)(bounds.y + bounds.height) -
+                          ScaleUIPx(focused ? 2 : 1),
+                      (int)bounds.width - ScaleUIPx(16),
+                      ScaleUIPx(focused ? 2 : 1), outline);
+    } else {
+        ui_draw_box_background(bounds, radius, style.background, border);
+    }
 
     ui_begin_world_clip((Rectangle){(float)(x + padding_x), (float)(y - clip_guard),
                                     (float)(w - padding_x * 2),
@@ -1638,9 +1431,10 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
             sel_w = ScaleUIPx(2);
         DrawRectangle(sel_x, text_y, sel_w,
                       GetUITextLineHeight(font),
-                      (Color){78, 132, 196, 135});
+                      ui_material_style() ? ui_alpha(c_circle, 82) :
+                                            (Color){78, 132, 196, 135});
     }
-    DrawUIText(value, text_x, text_y, font, style.text);
+    UIRenderText(value, text_x, text_y, font, style.text);
 
     if(focused && cursor_visible) {
         char before_cursor[1024];
@@ -1653,17 +1447,18 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
         before_cursor[copy_len] = '\0';
 
         int cursor_x = text_x + MeasureUIText(before_cursor, font);
-        DrawRectangle(cursor_x, cursor_y, ScaleUIPx(2), cursor_h, style.cursor);
+        DrawRectangle(cursor_x, cursor_y, ScaleUIPx(2), cursor_h,
+                      ui_material_style() ? c_circle : style.cursor);
     }
     EndUIClip();
 }
 
 void
-DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
+UIRenderTextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focused, int cursor_visible, int font,
                          UITextInputStyle style)
 {
-    DrawUITextInputEx(bounds, text, cursor_position, focused, cursor_visible,
+    UIRenderTextInputEx(bounds, text, cursor_position, focused, cursor_visible,
                       font, style, 0, 0);
 }
 
@@ -1784,7 +1579,7 @@ EditUIText(UITextEdit edit)
 }
 
 int
-DrawUIButton(UIButton button)
+UIRenderButton(UIButton button)
 {
     char editor_id[96];
     UIWidget widget;
@@ -1858,6 +1653,35 @@ DrawUIButton(UIButton button)
         hover_amount = hovered ? 1.0f : 0.0f;
     }
 
+    if(ui_material_style()) {
+        int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+
+        radius = 0.50f;
+        border = BLANK;
+        if(button.disabled) {
+            background = ui_material_surface_container();
+            background.a = 96;
+            text = c_text;
+            text.a = 96;
+        } else {
+            background = button.background.a != 0 ? button.background : c_circle;
+            text = button.text.a != 0 ? button.text : ui_material_on_color(background);
+        }
+        ui_draw_control_background(draw_bounds, background, border, radius);
+        if(!button.disabled)
+            ui_material_state_layer(draw_bounds, text, hovered, focused, pressed);
+        if(focused) {
+            SetUIFocusTextInputActive(0);
+            ui_material_focus(draw_bounds);
+        }
+        DrawCenteredUIControlText(button.label ? button.label : "",
+                                  (int)(draw_bounds.x + draw_bounds.width * 0.5f),
+                                  (int)(draw_bounds.y + draw_bounds.height * 0.5f),
+                                  font, text);
+        EndUIWidget(&widget);
+        return clicked || IsUIFocusActivatePressed(button.focus_id);
+    }
+
     if(button.disabled) {
         background.a = background.a > 120 ? 120 : background.a;
         text.a = text.a > 150 ? 150 : text.a;
@@ -1884,7 +1708,7 @@ DrawUIButton(UIButton button)
 
     if(focused) {
         SetUIFocusTextInputActive(0);
-        DrawUIFocus(draw_bounds);
+        UIRenderFocus(draw_bounds);
     }
 
     DrawCenteredUIControlText(button.label ? button.label : "",
@@ -1896,7 +1720,7 @@ DrawUIButton(UIButton button)
 }
 
 int
-DrawUIIconButton(UIIconButton button)
+UIRenderIconButton(UIIconButton button)
 {
     char editor_id[96];
     UIWidget widget;
@@ -1956,7 +1780,7 @@ DrawUIIconButton(UIIconButton button)
 
     if(focused) {
         SetUIFocusTextInputActive(0);
-        DrawUIFocus(button.bounds);
+        UIRenderFocus(button.bounds);
     }
 
     int icon_x = (int)(button.bounds.x + (button.bounds.width - (float)draw_size) * 0.5f);
@@ -1971,7 +1795,7 @@ DrawUIIconButton(UIIconButton button)
 }
 
 int
-DrawUITextInputControl(UITextInput input)
+UIRenderTextInputControl(UITextInput input)
 {
     char editor_id[96];
     UIWidget widget;
@@ -1989,10 +1813,10 @@ DrawUITextInputControl(UITextInput input)
     if(input.focus_id > 0 && RegisterUIFocus(input.focus_id, input.bounds)) {
         focused = 1;
         SetUIFocusTextInputActive(1);
-        DrawUIFocus(input.bounds);
+        UIRenderFocus(input.bounds);
     }
 
-    DrawUITextInput(input.bounds, input.text, input.cursor_position,
+    UIRenderTextInput(input.bounds, input.text, input.cursor_position,
                              focused, input.cursor_visible,
                              input.font > 0 ? input.font : GetUIFontSize(),
                              input.style);
@@ -2001,7 +1825,7 @@ DrawUITextInputControl(UITextInput input)
 }
 
 int
-DrawUIHref(UIHref link)
+UIRenderHref(UIHref link)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2053,7 +1877,7 @@ DrawUIHref(UIHref link)
         MarkUIDisabled();
     }
 
-    DrawUIText(text, (int)bounds.x,
+    UIRenderText(text, (int)bounds.x,
                GetUIControlTextY(text, (int)bounds.y, (int)bounds.height, font),
                font, color);
     if(hovered && text_w > 0) {
@@ -2063,7 +1887,7 @@ DrawUIHref(UIHref link)
     }
     if(focused) {
         SetUIFocusTextInputActive(0);
-        DrawUIFocus(bounds);
+        UIRenderFocus(bounds);
     }
     if(clicked)
         UIConsumeRelease();
@@ -2503,7 +2327,7 @@ ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
                                       style);
         if(token[0] != ' ' && token[0] != '\t')
             first_token = 0;
-        DrawUIText(token, x, y, font, color);
+        UIRenderText(token, x, y, font, color);
         x += MeasureUIText(token, font);
         offset += token_len;
     }
@@ -2546,7 +2370,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                                             (Color){0, 96, 192, 72},
                                             selection_start, selection_end);
                 if(syntax == UI_SYNTAX_NONE)
-                    DrawUIText(line, text_x, draw_y, line_font, style.text);
+                    UIRenderText(line, text_x, draw_y, line_font, style.text);
                 else
                     ui_draw_syntax_line(line, line_len, text_x, draw_y,
                                         line_font, syntax, style);
@@ -2567,7 +2391,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 }
 
 int
-DrawUITextArea(UITextArea area)
+UIRenderTextArea(UITextArea area)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2625,7 +2449,7 @@ DrawUITextArea(UITextArea area)
     if(area.focus_id > 0 && RegisterUIFocus(area.focus_id, area.bounds)) {
         focused = 1;
         ClaimUITextAreaFocus(area.focused);
-        DrawUIFocus(area.bounds);
+        UIRenderFocus(area.bounds);
     }
 
     mouse_world = ui_mouse_world();
@@ -2718,7 +2542,7 @@ DrawUITextArea(UITextArea area)
             g_ui_text_area_last_click_time = now;
         } else if(focused && !context_active) {
             focused = 0;
-            ReleaseUITextFocus(area.focused);
+            ReleaseUITextFocus(area.focused, area.focus_id);
         }
     }
     if(g_ui_text_area_drag_owner == area.focused &&
@@ -2753,7 +2577,7 @@ DrawUITextArea(UITextArea area)
     SetUIFocusTextInputActive(focused);
     if(focused && UIKeyPressed(KEY_ESCAPE)) {
         focused = 0;
-        ReleaseUITextFocus(area.focused);
+        ReleaseUITextFocus(area.focused, area.focus_id);
         *area.focused = 0;
         SetUIFocusTextInputActive(0);
     }
@@ -3000,7 +2824,7 @@ DrawUITextArea(UITextArea area)
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
                                     area.bounds.width - padding_x * 2, area.bounds.height - padding_y * 2});
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
-        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
+        UIRenderText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
     else
         ui_draw_text_area_text(area.text, *area.cursor_position, focused,
@@ -3051,7 +2875,7 @@ SetUITextAreaSelection(int focus_id, int anchor, int cursor)
 }
 
 int
-DrawUITextField(UITextField field)
+UIRenderTextField(UITextField field)
 {
     char editor_id[96];
     UIWidget widget;
@@ -3091,7 +2915,7 @@ DrawUITextField(UITextField field)
     if(field.focus_id > 0 && RegisterUIFocus(field.focus_id, field.bounds)) {
         focused = 1;
         ClaimUITextFieldFocus(field.focused);
-        DrawUIFocus(field.bounds);
+        UIRenderFocus(field.bounds);
     }
 
     mouse_world = ui_mouse_world();
@@ -3147,7 +2971,7 @@ DrawUITextField(UITextField field)
                                   *field.cursor_position, 1);
         } else if(focused && !context_active) {
             focused = 0;
-            ReleaseUITextFocus(field.focused);
+            ReleaseUITextFocus(field.focused, field.focus_id);
         }
     }
     if(g_ui_text_field_drag_owner == field.focused &&
@@ -3171,7 +2995,7 @@ DrawUITextField(UITextField field)
     SetUIFocusTextInputActive(focused);
     if(focused && UIKeyPressed(KEY_ESCAPE)) {
         focused = 0;
-        ReleaseUITextFocus(field.focused);
+        ReleaseUITextFocus(field.focused, field.focus_id);
         *field.focused = 0;
         SetUIFocusTextInputActive(0);
     }
@@ -3337,7 +3161,7 @@ DrawUITextField(UITextField field)
                                     &g_ui_text_field_selection,
                                     selection_start, selection_end, 0, 1);
 
-    DrawUITextInputEx(field.bounds, field.text, *field.cursor_position,
+    UIRenderTextInputEx(field.bounds, field.text, *field.cursor_position,
                       focused,
                       focused && ui_caret_blink_visible(),
                       font, field.style, selection_start, selection_end);
@@ -3391,7 +3215,7 @@ GetUIReadonlyTextBoxHeight(const char *text, int font, int width,
 }
 
 int
-DrawUIReadonlyTextBox(UIReadonlyTextBox box)
+UIRenderReadonlyTextBox(UIReadonlyTextBox box)
 {
     char editor_id[96];
     UIWidget widget;
@@ -3434,7 +3258,7 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
 
         if(MeasureUIText(text + offset, font) <= content_w) {
             snprintf(line, sizeof(line), "%s", text + offset);
-            DrawUIText(line, (int)box.bounds.x + padding_x, draw_y,
+            UIRenderText(line, (int)box.bounds.x + padding_x, draw_y,
                             font, box.style.text);
             break;
         }
@@ -3447,13 +3271,13 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
             chunk_len++;
         }
         snprintf(line, sizeof(line), "%.*s", chunk_len, text + offset);
-        DrawUIText(line, (int)box.bounds.x + padding_x, draw_y,
+        UIRenderText(line, (int)box.bounds.x + padding_x, draw_y,
                         font, box.style.text);
         draw_y += line_h + line_gap;
         offset += chunk_len;
     }
     if(len == 0)
-        DrawUIText("", (int)box.bounds.x + padding_x, draw_y, font, box.style.text);
+        UIRenderText("", (int)box.bounds.x + padding_x, draw_y, font, box.style.text);
     EndUIClip();
 
     if(active) {
@@ -3494,19 +3318,19 @@ GetUIParagraphHeight(UIParagraph paragraph)
 }
 
 void
-DrawUIParagraph(UIParagraph paragraph, int x, int *y)
+UIRenderParagraph(UIParagraph paragraph, int x, int *y)
 {
     if(y == NULL || paragraph.width <= 0)
         return;
     int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
     Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
     UITextLayout layout = UIParagraphLayout(paragraph);
-    DrawUITextLayout(&layout, x, y, font, color);
+    UIRenderTextLayout(&layout, x, y, font, color);
     FreeUITextLayout(&layout);
 }
 
 void
-DrawUIBevel(int x, int y, int w, int h, Color light, Color dark)
+UIRenderBevel(int x, int y, int w, int h, Color light, Color dark)
 {
     DrawLine(x, y, x + w - 1, y, light);
     DrawLine(x, y, x, y + h - 1, light);
@@ -3515,10 +3339,10 @@ DrawUIBevel(int x, int y, int w, int h, Color light, Color dark)
 }
 
 void
-DrawUITextLines(const char **lines, int count, int x, int *y, int font, int line_h, Color color)
+UIRenderTextLines(const char **lines, int count, int x, int *y, int font, int line_h, Color color)
 {
     for(int i = 0; i < count; i++) {
-        DrawUIText(lines[i], x, *y, font, color);
+        UIRenderText(lines[i], x, *y, font, color);
         *y += line_h;
     }
 }
@@ -3669,12 +3493,13 @@ SetUIFrame(Camera2D camera)
 }
 
 void
-DrawUIFrameOverlays(void)
+UIRenderFrameOverlays(void)
 {
     if(g_ui_overlays_drawn_frame == g_ui_frame_serial)
         return;
     g_ui_overlays_drawn_frame = g_ui_frame_serial;
     ResetUIClip();
+    ui_draw_dropdown_overlays();
     ui_text_draw_context_overlay();
 }
 
@@ -3761,7 +3586,7 @@ GetUIIconButtonPadding(UIIconSize size)
 }
 
 void
-DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint)
+UIRenderIconTexture(int x, int y, int size, Texture2D icon, Color tint)
 {
     Rectangle src;
     Rectangle dst;
@@ -3775,7 +3600,7 @@ DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint)
 }
 
 int
-DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
+UIRenderIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 {
     int btn_size = GetUIIconButtonSize(size);
     int padding = GetUIIconButtonPadding(size);
@@ -3789,7 +3614,7 @@ DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIIconButton((UIIconButton){
+    return UIRenderIconButton((UIIconButton){
         .bounds = bounds,
         .icon = icon,
         .icon_size = btn_size,
@@ -3803,7 +3628,7 @@ DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 }
 
 int
-DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *hover)
+UIRenderPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     int w = size + padding * 2;
@@ -3815,7 +3640,7 @@ DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *ho
 
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIIconButton((UIIconButton){
+    return UIRenderIconButton((UIIconButton){
         .bounds = bounds,
         .icon = icon,
         .icon_size = size,
@@ -3829,7 +3654,7 @@ DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *ho
 }
 
 int
-DrawUITextButton(int x, int y, const char *label, int *hover)
+UIRenderTextButton(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     int font = GetUISmallFontSize();
@@ -3846,7 +3671,7 @@ DrawUITextButton(int x, int y, const char *label, int *hover)
               UIHoverEffectsEnabled();
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIButton((UIButton){
+    return UIRenderButton((UIButton){
         .bounds = bounds,
         .label = text,
         .font = font,
@@ -3893,7 +3718,7 @@ ui_button_style_colors(UIButtonStyle style, Color *bg, Color *hover_bg,
 }
 
 int
-DrawUIGenericButton(int x, int y, int w, int h, const char *label,
+UIRenderGenericButton(int x, int y, int w, int h, const char *label,
                        UIButtonStyle style, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
@@ -3916,7 +3741,7 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
     if(hover != NULL)
         *hover = hovered;
 
-    clicked = DrawUIButton((UIButton){
+    clicked = UIRenderButton((UIButton){
         .bounds = bounds,
         .label = label,
         .font = font,
@@ -3941,7 +3766,7 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
 }
 
 int
-DrawUISubtabBar(UISubtabBar bar)
+UIRenderSubtabBar(UISubtabBar bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -4044,7 +3869,7 @@ DrawUISubtabBar(UISubtabBar bar)
 }
 
 void
-DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
+UIRenderIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
 {
     Vector2 mouse_world = ui_mouse_world();
     int mx = (int)mouse_world.x;
@@ -4064,13 +3889,13 @@ DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
 
     if(hover) {
         DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button_hover);
-        DrawUIBevel(btn_x, btn_y, btn_w, btn_h, DarkenUIColor(c_button_hover, 40), LightenUIColor(c_button_hover, 40));
+        UIRenderBevel(btn_x, btn_y, btn_w, btn_h, DarkenUIColor(c_button_hover, 40), LightenUIColor(c_button_hover, 40));
     } else {
         DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button);
-        DrawUIBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
+        UIRenderBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
     }
 
-    DrawUIIconTexture(x, y, icon_size, icon, c_icon);
+    UIRenderIconTexture(x, y, icon_size, icon, c_icon);
 
     if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
        !UIInputCapturesClick(mouse_world) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -4083,7 +3908,7 @@ DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
  * CONTROLS
  * ================================================================ */
 
-static Rectangle
+Rectangle
 ui_centered_min_hit_rect(int x, int y, int w, int h, int min_w, int min_h)
 {
     int hit_w = w < min_w ? min_w : w;
@@ -4098,504 +3923,7 @@ ui_centered_min_hit_rect(int x, int y, int w, int h, int min_w, int min_h)
 }
 
 int
-DrawUISlider(int id, int x, int y, int w, const char *label,
-               int min, int max, int *value, const char *suffix)
-{
-    char editor_id[96];
-    Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)ScaleUIPx(56)};
-    UIWidget widget;
-    Vector2 mouse_world = ui_mouse_world();
-    int mx = (int)mouse_world.x;
-    int label_font = GetUIFontSize();
-    int value_font = GetUIFontSize();
-    int track_y = y + ScaleUIPx(28);
-    int track_h = ScaleUIPx(8);
-    int knob_w = ScaleUIPx(12);
-    int knob_h = ScaleUIPx(22);
-    int knob_y = track_y - (knob_h - track_h) / 2;
-    int min_touch_h = ui_touch_target_min();
-    int changed = 0;
-    char value_text[32];
-    Rectangle hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
-
-    widget = BeginUIWidget("slider",
-                           ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "slider", id, label),
-                           editor_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
-    editor_bounds = widget.bounds;
-    x = (int)editor_bounds.x;
-    y = (int)editor_bounds.y;
-    w = (int)editor_bounds.width;
-    if(w < ScaleUIPx(32))
-        w = ScaleUIPx(32);
-    track_y = y + ScaleUIPx(28);
-    knob_y = track_y - (knob_h - track_h) / 2;
-    hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
-    editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)ScaleUIPx(56)};
-    UIWidgetSetBounds(&widget, editor_bounds);
-
-    if(g_ui_slider_active_id == id &&
-       !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-        g_ui_slider_active_id = 0;
-
-    snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
-    DrawUIText(label, x, y, label_font, c_text);
-    DrawUIText(value_text, x + w - MeasureUIText(value_text, value_font), y, value_font, c_text);
-
-    if(ui_modern_style()) {
-        DrawRectangleRounded((Rectangle){x, track_y, w, track_h},
-                             0.5f, 8, DarkenUIColor(c_bg, 20));
-    } else {
-        DrawRectangle(x, track_y, w, track_h, DarkenUIColor(c_bg, 28));
-        DrawUIBevel(x, track_y, w, track_h, DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
-    }
-
-    if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
-        MarkUIClickable();
-        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-            g_ui_slider_active_id = id;
-    }
-
-    if(g_ui_slider_active_id == id && g_ui_pointer_owner == UI_POINTER_OWNER_NONE &&
-       g_ui_pointer_dragging) {
-        if(ui_pointer_drag_is_horizontal())
-            g_ui_pointer_owner = UI_POINTER_OWNER_HORIZONTAL_SLIDER;
-        else
-            g_ui_slider_active_id = 0;
-    }
-
-    if(g_ui_slider_active_id == id &&
-       ((IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-         g_ui_pointer_owner == UI_POINTER_OWNER_HORIZONTAL_SLIDER) ||
-        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       !ui_input_captures_click_internal(mouse_world, 0)) {
-        int old_value = *value;
-        float t = (float)(mx - x) / (float)w;
-        if(t < 0.0f)
-            t = 0.0f;
-        if(t > 1.0f)
-            t = 1.0f;
-        *value = min + (int)(t * (float)(max - min) + 0.5f);
-        *value = ui_clampi(*value, min, max);
-        changed = (*value != old_value);
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            g_ui_slider_active_id = 0;
-    } else if(g_ui_slider_active_id == id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        g_ui_slider_active_id = 0;
-    }
-
-    float t = (float)(*value - min) / (float)(max - min);
-    int knob_x = x + (int)(t * (float)w) - knob_w / 2;
-    if(ui_modern_style()) {
-        DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                   (float)(knob_h / 2), c_button);
-        DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                        (float)(knob_h / 2), LightenUIColor(c_button, 24));
-    } else {
-        DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-        DrawUIBevel(knob_x, knob_y, knob_w, knob_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-    }
-
-    EndUIWidget(&widget);
-    return changed;
-}
-
-int
-DrawUIVerticalSlider(int id, int x, int y, int h,
-                        int min, int max, int *value)
-{
-    char editor_id[96];
-    Rectangle editor_bounds = {(float)(x - ScaleUIPx(18)), (float)y,
-                               (float)ScaleUIPx(36), (float)h};
-    UIWidget widget;
-    Vector2 mouse_world = ui_mouse_world();
-    int my = (int)mouse_world.y;
-    int track_w = ScaleUIPx(8);
-    int knob_w = ScaleUIPx(20);
-    int knob_h = ScaleUIPx(12);
-    int track_x = x - track_w / 2;
-    int min_touch_w = ui_touch_target_min();
-    int changed = 0;
-    Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
-
-    widget = BeginUIWidget("vertical_slider",
-                           ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "vertical_slider", id, NULL),
-                           editor_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
-    editor_bounds = widget.bounds;
-    x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
-    y = (int)editor_bounds.y;
-    h = (int)editor_bounds.height;
-    if(h < ScaleUIPx(32))
-        h = ScaleUIPx(32);
-    track_x = x - track_w / 2;
-    hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
-    editor_bounds = (Rectangle){(float)(x - ScaleUIPx(18)), (float)y,
-                                (float)ScaleUIPx(36), (float)h};
-    UIWidgetSetBounds(&widget, editor_bounds);
-
-    if(g_ui_slider_active_id == id &&
-       !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-        g_ui_slider_active_id = 0;
-
-    /* Draw track */
-    if(ui_modern_style()) {
-        DrawRectangleRounded((Rectangle){track_x, y, track_w, h},
-                             0.5f, 8, DarkenUIColor(c_bg, 20));
-    } else {
-        DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
-        DrawUIBevel(track_x, y, track_w, h, DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
-    }
-
-    /* Check for interaction */
-    if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
-        MarkUIClickable();
-        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            g_ui_slider_active_id = id;
-            g_ui_pointer_owner = UI_POINTER_OWNER_VERTICAL_SLIDER;
-        }
-    }
-
-    /* Handle drag */
-    if(g_ui_slider_active_id == id &&
-       (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       !ui_input_captures_click_internal(mouse_world, 0)) {
-        int old_value = *value;
-        /* Invert Y so 0% is at bottom, 100% at top */
-        float t = 1.0f - (float)(my - y) / (float)h;
-        if(t < 0.0f)
-            t = 0.0f;
-        if(t > 1.0f)
-            t = 1.0f;
-        *value = min + (int)(t * (float)(max - min) + 0.5f);
-        *value = ui_clampi(*value, min, max);
-        changed = (*value != old_value);
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            g_ui_slider_active_id = 0;
-    } else if(g_ui_slider_active_id == id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        g_ui_slider_active_id = 0;
-    }
-
-    float t = (float)(*value - min) / (float)(max - min);
-    int position_y = y + h - (int)(t * (float)h);  /* Position on track */
-    int knob_y;
-    int knob_x = track_x - (knob_w - track_w) / 2;
-
-    if(position_y < y)
-        position_y = y;
-    if(position_y > y + h)
-        position_y = y + h;
-    knob_y = position_y - knob_h / 2;
-    if(knob_y < y)
-        knob_y = y;
-    if(knob_y + knob_h > y + h)
-        knob_y = y + h - knob_h;
-
-    if(ui_modern_style()) {
-        DrawRectangleRounded((Rectangle){track_x, position_y, track_w,
-                                         y + h - position_y},
-                             0.5f, 8, c_button_hover);
-        DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                   (float)(knob_w / 2), c_button);
-        DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                        (float)(knob_w / 2), LightenUIColor(c_button, 24));
-    } else {
-        DrawRectangle(track_x, position_y, track_w, y + h - position_y, c_button_hover);
-        DrawUIBevel(track_x, position_y, track_w, y + h - position_y,
-                    LightenUIColor(c_button_hover, 35), DarkenUIColor(c_button_hover, 35));
-        DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-        DrawUIBevel(knob_x, knob_y, knob_w, knob_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-    }
-
-    EndUIWidget(&widget);
-    return changed;
-}
-
-int
-DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
-                                   int min, int max, int *value, UIVerticalSliderMarkCallback callback,
-                                   void *callback_user_data)
-{
-    char editor_id[96];
-    Rectangle editor_bounds = {(float)(x - ScaleUIPx(18)), (float)y,
-                               (float)ScaleUIPx(36), (float)h};
-    UIWidget widget;
-    Vector2 mouse_world = ui_mouse_world();
-    int my = (int)mouse_world.y;
-    int track_w = ScaleUIPx(8);
-    int knob_w = ScaleUIPx(20);
-    int knob_h = ScaleUIPx(12);
-    int track_x = x - track_w / 2;
-    int min_touch_w = ui_touch_target_min();
-    int changed = 0;
-    Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
-
-    widget = BeginUIWidget("vertical_slider_marks",
-                           ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "vertical_slider_marks", id,
-                                                 NULL),
-                           editor_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
-    editor_bounds = widget.bounds;
-    x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
-    y = (int)editor_bounds.y;
-    h = (int)editor_bounds.height;
-    if(h < ScaleUIPx(32))
-        h = ScaleUIPx(32);
-    track_x = x - track_w / 2;
-    hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h, min_touch_w, h);
-    editor_bounds = (Rectangle){(float)(x - ScaleUIPx(18)), (float)y,
-                                (float)ScaleUIPx(36), (float)h};
-    UIWidgetSetBounds(&widget, editor_bounds);
-
-    if(g_ui_slider_active_id == id &&
-       !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-        g_ui_slider_active_id = 0;
-
-    /* Draw track */
-    if(ui_modern_style()) {
-        DrawRectangleRounded((Rectangle){track_x, y, track_w, h},
-                             0.5f, 8, DarkenUIColor(c_bg, 20));
-    } else {
-        DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
-        DrawUIBevel(track_x, y, track_w, h, DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
-    }
-
-    /* Draw custom marks via callback (between track and knob) */
-    if(callback != NULL)
-        callback(callback_user_data, x, y, h, min, max, *value);
-
-    /* Check for interaction */
-    if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
-        MarkUIClickable();
-        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            g_ui_slider_active_id = id;
-            g_ui_pointer_owner = UI_POINTER_OWNER_VERTICAL_SLIDER;
-        }
-    }
-
-    /* Handle drag */
-    if(g_ui_slider_active_id == id &&
-       (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       !ui_input_captures_click_internal(mouse_world, 0)) {
-        int old_value = *value;
-        /* Invert Y so 0% is at bottom, 100% at top */
-        float t = 1.0f - (float)(my - y) / (float)h;
-        if(t < 0.0f)
-            t = 0.0f;
-        if(t > 1.0f)
-            t = 1.0f;
-        *value = min + (int)(t * (float)(max - min) + 0.5f);
-        *value = ui_clampi(*value, min, max);
-        changed = (*value != old_value);
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            g_ui_slider_active_id = 0;
-    } else if(g_ui_slider_active_id == id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        g_ui_slider_active_id = 0;
-    }
-
-    float t = (float)(*value - min) / (float)(max - min);
-    int position_y = y + h - (int)(t * (float)h);  /* Position on track */
-    int knob_y;
-    int knob_x = track_x - (knob_w - track_w) / 2;
-
-    if(position_y < y)
-        position_y = y;
-    if(position_y > y + h)
-        position_y = y + h;
-    knob_y = position_y - knob_h / 2;
-    if(knob_y < y)
-        knob_y = y;
-    if(knob_y + knob_h > y + h)
-        knob_y = y + h - knob_h;
-
-    if(ui_modern_style()) {
-        DrawRectangleRounded((Rectangle){track_x, position_y, track_w,
-                                         y + h - position_y},
-                             0.5f, 8, c_button_hover);
-        DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                   (float)(knob_w / 2), c_button);
-        DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                        (float)(knob_w / 2), LightenUIColor(c_button, 24));
-    } else {
-        DrawRectangle(track_x, position_y, track_w, y + h - position_y, c_button_hover);
-        DrawUIBevel(track_x, position_y, track_w, y + h - position_y,
-                    LightenUIColor(c_button_hover, 35), DarkenUIColor(c_button_hover, 35));
-        DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-        DrawUIBevel(knob_x, knob_y, knob_w, knob_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-    }
-
-    EndUIWidget(&widget);
-    return changed;
-}
-
-int
-DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
-                     const char *off_label, const char *on_label)
-{
-    char editor_id[96];
-    Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)h};
-    UIWidget widget;
-    Vector2 mouse_world = ui_mouse_world();
-    int min_touch = ui_touch_target_min();
-    int font = GetUIFontSize();
-    int off_w = MeasureUIText(off_label, font);
-    int on_w = MeasureUIText(on_label, font);
-    int min_half_w = (off_w > on_w ? off_w : on_w) + ScaleUIPx(16);
-    int min_w = min_half_w * 2 + ScaleUIPx(6);
-    if(w < min_w)
-        w = min_w;
-    if(h < ScaleUIPx(34))
-        h = ScaleUIPx(34);
-
-    editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    widget = BeginUIWidget("toggle",
-                           ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "toggle", 0, off_label),
-                           editor_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
-    editor_bounds = widget.bounds;
-    x = (int)editor_bounds.x;
-    y = (int)editor_bounds.y;
-    w = (int)editor_bounds.width;
-    h = (int)editor_bounds.height;
-    if(w < min_w)
-        w = min_w;
-    if(h < ScaleUIPx(34))
-        h = ScaleUIPx(34);
-    editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    UIWidgetSetBounds(&widget, editor_bounds);
-
-    Rectangle bounds = ui_centered_min_hit_rect(x, y, w, h, min_touch, min_touch);
-
-    if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world)) {
-        MarkUIClickable();
-    }
-
-    int pressed = CheckCollisionPointRec(mouse_world, bounds) &&
-                  !UIInputCapturesClick(mouse_world) &&
-                  IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
-
-    if(pressed) {
-        *value = !(*value);
-        UIConsumeRelease();
-    }
-
-    Color bg = DarkenUIColor(c_bg, 8);
-    if(ui_modern_style())
-        DrawRectangleRounded((Rectangle){x, y, w, h}, 0.5f, 8, bg);
-    else
-        DrawRectangle(x, y, w, h, bg);
-
-    int track_h = h - 6;
-    int track_y = y + 3;
-    DrawRectangleRounded((Rectangle){x + 3, track_y, w - 6, track_h}, 0.5f, 8, DarkenUIColor(c_bg, 20));
-
-    int active_w = (w - 6) / 2;
-    int active_x = *value ? x + w - active_w - 3 : x + 3;
-    DrawRectangleRounded((Rectangle){active_x, track_y, active_w, track_h}, 0.5f, 8, c_button);
-
-    Color label_color = c_text;
-    /* Center text in each half of the toggle */
-    int off_x = x + w / 4 - off_w / 2;
-    int on_x = x + w * 3 / 4 - on_w / 2;
-    DrawUIText(off_label, off_x, GetUIControlTextY(off_label, y, h, font), font, label_color);
-    DrawUIText(on_label, on_x, GetUIControlTextY(on_label, y, h, font), font, label_color);
-
-    EndUIWidget(&widget);
-    return pressed;
-}
-
-int
-DrawDisabledUICheckboxToggle(int x, int y, const char *label,
-                                int *value, int disabled)
-{
-    char editor_id[96];
-    UIWidget widget;
-    int font = GetUIFontSize();
-    int box_size = ScaleUIPx(22);
-    int label_gap = ScaleUIPx(10);
-    int label_w = MeasureUIText(label, font);
-    int label_h = GetUITextLineHeight(font);
-    int row_h = box_size > label_h ? box_size : label_h;
-    Rectangle bounds = {x, y, box_size + label_gap + label_w, row_h};
-    Vector2 mouse_world = ui_mouse_world();
-    Color box_color = disabled ? DarkenUIColor(c_button, 18) : c_button;
-    Color mark_color = disabled ? DarkenUIColor(c_text, 35) : c_text;
-    Color label_color = disabled ? DarkenUIColor(c_text, 35) : c_text;
-
-    widget = BeginUIWidget("checkbox",
-                           ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "checkbox", 0, label),
-                           bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
-    bounds = widget.bounds;
-    x = (int)bounds.x;
-    y = (int)bounds.y;
-
-    if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world)) {
-        if(disabled)
-            MarkUIDisabled();
-        else {
-            MarkUIClickable();
-        }
-    }
-
-    int pressed = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
-                  !UIInputCapturesClick(mouse_world) &&
-                  IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
-    if(pressed) {
-        *value = !(*value);
-        UIConsumeRelease();
-    }
-
-    if(ui_modern_style()) {
-        Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
-        Color border = LightenUIColor(box_color, 22);
-        border.a = border.a > 150 ? 150 : border.a;
-        DrawRectangleRounded(box, ui_control_radius(0.06f), 8, box_color);
-        DrawRectangleRoundedLines(box, ui_control_radius(0.06f), 8, border);
-    } else {
-        DrawRectangle(x, y + (row_h - box_size) / 2, box_size, box_size, box_color);
-        DrawUIBevel(x, y + (row_h - box_size) / 2, box_size, box_size,
-                    DarkenUIColor(c_bg, 30), LightenUIColor(c_bg, 20));
-    }
-
-    if(*value) {
-        int padding = ScaleUIPx(4);
-        int box_y = y + (row_h - box_size) / 2;
-        DrawLine(x + padding, box_y + padding, x + box_size / 2,
-                 box_y + box_size - padding, mark_color);
-        DrawLine(x + box_size / 2, box_y + box_size - padding,
-                 x + box_size - padding, box_y + padding, mark_color);
-    }
-
-    DrawUIText(label, x + box_size + label_gap,
-                    GetUIControlTextY(label, y, row_h, font),
-                    font, label_color);
-
-    EndUIWidget(&widget);
-    return pressed;
-}
-
-int
-DrawUICheckboxToggle(int x, int y, const char *label, int *value)
-{
-    return DrawDisabledUICheckboxToggle(x, y, label, value, 0);
-}
-
-int
-DrawUIInfoButton(int center_x, int center_y, int diameter)
+UIRenderInfoButton(int center_x, int center_y, int diameter)
 {
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = ScaleUIPx(32);
