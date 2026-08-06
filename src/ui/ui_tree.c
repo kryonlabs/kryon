@@ -8,7 +8,7 @@ static int ui_tree_screen_id = 0;
 static int ui_tree_building = 0;
 
 typedef struct UIWidgetOps {
-    int (*measure_height)(const UIWidgetNode *node);
+    int (*measure_height)(UIWidgetNode node);
 } UIWidgetOps;
 
 static UINodeId
@@ -40,105 +40,135 @@ ui_tree_node(UINodeId id)
     return &ui_tree_nodes[id];
 }
 
-static int
-ui_measure_bounds_height(const UIWidgetNode *node)
+static UIWidgetNode
+ui_node(int id, UIWidgetKind kind, Rectangle bounds)
 {
-    if(node == NULL)
-        return 0;
-    return (int)ceilf(node->bounds.height);
+    UIWidgetNode node;
+
+    memset(&node, 0, sizeof(node));
+    node.id = id;
+    node.kind = kind;
+    node.bounds = bounds;
+    node.parent = -1;
+    node.first_child = -1;
+    node.next_sibling = -1;
+    return node;
+}
+
+static void
+ui_tree_store_node(UINodeId id, UIWidgetNode src)
+{
+    UIWidgetNode *dst;
+
+    dst = ui_tree_node(id);
+    if(dst == NULL)
+        return;
+    src.parent = dst->parent;
+    src.first_child = dst->first_child;
+    src.next_sibling = dst->next_sibling;
+    *dst = src;
 }
 
 static int
-ui_measure_paragraph(const UIWidgetNode *node)
+ui_measure_bounds_height(UIWidgetNode node)
 {
-    if(node->props != NULL)
-        return ui_paragraph_height(*(const UIParagraph *)node->props);
-    return ui_paragraph_height(node->data.paragraph);
+    return (int)ceilf(node.bounds.height);
 }
 
 static int
-ui_measure_readonly_text_box(const UIWidgetNode *node)
+ui_measure_paragraph(UIWidgetNode node)
+{
+    if(node.props != NULL)
+        return ui_paragraph_height(*(const UIParagraph *)node.props);
+    return ui_paragraph_height(node.data.paragraph);
+}
+
+static int
+ui_measure_readonly_text_box(UIWidgetNode node)
 {
     const UIReadonlyTextBox *box;
 
-    box = node->props != NULL ? node->props : &node->data.readonly_text_box;
+    box = node.props != NULL ? node.props : &node.data.readonly_text_box;
     return ui_readonly_text_box_height(box->text, box->font,
                                        (int)box->bounds.width,
                                        box->style, box->line_gap);
 }
 
 static int
-ui_measure_label_text_field(const UIWidgetNode *node)
+ui_measure_label_text_field(UIWidgetNode node)
 {
-    if(node->props != NULL)
-        return ui_label_text_field_height(*(const UILabelTextField *)node->props);
-    return ui_label_text_field_height(node->data.label_text_field);
+    if(node.props != NULL)
+        return ui_label_text_field_height(*(const UILabelTextField *)node.props);
+    return ui_label_text_field_height(node.data.label_text_field);
 }
 
 static int
-ui_measure_section_label(const UIWidgetNode *node)
+ui_measure_section_label(UIWidgetNode node)
 {
-    if(node->props != NULL)
-        return ui_section_label_height(*(const UISectionLabel *)node->props);
-    return ui_section_label_height(node->data.section_label);
+    if(node.props != NULL)
+        return ui_section_label_height(*(const UISectionLabel *)node.props);
+    return ui_section_label_height(node.data.section_label);
 }
 
 static int
-ui_measure_checkbox_row(const UIWidgetNode *node)
+ui_measure_checkbox_row(UIWidgetNode node)
 {
-    if(node->props != NULL)
-        return ui_checkbox_row_height(*(const UICheckboxRow *)node->props);
-    return ui_checkbox_row_height(node->data.checkbox_row);
+    if(node.props != NULL)
+        return ui_checkbox_row_height(*(const UICheckboxRow *)node.props);
+    return ui_checkbox_row_height(node.data.checkbox_row);
 }
 
 static int
-ui_measure_button_row(const UIWidgetNode *node)
+ui_measure_button_row(UIWidgetNode node)
 {
-    if(node->props != NULL)
-        return ui_button_row_height(*(const UIButtonRow *)node->props);
-    return ui_button_row_height(node->data.button_row);
+    if(node.props != NULL)
+        return ui_button_row_height(*(const UIButtonRow *)node.props);
+    return ui_button_row_height(node.data.button_row);
 }
 
 static int
-ui_measure_bottom_nav(const UIWidgetNode *node)
+ui_measure_bottom_nav(UIWidgetNode node)
 {
-    (void)node;
+    if(node.bounds.height > 0)
+        return (int)ceilf(node.bounds.height);
     return ui_bottom_nav_height();
 }
 
 static int
-ui_measure_tab_bar(const UIWidgetNode *node)
+ui_measure_tab_bar(UIWidgetNode node)
 {
-    (void)node;
+    if(node.bounds.height > 0)
+        return (int)ceilf(node.bounds.height);
     return ui_tab_bar_height();
 }
 
 static int
-ui_measure_theme_settings(const UIWidgetNode *node)
+ui_measure_theme_settings(UIWidgetNode node)
 {
-    if(node->props != NULL)
-        return ui_theme_settings_height(*(const UIThemeSettings *)node->props);
-    return ui_theme_settings_height(node->data.theme_settings);
+    if(node.props != NULL)
+        return ui_theme_settings_height(*(const UIThemeSettings *)node.props);
+    return ui_theme_settings_height(node.data.theme_settings);
 }
 
 static int
-ui_measure_theme_picker(const UIWidgetNode *node)
+ui_measure_theme_picker(UIWidgetNode node)
 {
-    return ui_theme_picker_height((int)node->bounds.width);
+    return ui_theme_picker_height((int)node.bounds.width);
 }
 
 static int
-ui_measure_paragraph_modal(const UIWidgetNode *node)
+ui_measure_paragraph_modal(UIWidgetNode node)
 {
-    if(node->props != NULL)
-        return ui_paragraph_modal_height(*(const UIParagraphModalMeasure *)node->props);
-    return ui_paragraph_modal_height(node->data.paragraph_modal);
+    if(node.props != NULL)
+        return ui_paragraph_modal_height(*(const UIParagraphModalMeasure *)node.props);
+    return ui_paragraph_modal_height(node.data.paragraph_modal);
 }
 
 static int
-ui_measure_title_bar(const UIWidgetNode *node)
+ui_measure_title_bar(UIWidgetNode node)
 {
-    (void)node;
+    if(node.bounds.height > 0)
+        return (int)ceilf(node.bounds.height);
     return ui_title_bar_height();
 }
 
@@ -225,16 +255,14 @@ UIGetTreeNodes(int *count)
 }
 
 int
-UIGetNodeHeight(const UIWidgetNode *node)
+UIGetNodeHeight(UIWidgetNode node)
 {
     const UIWidgetOps *ops;
 
-    if(node == NULL)
-        return 0;
-    if(node->kind < 0 ||
-       node->kind >= (int)(sizeof(ui_widget_ops) / sizeof(ui_widget_ops[0])))
+    if(node.kind < 0 ||
+       node.kind >= (int)(sizeof(ui_widget_ops) / sizeof(ui_widget_ops[0])))
         return ui_measure_bounds_height(node);
-    ops = &ui_widget_ops[node->kind];
+    ops = &ui_widget_ops[node.kind];
     if(ops->measure_height == NULL)
         return ui_measure_bounds_height(node);
     return ops->measure_height(node);
@@ -247,9 +275,125 @@ UIGetNodeHeightById(int id)
 
     for(i = ui_tree_node_count - 1; i >= 0; i--) {
         if(ui_tree_nodes[i].id == id)
-            return UIGetNodeHeight(&ui_tree_nodes[i]);
+            return UIGetNodeHeight(ui_tree_nodes[i]);
     }
     return 0;
+}
+
+UIWidgetNode
+UINodeParagraph(UIParagraph paragraph, int x, int y)
+{
+    UIWidgetNode node;
+
+    node = ui_node(0, UI_WIDGET_PARAGRAPH_NODE,
+                   (Rectangle){x, y, paragraph.width, 0});
+    node.data.paragraph = paragraph;
+    return node;
+}
+
+UIWidgetNode
+UINodeReadonlyTextBox(UIReadonlyTextBox box)
+{
+    UIWidgetNode node;
+
+    node = ui_node(0, UI_WIDGET_READONLY_TEXT_BOX_NODE, box.bounds);
+    node.data.readonly_text_box = box;
+    return node;
+}
+
+UIWidgetNode
+UINodeLabelTextField(UILabelTextField row, int x, int y, int w)
+{
+    UIWidgetNode node;
+
+    node = ui_node(row.field.focus_id, UI_WIDGET_LABEL_TEXT_FIELD_NODE,
+                   (Rectangle){x, y, w, 0});
+    node.data.label_text_field = row;
+    return node;
+}
+
+UIWidgetNode
+UINodeSectionLabel(UISectionLabel label, int x, int y)
+{
+    UIWidgetNode node;
+
+    node = ui_node(0, UI_WIDGET_SECTION_LABEL_NODE, (Rectangle){x, y, 0, 0});
+    node.data.section_label = label;
+    return node;
+}
+
+UIWidgetNode
+UINodeCheckboxRow(UICheckboxRow row, int x, int y)
+{
+    UIWidgetNode node;
+
+    node = ui_node(0, UI_WIDGET_CHECKBOX_ROW_NODE, (Rectangle){x, y, 0, 0});
+    node.data.checkbox_row = row;
+    return node;
+}
+
+UIWidgetNode
+UINodeButtonRow(UIButtonRow row)
+{
+    UIWidgetNode node;
+
+    node = ui_node(0, UI_WIDGET_BUTTON_ROW_NODE,
+                   (Rectangle){row.x, row.y, row.width, 0});
+    node.data.button_row = row;
+    return node;
+}
+
+UIWidgetNode
+UINodeBottomNav(UIBottomNav nav)
+{
+    UIWidgetNode node;
+    int height;
+
+    height = nav.height > 0 ? nav.height : 0;
+    node = ui_node(0, UI_WIDGET_BOTTOM_NAV_NODE,
+                   (Rectangle){0, 0, nav.view_width, height});
+    return node;
+}
+
+UIWidgetNode
+UINodeTabBar(UITabBar bar)
+{
+    return ui_node(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds);
+}
+
+UIWidgetNode
+UINodeThemeSettings(UIThemeSettings settings)
+{
+    UIWidgetNode node;
+
+    node = ui_node(settings.id_base, UI_WIDGET_THEME_SETTINGS_NODE,
+                   (Rectangle){settings.x, settings.y, settings.w, 0});
+    node.data.theme_settings = settings;
+    return node;
+}
+
+UIWidgetNode
+UINodeThemePicker(int x, int y, int w)
+{
+    return ui_node(0, UI_WIDGET_THEME_PICKER_NODE, (Rectangle){x, y, w, 0});
+}
+
+UIWidgetNode
+UINodeParagraphModal(UIParagraphModalMeasure measure)
+{
+    UIWidgetNode node;
+
+    node = ui_node(0, UI_WIDGET_PARAGRAPH_MODAL_NODE,
+                   (Rectangle){0, 0, measure.width, 0});
+    node.data.paragraph_modal = measure;
+    return node;
+}
+
+UIWidgetNode
+UINodeTitleBar(int height)
+{
+    return ui_node(0, UI_WIDGET_TITLE_BAR_NODE,
+                   (Rectangle){0, 0, ui_view_width, height});
 }
 
 void
@@ -278,15 +422,14 @@ UITextInRectNode(const char *text, Rectangle rect, int font_size, Color color)
 void
 UIParagraphNode(UIParagraph paragraph, int x, int *y)
 {
-    UIWidgetNode *node;
+    UIWidgetNode node;
     UINodeId id;
     int start_y = y != NULL ? *y : 0;
 
     id = ui_tree_add(0, UI_WIDGET_PARAGRAPH_NODE,
                      (Rectangle){x, start_y, paragraph.width, 0}, NULL);
-    node = ui_tree_node(id);
-    if(node != NULL)
-        node->data.paragraph = paragraph;
+    node = UINodeParagraph(paragraph, x, start_y);
+    ui_tree_store_node(id, node);
     UIRenderParagraph(paragraph, x, y);
 }
 
@@ -382,13 +525,12 @@ UITextFieldNode(UITextField field)
 int
 UIReadonlyTextBoxNode(UIReadonlyTextBox box)
 {
-    UIWidgetNode *node;
+    UIWidgetNode node;
     UINodeId id;
 
     id = ui_tree_add(0, UI_WIDGET_READONLY_TEXT_BOX_NODE, box.bounds, NULL);
-    node = ui_tree_node(id);
-    if(node != NULL)
-        node->data.readonly_text_box = box;
+    node = UINodeReadonlyTextBox(box);
+    ui_tree_store_node(id, node);
     return UIRenderReadonlyTextBox(box);
 }
 
@@ -531,16 +673,15 @@ int
 UIThemeSettingsNode(UIThemeSettings settings, UIThemeSettingsState *state,
                     UIThemeSettingsResult *result)
 {
-    UIWidgetNode *node;
+    UIWidgetNode node;
     UINodeId id;
     UIThemeSettingsResult next = {0};
 
     id = ui_tree_add(settings.id_base, UI_WIDGET_THEME_SETTINGS_NODE,
                      (Rectangle){settings.x, settings.y, settings.w, 0},
                      NULL);
-    node = ui_tree_node(id);
-    if(node != NULL)
-        node->data.theme_settings = settings;
+    node = UINodeThemeSettings(settings);
+    ui_tree_store_node(id, node);
     UIRenderThemeSettings(settings, state);
     next = UIRenderThemeSettingsMenus(settings, state);
     if(result != NULL)
@@ -795,42 +936,39 @@ UIInfoRowsNode(UIInfoRows rows)
 int
 UILabelTextFieldNode(UILabelTextField row, int x, int y, int w)
 {
-    UIWidgetNode *node;
+    UIWidgetNode node;
     UINodeId id;
 
     id = ui_tree_add(row.field.focus_id, UI_WIDGET_LABEL_TEXT_FIELD_NODE,
                      (Rectangle){x, y, w, 0}, NULL);
-    node = ui_tree_node(id);
-    if(node != NULL)
-        node->data.label_text_field = row;
+    node = UINodeLabelTextField(row, x, y, w);
+    ui_tree_store_node(id, node);
     return UIRenderLabelTextField(row, x, y, w);
 }
 
 int
 UISectionLabelNode(UISectionLabel label, int x, int y)
 {
-    UIWidgetNode *node;
+    UIWidgetNode node;
     UINodeId id;
 
     id = ui_tree_add(0, UI_WIDGET_SECTION_LABEL_NODE,
                      (Rectangle){x, y, 0, 0}, NULL);
-    node = ui_tree_node(id);
-    if(node != NULL)
-        node->data.section_label = label;
+    node = UINodeSectionLabel(label, x, y);
+    ui_tree_store_node(id, node);
     return UIRenderSectionLabel(label, x, y);
 }
 
 int
 UICheckboxRowNode(UICheckboxRow row, int x, int y)
 {
-    UIWidgetNode *node;
+    UIWidgetNode node;
     UINodeId id;
 
     id = ui_tree_add(0, UI_WIDGET_CHECKBOX_ROW_NODE,
                      (Rectangle){x, y, 0, 0}, NULL);
-    node = ui_tree_node(id);
-    if(node != NULL)
-        node->data.checkbox_row = row;
+    node = UINodeCheckboxRow(row, x, y);
+    ui_tree_store_node(id, node);
     return UIRenderCheckboxRow(row, x, y);
 }
 
@@ -844,14 +982,13 @@ UIOverlayButtonNode(UIOverlayButton button)
 int
 UIButtonRowNode(UIButtonRow row)
 {
-    UIWidgetNode *node;
+    UIWidgetNode node;
     UINodeId id;
 
     id = ui_tree_add(0, UI_WIDGET_BUTTON_ROW_NODE,
                      (Rectangle){row.x, row.y, row.width, 0}, NULL);
-    node = ui_tree_node(id);
-    if(node != NULL)
-        node->data.button_row = row;
+    node = UINodeButtonRow(row);
+    ui_tree_store_node(id, node);
     return UIRenderButtonRow(row);
 }
 

@@ -74,8 +74,21 @@ void UIUpdateTree(void);
 void UIRenderTree(void);
 void UIRenderOverlays(void);
 const UIWidgetNode *UIGetTreeNodes(int *count);
-int UIGetNodeHeight(const UIWidgetNode *node);
+int UIGetNodeHeight(UIWidgetNode node);
 int UIGetNodeHeightById(int id);
+
+UIWidgetNode UINodeParagraph(UIParagraph paragraph, int x, int y);
+UIWidgetNode UINodeReadonlyTextBox(UIReadonlyTextBox box);
+UIWidgetNode UINodeLabelTextField(UILabelTextField row, int x, int y, int w);
+UIWidgetNode UINodeSectionLabel(UISectionLabel label, int x, int y);
+UIWidgetNode UINodeCheckboxRow(UICheckboxRow row, int x, int y);
+UIWidgetNode UINodeButtonRow(UIButtonRow row);
+UIWidgetNode UINodeBottomNav(UIBottomNav nav);
+UIWidgetNode UINodeTabBar(UITabBar bar);
+UIWidgetNode UINodeThemeSettings(UIThemeSettings settings);
+UIWidgetNode UINodeThemePicker(int x, int y, int w);
+UIWidgetNode UINodeParagraphModal(UIParagraphModalMeasure measure);
+UIWidgetNode UINodeTitleBar(int height);
 
 void UIBackground(Color color);
 void UITextNode(const char *text, int x, int y, int font_size, Color color);
