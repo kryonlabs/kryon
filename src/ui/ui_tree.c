@@ -7,6 +7,10 @@ static int ui_tree_node_count = 0;
 static int ui_tree_screen_id = 0;
 static int ui_tree_building = 0;
 
+typedef struct UIWidgetOps {
+    int (*measure_height)(const UIWidgetNode *node);
+} UIWidgetOps;
+
 static UINodeId
 ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
 {
@@ -35,6 +39,135 @@ ui_tree_node(UINodeId id)
         return NULL;
     return &ui_tree_nodes[id];
 }
+
+static int
+ui_measure_bounds_height(const UIWidgetNode *node)
+{
+    if(node == NULL)
+        return 0;
+    return (int)ceilf(node->bounds.height);
+}
+
+static int
+ui_measure_paragraph(const UIWidgetNode *node)
+{
+    if(node->props != NULL)
+        return ui_paragraph_height(*(const UIParagraph *)node->props);
+    return ui_paragraph_height(node->data.paragraph);
+}
+
+static int
+ui_measure_readonly_text_box(const UIWidgetNode *node)
+{
+    const UIReadonlyTextBox *box;
+
+    box = node->props != NULL ? node->props : &node->data.readonly_text_box;
+    return ui_readonly_text_box_height(box->text, box->font,
+                                       (int)box->bounds.width,
+                                       box->style, box->line_gap);
+}
+
+static int
+ui_measure_label_text_field(const UIWidgetNode *node)
+{
+    if(node->props != NULL)
+        return ui_label_text_field_height(*(const UILabelTextField *)node->props);
+    return ui_label_text_field_height(node->data.label_text_field);
+}
+
+static int
+ui_measure_section_label(const UIWidgetNode *node)
+{
+    if(node->props != NULL)
+        return ui_section_label_height(*(const UISectionLabel *)node->props);
+    return ui_section_label_height(node->data.section_label);
+}
+
+static int
+ui_measure_checkbox_row(const UIWidgetNode *node)
+{
+    if(node->props != NULL)
+        return ui_checkbox_row_height(*(const UICheckboxRow *)node->props);
+    return ui_checkbox_row_height(node->data.checkbox_row);
+}
+
+static int
+ui_measure_button_row(const UIWidgetNode *node)
+{
+    if(node->props != NULL)
+        return ui_button_row_height(*(const UIButtonRow *)node->props);
+    return ui_button_row_height(node->data.button_row);
+}
+
+static int
+ui_measure_bottom_nav(const UIWidgetNode *node)
+{
+    (void)node;
+    return ui_bottom_nav_height();
+}
+
+static int
+ui_measure_tab_bar(const UIWidgetNode *node)
+{
+    (void)node;
+    return ui_tab_bar_height();
+}
+
+static int
+ui_measure_theme_settings(const UIWidgetNode *node)
+{
+    if(node->props != NULL)
+        return ui_theme_settings_height(*(const UIThemeSettings *)node->props);
+    return ui_theme_settings_height(node->data.theme_settings);
+}
+
+static int
+ui_measure_theme_picker(const UIWidgetNode *node)
+{
+    return ui_theme_picker_height((int)node->bounds.width);
+}
+
+static int
+ui_measure_paragraph_modal(const UIWidgetNode *node)
+{
+    if(node->props != NULL)
+        return ui_paragraph_modal_height(*(const UIParagraphModalMeasure *)node->props);
+    return ui_paragraph_modal_height(node->data.paragraph_modal);
+}
+
+static int
+ui_measure_title_bar(const UIWidgetNode *node)
+{
+    (void)node;
+    return ui_title_bar_height();
+}
+
+static const UIWidgetOps ui_widget_ops[] = {
+    [UI_WIDGET_SCREEN_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_BACKGROUND_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_TEXT_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_RECT_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_LINE_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_BUTTON_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_TEXT_FIELD_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_DROPDOWN_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_SLIDER_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_TOGGLE_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_CHECKBOX_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_THEME_SETTINGS_NODE] = {ui_measure_theme_settings},
+    [UI_WIDGET_PARAGRAPH_NODE] = {ui_measure_paragraph},
+    [UI_WIDGET_READONLY_TEXT_BOX_NODE] = {ui_measure_readonly_text_box},
+    [UI_WIDGET_LABEL_TEXT_FIELD_NODE] = {ui_measure_label_text_field},
+    [UI_WIDGET_SECTION_LABEL_NODE] = {ui_measure_section_label},
+    [UI_WIDGET_CHECKBOX_ROW_NODE] = {ui_measure_checkbox_row},
+    [UI_WIDGET_BUTTON_ROW_NODE] = {ui_measure_button_row},
+    [UI_WIDGET_BOTTOM_NAV_NODE] = {ui_measure_bottom_nav},
+    [UI_WIDGET_TAB_BAR_NODE] = {ui_measure_tab_bar},
+    [UI_WIDGET_THEME_PICKER_NODE] = {ui_measure_theme_picker},
+    [UI_WIDGET_PARAGRAPH_MODAL_NODE] = {ui_measure_paragraph_modal},
+    [UI_WIDGET_TITLE_BAR_NODE] = {ui_measure_title_bar},
+    [UI_WIDGET_CUSTOM_NODE] = {ui_measure_bounds_height},
+};
 
 void
 UIBeginTree(int screen_id)
@@ -94,56 +227,17 @@ UIGetTreeNodes(int *count)
 int
 UIGetNodeHeight(const UIWidgetNode *node)
 {
-    const UIReadonlyTextBox *box;
+    const UIWidgetOps *ops;
 
     if(node == NULL)
         return 0;
-    switch(node->kind) {
-    case UI_WIDGET_PARAGRAPH_NODE:
-        if(node->props != NULL)
-            return GetUIParagraphHeight(*(const UIParagraph *)node->props);
-        return GetUIParagraphHeight(node->data.paragraph);
-    case UI_WIDGET_READONLY_TEXT_BOX_NODE:
-        box = node->props != NULL ? node->props : &node->data.readonly_text_box;
-        return GetUIReadonlyTextBoxHeight(box->text, box->font,
-                                          (int)box->bounds.width,
-                                          box->style, box->line_gap);
-    case UI_WIDGET_LABEL_TEXT_FIELD_NODE:
-        if(node->props != NULL)
-            return GetUILabelTextFieldHeight(*(const UILabelTextField *)node->props);
-        return GetUILabelTextFieldHeight(node->data.label_text_field);
-    case UI_WIDGET_SECTION_LABEL_NODE:
-        if(node->props != NULL)
-            return GetUISectionLabelHeight(*(const UISectionLabel *)node->props);
-        return GetUISectionLabelHeight(node->data.section_label);
-    case UI_WIDGET_CHECKBOX_ROW_NODE:
-        if(node->props != NULL)
-            return GetUICheckboxRowHeight(*(const UICheckboxRow *)node->props);
-        return GetUICheckboxRowHeight(node->data.checkbox_row);
-    case UI_WIDGET_BUTTON_ROW_NODE:
-        if(node->props != NULL)
-            return GetUIButtonRowHeight(*(const UIButtonRow *)node->props);
-        return GetUIButtonRowHeight(node->data.button_row);
-    case UI_WIDGET_BOTTOM_NAV_NODE:
-        return GetUIBottomNavHeight();
-    case UI_WIDGET_TAB_BAR_NODE:
-        return GetUITabBarHeight();
-    case UI_WIDGET_THEME_SETTINGS_NODE:
-        if(node->props != NULL)
-            return GetUIThemeSettingsHeight(*(const UIThemeSettings *)node->props);
-        return GetUIThemeSettingsHeight(node->data.theme_settings);
-    case UI_WIDGET_THEME_PICKER_NODE:
-        return GetUIThemePickerHeight((int)node->bounds.width);
-    case UI_WIDGET_PARAGRAPH_MODAL_NODE:
-        if(node->props != NULL)
-            return GetUIParagraphModalHeight(*(const UIParagraphModalMeasure *)node->props);
-        return GetUIParagraphModalHeight(node->data.paragraph_modal);
-    case UI_WIDGET_TITLE_BAR_NODE:
-        return GetUITitleBarHeight();
-    default:
-        break;
-    }
-    return (int)ceilf(node->bounds.height);
+    if(node->kind < 0 ||
+       node->kind >= (int)(sizeof(ui_widget_ops) / sizeof(ui_widget_ops[0])))
+        return ui_measure_bounds_height(node);
+    ops = &ui_widget_ops[node->kind];
+    if(ops->measure_height == NULL)
+        return ui_measure_bounds_height(node);
+    return ops->measure_height(node);
 }
 
 int

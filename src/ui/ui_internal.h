@@ -86,19 +86,19 @@ void ui_open_url(const char *url);
 
 void UIRenderFrameOverlays(void);
 void UIRenderFocus(Rectangle bounds);
-int GetUIReadonlyTextBoxHeight(const char *text, int font, int width,
+int ui_readonly_text_box_height(const char *text, int font, int width,
                                UITextInputStyle style, int line_gap);
-int GetUILabelTextFieldHeight(UILabelTextField row);
-int GetUISectionLabelHeight(UISectionLabel label);
-int GetUICheckboxRowHeight(UICheckboxRow row);
-int GetUIButtonRowHeight(UIButtonRow row);
-int GetUIBottomNavHeight(void);
-int GetUITabBarHeight(void);
-int GetUIThemeSettingsHeight(UIThemeSettings settings);
-int GetUIThemePickerHeight(int w);
-int GetUIParagraphModalHeight(UIParagraphModalMeasure measure);
-int GetUITitleBarHeight(void);
-int GetUIParagraphHeight(UIParagraph paragraph);
+int ui_label_text_field_height(UILabelTextField row);
+int ui_section_label_height(UISectionLabel label);
+int ui_checkbox_row_height(UICheckboxRow row);
+int ui_button_row_height(UIButtonRow row);
+int ui_bottom_nav_height(void);
+int ui_tab_bar_height(void);
+int ui_theme_settings_height(UIThemeSettings settings);
+int ui_theme_picker_height(int w);
+int ui_paragraph_modal_height(UIParagraphModalMeasure measure);
+int ui_title_bar_height(void);
+int ui_paragraph_height(UIParagraph paragraph);
 void UIRenderText(const char *text, int x, int y, int font_size, Color color);
 void UIRenderTextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);

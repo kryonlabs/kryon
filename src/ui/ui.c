@@ -3170,7 +3170,7 @@ UIRenderTextField(UITextField field)
 }
 
 int
-GetUIReadonlyTextBoxHeight(const char *text, int font, int width,
+ui_readonly_text_box_height(const char *text, int font, int width,
                                   UITextInputStyle style, int line_gap)
 {
     char line[1024];
@@ -3307,7 +3307,7 @@ UIParagraphLayout(UIParagraph paragraph)
 }
 
 int
-GetUIParagraphHeight(UIParagraph paragraph)
+ui_paragraph_height(UIParagraph paragraph)
 {
     if(paragraph.width <= 0)
         return 0;

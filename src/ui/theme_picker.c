@@ -118,7 +118,7 @@ ui_theme_style_option_label(UIThemeSettings settings, ThemeStyle style)
 }
 
 int
-GetUIThemeSettingsHeight(UIThemeSettings settings)
+ui_theme_settings_height(UIThemeSettings settings)
 {
     int rows = 1;
 
@@ -451,7 +451,7 @@ UIRenderThemePicker(int x, int y, int w, int dark_mode,
 }
 
 int
-GetUIThemePickerHeight(int w)
+ui_theme_picker_height(int w)
 {
     return ScaleUIPx(12) + ui_theme_grid_layout(w).height;
 }

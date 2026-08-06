@@ -2,7 +2,7 @@
 #include "ui_widget.h"
 
 int
-GetUIBottomNavHeight(void)
+ui_bottom_nav_height(void)
 {
     return ScaleUIPx(40);
 }
@@ -12,7 +12,7 @@ UIRenderBottomNav(UIBottomNav nav)
 {
     UIBottomNavResult result = {-1, -1, 0, 0};
     int count = nav.count;
-    int height = nav.height > 0 ? nav.height : GetUIBottomNavHeight();
+    int height = nav.height > 0 ? nav.height : ui_bottom_nav_height();
     int bottom_margin = nav.bottom_margin > 0 ? nav.bottom_margin : 0;
     int side_margin = nav.side_margin > 0 ? nav.side_margin : 0;
     int icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(22);

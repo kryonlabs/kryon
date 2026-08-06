@@ -61,9 +61,9 @@ UIRenderTitleBarCenteredTitle(const char *title, int height,
 }
 
 int
-GetUITitleBarHeight(void)
+ui_title_bar_height(void)
 {
-    return GetUITabBarHeight();
+    return ui_tab_bar_height();
 }
 
 void

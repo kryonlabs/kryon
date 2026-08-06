@@ -152,7 +152,7 @@ UIRenderGuideOverlay(UIGuideOverlay guide)
         .font = guide.paragraph_font,
         .line_gap = line_gap
     };
-    paragraph_h = GetUIParagraphHeight(paragraph);
+    paragraph_h = ui_paragraph_height(paragraph);
     tip_h = pad + paragraph_h + ScaleUIPx(12) + button_size + pad;
     if(tip_h < ScaleUIPx(112))
         tip_h = ScaleUIPx(112);

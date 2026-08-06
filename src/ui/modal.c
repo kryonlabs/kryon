@@ -257,7 +257,7 @@ UIRenderModal3Button(const char *title, const char *message,
 }
 
 int
-GetUIParagraphModalHeight(UIParagraphModalMeasure measure)
+ui_paragraph_modal_height(UIParagraphModalMeasure measure)
 {
     int width = measure.width > 0 ? measure.width : ScaleUIPx(320);
     int header_h = measure.header_h > 0 ? measure.header_h : ScaleUIPx(58);
@@ -284,7 +284,7 @@ GetUIParagraphModalHeight(UIParagraphModalMeasure measure)
         .line_gap = line_gap
     };
     height = header_h +
-             GetUIParagraphHeight(paragraph) +
+             ui_paragraph_height(paragraph) +
              extra_lines * (font + line_gap) +
              button_h +
              ScaleUIPx(18);

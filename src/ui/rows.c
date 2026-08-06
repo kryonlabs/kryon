@@ -36,7 +36,7 @@ UIRenderInfoRows(UIInfoRows rows)
 }
 
 int
-GetUILabelTextFieldHeight(UILabelTextField row)
+ui_label_text_field_height(UILabelTextField row)
 {
     int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
     int field_h = row.field_h > 0 ? row.field_h : ScaleUIPx(40);
@@ -62,7 +62,7 @@ UIRenderLabelTextField(UILabelTextField row, int x, int y, int w)
 }
 
 int
-GetUISectionLabelHeight(UISectionLabel label)
+ui_section_label_height(UISectionLabel label)
 {
     return label.height > 0 ? label.height : ScaleUIPx(24);
 }
@@ -85,7 +85,7 @@ UIRenderSectionLabel(UISectionLabel label, int x, int y)
 }
 
 int
-GetUICheckboxRowHeight(UICheckboxRow row)
+ui_checkbox_row_height(UICheckboxRow row)
 {
     return row.height > 0 ? row.height : ScaleUIPx(42);
 }
@@ -151,7 +151,7 @@ UIRenderOverlayButton(UIOverlayButton button)
 }
 
 int
-GetUIButtonRowHeight(UIButtonRow row)
+ui_button_row_height(UIButtonRow row)
 {
     int height = row.height > 0 ? row.height : ScaleUIPx(30);
     int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);

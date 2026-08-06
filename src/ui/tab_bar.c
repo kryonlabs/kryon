@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 int
-GetUITabBarHeight(void)
+ui_tab_bar_height(void)
 {
     return ScaleUIPx(36);
 }
