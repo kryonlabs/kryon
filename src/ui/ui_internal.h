@@ -109,12 +109,6 @@ void DrawCenteredUIText(const char *text, int center_x, int center_y,
                         int font_size, Color color);
 void UIRenderTextInRect(const char *text, Rectangle rect, int font_size,
                       Color color);
-void DrawCenteredUIControlText(const char *text, int center_x, int center_y,
-                               int font, Color color);
-void DrawLeftUIControlTextInRect(const char *text, Rectangle rect,
-                                 int font_size, Color color);
-void DrawFittedUITextInRect(const char *text, Rectangle rect,
-                            int preferred_size, int min_size, Color color);
 void UIRenderTextLayout(UITextLayout *layout, int x, int *y, int font_size,
                       Color color);
 void UIRenderParagraph(UIParagraph paragraph, int x, int *y);

@@ -1,6 +1,5 @@
 #include "ui_internal.h"
 #include "ui_layout.h"
-#include "locale.h"
 
 #define UI_THEME_SETTINGS_ROW_H 30
 #define UI_THEME_SETTINGS_ROW_GAP 10
@@ -127,20 +126,16 @@ UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
         *settings.theme_mode = THEME_MODE_SYSTEM;
 
     mode_options[THEME_MODE_SYSTEM] =
-        ui_theme_settings_text(settings.mode_system_label,
-                               GetLocaleText("theme_system"));
+        ui_theme_settings_text(settings.mode_system_label, "System");
     mode_options[THEME_MODE_LIGHT] =
-        ui_theme_settings_text(settings.mode_light_label,
-                               GetLocaleText("theme_light"));
+        ui_theme_settings_text(settings.mode_light_label, "Light");
     mode_options[THEME_MODE_DARK] =
-        ui_theme_settings_text(settings.mode_dark_label,
-                               GetLocaleText("theme_dark"));
+        ui_theme_settings_text(settings.mode_dark_label, "Dark");
     *settings.theme_mode = ui_clampi(*settings.theme_mode,
                                      THEME_MODE_SYSTEM,
                                      THEME_MODE_DARK);
     if(show_mode) {
-        UIRenderText(ui_theme_settings_text(settings.mode_label,
-                                          GetLocaleText("theme_mode_label")),
+        UIRenderText(ui_theme_settings_text(settings.mode_label, "Mode"),
                    settings.x, y, font, c_text);
         if(UIRenderDropdown(settings.id_base + 1, settings.x, y + font + label_gap,
                           settings.w, row_h, mode_options, 3,
@@ -159,7 +154,7 @@ UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
     palette_index = ui_theme_palette_index(settings);
     if(settings.allow_system_source) {
         theme_options[0] = ui_theme_settings_text(settings.source_system_label,
-                                                  GetLocaleText("theme_system"));
+                                                  "System");
         for(int i = 0; i < THEME_COUNT; i++)
             theme_options[i + 1] = ui_theme_label(theme_picker_order[i]);
     } else {
@@ -170,8 +165,7 @@ UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
         state->palette_index = ui_clampi(palette_index, 0, palette_count - 1);
         palette_index = state->palette_index;
     }
-    UIRenderText(ui_theme_settings_text(settings.palette_label,
-                                      GetLocaleText("theme_color_label")),
+    UIRenderText(ui_theme_settings_text(settings.palette_label, "Color"),
                settings.x, y, font, c_text);
     if(UIRenderDropdown(settings.id_base + 2, settings.x, y + font + label_gap,
                       settings.w, row_h, theme_options, palette_count,
