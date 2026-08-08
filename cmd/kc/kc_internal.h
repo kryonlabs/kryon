@@ -125,6 +125,18 @@ typedef struct KryMacroFrame {
 void add_raw_line(KryFile *file, const char *line);
 void add_type_line(KryFile *file, int is_public, const char *fmt, ...);
 void add_state_line(KryFile *file, const char *line);
+void add_global_line(KryFile *file, int is_public, const char *line);
+void add_const(KryFile *file, int line_no, const char *name, const char *expr);
+void add_define(KryFile *file, int line_no, const char *name, const char *value,
+                const char *guard);
+KryFunction *add_function(KryFile *file);
+KryRoute *add_route(KryFile *file, int line_no, const char *id,
+                    const KryMacroFrame *macros, int macro_count);
+void parse_route_property(KryFile *file, int line_no, KryRoute *route,
+                          char *line);
+void grow_body(KryFunction *fn);
+void add_body_line(KryFile *file, int source_line, const char *fmt, ...);
+void add_body(KryFile *file, const char *fmt, ...);
 void expand_compile_expr(char *dst, size_t dst_size, const KryFile *file,
                          const char *src);
 
