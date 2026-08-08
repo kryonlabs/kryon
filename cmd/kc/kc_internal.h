@@ -219,4 +219,16 @@ void header_guard(char *dst, size_t dst_size, const char *rel);
 const char *skip_indent(const char *line);
 int brace_delta(const char *line);
 
+/* --- kc_resolve.c: symbol/module resolution + expression rewrite --------- */
+
+void strip_module_alias(char *dst, size_t dst_size, const KryFile *file,
+                        const char *src);
+void rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
+                      const KryFunction *current_fn, const char *src);
+void rewrite_nil_tokens(char *dst, size_t dst_size, const char *src);
+void convert_var_decl_file(char *dst, size_t dst_size, const char *name,
+                           const char *type, const KryFile *file);
+void convert_arg_list_file(char *dst, size_t dst_size, const char *src,
+                           const KryFile *file);
+
 #endif
