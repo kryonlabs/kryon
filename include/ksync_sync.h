@@ -82,5 +82,19 @@ KsyncSyncResult RequestKsyncSyncBearer(const KsyncSyncConfig *cfg,
                                                    char *out,
                                                    size_t out_size);
 KsyncSyncResult DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg);
+int KsyncDefaultHttpRequest(const char *method, const char *url,
+                            const char *body,
+                            const char *const *headers,
+                            int header_count,
+                            KsyncSyncBuffer *response,
+                            long *status, void *user);
+KsyncSyncResult KsyncRemoteEventWait(const KsyncSyncConfig *cfg,
+                                     const char *path);
+#if defined(__EMSCRIPTEN__)
+int KsyncWebSyncStart(const KsyncSyncConfig *cfg);
+int KsyncWebSyncPoll(KsyncSyncResult *result, int *changed);
+int KsyncWebRemoteEventsStart(const KsyncSyncConfig *cfg, const char *path);
+int KsyncWebRemoteEventsPoll(void);
+#endif
 
 #endif
