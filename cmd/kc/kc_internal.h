@@ -152,6 +152,12 @@ void append_macro_excluded(char *dst, size_t dst_size, const char *current,
                            const char *next);
 void write_project_source(KryFile **files, int file_count, const char *root,
                           const char *out_dir);
+void write_project_header(KryFile **files, int file_count, const char *root,
+                          const char *out_dir);
+void write_generated(const KryFile *file, const char *root,
+                     const char *out_dir);
+void generated_header_rel(char *dst, size_t dst_size, const KryFile *file,
+                          const char *root);
 
 /* Build the per-function C name base: the screen name, suffixed with
  * "_kry_draw" unless the function declared an exact name. Does not prepend the
