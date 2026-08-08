@@ -231,4 +231,10 @@ void convert_var_decl_file(char *dst, size_t dst_size, const char *name,
 void convert_arg_list_file(char *dst, size_t dst_size, const char *src,
                            const KryFile *file);
 
+/* --- kc_defer.c: defer lowering ------------------------------------------ */
+
+/* Splice deferred statements into a function body at every scope exit
+ * (fall-through, return, break, continue). Rewrites fn->body[] in place. */
+void apply_defers(KryFunction *fn);
+
 #endif
