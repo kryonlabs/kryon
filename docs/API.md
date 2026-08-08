@@ -495,9 +495,9 @@ int GetCurrentLocaleIndex(void);
 
 Ksync Sync is Kryon's common sync protocol layer. Kryon owns URL handling, token auth,
 challenge/login, bearer requests, sync posting, account deletion, and small JSON
-helpers. Applications still own their local data model and provide callbacks to
-build sync payloads, apply sync responses, store auth tokens, and perform
-platform HTTP.
+helpers, and default platform transport. Applications still own their local data
+model and provide callbacks to build sync payloads, apply sync responses, and
+store auth tokens.
 
 #### `KsyncSyncResult`
 
@@ -533,8 +533,8 @@ typedef struct KsyncSyncConfig {
 } KsyncSyncConfig;
 ```
 
-`http_request` is platform-owned. Native apps can implement it with libcurl,
-Android apps can bridge through JNI, and web apps can bridge to JavaScript fetch.
+`http_request` can be app-provided, or set to `KsyncDefaultHttpRequest` for
+Kryon's built-in libcurl/JNI/fetch transport.
 `get_text` and `set_text` store `sync_auth_token` and
 `sync_auth_token_expires_at`.
 
@@ -590,6 +590,36 @@ const char *GetKsyncSyncResultName(KsyncSyncResult result);
 a local-first payload, posts it to `/api/v1/sync`, applies the response through
 the callback, and purges synced tombstones on success. `RequestKsyncSyncBearer`
 is for app-specific Ksync endpoints that use the same account token.
+
+#### Default Transport And Events
+
+```c
+int KsyncDefaultHttpRequest(const char *method, const char *url,
+                            const char *body,
+                            const char *const *headers,
+                            int header_count,
+                            KsyncSyncBuffer *response,
+                            long *status, void *user);
+KsyncSyncResult KsyncRemoteEventWait(const KsyncSyncConfig *cfg,
+                                     const char *path);
+#if defined(__EMSCRIPTEN__)
+int KsyncWebSyncStart(const KsyncSyncConfig *cfg);
+int KsyncWebSyncPoll(KsyncSyncResult *result, int *changed);
+int KsyncWebRemoteEventsStart(const KsyncSyncConfig *cfg, const char *path);
+int KsyncWebRemoteEventsPoll(void);
+#endif
+```
+
+`KsyncDefaultHttpRequest` provides the common platform HTTP transport. Native
+builds use libcurl, Android builds call `syncHttpRequest`/`syncWebSocketWait` on
+the activity through JNI, and web builds use JavaScript `fetch`.
+
+`KsyncRemoteEventWait` waits for one Ksync WebSocket sync-change event using the
+stored bearer token. Web builds use the nonblocking `KsyncWebRemoteEventsStart`
+and `KsyncWebRemoteEventsPoll` pair instead.
+
+`KsyncWebSyncStart` and `KsyncWebSyncPoll` run the same login/token/sync flow as
+`RunKsyncSync` without blocking the browser frame loop.
 
 ---
 
