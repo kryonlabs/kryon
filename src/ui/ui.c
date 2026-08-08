@@ -1731,7 +1731,7 @@ UIRenderIconButton(UIIconButton button)
     int draw_size = button.icon_size;
     Color background = button.background.a != 0 ? button.background : c_button;
     Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
-    Color icon_color = button.icon_color.a != 0 ? button.icon_color : c_text;
+    Color icon_tint = WHITE;
     Color border = button.border.a != 0 ? button.border : DarkenUIColor(background, 35);
     float radius = button.radius > 0.0f ? button.radius : 0.06f;
     int cues = UITransitionCuesEnabled();
@@ -1761,13 +1761,12 @@ UIRenderIconButton(UIIconButton button)
 
     if(button.disabled) {
         background.a = background.a > 120 ? 120 : background.a;
-        icon_color.a = icon_color.a > 150 ? 150 : icon_color.a;
+        icon_tint.a = 150;
     }
     draw_background = hovered ? hover_background : background;
     draw_border = hovered ? LightenUIColor(hover_background, cues ? 54 : 40) : border;
     if(cues && hovered) {
         draw_background = LightenUIColor(draw_background, 6);
-        icon_color = LightenUIColor(icon_color, 8);
     }
 
     ui_draw_control_background(button.bounds, draw_background, draw_border, radius);
@@ -1788,7 +1787,7 @@ UIRenderIconButton(UIIconButton button)
     if(button.icon.id != 0) {
         Rectangle src = {0, 0, (float)button.icon.width, (float)button.icon.height};
         Rectangle dst = {(float)icon_x, (float)icon_y, (float)draw_size, (float)draw_size};
-        DrawTexturePro(button.icon, src, dst, (Vector2){0}, 0, icon_color);
+        DrawTexturePro(button.icon, src, dst, (Vector2){0}, 0, icon_tint);
     }
     EndUIWidget(&widget);
     return clicked || IsUIFocusActivatePressed(button.focus_id);
@@ -3621,7 +3620,7 @@ UIRenderIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
         .icon_padding = padding,
         .background = c_button,
         .hover_background = c_button_hover,
-        .icon_color = c_icon,
+        .icon_color = WHITE,
         .border = DarkenUIColor(c_button, 35),
         .radius = 0.12f
     });
@@ -3647,7 +3646,7 @@ UIRenderPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *
         .icon_padding = padding,
         .background = c_button,
         .hover_background = c_button_hover,
-        .icon_color = c_icon,
+        .icon_color = WHITE,
         .border = DarkenUIColor(c_button, 35),
         .radius = 0.12f
     });
@@ -3856,8 +3855,10 @@ UIRenderSubtabBar(UISubtabBar bar)
                 (float)icon_size,
                 (float)icon_size
             };
-            Color icon_color = is_disabled ? DarkenUIColor(c_icon, 40) : c_icon;
-            DrawTexturePro(icon, src, dst, (Vector2){0}, 0, icon_color);
+            Color icon_tint = WHITE;
+            if(is_disabled)
+                icon_tint.a = 150;
+            DrawTexturePro(icon, src, dst, (Vector2){0}, 0, icon_tint);
         } else {
             DrawFittedUITextInRect(label, label_rect, font, UI_TEXT_8, text_color);
         }
@@ -3895,7 +3896,7 @@ UIRenderIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
         UIRenderBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
     }
 
-    UIRenderIconTexture(x, y, icon_size, icon, c_icon);
+    UIRenderIconTexture(x, y, icon_size, icon, WHITE);
 
     if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
        !UIInputCapturesClick(mouse_world) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {

@@ -162,15 +162,14 @@ UIRenderTabBar(UITabBar bar)
         int content_y = bar_y + (bar_h - content_h) / 2;
 
         Color text_color = c_text;
-        Color icon_color = c_icon;
+        Color icon_tint = WHITE;
 
         if(is_disabled) {
             text_color = DarkenUIColor(c_text, 70);
             text_color.a = text_color.a > 150 ? 150 : text_color.a;
-            icon_color = DarkenUIColor(c_icon, 40);
+            icon_tint.a = 150;
         } else if(is_selected) {
             text_color = LightenUIColor(c_text, 10);
-            icon_color = LightenUIColor(c_icon, cues ? 18 : 10);
         }
 
         // Draw icon if present
@@ -182,7 +181,7 @@ UIRenderTabBar(UITabBar bar)
                 (float)icon_size
             };
             Rectangle icon_src = {0, 0, (float)tab->icon.width, (float)tab->icon.height};
-            DrawTexturePro(tab->icon, icon_src, icon_rect, (Vector2){0}, 0, icon_color);
+            DrawTexturePro(tab->icon, icon_src, icon_rect, (Vector2){0}, 0, icon_tint);
             text_x = icon_x + icon_size + ScaleUIPx(4);
         } else {
             text_x = tab_x + text_pad;

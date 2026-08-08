@@ -60,7 +60,10 @@ UIRenderBottomNav(UIBottomNav nav)
         UIButtonStyle style = item->active
                                   ? UI_BUTTON_STYLE_TAB_SELECTED
                                   : UI_BUTTON_STYLE_TAB;
-        Color icon_color = item->disabled ? DarkenUIColor(c_icon, 40) : c_icon;
+        Color icon_tint = WHITE;
+
+        if(item->disabled)
+            icon_tint.a = 150;
 
         if(UIRenderGenericButton(x, y, w, height, "", style,
                                   item->disabled, &hover)) {
@@ -75,16 +78,13 @@ UIRenderBottomNav(UIBottomNav nav)
             DrawRectangle(x + ScaleUIPx(10), y + height - cue_h,
                           w - ScaleUIPx(20), cue_h,
                           LightenUIColor(c_button_hover, 18));
-            icon_color = LightenUIColor(icon_color, 18);
-        } else if(cues && hover && !item->disabled) {
-            icon_color = LightenUIColor(icon_color, 8);
         }
 
         if(item->icon.id != 0) {
             DrawTexturePro(item->icon,
                            (Rectangle){0, 0, item->icon.width, item->icon.height},
                            (Rectangle){icon_x, icon_y, icon_size, icon_size},
-                           (Vector2){0}, 0, icon_color);
+                           (Vector2){0}, 0, icon_tint);
         }
     }
 
