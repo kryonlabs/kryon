@@ -148,6 +148,37 @@ typedef struct {
 } UIToolbarHeaderResult;
 
 typedef struct {
+    Texture2D icon;
+    int disabled;
+} UITopNavAction;
+
+typedef struct {
+    int id;
+    int x;
+    int y;
+    int width;
+    int height;
+    const char *title;
+    const char **options;
+    int option_count;
+    int *selected_index;
+    int disabled;
+    int dropdown_min_width;
+    int dropdown_height;
+    const UITopNavAction *actions;
+    int action_count;
+    int action_icon_size;
+    int action_icon_padding;
+    int action_gap;
+    int side_padding;
+} UITopNav;
+
+typedef struct {
+    int selected_menu_item;
+    int clicked_action;
+} UITopNavResult;
+
+typedef struct {
     const char *label;
     Texture2D icon;
     int icon_size;

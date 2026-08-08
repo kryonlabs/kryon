@@ -2,6 +2,7 @@
 #include "ui_tk.h"
 
 #define UI_TK_MENU_MAX 8
+#define UI_RADIO_ANIM_MAX 128
 /* Large enough that the editor's source buffer (512 KiB) is the real ceiling,
  * not this. Matches the raylib SDL read buffer set via RAY_RAYLIB_CONFIG so
  * copy and paste caps stay symmetric. */
@@ -14,6 +15,15 @@ static int g_menu_panel_valid = 0;
 static int g_canvas_depth = 0;
 static char g_clipboard_text[UI_TK_CLIPBOARD_MAX];
 static int g_canvas_mode_depth = 0;
+
+typedef struct UIRadioAnimState {
+    unsigned int key;
+    float selected;
+    float press;
+    unsigned long frame_seen;
+} UIRadioAnimState;
+
+static UIRadioAnimState g_ui_radio_anim[UI_RADIO_ANIM_MAX];
 
 static int
 ui_contains(Rectangle bounds, Vector2 point)
@@ -415,19 +425,101 @@ int
 UIRenderRadioButton(UIRadioButton radio)
 {
     int font = GetUIFontSize();
-    int diameter = ScaleUIPx(18);
-    Vector2 center = {radio.bounds.x + diameter / 2.0f, radio.bounds.y + radio.bounds.height / 2.0f};
+    int diameter = ScaleUIPx(20);
+    int touch = ScaleUIPx(40);
+    Vector2 center = {radio.bounds.x + touch / 2.0f,
+                      radio.bounds.y + radio.bounds.height / 2.0f};
     int hot = ui_hot(radio.bounds) && !radio.disabled;
+    int down = hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
     if(hot)
         MarkUIClickable();
     if(radio.disabled)
         MarkUIDisabled();
-    DrawCircleLines((int)center.x, (int)center.y, (float)diameter / 2.0f, radio.disabled ? c_button : c_icon);
-    if(radio.checked)
-        DrawCircleV(center, (float)ScaleUIPx(5), radio.disabled ? c_button : c_icon);
-    UIRenderText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + ScaleUIPx(8),
-               ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
+    if(ui_material_style()) {
+        UIMaterialScheme scheme = ui_material_scheme();
+        UIRadioAnimState *anim;
+        Rectangle state_bounds = {
+            center.x - (float)touch / 2.0f,
+            center.y - (float)touch / 2.0f,
+            (float)touch,
+            (float)touch
+        };
+        unsigned int key = 2166136261u;
+        float target = radio.checked ? 1.0f : 0.0f;
+        float dt;
+        float selected;
+        float press;
+        float outer = (float)diameter / 2.0f;
+        float stroke = (float)ScaleUIPx(2);
+        float dot_radius;
+        Color ring;
+        Color label = radio.disabled ? scheme.disabled_content : scheme.on_surface;
+        const char *text = radio.label != NULL ? radio.label : "";
+
+        key = (key ^ (unsigned int)radio.id) * 16777619u;
+        key = (key ^ (unsigned int)(int)radio.bounds.x) * 16777619u;
+        key = (key ^ (unsigned int)(int)radio.bounds.y) * 16777619u;
+        key = (key ^ (unsigned int)(int)radio.bounds.width) * 16777619u;
+        key = (key ^ (unsigned int)(int)radio.bounds.height) * 16777619u;
+        while(*text != '\0')
+            key = (key ^ (unsigned char)*text++) * 16777619u;
+        anim = &g_ui_radio_anim[key % UI_RADIO_ANIM_MAX];
+        if(anim->key != key || g_ui_frame_serial - anim->frame_seen > 12) {
+            memset(anim, 0, sizeof(*anim));
+            anim->key = key;
+            anim->selected = target;
+        }
+        anim->frame_seen = g_ui_frame_serial;
+        dt = GetFrameTime();
+        if(dt <= 0.0f || dt > 0.1f)
+            dt = 1.0f / 60.0f;
+        {
+            float step = dt * 18.0f;
+            float press_step = dt * 20.0f;
+            if(step > 1.0f)
+                step = 1.0f;
+            if(press_step > 1.0f)
+                press_step = 1.0f;
+            anim->selected += (target - anim->selected) * step;
+            anim->press += ((down ? 1.0f : 0.0f) - anim->press) * press_step;
+        }
+        selected = anim->selected;
+        press = anim->press;
+
+        ring = ColorLerp(scheme.on_surface_variant, scheme.primary, selected);
+        if(radio.disabled) {
+            ring = scheme.disabled_content;
+            selected = target;
+            press = 0.0f;
+        }
+        if(stroke < 1.0f)
+            stroke = 1.0f;
+        if(hot && UIHoverEffectsEnabled()) {
+            Color layer = ring;
+            layer.a = (unsigned char)(20 + 11 * press);
+            DrawCircleV(center, (float)touch / 2.0f, layer);
+        } else if(down) {
+            Color layer = ring;
+            layer.a = 31;
+            DrawCircleV(center, (float)touch / 2.0f, layer);
+        }
+        ui_material_ripple(state_bounds, ring, (int)key, down);
+        DrawRing(center, outer - stroke, outer, 0.0f, 360.0f, 48, ring);
+        dot_radius = (float)ScaleUIPx(5) * selected;
+        if(dot_radius > 0.2f)
+            DrawCircleV(center, dot_radius, ring);
+        UIRenderText(radio.label != NULL ? radio.label : "",
+                   (int)radio.bounds.x + touch + ScaleUIPx(4),
+                   ui_row_text_y(radio.bounds, font), font, label);
+    } else {
+        center.x = radio.bounds.x + diameter / 2.0f;
+        DrawCircleLines((int)center.x, (int)center.y, (float)diameter / 2.0f, radio.disabled ? c_button : c_icon);
+        if(radio.checked)
+            DrawCircleV(center, (float)ScaleUIPx(5), radio.disabled ? c_button : c_icon);
+        UIRenderText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + ScaleUIPx(8),
+                   ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
+    }
     if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         UIConsumeRelease();
         return radio.id;

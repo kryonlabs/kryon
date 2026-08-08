@@ -46,14 +46,21 @@ UIRenderTabBar(UITabBar bar)
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 || bar.bounds.height <= 0)
         return -1;
 
-    // Draw tab bar background (recessed appearance)
-    DrawRectangle(bar_x, bar_y, bar_w, bar_h, DarkenUIColor(c_bg, 12));
-    DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, DarkenUIColor(c_bg, 38));
+    if(ui_material_style())
+        DrawRectangle(bar_x, bar_y, bar_w, bar_h,
+                      ui_material_scheme().surface_container);
+    else {
+        DrawRectangle(bar_x, bar_y, bar_w, bar_h, DarkenUIColor(c_bg, 12));
+        DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, DarkenUIColor(c_bg, 38));
+    }
 
     if(max_tab_w < min_tab_w)
         max_tab_w = min_tab_w;
     if(icon_tab_w > max_tab_w)
         icon_tab_w = max_tab_w;
+
+    if(ui_material_style())
+        tab_gap = 0;
 
     // Calculate if scrolling is needed
     int total_gap_w = tab_gap * (bar.count - 1);
@@ -61,6 +68,7 @@ UIRenderTabBar(UITabBar bar)
     for(int i = 0; i < bar.count; i++)
         total_tabs_w += ui_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
     int needs_scroll = total_tabs_w > bar_w;
+    int equal_tabs = ui_material_style() && !needs_scroll;
 
     // Set scroll offset
     if(*scroll_offset < 0)
@@ -92,12 +100,15 @@ UIRenderTabBar(UITabBar bar)
             *scroll_offset = max_scroll;
     }
 
-    // Start from left (not centered)
-    int tab_x = bar_x + tab_gap - *scroll_offset;
+    // Material top tabs are distributed equally across the full app bar.
+    int tab_x = equal_tabs ? bar_x : bar_x + tab_gap - *scroll_offset;
 
     for(int i = 0; i < bar.count; i++) {
         const UITab *tab = &bar.tabs[i];
-        int tab_w = ui_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
+        int tab_w = equal_tabs ? bar_w / bar.count :
+                    ui_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
+        if(equal_tabs && i == bar.count - 1)
+            tab_w = bar_x + bar_w - tab_x;
         Rectangle tab_rect = {(float)tab_x, (float)bar_y, (float)tab_w, (float)bar_h};
         int input_captured = UIInputCapturesClick(mouse_world);
         int is_active = CheckCollisionPointRec(mouse_world, tab_rect) && !input_captured;
@@ -105,24 +116,46 @@ UIRenderTabBar(UITabBar bar)
         int is_selected = i == bar.selected_index;
         int is_disabled = tab->disabled;
 
-        // Determine tab background color
         Color tab_fill;
-        if(is_disabled) {
-            tab_fill = DarkenUIColor(c_bg, 18);
-        } else if(is_selected) {
-            tab_fill = c_button;
-        } else if(is_hovered) {
-            tab_fill = DarkenUIColor(c_button_hover, cues ? 2 : 8);
+        if(ui_material_style()) {
+            UIMaterialScheme scheme = ui_material_scheme();
+            int indicator_w = ScaleUIPx(56);
+            int indicator_h = ScaleUIPx(28);
+            int indicator_x;
+            int indicator_y = bar_y + (bar_h - indicator_h) / 2;
+
+            if(!is_disabled)
+                ui_material_state_layer(tab_rect,
+                                        is_selected ? scheme.on_secondary :
+                                                      scheme.on_surface_variant,
+                                        is_hovered, 0,
+                                        is_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
+            if(is_selected) {
+                if(indicator_w > tab_w - ScaleUIPx(8))
+                    indicator_w = tab_w - ScaleUIPx(8);
+                if(indicator_w > 0) {
+                    indicator_x = tab_x + (tab_w - indicator_w) / 2;
+                    DrawRectangleRounded((Rectangle){(float)indicator_x,
+                                                     (float)indicator_y,
+                                                     (float)indicator_w,
+                                                     (float)indicator_h},
+                                         0.50f, 12, scheme.secondary);
+                }
+            }
         } else {
-            tab_fill = DarkenUIColor(c_bg, 10);
+            if(is_disabled) {
+                tab_fill = DarkenUIColor(c_bg, 18);
+            } else if(is_selected) {
+                tab_fill = c_button;
+            } else if(is_hovered) {
+                tab_fill = DarkenUIColor(c_button_hover, cues ? 2 : 8);
+            } else {
+                tab_fill = DarkenUIColor(c_bg, 10);
+            }
+            DrawRectangleRounded(tab_rect, 0.15f, 4, tab_fill);
         }
 
-        // Draw tab shape with rounded top corners (Chromium-style)
-        float corner_radius = 0.15f;
-        DrawRectangleRounded(tab_rect, corner_radius, 4, tab_fill);
-
-        // Apply 3D bevel effect for depth
-        if(is_selected) {
+        if(!ui_material_style() && is_selected) {
             // Strong bevel for selected tab (appears raised)
             UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 50),
@@ -135,7 +168,7 @@ UIRenderTabBar(UITabBar bar)
                               tab_w - ScaleUIPx(18), cue_h,
                               LightenUIColor(c_button_hover, 18));
             }
-        } else if(is_hovered && !is_disabled) {
+        } else if(!ui_material_style() && is_hovered && !is_disabled) {
             // Enhanced bevel for hovered tab
             UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, cues ? 42 : 30),
@@ -146,7 +179,7 @@ UIRenderTabBar(UITabBar bar)
                 DrawRectangle(tab_x + ScaleUIPx(4), bar_y + ScaleUIPx(1),
                               tab_w - ScaleUIPx(8), ScaleUIPx(1), cue);
             }
-        } else if(!is_disabled) {
+        } else if(!ui_material_style() && !is_disabled) {
             // Subtle bevel for normal tab
             UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 20),
@@ -156,12 +189,15 @@ UIRenderTabBar(UITabBar bar)
         // Draw tab text and icon
         int text_pad = ScaleUIPx(8);
         int icon_size = tab->icon_size > 0 ? tab->icon_size : ScaleUIPx(16);
+        int has_label = tab->label != NULL && tab->label[0] != '\0';
         int icon_x = tab_x + text_pad;
         int text_x = icon_x + icon_size + ScaleUIPx(4);
         int content_h = bar_h - ScaleUIPx(8);
         int content_y = bar_y + (bar_h - content_h) / 2;
 
-        Color text_color = c_text;
+        Color text_color = ui_material_style()
+                               ? ui_material_scheme().on_surface_variant
+                               : c_text;
         Color icon_tint = WHITE;
 
         if(is_disabled) {
@@ -169,11 +205,26 @@ UIRenderTabBar(UITabBar bar)
             text_color.a = text_color.a > 150 ? 150 : text_color.a;
             icon_tint.a = 150;
         } else if(is_selected) {
-            text_color = LightenUIColor(c_text, 10);
+            if(ui_material_style()) {
+                text_color = ui_material_scheme().primary;
+            } else {
+                text_color = LightenUIColor(c_text, 10);
+            }
         }
 
         // Draw icon if present
         if(tab->icon.id != 0) {
+            if(!has_label)
+                icon_x = tab_x + (tab_w - icon_size) / 2;
+            else if(ui_material_style()) {
+                int gap = ScaleUIPx(4);
+                int label_w = MeasureUIText(tab->label, font);
+                int content_w = icon_size + gap + label_w;
+                if(content_w > tab_w - text_pad * 2)
+                    content_w = tab_w - text_pad * 2;
+                icon_x = tab_x + (tab_w - content_w) / 2;
+                text_x = icon_x + icon_size + gap;
+            }
             Rectangle icon_rect = {
                 (float)icon_x,
                 (float)(bar_y + (bar_h - icon_size) / 2),
@@ -184,7 +235,9 @@ UIRenderTabBar(UITabBar bar)
             DrawTexturePro(tab->icon, icon_src, icon_rect, (Vector2){0}, 0, icon_tint);
             text_x = icon_x + icon_size + ScaleUIPx(4);
         } else {
-            text_x = tab_x + text_pad;
+            text_x = ui_material_style() && has_label
+                         ? tab_x + (tab_w - MeasureUIText(tab->label, font)) / 2
+                         : tab_x + text_pad;
         }
 
         // Draw tab label
@@ -195,8 +248,14 @@ UIRenderTabBar(UITabBar bar)
             (float)content_h
         };
 
-        if(text_rect.width > 0 && tab->label != NULL) {
-            DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
+        if(text_rect.width > 0 && has_label) {
+            if(ui_material_style())
+                DrawCenteredUIControlText(tab->label,
+                                          (int)(text_rect.x + text_rect.width / 2),
+                                          (int)(text_rect.y + text_rect.height / 2),
+                                          font, text_color);
+            else
+                DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
         }
 
         // Handle click detection

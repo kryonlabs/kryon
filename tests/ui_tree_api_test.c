@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "theme.h"
 #include <stdio.h>
 
 static int failures;
@@ -22,6 +23,8 @@ main(void)
     UIBottomNav nav = {0};
     UITabBar tabs = {0};
 
+    SetThemeStyle(THEME_STYLE_RETRO);
+
     check_int("section label",
               UIGetNodeHeight(UINodeSectionLabel(section, 0, 0)),
               ScaleUIPx(24));
@@ -37,6 +40,11 @@ main(void)
     check_int("bottom nav",
               UIGetNodeHeight(UINodeBottomNav(nav)),
               ScaleUIPx(40));
+    SetThemeStyle(THEME_STYLE_MATERIAL);
+    check_int("material bottom nav",
+              UIGetNodeHeight(UINodeBottomNav(nav)),
+              ScaleUIPx(64));
+    SetThemeStyle(THEME_STYLE_RETRO);
     check_int("tab bar",
               UIGetNodeHeight(UINodeTabBar(tabs)),
               ScaleUIPx(36));

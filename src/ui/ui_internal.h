@@ -20,6 +20,7 @@ extern Color c_text, c_bg, c_surface, c_circle, c_button, c_button_hover, c_icon
 extern Camera2D g_ui_camera;
 extern Texture2D g_ui_gear_icon;
 extern Texture2D g_ui_x_icon;
+extern unsigned long g_ui_frame_serial;
 extern int g_ui_slider_active_id;
 extern int g_ui_pointer_dragging;
 extern int g_ui_pointer_owner;
@@ -65,11 +66,15 @@ Rectangle ui_centered_min_hit_rect(int x, int y, int w, int h,
                                    int min_w, int min_h);
 int ui_material_style(void);
 Color ui_material_on_color(Color color);
+UIMaterialScheme ui_material_scheme(void);
 Color ui_material_surface_container(void);
+Color ui_material_surface_variant(void);
 Color ui_material_outline(void);
 void ui_material_state_layer(Rectangle bounds, Color on_color,
                              int hovered, int focused, int pressed);
 void ui_material_focus(Rectangle bounds);
+void ui_material_elevation(Rectangle bounds, float radius, int level);
+void ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed);
 void ui_draw_control_background(Rectangle bounds, Color background,
                                 Color border, float classic_radius);
 
@@ -170,6 +175,7 @@ int UIRenderIconSliderPopup(UIIconSliderPopup popup);
 UIIconRowResult UIRenderBottomIconRow(UIBottomIconRow row);
 UIBottomNavResult UIRenderBottomNav(UIBottomNav nav);
 UIBottomNavConfigResult UIRenderBottomNavConfigModal(UIBottomNavConfigModal modal);
+UITopNavResult UIRenderTopNav(UITopNav nav);
 UIToolbarResult UIRenderToolbar(UIToolbar toolbar);
 UIToolbarHeaderResult UIRenderToolbarHeader(UIToolbarHeader header);
 int UIRenderSubtabBar(UISubtabBar bar);

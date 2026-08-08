@@ -4,6 +4,18 @@
 static UIStyleTokens g_ui_style_override;
 static int g_ui_style_override_enabled = 0;
 
+typedef struct {
+    unsigned int key;
+    Vector2 origin;
+    float age;
+    int active;
+    unsigned long frame_seen;
+} UIMaterialRipple;
+
+#define UI_MATERIAL_RIPPLE_MAX 64
+
+static UIMaterialRipple g_material_ripples[UI_MATERIAL_RIPPLE_MAX];
+
 UIStyleTokens
 GetUIStyleTokensForThemeStyle(ThemeStyle style)
 {
@@ -37,59 +49,19 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
             .touch_target_min = 48,
             .shadow_offset_y = 2
         };
-    case THEME_STYLE_FLUENT:
+    case THEME_STYLE_SYSTEM:
+    default:
         return (UIStyleTokens){
-            .control_radius = 0.16f,
-            .panel_radius = 0.16f,
-            .control_alpha = 246,
-            .panel_alpha = 248,
-            .border_alpha = 220,
-            .shadow_alpha = 32,
-            .shine_alpha = 92,
-            .bevel_enabled = 0,
-            .touch_target_min = 36,
-            .shadow_offset_y = 1
-        };
-    case THEME_STYLE_ADWAITA:
-        return (UIStyleTokens){
-            .control_radius = 0.10f,
-            .panel_radius = 0.12f,
+            .control_radius = 0.06f,
+            .panel_radius = 0.0f,
             .control_alpha = 255,
             .panel_alpha = 255,
             .border_alpha = 255,
             .shadow_alpha = 0,
             .shine_alpha = 0,
-            .bevel_enabled = 0,
-            .touch_target_min = 40,
-            .shadow_offset_y = 0
-        };
-    case THEME_STYLE_LIQUID_GLASS:
-        return (UIStyleTokens){
-            .control_radius = 0.45f,
-            .panel_radius = 0.36f,
-            .control_alpha = 150,
-            .panel_alpha = 188,
-            .border_alpha = 190,
-            .shadow_alpha = 56,
-            .shine_alpha = 132,
-            .bevel_enabled = 0,
-            .touch_target_min = 40,
-            .shadow_offset_y = 2
-        };
-    case THEME_STYLE_AERO:
-    case THEME_STYLE_SYSTEM:
-    default:
-        return (UIStyleTokens){
-            .control_radius = 0.20f,
-            .panel_radius = 0.18f,
-            .control_alpha = 188,
-            .panel_alpha = 148,
-            .border_alpha = 220,
-            .shadow_alpha = 82,
-            .shine_alpha = 174,
-            .bevel_enabled = 0,
+            .bevel_enabled = 1,
             .touch_target_min = 36,
-            .shadow_offset_y = 4
+            .shadow_offset_y = 0
         };
     }
 }
@@ -161,12 +133,6 @@ ui_material_style(void)
 }
 
 static int
-ui_aero_style(void)
-{
-    return GetEffectiveThemeStyle() == THEME_STYLE_AERO;
-}
-
-static int
 ui_color_luminance(Color color)
 {
     return ((int)color.r * 299 + (int)color.g * 587 + (int)color.b * 114) / 1000;
@@ -178,16 +144,62 @@ ui_material_on_color(Color color)
     return ui_color_luminance(color) < 128 ? RAYWHITE : (Color){0x1D, 0x1B, 0x20, 0xFF};
 }
 
+static Color
+ui_material_tone(Color base, int light_delta, int dark_delta)
+{
+    return GetEffectiveThemeDarkMode() ? LightenUIColor(base, dark_delta) :
+                                         DarkenUIColor(base, light_delta);
+}
+
+UIMaterialScheme
+ui_material_scheme(void)
+{
+    UIMaterialScheme scheme;
+    Color disabled = c_text;
+
+    scheme.primary = c_circle;
+    scheme.on_primary = ui_material_on_color(scheme.primary);
+    scheme.secondary = c_button;
+    scheme.on_secondary = ui_material_on_color(scheme.secondary);
+    scheme.surface = c_surface.a != 0 ? c_surface : c_bg;
+    scheme.on_surface = c_text;
+    scheme.surface_container = ui_material_tone(c_bg, 4, 10);
+    scheme.surface_variant = ui_material_tone(c_bg, 10, 18);
+    scheme.on_surface_variant = ui_material_tone(c_text, 34, 28);
+    scheme.outline = ui_material_tone(c_bg, 44, 42);
+    scheme.error = GetEffectiveThemeDarkMode()
+                       ? (Color){0xF2, 0xB8, 0xB5, 0xFF}
+                       : (Color){0xBA, 0x1A, 0x1A, 0xFF};
+    scheme.on_error = ui_material_on_color(scheme.error);
+    scheme.disabled_container = ui_material_tone(c_bg, 14, 14);
+    scheme.disabled_container.a = 96;
+    disabled.a = 96;
+    scheme.disabled_content = disabled;
+    return scheme;
+}
+
+UIMaterialScheme
+GetUIMaterialScheme(void)
+{
+    return ui_material_scheme();
+}
+
 Color
 ui_material_surface_container(void)
 {
-    return GetEffectiveThemeDarkMode() ? LightenUIColor(c_bg, 10) : DarkenUIColor(c_bg, 4);
+    return ui_material_scheme().surface_container;
+}
+
+Color
+ui_material_surface_variant(void)
+{
+    return ui_material_scheme().surface_variant;
 }
 
 Color
 ui_material_outline(void)
 {
-    return GetEffectiveThemeDarkMode() ? LightenUIColor(c_bg, 42) : DarkenUIColor(c_bg, 44);
+    return ui_material_scheme().outline;
 }
 
 void
@@ -221,6 +233,82 @@ ui_material_focus(Rectangle bounds)
 }
 
 void
+ui_material_elevation(Rectangle bounds, float radius, int level)
+{
+    Color shadow;
+    int y1;
+    int y2;
+
+    if(level <= 0)
+        return;
+    if(level > 4)
+        level = 4;
+
+    shadow = BLACK;
+    shadow.a = (unsigned char)(18 + level * 6);
+    y1 = ScaleUIPx(level);
+    y2 = ScaleUIPx(level * 2);
+    DrawRectangleRounded((Rectangle){bounds.x, bounds.y + (float)y2,
+                                     bounds.width, bounds.height},
+                         radius, 12, shadow);
+    shadow.a = (unsigned char)(10 + level * 4);
+    DrawRectangleRounded((Rectangle){bounds.x, bounds.y + (float)y1,
+                                     bounds.width, bounds.height},
+                         radius, 12, shadow);
+}
+
+void
+ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed)
+{
+    UIMaterialRipple *ripple;
+    Vector2 mouse;
+    float dt;
+    float max_radius;
+    float radius;
+    Color color = on_color;
+    unsigned int hash = (unsigned int)key * 2654435761u;
+
+    if(key == 0)
+        return;
+    ripple = &g_material_ripples[hash % UI_MATERIAL_RIPPLE_MAX];
+    if(ripple->key != hash || g_ui_frame_serial - ripple->frame_seen > 20) {
+        memset(ripple, 0, sizeof(*ripple));
+        ripple->key = hash;
+    }
+    ripple->frame_seen = g_ui_frame_serial;
+
+    mouse = ui_mouse_world();
+    if(pressed && !ripple->active) {
+        ripple->origin = CheckCollisionPointRec(mouse, bounds)
+                             ? mouse
+                             : (Vector2){bounds.x + bounds.width * 0.5f,
+                                         bounds.y + bounds.height * 0.5f};
+        ripple->age = 0.0f;
+        ripple->active = 1;
+    }
+    if(!ripple->active)
+        return;
+
+    dt = GetFrameTime();
+    if(dt <= 0.0f || dt > 0.1f)
+        dt = 1.0f / 60.0f;
+    ripple->age += dt;
+    if(!pressed && ripple->age > 0.32f) {
+        ripple->active = 0;
+        return;
+    }
+
+    max_radius = sqrtf(bounds.width * bounds.width + bounds.height * bounds.height);
+    radius = max_radius * (ripple->age / 0.32f);
+    if(radius < ScaleUIPx(8))
+        radius = (float)ScaleUIPx(8);
+    if(radius > max_radius)
+        radius = max_radius;
+    color.a = pressed ? 28 : (unsigned char)(28.0f * (1.0f - ripple->age / 0.32f));
+    DrawCircleV(ripple->origin, radius, color);
+}
+
+void
 ui_draw_control_background(Rectangle bounds, Color background, Color border,
                            float classic_radius)
 {
@@ -241,59 +329,9 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     if(classic_radius > 0.0f)
         radius = classic_radius;
 
-    if(ui_aero_style()) {
-        Color shadow = BLACK;
-        Color glass = LightenUIColor(background, GetEffectiveThemeDarkMode() ? 16 : 28);
-        Color inner = c_circle;
-        Color top = WHITE;
-        Color bottom = GetEffectiveThemeDarkMode() ? LightenUIColor(c_bg, 30) :
-                                                     DarkenUIColor(c_bg, 12);
-        int inset = ScaleUIPx(2);
-        int top_h = (int)(bounds.height * 0.48f);
-
-        shadow.a = tokens.shadow_alpha;
-        DrawRectangleRounded((Rectangle){bounds.x,
-                                         bounds.y + ScaleUIPx(tokens.shadow_offset_y),
-                                         bounds.width, bounds.height},
-                             radius, 12, shadow);
-
-        if(tokens.control_alpha < glass.a)
-            glass.a = tokens.control_alpha;
-        if(tokens.border_alpha < border.a)
-            border.a = tokens.border_alpha;
-        DrawRectangleRounded(bounds, radius, 12, glass);
-
-        inner.a = 52;
-        if(bounds.width > (float)(inset * 2) &&
-           bounds.height > (float)(inset * 2))
-            DrawRectangleRounded((Rectangle){bounds.x + (float)inset,
-                                             bounds.y + (float)inset,
-                                             bounds.width - (float)(inset * 2),
-                                             bounds.height - (float)(inset * 2)},
-                                 radius, 12, inner);
-
-        top.a = tokens.shine_alpha;
-        if(top_h > ScaleUIPx(3))
-            DrawRectangleRounded((Rectangle){bounds.x + (float)inset,
-                                             bounds.y + (float)ScaleUIPx(1),
-                                             bounds.width - (float)(inset * 2),
-                                             (float)top_h},
-                                 radius, 12, top);
-
-        bottom.a = 48;
-        if(bounds.height > (float)ScaleUIPx(8))
-            DrawRectangleRounded((Rectangle){bounds.x + (float)inset,
-                                             bounds.y + bounds.height * 0.56f,
-                                             bounds.width - (float)(inset * 2),
-                                             bounds.height * 0.40f},
-                                 radius, 12, bottom);
-
-        if(border.a != 0)
-            DrawRectangleRoundedLines(bounds, radius, 12, border);
-        return;
-    }
-
-    if(tokens.shadow_alpha > 0 && tokens.shadow_offset_y > 0) {
+    if(ui_material_style()) {
+        ui_material_elevation(bounds, radius, tokens.shadow_offset_y);
+    } else if(tokens.shadow_alpha > 0 && tokens.shadow_offset_y > 0) {
         Color shadow = DarkenUIColor(c_bg, 35);
         shadow.a = tokens.shadow_alpha;
         DrawRectangleRounded((Rectangle){bounds.x,

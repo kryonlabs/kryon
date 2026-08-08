@@ -177,9 +177,41 @@ UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
     }
     y += font + label_gap + row_h + row_gap;
 
-    if(settings.theme_style != NULL)
-        *settings.theme_style = THEME_STYLE_RETRO;
-    ui_dropdown_close(settings.id_base + 3);
+    if(settings.theme_style != NULL) {
+        const char *style_options[3];
+        int style_values[3] = {
+            THEME_STYLE_SYSTEM,
+            THEME_STYLE_RETRO,
+            THEME_STYLE_MATERIAL
+        };
+        int style_index = 0;
+
+        style_options[0] = ui_theme_settings_text(settings.style_system_label,
+                                                  "System style");
+        style_options[1] = ui_theme_settings_text(settings.style_retro_label,
+                                                  GetThemeStyleLabel(THEME_STYLE_RETRO));
+        style_options[2] = ui_theme_settings_text(settings.style_material_label,
+                                                  GetThemeStyleLabel(THEME_STYLE_MATERIAL));
+        for(int i = 0; i < 3; i++) {
+            if(*settings.theme_style == style_values[i])
+                style_index = i;
+        }
+        UIRenderText(ui_theme_settings_text(settings.style_label, "Style"),
+                   settings.x, y, font, c_text);
+        if(UIRenderDropdown(settings.id_base + 3,
+                          settings.x, y + font + label_gap,
+                          settings.w, row_h, style_options, 3,
+                          &style_index)) {
+            *settings.theme_style = style_values[ui_clampi(style_index, 0, 2)];
+            if(state != NULL)
+                state->draw_style_menu = 2;
+        } else if(state != NULL) {
+            state->draw_style_menu = 1;
+        }
+        y += font + label_gap + row_h + row_gap;
+    } else {
+        ui_dropdown_close(settings.id_base + 3);
+    }
 
     return y - row_gap;
 }
@@ -215,8 +247,10 @@ UIRenderThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state
         if(settings.theme_id != NULL && previous_theme != *settings.theme_id)
             result.palette_changed = 1;
     }
+    if(state->draw_style_menu == 2)
+        result.style_changed = 1;
     result.changed = result.source_changed || result.mode_changed ||
-                     result.palette_changed;
+                     result.palette_changed || result.style_changed;
     if(settings.theme_source != NULL)
         *settings.theme_source = ui_clampi(*settings.theme_source,
                                                  THEME_SOURCE_APP,
@@ -238,8 +272,15 @@ UIRenderThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state
     if(settings.theme_id != NULL)
         *settings.theme_id = ui_clampi(*settings.theme_id, 0,
                                              THEME_COUNT - 1);
-    if(settings.theme_style != NULL)
-        *settings.theme_style = THEME_STYLE_RETRO;
+    if(settings.theme_style != NULL) {
+        if(*settings.theme_style != THEME_STYLE_SYSTEM &&
+           *settings.theme_style != THEME_STYLE_RETRO &&
+           *settings.theme_style != THEME_STYLE_MATERIAL) {
+            *settings.theme_style = THEME_STYLE_SYSTEM;
+            result.style_changed = 1;
+            result.changed = 1;
+        }
+    }
     return result;
 }
 

@@ -4,7 +4,42 @@
 int
 ui_bottom_nav_height(void)
 {
+    if(ui_material_style())
+        return ScaleUIPx(64);
     return ScaleUIPx(40);
+}
+
+static int
+ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
+{
+    Vector2 mouse = ui_mouse_world();
+    int inside = CheckCollisionPointRec(mouse, bounds);
+    int captured = UIInputCapturesClick(mouse);
+    int active = inside && !disabled && !captured;
+
+    if(hovered != NULL)
+        *hovered = active && UIHoverEffectsEnabled();
+    if(inside && !captured) {
+        if(disabled)
+            MarkUIDisabled();
+        else
+            MarkUIClickable();
+    }
+    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        UIConsumeRelease();
+        return 1;
+    }
+    return 0;
+}
+
+static void
+ui_draw_material_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint)
+{
+    if(icon.id == 0)
+        return;
+    DrawTexturePro(icon,
+                   (Rectangle){0, 0, (float)icon.width, (float)icon.height},
+                   dst, (Vector2){0}, 0, tint);
 }
 
 UIBottomNavResult
@@ -24,6 +59,7 @@ UIRenderBottomNav(UIBottomNav nav)
     int cues = UITransitionCuesEnabled();
     UIWidget widget;
     Rectangle bounds;
+    UIMaterialScheme scheme;
 
     result.y = y;
     result.height = height;
@@ -47,15 +83,23 @@ UIRenderBottomNav(UIBottomNav nav)
                            UI_WIDGET_READONLY);
     UIWidgetSetAction(&widget, "UIRenderBottomNav");
 
-    DrawRectangle(0, y, nav.view_width, height, DarkenUIColor(c_bg, 10));
-    DrawLine(0, y, nav.view_width, y, DarkenUIColor(c_bg, 42));
+    scheme = ui_material_scheme();
+    if(ui_material_style()) {
+        Rectangle bar = {0, (float)y, (float)nav.view_width, (float)height};
+
+        ui_material_elevation(bar, 0.0f, 2);
+        DrawRectangleRec(bar, scheme.surface_container);
+    } else {
+        DrawRectangle(0, y, nav.view_width, height, DarkenUIColor(c_bg, 10));
+        DrawLine(0, y, nav.view_width, y, DarkenUIColor(c_bg, 42));
+    }
 
     for(int i = 0; i < count; i++) {
         const UIBottomNavItem *item = &nav.items[i];
         int x = start_x + i * tab_w;
         int w = i == count - 1 ? start_x + group_w - x : tab_w;
-        int icon_x = x + (w - icon_size) / 2;
-        int icon_y = y + (height - icon_size) / 2;
+        int icon_x;
+        int icon_y;
         int hover = 0;
         UIButtonStyle style = item->active
                                   ? UI_BUTTON_STYLE_TAB_SELECTED
@@ -65,13 +109,71 @@ UIRenderBottomNav(UIBottomNav nav)
         if(item->disabled)
             icon_tint.a = 150;
 
+        if(ui_material_style()) {
+            Rectangle item_bounds = {(float)x, (float)y, (float)w, (float)height};
+            int label_font = UI_TEXT_12;
+            int label_h = GetUITextLineHeight(label_font);
+            int label_y = y + height - ScaleUIPx(10) - label_h;
+            int indicator_w = ScaleUIPx(56);
+            int indicator_h = ScaleUIPx(28);
+            int indicator_x = x + (w - indicator_w) / 2;
+            int indicator_y = y + ScaleUIPx(6);
+            int label_pad = ScaleUIPx(4);
+            Color text_tint = item->active ? scheme.on_surface :
+                                             scheme.on_surface_variant;
+            Color state_tint = item->active ? scheme.on_secondary :
+                                              scheme.on_surface_variant;
+
+            icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(24);
+            icon_x = x + (w - icon_size) / 2;
+            icon_y = indicator_y + (indicator_h - icon_size) / 2;
+            if(item->disabled) {
+                icon_tint = scheme.disabled_content;
+                text_tint = scheme.disabled_content;
+                state_tint = scheme.disabled_content;
+            }
+            if(ui_bottom_nav_hit(item_bounds, item->disabled, &hover)) {
+                result.clicked_index = i;
+                result.clicked_route = item->route;
+            }
+            if(hover)
+                ui_material_state_layer(item_bounds, state_tint, hover, 0,
+                                        hover && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
+            if(item->active)
+                DrawRectangleRounded((Rectangle){(float)indicator_x,
+                                                 (float)indicator_y,
+                                                 (float)indicator_w,
+                                                 (float)indicator_h},
+                                     0.50f, 12, scheme.secondary);
+            ui_draw_material_bottom_nav_icon(item->icon,
+                                             (Rectangle){(float)icon_x,
+                                                         (float)icon_y,
+                                                         (float)icon_size,
+                                                         (float)icon_size},
+                                             icon_tint);
+            if(item->label != NULL && item->label[0] != '\0') {
+                Rectangle label_rect = {
+                    (float)(x + label_pad),
+                    (float)label_y,
+                    (float)(w - label_pad * 2),
+                    (float)label_h
+                };
+                DrawFittedUITextInRect(item->label, label_rect, label_font,
+                                       UI_TEXT_8, text_tint);
+            }
+            continue;
+        }
+
+        icon_x = x + (w - icon_size) / 2;
+        icon_y = y + (height - icon_size) / 2;
         if(UIRenderGenericButton(x, y, w, height, "", style,
                                   item->disabled, &hover)) {
             result.clicked_index = i;
             result.clicked_route = item->route;
         }
 
-        if(cues && item->active && !item->disabled && w > ScaleUIPx(20)) {
+        if(!ui_material_style() && cues && item->active &&
+           !item->disabled && w > ScaleUIPx(20)) {
             int cue_h = ScaleUIPx(2);
             if(cue_h < 1)
                 cue_h = 1;

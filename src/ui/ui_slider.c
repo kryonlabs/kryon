@@ -538,7 +538,33 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         UIConsumeRelease();
     }
 
-    if(ui_modern_style()) {
+    if(ui_material_style()) {
+        Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
+        int hovered = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
+                      !UIInputCapturesClick(mouse_world) &&
+                      UIHoverEffectsEnabled();
+        UIMaterialScheme scheme = ui_material_scheme();
+        Color fill = *value ? scheme.primary : BLANK;
+        Color border = *value ? scheme.primary : scheme.on_surface_variant;
+        Color state_color = *value ? scheme.primary : scheme.on_surface_variant;
+
+        mark_color = *value ? scheme.on_primary : mark_color;
+        if(disabled) {
+            fill = *value ? scheme.disabled_content : BLANK;
+            border = scheme.disabled_content;
+            mark_color = scheme.disabled_container;
+            label_color = scheme.disabled_content;
+        }
+        ui_material_state_layer((Rectangle){box.x - ScaleUIPx(12),
+                                            box.y - ScaleUIPx(12),
+                                            box.width + ScaleUIPx(24),
+                                            box.height + ScaleUIPx(24)},
+                                state_color, hovered, 0,
+                                hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
+        if(fill.a != 0)
+            DrawRectangleRounded(box, 0.12f, 8, fill);
+        DrawRectangleRoundedLinesEx(box, 0.12f, 8, ScaleUIPx(2), border);
+    } else if(ui_modern_style()) {
         Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
         Color border = LightenUIColor(box_color, 22);
         border.a = border.a > 150 ? 150 : border.a;

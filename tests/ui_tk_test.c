@@ -1,5 +1,6 @@
 #include "kryon.h"
 #include "kryon_test.h"
+#include "theme.h"
 #include "ui_inspect.h"
 
 #include <stdio.h>
@@ -28,6 +29,28 @@ main(void)
     };
 
     SetUIScale(1.0f);
+
+    SetThemeStyle(THEME_STYLE_RETRO);
+    check_int("retro style", GetThemeStyle(), THEME_STYLE_RETRO);
+    check_int("retro effective style", GetEffectiveThemeStyle(), THEME_STYLE_RETRO);
+    check_int("retro bevel", GetUIStyleTokens().bevel_enabled, 1);
+
+    SetThemeStyle(THEME_STYLE_MATERIAL);
+    check_int("material style", GetThemeStyle(), THEME_STYLE_MATERIAL);
+    check_int("material effective style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
+    check_int("material bevel", GetUIStyleTokens().bevel_enabled, 0);
+    check_int("material touch target", GetUIStyleTokens().touch_target_min, 48);
+
+    SetThemeStyle((ThemeStyle)99);
+    check_int("invalid style clamps", GetThemeStyle(), THEME_STYLE_SYSTEM);
+    SetThemeStyle(THEME_STYLE_SYSTEM);
+#if defined(ANDROID_BUILD) && ANDROID_BUILD
+    check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
+#elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
+    check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
+#else
+    check_int("host default style", GetEffectiveThemeStyle(), THEME_STYLE_RETRO);
+#endif
 
     frame = BeginUIFrameBox(parent, 10, 10, 4);
     r = UIFramePack(&frame, UI_SIDE_TOP, 30);

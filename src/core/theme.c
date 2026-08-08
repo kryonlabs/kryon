@@ -687,27 +687,36 @@ GetThemeMode(void)
 void
 SetThemeStyle(ThemeStyle style)
 {
-    (void)style;
-    theme_style = THEME_STYLE_RETRO;
+    if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_MATERIAL)
+        style = THEME_STYLE_SYSTEM;
+    theme_style = style;
     ApplyCurrentUITheme();
 }
 
 ThemeStyle
 GetThemeStyle(void)
 {
-    return THEME_STYLE_RETRO;
+    return theme_style;
 }
 
 ThemeStyle
 GetEffectiveThemeStyle(void)
 {
-    return THEME_STYLE_RETRO;
+    if(theme_style == THEME_STYLE_SYSTEM)
+        return GetDefaultPlatformThemeStyle();
+    return theme_style;
 }
 
 ThemeStyle
 GetDefaultPlatformThemeStyle(void)
 {
+#if defined(ANDROID_BUILD) && ANDROID_BUILD
+    return THEME_STYLE_MATERIAL;
+#elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
+    return THEME_STYLE_MATERIAL;
+#else
     return THEME_STYLE_RETRO;
+#endif
 }
 
 int
@@ -721,14 +730,6 @@ GetDefaultThemeForThemeStyle(ThemeStyle style)
         return THEME_MONO;
     case THEME_STYLE_MATERIAL:
         return THEME_MINT;
-    case THEME_STYLE_FLUENT:
-        return THEME_COBALT;
-    case THEME_STYLE_ADWAITA:
-        return THEME_SAGE;
-    case THEME_STYLE_LIQUID_GLASS:
-        return THEME_DAWN;
-    case THEME_STYLE_AERO:
-        return THEME_OCEAN;
     case THEME_STYLE_SYSTEM:
     default:
         return THEME_MONO;
@@ -754,22 +755,6 @@ GetThemeStyleLabel(ThemeStyle style)
     case THEME_STYLE_MATERIAL:
         key = "theme_style_material";
         fallback = "Material";
-        break;
-    case THEME_STYLE_FLUENT:
-        key = "theme_style_fluent";
-        fallback = "Fluent";
-        break;
-    case THEME_STYLE_ADWAITA:
-        key = "theme_style_adwaita";
-        fallback = "Adwaita";
-        break;
-    case THEME_STYLE_LIQUID_GLASS:
-        key = "theme_style_liquid_glass";
-        fallback = "Liquid Glass";
-        break;
-    case THEME_STYLE_AERO:
-        key = "theme_style_aero";
-        fallback = "Aero";
         break;
     default:
         return "System";

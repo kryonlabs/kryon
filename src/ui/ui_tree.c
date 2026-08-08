@@ -356,6 +356,13 @@ UINodeBottomNav(UIBottomNav nav)
 }
 
 UIWidgetNode
+UINodeTopNav(UITopNav nav)
+{
+    return ui_node(nav.id, UI_WIDGET_CUSTOM_NODE,
+                   (Rectangle){nav.x, nav.y, nav.width, nav.height});
+}
+
+UIWidgetNode
 UINodeTabBar(UITabBar bar)
 {
     return ui_node(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds);
@@ -1021,6 +1028,14 @@ UIBottomNavConfigNode(UIBottomNavConfigModal modal)
 {
     ui_tree_add(modal.id, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
     return UIRenderBottomNavConfigModal(modal);
+}
+
+UITopNavResult
+UITopNavNode(UITopNav nav)
+{
+    ui_tree_add(nav.id, UI_WIDGET_CUSTOM_NODE,
+                (Rectangle){nav.x, nav.y, nav.width, nav.height}, &nav);
+    return UIRenderTopNav(nav);
 }
 
 UIToolbarResult
