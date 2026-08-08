@@ -85,16 +85,22 @@ kc_c_string(char *dst, size_t dst_size, const char *src)
     dst[n] = '\0';
 }
 
-static void
+void
+kc_function_base_name(char *dst, size_t dst_size, const KryFunction *fn)
+{
+    if(fn->exact_name)
+        snprintf(dst, dst_size, "%s", fn->screen);
+    else
+        snprintf(dst, dst_size, "%s_kry_draw", fn->screen);
+}
+
+void
 kc_function_name(char *dst, size_t dst_size, const KryFile *file,
                  const KryFunction *fn)
 {
     char base[KC_NAME_MAX + 16];
 
-    if(fn->exact_name)
-        snprintf(base, sizeof(base), "%s", fn->screen);
-    else
-        snprintf(base, sizeof(base), "%s_kry_draw", fn->screen);
+    kc_function_base_name(base, sizeof(base), fn);
     if(file->module[0] != '\0' && !fn->global_name) {
         snprintf(dst, dst_size, "%s_%s", file->module, base);
         return;

@@ -141,6 +141,16 @@ void append_macro_excluded(char *dst, size_t dst_size, const char *current,
 void write_project_source(KryFile **files, int file_count, const char *root,
                           const char *out_dir);
 
+/* Build the per-function C name base: the screen name, suffixed with
+ * "_kry_draw" unless the function declared an exact name. Does not prepend the
+ * module prefix — callers do that when the function is module-local. */
+void kc_function_base_name(char *dst, size_t dst_size, const KryFunction *fn);
+
+/* Resolve a function's full C name, prepending the module prefix for
+ * module-local functions. Shared by codegen and project emission. */
+void kc_function_name(char *dst, size_t dst_size, const KryFile *file,
+                      const KryFunction *fn);
+
 /* --- error recovery (Phase 4) ------------------------------------------- */
 
 /* Record a diagnostic and continue parsing. Use in place of die() for

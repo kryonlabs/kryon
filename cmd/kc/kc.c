@@ -4162,24 +4162,6 @@ brace_delta(const char *line)
     return delta;
 }
 
-static int
-kry_function_c_name(char *dst, size_t dst_size, const KryFile *file,
-                    const KryFunction *fn)
-{
-    char base[KC_NAME_MAX + 16];
-
-    if(fn->exact_name)
-        snprintf(base, sizeof(base), "%s", fn->screen);
-    else
-        snprintf(base, sizeof(base), "%s_kry_draw", fn->screen);
-    if(file->module[0] != '\0' && !fn->global_name) {
-        snprintf(dst, dst_size, "%s_%s", file->module, base);
-        return 1;
-    }
-    snprintf(dst, dst_size, "%s", base);
-    return 1;
-}
-
 static const KryFunction *
 find_local_function(const KryFile *file, const char *name)
 {
@@ -4187,10 +4169,7 @@ find_local_function(const KryFile *file, const char *name)
         const KryFunction *fn = &file->functions[i];
         char base[KC_NAME_MAX + 16];
 
-        if(fn->exact_name)
-            snprintf(base, sizeof(base), "%s", fn->screen);
-        else
-            snprintf(base, sizeof(base), "%s_kry_draw", fn->screen);
+        kc_function_base_name(base, sizeof(base), fn);
         if(strcmp(name, base) == 0 || strcmp(name, fn->screen) == 0)
             return fn;
     }
@@ -4501,7 +4480,7 @@ rewrite_kry_expr(char *dst, size_t dst_size, const KryFile *file,
                     char cname[KC_NAME_MAX * 2];
                     int written;
 
-                    kry_function_c_name(cname, sizeof(cname), file, fn);
+                    kc_function_name(cname, sizeof(cname), file, fn);
                     written = snprintf(dst + n, dst_size - n, "%s", cname);
                     if(written < 0)
                         written = 0;
@@ -4902,7 +4881,7 @@ static void
 function_name(char *dst, size_t dst_size, const KryFile *file,
               const KryFunction *fn)
 {
-    kry_function_c_name(dst, dst_size, file, fn);
+    kc_function_name(dst, dst_size, file, fn);
 }
 
 static int
@@ -4923,7 +4902,7 @@ app_hook_c_name(char *dst, size_t dst_size, const KryFile *file,
         const KryFunction *fn = &file->functions[i];
 
         if(fn->exact_name && strcmp(fn->screen, hook_name) == 0) {
-            kry_function_c_name(dst, dst_size, file, fn);
+            kc_function_name(dst, dst_size, file, fn);
             return;
         }
     }
