@@ -37,6 +37,7 @@ extern struct android_app *GetAndroidApp(void);
 #define KSYNC_SIGNATURE_HEADER "X-Ksync-Signature"
 #define KSYNC_WEB_RESPONSE_MAX (4 * 1024 * 1024)
 
+#if defined(__EMSCRIPTEN__)
 static const char *
 transport_signature_context(const KsyncSyncConfig *cfg)
 {
@@ -83,6 +84,7 @@ transport_build_message(const KsyncSyncConfig *cfg, const char *method,
                    nonce_hex);
     return len > 0 && (size_t)len < out_size;
 }
+#endif
 
 #if !ANDROID_BUILD && !defined(__EMSCRIPTEN__)
 static size_t
