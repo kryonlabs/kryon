@@ -1,6 +1,23 @@
 CC ?= cc
 AR ?= ar
-BUILD_DIR ?= build
+UNAME_S := $(shell uname -s 2>/dev/null)
+UNAME_M := $(shell uname -m 2>/dev/null)
+ifeq ($(UNAME_M),amd64)
+    KRYON_ARCH := x86_64
+else
+    KRYON_ARCH := $(UNAME_M)
+endif
+ifeq ($(UNAME_S),Linux)
+    KRYON_PLATFORM := linux
+else ifeq ($(UNAME_S),FreeBSD)
+    KRYON_PLATFORM := freebsd
+else ifeq ($(UNAME_S),Darwin)
+    KRYON_PLATFORM := macos
+else
+    KRYON_PLATFORM := $(UNAME_S)
+endif
+BUILD_ROOT ?= build
+BUILD_DIR ?= $(BUILD_ROOT)/$(KRYON_PLATFORM)-$(KRYON_ARCH)
 PREFIX ?= $(HOME)/.local
 SITE_DIR ?= docs/site
 SITE_BUILD_DIR ?= $(BUILD_DIR)/site
@@ -52,23 +69,6 @@ else ifeq ($(KRYON_BACKEND),null)
 else
   $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
 endif
-UNAME_S := $(shell uname -s 2>/dev/null)
-UNAME_M := $(shell uname -m 2>/dev/null)
-ifeq ($(UNAME_M),amd64)
-    KRYON_ARCH := x86_64
-else
-    KRYON_ARCH := $(UNAME_M)
-endif
-ifeq ($(UNAME_S),Linux)
-    KRYON_PLATFORM := linux
-else ifeq ($(UNAME_S),FreeBSD)
-    KRYON_PLATFORM := freebsd
-else ifeq ($(UNAME_S),Darwin)
-    KRYON_PLATFORM := macos
-else
-    KRYON_PLATFORM := $(UNAME_S)
-endif
-
 RAYLIB_DIR ?= $(KRYON_DIR)/vendor/raylib/src
 RAYLIB_BUILD_DIR ?= $(BUILD_DIR)/raylib
 RAYLIB_A ?= $(RAYLIB_BUILD_DIR)/libraylib.a
