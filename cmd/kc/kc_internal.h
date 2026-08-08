@@ -151,6 +151,42 @@ void kc_function_base_name(char *dst, size_t dst_size, const KryFunction *fn);
 void kc_function_name(char *dst, size_t dst_size, const KryFile *file,
                       const KryFunction *fn);
 
+/* --- kc_util.c: string/path/brace leaf helpers --------------------------- */
+
+/* Universal error path. When a "%s:%d:" location prefix is present and error
+ * recovery is active (parse_kry installs a setjmp boundary), the message is
+ * recorded as a diagnostic and control returns to the boundary so parsing can
+ * continue. Otherwise the message is printed and the process exits. */
+void die(const char *fmt, ...)
+#if defined(__GNUC__) || defined(__clang__)
+    __attribute__((noreturn))
+#endif
+    ;
+
+char *trim(char *s);
+int starts_word(const char *s, const char *word);
+int starts_statement_word(const char *s, const char *word);
+int starts_header_directive(const char *s, const char *word);
+int parse_ident(char **sp, char *dst, size_t dst_size);
+int is_ident_text(const char *text);
+int line_is_goto_label(const char *line, char *label, size_t label_size);
+int parse_quoted(char **sp, char *dst, size_t dst_size);
+int parse_c_header_token(char **sp, char *dst, size_t dst_size);
+void c_string_literal(char *dst, size_t dst_size, const char *src);
+void module_symbol(char *dst, size_t dst_size, const char *module);
+void module_header(char *dst, size_t dst_size, const char *module);
+void validate_output_name(KryFile *file, int line_no, const char *name);
+void replace_path_basename(char *dst, size_t dst_size, const char *path,
+                           const char *base);
+const char *relative_path(const char *root, const char *path);
+void normalize_source_path(char *dst, size_t dst_size, const char *path);
+void path_join(char *dst, size_t dst_size, const char *a, const char *b);
+void strip_kry_ext(char *dst, size_t dst_size, const char *path);
+void mkdir_parent(const char *path);
+void header_guard(char *dst, size_t dst_size, const char *rel);
+const char *skip_indent(const char *line);
+int brace_delta(const char *line);
+
 /* --- error recovery (Phase 4) ------------------------------------------- */
 
 /* Record a diagnostic and continue parsing. Use in place of die() for

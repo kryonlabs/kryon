@@ -16,32 +16,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Skip leading whitespace (mirrors skip_indent in kc.c, kept local to avoid a
- * cross-module static dependency). */
+/* Skip leading whitespace. NULL-tolerant (the shared skip_indent assumes a
+ * valid pointer, so this stays local). */
 static const char *
-skip_ws(const char *s)
+ast_skip_ws(const char *s)
 {
     while(s != NULL && (*s == ' ' || *s == '\t'))
         s++;
     return s;
-}
-
-/* Count `{` minus `}` in a line, skipping preprocessor lines (which start
- * with `#`). Mirrors brace_delta in kc.c. */
-static int
-brace_delta(const char *text)
-{
-    int delta = 0;
-
-    if(text[0] == '#')
-        return 0;
-    for(const char *p = text; *p != '\0'; p++) {
-        if(*p == '{')
-            delta++;
-        else if(*p == '}')
-            delta--;
-    }
-    return delta;
 }
 
 /* Classify a single body[] fragment into an AstStmtKind by its leading token.
@@ -50,7 +32,7 @@ brace_delta(const char *text)
 static AstStmtKind
 classify_fragment(const char *raw)
 {
-    const char *t = skip_ws(raw);
+    const char *t = ast_skip_ws(raw);
 
     if(t[0] == '\0')
         return AST_STMT_UNKNOWN;
@@ -198,7 +180,7 @@ ast_function_from_body(const KryFunction *fn)
     depth = 1;  /* function body starts at depth 1 */
     for(i = 0; i < fn->body_count; i++) {
         const char *raw = fn->body[i];
-        const char *text = skip_ws(raw);
+        const char *text = ast_skip_ws(raw);
         AstStmt *s = &af->stmts[i];
         int delta;
 
