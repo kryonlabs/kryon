@@ -30,6 +30,9 @@ STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
 KC = $(BUILD_DIR)/bin/kc
 KT = $(BUILD_DIR)/bin/kt
 KRYON_APP = $(BUILD_DIR)/bin/kryon-app
+LEGACY_KC = $(BUILD_ROOT)/bin/kc
+LEGACY_KT = $(BUILD_ROOT)/bin/kt
+LEGACY_KRYON_APP = $(BUILD_ROOT)/bin/kryon-app
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
@@ -133,6 +136,22 @@ UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
+
+ifneq ($(BUILD_DIR),$(BUILD_ROOT))
+.PHONY: $(LEGACY_KC) $(LEGACY_KT) $(LEGACY_KRYON_APP)
+
+$(LEGACY_KC): $(KC) | $(BUILD_ROOT)/bin
+	$(INSTALL) -m 755 $(KC) $@
+
+$(LEGACY_KT): $(KT) | $(BUILD_ROOT)/bin
+	$(INSTALL) -m 755 $(KT) $@
+
+$(LEGACY_KRYON_APP): $(KRYON_APP) | $(BUILD_ROOT)/bin
+	$(INSTALL) -m 755 $(KRYON_APP) $@
+
+$(BUILD_ROOT)/bin:
+	mkdir -p $@
+endif
 
 all: $(LIB) $(KC) $(KT) $(KRYON_APP)
 
