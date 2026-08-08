@@ -247,6 +247,10 @@ CloseFileDialog(FileDialog *dlg)
 #include <sys/wait.h>
 #include <unistd.h>
 
+#if defined(SYSTEM_THEME_GTK)
+#include <gtk/gtk.h>
+#endif
+
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
@@ -258,6 +262,9 @@ typedef struct {
 typedef enum {
     DIALOG_BACKEND_AUTO,
     DIALOG_BACKEND_NONE,
+#if defined(SYSTEM_THEME_GTK)
+    DIALOG_BACKEND_GTK,
+#endif
     DIALOG_BACKEND_ZENITY,
     DIALOG_BACKEND_KDIALOG,
     DIALOG_BACKEND_YAD
@@ -333,6 +340,10 @@ backend_from_name(const char *name)
     if(strcmp(name, "none") == 0 || strcmp(name, "off") == 0 ||
        strcmp(name, "disabled") == 0)
         return DIALOG_BACKEND_NONE;
+#if defined(SYSTEM_THEME_GTK)
+    if(strcmp(name, "gtk") == 0)
+        return DIALOG_BACKEND_GTK;
+#endif
     if(strcmp(name, "zenity") == 0)
         return DIALOG_BACKEND_ZENITY;
     if(strcmp(name, "kdialog") == 0)
@@ -346,6 +357,10 @@ static int
 backend_available(DialogBackend backend)
 {
     switch(backend) {
+#if defined(SYSTEM_THEME_GTK)
+    case DIALOG_BACKEND_GTK:
+        return 1;
+#endif
     case DIALOG_BACKEND_ZENITY:
         return command_exists("zenity");
     case DIALOG_BACKEND_KDIALOG:
@@ -365,6 +380,10 @@ select_backend_from_request(DialogBackend requested)
     if(requested != DIALOG_BACKEND_AUTO)
         return backend_available(requested) ? requested : DIALOG_BACKEND_NONE;
 
+#if defined(SYSTEM_THEME_GTK)
+    if(backend_available(DIALOG_BACKEND_GTK))
+        return DIALOG_BACKEND_GTK;
+#endif
     if(backend_available(DIALOG_BACKEND_ZENITY))
         return DIALOG_BACKEND_ZENITY;
     if(backend_available(DIALOG_BACKEND_KDIALOG))
@@ -391,6 +410,10 @@ backend_name(DialogBackend backend)
         return "auto";
     case DIALOG_BACKEND_NONE:
         return "none";
+#if defined(SYSTEM_THEME_GTK)
+    case DIALOG_BACKEND_GTK:
+        return "gtk";
+#endif
     case DIALOG_BACKEND_ZENITY:
         return "zenity";
     case DIALOG_BACKEND_KDIALOG:
@@ -581,6 +604,104 @@ build_start_path(char *out, size_t out_size, const char *dir, const char *defaul
     }
 }
 
+#if defined(SYSTEM_THEME_GTK)
+static GtkFileChooserAction
+gtk_action_for_mode(FileDialogMode mode)
+{
+    if(mode == FILE_DIALOG_SAVE)
+        return GTK_FILE_CHOOSER_ACTION_SAVE;
+    if(mode == FILE_DIALOG_SELECT_FOLDER)
+        return GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER;
+    return GTK_FILE_CHOOSER_ACTION_OPEN;
+}
+
+static int
+run_gtk_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
+               const char *filter, const char *default_filename)
+{
+    FileDialogInternal *internal;
+    GtkWidget *dialog;
+    GtkFileChooser *chooser;
+    GtkFileFilter *gtk_filter;
+    char patterns[256];
+    char *path;
+    int response;
+
+    internal = ensure_internal(dlg);
+    reset_dialog_result(dlg, mode, title, filter, default_filename);
+    if(internal == NULL)
+        return 0;
+    if(!gtk_init_check(NULL, NULL))
+        return 0;
+
+    dialog = gtk_file_chooser_dialog_new(title != NULL && title[0] != '\0'
+                                             ? title
+                                             : "Select file",
+                                         NULL,
+                                         gtk_action_for_mode(mode),
+                                         "_Cancel", GTK_RESPONSE_CANCEL,
+                                         mode == FILE_DIALOG_SAVE ? "_Save" : "_Open",
+                                         GTK_RESPONSE_ACCEPT,
+                                         NULL);
+    if(dialog == NULL)
+        return 0;
+
+    chooser = GTK_FILE_CHOOSER(dialog);
+    gtk_file_chooser_set_current_folder(chooser, internal->current_dir);
+    if(mode == FILE_DIALOG_SAVE && default_filename != NULL && default_filename[0] != '\0') {
+        gtk_file_chooser_set_current_name(chooser, default_filename);
+        gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
+    }
+    if(mode == FILE_DIALOG_LOAD && filter != NULL && filter[0] != '\0') {
+        build_filter_patterns(patterns, sizeof(patterns), filter);
+        if(patterns[0] != '\0') {
+            char *copy = strdup(patterns);
+            char *token = copy;
+
+            gtk_filter = gtk_file_filter_new();
+            gtk_file_filter_set_name(gtk_filter, "Files");
+            while(copy != NULL && token != NULL && token[0] != '\0') {
+                char *next = strchr(token, ' ');
+                if(next != NULL)
+                    *next++ = '\0';
+                if(token[0] != '\0')
+                    gtk_file_filter_add_pattern(gtk_filter, token);
+                token = next;
+            }
+            gtk_file_chooser_add_filter(chooser, gtk_filter);
+            free(copy);
+        }
+    }
+
+    response = gtk_dialog_run(GTK_DIALOG(dialog));
+    if(response != GTK_RESPONSE_ACCEPT) {
+        gtk_widget_destroy(dialog);
+        while(gtk_events_pending())
+            gtk_main_iteration();
+        return 0;
+    }
+
+    path = gtk_file_chooser_get_filename(chooser);
+    if(path == NULL || path[0] == '\0') {
+        if(path != NULL)
+            g_free(path);
+        gtk_widget_destroy(dialog);
+        while(gtk_events_pending())
+            gtk_main_iteration();
+        return 0;
+    }
+
+    snprintf(dlg->result_path, sizeof(dlg->result_path), "%s", path);
+    dlg->confirmed = 1;
+    update_current_dir_from_path(internal, path);
+    g_free(path);
+    gtk_widget_destroy(dialog);
+    while(gtk_events_pending())
+        gtk_main_iteration();
+    return 1;
+}
+#endif
+
 static int
 run_external_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
                     const char *filter, const char *default_filename)
@@ -606,6 +727,11 @@ run_external_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
     backend = select_backend();
     if(backend == DIALOG_BACKEND_NONE)
         return 0;
+
+#if defined(SYSTEM_THEME_GTK)
+    if(backend == DIALOG_BACKEND_GTK)
+        return run_gtk_dialog(dlg, mode, title, filter, default_filename);
+#endif
 
     build_start_path(start_path, sizeof(start_path), internal->current_dir, default_filename);
     build_filter_arg(filter_arg, sizeof(filter_arg), filter, backend);

@@ -61,6 +61,18 @@ test_backend_priority(void)
     }
     unsetenv("KRYON_FILE_DIALOG_BACKEND");
     set_test_path(dir);
+#if defined(SYSTEM_THEME_GTK)
+    check_backend("gtk default", "gtk");
+
+    write_fake_command(dir, "yad");
+    check_backend("gtk preferred over yad", "gtk");
+
+    write_fake_command(dir, "kdialog");
+    check_backend("gtk preferred over kdialog", "gtk");
+
+    write_fake_command(dir, "zenity");
+    check_backend("gtk preferred over helper dialogs", "gtk");
+#else
     check_backend("no helper returns none", "none");
 
     write_fake_command(dir, "yad");
@@ -71,6 +83,7 @@ test_backend_priority(void)
 
     write_fake_command(dir, "zenity");
     check_backend("zenity preferred over desktop-specific helpers", "zenity");
+#endif
 }
 
 static void
