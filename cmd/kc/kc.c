@@ -11,19 +11,6 @@
 #include "kc_internal.h"
 #include "kc_ast.h"
 
-#include <setjmp.h>
-
-/* Error recovery: parse_statement and the top-level dispatcher install a
- * recovery target (setjmp) before parsing each statement. A die() reached
- * during parsing that carries a "%s:%d:" location is recorded as a diagnostic
- * and longjmps back to that boundary, so one malformed statement does not abort
- * the whole compile — kc keeps going and reports every recoverable error.
- * Fatal conditions (out of memory, bad CLI args) die() with no location and
- * abort as before. */
-static jmp_buf g_kc_recover_buf;
-static int g_kc_recovering = 0;
-static KryFile *g_kc_current_file = NULL;
-
 static void rewrite_nil_tokens(char *dst, size_t dst_size, const char *src);
 static void resolve_use_module(char *dst, size_t dst_size,
                                const KryFile *file, const char *module);
@@ -295,115 +282,6 @@ add_body(KryFile *file, const char *fmt, ...)
     va_end(args);
     fn->body_line[fn->body_count] = file->current_line;
     fn->body_count++;
-}
-
-void
-die(const char *fmt, ...)
-{
-    va_list args;
-    char message[2048];
-    char *p1;
-    char *p2;
-    char *p3;
-    int line = 0;
-    int column = 1;
-
-    va_start(args, fmt);
-    vsnprintf(message, sizeof(message), fmt, args);
-    va_end(args);
-    p1 = strchr(message, ':');
-    p2 = p1 != NULL ? strchr(p1 + 1, ':') : NULL;
-    if(p1 != NULL && p2 != NULL) {
-        int all_digits = 1;
-
-        for(char *p = p1 + 1; p < p2; p++) {
-            if(*p < '0' || *p > '9') {
-                all_digits = 0;
-                break;
-            }
-        }
-        if(all_digits) {
-            *p1 = '\0';
-            *p2 = '\0';
-            line = atoi(p1 + 1);
-            p3 = strchr(p2 + 1, ':');
-            if(p3 != NULL) {
-                int column_digits = 1;
-
-                for(char *p = p2 + 1; p < p3; p++) {
-                    if(*p < '0' || *p > '9') {
-                        column_digits = 0;
-                        break;
-                    }
-                }
-                if(column_digits) {
-                    *p3 = '\0';
-                    column = atoi(p2 + 1);
-                    p2 = p3;
-                }
-            }
-            if(column <= 0)
-                column = 1;
-            /* During parsing, a located error is recoverable: record it as a
-             * diagnostic and jump back to the statement boundary so kc can
-             * report the next error too. Fatal (non-parse) callers never set
-             * the recovery flag and fall through to exit. */
-            if(g_kc_recovering && g_kc_current_file != NULL) {
-                kc_error(g_kc_current_file, line, "%s", trim(p2 + 1));
-                g_kc_current_file->diagnostics[g_kc_current_file->diagnostic_count - 1].column = column;
-                longjmp(g_kc_recover_buf, 1);
-            }
-            /* A fatal error reached mid-parse: print any diagnostics already
-             * recorded by earlier recoveries before aborting, so the user sees
-             * every error found so far, not just this last one. */
-            if(g_kc_current_file != NULL && g_kc_current_file->diagnostic_count > 0)
-                kc_flush_diagnostics(g_kc_current_file);
-            fprintf(stderr, "%s:%d:%d: error: %s\n",
-                    message, line, column, trim(p2 + 1));
-            exit(1);
-        }
-    }
-    if(g_kc_current_file != NULL && g_kc_current_file->diagnostic_count > 0)
-        kc_flush_diagnostics(g_kc_current_file);
-    fprintf(stderr, "kc: error: %s\n", message);
-    exit(1);
-}
-
-void
-kc_error(KryFile *file, int line_no, const char *fmt, ...)
-{
-    va_list args;
-    KryDiagnostic *diag;
-
-    if(file == NULL || file->diagnostic_count >= KC_DIAGNOSTIC_MAX) {
-        char msg[2048];
-        va_start(args, fmt);
-        vsnprintf(msg, sizeof(msg), fmt, args);
-        va_end(args);
-        die("%s", msg);
-    }
-    diag = &file->diagnostics[file->diagnostic_count++];
-    snprintf(diag->path, sizeof(diag->path), "%s", file->path);
-    diag->line = line_no > 0 ? line_no : 1;
-    diag->column = 1;
-    va_start(args, fmt);
-    vsnprintf(diag->message, sizeof(diag->message), fmt, args);
-    va_end(args);
-}
-
-int
-kc_flush_diagnostics(const KryFile *file)
-{
-    int i;
-
-    if(file == NULL)
-        return 0;
-    for(i = 0; i < file->diagnostic_count; i++) {
-        const KryDiagnostic *d = &file->diagnostics[i];
-        fprintf(stderr, "%s:%d:%d: error: %s\n", d->path, d->line, d->column,
-                d->message);
-    }
-    return file->diagnostic_count;
 }
 static void
 emit_source_push(KryFile *file, int line_no)
@@ -2822,7 +2700,7 @@ parse_kry(KryFile *file)
     /* Enable per-statement error recovery for this file. Located die() calls
      * reached while parsing record a diagnostic and longjmp to the nearest
      * statement boundary instead of aborting the compile. */
-    g_kc_current_file = file;
+    kc_set_recovery_file(file);
     int line_no = 1;
     int depth = 0;
     int in_screen = 0;
@@ -3465,11 +3343,11 @@ parse_kry(KryFile *file)
                      depth == macro_depths[macro_count - 1])) {
                     if(pending_stmt[0] != '\0') {
                         file->current_line = pending_line;
-                        if(setjmp(g_kc_recover_buf) == 0) {
-                            g_kc_recovering = 1;
+                        if(setjmp(*kc_recover_buf()) == 0) {
+                            kc_set_recovering(1);
                             parse_statement(file, pending_line, pending_stmt);
                         }
-                        g_kc_recovering = 0;
+                        kc_set_recovering(0);
                         file->current_line = 0;
                         pending_stmt[0] = '\0';
                         pending_line = 0;
@@ -3553,12 +3431,12 @@ process_screen_line:
                            pending_delta == 0 &&
                            !line_starts_continuation(line)) {
                             file->current_line = pending_line;
-                            if(setjmp(g_kc_recover_buf) == 0) {
-                                g_kc_recovering = 1;
+                            if(setjmp(*kc_recover_buf()) == 0) {
+                                kc_set_recovering(1);
                                 parse_statement(file, pending_line,
                                                 pending_stmt);
                             }
-                            g_kc_recovering = 0;
+                            kc_set_recovering(0);
                             file->current_line = 0;
                             pending_stmt[0] = '\0';
                             pending_line = 0;
@@ -3633,11 +3511,11 @@ process_screen_line:
 
                     if(stmt[0] != '\0') {
                         file->current_line = stmt_line;
-                        if(setjmp(g_kc_recover_buf) == 0) {
-                            g_kc_recovering = 1;
+                        if(setjmp(*kc_recover_buf()) == 0) {
+                            kc_set_recovering(1);
                             parse_statement(file, stmt_line, stmt);
                         }
-                        g_kc_recovering = 0;
+                        kc_set_recovering(0);
                         file->current_line = 0;
                         if(parsed_pending) {
                             pending_stmt[0] = '\0';

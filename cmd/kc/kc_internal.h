@@ -163,6 +163,26 @@ void die(const char *fmt, ...)
 #endif
     ;
 
+/* --- kc_diag.c: diagnostics + error recovery ----------------------------- */
+
+#include <setjmp.h>
+
+/* Recovery target for parse_kry's per-statement boundary. setjmp() must run in
+ * the caller's own frame, so the buffer is handed out by reference and the
+ * caller does setjmp(*kc_recover_buf()). */
+jmp_buf *kc_recover_buf(void);
+void kc_set_recovery_file(KryFile *file);
+void kc_set_recovering(int on);
+
+/* Record a diagnostic and continue parsing. Use in place of die() for
+ * recoverable parse errors (bad statement, missing token, etc.). Fatal errors
+ * (out of memory, bad CLI args) still use die(). */
+void kc_error(KryFile *file, int line_no, const char *fmt, ...);
+
+/* Print all accumulated diagnostics to stderr and return the count. Caller
+ * exits nonzero if any were printed. */
+int kc_flush_diagnostics(const KryFile *file);
+
 char *trim(char *s);
 int starts_word(const char *s, const char *word);
 int starts_statement_word(const char *s, const char *word);
@@ -186,16 +206,5 @@ void mkdir_parent(const char *path);
 void header_guard(char *dst, size_t dst_size, const char *rel);
 const char *skip_indent(const char *line);
 int brace_delta(const char *line);
-
-/* --- error recovery (Phase 4) ------------------------------------------- */
-
-/* Record a diagnostic and continue parsing. Use in place of die() for
- * recoverable parse errors (bad statement, missing token, etc.). Fatal errors
- * (out of memory, bad CLI args) still use die(). */
-void kc_error(KryFile *file, int line_no, const char *fmt, ...);
-
-/* Print all accumulated diagnostics to stderr and return the count. Caller
- * exits nonzero if any were printed. */
-int kc_flush_diagnostics(const KryFile *file);
 
 #endif
