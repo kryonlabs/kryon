@@ -24,7 +24,7 @@
   --card-hover-bg: #fbf9f2;
   --card-active-bg: #efeadd;
 
-  /* aliases (kept for compatibility with api.html) */
+  /* shared API page tokens */
   --page-bg: var(--bg);
   --panel-bg: var(--surface);
   --ink: var(--ink-strong);

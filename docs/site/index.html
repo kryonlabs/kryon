@@ -82,7 +82,7 @@
           </article>
           <article class="goal">
             <h3>Private Renderers</h3>
-            <p>Low-level widget drawing now lives behind internal <code>DrawUI*</code> functions so application code uses the declarative surface.</p>
+            <p>Kryon owns the raylib-style app surface: <code>DrawUI*</code>, <code>DrawRectangle</code>, <code>IsKeyPressed</code>, and <code>KEY_*</code> stay portable across backends.</p>
           </article>
           <article class="goal">
             <h3>System Themes</h3>
@@ -113,6 +113,11 @@
             <img src="icons/wrench.png" width="48" height="48" alt="">
             <h3>Source-Aware Inspection</h3>
             <p>Preview widgets carry source metadata, so inspection clicks select the generated UI element and open the exact .kry line.</p>
+          </article>
+          <article class="feature">
+            <img src="icons/app.png" width="48" height="48" alt="">
+            <h3>Backend Boundary</h3>
+            <p>Apps call Kryon-owned names directly. The current raylib backend can be replaced without changing app code.</p>
           </article>
         </div>
       </section>

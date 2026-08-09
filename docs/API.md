@@ -5,6 +5,7 @@ Kryon is a lightweight C UI component library for embedded applications and runt
 ## Table of Contents
 
 - [Initialization](#initialization)
+- [Canonical App API](#canonical-app-api)
 - [Core Modules](#core-modules)
   - [Color](#color)
   - [Scaling](#scaling)
@@ -90,6 +91,53 @@ state, updates the layout view size, and begins a frame with
 ```c
 void BeginUIFrame(int width, int height, float dpi);
 ```
+
+---
+
+## Canonical App API
+
+Kryon owns the public app-facing API. The default backend still implements much
+of the surface through raylib, but application and generated code should include
+Kryon headers and call Kryon-owned names directly. That keeps apps portable to
+future backends.
+
+Use the raylib-style drawing, input, texture, window, and math names provided by
+Kryon, such as:
+
+```c
+DrawRectangle(0, 0, view_width, view_height, GetThemeBackground());
+Vector2 mouse = GetMousePosition();
+if(IsKeyPressed(KEY_ESCAPE))
+    CloseWindow();
+```
+
+Use canonical widget drawing names when drawing a concrete widget immediately:
+
+```c
+DrawUIIconButton(button);
+DrawUITextField(field);
+DrawUISlider(id, x, y, w, "Volume", 0, 100, &volume, "%");
+DrawUIOverlays();
+```
+
+Use widget-tree node declarations for normal `.kry` screens and reusable UI.
+Generated app loops build, reconcile, layout, route input, update, draw the tree,
+then draw overlays:
+
+```c
+UIBeginTree(screen_id);
+/* screen declares UITextNode, UIButtonNode, WidgetSprite, and other nodes */
+UIEndTree();
+UIReconcileTree();
+UILayoutTree();
+UIRouteInput();
+UIUpdateTree();
+DrawUITree();
+DrawUIOverlays();
+```
+
+Migrate callers to the current Kryon API directly so the backend boundary stays
+simple.
 
 ---
 
@@ -1095,9 +1143,9 @@ int UIModalNode(const char *title, const char *message,
 
 **Returns:** 1 for cancel, 2 for confirm
 
-Compatibility wrapper around `UIActionModalNode`. It uses an adaptive width,
-reflows message text, fits button labels, and wraps actions when needed. Backdrop
-clicks are blocked automatically for the current frame and the next frame.
+Uses the same adaptive modal behavior as `UIActionModalNode`: adaptive width,
+reflowed message text, fitted button labels, wrapped actions when needed, and
+automatic backdrop capture for the current frame and the next frame.
 
 #### `UIModal3ButtonNode`
 
@@ -1108,9 +1156,9 @@ int UIModal3ButtonNode(const char *title, const char *message,
                        const char *left_btn, const char *middle_btn, const char *right_btn);
 ```
 
-Compatibility wrapper around `UIActionModalNode`. It uses an adaptive width,
-reflows message text, fits button labels, and wraps actions when needed. Backdrop
-clicks are blocked automatically for the current frame and the next frame.
+Uses the same adaptive modal behavior as `UIActionModalNode`: adaptive width,
+reflowed message text, fitted button labels, wrapped actions when needed, and
+automatic backdrop capture for the current frame and the next frame.
 
 #### `UIPanelFrame` / `UIModalFrameNode`
 

@@ -6,9 +6,18 @@ how to update downstream projects without editing vendored copies by hand.
 
 ## Role
 
-Kryon is a small immediate-mode UI layer on top of raylib. Applications should use
-Kryon for shared UI behavior instead of duplicating pointer capture, modal backdrop,
-button, tab, scroll, text input, theme, and DPI logic in each project.
+Kryon is a small native UI runtime with a Kryon-owned, raylib-style app API.
+The current default backend is raylib, but applications should not depend on
+raylib directly. Applications should use Kryon for shared UI behavior instead
+of duplicating pointer capture, modal backdrop, button, tab, scroll, text input,
+theme, and DPI logic in each project.
+
+Do not add legacy wrappers or alias layers when the app API changes. Migrate
+Kryon itself first, then update downstream apps such as Inbe and Krait to the
+canonical names directly. Public app code should use names such as
+`DrawUIIconButton`, `DrawUITextField`, `DrawRectangle`, `GetMousePosition`,
+`IsKeyPressed`, and `KEY_*` through Kryon. Do not reintroduce duplicate public
+widget names for the same behavior.
 
 Keep application code focused on product state and domain behavior. Move repeated UI
 interaction rules into Kryon when more than one screen or project needs them.
