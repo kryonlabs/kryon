@@ -44,7 +44,7 @@ ui_theme_settings_text(const char *text, const char *fallback)
 }
 
 static int
-ui_theme_settings_show_mode(UIThemeSettings settings)
+ui_theme_settings_show_mode(ThemeSettingsProps settings)
 {
     if(settings.theme_source != NULL &&
        *settings.theme_source == THEME_SOURCE_SYSTEM &&
@@ -54,13 +54,13 @@ ui_theme_settings_show_mode(UIThemeSettings settings)
 }
 
 static int
-ui_theme_palette_option_count(UIThemeSettings settings)
+ui_theme_palette_option_count(ThemeSettingsProps settings)
 {
     return THEME_COUNT + (settings.allow_system_source ? 1 : 0);
 }
 
 static int
-ui_theme_palette_index(UIThemeSettings settings)
+ui_theme_palette_index(ThemeSettingsProps settings)
 {
     int offset = settings.allow_system_source ? 1 : 0;
     int theme = settings.theme_id != NULL ? *settings.theme_id : THEME_SKY;
@@ -76,7 +76,7 @@ ui_theme_palette_index(UIThemeSettings settings)
 }
 
 static ThemeId
-ui_theme_palette_theme_at(UIThemeSettings settings, int index)
+ui_theme_palette_theme_at(ThemeSettingsProps settings, int index)
 {
     int offset = settings.allow_system_source ? 1 : 0;
 
@@ -87,7 +87,7 @@ ui_theme_palette_theme_at(UIThemeSettings settings, int index)
 }
 
 int
-ui_theme_settings_height(UIThemeSettings settings)
+ui_theme_settings_height(ThemeSettingsProps settings)
 {
     int rows = 1;
 
@@ -101,7 +101,7 @@ ui_theme_settings_height(UIThemeSettings settings)
 }
 
 int
-DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
+DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
 {
     const char *mode_options[3];
     const char *theme_options[THEME_COUNT + 1];
@@ -217,7 +217,7 @@ DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
 }
 
 UIThemeSettingsResult
-DrawUIThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state)
+DrawUIThemeSettingsMenus(ThemeSettingsProps settings, UIThemeSettingsState *state)
 {
     UIThemeSettingsResult result = {0};
 

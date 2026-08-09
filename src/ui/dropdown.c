@@ -56,6 +56,15 @@ ui_dropdown_panel_color(int amount)
     return luminance < 96 ? LightenUIColor(c_bg, amount) : DarkenUIColor(c_bg, amount);
 }
 
+static Color
+ui_dropdown_text_on(Color bg)
+{
+    int luma = (int)bg.r * 299 + (int)bg.g * 587 + (int)bg.b * 114;
+
+    return luma > 150000 ? (Color){24, 24, 24, 255}
+                         : (Color){246, 246, 246, 255};
+}
+
 void
 SetUIDropdownClipTop(int top)
 {
@@ -243,6 +252,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     Rectangle btn_bounds = {x, y, w, h};
     Vector2 mouse = ui_mouse_world();
     Color button_bg;
+    Color button_text;
     int button_inside = CheckCollisionPointRec(mouse, btn_bounds);
     int active = button_inside &&
                  (state->open
@@ -330,6 +340,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
         Color surface = ui_material_surface_container();
         Color border = state->open ? c_circle : ui_material_outline();
 
+        button_bg = surface;
         ui_draw_control_background(btn_bounds, surface, border, 0.18f);
         ui_material_state_layer(btn_bounds, c_text, hover || state->open, 0, 0);
     } else if(ui_modern_style()) {
@@ -341,6 +352,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
                     state->open ? LightenUIColor(button_bg, 34) : LightenUIColor(button_bg, 24),
                     state->open ? DarkenUIColor(button_bg, 38) : DarkenUIColor(button_bg, 30));
     }
+    button_text = ui_dropdown_text_on(button_bg);
 
     /* Draw current selection text, clipped before the X icon. */
     int current_index = state->selected_index;
@@ -356,7 +368,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
                          (int)((float)text_w * g_ui_camera.zoom),
                          (int)((float)h * g_ui_camera.zoom));
-        DrawUIText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, c_text);
+        DrawUIText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, button_text);
         EndUIClip();
         PopUIFont(font_token);
     }
@@ -368,8 +380,8 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     int x2 = arrow_x + x_half;
     int y1 = arrow_y - x_half;
     int y2 = arrow_y + x_half;
-    DrawLine(x1, y1, x2, y2, c_text);
-    DrawLine(x1, y2, x2, y1, c_text);
+    DrawLine(x1, y1, x2, y2, button_text);
+    DrawLine(x1, y2, x2, y1, button_text);
 
     EndUIWidget(&widget);
     return changed;
@@ -423,6 +435,8 @@ draw_dropdown_menu(int id)
     int option_count = state->option_count;
     const char **options = state->options;
     const char **option_fonts = state->option_fonts;
+    Color panel = ui_dropdown_panel_color(18);
+    Color option_text = ui_dropdown_text_on(panel);
 
     int dropdown_y = 0;
     int dropdown_h = 0;
@@ -510,21 +524,22 @@ draw_dropdown_menu(int id)
     /* Draw dropdown background */
     if(ui_material_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
-        Color panel = ui_material_surface_container();
         Color border = ui_material_outline();
 
+        panel = ui_material_surface_container();
+        option_text = ui_dropdown_text_on(panel);
         ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
                                    panel, border, tokens.panel_radius);
     } else if(ui_modern_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
-        Color panel = ui_dropdown_panel_color(18);
         Color border = ui_dropdown_panel_color(36);
         if(tokens.panel_alpha < panel.a)
             panel.a = tokens.panel_alpha;
+        option_text = ui_dropdown_text_on(panel);
         ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
                                    panel, border, tokens.panel_radius);
     } else {
-        DrawRectangle(x, dropdown_y, w, dropdown_h, ui_dropdown_panel_color(18));
+        DrawRectangle(x, dropdown_y, w, dropdown_h, panel);
         DrawUIBevel(x, dropdown_y, w, dropdown_h,
                     ui_dropdown_panel_color(32), ui_dropdown_panel_color(8));
     }
@@ -609,7 +624,7 @@ draw_dropdown_menu(int id)
             int font_token = PushUIFont(option_fonts[i]);
             DrawUIText(options[i], x + ScaleUIPx(12),
                        GetUIControlTextY(options[i], option_y, option_h, font),
-                       font, c_text);
+                       font, option_text);
             PopUIFont(font_token);
         }
     }
@@ -636,8 +651,8 @@ draw_arrow:
     int x2 = arrow_x + x_half;
     int y1 = arrow_y - x_half;
     int y2 = arrow_y + x_half;
-    DrawLine(x1, y1, x2, y2, c_text);
-    DrawLine(x1, y2, x2, y1, c_text);
+    DrawLine(x1, y1, x2, y2, option_text);
+    DrawLine(x1, y2, x2, y1, option_text);
     return changed;
 }
 

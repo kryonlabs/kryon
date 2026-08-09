@@ -112,14 +112,14 @@ static int
 ui_measure_paragraph(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_paragraph_height(*(const UIParagraph *)node.props);
+        return ui_paragraph_height(*(const UIParagraphSpec *)node.props);
     return ui_paragraph_height(node.data.paragraph);
 }
 
 static int
 ui_measure_readonly_text_box(UIWidgetNode node)
 {
-    const UIReadonlyTextBox *box;
+    const ReadonlyTextBoxProps *box;
 
     box = node.props != NULL ? node.props : &node.data.readonly_text_box;
     return ui_readonly_text_box_height(box->text, box->font,
@@ -131,7 +131,7 @@ static int
 ui_measure_label_text_field(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_label_text_field_height(*(const UILabelTextField *)node.props);
+        return ui_label_text_field_height(*(const LabelTextFieldProps *)node.props);
     return ui_label_text_field_height(node.data.label_text_field);
 }
 
@@ -139,7 +139,7 @@ static int
 ui_measure_section_label(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_section_label_height(*(const UISectionLabel *)node.props);
+        return ui_section_label_height(*(const SectionLabelProps *)node.props);
     return ui_section_label_height(node.data.section_label);
 }
 
@@ -147,7 +147,7 @@ static int
 ui_measure_checkbox_row(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_checkbox_row_height(*(const UICheckboxRow *)node.props);
+        return ui_checkbox_row_height(*(const CheckboxRowProps *)node.props);
     return ui_checkbox_row_height(node.data.checkbox_row);
 }
 
@@ -155,7 +155,7 @@ static int
 ui_measure_button_row(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_button_row_height(*(const UIButtonRow *)node.props);
+        return ui_button_row_height(*(const ButtonRowProps *)node.props);
     return ui_button_row_height(node.data.button_row);
 }
 
@@ -179,7 +179,7 @@ static int
 ui_measure_theme_settings(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_theme_settings_height(*(const UIThemeSettings *)node.props);
+        return ui_theme_settings_height(*(const ThemeSettingsProps *)node.props);
     return ui_theme_settings_height(node.data.theme_settings);
 }
 
@@ -193,7 +193,7 @@ static int
 ui_measure_paragraph_modal(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_paragraph_modal_height(*(const UIParagraphModalMeasure *)node.props);
+        return ui_paragraph_modal_height(*(const ParagraphModalMeasureProps *)node.props);
     return ui_paragraph_modal_height(node.data.paragraph_modal);
 }
 
@@ -257,7 +257,7 @@ UIEndTree(void)
 }
 
 UINodeId
-UIBeginNodeGroup(int id, Rectangle bounds)
+BeginNodeGroup(int id, Rectangle bounds)
 {
     UINodeId node;
 
@@ -268,7 +268,7 @@ UIBeginNodeGroup(int id, Rectangle bounds)
 }
 
 void
-UIEndNodeGroup(void)
+EndNodeGroup(void)
 {
     if(ui_tree_stack_depth > 1)
         ui_tree_stack_depth--;
@@ -361,7 +361,7 @@ UIGetNodeHeightById(int id)
 }
 
 UIWidgetNode
-UINodeParagraph(UIParagraph paragraph, int x, int y)
+UINodeParagraph(UIParagraphSpec paragraph, int x, int y)
 {
     UIWidgetNode node;
 
@@ -372,7 +372,7 @@ UINodeParagraph(UIParagraph paragraph, int x, int y)
 }
 
 UIWidgetNode
-UINodeReadonlyTextBox(UIReadonlyTextBox box)
+UINodeReadonlyTextBox(ReadonlyTextBoxProps box)
 {
     UIWidgetNode node;
 
@@ -382,7 +382,7 @@ UINodeReadonlyTextBox(UIReadonlyTextBox box)
 }
 
 UIWidgetNode
-UINodeLabelTextField(UILabelTextField row, int x, int y, int w)
+UINodeLabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
     UIWidgetNode node;
 
@@ -393,7 +393,7 @@ UINodeLabelTextField(UILabelTextField row, int x, int y, int w)
 }
 
 UIWidgetNode
-UINodeSectionLabel(UISectionLabel label, int x, int y)
+UINodeSectionLabel(SectionLabelProps label, int x, int y)
 {
     UIWidgetNode node;
 
@@ -403,7 +403,7 @@ UINodeSectionLabel(UISectionLabel label, int x, int y)
 }
 
 UIWidgetNode
-UINodeCheckboxRow(UICheckboxRow row, int x, int y)
+UINodeCheckboxRow(CheckboxRowProps row, int x, int y)
 {
     UIWidgetNode node;
 
@@ -413,7 +413,7 @@ UINodeCheckboxRow(UICheckboxRow row, int x, int y)
 }
 
 UIWidgetNode
-UINodeButtonRow(UIButtonRow row)
+UINodeButtonRow(ButtonRowProps row)
 {
     UIWidgetNode node;
 
@@ -424,7 +424,7 @@ UINodeButtonRow(UIButtonRow row)
 }
 
 UIWidgetNode
-UINodeBottomNav(UIBottomNav nav)
+UINodeBottomNav(BottomNavProps nav)
 {
     UIWidgetNode node;
     int height;
@@ -436,20 +436,20 @@ UINodeBottomNav(UIBottomNav nav)
 }
 
 UIWidgetNode
-UINodeTopNav(UITopNav nav)
+UINodeTopNav(TopNavProps nav)
 {
     return ui_node(nav.id, UI_WIDGET_CUSTOM_NODE,
                    (Rectangle){nav.x, nav.y, nav.width, nav.height});
 }
 
 UIWidgetNode
-UINodeTabBar(UITabBar bar)
+UINodeTabBar(TabBarProps bar)
 {
     return ui_node(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds);
 }
 
 UIWidgetNode
-UINodeThemeSettings(UIThemeSettings settings)
+UINodeThemeSettings(ThemeSettingsProps settings)
 {
     UIWidgetNode node;
 
@@ -466,7 +466,7 @@ UINodeThemePicker(int x, int y, int w)
 }
 
 UIWidgetNode
-UINodeParagraphModal(UIParagraphModalMeasure measure)
+UINodeParagraphModal(ParagraphModalMeasureProps measure)
 {
     UIWidgetNode node;
 
@@ -534,7 +534,7 @@ ui_load_sprite_texture(const char *path)
 }
 
 static Rectangle
-ui_sprite_fit_rect(UISprite sprite, Texture2D texture)
+ui_sprite_fit_rect(SpriteProps sprite, Texture2D texture)
 {
     Rectangle dst = sprite.bounds;
     float src_w = sprite.source.width != 0.0f ? fabsf(sprite.source.width)
@@ -561,7 +561,7 @@ ui_sprite_fit_rect(UISprite sprite, Texture2D texture)
 }
 
 void
-UISpriteNode(UISprite sprite)
+UISpriteNode(SpriteProps sprite)
 {
     Texture2D texture;
     Rectangle source;
@@ -587,7 +587,7 @@ UISpriteNode(UISprite sprite)
 }
 
 void
-UIBackground(Color color)
+Background(Color color)
 {
     ui_tree_add(0, UI_WIDGET_BACKGROUND_NODE,
                 (Rectangle){0, 0, ui_view_width, ui_view_height}, NULL);
@@ -610,7 +610,7 @@ UITextInRectNode(const char *text, Rectangle rect, int font_size, Color color)
 }
 
 void
-UIParagraphNode(UIParagraph paragraph, int x, int *y)
+UIParagraphNode(UIParagraphSpec paragraph, int x, int *y)
 {
     UIWidgetNode node;
     UINodeId id;
@@ -663,7 +663,7 @@ UIBevelNode(int x, int y, int w, int h, Color light, Color dark)
 }
 
 int
-UIButtonNode(UIButton button)
+UIButtonNode(UIButtonSpec button)
 {
     ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
                 &button);
@@ -671,7 +671,7 @@ UIButtonNode(UIButton button)
 }
 
 int
-UIIconButtonNode(UIIconButton button)
+UIIconButtonNode(IconButtonProps button)
 {
     ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
                 &button);
@@ -679,7 +679,7 @@ UIIconButtonNode(UIIconButton button)
 }
 
 int
-UIHrefNode(UIHref link)
+UIHrefNode(HrefProps link)
 {
     if(link.bounds.height <= 0)
         link.bounds.height = GetUITextHeight(link.text, link.font);
@@ -688,7 +688,7 @@ UIHrefNode(UIHref link)
 }
 
 int
-UITextInputControlNode(UITextInput input)
+UITextInputControlNode(TextInputProps input)
 {
     ui_tree_add(input.focus_id, UI_WIDGET_TEXT_FIELD_NODE, input.bounds,
                 &input);
@@ -705,7 +705,7 @@ UIGenericButtonNode(int id, int x, int y, int w, int h,
 }
 
 int
-UITextFieldNode(UITextField field)
+UITextFieldNode(TextFieldProps field)
 {
     ui_tree_add(field.focus_id, UI_WIDGET_TEXT_FIELD_NODE, field.bounds,
                 &field);
@@ -713,7 +713,7 @@ UITextFieldNode(UITextField field)
 }
 
 int
-UIReadonlyTextBoxNode(UIReadonlyTextBox box)
+UIReadonlyTextBoxNode(ReadonlyTextBoxProps box)
 {
     UIWidgetNode node;
     UINodeId id;
@@ -860,7 +860,7 @@ UICheckboxNode(int id, int x, int y, const char *label, int *value)
 }
 
 int
-UIThemeSettingsNode(UIThemeSettings settings, UIThemeSettingsState *state,
+UIThemeSettingsNode(ThemeSettingsProps settings, UIThemeSettingsState *state,
                     UIThemeSettingsResult *result)
 {
     UIWidgetNode node;
@@ -903,84 +903,84 @@ UIPopupMenuNode(int id, int x, int y, const UIMenuItem *items,
 }
 
 int
-UIRadioNode(UIRadioButton radio)
+UIRadioNode(RadioButtonProps radio)
 {
     ui_tree_add(radio.id, UI_WIDGET_CUSTOM_NODE, radio.bounds, &radio);
     return DrawUIRadioButton(radio);
 }
 
 void
-UIProgressNode(UIProgressBar progress)
+UIProgressNode(ProgressBarProps progress)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, progress.bounds, &progress);
     DrawUIProgressBar(progress);
 }
 
 int
-UISpinboxNode(UISpinbox spinbox)
+UISpinboxNode(SpinboxProps spinbox)
 {
     ui_tree_add(spinbox.id, UI_WIDGET_CUSTOM_NODE, spinbox.bounds, &spinbox);
     return DrawUISpinbox(spinbox);
 }
 
 int
-UIComboboxNode(UICombobox combo)
+UIComboboxNode(ComboboxProps combo)
 {
     ui_tree_add(combo.id, UI_WIDGET_DROPDOWN_NODE, combo.bounds, &combo);
     return DrawUICombobox(combo);
 }
 
 void
-UILabelFrameNode(UILabelFrame frame)
+UILabelFrameNode(LabelFrameProps frame)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, frame.bounds, &frame);
     DrawUILabelFrame(frame);
 }
 
 void
-UIImageBoxNode(UIImageBox image)
+UIImageBoxNode(ImageBoxProps image)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, image.bounds, &image);
     DrawUIImageBox(image);
 }
 
 int
-UIListBoxNode(UIListBox list)
+UIListBoxNode(ListBoxProps list)
 {
     ui_tree_add(list.id, UI_WIDGET_CUSTOM_NODE, list.bounds, &list);
     return DrawUIListBox(list);
 }
 
 int
-UITreeViewNode(UITreeView tree)
+UITreeViewNode(TreeViewProps tree)
 {
     ui_tree_add(tree.id, UI_WIDGET_CUSTOM_NODE, tree.bounds, &tree);
     return DrawUITreeView(tree);
 }
 
 int
-UICascadingTreeViewNode(UICascadingTreeView tree)
+UICascadingTreeViewNode(CascadingTreeViewProps tree)
 {
     ui_tree_add(tree.id, UI_WIDGET_CUSTOM_NODE, tree.bounds, &tree);
     return DrawUICascadingTreeView(tree);
 }
 
 int
-UISourceViewNode(UISourceView source)
+UISourceViewNode(SourceViewProps source)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, source.bounds, &source);
     return DrawUISourceView(source);
 }
 
 int
-UITableViewNode(UITableView table)
+UITableViewNode(TableViewProps table)
 {
     ui_tree_add(table.id, UI_WIDGET_CUSTOM_NODE, table.bounds, &table);
     return DrawUITableView(table);
 }
 
 int
-UITextAreaNode(UITextArea area)
+UITextAreaNode(TextAreaProps area)
 {
     ui_tree_add(area.focus_id, UI_WIDGET_TEXT_FIELD_NODE, area.bounds, &area);
     return DrawUITextArea(area);
@@ -994,21 +994,21 @@ UICanvasGridNode(Rectangle bounds, int step, Color color)
 }
 
 int
-UINotebookNode(UINotebook notebook)
+UINotebookNode(NotebookProps notebook)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, notebook.bounds, &notebook);
     return DrawUINotebook(notebook);
 }
 
 int
-UIPanedViewNode(UIPanedView panes)
+UIPanedViewNode(PanedViewProps panes)
 {
     ui_tree_add(panes.id, UI_WIDGET_CUSTOM_NODE, panes.bounds, &panes);
     return DrawUIPanedView(panes);
 }
 
 int
-UICollapsibleNode(UICollapsible section)
+UICollapsibleNode(CollapsibleProps section)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, section.bounds, &section);
     return DrawUICollapsible(section);
@@ -1022,28 +1022,28 @@ UIColorPickerNode(Rectangle bounds, Color *color)
 }
 
 int
-UIActionModalNode(UIModalSpec modal)
+UIActionModalNode(ModalProps modal)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
     return DrawUIActionModal(modal);
 }
 
 int
-UIMessageDialogNode(UIMessageDialog dialog)
+UIMessageDialogNode(MessageDialogProps dialog)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &dialog);
     return DrawUIMessageDialog(dialog);
 }
 
 int
-UIConfirmDialogNode(UIConfirmDialog dialog)
+UIConfirmDialogNode(ConfirmDialogProps dialog)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &dialog);
     return DrawUIConfirmDialog(dialog);
 }
 
 int
-UIPromptDialogNode(UIPromptDialog dialog)
+UIPromptDialogNode(PromptDialogProps dialog)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &dialog);
     return DrawUIPromptDialog(dialog);
@@ -1065,7 +1065,7 @@ UIFocusDebugOverlayNode(const UIAccessibilityNode *nodes, int count)
 }
 
 UIGuideResult
-UIGuideOverlayNode(UIGuideOverlay guide)
+UIGuideOverlayNode(GuideOverlayProps guide)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, guide.view_width, guide.view_height}, &guide);
     return DrawUIGuideOverlay(guide);
@@ -1115,7 +1115,7 @@ UITransitionFadeNode(const UITransition *transition, int width, int height,
 }
 
 void
-UIInfoRowsNode(UIInfoRows rows)
+UIInfoRowsNode(InfoRowsProps rows)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){rows.x, rows.y, rows.width,
@@ -1124,7 +1124,7 @@ UIInfoRowsNode(UIInfoRows rows)
 }
 
 int
-UILabelTextFieldNode(UILabelTextField row, int x, int y, int w)
+UILabelTextFieldNode(LabelTextFieldProps row, int x, int y, int w)
 {
     UIWidgetNode node;
     UINodeId id;
@@ -1137,7 +1137,7 @@ UILabelTextFieldNode(UILabelTextField row, int x, int y, int w)
 }
 
 int
-UISectionLabelNode(UISectionLabel label, int x, int y)
+UISectionLabelNode(SectionLabelProps label, int x, int y)
 {
     UIWidgetNode node;
     UINodeId id;
@@ -1150,7 +1150,7 @@ UISectionLabelNode(UISectionLabel label, int x, int y)
 }
 
 int
-UICheckboxRowNode(UICheckboxRow row, int x, int y)
+UICheckboxRowNode(CheckboxRowProps row, int x, int y)
 {
     UIWidgetNode node;
     UINodeId id;
@@ -1163,14 +1163,14 @@ UICheckboxRowNode(UICheckboxRow row, int x, int y)
 }
 
 int
-UIOverlayButtonNode(UIOverlayButton button)
+UIOverlayButtonNode(OverlayButtonProps button)
 {
     ui_tree_add(0, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
     return DrawUIOverlayButton(button);
 }
 
 int
-UIButtonRowNode(UIButtonRow row)
+UIButtonRowNode(ButtonRowProps row)
 {
     UIWidgetNode node;
     UINodeId id;
@@ -1183,7 +1183,7 @@ UIButtonRowNode(UIButtonRow row)
 }
 
 int
-UIIconSliderPopupNode(UIIconSliderPopup popup)
+UIIconSliderPopupNode(IconSliderPopupProps popup)
 {
     ui_tree_add(popup.id, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){popup.x, popup.y, 0, 0}, &popup);
@@ -1191,7 +1191,7 @@ UIIconSliderPopupNode(UIIconSliderPopup popup)
 }
 
 UIIconRowResult
-UIBottomIconRowNode(UIBottomIconRow row)
+UIBottomIconRowNode(BottomIconRowProps row)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){0, 0, row.view_width, row.view_height}, &row);
@@ -1199,7 +1199,7 @@ UIBottomIconRowNode(UIBottomIconRow row)
 }
 
 UIBottomNavResult
-UIBottomNavNode(UIBottomNav nav)
+UIBottomNavNode(BottomNavProps nav)
 {
     ui_tree_add(0, UI_WIDGET_BOTTOM_NAV_NODE,
                 (Rectangle){0, 0, nav.view_width, nav.view_height}, &nav);
@@ -1207,14 +1207,14 @@ UIBottomNavNode(UIBottomNav nav)
 }
 
 UIBottomNavConfigResult
-UIBottomNavConfigNode(UIBottomNavConfigModal modal)
+UIBottomNavConfigNode(BottomNavConfigProps modal)
 {
     ui_tree_add(modal.id, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
     return DrawUIBottomNavConfigModal(modal);
 }
 
 UITopNavResult
-UITopNavNode(UITopNav nav)
+UITopNavNode(TopNavProps nav)
 {
     ui_tree_add(nav.id, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){nav.x, nav.y, nav.width, nav.height}, &nav);
@@ -1222,7 +1222,7 @@ UITopNavNode(UITopNav nav)
 }
 
 UIToolbarResult
-UIToolbarNode(UIToolbar toolbar)
+UIToolbarNode(ToolbarProps toolbar)
 {
     ui_tree_add(toolbar.id, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){toolbar.x, toolbar.y, toolbar.width, toolbar.height}, &toolbar);
@@ -1230,7 +1230,7 @@ UIToolbarNode(UIToolbar toolbar)
 }
 
 UIToolbarHeaderResult
-UIToolbarHeaderNode(UIToolbarHeader header)
+UIToolbarHeaderNode(ToolbarHeaderProps header)
 {
     ui_tree_add(header.toolbar.id, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){0, 0, header.toolbar.width, header.toolbar.height}, &header);
@@ -1238,21 +1238,21 @@ UIToolbarHeaderNode(UIToolbarHeader header)
 }
 
 int
-UISubtabBarNode(UISubtabBar bar)
+UISubtabBarNode(SubtabBarProps bar)
 {
     ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
     return DrawUISubtabBar(bar);
 }
 
 int
-UITabBarNode(UITabBar bar)
+UITabBarNode(TabBarProps bar)
 {
     ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
     return DrawUITabBar(bar);
 }
 
 UISidebarAccountHeaderResult
-UISidebarAccountHeaderNode(UISidebarAccountHeader header)
+UISidebarAccountHeaderNode(UISidebarAccountHeaderSpec header)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){header.x, header.y, header.width, header.height}, &header);
@@ -1329,3 +1329,91 @@ UIModalFrameNode(int width, int height, const char *title,
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, width, height}, title);
     return DrawUIModalFrame(width, height, title, left_icon, right_icon);
 }
+
+void Text(const char *text, int x, int y, int font_size, Color color) { UITextNode(text, x, y, font_size, color); }
+void TextInRect(const char *text, Rectangle rect, int font_size, Color color) { UITextInRectNode(text, rect, font_size, color); }
+void Paragraph(UIParagraphSpec paragraph, int x, int *y) { UIParagraphNode(paragraph, x, y); }
+void TextLines(const char **lines, int count, int x, int *y, int font, int line_h, Color color) { UITextLinesNode(lines, count, x, y, font, line_h, color); }
+void Rect(int x, int y, int w, int h, Color fill, Color border) { UIRectNode(x, y, w, h, fill, border); }
+void Line(int x1, int y1, int x2, int y2, Color color) { UILineNode(x1, y1, x2, y2, color); }
+void Bevel(int x, int y, int w, int h, Color light, Color dark) { UIBevelNode(x, y, w, h, light, dark); }
+void IconTexture(int id, int x, int y, int size, Texture2D icon, Color tint) { UIIconTextureNode(id, x, y, size, icon, tint); }
+void Sprite(SpriteProps sprite) { UISpriteNode(sprite); }
+int Button(ButtonProps button) { return UIGenericButtonNode(button.id, (int)button.bounds.x, (int)button.bounds.y, (int)button.bounds.width, (int)button.bounds.height, button.label, button.style, button.disabled, NULL); }
+int IconButton(IconButtonProps button) { return UIIconButtonNode(button); }
+int Href(HrefProps link) { return UIHrefNode(link); }
+int TextInputControl(TextInputProps input) { return UITextInputControlNode(input); }
+int GenericButton(int id, int x, int y, int w, int h, const char *label, UIButtonStyle style, int disabled, int *hover) { return UIGenericButtonNode(id, x, y, w, h, label, style, disabled, hover); }
+int TextField(TextFieldProps field) { return UITextFieldNode(field); }
+int ReadonlyTextBox(ReadonlyTextBoxProps box) { return UIReadonlyTextBoxNode(box); }
+int IconBtn(int id, int x, int y, UIIconSize size, Texture2D icon, int *hover) { return UIIconBtnNode(id, x, y, size, icon, hover); }
+int PaddedIconBtn(int id, int x, int y, int size, int padding, Texture2D icon, int *hover) { return UIPaddedIconBtnNode(id, x, y, size, padding, icon, hover); }
+int InfoButton(int id, int center_x, int center_y, int diameter) { return UIInfoButtonNode(id, center_x, center_y, diameter); }
+int TextButton(int id, int x, int y, const char *label, int *hover) { return UITextButtonNode(id, x, y, label, hover); }
+void IconLink(int id, int x, int y, int icon_size, Texture2D icon, const char *url) { UIIconLinkNode(id, x, y, icon_size, icon, url); }
+int Dropdown(int id, int x, int y, int w, int h, const char **options, int option_count, int *selected_index) { return UIDropdownNode(id, x, y, w, h, options, option_count, selected_index); }
+int DropdownEx(int id, int x, int y, int w, int h, const UIDropdownOption *options, int option_count, int *selected_index) { return UIDropdownNodeEx(id, x, y, w, h, options, option_count, selected_index); }
+int LocaleDropdown(int id, int x, int y, int w, int h, int *selected_index) { return UILocaleDropdownNode(id, x, y, w, h, selected_index); }
+int Slider(int id, int x, int y, int w, const char *label, int min, int max, int *value, const char *suffix) { return UISliderNode(id, x, y, w, label, min, max, value, suffix); }
+int VerticalSlider(int id, int x, int y, int h, int min, int max, int *value) { return UIVerticalSliderNode(id, x, y, h, min, max, value); }
+int VerticalSliderWithMarks(int id, int x, int y, int h, int min, int max, int *value, UIVerticalSliderMarkCallback callback, void *callback_user_data) { return UIVerticalSliderWithMarksNode(id, x, y, h, min, max, value, callback, callback_user_data); }
+int Toggle(int id, int x, int y, int w, int h, int *value, const char *off_label, const char *on_label) { return UIToggleNode(id, x, y, w, h, value, off_label, on_label); }
+int Checkbox(int id, int x, int y, const char *label, int *value) { return UICheckboxNode(id, x, y, label, value); }
+int ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state, UIThemeSettingsResult *result) { return UIThemeSettingsNode(settings, state, result); }
+void Separator(Rectangle bounds, int vertical) { UISeparatorNode(bounds, vertical); }
+UIMenuBarResult MenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int *open_index) { return UIMenuBarNode(id, bounds, menus, menu_count, open_index); }
+int PopupMenu(int id, int x, int y, const UIMenuItem *items, int item_count) { return UIPopupMenuNode(id, x, y, items, item_count); }
+int Radio(RadioButtonProps radio) { return UIRadioNode(radio); }
+void Progress(ProgressBarProps progress) { UIProgressNode(progress); }
+int Spinbox(SpinboxProps spinbox) { return UISpinboxNode(spinbox); }
+int Combobox(ComboboxProps combo) { return UIComboboxNode(combo); }
+void LabelFrame(LabelFrameProps frame) { UILabelFrameNode(frame); }
+void ImageBox(ImageBoxProps image) { UIImageBoxNode(image); }
+int ListBox(ListBoxProps list) { return UIListBoxNode(list); }
+int TreeView(TreeViewProps tree) { return UITreeViewNode(tree); }
+int CascadingTreeView(CascadingTreeViewProps tree) { return UICascadingTreeViewNode(tree); }
+int SourceView(SourceViewProps source) { return UISourceViewNode(source); }
+int TableView(TableViewProps table) { return UITableViewNode(table); }
+int TextArea(TextAreaProps area) { return UITextAreaNode(area); }
+void CanvasGrid(Rectangle bounds, int step, Color color) { UICanvasGridNode(bounds, step, color); }
+int Notebook(NotebookProps notebook) { return UINotebookNode(notebook); }
+int PanedView(PanedViewProps panes) { return UIPanedViewNode(panes); }
+int Collapsible(CollapsibleProps section) { return UICollapsibleNode(section); }
+int ColorPicker(Rectangle bounds, Color *color) { return UIColorPickerNode(bounds, color); }
+int ActionModal(ModalProps modal) { return UIActionModalNode(modal); }
+int MessageDialog(MessageDialogProps dialog) { return UIMessageDialogNode(dialog); }
+int ConfirmDialog(ConfirmDialogProps dialog) { return UIConfirmDialogNode(dialog); }
+int PromptDialog(PromptDialogProps dialog) { return UIPromptDialogNode(dialog); }
+void Focus(Rectangle bounds) { UIFocusNode(bounds); }
+void FocusDebugOverlay(const UIAccessibilityNode *nodes, int count) { UIFocusDebugOverlayNode(nodes, count); }
+UIGuideResult GuideOverlay(GuideOverlayProps guide) { return UIGuideOverlayNode(guide); }
+int ThemeSwitcher(int x, int y, int w, const char *label, const char *light_label, const char *dark_label, int *theme_id, int *dark_mode) { return UIThemeSwitcherNode(x, y, w, label, light_label, dark_label, theme_id, dark_mode); }
+int ThemePicker(int x, int y, int w, int dark_mode, int *theme_id) { return UIThemePickerNode(x, y, w, dark_mode, theme_id); }
+void TutorialImagePlaceholder(const char *label, int x, int y, int w, int h) { UITutorialImagePlaceholderNode(label, x, y, w, h); }
+void TutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h) { UITutorialImageNode(texture, fallback, x, y, w, h); }
+void TransitionFade(const struct UITransition *transition, int width, int height, Color color) { UITransitionFadeNode(transition, width, height, color); }
+void InfoRows(InfoRowsProps rows) { UIInfoRowsNode(rows); }
+int LabelTextField(LabelTextFieldProps row, int x, int y, int w) { return UILabelTextFieldNode(row, x, y, w); }
+int SectionLabel(SectionLabelProps label, int x, int y) { return UISectionLabelNode(label, x, y); }
+int CheckboxRow(CheckboxRowProps row, int x, int y) { return UICheckboxRowNode(row, x, y); }
+int OverlayButton(OverlayButtonProps button) { return UIOverlayButtonNode(button); }
+int ButtonRow(ButtonRowProps row) { return UIButtonRowNode(row); }
+int IconSliderPopup(IconSliderPopupProps popup) { return UIIconSliderPopupNode(popup); }
+UIIconRowResult BottomIconRow(BottomIconRowProps row) { return UIBottomIconRowNode(row); }
+UIBottomNavResult BottomNav(BottomNavProps nav) { return UIBottomNavNode(nav); }
+UIBottomNavConfigResult BottomNavConfig(BottomNavConfigProps modal) { return UIBottomNavConfigNode(modal); }
+UITopNavResult TopNav(TopNavProps nav) { return UITopNavNode(nav); }
+UIToolbarResult Toolbar(ToolbarProps toolbar) { return UIToolbarNode(toolbar); }
+UIToolbarHeaderResult ToolbarHeader(ToolbarHeaderProps header) { return UIToolbarHeaderNode(header); }
+int SubtabBar(SubtabBarProps bar) { return UISubtabBarNode(bar); }
+int TabBar(TabBarProps bar) { return UITabBarNode(bar); }
+UISidebarAccountHeaderResult SidebarAccountHeader(UISidebarAccountHeaderSpec header) { return UISidebarAccountHeaderNode(header); }
+UIProfilePicturePickerResult ProfilePicturePicker(UIProfilePicturePickerModal modal) { return UIProfilePicturePickerNode(modal); }
+void ReorderHandle(int id, int x, int y, int w, int h, int active) { UIReorderHandleNode(id, x, y, w, h, active); }
+void ReorderPlaceholder(Rectangle bounds) { UIReorderPlaceholderNode(bounds); }
+int Modal(const char *title, const char *message, const char *cancel_btn, const char *confirm_btn) { return UIModalNode(title, message, cancel_btn, confirm_btn); }
+int Modal3Button(const char *title, const char *message, const char *left_btn, const char *middle_btn, const char *right_btn) { return UIModal3ButtonNode(title, message, left_btn, middle_btn, right_btn); }
+void TitleBar(const char *title, int height) { UITitleBarNode(title, height); }
+int ReturnTitleBar(Texture2D return_icon, const char *title, int height) { return UIReturnTitleBarNode(return_icon, title, height); }
+int ReturnDropdownTitleBar(Texture2D return_icon, UITitleBarDropdown dropdown, int height) { return UIReturnDropdownTitleBarNode(return_icon, dropdown, height); }
+UIPanelFrame ModalFrame(int width, int height, const char *title, Texture2D left_icon, Texture2D right_icon) { return UIModalFrameNode(width, height, title, left_icon, right_icon); }

@@ -93,17 +93,17 @@ void DrawUIFrameOverlays(void);
 void DrawUIFocus(Rectangle bounds);
 int ui_readonly_text_box_height(const char *text, int font, int width,
                                UITextInputStyle style, int line_gap);
-int ui_label_text_field_height(UILabelTextField row);
-int ui_section_label_height(UISectionLabel label);
-int ui_checkbox_row_height(UICheckboxRow row);
-int ui_button_row_height(UIButtonRow row);
+int ui_label_text_field_height(LabelTextFieldProps row);
+int ui_section_label_height(SectionLabelProps label);
+int ui_checkbox_row_height(CheckboxRowProps row);
+int ui_button_row_height(ButtonRowProps row);
 int ui_bottom_nav_height(void);
 int ui_tab_bar_height(void);
-int ui_theme_settings_height(UIThemeSettings settings);
+int ui_theme_settings_height(ThemeSettingsProps settings);
 int ui_theme_picker_height(int w);
-int ui_paragraph_modal_height(UIParagraphModalMeasure measure);
+int ui_paragraph_modal_height(ParagraphModalMeasureProps measure);
 int ui_title_bar_height(void);
-int ui_paragraph_height(UIParagraph paragraph);
+int ui_paragraph_height(UIParagraphSpec paragraph);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
 void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
@@ -117,7 +117,7 @@ void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
                       Color color);
 void DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size,
                       Color color);
-void DrawUIParagraph(UIParagraph paragraph, int x, int *y);
+void DrawUIParagraph(UIParagraphSpec paragraph, int x, int *y);
 void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
 void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);
@@ -125,16 +125,16 @@ void DrawUITransitionFade(const UITransition *transition, int width,
                           int height, Color color);
 int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
                     int *scroll_offset, int max_scroll);
-int DrawUIButton(UIButton button);
-int DrawUIIconButton(UIIconButton button);
-int DrawUIHref(UIHref link);
-int DrawUITextInputControl(UITextInput input);
+int DrawUIButton(UIButtonSpec button);
+int DrawUIIconButton(IconButtonProps button);
+int DrawUIHref(HrefProps link);
+int DrawUITextInputControl(TextInputProps input);
 void DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
                      UITextInputStyle style);
-int DrawUITextField(UITextField field);
-int DrawUITextArea(UITextArea area);
-int DrawUIReadonlyTextBox(UIReadonlyTextBox box);
+int DrawUITextField(TextFieldProps field);
+int DrawUITextArea(TextAreaProps area);
+int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint);
 int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
 int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
@@ -166,50 +166,53 @@ int DrawUIDropdownEx(int id, int x, int y, int w, int h,
                      int *selected_index);
 int DrawUILocaleDropdown(int id, int x, int y, int w, int h,
                          int *selected_index);
-void DrawUIInfoRows(UIInfoRows rows);
-int DrawUILabelTextField(UILabelTextField row, int x, int y, int w);
-int DrawUISectionLabel(UISectionLabel label, int x, int y);
-int DrawUICheckboxRow(UICheckboxRow row, int x, int y);
-int DrawUIOverlayButton(UIOverlayButton button);
-int DrawUIButtonRow(UIButtonRow row);
-int DrawUIIconSliderPopup(UIIconSliderPopup popup);
-UIIconRowResult DrawUIBottomIconRow(UIBottomIconRow row);
-UIBottomNavResult DrawUIBottomNav(UIBottomNav nav);
-UIBottomNavConfigResult DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal);
-UITopNavResult DrawUITopNav(UITopNav nav);
-UIToolbarResult DrawUIToolbar(UIToolbar toolbar);
-UIToolbarHeaderResult DrawUIToolbarHeader(UIToolbarHeader header);
-int DrawUISubtabBar(UISubtabBar bar);
-int DrawUITabBar(UITabBar bar);
+void DrawUIInfoRows(InfoRowsProps rows);
+int DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w);
+int DrawUISectionLabel(SectionLabelProps label, int x, int y);
+int DrawUICheckboxRow(CheckboxRowProps row, int x, int y);
+int DrawUIOverlayButton(OverlayButtonProps button);
+int DrawUIButtonRow(ButtonRowProps row);
+int DrawUIIconSliderPopup(IconSliderPopupProps popup);
+UIIconRowResult DrawUIBottomIconRow(BottomIconRowProps row);
+UIBottomNavResult DrawUIBottomNav(BottomNavProps nav);
+UIBottomNavConfigResult DrawUIBottomNavConfigModal(BottomNavConfigProps modal);
+UITopNavResult DrawUITopNav(TopNavProps nav);
+UIToolbarResult DrawUIToolbar(ToolbarProps toolbar);
+UIToolbarHeaderResult DrawUIToolbarHeader(ToolbarHeaderProps header);
+int DrawUISubtabBar(SubtabBarProps bar);
+int DrawUITabBar(TabBarProps bar);
+UIPaneTabBarResult DrawUIPaneTabBar(UIPaneTabBar bar);
+UIPaneDropZone GetUIPaneDropZone(Rectangle bounds, Vector2 mouse);
+void DrawUIPaneDropPreview(Rectangle bounds, UIPaneDropZone zone);
 void DrawUISeparator(Rectangle bounds, int vertical);
 UIMenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus,
                               int menu_count, int *open_index);
 int DrawUIPopupMenu(int id, int x, int y, const UIMenuItem *items,
                     int item_count);
 int DrawUIContextMenu(UIContextMenu menu);
-int DrawUIRadioButton(UIRadioButton radio);
-void DrawUIProgressBar(UIProgressBar progress);
-int DrawUISpinbox(UISpinbox spinbox);
-int DrawUICombobox(UICombobox combo);
-void DrawUILabelFrame(UILabelFrame frame);
-void DrawUIImageBox(UIImageBox image);
-int DrawUIListBox(UIListBox list);
-int DrawUITreeView(UITreeView tree);
-int DrawUICascadingTreeView(UICascadingTreeView tree);
-int DrawUISourceView(UISourceView source);
-int DrawUITableView(UITableView table);
+int DrawUIRadioButton(RadioButtonProps radio);
+void DrawUIProgressBar(ProgressBarProps progress);
+int DrawUISpinbox(SpinboxProps spinbox);
+int DrawUICombobox(ComboboxProps combo);
+void DrawUILabelFrame(LabelFrameProps frame);
+void DrawUIImageBox(ImageBoxProps image);
+int DrawUIListBox(ListBoxProps list);
+int DrawUITreeView(TreeViewProps tree);
+int DrawUICascadingTreeView(CascadingTreeViewProps tree);
+int DrawUISourceView(SourceViewProps source);
+int DrawUITableView(TableViewProps table);
 void DrawUICanvasGrid(Rectangle bounds, int step, Color color);
-int DrawUINotebook(UINotebook notebook);
-int DrawUIPanedView(UIPanedView panes);
-int DrawUICollapsible(UICollapsible section);
-int DrawUIMessageDialog(UIMessageDialog dialog);
-int DrawUIConfirmDialog(UIConfirmDialog dialog);
-int DrawUIPromptDialog(UIPromptDialog dialog);
+int DrawUINotebook(NotebookProps notebook);
+int DrawUIPanedView(PanedViewProps panes);
+int DrawUICollapsible(CollapsibleProps section);
+int DrawUIMessageDialog(MessageDialogProps dialog);
+int DrawUIConfirmDialog(ConfirmDialogProps dialog);
+int DrawUIPromptDialog(PromptDialogProps dialog);
 int DrawUIColorPicker(Rectangle bounds, Color *color);
 void DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
-UIGuideResult DrawUIGuideOverlay(UIGuideOverlay guide);
-int DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state);
-UIThemeSettingsResult DrawUIThemeSettingsMenus(UIThemeSettings settings,
+UIGuideResult DrawUIGuideOverlay(GuideOverlayProps guide);
+int DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state);
+UIThemeSettingsResult DrawUIThemeSettingsMenus(ThemeSettingsProps settings,
                                                UIThemeSettingsState *state);
 int DrawUIThemeSwitcher(int x, int y, int w, const char *label,
                         const char *light_label, const char *dark_label,
@@ -219,7 +222,7 @@ void DrawUITutorialImagePlaceholder(const char *label, int x, int y,
                                     int w, int h);
 void DrawUITutorialImage(Texture2D texture, const char *fallback,
                          int x, int y, int w, int h);
-int DrawUIActionModal(UIModalSpec modal);
+int DrawUIActionModal(ModalProps modal);
 int DrawUIModal(const char *title, const char *message,
                 const char *cancel_btn, const char *confirm_btn);
 int DrawUIModal3Button(const char *title, const char *message,
@@ -232,7 +235,7 @@ int DrawUIReturnDropdownTitleBar(Texture2D return_icon,
                                  UITitleBarDropdown dropdown, int height);
 UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
-UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeader header);
+UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeaderSpec header);
 UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal);
 void DrawUIReorderHandle(int x, int y, int w, int h, int active);
 void DrawUIReorderPlaceholder(Rectangle bounds);

@@ -9,7 +9,7 @@ typedef enum UISpriteFit {
     UI_SPRITE_FIT_COVER
 } UISpriteFit;
 
-typedef struct UISprite {
+typedef struct SpriteProps {
     const char *asset_path;
     Rectangle bounds;
     Rectangle source;
@@ -17,6 +17,6 @@ typedef struct UISprite {
     float rotation;
     Color tint;
     UISpriteFit fit;
-} UISprite;
+} SpriteProps;
 
 #endif

@@ -18,7 +18,7 @@ typedef struct {
     int max;
     int popup_width;
     int popup_height;
-} UIIconSliderPopup;
+} IconSliderPopupProps;
 
 typedef struct {
     Texture2D icon;
@@ -40,7 +40,7 @@ typedef struct {
     int min_icon_size;
     int min_icon_padding;
     int min_gap;
-} UIBottomIconRow;
+} BottomIconRowProps;
 
 typedef struct {
     int clicked_index;
@@ -67,7 +67,7 @@ typedef struct {
     int side_margin;
     int bottom_margin;
     int max_button_width;
-} UIBottomNav;
+} BottomNavProps;
 
 typedef struct {
     int clicked_index;
@@ -96,7 +96,7 @@ typedef struct {
     const char *save_label;
     const char *reset_label;
     Texture2D close_icon;
-} UIBottomNavConfigModal;
+} BottomNavConfigProps;
 
 typedef struct {
     int action;
@@ -127,7 +127,7 @@ typedef struct {
     int action_icon_padding;
     int action_gap;
     int side_padding;
-} UIToolbar;
+} ToolbarProps;
 
 typedef struct {
     int selected_menu_item;
@@ -135,12 +135,12 @@ typedef struct {
 } UIToolbarResult;
 
 typedef struct {
-    UIToolbar toolbar;
+    ToolbarProps toolbar;
     Texture2D leading_icon;
     int leading_width;
     int leading_icon_size;
     int leading_icon_padding;
-} UIToolbarHeader;
+} ToolbarHeaderProps;
 
 typedef struct {
     UIToolbarResult toolbar;
@@ -171,7 +171,7 @@ typedef struct {
     int action_icon_padding;
     int action_gap;
     int side_padding;
-} UITopNav;
+} TopNavProps;
 
 typedef struct {
     int selected_menu_item;
@@ -192,7 +192,7 @@ typedef struct {
     int count;
     int selected_index;
     int font;
-} UISubtabBar;
+} SubtabBarProps;
 
 typedef struct {
     const char *label;
@@ -215,9 +215,38 @@ typedef struct {
     int *scroll_offset;
     int focus_selected;
     int *closed_index;
-} UITabBar;
+} TabBarProps;
 
-int DrawUITabBar(UITabBar bar);
+typedef enum {
+    UI_PANE_DROP_NONE,
+    UI_PANE_DROP_CENTER,
+    UI_PANE_DROP_LEFT,
+    UI_PANE_DROP_RIGHT,
+    UI_PANE_DROP_TOP,
+    UI_PANE_DROP_BOTTOM
+} UIPaneDropZone;
+
+typedef struct {
+    Rectangle bounds;
+    const UITab *tabs;
+    int count;
+    int selected_index;
+    int font;
+    int min_tab_width;
+    int max_tab_width;
+    int *scroll_offset;
+    int *dragged_index;
+} UIPaneTabBar;
+
+typedef struct {
+    int clicked_index;
+    int dragged_index;
+} UIPaneTabBarResult;
+
+int DrawUITabBar(TabBarProps bar);
+UIPaneTabBarResult DrawUIPaneTabBar(UIPaneTabBar bar);
+UIPaneDropZone GetUIPaneDropZone(Rectangle bounds, Vector2 mouse);
+void DrawUIPaneDropPreview(Rectangle bounds, UIPaneDropZone zone);
 int GetUITabBarHeight(void);
 
 #endif

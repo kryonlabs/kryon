@@ -13,7 +13,7 @@ state {
 
 LayoutInfo :: (label: const char *, value: int, x: int, y: int) {
     info: const char * = TextFormat("%s:%d",label,value)
-    WidgetText(info, x, y, UI_TEXT_16, GetThemeText())
+    Text(info, x, y, UI_TEXT_16, GetThemeText())
 }
 
 WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
@@ -21,15 +21,15 @@ WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
     if max_width == value {
         style = UI_BUTTON_STYLE_PRIMARY
     }
-    return UIGenericButtonNode(1000 + x + y, x,y,ScaleUIPx(110),ScaleUIPx(34),label,style,0,NULL)
+    return GenericButton(1000 + x + y, x,y,ScaleUIPx(110),ScaleUIPx(34),label,style,0,NULL)
 }
 
 LayoutNote :: (label: const char *, x: int, y: int, color: Color) {
-    WidgetText(label, x, y, UI_TEXT_16, color)
+    Text(label, x, y, UI_TEXT_16, color)
 }
 
 screen LayoutExample(viewport: Rectangle) {
-    WidgetBackground(GetThemeBackground())
+    Background(GetThemeBackground())
     side_padding: int = GetUIPageSidePadding()
     page_x: int = side_padding
     page_w: int = GetUIViewWidth() - side_padding * 2
@@ -47,11 +47,11 @@ screen LayoutExample(viewport: Rectangle) {
     btn0_x = column_x + ScaleUIPx(16)
     btn1_x = column_x + ScaleUIPx(138)
     btn2_x = column_x + ScaleUIPx(260)
-    WidgetText("Responsive layout", page_x, ScaleUIPx(16), UI_TEXT_24, GetThemeText())
-    WidgetRect(page_x, y, page_w, guide_h, GetThemeSurface(), GetThemeIcon())
-    WidgetLine(side_padding, y, side_padding, y+guide_h, GetThemeLink())
-    WidgetLine(right_edge, y, right_edge, y+guide_h, GetThemeLink())
-    WidgetRect(column_x, column_y, column_w, ScaleUIPx(360), GetThemeBackground(), GetThemeButton())
+    Text("Responsive layout", page_x, ScaleUIPx(16), UI_TEXT_24, GetThemeText())
+    Rect(page_x, y, page_w, guide_h, GetThemeSurface(), GetThemeIcon())
+    Line(side_padding, y, side_padding, y+guide_h, GetThemeLink())
+    Line(right_edge, y, right_edge, y+guide_h, GetThemeLink())
+    Rect(column_x, column_y, column_w, ScaleUIPx(360), GetThemeBackground(), GetThemeButton())
     LayoutInfo("View width", GetUIViewWidth(), column_x+16, y+ScaleUIPx(54))
     LayoutInfo("Side padding", side_padding, column_x+16, y+ScaleUIPx(84))
     LayoutInfo("Column max", max_width, column_x+16, y+ScaleUIPx(114))

@@ -16,24 +16,24 @@ state {
 }
 
 screen DialogsExample(viewport: Rectangle) {
-    WidgetBackground(GetThemeBackground())
-    if WidgetButton(40, 60, 150, 34, "Message", UI_BUTTON_STYLE_PRIMARY) {
+    Background(GetThemeBackground())
+    if GenericButton(101, 40, 60, 150, 34, "Message", UI_BUTTON_STYLE_PRIMARY, 0, NULL) {
         dialog = 1
     }
-    if WidgetButton(40, 104, 150, 34, "Confirm", UI_BUTTON_STYLE_PRIMARY) {
+    if GenericButton(102, 40, 104, 150, 34, "Confirm", UI_BUTTON_STYLE_PRIMARY, 0, NULL) {
         dialog = 2
     }
-    if WidgetButton(40, 148, 150, 34, "Prompt", UI_BUTTON_STYLE_PRIMARY) {
+    if GenericButton(103, 40, 148, 150, 34, "Prompt", UI_BUTTON_STYLE_PRIMARY, 0, NULL) {
         dialog = 3
     }
-    UIColorPickerNode((Rectangle){240,60,320,160},&color)
-    if dialog == 1 && UIMessageDialogNode((UIMessageDialog){"Message","Hello from Kryon.","OK"}) > 0 {
+    ColorPicker((Rectangle){240,60,320,160},&color)
+    if dialog == 1 && MessageDialog((MessageDialogProps){"Message","Hello from Kryon.","OK"}) > 0 {
         dialog = 0
     }
-    if dialog == 2 && UIConfirmDialogNode((UIConfirmDialog){"Confirm","Continue?","No","Yes"}) != 0 {
+    if dialog == 2 && ConfirmDialog((ConfirmDialogProps){"Confirm","Continue?","No","Yes"}) != 0 {
         dialog = 0
     }
-    if dialog == 3 && UIPromptDialogNode((UIPromptDialog){"Prompt",prompt,sizeof(prompt),&cursor,&focused,"Cancel","Save"}) != 0 {
+    if dialog == 3 && PromptDialog((PromptDialogProps){"Prompt",prompt,sizeof(prompt),&cursor,&focused,"Cancel","Save"}) != 0 {
         dialog = 0
     }
 }

@@ -18,7 +18,7 @@ typedef struct {
     int content_padding_x;
     int current_frame;
     int block_click_frame;
-} UISidebarAccountHeader;
+} UISidebarAccountHeaderSpec;
 
 typedef struct {
     int pfp_clicked;

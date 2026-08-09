@@ -16,8 +16,16 @@ Do not add legacy wrappers or alias layers when the app API changes. Migrate
 Kryon itself first, then update downstream apps such as Inbe and Krait to the
 canonical names directly. Public app code should use names such as
 `DrawUIIconButton`, `DrawUITextField`, `DrawRectangle`, `GetMousePosition`,
-`IsKeyPressed`, and `KEY_*` through Kryon. Do not reintroduce duplicate public
-widget names for the same behavior.
+`IsKeyPressed`, and `KEY_*` through Kryon. Public widget construction uses
+Flutter-style widgets with raylib-style C names: `Background`, `Text`, `Rect`,
+`Button`, and `Sprite`. Lower-level immediate drawing keeps verb names such as
+`DrawUIText` and `DrawRectangle`. Do not reintroduce duplicate public widget
+names such as `WidgetText`, `UIText`, or `UITextNode` for the same behavior.
+
+Kryon owns live preview rendering, preview PNG capture, and hot-reload
+verification. Do not use Krait as the capture test harness for `.kry` files.
+Use Kryon-owned tooling directly, for example `kryon-preview`, to prove that a
+project source file renders, exports a PNG, and reloads safely.
 
 Keep application code focused on product state and domain behavior. Move repeated UI
 interaction rules into Kryon when more than one screen or project needs them.

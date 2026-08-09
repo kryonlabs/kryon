@@ -16,9 +16,9 @@ state {
 }
 
 screen CanvasExample(viewport: Rectangle) {
-    WidgetBackground(GetThemeBackground())
+    Background(GetThemeBackground())
     canvas: UICanvasResult = BeginUICanvas((UICanvas){{40,50,620,420},&sx,&sy,&zoom})
-    UICanvasGridNode((Rectangle){40,50,620,420},24,GetThemeButton())
+    CanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
     for i in 0..2 {
         DrawRectangleRec(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface())
         DrawRectangleLinesEx(shapes[i],2.0f,GetThemeIcon())

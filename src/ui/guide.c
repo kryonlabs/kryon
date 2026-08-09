@@ -92,7 +92,7 @@ guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
 }
 
 UIGuideResult
-DrawUIGuideOverlay(UIGuideOverlay guide)
+DrawUIGuideOverlay(GuideOverlayProps guide)
 {
     UIGuideResult result = {0};
     int view_w = guide.view_width > 0 ? guide.view_width : ui_view_width;
@@ -106,7 +106,7 @@ DrawUIGuideOverlay(UIGuideOverlay guide)
     int page_font = UI_TEXT_12;
     int line_gap = guide.line_gap > 0 ? guide.line_gap : ScaleUIPx(6);
     char page_text[32];
-    UIParagraph paragraph;
+    UIParagraphSpec paragraph;
     int paragraph_h;
     int tip_h;
     Rectangle tip;
@@ -146,7 +146,7 @@ DrawUIGuideOverlay(UIGuideOverlay guide)
     else if(tip_w > ScaleUIPx(300))
         tip_w = ScaleUIPx(300);
 
-    paragraph = (UIParagraph){
+    paragraph = (UIParagraphSpec){
         .text = guide.steps[step].text,
         .width = tip_w - pad * 2 - close_size - ScaleUIPx(8),
         .font = guide.paragraph_font,
@@ -168,7 +168,7 @@ DrawUIGuideOverlay(UIGuideOverlay guide)
                               DarkenUIColor(GetThemeButton(), 35));
     guide_draw_arrow(tip, guide.steps[step].anchor);
 
-    if(DrawUIIconButton((UIIconButton){
+    if(DrawUIIconButton((IconButtonProps){
            .bounds = {
                tip.x + tip.width - pad - close_size,
                tip.y + pad,
@@ -194,7 +194,7 @@ DrawUIGuideOverlay(UIGuideOverlay guide)
 
     finish = step >= guide.count - 1;
     if(step > 0) {
-        if(DrawUIIconButton((UIIconButton){
+        if(DrawUIIconButton((IconButtonProps){
                .bounds = {
                    tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8),
                    tip.y + tip.height - pad - button_size,
@@ -210,7 +210,7 @@ DrawUIGuideOverlay(UIGuideOverlay guide)
             result.step = *guide.step;
         }
     }
-    if(DrawUIIconButton((UIIconButton){
+    if(DrawUIIconButton((IconButtonProps){
            .bounds = {
                tip.x + tip.width - pad - button_size,
                tip.y + tip.height - pad - button_size,

@@ -126,7 +126,7 @@ then draw overlays:
 
 ```c
 UIBeginTree(screen_id);
-/* screen declares UITextNode, UIButtonNode, WidgetSprite, and other nodes */
+/* screen declares UIText, UIButton, UISprite, and other widgets */
 UIEndTree();
 UIReconcileTree();
 UILayoutTree();
@@ -350,10 +350,10 @@ int GetUITextHeight(const char *text, int font_size);
 int GetUITextLineHeight(int font_size);
 ```
 
-#### Text Nodes
+#### Text Widgets
 
 ```c
-void UITextNode(const char *text, int x, int y, int font_size, Color color);
+void Text(const char *text, int x, int y, int font_size, Color color);
 ```
 
 #### Vertical Centering
@@ -837,7 +837,7 @@ typedef enum UISpriteFit {
     UI_SPRITE_FIT_COVER
 } UISpriteFit;
 
-typedef struct UISprite {
+typedef struct SpriteProps {
     const char *asset_path;
     Rectangle bounds;
     Rectangle source;
@@ -845,20 +845,19 @@ typedef struct UISprite {
     float rotation;
     Color tint;
     UISpriteFit fit;
-} UISprite;
+} SpriteProps;
 
-void WidgetSprite(const char *asset_path, int x, int y, int w, int h);
-void WidgetSpriteEx(UISprite sprite);
+void Sprite(SpriteProps sprite);
 ```
 
 Sprites are image-backed widget nodes. `asset_path` is resolved first as a
-runtime file path and then as an embedded asset path. `WidgetSprite` uses the
-full image with contain fitting; `WidgetSpriteEx` exposes source rect, origin,
+runtime file path and then as an embedded asset path. `Sprite` uses the
+full image with contain fitting and exposes source rect, origin,
 rotation, tint, and fit mode for editor-generated scenes.
 
 ### Buttons
 
-#### `UIButton`
+#### `Button`
 
 ```c
 typedef struct {
@@ -872,20 +871,20 @@ typedef struct {
     Color text;
     Color border;
     float radius;
-} UIButton;
+} UIButtonSpec;
 ```
 
-#### `UIButtonNode`
+#### `Button`
 
 Draw and handle a button.
 
 ```c
-int UIButtonNode(UIButton button);
+int Button(UIButtonSpec button);
 ```
 
 **Returns:** 1 if clicked, 0 otherwise
 
-#### `UIIconButton`
+#### `IconButton`
 
 ```c
 typedef struct {
@@ -901,16 +900,16 @@ typedef struct {
     Color icon_color;
     Color border;
     float radius;
-} UIIconButton;
+} IconButton;
 ```
 
 #### `UIIconButtonNode`
 
 ```c
-int UIIconButtonNode(UIIconButton button);
+int UIIconButtonNode(IconButton button);
 ```
 
-#### `UIHref`
+#### `Href`
 
 ```c
 typedef struct {
@@ -922,7 +921,7 @@ typedef struct {
     int disabled;
     Color color;
     Color hover_color;
-} UIHref;
+} Href;
 ```
 
 #### `UIHrefNode`
@@ -930,7 +929,7 @@ typedef struct {
 Draw and handle a text link using the current theme link color by default.
 
 ```c
-int UIHrefNode(UIHref link);
+int UIHrefNode(Href link);
 ```
 
 ---
@@ -966,7 +965,7 @@ typedef struct {
 } UITextInput;
 ```
 
-#### `UITextField`
+#### `TextField`
 
 ```c
 typedef struct {
@@ -982,14 +981,14 @@ typedef struct {
     UITextInputFilter filter;
     void *filter_user_data;
     int *commit_pressed;
-} UITextField;
+} TextField;
 ```
 
-#### `UITextInputControlNode` / `UITextFieldNode`
+#### `UITextInputControlNode` / `TextField`
 
 ```c
 int UITextInputControlNode(UITextInput input);
-int UITextFieldNode(UITextField field);
+int TextField(TextField field);
 ```
 
 ---
@@ -1018,9 +1017,9 @@ typedef struct {
     int side_margin;
     int bottom_margin;
     int max_button_width;
-} UIBottomNav;
+} BottomNav;
 
-UIBottomNavResult UIBottomNavNode(UIBottomNav nav);
+UIBottomNavResult UIBottomNavNode(BottomNav nav);
 ```
 
 #### Toolbar
@@ -1037,16 +1036,16 @@ typedef struct {
     int option_count;
     int *selected_index;
     // ... more fields
-} UIToolbar;
+} Toolbar;
 
-UIToolbarResult UIToolbarNode(UIToolbar toolbar);
-UIToolbarHeaderResult UIToolbarHeaderNode(UIToolbarHeader header);
+UIToolbarResult UIToolbarNode(Toolbar toolbar);
+UIToolbarHeaderResult UIToolbarHeaderNode(ToolbarHeader header);
 ```
 
 #### Sidebar Account Header
 
 ```c
-UISidebarAccountHeaderResult UISidebarAccountHeaderNode(UISidebarAccountHeader header);
+UISidebarAccountHeaderResult UISidebarAccountHeaderNode(SidebarAccountHeader header);
 UIProfilePicturePickerResult UIProfilePicturePickerNode(UIProfilePicturePickerModal modal);
 ```
 
@@ -1082,15 +1081,15 @@ typedef struct {
     int max_tab_width;
     int *scroll_offset;
     int focus_selected;
-} UITabBar;
+} TabBar;
 
-int UITabBarNode(UITabBar bar);
+int TabBar(TabBar bar);
 ```
 
 #### Dropdown
 
 ```c
-int UIDropdownNode(int id, int x, int y, int w, int h,
+int Dropdown(int id, int x, int y, int w, int h,
                             const char **options, int option_count, int *selected_index);
 void DrawUIOverlays(void);
 ```
@@ -1118,9 +1117,9 @@ typedef struct {
     int action_count;
     Texture2D close_icon;
     int max_width;
-} UIModalSpec;
+} ModalProps;
 
-int UIActionModalNode(UIModalSpec modal);
+int UIActionModalNode(ModalProps modal);
 ```
 
 **Returns:** `-1` when the close icon is clicked, `0` for no action, or the
@@ -1269,15 +1268,15 @@ int UIVerticalSliderNode(int id, int x, int y, int h,
 #### Toggle Switch
 
 ```c
-int UIToggleNode(int x, int y, int w, int h, int *value,
+int Toggle(int x, int y, int w, int h, int *value,
                          const char *off_label, const char *on_label);
 ```
 
 #### Checkbox
 
 ```c
-int UICheckboxNode(int x, int y, const char *label, int *value);
-int UICheckboxNode(int x, int y, const char *label,
+int Checkbox(int x, int y, const char *label, int *value);
+int Checkbox(int x, int y, const char *label,
                                      int *value, int disabled);
 ```
 
@@ -1305,9 +1304,9 @@ typedef struct {
     Color background;
     Color separator;
     Color default_text;
-} UIInfoRows;
+} InfoRows;
 
-void UIInfoRowsNode(UIInfoRows rows);
+void UIInfoRowsNode(InfoRows rows);
 ```
 
 #### Button Rows
@@ -1327,9 +1326,9 @@ typedef struct {
     int gap;
     const UIButtonRowItem *items;
     int count;
-} UIButtonRow;
+} ButtonRow;
 
-int UIButtonRowNode(UIButtonRow row);
+int UIButtonRowNode(ButtonRow row);
 ```
 
 `UIButtonRowNode` measures labels, stores the final height on its node, fits
@@ -1535,7 +1534,7 @@ UIFrame frame = BeginUIFrameBox((Rectangle){40, 40, 320, 200}, 12, 12, 8);
 Rectangle row = UIFramePack(&frame, UI_SIDE_TOP, 32);
 
 int selected = 0;
-UIListBoxNode((UIListBox){
+UIListBoxNode((ListBox){
     .bounds = row,
     .id = 10,
     .items = items,
@@ -1558,10 +1557,10 @@ Feature families:
 
 - Geometry: `BeginUIFrameBox`, `UIFramePack`, `UIGridCell`, `UIPlace`, `UISeparatorNode`
 - Menus: `UIMenuBarNode`, `UIPopupMenuNode`
-- Basic controls: `UIRadioNode`, `UIProgressNode`, `UISpinboxNode`, `UIComboboxNode`, `UILabelFrameNode`, `UIImageBoxNode`
+- Basic controls: `Radio`, `Progress`, `Spinbox`, `Combobox`, `UILabelFrameNode`, `UIImageBoxNode`
 - Collections: `UIListBoxNode`, `UITreeViewNode`, `UITableViewNode`
 - Canvas: `BeginUICanvas`, `EndUICanvas`, `UICanvasGridNode`, `UICanvasHitTest`
-- Containers: `UINotebookNode`, `UIPanedViewNode`, `UICollapsibleNode`
+- Containers: `UINotebookNode`, `PanedView`, `Collapsible`
 - Dialogs/platform: `UIMessageDialogNode`, `UIConfirmDialogNode`, `UIPromptDialogNode`, `UIColorPickerNode`, `DispatchUIAccelerators`, clipboard helpers
 - Accessibility/debug: `UIFocusDebugOverlayNode`
 

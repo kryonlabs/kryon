@@ -12,7 +12,7 @@ typedef struct UIButtonAnimState {
 static UIButtonAnimState g_ui_button_anim[UI_BUTTON_ANIM_MAX];
 
 int
-DrawUIButton(UIButton button)
+DrawUIButton(UIButtonSpec button)
 {
     char editor_id[96];
     UIWidget widget;
@@ -151,7 +151,7 @@ DrawUIButton(UIButton button)
 }
 
 int
-DrawUIIconButton(UIIconButton button)
+DrawUIIconButton(IconButtonProps button)
 {
     char editor_id[96];
     UIWidget widget;
@@ -278,7 +278,7 @@ DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIIconButton((UIIconButton){
+    return DrawUIIconButton((IconButtonProps){
         .bounds = bounds,
         .icon = icon,
         .icon_size = btn_size,
@@ -304,7 +304,7 @@ DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *ho
 
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIIconButton((UIIconButton){
+    return DrawUIIconButton((IconButtonProps){
         .bounds = bounds,
         .icon = icon,
         .icon_size = size,
@@ -335,7 +335,7 @@ DrawUITextButton(int x, int y, const char *label, int *hover)
               UIHoverEffectsEnabled();
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIButton((UIButton){
+    return DrawUIButton((UIButtonSpec){
         .bounds = bounds,
         .label = text,
         .font = font,
@@ -437,7 +437,7 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
     if(hover != NULL)
         *hover = hovered;
 
-    clicked = DrawUIButton((UIButton){
+    clicked = DrawUIButton((UIButtonSpec){
         .bounds = bounds,
         .label = label,
         .font = font,

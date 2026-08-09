@@ -15,7 +15,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
     if(active)
         MarkUIClickable();
 
-    if(DrawUIButton((UIButton){
+    if(DrawUIButton((UIButtonSpec){
         .bounds = bounds,
         .label = label,
         .font = font,
@@ -113,7 +113,7 @@ ui_modal_draw_actions(const UIModalAction *actions, int count,
 }
 
 int
-DrawUIActionModal(UIModalSpec modal)
+DrawUIActionModal(ModalProps modal)
 {
     int screen_pad = ScaleUIPx(24);
     int modal_min_w = ScaleUIPx(280);
@@ -228,7 +228,7 @@ DrawUIModal(const char *title, const char *message,
         { confirm_btn, UI_BUTTON_STYLE_PRIMARY, 0 }
     };
 
-    return DrawUIActionModal((UIModalSpec){
+    return DrawUIActionModal((ModalProps){
         .title = title,
         .message = message,
         .actions = actions,
@@ -247,7 +247,7 @@ DrawUIModal3Button(const char *title, const char *message,
         { right_btn, UI_BUTTON_STYLE_DANGER, 0 }
     };
 
-    return DrawUIActionModal((UIModalSpec){
+    return DrawUIActionModal((ModalProps){
         .title = title,
         .message = message,
         .actions = actions,
@@ -257,7 +257,7 @@ DrawUIModal3Button(const char *title, const char *message,
 }
 
 int
-ui_paragraph_modal_height(UIParagraphModalMeasure measure)
+ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
 {
     int width = measure.width > 0 ? measure.width : ScaleUIPx(320);
     int header_h = measure.header_h > 0 ? measure.header_h : ScaleUIPx(58);
@@ -267,7 +267,7 @@ ui_paragraph_modal_height(UIParagraphModalMeasure measure)
     int extra_lines = measure.extra_lines > 0 ? measure.extra_lines : 0;
     int min_h = measure.min_height > 0 ? measure.min_height : 0;
     int content_w;
-    UIParagraph paragraph;
+    UIParagraphSpec paragraph;
     int height;
 
     if(width > ui_view_width - ScaleUIPx(24))
@@ -277,7 +277,7 @@ ui_paragraph_modal_height(UIParagraphModalMeasure measure)
     content_w = width - ScaleUIPx(36);
     if(content_w < ScaleUIPx(120))
         content_w = ScaleUIPx(120);
-    paragraph = (UIParagraph){
+    paragraph = (UIParagraphSpec){
         .text = measure.message,
         .width = content_w,
         .font = font,

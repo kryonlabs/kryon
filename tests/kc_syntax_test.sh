@@ -191,7 +191,7 @@ app "App Loop" {
 }
 
 screen AppLoop() {
-    WidgetText("hello", 10, 10, UI_TEXT_14, GetThemeText())
+    Text("hello", 10, 10, UI_TEXT_14, GetThemeText())
 }
 EOF
 
@@ -616,7 +616,7 @@ grep -q 'unknown top-level statement: import "src/ui/panel.kry"' "$err"
 
 cat > "$work/src/preview.kry" <<'EOF'
 preview stage_preview(viewport: Rectangle) {
-    WidgetBackground(BLACK)
+    Background(BLACK)
 }
 EOF
 
@@ -1171,13 +1171,18 @@ grep -E -B1 'Default\(s\);$' "$out/src/defer_switch.c" | grep -Eq 'default:'
     echo "defer_switch: Default fired more than once" >&2; exit 1; }
 
 # --- a call used as an if condition registers its source line for inspection
-# (regression: WidgetButton-in-if previously had no source, so click-to-source
+# (regression: UIButton-in-if previously had no source, so click-to-source
 # on buttons did nothing)
 cat > "$work/src/if_call.kry" <<'EOF'
 #import "thing.h"
 
 screen IfCall {
-    if WidgetButton(0, 0, 100, 40, "Click", UI_BUTTON_STYLE_PRIMARY) {
+    if Button((ButtonProps){
+        .bounds = {0, 0, 100, 40},
+        .label = "Click",
+        .style = UI_BUTTON_STYLE_PRIMARY,
+        .id = 10,
+    }) {
         DoThing()
     }
     if value > 0 {
@@ -1189,7 +1194,7 @@ EOF
 "$kc" --no-main --root "$work" -o "$out" "$work/src/if_call.kry" >"$err" 2>&1
 # The call condition is wrapped: Push, temp assign, Pop, then test the temp.
 grep -Eq 'PushUIInspectSource\([^)]*if_call\.kry", 4\);' "$out/src/if_call.c"
-grep -Eq '__auto_type __kryon_cond_4 = WidgetButton\(' "$out/src/if_call.c"
+grep -Eq '__auto_type __kryon_cond_4 = UIButton\(' "$out/src/if_call.c"
 grep -Eq 'PopUIInspectSource\(\);' "$out/src/if_call.c"
 grep -Eq 'if\(__kryon_cond_4\) \{' "$out/src/if_call.c"
 # A non-call condition is emitted unchanged (no temp, no wrapping).
@@ -1205,15 +1210,14 @@ state {
 }
 
 screen TabbarWidget {
-    if WidgetTabBar(0, 0, 360, 0, tabs, 3, &selected) >= 0 {
+    if TabBar((TabBarProps){{0,0,360,0},tabs,3,selected,0,0,0,NULL,1,NULL}) >= 0 {
         DoThing()
     }
 }
 EOF
 
 "$kc" --no-main --root "$work" -o "$out" "$work/src/tabbar_widget.kry" >"$err" 2>&1
-grep -Fq 'if(WidgetTabBar(0, 0, 360, 0, tabs, 3, &selected) >= 0) {' "$out/src/tabbar_widget.c"
-grep -Fq '&selected' "$out/src/tabbar_widget.c"
+grep -Fq 'if(TabBar((TabBarProps){{0,0,360,0},tabs,3,selected,0,0,0,NULL,1,NULL}) >= 0) {' "$out/src/tabbar_widget.c"
 
 # --- compound assignment operators not previously covered (-=, *=, /=, --)
 cat > "$work/src/compound.kry" <<'EOF'
@@ -1280,7 +1284,7 @@ app "Test App" {
     fps 60
 }
 screen Main {
-    WidgetText("hi", 0, 0, 16, GetThemeText())
+    Text("hi", 0, 0, 16, GetThemeText())
 }
 EOF
 

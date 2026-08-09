@@ -17,22 +17,22 @@ state {
 }
 
 screen FileDialogExample(viewport: Rectangle) {
-    WidgetBackground(GetThemeBackground())
+    Background(GetThemeBackground())
     if dlg_ready == 0 {
         InitFileDialog(&dlg)
         dlg_ready = 1
     }
-    WidgetText("Kryon File Dialog", ScaleUIPx(32), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
-    WidgetText("Dialog backend and result state", ScaleUIPx(32), ScaleUIPx(66), UI_TEXT_16, GetThemeIcon())
-    if WidgetButton(ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Open File", UI_BUTTON_STYLE_PRIMARY) {
+    Text("Kryon File Dialog", ScaleUIPx(32), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
+    Text("Dialog backend and result state", ScaleUIPx(32), ScaleUIPx(66), UI_TEXT_16, GetThemeIcon())
+    if GenericButton(101, ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Open File", UI_BUTTON_STYLE_PRIMARY, 0, NULL) {
         BeginLoadFileDialog(&dlg,"Open File")
         snprintf(status,sizeof(status),"Open file requested.")
     }
-    if WidgetButton(ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Save File", UI_BUTTON_STYLE_SECONDARY) {
+    if GenericButton(102, ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Save File", UI_BUTTON_STYLE_SECONDARY, 0, NULL) {
         BeginSaveFileDialog(&dlg,"Save File","untitled.kry")
         snprintf(status,sizeof(status),"Save file requested.")
     }
-    if WidgetButton(ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Select Folder", UI_BUTTON_STYLE_SECONDARY) {
+    if GenericButton(103, ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Select Folder", UI_BUTTON_STYLE_SECONDARY, 0, NULL) {
         BeginSelectFileDialogFolder(&dlg,"Select Folder")
         snprintf(status,sizeof(status),"Folder selection requested.")
     }
@@ -44,7 +44,7 @@ screen FileDialogExample(viewport: Rectangle) {
     if dialog_result < 0 {
         snprintf(status,sizeof(status),"Dialog cancelled.")
     }
-    WidgetText("Status", ScaleUIPx(32), ScaleUIPx(210), 18, GetThemeText())
-    WidgetText(status, ScaleUIPx(32), ScaleUIPx(242), UI_TEXT_16, GetThemeText())
-    WidgetText(last_path, ScaleUIPx(32), ScaleUIPx(274), UI_TEXT_16, GetThemeIcon())
+    Text("Status", ScaleUIPx(32), ScaleUIPx(210), 18, GetThemeText())
+    Text(status, ScaleUIPx(32), ScaleUIPx(242), UI_TEXT_16, GetThemeText())
+    Text(last_path, ScaleUIPx(32), ScaleUIPx(274), UI_TEXT_16, GetThemeIcon())
 }

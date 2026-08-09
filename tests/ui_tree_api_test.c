@@ -16,12 +16,12 @@ check_int(const char *name, int got, int want)
 int
 main(void)
 {
-    UILabelTextField field = {.field_h = 40};
-    UISectionLabel section = {0};
-    UICheckboxRow checkbox = {0};
-    UIButtonRow row = {.width = 240, .height = 40};
-    UIBottomNav nav = {0};
-    UITabBar tabs = {0};
+    LabelTextFieldProps field = {.field_h = 40};
+    SectionLabelProps section = {0};
+    CheckboxRowProps checkbox = {0};
+    ButtonRowProps row = {.width = 240, .height = 40};
+    BottomNavProps nav = {0};
+    TabBarProps tabs = {0};
     const UIWidgetNode *nodes;
     const UIWidgetNode *node;
     UINodeId group;
@@ -62,10 +62,10 @@ main(void)
               64);
 
     UIBeginTree(7);
-    group = UIBeginNodeGroup(11, (Rectangle){10, 10, 100, 80});
-    nested = UIBeginNodeGroup(12, (Rectangle){20, 20, 40, 30});
-    UIEndNodeGroup();
-    UIEndNodeGroup();
+    group = BeginNodeGroup(11, (Rectangle){10, 10, 100, 80});
+    nested = BeginNodeGroup(12, (Rectangle){20, 20, 40, 30});
+    EndNodeGroup();
+    EndNodeGroup();
     UIEndTree();
 
     nodes = UIGetTreeNodes(&count);

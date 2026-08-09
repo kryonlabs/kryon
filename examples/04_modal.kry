@@ -14,20 +14,20 @@ state {
 }
 
 screen ModalExample(viewport: Rectangle) {
-    WidgetBackground(GetThemeBackground())
-    WidgetText("Modal capture example", 32, 32, UI_TEXT_24, GetThemeText())
-    WidgetText("Open the modal and background clicks are blocked.", 32, 72, UI_TEXT_16, GetThemeIcon())
-    if WidgetButton(32, 120, 220, 42, "Background Button", UI_BUTTON_STYLE_SECONDARY) {
+    Background(GetThemeBackground())
+    Text("Modal capture example", 32, 32, UI_TEXT_24, GetThemeText())
+    Text("Open the modal and background clicks are blocked.", 32, 72, UI_TEXT_16, GetThemeIcon())
+    if GenericButton(101, 32, 120, 220, 42, "Background Button", UI_BUTTON_STYLE_SECONDARY, 0, NULL) {
         background_clicks++
     }
-    WidgetText(TextFormat("Background clicks:%d",background_clicks), 32, 176, UI_TEXT_16, GetThemeText())
-    WidgetText(TextFormat("Last modal result:%s",last_label), 32, 204, UI_TEXT_16, GetThemeText())
-    if WidgetButton(32, 240, 220, 42, "Open Modal", UI_BUTTON_STYLE_PRIMARY) {
+    Text(TextFormat("Background clicks:%d",background_clicks), 32, 176, UI_TEXT_16, GetThemeText())
+    Text(TextFormat("Last modal result:%s",last_label), 32, 204, UI_TEXT_16, GetThemeText())
+    if GenericButton(102, 32, 240, 220, 42, "Open Modal", UI_BUTTON_STYLE_PRIMARY, 0, NULL) {
         modal_open = 1
     }
     if modal_open {
         actions: [3] UIModalAction = {{"Cancel",UI_BUTTON_STYLE_SECONDARY,0},{"Confirm",UI_BUTTON_STYLE_PRIMARY,0},{"Delete",UI_BUTTON_STYLE_DANGER,0}}
-        result: int = UIActionModalNode((UIModalSpec){"Adaptive Action Modal","Kryon measures action labels and blocks background clicks.",actions,3,420})
+        result: int = ActionModal((ModalProps){"Adaptive Action Modal","Kryon measures action labels and blocks background clicks.",actions,3,420})
         if result == 1 {
             modal_open = 0
             snprintf(last_label,sizeof(last_label),"cancel")

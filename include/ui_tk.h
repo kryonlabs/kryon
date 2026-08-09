@@ -76,7 +76,7 @@ typedef struct {
     int id;
     int checked;
     int disabled;
-} UIRadioButton;
+} RadioButtonProps;
 
 typedef struct {
     Rectangle bounds;
@@ -84,7 +84,7 @@ typedef struct {
     int max;
     int value;
     const char *label;
-} UIProgressBar;
+} ProgressBarProps;
 
 typedef struct {
     Rectangle bounds;
@@ -94,7 +94,7 @@ typedef struct {
     int step;
     int *value;
     int disabled;
-} UISpinbox;
+} SpinboxProps;
 
 typedef struct {
     Rectangle bounds;
@@ -103,18 +103,18 @@ typedef struct {
     int option_count;
     int *selected_index;
     int disabled;
-} UICombobox;
+} ComboboxProps;
 
 typedef struct {
     Rectangle bounds;
     const char *title;
-} UILabelFrame;
+} LabelFrameProps;
 
 typedef struct {
     Rectangle bounds;
     Texture2D texture;
     Color tint;
-} UIImageBox;
+} ImageBoxProps;
 
 typedef struct {
     Rectangle bounds;
@@ -124,7 +124,7 @@ typedef struct {
     int *selected_index;
     int *scroll_offset;
     int row_height;
-} UIListBox;
+} ListBoxProps;
 
 typedef struct {
     const char *label;
@@ -142,7 +142,7 @@ typedef struct {
     int *selected_id;
     int *scroll_offset;
     int row_height;
-} UITreeView;
+} TreeViewProps;
 
 typedef struct {
     const char *label;
@@ -168,7 +168,7 @@ typedef struct {
     UICascadingTreeExpansion expanded;
     int *scroll_offset;
     int row_height;
-} UICascadingTreeView;
+} CascadingTreeViewProps;
 
 typedef struct {
     Rectangle bounds;
@@ -178,7 +178,7 @@ typedef struct {
     int font_size;
     int line_height;
     int show_line_numbers;
-} UISourceView;
+} SourceViewProps;
 
 typedef struct {
     const char **cells;
@@ -197,7 +197,7 @@ typedef struct {
     int *sort_column;
     int *scroll_offset;
     int row_height;
-} UITableView;
+} TableViewProps;
 
 typedef struct {
     Rectangle bounds;
@@ -218,7 +218,7 @@ typedef struct {
     const char **tabs;
     int tab_count;
     int *selected_index;
-} UINotebook;
+} NotebookProps;
 
 typedef struct {
     Rectangle bounds;
@@ -227,26 +227,26 @@ typedef struct {
     int *split;
     int min_first;
     int min_second;
-} UIPanedView;
+} PanedViewProps;
 
 typedef struct {
     Rectangle bounds;
     const char *label;
     int *open;
-} UICollapsible;
+} CollapsibleProps;
 
 typedef struct {
     const char *title;
     const char *message;
     const char *ok_label;
-} UIMessageDialog;
+} MessageDialogProps;
 
 typedef struct {
     const char *title;
     const char *message;
     const char *cancel_label;
     const char *confirm_label;
-} UIConfirmDialog;
+} ConfirmDialogProps;
 
 typedef struct {
     const char *title;
@@ -256,7 +256,7 @@ typedef struct {
     int *focused;
     const char *cancel_label;
     const char *confirm_label;
-} UIPromptDialog;
+} PromptDialogProps;
 
 typedef struct {
     int key;
@@ -284,7 +284,7 @@ void EndUICanvas(UICanvas canvas);
 int UICanvasHitTest(Vector2 point, Rectangle *items, int item_count);
 Vector2 UICanvasToScreen(UICanvas canvas, Vector2 point);
 Rectangle UICanvasRectToScreen(UICanvas canvas, Rectangle rect);
-int DrawUICascadingTreeView(UICascadingTreeView tree);
+int DrawUICascadingTreeView(CascadingTreeViewProps tree);
 
 int UIAcceleratorPressed(UIAccelerator accelerator);
 int DispatchUIAccelerators(const UIAccelerator *accelerators, int count);

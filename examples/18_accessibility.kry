@@ -12,13 +12,13 @@ state {
 }
 
 screen AccessibilityExample(viewport: Rectangle) {
-    WidgetBackground(GetThemeBackground())
-    WidgetText("Accessibility overlay", 40, 40, UI_TEXT_24, GetThemeText())
-    UICheckboxNode(1801,40,90,"Show focus/debug overlay",&enabled)
-    if WidgetButton(40, 140, 200, 40, "Focusable Button", UI_BUTTON_STYLE_PRIMARY) {
+    Background(GetThemeBackground())
+    Text("Accessibility overlay", 40, 40, UI_TEXT_24, GetThemeText())
+    Checkbox(1801,40,90,"Show focus/debug overlay",&enabled)
+    if GenericButton(101, 40, 140, 200, 40, "Focusable Button", UI_BUTTON_STYLE_PRIMARY, 0, NULL) {
         enabled = !enabled
     }
     if enabled {
-        UIFocusNode((Rectangle){36,136,208,48})
+        Focus((Rectangle){36,136,208,48})
     }
 }

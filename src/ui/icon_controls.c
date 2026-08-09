@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 int
-DrawUIIconSliderPopup(UIIconSliderPopup popup)
+DrawUIIconSliderPopup(IconSliderPopupProps popup)
 {
     int hover = 0;
     int popup_w;
@@ -55,7 +55,7 @@ DrawUIIconSliderPopup(UIIconSliderPopup popup)
 }
 
 UIIconRowResult
-DrawUIBottomIconRow(UIBottomIconRow row)
+DrawUIBottomIconRow(BottomIconRowProps row)
 {
     UIIconRowResult result = {-1, 0, 0};
     int count = row.count;

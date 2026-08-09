@@ -43,7 +43,7 @@ ui_top_nav_title(const char *title, Rectangle bounds, int side_reserved)
 }
 
 UITopNavResult
-DrawUITopNav(UITopNav nav)
+DrawUITopNav(TopNavProps nav)
 {
     UITopNavResult result = {-1, -1};
     int x = nav.x;

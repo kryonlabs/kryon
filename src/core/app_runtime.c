@@ -35,6 +35,9 @@ app_select_screen(void *userdata, int index)
        index < 0 || index >= app->route_count)
         return;
 
+    if(app->selected_route == index)
+        return;
+
     app->selected_route = index;
     if(app->routes[index].enter != 0)
         app->routes[index].enter(app->app, index);

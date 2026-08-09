@@ -109,8 +109,8 @@ static int *g_ui_text_context_changed_owner = NULL;
 /* Identity of the widget that currently owns text input focus, recorded as the
  * address of its `focused` flag. Ownership is PERSISTENT across frames: it does
  * not reset at frame start, it only changes when a text input is clicked (or
- * explicitly claimed). This guarantees that at most one text input (UITextField
- * or UITextArea) is ever treated as focused, so at most one blinking caret can
+ * explicitly claimed). This guarantees that at most one text input (TextFieldProps
+ * or TextAreaProps) is ever treated as focused, so at most one blinking caret can
  * ever be drawn - the UI layer owns focus, never trusting stale per-widget
  * flags. Works across widget types without relying on focus_id (which defaults
  * to 0 and is shared when unset). */
@@ -1518,7 +1518,7 @@ EditUIText(UITextEdit edit)
 }
 
 int
-DrawUITextInputControl(UITextInput input)
+DrawUITextInputControl(TextInputProps input)
 {
     char editor_id[96];
     UIWidget widget;
@@ -1548,7 +1548,7 @@ DrawUITextInputControl(UITextInput input)
 }
 
 int
-DrawUIHref(UIHref link)
+DrawUIHref(HrefProps link)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2114,7 +2114,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 }
 
 int
-DrawUITextArea(UITextArea area)
+DrawUITextArea(TextAreaProps area)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2598,7 +2598,7 @@ SetUITextAreaSelection(int focus_id, int anchor, int cursor)
 }
 
 int
-DrawUITextField(UITextField field)
+DrawUITextField(TextFieldProps field)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2938,7 +2938,7 @@ ui_readonly_text_box_height(const char *text, int font, int width,
 }
 
 int
-DrawUIReadonlyTextBox(UIReadonlyTextBox box)
+DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
 {
     char editor_id[96];
     UIWidget widget;
@@ -3016,7 +3016,7 @@ DrawUIReadonlyTextBox(UIReadonlyTextBox box)
 }
 
 static UITextLayout
-UIParagraphLayout(UIParagraph paragraph)
+UIParagraphLayout(UIParagraphSpec paragraph)
 {
     int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
     int line_gap = paragraph.line_gap > 0 ? paragraph.line_gap : ScaleUIPx(4);
@@ -3030,7 +3030,7 @@ UIParagraphLayout(UIParagraph paragraph)
 }
 
 int
-ui_paragraph_height(UIParagraph paragraph)
+ui_paragraph_height(UIParagraphSpec paragraph)
 {
     if(paragraph.width <= 0)
         return 0;
@@ -3041,7 +3041,7 @@ ui_paragraph_height(UIParagraph paragraph)
 }
 
 void
-DrawUIParagraph(UIParagraph paragraph, int x, int *y)
+DrawUIParagraph(UIParagraphSpec paragraph, int x, int *y)
 {
     if(y == NULL || paragraph.width <= 0)
         return;
@@ -3235,9 +3235,29 @@ SaveUIFrameState(void)
     state.view_height = ui_view_height;
     state.camera = g_ui_camera;
     state.input_clip_count = g_ui_input_clip_stack_count;
+    memcpy(state.input_clips, g_ui_input_clip_stack, sizeof(state.input_clips));
     state.input_capture_count = g_ui_input_capture_stack_count;
+    for(int i = 0; i < UI_INPUT_CAPTURE_STACK_MAX; i++) {
+        state.input_captures[i].bounds = g_ui_input_capture_stack[i].bounds;
+        state.input_captures[i].allow_inside =
+            g_ui_input_capture_stack[i].allow_inside;
+    }
     state.cursor_priority = g_ui_cursor_priority;
     state.cursor_had_intent = g_ui_cursor_had_intent;
+    state.pointer_down = g_ui_pointer_down;
+    state.pointer_dragging = g_ui_pointer_dragging;
+    state.pointer_dragged_this_click = g_ui_pointer_dragged_this_click;
+    state.pointer_start_x = g_ui_pointer_start_x;
+    state.pointer_start_y = g_ui_pointer_start_y;
+    state.pointer_owner = g_ui_pointer_owner;
+    state.release_consumed = g_ui_release_consumed;
+    state.focus_active_id = g_ui_focus_active_id;
+    memcpy(state.focus_ids, g_ui_focus_ids, sizeof(state.focus_ids));
+    state.focus_count = g_ui_focus_count;
+    state.focus_tab_dir = g_ui_focus_tab_dir;
+    state.focus_frame_open = g_ui_focus_frame_open;
+    state.focus_text_input_active = g_ui_focus_text_input_active;
+    state.text_input_requested = g_ui_text_input_requested;
     state.mouse_world_override_enabled = g_ui_mouse_world_override_enabled;
     state.mouse_world_override = g_ui_mouse_world_override;
     state.frame_serial = g_ui_frame_serial;
@@ -3251,9 +3271,29 @@ RestoreUIFrameState(UIFrameState state)
     ui_view_height = state.view_height;
     g_ui_camera = state.camera;
     g_ui_input_clip_stack_count = state.input_clip_count;
+    memcpy(g_ui_input_clip_stack, state.input_clips, sizeof(g_ui_input_clip_stack));
     g_ui_input_capture_stack_count = state.input_capture_count;
+    for(int i = 0; i < UI_INPUT_CAPTURE_STACK_MAX; i++) {
+        g_ui_input_capture_stack[i].bounds = state.input_captures[i].bounds;
+        g_ui_input_capture_stack[i].allow_inside =
+            state.input_captures[i].allow_inside;
+    }
     g_ui_cursor_priority = state.cursor_priority;
     g_ui_cursor_had_intent = state.cursor_had_intent;
+    g_ui_pointer_down = state.pointer_down;
+    g_ui_pointer_dragging = state.pointer_dragging;
+    g_ui_pointer_dragged_this_click = state.pointer_dragged_this_click;
+    g_ui_pointer_start_x = state.pointer_start_x;
+    g_ui_pointer_start_y = state.pointer_start_y;
+    g_ui_pointer_owner = state.pointer_owner;
+    g_ui_release_consumed = state.release_consumed;
+    g_ui_focus_active_id = state.focus_active_id;
+    memcpy(g_ui_focus_ids, state.focus_ids, sizeof(g_ui_focus_ids));
+    g_ui_focus_count = state.focus_count;
+    g_ui_focus_tab_dir = state.focus_tab_dir;
+    g_ui_focus_frame_open = state.focus_frame_open;
+    g_ui_focus_text_input_active = state.focus_text_input_active;
+    g_ui_text_input_requested = state.text_input_requested;
     g_ui_mouse_world_override_enabled = state.mouse_world_override_enabled;
     g_ui_mouse_world_override = state.mouse_world_override;
     g_ui_frame_serial = state.frame_serial;
@@ -3323,7 +3363,7 @@ DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint)
 }
 
 int
-DrawUISubtabBar(UISubtabBar bar)
+DrawUISubtabBar(SubtabBarProps bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);

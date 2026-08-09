@@ -133,8 +133,8 @@ generated C at every exit point of its scope, with no runtime cost. `goto`
 that jumps out of a deferred scope does not run the defer — use explicit
 cleanup labels if you mix the two.
 
-Widgets are ordinary library functions (WidgetText, WidgetRect, WidgetLine,
-WidgetBackground, WidgetButton) declared in `ui_widgets.h`; the compiler
+Widgets are ordinary library functions (UIText, UIRect, Line,
+Background, UIButton) declared by Kryon; the compiler
 treats them exactly like any other call. Input handling is plain control
 flow: `if (IsKeyPressed(KEY_A)) { ... }`, `if (IsKeyDown(KEY_A)) { ... }`.
 Event-style blocks (`button ... {`, `on key ... {`, `event ... {`) and

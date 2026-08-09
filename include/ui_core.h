@@ -10,9 +10,28 @@ typedef struct UIFrameState {
     int view_height;
     Camera2D camera;
     int input_clip_count;
+    Rectangle input_clips[16];
     int input_capture_count;
+    struct {
+        Rectangle bounds;
+        int allow_inside;
+    } input_captures[16];
     int cursor_priority;
     int cursor_had_intent;
+    int pointer_down;
+    int pointer_dragging;
+    int pointer_dragged_this_click;
+    int pointer_start_x;
+    int pointer_start_y;
+    int pointer_owner;
+    int release_consumed;
+    int focus_active_id;
+    int focus_ids[256];
+    int focus_count;
+    int focus_tab_dir;
+    int focus_frame_open;
+    int focus_text_input_active;
+    int text_input_requested;
     int mouse_world_override_enabled;
     Vector2 mouse_world_override;
     unsigned long frame_serial;

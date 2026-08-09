@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 void
-DrawUIInfoRows(UIInfoRows rows)
+DrawUIInfoRows(InfoRowsProps rows)
 {
     Color background = rows.background.a != 0
                            ? rows.background
@@ -36,7 +36,7 @@ DrawUIInfoRows(UIInfoRows rows)
 }
 
 int
-ui_label_text_field_height(UILabelTextField row)
+ui_label_text_field_height(LabelTextFieldProps row)
 {
     int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
     int field_h = row.field_h > 0 ? row.field_h : ScaleUIPx(40);
@@ -47,14 +47,20 @@ ui_label_text_field_height(UILabelTextField row)
 }
 
 int
-DrawUILabelTextField(UILabelTextField row, int x, int y, int w)
+GetUILabelTextFieldHeight(LabelTextFieldProps row)
+{
+    return ui_label_text_field_height(row);
+}
+
+int
+DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
     int label_font = row.label_font > 0 ? row.label_font : GetUISmallFontSize();
     int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
     int field_h = row.field_h > 0 ? row.field_h : ScaleUIPx(40);
     int gap = row.gap > 0 ? row.gap : 0;
     Color label_color = row.label_color.a != 0 ? row.label_color : DarkenUIColor(c_text, 34);
-    UITextField field = row.field;
+    TextFieldProps field = row.field;
 
     DrawUIText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
     field.bounds = (Rectangle){(float)x, (float)(y + label_h + gap), (float)w, (float)field_h};
@@ -62,13 +68,13 @@ DrawUILabelTextField(UILabelTextField row, int x, int y, int w)
 }
 
 int
-ui_section_label_height(UISectionLabel label)
+ui_section_label_height(SectionLabelProps label)
 {
     return label.height > 0 ? label.height : ScaleUIPx(24);
 }
 
 int
-DrawUISectionLabel(UISectionLabel label, int x, int y)
+DrawUISectionLabel(SectionLabelProps label, int x, int y)
 {
     int font = label.font > 0 ? label.font : GetUISmallFontSize();
     int icon_d = label.icon_diameter > 0 ? label.icon_diameter : ScaleUIPx(18);
@@ -85,13 +91,13 @@ DrawUISectionLabel(UISectionLabel label, int x, int y)
 }
 
 int
-ui_checkbox_row_height(UICheckboxRow row)
+ui_checkbox_row_height(CheckboxRowProps row)
 {
     return row.height > 0 ? row.height : ScaleUIPx(42);
 }
 
 int
-DrawUICheckboxRow(UICheckboxRow row, int x, int y)
+DrawUICheckboxRow(CheckboxRowProps row, int x, int y)
 {
     if(row.disabled)
         return DrawDisabledUICheckboxToggle(x, y, row.label, row.value, 1);
@@ -99,7 +105,7 @@ DrawUICheckboxRow(UICheckboxRow row, int x, int y)
 }
 
 int
-DrawUIOverlayButton(UIOverlayButton button)
+DrawUIOverlayButton(OverlayButtonProps button)
 {
     Vector2 mouse;
     int mouse_inside;
@@ -151,7 +157,7 @@ DrawUIOverlayButton(UIOverlayButton button)
 }
 
 int
-ui_button_row_height(UIButtonRow row)
+ui_button_row_height(ButtonRowProps row)
 {
     int height = row.height > 0 ? row.height : ScaleUIPx(30);
     int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);
@@ -189,7 +195,7 @@ ui_button_row_height(UIButtonRow row)
 }
 
 int
-DrawUIButtonRow(UIButtonRow row)
+DrawUIButtonRow(ButtonRowProps row)
 {
     int clicked = -1;
     int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);

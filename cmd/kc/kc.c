@@ -1927,7 +1927,7 @@ parse_statement(KryFile *file, int line_no, char *line)
         die("%s:%d: 'let' syntax was removed; use 'name: type = value'",
             file->path, line_no);
     } else if(starts_word(line, "background")) {
-        die("%s:%d: 'background' widget keyword was removed; call WidgetBackground(color) instead",
+        die("%s:%d: 'background' widget keyword was removed; call Background(color) instead",
             file->path, line_no);
     } else if(starts_word(line, "set_theme")) {
         die("%s:%d: 'set_theme' was removed; call SetCurrentTheme(id, mode) directly",
@@ -1939,16 +1939,16 @@ parse_statement(KryFile *file, int line_no, char *line)
     } else if(line_is_c_uninit_decl(line)) {
         add_body(file, "    %s;", line);
     } else if(starts_statement_word(line, "text")) {
-        die("%s:%d: 'text' widget keyword was removed; call WidgetText(label, x, y, size, color) instead",
+        die("%s:%d: 'text' widget keyword was removed; call Text(label, x, y, size, color) instead",
             file->path, line_no);
     } else if(starts_word(line, "rect")) {
-        die("%s:%d: 'rect' widget keyword was removed; call WidgetRect(x, y, w, h, fill, border) instead",
+        die("%s:%d: 'rect' widget keyword was removed; call Rect(x, y, w, h, fill, border) instead",
             file->path, line_no);
     } else if(starts_word(line, "line")) {
-        die("%s:%d: 'line' widget keyword was removed; call WidgetLine(x1, y1, x2, y2, color) instead",
+        die("%s:%d: 'line' widget keyword was removed; call UILine(x1, y1, x2, y2, color) instead",
             file->path, line_no);
     } else if(starts_word(line, "swatch")) {
-        die("%s:%d: 'swatch' widget keyword was removed; draw a rect + text with WidgetRect/WidgetText instead",
+        die("%s:%d: 'swatch' widget keyword was removed; draw a rect + text with Rect/Text instead",
             file->path, line_no);
     } else if(starts_word(line, "on key_down")) {
         die("%s:%d: 'on key_down' was removed; use 'if (IsKeyDown(KEY)) {'",
@@ -2089,7 +2089,7 @@ parse_statement(KryFile *file, int line_no, char *line)
         q = trim(q);
         if(q[0] == '\0')
             die("%s:%d: expected if condition", file->path, line_no);
-        /* If the condition is a function call (e.g. `WidgetButton(...)`),
+        /* If the condition is a function call (e.g. `Button(...)`),
          * wrap it so the call registers its source location for click-to-
          * source inspection. Evaluating into a temp and popping before the
          * branch keeps the Push/Pop balanced regardless of else/return. */
@@ -2174,13 +2174,13 @@ parse_statement(KryFile *file, int line_no, char *line)
             die("%s:%d: expected while condition", file->path, line_no);
         add_body(file, "    while(%s) {", q);
     } else if(starts_word(line, "button")) {
-        die("%s:%d: 'button' block keyword was removed; use 'if WidgetButton(x, y, w, h, label, style) {'",
+        die("%s:%d: 'button' block keyword was removed; use 'if Button((ButtonProps){...}) {'",
             file->path, line_no);
     } else if(starts_word(line, "event") || starts_word(line, "on")) {
         die("%s:%d: 'event'/'on' block keyword was removed; use 'if (expr) {' with a bool-returning call",
             file->path, line_no);
     } else if(starts_word(line, "icon_button")) {
-        die("%s:%d: 'icon_button' block keyword was removed; use 'if UIButtonNode((UIButton){...}) {'",
+        die("%s:%d: 'icon_button' block keyword was removed; use 'if IconButton((IconButtonProps){...}) {'",
             file->path, line_no);
     } else if(line[strlen(line) - 1] == ')' && strchr(line, '(') != NULL &&
               find_assignment_op(line) == NULL) {

@@ -16,19 +16,19 @@ state {
 }
 
 screen BasicControlsExample(viewport: Rectangle) {
-    WidgetBackground(GetThemeBackground())
-    WidgetText("Basic controls", 40, 40, UI_TEXT_24, GetThemeText())
-    picked: int = UIRadioNode((UIRadioButton){{40,90,160,28},"Choice A",1,radio==1,0})
+    Background(GetThemeBackground())
+    Text("Basic controls", 40, 40, UI_TEXT_24, GetThemeText())
+    picked: int = Radio((RadioButtonProps){{40,90,160,28},"Choice A",1,radio==1,0})
     if picked {
         radio = picked
     }
-    picked = UIRadioNode((UIRadioButton){{40,124,160,28},"Choice B",2,radio==2,0})
+    picked = Radio((RadioButtonProps){{40,124,160,28},"Choice B",2,radio==2,0})
     if picked {
         radio = picked
     }
-    UISpinboxNode((UISpinbox){{240,90,140,34},201,0,10,1,&spin,0})
-    UIComboboxNode((UICombobox){{240,140,180,34},202,choices,3,&combo,0})
-    UIProgressNode((UIProgressBar){{40,210,380,28},0,100,progress,"Progress"})
+    Spinbox((SpinboxProps){{240,90,140,34},201,0,10,1,&spin,0})
+    Combobox((ComboboxProps){{240,140,180,34},202,choices,3,&combo,0})
+    Progress((ProgressBarProps){{40,210,380,28},0,100,progress,"Progress"})
     if (IsKeyPressed(KEY_RIGHT)) {
         if progress < 100 {
             progress += 5

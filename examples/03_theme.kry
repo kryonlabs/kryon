@@ -54,7 +54,7 @@ ApplyThemeState :: () {
 }
 
 TokenValue :: (label: const char *, value: int, x: int, y: int) {
-    UITextNode(TextFormat("%s %d", label, value), x, y, UI_TEXT_12, GetThemeIcon())
+    Text(TextFormat("%s %d", label, value), x, y, UI_TEXT_12, GetThemeIcon())
 }
 
 ControlDemo :: (x: int, y: int, w: int) {
@@ -70,36 +70,42 @@ ControlDemo :: (x: int, y: int, w: int) {
         ScaleUIPx(8)
     }
 
-    UITextNode("Live controls", x, y, UI_TEXT_24, GetThemeText())
+    Text("Live controls", x, y, UI_TEXT_24, GetThemeText())
     y += ScaleUIPx(46)
-    UIButtonNode((UIButton){{x, y, ScaleUIPx(190), ScaleUIPx(44)}, "Primary", UI_TEXT_16, 301, 0,
-                            GetThemeButton(), GetThemeButtonHover(),
-                            GetThemeText(), DarkenUIColor(GetThemeButton(), 35), 0.06f})
-    UIButtonNode((UIButton){{x + ScaleUIPx(210), y, ScaleUIPx(190), ScaleUIPx(44)}, "Secondary", UI_TEXT_16, 302, 0,
-                            GetThemeSurface(), LightenUIColor(GetThemeSurface(), 12),
-                            GetThemeText(), DarkenUIColor(GetThemeSurface(), 35), 0.06f})
+    Button((ButtonProps){
+        .bounds = {x, y, ScaleUIPx(190), ScaleUIPx(44)},
+        .label = "Primary",
+        .style = UI_BUTTON_STYLE_PRIMARY,
+        .id = 301,
+    })
+    Button((ButtonProps){
+        .bounds = {x + ScaleUIPx(210), y, ScaleUIPx(190), ScaleUIPx(44)},
+        .label = "Secondary",
+        .style = UI_BUTTON_STYLE_SECONDARY,
+        .id = 302,
+    })
     y += ScaleUIPx(70)
 
-    UITextFieldNode((UITextField){{x, y, w, ScaleUIPx(44)}, text_value, sizeof(text_value),
+    TextField((TextFieldProps){{x, y, w, ScaleUIPx(44)}, text_value, sizeof(text_value),
                                   &text_cursor, &text_focused, 80, UI_TEXT_16, 303,
                                   field_style, NULL, NULL, NULL})
     y += ScaleUIPx(70)
-    UIDropdownNode(304, x, y, w, ScaleUIPx(44), options, 3, &combo_index)
+    Dropdown(304, x, y, w, ScaleUIPx(44), options, 3, &combo_index)
     y += ScaleUIPx(72)
-    UISliderNode(305, x, y, w, "Slider", 0, 100, &slider_value, "")
+    Slider(305, x, y, w, "Slider", 0, 100, &slider_value, "")
     y += ScaleUIPx(72)
-    UIToggleNode(306, x, y, ScaleUIPx(180), ScaleUIPx(48), &toggle_value, "Off", "On")
-    UICheckboxNode(307, x + ScaleUIPx(230), y + ScaleUIPx(12), "Checkbox", &check_value)
+    Toggle(306, x, y, ScaleUIPx(180), ScaleUIPx(48), &toggle_value, "Off", "On")
+    Checkbox(307, x + ScaleUIPx(230), y + ScaleUIPx(12), "Checkbox", &check_value)
 }
 
 screen ThemeExample(viewport: Rectangle) {
     ApplyThemeState()
-    UIBackground(GetThemeBackground())
+    Background(GetThemeBackground())
 
     margin: int = ScaleUIPx(26)
     panel_w: int = ScaleUIPx(310)
     right_x: int = margin + panel_w + ScaleUIPx(42)
-    settings := (UIThemeSettings){
+    settings := (ThemeSettingsProps){
         .id_base = 101,
         .x = margin,
         .y = ScaleUIPx(64),
@@ -116,16 +122,16 @@ screen ThemeExample(viewport: Rectangle) {
         .style_system_label = "System style"
     }
 
-    UITextNode("Kryon Native Theme State", margin, ScaleUIPx(24), UI_TEXT_24, GetThemeText())
-    UITextNode("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), UI_TEXT_16, GetThemeIcon())
+    Text("Kryon Native Theme State", margin, ScaleUIPx(24), UI_TEXT_24, GetThemeText())
+    Text("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), UI_TEXT_16, GetThemeIcon())
     result: UIThemeSettingsResult = {0}
-    UIThemeSettingsNode(settings, &menu_state, &result)
+    ThemeSettings(settings, &menu_state, &result)
 
     ControlDemo(right_x, ScaleUIPx(88), ScaleUIPx(420))
 
     tokens := GetUIStyleTokens()
     token_y: int = ScaleUIPx(520)
-    UITextNode("Active style tokens", right_x, token_y, UI_TEXT_16, GetThemeText())
+    Text("Active style tokens", right_x, token_y, UI_TEXT_16, GetThemeText())
     token_y += ScaleUIPx(30)
     TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
     TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)

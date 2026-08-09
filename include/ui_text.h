@@ -41,6 +41,8 @@ int MeasureScaledUIText(const char *text, int scale);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
 void DrawUITextStyled(const char *text, int x, int y, UITextStyle style);
 void DrawUITextItalic(const char *text, int x, int y, int font_size, Color color);
+void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
+                      Color color);
 int PushUITextSelectable(int selectable);
 void PopUITextSelectable(int token);
 int GetUITextY(const char *text, int box_y, int box_h, int font_size);

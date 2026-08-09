@@ -74,7 +74,7 @@
         <div class="goal-list">
           <article class="goal">
             <h3>Declarative Nodes</h3>
-            <p>Kryon has moved widget-facing APIs to node declarations such as <code>UIButtonNode</code>, <code>UITextNode</code>, and <code>UIDropdownNode</code>.</p>
+            <p>Kryon has moved widget-facing APIs to node declarations such as <code>UIButton</code>, <code>UIText</code>, and <code>Dropdown</code>.</p>
           </article>
           <article class="goal">
             <h3>Runtime Phases</h3>
@@ -183,7 +183,7 @@ make install</code></pre>
 AppHome :: (app: InbeApp*) {
     y: int = ScaleUIPx(24)
 
-    UITextNode("Inner Breeze", ScaleUIPx(20), y, UI_TEXT_24, GetThemeText())
+    Text("Inner Breeze", ScaleUIPx(20), y, UI_TEXT_24, GetThemeText())
     UIBottomNavNode(app->bottom_nav)
 }</code></pre>
       </section>

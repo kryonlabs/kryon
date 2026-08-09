@@ -43,7 +43,7 @@ ui_draw_material_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint)
 }
 
 UIBottomNavResult
-DrawUIBottomNav(UIBottomNav nav)
+DrawUIBottomNav(BottomNavProps nav)
 {
     UIBottomNavResult result = {-1, -1, 0, 0};
     int count = nav.count;
@@ -208,7 +208,7 @@ bottom_nav_option_index(const UIBottomNavOption *options, int option_count,
 }
 
 UIBottomNavConfigResult
-DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal)
+DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
 {
     static int route_scroll_offset = 0;
     UIBottomNavConfigResult result = {0, 0};

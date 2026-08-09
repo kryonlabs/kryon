@@ -13,7 +13,23 @@ GetUITabBarHeight(void)
 }
 
 static int
-ui_tab_bar_tab_width(UITabBar bar, int index, int min_tab_w, int icon_tab_w)
+ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int icon_tab_w)
+{
+    const UITab *tab;
+
+    if(index < 0 || index >= bar.count || bar.tabs == NULL)
+        return min_tab_w;
+
+    tab = &bar.tabs[index];
+    if((tab->label == NULL || tab->label[0] == '\0') && tab->icon.id != 0)
+        return icon_tab_w;
+
+    return min_tab_w;
+}
+
+static int
+ui_pane_tab_bar_tab_width(UIPaneTabBar bar, int index, int min_tab_w,
+                          int icon_tab_w)
 {
     const UITab *tab;
 
@@ -28,7 +44,7 @@ ui_tab_bar_tab_width(UITabBar bar, int index, int min_tab_w, int icon_tab_w)
 }
 
 int
-DrawUITabBar(UITabBar bar)
+DrawUITabBar(TabBarProps bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -356,4 +372,136 @@ DrawUITabBar(UITabBar bar)
     if(clicked_tab >= 0)
         UIConsumeRelease();
     return clicked_tab;
+}
+
+UIPaneTabBarResult
+DrawUIPaneTabBar(UIPaneTabBar bar)
+{
+    UIPaneTabBarResult result = {-1, -1};
+    TabBarProps tabs = {0};
+    Vector2 mouse = ui_mouse_world();
+    int font = bar.font > 0 ? bar.font : UI_TEXT_12;
+    int bar_x = (int)bar.bounds.x;
+    int bar_y = (int)bar.bounds.y;
+    int bar_h = (int)bar.bounds.height;
+    int tab_gap = ui_material_style() ? 0 : ScaleUIPx(4);
+    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : ScaleUIPx(92);
+    int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : min_tab_w;
+    int icon_tab_w = bar_h + tab_gap * 2;
+    int scroll = bar.scroll_offset != NULL ? *bar.scroll_offset : 0;
+    int tab_x;
+    int drag_threshold = ScaleUIPx(6);
+    static Vector2 press_pos = {0};
+    static int press_index = -1;
+    static int drag_reported = 0;
+
+    if(bar.dragged_index != NULL)
+        *bar.dragged_index = -1;
+
+    tabs.bounds = bar.bounds;
+    tabs.tabs = bar.tabs;
+    tabs.count = bar.count;
+    tabs.selected_index = bar.selected_index;
+    tabs.font = font;
+    tabs.min_tab_width = min_tab_w;
+    tabs.max_tab_width = max_tab_w;
+    tabs.scroll_offset = bar.scroll_offset;
+    tabs.focus_selected = 0;
+    tabs.closed_index = NULL;
+    result.clicked_index = DrawUITabBar(tabs);
+
+    if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 ||
+       bar.bounds.height <= 0)
+        return result;
+
+    if(max_tab_w < min_tab_w)
+        max_tab_w = min_tab_w;
+    if(icon_tab_w > max_tab_w)
+        icon_tab_w = max_tab_w;
+
+    if(bar.scroll_offset != NULL)
+        scroll = *bar.scroll_offset;
+
+    tab_x = bar_x + tab_gap - scroll;
+    for(int i = 0; i < bar.count; i++) {
+        int tab_w = ui_pane_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
+        Rectangle tab_rect = {(float)tab_x, (float)bar_y,
+                              (float)tab_w, (float)bar_h};
+        if(CheckCollisionPointRec(mouse, tab_rect) &&
+           !UIInputCapturesClick(mouse)) {
+            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                press_index = i;
+                press_pos = mouse;
+                drag_reported = 0;
+            } else if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+                      press_index == i &&
+                      !drag_reported) {
+                int dx = (int)(mouse.x - press_pos.x);
+                int dy = (int)(mouse.y - press_pos.y);
+                if(dx < 0)
+                    dx = -dx;
+                if(dy < 0)
+                    dy = -dy;
+                if(dx >= drag_threshold || dy >= drag_threshold) {
+                    result.dragged_index = i;
+                    if(bar.dragged_index != NULL)
+                        *bar.dragged_index = i;
+                    drag_reported = 1;
+                }
+            }
+            MarkUIClickable();
+        }
+        tab_x += tab_w + tab_gap;
+    }
+    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        press_index = -1;
+        drag_reported = 0;
+    }
+
+    return result;
+}
+
+UIPaneDropZone
+GetUIPaneDropZone(Rectangle bounds, Vector2 mouse)
+{
+    int edge;
+
+    if(!CheckCollisionPointRec(mouse, bounds))
+        return UI_PANE_DROP_NONE;
+
+    edge = ScaleUIPx(46);
+    if(mouse.x < bounds.x + (float)edge)
+        return UI_PANE_DROP_LEFT;
+    if(mouse.x > bounds.x + bounds.width - (float)edge)
+        return UI_PANE_DROP_RIGHT;
+    if(mouse.y < bounds.y + (float)edge)
+        return UI_PANE_DROP_TOP;
+    if(mouse.y > bounds.y + bounds.height - (float)edge)
+        return UI_PANE_DROP_BOTTOM;
+
+    return UI_PANE_DROP_CENTER;
+}
+
+void
+DrawUIPaneDropPreview(Rectangle bounds, UIPaneDropZone zone)
+{
+    Rectangle preview = bounds;
+
+    if(zone == UI_PANE_DROP_NONE)
+        return;
+
+    if(zone == UI_PANE_DROP_LEFT) {
+        preview.width = bounds.width * 0.35f;
+    } else if(zone == UI_PANE_DROP_RIGHT) {
+        preview.x = bounds.x + bounds.width * 0.65f;
+        preview.width = bounds.width * 0.35f;
+    } else if(zone == UI_PANE_DROP_TOP) {
+        preview.height = bounds.height * 0.35f;
+    } else if(zone == UI_PANE_DROP_BOTTOM) {
+        preview.y = bounds.y + bounds.height * 0.65f;
+        preview.height = bounds.height * 0.35f;
+    }
+
+    DrawRectangleRec(preview, Fade(c_link, 0.18f));
+    DrawRectangleLinesEx(preview, 2.0f, c_link);
 }

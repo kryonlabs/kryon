@@ -29,6 +29,7 @@ STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
 KC = $(BUILD_DIR)/bin/kc
 KT = $(BUILD_DIR)/bin/kt
+KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
 KRYON_APP = $(BUILD_DIR)/bin/kryon-app
 LEGACY_KC = $(BUILD_ROOT)/bin/kc
 LEGACY_KT = $(BUILD_ROOT)/bin/kt
@@ -153,9 +154,9 @@ $(BUILD_ROOT)/bin:
 	mkdir -p $@
 endif
 
-all: $(LIB) $(KC) $(KT) $(KRYON_APP)
+all: $(LIB) $(KC) $(KT) $(KRYON_PREVIEW) $(KRYON_APP)
 
-tools: $(KC) $(KT) $(KRYON_APP)
+tools: $(KC) $(KT) $(KRYON_PREVIEW) $(KRYON_APP)
 
 install: $(KT) $(KRYON_APP)
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -225,6 +226,15 @@ $(KC): $(KC_SRCS) $(KC_HDRS) | $(BUILD_DIR)/bin
 
 $(KT): cmd/kt/main.c | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ cmd/kt/main.c
+
+$(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ cmd/kryon-preview/main.c \
+		-Wl,-export-dynamic \
+		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
+		$(RAYLIB_A) $(RAY_LDLIBS) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) \
+		$(KRYON_MARKDOWN_DEPS) $(KRYON_OPENSSL_SSL_LDLIB) \
+		$(KRYON_OPENSSL_CRYPTO_LDLIB) $(CURL_CODEC_LDLIBS) \
+		$(LDLIBS) -lpthread -lm
 
 $(KRYON_APP): scripts/kryon-app.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon-app.sh $@

@@ -16,13 +16,13 @@ state {
 
 screen ScalingExample(viewport: Rectangle) {
     SetUIScale(scales[scale_index])
-    WidgetBackground(GetThemeBackground())
+    Background(GetThemeBackground())
     box_size: int = ScaleUIPx(100)
-    WidgetText(TextFormat("DPI Scale:%.1f",scales[scale_index]), 50, 20, 20, GetThemeText())
-    WidgetRect(box_x, box_y, box_size, box_size, GetThemeButton(), GetThemeIcon())
-    WidgetText("Scaled Box", box_x + 10, box_y + 10, UI_TEXT_16, GetThemeText())
-    WidgetText(TextFormat("Base:100px Scaled:%dpx",box_size), 50, 60, UI_TEXT_16, GetThemeText())
-    WidgetText("SPACE cycles DPI,arrows move box", 50, 90, UI_TEXT_16, GetThemeIcon())
+    Text(TextFormat("DPI Scale:%.1f",scales[scale_index]), 50, 20, 20, GetThemeText())
+    Rect(box_x, box_y, box_size, box_size, GetThemeButton(), GetThemeIcon())
+    Text("Scaled Box", box_x + 10, box_y + 10, UI_TEXT_16, GetThemeText())
+    Text(TextFormat("Base:100px Scaled:%dpx",box_size), 50, 60, UI_TEXT_16, GetThemeText())
+    Text("SPACE cycles DPI,arrows move box", 50, 90, UI_TEXT_16, GetThemeIcon())
     if (IsKeyDown(KEY_RIGHT)) {
         box_x += 3
     }

@@ -3,7 +3,7 @@
 
 #include "kryon_compat.generated.h"
 
-#define APP_HOST_ABI_VERSION 3
+#define APP_HOST_ABI_VERSION 4
 
 typedef struct KryonInputOverride {
     int enabled;

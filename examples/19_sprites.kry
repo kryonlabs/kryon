@@ -10,18 +10,22 @@ app "Kryon Sprites" {
 }
 
 screen main {
-    WidgetBackground(GetThemeBackground())
-    WidgetText("Sprites are image nodes", ScaleUIPx(32), ScaleUIPx(30),
+    Background(GetThemeBackground())
+    Text("Sprites are image nodes", ScaleUIPx(32), ScaleUIPx(30),
                UI_TEXT_24, GetThemeText())
-    UIBeginNodeGroup(100, (Rectangle){ScaleUIPx(32), ScaleUIPx(82),
+    BeginNodeGroup(100, (Rectangle){ScaleUIPx(32), ScaleUIPx(82),
                                       ScaleUIPx(260), ScaleUIPx(210)})
-    WidgetRect(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
+    Rect(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
                GetThemeSurface(), GetThemeButton())
-    WidgetSprite("tiles/tile.png", ScaleUIPx(52), ScaleUIPx(104),
-                 ScaleUIPx(96), ScaleUIPx(96))
-    WidgetSprite("pfp/lotus.png", ScaleUIPx(168), ScaleUIPx(104),
-                 ScaleUIPx(96), ScaleUIPx(96))
-    WidgetText("Images keep their node bounds for editing",
+    Sprite((SpriteProps){"tiles/tile.png",
+             (Rectangle){ScaleUIPx(52),ScaleUIPx(104),ScaleUIPx(96),ScaleUIPx(96)},
+             (Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,
+             UI_SPRITE_FIT_CONTAIN})
+    Sprite((SpriteProps){"pfp/lotus.png",
+             (Rectangle){ScaleUIPx(168),ScaleUIPx(104),ScaleUIPx(96),ScaleUIPx(96)},
+             (Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,
+             UI_SPRITE_FIT_CONTAIN})
+    Text("Images keep their node bounds for editing",
                ScaleUIPx(52), ScaleUIPx(226), UI_TEXT_12, GetThemeIcon())
-    UIEndNodeGroup()
+    EndNodeGroup()
 }

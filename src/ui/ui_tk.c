@@ -422,7 +422,7 @@ DrawUIContextMenu(UIContextMenu menu)
 }
 
 int
-DrawUIRadioButton(UIRadioButton radio)
+DrawUIRadioButton(RadioButtonProps radio)
 {
     int font = GetUIFontSize();
     int diameter = ScaleUIPx(20);
@@ -528,7 +528,7 @@ DrawUIRadioButton(UIRadioButton radio)
 }
 
 void
-DrawUIProgressBar(UIProgressBar progress)
+DrawUIProgressBar(ProgressBarProps progress)
 {
     float t;
     Rectangle fill = progress.bounds;
@@ -550,7 +550,7 @@ DrawUIProgressBar(UIProgressBar progress)
 }
 
 int
-DrawUISpinbox(UISpinbox spinbox)
+DrawUISpinbox(SpinboxProps spinbox)
 {
     int button_w = ScaleUIPx(28);
     int changed = 0;
@@ -574,7 +574,7 @@ DrawUISpinbox(UISpinbox spinbox)
     snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
     DrawCenteredUIText(value_text, (int)(text.x + text.width / 2), (int)(text.y + text.height / 2),
                        GetUIFontSize(), c_text);
-    if(DrawUIButton((UIButton){left, "-", GetUIFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
+    if(DrawUIButton((UIButtonSpec){left, "-", GetUIFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL && *spinbox.value > spinbox.min) {
         *spinbox.value -= spinbox.step;
@@ -582,7 +582,7 @@ DrawUISpinbox(UISpinbox spinbox)
             *spinbox.value = spinbox.min;
         changed = 1;
     }
-    if(DrawUIButton((UIButton){right, "+", GetUIFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
+    if(DrawUIButton((UIButtonSpec){right, "+", GetUIFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL && *spinbox.value < spinbox.max) {
         *spinbox.value += spinbox.step;
@@ -594,7 +594,7 @@ DrawUISpinbox(UISpinbox spinbox)
 }
 
 int
-DrawUICombobox(UICombobox combo)
+DrawUICombobox(ComboboxProps combo)
 {
     if(combo.disabled)
         MarkUIDisabled();
@@ -605,7 +605,7 @@ DrawUICombobox(UICombobox combo)
 }
 
 void
-DrawUILabelFrame(UILabelFrame frame)
+DrawUILabelFrame(LabelFrameProps frame)
 {
     int font = GetUISmallFontSize();
     DrawRectangleLinesEx(frame.bounds, 1.0f, c_button);
@@ -620,7 +620,7 @@ DrawUILabelFrame(UILabelFrame frame)
 }
 
 void
-DrawUIImageBox(UIImageBox image)
+DrawUIImageBox(ImageBoxProps image)
 {
     DrawRectangleRec(image.bounds, c_surface);
     if(image.texture.id != 0)
@@ -632,7 +632,7 @@ DrawUIImageBox(UIImageBox image)
 }
 
 int
-DrawUIListBox(UIListBox list)
+DrawUIListBox(ListBoxProps list)
 {
     int font = GetUIFontSize();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
@@ -679,7 +679,7 @@ DrawUIListBox(UIListBox list)
 }
 
 int
-DrawUITreeView(UITreeView tree)
+DrawUITreeView(TreeViewProps tree)
 {
     int font = GetUIFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
@@ -881,7 +881,7 @@ ui_draw_tree_file_mark(Rectangle box, int hot)
 }
 
 int
-DrawUICascadingTreeView(UICascadingTreeView tree)
+DrawUICascadingTreeView(CascadingTreeViewProps tree)
 {
     int font = GetUIFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
@@ -1095,7 +1095,7 @@ ui_draw_source_line(const char *text, int len, int x, int y, int font,
 }
 
 int
-DrawUISourceView(UISourceView source)
+DrawUISourceView(SourceViewProps source)
 {
     const char *text = source.text != NULL ? source.text : "";
     int font = source.font_size > 0 ? source.font_size : GetUISmallFontSize();
@@ -1194,7 +1194,7 @@ DrawUISourceView(UISourceView source)
 }
 
 int
-DrawUITableView(UITableView table)
+DrawUITableView(TableViewProps table)
 {
     int font = GetUISmallFontSize();
     int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
@@ -1371,7 +1371,7 @@ UICanvasHitTest(Vector2 point, Rectangle *items, int item_count)
 }
 
 int
-DrawUINotebook(UINotebook notebook)
+DrawUINotebook(NotebookProps notebook)
 {
     int font = GetUIFontSize();
     int changed = 0;
@@ -1404,7 +1404,7 @@ DrawUINotebook(UINotebook notebook)
 }
 
 int
-DrawUIPanedView(UIPanedView panes)
+DrawUIPanedView(PanedViewProps panes)
 {
     int changed = 0;
     int split = panes.split != NULL ? *panes.split : (panes.vertical ? (int)panes.bounds.width / 2 : (int)panes.bounds.height / 2);
@@ -1435,7 +1435,7 @@ DrawUIPanedView(UIPanedView panes)
 }
 
 int
-DrawUICollapsible(UICollapsible section)
+DrawUICollapsible(CollapsibleProps section)
 {
     int font = GetUIFontSize();
     Rectangle header = section.bounds;
@@ -1458,40 +1458,40 @@ DrawUICollapsible(UICollapsible section)
 }
 
 int
-DrawUIMessageDialog(UIMessageDialog dialog)
+DrawUIMessageDialog(MessageDialogProps dialog)
 {
     const UIModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
                                   UI_BUTTON_STYLE_PRIMARY, 0};
-    return DrawUIActionModal((UIModalSpec){dialog.title, dialog.message, &action, 1,
+    return DrawUIActionModal((ModalProps){dialog.title, dialog.message, &action, 1,
                                            g_ui_x_icon, ScaleUIPx(420)});
 }
 
 int
-DrawUIConfirmDialog(UIConfirmDialog dialog)
+DrawUIConfirmDialog(ConfirmDialogProps dialog)
 {
     UIModalAction actions[2] = {
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", UI_BUTTON_STYLE_SECONDARY, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", UI_BUTTON_STYLE_PRIMARY, 0}
     };
-    return DrawUIActionModal((UIModalSpec){dialog.title, dialog.message, actions, 2,
+    return DrawUIActionModal((ModalProps){dialog.title, dialog.message, actions, 2,
                                            g_ui_x_icon, ScaleUIPx(460)});
 }
 
 int
-DrawUIPromptDialog(UIPromptDialog dialog)
+DrawUIPromptDialog(PromptDialogProps dialog)
 {
     int result;
     UIModalAction actions[2] = {
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", UI_BUTTON_STYLE_SECONDARY, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", UI_BUTTON_STYLE_PRIMARY, 0}
     };
-    result = DrawUIActionModal((UIModalSpec){dialog.title, "", actions, 2,
+    result = DrawUIActionModal((ModalProps){dialog.title, "", actions, 2,
                                              g_ui_x_icon, ScaleUIPx(460)});
     if(dialog.text != NULL && dialog.cursor_position != NULL && dialog.focused != NULL) {
         Rectangle field = {(float)(ui_view_width / 2 - ScaleUIPx(190)),
                            (float)(ui_view_height / 2 - ScaleUIPx(4)),
                            (float)ScaleUIPx(380), (float)ScaleUIPx(38)};
-        DrawUITextField((UITextField){field, dialog.text, (size_t)dialog.text_size,
+        DrawUITextField((TextFieldProps){field, dialog.text, (size_t)dialog.text_size,
                                       dialog.cursor_position, dialog.focused, dialog.text_size - 1,
                                       GetUIFontSize(), 7301, {0}, NULL, NULL, NULL});
     }

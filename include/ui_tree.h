@@ -45,15 +45,15 @@ typedef enum UIWidgetKind {
 } UIWidgetKind;
 
 typedef union UIWidgetData {
-    UIParagraph paragraph;
-    UIReadonlyTextBox readonly_text_box;
-    UILabelTextField label_text_field;
-    UISectionLabel section_label;
-    UICheckboxRow checkbox_row;
-    UIButtonRow button_row;
-    UIThemeSettings theme_settings;
-    UIParagraphModalMeasure paragraph_modal;
-    UISprite sprite;
+    UIParagraphSpec paragraph;
+    ReadonlyTextBoxProps readonly_text_box;
+    LabelTextFieldProps label_text_field;
+    SectionLabelProps section_label;
+    CheckboxRowProps checkbox_row;
+    ButtonRowProps button_row;
+    ThemeSettingsProps theme_settings;
+    ParagraphModalMeasureProps paragraph_modal;
+    SpriteProps sprite;
 } UIWidgetData;
 
 typedef struct UIWidgetNode {
@@ -71,8 +71,8 @@ typedef struct UIWidgetNode {
 
 void UIBeginTree(int screen_id);
 void UIEndTree(void);
-UINodeId UIBeginNodeGroup(int id, Rectangle bounds);
-void UIEndNodeGroup(void);
+UINodeId BeginNodeGroup(int id, Rectangle bounds);
+void EndNodeGroup(void);
 void UIReconcileTree(void);
 void UILayoutTree(void);
 void UIRouteInput(void);
@@ -85,25 +85,34 @@ int UIGetNodeHeightById(int id);
 const UIWidgetNode *UIGetNode(UINodeId id);
 UINodeId UIHitTestNode(Vector2 point);
 
-UIWidgetNode UINodeParagraph(UIParagraph paragraph, int x, int y);
-UIWidgetNode UINodeReadonlyTextBox(UIReadonlyTextBox box);
-UIWidgetNode UINodeLabelTextField(UILabelTextField row, int x, int y, int w);
-UIWidgetNode UINodeSectionLabel(UISectionLabel label, int x, int y);
-UIWidgetNode UINodeCheckboxRow(UICheckboxRow row, int x, int y);
-UIWidgetNode UINodeButtonRow(UIButtonRow row);
-UIWidgetNode UINodeBottomNav(UIBottomNav nav);
-UIWidgetNode UINodeTopNav(UITopNav nav);
-UIWidgetNode UINodeTabBar(UITabBar bar);
-UIWidgetNode UINodeThemeSettings(UIThemeSettings settings);
+UIWidgetNode UINodeParagraph(UIParagraphSpec paragraph, int x, int y);
+UIWidgetNode UINodeReadonlyTextBox(ReadonlyTextBoxProps box);
+UIWidgetNode UINodeLabelTextField(LabelTextFieldProps row, int x, int y, int w);
+UIWidgetNode UINodeSectionLabel(SectionLabelProps label, int x, int y);
+UIWidgetNode UINodeCheckboxRow(CheckboxRowProps row, int x, int y);
+UIWidgetNode UINodeButtonRow(ButtonRowProps row);
+UIWidgetNode UINodeBottomNav(BottomNavProps nav);
+UIWidgetNode UINodeTopNav(TopNavProps nav);
+UIWidgetNode UINodeTabBar(TabBarProps bar);
+UIWidgetNode UINodeThemeSettings(ThemeSettingsProps settings);
 UIWidgetNode UINodeThemePicker(int x, int y, int w);
-UIWidgetNode UINodeParagraphModal(UIParagraphModalMeasure measure);
+UIWidgetNode UINodeParagraphModal(ParagraphModalMeasureProps measure);
 UIWidgetNode UINodeTitleBar(int height);
 
-void UIBackground(Color color);
+typedef struct ButtonProps {
+    Rectangle bounds;
+    const char *label;
+    UIButtonStyle style;
+    int font;
+    int id;
+    int disabled;
+} ButtonProps;
+
+void Background(Color color);
 void UITextNode(const char *text, int x, int y, int font_size, Color color);
 void UITextInRectNode(const char *text, Rectangle rect, int font_size,
                       Color color);
-void UIParagraphNode(UIParagraph paragraph, int x, int *y);
+void UIParagraphNode(UIParagraphSpec paragraph, int x, int *y);
 void UITextLinesNode(const char **lines, int count, int x, int *y,
                      int font, int line_h, Color color);
 void UIRectNode(int x, int y, int w, int h, Color fill, Color border);
@@ -111,16 +120,16 @@ void UILineNode(int x1, int y1, int x2, int y2, Color color);
 void UIBevelNode(int x, int y, int w, int h, Color light, Color dark);
 void UIIconTextureNode(int id, int x, int y, int size, Texture2D icon,
                        Color tint);
-void UISpriteNode(UISprite sprite);
-int UIButtonNode(UIButton button);
-int UIIconButtonNode(UIIconButton button);
-int UIHrefNode(UIHref link);
-int UITextInputControlNode(UITextInput input);
+void UISpriteNode(SpriteProps sprite);
+int UIButtonNode(UIButtonSpec button);
+int UIIconButtonNode(IconButtonProps button);
+int UIHrefNode(HrefProps link);
+int UITextInputControlNode(TextInputProps input);
 int UIGenericButtonNode(int id, int x, int y, int w, int h,
                         const char *label, UIButtonStyle style,
                         int disabled, int *hover);
-int UITextFieldNode(UITextField field);
-int UIReadonlyTextBoxNode(UIReadonlyTextBox box);
+int UITextFieldNode(TextFieldProps field);
+int UIReadonlyTextBoxNode(ReadonlyTextBoxProps box);
 int UIIconBtnNode(int id, int x, int y, UIIconSize size, Texture2D icon,
                   int *hover);
 int UIPaddedIconBtnNode(int id, int x, int y, int size, int padding,
@@ -148,37 +157,37 @@ int UIVerticalSliderWithMarksNode(int id, int x, int y, int h, int min,
 int UIToggleNode(int id, int x, int y, int w, int h, int *value,
                  const char *off_label, const char *on_label);
 int UICheckboxNode(int id, int x, int y, const char *label, int *value);
-int UIThemeSettingsNode(UIThemeSettings settings, UIThemeSettingsState *state,
+int UIThemeSettingsNode(ThemeSettingsProps settings, UIThemeSettingsState *state,
                         UIThemeSettingsResult *result);
 void UISeparatorNode(Rectangle bounds, int vertical);
 UIMenuBarResult UIMenuBarNode(int id, Rectangle bounds, const UIMenu *menus,
                               int menu_count, int *open_index);
 int UIPopupMenuNode(int id, int x, int y, const UIMenuItem *items,
                     int item_count);
-int UIRadioNode(UIRadioButton radio);
-void UIProgressNode(UIProgressBar progress);
-int UISpinboxNode(UISpinbox spinbox);
-int UIComboboxNode(UICombobox combo);
-void UILabelFrameNode(UILabelFrame frame);
-void UIImageBoxNode(UIImageBox image);
-int UIListBoxNode(UIListBox list);
-int UITreeViewNode(UITreeView tree);
-int UICascadingTreeViewNode(UICascadingTreeView tree);
-int UISourceViewNode(UISourceView source);
-int UITableViewNode(UITableView table);
-int UITextAreaNode(UITextArea area);
+int UIRadioNode(RadioButtonProps radio);
+void UIProgressNode(ProgressBarProps progress);
+int UISpinboxNode(SpinboxProps spinbox);
+int UIComboboxNode(ComboboxProps combo);
+void UILabelFrameNode(LabelFrameProps frame);
+void UIImageBoxNode(ImageBoxProps image);
+int UIListBoxNode(ListBoxProps list);
+int UITreeViewNode(TreeViewProps tree);
+int UICascadingTreeViewNode(CascadingTreeViewProps tree);
+int UISourceViewNode(SourceViewProps source);
+int UITableViewNode(TableViewProps table);
+int UITextAreaNode(TextAreaProps area);
 void UICanvasGridNode(Rectangle bounds, int step, Color color);
-int UINotebookNode(UINotebook notebook);
-int UIPanedViewNode(UIPanedView panes);
-int UICollapsibleNode(UICollapsible section);
+int UINotebookNode(NotebookProps notebook);
+int UIPanedViewNode(PanedViewProps panes);
+int UICollapsibleNode(CollapsibleProps section);
 int UIColorPickerNode(Rectangle bounds, Color *color);
-int UIActionModalNode(UIModalSpec modal);
-int UIMessageDialogNode(UIMessageDialog dialog);
-int UIConfirmDialogNode(UIConfirmDialog dialog);
-int UIPromptDialogNode(UIPromptDialog dialog);
+int UIActionModalNode(ModalProps modal);
+int UIMessageDialogNode(MessageDialogProps dialog);
+int UIConfirmDialogNode(ConfirmDialogProps dialog);
+int UIPromptDialogNode(PromptDialogProps dialog);
 void UIFocusNode(Rectangle bounds);
 void UIFocusDebugOverlayNode(const UIAccessibilityNode *nodes, int count);
-UIGuideResult UIGuideOverlayNode(UIGuideOverlay guide);
+UIGuideResult UIGuideOverlayNode(GuideOverlayProps guide);
 int UIThemeSwitcherNode(int x, int y, int w, const char *label,
                         const char *light_label, const char *dark_label,
                         int *theme_id, int *dark_mode);
@@ -189,22 +198,22 @@ void UITutorialImageNode(Texture2D texture, const char *fallback,
                          int x, int y, int w, int h);
 void UITransitionFadeNode(const struct UITransition *transition, int width,
                           int height, Color color);
-void UIInfoRowsNode(UIInfoRows rows);
-int UILabelTextFieldNode(UILabelTextField row, int x, int y, int w);
-int UISectionLabelNode(UISectionLabel label, int x, int y);
-int UICheckboxRowNode(UICheckboxRow row, int x, int y);
-int UIOverlayButtonNode(UIOverlayButton button);
-int UIButtonRowNode(UIButtonRow row);
-int UIIconSliderPopupNode(UIIconSliderPopup popup);
-UIIconRowResult UIBottomIconRowNode(UIBottomIconRow row);
-UIBottomNavResult UIBottomNavNode(UIBottomNav nav);
-UIBottomNavConfigResult UIBottomNavConfigNode(UIBottomNavConfigModal modal);
-UITopNavResult UITopNavNode(UITopNav nav);
-UIToolbarResult UIToolbarNode(UIToolbar toolbar);
-UIToolbarHeaderResult UIToolbarHeaderNode(UIToolbarHeader header);
-int UISubtabBarNode(UISubtabBar bar);
-int UITabBarNode(UITabBar bar);
-UISidebarAccountHeaderResult UISidebarAccountHeaderNode(UISidebarAccountHeader header);
+void UIInfoRowsNode(InfoRowsProps rows);
+int UILabelTextFieldNode(LabelTextFieldProps row, int x, int y, int w);
+int UISectionLabelNode(SectionLabelProps label, int x, int y);
+int UICheckboxRowNode(CheckboxRowProps row, int x, int y);
+int UIOverlayButtonNode(OverlayButtonProps button);
+int UIButtonRowNode(ButtonRowProps row);
+int UIIconSliderPopupNode(IconSliderPopupProps popup);
+UIIconRowResult UIBottomIconRowNode(BottomIconRowProps row);
+UIBottomNavResult UIBottomNavNode(BottomNavProps nav);
+UIBottomNavConfigResult UIBottomNavConfigNode(BottomNavConfigProps modal);
+UITopNavResult UITopNavNode(TopNavProps nav);
+UIToolbarResult UIToolbarNode(ToolbarProps toolbar);
+UIToolbarHeaderResult UIToolbarHeaderNode(ToolbarHeaderProps header);
+int UISubtabBarNode(SubtabBarProps bar);
+int UITabBarNode(TabBarProps bar);
+UISidebarAccountHeaderResult UISidebarAccountHeaderNode(UISidebarAccountHeaderSpec header);
 UIProfilePicturePickerResult UIProfilePicturePickerNode(UIProfilePicturePickerModal modal);
 void UIReorderHandleNode(int id, int x, int y, int w, int h, int active);
 void UIReorderPlaceholderNode(Rectangle bounds);
@@ -220,5 +229,128 @@ int UIReturnDropdownTitleBarNode(Texture2D return_icon,
                                  UITitleBarDropdown dropdown, int height);
 UIPanelFrame UIModalFrameNode(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
+
+/* Clean .kry widget vocabulary. These app-facing names still create explicit
+ * UI tree nodes so generated C remains inspectable and debuggable. */
+void Text(const char *text, int x, int y, int font_size, Color color);
+void TextInRect(const char *text, Rectangle rect, int font_size,
+                  Color color);
+void Paragraph(UIParagraphSpec paragraph, int x, int *y);
+void TextLines(const char **lines, int count, int x, int *y, int font,
+                 int line_h, Color color);
+void Rect(int x, int y, int w, int h, Color fill, Color border);
+void Line(int x1, int y1, int x2, int y2, Color color);
+void Bevel(int x, int y, int w, int h, Color light, Color dark);
+void IconTexture(int id, int x, int y, int size, Texture2D icon,
+                   Color tint);
+void Sprite(SpriteProps sprite);
+int Button(ButtonProps button);
+int IconButton(IconButtonProps button);
+int Href(HrefProps link);
+int TextInputControl(TextInputProps input);
+int GenericButton(int id, int x, int y, int w, int h,
+                    const char *label, UIButtonStyle style, int disabled,
+                    int *hover);
+int TextField(TextFieldProps field);
+int ReadonlyTextBox(ReadonlyTextBoxProps box);
+int IconBtn(int id, int x, int y, UIIconSize size, Texture2D icon,
+              int *hover);
+int PaddedIconBtn(int id, int x, int y, int size, int padding,
+                    Texture2D icon, int *hover);
+int InfoButton(int id, int center_x, int center_y, int diameter);
+int TextButton(int id, int x, int y, const char *label, int *hover);
+void IconLink(int id, int x, int y, int icon_size, Texture2D icon,
+                const char *url);
+int Dropdown(int id, int x, int y, int w, int h, const char **options,
+               int option_count, int *selected_index);
+int DropdownEx(int id, int x, int y, int w, int h,
+                 const UIDropdownOption *options, int option_count,
+                 int *selected_index);
+int LocaleDropdown(int id, int x, int y, int w, int h,
+                     int *selected_index);
+int Slider(int id, int x, int y, int w, const char *label, int min,
+             int max, int *value, const char *suffix);
+int VerticalSlider(int id, int x, int y, int h, int min, int max,
+                     int *value);
+int VerticalSliderWithMarks(int id, int x, int y, int h, int min,
+                              int max, int *value,
+                              UIVerticalSliderMarkCallback callback,
+                              void *callback_user_data);
+int Toggle(int id, int x, int y, int w, int h, int *value,
+             const char *off_label, const char *on_label);
+int Checkbox(int id, int x, int y, const char *label, int *value);
+int ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state,
+                    UIThemeSettingsResult *result);
+void Separator(Rectangle bounds, int vertical);
+UIMenuBarResult MenuBar(int id, Rectangle bounds, const UIMenu *menus,
+                          int menu_count, int *open_index);
+int PopupMenu(int id, int x, int y, const UIMenuItem *items,
+                int item_count);
+int Radio(RadioButtonProps radio);
+void Progress(ProgressBarProps progress);
+int Spinbox(SpinboxProps spinbox);
+int Combobox(ComboboxProps combo);
+void LabelFrame(LabelFrameProps frame);
+void ImageBox(ImageBoxProps image);
+int ListBox(ListBoxProps list);
+int TreeView(TreeViewProps tree);
+int CascadingTreeView(CascadingTreeViewProps tree);
+int SourceView(SourceViewProps source);
+int TableView(TableViewProps table);
+int TextArea(TextAreaProps area);
+void CanvasGrid(Rectangle bounds, int step, Color color);
+int Notebook(NotebookProps notebook);
+int PanedView(PanedViewProps panes);
+int Collapsible(CollapsibleProps section);
+int ColorPicker(Rectangle bounds, Color *color);
+int ActionModal(ModalProps modal);
+int MessageDialog(MessageDialogProps dialog);
+int ConfirmDialog(ConfirmDialogProps dialog);
+int PromptDialog(PromptDialogProps dialog);
+void Focus(Rectangle bounds);
+void FocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
+UIGuideResult GuideOverlay(GuideOverlayProps guide);
+int ThemeSwitcher(int x, int y, int w, const char *label,
+                    const char *light_label, const char *dark_label,
+                    int *theme_id, int *dark_mode);
+int ThemePicker(int x, int y, int w, int dark_mode, int *theme_id);
+void TutorialImagePlaceholder(const char *label, int x, int y,
+                                int w, int h);
+void TutorialImage(Texture2D texture, const char *fallback,
+                     int x, int y, int w, int h);
+void TransitionFade(const struct UITransition *transition, int width,
+                      int height, Color color);
+void InfoRows(InfoRowsProps rows);
+int LabelTextField(LabelTextFieldProps row, int x, int y, int w);
+int SectionLabel(SectionLabelProps label, int x, int y);
+int CheckboxRow(CheckboxRowProps row, int x, int y);
+int OverlayButton(OverlayButtonProps button);
+int ButtonRow(ButtonRowProps row);
+int IconSliderPopup(IconSliderPopupProps popup);
+UIIconRowResult BottomIconRow(BottomIconRowProps row);
+UIBottomNavResult BottomNav(BottomNavProps nav);
+UIBottomNavConfigResult BottomNavConfig(BottomNavConfigProps modal);
+UITopNavResult TopNav(TopNavProps nav);
+UIToolbarResult Toolbar(ToolbarProps toolbar);
+UIToolbarHeaderResult ToolbarHeader(ToolbarHeaderProps header);
+int SubtabBar(SubtabBarProps bar);
+int TabBar(TabBarProps bar);
+UISidebarAccountHeaderResult SidebarAccountHeader(
+    UISidebarAccountHeaderSpec header);
+UIProfilePicturePickerResult ProfilePicturePicker(
+    UIProfilePicturePickerModal modal);
+void ReorderHandle(int id, int x, int y, int w, int h, int active);
+void ReorderPlaceholder(Rectangle bounds);
+int Modal(const char *title, const char *message,
+            const char *cancel_btn, const char *confirm_btn);
+int Modal3Button(const char *title, const char *message,
+                   const char *left_btn, const char *middle_btn,
+                   const char *right_btn);
+void TitleBar(const char *title, int height);
+int ReturnTitleBar(Texture2D return_icon, const char *title, int height);
+int ReturnDropdownTitleBar(Texture2D return_icon,
+                             UITitleBarDropdown dropdown, int height);
+UIPanelFrame ModalFrame(int width, int height, const char *title,
+                          Texture2D left_icon, Texture2D right_icon);
 
 #endif

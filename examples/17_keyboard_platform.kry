@@ -13,15 +13,15 @@ state {
 }
 
 screen KeyboardPlatformExample(viewport: Rectangle) {
-    WidgetBackground(GetThemeBackground())
-    WidgetText("Keyboard and clipboard", 40, 40, UI_TEXT_24, GetThemeText())
-    WidgetText(message, 40, 90, UI_TEXT_16, GetThemeText())
+    Background(GetThemeBackground())
+    Text("Keyboard and clipboard", 40, 40, UI_TEXT_24, GetThemeText())
+    Text(message, 40, 90, UI_TEXT_16, GetThemeText())
     if UIAcceleratorPressed((UIAccelerator){KEY_C,1,0,0,1}) {
         SetUIClipboardTextValue("Copied from Kryon")
         snprintf(message,sizeof(message),"Copied to clipboard")
         copied = 1
     }
     if copied {
-        WidgetText("Clipboard updated.", 40, 130, UI_TEXT_16, GetThemeLink())
+        Text("Clipboard updated.", 40, 130, UI_TEXT_16, GetThemeLink())
     }
 }

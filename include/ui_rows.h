@@ -21,7 +21,7 @@ typedef struct {
     Color background;
     Color separator;
     Color default_text;
-} UIInfoRows;
+} InfoRowsProps;
 
 typedef struct {
     const char *label;
@@ -37,18 +37,18 @@ typedef struct {
     int gap;
     const UIButtonRowItem *items;
     int count;
-} UIButtonRow;
+} ButtonRowProps;
 
 typedef struct {
     const char *label;
-    UITextField field;
+    TextFieldProps field;
     int label_font;
     int label_h;
     int field_h;
     int gap;
     int bottom_gap;
     Color label_color;
-} UILabelTextField;
+} LabelTextFieldProps;
 
 typedef struct {
     const char *label;
@@ -57,14 +57,14 @@ typedef struct {
     int icon_diameter;
     int height;
     Color color;
-} UISectionLabel;
+} SectionLabelProps;
 
 typedef struct {
     const char *label;
     int *value;
     int height;
     int disabled;
-} UICheckboxRow;
+} CheckboxRowProps;
 
 typedef struct {
     Rectangle bounds;
@@ -76,6 +76,14 @@ typedef struct {
     Color border;
     Color hover_border;
     Color text;
-} UIOverlayButton;
+} OverlayButtonProps;
+
+int GetUILabelTextFieldHeight(LabelTextFieldProps row);
+int DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w);
+int DrawUISectionLabel(SectionLabelProps label, int x, int y);
+int DrawUICheckboxRow(CheckboxRowProps row, int x, int y);
+int DrawUIOverlayButton(OverlayButtonProps button);
+int DrawUIButtonRow(ButtonRowProps row);
+void DrawUIInfoRows(InfoRowsProps rows);
 
 #endif

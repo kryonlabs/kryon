@@ -23,7 +23,7 @@ typedef struct {
     Texture2D back_icon;
     Texture2D next_icon;
     Texture2D done_icon;
-} UIGuideOverlay;
+} GuideOverlayProps;
 
 typedef struct {
     int closed;
@@ -68,7 +68,7 @@ typedef struct {
     const char *style_liquid_glass_label;
     const char *style_aero_label;
     const char *system_theme_label;
-} UIThemeSettings;
+} ThemeSettingsProps;
 
 typedef struct {
     int changed;
@@ -78,8 +78,8 @@ typedef struct {
     int style_changed;
 } UIThemeSettingsResult;
 
-int DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state);
-UIThemeSettingsResult DrawUIThemeSettingsMenus(UIThemeSettings settings,
+int DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state);
+UIThemeSettingsResult DrawUIThemeSettingsMenus(ThemeSettingsProps settings,
                                                  UIThemeSettingsState *state);
 
 #endif

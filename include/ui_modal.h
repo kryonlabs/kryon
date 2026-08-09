@@ -13,7 +13,7 @@ typedef struct {
     int extra_lines;
     int min_height;
     int font;
-} UIParagraphModalMeasure;
+} ParagraphModalMeasureProps;
 
 typedef struct {
     int id;
@@ -38,7 +38,7 @@ typedef struct {
     int action_count;
     Texture2D close_icon;
     int max_width;
-} UIModalSpec;
+} ModalProps;
 
 typedef struct {
     int x;
@@ -52,5 +52,8 @@ typedef struct {
     int left_clicked;
     int right_clicked;
 } UIPanelFrame;
+
+UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
+                              Texture2D left_icon, Texture2D right_icon);
 
 #endif

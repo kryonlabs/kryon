@@ -170,7 +170,7 @@ ui_draw_pfp_fallback(int x, int y, int size, Color color)
 }
 
 UISidebarAccountHeaderResult
-DrawUISidebarAccountHeader(UISidebarAccountHeader header)
+DrawUISidebarAccountHeader(UISidebarAccountHeaderSpec header)
 {
     UISidebarAccountHeaderResult result = {0};
     int height = header.height > 0 ? header.height : ScaleUIPx(138);
